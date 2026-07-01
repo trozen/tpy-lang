@@ -5939,6 +5939,23 @@ API, floor 3.12, hand-rolled C-API glue, copy-in marshalling).
   valid top-level boundary types but **not yet** container elements (no
   per-element type handle); `list[SomeExportedClass]` is rejected. Verified in
   `tests/interop/containers/`.
+- **Working (`Span[T]` numeric, buffer protocol)**: a `Span[readonly[T]]` or
+  `Span[T]` param (`T` a fixed-width int or `float`) binds to any
+  buffer-protocol object -- `array.array`, `memoryview`, `bytes`/`bytearray`,
+  numpy arrays -- via `PyObject_GetBuffer` (`PyBUF_ND | PyBUF_FORMAT`,
+  requiring a 1-D C-contiguous buffer). The element format/itemsize must
+  strictly match `T` (no coercion, same strict-by-kind family as
+  containers/enums); the bytes copy into a fresh `std::vector<T>`, which
+  implicitly converts to the function's `std::span<T>`/`std::span<const T>`
+  param -- the same owned-copy-converts-to-borrow-param trick `str`/`bytes`
+  use. **Span crosses only as a function PARAMETER, never a return type** --
+  return numeric data via `list[T]` instead. v1 is copy-in for both the
+  read-only and mutable forms (no `PyBUF_WRITABLE`, no write-back): a
+  `Span[T]` (non-readonly) param sema proves is mutated **warns** at compile
+  time (the same `mutated_params` mechanism and no-escape-hatch bar as the
+  container-mutation warning); `Span[readonly[T]]` can never warn (writing
+  through it is already a compile error elsewhere). Verified in
+  `tests/interop/span_numeric/`.
 - **Working (`.so` build mode)**: `tpyc -b` on an `# tpy: ext_module` builds an
   importable `<mod>.so` directly -- every TU `-fPIC`, linked `-shared`, no
   `main()`, glue TU in the link set. `--exec` on an ext_module is a clean error

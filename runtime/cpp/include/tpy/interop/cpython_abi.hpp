@@ -148,4 +148,28 @@ inline constexpr unsigned int Py_TPFLAGS_DEFAULT = 0;
 // field, so read it directly.
 inline PyTypeObject *Py_TYPE(PyObject *o) { return o->ob_type; }
 
+// --- Buffer protocol (Span[T] numeric marshalling). ---
+// Py_buffer layout has been part of the stable abi3 since Python 3.11 (the
+// struct is fully public by design -- the whole point of the buffer protocol
+// is direct field access by the consumer).
+struct Py_buffer {
+    void *buf;
+    PyObject *obj;        // owned reference
+    Py_ssize_t len;
+    Py_ssize_t itemsize;
+    int readonly;
+    int ndim;
+    char *format;
+    Py_ssize_t *shape;
+    Py_ssize_t *strides;
+    Py_ssize_t *suboffsets;
+    void *internal;
+};
+
+// Flags for PyObject_GetBuffer. span_from_py requests ND (shape, and implies
+// the exporter must be C-contiguous since no strides are requested) | FORMAT
+// (populate view.format for the element-type check).
+inline constexpr int PyBUF_ND = 0x0008;
+inline constexpr int PyBUF_FORMAT = 0x0004;
+
 }  // namespace tpy::cpy

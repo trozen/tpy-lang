@@ -32,6 +32,8 @@ constexpr int tp_new = Py_tp_new;
 constexpr int tp_getset = Py_tp_getset;
 constexpr int tp_free = Py_tp_free;
 constexpr unsigned long tpflags_default = Py_TPFLAGS_DEFAULT;
+constexpr int pybuf_nd = PyBUF_ND;
+constexpr int pybuf_format = PyBUF_FORMAT;
 }  // namespace real_abi
 #undef METH_VARARGS
 #undef METH_KEYWORDS
@@ -44,6 +46,8 @@ constexpr unsigned long tpflags_default = Py_TPFLAGS_DEFAULT;
 #undef Py_tp_getset
 #undef Py_tp_free
 #undef Py_TPFLAGS_DEFAULT
+#undef PyBUF_ND
+#undef PyBUF_FORMAT
 
 #include "tpy/interop/cpython_abi.hpp"
 
@@ -126,5 +130,28 @@ static_assert(tpy::cpy::Py_tp_free == real_abi::tp_free,
               "Py_tp_free value mismatch");
 static_assert(tpy::cpy::Py_TPFLAGS_DEFAULT == real_abi::tpflags_default,
               "Py_TPFLAGS_DEFAULT value mismatch");
+
+// Buffer protocol (Span[T] numeric marshalling).
+static_assert(sizeof(tpy::cpy::Py_buffer) == sizeof(::Py_buffer),
+              "Py_buffer size mismatch");
+static_assert(offsetof(tpy::cpy::Py_buffer, obj) == offsetof(::Py_buffer, obj),
+              "Py_buffer.obj offset mismatch");
+static_assert(offsetof(tpy::cpy::Py_buffer, len) == offsetof(::Py_buffer, len),
+              "Py_buffer.len offset mismatch");
+static_assert(offsetof(tpy::cpy::Py_buffer, itemsize) ==
+                  offsetof(::Py_buffer, itemsize),
+              "Py_buffer.itemsize offset mismatch");
+static_assert(offsetof(tpy::cpy::Py_buffer, ndim) == offsetof(::Py_buffer, ndim),
+              "Py_buffer.ndim offset mismatch");
+static_assert(offsetof(tpy::cpy::Py_buffer, format) ==
+                  offsetof(::Py_buffer, format),
+              "Py_buffer.format offset mismatch");
+static_assert(offsetof(tpy::cpy::Py_buffer, shape) ==
+                  offsetof(::Py_buffer, shape),
+              "Py_buffer.shape offset mismatch");
+static_assert(tpy::cpy::PyBUF_ND == real_abi::pybuf_nd,
+              "PyBUF_ND value mismatch");
+static_assert(tpy::cpy::PyBUF_FORMAT == real_abi::pybuf_format,
+              "PyBUF_FORMAT value mismatch");
 
 int main() { return 0; }

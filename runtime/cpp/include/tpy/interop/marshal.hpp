@@ -13,6 +13,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <initializer_list>
 #include <limits>
 #include <string>
 #include <string_view>
@@ -210,6 +211,159 @@ inline std::vector<std::uint8_t> from_py<std::vector<std::uint8_t>>(
     }
     const auto *p = reinterpret_cast<const std::uint8_t *>(buf);
     return std::vector<std::uint8_t>(p, p + n);
+}
+
+// ---- Span[T] numeric marshalling (buffer protocol) -------------------------
+//
+// A Span[T]/Span[readonly[T]] @export param binds to any buffer-protocol
+// exporter (bytes, bytearray, array.array, memoryview, numpy arrays): the data
+// is copied into a fresh std::vector<T> (v1 is copy-in only, mirroring the
+// container boundary -- there is no write-back), which implicitly converts to
+// the function's std::span<T>/std::span<const T> param at the call site, the
+// same "owned local outlives the call" trick str/bytes use for
+// string_view/span<const uint8_t>.
+
+namespace detail {
+// True if `prefix` (one of '@'/'='/'<'/'>'/'!', or '\0' for "no prefix")
+// denotes this host's native byte order. '@' (native size/alignment) and '='
+// (native order, standard size) are native-order codes by definition (PEP
+// 3118); '<'/'>'/'!' are explicit byte orders that match only when they
+// happen to equal the host's -- accepting a mismatched one would silently
+// byte-swap every element.
+inline bool span_format_prefix_is_native(char prefix) {
+#if defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+    constexpr bool host_little_endian = false;
+#else
+    constexpr bool host_little_endian = true;
+#endif
+    switch (prefix) {
+        case '\0':
+        case '@':
+        case '=':
+            return true;
+        case '<':
+            return host_little_endian;
+        case '>':
+        case '!':
+            return !host_little_endian;
+        default:
+            return false;
+    }
+}
+
+// The buffer's format string denotes a byte layout compatible with T (per the
+// `struct`/`array` module typecodes). A leading byte-order/alignment
+// character (@=<>!) is stripped first -- native exporters (array.array,
+// numpy) always include one -- and rejected if it doesn't denote this host's
+// native order. A null format means "unsigned bytes" (the buffer-protocol
+// default for an exporter that ignores PyBUF_FORMAT).
+inline bool span_format_matches(const char *format,
+                                std::initializer_list<char> codes) {
+    if (format == nullptr) {
+        for (char c : codes) {
+            if (c == 'B') return true;
+        }
+        return false;
+    }
+    const char *p = format;
+    char prefix = '\0';
+    if (*p == '@' || *p == '=' || *p == '<' || *p == '>' || *p == '!') {
+        prefix = *p;
+        ++p;
+    }
+    if (!span_format_prefix_is_native(prefix)) {
+        return false;
+    }
+    if (p[0] == '\0' || p[1] != '\0') {
+        return false;  // exactly one code character after the optional prefix
+    }
+    for (char c : codes) {
+        if (*p == c) return true;
+    }
+    return false;
+}
+
+// Releases a Py_buffer view on scope exit (success, validation failure, or an
+// exception from the result-vector allocation) -- without this, an
+// std::bad_alloc thrown while copying out the data would leak the exporter's
+// held reference and skip its releasebuffer hook.
+struct BufferGuard {
+    cpy::Py_buffer *view;
+    ~BufferGuard() { cpy::PyBuffer_Release(view); }
+};
+
+// Shared buffer-read path: request a 1-D C-contiguous buffer (PyBUF_ND
+// implies contiguity since no strides are requested) with its format string
+// (PyBUF_FORMAT), validate itemsize + format against T and `codes`, and copy
+// into a fresh vector.
+template <class T>
+inline std::vector<T> span_from_py_impl(cpy::PyObject *o,
+                                        std::initializer_list<char> codes) {
+    cpy::Py_buffer view;
+    if (cpy::PyObject_GetBuffer(o, &view, cpy::PyBUF_ND | cpy::PyBUF_FORMAT) <
+        0) {
+        throw MarshalError{};  // PyObject_GetBuffer already set an exception
+    }
+    BufferGuard guard{&view};
+    if (view.ndim != 1 ||
+        view.itemsize != static_cast<cpy::Py_ssize_t>(sizeof(T)) ||
+        !span_format_matches(view.format, codes)) {
+        cpy::PyErr_SetString(cpy::PyExc_TypeError,
+                             "buffer element type/shape does not match the "
+                             "expected Span element type");
+        throw MarshalError{};
+    }
+    const auto *p = static_cast<const T *>(view.buf);
+    return std::vector<T>(p, p + view.len / view.itemsize);
+}
+}  // namespace detail
+
+template <class T>
+std::vector<T> span_from_py(cpy::PyObject *o);
+
+template <>
+inline std::vector<std::int8_t> span_from_py<std::int8_t>(cpy::PyObject *o) {
+    return detail::span_from_py_impl<std::int8_t>(o, {'b'});
+}
+template <>
+inline std::vector<std::uint8_t> span_from_py<std::uint8_t>(cpy::PyObject *o) {
+    return detail::span_from_py_impl<std::uint8_t>(o, {'B'});
+}
+template <>
+inline std::vector<std::int16_t> span_from_py<std::int16_t>(cpy::PyObject *o) {
+    return detail::span_from_py_impl<std::int16_t>(o, {'h'});
+}
+template <>
+inline std::vector<std::uint16_t> span_from_py<std::uint16_t>(
+    cpy::PyObject *o) {
+    return detail::span_from_py_impl<std::uint16_t>(o, {'H'});
+}
+template <>
+inline std::vector<std::int32_t> span_from_py<std::int32_t>(cpy::PyObject *o) {
+    // 'l' accepted alongside 'i': a native C long is 4 bytes on some
+    // platforms (e.g. Windows), and the itemsize check above is the real
+    // safety guard -- only the width that actually matches sizeof(T) passes.
+    return detail::span_from_py_impl<std::int32_t>(o, {'i', 'l'});
+}
+template <>
+inline std::vector<std::uint32_t> span_from_py<std::uint32_t>(
+    cpy::PyObject *o) {
+    return detail::span_from_py_impl<std::uint32_t>(o, {'I', 'L'});
+}
+template <>
+inline std::vector<std::int64_t> span_from_py<std::int64_t>(cpy::PyObject *o) {
+    // 'l' accepted alongside 'q': a native C long is 8 bytes on 64-bit
+    // Linux/macOS (numpy's int64 buffers report 'l' there); itemsize gates it.
+    return detail::span_from_py_impl<std::int64_t>(o, {'q', 'l'});
+}
+template <>
+inline std::vector<std::uint64_t> span_from_py<std::uint64_t>(
+    cpy::PyObject *o) {
+    return detail::span_from_py_impl<std::uint64_t>(o, {'Q', 'L'});
+}
+template <>
+inline std::vector<double> span_from_py<double>(cpy::PyObject *o) {
+    return detail::span_from_py_impl<double>(o, {'d'});
 }
 
 // to_py: a TPy value -> a new owned PyObject reference.

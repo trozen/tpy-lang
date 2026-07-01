@@ -606,6 +606,27 @@ def _boundary_inner(t: "TpyType") -> "TpyType":
     return inner
 
 
+def is_span_boundary_param(t: "TpyType | None") -> bool:
+    """Whether `t` is a Span[T]/Span[readonly[T]] @export FUNCTION PARAMETER
+    the buffer-protocol marshaller can bind: T is a fixed-width int or `float`
+    (float64) -- the numeric element types the CPython buffer protocol
+    (PyObject_GetBuffer) can format/itemsize-check against. Span never crosses
+    as a RETURN type (v1 buffer input is param-only; a function hands back
+    numeric data via list[T] instead), so this is a separate predicate checked
+    only at param sites -- never folded into is_function_boundary_marshallable,
+    whose admission is direction-symmetric for every other boundary type."""
+    from tpyc.typesys import ReadonlyType, unwrap_readonly
+    if t is None:
+        return False
+    inner = _boundary_inner(t)
+    if not is_span(inner):
+        return False
+    elem = inner.type_args[0]
+    if isinstance(elem, ReadonlyType):
+        elem = unwrap_readonly(elem)
+    return is_fixed_int_type(elem) or is_float64_type(elem)
+
+
 def is_exposed_class(t: "TpyType | None") -> "bool":
     """True if `t` resolves to a user record exposed as a CPython type (`@export`
     in an ext_module). Distinguishes a class boundary (PyType_FromSpec, marshalled
@@ -648,7 +669,9 @@ def boundary_unmarshallable_msg(name: str, what: str, cpp: str,
             f"(supported: the fixed-width int types, int, float, bool, str, "
             f"bytes, @export classes/enums defined in this module, and -- for "
             f"@export function params/returns -- list/dict/set/tuple of "
-            f"marshallable elements)")
+            f"marshallable elements; a numeric Span[T]/Span[readonly[T]] is "
+            f"supported as a function PARAM only, via the buffer protocol -- "
+            f"return numeric data as list[T] instead)")
 
 
 # Single-qname primitive predicates.

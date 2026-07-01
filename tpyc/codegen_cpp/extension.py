@@ -19,8 +19,8 @@ from ..parse import TpyModule, TpyVarDecl
 from ..typesys import TpyType, is_void_like_type, FinalType
 from ..type_def_registry import (
     is_boundary_marshallable, is_function_boundary_marshallable, is_exposed_class,
-    is_exposed_enum, _boundary_inner, enum_info_of, is_str_view_type,
-    boundary_cpp_type, boundary_unmarshallable_msg,
+    is_exposed_enum, is_span_boundary_param, _boundary_inner, enum_info_of,
+    is_str_view_type, boundary_cpp_type, boundary_unmarshallable_msg,
     _container_element_types, is_list, is_dict, is_set,
 )
 from .context import (
@@ -273,13 +273,26 @@ class ExtensionGenerator:
         # render instantiates and what from_py<leaf>/to_py are keyed on.
         return _boundary_inner(et).to_cpp_stored()
 
+    def _span_elem_cpp(self, typ: TpyType) -> str:
+        """The numeric C++ element type of a Span[T]/Span[readonly[T]] param
+        (after stripping Own/Ref and readonly) -- the type span_from_py<T> is
+        keyed on."""
+        from ..typesys import ReadonlyType, unwrap_readonly
+        elem = _boundary_inner(typ).type_args[0]
+        if isinstance(elem, ReadonlyType):
+            elem = unwrap_readonly(elem)
+        return elem.to_cpp()
+
     def _emit_marshal_in(self, out: TextIO, idx: int, typ: TpyType,
                          sym: str) -> str:
         """Marshal arg a{idx} into a local; return the token to pass at the
         call. A class param binds a reference to the live embedded payload --
         the borrow that makes mutation through it write through to the same
         PyObject; a scalar/str/bytes param copies in via from_py; a container
-        param copies in O(n) via the recursive glue."""
+        param copies in O(n) via the recursive glue; a Span[T] param copies in
+        via the buffer protocol into a vector that implicitly converts to the
+        function's span<T>/span<const T> param, the same "owned local outlives
+        the call" trick str/bytes use for string_view/span<const uint8_t>."""
         if is_exposed_class(typ):
             cpp, tv = self._class_cpp_var(typ, sym)
             out.write(f"        {cpp} &__p{idx} = "
@@ -289,6 +302,10 @@ class ExtensionGenerator:
             cpp, ev = self._enum_cpp_var(typ, sym)
             out.write(f"        {cpp} __p{idx} = "
                       f"::tpy::interop::enum_from_py<{cpp}>(a{idx}, {ev});\n")
+        elif is_span_boundary_param(typ):
+            elem_cpp = self._span_elem_cpp(typ)
+            out.write(f"        std::vector<{elem_cpp}> __p{idx} = "
+                      f"::tpy::interop::span_from_py<{elem_cpp}>(a{idx});\n")
         elif _container_element_types(_boundary_inner(typ)) is not None:
             cpp = boundary_cpp_type(_boundary_inner(typ))
             out.write(f"        {cpp} __p{idx} = "
@@ -582,8 +599,13 @@ class ExtensionGenerator:
         def assert_marshal(t, what: str, fn) -> None:
             # Sema (_validate_ext_module_exports) already rejected unmarshallable
             # boundary types; this asserts the contract to catch sema/codegen
-            # drift loudly rather than emit a TU that won't compile.
+            # drift loudly rather than emit a TU that won't compile. Span[T]
+            # mirrors sema's param-only admission (is_function_boundary_
+            # marshallable stays Span-blind, direction-symmetric for every
+            # other boundary type).
             allow_void = what == "return"
+            if what != "return" and is_span_boundary_param(t):
+                return
             assert is_function_boundary_marshallable(t, allow_void), \
                 boundary_unmarshallable_msg(fn.name, what, boundary_cpp_type(t))
 

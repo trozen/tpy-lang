@@ -190,6 +190,13 @@ extern PyObject *PyExc_KeyboardInterrupt;
 // underlying data symbol so void-return wrappers can hand back a fresh ref.
 extern PyObject _Py_NoneStruct;
 
+// Buffer protocol (Span[T] numeric marshalling). GetBuffer takes a new
+// reference to the exporter (stashed in view->obj) that keeps it alive until
+// Release -- span_from_py copies the data and releases before returning, so
+// the borrow never outlives the call.
+int PyObject_GetBuffer(PyObject *obj, Py_buffer *view, int flags);
+void PyBuffer_Release(Py_buffer *view);
+
 }  // extern "C"
 
 }  // namespace tpy::cpy

@@ -3897,8 +3897,8 @@ class Compiler:
             boundary marshaller. Runs post-sema so the types are resolved.
         """
         from .type_def_registry import (
-            is_function_boundary_marshallable, boundary_cpp_type,
-            boundary_unmarshallable_msg)
+            is_function_boundary_marshallable, is_span_boundary_param,
+            boundary_cpp_type, boundary_unmarshallable_msg)
         for compiled in self.modules.values():
             if not compiled.ast.directives.ext_module:
                 continue
@@ -3931,28 +3931,38 @@ class Compiler:
                         raise CompileError(
                             f"@export function '{func.name}': {what} {form_err}",
                             compiled.name, compiled.path, lineno=fline)
+                    # Span[T] numeric crosses only as a param (buffer-protocol
+                    # copy-in); a function hands back numeric data via list[T]
+                    # instead, so this is checked here rather than folded into
+                    # is_function_boundary_marshallable (which is otherwise
+                    # direction-symmetric for every boundary type).
+                    if role == "param" and is_span_boundary_param(typ):
+                        continue
                     if is_function_boundary_marshallable(typ, role == "return"):
                         continue
                     cpp = boundary_cpp_type(typ)
                     raise CompileError(
                         boundary_unmarshallable_msg(func.name, what, cpp),
                         compiled.name, compiled.path, lineno=fline)
-                self._warn_export_container_mutation(compiled, func)
+                self._warn_export_copy_boundary_mutation(compiled, func)
             for record in compiled.ast.records:
                 if not record.exposed_to_host:
                     continue
                 self._validate_exposed_class(compiled, record)
             self._validate_exposed_enums(compiled)
 
-    def _warn_export_container_mutation(self, compiled: 'CompiledModule',
-                                        func: 'TpyFunction') -> None:
-        """A container param crosses the @export boundary copy-in (the boundary
-        marshals an owned copy), so a structural mutation -- one visible through
-        the reference, e.g. append / setitem -- is silently lost to the Python
-        caller. Warn precisely where sema proved that happens; a non-mutating
-        container param has no observable divergence and stays quiet. tuple is
-        a value type (and immutable), so it is exempt."""
-        from .type_def_registry import is_list, is_dict, is_set, _boundary_inner
+    def _warn_export_copy_boundary_mutation(self, compiled: 'CompiledModule',
+                                            func: 'TpyFunction') -> None:
+        """A container or Span param crosses the @export boundary copy-in (the
+        boundary marshals an owned copy), so a structural mutation -- one
+        visible through the reference, e.g. append / setitem / element
+        assignment -- is silently lost to the Python caller. Warn precisely
+        where sema proved that happens; a non-mutating param has no observable
+        divergence and stays quiet. tuple is a value type (and immutable), so
+        it is exempt; Span[readonly[T]] can never appear here (writing through
+        it is already a compile error), so only a mutated Span[T] shows up."""
+        from .type_def_registry import (
+            is_list, is_dict, is_set, is_span, _boundary_inner)
         fis = compiled.analyzer.registry.functions.get(func.name)
         if not fis:
             return
@@ -3968,7 +3978,8 @@ class Compiler:
             inner = _boundary_inner(ptype)  # strip the auto-inserted Ref/borrow
             kind = ("list" if is_list(inner) else
                     "dict" if is_dict(inner) else
-                    "set" if is_set(inner) else None)
+                    "set" if is_set(inner) else
+                    "Span" if is_span(inner) else None)
             if kind is None:
                 continue
             # The per-module analyzer sink (not the compiler-level one) is what

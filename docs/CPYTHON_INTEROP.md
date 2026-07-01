@@ -53,7 +53,7 @@ progress -> ✅ done.
 | 1 | Marshalling layer + cpython facade (abi3) -- the keystone | **v1.0** | 🚧 all scalars (int/BigInt, float, bool, fixed-width ints) + void return + str/bytes (copy-in) + list/dict/set/tuple (copy-in, recursive) done |
 | 2 | Extension codegen; **free functions** end-to-end; local `.so` build | **v1.0** | 🚧 every scalar arg/return + void return + str/bytes + container arg/return done; positional + keyword args (PyArg_ParseTupleAndKeywords) |
 | 2.5 | PEP 517 backend -> abi3 wheel (packaging) | **v1.0** | 🔬 |
-| 3 | Buffer input -- numeric (copy-in in v1.0; zero-copy -> 3.5) | **v1.0** | 🔬 |
+| 3 | Buffer input -- numeric (copy-in in v1.0; zero-copy -> 3.5) | **v1.0** | ✅ done: `Span[readonly[T]]`/`Span[T]` (fixed-width int/`float`) as an @export fn PARAM only, via `PyObject_GetBuffer`; copy-in for both forms (no write-back for either); a mutated `Span[T]` param warns (copy-in, not visible to caller) |
 | 4 | **Classes + methods** (`PyType_FromSpec`; dunders per Q4) | **v1.1** | 🚧 baseline done: construct + plain methods + annotated fields as getset, instances as free-fn/method params (borrow) + returns (copy); dunders/inheritance/@property/class-typed fields deferred |
 | 5 | **Enums + constants** | **v1.1** | 🚧 `@export` enums recreated as real CPython IntEnum/Enum (functional API, module= set); enum values cross as @export fn params/returns (member round-trip, strict-by-type IN); `Final` scalar/str constants as init-time module-attribute snapshots; nested/cross-module enums deferred |
 | 3.5 | Foreign-borrow primitive -> zero-copy str + buffer input | post-v1.0 (next) -- IR-gated | 🔬 |
@@ -310,34 +310,50 @@ foreign-borrow primitive); the zero-copy borrow is the deferred optimization
 that lands with it (phase 3.5). The rest of this section describes that end
 state, not the v1 behavior.
 
-### The buffer protocol -- the high-value zero-copy path
+### The buffer protocol -- copy-in in v1.0, the high-value zero-copy path later (phase 3.5)
 
-`Span[readonly[T]]` (and writable `Span[T]`) bind to any object exposing
-the buffer protocol -- notably numpy arrays and `memoryview`:
+**Implemented (the Span rung).** `Span[readonly[T]]` and `Span[T]` (`T` a
+fixed-width int or `float`) bind to any object exposing the buffer protocol
+-- `array.array`, `memoryview`, `bytes`/`bytearray`, numpy arrays -- as an
+`@export` FUNCTION **parameter only** (never a return type -- return numeric
+data via `list[T]` instead; see "Resolved (Q2)" below).
 
-- `from_py` calls `PyObject_GetBuffer` (request `PyBUF_SIMPLE` +
-  format/itemsize check; `PyBUF_WRITABLE` for a mutable `Span[T]`),
-  yielding a `Py_buffer` whose `.buf` + `.len` become the `Span` view.
-  `PyBuffer_Release` runs after the call.
-- **Soundness under GIL release:** `PyObject_GetBuffer` (called at call
-  entry, GIL held) takes a reference that keeps the exporter alive until
-  `PyBuffer_Release`. So the borrowed memory stays valid for the whole
-  call even if the GIL is released inside it (see "GIL"). This is the same
-  assumption Cython/PyO3 rely on.
-- **v1.0 = copy-in (spike outcome).** The intended zero-copy path needed a
-  *non-escaping* foreign `Span` borrow, but the ephemeral-borrow spike showed
-  the escape machinery can't fence a foreign-source param at all sinks (see
-  "Alternatives and spike outcomes" / Q6). So **v1.0 copies the buffer in**;
-  zero-copy read-only input is deferred to phase 3.5 with the foreign-borrow
-  primitive. The `PyObject_GetBuffer` plumbing above still applies -- it just
-  feeds a copy in v1.0.
-- **dtype/format match:** TPy element type <-> buffer format code
-  (`float` <-> `'d'`, etc.); mismatch is a marshalling error raised as a
-  Python exception.
+- `span_from_py<T>` (`runtime/cpp/include/tpy/interop/marshal.hpp`) calls
+  `PyObject_GetBuffer` requesting `PyBUF_ND | PyBUF_FORMAT` (shape + format,
+  no strides -- the exporter must present a C-contiguous 1-D buffer or the
+  call fails), validates `itemsize`/`ndim`/`format` strictly against `T` (no
+  coercion across width/signedness/int-vs-float -- the same strict-by-kind
+  family as containers/enums; a format/itemsize mismatch or a non-contiguous
+  buffer is a `TypeError`), copies the bytes into a fresh `std::vector<T>`,
+  and releases the buffer view before returning.
+- The owned `std::vector<T>` implicitly converts to the function's
+  `std::span<T>`/`std::span<const T>` param at the call site -- the same
+  "owned local outlives the call" trick `str`/`bytes` use for
+  `string_view`/`span<const uint8_t>` (no borrow/storage-form special-casing
+  in the glue emitter).
+- **v1.0 = copy-in (spike outcome), for BOTH `Span[T]` and
+  `Span[readonly[T]]`.** The intended zero-copy path needed a *non-escaping*
+  foreign `Span` borrow, but the ephemeral-borrow spike showed the escape
+  machinery can't fence a foreign-source param at all sinks (see
+  "Alternatives and spike outcomes" / Q6). So **v1.0 copies the buffer in
+  unconditionally** -- there is no `PyBUF_WRITABLE` request and no write-back,
+  even for a mutable `Span[T]` param; zero-copy input (read-only and
+  writable) is deferred to phase 3.5 with the foreign-borrow primitive.
+- **Acknowledged divergence: mutation through a `Span[T]` (non-readonly)
+  param is invisible to the caller.** Unlike the container cliff (where the
+  annotation never promised write-back), a *mutable* `Span[T]` -- as opposed
+  to `Span[readonly[T]]` -- is TPy's own signal that the view is writable,
+  so copy-in defeats that promise more sharply than a copied container does.
+  The compiler WARNS wherever sema proves the param is mutated (the same
+  `mutated_params` mechanism and bar as the list/dict/set container-mutation
+  warning -- no escape hatch in v1, matching that precedent); a
+  `Span[readonly[T]]` param can never trigger this (writing through it is
+  already a compile error), and a read-only *use* of a mutable `Span[T]` has
+  no observable divergence and stays quiet.
 
 **Resolved (Q2):** *returning* a `Span` to Python is harder (TPy would
-have to export its own buffer or copy). v1 accepts buffers as input and
-returns owned copies / arrays; TPy-as-buffer-exporter is deferred.
+have to export its own buffer or copy). v1 accepts buffers as input only and
+returns owned copies via `list[T]`; TPy-as-buffer-exporter is deferred.
 
 ### The container cliff (a declared divergence)
 
@@ -345,8 +361,9 @@ returns owned copies / arrays; TPy-as-buffer-exporter is deferred.
 the two sides do **not** alias, so mutations do not propagate. This is a
 CPython-parity divergence, but an *inherent, declarable* one (the project
 rule: declared divergence is acceptable, silent is not). The doc states it
-plainly and steers bulk/numeric users to `Span` + buffer protocol (which
-*does* alias, zero-copy).
+plainly and steers bulk/numeric users to `Span` + buffer protocol, which is
+the same by-copy model in v1.0 (see "The buffer protocol" above) but is the
+path zero-copy input lands on first (phase 3.5).
 
 We do **not** build alias-preserving lazy proxies in v1 (a PyObject
 wrapping the vector, boxing per `__getitem__`) -- high complexity, and it
