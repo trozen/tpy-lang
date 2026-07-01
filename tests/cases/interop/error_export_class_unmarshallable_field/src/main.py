@@ -6,6 +6,6 @@ from tpy.extern import export
 
 
 @export
-class Bad:  # tpyc: error(/field 'items'.*not yet marshallable/)
+class Bad:
     def __init__(self, items: list[Int64]):
-        self.items = items
+        self.items = items  # tpyc: error(/field 'items'.*not yet marshallable/)

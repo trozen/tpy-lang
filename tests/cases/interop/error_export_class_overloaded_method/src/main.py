@@ -8,12 +8,12 @@ from tpy.extern import export
 
 
 @export
-class C:  # tpyc: error(/overloaded 'f' cannot be exposed/)
+class C:
     def __init__(self, a: Int64):
         self.a = a
 
     @overload
-    def f(self, x: Int64) -> Int64: ...
+    def f(self, x: Int64) -> Int64: ...  # tpyc: error(/overloaded 'f' cannot be exposed/)
     @overload
     def f(self, x: Int64, y: Int64) -> Int64: ...
     def f(self, x: Int64, y: Int64 = 0) -> Int64:

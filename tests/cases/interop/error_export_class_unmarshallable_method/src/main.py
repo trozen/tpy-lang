@@ -6,9 +6,9 @@ from tpy.extern import export
 
 
 @export
-class Bad:  # tpyc: error(/method 'frob'.*parameter 'items'.*not yet marshallable/)
+class Bad:
     def __init__(self, n: Int64):
         self.n = n
 
-    def frob(self, items: list[Int64]) -> None:
+    def frob(self, items: list[Int64]) -> None:  # tpyc: error(/method 'frob'.*parameter 'items'.*not yet marshallable/)
         pass

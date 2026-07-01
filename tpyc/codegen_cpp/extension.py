@@ -23,6 +23,7 @@ from ..type_def_registry import (
     is_str_view_type, boundary_cpp_type, boundary_unmarshallable_msg,
     _container_element_types, is_list, is_dict, is_set,
 )
+from ..modules import BINOP_TO_METHOD, BINOP_TO_RMETHOD, AUGOP_TO_IMETHOD, UNARYOP_TO_METHOD
 from .context import (
     qualified_cpp_name, escape_cpp_name, module_to_include_path, CodeGenError)
 from .type_resolution import resolve_stmt_type_cascade
@@ -31,6 +32,38 @@ if TYPE_CHECKING:
     from .context import CodeGenContext
     from .records import RecordGenerator
     from .types import TypeResolver
+
+# Exposed-class arithmetic/ordering operators: dunder name
+# -> CPython nb_* slot id. Dunder NAMES come from the canonical
+# BINOP_TO_METHOD/BINOP_TO_RMETHOD/AUGOP_TO_IMETHOD/UNARYOP_TO_METHOD tables
+# (modules/defs.py), so this stays in sync with the non-exposed operator path
+# by construction; only the CPython slot id (new here) is added per symbol.
+_NB_BINARY_SYMBOL_SLOT = {
+    "+": "Py_nb_add", "-": "Py_nb_subtract", "*": "Py_nb_multiply",
+    "div": "Py_nb_true_divide", "//": "Py_nb_floor_divide", "%": "Py_nb_remainder",
+    "**": "Py_nb_power", "<<": "Py_nb_lshift", ">>": "Py_nb_rshift",
+    "&": "Py_nb_and", "|": "Py_nb_or", "^": "Py_nb_xor",
+}
+_NB_UNARY_SYMBOL_SLOT = {
+    "+": "Py_nb_positive", "-": "Py_nb_negative", "~": "Py_nb_invert",
+}
+_NB_INPLACE_SYMBOL_SLOT = {
+    "+": "Py_nb_inplace_add", "-": "Py_nb_inplace_subtract", "*": "Py_nb_inplace_multiply",
+    "div": "Py_nb_inplace_true_divide", "//": "Py_nb_inplace_floor_divide",
+    "%": "Py_nb_inplace_remainder", "<<": "Py_nb_inplace_lshift", ">>": "Py_nb_inplace_rshift",
+    "&": "Py_nb_inplace_and", "|": "Py_nb_inplace_or", "^": "Py_nb_inplace_xor",
+}
+# dunder -> (slot id, reflected dunder or None)
+_NB_BINARY_OPS = {
+    BINOP_TO_METHOD[sym]: (slot, BINOP_TO_RMETHOD.get(sym))
+    for sym, slot in _NB_BINARY_SYMBOL_SLOT.items()
+}
+_NB_UNARY_OPS = {
+    UNARYOP_TO_METHOD[sym]: slot for sym, slot in _NB_UNARY_SYMBOL_SLOT.items()
+}
+_NB_INPLACE_OPS = {
+    AUGOP_TO_IMETHOD[sym]: slot for sym, slot in _NB_INPLACE_SYMBOL_SLOT.items()
+}
 
 
 class ExtensionGenerator:
@@ -357,6 +390,483 @@ class ExtensionGenerator:
         out.write("        return nullptr;\n")
         out.write("    }\n")
 
+    # richcompare op -> the CPython Py_LT..Py_GE constant + which dunder
+    # supplies it. __ne__ alone falls back to `not __eq__` when the record
+    # defines __eq__ but not __ne__ (mirrors sema/expressions.py's own
+    # __eq__-implies-__ne__ fallback for the non-exposed operator path);
+    # no other direction is auto-derived.
+    _COMPARE_DUNDER_OPS = (
+        ("__lt__", "Py_LT"), ("__le__", "Py_LE"), ("__eq__", "Py_EQ"),
+        ("__ne__", "Py_NE"), ("__gt__", "Py_GT"), ("__ge__", "Py_GE"),
+    )
+
+    def _emit_export_class_dunder_slots(self, out: TextIO, cls: dict, sym: str,
+                                        reg_arg: str, cppvar: str
+                                        ) -> list[tuple[str, str]]:
+        """Emit repr/str/richcompare/hash wrapper functions for an exposed
+        class's dunder methods and return the (slot-id, C++ expression) pairs
+        to splice into the class's PyType_Slot table. A dunder the record
+        doesn't define contributes no slot -- PyType_FromSpec then falls back
+        to `object`'s own (identity hash, no richcompare), the same as any
+        fresh heap type.
+        """
+        info = cls["info"]
+        cpp = cls["cpp_type"]
+        tv = cls["var"]
+        base = f"{sym}__{escape_cpp_name(cls['simple'])}"
+        slots: list[tuple[str, str]] = []
+
+        for mname, slot_id in (("__repr__", "Py_tp_repr"), ("__str__", "Py_tp_str")):
+            if mname not in info.methods:
+                continue
+            wname = f"{base}__{mname.strip('_')}_slot"
+            slots.append((slot_id, wname))
+            out.write(f"PyObject *{wname}(PyObject *self) {{\n")
+            out.write("    try {\n")
+            call = f"{cppvar}->payload.{mname}()"
+            self._emit_call_return(out, info.methods[mname][0].return_type, call, sym)
+            self._emit_boundary_catch(out, reg_arg)
+            out.write("}\n\n")
+
+        compare_defined = [m for m, _op in self._COMPARE_DUNDER_OPS
+                           if m in info.methods]
+        if compare_defined:
+            wname = f"{base}__richcompare_slot"
+            slots.append(("Py_tp_richcompare", wname))
+            out.write(f"PyObject *{wname}(PyObject *self, PyObject *other, "
+                      f"int op) {{\n")
+            out.write("    auto *__ot = Py_TYPE(other);\n")
+            out.write(f"    if (__ot != (::tpy::cpy::PyTypeObject *){tv} && "
+                      f"PyType_IsSubtype(__ot, (::tpy::cpy::PyTypeObject *){tv}) "
+                      f"== 0)\n")
+            out.write("        return ::tpy::interop::notimplemented_to_py();\n")
+            out.write("    try {\n")
+            out.write(f"        auto &__self = {cppvar}->payload;\n")
+            out.write(f"        auto &__other = reinterpret_cast<"
+                      f"::tpy::interop::Instance<{cpp}> *>(other)->payload;\n")
+            out.write("        switch (op) {\n")
+            for opname, opconst in self._COMPARE_DUNDER_OPS:
+                out.write(f"        case {opconst}:\n")
+                if opname in info.methods:
+                    out.write(f"            return ::tpy::interop::to_py("
+                              f"__self.{opname}(__other));\n")
+                elif opname == "__ne__" and "__eq__" in info.methods:
+                    out.write("            return ::tpy::interop::to_py("
+                              "!__self.__eq__(__other));\n")
+                else:
+                    out.write("            return "
+                              "::tpy::interop::notimplemented_to_py();\n")
+            out.write("        default:\n")
+            out.write("            return ::tpy::interop::notimplemented_to_py();\n")
+            out.write("        }\n")
+            self._emit_boundary_catch(out, reg_arg)
+            out.write("}\n\n")
+
+        if "__hash__" in info.methods:
+            wname = f"{base}__hash_slot"
+            slots.append(("Py_tp_hash", wname))
+            out.write(f"Py_ssize_t {wname}(PyObject *self) {{\n")
+            out.write("    try {\n")
+            out.write(f"        return ::tpy::interop::hash_to_py_hash_t("
+                      f"static_cast<std::uint64_t>("
+                      f"{cppvar}->payload.__hash__()));\n")
+            out.write("    } catch (const ::tpy::BaseException &__e) {\n")
+            out.write(f"        ::tpy::interop::set_py_err_from(__e{reg_arg});\n")
+            out.write("        return -1;\n")
+            out.write("    } catch (...) {\n")
+            out.write("        if (!PyErr_Occurred())\n")
+            out.write('            PyErr_SetString(PyExc_RuntimeError, '
+                      '"tpy extension: __hash__ failed");\n')
+            out.write("        return -1;\n")
+            out.write("    }\n}\n\n")
+        elif compare_defined:
+            # Any richcompare dunder without __hash__: the type becomes
+            # unhashable. This mirrors PyType_Ready's OWN behavior for a
+            # heap type built via PyType_FromSpec -- it nulls the hash
+            # whenever tp_richcompare is populated at all, regardless of
+            # which comparison op populated it (there is no per-dunder-name
+            # introspection available at the C level, unlike a Python
+            # class-statement's type_new, which specifically checks for an
+            # `__eq__` key in the class dict). So this is NOT the same rule
+            # as plain Python's -- a class overriding only __lt__ stays
+            # hashable in plain Python but becomes unhashable once exposed
+            # (verified empirically: PyObject_HashNotImplemented need not
+            # even be wired here for the type to end up unhashable, since
+            # PyType_Ready does it regardless of this slot table). Explicit
+            # wiring here is for clarity/consistency, not because it's what
+            # causes the unhashability. Acknowledged, unavoidable divergence
+            # -- see docs/CPYTHON_INTEROP.md.
+            slots.append(("Py_tp_hash", "PyObject_HashNotImplemented"))
+
+        return slots
+
+    def _operand_decl_and_expr(self, typ: TpyType, src: str, sym: str) -> tuple[str, str]:
+        """The local's C++ declaration type and marshal expression for an
+        operator dunder's non-self operand (scalar/exposed-class/exposed-enum
+        -- containers/Span don't arise as arithmetic/comparison operands). An
+        exposed-class operand binds a const reference to the live embedded
+        payload (mirrors the record's own `const Cls&` param, no copy); a
+        scalar/enum operand is a fresh owned value, like a normal @export
+        function param."""
+        if is_exposed_class(typ):
+            cpp, tv = self._class_cpp_var(typ, sym)
+            return (f"const {cpp} &",
+                    f"*::tpy::interop::instance_payload<{cpp}>("
+                    f"{src}, (::tpy::cpy::PyTypeObject *){tv})")
+        if is_exposed_enum(typ):
+            cpp, ev = self._enum_cpp_var(typ, sym)
+            return f"{cpp} ", f"::tpy::interop::enum_from_py<{cpp}>({src}, {ev})"
+        cpp = boundary_cpp_type(_boundary_inner(typ))
+        return f"{cpp} ", f"::tpy::interop::from_py<{cpp}>({src})"
+
+    def _nb_return_expr(self, call_expr: str, ret_typ: TpyType | None, sym: str) -> str:
+        """The C++ expression producing the returned PyObject* for an
+        operator-dunder call result -- an expression-form mirror of
+        `_emit_call_return`'s dispatch (needed here because the nb_* wrapper's
+        forward/reflected branches already sit inside their own try, so they
+        need a bare `return <expr>;`, not a multi-line statement emitter)."""
+        if ret_typ is not None and is_exposed_class(ret_typ):
+            _cpp, tv = self._class_cpp_var(ret_typ, sym)
+            return (f"::tpy::interop::instance_to_py("
+                    f"(::tpy::cpy::PyTypeObject *){tv}, {call_expr})")
+        if ret_typ is not None and is_exposed_enum(ret_typ):
+            _cpp, ev = self._enum_cpp_var(ret_typ, sym)
+            und = enum_info_of(_boundary_inner(ret_typ)).underlying_type.to_cpp()
+            return f"::tpy::interop::enum_to_py({ev}, static_cast<{und}>({call_expr}))"
+        if _container_element_types(_boundary_inner(ret_typ)) is not None:
+            return self._marshal_out_expr(ret_typ, call_expr, 0)
+        return f"::tpy::interop::to_py({call_expr})"
+
+    def _emit_export_class_binary_op(self, out: TextIO, cls: dict, sym: str,
+                                     reg_arg: str, dunder: str, slot_id: str,
+                                     reflected: str | None) -> tuple[str, str] | None:
+        """Emit one nb_* wrapper for a binary arithmetic dunder (forward
+        `dunder`, e.g. `__add__`, plus its `reflected` counterpart, e.g.
+        `__radd__`, if the record defines it) -- `__pow__`/`__rpow__` included
+        (CPython's nb_power is ternary; the wrapper rejects a non-None `mod`,
+        matching a type that doesn't support 3-arg `pow`). Returns None if the
+        record defines neither dunder.
+
+        `a op b`: CPython invokes this wrapper whenever EITHER operand's type
+        registers this slot, with the SAME (a, b) order regardless of which
+        side is `self` -- so the wrapper checks a's type for the forward call
+        and b's type for the reflected one, downgrading a wrong-typed operand
+        (a TypeError from the marshaller) to NotImplemented rather than
+        raising, so CPython can fall through to the other side / the standard
+        "unsupported operand type(s)" error.
+        """
+        info = cls["info"]
+        cpp = cls["cpp_type"]
+        tv = cls["var"]
+        has_fwd = dunder in info.methods
+        has_rev = reflected is not None and reflected in info.methods
+        if not has_fwd and not has_rev:
+            return None
+        base = f"{sym}__{escape_cpp_name(cls['simple'])}"
+        wname = f"{base}__{dunder.strip('_')}_slot"
+        is_pow = dunder == "__pow__"
+        sig = (f"PyObject *{wname}(PyObject *a, PyObject *b, PyObject *mod)"
+               if is_pow else f"PyObject *{wname}(PyObject *a, PyObject *b)")
+        out.write(f"{sig} {{\n")
+        if is_pow:
+            # 3-arg pow(a, b, mod): reject a real modulus (not supported),
+            # matching CPython's own NotImplemented convention for a type
+            # whose nb_power doesn't implement the ternary form.
+            out.write("    if (mod != &_Py_NoneStruct)\n")
+            out.write("        return ::tpy::interop::notimplemented_to_py();\n")
+        out.write("    try {\n")
+
+        def branch(operand_var: str, self_var: str, meth: str) -> None:
+            m = info.methods[meth][0]
+            operand_type = m.params[0].type
+            ret_typ = m.return_type
+            out.write(f"        if (Py_TYPE({self_var}) == "
+                      f"(::tpy::cpy::PyTypeObject *){tv} || PyType_IsSubtype("
+                      f"Py_TYPE({self_var}), (::tpy::cpy::PyTypeObject *){tv}"
+                      f") != 0) {{\n")
+            out.write("            try {\n")
+            decl, expr = self._operand_decl_and_expr(operand_type, operand_var, sym)
+            out.write(f"                {decl}__other = {expr};\n")
+            call = (f"reinterpret_cast<::tpy::interop::Instance<{cpp}> *>"
+                    f"({self_var})->payload.{meth}(__other)")
+            out.write(f"                return {self._nb_return_expr(call, ret_typ, sym)};\n")
+            out.write("            } catch (const ::tpy::interop::MarshalError &) {\n")
+            out.write("                if (!PyErr_ExceptionMatches(PyExc_TypeError)) "
+                      "return nullptr;\n")
+            out.write("                PyErr_Clear();\n")
+            out.write("            }\n")
+            out.write("        }\n")
+
+        if has_fwd:
+            branch("b", "a", dunder)
+        if has_rev:
+            branch("a", "b", reflected)
+        out.write("        return ::tpy::interop::notimplemented_to_py();\n")
+        self._emit_boundary_catch(out, reg_arg)
+        out.write("}\n\n")
+        return slot_id, wname
+
+    def _emit_export_class_unary_op(self, out: TextIO, cls: dict, sym: str,
+                                    reg_arg: str, cppvar: str, dunder: str,
+                                    slot_id: str) -> tuple[str, str] | None:
+        """Emit one nb_* wrapper for a unary arithmetic dunder (__pos__/
+        __neg__/__invert__); reuses the same call/return shape as repr/str
+        (unaryfunc, no operand to marshal). Returns None if undefined."""
+        info = cls["info"]
+        if dunder not in info.methods:
+            return None
+        base = f"{sym}__{escape_cpp_name(cls['simple'])}"
+        wname = f"{base}__{dunder.strip('_')}_slot"
+        out.write(f"PyObject *{wname}(PyObject *self) {{\n")
+        out.write("    try {\n")
+        call = f"{cppvar}->payload.{dunder}()"
+        out.write(f"        return {self._nb_return_expr(call, info.methods[dunder][0].return_type, sym)};\n")
+        self._emit_boundary_catch(out, reg_arg)
+        out.write("}\n\n")
+        return slot_id, wname
+
+    def _emit_export_class_inplace_op(self, out: TextIO, cls: dict, sym: str,
+                                      reg_arg: str, cppvar: str, dunder: str,
+                                      slot_id: str) -> tuple[str, str] | None:
+        """Emit one nb_inplace_* wrapper for an in-place arithmetic dunder
+        (__iadd__/...). TPy already requires these to mutate self and return
+        self (`CONST_PARAMS_METHODS` in typesys.py rejects any other return
+        shape at registration, export or not), so the wrapper always hands
+        back the same `self` (a fresh reference) rather than marshalling a
+        return value. A wrong-typed operand downgrades to NotImplemented,
+        like the forward/reflected binary case."""
+        info = cls["info"]
+        if dunder not in info.methods:
+            return None
+        base = f"{sym}__{escape_cpp_name(cls['simple'])}"
+        wname = f"{base}__{dunder.strip('_')}_slot"
+        operand_type = info.methods[dunder][0].params[0].type
+        out.write(f"PyObject *{wname}(PyObject *self, PyObject *other) {{\n")
+        out.write("    try {\n")
+        decl, expr = self._operand_decl_and_expr(operand_type, "other", sym)
+        out.write(f"        {decl}__other = {expr};\n")
+        out.write(f"        {cppvar}->payload.{dunder}(__other);\n")
+        out.write("        Py_IncRef(self);\n")
+        out.write("        return self;\n")
+        out.write("    } catch (const ::tpy::interop::MarshalError &) {\n")
+        out.write("        if (!PyErr_ExceptionMatches(PyExc_TypeError)) return nullptr;\n")
+        out.write("        PyErr_Clear();\n")
+        out.write("        return ::tpy::interop::notimplemented_to_py();\n")
+        self._emit_boundary_catch(out, reg_arg)
+        out.write("}\n\n")
+        return slot_id, wname
+
+    def _emit_export_class_operator_slots(self, out: TextIO, cls: dict, sym: str,
+                                          reg_arg: str, cppvar: str
+                                          ) -> list[tuple[str, str]]:
+        """Emit the arithmetic/ordering operator group: binary (forward +
+        reflected), unary, and in-place dunders -> Py_nb_* slots. Returns the
+        (slot-id, C++ expression) pairs to splice into the
+        class's PyType_Slot table."""
+        slots: list[tuple[str, str]] = []
+        for dunder, (slot_id, reflected) in _NB_BINARY_OPS.items():
+            r = self._emit_export_class_binary_op(
+                out, cls, sym, reg_arg, dunder, slot_id, reflected)
+            if r is not None:
+                slots.append(r)
+        for dunder, slot_id in _NB_UNARY_OPS.items():
+            r = self._emit_export_class_unary_op(
+                out, cls, sym, reg_arg, cppvar, dunder, slot_id)
+            if r is not None:
+                slots.append(r)
+        for dunder, slot_id in _NB_INPLACE_OPS.items():
+            r = self._emit_export_class_inplace_op(
+                out, cls, sym, reg_arg, cppvar, dunder, slot_id)
+            if r is not None:
+                slots.append(r)
+        return slots
+
+    def _emit_export_class_len(self, out: TextIO, cls: dict, sym: str,
+                               reg_arg: str, cppvar: str) -> list[tuple[str, str]]:
+        """Emit the __len__ wrapper (lenfunc), wired to BOTH Py_mp_length and
+        Py_sq_length (one wrapper, two slot entries) -- matching how CPython
+        wires a plain `class C: def __len__(self): ...` (`len(x)` prefers
+        mp_length but sq_length backs older sequence-protocol call sites)."""
+        info = cls["info"]
+        if "__len__" not in info.methods:
+            return []
+        base = f"{sym}__{escape_cpp_name(cls['simple'])}"
+        wname = f"{base}__len_slot"
+        out.write(f"Py_ssize_t {wname}(PyObject *self) {{\n")
+        out.write("    try {\n")
+        out.write(f"        return static_cast<Py_ssize_t>("
+                  f"{cppvar}->payload.__len__());\n")
+        out.write("    } catch (const ::tpy::BaseException &__e) {\n")
+        out.write(f"        ::tpy::interop::set_py_err_from(__e{reg_arg});\n")
+        out.write("        return -1;\n")
+        out.write("    } catch (...) {\n")
+        out.write("        if (!PyErr_Occurred())\n")
+        out.write('            PyErr_SetString(PyExc_RuntimeError, '
+                  '"tpy extension: __len__ failed");\n')
+        out.write("        return -1;\n")
+        out.write("    }\n}\n\n")
+        return [("Py_mp_length", wname), ("Py_sq_length", wname)]
+
+    def _emit_export_class_getitem(self, out: TextIO, cls: dict, sym: str,
+                                   reg_arg: str, cppvar: str
+                                   ) -> tuple[str, str] | None:
+        """Emit __getitem__ -> Py_mp_subscript (binaryfunc: self, key). No
+        NotImplemented downgrade on a wrong-typed key -- unlike an arithmetic
+        operator, subscripting has no reflected/fallback side, so the
+        marshaller's TypeError (already set) just propagates through the
+        generic catch. `__getitem__(self, s: slice)` (slicing) is out of
+        scope; the key marshals as whatever single type the dunder declares."""
+        info = cls["info"]
+        if "__getitem__" not in info.methods:
+            return None
+        m = info.methods["__getitem__"][0]
+        key_type = m.params[0].type
+        base = f"{sym}__{escape_cpp_name(cls['simple'])}"
+        wname = f"{base}__getitem_slot"
+        out.write(f"PyObject *{wname}(PyObject *self, PyObject *key) {{\n")
+        out.write("    try {\n")
+        decl, expr = self._operand_decl_and_expr(key_type, "key", sym)
+        out.write(f"        {decl}__key = {expr};\n")
+        call = f"{cppvar}->payload.__getitem__(__key)"
+        out.write(f"        return {self._nb_return_expr(call, m.return_type, sym)};\n")
+        self._emit_boundary_catch(out, reg_arg)
+        out.write("}\n\n")
+        return "Py_mp_subscript", wname
+
+    def _emit_export_class_ass_subscript(self, out: TextIO, cls: dict, sym: str,
+                                         reg_arg: str, cppvar: str
+                                         ) -> tuple[str, str] | None:
+        """Emit __setitem__/__delitem__ -> ONE Py_mp_ass_subscript wrapper
+        (objobjargproc: self, key, value); CPython calls this with value ==
+        nullptr for `del obj[k]`. Emitted whenever either dunder is defined;
+        the branch for whichever one is missing raises the same TypeError
+        CPython itself gives a type with only one of the pair."""
+        info = cls["info"]
+        has_set = "__setitem__" in info.methods
+        has_del = "__delitem__" in info.methods
+        if not has_set and not has_del:
+            return None
+        base = f"{sym}__{escape_cpp_name(cls['simple'])}"
+        wname = f"{base}__ass_subscript_slot"
+        out.write(f"int {wname}(PyObject *self, PyObject *key, PyObject *value) {{\n")
+        out.write("    try {\n")
+        out.write("        if (value == nullptr) {\n")
+        if has_del:
+            key_type = info.methods["__delitem__"][0].params[0].type
+            decl, expr = self._operand_decl_and_expr(key_type, "key", sym)
+            out.write(f"            {decl}__key = {expr};\n")
+            out.write(f"            {cppvar}->payload.__delitem__(__key);\n")
+            out.write("            return 0;\n")
+        else:
+            out.write('            PyErr_SetString(PyExc_TypeError, '
+                      '"object doesn\'t support item deletion");\n')
+            out.write("            return -1;\n")
+        out.write("        }\n")
+        if has_set:
+            key_type, val_type = (p.type for p in
+                                  info.methods["__setitem__"][0].params[:2])
+            kdecl, kexpr = self._operand_decl_and_expr(key_type, "key", sym)
+            vdecl, vexpr = self._operand_decl_and_expr(val_type, "value", sym)
+            out.write(f"        {kdecl}__key = {kexpr};\n")
+            out.write(f"        {vdecl}__value = {vexpr};\n")
+            out.write(f"        {cppvar}->payload.__setitem__(__key, __value);\n")
+            out.write("        return 0;\n")
+        else:
+            out.write('        PyErr_SetString(PyExc_TypeError, '
+                      '"object does not support item assignment");\n')
+            out.write("        return -1;\n")
+        out.write("    } catch (const ::tpy::BaseException &__e) {\n")
+        out.write(f"        ::tpy::interop::set_py_err_from(__e{reg_arg});\n")
+        out.write("        return -1;\n")
+        out.write("    } catch (...) {\n")
+        out.write("        if (!PyErr_Occurred())\n")
+        out.write('            PyErr_SetString(PyExc_RuntimeError, '
+                  '"tpy extension: item assignment failed");\n')
+        out.write("        return -1;\n")
+        out.write("    }\n}\n\n")
+        return "Py_mp_ass_subscript", wname
+
+    def _emit_export_class_contains(self, out: TextIO, cls: dict, sym: str,
+                                    reg_arg: str, cppvar: str
+                                    ) -> tuple[str, str] | None:
+        """Emit __contains__ -> Py_sq_contains (objobjproc: self, value ->
+        -1/0/1). Omitted entirely when undefined -- `in` then falls back to
+        CPython's own iterate-via-tp_iter behavior (PySequence_Contains),
+        free once __iter__/__next__ are wired, so no explicit fallback code
+        is needed here."""
+        info = cls["info"]
+        if "__contains__" not in info.methods:
+            return None
+        value_type = info.methods["__contains__"][0].params[0].type
+        base = f"{sym}__{escape_cpp_name(cls['simple'])}"
+        wname = f"{base}__contains_slot"
+        out.write(f"int {wname}(PyObject *self, PyObject *value) {{\n")
+        out.write("    try {\n")
+        decl, expr = self._operand_decl_and_expr(value_type, "value", sym)
+        out.write(f"        {decl}__v = {expr};\n")
+        out.write(f"        return {cppvar}->payload.__contains__(__v) ? 1 : 0;\n")
+        out.write("    } catch (const ::tpy::BaseException &__e) {\n")
+        out.write(f"        ::tpy::interop::set_py_err_from(__e{reg_arg});\n")
+        out.write("        return -1;\n")
+        out.write("    } catch (...) {\n")
+        out.write("        if (!PyErr_Occurred())\n")
+        out.write('            PyErr_SetString(PyExc_RuntimeError, '
+                  '"tpy extension: __contains__ failed");\n')
+        out.write("        return -1;\n")
+        out.write("    }\n}\n\n")
+        return "Py_sq_contains", wname
+
+    def _emit_export_class_next(self, out: TextIO, cls: dict, sym: str,
+                                reg_arg: str, cppvar: str
+                                ) -> tuple[str, str] | None:
+        """Emit __next__ -> Py_tp_iternext (iternextfunc/unaryfunc shape).
+        `__next__` is implicitly `@error_return(StopIteration)` (the parser
+        default), so the compiled method returns `std::expected<T,
+        StopIteration>` rather than throwing on exhaustion -- unwrap it
+        directly (`set_py_err_from` on the StopIteration value, no try/catch
+        needed for that path) rather than reusing `_emit_boundary_catch`'s
+        catch-a-thrown-exception shape, which does not apply here."""
+        info = cls["info"]
+        if "__next__" not in info.methods:
+            return None
+        ret_typ = info.methods["__next__"][0].return_type
+        base = f"{sym}__{escape_cpp_name(cls['simple'])}"
+        wname = f"{base}__next_slot"
+        out.write(f"PyObject *{wname}(PyObject *self) {{\n")
+        out.write("    try {\n")
+        out.write(f"        auto __r = {cppvar}->payload.__next__();\n")
+        out.write("        if (!__r.has_value()) {\n")
+        out.write(f"            ::tpy::interop::set_py_err_from(__r.error(){reg_arg});\n")
+        out.write("            return nullptr;\n")
+        out.write("        }\n")
+        call = "std::move(__r).value()"
+        out.write(f"        return {self._nb_return_expr(call, ret_typ, sym)};\n")
+        self._emit_boundary_catch(out, reg_arg)
+        out.write("}\n\n")
+        return "Py_tp_iternext", wname
+
+    def _emit_export_class_container_slots(self, out: TextIO, cls: dict, sym: str,
+                                           reg_arg: str, cppvar: str
+                                           ) -> list[tuple[str, str]]:
+        """Emit the container-protocol group: __len__, __getitem__,
+        __setitem__/__delitem__, __contains__, __iter__, __next__ ->
+        Py_mp_*/Py_sq_*/Py_tp_iter*. Returns the (slot-id, C++ expression)
+        pairs to splice into the class's PyType_Slot table."""
+        slots: list[tuple[str, str]] = []
+        slots += self._emit_export_class_len(out, cls, sym, reg_arg, cppvar)
+        for fn in (self._emit_export_class_getitem,
+                  self._emit_export_class_ass_subscript,
+                  self._emit_export_class_contains,
+                  self._emit_export_class_next):
+            r = fn(out, cls, sym, reg_arg, cppvar)
+            if r is not None:
+                slots.append(r)
+        r = self._emit_export_class_unary_op(
+            out, cls, sym, reg_arg, cppvar, "__iter__", "Py_tp_iter")
+        if r is not None:
+            slots.append(r)
+        return slots
+
     def _emit_exposed_class(self, out: TextIO, cls: dict, sym: str,
                             reg_arg: str) -> None:
         """Emit one exposed class's method/getset wrappers, the slot tables, and
@@ -471,6 +981,13 @@ class ExtensionGenerator:
             out.write("        return -1;\n")
             out.write("    }\n}\n\n")
 
+        dunder_slots = self._emit_export_class_dunder_slots(
+            out, cls, sym, reg_arg, cppvar)
+        dunder_slots += self._emit_export_class_operator_slots(
+            out, cls, sym, reg_arg, cppvar)
+        dunder_slots += self._emit_export_class_container_slots(
+            out, cls, sym, reg_arg, cppvar)
+
         base = f"{sym}__{escape_cpp_name(cls['simple'])}"
         out.write(f"PyMethodDef {base}__methods[] = {{\n")
         for pyname, wname, flag, kw in method_entries:
@@ -487,6 +1004,8 @@ class ExtensionGenerator:
                   f"(void *)::tpy::interop::instance_dealloc<{cpp}>}},\n")
         out.write(f"    {{Py_tp_methods, (void *){base}__methods}},\n")
         out.write(f"    {{Py_tp_getset, (void *){base}__getset}},\n")
+        for slot_id, expr in dunder_slots:
+            out.write(f"    {{{slot_id}, (void *){expr}}},\n")
         out.write("    {Py_tp_new, (void *)::tpy::cpy::PyType_GenericNew},\n")
         out.write("    {0, nullptr},\n};\n")
         out.write(f"PyType_Spec {base}__spec = {{\n")

@@ -1,14 +1,15 @@
-# A dunder other than __init__ on an exposed class is silently absent from the
-# host type (only __init__ + plain methods cross); warn so it isn't a surprise.
+# A dunder other than __init__ (and the currently-supported repr/str/eq/ne/
+# lt/le/gt/ge/hash group) on an exposed class is silently absent from the
+# host type; warn so it isn't a surprise. __call__ isn't wired yet.
 # tpy: ext_module
 from tpy import Int64
 from tpy.extern import export
 
 
 @export
-class C:  # tpyc: warning(/'__repr__' is not exposed to CPython/)
+class C:
     def __init__(self, a: Int64):
         self.a = a
 
-    def __repr__(self) -> str:
-        return "C"
+    def __call__(self) -> Int64:  # tpyc: warning(/'__call__' is not exposed to CPython/)
+        return self.a

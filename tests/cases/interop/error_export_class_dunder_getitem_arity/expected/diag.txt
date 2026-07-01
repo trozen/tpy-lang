@@ -1,0 +1,1 @@
+main.py:14: error: exposed class 'C': '__getitem__' crossing the CPython boundary must take exactly one parameter beyond self

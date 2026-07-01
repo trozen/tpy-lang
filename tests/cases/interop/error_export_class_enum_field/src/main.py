@@ -13,6 +13,6 @@ class Color(IntEnum):
 
 
 @export
-class Holder:  # tpyc: error(/exposed-enum getset field.*not supported/)
+class Holder:
     def __init__(self, c: Color):
-        self.c = c
+        self.c = c  # tpyc: error(/exposed-enum getset field.*not supported/)

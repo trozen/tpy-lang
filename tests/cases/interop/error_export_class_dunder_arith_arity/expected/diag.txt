@@ -1,0 +1,1 @@
+main.py:13: error: exposed class 'C': '__add__' crossing the CPython boundary must take exactly one parameter beyond self

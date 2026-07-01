@@ -1,0 +1,1 @@
+main.py:14: error: exposed class 'C': '__len__' cannot be generic (a template can't cross the CPython boundary, which needs one concrete method)

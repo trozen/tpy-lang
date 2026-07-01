@@ -12,6 +12,6 @@ class Inner:
 
 
 @export
-class Outer:  # tpyc: error(/field 'inner' of exposed-class type 'Inner'/)
+class Outer:
     def __init__(self, inner: Inner):
-        self.inner = inner
+        self.inner = inner  # tpyc: error(/field 'inner' of exposed-class type 'Inner'/)

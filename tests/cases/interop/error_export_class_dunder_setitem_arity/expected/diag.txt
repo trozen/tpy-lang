@@ -1,0 +1,1 @@
+main.py:14: error: exposed class 'C': '__setitem__' crossing the CPython boundary must take exactly two parameters beyond self

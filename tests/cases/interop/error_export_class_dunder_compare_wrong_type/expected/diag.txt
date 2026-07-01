@@ -1,0 +1,1 @@
+main.py:16: error: exposed class 'C': '__eq__' parameter 'other' must be 'C' -- a comparison dunder crossing the CPython boundary only supports comparing against the record's own type

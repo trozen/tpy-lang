@@ -45,6 +45,74 @@ _PENDING_LOCAL_TYPES = (
     PendingListType, PendingDictType, PendingSetType, PendingViewType,
 )
 
+# Dunders wired into an @export class's CPython type slots: repr/str ->
+# Py_tp_repr/Py_tp_str; the comparison group + __hash__ ->
+# Py_tp_richcompare/Py_tp_hash; arithmetic/ordering operators -> Py_nb_*;
+# the container protocol -> Py_mp_*/Py_sq_*/Py_tp_iter* (see the frozenset
+# below).
+_EXPORT_CLASS_REPR_STR_DUNDERS = frozenset({"__repr__", "__str__"})
+_EXPORT_CLASS_COMPARE_DUNDERS = frozenset(
+    {"__eq__", "__ne__", "__lt__", "__le__", "__gt__", "__ge__"})
+# Forward dunder -> its reflected counterpart (None if the op has no reflected
+# form, e.g. unary). Kept in sync with modules/defs.py's BINOP_TO_METHOD/
+# BINOP_TO_RMETHOD by construction (see the mirrored table in extension.py).
+_EXPORT_CLASS_BINARY_ARITH_DUNDERS = frozenset({
+    "__add__", "__sub__", "__mul__", "__truediv__", "__floordiv__", "__mod__",
+    "__pow__", "__lshift__", "__rshift__", "__and__", "__or__", "__xor__",
+})
+_EXPORT_CLASS_REFLECTED_ARITH_DUNDERS = frozenset({
+    "__radd__", "__rsub__", "__rmul__", "__rtruediv__", "__rfloordiv__",
+    "__rmod__", "__rpow__", "__rlshift__", "__rrshift__", "__rand__",
+    "__ror__", "__rxor__",
+})
+_EXPORT_CLASS_UNARY_ARITH_DUNDERS = frozenset({"__pos__", "__neg__", "__invert__"})
+_EXPORT_CLASS_INPLACE_ARITH_DUNDERS = frozenset({
+    "__iadd__", "__isub__", "__imul__", "__itruediv__", "__ifloordiv__",
+    "__imod__", "__ilshift__", "__irshift__", "__iand__", "__ior__", "__ixor__",
+})
+_EXPORT_CLASS_ARITH_DUNDERS = (
+    _EXPORT_CLASS_BINARY_ARITH_DUNDERS | _EXPORT_CLASS_REFLECTED_ARITH_DUNDERS
+    | _EXPORT_CLASS_UNARY_ARITH_DUNDERS | _EXPORT_CLASS_INPLACE_ARITH_DUNDERS)
+# Container protocol -> Py_mp_*/Py_sq_*/Py_tp_iter*.
+_EXPORT_CLASS_LEN_DUNDERS = frozenset({"__len__"})
+_EXPORT_CLASS_GETITEM_DUNDERS = frozenset({"__getitem__"})
+_EXPORT_CLASS_SETITEM_DUNDERS = frozenset({"__setitem__"})
+_EXPORT_CLASS_DELITEM_DUNDERS = frozenset({"__delitem__"})
+_EXPORT_CLASS_CONTAINS_DUNDERS = frozenset({"__contains__"})
+_EXPORT_CLASS_ITER_DUNDERS = frozenset({"__iter__"})
+_EXPORT_CLASS_NEXT_DUNDERS = frozenset({"__next__"})
+_EXPORT_CLASS_CONTAINER_DUNDERS = (
+    _EXPORT_CLASS_LEN_DUNDERS | _EXPORT_CLASS_GETITEM_DUNDERS
+    | _EXPORT_CLASS_SETITEM_DUNDERS | _EXPORT_CLASS_DELITEM_DUNDERS
+    | _EXPORT_CLASS_CONTAINS_DUNDERS | _EXPORT_CLASS_ITER_DUNDERS
+    | _EXPORT_CLASS_NEXT_DUNDERS)
+_EXPORT_CLASS_SUPPORTED_DUNDERS = (
+    _EXPORT_CLASS_REPR_STR_DUNDERS | _EXPORT_CLASS_COMPARE_DUNDERS
+    | {"__hash__"} | _EXPORT_CLASS_ARITH_DUNDERS
+    | _EXPORT_CLASS_CONTAINER_DUNDERS)
+
+
+def _unsupported_dunder_param_form(fn: 'TpyFunction') -> 'str | None':
+    """The argument forms an exposed class's dunder-slot wrappers don't cross
+    yet -- same shape as compiler.py's `_unsupported_param_form` for plain
+    @export methods/functions (duplicated here, not shared, since the two
+    validators live in different modules; see the TODO.md note on unifying
+    the "@export class shape" validators)."""
+    if fn.vararg_name is not None:
+        return "*args is not supported at the CPython boundary yet"
+    if fn.kwarg_name is not None:
+        return "**kwargs is not supported at the CPython boundary yet"
+    if any(d is not None for d in (fn.defaults or [])):
+        return ("default parameter values are not supported at the CPython "
+                "boundary yet (every parameter must be required)")
+    if fn.num_posonly_params:
+        return ("positional-only parameters (/) are not supported at the "
+                "CPython boundary yet")
+    if fn.keyword_only_start is not None:
+        return ("keyword-only parameters (*) are not supported at the "
+                "CPython boundary yet")
+    return None
+
 
 def _find_pending_leaf(typ: 'TpyType') -> 'TpyType | None':
     """Return the first Pending* leaf in a (possibly composite) type, else None.
@@ -102,6 +170,8 @@ from ..type_def_registry import (
     is_str_type, is_str_view_type, enum_info_of,
     is_array, is_enum_type, is_list, is_dict, is_set, is_span,
     protocol_info_of, is_exposed_class, _boundary_inner,
+    is_bool_type, is_fixed_int_type, is_function_boundary_marshallable,
+    type_def_of,
 )
 from ..typesys import unwrap_own, is_protocol_type, is_protocol_union, RefType
 from ..parse.resolve_refs import (
@@ -564,18 +634,194 @@ class SemanticAnalyzer:
             if not record.exposed_to_host:
                 continue
             for m in record.methods:
-                if m.name == "__init__" or (m.name.startswith("__")
-                                            and m.name.endswith("__")):
-                    continue  # only __init__ is exposed; other dunders aren't
+                is_dunder = m.name.startswith("__") and m.name.endswith("__")
+                if m.name == "__init__" or (
+                        is_dunder and m.name not in _EXPORT_CLASS_SUPPORTED_DUNDERS):
+                    continue  # only __init__ + supported dunders are exposed
+                if m.name in _EXPORT_CLASS_INPLACE_ARITH_DUNDERS:
+                    # An in-place dunder's nb_inplace_* wrapper hands back the
+                    # SAME self PyObject (Py_IncRef; no instance_to_py copy),
+                    # so its by-reference `-> Cls` return (required shape --
+                    # CONST_PARAMS_METHODS rejects any other) never loses
+                    # identity; the borrow-return warning doesn't apply.
+                    continue
                 warn_if_borrow_return(
                     m, f"exposed class '{record.name}' method '{m.name}'")
 
+    def _validate_export_class_dunders(self, module: TpyModule) -> None:
+        """In an ext_module, validate an @export class's repr/str/eq/ne/lt/le/
+        gt/ge/hash dunders before codegen wires them into CPython type slots
+        (Py_tp_repr/Py_tp_str/Py_tp_richcompare/Py_tp_hash). Mirrors
+        `_validate_dyn_dunder_kind`'s decorator/kind rejections, plus the
+        boundary-marshalling shape the slot wrapper needs: a comparison
+        dunder's other-operand type must cross the boundary, __hash__ must
+        return a fixed-width int (not BigInt -- no defined truncation rule
+        yet), repr/str must return str.
+        """
+        if not module.directives.ext_module:
+            return
+        for record in module.records:
+            if not record.exposed_to_host:
+                continue
+            for m in record.methods:
+                if m.name not in _EXPORT_CLASS_SUPPORTED_DUNDERS:
+                    continue
+                loc = m.loc
+                if record.linkage != RecordLinkage.DEFAULT:
+                    raise SemanticError(
+                        f"exposed class '{record.name}': '{m.name}' cannot be "
+                        f"declared on an @native record", loc)
+                if m.is_staticmethod:
+                    raise SemanticError(
+                        f"exposed class '{record.name}': '{m.name}' cannot be "
+                        f"a @staticmethod", loc)
+                if m.is_property_getter or m.is_property_setter:
+                    raise SemanticError(
+                        f"exposed class '{record.name}': '{m.name}' cannot be "
+                        f"a @property", loc)
+                if m.is_overload_stub:
+                    raise SemanticError(
+                        f"exposed class '{record.name}': '{m.name}' cannot be "
+                        f"@overload", loc)
+                if m.type_params:
+                    raise SemanticError(
+                        f"exposed class '{record.name}': '{m.name}' cannot be "
+                        f"generic (a template can't cross the CPython "
+                        f"boundary, which needs one concrete method)", loc)
+                if m.is_generator:
+                    raise SemanticError(
+                        f"exposed class '{record.name}': '{m.name}' cannot be "
+                        f"a generator (no `yield` in body)", loc)
+                # __next__ is implicitly @error_return(StopIteration) (the
+                # parser default -- see parse/parser.py), so it is exempted
+                # from the blanket @error_return reject: the container-slot
+                # wrapper unwraps the resulting std::expected itself instead
+                # of the normal boundary catch.
+                if m.error_return and m.name != "__next__":
+                    raise SemanticError(
+                        f"exposed class '{record.name}': '{m.name}' cannot "
+                        f"use @error_return", loc)
+                # Defaults/*args/**kwargs/posonly/kwonly all reach codegen
+                # silently otherwise -- e.g. a defaulted compare-dunder
+                # operand (`other: Vec2 = None`) passes this validator's
+                # count/type checks (a default doesn't change the arity or
+                # marshal a param needs) and then fails the actual C++ build
+                # with `could not convert 'nullptr' to 'const Vec2&'` instead
+                # of a located TPy error. Mirrors (duplicated, not shared --
+                # see the TODO.md note on unifying the "@export class shape"
+                # validators) compiler.py's `_unsupported_param_form`.
+                form = _unsupported_dunder_param_form(m)
+                if form is not None:
+                    raise SemanticError(
+                        f"exposed class '{record.name}': '{m.name}': {form}",
+                        loc)
+                params = [(pn, pt) for pn, pt in m.params if pn != "self"]
+                takes_two = _EXPORT_CLASS_SETITEM_DUNDERS
+                takes_one = (_EXPORT_CLASS_COMPARE_DUNDERS
+                             | _EXPORT_CLASS_BINARY_ARITH_DUNDERS
+                             | _EXPORT_CLASS_REFLECTED_ARITH_DUNDERS
+                             | _EXPORT_CLASS_INPLACE_ARITH_DUNDERS
+                             | _EXPORT_CLASS_GETITEM_DUNDERS
+                             | _EXPORT_CLASS_DELITEM_DUNDERS
+                             | _EXPORT_CLASS_CONTAINS_DUNDERS)
+                if m.name in takes_two:
+                    if len(params) != 2:
+                        raise SemanticError(
+                            f"exposed class '{record.name}': '{m.name}' "
+                            f"crossing the CPython boundary must take "
+                            f"exactly two parameters beyond self", loc)
+                    for pname, ptype in params:
+                        if not is_function_boundary_marshallable(ptype, False):
+                            raise SemanticError(
+                                f"exposed class '{record.name}': '{m.name}' "
+                                f"parameter '{pname}' cannot cross the "
+                                f"CPython boundary", loc)
+                elif m.name in takes_one:
+                    if len(params) != 1:
+                        raise SemanticError(
+                            f"exposed class '{record.name}': '{m.name}' "
+                            f"crossing the CPython boundary must take exactly "
+                            f"one parameter beyond self", loc)
+                    other_name, other_type = params[0]
+                    if not is_function_boundary_marshallable(other_type, False):
+                        raise SemanticError(
+                            f"exposed class '{record.name}': '{m.name}' "
+                            f"parameter '{other_name}' cannot cross the "
+                            f"CPython boundary", loc)
+                    # Comparison dunders share ONE richcompare wrapper with a
+                    # single type-guard-then-switch shape (unlike arithmetic
+                    # operators, which marshal each op's operand per its own
+                    # declared type): the wrapper only accepts `other` being
+                    # an instance of THIS record, so the declared type must
+                    # match -- a differently-typed operand would pass this
+                    # marshallability check but the compiled richcompare slot
+                    # would reject it at the type guard (or, if the operand
+                    # were some other exposed class, produce a C++ type
+                    # mismatch at the call site).
+                    if m.name in _EXPORT_CLASS_COMPARE_DUNDERS:
+                        own_info = self.ctx.registry.get_record(record.name)
+                        other_td = type_def_of(_boundary_inner(other_type))
+                        if own_info is None or other_td is None \
+                                or other_td.record is not own_info:
+                            raise SemanticError(
+                                f"exposed class '{record.name}': '{m.name}' "
+                                f"parameter '{other_name}' must be "
+                                f"'{record.name}' -- a comparison dunder "
+                                f"crossing the CPython boundary only "
+                                f"supports comparing against the record's "
+                                f"own type", loc)
+                else:  # repr/str/hash/unary-arith/len/iter/next: no params
+                    if params:
+                        raise SemanticError(
+                            f"exposed class '{record.name}': '{m.name}' "
+                            f"crossing the CPython boundary must take no "
+                            f"parameters beyond self", loc)
+
+                if m.name in (_EXPORT_CLASS_COMPARE_DUNDERS
+                              | _EXPORT_CLASS_CONTAINS_DUNDERS):
+                    if not is_bool_type(m.return_type):
+                        raise SemanticError(
+                            f"exposed class '{record.name}': '{m.name}' "
+                            f"crossing the CPython boundary must return bool",
+                            loc)
+                elif m.name in _EXPORT_CLASS_REPR_STR_DUNDERS:
+                    if not (is_str_type(m.return_type)
+                            or is_str_view_type(m.return_type)):
+                        raise SemanticError(
+                            f"exposed class '{record.name}': '{m.name}' "
+                            f"crossing the CPython boundary must return "
+                            f"str", loc)
+                elif m.name in ("__hash__", "__len__"):
+                    if not is_fixed_int_type(m.return_type):
+                        raise SemanticError(
+                            f"exposed class '{record.name}': '{m.name}' "
+                            f"crossing the CPython boundary must return a "
+                            f"fixed-width integer type (not BigInt)", loc)
+                elif m.name in (_EXPORT_CLASS_BINARY_ARITH_DUNDERS
+                                | _EXPORT_CLASS_REFLECTED_ARITH_DUNDERS
+                                | _EXPORT_CLASS_UNARY_ARITH_DUNDERS
+                                | _EXPORT_CLASS_GETITEM_DUNDERS
+                                | _EXPORT_CLASS_ITER_DUNDERS
+                                | _EXPORT_CLASS_NEXT_DUNDERS):
+                    if not is_function_boundary_marshallable(m.return_type, False):
+                        raise SemanticError(
+                            f"exposed class '{record.name}': '{m.name}' "
+                            f"return type cannot cross the CPython boundary",
+                            loc)
+                # Inplace dunders (__iadd__, ...) already have a general,
+                # non-export-specific rule that they return self (the record
+                # type) -- registration.py's CONST_PARAMS_METHODS check -- so
+                # no extra return-type validation is needed here.
+                # __setitem__/__delitem__ return values are discarded (the
+                # mp_ass_subscript slot returns a status int, not the TPy
+                # method's own return), so no return-type check applies.
+
     def _warn_export_class_unexposed_dunders(self, module: TpyModule) -> None:
-        """In an ext_module, warn when an exposed class defines a dunder other
-        than __init__. Only __init__ and plain methods are wired into the
-        CPython type in this rung; a __repr__/__eq__/... is silently absent from
-        the host type rather than rejected, so surface it -- otherwise the gap
-        reads as "works" until someone calls it from Python.
+        """In an ext_module, warn when an exposed class defines a dunder not
+        in `_EXPORT_CLASS_SUPPORTED_DUNDERS` (other than __init__). Such a
+        dunder is silently absent from the host CPython type rather than
+        rejected, so surface it -- otherwise the gap reads as "works" until
+        someone calls it from Python.
         """
         if not module.directives.ext_module:
             return
@@ -584,11 +830,12 @@ class SemanticAnalyzer:
                 continue
             for m in record.methods:
                 if m.name != "__init__" and m.name.startswith("__") \
-                        and m.name.endswith("__"):
+                        and m.name.endswith("__") \
+                        and m.name not in _EXPORT_CLASS_SUPPORTED_DUNDERS:
                     self._warning(
                         f"exposed class '{record.name}': '{m.name}' is not "
-                        f"exposed to CPython (only __init__ and plain methods "
-                        f"cross); the host type will not have it", record)
+                        f"exposed to CPython; the host type will not have it",
+                        m)
 
     def bind_imports(self, module: TpyModule, module_name: str = "__main__",
                      cpp_module_name: str | None = None) -> None:

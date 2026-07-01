@@ -12,7 +12,7 @@ struct C;
 inline constexpr std::string_view __name__ = "__main__";
 
 // @export
-// class C:  # tpyc: warning(/'__repr__' is not exposed to CPython/)
+// class C:
 struct C {
     // self.a = a
     int64_t a;
@@ -21,21 +21,25 @@ struct C {
     C() = default;
     explicit C(int64_t a) : a(a) {}
 
-    // def __repr__(self) -> str:
-    std::string __repr__() const;
+    // def __call__(self) -> Int64:  # tpyc: warning(/'__call__' is not exposed to CPython/)
+    int64_t __call__() const;
+
+    int64_t operator()() const {
+        return __call__();
+    }
     static constexpr std::string_view __tpy_class_name__ = "__main__.C";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const C& obj) {
-    os << obj.__repr__();
+    ::tpy::print_object_default(os, "C", obj);
     return os;
 }
 
 
-// def __repr__(self) -> str:
-inline std::string C::__repr__() const {
-    // return "C"
-    return "C";
+// def __call__(self) -> Int64:  # tpyc: warning(/'__call__' is not exposed to CPython/)
+inline int64_t C::__call__() const {
+    // return self.a
+    return this->a;
 }
 void __tpy_init();
 } // namespace tpyapp::main

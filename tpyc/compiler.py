@@ -2990,6 +2990,7 @@ class Compiler:
             analyzer.run_phase2_fixpoint(compiled.ast)
             analyzer._warn_export_user_exc_data(compiled.ast)
             analyzer._warn_export_class_return_alias(compiled.ast)
+            analyzer._validate_export_class_dunders(compiled.ast)
             analyzer._warn_export_class_unexposed_dunders(compiled.ast)
         except SemanticError as e:
             if e.filename is None and not compiled.is_entry_point:
@@ -4030,11 +4031,15 @@ class Compiler:
             is_boundary_marshallable, boundary_cpp_type,
             boundary_unmarshallable_msg)
         info = compiled.analyzer.registry.get_record(record.name)
-        line = record.loc.line if record.loc else None
+        class_line = record.loc.line if record.loc else None
 
-        def reject(msg: str) -> None:
+        def line_of(loc) -> 'int | None':
+            return loc.line if loc is not None else class_line
+
+        def reject(msg: str, loc=None) -> None:
             raise CompileError(f"@export class '{record.name}': {msg}",
-                               compiled.name, compiled.path, lineno=line)
+                               compiled.name, compiled.path,
+                               lineno=line_of(loc))
 
         # Exception classes already cross via the PyErr_NewException path
         # (auto-exposed, no @export needed); the two type-creation paths are
@@ -4053,25 +4058,26 @@ class Compiler:
 
         reg = compiled.analyzer.registry
 
-        def check(typ, what: str, role: str) -> None:
+        def check(typ, what: str, role: str, loc=None) -> None:
             form_err = self._exposed_form_error(typ, role, reg, compiled)
             if form_err is not None:
-                reject(f"{what} {form_err}")
+                reject(f"{what} {form_err}", loc)
             if is_boundary_marshallable(typ, role == "return"):
                 return
             cpp = boundary_cpp_type(typ)
             raise CompileError(
                 boundary_unmarshallable_msg(record.name, what, cpp, kind="class"),
-                compiled.name, compiled.path, lineno=line)
+                compiled.name, compiled.path, lineno=line_of(loc))
 
         for fld in info.fields:
-            check(fld.type, f"field '{fld.name}'", "field")
+            check(fld.type, f"field '{fld.name}'", "field", fld.loc)
 
         # AST nodes (not the FunctionInfo overloads) carry the arg-form facts
         # the keyword-aware unpack can't cross (defaults/*args/**kwargs/posonly/
-        # kwonly); map by name so the per-method loop can read them. First node
-        # per name is enough -- the form facts are signature-level, and an
-        # overloaded name is rejected before its form is inspected.
+        # kwonly) and the method's own source location; map by name so the
+        # per-method loop can read both. First node per name is enough -- the
+        # form facts are signature-level, and an overloaded name is rejected
+        # before its form is inspected.
         ast_by_name: dict = {}
         for rm in record.methods:
             ast_by_name.setdefault(rm.name, rm)
@@ -4080,33 +4086,34 @@ class Compiler:
             if mname.startswith("__") and mname.endswith("__") \
                     and mname != "__init__":
                 continue  # only __init__ is exposed; other dunders aren't yet
+            ast_m = ast_by_name.get(mname)
+            m_loc = ast_m.loc if ast_m is not None else None
             # The glue emits one positional wrapper per method; an @overload
             # group would silently expose only the first signature's arity.
             if len(overloads) > 1:
                 reject(f"overloaded '{mname}' cannot be exposed yet (only a "
-                       f"single signature crosses to CPython)")
-            ast_m = ast_by_name.get(mname)
+                       f"single signature crosses to CPython)", m_loc)
             if ast_m is not None:
                 form = self._unsupported_param_form(ast_m)
                 if form is not None:
-                    reject(f"method '{mname}': {form}")
+                    reject(f"method '{mname}': {form}", m_loc)
             for m in overloads:
                 if m.is_staticmethod:
-                    reject(f"static method '{mname}' cannot be exposed yet")
+                    reject(f"static method '{mname}' cannot be exposed yet", m_loc)
                 if m.is_async or m.is_generator:
-                    reject(f"async/generator method '{mname}' cannot be exposed")
+                    reject(f"async/generator method '{mname}' cannot be exposed", m_loc)
                 if m.type_params:
-                    reject(f"generic method '{mname}' cannot be exposed yet")
+                    reject(f"generic method '{mname}' cannot be exposed yet", m_loc)
                 # __init__'s "return" is the constructed instance (no value
                 # marshalled out); a plain method marshals its return, with
                 # `-> None` handed back as None.
                 if mname != "__init__":
-                    check(m.return_type, f"method '{mname}' return", "return")
+                    check(m.return_type, f"method '{mname}' return", "return", m_loc)
                 for p in m.params:
                     if p.name == "self":
                         continue
                     check(p.type, f"method '{mname}' parameter '{p.name}'",
-                          "param")
+                          "param", m_loc)
 
     def _unsupported_param_form(self, fn: 'TpyFunction') -> 'str | None':
         """The argument forms the CPython glue's keyword-aware unpack does not

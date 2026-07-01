@@ -595,13 +595,16 @@ def _is_marshallable_element(t: "TpyType") -> bool:
 
 
 def _boundary_inner(t: "TpyType") -> "TpyType":
-    """Strip the Own (ownership transfer) and Ref (auto-inserted borrow form at
-    param/return boundaries) wrappers so the boundary predicates see the bare
-    marshalled type. A class param arrives as Ref[Counter], an owning return as
-    Own[Counter]; both marshal iff the inner type does."""
-    from tpyc.typesys import OwnType, RefType
+    """Strip the Own (ownership transfer), Ref (auto-inserted borrow form at
+    param/return boundaries), and Readonly (immutable-borrow) wrappers so the
+    boundary predicates see the bare marshalled type. A class param arrives as
+    Ref[Counter] (or readonly[Counter] for a comparison-dunder-style
+    non-mutating param), an owning return as Own[Counter]; all marshal iff the
+    inner type does. Constness itself is a separate codegen concern (the C++
+    reference's const-ness), not something these type-identity predicates need."""
+    from tpyc.typesys import OwnType, RefType, ReadonlyType
     inner = t
-    while isinstance(inner, (OwnType, RefType)):
+    while isinstance(inner, (OwnType, RefType, ReadonlyType)):
         inner = inner.wrapped
     return inner
 

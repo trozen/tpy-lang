@@ -423,6 +423,20 @@ inline cpy::PyObject *none_to_py() {
     return &cpy::_Py_NoneStruct;
 }
 
+// A richcompare/nb_* slot's "I don't know how to handle the other operand"
+// return: a fresh ref to the NotImplemented singleton (Py_RETURN_NOTIMPLEMENTED).
+inline cpy::PyObject *notimplemented_to_py() {
+    cpy::Py_IncRef(&cpy::_Py_NotImplementedStruct);
+    return &cpy::_Py_NotImplementedStruct;
+}
+
+// tp_hash must never return -1 (CPython reserves it as the error sentinel);
+// remap to -2, the same idiom CPython's own hash wrappers use.
+inline cpy::Py_ssize_t hash_to_py_hash_t(std::uint64_t h) {
+    auto v = static_cast<cpy::Py_ssize_t>(h);
+    return v == -1 ? -2 : v;
+}
+
 inline cpy::PyObject *to_py(const tpy::BigInt &b) {
     std::int64_t v;
     if (b.to_i64_checked(v)) {  // fast path

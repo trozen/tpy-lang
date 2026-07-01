@@ -7,9 +7,9 @@ from tpy.extern import export
 
 @export
 @nocopy
-class C:  # tpyc: error(/method 'me' return is a @nocopy class 'C' returned by reference/)
+class C:
     def __init__(self, a: Int64):
         self.a = a
 
-    def me(self) -> "C":
+    def me(self) -> "C":  # tpyc: error(/method 'me' return is a @nocopy class 'C' returned by reference/)
         return self

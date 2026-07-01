@@ -1,1 +1,1 @@
-main.py:11: error: @export class 'C': overloaded 'f' cannot be exposed yet (only a single signature crosses to CPython)
+main.py:16: error: @export class 'C': overloaded 'f' cannot be exposed yet (only a single signature crosses to CPython)

@@ -6035,9 +6035,60 @@ API, floor 3.12, hand-rolled C-API glue, copy-in marshalling).
   separate `PyErr_NewException` path). The exposed type is not subclassable from
   Python (no `Py_TPFLAGS_BASETYPE`) and carries no GC traversal (its fields are
   scalar/str/bytes; `tp_traverse` becomes necessary only when class-typed fields
-  land). A dunder other than `__init__` (`__repr__`,
-  `__eq__`, ...) is **warned** -- it is not wired into the host type in this
-  rung, so it would be silently absent otherwise.
+  land). `__repr__`/`__str__` (-> `Py_tp_repr`/`Py_tp_str`, must return `str`),
+  `__eq__`/`__ne__`/`__lt__`/`__le__`/`__gt__`/`__ge__` (-> one
+  `Py_tp_richcompare` wrapper, one param beyond self typed as the record's
+  OWN exposed-class type -- richcompare's one shared type-guard covers every
+  comparison op, unlike arithmetic operators, so comparing against a scalar
+  or a different exposed class is rejected at sema; must return `bool`), and
+  `__hash__` (-> `Py_tp_hash`, must return a
+  fixed-width int) are **wired into the host type**: a slot is present iff the
+  record defines that dunder. `__ne__` auto-derives from `__eq__` when absent
+  (same fallback as the non-exposed operator path); a richcompare dunder
+  defined without `__hash__` makes the type **unhashable**
+  (`PyObject_HashNotImplemented`). Comparing against an unrelated type returns
+  CPython's own `NotImplemented` fallback. Two acknowledged divergences: (1) a
+  wrong-typed comparison operand raises the operator-protocol `TypeError`
+  *before* the method body runs (the C++ signature requires the declared
+  type) -- a duck-typed source would instead raise whatever the body's first
+  bad attribute access produces; this is TPy's pre-existing static-typing
+  divergence from CPython surfacing cleanly, not a new one. (2) the
+  unhashable-without-`__hash__` rule is **not** `__eq__`-specific the way a
+  plain Python class-statement's rule is -- `PyType_Ready` nulls the hash
+  whenever *any* richcompare dunder is defined (there's no per-dunder-name
+  introspection available at the C level), so a class defining only
+  `__lt__` becomes unhashable once exposed even though the plain-Python
+  source stays hashable; unavoidable, no escape hatch beyond declaring
+  `__hash__` explicitly. Arithmetic/ordering operators (`__add__`/`__sub__`/`__mul__`/
+  `__truediv__`/`__floordiv__`/`__mod__`/`__pow__`/`__lshift__`/`__rshift__`/
+  `__and__`/`__or__`/`__xor__`, their reflected `__r*__` counterparts, unary
+  `__pos__`/`__neg__`/`__invert__`, and in-place `__i*__`) are also **wired**,
+  into `Py_nb_*` slots: each binary op's wrapper handles both the forward and
+  reflected dunder (whichever the record defines) with the same
+  wrong-type-downgrades-to-`NotImplemented` behavior, and the non-self
+  operand can be a scalar/enum as well as another `@export` class (e.g.
+  `def __mul__(self, scalar: Int64)` for `vec * 3`) -- not restricted to the
+  record's own type. `__pow__`/`__rpow__` reject a real 3-argument modulus
+  (`NotImplemented`, since TPy has no 3-arg `__pow__`). In-place ops mutate
+  `self` and return the *same* object (unlike every other dunder's
+  fresh-instance return) -- TPy already requires them to return `self`, not
+  `Own[T]`. The container protocol is also **wired**: `__len__` -> both
+  `Py_mp_length`/`Py_sq_length`; `__getitem__` -> `Py_mp_subscript` (a
+  wrong-typed key's `TypeError` propagates directly -- no `NotImplemented`
+  fallback, and slicing, `__getitem__(self, s: slice)`, is out of scope);
+  `__setitem__`/`__delitem__` share one `Py_mp_ass_subscript` slot (`del
+  obj[k]` when only one of the pair is defined raises `TypeError`, like a
+  plain Python class with the same shape); `__contains__` -> `Py_sq_contains`
+  (omitted when undefined -- `in` then falls back to iterating via
+  `__iter__`/`__next__` for free, CPython's own behavior); `__iter__` ->
+  `Py_tp_iter` (no self-identity requirement -- it may return a fresh
+  iterator object, marshalled like any other exposed-class return);
+  `__next__` -> `Py_tp_iternext` (implicitly `@error_return(StopIteration)`,
+  so exhaustion crosses via the existing exception bridge rather than a
+  special sentinel). `list(x)`, `iter(x)`/`next(it)`, and a `for` loop all
+  work once these are wired. Any other dunder (`__call__`, `__bool__`, ...)
+  is still **warned** -- not yet wired into the host type, so it would be
+  silently absent otherwise.
 - **Working (enums + constants)**: an enum marked `@export` in an ext_module is
   recreated at `PyInit_` as a **real CPython enum type** -- `enum.IntEnum` for an
   `IntEnum`, `enum.Enum` for a plain `Enum` -- via the stdlib `enum` functional
@@ -6067,9 +6118,9 @@ API, floor 3.12, hand-rolled C-API glue, copy-in marshalling).
 - **Planned**: zero-copy `str`/`bytes` view input (`StrView`/`BytesView` via
   the phase-3.5 foreign-borrow primitive), faithful data-field crossing for
   user exception classes (the same per-instance field marshalling), class-typed
-  fields / `@property` / dunders / inheritance for exposed classes,
-  container and buffer input, the PEP 517 wheel backend, and
-  the `nogil` GIL capability. See `docs/CPYTHON_INTEROP.md`.
+  fields / `@property` / inheritance for exposed classes,
+  container and buffer input at the exposed-class boundary, the PEP 517
+  wheel backend, and the `nogil` GIL capability. See `docs/CPYTHON_INTEROP.md`.
 
 ---
 

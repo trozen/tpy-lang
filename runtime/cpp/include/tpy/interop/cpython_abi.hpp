@@ -131,11 +131,76 @@ struct PyGetSetDef {
 // Type-slot ids the class glue populates (values from CPython's typeslots.h,
 // stable across versions). Checked against Python.h in the facade self-check.
 inline constexpr int Py_tp_dealloc = 52;
+inline constexpr int Py_tp_hash = 59;
 inline constexpr int Py_tp_init = 60;
 inline constexpr int Py_tp_methods = 64;
 inline constexpr int Py_tp_new = 65;
+inline constexpr int Py_tp_repr = 66;
+inline constexpr int Py_tp_richcompare = 67;
+inline constexpr int Py_tp_str = 70;
 inline constexpr int Py_tp_getset = 73;
 inline constexpr int Py_tp_free = 74;
+
+// Dunder-slot function-pointer types (limited-API, abi3-stable signatures).
+using reprfunc = PyObject *(*)(PyObject *);
+using hashfunc = Py_ssize_t (*)(PyObject *);
+using richcmpfunc = PyObject *(*)(PyObject *, PyObject *, int);
+using unaryfunc = PyObject *(*)(PyObject *);
+using binaryfunc = PyObject *(*)(PyObject *, PyObject *);
+using ternaryfunc = PyObject *(*)(PyObject *, PyObject *, PyObject *);  // nb_power(base, exp, mod)
+
+// PyObject_RichCompare op codes (Python.h's Py_LT..Py_GE), passed as
+// richcmpfunc's third argument. Checked against Python.h in the self-check.
+inline constexpr int Py_LT = 0;
+inline constexpr int Py_LE = 1;
+inline constexpr int Py_EQ = 2;
+inline constexpr int Py_NE = 3;
+inline constexpr int Py_GT = 4;
+inline constexpr int Py_GE = 5;
+
+// Arithmetic/ordering operator slot ids. Values from
+// CPython's typeslots.h, stable across versions; checked against Python.h in
+// the facade self-check.
+inline constexpr int Py_nb_add = 7;
+inline constexpr int Py_nb_and = 8;
+inline constexpr int Py_nb_floor_divide = 12;
+inline constexpr int Py_nb_inplace_add = 14;
+inline constexpr int Py_nb_inplace_and = 15;
+inline constexpr int Py_nb_inplace_floor_divide = 16;
+inline constexpr int Py_nb_inplace_lshift = 17;
+inline constexpr int Py_nb_inplace_multiply = 18;
+inline constexpr int Py_nb_inplace_or = 19;
+inline constexpr int Py_nb_inplace_remainder = 21;
+inline constexpr int Py_nb_inplace_rshift = 22;
+inline constexpr int Py_nb_inplace_subtract = 23;
+inline constexpr int Py_nb_inplace_true_divide = 24;
+inline constexpr int Py_nb_inplace_xor = 25;
+inline constexpr int Py_nb_invert = 27;
+inline constexpr int Py_nb_lshift = 28;
+inline constexpr int Py_nb_multiply = 29;
+inline constexpr int Py_nb_negative = 30;
+inline constexpr int Py_nb_or = 31;
+inline constexpr int Py_nb_positive = 32;
+inline constexpr int Py_nb_power = 33;
+inline constexpr int Py_nb_remainder = 34;
+inline constexpr int Py_nb_rshift = 35;
+inline constexpr int Py_nb_subtract = 36;
+inline constexpr int Py_nb_true_divide = 37;
+inline constexpr int Py_nb_xor = 38;
+
+// Container-protocol slot ids + their function-pointer
+// types. binaryfunc (mp_subscript) and unaryfunc (tp_iter/tp_iternext) are
+// already declared above; lenfunc/objobjargproc/objobjproc are new here.
+using lenfunc = Py_ssize_t (*)(PyObject *);
+using objobjargproc = int (*)(PyObject *, PyObject *, PyObject *);  // mp_ass_subscript(o, key, value); value==nullptr deletes
+using objobjproc = int (*)(PyObject *, PyObject *);  // sq_contains(o, value) -> -1/0/1
+inline constexpr int Py_mp_ass_subscript = 3;
+inline constexpr int Py_mp_length = 4;
+inline constexpr int Py_mp_subscript = 5;
+inline constexpr int Py_sq_contains = 41;
+inline constexpr int Py_sq_length = 45;
+inline constexpr int Py_tp_iter = 62;
+inline constexpr int Py_tp_iternext = 63;
 
 // Exposed classes are final (not subclassable from Python): partial
 // subclassability would silently diverge in method dispatch (the C++ payload

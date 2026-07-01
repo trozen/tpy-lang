@@ -1,0 +1,1 @@
+main.py:18: error: exposed class 'C': '__iter__' return type cannot cross the CPython boundary

@@ -65,6 +65,12 @@ void Py_DecRef(PyObject *o);
 void Py_IncRef(PyObject *o);
 PyObject *PyErr_Occurred(void);
 void PyErr_SetString(PyObject *type, const char *message);
+// Used by an arithmetic/ordering operator slot to downgrade a wrong-typed
+// operand's TypeError (from from_py/instance_payload/enum_from_py) into
+// NotImplemented, letting CPython try the reflected operand instead of
+// propagating the error outright.
+int PyErr_ExceptionMatches(PyObject *exc);
+void PyErr_Clear(void);
 
 // Argument unpacking: glue uses only the "O" code (raw borrowed PyObject*);
 // from_py<T> owns every conversion, so format codes never appear. The keyword
@@ -189,6 +195,17 @@ extern PyObject *PyExc_KeyboardInterrupt;
 // The None singleton. Py_None is the macro `&_Py_NoneStruct`; we mirror the
 // underlying data symbol so void-return wrappers can hand back a fresh ref.
 extern PyObject _Py_NoneStruct;
+
+// The NotImplemented singleton (Py_NotImplemented is `&_Py_NotImplementedStruct`).
+// Returned by a richcompare/nb_* slot when the other operand's type isn't one
+// this dunder knows how to handle, letting CPython try the reflected operand
+// or synthesize the standard "unsupported operand type(s)" error.
+extern PyObject _Py_NotImplementedStruct;
+
+// A type that defines __eq__ (or any richcompare) without __hash__ becomes
+// unhashable, mirroring a plain Python class with the same shape (type_new's
+// own behavior): wire this directly as the Py_tp_hash slot function.
+Py_ssize_t PyObject_HashNotImplemented(PyObject *o);
 
 // Buffer protocol (Span[T] numeric marshalling). GetBuffer takes a new
 // reference to the exporter (stashed in view->obj) that keeps it alive until

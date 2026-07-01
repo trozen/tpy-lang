@@ -1,0 +1,1 @@
+main.py:13: error: exposed class 'C': '__len__' crossing the CPython boundary must return a fixed-width integer type (not BigInt)

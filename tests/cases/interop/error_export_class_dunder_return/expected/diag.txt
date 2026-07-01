@@ -1,0 +1,1 @@
+main.py:14: error: exposed class 'C': '__repr__' crossing the CPython boundary must return str
