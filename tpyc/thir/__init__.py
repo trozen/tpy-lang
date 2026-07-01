@@ -34,6 +34,7 @@ from .nodes import (
     THIRReturn,
     THIRSelf,
     THIRStmt,
+    THIRSubscript,
     THIRVarDecl,
     THIRWhile,
 )
@@ -68,6 +69,7 @@ __all__ = [
     "THIRReturn",
     "THIRSelf",
     "THIRStmt",
+    "THIRSubscript",
     "THIRVarDecl",
     "THIRWhile",
 ]

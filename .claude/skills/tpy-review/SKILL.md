@@ -1,7 +1,6 @@
 ---
 name: tpy-review
 description: Run a parallel multi-agent review of TurboPython compiler changes. Dispatches specialist reviewers (codegen, architecture, tests, safety, runtime, docs, conventions) in parallel and aggregates findings into a unified report.
-disable-model-invocation: true
 ---
 
 # /tpy-review

@@ -24,6 +24,7 @@ from .nodes import (
     THIRReturn,
     THIRSelf,
     THIRStmt,
+    THIRSubscript,
     THIRVarDecl,
     THIRWhile,
 )
@@ -50,9 +51,14 @@ def _expr(e: THIRExpr) -> str:
     if isinstance(e, THIRCoerce):
         return f"coerce({_expr(e.expr)} -> {_ty(e.result_type)})"
     if isinstance(e, THIRFieldAccess):
-        op = "->" if e.is_arrow else "."
         tag = "" if e.form is Form.VALUE else f" [{e.form.name.lower()}]"
+        if e.deref_check:
+            return f"deref_check({_expr(e.receiver)}).{e.field_cpp}{tag}"
+        op = "->" if e.is_arrow else "."
         return f"{_expr(e.receiver)}{op}{e.field_cpp}{tag}"
+    if isinstance(e, THIRSubscript):
+        tag = "" if e.form is Form.VALUE else f" [{e.form.name.lower()}]"
+        return f"{_expr(e.receiver)}[{e.index}]{tag}"
     if isinstance(e, THIRFormConvert):
         cst = "const " if e.is_const else ""
         return f"form_convert[{cst}{e.form.name.lower()}]({_expr(e.value)})"

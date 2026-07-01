@@ -41,6 +41,8 @@ from ..parse.nodes import (
     TpyPassStmt,
     TpyReturn,
     TpyStmt,
+    TpySubscript,
+    TpyUnaryOp,
     TpyVarDecl,
     TpyWhile,
     VarLinkage,
@@ -50,8 +52,8 @@ from ..parse.nodes import (
 )
 from ..typesys import (
     LiteralType, NominalType, OptionalType, OwnType, ReadonlyType, TpyType,
-    TupleType, VoidType, is_float_type, resolve_int_literals, unwrap_optional_own,
-    unwrap_readonly, unwrap_ref_type, unwrap_send_sync,
+    TupleType, ValueForm, VoidType, is_float_type, resolve_int_literals,
+    unwrap_optional_own, unwrap_readonly, unwrap_ref_type, unwrap_send_sync,
 )
 from ..type_def_registry import (
     int_traits_of, is_big_int_type, is_bool_type, is_fixed_int_type,
@@ -88,6 +90,7 @@ from .nodes import (
     THIRReturn,
     THIRSelf,
     THIRStmt,
+    THIRSubscript,
     THIRVarDecl,
     THIRWhile,
 )
@@ -177,6 +180,12 @@ def _f1_record(t: TpyType | None, analyzer) -> bool:
         t, analyzer.ctx.module_name) is None
 
 
+def _unwrap_own(t: TpyType) -> TpyType:
+    """The payload of an `Own[T]` wrapper, else `t` unchanged -- the recurring unwrap
+    the `Optional`-inner helpers apply before an `_f1_record` check."""
+    return t.wrapped if isinstance(t, OwnType) else t
+
+
 def _storage_optional_return_type(t: TpyType | None, analyzer) -> 'OptionalType | None':
     """The storage-form `Optional[F1-record]` return slot (F2c): `Own[T] | None`,
     which lowers to a `std::optional<T>` returned by value. `Inner | None` is
@@ -185,8 +194,7 @@ def _storage_optional_return_type(t: TpyType | None, analyzer) -> 'OptionalType 
     non-`TpyType` (unresolved) return annotation."""
     if not isinstance(t, OptionalType) or t.uses_pointer_repr():
         return None
-    inner = t.inner.wrapped if isinstance(t.inner, OwnType) else t.inner
-    return t if _f1_record(inner, analyzer) else None
+    return t if _f1_record(_unwrap_own(t.inner), analyzer) else None
 
 
 def _f1_tuple_element_ok(e: TpyType, analyzer) -> bool:
@@ -201,8 +209,7 @@ def _f1_tuple_element_ok(e: TpyType, analyzer) -> bool:
         return True
     inner = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(e)))
     if isinstance(inner, OptionalType) and inner.uses_pointer_repr():
-        opt_inner = inner.inner.wrapped if isinstance(inner.inner, OwnType) else inner.inner
-        return _f1_record(opt_inner, analyzer)
+        return _f1_record(_unwrap_own(inner.inner), analyzer)
     return False
 
 
@@ -238,14 +245,156 @@ def _is_borrow_form_name(t: TpyType | None) -> bool:
 
     Precondition: callers must first exclude a STORAGE-form pointer-repr tuple (an F3
     `auto&&` alias local), which has the same type but reads as STORAGE -- this query
-    keys on the type alone and would mistag it BORROW. The sole call site checks
-    `storage_tuple_locals` before falling through here."""
+    keys on the type alone and would mistag it BORROW. The name-read call site checks
+    `storage_tuple_locals` before falling through here. The other call site -- the
+    `TpySubscript` branch tagging a subscript *result* -- is safe without that check
+    because an admitted element is only ever a value scalar or a plain record, never
+    itself a pointer-repr tuple (a nested-tuple element is not in the admitted set), so
+    the storage-alias ambiguity cannot arise there."""
     if t is None:
         return False
     if not t.is_value_type():
         return True
     inner = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
     return isinstance(inner, TupleType) and inner.has_pointer_repr_element()
+
+
+def _value_scalar_tuple(t: TpyType | None) -> bool:
+    """A pure value-scalar tuple (`tuple[int, bool, ...]`): a value type rendered
+    `std::tuple<...>` where borrow and storage forms coincide, so a subscript read
+    of any element needs no lift. Every element is an eligible value scalar -- a
+    non-value element makes it pointer-repr (the `_f1_tuple` family), and a
+    str/view/nested-tuple element rides a later cell. Admitting it as a param (whose
+    signature stays on the AST path) routes functions that read it by subscript."""
+    if t is None:
+        return False
+    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    return (isinstance(t, TupleType)
+            and all(_eligible_scalar(e) for e in t.element_types))
+
+
+def _const_index(index: TpyExpr) -> 'int | None':
+    """The compile-time integer index of a tuple subscript, mirroring the AST's
+    `_extract_compile_time_index`: a bare int literal or a negated int literal. A
+    non-constant tuple index never reaches lowering (sema rejects it); the
+    eligibility gate uses this to confirm the literal form regardless."""
+    if isinstance(index, TpyIntLiteral):
+        return index.value
+    if (isinstance(index, TpyUnaryOp) and index.op == "-"
+            and isinstance(index.operand, TpyIntLiteral)):
+        return -index.operand.value
+    return None
+
+
+def _subscript_index_and_tuple(sub: TpySubscript,
+                               analyzer) -> 'tuple[TupleType, int] | None':
+    """`(tuple_type, normalized_idx)` for a tuple subscript with a compile-time-const,
+    in-bounds index (a negative literal folded by the tuple arity), or None if the
+    receiver is not a tuple or the index is not such a constant. The receiver-type
+    resolution + index fold written once, shared by the eligibility gate, the arrow
+    decision, and lowering so the three can never drift."""
+    recv_t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+        analyzer.get_expr_type(sub.obj))))
+    if not isinstance(recv_t, TupleType):
+        return None
+    idx = _const_index(sub.index)
+    if idx is None:
+        return None
+    n = len(recv_t.element_types)
+    if idx < 0:
+        idx += n
+    if not (0 <= idx < n):
+        return None
+    return recv_t, idx
+
+
+def _subscript_recv_tuple(e: TpyExpr, locals_: dict[str, TpyType],
+                          analyzer) -> 'tuple[TupleType, int] | None':
+    """`(tuple_type, normalized_idx)` for a subscript `t[N]` off an in-scope
+    eligible-tuple name (a value-scalar tuple or an already-routed pointer-repr
+    `_f1_tuple`); else None. Shared by the value-element and record-element read gates
+    -- non-name receivers, ineligible tuples, and non-const indices stay on the AST
+    path."""
+    if not isinstance(e, TpySubscript):
+        return None
+    recv = e.obj
+    if not isinstance(recv, TpyName) or recv.name not in locals_:
+        return None
+    res = _subscript_index_and_tuple(e, analyzer)
+    if res is None:
+        return None
+    recv_t, _idx = res
+    if not (_value_scalar_tuple(recv_t) or _f1_tuple(recv_t, analyzer) is not None):
+        return None
+    return res
+
+
+def _tuple_subscript_value_read(e: TpyExpr, locals_: dict[str, TpyType],
+                                analyzer) -> 'int | None':
+    """A value-result tuple subscript read `t[N]` -> `std::get<N>(t)` (value form, no
+    lift): element N is a value scalar. Returns the normalized index, or None -- record
+    / `Optional` (borrow) elements ride the field-receiver path (`t[N].field`)."""
+    res = _subscript_recv_tuple(e, locals_, analyzer)
+    if res is None:
+        return None
+    recv_t, idx = res
+    return idx if _eligible_scalar(recv_t.element_types[idx]) else None
+
+
+def _subscript_record_field_recv(e: TpyExpr, locals_: dict[str, TpyType],
+                                 analyzer) -> 'int | None':
+    """`t[N]` whose element is a plain F1-record (a `BORROW_REF` pointer-repr slot) --
+    a borrow result usable as a scalar-field-read receiver (`t[N].field`). Returns the
+    normalized index, or None. `Optional[record]` elements take the null-check member
+    path (`_subscript_optional_field_recv`) and are excluded here (`_f1_record` rejects
+    them)."""
+    res = _subscript_recv_tuple(e, locals_, analyzer)
+    if res is None:
+        return None
+    recv_t, idx = res
+    return idx if _f1_record(recv_t.element_types[idx], analyzer) else None
+
+
+def _subscript_optional_field_recv(e: TpyExpr, locals_: dict[str, TpyType],
+                                   analyzer) -> 'int | None':
+    """`t[N]` whose element is a pointer-repr `Optional[F1-record]` (PTR_OPTIONAL) -- a
+    nullable borrow usable as a runtime-null-checked field receiver (`t[N].field` ->
+    `deref_check(...)`). Returns the normalized index, or None. Mirrors the Optional arm
+    of `_f1_tuple_element_ok`."""
+    res = _subscript_recv_tuple(e, locals_, analyzer)
+    if res is None:
+        return None
+    recv_t, idx = res
+    inner = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(recv_t.element_types[idx])))
+    if not (isinstance(inner, OptionalType) and inner.uses_pointer_repr()):
+        return None
+    return idx if _f1_record(_unwrap_own(inner.inner), analyzer) else None
+
+
+def _field_over_subscript_ok(e: TpyExpr, locals_: dict[str, TpyType],
+                             analyzer) -> bool:
+    """A scalar field access off a record-element tuple subscript (`t[N].field`): the
+    receiver `t[N]` is a plain-record borrow, the field a value scalar (checked by the
+    caller). Position-neutral -- valid as a read (RHS) or a scalar-field write target
+    (LHS), since both render `std::get<N>(t)->field` / `.field` off the same receiver.
+    The borrow-local-binding source path keeps its own name-receiver gate, so `b = t[N]`
+    stays on the AST path. Markers-clean excludes the Optional null-check / property /
+    setattr shapes, so an Optional-element write and a property-setter write stay on the
+    AST path."""
+    return (isinstance(e, TpyFieldAccess) and _field_markers_clean(e)
+            and _subscript_record_field_recv(e.obj, locals_, analyzer) is not None)
+
+
+def _optional_field_over_subscript_ok(e: TpyExpr, locals_: dict[str, TpyType],
+                                      analyzer) -> bool:
+    """A scalar field read off an `Optional[record]`-element tuple subscript with an
+    unproven None (`t[N].field` -> `deref_check(...).field`, the
+    `needs_optional_runtime_check` path). The receiver `t[N]` is a nullable borrow, the
+    field a value scalar (checked by the caller). Read only -- writes / binds keep the
+    name-receiver gate."""
+    return (isinstance(e, TpyFieldAccess) and e.needs_optional_runtime_check
+            and _field_markers_clean(e, allow_optional_check=True)
+            and _subscript_optional_field_recv(e.obj, locals_, analyzer) is not None)
 
 
 def _field_receiver_ok(e: TpyExpr, declared: dict[str, TpyType], analyzer) -> bool:
@@ -257,17 +406,26 @@ def _field_receiver_ok(e: TpyExpr, declared: dict[str, TpyType], analyzer) -> bo
     reads would need narrowing (the marker guards below reject those), so only plain
     non-null receivers pass. The property-setter / `__setattr__` markers guard the
     write position (a property/setattr field assign takes a method-call emit path)."""
-    if not isinstance(e, TpyFieldAccess):
-        return False
-    if (e.module_var_access is not None or e.class_constant_owner is not None
-            or e.property_getter_call is not None or e.dyn_getattr_call is not None
-            or e.property_setter_call is not None or e.dyn_setattr_call is not None
-            or e.unbound_self_parent_type is not None or e.deref_depth
-            or e.deref_narrowed_to is not None or e.needs_optional_runtime_check):
+    if not isinstance(e, TpyFieldAccess) or not _field_markers_clean(e):
         return False
     recv = e.obj
     return (isinstance(recv, TpyName)
             and _f1_record(declared.get(recv.name), analyzer))
+
+
+def _field_markers_clean(e: TpyFieldAccess, *,
+                         allow_optional_check: bool = False) -> bool:
+    """The field access carries no special-emit marker (module var / class constant /
+    property / dyn attr / unbound-self / deref chain / Optional null-check) -- a plain
+    `.field` read or write. Each marker takes its own AST emit path, out of the slice.
+    `allow_optional_check` keeps `needs_optional_runtime_check` admissible for the
+    Optional-element member path (which reproduces that runtime check)."""
+    return not (e.module_var_access is not None or e.class_constant_owner is not None
+                or e.property_getter_call is not None or e.dyn_getattr_call is not None
+                or e.property_setter_call is not None or e.dyn_setattr_call is not None
+                or e.unbound_self_parent_type is not None or e.deref_depth
+                or e.deref_narrowed_to is not None
+                or (e.needs_optional_runtime_check and not allow_optional_check))
 
 
 def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
@@ -371,9 +529,14 @@ def _scalar_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
     F1-record receiver (`_field_receiver_ok` also rejects the property-setter /
     __setattr__ write target), written with an eligible scalar expression. The
     scalar sibling of `_f2b_optional_field_write_ok` -- it emits as the AST's
-    default field-assign path (`recv.field = <value>;`, no borrow<->storage lift)."""
+    default field-assign path (`recv.field = <value>;`, no borrow<->storage lift). The
+    target is a plain field off an F1-record receiver, or a record-element tuple
+    subscript (`t[N].field = <scalar>` -> `std::get<N>(t)->field = ...`, the write analog
+    of the record-element read); an Optional-element target stays on the AST path (its
+    markers reject it)."""
     target = stmt.target
-    if not _field_receiver_ok(target, declared, analyzer):
+    if not (_field_receiver_ok(target, declared, analyzer)
+            or _field_over_subscript_ok(target, declared, analyzer)):
         return False
     if not _eligible_scalar(analyzer.get_expr_type(target)):
         return False
@@ -420,10 +583,13 @@ def _scalar_aug_assign_ok(stmt: TpyAugAssign, declared: dict[str, TpyType],
         str target is not an eligible scalar);
       - `FixedInt += BigInt` wraps the value in `.to_fixed_check<T>()` the
         synthetic binop cannot reproduce;
-      - a subscript / class-constant / narrowed-optional target is not a plain
-        name-or-field eligible-scalar lvalue.
+      - a class-constant / narrowed-optional target is not a plain eligible-scalar
+        lvalue (a record-element tuple-subscript target IS admitted, via
+        `_field_over_subscript_ok` -- the target renders identically on both sides
+        of the synthetic `target = (target OP value)`).
 
-    The target is a declared scalar local or an F1-record scalar field; the value
+    The target is a declared scalar local, an F1-record scalar field, or a
+    record-element tuple subscript (`t[N].field`); the value
     is an eligible scalar expression. Lowering synthesizes the binop with
     `divisor_non_zero=False` -- the AST aug-assign path never swaps
     `div_check`->`div_floor` (no `TpyBinOp` node carries the flag)."""
@@ -436,7 +602,8 @@ def _scalar_aug_assign_ok(stmt: TpyAugAssign, declared: dict[str, TpyType],
     if isinstance(target, TpyName):
         if target.name not in declared:
             return False
-    elif not _field_receiver_ok(target, declared, analyzer):
+    elif not (_field_receiver_ok(target, declared, analyzer)
+              or _field_over_subscript_ok(target, declared, analyzer)):
         return False
     # A narrowed-Optional or non-scalar target is rejected here (the AST unwraps
     # the former and never reaches the binop branch for the latter).
@@ -629,8 +796,15 @@ def _expr_eligible(e: TpyExpr, locals_: dict[str, TpyType], analyzer) -> bool:
         # form). The non-value field source for a borrow-local binding is handled
         # in the var-decl branch, not here -- a non-value field read is not a
         # value expression.
-        return (_field_receiver_ok(e, locals_, analyzer)
-                and _eligible_scalar(analyzer.get_expr_type(e)))
+        return (_eligible_scalar(analyzer.get_expr_type(e))
+                and (_field_receiver_ok(e, locals_, analyzer)
+                     or _field_over_subscript_ok(e, locals_, analyzer)
+                     or _optional_field_over_subscript_ok(e, locals_, analyzer)))
+    if isinstance(e, TpySubscript):
+        # A value-result tuple subscript read `t[N]` off an eligible tuple receiver
+        # (`std::get<N>(t)`, value form). Borrow-result (record/Optional) element
+        # reads and container subscripts ride later cells.
+        return _tuple_subscript_value_read(e, locals_, analyzer) is not None
     if isinstance(e, TpyBinOp):
         return _binop_eligible(e, locals_, analyzer)
     if isinstance(e, TpyCall):
@@ -646,11 +820,13 @@ def _expr_eligible(e: TpyExpr, locals_: dict[str, TpyType], analyzer) -> bool:
 
 def _f1_param_eligible(ptype: TpyType | None, analyzer) -> bool:
     """An F1-eligible param: a value scalar, an F1-record passed by reference
-    (`T&` / `const T&`, accessed `.`), or an F3 borrow-form pointer-repr tuple
-    (`std::tuple<..., T*>`, a borrow source for a `tuple_to_storage` field write).
+    (`T&` / `const T&`, accessed `.`), an F3 borrow-form pointer-repr tuple
+    (`std::tuple<..., T*>`, a borrow source for a `tuple_to_storage` field write), or
+    a pure value-scalar tuple (`const std::tuple<...>&`, read by subscript).
     Optional/container/cross-module/native record params stay on the AST path."""
     return (_eligible_scalar(ptype) or _f1_record(ptype, analyzer)
-            or _f1_tuple(ptype, analyzer) is not None)
+            or _f1_tuple(ptype, analyzer) is not None
+            or _value_scalar_tuple(ptype))
 
 
 def _function_eligible(func: TpyFunction, analyzer,
@@ -947,13 +1123,52 @@ def _body_eligible(body, analyzer, declared: dict[str, TpyType],
     return True
 
 
+def _subscript_yields_borrow_ptr(sub: TpySubscript, lc: '_LowerCtx') -> bool:
+    """Mirror ExpressionGenerator._tuple_subscript_yields_borrow_ptr: `std::get<N>(t)`
+    is a bare `T*` (member access `->`) iff element N is a plain non-value BORROW_REF
+    pointer-repr slot read from a borrow-form tuple. An owned (`Own`) or value element
+    is held by value in the tuple (`std::get` yields a `T&`, `.` access), and a storage
+    `auto&&` alias receiver likewise holds its elements by value -- both take `.`."""
+    res = _subscript_index_and_tuple(sub, lc.analyzer)
+    if res is None:
+        return False
+    recv_t, idx = res
+    et = recv_t.element_types[idx]
+    return (et.value_form() is ValueForm.BORROW_REF
+            and TupleType._element_is_pointer_repr(et)
+            and isinstance(sub.obj, TpyName)
+            and sub.obj.name not in lc.storage_tuple_locals)
+
+
+def _subscript_result_form(sub: TpySubscript, rtype: TpyType, lc: '_LowerCtx') -> Form:
+    """The form a tuple subscript result renders as. A value scalar is VALUE; a record
+    element is BORROW (a `T*`/`T&`). An Optional element read off a storage-tuple alias
+    is STORAGE (`std::optional<T>`, lifted by the consumer via optional_to_ptr); off a
+    borrow tuple param it is already `T*` (BORROW)."""
+    if not _is_borrow_form_name(rtype):
+        return Form.VALUE
+    inner = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rtype)))
+    if (isinstance(inner, OptionalType) and isinstance(sub.obj, TpyName)
+            and sub.obj.name in lc.storage_tuple_locals):
+        return Form.STORAGE
+    return Form.BORROW
+
+
 def _field_is_arrow(e: TpyFieldAccess, lc: '_LowerCtx') -> bool:
     """`recv->field` vs `recv.field`: a plain `T*` pointer-local (F2) or the `self`
     receiver (a `this` pointer) renders `->`; a record param / `T&` alias receiver
     renders `.`. Decided from the pointer-local set lowering tracks (the same names
-    eligibility recorded) plus the method receiver."""
-    return (isinstance(e.obj, TpyName)
-            and (e.obj.name in lc.pointers or e.obj.name == lc.self_receiver))
+    eligibility recorded) plus the method receiver.
+
+    A record-element tuple subscript receiver (`t[N].field`) renders `->` only when the
+    element is a borrow `T*` (`_subscript_yields_borrow_ptr`): a bare-reference element
+    off a borrow-form tuple param. An owned element (`std::get` yields `T&`) or a
+    storage `auto&&` alias receiver reads `.`."""
+    obj = e.obj
+    if isinstance(obj, TpySubscript):
+        return _subscript_yields_borrow_ptr(obj, lc)
+    return (isinstance(obj, TpyName)
+            and (obj.name in lc.pointers or obj.name == lc.self_receiver))
 
 
 def _lower_expr(e: TpyExpr, lc: '_LowerCtx') -> THIRExpr:
@@ -978,6 +1193,18 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx') -> THIRExpr:
             form = Form.BORROW if _is_borrow_form_name(rtype) else Form.VALUE
         return THIRName(result_type=rtype, name=e.name, form=form, loc=loc)
     if isinstance(e, TpyFieldAccess):
+        if e.needs_optional_runtime_check and isinstance(e.obj, TpySubscript):
+            # Unproven `Optional[record]`-element member access `t[N].field` ->
+            # `deref_check(<T*>).field`. The subscript is a `T*` off a borrow tuple, or
+            # a `std::optional<T>` off a storage alias lifted to `T*` via optional_to_ptr
+            # (the STORAGE-form convert). Mirrors _gen_field_access's runtime-check path.
+            sub = _lower_expr(e.obj, lc)
+            recv = (THIRFormConvert(result_type=sub.result_type, value=sub,
+                                    form=Form.BORROW, loc=loc)
+                    if sub.form is Form.STORAGE else sub)
+            return THIRFieldAccess(
+                result_type=rtype, receiver=recv,
+                field_cpp=escape_cpp_name(e.field), deref_check=True, loc=loc)
         # Scalar field read off a borrow receiver (value-form result). A plain
         # non-null `T*` pointer-local receiver renders `recv->field`; the non-value
         # field source for a borrow-local binding is built in _lower_field_source.
@@ -986,6 +1213,24 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx') -> THIRExpr:
             receiver=_lower_expr(e.obj, lc),
             field_cpp=escape_cpp_name(e.field),
             is_arrow=_field_is_arrow(e, lc),
+            loc=loc,
+        )
+    if isinstance(e, TpySubscript):
+        # Tuple subscript -> `std::get<N>(t)`. Eligibility guaranteed a const index and
+        # an eligible-tuple receiver; the shared helper re-derives the normalized index
+        # (negatives folded), mirroring _gen_subscript. The emit is `std::get<N>(t)`
+        # for every element; `form` records the result shape for the consumer: a value
+        # scalar is VALUE, a record element is a borrow (`T*`/`T&`), and an Optional
+        # element read off a storage-tuple alias is `std::optional<T>` (STORAGE, lifted
+        # to `T*` by the consuming deref_check via optional_to_ptr) -- off a borrow tuple
+        # it is already `T*` (BORROW).
+        _recv_t, idx = _subscript_index_and_tuple(e, analyzer)
+        form = _subscript_result_form(e, rtype, lc)
+        return THIRSubscript(
+            result_type=rtype,
+            receiver=_lower_expr(e.obj, lc),
+            index=idx,
+            form=form,
             loc=loc,
         )
     if isinstance(e, (TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral)):

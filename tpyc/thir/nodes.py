@@ -143,10 +143,39 @@ class THIRFieldAccess(THIRExpr):
     receiver. `form` is the field's value form -- `STORAGE` for a storage-form
     `Optional[ref]` field read (the F1 source lifted to a borrow via
     `THIRFormConvert`). The F1 slice admits only a non-value record reference
-    receiver (`.` access), so `is_arrow` is False there."""
+    receiver (`.` access), so `is_arrow` is False there.
+
+    `deref_check` wraps the receiver in a runtime null check for an unproven
+    `Optional` member access (`::tpy::deref_check(receiver).field`, the
+    `needs_optional_runtime_check` path). The receiver is already a `T*` (a borrow
+    subscript element, or a storage element lifted via `optional_to_ptr`), so the
+    access after the checked deref is always `.` -- `deref_check` and `is_arrow` are
+    mutually exclusive."""
     receiver: THIRExpr
     field_cpp: str
     is_arrow: bool = False
+    deref_check: bool = False
+
+    def __post_init__(self) -> None:
+        # Enforce the deref_check/is_arrow mutual exclusivity the docstring documents.
+        assert not (self.deref_check and self.is_arrow)
+
+
+@dataclass(frozen=True)
+class THIRSubscript(THIRExpr):
+    """Tuple subscript read `receiver[index]` -> `std::get<index>(receiver)`.
+
+    `index` is the element index, already normalized to a non-negative offset at
+    lowering (a negative literal `t[-1]` folds to `len - 1`), mirroring the AST
+    `_gen_subscript` tuple branch. The emit is `std::get<index>(receiver)` for every
+    admitted element; `form` records the result's shape -- `VALUE` for a value-scalar
+    element (used directly), `BORROW` for a plain-record element (a `T*`/`T&` consumed
+    by one member access, whose `->` vs `.` the field access decides) or an `Optional`
+    element off a borrow tuple param (a nullable `T*`), and `STORAGE` for an `Optional`
+    element off a storage-tuple alias (a `std::optional<T>` lifted to a borrow via
+    `THIRFormConvert`/`optional_to_ptr` at the consuming `deref_check`)."""
+    receiver: THIRExpr
+    index: int
 
 
 @dataclass(frozen=True)

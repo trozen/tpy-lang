@@ -123,11 +123,13 @@ deferred (self-contained) / blocked-on-`<rung>`.
   (`tuple_to_pointer`: borrow-form tuple return + storage-tuple `auto&&` alias locals)
   + borrow->storage write (`tuple_to_storage`, tuple-field write off a borrow tuple
   param) DONE for pointer-repr tuples of scalar / F1-record / `Optional[F1-record]`
-  elements. **Deferred (blocked-on later F3 cells / the statement-shape axis):**
-  Subscript / storage-Name alias sources, reassignable BORROW_TUPLE /
-  OPTIONAL_BORROW_TUPLE, the `tuple_to_storage_move` `Own[tuple]` move arm, subscript /
-  loop-var / unpack sources, tuple-literal MIL construction. **Note:** further F3 form
-  cells gain little routing until the statement-shape axis (subscript reads, for-loops,
+  elements. Value-result + record + Optional element subscript reads landed via the
+  statement-shape axis (increments 25-27, the tuple-READ frontier; see below). **Deferred
+  (blocked-on later F3 cells / the statement-shape axis):** storage-Name alias sources,
+  reassignable BORROW_TUPLE / OPTIONAL_BORROW_TUPLE, the
+  `tuple_to_storage_move` `Own[tuple]` move arm, loop-var / unpack sources,
+  tuple-literal MIL construction. **Note:** further F3 form cells gain little routing
+  until more of the statement-shape axis (the remaining subscript cells, for-loops,
   tuple-unpack) lands -- most corpus tuples are accessed that way.
 - F4 unions (`to_ptr_variant`/`to_value_variant`), F5 generic-slot,
   F6 str/bytes view-split, F-final (RefType removal + retirement): **not started.**
@@ -136,16 +138,34 @@ deferred (self-contained) / blocked-on-`<rung>`.
   reseat sources): **blocked-on-F3+** or the relevant frontier; see the F1/F2 TODO
   cell (items C-G).
 
-### Statement / expression shapes -- **NOT YET SYSTEMATICALLY ENUMERATED**
-The form ladder and callable axis are tracked; the statement-shape axis is not.
+### Statement / expression shapes -- **AXIS OPENED (increment 25), STILL MOSTLY UNCOVERED**
+The form ladder and callable axis are tracked; the statement-shape axis was the
+untracked gap and is now being enumerated + driven.
 Routed so far: var-decl / assign / return / if-elif-else / while / range-for /
-aug-assign, plus the no-op trivia `pass` / docstring (M3c-trivia, `THIRNoOpStmt`).
+aug-assign, plus the no-op trivia `pass` / docstring (M3c-trivia, `THIRNoOpStmt`),
+**value-result tuple subscript reads** (`t[N]` -> `std::get<N>(t)`, `THIRSubscript`,
+increment 25 -- the first deliberate cell of this axis; admits value-scalar tuple params
+to carry routing), **record-element subscript reads** (`t[N].field` off a plain-record
+element -> `std::get<N>(t)->field` / `.field` per the element-form arrow mirror, increment
+26), and **Optional[record]-element member access** (`t[N].field` on an unproven Optional
+-> `deref_check(<T*>).field`, a `deref_check` flag on `THIRFieldAccess` + the storage-source
+`optional_to_ptr` lift, increment 27), and the **write position** (`t[N].field = / +=
+<scalar>` off a record element -> `std::get<N>(t)->field = ...`, the position-neutral
+`_field_over_subscript_ok` added to the scalar-field-write + aug-assign gates, increment 28).
+**The tuple-subscript FAMILY is COMPLETE** (record-element reads + writes; value + Optional
+reads). Subscript follow-ons still on AST: Optional-field / tuple-field writes THROUGH a
+subscript (`t[N].opt = None` -- the `_f2b`/`_f1_tuple` write gates still name-only). Beyond
+the tuple family (separate frontiers): container subscript (`items[i]`, dynamic index/bounds),
+value-tuple locals, standalone record/Optional-element binds / borrow returns, for-loops,
+tuple-unpack. **Test-coverage follow-on:** the storage-tuple-alias receiver form (`a = h.pair;
+a[N].field` read/write) is covered only by unit byte-diff, not a build+run corpus case -- add
+one (the aliasing fn must stay THIR-routable, i.e. no `print()` inside it) for exec/cpy
+coverage of the `.`-access + `optional_to_ptr` alias paths.
 Uncovered shapes include: `match`, `with`, `try`/`except`/`finally`,
 `for`-over-container, `async`/`await`, `yield` / generators, comprehensions,
 `break`/`continue`, `del`/`global`/`nonlocal`/`raise`/`assert`, chained
-comparisons, logical `and`/`or`/`not` (short-circuit). **Action:** enumerate these
-as a tracked axis before claiming `gen_body`/`gen_expr` deletion is near -- this
-ledger surfaced that they are an untracked gap.
+comparisons, logical `and`/`or`/`not` (short-circuit). **Action:** continue enumerating +
+driving these as a tracked axis before claiming `gen_body`/`gen_expr` deletion is near.
 
 ## Sequencing discipline (the plan)
 
@@ -166,4 +186,4 @@ ledger surfaced that they are an untracked gap.
 - **Planned:** extend the `--thir-codegen` non-vacuity tally to report per-component
   AST-fallback coverage (how much of each component still falls back to AST), so the
   gap to each deletion is *measured*, not estimated. Today the tally reports only
-  total routed bodies/cases (5081 bodies / 1218 cases as of increment 24).
+  total routed bodies/cases (5092 bodies / 1223 cases as of increment 28).

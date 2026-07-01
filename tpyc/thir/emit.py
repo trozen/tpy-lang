@@ -38,6 +38,7 @@ from .nodes import (
     THIRReturn,
     THIRSelf,
     THIRStmt,
+    THIRSubscript,
     THIRVarDecl,
     THIRWhile,
 )
@@ -176,7 +177,18 @@ def _emit_call(e: THIRCall) -> str:
 
 
 def _emit_field_access(e: THIRFieldAccess) -> str:
+    if e.deref_check:
+        # Unproven Optional member access: null-check the (already `T*`) receiver
+        # before the `.` member read. Mirrors _gen_field_access's runtime-check path.
+        return f"::tpy::deref_check({_emit_expr(e.receiver)}).{e.field_cpp}"
     return f"{_emit_expr(e.receiver)}{'->' if e.is_arrow else '.'}{e.field_cpp}"
+
+
+def _emit_subscript(e: THIRSubscript) -> str:
+    # Tuple element read: the index is a normalized compile-time constant, so the
+    # C++ template argument is a bare non-negative int. Mirrors _gen_subscript's
+    # tuple branch base emission (the value-scalar element takes no lift).
+    return f"std::get<{e.index}>({_emit_expr(e.receiver)})"
 
 
 def _emit_form_convert(e: THIRFormConvert) -> str:
@@ -228,6 +240,8 @@ def _emit_expr(e: THIRExpr) -> str:
         return _emit_literal(e)
     if isinstance(e, THIRFieldAccess):
         return _emit_field_access(e)
+    if isinstance(e, THIRSubscript):
+        return _emit_subscript(e)
     if isinstance(e, THIRFormConvert):
         return _emit_form_convert(e)
     if isinstance(e, THIRBinOp):
