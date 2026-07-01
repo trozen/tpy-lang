@@ -5,6 +5,7 @@
 # open while the client writes so the request sends don't hit a closed peer.
 import socket
 from http.client import HTTPConnection
+from tplib import Box
 import tplib.requests as requests
 
 
@@ -15,13 +16,9 @@ def main() -> None:
               b"Content-Length: 0\r\n\r\n")
     d.sendall(b"HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n"
               b"Content-Length: 5\r\n\r\nhello")
-    h0 = HTTPConnection("api.test", 80)
-    h0.sock = a
-    h1 = HTTPConnection("api.test", 80)
-    h1.sock = c
     s = requests.Session()
-    s._connection = h0
-    s._redirect_connections = [h1]
+    s._connection = Box(HTTPConnection("api.test", 80, None, a))
+    s._redirect_connections = [Box(HTTPConnection("api.test", 80, None, c))]
     r = s.get("http://api.test/v1/tables")
     print(r.status_code, r.ok, r.text)
     print(r.url)

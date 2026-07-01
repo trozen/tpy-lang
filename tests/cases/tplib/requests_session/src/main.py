@@ -5,19 +5,18 @@
 # on exit (observed as EOF on the socketpair peer).
 import socket
 from http.client import HTTPConnection
+from tplib import Box
 import tplib.requests as requests
 
 
 def merge_and_clear() -> None:
     a, b = socket.socketpair()
     b.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok")
-    conn = HTTPConnection("api.test", 80)
-    conn.sock = a
     s = requests.Session()
     s.headers = {"X-App": "atlas", "Accept": "application/json"}
     s.params = {"db": "das"}
     s.auth = ("user", "pw")
-    s._connection = conn
+    s._connection = Box(HTTPConnection("api.test", 80, None, a))
     r = s.get("http://api.test/v1/tables", {"limit": "10"}, {"X-App": "override"})
     print(r.status_code)
     print(b.recv(65536))
@@ -29,10 +28,8 @@ def merge_and_clear() -> None:
 def session_post() -> None:
     a, b = socket.socketpair()
     b.sendall(b"HTTP/1.1 201 Created\r\nContent-Length: 2\r\n\r\nok")
-    conn = HTTPConnection("api.test", 80)
-    conn.sock = a
     s = requests.Session()
-    s._connection = conn
+    s._connection = Box(HTTPConnection("api.test", 80, None, a))
     r = s.post("http://api.test/v1/items", b"payload")
     print(r.status_code)
     print(b.recv(65536))
@@ -41,10 +38,8 @@ def session_post() -> None:
 
 def context_manager_closes() -> None:
     a, b = socket.socketpair()
-    conn = HTTPConnection("api.test", 80)
-    conn.sock = a
     with requests.Session() as s:
-        s._connection = conn
+        s._connection = Box(HTTPConnection("api.test", 80, None, a))
     # __exit__ closed the still-set connection; the peer now sees EOF.
     print(b.recv(10))
     b.close()

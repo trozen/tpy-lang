@@ -8,10 +8,12 @@
 #include "tpystd/http/client.hpp"
 #include "tpystd/socket.hpp"
 #include "tpystd/tplib.hpp"
+#include "tpystd/tplib/box.hpp"
 #include "tpystd/tplib/requests.hpp"
 
 namespace tpyapp::main {
 
+using ::tpystd::tplib::box::Box;
 using ::tpystd::tplib::requests::CaseInsensitiveDict;
 using ::tpystd::http::client::HTTPConnection;
 

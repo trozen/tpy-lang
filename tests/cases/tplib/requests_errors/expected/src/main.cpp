@@ -12,14 +12,10 @@ void main() {
     ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
     // b.sendall(b"HTTP/1.1 404 Not Found\r\nContent-Length: 3\r\n\r\nno!")
     b.sendall(::tpy::bytes_literal("HTTP/1.1 404 Not Found\r\nContent-Length: 3\r\n\r\nno!", 48));
-    // conn = HTTPConnection("api.test", 80)
-    ::tpystd::http::client::HTTPConnection conn = ::tpystd::http::client::HTTPConnection("api.test", 80);
-    // conn.sock = a
-    conn.sock = std::move(a);
     // s = requests.Session()
     ::tpystd::tplib::requests::Session s = ::tpystd::tplib::requests::Session();
-    // s._connection = conn
-    s._connection = std::move(conn);
+    // s._connection = Box(HTTPConnection("api.test", 80, None, a))
+    s._connection = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(::tpystd::http::client::HTTPConnection("api.test", 80, std::nullopt, std::move(a)));
     // r = s.get("http://api.test/missing")
     ::tpystd::tplib::requests::Response r = s.get("http://api.test/missing");
     // print(r.status_code, r.ok, r.text)
@@ -59,14 +55,10 @@ void main() {
     ::tpystd::socket::socket q = std::move(std::get<1>(__tup_2));
     // q.close()
     q.close();
-    // conn2 = HTTPConnection("api.test", 80)
-    ::tpystd::http::client::HTTPConnection conn2 = ::tpystd::http::client::HTTPConnection("api.test", 80);
-    // conn2.sock = p
-    conn2.sock = std::move(p);
     // s2 = requests.Session()
     ::tpystd::tplib::requests::Session s2 = ::tpystd::tplib::requests::Session();
-    // s2._connection = conn2
-    s2._connection = std::move(conn2);
+    // s2._connection = Box(HTTPConnection("api.test", 80, None, p))
+    s2._connection = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(::tpystd::http::client::HTTPConnection("api.test", 80, std::nullopt, std::move(p)));
     // try:
     {
         try {
@@ -96,8 +88,9 @@ void __tpy_init() {
     // from http.client import HTTPConnection
     ::tpystd::http::__tpy_init();
     ::tpystd::http::client::__tpy_init();
-    // import tplib.requests as requests
+    // from tplib import Box
     ::tpystd::tplib::__tpy_init();
+    // import tplib.requests as requests
     ::tpystd::tplib::requests::__tpy_init();
     // main()
     main();

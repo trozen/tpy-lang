@@ -7,6 +7,7 @@
 # to confirm the query string and auto headers.
 import socket
 from http.client import HTTPConnection
+from tplib import Box
 import tplib.requests as requests
 from json import JsonValue
 
@@ -16,10 +17,10 @@ def main() -> None:
     b.sendall(b"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n"
               b"Content-Length: 24\r\n\r\n"
               b'{"name": "t", "rows": 3}')
-    conn = HTTPConnection("api.test", 8002)
-    conn.sock = a
     s = requests.Session()
-    s._connection = conn
+    # Inject the pre-bound socket via the ctor (an rvalue Box site -- a nominal
+    # @dynamic conformer can't be moved into Box from a named local).
+    s._connection = Box(HTTPConnection("api.test", 8002, None, a))
     r = s.get("http://api.test:8002/v1/tables", {"db": "das"})
     print(r.status_code, r.ok, r.reason)
     print(r.text)

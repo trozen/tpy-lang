@@ -4,38 +4,123 @@
 namespace tpyapp::main {
 
 
-// def main() -> None:
-void main() {
+// def write_fixtures() -> None:
+void write_fixtures() {
+    // with open(CERT_PATH, "w") as f:
+    auto __ctx_1 = ::tpy::builtin_open_mode(CERT_PATH, "w");
+    ::tpy::TextFile* f = &(__ctx_1.__enter__());
+    try {
+        // f.write(CERT_PEM)
+        f->write(CERT_PEM);
+        __ctx_1.__exit__({}, nullptr, {});
+    } catch (::tpy::BaseException& __exc_1) {
+        __ctx_1.__exit__({}, &__exc_1, {});
+        throw;
+    } catch (...) {
+        __ctx_1.__exit__({}, nullptr, {});
+        throw;
+    }
+    // with open(KEY_PATH, "w") as f:
+    auto __ctx_2 = ::tpy::builtin_open_mode(KEY_PATH, "w");
+    f = &(__ctx_2.__enter__());
+    try {
+        // f.write(KEY_PEM)
+        f->write(KEY_PEM);
+        __ctx_2.__exit__({}, nullptr, {});
+    } catch (::tpy::BaseException& __exc_2) {
+        __ctx_2.__exit__({}, &__exc_2, {});
+        throw;
+    } catch (...) {
+        __ctx_2.__exit__({}, nullptr, {});
+        throw;
+    }
+}
+
+// def handshaken_pair() -> tuple[Own[SSLSocket], Own[SSLSocket]]:
+std::tuple<::tpystd::ssl::SSLSocket, ::tpystd::ssl::SSLSocket> handshaken_pair() {
     // a, b = socket.socketpair()
     auto __tup_1 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
     ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
+    // a.setblocking(False)
+    a.setblocking(false);
+    // b.setblocking(False)
+    b.setblocking(false);
+    // ctx = ssl.create_default_context()
+    ::tpystd::ssl::SSLContext ctx = ::tpystd::ssl::create_default_context();
+    // ctx.load_verify_locations(CERT_PATH)
+    ctx.load_verify_locations(CERT_PATH);
+    // cli = ctx.wrap_socket(a, "localhost", False)
+    ::tpystd::ssl::SSLSocket cli = ctx.wrap_socket(std::move(a), "localhost", false);
+    // srv = ssl._wrap_server(b, CERT_PATH, KEY_PATH)
+    ::tpystd::ssl::SSLSocket srv = ::tpystd::ssl::_wrap_server(std::move(b), CERT_PATH, KEY_PATH);
+    // i = 0
+    int32_t i = 0;
+    // cdone = False
+    bool cdone = false;
+    // sdone = False
+    bool sdone = false;
+    // while i < 500 and not (cdone and sdone):
+    while (((i < 500) && (!((cdone && sdone))))) {
+        // if not sdone and srv.do_handshake():
+        if (((!(sdone)) && srv.do_handshake())) {
+            // sdone = True
+            sdone = true;
+        }
+        // if not cdone and cli.do_handshake():
+        if (((!(cdone)) && cli.do_handshake())) {
+            // cdone = True
+            cdone = true;
+        }
+        // i += 1
+        i = ::tpy::add_check<int32_t>(i, 1);
+    }
+    // cli.setblocking(True)
+    cli.setblocking(true);
+    // srv.setblocking(True)
+    srv.setblocking(true);
+    // return cli, srv
+    return std::tuple<::tpystd::ssl::SSLSocket, ::tpystd::ssl::SSLSocket>{std::move(cli), std::move(srv)};
+}
+
+// def main() -> None:
+void main() {
+    // write_fixtures()
+    write_fixtures();
+    // cli, srv = handshaken_pair()
+    auto __tup_1 = handshaken_pair();
+    ::tpystd::ssl::SSLSocket cli = std::move(std::get<0>(__tup_1));
+    ::tpystd::ssl::SSLSocket srv = std::move(std::get<1>(__tup_1));
+    // # Pre-encrypt + buffer the hop-1 (https) response before requests.get runs.
+    // srv.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 7\r\n\r\nlogged.")
+    srv.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Length: 7\r\n\r\nlogged.", 45));
+    // a, b = socket.socketpair()
+    auto __tup_2 = ::tpystd::socket::socketpair();
+    ::tpystd::socket::socket a = std::move(std::get<0>(__tup_2));
+    ::tpystd::socket::socket b = std::move(std::get<1>(__tup_2));
     // b.sendall(b"HTTP/1.1 302 Found\r\n"
     // b"Location: https://secure.test/login\r\n"
     // b"Content-Length: 0\r\n\r\n")
     b.sendall(::tpy::bytes_literal("HTTP/1.1 302 Found\r\nLocation: https://secure.test/login\r\nContent-Length: 0\r\n\r\n", 78));
-    // h0 = HTTPConnection("api.test", 80)
-    ::tpystd::http::client::HTTPConnection h0 = ::tpystd::http::client::HTTPConnection("api.test", 80);
-    // h0.sock = a
-    h0.sock = std::move(a);
     // s = requests.Session()
     ::tpystd::tplib::requests::Session s = ::tpystd::tplib::requests::Session();
-    // s._connection = h0
-    s._connection = std::move(h0);
-    // try:
-    {
-        try {
-            // s.get("http://api.test/start")
-            s.get("http://api.test/start");
-            // print("NO RAISE")
-            std::cout << "NO RAISE" << "\n";
-        } catch (const ::tpystd::tplib::requests::ConnectionError&) {
-            // print("caught ConnectionError for https redirect")
-            std::cout << "caught ConnectionError for https redirect" << "\n";
-        }
-    }
+    // s._connection = Box(HTTPConnection("api.test", 80, None, a))
+    s._connection = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(::tpystd::http::client::HTTPConnection("api.test", 80, std::nullopt, std::move(a)));
+    // s._redirect_connections = [Box(HTTPSConnection("secure.test", 443, None,
+    // None, cli))]
+    s._redirect_connections = ::tpy::make_vector<::tpystd::tplib::box::Box<::tpystd::http::client::_Connection>>(::tpystd::tplib::box::Box<::tpystd::http::client::HTTPSConnection>(::tpystd::http::client::HTTPSConnection("secure.test", 443, std::nullopt, nullptr, std::move(cli))));
+    // r = s.get("http://api.test/start")
+    ::tpystd::tplib::requests::Response r = s.get("http://api.test/start");
+    // print(r.status_code, r.text)
+    std::cout << r.status_code << " " << r.text() << "\n";
+    // print(r.url)
+    std::cout << r.url << "\n";
+    // print(len(r.history))
+    std::cout << ::tpy::__len__(r.history) << "\n";
     // b.close()
     b.close();
+    // srv.close()
+    srv.close();
 }
 
 void __tpy_init() {
@@ -43,16 +128,16 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # Declared divergence from requests: this client is HTTP-only, so a redirect to
-    // # a non-http scheme (here https) raises ConnectionError rather than being
-    // # silently followed over plaintext. Only the first hop runs (one socketpair).
+    // from tplib import Box
+    ::tpystd::tplib::__tpy_init();
     // import socket
     ::tpystd::socket::__tpy_init();
-    // from http.client import HTTPConnection
+    // import ssl
+    ::tpystd::ssl::__tpy_init();
+    // from http.client import HTTPConnection, HTTPSConnection
     ::tpystd::http::__tpy_init();
     ::tpystd::http::client::__tpy_init();
     // import tplib.requests as requests
-    ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::requests::__tpy_init();
     // main()
     main();

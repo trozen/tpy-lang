@@ -44,23 +44,31 @@
 #     Response.url is the final URL. As in requests, 301/302/303 rewrite the
 #     method to GET (POST->GET; 303 always except HEAD) and drop the body;
 #     307/308 keep method and body; a cross-host redirect drops Authorization.
-#     Exceeding Session.max_redirects (default 30) raises TooManyRedirects. The
-#     one divergence from requests: this client is HTTP-only, so a redirect to a
-#     non-http scheme (e.g. https) raises ConnectionError rather than being
-#     silently followed.
+#     Exceeding Session.max_redirects (default 30) raises TooManyRedirects.
+#     Authorization is dropped across a host/scheme/port change
+#     (should_strip_auth). A redirect to a scheme other than http/https (e.g.
+#     ftp) raises ConnectionError.
+#   - https: an https URL (or redirect target) routes to HTTPSConnection on port
+#     443; verify (bool | str) selects the TLS trust (True = verified default,
+#     "<path>" = custom CA file, False = no verification). ssl.SSLError is
+#     wrapped as requests.SSLError (a ConnectionError). No bundled CA store yet,
+#     so a real server needs verify="<ca>".
 # Not supported (yet): cookies, multipart files, streaming
-# (stream=/iter_content), proxies, TLS/HTTPS, auth schemes beyond Basic.
+# (stream=/iter_content), proxies, auth schemes beyond Basic.
 # tpy: cpp_namespace("tpystd::tplib::requests")
 from __future__ import annotations
 from typing import Final, Iterator
 from tpy import Int32, Own, String
-from http.client import HTTPConnection
+from tplib import Box
+from http.client import HTTPConnection, HTTPSConnection, _Connection
+import ssl
 from urllib.parse import urlsplit, urlencode, urljoin
 from json import loads, dumps, JsonValue
 import base64
 
 
 DEFAULT_HTTP_PORT: Final[Int32] = 80
+DEFAULT_HTTPS_PORT: Final[Int32] = 443
 
 
 class RequestException(Exception):
@@ -81,6 +89,14 @@ class ConnectionError(RequestException):
 class Timeout(RequestException):
     """Raised when a request times out (the socket-level TimeoutError is
     re-raised as this, matching the `requests` exception surface)."""
+    def __init__(self, message: String = "") -> None:
+        super().__init__(message)
+
+
+class SSLError(ConnectionError):
+    """Raised when the TLS layer fails (cert verification, handshake). Wraps
+    `ssl.SSLError`, mirroring how Timeout wraps TimeoutError -- a ConnectionError
+    subclass so existing `except ConnectionError` handlers still catch it."""
     def __init__(self, message: String = "") -> None:
         super().__init__(message)
 
@@ -302,6 +318,31 @@ def _host_of(url: str) -> str:
     return h
 
 
+def _should_strip_auth(old_url: str, new_url: str) -> bool:
+    # Mirrors requests.Session.should_strip_auth: drop Authorization across a
+    # redirect unless host, scheme, and port all match -- so a scheme change or
+    # port change (even same host) strips, preventing a credential leak on an
+    # https->http downgrade or a same-host non-default-port hop. The one
+    # exception (requests back-compat): a same-host http->https upgrade on the
+    # standard ports keeps auth. Ports compared raw (None vs int), as CPython does.
+    o = urlsplit(old_url)
+    n = urlsplit(new_url)
+    if o.hostname != n.hostname:
+        return True
+    op = o.port
+    np = n.port
+    if (o.scheme == "http" and (op is None or op == 80)
+            and n.scheme == "https" and (np is None or np == 443)):
+        return False
+    if o.scheme != n.scheme:
+        return True
+    if op is None and np is None:
+        return False
+    if op is None or np is None:
+        return True
+    return op != np
+
+
 def _drop_body_headers(headers: dict[str, str]) -> None:
     # When a redirect coerces the method to GET the body is dropped, so its
     # content headers must go too (requests purges Content-Type/Length/Transfer-
@@ -328,7 +369,7 @@ def _rebuild_method(method: str, status: Int32) -> str:
     return method
 
 
-def _request_on(conn: HTTPConnection, method: str, url: str,
+def _request_on(conn: Box[_Connection], method: str, url: str,
                 params: dict[str, str] | None, data: bytes | None,
                 json: JsonValue | None, headers: dict[str, str] | None,
                 auth: tuple[str, str] | None) -> Own[Response]:
@@ -344,14 +385,20 @@ def _request_on(conn: HTTPConnection, method: str, url: str,
         has_json = True
     hdrs = _prepare_headers(headers, auth, has_json)
 
-    # Re-wrap socket-level OSerrors into the requests exception surface. The
-    # TimeoutError arm must precede the OSError arm: TimeoutError is itself an
-    # OSError and the first matching handler wins (CPython's Timeout-vs-
-    # ConnectionError split).
+    # Re-wrap socket-level OSErrors into the requests exception surface. Order
+    # matters -- each arm's exception is an OSError subclass and the first
+    # matching handler wins: ssl.SSLError (TLS/cert) before TimeoutError (a
+    # timed-out read) before the generic OSError (CPython's
+    # SSLError/Timeout/ConnectionError split).
     try:
         conn.request(method, target, body, hdrs)
         resp = conn.getresponse()
         content = resp.read()
+    except ssl.SSLError as e:
+        conn.close()
+        # Preserve the underlying TLS reason (e.g. "certificate verify failed")
+        # rather than collapsing every TLS failure to a generic message.
+        raise SSLError("TLS error for " + url + ": " + str(e))
     except TimeoutError:
         conn.close()
         raise Timeout("request timed out: " + url)
@@ -373,16 +420,38 @@ def _request_on(conn: HTTPConnection, method: str, url: str,
     return Response(status, reason, url, out_headers, content)
 
 
-def _connect(url: str, timeout: float | None = None) -> Own[HTTPConnection]:
+def _ssl_context_for(verify: bool | str) -> Own[ssl.SSLContext]:
+    # verify=True -> verified default context; verify="<path>" -> trust that CA
+    # file; verify=False -> disable verification (check_hostname must be cleared
+    # before CERT_NONE, or the context rejects the combination, as in CPython).
+    ctx = ssl.create_default_context()
+    if isinstance(verify, str):
+        ctx.load_verify_locations(verify)
+        return ctx
+    if not verify:
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+    return ctx
+
+
+def _connect(url: str, timeout: float | None = None,
+             verify: bool | str = True) -> Own[Box[_Connection]]:
     parts = urlsplit(url)
     host = parts.hostname
     if host is None:
         raise ConnectionError("No host in URL: " + url)
-    port: Int32 = DEFAULT_HTTP_PORT
     pnum = parts.port
+    # Box sites are rvalues: a nominal @dynamic conformer can't be moved into
+    # Box from a named local (slicing guard), so build the connection inline.
+    if parts.scheme == "https":
+        hport: Int32 = DEFAULT_HTTPS_PORT
+        if pnum is not None:
+            hport = Int32(pnum)
+        return Box(HTTPSConnection(host, hport, timeout, _ssl_context_for(verify)))
+    port: Int32 = DEFAULT_HTTP_PORT
     if pnum is not None:
         port = Int32(pnum)
-    return HTTPConnection(host, port, timeout)
+    return Box(HTTPConnection(host, port, timeout))
 
 
 def request(method: str, url: str, params: dict[str, str] | None = None,
@@ -390,31 +459,34 @@ def request(method: str, url: str, params: dict[str, str] | None = None,
             headers: dict[str, str] | None = None,
             auth: tuple[str, str] | None = None,
             timeout: float | None = None,
-            allow_redirects: bool = True) -> Own[Response]:
+            allow_redirects: bool = True,
+            verify: bool | str = True) -> Own[Response]:
     # A fresh Session per call (http.client is Connection: close, so there is
     # no pool to lose); routing through it keeps the redirect engine in one
     # place. The empty-default header/param merge is an identity here.
     s = Session()
     return s.request(method, url, params, data, json, headers, auth, timeout,
-                     allow_redirects)
+                     allow_redirects, verify)
 
 
 def get(url: str, params: dict[str, str] | None = None,
         headers: dict[str, str] | None = None,
         auth: tuple[str, str] | None = None,
         timeout: float | None = None,
-        allow_redirects: bool = True) -> Own[Response]:
+        allow_redirects: bool = True,
+        verify: bool | str = True) -> Own[Response]:
     return request("GET", url, params, None, None, headers, auth, timeout,
-                   allow_redirects)
+                   allow_redirects, verify)
 
 
 def head(url: str, params: dict[str, str] | None = None,
          headers: dict[str, str] | None = None,
          auth: tuple[str, str] | None = None,
          timeout: float | None = None,
-         allow_redirects: bool = False) -> Own[Response]:
+         allow_redirects: bool = False,
+         verify: bool | str = True) -> Own[Response]:
     return request("HEAD", url, params, None, None, headers, auth, timeout,
-                   allow_redirects)
+                   allow_redirects, verify)
 
 
 def post(url: str, data: bytes | None = None, json: JsonValue | None = None,
@@ -422,9 +494,10 @@ def post(url: str, data: bytes | None = None, json: JsonValue | None = None,
          headers: dict[str, str] | None = None,
          auth: tuple[str, str] | None = None,
          timeout: float | None = None,
-         allow_redirects: bool = True) -> Own[Response]:
+         allow_redirects: bool = True,
+         verify: bool | str = True) -> Own[Response]:
     return request("POST", url, params, data, json, headers, auth, timeout,
-                   allow_redirects)
+                   allow_redirects, verify)
 
 
 def put(url: str, data: bytes | None = None, json: JsonValue | None = None,
@@ -432,9 +505,10 @@ def put(url: str, data: bytes | None = None, json: JsonValue | None = None,
         headers: dict[str, str] | None = None,
         auth: tuple[str, str] | None = None,
         timeout: float | None = None,
-        allow_redirects: bool = True) -> Own[Response]:
+        allow_redirects: bool = True,
+        verify: bool | str = True) -> Own[Response]:
     return request("PUT", url, params, data, json, headers, auth, timeout,
-                   allow_redirects)
+                   allow_redirects, verify)
 
 
 def patch(url: str, data: bytes | None = None, json: JsonValue | None = None,
@@ -442,18 +516,20 @@ def patch(url: str, data: bytes | None = None, json: JsonValue | None = None,
           headers: dict[str, str] | None = None,
           auth: tuple[str, str] | None = None,
           timeout: float | None = None,
-          allow_redirects: bool = True) -> Own[Response]:
+          allow_redirects: bool = True,
+          verify: bool | str = True) -> Own[Response]:
     return request("PATCH", url, params, data, json, headers, auth, timeout,
-                   allow_redirects)
+                   allow_redirects, verify)
 
 
 def delete(url: str, params: dict[str, str] | None = None,
            headers: dict[str, str] | None = None,
            auth: tuple[str, str] | None = None,
            timeout: float | None = None,
-           allow_redirects: bool = True) -> Own[Response]:
+           allow_redirects: bool = True,
+           verify: bool | str = True) -> Own[Response]:
     return request("DELETE", url, params, None, None, headers, auth, timeout,
-                   allow_redirects)
+                   allow_redirects, verify)
 
 
 class Session:
@@ -468,11 +544,12 @@ class Session:
     auth: tuple[str, str] | None
     # Offline test seam: the tests can't run a threaded loopback server, so they
     # inject a pre-bound connection here instead of letting hop 0 do a real TCP
-    # connect. Cleared after use, since the connection is single-use.
-    _connection: HTTPConnection | None
+    # connect. Cleared after use, since the connection is single-use. Held as
+    # Box[_Connection] so an injected HTTPConnection or HTTPSConnection both fit.
+    _connection: Box[_Connection] | None
     # Offline test seam for redirect hops 1..N (hop 0 uses `_connection`): each
     # hop needs its own connection because there is no pool (Connection: close).
-    _redirect_connections: list[HTTPConnection]
+    _redirect_connections: list[Box[_Connection]]
     max_redirects: Int32
 
     def __init__(self) -> None:
@@ -505,7 +582,8 @@ class Session:
                       params: dict[str, str] | None, data: bytes | None,
                       json: JsonValue | None, headers: dict[str, str],
                       auth: tuple[str, str] | None,
-                      timeout: float | None, hop: Int32) -> Own[Response]:
+                      timeout: float | None, hop: Int32,
+                      verify: bool | str = True) -> Own[Response]:
         # Each connection is single-use (Connection: close) and is closed inside
         # _request_on, so every hop needs its own.
         if hop == 0 and self._connection is not None:
@@ -520,7 +598,7 @@ class Session:
             conn = self._redirect_connections.pop(0)
             return _request_on(conn, method, url, params, data, json, headers,
                                auth)
-        fresh = _connect(url, timeout)
+        fresh = _connect(url, timeout, verify)
         return _request_on(fresh, method, url, params, data, json, headers,
                            auth)
 
@@ -528,12 +606,12 @@ class Session:
              data: bytes | None, json: JsonValue | None,
              headers: dict[str, str], auth: tuple[str, str] | None,
              timeout: float | None, history: Own[list[Response]],
-             hop: Int32, follow: bool) -> Own[Response]:
+             hop: Int32, follow: bool, verify: bool | str = True) -> Own[Response]:
         # One request, then (when following) recurse on a 3xx Location. Recursion
         # rather than a loop so each `return resp` is a straight-line last use --
         # a loop-carried Own local trips the borrow checker's return guard.
         resp = self._send_for_hop(method, url, params, data, json, headers, auth,
-                                  timeout, hop)
+                                  timeout, hop, verify)
         if not follow or not _is_redirect(resp.status_code):
             resp.history = history
             return resp
@@ -546,15 +624,16 @@ class Session:
                                    + " redirects for url: " + url)
         next_url = urljoin(url, location)
         next_scheme = urlsplit(next_url).scheme
-        if next_scheme != "" and next_scheme != "http":
+        if next_scheme != "" and next_scheme != "http" and next_scheme != "https":
             raise ConnectionError("redirect to unsupported scheme '"
                                   + next_scheme + "': " + next_url)
         # Read everything needed off `resp` before appending it -- the append is
         # resp's last use so it moves into history (no copy).
         new_method = _rebuild_method(method, resp.status_code)
         next_auth = auth
-        if _host_of(next_url) != _host_of(url):
-            # Don't leak credentials to a different host (requests.rebuild_auth).
+        if _should_strip_auth(url, next_url):
+            # Don't leak credentials across a host/scheme/port change
+            # (requests.rebuild_auth / should_strip_auth).
             if "Authorization" in headers:
                 del headers["Authorization"]
             next_auth = None
@@ -566,9 +645,9 @@ class Session:
         if new_method != method:
             _drop_body_headers(headers)
             return self._hop(new_method, next_url, None, None, None, headers,
-                             next_auth, timeout, history, hop + 1, True)
+                             next_auth, timeout, history, hop + 1, True, verify)
         return self._hop(new_method, next_url, None, data, json, headers,
-                         next_auth, timeout, history, hop + 1, True)
+                         next_auth, timeout, history, hop + 1, True, verify)
 
     def request(self, method: str, url: str,
                 params: dict[str, str] | None = None,
@@ -576,7 +655,8 @@ class Session:
                 headers: dict[str, str] | None = None,
                 auth: tuple[str, str] | None = None,
                 timeout: float | None = None,
-                allow_redirects: bool = True) -> Own[Response]:
+                allow_redirects: bool = True,
+                verify: bool | str = True) -> Own[Response]:
         merged_headers = self._merge_headers(headers)
         merged_params = self._merge_params(params)
         use_auth = auth
@@ -584,23 +664,25 @@ class Session:
             use_auth = self.auth
         history: list[Response] = []
         return self._hop(method, url, merged_params, data, json, merged_headers,
-                         use_auth, timeout, history, 0, allow_redirects)
+                         use_auth, timeout, history, 0, allow_redirects, verify)
 
     def get(self, url: str, params: dict[str, str] | None = None,
             headers: dict[str, str] | None = None,
             timeout: float | None = None,
-            allow_redirects: bool = True) -> Own[Response]:
+            allow_redirects: bool = True,
+            verify: bool | str = True) -> Own[Response]:
         return self.request("GET", url, params, None, None, headers, None,
-                            timeout, allow_redirects)
+                            timeout, allow_redirects, verify)
 
     def post(self, url: str, data: bytes | None = None,
              json: JsonValue | None = None,
              params: dict[str, str] | None = None,
              headers: dict[str, str] | None = None,
              timeout: float | None = None,
-             allow_redirects: bool = True) -> Own[Response]:
+             allow_redirects: bool = True,
+             verify: bool | str = True) -> Own[Response]:
         return self.request("POST", url, params, data, json, headers, None,
-                            timeout, allow_redirects)
+                            timeout, allow_redirects, verify)
 
     def __enter__(self) -> "Session":
         return self

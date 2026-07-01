@@ -6,6 +6,7 @@
 # also catchable as the RequestException base.
 import socket
 from http.client import HTTPConnection
+from tplib import Box
 import tplib.requests as requests
 from tplib.requests import Timeout, RequestException
 
@@ -13,10 +14,8 @@ from tplib.requests import Timeout, RequestException
 def _hang_request() -> None:
     a, b = socket.socketpair()
     a.settimeout(0.05)
-    conn = HTTPConnection("api.test", 8002)
-    conn.sock = a
     s = requests.Session()
-    s._connection = conn
+    s._connection = Box(HTTPConnection("api.test", 8002, None, a))
     s.get("http://api.test:8002/hang")
     b.close()
 

@@ -1,0 +1,5 @@
+urlopen over HTTPS driven by a real mbedTLS handshake against an internal server
+peer (ssl._wrap_server) on a socketpair, via the _tls injection seam -- no
+CPython equivalent (CPython's ssl needs a real server / threads to handshake
+here, which the suite avoids). TLS routing + framing correctness is validated by
+the exec phase, not cpy parity.

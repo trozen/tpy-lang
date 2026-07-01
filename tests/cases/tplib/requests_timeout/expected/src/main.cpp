@@ -12,14 +12,10 @@ void _hang_request() {
     ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
     // a.settimeout(0.05)
     a.settimeout(0.05);
-    // conn = HTTPConnection("api.test", 8002)
-    ::tpystd::http::client::HTTPConnection conn = ::tpystd::http::client::HTTPConnection("api.test", 8002);
-    // conn.sock = a
-    conn.sock = std::move(a);
     // s = requests.Session()
     ::tpystd::tplib::requests::Session s = ::tpystd::tplib::requests::Session();
-    // s._connection = conn
-    s._connection = std::move(conn);
+    // s._connection = Box(HTTPConnection("api.test", 8002, None, a))
+    s._connection = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(::tpystd::http::client::HTTPConnection("api.test", 8002, std::nullopt, std::move(a)));
     // s.get("http://api.test:8002/hang")
     s.get("http://api.test:8002/hang");
     // b.close()
@@ -71,8 +67,9 @@ void __tpy_init() {
     // from http.client import HTTPConnection
     ::tpystd::http::__tpy_init();
     ::tpystd::http::client::__tpy_init();
-    // import tplib.requests as requests
+    // from tplib import Box
     ::tpystd::tplib::__tpy_init();
+    // import tplib.requests as requests
     ::tpystd::tplib::requests::__tpy_init();
     // main()
     main();

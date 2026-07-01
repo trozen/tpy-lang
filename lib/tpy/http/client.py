@@ -9,10 +9,14 @@
 # the response read via the reader. `getheader`/`getheaders` replace CPython's
 # email.message-backed `.headers` object (which is not reproduced here).
 #
-# Both connection classes satisfy the @dynamic `_Connection` protocol so a
-# caller (requests/urllib) can hold either behind one `Box[_Connection]` and
-# dispatch request/getresponse/close virtually -- TPy method overrides are
+# Both connection classes nominally inherit the @dynamic `_Connection` protocol
+# so a caller (requests/urllib) can hold either behind one `Box[_Connection]`
+# and dispatch request/getresponse/close virtually -- TPy method overrides are
 # static, so a plain subclass would not dispatch through a base reference.
+# Nominal inheritance (vs structural conformance) stores the conformer directly
+# as the protocol base in the Box (no Adapter), which is why box sites use the
+# rvalue form `Box(HTTPConnection(...))` -- a polymorphic root cannot be moved
+# into the Box from a named local without slicing.
 # HTTPSConnection imports `ssl`, so any program importing http.client links
 # the TLS backend (mbedTLS) -- discovery + managed-linking are import-driven
 # at module granularity, with no per-symbol use-driven scoping.
@@ -299,10 +303,11 @@ def _content_length(method: str, body: bytes | None) -> int:
 def _build_request(method: str, url: str, body: bytes | None,
                    headers: dict[str, str] | None,
                    host: str, port: Int32, default_port: Int32) -> bytes:
-    """Serialize a request line + headers + body. Shared by HTTPConnection
-    and HTTPSConnection (which don't share an inheritance chain -- see the
-    _Connection protocol note); `default_port` is the scheme's default (80 /
-    443), omitted from the Host header like CPython."""
+    """Serialize a request line + headers + body. A free function shared by
+    HTTPConnection and HTTPSConnection (a @dynamic protocol declares no shared
+    implementation, so common logic lives in module functions, not a base);
+    `default_port` is the scheme's default (80 / 443), omitted from the Host
+    header like CPython."""
     lines: list[str] = []
     lines.append(method + " " + url + " HTTP/1.1")
     has_host = False
@@ -359,7 +364,7 @@ class _Connection(Protocol):
     def close(self) -> None: ...
 
 
-class HTTPConnection:
+class HTTPConnection(_Connection):
     """A single plaintext HTTP/1.1 connection to (host, port)."""
 
     host: str
@@ -369,11 +374,17 @@ class HTTPConnection:
     _method: str
 
     def __init__(self, host: str, port: Int32 = HTTP_PORT,
-                 timeout: float | None = None) -> None:
+                 timeout: float | None = None,
+                 _sock: Own[socket.socket] | None = None) -> None:
+        # `_sock` is an offline test seam (a pre-bound socket); production leaves
+        # it None and connect() dials. It's a ctor arg only because the slicing
+        # guard rejects boxing a post-construction `conn.sock = s` local (see
+        # BUGS.md, _check_polymorphic_slicing fresh-construction entry); once that
+        # guard is fixed this moves to the public `sock` field and drops.
         self.host = host
         self.port = port
         self.timeout = timeout
-        self.sock = None
+        self.sock = _sock
         self._method = ""
 
     def connect(self) -> None:
@@ -404,7 +415,7 @@ class HTTPConnection:
             self.sock = None
 
 
-class HTTPSConnection:
+class HTTPSConnection(_Connection):
     """A single HTTP/1.1 connection over TLS -- HTTPConnection's flow run
     through an `ssl.SSLSocket` instead of a bare socket.
 
@@ -412,8 +423,8 @@ class HTTPSConnection:
     verifies the chain and checks the hostname (so it needs a trust store --
     `ssl` has no bundled CA bundle yet, so a real server requires a context
     with `load_verify_locations`). A sibling of HTTPConnection, not a subclass
-    (TPy's static dispatch would not route a base reference here); both satisfy
-    `_Connection` for virtual dispatch through a `Box[_Connection]`.
+    (TPy's static dispatch would not route a base reference here); both nominally
+    inherit `_Connection` for virtual dispatch through a `Box[_Connection]`.
     """
     host: str
     port: Int32
@@ -424,7 +435,11 @@ class HTTPSConnection:
 
     def __init__(self, host: str, port: Int32 = HTTPS_PORT,
                  timeout: float | None = None,
-                 context: ssl.SSLContext | None = None) -> None:
+                 context: ssl.SSLContext | None = None,
+                 _tls: Own[ssl.SSLSocket] | None = None) -> None:
+        # `_tls` is an offline test seam (a pre-handshaken SSLSocket); see
+        # HTTPConnection.__init__ for why the transport is a constructor arg
+        # rather than a post-construction assignment.
         self.host = host
         self.port = port
         self.timeout = timeout
@@ -433,7 +448,7 @@ class HTTPSConnection:
         # connection snapshots its settings rather than aliasing the caller's.
         self._context = (copy(context) if context is not None
                          else ssl.create_default_context())
-        self._tls = None
+        self._tls = _tls
         self._method = ""
 
     def connect(self) -> None:

@@ -17,14 +17,10 @@ void main() {
     // b"X-Multi: b\r\n"
     // b"Content-Length: 2\r\n\r\nok")
     b.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nX-Custom-Header: Yes\r\nX-Multi: a\r\nX-Multi: b\r\nContent-Length: 2\r\n\r\nok", 118));
-    // conn = HTTPConnection("api.test", 80)
-    ::tpystd::http::client::HTTPConnection conn = ::tpystd::http::client::HTTPConnection("api.test", 80);
-    // conn.sock = a
-    conn.sock = std::move(a);
     // s = requests.Session()
     ::tpystd::tplib::requests::Session s = ::tpystd::tplib::requests::Session();
-    // s._connection = conn
-    s._connection = std::move(conn);
+    // s._connection = Box(HTTPConnection("api.test", 80, None, a))
+    s._connection = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(::tpystd::http::client::HTTPConnection("api.test", 80, std::nullopt, std::move(a)));
     // r = s.get("http://api.test/")
     ::tpystd::tplib::requests::Response r = s.get("http://api.test/");
     // b.recv(65536)
@@ -168,8 +164,9 @@ void __tpy_init() {
     // from http.client import HTTPConnection
     ::tpystd::http::__tpy_init();
     ::tpystd::http::client::__tpy_init();
-    // import tplib.requests as requests
+    // from tplib import Box
     ::tpystd::tplib::__tpy_init();
+    // import tplib.requests as requests
     ::tpystd::tplib::requests::__tpy_init();
     // main()
     main();

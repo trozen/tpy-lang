@@ -13,14 +13,10 @@ void send(std::string_view method, std::string_view url, std::optional<std::span
     ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
     // b.sendall(b"HTTP/1.1 201 Created\r\nContent-Length: 2\r\n\r\nok")
     b.sendall(::tpy::bytes_literal("HTTP/1.1 201 Created\r\nContent-Length: 2\r\n\r\nok", 45));
-    // conn = HTTPConnection("api.test", 80)
-    ::tpystd::http::client::HTTPConnection conn = ::tpystd::http::client::HTTPConnection("api.test", 80);
-    // conn.sock = a
-    conn.sock = std::move(a);
     // s = requests.Session()
     ::tpystd::tplib::requests::Session s = ::tpystd::tplib::requests::Session();
-    // s._connection = conn
-    s._connection = std::move(conn);
+    // s._connection = Box(HTTPConnection("api.test", 80, None, a))
+    s._connection = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(::tpystd::http::client::HTTPConnection("api.test", 80, std::nullopt, std::move(a)));
     // r = s.request(method, url, None, data, body_json, None, auth)
     ::tpystd::tplib::requests::Response r = s.request(method, url, nullptr, data, body_json, nullptr, auth);
     // print(r.status_code, r.ok)
@@ -59,8 +55,9 @@ void __tpy_init() {
     // from http.client import HTTPConnection
     ::tpystd::http::__tpy_init();
     ::tpystd::http::client::__tpy_init();
-    // import tplib.requests as requests
+    // from tplib import Box
     ::tpystd::tplib::__tpy_init();
+    // import tplib.requests as requests
     ::tpystd::tplib::requests::__tpy_init();
     // from json import JsonValue
     ::tpystd::json::__tpy_init();

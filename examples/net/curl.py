@@ -12,15 +12,20 @@ Usage:
     uv run tpyc -x examples/net/curl.py -- -m 5 http://api.test/slow
     uv run tpyc -x examples/net/curl.py -- -o out.bin http://api.test/blob
     uv run tpyc -x examples/net/curl.py -- -L http://api.test/redirects-here
+    uv run tpyc -x examples/net/curl.py -- --cacert ca.pem https://api.test/
+    uv run tpyc -x examples/net/curl.py -- -k https://self-signed.test/
 
-Plaintext HTTP only (tplib.requests has no TLS yet). This sandbox has no
-outbound network -- run it on a host that can reach the target.
+Both http:// and https:// are supported. TLS verifies the certificate by
+default, but there is no bundled CA store yet, so a real https server needs
+--cacert <file> to trust its CA (or -k to skip verification, like curl).
+This sandbox has no outbound network -- run it on a host that can reach the
+target.
 """
 import sys
 from argparse import ArgumentParser
 from tpy import Int32
 import tplib.requests as requests
-from tplib.requests import RequestException, Timeout
+from tplib.requests import RequestException, Timeout, SSLError, ConnectionError
 
 
 def _split_header(raw: str) -> tuple[str, str]:
@@ -55,6 +60,10 @@ def main() -> Int32:
                         help="follow HTTP redirects (off by default, like curl)")
     parser.add_argument("-m", "--max-time", type=float, default=0.0,
                         help="abort the request after this many seconds (0 = no limit)")
+    parser.add_argument("--cacert", default="",
+                        help="CA bundle file to verify the server's TLS cert against")
+    parser.add_argument("-k", "--insecure", action="store_true",
+                        help="skip TLS certificate verification (https only)")
     args = parser.parse_args()
 
     headers: dict[str, str] = {}
@@ -82,14 +91,33 @@ def main() -> Int32:
     if args.max_time > 0.0:
         timeout = args.max_time
 
+    # No bundled CA store yet, so default verify=True can't trust a real https
+    # server without --cacert (or -k to skip). Ignored for http:// URLs.
+    verify: bool | str = True
+    if args.cacert != "":
+        verify = args.cacert
+    elif args.insecure:
+        verify = False
+
+    # Order the handlers most-specific first (SSLError < ConnectionError <
+    # RequestException; Timeout < RequestException) and surface the reason --
+    # the bare "request failed" hid whether it was TLS, connect, or timeout.
     try:
         r = requests.request(method, args.url, None, body, None, headers, auth,
-                             timeout, args.location)
+                             timeout, args.location, verify)
+    except SSLError as e:
+        print(str(e))
+        print("hint: pass --cacert <file> to trust the server's CA, "
+              "or -k to skip verification")
+        return 60          # curl's exit code for a TLS certificate problem
     except Timeout:
         print(f"request timed out after {args.max_time}s")
         return 28          # curl's exit code for a timeout
-    except RequestException:
-        print("request failed")
+    except ConnectionError as e:
+        print(str(e))
+        return 7           # curl's exit code for a failed connection
+    except RequestException as e:
+        print(f"request failed: {str(e)}")
         return 1
 
     print(f"{r.status_code} {r.reason}")

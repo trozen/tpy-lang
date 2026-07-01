@@ -7,16 +7,26 @@
 #include "tpystd/http.hpp"
 #include "tpystd/http/client.hpp"
 #include "tpystd/socket.hpp"
+#include "tpystd/ssl.hpp"
 #include "tpystd/tplib.hpp"
+#include "tpystd/tplib/box.hpp"
 #include "tpystd/tplib/requests.hpp"
 
 namespace tpyapp::main {
 
-using ::tpystd::tplib::requests::ConnectionError;
+using ::tpystd::tplib::box::Box;
 using ::tpystd::http::client::HTTPConnection;
+using ::tpystd::http::client::HTTPSConnection;
+using ::tpystd::ssl::SSLSocket;
 
 inline constexpr std::string_view __name__ = "__main__";
+inline constexpr std::string_view CERT_PEM = "-----BEGIN CERTIFICATE-----\nMIIBlTCCATugAwIBAgIUe2CartEUhHtqoCYrRV89NXxqz8EwCgYIKoZIzj0EAwIw\nFDESMBAGA1UEAwwJbG9jYWxob3N0MCAXDTI2MDYyOTE1MDY1NloYDzIxMjYwNjA1\nMTUwNjU2WjAUMRIwEAYDVQQDDAlsb2NhbGhvc3QwWTATBgcqhkjOPQIBBggqhkjO\nPQMBBwNCAATi4r8fZOEM8tz66TgRALGG7z33xtTCAHavwkRqu8crpAaMoNVIsMxE\ntP9yXT/7crk2Jpju9JqnkjzM/iLZ5gbqo2kwZzAdBgNVHQ4EFgQUcHp1/TdGBPiN\nWGIQoSCKEgty4yUwHwYDVR0jBBgwFoAUcHp1/TdGBPiNWGIQoSCKEgty4yUwDwYD\nVR0TAQH/BAUwAwEB/zAUBgNVHREEDTALgglsb2NhbGhvc3QwCgYIKoZIzj0EAwID\nSAAwRQIgE8EzoNEb464cVe4PlS6BpNoBLmBWGkwUQ9mTi5JqX5UCIQCRCx3f+YQW\nDdslcyu0U0qfufOT/QbqMaDSyosTTmLteQ==\n-----END CERTIFICATE-----\n";
+inline constexpr std::string_view KEY_PEM = "-----BEGIN PRIVATE KEY-----\nMIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQg2kn/USvpv4Ilspd2\nxfLz4BM0UjqqhFJndB7QYY+ijAihRANCAATi4r8fZOEM8tz66TgRALGG7z33xtTC\nAHavwkRqu8crpAaMoNVIsMxEtP9yXT/7crk2Jpju9JqnkjzM/iLZ5gbq\n-----END PRIVATE KEY-----\n";
+inline constexpr std::string_view CERT_PATH = "/tmp/tpy_test_https_cert.pem";
+inline constexpr std::string_view KEY_PATH = "/tmp/tpy_test_https_key.pem";
 
+void write_fixtures();
+std::tuple<::tpystd::ssl::SSLSocket, ::tpystd::ssl::SSLSocket> handshaken_pair();
 void main();
 
 void __tpy_init();

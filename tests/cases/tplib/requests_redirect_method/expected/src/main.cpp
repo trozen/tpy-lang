@@ -18,20 +18,12 @@ std::tuple<std::vector<uint8_t>, bool, bool> run_redirect(std::span<const uint8_
     b.sendall((::tpy::bytes_concat(status_line, ::tpy::bytes_literal_owned("\r\nLocation: /next\r\nContent-Length: 0\r\n\r\n", 40))));
     // d.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok")
     d.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok", 40));
-    // h0 = HTTPConnection("api.test", 80)
-    ::tpystd::http::client::HTTPConnection h0 = ::tpystd::http::client::HTTPConnection("api.test", 80);
-    // h0.sock = a
-    h0.sock = std::move(a);
-    // h1 = HTTPConnection("api.test", 80)
-    ::tpystd::http::client::HTTPConnection h1 = ::tpystd::http::client::HTTPConnection("api.test", 80);
-    // h1.sock = c
-    h1.sock = std::move(c);
     // s = requests.Session()
     ::tpystd::tplib::requests::Session s = ::tpystd::tplib::requests::Session();
-    // s._connection = h0
-    s._connection = std::move(h0);
-    // s._redirect_connections = [h1]
-    s._redirect_connections = ::tpy::make_vector<::tpystd::http::client::HTTPConnection>(std::move(h1));
+    // s._connection = Box(HTTPConnection("api.test", 80, None, a))
+    s._connection = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(::tpystd::http::client::HTTPConnection("api.test", 80, std::nullopt, std::move(a)));
+    // s._redirect_connections = [Box(HTTPConnection("api.test", 80, None, c))]
+    s._redirect_connections = ::tpy::make_vector<::tpystd::tplib::box::Box<::tpystd::http::client::_Connection>>(::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(::tpystd::http::client::HTTPConnection("api.test", 80, std::nullopt, std::move(c))));
     // r = s.post("http://api.test/submit", b'{"x":1}', None, None,
     // {"Content-Type": "text/plain"})
     ::tpy::ordered_map<std::string, std::string> __tmp_1 = ::tpy::ordered_map<std::string, std::string>({{"Content-Type", "text/plain"}});
@@ -94,8 +86,9 @@ void __tpy_init() {
     // from http.client import HTTPConnection
     ::tpystd::http::__tpy_init();
     ::tpystd::http::client::__tpy_init();
-    // import tplib.requests as requests
+    // from tplib import Box
     ::tpystd::tplib::__tpy_init();
+    // import tplib.requests as requests
     ::tpystd::tplib::requests::__tpy_init();
     // main()
     main();

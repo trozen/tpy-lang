@@ -5,6 +5,7 @@
 # rules, not a live run.) Each flow inspects the bytes the second hop sends.
 import socket
 from http.client import HTTPConnection
+from tplib import Box
 import tplib.requests as requests
 
 
@@ -13,13 +14,9 @@ def run_redirect(status_line: bytes) -> tuple[bytes, bool, bool]:
     c, d = socket.socketpair()
     b.sendall(status_line + b"\r\nLocation: /next\r\nContent-Length: 0\r\n\r\n")
     d.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok")
-    h0 = HTTPConnection("api.test", 80)
-    h0.sock = a
-    h1 = HTTPConnection("api.test", 80)
-    h1.sock = c
     s = requests.Session()
-    s._connection = h0
-    s._redirect_connections = [h1]
+    s._connection = Box(HTTPConnection("api.test", 80, None, a))
+    s._redirect_connections = [Box(HTTPConnection("api.test", 80, None, c))]
     r = s.post("http://api.test/submit", b'{"x":1}', None, None,
                {"Content-Type": "text/plain"})
     print(r.status_code, r.url)

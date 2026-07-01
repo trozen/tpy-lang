@@ -6,6 +6,7 @@
 # error).
 import socket
 from http.client import HTTPConnection
+from tplib import Box
 import tplib.requests as requests
 from json import JsonValue
 
@@ -14,10 +15,8 @@ def send(method: str, url: str, data: bytes | None, body_json: JsonValue | None,
          auth: tuple[str, str] | None) -> None:
     a, b = socket.socketpair()
     b.sendall(b"HTTP/1.1 201 Created\r\nContent-Length: 2\r\n\r\nok")
-    conn = HTTPConnection("api.test", 80)
-    conn.sock = a
     s = requests.Session()
-    s._connection = conn
+    s._connection = Box(HTTPConnection("api.test", 80, None, a))
     r = s.request(method, url, None, data, body_json, None, auth)
     print(r.status_code, r.ok)
     print(b.recv(65536))

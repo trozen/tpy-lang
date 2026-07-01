@@ -1,1 +1,3 @@
-caught ConnectionError for https redirect
+200 logged.
+https://secure.test/login
+1

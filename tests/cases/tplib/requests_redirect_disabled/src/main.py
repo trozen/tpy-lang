@@ -3,6 +3,7 @@
 # enough since no second hop is made.
 import socket
 from http.client import HTTPConnection
+from tplib import Box
 import tplib.requests as requests
 
 
@@ -10,10 +11,8 @@ def main() -> None:
     a, b = socket.socketpair()
     b.sendall(b"HTTP/1.1 302 Found\r\nLocation: /elsewhere\r\n"
               b"Content-Length: 0\r\n\r\n")
-    h0 = HTTPConnection("api.test", 80)
-    h0.sock = a
     s = requests.Session()
-    s._connection = h0
+    s._connection = Box(HTTPConnection("api.test", 80, None, a))
     r = s.get("http://api.test/start", None, None, None, False)
     print(r.status_code, r.ok)
     print(r.url)

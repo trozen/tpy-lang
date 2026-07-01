@@ -1,0 +1,3 @@
+tplib.requests has no CPython module (and now imports _Connection from
+http.client, which the real stdlib lacks); the offline socketpair seam has no
+CPython equivalent. Matches the rest of the requests_* suite.

@@ -5,7 +5,11 @@
 # static compiler. This is a deliberately simplified, signature-compatible
 # urlopen that calls http.client directly. Divergences (declarable):
 #   - No opener/handler machinery, no install_opener/build_opener.
-#   - No redirect following, no proxies, no auth handlers, no HTTPS/TLS.
+#   - No redirect following, no proxies, no auth handlers.
+#   - http and https both work (https routes to HTTPSConnection on 443; `context`
+#     is the TLS context, like CPython -- but keyword-only there, positional
+#     here). No bundled CA store yet, so a real https server needs a context with
+#     load_verify_locations.
 #   - `timeout` (seconds) is honored for connect/recv/send (None = blocking);
 #     CPython's `_GLOBAL_DEFAULT_TIMEOUT` sentinel / setdefaulttimeout() is not
 #     reproduced (default is plain blocking).
@@ -16,12 +20,14 @@
 from __future__ import annotations
 from typing import Final
 from tpy import Int32, Own, String
-from socket import socket
-from http.client import HTTPConnection, HTTPResponse
+from tplib import Box
+import ssl
+from http.client import HTTPConnection, HTTPSConnection, HTTPResponse, _Connection
 from urllib.parse import urlsplit
 
 
 HTTP_PORT: Final[Int32] = 80
+HTTPS_PORT: Final[Int32] = 443
 
 
 class URLError(Exception):
@@ -31,18 +37,29 @@ class URLError(Exception):
 
 def urlopen(url: str, data: bytes | None = None,
             timeout: float | None = None,
-            _sock: Own[socket] | None = None) -> Own[HTTPResponse]:
-    # `_sock` is a test seam: an injected socket bound to the built connection
-    # (skipping the real TCP connect). The connection is still built from the
-    # URL and dropped on return exactly as in normal use, so the returned
-    # response's reader (a dup of the socket fd) is exercised the same way.
+            context: ssl.SSLContext | None = None) -> Own[HTTPResponse]:
+    # `context` mirrors CPython's urlopen(context=...) for https (default
+    # verification when None); https requires a CA-bearing context to verify a
+    # real server (`ssl` has no bundled CA store yet).
+    return _urlopen(url, data, timeout, context, None)
+
+
+def _urlopen(url: str, data: bytes | None, timeout: float | None,
+             context: ssl.SSLContext | None,
+             injected: Own[Box[_Connection]] | None) -> Own[HTTPResponse]:
+    # `injected` is an offline test seam: a pre-connected `Box[_Connection]` used
+    # instead of dialing from the URL (the suite can't do real connects). It
+    # stays off the public `urlopen` signature -- only this internal impl takes
+    # it. The response reader outlives the dropped connection (a dup'd fd for
+    # http, the Rc-shared session for https), so the returned response is valid.
     parts = urlsplit(url)
-    # Require an explicit http scheme: an empty scheme (e.g. a protocol-
+    scheme = parts.scheme
+    # Require an explicit http/https scheme: an empty scheme (e.g. a protocol-
     # relative "//host/path") would otherwise connect silently, where CPython
-    # raises. No TLS, so https is rejected too.
-    if parts.scheme != "http":
-        raise URLError("unsupported URL scheme (expected http): '"
-                       + parts.scheme + "'")
+    # raises.
+    if scheme != "http" and scheme != "https":
+        raise URLError("unsupported URL scheme (expected http or https): '"
+                       + scheme + "'")
     target: str = parts.path
     if target == "":
         target = "/"
@@ -53,16 +70,29 @@ def urlopen(url: str, data: bytes | None = None,
     if data is not None:
         method = "POST"
 
+    # Headers passed explicitly (None): the call dispatches through the
+    # _Connection pure-virtual, which -- unlike the concrete methods -- carries no
+    # default args, so a box-routed call must supply every parameter.
+    if injected is not None:
+        # Test seam: drive the pre-connected box directly (avoids moving it out
+        # of the narrowed Optional into a shared local).
+        injected.request(method, target, data, None)
+        return injected.getresponse()
+
     host = parts.hostname
     if host is None:
         raise URLError("no host in URL: " + url)
-    port: Int32 = HTTP_PORT
     pnum = parts.port
-    if pnum is not None:
-        port = Int32(pnum)
-
-    conn = HTTPConnection(host, port, timeout)
-    if _sock is not None:
-        conn.sock = _sock
-    conn.request(method, target, data)
+    # Box[_Connection] so http and https share request()/getresponse().
+    if scheme == "https":
+        hport: Int32 = HTTPS_PORT
+        if pnum is not None:
+            hport = Int32(pnum)
+        conn: Box[_Connection] = Box(HTTPSConnection(host, hport, timeout, context))
+    else:
+        port: Int32 = HTTP_PORT
+        if pnum is not None:
+            port = Int32(pnum)
+        conn = Box(HTTPConnection(host, port, timeout))
+    conn.request(method, target, data, None)
     return conn.getresponse()

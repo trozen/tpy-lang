@@ -14,14 +14,12 @@ void main() {
     // b"Content-Length: 24\r\n\r\n"
     // b'{"name": "t", "rows": 3}')
     b.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 24\r\n\r\n{\"name\": \"t\", \"rows\": 3}", 95));
-    // conn = HTTPConnection("api.test", 8002)
-    ::tpystd::http::client::HTTPConnection conn = ::tpystd::http::client::HTTPConnection("api.test", 8002);
-    // conn.sock = a
-    conn.sock = std::move(a);
     // s = requests.Session()
     ::tpystd::tplib::requests::Session s = ::tpystd::tplib::requests::Session();
-    // s._connection = conn
-    s._connection = std::move(conn);
+    // # Inject the pre-bound socket via the ctor (an rvalue Box site -- a nominal
+    // # @dynamic conformer can't be moved into Box from a named local).
+    // s._connection = Box(HTTPConnection("api.test", 8002, None, a))
+    s._connection = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(::tpystd::http::client::HTTPConnection("api.test", 8002, std::nullopt, std::move(a)));
     // r = s.get("http://api.test:8002/v1/tables", {"db": "das"})
     ::tpy::ordered_map<std::string, std::string> __tmp_1 = ::tpy::ordered_map<std::string, std::string>({{"db", "das"}});
     ::tpystd::tplib::requests::Response r = s.get("http://api.test:8002/v1/tables", &(__tmp_1));
@@ -70,8 +68,9 @@ void __tpy_init() {
     // from http.client import HTTPConnection
     ::tpystd::http::__tpy_init();
     ::tpystd::http::client::__tpy_init();
-    // import tplib.requests as requests
+    // from tplib import Box
     ::tpystd::tplib::__tpy_init();
+    // import tplib.requests as requests
     ::tpystd::tplib::requests::__tpy_init();
     // from json import JsonValue
     ::tpystd::json::__tpy_init();

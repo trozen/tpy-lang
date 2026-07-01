@@ -1,17 +1,20 @@
-# urllib.request.urlopen over http.client: GET reads the body (read happens
-# AFTER the connection built inside urlopen has been dropped -- the response
-# reader is a dup of the socket fd, so it stays valid); data= switches to POST
-# with a Content-Length; a non-http scheme raises URLError. The _sock seam
-# injects a socketpair end (moved in -- @nocopy, so a silent copy would be a
-# compile error) with a pre-buffered response.
+# urllib.request.urlopen over http.client: GET reads the body (read happens AFTER
+# the connection is dropped -- the response reader is a dup of the socket fd, so
+# it stays valid); data= switches to POST; a non-http scheme / no-host raises
+# URLError. Drives the internal `_urlopen` with a pre-connected Box[_Connection]
+# (the offline seam -- @nocopy socket, so a silent copy would be a compile error);
+# public urlopen() dials and takes no such param.
 import socket
-from urllib.request import urlopen, URLError
+from tplib import Box
+from urllib.request import urlopen, _urlopen, URLError
+from http.client import HTTPConnection, _Connection
 
 
 def main() -> None:
     a, b = socket.socketpair()
     b.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nhello")
-    resp = urlopen("http://api.test:8002/health", None, _sock=a)
+    conn: Box[_Connection] = Box(HTTPConnection("api.test", 8002, None, a))
+    resp = _urlopen("http://api.test:8002/health", None, None, None, conn)
     print(resp.status, resp.reason)
     print(resp.read())
     print(b.recv(65536))
@@ -19,7 +22,8 @@ def main() -> None:
 
     c, d = socket.socketpair()
     d.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok")
-    resp2 = urlopen("http://api.test/v1", b'{"x":1}', _sock=c)
+    conn2: Box[_Connection] = Box(HTTPConnection("api.test", 80, None, c))
+    resp2 = _urlopen("http://api.test/v1", b'{"x":1}', None, None, conn2)
     print(resp2.status)
     print(d.recv(65536))
     d.close()

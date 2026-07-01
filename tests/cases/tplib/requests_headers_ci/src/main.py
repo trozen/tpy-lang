@@ -4,6 +4,7 @@
 # module; the socket-injection seam is not real-requests API).
 import socket
 from http.client import HTTPConnection
+from tplib import Box
 import tplib.requests as requests
 from tplib.requests import CaseInsensitiveDict
 
@@ -16,10 +17,8 @@ def main() -> None:
               b"X-Multi: a\r\n"
               b"X-Multi: b\r\n"
               b"Content-Length: 2\r\n\r\nok")
-    conn = HTTPConnection("api.test", 80)
-    conn.sock = a
     s = requests.Session()
-    s._connection = conn
+    s._connection = Box(HTTPConnection("api.test", 80, None, a))
     r = s.get("http://api.test/")
     b.recv(65536)
     b.close()

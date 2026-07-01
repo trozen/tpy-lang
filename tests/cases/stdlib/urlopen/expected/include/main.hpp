@@ -7,14 +7,22 @@
 #include "tpystd/http.hpp"
 #include "tpystd/http/client.hpp"
 #include "tpystd/socket.hpp"
+#include "tpystd/ssl.hpp"
+#include "tpystd/tplib.hpp"
+#include "tpystd/tplib/box.hpp"
 #include "tpystd/urllib.hpp"
 #include "tpystd/urllib/request.hpp"
 
 namespace tpyapp::main {
 
+using ::tpystd::urllib::request::_urlopen;
 using ::tpystd::urllib::request::urlopen;
 
+using ::tpystd::tplib::box::Box;
+using ::tpystd::http::client::HTTPConnection;
 using ::tpystd::urllib::request::URLError;
+
+using ::tpystd::http::client::_Connection;
 
 inline constexpr std::string_view __name__ = "__main__";
 

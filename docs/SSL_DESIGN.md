@@ -6,11 +6,16 @@ verifying client + handshake test) merged to master. Increment 3a is built:
 `SSLSocket.makefile()` over the BufferedReader `Box[RawBinaryIO]` refactor +
 an `Rc[_SslSession]` (session handle + socket folded together) shared with
 an `SSLRawIO` reader (test `ssl/tls_makefile`). Increment 4 is built:
-`http.client.HTTPSConnection` (sibling of `HTTPConnection` via a `@dynamic
-_Connection` protocol, since TPy method dispatch is static) runs the HTTP/1.1
-flow over an `SSLSocket` (test `stdlib/https_client`). Remaining:
-requests/urlopen https routing + a bundled CA store (step 5). This document
-is the contract for the whole track.
+`http.client.HTTPSConnection` runs the HTTP/1.1 flow over an `SSLSocket` (test
+`stdlib/https_client`). Increment 5 is built: `HTTPConnection`/`HTTPSConnection`
+now **nominally inherit** the `@dynamic _Connection` protocol (a prerequisite
+codegen fix -- @dynamic-override reference-param const-ness -- landed first on
+master), and `tplib.requests` (`verify: bool|str`) + `urllib.request.urlopen`
+(`context=`) route `https://` through `Box[_Connection]`, including http->https
+redirects (tests `tplib/requests_https`, `tplib/requests_redirect_https`,
+`stdlib/urlopen_https`). Remaining: a bundled CA store (verify needs an explicit
+`load_verify_locations` / `verify="<ca>"` until then). This document is the
+contract for the whole track.
 
 ## Goal
 
@@ -248,18 +253,29 @@ Match CPython's `create_default_context()` + `requests` `verify=True`:
   runs `connect()` (`socket.create_connection` then `context.wrap_socket`)
   and reads the response via `SSLSocket.makefile()`; `context: SSLContext |
   None = None` defaults to `create_default_context()` (a caller context is
-  captured by value). KNOWN: constructing `Box[_Connection]` over
-  `HTTPSConnection` cross-module hits an incomplete-`Adapter` codegen bug
-  (BUGS.md) -- so the requests/urlopen integration below must obtain the
-  `Box[_Connection]` from an http.client factory (Adapter instantiated in
-  http.client's own module), not construct it directly.
-- `requests._connect`: branch `parts.scheme == "https"` ->
-  `HTTPSConnection` (via the http.client factory above), default port 443;
-  thread `verify` into the context. The redirect-hop scheme check and
-  `urlopen` widen from `"http"`-only to `"http"`/`"https"`.
-- The existing `tests/cases/tplib/requests_redirect_https` case (currently
-  asserts an https redirect *raises* `ConnectionError`) is **rewritten** --
-  the redirect is now followed.
+  captured by value).
+- **Increment 5 (DONE): NOMINAL inheritance** -- `class HTTPConnection(
+  _Connection)` / `class HTTPSConnection(_Connection)`. Explicit conformance
+  (checked at the class, not just at each box site), and `Box[_Connection]`
+  stores the conformer directly as the base -- no `Adapter` -- which sidesteps
+  the structural-conformance incomplete-`Adapter` bug (BUGS.md). Cost: a vtable
+  pointer per instance (concrete calls devirtualize) + box sites use the rvalue
+  form to clear the owned-polymorphic slicing guard. A prerequisite codegen fix
+  (a @dynamic-override reference-type param was const-mismatched against the
+  base pure-virtual, leaving the class abstract) landed first on master.
+- `requests._connect` (DONE): branches `parts.scheme == "https"` ->
+  `HTTPSConnection` on port 443 and threads `verify: bool|str` into the context
+  via `_ssl_context_for`; `requests.SSLError(ConnectionError)` wraps
+  `ssl.SSLError`; `Authorization` is dropped across a host/scheme/port change
+  (`should_strip_auth`). The redirect-hop scheme check and `urlopen` widen from
+  `"http"`-only to `"http"`/`"https"` (`urlopen` takes a CPython-style
+  `context=`). `requests`/`urlopen` construct/hold `Box[_Connection]` directly
+  (rvalue form), injecting the offline-test transport via an internal `_sock`/
+  `_tls` constructor seam.
+- The `tests/cases/tplib/requests_redirect_https` case was **rewritten** -- the
+  http->https redirect is now followed over a real TLS hop (was: asserts it
+  raises). New `requests_https` (direct https GET via the `Box[_Connection]`
+  seam) + `stdlib/urlopen_https` cover the https path.
 
 ## Testing: step-wise handshake over `socketpair`
 

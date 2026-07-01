@@ -19,20 +19,12 @@ bool second_has_auth(std::span<const uint8_t> location) {
     b.sendall((::tpy::bytes_concat((::tpy::bytes_concat(::tpy::bytes_literal_owned("HTTP/1.1 302 Found\r\nLocation: ", 30), location)), ::tpy::bytes_literal_owned("\r\nContent-Length: 0\r\n\r\n", 23))));
     // d.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok")
     d.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok", 40));
-    // h0 = HTTPConnection("api.test", 80)
-    ::tpystd::http::client::HTTPConnection h0 = ::tpystd::http::client::HTTPConnection("api.test", 80);
-    // h0.sock = a
-    h0.sock = std::move(a);
-    // h1 = HTTPConnection("api.test", 80)
-    ::tpystd::http::client::HTTPConnection h1 = ::tpystd::http::client::HTTPConnection("api.test", 80);
-    // h1.sock = c
-    h1.sock = std::move(c);
     // s = requests.Session()
     ::tpystd::tplib::requests::Session s = ::tpystd::tplib::requests::Session();
-    // s._connection = h0
-    s._connection = std::move(h0);
-    // s._redirect_connections = [h1]
-    s._redirect_connections = ::tpy::make_vector<::tpystd::http::client::HTTPConnection>(std::move(h1));
+    // s._connection = Box(HTTPConnection("api.test", 80, None, a))
+    s._connection = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(::tpystd::http::client::HTTPConnection("api.test", 80, std::nullopt, std::move(a)));
+    // s._redirect_connections = [Box(HTTPConnection("api.test", 80, None, c))]
+    s._redirect_connections = ::tpy::make_vector<::tpystd::tplib::box::Box<::tpystd::http::client::_Connection>>(::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(::tpystd::http::client::HTTPConnection("api.test", 80, std::nullopt, std::move(c))));
     // s.auth = ("user", "pw")
     s.auth = std::tuple<std::string, std::string>{"user", "pw"};
     // r = s.get("http://api.test/start")
@@ -53,12 +45,15 @@ bool second_has_auth(std::span<const uint8_t> location) {
 
 // def main() -> None:
 void main() {
-    // # Same-host redirect keeps the credentials.
+    // # Same-origin redirect keeps the credentials.
     // print(second_has_auth(b"http://api.test/next"))
     std::cout << ::tpy::print_bool(second_has_auth(::tpy::bytes_literal("http://api.test/next", 20))) << "\n";
     // # Cross-host redirect strips them.
     // print(second_has_auth(b"http://other.test/next"))
     std::cout << ::tpy::print_bool(second_has_auth(::tpy::bytes_literal("http://other.test/next", 22))) << "\n";
+    // # Same host but a different port also strips (should_strip_auth).
+    // print(second_has_auth(b"http://api.test:8080/next"))
+    std::cout << ::tpy::print_bool(second_has_auth(::tpy::bytes_literal("http://api.test:8080/next", 25))) << "\n";
 }
 
 void __tpy_init() {
@@ -66,16 +61,18 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # Cross-host redirect drops the Authorization header (requests.rebuild_auth), so
-    // # credentials don't leak to a different host; a same-host redirect keeps it. Each
-    // # flow inspects the Authorization line the second hop sends.
+    // # A redirect drops the Authorization header unless host, scheme, and port all
+    // # match (requests.should_strip_auth), so credentials don't leak across a host,
+    // # scheme, or port change; a fully same-origin redirect keeps it. Each flow
+    // # inspects the Authorization line the second hop sends.
     // import socket
     ::tpystd::socket::__tpy_init();
     // from http.client import HTTPConnection
     ::tpystd::http::__tpy_init();
     ::tpystd::http::client::__tpy_init();
-    // import tplib.requests as requests
+    // from tplib import Box
     ::tpystd::tplib::__tpy_init();
+    // import tplib.requests as requests
     ::tpystd::tplib::requests::__tpy_init();
     // main()
     main();

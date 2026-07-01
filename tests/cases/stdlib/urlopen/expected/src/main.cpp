@@ -12,8 +12,10 @@ void main() {
     ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
     // b.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nhello")
     b.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nhello", 43));
-    // resp = urlopen("http://api.test:8002/health", None, _sock=a)
-    ::tpystd::http::client::HTTPResponse resp = ::tpystd::urllib::request::urlopen("http://api.test:8002/health", std::nullopt, std::nullopt, std::move(a));
+    // conn: Box[_Connection] = Box(HTTPConnection("api.test", 8002, None, a))
+    ::tpystd::tplib::box::Box<::tpystd::http::client::_Connection> conn = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(::tpystd::http::client::HTTPConnection("api.test", 8002, std::nullopt, std::move(a)));
+    // resp = _urlopen("http://api.test:8002/health", None, None, None, conn)
+    ::tpystd::http::client::HTTPResponse resp = ::tpystd::urllib::request::_urlopen("http://api.test:8002/health", std::nullopt, std::nullopt, nullptr, std::move(conn));
     // print(resp.status, resp.reason)
     std::cout << resp.status << " " << resp.reason << "\n";
     // print(resp.read())
@@ -28,8 +30,10 @@ void main() {
     ::tpystd::socket::socket d = std::move(std::get<1>(__tup_2));
     // d.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok")
     d.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok", 40));
-    // resp2 = urlopen("http://api.test/v1", b'{"x":1}', _sock=c)
-    ::tpystd::http::client::HTTPResponse resp2 = ::tpystd::urllib::request::urlopen("http://api.test/v1", ::tpy::bytes_literal_owned("{\"x\":1}", 7), std::nullopt, std::move(c));
+    // conn2: Box[_Connection] = Box(HTTPConnection("api.test", 80, None, c))
+    ::tpystd::tplib::box::Box<::tpystd::http::client::_Connection> conn2 = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(::tpystd::http::client::HTTPConnection("api.test", 80, std::nullopt, std::move(c)));
+    // resp2 = _urlopen("http://api.test/v1", b'{"x":1}', None, None, conn2)
+    ::tpystd::http::client::HTTPResponse resp2 = ::tpystd::urllib::request::_urlopen("http://api.test/v1", ::tpy::bytes_literal_owned("{\"x\":1}", 7), std::nullopt, nullptr, std::move(conn2));
     // print(resp2.status)
     std::cout << resp2.status << "\n";
     // print(d.recv(65536))
@@ -67,17 +71,22 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # urllib.request.urlopen over http.client: GET reads the body (read happens
-    // # AFTER the connection built inside urlopen has been dropped -- the response
-    // # reader is a dup of the socket fd, so it stays valid); data= switches to POST
-    // # with a Content-Length; a non-http scheme raises URLError. The _sock seam
-    // # injects a socketpair end (moved in -- @nocopy, so a silent copy would be a
-    // # compile error) with a pre-buffered response.
+    // # urllib.request.urlopen over http.client: GET reads the body (read happens AFTER
+    // # the connection is dropped -- the response reader is a dup of the socket fd, so
+    // # it stays valid); data= switches to POST; a non-http scheme / no-host raises
+    // # URLError. Drives the internal `_urlopen` with a pre-connected Box[_Connection]
+    // # (the offline seam -- @nocopy socket, so a silent copy would be a compile error);
+    // # public urlopen() dials and takes no such param.
     // import socket
     ::tpystd::socket::__tpy_init();
-    // from urllib.request import urlopen, URLError
+    // from tplib import Box
+    ::tpystd::tplib::__tpy_init();
+    // from urllib.request import urlopen, _urlopen, URLError
     ::tpystd::urllib::__tpy_init();
     ::tpystd::urllib::request::__tpy_init();
+    // from http.client import HTTPConnection, _Connection
+    ::tpystd::http::__tpy_init();
+    ::tpystd::http::client::__tpy_init();
     // main()
     main();
 }
