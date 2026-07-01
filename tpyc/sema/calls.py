@@ -492,11 +492,17 @@ def validate_type_param_bounds(
     func_name: str,
     satisfies_bound,
     error_fn,
+    substitute,
 ) -> None:
-    """Validate that resolved type args satisfy their type parameter bounds."""
+    """Validate that resolved type args satisfy their type parameter bounds.
+
+    A bound may name sibling type parameters (`[R, T: Proto[R]]`); `substitute`
+    resolves them against `type_subst` before the conformance check so `T`'s
+    bound is checked as `Proto[<resolved R>]`, not the raw `Proto[R]`.
+    """
     for param_name, type_arg in type_subst.items():
         if param_name in bounds:
-            bound = bounds[param_name]
+            bound = substitute(bounds[param_name], type_subst)
             if not satisfies_bound(type_arg, bound):
                 raise error_fn(
                     f"Type argument '{type_arg}' does not satisfy bound '{bound}' "
@@ -5005,6 +5011,7 @@ class CallAnalyzer:
                 type_subst, func.type_param_bounds, func.name,
                 self.protocols.satisfies_bound,
                 lambda msg: self.ctx.error(msg, expr),
+                self.type_ops.substitute_type_params,
             )
         else:
             # Infer from arguments (seeded with LHS hint for nested-call hints).

@@ -1,0 +1,1 @@
+main.py:26: error: Type argument 'IntBox' does not satisfy bound 'Container[StrView]' for type parameter 'T' of 'pick'

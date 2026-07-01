@@ -1962,15 +1962,23 @@ class MethodAnalyzer:
                 explicit_type_args=None,
             )
 
+        # Merge class subst + method subst up front: a method-level bound may
+        # name a class-level type param (`class C[R]: def m[T: Proto[R]]`), so
+        # bound validation below must substitute with the full map, not just the
+        # method-level one (else the class param is unresolved when substituting).
+        full_subst = dict(class_subst) if class_subst else {}
+        full_subst.update(method_subst)
+
         # Validate bounds for new params (inference checks bounds internally,
         # but explicit type args bypass inference)
         new_param_bounds = {k: v for k, v in method_info.type_param_bounds.items()
                            if k in set(new_params)}
         if new_param_bounds:
             validate_type_param_bounds(
-                method_subst, new_param_bounds, method_info.name,
+                full_subst, new_param_bounds, method_info.name,
                 self.protocols.satisfies_bound,
                 lambda msg: self.ctx.error(msg, expr),
+                self.type_ops.substitute_type_params,
             )
 
         # Store inferred type args (new params only) for codegen
@@ -1981,10 +1989,6 @@ class MethodAnalyzer:
         expr.representational_subst_params = (
             self.type_ops.compute_representational_subst_params(
                 method_info, expr.inferred_type_args))
-
-        # Merge class subst + method subst for full substitution
-        full_subst = dict(class_subst) if class_subst else {}
-        full_subst.update(method_subst)
 
         return self._resolve_and_check_args(expr, [method_info], full_subst)
 

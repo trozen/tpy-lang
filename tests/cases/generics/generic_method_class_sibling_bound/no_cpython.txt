@@ -1,0 +1,5 @@
+Explicit type args on a generic-method call (r.pick[IntBox](...)) are required
+here (T cannot be inferred without associated-type inference), but CPython
+cannot subscript a bound method at runtime ('method' object is not
+subscriptable). Comp/exec regression guard for a class-level-sibling method
+bound (`class Runner[R]: def pick[T: Container[R]]`).
