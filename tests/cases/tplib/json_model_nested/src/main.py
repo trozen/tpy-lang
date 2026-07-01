@@ -38,7 +38,7 @@ class Profile:
     email: str | None = None
 
 def test_full() -> None:
-    json = '{"name": "Alice", "age": 30, "score": 9.5, "precision": 1.5, "active": true, "big_id": "999999999999999999", "role": "Admin", "address": {"street": "123 Main", "city": "NYC"}, "tags": ["dev", "ops"], "scores": [100, 95], "friends": [{"street": "456 Oak", "city": "LA"}], "roles": ["User", "Guest"], "metadata": {"level": 5, "xp": 1200}, "nested_map": {"a": [1, 2], "b": [3]}, "coord": [10, 20, "north"], "backup_role": "Guest", "alt_address": {"street": "999 Pine", "city": "CHI"}, "email": "a@b.com"}'
+    json = '{"name": "Alice", "age": 30, "score": 9.5, "precision": 1.5, "active": true, "big_id": 999999999999999999, "role": "Admin", "address": {"street": "123 Main", "city": "NYC"}, "tags": ["dev", "ops"], "scores": [100, 95], "friends": [{"street": "456 Oak", "city": "LA"}], "roles": ["User", "Guest"], "metadata": {"level": 5, "xp": 1200}, "nested_map": {"a": [1, 2], "b": [3]}, "coord": [10, 20, "north"], "backup_role": "Guest", "alt_address": {"street": "999 Pine", "city": "CHI"}, "email": "a@b.com"}'
     p = Profile.from_json(json)
     print(p.name)
     print(p.age)
@@ -62,7 +62,7 @@ def test_full() -> None:
     print(p.email)
 
 def test_defaults() -> None:
-    json = '{"name": "Bob", "age": 25, "score": 0.0, "precision": 0.0, "active": false, "big_id": "0", "role": "Guest", "address": {"street": "x", "city": "y"}, "tags": [], "scores": [], "friends": [], "roles": [], "metadata": {}, "nested_map": {}, "coord": [0, 0, ""]}'
+    json = '{"name": "Bob", "age": 25, "score": 0.0, "precision": 0.0, "active": false, "big_id": 0, "role": "Guest", "address": {"street": "x", "city": "y"}, "tags": [], "scores": [], "friends": [], "roles": [], "metadata": {}, "nested_map": {}, "coord": [0, 0, ""]}'
     p = Profile.from_json(json)
     print(p.name)
     print(p.backup_role)
@@ -70,7 +70,7 @@ def test_defaults() -> None:
     print(p.email)
 
 def test_roundtrip() -> None:
-    json = '{"name": "Eve", "age": 40, "score": 3.14, "precision": 2.5, "active": true, "big_id": "12345678901234567890", "role": "User", "address": {"street": "789 Elm", "city": "SF"}, "tags": ["ops"], "scores": [42], "friends": [{"street": "1st", "city": "DC"}], "roles": ["Admin"], "metadata": {"rank": 1}, "nested_map": {"z": [9]}, "coord": [100, 200, "east"], "alt_address": {"street": "2nd", "city": "BOS"}, "email": null}'
+    json = '{"name": "Eve", "age": 40, "score": 3.14, "precision": 2.5, "active": true, "big_id": 12345678901234567890, "role": "User", "address": {"street": "789 Elm", "city": "SF"}, "tags": ["ops"], "scores": [42], "friends": [{"street": "1st", "city": "DC"}], "roles": ["Admin"], "metadata": {"rank": 1}, "nested_map": {"z": [9]}, "coord": [100, 200, "east"], "alt_address": {"street": "2nd", "city": "BOS"}, "email": null}'
     p = Profile.from_json(json)
     out = p.to_json()
     print(out)

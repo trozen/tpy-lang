@@ -1,0 +1,1 @@
+@model is a compile-time macro; no CPython-runtime stub for tplib.json.model.

@@ -16,6 +16,9 @@ def send(method: str, url: str, data: bytes | None, body_json: JsonValue | None,
     a, b = socket.socketpair()
     b.sendall(b"HTTP/1.1 201 Created\r\nContent-Length: 2\r\n\r\nok")
     s = requests.Session()
+    # Pin the User-Agent so the sent-bytes snapshot doesn't churn on a compiler
+    # version bump (default is covered in requests_default_user_agent).
+    s.headers = {"User-Agent": "test-agent"}
     conn = HTTPConnection("api.test", 80)
     conn.sock = a
     s._connection = Box(conn)

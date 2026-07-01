@@ -1,0 +1,2 @@
+Uses socketpair injection and the @nocopy socket move seam (C++-only), like the
+other requests_* cases.

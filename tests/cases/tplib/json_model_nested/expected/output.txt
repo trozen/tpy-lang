@@ -22,5 +22,5 @@ Bob
 None
 None
 None
-{"name": "Eve", "age": 40, "score": 3.14, "precision": 2.5, "active": true, "big_id": "12345678901234567890", "role": "User", "address": {"street": "789 Elm", "city": "SF"}, "tags": ["ops"], "scores": [42], "friends": [{"street": "1st", "city": "DC"}], "roles": ["Admin"], "metadata": {"rank": 1}, "nested_map": {"z": [9]}, "coord": [100, 200, "east"], "backup_role": null, "alt_address": {"street": "2nd", "city": "BOS"}, "email": null}
+{"name": "Eve", "age": 40, "score": 3.14, "precision": 2.5, "active": true, "big_id": 12345678901234567890, "role": "User", "address": {"street": "789 Elm", "city": "SF"}, "tags": ["ops"], "scores": [42], "friends": [{"street": "1st", "city": "DC"}], "roles": ["Admin"], "metadata": {"rank": 1}, "nested_map": {"z": [9]}, "coord": [100, 200, "east"], "backup_role": null, "alt_address": {"street": "2nd", "city": "BOS"}, "email": null}
 True

@@ -16,6 +16,11 @@ void main() {
     b.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 24\r\n\r\n{\"name\": \"t\", \"rows\": 3}", 95));
     // s = requests.Session()
     ::tpystd::tplib::requests::Session s = ::tpystd::tplib::requests::Session();
+    // # Pin the User-Agent so the sent-bytes snapshot doesn't churn on a compiler
+    // # version bump (the auto default is version-derived; covered version-
+    // # agnostically in requests_default_user_agent).
+    // s.headers = {"User-Agent": "test-agent"}
+    s.headers = ::tpy::ordered_map<std::string, std::string>({{"User-Agent", "test-agent"}});
     // # Inject the pre-bound socket via the public sock field, then box the
     // # fresh-constructed local (the offline test seam).
     // conn = HTTPConnection("api.test", 8002)

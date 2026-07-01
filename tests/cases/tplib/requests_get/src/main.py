@@ -18,6 +18,10 @@ def main() -> None:
               b"Content-Length: 24\r\n\r\n"
               b'{"name": "t", "rows": 3}')
     s = requests.Session()
+    # Pin the User-Agent so the sent-bytes snapshot doesn't churn on a compiler
+    # version bump (the auto default is version-derived; covered version-
+    # agnostically in requests_default_user_agent).
+    s.headers = {"User-Agent": "test-agent"}
     # Inject the pre-bound socket via the public sock field, then box the
     # fresh-constructed local (the offline test seam).
     conn = HTTPConnection("api.test", 8002)

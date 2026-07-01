@@ -4,6 +4,7 @@
 #include <tpy/tpy.hpp>
 #include "tpystd/tpy/_types.hpp"
 #include "tpystd/typing/_typing.hpp"
+#include "tpystd/tpy/version.hpp"
 #include "tpystd/ssl.hpp"
 #include "tpystd/tplib.hpp"
 #include "tpystd/tplib/requests.hpp"

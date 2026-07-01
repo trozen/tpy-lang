@@ -14,8 +14,9 @@ void merge_and_clear() {
     b.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok", 40));
     // s = requests.Session()
     ::tpystd::tplib::requests::Session s = ::tpystd::tplib::requests::Session();
-    // s.headers = {"X-App": "atlas", "Accept": "application/json"}
-    s.headers = ::tpy::ordered_map<std::string, std::string>({{"X-App", "atlas"}, {"Accept", "application/json"}});
+    // s.headers = {"X-App": "atlas", "Accept": "application/json",
+    // "User-Agent": "test-agent"}
+    s.headers = ::tpy::ordered_map<std::string, std::string>({{"X-App", "atlas"}, {"Accept", "application/json"}, {"User-Agent", "test-agent"}});
     // s.params = {"db": "das"}
     s.params = ::tpy::ordered_map<std::string, std::string>({{"db", "das"}});
     // s.auth = ("user", "pw")
@@ -53,6 +54,8 @@ void session_post() {
     b.sendall(::tpy::bytes_literal("HTTP/1.1 201 Created\r\nContent-Length: 2\r\n\r\nok", 45));
     // s = requests.Session()
     ::tpystd::tplib::requests::Session s = ::tpystd::tplib::requests::Session();
+    // s.headers = {"User-Agent": "test-agent"}
+    s.headers = ::tpy::ordered_map<std::string, std::string>({{"User-Agent", "test-agent"}});
     // conn = HTTPConnection("api.test", 80)
     ::tpystd::http::client::HTTPConnection conn = ::tpystd::http::client::HTTPConnection("api.test", 80);
     // conn.sock = a
@@ -120,7 +123,9 @@ void __tpy_init() {
     // # per-call override), a default auth is applied, the injected connection is
     // # cleared after the request (so a regression that drops the clear is caught),
     // # Session.post sends a body, and `with Session()` closes a still-set connection
-    // # on exit (observed as EOF on the socketpair peer).
+    // # on exit (observed as EOF on the socketpair peer). A fixed User-Agent is pinned
+    // # so the sent-bytes snapshots don't churn on a compiler version bump; the auto
+    // # default lives in requests_default_user_agent.
     // import socket
     ::tpystd::socket::__tpy_init();
     // from http.client import HTTPConnection

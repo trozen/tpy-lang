@@ -189,9 +189,11 @@ def _try_build_read_stmts(fld_type: TypeInfo, reader: Expr, var_name: str) -> li
             ]
         return [ast.var_decl(var_name, init=ast.method_call(reader, "read_int"))]
     if fld_type.is_bigint:
+        # BigInt round-trips as a bare JSON number (read_number_raw preserves
+        # arbitrary precision), matching stdlib json.dumps/loads and CPython.
         raw = ast.fresh_tmp("raw")
         return [
-            ast.var_decl(raw, init=ast.method_call(reader, "read_str")),
+            ast.var_decl(raw, init=ast.method_call(reader, "read_number_raw")),
             ast.var_decl(var_name, init=ast.call("int", [ast.name(raw)])),
         ]
     # Model records and other unhandled types: handled by _build_read_into.
@@ -566,9 +568,7 @@ def _build_write_value_stmts(
         return [ast.expr_stmt(ast.method_call(access, "__json_encode__", [writer]))]
 
     if fld_type.is_bigint:
-        # Write BigInt as JSON string to preserve precision
-        return [ast.expr_stmt(ast.method_call(
-            writer, "write_str", [ast.call("str", [access])]))]
+        return [ast.expr_stmt(ast.method_call(writer, "write_bigint", [access]))]
 
     # Primitive write
     write_method = _get_write_method(fld_type)

@@ -1,6 +1,6 @@
 200
-b'GET /v1/tables?db=das&limit=10 HTTP/1.1\r\nHost: api.test\r\nAccept-Encoding: identity\r\nX-App: override\r\nAccept: application/json\r\nAuthorization: Basic dXNlcjpwdw==\r\n\r\n'
+b'GET /v1/tables?db=das&limit=10 HTTP/1.1\r\nHost: api.test\r\nAccept-Encoding: identity\r\nX-App: override\r\nAccept: application/json\r\nUser-Agent: test-agent\r\nAuthorization: Basic dXNlcjpwdw==\r\n\r\n'
 connection cleared
 201
-b'POST /v1/items HTTP/1.1\r\nHost: api.test\r\nAccept-Encoding: identity\r\nContent-Length: 7\r\n\r\npayload'
+b'POST /v1/items HTTP/1.1\r\nHost: api.test\r\nAccept-Encoding: identity\r\nContent-Length: 7\r\nUser-Agent: test-agent\r\n\r\npayload'
 b''

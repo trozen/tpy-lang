@@ -2,7 +2,9 @@
 # per-call override), a default auth is applied, the injected connection is
 # cleared after the request (so a regression that drops the clear is caught),
 # Session.post sends a body, and `with Session()` closes a still-set connection
-# on exit (observed as EOF on the socketpair peer).
+# on exit (observed as EOF on the socketpair peer). A fixed User-Agent is pinned
+# so the sent-bytes snapshots don't churn on a compiler version bump; the auto
+# default lives in requests_default_user_agent.
 import socket
 from http.client import HTTPConnection
 from tplib import Box
@@ -13,7 +15,8 @@ def merge_and_clear() -> None:
     a, b = socket.socketpair()
     b.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok")
     s = requests.Session()
-    s.headers = {"X-App": "atlas", "Accept": "application/json"}
+    s.headers = {"X-App": "atlas", "Accept": "application/json",
+                 "User-Agent": "test-agent"}
     s.params = {"db": "das"}
     s.auth = ("user", "pw")
     conn = HTTPConnection("api.test", 80)
@@ -31,6 +34,7 @@ def session_post() -> None:
     a, b = socket.socketpair()
     b.sendall(b"HTTP/1.1 201 Created\r\nContent-Length: 2\r\n\r\nok")
     s = requests.Session()
+    s.headers = {"User-Agent": "test-agent"}
     conn = HTTPConnection("api.test", 80)
     conn.sock = a
     s._connection = Box(conn)

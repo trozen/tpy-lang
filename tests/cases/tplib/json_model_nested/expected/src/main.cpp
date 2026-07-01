@@ -48,8 +48,8 @@ namespace tpyapp::main {
 
 // def test_full() -> None:
 void test_full() {
-    // json = '{"name": "Alice", "age": 30, "score": 9.5, "precision": 1.5, "active": true, "big_id": "999999999999999999", "role": "Admin", "address": {"street": "123 Main", "city": "NYC"}, "tags": ["dev", "ops"], "scores": [100, 95], "friends": [{"street": "456 Oak", "city": "LA"}], "roles": ["User", "Guest"], "metadata": {"level": 5, "xp": 1200}, "nested_map": {"a": [1, 2], "b": [3]}, "coord": [10, 20, "north"], "backup_role": "Guest", "alt_address": {"street": "999 Pine", "city": "CHI"}, "email": "a@b.com"}'
-    std::string_view json = "{\"name\": \"Alice\", \"age\": 30, \"score\": 9.5, \"precision\": 1.5, \"active\": true, \"big_id\": \"999999999999999999\", \"role\": \"Admin\", \"address\": {\"street\": \"123 Main\", \"city\": \"NYC\"}, \"tags\": [\"dev\", \"ops\"], \"scores\": [100, 95], \"friends\": [{\"street\": \"456 Oak\", \"city\": \"LA\"}], \"roles\": [\"User\", \"Guest\"], \"metadata\": {\"level\": 5, \"xp\": 1200}, \"nested_map\": {\"a\": [1, 2], \"b\": [3]}, \"coord\": [10, 20, \"north\"], \"backup_role\": \"Guest\", \"alt_address\": {\"street\": \"999 Pine\", \"city\": \"CHI\"}, \"email\": \"a@b.com\"}";
+    // json = '{"name": "Alice", "age": 30, "score": 9.5, "precision": 1.5, "active": true, "big_id": 999999999999999999, "role": "Admin", "address": {"street": "123 Main", "city": "NYC"}, "tags": ["dev", "ops"], "scores": [100, 95], "friends": [{"street": "456 Oak", "city": "LA"}], "roles": ["User", "Guest"], "metadata": {"level": 5, "xp": 1200}, "nested_map": {"a": [1, 2], "b": [3]}, "coord": [10, 20, "north"], "backup_role": "Guest", "alt_address": {"street": "999 Pine", "city": "CHI"}, "email": "a@b.com"}'
+    std::string_view json = "{\"name\": \"Alice\", \"age\": 30, \"score\": 9.5, \"precision\": 1.5, \"active\": true, \"big_id\": 999999999999999999, \"role\": \"Admin\", \"address\": {\"street\": \"123 Main\", \"city\": \"NYC\"}, \"tags\": [\"dev\", \"ops\"], \"scores\": [100, 95], \"friends\": [{\"street\": \"456 Oak\", \"city\": \"LA\"}], \"roles\": [\"User\", \"Guest\"], \"metadata\": {\"level\": 5, \"xp\": 1200}, \"nested_map\": {\"a\": [1, 2], \"b\": [3]}, \"coord\": [10, 20, \"north\"], \"backup_role\": \"Guest\", \"alt_address\": {\"street\": \"999 Pine\", \"city\": \"CHI\"}, \"email\": \"a@b.com\"}";
     // p = Profile.from_json(json)
     Profile p = Profile::from_json(json);
     // print(p.name)
@@ -96,8 +96,8 @@ void test_full() {
 
 // def test_defaults() -> None:
 void test_defaults() {
-    // json = '{"name": "Bob", "age": 25, "score": 0.0, "precision": 0.0, "active": false, "big_id": "0", "role": "Guest", "address": {"street": "x", "city": "y"}, "tags": [], "scores": [], "friends": [], "roles": [], "metadata": {}, "nested_map": {}, "coord": [0, 0, ""]}'
-    std::string_view json = "{\"name\": \"Bob\", \"age\": 25, \"score\": 0.0, \"precision\": 0.0, \"active\": false, \"big_id\": \"0\", \"role\": \"Guest\", \"address\": {\"street\": \"x\", \"city\": \"y\"}, \"tags\": [], \"scores\": [], \"friends\": [], \"roles\": [], \"metadata\": {}, \"nested_map\": {}, \"coord\": [0, 0, \"\"]}";
+    // json = '{"name": "Bob", "age": 25, "score": 0.0, "precision": 0.0, "active": false, "big_id": 0, "role": "Guest", "address": {"street": "x", "city": "y"}, "tags": [], "scores": [], "friends": [], "roles": [], "metadata": {}, "nested_map": {}, "coord": [0, 0, ""]}'
+    std::string_view json = "{\"name\": \"Bob\", \"age\": 25, \"score\": 0.0, \"precision\": 0.0, \"active\": false, \"big_id\": 0, \"role\": \"Guest\", \"address\": {\"street\": \"x\", \"city\": \"y\"}, \"tags\": [], \"scores\": [], \"friends\": [], \"roles\": [], \"metadata\": {}, \"nested_map\": {}, \"coord\": [0, 0, \"\"]}";
     // p = Profile.from_json(json)
     Profile p = Profile::from_json(json);
     // print(p.name)
@@ -112,8 +112,8 @@ void test_defaults() {
 
 // def test_roundtrip() -> None:
 void test_roundtrip() {
-    // json = '{"name": "Eve", "age": 40, "score": 3.14, "precision": 2.5, "active": true, "big_id": "12345678901234567890", "role": "User", "address": {"street": "789 Elm", "city": "SF"}, "tags": ["ops"], "scores": [42], "friends": [{"street": "1st", "city": "DC"}], "roles": ["Admin"], "metadata": {"rank": 1}, "nested_map": {"z": [9]}, "coord": [100, 200, "east"], "alt_address": {"street": "2nd", "city": "BOS"}, "email": null}'
-    std::string_view json = "{\"name\": \"Eve\", \"age\": 40, \"score\": 3.14, \"precision\": 2.5, \"active\": true, \"big_id\": \"12345678901234567890\", \"role\": \"User\", \"address\": {\"street\": \"789 Elm\", \"city\": \"SF\"}, \"tags\": [\"ops\"], \"scores\": [42], \"friends\": [{\"street\": \"1st\", \"city\": \"DC\"}], \"roles\": [\"Admin\"], \"metadata\": {\"rank\": 1}, \"nested_map\": {\"z\": [9]}, \"coord\": [100, 200, \"east\"], \"alt_address\": {\"street\": \"2nd\", \"city\": \"BOS\"}, \"email\": null}";
+    // json = '{"name": "Eve", "age": 40, "score": 3.14, "precision": 2.5, "active": true, "big_id": 12345678901234567890, "role": "User", "address": {"street": "789 Elm", "city": "SF"}, "tags": ["ops"], "scores": [42], "friends": [{"street": "1st", "city": "DC"}], "roles": ["Admin"], "metadata": {"rank": 1}, "nested_map": {"z": [9]}, "coord": [100, 200, "east"], "alt_address": {"street": "2nd", "city": "BOS"}, "email": null}'
+    std::string_view json = "{\"name\": \"Eve\", \"age\": 40, \"score\": 3.14, \"precision\": 2.5, \"active\": true, \"big_id\": 12345678901234567890, \"role\": \"User\", \"address\": {\"street\": \"789 Elm\", \"city\": \"SF\"}, \"tags\": [\"ops\"], \"scores\": [42], \"friends\": [{\"street\": \"1st\", \"city\": \"DC\"}], \"roles\": [\"Admin\"], \"metadata\": {\"rank\": 1}, \"nested_map\": {\"z\": [9]}, \"coord\": [100, 200, \"east\"], \"alt_address\": {\"street\": \"2nd\", \"city\": \"BOS\"}, \"email\": null}";
     // p = Profile.from_json(json)
     Profile p = Profile::from_json(json);
     // out = p.to_json()
@@ -403,9 +403,9 @@ std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> Profile::__json
             }
             case 'i': {
                 if (__match_subject_1 == "big_id") {
-                    std::string __raw_9;
+                    std::string_view __raw_9;
                     {
-                        auto __try_tmp_36 = __reader.read_str();
+                        auto __try_tmp_36 = __reader.read_number_raw();
                         if (!__try_tmp_36.has_value()) return ::tpy::make_unexpected(__try_tmp_36.error());
                         __raw_9 = ::tpy::unwrap_ref_move(*__try_tmp_36);
                     }
@@ -608,7 +608,7 @@ void Profile::__json_encode__(::tpystd::tplib::json::writer::JsonWriter& __write
     __writer.key("active");
     __writer.write_bool(this->active);
     __writer.key("big_id");
-    __writer.write_str((this->big_id).to_string());
+    __writer.write_bigint(this->big_id);
     __writer.key("role");
     __writer.write_str(::tpy::EnumUtil<Role>::name(this->role));
     __writer.key("address");

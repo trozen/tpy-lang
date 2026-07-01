@@ -60,6 +60,7 @@
 from __future__ import annotations
 from typing import Final, Iterator
 from tpy import Int32, Own, String
+from tpy.version import version_info as _tpy_version_info
 from tplib import Box
 from http.client import HTTPConnection, HTTPSConnection, _Connection
 import ssl
@@ -300,6 +301,20 @@ def _prepare_headers(headers: dict[str, str] | None,
     if headers is not None:
         for kv in headers.items():
             out[kv[0]] = kv[1]
+    # A default User-Agent (overridable by the caller), as CPython requests
+    # sends one -- some servers (e.g. the GitHub API) reject UA-less requests.
+    has_ua = False
+    for k in out:
+        if k.lower() == "user-agent":
+            has_ua = True
+            break
+    if not has_ua:
+        # major.minor (not full version) so a patch/dev bump doesn't churn it.
+        # TODO: hoist to a module constant computed once, when tpyc can
+        # const-fold a str-concat Final initializer (today it rejects it -- see
+        # BUGS.md); until then this rebuilds the tiny string per request.
+        out["User-Agent"] = ("tpy-requests/" + str(_tpy_version_info[0])
+                             + "." + str(_tpy_version_info[1]))
     if auth is not None:
         out["Authorization"] = _basic_auth_header(auth[0], auth[1])
     if has_json_body and "Content-Type" not in out:

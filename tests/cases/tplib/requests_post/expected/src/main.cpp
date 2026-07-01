@@ -15,6 +15,10 @@ void send(std::string_view method, std::string_view url, std::optional<std::span
     b.sendall(::tpy::bytes_literal("HTTP/1.1 201 Created\r\nContent-Length: 2\r\n\r\nok", 45));
     // s = requests.Session()
     ::tpystd::tplib::requests::Session s = ::tpystd::tplib::requests::Session();
+    // # Pin the User-Agent so the sent-bytes snapshot doesn't churn on a compiler
+    // # version bump (default is covered in requests_default_user_agent).
+    // s.headers = {"User-Agent": "test-agent"}
+    s.headers = ::tpy::ordered_map<std::string, std::string>({{"User-Agent", "test-agent"}});
     // conn = HTTPConnection("api.test", 80)
     ::tpystd::http::client::HTTPConnection conn = ::tpystd::http::client::HTTPConnection("api.test", 80);
     // conn.sock = a
