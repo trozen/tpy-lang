@@ -5914,6 +5914,31 @@ API, floor 3.12, hand-rolled C-API glue, copy-in marshalling).
   boundary (a view needs the deferred foreign-borrow primitive; `bytearray`'s
   aliasing a by-copy `PyBytes` would silently drop) and stay rejected; use
   `str` / `bytes`.
+- **Working (`list` / `dict` / `set` / `tuple`)**: functions taking and
+  returning containers, marshalled O(n) **by copy** recursively -- `std::vector`
+  <-> PyList, `tpy::ordered_map` <-> PyDict (insertion order), `tpy::ordered_set`
+  <-> PySet, `std::tuple` <-> PyTuple. Elements are the scalar/str/bytes leaves
+  and arbitrarily nested containers of those (`list[list[int]]`,
+  `dict[str, list[int]]`). The recursion is **glue-driven**, not
+  C++-template-driven: the C++ storage type is ambiguous at the leaves
+  (`list[bytes]` and `list[list[UInt8]]` both render
+  `std::vector<std::vector<uint8_t>>`), so the codegen glue -- holding the
+  unambiguous TPy element types -- emits nested per-element conversion lambdas
+  bottoming out at `from_py<leaf>` / `to_py`; `marshal.hpp` supplies the
+  element-fn-parameterized container helpers. `is_function_boundary_marshallable`
+  (split from the base `is_boundary_marshallable`, which stays scalar/leaf-only
+  and still gates the exposed-class field/method and enum boundaries) recurses
+  into element/key/value types. **Three acknowledged divergences from the
+  aliasing source** (the "container cliff"): (1) a param is an owned copy, so a
+  mutation through it (`append`, `d[k] = v`) is not visible to the caller -- a
+  list/dict/set param sema proves is mutated **warns**; a read-only one stays
+  quiet; tuple is exempt. (2) strict-by-container-kind IN: a wrong container kind
+  / tuple arity is a `TypeError` where the untyped source accepts any iterable.
+  (3) per-element scalar coercion (`list[int]` coerces `True -> 1`), so distinct
+  keys can collapse (`{1, True}` -> `set[int]`). Exposed class/enum types are
+  valid top-level boundary types but **not yet** container elements (no
+  per-element type handle); `list[SomeExportedClass]` is rejected. Verified in
+  `tests/interop/containers/`.
 - **Working (`.so` build mode)**: `tpyc -b` on an `# tpy: ext_module` builds an
   importable `<mod>.so` directly -- every TU `-fPIC`, linked `-shared`, no
   `main()`, glue TU in the link set. `--exec` on an ext_module is a clean error

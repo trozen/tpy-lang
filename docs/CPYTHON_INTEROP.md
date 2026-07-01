@@ -50,14 +50,14 @@ progress -> ✅ done.
 
 | Phase | Deliverable | Scope | Status |
 |---|---|---|---|
-| 1 | Marshalling layer + cpython facade (abi3) -- the keystone | **v1.0** | 🚧 all scalars (int/BigInt, float, bool, fixed-width ints) + void return + str/bytes (copy-in) done; containers next |
-| 2 | Extension codegen; **free functions** end-to-end; local `.so` build | **v1.0** | 🚧 every scalar arg/return + void return + str/bytes done; positional + keyword args (PyArg_ParseTupleAndKeywords); containers next |
+| 1 | Marshalling layer + cpython facade (abi3) -- the keystone | **v1.0** | 🚧 all scalars (int/BigInt, float, bool, fixed-width ints) + void return + str/bytes (copy-in) + list/dict/set/tuple (copy-in, recursive) done |
+| 2 | Extension codegen; **free functions** end-to-end; local `.so` build | **v1.0** | 🚧 every scalar arg/return + void return + str/bytes + container arg/return done; positional + keyword args (PyArg_ParseTupleAndKeywords) |
 | 2.5 | PEP 517 backend -> abi3 wheel (packaging) | **v1.0** | 🔬 |
 | 3 | Buffer input -- numeric (copy-in in v1.0; zero-copy -> 3.5) | **v1.0** | 🔬 |
 | 4 | **Classes + methods** (`PyType_FromSpec`; dunders per Q4) | **v1.1** | 🚧 baseline done: construct + plain methods + annotated fields as getset, instances as free-fn/method params (borrow) + returns (copy); dunders/inheritance/@property/class-typed fields deferred |
 | 5 | **Enums + constants** | **v1.1** | 🚧 `@export` enums recreated as real CPython IntEnum/Enum (functional API, module= set); enum values cross as @export fn params/returns (member round-trip, strict-by-type IN); `Final` scalar/str constants as init-time module-attribute snapshots; nested/cross-module enums deferred |
 | 3.5 | Foreign-borrow primitive -> zero-copy str + buffer input | post-v1.0 (next) -- IR-gated | 🔬 |
-| 6 | Containers (`list`/`dict`/`set`/`tuple`, by-copy) | v1-adjacent | 🔬 |
+| 6 | Containers (`list`/`dict`/`set`/`tuple`, by-copy) | v1-adjacent | 🚧 done: list/dict/set/tuple cross as @export fn params/returns, O(n) recursive copy-in/out (str/bytes elements + arbitrary nesting); strict-by-container-kind IN; a mutated container param warns (copy-in, not visible to caller); exposed class/enum *elements* deferred |
 | 7 | `nogil` / `with gil` (parallelism + GIL checking) | later | 🔬 |
 | 8 | Embedding, callbacks / opaque `PyRef`, async <-> `asyncio` | later | 🔬 |
 
@@ -351,6 +351,49 @@ plainly and steers bulk/numeric users to `Span` + buffer protocol (which
 We do **not** build alias-preserving lazy proxies in v1 (a PyObject
 wrapping the vector, boxing per `__getitem__`) -- high complexity, and it
 fights the unboxing that is the whole point.
+
+**Implemented (the container rung).** `list`/`dict`/`set`/`tuple` cross as
+`@export` function params/returns, marshalled O(n) by-copy recursively:
+`std::vector` <-> PyList, `tpy::ordered_map` <-> PyDict (insertion order),
+`tpy::ordered_set` <-> PySet, `std::tuple` <-> PyTuple. Elements are the
+scalar/str/bytes leaves and arbitrarily nested containers of those. The
+recursion is **glue-driven**, not C++-template-driven: the C++ storage type
+is ambiguous at the leaves (`list[bytes]` and `list[list[UInt8]]` both render
+`std::vector<std::vector<uint8_t>>`), so only the codegen glue -- which holds
+the unambiguous TPy element types -- can pick the right leaf marshaller. The
+`marshal.hpp` helpers (`list_from_py`/`list_to_py`/...) take a per-element
+conversion callable; `extension.py` emits nested lambdas bottoming out at
+`from_py<leaf>`/`to_py`.
+
+Three acknowledged, documented divergences from the aliasing CPython source:
+
+- **Copy-in mutation (the cliff itself).** A param is an owned copy, so a
+  mutation through it (`append`, `d[k] = v`) is not visible to the caller. A
+  list/dict/set param that sema proves is mutated **warns** at the `@export`
+  function (`mutated_params`); a read-only container param has no observable
+  divergence and stays quiet. tuple is exempt (value type, immutable). There
+  is no write-back escape hatch in v1; the zero-copy *read* path is `Span` +
+  buffer protocol (phase 3.5). A tuple whose element is itself a mutable
+  container (`tuple[list[int], str]`) does not warn either, and mutating the
+  inner container is likewise invisible to the caller -- but this is the
+  pre-existing TPy value-vs-reference model (a tuple is a value type, so `p[0]`
+  copies the inner list on access; a pure-TPy caller wouldn't see the mutation
+  through the tuple either), *not* a new boundary divergence, so there is
+  nothing for the warning to fire on.
+- **Strict-by-container-kind IN.** A non-list / non-dict / non-set / non-tuple
+  arg (or a tuple of the wrong arity) is a `TypeError`, where the annotation-
+  ignoring source would accept any iterable. Same class as the existing
+  enum/str/bytes strict-IN contract.
+- **Per-element scalar coercion.** Each element converts through the same
+  `from_py<leaf>` the scalar params use, so `list[int]` coerces `True -> 1`
+  (`__index__`) and `list[bool]` coerces via truthiness. A `dict[int, ...]`
+  marshalled from `{True: ...}` returns a Python `int` key (`True == 1`, but
+  `type(k)` flips) -- and two keys that collapse under the leaf conversion
+  (`{1, True}` -> `set[int]`) merge.
+
+Exposed class/enum types are **not** yet admitted as container elements (the
+per-element converter has no module type handle to round-trip through);
+`list[SomeExportedClass]` is rejected with the unmarshallable diagnostic.
 
 ## abi3 / limited API commitment
 

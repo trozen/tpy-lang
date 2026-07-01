@@ -3897,7 +3897,7 @@ class Compiler:
             boundary marshaller. Runs post-sema so the types are resolved.
         """
         from .type_def_registry import (
-            is_boundary_marshallable, boundary_cpp_type,
+            is_function_boundary_marshallable, boundary_cpp_type,
             boundary_unmarshallable_msg)
         for compiled in self.modules.values():
             if not compiled.ast.directives.ext_module:
@@ -3931,17 +3931,55 @@ class Compiler:
                         raise CompileError(
                             f"@export function '{func.name}': {what} {form_err}",
                             compiled.name, compiled.path, lineno=fline)
-                    if is_boundary_marshallable(typ, role == "return"):
+                    if is_function_boundary_marshallable(typ, role == "return"):
                         continue
                     cpp = boundary_cpp_type(typ)
                     raise CompileError(
                         boundary_unmarshallable_msg(func.name, what, cpp),
                         compiled.name, compiled.path, lineno=fline)
+                self._warn_export_container_mutation(compiled, func)
             for record in compiled.ast.records:
                 if not record.exposed_to_host:
                     continue
                 self._validate_exposed_class(compiled, record)
             self._validate_exposed_enums(compiled)
+
+    def _warn_export_container_mutation(self, compiled: 'CompiledModule',
+                                        func: 'TpyFunction') -> None:
+        """A container param crosses the @export boundary copy-in (the boundary
+        marshals an owned copy), so a structural mutation -- one visible through
+        the reference, e.g. append / setitem -- is silently lost to the Python
+        caller. Warn precisely where sema proved that happens; a non-mutating
+        container param has no observable divergence and stays quiet. tuple is
+        a value type (and immutable), so it is exempt."""
+        from .type_def_registry import is_list, is_dict, is_set, _boundary_inner
+        fis = compiled.analyzer.registry.functions.get(func.name)
+        if not fis:
+            return
+        fi = next((f for f in fis if len(f.params) == len(func.params)), fis[0])
+        # `mutated_params` (not `structural_mutated_params`) is the caller-visible
+        # write-back fact: it covers element assignment (d[k] = v) that the
+        # narrower structural set omits. A reference-type container param is
+        # passed by reference, so any mutation here would write through.
+        mut = fi.mutated_params or frozenset()
+        for i, (pname, ptype) in enumerate(func.params):
+            if i not in mut:
+                continue
+            inner = _boundary_inner(ptype)  # strip the auto-inserted Ref/borrow
+            kind = ("list" if is_list(inner) else
+                    "dict" if is_dict(inner) else
+                    "set" if is_set(inner) else None)
+            if kind is None:
+                continue
+            # The per-module analyzer sink (not the compiler-level one) is what
+            # the test harness's `# tpyc: warning(...)` annotation validation
+            # reads, matching the other @export diagnostics.
+            compiled.analyzer.diagnostics.append(Diagnostic(
+                DiagnosticLevel.WARNING,
+                f"@export function '{func.name}': {kind} parameter '{pname}' is "
+                f"copied in at the CPython boundary; mutations to it are not "
+                f"visible to the caller",
+                func.loc))
 
     def _validate_exposed_enums(self, compiled: 'CompiledModule') -> None:
         """An `@export` enum is recreated as a CPython IntEnum/Enum at PyInit_.

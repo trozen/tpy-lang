@@ -111,6 +111,42 @@ double PyFloat_AsDouble(PyObject *o);
 int PyObject_IsTrue(PyObject *o);
 PyObject *PyBool_FromLong(long v);
 
+// Container marshalling (list/dict/set/tuple as @export param/return types).
+// The marshal.hpp helpers are element-fn-parameterized and copy O(n) per
+// element; admission is strict-by-container-kind via PyType_IsSubtype against
+// these exported builtin type objects (the `*_Check` macros live in Python.h,
+// which we deliberately do not include). PyAnySet (set | frozenset) reuses the
+// two set type objects. The type objects are stable-ABI data symbols resolved
+// against the host interpreter at import time.
+extern PyTypeObject PyList_Type;
+extern PyTypeObject PyDict_Type;
+extern PyTypeObject PySet_Type;
+extern PyTypeObject PyFrozenSet_Type;
+extern PyTypeObject PyTuple_Type;
+
+// IN accessors. List/dict/tuple yield BORROWED element refs (no DecRef);
+// PyDict_Next walks in insertion order (matching ordered_map). A set has no
+// stable-ABI indexed access, so set_from_py iterates via the iterator protocol
+// (PyObject_GetIter once, then PyIter_Next per element -- each a NEW ref to
+// DecRef; returns NULL at exhaustion or on error).
+Py_ssize_t PyList_Size(PyObject *list);
+PyObject *PyList_GetItem(PyObject *list, Py_ssize_t index);
+int PyDict_Next(PyObject *dp, Py_ssize_t *pos, PyObject **key, PyObject **value);
+Py_ssize_t PyTuple_Size(PyObject *tup);
+PyObject *PyTuple_GetItem(PyObject *tup, Py_ssize_t index);
+PyObject *PyObject_GetIter(PyObject *o);
+PyObject *PyIter_Next(PyObject *o);
+
+// OUT constructors. PyList_SetItem / PyTuple_SetItem STEAL the element ref;
+// PyDict_SetItem / PySet_Add do NOT (the caller still owns and must DecRef).
+PyObject *PyList_New(Py_ssize_t len);
+int PyList_SetItem(PyObject *list, Py_ssize_t index, PyObject *item);
+int PyDict_SetItem(PyObject *dp, PyObject *key, PyObject *item);
+PyObject *PySet_New(PyObject *iterable);
+int PySet_Add(PyObject *set, PyObject *key);
+PyObject *PyTuple_New(Py_ssize_t len);
+int PyTuple_SetItem(PyObject *tup, Py_ssize_t index, PyObject *item);
+
 // Stable-ABI exception singletons (provided by the host interpreter). The
 // exc_bridge cascade maps each tpy::BaseException subclass to its counterpart
 // here, so the set mirrors the core.hpp taxonomy.

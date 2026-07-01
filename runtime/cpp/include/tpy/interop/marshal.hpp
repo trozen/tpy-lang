@@ -11,15 +11,20 @@
 // OverflowError) and throws MarshalError; the generated boundary catch returns
 // the NULL sentinel, preserving the already-set exception.
 
+#include <cstddef>
 #include <cstdint>
 #include <limits>
 #include <string>
 #include <string_view>
+#include <tuple>
 #include <type_traits>
+#include <utility>
 #include <vector>
 
 #include "tpy/bigint.hpp"
 #include "tpy/interop/cpython_h.hpp"
+#include "tpy/ordered_map.hpp"
+#include "tpy/ordered_set.hpp"
 
 namespace tpy::interop {
 
@@ -271,6 +276,230 @@ inline cpy::PyObject *to_py(const tpy::BigInt &b) {
     }
     std::string hx = b.to_hex_string();  // "[-]0x..", parsed by PyLong_FromString
     return cpy::PyLong_FromString(hx.c_str(), nullptr, 16);
+}
+
+// ---- Container marshalling ------------------------------------------------
+//
+// list/dict/set/tuple cross the @export boundary O(n) by-copy. The codegen
+// glue, which holds the unambiguous TPy element types, drives the recursion and
+// passes a per-element conversion callable; these helpers own only the
+// container-shaped traversal + refcounting. Keying off the C++ type alone is
+// impossible -- list[bytes] and list[list[UInt8]] both render
+// std::vector<std::vector<uint8_t>> -- so the leaf choice (e.g. bytes vs list)
+// must come from the glue, never from a template specialization here.
+//
+// Direction mirrors the scalars: from_* THROWS MarshalError on failure (a
+// Python exception is already set); to_* RETURNS nullptr on failure (matching
+// to_py). So a recursive element callable composes on either side.
+
+// list[T] <- PyList. Element refs are borrowed (PyList_GetItem).
+template <class T, class Fn>
+std::vector<T> list_from_py(cpy::PyObject *o, Fn elem) {
+    if (cpy::PyType_IsSubtype(cpy::Py_TYPE(o), &cpy::PyList_Type) == 0) {
+        cpy::PyErr_SetString(cpy::PyExc_TypeError, "expected a list");
+        throw MarshalError{};
+    }
+    cpy::Py_ssize_t n = cpy::PyList_Size(o);
+    std::vector<T> v;
+    v.reserve(static_cast<std::size_t>(n));
+    for (cpy::Py_ssize_t i = 0; i < n; ++i) {
+        v.push_back(elem(cpy::PyList_GetItem(o, i)));  // borrowed
+    }
+    return v;
+}
+
+// dict[K, V] <- PyDict. Key/value refs are borrowed (PyDict_Next), walked in
+// insertion order. Key converts before value (left-to-right, CPython arg order).
+template <class K, class V, class KF, class VF>
+tpy::ordered_map<K, V> dict_from_py(cpy::PyObject *o, KF kf, VF vf) {
+    if (cpy::PyType_IsSubtype(cpy::Py_TYPE(o), &cpy::PyDict_Type) == 0) {
+        cpy::PyErr_SetString(cpy::PyExc_TypeError, "expected a dict");
+        throw MarshalError{};
+    }
+    tpy::ordered_map<K, V> m;
+    cpy::PyObject *k = nullptr, *val = nullptr;
+    cpy::Py_ssize_t pos = 0;
+    while (cpy::PyDict_Next(o, &pos, &k, &val) != 0) {
+        K kk = kf(k);
+        m.insert_or_assign(std::move(kk), vf(val));
+    }
+    return m;
+}
+
+// set[T] <- PySet/PyFrozenSet. No stable-ABI indexed access, so iterate the
+// iterator protocol; each PyIter_Next yields a NEW ref to release -- even when
+// the element conversion throws mid-iteration.
+template <class T, class Fn>
+tpy::ordered_set<T> set_from_py(cpy::PyObject *o, Fn elem) {
+    cpy::PyTypeObject *ty = cpy::Py_TYPE(o);
+    if (cpy::PyType_IsSubtype(ty, &cpy::PySet_Type) == 0 &&
+        cpy::PyType_IsSubtype(ty, &cpy::PyFrozenSet_Type) == 0) {
+        cpy::PyErr_SetString(cpy::PyExc_TypeError, "expected a set");
+        throw MarshalError{};
+    }
+    cpy::PyObject *it = cpy::PyObject_GetIter(o);
+    if (it == nullptr) {
+        throw MarshalError{};
+    }
+    tpy::ordered_set<T> s;
+    cpy::PyObject *item = nullptr;
+    while ((item = cpy::PyIter_Next(it)) != nullptr) {
+        try {
+            s.insert(elem(item));
+        } catch (...) {
+            cpy::Py_DecRef(item);
+            cpy::Py_DecRef(it);
+            throw;
+        }
+        cpy::Py_DecRef(item);
+    }
+    cpy::Py_DecRef(it);
+    if (cpy::PyErr_Occurred() != nullptr) {  // PyIter_Next failed mid-iteration
+        throw MarshalError{};
+    }
+    return s;
+}
+
+namespace detail {
+// Braced-init guarantees left-to-right evaluation of the per-index conversions.
+template <class Tuple, class FnTuple, std::size_t... I>
+Tuple tuple_from_py_impl(cpy::PyObject *o, FnTuple &fns,
+                         std::index_sequence<I...>) {
+    return Tuple{std::get<I>(fns)(
+        cpy::PyTuple_GetItem(o, static_cast<cpy::Py_ssize_t>(I)))...};  // borrowed
+}
+}  // namespace detail
+
+// tuple[Ts...] <- PyTuple, fixed arity. Ts are the explicit element types; the
+// glue supplies one conversion callable per element (Fns has the same length).
+template <class... Ts, class... Fns>
+std::tuple<Ts...> tuple_from_py(cpy::PyObject *o, Fns... fns) {
+    if (cpy::PyType_IsSubtype(cpy::Py_TYPE(o), &cpy::PyTuple_Type) == 0) {
+        cpy::PyErr_SetString(cpy::PyExc_TypeError, "expected a tuple");
+        throw MarshalError{};
+    }
+    if (cpy::PyTuple_Size(o) != static_cast<cpy::Py_ssize_t>(sizeof...(Ts))) {
+        cpy::PyErr_SetString(cpy::PyExc_TypeError,
+                             "tuple has the wrong number of elements");
+        throw MarshalError{};
+    }
+    auto fn_tuple = std::forward_as_tuple(fns...);
+    return detail::tuple_from_py_impl<std::tuple<Ts...>>(
+        o, fn_tuple, std::index_sequence_for<Fns...>{});
+}
+
+// std::vector<T> -> PyList. elem(e) yields a NEW ref (or nullptr); SetItem steals.
+template <class T, class Fn>
+cpy::PyObject *list_to_py(const std::vector<T> &v, Fn elem) {
+    cpy::PyObject *lst = cpy::PyList_New(static_cast<cpy::Py_ssize_t>(v.size()));
+    if (lst == nullptr) {
+        return nullptr;
+    }
+    cpy::Py_ssize_t i = 0;
+    for (const auto &e : v) {
+        cpy::PyObject *pe = elem(e);
+        if (pe == nullptr) {
+            cpy::Py_DecRef(lst);
+            return nullptr;
+        }
+        cpy::PyList_SetItem(lst, i++, pe);  // steals pe
+    }
+    return lst;
+}
+
+// tpy::ordered_map<K, V> -> PyDict (insertion order). SetItem does NOT steal.
+template <class K, class V, class KF, class VF>
+cpy::PyObject *dict_to_py(const tpy::ordered_map<K, V> &m, KF kf, VF vf) {
+    cpy::PyObject *d = cpy::PyDict_New();
+    if (d == nullptr) {
+        return nullptr;
+    }
+    for (auto it = m.items_begin(); it != m.items_end(); ++it) {
+        auto kv = *it;  // pair<const K&, const V&>
+        cpy::PyObject *pk = kf(kv.first);
+        if (pk == nullptr) {
+            cpy::Py_DecRef(d);
+            return nullptr;
+        }
+        cpy::PyObject *pv = vf(kv.second);
+        if (pv == nullptr) {
+            cpy::Py_DecRef(pk);
+            cpy::Py_DecRef(d);
+            return nullptr;
+        }
+        int rc = cpy::PyDict_SetItem(d, pk, pv);
+        cpy::Py_DecRef(pk);
+        cpy::Py_DecRef(pv);
+        if (rc < 0) {
+            cpy::Py_DecRef(d);
+            return nullptr;
+        }
+    }
+    return d;
+}
+
+// tpy::ordered_set<T> -> PySet (insertion order). Add does NOT steal.
+template <class T, class Fn>
+cpy::PyObject *set_to_py(const tpy::ordered_set<T> &s, Fn elem) {
+    cpy::PyObject *ps = cpy::PySet_New(nullptr);
+    if (ps == nullptr) {
+        return nullptr;
+    }
+    for (const auto &e : s) {
+        cpy::PyObject *pe = elem(e);
+        if (pe == nullptr) {
+            cpy::Py_DecRef(ps);
+            return nullptr;
+        }
+        int rc = cpy::PySet_Add(ps, pe);
+        cpy::Py_DecRef(pe);
+        if (rc < 0) {
+            cpy::Py_DecRef(ps);
+            return nullptr;
+        }
+    }
+    return ps;
+}
+
+namespace detail {
+inline bool tuple_set_or_fail(cpy::PyObject *tup, cpy::Py_ssize_t i,
+                              cpy::PyObject *pe) {
+    if (pe == nullptr) {
+        return false;
+    }
+    cpy::PyTuple_SetItem(tup, i, pe);  // steals pe
+    return true;
+}
+
+template <class Tuple, class FnTuple, std::size_t... I>
+cpy::PyObject *tuple_to_py_impl(const Tuple &t, FnTuple &fns,
+                                std::index_sequence<I...>) {
+    cpy::PyObject *tup = cpy::PyTuple_New(static_cast<cpy::Py_ssize_t>(sizeof...(I)));
+    if (tup == nullptr) {
+        return nullptr;
+    }
+    // Left-to-right; once one element fails, stop converting the rest. A
+    // partially-filled tuple's unset slots are NULL, which Py_DecRef tolerates.
+    bool ok = true;
+    // `&&` short-circuits once ok is false, so a failed element skips every
+    // later conversion (the call and its argument are never evaluated).
+    ((ok = ok && tuple_set_or_fail(
+          tup, static_cast<cpy::Py_ssize_t>(I),
+          std::get<I>(fns)(std::get<I>(t)))),
+     ...);
+    if (!ok) {
+        cpy::Py_DecRef(tup);
+        return nullptr;
+    }
+    return tup;
+}
+}  // namespace detail
+
+// std::tuple<Ts...> -> PyTuple. One conversion callable per element.
+template <class... Ts, class... Fns>
+cpy::PyObject *tuple_to_py(const std::tuple<Ts...> &t, Fns... fns) {
+    auto fn_tuple = std::forward_as_tuple(fns...);
+    return detail::tuple_to_py_impl(t, fn_tuple, std::index_sequence_for<Ts...>{});
 }
 
 }  // namespace tpy::interop

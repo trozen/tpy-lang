@@ -18,8 +18,10 @@ from typing import TYPE_CHECKING, TextIO
 from ..parse import TpyModule, TpyVarDecl
 from ..typesys import TpyType, is_void_like_type, FinalType
 from ..type_def_registry import (
-    is_boundary_marshallable, is_exposed_class, is_exposed_enum, _boundary_inner,
-    enum_info_of, is_str_view_type, boundary_cpp_type, boundary_unmarshallable_msg,
+    is_boundary_marshallable, is_function_boundary_marshallable, is_exposed_class,
+    is_exposed_enum, _boundary_inner, enum_info_of, is_str_view_type,
+    boundary_cpp_type, boundary_unmarshallable_msg,
+    _container_element_types, is_list, is_dict, is_set,
 )
 from .context import (
     qualified_cpp_name, escape_cpp_name, module_to_include_path, CodeGenError)
@@ -209,12 +211,75 @@ class ExtensionGenerator:
                   f'"{"O" * n}:{fn_label}", __kwlist, {addrs})) '
                   f"return {fail_ret};\n")
 
+    def _marshal_in_expr(self, typ: TpyType, src: str, depth: int) -> str:
+        """A C++ expression converting the borrowed PyObject* `src` into the TPy
+        value of `typ`. Recurses for containers -- the glue, not a C++ template,
+        drives the element choice because the C++ type is ambiguous at the leaves
+        (list[bytes] and list[list[UInt8]] share a C++ type) -- and bottoms out
+        at from_py<leaf>."""
+        inner = _boundary_inner(typ)
+        elems = _container_element_types(inner)
+        if elems is None:
+            return f"::tpy::interop::from_py<{boundary_cpp_type(inner)}>({src})"
+        if is_list(inner):
+            return (f"::tpy::interop::list_from_py<{self._elem_cpp(elems[0])}>("
+                    f"{src}, {self._in_lambda(elems[0], depth)})")
+        if is_set(inner):
+            return (f"::tpy::interop::set_from_py<{self._elem_cpp(elems[0])}>("
+                    f"{src}, {self._in_lambda(elems[0], depth)})")
+        if is_dict(inner):
+            return (f"::tpy::interop::dict_from_py<{self._elem_cpp(elems[0])}, "
+                    f"{self._elem_cpp(elems[1])}>({src}, "
+                    f"{self._in_lambda(elems[0], depth)}, "
+                    f"{self._in_lambda(elems[1], depth)})")
+        targs = ", ".join(self._elem_cpp(e) for e in elems)
+        tfns = ", ".join(self._in_lambda(e, depth) for e in elems)
+        return f"::tpy::interop::tuple_from_py<{targs}>({src}, {tfns})"
+
+    def _in_lambda(self, et: TpyType, depth: int) -> str:
+        var = f"__e{depth}"
+        return (f"[](::tpy::cpy::PyObject *{var}) {{ return "
+                f"{self._marshal_in_expr(et, var, depth + 1)}; }}")
+
+    def _marshal_out_expr(self, typ: TpyType, src: str, depth: int) -> str:
+        """A C++ expression producing a new PyObject* (nullptr on failure) from
+        the TPy value `src`. Mirror of _marshal_in_expr; container leaves are
+        scalar/str/bytes (exposed-class/enum elements are rejected at sema)."""
+        inner = _boundary_inner(typ)
+        elems = _container_element_types(inner)
+        if elems is None:
+            return f"::tpy::interop::to_py({src})"
+        if is_list(inner):
+            return (f"::tpy::interop::list_to_py("
+                    f"{src}, {self._out_lambda(elems[0], depth)})")
+        if is_set(inner):
+            return (f"::tpy::interop::set_to_py("
+                    f"{src}, {self._out_lambda(elems[0], depth)})")
+        if is_dict(inner):
+            return (f"::tpy::interop::dict_to_py({src}, "
+                    f"{self._out_lambda(elems[0], depth)}, "
+                    f"{self._out_lambda(elems[1], depth)})")
+        tfns = ", ".join(self._out_lambda(e, depth) for e in elems)
+        return f"::tpy::interop::tuple_to_py({src}, {tfns})"
+
+    def _out_lambda(self, et: TpyType, depth: int) -> str:
+        var = f"__o{depth}"
+        return (f"[](const {self._elem_cpp(et)} &{var}) {{ return "
+                f"{self._marshal_out_expr(et, var, depth + 1)}; }}")
+
+    def _elem_cpp(self, et: TpyType) -> str:
+        # Stored form: a container holds owned elements (str -> std::string,
+        # bytes -> std::vector<uint8_t>), matching what the container's own C++
+        # render instantiates and what from_py<leaf>/to_py are keyed on.
+        return _boundary_inner(et).to_cpp_stored()
+
     def _emit_marshal_in(self, out: TextIO, idx: int, typ: TpyType,
                          sym: str) -> str:
         """Marshal arg a{idx} into a local; return the token to pass at the
         call. A class param binds a reference to the live embedded payload --
         the borrow that makes mutation through it write through to the same
-        PyObject; a scalar/str/bytes param copies in via from_py."""
+        PyObject; a scalar/str/bytes param copies in via from_py; a container
+        param copies in O(n) via the recursive glue."""
         if is_exposed_class(typ):
             cpp, tv = self._class_cpp_var(typ, sym)
             out.write(f"        {cpp} &__p{idx} = "
@@ -224,6 +289,10 @@ class ExtensionGenerator:
             cpp, ev = self._enum_cpp_var(typ, sym)
             out.write(f"        {cpp} __p{idx} = "
                       f"::tpy::interop::enum_from_py<{cpp}>(a{idx}, {ev});\n")
+        elif _container_element_types(_boundary_inner(typ)) is not None:
+            cpp = boundary_cpp_type(_boundary_inner(typ))
+            out.write(f"        {cpp} __p{idx} = "
+                      f"{self._marshal_in_expr(typ, f'a{idx}', 0)};\n")
         else:
             cpp = boundary_cpp_type(_boundary_inner(typ))
             out.write(f"        {cpp} __p{idx} = "
@@ -250,6 +319,9 @@ class ExtensionGenerator:
             und = enum_info_of(_boundary_inner(ret_typ)).underlying_type.to_cpp()
             out.write(f"        return ::tpy::interop::enum_to_py({ev}, "
                       f"static_cast<{und}>({call_expr}));\n")
+        elif _container_element_types(_boundary_inner(ret_typ)) is not None:
+            out.write(f"        return "
+                      f"{self._marshal_out_expr(ret_typ, call_expr, 0)};\n")
         else:
             out.write(f"        return ::tpy::interop::to_py({call_expr});\n")
 
@@ -512,7 +584,7 @@ class ExtensionGenerator:
             # boundary types; this asserts the contract to catch sema/codegen
             # drift loudly rather than emit a TU that won't compile.
             allow_void = what == "return"
-            assert is_boundary_marshallable(t, allow_void), \
+            assert is_function_boundary_marshallable(t, allow_void), \
                 boundary_unmarshallable_msg(fn.name, what, boundary_cpp_type(t))
 
         wrappers: list[tuple[str, str, str, bool]] = []  # (pyname, wrap, flag, kw)

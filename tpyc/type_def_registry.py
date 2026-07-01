@@ -545,7 +545,52 @@ def is_boundary_marshallable(t: "TpyType | None", allow_void: bool = False) -> b
     inner = _boundary_inner(t)
     td = type_def_of(inner)
     # An @export class is admitted through the same per-type fact the scalars
-    # use: sema sets boundary_marshal on its (dynamic) TypeDef.
+    # use: sema sets boundary_marshal on its (dynamic) TypeDef. This is the BASE
+    # rule -- scalar/str/bytes leaves + @export classes/enums -- shared by the
+    # exposed-CLASS field/method boundary and enums, where container marshalling
+    # is not wired yet. The @export FUNCTION boundary additionally admits
+    # containers; see is_function_boundary_marshallable.
+    return td is not None and td.boundary_marshal
+
+
+def is_function_boundary_marshallable(t: "TpyType | None",
+                                      allow_void: bool = False) -> bool:
+    """The @export FUNCTION boundary: the base rule plus list/dict/set/tuple of
+    marshallable elements (O(n) recursive copy-in/out). Containers are not yet
+    wired at the exposed-class field/method or enum boundaries, so those keep the
+    base `is_boundary_marshallable`."""
+    inner = _boundary_inner(t) if t is not None else t
+    if inner is not None:
+        elems = _container_element_types(inner)
+        if elems is not None:
+            return all(_is_marshallable_element(e) for e in elems)
+    return is_boundary_marshallable(t, allow_void)
+
+
+def _container_element_types(t: "TpyType") -> "list[TpyType] | None":
+    """The element/key/value types of a list/dict/set/tuple, else None. list/set
+    expose one element type, dict its (key, value), tuple its fixed sequence."""
+    from tpyc.typesys import TupleType
+    if isinstance(t, TupleType):
+        return list(t.element_types)
+    if is_list(t) or is_set(t):
+        return [a for a in t.type_args if not isinstance(a, int)][:1]
+    if is_dict(t):
+        return [a for a in t.type_args if not isinstance(a, int)][:2]
+    return None
+
+
+def _is_marshallable_element(t: "TpyType") -> bool:
+    """Whether `t` may appear as a container element/key/value: a scalar/str/
+    bytes leaf or a nested marshallable container. Unlike the top-level rule,
+    exposed class/enum types are rejected here -- they have no per-element type
+    handle yet (deferred)."""
+    inner = _boundary_inner(t)
+    if _container_element_types(inner) is not None:
+        return is_function_boundary_marshallable(inner)  # nested container
+    if is_exposed_class(inner) or is_exposed_enum(inner):
+        return False
+    td = type_def_of(inner)
     return td is not None and td.boundary_marshal
 
 
@@ -601,7 +646,9 @@ def boundary_unmarshallable_msg(name: str, what: str, cpp: str,
     return (f"@export {kind} '{name}': {what} type '{cpp}' is not yet "
             f"marshallable across the CPython boundary "
             f"(supported: the fixed-width int types, int, float, bool, str, "
-            f"bytes, and @export classes/enums defined in this module)")
+            f"bytes, @export classes/enums defined in this module, and -- for "
+            f"@export function params/returns -- list/dict/set/tuple of "
+            f"marshallable elements)")
 
 
 # Single-qname primitive predicates.
