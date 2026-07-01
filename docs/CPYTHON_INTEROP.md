@@ -277,6 +277,11 @@ cost embedding nothing later. It is *the* hook to reserve.
 | `Optional[T]` / None | None | O(1) | |
 | `A \| B` union | tag dispatch | varies | |
 
+> `str` / `PyUnicode` round-trip fidelity depends on the build's string width
+> (`STRING_WIDTH_DESIGN.md`): width 4 round-trips any Python `str` losslessly,
+> so Unicode extensions build at width 4; a narrower build (e.g. width 1 /
+> Latin-1) accepts only strings in its range and errors otherwise.
+
 ### Ownership rule
 
 A `PyObject*` entering TPy is an owned, refcounted resource -> model it as

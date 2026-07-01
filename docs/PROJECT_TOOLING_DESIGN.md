@@ -586,7 +586,7 @@ accrete as ad-hoc one-off flags. Initial set:
 | `default-int` | Int32 / Int64 / BigInt | per-module (already in `options.json`); cross-call mixing needs care |
 | `default-float` | Float64 / Float32 | per-module (sibling of `default-int`) |
 | panic mode | abort (`std::exit`) / throw (catchable) | whole-program-ish; `.so` extension builds want throw (see `CPYTHON_INTEROP.md`) |
-| `str` representation | 8-bit / utf-8 | **whole-program-consistent** -- mixing across a call boundary is a UAF/corruption hazard |
+| `str` character width | 1 (Latin-1) / 2 / 4 / PEP-393 (default 4) | **whole-artifact** -- it is the `str` ABI; mixing widths across a boundary is a corruption hazard. Resolved design: `STRING_WIDTH_DESIGN.md` |
 | integer overflow checks | on (panic) / off (wrap) | per-module / per-function |
 | integer `//` / `%` | Python floor (default; parity) / C truncation (perf) | per-module / per-function (no boundary hazard) |
 | bounds checks (indexing) | on / off | per-module / per-function |

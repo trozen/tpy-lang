@@ -1,5 +1,15 @@
 # String Handling Design
 
+> **Scope note (current-state doc).** This describes the *shipped* string
+> implementation, which is accurate today. The character *representation* axis
+> below -- `Char` = `char`, byte-indexed `str`, and the ASCII-only case/`is*`
+> method behavior -- is slated to change: `docs/STRING_WIDTH_DESIGN.md` makes
+> `str` a Python-correct Unicode type with a build-time character width
+> (`Char` becomes a code point). That doc is the target design; this one is
+> updated when it is implemented. The ownership model (`str`/`StrView`/`String`,
+> PendingStrType), the method list, coercions, and f-strings are unaffected by
+> the width work.
+
 ## Roadmap
 
 | Feature | Status |

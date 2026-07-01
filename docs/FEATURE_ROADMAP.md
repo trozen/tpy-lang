@@ -151,6 +151,7 @@ of phase, to avoid costly retrofitting when concurrency arrives.
 | H1 | CPython interop (extension mode + embedding hooks) | XL | 🚧 v1.0 in progress (free funcs: all scalars + void return + str/bytes copy-in + list/dict/set/tuple copy-in + numeric `Span[T]` buffer-protocol copy-in (param only) + positional/keyword args; built-in + user exception classes (type crossing); exposed classes via `PyType_FromSpec`; enums + `Final` constants; local `.so` build) -- design in [`docs/CPYTHON_INTEROP.md`](CPYTHON_INTEROP.md) | [XI](#cpython-interop) |
 | H2 | Project / build / dependency tooling (`tpx` porcelain) | XL | 🔬 Research -- design in [`docs/PROJECT_TOOLING_DESIGN.md`](PROJECT_TOOLING_DESIGN.md) | [XII](#project--build--dependency-tooling) |
 | H3 | Windows support + target-aware conditional compilation | XL | 🔬 Research -- needs design (see note below) | -- |
+| H4 | Unicode `str` / build-time string width (1/2/4/PEP-393) | XL | 🔬 Design done -- see [`docs/STRING_WIDTH_DESIGN.md`](STRING_WIDTH_DESIGN.md) | -- |
 
 **H3 -- Cross-platform / Windows.** Linux + macOS/*BSD work today via a
 three-layer pattern (C++ `#ifdef` in runtime `.cpp`, `native_global` for
@@ -908,7 +909,7 @@ argument parsing (call-style syntax).
 
 Remaining: `default-int` per-module override, `range-check` toggle. These are
 the first members of a broader **compilation-options / semantic-knobs**
-surface (panic abort-vs-throw, `str` 8-bit-vs-utf8, bounds/deref/div-zero/
+surface (panic abort-vs-throw, `str` character width (`STRING_WIDTH_DESIGN.md`), bounds/deref/div-zero/
 overflow checks, `assert` stripping, `@noalloc` enforcement) that wants one
 coherent home rather than ad-hoc flags -- design captured in
 `PROJECT_TOOLING_DESIGN.md` "Compilation options (semantic knobs)".
