@@ -93,8 +93,12 @@ void main() {
     ::tpystd::ssl::SSLSocket srv = std::move(std::get<1>(__tup_1));
     // srv.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 6\r\n\r\nsecure")
     srv.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Length: 6\r\n\r\nsecure", 44));
-    // conn: Box[_Connection] = Box(HTTPSConnection("das.test", 443, None, None, cli))
-    ::tpystd::tplib::box::Box<::tpystd::http::client::_Connection> conn = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPSConnection>(::tpystd::http::client::HTTPSConnection("das.test", 443, std::nullopt, nullptr, std::move(cli)));
+    // hc = HTTPSConnection("das.test", 443, None, None)
+    ::tpystd::http::client::HTTPSConnection hc = ::tpystd::http::client::HTTPSConnection("das.test", 443, std::nullopt, nullptr);
+    // hc._tls = cli
+    hc._tls = std::move(cli);
+    // conn: Box[_Connection] = Box(hc)
+    ::tpystd::tplib::box::Box<::tpystd::http::client::_Connection> conn = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPSConnection>(std::move(hc));
     // resp = _urlopen("https://das.test/health", None, None, None, conn)
     ::tpystd::http::client::HTTPResponse resp = ::tpystd::urllib::request::_urlopen("https://das.test/health", std::nullopt, std::nullopt, nullptr, std::move(conn));
     // print(resp.status, resp.reason)

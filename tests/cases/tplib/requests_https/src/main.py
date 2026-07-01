@@ -76,7 +76,9 @@ def main() -> None:
                 b"Content-Length: 13\r\n\r\n{\"rows\": 42}\n")
 
     s = requests.Session()
-    s._connection = Box(HTTPSConnection("das.test", 443, None, None, cli))
+    conn = HTTPSConnection("das.test", 443, None, None)
+    conn._tls = cli
+    s._connection = Box(conn)
     r = s.get("https://das.test/v1/tables", {"db": "das"})
     print(r.status_code, r.ok, r.reason)
     print(r.headers["Content-Type"])

@@ -688,6 +688,12 @@ class FunctionTrackingState:
 
     # --- Prescan / last-use ---
     current_reassigned_vars: set[str] = field(default_factory=set)
+    # Locals whose sole binding is a fresh constructor call of their exact static
+    # type (never rebound -- field mutation doesn't count). Their dynamic type is
+    # provably their static type, so the polymorphic-slicing guard may move them
+    # into an owned poly slot (`Box[P]`) without slicing, exactly like a
+    # fresh-rvalue ctor at the store site.
+    current_fresh_ctor_locals: set[str] = field(default_factory=set)
     # Fresh str/bytes view tuple-unpack targets, candidates for owned-promotion
     # if they later get hoisted out of a branch (a view would then outlive its
     # source __tup temp / branch-local by-ref source). Consumed at the

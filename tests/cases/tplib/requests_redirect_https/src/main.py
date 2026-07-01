@@ -80,9 +80,12 @@ def main() -> None:
               b"Content-Length: 0\r\n\r\n")
 
     s = requests.Session()
-    s._connection = Box(HTTPConnection("api.test", 80, None, a))
-    s._redirect_connections = [Box(HTTPSConnection("secure.test", 443, None,
-                                                   None, cli))]
+    h0 = HTTPConnection("api.test", 80)
+    h0.sock = a
+    s._connection = Box(h0)
+    h1 = HTTPSConnection("secure.test", 443, None, None)
+    h1._tls = cli
+    s._redirect_connections = [Box(h1)]
     r = s.get("http://api.test/start")
     print(r.status_code, r.text)
     print(r.url)

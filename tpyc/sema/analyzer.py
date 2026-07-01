@@ -3439,6 +3439,7 @@ class SemanticAnalyzer:
         self.ctx.all_last_uses |= analyze_last_uses(
             stmts, liveness_alias_sources(self.top_level_scan_result))
         self.ctx.func.current_reassigned_vars = self.top_level_scan_result.reassigned.copy()
+        self.ctx.func.current_fresh_ctor_locals = set()
         self.ctx.func.current_lvalue_reassigned = self.top_level_scan_result.lvalue_reassigned.copy()
         self.ctx.func.current_aug_assigned_vars = self.top_level_scan_result.aug_assigned.copy()
         self.ctx.func.current_alias_sources = dict(self.top_level_scan_result.alias_sources)

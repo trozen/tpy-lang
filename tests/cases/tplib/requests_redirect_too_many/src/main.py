@@ -14,8 +14,12 @@ def main() -> None:
     b.sendall(b"HTTP/1.1 302 Found\r\nLocation: /two\r\nContent-Length: 0\r\n\r\n")
     d.sendall(b"HTTP/1.1 302 Found\r\nLocation: /three\r\nContent-Length: 0\r\n\r\n")
     s = requests.Session()
-    s._connection = Box(HTTPConnection("api.test", 80, None, a))
-    s._redirect_connections = [Box(HTTPConnection("api.test", 80, None, c))]
+    h0 = HTTPConnection("api.test", 80)
+    h0.sock = a
+    s._connection = Box(h0)
+    h1 = HTTPConnection("api.test", 80)
+    h1.sock = c
+    s._redirect_connections = [Box(h1)]
     s.max_redirects = 1
     try:
         s.get("http://api.test/one")

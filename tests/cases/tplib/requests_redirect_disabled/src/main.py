@@ -12,7 +12,9 @@ def main() -> None:
     b.sendall(b"HTTP/1.1 302 Found\r\nLocation: /elsewhere\r\n"
               b"Content-Length: 0\r\n\r\n")
     s = requests.Session()
-    s._connection = Box(HTTPConnection("api.test", 80, None, a))
+    conn = HTTPConnection("api.test", 80)
+    conn.sock = a
+    s._connection = Box(conn)
     r = s.get("http://api.test/start", None, None, None, False)
     print(r.status_code, r.ok)
     print(r.url)

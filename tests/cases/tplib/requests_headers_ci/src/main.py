@@ -18,7 +18,9 @@ def main() -> None:
               b"X-Multi: b\r\n"
               b"Content-Length: 2\r\n\r\nok")
     s = requests.Session()
-    s._connection = Box(HTTPConnection("api.test", 80, None, a))
+    conn = HTTPConnection("api.test", 80)
+    conn.sock = a
+    s._connection = Box(conn)
     r = s.get("http://api.test/")
     b.recv(65536)
     b.close()

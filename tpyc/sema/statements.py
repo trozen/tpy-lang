@@ -2599,6 +2599,7 @@ class StatementAnalyzer:
         self.ctx.all_last_uses |= analyze_last_uses(
             func.body, liveness_alias_sources(scan))
         self.ctx.func.current_reassigned_vars = scan.reassigned.copy()
+        self.ctx.func.current_fresh_ctor_locals = set()
         self.ctx.func.tuple_unpack_view_targets = set()
         self.ctx.func.current_lvalue_reassigned = scan.lvalue_reassigned.copy()
         self.ctx.func.current_aug_assigned_vars = scan.aug_assigned.copy()
@@ -4018,6 +4019,25 @@ class StatementAnalyzer:
                 if is_rvalue_source(self.ctx, stmt.init):
                     self.ctx.func.owned_locals.add(stmt.name)
                     self.ctx.func.ever_owned_locals.add(stmt.name)
+                    # Fresh-ctor local: a non-reassigned local whose sole binding
+                    # is a constructor call of its exact static type. Its dynamic
+                    # type is then provably its static type, so the
+                    # polymorphic-slicing guard may move it into an owned poly slot
+                    # (Box[P]) like a fresh-rvalue ctor at the store.
+                    # current_reassigned_vars comes from a whole-function prescan
+                    # (all branches, flat `declared` set), so ANY later rebind --
+                    # in this or any other branch -- excludes the name here. That
+                    # is why the set needs no per-branch save/restore: a name that
+                    # could hold a subclass value on some path was never added.
+                    # var_type == init_type excludes a widening annotation.
+                    if (stmt.name not in self.ctx.func.current_reassigned_vars
+                            and isinstance(stmt.init, TpyCall)
+                            and isinstance(stmt.init.func, TpyName)
+                            and self.ctx.registry.get_record(stmt.init.func.name) is not None
+                            and init_type is not None and var_type == init_type):
+                        self.ctx.func.current_fresh_ctor_locals.add(stmt.name)
+                    else:
+                        self.ctx.func.current_fresh_ctor_locals.discard(stmt.name)
                 else:
                     self.ctx.func.owned_locals.discard(stmt.name)
                     record_stmt_borrow_binding(self.ctx, stmt.name, var_type, stmt.init)

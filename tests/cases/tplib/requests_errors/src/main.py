@@ -14,7 +14,9 @@ def main() -> None:
     a, b = socket.socketpair()
     b.sendall(b"HTTP/1.1 404 Not Found\r\nContent-Length: 3\r\n\r\nno!")
     s = requests.Session()
-    s._connection = Box(HTTPConnection("api.test", 80, None, a))
+    conn = HTTPConnection("api.test", 80)
+    conn.sock = a
+    s._connection = Box(conn)
     r = s.get("http://api.test/missing")
     print(r.status_code, r.ok, r.text)
     try:
@@ -36,7 +38,9 @@ def main() -> None:
     p, q = socket.socketpair()
     q.close()
     s2 = requests.Session()
-    s2._connection = Box(HTTPConnection("api.test", 80, None, p))
+    conn2 = HTTPConnection("api.test", 80)
+    conn2.sock = p
+    s2._connection = Box(conn2)
     try:
         s2.get("http://api.test/x")
         print("no-raise")

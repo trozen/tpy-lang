@@ -15,7 +15,9 @@ def _hang_request() -> None:
     a, b = socket.socketpair()
     a.settimeout(0.05)
     s = requests.Session()
-    s._connection = Box(HTTPConnection("api.test", 8002, None, a))
+    conn = HTTPConnection("api.test", 8002)
+    conn.sock = a
+    s._connection = Box(conn)
     s.get("http://api.test:8002/hang")
     b.close()
 

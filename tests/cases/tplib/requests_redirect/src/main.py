@@ -17,8 +17,12 @@ def main() -> None:
     d.sendall(b"HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n"
               b"Content-Length: 5\r\n\r\nhello")
     s = requests.Session()
-    s._connection = Box(HTTPConnection("api.test", 80, None, a))
-    s._redirect_connections = [Box(HTTPConnection("api.test", 80, None, c))]
+    h0 = HTTPConnection("api.test", 80)
+    h0.sock = a
+    s._connection = Box(h0)
+    h1 = HTTPConnection("api.test", 80)
+    h1.sock = c
+    s._redirect_connections = [Box(h1)]
     r = s.get("http://api.test/v1/tables")
     print(r.status_code, r.ok, r.text)
     print(r.url)

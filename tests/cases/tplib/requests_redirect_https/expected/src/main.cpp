@@ -104,11 +104,18 @@ void main() {
     b.sendall(::tpy::bytes_literal("HTTP/1.1 302 Found\r\nLocation: https://secure.test/login\r\nContent-Length: 0\r\n\r\n", 78));
     // s = requests.Session()
     ::tpystd::tplib::requests::Session s = ::tpystd::tplib::requests::Session();
-    // s._connection = Box(HTTPConnection("api.test", 80, None, a))
-    s._connection = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(::tpystd::http::client::HTTPConnection("api.test", 80, std::nullopt, std::move(a)));
-    // s._redirect_connections = [Box(HTTPSConnection("secure.test", 443, None,
-    // None, cli))]
-    s._redirect_connections = ::tpy::make_vector<::tpystd::tplib::box::Box<::tpystd::http::client::_Connection>>(::tpystd::tplib::box::Box<::tpystd::http::client::HTTPSConnection>(::tpystd::http::client::HTTPSConnection("secure.test", 443, std::nullopt, nullptr, std::move(cli))));
+    // h0 = HTTPConnection("api.test", 80)
+    ::tpystd::http::client::HTTPConnection h0 = ::tpystd::http::client::HTTPConnection("api.test", 80);
+    // h0.sock = a
+    h0.sock = std::move(a);
+    // s._connection = Box(h0)
+    s._connection = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(h0));
+    // h1 = HTTPSConnection("secure.test", 443, None, None)
+    ::tpystd::http::client::HTTPSConnection h1 = ::tpystd::http::client::HTTPSConnection("secure.test", 443, std::nullopt, nullptr);
+    // h1._tls = cli
+    h1._tls = std::move(cli);
+    // s._redirect_connections = [Box(h1)]
+    s._redirect_connections = ::tpy::make_vector<::tpystd::tplib::box::Box<::tpystd::http::client::_Connection>>(::tpystd::tplib::box::Box<::tpystd::http::client::HTTPSConnection>(std::move(h1)));
     // r = s.get("http://api.test/start")
     ::tpystd::tplib::requests::Response r = s.get("http://api.test/start");
     // print(r.status_code, r.text)

@@ -15,8 +15,12 @@ void main() {
     b.sendall(::tpy::bytes_literal("HTTP/1.1 302 Found\r\nLocation: /elsewhere\r\nContent-Length: 0\r\n\r\n", 63));
     // s = requests.Session()
     ::tpystd::tplib::requests::Session s = ::tpystd::tplib::requests::Session();
-    // s._connection = Box(HTTPConnection("api.test", 80, None, a))
-    s._connection = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(::tpystd::http::client::HTTPConnection("api.test", 80, std::nullopt, std::move(a)));
+    // conn = HTTPConnection("api.test", 80)
+    ::tpystd::http::client::HTTPConnection conn = ::tpystd::http::client::HTTPConnection("api.test", 80);
+    // conn.sock = a
+    conn.sock = std::move(a);
+    // s._connection = Box(conn)
+    s._connection = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(conn));
     // r = s.get("http://api.test/start", None, None, None, False)
     ::tpystd::tplib::requests::Response r = s.get("http://api.test/start", nullptr, nullptr, std::nullopt, false);
     // print(r.status_code, r.ok)

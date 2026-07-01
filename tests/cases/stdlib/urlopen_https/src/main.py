@@ -73,7 +73,9 @@ def main() -> None:
     cli, srv = handshaken_pair()
     srv.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 6\r\n\r\nsecure")
 
-    conn: Box[_Connection] = Box(HTTPSConnection("das.test", 443, None, None, cli))
+    hc = HTTPSConnection("das.test", 443, None, None)
+    hc._tls = cli
+    conn: Box[_Connection] = Box(hc)
     resp = _urlopen("https://das.test/health", None, None, None, conn)
     print(resp.status, resp.reason)
     print(resp.read())

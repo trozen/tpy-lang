@@ -259,19 +259,21 @@ Match CPython's `create_default_context()` + `requests` `verify=True`:
   (checked at the class, not just at each box site), and `Box[_Connection]`
   stores the conformer directly as the base -- no `Adapter` -- which sidesteps
   the structural-conformance incomplete-`Adapter` bug (BUGS.md). Cost: a vtable
-  pointer per instance (concrete calls devirtualize) + box sites use the rvalue
-  form to clear the owned-polymorphic slicing guard. A prerequisite codegen fix
-  (a @dynamic-override reference-type param was const-mismatched against the
-  base pure-virtual, leaving the class abstract) landed first on master.
+  pointer per instance (concrete calls devirtualize). Two prerequisite codegen
+  fixes landed first on master: (1) a @dynamic-override reference-type param was
+  const-mismatched against the base pure-virtual, leaving the class abstract;
+  (2) the polymorphic-slicing guard over-rejected moving a freshly-constructed
+  named local into `Box[P]`, which is why a caller can now build a connection,
+  set its transport field, and box the local directly (no ctor-injection seam).
 - `requests._connect` (DONE): branches `parts.scheme == "https"` ->
   `HTTPSConnection` on port 443 and threads `verify: bool|str` into the context
   via `_ssl_context_for`; `requests.SSLError(ConnectionError)` wraps
   `ssl.SSLError`; `Authorization` is dropped across a host/scheme/port change
   (`should_strip_auth`). The redirect-hop scheme check and `urlopen` widen from
   `"http"`-only to `"http"`/`"https"` (`urlopen` takes a CPython-style
-  `context=`). `requests`/`urlopen` construct/hold `Box[_Connection]` directly
-  (rvalue form), injecting the offline-test transport via an internal `_sock`/
-  `_tls` constructor seam.
+  `context=`). `requests`/`urlopen` construct/hold `Box[_Connection]` directly;
+  the offline tests build a connection, set its `sock`/`_tls` field, then box
+  the fresh local (no ctor-injection seam -- the slicing-guard fix permits it).
 - The `tests/cases/tplib/requests_redirect_https` case was **rewritten** -- the
   http->https redirect is now followed over a real TLS hop (was: asserts it
   raises). New `requests_https` (direct https GET via the `Box[_Connection]`

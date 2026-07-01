@@ -18,9 +18,11 @@ def main() -> None:
               b"Content-Length: 24\r\n\r\n"
               b'{"name": "t", "rows": 3}')
     s = requests.Session()
-    # Inject the pre-bound socket via the ctor (an rvalue Box site -- a nominal
-    # @dynamic conformer can't be moved into Box from a named local).
-    s._connection = Box(HTTPConnection("api.test", 8002, None, a))
+    # Inject the pre-bound socket via the public sock field, then box the
+    # fresh-constructed local (the offline test seam).
+    conn = HTTPConnection("api.test", 8002)
+    conn.sock = a
+    s._connection = Box(conn)
     r = s.get("http://api.test:8002/v1/tables", {"db": "das"})
     print(r.status_code, r.ok, r.reason)
     print(r.text)

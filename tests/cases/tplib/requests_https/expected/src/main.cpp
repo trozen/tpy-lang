@@ -96,8 +96,12 @@ void main() {
     srv.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 13\r\n\r\n{\"rows\": 42}\n", 84));
     // s = requests.Session()
     ::tpystd::tplib::requests::Session s = ::tpystd::tplib::requests::Session();
-    // s._connection = Box(HTTPSConnection("das.test", 443, None, None, cli))
-    s._connection = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPSConnection>(::tpystd::http::client::HTTPSConnection("das.test", 443, std::nullopt, nullptr, std::move(cli)));
+    // conn = HTTPSConnection("das.test", 443, None, None)
+    ::tpystd::http::client::HTTPSConnection conn = ::tpystd::http::client::HTTPSConnection("das.test", 443, std::nullopt, nullptr);
+    // conn._tls = cli
+    conn._tls = std::move(cli);
+    // s._connection = Box(conn)
+    s._connection = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPSConnection>(std::move(conn));
     // r = s.get("https://das.test/v1/tables", {"db": "das"})
     ::tpy::ordered_map<std::string, std::string> __tmp_1 = ::tpy::ordered_map<std::string, std::string>({{"db", "das"}});
     ::tpystd::tplib::requests::Response r = s.get("https://das.test/v1/tables", &(__tmp_1));

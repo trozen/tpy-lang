@@ -13,7 +13,9 @@ from http.client import HTTPConnection, _Connection
 def main() -> None:
     a, b = socket.socketpair()
     b.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nhello")
-    conn: Box[_Connection] = Box(HTTPConnection("api.test", 8002, None, a))
+    hc = HTTPConnection("api.test", 8002)
+    hc.sock = a
+    conn: Box[_Connection] = Box(hc)
     resp = _urlopen("http://api.test:8002/health", None, None, None, conn)
     print(resp.status, resp.reason)
     print(resp.read())
@@ -22,7 +24,9 @@ def main() -> None:
 
     c, d = socket.socketpair()
     d.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok")
-    conn2: Box[_Connection] = Box(HTTPConnection("api.test", 80, None, c))
+    hc2 = HTTPConnection("api.test", 80)
+    hc2.sock = c
+    conn2: Box[_Connection] = Box(hc2)
     resp2 = _urlopen("http://api.test/v1", b'{"x":1}', None, None, conn2)
     print(resp2.status)
     print(d.recv(65536))

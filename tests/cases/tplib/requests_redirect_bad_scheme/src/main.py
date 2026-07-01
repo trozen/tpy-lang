@@ -13,7 +13,9 @@ def main() -> None:
               b"Location: ftp://files.test/data\r\n"
               b"Content-Length: 0\r\n\r\n")
     s = requests.Session()
-    s._connection = Box(HTTPConnection("api.test", 80, None, a))
+    conn = HTTPConnection("api.test", 80)
+    conn.sock = a
+    s._connection = Box(conn)
     try:
         s.get("http://api.test/start")
         print("NO RAISE")

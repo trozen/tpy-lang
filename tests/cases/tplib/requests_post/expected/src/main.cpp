@@ -15,8 +15,12 @@ void send(std::string_view method, std::string_view url, std::optional<std::span
     b.sendall(::tpy::bytes_literal("HTTP/1.1 201 Created\r\nContent-Length: 2\r\n\r\nok", 45));
     // s = requests.Session()
     ::tpystd::tplib::requests::Session s = ::tpystd::tplib::requests::Session();
-    // s._connection = Box(HTTPConnection("api.test", 80, None, a))
-    s._connection = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(::tpystd::http::client::HTTPConnection("api.test", 80, std::nullopt, std::move(a)));
+    // conn = HTTPConnection("api.test", 80)
+    ::tpystd::http::client::HTTPConnection conn = ::tpystd::http::client::HTTPConnection("api.test", 80);
+    // conn.sock = a
+    conn.sock = std::move(a);
+    // s._connection = Box(conn)
+    s._connection = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(conn));
     // r = s.request(method, url, None, data, body_json, None, auth)
     ::tpystd::tplib::requests::Response r = s.request(method, url, nullptr, data, body_json, nullptr, auth);
     // print(r.status_code, r.ok)

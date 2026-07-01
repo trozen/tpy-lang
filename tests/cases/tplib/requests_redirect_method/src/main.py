@@ -15,8 +15,12 @@ def run_redirect(status_line: bytes) -> tuple[bytes, bool, bool]:
     b.sendall(status_line + b"\r\nLocation: /next\r\nContent-Length: 0\r\n\r\n")
     d.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok")
     s = requests.Session()
-    s._connection = Box(HTTPConnection("api.test", 80, None, a))
-    s._redirect_connections = [Box(HTTPConnection("api.test", 80, None, c))]
+    h0 = HTTPConnection("api.test", 80)
+    h0.sock = a
+    s._connection = Box(h0)
+    h1 = HTTPConnection("api.test", 80)
+    h1.sock = c
+    s._redirect_connections = [Box(h1)]
     r = s.post("http://api.test/submit", b'{"x":1}', None, None,
                {"Content-Type": "text/plain"})
     print(r.status_code, r.url)

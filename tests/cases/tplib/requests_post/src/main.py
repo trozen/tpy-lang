@@ -16,7 +16,9 @@ def send(method: str, url: str, data: bytes | None, body_json: JsonValue | None,
     a, b = socket.socketpair()
     b.sendall(b"HTTP/1.1 201 Created\r\nContent-Length: 2\r\n\r\nok")
     s = requests.Session()
-    s._connection = Box(HTTPConnection("api.test", 80, None, a))
+    conn = HTTPConnection("api.test", 80)
+    conn.sock = a
+    s._connection = Box(conn)
     r = s.request(method, url, None, data, body_json, None, auth)
     print(r.status_code, r.ok)
     print(b.recv(65536))

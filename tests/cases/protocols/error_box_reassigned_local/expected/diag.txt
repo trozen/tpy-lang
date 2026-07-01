@@ -1,0 +1,1 @@
+main.py:28: error: cannot store 'HttpConn' borrow as owned 'HttpConn' in argument 'value' -- the dynamic type may be a subclass and would be lost (slicing). Use `Box[HttpConn]` for owned polymorphic storage: construct into the `Box` directly, or `Box(value.clone())`.

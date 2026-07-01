@@ -21,7 +21,7 @@ from ..typesys import (
     CallableType, is_fn_type, RefType, unwrap_ref_type,
     is_callable_type, is_integer_type, is_any_float_type, is_readonly_span,
     unify_literal_types,
-    is_polymorphic_class_type, SendType, SyncType, unwrap_send_sync, FrameType,
+    is_polymorphic_class_type, is_exception_type, SendType, SyncType, unwrap_send_sync, FrameType,
     disambiguated_pair)
 from .frame_traits import frame_traits_of_function, frame_type_of_function
 from .send_chain import why_not_send, why_not_sync, why_not_frame, render_chain
@@ -323,13 +323,30 @@ class TypeCompatibility:
             return
         if not is_polymorphic_class_type(src_inner, self.ctx.registry):
             return
+        # Fresh-ctor local: a non-reassigned local whose sole binding is a
+        # constructor call of its exact static type has a provably-known dynamic
+        # type (== its static type), so moving it into the owned poly slot cannot
+        # slice -- same guarantee as the fresh-rvalue ctor above, one binding hop
+        # removed. (Field mutation between construction and store is fine -- it is
+        # not a rebind, so the prescan leaves the name eligible.)
+        if (isinstance(source_expr, TpyName)
+                and self.ctx.func is not None
+                and source_expr.name in self.ctx.func.current_fresh_ctor_locals):
+            return
+        # Tailor the remediation: exception roots have the idiomatic
+        # `Box[Throwable]` shared-base form; other polymorphic roots point at
+        # their own `Box[Root]`.
+        if is_exception_type(target_inner.name, self.ctx.registry):
+            hint = (f"Use `Box[Throwable]` (or `Box[{target_inner.name}]`) for "
+                    f"owned polymorphic storage: `slot = Box(exc.clone())`.")
+        else:
+            hint = (f"Use `Box[{target_inner.name}]` for owned polymorphic "
+                    f"storage: construct into the `Box` directly, or "
+                    f"`Box(value.clone())`.")
         raise SemanticError(
             f"cannot store '{src_inner.name}' borrow as owned "
             f"'{target_inner.name}' in {context} -- the dynamic type may "
-            f"be a subclass and would be lost (slicing). Use "
-            f"`Box[Throwable]` (or `Box[{target_inner.name}]` for "
-            f"non-exception roots) for owned polymorphic storage: "
-            f"`slot = Box(e.clone())`.",
+            f"be a subclass and would be lost (slicing). " + hint,
             loc,
         )
 

@@ -20,10 +20,18 @@ void main() {
     d.sendall(::tpy::bytes_literal("HTTP/1.1 302 Found\r\nLocation: /three\r\nContent-Length: 0\r\n\r\n", 59));
     // s = requests.Session()
     ::tpystd::tplib::requests::Session s = ::tpystd::tplib::requests::Session();
-    // s._connection = Box(HTTPConnection("api.test", 80, None, a))
-    s._connection = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(::tpystd::http::client::HTTPConnection("api.test", 80, std::nullopt, std::move(a)));
-    // s._redirect_connections = [Box(HTTPConnection("api.test", 80, None, c))]
-    s._redirect_connections = ::tpy::make_vector<::tpystd::tplib::box::Box<::tpystd::http::client::_Connection>>(::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(::tpystd::http::client::HTTPConnection("api.test", 80, std::nullopt, std::move(c))));
+    // h0 = HTTPConnection("api.test", 80)
+    ::tpystd::http::client::HTTPConnection h0 = ::tpystd::http::client::HTTPConnection("api.test", 80);
+    // h0.sock = a
+    h0.sock = std::move(a);
+    // s._connection = Box(h0)
+    s._connection = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(h0));
+    // h1 = HTTPConnection("api.test", 80)
+    ::tpystd::http::client::HTTPConnection h1 = ::tpystd::http::client::HTTPConnection("api.test", 80);
+    // h1.sock = c
+    h1.sock = std::move(c);
+    // s._redirect_connections = [Box(h1)]
+    s._redirect_connections = ::tpy::make_vector<::tpystd::tplib::box::Box<::tpystd::http::client::_Connection>>(::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(h1)));
     // s.max_redirects = 1
     s.max_redirects = 1;
     // try:
