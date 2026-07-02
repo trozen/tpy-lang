@@ -58,9 +58,10 @@ cell it touches is admitted:
   incr 30, record-element incr 31) / expression statements (print + bare free-function
   call, incr 32) / container method-calls (list/dict scalar slice, stmt + value
   position, incr 33) / container-literal locals (list/Array/dict/set scalar
-  elements, incr 34) **(covered)** vs match / with / try-except / for-over-container
+  elements, incr 34) / logical and-or-not + inline chained compares (bool slice,
+  incr 36) **(covered)** vs match / with / try-except / for-over-container
   (generators / tuple-unpack / dict-value) / async-await / yield / comprehension /
-  break-continue / del-global-raise-assert / chained-compare / and-or-not **(not)**.
+  break-continue / del-global-raise-assert **(not)**.
 
 A **deferred cell** is one `(kind x form x shape)` the eligibility gate rejects.
 Two kinds, treated oppositely:
@@ -80,8 +81,8 @@ deletion is the concrete milestone that forces its tail closed.
 | AST component to delete | Deletion gate (cells that must route) | Status |
 |---|---|---|
 | **Ctor MIL emit** -- `records.py` `_extract_field_inits` / `_extract_base_inits` / `_get_non_init_stmts` + the inline ` : f(v)... {}` write | every ctor MIL field cell + body: scalar (M3a), record/Optional copy+move (M3b), ctor-call / param-field-read sources + own-optional params (M3b-rvalue), docstring/`pass` trivia body (M3c-trivia), non-init body + demotion (M3c-demotion), inheritance -- single + multi base + inherited-field writes (M3d), and str/list/dict/tuple/union/bytes fields (F3+) + cross-module/native/generic records | **PARTIAL** -- the whole scalar/record/Optional + body + inheritance surface lands (ctor self-contained tail complete); deferred cells are cross-axis-blocked -- non-record demoted-field-writes + non-record fields (F3+) + native/generic records |
-| **Body statement + expression emit** -- `statements.py` `gen_body` per-statement path + `expressions.py` `gen_expr`, for routed callables | every statement shape + expression form across every callable kind | **PARTIAL** -- straight-line shapes over the F1/F2 + scalar/bool/double-float slice |
-| **Form / conversion machinery** -- `context.py` `convert` + `CppForm`/`FormValue`, the ~12 detection predicates + ~22 local side-sets + the `RefType` wrapper (see `THIR_FORM_INVENTORY.md`) | **F-final**: the `Form` tag + `THIRFormConvert` subsume all form dispatch | **PARTIAL** -- F1/F2 forms carried; F3-F6 + RefType removal pending |
+| **Body statement + expression emit** -- `statements.py` `gen_body` per-statement path + `expressions.py` `gen_expr`, for routed callables | every statement shape + expression form across every callable kind | **PARTIAL** -- straight-line shapes over the F1/F2 + scalar/bool/double-float + str-value (F6 S1) slice, incl. logical/chained-compare exprs and scalar type-constructor calls |
+| **Form / conversion machinery** -- `context.py` `convert` + `CppForm`/`FormValue`, the ~12 detection predicates + ~22 local side-sets + the `RefType` wrapper (see `THIR_FORM_INVENTORY.md`) | **F-final**: the `Form` tag + `THIRFormConvert` subsume all form dispatch | **PARTIAL** -- F1/F2 forms carried + F3 tuple read/write + the F6 str view->owned convert (S1); F4/F5, the F6 tail (S2-S6), and RefType removal pending |
 
 These interlock: deleting `gen_body`/`gen_expr` requires the form machinery gone
 (F-final) and every statement shape routed. The **ctor MIL emit is the first
@@ -147,7 +148,25 @@ deferred (self-contained) / blocked-on-`<rung>`.
   until more of the statement-shape axis (the remaining subscript cells, for-loops,
   tuple-unpack) lands -- most corpus tuples are accessed that way.
 - F4 unions (`to_ptr_variant`/`to_value_variant`), F5 generic-slot,
-  F6 str/bytes view-split, F-final (RefType removal + retirement): **not started.**
+  F-final (RefType removal + retirement): **not started.**
+- F6 str/bytes view-split: **OPENED (S1 str values)** -- str/StrView params,
+  literal-init locals (PendingStrType resolved through ViewVarInfo at lowering),
+  print args, comparisons, `len(s)`, owned-str returns, same-type call args; the
+  view->owned copy is an explicit `THIRFormConvert` (str BORROW -> STORAGE,
+  `std::string(x)`). Deferred S-cells: S2 f-strings (`std::format` mirror + the
+  per-arg wrapper table), S3 concat/`+=` (owned results + the in-place-append
+  peephole), S4 subscript/slice/iteration (Char / `str_slice` view results),
+  S5 dict[str]/container-of-str keys+elements (static-storage literal pinning,
+  owned-slot wraps), S6 bytes (explicit `bytes_copy` wraps, `BytesPrinter`,
+  non-view-safe literals; the S1 plumbing is family-generic, but emit.py's bytes
+  convert arm is UNREACHABLE until S6 -- the cell must validate it under the
+  byte-diff, not inherit it as verified), plus: cross-type
+  str-family coercions (str<->StrView<->String -- position-dependent identity vs
+  materialization), reassigned str params (owned-copy prologue; NB this over-rejects reassigned
+  StrView params -- only owned str/bytes set `param_needs_copy_for_reassign`, so a
+  StrView widening is a free routing win for a later cell), multi-overload
+  callees with str-literal args (`_wants_str_literal_pin`), `String`/`Char`/
+  `Literal[str]` bindings, `bytearray` (a reference type, different axis).
 - F2 carry-over deferred cells (container locals, cross-module/native/generic
   records, subscript sources, narrowing-needed `->` deref, name-alias/REF_ALIAS
   reseat sources): **blocked-on-F3+** or the relevant frontier; see the F1/F2 TODO
@@ -217,8 +236,27 @@ writes (`xs[i] = v`). **Container call args landed (incr 35,
 builtin-container binding into a NON-Own concrete container param passes through as the bare
 name in `_call_eligible` + `_method_call_eligible` (no new node/emit); `Own[container]`
 (auto-move), `Span` (as_mut_span conversion), and protocol (`Iterable`) slots stay AST.
-The remaining measured co-blockers for `main()`-shaped functions: **str values / f-string
-print args** and the `Int32(0)` constructor-init. Method-call cells still deferred: `set`/`Span`/`Array` receivers (params not
+The remaining measured co-blocker for `main()`-shaped functions: **f-string print args**
+(S2; str VALUES landed with the F6 S1 cell, the `Int32(0)` constructor-init with incr 37).
+**Logical and/or/not + inline chained
+compares landed (incr 36, `THIRUnaryNot`): +2435 bodies (5689 -> 8124) -- the biggest
+single-cell gain to date** (conditions gate everything); bool-result `&&`/`||` over bool
+operands and the chained-compare pair fold reuse `THIRBinOp`'s bare-operator arm. Deferred
+by design: value-semantics `and`/`or` (non-bool result -> `_gen_logical_value` temp+ternary),
+non-bool truthiness operands (incl. `not <int>`), the statement-expr chained arm (a
+non-`_is_simple_expr` intermediate binds `_cmp` temps), bool-literal conditions
+(dead-branch elimination). The incr-36 byte-diff also exposed and closed a latent compare
+gap: the rb=None derived-comparison arm admitted RECORD operands (`not (self <= other)` from
+`@total_ordering` -- the AST derefs `(*this)`); compare operands are now pinned to resolved
+scalars (widened to the str slice when the F6 S1 cell merged: str operands emit the same
+bare/templated compare on both paths). **Scalar type-constructor calls landed
+(incr 37, `cpp_template` on `THIRCall`): +94 bodies (5689 -> 5783)** -- `Int32(0)` /
+`UInt32(x)` / `Int64(a + b)` / `Float64(1.5)` / `bool(n)` / zero-arg ctors route in every
+covered expression position; sema's fully-substituted `__init__` template expands
+receiver-less at emit, gated to positional-only templates + eligible-scalar result/args.
+Rejected-by-design (AST): str/bytes/BigInt/Float32/Char conversions (incl. `float("nan")`'s
+constexpr fold), enum / borrowing-view ctors, out-of-int32-range literals (the AST's
+`static_cast` wrap), unary-minus args. Method-call cells still deferred: `set`/`Span`/`Array` receivers (params not
 admitted), str/bytes args (owned-copy conversion), record / `Own[record]` args (ownership
 boundary -- part of the `gen_call_arg` frontier below), non-name receivers
 (`self.items.append(...)`), user-record method receivers + same-module `self.helper()` call
@@ -242,8 +280,10 @@ tuple-unpack / dict-value remain), expression statements (print + bare call land
 container method-calls landed incr 33 -- their deferred receiver/arg cells listed above),
 `async`/`await`, `yield` / generators, comprehensions,
 `break`/`continue`, `del`/`global`/`nonlocal`/`raise`/`assert`, chained
-comparisons, logical `and`/`or`/`not` (short-circuit). **Action:** continue enumerating +
-driving these as a tracked axis before claiming `gen_body`/`gen_expr` deletion is near.
+comparisons with non-simple intermediates (the statement-expr arm) and value-semantics /
+non-bool-truthiness `and`/`or`/`not` (the bool slice landed incr 36). **Action:** continue
+enumerating + driving these as a tracked axis before claiming `gen_body`/`gen_expr`
+deletion is near.
 
 ## Sequencing discipline (the plan)
 
@@ -277,4 +317,4 @@ byte-diff itself.
 - **Planned:** extend the `--thir-codegen` non-vacuity tally to report per-component
   AST-fallback coverage (how much of each component still falls back to AST), so the
   gap to each deletion is *measured*, not estimated. Today the tally reports only
-  total routed bodies/cases (5689 bodies / 1356 cases as of increment 35).
+  total routed bodies/cases (22165 bodies / 3271 cases as of increment 38).

@@ -8,7 +8,9 @@ every fact codegen consumes is materialized onto the returned THIR nodes.
 Eligible slice: non-generic, non-generator/async, plain-linkage free functions
 -- and plain instance methods of same-module non-generic records (`self` as an
 F1-record `this` receiver) -- whose params/locals/return are fixed-width-int
-scalars (plus the F1/F2 non-value record forms for locals/returns), with
+scalars or str-slice values (owned `str` / `StrView`; the view/owned duality is
+sema-resolved pre-lowering, and the owned-sink copy is an explicit
+THIRFormConvert), plus the F1/F2 non-value record forms for locals/returns, with
 straight-line bodies (var-decl / assign / return) over names and literals.
 Anything else -> None (stays on the AST codegen path). The gate is the safety
 boundary: it must reject every construct the emitter cannot reproduce byte-
@@ -28,6 +30,7 @@ from ..parse.nodes import (
     TpyBinOp,
     TpyBoolLiteral,
     TpyCall,
+    TpyChainedCompare,
     TpyCoerce,
     TpyDictLiteral,
     TpyExpr,
@@ -58,13 +61,15 @@ from ..parse.nodes import (
 )
 from ..typesys import (
     IntLiteralType, LiteralType, NominalType, OptionalType, OwnType,
-    ReadonlyType, TpyType, TupleType, ValueForm, VoidType, is_float_type,
-    is_void_like_type, resolve_int_literals, unwrap_optional_own,
-    unwrap_readonly, unwrap_ref_type, unwrap_send_sync,
+    PendingViewType, ReadonlyType, STR_FAMILY, TpyType, TupleType,
+    TypeParamRef, ValueForm, VoidType, is_float_type, is_void_like_type,
+    resolve_int_literals,
+    unwrap_optional_own, unwrap_readonly, unwrap_ref_type, unwrap_send_sync,
 )
 from ..type_def_registry import (
     int_traits_of, is_array, is_big_int_type, is_bool_type, is_dict,
-    is_fixed_int_type, is_float32_type, is_list, is_set,
+    is_fixed_int_type, is_float32_type, is_list, is_set, is_str_type,
+    is_str_view_type,
 )
 from ..codegen_cpp.type_resolution import resolve_stmt_binding_type
 from ..codegen_cpp.types import resolve_pending_container
@@ -75,6 +80,9 @@ from ..codegen_cpp.forms import (
 )
 from ..value_category import is_rvalue_source
 from ..codegen_cpp.context import escape_cpp_name
+# The chained-compare inline-vs-statement-expr trigger, imported (not mirrored)
+# so the eligibility gate can never drift from the emit decision.
+from ..codegen_cpp.expressions import ExpressionGenerator
 from .nodes import (
     Form,
     PrintForm,
@@ -108,6 +116,7 @@ from .nodes import (
     THIRStmt,
     THIRStrLiteral,
     THIRSubscript,
+    THIRUnaryNot,
     THIRVarDecl,
     THIRWhile,
 )
@@ -121,6 +130,11 @@ _ARITH_OPS = frozenset({"+", "-", "*", "/", "//", "%"})
 # derived ones emit as a bare C++ operator); the result is bool. Admitted both
 # as `if`/`while` conditions and as values (`x = a < b`).
 _COMPARE_OPS = frozenset({"<", "<=", ">", ">=", "==", "!="})
+# Logical and/or (the parser folds `a and b` to TpyBinOp("&&")). Admitted only
+# with a bool result over bool operands, where the AST emits the bare C++
+# operator (`(l && r)`); the non-bool Python value semantics (`x or default` ->
+# temp + ternary via _gen_logical_value) stay on the AST path.
+_LOGICAL_OPS = frozenset({"&&", "||"})
 # Literal-into-typed-slot coercions the slice reproduces, both pass-throughs on
 # the C++ side (the inner literal renders directly in the slot's type): a literal
 # into a fixed-int slot, and a float literal into a double `float` slot.
@@ -161,8 +175,60 @@ def _resolved_scalar(t: TpyType | None, analyzer) -> bool:
         resolve_int_literals(t, analyzer.ctx.default_int_for_literal))
 
 
+def _resolve_pending_view(t: TpyType | None, analyzer) -> TpyType | None:
+    """A `PendingStrType`/`PendingBytesType` resolved to its concrete view/owned
+    type through the family's ViewVarInfo (sema's usage resolution is FINAL
+    pre-lowering), else None. Mirrors codegen's `_resolve_view_storage`: no
+    registry entry (or an unresolved one) falls back to the owned type."""
+    if not isinstance(t, PendingViewType):
+        return None
+    info = analyzer.ctx.view_vars(t.family).get(t.var_id)
+    return (info.resolved_type if info is not None and info.resolved_type
+            else t.family.owned_type)
+
+
+def _resolved_str_value(t: TpyType | None, analyzer) -> TpyType | None:
+    """The sema-RESOLVED str-slice type -- owned `str` (`std::string` storage /
+    `std::string_view` param) or `StrView` (`std::string_view`) -- or None
+    outside the slice. A str local's binding type stays `PendingStrType` on the
+    AST/sema side; resolve it like `_resolve_pending_view` does. `String`,
+    `Char`, `Literal[str]`-annotated bindings, and the bytes family stay on the
+    AST path (later cells)."""
+    if t is None:
+        return None
+    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    if isinstance(t, PendingViewType):
+        return _resolve_pending_view(t, analyzer) if t.family is STR_FAMILY else None
+    if isinstance(t, NominalType) and (is_str_type(t) or is_str_view_type(t)):
+        return t
+    return None
+
+
+def _str_compare_operand(e: TpyExpr, t: TpyType | None, analyzer) -> bool:
+    """A str-slice comparison operand: a str literal (its expr type is
+    `LiteralType[str]`, but the const char[N] emit is position-independent) or
+    a str/StrView value. Guards the compare arm's operand pin -- see
+    `_binop_eligible`."""
+    if isinstance(e, TpyStrLiteral):
+        return True
+    return _resolved_str_value(t, analyzer) is not None
+
+
+def _str_name_form(name: str, resolved: TpyType, param_names: set[str]) -> Form:
+    """The C++ shape of a str-slice NAME read -- mirrors the AST's
+    `_is_str_view_source`: a `StrView`-resolved binding and a `str`-typed param
+    (the signature spells `std::string_view`) are view/BORROW; an owned local is
+    `std::string` (STORAGE). The owned-sink copy (`std::string(x)` at a decl
+    init / return) fires only on a BORROW source; a str literal is const
+    char[N] (implicitly convertible both ways) and stays VALUE, never wrapped."""
+    if is_str_view_type(resolved) or name in param_names:
+        return Form.BORROW
+    return Form.STORAGE
+
+
 def _eligible_return(t: TpyType | None, analyzer) -> bool:
     return (t is None or isinstance(t, VoidType) or _eligible_scalar(t)
+            or _resolved_str_value(t, analyzer) is not None
             or _storage_optional_return_type(t, analyzer) is not None
             or _borrow_tuple_return_type(t, analyzer) is not None)
 
@@ -174,7 +240,7 @@ class _Prescan:
     codegen seeds into ctx (see setup_body_scope), recomputed here from the
     analyzer so lowering classifies identically without a CodeGenContext."""
     __slots__ = ("reassigned", "rvalue_reassigned", "hoisted", "move_through",
-                 "ret_storage_opt", "ret_borrow_tuple")
+                 "ret_storage_opt", "ret_borrow_tuple", "ret_str")
 
     def __init__(self, func: TpyFunction, analyzer) -> None:
         scan = analyzer.function_scan_results.get(id(func))
@@ -196,6 +262,10 @@ class _Prescan:
         # (`tuple[..., Ref]` -> `std::tuple<..., T*>`), so a `return <storage tuple
         # lvalue>` lifts via `tuple_to_pointer`. None for every other return type.
         self.ret_borrow_tuple = _borrow_tuple_return_type(rt, analyzer)
+        # S1 str slice: the resolved str-family return type (owned `str` or
+        # `StrView`), so a `return <view-form source>` into an owned `std::string`
+        # return copies via the view->owned THIRFormConvert. None otherwise.
+        self.ret_str = _resolved_str_value(rt, analyzer)
 
 
 def _f1_record(t: TpyType | None, analyzer) -> bool:
@@ -891,15 +961,77 @@ def _binop_eligible(e: TpyBinOp, locals_: dict[str, TpyType], analyzer) -> bool:
             return False
         if rb is not None and not getattr(rb.method, "cpp_template", None):
             return False
-        if _mixed_sign_compare(_operand_type(e.left, locals_, analyzer),
-                               _operand_type(e.right, locals_, analyzer)):
+        lt = _operand_type(e.left, locals_, analyzer)
+        rt_op = _operand_type(e.right, locals_, analyzer)
+        # Both operands must be value scalars (or both str-slice values): a
+        # record compare also reaches the rb=None bare-operator arm (a user
+        # dunder carries no template), but its operands take gen_expr_deref's
+        # indirection handling -- `self` renders `(*this)`, a pointer-local
+        # `(*p)` -- which the scalar emit does not reproduce. Str names are
+        # value types (never pointer-locals), so the str pair is safe; str
+        # `<`/`==` templates and the derived bare operators emit identically
+        # on both paths. The name-eligibility check below is no guard here
+        # (any in-scope name passes it, whatever its type).
+        if not ((_resolved_scalar(lt, analyzer)
+                 and _resolved_scalar(rt_op, analyzer))
+                or (_str_compare_operand(e.left, lt, analyzer)
+                    and _str_compare_operand(e.right, rt_op, analyzer))):
+            return False
+        if _mixed_sign_compare(lt, rt_op):
+            return False
+    elif e.op in _LOGICAL_OPS:
+        # Bool-result and/or over bool operands emits the bare C++ operator
+        # (`(l && r)`, rb is None), identical in value and condition position
+        # (gen_truthy_expr reduces to the value render for every admitted bool
+        # shape). A non-bool result takes _gen_logical_value's temp+ternary; a
+        # non-bool operand under a bool result would need per-operand truthiness
+        # reasoning -- both stay on the AST path. The literal_facts chain fold
+        # (_try_fold_literal_chain) cannot fire in an eligible function: it needs
+        # a LiteralType-typed var, which the param/local gates reject. The
+        # isinstance-narrowing propagation to the RHS is inert too (isinstance
+        # calls are gated out of the operand set).
+        if rt is None or not is_bool_type(rt):
+            return False
+        lt = _operand_type(e.left, locals_, analyzer)
+        rt_op = _operand_type(e.right, locals_, analyzer)
+        if not (lt is not None and is_bool_type(lt)
+                and rt_op is not None and is_bool_type(rt_op)):
             return False
     else:
-        # Logical &&/|| (narrowing + short-circuit-slot emit) and is/in/bitwise
-        # are out of the slice -> AST path.
+        # is/in/bitwise take other emit paths, out of the slice -> AST path.
         return False
     return (_expr_eligible(e.left, locals_, analyzer)
             and _expr_eligible(e.right, locals_, analyzer))
+
+
+def _chained_compare_eligible(e: TpyChainedCompare, locals_: dict[str, TpyType],
+                              analyzer) -> bool:
+    """The inline arm of `_gen_chained_compare`: every INTERMEDIATE operand is
+    side-effect-free (`_is_simple_expr` -- imported, so the trigger cannot drift),
+    letting the chain desugar to a left-folded `&&` over the sema-synthesized
+    pairs (`((a < b) && (b < c))`); endpoints may be complex (evaluated once).
+    A non-simple intermediate takes the GCC statement-expression arm
+    (`({ auto&& _cmp1 = ...; ... && ...; })`) -> AST path. Each pair is gated
+    exactly like a single comparison (`_binop_eligible`: bool result, template
+    dunder or bare operator, mixed-sign exclusion, operand eligibility)."""
+    if e.pairs is None:
+        return False
+    if not all(ExpressionGenerator._is_simple_expr(c) for c in e.comparators[:-1]):
+        return False
+    return all(_binop_eligible(p, locals_, analyzer) for p in e.pairs)
+
+
+def _unary_not_eligible(e: TpyUnaryOp, locals_: dict[str, TpyType],
+                        analyzer) -> bool:
+    """Logical `not` over a bool operand -> `(!(operand))`. A bool operand's
+    truthiness render (gen_truthy_expr) is its plain value render, so the emit
+    is position-independent. Non-bool operands (int / Optional / __bool__
+    truthiness wraps) and the arithmetic unaries (`- + ~`) stay on the AST path."""
+    if e.op != "!":
+        return False
+    ot = analyzer.get_expr_type(e.operand)
+    return (ot is not None and is_bool_type(ot)
+            and _expr_eligible(e.operand, locals_, analyzer))
 
 
 def _is_len_native(e: TpyExpr) -> bool:
@@ -913,14 +1045,15 @@ def _is_len_native(e: TpyExpr) -> bool:
     return fi is not None and fi.native_name == "tpy::__len__"
 
 
-def _is_len_call(e: TpyExpr, locals_: dict[str, TpyType]) -> bool:
+def _is_len_call(e: TpyExpr, locals_: dict[str, TpyType], analyzer) -> bool:
     """The eligible `len(name)` form: the builtin len over a single in-scope name of a
-    builtin container type (`::tpy::__len__(name)`, Int32). The container restriction is
-    load-bearing, not cosmetic: a container is a by-ref/by-value param that emits as the
-    bare name, but a record (or `Optional`) with `__len__` bound to a pointer-local
-    would need `(*p)` (the AST's is_indirect_name deref) that the bare emit misses -- so
-    only list/dict/set/Array (never pointer-locals) are admitted. A non-name arg
-    (literal, subscript, call) rides a later cell."""
+    builtin container type or a str-slice value (`::tpy::__len__(name)`, Int32 -- the
+    runtime overloads cover std::string and std::string_view). The container/str
+    restriction is load-bearing, not cosmetic: a container/str is a by-ref/by-value
+    param that emits as the bare name, but a record (or `Optional`) with `__len__`
+    bound to a pointer-local would need `(*p)` (the AST's is_indirect_name deref) that
+    the bare emit misses -- so only list/dict/set/Array/str (never pointer-locals) are
+    admitted. A non-name arg (literal, subscript, call) rides a later cell."""
     if not _is_len_native(e):
         return False
     if e.kwargs or e.double_star_unpack is not None or len(e.args) != 1:
@@ -929,12 +1062,13 @@ def _is_len_call(e: TpyExpr, locals_: dict[str, TpyType]) -> bool:
     if not (isinstance(arg, TpyName) and arg.name in locals_):
         return False
     t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(locals_[arg.name])))
-    return is_list(t) or is_dict(t) or is_set(t) or is_array(t)
+    return (is_list(t) or is_dict(t) or is_set(t) or is_array(t)
+            or _resolved_str_value(t, analyzer) is not None)
 
 
 def _call_eligible(e: TpyCall, locals_: dict[str, TpyType], analyzer,
                    *, stmt_position: bool = False) -> bool:
-    if _is_len_call(e, locals_):
+    if _is_len_call(e, locals_, analyzer):
         return True
     # Only a bare-name call to a same-module plain user free function emits as
     # `name(args)`. Every special form (constructor, generic, cast, isinstance,
@@ -977,15 +1111,28 @@ def _call_eligible(e: TpyCall, locals_: dict[str, TpyType], analyzer,
     # synthesize the missing/packed args, which the slice does not).
     if len(e.args) != len(fi.params):
         return False
-    # In value position the result must be an eligible scalar; as a bare statement
-    # the result is discarded, so a `void` (None) return is admitted too. The emit
-    # (`callee(args);`) is identical either way.
+    # In value position the result must be an eligible scalar or a str-slice
+    # value (owned str returns by value, StrView by view -- both emit the bare
+    # call); as a bare statement the result is discarded, so a `void` (None)
+    # return is admitted too. The emit (`callee(args);`) is identical either way.
     ret = analyzer.get_expr_type(e)
-    if not (_eligible_scalar(ret) or (stmt_position and is_void_like_type(ret))):
+    if not (_eligible_scalar(ret)
+            or _resolved_str_value(ret, analyzer) is not None
+            or (stmt_position and is_void_like_type(ret))):
         return False
+    # A str-LITERAL arg to a multi-overload callee is pinned to its param's view
+    # form (`std::string_view("...")`, _wants_str_literal_pin) -- the bare-literal
+    # emit does not reproduce that, so the shape stays on the AST path. (A generic
+    # callee never pins, but fi.type_params is already rejected above.)
+    if any(isinstance(a, TpyStrLiteral) for a in e.args):
+        fis = analyzer.registry.get_function(e.func_name)
+        if fis is not None and len(fis) > 1:
+            return False
     # Every argument is an eligible SCALAR (a value type: copied, never moved,
-    # so the bare call is byte-identical) or a bare-name CONTAINER into a
-    # non-Own concrete container param (the other pass-through slot shape --
+    # so the bare call is byte-identical), a str-slice value into a str-family
+    # param (both spell the borrow `std::string_view` at the boundary, so the
+    # bare emit is byte-identical), or a bare-name CONTAINER into a non-Own
+    # concrete container param (the other pass-through slot shape --
     # `use_list(xs)` emits the bare name on both paths). Any other non-value
     # arg (record / Own / Span / protocol slot) crosses an ownership or
     # conversion boundary -- an Own param at its last use auto-moves
@@ -993,8 +1140,28 @@ def _call_eligible(e: TpyCall, locals_: dict[str, TpyType], analyzer,
     # emit does not reproduce.
     return all((_eligible_scalar(analyzer.get_expr_type(a))
                 and _expr_eligible(a, locals_, analyzer))
+               or _str_pass_through_arg(a, p.type, locals_, analyzer)
                or _container_pass_through_arg(a, p.type, locals_, analyzer)
                for a, p in zip(e.args, fi.params))
+
+
+def _str_pass_through_arg(a: TpyExpr, ptype: TpyType | None,
+                          locals_: dict[str, TpyType], analyzer) -> bool:
+    """A str-slice arg into a non-Own `str`/`StrView` param slot. The param
+    renders `std::string_view`, and every slice source lands in it bare: a
+    param/view local IS a string_view, an owned local converts implicitly, a
+    literal is const char[N]. An `Own[str]` slot materializes an owned copy
+    (`std::string(x)`) the bare emit does not reproduce -> AST path."""
+    pt = ptype if isinstance(ptype, TpyType) else None
+    if pt is None:
+        return False
+    pt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(pt)))
+    if not (isinstance(pt, NominalType) and (is_str_type(pt) or is_str_view_type(pt))):
+        return False
+    if isinstance(a, TpyStrLiteral):
+        return True
+    return (_resolved_str_value(analyzer.get_expr_type(a), analyzer) is not None
+            and _expr_eligible(a, locals_, analyzer))
 
 
 def _scalar_pass_through_slot(ptype: TpyType | None, analyzer) -> bool:
@@ -1043,6 +1210,109 @@ def _container_pass_through_arg(a: TpyExpr, ptype: TpyType | None,
     if isinstance(pt, (OwnType, OptionalType)):
         return False
     return is_list(pt) or is_dict(pt) or is_set(pt) or is_array(pt)
+
+
+def _positional_only_template(tmpl: str, n_args: int) -> bool:
+    """Whether a `@cpp_template` body contains only in-range positional
+    placeholders (`{0}`, `{1}`, ...) and `{{`/`}}` literal-brace escapes --
+    the subset `expand_cpp_template` can render with no receiver and no
+    substitution context. A surviving named field (`{cpp}`, `{self}`, a type
+    param) means sema's substitution did not fully resolve the template, so
+    the call must stay on the AST path (which has the substitution machinery)."""
+    i, n = 0, len(tmpl)
+    while i < n:
+        c = tmpl[i]
+        if c == "{":
+            if i + 1 < n and tmpl[i + 1] == "{":
+                i += 2
+                continue
+            close = tmpl.find("}", i + 1)
+            field = tmpl[i + 1:close] if close != -1 else ""
+            if not field.isdigit() or int(field) >= n_args:
+                return False
+            i = close + 1
+        elif c == "}":
+            # Only the `}}` escape is admitted; a lone `}` (which expand would
+            # pass through literally) never occurs in a real template -- reject
+            # conservatively.
+            if not (i + 1 < n and tmpl[i + 1] == "}"):
+                return False
+            i += 2
+        else:
+            i += 1
+    return True
+
+
+def _ctor_arg_slot_ok(ptype: TpyType | None, analyzer) -> bool:
+    """A scalar-ctor param slot the arg passes bare: a value scalar /
+    `Own[scalar]` (`_scalar_pass_through_slot`), or the generic conversion
+    overload's unsubstituted method type param (`__init__[T: AnyFixedInt](self,
+    x: T)`, the `int_cast_check` arm). `gen_call_arg`'s target hint is inert for
+    a TypeParamRef slot -- not Own, not fixed-int, no borrow/storage lift -- so
+    an eligible-scalar arg emits bare exactly as into a concrete scalar slot.
+    The Ref/readonly peel mirrors gen_call_arg's own `ptype_inner` unwrap (the
+    stub stores the generic param as `Ref(TypeParamRef)`)."""
+    if ptype is not None and isinstance(
+            unwrap_readonly(unwrap_ref_type(ptype)), TypeParamRef):
+        return True
+    return _scalar_pass_through_slot(ptype, analyzer)
+
+
+def _scalar_ctor_call_eligible(e: TpyCall, locals_: dict[str, TpyType],
+                               analyzer) -> bool:
+    """A builtin scalar type-constructor call -- `Int32(0)` / `UInt32(x)` /
+    `Int64(a + b)` / `Float64(1.5)` / `bool(n)` -- resolved by sema to a
+    `@cpp_template` `__init__` overload and emitted via `_gen_call`'s
+    `fi.cpp_template and not call_type` branch (-> `gen_template_or_native_call`
+    -> `gen_call_from_fi`'s template arm). Sema already substituted `{cpp}` /
+    class type params into the stored template (`_resolve_cpp_template_type_
+    params`), and `_check_cast_safe`'s `static_cast` rewrite lands on the same
+    node fact, so the emit is a pure `expand_cpp_template(template, None,
+    *args)` -- the gate requires the template be positional-only to keep any
+    still-unsubstituted shape on the AST path.
+
+    Admitted: an eligible-scalar result (fixed-int / bool / double) and
+    eligible-scalar args in scalar / `Own[scalar]` / method-type-param slots
+    (the bare `gen_call_arg` pass-through). str / bytes / BigInt / Float32 /
+    Char conversions fail the scalar checks (a `@native(function=True)` ctor
+    like Char has no cpp_template at all); `int(...)` produces BigInt; enum
+    ctors carry `enum_from_value`; borrowing-view ctors (StrView/Span) set
+    `call_type` -- all stay on the AST path."""
+    if not isinstance(e.func, TpyName):
+        return False
+    if e.kwargs or e.double_star_unpack is not None:
+        return False
+    # Markers that take earlier / different _gen_call branches. Explicit
+    # type_args are rejected; INFERRED type args (the generic int_cast_check
+    # overload) are fine -- the positional-only template makes gen_call_from_fi's
+    # substitution loop a no-op.
+    if (e.call_type is not None or e.type_args
+            or e.enum_from_value is not None or e.cast_target_type is not None
+            or e.isinstance_var is not None or e.dunder_call is not None
+            or e.macro_expansion is not None or e.compile_time_assert
+            or e.subscript_callee is not None):
+        return False
+    fi = e.resolved_function_info
+    if fi is None or not (fi.is_method and fi.name == "__init__"):
+        return False
+    # Post-call wrappers / special member forms the bare template emit does not
+    # reproduce (mirrors _method_call_eligible's fi rejects).
+    if (fi.is_consuming or fi.error_return_type is not None
+            or fi.native_cpp_return_type is not None
+            or fi.is_async or fi.is_generator
+            or any(isinstance(p.type, LiteralType) for p in fi.params)):
+        return False
+    if not fi.cpp_template or not _positional_only_template(fi.cpp_template,
+                                                            len(e.args)):
+        return False
+    if not _eligible_scalar(analyzer.get_expr_type(e)):
+        return False
+    if len(e.args) != len(fi.params):
+        return False
+    return all(_ctor_arg_slot_ok(p.type, analyzer)
+               and _resolved_scalar(analyzer.get_expr_type(a), analyzer)
+               and _expr_eligible(a, locals_, analyzer)
+               for a, p in zip(e.args, fi.params))
 
 
 def _method_call_eligible(e: TpyMethodCall, locals_: dict[str, TpyType], analyzer,
@@ -1144,15 +1414,19 @@ def _print_arg_form(t: TpyType) -> PrintForm:
 
 def _print_eligible(e: TpyCall, locals_: dict[str, TpyType], analyzer) -> bool:
     """A `print(<args>)` in the no-kwargs common-arg subset: every arg is a str
-    literal or an eligible scalar (fixed-int / bool / double). Any `sep=`/`end=`/
-    `file=`/`flush=` kwarg, `**`-unpack, f-string, or non-scalar arg falls back to
-    the AST path (gen_print's richer cases)."""
+    literal, an eligible scalar (fixed-int / bool / double), or a str-slice value
+    (a str/StrView name or str-returning call -- string and string_view stream
+    raw, like the AST's is_any_str_type arm). Any `sep=`/`end=`/`file=`/`flush=`
+    kwarg, `**`-unpack, f-string, or other non-scalar arg falls back to the AST
+    path (gen_print's richer cases)."""
     if e.kwargs or e.double_star_unpack is not None:
         return False
     for a in e.args:
         if isinstance(a, TpyStrLiteral):
             continue
-        if (_resolved_scalar(analyzer.get_expr_type(a), analyzer)
+        at = analyzer.get_expr_type(a)
+        if ((_resolved_scalar(at, analyzer)
+             or _resolved_str_value(at, analyzer) is not None)
                 and _expr_eligible(a, locals_, analyzer)):
             continue
         return False
@@ -1178,6 +1452,12 @@ def _expr_eligible(e: TpyExpr, locals_: dict[str, TpyType], analyzer) -> bool:
         return math.isfinite(e.value)
     if isinstance(e, TpyBoolLiteral):
         return True  # True/False -> true/false; no target-type dependence
+    if isinstance(e, TpyStrLiteral):
+        # const char[N] via cpp_string_literal_expr -- implicitly convertible to
+        # every str-slice slot (string_view AND string), so never wrapped. The
+        # positions that reach here are gated by their slot checks (a str-slice
+        # decl init / compare operand / call arg / print arg / return value).
+        return True
     if isinstance(e, TpyFieldAccess):
         # A scalar field read off an F1-record receiver (`recv.field`, value
         # form). The non-value field source for a borrow-local binding is handled
@@ -1196,8 +1476,15 @@ def _expr_eligible(e: TpyExpr, locals_: dict[str, TpyType], analyzer) -> bool:
                 or _container_subscript_value_read(e, locals_, analyzer))
     if isinstance(e, TpyBinOp):
         return _binop_eligible(e, locals_, analyzer)
+    if isinstance(e, TpyUnaryOp):
+        return _unary_not_eligible(e, locals_, analyzer)
+    if isinstance(e, TpyChainedCompare):
+        return _chained_compare_eligible(e, locals_, analyzer)
     if isinstance(e, TpyCall):
-        return _call_eligible(e, locals_, analyzer)
+        # A same-module free-function call, or a builtin scalar type-constructor
+        # call (`Int32(x)`, emitted via its resolved __init__ @cpp_template).
+        return (_call_eligible(e, locals_, analyzer)
+                or _scalar_ctor_call_eligible(e, locals_, analyzer))
     if isinstance(e, TpyMethodCall):
         # A value-scalar-returning container method call (`x = xs.pop()`).
         return _method_call_eligible(e, locals_, analyzer)
@@ -1221,6 +1508,7 @@ def _f1_param_eligible(ptype: TpyType | None, analyzer) -> bool:
     stays on the AST path per M1). Optional/view-keyed-container/cross-module/native
     record params stay on the AST path."""
     return (_eligible_scalar(ptype) or _f1_record(ptype, analyzer)
+            or _resolved_str_value(ptype, analyzer) is not None
             or _f1_tuple(ptype, analyzer) is not None
             or _value_scalar_tuple(ptype)
             or _container_scalar_read(ptype)
@@ -1252,6 +1540,19 @@ def _function_eligible(func: TpyFunction, analyzer,
         return False
     if func.is_overload_stub or func.native_function or func.is_consuming:
         return False
+    # An overload IMPL body is emitted once per stub with per-stub dead-branch
+    # facts (literal_overload_facts / overload_param_types), but gen_body's THIR
+    # interception keys on id(func) -- routing the shared impl would hijack
+    # every specialization with the unspecialized body. Reject any callable in
+    # a multi-entry overload set (functions and methods alike).
+    if is_instance_method:
+        ri = analyzer.registry.get_record_for_type(self_type)
+        if ri is not None and len(ri.get_method_overloads(func.name) or []) > 1:
+            return False
+    else:
+        fis = analyzer.registry.get_function(func.name)
+        if fis is not None and len(fis) > 1:
+            return False
     if func.builtin_decorator_key is not None:
         return False
     if func.is_async or func.is_generator:
@@ -1272,6 +1573,16 @@ def _function_eligible(func: TpyFunction, analyzer,
         # anyway, so its record params are uniformly const).
         if not _f1_param_eligible(pt, analyzer):
             return False
+    # A reassigned str-family param gets a mutable owned copy hoisted by the AST
+    # path (`param_needs_copy_for_reassign` -> `std::string p_ = std::string(p);`)
+    # -- a prologue shape the slice does not reproduce. Reject the function.
+    scan = analyzer.function_scan_results.get(id(func))
+    if scan is not None and scan.reassigned:
+        for name, ptype in func.params:
+            pt = ptype if isinstance(ptype, TpyType) else None
+            if (name in scan.reassigned
+                    and _resolved_str_value(pt, analyzer) is not None):
+                return False
     rt = func.return_type if isinstance(func.return_type, TpyType) else None
     return _eligible_return(rt, analyzer) if func.return_type is not None else True
 
@@ -1294,16 +1605,24 @@ def _var_decl_type(stmt: TpyVarDecl, analyzer) -> TpyType | None:
 
 
 def _condition_eligible(cond: TpyExpr, declared: dict[str, TpyType], analyzer) -> bool:
-    # An `if`/`while` condition: a bare bool local/param (`if flag:`) or a single
-    # scalar comparison (bool result), the latter routed through _binop_eligible
-    # so it gets the same mixed-sign gate as comparison-as-value. and/or/not,
-    # chained compares, and a bool-literal condition (the AST path may
-    # dead-branch-eliminate it) are not handled here -> AST path.
+    # An `if`/`while` condition: a bare bool local/param (`if flag:`), a scalar
+    # comparison, a bool-result and/or, a bool-operand `not`, or an inline-arm
+    # chained comparison. For each admitted shape the truthiness render
+    # (gen_truthy_expr) equals the value render, so the emitter reuses
+    # _emit_expr for conditions. A comparison/logical BinOp routes through
+    # _binop_eligible so it gets the same mixed-sign / bool-operand gates as in
+    # value position; an ARITH binop condition (`if a + b:`, int truthiness) is
+    # excluded by the op-set check. A bool-literal condition stays on the AST
+    # path (it may dead-branch-eliminate).
     if isinstance(cond, TpyName):
         rt = analyzer.get_expr_type(cond)
         return cond.name in declared and rt is not None and is_bool_type(rt)
-    if isinstance(cond, TpyBinOp) and cond.op in _COMPARE_OPS:
+    if isinstance(cond, TpyBinOp) and cond.op in _COMPARE_OPS | _LOGICAL_OPS:
         return _binop_eligible(cond, declared, analyzer)
+    if isinstance(cond, TpyUnaryOp):
+        return _unary_not_eligible(cond, declared, analyzer)
+    if isinstance(cond, TpyChainedCompare):
+        return _chained_compare_eligible(cond, declared, analyzer)
     return False
 
 
@@ -1320,7 +1639,8 @@ def _range_bound_literal_value(arg: TpyExpr) -> int | None:
     return None
 
 
-def _range_bound_eligible(arg: TpyExpr, declared: dict[str, TpyType]) -> bool:
+def _range_bound_eligible(arg: TpyExpr, declared: dict[str, TpyType],
+                          analyzer) -> bool:
     # Tight slice: an inlinable int literal, or a bare name of an
     # already-declared fixed-int local/param (hoisted to a __start/__stop temp).
     # Binop/call bounds are deferred -- they need the byte-identical net to
@@ -1331,7 +1651,7 @@ def _range_bound_eligible(arg: TpyExpr, declared: dict[str, TpyType]) -> bool:
         return is_fixed_int_type(declared.get(arg.name))
     # `range(len(c))` -- the Int32-valued len builtin, hoisted into a `__stop_N` temp
     # like any non-literal bound; unblocks the bounds-safe container-subscript branch.
-    if _is_len_call(arg, declared):
+    if _is_len_call(arg, declared, analyzer):
         return True
     return _range_bound_literal_value(arg) is not None
 
@@ -1374,10 +1694,10 @@ def _for_range_eligible(stmt: TpyForEach, analyzer, declared: dict[str, TpyType]
     if not _eligible_scalar(et):
         return False
     nargs = len(it.args)
-    if nargs == 2 and not _range_bound_eligible(it.args[0], declared):
+    if nargs == 2 and not _range_bound_eligible(it.args[0], declared, analyzer):
         return False
     stop_arg = it.args[0] if nargs == 1 else it.args[1]
-    if not _range_bound_eligible(stop_arg, declared):
+    if not _range_bound_eligible(stop_arg, declared, analyzer):
         return False
     body_declared = dict(declared)
     body_declared[stmt.var] = et  # loop var's resolved (fixed-int) type
@@ -1491,10 +1811,16 @@ def _stmt_eligible(stmt: TpyStmt, analyzer, declared: dict[str, TpyType],
         if not _expr_eligible(stmt.init, declared, analyzer):
             return False
         # First declaration: the local's type must be an eligible scalar (a
-        # bare-literal init analyzes as IntLiteralType, pinning no width -> out).
+        # bare-literal init analyzes as IntLiteralType, pinning no width -> out)
+        # or a str-slice binding (a `PendingStrType` whose view/owned resolution
+        # is final pre-lowering -- `std::string_view` or `std::string`).
         # A reassignment targets an already-validated local (its value just
         # renders into the existing slot), so the type check does not apply.
-        return is_reassign or _eligible_scalar(_var_decl_type(stmt, analyzer))
+        if is_reassign:
+            return True
+        vtype = _var_decl_type(stmt, analyzer)
+        return (_eligible_scalar(vtype)
+                or _resolved_str_value(vtype, analyzer) is not None)
     if isinstance(stmt, TpyAssign):
         if isinstance(stmt.target, TpyName):
             return (stmt.target.name in declared
@@ -1652,9 +1978,11 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx') -> THIRExpr:
     analyzer = lc.analyzer
     # A container-literal local's use sites keep the pre-resolution pending type
     # on the expr (the AST path unwraps it in TypeResolver.get_resolved_type);
-    # THIR nodes must carry fully-resolved types.
+    # THIR nodes must carry fully-resolved types. Same for a str local's
+    # PendingStrType (sema's view/owned usage resolution is final pre-lowering).
     rtype = analyzer.get_expr_type(e)
     rtype = resolve_pending_container(rtype, analyzer) or rtype
+    rtype = _resolve_pending_view(rtype, analyzer) or rtype
     loc = getattr(e, "loc", None)
     if isinstance(e, TpyName):
         if e.name == lc.self_receiver:
@@ -1667,7 +1995,15 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx') -> THIRExpr:
         # name is a borrow tuple param (`std::tuple<..., T*>`) UNLESS it is an F3
         # storage-tuple alias local (`auto&& t = ...`, which aliases storage and reads
         # as STORAGE). The tag is informational for the field-access / convert emit,
-        # but kept honest so a convert source is never mislabeled.
+        # but kept honest so a convert source is never mislabeled. A str-slice name
+        # is the exception where the tag is LOAD-BEARING: BORROW (string_view param /
+        # view local) drives the owned-sink `std::string(x)` copy, STORAGE (owned
+        # local) suppresses it.
+        str_t = _resolved_str_value(rtype, analyzer)
+        if str_t is not None:
+            return THIRName(result_type=str_t, name=e.name,
+                            form=_str_name_form(e.name, str_t, lc.param_names),
+                            loc=loc)
         if e.name in lc.storage_tuple_locals:
             form = Form.STORAGE
         else:
@@ -1731,7 +2067,14 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx') -> THIRExpr:
         )
     if isinstance(e, (TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral)):
         return THIRLiteral(result_type=rtype, value=e.value, loc=loc)
+    if isinstance(e, TpyStrLiteral):
+        # const char[N] via cpp_string_literal_expr; VALUE form -- implicitly
+        # convertible to both string_view and string slots, never wrapped.
+        return THIRStrLiteral(result_type=rtype, value=e.value, loc=loc)
     if isinstance(e, TpyBinOp):
+        # and/or lower here too: sema leaves resolved_binop None for &&/||, so
+        # the emit takes the bare-operator arm (`(l && r)`), matching the AST's
+        # bool-result logical branch.
         return THIRBinOp(
             result_type=rtype,
             left=_lower_expr(e.left, lc),
@@ -1741,15 +2084,51 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx') -> THIRExpr:
             divisor_non_zero=e.divisor_non_zero,
             loc=loc,
         )
+    if isinstance(e, TpyUnaryOp):
+        # Only logical `not` is admitted (bool operand).
+        return THIRUnaryNot(result_type=rtype, operand=_lower_expr(e.operand, lc),
+                            loc=loc)
+    if isinstance(e, TpyChainedCompare):
+        # Inline arm of _gen_chained_compare: left-fold the sema pairs with the
+        # bare && (resolved None), reproducing `((a < b) && (b < c))`. Each pair
+        # is a full TpyBinOp (sema-analyzed), so it lowers like any comparison.
+        assert e.pairs is not None
+        folded = _lower_expr(e.pairs[0], lc)
+        for pair in e.pairs[1:]:
+            folded = THIRBinOp(result_type=rtype, left=folded, op="&&",
+                               right=_lower_expr(pair, lc), resolved=None,
+                               loc=loc)
+        return folded
     if isinstance(e, TpyCall):
+        fi = e.resolved_function_info
+        if fi is not None and fi.is_method and fi.name == "__init__":
+            # A scalar type-constructor call (`Int32(x)`): the emit is the
+            # resolved __init__ overload's @cpp_template expanded over the args
+            # with no receiver. Sema already substituted {cpp} / class type
+            # params, and the gate admitted only positional-only templates, so
+            # the stored template is carried verbatim.
+            return THIRCall(
+                result_type=rtype,
+                callee=e.func_name,
+                args=tuple(_lower_expr(a, lc) for a in e.args),
+                cpp_template=fi.cpp_template,
+                loc=loc,
+            )
         # A @native free-function builtin (currently `len` -> `tpy::__len__`) carries
         # its resolved symbol so the emit dispatches on it, not the source name.
-        native_name = e.resolved_function_info.native_name if _is_len_native(e) else None
+        native_name = fi.native_name if _is_len_native(e) else None
+        # A str-slice call result carries its C++ shape: a StrView-returning call
+        # yields a string_view (BORROW -- an owned sink copies it), an owned-str
+        # call returns std::string by value (STORAGE -- lands bare).
+        str_t = _resolved_str_value(rtype, analyzer)
+        form = (Form.VALUE if str_t is None
+                else Form.BORROW if is_str_view_type(str_t) else Form.STORAGE)
         return THIRCall(
             result_type=rtype,
             callee=e.func_name,
             args=tuple(_lower_expr(a, lc) for a in e.args),
             native_name=native_name,
+            form=form,
             loc=loc,
         )
     if isinstance(e, (TpyArrayLiteral, TpySetLiteral)):
@@ -1825,7 +2204,8 @@ class _LowerCtx:
     never hit a non-value local."""
     __slots__ = ("analyzer", "func", "prescan", "render_type", "const_locals",
                  "pointers", "rebind_slot_locals", "movable_locals",
-                 "self_receiver", "record_name", "storage_tuple_locals")
+                 "self_receiver", "record_name", "storage_tuple_locals",
+                 "param_names")
 
     def __init__(self, func: TpyFunction, analyzer, render_type,
                  self_receiver: str | None = None,
@@ -1859,6 +2239,11 @@ class _LowerCtx:
         # set at any post-decl write/return (see _is_move_source).
         self.movable_locals: set[str] = analyzer.function_movable_locals.get(
             id(func), set())
+        # Param names: a `str`-typed PARAM name is a `std::string_view` in the
+        # C++ signature (the ARG-position formatter) while an owned str LOCAL of
+        # the same resolved type is a `std::string` -- the str name-form
+        # classifier needs the distinction (see _str_name_form).
+        self.param_names: set[str] = {n for n, _t in func.params}
 
 
 def _is_move_source(value: TpyExpr, lc: _LowerCtx,
@@ -1998,17 +2383,34 @@ def _lower_stmt_dispatch(stmt: TpyStmt, lc: _LowerCtx,
                 target=THIRName(result_type=vtype, name=stmt.name, loc=loc),
                 value=convert, loc=loc)
         init = _lower_expr(stmt.init, lc) if stmt.init else None
+        # A str local's binding type is a PendingStrType; carry the RESOLVED
+        # view/owned type (std::string_view / std::string) on the nodes.
+        str_t = _resolved_str_value(vtype, analyzer)
+        if str_t is not None:
+            vtype = str_t
         # The parser emits TpyVarDecl for every `name = expr`; the AST codegen
         # treats a write to an already-declared name as a reassignment, not a
         # re-declaration. Mirror that here so first-decl emits `T x = ...` and a
         # reassignment emits `x = ...`.
         if stmt.name in declared:
             assert init is not None  # eligibility requires a var-decl init
+            # No view->owned wrap on a plain reassignment: std::string has an
+            # implicit operator=(string_view), and the AST emits the bare
+            # `t = s;` here (the wrap is a decl-init/return-boundary shape).
             return THIRAssign(
                 target=THIRName(result_type=vtype, name=stmt.name, loc=loc),
                 value=init,
                 loc=loc,
             )
+        # Owned-str decl init off a view-form source copies explicitly --
+        # `std::string u = std::string(v);` -- because the string_view->string
+        # CONSTRUCTOR is explicit (unlike operator=). Mirrors the AST's
+        # `_view_source_to_owned` chokepoint; a literal init (VALUE form,
+        # const char[N]) constructs implicitly and stays bare.
+        if (init is not None and str_t is not None and is_str_type(str_t)
+                and init.form is Form.BORROW):
+            init = THIRFormConvert(result_type=str_t, value=init,
+                                   form=Form.STORAGE, loc=loc)
         declared[stmt.name] = vtype
         return THIRVarDecl(name=stmt.name, resolved_type=vtype, init=init, loc=loc)
     if isinstance(stmt, TpyAssign):
@@ -2092,10 +2494,19 @@ def _lower_stmt_dispatch(stmt: TpyStmt, lc: _LowerCtx,
                                         form=Form.STORAGE,
                                         move=_is_move_source(stmt.value, lc), loc=loc)
             return THIRReturn(value=value, loc=loc)
-        return THIRReturn(
-            value=_lower_expr(stmt.value, lc) if stmt.value else None,
-            loc=loc,
-        )
+        value = _lower_expr(stmt.value, lc) if stmt.value else None
+        # An owned-str return (`-> str`, std::string by value) fed a view-form
+        # source (string_view param / view local) copies explicitly --
+        # `return std::string(a);` -- the string_view->string ctor being
+        # explicit. Mirrors _view_source_to_owned at the return boundary; a
+        # literal (VALUE) or owned local / owned call result (STORAGE) returns
+        # bare.
+        ret_str = lc.prescan.ret_str
+        if (value is not None and ret_str is not None and is_str_type(ret_str)
+                and value.form is Form.BORROW):
+            value = THIRFormConvert(result_type=ret_str, value=value,
+                                    form=Form.STORAGE, loc=loc)
+        return THIRReturn(value=value, loc=loc)
     if isinstance(stmt, TpyIf):
         # Branches share `declared`: eligibility guarantees they only reassign
         # already-declared locals (lowered to THIRAssign), so neither branch

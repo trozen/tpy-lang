@@ -185,11 +185,16 @@ def test_case(case_dir, main_src, request):
                 pairs.append(("_fwd.hpp", fwd_path))
         if cpp_path is not None:
             pairs.append((".cpp", cpp_path))
+        # Routed names activate the THIR divergence reporter (None when
+        # --thir-codegen is off; empty set = module routed no bodies).
+        thir_names = (result.thir_routed_names.get(mod_name, frozenset())
+                      if result.thir_routed_names is not None else None)
         for ext, gen_path in pairs:
             expected_file = _module_to_expected_path(expected_dir, mod_name, ext)
             if not gen_path.exists():
                 pytest.fail(f"{gen_path} not generated", pytrace=False)
-            check_or_update(gen_path.read_text(), expected_file, f"{mod_name}{ext}")
+            check_or_update(gen_path.read_text(), expected_file, f"{mod_name}{ext}",
+                            thir_routed_names=thir_names)
 
     # Additional semantic annotations
     if not UPDATE_EXPECTED:

@@ -21,7 +21,9 @@ from ..codegen_cpp.context import (
     loop_var_binding, qualify_native_name,
 )
 from ..codegen_cpp.forms import LocalBinding, is_plain_nonvalue
-from ..type_def_registry import is_dict, is_list, is_set
+from ..type_def_registry import (
+    is_bytes_type, is_dict, is_list, is_set, is_str_type, view_to_owned_conv,
+)
 from ..typesys import OptionalType, TupleType, unwrap_qualifiers
 from .nodes import (
     Form,
@@ -51,6 +53,7 @@ from .nodes import (
     THIRStmt,
     THIRStrLiteral,
     THIRSubscript,
+    THIRUnaryNot,
     THIRVarDecl,
     THIRWhile,
 )
@@ -170,7 +173,8 @@ def _emit_binop(e: THIRBinOp) -> str:
     left, right = _emit_expr(e.left), _emit_expr(e.right)
     rb = e.resolved
     if rb is None:
-        # Derived comparison (`<= > >= !=`): bare C++ operator, no template.
+        # Derived comparison (`<= > >= !=`) or logical `&&`/`||` (incl. the
+        # chained-compare pair fold): bare C++ operator, no template.
         return f"({left} {e.op} {right})" if e.paren_wrap else f"{left} {e.op} {right}"
     wl = rb.left_wrapper.replace("{self}", left).replace("{expr}", left)
     wr = rb.right_wrapper.replace("{self}", right).replace("{expr}", right)
@@ -184,6 +188,12 @@ def _emit_binop(e: THIRBinOp) -> str:
 
 
 def _emit_call(e: THIRCall) -> str:
+    if e.cpp_template is not None:
+        # A scalar type-constructor call: expand the (sema-substituted,
+        # positional-only) __init__ template over the args with no receiver --
+        # gen_call_from_fi's cpp_template arm for a free call.
+        return expand_cpp_template(e.cpp_template, None,
+                                   *[_emit_expr(a) for a in e.args])
     args = ", ".join(_emit_expr(a) for a in e.args)
     if e.native_name is not None:
         # A @native free-function builtin (e.g. `len(c)` -> `::tpy::__len__(c)`):
@@ -300,6 +310,14 @@ def _emit_form_convert(e: THIRFormConvert) -> str:
         if isinstance(t, TupleType):
             helper = "tuple_to_storage_move" if e.move else "tuple_to_storage"
             return f"::tpy::{helper}<{t.to_cpp()}>({inner})"
+        # S1 str slice: a view-form source (string_view) into an owned storage
+        # sink (decl init / return) copies via the family's owned constructor --
+        # `std::string(x)` -- the string_view->string ctor being explicit.
+        # Mirrors the AST's `_view_source_to_owned` chokepoint spelling (the
+        # bytes arm, `::tpy::bytes_copy`, rides the S6 cell; the family helper
+        # covers it for free).
+        if is_str_type(t) or is_bytes_type(t):
+            return f"{view_to_owned_conv(t)}({inner})"
     raise THIRCodeGenError(
         f"unhandled THIRFormConvert: {type(t).__name__} {e.value.form}->{e.form}")
 
@@ -321,6 +339,10 @@ def _emit_expr(e: THIRExpr) -> str:
         return _emit_form_convert(e)
     if isinstance(e, THIRBinOp):
         return _emit_binop(e)
+    if isinstance(e, THIRUnaryNot):
+        # Mirrors _gen_unaryop's `!` arm over a bool operand, whose truthiness
+        # render is the plain value render.
+        return f"(!({_emit_expr(e.operand)}))"
     if isinstance(e, THIRCall):
         return _emit_call(e)
     if isinstance(e, THIRMethodCall):

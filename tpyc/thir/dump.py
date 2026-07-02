@@ -31,6 +31,7 @@ from .nodes import (
     THIRStmt,
     THIRStrLiteral,
     THIRSubscript,
+    THIRUnaryNot,
     THIRVarDecl,
     THIRWhile,
 )
@@ -54,8 +55,17 @@ def _expr(e: THIRExpr) -> str:
         return f"str({e.value!r})"
     if isinstance(e, THIRBinOp):
         return f"binop({_expr(e.left)}, {e.op}, {_expr(e.right)})"
+    if isinstance(e, THIRUnaryNot):
+        return f"not({_expr(e.operand)})"
     if isinstance(e, THIRCall):
-        name = f"{e.callee} [{e.native_name}]" if e.native_name else e.callee
+        # Surface the emit arm: a scalar-ctor cpp_template, a @native
+        # free-function symbol, or the bare callee name.
+        if e.cpp_template is not None:
+            name = f"{e.callee} [template {e.cpp_template!r}]"
+        elif e.native_name:
+            name = f"{e.callee} [{e.native_name}]"
+        else:
+            name = e.callee
         return f"call({name}, [{', '.join(_expr(a) for a in e.args)}])"
     if isinstance(e, THIRContainerLiteral):
         if e.values:  # dict: elements are keys

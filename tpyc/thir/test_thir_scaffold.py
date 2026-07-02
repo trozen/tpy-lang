@@ -18,7 +18,8 @@ from .nodes import (
     Form, PrintForm, THIRAssign, THIRBinOp, THIRCall, THIRContainerLiteral,
     THIRExprStmt, THIRFieldAccess, THIRForEach, THIRForRange,
     THIRFormConvert, THIRIf, THIRLiteral, THIRMethodCall, THIRName, THIRPrint,
-    THIRReturn, THIRSelf, THIRStrLiteral, THIRSubscript, THIRVarDecl, THIRWhile,
+    THIRReturn, THIRSelf, THIRStrLiteral, THIRSubscript, THIRUnaryNot,
+    THIRVarDecl, THIRWhile,
 )
 
 _STDLIB_DIRS = [get_lib_dir() / "tpy"]
@@ -654,13 +655,16 @@ class TestPrintStmt:
             + "def f(n: Int32) -> None:\n    g(n)\n")
         assert isinstance(_fn(thir, "f").body[0], THIRExprStmt)
 
-    def test_str_var_arg_ineligible(self):
-        # A str *variable* is not in the eligible-scalar slice (only str literals
-        # are handled, as raw C++ strings) -> AST path.
+    def test_str_var_arg_routes(self):
+        # A str variable streams raw like the AST's is_any_str_type arm.
         thir = _lower(
             "from tpy import Int32\n"
             + "def f(s: str) -> None:\n    print(s)\n")
-        assert _fn(thir, "f") is None
+        fn = _fn(thir, "f")
+        assert fn is not None
+        arg = fn.body[0].args[0]
+        assert arg.print_form is PrintForm.RAW
+        assert isinstance(arg.expr, THIRName) and arg.expr.form is Form.BORROW
 
     def test_bigint_arg_ineligible(self):
         # A plain `int` is BigInt, not an eligible fixed-int scalar -> AST path.
@@ -860,30 +864,221 @@ class TestBool:
         assert isinstance(fn.body[1].condition, THIRName)
         assert fn.body[1].condition.name == "go"
 
-    def test_logical_and_is_ineligible(self):
-        # `and`/`or` (TpyBinOp &&/||) use a narrowing + short-circuit-slot emit
-        # path (`_gen_logical_value`) the slice does not reproduce.
-        thir = _lower("def f(a: bool, b: bool) -> bool:\n    return a and b\n")
-        assert _fn(thir, "f") is None
-
-    def test_logical_or_is_ineligible(self):
-        # `or` (TpyBinOp ||) shares the `and` exclusion; a separate guard so a
-        # future edit admitting one operator can't silently route the other.
-        thir = _lower("def f(a: bool, b: bool) -> bool:\n    return a or b\n")
-        assert _fn(thir, "f") is None
-
-    def test_not_is_ineligible(self):
-        # `not` (TpyUnaryOp) emits via the resolved_unaryop path the slice has no
-        # node for.
-        thir = _lower("def f(a: bool) -> bool:\n    return not a\n")
-        assert _fn(thir, "f") is None
-
     def test_bool_literal_condition_is_ineligible(self):
         # `if True:` is excluded -- the AST path may dead-branch-eliminate a
         # bool-literal condition, which a bare `if (true)` would not reproduce.
         thir = _lower("def f(a: bool) -> bool:\n    r = a\n"
                       "    if True:\n        r = a\n    return r\n")
         assert _fn(thir, "f") is None
+
+
+class TestBoolOps:
+    def test_logical_and_routes(self):
+        # Bool-result `and` over bool operands: the bare-operator emit arm.
+        thir = _lower("def f(a: bool, b: bool) -> bool:\n    return a and b\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+        v = fn.body[0].value
+        assert isinstance(v, THIRBinOp) and v.op == "&&" and v.resolved is None
+
+    def test_logical_or_routes(self):
+        # `or` alongside `and` -- a separate guard so a future edit gating one
+        # operator can't silently drop the other.
+        thir = _lower("def f(a: bool, b: bool) -> bool:\n    return a or b\n")
+        fn = _fn(thir, "f")
+        assert fn is not None and fn.body[0].value.op == "||"
+
+    def test_not_routes(self):
+        thir = _lower("def f(a: bool) -> bool:\n    return not a\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+        assert isinstance(fn.body[0].value, THIRUnaryNot)
+
+    def test_and_or_not_condition_routes(self):
+        thir = _lower(_PRELUDE + "def f(a: Int32, b: Int32, flag: bool) -> Int32:\n"
+                      "    if a < b and flag:\n        return 1\n"
+                      "    while not flag or a == b:\n        a = a + 1\n"
+                      "    return a\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+        assert isinstance(fn.body[0], THIRIf) and fn.body[0].condition.op == "&&"
+        assert isinstance(fn.body[1], THIRWhile) and fn.body[1].condition.op == "||"
+        assert isinstance(fn.body[1].condition.left, THIRUnaryNot)
+
+    def test_value_semantics_or_is_ineligible(self):
+        # `n or 5` (non-bool result) takes _gen_logical_value's Python operand
+        # semantics (temp + ternary `(n ? n : 5)`), not the bare operator.
+        thir = _lower(_PRELUDE + "def f(n: Int32) -> Int32:\n    return n or 5\n")
+        assert _fn(thir, "f") is None
+
+    def test_non_bool_operand_is_ineligible(self):
+        # An int operand under a bool result (`flag and n`) renders through
+        # truthiness reasoning the slice does not carry -- stays on the AST path.
+        thir = _lower(_PRELUDE
+                      + "def f(flag: bool, n: Int32) -> bool:\n    return flag and n\n")
+        assert _fn(thir, "f") is None
+
+    def test_int_truthiness_not_is_ineligible(self):
+        # `not n` (int operand) is bool-result but truthy-wraps the operand.
+        thir = _lower(_PRELUDE + "def f(n: Int32) -> bool:\n    return not n\n")
+        assert _fn(thir, "f") is None
+
+    def test_unary_minus_is_ineligible(self):
+        # The arithmetic unaries take the resolved_unaryop emit path.
+        thir = _lower(_PRELUDE + "def f(n: Int32) -> Int32:\n    m = n\n    return -m\n")
+        assert _fn(thir, "f") is None
+
+    def test_mixed_sign_compare_operand_is_ineligible(self):
+        # The mixed-sign gate applies inside a logical operand too (the pair
+        # would emit std::cmp_*, not the bare operator).
+        thir = _lower(_PRELUDE + "from tpy import UInt32\n"
+                      "def f(a: Int32, b: UInt32, flag: bool) -> bool:\n"
+                      "    return flag and a < b\n")
+        assert _fn(thir, "f") is None
+
+    def test_record_operand_compare_is_ineligible(self):
+        # A record compare also reaches the rb=None bare-operator arm (a user
+        # dunder has no template), but its operands need gen_expr_deref's
+        # indirection -- `self` renders `(*this)`. The @total_ordering-
+        # synthesized `not (self <= other)` bodies pinned this divergence.
+        thir = _lower_ctx(
+            _PRELUDE
+            + "class C:\n"
+            + "    n: Int32\n"
+            + "    def __init__(self, n: Int32):\n        self.n = n\n"
+            + "    def __le__(self, other: C) -> bool:\n"
+            + "        return self.n <= other.n\n"
+            + "    def gt(self, other: C) -> bool:\n"
+            + "        return not (self <= other)\n")
+        assert _fn(thir, "gt") is None
+
+
+class TestBoolOpsEmit:
+    def test_emit_and_or_not(self):
+        thir = _lower(_PRELUDE + "def f(a: Int32, b: Int32, flag: bool) -> bool:\n"
+                      "    x = flag and not (a < b)\n    return x or flag\n")
+        buf = io.StringIO()
+        emit_thir_body(buf, _fn(thir, "f"))
+        assert buf.getvalue() == (
+            "    bool x = (flag && (!((a < b))));\n"
+            "    return (x || flag);\n")
+
+    def test_emit_not_nested_and_double_not(self):
+        thir = _lower("def f(a: bool, b: bool) -> bool:\n"
+                      "    x = not (a and b)\n    return not not x\n")
+        buf = io.StringIO()
+        emit_thir_body(buf, _fn(thir, "f"))
+        assert buf.getvalue() == (
+            "    bool x = (!((a && b)));\n"
+            "    return (!((!(x))));\n")
+
+    def test_emit_condition_matches_value_render(self):
+        # Condition position reuses the value render (`gen_truthy_expr` reduces
+        # to it for the admitted bool shapes).
+        thir = _lower(_PRELUDE + "def f(a: Int32, b: Int32, flag: bool) -> Int32:\n"
+                      "    if a < b and flag:\n        return 1\n"
+                      "    while not flag:\n        a = a + 1\n"
+                      "    return a\n")
+        buf = io.StringIO()
+        emit_thir_body(buf, _fn(thir, "f"))
+        assert buf.getvalue() == (
+            "    if (((a < b) && flag)) {\n"
+            "        return 1;\n"
+            "    }\n"
+            "    while ((!(flag))) {\n"
+            "        a = (::tpy::add_check<int32_t>(a, 1));\n"
+            "    }\n"
+            "    return a;\n")
+
+    def test_emit_bool_print_arg(self):
+        thir = _lower("def f(x: bool, y: bool):\n    print(x and y, not x)\n")
+        buf = io.StringIO()
+        emit_thir_body(buf, _fn(thir, "f"))
+        assert buf.getvalue() == (
+            "    std::cout << ::tpy::print_bool((x && y)) << \" \" "
+            "<< ::tpy::print_bool((!(x))) << \"\\n\";\n")
+
+
+class TestChainedCompare:
+    def test_simple_chain_routes(self):
+        # Simple (name) intermediate -> the inline arm: a left-folded && of the
+        # sema pairs.
+        thir = _lower(_PRELUDE + "def f(a: Int32, b: Int32, c: Int32) -> bool:\n"
+                      "    return a < b < c\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+        v = fn.body[0].value
+        assert isinstance(v, THIRBinOp) and v.op == "&&" and v.resolved is None
+        assert v.left.op == "<" and v.right.op == "<"
+
+    def test_four_operand_chain_routes(self):
+        thir = _lower(_PRELUDE + "def f(a: Int32, b: Int32, c: Int32, d: Int32) -> bool:\n"
+                      "    return a < b <= c < d\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+        v = fn.body[0].value          # ((p0 && p1) && p2)
+        assert v.op == "&&" and v.left.op == "&&" and v.right.op == "<"
+
+    def test_complex_endpoints_route(self):
+        # Endpoints may be non-simple (evaluated once); only INTERMEDIATES
+        # trigger the statement-expr arm.
+        thir = _lower(_PRELUDE + "def f(a: Int32, b: Int32, c: Int32) -> bool:\n"
+                      "    return a + 1 < b < c + 2\n")
+        assert _fn(thir, "f") is not None
+
+    def test_complex_intermediate_is_ineligible(self):
+        # A non-simple intermediate (`b + 1`) binds a `_cmp1` temp inside a GCC
+        # statement expression (`({ auto&& _cmp1 = ...; ... })`) -> AST path.
+        thir = _lower(_PRELUDE + "def f(a: Int32, b: Int32, c: Int32) -> bool:\n"
+                      "    return a < b + 1 < c\n")
+        assert _fn(thir, "f") is None
+
+    def test_call_intermediate_is_ineligible(self):
+        # A call intermediate (`len(xs)`) is non-simple -> statement-expr arm.
+        thir = _lower(_PRELUDE + "def f(a: Int32, c: Int32) -> bool:\n"
+                      "    xs = [1, 2, 3]\n    return a < len(xs) < c\n")
+        assert _fn(thir, "f") is None
+
+    def test_mixed_sign_pair_is_ineligible(self):
+        # Each pair gets the single-comparison gates (mixed-sign -> std::cmp_*).
+        thir = _lower(_PRELUDE + "from tpy import UInt32\n"
+                      "def f(a: Int32, b: UInt32, c: UInt32) -> bool:\n"
+                      "    return a < b < c\n")
+        assert _fn(thir, "f") is None
+
+    def test_chain_condition_routes(self):
+        thir = _lower(_PRELUDE + "def f(i: Int32, n: Int32) -> Int32:\n"
+                      "    if 0 <= i < n:\n        return i\n    return 0\n")
+        fn = _fn(thir, "f")
+        assert fn is not None and isinstance(fn.body[0], THIRIf)
+        assert fn.body[0].condition.op == "&&"
+
+
+class TestChainedCompareEmit:
+    def test_emit_inline_chain(self):
+        thir = _lower(_PRELUDE + "def f(a: Int32, b: Int32, c: Int32) -> bool:\n"
+                      "    return a < b < c\n")
+        buf = io.StringIO()
+        emit_thir_body(buf, _fn(thir, "f"))
+        assert buf.getvalue() == "    return ((a < b) && (b < c));\n"
+
+    def test_emit_four_operand_chain(self):
+        thir = _lower(_PRELUDE + "def f(a: Int32, b: Int32, c: Int32, d: Int32) -> bool:\n"
+                      "    return a < b < c < d\n")
+        buf = io.StringIO()
+        emit_thir_body(buf, _fn(thir, "f"))
+        assert buf.getvalue() == "    return (((a < b) && (b < c)) && (c < d));\n"
+
+    def test_emit_chain_condition(self):
+        thir = _lower(_PRELUDE + "def f(i: Int32, n: Int32) -> Int32:\n"
+                      "    if 0 <= i < n:\n        return i\n    return 0\n")
+        buf = io.StringIO()
+        emit_thir_body(buf, _fn(thir, "f"))
+        assert buf.getvalue() == (
+            "    if (((0 <= i) && (i < n))) {\n"
+            "        return i;\n"
+            "    }\n"
+            "    return 0;\n")
 
 
 class TestDump:
@@ -2324,13 +2519,19 @@ class TestContainerSubscriptRead:
             + "def h(s: list[Int32], i: Int32) -> Int32:\n    return i\n")
         assert _fn(ctrl, "h") is not None
 
-    def test_container_local_ineligible(self):
-        # Only container PARAMS are admitted; a container local (built from a literal)
-        # needs container-construction lowering, a later cell.
+    def test_container_local_with_ctor_elements_routes(self):
+        # Container-literal locals route (TestContainerLiteralLocal), and scalar
+        # ctor-call elements are eligible exprs -- the elements fold into the
+        # brace-init like bare literals.
         thir = _lower(
             _PRELUDE
             + "def f() -> Int32:\n    xs = [Int32(1), Int32(2)]\n    return xs[0]\n")
-        assert _fn(thir, "f") is None
+        fn = _fn(thir, "f")
+        assert fn is not None
+        lit = fn.body[0].init
+        assert isinstance(lit, THIRContainerLiteral)
+        assert all(isinstance(e, THIRCall) and e.cpp_template == "{0}"
+                   for e in lit.elements)
 
     def test_readonly_container_routes(self):
         # A `readonly[list/dict]` param routes (byte-identical): sema readonly-wraps
@@ -4170,3 +4371,399 @@ class TestContainerCallArgs:
         thir = _lower(src)
         assert _fn(thir, "f") is not None
         assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+
+
+# --- S1 str slice: str/StrView values (params, locals, print, compare, len,
+# --- return, call args); the view->owned copy as an explicit THIRFormConvert ---
+
+class TestStrValues:
+    def test_view_local_from_literal(self):
+        # Literal init, no owned-forcing usage -> StrView local; the literal
+        # (const char[N], VALUE form) is never wrapped.
+        thir = _lower('def f() -> None:\n    s = "hi"\n    print(s)\n')
+        decl = _fn(thir, "f").body[0]
+        assert isinstance(decl, THIRVarDecl)
+        assert decl.resolved_type.to_cpp() == "std::string_view"
+        assert isinstance(decl.init, THIRStrLiteral)
+        assert decl.init.form is Form.VALUE
+
+    def test_owned_local_init_from_view_wraps(self):
+        # v is a view of the param; u is forced owned (aug-assign) -> its init
+        # off the view copies explicitly (std::string(v)).
+        thir = _lower(
+            "def f(a: str) -> None:\n"
+            '    v = a\n    u = v\n    u += "z"\n    print(u, v)\n')
+        assert _fn(thir, "f") is None  # u += "z" is out of the slice (S3)
+        thir = _lower(
+            "def g(a: str) -> str:\n    u = a\n    return u\n"
+            "def h(a: str) -> None:\n    u = g(a)\n    print(u)\n")
+        g = _fn(thir, "g")
+        decl = g.body[0]
+        # u resolves VIEW (view-safe param source, no owned-forcing usage), so
+        # the decl init stays bare; the owned-RETURN wrap fires instead.
+        assert decl.resolved_type.to_cpp() == "std::string_view"
+        ret = g.body[1]
+        assert isinstance(ret.value, THIRFormConvert)
+        assert ret.value.form is Form.STORAGE
+        # h: u initialized from an owned-returning call -> owned local, bare init.
+        h = _fn(thir, "h")
+        hdecl = h.body[0]
+        assert hdecl.resolved_type.to_cpp() == "std::string"
+        assert isinstance(hdecl.init, THIRCall)
+        assert hdecl.init.form is Form.STORAGE
+
+    def test_return_param_wraps_return_literal_bare(self):
+        thir = _lower(
+            'def f(a: str) -> str:\n    return a\n'
+            'def g() -> str:\n    return "lit"\n')
+        f_ret = _fn(thir, "f").body[0]
+        assert isinstance(f_ret.value, THIRFormConvert)
+        inner = f_ret.value.value
+        assert isinstance(inner, THIRName) and inner.form is Form.BORROW
+        g_ret = _fn(thir, "g").body[0]
+        assert isinstance(g_ret.value, THIRStrLiteral)  # VALUE form, bare
+
+    def test_reassign_owned_from_view_bare(self):
+        # Plain reassignment uses std::string's implicit operator=(string_view)
+        # -- the AST emits `t = a;` bare, so no convert node.
+        thir = _lower(
+            "def f(a: str) -> None:\n"
+            '    t = f_src()\n    t = a\n    print(t)\n'
+            "def f_src() -> str:\n"
+            '    return "x"\n')
+        body = _fn(thir, "f").body
+        assign = body[1]
+        assert isinstance(assign, THIRAssign)
+        assert isinstance(assign.value, THIRName)  # no THIRFormConvert
+
+    def test_compare_and_len_route(self):
+        thir = _lower(
+            'def f(a: str, b: str) -> bool:\n    return a < b\n'
+            'def g(a: str) -> Int32:\n    return len(a)\n'
+            "from tpy import Int32\n")
+        cmp_ret = _fn(thir, "f").body[0]
+        assert isinstance(cmp_ret.value, THIRBinOp)
+        # str.__lt__ resolves with a `{self} < {0}` template -> `(a < b)`.
+        assert _emit_expr(cmp_ret.value) == "(a < b)"
+        len_ret = _fn(thir, "g").body[0]
+        assert isinstance(len_ret.value, THIRCall)
+        assert len_ret.value.native_name == "tpy::__len__"
+
+    def test_str_args_pass_through(self):
+        thir = _lower(
+            "def greet(name: str) -> None:\n    print(name)\n"
+            'def f(a: str) -> None:\n    greet(a)\n    greet("bob")\n')
+        f = _fn(thir, "f")
+        assert f is not None
+        assert isinstance(f.body[0].expr.args[0], THIRName)
+        assert isinstance(f.body[1].expr.args[0], THIRStrLiteral)
+
+    def test_aug_assign_ineligible(self):
+        # str += takes the AST in-place-append path (S3).
+        thir = _lower('def f() -> None:\n    t = "x"\n    t += "y"\n    print(t)\n')
+        assert _fn(thir, "f") is None
+
+    def test_reassigned_str_param_ineligible(self):
+        # A reassigned str param hoists an owned copy in the AST prologue.
+        thir = _lower('def f(a: str) -> None:\n    a = "other"\n    print(a)\n')
+        assert _fn(thir, "f") is None
+
+    def test_concat_ineligible(self):
+        # str + str is an owned-producing binop (S3).
+        thir = _lower("def f(a: str, b: str) -> str:\n    return a + b\n")
+        assert _fn(thir, "f") is None
+
+    def test_cross_type_coercion_ineligible(self):
+        # `return a` at a StrView return wraps a sema TpyCoerce (str_to_strview);
+        # cross-type str-family coercions are position-dependent -> AST path.
+        thir = _lower(
+            "from tpy import StrView\n"
+            "def f(a: str) -> StrView:\n    return a\n")
+        assert _fn(thir, "f") is None
+
+    def test_string_param_ineligible(self):
+        # tpy.String (const std::string&) is outside the S1 slice.
+        thir = _lower(
+            "from tpy import String\n"
+            "def f(s: String) -> None:\n    print(s)\n")
+        assert _fn(thir, "f") is None
+
+    def test_fstring_ineligible(self):
+        thir = _lower('def f(a: str) -> None:\n    print(f"v={a}")\n')
+        assert _fn(thir, "f") is None
+
+
+class TestStrValuesEmit:
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+        return cpp
+
+    SRC = (
+        "def greet(name: str) -> None:\n"
+        '    print("hello", name)\n'
+        "def pick(a: str, b: str) -> str:\n"
+        "    if a < b:\n        return a\n"
+        '    s = "fallback"\n    return s\n'
+        "def owned_chain(a: str) -> None:\n"
+        "    t = pick(a, a)\n"
+        "    t = a\n"
+        "    print(t, len(t))\n"
+        "def eq_test(a: str) -> bool:\n"
+        '    return a == "yes"\n'
+        "def main() -> None:\n"
+        '    greet("bob")\n'
+        '    print(pick("alpha", "beta"))\n'
+        '    owned_chain("q")\n'
+        '    print(eq_test("yes"))\n'
+        "main()\n"
+    )
+
+    def test_str_byte_identical(self):
+        thir = _lower(self.SRC)
+        for name in ("greet", "pick", "owned_chain", "eq_test", "main"):
+            assert _fn(thir, name) is not None, name
+        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
+
+    def test_owned_init_wrap_byte_identical(self):
+        # The decl-init view->owned copy (std::string u = std::string(v);):
+        # forced owned by a later reassign from an owned source.
+        src = (
+            "def mk() -> str:\n"
+            '    return "own"\n'
+            "def f(a: str) -> None:\n"
+            "    u = a\n"
+            "    u = mk()\n"
+            "    print(u)\n"
+            'f("q")\n'
+        )
+        thir = _lower(src)
+        f = _fn(thir, "f")
+        assert f is not None
+        decl = f.body[0]
+        assert isinstance(decl.init, THIRFormConvert)
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+
+    def test_overload_impl_ineligible(self):
+        # An overload IMPL is emitted once per stub with per-stub dead-branch
+        # facts; routing the shared body would hijack every specialization
+        # (caught by the byte-diff: calls/overload_literal_bool `describe`).
+        src = (
+            "from typing import Literal, overload\n"
+            "@overload\n"
+            'def describe(x: Literal[True]) -> str: ...\n'
+            "@overload\n"
+            'def describe(x: Literal[False]) -> str: ...\n'
+            "def describe(x: bool) -> str:\n"
+            '    if x:\n        return "yes"\n    return "no"\n')
+        thir = _lower(src)
+        assert _fn(thir, "describe") is None
+
+    def test_overload_impl_method_ineligible(self):
+        # The method arm of the overload-impl rejection: a literal-overloaded
+        # METHOD impl is per-stub specialized just like a free function
+        # (_gen_literal_specialized_method); the gate reads the owning record's
+        # method overload count. No corpus case load-bears this arm.
+        src = (
+            "from typing import Literal, overload\n"
+            "from tpy import Int32\n"
+            "class Box:\n"
+            "    n: Int32\n"
+            "    def __init__(self, n: Int32):\n        self.n = n\n"
+            "    @overload\n"
+            "    def pick(self, x: Literal[True]) -> Int32: ...\n"
+            "    @overload\n"
+            "    def pick(self, x: Literal[False]) -> Int32: ...\n"
+            "    def pick(self, x: bool) -> Int32:\n"
+            "        if x:\n            return self.n\n        return 0\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "pick") is None
+
+    def test_multi_overload_str_literal_arg_ineligible(self):
+        # A str-LITERAL arg to a multi-overload callee is pinned to its param's
+        # view form (`std::string_view("...")`, _wants_str_literal_pin) -- the
+        # bare-literal THIR emit would diverge, so the CALLER stays AST. No
+        # corpus case load-bears this reject (overload_str_literal_arg's main
+        # is ineligible for other reasons).
+        src = (
+            "from typing import Literal, overload\n"
+            "from tpy import Int32\n"
+            "@overload\n"
+            'def mode(m: Literal["r"]) -> Int32: ...\n'
+            "@overload\n"
+            'def mode(m: Literal["w"]) -> Int32: ...\n'
+            "def mode(m: str) -> Int32:\n"
+            '    if m == "r":\n        return 1\n    return 2\n'
+            "def caller() -> Int32:\n"
+            '    return mode("r")\n')
+        thir = _lower(src)
+        assert _fn(thir, "caller") is None
+
+
+# --- Scalar type-constructor calls (Int32(x) / Float64(x) / bool(n)) ---
+
+
+_CTOR_PRELUDE = "from tpy import Int32, Int64, UInt32, UInt64, Float64\n"
+
+
+class TestScalarCtorCall:
+    def test_literal_passthrough_routes(self):
+        # Int32(0) -- the same-type overload's `{0}` template over a literal.
+        thir = _lower(_CTOR_PRELUDE + "def f() -> Int32:\n    x = Int32(0)\n    return x\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+        init = fn.body[0].init
+        assert isinstance(init, THIRCall) and init.callee == "Int32"
+        assert init.cpp_template == "{0}"
+        assert isinstance(init.args[0], THIRLiteral) and init.args[0].value == 0
+
+    def test_int_cast_check_routes(self):
+        # Int64(a) with a: Int32 -- the generic AnyFixedInt overload; sema has
+        # already substituted {cpp} with the concrete return spelling.
+        thir = _lower(_CTOR_PRELUDE
+                      + "def f(a: Int32) -> Int64:\n    return Int64(a)\n")
+        ret = _fn(thir, "f").body[0].value
+        assert isinstance(ret, THIRCall)
+        assert ret.cpp_template == "::tpy::int_cast_check<int64_t>({0})"
+
+    def test_zero_arg_ctor_routes(self):
+        # Int32() -- the 0-arity overload's constant template.
+        thir = _lower(_CTOR_PRELUDE + "def f() -> Int32:\n    return Int32()\n")
+        ret = _fn(thir, "f").body[0].value
+        assert isinstance(ret, THIRCall) and ret.cpp_template == "0"
+        assert ret.args == ()
+
+    def test_float_from_int_routes(self):
+        thir = _lower(_CTOR_PRELUDE
+                      + "def f(a: Int32) -> float:\n    return Float64(a)\n")
+        ret = _fn(thir, "f").body[0].value
+        assert isinstance(ret, THIRCall)
+        assert ret.cpp_template == "static_cast<double>({0})"
+
+    def test_binop_arg_routes(self):
+        # The cast wraps a parenthesized binop -- the arg lowers through the
+        # normal THIRBinOp (paren_wrap default), so the emit keeps the parens.
+        thir = _lower(_CTOR_PRELUDE
+                      + "def f(a: Int32) -> Int64:\n    return Int64(a + a)\n")
+        ret = _fn(thir, "f").body[0].value
+        assert isinstance(ret, THIRCall) and isinstance(ret.args[0], THIRBinOp)
+
+    def test_ctor_as_call_and_print_arg_routes(self):
+        thir = _lower(_CTOR_PRELUDE
+                      + "def use(v: Int64) -> Int64:\n    return v\n"
+                      + "def f(a: Int32) -> None:\n"
+                      + "    print(use(Int64(a)), Int32(7))\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+        outer = fn.body[0].args[0].expr
+        assert isinstance(outer, THIRCall) and outer.callee == "use"
+        assert isinstance(outer.args[0], THIRCall)
+        assert outer.args[0].cpp_template is not None
+
+    def test_bool_ctor_routes(self):
+        thir = _lower(_CTOR_PRELUDE + "def f() -> bool:\n    return bool(1)\n")
+        ret = _fn(thir, "f").body[0].value
+        assert isinstance(ret, THIRCall) and ret.cpp_template == "({0} != 0)"
+
+    def test_bigint_result_ineligible(self):
+        # int(x) constructs a BigInt -- not an eligible scalar result.
+        thir = _lower(_CTOR_PRELUDE
+                      + "def f(a: Int32) -> None:\n    x = int(a)\n    print(a)\n")
+        assert _fn(thir, "f") is None
+
+    def test_str_result_ineligible(self):
+        thir = _lower(_CTOR_PRELUDE
+                      + "def f(a: Int32) -> None:\n    s = str(a)\n    print(a)\n")
+        assert _fn(thir, "f") is None
+
+    def test_float_str_arg_ineligible(self):
+        # float("nan") folds to a numeric_limits constant on the AST path -- the
+        # str-literal arg fails the scalar arg gate, keeping the fold there.
+        thir = _lower(_CTOR_PRELUDE
+                      + "def f() -> float:\n    return float(\"nan\")\n")
+        assert _fn(thir, "f") is None
+
+    def test_char_ctor_ineligible(self):
+        # Char("a") resolves to a @native(function=True) ctor (no cpp_template),
+        # and neither the str arg nor the Char result is an eligible scalar.
+        thir = _lower("from tpy import Char\n"
+                      + "def f() -> None:\n    c = Char(\"a\")\n    print(1)\n")
+        assert _fn(thir, "f") is None
+
+    def test_float32_ctor_ineligible(self):
+        # Float32 literals need an `f` suffix the slice does not emit.
+        thir = _lower("from tpy import Float32\n"
+                      + "def f() -> None:\n    x = Float32(1.5)\n    print(1)\n")
+        assert _fn(thir, "f") is None
+
+    def test_wide_literal_arg_ineligible(self):
+        # A literal outside int32 range renders with a static_cast wrap
+        # (_gen_int_literal_value) the bare THIRLiteral emit does not reproduce.
+        thir = _lower(_CTOR_PRELUDE
+                      + "def f() -> None:\n    g = UInt32(4294967295)\n    print(1)\n")
+        assert _fn(thir, "f") is None
+
+    def test_negative_literal_arg_ineligible(self):
+        # Unary minus is outside the expression slice (pre-existing boundary).
+        thir = _lower(_CTOR_PRELUDE
+                      + "def f() -> None:\n    d = Int32(-3)\n    print(1)\n")
+        assert _fn(thir, "f") is None
+
+
+class TestScalarCtorCallEmit:
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+        return cpp
+
+    SRC = (
+        _CTOR_PRELUDE
+        + "def conv(a: Int32, b: UInt32) -> Int64:\n"
+        + "    w = Int64(a)\n"
+        + "    u = UInt64(b)\n"
+        + "    s = Int64(a + a)\n"
+        + "    return w + s\n"
+        + "def seed() -> Int32:\n"
+        + "    z = Int32()\n"
+        + "    x = Int32(0)\n"
+        + "    y = Int32(x)\n"
+        + "    return x + y + z\n"
+        + "def fl(a: Int32) -> float:\n"
+        + "    m = Float64(a)\n"
+        + "    return m + Float64(1.5)\n"
+        + "def flags() -> bool:\n"
+        + "    k = bool(1)\n"
+        + "    return k\n"
+        + "def use(v: Int64) -> Int64:\n    return v\n"
+        + "def main():\n"
+        + "    print(conv(3, UInt32(4)))\n"
+        + "    print(seed(), fl(2), flags())\n"
+        + "    print(use(Int64(9)))\n"
+        + "main()\n"
+    )
+
+    def test_routed(self):
+        thir = _lower(self.SRC)
+        for name in ("conv", "seed", "fl", "flags"):
+            assert _fn(thir, name) is not None, name
+
+    def test_byte_identical(self):
+        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
+
+    def test_emit_arms(self):
+        cpp = self._cpp(self.SRC, thir=True)
+        assert "int64_t w = ::tpy::int_cast_check<int64_t>(a);" in cpp
+        assert "uint64_t u = ::tpy::int_cast_check<uint64_t>(b);" in cpp
+        # the cast keeps the binop's paren wrap
+        assert ("int64_t s = ::tpy::int_cast_check<int64_t>"
+                "((::tpy::add_check<int32_t>(a, a)));") in cpp
+        assert "int32_t z = 0;" in cpp           # zero-arg ctor
+        assert "int32_t x = 0;" in cpp           # literal passthrough
+        assert "int32_t y = x;" in cpp           # same-type passthrough
+        assert "double m = static_cast<double>(a);" in cpp
+        assert "bool k = (1 != 0);" in cpp
+        assert "use(9)" in cpp                   # ctor folded in a call arg

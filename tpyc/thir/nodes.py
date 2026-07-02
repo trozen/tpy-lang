@@ -86,9 +86,10 @@ class THIRLiteral(THIRExpr):
 
 @dataclass(frozen=True)
 class THIRStrLiteral(THIRExpr):
-    """A string literal. Currently only arises as a `print()` argument (str is
-    not otherwise in the eligible-scalar slice); the emitter renders it via
-    `cpp_string_literal_expr`, so the quoting/escaping matches the AST path."""
+    """A string literal, rendered via `cpp_string_literal_expr` so the
+    quoting/escaping matches the AST path. Form stays VALUE: the emitted
+    const char[N] converts implicitly to both string_view and string slots,
+    so a literal is never wrapped by the owned-sink view->owned copy."""
     value: str
 
 
@@ -116,8 +117,10 @@ class THIRBinOp(THIRExpr):
     """Binary operation. `resolved` carries the operator's C++ template and
     operand wrappers (from sema); `divisor_non_zero` swaps the checked div/mod
     helper for the unchecked one, mirroring the AST emit path. `resolved` is
-    None for the derived comparisons (`<= > >= !=`), which sema leaves to the
-    bare C++ operator -- the emitter renders `(l op r)` directly."""
+    None for the derived comparisons (`<= > >= !=`) and for logical `&&`/`||`
+    (bool-result and/or, plus the pair-fold of an inline chained comparison),
+    which sema leaves to the bare C++ operator -- the emitter renders
+    `(l op r)` directly."""
     left: THIRExpr
     op: str
     right: THIRExpr
@@ -127,6 +130,17 @@ class THIRBinOp(THIRExpr):
     # (`x = (a + b)`); an augmented-assignment RHS is a full statement RHS where
     # the AST omits that wrap (`x = a + b;`). False reproduces the latter.
     paren_wrap: bool = True
+
+
+@dataclass(frozen=True)
+class THIRUnaryNot(THIRExpr):
+    """Logical `not` over a bool-typed operand -> `(!(operand))`. Eligibility
+    pins the operand to bool, where the AST's truthiness render
+    (`gen_truthy_expr`) reduces to the plain value render this wraps -- so one
+    emit serves value and condition position alike. `result_type` is always
+    bool. The arithmetic unaries (`- + ~`) and non-bool truthiness (int /
+    Optional / `__bool__` wrappers) stay on the AST path."""
+    operand: THIRExpr
 
 
 @dataclass(frozen=True)
@@ -141,10 +155,19 @@ class THIRCall(THIRExpr):
     `qualify_native_name(native_name)(args)` instead of the bare callee, so the
     dispatch keys on the resolved symbol, not the source name (a user function
     that happens to be named `len` has `native_name=None` and stays a plain
-    call)."""
+    call).
+
+    `cpp_template` (when set) is a scalar type-constructor call's resolved
+    `__init__` template (`Int32(x)` -> `::tpy::int_cast_check<int32_t>({0})`),
+    already fully substituted by sema ({cpp} / class type params) so only
+    positional `{0}, {1}, ...` placeholders remain -- the eligibility gate
+    enforces that. The emitter expands it over the args with no receiver
+    (gen_call_from_fi's template arm); `callee` is the source type name, kept
+    for the dump only."""
     callee: str
     args: tuple[THIRExpr, ...]
     native_name: str | None = None
+    cpp_template: str | None = None
 
 
 @dataclass(frozen=True)

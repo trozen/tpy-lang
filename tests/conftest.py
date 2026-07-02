@@ -695,6 +695,10 @@ class CompileResult:
     third_party_include_dirs: list[Path] = field(default_factory=list)
     third_party_link_flags: list[str] = field(default_factory=list)
     third_party_c_sources: list[tuple[Path, list[str]]] = field(default_factory=list)
+    # Per-module names of THIR-routed bodies (None when --thir-codegen is off).
+    # Feeds the divergence reporter: a snapshot mismatch is labeled with the
+    # enclosing function and whether THIR routed it.
+    thir_routed_names: dict[str, frozenset[str]] | None = None
 
 
 def _validate_default_int_name(name: str) -> str:
@@ -885,6 +889,8 @@ def compile_with_diagnostics(src_file: Path, output_dir: Path, default_int: str 
 
         # Feed the --thir-codegen non-vacuity gate: 0 when the flag is off.
         record_thir_routed(compiler._thir_routed_bodies)
+        thir_routed_names = (dict(compiler._thir_routed_names)
+                             if TEST_CODEGEN_OPTIONS.thir_codegen else None)
 
         # Return paths for the entry point module
         layout = BuildLayout(output_dir, entry_module.name)
@@ -921,6 +927,7 @@ def compile_with_diagnostics(src_file: Path, output_dir: Path, default_int: str 
             modes={},
         )
         return CompileResult(success=True, diagnostics=diagnostics, hpp_path=hpp_path, cpp_path=cpp_path,
+                             thir_routed_names=thir_routed_names,
                              all_modules=all_modules, declared_var_types=declared_var_types,
                              ptr_deref_facts=ptr_deref_facts,
                              subscript_bounds_facts=subscript_bounds_facts,
@@ -1671,6 +1678,18 @@ def record_thir_routed(bodies: int) -> None:
         _thir_tally["cases"] += 1
 
 
+# THIR divergence reporter -- one label per failed generated-code snapshot
+# under --thir-codegen ("<case> <file>: in `fn` [THIR-routed]"), aggregated
+# worker -> controller like the tallies and echoed in the terminal summary so
+# a failing byte-diff names its diverging functions without scanning diffs.
+_thir_divergences: list[str] = []
+_thir_divergences_agg: list[str] = []
+
+
+def record_thir_divergence(label: str) -> None:
+    _thir_divergences.append(label)
+
+
 def _thir_gate_verdict(config) -> str:
     """Verdict for the --thir-codegen non-vacuity gate: 'off' (flag unset),
     'ok' (routed > 0), 'warn' (routed 0 on a filtered run), or 'fail' (routed 0
@@ -1696,6 +1715,7 @@ def pytest_sessionfinish(session):
     if workeroutput is not None:
         workeroutput["exec_tally"] = dict(_exec_tally)
         workeroutput["thir_tally"] = dict(_thir_tally)
+        workeroutput["thir_divergences"] = list(_thir_divergences)
         return
     if _thir_gate_verdict(session.config) == "fail":
         session.exitstatus = pytest.ExitCode.TESTS_FAILED
@@ -1712,6 +1732,7 @@ def pytest_testnodedown(node, error):
     if thir:
         for k in _thir_tally_agg:
             _thir_tally_agg[k] += thir.get(k, 0)
+    _thir_divergences_agg.extend(wo.get("thir_divergences", []))
 
 
 def pytest_terminal_summary(terminalreporter, exitstatus, config):
@@ -1748,6 +1769,20 @@ def pytest_terminal_summary(terminalreporter, exitstatus, config):
                 f"the full corpus; the byte-diff gate is vacuous (wiring "
                 f"regression?). Session failed."
             )
+        divergences = _thir_divergences + _thir_divergences_agg
+        if divergences:
+            shown = sorted(divergences)[:30]
+            terminalreporter.write_line(
+                f"{_LOG_PREFIX} thir divergences: {len(divergences)} snapshot "
+                f"mismatch(es), first-divergent-function labels:"
+            )
+            for label in shown:
+                terminalreporter.write_line(f"{_LOG_PREFIX}   {label}")
+            if len(divergences) > len(shown):
+                terminalreporter.write_line(
+                    f"{_LOG_PREFIX}   ... and {len(divergences) - len(shown)} "
+                    f"more (see individual failures)"
+                )
 
 
 def case_binary_path(build_dir: Path, module_name: str) -> Path:
@@ -2443,7 +2478,8 @@ def validate_frame_annotations(
 
 
 def check_or_update(actual: str, expected_file: Path, description: str,
-                    *, compare_only: bool = False) -> None:
+                    *, compare_only: bool = False,
+                    thir_routed_names: frozenset[str] | None = None) -> None:
     """Compare actual with expected, or update expected if UPDATE_EXPECTED is set.
 
     In update mode, creates parent directories and writes the file.
@@ -2452,6 +2488,11 @@ def check_or_update(actual: str, expected_file: Path, description: str,
     Pass ``compare_only=True`` to always compare and never write -- used by the
     cpy phase to verify CPython output against the canonical output.txt
     produced by the exec phase, even in update mode.
+
+    ``thir_routed_names`` (generated-code snapshots under --thir-codegen only)
+    activates the THIR divergence reporter: the failure is prefixed with the
+    function enclosing the first divergent hunk and whether THIR routed it, and
+    the divergence is tallied into the ``tpy| thir divergences`` summary.
     """
     if UPDATE_EXPECTED and not compare_only:
         expected_file.parent.mkdir(parents=True, exist_ok=True)
@@ -2460,10 +2501,93 @@ def check_or_update(actual: str, expected_file: Path, description: str,
         expected = expected_file.read_text() if expected_file.exists() else ""
         if actual != expected:
             diff = _format_unified_diff(expected, actual, fromfile=str(expected_file), tofile="actual")
+            thir_note = ""
+            if thir_routed_names is not None:
+                label = _thir_divergence_label(
+                    expected, actual, thir_routed_names)
+                record_thir_divergence(
+                    f"{_case_label(expected_file)} {description}: {label}")
+                thir_note = f"THIR divergence: {label}\n"
             pytest.fail(
-                f"{description} differs: {expected_file}\n{diff}",
+                f"{description} differs: {expected_file}\n{thir_note}{diff}",
                 pytrace=False,
             )
+
+
+def _case_label(expected_file: Path) -> str:
+    """`<group>/<case>` for a path under tests/cases, else the file name."""
+    try:
+        rel = expected_file.relative_to(CASES_DIR)
+        return "/".join(rel.parts[:rel.parts.index("expected")])
+    except ValueError:
+        return expected_file.name
+
+
+_THIR_DEF_MARKER_RE = re.compile(r"^\s*// def (\w+)\(")
+_THIR_CLASS_MARKER_RE = re.compile(r"^\s*// class (\w+)")
+
+
+def first_divergent_line(expected: str, actual: str) -> int | None:
+    """0-based index into `actual`'s lines of the first divergence, or None."""
+    sm = difflib.SequenceMatcher(a=expected.splitlines(),
+                                 b=actual.splitlines(), autojunk=False)
+    for tag, _i1, _i2, j1, _j2 in sm.get_opcodes():
+        if tag != "equal":
+            return j1
+    return None
+
+
+def enclosing_function(lines: list[str], idx: int) -> str | None:
+    """Name the function enclosing generated-code line `idx` by scanning
+    backwards for the `// def name(...)` source marker codegen emits before
+    every function/method body. A `// class` marker hit first means the
+    divergence sits in the record declaration itself (field layout etc.);
+    ctor markers (`__init__` sits inside the struct) qualify with the record
+    name to match the `Rec.__init__` form the routed-names set uses.
+    """
+    for i in range(min(idx, len(lines) - 1), -1, -1):
+        m = _THIR_DEF_MARKER_RE.match(lines[i])
+        if m:
+            name = m.group(1)
+            if name != "__init__":
+                return name
+            for k in range(i - 1, -1, -1):
+                cm = _THIR_CLASS_MARKER_RE.match(lines[k])
+                if cm:
+                    return f"{cm.group(1)}.__init__"
+            return name
+        cm = _THIR_CLASS_MARKER_RE.match(lines[i])
+        if cm:
+            return f"class {cm.group(1)}"
+    return None
+
+
+def _thir_divergence_label(expected: str, actual: str,
+                           routed_names: frozenset[str]) -> str:
+    idx = first_divergent_line(expected, actual)
+    if idx is None:
+        return "whitespace/trailing-newline only"
+    # Anchor on whichever side names an enclosing function: a THIR emit that
+    # DROPS lines can put actual's divergence point before any marker while
+    # the expected side still sits inside one.
+    fn = (enclosing_function(actual.splitlines(), idx)
+          or enclosing_function(expected.splitlines(),
+                                first_divergent_expected_line(expected, actual)))
+    if fn is None:
+        return f"outside any function marker (line {idx + 1})"
+    routed = fn in routed_names
+    return f"in `{fn}` [{'THIR-routed' if routed else 'NOT THIR-routed'}]"
+
+
+def first_divergent_expected_line(expected: str, actual: str) -> int:
+    """0-based index into `expected`'s lines of the first divergence (0 when
+    the texts are equal -- callers only reach this on a known mismatch)."""
+    sm = difflib.SequenceMatcher(a=expected.splitlines(),
+                                 b=actual.splitlines(), autojunk=False)
+    for tag, i1, _i2, _j1, _j2 in sm.get_opcodes():
+        if tag != "equal":
+            return i1
+    return 0
 
 
 def _format_unified_diff(expected: str, actual: str, fromfile: str, tofile: str, context: int = 3) -> str:

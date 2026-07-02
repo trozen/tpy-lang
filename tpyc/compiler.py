@@ -1090,6 +1090,10 @@ class Compiler:
         self._ext_glue_cpp_paths: list[Path] = []
         # Routed-body count for the THIR byte-diff gate's non-vacuity check.
         self._thir_routed_bodies = 0
+        # Per-module names of THIR-routed bodies (ctors as `Rec.__init__`),
+        # consumed by the test harness's divergence reporter to label a
+        # snapshot-diff hunk as inside/outside a routed body.
+        self._thir_routed_names: dict[str, frozenset[str]] = {}
         self.shadowed_builtins: dict[str, set[tuple[str, int | None]]] = {}
         self.diagnostics: list[Diagnostic] = []
         self._source_input: tuple[str, str] | None = None
@@ -3810,6 +3814,12 @@ class Compiler:
         # ctor frontier), so the gate sees the ctor-MIL tail routing.
         self._thir_routed_bodies += (len(codegen.ctx.thir_functions)
                                      + len(codegen.ctx.thir_constructors))
+        if codegen.ctx.thir_functions or codegen.ctx.thir_constructors:
+            self._thir_routed_names[mod_name] = frozenset(
+                [tf.name for tf in codegen.ctx.thir_functions.values()]
+                + [f"{tc.record_name}.__init__"
+                   for tc in codegen.ctx.thir_constructors.values()]
+            )
 
         if not hpp_code:
             return None, None
