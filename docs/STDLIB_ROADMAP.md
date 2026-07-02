@@ -163,9 +163,9 @@ Examples of the policy in action:
 | [`subprocess`](#subprocess) | P1 | Blocked | 0% | -- | Needs process spawning |
 | [`socket`](#socket) | P1 | Partial | ~75% | pure + C | IPv4 TCP client/server (blocking + non-blocking via `setblocking`), `socketpair`, `create_connection`/`create_server`, `send`/`recv`/`sendall`/`shutdown`/`setsockopt_int`/`getsockopt_int`/`getsockname`/`getpeername`, `gethostbyname`, context-manager, `SocketError`/`BlockingIOError` (subclass `OSError`); errno maps to the PEP 3151 `ConnectionError` subclasses (`BrokenPipeError` on EPIPE -- a write to a hung-up peer raises this rather than killing the process, the runtime ignores `SIGPIPE` at startup; `ConnectionResetError`/`ConnectionRefusedError`/`ConnectionAbortedError` on ECONNRESET/ECONNREFUSED/ECONNABORTED), matching CPython. `settimeout`/`gettimeout`/`getblocking` timeout mode (recv/send via SO_RCVTIMEO/SO_SNDTIMEO, connect via a poll wait; timeout -> `TimeoutError`, now an `OSError` subclass). `makefile("rb")` -> `io.BufferedReader` (timeout-aware). `create_connection(addr, timeout=)`. Backed by `_bindings.posix_socket` + `socket_impl.cpp`. Missing: IPv6/`AF_INET6`, `AF_UNIX`, `sendto`/`recvfrom`/`recv_into`, full `getaddrinfo`, `makefile` text/write modes, `setdefaulttimeout`, accept-under-timeout, TLS/`ssl`, Windows |
 | [`http`](#httpclient) | P2 | Partial | ~60% | pure | `HTTPStatus` (full IntEnum code set; `.value`/`.name`/value-lookup/int-compare; no `.phrase`/`.description`/`.is_*` -- enum can't carry per-member data). Missing: `HTTPMethod` enum |
-| [`http.client`](#httpclient) | P2 | Partial | ~60% | pure | HTTP/1.1 over plaintext (`HTTPConnection`) and TLS (`HTTPSConnection`, via `ssl` -- secure-default context, `context=` override, default port 443): `request`/`getresponse`/`connect`/`close`, `HTTPResponse` (`status`/`reason`/`version`/`read`/`getheader`/`getheaders`), `HTTPException`/`BadStatusLine`/`UnknownProtocol`. Both connection classes nominally inherit a `@dynamic _Connection` protocol so a caller can hold either behind one `Box[_Connection]` and dispatch virtually (TPy method dispatch is static, so a plain subclass would not dispatch through a base reference; nominal inheritance stores the conformer directly as the base, no Adapter). Auto Host/Accept-Encoding/Content-Length (CPython byte-order); body framing via Content-Length, chunked, and connection-close. Reads through `makefile()` -> `io.BufferedReader`. `HTTPConnection(host, port, timeout=)` threads a socket timeout through `create_connection`. Missing: low-level putrequest/putheader, str/file/iterable bodies, `email.message`-style `.headers`, redirects/proxy/connection-reuse (see TODO.md). Note: importing `http.client` now links the TLS backend (mbedTLS) for all users -- TODO.md tracks the use-driven-linking follow-up to scope that to HTTPSConnection users |
+| [`http.client`](#httpclient) | P2 | Partial | ~60% | pure | HTTP/1.1 over plaintext (`HTTPConnection`) and TLS (`HTTPSConnection`, via `ssl` -- secure-default context, `context=` override, default port 443): `request`/`getresponse`/`connect`/`close`, `HTTPResponse` (`status`/`reason`/`version`/`read`/`getheader`/`getheaders`), `HTTPException`/`BadStatusLine`/`UnknownProtocol`. Both connection classes nominally inherit a `@dynamic _Connection` protocol so a caller can hold either behind one `Box[_Connection]` and dispatch virtually (TPy method dispatch is static, so a plain subclass would not dispatch through a base reference; nominal inheritance stores the conformer directly as the base, no Adapter). Auto Host/Accept-Encoding/Content-Length (CPython byte-order); body framing via Content-Length, chunked, and connection-close. Reads through `makefile()` -> `io.BufferedReader`. `HTTPConnection(host, port, timeout=)` threads a socket timeout through `create_connection`. Connections are persistent (HTTP/1.1 keep-alive): the socket survives request/getresponse cycles, `HTTPResponse.will_close` mirrors CPython's `_check_close`, and `request()` after `close()` reconnects; the caller drains each response and closes on `will_close` (`getresponse()` does not auto-close on will_close as CPython does -- a declared divergence, since TPy's `SSLSocket.close()` sends close_notify immediately). Missing: low-level putrequest/putheader, str/file/iterable bodies, `email.message`-style `.headers`, proxy/`set_tunnel`, the `CannotSendRequest`/`ResponseNotReady` misuse guards, pipelining (see TODO.md). Note: importing `http.client` now links the TLS backend (mbedTLS) for all users -- TODO.md tracks the use-driven-linking follow-up to scope that to HTTPSConnection users |
 | [`urllib.request`](#urllibrequest) | P2 | Partial | ~20% | pure | Simplified `urlopen(url, data=None, timeout=None, context=None)` over `http.client` (GET/POST), returns `HTTPResponse`; `http`/`https` schemes (https routes to `HTTPSConnection` on 443, `context=` is the TLS context like CPython), other schemes -> `URLError`. `timeout` (seconds) honored for connect/recv/send. No opener/handler stack, redirects, proxies, auth handlers, `_GLOBAL_DEFAULT_TIMEOUT` sentinel; `create_default_context()` trusts the vendored Mozilla root bundle, so real https verifies out of the box. See TODO.md |
-| [`tplib.requests`](#tplibrequests) | P2 | Partial | ~50% | pure | `requests`-style client on `http.client`. `get`/`post`/`put`/`patch`/`delete`/`head`/`request` with `params`/`headers`/`data`/`json`/`auth`/`timeout`/`allow_redirects`; `Response` (`.status_code`/`.ok`/`.text`/`.content`/`.json()`/`.headers` (`CaseInsensitiveDict`)/`.url`/`.history`/`.raise_for_status()`); `Session` (default headers/params, Basic `auth`, `max_redirects`); `RequestException`->`HTTPError`/`ConnectionError`/`Timeout`/`TooManyRedirects` (`timeout` float raises `Timeout` on a slow connect/read; a socket-level connection failure -- refused/reset/broken-pipe/no-host -- is re-wrapped as `ConnectionError`). `allow_redirects=` follows 301/302/303/307/308 via `Location` (method/body rewrite + cross-host auth strip per requests), including http->https redirects. HTTPS: an `https://` URL (or redirect target) routes to `HTTPSConnection` on port 443; `verify: bool|str=True` maps to the TLS context (`True` verified default, `"<path>"` custom CA, `False` disables); `requests.SSLError(ConnectionError)` wraps `ssl.SSLError`. Divergences: typed kwargs, untyped `.json()`, no `(connect, read)` timeout tuple, no pooling/cookies. `verify=True` trusts the vendored Mozilla root bundle, so public https verifies out of the box. A default `User-Agent` (`tpy-requests/<major.minor>`, from the compiler version) is sent unless the caller supplies one, matching requests. See TODO.md |
+| [`tplib.requests`](#tplibrequests) | P2 | Partial | ~50% | pure | `requests`-style client on `http.client`. `get`/`post`/`put`/`patch`/`delete`/`head`/`request` with `params`/`headers`/`data`/`json`/`auth`/`timeout`/`allow_redirects`; `Response` (`.status_code`/`.ok`/`.text`/`.content`/`.json()`/`.headers` (`CaseInsensitiveDict`)/`.url`/`.history`/`.raise_for_status()`); `Session` (default headers/params, Basic `auth`, `max_redirects`); `RequestException`->`HTTPError`/`ConnectionError`/`Timeout`/`TooManyRedirects` (`timeout` float raises `Timeout` on a slow connect/read; a socket-level connection failure -- refused/reset/broken-pipe/no-host -- is re-wrapped as `ConnectionError`). `allow_redirects=` follows 301/302/303/307/308 via `Location` (method/body rewrite + cross-host auth strip per requests), including http->https redirects. HTTPS: an `https://` URL (or redirect target) routes to `HTTPSConnection` on port 443; `verify: bool|str=True` maps to the TLS context (`True` verified default, `"<path>"` custom CA, `False` disables); `requests.SSLError(ConnectionError)` wraps `ssl.SSLError`. `Session` pools connections per `(scheme, host, port, verify)` and reuses them across requests (HTTP/1.1 keep-alive; a `will_close` response closes the socket, the pooled entry lazily reconnects). Divergences: typed kwargs, untyped `.json()`, no `(connect, read)` timeout tuple, no cookies; a pooled connection keeps its creation timeout. `verify=True` trusts the vendored Mozilla root bundle, so public https verifies out of the box. A default `User-Agent` (`tpy-requests/<major.minor>`, from the compiler version) is sent unless the caller supplies one, matching requests. See TODO.md |
 
 ---
 
@@ -1401,19 +1401,31 @@ imports `ssl`, every program importing it links the TLS backend (mbedTLS);
 TODO.md tracks the use-driven-linking follow-up to scope that to programs that
 actually reference `HTTPSConnection`.
 
+Connections are persistent (HTTP/1.1 keep-alive): the socket survives
+request/getresponse cycles and `request()` after `close()` reconnects.
+`HTTPResponse.will_close` mirrors CPython's `_check_close` (Connection-header
+substring, HTTP/1.0 default-close, unframed-body fallback); the caller drains
+each response and closes the connection on `will_close`. Declared divergence:
+`getresponse()` does not auto-close on will_close as CPython does (TPy's
+`SSLSocket.close()` sends close_notify immediately, which would race a
+still-unread TLS body). Chunked bodies accumulate into a `bytearray`
+(amortized O(n)). Test: `cases/stdlib/http_client_keepalive` (gold parity).
+
 **Deferred** (see TODO.md): the `http.HTTPMethod` enum, low-level
 putrequest/putheader/endheaders, str/file/iterable request bodies,
 `email.message`-style `.headers`, `HTTPStatus.phrase`/`.is_*`, header folding,
-single-space-vs-whitespace status-line split, redirects/proxy/connection-reuse.
+single-space-vs-whitespace status-line split, proxy/`set_tunnel`, the
+`CannotSendRequest`/`ResponseNotReady` misuse guards, pipelining.
 
 ### urllib.request
 
 Current: `lib/tpy/urllib/request.py` -- a simplified, signature-compatible
-`urlopen(url, data=None)` over `http.client` (GET, or POST when `data` is
-given). Returns an `http.client.HTTPResponse` (read via `.status`/`.reason`/
-`.read()`/`.getheader()`). A non-`http` scheme raises `URLError`. No
-opener/handler stack, no redirects/proxies/auth-handlers/`timeout=`/HTTPS
-(see TODO.md). A private `_sock` param injects a socket for offline tests
+`urlopen(url, data=None, timeout=None, context=None)` over `http.client`
+(GET, or POST when `data` is given; `https://` routes to `HTTPSConnection`
+with `context=` as the TLS context). Returns an `http.client.HTTPResponse`
+(read via `.status`/`.reason`/`.read()`/`.getheader()`). A non-`http(s)`
+scheme raises `URLError`. No opener/handler stack, no
+redirects/proxies/auth-handlers (see TODO.md). A private `_sock` param injects a socket for offline tests
 (the connection is still built from the URL and dropped on return, so the
 response's dup-fd reader is exercised as in normal use). Test:
 `cases/stdlib/urlopen`.
@@ -1446,8 +1458,11 @@ divergences** (all compile-visible, none silent): kwargs are a fixed typed set
 `Model.from_json(r.text)`); `.text` is UTF-8 only; `.headers` is a
 `CaseInsensitiveDict` (case-insensitive lookup, original casing kept for
 items/keys, repeated headers joined with `", "`, full mutable-mapping surface
-incl. `for k in headers` iteration); no true connection pooling
-(`Connection: close`). HTTPS: an `https://` URL (or redirect target) routes to
+incl. `for k in headers` iteration). `Session` pools connections per
+`(scheme, host, port, verify)` (`_pool_key`) and reuses them across requests
+(HTTP/1.1 keep-alive); a `will_close` response closes the socket but the
+pooled entry stays as a lazy-reconnect handle; a pooled connection keeps the
+timeout it was created with. HTTPS: an `https://` URL (or redirect target) routes to
 `HTTPSConnection` on port 443; `verify: bool|str` (`True` verified default,
 `"<path>"` custom CA, `False` disabled) selects the trust; `ssl.SSLError` wraps
 as `requests.SSLError` (a `ConnectionError`); `Authorization` is dropped across a
@@ -1460,7 +1475,8 @@ Tests: `cases/tplib/requests_get`, `requests_post`, `requests_session`,
 `requests_errors`, `requests_timeout`, `requests_redirect`,
 `requests_redirect_disabled`, `requests_redirect_method`,
 `requests_redirect_too_many`, `requests_redirect_cross_host`,
-`requests_redirect_https`, `requests_headers_ci`, `error_requests_json_inline`.
+`requests_redirect_https`, `requests_headers_ci`, `requests_pool`,
+`error_requests_json_inline`.
 
 ---
 

@@ -220,9 +220,13 @@ contexts are not thread-safe anyway).
 Note: plaintext `socket.makefile()` keeps its existing dup-the-fd
 strategy -- TLS does not indict it (the TLS problem is "the readable thing
 is not an fd at all," orthogonal to fd sharing), and the meaningful
-unification is the `RawBinaryIO` seam, not the fd layer. A future
-`Rc`-shared session for plaintext is filed as a deferred cleanup, worth
-doing only if TLS keep-alive (interleaved socket+reader) lands.
+unification is the `RawBinaryIO` seam, not the fd layer. TLS keep-alive has
+since landed (persistent connections ride the shared `_Connection` path;
+`tests/cases/stdlib/https_client` pins a second cycle) and dup remains
+sufficient -- the drain-before-next-request discipline never reads through
+socket and reader concurrently. The `Rc`-shared plaintext cleanup stays
+tracked in TODO.md (io v2, the makefile shared-fd / `tplib.net.Socket`
+split item).
 
 ## Security defaults (secure by default)
 
@@ -367,6 +371,7 @@ end after `/tpy-review` + `/tpy-ready`.
 - Structured exception attributes (`verify_code`/`verify_message`, and the
   broader exception-carries-only-a-message gap).
 - System trust-store integration.
-- `Rc`-unify plaintext `makefile` (only if TLS keep-alive lands).
-- TLS keep-alive / connection reuse.
+- `Rc`-unify plaintext `makefile` -- TLS keep-alive has landed (its former
+  precondition), but dup still suffices under the drain-before-next-request
+  discipline; tracked in TODO.md (io v2 makefile shared-fd item).
 - Server-side TLS as a public API; async-reactor TLS integration.

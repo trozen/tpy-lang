@@ -1,0 +1,13 @@
+key: http|api.test|80|on
+200 r1
+req1: GET /v1/a HTTP/1.1
+200 r2
+req2: GET /v1/b HTTP/1.1
+200 r3
+peer EOF after close: True
+pool keeps handle: True
+https|api.test|443|on
+https|api.test|8443|off
+https|api.test|443|path:/etc/ca.pem
+bad status; entry dropped: True
+closed on exit: True

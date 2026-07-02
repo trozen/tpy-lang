@@ -9,6 +9,18 @@
 # the response read via the reader. `getheader`/`getheaders` replace CPython's
 # email.message-backed `.headers` object (which is not reproduced here).
 #
+# Connections are persistent (HTTP/1.1 keep-alive): the socket stays open
+# across request()/getresponse() cycles, and `HTTPResponse.will_close` reports
+# whether the server ended reuse (Connection: close, HTTP/1.0 without
+# keep-alive, or a read-to-EOF-framed body). The caller must fully drain each
+# response before the next request() and close() the connection when
+# `will_close` is set -- there is no CPython-style CannotSendRequest/
+# ResponseNotReady state machine guarding misuse, and unlike CPython,
+# getresponse() does not auto-close the connection on will_close (TPy's
+# SSLSocket.close() sends close_notify immediately, which would race a
+# still-unread TLS body; CPython's close is deferred by fp refcounts).
+# request() on a closed connection transparently reconnects. No pipelining.
+#
 # Both connection classes nominally inherit the @dynamic `_Connection` protocol
 # so a caller (requests/urllib) can hold either behind one `Box[_Connection]`
 # and dispatch request/getresponse/close virtually -- TPy method overrides are
@@ -109,6 +121,7 @@ class HTTPResponse:
     _chunked: bool
     _chunk_left: int  # remaining bytes in the current chunk; <= 0 => read next size
     _eof: bool
+    will_close: bool  # server ended keep-alive; caller should close the connection
 
     def __init__(self, fp: Own[BufferedReader], method: str) -> None:
         self._fp = fp
@@ -121,6 +134,7 @@ class HTTPResponse:
         self._chunked = False
         self._chunk_left = -1
         self._eof = False
+        self.will_close = True
 
     def begin(self) -> None:
         self._read_status()
@@ -131,6 +145,7 @@ class HTTPResponse:
             self._read_status()
         self._read_headers()
         self._init_framing()
+        self.will_close = self._check_close()
 
     def _read_status(self) -> None:
         line: str = self._fp.readline().decode()
@@ -194,6 +209,28 @@ class HTTPResponse:
         if cl is not None:
             self._length = _digits_to_int(cl)
 
+    def _check_close(self) -> bool:
+        # CPython HTTPResponse._check_close (substring match on the Connection
+        # header, like CPython), minus the HTTP/1.0 Proxy-Connection case, plus
+        # CPython's begin() fallback: a body with no framing (no Content-Length,
+        # not chunked) is delimited by connection close.
+        conn_hdr = self.getheader("connection")
+        if self.version == 11:
+            if conn_hdr is not None and "close" in conn_hdr.lower():
+                return True
+        else:
+            # HTTP/1.0 stays open only on an explicit keep-alive: a non-empty
+            # standalone Keep-Alive header (CPython truthiness -- an empty
+            # value does not count) or a Connection: keep-alive token. Either
+            # way the unframed-body fallback below still applies.
+            ka = self.getheader("keep-alive")
+            if ka is None or ka == "":
+                if conn_hdr is None or "keep-alive" not in conn_hdr.lower():
+                    return True
+        if not self._chunked and self._length < 0 and not self._eof:
+            return True
+        return False
+
     def read(self, amt: Int32 = -1) -> bytes:
         if self._eof:
             return b""
@@ -218,7 +255,10 @@ class HTTPResponse:
         return data
 
     def _read_chunked(self, amt: Int32) -> bytes:
-        result = b""
+        # bytearray accumulator: `result = result + piece` would be
+        # O(total*chunks), and chunked framing is normal streamed-response
+        # behavior, not an edge (CPython collects pieces and joins once).
+        result = bytearray()
         while not self._eof:
             if self._chunk_left <= 0:
                 if not self._next_chunk():
@@ -235,12 +275,12 @@ class HTTPResponse:
             if len(piece) == 0:
                 self._eof = True
                 break
-            result = result + piece
+            result.extend(piece)
             self._chunk_left = self._chunk_left - len(piece)
             if self._chunk_left <= 0:
                 # Chunk data is CRLF-terminated; drop it before the next size line.
                 self._fp.read(2)
-        return result
+        return bytes(result)
 
     def _next_chunk(self) -> bool:
         size = _parse_chunk_size(self._fp.readline())
@@ -363,7 +403,11 @@ class _Connection(Protocol):
 
 
 class HTTPConnection(_Connection):
-    """A single plaintext HTTP/1.1 connection to (host, port)."""
+    """A persistent plaintext HTTP/1.1 connection to (host, port).
+
+    The socket stays open across request()/getresponse() cycles; the caller
+    drains each response, checks its `will_close`, and calls close() when the
+    server ended reuse. request() after close() reconnects."""
 
     host: str
     port: Int32
@@ -408,8 +452,9 @@ class HTTPConnection(_Connection):
 
 
 class HTTPSConnection(_Connection):
-    """A single HTTP/1.1 connection over TLS -- HTTPConnection's flow run
-    through an `ssl.SSLSocket` instead of a bare socket.
+    """A persistent HTTP/1.1 connection over TLS -- HTTPConnection's flow run
+    through an `ssl.SSLSocket` instead of a bare socket (same keep-alive and
+    reconnect-after-close contract).
 
     Secure by default: with no `context`, an `ssl.create_default_context()`
     verifies the chain and checks the hostname (so it needs a trust store --

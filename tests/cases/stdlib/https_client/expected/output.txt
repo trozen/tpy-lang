@@ -3,3 +3,5 @@ has-host: True
 200 OK 11
 application/json
 abcdefghij
+req2-line: GET /v1/second HTTP/1.1
+tls2 False

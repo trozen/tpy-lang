@@ -1,0 +1,8 @@
+res1 False
+res2!!! False
+res3 True
+True
+False
+False
+True
+False

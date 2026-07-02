@@ -6,6 +6,8 @@
 # silent copy would be a compile error). The peer is ssl._wrap_server over the
 # other end of a socketpair; it reads the encrypted request and replies with a
 # Content-Length response, which getresponse() parses through makefile().
+# A second request/response cycle on the same connection pins TLS keep-alive
+# (a fresh makefile reader per response over the shared Rc session).
 # no_cpython: needs a real mbedTLS handshake + internal server peer (no CPython
 # equivalent without a real server/threads), as in ssl/tls_handshake.
 from typing import Final
@@ -90,12 +92,22 @@ def main() -> None:
 
     srv.sendall(b"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n"
                 b"Content-Length: 10\r\n\r\nabcdefghij")
-    srv.close()
 
     resp = conn.getresponse()
     print(resp.status, resp.reason, resp.version)
     print(resp.getheader("content-type"))
     print(resp.read().decode())
+
+    # Keep-alive: a second request/response cycle over the same live TLS
+    # session (each getresponse builds a fresh reader over the shared Rc
+    # session; the first response is drained before the next request).
+    conn.request("GET", "/v1/second")
+    req2 = srv.recv(4096).decode()
+    print("req2-line:", req2.split("\r\n")[0])
+    srv.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\ntls2")
+    srv.close()
+    resp2 = conn.getresponse()
+    print(resp2.read().decode(), resp2.will_close)
     conn.close()
 
 

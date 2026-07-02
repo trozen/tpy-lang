@@ -113,8 +113,6 @@ void main() {
     // srv.sendall(b"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n"
     // b"Content-Length: 10\r\n\r\nabcdefghij")
     srv.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 10\r\n\r\nabcdefghij", 81));
-    // srv.close()
-    srv.close();
     // resp = conn.getresponse()
     ::tpystd::http::client::HTTPResponse resp = conn.getresponse();
     // print(resp.status, resp.reason, resp.version)
@@ -123,6 +121,23 @@ void main() {
     std::cout << ::tpy::print_optional_val(resp.getheader("content-type")) << "\n";
     // print(resp.read().decode())
     std::cout << ::tpy::bytes_decode(resp.read()) << "\n";
+    // # Keep-alive: a second request/response cycle over the same live TLS
+    // # session (each getresponse builds a fresh reader over the shared Rc
+    // # session; the first response is drained before the next request).
+    // conn.request("GET", "/v1/second")
+    conn.request("GET", "/v1/second");
+    // req2 = srv.recv(4096).decode()
+    std::string req2 = ::tpy::bytes_decode(srv.recv(4096));
+    // print("req2-line:", req2.split("\r\n")[0])
+    std::cout << "req2-line:" << " " << ::tpy::__getitem__(::tpy::str_split(req2, "\r\n"), 0) << "\n";
+    // srv.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\ntls2")
+    srv.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\ntls2", 42));
+    // srv.close()
+    srv.close();
+    // resp2 = conn.getresponse()
+    ::tpystd::http::client::HTTPResponse resp2 = conn.getresponse();
+    // print(resp2.read().decode(), resp2.will_close)
+    std::cout << ::tpy::bytes_decode(resp2.read()) << " " << ::tpy::print_bool(resp2.will_close) << "\n";
     // conn.close()
     conn.close();
 }

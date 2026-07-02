@@ -22,10 +22,11 @@
 #     key returns the default (None) instead of raising KeyError (no sentinel
 #     to mark "no default given"); update()/setdefault() take a CID / a
 #     required default only (a non-CID arg / omitted default is a compile error).
-#   - Session keeps default headers/params but cannot truly pool connections:
-#     http.client sends `Connection: close`, so each request uses a fresh
-#     connection. The assignable `connection` field overrides that for one
-#     request (used to inject a socket in tests).
+#   - Session pools connections per (scheme, host, port, verify) and reuses
+#     them across requests (HTTP/1.1 keep-alive); a pooled connection keeps
+#     the timeout it was created with (a later per-call timeout= does not
+#     re-apply). The assignable `_connection` field injects a single-use
+#     connection for one request (offline test seam; never pooled).
 #   - A URL with no scheme (e.g. a protocol-relative "//host/path") is not
 #     rejected -- it connects via the parsed host, where CPython requests
 #     raises MissingSchema. A scheme-less host-only string ("host/path")
@@ -389,8 +390,9 @@ def _request_on(conn: Box[_Connection], method: str, url: str,
                 params: dict[str, str] | None, data: bytes | None,
                 json: JsonValue | None, headers: dict[str, str] | None,
                 auth: tuple[str, str] | None) -> Own[Response]:
-    # Closes the connection after reading: http.client framing is
-    # Connection: close, so the connection serves exactly one response.
+    # Reads the full body, then closes the connection only when the server
+    # ended keep-alive (will_close) or the request failed -- a still-open
+    # connection is reusable and the caller may pool it.
     parts = urlsplit(url)
     target = _merge_query(parts.path, parts.query, params)
 
@@ -432,7 +434,8 @@ def _request_on(conn: Box[_Connection], method: str, url: str,
             out_headers[kv[0]] = existing + ", " + kv[1]
         else:
             out_headers[kv[0]] = kv[1]
-    conn.close()
+    if resp.will_close:
+        conn.close()
     return Response(status, reason, url, out_headers, content)
 
 
@@ -470,6 +473,30 @@ def _connect(url: str, timeout: float | None = None,
     return Box(HTTPConnection(host, port, timeout))
 
 
+def _pool_key(url: str, verify: bool | str) -> str:
+    # One pooled connection per (scheme, host, port) -- plus the TLS trust
+    # selection, so reusing a socket never silently changes what a request
+    # trusts (a different `verify` gets its own connection).
+    parts = urlsplit(url)
+    scheme = parts.scheme
+    host = parts.hostname
+    if host is None:
+        host = ""
+    port: Int32 = DEFAULT_HTTPS_PORT if scheme == "https" else DEFAULT_HTTP_PORT
+    pnum = parts.port
+    if pnum is not None:
+        port = Int32(pnum)
+    # isinstance + early return (not elif): the elif arm's `not verify` on the
+    # un-narrowed bool|str union miscompiles (BUGS.md); _ssl_context_for uses
+    # the same return-based shape.
+    if isinstance(verify, str):
+        return scheme + "|" + host + "|" + str(port) + "|path:" + verify
+    vtok: str = "on"
+    if not verify:
+        vtok = "off"
+    return scheme + "|" + host + "|" + str(port) + "|" + vtok
+
+
 def request(method: str, url: str, params: dict[str, str] | None = None,
             data: bytes | None = None, json: JsonValue | None = None,
             headers: dict[str, str] | None = None,
@@ -477,9 +504,10 @@ def request(method: str, url: str, params: dict[str, str] | None = None,
             timeout: float | None = None,
             allow_redirects: bool = True,
             verify: bool | str = True) -> Own[Response]:
-    # A fresh Session per call (http.client is Connection: close, so there is
-    # no pool to lose); routing through it keeps the redirect engine in one
-    # place. The empty-default header/param merge is an identity here.
+    # A fresh Session per call, like CPython requests' module-level API (its
+    # pool dies with the call too; same-host redirect hops still reuse the
+    # pooled connection within the call). Routing through Session keeps the
+    # redirect engine in one place.
     s = Session()
     return s.request(method, url, params, data, json, headers, auth, timeout,
                      allow_redirects, verify)
@@ -549,10 +577,15 @@ def delete(url: str, params: dict[str, str] | None = None,
 
 
 class Session:
-    """Default headers/params reused across requests.
+    """Default headers/params reused across requests, plus connection pooling.
 
     `headers` and `params` are merged into every request (per-call values win).
-    Real connection pooling is not provided (http.client is Connection: close).
+    Connections are pooled per `_pool_key` (scheme|host|port|verify): a request
+    pops the pooled connection for its target, and puts it back afterwards --
+    keep-alive reuse when the socket survived, a lazy reconnect (inside
+    `HTTPConnection.connect`) when it did not. A pooled connection keeps the
+    timeout it was created with; a later per-call `timeout=` does not re-apply
+    to it.
     """
 
     headers: dict[str, str]
@@ -560,12 +593,15 @@ class Session:
     auth: tuple[str, str] | None
     # Offline test seam: the tests can't run a threaded loopback server, so they
     # inject a pre-bound connection here instead of letting hop 0 do a real TCP
-    # connect. Cleared after use, since the connection is single-use. Held as
+    # connect. Cleared after use and never pooled (single-use). Held as
     # Box[_Connection] so an injected HTTPConnection or HTTPSConnection both fit.
+    # (Pooling tests seed `_pool` directly instead -- a Box cannot be moved out
+    # of this Optional field into the pool.)
     _connection: Box[_Connection] | None
     # Offline test seam for redirect hops 1..N (hop 0 uses `_connection`): each
-    # hop needs its own connection because there is no pool (Connection: close).
+    # hop pops the next queued connection, bypassing the pool.
     _redirect_connections: list[Box[_Connection]]
+    _pool: dict[str, Box[_Connection]]
     max_redirects: Int32
 
     def __init__(self) -> None:
@@ -574,6 +610,7 @@ class Session:
         self.auth = None
         self._connection = None
         self._redirect_connections = []
+        self._pool = {}
         self.max_redirects = 30
 
     def _merge_headers(self, headers: dict[str, str] | None) -> Own[dict[str, str]]:
@@ -600,11 +637,9 @@ class Session:
                       auth: tuple[str, str] | None,
                       timeout: float | None, hop: Int32,
                       verify: bool | str = True) -> Own[Response]:
-        # Each connection is single-use (Connection: close) and is closed inside
-        # _request_on, so every hop needs its own.
         if hop == 0 and self._connection is not None:
-            # Clear even if the request raises -- the connection is single-use
-            # and must not be reused after a failure.
+            # Clear even if the request raises -- the injected connection is
+            # single-use and must not be reused after a failure.
             try:
                 return _request_on(self._connection, method, url, params, data,
                                    json, headers, auth)
@@ -614,9 +649,22 @@ class Session:
             conn = self._redirect_connections.pop(0)
             return _request_on(conn, method, url, params, data, json, headers,
                                auth)
+        # Pool pop -> use -> put back. A raise inside _request_on drops the
+        # popped/fresh connection (RAII closes the socket); on success it goes
+        # back in even if will_close closed it -- the pooled entry then acts as
+        # a lazy-reconnect handle for the next request to the same target.
+        key = _pool_key(url, verify)
+        if key in self._pool:
+            pooled = self._pool.pop(key)
+            resp = _request_on(pooled, method, url, params, data, json,
+                               headers, auth)
+            self._pool[key] = pooled
+            return resp
         fresh = _connect(url, timeout, verify)
-        return _request_on(fresh, method, url, params, data, json, headers,
+        resp = _request_on(fresh, method, url, params, data, json, headers,
                            auth)
+        self._pool[key] = fresh
+        return resp
 
     def _hop(self, method: str, url: str, params: dict[str, str] | None,
              data: bytes | None, json: JsonValue | None,
@@ -709,3 +757,6 @@ class Session:
             self._connection = None
         for conn in self._redirect_connections:
             conn.close()
+        for k in self._pool:
+            self._pool[k].close()
+        self._pool.clear()
