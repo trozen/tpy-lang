@@ -12,12 +12,14 @@ from .nodes import (
     THIRAssign,
     THIRBinOp,
     THIRCall,
+    THIRCharLiteral,
     THIRCoerce,
     THIRExpr,
     THIRFieldAccess,
     THIRForEach,
     THIRForRange,
     THIRFormConvert,
+    THIRFString,
     THIRIf,
     THIRExprStmt,
     THIRContainerLiteral,
@@ -29,7 +31,9 @@ from .nodes import (
     THIRReturn,
     THIRSelf,
     THIRStmt,
+    THIRStrAppend,
     THIRStrLiteral,
+    THIRStrSlice,
     THIRSubscript,
     THIRUnaryNot,
     THIRVarDecl,
@@ -53,6 +57,17 @@ def _expr(e: THIRExpr) -> str:
         return f"lit({e.value!r}){tag}"
     if isinstance(e, THIRStrLiteral):
         return f"str({e.value!r})"
+    if isinstance(e, THIRFString):
+        # Literal segments render repr'd; interpolated args in braces, with the
+        # carried wrap template when one applies (it is emit-relevant).
+        parts = ", ".join(
+            repr(p) if isinstance(p, str)
+            else f"{{{_expr(p.expr)}}}"
+            + (f" [wrap {p.wrap!r}]" if p.wrap is not None else "")
+            for p in e.parts)
+        return f"fstring({parts})"
+    if isinstance(e, THIRCharLiteral):
+        return f"char({e.value!r})"
     if isinstance(e, THIRBinOp):
         return f"binop({_expr(e.left)}, {e.op}, {_expr(e.right)})"
     if isinstance(e, THIRUnaryNot):
@@ -100,6 +115,10 @@ def _expr(e: THIRExpr) -> str:
         idx = e.index.value if isinstance(e.index, THIRLiteral) else _expr(e.index)
         flags = " bounds_safe" if e.bounds_safe else ""
         return f"{_expr(e.receiver)}[{idx}]{tag}{flags}"
+    if isinstance(e, THIRStrSlice):
+        lo = _expr(e.lower) if e.lower is not None else ""
+        hi = _expr(e.upper) if e.upper is not None else ""
+        return f"{_expr(e.receiver)}[{lo}:{hi}]"
     if isinstance(e, THIRFormConvert):
         cst = "const " if e.is_const else ""
         return f"form_convert[{cst}{e.form.name.lower()}]({_expr(e.value)})"
@@ -114,6 +133,8 @@ def _stmt_lines(stmt: THIRStmt, depth: int) -> list[str]:
     if isinstance(stmt, THIRAssign):
         # target is a THIRName (`%x`) or, for F2b, a THIRFieldAccess (`recv.field`).
         return [f"{pad}{_expr(stmt.target)} = {_expr(stmt.value)}"]
+    if isinstance(stmt, THIRStrAppend):
+        return [f"{pad}%{stmt.target} += {_expr(stmt.value)}"]
     if isinstance(stmt, THIRReturn):
         return [f"{pad}return {_expr(stmt.value)}" if stmt.value is not None
                 else f"{pad}return"]

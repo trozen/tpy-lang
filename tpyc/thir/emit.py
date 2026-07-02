@@ -17,8 +17,9 @@ from dataclasses import dataclass, field
 from typing import TextIO
 
 from ..codegen_cpp.context import (
-    INDENT, cpp_string_literal_expr, escape_cpp_name, expand_cpp_template,
-    loop_var_binding, qualify_native_name,
+    INDENT, cpp_string_literal_expr, escape_cpp_char, escape_cpp_name,
+    escape_cpp_string, expand_cpp_template, loop_var_binding,
+    qualify_native_name,
 )
 from ..codegen_cpp.forms import LocalBinding, is_plain_nonvalue
 from ..type_def_registry import (
@@ -31,6 +32,7 @@ from .nodes import (
     THIRAssign,
     THIRBinOp,
     THIRCall,
+    THIRCharLiteral,
     THIRCoerce,
     THIRConstructor,
     THIRContainerLiteral,
@@ -40,6 +42,7 @@ from .nodes import (
     THIRForEach,
     THIRForRange,
     THIRFormConvert,
+    THIRFString,
     THIRFunction,
     THIRIf,
     THIRLiteral,
@@ -51,7 +54,9 @@ from .nodes import (
     THIRReturn,
     THIRSelf,
     THIRStmt,
+    THIRStrAppend,
     THIRStrLiteral,
+    THIRStrSlice,
     THIRSubscript,
     THIRUnaryNot,
     THIRVarDecl,
@@ -274,6 +279,59 @@ def _emit_subscript(e: THIRSubscript) -> str:
     return f"::tpy::__getitem__({recv}, {idx})"
 
 
+def _emit_fstring(e: THIRFString) -> str:
+    # Mirrors ExpressionGenerator._gen_fstring's assembly as a pure string
+    # function (the per-arg type dispatch is already carried as wrap templates):
+    # a pure-literal f-string renders as a std::string of the joined segments;
+    # an interpolated one as std::format over the brace-escaped format string.
+    # A literal segment embedding a NUL byte takes the explicit-length arms --
+    # the const char* std::string ctor / std::format's consteval string_view
+    # ctor would truncate via strlen.
+    fmt_parts: list[str] = []
+    raw_parts: list[str] = []  # without brace-escaping, for the pure-literal path
+    raw_value = ""  # original (unescaped) literal content, for NUL detection
+    decoded_fmt_parts: list[str] = []  # runtime view of the fmt string (NUL length)
+    args: list[str] = []
+    all_literal = True
+    for part in e.parts:
+        if isinstance(part, str):
+            escaped = escape_cpp_string(part)
+            raw_parts.append(escaped)
+            raw_value += part
+            fmt_parts.append(escaped.replace("{", "{{").replace("}", "}}"))
+            decoded_fmt_parts.append(part.replace("{", "{{").replace("}", "}}"))
+        else:
+            all_literal = False
+            fmt_parts.append("{}")  # format specs are gate-excluded
+            decoded_fmt_parts.append("{}")
+            inner = _emit_expr(part.expr)
+            args.append(inner if part.wrap is None
+                        else expand_cpp_template(part.wrap, None, inner))
+    if all_literal:
+        joined = "".join(raw_parts)
+        if "\x00" in raw_value:
+            nbytes = len(raw_value.encode("utf-8"))
+            return f'std::string("{joined}", {nbytes})'
+        return f'std::string("{joined}")'
+    fmt_str = "".join(fmt_parts)
+    args_str = ", ".join(args)
+    if "\x00" in raw_value:
+        nbytes = len("".join(decoded_fmt_parts).encode("utf-8"))
+        return (f'std::vformat(std::string_view{{"{fmt_str}", {nbytes}}}, '
+                f'std::make_format_args({args_str}))')
+    return f'std::format("{fmt_str}", {args_str})'
+
+
+def _emit_str_slice(e: THIRStrSlice) -> str:
+    # Mirrors _gen_subscript's slice arm: the resolved __getitem__ @cpp_template
+    # expanded over the receiver and a BasicSlice initializer; an absent bound
+    # renders std::nullopt (_gen_optional_slice_bound).
+    lo = _emit_expr(e.lower) if e.lower is not None else "std::nullopt"
+    hi = _emit_expr(e.upper) if e.upper is not None else "std::nullopt"
+    return expand_cpp_template(e.cpp_template, _emit_expr(e.receiver),
+                               f"::tpy::BasicSlice{{{lo}, {hi}}}")
+
+
 def _emit_form_convert(e: THIRFormConvert) -> str:
     # storage->borrow lifts. optional_to_ptr's const overload is auto-selected by
     # the optional's own const-ness, so is_const here is carried for MIR / other
@@ -331,10 +389,18 @@ def _emit_expr(e: THIRExpr) -> str:
         return _emit_literal(e)
     if isinstance(e, THIRStrLiteral):
         return cpp_string_literal_expr(e.value)
+    if isinstance(e, THIRFString):
+        return _emit_fstring(e)
+    if isinstance(e, THIRCharLiteral):
+        # A Char-targeted str literal (compare operand opposite a Char) --
+        # mirrors gen_expr_deref's char-literal branch.
+        return f"'{escape_cpp_char(e.value)}'"
     if isinstance(e, THIRFieldAccess):
         return _emit_field_access(e)
     if isinstance(e, THIRSubscript):
         return _emit_subscript(e)
+    if isinstance(e, THIRStrSlice):
+        return _emit_str_slice(e)
     if isinstance(e, THIRFormConvert):
         return _emit_form_convert(e)
     if isinstance(e, THIRBinOp):
@@ -350,8 +416,10 @@ def _emit_expr(e: THIRExpr) -> str:
     if isinstance(e, THIRContainerLiteral):
         return _emit_container_literal(e)
     if isinstance(e, THIRCoerce):
-        # int_literal_to_fixed_int is a passthrough -- the inner literal already
-        # renders in the target type's context (a bare value).
+        # The admitted coercions are all passthroughs: a literal renders in the
+        # target type's context (int/float literal coercions), and string_to_str
+        # is identity in every position (both spell std::string; the Coercion
+        # carries no codegen lambda).
         return _emit_expr(e.expr)
     raise THIRCodeGenError(f"unhandled THIR expr: {type(e).__name__}")
 
@@ -502,6 +570,11 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
                       f"&*(__slot_{slot} = {_emit_expr(stmt.value)});\n")
         else:
             out.write(f"{indent}{_emit_expr(stmt.target)} = {_emit_expr(stmt.value)};\n")
+    elif isinstance(stmt, THIRStrAppend):
+        # `t += v;` -- the str in-place append (the `+=` statement and the
+        # `x = x + y` peephole share the emit).
+        out.write(f"{indent}{escape_cpp_name(stmt.target)} += "
+                  f"{_emit_expr(stmt.value)};\n")
     elif isinstance(stmt, THIRReturn):
         if stmt.value is None:
             out.write(f"{indent}return;\n")

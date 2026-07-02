@@ -15,11 +15,13 @@ from .lower import _is_len_native, lower_module
 from ..parse.nodes import TpyCall
 from ..codegen_cpp.forms import LocalBinding
 from .nodes import (
-    Form, PrintForm, THIRAssign, THIRBinOp, THIRCall, THIRContainerLiteral,
+    Form, PrintForm, THIRAssign, THIRBinOp, THIRCall, THIRCharLiteral,
+    THIRCoerce, THIRContainerLiteral,
     THIRExprStmt, THIRFieldAccess, THIRForEach, THIRForRange,
-    THIRFormConvert, THIRIf, THIRLiteral, THIRMethodCall, THIRName, THIRPrint,
-    THIRReturn, THIRSelf, THIRStrLiteral, THIRSubscript, THIRUnaryNot,
-    THIRVarDecl, THIRWhile,
+    THIRFormConvert, THIRFString, THIRFStringArg, THIRIf, THIRLiteral,
+    THIRMethodCall, THIRName, THIRPrint, THIRReturn, THIRSelf, THIRStrAppend,
+    THIRStrLiteral, THIRStrSlice, THIRSubscript, THIRUnaryNot, THIRVarDecl,
+    THIRWhile,
 )
 
 _STDLIB_DIRS = [get_lib_dir() / "tpy"]
@@ -3275,12 +3277,13 @@ class TestScalarAugAssign:
             "def grow(v: Int32):\n    xs = [1]\n    xs += [v]\n")
         assert _fn(thir, "grow") is None
 
-    def test_str_aug_assign_excluded(self):
-        # `s += t` on a str takes the in-place-append optimization; a str target is
-        # not an eligible scalar, so the body stays on the AST path.
+    def test_str_aug_assign_routes_as_append(self):
+        # `s += t` on a str takes the in-place-append emit -- not the scalar
+        # synthetic-binop path this class covers (S3, THIRStrAppend).
         thir = _lower_ctx(
             "def cat(t: str):\n    s = 'a'\n    s += t\n")
-        assert _fn(thir, "cat") is None
+        stmt = _fn(thir, "cat").body[1]
+        assert isinstance(stmt, THIRStrAppend)
 
     def test_subscript_aug_assign_excluded(self):
         # A subscript target takes the set_value/get_value path -> AST.
@@ -4393,7 +4396,12 @@ class TestStrValues:
         thir = _lower(
             "def f(a: str) -> None:\n"
             '    v = a\n    u = v\n    u += "z"\n    print(u, v)\n')
-        assert _fn(thir, "f") is None  # u += "z" is out of the slice (S3)
+        body = _fn(thir, "f").body
+        u_decl = body[1]
+        assert isinstance(u_decl, THIRVarDecl)
+        assert isinstance(u_decl.init, THIRFormConvert)
+        assert u_decl.init.form is Form.STORAGE
+        assert isinstance(body[2], THIRStrAppend)
         thir = _lower(
             "def g(a: str) -> str:\n    u = a\n    return u\n"
             "def h(a: str) -> None:\n    u = g(a)\n    print(u)\n")
@@ -4458,20 +4466,29 @@ class TestStrValues:
         assert isinstance(f.body[0].expr.args[0], THIRName)
         assert isinstance(f.body[1].expr.args[0], THIRStrLiteral)
 
-    def test_aug_assign_ineligible(self):
-        # str += takes the AST in-place-append path (S3).
+    def test_aug_assign_routes(self):
+        # str += lowers to the in-place append (S3).
         thir = _lower('def f() -> None:\n    t = "x"\n    t += "y"\n    print(t)\n')
-        assert _fn(thir, "f") is None
+        app = _fn(thir, "f").body[1]
+        assert isinstance(app, THIRStrAppend)
+        assert app.target == "t"
+        assert isinstance(app.value, THIRStrLiteral)
 
     def test_reassigned_str_param_ineligible(self):
         # A reassigned str param hoists an owned copy in the AST prologue.
         thir = _lower('def f(a: str) -> None:\n    a = "other"\n    print(a)\n')
         assert _fn(thir, "f") is None
 
-    def test_concat_ineligible(self):
-        # str + str is an owned-producing binop (S3).
+    def test_concat_routes(self):
+        # str + str routes as an owned (STORAGE) String-result binop; the
+        # return's string_to_str coercion is an identity passthrough (S3).
         thir = _lower("def f(a: str, b: str) -> str:\n    return a + b\n")
-        assert _fn(thir, "f") is None
+        ret = _fn(thir, "f").body[0]
+        assert isinstance(ret.value, THIRCoerce)
+        binop = ret.value.expr
+        assert isinstance(binop, THIRBinOp)
+        assert binop.form is Form.STORAGE
+        assert _emit_expr(ret.value) == "(::tpy::str_concat(a, b))"
 
     def test_cross_type_coercion_ineligible(self):
         # `return a` at a StrView return wraps a sema TpyCoerce (str_to_strview);
@@ -4488,9 +4505,10 @@ class TestStrValues:
             "def f(s: String) -> None:\n    print(s)\n")
         assert _fn(thir, "f") is None
 
-    def test_fstring_ineligible(self):
+    def test_fstring_routes(self):
+        # F6 S2: an f-string is an owned-str expr (STORAGE) -- see TestFString.
         thir = _lower('def f(a: str) -> None:\n    print(f"v={a}")\n')
-        assert _fn(thir, "f") is None
+        assert _fn(thir, "f") is not None
 
 
 class TestStrValuesEmit:
@@ -4602,10 +4620,352 @@ class TestStrValuesEmit:
         assert _fn(thir, "caller") is None
 
 
+# --- F-strings (F6 S2) ---
+
+
+class TestFString:
+    def test_all_literal_decl(self):
+        # A pure-literal f-string is an owned std::string ctor (STORAGE), so an
+        # owned local decl-init lands bare (no view->owned wrap).
+        thir = _lower('def f() -> str:\n    a = f"hello"\n    return a\n')
+        decl = _fn(thir, "f").body[0]
+        assert isinstance(decl.init, THIRFString)
+        assert decl.init.form is Form.STORAGE
+        assert decl.init.parts == ("hello",)
+        assert _emit_expr(decl.init) == 'std::string("hello")'
+
+    def test_wrapper_rows(self):
+        # str-family args pass through bare; bool/double/int8 carry their
+        # Python-compatible wrap templates; wider fixed ints stay bare.
+        thir = _lower(
+            "from tpy import Int8, Int32, Float64\n"
+            "def f(s: str, n: Int32, m: Int8, b: bool, x: Float64) -> str:\n"
+            '    return f"{s}|{n}|{m}|{b}|{x}"\n')
+        ret = _fn(thir, "f").body[0]
+        fstr = ret.value
+        assert isinstance(fstr, THIRFString)
+        args = [p for p in fstr.parts if isinstance(p, THIRFStringArg)]
+        assert [a.wrap for a in args] == [
+            None, None, "static_cast<int>({0})", "::tpy::bool_to_str({0})",
+            "::tpy::float_to_str({0})"]
+        assert _emit_expr(fstr) == (
+            'std::format("{}|{}|{}|{}|{}", s, n, static_cast<int>(m), '
+            "::tpy::bool_to_str(b), ::tpy::float_to_str(x))")
+
+    def test_literal_args(self):
+        # Literal value parts: int resolves through the default int (bare),
+        # float/bool carry their wraps, a str literal passes through as
+        # const char[N].
+        thir = _lower('def f() -> str:\n    return f"{5} {1.5} {True} {\'x\'}"\n')
+        fstr = _fn(thir, "f").body[0].value
+        assert _emit_expr(fstr) == (
+            'std::format("{} {} {} {}", 5, ::tpy::float_to_str(1.5), '
+            '::tpy::bool_to_str(true), "x")')
+
+    def test_brace_escaping(self):
+        # Literal braces double for std::format; the pure-literal path keeps
+        # them raw (std::string, no format machinery).
+        thir = _lower(
+            "from tpy import Int32\n"
+            'def f(n: Int32) -> str:\n    return f"{{{n}}}"\n'
+            'def g() -> str:\n    return f"a{{b"\n')
+        assert _emit_expr(_fn(thir, "f").body[0].value) == \
+            'std::format("{{{}}}", n)'
+        assert _emit_expr(_fn(thir, "g").body[0].value) == 'std::string("a{b")'
+
+    def test_embedded_nul(self):
+        # NUL in a literal segment: explicit-length std::string / vformat arms
+        # (the char* ctor and format's consteval ctor would strlen-truncate).
+        thir = _lower(
+            "from tpy import Int32\n"
+            'def f() -> str:\n    return f"a\\x00b"\n'
+            'def g(n: Int32) -> str:\n    return f"a\\x00{n}"\n')
+        assert _emit_expr(_fn(thir, "f").body[0].value) == \
+            'std::string("a\\000b", 3)'
+        assert _emit_expr(_fn(thir, "g").body[0].value) == (
+            'std::vformat(std::string_view{"a\\000{}", 4}, '
+            "std::make_format_args(n))")
+
+    def test_sinks_compose(self):
+        # The owned result feeds the S1 sinks bare: print arg (RAW), call arg
+        # into a str param, compare operand.
+        thir = _lower(
+            "from tpy import Int32\n"
+            "def use(s: str) -> Int32:\n    return len(s)\n"
+            "def f(a: str, n: Int32) -> bool:\n"
+            '    print(f"n={n}")\n'
+            '    x = use(f"a={a}")\n'
+            '    return f"{a}!" == a\n')
+        fn = _fn(thir, "f")
+        assert fn is not None
+        assert isinstance(fn.body[0].args[0].expr, THIRFString)
+        assert fn.body[0].args[0].print_form is PrintForm.RAW
+        assert isinstance(fn.body[1].init.args[0], THIRFString)
+        ret = fn.body[2]
+        assert isinstance(ret.value, THIRBinOp)
+        assert isinstance(ret.value.left, THIRFString)
+
+    def test_conversion_ineligible(self):
+        # !r / !s and format specs change the placeholder/wrapper table -> AST.
+        thir = _lower(
+            "from tpy import Int32\n"
+            'def f(a: str) -> str:\n    return f"{a!r}"\n'
+            'def g(n: Int32) -> str:\n    return f"{n:04}"\n')
+        assert _fn(thir, "f") is None
+        assert _fn(thir, "g") is None
+
+    def test_bigint_arg_ineligible(self):
+        # A runtime-BigInt arg takes the `.to_string()` row -- not mirrored.
+        thir = _lower('def f(n: int) -> str:\n    return f"n={n}"\n')
+        assert _fn(thir, "f") is None
+
+    def test_char_arg_ineligible(self):
+        # Char has no mirrored wrapper row (S4 introduces Char values).
+        thir = _lower(
+            "from tpy import Char\n"
+            'def f(c: Char) -> str:\n    return f"c={c}"\n')
+        assert _fn(thir, "f") is None
+
+    def test_container_arg_ineligible(self):
+        # Containers format via _container_to_str (`::tpy::list_to_str(xs)`)
+        # -- not mirrored. (An ANNOTATED local: container params and
+        # unannotated container locals in f-strings are pre-existing sema
+        # rejections -- Ref[list] / PendingList are not unwrapped by
+        # _analyze_fstring; see BUGS.md.)
+        thir = _lower(
+            "from tpy import Int32\n"
+            "def f() -> str:\n"
+            "    xs: list[Int32] = [1, 2]\n"
+            '    return f"{xs}"\n')
+        assert _fn(thir, "f") is None
+
+    def test_ineligible_inner_expr_rejects(self):
+        # The interpolated expr itself must be in the slice (a global is not).
+        thir = _lower(
+            "from tpy import Int32\n"
+            "G = 1\n"
+            'def f() -> str:\n    return f"{G}"\n')
+        assert _fn(thir, "f") is None
+
+    def test_string_concat_arg_ineligible(self):
+        # A String (concat result) has no mirrored wrapper row -- the S3-in-S2
+        # composition stays on the AST path.
+        thir = _lower(
+            'def f(a: str, b: str) -> str:\n    return f"{a + b}"\n')
+        assert _fn(thir, "f") is None
+
+    def test_empty_fstring(self):
+        # `f""` is a TpyFString with no parts: the all-literal arm over an
+        # empty join -- `std::string("")`.
+        thir = _lower('def f() -> str:\n    return f""\n')
+        fstr = _fn(thir, "f").body[0].value
+        assert isinstance(fstr, THIRFString) and fstr.parts == ()
+        assert _emit_expr(fstr) == 'std::string("")'
+
+
+class TestFStringEmit:
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=thir))
+        return cpp
+
+    SRC = (
+        "from tpy import Int8, Int32, Float64\n"
+        "def use(s: str) -> Int32:\n"
+        "    return len(s)\n"
+        "def f(name: str, n: Int32, m: Int8, b: bool, x: Float64) -> str:\n"
+        '    a = f"hello"\n'
+        '    a = f"name={name} n={n} m={m} b={b} x={x}"\n'
+        '    print(a, f"inline {n}", use(f"arg {name}"))\n'
+        '    same = f"{name}!" == name\n'
+        "    print(same)\n"
+        '    return f"bye {name} {{esc}} {5} {1.5} {True}"\n'
+        "def main() -> None:\n"
+        '    print(f("bob", 3, 2, True, 1.5))\n'
+        "main()\n"
+    )
+
+    def test_fstring_byte_identical(self):
+        thir = _lower(self.SRC)
+        # main stays AST: its bare numeric-literal call args are outside the
+        # call-arg slice (a pre-S2 frontier, not an f-string gap).
+        for name in ("use", "f"):
+            assert _fn(thir, name) is not None, name
+        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
+
+
 # --- Scalar type-constructor calls (Int32(x) / Float64(x) / bool(n)) ---
 
 
 _CTOR_PRELUDE = "from tpy import Int32, Int64, UInt32, UInt64, Float64\n"
+
+
+class TestStrConcat:
+    def test_string_local_and_copy(self):
+        # A concat-initialized local is String-typed (std::string); a local
+        # bound to it copies bare (owned -> owned, no view wrap).
+        thir = _lower(
+            "def f(a: str, b: str) -> str:\n"
+            "    c = a + b\n    c2 = c\n    print(c2)\n    return c\n")
+        body = _fn(thir, "f").body
+        decl, copy_decl = body[0], body[1]
+        assert isinstance(decl, THIRVarDecl) and isinstance(decl.init, THIRBinOp)
+        assert decl.init.form is Form.STORAGE
+        assert isinstance(copy_decl.init, THIRName)
+        assert copy_decl.init.form is Form.STORAGE  # String local: owned lvalue
+
+    def test_self_append_peephole(self):
+        # `t = t + a` fires the in-place-append peephole at a reassignment,
+        # exactly like the AST's _try_str_inplace_append.
+        thir = _lower(
+            'def f(a: str) -> str:\n    t = "p"\n    t = t + a\n    return t\n')
+        app = _fn(thir, "f").body[1]
+        assert isinstance(app, THIRStrAppend)
+        assert app.target == "t"
+        assert isinstance(app.value, THIRName)
+
+    def test_reversed_operands_no_peephole(self):
+        # `x = b + x` must NOT fire the peephole (left operand != target).
+        thir = _lower(
+            "def f(a: str, b: str) -> str:\n"
+            "    x = a + b\n    x = b + x\n    return x\n")
+        assign = _fn(thir, "f").body[1]
+        assert isinstance(assign, THIRAssign)
+        assert isinstance(assign.value, THIRBinOp)
+
+    def test_aug_assign_concat_rhs(self):
+        # `t += a + b`: the append's value is the nested (paren-wrapped) concat.
+        thir = _lower(
+            'def f(a: str, b: str) -> str:\n    t = "s"\n    t += a + b\n'
+            "    return t\n")
+        app = _fn(thir, "f").body[1]
+        assert isinstance(app, THIRStrAppend)
+        assert _emit_expr(app.value) == "(::tpy::str_concat(a, b))"
+
+    def test_concat_feeds_print_call_len(self):
+        # A concat composes with the S1 sinks: print arg, same-type call arg
+        # (via the identity string_to_str coercion), len of a String local.
+        thir = _lower(
+            "from tpy import Int32\n"
+            "def use(s: str) -> Int32:\n    return len(s)\n"
+            "def f(a: str, b: str) -> None:\n"
+            "    print(a + b)\n"
+            "    n = use(a + b)\n"
+            "    c = a + b\n"
+            "    print(len(c), n)\n")
+        f = _fn(thir, "f")
+        assert f is not None
+        assert isinstance(f.body[0].args[0].expr, THIRBinOp)
+        assert isinstance(f.body[1].init, THIRCall)
+
+    def test_aug_assign_param_ineligible(self):
+        # A str param's aug-assign needs the AST's owned-copy prologue (and the
+        # AST path currently miscompiles it) -- stays off the slice.
+        thir = _lower('def f(a: str) -> str:\n    a += "x"\n    return a\n')
+        assert _fn(thir, "f") is None
+
+    def test_char_operand_ineligible(self):
+        # A Char operand resolves the char_to_str __add__ overload -- Char
+        # values ride the S4 cell, so the shape stays on the AST path.
+        thir = _lower(
+            "from tpy import Char\n"
+            "def f(a: str, c: Char) -> str:\n    return a + c\n")
+        assert _fn(thir, "f") is None
+
+    def test_str_repeat_ineligible(self):
+        # `s * n` resolves __mul__ (str_repeat) with a str result -- not the
+        # String-result concat arm; stays on the AST path.
+        thir = _lower(
+            "from tpy import Int32\n"
+            "def f(a: str, n: Int32) -> str:\n    return a * n\n")
+        assert _fn(thir, "f") is None
+
+    def test_string_param_still_ineligible(self):
+        # The concat slice admits String locals/operands but must not widen the
+        # param gate: a String param spells `const std::string&`.
+        thir = _lower(
+            "from tpy import String\n"
+            "def f(s: String, a: str) -> str:\n    return a\n")
+        assert _fn(thir, "f") is None
+
+    def test_concat_in_compare_ineligible(self):
+        # A String concat result satisfies no compare-operand row (scalar /
+        # str / char), so the S3-in-S1 composition stays on the AST path.
+        thir = _lower(
+            "def f(a: str, b: str, c: str) -> bool:\n    return a + b == c\n")
+        assert _fn(thir, "f") is None
+
+
+class TestStrConcatEmit:
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+        return cpp
+
+    SRC = (
+        "from tpy import Int32\n"
+        "def use(s: str) -> Int32:\n"
+        "    return len(s)\n"
+        "def concat_params(a: str, b: str) -> str:\n"
+        "    c = a + b\n"
+        "    return c\n"
+        "def string_local_flows(a: str, b: str) -> str:\n"
+        "    c = a + b\n"
+        "    c2 = c\n"
+        "    print(c, c2, len(c))\n"
+        "    c += a\n"
+        "    c = c + b\n"
+        "    d = c + c2\n"
+        "    return d\n"
+        "def reassign_nonpeep(a: str, b: str) -> str:\n"
+        "    x = a + b\n"
+        "    x = b + x\n"
+        "    return x\n"
+        "def nested3(a: str, b: str, c: str) -> str:\n"
+        "    return a + b + c\n"
+        "def cond_concat(a: str, b: str) -> str:\n"
+        '    t = "z"\n'
+        "    if a < b:\n"
+        "        t = t + a\n"
+        "    else:\n"
+        "        t += b\n"
+        "    return t\n"
+        "def call_arg(a: str, b: str) -> Int32:\n"
+        "    return use(a + b)\n"
+        "def main() -> None:\n"
+        '    print(concat_params("a", "b"))\n'
+        '    print(string_local_flows("a", "b"))\n'
+        '    print(reassign_nonpeep("c", "d"))\n'
+        '    print(nested3("g", "h", "i"))\n'
+        '    print(cond_concat("j", "k"))\n'
+        '    print(call_arg("x", "y"))\n'
+        "main()\n"
+    )
+
+    def test_routed(self):
+        thir = _lower(self.SRC)
+        for name in ("use", "concat_params", "string_local_flows",
+                     "reassign_nonpeep", "nested3", "cond_concat", "call_arg",
+                     "main"):
+            assert _fn(thir, name) is not None, name
+
+    def test_byte_identical(self):
+        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
+
+    def test_emit_shapes(self):
+        cpp = self._cpp(self.SRC, thir=True)
+        assert "std::string c = (::tpy::str_concat(a, b));" in cpp
+        assert "c += a;" in cpp          # str += statement
+        assert "c += b;" in cpp          # x = x + y peephole
+        assert "x = (::tpy::str_concat(b, x));" in cpp  # reversed: no peephole
+        assert ("return (::tpy::str_concat((::tpy::str_concat(a, b)), c));"
+                in cpp)                  # nested concat, bare owned return
+        assert "use((::tpy::str_concat(a, b)))" in cpp  # concat call arg
 
 
 class TestScalarCtorCall:
@@ -4767,3 +5127,261 @@ class TestScalarCtorCallEmit:
         assert "double m = static_cast<double>(a);" in cpp
         assert "bool k = (1 != 0);" in cpp
         assert "use(9)" in cpp                   # ctor folded in a call arg
+
+
+# --- S4 str subscript / slice / iteration: Char reads (checked + bounds-safe),
+# --- str_slice views, Char loop vars, char-literal compares; the reassigned
+# --- StrView param widening (param_needs_copy_for_reassign is the exact gate) ---
+
+class TestStrSubscriptSliceIter:
+    def test_char_subscript_routes(self):
+        thir = _lower(
+            "def f(s: str) -> None:\n    c = s[0]\n    print(c)\n")
+        body = _fn(thir, "f").body
+        decl = body[0]
+        assert isinstance(decl, THIRVarDecl)
+        assert decl.resolved_type.to_cpp() == "char"
+        assert isinstance(decl.init, THIRSubscript)
+        assert decl.init.form is Form.VALUE
+        assert not decl.init.bounds_safe
+        assert _emit_expr(decl.init) == "::tpy::__getitem__(s, 0)"
+        # print(Char) streams raw -- Char has no int_traits, so no int8 cast.
+        assert body[1].args[0].print_form is PrintForm.RAW
+
+    def test_bounds_safe_subscript_routes(self):
+        thir = _lower(
+            "def f(s: str) -> None:\n"
+            "    for i in range(len(s)):\n        print(s[i])\n")
+        loop = _fn(thir, "f").body[0]
+        sub = loop.body[0].args[0].expr
+        assert isinstance(sub, THIRSubscript) and sub.bounds_safe
+        assert _emit_expr(sub) == "s[static_cast<std::size_t>(i)]"
+
+    def test_char_literal_compare_routes(self):
+        # The str literal opposite a Char renders as a char literal (the AST's
+        # _comparison_targets char arm); char-vs-char compares stay bare.
+        thir = _lower(
+            "def f(s: str) -> bool:\n    return s[0] == \"x\"\n"
+            "def g(s: str) -> bool:\n    c = s[0]\n    d = s[1]\n    return c != d\n"
+            "def h(s: str) -> bool:\n    return \"y\" == s[1]\n")
+        f_ret = _fn(thir, "f").body[0].value
+        assert isinstance(f_ret.right, THIRCharLiteral)
+        assert _emit_expr(f_ret) == '(::tpy::__getitem__(s, 0) == \'x\')'
+        g_ret = _fn(thir, "g").body[2].value
+        assert isinstance(g_ret.left, THIRName) and isinstance(g_ret.right, THIRName)
+        assert _emit_expr(g_ret) == "(c != d)"
+        h_ret = _fn(thir, "h").body[0].value
+        assert isinstance(h_ret.left, THIRCharLiteral)  # literal on the left
+
+    def test_escaped_char_literal_compare(self):
+        # A Char-targeted literal needing escaping threads escape_cpp_char.
+        thir = _lower(
+            "def f(s: str) -> bool:\n    return s[0] == \"'\"\n"
+            'def g(s: str) -> bool:\n    return s[0] == "\\n"\n')
+        f_ret = _fn(thir, "f").body[0].value
+        assert _emit_expr(f_ret) == "(::tpy::__getitem__(s, 0) == '\\'')"
+        g_ret = _fn(thir, "g").body[0].value
+        assert _emit_expr(g_ret) == "(::tpy::__getitem__(s, 0) == '\\n')"
+
+    def test_str_literal_pair_stays_str(self):
+        # Two str literals have no Char operand -> the str-pair arm, plain
+        # string-literal compare on both paths (no char target arises).
+        thir = _lower('def f() -> bool:\n    return "a" == "b"\n')
+        ret = _fn(thir, "f").body[0].value
+        assert isinstance(ret.left, THIRStrLiteral)
+        assert isinstance(ret.right, THIRStrLiteral)
+
+    def test_char_param_return_and_call_arg(self):
+        thir = _lower(
+            "from tpy import Char\n"
+            "def is_x(c: Char) -> bool:\n    return c == \"x\"\n"
+            "def pick(s: str) -> Char:\n    return s[1]\n"
+            "def f(s: str) -> None:\n    c = s[0]\n    b = is_x(c)\n    print(b)\n")
+        assert _fn(thir, "is_x") is not None
+        assert _fn(thir, "pick") is not None
+        f = _fn(thir, "f")
+        call = f.body[1].init
+        assert isinstance(call, THIRCall) and isinstance(call.args[0], THIRName)
+
+    def test_char_literal_decl_ineligible(self):
+        # A Char-annotated decl init from a str literal renders as a
+        # target-typed char literal (`char c = 'x';`) -- stays on the AST path.
+        # (Reassigning / returning a str literal into a Char slot is
+        # sema-rejected, so those gate guards are defense in depth only.)
+        thir = _lower(
+            "from tpy import Char\n"
+            'def f() -> None:\n    c: Char = "x"\n    print(c)\n')
+        assert _fn(thir, "f") is None
+
+    def test_slice_routes_view_sinks(self):
+        thir = _lower(
+            "def f(s: str) -> None:\n"
+            "    a = s[1:3]\n    b = s[2:]\n    c = s[:2]\n"
+            "    print(a, b, c)\n")
+        body = _fn(thir, "f").body
+        sl = body[0].init
+        assert isinstance(sl, THIRStrSlice) and sl.form is Form.BORROW
+        assert _emit_expr(sl) == "::tpy::str_slice(s, ::tpy::BasicSlice{1, 3})"
+        assert _emit_expr(body[1].init) == (
+            "::tpy::str_slice(s, ::tpy::BasicSlice{2, std::nullopt})")
+        assert _emit_expr(body[2].init) == (
+            "::tpy::str_slice(s, ::tpy::BasicSlice{std::nullopt, 2})")
+
+    def test_slice_variable_bounds_route(self):
+        thir = _lower(
+            "from tpy import Int32\n"
+            "def f(s: str, i: Int32, j: Int32) -> None:\n"
+            "    d = s[i:j]\n    print(d)\n")
+        sl = _fn(thir, "f").body[0].init
+        assert _emit_expr(sl) == "::tpy::str_slice(s, ::tpy::BasicSlice{i, j})"
+
+    def test_slice_owned_sink_ineligible(self):
+        # A slice into an owned sink arrives as a sema strview_to_str TpyCoerce
+        # (cross-type str-family coercions are a deferred cell).
+        thir = _lower(
+            "def f(s: str) -> str:\n    return s[1:3]\n"
+            "def g(s: str) -> None:\n    t: str = s[1:3]\n    print(t)\n")
+        assert _fn(thir, "f") is None
+        assert _fn(thir, "g") is None
+
+    def test_stepped_slice_ineligible(self):
+        thir = _lower("def f(s: str) -> None:\n    a = s[::2]\n    print(a)\n")
+        assert _fn(thir, "f") is None
+
+    def test_str_iteration_routes(self):
+        thir = _lower(
+            "def f(s: str) -> None:\n    for c in s:\n        print(c)\n"
+            'def g() -> None:\n    t = "abc"\n    for c in t:\n        print(c)\n'
+            "def h(s: str) -> None:\n    v = s[1:]\n    for c in v:\n        print(c)\n")
+        for name in ("f", "g", "h"):
+            fn = _fn(thir, name)
+            assert fn is not None, name
+            loop = fn.body[-1]
+            assert isinstance(loop, THIRForEach)
+            assert loop.elem_type.to_cpp() == "char"
+
+    def test_reassigned_strview_param_routes(self):
+        # Only param_needs_copy_for_reassign types (owned str/bytes, BigInt)
+        # hoist the AST's mutable-copy prologue; a StrView param is a by-value
+        # view and reassigns in place on both paths.
+        thir = _lower(
+            "from tpy import StrView\n"
+            "def f(s: StrView, flag: bool) -> None:\n"
+            "    if flag:\n        s = s[1:]\n    print(s)\n"
+            'def g(a: str) -> None:\n    a = "other"\n    print(a)\n')
+        f = _fn(thir, "f")
+        assert f is not None
+        reassign = f.body[0].then_body[0]
+        assert isinstance(reassign, THIRAssign)
+        assert isinstance(reassign.value, THIRStrSlice)
+        assert _fn(thir, "g") is None  # owned str param still rejected
+
+
+class TestStrSubscriptSliceIterEmit:
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+        return cpp
+
+    SRC = (
+        "from tpy import Char, Int32, StrView\n"
+        "def first(s: str) -> Char:\n"
+        "    return s[0]\n"
+        "def count_x(s: str) -> Int32:\n"
+        "    n = 0\n"
+        "    for c in s:\n"
+        '        if c == "x":\n'
+        "            n = n + 1\n"
+        "    return n\n"
+        "def find_x(s: str) -> Int32:\n"
+        "    n = 0\n"
+        "    for i in range(len(s)):\n"
+        '        if s[i] == "x":\n'
+        "            n = n + 1\n"
+        "    return n\n"
+        "def trim(s: StrView, flag: bool) -> None:\n"
+        "    if flag:\n"
+        "        s = s[1:]\n"
+        "    print(s)\n"
+        "def views(s: str) -> None:\n"
+        "    a = s[1:3]\n"
+        "    b = s[2:]\n"
+        "    print(a, b, len(s))\n"
+        "def main() -> None:\n"
+        '    print(first("q"))\n'
+        '    print(count_x("axbx"), find_x("xcx"))\n'
+        # a literal arg into a StrView slot arrives str_to_strview
+        # coerce-wrapped (deferred cross-type cell) -- pass a view local
+        '    s = "hello"\n'
+        "    trim(s, True)\n"
+        '    views("world")\n'
+        "main()\n"
+    )
+
+    def test_routed(self):
+        thir = _lower(self.SRC)
+        for name in ("first", "count_x", "find_x", "trim", "views", "main"):
+            assert _fn(thir, name) is not None, name
+
+    def test_byte_identical(self):
+        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
+
+    def test_emit_arms(self):
+        cpp = self._cpp(self.SRC, thir=True)
+        assert "return ::tpy::__getitem__(s, 0);" in cpp
+        assert "char c = *__beg_0;" in cpp                       # Char loop var
+        assert "if ((c == 'x')) {" in cpp                        # char literal
+        assert "if ((s[static_cast<std::size_t>(i)] == 'x')) {" in cpp
+        assert "s = ::tpy::str_slice(s, ::tpy::BasicSlice{1, std::nullopt});" in cpp
+        assert "std::string_view a = ::tpy::str_slice(s, ::tpy::BasicSlice{1, 3});" in cpp
+
+
+class TestCrossCellEmit:
+    """Compositions ACROSS the S2/S3/S4 cells (developed in parallel worktrees
+    and merged): a slice view consumed inline as a concat operand and as an
+    f-string arg, and slice-then-iterate. The per-cell byte-identical tests
+    can't see a merge regression between cells; these can."""
+
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=thir))
+        return cpp
+
+    SRC = (
+        "def cut_join(s: str) -> str:\n"
+        "    t = s[1:3] + s\n"
+        "    return t\n"
+        "def fmt_slice(s: str) -> str:\n"
+        '    return f"mid={s[1:3]} c={s[0] == \'h\'}"\n'
+        "def iter_slice(s: str) -> None:\n"
+        "    v = s[1:]\n"
+        "    for c in v:\n"
+        "        print(c)\n"
+        "def main() -> None:\n"
+        '    s = "hello"\n'
+        "    print(cut_join(s), fmt_slice(s))\n"
+        "    iter_slice(s)\n"
+        "main()\n"
+    )
+
+    def test_routed(self):
+        thir = _lower(self.SRC)
+        for name in ("cut_join", "fmt_slice", "iter_slice", "main"):
+            assert _fn(thir, name) is not None, name
+
+    def test_coerce_carries_inner_form(self):
+        # The string_to_str passthrough at cut_join's owned return: the coerce
+        # must carry the wrapped String local's STORAGE form (not the VALUE
+        # default), so the owned-sink BORROW check reads the real source shape.
+        thir = _lower(self.SRC)
+        ret = _fn(thir, "cut_join").body[-1]
+        assert isinstance(ret.value, THIRCoerce)
+        assert ret.value.form is Form.STORAGE
+
+    def test_byte_identical(self):
+        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)

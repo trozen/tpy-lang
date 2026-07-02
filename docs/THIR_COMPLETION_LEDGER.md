@@ -149,23 +149,55 @@ deferred (self-contained) / blocked-on-`<rung>`.
   tuple-unpack) lands -- most corpus tuples are accessed that way.
 - F4 unions (`to_ptr_variant`/`to_value_variant`), F5 generic-slot,
   F-final (RefType removal + retirement): **not started.**
-- F6 str/bytes view-split: **OPENED (S1 str values)** -- str/StrView params,
+- F6 str/bytes view-split: **OPENED (S1 str values; S2 f-strings DONE, incr 39;
+  S3 concat/`+=` DONE, incr 40; S4 subscript/slice/iteration DONE, incr 41)**
+  -- S1: str/StrView params,
   literal-init locals (PendingStrType resolved through ViewVarInfo at lowering),
   print args, comparisons, `len(s)`, owned-str returns, same-type call args; the
   view->owned copy is an explicit `THIRFormConvert` (str BORROW -> STORAGE,
-  `std::string(x)`). Deferred S-cells: S2 f-strings (`std::format` mirror + the
-  per-arg wrapper table), S3 concat/`+=` (owned results + the in-place-append
-  peephole), S4 subscript/slice/iteration (Char / `str_slice` view results),
+  `std::string(x)`). **S2 f-strings DONE (increment 39, `THIRFString`)**: the
+  `_gen_fstring` mirror -- all-literal `std::string("...")` (incl. the
+  embedded-NUL explicit-length arm), interpolated `std::format` / NUL `vformat`,
+  brace escaping, per-arg wrap templates carried on the node (str-family/
+  str-literal bare, bool `bool_to_str`, double + bare-float-literal
+  `float_to_str`, int8 `static_cast<int>`, IntLiteral resolved through the
+  default int); the owned (STORAGE) result composes into every S1 sink (decl
+  init, return, print/call arg, compare operand). S2-deferred rows (gate-
+  rejected): `!r`/`!s` conversions, format specs, BigInt `.to_string()`, enum/
+  Float32 `static_cast`, user/union `__str__`, `_container_to_str` containers,
+  Char. S4: str subscript `s[i]` -> Char (the checked
+  `::tpy::__getitem__` / bounds-safe operator[] container emit verbatim),
+  non-stepped slices `s[a:b]` -> `::tpy::str_slice` view results (`THIRStrSlice`,
+  BORROW, view sinks only -- an owned sink arrives as a `strview_to_str`
+  TpyCoerce, the deferred coercion cell), `for c in s` Char loop vars (str/
+  StrView NativeIterable[Char], incl. pending-resolved str locals), Char
+  params/returns/prints/call-args, char-literal compare operands
+  (`THIRCharLiteral` `'x'`, the `_comparison_targets` char-arm mirror;
+  Char-targeted literals at decl/reassign/return stay AST), and the reassigned
+  StrView-param widening (the reject now keys on the exact AST trigger,
+  `param_needs_copy_for_reassign`). S3: same-type `a + b` (the resolved
+  `__add__` template; an owned STORAGE `String` result feeding the S1 sinks,
+  plus String-typed locals / len / print args / the identity `string_to_str`
+  coercion) and the in-place appends -- str `+=` statements and the
+  `x = x + y` self-append peephole -- both lowering to `THIRStrAppend`
+  (`t += v;`; NB scalar aug-assign lowers as the `THIRAssign`+`THIRBinOp`
+  desugar -- if a general aug-assign node ever lands, fold this in rather
+  than growing two parallel aug-assign systems); Char operands of concat,
+  `str * n`, String params/returns, and
+  aug-assigned str PARAMS stay AST (the last is a pre-existing AST miscompile,
+  see BUGS.md). Remaining S-cells: S4 leftovers (stepped slices via
+  `::tpy::Slice`, slice-typed variable indices `s[sl]`, Char-targeted literal
+  decl/reassign/return renders, Char record fields, non-name
+  receivers/iterables),
   S5 dict[str]/container-of-str keys+elements (static-storage literal pinning,
   owned-slot wraps), S6 bytes (explicit `bytes_copy` wraps, `BytesPrinter`,
   non-view-safe literals; the S1 plumbing is family-generic, but emit.py's bytes
   convert arm is UNREACHABLE until S6 -- the cell must validate it under the
   byte-diff, not inherit it as verified), plus: cross-type
   str-family coercions (str<->StrView<->String -- position-dependent identity vs
-  materialization), reassigned str params (owned-copy prologue; NB this over-rejects reassigned
-  StrView params -- only owned str/bytes set `param_needs_copy_for_reassign`, so a
-  StrView widening is a free routing win for a later cell), multi-overload
-  callees with str-literal args (`_wants_str_literal_pin`), `String`/`Char`/
+  materialization), reassigned owned-str params (owned-copy prologue),
+  multi-overload
+  callees with str-literal args (`_wants_str_literal_pin`), `String`/
   `Literal[str]` bindings, `bytearray` (a reference type, different axis).
 - F2 carry-over deferred cells (container locals, cross-module/native/generic
   records, subscript sources, narrowing-needed `->` deref, name-alias/REF_ALIAS
@@ -236,8 +268,19 @@ writes (`xs[i] = v`). **Container call args landed (incr 35,
 builtin-container binding into a NON-Own concrete container param passes through as the bare
 name in `_call_eligible` + `_method_call_eligible` (no new node/emit); `Own[container]`
 (auto-move), `Span` (as_mut_span conversion), and protocol (`Iterable`) slots stay AST.
-The remaining measured co-blocker for `main()`-shaped functions: **f-string print args**
-(S2; str VALUES landed with the F6 S1 cell, the `Int32(0)` constructor-init with incr 37).
+**F-strings landed (incr 39, `THIRFString`): +27 bodies (22165 -> 22192 solo)** --
+the last measured co-blocker for `main()`-shaped functions (str VALUES landed with
+the F6 S1 cell, the `Int32(0)` constructor-init with incr 37); scope + deferred
+rows in the F6 row above. The modest gain reflects f-strings co-occurring with
+other ineligible constructs (bare numeric-literal call args, containers) in most
+corpus `main()`s. **Str concat/`+=` landed (incr 40, `THIRStrAppend`): +21 bodies
+(22165 -> 22186 solo)** -- same modest-gain pattern (concat co-occurs with
+still-deferred shapes); scope in the F6 row. **Str subscript/slice/iteration
+landed (incr 41, `THIRStrSlice`/`THIRCharLiteral`): +331 bodies (22165 -> 22496
+solo)** -- Char values enter the slice; scope in the F6 row. Increments 39-41
+were parallel cells integrated sequentially; the INTEGRATED tally on the merged
+tree is **22545 bodies / 3271 cases** (+380 over the 22165 base -- the cells'
+solo gains plus cross-cell composition).
 **Logical and/or/not + inline chained
 compares landed (incr 36, `THIRUnaryNot`): +2435 bodies (5689 -> 8124) -- the biggest
 single-cell gain to date** (conditions gate everything); bool-result `&&`/`||` over bool

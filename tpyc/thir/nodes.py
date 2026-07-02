@@ -94,6 +94,44 @@ class THIRStrLiteral(THIRExpr):
 
 
 @dataclass(frozen=True)
+class THIRFStringArg:
+    """One interpolated f-string value: the lowered expression plus its
+    Python-compatible formatting wrapper as a positional `{0}` template
+    (e.g. `::tpy::bool_to_str({0})`), decided at lowering from the arg's
+    resolved type -- the carried mirror of `_gen_fstring`'s per-arg wrapper
+    table. None passes the arg through unwrapped (str-family values, plain
+    fixed ints)."""
+    expr: THIRExpr
+    wrap: str | None = None
+
+
+@dataclass(frozen=True)
+class THIRFString(THIRExpr):
+    """An f-string: literal segments (raw, unescaped source text) interleaved
+    with interpolated args. All type dispatch is decided at lowering (the arg
+    wrap templates); the emitter reassembles `_gen_fstring`'s output as a pure
+    string function -- `std::string("joined")` for the all-literal shape,
+    `std::format("fmt", args...)` otherwise, with the explicit-length
+    `std::string("...", N)` / `std::vformat` arms when a literal segment embeds
+    a NUL byte. Conversions (`!r`/`!s`), format specs, and the non-mirrored
+    arg-type rows (BigInt / enum / user / union / container) are gate-excluded.
+    The result is an owned `str` (STORAGE form), landing bare in owned sinks
+    like any owned-str call result."""
+    parts: tuple['str | THIRFStringArg', ...]
+
+
+@dataclass(frozen=True)
+class THIRCharLiteral(THIRExpr):
+    """A single-char str literal rendered as a C++ char literal (`'x'`, via
+    `escape_cpp_char`). Arises only where the AST threads a `Char` target into
+    the literal render -- a comparison operand opposite a Char-typed value
+    (`_comparison_targets`' char arm). Every other str literal stays a
+    `THIRStrLiteral`; Char-targeted literal decl inits / returns / call args
+    are gate-excluded, so this node never renders without that target."""
+    value: str
+
+
+@dataclass(frozen=True)
 class THIRName(THIRExpr):
     """Local / param reference."""
     name: str
@@ -216,9 +254,13 @@ class THIRContainerLiteral(THIRExpr):
 
 @dataclass(frozen=True)
 class THIRCoerce(THIRExpr):
-    """A sema-inserted coercion made explicit on the IR. The slice carries the
-    literal-into-typed-slot passthroughs (`int_literal_to_fixed_int`,
-    `float_literal_to_float`) -- the inner literal renders in the target type."""
+    """A sema-inserted coercion made explicit on the IR. The slice carries only
+    emit passthroughs -- the literal-into-typed-slot pair
+    (`int_literal_to_fixed_int`, `float_literal_to_float`) and the identity
+    `string_to_str` -- so the inner expression renders directly in the target
+    type. `form` is set from the wrapped expression at lowering (a passthrough
+    changes type, never shape); a future materializing coercion must set its
+    own result form instead."""
     expr: THIRExpr
     coercion_name: str
 
@@ -266,15 +308,38 @@ class THIRSubscript(THIRExpr):
     (a `std::optional<T>` lifted to a borrow via `THIRFormConvert`/`optional_to_ptr`
     at the consuming `deref_check`).
 
-    Container (list / dict) -- a runtime index/key lookup, `form` VALUE (the
-    scalar-element slice). `index` is the lowered index expression; `bounds_safe`
-    (sema value-range analysis) picks the emit -- `receiver[static_cast<std::size_t>(
-    index)]` when proven in-bounds, else the checked dunder `::tpy::__getitem__(
-    receiver, index)`. The index is a value scalar of fixed-int width (a runtime-BigInt
-    index is not in the scalar slice), so no `.to_fixed_check` narrow arises here."""
+    Container (list / dict) or str-family (`s[i]` -> Char) -- a runtime
+    index/key lookup, `form` VALUE (a value-scalar / Char element). `index` is
+    the lowered index expression; `bounds_safe` (sema value-range analysis)
+    picks the emit -- `receiver[static_cast<std::size_t>(index)]` when proven
+    in-bounds (a literal index needs no cast), else the checked dunder
+    `::tpy::__getitem__(receiver, index)` (str's `__getitem__` @cpp_template
+    spells the same dunder, so one emit covers both). The index is a value
+    scalar of fixed-int width (a runtime-BigInt index is not in the scalar
+    slice), so no `.to_fixed_check` narrow arises here."""
     receiver: THIRExpr
     index: THIRExpr
     bounds_safe: bool = False
+
+
+@dataclass(frozen=True)
+class THIRStrSlice(THIRExpr):
+    """A non-stepped str slice `s[a:b]` off a str-family receiver, emitted via
+    the sema-resolved slice `__getitem__`'s `@cpp_template`
+    (`::tpy::str_slice({self}, {0})`) expanded over the receiver and a
+    `::tpy::BasicSlice{lo, hi}` initializer -- an absent bound renders
+    `std::nullopt` (`_gen_optional_slice_bound`). The result is a
+    `std::string_view` VIEW (`form` is BORROW), consumed at view sinks only:
+    an owned sink (decl init / return into owned `str`) arrives as a sema
+    `strview_to_str` TpyCoerce -- the deferred cross-type str-family coercion
+    cell -- so it is gate-rejected, never wrapped here. Bounds are eligible
+    fixed-int value exprs rendered bare (a BigInt bound's `.to_fixed_check`
+    narrow is gate-excluded); stepped slices (`::tpy::Slice`, an owned result)
+    and slice-typed variable indices ride a later cell."""
+    receiver: THIRExpr
+    cpp_template: str
+    lower: THIRExpr | None = None
+    upper: THIRExpr | None = None
 
 
 @dataclass(frozen=True)
@@ -323,6 +388,19 @@ class THIRAssign(THIRStmt):
     a THIRName for the former and a THIRFieldAccess for the latter; emission
     renders the target expression directly, so both shapes share one node."""
     target: THIRExpr
+    value: THIRExpr
+
+
+@dataclass(frozen=True)
+class THIRStrAppend(THIRStmt):
+    """In-place append to an owned-str local -- `t += v;` (S3). Two AST sources
+    share it: the str `+=` statement (`_gen_aug_assign_code`'s string branch)
+    and the `x = x + y` self-append peephole (`_try_str_inplace_append`, fired
+    at a decl-reassign/assign whose RHS concat's left operand is the target).
+    `target` is the local's source name; `value` renders bare --
+    `std::string::operator+=` accepts string_view / const char* / string /
+    an owned concat result alike, so no form wrap arises."""
+    target: str
     value: THIRExpr
 
 
@@ -398,9 +476,11 @@ class THIRForEach(THIRStmt):
             // body
         }
 
-    `elem_type` is the loop var's type -- a value scalar (a typed copy) or an F1-record
-    (a borrow alias: `auto&&`, or `const auto&` when `const_loop_var`). For list/set/Span/
-    Array it is the element; for dict the key (`for k in d`, always a scalar). `N` is the
+    `elem_type` is the loop var's type -- a value scalar or Char (a typed copy) or an
+    F1-record (a borrow alias: `auto&&`, or `const auto&` when `const_loop_var`). For
+    list/set/Span/Array it is the element; for dict the key (`for k in d`, always a
+    scalar); for a str-family iterable (str/StrView, NativeIterable[Char]) it is Char
+    (`char c = *__beg_N;`). `N` is the
     per-function loop index (reproducing `ctx.iter_counter`). `const_loop_var` mirrors
     sema's flag; it is inert for a cheap value scalar (the typed copy drops const either
     way) but load-bearing for a record (`const auto&` vs `auto&&`). Slice: a name
