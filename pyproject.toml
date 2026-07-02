@@ -18,6 +18,7 @@ classifiers = [
 
 [project.urls]
 Homepage = "https://tpy-lang.org"
+Repository = "https://github.com/trozen/tpy-lang"
 
 [project.optional-dependencies]
 bundled = ["ziglang>=0.13"]
