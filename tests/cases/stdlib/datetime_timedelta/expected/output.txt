@@ -1,0 +1,25 @@
+1 day, 1:30:00
+datetime.timedelta(days=1, seconds=5400)
+1 day, 0:00:30
+datetime.timedelta(days=1, seconds=30)
+datetime.timedelta(0)
+0:00:00
+-1 day, 0:00:00
+datetime.timedelta(days=-1, seconds=86399, microseconds=999999)
+-1 day, 23:59:59
+3 days, 2:00:00
+23:00:00
+-2 days, 23:00:00
+2 days, 0:00:00
+3:00:00
+1:00:00
+2.0
+2
+0:30:00
+0:10:00
+3600.0
+True
+True
+False True
+True
+caught OverflowError

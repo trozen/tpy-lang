@@ -34,7 +34,10 @@ DUNDER_CPP_TEMPLATES: dict[str, str] = {
     "__sub__": "({self}) - ({0})",
     "__mul__": "({self}) * ({0})",
     "__truediv__": "({self}) / ({0})",
-    "__floordiv__": "({self}) / ({0})",  # User types use regular division
+    # C++ has no `//`; lower to a direct method call so `//` stays distinct
+    # from `/` (a type may define both __truediv__ and __floordiv__ with the
+    # same operand type -- e.g. timedelta -- which cannot share operator/).
+    "__floordiv__": "({self}).__floordiv__({0})",
     "__mod__": "({self}) % ({0})",
     "__pow__": "std::pow({self}, {0})",
     "__lshift__": "({self}) << ({0})",
@@ -54,7 +57,7 @@ DUNDER_CPP_TEMPLATES: dict[str, str] = {
     "__rsub__": "({0}) - ({self})",
     "__rmul__": "({0}) * ({self})",
     "__rtruediv__": "({0}) / ({self})",
-    "__rfloordiv__": "({0}) / ({self})",
+    "__rfloordiv__": "({self}).__rfloordiv__({0})",
     "__rmod__": "({0}) % ({self})",
     "__rpow__": "std::pow({0}, {self})",
     "__rlshift__": "({0}) << ({self})",

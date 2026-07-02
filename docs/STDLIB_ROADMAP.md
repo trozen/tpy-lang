@@ -139,7 +139,7 @@ Examples of the policy in action:
 | [`enum`](#enum) | P1 | Partial | ~50% | macro | Enum/IntEnum/auto; missing functional API, lookup by name/value, iteration |
 | [`dataclasses`](#dataclasses) | P1 | Partial | ~80% | macro | frozen/order/inheritance/asdict/astuple/__post_init__; missing InitVar, replace(), metadata |
 | [`typing`](#typing) | P1 | Partial | ~60% | native | Protocols/Sized/Iterator/TypedDict/Unpack; missing Generic, TypeVar, ParamSpec, ClassVar |
-| [`datetime`](#datetime) | P1 | Missing | 0% | -- | Class-heavy; needs timedelta arithmetic and timezone handling |
+| [`datetime`](#datetime) | P1 | Partial | ~40% | -- | v1 landed: `timedelta` + `date` (integer surface). v2 `datetime`/`time`, v3 formatting + tz pending |
 | [`csv`](#csv) | P1 | Partial | ~70% | pure | `reader` / `writer` (list[str] rows) + `DictReader` / `DictWriter` (dict[str, str] rows) over the io `Readable`/`Writable` protocols. Excel default dialect + delimiter/quotechar/doublequote/skipinitialspace/lineterminator kwargs; writer is QUOTE_MINIMAL. CPython byte-compatible. DictWriter matches CPython's write-side defaults (restval="" for a missing field, ValueError for a key not in fieldnames). Missing: escapechar, quoting constants, Dialect objects/register_dialect, Sniffer, DictReader restval/restkey (short rows pad "", long rows drop extras -- dict[str,str] can't hold None or a list), DictWriter extrasaction='ignore' |
 | [`base64`](#base64) | P1 | Partial | ~95% | pure | Pure-TPy b64/b32/b16 encode+decode + urlsafe/standard variants + altchars=/validate=/casefold=/map01= kwargs + encodebytes/decodebytes. bytes/bytearray/str accepted on decoders (matches CPython). Missing: b85/a85 (rare, separate algorithms); `memoryview` depends on builtin gap |
 | [`hashlib`](#hashlib) | P1 | Partial | ~20% | pure | SHA-256 pure-TPy. MD5/SHA-1/SHA-512 are straight follow-ups (same class pattern, different round functions / endian). BLAKE2/SHA-3 later. Optional OpenSSL backend also later |
@@ -990,18 +990,21 @@ Current: `lib/tpy/typing.py` -- re-export from `tpy._typing`.
 
 ### datetime
 
-**Missing (design approved).** See `docs/DATETIME_DESIGN.md` for the full
-design and phased roadmap (v0 `@overload`-operator codegen fix -> v1
-`timedelta`+`date` -> v2 `datetime`+`time` -> v3 formatting + fixed-offset
-`timezone`). Value-typed frozen dataclasses; pure-TPy calendar math and
-formatting; vendored Hinnant `date` behind a facade for local/IANA offsets.
+**Partial (v1 landed).** See `docs/DATETIME_DESIGN.md` for the full design and
+phased roadmap (v0 `@overload`-operator codegen fix -> v1 `timedelta`+`date`
+-> v2 `datetime`+`time` -> v3 formatting + fixed-offset `timezone`).
+Value-typed frozen dataclasses; pure-TPy calendar math and formatting;
+vendored Hinnant `date` behind a facade for local/IANA offsets (v2).
 
 | Item | Status |
 |---|---|
-| `date`, `time`, `datetime`, `timedelta`, `tzinfo`, `timezone` | Missing |
-| `date.today`, `datetime.now`, `datetime.utcnow` | Missing |
-| `strftime`, `strptime`, `isoformat`, `fromisoformat` | Missing |
-| `timedelta` arithmetic | Missing |
+| `timedelta`, `date` | Done (v1, integer surface -- byte-parity with CPython) |
+| `time`, `datetime` | Missing (v2) |
+| `tzinfo`, `timezone` | Missing (v3; fixed-offset only) |
+| `timedelta` arithmetic | Done (integer surface); `timedelta / number` + float args deferred |
+| `date.today`, `datetime.now`, `datetime.utcnow` | Missing (v2) |
+| `strftime`, `strptime`, `fromisoformat` | Missing (v3) |
+| `isoformat` | Done for `date`; `time`/`datetime` in v2 |
 
 ### csv
 

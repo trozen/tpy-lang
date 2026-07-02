@@ -1,10 +1,10 @@
 # datetime stdlib design
 
-Status: **design approved, not yet implemented.** This document is the
-contract for the whole `datetime` track. It captures the type model,
-storage/representation, operator strategy, timezone model, and the phased
-build. Implementation lands rung-by-rung per the roadmap below; update the
-Status column of the roadmap table as each phase merges.
+Status: **v0 + v1 landed (timedelta + date, integer surface); v2/v3 pending.**
+This document is the contract for the whole `datetime` track. It captures the
+type model, storage/representation, operator strategy, timezone model, and the
+phased build. Implementation lands rung-by-rung per the roadmap below; update
+the Status column of the roadmap table as each phase merges.
 
 The parity oracle is **CPython 3.12** (the repo's venv Python). The cpy test
 phase resolves the real CPython `datetime` (no `lib/cpy/tpy/datetime.py`
@@ -15,8 +15,9 @@ is byte-compared against CPython directly, exactly like the `csv` module.
 
 | Phase | Scope | Status |
 |---|---|---|
-| **v0** | `@overload`-operator codegen fix (skip the impl signature when emitting operators) + focused test. Prerequisite for all operand-polymorphic operators. Routed via `/tpy-fix-bug` (it is a defect). | Not started |
-| **v1** | `timedelta` (full arithmetic incl. `@overload` `/`,`//`,`%`; comparisons; `abs`; `total_seconds`; repr) and `date` (ctor+validation, attributes, `weekday`/`isoweekday`, `isoformat`/`str`, comparisons, `date +/- timedelta`, `date - date`, repr). Pure-TPy, **no native dependency**, no `today()`. | Not started |
+| **v0** | `@overload`-operator codegen fix (skip the impl signature when emitting operators) + focused test. Prerequisite for all operand-polymorphic operators. Routed via `/tpy-fix-bug` (it is a defect). | **Done** (`_gen_binary_operators` overload-impl guard; test `operators/overload_binary_operator`) |
+| **v1** | `timedelta` (integer-surface arithmetic: `+ - `, unary, `*int`, `//int`, `//td`, `/td`->float, `%td`, comparisons, `abs`, `total_seconds`, repr/str) and `date` (ctor+validation, attributes, `weekday`/`isoweekday`, `isoformat`/`str`, comparisons, `date +/- timedelta`, `date - date`, repr). Pure-TPy, **no native dependency**, no `today()`. Prerequisite compiler fixes: `abs()`->`__abs__` dispatch (P1), `/`-vs-`//` decoupling (P2). | **Done** (tests `stdlib/datetime_{timedelta,date}`; byte-parity with CPython) |
+| **v1-deferred** | `timedelta` float/rounding surface: float constructor args (`timedelta(hours=1.5)`), `td / number` (round-half-to-even -> timedelta), float `*`/`/`. `td / number` also blocked on the `/`-overload result-typing bug (BUGS.md). Compile-error (rejects-valid) until landed, not silent. | Deferred |
 | **v2** | `datetime` and `time` (the `datetime.time` class), `now()`/`utcnow()`/`fromtimestamp()`/`combine()`, `date.today()`. Naive-only. Introduces the vendored Hinnant `date` backend behind the `stdlib/datetime.hpp` facade for the local-offset lookup. | Not started |
 | **v3** | `strftime`/`strptime`/`fromisoformat` (pure-TPy directive engine) and fixed-offset `timezone` awareness (aware `datetime`, `astimezone`, offset-aware arithmetic/comparison). | Not started |
 | **Deferred** | `fold`; `zoneinfo`/IANA DST (`ZoneInfo` value type backed by the tz db); user-defined `tzinfo` subclasses; Windows tz backend. Filed, not silent. | Deferred |
@@ -105,17 +106,31 @@ returns different types depending on the operand:
 ```python
 date  - date       -> timedelta
 date  - timedelta  -> date
-timedelta / int        -> timedelta
+timedelta / int        -> timedelta   # DEFERRED (v1-deferred: float/rounding surface)
 timedelta / timedelta  -> float
 timedelta // int       -> timedelta
 timedelta // timedelta -> int
 ```
 
-The source must be a single valid-Python method (it runs under real CPython
-in the cpy phase), so this is expressed with `typing.overload`: typed
+(`timedelta / int` -- round-half-to-even -> timedelta -- is v1-deferred with
+the float surface and also blocked on the `/`-overload result-typing bug in
+`BUGS.md`; v1 ships `timedelta / timedelta -> float` only.)
+
+Python has one `__sub__`, so this is expressed with `typing.overload`: typed
 `@overload` stubs plus one shared implementation that dispatches on the
 operand via `isinstance`. Sema already resolves these correctly and narrows
 the result type by operand.
+
+Note on the parity model: `lib/tpy/datetime.py` is compiled **only by TPy** --
+the cpy phase resolves the real CPython `datetime` (see the Status note), so
+our implementation file is never executed by CPython (same as `csv`). It
+therefore only has to compile+run under TPy; parity is verified at the
+*user-code* level, where each toolchain uses its own `datetime`. This is why
+value-type spellings TPy accepts but CPython would reject at runtime -- e.g. a
+`@dataclass(frozen=True)` with a custom `__init__` that assigns `self.field =
+...` (TPy allows field assignment inside `__init__`; CPython's frozen
+`__setattr__` would raise) -- are fine here. The source stays syntactically
+valid Python for tooling, but need not be *runnable* under CPython.
 
 **v0 fix.** Codegen currently mis-emits this pattern. For an `@overload`
 operator set it correctly specializes the shared body into one concrete C++
@@ -212,10 +227,19 @@ detail.
 
 ## CPython parity: acknowledged divergences
 
-The design matches CPython except for the following, each of which is
-signaled (compile-time rejection or a documented restriction), never a silent
-wrong result:
+The design matches CPython except for the following. All but the last are
+signaled (compile-time rejection or a documented restriction); the last is a
+known silent value divergence tracked in `BUGS.md`, pending a runtime fix:
 
+- **`total_seconds()` / `timedelta / timedelta` float precision.** These do
+  `BigInt / BigInt` true division, which TPy currently lowers as a
+  double-rounded `double(a)/double(b)` rather than CPython's correctly-rounded
+  `int/int`. Results diverge silently for timedeltas whose microsecond total
+  exceeds 2^53 (~285 years), e.g. `timedelta(days=-999999999).total_seconds()`
+  -> `-86399999913599.98` (TPy) vs `-86399999913600.0` (CPython). This is a
+  general BigInt-to-float-division gap, not datetime-specific; filed in
+  `BUGS.md`, to be fixed in the runtime via `/tpy-fix-bug`. Small-magnitude
+  timedeltas (the common case) are exact.
 - **No `datetime` subclass of `date`.** We compose rather than inherit (keeps
   the value-type story clean). Consequence: `isinstance(dt, date)` is `False`
   (CPython: `True`), and cross-type comparison/equality (`date == datetime`,

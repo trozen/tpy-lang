@@ -1641,6 +1641,25 @@ class RecordGenerator:
             if forward_op is None and reverse_op is None:
                 continue
 
+            # C++ has no floor-division operator: `__floordiv__` maps to `/`,
+            # which would collide with `__truediv__`'s `operator/` (a type
+            # implementing both -- e.g. timedelta -- would emit two `operator/`
+            # with the same operand type). TPy call sites dispatch `//` through a
+            # `__floordiv__` method call (see _gen_binop_from_result), so no
+            # friend operator is needed; emitting one is both a collision and
+            # semantically wrong (external C++ `a / b` would floor-divide).
+            if method.name in ("__floordiv__", "__rfloordiv__"):
+                continue
+
+            # An @overload group's impl is not emitted as-is (the per-stub
+            # specializations carry its body), so it must not get a friend
+            # operator either -- its param is the operand union, and emitting an
+            # operator for it would forward to a `__op__(variant)` method that
+            # was specialized away. The stubs' operators cover every emitted
+            # signature. Mirrors the same guard in _gen_call_operator.
+            if self.ctx.analyzer.overload_groups.get(id(method)):
+                continue
+
             param_name, param_type = method.params[0]
             param_cpp = param_type.to_cpp_const_param(param_name)
             # Return type - use to_cpp() for value/Own types

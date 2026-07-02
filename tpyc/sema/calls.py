@@ -4446,6 +4446,28 @@ class CallAnalyzer:
                 )
                 return STR
 
+        # abs() fallback: a user type with __abs__ (the native abs overloads
+        # only cover numerics). Mirrors CPython's abs() -> x.__abs__() dispatch.
+        if expr.func_name == "abs" and len(arg_types) == 1:
+            inner = unwrap_readonly(unwrap_ref_type(arg_types[0]))
+            if isinstance(inner, NominalType):
+                abs_rec = self.ctx.registry.get_record(inner.name)
+                abs_overloads = abs_rec.get_method_overloads("__abs__") if abs_rec else None
+                if abs_overloads:
+                    ret = abs_overloads[0].return_type
+                    expr.resolved_function_info = FunctionInfo(
+                        name="abs",
+                        params=[ParamInfo("x", arg_types[0])],
+                        return_type=ret,
+                        cpp_template="({0}).__abs__()",
+                        # Track the resolved __abs__'s readonly status so a
+                        # mutating __abs__ reached via abs(x) records the same
+                        # mutation-propagation edge as a direct x.__abs__() call.
+                        is_readonly=abs_overloads[0].is_readonly,
+                        is_builtin_function=True,
+                    )
+                    return ret
+
         # No matching overload found - try to give a helpful error
         arg_type_strs = ", ".join(str(unwrap_own(t)) for t in arg_types)
 

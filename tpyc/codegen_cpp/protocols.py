@@ -606,7 +606,12 @@ class ProtocolGenerator:
                     cpp_tmpl, "t",
                     *(f"std::declval<{subst_to_cpp(ptype)}>()"
                       for _, ptype in method_sig.params))
-            elif method_sig.name in DUNDER_TO_BINARY_OP and len(method_sig.params) == 1:
+            elif (method_sig.name in DUNDER_TO_BINARY_OP
+                    and method_sig.name not in ("__floordiv__", "__rfloordiv__")
+                    and len(method_sig.params) == 1):
+                # __floordiv__/__rfloordiv__ have no C++ `//` operator (they would
+                # collide with __truediv__'s operator/); fall through to a direct
+                # method call, matching the sema DUNDER_CPP_TEMPLATES lowering.
                 cpp_op = DUNDER_TO_BINARY_OP[method_sig.name]
                 _, ptype = method_sig.params[0]
                 call_expr = f"t {cpp_op} std::declval<{subst_to_cpp(ptype)}>()"
@@ -880,7 +885,12 @@ class ProtocolGenerator:
             return f"::tpy::__getitem__(inner, {args_str})"
         if method_sig.name == "__setitem__" and len(method_sig.params) == 2:
             return f"::tpy::__setitem__(inner, {args_str})"
-        if method_sig.name in DUNDER_TO_BINARY_OP and len(method_sig.params) == 1:
+        if (method_sig.name in DUNDER_TO_BINARY_OP
+                and method_sig.name not in ("__floordiv__", "__rfloordiv__")
+                and len(method_sig.params) == 1):
+            # __floordiv__/__rfloordiv__ have no C++ `//`; forward via the method
+            # call below (matches the sema DUNDER_CPP_TEMPLATES lowering) rather
+            # than `/`, which would invoke __truediv__'s operator.
             cpp_op = DUNDER_TO_BINARY_OP[method_sig.name]
             return f"inner {cpp_op} {arg_names[0]}"
 

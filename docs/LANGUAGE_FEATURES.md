@@ -4815,7 +4815,7 @@ class Car(Vehicle, Printable, Measurable):
 ### Special Methods
 - **Working**: `__init__`
 - **Working**: `__eq__`, `__ne__`, `__lt__`, `__le__`, `__gt__`, `__ge__` → C++ `friend` comparison operators. Sema errors if comparing user records without the required dunder. `!=` is auto-synthesized from `__eq__` via C++20 rewriting.
-- **Working**: `__add__`, `__sub__`, `__mul__`, `__truediv__`, `__floordiv__`, `__mod__`, `__and__`, `__or__`, `__xor__`, `__lshift__`, `__rshift__` → C++ `friend` binary operators
+- **Working**: `__add__`, `__sub__`, `__mul__`, `__truediv__`, `__floordiv__`, `__mod__`, `__and__`, `__or__`, `__xor__`, `__lshift__`, `__rshift__` → C++ `friend` binary operators. **Exception**: `__floordiv__`/`__rfloordiv__` lower to a direct `.__floordiv__()`/`.__rfloordiv__()` method call, not a friend `operator/` -- C++ has no `//`, and reusing `operator/` would collide with `__truediv__`, so a type may define both `/` and `//` distinctly (e.g. `timedelta`).
 - **Working**: reflected operators `__radd__`, `__rsub__`, `__rmul__`, `__rtruediv__`, `__rfloordiv__`, `__rmod__`, `__rand__`, `__ror__`, `__rxor__`, `__rlshift__`, `__rrshift__` → C++ `friend` binary operators with the operand order swapped (the record is the right operand). When `left OP right` has no viable `left.__OP__(right)`, sema dispatches to `right.__rOP__(left)` -- enabling `builtin OP user-type` (e.g. `1.5 * dur` where `Dur.__rmul__(float)` is defined). No reflected comparisons (Python reflects those by swapping `__lt__`/`__gt__`) and no `__rpow__` (pow is `std::pow`, not an operator).
 - **Working**: `__neg__`, `__pos__`, `__invert__` → C++ `friend` unary operators (`-x`, `+x`, `~x`)
 - **Working**: `__iadd__`, `__isub__`, `__imul__`, etc. → in-place mutation (`+=`, `-=`, `*=`, etc.). Must return `self` (like Python). Generates C++ `T&` return with `return *this`. Params are `const` (rvalue-safe).
@@ -4861,7 +4861,7 @@ class Car(Vehicle, Printable, Measurable):
   - Inline repeat cannot be passed directly to `Span` -- assign to a variable first
 - **Working**: Negative indexing for list, Array, Span: `items[-1]` (last element)
 - **Working**: `hash(x)` → `UInt64` hash value. Works on all `Hashable` types (str, int, fixed ints, float, bool, Char, Enum). Uses `tpy::__hash__()` free function dispatch.
-- **Working**: `abs()`, `min()`, `max()`, `pow()`, `round()`, `divmod()` for numeric types
+- **Working**: `abs()`, `min()`, `max()`, `pow()`, `round()`, `divmod()` for numeric types. `abs(x)` also dispatches to a user type's `__abs__` (mirroring CPython's `abs()` -> `x.__abs__()`).
 - **Working**: `sorted()` / `min()` / `max()` with a `key=` callable, including inside a generic function over a generic-element container (`def ranked[T](pairs: list[tuple[T, Int32]]): return sorted(pairs, key=lambda p: -p[1])`) for **value-type** keys (str/int/...). Sort is stable; `min`/`max` return the first element on a tie (CPython parity).
   - **Limitation**: a `key=` lambda over a *reference-type* generic element (`T` a class/record) fails the C++ build (borrow-vs-storage tuple-form mismatch); see BUGS.md. Value-type keys are unaffected.
 - **Working**: `ord(c)` accepts `Char` (zero-cost) and `str` (runtime length-1 check; raises `TypeError` -- catchable -- with CPython-aligned `expected a character, but string of length N found`)
@@ -6998,7 +6998,7 @@ Key difference from Python Pydantic:
 
 Builtin method calls go through overload resolution in sema, which attaches `resolved_function_info` to the AST node. Codegen then uses this resolved info.
 
-**Note**: `__getitem__` supports multi-overload dispatch (e.g., `Int32` index + `slice` overloads) via per-stub `operator[]` generation. `__setitem__` and binary operator codegen paths still fall back to registry lookup without `resolved_function_info`, which works because these methods are single-overload today.
+**Note**: `__getitem__` and binary operators (`__add__`, `__sub__`, ... and their reflected forms) support multi-overload dispatch via per-stub operator generation: each `@overload` stub emits its own concrete C++ `operator[]` / `operatorOP`, and C++ overload resolution selects by operand type. The `@overload` *implementation* signature (whose parameter is the operand union) is deliberately not emitted as an operator -- its body is specialized into the per-stub operators. `__setitem__` codegen still falls back to registry lookup without `resolved_function_info`, which works because it is single-overload today.
 
 ### Integer Range Tracking (Working)
 
