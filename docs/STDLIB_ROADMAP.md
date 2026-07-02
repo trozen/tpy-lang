@@ -990,8 +990,11 @@ Current: `lib/tpy/typing.py` -- re-export from `tpy._typing`.
 
 ### datetime
 
-**Missing.** Class-heavy; natural fit for @dataclass-style TPy records +
-native conversion helpers. Blocked by nothing architectural; medium effort.
+**Missing (design approved).** See `docs/DATETIME_DESIGN.md` for the full
+design and phased roadmap (v0 `@overload`-operator codegen fix -> v1
+`timedelta`+`date` -> v2 `datetime`+`time` -> v3 formatting + fixed-offset
+`timezone`). Value-typed frozen dataclasses; pure-TPy calendar math and
+formatting; vendored Hinnant `date` behind a facade for local/IANA offsets.
 
 | Item | Status |
 |---|---|
