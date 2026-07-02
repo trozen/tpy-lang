@@ -29,6 +29,8 @@ It ships two CLIs that share the same argument grammar, differing only in their 
 
 In all cases: never `--amend`, rebase, force-push, or commit changes you didn't make; never push without an explicit request. An explicit user instruction ("don't commit yet", "hold off") always overrides the auto-commit default.
 
+**Never prune worktrees.** Development uses multiple git worktrees (sibling checkouts sharing one `.git`), but an agent sandbox often can't see the sibling paths -- so they *look* missing. Never run `git worktree prune`, `git gc --prune`, or `git worktree remove` on a path that only appears absent: from the sandbox, prune deletes the other worktrees' admin entries and orphans their checkouts (including unmerged work). More generally, never do destructive git cleanup based on path-existence evidence -- verify against reality first. A machine-local safeguard backs this up (`gc.worktreePruneExpire never`, so a bare prune and auto-gc won't expire worktree entries), but an explicit `--expire` overrides it, so this rule stands regardless.
+
 **Commit message format.** Subject line under ~72 chars; **hard-wrap the body at ~72 columns** (don't emit one long unwrapped line per paragraph -- when using `git commit`, pass a wrapped `-F <file>` rather than long `-m` strings). No `Co-Authored-By` or other LLM/tool-generated references.
 
 **Spirit over letter.** These commit rules exist to (a) spare the user the manual-commit chore and (b) keep junk out of `master` -- not to be performed as a ritual. If following them literally would waste time or nag about obviously-legitimate files, optimize for that intent instead.
