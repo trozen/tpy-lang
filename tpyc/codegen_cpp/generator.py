@@ -297,6 +297,13 @@ class CodeGenerator:
                         continue
                     register_native_cpp_name(
                         short, qualified_cpp_name(record_info.module, short))
+        # A module-local enum declaration must win its own canonical name --
+        # the "also map the canonical name" step below is unconditional
+        # otherwise, so it would clobber `native_cpp_names[name]` with the
+        # FOREIGN qualified spelling whenever this module also declares its
+        # own unrelated enum sharing that short name (an aliased import's
+        # canonical name colliding with a local declaration).
+        local_enum_names = {e.name for e in module.enums}
         for local_name in list(self.analyzer.registry.enums.keys()):
             qual = self.analyzer.registry.imported_enum_qualification(
                 local_name, current_module)
@@ -311,10 +318,19 @@ class CodeGenerator:
             else:
                 qualified = qualified_cpp_name(*qual)
             register_native_cpp_name(local_name, qualified)
+            # Also key by canonical qname, mirroring the user-record loop
+            # above (`_user_qname_index`). `NominalType._cpp_base_name()`
+            # checks the qname-keyed slot FIRST -- any correctly-qualified
+            # enum reference (e.g. a var-decl annotation resolved via
+            # `resolved[0]`, see type_resolver.py's enum branch) resolves
+            # here regardless of what a same-short-named local enum has
+            # done to the bare-name slot below.
+            register_native_cpp_name(f"{qual[0]}.{qual[1]}", qualified)
             # For aliased imports, also map the canonical name so references
-            # that go through NominalType.name resolve too.
+            # that go through NominalType.name resolve too -- unless this
+            # module's own local declaration owns that canonical name.
             original_name = qual[1]
-            if local_name != original_name:
+            if local_name != original_name and original_name not in local_enum_names:
                 register_native_cpp_name(original_name, qualified)
         # Register native names from builtin type records without type_factory
         # (e.g. TextIO -> tpy::TextFile, ValueError -> tpy::ValueError) so

@@ -1,0 +1,1 @@
+main.py:15: error: @export function 'step': return is an exposed enum from another module, which cannot cross the boundary yet (cross-module exposed types are deferred -- define and @export the enum in this module)

@@ -945,6 +945,17 @@ class TypeResolver:
                 is_dynamic_protocol=user_protocol.is_dynamic,
             )
         elif (enum_type := parser.registry.get_enum(name)) is not None:
+            # Mint qname for a cross-module enum reference, mirroring the user-
+            # record arm below. `get_enum(name)` is keyed by bare short name
+            # (`TypeRegistry.enums`), so a local declaration sharing the
+            # canonical name (which registers into the same slot, after any
+            # import) can silently overwrite an aliased import's entry --
+            # trusting the returned object's identity would then resolve the
+            # WRONG enum. When the name came from a canonicalized import
+            # tuple, that module is authoritative regardless of what
+            # currently occupies the bare-name slot.
+            if resolved is not None:
+                return NominalType(name, _module_qname=f"{resolved[0]}.{name}")
             return enum_type
         elif (alias_info := parser.registry.get_type_alias_info(name)) is not None:
             if alias_info.type_params:
