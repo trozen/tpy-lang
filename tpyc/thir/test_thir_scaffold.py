@@ -15,10 +15,10 @@ from .lower import _is_len_native, lower_module
 from ..parse.nodes import TpyCall
 from ..codegen_cpp.forms import LocalBinding
 from .nodes import (
-    Form, PrintForm, THIRAssign, THIRBinOp, THIRCall, THIRExprStmt,
-    THIRFieldAccess, THIRForEach, THIRForRange,
-    THIRFormConvert, THIRIf, THIRLiteral, THIRName, THIRPrint, THIRReturn,
-    THIRSelf, THIRStrLiteral, THIRSubscript, THIRVarDecl, THIRWhile,
+    Form, PrintForm, THIRAssign, THIRBinOp, THIRCall, THIRContainerLiteral,
+    THIRExprStmt, THIRFieldAccess, THIRForEach, THIRForRange,
+    THIRFormConvert, THIRIf, THIRLiteral, THIRMethodCall, THIRName, THIRPrint,
+    THIRReturn, THIRSelf, THIRStrLiteral, THIRSubscript, THIRVarDecl, THIRWhile,
 )
 
 _STDLIB_DIRS = [get_lib_dir() / "tpy"]
@@ -3754,3 +3754,419 @@ class TestConstructor:
             "H")
         assert ctor is not None
         assert _ctor_tail(ctor) == " : opt(::tpy::ptr_to_optional(m)) {}\n"
+
+
+# --- Method-call sites: container mutation/read calls (THIRMethodCall) ---
+
+
+class TestMethodCall:
+    def test_native_member_routes(self):
+        # `xs.append(v)` -- @native member rename: push_back, no free-function symbol.
+        thir = _lower(
+            _PRELUDE
+            + "def f(xs: list[Int32], n: Int32) -> None:\n    xs.append(n)\n")
+        stmt = _fn(thir, "f").body[0]
+        assert isinstance(stmt, THIRExprStmt)
+        mc = stmt.expr
+        assert isinstance(mc, THIRMethodCall) and mc.method_cpp == "push_back"
+        assert mc.native_function_name is None and mc.cpp_template is None
+        assert isinstance(mc.receiver, THIRName) and mc.receiver.name == "xs"
+
+    def test_native_function_routes(self):
+        # `xs.pop()` -- @native(..., function=True): the receiver becomes the first arg.
+        thir = _lower(
+            _PRELUDE
+            + "def f(xs: list[Int32]) -> None:\n    xs.pop()\n")
+        mc = _fn(thir, "f").body[0].expr
+        assert isinstance(mc, THIRMethodCall)
+        assert mc.native_function_name == "tpy::pop_back"
+
+    def test_cpp_template_routes(self):
+        # `xs.sort()` -- @cpp_template body carried for expansion at emit.
+        thir = _lower(
+            _PRELUDE
+            + "def f(xs: list[Int32]) -> None:\n    xs.sort()\n")
+        mc = _fn(thir, "f").body[0].expr
+        assert isinstance(mc, THIRMethodCall)
+        assert mc.cpp_template == "std::stable_sort({self}.begin(), {self}.end())"
+
+    def test_plain_member_routes(self):
+        # `xs.clear()` -- bare @native member (no rename): the escaped source name.
+        thir = _lower(
+            _PRELUDE
+            + "def f(xs: list[Int32]) -> None:\n    xs.clear()\n")
+        mc = _fn(thir, "f").body[0].expr
+        assert isinstance(mc, THIRMethodCall) and mc.method_cpp == "clear"
+        assert mc.native_function_name is None and mc.cpp_template is None
+
+    def test_value_position_routes(self):
+        # `a = xs.pop()` -- a scalar-returning method call in a decl init.
+        thir = _lower(
+            _PRELUDE
+            + "def f(xs: list[Int32]) -> Int32:\n"
+            + "    a = xs.pop()\n    return a + xs.pop()\n")
+        fn = _fn(thir, "f")
+        assert isinstance(fn.body[0], THIRVarDecl)
+        assert isinstance(fn.body[0].init, THIRMethodCall)
+
+    def test_dict_readonly_key_slot_routes(self):
+        # `d.pop(k)` -- a readonly[K] param slot unwraps to the scalar key.
+        thir = _lower(
+            _PRELUDE
+            + "def f(d: dict[Int32, Int32], k: Int32) -> None:\n    d.pop(k)\n")
+        mc = _fn(thir, "f").body[0].expr
+        assert isinstance(mc, THIRMethodCall)
+        assert mc.native_function_name == "tpy::dict_pop"
+
+    def test_void_call_value_position_ineligible(self):
+        # A void method call is discard-only: statement position routes, but a void
+        # `return xs.clear()` (None-typed) must not slip through the value gate.
+        thir = _lower(
+            _PRELUDE
+            + "def f(xs: list[Int32]) -> None:\n    return xs.clear()\n")
+        assert _fn(thir, "f") is None
+
+    def test_record_element_arg_ineligible(self):
+        # A record arg crosses an ownership boundary (Own move / borrow lift) -> AST.
+        thir = _lower(
+            "from tpy import Int32\n"
+            + "class P:\n    x: Int32\n"
+            + "    def __init__(self, x: Int32):\n        self.x = x\n"
+            + "def f(xs: list[P], p: P) -> None:\n    xs.append(p)\n")
+        assert _fn(thir, "f") is None
+
+    def test_str_arg_ineligible(self):
+        # A str arg into an Own[str] slot takes the owned-copy conversion -> AST.
+        thir = _lower(
+            "from tpy import Int32\n"
+            + "def f(xs: list[str], s: str) -> None:\n    xs.append(s)\n")
+        assert _fn(thir, "f") is None
+
+    def test_field_receiver_ineligible(self):
+        # `self.items.append(...)` -- a non-name receiver rides a later cell.
+        thir = _lower(
+            "from tpy import Int32\n"
+            + "class H:\n    items: list[Int32]\n"
+            + "    def __init__(self):\n        self.items = []\n"
+            + "    def add(self, n: Int32) -> None:\n        self.items.append(n)\n")
+        assert _fn(thir, "add") is None
+
+    def test_set_receiver_ineligible(self):
+        # set params are not in the admitted container family (ride a later cell).
+        thir = _lower(
+            _PRELUDE
+            + "def f(s: set[Int32], n: Int32) -> None:\n    s.add(n)\n")
+        assert _fn(thir, "f") is None
+
+    def test_user_record_method_ineligible(self):
+        # A user-record method call takes the record emit path (temps, TypeParamRef
+        # handling) -- a different frontier.
+        thir = _lower(
+            "from tpy import Int32\n"
+            + "class C:\n    v: Int32\n"
+            + "    def __init__(self):\n        self.v = 0\n"
+            + "    def bump(self) -> None:\n        self.v += 1\n"
+            + "def f(c: C) -> None:\n    c.bump()\n")
+        assert _fn(thir, "f") is None
+
+    def test_negative_literal_arg_ineligible(self):
+        # Unary minus is outside the expression slice (pre-existing boundary), so a
+        # `-1` default arg keeps the call on the AST path.
+        thir = _lower(
+            _PRELUDE
+            + "def f(d: dict[Int32, Int32], k: Int32) -> Int32:\n"
+            + "    return d.pop(k, -1)\n")
+        assert _fn(thir, "f") is None
+
+
+class TestMethodCallEmit:
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+        return cpp
+
+    SRC = (
+        _PRELUDE
+        + "def grow(xs: list[Int32], n: Int32) -> None:\n"
+        + "    xs.append(n)\n"
+        + "    xs.insert(0, 7)\n"
+        + "    xs.sort()\n"
+        + "    xs.clear()\n"
+        + "def take(xs: list[Int32]) -> Int32:\n"
+        + "    a = xs.pop()\n    return a + xs.pop()\n"
+        + "def dtake(d: dict[Int32, Int32], k: Int32) -> Int32:\n"
+        + "    d.pop(k)\n    return d.pop(k, 0)\n"
+        + "def main():\n"
+        + "    xs = [2, 1]\n"
+        + "    grow(xs, 9)\n    print(take(xs))\n"
+        + "main()\n"
+    )
+
+    def test_byte_identical(self):
+        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
+
+    def test_emit_arms(self):
+        cpp = self._cpp(self.SRC, thir=True)
+        assert "xs.push_back(n);" in cpp                      # @native member rename
+        assert "::tpy::list_insert(xs, 0, 7);" in cpp         # @native free function
+        assert "std::stable_sort(xs.begin(), xs.end());" in cpp  # @cpp_template
+        assert "xs.clear();" in cpp                           # plain member
+        assert "int32_t a = ::tpy::pop_back(xs);" in cpp      # value position
+        assert "return ::tpy::dict_pop_default(d, k, 0);" in cpp
+
+
+# --- Container-literal locals (THIRContainerLiteral) ---
+
+
+class TestContainerLiteralLocal:
+    def test_mutated_list_literal_routes_as_vector(self):
+        # Mutation keeps the literal a list (sema's PendingListType resolution).
+        thir = _lower(
+            _PRELUDE
+            + "def f() -> None:\n    xs = [1, 2]\n    xs.append(3)\n")
+        fn = _fn(thir, "f")
+        decl = fn.body[0]
+        assert isinstance(decl, THIRVarDecl)
+        lit = decl.init
+        assert isinstance(lit, THIRContainerLiteral) and len(lit.elements) == 2
+        assert decl.resolved_type.name == "list"
+
+    def test_readonly_list_literal_routes_as_array(self):
+        # No mutation -> sema demotes the literal local to Array[T, N].
+        thir = _lower(
+            _PRELUDE
+            + "def f() -> Int32:\n    ys = [1, 2, 3]\n    return ys[1]\n")
+        decl = _fn(thir, "f").body[0]
+        assert isinstance(decl.init, THIRContainerLiteral)
+        assert decl.resolved_type.name == "Array"
+
+    def test_empty_annotated_list_routes(self):
+        thir = _lower(
+            _PRELUDE
+            + "def f(n: Int32) -> Int32:\n"
+            + "    zs: list[Int32] = []\n    zs.append(n)\n    return len(zs)\n")
+        decl = _fn(thir, "f").body[0]
+        assert isinstance(decl.init, THIRContainerLiteral)
+        assert decl.init.elements == ()
+
+    def test_dict_literal_routes(self):
+        thir = _lower(
+            _PRELUDE
+            + "def f() -> Int32:\n    d = {1: 10, 2: 20}\n    return d[1]\n")
+        decl = _fn(thir, "f").body[0]
+        lit = decl.init
+        assert isinstance(lit, THIRContainerLiteral)
+        assert len(lit.elements) == 2 and len(lit.values) == 2
+
+    def test_set_literal_routes(self):
+        thir = _lower(
+            _PRELUDE
+            + "def f() -> Int32:\n    s = {4, 5}\n    return len(s)\n")
+        decl = _fn(thir, "f").body[0]
+        assert isinstance(decl.init, THIRContainerLiteral)
+        assert decl.init.values == ()
+
+    def test_reassigned_container_local_ineligible(self):
+        # A reassigned container local is a POINTER-LOCAL on the AST path
+        # (aliasing rebind, `a = &(b)`); the plain value decl would silently
+        # copy -- the whole function stays AST.
+        thir = _lower(
+            _PRELUDE
+            + "def f() -> None:\n"
+            + "    a = [1, 2]\n    b = [3, 4]\n    a = b\n    a.append(5)\n")
+        assert _fn(thir, "f") is None
+
+    def test_record_element_literal_ineligible(self):
+        thir = _lower(
+            "from tpy import Int32\n"
+            + "class P:\n    x: Int32\n"
+            + "    def __init__(self, x: Int32):\n        self.x = x\n"
+            + "def f() -> None:\n    ps = [P(1), P(2)]\n    ps.pop()\n")
+        assert _fn(thir, "f") is None
+
+    def test_nested_list_literal_ineligible(self):
+        thir = _lower(
+            _PRELUDE
+            + "def f() -> Int32:\n    m = [[1, 2], [3]]\n    return len(m)\n")
+        assert _fn(thir, "f") is None
+
+    def test_list_repeat_ineligible(self):
+        # `[0] * n` is a TpyListRepeat, a different node/emit -> AST path.
+        thir = _lower(
+            _PRELUDE
+            + "def f(n: Int32) -> Int32:\n    xs = [0] * n\n    return len(xs)\n")
+        assert _fn(thir, "f") is None
+
+    def test_container_alias_decl_ineligible(self):
+        # `ys = xs` (container alias) is not a literal init -> AST path.
+        thir = _lower(
+            _PRELUDE
+            + "def f() -> None:\n    xs = [1]\n    ys = xs\n    ys.append(2)\n")
+        assert _fn(thir, "f") is None
+
+    def test_literal_operand_binop_ineligible(self):
+        # `ys[0] + ys[2]` -- both operands IntLiteral-typed non-names: the AST's
+        # fixed-target literal-operand branch emits WITHOUT the paren wrap
+        # (position-dependent), so the shape stays on the AST path.
+        thir = _lower(
+            _PRELUDE
+            + "def f() -> Int32:\n    ys = [1, 2, 3]\n    return ys[0] + ys[2]\n")
+        assert _fn(thir, "f") is None
+
+
+class TestContainerLiteralLocalEmit:
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+        return cpp
+
+    SRC = (
+        _PRELUDE
+        + "def f() -> Int32:\n"
+        + "    xs = [1, 2]\n    xs.append(3)\n"
+        + "    ys = [10, 20, 30]\n"
+        + "    zs: list[Int32] = []\n    zs.append(ys[1])\n"
+        + "    d = {1: 100}\n"
+        + "    e: dict[Int32, Int32] = {}\n"
+        + "    s = {7, 8}\n"
+        + "    total = len(xs) + len(zs)\n"
+        + "    total = total + len(d) + len(e) + len(s)\n"
+        + "    for v in ys:\n        total = total + v\n"
+        + "    return total\n"
+        + "def main():\n    print(f())\nmain()\n"
+    )
+
+    def test_byte_identical(self):
+        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
+
+    def test_emit_families(self):
+        cpp = self._cpp(self.SRC, thir=True)
+        assert "std::vector<int32_t> xs = {1, 2};" in cpp             # mutated -> vector
+        assert "std::array<int32_t, 3> ys = {10, 20, 30};" in cpp     # read-only -> array
+        assert "std::vector<int32_t> zs = std::vector<int32_t>{};" in cpp  # empty list
+        assert ("::tpy::ordered_map<int32_t, int32_t> d = "
+                "::tpy::ordered_map<int32_t, int32_t>({{1, 100}});") in cpp
+        assert ("::tpy::ordered_map<int32_t, int32_t> e = "
+                "::tpy::ordered_map<int32_t, int32_t>();") in cpp     # empty dict
+        assert "::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>({7, 8});" in cpp
+
+    def test_bool_float_elements_route(self):
+        # The non-int eligible scalars as literal elements: bool and double
+        # float lists route (and stay byte-identical) like the Int32 ones.
+        src = (
+            _PRELUDE
+            + "def f() -> None:\n"
+            + "    flags = [True, False]\n    flags.append(True)\n"
+            + "    vals = [1.5, 2.5]\n    vals.append(3.5)\n"
+            + "    print(len(flags) + len(vals))\n"
+            + "def main():\n    f()\nmain()\n"
+        )
+        thir = _lower(src)
+        fn = _fn(thir, "f")
+        assert fn is not None
+        assert isinstance(fn.body[0].init, THIRContainerLiteral)
+        assert isinstance(fn.body[2].init, THIRContainerLiteral)
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+
+
+# --- Container call args (the pass-through arg widening) ---
+
+
+class TestContainerCallArgs:
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+        return cpp
+
+    def test_free_call_container_arg_routes(self):
+        thir = _lower(
+            _PRELUDE
+            + "def use(xs: list[Int32]) -> Int32:\n    return len(xs)\n"
+            + "def f(xs: list[Int32]) -> Int32:\n    return use(xs)\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+        call = fn.body[0].value
+        assert isinstance(call, THIRCall) and isinstance(call.args[0], THIRName)
+
+    def test_literal_local_arg_routes(self):
+        # The composition the widening exists for: a literal local passed on.
+        thir = _lower(
+            _PRELUDE
+            + "def use(xs: list[Int32]) -> Int32:\n    return len(xs)\n"
+            + "def f() -> Int32:\n    ys = [1, 2]\n    return use(ys)\n")
+        assert _fn(thir, "f") is not None
+
+    def test_dict_arg_stmt_position_routes(self):
+        thir = _lower(
+            _PRELUDE
+            + "def wipe(d: dict[Int32, Int32]) -> None:\n    d.clear()\n"
+            + "def f(d: dict[Int32, Int32]) -> None:\n    wipe(d)\n")
+        assert isinstance(_fn(thir, "f").body[0], THIRExprStmt)
+
+    def test_own_container_param_ineligible(self):
+        # An Own[list] slot auto-moves at last use (`f(std::move(xs))`) -> AST.
+        thir = _lower(
+            "from tpy import Int32, Own\n"
+            + "def consume(xs: Own[list[Int32]]) -> Int32:\n    return len(xs)\n"
+            + "def f() -> Int32:\n    zs = [1]\n    return consume(zs)\n")
+        assert _fn(thir, "f") is None
+
+    def test_span_param_ineligible(self):
+        # A Span slot converts (`::tpy::as_mut_span(xs)`) -> AST.
+        thir = _lower(
+            "from tpy import Int32, Span\n"
+            + "def use_span(sp: Span[Int32]) -> Int32:\n    return len(sp)\n"
+            + "def f(xs: list[Int32]) -> Int32:\n    return use_span(xs)\n")
+        assert _fn(thir, "f") is None
+
+    def test_protocol_param_method_arg_ineligible(self):
+        # list.extend(other: Iterable[Own[T]]) -- a protocol slot (adapter /
+        # consuming-iteration handling) -> AST.
+        thir = _lower(
+            _PRELUDE
+            + "def f(xs: list[Int32], ys: list[Int32]) -> None:\n    xs.extend(ys)\n")
+        assert _fn(thir, "f") is None
+
+    def test_byte_identical(self):
+        src = (
+            _PRELUDE
+            + "def use(xs: list[Int32]) -> Int32:\n    return len(xs)\n"
+            + "def grow(xs: list[Int32], n: Int32) -> None:\n    xs.append(n)\n"
+            + "def f() -> Int32:\n"
+            + "    ys = [1, 2]\n    grow(ys, 3)\n    return use(ys)\n"
+            + "def main():\n    print(f())\nmain()\n"
+        )
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+
+    def test_method_call_container_arg_routes(self):
+        # The _method_call_eligible half of the widening: d.update(e) -- the
+        # param is dict[K, Own[V]] (Own wraps only the VALUE type arg, so the
+        # slot is still a non-Own concrete dict).
+        thir = _lower(
+            _PRELUDE
+            + "def f(d: dict[Int32, Int32], e: dict[Int32, Int32]) -> None:\n"
+            + "    d.update(e)\n")
+        stmt = _fn(thir, "f").body[0]
+        assert isinstance(stmt, THIRExprStmt)
+        mc = stmt.expr
+        assert isinstance(mc, THIRMethodCall) and isinstance(mc.args[0], THIRName)
+
+    def test_array_arg_routes(self):
+        # Array[T, N] as the pass-through family -- corpus-vacuous (every
+        # corpus Array-arg call site is blocked by another gate), so this unit
+        # is the byte-diff's only guard for the shape.
+        src = (
+            "from tpy import Int32, Array\n"
+            + "def use_arr(a: Array[Int32, 2]) -> Int32:\n    return len(a)\n"
+            + "def f() -> Int32:\n    ys = [1, 2]\n    return use_arr(ys)\n"
+            + "def main():\n    print(f())\nmain()\n"
+        )
+        thir = _lower(src)
+        assert _fn(thir, "f") is not None
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)

@@ -20,7 +20,9 @@ from .nodes import (
     THIRFormConvert,
     THIRIf,
     THIRExprStmt,
+    THIRContainerLiteral,
     THIRLiteral,
+    THIRMethodCall,
     THIRModule,
     THIRName,
     THIRPrint,
@@ -55,6 +57,24 @@ def _expr(e: THIRExpr) -> str:
     if isinstance(e, THIRCall):
         name = f"{e.callee} [{e.native_name}]" if e.native_name else e.callee
         return f"call({name}, [{', '.join(_expr(a) for a in e.args)}])"
+    if isinstance(e, THIRContainerLiteral):
+        if e.values:  # dict: elements are keys
+            pairs = ", ".join(f"{_expr(k)}: {_expr(v)}"
+                              for k, v in zip(e.elements, e.values))
+            return f"container_literal[{_ty(e.result_type)}]({{{pairs}}})"
+        elems = ", ".join(_expr(x) for x in e.elements)
+        return f"container_literal[{_ty(e.result_type)}]([{elems}])"
+    if isinstance(e, THIRMethodCall):
+        # Surface the emit arm: the cpp_template body, the @native free-function
+        # symbol, or the plain member name.
+        if e.cpp_template is not None:
+            how = f"template {e.cpp_template!r}"
+        elif e.native_function_name is not None:
+            how = f"native {e.native_function_name}"
+        else:
+            how = e.method_cpp
+        return (f"method_call({_expr(e.receiver)}, {how}, "
+                f"[{', '.join(_expr(a) for a in e.args)}])")
     if isinstance(e, THIRCoerce):
         return f"coerce({_expr(e.expr)} -> {_ty(e.result_type)})"
     if isinstance(e, THIRFieldAccess):

@@ -59,6 +59,7 @@ from ..type_def_registry import (
 from .expressions import _is_concrete_user_record
 from .functions import default_to_cpp
 from .type_resolution import resolve_stmt_binding_type, resolve_stmt_type_cascade
+from .types import resolve_pending_container
 from ..prescan import match_is_none, parse_deref_view_key
 from .match import MatchGenerator
 from .gen_async import POLL_VOID_READY_RETURN
@@ -1155,18 +1156,9 @@ class StatementGenerator:
         return target_type
 
     def _resolve_pending_container(self, typ: TpyType) -> TpyType | None:
-        """Resolve PendingListType/PendingDictType/PendingSetType to their resolved concrete type.
-
-        Returns None if the type is not a pending container or has no resolution yet.
-        Uses the unified lookup on SemanticContext so adding a new container type
-        is handled automatically.
-        """
-        if not isinstance(typ, PENDING_CONTAINER_TYPES):
-            return None
-        info = self.ctx.analyzer.ctx.get_container_info(typ.literal_id)
-        if info and info.resolved_type:
-            return info.resolved_type
-        return None
+        """Resolve a pending container via the shared unified lookup (see
+        `types.resolve_pending_container`)."""
+        return resolve_pending_container(typ, self.ctx.analyzer)
 
     def _normalize_decl_type_for_cpp(self, var_type: TpyType) -> TpyType:
         """Normalize declaration type before C++ emission."""

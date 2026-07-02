@@ -21,6 +21,7 @@ from ..codegen_cpp.context import (
     loop_var_binding, qualify_native_name,
 )
 from ..codegen_cpp.forms import LocalBinding, is_plain_nonvalue
+from ..type_def_registry import is_dict, is_list, is_set
 from ..typesys import OptionalType, TupleType, unwrap_qualifiers
 from .nodes import (
     Form,
@@ -30,6 +31,7 @@ from .nodes import (
     THIRCall,
     THIRCoerce,
     THIRConstructor,
+    THIRContainerLiteral,
     THIRExpr,
     THIRExprStmt,
     THIRFieldAccess,
@@ -39,6 +41,7 @@ from .nodes import (
     THIRFunction,
     THIRIf,
     THIRLiteral,
+    THIRMethodCall,
     THIRName,
     THIRNoOpStmt,
     THIRPrint,
@@ -189,6 +192,47 @@ def _emit_call(e: THIRCall) -> str:
     return f"{escape_cpp_name(e.callee)}({args})"
 
 
+def _emit_method_call(e: THIRMethodCall) -> str:
+    # Mirrors gen_call_from_fi's three dispatch arms for a receiver call, in the
+    # same order: cpp_template expansion, @native free-function symbol (receiver
+    # prepended), plain member call. The eligibility gate pinned the receiver to
+    # a bare container name, so the member accessor is always `.`.
+    recv = _emit_expr(e.receiver)
+    args = [_emit_expr(a) for a in e.args]
+    if e.cpp_template is not None:
+        return expand_cpp_template(e.cpp_template, recv, *args)
+    if e.native_function_name is not None:
+        return f"{qualify_native_name(e.native_function_name)}({', '.join([recv, *args])})"
+    return f"{recv}.{e.method_cpp}({', '.join(args)})"
+
+
+def _emit_container_literal(e: THIRContainerLiteral) -> str:
+    # Dispatch on the resolved container family, mirroring the scalar branches of
+    # _gen_array_literal / _gen_dict_literal / _gen_set_literal. list/Array
+    # brace-inits are consumed by the spelled decl type; dict/set spell their
+    # runtime container constructor.
+    t = unwrap_qualifiers(e.result_type)
+    if is_dict(t):
+        k_cpp = t.type_args[0].to_cpp()
+        v_cpp = t.type_args[1].to_cpp()
+        if not e.elements:
+            return f"::tpy::ordered_map<{k_cpp}, {v_cpp}>()"
+        braces = ", ".join(f"{{{_emit_expr(k)}, {_emit_expr(v)}}}"
+                           for k, v in zip(e.elements, e.values))
+        return f"::tpy::ordered_map<{k_cpp}, {v_cpp}>({{{braces}}})"
+    if is_set(t):
+        cpp_elem = t.type_args[0].to_cpp()
+        if not e.elements:
+            return f"::tpy::ordered_set<{cpp_elem}>()"
+        elems = ", ".join(_emit_expr(x) for x in e.elements)
+        return f"::tpy::ordered_set<{cpp_elem}>({{{elems}}})"
+    # An empty list literal spells its type (the T*-assignment-ambiguity guard in
+    # _gen_array_literal); an empty Array is gated out at eligibility.
+    if not e.elements and is_list(t):
+        return f"{t.to_cpp()}{{}}"
+    return f"{{{', '.join(_emit_expr(x) for x in e.elements)}}}"
+
+
 def _emit_field_access(e: THIRFieldAccess) -> str:
     if e.deref_check:
         # Unproven Optional member access: null-check the (already `T*`) receiver
@@ -279,6 +323,10 @@ def _emit_expr(e: THIRExpr) -> str:
         return _emit_binop(e)
     if isinstance(e, THIRCall):
         return _emit_call(e)
+    if isinstance(e, THIRMethodCall):
+        return _emit_method_call(e)
+    if isinstance(e, THIRContainerLiteral):
+        return _emit_container_literal(e)
     if isinstance(e, THIRCoerce):
         # int_literal_to_fixed_int is a passthrough -- the inner literal already
         # renders in the target type's context (a bare value).

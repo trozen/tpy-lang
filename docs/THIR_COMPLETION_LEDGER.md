@@ -56,10 +56,11 @@ cell it touches is admitted:
 - **Statement & expression shape:** straight-line var-decl / assign / return /
   if-elif-else / while / range-for / aug-assign / for-over-container (value-scalar
   incr 30, record-element incr 31) / expression statements (print + bare free-function
-  call, incr 32) **(covered)** vs match / with / try-except / for-over-container
+  call, incr 32) / container method-calls (list/dict scalar slice, stmt + value
+  position, incr 33) / container-literal locals (list/Array/dict/set scalar
+  elements, incr 34) **(covered)** vs match / with / try-except / for-over-container
   (generators / tuple-unpack / dict-value) / async-await / yield / comprehension /
-  break-continue / del-global-raise-assert / chained-compare / and-or-not / container
-  method-calls (`.append`) **(not)**.
+  break-continue / del-global-raise-assert / chained-compare / and-or-not **(not)**.
 
 A **deferred cell** is one `(kind x form x shape)` the eligibility gate rejects.
 Two kinds, treated oppositely:
@@ -118,7 +119,10 @@ deferred (self-contained) / blocked-on-`<rung>`.
   records only.
 - Non-value **call arguments** (the `gen_call_arg` coercion cascade: auto-move,
   view->owned, union/tuple lifts) + call / `copy()`-write optional sources:
-  **deferred (self-contained frontier)** -- not isolable, must land whole.
+  **deferred (self-contained frontier)** -- the CASCADE itself is not isolable
+  and must land whole. (The no-cascade subset OUTSIDE it -- bare-name container
+  args into non-Own concrete container slots, where `own is None` and no
+  branch fires -- landed separately as incr 35's pass-through widening.)
 - **Non-`DEFAULT`-linkage call symbols** (`@native` / `@native_c` / `@export(binding="C")`
   callees): **deferred (self-contained)** -- `_call_eligible` gates `fi.linkage ==
   DEFAULT` (incr 32), so any caller of a native/export-C free function stays on the AST
@@ -172,8 +176,8 @@ still on AST: Optional-field / tuple-field writes THROUGH a tuple subscript (`t[
 None` -- the `_f2b`/`_f1_tuple` write gates still name-only); and, for containers -- BigInt /
 view-typed keys+indices (the `.to_fixed_check` narrow / static-storage literals), `dict[K,
 Any]` (`any_cast_or_panic`), record/Optional/container *element* results (borrow form),
-narrowed-`Optional` receivers, non-name receivers, container-literal-init locals, and the
-whole container-write side (`c[i] = v` / `+=` / `del` / slices). And **container iteration**
+narrowed-`Optional` receivers, non-name receivers (container-literal-init locals landed
+incr 34), and the whole container-write side (`c[i] = v` / `+=` / `del` / slices). And **container iteration**
 (`for x in <NativeIterable>:` over a value-scalar element -> the begin/end loop, a new
 `THIRForEach`; + the `len(c)` builtin via a `native_name` on `THIRCall`; increment 30) --
 `range(len(c))` now routes, lighting up the bounds-safe subscript branch. The
@@ -189,8 +193,38 @@ high-leverage unblocks. (The record-element cell was the exception: +48 bodies, 
 because admitting the `list[record]` param unblocks whole record-iterating functions.)
 **`print` landed (incr 32): +453 bodies (5176 -> 5629) -- the biggest single-cell gain**, since
 print gated a huge tail of small functions (main + helpers); this confirms the body-construct
-model. Container method-calls (`.append`) are the remaining half of the bottleneck (need
-method-call-site lowering -- no method call routes today).
+model. **Container method-calls landed (incr 33, `THIRMethodCall`): +11 bodies (5629 -> 5640)**
+-- the shape is covered (all three `gen_call_from_fi` emit arms -- `@cpp_template`, `@native`
+free function, plain/renamed member -- in statement and value position, on the admitted
+list/dict param family), but the modest gain exposed the next co-blocker: most `.append` sites
+sit on container-*literal locals* (`xs = [...]` / `xs = []`), whose var-decls don't route, so
+those functions stay AST regardless. **Container-literal locals landed (incr 34,
+`THIRContainerLiteral`): +38 bodies (5640 -> 5678)** -- list (vector AND the read-only
+Array demotion) / dict / set literal decls route with scalar elements, and the local enters
+`declared` so the param-receiver shapes (method calls / subscripts / len / iteration) light
+up on locals; `_container_scalar_read` + the len gate widened to `Array[scalar, N]`.
+Rejected-by-design (aliasing/emit fidelity): REASSIGNED container-literal locals (the AST
+makes them pointer-locals -- `a = b` rebinds the alias; a value decl would silently copy)
+and fixed-target binops with two IntLiteral-typed non-name operands (the AST's no-paren
+literal-operand branch, position-dependent). The measured next co-blockers: **container
+locals as call args** (`f(xs)` -- the borrow-ref pass looks like another gen_call_arg
+pass-through for non-Own container params; keeps `main()`-shaped callers on AST), the
+`Int32(0)` constructor-init, and the str/BigInt/f-string print args. Literal-locals cells
+still deferred: `[0] * n` (`TpyListRepeat`), nested container literals, str/record/Optional
+elements, empty-`Array` literals, container reassignment + aliasing (`ys = xs`), subscript
+writes (`xs[i] = v`). **Container call args landed (incr 35,
+`_container_pass_through_arg`): +11 bodies (5678 -> 5689)** -- a bare-name arg with a
+builtin-container binding into a NON-Own concrete container param passes through as the bare
+name in `_call_eligible` + `_method_call_eligible` (no new node/emit); `Own[container]`
+(auto-move), `Span` (as_mut_span conversion), and protocol (`Iterable`) slots stay AST.
+The remaining measured co-blockers for `main()`-shaped functions: **str values / f-string
+print args** and the `Int32(0)` constructor-init. Method-call cells still deferred: `set`/`Span`/`Array` receivers (params not
+admitted), str/bytes args (owned-copy conversion), record / `Own[record]` args (ownership
+boundary -- part of the `gen_call_arg` frontier below), non-name receivers
+(`self.items.append(...)`), user-record method receivers + same-module `self.helper()` call
+sites (the record emit path: temps / TypeParamRef handling -- a bigger separate frontier),
+consuming receivers, generic `inferred_type_args` methods, negative-literal args (unary
+minus, a pre-existing expression-slice boundary).
 Deferred container-iteration cells: `dict[int, record]` key iteration (param not admitted --
 its value read is a record borrow), `set`/`Span`/`Array` containers (params not yet admitted),
 str/bytes-key dicts, `dict.items()`/tuple-unpack, non-name iterables (a field/subscript/call/
@@ -205,7 +239,8 @@ coverage of the `.`-access + `optional_to_ptr` alias paths.
 Uncovered shapes include: `match`, `with`, `try`/`except`/`finally`,
 `for`-over-container (value-scalar landed incr 30, record-element incr 31; generators /
 tuple-unpack / dict-value remain), expression statements (print + bare call landed incr 32;
-container method-calls `.append` remain), `async`/`await`, `yield` / generators, comprehensions,
+container method-calls landed incr 33 -- their deferred receiver/arg cells listed above),
+`async`/`await`, `yield` / generators, comprehensions,
 `break`/`continue`, `del`/`global`/`nonlocal`/`raise`/`assert`, chained
 comparisons, logical `and`/`or`/`not` (short-circuit). **Action:** continue enumerating +
 driving these as a tracked axis before claiming `gen_body`/`gen_expr` deletion is near.
@@ -223,10 +258,23 @@ driving these as a tracked axis before claiming `gen_body`/`gen_expr` deletion i
    form-ladder-gated, but the explicit endpoint, so high routing is never mistaken
    for completion.
 
+## Per-cell test convention (2026-07-02)
+
+THIR cells default to **scaffold units only** (routes/ineligible pairs for the
+gate + a targeted `test_byte_identical` per new emit arm -- the byte-diff in
+miniature). A dedicated corpus case is added ONLY when the shape occurs nowhere
+in the corpus (the whole-corpus byte-diff would be vacuous for it) AND a unit
+cannot express it (multi-module, exec-observable). Rationale: a THIR cell adds
+no language behavior; corpus-case exec runs the AST-path binary (byte-identity
+transfers its coverage to THIR), so a new case's functional/exec phases only
+re-test constructs the reviewed corpus already covers. Under-routing stays
+guarded by the routes-units (invisible to the byte-diff); over-routing by the
+byte-diff itself.
+
 ## Maintaining this ledger
 
 - Flip cells / update statuses when a rung lands or a deferral is discovered.
 - **Planned:** extend the `--thir-codegen` non-vacuity tally to report per-component
   AST-fallback coverage (how much of each component still falls back to AST), so the
   gap to each deletion is *measured*, not estimated. Today the tally reports only
-  total routed bodies/cases (5629 bodies / 1334 cases as of increment 32).
+  total routed bodies/cases (5689 bodies / 1356 cases as of increment 35).

@@ -148,6 +148,50 @@ class THIRCall(THIRExpr):
 
 
 @dataclass(frozen=True)
+class THIRMethodCall(THIRExpr):
+    """Method call on a builtin-container receiver, carrying the facts
+    `gen_call_from_fi` dispatches on, materialized at lowering from the resolved
+    FunctionInfo. Emit tries the arms in the same order: `cpp_template` (expanded
+    with the receiver + args, e.g. `xs.sort()` -> `std::stable_sort(xs.begin(),
+    xs.end())`), else `native_function_name` (a `@native(..., function=True)`
+    free-function symbol with the receiver prepended as the first argument, e.g.
+    `xs.pop()` -> `::tpy::pop_back(xs)`), else the plain member call
+    `receiver.method_cpp(args)` (`method_cpp` is the `@native` member rename or
+    the escaped source name, e.g. `xs.append(v)` -> `xs.push_back(v)`).
+
+    The eligibility gate admits only the AST path's pass-through shapes -- a
+    bare-name container receiver (never a pointer-local, so no deref/arrow) and
+    value-scalar args into scalar / `Own[scalar]` slots (copied bare, no move /
+    lift / temp) -- so the emit is a pure function of the node."""
+    receiver: THIRExpr
+    method_cpp: str
+    args: tuple[THIRExpr, ...]
+    native_function_name: str | None = None
+    cpp_template: str | None = None
+
+
+@dataclass(frozen=True)
+class THIRContainerLiteral(THIRExpr):
+    """A container-literal local initializer, emitted per the sema-RESOLVED
+    container family in `result_type` (the vector-vs-array decision for a list
+    literal -- sema's PendingListType resolution -- is already final at lowering).
+    Mirrors the scalar branches of `_gen_array_literal` / `_gen_dict_literal` /
+    `_gen_set_literal`:
+
+    - list / `Array[T, N]` -> `{e1, e2}` (brace-init consumed by the spelled
+      decl type); an empty LIST spells the type (`std::vector<T>{}`, the
+      T*-assignment-ambiguity guard)
+    - dict -> `::tpy::ordered_map<K, V>({{k1, v1}, ...})`; empty -> `()`
+    - set -> `::tpy::ordered_set<T>({e1, e2})`; empty -> `()`
+
+    `values` is used only by the dict family (zipped with `elements` as keys).
+    Elements are value scalars -- the movable / nocopy / union / protocol /
+    owned-slot literal branches are gate-excluded, so no move or wrap arises."""
+    elements: tuple[THIRExpr, ...]
+    values: tuple[THIRExpr, ...] = ()
+
+
+@dataclass(frozen=True)
 class THIRCoerce(THIRExpr):
     """A sema-inserted coercion made explicit on the IR. The slice carries the
     literal-into-typed-slot passthroughs (`int_literal_to_fixed_int`,

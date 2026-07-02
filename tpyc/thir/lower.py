@@ -22,12 +22,14 @@ from dataclasses import replace
 
 from ..parse.nodes import (
     FunctionLinkage,
+    TpyArrayLiteral,
     TpyAssign,
     TpyAugAssign,
     TpyBinOp,
     TpyBoolLiteral,
     TpyCall,
     TpyCoerce,
+    TpyDictLiteral,
     TpyExpr,
     TpyExprStmt,
     TpyFieldAccess,
@@ -42,6 +44,7 @@ from ..parse.nodes import (
     TpyNoneLiteral,
     TpyPassStmt,
     TpyReturn,
+    TpySetLiteral,
     TpyStmt,
     TpyStrLiteral,
     TpySubscript,
@@ -54,16 +57,17 @@ from ..parse.nodes import (
     is_docstring,
 )
 from ..typesys import (
-    LiteralType, NominalType, OptionalType, OwnType, ReadonlyType, TpyType,
-    TupleType, ValueForm, VoidType, is_float_type, is_void_like_type,
-    resolve_int_literals, unwrap_optional_own, unwrap_readonly, unwrap_ref_type,
-    unwrap_send_sync,
+    IntLiteralType, LiteralType, NominalType, OptionalType, OwnType,
+    ReadonlyType, TpyType, TupleType, ValueForm, VoidType, is_float_type,
+    is_void_like_type, resolve_int_literals, unwrap_optional_own,
+    unwrap_readonly, unwrap_ref_type, unwrap_send_sync,
 )
 from ..type_def_registry import (
-    int_traits_of, is_big_int_type, is_bool_type, is_dict, is_fixed_int_type,
-    is_float32_type, is_list, is_set,
+    int_traits_of, is_array, is_big_int_type, is_bool_type, is_dict,
+    is_fixed_int_type, is_float32_type, is_list, is_set,
 )
 from ..codegen_cpp.type_resolution import resolve_stmt_binding_type
+from ..codegen_cpp.types import resolve_pending_container
 from ..modules.type_resolution import is_native_iterable
 from ..codegen_cpp.forms import (
     LocalBinding, classify_local_binding, is_storage_tuple_alias_decl,
@@ -80,6 +84,7 @@ from .nodes import (
     THIRCall,
     THIRCoerce,
     THIRConstructor,
+    THIRContainerLiteral,
     THIRExpr,
     THIRExprStmt,
     THIRFieldAccess,
@@ -90,6 +95,7 @@ from .nodes import (
     THIRFunctionLayout,
     THIRIf,
     THIRLiteral,
+    THIRMethodCall,
     THIRMilInit,
     THIRModule,
     THIRName,
@@ -131,6 +137,28 @@ def _eligible_scalar(t: TpyType | None) -> bool:
     """
     return t is not None and (is_fixed_int_type(t) or is_bool_type(t)
                               or (is_float_type(t) and not is_float32_type(t)))
+
+
+def _resolved_scalar(t: TpyType | None, analyzer) -> bool:
+    """`_eligible_scalar` over a type that may still be an IntLiteralType: a
+    literal-seeded container leaves IntLiteral element types on its use sites
+    (the sema-resolved method fi's slots, a `pop`/subscript result, print args of
+    its loop var) -- the AST path resolves these through TypeResolver/default-int
+    at emit; the emitted value is the same bare literal either way. Readonly/Ref
+    wrappers are peeled first: a scalar coerced into a `readonly[K]` slot carries
+    the wrapper on its expr type, and a readonly scalar is representationally
+    the same C++ value.
+
+    Companion convention: a RECEIVER gate reads the declared/`locals_` BINDING
+    type, never `get_expr_type` on the name -- a literal-seeded local's use sites
+    carry the pre-resolution pending container type (see `_is_len_call`,
+    `_method_call_eligible`, `_container_subscript_value_read`,
+    `_for_each_container_eligible`)."""
+    if t is None:
+        return False
+    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    return _eligible_scalar(
+        resolve_int_literals(t, analyzer.ctx.default_int_for_literal))
 
 
 def _eligible_return(t: TpyType | None, analyzer) -> bool:
@@ -410,22 +438,24 @@ def _optional_field_over_subscript_ok(e: TpyExpr, locals_: dict[str, TpyType],
 
 def _container_scalar_read(t: TpyType | None) -> bool:
     """A container whose element/value read renders as a value scalar via the
-    container subscript emit: `list[scalar]` or `dict[fixed-int-key, scalar-value]`.
-    `set` has no `__getitem__`. A view-typed (str/bytes) key rides a later cell (its
-    literal keys need static-storage handling); a BigInt key rides the same cell as
-    BigInt indices (both need the `.to_fixed_check<int32_t>()` narrow, out of the
-    fixed-int scalar slice), so cell 1 keeps to fixed-int keys -- read identically to a
-    list index (`::tpy::__getitem__(c, i)`). An `Own[container]` (move-in `T&&` param)
-    is excluded explicitly -- its ABI differs from the borrow shape this slice's emit
-    assumes, and it rides a later cell (mirrors the Own unwrap in `_f1_record`, which
-    admits Own where this deliberately does not)."""
+    container subscript emit: `list[scalar]`, `Array[scalar, N]` (sema's read-only
+    list-literal demotion -- subscript/len/iteration emit identically to list), or
+    `dict[fixed-int-key, scalar-value]`. `set` has no `__getitem__`. A view-typed
+    (str/bytes) key rides a later cell (its literal keys need static-storage
+    handling); a BigInt key rides the same cell as BigInt indices (both need the
+    `.to_fixed_check<int32_t>()` narrow, out of the fixed-int scalar slice), so
+    cell 1 keeps to fixed-int keys -- read identically to a list index
+    (`::tpy::__getitem__(c, i)`). An `Own[container]` (move-in `T&&` param) is
+    excluded explicitly -- its ABI differs from the borrow shape this slice's emit
+    assumes, and it rides a later cell (mirrors the Own unwrap in `_f1_record`,
+    which admits Own where this deliberately does not)."""
     if t is None:
         return False
     t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
     if isinstance(t, OwnType):
         return False
     args = getattr(t, "type_args", None)
-    if is_list(t):
+    if is_list(t) or is_array(t):
         return bool(args) and _eligible_scalar(args[0])
     if is_dict(t):
         if not args or len(args) < 2:
@@ -433,6 +463,55 @@ def _container_scalar_read(t: TpyType | None) -> bool:
         key, val = args[0], args[1]
         return is_fixed_int_type(key) and _eligible_scalar(val)
     return False
+
+
+def _container_literal_decl_ok(stmt: TpyVarDecl, declared: dict[str, TpyType],
+                               prescan: '_Prescan', analyzer) -> bool:
+    """First decl of a container-literal local: `xs = [1, 2]` / `xs: list[T] = []`
+    / `d = {k: v}` / `s = {a, b}`. The decl's binding type is sema's RESOLVED
+    container (a list literal's vector-vs-array decision -- the PendingListType
+    resolution -- is final before lowering), so the emit is a pure function of
+    that type + the elements. Admitted families mirror the receiver slice:
+    `list[scalar]` / `Array[scalar, N]` / `dict[fixed-int, scalar]`, plus
+    `set[scalar]` (decl/len/iteration only -- set has no `__getitem__`). Every
+    element/key/value is an eligible scalar expr, so the AST literal emit
+    collapses to its brace-init pass-through (no move / owned-slot wrap / variant
+    lift -- scalars are never movable). A `[0] * n` repeat (TpyListRepeat) and a
+    nested container element stay on the AST path. The empty-literal-to-Array
+    reject is defensive-only: sema errors on both routes to that shape (a bare
+    `[]` is un-inferable; an `Array[T, 0]` annotation mismatches the literal),
+    so only the empty LIST form (the spelled `std::vector<T>{}` emit) is
+    reachable."""
+    # A reassigned container local is a POINTER-LOCAL on the AST path (`a = b`
+    # rebinds the alias -- `std::vector<T>* a = &__slot_N; ... a = &(b);` -- so a
+    # later `a.append` mutates the aliased list, Python's rebinding semantics).
+    # The plain value decl this cell emits would silently copy instead; reject
+    # (hoisted / move-through conservatively ride along).
+    if (stmt.name in prescan.reassigned or stmt.name in prescan.hoisted
+            or stmt.name in prescan.move_through):
+        return False
+    init = stmt.init
+    t = _var_decl_type(stmt, analyzer)
+    if t is None:
+        return False
+    if isinstance(init, TpyDictLiteral):
+        if not (is_dict(t) and _container_scalar_read(t)):
+            return False
+        elems = list(init.keys) + list(init.values)
+    elif isinstance(init, TpySetLiteral):
+        args = getattr(t, "type_args", None)
+        if not (is_set(t) and bool(args) and _eligible_scalar(args[0])):
+            return False
+        elems = list(init.elements)
+    elif isinstance(init, TpyArrayLiteral):
+        if is_dict(t) or not _container_scalar_read(t):
+            return False
+        if not init.elements and not is_list(t):
+            return False
+        elems = list(init.elements)
+    else:
+        return False
+    return all(_expr_eligible(e, declared, analyzer) for e in elems)
 
 
 def _container_record_iter(t: TpyType | None, analyzer) -> bool:
@@ -470,8 +549,11 @@ def _container_subscript_value_read(e: TpyExpr, locals_: dict[str, TpyType],
     recv = e.obj
     if not isinstance(recv, TpyName) or recv.name not in locals_:
         return False
-    return (_container_scalar_read(analyzer.get_expr_type(recv))
-            and _eligible_scalar(analyzer.get_expr_type(e))
+    # locals_ (the declared binding type) rather than get_expr_type: a
+    # container-literal local's use sites carry the pre-resolution
+    # PendingListType (see _method_call_eligible).
+    return (_container_scalar_read(locals_[recv.name])
+            and _resolved_scalar(analyzer.get_expr_type(e), analyzer)
             and _expr_eligible(e.index, locals_, analyzer))
 
 
@@ -780,9 +862,25 @@ def _binop_eligible(e: TpyBinOp, locals_: dict[str, TpyType], analyzer) -> bool:
     if e.op in _ARITH_OPS:
         # Same-width arithmetic: a templated dunder, scalar result. Excludes any
         # mixed/widening result the slice can't render without a coercion node.
+        # _resolved_scalar: two literal-seeded-container element reads (e.g.
+        # `ys[0] + ys[2]`) produce an IntLiteral result type; the emit reads only
+        # the resolved dunder's template, so the resolved default int is the fact
+        # that matters.
         if rb is None or not getattr(rb.method, "cpp_template", None):
             return False
-        if not _eligible_scalar(rt):
+        if not _resolved_scalar(rt, analyzer):
+            return False
+        # Both operands IntLiteral-typed NON-NAMES (two literal-seeded-container
+        # element reads, `ys[0] + ys[2]`): in a fixed-int target context the AST
+        # short-circuits to gen_call_from_fi WITHOUT the paren wrap
+        # (_gen_binop's literal-operand branch), and the target is
+        # position-dependent -- keep the shape on the AST path. A name operand
+        # (incl. an IntLiteral-typed loop var) takes the resolved-binop branch
+        # THIR mirrors.
+        if (isinstance(analyzer.get_expr_type(e.left), IntLiteralType)
+                and not isinstance(e.left, TpyName)
+                and isinstance(analyzer.get_expr_type(e.right), IntLiteralType)
+                and not isinstance(e.right, TpyName)):
             return False
     elif e.op in _COMPARE_OPS:
         # A scalar comparison -> bool, usable as a value (`x = a < b`) or an
@@ -821,8 +919,8 @@ def _is_len_call(e: TpyExpr, locals_: dict[str, TpyType]) -> bool:
     load-bearing, not cosmetic: a container is a by-ref/by-value param that emits as the
     bare name, but a record (or `Optional`) with `__len__` bound to a pointer-local
     would need `(*p)` (the AST's is_indirect_name deref) that the bare emit misses -- so
-    only list/dict/set (never pointer-locals) are admitted. A non-name arg (literal,
-    subscript, call) rides a later cell."""
+    only list/dict/set/Array (never pointer-locals) are admitted. A non-name arg
+    (literal, subscript, call) rides a later cell."""
     if not _is_len_native(e):
         return False
     if e.kwargs or e.double_star_unpack is not None or len(e.args) != 1:
@@ -831,7 +929,7 @@ def _is_len_call(e: TpyExpr, locals_: dict[str, TpyType]) -> bool:
     if not (isinstance(arg, TpyName) and arg.name in locals_):
         return False
     t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(locals_[arg.name])))
-    return is_list(t) or is_dict(t) or is_set(t)
+    return is_list(t) or is_dict(t) or is_set(t) or is_array(t)
 
 
 def _call_eligible(e: TpyCall, locals_: dict[str, TpyType], analyzer,
@@ -885,13 +983,132 @@ def _call_eligible(e: TpyCall, locals_: dict[str, TpyType], analyzer,
     ret = analyzer.get_expr_type(e)
     if not (_eligible_scalar(ret) or (stmt_position and is_void_like_type(ret))):
         return False
-    # Every argument must be an eligible SCALAR. A non-value arg (a record /
-    # Own[record] param passed positionally) crosses an ownership boundary --
-    # an Own param at its last use auto-moves (`f(std::move(p))`), a borrow param
-    # may lift -- which the bare-name THIRCall emit does not reproduce. Scalars
-    # are value types: copied, never moved, so the bare call is byte-identical.
-    return all(_eligible_scalar(analyzer.get_expr_type(a))
-               and _expr_eligible(a, locals_, analyzer) for a in e.args)
+    # Every argument is an eligible SCALAR (a value type: copied, never moved,
+    # so the bare call is byte-identical) or a bare-name CONTAINER into a
+    # non-Own concrete container param (the other pass-through slot shape --
+    # `use_list(xs)` emits the bare name on both paths). Any other non-value
+    # arg (record / Own / Span / protocol slot) crosses an ownership or
+    # conversion boundary -- an Own param at its last use auto-moves
+    # (`f(std::move(p))`), a Span slot converts -- which the bare-name THIRCall
+    # emit does not reproduce.
+    return all((_eligible_scalar(analyzer.get_expr_type(a))
+                and _expr_eligible(a, locals_, analyzer))
+               or _container_pass_through_arg(a, p.type, locals_, analyzer)
+               for a, p in zip(e.args, fi.params))
+
+
+def _scalar_pass_through_slot(ptype: TpyType | None, analyzer) -> bool:
+    """A method param slot the inline-template arg path passes a scalar into
+    bare: a value scalar or `Own[scalar]`. Scalars are value types -- copied,
+    never moved -- and `gen_call_arg`'s Own handling skips the copy+move temp for
+    a template/native callee (`inline_template=True`), so the arg emits as the
+    bare expression. Every other slot shape (record / Optional / union / tuple /
+    Ptr / str / protocol / unsubstituted type param) takes a lift, move, or
+    conversion the slice does not reproduce. A literal-seeded container's fi
+    carries `Own[IntLiteral]` slots (resolved like every scalar-typed check)."""
+    if ptype is None:
+        return False
+    t = unwrap_readonly(unwrap_ref_type(ptype))
+    if isinstance(t, OwnType):
+        t = unwrap_readonly(t.wrapped)
+    return _resolved_scalar(t, analyzer)
+
+
+def _container_pass_through_arg(a: TpyExpr, ptype: TpyType | None,
+                                locals_: dict[str, TpyType], analyzer) -> bool:
+    """A container arg the AST passes as the bare name: a bare in-scope name
+    with a builtin-container binding, into a NON-Own concrete builtin-container
+    param (`std::vector<T>&` / `const ordered_map<K, V>&` / ...).
+    `gen_call_arg`'s ownership cascade never fires for that slot shape (`own is
+    None`), so the emit is the bare name on both paths. An `Own[container]`
+    slot auto-moves at last use (`f(std::move(xs))`), a `Span` / protocol
+    (`Iterable`) slot converts (`::tpy::as_mut_span(xs)` / adapter wrap), and an
+    `Optional[container]` slot lifts (`&(xs)`), so those stay on the AST path.
+    The binding type is read from `locals_`, per the receiver-gate convention on
+    `_resolved_scalar`. NB unlike the sibling `_scalar_pass_through_slot` (slot
+    check only; the arg shape is checked separately at its call sites), this
+    predicate owns BOTH sides -- the container arg shape is inseparable from the
+    slot shape it pairs with."""
+    if not isinstance(a, TpyName) or a.name not in locals_:
+        return False
+    at = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(locals_[a.name])))
+    if not (is_list(at) or is_dict(at) or is_set(at) or is_array(at)):
+        return False
+    if ptype is None:
+        return False
+    pt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
+    # Explicit Own/Optional rejects (the move / address-of lift slots); the
+    # concrete-container check below would also exclude them, but the invariant
+    # should be self-evident, mirroring gen_call_arg's own Own detection.
+    if isinstance(pt, (OwnType, OptionalType)):
+        return False
+    return is_list(pt) or is_dict(pt) or is_set(pt) or is_array(pt)
+
+
+def _method_call_eligible(e: TpyMethodCall, locals_: dict[str, TpyType], analyzer,
+                          *, stmt_position: bool = False) -> bool:
+    """A method call on a bare-name builtin-container receiver whose emit is the
+    pass-through subset of `_gen_method_call`: `xs.append(v)` -> `xs.push_back(v)`
+    (@native member), `xs.pop()` -> `::tpy::pop_back(xs)` (@native free function),
+    `xs.sort()` -> `std::stable_sort(...)` (@cpp_template). The receiver is an
+    in-scope container name (the admitted list/dict param family -- never a
+    pointer-local, so no deref/arrow/narrowing arises); args are value scalars
+    into scalar / `Own[scalar]` slots, or pass-through container names into
+    non-Own container slots (`d.update(e)` -- see `_container_pass_through_arg`);
+    the result is a value scalar (or void, discarded, in statement position). Every special-emit marker (static / super /
+    module-qualified / typed-dict / nested-ctor / callable-field / macro / fstr /
+    deref chain / Optional runtime check) takes a different `_gen_method_call`
+    path and is rejected."""
+    if not isinstance(e.obj, TpyName) or e.obj.name not in locals_:
+        return False
+    # The declared binding type, not get_expr_type: a container-literal local's
+    # use sites carry the pre-resolution PendingListType (the AST path unwraps it
+    # in TypeResolver.get_resolved_type); the binding type is post-resolution.
+    # Mirrors _is_len_call's locals_ lookup.
+    if not _container_scalar_read(locals_[e.obj.name]):
+        return False
+    if e.kwargs or e.double_star_unpack is not None:
+        return False
+    if (e.is_static_call or e.super_parent_type is not None
+            or e.unbound_self_parent_type is not None
+            or e.user_module_call is not None
+            or e.builtin_module_call is not None
+            or e.typed_dict_get_field is not None
+            or e.is_nested_constructor or e.is_nested_enum_constructor
+            or e.is_callable_field or e.macro_expansion is not None
+            or e.fstr_expansion is not None or e.type_args
+            or e.inferred_type_args or e.deref_depth
+            or e.deref_narrowed_to is not None
+            or e.needs_optional_runtime_check):
+        return False
+    fi = e.resolved_function_info
+    if fi is None:
+        return False
+    # A consuming method moves the receiver (`std::move(xs)`); a `{cpp}` template
+    # placeholder substitutes the return type; `cpp_return_type` wraps the call in
+    # a static_cast; @error_return unwraps via a statement expression; a
+    # LiteralType param mangles the member name. None are reproduced.
+    if (fi.is_consuming or fi.error_return_type is not None
+            or fi.native_cpp_return_type is not None
+            or (fi.cpp_template is not None and "{cpp}" in fi.cpp_template)
+            or any(isinstance(p.type, LiteralType) for p in fi.params)
+            or fi.is_async or fi.is_generator
+            or fi.is_property_getter or fi.is_property_setter):
+        return False
+    # Exact positional arity -- no omitted defaults, no varargs.
+    if len(e.args) != len(fi.params):
+        return False
+    # A void method's call carries no resolved expr type (None), unlike a void
+    # free-function call (NoneType); both are discard-only, statement position.
+    ret = analyzer.get_expr_type(e)
+    if not (_resolved_scalar(ret, analyzer)
+            or (stmt_position and (ret is None or is_void_like_type(ret)))):
+        return False
+    return all((_scalar_pass_through_slot(p.type, analyzer)
+                and _resolved_scalar(analyzer.get_expr_type(a), analyzer)
+                and _expr_eligible(a, locals_, analyzer))
+               or _container_pass_through_arg(a, p.type, locals_, analyzer)
+               for a, p in zip(e.args, fi.params))
 
 
 def _is_builtin_print(e: TpyExpr, declared: dict[str, TpyType], analyzer) -> bool:
@@ -935,7 +1152,7 @@ def _print_eligible(e: TpyCall, locals_: dict[str, TpyType], analyzer) -> bool:
     for a in e.args:
         if isinstance(a, TpyStrLiteral):
             continue
-        if (_eligible_scalar(analyzer.get_expr_type(a))
+        if (_resolved_scalar(analyzer.get_expr_type(a), analyzer)
                 and _expr_eligible(a, locals_, analyzer)):
             continue
         return False
@@ -981,6 +1198,9 @@ def _expr_eligible(e: TpyExpr, locals_: dict[str, TpyType], analyzer) -> bool:
         return _binop_eligible(e, locals_, analyzer)
     if isinstance(e, TpyCall):
         return _call_eligible(e, locals_, analyzer)
+    if isinstance(e, TpyMethodCall):
+        # A value-scalar-returning container method call (`x = xs.pop()`).
+        return _method_call_eligible(e, locals_, analyzer)
     if isinstance(e, TpyCoerce):
         # Only the literal-into-typed-slot passthroughs; other coercions
         # (widening, bigint, int<->float, float32, optional-wrap, ...) take
@@ -995,7 +1215,8 @@ def _f1_param_eligible(ptype: TpyType | None, analyzer) -> bool:
     (`T&` / `const T&`, accessed `.`), an F3 borrow-form pointer-repr tuple
     (`std::tuple<..., T*>`, a borrow source for a `tuple_to_storage` field write), a
     pure value-scalar tuple (`const std::tuple<...>&`, read by subscript), a
-    scalar-element container (`list[scalar]` / `dict[int, scalar]`, read by subscript),
+    scalar-element container (`list[scalar]` / `Array[scalar, N]` /
+    `dict[int, scalar]`, read by subscript),
     or a record-element list (`list[record]`, iterated by `for x in c` -- the signature
     stays on the AST path per M1). Optional/view-keyed-container/cross-module/native
     record params stay on the AST path."""
@@ -1182,7 +1403,12 @@ def _for_each_container_eligible(stmt: TpyForEach, analyzer,
     # (range() call, subscript, attribute) rides a later cell.
     if not isinstance(it, TpyName) or it.name not in declared:
         return False
-    if not is_native_iterable(analyzer.get_expr_type(it), analyzer.registry):
+    # declared (the binding type) rather than get_expr_type: a container-literal
+    # local's use sites carry the pre-resolution PendingListType (see
+    # _method_call_eligible). A param binding is Ref/readonly-wrapped -- unwrap
+    # like _container_scalar_read does internally.
+    it_type = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(declared[it.name])))
+    if not is_native_iterable(it_type, analyzer.registry):
         return False
     # The loop var (list/set/Span/Array element, or dict key) is a value scalar (typed
     # copy) or an F1-record (a borrow alias -- `auto&&`/`const auto&`, read/written
@@ -1191,7 +1417,12 @@ def _for_each_container_eligible(stmt: TpyForEach, analyzer,
     # loop var (`_check_nonvalue_rebinding` -- `p = other` is a hard error), so an
     # eligible record loop var is only ever read or field-mutated through the alias, both
     # matching Python's reference semantics.
-    et = unwrap_ref_type(stmt.elem_type) if stmt.elem_type is not None else None
+    # resolve_int_literals: a literal-seeded container's elem_type is still
+    # IntLiteral (IntLiteralType.to_cpp() would emit the VALUE); the AST binding
+    # emits the resolved default-int spelling.
+    et = (resolve_int_literals(unwrap_ref_type(stmt.elem_type),
+                               analyzer.ctx.default_int_for_literal)
+          if stmt.elem_type is not None else None)
     if not _eligible_scalar(et) and not _f1_record(et, analyzer):
         return False
     body_declared = dict(declared)
@@ -1244,6 +1475,12 @@ def _stmt_eligible(stmt: TpyStmt, analyzer, declared: dict[str, TpyType],
                     and _field_receiver_ok(stmt.init, declared, analyzer)
                     and _f1_tuple(analyzer.get_expr_type(stmt.init), analyzer) is not None):
                 storage_tuple_locals.add(stmt.name)
+                return True
+            # Container-literal local (`xs = [1, 2]` / `d = {k: v}`): the local
+            # enters `declared` with its resolved container type, so the
+            # receiver gates (subscript / len / iteration / method calls)
+            # admit it exactly like a container param.
+            if _container_literal_decl_ok(stmt, declared, prescan, analyzer):
                 return True
         elif stmt.name in rebind_slots:
             # F2d rebind-slot reseat: an rvalue F1-record ctor / by-value source.
@@ -1327,6 +1564,11 @@ def _stmt_eligible(stmt: TpyStmt, analyzer, declared: dict[str, TpyType],
             return _print_eligible(stmt.expr, declared, analyzer)
         if isinstance(stmt.expr, TpyCall):
             return _call_eligible(stmt.expr, declared, analyzer, stmt_position=True)
+        if isinstance(stmt.expr, TpyMethodCall):
+            # A container mutation call discarded for its side effect
+            # (`xs.append(v)` / `xs.pop()` / ...).
+            return _method_call_eligible(stmt.expr, declared, analyzer,
+                                         stmt_position=True)
         return False
     return False
 
@@ -1408,7 +1650,11 @@ def _field_is_arrow(e: TpyFieldAccess, lc: '_LowerCtx') -> bool:
 
 def _lower_expr(e: TpyExpr, lc: '_LowerCtx') -> THIRExpr:
     analyzer = lc.analyzer
+    # A container-literal local's use sites keep the pre-resolution pending type
+    # on the expr (the AST path unwraps it in TypeResolver.get_resolved_type);
+    # THIR nodes must carry fully-resolved types.
     rtype = analyzer.get_expr_type(e)
+    rtype = resolve_pending_container(rtype, analyzer) or rtype
     loc = getattr(e, "loc", None)
     if isinstance(e, TpyName):
         if e.name == lc.self_receiver:
@@ -1504,6 +1750,39 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx') -> THIRExpr:
             callee=e.func_name,
             args=tuple(_lower_expr(a, lc) for a in e.args),
             native_name=native_name,
+            loc=loc,
+        )
+    if isinstance(e, (TpyArrayLiteral, TpySetLiteral)):
+        # A container-literal decl init (the only position eligibility admits
+        # it). result_type is the RESOLVED container (list vs Array already
+        # decided by sema); the emit dispatches on its family.
+        return THIRContainerLiteral(
+            result_type=rtype,
+            elements=tuple(_lower_expr(x, lc) for x in e.elements),
+            loc=loc,
+        )
+    if isinstance(e, TpyDictLiteral):
+        return THIRContainerLiteral(
+            result_type=rtype,
+            elements=tuple(_lower_expr(k, lc) for k in e.keys),
+            values=tuple(_lower_expr(v, lc) for v in e.values),
+            loc=loc,
+        )
+    if isinstance(e, TpyMethodCall):
+        fi = e.resolved_function_info
+        # The member name mirrors _gen_method_call's resolution: @native rename
+        # over the escaped source name (the LiteralType-mangled overload form is
+        # gated out). A void method call carries no resolved expr type (None);
+        # normalize so the node keeps a non-None result_type.
+        member = (fi.native_name if fi.native_name and not fi.native_function
+                  else escape_cpp_name(e.method))
+        return THIRMethodCall(
+            result_type=rtype if rtype is not None else VoidType(),
+            receiver=_lower_expr(e.obj, lc),
+            method_cpp=member,
+            args=tuple(_lower_expr(a, lc) for a in e.args),
+            native_function_name=fi.native_name if fi.native_function else None,
+            cpp_template=fi.cpp_template,
             loc=loc,
         )
     if isinstance(e, TpyCoerce):
@@ -1837,7 +2116,11 @@ def _lower_stmt_dispatch(stmt: TpyStmt, lc: _LowerCtx,
         it = stmt.iterable
         # Loop var is C++-for-scoped: visible in the body but not the outer scope
         # (a fresh declared copy, so a body decl can't leak past the loop).
-        et = unwrap_ref_type(stmt.elem_type)
+        # resolve_int_literals mirrors the eligibility gate: a literal-seeded
+        # container's elem_type is still IntLiteral, whose to_cpp() emits the
+        # value -- the binding must spell the resolved default int.
+        et = resolve_int_literals(unwrap_ref_type(stmt.elem_type),
+                                  analyzer.ctx.default_int_for_literal)
         body_declared = dict(declared)
         body_declared[stmt.var] = et
         body = tuple(_lower_stmt(s, lc, body_declared) for s in stmt.body)
@@ -1888,7 +2171,11 @@ def _lower_print_arg(a: TpyExpr, lc: _LowerCtx) -> THIRPrintArg:
         return THIRPrintArg(
             THIRStrLiteral(value=a.value, result_type=lc.analyzer.get_expr_type(a)),
             PrintForm.RAW)
-    arg_type = unwrap_readonly(lc.analyzer.get_expr_type(a))
+    # resolve_int_literals: an IntLiteral-typed arg (a literal-seeded container's
+    # loop var / pop result) must derive its stream form from the resolved type.
+    arg_type = resolve_int_literals(
+        unwrap_readonly(lc.analyzer.get_expr_type(a)),
+        lc.analyzer.ctx.default_int_for_literal)
     return THIRPrintArg(_lower_expr(a, lc), _print_arg_form(arg_type))
 
 

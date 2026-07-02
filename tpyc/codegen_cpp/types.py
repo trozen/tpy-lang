@@ -30,6 +30,21 @@ if TYPE_CHECKING:
     from .protocols import ProtocolGenerator
 
 
+def resolve_pending_container(typ: 'TpyType | None', analyzer) -> 'TpyType | None':
+    """Resolve a PendingListType/PendingDictType/PendingSetType to its final
+    container type via sema's per-literal resolution record, or None when `typ`
+    is not a pending container (or has no resolution yet). The single shared
+    lookup -- TypeResolver, the statement decl-type normalizer, and THIR lowering
+    all consult the same SemanticContext record, so a new container kind is
+    handled in one place."""
+    if not isinstance(typ, PENDING_CONTAINER_TYPES):
+        return None
+    info = analyzer.ctx.get_container_info(typ.literal_id)
+    if info and info.resolved_type:
+        return info.resolved_type
+    return None
+
+
 class TypeResolver:
     """Type resolution and C++ type mapping utilities."""
 
@@ -253,7 +268,7 @@ class TypeResolver:
         return self._resolve_tuple_pending(tt).to_cpp()
 
     def _resolve_pending_container(self, typ: TpyType) -> TpyType | None:
-        """Resolve a pending container type via unified lookup.
+        """Resolve a pending container type via the shared unified lookup.
 
         Returns the resolved type, or None if not a pending container.
         Falls back to a best-effort concrete type if resolution hasn't run
@@ -261,9 +276,9 @@ class TypeResolver:
         """
         if not isinstance(typ, PENDING_CONTAINER_TYPES):
             return None
-        info = self.ctx.analyzer.ctx.get_container_info(typ.literal_id)
-        if info and info.resolved_type:
-            return info.resolved_type
+        resolved = resolve_pending_container(typ, self.ctx.analyzer)
+        if resolved is not None:
+            return resolved
         # Fallback for unresolved containers
         if isinstance(typ, PendingListType):
             elem_type = typ.element_type
