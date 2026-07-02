@@ -11,6 +11,7 @@ from .nodes import (
     Form,
     THIRAssign,
     THIRBinOp,
+    THIRBytesLiteral,
     THIRCall,
     THIRCharLiteral,
     THIRCoerce,
@@ -57,6 +58,9 @@ def _expr(e: THIRExpr) -> str:
         return f"lit({e.value!r}){tag}"
     if isinstance(e, THIRStrLiteral):
         return f"str({e.value!r})"
+    if isinstance(e, THIRBytesLiteral):
+        # The owned/span render verdict is emit-relevant, so surface it.
+        return f"bytes({e.value!r})" + ("" if e.owned else " [span]")
     if isinstance(e, THIRFString):
         # Literal segments render repr'd; interpolated args in braces, with the
         # carried wrap template when one applies (it is emit-relevant).
@@ -116,8 +120,13 @@ def _expr(e: THIRExpr) -> str:
         flags = " bounds_safe" if e.bounds_safe else ""
         return f"{_expr(e.receiver)}[{idx}]{tag}{flags}"
     if isinstance(e, THIRStrSlice):
+        if e.index is not None:
+            return f"{_expr(e.receiver)}[{_expr(e.index)}]"
         lo = _expr(e.lower) if e.lower is not None else ""
         hi = _expr(e.upper) if e.upper is not None else ""
+        if e.stepped:
+            step = _expr(e.step) if e.step is not None else ""
+            return f"{_expr(e.receiver)}[{lo}:{hi}:{step}]"
         return f"{_expr(e.receiver)}[{lo}:{hi}]"
     if isinstance(e, THIRFormConvert):
         cst = "const " if e.is_const else ""

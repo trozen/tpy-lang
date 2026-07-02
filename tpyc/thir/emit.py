@@ -17,13 +17,15 @@ from dataclasses import dataclass, field
 from typing import TextIO
 
 from ..codegen_cpp.context import (
-    INDENT, cpp_string_literal_expr, escape_cpp_char, escape_cpp_name,
+    INDENT, cpp_bytes_literal_owned, cpp_bytes_literal_span,
+    cpp_string_literal_expr, escape_cpp_char, escape_cpp_name,
     escape_cpp_string, expand_cpp_template, loop_var_binding,
     qualify_native_name,
 )
 from ..codegen_cpp.forms import LocalBinding, is_plain_nonvalue
 from ..type_def_registry import (
-    is_bytes_type, is_dict, is_list, is_set, is_str_type, view_to_owned_conv,
+    is_bytes_type, is_dict, is_list, is_set, is_str_type, is_string_type,
+    view_to_owned_conv,
 )
 from ..typesys import OptionalType, TupleType, unwrap_qualifiers
 from .nodes import (
@@ -31,6 +33,7 @@ from .nodes import (
     PrintForm,
     THIRAssign,
     THIRBinOp,
+    THIRBytesLiteral,
     THIRCall,
     THIRCharLiteral,
     THIRCoerce,
@@ -184,9 +187,15 @@ def _emit_binop(e: THIRBinOp) -> str:
     wl = rb.left_wrapper.replace("{self}", left).replace("{expr}", left)
     wr = rb.right_wrapper.replace("{self}", right).replace("{expr}", right)
     if rb.is_reverse:
-        result = expand_cpp_template(rb.method.cpp_template, wr, wl)
-    else:
+        wl, wr = wr, wl
+    if rb.method.cpp_template:
         result = expand_cpp_template(rb.method.cpp_template, wl, wr)
+    else:
+        # A @native free-function dunder (bytes `==` -> `::tpy::bytes_eq`):
+        # gen_call_from_fi's native arm with the receiver prepended. The gate
+        # admits a template-less rb only in this shape.
+        result = (f"{qualify_native_name(rb.method.native_name)}"
+                  f"({wl}, {wr})")
     if e.divisor_non_zero:
         result = result.replace("div_check", "div_floor").replace("mod_check", "mod_floor")
     return f"({result})" if e.paren_wrap else result
@@ -324,12 +333,21 @@ def _emit_fstring(e: THIRFString) -> str:
 
 def _emit_str_slice(e: THIRStrSlice) -> str:
     # Mirrors _gen_subscript's slice arm: the resolved __getitem__ @cpp_template
-    # expanded over the receiver and a BasicSlice initializer; an absent bound
+    # expanded over the receiver and the slice argument -- a slice-typed
+    # variable index rendered bare, or a BasicSlice/Slice initializer
+    # (_gen_slice_object, stepped per the source syntax); an absent bound
     # renders std::nullopt (_gen_optional_slice_bound).
+    if e.index is not None:
+        return expand_cpp_template(e.cpp_template, _emit_expr(e.receiver),
+                                   _emit_expr(e.index))
     lo = _emit_expr(e.lower) if e.lower is not None else "std::nullopt"
     hi = _emit_expr(e.upper) if e.upper is not None else "std::nullopt"
-    return expand_cpp_template(e.cpp_template, _emit_expr(e.receiver),
-                               f"::tpy::BasicSlice{{{lo}, {hi}}}")
+    if e.stepped:
+        step = _emit_expr(e.step) if e.step is not None else "std::nullopt"
+        slice_arg = f"::tpy::Slice{{{lo}, {hi}, {step}}}"
+    else:
+        slice_arg = f"::tpy::BasicSlice{{{lo}, {hi}}}"
+    return expand_cpp_template(e.cpp_template, _emit_expr(e.receiver), slice_arg)
 
 
 def _emit_form_convert(e: THIRFormConvert) -> str:
@@ -368,13 +386,16 @@ def _emit_form_convert(e: THIRFormConvert) -> str:
         if isinstance(t, TupleType):
             helper = "tuple_to_storage_move" if e.move else "tuple_to_storage"
             return f"::tpy::{helper}<{t.to_cpp()}>({inner})"
-        # S1 str slice: a view-form source (string_view) into an owned storage
-        # sink (decl init / return) copies via the family's owned constructor --
-        # `std::string(x)` -- the string_view->string ctor being explicit.
-        # Mirrors the AST's `_view_source_to_owned` chokepoint spelling (the
-        # bytes arm, `::tpy::bytes_copy`, rides the S6 cell; the family helper
-        # covers it for free).
-        if is_str_type(t) or is_bytes_type(t):
+        # S1/S6 str+bytes slices: a view-form source (string_view / span) into
+        # an owned storage sink (decl init / return) copies via the family's
+        # owned constructor -- `std::string(x)` / `::tpy::bytes_copy(x)` -- the
+        # view->owned construction being explicit. Mirrors the AST's
+        # `_view_source_to_owned` chokepoint spelling via the shared
+        # `view_to_owned_conv` helper. The materializing str-family coercions
+        # (strview_to_str / str_to_string / strview_to_string) lower here too:
+        # the cross-type respelling is family-internal, the emit identical --
+        # `String` is the same owned std::string spelled as a distinct type.
+        if is_str_type(t) or is_string_type(t) or is_bytes_type(t):
             return f"{view_to_owned_conv(t)}({inner})"
     raise THIRCodeGenError(
         f"unhandled THIRFormConvert: {type(t).__name__} {e.value.form}->{e.form}")
@@ -389,11 +410,21 @@ def _emit_expr(e: THIRExpr) -> str:
         return _emit_literal(e)
     if isinstance(e, THIRStrLiteral):
         return cpp_string_literal_expr(e.value)
+    if isinstance(e, THIRBytesLiteral):
+        # The owned/span verdict was decided at lowering from the sink (see the
+        # node's doc); the empty-literal arms mirror gen_expr's TpyBytesLiteral
+        # branch and gen_call_arg's static-span pin.
+        if e.owned:
+            return cpp_bytes_literal_owned(e.value)
+        if not e.value:
+            return "std::span<const uint8_t>{}"
+        return cpp_bytes_literal_span(e.value)
     if isinstance(e, THIRFString):
         return _emit_fstring(e)
     if isinstance(e, THIRCharLiteral):
-        # A Char-targeted str literal (compare operand opposite a Char) --
-        # mirrors gen_expr_deref's char-literal branch.
+        # A Char-targeted str literal (compare operand opposite a Char, a
+        # Char-annotated decl init, a Char-slot call arg) -- mirrors
+        # gen_expr's char-literal branch.
         return f"'{escape_cpp_char(e.value)}'"
     if isinstance(e, THIRFieldAccess):
         return _emit_field_access(e)
@@ -608,6 +639,8 @@ def _emit_print_arg(a: THIRPrintArg) -> str:
         return f"::tpy::print_float({inner})"
     if a.print_form is PrintForm.INT8:
         return f"static_cast<int>({inner})"
+    if a.print_form is PrintForm.BYTES:
+        return f"::tpy::BytesPrinter({inner})"
     return inner
 
 

@@ -706,10 +706,12 @@ def is_owned_in_coro_frame(t: "TpyType") -> bool:
 
 def view_to_owned_conv(t: "TpyType") -> str:
     """The C++ callable that copies a view-form `t` into its owned storage form:
-    `std::string` for `str` (from a `std::string_view`), `::tpy::bytes_copy` for
-    `bytes` (from a `BytesView`). `t` is the bare view type (Optional callers
-    pass the inner). Only valid for view-family types."""
-    return "std::string" if is_str_type(t) else "::tpy::bytes_copy"
+    `std::string` for the str family (`str`/`String`, from a
+    `std::string_view`), `::tpy::bytes_copy` for `bytes` (from a `BytesView`).
+    `t` is the bare view type (Optional callers pass the inner). Only valid
+    for view-family types."""
+    return ("std::string" if is_str_type(t) or is_string_type(t)
+            else "::tpy::bytes_copy")
 
 
 def view_owned_copy_init(t: "TpyType", arg: str) -> str:

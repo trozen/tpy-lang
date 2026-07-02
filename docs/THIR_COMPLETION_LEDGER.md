@@ -81,8 +81,8 @@ deletion is the concrete milestone that forces its tail closed.
 | AST component to delete | Deletion gate (cells that must route) | Status |
 |---|---|---|
 | **Ctor MIL emit** -- `records.py` `_extract_field_inits` / `_extract_base_inits` / `_get_non_init_stmts` + the inline ` : f(v)... {}` write | every ctor MIL field cell + body: scalar (M3a), record/Optional copy+move (M3b), ctor-call / param-field-read sources + own-optional params (M3b-rvalue), docstring/`pass` trivia body (M3c-trivia), non-init body + demotion (M3c-demotion), inheritance -- single + multi base + inherited-field writes (M3d), and str/list/dict/tuple/union/bytes fields (F3+) + cross-module/native/generic records | **PARTIAL** -- the whole scalar/record/Optional + body + inheritance surface lands (ctor self-contained tail complete); deferred cells are cross-axis-blocked -- non-record demoted-field-writes + non-record fields (F3+) + native/generic records |
-| **Body statement + expression emit** -- `statements.py` `gen_body` per-statement path + `expressions.py` `gen_expr`, for routed callables | every statement shape + expression form across every callable kind | **PARTIAL** -- straight-line shapes over the F1/F2 + scalar/bool/double-float + str-value (F6 S1) slice, incl. logical/chained-compare exprs and scalar type-constructor calls |
-| **Form / conversion machinery** -- `context.py` `convert` + `CppForm`/`FormValue`, the ~12 detection predicates + ~22 local side-sets + the `RefType` wrapper (see `THIR_FORM_INVENTORY.md`) | **F-final**: the `Form` tag + `THIRFormConvert` subsume all form dispatch | **PARTIAL** -- F1/F2 forms carried + F3 tuple read/write + the F6 str view->owned convert (S1); F4/F5, the F6 tail (S2-S6), and RefType removal pending |
+| **Body statement + expression emit** -- `statements.py` `gen_body` per-statement path + `expressions.py` `gen_expr`, for routed callables | every statement shape + expression form across every callable kind | **PARTIAL** -- straight-line shapes over the F1/F2 + scalar/bool/double-float + str (F6 S1-S5 + cross-type coercions) + bytes-value (F6 S6) slice, incl. logical/chained-compare exprs and scalar type-constructor calls |
+| **Form / conversion machinery** -- `context.py` `convert` + `CppForm`/`FormValue`, the ~12 detection predicates + ~22 local side-sets + the `RefType` wrapper (see `THIR_FORM_INVENTORY.md`) | **F-final**: the `Form` tag + `THIRFormConvert` subsume all form dispatch | **PARTIAL** -- F1/F2 forms carried + F3 tuple read/write + the F6 str+bytes view->owned converts (S1/S6 -- both `view_to_owned_conv` family arms validated; reused at container-element slots by S5; extended to the cross-type str-family coercions in incr 42, the materializing arms lowering to the same THIRFormConvert); F4/F5, the remaining F6 tail, and RefType removal pending |
 
 These interlock: deleting `gen_body`/`gen_expr` requires the form machinery gone
 (F-final) and every statement shape routed. The **ctor MIL emit is the first
@@ -150,7 +150,11 @@ deferred (self-contained) / blocked-on-`<rung>`.
 - F4 unions (`to_ptr_variant`/`to_value_variant`), F5 generic-slot,
   F-final (RefType removal + retirement): **not started.**
 - F6 str/bytes view-split: **OPENED (S1 str values; S2 f-strings DONE, incr 39;
-  S3 concat/`+=` DONE, incr 40; S4 subscript/slice/iteration DONE, incr 41)**
+  S3 concat/`+=` DONE, incr 40; S4 subscript/slice/iteration DONE, incr 41;
+  cross-type str-family coercions DONE, incr 42;
+  S5 dict[str]/container-of-str DONE, incr 43;
+  S6 bytes values DONE, incr 44;
+  S4 leftovers + literal call args DONE, incr 45)**
   -- S1: str/StrView params,
   literal-init locals (PendingStrType resolved through ViewVarInfo at lowering),
   print args, comparisons, `len(s)`, owned-str returns, same-type call args; the
@@ -185,20 +189,95 @@ deferred (self-contained) / blocked-on-`<rung>`.
   than growing two parallel aug-assign systems); Char operands of concat,
   `str * n`, String params/returns, and
   aug-assigned str PARAMS stay AST (the last is a pre-existing AST miscompile,
-  see BUGS.md). Remaining S-cells: S4 leftovers (stepped slices via
-  `::tpy::Slice`, slice-typed variable indices `s[sl]`, Char-targeted literal
-  decl/reassign/return renders, Char record fields, non-name
-  receivers/iterables),
-  S5 dict[str]/container-of-str keys+elements (static-storage literal pinning,
-  owned-slot wraps), S6 bytes (explicit `bytes_copy` wraps, `BytesPrinter`,
-  non-view-safe literals; the S1 plumbing is family-generic, but emit.py's bytes
-  convert arm is UNREACHABLE until S6 -- the cell must validate it under the
-  byte-diff, not inherit it as verified), plus: cross-type
-  str-family coercions (str<->StrView<->String -- position-dependent identity vs
-  materialization), reassigned owned-str params (owned-copy prologue),
-  multi-overload
-  callees with str-literal args (`_wants_str_literal_pin`), `String`/
-  `Literal[str]` bindings, `bytearray` (a reference type, different axis).
+  see BUGS.md). **S5 dict[str]/container-of-str DONE (increment 43)**:
+  owned-`str` container elements/keys/values across the already-routed
+  container shapes -- `dict[str, scalar|str]` / `list[str]` / `Array[str, N]`
+  params and literal-init locals (`set[str]` literals for decl/len/iteration),
+  subscript reads with str keys (`d["a"]` / `d[k]` / `d[a + b]` -- the key
+  renders bare; owned-str keys never take the `view_key_target` static-storage
+  literal pin, which fires only for VIEW-typed keys), `len`, method calls with
+  str args into non-Own str slots (`d.pop(k)` / `d.get(k, v)`; builtin-container
+  methods never take the `_wants_str_literal_pin` path) and owned-str results
+  (`xs.pop()`, STORAGE), iteration with str loop vars (a fresh view var
+  usage-resolved to `std::string_view` or an owned `std::string` copy, spelled
+  by the shared `loop_var_binding`), and str-element container literals with
+  the per-slot view->owned wrap (a BORROW str source into an owned
+  `std::string` element slot reuses the S1 `THIRFormConvert` ->
+  `std::string(x)`; literals and owned/String/rvalue sources land bare -- the
+  `make_vector`/`make_ordered_*` move arm cannot fire, str is a value type and
+  never in `movable_locals`). A str element/value subscript read carries its
+  resolved shape (BORROW when its view var resolved StrView, driving the S1
+  owned-sink copy; STORAGE when owned -- the `const std::string&` element
+  copies implicitly at owned sinks, bare on both paths). S5-deferred rows
+  (gate-rejected): StrView/BytesView-keyed or -element containers (view
+  containers; their literal keys DO pin to static storage via
+  `view_key_target`), bytes keys/elements (S6), `Own[str]` method-arg slots
+  (`xs.append(s)` / `st.add(s)` / `setdefault` defaults -- the owned-copy
+  wrap and the copy-into-temp + `std::move(__tmp_N)` shapes), and container
+  subscript WRITES (`d[k] = v`, `__setitem__` -- not a routed statement shape
+  for ANY container family, the pre-existing parked cell).
+  **S6 bytes values DONE (increment 44)**: the bytes twin of S1 --
+  bytes/BytesView params, literal-init locals (PendingBytesType through
+  ViewVarInfo), owned-bytes returns, comparisons, `len(b)`, same-type call
+  args, `BytesPrinter` print args (`PrintForm.BYTES`). Two shapes with no str
+  analog: (1) a bytes LITERAL's render is target-dependent (`THIRBytesLiteral`
+  carries an `owned` flag decided per sink at lowering -- owned
+  `bytes_literal_owned`/empty-vector at target-less positions
+  (print/compare/owned sinks), static-storage span `bytes_literal`/empty-span
+  at view sinks: view decl-init/reassign and the gen_call_arg span pin into
+  bytes/BytesView slots, coerce-peeled like the AST); (2) bytes `==` is a
+  @native free-function dunder (no cpp_template) -> a native binop emit arm
+  (`::tpy::bytes_eq(l, r)`, gen_call_from_fi's native shape) now admitted by
+  the compare gate. The formerly-UNREACHABLE bytes arm of `_emit_form_convert`
+  (`::tpy::bytes_copy`) is now exercised and byte-diff-validated at both owned
+  sinks (decl init off a view source, owned return of a view param).
+  S6-deferred rows (gate-rejected): bytes aug-assign/concat
+  (`::tpy::bytes_concat` concat-and-assign -- no in-place-append analog, do NOT
+  reuse `THIRStrAppend`), bytes subscript (`b[i]` -> UInt8) / slices /
+  iteration (NativeIterable[UInt8], explicitly excluded from the for-each
+  gate), cross-type bytes coercions (bytes<->BytesView, incl. any value or
+  literal at a BytesView return -- always coerce-wrapped), bytes literals into
+  wrapped (readonly/Own) slots (the AST renders those owned, not span),
+  `bytearray` (a reference type, different axis). NB the mixed owned/view
+  reassign/compare shapes (`t = b`, `t != v`, `v == b"..."`) route
+  byte-identically but are a pre-existing AST miscompile (invalid C++, see
+  BUGS.md) -- when fixed, the byte-diff flags the THIR arms to update in
+  lockstep. Cross-type str-family coercions
+  (str<->StrView<->String) DONE (incr 42): the sema TpyCoerce arms are
+  position-disposed at lowering (`_coerce_disposition`, mirroring the
+  coercions.py lambdas off the node's context / expected-type / literal
+  facts) -- identity positions extend the THIRCoerce passthrough (a
+  view-target coerce sets BORROW itself), materializing positions
+  (`std::string(x)`: strview_to_str at INIT/ASSIGN/RETURN, str_to_string at
+  non-literal ARG, strview_to_string everywhere) lower to the S1 view->owned
+  THIRFormConvert (the family respelling rides result_type -- one emit
+  chokepoint); slices flow into owned sinks, str literals into StrView/String
+  slots, and the String rows (compare operands, f-string args, non-Own
+  String call slots -- no coercion involved, the concat result renders bare)
+  are widened alongside; the multi-overload str-literal pin guard now
+  coerce-peels like the AST's gen_call_arg. Coercion cells still deferred:
+  `Own[...]` ARG slots (the gen_call_arg cascade frontier), the
+  `Optional[str/StrView]` per-element arms (statement-expression hoist),
+  `char_to_str/string/strview` (own wrap renders, the Char edge).
+  **S4 leftovers DONE (increment 45)**: stepped slices
+  `s[a:b:c]` -> `::tpy::str_stepped_slice` over `::tpy::Slice{lo, hi, step}`
+  (an OWNED `std::string` STORAGE result, bare at every sink -- `THIRStrSlice`
+  grew `stepped`/`step`), slice-typed variable indices `s[sl]` (the bare name
+  into the template's `{0}`; `basic_slice`/`slice` PARAMS admitted -- ctor
+  LOCALS `sl = basic_slice(1, 3)` are deferred, an `Int32 | None` Optional-slot
+  ctor), Char-targeted literal DECLS (`c: Char = 'x'` -> `char c = 'x';`) and
+  Char-slot literal call args (`take('a')` -- call args now lower against
+  their param slots; literal reassign/return into Char are sema type errors,
+  so those gate rejects are defensive), and non-name slice receivers/iterables
+  (str-family fields off F1-record receivers slice AND iterate; owned-str call
+  results slice -- a call-result ITERABLE is an rvalue `auto` capture,
+  deferred). Still-deferred S4 rows: slice-object ctor locals, Char record
+  fields, call-result iterables, non-name `s[i]` char-subscript receivers
+  (the subscript gate stays name-only; only slice/iterate receivers widened).
+  Plus, still remaining: reassigned owned-str params
+  (owned-copy prologue), `Literal[str]` bindings, String params/returns
+  (`const std::string&` signatures), `bytearray` (a reference type,
+  different axis).
 - F2 carry-over deferred cells (container locals, cross-module/native/generic
   records, subscript sources, narrowing-needed `->` deref, name-alias/REF_ALIAS
   reseat sources): **blocked-on-F3+** or the relevant frontier; see the F1/F2 TODO
@@ -280,7 +359,12 @@ landed (incr 41, `THIRStrSlice`/`THIRCharLiteral`): +331 bodies (22165 -> 22496
 solo)** -- Char values enter the slice; scope in the F6 row. Increments 39-41
 were parallel cells integrated sequentially; the INTEGRATED tally on the merged
 tree is **22545 bodies / 3271 cases** (+380 over the 22165 base -- the cells'
-solo gains plus cross-cell composition).
+solo gains plus cross-cell composition; 22642 / 3280 after the master merge).
+**Bytes values landed (incr 44, `THIRBytesLiteral`/`PrintForm.BYTES`): +4493
+bodies (22642 -> 27135 solo)** -- bytes shapes pervade the implicitly-compiled
+stdlib bindings (socket/io/http/re), so the S1-twin cell carries outsized
+routing; scope + the target-dependent literal render + the native-dunder
+compare arm + deferred rows in the F6 row above.
 **Logical and/or/not + inline chained
 compares landed (incr 36, `THIRUnaryNot`): +2435 bodies (5689 -> 8124) -- the biggest
 single-cell gain to date** (conditions gate everything); bool-result `&&`/`||` over bool
@@ -299,17 +383,33 @@ covered expression position; sema's fully-substituted `__init__` template expand
 receiver-less at emit, gated to positional-only templates + eligible-scalar result/args.
 Rejected-by-design (AST): str/bytes/BigInt/Float32/Char conversions (incl. `float("nan")`'s
 constexpr fold), enum / borrowing-view ctors, out-of-int32-range literals (the AST's
-`static_cast` wrap), unary-minus args. Method-call cells still deferred: `set`/`Span`/`Array` receivers (params not
+`static_cast` wrap), unary-minus FLOAT args (int negations fold since incr 45).
+Method-call cells still deferred: `set`/`Span`/`Array` receivers (params not
 admitted), str/bytes args (owned-copy conversion), record / `Own[record]` args (ownership
 boundary -- part of the `gen_call_arg` frontier below), non-name receivers
 (`self.items.append(...)`), user-record method receivers + same-module `self.helper()` call
 sites (the record emit path: temps / TypeParamRef handling -- a bigger separate frontier),
-consuming receivers, generic `inferred_type_args` methods, negative-literal args (unary
-minus, a pre-existing expression-slice boundary).
+consuming receivers, generic `inferred_type_args` methods.
+**Bare numeric-literal call args + negated int literals landed (incr 45)**: a
+bare FLOAT literal (FloatLiteralType) into a double param slot passes through
+(`f(3, 1.5)` -- repr(v) bare on both paths; Float32 slots arrive
+`float_literal_to_float32`-coerce-wrapped and stay AST, a BigInt slot's
+`::tpy::BigInt(v)` wrap stays AST, inf/nan literals reject), for free calls
+AND record-ctor rvalue sources (`P(1.5, ...)`; `_is_record_rvalue_source` also
+gained the missing fi/arity gate -- an omitted-default ctor call no longer
+routes). Negated INT literals (`-3`) fold to plain literals at lowering
+(mirroring `_gen_unaryop`'s literal-negation branch), lighting up every
+admitted literal position at once: call/method/ctor args, decl inits, compare
+operands, subscript indices, slice bounds/steps, `range(-3, 3)` bounds (the
+inline-literal decision extended to the negated arm), print/f-string args.
+Deferred: negated FLOAT literals (`-1.5` takes the resolved `__neg__` template
+render `-(1.5)`), `-x` over names (same template arm), negations outside the
++-int32 literal range (suffix/cast renders).
 Deferred container-iteration cells: `dict[int, record]` key iteration (param not admitted --
 its value read is a record borrow), `set`/`Span`/`Array` containers (params not yet admitted),
-str/bytes-key dicts, `dict.items()`/tuple-unpack, non-name iterables (a field/subscript/call/
-literal receiver; only a bare declared name routes today), generators / user iterators (the
+str/bytes-key dicts, `dict.items()`/tuple-unpack, non-name iterables (str-family FIELDS off
+F1-record receivers route since incr 45 -- lvalues, the same `auto&` capture; subscript/call/
+literal receivers stay deferred, a call result being an rvalue `auto` capture), generators / user iterators (the
 `__iter__`/`__next__` fallback), hoisted loop vars, `for/else`, consuming/enum iteration. (Audit-note: the gate keys
 `is_native_iterable` off the use-site type -- re-check it when narrowed-`Optional` containers
 land, since a narrowed value-repr Optional could then reach it.) Beyond subscript/iteration (separate frontiers): value-tuple locals, standalone
@@ -360,4 +460,4 @@ byte-diff itself.
 - **Planned:** extend the `--thir-codegen` non-vacuity tally to report per-component
   AST-fallback coverage (how much of each component still falls back to AST), so the
   gap to each deletion is *measured*, not estimated. Today the tally reports only
-  total routed bodies/cases (22165 bodies / 3271 cases as of increment 38).
+  total routed bodies/cases (27561 bodies / 3280 cases as of increment 45).

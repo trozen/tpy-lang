@@ -1,7 +1,6 @@
 ---
 name: tpy-merge-master
 description: Merge master into the current working branch and verify nothing broke. Captures what changed on both sides, performs the merge (resolving conflicts), then scrutinizes the merged result for semantic conflicts where master and the branch touched the same files or adjacent functionality. Ends with a short-bullet status summary. Invoke when you want to pull master into a feature branch safely.
-disable-model-invocation: true
 ---
 
 # /tpy-merge-master

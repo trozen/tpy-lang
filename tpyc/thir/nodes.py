@@ -94,6 +94,22 @@ class THIRStrLiteral(THIRExpr):
 
 
 @dataclass(frozen=True)
+class THIRBytesLiteral(THIRExpr):
+    """A bytes literal. Unlike a str literal (a position-neutral const char[N]),
+    a bytes literal's C++ render is TARGET-dependent, so lowering decides it
+    per sink and carries the verdict: `owned=True` renders the owning vector
+    (`::tpy::bytes_literal_owned(...)` / empty `std::vector<uint8_t>{}` -- the
+    default, matching every target-less position: print args, compare operands,
+    owned decl inits/returns), `owned=False` the static-storage span
+    (`::tpy::bytes_literal(...)` / empty `std::span<const uint8_t>{}`, the
+    view-targeted positions: view-local inits/reassigns, bytes/BytesView call
+    args, view returns). Form stays VALUE: an owned render already owns its
+    storage, so the owned-sink view->owned copy never wraps a literal."""
+    value: bytes
+    owned: bool = True
+
+
+@dataclass(frozen=True)
 class THIRFStringArg:
     """One interpolated f-string value: the lowered expression plus its
     Python-compatible formatting wrapper as a positional `{0}` template
@@ -124,10 +140,14 @@ class THIRFString(THIRExpr):
 class THIRCharLiteral(THIRExpr):
     """A single-char str literal rendered as a C++ char literal (`'x'`, via
     `escape_cpp_char`). Arises only where the AST threads a `Char` target into
-    the literal render -- a comparison operand opposite a Char-typed value
-    (`_comparison_targets`' char arm). Every other str literal stays a
-    `THIRStrLiteral`; Char-targeted literal decl inits / returns / call args
-    are gate-excluded, so this node never renders without that target."""
+    the literal render (gen_expr's is_char_type arm): a comparison operand
+    opposite a Char-typed value (`_comparison_targets`' char arm), a
+    Char-annotated decl init (`c: Char = 'x'` -> `char c = 'x';`), or a call
+    arg into a Char param slot (`take('a')` -> `take('a')`). Every other str
+    literal stays a `THIRStrLiteral`. Char-targeted literal reassigns and
+    returns cannot reach lowering -- sema rejects them (`c = 'y'` /
+    `return 'q'` at a Char slot are type errors; only the annotated decl form
+    converts) -- so their gate rejects are defensive."""
     value: str
 
 
@@ -221,9 +241,12 @@ class THIRMethodCall(THIRExpr):
     the escaped source name, e.g. `xs.append(v)` -> `xs.push_back(v)`).
 
     The eligibility gate admits only the AST path's pass-through shapes -- a
-    bare-name container receiver (never a pointer-local, so no deref/arrow) and
-    value-scalar args into scalar / `Own[scalar]` slots (copied bare, no move /
-    lift / temp) -- so the emit is a pure function of the node."""
+    bare-name container receiver (never a pointer-local, so no deref/arrow),
+    value-scalar args into scalar / `Own[scalar]` slots, and str-slice args
+    into non-Own str-family slots (all copied/viewed bare, no move / lift /
+    temp; an `Own[str]` slot's owned-copy or `std::move(__tmp_N)` temp is
+    gate-excluded) -- so the emit is a pure function of the node. An owned-str
+    result (`xs.pop()`, S5) is STORAGE form, landing bare in owned sinks."""
     receiver: THIRExpr
     method_cpp: str
     args: tuple[THIRExpr, ...]
@@ -246,21 +269,28 @@ class THIRContainerLiteral(THIRExpr):
     - set -> `::tpy::ordered_set<T>({e1, e2})`; empty -> `()`
 
     `values` is used only by the dict family (zipped with `elements` as keys).
-    Elements are value scalars -- the movable / nocopy / union / protocol /
-    owned-slot literal branches are gate-excluded, so no move or wrap arises."""
+    Elements are value scalars or str-slice values (S5): a view-form str source
+    into an owned `std::string` slot arrives wrapped in the S1 view->owned
+    `THIRFormConvert` (`std::string(x)`), decided at lowering -- everything else
+    lands bare. The movable / nocopy / union / protocol branches are
+    gate-excluded (scalars and the str family are value types, never in
+    `movable_locals`), so the AST's `make_vector` move arm never arises."""
     elements: tuple[THIRExpr, ...]
     values: tuple[THIRExpr, ...] = ()
 
 
 @dataclass(frozen=True)
 class THIRCoerce(THIRExpr):
-    """A sema-inserted coercion made explicit on the IR. The slice carries only
-    emit passthroughs -- the literal-into-typed-slot pair
-    (`int_literal_to_fixed_int`, `float_literal_to_float`) and the identity
-    `string_to_str` -- so the inner expression renders directly in the target
-    type. `form` is set from the wrapped expression at lowering (a passthrough
-    changes type, never shape); a future materializing coercion must set its
-    own result form instead."""
+    """A sema-inserted coercion made explicit on the IR -- always an emit
+    PASSTHROUGH: the literal-into-typed-slot pair (`int_literal_to_fixed_int`,
+    `float_literal_to_float`) and the identity positions of the str-family
+    cross-type coercions (see lower.py `_coerce_disposition`), so the inner
+    expression renders directly in the target type. A MATERIALIZING position
+    (`std::string(x)`) never reaches this node -- it lowers to the view->owned
+    `THIRFormConvert` instead. `form` is the wrapped expression's form (a
+    passthrough changes type, never the value's shape), EXCEPT a view-target
+    coerce (`*_to_strview`), whose value is a view into the source's buffer
+    whatever the source's form -- it sets BORROW itself."""
     expr: THIRExpr
     coercion_name: str
 
@@ -309,14 +339,21 @@ class THIRSubscript(THIRExpr):
     at the consuming `deref_check`).
 
     Container (list / dict) or str-family (`s[i]` -> Char) -- a runtime
-    index/key lookup, `form` VALUE (a value-scalar / Char element). `index` is
+    index/key lookup, `form` VALUE (a value-scalar / Char element). A str
+    element/value read (`xs[i]` on `list[str]`, `d[k]` on a str-valued dict,
+    S5) carries its resolved shape instead: BORROW when the read's view var
+    resolved `StrView` (drives the S1 owned-sink `std::string(x)` copy),
+    STORAGE when it resolved owned (bare -- the `const std::string&` element
+    copies implicitly at owned sinks on both paths). `index` is
     the lowered index expression; `bounds_safe` (sema value-range analysis)
     picks the emit -- `receiver[static_cast<std::size_t>(index)]` when proven
     in-bounds (a literal index needs no cast), else the checked dunder
     `::tpy::__getitem__(receiver, index)` (str's `__getitem__` @cpp_template
     spells the same dunder, so one emit covers both). The index is a value
     scalar of fixed-int width (a runtime-BigInt index is not in the scalar
-    slice), so no `.to_fixed_check` narrow arises here."""
+    slice -- no `.to_fixed_check` narrow) or, for an owned-str-keyed dict, a
+    str-slice expr rendered bare in the key slot (the static-storage literal
+    pin fires only for view-typed keys, which the gate excludes)."""
     receiver: THIRExpr
     index: THIRExpr
     bounds_safe: bool = False
@@ -324,30 +361,49 @@ class THIRSubscript(THIRExpr):
 
 @dataclass(frozen=True)
 class THIRStrSlice(THIRExpr):
-    """A non-stepped str slice `s[a:b]` off a str-family receiver, emitted via
-    the sema-resolved slice `__getitem__`'s `@cpp_template`
-    (`::tpy::str_slice({self}, {0})`) expanded over the receiver and a
-    `::tpy::BasicSlice{lo, hi}` initializer -- an absent bound renders
-    `std::nullopt` (`_gen_optional_slice_bound`). The result is a
-    `std::string_view` VIEW (`form` is BORROW), consumed at view sinks only:
-    an owned sink (decl init / return into owned `str`) arrives as a sema
-    `strview_to_str` TpyCoerce -- the deferred cross-type str-family coercion
-    cell -- so it is gate-rejected, never wrapped here. Bounds are eligible
-    fixed-int value exprs rendered bare (a BigInt bound's `.to_fixed_check`
-    narrow is gate-excluded); stepped slices (`::tpy::Slice`, an owned result)
-    and slice-typed variable indices ride a later cell."""
+    """A str slice off a str-family receiver, emitted via the sema-resolved
+    slice `__getitem__`'s `@cpp_template` expanded over the receiver and the
+    slice argument (mirrors `_gen_subscript`'s slice arm). Three index shapes:
+
+      * non-stepped `s[a:b]` -- `::tpy::str_slice({self}, {0})` over a
+        `::tpy::BasicSlice{lo, hi}` initializer; a `std::string_view` VIEW
+        result (`form` BORROW).
+      * stepped `s[a:b:c]` (`stepped`) -- `::tpy::str_stepped_slice` over a
+        `::tpy::Slice{lo, hi, step}` initializer; an OWNED `std::string`
+        result (`form` STORAGE), landing bare in every owned sink.
+      * slice-typed variable index `s[sl]` (`index`) -- the index expression
+        rendered bare into the template (`::tpy::str_slice(s, sl)`); the
+        view/owned result follows the resolved overload (basic_slice -> view,
+        slice -> owned).
+
+    The receiver is a str name, a str-family field off an F1-record receiver,
+    or an eligible owned-str/view-returning call (all render bare into
+    `{self}`). An absent bound renders `std::nullopt`
+    (`_gen_optional_slice_bound`). A VIEW result is consumed at view sinks or
+    materialized at an owned sink (decl init / return -- a sema
+    `strview_to_str` TpyCoerce lowered via `_coerce_disposition`) by the S1
+    view->owned `THIRFormConvert` (`std::string(...)`, keyed on the BORROW
+    form). Bounds are eligible fixed-int value exprs rendered bare (a BigInt
+    bound's `.to_fixed_check` narrow is gate-excluded)."""
     receiver: THIRExpr
     cpp_template: str
     lower: THIRExpr | None = None
     upper: THIRExpr | None = None
+    step: THIRExpr | None = None
+    stepped: bool = False
+    index: THIRExpr | None = None
 
 
 @dataclass(frozen=True)
 class THIRFormConvert(THIRExpr):
     """An explicit borrow<->storage form conversion (IR_DESIGN "THIRFormConvert").
 
-    Preserves `result_type` and changes only `form` (this is what distinguishes
-    it from `THIRCoerce`, which changes the type). There is no `kind` field: the
+    Preserves the type FAMILY and changes `form` (vs `THIRCoerce`, an emit
+    passthrough that changes only the type). Within a view family the
+    view->owned copy may also respell the type (`StrView` -> `str`/`String`,
+    the materializing str-family coercions): the respelling IS the form change
+    materialized in the type system, carried on `result_type`, and the
+    `std::string(x)` emit stays one chokepoint. There is no `kind` field: the
     runtime helper is a pure function of (family(result_type), value.form ->
     form, is_const, move). F1 covers the Optional storage->borrow read
     (`::tpy::optional_to_ptr`)."""
@@ -476,19 +532,26 @@ class THIRForEach(THIRStmt):
             // body
         }
 
-    `elem_type` is the loop var's type -- a value scalar or Char (a typed copy) or an
+    `elem_type` is the loop var's type -- a value scalar, Char, or str (a typed copy;
+    a str loop var is usage-resolved at lowering to `std::string_view` or an owned
+    `std::string` copy, both spelled by `loop_var_binding`) or an
     F1-record (a borrow alias: `auto&&`, or `const auto&` when `const_loop_var`). For
-    list/set/Span/Array it is the element; for dict the key (`for k in d`, always a
-    scalar); for a str-family iterable (str/StrView, NativeIterable[Char]) it is Char
+    list/set/Span/Array it is the element; for dict the key (`for k in d` -- a
+    scalar, or a str for an owned-str-keyed dict, S5); for a str-family iterable
+    (str/StrView, NativeIterable[Char]) it is Char
     (`char c = *__beg_N;`). `N` is the
     per-function loop index (reproducing `ctx.iter_counter`). `const_loop_var` mirrors
     sema's flag; it is inert for a cheap value scalar (the typed copy drops const either
     way) but load-bearing for a record (`const auto&` vs `auto&&`). Slice: a name
-    container (an lvalue, so `auto&`), loop var not reassigned/moved (a record alias can't
-    reseat) and not used after the loop. Container params reaching here are `list[scalar]`
-    / `dict[fixed-int-key]` (`_container_scalar_read`) and `list[record]`
+    container or a str-family field off an F1-record receiver (both C++ lvalues, so
+    `auto&`; a call-result iterable is an rvalue -> `auto` capture, a different emit,
+    gate-excluded), loop var not reassigned/moved (a record alias can't
+    reseat) and not used after the loop. Container params reaching here are
+    `list[scalar|str]` / `dict[fixed-int|str key]` (`_container_scalar_read`) and
+    `list[record]`
     (`_container_record_iter`); `set` / `Span` / `Array` pass `is_native_iterable` but are
-    inert (their params aren't admitted). Generators / user iterators (the
+    inert as params (a `set[scalar|str]` LITERAL local iterates). Generators / user
+    iterators (the
     `__iter__`/`__next__` fallback), `dict.items()` / tuple-unpack, and hoisted loop vars
     ride later cells."""
     var: str
@@ -508,11 +571,13 @@ class PrintForm(Enum):
       * `INT8`  -- `static_cast<int>(...)`, so an 8-bit int isn't printed as a char.
       * `BOOL`  -- `::tpy::print_bool(...)` (Python-style `True`/`False`).
       * `FLOAT` -- `::tpy::print_float(...)` (Python-style float formatting).
+      * `BYTES` -- `::tpy::BytesPrinter(...)` (Python-style `b'...'` repr).
     """
     RAW = auto()
     INT8 = auto()
     BOOL = auto()
     FLOAT = auto()
+    BYTES = auto()
 
 
 @dataclass(frozen=True)
