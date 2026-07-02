@@ -934,7 +934,12 @@ class StatementAnalyzer:
             return binding.enum_type
         if binding.kind == BindingKind.IMPORTED_NAME and binding.import_source:
             src_mod, original_name = binding.import_source
-            enum_type = self.ctx.registry.get_enum(original_name)
+            # Resolve via the source module's qname, not the bare canonical
+            # name: a same-canonical-named local enum wins the bare
+            # `registry.enums` slot, so `get_enum(original_name)` could
+            # return the local enum instead of the imported one.
+            enum_type = self.ctx.registry.find_enum_by_qname(
+                f"{src_mod}.{original_name}")
             if enum_type is not None:
                 return enum_type
         return None

@@ -1,0 +1,4 @@
+foreign count 2
+local count 3
+foreign sum 30
+local sum 6

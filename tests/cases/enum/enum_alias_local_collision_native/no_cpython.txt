@@ -1,0 +1,1 @@
+# @native interop: relies on a hand-written C++ enum, no CPython analog.

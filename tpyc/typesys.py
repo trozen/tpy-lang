@@ -6059,6 +6059,25 @@ class TypeRegistry:
     def get_enum(self, name: str) -> Optional['NominalType']:
         return self.enums.get(name)
 
+    def find_enum_by_qname(self, qname: str) -> Optional['NominalType']:
+        """Find an enum NominalType by qualified name (e.g. 'colors.Color').
+
+        Routes through the declaring module's own `ModuleInfo.enums` dict so a
+        cross-module reference resolves even when the bare-name `self.enums`
+        slot holds an unrelated local enum of the same canonical name; mirrors
+        `find_record_by_qname`'s module-dict + short-name fallback tail. No
+        dedicated qname index is needed -- a local enum always wins its own
+        bare slot, so the short-name fallback stays authoritative for
+        current-module refs (whose `ModuleInfo` isn't in `self.modules` yet).
+        """
+        if "." in qname:
+            module_name, short = qname.rsplit(".", 1)
+            mod = self.modules.get(module_name)
+            if mod is not None and short in mod.enums:
+                return mod.enums[short]
+            return self.enums.get(short)
+        return self.enums.get(qname)
+
     def is_known_type(self, name: str) -> bool:
         """Check if a name refers to a known type."""
         if name in self._fundamental_types:
