@@ -2683,8 +2683,17 @@ class TypeCompatibility:
                 return False
             return True
 
-        # Field access - safe only if the object itself is safe
+        # Field access - safe only if the object itself is safe. A @property
+        # read is a getter *call*, not a stable stored field: its provenance is
+        # the getter's return, so route through the getter call (which reaches
+        # the TpyMethodCall branch's owned-str/borrow rules) rather than the
+        # object. A property returning a fresh owned str/String/bytes is a
+        # temporary that dangles behind a view exactly as a method would.
         if isinstance(expr, TpyFieldAccess):
+            if expr.is_property_access and expr.property_getter_call is not None:
+                return self.is_dangling_return(expr.property_getter_call,
+                                               view_source=view_source,
+                                               gen_yield=gen_yield)
             return self.is_dangling_return(expr.obj, view_source=view_source,
                                            gen_yield=gen_yield)
 

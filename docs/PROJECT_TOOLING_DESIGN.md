@@ -204,12 +204,12 @@ a different thing from building a native binary.
 
 ```toml
 [[tool.tpy.bin]]
-name = "atlas"
-path = "src/atlas/main.py"
+name = "myapp"
+path = "src/myapp/main.py"
 
 [[tool.tpy.bin]]
 name = "report"
-path = "src/atlas/report.py"
+path = "src/myapp/report.py"
 ```
 
 **Auto-discovery (MVP):** only the default `src/<pkg>/main.py` -> a bin named
@@ -222,19 +222,19 @@ cargo:
 
 ```
 tpx build                 # all bins in the package (all members at ws root)
-tpx build --bin atlas     # one bin
+tpx build --bin myapp     # one bin
 tpx build -p regex        # one workspace member (--package)
-tpx run --bin atlas       # run a specific bin
+tpx run --bin myapp       # run a specific bin
 ```
 
 **Layout convention:**
 
 ```
-atlas/
+myapp/
   pyproject.toml
-  src/atlas/__init__.py     # library modules (importable; lib target)
-  src/atlas/main.py         # default bin "atlas" (auto)
-  src/atlas/report.py       # extra bin via [[bin]]
+  src/myapp/__init__.py     # library modules (importable; lib target)
+  src/myapp/main.py         # default bin "myapp" (auto)
+  src/myapp/report.py       # extra bin via [[bin]]
   tests/test_*.py           # test target (auto)
 ```
 

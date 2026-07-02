@@ -22,7 +22,7 @@ subclasses, server-side TLS). This document is the contract for the whole track.
 
 ## Goal
 
-Make this work, against real HTTPS servers (e.g. Atlas DAS), with
+Make this work, against real HTTPS servers, with
 certificate verification on by default:
 
 ```python
@@ -102,7 +102,7 @@ pre-built.
 Vendor a Mozilla CA bundle (the `cacert.pem` set, as `certifi` /
 `webpki-roots` do) as the default trust store; mbedTLS ships none and does
 not read the system store. Support `SSLContext.load_verify_locations(
-cafile=...)` for custom CAs (e.g. an Atlas corporate root). System
+cafile=...)` for custom CAs (e.g. a corporate root). System
 trust-store integration is deferred -- vendoring keeps the build hermetic
 and cross-platform-identical (consistent with the test-cache assumptions)
 and dodges the macOS keychain problem.

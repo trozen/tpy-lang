@@ -11,12 +11,10 @@ void __tpy_init() {
 
     // print("before first import")
     std::cout << "before first import" << "\n";
-    // from . import first
     ::tpyapp::pkg::__tpy_init();
     ::tpyapp::pkg::first::__tpy_init();
     // print("after first, before second")
     std::cout << "after first, before second" << "\n";
-    // from . import second
     ::tpyapp::pkg::second::__tpy_init();
     // print("after second")
     std::cout << "after second" << "\n";

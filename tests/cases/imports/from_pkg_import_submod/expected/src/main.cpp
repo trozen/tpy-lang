@@ -32,6 +32,7 @@ void __tpy_init() {
     // # (or `pkg.submod.X` annotations, which sema rejected outright).
     // from _bindings import pcre2
     ::tpyapp::_bindings::__tpy_init();
+    ::tpyapp::_bindings::pcre2::__tpy_init();
     // main()
     main();
 }

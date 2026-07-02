@@ -33,6 +33,7 @@ void __tpy_init() {
     // # against CPython posixpath.commonprefix in the cpy phase.
     // import os
     ::tpystd::os::__tpy_init();
+    ::tpystd::os::path::__tpy_init();
     // main()
     main();
 }

@@ -26,6 +26,7 @@ void __tpy_init() {
     // # code path.
     // from pkg import models
     ::tpyapp::pkg::__tpy_init();
+    ::tpyapp::pkg::models::__tpy_init();
     // main()
     main();
 }

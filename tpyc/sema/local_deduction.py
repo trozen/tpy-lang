@@ -1017,7 +1017,14 @@ class LocalTypeDeduction:
         # the record field is reassigned (tracked by source_mutated).
         # Only single-level access (obj.field where obj is a name) is safe;
         # nested chains (p.inner.name) cannot be tracked by _borrow_storage_root.
+        # A @property is NOT stored field storage -- it is a getter call whose
+        # result may be a fresh owned string. Route through the getter call so
+        # an owned-str-returning property is deemed unsafe (owned local), while
+        # a property returning a borrow of a stable field stays view-safe via
+        # its return_borrows_from provenance -- exactly as a method call does.
         if isinstance(init_expr, TpyFieldAccess) and self.compat.is_lvalue(init_expr):
+            if init_expr.is_property_access and init_expr.property_getter_call is not None:
+                return not self.compat.is_dangling_return(init_expr.property_getter_call)
             if isinstance(init_expr.obj, TpyName):
                 return True
 

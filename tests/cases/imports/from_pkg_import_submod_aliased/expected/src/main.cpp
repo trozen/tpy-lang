@@ -30,6 +30,7 @@ void __tpy_init() {
     // # for the un-aliased case; this pins the aliased path.
     // from pkg import state as p
     ::tpyapp::pkg::__tpy_init();
+    ::tpyapp::pkg::state::__tpy_init();
     // main()
     main();
 }

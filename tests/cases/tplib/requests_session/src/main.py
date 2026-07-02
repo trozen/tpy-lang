@@ -15,7 +15,7 @@ def merge_and_clear() -> None:
     a, b = socket.socketpair()
     b.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok")
     s = requests.Session()
-    s.headers = {"X-App": "atlas", "Accept": "application/json",
+    s.headers = {"X-App": "demo-app", "Accept": "application/json",
                  "User-Agent": "test-agent"}
     s.params = {"db": "das"}
     s.auth = ("user", "pw")

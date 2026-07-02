@@ -1568,7 +1568,11 @@ class Compiler:
         if partial is None and imported_name in ast.imports:
             import_items = ast.imports[imported_name]
             if isinstance(import_items, set):
-                for orig_name, local_name in list(import_items):
+                # `import_items` is a set, so iterate sorted for a deterministic
+                # __tpy_init emission order (a hash-seeded order would give a
+                # non-reproducible build); source order is unrecoverable here (it
+                # was lost at parse time). Mirrors _discover_absolute_submodule_imports.
+                for orig_name, local_name in sorted(import_items):
                     submod_name = f"{resolved_name}.{orig_name}" if resolved_name else orig_name
                     submod_resolved = self.resolver.resolve(submod_name)
                     if submod_resolved:
@@ -1577,9 +1581,12 @@ class Compiler:
                         ast.bare_module_imports.add(submod_name)
                         ast.user_module_imports[submod_name] = import_lineno
                         ast.module_aliases[submod_name] = local_name
+                        # No source line: multiple names in one `from . import a, b`
+                        # share a lineno, so a per-submodule comment would mislabel
+                        # all but one (see the absolute path).
                         submod_imports.append(TpyImport(
                             module_name=submod_name,
-                            loc=SourceLocation(import_lineno, 0)
+                            loc=SourceLocation(0, 0)
                         ))
                         import_queue.append((submod_name, import_lineno))
                     elif not resolved_name:
@@ -1763,7 +1770,14 @@ class Compiler:
         if not isinstance(names, set):
             return
         promoted = False
-        for orig_name, local_name in list(names):
+        submod_imports: list[TpyImport] = []
+        # Iterate in a deterministic order: `names` is a set, so bare iteration
+        # is hash-seeded and would emit the submodules' __tpy_init() calls in a
+        # different order each build (non-reproducible binary). Independent
+        # siblings' init order is unobservable, and a submodule that depends on
+        # another is ordered by the discovery chain regardless, so sorted order
+        # is observably equivalent to source order here.
+        for orig_name, local_name in sorted(names):
             submod_name = f"{package_name}.{orig_name}"
             submod_resolved = (
                 self.resolver.resolve(submod_name)
@@ -1782,6 +1796,20 @@ class Compiler:
             if local_name != submod_name:
                 ast.module_aliases[submod_name] = local_name
             promoted = True
+            # A TpyImport node is what drives the submodule's __tpy_init() call
+            # in codegen; user_module_imports alone only pulls it into the build.
+            # Mirror the relative-import path (_resolve_relative_import), which
+            # appends a submodule TpyImport -- without this the submodule is
+            # compiled but its module globals never initialize.
+            if not any(isinstance(s, TpyImport) and s.module_name == submod_name
+                       for s in ast.top_level_stmts):
+                # No source line: the package's `from pkg import a, b` names all
+                # share one lineno, so a per-submodule source-comment would
+                # mislabel every entry but the last. Emit the init call bare.
+                submod_imports.append(TpyImport(
+                    module_name=submod_name,
+                    loc=SourceLocation(0, 0),
+                ))
             if submod_resolved is not None:
                 self._discover_package_inits(submod_name, import_chain, import_lineno)
                 self._discover_modules(
@@ -1789,6 +1817,17 @@ class Compiler:
                     import_chain, import_lineno,
                     is_package_init=submod_resolved.is_package_init,
                 )
+        # Splice the submodule imports in right after the package's own import
+        # (the package __init__ still needs to init first; codegen's dotted-name
+        # logic re-emits the parent init, guarded against double-init). Fall back
+        # to the front so the inits precede any top-level use / main() call.
+        if submod_imports:
+            insert_at = 0
+            for i, stmt in enumerate(ast.top_level_stmts):
+                if isinstance(stmt, TpyImport) and stmt.module_name == package_name:
+                    insert_at = i + 1
+                    break
+            ast.top_level_stmts[insert_at:insert_at] = submod_imports
         # The parser's reverse-alias cache is built once at parse time;
         # ask the resolver to refresh it now so qualified-name lookup sees
         # the freshly promoted module aliases.

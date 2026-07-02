@@ -14,9 +14,9 @@ void merge_and_clear() {
     b.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok", 40));
     // s = requests.Session()
     ::tpystd::tplib::requests::Session s = ::tpystd::tplib::requests::Session();
-    // s.headers = {"X-App": "atlas", "Accept": "application/json",
+    // s.headers = {"X-App": "demo-app", "Accept": "application/json",
     // "User-Agent": "test-agent"}
-    s.headers = ::tpy::ordered_map<std::string, std::string>({{"X-App", "atlas"}, {"Accept", "application/json"}, {"User-Agent", "test-agent"}});
+    s.headers = ::tpy::ordered_map<std::string, std::string>({{"X-App", "demo-app"}, {"Accept", "application/json"}, {"User-Agent", "test-agent"}});
     // s.params = {"db": "das"}
     s.params = ::tpy::ordered_map<std::string, std::string>({{"db", "das"}});
     // s.auth = ("user", "pw")

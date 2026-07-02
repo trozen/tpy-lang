@@ -15,7 +15,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // from . import utils
     ::tpyapp::mypackage::__tpy_init();
     ::tpyapp::mypackage::utils::__tpy_init();
 }
