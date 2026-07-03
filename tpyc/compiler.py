@@ -1115,6 +1115,9 @@ class Compiler:
         self._ext_glue_cpp_paths: list[Path] = []
         # Routed-body count for the THIR byte-diff gate's non-vacuity check.
         self._thir_routed_bodies = 0
+        # Per-face witness counts (thir/faces.py) for the harness's
+        # zero-witness report; only ever written under --thir-codegen.
+        self._thir_face_witnesses: dict[str, int] = {}
         # Per-module names of THIR-routed bodies (ctors as `Rec.__init__`),
         # consumed by the test harness's divergence reporter to label a
         # snapshot-diff hunk as inside/outside a routed body.

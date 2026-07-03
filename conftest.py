@@ -39,6 +39,7 @@ class _TestCompilerContext:
     native_cpp_names: dict[str, str] = field(default_factory=dict)
     dynamic_type_defs: dict[str, Any] = field(default_factory=dict)
     dynamic_created_qnames: set[str] = field(default_factory=set)
+    _thir_face_witnesses: dict[str, int] = field(default_factory=dict)
 
 
 @pytest.fixture(autouse=True)

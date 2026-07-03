@@ -1,0 +1,75 @@
+"""Per-face witness tally for the --thir-codegen non-vacuity report.
+
+The corpus byte-diff proves routed bodies emit byte-identical C++, but says
+nothing about a face (a gate arm / a lowering render) that NO corpus case
+reaches -- a latent bug there stays invisible until its first witness
+arrives. The test harness folds these counts across cases and xdist workers
+(like the routed-body tally) and reports registered faces with zero
+witnesses over the whole corpus run.
+
+Witness semantics differ by face kind (encoded in the registry comment):
+lowering faces record at THIR-node construction (the render actually
+fired); the `own.*` gate rows record at gate ADMISSION -- their render is
+the bare arg shared with the pass-through emit, so admission is the only
+distinguishing site (an admit in a body later rejected elsewhere still
+counts, a deliberate over-approximation); `flush.*` record when a flushable
+statement position's lowered value actually carries a hoisted arg temp.
+
+The registry is immutable metadata (module-level by design); the mutable
+counts live on the active Compiler (`_thir_face_witnesses`), so the helper
+is a no-op outside a compilation and the default (non---thir-codegen) path
+never reaches it at all -- lowering and gating only run under the flag.
+"""
+
+from __future__ import annotations
+
+from ..compilation_context import get_current_compiler
+
+THIR_FACES: frozenset[str] = frozenset({
+    # THIRArgTemp arms (lowering; _lower_call_arg / the method-arg row).
+    "argtemp.value_union",          # free-call value-union member temp
+    "argtemp.value_union_method",   # method-call value-union member temp
+    "argtemp.record_rvalue",        # record-ctor rvalue into a ref slot
+    "argtemp.own_copy",             # Own-slot copy+move `__tmp_N` temp
+    # The temp-free last-use move (lowering).
+    "move.own_last_use",            # `f(std::move(name))`
+    # Pointer-repr Optional[record] slot faces (lowering).
+    "optptr.none",                  # `nullptr`
+    "optptr.ctor_rvalue",           # `&(__tmp_N)` addr-of arg temp
+    "optptr.lift",                  # `::tpy::optional_to_ptr(...)`
+    "optptr.pass",                  # already-`T*` binding passes bare
+    "optptr.name",                  # `&(name)`
+    # Pointer-variant union-slot lifts (lowering).
+    "unionlift.none",               # `pv{std::monostate{}}`
+    "unionlift.const_wrap",         # `ptr_variant_to_const(...)`
+    "unionlift.member",             # `pv{&(name)}`
+    # Own-cascade bare rows + the readonly ctor tail (gate admission).
+    "own.scalar_rvalue",            # rvalue scalar into Own[scalar]
+    "own.record_rvalue",            # record rvalue call into Own[record]
+    "own.union_ctor",               # record-ctor rvalue into Own[union]
+    "own.readonly_ctor",            # record-ctor rvalue into readonly slot
+    # Self receiver / ctor-call renders (lowering).
+    "self.this",                    # `self` name read -> `this`
+    "call.self_method",             # `self.helper()` -> `this->helper()`
+    "ctor.call",                    # THIRCtorCall bare ctor expansion
+    # The five flushable statement positions, counted only when the
+    # position's value actually hoists an arg temp.
+    "flush.vardecl",
+    "flush.assign",
+    "flush.field_write",
+    "flush.return",
+    "flush.expr_stmt",
+})
+
+
+def witness(face: str) -> bool:
+    """Record one hit of `face` on the active compiler; no-op (but still
+    True) when no compilation is in flight. Returns True so gate arms can
+    tack it onto their admission conjunction (`... and witness("own.x")`)
+    without restructuring."""
+    assert face in THIR_FACES, f"unregistered THIR face: {face}"
+    compiler = get_current_compiler()
+    if compiler is not None:
+        w = compiler._thir_face_witnesses
+        w[face] = w.get(face, 0) + 1
+    return True

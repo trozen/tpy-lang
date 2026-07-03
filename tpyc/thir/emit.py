@@ -35,12 +35,14 @@ from .nodes import (
     THIRAssert,
     THIRAssign,
     THIRBinOp,
+    THIRBreak,
     THIRBytesLiteral,
     THIRCall,
     THIRCharLiteral,
     THIRCoerce,
     THIRConstructor,
     THIRContainerLiteral,
+    THIRContinue,
     THIRCtorCall,
     THIRExpr,
     THIRExprStmt,
@@ -51,6 +53,7 @@ from .nodes import (
     THIRFString,
     THIRFunction,
     THIRIf,
+    THIRIsNone,
     THIRIsinstance,
     THIRLiteral,
     THIRMethodCall,
@@ -69,6 +72,7 @@ from .nodes import (
     THIRStrLiteral,
     THIRStrSlice,
     THIRSubscript,
+    THIRTupleUnpack,
     THIRUnaryNot,
     THIRUnionArgLift,
     THIRVarDecl,
@@ -182,6 +186,7 @@ class _EmitState:
     temps: TempSink = field(default_factory=TempSink)
     iter_counter: int = 0
     slot_counter: int = 0
+    unpack_counter: int = 0
     rebind_slots: dict[str, int] = field(default_factory=dict)
 
     def next_loop_index(self) -> int:
@@ -192,6 +197,12 @@ class _EmitState:
     def next_slot(self) -> int:
         self.slot_counter += 1  # pre-increment: first slot is __slot_1
         return self.slot_counter
+
+    def next_unpack(self) -> int:
+        # Reproduces ctx.unpack_counter: per-function, pre-incremented (first
+        # is __tup_1); its other consumers are gate-rejected shapes.
+        self.unpack_counter += 1
+        return self.unpack_counter
 
 
 class CtxCommentSink(CommentSink):
@@ -321,6 +332,11 @@ def _emit_method_call(e: THIRMethodCall, state: _EmitState) -> str:
         return expand_cpp_template(e.cpp_template, recv, *args)
     if e.native_function_name is not None:
         return f"{qualify_native_name(e.native_function_name)}({', '.join([recv, *args])})"
+    if e.deref_check:
+        # Unproven pointer-repr Optional receiver: null-check the (already
+        # `T*`) receiver before the `.` member call -- _gen_method_call's
+        # runtime-check arm (type args are gate-excluded, so no {method_targs}).
+        return f"::tpy::deref_check({recv}).{e.method_cpp}({', '.join(args)})"
     return f"{recv}{'->' if e.is_arrow else '.'}{e.method_cpp}({', '.join(args)})"
 
 
@@ -565,8 +581,13 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         return _emit_binop(e, state)
     if isinstance(e, THIRUnaryNot):
         # Mirrors _gen_unaryop's `!` arm over a bool operand, whose truthiness
-        # render is the plain value render.
+        # render is the plain value render. A pointer-repr Optional borrow
+        # name's truthiness render is the bare `T*` (gen_truthy_expr), so the
+        # same wrap serves `not p` too.
         return f"(!({_emit_expr(e.operand, state)}))"
+    if isinstance(e, THIRIsNone):
+        op = "!=" if e.negate else "=="
+        return f"({_emit_expr(e.operand, state)} {op} nullptr)"
     if isinstance(e, THIRCall):
         return _emit_call(e, state)
     if isinstance(e, THIRUnionArgLift):
@@ -814,6 +835,22 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
         expr_cpp = _emit_expr(stmt.expr, state)
         state.temps.flush(out, indent)
         out.write(f"{indent}{expr_cpp};\n")
+    elif isinstance(stmt, THIRTupleUnpack):
+        # Mirrors _gen_tuple_unpack's slice arm: a bare-name loop-shadow
+        # source binds `const auto&` (no owned/ref elements), each non-discard
+        # target declares a fresh value-scalar local.
+        tmp = f"__tup_{state.next_unpack()}"
+        out.write(f"{indent}const auto& {tmp} = "
+                  f"{escape_cpp_name(stmt.source)};\n")
+        for i, (name, cpp) in enumerate(zip(stmt.targets, stmt.target_cpps)):
+            if name is None:
+                continue
+            out.write(f"{indent}{cpp} {escape_cpp_name(name)} = "
+                      f"std::get<{i}>({tmp});\n")
+    elif isinstance(stmt, THIRBreak):
+        out.write(f"{indent}break;\n")
+    elif isinstance(stmt, THIRContinue):
+        out.write(f"{indent}continue;\n")
     elif isinstance(stmt, THIRNoOpStmt):
         # No code -- the `// pass` source comment (if any) is emitted by the
         # caller (_emit_stmts) from the node's loc.

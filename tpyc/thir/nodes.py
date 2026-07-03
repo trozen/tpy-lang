@@ -195,6 +195,21 @@ class THIRBinOp(THIRExpr):
 
 
 @dataclass(frozen=True)
+class THIRIsNone(THIRExpr):
+    """A `name is None` / `name is not None` identity test on a pointer-repr
+    Optional borrow name (an `Optional[record]` param or an OPTIONAL_TO_PTR
+    local -- a bare `T*`), rendered as the pointer comparison
+    `(operand == nullptr)` / `(operand != nullptr)` -- _gen_binop's identity
+    arm over an indirect name. The AST canonicalizes the operand order (the
+    Optional side renders first whichever side of `is` it appears on), so the
+    node carries only the Optional operand; the storage-form sources
+    (`has_value()`) and protocol slots (typed null) are gate-rejected.
+    `result_type` is always bool; VALUE form."""
+    operand: THIRExpr
+    negate: bool = False
+
+
+@dataclass(frozen=True)
 class THIRUnaryNot(THIRExpr):
     """Logical `not` over a bool-typed operand -> `(!(operand))`. Eligibility
     pins the operand to bool, where the AST's truthiness render
@@ -212,8 +227,10 @@ class THIRCall(THIRExpr):
     bare-name emission -- no cross-module qualification, no generic/overload
     name mangling.
 
-    `native_name` (when set) is a `@native` free-function builtin's C++ symbol
-    (e.g. `tpy::__len__` for `len(c)`): the emitter renders
+    `native_name` (when set) is a runtime-helper C++ symbol -- an fi-resolved
+    `@native` free-function builtin (e.g. `tpy::__len__` for `len(c)`) or a
+    hardcoded fallback helper mirroring an AST hardcode (`tpy::__delitem__`
+    for `del c[k]`): the emitter renders
     `qualify_native_name(native_name)(args)` instead of the bare callee, so the
     dispatch keys on the resolved symbol, not the source name (a user function
     that happens to be named `len` has `native_name=None` and stays a plain
@@ -259,13 +276,14 @@ class THIRUnionArgLift(THIRExpr):
 
 @dataclass(frozen=True)
 class THIROptionalPtrArg(THIRExpr):
-    """A temp-free call arg into a pointer-repr `Optional[record]` slot
-    (`const A*` / `A*`) -- the inline arms of `_gen_optional_ptr_arg`'s
-    non-protocol tail: a `None` literal renders `nullptr` (`value=None`; the
-    typed-null spelling is protocol-only, and protocol slots are
-    gate-rejected), a record name the address-of (`&(name)`, `addr_of`), and
-    a storage-form Optional field read the `::tpy::optional_to_ptr(...)`
-    lift (`lift`). An already-pointer name (an F2 pointer-local, a
+    """A temp-free value into a pointer-repr `Optional[record]` slot
+    (`const A*` / `A*`) -- a call arg (the inline arms of
+    `_gen_optional_ptr_arg`'s non-protocol tail) or a return value (the same
+    renders via `_optional_pointer_form_value`): a `None` literal renders
+    `nullptr` (`value=None`; the typed-null spelling is protocol-only, and
+    protocol slots are gate-rejected), a record name the address-of
+    (`&(name)`, `addr_of`), and a storage-form Optional field read the
+    `::tpy::optional_to_ptr(...)` lift (`lift`). An already-pointer name (an F2 pointer-local, a
     pointer-repr Optional binding) passes bare and never builds this node;
     the ctor-rvalue face hoists a `THIRArgTemp` with its `addr_of` wrap
     instead. The spelling is const-blind: `optional_to_ptr` selects its
@@ -367,14 +385,22 @@ class THIRMethodCall(THIRExpr):
     temp is gate-excluded) -- so the emit is a pure function of the node.
     `is_arrow` renders a user-record F2 pointer-local receiver's member access
     (`p->get()`), like THIRFieldAccess; container receivers are never
-    pointer-locals. An owned-str result (`xs.pop()`, S5) is STORAGE form,
-    landing bare in owned sinks."""
+    pointer-locals. `deref_check` wraps an UNPROVEN pointer-repr Optional
+    borrow receiver in the runtime null check
+    (`::tpy::deref_check(p).method(args)`, _gen_method_call's runtime-check
+    arm) -- like THIRFieldAccess it is mutually exclusive with `is_arrow`
+    (the checked deref yields a reference, read with `.`). An owned-str
+    result (`xs.pop()`, S5) is STORAGE form, landing bare in owned sinks."""
     receiver: THIRExpr
     method_cpp: str
     args: tuple[THIRExpr, ...]
     native_function_name: str | None = None
     cpp_template: str | None = None
     is_arrow: bool = False
+    deref_check: bool = False
+
+    def __post_init__(self) -> None:
+        assert not (self.deref_check and self.is_arrow)
 
 
 @dataclass(frozen=True)
@@ -662,6 +688,20 @@ class THIRNoOpStmt(THIRStmt):
 
 
 @dataclass(frozen=True)
+class THIRBreak(THIRStmt):
+    """`break` -- a bare `break;`. In the slice the enclosing routed loop has
+    no else clause (else-loops break via `goto __after_else_N`), no finally
+    frame (try is gate-rejected) and no match switch between the break and the
+    loop, so the AST's `_make_break_continue` always reduces to the bare form."""
+
+
+@dataclass(frozen=True)
+class THIRContinue(THIRStmt):
+    """`continue` -- a bare `continue;` (the finally-chain caveat of THIRBreak
+    applies; C++ continue passes through a switch, so no label case exists)."""
+
+
+@dataclass(frozen=True)
 class THIRIf(THIRStmt):
     """if / elif / else. An elif chain is an else_body of a single THIRIf.
 
@@ -727,6 +767,27 @@ class THIRForRange(THIRStmt):
     start_is_literal: bool = True
     stop_is_literal: bool = True
     body: tuple[THIRStmt, ...] = ()
+
+
+@dataclass(frozen=True)
+class THIRTupleUnpack(THIRStmt):
+    """The `a, b = __for_tup_M` head statement of a tuple-unpack for loop --
+    mirrors `_gen_tuple_unpack`'s slice arm (bare-name loop-shadow source,
+    all-new plain value-scalar targets, no ref/owned/const-ref elements):
+
+        const auto& __tup_N = __for_tup_M;
+        int32_t a = std::get<0>(__tup_N);
+        int32_t b = std::get<1>(__tup_N);
+
+    `N` reproduces `ctx.unpack_counter` (per-function, pre-incremented). The
+    counter's other consumers (expression-position `__tup_`/`__dk_` temps)
+    are all gate-rejected, so a per-body emit counter numbers identically.
+    A None target is the `_` discard -- its slot emits nothing. `target_cpps`
+    carries the rendered decl types (render_type at lowering), None at
+    discard slots."""
+    source: str
+    targets: tuple[str | None, ...]
+    target_cpps: tuple[str | None, ...]
 
 
 @dataclass(frozen=True)

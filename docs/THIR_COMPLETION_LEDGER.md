@@ -55,13 +55,15 @@ cell it touches is admitted:
   union / generic-slot / str-bytes-view.
 - **Statement & expression shape:** straight-line var-decl / assign / return /
   if-elif-else / while / range-for / aug-assign / for-over-container (value-scalar
-  incr 30, record-element incr 31) / expression statements (print + bare free-function
+  incr 30, record-element incr 31, tuple-unpack + dict-view incr 69) / expression
+  statements (print + bare free-function
   call, incr 32) / container method-calls (list/dict scalar slice, stmt + value
   position, incr 33) / container-literal locals (list/Array/dict/set scalar
   elements, incr 34) / logical and-or-not + inline chained compares (bool slice,
-  incr 36) **(covered)** vs match / with / try-except / for-over-container
-  (generators / tuple-unpack / dict-value) / async-await / yield / comprehension /
-  break-continue / del-global-raise-assert **(not)**.
+  incr 36) / break-continue (else-free loops, incr 66) / del (trivial del-var +
+  list/dict del-item, incr 67) / global (scalar globals, incr 68) **(covered)**
+  vs match / with / try-except / for-over-container (generators) / async-await /
+  yield / comprehension / nonlocal-raise + plain-assert messages **(not)**.
 
 A **deferred cell** is one `(kind x form x shape)` the eligibility gate rejects.
 Two kinds, treated oppositely:
@@ -178,10 +180,36 @@ deferred (self-contained) / blocked-on-`<rung>`.
   names / coerced literals bare, member-valued scalars through the
   variant arg temp; value variants are const-blind so inherited methods'
   first-pass AST loop renders identically) (incr 65).
+  Optional PARAMS landed (incr 71, the Optional-param cell):
+  `_f1_param_eligible` admits pointer-repr `Optional[F1-record]` params,
+  and every borrow-name face mirrors (params + OPTIONAL_TO_PTR locals
+  uniformly, keyed on the DECLARED type -- narrowing is sema-side, so
+  the mirror is per-node with no gate-side flow state): unproven
+  reads/writes/aug-targets/method-calls via `deref_check`
+  (`THIRFieldAccess.deref_check` widened to name receivers +
+  `THIRMethodCall.deref_check`), proven ones via the indirect renders
+  (the names join `lc.pointers`: `p->x`, `(*p)` record-slot args, the
+  Own-slot `(*p)` copy+move temp, bare optional-slot passes), the None
+  identity test (`THIRIsNone`, `(p ==|!= nullptr)`, operand-order
+  canonicalized), truthiness (`if p:` bare / `not p` -> `(!(p))`,
+  un-narrowed reads only), Optional-narrowing assert facts (no emit --
+  the assert lowers as its bare condition), and the pointer-repr
+  Optional RETURN slot (`prescan.ret_ptr_opt`: None -> `nullptr`,
+  already-pointer names bare, F1-record names `&(name)` via
+  `THIROptionalPtrArg`; field/call sources deferred). Still-deferred
+  Optional-adjacent faces: const-SPELLING borrow-local decls off an
+  Optional-ptr receiver (REF_ALIAS / OPTIONAL_TO_PTR / tuple-alias /
+  union locals + borrow-tuple returns -- gate-rejected via
+  `_const_exact_field_receiver_ok`; the AST drops the receiver's
+  INFERRED constness there, the BUGS.md narrowed-Optional-receiver
+  entry), `readonly[A | None]` sources at
+  `_is_borrow_ptr_local` (the write/return `ptr_to_optional` gate does
+  not unwrap readonly), narrowed Optional names into UNION slots
+  (`_union_member_lift_arg` keys on the declared type), and the
+  storage-field / call return sources above.
   **Still deferred**: the elif-chain-abandon + statement-expr temp
   relocation (ARCHITECTURAL -- design first), protocol slots (adapter
-  machinery; typed-null spelling), Optional PARAMS (`_f1_param_eligible`
-  -- the signature/narrowing cell), method POINTER-variant union slots
+  machinery; typed-null spelling), method POINTER-variant union slots
   (the deep-const threading differs between the AST's own-record and
   inherited first-pass arg loops), coerce-wrapped lvalues into Own slots
   (the AST's rendered-identity `needs_copy` split), record field reads
@@ -708,16 +736,42 @@ record/Optional-element binds / borrow returns, tuple-unpack. **Test-coverage fo
 a[N].field` read/write) is covered only by unit byte-diff, not a build+run corpus case -- add
 one (the aliasing fn must stay THIR-routable, i.e. no `print()` inside it) for exec/cpy
 coverage of the `.`-access + `optional_to_ptr` alias paths.
-Uncovered shapes include: `match`, `with`, `try`/`except`/`finally`,
-`for`-over-container (value-scalar landed incr 30, record-element incr 31; generators /
-tuple-unpack / dict-value remain), expression statements (print + bare call landed incr 32;
-container method-calls landed incr 33 -- their deferred receiver/arg cells listed above),
-`async`/`await`, `yield` / generators, comprehensions,
-`break`/`continue`, `del`/`global`/`nonlocal`/`raise`/`assert`, chained
-comparisons with non-simple intermediates (the statement-expr arm) and value-semantics /
-non-bool-truthiness `and`/`or`/`not` (the bool slice landed incr 36). **Action:** continue
-enumerating + driving these as a tracked axis before claiming `gen_body`/`gen_expr`
-deletion is near.
+**Routine statement shapes landed (the statement-shape session, incr 66-69):**
+`break`/`continue` in else-free loops (bare `break;`/`continue;` -- else-loops
+break via `goto __after_else_N`, gate-rejected; the gate threads an `in_loop`
+flag through the body walk); `del` -- the trivially-destructible del-var face
+(the AST's FIRST skip: comment only, no code -- the move-sink face for owning
+locals reads alias bookkeeping the slice does not track, deferred) and
+single-target `del c[k]` on bare-name list/dict bindings (the no-method-fi
+`::tpy::__delitem__(c, k);` fallback; multi-target del shares one comment
+across N lines, deferred); the `global` statement + scalar-global
+reads/writes (`global`-declared names with eligible-scalar module types seed
+the scope like params -- writes lower as bare `g = v;` reassignments, reads
+render bare; the seeded set rides `_Prescan.global_seeded`; BigInt /
+native-linkage / non-scalar globals stay unseeded and keep the body AST;
+READ-ONLY module-global access without a `global` statement is a deferred row
+-- seeding those risks local-shadowing misroutes); dict-view iteration
+(`for v in d.values():` / `d.keys()` -- the view call is an rvalue iterable,
+owning `auto __obj_N =` capture, `_dict_view_iterable_ok`); and tuple-unpack
+loops (`for a, b in ps:` / `for k, v in d.items():` -- the parser's synthetic
+`__for_tup_N` loop var binds `auto&&` via the shared loop_var_binding tuple
+arm, the head TpyTupleUnpack lowers to `THIRTupleUnpack`:
+`const auto& __tup_N = __for_tup_M;` + per-target `std::get<i>` decls, with
+`__tup_N` reproducing the per-function `ctx.unpack_counter`; slice =
+all-new plain value-scalar targets incl. `_` discards, over
+`list[tuple[scalar]]`-family names (`_container_scalar_tuple_iter`, a new
+param family admitted ONLY as the unpack iterable) or `d.items()`).
+Unpack-deferred rows: ref/owned/const-ref elements, reused (was-declared)
+targets, record/str elements, standalone `a, b = expr` statements,
+generator/async frames.
+Uncovered shapes remaining: `match`, `with`, `try`/`except`/`finally`,
+generator iterables, expression statements' deferred receiver/arg cells
+(listed above), `async`/`await`, `yield` / generators, comprehensions,
+`nonlocal`/`raise`, plain (non-isinstance) `assert` messages, chained
+comparisons with non-simple intermediates (the statement-expr arm) and
+value-semantics / non-bool-truthiness `and`/`or`/`not` (the bool slice landed
+incr 36). **Action:** continue enumerating + driving these as a tracked axis
+before claiming `gen_body`/`gen_expr` deletion is near.
 
 ## Sequencing discipline (the plan)
 
@@ -748,7 +802,13 @@ byte-diff itself.
 ## Maintaining this ledger
 
 - Flip cells / update statuses when a rung lands or a deferral is discovered.
-- **Planned:** extend the `--thir-codegen` non-vacuity tally to report per-component
-  AST-fallback coverage (how much of each component still falls back to AST), so the
-  gap to each deletion is *measured*, not estimated. Today the tally reports only
-  total routed bodies/cases (28778 bodies / 3280 cases as of increment 50).
+- **Landed: per-face witness tally** (`tpyc/thir/faces.py`): the `--thir-codegen`
+  summary now prints `tpy| thir faces: N/M witnessed; zero-witness: <names>` --
+  which registered gate/lowering faces (currently the call-arg machinery's) had
+  zero corpus witnesses. A zero-witness face is a byte-diff blind spot; give it a
+  unit or a corpus witness before deleting its component's AST path. Register new
+  faces in `THIR_FACES` when adding gate arms / lowering renders.
+- **Planned:** extend the tally further to per-component AST-fallback coverage
+  (how much of each component still falls back to AST), so the gap to each
+  deletion is *measured*, not estimated. Today the tally reports total routed
+  bodies/cases plus the per-face witness line above.

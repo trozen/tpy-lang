@@ -13,6 +13,7 @@ from .nodes import (
     THIRAssert,
     THIRAssign,
     THIRBinOp,
+    THIRBreak,
     THIRBytesLiteral,
     THIRCall,
     THIRCharLiteral,
@@ -25,9 +26,11 @@ from .nodes import (
     THIRFormConvert,
     THIRFString,
     THIRIf,
+    THIRIsNone,
     THIRIsinstance,
     THIRExprStmt,
     THIRContainerLiteral,
+    THIRContinue,
     THIRLiteral,
     THIRMethodCall,
     THIRModule,
@@ -44,6 +47,7 @@ from .nodes import (
     THIRStrLiteral,
     THIRStrSlice,
     THIRSubscript,
+    THIRTupleUnpack,
     THIRUnaryNot,
     THIRUnionArgLift,
     THIRVarDecl,
@@ -86,6 +90,8 @@ def _expr(e: THIRExpr) -> str:
         return f"binop({_expr(e.left)}, {e.op}, {_expr(e.right)})"
     if isinstance(e, THIRUnaryNot):
         return f"not({_expr(e.operand)})"
+    if isinstance(e, THIRIsNone):
+        return f"is_none({_expr(e.operand)}{', negate' if e.negate else ''})"
     if isinstance(e, THIRCall):
         # Surface the emit arm: a scalar-ctor cpp_template, a @native
         # free-function symbol, or the bare callee name.
@@ -110,6 +116,9 @@ def _expr(e: THIRExpr) -> str:
             how = f"template {e.cpp_template!r}"
         elif e.native_function_name is not None:
             how = f"native {e.native_function_name}"
+        elif e.deref_check:
+            # An unproven Optional-ptr receiver's runtime-checked call.
+            how = f"deref_check.{e.method_cpp}"
         else:
             # `->member` surfaces a pointer-local receiver's arrow access.
             how = f"->{e.method_cpp}" if e.is_arrow else e.method_cpp
@@ -231,6 +240,13 @@ def _stmt_lines(stmt: THIRStmt, depth: int) -> list[str]:
         for s in stmt.body:
             lines.extend(_stmt_lines(s, depth + 1))
         return lines
+    if isinstance(stmt, THIRTupleUnpack):
+        tgts = ", ".join(n if n is not None else "_" for n in stmt.targets)
+        return [f"{pad}{tgts} = %{stmt.source}"]
+    if isinstance(stmt, THIRBreak):
+        return [f"{pad}break"]
+    if isinstance(stmt, THIRContinue):
+        return [f"{pad}continue"]
     if isinstance(stmt, THIRPrint):
         args = ", ".join(f"{_expr(a.expr)} [{a.print_form.name.lower()}]" for a in stmt.args)
         return [f"{pad}print({args})"]

@@ -50,6 +50,7 @@ from tpyc.compiler import (
     get_or_build_pch, list_compilers, CompilerNotFoundError,
 )
 from tpyc.build.third_party import resolve_build_plan
+from tpyc.thir.faces import THIR_FACES
 
 # Default options for tests: emit source comments for easier debugging
 TEST_CODEGEN_OPTIONS = CodeGenOptions(emit_source_comments=True, comment_line_numbers=False)
@@ -891,6 +892,7 @@ def compile_with_diagnostics(src_file: Path, output_dir: Path, default_int: str 
 
         # Feed the --thir-codegen non-vacuity gate: 0 when the flag is off.
         record_thir_routed(compiler._thir_routed_bodies)
+        record_thir_faces(compiler._thir_face_witnesses)
         thir_routed_names = (dict(compiler._thir_routed_names)
                              if TEST_CODEGEN_OPTIONS.thir_codegen else None)
 
@@ -1680,6 +1682,20 @@ def record_thir_routed(bodies: int) -> None:
         _thir_tally["cases"] += 1
 
 
+# THIR per-face witness tally (tpyc/thir/faces.py) -- byte-diff green only
+# proves the ROUTED code matched; a face no corpus case reaches is invisible
+# to it, so the summary names registered faces with zero witnesses across the
+# run. Aggregated worker -> controller like the tallies above.
+_thir_faces: dict[str, int] = {}
+_thir_faces_agg: dict[str, int] = {}
+
+
+def record_thir_faces(witnesses: dict[str, int]) -> None:
+    """Fold one case's per-face witness counts (empty when the flag is off)."""
+    for face, n in witnesses.items():
+        _thir_faces[face] = _thir_faces.get(face, 0) + n
+
+
 # THIR divergence reporter -- one label per failed generated-code snapshot
 # under --thir-codegen ("<case> <file>: in `fn` [THIR-routed]"), aggregated
 # worker -> controller like the tallies and echoed in the terminal summary so
@@ -1717,6 +1733,7 @@ def pytest_sessionfinish(session):
     if workeroutput is not None:
         workeroutput["exec_tally"] = dict(_exec_tally)
         workeroutput["thir_tally"] = dict(_thir_tally)
+        workeroutput["thir_faces"] = dict(_thir_faces)
         workeroutput["thir_divergences"] = list(_thir_divergences)
         return
     if _thir_gate_verdict(session.config) == "fail":
@@ -1734,6 +1751,8 @@ def pytest_testnodedown(node, error):
     if thir:
         for k in _thir_tally_agg:
             _thir_tally_agg[k] += thir.get(k, 0)
+    for face, n in wo.get("thir_faces", {}).items():
+        _thir_faces_agg[face] = _thir_faces_agg.get(face, 0) + n
     _thir_divergences_agg.extend(wo.get("thir_divergences", []))
 
 
@@ -1760,6 +1779,23 @@ def pytest_terminal_summary(terminalreporter, exitstatus, config):
                 f"{_LOG_PREFIX} thir: {bodies} bodies routed via THIR "
                 f"across {cases} cases"
             )
+            # Per-face coverage: which registered gate/lowering faces the run
+            # actually exercised. Zero-witness faces are the byte-diff's blind
+            # spots (a latent bug there has no corpus witness). On a filtered
+            # run the list is naturally long -- read it against full runs.
+            hit = set(_thir_faces) | set(_thir_faces_agg)
+            zero = sorted(THIR_FACES - hit)
+            if zero:
+                terminalreporter.write_line(
+                    f"{_LOG_PREFIX} thir faces: "
+                    f"{len(THIR_FACES) - len(zero)}/{len(THIR_FACES)} "
+                    f"witnessed; zero-witness: {', '.join(zero)}"
+                )
+            else:
+                terminalreporter.write_line(
+                    f"{_LOG_PREFIX} thir faces: all {len(THIR_FACES)} "
+                    f"witnessed"
+                )
         elif verdict == "warn":
             terminalreporter.write_line(
                 f"{_LOG_PREFIX} thir: WARNING -- forced THIR routed 0 bodies "

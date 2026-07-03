@@ -7,7 +7,7 @@ from ..codegen_cpp.context import CodeGenOptions
 from ..codegen_cpp.forms import LocalBinding
 from .nodes import (
     Form, THIRAssign, THIRCall, THIRCtorCall, THIRFieldAccess, THIRFormConvert, THIRLiteral,
-    THIRReturn, THIRSelf, THIRVarDecl,
+    THIRName, THIRReturn, THIRSelf, THIRVarDecl,
 )
 from .testutil import (
     _compile, _entry, _lower_ctx, _fn, _F1_RECORDS,
@@ -515,13 +515,18 @@ class TestF2cReturn:
         assert isinstance(ret.value, THIRLiteral) and ret.value.value is None
         assert ret.value.form is Form.STORAGE
 
-    def test_pointer_repr_return_is_ineligible(self):
-        # `Inner | None` is pointer-repr (the function returns a borrow `Inner*`),
-        # a different direction than the storage `Own[Inner] | None` slot -> AST path.
+    def test_pointer_repr_return_routes_bare_name(self):
+        # `Inner | None` is pointer-repr (the function returns a borrow
+        # `Inner*`); an already-pointer OPTIONAL_TO_PTR local returns bare
+        # (the Optional-param cell's return arm).
         thir = _lower_ctx(
             _F1_RECORDS
             + "def f(b: Box) -> Inner | None:\n    p = b.opt\n    return p\n")
-        assert _fn(thir, "f") is None
+        fn = _fn(thir, "f")
+        assert fn is not None
+        ret = fn.body[-1]
+        assert isinstance(ret, THIRReturn)
+        assert isinstance(ret.value, THIRName) and not ret.value.deref
 
     def test_rvalue_return_is_ineligible(self):
         # A non-borrow, non-None source (here an rvalue ctor) into the storage

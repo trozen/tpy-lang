@@ -10,7 +10,7 @@ from ..codegen_cpp.context import CodeGenOptions
 from ..parse.nodes import TpyCall
 from .dump import dump_thir
 from .emit import emit_thir_body
-from .lower import _is_len_native
+from .lower import _is_len_native, lower_module
 from .nodes import (
     Form, PrintForm, THIRAssign, THIRBinOp, THIRCall, THIRExprStmt,
     THIRForEach, THIRForRange, THIRIf, THIRLiteral, THIRName, THIRPrint,
@@ -155,11 +155,28 @@ class TestEligibility:
                       + "    return i\n")
         assert _fn(thir, "f") is None
 
-    def test_while_with_break_is_ineligible(self):
+    def test_while_with_break_routes(self):
         thir = _lower(_PRELUDE
                       + "def f(n: Int32) -> Int32:\n    i = 0\n"
                       + "    while i < n:\n        if i > 3:\n            break\n        i = i + 1\n"
                       + "    return i\n")
+        assert _fn(thir, "f") is not None
+
+    def test_for_with_continue_routes(self):
+        thir = _lower(_PRELUDE
+                      + "def f(n: Int32) -> Int32:\n    s = 0\n"
+                      + "    for i in range(n):\n        if i > 3:\n            continue\n"
+                      + "        s = s + i\n    return s\n")
+        assert _fn(thir, "f") is not None
+
+    def test_break_in_else_loop_is_ineligible(self):
+        # A for/else loop's break is a `goto __after_else_N` -- the whole
+        # body stays AST via the loop's orelse reject.
+        thir = _lower(_PRELUDE
+                      + "def f(n: Int32) -> Int32:\n"
+                      + "    for i in range(n):\n        if i > 3:\n            break\n"
+                      + "    else:\n        return -1\n"
+                      + "    return 1\n")
         assert _fn(thir, "f") is None
 
     def test_non_fixed_int_param_is_ineligible(self):
@@ -277,21 +294,19 @@ class TestForRange:
                       + "    for i in range(0, n, 2):\n        acc = acc + i\n    return acc\n")
         assert _fn(thir, "f") is None
 
-    def test_break_in_body_is_ineligible(self):
+    def test_break_in_body_routes(self):
         thir = _lower(_PRELUDE
                       + "def f(n: Int32) -> Int32:\n    acc = 0\n"
                       + "    for i in range(n):\n        if i > 3:\n            break\n        acc = acc + i\n"
                       + "    return acc\n")
-        assert _fn(thir, "f") is None
+        assert _fn(thir, "f") is not None
 
-    def test_continue_in_body_is_ineligible(self):
-        # TpyContinue is not in the supported statement set (default-reject) --
-        # an explicit guard so a future _stmt_eligible arm can't silently route it.
+    def test_continue_in_body_routes(self):
         thir = _lower(_PRELUDE
                       + "def f(n: Int32) -> Int32:\n    acc = 0\n"
                       + "    for i in range(n):\n        if i > 3:\n            continue\n        acc = acc + i\n"
                       + "    return acc\n")
-        assert _fn(thir, "f") is None
+        assert _fn(thir, "f") is not None
 
     def test_loop_var_shadowing_outer_is_ineligible(self):
         # A loop var name already bound in the outer scope hits the AST path's
@@ -381,13 +396,12 @@ class TestForEachContainer:
         assert isinstance(loop, THIRForEach)
         assert loop.elem_type.to_cpp() == "std::string_view"
 
-    def test_tuple_unpack_ineligible(self):
-        # `for k, v in d.items()` (tuple-unpack) rides a later cell.
+    def test_tuple_unpack_items_routes(self):
         thir = _lower(
             _PRELUDE
             + "def f(d: dict[Int32, Int32]) -> Int32:\n    s = 0\n"
             + "    for k, v in d.items():\n        s = s + k\n    return s\n")
-        assert _fn(thir, "f") is None
+        assert _fn(thir, "f") is not None
 
     def test_len_call_routes(self):
         thir = _lower(
@@ -1316,3 +1330,273 @@ class TestByteIdentical:
         thir = compiler.generate_code_to_strings(
             entry, options=CodeGenOptions(emit_source_comments=True, thir_codegen=True))
         assert thir == ast
+
+
+class TestDelStmt:
+    def test_del_scalar_local_routes_as_noop(self):
+        # Trivially-destructible target: the AST emits no code, THIR a NoOp.
+        thir = _lower(_PRELUDE
+                      + "def f(n: Int32) -> Int32:\n    x = n + 1\n"
+                      + "    y = x * 2\n    del x\n    return y\n")
+        assert _fn(thir, "f") is not None
+
+    def test_del_multi_scalar_routes(self):
+        thir = _lower(_PRELUDE
+                      + "def f(n: Int32) -> Int32:\n    a = n + 1\n    b = n + 2\n"
+                      + "    del a, b\n    return n\n")
+        assert _fn(thir, "f") is not None
+
+    def test_del_owned_str_is_ineligible(self):
+        # An owned-str local takes the move-sink face
+        # (`{ auto __del_sink = std::move(t); }`) -- gated out.
+        thir = _lower(_PRELUDE
+                      + "def f(s: str) -> Int32:\n    t = s + \"x\"\n"
+                      + "    del t\n    return 1\n")
+        assert _fn(thir, "f") is None
+
+    def test_del_item_routes(self):
+        thir = _lower(_PRELUDE
+                      + "def f(d: dict[Int32, Int32], k: Int32) -> Int32:\n"
+                      + "    del d[k]\n    return len(d)\n"
+                      + "def g(xs: list[Int32]) -> Int32:\n"
+                      + "    del xs[0]\n    return len(xs)\n")
+        assert _fn(thir, "f") is not None
+        assert _fn(thir, "g") is not None
+
+    def test_del_item_multi_target_is_ineligible(self):
+        # Multi-target del shares one source comment across N emitted lines --
+        # a shape one THIR statement cannot carry.
+        thir = _lower(_PRELUDE
+                      + "def f(d: dict[Int32, Int32]) -> Int32:\n"
+                      + "    del d[1], d[2]\n    return len(d)\n")
+        assert _fn(thir, "f") is None
+
+    SRC = (
+        _PRELUDE
+        + "def drop(d: dict[str, Int32], k: str) -> Int32:\n"
+        + "    del d[k]\n    del d[\"gone\"]\n    return len(d)\n"
+        + "def scalars(n: Int32) -> Int32:\n    x = n + 1\n    del x\n    return n\n"
+        + "def main():\n    d = {\"a\": 1, \"b\": 2, \"gone\": 3}\n"
+        + "    print(drop(d, \"a\"))\n    print(scalars(5))\nmain()\n"
+    )
+
+    def test_byte_identical_with_comments(self):
+        # The del source comment must land exactly where the AST puts it --
+        # before the __delitem__ line, and alone for the no-code del-var.
+        compiler, modules = _compile(self.SRC)
+        entry = _entry(modules)
+        ast = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=True))
+        thir = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=True, thir_codegen=True))
+        assert thir == ast
+
+    def test_routes_and_emits_delitem(self):
+        compiler, modules = _compile(self.SRC)
+        entry = _entry(modules)
+        assert _fn(lower_module(entry.ast, entry.analyzer), "drop") is not None
+        assert _fn(lower_module(entry.ast, entry.analyzer), "scalars") is not None
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=True))
+        assert "::tpy::__delitem__(d, k);" in cpp
+        assert '::tpy::__delitem__(d, "gone");' in cpp
+
+
+class TestForTails:
+    SRC = (
+        _PRELUDE
+        + "def sum_values(d: dict[Int32, Int32]) -> Int32:\n    s = 0\n"
+        + "    for v in d.values():\n        s = s + v\n    return s\n"
+        + "def sum_keys(d: dict[Int32, Int32]) -> Int32:\n    s = 0\n"
+        + "    for k in d.keys():\n        s = s + k\n    return s\n"
+        + "def sum_items(d: dict[Int32, Int32]) -> Int32:\n    s = 0\n"
+        + "    for k, v in d.items():\n        s = s + k + v\n    return s\n"
+        + "def sum_pairs(ps: list[tuple[Int32, Int32]]) -> Int32:\n    s = 0\n"
+        + "    for a, b in ps:\n        s = s + a * b\n    return s\n"
+        + "def discard_snd(ps: list[tuple[Int32, Int32]]) -> Int32:\n    s = 0\n"
+        + "    for a, _ in ps:\n        s = s + a\n    return s\n"
+        + "def reused_target(ps: list[tuple[Int32, Int32]]) -> Int32:\n"
+        + "    a = 100\n    s = 0\n"
+        + "    for a, b in ps:\n        s = s + a + b\n    return s + a\n"
+        + "def main():\n    d = {1: 10, 2: 20}\n"
+        + "    print(sum_values(d))\n    print(sum_keys(d))\n    print(sum_items(d))\n"
+        + "    ps = [(1, 2), (3, 4)]\n"
+        + "    print(sum_pairs(ps))\n    print(discard_snd(ps))\n"
+        + "    print(reused_target(ps))\nmain()\n"
+    )
+
+    def test_dict_view_iteration_routes(self):
+        thir = _lower(self.SRC)
+        assert _fn(thir, "sum_values") is not None
+        assert _fn(thir, "sum_keys") is not None
+
+    def test_tuple_unpack_loops_route(self):
+        thir = _lower(self.SRC)
+        assert _fn(thir, "sum_items") is not None
+        assert _fn(thir, "sum_pairs") is not None
+        assert _fn(thir, "discard_snd") is not None
+
+    def test_two_unpack_loops_share_the_per_function_counter(self):
+        # Two unpack loops in one function: __tup_1 then __tup_2 (the counter
+        # is per-function and continuous across statements, NOT per-loop).
+        src = (
+            _PRELUDE
+            + "def two(ps: list[tuple[Int32, Int32]], qs: list[tuple[Int32, Int32]]) -> Int32:\n"
+            + "    s = 0\n"
+            + "    for a, b in ps:\n        s = s + a * b\n"
+            + "    for c, d in qs:\n        s = s - c + d\n    return s\n"
+            + "def main():\n    ps = [(1, 2)]\n    print(two(ps, ps))\nmain()\n")
+        assert _fn(_lower(src), "two") is not None
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        ast = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=True))
+        thir = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=True, thir_codegen=True))
+        assert thir == ast
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=True))
+        assert "__tup_1" in cpp and "__tup_2" in cpp
+
+    def test_dict_view_on_optional_receiver_is_ineligible(self):
+        # `d.values()` on an unproven Optional dict carries the runtime-check
+        # marker (needs_optional_runtime_check) -- the bare view render would
+        # skip the deref check, so the iterable gate must reject it.
+        thir = _lower(
+            _PRELUDE
+            + "def f(d: dict[Int32, Int32] | None) -> Int32:\n    s = 0\n"
+            + "    for v in d.values():\n        s = s + v\n    return s\n")
+        assert _fn(thir, "f") is None
+
+    def test_reused_unpack_target_is_ineligible(self):
+        # A target shadowing an outer local takes the AST's was_declared
+        # assign path -- out of the slice.
+        thir = _lower(self.SRC)
+        assert _fn(thir, "reused_target") is None
+
+    def test_standalone_unpack_stmt_is_ineligible(self):
+        # `a, b = t` outside a for-loop head is not the loop-shadow shape.
+        thir = _lower(_PRELUDE
+                      + "def f(t: tuple[Int32, Int32]) -> Int32:\n"
+                      + "    a, b = t\n    return a + b\n")
+        assert _fn(thir, "f") is None
+
+    def test_byte_identical_with_comments(self):
+        compiler, modules = _compile(self.SRC)
+        entry = _entry(modules)
+        ast = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=True))
+        thir = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=True, thir_codegen=True))
+        assert thir == ast
+
+    def test_emit_shapes(self):
+        compiler, modules = _compile(self.SRC)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=True))
+        assert "auto __obj_0 = ::tpy::dict_values(d);" in cpp
+        assert "auto __obj_0 = ::tpy::dict_items(d);" in cpp
+        assert "const auto& __tup_1 = __for_tup_0;" in cpp
+        assert "int32_t k = std::get<0>(__tup_1);" in cpp
+
+    def test_dump(self):
+        thir = _lower(self.SRC)
+        assert "a, b = %__for_tup_" in dump_thir(thir)
+        assert "a, _ = %__for_tup_" in dump_thir(thir)
+
+
+class TestGlobalStmt:
+    SRC = (
+        _PRELUDE
+        + "counter: Int32 = 0\nflag: bool = False\nbig: int = 0\n"
+        + "def bump() -> Int32:\n    global counter\n"
+        + "    counter = counter + 1\n    return counter\n"
+        + "def bump_aug() -> None:\n    global counter\n    counter += 2\n"
+        + "def set_flag() -> None:\n    global flag\n    flag = True\n"
+        + "def big_write() -> None:\n    global big\n    big = big + 1\n"
+        + "def read_no_decl() -> Int32:\n    return counter + 1\n"
+        + "def main():\n    print(bump())\n    bump_aug()\n    set_flag()\n"
+        + "    big_write()\n    print(read_no_decl())\nmain()\n"
+    )
+
+    def test_scalar_global_writes_route(self):
+        thir = _lower(self.SRC)
+        assert _fn(thir, "bump") is not None
+        assert _fn(thir, "bump_aug") is not None
+        assert _fn(thir, "set_flag") is not None
+
+    def test_bigint_global_is_ineligible(self):
+        # `int` globals are BigInt -- outside the scalar slice; the unseeded
+        # name keeps the `global` statement (and so the body) on the AST path.
+        thir = _lower(self.SRC)
+        assert _fn(thir, "big_write") is None
+
+    def test_bare_global_read_without_decl_is_ineligible(self):
+        # Read-only module-global access (no `global` statement) is the
+        # deferred row -- only explicitly `global`-declared names seed.
+        thir = _lower(self.SRC)
+        assert _fn(thir, "read_no_decl") is None
+
+    def test_byte_identical_with_comments(self):
+        compiler, modules = _compile(self.SRC)
+        entry = _entry(modules)
+        ast = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=True))
+        thir = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=True, thir_codegen=True))
+        assert thir == ast
+
+    def test_write_emits_bare_assign(self):
+        compiler, modules = _compile(self.SRC)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=True))
+        assert "flag = true;" in cpp
+        assert "counter = (::tpy::add_check<int32_t>(counter, 1));" in cpp
+
+
+class TestBreakContinueEmit:
+    SRC = (
+        _PRELUDE
+        + "def first_gt(xs: list[Int32], lim: Int32) -> Int32:\n    r = -1\n"
+        + "    for x in xs:\n        if x > lim:\n            r = x\n            break\n"
+        + "    return r\n"
+        + "def sum_odd(n: Int32) -> Int32:\n    s = 0\n    i = 0\n"
+        + "    while i < n:\n        i = i + 1\n        if i % 2 == 0:\n            continue\n"
+        + "        s = s + i\n    return s\n"
+        + "def main():\n    print(first_gt([1, 5, 9], 4))\n    print(sum_odd(7))\nmain()\n"
+    )
+
+    def test_routes(self):
+        thir = _lower(self.SRC)
+        assert _fn(thir, "first_gt") is not None
+        assert _fn(thir, "sum_odd") is not None
+
+    def test_byte_identical_with_comments(self):
+        # Comments on: the `// break` / `// continue` source lines ride the
+        # generic loc mechanism and must match the AST's placement.
+        compiler, modules = _compile(self.SRC)
+        entry = _entry(modules)
+        ast = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=True))
+        thir = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=True, thir_codegen=True))
+        assert thir == ast
+
+    def test_emits_bare_forms(self):
+        compiler, modules = _compile(self.SRC)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=True))
+        assert "break;" in cpp and "continue;" in cpp
+
+    def test_dump(self):
+        thir = _lower(self.SRC)
+        d = dump_thir(thir)
+        assert "break" in d and "continue" in d

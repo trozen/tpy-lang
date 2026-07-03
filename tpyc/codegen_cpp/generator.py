@@ -438,11 +438,14 @@ class CodeGenerator:
                 iter_module_constructors as _thir_ctors,
                 lower_constructor as _thir_lower_ctor,
                 lower_function as _thir_lower,
+                module_native_globals as _thir_native_globals,
             )
+            _ng = _thir_native_globals(module)
             self.ctx.thir_functions = {
                 id(f): tf for f, self_type in _thir_callables(module, self.analyzer)
                 if (tf := _thir_lower(f, self.analyzer, self.types.type_to_cpp,
-                                      self_type=self_type)) is not None
+                                      self_type=self_type,
+                                      native_globals=_ng)) is not None
             }
             self.ctx.thir_constructors = {
                 id(init): tc

@@ -891,10 +891,10 @@ class TestOptionalPtrGateRejects:
         assert _cpp(src, thir=True) == _cpp(src, thir=False)
         assert _fn(_lower_ctx(src), "m") is None
 
-    def test_optional_param_stays_ast(self):
-        # A pointer-repr Optional PARAM is outside `_f1_param_eligible` (the
-        # signature/narrowing cell) -- the 'pass' face fires only for
-        # OPTIONAL_TO_PTR locals today.
+    def test_optional_param_routes_bare_pass(self):
+        # A pointer-repr Optional PARAM is admitted: `use` passes the
+        # already-`T*` name bare into the Optional slot, and `take_opt`'s
+        # None-narrowing body routes too.
         src = (
             _PRELUDE
             + "def take_opt(o: A | None) -> Int32:\n"
@@ -902,7 +902,9 @@ class TestOptionalPtrGateRejects:
             + "    return o.x\n"
             + "def use(o: A | None) -> Int32:\n    return take_opt(o)\n")
         assert _cpp(src, thir=True) == _cpp(src, thir=False)
-        assert _fn(_lower_ctx(src), "use") is None
+        thir = _lower_ctx(src)
+        assert _fn(thir, "use") is not None
+        assert _fn(thir, "take_opt") is not None
 
     def test_ctor_rvalue_in_non_flushable_position_stays_ast(self):
         # The &(__tmp_N) hoist needs a flush point -- a nested call arg has
