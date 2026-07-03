@@ -5,7 +5,7 @@ import asyncio
 from tpy import Int32
 
 
-async def a(n: Int32) -> Int32:  # tpyc: error(/recursive inline .await./)
+async def a(n: Int32) -> Int32:  # tpyc: error(/recursive coroutine embedding/)
     await asyncio.sleep(0)
     return await b(n - 1)
 

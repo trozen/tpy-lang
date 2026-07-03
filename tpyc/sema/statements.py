@@ -26,6 +26,8 @@ from ..typesys import (
     is_float_type, is_any_float_type, is_polymorphic_subclass_fact,
     resolve_int_literals,
     yield_uses_borrow_slot, GenExprType,
+    is_dyn_protocol, is_fn_type, coro_struct_owner,
+    ConcreteCoroType, make_concrete_coro, make_cancellable,
     bare_name)
 from ..parse import (
     TpyExpr,
@@ -39,6 +41,7 @@ from ..parse import (
     TpyNoneLiteral,
     TpyFieldAccess, TpyFunction, TupleElemCapture,
     TpyMatch, TpyBinOp, TpyIfExpr, TpyNamedExpr, TpyFString,
+    is_stable_address_lvalue,
 )
 from ..coercions import CoercionContext
 from ..namespace import BindingKind
@@ -427,30 +430,24 @@ class StatementAnalyzer:
             )
 
     def _check_no_bare_async_call(self, stmt: TpyStmt) -> None:
-        """Sema rule: a call to an async def whose result is dropped or
-        bound to a non-consuming local is rejected. The caller must
-        consume the coroutine via `await`, `asyncio.run`, `create_task`,
-        or pass it as an arg to a function that does.
+        """Sema rule: a call to an async def whose result is silently
+        dropped, or stored where a coroutine cannot live, is rejected.
 
         Rejected (caught at TpyStmt analysis time):
-          c = f()        (TpyVarDecl / TpyAssign whose RHS is a bare async call)
-          f()            (TpyExprStmt whose expr is a bare async call)
-          return f()     (TpyReturn whose value is a bare async call)
+          f()            (TpyExprStmt: the coroutine is dropped unrun)
+          obj.x = f()    (TpyAssign: fields/elements need Box[Cancellable])
         Allowed:
+          c = f()                -- owned-erased local binding (TpyVarDecl)
+          return f()             -- return-type check enforces conformance
           await f()              -- TpyAwait, not TpyCall
-          x = await f()          -- RHS is TpyAwait
           asyncio.run(f())       -- f() is an arg of another call
           asyncio.create_task(f())
         """
         target_expr: TpyExpr | None = None
-        if isinstance(stmt, TpyVarDecl):
-            target_expr = stmt.init
-        elif isinstance(stmt, TpyAssign):
+        if isinstance(stmt, TpyAssign):
             target_expr = stmt.value
         elif isinstance(stmt, TpyExprStmt):
             target_expr = stmt.expr
-        elif isinstance(stmt, TpyReturn):
-            target_expr = stmt.value
         if not isinstance(target_expr, TpyCall):
             return
         func_name = target_expr.maybe_func_name
@@ -459,12 +456,85 @@ class StatementAnalyzer:
         overloads = self.ctx.registry.get_function(func_name)
         if not any(getattr(fi, "is_async", False) for fi in (overloads or ())):
             return
+        if isinstance(stmt, TpyExprStmt):
+            raise self.ctx.error(
+                f"Coroutine value from async def '{func_name}' is dropped "
+                f"without running: `await {func_name}(...)`, pass it to "
+                f"asyncio.create_task/run, or bind it to a variable to "
+                f"consume later. Coroutines are single-use, must-use values.",
+                stmt)
         raise self.ctx.error(
-            f"Coroutine value from async def '{func_name}' must be consumed: "
-            f"use `await {func_name}(...)` inside an async def, or "
-            f"`asyncio.run({func_name}(...))` at top level. "
-            f"Coroutines are single-use, must-use values.",
+            f"Coroutine value from async def '{func_name}' cannot be stored "
+            f"in a field or container element; use Box[Cancellable[T]] for "
+            f"owned storage, or bind it to a local and consume it there.",
             stmt)
+
+    def _bind_method_coro_receiver(self, target: str,
+                                    init: 'TpyMethodCall') -> None:
+        """A bound async-METHOD coroutine captures its receiver by
+        reference for the handle's whole lifetime (concrete frame and
+        erased adapter alike). Require a stable-lvalue receiver (the
+        rule inline `await obj.m()` enforces for the await's duration)
+        and register the borrow so the receiver cannot be silently
+        moved out from under a live handle. Escapes that outlive the
+        scope (create_task / return) additionally warn at those sites.
+
+        Called from the single post-cleanup site in _analyze_var_decl,
+        keyed on the init shape alone -- it must cover every binding
+        form (fresh, annotated-erased, rebind) and must run AFTER the
+        generic `remove_borrower(stmt.name)` reassignment cleanup, which
+        would otherwise erase the fresh borrow.
+        """
+        if not is_stable_address_lvalue(init.obj):
+            raise self.ctx.error(
+                "receiver of a bound async method call must be a stable "
+                "lvalue (a local, parameter, or field chain rooted at "
+                "one) -- the coroutine captures it by reference for the "
+                "handle's lifetime. Bind the receiver to a local first: "
+                "`r = <expr>; c = r.method(...)`",
+                init)
+        root = _root_name_of_expr(init.obj)
+        if root is not None:
+            storage = self.ctx.func.borrow_tracker.effective_storage(root)
+            self.ctx.func.borrow_tracker.add_borrow(
+                storage, target, BorrowKind.ALIAS)
+
+    def _concrete_coro_bind_type(self, init: TpyExpr,
+                                  cancellable: TpyType) -> TpyType:
+        """Type for a local bound from a direct async-def/method call.
+
+        Returns a ConcreteCoroType (the zero-alloc representation: the
+        local holds the concrete `__coro_*` frame; erasure happens only
+        at typed boundaries) when the callee's frame struct is nameable
+        from the binding. Falls back to the erased `Cancellable[T]`
+        handle for template-frame callees (static-protocol / Fn params
+        -- their struct name needs call-site deduction), a declared
+        erasure boundary.
+        """
+        fi = init.resolved_function_info
+        for p in fi.params:
+            pt = unwrap_readonly(unwrap_ref_type(p.type))
+            if (is_protocol_type(pt) and not is_dyn_protocol(pt)) or is_fn_type(pt):
+                return cancellable
+        owner = None
+        if isinstance(init, TpyMethodCall):
+            recv_type = self.ctx.get_expr_type(init.obj)
+            recv_inner = unwrap_own(unwrap_ref_type(recv_type)) if recv_type else None
+            if not isinstance(recv_inner, NominalType):
+                return cancellable
+            owner = coro_struct_owner(
+                fi.owning_type_qname, recv_inner,
+                self.ctx.registry.get_record_for_type(recv_inner))
+        module_qual = None
+        if (owner is None and fi.originating_module is not None
+                and fi.originating_module != self.ctx.module_name):
+            module_qual = fi.originating_module
+        targs = getattr(init, "inferred_type_args", None)
+        inner = cancellable.type_args[0] if cancellable.type_args else VOID
+        return make_concrete_coro(
+            inner, fi.name, owner=owner,
+            inferred_type_args=tuple(targs) if targs else None,
+            module_qual=module_qual)
 
     def _warn_unnecessary_return_copy(self, value: TpyExpr) -> None:
         """Warn when return copy(x) is used but x is at last use (auto-move suffices)."""
@@ -959,17 +1029,11 @@ class StatementAnalyzer:
                 pending.clear()
 
     def _analyze_stmt_dispatch(self, stmt: TpyStmt) -> None:
-        # Coroutine[T] single-use: a bare call to an async def whose
-        # result is dropped/stored without consumption is a sema error.
-        # See docs/ASYNC_DESIGN.md "Coroutine value model". Allowed:
-        #   await f()  (TpyAwait wraps the call)
-        #   x = await f()
-        #   asyncio.run(f()), asyncio.create_task(f()), Task wrap (the
-        #     coro is the arg of another call, which consumes it)
-        # Rejected:
-        #   c = f()    (drops the coro into a non-consuming local)
-        #   f()        (statement-level call, no consumption)
-        #   return f() (returns the coro instead of awaiting)
+        # Coroutine[T] single-use: reject only genuine drops of a bare
+        # async-def call (statement-level `f()`, field/element store) --
+        # binding (`c = f()`) and `return f()` are owned consumers now.
+        # See _check_no_bare_async_call and docs/ASYNC_DESIGN.md
+        # "Coroutine value model".
         self._check_no_bare_async_call(stmt)
 
         if isinstance(stmt, TpyVarDecl):
@@ -999,6 +1063,18 @@ class StatementAnalyzer:
                 self.deduction.mark_container_return_context(stmt.value, expected)
                 # Warn when a method copies a str field on return
                 self._warn_str_field_return_copy(stmt.value, expected)
+                # Borrowed-receiver escape: returning a bound async-METHOD
+                # coroutine lets the handle outlive the receiver's scope;
+                # lifetime is not tracked across the escape.
+                ret_inner = unwrap_readonly(unwrap_own(unwrap_ref_type(ret_type)))
+                if (isinstance(ret_inner, ConcreteCoroType)
+                        and ret_inner.coro_owner is not None):
+                    self.ctx.warning(
+                        "returned bound method-coroutine borrows its "
+                        "receiver by reference; the handle must not "
+                        "outlive the receiver (receiver lifetime is not "
+                        "tracked across this escape)",
+                        stmt)
                 # Check for lvalue returned as Own[T] without explicit copy()
                 if isinstance(expected, OwnType):
                     if self.compat.is_copy_call(stmt.value):
@@ -3763,8 +3839,103 @@ class StatementAnalyzer:
             # Strip OwnType from init_type: ownership of the source variable
             # doesn't transfer to the target. The target determines its own
             # ownership via the OwnType wrapping logic below (line ~2570).
+            # EXCEPTION: an owned @dynamic-protocol rvalue (async-def call
+            # result / Own[P]-returning call) binds as an owned-erased
+            # local (unique_ptr<P>) -- a bare protocol local would be a
+            # borrow of a temporary.
             if isinstance(var_type, OwnType):
-                var_type = var_type.wrapped
+                inner = unwrap_readonly(var_type.wrapped)
+                if not (is_protocol_type(inner)
+                        and (pi := protocol_info_of(inner)) is not None
+                        and pi.is_dynamic):
+                    var_type = var_type.wrapped
+            elif (is_protocol_type(var_type)
+                    and (pi := protocol_info_of(var_type)) is not None
+                    and pi.is_dynamic
+                    and isinstance(stmt.init, (TpyCall, TpyMethodCall))
+                    and getattr(stmt.init.resolved_function_info, "is_async", False)):
+                # Bare async-def call: the C++ value is the concrete owned
+                # coro struct. Keep the concreteness in the type (zero-alloc
+                # representation); template-frame callees fall back to the
+                # erased handle.
+                var_type = OwnType(self._concrete_coro_bind_type(
+                    stmt.init, var_type))
+            # A binding that is still BARE Cancellable after the owned-wrap
+            # above is a borrow of a coroutine (ternary over handles,
+            # protocol-annotated alias) -- no supported form; handles are
+            # single-use and consume-only.
+            bare_bind = unwrap_readonly(unwrap_ref_type(var_type))
+            if (is_protocol_type(bare_bind)
+                    and isinstance(bare_bind, NominalType)
+                    and bare_bind.qualified_name() == qnames.CANCELLABLE):
+                raise self.ctx.error(
+                    f"cannot bind '{stmt.name}' as a borrowed coroutine "
+                    f"reference: coroutine handles are single-use; bind the "
+                    f"async call directly (the binding owns the handle) and "
+                    f"consume it via await / asyncio.create_task/run",
+                    stmt)
+            # Rebind rules: a concrete slot holds exactly one frame type;
+            # an erased slot (unique_ptr) accepts any coroutine, so a
+            # rebind into it keeps the erased representation.
+            if isinstance(var_type, OwnType) and existing_type is not None:
+                prev_inner = unwrap_readonly(unwrap_own(
+                    unwrap_ref_type(existing_type)))
+                new_inner = unwrap_readonly(var_type.wrapped)
+                prev_is_coro = (isinstance(prev_inner, NominalType)
+                                and prev_inner.qualified_name() == qnames.CANCELLABLE)
+                if isinstance(prev_inner, ConcreteCoroType):
+                    # The reassignment merge resolves var_type to the
+                    # existing binding's type, so derive the INCOMING
+                    # frame identity from the init expr itself.
+                    cand: TpyType | None = new_inner
+                    init_i = stmt.init
+                    if isinstance(init_i, TpyCoerce):
+                        init_i = init_i.expr
+                    if (isinstance(init_i, (TpyCall, TpyMethodCall))
+                            and getattr(init_i.resolved_function_info,
+                                        "is_async", False)):
+                        cand = self._concrete_coro_bind_type(
+                            init_i, make_cancellable(prev_inner.type_args[0]))
+                    elif isinstance(init_i, TpyName):
+                        src_t = self.ctx.func.current_scope.lookup(init_i.name)
+                        if src_t is not None:
+                            cand = unwrap_readonly(unwrap_own(
+                                unwrap_ref_type(src_t)))
+                    if not (isinstance(cand, ConcreteCoroType)
+                            and cand == prev_inner):
+                        raise self.ctx.error(
+                            f"cannot rebind '{stmt.name}' to a different "
+                            f"coroutine: the binding holds a concrete "
+                            f"coroutine frame (one frame type per name); "
+                            f"bind to a new name",
+                            stmt)
+                elif prev_is_coro and isinstance(new_inner, ConcreteCoroType):
+                    # Erased slot: materialize the concrete value into it.
+                    var_type = OwnType(prev_inner)
+            # Record the owned binding on the decl node so codegen reads
+            # Own[...] instead of re-deriving the bare protocol from the
+            # init expr (mirrors the collapsed-tuple recording below).
+            if isinstance(var_type, OwnType):
+                self.ctx.var_types[id(stmt)] = var_type
+                if stmt.name in self.ctx.func.unread_coro_locals:
+                    self.ctx.warning(
+                        f"rebinding '{stmt.name}' drops the previous "
+                        f"coroutine without running it",
+                        stmt)
+                self.ctx.func.unread_coro_locals[stmt.name] = stmt
+                # Binding from a name moves the handle out of the source
+                # (coroutine handles are single-use; CPython aliases, TPy
+                # moves -- declared divergence). Reject when the source is
+                # used again; otherwise mark it consumed.
+                if isinstance(stmt.init, TpyName):
+                    if not self.compat.is_auto_move_use(stmt.init):
+                        raise self.ctx.error(
+                            f"binding '{stmt.name}' moves the coroutine out of "
+                            f"'{stmt.init.name}' (coroutine handles are "
+                            f"single-use); '{stmt.init.name}' is used again "
+                            f"later",
+                            stmt)
+                    self.ctx.func.consumed_vars.add(stmt.init.name)
             # Preserve Ref on non-reassigned function locals from reference
             # sources (call returns, field access, subscript, params).
             # Strip for: reassigned locals (T* codegen), top-level globals.
@@ -3845,6 +4016,20 @@ class StatementAnalyzer:
         bt = self.ctx.func.borrow_tracker
         bt.retarget_storage_borrows(stmt.name)
         bt.remove_borrower(stmt.name)
+        # Bound async-METHOD coroutine: stable-lvalue receiver + borrow
+        # registration. Keyed on the init shape alone so every binding
+        # form (fresh, annotated-erased, rebind) is covered, and placed
+        # after remove_borrower so the fresh borrow survives.
+        _coro_init = (stmt.init.expr if isinstance(stmt.init, TpyCoerce)
+                      else stmt.init)
+        if (isinstance(_coro_init, TpyMethodCall)
+                and getattr(_coro_init.resolved_function_info,
+                            "is_async", False)
+                # `mod.f()` is a TpyMethodCall whose receiver is a
+                # namespace, not a value -- nothing to borrow.
+                and _coro_init.user_module_call is None
+                and _coro_init.builtin_module_call is None):
+            self._bind_method_coro_receiver(stmt.name, _coro_init)
         # Create borrow when the target aliases another variable's storage.
         # Reassigned vars register too: codegen uses T* pointer-locals, so
         # `view = s` aliases the storage `s` currently points into; the

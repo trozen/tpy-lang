@@ -1,10 +1,10 @@
-# Coroutines are single-use, must-use values: storing the result of an
-# async def call without consuming it is rejected.
+# A bare async-def call statement drops the coroutine unrun -- rejected.
+# (Binding to a variable is legal; the guard rejects only genuine drops.)
 async def sub() -> int:
     return 42
 
 async def caller() -> int:
-    coro = sub()  # tpyc: error(/Coroutine value from async def 'sub' must be consumed/)
+    sub()  # tpyc: error(/is dropped without running/)
     return 0
 
 def main() -> None:

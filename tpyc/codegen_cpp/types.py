@@ -10,7 +10,8 @@ from typing import TYPE_CHECKING
 from ..typesys import (
     TpyType, IntLiteralType, FloatLiteralType,
     PendingListType, PendingDictType, PendingSetType, PendingViewType, ViewTypeFamily, make_list, make_dict, make_set, TypeParamRef, NominalType,
-    UnionType, NoneType, VoidType, TupleType, ReadonlyType,
+    UnionType, NoneType, VoidType, TupleType, ReadonlyType, OwnType,
+    ConcreteCoroType,
     unwrap_readonly, unwrap_ref_type, is_protocol_type, resolve_int_literals,
     is_integer_type, is_float_type, is_numeric_type, is_void_like_type,
     INT32, BIGINT, FLOAT, FLOAT32, STR, BYTES,
@@ -384,6 +385,22 @@ class TypeResolver:
         Native records use their native C++ name directly (no namespace qualification).
         @dynamic protocol types map to the base class name.
         """
+        # Concrete coroutine handle: renders as the concrete `__coro_*`
+        # frame struct (zero-alloc representation), NOT the Cancellable
+        # base it subtypes -- must precede the protocol branch below.
+        # Own[ConcreteCoro] is the storage form: std::optional<frame>.
+        if isinstance(typ, ConcreteCoroType):
+            # Local import: types <-> gen_async circular dodge (gen_async
+            # imports functions -> type_resolution -> types at module load).
+            from .gen_async import sub_struct_qualname
+            return sub_struct_qualname(
+                self, typ.coro_owner, typ.coro_func_name,
+                typ.coro_inferred_type_args,
+                module_qual=typ.coro_module_qual)
+        if isinstance(typ, OwnType):
+            own_inner = unwrap_readonly(typ.wrapped)
+            if isinstance(own_inner, ConcreteCoroType):
+                return f"std::optional<{self.type_to_cpp(own_inner)}>"
         if isinstance(typ, NominalType) and is_protocol_type(typ):
             protocol_info = protocol_info_of(typ)
             if protocol_info and protocol_info.is_dynamic:

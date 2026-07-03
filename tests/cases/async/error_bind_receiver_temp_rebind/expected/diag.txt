@@ -1,0 +1,1 @@
+main.py:20: error: receiver of a bound async method call must be a stable lvalue (a local, parameter, or field chain rooted at one) -- the coroutine captures it by reference for the handle's lifetime. Bind the receiver to a local first: `r = <expr>; c = r.method(...)`

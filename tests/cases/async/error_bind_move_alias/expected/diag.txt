@@ -1,0 +1,1 @@
+main.py:14: error: binding 'd' moves the coroutine out of 'c' (coroutine handles are single-use); 'c' is used again later

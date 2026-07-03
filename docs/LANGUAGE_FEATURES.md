@@ -6420,9 +6420,73 @@ Send/Sync rules for built-in types:
   with the executor -- the caller binds it to a `Task[T]` local via the
   implicit `Own[]` unwrap and can then `await` the local or pass it as a
   borrow; `await asyncio.create_task(...)` on a temporary works too
-  (move-constructed into the awaiter frame). Both `asyncio.run` and
-  `asyncio.create_task` require a direct call to a known `async def` in
-  v1 (other awaitables such as `Future` need a coroutine wrapper -- v1.5).
+  (move-constructed into the awaiter frame). A coroutine can also be
+  BOUND first and consumed later: `c = f()` binds an owned, move-only,
+  single-use handle holding the CONCRETE coro frame inline
+  (C++: `std::optional<__coro_f>`) -- **binding a direct async-def or
+  async-method call never allocates**. `await c` polls the handle's own
+  slot in place (identical cost to inline `await f()`); the one heap
+  allocation happens exactly at type-erasure boundaries --
+  `create_task`/`run` args and `Own[Cancellable[T]]` params/returns --
+  via the `make_adapter` wrap
+  (`unique_ptr<Cancellable<T>>`). This is a guaranteed representation
+  rule, not an optimization: no generated-code inspection needed.
+  A handle can be awaited (`await c`), passed to `create_task`/`run`,
+  held across a suspension (a concrete frame field), moved to another
+  binding, or returned from a sync coroutine factory
+  (`-> Own[Cancellable[T]]`, an erasure boundary). Two shapes stay
+  erased by construction (each an author-visible signature boundary):
+  values received through `Own[Cancellable[T]]` (factory returns,
+  params), and bindings of template-frame callees (async defs with
+  static-protocol / `Fn` params, whose struct name needs call-site
+  deduction). A concrete
+  binding holds exactly one frame type: rebinding or branch-binding a
+  DIFFERENT coroutine under the same name is rejected (bind to a new
+  name; `Box[Cancellable[T]]` is the intended heap-storage vocabulary
+  when one slot genuinely must hold different coroutines -- but note
+  only CONSTRUCTION is wired today; consuming a coroutine through a
+  Box (await / create_task via take()) is not, see TODO). RECURSIVE bindings
+  (direct or mutual) are rejected for the same reason inline recursive
+  awaits are -- the by-value frame embedding would be infinite-size --
+  with the working escape named in the diagnostic: drive the recursive
+  call through `asyncio.create_task` (the Task provides the heap
+  indirection). A bound async-METHOD coroutine
+  borrows its receiver by reference for the handle's lifetime: the
+  receiver must be a stable lvalue at the binding, the borrow is
+  registered until consumption, and escapes that can outlive the scope
+  (`create_task(c)`, returning the handle) warn -- receiver lifetime
+  is not tracked across those escapes (post-THIR escape analysis).
+  Consumption moves the handle: a second `await c` / `create_task(c)`
+  or a use after `d = c` is a compile-time error (CPython's runtime
+  "cannot reuse already awaited coroutine" surfaced early; note the
+  divergence -- CPython *aliases* coroutine objects on assignment, TPy
+  *moves*). A handle never consumed warns at compile time ("bound
+  coroutine is never consumed"), as does rebinding over an unconsumed
+  one -- the CPython "coroutine was never awaited" RuntimeWarning at
+  compile time; execution matches (the coroutine never runs). Caveat:
+  the warning is cleared by ANY read of the handle, not only a true
+  consumption (e.g. `c.cancel()` on a fresh handle silences it) -- see
+  the TODO exclusions entry. A bare
+  `f()` statement (immediate drop) and storing a coroutine into a
+  field/element stay compile errors (`Box[Cancellable[T]]` is the
+  intended owned-storage spelling; construction only today -- consuming
+  through the Box is not yet wired, see TODO), and borrowing a handle (protocol-annotated
+  alias, bare-`Cancellable[T]` borrow param, ternary over handles) is
+  rejected -- handles are consume-only in v1. Both `asyncio.run` and
+  `asyncio.create_task` enforce CPython's coroutine-only contract at
+  compile time as a STATIC approximation of `iscoroutine`: the arg's
+  static type must be `Cancellable[T]` (the async-def call-result
+  shape) -- an already-spawned `Task`, a `Future`, or another
+  nominally-typed conforming awaitable is rejected where CPython raises
+  `TypeError` (`create_task`) / `ValueError` (`run`), and passing the
+  async def itself (uncalled) gets a targeted "call it" hint. Being
+  static, the check cannot see through laundering: a hand-written
+  conforming record returned from a factory typed `-> Own[Cancellable[T]]`
+  passes and runs as a task where CPython would raise -- a declared
+  divergence (TPy accepts a superset; CPython fails loudly at the same
+  call). Module-scope
+  (top-level) coroutine bindings are not supported (rejected at the
+  consumption site; bind inside a function -- see TODO).
   `asyncio.Future[T]` provides manual completion via
   `set_result` / `set_exception`; `Future[None]` works after the
   position-aware-None compiler fix lowered `None` type-args to
@@ -6454,8 +6518,10 @@ Send/Sync rules for built-in types:
   handle (the same `make_adapter` step the direct `create_task(f(...))`
   arg coercion emits). Free async defs are covered; a bound async *method*
   reference (`obj.m`) is the general no-method-value gap, and an `Fn`
-  (template) target plus an intermediate `Own[Cancellable[T]]` local in an
-  async body are blocked on separate coro-frame codegen gaps (see BUGS.md).
+  (template) target is blocked on a coro-frame codegen gap (see BUGS.md).
+  An intermediate `Own[Cancellable[T]]` local (the factory-call binding
+  `coro = factory(n)` inside an async body) works -- it is the same
+  owned-erased local as a bound coroutine.
   Sema rejects user-defined `__await__` and bare-coroutine drops. See
   `docs/ASYNC_DESIGN.md` and `docs/ASYNC_PROGRESS.md`.
   At `asyncio.run` exit, remaining spawned tasks are cancelled and

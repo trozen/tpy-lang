@@ -43,7 +43,7 @@ _FRESH_COLLECTION_NODES = (
     TpyArrayLiteral, TpyDictLiteral, TpySetLiteral, TpyListRepeat,
     TpyListComprehension, TpyDictComprehension, TpySetComprehension,
 )
-from ..typesys import IntLiteralType, NominalType, OptionalType, OwnType, TupleType, TypeParamRef, unwrap_readonly, unwrap_ref_type, unwrap_own, VoidType, is_fn_type
+from ..typesys import IntLiteralType, NominalType, OptionalType, OwnType, TupleType, TypeParamRef, unwrap_readonly, unwrap_ref_type, unwrap_own, unwrap_send_sync, VoidType, is_fn_type, is_dyn_protocol
 from .gen_generators import GeneratorCodegen, GeneratorForInfo
 from ..type_def_registry import (is_str_type, is_str_category, is_big_int_type,
                                   is_owned_in_coro_frame, view_owned_copy_init)
@@ -1712,6 +1712,10 @@ class AsyncCoroCodegen:
         for_struct_names = state.async_for_struct_names
         for y in yields:
             p = y.payload
+            if p.prebuilt_slot is not None:
+                # Bound-coroutine await: polls the handle's own frame
+                # field; no dedicated sub-future slot.
+                continue
             sub_cpp = p.sub_field_cpp_type
             if p.async_with_kind is not None and p.async_with_ctx_n is not None:
                 entry = struct_names.get(p.async_with_ctx_n)
@@ -2034,8 +2038,11 @@ class AsyncCoroCodegen:
                     # scoped and may not survive a suspension stably, so a frame
                     # pointer into it could dangle -- keep the owning copy.
                     src_is_exc = root_name(s.init) in exc_bindings
+                    # Owned-erased (Own[dyn P]) locals move on binding --
+                    # never a borrow alias of the source.
                     if (ltype is not None and s.init is not None
                             and not src_is_exc
+                            and not isinstance(unwrap_ref_type(ltype), OwnType)
                             and self.statements._is_plain_nonvalue(
                                 unwrap_ref_type(ltype))
                             and not self.ctx.is_rvalue_source(s.init)):
@@ -2106,50 +2113,11 @@ class AsyncCoroCodegen:
         these correspond to the `T_<pname>` template args declared on the
         callee's struct.
         """
-        ns_qual = ""
-        owner_name = None
-        owner_args_suffix = ""
-        if owner is not None:
-            owner_cpp = self.types.type_to_cpp(owner)
-            ns_prefix = owner_cpp.split("<", 1)[0]
-            ns_qual = (ns_prefix.rsplit("::", 1)[0] + "::"
-                       if "::" in ns_prefix else "")
-            owner_name = owner.name
-            if owner.type_args:
-                # A call/await site must name the base coro struct with concrete
-                # type args. An unbound TypeParamRef here means the MRO-resolved
-                # owner's args were not bound to concrete types -- compute_mro_
-                # ancestors records each base with the defining class's own type
-                # params, so a generic subclass of a generic base (Child[U](Box[U]))
-                # or a multi-level chain (C(B[Int32]) where B[U](A[U])) leaves them
-                # unbound. Emit a clean diagnostic rather than ill-formed C++.
-                if any(isinstance(ta, TypeParamRef) for ta in owner.type_args):
-                    raise CodeGenError(
-                        f"inherited async method on generic base '{owner.name}' "
-                        "is not yet supported here: its type parameters are not "
-                        "bound to concrete types (this happens with a generic "
-                        "subclass of a generic base, or a multi-level generic "
-                        "inheritance chain); flatten the hierarchy or make the "
-                        "base concrete", loc=loc)
-                inner_cpps = [self.types.type_to_cpp(ta)
-                              for ta in owner.type_args]
-                owner_args_suffix = "<" + ", ".join(inner_cpps) + ">"
-        elif module_qual is not None:
-            # Cross-module free-function await: qualify with the
-            # callee module's C++ namespace.
-            ns_qual = f"::{module_to_cpp_namespace(module_qual)}::"
-        bare = AsyncCoroCodegen._sub_struct_name(method, owner_name)
-        # Combined template-arg list: callee's explicit `[T1, ...]` from
-        # the call's inferred substitution, followed by any
-        # `T_<pname>` extras deduced from static-protocol args.
-        all_args: list[str] = []
-        if inferred_type_args and not (owner is not None and owner.type_args):
-            all_args.extend(self.types.type_to_cpp(ta)
-                             for ta in inferred_type_args)
-        if extra_template_args:
-            all_args.extend(extra_template_args)
-        suffix = ("<" + ", ".join(all_args) + ">") if all_args else ""
-        return f"{ns_qual}{bare}{owner_args_suffix}{suffix}"
+        return sub_struct_qualname(
+            self.types, owner, method, inferred_type_args,
+            module_qual=module_qual,
+            extra_template_args=extra_template_args, loc=loc)
+
 
     def _extra_template_args_for_await(self, call: TpyExpr) -> list[str]:
         """Compute the per-static-protocol `T_<pname>` template-arg
@@ -2417,6 +2385,22 @@ class AsyncCoroCodegen:
                              kind, bind_target, return_stmt) -> 'rcfg.AwaitPayload':
         """CFGBuilder payload factory: derives mode + sub_field_cpp_type
         from the await's sema annotations."""
+        if await_node.awaited_prebuilt_slot is not None:
+            # Bound-coroutine handle: poll the handle's own frame slot in
+            # place (INLINE flavors for reset/poll; no field, no emplace).
+            operand_type = self.ctx.get_expr_type(await_node.value)
+            inner = unwrap_readonly(unwrap_own(unwrap_ref_type(operand_type)))
+            return rcfg.AwaitPayload(
+                mode=rcfg.AwaitMode.INLINE,
+                sub_field_cpp_type=self.types.type_to_cpp(inner),
+                operand_expr=await_node.value,
+                kind=kind,
+                bind_target=bind_target,
+                return_stmt=return_stmt,
+                host_stmt=host_stmt,
+                await_node=await_node,
+                prebuilt_slot=await_node.awaited_prebuilt_slot,
+            )
         if await_node.awaited_async_func_name is not None:
             mode = rcfg.AwaitMode.INLINE
             inferred_type_args = getattr(
@@ -3844,6 +3828,16 @@ class AsyncCoroCodegen:
     def _sub_field_name(suspension_index: int) -> str:
         return f"__sub_{suspension_index}"
 
+    @staticmethod
+    def _sub_slot_name(payload: 'rcfg.AwaitPayload',
+                       suspension_index: int) -> str:
+        """The C++ slot a suspension polls/resets: the dedicated
+        `__sub_<i>` field, or -- for a prebuilt-slot await of a bound
+        coroutine -- the handle's own frame field."""
+        if payload.prebuilt_slot is not None:
+            return escape_cpp_name(payload.prebuilt_slot)
+        return AsyncCoroCodegen._sub_field_name(suspension_index)
+
     def _gen_coro_emplace_arg(self, arg: 'TpyExpr', arg_index: int,
                                 call: 'TpyCall | TpyMethodCall') -> str:
         """Generate one arg for `__sub_N.emplace(...)` constructing a
@@ -3877,7 +3871,7 @@ class AsyncCoroCodegen:
     def _emit_sub_reset(self, out: "TextIO", indent: str,
                         payload: 'rcfg.AwaitPayload',
                         suspension_index: int) -> None:
-        sub = self._sub_field_name(suspension_index)
+        sub = self._sub_slot_name(payload, suspension_index)
         if payload.mode is rcfg.AwaitMode.BORROWED:
             out.write(f"{indent}{sub} = nullptr;\n")
         elif (payload.mode is rcfg.AwaitMode.INLINE
@@ -3896,7 +3890,7 @@ class AsyncCoroCodegen:
         statements; for RETURN-kind, this function fully terminates the
         case body (walks finally chain and returns Ready)."""
         ret_cpp = self._poll_ret_cpp(func)
-        sub = self._sub_field_name(suspension_index)
+        sub = self._sub_slot_name(payload, suspension_index)
         # `::tpy::poll_with_cancel` propagates the outer's cancel into
         # the in-flight sub before polling (so the sub observes the
         # cancel at its own suspension point and can run
@@ -4010,8 +4004,12 @@ class AsyncCoroCodegen:
         """
         if payload.host_stmt is not None and payload.host_stmt.loc is not None:
             self.ctx.emit_source_comment(out, payload.host_stmt.loc, indent)
-        sub = self._sub_field_name(suspension_index)
-        if payload.mode is rcfg.AwaitMode.INLINE:
+        sub = self._sub_slot_name(payload, suspension_index)
+        if payload.prebuilt_slot is not None:
+            # Bound-coroutine await: the handle's frame slot is already
+            # engaged (emplaced at the binding); nothing to construct.
+            pass
+        elif payload.mode is rcfg.AwaitMode.INLINE:
             if payload.async_with_kind is not None:
                 # Async-with synthetic yield. Receiver is the CM frame
                 # slot; args differ by kind.
@@ -4064,9 +4062,17 @@ class AsyncCoroCodegen:
         elif payload.mode is rcfg.AwaitMode.BORROWED:
             operand_cpp = self.expressions.gen_expr(payload.operand_expr)
             self.ctx.temps.flush(out, indent)
+            declared = self.expressions._get_cpp_declared_type(payload.operand_expr)
+            declared = unwrap_readonly(unwrap_send_sync(declared)) if declared else None
+            if (isinstance(declared, OwnType)
+                    and is_dyn_protocol(unwrap_readonly(declared.wrapped))):
+                # Owned-erased handle (unique_ptr<P> local/param): the
+                # sub-future points at the heap payload; polls dispatch
+                # through the protocol vtable.
+                out.write(f"{indent}{sub} = {operand_cpp}.get();\n")
             # A global / pointer-alias loop var already renders as `T*`;
             # re-taking its address would double-pointer the sub-future field.
-            if self.ctx.is_already_pointer_source(payload.operand_expr):
+            elif self.ctx.is_already_pointer_source(payload.operand_expr):
                 out.write(f"{indent}{sub} = {operand_cpp};\n")
             else:
                 out.write(f"{indent}{sub} = &({operand_cpp});\n")
@@ -4075,3 +4081,61 @@ class AsyncCoroCodegen:
                                loc=None)
         out.write(f"{indent}__state = "
                   f"{_StateLabel(_StateKind.RESUME, suspension_index).cpp_name()};\n")
+
+
+def sub_struct_qualname(
+        types, owner: 'NominalType | None', method: str,
+        inferred_type_args: 'tuple[TpyType, ...] | None' = None,
+        *, module_qual: str | None = None,
+        extra_template_args: 'list[str] | None' = None,
+        loc=None) -> str:
+    """Module-level core of `_sub_struct_qualname` (see that method's
+    docstring for the naming grammar) -- also the renderer for
+    ConcreteCoroType (a bound coroutine's frame struct), which needs the
+    same naming from the type-to-C++ path where no AsyncCoroCodegen
+    instance exists. `types` is the TypeResolver.
+    """
+    ns_qual = ""
+    owner_name = None
+    owner_args_suffix = ""
+    if owner is not None:
+        owner_cpp = types.type_to_cpp(owner)
+        ns_prefix = owner_cpp.split("<", 1)[0]
+        ns_qual = (ns_prefix.rsplit("::", 1)[0] + "::"
+                   if "::" in ns_prefix else "")
+        owner_name = owner.name
+        if owner.type_args:
+            # A call/await site must name the base coro struct with concrete
+            # type args. An unbound TypeParamRef here means the MRO-resolved
+            # owner's args were not bound to concrete types -- compute_mro_
+            # ancestors records each base with the defining class's own type
+            # params, so a generic subclass of a generic base (Child[U](Box[U]))
+            # or a multi-level chain (C(B[Int32]) where B[U](A[U])) leaves them
+            # unbound. Emit a clean diagnostic rather than ill-formed C++.
+            if any(isinstance(ta, TypeParamRef) for ta in owner.type_args):
+                raise CodeGenError(
+                    f"inherited async method on generic base '{owner.name}' "
+                    "is not yet supported here: its type parameters are not "
+                    "bound to concrete types (this happens with a generic "
+                    "subclass of a generic base, or a multi-level generic "
+                    "inheritance chain); flatten the hierarchy or make the "
+                    "base concrete", loc=loc)
+            inner_cpps = [types.type_to_cpp(ta)
+                          for ta in owner.type_args]
+            owner_args_suffix = "<" + ", ".join(inner_cpps) + ">"
+    elif module_qual is not None:
+        # Cross-module free function: qualify with the callee module's
+        # C++ namespace.
+        ns_qual = f"::{module_to_cpp_namespace(module_qual)}::"
+    bare = AsyncCoroCodegen._sub_struct_name(method, owner_name)
+    # Combined template-arg list: callee's explicit `[T1, ...]` from
+    # the call's inferred substitution, followed by any
+    # `T_<pname>` extras deduced from static-protocol args.
+    all_args: list[str] = []
+    if inferred_type_args and not (owner is not None and owner.type_args):
+        all_args.extend(types.type_to_cpp(ta)
+                        for ta in inferred_type_args)
+    if extra_template_args:
+        all_args.extend(extra_template_args)
+    suffix = ("<" + ", ".join(all_args) + ">") if all_args else ""
+    return f"{ns_qual}{bare}{owner_args_suffix}{suffix}"

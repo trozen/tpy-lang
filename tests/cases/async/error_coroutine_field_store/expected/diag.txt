@@ -1,0 +1,1 @@
+main.py:16: error: Coroutine value from async def 'sub' cannot be stored in a field or container element; use Box[Cancellable[T]] for owned storage, or bind it to a local and consume it there.

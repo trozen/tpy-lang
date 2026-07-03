@@ -1,0 +1,1 @@
+main.py:19: error: cannot rebind 'c' to a different coroutine: the binding holds a concrete coroutine frame (one frame type per name); bind to a new name

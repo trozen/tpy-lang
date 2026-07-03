@@ -3853,9 +3853,76 @@ def make_cancellable(awaited_type: 'TpyType') -> 'NominalType':
     Cancellable structurally extends Awaitable via its `__poll__` member,
     so `await coro` and other Awaitable-consumer sites continue to work."""
     from tpyc import qnames
+    # is_dynamic_protocol matches the lib declaration (tpy.coro.Cancellable
+    # is @dynamic); without it is_dyn_protocol() disagrees with the
+    # registry's protocol_info and Own[Cancellable[T]] renders as the
+    # structural-protocol placeholder instead of unique_ptr<P>.
     return NominalType(name="Cancellable", type_args=(awaited_type,),
                        is_protocol=True,
+                       is_dynamic_protocol=True,
                        _module_qname=qnames.CANCELLABLE)
+
+
+@dataclass(frozen=True)
+class ConcreteCoroType(NominalType):
+    """A coroutine handle whose concrete frame struct is statically known
+    (the result of binding a direct async-def/method call).
+
+    Subtype of the Cancellable[T] NominalType so every conformance,
+    compat, and diagnostic path treats it as Cancellable[T] -- the
+    concreteness is a REPRESENTATION fact: the value is the concrete
+    `__coro_*` frame (stored in std::optional, zero heap allocation),
+    erased to unique_ptr<Cancellable<T>> only at typed boundaries
+    (create_task/run args, Own[Cancellable[T]] params/returns).
+    Never printed to users (renders as
+    Cancellable[T] via the inherited __str__); has no self-contained
+    C++ spelling -- codegen renders it via the sub-coro struct naming
+    helper.
+    """
+    # Identity fields participate in equality: handles of two DIFFERENT
+    # coroutines must compare unequal (a branch-join merge collapsing
+    # them would poll the wrong frame type).
+    coro_func_name: str = ""
+    # Method coroutines: the receiver's owner NominalType (carries the
+    # class-level type args the struct name needs). None for free fns.
+    coro_owner: 'NominalType | None' = None
+    coro_inferred_type_args: 'tuple[TpyType, ...] | None' = None
+    # Defining module when it differs from the binding module (qualifies
+    # the struct name with the callee's C++ namespace).
+    coro_module_qual: 'str | None' = None
+
+    def to_cpp(self) -> str:
+        raise RuntimeError(
+            "ConcreteCoroType has no self-contained C++ spelling; render "
+            "via codegen's type_to_cpp (sub-coro struct naming)")
+
+    def with_inner_types(self, types: tuple['TpyType', ...]) -> 'TpyType':
+        # NominalType's override reconstructs a plain NominalType, which
+        # would silently strip the frame identity (degrading the handle
+        # to the erased representation) if a generic-substitution walk
+        # ever traverses one of these. Preserve the identity fields.
+        base = super().with_inner_types(types)
+        return ConcreteCoroType(
+            base.name, base.type_args, base.is_protocol,
+            base._module_qname, base.is_dynamic_protocol,
+            coro_func_name=self.coro_func_name,
+            coro_owner=self.coro_owner,
+            coro_inferred_type_args=self.coro_inferred_type_args,
+            coro_module_qual=self.coro_module_qual)
+
+
+def make_concrete_coro(awaited_type: 'TpyType', func_name: str,
+                       owner: 'NominalType | None' = None,
+                       inferred_type_args: 'tuple[TpyType, ...] | None' = None,
+                       module_qual: 'str | None' = None) -> 'ConcreteCoroType':
+    from tpyc import qnames
+    return ConcreteCoroType(
+        name="Cancellable", type_args=(awaited_type,),
+        is_protocol=True, is_dynamic_protocol=True,
+        _module_qname=qnames.CANCELLABLE,
+        coro_func_name=func_name, coro_owner=owner,
+        coro_inferred_type_args=inferred_type_args,
+        coro_module_qual=module_qual)
 
 
 # Singleton for the non-generic Waker type. Registered as a value-type

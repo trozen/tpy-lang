@@ -1717,6 +1717,19 @@ class SemanticAnalyzer:
                 f"(not stored in a field, forwarded to another Own[T], or returned)",
                 func,
             )
+        # Bound coroutines never read after binding are destroyed without
+        # running -- CPython's "coroutine was never awaited" RuntimeWarning,
+        # surfaced at compile time. Drained per body; a nested def draining
+        # its enclosing body's entries can only miss a warning, never
+        # produce a false one.
+        for lname, decl in self.ctx.func.unread_coro_locals.items():
+            self.ctx.warning(
+                f"bound coroutine '{lname}' is never consumed (never "
+                f"awaited, passed to asyncio.create_task/run, or moved); "
+                f"it will be destroyed without running",
+                decl,
+            )
+        self.ctx.func.unread_coro_locals.clear()
 
     def _collect_generator_locals(
         self, func: TpyFunction, local_ns: Namespace, *, exclude_self: bool,

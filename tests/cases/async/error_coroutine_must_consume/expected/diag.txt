@@ -1,1 +1,1 @@
-main.py:7: error: Coroutine value from async def 'sub' must be consumed: use `await sub(...)` inside an async def, or `asyncio.run(sub(...))` at top level. Coroutines are single-use, must-use values.
+main.py:7: error: Coroutine value from async def 'sub' is dropped without running: `await sub(...)`, pass it to asyncio.create_task/run, or bind it to a variable to consume later. Coroutines are single-use, must-use values.

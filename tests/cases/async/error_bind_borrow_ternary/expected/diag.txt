@@ -1,0 +1,1 @@
+main.py:13: error: cannot bind 'c' as a borrowed coroutine reference: coroutine handles are single-use; bind the async call directly (the binding owns the handle) and consume it via await / asyncio.create_task/run

@@ -23,6 +23,7 @@ from ..typesys import (
     unify_literal_types,
     is_polymorphic_class_type, is_exception_type, SendType, SyncType, unwrap_send_sync, FrameType,
     disambiguated_pair)
+from .. import qnames
 from .frame_traits import frame_traits_of_function, frame_type_of_function
 from .send_chain import why_not_send, why_not_sync, why_not_frame, render_chain
 from .move_chain import why_not_movable, render_move_chain
@@ -1545,6 +1546,26 @@ class TypeCompatibility:
         that know the destination is a field / container element so the
         pointer-repr-Optional address-take mark is suppressed.
         """
+        # A bound coroutine handle (owned-erased Own[Cancellable[T]]) is
+        # single-use and consume-only: borrowing it into a bare-protocol
+        # slot (protocol-annotated local, borrow param) has no supported
+        # form -- codegen would alias the unique_ptr, breaking the
+        # move-consume discipline. Own[...] destinations (create_task,
+        # forwarding) are the consuming path and stay allowed.
+        actual_bare = unwrap_readonly(unwrap_send_sync(actual))
+        if isinstance(actual_bare, OwnType):
+            inner = unwrap_readonly(actual_bare.wrapped)
+            expected_bare = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(expected)))
+            if (isinstance(inner, NominalType)
+                    and inner.qualified_name() == qnames.CANCELLABLE
+                    and is_protocol_type(expected_bare)
+                    and not isinstance(unwrap_send_sync(unwrap_readonly(expected)), OwnType)):
+                raise self.ctx.error(
+                    f"cannot borrow a coroutine handle into {context}: the "
+                    f"handle is single-use; consume it instead (await it, "
+                    f"pass it to asyncio.create_task/run, or move it into "
+                    f"an Own[Cancellable[T]] slot)",
+                    expr if getattr(expr, "loc", None) else None)
         coercion = self.check_type_compatible(
             actual, expected, context,
             getattr(expr, "loc", None),

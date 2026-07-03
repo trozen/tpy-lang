@@ -779,6 +779,12 @@ class FunctionTrackingState:
     # --- Consumed variable tracking ---
     consumed_vars: set[str] = field(default_factory=set)
 
+    # Owned-erased coroutine locals bound in this body and not read since
+    # (any read clears the entry -- every legal read is a consumption or a
+    # manual-driving borrow). Survivors warn at body end: a bound coroutine
+    # never consumed is destroyed without running.
+    unread_coro_locals: dict[str, 'TpyStmt'] = field(default_factory=dict)
+
     # --- Variable declaration tracking (per-function) ---
     var_decl_by_name: dict[str, 'TpyVarDecl'] = field(default_factory=dict)
 

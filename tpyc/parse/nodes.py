@@ -684,6 +684,10 @@ class TpyAwait(TpyExpr):
     awaited_async_func_name: str | None = field(default=None, kw_only=True)
     awaited_method_owner_type: 'NominalType | None' = field(default=None, kw_only=True)
     awaited_task_inner: 'TpyType | None' = field(default=None, kw_only=True)
+    # Prebuilt-slot mode: the operand is a bound coroutine handle
+    # (ConcreteCoroType local) -- the await polls the local's own frame
+    # slot in place (no sub-future field, no allocation). Holds the name.
+    awaited_prebuilt_slot: str | None = field(default=None, kw_only=True)
     suspension_index: int | None = field(default=None, kw_only=True)
 
     def children(self) -> list[TpyExpr]:

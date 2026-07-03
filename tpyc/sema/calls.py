@@ -22,6 +22,7 @@ from ..typesys import (
     strip_auto_readonly, apply_auto_readonly,
     UNKNOWN_ELEMENT, UnknownElementType, PendingDictType, DictLiteralInfo, PendingSetType, SetLiteralInfo,
     UnionType, VOID, BIGINT, BOOL, STR, INT32, AnyType, ANY, is_protocol_type, unwrap_readonly, unwrap_own, unwrap_optional_own, make_union, ensure_qualified,
+    ConcreteCoroType,
     is_any_str_type, container_to_str_template, error_return_matches,
     is_protocol_union, protocol_union_protocols,
     MutationCallEdge,
@@ -1018,8 +1019,9 @@ class CallAnalyzer:
                     if qname == "tpy.try_parse":
                         return self._analyze_tpy_try_parse(expr)
                     if qname in (qnames.ASYNCIO_CREATE_TASK, qnames.ASYNCIO_RUN):
-                        self._require_async_def_call_arg(expr, qname)
-                        # falls through to normal cpp_template lowering
+                        if overloads := self._get_module_function_overloads(module_name, func_name):
+                            return self._analyze_asyncio_spawn_call(expr, qname, overloads)
+                        # falls through when the module registry misses (error path)
                     if qname == "builtins.isinstance":
                         return self._analyze_isinstance(expr)
                     if qname == "builtins.super":
@@ -1030,6 +1032,12 @@ class CallAnalyzer:
                         return self._analyze_print_call(expr)
                     # Check for user module function (registered via _register_user_module_import)
                     if func_infos := self.ctx.registry.get_function(expr.func_name):
+                        # from-imported asyncio.run / create_task keep the
+                        # coroutine-only arg contract (CPython parity).
+                        if func_infos[0].qualified_name in (
+                                qnames.ASYNCIO_CREATE_TASK, qnames.ASYNCIO_RUN):
+                            return self._analyze_asyncio_spawn_call(
+                                expr, func_infos[0].qualified_name, func_infos)
                         # Builtin-supplemented functions route through builtin path
                         if func_infos[0].is_builtin_function:
                             if func_infos[0].special_handling:
@@ -1541,23 +1549,90 @@ class CallAnalyzer:
             return module_info.functions[func_name]
         return None
 
-    def _require_async_def_call_arg(self, expr: TpyCall, qname: str) -> None:
-        """v1: `asyncio.run` / `asyncio.create_task` accept only a direct
-        call to a known async def. Other Awaitables (Future, Task, custom)
-        match the cpp_template's `Awaitable[T]` parameter at sema, but the
-        C++ helpers assume a coroutine struct (touch `__cancel_pending` /
-        emit a Poll-deducing `decltype` of the awaited value). Reject at
-        sema with a clear diagnostic instead of letting the C++ build
-        fail with a template error.
-        """
-        if len(expr.args) != 1:
-            return  # arity error will be reported by normal resolution
-        if self.expr._resolve_call_to_async_def(expr.args[0]) is not None:
+    def _analyze_asyncio_spawn_call(self, expr: TpyCall, qname: str,
+                                     overloads: 'list[FunctionInfo]') -> TpyType:
+        """Analyze `asyncio.run` / `asyncio.create_task` like the ordinary
+        module function it is, then enforce the coroutine-only contract."""
+        self._reject_async_def_ref_arg(expr, qname)
+        if overloads[0].special_handling:
+            result = self._analyze_special_builtin(expr, overloads)
+        elif overloads[0].is_builtin_function or overloads[0].cpp_template is not None:
+            result = self._analyze_builtin_function_overloads(expr, overloads)
+        else:
+            result = self._analyze_user_function_call(expr, overloads)
+        self._require_coroutine_arg(expr, qname)
+        return result
+
+    def _reject_coro_handle_borrow(self, arg: TpyExpr, arg_type: 'OwnType',
+                                    pname: str) -> None:
+        """A bound coroutine handle is single-use and consume-only: the
+        create-lend-drop Own-strip (lend an owned rvalue to a borrow param)
+        must not apply -- codegen would alias the unique_ptr handle,
+        breaking the move-consume discipline."""
+        inner = unwrap_readonly(arg_type.wrapped)
+        if (isinstance(inner, NominalType)
+                and inner.qualified_name() == qnames.CANCELLABLE):
+            raise self.ctx.error(
+                f"cannot borrow a coroutine handle into argument '{pname}': "
+                f"the handle is single-use; consume it instead (await it, "
+                f"pass it to asyncio.create_task/run, or move it into an "
+                f"Own[Cancellable[T]] param)",
+                arg)
+
+    def _reject_async_def_ref_arg(self, expr: TpyCall, qname: str) -> None:
+        """Friendly pre-check: `run(f)` where f is an async def is a missing
+        call, not a coroutine. Without this the user gets a generic
+        type-inference failure."""
+        if len(expr.args) != 1 or not isinstance(expr.args[0], TpyName):
+            return
+        overloads = self.ctx.registry.get_function(expr.args[0].name)
+        if not any(getattr(fi, "is_async", False) for fi in (overloads or ())):
             return
         short_name = qname.split(".", 1)[1]
+        fname = expr.args[0].name
         raise self.ctx.error(
-            f"asyncio.{short_name}() requires a direct call to an async "
-            f"def in v1; pass `f(...)` where `f` is `async def f(...) -> T`",
+            f"asyncio.{short_name}() expects a coroutine, not the async "
+            f"def itself; call it: {short_name}({fname}(...))",
+            expr)
+
+    def _require_coroutine_arg(self, expr: TpyCall, qname: str) -> None:
+        """CPython parity: `asyncio.run` / `asyncio.create_task` accept
+        coroutine objects only -- CPython raises TypeError('a coroutine was
+        expected') for Tasks, Futures, and other awaitables even though
+        they satisfy the Cancellable[T] param structurally. Compile-time
+        analog of `iscoroutine`: the arg's static type must be the
+        Cancellable[T] protocol (the async-def call-result shape). Runs
+        after arg analysis so bound and forwarded handles are typed.
+        """
+        if len(expr.args) != 1:
+            return  # arity error already reported by normal resolution
+        arg_type = self.ctx.get_expr_type(expr.args[0])
+        if arg_type is None:
+            return
+        inner = unwrap_readonly(unwrap_own(unwrap_ref_type(unwrap_send_sync(arg_type))))
+        if (isinstance(inner, NominalType)
+                and inner.qualified_name() == qnames.CANCELLABLE):
+            # Borrowed-receiver escape: a bound async-METHOD coroutine
+            # captures its receiver by reference; spawning it as a task
+            # lets the task outlive the receiver's scope. Lifetime is
+            # not tracked across the escape.
+            if (isinstance(inner, ConcreteCoroType)
+                    and inner.coro_owner is not None):
+                self.ctx.warning(
+                    f"spawned bound method-coroutine borrows its receiver "
+                    f"by reference; the task must not outlive the "
+                    f"receiver (receiver lifetime is not tracked across "
+                    f"this escape)",
+                    expr)
+            return
+        short_name = qname.split(".", 1)[1]
+        exc_name = ("TypeError" if qname == qnames.ASYNCIO_CREATE_TASK
+                    else "ValueError")
+        raise self.ctx.error(
+            f"asyncio.{short_name}() expects a coroutine (the result of "
+            f"calling an `async def`), got '{arg_type}'. CPython raises "
+            f"{exc_name} for non-coroutine awaitables; await the value "
+            f"directly instead",
             expr)
 
     def _analyze_tpy_copy(self, expr: TpyCall) -> TpyType:
@@ -4799,6 +4874,7 @@ class CallAnalyzer:
             # and let coercion handle the rest (create-lend-drop is intentional;
             # ownership-transfer params declare Own[T] and skip this).
             if isinstance(arg_type, OwnType) and not isinstance(ptype, OwnType):
+                self._reject_coro_handle_borrow(arg, arg_type, pname)
                 arg_type = arg_type.wrapped
 
             self.check_own_param(arg, arg_type, pname, ptype)
@@ -4824,6 +4900,7 @@ class CallAnalyzer:
         arg_type = self.expr.analyze_expr_with_hint(arg, ptype)
         arg_type = self._restore_readonly_arg(arg, arg_type, func_is_readonly)
         if isinstance(arg_type, OwnType) and not isinstance(ptype, OwnType):
+            self._reject_coro_handle_borrow(arg, arg_type, pname)
             arg_type = arg_type.wrapped
         self.check_own_param(arg, arg_type, pname, ptype)
         # Pending literals/views resolve against the param context (a bare

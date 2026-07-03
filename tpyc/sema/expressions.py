@@ -27,6 +27,7 @@ from ..typesys import (
     is_integer_type, is_any_int_type, is_union_or_optional_type,
     is_callable_type, is_float_type, is_any_float_type, is_numeric_type,
     unwrap_own, coro_struct_owner, is_readonly_span, collapse_tuple_own_elements,
+    ConcreteCoroType,
     yield_uses_borrow_slot,
     RecursiveAliasInstanceType, recursive_union_alternatives)
 from ..parse import (
@@ -646,6 +647,9 @@ class ExpressionAnalyzer:
                 f"Cannot use '{expr.name}' after it was consumed by a consuming method call",
                 expr,
             )
+        # Any read of a bound coroutine counts as (potential) consumption
+        # for the never-consumed warning.
+        self.ctx.func.unread_coro_locals.pop(expr.name, None)
 
         # No ephemeral-borrow closure-capture check is needed: an escaping closure
         # is Callable-typed and captures by value (copies the borrow's value -- safe),
@@ -2413,6 +2417,41 @@ class ExpressionAnalyzer:
         # matching so the inner Task[T] / Awaitable conformance check fires.
         unwrapped = unwrap_own(unwrap_ref_type(operand_type))
         if isinstance(unwrapped, NominalType):
+            # Bound coroutine handle (owned-erased Own[Cancellable[T]]
+            # local/param): erased await through the protocol's virtual
+            # __poll__. Single-use: the handle is consumed, so a later
+            # read (second await, create_task) is a compile error --
+            # CPython's runtime "cannot reuse already awaited coroutine"
+            # surfaced at compile time.
+            # Concrete coroutine handle (zero-alloc representation): the
+            # await polls the handle's own frame slot in place -- no
+            # sub-future field, no allocation. Must precede the erased
+            # branch below (ConcreteCoroType carries the same qname).
+            if isinstance(unwrapped, ConcreteCoroType):
+                if not isinstance(operand, TpyName):
+                    raise self.ctx.error(
+                        "await of a coroutine-handle expression must be "
+                        "a named binding; bind it to a variable first",
+                        expr)
+                self._check_coro_await_consume(operand, expr)
+                expr.awaited_prebuilt_slot = operand.name
+                # Erased-equivalent conservative frame classification.
+                self.ctx.func.current_awaited_subframes.append(None)
+                self._mark_await_operand_mutated(operand)
+                return unwrapped.type_args[0]
+            # Cancellable only: the structural Awaitable[T] has no @dynamic
+            # C++ base to poll through, so it stays rejected below.
+            if (unwrapped.is_protocol
+                    and unwrapped.qualified_name() == qnames.CANCELLABLE
+                    and len(unwrapped.type_args) == 1
+                    and isinstance(unwrapped.type_args[0], TpyType)):
+                expr.awaited_task_inner = unwrapped.type_args[0]
+                # Erased frame: sema cannot classify the stored frame -- non-Send.
+                self.ctx.func.current_awaited_subframes.append(None)
+                self._mark_await_operand_mutated(operand)
+                if isinstance(operand, TpyName):
+                    self._check_coro_await_consume(operand, expr)
+                return unwrapped.type_args[0]
             inner, poll_is_readonly = self._extract_awaitable_inner(unwrapped)
             if inner is not None:
                 if isinstance(inner, TpyType):
@@ -2434,6 +2473,25 @@ class ExpressionAnalyzer:
             "Task[T] / Future[T], or a value of a type with a "
             "`__poll__(self, waker: Waker) -> Own[Poll[T]]` method",
             expr)
+
+    def _check_coro_await_consume(self, operand: TpyName, expr: TpyAwait) -> None:
+        """Awaiting a bound coroutine consumes it. Mirrors the
+        consuming-method loop guard: consumption inside a loop of a
+        handle bound outside it would re-poll a finished coroutine on
+        the next iteration."""
+        if self.ctx.func.loop_depth > 0:
+            var_depth = self.ctx.func.var_scope_depth.get(operand.name, 0)
+            if var_depth < self.ctx.func.current_scope.depth:
+                raise self.ctx.error(
+                    f"Cannot await coroutine '{operand.name}' inside a "
+                    f"loop; the handle is single-use and is not re-bound "
+                    f"each iteration",
+                    expr,
+                )
+        self.ctx.func.consumed_vars.add(operand.name)
+        # Awaiting an Own[Cancellable[T]] PARAM is consumption -- without
+        # this the never-consumed-Own-param warning false-positives.
+        self.ctx.mark_own_param_consumed(operand.name)
 
     def _mark_await_operand_mutated(self, operand) -> None:
         """Mark the durable root of an awaited operand mutated.

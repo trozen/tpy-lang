@@ -1,0 +1,1 @@
+main.py:13: error: asyncio.create_task() expects a coroutine (the result of calling an `async def`), got 'Task[int]'. CPython raises TypeError for non-coroutine awaitables; await the value directly instead

@@ -1,1 +1,1 @@
-main.py:9: error: recursive inline `await` involving coroutine 'f' is not supported: the awaited coroutine is stored by value in the awaiter's frame, so the cycle would be infinite-size. Break the recursion (e.g. drive one side through a Task) or restructure.
+main.py:9: error: recursive coroutine embedding involving 'f' is not supported: an inline-awaited or bound coroutine is stored by value in the enclosing frame, so the cycle would be infinite-size. Break the recursion by driving one side through asyncio.create_task (the Task provides the heap indirection) or restructure.

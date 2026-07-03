@@ -12,7 +12,7 @@ import io
 import os
 import sys as _sys
 
-from ..typesys import TpyType, NominalType, UnionType, OwnType, PendingListType, PtrType, NoneType, VoidType, BIGINT, RecordInfo, ProtocolInfo, clear_codegen_state, register_native_cpp_name, register_recursive_alias_cpp_name, register_union_alias, resolve_int_literals, is_void_like_type, bare_name
+from ..typesys import TpyType, NominalType, UnionType, OwnType, PendingListType, PtrType, NoneType, VoidType, BIGINT, RecordInfo, ProtocolInfo, clear_codegen_state, register_native_cpp_name, register_recursive_alias_cpp_name, register_union_alias, resolve_int_literals, is_void_like_type, bare_name, ConcreteCoroType, unwrap_readonly, unwrap_own, unwrap_ref_type
 from ..compilation_context import require_current_compiler
 from ..type_def_registry import type_def_of, is_enum_type, enum_info_of, protocol_info_of
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyVarDecl, VarLinkage
@@ -742,6 +742,22 @@ class CodeGenerator:
         walk_stmts(func.body)
         return targets
 
+    @staticmethod
+    def _bound_coro_frame_targets(
+            func: TpyFunction) -> list[tuple[str, str | None]]:
+        """`(coro_name, owner_record_name | None)` for every bound
+        coroutine handle promoted into `func`'s resumable frame -- each is
+        embedded by value as a `std::optional<__coro_X>` field, the same
+        infinite-size constraint as an inline await's sub-future."""
+        targets: list[tuple[str, str | None]] = []
+        for _lname, ltype in (func.generator_locals or []):
+            inner = unwrap_readonly(unwrap_own(unwrap_ref_type(ltype)))
+            if isinstance(inner, ConcreteCoroType):
+                owner = inner.coro_owner
+                targets.append((inner.coro_func_name,
+                                owner.name if owner is not None else None))
+        return targets
+
     def _prescan_for_src_embedding(self, module: TpyModule) -> None:
         """Populate the same-module generator map, then force-mark simple
         generators whose struct another resumable frame embeds by value via
@@ -846,6 +862,7 @@ class CodeGenerator:
         dependents: list[list[int]] = [[] for _ in range(n)]
         for i, (f, _rn, is_async) in enumerate(units):
             edges = list(self.gen_generators._for_src_generator_targets(f))
+            edges.extend(self._bound_coro_frame_targets(f))
             if is_async:
                 edges.extend(self._inline_await_targets(f))
             for name, owner in edges:
@@ -878,11 +895,13 @@ class CodeGenerator:
             # generator-only -- the stuck unit's kind picks the right wording.
             if units[stuck][2]:
                 raise CodeGenError(
-                    f"recursive inline `await` involving coroutine "
-                    f"'{units[stuck][0].name}' is not supported: the awaited "
-                    f"coroutine is stored by value in the awaiter's frame, so the "
-                    f"cycle would be infinite-size. Break the recursion (e.g. "
-                    f"drive one side through a Task) or restructure.",
+                    f"recursive coroutine embedding involving "
+                    f"'{units[stuck][0].name}' is not supported: an inline-"
+                    f"awaited or bound coroutine is stored by value in the "
+                    f"enclosing frame, so the cycle would be infinite-size. "
+                    f"Break the recursion by driving one side through "
+                    f"asyncio.create_task (the Task provides the heap "
+                    f"indirection) or restructure.",
                     loc=units[stuck][0].loc)
             raise CodeGenError(
                 f"recursive generator delegation involving "

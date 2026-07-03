@@ -616,6 +616,20 @@ class MethodAnalyzer:
 
     def analyze_method_call(self, expr: TpyMethodCall) -> TpyType:
         """Analyze a method call."""
+        # A `.cancel()` read of a bound coroutine handle is not
+        # consumption: without this restore, `c = f(); c.cancel()`
+        # silences the never-consumed warning while the body never runs.
+        # Task/other receivers are not in unread_coro_locals -- no-op.
+        _coro_unread = None
+        if expr.method == "cancel" and isinstance(expr.obj, TpyName):
+            _coro_unread = self.ctx.func.unread_coro_locals.get(expr.obj.name)
+        try:
+            return self._analyze_method_call_impl(expr)
+        finally:
+            if _coro_unread is not None:
+                self.ctx.func.unread_coro_locals[expr.obj.name] = _coro_unread
+
+    def _analyze_method_call_impl(self, expr: TpyMethodCall) -> TpyType:
         if isinstance(expr.obj, TpyName):
             # ClassName.staticmethod() pattern
             result = self._analyze_static_method_call(expr)
@@ -1326,6 +1340,24 @@ class MethodAnalyzer:
         module_info = self.ctx.registry.get_module(module_name)
         if module_info and module_info.functions and expr.method in module_info.functions:
             overloads = module_info.functions[expr.method]
+            # asyncio.run / asyncio.create_task: ordinary module functions
+            # plus the coroutine-only arg contract (CPython parity).
+            from .. import qnames
+            _qname = f"{module_name}.{expr.method}"
+            if _qname in (qnames.ASYNCIO_RUN, qnames.ASYNCIO_CREATE_TASK):
+                expr.user_module_call = module_name
+                temp_call = TpyCall(func=TpyName(expr.method, loc=expr.loc), args=expr.args,
+                                    kwargs=expr.kwargs,
+                                    type_args=expr.type_args,
+                                    type_args_parse_error=expr.type_args_parse_error,
+                                    loc=expr.loc)
+                result = self.calls._analyze_asyncio_spawn_call(temp_call, _qname, overloads)
+                expr.args = temp_call.args
+                expr.kwargs = temp_call.kwargs
+                expr.resolved_function_info = temp_call.resolved_function_info
+                expr.inferred_type_args = temp_call.inferred_type_args
+                expr.representational_subst_params = temp_call.representational_subst_params
+                return result
             # Route through builtin path if the function is from a builtin module
             # or has a cpp_template (inline expansion, no C++ function body).
             is_builtin_func = (module_info.is_builtin
@@ -1338,10 +1370,6 @@ class MethodAnalyzer:
                                     type_args=expr.type_args,
                                     type_args_parse_error=expr.type_args_parse_error,
                                     loc=expr.loc)
-                from .. import qnames
-                _qname = f"{module_name}.{expr.method}"
-                if _qname in (qnames.ASYNCIO_RUN, qnames.ASYNCIO_CREATE_TASK):
-                    self.calls._require_async_def_call_arg(temp_call, _qname)
                 if overloads[0].special_handling:
                     result = self.calls._analyze_special_builtin(temp_call, overloads)
                 else:

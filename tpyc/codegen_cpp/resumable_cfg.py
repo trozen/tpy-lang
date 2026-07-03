@@ -197,6 +197,10 @@ class AwaitPayload:
     # The TpyAwait node itself (sema attaches awaited_async_func_name /
     # awaited_task_inner here; emit consults them).
     await_node: TpyAwait
+    # Prebuilt-slot await: the operand is a bound coroutine handle whose
+    # frame field IS the slot -- emit declares no __sub field, skips the
+    # emplace, and polls/resets that frame field instead.
+    prebuilt_slot: str | None = None
     # Async-with internal yields: emit takes a special path that
     # synthesizes `(*__with_ctx_<n>).__aenter__()` or
     # `(*__with_ctx_<n>).__aexit__({}, nullptr, {})` directly rather

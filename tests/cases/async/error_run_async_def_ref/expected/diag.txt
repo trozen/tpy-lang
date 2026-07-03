@@ -1,0 +1,1 @@
+main.py:11: error: asyncio.run() expects a coroutine, not the async def itself; call it: run(add_one(...))

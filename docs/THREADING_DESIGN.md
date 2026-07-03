@@ -47,7 +47,7 @@ review findings are recorded inline so they do not get re-litigated.
 | V2 | `Arc[T]` / `Weak[T]` | Atomic sibling of `Rc`. Needs a new `@native` atomic-cell primitive (`std::atomic<uint32_t>`) -- not a pure-lib mirror of `rc.py`. Shared into a task by `arc.clone()` into a struct field. | **designed** | V1 |
 | V3 | `Mutex[T]` / `RwLock[T]` | `Sync` iff `T: Send`; shared as `Arc[Mutex[T]]`. Module placement decided here (`tpy.sync` vs extend `tplib.*`). | **designed** | V2 |
 | D1 | Closure `spawn` (ergonomic layer) | `spawn(lambda: work(data))` desugaring to the V1 core. Needs a **callable generic bound** + owning-capture. Own design pass; the current spelling is shaky (see "Deferred: closures"). Likely **post-THIR**. | **deferred** | V1, (THIR) |
-| D2 | De-intrinsic `asyncio.create_task` | Relax two sema guards so a coroutine binds to a variable and passes as an owned value. Independent of threads; opportunistic. | **deferred / independent** | -- |
+| D2 | De-intrinsic `asyncio.create_task` | Shipped as "bound coroutines": move-only handle locals holding the concrete frame (zero-alloc; erasure only at typed boundaries), consumed by await/create_task/run/move; compile-time coroutine-only arg contract. See the SHIPPED section below. | **SHIPPED** | -- |
 | D3 | Movable `Callable` | Re-back `Callable` with C++23 `std::move_only_function`. Independent; breaking (~47 snapshots + real copy sites). | **filed, decoupled** | -- |
 | D4 | Scoped threads / `TaskGroup` | Borrow-a-local-into-a-thread; structured concurrency. Region-gated. | **THIR-gated** | THIR/MIR |
 | D5 | Multi-threaded async executor | Work-stealing, cross-thread wakers, atomic `Task` state. | **v3+** | V2, V3 |
@@ -273,22 +273,34 @@ callable generic bound, revisited with a de-risk spike (wire
 `TypeParamRef.bound` to a callable type; confirm `R` recovery and valid
 tooling), likely after THIR.
 
-## Deferred: `create_task` de-intrinsic (D2)
+## SHIPPED: `create_task` de-intrinsic (D2 -- bound coroutines)
 
-Independent of threads. `create_task` is already a library function
-(`lib/tpy/asyncio/__init__.py`, `create_task[T](coro: Own[Cancellable[T]])
--> Own[Task[T]]`), executor wiring is 100% library, no codegen hook. It only
-*feels* intrinsic due to two conservative sema guards:
-`_check_no_bare_async_call` (`statements.py`) and `_require_async_def_call_arg`
-(`calls.py`). Relaxing them for `create_task` (keeping the strict rule for
-`asyncio.run`) makes it a plain library call. **Invariant to preserve:** a
-coroutine may be bound and passed, but must still be *consumed on all paths
-before scope exit* -- relaxed from "consume inline," not removed (an
-unconsumed coroutine silently never runs). Open question that sizes it: does
-`Own`/move flow-analysis already error on an owned value dropped unconsumed
-at scope end? If yes, D2 is nearly free; if not, that check is the work --
-and it is the same must-consume machinery V1's `JoinHandle` and D1's
-owning-capture would reuse, which is the *only* reason to pull D2 forward.
+Independent of threads; shipped as the "bound coroutines" feature. A
+coroutine binds to a move-only local holding the CONCRETE frame inline
+(`std::optional<__coro_*>`, internal ConcreteCoroType subtyping
+Cancellable[T]) -- binding and `await c` never allocate; erasure to
+`unique_ptr<Cancellable<T>>` (the `make_adapter` wrap `create_task`'s
+arg coercion always emitted) happens exactly at typed boundaries:
+`create_task(c)` / `run(c)` args and `Own[Cancellable[T]]`
+params/returns (a concrete binding holds one frame type: mixed and
+recursive rebinds rejected, create_task named as the recursion escape). A guaranteed representation rule, not
+an optimization. Method-coroutine bindings carry receiver borrow rules:
+stable-lvalue receiver at bind, borrow registered until consumption,
+warnings on receiver-escaping consumption (create_task / return).
+`_require_async_def_call_arg` (which had gone half-dead after the v1.2
+library cutover) was replaced by a compile-time *coroutine-only* value check
+on `create_task`/`run` args -- CPython-parity: the strict rule was kept for
+BOTH (CPython's create_task and run raise TypeError/ValueError for
+non-coroutine awaitables), implemented as a static-type check, not a
+call-shape check.
+`_check_no_bare_async_call` now rejects only genuine drops (bare statement,
+field/element store). The must-consume guarantee landed as compile
+*warnings* (never-consumed / rebind-over-unconsumed; runtime abort-on-drop
+a la JoinHandle is unsound for coroutines -- a cancelled task legitimately
+drops an unrun frame) plus hard errors for double-consume and use-after-move
+via the existing consumed-vars machinery. Note for D1: this is the
+consume-discipline substrate owning-capture would reuse; the
+all-paths-consumed flow upgrade is a filed TODO.
 
 ## Deferred: D3 (movable `Callable`), D4 (scoped/`TaskGroup`), D5 (executor)
 

@@ -5,7 +5,7 @@ import asyncio
 from tpy import Int32
 
 
-async def ping(n: Int32) -> Int32:  # tpyc: error(/recursive inline .await./)
+async def ping(n: Int32) -> Int32:  # tpyc: error(/recursive coroutine embedding/)
     if n <= 0:
         return 0
     return await pong(n - 1)

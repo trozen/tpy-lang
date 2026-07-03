@@ -14,7 +14,7 @@ from ..typesys import (
     PendingListType, PendingDictType, PendingSetType, PendingStrType, PendingViewType, OwnType, OptionalType,
     NoneType, NominalType, AliasRef, AnyType, STR, BYTES, TupleType, VoidType,
     ValueForm,
-    INT32, BIGINT, FLOAT, is_protocol_type,
+    INT32, BIGINT, FLOAT, is_protocol_type, is_dyn_protocol, ConcreteCoroType,
     polymorphic_source_is_pointer, polymorphic_subclass_into_optional,
     polymorphic_source_inner,
     is_polymorphic_subclass_fact, ALL_FIXED_INTS,
@@ -1042,6 +1042,29 @@ class StatementGenerator:
             return self._is_protocol_isinstance_condition(condition.operand)
         return False
 
+    def _gen_concrete_coro_write(self, cpp_name: str, init: 'TpyExpr',
+                                  indent: str) -> str:
+        """Write into a concrete coroutine handle's `std::optional<coro>`
+        slot (frame field or already-declared local). Always emplace:
+        a call source constructs the fresh frame in place; a name source
+        move-CONSTRUCTS from the source's payload -- optional's move-
+        ASSIGN is deleted outright when the frame has reference members
+        (method coroutines hold `Record& __self`), while its move
+        constructor is fine. emplace destroys any prior payload first.
+        Sema guarantees a name source is engaged (consumed handles are
+        rejected at the read)."""
+        init_inner = self.ctx.unwrap_copy(init)
+        if isinstance(init_inner, TpyName):
+            src = self.expressions.gen_expr(init)
+            if src == cpp_name:
+                # Self-write (`c = c`): a no-op in Python; emplace-from-
+                # self would destroy the payload mid-construction.
+                return ""
+            return (f"{indent}{cpp_name}.emplace(std::move(*{src}));\n"
+                    f"{indent}{src}.reset();\n")
+        init_expr = self.expressions.gen_expr(init)
+        return f"{indent}{cpp_name}.emplace({init_expr});\n"
+
     def _gen_dynamic_protocol_init(self, name: str, target_type: NominalType,
                                     init: 'TpyExpr', indent: str) -> str:
         """Generate slot + pointer-local for a @dynamic protocol variable.
@@ -1136,7 +1159,11 @@ class StatementGenerator:
             # handled by codegen binding (T& / auto&), not by the type itself.
             # Send/Sync markers (canonically outermost) have no C++ shape.
             target_type = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(target_type)))
-            if isinstance(target_type, OwnType):
+            # Keep Own[dyn P]: the owned-erased local IS unique_ptr<P>;
+            # stripping it would route the decl to the borrow-form
+            # pointer-local path (dangling for an owned rvalue init).
+            if isinstance(target_type, OwnType) and not is_dyn_protocol(
+                    unwrap_readonly(target_type.wrapped)):
                 target_type = target_type.wrapped
             target_type = resolve_int_literals(target_type, self.ctx.analyzer.ctx.default_int_for_literal)
             if isinstance(target_type, FloatLiteralType):
@@ -1975,6 +2002,22 @@ class StatementGenerator:
                 self.ctx.movable_locals.add(stmt.name)
             if stmt.init:
                 cpp_name = escape_cpp_name(stmt.name)
+                var_type = self.ctx.var_types.get(stmt.name)
+                if (isinstance(var_type, OwnType)
+                        and is_dyn_protocol(unwrap_readonly(var_type.wrapped))):
+                    inner = unwrap_readonly(var_type.wrapped)
+                    # Concrete handle (optional<__coro_*> frame field):
+                    # construct the frame in place -- zero allocation.
+                    if isinstance(inner, ConcreteCoroType):
+                        return self._gen_concrete_coro_write(
+                            cpp_name, stmt.init, indent)
+                    # Owned-erased @dynamic local (unique_ptr<P> frame
+                    # field): route the RHS through the own-arg wrap so a
+                    # concrete rvalue gets its make_adapter erasure and an
+                    # already-erased source forwards.
+                    init_expr = self.expressions._gen_dynamic_protocol_own_arg(
+                        stmt.init, inner)
+                    return f"{indent}{cpp_name} = {init_expr};\n"
                 init_expr = self.expressions.gen_expr(stmt.init)
                 if stmt.name in self.ctx.generator_frame_slot_locals:
                     # frame_slot<T> has no operator= for arbitrary T;
@@ -2013,6 +2056,26 @@ class StatementGenerator:
         # Check if variable is already declared (reassignment)
         if stmt.name in self.ctx.declared_vars:
             if stmt.init:
+                # Owned-erased @dynamic rebind: unique_ptr assignment (the
+                # previous coroutine is destroyed unrun -- sema warned);
+                # the RHS routes through the own-arg wrap like the decl.
+                sema_t = resolve_stmt_binding_type(
+                    stmt, self.ctx.analyzer,
+                    include_global_binding=(
+                        self.ctx.current_ns is self.ctx.analyzer.global_ns))
+                sema_t = unwrap_readonly(unwrap_send_sync(sema_t)) if sema_t else None
+                if (isinstance(sema_t, OwnType)
+                        and is_dyn_protocol(unwrap_readonly(sema_t.wrapped))):
+                    inner = unwrap_readonly(sema_t.wrapped)
+                    # Concrete handle rebind: re-emplace the frame in the
+                    # optional slot (same-coroutine only; sema rejects
+                    # mixed rebinds).
+                    if isinstance(inner, ConcreteCoroType):
+                        return self._gen_concrete_coro_write(
+                            cpp_name, stmt.init, indent)
+                    init_expr = self.expressions._gen_dynamic_protocol_own_arg(
+                        stmt.init, inner)
+                    return f"{indent}{cpp_name} = {init_expr};\n"
                 var_type = self.ctx.var_types.get(stmt.name)
                 form = self.ctx.local_cpp_form(stmt.name)
                 if form is LocalCppForm.OPTIONAL_STORAGE:
@@ -2182,6 +2245,30 @@ class StatementGenerator:
                 return f"{indent}{borrow_cpp} {cpp_name} = {init_expr};\n"
 
         cpp_type = self._resolve_cpp_type(stmt)
+
+        # Owned coroutine-handle / owned-erased @dynamic local. Concrete
+        # handle: `std::optional<__coro_*>` holding the frame inline --
+        # zero allocation. Erased: `std::unique_ptr<P>` (adapter-wrapped
+        # concrete rvalue, or forwarded erased source). Both are
+        # move-only, consumed by move into Own[P] slots.
+        if (isinstance(target_type, OwnType)
+                and is_dyn_protocol(unwrap_readonly(target_type.wrapped))):
+            assert stmt.init, f"owned @dynamic local '{stmt.name}' requires initializer"
+            protocol = unwrap_readonly(target_type.wrapped)
+            if stmt.name in self.ctx.sema_movable_locals:
+                self.ctx.movable_locals.add(stmt.name)
+            if isinstance(protocol, ConcreteCoroType):
+                owned_cpp = self.types.type_to_cpp(target_type)
+                init_inner = self.ctx.unwrap_copy(stmt.init)
+                if isinstance(init_inner, TpyName):
+                    rhs = f"std::move({self.expressions.gen_expr(stmt.init)})"
+                else:
+                    rhs = self.expressions.gen_expr(stmt.init)
+                return f"{indent}{owned_cpp} {cpp_name} = {rhs};\n"
+            init_expr = self.expressions._gen_dynamic_protocol_own_arg(
+                stmt.init, protocol)
+            owned_cpp = f"std::unique_ptr<{self.protocols.get_dynamic_base_name(protocol)}>"
+            return f"{indent}{owned_cpp} {cpp_name} = {init_expr};\n"
 
         # @dynamic protocol types always use adapter slots + Base* pointer-local
         if self._is_dynamic_protocol_type(target_type):

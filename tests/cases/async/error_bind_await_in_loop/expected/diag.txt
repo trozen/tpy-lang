@@ -1,0 +1,1 @@
+main.py:14: error: Cannot await coroutine 'c' inside a loop; the handle is single-use and is not re-bound each iteration

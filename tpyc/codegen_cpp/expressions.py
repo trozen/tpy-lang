@@ -16,6 +16,7 @@ from ..typesys import (
     PtrType, OwnType, OptionalType, NoneType, AnyType, make_array,
     PendingListType, ListRepeatType,
     TypeParamRef, ReadonlyType, unwrap_readonly, unwrap_own, unwrap_qualifiers, unwrap_optional_own, unwrap_send_sync, collapse_tuple_own_elements, UnionType, VoidType, make_union, union_none_narrow,
+    ConcreteCoroType,
     TupleType, CallableType, ValueForm,
     INT32, BIGINT, FLOAT, CHAR, VOID, is_protocol_type, is_void_like_type, polymorphic_source_inner, polymorphic_source_is_pointer, polymorphic_subclass_into_optional, is_any_str_type, is_any_bytes_type, container_to_str_template,
     ResolvedBinop, get_covariant_params, unwrap_ref_type, RefType, ParamInfo,
@@ -894,16 +895,26 @@ class ExpressionGenerator:
             return False
         source = self._resolve_own_source_type(expr)
         if source is not None:
-            inner = source.wrapped
+            inner = unwrap_readonly(source.wrapped)
+            # Concrete coroutine handle: always needs the adapter wrap
+            # (the optional<frame> slot is not a unique_ptr).
+            if isinstance(inner, ConcreteCoroType):
+                return True
             if not is_protocol_type(inner):
                 return True
             return not self.protocols.dyn_protocol_forward_ok(inner, target.wrapped)
-        # `_resolve_own_source_type` misses non-name expressions whose sema
-        # type was stripped to bare `P` (ternary, subscript element). C++
-        # shape is still `unique_ptr<P>`, so forward without wrap.
         expr_type = self.ctx.get_expr_type(expr)
         if isinstance(expr_type, OwnType):
             expr_type = expr_type.wrapped
+        # An async-def call's sema type is the @dynamic Cancellable[T], but
+        # the C++ value is the concrete coro struct -- always needs the
+        # adapter wrap (checked before the bare-P forward heuristic below,
+        # which would mistake it for an already-erased unique_ptr).
+        if self._is_async_call_with_protocol_return(expr, expr_type):
+            return True
+        # `_resolve_own_source_type` misses non-name expressions whose sema
+        # type was stripped to bare `P` (ternary, subscript element). C++
+        # shape is still `unique_ptr<P>`, so forward without wrap.
         if is_dyn_protocol(expr_type) and self.protocols.dyn_protocol_forward_ok(expr_type, target.wrapped):
             return False
         return True
@@ -926,12 +937,32 @@ class ExpressionGenerator:
         """
         source_own_type = self._resolve_own_source_type(arg)
         if source_own_type is not None:
-            inner = source_own_type.wrapped
+            inner = unwrap_readonly(source_own_type.wrapped)
+            # Concrete coroutine handle: the erasure boundary -- move the
+            # frame out of its optional slot into the heap adapter (the
+            # one allocation, paid exactly here).
+            if isinstance(inner, ConcreteCoroType):
+                base_cpp = self.protocols.get_dynamic_base_name(protocol)
+                arg_expr = self.gen_expr(arg)
+                return (f"::tpy::make_adapter<{base_cpp}>"
+                        f"(std::move(*({arg_expr})))")
             if is_protocol_type(inner) and self.protocols.dyn_protocol_forward_ok(inner, protocol):
                 return self.gen_call_arg(arg, OwnType(protocol))
         arg_type = self.ctx.get_expr_type(arg)
         if isinstance(arg_type, OwnType):
             arg_type = arg_type.wrapped
+        # Async-def call results: sema views them as `Cancellable[T]` (the
+        # registered FunctionInfo return type), but the C++ value is the
+        # concrete `__coro_<funcname>` struct returned by the factory -- not a
+        # sema-visible type. `make_adapter` deduces the concrete impl from the
+        # argument, so the source evaluates `arg_expr` once with no `decltype`.
+        # Must precede the erased-forward branch: Cancellable is @dynamic, so
+        # the protocol-typed-forward check would mistake the concrete rvalue
+        # for an already-erased unique_ptr.
+        if self._is_async_call_with_protocol_return(arg, arg_type):
+            arg_expr = self._maybe_move(arg, self.gen_expr_deref(arg, arg_type))
+            base_cpp = self.protocols.get_dynamic_base_name(protocol)
+            return f"::tpy::make_adapter<{base_cpp}>({arg_expr})"
         # Sibling of the forward branch above for non-name expressions whose
         # sema type was stripped to bare `P` (ternary, subscript). Wrapping
         # via `Adapter<P, P>` would be ill-formed -- abstract P has no sizeof.
@@ -939,14 +970,6 @@ class ExpressionGenerator:
             return self.gen_call_arg(arg, OwnType(protocol))
         arg_expr = self.gen_expr_deref(arg, arg_type)
         arg_expr = self._maybe_move(arg, arg_expr)
-        # Async-def call results: sema views them as `Cancellable[T]` (the
-        # registered FunctionInfo return type), but the C++ value is the
-        # concrete `__coro_<funcname>` struct returned by the factory -- not a
-        # sema-visible type. `make_adapter` deduces the concrete impl from the
-        # argument, so the source evaluates `arg_expr` once with no `decltype`.
-        if self._is_async_call_with_protocol_return(arg, arg_type):
-            base_cpp = self.protocols.get_dynamic_base_name(protocol)
-            return f"::tpy::make_adapter<{base_cpp}>({arg_expr})"
         if self.protocols.directly_implements_dynamic(arg_type, protocol):
             # Inheritance conformer: U IS-A P, so unique_ptr<U> converts to
             # unique_ptr<P> directly -- no adapter.

@@ -1,0 +1,1 @@
+main.py:17: error: cannot borrow a coroutine handle into argument 'x': the handle is single-use; consume it instead (await it, pass it to asyncio.create_task/run, or move it into an Own[Cancellable[T]] param)

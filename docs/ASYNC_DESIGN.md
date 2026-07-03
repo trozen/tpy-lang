@@ -269,6 +269,35 @@ A `Coroutine[T]` value is **single-use** (consumed by `await` or `Task` wrap) an
 
 This matches CPython (a coroutine raises if awaited twice, and "coroutine was never awaited" warns at GC time). The closest existing TPy analog is `Own[T]`; the implementation can lean on the same lifetime tracking infrastructure.
 
+**SHIPPED (bound coroutines / create_task de-intrinsic)** with these deltas
+from the spec above: a bound coroutine holds its CONCRETE frame inline
+(`std::optional<__coro_*>` local / frame field; internal ConcreteCoroType
+subtyping Cancellable[T]) -- binding and `await c` never allocate; the one
+heap allocation (the `make_adapter` wrap into `unique_ptr<Cancellable<T>>`)
+happens exactly at type-erasure boundaries: create_task/run args,
+`Own[Cancellable[T]]` params/returns, and template-frame callees
+(static-protocol / Fn params). Consumption moves the handle. A concrete
+binding holds one frame type (mixed rebind/branch-bind rejected -- bind
+to a new name); recursive bindings are rejected like inline recursive
+awaits (infinite-size by-value embedding), with create_task as the
+named escape (the Task is the heap indirection). Bound async-METHOD coroutines require a stable-lvalue receiver,
+borrow it until consumption, and warn on receiver-escaping consumption
+(create_task / return). Never-consumed and
+rebind-over-unconsumed are compile *warnings* (CPython's RuntimeWarning
+severity), not errors; double-consume and use-after-move are errors.
+Container storage (the list case above) is NOT supported (`Box[Cancellable]`
+is the owned-storage spelling); module-scope bindings are rejected; so is
+any borrow of a handle (protocol-annotated alias, bare-protocol borrow
+param, ternary over handles) -- handles are consume-only. `run` /
+`create_task` additionally enforce CPython's coroutine-only contract
+(TypeError for create_task, ValueError for run) at compile time as a
+STATIC approximation of `iscoroutine`: the arg's static type must be
+`Cancellable[T]` itself, not a merely-conforming awaitable (`Task`,
+`Future`, user records). The approximation cannot see through laundering
+(a conforming record behind a `-> Own[Cancellable[T]]` factory passes and
+runs where CPython raises) -- declared divergence, crash-direction under
+CPython.
+
 ### Where the frame lives
 
 | Context | Allocation |

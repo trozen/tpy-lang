@@ -1,0 +1,1 @@
+main.py:21: warning: spawned bound method-coroutine borrows its receiver by reference; the task must not outlive the receiver (receiver lifetime is not tracked across this escape)

@@ -1,1 +1,1 @@
-main.py:10: error: asyncio.run() requires a direct call to an async def in v1; pass `f(...)` where `f` is `async def f(...) -> T`
+main.py:11: error: asyncio.run() expects a coroutine (the result of calling an `async def`), got 'Future[Int32]'. CPython raises ValueError for non-coroutine awaitables; await the value directly instead
