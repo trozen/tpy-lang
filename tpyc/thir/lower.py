@@ -81,6 +81,7 @@ from ..typesys import (
     OptionalType, OwnType, PendingViewType, ReadonlyType, STR_FAMILY, TpyType,
     TupleType,
     TypeParamRef, UnionType, ValueForm, VoidType, is_float_type,
+    is_protocol_type,
     is_void_like_type,
     resolve_int_literals,
     unwrap_optional_own, unwrap_readonly, unwrap_ref_type, unwrap_send_sync,
@@ -130,11 +131,13 @@ from .nodes import (
     THIRFunction,
     THIRFunctionLayout,
     THIRIf,
+    THIRIsinstance,
     THIRLiteral,
     THIRMethodCall,
     THIRMilInit,
     THIRModule,
     THIRName,
+    THIRNarrowAlias,
     THIRNoOpStmt,
     THIRParam,
     THIRPrint,
@@ -307,6 +310,149 @@ def _union_binding_divergent(e: 'TpyName', locals_: dict[str, TpyType],
     rt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rt)))
           if rt is not None else None)
     return rt != bt
+
+
+def _isinstance_narrow_info(
+        cond: TpyExpr, declared: dict[str, TpyType], analyzer,
+) -> 'tuple[str, UnionType, tuple[TpyType, ...], bool] | None':
+    """The F4 U3 isinstance-condition shape: `isinstance(v, A)` /
+    `isinstance(v, (A, B))` on a declared local/param of a routed union (U1
+    value / U2 pointer-variant). Returns `(var, union, check_members,
+    folded_true)` or None. `folded_true` is sema's exhaustiveness constant-fold
+    (`macro_expansion == True`, the last elif of an exhausted union): the
+    condition renders `true` and the AST suppresses the dead implicit-else
+    (`_condition_static_true`). Out of the slice: Any / polymorphic /
+    deref-view / type-param subjects (different extraction machinery),
+    readonly-qualified subjects (the `ptr_variant_to_const` chain stays AST,
+    the U2 verdict), and indirect / frame-slot names (no globals or resumable
+    frames route)."""
+    if not (isinstance(cond, TpyCall) and cond.isinstance_var is not None
+            and cond.isinstance_type is not None):
+        return None
+    if cond.isinstance_type_param or cond.isinstance_deref_depth:
+        return None
+    me = cond.macro_expansion
+    folded = isinstance(me, TpyBoolLiteral) and me.value is True
+    if me is not None and not folded:
+        return None
+    var = cond.isinstance_var
+    dt = declared.get(var)
+    if dt is None or unwrap_readonly(unwrap_ref_type(unwrap_send_sync(dt))) is not dt:
+        return None
+    u = _eligible_value_union(dt) or _eligible_ptr_union(dt, analyzer)
+    if u is None:
+        return None
+    ct = cond.isinstance_type
+    members = tuple(ct.members) if isinstance(ct, UnionType) else (ct,)
+    # Each check member must be a member of the subject union (sema enforces;
+    # kept as a slice guard so a fact mismatch gate-rejects, never mis-lowers).
+    if not all(any(m == cm for m in u.members) for cm in members):
+        return None
+    return var, u, members, folded
+
+
+def _narrow_fact_member(u: UnionType, facts: dict[str, TpyType],
+                        var: str) -> TpyType | None:
+    """The concrete-member extraction fact for `var` in a branch's type-facts
+    map, or None when the branch keeps the variant un-extracted (no fact, or a
+    remaining-union / void fact -- mirrors `_emit_isinstance_extractions`'
+    union/void skip). A fact that is neither a member of `u` nor union/void has
+    no mirrored emit; the caller gate-rejects on it via `_narrow_facts_ok`."""
+    ft = facts.get(var)
+    if ft is None or isinstance(ft, UnionType) or is_void_like_type(ft):
+        return None
+    return ft if any(m == ft for m in u.members) else None
+
+
+def _narrow_facts_ok(u: UnionType, facts: dict[str, TpyType], var: str) -> bool:
+    """A branch facts map the slice can mirror: facts describe only the checked
+    var (a compound condition or deref-view key would carry other entries), and
+    each fact is a member of the union, a remaining union, or void."""
+    for k, ft in facts.items():
+        if k != var:
+            return False
+        if not (isinstance(ft, UnionType) or is_void_like_type(ft)
+                or any(m == ft for m in u.members)):
+            return False
+    return True
+
+
+def _facts_have_concrete(facts: dict[str, TpyType]) -> bool:
+    """Mirror of `_has_concrete_isinstance_facts`: whether a facts map would
+    emit an extraction -- the AST's elif-flattening gate (a concrete else-fact
+    forces `} else {` + a nested if instead of a flat `else if`)."""
+    return any(
+        not (isinstance(ty, (UnionType, LiteralType)) or is_void_like_type(ty))
+        and not is_protocol_type(ty)
+        for ty in facts.values()
+    )
+
+
+def _is_elif_link(outer: TpyIf, inner: TpyIf) -> bool:
+    """Mirror of StatementGenerator._is_elif (and emit._is_elif): an elif keeps
+    the outer's column; a nested `else: if` sits deeper. Both-locs-None (macro
+    fragments) counts as elif."""
+    if outer.loc is None and inner.loc is None:
+        return True
+    if outer.loc is None or inner.loc is None:
+        return False
+    return inner.loc.column == outer.loc.column
+
+
+def _elif_link(stmt: TpyIf) -> 'TpyIf | None':
+    """The single elif continuation in `stmt`'s else body (the AST's
+    is_elif_continuation shape: one same-column TpyIf), or None for a genuine
+    else block. Whether the link then FLATTENS to `else if` additionally
+    requires no concrete else-fact (`_facts_have_concrete`) -- the callers
+    that flatten check that separately, mirroring _gen_if's chain collect."""
+    if (len(stmt.else_body) == 1 and isinstance(stmt.else_body[0], TpyIf)
+            and _is_elif_link(stmt, stmt.else_body[0])):
+        return stmt.else_body[0]
+    return None
+
+
+def _post_if_narrow_fact(
+        stmt: TpyIf, info, narrowed: 'set[str] | dict[str, str]',
+) -> TpyType | None:
+    """The early-return implicit-else fact: when the then-body terminates with
+    a return and there is no else block, code after the if is the else branch,
+    and the AST emits a persistent statement-level extraction (`_gen_if`'s
+    post-narrowing arm, `_narrows_to_union_member` + not-already-narrowed).
+    `narrowed` is the active narrowing scope (eligibility's set / lowering's
+    alias map -- only membership is read). Returns the member fact or None."""
+    var, u, _members, folded = info
+    if folded or stmt.else_body or not stmt.else_type_facts:
+        return None
+    if var in narrowed:
+        return None
+    if not (stmt.then_body and isinstance(stmt.then_body[-1], TpyReturn)):
+        return None
+    return _narrow_fact_member(u, stmt.else_type_facts, var)
+
+
+def _chain_post_if_fact(
+        stmt: TpyIf, declared: dict[str, TpyType],
+        narrowed: 'set[str] | dict[str, str]', analyzer,
+) -> 'tuple[str, UnionType, TpyType] | None':
+    """The post-if extraction for a whole if statement: the AST collects the
+    flat elif chain first and runs post-narrowing on `chain[-1]`, emitting the
+    persistent alias at the ENCLOSING scope -- so the fact belongs to the last
+    FLATTENABLE link (same column, no concrete intermediate else-fact),
+    whatever the head condition's kind (a plain-headed chain can still end in
+    a narrowing elif). A nested `else: if` is a body statement of its else
+    block and handles its own post-if there. Returns `(var, union, member)`
+    or None."""
+    last = stmt
+    while ((nxt := _elif_link(last)) is not None
+           and not _facts_have_concrete(last.else_type_facts)):
+        last = nxt
+    info = _isinstance_narrow_info(last.condition, declared, analyzer)
+    if info is None:
+        return None
+    post = _post_if_narrow_fact(last, info, narrowed)
+    if post is None:
+        return None
+    return info[0], info[1], post
 
 
 def _folded_neg_int_literal(e: TpyExpr, analyzer) -> int | None:
@@ -2693,7 +2839,8 @@ def _for_loop_shape_ok(stmt: TpyForEach, analyzer, declared: dict[str, TpyType])
 
 def _for_range_eligible(stmt: TpyForEach, analyzer, declared: dict[str, TpyType],
                         prescan: _Prescan, pointers: set[str],
-                        rebind_slots: set[str], storage_tuple_locals: set[str]) -> bool:
+                        rebind_slots: set[str], storage_tuple_locals: set[str],
+                        narrowed: set[str]) -> bool:
     # Only a plain `for v in range(stop | start, stop)` with step 1 over a fixed-int
     # counter (loop var not used after the loop). 3-arg/stepped range stays on the AST
     # path; the shared shape guards exclude the other richer for-shapes.
@@ -2716,13 +2863,15 @@ def _for_range_eligible(stmt: TpyForEach, analyzer, declared: dict[str, TpyType]
     return _body_eligible(stmt.body, analyzer, body_declared, prescan,
                           in_branch=True, pointers=pointers,
                           rebind_slots=rebind_slots,
-                          storage_tuple_locals=storage_tuple_locals)
+                          storage_tuple_locals=storage_tuple_locals,
+                          narrowed=narrowed)
 
 
 def _for_each_container_eligible(stmt: TpyForEach, analyzer,
                                  declared: dict[str, TpyType], prescan: _Prescan,
                                  pointers: set[str], rebind_slots: set[str],
-                                 storage_tuple_locals: set[str]) -> bool:
+                                 storage_tuple_locals: set[str],
+                                 narrowed: set[str]) -> bool:
     # `for v in <container>` over a NativeIterable with a value-scalar (`list[scalar]` /
     # `dict[fixed-int-key]`, a typed copy; bytes/BytesView are
     # NativeIterable[UInt8] -- the same typed-copy loop var), Char (str/StrView,
@@ -2795,15 +2944,23 @@ def _for_each_container_eligible(stmt: TpyForEach, analyzer,
     return _body_eligible(stmt.body, analyzer, body_declared, prescan,
                           in_branch=True, pointers=pointers,
                           rebind_slots=rebind_slots,
-                          storage_tuple_locals=storage_tuple_locals)
+                          storage_tuple_locals=storage_tuple_locals,
+                          narrowed=narrowed)
 
 
 def _stmt_eligible(stmt: TpyStmt, analyzer, declared: dict[str, TpyType],
                    prescan: _Prescan, *, in_branch: bool,
                    pointers: set[str], rebind_slots: set[str],
-                   storage_tuple_locals: set[str]) -> bool:
+                   storage_tuple_locals: set[str],
+                   narrowed: set[str]) -> bool:
     if isinstance(stmt, TpyVarDecl):
         if stmt.linkage != VarLinkage.DEFAULT or stmt.init is None:
+            return False
+        # A direct rebind of an isinstance-narrowed name: the AST write targets
+        # the extraction alias / the variant inconsistently across shapes --
+        # out of the U3 slice (field writes THROUGH the alias stay eligible;
+        # they rename like reads).
+        if stmt.name in narrowed:
             return False
         is_reassign = stmt.name in declared
         # A var-decl inside a branch must reassign an already-declared local --
@@ -2904,6 +3061,12 @@ def _stmt_eligible(stmt: TpyStmt, analyzer, declared: dict[str, TpyType],
                 or _slice_object_type(vtype))
     if isinstance(stmt, TpyAssign):
         if isinstance(stmt.target, TpyName):
+            # A rebind of an isinstance-narrowed name: same reject as the
+            # VarDecl/AugAssign arms. The parser emits TpyVarDecl for every
+            # ordinary name-target assign, but macro-authored / frontend-IR
+            # ASTs can build this shape directly.
+            if stmt.target.name in narrowed:
+                return False
             # Char-targeted str literal: target-typed `'x'` render -> AST path
             # (mirrors the var-decl reassign guard).
             if (isinstance(stmt.value, TpyStrLiteral)
@@ -2964,37 +3127,66 @@ def _stmt_eligible(stmt: TpyStmt, analyzer, declared: dict[str, TpyType],
             return False
         return _expr_eligible(stmt.value, declared, analyzer)
     if isinstance(stmt, TpyIf):
-        if not _condition_eligible(stmt.condition, declared, analyzer):
+        info = _isinstance_narrow_info(stmt.condition, declared, analyzer)
+        if info is not None:
+            ok = _narrow_if_eligible(
+                stmt, info, analyzer, declared, prescan, pointers=pointers,
+                rebind_slots=rebind_slots,
+                storage_tuple_locals=storage_tuple_locals, narrowed=narrowed)
+        elif not _condition_eligible(stmt.condition, declared, analyzer):
             return False
-        # Branches do not extend the outer scope (no new-name decls allowed in
-        # them), so each is checked against the same declared-so-far set.
-        return (_body_eligible(stmt.then_body, analyzer, declared, prescan,
-                               in_branch=True, pointers=pointers,
-                               rebind_slots=rebind_slots,
-                               storage_tuple_locals=storage_tuple_locals)
-                and _body_eligible(stmt.else_body, analyzer, declared, prescan,
-                                   in_branch=True, pointers=pointers,
-                                   rebind_slots=rebind_slots,
-                                   storage_tuple_locals=storage_tuple_locals))
+        else:
+            # Branches do not extend the outer scope (no new-name decls
+            # allowed in them), so each is checked against the same
+            # declared-so-far set.
+            ok = (_body_eligible(stmt.then_body, analyzer, declared, prescan,
+                                 in_branch=True, pointers=pointers,
+                                 rebind_slots=rebind_slots,
+                                 storage_tuple_locals=storage_tuple_locals,
+                                 narrowed=narrowed)
+                  and _body_eligible(stmt.else_body, analyzer, declared,
+                                     prescan, in_branch=True,
+                                     pointers=pointers,
+                                     rebind_slots=rebind_slots,
+                                     storage_tuple_locals=storage_tuple_locals,
+                                     narrowed=narrowed))
+        if not ok:
+            return False
+        # The early-return implicit else of the (possibly plain-headed) elif
+        # chain retypes its subject for the rest of the enclosing walk --
+        # mutated in place like a POINTER decl mutates `pointers`.
+        pf = _chain_post_if_fact(stmt, declared, narrowed, analyzer)
+        if pf is not None:
+            declared[pf[0]] = pf[2]
+            narrowed.add(pf[0])
+        return True
     if isinstance(stmt, TpyWhile):
-        # No while/else, and a comparison condition. break/continue are not in
-        # the stmt set, so a body containing them is rejected by _body_eligible.
+        # No while/else, and a comparison condition (an isinstance condition
+        # here is `while isinstance(...)` -- its loop-entry extraction is a U3
+        # deferred row, so _condition_eligible's reject keeps it on the AST
+        # path). break/continue are not in the stmt set, so a body containing
+        # them is rejected by _body_eligible.
         if stmt.orelse or not _condition_eligible(stmt.condition, declared, analyzer):
             return False
         return _body_eligible(stmt.body, analyzer, declared, prescan,
                               in_branch=True, pointers=pointers,
                               rebind_slots=rebind_slots,
-                              storage_tuple_locals=storage_tuple_locals)
+                              storage_tuple_locals=storage_tuple_locals,
+                              narrowed=narrowed)
     if isinstance(stmt, TpyAugAssign):
+        # An aug-assign targeting an isinstance-narrowed name writes through
+        # the extraction alias on the AST path -- out of the U3 slice.
+        if isinstance(stmt.target, TpyName) and stmt.target.name in narrowed:
+            return False
         return (_scalar_aug_assign_ok(stmt, declared, analyzer)
                 or _str_aug_append_ok(stmt, declared, prescan, analyzer)
                 or _bytes_aug_concat_ok(stmt, declared, prescan, analyzer))
     if isinstance(stmt, TpyForEach):
         return (_for_range_eligible(stmt, analyzer, declared, prescan, pointers,
-                                    rebind_slots, storage_tuple_locals)
+                                    rebind_slots, storage_tuple_locals, narrowed)
                 or _for_each_container_eligible(stmt, analyzer, declared, prescan,
                                                 pointers, rebind_slots,
-                                                storage_tuple_locals))
+                                                storage_tuple_locals, narrowed))
     if isinstance(stmt, TpyExprStmt):
         # A bare expression statement: a builtin `print(...)` (common-arg subset)
         # or a same-module free-function call discarded for its side effects.
@@ -3014,27 +3206,102 @@ def _stmt_eligible(stmt: TpyStmt, analyzer, declared: dict[str, TpyType],
 def _body_eligible(body, analyzer, declared: dict[str, TpyType],
                    prescan: _Prescan, *, in_branch: bool,
                    pointers: set[str], rebind_slots: set[str],
-                   storage_tuple_locals: set[str]) -> bool:
+                   storage_tuple_locals: set[str],
+                   narrowed: set[str]) -> bool:
     """Walk a statement list in source order, mirroring lowering's declared-scope
     growth: a top-level new-name var-decl extends scope; branch bodies don't. The
     map carries each name's resolved type (for the mixed-sign comparison gate and
     F1 field-receiver lookup); `pointers` carries the F2 pointer-local names a
     reseat reads, `rebind_slots` the F2d rebind-slot subset whose reseats are
     rvalue rebinds, `storage_tuple_locals` the F3 `auto&&` tuple aliases a borrow
-    read lifts. All copied so sibling branches don't see each other."""
+    read lifts, `narrowed` the U3 isinstance-narrowed names whose reads rename
+    to the extraction alias (writes to them are out of the slice; a post-if
+    narrowing mutates the set mid-walk like a POINTER decl mutates `pointers`).
+    All copied so sibling branches don't see each other."""
     declared = dict(declared)  # local copy -- sibling branches must not see each other
     pointers = set(pointers)
     rebind_slots = set(rebind_slots)
     storage_tuple_locals = set(storage_tuple_locals)
+    narrowed = set(narrowed)
     for stmt in body:
         if not _stmt_eligible(stmt, analyzer, declared, prescan,
                               in_branch=in_branch, pointers=pointers,
                               rebind_slots=rebind_slots,
-                              storage_tuple_locals=storage_tuple_locals):
+                              storage_tuple_locals=storage_tuple_locals,
+                              narrowed=narrowed):
             return False
         if (not in_branch and isinstance(stmt, TpyVarDecl)
                 and stmt.name not in declared):  # first decl -- keep retro-widened type
             declared[stmt.name] = _var_decl_type(stmt, analyzer)
+    return True
+
+
+def _narrow_if_eligible(stmt: TpyIf, info, analyzer,
+                        declared: dict[str, TpyType], prescan: _Prescan, *,
+                        pointers: set[str], rebind_slots: set[str],
+                        storage_tuple_locals: set[str],
+                        narrowed: set[str]) -> bool:
+    """The U3 isinstance-narrowing `if`. Each branch with a concrete member
+    fact is walked with the subject RETYPED to that member (reads then check
+    like a record param / scalar local -- the same shapes the alias rename
+    lowers to) and the subject marked narrowed (rebinding writes reject). A
+    remaining-union fact keeps the subject un-retyped: its reads stay the bare
+    variant on both paths. The elif continuation recurses whether it flattens
+    (`else if`) or nests (`} else {` + if, when the outer else-fact is
+    concrete) -- the split is an emit decision, taken again at lowering. The
+    early-return implicit else is NOT handled here: it belongs to the last
+    link of the whole (possibly plain-headed) chain and is applied by the
+    caller's `_chain_post_if_fact` pass at statement level."""
+    var, u, _members, folded = info
+    if var in narrowed and not folded:
+        # Re-dispatch on an already-extracted subject: the AST still reads the
+        # original variant here, but a same-scope re-extraction would bump the
+        # alias suffix -- out of the slice (the exhaustiveness fold is safe:
+        # it emits no new holds_alternative).
+        return False
+    if folded and stmt.else_body:
+        # A dead else after an exhaustiveness fold never occurs in green code
+        # (sema folded BECAUSE the chain exhausted the union) -- defensive.
+        return False
+    if analyzer.if_branch_decls.get(id(stmt)):
+        return False
+    if not (_narrow_facts_ok(u, stmt.then_type_facts, var)
+            and _narrow_facts_ok(u, stmt.else_type_facts, var)):
+        return False
+    then_fact = _narrow_fact_member(u, stmt.then_type_facts, var)
+    then_declared = dict(declared)
+    then_narrowed = set(narrowed)
+    if then_fact is not None:
+        then_declared[var] = then_fact
+        then_narrowed.add(var)
+    if not _body_eligible(stmt.then_body, analyzer, then_declared, prescan,
+                          in_branch=True, pointers=pointers,
+                          rebind_slots=rebind_slots,
+                          storage_tuple_locals=storage_tuple_locals,
+                          narrowed=then_narrowed):
+        return False
+    if stmt.else_body:
+        inner = _elif_link(stmt)
+        if inner is not None:
+            # Elif continuation: no extraction at this level
+            # (is_elif_continuation) -- the inner if narrows for itself
+            # against the original variant.
+            return _stmt_eligible(inner, analyzer, dict(declared),
+                                  prescan, in_branch=True, pointers=pointers,
+                                  rebind_slots=rebind_slots,
+                                  storage_tuple_locals=storage_tuple_locals,
+                                  narrowed=set(narrowed))
+        else_fact = _narrow_fact_member(u, stmt.else_type_facts, var)
+        else_declared = dict(declared)
+        else_narrowed = set(narrowed)
+        if else_fact is not None:
+            else_declared[var] = else_fact
+            else_narrowed.add(var)
+        return _body_eligible(stmt.else_body, analyzer, else_declared, prescan,
+                              in_branch=True, pointers=pointers,
+                              rebind_slots=rebind_slots,
+                              storage_tuple_locals=storage_tuple_locals,
+                              narrowed=else_narrowed)
     return True
 
 
@@ -3112,6 +3379,16 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx') -> THIRExpr:
             # ever reached as a field-access receiver (other `self` positions are
             # gated out), so its form tag is informational.
             return THIRSelf(result_type=rtype, form=Form.BORROW, loc=loc)
+        alias = lc.narrowed.get(e.name)
+        if alias is not None:
+            # A U3 isinstance-narrowed read renames to the extraction alias
+            # (`ctx.narrowed_vars`): a `T&` record alias (BORROW, like a
+            # REF_ALIAS local) or a scalar ref (VALUE). rtype is already the
+            # narrowed member -- sema retyped the read.
+            return THIRName(
+                result_type=rtype, name=alias,
+                form=Form.BORROW if _is_borrow_form_name(rtype) else Form.VALUE,
+                loc=loc)
         # A non-value name (a record param / REF_ALIAS / POINTER local used as a
         # field receiver) is a borrow; scalars are value form. A pointer-repr tuple
         # name is a borrow tuple param (`std::tuple<..., T*>`) UNLESS it is an F3
@@ -3546,7 +3823,8 @@ class _LowerCtx:
     never hit a non-value local."""
     __slots__ = ("analyzer", "func", "prescan", "render_type", "const_locals",
                  "pointers", "rebind_slot_locals", "movable_locals",
-                 "self_receiver", "record_name", "storage_tuple_locals")
+                 "self_receiver", "record_name", "storage_tuple_locals",
+                 "narrowed", "persistent_aliases")
 
     def __init__(self, func: TpyFunction, analyzer, render_type,
                  self_receiver: str | None = None,
@@ -3580,6 +3858,14 @@ class _LowerCtx:
         # set at any post-decl write/return (see _is_move_source).
         self.movable_locals: set[str] = analyzer.function_movable_locals.get(
             id(func), set())
+        # U3 isinstance-narrowing scope: source var -> live extraction alias
+        # (`ctx.narrowed_vars`); reads rename, the isinstance condition keeps
+        # the original variant. Saved/restored around branch and loop bodies
+        # like the AST's scope snapshots. `persistent_aliases` mirrors
+        # `ctx.declared_persistent_aliases` for the post-if statement-level
+        # extraction's collision bump (`__v` -> `__v_2`).
+        self.narrowed: dict[str, str] = {}
+        self.persistent_aliases: set[str] = set()
         # Param names live on `prescan.param_names` (the single copy): a
         # `str`-typed PARAM name is a `std::string_view` in the C++ signature
         # while an owned str LOCAL of the same resolved type is a `std::string`
@@ -3649,6 +3935,160 @@ def _lower_stmt(stmt: TpyStmt, lc: _LowerCtx, declared: dict[str, TpyType]) -> T
     if getattr(stmt, "no_source_comment", False) and not result.no_source_comment:
         return replace(result, no_source_comment=True)
     return result
+
+
+def _persistent_alias_name(var: str, lc: _LowerCtx) -> str:
+    """Mirror of `_fresh_alias_local(persistent=True)`: `__{var}`, suffix-bumped
+    past persistent aliases already declared at the enclosing C++ scope. (The
+    resumable frame-field rename arm is unreachable -- no resumable bodies
+    route.)"""
+    base = f"__{var}"
+    if base not in lc.persistent_aliases:
+        return base
+    n = 2
+    while f"{base}_{n}" in lc.persistent_aliases:
+        n += 1
+    return f"{base}_{n}"
+
+
+def _make_narrow_alias(alias: str, var: str, member: TpyType, u: UnionType,
+                       lc: _LowerCtx, loc) -> THIRNarrowAlias:
+    """One U3 extraction alias -- mirrors `_emit_isinstance_extractions`'
+    variant arm. The member template arg carries the pointer-variant `*` and
+    the const-pointee prefix (`lc.const_locals`, the U2 field-lift chain); the
+    `const auto&` qualifier fires for value-type union PARAMS (the `const
+    std::variant<...>` signature slot)."""
+    member_cpp = lc.render_type(member)
+    is_ptr = is_ptr_variant_union(u)
+    if is_ptr:
+        const = "const " if var in lc.const_locals else ""
+        member_cpp = f"{const}{member_cpp}*"
+    const_ref = var in lc.prescan.param_names and u.is_value_type()
+    return THIRNarrowAlias(alias=alias, variant_cpp=var, member_cpp=member_cpp,
+                           is_ptr_variant=is_ptr, const_ref=const_ref,
+                           no_source_comment=True, loc=loc)
+
+
+def _lower_stmts(body, lc: _LowerCtx, declared: dict[str, TpyType],
+                 stmt_fn=None) -> tuple[THIRStmt, ...]:
+    """Lower a statement list, appending the U3 post-if extraction after an
+    early-return narrowing `if` (`_gen_if`'s post-narrowing arm: a persistent,
+    comment-less, statement-level alias) and extending the narrowing scope /
+    retyping the subject for the REST of the list -- the enclosing branch/loop
+    save-restore pops both (the AST's scope-snapshot semantics). `stmt_fn`
+    lets the ctor body route its docstring/pass trivia arm."""
+    fn = stmt_fn or _lower_stmt
+    out: list[THIRStmt] = []
+    for s in body:
+        out.append(fn(s, lc, declared))
+        if not isinstance(s, TpyIf):
+            continue
+        pf = _chain_post_if_fact(s, declared, lc.narrowed, lc.analyzer)
+        if pf is None:
+            continue
+        var, u, post = pf
+        alias = _persistent_alias_name(var, lc)
+        out.append(_make_narrow_alias(alias, var, post, u, lc,
+                                      getattr(s, "loc", None)))
+        lc.persistent_aliases.add(alias)
+        lc.narrowed[var] = alias
+        declared[var] = post
+    return tuple(out)
+
+
+def _lower_scoped_stmts(body, lc: _LowerCtx,
+                        declared: dict[str, TpyType]) -> tuple[THIRStmt, ...]:
+    """`_lower_stmts` under a narrowing-scope snapshot: a branch or loop body.
+    A post-if narrowing made inside pops at the closing brace (the AST's
+    `narrowed_vars` / `declared_persistent_aliases` body restores)."""
+    saved_narrowed = dict(lc.narrowed)
+    saved_aliases = set(lc.persistent_aliases)
+    try:
+        return _lower_stmts(body, lc, declared)
+    finally:
+        lc.narrowed = saved_narrowed
+        lc.persistent_aliases = saved_aliases
+
+
+def _lower_narrowed_branch(body, fact: 'TpyType | None', var: str,
+                           u: UnionType, lc: _LowerCtx,
+                           declared: dict[str, TpyType],
+                           alias_loc) -> tuple[THIRStmt, ...]:
+    """Lower one narrow-if branch under a narrowing-scope snapshot: a concrete
+    member fact prepends the extraction alias (reads rename via `lc.narrowed`,
+    the subject retypes for the branch walk); the snapshot pops at the closing
+    brace. `alias_loc` is the if's loc for the then arm, but else_body[0]'s
+    loc for the else arm -- emit_else_comment's backward scan for the `else:`
+    line starts from the else body's leading statement."""
+    saved_narrowed = dict(lc.narrowed)
+    saved_aliases = set(lc.persistent_aliases)
+    branch_declared = dict(declared)
+    out: list[THIRStmt] = []
+    if fact is not None:
+        alias = f"__{var}"  # branch-scoped: shadowing an outer alias is fine
+        out.append(_make_narrow_alias(alias, var, fact, u, lc, alias_loc))
+        lc.narrowed[var] = alias
+        branch_declared[var] = fact
+    out.extend(_lower_stmts(body, lc, branch_declared))
+    lc.narrowed = saved_narrowed
+    lc.persistent_aliases = saved_aliases
+    return tuple(out)
+
+
+def _lower_narrow_if(stmt: TpyIf, info, lc: _LowerCtx,
+                     declared: dict[str, TpyType], loc) -> THIRIf:
+    """Lower a U3 isinstance-narrowing `if` (gate-admitted by
+    `_narrow_if_eligible`). The condition is the holds_alternative test (or
+    the exhaustiveness fold's bare `true`); each branch lowers via
+    `_lower_narrowed_branch`; an elif continuation recurses, breaking the
+    emitter's flat `else if` chain when the outer else-fact would extract
+    (`else_is_nested` -- the AST's `_has_concrete_isinstance_facts` gate)."""
+    analyzer = lc.analyzer
+    var, u, members, folded = info
+    cond_loc = getattr(stmt.condition, "loc", None)
+    if folded:
+        cond: THIRExpr = THIRLiteral(
+            result_type=analyzer.get_expr_type(stmt.condition), value=True,
+            loc=cond_loc)
+    else:
+        is_ptr = is_ptr_variant_union(u)
+        const = "const " if (is_ptr and var in lc.const_locals) else ""
+        cond = THIRIsinstance(
+            result_type=analyzer.get_expr_type(stmt.condition),
+            variant_cpp=var,
+            member_cpps=tuple(
+                f"{const}{lc.render_type(m)}*" if is_ptr else lc.render_type(m)
+                for m in members),
+            loc=cond_loc)
+    then_fact = _narrow_fact_member(u, stmt.then_type_facts, var)
+    then_stmts = _lower_narrowed_branch(stmt.then_body, then_fact, var, u, lc,
+                                        declared, loc)
+    else_stmts: tuple[THIRStmt, ...] = ()
+    else_is_nested = False
+    if stmt.else_body:
+        inner = _elif_link(stmt)
+        if inner is not None:
+            # Elif continuation: no extraction at this level
+            # (is_elif_continuation); the inner if handles its own narrowing.
+            else_is_nested = _facts_have_concrete(stmt.else_type_facts)
+            if else_is_nested:
+                # The nested if is a body STATEMENT of the else block: its own
+                # early-return post-if alias emits inside the block and its
+                # narrowing scope pops at the closing brace.
+                else_stmts = _lower_scoped_stmts(stmt.else_body, lc,
+                                                 dict(declared))
+            else:
+                # Flat chain: the chain-level post-if belongs to the enclosing
+                # statement walk (_lower_stmts' _chain_post_if_fact pass), so
+                # the link lowers bare.
+                else_stmts = (_lower_stmt(inner, lc, dict(declared)),)
+        else:
+            else_fact = _narrow_fact_member(u, stmt.else_type_facts, var)
+            else_stmts = _lower_narrowed_branch(
+                stmt.else_body, else_fact, var, u, lc, declared,
+                getattr(stmt.else_body[0], "loc", None))
+    return THIRIf(condition=cond, then_body=then_stmts,
+                  else_body=else_stmts, else_is_nested=else_is_nested, loc=loc)
 
 
 def _lower_stmt_dispatch(stmt: TpyStmt, lc: _LowerCtx,
@@ -3960,19 +4400,37 @@ def _lower_stmt_dispatch(stmt: TpyStmt, lc: _LowerCtx,
                                         form=Form.STORAGE, loc=loc)
         return THIRReturn(value=value, loc=loc)
     if isinstance(stmt, TpyIf):
-        # Branches share `declared`: eligibility guarantees they only reassign
-        # already-declared locals (lowered to THIRAssign), so neither branch
-        # extends the scope and order stays consistent with the AST path.
+        info = _isinstance_narrow_info(stmt.condition, declared, analyzer)
+        if info is not None:
+            return _lower_narrow_if(stmt, info, lc, declared, loc)
+        # Branch-local `declared` copies: eligibility guarantees branches only
+        # reassign already-declared locals, but a nested post-if narrowing may
+        # retype its subject for the rest of ITS branch -- that must not leak
+        # to the sibling or past the if (the AST's per-branch scope restore).
+        # The else side mirrors the AST chain collect: a flat elif link lowers
+        # BARE (its chain-level post-if belongs to the enclosing statement
+        # walk -- a plain-headed chain can still end in a narrowing elif); a
+        # genuine else block (or a concrete-else-fact nested if) is a body.
+        else_is_nested = False
+        inner = _elif_link(stmt)
+        if inner is not None and not _facts_have_concrete(stmt.else_type_facts):
+            else_stmts: tuple[THIRStmt, ...] = (
+                _lower_stmt(inner, lc, dict(declared)),)
+        else:
+            else_is_nested = inner is not None
+            else_stmts = _lower_scoped_stmts(stmt.else_body, lc,
+                                             dict(declared))
         return THIRIf(
             condition=_lower_expr(stmt.condition, lc),
-            then_body=tuple(_lower_stmt(s, lc, declared) for s in stmt.then_body),
-            else_body=tuple(_lower_stmt(s, lc, declared) for s in stmt.else_body),
+            then_body=_lower_scoped_stmts(stmt.then_body, lc, dict(declared)),
+            else_body=else_stmts,
+            else_is_nested=else_is_nested,
             loc=loc,
         )
     if isinstance(stmt, TpyWhile):
         return THIRWhile(
             condition=_lower_expr(stmt.condition, lc),
-            body=tuple(_lower_stmt(s, lc, declared) for s in stmt.body),
+            body=_lower_scoped_stmts(stmt.body, lc, dict(declared)),
             loc=loc,
         )
     if isinstance(stmt, TpyForEach):
@@ -3992,7 +4450,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, lc: _LowerCtx,
             et = str_et
         body_declared = dict(declared)
         body_declared[stmt.var] = et
-        body = tuple(_lower_stmt(s, lc, body_declared) for s in stmt.body)
+        body = _lower_scoped_stmts(stmt.body, lc, body_declared)
         if _is_range_call(it):
             nargs = len(it.args)
             if nargs == 1:
@@ -4097,13 +4555,13 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
             lc.const_locals.add("self")
     if not _body_eligible(func.body, analyzer, params_set, lc.prescan,
                           in_branch=False, pointers=set(), rebind_slots=set(),
-                          storage_tuple_locals=set()):
+                          storage_tuple_locals=set(), narrowed=set()):
         return None
     params = tuple(THIRParam(name=n, type=t) for n, t in func.params)
     rt = func.return_type if isinstance(func.return_type, TpyType) else VoidType()
     # Seeded with params (and `self`): a write to such a name is a reassignment.
     declared: dict[str, TpyType] = dict(params_set)
-    body = tuple(_lower_stmt(s, lc, declared) for s in func.body)
+    body = _lower_stmts(func.body, lc, declared)
     fn = THIRFunction(
         name=func.name,
         params=params,
@@ -4374,7 +4832,7 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
                        if not (is_docstring(s) or isinstance(s, TpyPassStmt))]
     if not _body_eligible(body_non_trivia, analyzer, declared, lc.prescan,
                           in_branch=False, pointers=set(), rebind_slots=set(),
-                          storage_tuple_locals=set()):
+                          storage_tuple_locals=set(), narrowed=set()):
         return None
     body_declared = dict(declared)
     ctor = THIRConstructor(
@@ -4383,7 +4841,8 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
         mil_inits=tuple(_lower_ctor_mil_init(s, own_param_names, declared, lc)
                         for s in field_inits),
         base_inits=tuple(base_inits),
-        body=tuple(_lower_ctor_body_stmt(s, lc, body_declared) for s in body_stmts),
+        body=_lower_stmts(body_stmts, lc, body_declared,
+                          stmt_fn=_lower_ctor_body_stmt),
     )
     validate_constructor(ctor)
     return ctor

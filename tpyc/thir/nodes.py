@@ -407,6 +407,21 @@ class THIRStrSlice(THIRExpr):
 
 
 @dataclass(frozen=True)
+class THIRIsinstance(THIRExpr):
+    """`isinstance(v, A)` / `isinstance(v, (A, B))` over a routed union
+    local/param -> `std::holds_alternative<M>(v)` per check member, OR-joined
+    and parenthesized for the multi-member form -- mirrors the AST isinstance
+    arm over value/pointer variants (F4 U3). `member_cpps` are the final
+    template args (the `*` suffix and `const` prefix already applied for
+    pointer variants at lowering, mirroring VariantAccess._type_arg);
+    `variant_cpp` is the source spelled the way the AST spells it (the bare
+    Python name -- the AST deliberately skips the narrowed_vars alias, and the
+    slice excludes indirect / frame-slot sources)."""
+    variant_cpp: str
+    member_cpps: tuple[str, ...]
+
+
+@dataclass(frozen=True)
 class THIRFormConvert(THIRExpr):
     """An explicit borrow<->storage form conversion (IR_DESIGN "THIRFormConvert").
 
@@ -478,6 +493,28 @@ class THIRReturn(THIRStmt):
 
 
 @dataclass(frozen=True)
+class THIRNarrowAlias(THIRStmt):
+    """The isinstance-narrowing extraction alias (F4 U3): declared at branch
+    entry, or -- for the early-return implicit else -- at statement level
+    right after the `if`. Mirrors _emit_isinstance_extractions' variant arm:
+
+        auto& __v = *std::get<A*>(v);        (pointer variant)
+        const auto& __v = std::get<T>(v);    (value variant; const for
+                                              value-type params)
+
+    Reads of the narrowed source inside the alias's scope lower to
+    `THIRName(alias)`; the isinstance condition keeps reading the original
+    variant. `member_cpp` is the final template arg (const/`*` applied for
+    pointer variants). Never carries a source comment -- the AST writes the
+    alias between the brace and the first statement's comment."""
+    alias: str
+    variant_cpp: str
+    member_cpp: str
+    is_ptr_variant: bool
+    const_ref: bool
+
+
+@dataclass(frozen=True)
 class THIRNoOpStmt(THIRStmt):
     """A statement that emits no C++ code -- a `pass` or a docstring in a
     constructor body (M3c-trivia). It carries no payload; its only effect is to
@@ -493,12 +530,21 @@ class THIRNoOpStmt(THIRStmt):
 class THIRIf(THIRStmt):
     """if / elif / else. An elif chain is an else_body of a single THIRIf.
 
-    Slice: simple comparison conditions, no branch-local first
-    declarations, no narrowing -- so it lowers to a plain C++ if/else with no
-    hoisting or scope machinery."""
+    Slice: no branch-local first declarations. Conditions are simple
+    comparisons or the F4 U3 isinstance form; U3 narrowing arrives as a
+    `THIRNarrowAlias` leading each narrowed branch (lowering resolved the
+    read renames), so the emitter still needs no scope machinery.
+
+    `else_is_nested` mirrors the AST's elif-flattening gate: an elif whose
+    outer `else_type_facts` carry a concrete extraction cannot flatten to
+    `} else if (...)` (the alias must be declared inside the else block), so
+    the chain breaks and the inner if emits as a nested statement --
+    `} else {` + its own source comment + `if (...)` one level deeper
+    (`_gen_if`'s `_has_concrete_isinstance_facts` chain-collect gate)."""
     condition: THIRExpr
     then_body: tuple[THIRStmt, ...]
     else_body: tuple[THIRStmt, ...] = ()
+    else_is_nested: bool = False
 
 
 @dataclass(frozen=True)

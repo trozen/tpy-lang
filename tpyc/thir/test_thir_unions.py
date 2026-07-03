@@ -14,7 +14,8 @@ from ..typesys import INT32, UnionType, VoidType
 from .lower import iter_module_constructors, lower_constructor, lower_module
 from .nodes import (
     Form, THIRCoerce, THIRFormConvert, THIRFunction, THIRFunctionLayout,
-    THIRLiteral, THIRName, THIRReturn, THIRVarDecl,
+    THIRIf, THIRIsinstance, THIRLiteral, THIRName, THIRNarrowAlias,
+    THIRReturn, THIRVarDecl,
 )
 from .validate import (
     THIRValidationError, validate_constructor, validate_function,
@@ -400,3 +401,407 @@ class TestValidator:
                           body=(bad,), layout=THIRFunctionLayout())
         with pytest.raises(THIRValidationError, match="BORROW return"):
             validate_function(fn)
+
+
+_THREE_RECORDS = _PRELUDE + _PTR_RECORDS + (
+    "class C:\n    z: Int32\n    def __init__(self, z: Int32):\n        self.z = z\n"
+)
+
+
+class TestNarrowingEligibility:
+    """F4 U3: isinstance-narrowing reads (if/elif/else + the early-return
+    implicit else). Writes to the narrowed subject, while-isinstance,
+    compound conditions, and readonly subjects stay on the AST path."""
+
+    def _lower(self, src: str):
+        return _lower_ctx(_THREE_RECORDS + src)
+
+    def test_two_member_if_else_routes(self):
+        thir = self._lower(
+            "def f(v: A | B) -> Int32:\n"
+            "    if isinstance(v, A):\n        return v.x\n"
+            "    else:\n        return v.y\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+        node = fn.body[0]
+        assert isinstance(node, THIRIf)
+        assert isinstance(node.condition, THIRIsinstance)
+        assert node.condition.member_cpps == ("A*",)
+        alias = node.then_body[0]
+        assert isinstance(alias, THIRNarrowAlias)
+        assert alias.alias == "__v" and alias.is_ptr_variant
+        assert not alias.const_ref  # ptr-variant alias is `auto&`
+        # reads inside the branch renamed to the alias
+        ret = node.then_body[1]
+        assert isinstance(ret.value.receiver, THIRName)
+        assert ret.value.receiver.name == "__v"
+        # the else branch extracts the complement member
+        el = node.else_body[0]
+        assert isinstance(el, THIRNarrowAlias) and el.member_cpp == "B*"
+
+    def test_post_if_alias_and_scope(self):
+        thir = self._lower(
+            "def f(v: A | B) -> Int32:\n"
+            "    if isinstance(v, A):\n        return v.x\n"
+            "    return v.y\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+        assert isinstance(fn.body[0], THIRIf)
+        post = fn.body[1]
+        assert isinstance(post, THIRNarrowAlias)
+        assert post.member_cpp == "B*" and post.no_source_comment
+        ret = fn.body[2]
+        assert ret.value.receiver.name == "__v"
+
+    def test_exhaustive_elif_folds_to_nested_true(self):
+        thir = self._lower(
+            "def f(v: A | B) -> Int32:\n"
+            "    if isinstance(v, A):\n        return v.x\n"
+            "    elif isinstance(v, B):\n        return v.y\n"
+            "    return -1\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+        outer = fn.body[0]
+        assert outer.else_is_nested  # concrete else-fact breaks the flat chain
+        inner = outer.else_body[0]
+        assert isinstance(inner, THIRIf)
+        assert isinstance(inner.condition, THIRLiteral)
+        assert inner.condition.value is True  # the exhaustiveness fold
+        assert isinstance(inner.then_body[0], THIRNarrowAlias)
+        # the dead implicit-else is suppressed: no post-if alias after outer
+        assert not isinstance(fn.body[1], THIRNarrowAlias)
+
+    def test_three_member_elif_chain_flattens(self):
+        thir = self._lower(
+            "def f(v: A | B | C) -> Int32:\n"
+            "    if isinstance(v, A):\n        return v.x\n"
+            "    elif isinstance(v, B):\n        return v.y\n"
+            "    else:\n        return v.z\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+        outer = fn.body[0]
+        # intermediate else-fact is the remaining union -> flat `else if`
+        assert not outer.else_is_nested
+        inner = outer.else_body[0]
+        assert isinstance(inner, THIRIf)
+        assert isinstance(inner.condition, THIRIsinstance)
+        assert isinstance(inner.else_body[0], THIRNarrowAlias)
+        assert inner.else_body[0].member_cpp == "C*"
+
+    def test_chain_post_if_alias_at_enclosing_scope(self):
+        # The early-return implicit else belongs to the LAST link of the flat
+        # elif chain and its alias emits at the ENCLOSING scope (the AST runs
+        # post-narrowing on chain[-1]) -- not inside the else arm.
+        thir = self._lower(
+            "def f(v: A | B | C) -> Int32:\n"
+            "    if isinstance(v, A):\n        return v.x\n"
+            "    elif isinstance(v, B):\n        return v.y\n"
+            "    return v.z\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+        outer = fn.body[0]
+        assert not outer.else_is_nested
+        post = fn.body[1]
+        assert isinstance(post, THIRNarrowAlias) and post.member_cpp == "C*"
+        assert fn.body[2].value.receiver.name == "__v"
+
+    def test_persistent_alias_suffix_bump(self):
+        # Unreachable from the routed slice today (a second post-if on the
+        # same subject is rejected as a re-dispatch), but the assert-isinstance
+        # cell will reach it -- pin _fresh_alias_local's bump mirror directly.
+        from .lower import _LowerCtx, _persistent_alias_name
+        compiler, modules = _compile(_PRELUDE + "def f() -> Int32:\n    return 0\n")
+        entry = _entry(modules)
+        lc = _LowerCtx(entry.ast.functions[0], entry.analyzer, None)
+        assert _persistent_alias_name("v", lc) == "__v"
+        lc.persistent_aliases.add("__v")
+        assert _persistent_alias_name("v", lc) == "__v_2"
+        lc.persistent_aliases.add("__v_2")
+        assert _persistent_alias_name("v", lc) == "__v_3"
+
+    def test_assign_node_rebind_of_narrowed_rejects(self):
+        # The parser emits TpyVarDecl for every ordinary name-target assign; a
+        # name-target TpyAssign only arises from macro-authored / frontend-IR
+        # ASTs. The gate must reject a narrowed-subject rebind there too -- a
+        # routed rebind would leave later reads on the stale extraction alias.
+        from ..parse.nodes import TpyAssign, TpyName
+        from .lower import _Prescan, _stmt_eligible
+        compiler, modules = _compile(_PRELUDE + (
+            "def f(v: Int32 | Float64, v2: Int32 | Float64) -> Int32:\n"
+            "    x = v2\n"
+            "    return 0\n"))
+        entry = _entry(modules)
+        an = entry.analyzer
+        fn = entry.ast.functions[0]
+        declared = {n: t for n, t in fn.params}
+        synthetic = TpyAssign(target=TpyName("v"), value=fn.body[0].init)
+        common = dict(in_branch=True, pointers=set(), rebind_slots=set(),
+                      storage_tuple_locals=set())
+        prescan = _Prescan(fn, an)
+        assert _stmt_eligible(synthetic, an, dict(declared), prescan,
+                              narrowed=set(), **common)
+        assert not _stmt_eligible(synthetic, an, dict(declared), prescan,
+                                  narrowed={"v"}, **common)
+
+    def test_narrowing_inside_loop_body_scopes(self):
+        # Narrow inside a for body; the scope pops at the loop's closing
+        # brace, so a fresh isinstance on the SAME subject after the loop is
+        # still admitted (a leaked scope would reject it as a re-dispatch).
+        thir = self._lower(
+            "def f(v: A | B) -> Int32:\n"
+            "    for i in range(2):\n"
+            "        if isinstance(v, A):\n            print(v.x)\n"
+            "    if isinstance(v, B):\n        return v.y\n"
+            "    return 0\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+        loop_if = fn.body[0].body[0]
+        assert isinstance(loop_if.then_body[0], THIRNarrowAlias)
+        assert isinstance(fn.body[1].then_body[0], THIRNarrowAlias)
+        assert fn.body[1].then_body[0].member_cpp == "B*"
+
+    def test_plain_headed_chain_post_if(self):
+        # A PLAIN-condition head whose chain ends in a narrowing elif: the
+        # early-return fact still belongs to the last link and the alias
+        # emits at the enclosing scope.
+        thir = self._lower(
+            "def f(flag: bool, v: A | B) -> Int32:\n"
+            "    if flag:\n        return 0\n"
+            "    elif isinstance(v, A):\n        return v.x\n"
+            "    return v.y\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+        outer = fn.body[0]
+        assert not isinstance(outer.condition, THIRIsinstance)
+        assert isinstance(outer.else_body[0], THIRIf)
+        post = fn.body[1]
+        assert isinstance(post, THIRNarrowAlias) and post.member_cpp == "B*"
+        assert fn.body[2].value.receiver.name == "__v"
+
+    def test_const_pointee_local_narrowing(self):
+        # A U2 const-lifted ptr-variant local (field read off an unmutated
+        # receiver) narrowed via isinstance: the const chain reaches BOTH the
+        # holds_alternative template arg and the extraction.
+        thir = self._lower(
+            "def f(h: H) -> Int32:\n"
+            "    w = h.u\n"
+            "    if isinstance(w, A):\n        return w.x\n"
+            "    return w.y\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+        node = fn.body[1]
+        assert node.condition.member_cpps == ("const A*",)
+        alias = node.then_body[0]
+        assert alias.member_cpp == "const A*" and alias.is_ptr_variant
+        assert fn.body[2].member_cpp == "const B*"  # post-if complement
+
+    def test_two_subject_nested_narrowing(self):
+        # Independent aliases for two different subjects in one nest; the
+        # inner post-if alias (unused) still emits inside the outer branch.
+        thir = self._lower(
+            "def f(v: A | B, w: A | B) -> Int32:\n"
+            "    if isinstance(v, A):\n"
+            "        if isinstance(w, B):\n            return v.x + w.y\n"
+            "        return v.x\n"
+            "    return 0\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+        outer = fn.body[0]
+        assert outer.then_body[0].alias == "__v"
+        inner = outer.then_body[1]
+        assert inner.then_body[0].alias == "__w"
+        ret = inner.then_body[1]
+        assert ret.value.left.receiver.name == "__v"
+        assert ret.value.right.receiver.name == "__w"
+        # the inner post-if complement alias for w, inside v's branch
+        assert isinstance(outer.then_body[2], THIRNarrowAlias)
+        assert outer.then_body[2].alias == "__w"
+        assert outer.then_body[2].member_cpp == "A*"
+
+    def test_narrowed_method_receiver_rejects(self):
+        # `v.sound()` on the narrowed member rides the record-method-CALL
+        # frontier (the call-site gate admits container receivers only), not
+        # U3 -> AST. The rename itself is exercised by field reads.
+        thir = _lower_ctx(
+            "from tpy import Int32\n"
+            "class A:\n    x: Int32\n"
+            "    def __init__(self, x: Int32):\n        self.x = x\n"
+            "    def sound(self) -> Int32:\n        return self.x\n"
+            "class B:\n    y: Int32\n"
+            "    def __init__(self, y: Int32):\n        self.y = y\n"
+            "    def sound(self) -> Int32:\n        return self.y\n"
+            "def f(v: A | B) -> Int32:\n"
+            "    if isinstance(v, A):\n        return v.sound()\n"
+            "    return v.sound()\n")
+        assert _fn(thir, "f") is None
+
+    def test_narrowed_record_call_arg_rejects(self):
+        # A record arg (`use(v)` with v narrowed to A) rides the call-arg
+        # record frontier (auto-move / conversion cascade), not U3 -> AST.
+        thir = self._lower(
+            "def use(a2: A) -> Int32:\n    return a2.x\n"
+            "def f(v: A | B) -> Int32:\n"
+            "    if isinstance(v, A):\n        return use(v)\n"
+            "    return v.y\n")
+        assert _fn(thir, "f") is None
+
+    def test_write_to_narrowed_subject_rejects(self):
+        # Rebinding the narrowed LOCAL inside the branch writes through the
+        # alias on the AST path -- out of the slice. (A param subject can't
+        # even be reassigned -- sema rejects that outright.)
+        thir = self._lower(
+            "def f(v: A | B, v2: A | B) -> Int32:\n"
+            "    w = v\n"
+            "    if isinstance(w, A):\n        w = v2\n"
+            "    return 0\n")
+        assert _fn(thir, "f") is None
+
+    def test_readonly_subject_rejects(self):
+        thir = self._lower(
+            "def f(v: readonly[A | B]) -> Int32:\n"
+            "    if isinstance(v, A):\n        return v.x\n"
+            "    return v.y\n")
+        assert _fn(thir, "f") is None
+
+    def test_while_isinstance_rejects(self):
+        thir = self._lower(
+            "def f(v: A | B) -> Int32:\n"
+            "    while isinstance(v, A):\n        return v.x\n"
+            "    return 0\n")
+        assert _fn(thir, "f") is None
+
+    def test_compound_condition_rejects(self):
+        thir = self._lower(
+            "def f(v: A | B, flag: bool) -> Int32:\n"
+            "    if isinstance(v, A) and flag:\n        return v.x\n"
+            "    return 0\n")
+        assert _fn(thir, "f") is None
+
+    def test_unused_alias_still_emitted(self):
+        # The AST extracts at branch entry even when the branch never reads
+        # the narrowed name.
+        thir = self._lower(
+            "def f(v: A | B) -> Int32:\n"
+            "    if isinstance(v, A):\n        return 10\n"
+            "    return v.y\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+        assert isinstance(fn.body[0].then_body[0], THIRNarrowAlias)
+
+    def test_value_union_narrowing_routes(self):
+        thir = _lower(_PRELUDE + (
+            "def f(v: Int32 | Float64) -> Int32:\n"
+            "    if isinstance(v, Int32):\n        return v\n"
+            "    return 7\n"))
+        fn = _fn(thir, "f")
+        assert fn is not None
+        alias = fn.body[0].then_body[0]
+        assert isinstance(alias, THIRNarrowAlias)
+        assert not alias.is_ptr_variant
+        assert alias.const_ref  # value-type union PARAM -> `const auto&`
+        assert alias.member_cpp == "int32_t"
+
+    def test_value_union_local_alias_is_mutable_ref(self):
+        thir = _lower(_PRELUDE + (
+            "def f(v: Int32 | Float64) -> Int32:\n"
+            "    x = v\n"
+            "    if isinstance(x, Int32):\n        return x\n"
+            "    return 7\n"))
+        fn = _fn(thir, "f")
+        assert fn is not None
+        alias = fn.body[1].then_body[0]
+        assert isinstance(alias, THIRNarrowAlias)
+        assert not alias.const_ref  # local -> `auto&`
+
+    def test_tuple_form_check_routes_without_extraction(self):
+        # `isinstance(v, (A, B))` on a 3-member union: the then-fact is the
+        # remaining union -- condition ORs, no alias, reads of v stay bare.
+        thir = self._lower(
+            "def f(v: A | B | C) -> Int32:\n"
+            "    if isinstance(v, (A, B)):\n        return 1\n"
+            "    return v.z\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+        node = fn.body[0]
+        assert isinstance(node.condition, THIRIsinstance)
+        assert node.condition.member_cpps == ("A*", "B*")
+        assert not isinstance(node.then_body[0], THIRNarrowAlias)
+        # the implicit else IS concrete (C) -> post-if alias
+        assert isinstance(fn.body[1], THIRNarrowAlias)
+        assert fn.body[1].member_cpp == "C*"
+
+
+class TestNarrowingEmit:
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        hpp, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=thir))
+        return hpp + cpp
+
+    SRC = _THREE_RECORDS + (
+        "def two(v: A | B) -> Int32:\n"
+        "    if isinstance(v, A):\n        return v.x\n"
+        "    else:\n        return v.y\n"
+        "def post(v: A | B) -> Int32:\n"
+        "    if isinstance(v, A):\n        return v.x\n"
+        "    return v.y\n"
+        "def exhaust(v: A | B) -> Int32:\n"
+        "    if isinstance(v, A):\n        return v.x\n"
+        "    elif isinstance(v, B):\n        return v.y\n"
+        "    return -1\n"
+        "def three(v: A | B | C) -> Int32:\n"
+        "    if isinstance(v, A):\n        return v.x\n"
+        "    elif isinstance(v, B):\n        return v.y\n"
+        "    else:\n        return v.z\n"
+        "def val(v: Int32 | Float64) -> Int32:\n"
+        "    if isinstance(v, Int32):\n        return v\n"
+        "    return 7\n"
+        "def chain(v: A | B | C) -> Int32:\n"
+        "    if isinstance(v, A):\n        return v.x\n"
+        "    elif isinstance(v, B):\n        return v.y\n"
+        "    return v.z\n"
+        "def loop(v: A | B) -> Int32:\n"
+        "    for i in range(2):\n"
+        "        if isinstance(v, A):\n            print(v.x)\n"
+        "    if isinstance(v, B):\n        return v.y\n"
+        "    return 0\n"
+        "def plain_head(flag: bool, v: A | B) -> Int32:\n"
+        "    if flag:\n        return 0\n"
+        "    elif isinstance(v, A):\n        return v.x\n"
+        "    return v.y\n"
+        "def constw(h: H) -> Int32:\n"
+        "    w = h.u\n"
+        "    if isinstance(w, A):\n        return w.x\n"
+        "    return w.y\n"
+        "def two_vars(v: A | B, w: A | B) -> Int32:\n"
+        "    if isinstance(v, A):\n"
+        "        if isinstance(w, B):\n            return v.x + w.y\n"
+        "        return v.x\n"
+        "    return 0\n"
+        "def main():\n"
+        "    two(A(1))\n    post(B(2))\n    exhaust(A(3))\n"
+        "    three(C(4))\n    val(5)\n    chain(B(6))\n"
+        "    loop(A(7))\n    plain_head(False, B(8))\n"
+        "    h = H(A(9))\n    constw(h)\n    two_vars(A(10), B(11))\n"
+        "main()\n")
+
+    def test_byte_identical(self):
+        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
+
+    def test_narrowing_renders(self):
+        cpp = self._cpp(self.SRC, thir=True)
+        assert "if (std::holds_alternative<A*>(v)) {" in cpp
+        assert "auto& __v = *std::get<A*>(v);" in cpp
+        assert "auto& __v = *std::get<B*>(v);" in cpp  # complement + post-if
+        assert "if (true) {" in cpp  # the exhaustiveness fold
+        assert "} else if (std::holds_alternative<B*>(v)) {" in cpp  # flat chain
+        assert "const auto& __v = std::get<int32_t>(v);" in cpp  # value union
+        assert "return __v.x;" in cpp
+
+    def test_routing_is_non_vacuous(self):
+        thir = _lower_ctx(self.SRC)
+        for name in ("two", "post", "exhaust", "three", "val", "chain",
+                     "loop", "plain_head", "constw", "two_vars"):
+            assert _fn(thir, name) is not None, name

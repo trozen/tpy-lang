@@ -48,9 +48,11 @@ from .nodes import (
     THIRFString,
     THIRFunction,
     THIRIf,
+    THIRIsinstance,
     THIRLiteral,
     THIRMethodCall,
     THIRName,
+    THIRNarrowAlias,
     THIRNoOpStmt,
     THIRPrint,
     THIRPrintArg,
@@ -447,6 +449,13 @@ def _emit_expr(e: THIRExpr) -> str:
         # Char-annotated decl init, a Char-slot call arg) -- mirrors
         # gen_expr's char-literal branch.
         return f"'{escape_cpp_char(e.value)}'"
+    if isinstance(e, THIRIsinstance):
+        # Mirrors the AST isinstance arm over value/pointer variants: one
+        # holds_alternative per check member, OR-joined and parenthesized for
+        # the multi-member (tuple / inline-union) form.
+        checks = [f"std::holds_alternative<{m}>({e.variant_cpp})"
+                  for m in e.member_cpps]
+        return checks[0] if len(checks) == 1 else "(" + " || ".join(checks) + ")"
     if isinstance(e, THIRFieldAccess):
         return _emit_field_access(e)
     if isinstance(e, THIRSubscript):
@@ -497,6 +506,7 @@ def _emit_if(out: TextIO, stmt: THIRIf, indent_level: int, state: _EmitState) ->
     chain = [stmt]
     while (len(chain[-1].else_body) == 1
            and isinstance(chain[-1].else_body[0], THIRIf)
+           and not chain[-1].else_is_nested
            and _is_elif(chain[-1], chain[-1].else_body[0])):
         chain.append(chain[-1].else_body[0])
     for i, node in enumerate(chain):
@@ -635,6 +645,14 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
         # `x = x + y` peephole share the emit).
         out.write(f"{indent}{escape_cpp_name(stmt.target)} += "
                   f"{_emit_expr(stmt.value)};\n")
+    elif isinstance(stmt, THIRNarrowAlias):
+        # The isinstance-narrowing extraction (F4 U3) -- mirrors
+        # _emit_isinstance_extractions' variant arm (VariantAccess.get_by_type
+        # with lvalue=True: the ptr-variant deref carries no outer parens).
+        qualifier = "const auto&" if stmt.const_ref else "auto&"
+        deref = "*" if stmt.is_ptr_variant else ""
+        out.write(f"{indent}{qualifier} {stmt.alias} = {deref}"
+                  f"std::get<{stmt.member_cpp}>({stmt.variant_cpp});\n")
     elif isinstance(stmt, THIRReturn):
         if stmt.value is None:
             out.write(f"{indent}return;\n")

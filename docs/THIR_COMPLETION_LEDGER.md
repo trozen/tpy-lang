@@ -82,7 +82,7 @@ deletion is the concrete milestone that forces its tail closed.
 |---|---|---|
 | **Ctor MIL emit** -- `records.py` `_extract_field_inits` / `_extract_base_inits` / `_get_non_init_stmts` + the inline ` : f(v)... {}` write | every ctor MIL field cell + body: scalar (M3a), record/Optional copy+move (M3b), ctor-call / param-field-read sources + own-optional params (M3b-rvalue), docstring/`pass` trivia body (M3c-trivia), non-init body + demotion (M3c-demotion), inheritance -- single + multi base + inherited-field writes (M3d), and str/list/dict/tuple/union/bytes fields (F3+) + cross-module/native/generic records | **PARTIAL** -- the whole scalar/record/Optional + body + inheritance surface lands (ctor self-contained tail complete); deferred cells are cross-axis-blocked -- non-record demoted-field-writes + non-record fields (F3+) + native/generic records |
 | **Body statement + expression emit** -- `statements.py` `gen_body` per-statement path + `expressions.py` `gen_expr`, for routed callables | every statement shape + expression form across every callable kind | **PARTIAL** -- straight-line shapes over the F1/F2 + scalar/bool/double-float + str (F6 S1-S5 + cross-type coercions) + bytes (F6 S6 values + the incr-46 tail: subscript/slices/iteration/concat/aug-assign) slice, incl. logical/chained-compare exprs and scalar/slice-object type-constructor calls |
-| **Form / conversion machinery** -- `context.py` `convert` + `CppForm`/`FormValue`, the ~12 detection predicates + ~22 local side-sets + the `RefType` wrapper (see `THIR_FORM_INVENTORY.md`) | **F-final**: the `Form` tag + `THIRFormConvert` subsume all form dispatch | **PARTIAL** -- F1/F2 forms carried + F3 tuple read/write + the F6 str+bytes view->owned converts (S1/S6 -- both `view_to_owned_conv` family arms validated; reused at container-element slots by S5; extended to the cross-type str-family coercions in incr 42, the materializing arms lowering to the same THIRFormConvert) + the F4 union arms (U1 value + U2 pointer-variant, incr 49-50: `to_[const_]ptr_variant` / `to_value_variant<...>` carried, plus the structural form validator as the second gate); F4 U3+ (narrowing reads), F5, the remaining F6 tail, and RefType removal pending |
+| **Form / conversion machinery** -- `context.py` `convert` + `CppForm`/`FormValue`, the ~12 detection predicates + ~22 local side-sets + the `RefType` wrapper (see `THIR_FORM_INVENTORY.md`) | **F-final**: the `Form` tag + `THIRFormConvert` subsume all form dispatch | **PARTIAL** -- F1/F2 forms carried + F3 tuple read/write + the F6 str+bytes view->owned converts (S1/S6 -- both `view_to_owned_conv` family arms validated; reused at container-element slots by S5; extended to the cross-type str-family coercions in incr 42, the materializing arms lowering to the same THIRFormConvert) + the F4 union arms (U1 value + U2 pointer-variant, incr 49-50: `to_[const_]ptr_variant` / `to_value_variant<...>` carried, plus the structural form validator as the second gate) + the U3 narrowing extractions (incr 51: `THIRIsinstance` / `THIRNarrowAlias`, the `narrowed_vars` rename mirrored as lowering scope); F4 U4+ (the while/assert/compound narrowing tail), F5, the remaining F6 tail, and RefType removal pending |
 
 These interlock: deleting `gen_body`/`gen_expr` requires the form machinery gone
 (F-final) and every statement shape routed. The **ctor MIL emit is the first
@@ -197,8 +197,26 @@ deferred (self-contained) / blocked-on-`<rung>`.
   U2-deferred: None-member ptr unions (monostate write arms), readonly
   ptr-variant slots (`ptr_variant_to_const`), field-to-field copies,
   `Own[union]` free-function params, member-value sources (the
-  gen_call_arg cascade). NEXT: U3 isinstance-narrowing reads
-  (`THIRVariantAccess` -- where the corpus routing lives). Deferred beyond
+  gen_call_arg cascade). **U3 isinstance-narrowing reads DONE (incr 51)**
+  -- the stateful `_gen_if` narrowing emit over routed unions:
+  `THIRIsinstance` conditions (`std::holds_alternative<M>(v)` per check
+  member, OR-joined; template args carry the ptr `*` + the U2
+  const-pointee chain), `THIRNarrowAlias` branch-entry extractions
+  (`auto& __v = *std::get<A*>(v);` / value-union `const auto&` for
+  params) with reads renamed via the lowering-scoped `lc.narrowed`
+  mirror of `ctx.narrowed_vars`; the else complement alias, the flat
+  elif chain + the concrete-else-fact chain break
+  (`THIRIf.else_is_nested`), the exhaustiveness constant-fold
+  (`if (true)`, dead implicit-else suppressed), and the early-return
+  implicit else (persistent post-if alias via the `_lower_stmts`
+  chokepoint; subject retyped for the rest of the scope). Eligibility
+  threads a `narrowed` set: branch walks retype the subject to the
+  member, rebinding writes reject, remaining-union (tuple-form) facts
+  keep the variant un-extracted. U3-deferred: `while isinstance`
+  loop-entry extraction, `assert isinstance` persistent narrowing,
+  compound conditions, re-dispatch on a narrowed subject, readonly
+  subjects, narrowed record call-args / method receivers (the record
+  call-site frontiers). Routing 28778 -> 28788 bodies. Deferred beyond
   F4: `match` captures (statement shape), recursive-alias wrappers
   (reference ABI), protocol unions, async/generator union frames,
   ternary-arm normalization, tuple-unpack binds. F5 generic-slot, F-final

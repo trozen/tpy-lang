@@ -22,12 +22,14 @@ from .nodes import (
     THIRFormConvert,
     THIRFString,
     THIRIf,
+    THIRIsinstance,
     THIRExprStmt,
     THIRContainerLiteral,
     THIRLiteral,
     THIRMethodCall,
     THIRModule,
     THIRName,
+    THIRNarrowAlias,
     THIRPrint,
     THIRReturn,
     THIRSelf,
@@ -131,6 +133,8 @@ def _expr(e: THIRExpr) -> str:
     if isinstance(e, THIRFormConvert):
         cst = "const " if e.is_const else ""
         return f"form_convert[{cst}{e.form.name.lower()}]({_expr(e.value)})"
+    if isinstance(e, THIRIsinstance):
+        return f"isinstance(%{e.variant_cpp}, [{', '.join(e.member_cpps)}])"
     return f"<{type(e).__name__}>"
 
 
@@ -144,6 +148,11 @@ def _stmt_lines(stmt: THIRStmt, depth: int) -> list[str]:
         return [f"{pad}{_expr(stmt.target)} = {_expr(stmt.value)}"]
     if isinstance(stmt, THIRStrAppend):
         return [f"{pad}%{stmt.target} += {_expr(stmt.value)}"]
+    if isinstance(stmt, THIRNarrowAlias):
+        deref = "*" if stmt.is_ptr_variant else ""
+        cst = "const " if stmt.const_ref else ""
+        return [f"{pad}%{stmt.alias} = {cst}&{deref}get<{stmt.member_cpp}>"
+                f"(%{stmt.variant_cpp})"]
     if isinstance(stmt, THIRReturn):
         return [f"{pad}return {_expr(stmt.value)}" if stmt.value is not None
                 else f"{pad}return"]
@@ -152,7 +161,9 @@ def _stmt_lines(stmt: THIRStmt, depth: int) -> list[str]:
         for s in stmt.then_body:
             lines.extend(_stmt_lines(s, depth + 1))
         if stmt.else_body:
-            lines.append(f"{pad}else:")
+            # `[nested]` marks the broken elif chain (a concrete-extraction
+            # else emits `} else {` + a nested if, not a flat `else if`).
+            lines.append(f"{pad}else:" + (" [nested]" if stmt.else_is_nested else ""))
             for s in stmt.else_body:
                 lines.extend(_stmt_lines(s, depth + 1))
         return lines
