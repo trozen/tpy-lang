@@ -50,6 +50,20 @@ void main() {
             std::cout << "ConnectionError" << "\n";
         }
     }
+    // # RequestException roots at OSError (CPython requests: IOError/OSError),
+    // # so a handler written for the builtin hierarchy catches a requests error.
+    // try:
+    {
+        try {
+            // requests.get("http:///no-host")
+            ::tpystd::tplib::requests::get("http:///no-host");
+            // print("no-raise")
+            std::cout << "no-raise" << "\n";
+        } catch (const ::tpy::OSError&) {
+            // print("OSError")
+            std::cout << "OSError" << "\n";
+        }
+    }
     // # A hung-up peer mid-request: the socket BrokenPipeError is re-wrapped as
     // # requests.ConnectionError. Catch the specific subclass to pin the wrap
     // # target, not just the RequestException base.
@@ -90,7 +104,8 @@ void __tpy_init() {
     // # raise HTTPError; a URL with no host raises ConnectionError before any socket
     // # work; a socket-level failure mid-request (here, a hung-up peer) is re-wrapped
     // # from the OSError family into requests.ConnectionError. All are caught by the
-    // # documented exception tree (the RequestException base).
+    // # documented exception tree (the RequestException base), which roots at
+    // # OSError like CPython requests -- a plain `except OSError` catches them too.
     // import socket
     ::tpystd::socket::__tpy_init();
     // from http.client import HTTPConnection

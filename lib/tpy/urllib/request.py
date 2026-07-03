@@ -30,7 +30,8 @@ HTTP_PORT: Final[Int32] = 80
 HTTPS_PORT: Final[Int32] = 443
 
 
-class URLError(Exception):
+# Subclasses OSError like CPython's URLError, so `except OSError` catches it.
+class URLError(OSError):
     def __init__(self, reason: String = "") -> None:
         super().__init__(reason)
 

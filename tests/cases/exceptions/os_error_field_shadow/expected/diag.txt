@@ -1,0 +1,1 @@
+main.py:12: warning: Field 'strerror' in 'Weird' shadows inherited field from 'OSError'; use 'OSError.strerror' to access the ancestor's

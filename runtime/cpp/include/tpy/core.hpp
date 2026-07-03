@@ -9,6 +9,7 @@
 #include <cmath>
 #include <concepts>
 #include <csignal>
+#include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <cxxabi.h>
@@ -48,7 +49,16 @@ struct BaseException : ::tpy::Throwable {
 };
 struct Exception : BaseException { using BaseException::BaseException; TPY_THROWABLE_VIRTUALS(Exception) };
 struct ValueError : Exception { using Exception::Exception; TPY_THROWABLE_VIRTUALS(ValueError) };
-struct OSError : Exception { using Exception::Exception; TPY_THROWABLE_VIRTUALS(OSError) };
+// Carries CPython's structured `.errno` / `.strerror` OSError attributes.
+// The C++ members need different names: `errno` is a C macro. TPy-level
+// access maps through native_field renames in _builtins/_exceptions.py.
+// Unset defaults are 0 / "" (CPython uses None; TPy has no Optional here).
+struct OSError : Exception {
+    using Exception::Exception;
+    int32_t error_number = 0;
+    std::string strerror_text;
+    TPY_THROWABLE_VIRTUALS(OSError)
+};
 struct FileNotFoundError : OSError { using OSError::OSError; TPY_THROWABLE_VIRTUALS(FileNotFoundError) };
 struct PermissionError : OSError { using OSError::OSError; TPY_THROWABLE_VIRTUALS(PermissionError) };
 struct BlockingIOError : OSError { using OSError::OSError; TPY_THROWABLE_VIRTUALS(BlockingIOError) };

@@ -155,6 +155,11 @@ def tpy_errno() -> Int32: ...
 @native("::tpy_last_resolve_error")
 def tpy_last_resolve_error() -> Ptr[readonly[UInt8]]: ...
 
+# The matching EAI_* code (same thread-local lifetime as the message);
+# becomes socket.gaierror's `.errno`, like CPython.
+@native("::tpy_last_resolve_code")
+def tpy_last_resolve_code() -> Int32: ...
+
 # Toggle O_NONBLOCK on `fd` (nonblocking != 0 sets it). Backs
 # socket.socket.setblocking; required before using a socket with the
 # asyncio reactor. Returns 0 on success, -1 on error (read tpy_errno).

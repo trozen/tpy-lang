@@ -44,5 +44,13 @@ def main() -> None:
     except URLError:
         print("no-host URLError")
 
+    # URLError roots at OSError (CPython parity), so a handler written for
+    # the builtin hierarchy catches it.
+    try:
+        urlopen("http:///path")
+        print("no-raise")
+    except OSError:
+        print("no-host OSError")
+
 
 main()

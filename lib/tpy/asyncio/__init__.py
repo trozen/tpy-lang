@@ -18,13 +18,13 @@ from tpy.coro import (
     poll_ready, poll_pending, poll_ready_none,
 )
 from tpy.mem import UninitStorage
-from tpy.unsafe import unsafe_str_from_cstr
 from tplib import Box
 from tplib.rc import Rc
 from time import monotonic
 from socket import (
-    socket, SocketError, SOL_SOCKET, SO_ERROR, SO_REUSEADDR, AF_INET, SOCK_STREAM)
-from _bindings import posix_socket, posix_signal
+    socket, SOL_SOCKET, SO_ERROR, SO_REUSEADDR, AF_INET, SOCK_STREAM,
+    _maybe_raise_connection_error, _socket_error, _strerror)
+from _bindings import posix_signal
 from ._executor import (
     Task, AnyTask,
     task_from_coro, make_executor_owned_task, task_to_any_box,
@@ -298,8 +298,12 @@ class _SockConnect:
         err = self._sock.getsockopt_int(SOL_SOCKET, SO_ERROR)
         if err == 0:
             return poll_ready_none()
-        raise SocketError("connect: " + unsafe_str_from_cstr(
-            posix_socket.strerror(err)))
+        # Same errno-keyed taxonomy as socket's own raise helpers: a refused
+        # connect surfaces as ConnectionRefusedError (CPython asyncio parity),
+        # any other errno as SocketError; all carry `.errno` / `.strerror`.
+        msg = _strerror(err)
+        _maybe_raise_connection_error(err, msg, "connect: " + msg)
+        raise _socket_error("connect: " + msg, err, msg)
 
 
 class SleepFuture:

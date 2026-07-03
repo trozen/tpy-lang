@@ -1642,6 +1642,7 @@ class ExpressionAnalyzer:
             field_info = self.protocols.lookup_record_field(record, expr.field)
             if field_info:
                 expr.accessed_field_is_interior = field_info.is_interior_mutable
+                expr.native_field_name = field_info.native_name
                 field_type = field_info.type
                 if type_subst:
                     field_type = self.type_ops.substitute_type_params(field_type, type_subst)
@@ -1871,6 +1872,7 @@ class ExpressionAnalyzer:
                 field_type = ReadonlyType(field_type)
 
         expr.unbound_self_parent_type = parent_type
+        expr.native_field_name = field_info.native_name
         return make_ref(field_type)
 
     def _analyze_field_access(self, expr: TpyFieldAccess) -> TpyType:

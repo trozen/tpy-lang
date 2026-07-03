@@ -35,10 +35,18 @@ namespace tpyapp::main {
             std::cout << "connected unexpectedly" << "\n";
             __state = S_JOIN_0;
             continue;
-        } catch (const ::tpy::OSError&) {
+        } catch (const ::tpy::ConnectionRefusedError&) {
             __sub_0.reset();
+            // # The specific subclass pins the CPython-parity claim; a regression
+            // # to generic SocketError would fall through to the arm below.
             // print("connect refused")
             std::cout << "connect refused" << "\n";
+            __state = S_JOIN_0;
+            continue;
+        } catch (const ::tpy::OSError&) {
+            __sub_0.reset();
+            // print("caught generic OSError")
+            std::cout << "caught generic OSError" << "\n";
             __state = S_JOIN_0;
             continue;
         } catch (...) {
@@ -60,9 +68,16 @@ namespace tpyapp::main {
             __sub_0.emplace(std::move((*loop).sock_connect((*s), std::tuple<std::string, int32_t>{"127.0.0.1", port})));
             __state = S_RESUME_0;
             continue;
-        } catch (const ::tpy::OSError&) {
+        } catch (const ::tpy::ConnectionRefusedError&) {
+            // # The specific subclass pins the CPython-parity claim; a regression
+            // # to generic SocketError would fall through to the arm below.
             // print("connect refused")
             std::cout << "connect refused" << "\n";
+            __state = S_JOIN_0;
+            continue;
+        } catch (const ::tpy::OSError&) {
+            // print("caught generic OSError")
+            std::cout << "caught generic OSError" << "\n";
             __state = S_JOIN_0;
             continue;
         } catch (...) {
@@ -91,8 +106,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # asyncio reactor: sock_connect to a refused port surfaces as OSError (TPy
-    // # raises socket.SocketError, CPython ConnectionRefusedError -- both OSError).
+    // # asyncio reactor: sock_connect to a refused port raises
+    // # ConnectionRefusedError (an OSError), matching CPython asyncio.
     // # The bound-but-not-listen()ed socket stays open to reserve the port.
     // import asyncio
     ::tpystd::asyncio::__tpy_init();

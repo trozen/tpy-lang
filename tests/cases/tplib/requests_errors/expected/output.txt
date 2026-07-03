@@ -1,4 +1,5 @@
 404 False no!
 HTTPError
 ConnectionError
+OSError
 ConnectionError

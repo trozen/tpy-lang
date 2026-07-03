@@ -154,7 +154,7 @@ class SockAddrIn:
     port:   UInt16 = native_field("sin_port")
 ```
 
-Field reads and writes emit the renamed C/C++ member (`v.x` -> `v.m_x`, `a.port` -> `a.sin_port`). Constructor calls are positional (aggregate init for C structs, constructor args for C++ classes) so the rename does not affect construction. `native_field` is rejected on non-`@native` classes and requires exactly one positional string literal argument.
+Field reads and writes emit the renamed C/C++ member (`v.x` -> `v.m_x`, `a.port` -> `a.sin_port`). The rename is inherited: accessing the field through a TPy-level subclass of the `@native` class resolves it too (e.g. a user subclass of `OSError` reads `.errno` -> `error_number`); a subclass redeclaring the same field name shadows the rename and binds its own plain member (sema warns). Constructor calls are positional (aggregate init for C structs, constructor args for C++ classes) so the rename does not affect construction. `native_field` is rejected on non-`@native` classes and requires exactly one positional string literal argument.
 
 ### Global variables
 

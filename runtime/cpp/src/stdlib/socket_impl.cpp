@@ -38,15 +38,19 @@ namespace {
 // each other's error messages. The buffer is a fixed size because
 // gai_strerror / strerror messages are short; we copy to decouple the
 // returned pointer from libc's internal buffer reuse.
-thread_local char g_resolve_err[256] = {0};
+thread_local char tl_resolve_err[256] = {0};
+// The matching EAI_* code, surfaced as socket.gaierror's `.errno` (CPython
+// puts the gai code there, not a POSIX errno).
+thread_local int tl_resolve_code = 0;
 
-void set_resolve_error(const char* msg) {
+void set_resolve_error(const char* msg, int code = 0) {
+    tl_resolve_code = code;
     if (msg == nullptr) {
-        g_resolve_err[0] = '\0';
+        tl_resolve_err[0] = '\0';
         return;
     }
-    std::strncpy(g_resolve_err, msg, sizeof(g_resolve_err) - 1);
-    g_resolve_err[sizeof(g_resolve_err) - 1] = '\0';
+    std::strncpy(tl_resolve_err, msg, sizeof(tl_resolve_err) - 1);
+    tl_resolve_err[sizeof(tl_resolve_err) - 1] = '\0';
 }
 
 }  // namespace
@@ -69,13 +73,13 @@ int tpy_resolve_ipv4(const std::uint8_t* host, std::uint64_t host_len,
     addrinfo* res = nullptr;
     int rc = getaddrinfo(host_s.c_str(), nullptr, &hints, &res);
     if (rc != 0) {
-        set_resolve_error(gai_strerror(rc));
+        set_resolve_error(gai_strerror(rc), rc);
         return -1;
     }
     if (res == nullptr) {
         // getaddrinfo returned 0 but no results -- shouldn't happen,
         // but guard anyway.
-        set_resolve_error("no addresses returned");
+        set_resolve_error("no addresses returned", EAI_FAIL);
         return -1;
     }
     if (res->ai_addr == nullptr) {
@@ -84,7 +88,7 @@ int tpy_resolve_ipv4(const std::uint8_t* host, std::uint64_t host_len,
         // custom resolver library could in theory break this
         // invariant; fail cleanly rather than dereference null.
         freeaddrinfo(res);
-        set_resolve_error("getaddrinfo returned entry with null ai_addr");
+        set_resolve_error("getaddrinfo returned entry with null ai_addr", EAI_FAIL);
         return -1;
     }
     // Copy the first A-record's 4 bytes. `sin_addr.s_addr` is already in
@@ -101,7 +105,11 @@ int tpy_errno() {
 }
 
 const char* tpy_last_resolve_error() {
-    return g_resolve_err;
+    return tl_resolve_err;
+}
+
+int tpy_last_resolve_code() {
+    return tl_resolve_code;
 }
 
 int tpy_set_nonblocking(int fd, int nonblocking) {

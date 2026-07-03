@@ -144,6 +144,11 @@ int tpy_errno();
 // exposing the error-code namespace.
 const char* tpy_last_resolve_error();
 
+// The matching EAI_* code for the most recent tpy_resolve_ipv4 failure
+// (same thread-local lifetime as the message). Surfaced as
+// socket.gaierror's `.errno`, mirroring CPython.
+int tpy_last_resolve_code();
+
 // Toggle O_NONBLOCK on `fd` via fcntl (nonblocking != 0 sets it, 0 clears
 // it). Hidden behind a helper because <fcntl.h> defines the F_* / O_*
 // macros we keep out of TPy-generated TUs. Returns 0 on success, -1 on

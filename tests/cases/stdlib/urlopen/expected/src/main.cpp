@@ -72,6 +72,20 @@ void main() {
             std::cout << "no-host URLError" << "\n";
         }
     }
+    // # URLError roots at OSError (CPython parity), so a handler written for
+    // # the builtin hierarchy catches it.
+    // try:
+    {
+        try {
+            // urlopen("http:///path")
+            ::tpystd::urllib::request::urlopen("http:///path");
+            // print("no-raise")
+            std::cout << "no-raise" << "\n";
+        } catch (const ::tpy::OSError&) {
+            // print("no-host OSError")
+            std::cout << "no-host OSError" << "\n";
+        }
+    }
 }
 
 void __tpy_init() {

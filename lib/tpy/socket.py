@@ -77,9 +77,11 @@ TODO -- v2 feature follow-ups. New scope, not compiler-blocked:
     (EPIPE -> BrokenPipeError, ECONNRESET -> ConnectionResetError,
     ECONNREFUSED -> ConnectionRefusedError, ECONNABORTED ->
     ConnectionAbortedError); every other errno falls through to SocketError.
-    Still missing: a structured `.errno` / `.strerror` attribute (errno +
-    strerror are baked into the message text only) and a distinct `gaierror`
-    for name-resolution failures (resolve errors raise plain SocketError).
+    All carry the structured `.errno` / `.strerror` OSError attributes
+    (compare `.errno` against the `errno` module's constants), and
+    name-resolution failures raise a distinct `gaierror` whose `.errno` is
+    the EAI_* code. Still missing: `.filename` (the os-module file-op
+    raise sites don't populate the attributes yet -- C++-side raises).
 
   * **gethostbyname_ex, gethostbyaddr, getservbyname.** CPython legacy
     DNS APIs; low priority.
@@ -148,17 +150,26 @@ SHUT_RDWR: Final[Int32] = 2
 # ---------- SocketError ----------
 
 class SocketError(OSError):
-    """Raised on any libc socket-call failure. Carries errno + strerror.
+    """Raised on any libc socket-call failure. Carries the structured
+    `.errno` / `.strerror` OSError attributes plus a "<op>: <strerror>"
+    message.
 
     Subclasses `OSError` (not plain `Exception`) to match CPython, whose
     socket module raises `OSError`: code written `except OSError` catches
     these and ports to CPython unchanged. The distinct name is kept for
-    readable tracebacks and existing `except SocketError` users. The
-    errno-keyed `OSError` subclasses (`ConnectionRefusedError`, ...) and a
-    structured `.errno` attribute are still a follow-up (see module TODO).
+    readable tracebacks and existing `except SocketError` users.
     """
     # Explicit __init__ + String param are compiler-gap workarounds mirroring
     # re.error; see module TODO above and BUGS.md.
+    def __init__(self, message: String = "") -> None:
+        super().__init__(message)
+
+
+class gaierror(OSError):
+    """Raised when name resolution (getaddrinfo) fails. `.errno` carries the
+    EAI_* code (not a POSIX errno) and `.strerror` the gai_strerror message,
+    like CPython's socket.gaierror. Subclasses `OSError` directly, matching
+    CPython's hierarchy."""
     def __init__(self, message: String = "") -> None:
         super().__init__(message)
 
@@ -176,38 +187,101 @@ _ECONNREFUSED: Final[Int32] = native_global("tpy_const_econnrefused", binding="C
 _ECONNABORTED: Final[Int32] = native_global("tpy_const_econnaborted", binding="C")
 
 
-def _maybe_raise_connection_error(err: Int32, text: str) -> None:
+def _strerror(err: Int32) -> str:
+    return unsafe_str_from_cstr(posix_socket.strerror(err))
+
+
+# Factories for the errno-carrying raises. The exception ctors are
+# message-only (TPy has no overloads to express CPython's errno-first
+# `OSError(errno, strerror)` form), so the structured attributes are
+# assigned post-construction; these keep every raise site one line.
+
+def _socket_error(text: str, err: Int32, strerr: str) -> Own[SocketError]:
+    e = SocketError(text)
+    e.errno = err
+    e.strerror = strerr
+    return e
+
+
+def _gai_error(text: str, code: Int32, strerr: str) -> Own[gaierror]:
+    e = gaierror(text)
+    e.errno = code
+    e.strerror = strerr
+    return e
+
+
+def _blocking_io_error(text: str, err: Int32, strerr: str) -> Own[BlockingIOError]:
+    e = BlockingIOError(text)
+    e.errno = err
+    e.strerror = strerr
+    return e
+
+
+def _broken_pipe_error(text: str, err: Int32, strerr: str) -> Own[BrokenPipeError]:
+    e = BrokenPipeError(text)
+    e.errno = err
+    e.strerror = strerr
+    return e
+
+
+def _conn_reset_error(text: str, err: Int32, strerr: str) -> Own[ConnectionResetError]:
+    e = ConnectionResetError(text)
+    e.errno = err
+    e.strerror = strerr
+    return e
+
+
+def _conn_refused_error(text: str, err: Int32, strerr: str) -> Own[ConnectionRefusedError]:
+    e = ConnectionRefusedError(text)
+    e.errno = err
+    e.strerror = strerr
+    return e
+
+
+def _conn_aborted_error(text: str, err: Int32, strerr: str) -> Own[ConnectionAbortedError]:
+    e = ConnectionAbortedError(text)
+    e.errno = err
+    e.strerror = strerr
+    return e
+
+
+def _maybe_raise_connection_error(err: Int32, strerr: str, text: str) -> None:
     """Raise the PEP 3151 ConnectionError subclass for a connection-related
     errno; return if `err` is none of them, so the caller falls back to the
     generic SocketError. Mirrors CPython, which raises these subclasses (all
-    OSError) for the same errno on socket I/O."""
+    OSError) for the same errno on socket I/O. All raises here and in the
+    callers carry the structured `.errno` / `.strerror` attributes."""
     if err == _EPIPE:
-        raise BrokenPipeError(text)
+        raise _broken_pipe_error(text, err, strerr)
     if err == _ECONNRESET:
-        raise ConnectionResetError(text)
+        raise _conn_reset_error(text, err, strerr)
     if err == _ECONNREFUSED:
-        raise ConnectionRefusedError(text)
+        raise _conn_refused_error(text, err, strerr)
     if err == _ECONNABORTED:
-        raise ConnectionAbortedError(text)
+        raise _conn_aborted_error(text, err, strerr)
 
 
 def _raise_errno(op: str) -> None:
     """Raise the errno-keyed OSError subclass: BlockingIOError on
     EAGAIN/EWOULDBLOCK/EINPROGRESS (so the asyncio reactor can park on fd
     readiness), a ConnectionError subclass on a connection errno, else
-    SocketError. All carry "<op>: <strerror(errno)>"."""
+    SocketError. All carry "<op>: <strerror(errno)>" plus `.errno` /
+    `.strerror`."""
     err = posix_socket.tpy_errno()
-    msg = unsafe_str_from_cstr(posix_socket.strerror(err))
+    msg = _strerror(err)
+    text = op + ": " + msg
     if err == _EAGAIN or err == _EINPROGRESS:
-        raise BlockingIOError(op + ": " + msg)
-    _maybe_raise_connection_error(err, op + ": " + msg)
-    raise SocketError(op + ": " + msg)
+        raise _blocking_io_error(text, err, msg)
+    _maybe_raise_connection_error(err, msg, text)
+    raise _socket_error(text, err, msg)
 
 
 def _raise_resolve_error(host: str) -> None:
-    """Raise SocketError from the last getaddrinfo gai_strerror message."""
+    """Raise gaierror from the last getaddrinfo failure: the EAI_* code in
+    `.errno`, the gai_strerror message in `.strerror` (CPython-shaped)."""
+    code = posix_socket.tpy_last_resolve_code()
     msg = unsafe_str_from_cstr(posix_socket.tpy_last_resolve_error())
-    raise SocketError("resolve " + host + ": " + msg)
+    raise _gai_error("resolve " + host + ": " + msg, code, msg)
 
 
 # ---------- Address helpers ----------
@@ -327,13 +401,16 @@ class socket:
         BlockingIOError (the asyncio reactor parks on it). Other errno ->
         SocketError."""
         err = posix_socket.tpy_errno()
-        msg = unsafe_str_from_cstr(posix_socket.strerror(err))
+        msg = _strerror(err)
+        text = op + ": " + msg
         if err == _EAGAIN or err == _EINPROGRESS:
             if self._timeout > 0.0:
+                # CPython's socket.timeout carries no errno (it is None
+                # there); leave the unset 0 / "" defaults.
                 raise TimeoutError("timed out")
-            raise BlockingIOError(op + ": " + msg)
-        _maybe_raise_connection_error(err, op + ": " + msg)
-        raise SocketError(op + ": " + msg)
+            raise _blocking_io_error(text, err, msg)
+        _maybe_raise_connection_error(err, msg, text)
+        raise _socket_error(text, err, msg)
 
     def setblocking(self, flag: bool) -> None:
         """Set blocking (True) or non-blocking (False) mode, like CPython.

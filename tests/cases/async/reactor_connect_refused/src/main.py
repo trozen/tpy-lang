@@ -1,5 +1,5 @@
-# asyncio reactor: sock_connect to a refused port surfaces as OSError (TPy
-# raises socket.SocketError, CPython ConnectionRefusedError -- both OSError).
+# asyncio reactor: sock_connect to a refused port raises
+# ConnectionRefusedError (an OSError), matching CPython asyncio.
 # The bound-but-not-listen()ed socket stays open to reserve the port.
 import asyncio
 from socket import socket, AF_INET, SOCK_STREAM
@@ -16,8 +16,12 @@ async def main_coro() -> None:
     try:
         await loop.sock_connect(s, ("127.0.0.1", port))
         print("connected unexpectedly")
-    except OSError:
+    except ConnectionRefusedError:
+        # The specific subclass pins the CPython-parity claim; a regression
+        # to generic SocketError would fall through to the arm below.
         print("connect refused")
+    except OSError:
+        print("caught generic OSError")
     s.close()
     blocker.close()
 

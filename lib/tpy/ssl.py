@@ -24,9 +24,11 @@ silent -- see docs/LANGUAGE_FEATURES.md):
   * `SSLSocket.do_handshake()` returns a bool (True done / False needs I/O)
     rather than returning None and raising `SSLWantReadError`/`Write` on a
     non-blocking socket; the blocking `wrap_socket(do_handshake_on_connect=
-    True)` path is unaffected and matches CPython.
-  * `recv()` returns `b""` on a clean `close_notify` (the socket EOF
-    convention the read path expects) rather than raising `SSLZeroReturnError`.
+    True)` path is unaffected and matches CPython. (recv/send DO raise the
+    `SSLWant*` subclasses on a non-blocking socket, and the write path maps
+    a `close_notify` return to `SSLZeroReturnError` defensively; `recv()`
+    returns `b""` on a clean `close_notify`, which matches CPython's
+    `SSLSocket.recv`.)
   * `SSLCertVerificationError` derives only from `SSLError`, not from
     `(SSLError, ValueError)` -- TPy enforces single inheritance, so the
     `ValueError` base cannot be added; code catching `ValueError` for a cert
@@ -44,8 +46,7 @@ silent -- see docs/LANGUAGE_FEATURES.md):
     returns `None`.
   * `wrap_socket` / `load_verify_locations` take a tighter v1 signature
     (`server_hostname` positional-with-default; `cafile` only, no `capath`/
-    `cadata`). Non-blocking `recv` raises `SSLError`, not `SSLWantReadError`
-    (the `SSLWant*` subclasses are deferred).
+    `cadata`).
 """
 
 from __future__ import annotations
@@ -76,10 +77,45 @@ class SSLCertVerificationError(SSLError):
     pass
 
 
+class SSLWantReadError(SSLError):
+    """A non-blocking operation needs more data from the socket; retry when
+    it is readable."""
+    pass
+
+
+class SSLWantWriteError(SSLError):
+    """A non-blocking operation needs to flush to the socket; retry when it
+    is writable."""
+    pass
+
+
+class SSLZeroReturnError(SSLError):
+    """The TLS connection was closed cleanly (close_notify) during the
+    operation."""
+    pass
+
+
 def _errstr(rc: Int32) -> str:
     buf = UninitHeapStorage[UInt8](UInt32(160))
     mbedtls.tls_strerror(rc, buf.ptr(), UInt64(160))
     return unsafe_str_from_cstr(unsafe_cast(buf.ptr()))
+
+
+def _raise_io_error(rc: Int32) -> None:
+    """Map a negative mbedTLS I/O return to the CPython ssl exception:
+    WANT_READ/WANT_WRITE -> SSLWantReadError/SSLWantWriteError (non-blocking
+    socket needs I/O), close_notify -> SSLZeroReturnError, else SSLError.
+    The close_notify arm is defensive on the write path: mbedTLS surfaces
+    PEER_CLOSE_NOTIFY from record reads, and whether CPython raises on a
+    write after a received close_notify is unverified."""
+    c = mbedtls.tls_classify(rc)
+    if c == 1:
+        raise SSLWantReadError(_errstr(rc))
+    if c == 2:
+        raise SSLWantWriteError(_errstr(rc))
+    if c == 3:
+        raise SSLZeroReturnError(_errstr(rc))
+    raise SSLError(_errstr(rc))
 
 
 @nocopy
@@ -118,11 +154,10 @@ class _SslSession:
             return b""
         buf = UninitHeapStorage[UInt8](UInt32.trunc(size))
         rc = mbedtls.tls_read(self._s, buf.ptr(), UInt64(size))
-        c = mbedtls.tls_classify(rc)
-        if c == 3:  # peer close_notify -> EOF
+        if mbedtls.tls_classify(rc) == 3:  # peer close_notify -> EOF
             return b""
         if rc < Int32(0):
-            raise SSLError(_errstr(rc))
+            _raise_io_error(rc)
         return unsafe_bytes_from_buf(buf.ptr(), UInt64(rc))
 
 
@@ -246,7 +281,7 @@ class SSLSocket:
         rc = mbedtls.tls_write(self._session.get().raw(), unsafe_ptr(data),
                                UInt64(len(data)))
         if rc < Int32(0):
-            raise SSLError(_errstr(rc))
+            _raise_io_error(rc)
         return rc
 
     def sendall(self, data: bytes) -> None:
@@ -259,7 +294,7 @@ class SSLSocket:
                                    unsafe_ptr_add(data_ptr, Int64.trunc(sent)),
                                    total - sent)
             if rc < Int32(0):
-                raise SSLError(_errstr(rc))
+                _raise_io_error(rc)
             sent = sent + UInt64(rc)
 
     def makefile(self) -> Own[BufferedReader]:

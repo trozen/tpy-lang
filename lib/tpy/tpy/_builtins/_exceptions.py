@@ -1,8 +1,8 @@
 # tpy: native_module
 # tpy: cpp_namespace("tpystd::builtins")
 from .._bootstrap._decorators import readonly, Own
-from .._bootstrap._extern import native
-from .._core._types import ReturnException, StrView, Throwable
+from .._bootstrap._extern import native, native_field
+from .._core._types import Int32, ReturnException, StrView, Throwable
 
 
 # Python exception hierarchy (maps to ::tpy:: runtime structs in core.hpp).
@@ -51,8 +51,14 @@ class Exception(BaseException):
 class ValueError(Exception):
     def __init__(self, message: str = "") -> None: ...
 
+# Carries CPython's structured `.errno` / `.strerror` attributes (0 / ""
+# when unset -- TPy has no None default here). The C++ members are renamed:
+# `errno` is a C macro and cannot name a struct member.
 @native("tpy::OSError")
 class OSError(Exception):
+    errno: Int32 = native_field("error_number")
+    strerror: str = native_field("strerror_text")
+
     def __init__(self, message: str = "") -> None: ...
 
 @native("tpy::FileNotFoundError")

@@ -1,0 +1,3 @@
+refused: True True
+gaierror: True True True
+unset: True True

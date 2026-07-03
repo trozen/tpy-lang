@@ -35,10 +35,8 @@
 #     None for no timeout; the requests (connect, read) tuple form is not
 #     supported, and a timeout raises requests.Timeout (not a bare OSError).
 #   - the exception tree (RequestException -> HTTPError/ConnectionError/
-#     Timeout/TooManyRedirects) subclasses Exception only, NOT OSError; CPython
-#     requests roots it at IOError/OSError, so `except OSError` catches a
-#     requests error there but not here -- catch RequestException (or a
-#     subclass) instead.
+#     Timeout/TooManyRedirects) roots at OSError like CPython requests
+#     (IOError/OSError), so `except OSError` catches a requests error.
 #   - redirects: allow_redirects= (default True; head() defaults False) follows
 #     301/302/303/307/308 via the Location header, resolved against the current
 #     URL with urljoin. Response.history holds the intermediate responses and
@@ -74,7 +72,7 @@ DEFAULT_HTTP_PORT: Final[Int32] = 80
 DEFAULT_HTTPS_PORT: Final[Int32] = 443
 
 
-class RequestException(Exception):
+class RequestException(OSError):
     def __init__(self, message: String = "") -> None:
         super().__init__(message)
 

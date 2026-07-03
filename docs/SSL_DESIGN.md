@@ -16,9 +16,14 @@ redirects (tests `tplib/requests_https`, `tplib/requests_redirect_https`,
 `stdlib/urlopen_https`). The bundled CA store is built: `create_default_context()`
 trusts a vendored Mozilla root bundle (certifi, embedded as a compiled-in blob
 via `scripts/vendor_cacert.py`), so `requests.get("https://...")` / `urlopen`
-verify out of the box (test `ssl/tls_bundled_ca`). The HTTPS-client track is now
-complete except for deferred surface (system trust store, `SSLWant*`/`SSLZeroReturn`
-subclasses, server-side TLS). This document is the contract for the whole track.
+verify out of the box (test `ssl/tls_bundled_ca`). The `SSLWantReadError`/
+`SSLWantWriteError`/`SSLZeroReturnError` subclasses ship: non-blocking
+`recv`/`send` raise the want-errors, and the write path maps a `close_notify`
+return to `SSLZeroReturnError` defensively (test `ssl/tls_want_read`; `recv`
+keeps returning `b""` on a clean close, matching CPython's `SSLSocket.recv`).
+The HTTPS-client track is now complete except for deferred surface (system
+trust store, server-side TLS). This document is the contract for the whole
+track.
 
 ## Goal
 
@@ -252,9 +257,13 @@ Match CPython's `create_default_context()` + `requests` `verify=True`:
   (the one specific subclass worth having in v1). Structured
   `verify_code`/`verify_message` attrs deferred (the general
   exception-carries-only-a-message gap).
-- Deferred subclasses (map to `SSLError` in v1):
-  `SSLZeroReturnError`, `SSLWantRead/WriteError`, `SSLSyscallError`,
-  `SSLEOFError`.
+- `SSLWantReadError`/`SSLWantWriteError`/`SSLZeroReturnError(SSLError)` --
+  shipped: raised by the shared `_raise_io_error` mapping on
+  WANT_READ/WANT_WRITE/close_notify from `recv`/`send`/`sendall`
+  (`do_handshake` keeps its bool return -- declared divergence). The
+  close_notify arm is defensive on the write path (mbedTLS surfaces
+  PEER_CLOSE_NOTIFY from reads; CPython's write-after-close behavior is
+  unverified). Still deferred: `SSLSyscallError`, `SSLEOFError`.
 - The TLS error-mapping function routes mbedTLS codes: verify failure ->
   `SSLCertVerificationError`; other TLS/handshake -> `SSLError`;
   transport read/write error/timeout -> the **existing** socket
