@@ -1,0 +1,1 @@
+main.py:14: error: value pattern type '__main__.Color' does not match subject type 'palette.Color'

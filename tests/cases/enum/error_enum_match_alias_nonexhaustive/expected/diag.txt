@@ -1,0 +1,1 @@
+main.py:6: error: 'label' can reach the end of the function without returning a value; declared return type is 'str' (return or raise on every path)

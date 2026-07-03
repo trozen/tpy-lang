@@ -16,6 +16,7 @@ from ..typesys import (
     unwrap_readonly, unwrap_ref_type, unwrap_own, make_union,
     is_float_type, is_any_str_type, is_protocol_type,
     polymorphic_source_inner, deref_dispatch_inner,
+    same_nominal_symbol_loose,
 )
 from ..modules import _resolve_concrete_type_name
 from .flow_facts import FlowFacts
@@ -851,7 +852,7 @@ class MatchAnalyzer:
             return [
                 f"{subject_type.name}.{name}"
                 for name in einfo.members
-                if (subject_type.name, name) not in seen_values
+                if (subject_type.qualified_name(), name) not in seen_values
             ]
 
         if is_bool_type(subject_type):
@@ -1186,7 +1187,7 @@ class MatchAnalyzer:
 
         elif isinstance(pattern, TpyValuePattern):
             self._validate_value_pattern(pattern, subject_type)
-            self._check_duplicate_value(pattern, seen_values)
+            self._check_duplicate_value(pattern, seen_values, subject_type)
 
         elif isinstance(pattern, TpyOrPattern):
             self._analyze_or_pattern(pattern, subject_type, seen_values, bindings, stmt, kind=OrPatternKind.NONUNION)
@@ -1281,7 +1282,7 @@ class MatchAnalyzer:
         elif isinstance(pattern, TpyValuePattern):
             # Value pattern on inner type (e.g. case Color.RED: on Optional[Color])
             self._validate_value_pattern(pattern, subject_type.inner)
-            self._check_duplicate_value(pattern, seen_values)
+            self._check_duplicate_value(pattern, seen_values, subject_type.inner)
 
         elif isinstance(pattern, TpyClassPattern):
             # Class pattern on the inner type (e.g. case Point(): on Optional[Point])
@@ -1424,10 +1425,24 @@ class MatchAnalyzer:
         """Validate a value pattern (e.g., Color.RED) against the subject type."""
         val_type = self.expr.analyze_expr(pattern.expr)
         if is_enum_type(subject_type):
-            if not is_enum_type(val_type) or val_type.name != subject_type.name:
+            # Compare by qualified identity, not bare name: two enums sharing
+            # a canonical name (one imported under an alias) are distinct, so
+            # a case member from the wrong enum must not match the subject. The
+            # helper's None-qname loose fallback can't fire here -- every enum
+            # carries a qname by registration, and an alias rebinds the same
+            # NominalType object rather than minting a bare one.
+            if not is_enum_type(val_type) or not same_nominal_symbol_loose(val_type, subject_type):
+                # Disambiguate with the intrinsic qname when the two enums
+                # share a bare name (the aliased-import case), else "'E' does
+                # not match 'E'" is meaningless. `disambiguated_pair` can't be
+                # used here: it qualifies via the codegen namespace map, which
+                # isn't populated at sema time, so it renders both as 'E'.
+                same_bare = is_enum_type(val_type) and val_type.name == subject_type.name
+                val_disp = (val_type.qualified_name() or str(val_type)) if same_bare else str(val_type)
+                subj_disp = (subject_type.qualified_name() or str(subject_type)) if same_bare else str(subject_type)
                 raise self.ctx.error(
-                    f"value pattern type '{val_type}' does not match "
-                    f"subject type '{subject_type}'", pattern
+                    f"value pattern type '{val_disp}' does not match "
+                    f"subject type '{subj_disp}'", pattern
                 )
         else:
             raise self.ctx.error(
@@ -1449,11 +1464,16 @@ class MatchAnalyzer:
 
     def _check_duplicate_value(
         self, pattern: TpyValuePattern, seen: set[object],
+        subject_type: TpyType,
     ) -> None:
         """Check for duplicate value pattern (e.g. Color.RED)."""
         if isinstance(pattern.expr, TpyFieldAccess):
             obj_name = pattern.expr.obj.name if isinstance(pattern.expr.obj, TpyName) else "?"
-            key = (obj_name, pattern.expr.field)
+            # Key by the subject enum's qualified identity, not the case's
+            # source spelling: under an import alias the bare names diverge,
+            # and this set is read back by `_match_missing_cases` on the same
+            # `subject_type.qualified_name()` key.
+            key = (subject_type.qualified_name(), pattern.expr.field)
             if key in seen:
                 raise self.ctx.error(
                     f"duplicate case for '{obj_name}.{pattern.expr.field}' "

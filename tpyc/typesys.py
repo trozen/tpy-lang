@@ -1234,10 +1234,14 @@ def same_nominal_symbol_loose(a: 'TpyType', b: 'TpyType') -> bool:
     boundary, where one side may be a placeholder minted pre-qname
     that must still match a qname-bearing counterpart:
     `TypeRegistry.is_subclass_of`'s parent-chain walk (a recorded
-    parent reference vs a qname-bearing argument) and the
+    parent reference vs a qname-bearing argument), the
     `record_to_ptr` / `record_to_const_ptr` coercions (the `&value`
-    pointee may be a parser placeholder).  Keep the call-site list
-    short; each addition should be justified at review time.
+    pointee may be a parser placeholder), and the match value-pattern
+    enum-identity check in `sema/match.py::_validate_value_pattern`
+    (where both sides are always qname-bearing, so the loose fallback
+    is inert -- it reuses this helper for the name/type_args/is_protocol
+    equality rather than for placeholder tolerance).  Keep the call-site
+    list short; each addition should be justified at review time.
     """
     if not (isinstance(a, NominalType) and isinstance(b, NominalType)):
         return False
