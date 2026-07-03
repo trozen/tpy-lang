@@ -11,11 +11,11 @@ void __tpy_init() {
 
     // # True division (/) always returns float
     // print(10 / 4)
-    std::cout << ::tpy::print_float((::tpy::truediv(static_cast<double>(::tpy::BigInt(10)), static_cast<double>(::tpy::BigInt(4))))) << "\n";
+    std::cout << ::tpy::print_float((::tpy::truediv(::tpy::BigInt(10), ::tpy::BigInt(4)))) << "\n";
     // print(10 / 2)
-    std::cout << ::tpy::print_float((::tpy::truediv(static_cast<double>(::tpy::BigInt(10)), static_cast<double>(::tpy::BigInt(2))))) << "\n";
+    std::cout << ::tpy::print_float((::tpy::truediv(::tpy::BigInt(10), ::tpy::BigInt(2)))) << "\n";
     // print(9 / 3)
-    std::cout << ::tpy::print_float((::tpy::truediv(static_cast<double>(::tpy::BigInt(9)), static_cast<double>(::tpy::BigInt(3))))) << "\n";
+    std::cout << ::tpy::print_float((::tpy::truediv(::tpy::BigInt(9), ::tpy::BigInt(3)))) << "\n";
     // # Floor division (//) preserves type
     // print(10 // 4)
     std::cout << 2 << "\n";

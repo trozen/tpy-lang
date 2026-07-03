@@ -4,10 +4,8 @@
 # "integer modulo by zero" vs "integer division or modulo by zero") and
 # operation ("float modulo", "float floor division by zero", "float divmod()").
 #
-# `int / 0` (TPy converts int operands to float for true division) is
-# covered by the panic_int_truediv_zero case; TPy emits "float division
-# by zero" there, while CPython says "division by zero" -- a documented
-# divergence (see EXCEPTION_DESIGN.md).
+# `int / 0` ("division by zero", the integer true-division path) is
+# covered by the panic_int_truediv_zero case.
 
 from tpy import Int32
 

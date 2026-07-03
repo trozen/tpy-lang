@@ -17,6 +17,7 @@
 
 #pragma once
 
+#include <algorithm>
 #include <bit>
 #include <cctype>
 #include <charconv>
@@ -312,20 +313,23 @@ public:
         return result;
     }
 
-    // Comparison operators
-    bool operator==(const BigInt& rhs) const {
-        if (is_small() && rhs.is_small()) {
-            return raw_ == rhs.raw_;
+    // Comparison operators. Hidden friends rather than members so an integer
+    // on EITHER side converts implicitly -- codegen emits derived comparisons
+    // (`1 <= x`) as the bare C++ operator, which a member (LHS-fixed) form
+    // cannot satisfy for a scalar left operand.
+    friend bool operator==(const BigInt& lhs, const BigInt& rhs) {
+        if (lhs.is_small() && rhs.is_small()) {
+            return lhs.raw_ == rhs.raw_;
         }
-        return compare(rhs) == 0;
+        return lhs.compare(rhs) == 0;
     }
 
-    bool operator!=(const BigInt& rhs) const { return !(*this == rhs); }
+    friend bool operator!=(const BigInt& lhs, const BigInt& rhs) { return !(lhs == rhs); }
 
-    bool operator<(const BigInt& rhs) const { return compare(rhs) < 0; }
-    bool operator<=(const BigInt& rhs) const { return compare(rhs) <= 0; }
-    bool operator>(const BigInt& rhs) const { return compare(rhs) > 0; }
-    bool operator>=(const BigInt& rhs) const { return compare(rhs) >= 0; }
+    friend bool operator<(const BigInt& lhs, const BigInt& rhs) { return lhs.compare(rhs) < 0; }
+    friend bool operator<=(const BigInt& lhs, const BigInt& rhs) { return lhs.compare(rhs) <= 0; }
+    friend bool operator>(const BigInt& lhs, const BigInt& rhs) { return lhs.compare(rhs) > 0; }
+    friend bool operator>=(const BigInt& lhs, const BigInt& rhs) { return lhs.compare(rhs) >= 0; }
 
     // Generic conversion to any fixed-width integer type
     template<typename T>
@@ -1391,6 +1395,94 @@ inline std::ostream& operator<<(std::ostream& os, const BigInt& val) {
 
 inline uint64_t __hash__(const BigInt& val) {
     return val.hash();
+}
+
+// Correctly-rounded true division of two Python ints (CPython's
+// long_true_divide). Casting each operand to double and dividing rounds
+// twice and diverges from CPython once a magnitude exceeds 2^53; instead,
+// scale so the quotient keeps digits+2 significant bits plus a sticky bit
+// from the remainder, then round ONCE: the uint64->double conversion does
+// the half-even rounding and ldexp restores the scale (exact in the normal
+// range; a correct single rounding into subnormals thanks to the
+// min_exponent clamp on the shift).
+inline double truediv(const BigInt& a, const BigInt& b) {
+    constexpr int MANT_DIG = std::numeric_limits<double>::digits;        // 53
+    constexpr int MAX_EXP = std::numeric_limits<double>::max_exponent;   // 1024
+    constexpr int MIN_EXP = std::numeric_limits<double>::min_exponent;   // -1021
+
+    // Fast path: both operands convert to double exactly, so the plain
+    // divide is already the single correct rounding -- and it avoids the
+    // BigInt temporaries below, which allocate limb buffers even for small
+    // values. A zero divisor falls through for the right error message.
+    int64_t ia, ib;
+    constexpr int64_t EXACT = int64_t(1) << MANT_DIG;
+    if (a.to_i64_checked(ia) && b.to_i64_checked(ib) && ib != 0
+            && ia > -EXACT && ia < EXACT && ib > -EXACT && ib < EXACT) {
+        return static_cast<double>(ia) / static_cast<double>(ib);
+    }
+
+    const BigInt zero(0);
+    if (b == zero) {
+        raise_zero_division_error("division by zero");
+    }
+    const bool negate = (a < zero) != (b < zero);
+    if (a == zero) {
+        return negate ? -0.0 : 0.0;
+    }
+    BigInt x = BigInt::abs(a);
+    BigInt y = BigInt::abs(b);
+    // |a/b| lies in [2^(diff-1), 2^(diff+1)).
+    const int32_t diff = x.bit_length() - y.bit_length();
+    if (diff > MAX_EXP) {
+        raise_overflow_error("integer division result too large for a float");
+    }
+    if (diff < MIN_EXP - MANT_DIG - 1) {
+        return negate ? -0.0 : 0.0;
+    }
+    const int32_t shift = std::max(diff, static_cast<int32_t>(MIN_EXP)) - MANT_DIG - 2;
+    if (shift <= 0) {
+        x <<= -shift;
+    } else {
+        y <<= shift;
+    }
+    auto [q, r] = x.floor_divmod(y);
+    // q has at most MANT_DIG+3 bits (fits uint64), and at least MANT_DIG+2
+    // when unclamped -- so bit 0 sits strictly below the rounding position
+    // and can absorb the sticky bit without disturbing a halfway case.
+    uint64_t qi = q.to_fixed_check<uint64_t>();
+    if (r != zero) {
+        qi |= 1;
+    }
+    const double result = std::ldexp(static_cast<double>(qi), shift);
+    if (std::isinf(result)) {
+        raise_overflow_error("integer division result too large for a float");
+    }
+    return negate ? -result : result;
+}
+
+// Python int / int over 64-bit operands: below 2^53 both conversions are
+// exact, so the plain double division is the correct single rounding;
+// larger magnitudes take the BigInt path above.
+inline double truediv(int64_t a, int64_t b) {
+    if (b == 0) {
+        raise_zero_division_error("division by zero");
+    }
+    constexpr int64_t EXACT = int64_t(1) << std::numeric_limits<double>::digits;
+    if (a > -EXACT && a < EXACT && b > -EXACT && b < EXACT) {
+        return static_cast<double>(a) / static_cast<double>(b);
+    }
+    return truediv(BigInt(a), BigInt(b));
+}
+
+inline double truediv(uint64_t a, uint64_t b) {
+    if (b == 0) {
+        raise_zero_division_error("division by zero");
+    }
+    constexpr uint64_t EXACT = uint64_t(1) << std::numeric_limits<double>::digits;
+    if (a < EXACT && b < EXACT) {
+        return static_cast<double>(a) / static_cast<double>(b);
+    }
+    return truediv(BigInt(a), BigInt(b));
 }
 
 

@@ -17,7 +17,7 @@ is byte-compared against CPython directly, exactly like the `csv` module.
 |---|---|---|
 | **v0** | `@overload`-operator codegen fix (skip the impl signature when emitting operators) + focused test. Prerequisite for all operand-polymorphic operators. Routed via `/tpy-fix-bug` (it is a defect). | **Done** (`_gen_binary_operators` overload-impl guard; test `operators/overload_binary_operator`) |
 | **v1** | `timedelta` (integer-surface arithmetic: `+ - `, unary, `*int`, `//int`, `//td`, `/td`->float, `%td`, comparisons, `abs`, `total_seconds`, repr/str) and `date` (ctor+validation, attributes, `weekday`/`isoweekday`, `isoformat`/`str`, comparisons, `date +/- timedelta`, `date - date`, repr). Pure-TPy, **no native dependency**, no `today()`. Prerequisite compiler fixes: `abs()`->`__abs__` dispatch (P1), `/`-vs-`//` decoupling (P2). | **Done** (tests `stdlib/datetime_{timedelta,date}`; byte-parity with CPython) |
-| **v1-deferred** | `timedelta` float/rounding surface: float constructor args (`timedelta(hours=1.5)`), `td / number` (round-half-to-even -> timedelta), float `*`/`/`. `td / number` also blocked on the `/`-overload result-typing bug (BUGS.md). Compile-error (rejects-valid) until landed, not silent. | Deferred |
+| **v1-deferred** | `timedelta` float/rounding surface: float constructor args (`timedelta(hours=1.5)`), `td / number` (round-half-to-even -> timedelta), float `*`/`/`. Compile-error (rejects-valid) until landed, not silent. (The `/`-overload result-typing bug that also blocked `td / number` is fixed.) | Deferred |
 | **v2** | `datetime` and `time` (the `datetime.time` class), `now()`/`utcnow()`/`fromtimestamp()`/`combine()`, `date.today()`. Naive-only. Introduces the vendored Hinnant `date` backend behind the `stdlib/datetime.hpp` facade for the local-offset lookup. | Not started |
 | **v3** | `strftime`/`strptime`/`fromisoformat` (pure-TPy directive engine) and fixed-offset `timezone` awareness (aware `datetime`, `astimezone`, offset-aware arithmetic/comparison). | Not started |
 | **Deferred** | `fold`; `zoneinfo`/IANA DST (`ZoneInfo` value type backed by the tz db); user-defined `tzinfo` subclasses; Windows tz backend. Filed, not silent. | Deferred |
@@ -113,8 +113,8 @@ timedelta // timedelta -> int
 ```
 
 (`timedelta / int` -- round-half-to-even -> timedelta -- is v1-deferred with
-the float surface and also blocked on the `/`-overload result-typing bug in
-`BUGS.md`; v1 ships `timedelta / timedelta -> float` only.)
+the float surface; v1 ships `timedelta / timedelta -> float` only. The
+`/`-overload result-typing bug that also blocked it is fixed.)
 
 Python has one `__sub__`, so this is expressed with `typing.overload`: typed
 `@overload` stubs plus one shared implementation that dispatches on the
@@ -227,19 +227,14 @@ detail.
 
 ## CPython parity: acknowledged divergences
 
-The design matches CPython except for the following. All but the last are
-signaled (compile-time rejection or a documented restriction); the last is a
-known silent value divergence tracked in `BUGS.md`, pending a runtime fix:
+The design matches CPython except for the following, all signaled
+(compile-time rejection or a documented restriction):
 
-- **`total_seconds()` / `timedelta / timedelta` float precision.** These do
-  `BigInt / BigInt` true division, which TPy currently lowers as a
-  double-rounded `double(a)/double(b)` rather than CPython's correctly-rounded
-  `int/int`. Results diverge silently for timedeltas whose microsecond total
-  exceeds 2^53 (~285 years), e.g. `timedelta(days=-999999999).total_seconds()`
-  -> `-86399999913599.98` (TPy) vs `-86399999913600.0` (CPython). This is a
-  general BigInt-to-float-division gap, not datetime-specific; filed in
-  `BUGS.md`, to be fixed in the runtime via `/tpy-fix-bug`. Small-magnitude
-  timedeltas (the common case) are exact.
+(`total_seconds()` / `timedelta / timedelta` float precision was a fourth,
+silent, divergence -- TPy lowered `BigInt / BigInt` as double-rounded
+`double(a)/double(b)` -- until int/int true division became correctly
+rounded in the runtime; it now matches CPython for all magnitudes.)
+
 - **No `datetime` subclass of `date`.** We compose rather than inherit (keeps
   the value-type story clean). Consequence: `isinstance(dt, date)` is `False`
   (CPython: `True`), and cross-type comparison/equality (`date == datetime`,

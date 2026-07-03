@@ -12,7 +12,7 @@ from ..typesys import (
     PendingListType, PendingDictType, PendingSetType, PendingViewType, ViewTypeFamily, make_list, make_dict, make_set, TypeParamRef, NominalType,
     UnionType, NoneType, VoidType, TupleType, ReadonlyType,
     unwrap_readonly, unwrap_ref_type, is_protocol_type, resolve_int_literals,
-    is_integer_type, is_float_type, is_void_like_type,
+    is_integer_type, is_float_type, is_numeric_type, is_void_like_type,
     INT32, BIGINT, FLOAT, FLOAT32, STR, BYTES,
 )
 from ..parse import TpyExpr, TpyName, TpyBinOp, TpyUnaryOp, TpyCoerce, TpyCall, TpyMethodCall, TpyIntLiteral, TpyIfExpr
@@ -43,6 +43,11 @@ def resolve_pending_container(typ: 'TpyType | None', analyzer) -> 'TpyType | Non
     if info and info.resolved_type:
         return info.resolved_type
     return None
+
+
+def _numeric_operand(t: TpyType | None) -> bool:
+    """A binop operand the numeric result-typing rules may be applied to."""
+    return is_numeric_type(t) or isinstance(t, (IntLiteralType, FloatLiteralType))
 
 
 class TypeResolver:
@@ -119,62 +124,68 @@ class TypeResolver:
             # First pass without context to detect Int32 operands
             left_raw = self.get_resolved_type(expr.left)
             right_raw = self.get_resolved_type(expr.right)
-            left_analyzer_type = self.ctx.analyzer.get_expr_type(expr.left)
-            right_analyzer_type = self.ctx.analyzer.get_expr_type(expr.right)
-            left_is_literal = isinstance(left_analyzer_type, IntLiteralType) and not isinstance(expr.left, TpyName)
-            right_is_literal = isinstance(right_analyzer_type, IntLiteralType) and not isinstance(expr.right, TpyName)
+            # The numeric rules below (div -> float, float precedence, fixed-int
+            # and BigInt propagation) are only valid when BOTH operands are
+            # numeric scalars. With a record operand the binop resolved to a
+            # user dunder (e.g. __truediv__ -> record) and they would misfire;
+            # fall through to sema's resolved type instead.
+            if _numeric_operand(left_raw) and _numeric_operand(right_raw):
+                left_analyzer_type = self.ctx.analyzer.get_expr_type(expr.left)
+                right_analyzer_type = self.ctx.analyzer.get_expr_type(expr.right)
+                left_is_literal = isinstance(left_analyzer_type, IntLiteralType) and not isinstance(expr.left, TpyName)
+                right_is_literal = isinstance(right_analyzer_type, IntLiteralType) and not isinstance(expr.right, TpyName)
 
-            # If either operand is float-family, result is float (float takes precedence)
-            if is_float_type(left_raw) or is_float_type(right_raw):
-                if expr.op == "div" or expr.op in ("+", "-", "*", "//", "%", "**"):
-                    # Float64 wins over Float32
-                    if is_float64_type(left_raw) or is_float64_type(right_raw):
-                        return FLOAT
-                    return left_raw if is_float32_type(left_raw) else right_raw
+                # If either operand is float-family, result is float (float takes precedence)
+                if is_float_type(left_raw) or is_float_type(right_raw):
+                    if expr.op == "div" or expr.op in ("+", "-", "*", "//", "%", "**"):
+                        # Float64 wins over Float32
+                        if is_float64_type(left_raw) or is_float64_type(right_raw):
+                            return FLOAT
+                        return left_raw if is_float32_type(left_raw) else right_raw
 
-            # True division always returns float
-            if expr.op == "div":
-                return FLOAT
+                # True division always returns float
+                if expr.op == "div":
+                    return FLOAT
 
-            # Determine fixed-int context: explicit target or operand is a fixed-width int
-            fixed_ctx = target_type if is_fixed_int_type(target_type) else None
-            if is_fixed_int_type(left_raw) and not left_is_literal:
-                fixed_ctx = left_raw
-            elif is_fixed_int_type(right_raw) and not right_is_literal:
-                fixed_ctx = right_raw
-            # Second pass with context for proper literal resolution
-            left_type = self.get_resolved_type(expr.left, fixed_ctx)
-            right_type = self.get_resolved_type(expr.right, fixed_ctx)
-            # If target is fixed-int and both operands are literals, result is that type
-            if is_fixed_int_type(fixed_ctx) and left_is_literal and right_is_literal:
-                return fixed_ctx
-            # Pure literal binops without fixed context use configured default-int,
-            # with range-safe fallback for out-of-range results.
-            if left_is_literal and right_is_literal:
-                analyzed = self.ctx.analyzer.get_expr_type(expr)
-                if isinstance(analyzed, IntLiteralType):
-                    return self.ctx.analyzer.ctx.default_int_for_literal(analyzed)
-                return self.ctx.analyzer.ctx.default_int_type
-            # If either operand is a fixed-width int (and other is compatible), result is that type
-            if is_fixed_int_type(left_type) and (is_fixed_int_type(right_type) or isinstance(right_type, IntLiteralType)):
-                return left_type
-            if is_fixed_int_type(right_type) and (is_fixed_int_type(left_type) or isinstance(left_type, IntLiteralType)):
-                return right_type
-            # Otherwise, result is BigInt if either operand is BigInt.
-            # For literal-literal arithmetic without stronger context, use the
-            # configured default integer type.
-            is_bigint_op = is_big_int_type(left_type) or is_big_int_type(right_type)
-            if is_bigint_op and expr.op in ("+", "-", "*", "//", "%", "**", "&", "|", "^", "<<", ">>"):
-                return BIGINT
-            if (
-                isinstance(left_type, IntLiteralType)
-                and isinstance(right_type, IntLiteralType)
-                and expr.op in ("+", "-", "*", "//", "%", "**", "&", "|", "^", "<<", ">>")
-            ):
-                analyzed = self.ctx.analyzer.get_expr_type(expr)
-                if isinstance(analyzed, IntLiteralType):
-                    return self.ctx.analyzer.ctx.default_int_for_literal(analyzed)
-                return self.ctx.analyzer.ctx.default_int_type
+                # Determine fixed-int context: explicit target or operand is a fixed-width int
+                fixed_ctx = target_type if is_fixed_int_type(target_type) else None
+                if is_fixed_int_type(left_raw) and not left_is_literal:
+                    fixed_ctx = left_raw
+                elif is_fixed_int_type(right_raw) and not right_is_literal:
+                    fixed_ctx = right_raw
+                # Second pass with context for proper literal resolution
+                left_type = self.get_resolved_type(expr.left, fixed_ctx)
+                right_type = self.get_resolved_type(expr.right, fixed_ctx)
+                # If target is fixed-int and both operands are literals, result is that type
+                if is_fixed_int_type(fixed_ctx) and left_is_literal and right_is_literal:
+                    return fixed_ctx
+                # Pure literal binops without fixed context use configured default-int,
+                # with range-safe fallback for out-of-range results.
+                if left_is_literal and right_is_literal:
+                    analyzed = self.ctx.analyzer.get_expr_type(expr)
+                    if isinstance(analyzed, IntLiteralType):
+                        return self.ctx.analyzer.ctx.default_int_for_literal(analyzed)
+                    return self.ctx.analyzer.ctx.default_int_type
+                # If either operand is a fixed-width int (and other is compatible), result is that type
+                if is_fixed_int_type(left_type) and (is_fixed_int_type(right_type) or isinstance(right_type, IntLiteralType)):
+                    return left_type
+                if is_fixed_int_type(right_type) and (is_fixed_int_type(left_type) or isinstance(left_type, IntLiteralType)):
+                    return right_type
+                # Otherwise, result is BigInt if either operand is BigInt.
+                # For literal-literal arithmetic without stronger context, use the
+                # configured default integer type.
+                is_bigint_op = is_big_int_type(left_type) or is_big_int_type(right_type)
+                if is_bigint_op and expr.op in ("+", "-", "*", "//", "%", "**", "&", "|", "^", "<<", ">>"):
+                    return BIGINT
+                if (
+                    isinstance(left_type, IntLiteralType)
+                    and isinstance(right_type, IntLiteralType)
+                    and expr.op in ("+", "-", "*", "//", "%", "**", "&", "|", "^", "<<", ">>")
+                ):
+                    analyzed = self.ctx.analyzer.get_expr_type(expr)
+                    if isinstance(analyzed, IntLiteralType):
+                        return self.ctx.analyzer.ctx.default_int_for_literal(analyzed)
+                    return self.ctx.analyzer.ctx.default_int_type
 
         typ = self.ctx.analyzer.get_expr_type(expr)
         # Strip ReadonlyType -- C++ doesn't use it

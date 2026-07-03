@@ -1,1 +1,1 @@
-TurboPython panic: uncaught tpy::ZeroDivisionError: float division by zero
+TurboPython panic: uncaught tpy::ZeroDivisionError: division by zero

@@ -11,7 +11,7 @@ void main() {
     // b: Int32 = Int32(0)
     int32_t b = 0;
     // print(a / b)
-    std::cout << ::tpy::print_float((::tpy::truediv(static_cast<double>(a), static_cast<double>(b)))) << "\n";
+    std::cout << ::tpy::print_float((::tpy::truediv(static_cast<int64_t>(a), static_cast<int64_t>(b)))) << "\n";
 }
 
 void __tpy_init() {

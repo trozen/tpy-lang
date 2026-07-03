@@ -450,8 +450,8 @@ print(UInt8.trunc(2**100 + 42))  # 42 (low 8 bits)
 | `int + float` | `float` | Float is wider than int |
 | `float + IntN` | `float` | Float is wider than any fixed-width int (signed or unsigned) |
 | `Float32 + IntN` | `Float32` | Result keeps `Float32`; mixing with `float` widens to `float` |
-| `int / int` | `float` | True division always returns float (raises `ZeroDivisionError` on zero divisor) |
-| `Int32 / Int32` | `float` | Fixed-width true division: operands cast to double (raises `ZeroDivisionError` on zero divisor) |
+| `int / int` | `float` | True division always returns float, correctly rounded like CPython (raises `ZeroDivisionError` on zero divisor, `OverflowError` when the quotient exceeds double range) |
+| `Int32 / Int32` | `float` | Fixed-width true division, same CPython-parity semantics (Int64/UInt64 magnitudes beyond 2^53 route through the correctly-rounded BigInt path) |
 
 `float + bool` (e.g. `3.0 + True`) is currently rejected, unlike CPython where `bool` is an `int` -- `bool` does not extend the `AnyFixedInt` marker the float operators widen over (see BUGS.md).
 
@@ -2299,6 +2299,8 @@ class Point:
 ```
 
 `Point` conforms to `Addable` because `Point.__add__(Point) -> Own[Point]` matches `__add__(Self) -> Own[Self]` after substituting `Self` with `Point`.
+
+A protocol may also reference its own name (or another protocol, mutually) in a method signature -- e.g. `def half(self) -> Chainable: ...` inside `class Chainable(Protocol)`. Conformance checking is cycle-guarded (coinductive), so recursive and mutually-recursive protocol signatures work for structural protocols; `Self` remains the preferred spelling where it fits.
 
 #### Working: Self Type in Record Methods
 

@@ -1,0 +1,9 @@
+-86399999913600.0
+3.843071682022824e+17
+9007199254740992.0
+10.0
+-0.0
+0.0
+-0.0
+overflow: integer division result too large for a float
+zerodiv: division by zero

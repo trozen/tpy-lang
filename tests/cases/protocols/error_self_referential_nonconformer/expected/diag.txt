@@ -1,0 +1,1 @@
+main.py:21: error: Type Blob does not conform to protocol Addable in argument 'a'

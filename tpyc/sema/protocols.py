@@ -147,6 +147,10 @@ class ProtocolChecker:
     def __init__(self, ctx: SemanticContext, type_ops: TypeOperations):
         self.ctx = ctx
         self.type_ops = type_ops
+        # (actual, protocol) pairs currently being checked -- breaks the
+        # otherwise-unbounded recursion when a protocol references itself
+        # (directly or mutually) in a method signature.
+        self._conformance_in_progress: set[tuple[TpyType, NominalType]] = set()
 
     def is_all_readonly(self, proto_info: 'ProtocolInfo') -> bool:
         """Check if all methods (including inherited) are readonly."""
@@ -222,6 +226,30 @@ class ProtocolChecker:
         return False
 
     def classify_protocol_conformance(
+        self, actual: TpyType, protocol: NominalType,
+    ) -> ProtocolConformanceKind | None:
+        """Cycle-guarded wrapper over the conformance classifier.
+
+        A protocol that references itself in a method signature (directly,
+        or mutually through another protocol) re-asks the same (actual,
+        protocol) question mid-walk. Coinductive answer: the cycle itself
+        cannot refute conformance, so the in-progress pair counts as
+        conforming; any genuine mismatch still fails on the outer walk.
+        """
+        # Keyed on the type objects themselves (frozen, qname-aware hash/eq),
+        # so a delegation arm re-asking with a different type (FloatLiteralType
+        # -> float, unwrap of Own/readonly) is never mistaken for a cycle, and
+        # same-short-name protocols from different modules cannot collide.
+        key = (actual, protocol)
+        if key in self._conformance_in_progress:
+            return ProtocolConformanceKind.STRUCTURAL
+        self._conformance_in_progress.add(key)
+        try:
+            return self._classify_protocol_conformance(actual, protocol)
+        finally:
+            self._conformance_in_progress.discard(key)
+
+    def _classify_protocol_conformance(
         self, actual: TpyType, protocol: NominalType,
     ) -> ProtocolConformanceKind | None:
         """Check if actual type conforms to a protocol and return how.

@@ -52,7 +52,7 @@ namespace tpyapp::main {
 // def __truediv__(self, other: "Meters") -> float:
 inline double Meters::__truediv__(Meters other) const {
     // return self.v / other.v
-    return (::tpy::truediv(static_cast<double>(this->v), static_cast<double>(other.v)));
+    return (::tpy::truediv(static_cast<int64_t>(this->v), static_cast<int64_t>(other.v)));
 }
 
 // def __floordiv__(self, other: "Meters") -> "Meters":

@@ -12,7 +12,7 @@ void main() {
     // y: int = 0
     ::tpy::BigInt y = ::tpy::BigInt(0);
     // z: float = x / y
-    double z = (::tpy::truediv(static_cast<double>(x), static_cast<double>(y)));
+    double z = (::tpy::truediv(x, y));
     // print(z)
     std::cout << ::tpy::print_float(z) << "\n";
 }
