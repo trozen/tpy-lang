@@ -54,10 +54,12 @@ from .nodes import (
     THIRIsinstance,
     THIRLiteral,
     THIRMethodCall,
+    THIRMove,
     THIRName,
     THIRNarrowAlias,
     THIRNarrowedRead,
     THIRNoOpStmt,
+    THIROptionalPtrArg,
     THIRPrint,
     THIRPrintArg,
     THIRReturn,
@@ -577,7 +579,19 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         # per-arg cascade. The pending decl flushes before the statement line.
         init_cpp = _emit_expr(e.init, state)
         cpp_type = e.cpp_type if e.cpp_type is not None else "auto"
-        return state.temps.create(cpp_type, init_cpp, brace_init=e.brace_init)
+        name = state.temps.create(cpp_type, init_cpp, brace_init=e.brace_init)
+        if e.move:
+            return f"std::move({name})"
+        return f"&({name})" if e.addr_of else name
+    if isinstance(e, THIRMove):
+        return f"std::move({_emit_expr(e.value, state)})"
+    if isinstance(e, THIROptionalPtrArg):
+        if e.value is None:
+            return "nullptr"
+        inner = _emit_expr(e.value, state)
+        if e.lift:
+            return f"::tpy::optional_to_ptr({inner})"
+        return f"&({inner})" if e.addr_of else inner
     if isinstance(e, THIRMethodCall):
         return _emit_method_call(e, state)
     if isinstance(e, THIRContainerLiteral):

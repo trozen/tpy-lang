@@ -258,6 +258,26 @@ class THIRUnionArgLift(THIRExpr):
 
 
 @dataclass(frozen=True)
+class THIROptionalPtrArg(THIRExpr):
+    """A temp-free call arg into a pointer-repr `Optional[record]` slot
+    (`const A*` / `A*`) -- the inline arms of `_gen_optional_ptr_arg`'s
+    non-protocol tail: a `None` literal renders `nullptr` (`value=None`; the
+    typed-null spelling is protocol-only, and protocol slots are
+    gate-rejected), a record name the address-of (`&(name)`, `addr_of`), and
+    a storage-form Optional field read the `::tpy::optional_to_ptr(...)`
+    lift (`lift`). An already-pointer name (an F2 pointer-local, a
+    pointer-repr Optional binding) passes bare and never builds this node;
+    the ctor-rvalue face hoists a `THIRArgTemp` with its `addr_of` wrap
+    instead. The spelling is const-blind: `optional_to_ptr` selects its
+    const overload from the source, `&(...)`/`nullptr` are shared, so no
+    deep-const threading is needed (unlike the union lift). BORROW form --
+    a pointer the slot binds."""
+    value: THIRExpr | None = None  # None -> nullptr
+    addr_of: bool = False
+    lift: bool = False
+
+
+@dataclass(frozen=True)
 class THIRCtorCall(THIRExpr):
     """A same-module user-record constructor call rvalue (`A(7)`), admitted
     only as a call arg: into an `Own[union]` value-variant slot (bare), as a
@@ -278,29 +298,51 @@ class THIRCtorCall(THIRExpr):
 @dataclass(frozen=True)
 class THIRArgTemp(THIRExpr):
     """A call arg hoisted into a `__tmp_N` declaration flushed before the
-    enclosing statement, rendering as the bare temp name at the arg position.
-    Two admitted rows: a member-valued scalar into a value-union slot
-    (`std::variant<...> __tmp_N = <arg>;`, `_gen_union_arg`'s value branch)
-    and a same-module record-ctor rvalue into a same-nominal ref slot
+    enclosing statement, rendering as the bare temp name at the arg position
+    (or `std::move(__tmp_N)` when `move`). Three admitted rows: a
+    member-valued scalar into a value-union slot
+    (`std::variant<...> __tmp_N = <arg>;`, `_gen_union_arg`'s value branch),
+    a same-module record-ctor rvalue into a same-nominal ref slot
     (`A __tmp_N = A(7);`, the free-call `is_ref_param + is_temporary_expr`
-    arm). Only the flushable statement positions admit it (expr stmt /
-    var-decl init / name assign / return): a while-condition hoist is the
-    stale-snapshot miscompile (BUGS.md), an elif temp breaks the flat
+    arm), an lvalue into an `Own[T]` slot (`auto __tmp_N = <arg>;` +
+    the `move` wrap -- gen_call_arg's copy+move cascade; a movable NAME at
+    its last use skips the temp via `THIRMove` instead), and a record-ctor
+    rvalue into a pointer-repr `Optional[record]` slot (`A __tmp_N = A(7);`
+    + the `addr_of` wrap -- `_gen_optional_ptr_arg`'s temporary face). Only
+    the flushable statement positions admit it (expr stmt / var-decl init /
+    name assign / scalar field write / return): a while-condition hoist is
+    the stale-snapshot miscompile (BUGS.md), an elif temp breaks the flat
     `else if` chain -- both gate-rejected.
 
     Carries NO temp number: numbering is emit-time via the TempSink (the
     `__slot_N` precedent), drawing real numbers from the module-cumulative
     `ctx.temps` counter so THIR and AST bodies interleaved in one module
     stay continuous. `cpp_type` is the declared C++ type rendered at
-    lowering (`None` -> `auto`, mirroring `TempState.create`'s protocol /
-    TypeParamRef arm -- unused by the current rows but kept so the node
-    matches the AST facility); `brace_init` selects `{init}` over `= init`.
-    `form` mirrors how the temp NAME reads at the arg position: VALUE for
-    the value-union row (like a same-union name), BORROW for the record row
-    (a record lvalue the ref param binds)."""
+    lowering (`None` -> `auto`, the Own-slot copy row / `TempState.create`'s
+    protocol arm); `brace_init` selects `{init}` over `= init`.
+    `form` mirrors how the temp reads at the arg position: VALUE for
+    the value-union row (like a same-union name) and for a scalar Own-slot
+    payload, BORROW for the record ref-slot row (a record lvalue the ref
+    param binds) and the optional-ptr `addr_of` row, STORAGE for a moved
+    RECORD Own-slot payload (a self-contained value the slot consumes)."""
     init: THIRExpr
     cpp_type: str | None = None
     brace_init: bool = False
+    move: bool = False
+    addr_of: bool = False
+
+
+@dataclass(frozen=True)
+class THIRMove(THIRExpr):
+    """A movable owned local consumed at its last use by an `Own[T]` call-arg
+    slot: renders `std::move(<value>)` (gen_call_arg's `_maybe_move` arm).
+    Lowering creates it only when the movability + last-use facts fire (the
+    same `movable_locals` + `all_last_uses` reads as the AST); the
+    non-movable lvalue shape hoists a `THIRArgTemp` copy instead. STORAGE in
+    practice -- only owned records are ever movable, and a moved record is a
+    self-contained value handed to the consuming slot (the lowering's scalar
+    branch is unreachable here: scalars are never in `movable_locals`)."""
+    value: THIRExpr
 
 
 @dataclass(frozen=True)

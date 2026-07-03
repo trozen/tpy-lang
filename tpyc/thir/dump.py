@@ -31,9 +31,11 @@ from .nodes import (
     THIRLiteral,
     THIRMethodCall,
     THIRModule,
+    THIRMove,
     THIRName,
     THIRNarrowAlias,
     THIRNarrowedRead,
+    THIROptionalPtrArg,
     THIRPrint,
     THIRReturn,
     THIRSelf,
@@ -129,7 +131,18 @@ def _expr(e: THIRExpr) -> str:
     if isinstance(e, THIRArgTemp):
         # Number-free by design: the real __tmp_N is drawn at emission from
         # the module-cumulative sink.
-        return f"%argtmp({e.cpp_type or 'auto'}){{{_expr(e.init)}}}"
+        mods = (" move" if e.move else "") + (" addr" if e.addr_of else "")
+        return f"%argtmp({e.cpp_type or 'auto'}{mods}){{{_expr(e.init)}}}"
+    if isinstance(e, THIRMove):
+        return f"move({_expr(e.value)})"
+    if isinstance(e, THIROptionalPtrArg):
+        if e.value is None:
+            inner = "nullptr"
+        elif e.lift:
+            inner = f"optional_to_ptr({_expr(e.value)})"
+        else:
+            inner = f"&({_expr(e.value)})"
+        return f"optptr{{{inner}}}"
     if isinstance(e, THIRCoerce):
         return f"coerce({_expr(e.expr)} -> {_ty(e.result_type)})"
     if isinstance(e, THIRFieldAccess):

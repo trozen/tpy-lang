@@ -82,7 +82,7 @@ deletion is the concrete milestone that forces its tail closed.
 |---|---|---|
 | **Ctor MIL emit** -- `records.py` `_extract_field_inits` / `_extract_base_inits` / `_get_non_init_stmts` + the inline ` : f(v)... {}` write | every ctor MIL field cell + body: scalar (M3a), record/Optional copy+move (M3b), ctor-call / param-field-read sources + own-optional params (M3b-rvalue), docstring/`pass` trivia body (M3c-trivia), non-init body + demotion (M3c-demotion), inheritance -- single + multi base + inherited-field writes (M3d), and str/list/dict/tuple/union/bytes fields (F3+) + cross-module/native/generic records | **PARTIAL** -- the whole scalar/record/Optional + body + inheritance surface lands (ctor self-contained tail complete); deferred cells are cross-axis-blocked -- non-record demoted-field-writes + non-record fields (F3+) + native/generic records |
 | **Body statement + expression emit** -- `statements.py` `gen_body` per-statement path + `expressions.py` `gen_expr`, for routed callables | every statement shape + expression form across every callable kind | **PARTIAL** -- straight-line shapes over the F1/F2 + scalar/bool/double-float + str (F6 S1-S5 + cross-type coercions) + bytes (F6 S6 values + the incr-46 tail: subscript/slices/iteration/concat/aug-assign) slice, incl. logical/chained-compare exprs and scalar/slice-object type-constructor calls |
-| **Form / conversion machinery** -- `context.py` `convert` + `CppForm`/`FormValue`, the ~12 detection predicates + ~22 local side-sets + the `RefType` wrapper (see `THIR_FORM_INVENTORY.md`) | **F-final**: the `Form` tag + `THIRFormConvert` subsume all form dispatch | **PARTIAL** -- F1/F2 forms carried + F3 tuple read/write + the F6 str+bytes view->owned converts (S1/S6 -- both `view_to_owned_conv` family arms validated; reused at container-element slots by S5; extended to the cross-type str-family coercions in incr 42, the materializing arms lowering to the same THIRFormConvert) + the F4 union arms (U1 value + U2 pointer-variant, incr 49-50: `to_[const_]ptr_variant` / `to_value_variant<...>` carried, plus the structural form validator as the second gate) + the U3 narrowing extractions (incr 51: `THIRIsinstance` / `THIRNarrowAlias`, the `narrowed_vars` rename mirrored as lowering scope) + the U2 write-arm tail (incr 52: monostate write arms + union field-to-field copies) + the U4 narrowing tail (incr 53-54: `THIRAssert` persistent extractions + re-assert bump, while-isinstance loop-entry aliases, compound-`and` `THIRNarrowedRead` inline reads); + the call-arg lifts and temps (incr 56-59: `THIRUnionArgLift` ptr-variant member/None arg lifts incl. the deep-const slot spelling + `ptr_variant_to_const`, `THIRCtorCall`, `THIRArgTemp` value-union/record-rvalue arg temps, record-arg/method-receiver pass-throughs); F4 remainder (readonly narrowing subjects), F5, the remaining F6 tail, and RefType removal pending |
+| **Form / conversion machinery** -- `context.py` `convert` + `CppForm`/`FormValue`, the ~12 detection predicates + ~22 local side-sets + the `RefType` wrapper (see `THIR_FORM_INVENTORY.md`) | **F-final**: the `Form` tag + `THIRFormConvert` subsume all form dispatch | **PARTIAL** -- F1/F2 forms carried + F3 tuple read/write + the F6 str+bytes view->owned converts (S1/S6 -- both `view_to_owned_conv` family arms validated; reused at container-element slots by S5; extended to the cross-type str-family coercions in incr 42, the materializing arms lowering to the same THIRFormConvert) + the F4 union arms (U1 value + U2 pointer-variant, incr 49-50: `to_[const_]ptr_variant` / `to_value_variant<...>` carried, plus the structural form validator as the second gate) + the U3 narrowing extractions (incr 51: `THIRIsinstance` / `THIRNarrowAlias`, the `narrowed_vars` rename mirrored as lowering scope) + the U2 write-arm tail (incr 52: monostate write arms + union field-to-field copies) + the U4 narrowing tail (incr 53-54: `THIRAssert` persistent extractions + re-assert bump, while-isinstance loop-entry aliases, compound-`and` `THIRNarrowedRead` inline reads); + the call-arg lifts and temps (incr 56-65: `THIRUnionArgLift` ptr-variant member/None arg lifts incl. the deep-const slot spelling + `ptr_variant_to_const`, `THIRCtorCall`, `THIRArgTemp` value-union/record-rvalue/Own-slot/optional-ptr arg temps with the `move`/`addr_of` wraps, `THIRMove` last-use moves, `THIROptionalPtrArg` nullptr/&(name)/optional_to_ptr faces, record-arg/method-receiver/self-receiver pass-throughs); F4 remainder (readonly narrowing subjects), F5, the remaining F6 tail, and RefType removal pending |
 
 These interlock: deleting `gen_body`/`gen_expr` requires the form machinery gone
 (F-final) and every statement shape routed. The **ctor MIL emit is the first
@@ -138,7 +138,7 @@ deferred (self-contained) / blocked-on-`<rung>`.
   records only.
 - Non-value **call arguments** (the `gen_call_arg` coercion cascade: auto-move,
   view->owned, union/tuple lifts) + call / `copy()`-write optional sources:
-  **OPENED (incr 56-59)** -- the cascade splits on a probe-verified temp
+  **OPENED (incr 56-65)** -- the cascade splits on a probe-verified temp
   boundary. Temp-free rows landed (incr 56-57): record names into ref slots,
   user-record method calls, the ptr-union member/None inline lift, ctor
   rvalues into `Own[union]` slots, union-coerced literals. The **arg-temp
@@ -151,16 +151,55 @@ deferred (self-contained) / blocked-on-`<rung>`.
   Follow-up rows landed (incr 59): deep-const (readonly-annotated or
   `deep_const_borrow_params`) ptr-union slots incl. `ptr_variant_to_const`,
   upcast Child->Parent NAME args, method ctor-rvalues into const slots.
-  **Still deferred**: the Own copy+move arms, protocol / optional-ptr
-  `&(__tmp)`, covariant slots, the elif-chain-abandon + statement-expr temp
-  relocation, the field-write flush position, readonly ref-slot ctor temps,
-  `self.helper()` sites, method union-slot args, and the F2d NON-ctor
-  source face (`_is_record_rvalue_source`'s record-returning-CALL arm
-  lacks the callee-shape rejects `_ctor_shape_ok`/`_call_eligible` apply
-  -- linkage, literal-overload mangling, generic type args, error_return;
-  same-module shapes are reachable; pre-existing, toolchain-caught if
-  ever hit, byte-diff self-catching -- extend the face with
-  `_call_eligible`'s callee-shape head). (The
+  **Wave-3 tails landed (incr 60-65)**: the F2d non-ctor source face now
+  shares `_call_eligible`'s callee-shape head (`_plain_free_callee_ok`,
+  incr 60); the Own[T]-slot cascade (incr 61) -- lvalue copy+move temps
+  (`THIRArgTemp.move`), the temp-free last-use `std::move(name)`
+  (`THIRMove`, Own params seeded into `lc.movable_locals` mirroring
+  `seed_param_locals`), bare rvalues (coerced literals / scalar rvalues
+  into `Own[scalar]`, same-nominal ctor / by-value record calls into
+  `Own[record]`), plus fixes for two latent slot-blind holes (the scalar
+  pass-through arm and the F2d arg loop both admitted Own-cascade slots
+  bare -- the shared `_own_cascade_fires` guard); the pointer-repr
+  Optional slot faces (incr 62, `THIROptionalPtrArg` + the `addr_of`
+  temp wrap): nullptr / `&(name)` / bare already-pointer pass /
+  `optional_to_ptr` field lift / ctor-rvalue `&(__tmp_N)` -- incl.
+  NARROWED union subjects, which mirror as `&(<alias / inline get>)` on
+  both paths (the review-round fix: the temp-free name face is
+  reachable from `_expr_eligible`, where `narrowed` is not threaded, so
+  the face must mirror rather than reject); readonly-slot
+  ctor rvalues route bare (incr 63 -- the ref-param temp arm keys on
+  `is_ref_param()`, which the readonly wrapper defeats; the old
+  "`const A` temp" note was wrong, probe-verified); field writes are the
+  FIFTH flushable arg-temp position (incr 64); self-receiver method
+  calls (`self.helper()` -> `this->helper()`, THIRSelf on the `is_arrow`
+  render -- method AND ctor bodies; the largest single routing jump of
+  the migration, ~+1.9k bodies) and method VALUE-union args (same-union
+  names / coerced literals bare, member-valued scalars through the
+  variant arg temp; value variants are const-blind so inherited methods'
+  first-pass AST loop renders identically) (incr 65).
+  **Still deferred**: the elif-chain-abandon + statement-expr temp
+  relocation (ARCHITECTURAL -- design first), protocol slots (adapter
+  machinery; typed-null spelling), Optional PARAMS (`_f1_param_eligible`
+  -- the signature/narrowing cell), method POINTER-variant union slots
+  (the deep-const threading differs between the AST's own-record and
+  inherited first-pass arg loops), coerce-wrapped lvalues into Own slots
+  (the AST's rendered-identity `needs_copy` split), record field reads
+  into Own slots (not `_expr_eligible`), `Own[T] | None` slots
+  (`ptr_to_optional[_move]` wrap arms), borrow-returning callee args
+  (copy-through-temp), the `Own[Opt[P_ref]]` param lift at optional-ptr
+  slots, and subscript sources. Two structural notes for future rows:
+  `_LowerCtx.movable_locals` mirrors ONLY seed_param_locals' Own-param
+  branch (the owned-movable-tuple and expensive-copy-value-Optional
+  param branches are unmirrored -- inert while the Own-slot rows admit
+  scalar/F1-record payloads only; a frontier reusing the set against
+  tuple/Optional sources must extend the seeding), and the validator
+  has no position/shape rules for `THIRMove` / `THIROptionalPtrArg`
+  (the byte-diff backstops; add rules if either node gains new
+  positions). Covariant slots DISSOLVED into the F5
+  rung: covariant conversion requires a generic record, and generics are
+  gate-rejected wholesale -- not a self-contained call-arg tail. Upcasts
+  into Own slots are sema-rejected outright (no THIR face needed). (The
   no-cascade subset OUTSIDE it -- bare-name container args into non-Own
   concrete container slots, where `own is None` and no branch fires --
   landed separately as incr 35's pass-through widening.)

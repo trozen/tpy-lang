@@ -131,10 +131,10 @@ class TestConstructor:
         assert len(ctor.mil_inits) == 1  # self.x = x hoisted to the MIL
         assert _ctor_tail(ctor) == ' : x(x) {\n        std::cout << x << "\\n";\n    }\n'
 
-    def test_non_init_method_call_body_is_ineligible(self):
-        # A non-init body statement outside the eligible expr-statement set (a
-        # method call is a TpyMethodCall, not a routable TpyCall) keeps the ctor
-        # on the AST path.
+    def test_non_init_self_method_call_body_routes(self):
+        # A `self.reset()` body statement rides the self-receiver method-call
+        # row (`this->reset();` in the ctor tail -- probe-verified
+        # byte-identical to the AST render).
         ctor = _lower_ctor(
             _PRELUDE
             + "class C:\n    x: Int32\n"
@@ -142,7 +142,8 @@ class TestConstructor:
             + "        self.x = x\n        self.reset()\n"
             + "    def reset(self) -> None:\n        self.x = 0\n",
             "C")
-        assert ctor is None
+        assert ctor is not None
+        assert "this->reset();" in _ctor_tail(ctor)
 
     def test_body_local_demotion_routes(self):
         # M3c-demotion: a field init whose RHS reads a body-local can't hoist (the

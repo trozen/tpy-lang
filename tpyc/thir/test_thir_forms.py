@@ -695,6 +695,18 @@ class TestF2dRebindSlot:
         assert decl.cpp_local_representation is LocalBinding.REBIND_SLOT
         assert isinstance(decl.init, THIRCall) and decl.init.callee == "make_inner"
 
+    def test_generic_call_rebind_source_is_ineligible(self):
+        # A generic record-returning callee spells inferred type args on the
+        # AST path -- the free-call face shares `_call_eligible`'s
+        # callee-shape head (`_plain_free_callee_ok`), so it rejects -> AST.
+        thir = _lower_ctx(
+            _F1_RECORDS
+            + "from tpy import ValueType\n"
+            + "def mk[T: ValueType](v: T) -> Own[Inner]:\n    return Inner(1)\n"
+            + "def f() -> Int32:\n"
+            + "    p = mk(5)\n    p = mk(7)\n    return p.value\n")
+        assert _fn(thir, "f") is None
+
     def test_conditional_reseat_routes(self):
         # A REBIND_SLOT reseat inside an `if`-body (the in-branch reseat path).
         thir = _lower_ctx(

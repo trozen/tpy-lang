@@ -110,13 +110,14 @@ class TestRecordCallArgs:
         arg = fn.body[0].value.args[0]
         assert isinstance(arg, THIRArgTemp) and arg.cpp_type == "A"
 
-    def test_own_record_slot_stays_ast(self):
-        # An Own[A] slot auto-moves its arg at last use (`sink(std::move(a))`).
+    def test_own_record_slot_routes_via_move(self):
+        # An Own[A] slot auto-moves its arg at last use (`sink(std::move(a))`)
+        # -- the Own-slot cascade rows (see TestOwnSlotArgs).
         thir = _lower_ctx(
             _PRELUDE
             + "def sink(a: Own[A]) -> Int32:\n    return a.x\n"
             + "def use(a: Own[A]) -> Int32:\n    return sink(a)\n")
-        assert _fn(thir, "use") is None
+        assert _fn(thir, "use") is not None
 
     def test_readonly_record_slot_stays_ast(self):
         # A readonly-wrapped slot is the deep-const frontier -- deferred.
@@ -125,6 +126,19 @@ class TestRecordCallArgs:
             + "def take_ro(a: readonly[A]) -> Int32:\n    return a.x\n"
             + "def use(a: A) -> Int32:\n    return take_ro(a)\n")
         assert _fn(thir, "use") is None
+
+    def test_readonly_slot_ctor_rvalue_routes_bare(self):
+        # A ctor rvalue into a readonly-ANNOTATED slot binds the const ref
+        # directly -- bare on both paths (the ref-param temp arm keys on
+        # is_ref_param, which the readonly wrapper defeats).
+        src = (
+            _PRELUDE
+            + "def take_ro(a: readonly[A]) -> Int32:\n    return a.x\n"
+            + "def use() -> Int32:\n    return take_ro(A(7))\n")
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+        out = _cpp(src, thir=True)
+        assert "return take_ro(A(7));" in out
+        assert _fn(_lower_ctx(src), "use") is not None
 
     def test_upcast_name_arg_routes(self):
         # A Child NAME into a Parent ref slot emits the bare name on both
@@ -158,15 +172,16 @@ class TestRecordCallArgs:
             + "def use(c: Child) -> Int32:\n    return take_ro(c)\n")
         assert _fn(thir, "use") is None
 
-    def test_optional_record_slot_stays_ast(self):
-        # An `A | None` slot takes the `_gen_optional_ptr_arg` lift (`&(a)`).
+    def test_optional_record_slot_routes_via_addr_of(self):
+        # An `A | None` slot takes the `_gen_optional_ptr_arg` lift (`&(a)`)
+        # -- the optional-ptr faces (see TestOptionalPtrArgs).
         thir = _lower_ctx(
             _PRELUDE
             + "def maybe(a: A | None) -> Int32:\n"
             + "    if a is not None:\n        return a.x\n"
             + "    return 0\n"
             + "def use(a: A) -> Int32:\n    return maybe(a)\n")
-        assert _fn(thir, "use") is None
+        assert _fn(thir, "use") is not None
 
     def test_union_record_slot_routes_via_member_lift(self):
         # An `A | B` slot lifts the member arg into the variant -- routed by
@@ -300,13 +315,16 @@ class TestRecordMethodCalls:
         arg = mc.args[0]
         assert isinstance(arg, THIRName) and arg.name == "c"
 
-    def test_self_receiver_stays_ast(self):
-        # `self.get()` renders `this->get()` -- the self-receiver emit is a
-        # different row (rejected here).
-        thir = _lower_ctx(_src(
+    def test_self_receiver_routes_via_arrow(self):
+        # `self.get()` renders `this->get()` -- the THIRSelf receiver rides
+        # the same indirect (`is_arrow`) render as a pointer-local's.
+        src = _src(
             "", extra_a="    def twice(self) -> Int32:\n"
-                        "        return self.get() * 2\n"))
-        assert _fn(thir, "twice") is None
+                        "        return self.get() * 2\n")
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+        out = _cpp(src, thir=True)
+        assert "return (::tpy::mul_check<int32_t>(this->get(), 2));" in out
+        assert _fn(_lower_ctx(src), "twice") is not None
 
     def test_multi_overload_method_stays_ast(self):
         # @auto_readonly clones a method into a same-name mutable + const
@@ -464,6 +482,24 @@ class TestArgTempEmit:
         assert _fn(thir, "use_ret") is not None
         assert _fn(thir, "use_mut") is not None
 
+    def test_field_write_position_flushes(self):
+        # The fifth flushable statement position: a scalar-field write's value
+        # call hoists its temp before the assign line (the AST's single
+        # gen_stmt flush point covers every assign target shape).
+        src = (
+            _VU_PRELUDE
+            + "class K:\n"
+            + "    n: Int32\n"
+            + "    def __init__(self):\n        self.n = 0\n"
+            + "def use(k: K, v: Int32) -> Int32:\n"
+            + "    k.n = take_vu(v)\n    return k.n\n"
+        )
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+        out = _cpp(src, thir=True)
+        assert ("std::variant<int32_t, double> __tmp_1 = v;\n"
+                "    k.n = take_vu(__tmp_1);") in out
+        assert _fn(_lower_ctx(src), "use") is not None
+
     def test_mixed_thir_ast_numbering_stays_continuous(self):
         # The load-bearing seam test: fn1 routes (its temp draws __tmp_1 from
         # the module-cumulative ctx.temps via CtxTempSink), fn2 stays AST (a
@@ -510,6 +546,376 @@ class TestArgTempEmit:
         text = dump_thir(thir)
         assert "%argtmp(std::variant<int32_t, double>){%k}" in text
         assert "__tmp" not in text
+
+
+class TestOwnSlotArgs:
+    # gen_call_arg's ownership cascade (the copy+move arms): an lvalue into a
+    # plain Own[T] slot hoists `auto __tmp_N = <arg>;` and moves the temp; a
+    # movable name (an Own param) at its last use moves temp-free
+    # (`std::move(o)`); rvalues bind the slot bare. Record args are params --
+    # a single-assignment record LOCAL is itself outside the slice.
+    SRC = (
+        _PRELUDE
+        + "def take_own(o: Own[A]) -> Int32:\n    return o.x\n"
+        + "def take_own_s(o: Own[Int32]) -> Int32:\n    return o\n"
+        + "def mk() -> Own[A]:\n    return A(4)\n"
+        + "def copy_arm(a: A) -> Int32:\n"
+        + "    r = take_own(a)\n    return r + a.x\n"
+        + "def scalar_name_arm(n: Int32) -> Int32:\n    return take_own_s(n)\n"
+        + "def field_arm(a: A) -> Int32:\n    return take_own_s(a.x)\n"
+        + "def move_arm(o: Own[A]) -> Int32:\n    return take_own(o)\n"
+        + "def rvalue_arm() -> Int32:\n    return take_own(A(3))\n"
+        + "def call_rvalue_arm() -> Int32:\n    return take_own(mk())\n"
+        + "def scalar_lit_arm() -> Int32:\n    return take_own_s(5)\n"
+    )
+
+    def test_byte_identical(self):
+        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
+
+    def test_routing_is_non_vacuous(self):
+        thir = _lower_ctx(self.SRC)
+        for name in ("copy_arm", "scalar_name_arm", "field_arm", "move_arm",
+                     "rvalue_arm", "call_rvalue_arm", "scalar_lit_arm"):
+            assert _fn(thir, name) is not None, name
+
+    def test_emitted_shapes(self):
+        thir_out = _cpp(self.SRC, thir=True)
+        assert thir_out == _cpp(self.SRC, thir=False)
+        # The copy+move temps (record param, scalar name, scalar field read).
+        assert ("auto __tmp_1 = a;\n    "
+                "int32_t r = take_own(std::move(__tmp_1));") in thir_out
+        assert ("auto __tmp_2 = n;\n    "
+                "return take_own_s(std::move(__tmp_2));") in thir_out
+        assert ("auto __tmp_3 = a.x;\n    "
+                "return take_own_s(std::move(__tmp_3));") in thir_out
+        # The temp-free last-use move of an Own param.
+        assert "return take_own(std::move(o));" in thir_out
+        # The bare rvalue binds (ctor, by-value call, coerced literal).
+        assert "return take_own(A(3));" in thir_out
+        assert "return take_own(mk());" in thir_out
+        assert "return take_own_s(5);" in thir_out
+
+    def test_pointer_local_arg_copies_through_deref_temp(self):
+        # A pointer-local is a non-owning borrow -- never movable, so it
+        # always copies, with the indirect deref in the temp init.
+        src = (
+            _PRELUDE
+            + "def take_own(o: Own[A]) -> Int32:\n    return o.x\n"
+            + "def use(h: H, flag: bool) -> Int32:\n"
+            + "    p = h.a\n"
+            + "    if flag:\n        p = h.b\n"
+            + "    return take_own(p)\n")
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+        out = _cpp(src, thir=True)
+        assert "auto __tmp_1 = (*p);\n    return take_own(std::move(__tmp_1));" in out
+        assert _fn(_lower_ctx(src), "use") is not None
+
+    def test_own_param_not_at_last_use_copies(self):
+        # Movable but NOT the last use: the copy temp fires, not the move.
+        src = (
+            _PRELUDE
+            + "def take_own(o: Own[A]) -> Int32:\n    return o.x\n"
+            + "def use(o: Own[A]) -> Int32:\n"
+            + "    r = take_own(o)\n    return r + o.x\n")
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+        out = _cpp(src, thir=True)
+        assert "auto __tmp_1 = o;\n    int32_t r = take_own(std::move(__tmp_1));" in out
+        assert _fn(_lower_ctx(src), "use") is not None
+
+    def test_dump_shapes(self):
+        from .dump import dump_thir
+        text = dump_thir(_lower_ctx(self.SRC))
+        assert "move(%o)" in text                     # the temp-free move
+        assert "%argtmp(auto move){%a}" in text       # the copy+move temp
+        assert "__tmp" not in text                    # number-free by design
+
+
+class TestOwnSlotGateRejects:
+    # Own-slot shapes whose AST render the slice does not reproduce -- pinned
+    # unrouted. Each pairs with a byte-identity assertion so a future gate
+    # widening that forgets the emit half fails here first.
+
+    def test_own_arg_in_non_flushable_position_stays_ast(self):
+        # A nested call arg has no flush point -- the copy temp cannot hoist.
+        src = (
+            _PRELUDE
+            + "def take_own_s(o: Own[Int32]) -> Int32:\n    return o\n"
+            + "def g(x: Int32) -> Int32:\n    return x\n"
+            + "def use(n: Int32) -> Int32:\n    return g(take_own_s(n))\n")
+        assert _fn(_lower_ctx(src), "use") is None
+
+    def test_optional_own_slot_stays_ast(self):
+        # An `Own[A] | None` slot takes the ptr_to_optional wrap arms.
+        src = (
+            _PRELUDE
+            + "def take_opt(o: Own[A] | None) -> Int32:\n"
+            + "    if o is None:\n        return 0\n"
+            + "    return o.x\n"
+            + "def use(a: A) -> Int32:\n"
+            + "    r = take_opt(a)\n    return r + a.x\n")
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+        assert _fn(_lower_ctx(src), "use") is None
+
+    def test_record_field_arg_stays_ast(self):
+        # A RECORD-typed field read into an Own slot copies through the temp
+        # on the AST path (`auto __tmp = h.a;`), but a record field read is
+        # not `_expr_eligible` in arbitrary expression position -- deferred.
+        src = (
+            _PRELUDE
+            + "def take_own(o: Own[A]) -> Int32:\n    return o.x\n"
+            + "def use(h: H) -> Int32:\n    return take_own(h.a)\n")
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+        assert _fn(_lower_ctx(src), "use") is None
+
+    def test_borrow_returning_callee_arg_stays_ast(self):
+        # A borrow-returning call is not an rvalue source: the AST copies it
+        # through a temp (`auto __tmp = get_ref(h); std::move(__tmp)`), which
+        # is neither the bare-rvalue nor the lvalue row.
+        src = (
+            _PRELUDE
+            + "def take_own(o: Own[A]) -> Int32:\n    return o.x\n"
+            + "def get_ref(h: H) -> A:\n    return h.a\n"
+            + "def use(h: H) -> Int32:\n    return take_own(get_ref(h))\n")
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+        assert _fn(_lower_ctx(src), "use") is None
+
+    def test_narrowed_subject_own_arg_stays_ast(self):
+        # A narrowed union subject into an Own slot: the copy temp would
+        # need the extraction-alias init -- the row is temps_ok-gated, and
+        # every temps_ok site threads `narrowed`, so the reject holds on
+        # both the gate and lowering sides.
+        src = (
+            _PRELUDE
+            + "def take_own(o: Own[A]) -> Int32:\n    return o.x\n"
+            + "def use(u: A | B) -> Int32:\n"
+            + "    if isinstance(u, A):\n        return take_own(u)\n"
+            + "    return 0\n")
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+        assert _fn(_lower_ctx(src), "use") is None
+
+    def test_coerced_lvalue_into_own_slot_stays_ast(self):
+        # A coerce-WRAPPED lvalue splits on the AST's rendered-identity
+        # `needs_copy` check (identity coercion temps, real conversion binds
+        # bare) -- not mirrored, both faces stay AST.
+        src = ("from tpy import Int32, Int64, Own\n"
+               "def take64(o: Own[Int64]) -> Int64:\n    return o\n"
+               "def use(n: Int32) -> Int64:\n    return take64(n)\n")
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+        assert _fn(_lower_ctx(src), "use") is None
+
+    def test_f2d_own_ctor_arg_stays_ast(self):
+        # The F2d rebind-slot ctor face shares the slot-blindness fix: an
+        # `Own[scalar]` __init__ slot temps the bare-name arg on the AST path
+        # (`_gen_record_ctor_args` shares the copy+move shape).
+        src = ("from tpy import Int32, Own\n"
+               "class W:\n    v: Int32\n"
+               "    def __init__(self, v: Own[Int32]):\n        self.v = v\n"
+               "def f(n: Int32) -> Int32:\n"
+               "    p = W(n)\n    p = W(n)\n    return p.v\n")
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+        assert _fn(_lower_ctx(src), "f") is None
+
+
+class TestMethodUnionAndSelfArgs:
+    # Method value-union args (the free-call temp/pass-through rows through
+    # the method arg loop -- value variants are const-blind, so own-record
+    # and inherited methods render identically) and self-receiver method
+    # calls (`self.helper()` -> `this->helper()`).
+    SRC = (
+        "from tpy import Int32, Float64\n"
+        "class A:\n"
+        "    x: Int32\n"
+        "    u: Int32 | Float64\n"
+        "    def __init__(self, x: Int32):\n"
+        "        self.x = x\n        self.u = 0\n"
+        "    def tag(self, v: Int32 | Float64) -> Int32:\n        return self.x\n"
+        "    def helper(self) -> Int32:\n        return self.x + 1\n"
+        "    def outer(self) -> Int32:\n        return self.helper()\n"
+        "class Child(A):\n"
+        "    def __init__(self, x: Int32):\n        super().__init__(x)\n"
+        "def use(a: A, k: Int32, f: Float64) -> Int32:\n"
+        "    r = a.tag(k)\n"
+        "    r = a.tag(f)\n"
+        "    return r\n"
+        "def use_inherited(c: Child, k: Int32) -> Int32:\n"
+        "    return c.tag(k)\n"
+        "def use_lit(a: A) -> Int32:\n"
+        "    return a.tag(5)\n"
+    )
+
+    def test_byte_identical(self):
+        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
+
+    def test_routing_is_non_vacuous(self):
+        thir = _lower_ctx(self.SRC)
+        for name in ("use", "use_inherited", "use_lit", "outer", "helper"):
+            assert _fn(thir, name) is not None, name
+
+    def test_emitted_shapes(self):
+        out = _cpp(self.SRC, thir=True)
+        assert out == _cpp(self.SRC, thir=False)
+        # Member-valued scalars hoist the variant temp at the method arg
+        # (decl-init, reassign, and return positions; inherited callee too).
+        assert ("std::variant<int32_t, double> __tmp_1 = k;\n"
+                "    int32_t r = a.tag(__tmp_1);") in out
+        assert ("std::variant<int32_t, double> __tmp_2 = f;\n"
+                "    r = a.tag(__tmp_2);") in out
+        assert ("std::variant<int32_t, double> __tmp_3 = k;\n"
+                "    return c.tag(__tmp_3);") in out
+        # A coerced int literal passes bare (sema coerces it to the union).
+        assert "return a.tag(5);" in out
+        # The self receiver renders arrow.
+        assert "return this->helper();" in out
+
+    def test_method_union_temp_in_non_flushable_position_stays_ast(self):
+        # A nested method-call arg has no flush point for the variant temp.
+        src = (
+            self.SRC
+            + "def g(x: Int32) -> Int32:\n    return x\n"
+            + "def nested(a: A, k: Int32) -> Int32:\n    return g(a.tag(k))\n")
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+        assert _fn(_lower_ctx(src), "nested") is None
+
+
+class TestOptionalPtrArgs:
+    # _gen_optional_ptr_arg's non-protocol faces: a pointer-repr Optional
+    # slot (`const A*` / `A*`) takes nullptr for None, `&(name)` for a plain
+    # record lvalue, the bare name for an already-pointer source (an F2
+    # pointer-local, a pointer-repr Optional binding), the optional_to_ptr
+    # lift for a storage Optional field, and the `&(__tmp_N)` temp for a
+    # ctor rvalue. Self-contained prelude: the optional-field face needs an
+    # `A | None` field on the receiver record.
+    SRC = (
+        "from tpy import Int32\n"
+        "class A:\n"
+        "    x: Int32\n"
+        "    def __init__(self, x: Int32):\n        self.x = x\n"
+        "class H:\n"
+        "    a: A\n"
+        "    b: A\n"
+        "    opt: A | None\n"
+        "    def __init__(self):\n"
+        "        self.a = A(1)\n        self.b = A(2)\n        self.opt = None\n"
+        + "def take_opt(o: A | None) -> Int32:\n"
+        + "    if o is None:\n        return 0\n"
+        + "    return o.x\n"
+        + "def none_arm() -> Int32:\n    return take_opt(None)\n"
+        + "def name_arm(a: A) -> Int32:\n    return take_opt(a)\n"
+        + "def rvalue_arm() -> Int32:\n    return take_opt(A(7))\n"
+        + "def opt_local_arm(h: H) -> Int32:\n"
+        + "    o = h.opt\n    return take_opt(o)\n"
+        + "def field_arm(h: H) -> Int32:\n    return take_opt(h.opt)\n"
+        + "def ptr_local_arm(h: H, flag: bool) -> Int32:\n"
+        + "    p = h.a\n"
+        + "    if flag:\n        p = h.b\n"
+        + "    return take_opt(p)\n"
+    )
+
+    def test_byte_identical(self):
+        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
+
+    def test_routing_is_non_vacuous(self):
+        thir = _lower_ctx(self.SRC)
+        for name in ("none_arm", "name_arm", "rvalue_arm", "opt_local_arm",
+                     "field_arm", "ptr_local_arm"):
+            assert _fn(thir, name) is not None, name
+
+    def test_emitted_shapes(self):
+        out = _cpp(self.SRC, thir=True)
+        assert out == _cpp(self.SRC, thir=False)
+        assert "return take_opt(nullptr);" in out
+        assert "return take_opt(&(a));" in out
+        assert "A __tmp_1 = A(7);\n    return take_opt(&(__tmp_1));" in out
+        assert "return take_opt(o);" in out                    # bare pass
+        assert "return take_opt(::tpy::optional_to_ptr(h.opt));" in out
+        assert "return take_opt(p);" in out                    # bare pointer
+
+    def test_dump_shapes(self):
+        from .dump import dump_thir
+        text = dump_thir(_lower_ctx(self.SRC))
+        assert "optptr{nullptr}" in text
+        assert "optptr{&(%a)}" in text
+        assert "optptr{optional_to_ptr(" in text
+        assert "%argtmp(A addr){ctor(A, " in text
+
+
+class TestOptionalPtrNarrowedArgs:
+    def test_narrowed_subject_arg_routes_via_alias_addr(self):
+        # A narrowed union subject into an `A | None` slot classifies 'name':
+        # the read renames to the extraction alias and both paths wrap the
+        # address-of (`take_opt(&(__u))`). The temp-free face is reachable
+        # from _expr_eligible (no narrowed threading), so the render MIRRORS
+        # rather than rejects -- a reject only at lowering was the
+        # gate/lowering drift this test pins against.
+        src = (
+            _PRELUDE
+            + "def take_opt(o: A | None) -> Int32:\n"
+            + "    if o is None:\n        return 0\n"
+            + "    return o.x\n"
+            + "def use(u: A | B) -> Int32:\n"
+            + "    if isinstance(u, A):\n        return take_opt(u)\n"
+            + "    return 0\n")
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+        out = _cpp(src, thir=True)
+        assert "return take_opt(&(__u));" in out
+        assert _fn(_lower_ctx(src), "use") is not None
+
+    def test_inline_narrowed_subject_arg_routes(self):
+        # The compound-condition twin: the inline get renders inside the
+        # same `&(...)` wrap on both paths.
+        src = (
+            _PRELUDE
+            + "def take_opt(o: A | None) -> Int32:\n"
+            + "    if o is None:\n        return 0\n"
+            + "    return o.x\n"
+            + "def use(u: A | B) -> Int32:\n"
+            + "    if isinstance(u, A) and take_opt(u) > 0:\n"
+            + "        return 1\n"
+            + "    return 0\n")
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+        out = _cpp(src, thir=True)
+        assert "take_opt(&((*std::get<A*>(u))))" in out
+        assert _fn(_lower_ctx(src), "use") is not None
+
+
+class TestOptionalPtrGateRejects:
+    def test_self_arg_stays_ast(self):
+        # `self` as an optional-ptr arg is classifier-rejected (its render
+        # is `this`, not an addressable record lvalue).
+        src = _src(
+            "def take_opt(o: A | None) -> Int32:\n"
+            "    if o is None:\n        return 0\n"
+            "    return o.x\n",
+            extra_a="    def m(self) -> Int32:\n"
+                    "        return take_opt(self)\n")
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+        assert _fn(_lower_ctx(src), "m") is None
+
+    def test_optional_param_stays_ast(self):
+        # A pointer-repr Optional PARAM is outside `_f1_param_eligible` (the
+        # signature/narrowing cell) -- the 'pass' face fires only for
+        # OPTIONAL_TO_PTR locals today.
+        src = (
+            _PRELUDE
+            + "def take_opt(o: A | None) -> Int32:\n"
+            + "    if o is None:\n        return 0\n"
+            + "    return o.x\n"
+            + "def use(o: A | None) -> Int32:\n    return take_opt(o)\n")
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+        assert _fn(_lower_ctx(src), "use") is None
+
+    def test_ctor_rvalue_in_non_flushable_position_stays_ast(self):
+        # The &(__tmp_N) hoist needs a flush point -- a nested call arg has
+        # none.
+        src = (
+            _PRELUDE
+            + "def take_opt(o: A | None) -> Int32:\n"
+            + "    if o is None:\n        return 0\n"
+            + "    return o.x\n"
+            + "def g(x: Int32) -> Int32:\n    return x\n"
+            + "def use() -> Int32:\n    return g(take_opt(A(7)))\n")
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+        assert _fn(_lower_ctx(src), "use") is None
 
 
 class TestArgTempGateRejects:
@@ -560,15 +966,15 @@ class TestArgTempGateRejects:
         assert _fn(thir, "f") is None
         assert _fn(thir, "g") is None
 
-    def test_scalar_field_write_value_stays_ast(self):
-        # A field-write assign is not one of the four flushable positions
-        # (deferred, not unsafe -- the AST flushes there too).
+    def test_scalar_field_write_value_routes(self):
+        # A field-write assign is the fifth flushable position (see
+        # TestArgTempEmit.test_field_write_position_flushes for the emit pin).
         thir = _lower_ctx(_PRELUDE
                           + "from tpy import Float64\n"
                           + "def take_vu(v: Int32 | Float64) -> Int32:\n"
                           + "    return 0\n"
                           + "def f(a: A, k: Int32):\n    a.x = take_vu(k)\n")
-        assert _fn(thir, "f") is None
+        assert _fn(thir, "f") is not None
 
     def test_narrowed_subject_value_union_arg_stays_ast(self):
         # A narrowed subject's C++ binding is still the variant: the AST's
@@ -579,15 +985,6 @@ class TestArgTempGateRejects:
                       + "    if isinstance(v, Int32):\n"
                       + "        return take_vu(v)\n"
                       + "    return 0\n")
-        assert _fn(thir, "f") is None
-
-    def test_readonly_record_slot_ctor_stays_ast(self):
-        # A readonly slot's temp declares `const A` -- deferred with the
-        # deep-const frontier.
-        thir = _lower_ctx(_PRELUDE
-                          + "def take_ro(a: readonly[A]) -> Int32:\n"
-                          + "    return a.x\n"
-                          + "def f() -> Int32:\n    return take_ro(A(3))\n")
         assert _fn(thir, "f") is None
 
     def test_upcast_ctor_arg_stays_ast(self):
@@ -737,6 +1134,34 @@ class TestArgTempValidator:
         from ..typesys import INT32
         return THIRCall(result_type=INT32, callee="take_vu", args=(arg,))
 
+    def _method_call(self, arg):
+        from ..typesys import INT32
+        return THIRMethodCall(
+            result_type=INT32, method_cpp="tag", args=(arg,),
+            receiver=THIRName(result_type=INT32, name="a"))
+
+    def test_temp_under_method_call_flushable_passes(self):
+        from ..typesys import INT32
+        from .nodes import THIRFunction, THIRFunctionLayout
+        from .validate import validate_function
+        fn = THIRFunction(
+            name="t", params=(), return_type=INT32,
+            body=(THIRReturn(value=self._method_call(self._temp())),),
+            layout=THIRFunctionLayout())
+        validate_function(fn)
+
+    def test_temp_under_method_call_condition_raises(self):
+        import pytest
+        from ..typesys import VoidType
+        from .nodes import THIRFunction, THIRFunctionLayout, THIRWhile
+        from .validate import THIRValidationError, validate_function
+        loop = THIRWhile(condition=self._method_call(self._temp()), body=())
+        fn = THIRFunction(name="t", params=(), return_type=VoidType(),
+                          body=(loop,), layout=THIRFunctionLayout())
+        with pytest.raises(THIRValidationError,
+                           match="non-flushable statement position"):
+            validate_function(fn)
+
     def test_temp_under_flushable_positions_passes(self):
         from ..typesys import INT32, VoidType
         from .nodes import THIRFunction, THIRFunctionLayout, THIRVarDecl
@@ -771,5 +1196,5 @@ class TestArgTempValidator:
                           body=(THIRReturn(value=self._temp()),),
                           layout=THIRFunctionLayout())
         with pytest.raises(THIRValidationError,
-                           match="outside a free-call arg position"):
+                           match="outside a call arg position"):
             validate_function(fn)
