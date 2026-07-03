@@ -47,6 +47,10 @@ def tls_config_server(s: Ptr[Session],
 @native("::tpy_tls_add_bundled_ca")
 def tls_add_bundled_ca(s: Ptr[Session]) -> Int32: ...
 
+@native("::tpy_tls_add_ca_file")
+def tls_add_ca_file(s: Ptr[Session], path: Ptr[readonly[UInt8]],
+                    path_len: UInt64) -> Int32: ...
+
 @native("::tpy_tls_bundled_ca_count")
 def tls_bundled_ca_count() -> Int32: ...
 

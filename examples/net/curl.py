@@ -16,8 +16,9 @@ Usage:
     uv run tpyc -x examples/net/curl.py -- -k https://self-signed.test/
 
 Both http:// and https:// are supported. TLS verifies the certificate by
-default, but there is no bundled CA store yet, so a real https server needs
---cacert <file> to trust its CA (or -k to skip verification, like curl).
+default against the vendored Mozilla roots plus the system CA bundle, so
+public and system-trusted corporate hosts verify with no flags; --cacert
+<file> trusts an extra CA for this run (or -k skips verification, like curl).
 This sandbox has no outbound network -- run it on a host that can reach the
 target.
 """
@@ -91,8 +92,8 @@ def main() -> Int32:
     if args.max_time > 0.0:
         timeout = args.max_time
 
-    # No bundled CA store yet, so default verify=True can't trust a real https
-    # server without --cacert (or -k to skip). Ignored for http:// URLs.
+    # Default verify=True trusts the vendored Mozilla root bundle; --cacert
+    # adds a custom CA, -k skips verification. Ignored for http:// URLs.
     verify: bool | str = True
     if args.cacert != "":
         verify = args.cacert
@@ -107,8 +108,11 @@ def main() -> Int32:
                              timeout, args.location, verify)
     except SSLError as e:
         print(str(e))
-        print("hint: pass --cacert <file> to trust the server's CA, "
-              "or -k to skip verification")
+        # The trust hint only makes sense while verification is on; with -k
+        # the failure is protocol-level, not a trust problem.
+        if not args.insecure:
+            print("hint: pass --cacert <file> to trust the server's CA, "
+                  "or -k to skip verification")
         return 60          # curl's exit code for a TLS certificate problem
     except Timeout:
         print(f"request timed out after {args.max_time}s")

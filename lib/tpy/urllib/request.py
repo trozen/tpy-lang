@@ -8,8 +8,8 @@
 #   - No redirect following, no proxies, no auth handlers.
 #   - http and https both work (https routes to HTTPSConnection on 443; `context`
 #     is the TLS context, like CPython -- but keyword-only there, positional
-#     here). No bundled CA store yet, so a real https server needs a context with
-#     load_verify_locations.
+#     here). The default context trusts the vendored Mozilla roots plus the
+#     system CA bundle; `context` with load_verify_locations adds custom CAs.
 #   - `timeout` (seconds) is honored for connect/recv/send (None = blocking);
 #     CPython's `_GLOBAL_DEFAULT_TIMEOUT` sentinel / setdefaulttimeout() is not
 #     reproduced (default is plain blocking).
@@ -40,8 +40,8 @@ def urlopen(url: str, data: bytes | None = None,
             timeout: float | None = None,
             context: ssl.SSLContext | None = None) -> Own[HTTPResponse]:
     # `context` mirrors CPython's urlopen(context=...) for https (default
-    # verification when None); https requires a CA-bearing context to verify a
-    # real server (`ssl` has no bundled CA store yet).
+    # verification when None, against the vendored Mozilla roots + the system
+    # CA bundle); pass a context with load_verify_locations for custom CAs.
     return _urlopen(url, data, timeout, context, None)
 
 

@@ -167,6 +167,31 @@ int tpy_tls_add_bundled_ca(tpy_tls_session *s)
     return 0;
 }
 
+// Parse an additional CA file (PEM or DER) into the session's trust chain,
+// additive like tpy_tls_add_bundled_ca -- backs the ssl module's system
+// trust store. `path` arrives as TPy str bytes (not NUL-terminated). A
+// positive parse_file return (some certs in the bundle unparseable) is
+// accepted: the parsed remainder is trusted, matching OpenSSL's handling
+// of mixed system bundles.
+int tpy_tls_add_ca_file(tpy_tls_session *s, const unsigned char *path,
+                        size_t path_len)
+{
+    char *p = dup_cstr(path, path_len);
+    if (p == NULL) {
+        return MBEDTLS_ERR_X509_ALLOC_FAILED;
+    }
+    int rc = mbedtls_x509_crt_parse_file(&s->cacert, p);
+    free(p);
+    if (rc < 0) {
+        return rc;
+    }
+    if (!s->has_cacert) {
+        s->has_cacert = 1;
+        mbedtls_ssl_conf_ca_chain(&s->conf, &s->cacert, NULL);
+    }
+    return 0;
+}
+
 // Parse the bundled roots into a throwaway chain and count them. The ssl
 // module's test hook uses this to assert the bundle is embedded + non-empty
 // (a real public-root handshake can't run offline). Returns -1 on hard error.

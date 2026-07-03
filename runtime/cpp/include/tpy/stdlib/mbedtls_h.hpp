@@ -44,6 +44,10 @@ int tpy_tls_config_server(tpy_tls_session *s,
 // Add the vendored Mozilla root bundle to the session's trust chain (the
 // default trust store for create_default_context). Additive to any file roots.
 int tpy_tls_add_bundled_ca(tpy_tls_session *s);
+// Add a CA file (PEM or DER) to the session's trust chain, additive like the
+// bundled roots -- backs the ssl module's system trust store.
+int tpy_tls_add_ca_file(tpy_tls_session *s, const unsigned char *path,
+                        std::uint64_t path_len);
 // Count the roots in the compiled-in bundle (test hook; -1 on parse error).
 int tpy_tls_bundled_ca_count(void);
 int tpy_tls_setup(tpy_tls_session *s);

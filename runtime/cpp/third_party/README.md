@@ -21,6 +21,7 @@ After vendoring, the script writes a sidecar metadata file
 `runtime/cpp/third_party/<name>.vendor.json`. The sidecar records the
 version + URL + SHA256 + vendored timestamp -- single place to look up
 "what's currently vendored", and the upstream source tree stays pristine
+apart from any `<name>.patches/` backports the vendor script applies
 (no risk of our marker colliding with a future upstream file). The
 script reads the sidecar's `version` field for idempotency: re-running it
 on an already-vendored tree is a no-op.
@@ -28,15 +29,21 @@ on an already-vendored tree is a no-op.
 ## Bumping a vendored lib
 
 1. Edit `scripts/vendor_<name>.py`: bump `VERSION`, `URL`, `SHA256`.
-2. Run: `uv run python scripts/vendor_<name>.py`.
-3. Review the diff in `runtime/cpp/third_party/<name>/`.
-4. If upstream added, removed, or renamed source files, update the
+2. If `runtime/cpp/third_party/<name>.patches/` exists (local backports of
+   not-yet-released upstream fixes, applied by the vendor script after
+   extraction and listed in the sidecar's `patches` field), DROP every
+   patch the new release already contains -- each patch's header names its
+   upstream commits and when to drop it. A kept patch that no longer
+   applies makes the script fail loudly rather than skip.
+3. Run: `uv run python scripts/vendor_<name>.py`.
+4. Review the diff in `runtime/cpp/third_party/<name>/`.
+5. If upstream added, removed, or renamed source files, update the
    corresponding sidecar source list (e.g.
    `runtime/cpp/third_party/<name>.sources.txt`).
-5. If our manual mirror header
+6. If our manual mirror header
    (`runtime/cpp/include/tpy/stdlib/<name>_h.hpp`) needs updating because
    the upstream API changed shape, do that too.
-6. Commit.
+7. Commit.
 
 ## Current contents
 

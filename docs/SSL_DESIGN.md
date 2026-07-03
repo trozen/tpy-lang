@@ -21,9 +21,12 @@ verify out of the box (test `ssl/tls_bundled_ca`). The `SSLWantReadError`/
 `recv`/`send` raise the want-errors, and the write path maps a `close_notify`
 return to `SSLZeroReturnError` defensively (test `ssl/tls_want_read`; `recv`
 keeps returning `b""` on a clean close, matching CPython's `SSLSocket.recv`).
-The HTTPS-client track is now complete except for deferred surface (system
-trust store, server-side TLS). This document is the contract for the whole
-track.
+The system trust store ships: `load_default_certs()` resolves the platform
+CA bundle (`SSL_CERT_FILE` override, else well-known bundle paths) and
+`create_default_context()` loads it additively with the vendored roots via
+`tpy_tls_add_ca_file` (test `ssl/tls_system_ca`). The HTTPS-client track is
+now complete except for deferred surface (server-side TLS). This document
+is the contract for the whole track.
 
 ## Goal
 
@@ -107,10 +110,10 @@ pre-built.
 Vendor a Mozilla CA bundle (the `cacert.pem` set, as `certifi` /
 `webpki-roots` do) as the default trust store; mbedTLS ships none and does
 not read the system store. Support `SSLContext.load_verify_locations(
-cafile=...)` for custom CAs (e.g. a corporate root). System
-trust-store integration is deferred -- vendoring keeps the build hermetic
-and cross-platform-identical (consistent with the test-cache assumptions)
-and dodges the macOS keychain problem.
+cafile=...)` for custom CAs (e.g. a corporate root). The system trust
+store is read ADDITIVELY on top (see below) -- the vendored bundle keeps
+the no-store fallback hermetic and cross-platform-identical (consistent
+with the test-cache assumptions).
 
 **Built.** `scripts/vendor_cacert.py` pins a certifi release (the Mozilla NSS
 root set, same source as curl's `cacert.pem`, and what CPython's `requests`
@@ -124,10 +127,34 @@ or cwd dependence. `SSLContext._use_bundled_ca` (set by `create_default_context(
 cleared on a bare `SSLContext()`) gates a `tpy_tls_add_bundled_ca` call in
 `wrap_socket`, which **appends** the roots to any file roots (additive, matching
 CPython's `load_verify_locations`). No CLI flag: the blob is opt-in at runtime
-(bare `SSLContext()` / `verify=False` / `CERT_NONE` opt out); the system trust
-store stays deferred, so a `--ca-bundle` mode switch is not built. A test hook
+(bare `SSLContext()` / `verify=False` / `CERT_NONE` opt out). A test hook
 (`ssl._bundled_ca_count()` -> `tpy_tls_bundled_ca_count`) asserts the bundle is
 embedded and non-empty offline (a real public-root handshake needs network).
+
+**System trust store (built).** `SSLContext.load_default_certs()` (called by
+`create_default_context()`) resolves the platform CA bundle -- `SSL_CERT_FILE`
+env override, else the first existing path from `ssl._ca_probe_paths` (the curl/Go
+well-known list: Debian/Fedora/RHEL/openSUSE/Alpine/FreeBSD/macOS/Homebrew;
+a module global so tests can inject a fixture bundle) -- and `wrap_socket`
+parses it via `tpy_tls_add_ca_file` (sibling of `tpy_tls_add_bundled_ca`;
+`mbedtls_x509_crt_parse_file`, positive partial-parse accepted like OpenSSL)
+into the same additive `s->cacert` chain. So: vendored roots UNION system
+bundle UNION `load_verify_locations` -- a corporate CA installed system-wide
+verifies flag-free, like curl, and machines with no store keep the hermetic
+vendored behavior. Declared gaps: macOS Keychain-only CAs (database, not a
+PEM file; the shipped `/etc/ssl/cert.pem` + Homebrew's exported bundle cover
+common setups, `SSL_CERT_FILE` the rest), `SSL_CERT_DIR` directory stores
+(mbedTLS `x509_crt_parse_path` exists -- bounded follow-up), Windows
+CryptoAPI (no bundle file; lands with the Windows port). Loading is
+best-effort, matching CPython/OpenSSL (verified empirically against real
+CPython): a missing or unparseable bundle -- even an explicit
+`SSL_CERT_FILE` -- is skipped, never raises; `load_verify_locations` is the
+loud explicit spelling. Test `ssl/tls_system_ca` covers both seams: the
+probe list (`ssl._ca_probe_paths`) and the in-process env snapshot
+(`os.environ["SSL_CERT_FILE"] = ...`, the `ospath_expanduser` precedent),
+including env-wins-over-probe, garbage-bundle skip on both branches, and
+the untrusted-rejected negative; it sanitizes any inherited `SSL_CERT_FILE`
+at start for hermeticity.
 
 ## I/O model: fd-direct BIO
 

@@ -11,10 +11,13 @@ Usage:
 To bump mbedTLS:
     1. Update VERSION + SHA256 + URL below (SHA256 is published as the
        mbedtls-<v>-sha256sum.txt release asset).
-    2. Run this script (without --force).
-    3. Review the diff under runtime/cpp/third_party/mbedtls/ and regenerate
+    2. Review runtime/cpp/third_party/mbedtls.patches/: DROP any patch the
+       new release already contains (each patch header names its upstream
+       commits); keep the rest -- they are re-applied after extraction.
+    3. Run this script (without --force).
+    4. Review the diff under runtime/cpp/third_party/mbedtls/ and regenerate
        the facade header if the upstream API surface we use changed.
-    4. Commit.
+    5. Commit.
 
 We pin the 3.6.x LTS line: it carries the documented mbedtls_ssl_* client
 API the ssl module binds, and is maintained for years. The 4.x line
@@ -28,6 +31,7 @@ import datetime
 import hashlib
 import json
 import shutil
+import subprocess
 import sys
 import tarfile
 import tempfile
@@ -51,6 +55,10 @@ THIRD_PARTY_DIR = REPO_ROOT / "runtime" / "cpp" / "third_party"
 DEST_DIR = THIRD_PARTY_DIR / NAME
 SIDECAR = THIRD_PARTY_DIR / f"{NAME}.vendor.json"
 MANIFEST = THIRD_PARTY_DIR / f"{NAME}.sources.txt"
+# Local backports of not-yet-released upstream fixes, applied in name order
+# after extraction. Each patch's header names the upstream commits it
+# squashes and when to drop it (see the bump procedure above).
+PATCHES_DIR = THIRD_PARTY_DIR / f"{NAME}.patches"
 
 # Keep-list, not strip-list: the release asset carries ~45 MiB of tests,
 # programs, docs, framework, build scaffolding, and optional 3rdparty crypto
@@ -114,6 +122,23 @@ def _prune(dest: Path) -> None:
                 path.unlink()
 
 
+def _apply_patches(dest: Path) -> list[str]:
+    """Apply every local backport patch (name order) onto the pristine tree.
+    Returns the applied patch names for the sidecar. A patch that no longer
+    applies (upstream released the fix) must be dropped per the bump
+    procedure, so failure here is a hard error, not a skip."""
+    names = sorted(p.name for p in PATCHES_DIR.glob("*.patch")) \
+        if PATCHES_DIR.is_dir() else []
+    for name in names:
+        print(f"  applying {name}", file=sys.stderr)
+        subprocess.run(
+            ["git", "apply", "-p1",
+             f"--directory={dest.relative_to(REPO_ROOT)}",
+             str(PATCHES_DIR / name)],
+            cwd=REPO_ROOT, check=True)
+    return names
+
+
 def _write_cmakelists(dest: Path) -> None:
     """Write a minimal static-library CMakeLists.txt for the bundled
     CMake-emit path (`tpyc -o`). Upstream's CMake is stripped (it pulls in
@@ -160,12 +185,13 @@ def _stamp(metadata: dict) -> str:
     return datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")
 
 
-def _write_sidecar() -> None:
+def _write_sidecar(patches: list[str]) -> None:
     metadata = {
         "name": NAME,
         "version": VERSION,
         "url": URL,
         "sha256": SHA256,
+        "patches": patches,
     }
     metadata["vendored_at"] = _stamp(metadata)
     SIDECAR.write_text(json.dumps(metadata, indent=2) + "\n")
@@ -217,9 +243,10 @@ def main() -> int:
         _extract(tarball, DEST_DIR)
 
     _prune(DEST_DIR)
+    patches = _apply_patches(DEST_DIR)
     _write_cmakelists(DEST_DIR)
     n_sources = _write_manifest(DEST_DIR)
-    _write_sidecar()
+    _write_sidecar(patches)
 
     file_count = sum(1 for _ in DEST_DIR.rglob("*") if _.is_file())
     size_mb = sum(p.stat().st_size for p in DEST_DIR.rglob("*") if p.is_file()) / (1024 * 1024)

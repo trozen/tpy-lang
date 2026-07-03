@@ -1,0 +1,4 @@
+Drives a real mbedTLS handshake over socketpair with an internal server peer
+(ssl._wrap_server) and injects the fixture CA via the TPy ssl module's
+_ca_probe_paths seam -- no CPython equivalent (CPython's ssl reads OpenSSL's
+default verify paths, which a test cannot safely rewrite).

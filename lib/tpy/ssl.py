@@ -5,8 +5,11 @@ v1 is an HTTPS *client*: `create_default_context()` -> `SSLContext` ->
 `wrap_socket(sock, server_hostname=...)` -> `SSLSocket` (recv/send/sendall/
 do_handshake/close). Secure by default: certificate verification REQUIRED
 and the hostname checked against the peer cert's CN/SAN (which also drives
-SNI). `create_default_context()` trusts a vendored Mozilla root bundle; add
-more CAs with `load_verify_locations(cafile=...)`.
+SNI). `create_default_context()` trusts a vendored Mozilla root bundle PLUS
+the platform's CA bundle when one exists (`SSL_CERT_FILE` overrides the
+probed location; see `load_default_certs`), so system-installed corporate
+CAs verify with no flags, like curl. Add per-context CAs with
+`load_verify_locations(cafile=...)`.
 
 Architecture (see docs/SSL_DESIGN.md):
   * `_bindings.mbedtls` -- raw @native bindings to the cohesive
@@ -14,10 +17,11 @@ Architecture (see docs/SSL_DESIGN.md):
   * this module -- backend-agnostic facade; classes hold a single opaque
     session handle and map mbedTLS return codes to the exception tree.
 
-Known v1 gaps (filed in docs/SSL_DESIGN.md / TODO): the default trust store
-is a pinned Mozilla snapshot (the certifi bundle), not the host system store;
-server-side TLS is internal-only (the test peer). `makefile()` returns a
-binary `BufferedReader` (the http.client read path); text mode follows.
+Known v1 gaps (filed in docs/SSL_DESIGN.md / TODO): the system trust store
+is read as a bundle FILE (env override + well-known paths) -- macOS
+Keychain-only corporate CAs and `SSL_CERT_DIR` directory stores are not
+read; server-side TLS is internal-only (the test peer). `makefile()` returns
+a binary `BufferedReader` (the http.client read path); text mode follows.
 
 Deliberate divergences from CPython's `ssl` (so they are declared, not
 silent -- see docs/LANGUAGE_FEATURES.md):
@@ -59,12 +63,46 @@ from tpy.unsafe import (
 )
 from _bindings import mbedtls
 from socket import socket
+import os
 from tplib import Rc
 from io import BufferedReader
 
 # CPython ssl.CERT_* values.
 CERT_NONE: Final[Int32] = 0
 CERT_REQUIRED: Final[Int32] = 2
+
+# Well-known platform CA-bundle locations (the curl/Go probe conventions),
+# tried in order by load_default_certs(); SSL_CERT_FILE overrides the probe.
+# A module global (not Final) so tests can inject a fixture bundle -- the
+# offline seam for the system-trust path. macOS gap: Keychain-only corporate
+# CAs live in a database, not a PEM file; the shipped /etc/ssl/cert.pem and
+# the Homebrew export cover the common cases, SSL_CERT_FILE the rest.
+_ca_probe_paths: list[str] = [
+    "/etc/ssl/certs/ca-certificates.crt",                 # Debian/Ubuntu/Arch
+    "/etc/pki/tls/certs/ca-bundle.crt",                   # Fedora/RHEL
+    "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem",  # RHEL 7+
+    "/etc/ssl/ca-bundle.pem",                             # openSUSE
+    "/etc/ssl/cert.pem",                                  # Alpine, macOS
+    "/usr/local/share/certs/ca-root-nss.crt",             # FreeBSD
+    "/opt/homebrew/etc/ca-certificates/cert.pem",         # Homebrew (arm64)
+    "/usr/local/etc/ca-certificates/cert.pem",            # Homebrew (x86_64)
+]
+
+
+def _resolve_system_ca_file() -> str:
+    """The platform CA bundle: SSL_CERT_FILE if set, else the first existing
+    well-known bundle, else "" (no system store; the vendored roots still
+    apply). Loading is best-effort, matching CPython/OpenSSL: a missing or
+    unparseable bundle (even an explicit SSL_CERT_FILE) is skipped at wrap
+    time, never raises -- load_verify_locations() is the loud explicit
+    spelling."""
+    env = os.getenv("SSL_CERT_FILE")
+    if env is not None and len(env) > 0:
+        return env
+    for p in _ca_probe_paths:
+        if os.path.isfile(p):
+            return p
+    return ""
 
 
 class SSLError(OSError):
@@ -167,6 +205,7 @@ class SSLContext:
     check_hostname: bool
     _cafile: str
     _use_bundled_ca: bool
+    _system_cafile: str
 
     def __init__(self) -> None:
         self.verify_mode = CERT_REQUIRED
@@ -175,11 +214,22 @@ class SSLContext:
         # A bare SSLContext() trusts nothing until told to (like CPython, where
         # only create_default_context / load_default_certs load the roots).
         self._use_bundled_ca = False
+        self._system_cafile = ""
 
     def load_verify_locations(self, cafile: str) -> None:
         """Trust the CA certificates in `cafile` (PEM or DER). Additive to the
         bundled roots when those are also enabled (matches CPython)."""
         self._cafile = cafile
+
+    def load_default_certs(self) -> None:
+        """Trust the default CA sets: the vendored Mozilla bundle plus the
+        platform's own bundle when one exists (SSL_CERT_FILE overrides the
+        probed location, like OpenSSL) -- so a corporate CA installed
+        system-wide verifies with no flags, matching curl. Additive with
+        load_verify_locations. CPython's `purpose=` parameter is not
+        supported (tighter v1 signature)."""
+        self._use_bundled_ca = True
+        self._system_cafile = _resolve_system_ca_file()
 
     def wrap_socket(self, sock: Own[socket], server_hostname: str = "",
                     do_handshake_on_connect: bool = True) -> Own[SSLSocket]:
@@ -201,6 +251,14 @@ class SSLContext:
             if mbedtls.tls_add_bundled_ca(s) != 0:
                 mbedtls.tls_free(s)
                 raise SSLError("could not load bundled CA store")
+        if len(self._system_cafile) > 0:
+            # Best-effort, matching CPython/OpenSSL: an unreadable or
+            # unparseable system bundle (even an explicit SSL_CERT_FILE) is
+            # skipped -- the vendored roots and load_verify_locations still
+            # apply. load_verify_locations() is the loud explicit tool.
+            sp = self._system_cafile
+            mbedtls.tls_add_ca_file(s, unsafe_cast(unsafe_ptr(sp)),
+                                    UInt64(len(sp)))
         if mbedtls.tls_setup(s) != 0:
             mbedtls.tls_free(s)
             raise SSLError("TLS setup failed")
@@ -221,10 +279,12 @@ class SSLContext:
 
 def create_default_context() -> Own[SSLContext]:
     """A secure-by-default client context: verification + hostname check on,
-    trusting the vendored Mozilla root bundle. `requests.get("https://...")`
-    and `urlopen` verify out of the box, no explicit CA path required."""
+    trusting the vendored Mozilla root bundle plus the platform's CA bundle
+    (see load_default_certs). `requests.get("https://...")` and `urlopen`
+    verify out of the box, and hosts signed by a system-installed corporate
+    CA verify with no flags, like curl."""
     ctx = SSLContext()
-    ctx._use_bundled_ca = True
+    ctx.load_default_certs()
     return ctx
 
 
@@ -255,8 +315,8 @@ class SSLSocket:
     def do_handshake(self) -> bool:
         """Advance the handshake one step. True when complete; False when it
         needs more socket I/O (non-blocking socket). Raises on failure."""
-        c = mbedtls.tls_classify(
-            mbedtls.tls_handshake(self._session.get().raw()))
+        rc = mbedtls.tls_handshake(self._session.get().raw())
+        c = mbedtls.tls_classify(rc)
         if c == 0:
             self._handshaked = True
             return True
@@ -264,7 +324,9 @@ class SSLSocket:
             return False
         if c == 4:
             raise SSLCertVerificationError("certificate verify failed")
-        raise SSLError("handshake failed")
+        # Keep the mbedTLS reason: a bare "handshake failed" is undebuggable
+        # (protocol/cipher mismatch vs alert vs parse error all look alike).
+        raise SSLError("handshake failed: " + _errstr(rc))
 
     def do_handshake_blocking(self) -> None:
         """Drive the handshake to completion (expects a blocking socket)."""
