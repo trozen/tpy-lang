@@ -6,7 +6,7 @@ from __future__ import annotations
 import dataclasses
 
 from ..codegen_cpp.context import CodeGenOptions
-from .emit import _emit_expr
+from .testutil import _emit_expr
 from .nodes import (
     Form, THIRCall, THIRCoerce, THIRContainerLiteral, THIRExprStmt,
     THIRForEach, THIRLiteral, THIRMethodCall, THIRName, THIRSubscript,

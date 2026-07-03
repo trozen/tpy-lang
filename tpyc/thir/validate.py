@@ -50,8 +50,9 @@ from ..typesys import (
     unwrap_send_sync,
 )
 from .nodes import (
-    Form, THIRAssign, THIRCoerce, THIRConstructor, THIRFieldAccess,
-    THIRFormConvert, THIRFunction, THIRNode, THIRReturn,
+    Form, THIRArgTemp, THIRAssign, THIRCall, THIRCoerce, THIRConstructor,
+    THIRExprStmt, THIRFieldAccess, THIRFormConvert, THIRFunction, THIRNode,
+    THIRReturn, THIRVarDecl,
 )
 
 
@@ -143,9 +144,44 @@ def _check_stmt(owner: str, stmt: THIRNode, return_type) -> None:
                   f"BORROW return value for value-typed return {return_type}")
 
 
-def _walk(owner: str, node: THIRNode, return_type=None) -> None:
+def _walk(owner: str, node: THIRNode, return_type=None, *,
+          argtemp_ok: bool = False) -> None:
+    """`argtemp_ok` marks the value expression of a flushable statement
+    (expr stmt / var-decl init / assign value / return value) -- the only
+    region where a THIRArgTemp may appear, and there only as a direct
+    free-call arg. Anywhere else (a condition, an iterable, a MIL cell, a
+    method/ctor arg, a non-call operand) a temp has no flush point on the
+    AST path -- a while-condition hoist is the stale-snapshot miscompile --
+    so reaching one is a lowering bug."""
     _check_node(owner, node)
     _check_stmt(owner, node, return_type)
+    if isinstance(node, THIRArgTemp):
+        _fail(owner, node, "THIRArgTemp outside a free-call arg position")
+    if isinstance(node, THIRCall):
+        for a in node.args:
+            if isinstance(a, THIRArgTemp):
+                if not argtemp_ok:
+                    _fail(owner, a, "THIRArgTemp under a non-flushable "
+                                    "statement position")
+                _walk(owner, a.init, return_type)  # nested temps are illegal
+            else:
+                _walk(owner, a, return_type)  # temps never nest deeper
+        return
+    if isinstance(node, THIRExprStmt):
+        _walk(owner, node.expr, return_type, argtemp_ok=True)
+        return
+    if isinstance(node, THIRVarDecl):
+        if node.init is not None:
+            _walk(owner, node.init, return_type, argtemp_ok=True)
+        return
+    if isinstance(node, THIRAssign):
+        _walk(owner, node.target, return_type)
+        _walk(owner, node.value, return_type, argtemp_ok=True)
+        return
+    if isinstance(node, THIRReturn):
+        if node.value is not None:
+            _walk(owner, node.value, return_type, argtemp_ok=True)
+        return
     for child in _iter_children(node):
         _walk(owner, child, return_type)
 

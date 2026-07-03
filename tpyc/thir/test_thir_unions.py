@@ -13,9 +13,10 @@ from ..compilation_context import activate_compiler
 from ..typesys import INT32, UnionType, VoidType
 from .lower import iter_module_constructors, lower_constructor, lower_module
 from .nodes import (
-    Form, THIRAssert, THIRCoerce, THIRFormConvert, THIRFunction,
-    THIRFunctionLayout, THIRIf, THIRIsinstance, THIRLiteral, THIRName,
-    THIRNarrowAlias, THIRNarrowedRead, THIRReturn, THIRVarDecl, THIRWhile,
+    Form, THIRArgTemp, THIRAssert, THIRBinOp, THIRCoerce, THIRCtorCall,
+    THIRFormConvert, THIRFunction, THIRFunctionLayout, THIRIf, THIRIsinstance,
+    THIRLiteral, THIRName, THIRNarrowAlias, THIRNarrowedRead, THIRReturn,
+    THIRSelf, THIRUnionArgLift, THIRVarDecl, THIRWhile,
 )
 from .validate import (
     THIRValidationError, validate_constructor, validate_function,
@@ -95,15 +96,20 @@ class TestValueUnionEligibility:
             "    return take(v)\n"))
         assert _fn(thir, "h") is not None
 
-    def test_member_valued_arg_rejected(self):
-        # A float-literal member arg hoists a `__tmp_N` variant temp on the
-        # AST path (the gen_call_arg cascade frontier) -> AST path.
+    def test_member_valued_float_literal_arg_temps(self):
+        # A float-literal member arg hoists a `__tmp_N` variant temp -- the
+        # arg-temp row (the literal's FloatLiteralType resolves to the
+        # union's double member).
         thir = _lower(_PRELUDE + (
             "def take(v: Int32 | Float64) -> Int32:\n"
             "    return 0\n"
             "def h() -> Int32:\n"
             "    return take(2.5)\n"))
-        assert _fn(thir, "h") is None
+        fn = _fn(thir, "h")
+        assert fn is not None
+        arg = fn.body[0].value.args[0]
+        assert isinstance(arg, THIRArgTemp)
+        assert isinstance(arg.init, THIRLiteral) and arg.init.value == 2.5
 
     def test_union_print_rejected(self):
         # union __str__ is an S2-deferred row; print(v) stays AST.
@@ -274,13 +280,14 @@ class TestPtrUnionEligibility:
             "def op(v: Own[A | B]) -> Int32:\n    return take(v)\n")
         assert _fn(thir, "op") is None
 
-    def test_readonly_slot_arg_rejects(self):
+    def test_readonly_slot_arg_const_wraps(self):
         # A readonly ptr-variant slot takes _gen_union_arg's
-        # ptr_variant_to_const wrap -> AST path.
+        # ptr_variant_to_const wrap -- mirrored (render pinned in
+        # TestUnionCallArgLift.test_readonly_slot_union_name_arg_const_wraps).
         thir = self._lower(
             "def take(v: readonly[A | B]) -> Int32:\n    return 0\n"
             "def ra(v: A | B) -> Int32:\n    return take(v)\n")
-        assert _fn(thir, "ra") is None
+        assert _fn(thir, "ra") is not None
 
     def test_ctor_mil_own_move_routes(self):
         ctor = _lower_ctor(_PTR_RECORDS, "H")
@@ -636,9 +643,9 @@ class TestNarrowingEligibility:
         entry = _entry(modules)
         lc = _LowerCtx(entry.ast.functions[0], entry.analyzer, None)
         assert _persistent_alias_name("v", lc) == "__v"
-        lc.persistent_aliases.add("__v")
+        lc.narrow.persistent_aliases.add("__v")
         assert _persistent_alias_name("v", lc) == "__v_2"
-        lc.persistent_aliases.add("__v_2")
+        lc.narrow.persistent_aliases.add("__v_2")
         assert _persistent_alias_name("v", lc) == "__v_3"
 
     def test_assign_node_rebind_of_narrowed_rejects(self):
@@ -739,10 +746,11 @@ class TestNarrowingEligibility:
         assert outer.then_body[2].alias == "__w"
         assert outer.then_body[2].member_cpp == "A*"
 
-    def test_narrowed_method_receiver_rejects(self):
-        # `v.sound()` on the narrowed member rides the record-method-CALL
-        # frontier (the call-site gate admits container receivers only), not
-        # U3 -> AST. The rename itself is exercised by field reads.
+    def test_narrowed_method_receiver_routes(self):
+        # `v.sound()` on the narrowed subject routes through the record
+        # method-call row (call-arg cascade): the read renames to the `T&`
+        # extraction alias on both the branch narrowing and the early-return
+        # post-if complement.
         thir = _lower_ctx(
             "from tpy import Int32\n"
             "class A:\n    x: Int32\n"
@@ -754,17 +762,23 @@ class TestNarrowingEligibility:
             "def f(v: A | B) -> Int32:\n"
             "    if isinstance(v, A):\n        return v.sound()\n"
             "    return v.sound()\n")
-        assert _fn(thir, "f") is None
+        fn = _fn(thir, "f")
+        assert fn is not None
+        ret = fn.body[0].then_body[-1]
+        assert ret.value.receiver.name == "__v"
 
-    def test_narrowed_record_call_arg_rejects(self):
-        # A record arg (`use(v)` with v narrowed to A) rides the call-arg
-        # record frontier (auto-move / conversion cascade), not U3 -> AST.
+    def test_narrowed_record_call_arg_routes(self):
+        # A record arg (`use(v)` with v narrowed to A) routes through the
+        # record call-arg row: the retyped subject renames to its alias.
         thir = self._lower(
             "def use(a2: A) -> Int32:\n    return a2.x\n"
             "def f(v: A | B) -> Int32:\n"
             "    if isinstance(v, A):\n        return use(v)\n"
             "    return v.y\n")
-        assert _fn(thir, "f") is None
+        fn = _fn(thir, "f")
+        assert fn is not None
+        ret = fn.body[0].then_body[-1]
+        assert ret.value.args[0].name == "__v"
 
     def test_write_to_narrowed_subject_rejects(self):
         # Rebinding the narrowed LOCAL inside the branch writes through the
@@ -1191,3 +1205,351 @@ class TestNarrowingEmit:
                      "drain", "chk", "rechk", "comp", "compw", "compv",
                      "compa", "compc", "esc"):
             assert _fn(thir, name) is not None, name
+
+
+_CALLARG_RECORDS = (
+    "from tpy import Int32, Float64, Own, readonly\n"
+    "class A:\n    x: Int32\n    def __init__(self, x: Int32):\n        self.x = x\n"
+    "class B:\n    y: Int32\n    def __init__(self, y: Int32):\n        self.y = y\n"
+    "class S:\n    u: A | B\n"
+    "    def __init__(self, v: Own[A | B]):\n        self.u = v\n"
+    "def mut(v: A | B) -> None:\n"
+    "    if isinstance(v, A):\n        v.x = v.x + 1\n"
+    "def take(v: A | B) -> Int32:\n    return 0\n"
+    "def take_opt(v: A | B | None) -> Int32:\n    return 0\n"
+    "def take_own(v: Own[A | B]) -> Int32:\n"
+    "    s = S(v)\n    return 1\n"
+    "def take_vu(v: Int32 | Float64) -> Int32:\n    return 0\n"
+)
+
+
+class TestUnionCallArgLift:
+    """The temp-free union call-arg rows: member name / None into a
+    pointer-variant slot (THIRUnionArgLift), a record-ctor rvalue into an
+    Own[union] slot (THIRCtorCall), an already-union coerced literal into a
+    value-union slot (bare). The temp rows (member scalar into a value union,
+    record rvalue into a ptr union, readonly / Own-name slots) stay AST."""
+
+    def _lower(self, src: str):
+        return _lower_ctx(_CALLARG_RECORDS + src)
+
+    def _arg(self, thir, name):
+        fn = _fn(thir, name)
+        assert fn is not None, name
+        ret = fn.body[-1]
+        assert isinstance(ret, THIRReturn)
+        return ret.value.args[0]
+
+    def test_member_param_arg_lifts(self):
+        thir = self._lower("def f(a2: A) -> Int32:\n    return take(a2)\n")
+        arg = self._arg(thir, "f")
+        assert isinstance(arg, THIRUnionArgLift)
+        assert arg.variant_cpp == "std::variant<A*, B*>"
+        assert isinstance(arg.value, THIRName) and not arg.deref
+        assert arg.form is Form.BORROW
+
+    def test_none_arg_lifts_monostate(self):
+        thir = self._lower("def f() -> Int32:\n    return take_opt(None)\n")
+        arg = self._arg(thir, "f")
+        assert isinstance(arg, THIRUnionArgLift)
+        assert arg.value is None
+        assert arg.variant_cpp == "std::variant<std::monostate, A*, B*>"
+
+    def test_ctor_rvalue_own_union_arg_routes(self):
+        thir = self._lower("def f() -> Int32:\n    return take_own(A(7))\n")
+        arg = self._arg(thir, "f")
+        assert isinstance(arg, THIRCtorCall)
+        assert arg.type_cpp == "A"
+        assert arg.form is Form.STORAGE
+
+    def test_coerced_literal_value_union_arg_routes(self):
+        thir = self._lower("def f() -> Int32:\n    return take_vu(3)\n")
+        arg = self._arg(thir, "f")
+        assert isinstance(arg, THIRCoerce)
+
+    def test_narrowed_subject_union_arg_routes_bare(self):
+        # The narrowed subject's C++ binding is still the variant
+        # (already_union), so the AST renders the bare extraction alias --
+        # mirrored as a plain renamed read, no lift node.
+        thir = self._lower(
+            "def f(v: A | B) -> Int32:\n"
+            "    if isinstance(v, A):\n        return take(v)\n"
+            "    return 0\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+        ret = fn.body[0].then_body[1]  # [0] is the extraction alias
+        arg = ret.value.args[0]
+        assert isinstance(arg, THIRName) and arg.name == "__v"
+
+    def test_self_arg_lifts_with_deref(self):
+        thir = self._lower(
+            "class C:\n    n: Int32\n"
+            "    def __init__(self, n: Int32):\n        self.n = n\n"
+            "    def go(self) -> Int32:\n        return take_c(self)\n"
+            "def take_c(v: C | A) -> Int32:\n    return 0\n")
+        arg = self._arg(thir, "go")
+        assert isinstance(arg, THIRUnionArgLift) and arg.deref
+        assert isinstance(arg.value, THIRSelf)
+
+    def test_pointer_local_arg_lifts_with_deref(self):
+        thir = self._lower(
+            "class H2:\n    a1: A\n    a2: A\n"
+            "    def __init__(self, m: Int32, n: Int32):\n"
+            "        self.a1 = A(m)\n        self.a2 = A(n)\n"
+            "    def pick(self, flip: bool) -> Int32:\n"
+            "        p = self.a1\n"
+            "        if flip:\n            p = self.a2\n"
+            "        return take(p)\n")
+        arg = self._arg(thir, "pick")
+        assert isinstance(arg, THIRUnionArgLift) and arg.deref
+
+    def test_scalar_name_value_union_arg_temps(self):
+        # `take_vu(k)` hoists `std::variant<int32_t, double> __tmp_N = k;`
+        # -- the member-valued arg-temp row (number-free node; the real
+        # __tmp_N is drawn from the module-cumulative sink at emission).
+        thir = self._lower("def f(k: Int32) -> Int32:\n    return take_vu(k)\n")
+        arg = self._arg(thir, "f")
+        assert isinstance(arg, THIRArgTemp)
+        assert arg.cpp_type == "std::variant<int32_t, double>"
+        assert not arg.brace_init
+        assert isinstance(arg.init, THIRName) and arg.init.name == "k"
+
+    def test_scalar_binop_value_union_arg_temps(self):
+        # Any member-valued scalar expression temps the same way; the init
+        # renders in expression position (paren-wrapped binop).
+        thir = self._lower(
+            "def f(k: Int32) -> Int32:\n    return take_vu(k + 1)\n")
+        arg = self._arg(thir, "f")
+        assert isinstance(arg, THIRArgTemp)
+        assert isinstance(arg.init, THIRBinOp) and arg.init.paren_wrap
+
+    def test_record_rvalue_ptr_union_arg_rejects(self):
+        # `take(A(n))` hoists a named record temp (`A __tmp_N = A(n);`) on
+        # the AST path -> AST.
+        thir = self._lower("def f(n: Int32) -> Int32:\n    return take(A(n))\n")
+        assert _fn(thir, "f") is None
+
+    def test_readonly_slot_member_arg_lifts_const(self):
+        # A readonly ptr-variant slot spells const pointees on the lift
+        # (`std::variant<const A*, const B*>{&(a2)}`).
+        thir = self._lower(
+            "def tr(v: readonly[A | B]) -> Int32:\n    return 0\n"
+            "def f(a2: A) -> Int32:\n    return tr(a2)\n")
+        arg = self._arg(thir, "f")
+        assert isinstance(arg, THIRUnionArgLift) and not arg.const_wrap
+        assert arg.variant_cpp == "std::variant<const A*, const B*>"
+        assert isinstance(arg.value, THIRName) and not arg.deref
+
+    def test_readonly_slot_none_arg_lifts_const_monostate(self):
+        thir = self._lower(
+            "def tro(v: readonly[A | B | None]) -> Int32:\n    return 0\n"
+            "def f() -> Int32:\n    return tro(None)\n")
+        arg = self._arg(thir, "f")
+        assert isinstance(arg, THIRUnionArgLift) and arg.value is None
+        assert arg.variant_cpp == (
+            "std::variant<std::monostate, const A*, const B*>")
+
+    def test_readonly_slot_union_name_arg_const_wraps(self):
+        # An already-union name into a deep-const slot takes the explicit
+        # `::tpy::ptr_variant_to_const<...>(v)` conversion.
+        thir = self._lower(
+            "def tr(v: readonly[A | B]) -> Int32:\n    return 0\n"
+            "def f(v: A | B) -> Int32:\n    return tr(v)\n")
+        arg = self._arg(thir, "f")
+        assert isinstance(arg, THIRUnionArgLift) and arg.const_wrap
+        assert arg.variant_cpp == "std::variant<const A*, const B*>"
+        assert isinstance(arg.value, THIRName) and not arg.deref
+
+    def test_readonly_slot_narrowed_union_arg_routes_bare(self):
+        # `_gen_union_arg` SKIPS the const wrap for an isinstance-narrowed
+        # arg (`is_narrowed`) and falls to the bare extraction alias --
+        # mirrored as the plain renamed read (byte-identical; the render is
+        # the same pre-existing `A&`-into-variant AST miscompile class as the
+        # mutable-slot narrowed arg, see BUGS.md).
+        thir = self._lower(
+            "def tr(v: readonly[A | B]) -> Int32:\n    return 0\n"
+            "def f(v: A | B) -> Int32:\n"
+            "    if isinstance(v, A):\n        return tr(v)\n"
+            "    return 0\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+        ret = fn.body[0].then_body[1]  # [0] is the extraction alias
+        arg = ret.value.args[0]
+        assert isinstance(arg, THIRName) and arg.name == "__v"
+
+    def test_dcbp_readonly_fn_member_arg_lifts_const(self):
+        # The deep-const verdict WITHOUT an annotation: a @readonly free fn's
+        # plain union param lands in `deep_const_borrow_params`, and the AST
+        # (`is_readonly_target`) spells const pointees at every call site.
+        thir = self._lower(
+            "@readonly\n"
+            "def show(v: A | B) -> Int32:\n"
+            "    if isinstance(v, A):\n        return v.x\n"
+            "    return v.y\n"
+            "def f(a2: A) -> Int32:\n    return show(a2)\n"
+            "def g(v: A | B) -> Int32:\n    return show(v)\n")
+        arg = self._arg(thir, "f")
+        assert isinstance(arg, THIRUnionArgLift) and not arg.const_wrap
+        assert arg.variant_cpp == "std::variant<const A*, const B*>"
+        arg = self._arg(thir, "g")
+        assert isinstance(arg, THIRUnionArgLift) and arg.const_wrap
+
+    def test_own_slot_name_arg_rejects(self):
+        # An Own[union] slot with a NAME arg auto-moves (`std::move(v)`) -> AST.
+        thir = self._lower(
+            "def f(v: Own[A | B]) -> Int32:\n    return take_own(v)\n")
+        assert _fn(thir, "f") is None
+
+    def test_ctor_rvalue_plain_record_slot_temps(self):
+        # `use(A(7))` into a plain record param hoists `A __tmp_N = A(7);`
+        # -- the record-rvalue arg-temp row (same-nominal ref slot).
+        thir = self._lower(
+            "def use(a2: A) -> Int32:\n    return a2.x\n"
+            "def f() -> Int32:\n    return use(A(7))\n")
+        arg = self._arg(thir, "f")
+        assert isinstance(arg, THIRArgTemp)
+        assert arg.cpp_type == "A"
+        assert isinstance(arg.init, THIRCtorCall) and arg.init.type_cpp == "A"
+
+    def test_ctor_record_arg_rejects(self):
+        # A ctor whose own arg is a record (non-scalar) -> AST.
+        thir = self._lower(
+            "class W:\n    a: A\n"
+            "    def __init__(self, a: Own[A]):\n        self.a = a\n"
+            "def take_w(v: W | A) -> Int32:\n    return 0\n"
+            "def f() -> Int32:\n    return take_own2(W(A(1)))\n"
+            "def take_own2(v: Own[W | A]) -> Int32:\n"
+            "    s2 = S2(v)\n    return 1\n"
+            "class S2:\n    u: W | A\n"
+            "    def __init__(self, v: Own[W | A]):\n        self.u = v\n")
+        assert _fn(thir, "f") is None
+
+    def test_dump_renders_lift_arms_and_ctor(self):
+        # All three THIRUnionArgLift arms (member address-of, monostate,
+        # const conversion) plus the THIRCtorCall render.
+        from .dump import dump_thir
+        thir = self._lower(
+            "def tr(v: readonly[A | B]) -> Int32:\n    return 0\n"
+            "def f(a2: A) -> Int32:\n    return take(a2)\n"
+            "def g() -> Int32:\n    return take_opt(None)\n"
+            "def h() -> Int32:\n    return take_own(A(7))\n"
+            "def w(v: A | B) -> Int32:\n    return tr(v)\n")
+        text = dump_thir(thir)
+        assert "union_lift[std::variant<A*, B*>]{&(%a2)}" in text
+        assert ("union_lift[std::variant<std::monostate, A*, B*>]"
+                "{monostate}") in text
+        assert "ctor(A, [coerce(lit(7) -> Int32)])" in text
+        assert ("union_lift[std::variant<const A*, const B*>]"
+                "{to_const(%v)}") in text
+
+
+class TestUnionCallArgEmit:
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        hpp, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=thir))
+        return hpp + cpp
+
+    SRC = _CALLARG_RECORDS + (
+        "class H2:\n    a1: A\n    a2: A\n"
+        "    def __init__(self, m: Int32, n: Int32):\n"
+        "        self.a1 = A(m)\n        self.a2 = A(n)\n"
+        "    def pick(self, flip: bool) -> Int32:\n"
+        "        p = self.a1\n"
+        "        if flip:\n            p = self.a2\n"
+        "        mut(p)\n"
+        "        return take(p)\n"
+        "class C:\n    n: Int32\n"
+        "    def __init__(self, n: Int32):\n        self.n = n\n"
+        "    def go(self) -> Int32:\n        mut_c(self)\n        return self.n\n"
+        "def mut_c(v: C | A) -> None:\n"
+        "    if isinstance(v, C):\n        v.n = v.n + 1\n"
+        "def f1(a2: A) -> Int32:\n    mut(a2)\n    return take(a2)\n"
+        "def f2() -> Int32:\n    return take_opt(None)\n"
+        "def f3() -> Int32:\n    return take_own(A(7))\n"
+        "def f4() -> Int32:\n    return take_vu(3)\n"
+        "def f5(n: Int32) -> Int32:\n"
+        "    t = 0\n"
+        "    while take_own(A(n)) > t:\n"
+        "        t = t + 4\n"
+        "    return t\n"
+        "def tr(v: readonly[A | B]) -> Int32:\n"
+        "    if isinstance(v, A):\n        return v.x\n"
+        "    return v.y\n"
+        "def tro(v: readonly[A | B | None]) -> Int32:\n"
+        "    if v is None:\n        return -1\n"
+        "    if isinstance(v, A):\n        return v.x\n"
+        "    return 0\n"
+        "@readonly\n"
+        "def show(v: A | B) -> Int32:\n"
+        "    if isinstance(v, A):\n        return v.x\n"
+        "    return v.y\n"
+        "def f6(a2: A) -> Int32:\n    return tr(a2) + tro(a2) + show(a2)\n"
+        "def f7() -> Int32:\n    return tro(None)\n"
+        "def f8(v: A | B) -> Int32:\n    return tr(v) + show(v)\n"
+        "def main():\n"
+        "    a = A(1)\n"
+        "    print(f1(a))\n"
+        "    print(f2())\n"
+        "    print(f3())\n"
+        "    print(f4())\n"
+        "    print(f5(2))\n"
+        "    h = H2(1, 2)\n"
+        "    print(h.pick(True))\n"
+        "    c = C(5)\n"
+        "    print(c.go())\n"
+        "    print(f6(a))\n"
+        "    print(f7())\n"
+        "    print(f8(a))\n"
+        "main()\n")
+
+    def test_byte_identical(self):
+        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
+
+    def test_readonly_slot_emitted_shapes(self):
+        out = self._cpp(self.SRC, thir=True)
+        # Member lift + monostate spell const pointees; the already-union
+        # name takes the explicit const conversion.
+        assert "std::variant<const A*, const B*>{&(a2)}" in out
+        assert ("tro(std::variant<std::monostate, const A*, const B*>"
+                "{std::monostate{}})") in out
+        assert ("::tpy::ptr_variant_to_const"
+                "<std::variant<const A*, const B*>>(v)") in out
+
+    def test_lift_renders(self):
+        cpp = self._cpp(self.SRC, thir=True)
+        assert "take(std::variant<A*, B*>{&(a2)})" in cpp
+        assert ("take_opt(std::variant<std::monostate, A*, B*>"
+                "{std::monostate{}})") in cpp
+        assert "take_own(A(7))" in cpp
+        assert "take_vu(3)" in cpp
+        assert "while ((take_own(A(n)) > t))" in cpp
+        assert "take(std::variant<A*, B*>{&((*p))})" in cpp  # pointer-local
+        assert "mut_c(std::variant<A*, C*>{&((*this))})" in cpp  # self
+
+    def test_routing_is_non_vacuous(self):
+        thir = _lower_ctx(self.SRC)
+        for name in ("f1", "f2", "f3", "f4", "f5", "f6", "f7", "f8",
+                     "pick", "go"):
+            assert _fn(thir, name) is not None, name
+
+    # Separate fixture: the narrowed-arg wrap SKIP into a readonly slot. The
+    # render (the bare `A&` extraction alias into a variant slot) is the
+    # pre-existing AST miscompile class in BUGS.md -- it does not compile as
+    # C++, so it lives outside the exec'd SRC above; the byte comparison
+    # still pins the mirror (string compare only, never built).
+    NARROW_SKIP_SRC = _CALLARG_RECORDS + (
+        "def tr(v: readonly[A | B]) -> Int32:\n"
+        "    if isinstance(v, A):\n        return v.x\n"
+        "    return v.y\n"
+        "def f(v: A | B) -> Int32:\n"
+        "    if isinstance(v, A):\n        return tr(v)\n"
+        "    return 0\n")
+
+    def test_narrowed_arg_wrap_skip_byte_identical(self):
+        assert (self._cpp(self.NARROW_SKIP_SRC, thir=True)
+                == self._cpp(self.NARROW_SKIP_SRC, thir=False))
+        out = self._cpp(self.NARROW_SKIP_SRC, thir=True)
+        assert "return tr(__v);" in out  # the is_narrowed wrap skip

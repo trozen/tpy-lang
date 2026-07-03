@@ -66,6 +66,14 @@ def _ctor_tail(ctor) -> str:
     return buf.getvalue()
 
 
+def _emit_expr(e) -> str:
+    """Render one expression standalone, over a fresh emit state (tests
+    only): the real `_emit_expr` threads the per-body state for the arg-temp
+    sink, which a single-expression assertion doesn't exercise."""
+    from .emit import _emit_expr as emit_expr, _EmitState, _NO_COMMENTS
+    return emit_expr(e, _EmitState(_NO_COMMENTS))
+
+
 _PRELUDE = "from tpy import Int32, UInt8, UInt64\n"
 
 # Shared F1-record fixture (records need `_lower_ctx` / a full compile -- see its

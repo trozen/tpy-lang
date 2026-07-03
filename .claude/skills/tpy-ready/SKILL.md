@@ -1,7 +1,6 @@
 ---
 name: tpy-ready
 description: Merge-readiness gate to run before /prep-merge. Confirms the branch is complete, documented, tracked, and that you'd still build it this way -- then hands off to /prep-merge. Assumes /tpy-review already ran; does not re-run the deep review.
-disable-model-invocation: true
 ---
 
 # /tpy-ready

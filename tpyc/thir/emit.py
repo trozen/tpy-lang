@@ -31,6 +31,7 @@ from ..typesys import OptionalType, TupleType, UnionType, unwrap_qualifiers
 from .nodes import (
     Form,
     PrintForm,
+    THIRArgTemp,
     THIRAssert,
     THIRAssign,
     THIRBinOp,
@@ -40,6 +41,7 @@ from .nodes import (
     THIRCoerce,
     THIRConstructor,
     THIRContainerLiteral,
+    THIRCtorCall,
     THIRExpr,
     THIRExprStmt,
     THIRFieldAccess,
@@ -66,6 +68,7 @@ from .nodes import (
     THIRStrSlice,
     THIRSubscript,
     THIRUnaryNot,
+    THIRUnionArgLift,
     THIRVarDecl,
     THIRWhile,
 )
@@ -102,6 +105,57 @@ class CommentSink:
 _NO_COMMENTS = CommentSink()
 
 
+class TempSink:
+    """Allocates `__tmp_N` names for THIRArgTemp and renders the pending
+    declarations at the statement flush point -- the emit-side seam of the
+    AST path's `TempState`. This default implementation is the standalone /
+    unit-test sink: a fresh module-local counter starting at `__tmp_1`, with
+    `TempState._render`'s exact decl spelling. The codegen seam supplies
+    `CtxTempSink` instead, backed by the module-cumulative `ctx.temps`
+    counter shared with AST-emitted bodies (interleaved THIR/AST numbering
+    must stay continuous)."""
+
+    def __init__(self) -> None:
+        self._counter = 0
+        self._pending: list[tuple[str, str, str, bool]] = []
+
+    def create(self, cpp_type: str, init_expr: str, *,
+               brace_init: bool = False) -> str:
+        self._counter += 1
+        name = f"__tmp_{self._counter}"
+        self._pending.append((name, cpp_type, init_expr, brace_init))
+        return name
+
+    def flush(self, out: TextIO, indent: str) -> None:
+        for name, cpp_type, init_expr, brace_init in self._pending:
+            if brace_init:
+                out.write(f"{indent}{cpp_type} {name}{{{init_expr}}};\n")
+            else:
+                out.write(f"{indent}{cpp_type} {name} = {init_expr};\n")
+        self._pending.clear()
+
+
+class CtxTempSink(TempSink):
+    """TempSink backed by a CodeGenContext's `TempState` (duck-typed on `ctx`
+    like CtxCommentSink, keeping emit.py free of a CodeGenContext import).
+    `create` delegates to `create_typed` -- the type is already rendered at
+    lowering, so both AST arms (`create`'s param-type render and
+    `create_typed`'s explicit string) reduce to the same pending row -- and
+    both draw from the live module-cumulative `__tmp_N` counter, so a THIR
+    body's temps keep every later AST body's numbering unshifted."""
+
+    def __init__(self, ctx) -> None:
+        self._ctx = ctx
+
+    def create(self, cpp_type: str, init_expr: str, *,
+               brace_init: bool = False) -> str:
+        return self._ctx.temps.create_typed(cpp_type, init_expr,
+                                            brace_init=brace_init)
+
+    def flush(self, out: TextIO, indent: str) -> None:
+        self._ctx.temps.flush(out, indent)
+
+
 @dataclass
 class _EmitState:
     """Per-function emit state. `iter_counter` reproduces `ctx.iter_counter`:
@@ -115,8 +169,15 @@ class _EmitState:
     it pre-increments per allocation just like `SlotState.next_slot`, so the
     `__slot_N` numbering matches the AST path. `rebind_slots` maps a rebind-slot
     local's name to its optional rebind slot N (allocated at the decl, read at
-    each reseat) -- the analog of `ctx.rebind_slots`."""
+    each reseat) -- the analog of `ctx.rebind_slots`.
+
+    `temps` is the `__tmp_N` sink THIRArgTemp renders through, flushed before
+    the enclosing statement line (after its source comment, mirroring the AST's
+    single flush point in `gen_stmt`). Unlike the counters above it is NOT
+    per-function: the seam passes a CtxTempSink so the numbering stays
+    module-cumulative across interleaved THIR/AST bodies."""
     comments: CommentSink
+    temps: TempSink = field(default_factory=TempSink)
     iter_counter: int = 0
     slot_counter: int = 0
     rebind_slots: dict[str, int] = field(default_factory=dict)
@@ -179,13 +240,13 @@ def _emit_literal(lit: THIRLiteral) -> str:
     return str(v)
 
 
-def _emit_binop(e: THIRBinOp) -> str:
+def _emit_binop(e: THIRBinOp, state: _EmitState) -> str:
     # Mirrors ExpressionGenerator._gen_binop_from_result: apply the operand
     # wrappers, expand the operator's cpp_template, swap the checked div/mod
     # helper when the divisor is proven non-zero, and paren-wrap the result.
     # Comparisons reuse this path (their dunder carries a `{self} OP {0}`
     # template), so the same code emits both arithmetic and comparison binops.
-    left, right = _emit_expr(e.left), _emit_expr(e.right)
+    left, right = _emit_expr(e.left, state), _emit_expr(e.right, state)
     rb = e.resolved
     if rb is None:
         # Derived comparison (`<= > >= !=`) or logical `&&`/`||` (incl. the
@@ -208,14 +269,14 @@ def _emit_binop(e: THIRBinOp) -> str:
     return f"({result})" if e.paren_wrap else result
 
 
-def _emit_call(e: THIRCall) -> str:
+def _emit_call(e: THIRCall, state: _EmitState) -> str:
     if e.cpp_template is not None:
         # A scalar type-constructor call: expand the (sema-substituted,
         # positional-only) __init__ template over the args with no receiver --
         # gen_call_from_fi's cpp_template arm for a free call.
         return expand_cpp_template(e.cpp_template, None,
-                                   *[_emit_expr(a) for a in e.args])
-    args = ", ".join(_emit_expr(a) for a in e.args)
+                                   *[_emit_expr(a, state) for a in e.args])
+    args = ", ".join(_emit_expr(a, state) for a in e.args)
     if e.native_name is not None:
         # A @native free-function builtin (e.g. `len(c)` -> `::tpy::__len__(c)`):
         # dispatch on the resolved symbol, mirroring gen_call_from_fi's native arm.
@@ -223,21 +284,45 @@ def _emit_call(e: THIRCall) -> str:
     return f"{escape_cpp_name(e.callee)}({args})"
 
 
-def _emit_method_call(e: THIRMethodCall) -> str:
+def _emit_union_arg_lift(e: THIRUnionArgLift, state: _EmitState) -> str:
+    # Mirrors _gen_union_arg's temp-free pointer-variant arms: the monostate
+    # member for a None literal, the address-of lift for a member-typed name
+    # (deref prepends the pointer-local/receiver `(*...)`, gen_expr_deref's
+    # indirect render), and the mutable->const conversion for an already-union
+    # name into a deep-const slot (const_wrap). variant_cpp was fixed at
+    # lowering (const-pointee spelling for a deep-const slot).
+    if e.value is None:
+        return f"{e.variant_cpp}{{std::monostate{{}}}}"
+    inner = _emit_expr(e.value, state)
+    if e.deref:
+        inner = f"(*{inner})"
+    if e.const_wrap:
+        return f"::tpy::ptr_variant_to_const<{e.variant_cpp}>({inner})"
+    return f"{e.variant_cpp}{{&({inner})}}"
+
+
+def _emit_ctor_call(e: THIRCtorCall, state: _EmitState) -> str:
+    # _gen_call's record-branch tail for a same-module plain record: the RAW
+    # source name over bare scalar args.
+    return f"{e.type_cpp}({', '.join(_emit_expr(a, state) for a in e.args)})"
+
+
+def _emit_method_call(e: THIRMethodCall, state: _EmitState) -> str:
     # Mirrors gen_call_from_fi's three dispatch arms for a receiver call, in the
     # same order: cpp_template expansion, @native free-function symbol (receiver
-    # prepended), plain member call. The eligibility gate pinned the receiver to
-    # a bare container name, so the member accessor is always `.`.
-    recv = _emit_expr(e.receiver)
-    args = [_emit_expr(a) for a in e.args]
+    # prepended), plain member call. The member accessor is `->` only for a
+    # user-record pointer-local receiver (`is_arrow`, the _gen_method_call
+    # indirect-name arm); container receivers are pinned to bare names.
+    recv = _emit_expr(e.receiver, state)
+    args = [_emit_expr(a, state) for a in e.args]
     if e.cpp_template is not None:
         return expand_cpp_template(e.cpp_template, recv, *args)
     if e.native_function_name is not None:
         return f"{qualify_native_name(e.native_function_name)}({', '.join([recv, *args])})"
-    return f"{recv}.{e.method_cpp}({', '.join(args)})"
+    return f"{recv}{'->' if e.is_arrow else '.'}{e.method_cpp}({', '.join(args)})"
 
 
-def _emit_container_literal(e: THIRContainerLiteral) -> str:
+def _emit_container_literal(e: THIRContainerLiteral, state: _EmitState) -> str:
     # Dispatch on the resolved container family, mirroring the scalar branches of
     # _gen_array_literal / _gen_dict_literal / _gen_set_literal. list/Array
     # brace-inits are consumed by the spelled decl type; dict/set spell their
@@ -248,32 +333,32 @@ def _emit_container_literal(e: THIRContainerLiteral) -> str:
         v_cpp = t.type_args[1].to_cpp()
         if not e.elements:
             return f"::tpy::ordered_map<{k_cpp}, {v_cpp}>()"
-        braces = ", ".join(f"{{{_emit_expr(k)}, {_emit_expr(v)}}}"
+        braces = ", ".join(f"{{{_emit_expr(k, state)}, {_emit_expr(v, state)}}}"
                            for k, v in zip(e.elements, e.values))
         return f"::tpy::ordered_map<{k_cpp}, {v_cpp}>({{{braces}}})"
     if is_set(t):
         cpp_elem = t.type_args[0].to_cpp()
         if not e.elements:
             return f"::tpy::ordered_set<{cpp_elem}>()"
-        elems = ", ".join(_emit_expr(x) for x in e.elements)
+        elems = ", ".join(_emit_expr(x, state) for x in e.elements)
         return f"::tpy::ordered_set<{cpp_elem}>({{{elems}}})"
     # An empty list literal spells its type (the T*-assignment-ambiguity guard in
     # _gen_array_literal); an empty Array is gated out at eligibility.
     if not e.elements and is_list(t):
         return f"{t.to_cpp()}{{}}"
-    return f"{{{', '.join(_emit_expr(x) for x in e.elements)}}}"
+    return f"{{{', '.join(_emit_expr(x, state) for x in e.elements)}}}"
 
 
-def _emit_field_access(e: THIRFieldAccess) -> str:
+def _emit_field_access(e: THIRFieldAccess, state: _EmitState) -> str:
     if e.deref_check:
         # Unproven Optional member access: null-check the (already `T*`) receiver
         # before the `.` member read. Mirrors _gen_field_access's runtime-check path.
-        return f"::tpy::deref_check({_emit_expr(e.receiver)}).{e.field_cpp}"
-    return f"{_emit_expr(e.receiver)}{'->' if e.is_arrow else '.'}{e.field_cpp}"
+        return f"::tpy::deref_check({_emit_expr(e.receiver, state)}).{e.field_cpp}"
+    return f"{_emit_expr(e.receiver, state)}{'->' if e.is_arrow else '.'}{e.field_cpp}"
 
 
-def _emit_subscript(e: THIRSubscript) -> str:
-    recv = _emit_expr(e.receiver)
+def _emit_subscript(e: THIRSubscript, state: _EmitState) -> str:
+    recv = _emit_expr(e.receiver, state)
     if isinstance(unwrap_qualifiers(e.receiver.result_type), TupleType):
         # Tuple element read: the index is a normalized compile-time constant (a
         # THIRLiteral), so the C++ template argument is a bare non-negative int.
@@ -284,7 +369,7 @@ def _emit_subscript(e: THIRSubscript) -> str:
     # Container (list / dict) index/key lookup, mirroring _gen_subscript's
     # container branch. The index is a fixed-int value scalar (a runtime-BigInt
     # index is out of the scalar slice), so no `.to_fixed_check` narrow arises.
-    idx = _emit_expr(e.index)
+    idx = _emit_expr(e.index, state)
     if e.bounds_safe:
         # Index proven in [0, len): skip normalize_index. A literal index needs no
         # cast (a compile-time constant is -Wsign-conversion-exempt); a variable
@@ -301,7 +386,7 @@ def _emit_subscript(e: THIRSubscript) -> str:
     return f"::tpy::__getitem__({recv}, {idx})"
 
 
-def _emit_fstring(e: THIRFString) -> str:
+def _emit_fstring(e: THIRFString, state: _EmitState) -> str:
     # Mirrors ExpressionGenerator._gen_fstring's assembly as a pure string
     # function (the per-arg type dispatch is already carried as wrap templates):
     # a pure-literal f-string renders as a std::string of the joined segments;
@@ -326,7 +411,7 @@ def _emit_fstring(e: THIRFString) -> str:
             all_literal = False
             fmt_parts.append("{}")  # format specs are gate-excluded
             decoded_fmt_parts.append("{}")
-            inner = _emit_expr(part.expr)
+            inner = _emit_expr(part.expr, state)
             args.append(inner if part.wrap is None
                         else expand_cpp_template(part.wrap, None, inner))
     if all_literal:
@@ -344,31 +429,31 @@ def _emit_fstring(e: THIRFString) -> str:
     return f'std::format("{fmt_str}", {args_str})'
 
 
-def _emit_str_slice(e: THIRStrSlice) -> str:
+def _emit_str_slice(e: THIRStrSlice, state: _EmitState) -> str:
     # Mirrors _gen_subscript's slice arm: the resolved __getitem__ @cpp_template
     # expanded over the receiver and the slice argument -- a slice-typed
     # variable index rendered bare, or a BasicSlice/Slice initializer
     # (_gen_slice_object, stepped per the source syntax); an absent bound
     # renders std::nullopt (_gen_optional_slice_bound).
     if e.index is not None:
-        return expand_cpp_template(e.cpp_template, _emit_expr(e.receiver),
-                                   _emit_expr(e.index))
-    lo = _emit_expr(e.lower) if e.lower is not None else "std::nullopt"
-    hi = _emit_expr(e.upper) if e.upper is not None else "std::nullopt"
+        return expand_cpp_template(e.cpp_template, _emit_expr(e.receiver, state),
+                                   _emit_expr(e.index, state))
+    lo = _emit_expr(e.lower, state) if e.lower is not None else "std::nullopt"
+    hi = _emit_expr(e.upper, state) if e.upper is not None else "std::nullopt"
     if e.stepped:
-        step = _emit_expr(e.step) if e.step is not None else "std::nullopt"
+        step = _emit_expr(e.step, state) if e.step is not None else "std::nullopt"
         slice_arg = f"::tpy::Slice{{{lo}, {hi}, {step}}}"
     else:
         slice_arg = f"::tpy::BasicSlice{{{lo}, {hi}}}"
-    return expand_cpp_template(e.cpp_template, _emit_expr(e.receiver), slice_arg)
+    return expand_cpp_template(e.cpp_template, _emit_expr(e.receiver, state), slice_arg)
 
 
-def _emit_form_convert(e: THIRFormConvert) -> str:
+def _emit_form_convert(e: THIRFormConvert, state: _EmitState) -> str:
     # storage->borrow lifts. optional_to_ptr's const overload is auto-selected by
     # the optional's own const-ness, so is_const here is carried for MIR / other
     # families, not the rendered helper. The borrow->storage direction (F2b) and
     # the union / tuple families arrive in later rungs.
-    inner = _emit_expr(e.value)
+    inner = _emit_expr(e.value, state)
     t = unwrap_qualifiers(e.result_type)
     if e.form is Form.BORROW:
         # F1 Optional[ref] read: `std::optional<T>` lvalue -> `T*`.
@@ -425,9 +510,12 @@ def _emit_form_convert(e: THIRFormConvert) -> str:
         f"unhandled THIRFormConvert: {type(t).__name__} {e.value.form}->{e.form}")
 
 
-def _emit_expr(e: THIRExpr) -> str:
+def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
     if isinstance(e, THIRName):
-        return escape_cpp_name(e.name)
+        # `deref`: an F2 pointer-local read in a value position (a record call
+        # arg) -- gen_expr_deref's `(*p)` indirect render.
+        name = escape_cpp_name(e.name)
+        return f"(*{name})" if e.deref else name
     if isinstance(e, THIRSelf):
         return "this"
     if isinstance(e, THIRLiteral):
@@ -445,7 +533,7 @@ def _emit_expr(e: THIRExpr) -> str:
             return "std::span<const uint8_t>{}"
         return cpp_bytes_literal_span(e.value)
     if isinstance(e, THIRFString):
-        return _emit_fstring(e)
+        return _emit_fstring(e, state)
     if isinstance(e, THIRCharLiteral):
         # A Char-targeted str literal (compare operand opposite a Char, a
         # Char-annotated decl init, a Char-slot call arg) -- mirrors
@@ -464,31 +552,42 @@ def _emit_expr(e: THIRExpr) -> str:
         get = f"std::get<{e.member_cpp}>({e.variant_cpp})"
         return f"(*{get})" if e.is_ptr_variant else get
     if isinstance(e, THIRFieldAccess):
-        return _emit_field_access(e)
+        return _emit_field_access(e, state)
     if isinstance(e, THIRSubscript):
-        return _emit_subscript(e)
+        return _emit_subscript(e, state)
     if isinstance(e, THIRStrSlice):
-        return _emit_str_slice(e)
+        return _emit_str_slice(e, state)
     if isinstance(e, THIRFormConvert):
-        return _emit_form_convert(e)
+        return _emit_form_convert(e, state)
     if isinstance(e, THIRBinOp):
-        return _emit_binop(e)
+        return _emit_binop(e, state)
     if isinstance(e, THIRUnaryNot):
         # Mirrors _gen_unaryop's `!` arm over a bool operand, whose truthiness
         # render is the plain value render.
-        return f"(!({_emit_expr(e.operand)}))"
+        return f"(!({_emit_expr(e.operand, state)}))"
     if isinstance(e, THIRCall):
-        return _emit_call(e)
+        return _emit_call(e, state)
+    if isinstance(e, THIRUnionArgLift):
+        return _emit_union_arg_lift(e, state)
+    if isinstance(e, THIRCtorCall):
+        return _emit_ctor_call(e, state)
+    if isinstance(e, THIRArgTemp):
+        # Register the hoisted decl with the sink and read the real __tmp_N
+        # here; args render left-to-right, so creation order matches the AST's
+        # per-arg cascade. The pending decl flushes before the statement line.
+        init_cpp = _emit_expr(e.init, state)
+        cpp_type = e.cpp_type if e.cpp_type is not None else "auto"
+        return state.temps.create(cpp_type, init_cpp, brace_init=e.brace_init)
     if isinstance(e, THIRMethodCall):
-        return _emit_method_call(e)
+        return _emit_method_call(e, state)
     if isinstance(e, THIRContainerLiteral):
-        return _emit_container_literal(e)
+        return _emit_container_literal(e, state)
     if isinstance(e, THIRCoerce):
         # The admitted coercions are all passthroughs: a literal renders in the
         # target type's context (int/float literal coercions), and string_to_str
         # is identity in every position (both spell std::string; the Coercion
         # carries no codegen lambda).
-        return _emit_expr(e.expr)
+        return _emit_expr(e.expr, state)
     raise THIRCodeGenError(f"unhandled THIR expr: {type(e).__name__}")
 
 
@@ -518,10 +617,10 @@ def _emit_if(out: TextIO, stmt: THIRIf, indent_level: int, state: _EmitState) ->
         chain.append(chain[-1].else_body[0])
     for i, node in enumerate(chain):
         if i == 0:
-            out.write(f"{indent}if ({_emit_expr(node.condition)}) {{\n")
+            out.write(f"{indent}if ({_emit_expr(node.condition, state)}) {{\n")
         else:
             state.comments.elif_(out, node.loc, indent)
-            out.write(f"{indent}}} else if ({_emit_expr(node.condition)}) {{\n")
+            out.write(f"{indent}}} else if ({_emit_expr(node.condition, state)}) {{\n")
         _emit_stmts(out, node.then_body, indent_level + 1, state)
         state.comments.trailing(out, node.then_body, body_indent)
     last = chain[-1]
@@ -536,7 +635,7 @@ def _emit_if(out: TextIO, stmt: THIRIf, indent_level: int, state: _EmitState) ->
 def _emit_while(out: TextIO, stmt: THIRWhile, indent_level: int, state: _EmitState) -> None:
     # The `// while ...:` comment is emitted by the caller (_emit_stmts).
     indent = INDENT * indent_level
-    out.write(f"{indent}while ({_emit_expr(stmt.condition)}) {{\n")
+    out.write(f"{indent}while ({_emit_expr(stmt.condition, state)}) {{\n")
     _emit_stmts(out, stmt.body, indent_level + 1, state)
     state.comments.trailing(out, stmt.body, INDENT * (indent_level + 1))
     out.write(f"{indent}}}\n")
@@ -553,8 +652,8 @@ def _emit_for_range(out: TextIO, stmt: THIRForRange, indent_level: int,
     n = state.next_loop_index()
     cpp_elem = stmt.elem_type.to_cpp()
     var = escape_cpp_name(stmt.var)
-    start_cpp = "0" if stmt.start is None else _emit_expr(stmt.start)
-    stop_cpp = _emit_expr(stmt.stop)
+    start_cpp = "0" if stmt.start is None else _emit_expr(stmt.start, state)
+    stop_cpp = _emit_expr(stmt.stop, state)
     if stmt.start is not None and not stmt.start_is_literal:
         out.write(f"{indent}{cpp_elem} __start_{n} = {start_cpp};\n")
         start_cpp = f"__start_{n}"
@@ -582,7 +681,7 @@ def _emit_for_each(out: TextIO, stmt: THIRForEach, indent_level: int,
     n = state.next_loop_index()
     obj, beg, end = f"__obj_{n}", f"__beg_{n}", f"__end_{n}"
     binding_kw = "auto&" if stmt.iterable_lvalue else "auto"
-    out.write(f"{indent}{binding_kw} {obj} = {_emit_expr(stmt.iterable)};\n")
+    out.write(f"{indent}{binding_kw} {obj} = {_emit_expr(stmt.iterable, state)};\n")
     out.write(f"{indent}auto {beg} = {obj}.begin();\n")
     out.write(f"{indent}auto {end} = {obj}.end();\n")
     out.write(f"{indent}for (; {beg} != {end}; ++{beg}) {{\n")
@@ -610,18 +709,18 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             state.rebind_slots[stmt.name] = rebind_slot
             cpp = stmt.cpp_type
             const_pfx = "const " if stmt.is_const else ""
-            out.write(f"{indent}{cpp} __slot_{init_slot} = {_emit_expr(stmt.init)};\n")
+            out.write(f"{indent}{cpp} __slot_{init_slot} = {_emit_expr(stmt.init, state)};\n")
             out.write(f"{indent}std::optional<{cpp}> __slot_{rebind_slot};\n")
             out.write(f"{indent}{const_pfx}{cpp}* {name} = &__slot_{init_slot};\n")
         elif stmt.cpp_local_representation is LocalBinding.STORAGE_TUPLE_ALIAS:
             # F3 storage-tuple alias: `auto&& name = <lvalue storage tuple>` binds a
             # forwarding reference to the source's storage (no spelled type). Reads
             # off it lift via tuple_to_pointer at borrow boundaries.
-            out.write(f"{indent}auto&& {name} = {_emit_expr(stmt.init)};\n")
+            out.write(f"{indent}auto&& {name} = {_emit_expr(stmt.init, state)};\n")
         elif stmt.cpp_local_representation is LocalBinding.PTR_VARIANT:
             # F4 U2 pointer-variant local: cpp_type carries the full (possibly
             # const-pointee) variant spelling -- no sigil, no const prefix.
-            out.write(f"{indent}{stmt.cpp_type} {name} = {_emit_expr(stmt.init)};\n")
+            out.write(f"{indent}{stmt.cpp_type} {name} = {_emit_expr(stmt.init, state)};\n")
         elif stmt.cpp_local_representation is not None:
             # Non-value borrow local. cpp_type is already the pointee record (the
             # optional's inner for OPTIONAL_TO_PTR, not the optional itself), so
@@ -630,12 +729,17 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             sigil = ("&" if stmt.cpp_local_representation is LocalBinding.REF_ALIAS
                      else "*")
             out.write(f"{indent}{const_pfx}{stmt.cpp_type}{sigil} {name} = "
-                      f"{_emit_expr(stmt.init)};\n")
+                      f"{_emit_expr(stmt.init, state)};\n")
         elif stmt.init is None:
             out.write(f"{indent}{stmt.resolved_type.to_cpp()} {name};\n")
         else:
+            # Render before flushing: the init may register arg temps, whose
+            # decls the AST flushes between the source comment and the
+            # statement line (gen_stmt's single flush point).
             cpp_type = stmt.resolved_type.to_cpp()
-            out.write(f"{indent}{cpp_type} {name} = {_emit_expr(stmt.init)};\n")
+            init_cpp = _emit_expr(stmt.init, state)
+            state.temps.flush(out, indent)
+            out.write(f"{indent}{cpp_type} {name} = {init_cpp};\n")
     elif isinstance(stmt, THIRAssign):
         # target is a THIRName (`x = ...`) or, for F2b, a THIRFieldAccess
         # (`recv.field = ...` / `recv->field = ...`); _emit_expr renders both. An
@@ -644,14 +748,19 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
         if isinstance(stmt.target, THIRName) and stmt.target.name in state.rebind_slots:
             slot = state.rebind_slots[stmt.target.name]
             out.write(f"{indent}{escape_cpp_name(stmt.target.name)} = "
-                      f"&*(__slot_{slot} = {_emit_expr(stmt.value)});\n")
+                      f"&*(__slot_{slot} = {_emit_expr(stmt.value, state)});\n")
         else:
-            out.write(f"{indent}{_emit_expr(stmt.target)} = {_emit_expr(stmt.value)};\n")
+            # Value renders first (its arg temps flush before the line);
+            # targets are names/field lvalues that never register temps.
+            target_cpp = _emit_expr(stmt.target, state)
+            value_cpp = _emit_expr(stmt.value, state)
+            state.temps.flush(out, indent)
+            out.write(f"{indent}{target_cpp} = {value_cpp};\n")
     elif isinstance(stmt, THIRStrAppend):
         # `t += v;` -- the str in-place append (the `+=` statement and the
         # `x = x + y` peephole share the emit).
         out.write(f"{indent}{escape_cpp_name(stmt.target)} += "
-                  f"{_emit_expr(stmt.value)};\n")
+                  f"{_emit_expr(stmt.value, state)};\n")
     elif isinstance(stmt, THIRNarrowAlias):
         # The isinstance-narrowing extraction (F4 U3) -- mirrors
         # _emit_isinstance_extractions' variant arm (VariantAccess.get_by_type
@@ -669,12 +778,14 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
         else:
             msg = stmt.message.replace("\\", "\\\\").replace('"', '\\"')
             throw = f'::tpy::raise_assertion_error("{msg}")'
-        out.write(f"{indent}if (!({_emit_expr(stmt.condition)})) {throw};\n")
+        out.write(f"{indent}if (!({_emit_expr(stmt.condition, state)})) {throw};\n")
     elif isinstance(stmt, THIRReturn):
         if stmt.value is None:
             out.write(f"{indent}return;\n")
         else:
-            out.write(f"{indent}return {_emit_expr(stmt.value)};\n")
+            value_cpp = _emit_expr(stmt.value, state)
+            state.temps.flush(out, indent)
+            out.write(f"{indent}return {value_cpp};\n")
     elif isinstance(stmt, THIRIf):
         _emit_if(out, stmt, indent_level, state)
     elif isinstance(stmt, THIRWhile):
@@ -684,9 +795,11 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
     elif isinstance(stmt, THIRForEach):
         _emit_for_each(out, stmt, indent_level, state)
     elif isinstance(stmt, THIRPrint):
-        _emit_print(out, stmt, indent_level)
+        _emit_print(out, stmt, indent_level, state)
     elif isinstance(stmt, THIRExprStmt):
-        out.write(f"{indent}{_emit_expr(stmt.expr)};\n")
+        expr_cpp = _emit_expr(stmt.expr, state)
+        state.temps.flush(out, indent)
+        out.write(f"{indent}{expr_cpp};\n")
     elif isinstance(stmt, THIRNoOpStmt):
         # No code -- the `// pass` source comment (if any) is emitted by the
         # caller (_emit_stmts) from the node's loc.
@@ -695,8 +808,8 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
         raise THIRCodeGenError(f"unhandled THIR stmt: {type(stmt).__name__}")
 
 
-def _emit_print_arg(a: THIRPrintArg) -> str:
-    inner = _emit_expr(a.expr)
+def _emit_print_arg(a: THIRPrintArg, state: _EmitState) -> str:
+    inner = _emit_expr(a.expr, state)
     if a.print_form is PrintForm.BOOL:
         return f"::tpy::print_bool({inner})"
     if a.print_form is PrintForm.FLOAT:
@@ -708,7 +821,8 @@ def _emit_print_arg(a: THIRPrintArg) -> str:
     return inner
 
 
-def _emit_print(out: TextIO, stmt: THIRPrint, indent_level: int) -> None:
+def _emit_print(out: TextIO, stmt: THIRPrint, indent_level: int,
+                state: _EmitState) -> None:
     # Mirrors gen_print's no-kwargs common-arg path: `std::cout << a0 << " " << a1
     # << ... << "\n";`. Default sep=" " between args, end="\n"; empty print() is
     # just the newline.
@@ -717,7 +831,7 @@ def _emit_print(out: TextIO, stmt: THIRPrint, indent_level: int) -> None:
     for i, a in enumerate(stmt.args):
         if i > 0:
             parts.append('" "')
-        parts.append(_emit_print_arg(a))
+        parts.append(_emit_print_arg(a, state))
     parts.append('"\\n"')
     out.write(f"{indent}std::cout << " + " << ".join(parts) + ";\n")
 
@@ -733,31 +847,41 @@ def _emit_stmts(out: TextIO, stmts, indent_level: int, state: _EmitState) -> Non
 
 
 def emit_thir_body(out: TextIO, fn: THIRFunction, indent_level: int = 1,
-                   *, comments: CommentSink | None = None) -> None:
-    """Emit `fn`'s body statements (no signature, no braces) at `indent_level`."""
-    _emit_stmts(out, fn.body, indent_level, _EmitState(comments or _NO_COMMENTS))
+                   *, comments: CommentSink | None = None,
+                   temps: TempSink | None = None) -> None:
+    """Emit `fn`'s body statements (no signature, no braces) at `indent_level`.
+
+    `temps` is the `__tmp_N` sink -- the codegen seam passes a CtxTempSink so
+    THIR bodies draw from the module-cumulative `ctx.temps` counter; the
+    default is a fresh local sink (standalone/unit callers)."""
+    _emit_stmts(out, fn.body, indent_level,
+                _EmitState(comments or _NO_COMMENTS, temps=temps or TempSink()))
 
 
 def emit_thir_constructor_tail(out: TextIO, ctor: THIRConstructor,
-                               *, comments: CommentSink | None = None) -> None:
+                               *, comments: CommentSink | None = None,
+                               temps: TempSink | None = None) -> None:
     """Emit a constructor's member-init-list + body tail (the ` : f(v)... {}` that
     follows the signature). The THIR counterpart of gen_record_decl's AST MIL+body
     emit: the signature is written by the AST path before this is called (the M1
     precedent -- signatures stay on the AST path). Byte-identical to that path's
     tail. M3a is pure-MIL, so `body` is empty and this emits ` {}` (or
-    ` : inits {}`)."""
-    inits = [f"{bi.base_cpp}({', '.join(_emit_expr(a) for a in bi.args)})"
+    ` : inits {}`). MIL / base-init cells have no flush point, so arg temps
+    never lower there (gate + validator enforced); the body shares the
+    statement machinery and its sink."""
+    state = _EmitState(comments or _NO_COMMENTS, temps=temps or TempSink())
+    inits = [f"{bi.base_cpp}({', '.join(_emit_expr(a, state) for a in bi.args)})"
              for bi in ctor.base_inits]
     inits.extend(
-        f"{mi.field_cpp}(std::move({_emit_expr(mi.value)}))" if mi.move
-        else f"{mi.field_cpp}({_emit_expr(mi.value)})"
+        f"{mi.field_cpp}(std::move({_emit_expr(mi.value, state)}))" if mi.move
+        else f"{mi.field_cpp}({_emit_expr(mi.value, state)})"
         for mi in ctor.mil_inits)
     if inits:
         out.write(" : ")
         out.write(", ".join(inits))
     if ctor.body:
         out.write(" {\n")
-        _emit_stmts(out, ctor.body, 2, _EmitState(comments or _NO_COMMENTS))
+        _emit_stmts(out, ctor.body, 2, state)
         out.write(f"{INDENT}}}\n")
     else:
         out.write(" {}\n")

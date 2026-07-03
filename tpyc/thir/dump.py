@@ -9,6 +9,7 @@ from __future__ import annotations
 from ..typesys import TpyType
 from .nodes import (
     Form,
+    THIRArgTemp,
     THIRAssert,
     THIRAssign,
     THIRBinOp,
@@ -16,6 +17,7 @@ from .nodes import (
     THIRCall,
     THIRCharLiteral,
     THIRCoerce,
+    THIRCtorCall,
     THIRExpr,
     THIRFieldAccess,
     THIRForEach,
@@ -41,6 +43,7 @@ from .nodes import (
     THIRStrSlice,
     THIRSubscript,
     THIRUnaryNot,
+    THIRUnionArgLift,
     THIRVarDecl,
     THIRWhile,
 )
@@ -52,7 +55,8 @@ def _ty(t: TpyType) -> str:
 
 def _expr(e: THIRExpr) -> str:
     if isinstance(e, THIRName):
-        return f"%{e.name}"
+        # A pointer-local read in a value position renders `(*name)`.
+        return f"*%{e.name}" if e.deref else f"%{e.name}"
     if isinstance(e, THIRSelf):
         return "%self"
     if isinstance(e, THIRLiteral):
@@ -105,9 +109,27 @@ def _expr(e: THIRExpr) -> str:
         elif e.native_function_name is not None:
             how = f"native {e.native_function_name}"
         else:
-            how = e.method_cpp
+            # `->member` surfaces a pointer-local receiver's arrow access.
+            how = f"->{e.method_cpp}" if e.is_arrow else e.method_cpp
         return (f"method_call({_expr(e.receiver)}, {how}, "
                 f"[{', '.join(_expr(a) for a in e.args)}])")
+    if isinstance(e, THIRCtorCall):
+        return f"ctor({e.type_cpp}, [{', '.join(_expr(a) for a in e.args)}])"
+    if isinstance(e, THIRUnionArgLift):
+        # The three inline arms: monostate (None), the const conversion of an
+        # already-union name, and the address-of member lift (deref for a
+        # pointer-local / self receiver).
+        if e.value is None:
+            inner = "monostate"
+        elif e.const_wrap:
+            inner = f"to_const({_expr(e.value)})"
+        else:
+            inner = f"&({'*' if e.deref else ''}{_expr(e.value)})"
+        return f"union_lift[{e.variant_cpp}]{{{inner}}}"
+    if isinstance(e, THIRArgTemp):
+        # Number-free by design: the real __tmp_N is drawn at emission from
+        # the module-cumulative sink.
+        return f"%argtmp({e.cpp_type or 'auto'}){{{_expr(e.init)}}}"
     if isinstance(e, THIRCoerce):
         return f"coerce({_expr(e.expr)} -> {_ty(e.result_type)})"
     if isinstance(e, THIRFieldAccess):

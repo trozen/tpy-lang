@@ -4,7 +4,7 @@ subscript/slice/iteration, cross-type coercions, dict[str]/container-of-str."""
 from __future__ import annotations
 
 from ..codegen_cpp.context import CodeGenOptions
-from .emit import _emit_expr
+from .testutil import _emit_expr
 from .nodes import (
     Form, PrintForm, THIRAssign, THIRBinOp, THIRCall, THIRCharLiteral,
     THIRCoerce, THIRContainerLiteral, THIRForEach, THIRFormConvert,

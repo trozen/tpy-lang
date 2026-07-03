@@ -4,7 +4,7 @@ iteration / concat / aug-assign, increment 46)."""
 from __future__ import annotations
 
 from ..codegen_cpp.context import CodeGenOptions
-from .emit import _emit_expr
+from .testutil import _emit_expr
 from .nodes import (
     Form, PrintForm, THIRAssign, THIRBinOp, THIRBytesLiteral, THIRCall,
     THIRForEach, THIRFormConvert, THIRName, THIRStrSlice, THIRSubscript,

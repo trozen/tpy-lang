@@ -6,7 +6,7 @@ from __future__ import annotations
 from ..codegen_cpp.context import CodeGenOptions
 from ..codegen_cpp.forms import LocalBinding
 from .nodes import (
-    Form, THIRAssign, THIRCall, THIRFieldAccess, THIRFormConvert, THIRLiteral,
+    Form, THIRAssign, THIRCall, THIRCtorCall, THIRFieldAccess, THIRFormConvert, THIRLiteral,
     THIRReturn, THIRSelf, THIRVarDecl,
 )
 from .testutil import (
@@ -132,19 +132,20 @@ class TestF1Eligibility:
         assert _fn(thir, "consume") is not None
         assert _fn(thir, "forward") is None
 
-    def test_method_call_on_record_is_ineligible(self):
+    def test_method_call_on_record_routes(self):
         thir = _lower_ctx(
             _F1_RECORDS
             + "def f(b: Box) -> Int32:\n    x = b.inner\n    return x.value + b.n\n")
-        # b.n is a scalar field read (fine); but a method call would not be. Use
-        # one with a method call to confirm rejection.
+        # A single-overload plain method call on a bare record name routes
+        # (`c.bump()` -- the record method-call row of the call-arg cascade;
+        # see test_thir_callargs for the full gate matrix).
         thir2 = _lower_ctx(
             _F1_RECORDS
             + "class Counter:\n    k: Int32\n"
             + "    def __init__(self):\n        self.k = 0\n"
             + "    def bump(self) -> Int32:\n        self.k = self.k + 1\n        return self.k\n"
             + "def g(c: Counter) -> Int32:\n    return c.bump()\n")
-        assert _fn(thir2, "g") is None
+        assert _fn(thir2, "g") is not None
         # The pure field-read function is eligible.
         assert _fn(thir, "f") is not None
 
@@ -626,12 +627,12 @@ class TestF2dRebindSlot:
         assert isinstance(decl, THIRVarDecl)
         assert decl.cpp_local_representation is LocalBinding.REBIND_SLOT
         assert decl.form is Form.BORROW and decl.cpp_type == "Inner"
-        assert isinstance(decl.init, THIRCall) and decl.init.callee == "Inner"
+        assert isinstance(decl.init, THIRCtorCall) and decl.init.type_cpp == "Inner"
         read = fn.body[1].init  # a = p.value -> arrow read off the pointer-local
         assert isinstance(read, THIRFieldAccess) and read.is_arrow
         reseat = fn.body[2]
         assert isinstance(reseat, THIRAssign) and reseat.target.name == "p"
-        assert isinstance(reseat.value, THIRCall) and reseat.value.callee == "Inner"
+        assert isinstance(reseat.value, THIRCtorCall) and reseat.value.type_cpp == "Inner"
 
     def test_single_assignment_rvalue_is_ineligible(self):
         # No reassignment -> a plain value local (`Inner p = Inner(1);`), not a
@@ -654,7 +655,7 @@ class TestF2dRebindSlot:
         assert fn is not None
         decl = fn.body[0]
         assert decl.cpp_local_representation is LocalBinding.REBIND_SLOT
-        assert isinstance(decl.init, THIRCall) and len(decl.init.args) == 1
+        assert isinstance(decl.init, THIRCtorCall) and len(decl.init.args) == 1
 
     def test_record_arg_ctor_source_is_ineligible(self):
         # A rebind-slot ctor whose arg is a non-scalar (a record value-local) needs
@@ -665,6 +666,19 @@ class TestF2dRebindSlot:
             _F1_RECORDS
             + "def f() -> Int32:\n"
             + "    a = Inner(0)\n    p = Box(a)\n    p = Box(a)\n    return p.n\n")
+        assert _fn(thir, "f") is None
+
+    def test_union_arg_ctor_source_is_ineligible(self):
+        # A rebind-slot ctor whose member-valued scalar arg lands in a
+        # union-typed __init__ slot hoists a variant temp on the AST path
+        # (`_member_valued_union_slot` in `_is_record_rvalue_source`'s arg
+        # loop), which the bare `Name(args)` emit does not reproduce -> AST.
+        thir = _lower_ctx(
+            "from tpy import Int32, Float64\n"
+            "class W:\n    u: Int32 | Float64\n"
+            "    def __init__(self, v: Int32 | Float64):\n        self.u = v\n"
+            "def f(k: Int32) -> Int32:\n"
+            "    p = W(k)\n    p = W(k)\n    return 0\n")
         assert _fn(thir, "f") is None
 
     def test_function_call_rebind_source_routes(self):
@@ -691,7 +705,7 @@ class TestF2dRebindSlot:
         assert fn is not None
         assert fn.body[0].cpp_local_representation is LocalBinding.REBIND_SLOT
         reseat = fn.body[1].then_body[0]  # the in-branch reseat
-        assert isinstance(reseat, THIRAssign) and isinstance(reseat.value, THIRCall)
+        assert isinstance(reseat, THIRAssign) and isinstance(reseat.value, THIRCtorCall)
 
     def test_lvalue_reseat_of_rebind_slot_is_ineligible(self):
         # A REBIND_SLOT local (rvalue first decl) reseated with an lvalue field

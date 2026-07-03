@@ -154,10 +154,13 @@ class THIRCharLiteral(THIRExpr):
 
 @dataclass(frozen=True)
 class THIRName(THIRExpr):
-    """Local / param reference."""
+    """Local / param reference. `deref` marks an F2 pointer-local (`T*`) read
+    in a value position (a record call arg), rendered `(*name)` -- the mirror
+    of `gen_expr_deref`'s indirect-name deref. Non-pointer names render bare."""
     name: str
     is_last_use: bool = False
     is_movable: bool = False
+    deref: bool = False
 
 
 @dataclass(frozen=True)
@@ -230,29 +233,106 @@ class THIRCall(THIRExpr):
 
 
 @dataclass(frozen=True)
+class THIRUnionArgLift(THIRExpr):
+    """A temp-free call arg lifted inline into a pointer-variant union slot --
+    the inline arms of `_gen_union_arg`: a `None` literal renders the monostate
+    member (`std::variant<...>{std::monostate{}}`, `value=None`), a
+    member-typed record name the address-of lift (`std::variant<...>{&(name)}`;
+    `deref` prepends the pointer-local/receiver deref -- `&((*p))` /
+    `&((*this))` -- mirroring `gen_expr_deref`'s indirect-name render), and an
+    already-union name into a deep-const slot the explicit const conversion
+    (`const_wrap`: `::tpy::ptr_variant_to_const<std::variant<...>>(name)`).
+
+    `variant_cpp` is the slot's pointer-variant spelling, fixed at lowering:
+    const-pointee (`std::variant<const A*, ...>`) for a deep-const slot (a
+    `readonly[...]` annotation or the callee's `deep_const_borrow_params`
+    verdict), the mutable spelling otherwise. Beyond that split the member
+    render is const-blind on the AST path (it spells the callee's variant
+    whatever the source's const-ness -- a const source into a MUTABLE slot is
+    a pre-existing AST miscompile the mirror reproduces, see BUGS.md). BORROW
+    form -- the variant aliases the named source."""
+    variant_cpp: str
+    value: THIRExpr | None = None  # None -> the monostate member
+    deref: bool = False
+    const_wrap: bool = False
+
+
+@dataclass(frozen=True)
+class THIRCtorCall(THIRExpr):
+    """A same-module user-record constructor call rvalue (`A(7)`), admitted
+    only as a call arg: into an `Own[union]` value-variant slot (bare), as a
+    method arg into a const same-record ref slot (`a.combine(A(9))` -- the
+    method arg loop inlines the expansion, unlike the free-fn rvalue-temp
+    arm), or as a `THIRArgTemp` init (the free-fn same-record ref-slot
+    hoist). Renders
+    `type_cpp(args)` -- `_gen_call`'s record-branch tail, which emits the RAW
+    source name (no `escape_cpp_name`, no cross-module qualification; both
+    gate-enforced). Args are value scalars into plain scalar slots (every
+    `_gen_record_ctor_args` special arm is gate-excluded), so each renders
+    bare. STORAGE form -- a fresh self-contained value the slot's variant
+    converting ctor consumes."""
+    type_cpp: str
+    args: tuple[THIRExpr, ...] = ()
+
+
+@dataclass(frozen=True)
+class THIRArgTemp(THIRExpr):
+    """A call arg hoisted into a `__tmp_N` declaration flushed before the
+    enclosing statement, rendering as the bare temp name at the arg position.
+    Two admitted rows: a member-valued scalar into a value-union slot
+    (`std::variant<...> __tmp_N = <arg>;`, `_gen_union_arg`'s value branch)
+    and a same-module record-ctor rvalue into a same-nominal ref slot
+    (`A __tmp_N = A(7);`, the free-call `is_ref_param + is_temporary_expr`
+    arm). Only the flushable statement positions admit it (expr stmt /
+    var-decl init / name assign / return): a while-condition hoist is the
+    stale-snapshot miscompile (BUGS.md), an elif temp breaks the flat
+    `else if` chain -- both gate-rejected.
+
+    Carries NO temp number: numbering is emit-time via the TempSink (the
+    `__slot_N` precedent), drawing real numbers from the module-cumulative
+    `ctx.temps` counter so THIR and AST bodies interleaved in one module
+    stay continuous. `cpp_type` is the declared C++ type rendered at
+    lowering (`None` -> `auto`, mirroring `TempState.create`'s protocol /
+    TypeParamRef arm -- unused by the current rows but kept so the node
+    matches the AST facility); `brace_init` selects `{init}` over `= init`.
+    `form` mirrors how the temp NAME reads at the arg position: VALUE for
+    the value-union row (like a same-union name), BORROW for the record row
+    (a record lvalue the ref param binds)."""
+    init: THIRExpr
+    cpp_type: str | None = None
+    brace_init: bool = False
+
+
+@dataclass(frozen=True)
 class THIRMethodCall(THIRExpr):
-    """Method call on a builtin-container receiver, carrying the facts
-    `gen_call_from_fi` dispatches on, materialized at lowering from the resolved
-    FunctionInfo. Emit tries the arms in the same order: `cpp_template` (expanded
-    with the receiver + args, e.g. `xs.sort()` -> `std::stable_sort(xs.begin(),
-    xs.end())`), else `native_function_name` (a `@native(..., function=True)`
-    free-function symbol with the receiver prepended as the first argument, e.g.
-    `xs.pop()` -> `::tpy::pop_back(xs)`), else the plain member call
-    `receiver.method_cpp(args)` (`method_cpp` is the `@native` member rename or
-    the escaped source name, e.g. `xs.append(v)` -> `xs.push_back(v)`).
+    """Method call on a builtin-container or user-record receiver, carrying the
+    facts `gen_call_from_fi` dispatches on, materialized at lowering from the
+    resolved FunctionInfo. Emit tries the arms in the same order: `cpp_template`
+    (expanded with the receiver + args, e.g. `xs.sort()` -> `std::stable_sort(
+    xs.begin(), xs.end())`), else `native_function_name` (a `@native(...,
+    function=True)` free-function symbol with the receiver prepended as the
+    first argument, e.g. `xs.pop()` -> `::tpy::pop_back(xs)`), else the plain
+    member call `receiver.method_cpp(args)` (`method_cpp` is the `@native`
+    member rename or the escaped source name, e.g. `xs.append(v)` ->
+    `xs.push_back(v)`; `a.combine(b)` -> `a.combine(b)`).
 
     The eligibility gate admits only the AST path's pass-through shapes -- a
-    bare-name container receiver (never a pointer-local, so no deref/arrow),
-    value-scalar args into scalar / `Own[scalar]` slots, and str-slice args
-    into non-Own str-family slots (all copied/viewed bare, no move / lift /
-    temp; an `Own[str]` slot's owned-copy or `std::move(__tmp_N)` temp is
-    gate-excluded) -- so the emit is a pure function of the node. An owned-str
-    result (`xs.pop()`, S5) is STORAGE form, landing bare in owned sinks."""
+    bare-name receiver, value-scalar args into scalar / `Own[scalar]` slots
+    (plain scalar only for user records: their non-template callees temp+move
+    an Own[scalar] arg), str-slice args into non-Own str-family slots, and
+    record names into non-Own same-record slots (all copied/viewed bare, no
+    move / lift / temp; an `Own[str]` slot's owned-copy or `std::move(__tmp_N)`
+    temp is gate-excluded) -- so the emit is a pure function of the node.
+    `is_arrow` renders a user-record F2 pointer-local receiver's member access
+    (`p->get()`), like THIRFieldAccess; container receivers are never
+    pointer-locals. An owned-str result (`xs.pop()`, S5) is STORAGE form,
+    landing bare in owned sinks."""
     receiver: THIRExpr
     method_cpp: str
     args: tuple[THIRExpr, ...]
     native_function_name: str | None = None
     cpp_template: str | None = None
+    is_arrow: bool = False
 
 
 @dataclass(frozen=True)

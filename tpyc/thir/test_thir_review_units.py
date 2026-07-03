@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from ..codegen_cpp.context import CodeGenOptions
 from .nodes import (
-    THIRCall, THIRCoerce, THIRContainerLiteral, THIRFormConvert,
+    THIRCall, THIRCoerce, THIRContainerLiteral, THIRCtorCall, THIRFormConvert,
 )
 from .testutil import (
     _compile, _entry, _lower, _lower_ctx, _fn,
@@ -38,7 +38,7 @@ class TestIntegrationReviewUnits:
         fn = _fn(thir, "f")
         assert fn is not None
         decl = fn.body[0]
-        assert isinstance(decl.init, THIRCall) and decl.init.callee == "P"
+        assert isinstance(decl.init, THIRCtorCall) and decl.init.type_cpp == "P"
         assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
     def test_omitted_default_ctor_rvalue_ineligible(self):
