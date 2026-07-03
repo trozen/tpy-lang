@@ -59,8 +59,8 @@ def _expr(e: THIRExpr) -> str:
     if isinstance(e, THIRStrLiteral):
         return f"str({e.value!r})"
     if isinstance(e, THIRBytesLiteral):
-        # The owned/span render verdict is emit-relevant, so surface it.
-        return f"bytes({e.value!r})" + ("" if e.owned else " [span]")
+        # The owned/span render verdict (the form tag) is emit-relevant.
+        return f"bytes({e.value!r})" + ("" if e.form is Form.STORAGE else " [span]")
     if isinstance(e, THIRFString):
         # Literal segments render repr'd; interpolated args in braces, with the
         # carried wrap template when one applies (it is emit-relevant).
@@ -170,8 +170,10 @@ def _stmt_lines(stmt: THIRStmt, depth: int) -> list[str]:
     if isinstance(stmt, THIRForEach):
         # `[const]` marks a `const auto&` record loop var (vs `auto&&`); load-bearing
         # for record elements, so surface it like the other emit-relevant tags.
+        # `[rvalue]` marks an owning `auto __obj_N` capture (vs the `auto&` alias).
         const = " [const]" if stmt.const_loop_var else ""
-        lines = [f"{pad}for %{stmt.var}{const} in {_expr(stmt.iterable)}:"]
+        rval = "" if stmt.iterable_lvalue else " [rvalue]"
+        lines = [f"{pad}for %{stmt.var}{const}{rval} in {_expr(stmt.iterable)}:"]
         for s in stmt.body:
             lines.extend(_stmt_lines(s, depth + 1))
         return lines

@@ -24,10 +24,10 @@ from ..codegen_cpp.context import (
 )
 from ..codegen_cpp.forms import LocalBinding, is_plain_nonvalue
 from ..type_def_registry import (
-    is_bytes_type, is_dict, is_list, is_set, is_str_type, is_string_type,
-    view_to_owned_conv,
+    is_bytes_type, is_bytes_view_type, is_dict, is_list, is_set, is_str_type,
+    is_string_type, view_to_owned_conv,
 )
-from ..typesys import OptionalType, TupleType, unwrap_qualifiers
+from ..typesys import OptionalType, TupleType, UnionType, unwrap_qualifiers
 from .nodes import (
     Form,
     PrintForm,
@@ -160,9 +160,12 @@ def _emit_literal(lit: THIRLiteral) -> str:
     if isinstance(v, bool):
         return "true" if v else "false"
     if v is None:
-        # Positional: a None into a storage-form Optional slot (field write /
-        # storage-Optional return) is `std::nullopt`; a borrow/value-form None
-        # (pointer-repr slot) is `nullptr`. The form is set by lowering.
+        # Positional: a None into a value-union slot (decl init / reassign /
+        # return) is the monostate member; into a storage-form Optional slot
+        # (field write / storage-Optional return) `std::nullopt`; a borrow/
+        # value-form None (pointer-repr slot) `nullptr`. Set by lowering.
+        if isinstance(lit.result_type, UnionType):
+            return "std::monostate{}"
         return "std::nullopt" if lit.form is Form.STORAGE else "nullptr"
     if isinstance(v, float):
         # Matches _gen_float_literal_value's double branch: repr() is the
@@ -285,6 +288,12 @@ def _emit_subscript(e: THIRSubscript) -> str:
         if isinstance(e.index, THIRLiteral):
             return f"{recv}[{idx}]"
         return f"{recv}[static_cast<std::size_t>({idx})]"
+    rt = unwrap_qualifiers(e.receiver.result_type)
+    if is_bytes_type(rt) or is_bytes_view_type(rt):
+        # bytes' `__getitem__(Int32)` is a @native free-function dunder, not
+        # the containers' checked `::tpy::__getitem__` template -- mirrors
+        # _gen_subscript's fi dispatch (get_type_method_fi -> the native arm).
+        return f"::tpy::bytes_getitem({recv}, {idx})"
     return f"::tpy::__getitem__({recv}, {idx})"
 
 
@@ -361,6 +370,12 @@ def _emit_form_convert(e: THIRFormConvert) -> str:
         # F1 Optional[ref] read: `std::optional<T>` lvalue -> `T*`.
         if isinstance(t, OptionalType):
             return f"::tpy::optional_to_ptr({inner})"
+        # F4 U2: a storage `std::variant<A, B>` lvalue (a union field) lifts to
+        # the pointer variant; the const helper aliases const pointees (a
+        # readonly receiver). Mirrors context.convert's union BORROW arm.
+        if isinstance(t, UnionType):
+            helper = "to_const_ptr_variant" if e.is_const else "to_ptr_variant"
+            return f"::tpy::{helper}({inner})"
         # F2a plain non-value lvalue -> reseatable `T*` pointer-local: address-of.
         if is_plain_nonvalue(t):
             return f"&({inner})"
@@ -379,6 +394,11 @@ def _emit_form_convert(e: THIRFormConvert) -> str:
         if isinstance(t, OptionalType):
             helper = "ptr_to_optional_move" if e.move else "ptr_to_optional"
             return f"::tpy::{helper}({inner})"
+        # F4 U2: a borrow pointer-variant into a storage `std::variant<A, B>`
+        # slot (a union field write) copies the active member out. Mirrors
+        # context.convert's union STORAGE arm.
+        if isinstance(t, UnionType):
+            return f"::tpy::to_value_variant<{t.to_cpp()}>({inner})"
         # F3 borrow tuple -> storage tuple: the helper absorbs the per-element
         # pointer->optional/value mask from the spelled storage destination. An
         # owned source at last use moves; a borrow copies. Mirrors context.convert's
@@ -411,10 +431,11 @@ def _emit_expr(e: THIRExpr) -> str:
     if isinstance(e, THIRStrLiteral):
         return cpp_string_literal_expr(e.value)
     if isinstance(e, THIRBytesLiteral):
-        # The owned/span verdict was decided at lowering from the sink (see the
-        # node's doc); the empty-literal arms mirror gen_expr's TpyBytesLiteral
-        # branch and gen_call_arg's static-span pin.
-        if e.owned:
+        # The owned/span verdict was decided at lowering from the sink and
+        # rides the form tag (see the node's doc); the empty-literal arms
+        # mirror gen_expr's TpyBytesLiteral branch and gen_call_arg's
+        # static-span pin.
+        if e.form is Form.STORAGE:
             return cpp_bytes_literal_owned(e.value)
         if not e.value:
             return "std::span<const uint8_t>{}"
@@ -534,13 +555,17 @@ def _emit_for_each(out: TextIO, stmt: THIRForEach, indent_level: int,
                    state: _EmitState) -> None:
     # Mirrors _gen_begin_end_loop for an element off an lvalue name container: grab the
     # loop index before the body (nested loops number after this one), capture the
-    # container by `auto&`, then the loop-var binding via the shared loop_var_binding (a
-    # scalar is a typed copy; a record is a borrow alias -- auto&& / const auto&, so the
-    # const flag is threaded through, not hardcoded).
+    # container -- `auto&` for an lvalue, owning `auto` for an rvalue (a
+    # str-returning call: the temporary must outlive the loop; mirrors
+    # _gen_begin_end_loop's obj_binding) -- then the loop-var binding via the
+    # shared loop_var_binding (a scalar is a typed copy; a record is a borrow
+    # alias -- auto&& / const auto&, so the const flag is threaded through,
+    # not hardcoded).
     indent = INDENT * indent_level
     n = state.next_loop_index()
     obj, beg, end = f"__obj_{n}", f"__beg_{n}", f"__end_{n}"
-    out.write(f"{indent}auto& {obj} = {_emit_expr(stmt.iterable)};\n")
+    binding_kw = "auto&" if stmt.iterable_lvalue else "auto"
+    out.write(f"{indent}{binding_kw} {obj} = {_emit_expr(stmt.iterable)};\n")
     out.write(f"{indent}auto {beg} = {obj}.begin();\n")
     out.write(f"{indent}auto {end} = {obj}.end();\n")
     out.write(f"{indent}for (; {beg} != {end}; ++{beg}) {{\n")
@@ -576,6 +601,10 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             # forwarding reference to the source's storage (no spelled type). Reads
             # off it lift via tuple_to_pointer at borrow boundaries.
             out.write(f"{indent}auto&& {name} = {_emit_expr(stmt.init)};\n")
+        elif stmt.cpp_local_representation is LocalBinding.PTR_VARIANT:
+            # F4 U2 pointer-variant local: cpp_type carries the full (possibly
+            # const-pointee) variant spelling -- no sigil, no const prefix.
+            out.write(f"{indent}{stmt.cpp_type} {name} = {_emit_expr(stmt.init)};\n")
         elif stmt.cpp_local_representation is not None:
             # Non-value borrow local. cpp_type is already the pointee record (the
             # optional's inner for OPTIONAL_TO_PTR, not the optional itself), so

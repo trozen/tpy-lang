@@ -97,16 +97,17 @@ class THIRStrLiteral(THIRExpr):
 class THIRBytesLiteral(THIRExpr):
     """A bytes literal. Unlike a str literal (a position-neutral const char[N]),
     a bytes literal's C++ render is TARGET-dependent, so lowering decides it
-    per sink and carries the verdict: `owned=True` renders the owning vector
-    (`::tpy::bytes_literal_owned(...)` / empty `std::vector<uint8_t>{}` -- the
-    default, matching every target-less position: print args, compare operands,
-    owned decl inits/returns), `owned=False` the static-storage span
-    (`::tpy::bytes_literal(...)` / empty `std::span<const uint8_t>{}`, the
-    view-targeted positions: view-local inits/reassigns, bytes/BytesView call
-    args, view returns). Form stays VALUE: an owned render already owns its
-    storage, so the owned-sink view->owned copy never wraps a literal."""
+    per sink and carries the verdict on the `form` tag: STORAGE renders the
+    owning vector (`::tpy::bytes_literal_owned(...)` / empty
+    `std::vector<uint8_t>{}` -- the default, matching every target-less
+    position: print args, compare operands, owned decl inits/returns), BORROW
+    the static-storage span (`::tpy::bytes_literal(...)` / empty
+    `std::span<const uint8_t>{}`, the view-targeted positions: view-local
+    inits/reassigns, bytes/BytesView call args). Never VALUE. The owned-sink
+    view->owned wraps still never fire on a literal: they key on an owned
+    (`bytes`) target, and a bytes-targeted literal lowers STORAGE."""
     value: bytes
-    owned: bool = True
+    form: Form = field(default=Form.STORAGE, kw_only=True)
 
 
 @dataclass(frozen=True)
@@ -338,7 +339,8 @@ class THIRSubscript(THIRExpr):
     (a `std::optional<T>` lifted to a borrow via `THIRFormConvert`/`optional_to_ptr`
     at the consuming `deref_check`).
 
-    Container (list / dict) or str-family (`s[i]` -> Char) -- a runtime
+    Container (list / dict), str-family (`s[i]` -> Char), or bytes-family
+    (`b[i]` -> UInt8) -- a runtime
     index/key lookup, `form` VALUE (a value-scalar / Char element). A str
     element/value read (`xs[i]` on `list[str]`, `d[k]` on a str-valued dict,
     S5) carries its resolved shape instead: BORROW when the read's view var
@@ -349,7 +351,10 @@ class THIRSubscript(THIRExpr):
     picks the emit -- `receiver[static_cast<std::size_t>(index)]` when proven
     in-bounds (a literal index needs no cast), else the checked dunder
     `::tpy::__getitem__(receiver, index)` (str's `__getitem__` @cpp_template
-    spells the same dunder, so one emit covers both). The index is a value
+    spells the same dunder, so one emit covers both; a BYTES receiver instead
+    dispatches to `::tpy::bytes_getitem(receiver, index)` -- bytes'
+    `__getitem__(Int32)` is a @native free-function dunder, mirroring
+    `_gen_subscript`'s fi lookup). The index is a value
     scalar of fixed-int width (a runtime-BigInt index is not in the scalar
     slice -- no `.to_fixed_check` narrow) or, for an owned-str-keyed dict, a
     str-slice expr rendered bare in the key slot (the static-storage literal
@@ -361,30 +366,37 @@ class THIRSubscript(THIRExpr):
 
 @dataclass(frozen=True)
 class THIRStrSlice(THIRExpr):
-    """A str slice off a str-family receiver, emitted via the sema-resolved
-    slice `__getitem__`'s `@cpp_template` expanded over the receiver and the
-    slice argument (mirrors `_gen_subscript`'s slice arm). Three index shapes:
+    """A str/bytes slice off a str/bytes-family receiver, emitted via the
+    sema-resolved slice `__getitem__`'s `@cpp_template` expanded over the
+    receiver and the slice argument (mirrors `_gen_subscript`'s slice arm;
+    the template carried on the node makes the emit family-neutral -- bytes
+    carries `::tpy::bytes_slice` / `::tpy::bytes_stepped_slice`). Three index
+    shapes:
 
       * non-stepped `s[a:b]` -- `::tpy::str_slice({self}, {0})` over a
-        `::tpy::BasicSlice{lo, hi}` initializer; a `std::string_view` VIEW
-        result (`form` BORROW).
+        `::tpy::BasicSlice{lo, hi}` initializer; a `std::string_view` /
+        `std::span<const uint8_t>` VIEW result (`form` BORROW).
       * stepped `s[a:b:c]` (`stepped`) -- `::tpy::str_stepped_slice` over a
-        `::tpy::Slice{lo, hi, step}` initializer; an OWNED `std::string`
-        result (`form` STORAGE), landing bare in every owned sink.
+        `::tpy::Slice{lo, hi, step}` initializer; the family's OWNED type
+        (`std::string` / `std::vector<uint8_t>`, `form` STORAGE), landing
+        bare in every owned sink.
       * slice-typed variable index `s[sl]` (`index`) -- the index expression
         rendered bare into the template (`::tpy::str_slice(s, sl)`); the
         view/owned result follows the resolved overload (basic_slice -> view,
         slice -> owned).
 
-    The receiver is a str name, a str-family field off an F1-record receiver,
-    or an eligible owned-str/view-returning call (all render bare into
-    `{self}`). An absent bound renders `std::nullopt`
+    The receiver is a str/bytes name, a str/bytes-family field off an
+    F1-record receiver, or an eligible owned/view-returning call (all render
+    bare into `{self}`). An absent bound renders `std::nullopt`
     (`_gen_optional_slice_bound`). A VIEW result is consumed at view sinks or
-    materialized at an owned sink (decl init / return -- a sema
-    `strview_to_str` TpyCoerce lowered via `_coerce_disposition`) by the S1
-    view->owned `THIRFormConvert` (`std::string(...)`, keyed on the BORROW
-    form). Bounds are eligible fixed-int value exprs rendered bare (a BigInt
-    bound's `.to_fixed_check` narrow is gate-excluded)."""
+    materialized at an owned sink by the view->owned `THIRFormConvert` keyed
+    on the BORROW form -- str: a sema `strview_to_str` TpyCoerce (decl init /
+    return) lowered via `_coerce_disposition` to `std::string(...)`; bytes: a
+    coerce-less owned decl init wrapped `::tpy::bytes_copy(...)` at lowering
+    (an owned bytes RETURN arrives as the gate-rejected `bytesview_to_bytes`
+    coerce -> AST, the deferred cross-type bytes-coercion cell). Bounds are
+    eligible fixed-int value exprs rendered bare (a BigInt bound's
+    `.to_fixed_check` narrow is gate-excluded)."""
     receiver: THIRExpr
     cpp_template: str
     lower: THIRExpr | None = None
@@ -539,14 +551,18 @@ class THIRForEach(THIRStmt):
     list/set/Span/Array it is the element; for dict the key (`for k in d` -- a
     scalar, or a str for an owned-str-keyed dict, S5); for a str-family iterable
     (str/StrView, NativeIterable[Char]) it is Char
-    (`char c = *__beg_N;`). `N` is the
+    (`char c = *__beg_N;`); for a bytes-family iterable (bytes/BytesView,
+    NativeIterable[UInt8]) it is UInt8 (`uint8_t x = *__beg_N;`, the same
+    value-scalar typed copy). `N` is the
     per-function loop index (reproducing `ctx.iter_counter`). `const_loop_var` mirrors
     sema's flag; it is inert for a cheap value scalar (the typed copy drops const either
     way) but load-bearing for a record (`const auto&` vs `auto&&`). Slice: a name
-    container or a str-family field off an F1-record receiver (both C++ lvalues, so
-    `auto&`; a call-result iterable is an rvalue -> `auto` capture, a different emit,
-    gate-excluded), loop var not reassigned/moved (a record alias can't
-    reseat) and not used after the loop. Container params reaching here are
+    container, a str/bytes-family field off an F1-record receiver (both C++
+    lvalues: `iterable_lvalue`, the `auto& __obj_N =` capture), or a
+    str-returning call (an rvalue: `iterable_lvalue=False`, the owning
+    `auto __obj_N =` capture -- `is_lvalue_iterable`'s value-type call arm;
+    bytes-returning calls stay gate-excluded); loop var not reassigned/moved
+    (a record alias can't reseat) and not used after the loop. Container params reaching here are
     `list[scalar|str]` / `dict[fixed-int|str key]` (`_container_scalar_read`) and
     `list[record]`
     (`_container_record_iter`); `set` / `Span` / `Array` pass `is_native_iterable` but are
@@ -559,6 +575,7 @@ class THIRForEach(THIRStmt):
     iterable: THIRExpr
     body: tuple[THIRStmt, ...] = ()
     const_loop_var: bool = False
+    iterable_lvalue: bool = True
 
 
 class PrintForm(Enum):

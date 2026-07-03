@@ -81,8 +81,8 @@ deletion is the concrete milestone that forces its tail closed.
 | AST component to delete | Deletion gate (cells that must route) | Status |
 |---|---|---|
 | **Ctor MIL emit** -- `records.py` `_extract_field_inits` / `_extract_base_inits` / `_get_non_init_stmts` + the inline ` : f(v)... {}` write | every ctor MIL field cell + body: scalar (M3a), record/Optional copy+move (M3b), ctor-call / param-field-read sources + own-optional params (M3b-rvalue), docstring/`pass` trivia body (M3c-trivia), non-init body + demotion (M3c-demotion), inheritance -- single + multi base + inherited-field writes (M3d), and str/list/dict/tuple/union/bytes fields (F3+) + cross-module/native/generic records | **PARTIAL** -- the whole scalar/record/Optional + body + inheritance surface lands (ctor self-contained tail complete); deferred cells are cross-axis-blocked -- non-record demoted-field-writes + non-record fields (F3+) + native/generic records |
-| **Body statement + expression emit** -- `statements.py` `gen_body` per-statement path + `expressions.py` `gen_expr`, for routed callables | every statement shape + expression form across every callable kind | **PARTIAL** -- straight-line shapes over the F1/F2 + scalar/bool/double-float + str (F6 S1-S5 + cross-type coercions) + bytes-value (F6 S6) slice, incl. logical/chained-compare exprs and scalar type-constructor calls |
-| **Form / conversion machinery** -- `context.py` `convert` + `CppForm`/`FormValue`, the ~12 detection predicates + ~22 local side-sets + the `RefType` wrapper (see `THIR_FORM_INVENTORY.md`) | **F-final**: the `Form` tag + `THIRFormConvert` subsume all form dispatch | **PARTIAL** -- F1/F2 forms carried + F3 tuple read/write + the F6 str+bytes view->owned converts (S1/S6 -- both `view_to_owned_conv` family arms validated; reused at container-element slots by S5; extended to the cross-type str-family coercions in incr 42, the materializing arms lowering to the same THIRFormConvert); F4/F5, the remaining F6 tail, and RefType removal pending |
+| **Body statement + expression emit** -- `statements.py` `gen_body` per-statement path + `expressions.py` `gen_expr`, for routed callables | every statement shape + expression form across every callable kind | **PARTIAL** -- straight-line shapes over the F1/F2 + scalar/bool/double-float + str (F6 S1-S5 + cross-type coercions) + bytes (F6 S6 values + the incr-46 tail: subscript/slices/iteration/concat/aug-assign) slice, incl. logical/chained-compare exprs and scalar/slice-object type-constructor calls |
+| **Form / conversion machinery** -- `context.py` `convert` + `CppForm`/`FormValue`, the ~12 detection predicates + ~22 local side-sets + the `RefType` wrapper (see `THIR_FORM_INVENTORY.md`) | **F-final**: the `Form` tag + `THIRFormConvert` subsume all form dispatch | **PARTIAL** -- F1/F2 forms carried + F3 tuple read/write + the F6 str+bytes view->owned converts (S1/S6 -- both `view_to_owned_conv` family arms validated; reused at container-element slots by S5; extended to the cross-type str-family coercions in incr 42, the materializing arms lowering to the same THIRFormConvert) + the F4 union arms (U1 value + U2 pointer-variant, incr 49-50: `to_[const_]ptr_variant` / `to_value_variant<...>` carried, plus the structural form validator as the second gate); F4 U3+ (narrowing reads), F5, the remaining F6 tail, and RefType removal pending |
 
 These interlock: deleting `gen_body`/`gen_expr` requires the form machinery gone
 (F-final) and every statement shape routed. The **ctor MIL emit is the first
@@ -113,8 +113,26 @@ deferred (self-contained) / blocked-on-`<rung>`.
   method calls / ...; print + bare free-function calls now route, incr 32), and
   `str`/`list`/`dict`/`tuple`/`union` MIL fields (F3+) +
   cross-module / native / generic records (their frontiers).
-- Static / property / dunder-operator methods: **deferred (self-contained)** --
-  separate emit paths.
+- Static / property / dunder-operator methods: **DONE** (increment 48) -- all
+  method kinds funnel their bodies through `gen_body`, so the differences are
+  signature-only (the `static` prefix, the setter's `set_` rename, the getter's
+  ref-return arm) and the cell only widens the gate. Static methods lower like
+  free functions (no receiver; `record_name` kept so `_param_is_const` reads the
+  method's FunctionInfo off the owning record, the `_get_method_mutated_params`
+  mirror); property getters/setters lower like instance methods (the
+  getter+setter pair shares one method name in the registry -- a two-entry
+  overload list carved out of the shared-impl hijack gate, since each has its
+  own body). Dunder-operator methods were ALREADY admitted as plain instance
+  methods (`__eq__`/`__lt__`/`__str__`/... route since M1; the C++ `operator==`
+  friend wrappers delegating to them are structural emission, not bodies) --
+  now pinned by units. Deferred rows: inplace dunders (`__iadd__` ...; the AST
+  forces const params via CONST_PARAMS_METHODS, a verdict `_param_is_const`
+  does not mirror, and their `return self` -> `return *this;` is outside the
+  slice), `@readonly` statics (emitted with the readonly verdicts dropped),
+  pointer-repr Optional/union getter returns (the `in_property_getter`
+  return-the-field-storage arm; rejected by the general return gate),
+  `@total_ordering`-synthesized comparison bodies (record compare operands,
+  the pinned gen_expr_deref divergence).
 - Generic-record methods (templated `self`): **blocked-on-F5** (generic-slot form).
 - Nested-record methods: **deferred (self-contained)** -- the feed walks top-level
   records only.
@@ -147,14 +165,52 @@ deferred (self-contained) / blocked-on-`<rung>`.
   tuple-literal MIL construction. **Note:** further F3 form cells gain little routing
   until more of the statement-shape axis (the remaining subscript cells, for-loops,
   tuple-unpack) lands -- most corpus tuples are accessed that way.
-- F4 unions (`to_ptr_variant`/`to_value_variant`), F5 generic-slot,
-  F-final (RefType removal + retirement): **not started.**
+- F4 unions: **OPENED (U1 value unions + the structural form validator,
+  incr 49)** -- value-form scalar-member unions (`Int32 | Float64 [| None]`
+  -> `std::variant<...>`, no borrow/storage duality): params, locals
+  (decl + reassign), returns, same-type compares (variant's own operators,
+  the rb=None bare arm), same-union bare-name call args (member-valued args
+  hoist `__tmp_N` variant temps -- the gen_call_arg cascade frontier ->
+  AST); a `None` source renders `std::monostate{}`, target-typed at
+  lowering. Narrowing-divergent union reads (`_union_binding_divergent`)
+  and union-vs-member compares are gate-rejected -- both are pre-existing
+  AST miscompiles (BUGS.md). Routing unchanged at U1 (corpus union code
+  narrows / prints / matches, all still gated -- the F2 precedent: units
+  are the per-rung net). **U2 pointer-variant conversions DONE (incr 50)**
+  -- the actual form rung: F1-record-member pointer unions (`A | B` ->
+  borrow `std::variant<A*, B*>` / storage `std::variant<A, B>`). The
+  `THIRFormConvert` union arms (`to_[const_]ptr_variant` at BORROW,
+  `to_value_variant<...>` at STORAGE) mirror `context.convert`'s;
+  `LocalBinding.PTR_VARIANT` locals (bare borrow copy of a same-union
+  name; `to_[const_]ptr_variant` field lift, const from the receiver;
+  name-source reseats -- field reseats stay AST, a per-reseat const
+  chain); union-field writes from borrow names; borrow passthroughs
+  (params / same-type args / borrow returns -- all bare); the ctor MIL
+  own-param move (`u(std::move(v))`, `Own[A | B]` admitted at the ctor
+  param gate); and the `Own[...]`-param STORAGE name-form fix (an own
+  param owns its storage -- the validator's sink rule caught the BORROW
+  mislabel). WITH it: the validator's sink table (pointer-lifted
+  field-write/MIL sinks reject BORROW values; BORROW returns need a
+  borrow-legal type) and the `THIRBytesLiteral.owned` -> form fold.
+  Gate-rejected (pre-existing AST miscompiles, BUGS.md): storage union
+  fields at returns / call args, const-lifted locals into mutable slots.
+  U2-deferred: None-member ptr unions (monostate write arms), readonly
+  ptr-variant slots (`ptr_variant_to_const`), field-to-field copies,
+  `Own[union]` free-function params, member-value sources (the
+  gen_call_arg cascade). NEXT: U3 isinstance-narrowing reads
+  (`THIRVariantAccess` -- where the corpus routing lives). Deferred beyond
+  F4: `match` captures (statement shape), recursive-alias wrappers
+  (reference ABI), protocol unions, async/generator union frames,
+  ternary-arm normalization, tuple-unpack binds. F5 generic-slot, F-final
+  (RefType removal + retirement): **not started.**
 - F6 str/bytes view-split: **OPENED (S1 str values; S2 f-strings DONE, incr 39;
   S3 concat/`+=` DONE, incr 40; S4 subscript/slice/iteration DONE, incr 41;
   cross-type str-family coercions DONE, incr 42;
   S5 dict[str]/container-of-str DONE, incr 43;
   S6 bytes values DONE, incr 44;
-  S4 leftovers + literal call args DONE, incr 45)**
+  S4 leftovers + literal call args DONE, incr 45;
+  bytes tail -- subscript/slices/iteration + concat/aug-assign DONE, incr 46;
+  S4 leftovers wave 2 DONE, incr 47)**
   -- S1: str/StrView params,
   literal-init locals (PendingStrType resolved through ViewVarInfo at lowering),
   print args, comparisons, `len(s)`, owned-str returns, same-type call args; the
@@ -231,18 +287,49 @@ deferred (self-contained) / blocked-on-`<rung>`.
   the compare gate. The formerly-UNREACHABLE bytes arm of `_emit_form_convert`
   (`::tpy::bytes_copy`) is now exercised and byte-diff-validated at both owned
   sinks (decl init off a view source, owned return of a view param).
-  S6-deferred rows (gate-rejected): bytes aug-assign/concat
-  (`::tpy::bytes_concat` concat-and-assign -- no in-place-append analog, do NOT
-  reuse `THIRStrAppend`), bytes subscript (`b[i]` -> UInt8) / slices /
-  iteration (NativeIterable[UInt8], explicitly excluded from the for-each
-  gate), cross-type bytes coercions (bytes<->BytesView, incl. any value or
+  S6-deferred rows (gate-rejected): cross-type bytes coercions
+  (bytes<->BytesView, incl. any value or
   literal at a BytesView return -- always coerce-wrapped), bytes literals into
   wrapped (readonly/Own) slots (the AST renders those owned, not span),
   `bytearray` (a reference type, different axis). NB the mixed owned/view
   reassign/compare shapes (`t = b`, `t != v`, `v == b"..."`) route
   byte-identically but are a pre-existing AST miscompile (invalid C++, see
   BUGS.md) -- when fixed, the byte-diff flags the THIR arms to update in
-  lockstep. Cross-type str-family coercions
+  lockstep.
+  **Bytes tail DONE (increment 46)**: the S4/S3 twins for bytes --
+  subscript `b[i]` -> UInt8 (`::tpy::bytes_getitem(b, i)`, bytes'
+  `__getitem__(Int32)` being a @native free-function dunder rather than the
+  containers' checked `::tpy::__getitem__` template, dispatched at emit on the
+  bytes receiver; the bounds-safe operator[] branch is shared verbatim;
+  name receivers only, like the str twin), slices (`THIRStrSlice` reused
+  as-is -- the node already carries the resolved @cpp_template, so
+  `::tpy::bytes_slice` / `::tpy::bytes_stepped_slice` ride the same emit;
+  non-stepped -> span VIEW/BORROW, stepped + `slice`-var index -> owned
+  vector STORAGE; name/field/call receivers like str incr 45; an owned DECL
+  sink carries no coerce -- the pending local's owned resolution -- and takes
+  the S6 decl-init BORROW wrap `::tpy::bytes_copy(...)`, while an owned
+  RETURN of a slice arrives as the still-deferred `bytesview_to_bytes` coerce
+  -> AST), iteration (`for x in b:` over bytes/BytesView/pending-bytes names
+  and bytes fields off F1-record receivers -- NativeIterable[UInt8], the
+  for-each gate's explicit bytes exclusion lifted; the loop var is the plain
+  value-scalar `uint8_t` typed copy, no new emit), and concat/aug-assign --
+  `a + b` admits the template-less @native `__add__` (`::tpy::bytes_concat`,
+  the emit's native binop arm the compare gate already used for `bytes_eq`;
+  owned `bytes` result, STORAGE, paren-wrapped in value position; literal
+  operands render OWNED -- the resolved overload's param is owned bytes;
+  the `bytearray` overload's operand rejects), and `t += v` on an owned-bytes
+  LOCAL lowers through the existing generic aug-assign desugar to the
+  unwrapped concat-and-assign `t = ::tpy::bytes_concat(t, v);` (NO
+  `THIRStrAppend` -- there is no bytes in-place append; the desugar's
+  `paren_wrap=False` reproduces the statement-RHS shape). Deferred rows:
+  aug-assigned bytes PARAMS (the AST skips the owned-copy prologue and
+  silently rebinds the span param to the concat's dying temporary -- the
+  silent-dangle bytes face added to the str aug-assign-param BUGS.md entry;
+  rejected, not reproduced), non-name `b[i]` subscript receivers (the gate
+  stays name-only, matching str), `len(a + b)` / `len(b[1:3])` (the len gate
+  is name-arg-only for every family), bytes-keyed/element containers and the
+  cross-type coercion + wrapped-literal-slot + `bytearray` rows above.
+  Cross-type str-family coercions
   (str<->StrView<->String) DONE (incr 42): the sema TpyCoerce arms are
   position-disposed at lowering (`_coerce_disposition`, mirroring the
   coercions.py lambdas off the node's context / expected-type / literal
@@ -271,10 +358,31 @@ deferred (self-contained) / blocked-on-`<rung>`.
   so those gate rejects are defensive), and non-name slice receivers/iterables
   (str-family fields off F1-record receivers slice AND iterate; owned-str call
   results slice -- a call-result ITERABLE is an rvalue `auto` capture,
-  deferred). Still-deferred S4 rows: slice-object ctor locals, Char record
-  fields, call-result iterables, non-name `s[i]` char-subscript receivers
-  (the subscript gate stays name-only; only slice/iterate receivers widened).
-  Plus, still remaining: reassigned owned-str params
+  deferred).
+  **S4 leftovers wave 2 DONE (increment 47)**: slice-object ctor
+  LOCALS (`sl = basic_slice(1, 3)` / `slice(a, b, c)` -- the same
+  pure-@cpp_template expansion as the scalar ctors, gated by
+  `_slice_ctor_call_eligible` over the shared `_template_init_call_fi`
+  shape check; a `None` bound in the value-repr `Int32 | None` slot lowers
+  to a STORAGE-form None -> `std::nullopt`, int literals / fixed-int names
+  render bare -- a BigInt bound never arises, sema rejects it at the ctor;
+  the local declares as `resolved_type.to_cpp()` -> `::tpy::BasicSlice` /
+  `::tpy::Slice`), Char record fields (`self.c: Char` -- reads/writes off
+  F1-record receivers and the ctor MIL scalar arm widened to
+  `_eligible_char`; the field access render is type-independent, the Char
+  value lands only in positions whose own gates admit it; str-literal
+  values into Char fields are defensively rejected -- sema type-errors
+  them), call-result ITERABLES (`for c in full(s):` -- a str-returning
+  call is a value-type rvalue per `is_lvalue_iterable`, captured owning
+  `auto __obj_N = ...;`; the fact rides `THIRForEach.iterable_lvalue`,
+  decided statically from the admitted iterable shapes), and non-name
+  `s[i]` char-subscript receivers (the subscript gate now takes the shared
+  `_str_slice_receiver_ok` set: names, str-family F1-record fields,
+  eligible str-returning calls). Still-deferred S4 rows: slice-object ctor
+  rvalues as CALL ARGS (`use(s, basic_slice(1, 3))` -- the gen_call_arg
+  cascade frontier), container-returning call iterables (only str-family
+  calls admitted; a non-value container return flips is_lvalue_iterable's
+  verdict). Plus, still remaining: reassigned owned-str params
   (owned-copy prologue), `Literal[str]` bindings, String params/returns
   (`const std::string&` signatures), `bytearray` (a reference type,
   different axis).
@@ -460,4 +568,4 @@ byte-diff itself.
 - **Planned:** extend the `--thir-codegen` non-vacuity tally to report per-component
   AST-fallback coverage (how much of each component still falls back to AST), so the
   gap to each deletion is *measured*, not estimated. Today the tally reports only
-  total routed bodies/cases (27561 bodies / 3280 cases as of increment 45).
+  total routed bodies/cases (28778 bodies / 3280 cases as of increment 50).

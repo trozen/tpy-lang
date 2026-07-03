@@ -55,15 +55,22 @@ class LocalBinding(Enum):
                              pointer-repr tuple's storage (F3); single-assignment.
                              Used by THIR lowering only (`is_storage_tuple_alias_decl`);
                              the AST path decides this arm inline in `_gen_var_decl_code`.
+      * `PTR_VARIANT`     -- `std::variant<[const] A*, [const] B*>` pointer-variant
+                             local of a non-value union (F4 U2): a bare copy of a
+                             borrow-form source, or a `to_[const_]ptr_variant` lift
+                             of a value-variant lvalue (a union field); reseatable.
+                             Used by THIR lowering only; the AST path decides these
+                             arms inline in `_gen_ptr_variant_local_init`.
       * `OTHER`           -- any other binding; the caller's existing path owns it
                              (single-assignment rvalue value-locals, tuples,
-                             unions, generic slots, value types).
+                             generic slots, value types).
     """
     REF_ALIAS = auto()
     OPTIONAL_TO_PTR = auto()
     POINTER = auto()
     REBIND_SLOT = auto()
     STORAGE_TUPLE_ALIAS = auto()
+    PTR_VARIANT = auto()
     OTHER = auto()
 
 
