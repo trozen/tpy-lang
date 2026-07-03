@@ -55,7 +55,7 @@ class DisabledLibError(Exception):
 class ThirdPartyLib:
     """Declaration of a single third-party C/C++ dependency.
 
-    Lib-specific build knowledge (what .c files to compile, what -I /
+    Lib-specific build knowledge (what source files to compile, what -I /
     -D flags they need, what dir holds the public headers) lives behind
     the ``bundled_*`` callables rather than in the registry, so adding
     a new managed lib means a new factory module plus one row in
@@ -90,9 +90,11 @@ class ThirdPartyLib:
 
     # Per-lib callables for the direct-compile bundled path. Each takes
     # the lib itself and returns the lib-specific answer:
-    #   * bundled_source_files   -- list of .c files to compile
+    #   * bundled_source_files   -- list of source files to compile (.c or
+    #                               .cpp; driver picked per suffix by
+    #                               compiler.third_party_source_driver)
     #   * bundled_compile_flags  -- list of -I / -D / ... flags for those
-    #                               .c files (same flags for all sources
+    #                               sources (same flags for all sources
     #                               in v1; refine if any lib needs per-file)
     #   * bundled_user_include_dir -- path containing the public headers
     #                                 that dependents #include
@@ -136,7 +138,9 @@ def _factories() -> dict[str, Callable[[Path], ThirdPartyLib]]:
     if _FACTORIES is None:
         from . import pcre2 as _pcre2
         from . import mbedtls as _mbedtls
-        _FACTORIES = {"pcre2": _pcre2.factory, "mbedtls": _mbedtls.factory}
+        from . import date as _date
+        _FACTORIES = {"pcre2": _pcre2.factory, "mbedtls": _mbedtls.factory,
+                      "date": _date.factory}
     return _FACTORIES
 
 

@@ -507,6 +507,15 @@ Native functions can use any type with a direct C++ mapping:
 | `Ptr[readonly[T]]` | `const T*` |
 | `Span[T]` | `std::span<T>` |
 
+**Fixed-width arguments from unbounded values:** converting a BigInt (or any
+wider value) into a fixed-width native argument (`Int64(x)`, `Int32(x)`, ...)
+panics uncatchably when out of range. Stdlib code calling `@native` functions
+must range-check the value and raise the appropriate catchable exception
+BEFORE the conversion -- the same validate-in-BigInt-first discipline used
+for record field stores applies to native-call arguments (see the timestamp
+guard in `lib/tpy/datetime.py::_from_epoch_us` for the pattern; the missing
+guard there was a review-caught uncatchable-panic bug).
+
 ---
 
 ## Other decorators

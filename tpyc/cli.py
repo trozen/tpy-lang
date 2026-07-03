@@ -332,6 +332,14 @@ def _run_cli(is_runner: bool) -> int:
              "error, useful for targets that want to strip out TLS)",
     )
     parser.add_argument(
+        "--date", choices=["bundled", "system", "auto", "none"], default="bundled",
+        help="Howard Hinnant date source for the `datetime` module's timezone "
+             "backend: bundled (vendored, default), system (find_package / "
+             "-ldate-tz), auto (system, fall back to bundled), or none "
+             "(disabled -- any module that imports `datetime` becomes a "
+             "compile error)",
+    )
+    parser.add_argument(
         "--dsl-plugin", action="append", default=None, metavar="SPEC",
         help="Load a frontend plugin (path to .py file or importable module). "
              "Can be repeated.",
@@ -699,7 +707,8 @@ def _run_cli(is_runner: bool) -> int:
         # a module in the compile graph needs that lib -- surface it as a
         # clean compile error.
         from .build.third_party import resolve_build_plan, DisabledLibError
-        third_party_modes = {"pcre2": args.pcre2, "mbedtls": args.mbedtls}
+        third_party_modes = {"pcre2": args.pcre2, "mbedtls": args.mbedtls,
+                             "date": args.date}
         try:
             third_party_plan = resolve_build_plan(
                 dep_names=compiler.collect_third_party_deps(),

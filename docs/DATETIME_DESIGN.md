@@ -1,6 +1,7 @@
 # datetime stdlib design
 
-Status: **v0 + v1 landed (timedelta + date, integer surface); v2/v3 pending.**
+Status: **v0 + v1 + v2 landed (timedelta, date, naive time/datetime + wall
+clock); v3 pending.**
 This document is the contract for the whole `datetime` track. It captures the
 type model, storage/representation, operator strategy, timezone model, and the
 phased build. Implementation lands rung-by-rung per the roadmap below; update
@@ -18,7 +19,7 @@ is byte-compared against CPython directly, exactly like the `csv` module.
 | **v0** | `@overload`-operator codegen fix (skip the impl signature when emitting operators) + focused test. Prerequisite for all operand-polymorphic operators. Routed via `/tpy-fix-bug` (it is a defect). | **Done** (`_gen_binary_operators` overload-impl guard; test `operators/overload_binary_operator`) |
 | **v1** | `timedelta` (integer-surface arithmetic: `+ - `, unary, `*int`, `//int`, `//td`, `/td`->float, `%td`, comparisons, `abs`, `total_seconds`, repr/str) and `date` (ctor+validation, attributes, `weekday`/`isoweekday`, `isoformat`/`str`, comparisons, `date +/- timedelta`, `date - date`, repr). Pure-TPy, **no native dependency**, no `today()`. Prerequisite compiler fixes: `abs()`->`__abs__` dispatch (P1), `/`-vs-`//` decoupling (P2). | **Done** (tests `stdlib/datetime_{timedelta,date}`; byte-parity with CPython) |
 | **v1-deferred** | `timedelta` float/rounding surface: float constructor args (`timedelta(hours=1.5)`), `td / number` (round-half-to-even -> timedelta), float `*`/`/`. Compile-error (rejects-valid) until landed, not silent. (The `/`-overload result-typing bug that also blocked `td / number` is fixed.) | Deferred |
-| **v2** | `datetime` and `time` (the `datetime.time` class), `now()`/`utcnow()`/`fromtimestamp()`/`combine()`, `date.today()`. Naive-only. Introduces the vendored Hinnant `date` backend behind the `stdlib/datetime.hpp` facade for the local-offset lookup. | Not started |
+| **v2** | `datetime` and `time` (the `datetime.time` class), `now()`/`utcnow()`/`today()`/`fromtimestamp()`/`utcfromtimestamp()`/`combine()`, `date.today()`. Naive-only. Introduces the vendored Hinnant `date` backend behind the `stdlib/datetime.hpp` facade for the local-offset lookup. | **Done** (tests `stdlib/datetime_{time,datetime,now}`; byte-parity with CPython; `dt.date()`/`dt.time()` accessors excluded -- blocked on the member-name/type-name C++ collision bug in BUGS.md, follow-up once fixed) |
 | **v3** | `strftime`/`strptime`/`fromisoformat` (pure-TPy directive engine) and fixed-offset `timezone` awareness (aware `datetime`, `astimezone`, offset-aware arithmetic/comparison). | Not started |
 | **Deferred** | `fold`; `zoneinfo`/IANA DST (`ZoneInfo` value type backed by the tz db); user-defined `tzinfo` subclasses; Windows tz backend. Filed, not silent. | Deferred |
 
@@ -116,10 +117,14 @@ timedelta // timedelta -> int
 the float surface; v1 ships `timedelta / timedelta -> float` only. The
 `/`-overload result-typing bug that also blocked it is fixed.)
 
-Python has one `__sub__`, so this is expressed with `typing.overload`: typed
-`@overload` stubs plus one shared implementation that dispatches on the
-operand via `isinstance`. Sema already resolves these correctly and narrows
-the result type by operand.
+Python has one `__sub__`, so this is expressed with `typing.overload`. TPy
+supports two spellings: typed stubs plus one shared implementation that
+dispatches via `isinstance` (the CPython-source shape), or individually
+implemented overloads, each with its own body (the C++-overload shape --
+`functools.reduce` precedent). The module uses the individually-implemented
+form: the isinstance dispatch was pure ceremony since the compiler
+specializes per operand type anyway. Sema resolves and narrows the result
+type by operand either way.
 
 Note on the parity model: `lib/tpy/datetime.py` is compiled **only by TPy** --
 the cpy phase resolves the real CPython `datetime` (see the Status note), so
@@ -196,6 +201,12 @@ TPy cannot do is read the OS's local UTC offset and the IANA zone rules.
   to minimal facade primitives (`local_utc_offset(epoch)`, later
   `zone_offset(zone_id, epoch)`). The concrete C++ tz provider sits behind
   it, so it can be swapped without touching TPy stdlib or generated code.
+- **Coupling note:** the binding import is module-level, so ANY datetime
+  import links the tz backend (and `--date=none` rejects the whole module),
+  including pure-calendar use (`timedelta`/`date` arithmetic) that needs no
+  OS access. Accepted for v2; a finer-grained model (link a managed dep only
+  when its native symbols are referenced) is filed in TODO.md (Build
+  pipeline).
 - **Platforms.** Linux/macOS use the OS tz db (`USE_OS_TZDB`), no download or
   bundling. Windows ships no IANA db, so any vendored provider needs bundled
   tz data + a Windows->IANA zone mapping. This is filed, not solved here, and
@@ -247,6 +258,31 @@ rounded in the runtime; it now matches CPython for all magnitudes.)
 - **Extreme-arg construction** raises the correct catchable exception because
   we validate on BigInt before the Int32 store (no divergence -- noted here
   because the naive store-then-check ordering *would* have panicked).
+- **The `TZ` environment variable is not consulted** for local-time
+  conversions (`now()`, `fromtimestamp()`, `date.today()`): the Hinnant
+  backend's `current_zone()` reads `/etc/localtime` directly, while libc
+  (and therefore CPython) honors `TZ`. Identical on hosts that don't set
+  `TZ`; divergent for programs relying on a runtime `TZ` override. A
+  TZ-aware resolution (IANA-name `TZ` values via `locate_zone`, POSIX rule
+  strings via `ptz.h`) is a possible backend refinement behind the same
+  facade. Tests are TZ-agnostic (invariant-only), so no committed output
+  depends on it.
+
+Behavioral notes (matching CPython, recorded because the "obvious" choice
+differs): an out-of-range `fromtimestamp()`/`utcfromtimestamp()` raises
+**ValueError** (CPython's "year N is out of range") when the timestamp fits
+64-bit time_t, and **OverflowError** ("timestamp out of range") beyond it --
+unlike ordinal overflow in `date`/`datetime` +/- `timedelta`, which raises
+OverflowError in both CPython and TPy. Both checks run BEFORE the local
+offset is applied (and before the Int64 narrowing at the native boundary,
+which would otherwise panic): CPython rejects an out-of-range UTC instant
+even when the historical LMT offset would shift it into year 1. Known
+non-emulated nuance: glibc's `localtime` fails with OSError in an
+intermediate band (roughly |t| in 1e17..9.2e18) where TPy raises
+ValueError; CPython's exact type there is libc-dependent, so we pin the
+two stable bands only. A missing/corrupt OS tz database degrades local
+conversions to UTC (offset 0) instead of failing -- the same silent
+fallback glibc gives CPython.
 
 Independent of datetime: the pre-existing "union operand accepted by sema,
 uncompilable in C++ for operators" defect (affects monomorphic operators too)
@@ -278,10 +314,17 @@ relationships, never absolute local timestamps).
 ## File layout
 
 - `lib/tpy/datetime.py` -- the module (single file; not a package).
+- `lib/tpy/_bindings/hinnant_date.py` -- `@native` binding over the facade
+  (declares the tz-backend dep via `# tpy: link("date", managed=True)`).
 - `runtime/cpp/include/tpy/stdlib/datetime.hpp` -- hand-written facade over
   the tz backend (v2+).
-- `runtime/cpp/third_party/date/` + `date.vendor.json` +
-  `scripts/vendor_date.py` -- vendored Hinnant `date` (v2+).
+- `runtime/cpp/src/stdlib/date_shim.cpp` -- facade implementation; the only
+  TU that includes the vendored headers (compiled by the lib's build
+  factory, not the always-linked runtime source discovery).
+- `runtime/cpp/third_party/date/` + `date.vendor.json` + `date.sources.txt`
+  + `scripts/vendor_date.py` -- vendored Hinnant `date` (v2+).
+- `tpyc/build/date.py` -- build wiring (sources, flags, CMake vars,
+  `--date` mode flag).
 - Tests under `tests/cases/stdlib/`.
 
 Docs to keep in sync as phases land: `docs/STDLIB_ROADMAP.md` (the datetime

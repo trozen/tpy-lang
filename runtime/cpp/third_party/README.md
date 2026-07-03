@@ -52,6 +52,7 @@ on an already-vendored tree is a no-op.
 | `pcre2/` | `pcre2.vendor.json` | PCRE2 10.44 | `re` (via `_bindings.pcre2`) | `scripts/vendor_pcre2.py` |
 | `mbedtls/` | `mbedtls.vendor.json` | mbedTLS 3.6.6 | `ssl` (via `_bindings.mbedtls`) | `scripts/vendor_mbedtls.py` |
 | `cacert/` | `cacert.vendor.json` | Mozilla CA roots (certifi 2026.06.17) | `ssl` default trust store (compiled-in blob `cacert_data.c`, built with mbedTLS) | `scripts/vendor_cacert.py` |
+| `date/` | `date.vendor.json` | Howard Hinnant date 3.0.4 | `datetime` tz backend (via `_bindings.hinnant_date`; `tz.cpp` built with `USE_OS_TZDB`, TPy-facing surface is the hand-written `tpy/stdlib/datetime.hpp` facade) | `scripts/vendor_date.py` |
 
 ## Why committed instead of fetched
 

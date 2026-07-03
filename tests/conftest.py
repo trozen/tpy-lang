@@ -261,23 +261,25 @@ def _setup_stdlib_cache(cache_dir: Path) -> _StdlibCache:
     relpaths = {rel for rel, _ in results}
     objects = [obj for _, obj in results]
 
-    # Also pre-compile bundled C deps (e.g. PCRE2 .c files). These are
-    # referenced by stdlib .o files (e.g. re.o links against pcre2_*),
-    # so any test linking the stdlib cache needs them available -- even
-    # tests that don't import the relevant module, because the cache .o
-    # set is shared. Compiled with the C compiler derived from the C++ one.
+    # Also pre-compile bundled third-party deps (e.g. PCRE2 .c files, date's
+    # tz.cpp). These are referenced by stdlib .o files (e.g. re.o links
+    # against pcre2_*), so any test linking the stdlib cache needs them
+    # available -- even tests that don't import the relevant module, because
+    # the cache .o set is shared. Per-file driver via the same
+    # `third_party_source_driver` that `build_cpp_commands` uses.
     #
     # No opt_flags applied here, mirroring the .cpp pre-compile above:
     # tests always run a single shared cache regardless of build variant.
     # End-user `tpyc -xO` builds go through `BuildLayout.build_cpp_commands`
-    # (not this cache) and DO get -O3 on the same .c sources.
+    # (not this cache) and DO get -O3 on the same sources.
     if third_party_plan.c_sources:
-        from tpyc.compiler import _derive_c_compiler
-        c_compiler = _derive_c_compiler(CPP_CONFIG.compiler)
+        from tpyc.compiler import third_party_source_driver
         for c_src, c_flags in third_party_plan.c_sources:
             obj_path = obj_dir / (c_src.stem + ".o")
             prefix = ["ccache"] if CPP_CONFIG.ccache else []
-            cmd = [*prefix, *c_compiler, *CPP_CONFIG.extra_flags,
+            driver = third_party_source_driver(
+                c_src, CPP_CONFIG.compiler, CPP_CONFIG.std)
+            cmd = [*prefix, *driver, *CPP_CONFIG.extra_flags,
                    *c_flags, "-c", "-o", str(obj_path), str(c_src)]
             result = subprocess.run(cmd, capture_output=True, text=True)
             if result.returncode != 0:

@@ -263,6 +263,21 @@ def _is_zig(compiler: list[str]) -> bool:
     return "zig" in os.path.basename(compiler[0])
 
 
+def third_party_source_driver(src: Path, cxx: list[str], std: str) -> list[str]:
+    """Compiler driver for one bundled third-party source file.
+
+    `.cpp` sources (e.g. Hinnant date's tz.cpp and the datetime tz shim)
+    use the C++ driver with the configured -std; anything else uses the C
+    compiler derived from it (C++ drivers reject implicit ``void*``
+    conversions that PCRE2 relies on). Shared by `build_cpp_commands` and
+    the test harness's stdlib-cache pre-compile so the dispatch rule can't
+    drift between the two build paths.
+    """
+    if src.suffix == ".cpp":
+        return [*cxx, f"-std={std}"]
+    return _derive_c_compiler(cxx)
+
+
 def _derive_c_compiler(cxx: list[str]) -> list[str]:
     """Derive the matching C compiler command from a C++ compiler command.
 
@@ -382,11 +397,19 @@ def discover_runtime_cpp_sources(runtime_cpp_dir: Path) -> list[Path]:
     access to C system struct layouts (e.g. sockets / getaddrinfo) and
     can't be expressed header-only without leaking system-header macros
     into downstream TUs. Returns [] if the directory doesn't exist.
+
+    `*_shim.*` files are third-party glue owned by a managed lib
+    (mbedtls_shim.c, date_shim.cpp): they include vendored headers, so
+    they are compiled by their lib's build factory (tpyc/build/<lib>.py)
+    with the lib's flags, only when a module declares the dep -- never
+    linked into every binary. (.c files are skipped by the glob anyway;
+    the explicit filter keeps the .cpp shims out too.)
     """
     src_dir = runtime_cpp_dir / "src"
     if not src_dir.is_dir():
         return []
-    return sorted(src_dir.rglob("*.cpp"))
+    return sorted(p for p in src_dir.rglob("*.cpp")
+                  if not p.stem.endswith("_shim"))
 
 
 def get_or_build_pch(
@@ -690,10 +713,11 @@ class BuildLayout:
             force_includes: Headers to force-include via -include flag.
             extra_link_flags: Additional link-line flags (e.g. -lpcre2-8 from
                               third-party deps in system mode).
-            c_sources: Bundled C source files to compile with the C compiler
-                       (derived from config.compiler), each paired with its
-                       own list of compile flags. Used to build vendored C
-                       deps like PCRE2 inline with the user binary.
+            c_sources: Bundled third-party source files, each paired with its
+                       own list of compile flags. `.c` files compile with the
+                       C compiler derived from config.compiler, `.cpp` files
+                       with the C++ driver. Used to build vendored deps like
+                       PCRE2 or Hinnant date inline with the user binary.
             runtime_cpp_sources: TPy-owned C++ runtime sources (typically
                        discovered under runtime/cpp/src/ via
                        `discover_runtime_cpp_sources`). Compiled with the
@@ -748,22 +772,23 @@ class BuildLayout:
                 "-c", "-o", str(obj), str(cpp),
             ])
 
-        # Bundled C source files (e.g. PCRE2 in bundled mode). Compiled with
-        # the C compiler derived from config.compiler -- C++ drivers reject
-        # implicit void* conversions that PCRE2 relies on.
+        # Bundled third-party source files (e.g. PCRE2, Hinnant date in
+        # bundled mode); per-file driver via `third_party_source_driver`.
         if c_sources:
-            c_compiler = _derive_c_compiler(config.compiler)
             third_party_dir = self.build_dir / "third_party"
             third_party_dir.mkdir(parents=True, exist_ok=True)
             for c_file, c_extra_flags in c_sources:
                 obj = third_party_dir / (c_file.stem + ".o")
                 obj_files.append(str(obj))
                 prefix = ["ccache"] if config.ccache else []
+                driver = third_party_source_driver(
+                    c_file, config.compiler, config.std)
                 cmds.append([
-                    *prefix, *c_compiler,
+                    *prefix, *driver,
                     *(opt_flags or []),
-                    # C objects link into the .so too, so they need -fPIC like
-                    # the C++ TUs (common carries it; the C path doesn't use it).
+                    # These objects link into the .so too, so they need -fPIC
+                    # like the generated TUs (common carries it; this path
+                    # doesn't use common).
                     *(["-fPIC"] if shared else []),
                     *c_extra_flags,
                     "-c", "-o", str(obj), str(c_file),

@@ -1,0 +1,4 @@
+# C++ sources compiled into the bundled Hinnant date tz library, relative
+# to src/. The TPy-owned shim (runtime/cpp/src/stdlib/date_shim.cpp) is
+# appended by tpyc/build/date.py, mirroring the mbedTLS shim wiring.
+tz.cpp

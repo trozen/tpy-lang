@@ -139,7 +139,7 @@ Examples of the policy in action:
 | [`enum`](#enum) | P1 | Partial | ~50% | macro | Enum/IntEnum/auto; missing functional API, lookup by name/value, iteration |
 | [`dataclasses`](#dataclasses) | P1 | Partial | ~80% | macro | frozen/order/inheritance/asdict/astuple/__post_init__; missing InitVar, replace(), metadata |
 | [`typing`](#typing) | P1 | Partial | ~60% | native | Protocols/Sized/Iterator/TypedDict/Unpack; missing Generic, TypeVar, ParamSpec, ClassVar |
-| [`datetime`](#datetime) | P1 | Partial | ~40% | -- | v1 landed: `timedelta` + `date` (integer surface). v2 `datetime`/`time`, v3 formatting + tz pending |
+| [`datetime`](#datetime) | P1 | Partial | ~70% | pure | v1+v2 landed: `timedelta` + `date` (integer surface) + naive `time`/`datetime` with now/today/fromtimestamp/combine on the vendored Hinnant date tz backend. v3 formatting (strftime/strptime/fromisoformat) + fixed-offset `timezone` pending |
 | [`csv`](#csv) | P1 | Partial | ~70% | pure | `reader` / `writer` (list[str] rows) + `DictReader` / `DictWriter` (dict[str, str] rows) over the io `Readable`/`Writable` protocols. Excel default dialect + delimiter/quotechar/doublequote/skipinitialspace/lineterminator kwargs; writer is QUOTE_MINIMAL. CPython byte-compatible. DictWriter matches CPython's write-side defaults (restval="" for a missing field, ValueError for a key not in fieldnames). Missing: escapechar, quoting constants, Dialect objects/register_dialect, Sniffer, DictReader restval/restkey (short rows pad "", long rows drop extras -- dict[str,str] can't hold None or a list), DictWriter extrasaction='ignore' |
 | [`base64`](#base64) | P1 | Partial | ~95% | pure | Pure-TPy b64/b32/b16 encode+decode + urlsafe/standard variants + altchars=/validate=/casefold=/map01= kwargs + encodebytes/decodebytes. bytes/bytearray/str accepted on decoders (matches CPython). Missing: b85/a85 (rare, separate algorithms); `memoryview` depends on builtin gap |
 | [`hashlib`](#hashlib) | P1 | Partial | ~20% | pure | SHA-256 pure-TPy. MD5/SHA-1/SHA-512 are straight follow-ups (same class pattern, different round functions / endian). BLAKE2/SHA-3 later. Optional OpenSSL backend also later |
@@ -991,21 +991,27 @@ Current: `lib/tpy/typing.py` -- re-export from `tpy._typing`.
 
 ### datetime
 
-**Partial (v1 landed).** See `docs/DATETIME_DESIGN.md` for the full design and
-phased roadmap (v0 `@overload`-operator codegen fix -> v1 `timedelta`+`date`
+**Partial (v1 + v2 landed).** See `docs/DATETIME_DESIGN.md` for the full design
+and phased roadmap (v0 `@overload`-operator codegen fix -> v1 `timedelta`+`date`
 -> v2 `datetime`+`time` -> v3 formatting + fixed-offset `timezone`).
-Value-typed frozen dataclasses; pure-TPy calendar math and formatting;
-vendored Hinnant `date` behind a facade for local/IANA offsets (v2).
+Value-typed frozen dataclasses; pure-TPy calendar math and formatting. v2
+introduced the vendored Hinnant `date` tz backend (`--date=bundled|system|
+auto|none`) behind the `tpy/stdlib/datetime.hpp` facade -- the module's only
+OS dependencies are `time.time_ns()` and `local_utc_offset_seconds(epoch)`.
+Note: the backend reads `/etc/localtime` and does not consult the `TZ` env
+var (libc/CPython honor it) -- benign for invariant-style code, divergent for
+programs that set `TZ` at runtime.
 
 | Item | Status |
 |---|---|
 | `timedelta`, `date` | Done (v1, integer surface -- byte-parity with CPython) |
-| `time`, `datetime` | Missing (v2) |
-| `tzinfo`, `timezone` | Missing (v3; fixed-offset only) |
+| `time`, `datetime` | Done (v2, naive-only; hand-written `datetime` ordering, `@overload` `dt - dt` / `dt - td`) |
+| `datetime.now/utcnow/today/fromtimestamp/utcfromtimestamp/combine`, `date.today` | Done (v2; out-of-range timestamp raises `ValueError`, beyond-time_t raises `OverflowError` -- both catchable, matching CPython's stable bands) |
+| `dt.date()`, `dt.time()` accessors | Missing -- blocked on the member-name/type-name C++ collision bug (BUGS.md); follow-up once fixed |
+| `tzinfo`, `timezone`, aware datetimes, `fold` | Missing (v3; fixed-offset only) |
 | `timedelta` arithmetic | Done (integer surface); `timedelta / number` + float args deferred |
-| `date.today`, `datetime.now`, `datetime.utcnow` | Missing (v2) |
-| `strftime`, `strptime`, `fromisoformat` | Missing (v3) |
-| `isoformat` | Done for `date`; `time`/`datetime` in v2 |
+| `isoformat` | Done (`date`/`time`/`datetime`; `sep` supported, `timespec` param missing -- compile error, not silent) |
+| `strftime`, `strptime`, `fromisoformat`, `datetime.timestamp()` | Missing (v3) |
 
 ### csv
 

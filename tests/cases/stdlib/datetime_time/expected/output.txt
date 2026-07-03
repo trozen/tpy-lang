@@ -1,0 +1,23 @@
+14:30:05
+14:30:05
+datetime.time(14, 30, 5)
+14 30 5 0
+00:00:00
+datetime.time(0, 0)
+datetime.time(7, 0)
+datetime.time(7, 8)
+datetime.time(7, 8, 0, 9)
+01:02:03.400000
+23:59:59.999999
+True
+True
+True
+False
+True
+a
+True
+caught hour
+caught minute
+caught second
+caught microsecond
+caught negative
