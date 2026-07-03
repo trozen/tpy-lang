@@ -1,0 +1,1 @@
+main.py:19: error: class pattern '__main__.Point' does not match union member 'shapes.Point' (different type, same name)

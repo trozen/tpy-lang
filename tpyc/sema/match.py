@@ -994,11 +994,26 @@ class MatchAnalyzer:
         if resolved is not None:
             if any(m == resolved for m in subject_type.members):
                 return resolved
-            # Known type but not a union member -- give specific error,
-            # unless it could match as a parameterized type (fall through)
-            if not any(getattr(m, 'name', None) == name for m in subject_type.members):
+            same_name = [m for m in subject_type.members
+                         if getattr(m, 'name', None) == name]
+            if not same_name:
                 raise self.ctx.error(
                     f"'{name}' is not a member of union '{subject_type}'", pattern
+                )
+            # A same-bare-named member that is NOT parameterized is a distinct
+            # (e.g. alias-imported) record: exact qname identity already failed
+            # above, so a bare-name match here would bind the wrong record.
+            # Only the base-name fuzzy path below -- for parameterized members
+            # like `Box[str]` under a bare `Box` pattern -- may match by name.
+            if not any(getattr(m, 'type_args', ()) for m in same_name):
+                member = same_name[0]
+                pat_disp = (resolved.qualified_name()
+                            if isinstance(resolved, NominalType) else None) or name
+                subj_disp = (member.qualified_name()
+                             if isinstance(member, NominalType) else None) or name
+                raise self.ctx.error(
+                    f"class pattern '{pat_disp}' does not match union member "
+                    f"'{subj_disp}' (different type, same name)", pattern
                 )
 
         # Fall back: search union members by base name (for parameterized types)
@@ -1034,10 +1049,22 @@ class MatchAnalyzer:
         if record is None:
             raise self.ctx.error(f"unknown type '{cls_name}' in match pattern", pattern)
 
-        if cls_name != subject_type.name:
+        # Compare by qualified identity, not bare name: a record sharing the
+        # subject's canonical name (one imported under an alias) is a distinct
+        # type, so its class pattern must not bind fields against the subject.
+        # The pattern name is a source spelling (maybe an alias), so compare
+        # the resolved record's qname to the subject's rather than names.
+        pat_qname = record.qualified_name()
+        subj_qname = subject_type.qualified_name()
+        mismatch = (pat_qname != subj_qname if pat_qname and subj_qname
+                    else cls_name != subject_type.name)
+        if mismatch:
+            same_bare = cls_name == subject_type.name
+            pat_disp = (pat_qname or cls_name) if same_bare else cls_name
+            subj_disp = (subj_qname or subject_type.name) if same_bare else subject_type.name
             raise self.ctx.error(
-                f"class pattern '{cls_name}' does not match "
-                f"subject type '{subject_type.name}'", pattern
+                f"class pattern '{pat_disp}' does not match "
+                f"subject type '{subj_disp}'", pattern
             )
 
         pattern.resolved_type = subject_type
