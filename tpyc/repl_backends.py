@@ -54,6 +54,33 @@ class BackendResult:
         self.build_cached = build_cached
 
 
+class ReplBuildDeps:
+    """Link-time dependencies derived from the session's compiled module set.
+
+    Assembled per eval by the REPL session (tpyc/repl.py) from the same
+    helpers the file-compile path uses (discover_runtime_cpp_sources,
+    resolve_build_plan, collect_link_flags), so what a module needs to link
+    cannot drift between `tpy file.py` and the REPL. Binary-building
+    backends compile and link these; the JIT backend cannot (see BUGS.md).
+    """
+    __slots__ = ("runtime_sources", "third_party_sources", "include_dirs",
+                 "link_flags")
+
+    def __init__(self,
+                 runtime_sources: list[Path] | None = None,
+                 third_party_sources: list[tuple[Path, list[str]]] | None = None,
+                 include_dirs: list[Path] | None = None,
+                 link_flags: list[str] | None = None):
+        # TPy-owned always-linked runtime impls (os_impl.cpp, socket_impl.cpp, ...)
+        self.runtime_sources = runtime_sources or []
+        # Bundled third-party sources with their per-source compile flags
+        # (PCRE2 .c files, Hinnant date tz.cpp + date_shim.cpp, ...)
+        self.third_party_sources = third_party_sources or []
+        self.include_dirs = include_dirs or []
+        # Managed-lib link flags + raw `# tpy: link()` flags, in that order
+        self.link_flags = link_flags or []
+
+
 class REPLBackend(abc.ABC):
     """Abstract base for REPL execution backends."""
 
@@ -73,6 +100,7 @@ class REPLBackend(abc.ABC):
         all_cpp_code: list[str],
         all_hpp_paths: list[Path],
         all_cpp_paths: list[Path],
+        deps: "ReplBuildDeps | None" = None,
     ) -> BackendResult:
         """Build and run the current REPL state.
 
@@ -81,6 +109,7 @@ class REPLBackend(abc.ABC):
             all_cpp_code: Generated cpp source strings for all modules.
             all_hpp_paths: Paths where hpp files have been written.
             all_cpp_paths: Paths where cpp files have been written.
+            deps: Link-time dependencies of the compiled module set.
 
         Returns:
             BackendResult with success, output, and timing info.
@@ -124,6 +153,14 @@ class CompileBackend(REPLBackend):
         self._cpp_hashes: dict[str, str] = {}
         # Cached .o paths keyed by .cpp path string
         self._obj_cache: dict[str, str] = {}
+        # Support objects (runtime impls + bundled third-party sources),
+        # keyed by source path -> (source mtime, .o path). The mtime keeps a
+        # dev editing runtime .cpp mid-session from linking a stale object
+        # (mirrors the PCH cache's staleness check); otherwise each source
+        # compiles once, on the first eval that needs it.
+        self._support_objs: dict[str, tuple[float, str]] = {}
+        # Third-party include dirs from the current eval's build plan
+        self._extra_include_dirs: list[Path] = []
         self._n_jobs = os.cpu_count() or 1
 
     @property
@@ -166,6 +203,8 @@ class CompileBackend(REPLBackend):
             "-I", str(runtime_dir / "cpp" / "include"),
             "-I", str(self._temp_dir),
         ]
+        for d in self._extra_include_dirs:
+            flags += ["-I", str(d)]
         if self._pch_path:
             flags += ["-include", str(self._pch_path)]
         return flags
@@ -183,13 +222,83 @@ class CompileBackend(REPLBackend):
         cmd = [*self._common_flags(), "-c", "-o", str(obj), str(cpp_path)]
         return subprocess.run(cmd, capture_output=True, text=True)
 
+    def _ensure_support_objects(
+        self, deps: ReplBuildDeps | None,
+    ) -> tuple[list[str], str]:
+        """Compile any not-yet-built support sources; return (.o list, error).
+
+        Runtime impl sources compile with the C++ driver + runtime include;
+        third-party sources compile exactly like the file path's
+        `build_cpp_commands`: per-suffix driver, only their own flags. PCH
+        is omitted (each support source compiles once per session). All
+        results are cached for the session.
+        """
+        if deps is None:
+            return [], ""
+        from .compiler import third_party_source_driver
+        runtime_include = get_runtime_dir() / "cpp" / "include"
+
+        def fresh_mtime(src: Path) -> float | None:
+            """The source's current mtime if it needs (re)compiling, else None.
+            Captured pre-compile so an edit racing the compile re-triggers."""
+            mtime = src.stat().st_mtime
+            cached = self._support_objs.get(str(src))
+            return None if cached is not None and cached[0] == mtime else mtime
+
+        jobs: list[tuple[Path, float, list[str]]] = []
+        for src in deps.runtime_sources:
+            mtime = fresh_mtime(src)
+            if mtime is not None:
+                # warn_flags included to match build_cpp_commands' treatment
+                # of runtime sources (vendored third-party sources below get
+                # only their own flags there too).
+                jobs.append((src, mtime, [
+                    *self._config.compiler, f"-std={self._config.std}",
+                    *self._config.extra_flags, *self._config.warn_flags,
+                    *self._OPT_FLAGS,
+                    "-I", str(runtime_include),
+                ]))
+        for src, flags in deps.third_party_sources:
+            mtime = fresh_mtime(src)
+            if mtime is not None:
+                driver = third_party_source_driver(
+                    src, self._config.compiler, self._config.std)
+                jobs.append((src, mtime, [*driver, *self._OPT_FLAGS, *flags]))
+
+        def build_one(job: tuple[Path, float, list[str]]) -> tuple[Path, float, str, str]:
+            src, mtime, cmd_prefix = job
+            # Parent dir in the name disambiguates same-stem sources from
+            # different libs (e.g. two vendored trees both shipping error.c).
+            obj = self._build_dir / f"support_{src.parent.name}_{src.stem}.o"
+            cmd = [*cmd_prefix, "-c", "-o", str(obj), str(src)]
+            r = subprocess.run(cmd, capture_output=True, text=True)
+            return src, mtime, str(obj), r.stderr if r.returncode != 0 else ""
+
+        if jobs:
+            if self._verbose >= 1:
+                names = [src.name for src, _, _ in jobs]
+                print(f"  [build] compiling {len(jobs)} support files: "
+                      f"{', '.join(names)}", file=sys.stderr)
+            with ThreadPoolExecutor(max_workers=self._n_jobs) as pool:
+                for src, mtime, obj, err in pool.map(build_one, jobs):
+                    if err:
+                        return [], err
+                    self._support_objs[str(src)] = (mtime, obj)
+
+        wanted = [str(s) for s in deps.runtime_sources]
+        wanted += [str(s) for s, _ in deps.third_party_sources]
+        return [self._support_objs[k][1] for k in wanted], ""
+
     def execute(
         self,
         all_hpp_code: list[str],
         all_cpp_code: list[str],
         all_hpp_paths: list[Path],
         all_cpp_paths: list[Path],
+        deps: ReplBuildDeps | None = None,
     ) -> BackendResult:
+        self._extra_include_dirs = deps.include_dirs if deps else []
+
         # Determine which .cpp files changed
         changed: list[Path] = []
         for cpp_path, cpp_code in zip(all_cpp_paths, all_cpp_code):
@@ -203,6 +312,16 @@ class CompileBackend(REPLBackend):
 
         t_build_start = time.monotonic()
         self._wait_for_pch()
+
+        # Compile link-time support sources (runtime impls + bundled
+        # third-party deps) that aren't built yet; each compiles once per
+        # session. Must precede the generated-TU compile so a support
+        # failure surfaces cleanly rather than as undefined refs at link.
+        support_objs, support_err = self._ensure_support_objects(deps)
+        if support_err:
+            return BackendResult(
+                False, stderr=f"C++ compilation failed:\n{support_err}",
+                t_build=time.monotonic() - t_build_start)
 
         # Compile changed .cpp files (parallel for multiple files)
         if self._verbose >= 1 and changed:
@@ -241,7 +360,9 @@ class CompileBackend(REPLBackend):
             *self._config.compiler,
             "-o", str(self._binary_path),
             *all_objs,
+            *support_objs,
             *self._config.link_flags,
+            *(deps.link_flags if deps else []),
         ]
         result = subprocess.run(link_cmd, capture_output=True, text=True)
         t_build = time.monotonic() - t_build_start
@@ -393,7 +514,13 @@ class ClangReplBackend(REPLBackend):
         all_cpp_code: list[str],
         all_hpp_paths: list[Path],
         all_cpp_paths: list[Path],
+        deps: ReplBuildDeps | None = None,
     ) -> BackendResult:
+        # deps is accepted but unsupported: a JIT has no link step to feed
+        # the support objects into, so modules needing runtime impls or
+        # managed third-party libs fail with unresolved symbols here (see
+        # the BUGS.md clang-repl entry). The default CompileBackend handles
+        # them fully.
         if self._proc is None or self._proc.poll() is not None:
             # Auto-restart after crash
             try:

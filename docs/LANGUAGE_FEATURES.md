@@ -6775,11 +6775,11 @@ Send/Sync rules for built-in types:
 - Multi-line input with automatic continuation detection (`if`/`else`/`elif`/`except`/`finally`)
 - Paste mode (`.paste` or `.p`) for multi-line blocks
 - Configurable C++ compiler via `--cxx`:
-  - `clang-repl` -- incremental JIT, fastest for iteration (~20-80ms per expression); auto-restarts after JIT crashes
+  - `clang-repl` -- incremental JIT, fastest for iteration (~20-80ms per expression); auto-restarts after JIT crashes. Explicit opt-in only; modules needing runtime impls or managed third-party libs (`os`, `re`, `ssl`, `datetime`, ...) are unsupported in this backend (see BUGS.md)
   - `clang` -- compile-and-run via clang++ with PCH caching
   - `gcc` -- compile-and-run via g++ with PCH caching
   - `zig` -- compile-and-run via zig c++ (from system or bundled ziglang package)
-  - `auto` (default) -- picks the best available compiler (clang-repl > clang > gcc > zig)
+  - `auto` (default) -- picks the best available compile-and-run backend (g++ > clang++ > zig); never auto-selects clang-repl
 
 ---
 

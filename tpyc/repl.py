@@ -25,11 +25,13 @@ from .parse import ParseError, TpyExprStmt, TpyCoerce
 from .sema import SemanticError, DiagnosticLevel
 from .typesys import VoidType, is_any_str_type
 from .type_def_registry import is_char_type
-from .compiler import Compiler
+from . import get_runtime_dir
+from .build.third_party import ThirdPartyBuildPlan, resolve_build_plan
+from .compiler import Compiler, discover_runtime_cpp_sources
 from .compilation_context import activate_compiler
 from .codegen_cpp.context import get_include_path
 from .repl_backends import (
-    REPLBackend, BackendResult, detect_backend, _fmt_ms,
+    REPLBackend, BackendResult, ReplBuildDeps, detect_backend, _fmt_ms,
 )
 
 
@@ -48,7 +50,34 @@ class REPLSession:
         self._module_name = "repl"
         self._cxx = cxx
         self._backend: REPLBackend | None = None
+        # Session-constant runtime impl sources + per-dep-set build plans,
+        # resolved lazily for _collect_build_deps.
+        self._runtime_sources: list[Path] | None = None
+        self._plan_cache: dict[tuple[str, ...], ThirdPartyBuildPlan] = {}
         atexit.register(self.cleanup)
+
+    def _collect_build_deps(self, compiler: Compiler) -> ReplBuildDeps:
+        """Link-time deps of this eval's compiled module set -- the same
+        three inputs the file-compile path assembles (runtime impl sources,
+        the managed third-party build plan, collected link flags), so REPL
+        link behavior cannot drift from `tpy file.py`. Third-party libs
+        always resolve in bundled mode here (no --pcre2/--date etc. in the
+        REPL)."""
+        runtime_cpp = get_runtime_dir() / "cpp"
+        if self._runtime_sources is None:
+            self._runtime_sources = discover_runtime_cpp_sources(runtime_cpp)
+        dep_names = tuple(compiler.collect_third_party_deps())
+        plan = self._plan_cache.get(dep_names)
+        if plan is None:
+            plan = resolve_build_plan(list(dep_names), runtime_cpp, modes={})
+            self._plan_cache[dep_names] = plan
+        return ReplBuildDeps(
+            runtime_sources=self._runtime_sources,
+            third_party_sources=plan.c_sources,
+            include_dirs=plan.extra_include_dirs,
+            link_flags=[*plan.extra_link_flags,
+                        *compiler.collect_link_flags()],
+        )
 
     def _preload_file(self, filepath: Path) -> bool:
         """Load and execute a file, accumulating its definitions.
@@ -507,7 +536,9 @@ class REPLSession:
             self.prev_cpp_lines = current_lines
 
         # Execute via backend
-        result = self._backend.execute(all_hpp_code, all_cpp_code, all_hpp_paths, all_cpp_paths)
+        deps = self._collect_build_deps(compiler)
+        result = self._backend.execute(all_hpp_code, all_cpp_code,
+                                       all_hpp_paths, all_cpp_paths, deps)
 
         if not result.success:
             error_msg = result.stderr or "Unknown error\n"
