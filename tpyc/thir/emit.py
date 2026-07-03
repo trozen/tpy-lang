@@ -31,6 +31,7 @@ from ..typesys import OptionalType, TupleType, UnionType, unwrap_qualifiers
 from .nodes import (
     Form,
     PrintForm,
+    THIRAssert,
     THIRAssign,
     THIRBinOp,
     THIRBytesLiteral,
@@ -53,6 +54,7 @@ from .nodes import (
     THIRMethodCall,
     THIRName,
     THIRNarrowAlias,
+    THIRNarrowedRead,
     THIRNoOpStmt,
     THIRPrint,
     THIRPrintArg,
@@ -456,6 +458,11 @@ def _emit_expr(e: THIRExpr) -> str:
         checks = [f"std::holds_alternative<{m}>({e.variant_cpp})"
                   for m in e.member_cpps]
         return checks[0] if len(checks) == 1 else "(" + " || ".join(checks) + ")"
+    if isinstance(e, THIRNarrowedRead):
+        # A compound-condition read of the narrowed subject: the bare get, no
+        # alias yet -- the ptr-variant deref parenthesizes for member access.
+        get = f"std::get<{e.member_cpp}>({e.variant_cpp})"
+        return f"(*{get})" if e.is_ptr_variant else get
     if isinstance(e, THIRFieldAccess):
         return _emit_field_access(e)
     if isinstance(e, THIRSubscript):
@@ -566,8 +573,8 @@ def _emit_for_each(out: TextIO, stmt: THIRForEach, indent_level: int,
     # Mirrors _gen_begin_end_loop for an element off an lvalue name container: grab the
     # loop index before the body (nested loops number after this one), capture the
     # container -- `auto&` for an lvalue, owning `auto` for an rvalue (a
-    # str-returning call: the temporary must outlive the loop; mirrors
-    # _gen_begin_end_loop's obj_binding) -- then the loop-var binding via the
+    # str-returning or Own-container-returning call: the temporary must outlive
+    # the loop; mirrors _gen_begin_end_loop's obj_binding) -- then the loop-var binding via the
     # shared loop_var_binding (a scalar is a typed copy; a record is a borrow
     # alias -- auto&& / const auto&, so the const flag is threaded through,
     # not hardcoded).
@@ -653,6 +660,16 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
         deref = "*" if stmt.is_ptr_variant else ""
         out.write(f"{indent}{qualifier} {stmt.alias} = {deref}"
                   f"std::get<{stmt.member_cpp}>({stmt.variant_cpp});\n")
+    elif isinstance(stmt, THIRAssert):
+        # Mirrors _gen_assert's non-constant, non-lazy-message arm; the
+        # narrowing alias (if any) follows as its own THIRNarrowAlias
+        # statement. The message escape mirrors _gen_assert_throw.
+        if stmt.message is None:
+            throw = "::tpy::raise_assertion_error()"
+        else:
+            msg = stmt.message.replace("\\", "\\\\").replace('"', '\\"')
+            throw = f'::tpy::raise_assertion_error("{msg}")'
+        out.write(f"{indent}if (!({_emit_expr(stmt.condition)})) {throw};\n")
     elif isinstance(stmt, THIRReturn):
         if stmt.value is None:
             out.write(f"{indent}return;\n")

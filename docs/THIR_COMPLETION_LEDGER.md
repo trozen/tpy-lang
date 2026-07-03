@@ -82,7 +82,7 @@ deletion is the concrete milestone that forces its tail closed.
 |---|---|---|
 | **Ctor MIL emit** -- `records.py` `_extract_field_inits` / `_extract_base_inits` / `_get_non_init_stmts` + the inline ` : f(v)... {}` write | every ctor MIL field cell + body: scalar (M3a), record/Optional copy+move (M3b), ctor-call / param-field-read sources + own-optional params (M3b-rvalue), docstring/`pass` trivia body (M3c-trivia), non-init body + demotion (M3c-demotion), inheritance -- single + multi base + inherited-field writes (M3d), and str/list/dict/tuple/union/bytes fields (F3+) + cross-module/native/generic records | **PARTIAL** -- the whole scalar/record/Optional + body + inheritance surface lands (ctor self-contained tail complete); deferred cells are cross-axis-blocked -- non-record demoted-field-writes + non-record fields (F3+) + native/generic records |
 | **Body statement + expression emit** -- `statements.py` `gen_body` per-statement path + `expressions.py` `gen_expr`, for routed callables | every statement shape + expression form across every callable kind | **PARTIAL** -- straight-line shapes over the F1/F2 + scalar/bool/double-float + str (F6 S1-S5 + cross-type coercions) + bytes (F6 S6 values + the incr-46 tail: subscript/slices/iteration/concat/aug-assign) slice, incl. logical/chained-compare exprs and scalar/slice-object type-constructor calls |
-| **Form / conversion machinery** -- `context.py` `convert` + `CppForm`/`FormValue`, the ~12 detection predicates + ~22 local side-sets + the `RefType` wrapper (see `THIR_FORM_INVENTORY.md`) | **F-final**: the `Form` tag + `THIRFormConvert` subsume all form dispatch | **PARTIAL** -- F1/F2 forms carried + F3 tuple read/write + the F6 str+bytes view->owned converts (S1/S6 -- both `view_to_owned_conv` family arms validated; reused at container-element slots by S5; extended to the cross-type str-family coercions in incr 42, the materializing arms lowering to the same THIRFormConvert) + the F4 union arms (U1 value + U2 pointer-variant, incr 49-50: `to_[const_]ptr_variant` / `to_value_variant<...>` carried, plus the structural form validator as the second gate) + the U3 narrowing extractions (incr 51: `THIRIsinstance` / `THIRNarrowAlias`, the `narrowed_vars` rename mirrored as lowering scope); F4 U4+ (the while/assert/compound narrowing tail), F5, the remaining F6 tail, and RefType removal pending |
+| **Form / conversion machinery** -- `context.py` `convert` + `CppForm`/`FormValue`, the ~12 detection predicates + ~22 local side-sets + the `RefType` wrapper (see `THIR_FORM_INVENTORY.md`) | **F-final**: the `Form` tag + `THIRFormConvert` subsume all form dispatch | **PARTIAL** -- F1/F2 forms carried + F3 tuple read/write + the F6 str+bytes view->owned converts (S1/S6 -- both `view_to_owned_conv` family arms validated; reused at container-element slots by S5; extended to the cross-type str-family coercions in incr 42, the materializing arms lowering to the same THIRFormConvert) + the F4 union arms (U1 value + U2 pointer-variant, incr 49-50: `to_[const_]ptr_variant` / `to_value_variant<...>` carried, plus the structural form validator as the second gate) + the U3 narrowing extractions (incr 51: `THIRIsinstance` / `THIRNarrowAlias`, the `narrowed_vars` rename mirrored as lowering scope) + the U2 write-arm tail (incr 52: monostate write arms + union field-to-field copies) + the U4 narrowing tail (incr 53-54: `THIRAssert` persistent extractions + re-assert bump, while-isinstance loop-entry aliases, compound-`and` `THIRNarrowedRead` inline reads); F4 remainder (readonly subjects, record call-site frontiers), F5, the remaining F6 tail, and RefType removal pending |
 
 These interlock: deleting `gen_body`/`gen_expr` requires the form machinery gone
 (F-final) and every statement shape routed. The **ctor MIL emit is the first
@@ -194,10 +194,17 @@ deferred (self-contained) / blocked-on-`<rung>`.
   borrow-legal type) and the `THIRBytesLiteral.owned` -> form fold.
   Gate-rejected (pre-existing AST miscompiles, BUGS.md): storage union
   fields at returns / call args, const-lifted locals into mutable slots.
-  U2-deferred: None-member ptr unions (monostate write arms), readonly
-  ptr-variant slots (`ptr_variant_to_const`), field-to-field copies,
-  `Own[union]` free-function params, member-value sources (the
-  gen_call_arg cascade). **U3 isinstance-narrowing reads DONE (incr 51)**
+  **U2 write-arm tail DONE (incr 52)** -- None-member ptr unions (the gate
+  admits void-like members; monostate is form-neutral in both spellings)
+  with the monostate write arms (`w = None` decl/rebind,
+  `recv.field = None`, `return None` -- all `std::monostate{}`,
+  target-typed like the U1 arms) and field-to-field copies
+  (`recv1.f = recv2.f`, a storage-to-storage plain assign -- a field
+  source is not a ptr-variant source, no `to_value_variant` lift). Solo
+  routing 28861 -> 28873 bodies / 3285 cases. Still U2-deferred:
+  readonly ptr-variant slots (`ptr_variant_to_const`), `Own[union]`
+  free-function params, member-value sources (the gen_call_arg
+  cascade). **U3 isinstance-narrowing reads DONE (incr 51)**
   -- the stateful `_gen_if` narrowing emit over routed unions:
   `THIRIsinstance` conditions (`std::holds_alternative<M>(v)` per check
   member, OR-joined; template args carry the ptr `*` + the U2
@@ -212,11 +219,27 @@ deferred (self-contained) / blocked-on-`<rung>`.
   chokepoint; subject retyped for the rest of the scope). Eligibility
   threads a `narrowed` set: branch walks retype the subject to the
   member, rebinding writes reject, remaining-union (tuple-form) facts
-  keep the variant un-extracted. U3-deferred: `while isinstance`
-  loop-entry extraction, `assert isinstance` persistent narrowing,
-  compound conditions, re-dispatch on a narrowed subject, readonly
+  keep the variant un-extracted. Routing 28778 -> 28788 bodies.
+  **U4 narrowing tail DONE (incr 53-54)** -- `while isinstance` loop-entry
+  extraction (the branch-alias shape leading the `THIRWhile` body, popped
+  at the brace; a body assert on the same subject stays AST -- the AST
+  redeclares the alias there, the BUGS.md `_gen_while` collision),
+  `assert isinstance` persistent narrowing (the new `THIRAssert` node:
+  `if (!(<cond>)) ::tpy::raise_assertion_error(...)` with None/
+  str-literal messages; the alias appended by `_lower_stmts` like the
+  post-if alias; a re-assert on a persistently extracted subject mirrors
+  the sema fold `if (!(true))` + the suffix-bumped `__v_2` re-extraction,
+  gated by `_WalkState.persistent_narrowed` / `lc.narrow_subject_union`),
+  and compound `and` conditions in if/while/assert position
+  (`_compound_narrow_info`: one isinstance leaf in the `&&` tree, other
+  leaves eligible bool conditions; subject reads after the leaf lower to
+  `THIRNarrowedRead` -- the alias-free `(*std::get<A*>(v))` /
+  `std::get<T>(v)` get -- via the condition-scoped `lc.inline_narrowed`
+  fact). Solo routing 28861 -> 28871 bodies / 3284 cases.
+  U4-deferred: `or` trees, multi-subject compounds, compound re-asserts,
+  re-dispatch on a narrowed subject (branch/loop-scoped bump), readonly
   subjects, narrowed record call-args / method receivers (the record
-  call-site frontiers). Routing 28778 -> 28788 bodies. Deferred beyond
+  call-site frontiers). Deferred beyond
   F4: `match` captures (statement shape), recursive-alias wrappers
   (reference ABI), protocol unions, async/generator union frames,
   ternary-arm normalization, tuple-unpack binds. F5 generic-slot, F-final
@@ -228,7 +251,9 @@ deferred (self-contained) / blocked-on-`<rung>`.
   S6 bytes values DONE, incr 44;
   S4 leftovers + literal call args DONE, incr 45;
   bytes tail -- subscript/slices/iteration + concat/aug-assign DONE, incr 46;
-  S4 leftovers wave 2 DONE, incr 47)**
+  S4 leftovers wave 2 DONE, incr 47;
+  S4 leftovers wave 3 -- container-returning call iterables + slice-ctor
+  call args DONE, for/call-arg cell)**
   -- S1: str/StrView params,
   literal-init locals (PendingStrType resolved through ViewVarInfo at lowering),
   print args, comparisons, `len(s)`, owned-str returns, same-type call args; the
@@ -241,9 +266,17 @@ deferred (self-contained) / blocked-on-`<rung>`.
   `float_to_str`, int8 `static_cast<int>`, IntLiteral resolved through the
   default int); the owned (STORAGE) result composes into every S1 sink (decl
   init, return, print/call arg, compare operand). S2-deferred rows (gate-
-  rejected): `!r`/`!s` conversions, format specs, BigInt `.to_string()`, enum/
-  Float32 `static_cast`, user/union `__str__`, `_container_to_str` containers,
-  Char. S4: str subscript `s[i]` -> Char (the checked
+  rejected): `!r`/`!s` conversions, format specs, user/union `__str__`,
+  `_container_to_str` containers, Char. NB the BigInt `.to_string()` / enum
+  / Float32 `static_cast` arg rows are blocked on VALUE-BINDING admission,
+  not the wrap table: no BigInt/enum/Float32-typed expression is admissible
+  anywhere in the slice (`_eligible_scalar` excludes all three,
+  load-bearing for the subscript-index and literal-render gates), so they
+  are "BigInt/Float32/enum values" frontier cells, not f-string rows.
+  Pinned AST wrap shapes for that frontier: BigInt `({0}).to_string()`,
+  Float32 `::tpy::float_to_str(static_cast<double>({0}))`, enum
+  `static_cast<int>({0})` (spec-free; AST arg order: bool, float64,
+  float32, runtime-bigint, int8, enum). S4: str subscript `s[i]` -> Char (the checked
   `::tpy::__getitem__` / bounds-safe operator[] container emit verbatim),
   non-stepped slices `s[a:b]` -> `::tpy::str_slice` view results (`THIRStrSlice`,
   BORROW, view sinks only -- an owned sink arrives as a `strview_to_str`
@@ -396,14 +429,23 @@ deferred (self-contained) / blocked-on-`<rung>`.
   decided statically from the admitted iterable shapes), and non-name
   `s[i]` char-subscript receivers (the subscript gate now takes the shared
   `_str_slice_receiver_ok` set: names, str-family F1-record fields,
-  eligible str-returning calls). Still-deferred S4 rows: slice-object ctor
-  rvalues as CALL ARGS (`use(s, basic_slice(1, 3))` -- the gen_call_arg
-  cascade frontier), container-returning call iterables (only str-family
-  calls admitted; a non-value container return flips is_lvalue_iterable's
-  verdict). Plus, still remaining: reassigned owned-str params
-  (owned-copy prologue), `Literal[str]` bindings, String params/returns
-  (`const std::string&` signatures), `bytearray` (a reference type,
-  different axis).
+  eligible str-returning calls).
+  **S4 leftovers wave 3 DONE (incr 55, for/call-arg cell)**: container-returning
+  call iterables (`for x in make_list():` -- `_call_eligible` widened with
+  `container_ret_ok` for list/dict/set returns; the capture verdict rides
+  `THIRForEach.iterable_lvalue` via `_call_iterable_lvalue`, mirroring
+  is_lvalue_iterable's call arm: an `Own[...]` return is a by-value rvalue
+  (owning `auto __obj_N =`), a borrow / readonly borrow return a C++ lvalue
+  (`auto& __obj_N =`); bytes-returning calls and subscript iterables stay
+  gate-excluded), and slice-object ctor rvalues as CALL ARGS
+  (`use(s, basic_slice(1, 3))` -- `_slice_ctor_pass_through_arg`: the bare
+  template expansion into a by-value slice-object param slot; Own-wrapped
+  and union slots stay on the AST path). Solo routing 28861 -> 28877
+  bodies / 3286 cases; integrated with the sibling incr 52-54 cells on the
+  same branch: **28899 bodies / 3287 cases**. Plus, still remaining: reassigned
+  owned-str params (owned-copy prologue), `Literal[str]` bindings, String
+  params/returns (`const std::string&` signatures), `bytearray` (a
+  reference type, different axis).
 - F2 carry-over deferred cells (container locals, cross-module/native/generic
   records, subscript sources, narrowing-needed `->` deref, name-alias/REF_ALIAS
   reseat sources): **blocked-on-F3+** or the relevant frontier; see the F1/F2 TODO

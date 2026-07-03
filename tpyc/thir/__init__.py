@@ -13,6 +13,7 @@ from .emit import emit_thir_body, emit_thir_constructor_tail, THIRCodeGenError
 from .lower import lower_constructor, lower_function, lower_module
 from .nodes import (
     Form,
+    THIRAssert,
     THIRAssign,
     THIRBinOp,
     THIRCall,
@@ -32,6 +33,7 @@ from .nodes import (
     THIRModule,
     THIRName,
     THIRNode,
+    THIRNarrowedRead,
     THIRParam,
     THIRReturn,
     THIRSelf,
@@ -50,6 +52,7 @@ __all__ = [
     "lower_function",
     "lower_module",
     "Form",
+    "THIRAssert",
     "THIRAssign",
     "THIRBinOp",
     "THIRCall",
@@ -69,6 +72,7 @@ __all__ = [
     "THIRModule",
     "THIRName",
     "THIRNode",
+    "THIRNarrowedRead",
     "THIRParam",
     "THIRReturn",
     "THIRSelf",

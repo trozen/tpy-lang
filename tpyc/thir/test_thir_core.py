@@ -179,6 +179,22 @@ class TestEligibility:
         thir = _lower("def f[T](a: T) -> T:\n    b = a\n    return b\n")
         assert _fn(thir, "f") is None
 
+    def test_walk_state_branch_copy_isolates_every_field(self):
+        # branch_copy must deep-copy EVERY container field: a branch mutation
+        # leaking into the parent scope would let a branch-local fact (a
+        # POINTER decl, a narrowing) survive past the branch. Field-generic
+        # so a sixth field added for a later cell can't be silently shared.
+        from dataclasses import fields
+        from .lower import _WalkState
+        ws = _WalkState({"a": None})
+        copy = ws.branch_copy()
+        for f in fields(_WalkState):
+            container = getattr(copy, f.name)
+            if isinstance(container, dict):
+                container["x"] = None
+            else:
+                container.add("x")
+            assert "x" not in getattr(ws, f.name)
 
 
 class TestForRange:

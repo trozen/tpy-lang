@@ -9,6 +9,7 @@ from __future__ import annotations
 from ..typesys import TpyType
 from .nodes import (
     Form,
+    THIRAssert,
     THIRAssign,
     THIRBinOp,
     THIRBytesLiteral,
@@ -30,6 +31,7 @@ from .nodes import (
     THIRModule,
     THIRName,
     THIRNarrowAlias,
+    THIRNarrowedRead,
     THIRPrint,
     THIRReturn,
     THIRSelf,
@@ -135,6 +137,9 @@ def _expr(e: THIRExpr) -> str:
         return f"form_convert[{cst}{e.form.name.lower()}]({_expr(e.value)})"
     if isinstance(e, THIRIsinstance):
         return f"isinstance(%{e.variant_cpp}, [{', '.join(e.member_cpps)}])"
+    if isinstance(e, THIRNarrowedRead):
+        deref = "*" if e.is_ptr_variant else ""
+        return f"({deref}get<{e.member_cpp}>(%{e.variant_cpp}))"
     return f"<{type(e).__name__}>"
 
 
@@ -153,6 +158,9 @@ def _stmt_lines(stmt: THIRStmt, depth: int) -> list[str]:
         cst = "const " if stmt.const_ref else ""
         return [f"{pad}%{stmt.alias} = {cst}&{deref}get<{stmt.member_cpp}>"
                 f"(%{stmt.variant_cpp})"]
+    if isinstance(stmt, THIRAssert):
+        msg = f", {stmt.message!r}" if stmt.message is not None else ""
+        return [f"{pad}assert {_expr(stmt.condition)}{msg}"]
     if isinstance(stmt, THIRReturn):
         return [f"{pad}return {_expr(stmt.value)}" if stmt.value is not None
                 else f"{pad}return"]

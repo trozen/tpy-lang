@@ -1,0 +1,7 @@
+a
+none
+a
+b
+none
+cycle kept it
+picked none

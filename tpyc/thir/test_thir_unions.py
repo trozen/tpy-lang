@@ -13,9 +13,9 @@ from ..compilation_context import activate_compiler
 from ..typesys import INT32, UnionType, VoidType
 from .lower import iter_module_constructors, lower_constructor, lower_module
 from .nodes import (
-    Form, THIRCoerce, THIRFormConvert, THIRFunction, THIRFunctionLayout,
-    THIRIf, THIRIsinstance, THIRLiteral, THIRName, THIRNarrowAlias,
-    THIRReturn, THIRVarDecl,
+    Form, THIRAssert, THIRCoerce, THIRFormConvert, THIRFunction,
+    THIRFunctionLayout, THIRIf, THIRIsinstance, THIRLiteral, THIRName,
+    THIRNarrowAlias, THIRNarrowedRead, THIRReturn, THIRVarDecl, THIRWhile,
 )
 from .validate import (
     THIRValidationError, validate_constructor, validate_function,
@@ -229,12 +229,20 @@ class TestPtrUnionEligibility:
         assert isinstance(w.value, THIRFormConvert)
         assert w.value.form is Form.STORAGE
 
-    def test_field_write_from_field_or_member_rejects(self):
-        # Field-to-field and member-valued union field writes ride later
-        # cells (`_ptr_union_source_ok(allow_field=False)` -- name sources
-        # only); the write gate must reject both sides, like the reseat pair.
+    def test_field_write_from_field_routes_bare(self):
+        # A field-to-field union copy is storage-to-storage on the AST path
+        # (a field source is not a ptr-variant source): a plain assign with
+        # no to_value_variant lift.
         thir = self._lower("def w1(h: H, g: H) -> None:\n    h.u = g.u\n")
-        assert _fn(thir, "w1") is None
+        fn = _fn(thir, "w1")
+        assert fn is not None
+        w = fn.body[0]
+        assert not isinstance(w.value, THIRFormConvert)
+        assert w.value.form is Form.STORAGE
+
+    def test_field_write_from_member_rejects(self):
+        # A member-valued union field write rides the gen_call_arg cascade
+        # cell; the write gate must reject it, like the reseat pair.
         thir = self._lower("def w2(h: H, a2: A) -> None:\n    h.u = a2\n")
         assert _fn(thir, "w2") is None
 
@@ -317,6 +325,117 @@ class TestPtrUnionEmit:
     def test_routing_is_non_vacuous(self):
         thir = _lower_ctx(self.SRC)
         for name in ("take", "fwd", "ro", "mu", "rs", "wf"):
+            assert _fn(thir, name) is not None, name
+
+
+_PTR_NONE_RECORDS = (
+    "from tpy import Int32\n"
+    "class A:\n    x: Int32\n    def __init__(self, x: Int32):\n        self.x = x\n"
+    "class B:\n    y: Int32\n    def __init__(self, y: Int32):\n        self.y = y\n"
+    "class S:\n"
+    "    p: A | B | None\n"
+    "    def __init__(self, v: A | B | None):\n"
+    "        self.p = v\n"
+)
+
+
+class TestPtrUnionNoneEligibility:
+    """The U2 monostate write arms: a None member makes the ptr union
+    `std::variant<std::monostate, A*, B*>`; None writes store the monostate
+    member bare at decls, reseats, field writes, and returns."""
+
+    def _lower(self, src: str):
+        return _lower_ctx(_PTR_NONE_RECORDS + src)
+
+    def test_none_decl_and_reseat_route(self):
+        thir = self._lower(
+            "def dn(v: A | B | None) -> Int32:\n"
+            "    w: A | B | None = None\n"
+            "    w = v\n"
+            "    w = None\n"
+            "    return 0\n")
+        fn = _fn(thir, "dn")
+        assert fn is not None
+        decl = fn.body[0]
+        assert isinstance(decl, THIRVarDecl)
+        assert isinstance(decl.init, THIRLiteral) and decl.init.value is None
+        assert isinstance(decl.init.result_type, UnionType)
+
+    def test_none_field_write_routes(self):
+        thir = self._lower("def wn(s: S) -> None:\n    s.p = None\n")
+        fn = _fn(thir, "wn")
+        assert fn is not None
+        w = fn.body[0]
+        assert isinstance(w.value, THIRLiteral) and w.value.value is None
+        assert isinstance(w.value.result_type, UnionType)
+
+    def test_none_return_routes(self):
+        thir = self._lower(
+            "def rn(v: A | B | None) -> A | B | None:\n    return None\n")
+        fn = _fn(thir, "rn")
+        assert fn is not None
+        ret = fn.body[0]
+        assert isinstance(ret.value, THIRLiteral) and ret.value.value is None
+        assert isinstance(ret.value.result_type, UnionType)
+
+    def test_passthrough_routes(self):
+        thir = self._lower(
+            "def fwd(v: A | B | None) -> A | B | None:\n    return v\n"
+            "def wf(s: S, v: A | B | None) -> None:\n    s.p = v\n"
+            "def cp(s1: S, s2: S) -> None:\n    s1.p = s2.p\n")
+        for name in ("fwd", "wf", "cp"):
+            assert _fn(thir, name) is not None, name
+
+    def test_non_f1_member_union_still_rejects(self):
+        # A scalar member (Int32 | A | None) is outside the F1-record slice;
+        # only None gets the monostate carve-out.
+        thir = self._lower(
+            "def f(v: Int32 | A | None) -> Int32:\n    return 0\n")
+        assert _fn(thir, "f") is None
+
+
+class TestPtrUnionNoneEmit:
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        hpp, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=thir))
+        return hpp + cpp
+
+    SRC = _PTR_NONE_RECORDS + (
+        "def dn(v: A | B | None) -> A | B | None:\n"
+        "    w: A | B | None = None\n"
+        "    w = v\n"
+        "    w = None\n"
+        "    return v\n"
+        "def wn(s: S) -> None:\n    s.p = None\n"
+        "def cp(s1: S, s2: S) -> None:\n    s1.p = s2.p\n"
+        "def rn(v: A | B | None) -> A | B | None:\n    return None\n"
+        "def main():\n"
+        "    a = A(1)\n"
+        "    pv: A | B | None = a\n"
+        "    s1 = S(pv)\n"
+        "    s2 = S(pv)\n"
+        "    wn(s1)\n"
+        "    cp(s1, s2)\n"
+        "main()\n")
+
+    def test_byte_identical(self):
+        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
+
+    def test_monostate_and_bare_copy_render(self):
+        cpp = self._cpp(self.SRC, thir=True)
+        assert ("std::variant<std::monostate, A*, B*> w = std::monostate{};"
+                in cpp)
+        assert "    w = std::monostate{};" in cpp
+        assert "s.p = std::monostate{};" in cpp
+        assert "s1.p = s2.p;" in cpp
+        assert "return std::monostate{};" in cpp
+
+    def test_routing_is_non_vacuous(self):
+        thir = _lower_ctx(self.SRC)
+        for name in ("dn", "wn", "cp", "rn"):
             assert _fn(thir, name) is not None, name
 
 
@@ -409,9 +528,12 @@ _THREE_RECORDS = _PRELUDE + _PTR_RECORDS + (
 
 
 class TestNarrowingEligibility:
-    """F4 U3: isinstance-narrowing reads (if/elif/else + the early-return
-    implicit else). Writes to the narrowed subject, while-isinstance,
-    compound conditions, and readonly subjects stay on the AST path."""
+    """F4 U3/U4: isinstance-narrowing reads (if/elif/else + the early-return
+    implicit else), while-isinstance (loop-entry extraction),
+    assert-isinstance (persistent extraction + the re-assert suffix bump),
+    and compound `and` conditions (inline deref reads). Writes to the
+    narrowed subject, `or` conditions, multi-subject compounds, and readonly
+    subjects stay on the AST path."""
 
     def _lower(self, src: str):
         return _lower_ctx(_THREE_RECORDS + src)
@@ -525,7 +647,7 @@ class TestNarrowingEligibility:
         # ASTs. The gate must reject a narrowed-subject rebind there too -- a
         # routed rebind would leave later reads on the stale extraction alias.
         from ..parse.nodes import TpyAssign, TpyName
-        from .lower import _Prescan, _stmt_eligible
+        from .lower import _Prescan, _stmt_eligible, _WalkState
         compiler, modules = _compile(_PRELUDE + (
             "def f(v: Int32 | Float64, v2: Int32 | Float64) -> Int32:\n"
             "    x = v2\n"
@@ -535,13 +657,12 @@ class TestNarrowingEligibility:
         fn = entry.ast.functions[0]
         declared = {n: t for n, t in fn.params}
         synthetic = TpyAssign(target=TpyName("v"), value=fn.body[0].init)
-        common = dict(in_branch=True, pointers=set(), rebind_slots=set(),
-                      storage_tuple_locals=set())
         prescan = _Prescan(fn, an)
-        assert _stmt_eligible(synthetic, an, dict(declared), prescan,
-                              narrowed=set(), **common)
-        assert not _stmt_eligible(synthetic, an, dict(declared), prescan,
-                                  narrowed={"v"}, **common)
+        assert _stmt_eligible(synthetic, an, _WalkState(dict(declared)),
+                              prescan, in_branch=True)
+        assert not _stmt_eligible(synthetic, an,
+                                  _WalkState(dict(declared), narrowed={"v"}),
+                                  prescan, in_branch=True)
 
     def test_narrowing_inside_loop_body_scopes(self):
         # Narrow inside a for body; the scope pops at the loop's closing
@@ -663,19 +784,233 @@ class TestNarrowingEligibility:
             "    return v.y\n")
         assert _fn(thir, "f") is None
 
-    def test_while_isinstance_rejects(self):
+    def test_while_isinstance_routes(self):
         thir = self._lower(
             "def f(v: A | B) -> Int32:\n"
             "    while isinstance(v, A):\n        return v.x\n"
             "    return 0\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+        w = fn.body[0]
+        assert isinstance(w, THIRWhile)
+        assert isinstance(w.condition, THIRIsinstance)
+        assert isinstance(w.body[0], THIRNarrowAlias)
+        assert w.body[0].alias == "__v" and w.body[0].member_cpp == "A*"
+        assert w.body[1].value.receiver.name == "__v"
+
+    def test_while_isinstance_scope_pops(self):
+        # The loop alias pops at the closing brace: a fresh isinstance on the
+        # SAME subject after the loop still routes, with the base alias name.
+        thir = self._lower(
+            "def f(v: A | B) -> Int32:\n"
+            "    while isinstance(v, A):\n        return v.x\n"
+            "    if isinstance(v, B):\n        return v.y\n"
+            "    return 0\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+        assert isinstance(fn.body[1], THIRIf)
+        assert fn.body[1].then_body[0].alias == "__v"
+
+    def test_while_body_assert_same_subject_rejects(self):
+        # The AST redeclares the loop alias here (`auto& __v` twice in one
+        # block -- the BUGS.md _gen_while persistent=False collision), so the
+        # shape must stay on the AST path, not be mirrored.
+        thir = self._lower(
+            "def f(v: A | B) -> Int32:\n"
+            "    while isinstance(v, A):\n"
+            "        assert isinstance(v, A)\n"
+            "        return v.x\n"
+            "    return 0\n")
         assert _fn(thir, "f") is None
 
-    def test_compound_condition_rejects(self):
+    def test_assert_isinstance_routes(self):
+        thir = self._lower(
+            "def f(v: A | B) -> Int32:\n"
+            "    assert isinstance(v, A)\n"
+            "    return v.x\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+        a, alias, ret = fn.body
+        assert isinstance(a, THIRAssert) and a.message is None
+        assert isinstance(a.condition, THIRIsinstance)
+        assert isinstance(alias, THIRNarrowAlias) and alias.alias == "__v"
+        assert ret.value.receiver.name == "__v"
+
+    def test_assert_message_routes_computed_rejects(self):
+        thir = self._lower(
+            "def f(v: A | B) -> Int32:\n"
+            '    assert isinstance(v, A), "want A"\n'
+            "    return v.x\n")
+        fn = _fn(thir, "f")
+        assert fn is not None and fn.body[0].message == "want A"
+        # A computed message evaluates lazily inside an if block -- stays AST.
+        thir = self._lower(
+            "def g(v: A | B, m: str) -> Int32:\n"
+            "    assert isinstance(v, A), m\n"
+            "    return v.x\n")
+        assert _fn(thir, "g") is None
+
+    def test_reassert_suffix_bump(self):
+        # Sema folds the second condition to `true`; the extraction re-runs
+        # with the suffix-bumped alias against the original variant.
+        thir = self._lower(
+            "def f(v: A | B) -> Int32:\n"
+            "    assert isinstance(v, A)\n"
+            "    assert isinstance(v, A)\n"
+            "    return v.x\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+        a2, alias2 = fn.body[2], fn.body[3]
+        assert isinstance(a2, THIRAssert)
+        assert isinstance(a2.condition, THIRLiteral) and a2.condition.value is True
+        assert isinstance(alias2, THIRNarrowAlias) and alias2.alias == "__v_2"
+        assert fn.body[4].value.receiver.name == "__v_2"
+
+    def test_post_if_then_reassert_bump(self):
+        # A post-if persistent alias counts for the re-assert bump too (both
+        # are statement-level registrations).
+        thir = self._lower(
+            "def f(v: A | B) -> Int32:\n"
+            "    if isinstance(v, A):\n        return v.x\n"
+            "    assert isinstance(v, B)\n"
+            "    return v.y\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+        assert isinstance(fn.body[1], THIRNarrowAlias)  # post-if `__v` (B*)
+        assert isinstance(fn.body[2], THIRAssert)
+        assert isinstance(fn.body[2].condition, THIRLiteral)
+        assert fn.body[3].alias == "__v_2"
+        assert fn.body[4].value.receiver.name == "__v_2"
+
+    def test_plain_assert_routes(self):
+        thir = self._lower(
+            "def f(x: Int32) -> Int32:\n"
+            "    assert x > 0\n"
+            "    return x\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+        assert isinstance(fn.body[0], THIRAssert)
+        assert len(fn.body) == 2  # no extraction alias
+
+    def test_assert_union_fact_no_alias(self):
+        # `isinstance(v, (A, B))` extracts nothing -- the holds-OR test emits
+        # bare and the subject stays the variant.
+        thir = self._lower(
+            "def f(v: A | B | C) -> Int32:\n"
+            "    assert isinstance(v, (A, B))\n"
+            "    return 0\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+        a = fn.body[0]
+        assert isinstance(a, THIRAssert)
+        assert a.condition.member_cpps == ("A*", "B*")
+        assert not isinstance(fn.body[1], THIRNarrowAlias)
+
+    def test_compound_assert_routes(self):
+        # The RHS read renders as the inline deref (no alias yet); the
+        # persistent alias follows the assert line.
+        thir = self._lower(
+            "def f(v: A | B) -> Int32:\n"
+            "    assert isinstance(v, A) and v.x > 0\n"
+            "    return v.x\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+        a, alias, ret = fn.body
+        assert isinstance(a, THIRAssert)
+        assert isinstance(a.condition.left, THIRIsinstance)
+        assert a.condition.left.member_cpps == ("A*",)
+        rhs_recv = a.condition.right.left.receiver
+        assert isinstance(rhs_recv, THIRNarrowedRead)
+        assert rhs_recv.variant_cpp == "v" and rhs_recv.member_cpp == "A*"
+        assert rhs_recv.is_ptr_variant
+        assert isinstance(alias, THIRNarrowAlias) and alias.alias == "__v"
+        assert ret.value.receiver.name == "__v"
+
+    def test_compound_condition_routes(self):
+        # isinstance in either operand position; reads before the test (g4
+        # shape) never mention the subject, reads after rename inline.
         thir = self._lower(
             "def f(v: A | B, flag: bool) -> Int32:\n"
             "    if isinstance(v, A) and flag:\n        return v.x\n"
+            "    return 0\n"
+            "def g(v: A | B, flag: bool) -> Int32:\n"
+            "    if flag and isinstance(v, A):\n        return v.x\n"
+            "    return 0\n")
+        for name in ("f", "g"):
+            fn = _fn(thir, name)
+            assert fn is not None, name
+            node = fn.body[0]
+            assert isinstance(node, THIRIf)
+            assert isinstance(node.then_body[0], THIRNarrowAlias)
+            assert node.then_body[1].value.receiver.name == "__v"
+        # no post-if fact from a compound early-return (else facts are weak)
+        fn = _fn(thir, "f")
+        assert not isinstance(fn.body[1], THIRNarrowAlias)
+
+    def test_compound_value_union_inline_read(self):
+        thir = self._lower(
+            "def f(v: Int32 | Float64) -> Int32:\n"
+            "    if isinstance(v, Int32) and v > 0:\n        return v\n"
+            "    return 0\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+        read = fn.body[0].condition.right.left
+        assert isinstance(read, THIRNarrowedRead)
+        assert read.variant_cpp == "v" and read.member_cpp == "int32_t"
+        assert not read.is_ptr_variant
+
+    def test_assert_narrow_in_branch_pops(self):
+        # A persistent assert narrowing made INSIDE a branch pops at the
+        # closing brace: the post-branch isinstance on the same subject still
+        # routes with the base alias name (no bump, no re-dispatch reject).
+        thir = self._lower(
+            "def f(v: A | B, flag: bool) -> Int32:\n"
+            "    if flag:\n"
+            "        assert isinstance(v, A)\n"
+            "        return v.x\n"
+            "    if isinstance(v, B):\n        return v.y\n"
+            "    return 0\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+        branch = fn.body[0].then_body
+        assert isinstance(branch[0], THIRAssert)
+        assert isinstance(branch[1], THIRNarrowAlias) and branch[1].alias == "__v"
+        assert isinstance(fn.body[1], THIRIf)
+        assert fn.body[1].then_body[0].alias == "__v"
+
+    def test_compound_not_and_chained_leaves(self):
+        # `not` and chained-compare leaves ride _condition_eligible; the
+        # chained pair reads the narrowed subject through the inline get.
+        thir = self._lower(
+            "def f(v: A | B, flag: bool) -> Int32:\n"
+            "    if isinstance(v, A) and not flag:\n        return v.x\n"
+            "    return 0\n"
+            "def g(v: A | B) -> Int32:\n"
+            "    if isinstance(v, A) and 0 < v.x < 10:\n        return v.x\n"
+            "    return 0\n")
+        for name in ("f", "g"):
+            assert _fn(thir, name) is not None, name
+        pair0 = _fn(thir, "g").body[0].condition.right.left  # (0 < v.x)
+        assert isinstance(pair0.right.receiver, THIRNarrowedRead)
+
+    def test_assert_dump_renders(self):
+        from .dump import dump_thir
+        thir = self._lower(
+            "def f(v: A | B) -> Int32:\n"
+            '    assert isinstance(v, A), "want A"\n'
+            "    return v.x\n")
+        assert "assert isinstance(%v, [A*]), 'want A'" in dump_thir(thir)
+
+    def test_compound_or_and_multi_isinstance_reject(self):
+        thir = self._lower(
+            "def f(v: A | B, flag: bool) -> Int32:\n"
+            "    if isinstance(v, A) or flag:\n        return 0\n"
+            "    return 0\n"
+            "def g(v: A | B, w: A | B) -> Int32:\n"
+            "    if isinstance(v, A) and isinstance(w, B):\n        return v.x\n"
             "    return 0\n")
         assert _fn(thir, "f") is None
+        assert _fn(thir, "g") is None
 
     def test_unused_alias_still_emitted(self):
         # The AST extracts at branch entry even when the branch never reads
@@ -780,11 +1115,42 @@ class TestNarrowingEmit:
         "        if isinstance(w, B):\n            return v.x + w.y\n"
         "        return v.x\n"
         "    return 0\n"
+        "def drain(v: A | B) -> Int32:\n"
+        "    while isinstance(v, A):\n        return v.x\n"
+        "    return 0\n"
+        "def chk(v: A | B) -> Int32:\n"
+        '    assert isinstance(v, A), "want A"\n'
+        "    return v.x\n"
+        "def rechk(v: A | B) -> Int32:\n"
+        "    assert isinstance(v, A)\n"
+        "    assert isinstance(v, A)\n"
+        "    return v.x\n"
+        "def comp(v: A | B) -> Int32:\n"
+        "    if isinstance(v, A) and v.x > 0:\n        return v.x\n"
+        "    return 0\n"
+        "def compw(v: A | B) -> Int32:\n"
+        "    while isinstance(v, A) and v.x > 0:\n        return v.x\n"
+        "    return 0\n"
+        "def compv(v: Int32 | Float64) -> Int32:\n"
+        "    if isinstance(v, Int32) and v > 0:\n        return v\n"
+        "    return 0\n"
+        "def compa(v: A | B) -> Int32:\n"
+        "    assert isinstance(v, A) and v.x > 0\n"
+        "    return v.x\n"
+        "def compc(v: A | B) -> Int32:\n"
+        "    if isinstance(v, A) and 0 < v.x < 10:\n        return v.x\n"
+        "    return 0\n"
+        "def esc(v: A | B) -> Int32:\n"
+        "    assert isinstance(v, A), 'q\"b\\\\s'\n"
+        "    return v.x\n"
         "def main():\n"
         "    two(A(1))\n    post(B(2))\n    exhaust(A(3))\n"
         "    three(C(4))\n    val(5)\n    chain(B(6))\n"
         "    loop(A(7))\n    plain_head(False, B(8))\n"
         "    h = H(A(9))\n    constw(h)\n    two_vars(A(10), B(11))\n"
+        "    drain(A(12))\n    chk(A(13))\n    rechk(A(14))\n"
+        "    comp(A(15))\n    compw(A(16))\n    compv(17)\n"
+        "    compa(A(18))\n    compc(A(5))\n    esc(A(19))\n"
         "main()\n")
 
     def test_byte_identical(self):
@@ -799,9 +1165,29 @@ class TestNarrowingEmit:
         assert "} else if (std::holds_alternative<B*>(v)) {" in cpp  # flat chain
         assert "const auto& __v = std::get<int32_t>(v);" in cpp  # value union
         assert "return __v.x;" in cpp
+        # U4: while-isinstance loop-entry extraction + assert forms
+        assert "while (std::holds_alternative<A*>(v)) {" in cpp
+        assert ('if (!(std::holds_alternative<A*>(v))) '
+                '::tpy::raise_assertion_error("want A");') in cpp
+        assert "if (!(true)) ::tpy::raise_assertion_error();" in cpp
+        assert "auto& __v_2 = *std::get<A*>(v);" in cpp  # re-assert bump
+        # U4 compound conditions: inline deref reads, no alias in-condition
+        assert ("if ((std::holds_alternative<A*>(v) && "
+                "((*std::get<A*>(v)).x > 0))) {") in cpp
+        assert ("while ((std::holds_alternative<A*>(v) && "
+                "((*std::get<A*>(v)).x > 0))) {") in cpp
+        assert ("if ((std::holds_alternative<int32_t>(v) && "
+                "(std::get<int32_t>(v) > 0))) {") in cpp
+        assert ("if (!((std::holds_alternative<A*>(v) && "
+                "((*std::get<A*>(v)).x > 0)))) "
+                "::tpy::raise_assertion_error();") in cpp  # compound assert
+        # message escaping mirrors _gen_assert_throw: `\` doubles, `"` escapes
+        assert '::tpy::raise_assertion_error("q\\"b\\\\s");' in cpp
 
     def test_routing_is_non_vacuous(self):
         thir = _lower_ctx(self.SRC)
         for name in ("two", "post", "exhaust", "three", "val", "chain",
-                     "loop", "plain_head", "constw", "two_vars"):
+                     "loop", "plain_head", "constw", "two_vars",
+                     "drain", "chk", "rechk", "comp", "compw", "compv",
+                     "compa", "compc", "esc"):
             assert _fn(thir, name) is not None, name

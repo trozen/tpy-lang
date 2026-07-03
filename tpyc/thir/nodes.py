@@ -422,6 +422,19 @@ class THIRIsinstance(THIRExpr):
 
 
 @dataclass(frozen=True)
+class THIRNarrowedRead(THIRExpr):
+    """A condition-position read of an isinstance-narrowed subject (F4 U4
+    compound conditions): no extraction alias exists yet, so the read renders
+    as the bare get -- `(*std::get<A*>(v))` (pointer variant, parenthesized
+    for member access) / `std::get<T>(v)` (value variant). The expression
+    sibling of `THIRNarrowAlias` (same structural fields); only ever produced
+    inside a compound narrowing condition, after its isinstance leaf."""
+    variant_cpp: str
+    member_cpp: str
+    is_ptr_variant: bool
+
+
+@dataclass(frozen=True)
 class THIRFormConvert(THIRExpr):
     """An explicit borrow<->storage form conversion (IR_DESIGN "THIRFormConvert").
 
@@ -549,10 +562,29 @@ class THIRIf(THIRStmt):
 
 @dataclass(frozen=True)
 class THIRWhile(THIRStmt):
-    """while loop. Slice: comparison condition, no while/else,
-    reassign-only body -- a plain C++ `while (cond) { ... }`."""
+    """while loop. Slice: comparison condition or the F4 U4
+    `while isinstance(...)` form (the loop-entry extraction arrives as a
+    `THIRNarrowAlias` leading the body, exactly like a narrowed if branch),
+    no while/else, reassign-only body -- a plain C++ `while (cond) { ... }`."""
     condition: THIRExpr
     body: tuple[THIRStmt, ...]
+
+
+@dataclass(frozen=True)
+class THIRAssert(THIRStmt):
+    """assert statement -- mirrors `_gen_assert`'s non-constant arm:
+
+        if (!(<cond>)) ::tpy::raise_assertion_error(["<msg>"]);
+
+    `message` is the raw str-literal text (escaped at emit; a computed
+    message evaluates lazily inside an if block, a shape the slice defers).
+    An isinstance-narrowing assert is followed by a persistent
+    `THIRNarrowAlias` statement appended by `_lower_stmts` (the same
+    statement-level pass as the early-return post-if alias); a re-assert on
+    an already-extracted subject carries the sema-folded `true` condition
+    (`THIRLiteral`) and a suffix-bumped alias."""
+    condition: THIRExpr
+    message: str | None = None
 
 
 @dataclass(frozen=True)
@@ -604,9 +636,10 @@ class THIRForEach(THIRStmt):
     sema's flag; it is inert for a cheap value scalar (the typed copy drops const either
     way) but load-bearing for a record (`const auto&` vs `auto&&`). Slice: a name
     container, a str/bytes-family field off an F1-record receiver (both C++
-    lvalues: `iterable_lvalue`, the `auto& __obj_N =` capture), or a
-    str-returning call (an rvalue: `iterable_lvalue=False`, the owning
-    `auto __obj_N =` capture -- `is_lvalue_iterable`'s value-type call arm;
+    lvalues: `iterable_lvalue`, the `auto& __obj_N =` capture), or an eligible
+    str- or container-returning call (str and `Own[...]` container returns are
+    rvalues: `iterable_lvalue=False`, the owning `auto __obj_N =` capture; a
+    borrow container return is an lvalue -- `is_lvalue_iterable`'s call arm;
     bytes-returning calls stay gate-excluded); loop var not reassigned/moved
     (a record alias can't reseat) and not used after the loop. Container params reaching here are
     `list[scalar|str]` / `dict[fixed-int|str key]` (`_container_scalar_read`) and

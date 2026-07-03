@@ -9,10 +9,11 @@ from ..codegen_cpp.context import CodeGenOptions
 from .emit import _emit_expr
 from .nodes import (
     Form, THIRCall, THIRCoerce, THIRContainerLiteral, THIRExprStmt,
-    THIRLiteral, THIRMethodCall, THIRName, THIRSubscript, THIRVarDecl,
+    THIRForEach, THIRLiteral, THIRMethodCall, THIRName, THIRSubscript,
+    THIRVarDecl,
 )
 from .testutil import (
-    _compile, _entry, _lower, _fn, _PRELUDE,
+    _compile, _entry, _lower, _lower_ctx, _fn, _PRELUDE, _F1_RECORDS,
 )
 
 # --- Statement-shape axis: container subscript reads (list[scalar] /
@@ -616,3 +617,96 @@ class TestContainerCallArgs:
         thir = _lower(src)
         assert _fn(thir, "f") is not None
         assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+
+
+# --- S4 leftover: container-returning call iterables (`for x in make_list():`) ---
+
+# The call's capture verdict mirrors is_lvalue_iterable's call arm
+# (_call_iterable_lvalue): an `Own[...]` return is a by-value rvalue (the owning
+# `auto __obj_N =` capture), a borrow / readonly borrow return (`T&` /
+# `const T&`) is a C++ lvalue (`auto& __obj_N =`). Bytes-returning calls and
+# subscript iterables stay gate-excluded.
+class TestContainerCallIterable:
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+        return cpp
+
+    def test_own_list_return_is_rvalue_capture(self):
+        thir = _lower(
+            "from tpy import Int32, Own\n"
+            "def make_list(n: Int32) -> Own[list[Int32]]:\n    return [n, n]\n"
+            "def f() -> Int32:\n    s = 0\n"
+            "    for x in make_list(4):\n        s = s + x\n    return s\n")
+        loop = _fn(thir, "f").body[1]
+        assert isinstance(loop, THIRForEach) and not loop.iterable_lvalue
+        assert isinstance(loop.iterable, THIRCall)
+
+    def test_borrow_list_return_is_lvalue_capture(self):
+        thir = _lower(
+            _PRELUDE
+            + "def get_list(items: list[Int32]) -> list[Int32]:\n    return items\n"
+            + "def f(items: list[Int32]) -> Int32:\n    s = 0\n"
+            + "    for x in get_list(items):\n        s = s + x\n    return s\n")
+        loop = _fn(thir, "f").body[1]
+        assert isinstance(loop, THIRForEach) and loop.iterable_lvalue
+
+    def test_readonly_borrow_return_is_lvalue_capture(self):
+        thir = _lower(
+            "from tpy import Int32, readonly\n"
+            "def view(items: list[Int32]) -> readonly[list[Int32]]:\n    return items\n"
+            "def f(items: list[Int32]) -> Int32:\n    s = 0\n"
+            "    for x in view(items):\n        s = s + x\n    return s\n")
+        loop = _fn(thir, "f").body[1]
+        assert isinstance(loop, THIRForEach) and loop.iterable_lvalue
+
+    def test_own_dict_return_key_iteration_routes(self):
+        thir = _lower(
+            "from tpy import Int32, Own\n"
+            "def make_dict() -> Own[dict[Int32, Int32]]:\n    return {1: 10}\n"
+            "def f() -> Int32:\n    s = 0\n"
+            "    for k in make_dict():\n        s = s + k\n    return s\n")
+        loop = _fn(thir, "f").body[1]
+        assert isinstance(loop, THIRForEach) and not loop.iterable_lvalue
+
+    def test_record_elements_from_borrow_return_route(self):
+        # A `list[record]` borrow return composes with the F1-record loop var
+        # (`auto&&` alias); a field write through it mutates the source list.
+        thir = _lower_ctx(
+            _F1_RECORDS
+            + "def get(items: list[Inner]) -> list[Inner]:\n    return items\n"
+            + "def f(items: list[Inner]) -> None:\n"
+            + "    for p in get(items):\n        p.value = p.value + 1\n")
+        loop = _fn(thir, "f").body[0]
+        assert isinstance(loop, THIRForEach) and loop.iterable_lvalue
+
+    def test_bytes_returning_call_iterable_ineligible(self):
+        # _call_eligible admits a bytes return in value position; the for-each
+        # arm filters it (the owned-vs-view capture shape is a deferred cell).
+        thir = _lower(
+            _PRELUDE
+            + 'def make() -> bytes:\n    return b"ab"\n'
+            + "def f() -> Int32:\n    s = 0\n"
+            + "    for x in make():\n        s = s + 1\n    return s\n")
+        assert _fn(thir, "f") is None
+
+    def test_byte_identical(self):
+        src = (
+            "from tpy import Int32, Own, readonly\n"
+            "def make_list(n: Int32) -> Own[list[Int32]]:\n    return [n, n]\n"
+            "def get_list(items: list[Int32]) -> list[Int32]:\n    return items\n"
+            "def view(items: list[Int32]) -> readonly[list[Int32]]:\n    return items\n"
+            "def f() -> Int32:\n    s = 0\n"
+            "    for x in make_list(4):\n        s = s + x\n"
+            "    items = [4, 5]\n"
+            "    for y in get_list(items):\n        s = s + y\n"
+            "    for z in view(items):\n        s = s + z\n"
+            "    return s\n"
+            "def main():\n    print(f())\nmain()\n")
+        thir_cpp = self._cpp(src, thir=True)
+        assert thir_cpp == self._cpp(src, thir=False)
+        assert "auto __obj_0 = make_list(4);" in thir_cpp
+        assert "auto& __obj_1 = get_list(items);" in thir_cpp
+        assert "auto& __obj_2 = view(items);" in thir_cpp

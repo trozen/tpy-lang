@@ -1024,8 +1024,9 @@ class TestStrSubscriptSliceIterEmit:
         for name in ("stepped", "var_index", "ctor_locals", "take", "chars",
                      "non_name", "iter_call", "char_at"):
             assert _fn(thir, name) is not None, name
-        # main stays AST: slice-object ctor rvalues as CALL ARGS
-        # (`var_index(..., basic_slice(1, 3), ...)`) are a deferred cell.
+        # main stays AST: the record-ctor arg (`non_name(H("greetings"), ...)`)
+        # is not an admitted call-arg shape. (Slice-object ctor rvalue args
+        # route now -- see TestSliceCtorCallArg.)
         assert _fn(thir, "main") is None
 
     def test_s4_leftovers_byte_identical(self):
@@ -1054,6 +1055,63 @@ class TestStrSubscriptSliceIterEmit:
         assert "::tpy::__getitem__(h.name, n)" in cpp
         assert "::tpy::__getitem__(full(s), 0)" in cpp
 
+
+
+# --- S4 leftover: slice-object ctor rvalues as call args
+# --- (`use(s, basic_slice(1, 3))` -- the bare template expansion into a
+# --- by-value slice-object param slot) ---
+
+class TestSliceCtorCallArg:
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+        return cpp
+
+    SRC = (
+        "from tpy import Int32, basic_slice\n"
+        "def use(s: str, sl: basic_slice) -> None:\n    print(s[sl])\n"
+        "def use_full(s: str, st: slice) -> None:\n    print(s[st])\n"
+        "def f(s: str, n: Int32) -> None:\n"
+        "    use(s, basic_slice(1, 3))\n"
+        "    use_full(s, slice(None, n, 2))\n"
+        "def main() -> None:\n"
+        '    f("greetings", 5)\n'
+        "main()\n"
+    )
+
+    def test_ctor_rvalue_arg_routes(self):
+        thir = _lower_ctx(self.SRC)
+        fn = _fn(thir, "f")
+        assert fn is not None
+        call = fn.body[0].expr
+        assert isinstance(call, THIRCall)
+        assert _emit_expr(call) == "use(s, ::tpy::BasicSlice{1, 3})"
+        assert (_emit_expr(fn.body[1].expr)
+                == "use_full(s, ::tpy::Slice{std::nullopt, n, 2})")
+
+    def test_own_slot_ineligible(self):
+        # An Own[...] slot rides gen_call_arg's auto-move cascade -> AST
+        # (_slice_object_type does not peel Own).
+        thir = _lower_ctx(
+            "from tpy import Own, basic_slice\n"
+            "def use(s: str, sl: Own[basic_slice]) -> None:\n    pass\n"
+            "def f(s: str) -> None:\n    use(s, basic_slice(1, 3))\n")
+        assert _fn(thir, "f") is None
+
+    def test_union_slot_ineligible(self):
+        # An `Int32 | basic_slice` slot lifts the ctor rvalue into the
+        # variant (_gen_union_arg) -> AST.
+        thir = _lower_ctx(
+            "from tpy import Int32, basic_slice\n"
+            "def use(items: list[Int32], index: Int32 | basic_slice) -> None:\n"
+            "    print(len(items))\n"
+            "def f(items: list[Int32]) -> None:\n    use(items, basic_slice(1, 3))\n")
+        assert _fn(thir, "f") is None
+
+    def test_byte_identical(self):
+        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
 
 
 class TestCrossCellEmit:
