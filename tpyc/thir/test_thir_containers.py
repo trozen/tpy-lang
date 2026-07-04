@@ -54,14 +54,15 @@ class TestContainerSubscriptRead:
         sub = _fn(thir, "get").body[0].value
         assert isinstance(sub, THIRSubscript) and isinstance(sub.receiver, THIRName)
 
-    def test_bigint_key_dict_param_ineligible(self):
-        # A BigInt (`int`) key needs the `.to_fixed_check` narrow (a later cell), so a
-        # BigInt-keyed dict param stays on the AST path. Isolated by a trivial body so
-        # only the param gate decides.
+    def test_bigint_key_dict_param_routes(self):
+        # A BigInt (`int`) dict key is admitted like a fixed-int one; the
+        # `.to_fixed_check<int32_t>()` narrow fires per-index on the INDEX
+        # type, not here. Isolated by a trivial body so only the param gate
+        # decides.
         thir = _lower(
             _PRELUDE
             + "def g(d: dict[int, Int32], i: Int32) -> Int32:\n    return i\n")
-        assert _fn(thir, "g") is None
+        assert _fn(thir, "g") is not None
 
     def test_str_keyed_dict_param_routes(self):
         # An owned-str dict key routes (S5); a StrView-keyed dict stays AST --

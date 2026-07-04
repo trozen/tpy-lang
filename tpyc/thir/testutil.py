@@ -13,9 +13,10 @@ from .lower import lower_module
 _STDLIB_DIRS = [get_lib_dir() / "tpy"]
 
 
-def _compile(source: str, extra_lib_dirs=None):
+def _compile(source: str, extra_lib_dirs=None, default_int: str = "Int32"):
     dirs = list(extra_lib_dirs or []) + _STDLIB_DIRS
-    compiler = Compiler.from_source(source, lib_dirs=dirs)
+    compiler = Compiler.from_source(source, lib_dirs=dirs,
+                                    default_int=default_int)
     return compiler, compiler.compile()
 
 
@@ -23,8 +24,8 @@ def _entry(modules):
     return [m for m in modules if m.is_entry_point][0]
 
 
-def _lower(source: str):
-    compiler, modules = _compile(source)
+def _lower(source: str, default_int: str = "Int32"):
+    compiler, modules = _compile(source, default_int=default_int)
     entry = _entry(modules)
     return lower_module(entry.ast, entry.analyzer)
 
@@ -41,14 +42,16 @@ def _lower_ctx(source: str):
         return lower_module(entry.ast, entry.analyzer)
 
 
-def _lower_ctx_witnessed(source: str, extra_lib_dirs=None):
+def _lower_ctx_witnessed(source: str, extra_lib_dirs=None,
+                         default_int: str = "Int32"):
     """_lower_ctx plus the per-face witness counts the run recorded
     (faces.py, `compiler._thir_face_witnesses`). Lets a unit pin that its
     shape actually reaches the gate/lowering face it exercises -- without
     the pin, a refactor can silently un-witness a face while routing and
     the byte-diff both stay green."""
     from ..compilation_context import activate_compiler
-    compiler, modules = _compile(source, extra_lib_dirs)
+    compiler, modules = _compile(source, extra_lib_dirs,
+                                 default_int=default_int)
     entry = _entry(modules)
     with activate_compiler(compiler):
         thir = lower_module(entry.ast, entry.analyzer)

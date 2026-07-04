@@ -83,7 +83,7 @@ deletion is the concrete milestone that forces its tail closed.
 | AST component to delete | Deletion gate (cells that must route) | Status |
 |---|---|---|
 | **Ctor MIL emit** -- `records.py` `_extract_field_inits` / `_extract_base_inits` / `_get_non_init_stmts` + the inline ` : f(v)... {}` write | every ctor MIL field cell + body: scalar (M3a), record/Optional copy+move (M3b), ctor-call / param-field-read sources + own-optional params (M3b-rvalue), docstring/`pass` trivia body (M3c-trivia), non-init body + demotion (M3c-demotion), inheritance -- single + multi base + inherited-field writes (M3d), and str/list/dict/tuple/union/bytes fields (F3+) + cross-module/native/generic records | **PARTIAL** -- the whole scalar/record/Optional + body + inheritance surface lands (ctor self-contained tail complete); deferred cells are cross-axis-blocked -- non-record demoted-field-writes + non-record fields (F3+) + native/generic records |
-| **Body statement + expression emit** -- `statements.py` `gen_body` per-statement path + `expressions.py` `gen_expr`, for routed callables | every statement shape + expression form across every callable kind | **PARTIAL** -- straight-line shapes over the F1/F2 + scalar (fixed-int/bool/both-float-widths/BigInt/same-module-enum, incr 73-75) + str (F6 S1-S5 + cross-type coercions) + bytes (F6 S6 values + the incr-46 tail: subscript/slices/iteration/concat/aug-assign) slice, incl. logical/chained-compare exprs and scalar/slice-object type-constructor calls |
+| **Body statement + expression emit** -- `statements.py` `gen_body` per-statement path + `expressions.py` `gen_expr`, for routed callables | every statement shape + expression form across every callable kind | **PARTIAL** -- straight-line shapes over the F1/F2 + scalar (fixed-int/bool/both-float-widths/BigInt incl. the runtime-BigInt `.to_fixed_check` narrows, incr 73-76; enums of every flavor incl. truthiness/`.value`/`.name`, incr 77) + str (F6 S1-S5 + cross-type coercions) + bytes (F6 S6 values + the incr-46 tail: subscript/slices/iteration/concat/aug-assign) slice, incl. logical/chained-compare exprs and scalar/slice-object type-constructor calls |
 | **Form / conversion machinery** -- `context.py` `convert` + `CppForm`/`FormValue`, the ~12 detection predicates + ~22 local side-sets + the `RefType` wrapper (see `THIR_FORM_INVENTORY.md`) | **F-final**: the `Form` tag + `THIRFormConvert` subsume all form dispatch | **PARTIAL** -- F1/F2 forms carried + F3 tuple read/write + the F6 str+bytes view->owned converts (S1/S6 -- both `view_to_owned_conv` family arms validated; reused at container-element slots by S5; extended to the cross-type str-family coercions in incr 42, the materializing arms lowering to the same THIRFormConvert) + the F4 union arms (U1 value + U2 pointer-variant, incr 49-50: `to_[const_]ptr_variant` / `to_value_variant<...>` carried, plus the structural form validator as the second gate) + the U3 narrowing extractions (incr 51: `THIRIsinstance` / `THIRNarrowAlias`, the `narrowed_vars` rename mirrored as lowering scope) + the U2 write-arm tail (incr 52: monostate write arms + union field-to-field copies) + the U4 narrowing tail (incr 53-54: `THIRAssert` persistent extractions + re-assert bump, while-isinstance loop-entry aliases, compound-`and` `THIRNarrowedRead` inline reads); + the call-arg lifts and temps (incr 56-65: `THIRUnionArgLift` ptr-variant member/None arg lifts incl. the deep-const slot spelling + `ptr_variant_to_const`, `THIRCtorCall`, `THIRArgTemp` value-union/record-rvalue/Own-slot/optional-ptr arg temps with the `move`/`addr_of` wraps, `THIRMove` last-use moves, `THIROptionalPtrArg` nullptr/&(name)/optional_to_ptr faces, record-arg/method-receiver/self-receiver pass-throughs); F4 remainder (readonly narrowing subjects), F5, the remaining F6 tail, and RefType removal pending |
 
 These interlock: deleting `gen_body`/`gen_expr` requires the form machinery gone
@@ -251,7 +251,7 @@ deferred (self-contained) / blocked-on-`<rung>`.
 ### Form ladder (F) -- `IR_DESIGN.md` rung ladder + `THIR_FORM_INVENTORY.md`
 - F1 (record locals + Optional read), F2 (reseatable pointer-locals + Optional
   write/return + move): **DONE**.
-- **Value-scalar family widening DONE (increments 73-75)** -- `_eligible_scalar`
+- **Value-scalar family widening DONE (increments 73-76)** -- `_eligible_scalar`
   now spans fixed-ints, bool, BOTH float widths, and BigInt, plus the
   `_eligible_enum` sibling (same-module non-@native top-level enums), so
   every scalar-keyed gate admits them at once. Mechanisms (reused by any
@@ -261,14 +261,39 @@ deferred (self-contained) / blocked-on-`<rung>`.
   (incl. the previously-unrouted float64 casts + `fixed_int_widening` +
   `bigint_to_fixed_int`), and per-side `THIRBinOp.left_cast`/`right_cast`
   operand wraps (int-enum underlying casts, mixed BigInt/float compares).
-  Deferred rows: the runtime-BigInt NARROW positions (`_runtime_bigint`
-  pins: subscript indices / slice bounds `.to_fixed_check<int32_t>()`,
-  BigInt range counters, dict BigInt keys, FixedInt-target aug-assigns fed
-  BigInt values, BigInt-arg `E(x)`); cross-module / @native / nested
-  enums, enum truthiness, unary minus, IntEnum arithmetic,
-  enum `.value`/`.name`; Float32/enum/BigInt members in value unions are
+  The runtime-BigInt NARROW positions landed as increment 76: subscript
+  indices / dict keys / `del c[k]` / slice bounds
+  (`.to_fixed_check<int32_t>()` via `_bigint_index_disposition` +
+  `_narrow_bigint_index`, one helper shared by gates and lowering),
+  BigInt range counters, FixedInt-target aug-assigns fed BigInt values
+  (`THIRBinOp.right_cast`), BigInt-arg `E(x)` (underlying-typed wrap),
+  BigInt-keyed dict receivers, and the resolved-container-kind retype fix
+  (ARRAY literal elements thread their scalar target; vector elements
+  stay bare). Still-deferred narrow shapes (all literal-render mismatches,
+  each gate-rejected explicitly): out-of-int32-range literal indices,
+  literal slice bounds resolving BigInt (the AST render is ill-formed C++
+  -- BUGS.md), literal-BigInt `E(x)` args, the BigInt-arg NESTED
+  `Outer.Kind(v)` form (its method-call gate keeps the reject);
+  subscript-TARGET aug-assigns
+  (`xs[0] += b`) ride the statement-shape axis (subscript writes are not
+  in the slice at all). Float32/enum/BigInt members in value unions are
   admitted by the widened predicates wherever the union gates key on
   `_eligible_scalar` (byte-diff-validated).
+- **Enum remainder DONE (increment 77)** -- `_eligible_enum` spans every
+  registered enum flavor: cross-module (qualified), @native (rename map +
+  `PrintForm.REPR` `::tpy::__repr__` print arm), nested (`Outer::Kind`;
+  sema stamps `enum_member_of` on the chained access too). New rows on
+  `THIREnumWrap` `{0}` wraps: truthiness (if/while/assert/`not`; the
+  plain-enum literal-`true` fold gate-rejects CALL operands -- the AST
+  drops their side effects, BUGS.md), IntEnum unary minus, `.value`,
+  nested `Outer.Kind(v)` from_value; IntEnum arithmetic rides
+  the existing resolved-binop operand casts. Still deferred: enum
+  ITERATION (`for c in Color:`, the `enum_iterable` for-loop arm),
+  match-over-enum (the match-statement axis), and `.name` -- RETRACTED
+  post-review: sema types it owned `str` while the value is a
+  static-storage view, so the AST renders it bare into owned-str sinks
+  (ill-formed C++, BUGS.md) and THIR's correct `std::string(...)` wrap
+  diverges byte-wise; re-admit once sema types `.name` as StrView.
 - F3 tuples: **PARTIAL** (increments 22-24) -- storage->borrow read
   (`tuple_to_pointer`: borrow-form tuple return + storage-tuple `auto&&` alias locals)
   + borrow->storage write (`tuple_to_storage`, tuple-field write off a borrow tuple
@@ -797,6 +822,16 @@ before claiming `gen_body`/`gen_expr` deletion is near.
 4. **Hold per-component deletion as the real done-signal** -- late and
    form-ladder-gated, but the explicit endpoint, so high routing is never mistaken
    for completion.
+5. **Pre-existing AST-path bugs, two policies by output well-formedness.**
+   A shape whose AST render is well-formed C++ but semantically wrong (e.g.
+   the BigInt-keyed dict int32 round-trip) is MIRRORED byte-identically and
+   filed in BUGS.md ("mirrored, not endorsed") -- when the AST fix lands,
+   both paths change together under the byte-diff. A shape whose AST render
+   is ILL-FORMED C++ or where a byte-identical mirror is impossible (the
+   literal BigInt slice bounds, enum `.name` at owned sinks, the truthiness
+   CALL-operand drop) is GATE-REJECTED with the re-admission trigger noted
+   at the gate and in BUGS.md -- never mirrored (reproducing a build failure
+   or a lost side effect), never silently fixed (breaking byte-parity).
 
 ## Per-cell test convention (2026-07-02)
 

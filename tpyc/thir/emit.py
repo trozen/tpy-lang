@@ -46,6 +46,7 @@ from .nodes import (
     THIRContinue,
     THIRCtorCall,
     THIREnumMember,
+    THIREnumWrap,
     THIRExpr,
     THIRExprStmt,
     THIRFieldAccess,
@@ -408,8 +409,9 @@ def _emit_subscript(e: THIRSubscript, state: _EmitState) -> str:
             raise THIRCodeGenError("tuple subscript index is not a THIRLiteral")
         return f"std::get<{e.index.value}>({recv})"
     # Container (list / dict) index/key lookup, mirroring _gen_subscript's
-    # container branch. The index is a fixed-int value scalar (a runtime-BigInt
-    # index is out of the scalar slice), so no `.to_fixed_check` narrow arises.
+    # container branch. A runtime-BigInt index arrives pre-wrapped in its
+    # `.to_fixed_check<int32_t>()` THIRCoerce (lowering's _narrow_bigint_index
+    # mirrors gen_index_expr), so the emit stays index-type-neutral.
     idx = _emit_expr(e.index, state)
     if e.bounds_safe:
         # Index proven in [0, len): skip normalize_index. A literal index needs no
@@ -640,6 +642,10 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         return _emit_method_call(e, state)
     if isinstance(e, THIREnumMember):
         return e.cpp
+    if isinstance(e, THIREnumWrap):
+        if e.operand is None:
+            return e.wrap  # plain-enum truthiness: literal `true`
+        return e.wrap.format(_emit_expr(e.operand, state))
     if isinstance(e, THIRContainerLiteral):
         return _emit_container_literal(e, state)
     if isinstance(e, THIRCoerce):
@@ -794,12 +800,17 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             out.write(f"{indent}{const_pfx}{stmt.cpp_type}{sigil} {name} = "
                       f"{_emit_expr(stmt.init, state)};\n")
         elif stmt.init is None:
-            out.write(f"{indent}{stmt.resolved_type.to_cpp()} {name};\n")
+            cpp = stmt.cpp_type if stmt.cpp_type is not None \
+                else stmt.resolved_type.to_cpp()
+            out.write(f"{indent}{cpp} {name};\n")
         else:
             # Render before flushing: the init may register arg temps, whose
             # decls the AST flushes between the source comment and the
             # statement line (gen_stmt's single flush point).
-            cpp_type = stmt.resolved_type.to_cpp()
+            # cpp_type (when set at lowering -- enum decls) overrides the
+            # bare to_cpp() spelling.
+            cpp_type = stmt.cpp_type if stmt.cpp_type is not None \
+                else stmt.resolved_type.to_cpp()
             init_cpp = _emit_expr(stmt.init, state)
             state.temps.flush(out, indent)
             out.write(f"{indent}{cpp_type} {name} = {init_cpp};\n")
@@ -899,6 +910,8 @@ def _emit_print_arg(a: THIRPrintArg, state: _EmitState) -> str:
         return f"static_cast<int>({inner})"
     if a.print_form is PrintForm.BYTES:
         return f"::tpy::BytesPrinter({inner})"
+    if a.print_form is PrintForm.REPR:
+        return f"::tpy::__repr__({inner})"
     return inner
 
 

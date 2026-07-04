@@ -82,7 +82,9 @@ from ..parse.nodes import (
     is_docstring,
 )
 from ..typesys import (
+    BOOL,
     BYTES_FAMILY, CHAR, CONST_PARAMS_METHODS, FLOAT, FloatLiteralType,
+    INT32,
     IntLiteralType,
     LiteralType,
     NominalType,
@@ -137,6 +139,7 @@ from .nodes import (
     THIRContinue,
     THIRCtorCall,
     THIREnumMember,
+    THIREnumWrap,
     THIRExpr,
     THIRExprStmt,
     THIRFieldAccess,
@@ -901,33 +904,84 @@ def _runtime_bigint(t: TpyType | None, analyzer) -> bool:
         resolve_int_literals(t, analyzer.ctx.default_int_for_literal))
 
 
+_BIGINT_NARROW = "bigint_narrow"  # synthetic THIRCoerce tag (not a sema coercion)
+_BIGINT_INDEX_NARROW_WRAP = "{0}.to_fixed_check<int32_t>()"
+
+
+def _unwrap_lit_coerce(e: TpyExpr) -> TpyExpr:
+    """Strip sema's int-literal slot coercions (fixed-int / BigInt targets) so
+    literal-shape checks see the digit token the AST renders."""
+    while (isinstance(e, TpyCoerce)
+           and e.coercion.name in (_INT_LIT_COERCION, _BIGINT_LIT_COERCION)):
+        e = e.expr
+    return e
+
+
+def _bigint_index_disposition(index: TpyExpr, analyzer) -> str:
+    """How a subscript index / str-slice-adjacent int position renders when its
+    type half is a runtime BigInt -- gen_index_expr's decision, written once so
+    the gates and the wrap sites cannot drift:
+
+      * 'bare' -- not runtime-BigInt, or an int32-range (possibly negated) int
+        literal: `_is_int_constant` exempts those from the narrow, and the
+        emitter renders an unresolved IntLiteralType literal as the bare token
+        on both paths;
+      * 'narrow' -- the `{0}.to_fixed_check<int32_t>()` wrap (no outer parens:
+        any composite render already carries its own);
+      * 'reject' -- an out-of-int32-range literal: the AST renders the BigInt
+        ctor wrap inside the narrow, a shape the literal emit does not
+        reproduce."""
+    if not _runtime_bigint(analyzer.get_expr_type(index), analyzer):
+        return "bare"
+    c = _const_index(index)
+    if c is not None:
+        return "bare" if -(2**31) <= c <= 2**31 - 1 else "reject"
+    if _const_index(_unwrap_lit_coerce(index)) is not None:
+        # A coerce-wrapped literal fails `_is_int_constant` on the AST path, so
+        # the narrow would wrap the literal's target-typed render -- a shape
+        # not observed at index positions (sema leaves indices unwrapped);
+        # defensive reject rather than a guessed mirror.
+        return "reject"
+    return "narrow"
+
+
+def _narrow_bigint_index(idx: 'THIRExpr', e: TpyExpr, analyzer,
+                         loc) -> 'THIRExpr':
+    """Wrap a lowered runtime-BigInt index in the `.to_fixed_check<int32_t>()`
+    narrow when its disposition says so (reads, del-item); 'reject' never
+    reaches lowering (the gates exclude it)."""
+    if _bigint_index_disposition(e, analyzer) != "narrow":
+        return idx
+    _witness("narrow.subscript_index")
+    return THIRCoerce(result_type=INT32, expr=idx,
+                      coercion_name=_BIGINT_NARROW,
+                      wrap=_BIGINT_INDEX_NARROW_WRAP, loc=loc)
+
+
 def _eligible_enum(t: TpyType | None, analyzer) -> 'TpyType | None':
-    """A same-module, non-@native, top-level enum value type -- the slice
-    where the C++ spelling is the bare enum name in every position
-    (enum_cpp_name's local fall-through) and the member map carries no
-    renames. Cross-module enums (qualified `::tpyapp::m::E`), @native enums
-    (user qname + rename map + the `__repr__` print arm), and nested enums
-    (`Outer.Kind`, the record-scoped `A::B` spelling) ride later cells.
-    Returns the unwrapped enum type, or None."""
+    """A registered enum value type of any flavor: same-module (bare name),
+    cross-module (qualified `::tpyapp::m::E`), @native (user qname + member
+    rename map + the `__repr__` print arm), or nested (`Outer.Kind`, the
+    record-scoped `A::B` spelling). Value-position spellings all route
+    through `enum_cpp_name` at lowering (member access, `E(x)`) or through
+    the shared `native_cpp_names`-aware `to_cpp()` / `render_type` (decl
+    types), so no per-flavor emit split is needed here. Returns the
+    unwrapped enum type, or None."""
     if t is None:
         return None
     t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
-    if not is_enum_type(t) or "." in t.name:
+    if not is_enum_type(t):
         return None
-    einfo = enum_info_of(t)
-    if einfo is None or einfo.is_native:
-        return None
-    if einfo.module_name is not None \
-            and einfo.module_name != analyzer.ctx.module_name:
+    if enum_info_of(t) is None:
         return None
     return t
 
 
 def _enum_member_cpp(e: TpyFieldAccess, analyzer) -> str:
     """The rendered `E::A` spelling for a type-level enum member access --
-    gen_expr's BindingKind.ENUM arm: enum_cpp_name over the current module
-    (the gate admits only local non-native enums, so this is the bare name)
-    plus the member rename map (empty on the admitted slice)."""
+    gen_expr's BindingKind.ENUM arm (and the chained nested-access arm):
+    enum_cpp_name over the current module (bare / `Outer::Kind` /
+    `::tpyapp::m::E` / @native qname) plus the @native member rename map."""
     enum_type = e.enum_member_of
     einfo = enum_info_of(enum_type)
     member_cpp = (einfo.cpp_member_name_map.get(e.field, e.field)
@@ -1003,16 +1057,106 @@ def _enum_pass_through_arg(a: TpyExpr, ptype: TpyType | None,
     return at == et and _expr_eligible(a, locals_, analyzer)
 
 
+def _enum_truthy_wrap(t: TpyType | None, analyzer) -> 'str | None':
+    """The truthiness render for an enum-typed operand, as a `{0}` wrap --
+    gen_truthy_expr's enum arms: an IntEnum tests its underlying value
+    (`(static_cast<U>({0}) != 0)`); a plain enum is ALWAYS truthy and renders
+    the literal `true` with the operand dropped. None for non-enum types."""
+    et = _eligible_enum(t, analyzer)
+    if et is None:
+        return None
+    if is_int_enum_type(et):
+        u_cpp = enum_info_of(et).underlying_type.to_cpp()
+        return f"(static_cast<{u_cpp}>({{0}}) != 0)"
+    return "true"
+
+
+def _enum_truthy_operand(e: TpyExpr, locals_: dict[str, TpyType],
+                         analyzer) -> bool:
+    """An enum-typed truthiness operand (an if/while/assert condition or a
+    `not` operand): an eligible NAME / member-access / field-read. A CALL
+    operand is rejected even where the bytes would match: the AST drops a
+    plain enum's operand render entirely (`if f():` -> `if (true)`, losing
+    the call's side effects -- BUGS.md), a miscompile the slice does not
+    mirror."""
+    if not isinstance(e, (TpyName, TpyFieldAccess)):
+        return False
+    if _enum_truthy_wrap(analyzer.get_expr_type(e), analyzer) is None:
+        return False
+    return _expr_eligible(e, locals_, analyzer)
+
+
+def _enum_prop_wrap(e: TpyFieldAccess, analyzer) -> 'str | None':
+    """The enum `.value` instance property read, as a `{0}` wrap over the
+    receiver render (gen_expr's enum property arm): `c.value` ->
+    `static_cast<U>({0})` (U = the underlying type). None when `e` is not
+    such a read. The receiver is an enum VALUE (never a pointer-local), so
+    the bare receiver render composes in any position.
+
+    `.name` is REJECTED wholesale: sema types it as owned `str` while its
+    value is a `string_view` into EnumUtil's static storage, so the AST path
+    renders it bare into owned-str sinks -- ill-formed C++ (a BUGS.md entry);
+    the type-keyed gates would admit it as an owned source while lowering's
+    shape-keyed BORROW tag fires the view->owned wrap, a byte divergence.
+    Re-admit (with the BORROW tag -- the correct emit already exists) once
+    sema types `.name` as StrView and the AST path gains the same wrap."""
+    if e.enum_member_of is not None or e.field != "value":
+        return None
+    et = _eligible_enum(analyzer.get_expr_type(e.obj), analyzer)
+    if et is None:
+        return None
+    einfo = enum_info_of(et)
+    return f"static_cast<{einfo.underlying_type.to_cpp()}>({{0}})"
+
+
+def _enum_neg_wrap(e: TpyUnaryOp, analyzer) -> 'str | None':
+    """IntEnum unary negation `-p` -> `(-static_cast<U>({0}))` (_gen_unaryop's
+    IntEnum arm; sema leaves resolved_unaryop None there). None otherwise."""
+    if e.op != "-" or e.resolved_unaryop is not None:
+        return None
+    et = _eligible_enum(analyzer.get_expr_type(e.operand), analyzer)
+    if et is None or not is_int_enum_type(et):
+        return None
+    u_cpp = enum_info_of(et).underlying_type.to_cpp()
+    return f"(-static_cast<{u_cpp}>({{0}}))"
+
+
 def _enum_from_value_eligible(e: TpyCall, locals_: dict[str, TpyType],
                               analyzer) -> bool:
     """`E(x)` -- sema's BindingKind.ENUM value lookup, rendered
-    `::tpy::EnumUtil<E>::from_value(x)`. A runtime-BigInt arg takes the
-    checked `.to_fixed_check<U>()` wrap -> AST path (a deferred narrow
-    row, rejected explicitly)."""
+    `::tpy::EnumUtil<E>::from_value(x)`. A NON-literal runtime-BigInt arg
+    takes the checked `({0}).to_fixed_check<U>()` wrap over the enum's
+    underlying type; a LITERAL arg resolving BigInt (a BigInt module default)
+    stays rejected -- the AST wraps the literal's `::tpy::BigInt(...)` render,
+    a shape the bare-literal emit does not reproduce."""
     et = e.enum_from_value
     if et is None or _eligible_enum(et, analyzer) is None:
         return False
     if len(e.args) != 1 or e.kwargs:
+        return False
+    at = analyzer.get_expr_type(e.args[0])
+    if not _resolved_scalar(at, analyzer):
+        return False
+    if (_runtime_bigint(at, analyzer)
+            and _const_index(_unwrap_lit_coerce(e.args[0])) is not None):
+        return False
+    return _expr_eligible(e.args[0], locals_, analyzer)
+
+
+def _nested_enum_from_value_eligible(e: TpyMethodCall,
+                                     locals_: dict[str, TpyType],
+                                     analyzer) -> bool:
+    """`Outer.Kind(v)` -- the nested-enum value lookup (a method-call SHAPE:
+    sema marks it is_nested_enum_constructor; _gen_method_call renders
+    `::tpy::EnumUtil<Outer::Kind>::from_value(v)`). Arg pins mirror
+    `_enum_from_value_eligible`: one positional scalar, no runtime-BigInt
+    (the checked `.to_fixed_check` narrow is a deferred row)."""
+    if not (e.is_nested_enum_constructor and e.nested_type_name):
+        return False
+    if e.kwargs or e.double_star_unpack is not None or len(e.args) != 1:
+        return False
+    et = analyzer.registry.get_enum(e.nested_type_name)
+    if et is None or _eligible_enum(et, analyzer) is None:
         return False
     at = analyzer.get_expr_type(e.args[0])
     return (_resolved_scalar(at, analyzer)
@@ -1408,9 +1552,13 @@ def _container_scalar_read(t: TpyType | None, analyzer) -> bool:
     to list), or `dict[fixed-int|str key, scalar|str value]`. `set` has no
     `__getitem__`. Owned-`str` keys read identically to a fixed-int index
     (`::tpy::__getitem__(c, k)` -- the static-storage literal pin fires only for
-    VIEW-typed keys, which `_owned_str_slot` excludes); a BigInt key rides the
-    same cell as BigInt indices (both need the `.to_fixed_check<int32_t>()`
-    narrow, out of the fixed-int scalar slice). An `Own[container]` (move-in
+    VIEW-typed keys, which `_owned_str_slot` excludes); a BigInt-KEYED dict is
+    admitted like a fixed-int-keyed one -- every render this predicate feeds is
+    key-type-neutral (bare receiver name, `__len__`, dict-literal elements via
+    the slot retype) except the index positions, which apply
+    `_narrow_bigint_index` on the INDEX type alone (gen_index_expr narrows a
+    runtime-BigInt key even into a BigInt-keyed map -- the int32 round-trip is
+    mirrored, not endorsed). An `Own[container]` (move-in
     `T&&` param) is excluded explicitly -- its ABI differs from the borrow shape
     this slice's emit assumes, and it rides a later cell (mirrors the Own unwrap
     in `_f1_record`, which admits Own where this deliberately does not)."""
@@ -1427,7 +1575,8 @@ def _container_scalar_read(t: TpyType | None, analyzer) -> bool:
         if not args or len(args) < 2:
             return False
         key, val = args[0], args[1]
-        return ((is_fixed_int_type(key) or _owned_str_slot(key, analyzer))
+        return ((is_fixed_int_type(key) or _runtime_bigint(key, analyzer)
+                 or _owned_str_slot(key, analyzer))
                 and (_eligible_scalar(val) or _owned_str_slot(val, analyzer)))
     return False
 
@@ -1548,11 +1697,12 @@ def _container_subscript_value_read(e: TpyExpr, locals_: dict[str, TpyType],
     # container-literal local's use sites carry the pre-resolution
     # PendingListType (see _method_call_eligible).
     # A runtime-BigInt index takes gen_index_expr's `.to_fixed_check<int32_t>()`
-    # narrow -- a deferred row; fixed-int indices render bare.
+    # narrow (`_narrow_bigint_index`); only the out-of-int32-range literal
+    # disposition rejects.
     return (_container_scalar_read(locals_[recv.name], analyzer)
             and (_resolved_scalar(ret, analyzer)
                  or _resolved_str_value(ret, analyzer) is not None)
-            and not _runtime_bigint(analyzer.get_expr_type(e.index), analyzer)
+            and _bigint_index_disposition(e.index, analyzer) != "reject"
             and _expr_eligible(e.index, locals_, analyzer))
 
 
@@ -1566,9 +1716,9 @@ def _str_subscript_char_read(e: TpyExpr, locals_: dict[str, TpyType],
     a str-family field off an F1-record receiver, an eligible str-returning
     call -- the receiver renders bare into the dunder / operator[] either way,
     and `bounds_safe` is a carried node fact); the index is any eligible
-    NON-BigInt value-scalar expr (a runtime-BigInt index takes the
-    `.to_fixed_check<int32_t>()` narrow -- a deferred row). The slice form
-    (`s[a:b]`, slice_function_info) has its own gate; bytes has its
+    value-scalar expr (a runtime-BigInt index takes the
+    `.to_fixed_check<int32_t>()` narrow via `_narrow_bigint_index`). The slice
+    form (`s[a:b]`, slice_function_info) has its own gate; bytes has its
     `::tpy::bytes_getitem` twin (`_bytes_subscript_read`, name receivers
     only)."""
     if not isinstance(e, TpySubscript) or e.needs_optional_runtime_check:
@@ -1578,7 +1728,7 @@ def _str_subscript_char_read(e: TpyExpr, locals_: dict[str, TpyType],
     if not _str_slice_receiver_ok(e.obj, locals_, analyzer):
         return False
     return (_eligible_char(analyzer.get_expr_type(e))
-            and not _runtime_bigint(analyzer.get_expr_type(e.index), analyzer)
+            and _bigint_index_disposition(e.index, analyzer) != "reject"
             and _expr_eligible(e.index, locals_, analyzer))
 
 
@@ -1591,8 +1741,8 @@ def _bytes_subscript_read(e: TpyExpr, locals_: dict[str, TpyType],
     bounds-safe `b[static_cast<std::size_t>(i)]` / literal `b[0]` shared with
     the container arm. Receiver and index constraints mirror the str twin
     (`_str_subscript_char_read`): a plain name receiver, an eligible
-    value-scalar index (no BigInt binding is admitted, so no
-    `.to_fixed_check` narrow)."""
+    value-scalar index (a runtime-BigInt index narrows via
+    `_narrow_bigint_index`)."""
     if not isinstance(e, TpySubscript) or e.needs_optional_runtime_check:
         return False
     if e.slice_function_info is not None:
@@ -1603,7 +1753,7 @@ def _bytes_subscript_read(e: TpyExpr, locals_: dict[str, TpyType],
     if _resolved_bytes_value(locals_[recv.name], analyzer) is None:
         return False
     return (_eligible_scalar(analyzer.get_expr_type(e))
-            and not _runtime_bigint(analyzer.get_expr_type(e.index), analyzer)
+            and _bigint_index_disposition(e.index, analyzer) != "reject"
             and _expr_eligible(e.index, locals_, analyzer))
 
 
@@ -1612,9 +1762,12 @@ def _slice_bound_ok(b: 'TpyExpr | None', locals_: dict[str, TpyType],
     """A str-slice bound: absent (-> `std::nullopt`), or an eligible fixed-int
     value expr rendered bare into the BasicSlice initializer (the AST's
     `_gen_slice_bound` is a target-less gen_expr_deref, so the expression
-    render is position-neutral). A BigInt-resolving bound appends
-    `.to_fixed_check<int32_t>()` -> AST path; int literals resolve through the
-    module default int so a BigInt default rejects rather than mis-admits."""
+    render is position-neutral), or a NON-literal runtime-BigInt expr taking
+    the `.to_fixed_check<int32_t>()` narrow. A LITERAL bound resolving BigInt
+    (a BigInt module default int) stays rejected: the AST wraps the bare digit
+    token (`1.to_fixed_check<...>()`, no `_is_int_constant` exemption here),
+    which is ill-formed C++ (one pp-number token) -- see the BUGS.md entry;
+    mirroring it would just reproduce the build failure."""
     if b is None:
         return True
     if not _expr_eligible(b, locals_, analyzer):
@@ -1622,6 +1775,8 @@ def _slice_bound_ok(b: 'TpyExpr | None', locals_: dict[str, TpyType],
     bt = analyzer.get_expr_type(b)
     if bt is None:
         return False
+    if _runtime_bigint(bt, analyzer):
+        return _const_index(_unwrap_lit_coerce(b)) is None
     bt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(bt)))
     return is_fixed_int_type(
         resolve_int_literals(bt, analyzer.ctx.default_int_for_literal))
@@ -2008,8 +2163,6 @@ def _scalar_aug_assign_ok(stmt: TpyAugAssign, declared: dict[str, TpyType],
       - a missing/non-template `resolved_binop` emits a bare C++ `op=` fallback;
       - `str +=` takes the in-place-append optimization (excluded for free: a
         str target is not an eligible scalar);
-      - `FixedInt += BigInt` wraps the value in `.to_fixed_check<T>()` the
-        synthetic binop cannot reproduce;
       - a class-constant / narrowed-optional target is not a plain eligible-scalar
         lvalue (a record-element tuple-subscript target IS admitted, via
         `_field_over_subscript_ok` -- the target renders identically on both sides
@@ -2042,10 +2195,9 @@ def _scalar_aug_assign_ok(stmt: TpyAugAssign, declared: dict[str, TpyType],
     target_type = analyzer.get_expr_type(target)
     if not _eligible_scalar(target_type):
         return False
-    # FixedInt += BigInt: the AST converts the value via `.to_fixed_check<T>()`
-    # before the binop -- the synthetic THIRBinOp would emit a bare `t + b`.
-    if is_fixed_int_type(target_type) and is_big_int_type(analyzer.get_expr_type(stmt.value)):
-        return False
+    # FixedInt += BigInt converts the value via `.to_fixed_check<T>()` before
+    # the binop -- mirrored as the synthetic THIRBinOp's right_cast at lowering
+    # (the same target-type/value-type pair keys both, so gate and emit agree).
     return _expr_eligible(stmt.value, declared, analyzer)
 
 
@@ -2429,6 +2581,11 @@ def _unary_not_eligible(e: TpyUnaryOp, locals_: dict[str, TpyType],
     if (isinstance(ot, OptionalType)
             and _optional_ptr_borrow_name(e.operand, locals_, analyzer)
             is not None):
+        return True
+    # An enum operand's truthiness render slots under the same `(!(...))`
+    # wrap: `not c` -> `(!(true))` (plain) / `(!((static_cast<U>(p) != 0)))`
+    # (IntEnum) -- gen_truthy_expr's enum arms.
+    if _enum_truthy_operand(e.operand, locals_, analyzer):
         return True
     return (ot is not None and is_bool_type(ot)
             and _expr_eligible(e.operand, locals_, analyzer))
@@ -3661,6 +3818,11 @@ def _method_call_eligible(e: TpyMethodCall, locals_: dict[str, TpyType], analyze
     module-qualified / typed-dict / nested-ctor / callable-field / macro / fstr /
     deref chain / Optional runtime check) takes a different `_gen_method_call`
     path and is rejected."""
+    # Nested enum value lookup `Outer.Kind(v)`: a method-call shape whose
+    # receiver is the TYPE name, not a local -- checked before the
+    # receiver-name pin.
+    if e.is_nested_enum_constructor:
+        return _nested_enum_from_value_eligible(e, locals_, analyzer)
     if not isinstance(e.obj, TpyName) or e.obj.name not in locals_:
         return False
     if not _plain_member_call_markers_ok(e):
@@ -3905,6 +4067,15 @@ def _print_arg_form(t: TpyType) -> PrintForm:
     # (gen_print's is_any_bytes_type arm; bytearray is gated out of the args).
     if _is_bytes_family(t):
         return PrintForm.BYTES
+    if is_enum_type(t):
+        # @native enums have no emitted operator<< (it would conflict with a
+        # user-provided one) -- gen_print routes them through `::tpy::__repr__`;
+        # tpy-defined enums stream raw via their emitted operator<<.
+        einfo = enum_info_of(t)
+        if einfo is not None and einfo.is_native:
+            _witness("enum.repr_print")
+            return PrintForm.REPR
+        return PrintForm.RAW
     tr = int_traits_of(t)
     if tr is not None and tr.bits == 8:
         return PrintForm.INT8
@@ -3939,9 +4110,8 @@ def _print_eligible(e: TpyCall, locals_: dict[str, TpyType], analyzer) -> bool:
             continue
         at = analyzer.get_expr_type(a)
         if ((_resolved_scalar(at, analyzer) or _eligible_char(at)
-             # A local non-native enum streams via its emitted operator<<
-             # (gen_print's else arm) -- @native enums take `::tpy::__repr__`,
-             # which _eligible_enum gates out.
+             # A tpy-defined enum streams via its emitted operator<< (RAW);
+             # an @native enum takes `::tpy::__repr__` (PrintForm.REPR).
              or _eligible_enum(at, analyzer) is not None
              or _resolved_str_value(at, analyzer) is not None
              or _resolved_bytes_value(at, analyzer) is not None  # BytesPrinter
@@ -4065,6 +4235,10 @@ def _expr_eligible(e: TpyExpr, locals_: dict[str, TpyType], analyzer) -> bool:
         # shadowing).
         if e.enum_member_of is not None:
             return _eligible_enum(e.enum_member_of, analyzer) is not None
+        # Enum instance property read (`c.value` / `c.name`): the receiver is
+        # any eligible enum-valued expr (name, member access, field read).
+        if _enum_prop_wrap(e, analyzer) is not None:
+            return _expr_eligible(e.obj, locals_, analyzer)
         # A scalar or Char field read off an F1-record receiver (`recv.field`,
         # value form -- the access render is type-independent, and a Char value
         # lands only in positions whose own gates admit it) or off a pointer-repr
@@ -4106,6 +4280,11 @@ def _expr_eligible(e: TpyExpr, locals_: dict[str, TpyType], analyzer) -> bool:
         # literal takes the resolved __neg__ template (`-(1.5)`), a render the
         # slice does not reproduce -> AST path.
         if _folded_neg_int_literal(e, analyzer) is not None:
+            return True
+        # IntEnum negation: `(-static_cast<U>(p))`, a plain underlying-int
+        # value composing in any scalar sink.
+        if (_enum_neg_wrap(e, analyzer) is not None
+                and _expr_eligible(e.operand, locals_, analyzer)):
             return True
         return _unary_not_eligible(e, locals_, analyzer)
     if isinstance(e, TpyChainedCompare):
@@ -4305,6 +4484,11 @@ def _condition_eligible(cond: TpyExpr, declared: dict[str, TpyType], analyzer) -
     # value position; an ARITH binop condition (`if a + b:`, int truthiness) is
     # excluded by the op-set check. A bool-literal condition stays on the AST
     # path (it may dead-branch-eliminate).
+    # An enum-typed operand takes its truthiness wrap at lowering
+    # (_lower_truthy): `if (true)` (plain) / the underlying `!= 0` test
+    # (IntEnum) -- gen_truthy_expr's enum arms.
+    if _enum_truthy_operand(cond, declared, analyzer):
+        return True
     if isinstance(cond, TpyName):
         rt = analyzer.get_expr_type(cond)
         if cond.name in declared and rt is not None and is_bool_type(rt):
@@ -4332,8 +4516,7 @@ def _range_bound_literal_value(arg: TpyExpr) -> int | None:
     # name/expr hoisted to a temp. Only the bare-literal subset the slice admits is
     # mirrored, so it agrees with _extract_int_literal regardless of that helper's
     # evolution. The int32 bound keeps the value a bare token (no `ull`/cast).
-    while isinstance(arg, TpyCoerce) and arg.coercion.name == _INT_LIT_COERCION:
-        arg = arg.expr
+    arg = _unwrap_lit_coerce(arg)
     if isinstance(arg, TpyIntLiteral) and -2**31 <= arg.value <= 2**31 - 1:
         return arg.value
     # A negated literal (`range(-3, 3)`) is inlined by the AST too
@@ -4353,8 +4536,11 @@ def _range_bound_eligible(arg: TpyExpr, declared: dict[str, TpyType],
     # confirm gen_range_args' _gen_expr_deref(arg, ptype) matches _emit_expr.
     if isinstance(arg, TpyName):
         # `declared` holds bool/float locals too, so the bound's resolved type
-        # must be checked fixed-int (it renders into a `cpp_elem` temp).
-        return is_fixed_int_type(declared.get(arg.name))
+        # must be checked int (it renders into a `cpp_elem` temp -- a BigInt
+        # bound lands in a `::tpy::BigInt` temp, a fixed-int one converts
+        # implicitly).
+        dt = declared.get(arg.name)
+        return is_fixed_int_type(dt) or _runtime_bigint(dt, analyzer)
     # `range(len(c))` -- the Int32-valued len builtin, hoisted into a `__stop_N` temp
     # like any non-literal bound; unblocks the bounds-safe container-subscript branch.
     if _is_len_call(arg, declared, analyzer):
@@ -4427,11 +4613,15 @@ def _for_range_eligible(stmt: TpyForEach, analyzer, ws: _WalkState,
     if it.kwargs or it.double_star_unpack is not None or len(it.args) not in (1, 2):
         return False
     et = unwrap_ref_type(stmt.elem_type) if stmt.elem_type is not None else None
-    # A BigInt counter (a BigInt module default int) takes the BigInt range
-    # machinery (`to_size_checked` reserve, no overflow-check helpers) -- a
-    # deferred row; the routed counter is a plain fixed-int/bool/float scalar.
-    if not _eligible_scalar(et) or _runtime_bigint(et, analyzer):
+    # A BigInt counter (a BigInt bound / module default int) shares the step-1
+    # emit shape -- `cpp_elem` renders `::tpy::BigInt`, literal bounds retype
+    # to the elem slot (`::tpy::BigInt(3)`), non-literal bounds hoist to
+    # `__start/__stop` temps like fixed ints. The overflow-check helpers only
+    # fire for step != +-1, which this gate never admits.
+    if not _eligible_scalar(et):
         return False
+    if _runtime_bigint(et, analyzer):
+        _witness("range.bigint_counter")
     nargs = len(it.args)
     if nargs == 2 and not _range_bound_eligible(it.args[0], ws.declared, analyzer):
         return False
@@ -4962,9 +5152,10 @@ def _stmt_eligible(stmt: TpyStmt, analyzer, ws: _WalkState,
         # `del c[k]` on a bare-name builtin list/dict binding the read gate
         # already admits: the AST's fi lookup finds no `__delitem__` method fi
         # for list/dict, so the render is the fallback
-        # `::tpy::__delitem__(c, k);` with the index rendered bare
-        # (gen_index_expr adds nothing for the admitted fixed-int / str-key
-        # shapes). Multi-target del shares ONE source comment across N lines
+        # `::tpy::__delitem__(c, k);` with the index through gen_index_expr --
+        # bare for fixed-int / str keys, the `.to_fixed_check<int32_t>()`
+        # narrow for a runtime-BigInt one (`_narrow_bigint_index` at lowering).
+        # Multi-target del shares ONE source comment across N lines
         # -- a shape one THIR statement cannot carry -- so it stays AST.
         if len(stmt.targets) != 1:
             return False
@@ -4976,6 +5167,7 @@ def _stmt_eligible(stmt: TpyStmt, analyzer, ws: _WalkState,
                 or recv.name in ws.pointers or recv.name in ws.narrowed):
             return False
         return (_container_scalar_read(ws.declared[recv.name], analyzer)
+                and _bigint_index_disposition(sub.index, analyzer) != "reject"
                 and _expr_eligible(sub.index, ws.declared, analyzer))
     if isinstance(stmt, TpyExprStmt):
         # A bare expression statement: a builtin `print(...)` (common-arg subset)
@@ -5217,6 +5409,15 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx', *, temp_args: bool = False) -> THIR
             # (gen_expr's BindingKind.ENUM arm, spelled at lowering).
             return THIREnumMember(result_type=rtype,
                                   cpp=_enum_member_cpp(e, analyzer), loc=loc)
+        prop = _enum_prop_wrap(e, analyzer)
+        if prop is not None:
+            # `c.value`: a `{0}` wrap over the receiver render, a plain
+            # underlying-int value (`.name` never reaches lowering -- the
+            # gate rejects it, see _enum_prop_wrap).
+            _witness("enum.value")
+            return THIREnumWrap(
+                result_type=rtype, wrap=prop, operand=_lower_expr(e.obj, lc),
+                loc=loc)
         if e.needs_optional_runtime_check and isinstance(e.obj,
                                                          (TpySubscript, TpyName)):
             # Unproven `Optional[record]` member access -> `deref_check(<T*>).field`.
@@ -5265,13 +5466,29 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx', *, temp_args: bool = False) -> THIR
                     result_type=rtype, receiver=recv, cpp_template=tpl,
                     index=_lower_expr(e.index, lc), form=form, loc=loc)
             sl = e.index
+
+            def _bound(b: 'TpyExpr | None') -> 'THIRExpr | None':
+                # `_gen_slice_bound`: a runtime-BigInt bound appends the
+                # `.to_fixed_check<int32_t>()` narrow (non-literal only --
+                # the gate rejects literal BigInt bounds, whose AST render
+                # is ill-formed).
+                if b is None:
+                    return None
+                lowered = _lower_expr(b, lc)
+                if not _runtime_bigint(analyzer.get_expr_type(b), analyzer):
+                    return lowered
+                _witness("narrow.slice_bound")
+                return THIRCoerce(result_type=INT32, expr=lowered,
+                                  coercion_name=_BIGINT_NARROW,
+                                  wrap=_BIGINT_INDEX_NARROW_WRAP, loc=loc)
+
             return THIRStrSlice(
                 result_type=rtype,
                 receiver=recv,
                 cpp_template=tpl,
-                lower=_lower_expr(sl.lower, lc) if sl.lower is not None else None,
-                upper=_lower_expr(sl.upper, lc) if sl.upper is not None else None,
-                step=_lower_expr(sl.step, lc) if sl.step is not None else None,
+                lower=_bound(sl.lower),
+                upper=_bound(sl.upper),
+                step=_bound(sl.step),
                 stepped=e.is_stepped_slice,
                 form=form,
                 loc=loc,
@@ -5301,8 +5518,9 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx', *, temp_args: bool = False) -> THIR
         # `::tpy::__getitem__(c, i)` (str's __getitem__ @cpp_template spells the
         # same) or, when sema proved the index in-bounds,
         # `c[static_cast<std::size_t>(i)]` (a literal index needs no cast). The
-        # index is a fixed-int value-scalar expr (a runtime-BigInt index is out
-        # of the scalar slice, so no `.to_fixed_check` narrow arises) or, for an
+        # index is a value-scalar expr (a runtime-BigInt one takes the
+        # `.to_fixed_check<int32_t>()` narrow, inside the bounds-safe
+        # static_cast when both fire) or, for an
         # owned-str-keyed dict, a str-slice expr rendered bare in the key slot.
         # `form` is VALUE for a scalar / Char element; a str element/value read
         # (S5) carries its resolved shape -- BORROW when the read's view var
@@ -5314,7 +5532,8 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx', *, temp_args: bool = False) -> THIR
         return THIRSubscript(
             result_type=rtype,
             receiver=_lower_expr(e.obj, lc),
-            index=_lower_expr(e.index, lc),
+            index=_narrow_bigint_index(_lower_expr(e.index, lc), e.index,
+                                       analyzer, loc),
             bounds_safe=e.bounds_safe,
             form=(Form.VALUE if sub_str is None
                   else Form.BORROW if is_str_view_type(sub_str)
@@ -5400,7 +5619,17 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx', *, temp_args: bool = False) -> THIR
         neg = _folded_neg_int_literal(e, analyzer)
         if neg is not None:
             return THIRLiteral(result_type=rtype, value=neg, loc=loc)
-        return THIRUnaryNot(result_type=rtype, operand=_lower_expr(e.operand, lc),
+        # IntEnum negation: `(-static_cast<U>(p))` (_gen_unaryop's enum arm).
+        enum_neg = _enum_neg_wrap(e, analyzer)
+        if enum_neg is not None:
+            _witness("enum.neg")
+            return THIREnumWrap(result_type=rtype, wrap=enum_neg,
+                                operand=_lower_expr(e.operand, lc), loc=loc)
+        # `not`: an enum operand takes its truthiness wrap under `(!(...))`;
+        # bool / Optional-ptr operands lower bare (their truthiness render is
+        # their value render).
+        return THIRUnaryNot(result_type=rtype,
+                            operand=_lower_truthy(e.operand, lc),
                             loc=loc)
     if isinstance(e, TpyChainedCompare):
         # Inline arm of _gen_chained_compare: left-fold the sema pairs with the
@@ -5416,14 +5645,25 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx', *, temp_args: bool = False) -> THIR
     if isinstance(e, TpyCall):
         if e.enum_from_value is not None:
             # `E(x)` -> `::tpy::EnumUtil<E>::from_value(x)` (gen_expr's
-            # enum_from_value arm; the gate rejected BigInt args, so the
-            # checked-conversion wrap never arises). Rides THIRCall's
+            # enum_from_value arm). A runtime-BigInt arg takes the checked
+            # `({0}).to_fixed_check<U>()` wrap over the enum's underlying
+            # type (the gate keeps literal-BigInt args out). Rides THIRCall's
             # cpp_template expansion like a scalar type-constructor.
             spelled = enum_cpp_name(e.enum_from_value,
                                     analyzer.ctx.module_name)
+            arg = _lower_expr(e.args[0], lc)
+            if _runtime_bigint(analyzer.get_expr_type(e.args[0]), analyzer):
+                _witness("narrow.enum_arg")
+                einfo = enum_info_of(e.enum_from_value)
+                assert einfo is not None
+                u = einfo.underlying_type
+                arg = THIRCoerce(result_type=u, expr=arg,
+                                 coercion_name=_BIGINT_NARROW,
+                                 wrap="({0})" + f".to_fixed_check<{u.to_cpp()}>()",
+                                 loc=loc)
             return THIRCall(
                 result_type=rtype, callee=e.func_name,
-                args=(_lower_expr(e.args[0], lc),),
+                args=(arg,),
                 cpp_template=(f"::tpy::EnumUtil<{spelled}>"
                               "::from_value({0})"),
                 loc=loc)
@@ -5501,14 +5741,16 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx', *, temp_args: bool = False) -> THIR
         # A container-literal decl init (the only position eligibility admits
         # it). result_type is the RESOLVED container (list vs Array already
         # decided by sema); the emit dispatches on its family. Elements lower
-        # through the per-slot owned-str wrap (S5). A list/Array literal's
-        # SCALAR elements render target-less on the AST path
-        # (_gen_array_literal threads elem_target only for Optional/Union/
-        # Tuple/str/bytes elements) -- Float32/BigInt literals stay bare
-        # there, unlike a set's (whose _gen_set_literal DOES thread).
+        # through the per-slot owned-str wrap (S5). A LIST literal's SCALAR
+        # elements render target-less on the AST path (bare `{10, 20}` into
+        # the vector's brace init) -- but a demoted/annotated ARRAY's and a
+        # set's DO thread the element target (probe-verified: `std::array`
+        # elements take the Float32 `f` suffix / `::tpy::BigInt(N)` wraps a
+        # vector's elements never get), so retype keys on the RESOLVED
+        # container kind, not the literal's source shape.
         args = getattr(rtype, "type_args", None)
         slot = args[0] if args else None
-        retype = isinstance(e, TpySetLiteral)
+        retype = isinstance(e, TpySetLiteral) or is_array(rtype)
         return THIRContainerLiteral(
             result_type=rtype,
             elements=tuple(
@@ -5527,6 +5769,20 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx', *, temp_args: bool = False) -> THIR
             loc=loc,
         )
     if isinstance(e, TpyMethodCall):
+        if e.is_nested_enum_constructor:
+            # `Outer.Kind(v)` -> `::tpy::EnumUtil<Outer::Kind>::from_value(v)`
+            # (_gen_method_call's nested-enum arm). Spelled via enum_cpp_name
+            # like the top-level E(x) arm -- `Outer::Kind` locally, qualified
+            # cross-module.
+            _witness("enum.nested_from_value")
+            nested_t = analyzer.registry.get_enum(e.nested_type_name)
+            spelled = enum_cpp_name(nested_t, analyzer.ctx.module_name)
+            return THIRCall(
+                result_type=rtype, callee=e.method,
+                args=(_lower_expr(e.args[0], lc),),
+                cpp_template=(f"::tpy::EnumUtil<{spelled}>"
+                              "::from_value({0})"),
+                loc=loc)
         fi = e.resolved_function_info
         # The member name mirrors _gen_method_call's resolution: @native rename
         # over the escaped source name (the LiteralType-mangled overload form is
@@ -5873,6 +6129,24 @@ def _lower_char_targeted(e: TpyExpr, target: TpyType | None,
         return THIRCharLiteral(result_type=CHAR, value=e.value,
                                loc=getattr(e, "loc", None))
     return _lower_expr(e, lc, temp_args=temp_args)
+
+
+def _lower_truthy(e: TpyExpr, lc: '_LowerCtx') -> THIRExpr:
+    """Lower a truthiness position (an if/while/assert condition, or a `not`
+    operand). An enum-typed operand takes its truthiness wrap (THIREnumWrap;
+    the plain-enum arm renders `true` and DROPS the operand, mirroring
+    gen_truthy_expr); every other admitted shape's truthiness render equals
+    its value render, so it lowers as a plain expression."""
+    wrap = _enum_truthy_wrap(lc.analyzer.get_expr_type(e), lc.analyzer)
+    if wrap is None:
+        return _lower_expr(e, lc)
+    loc = getattr(e, "loc", None)
+    if wrap == "true":
+        _witness("enum.truthy_plain")
+        return THIREnumWrap(result_type=BOOL, wrap=wrap, operand=None, loc=loc)
+    _witness("enum.truthy_int")
+    return THIREnumWrap(result_type=BOOL, wrap=wrap,
+                        operand=_lower_expr(e, lc), loc=loc)
 
 
 def _slot_literal_retype(v: 'THIRExpr | None',
@@ -6570,7 +6844,16 @@ def _lower_stmt_dispatch(stmt: TpyStmt, lc: _LowerCtx,
             init = THIRFormConvert(result_type=str_t if str_t is not None else bytes_t,
                                    value=init, form=Form.STORAGE, loc=loc)
         declared[stmt.name] = vtype
-        return THIRVarDecl(name=stmt.name, resolved_type=vtype, init=init, loc=loc)
+        # An enum decl type spells via render_type (codegen's type_to_cpp):
+        # its enum arm routes through enum_cpp_name -- the authoritative
+        # spelling for cross-module (`::tpyapp::m::E`), @native (user qname),
+        # and nested (`Outer::Kind`) enums; plain to_cpp() reads the
+        # native_cpp_names view, which an aliased-import collision can skew.
+        return THIRVarDecl(
+            name=stmt.name, resolved_type=vtype, init=init,
+            cpp_type=(lc.render_type(vtype)
+                      if _eligible_enum(vtype, analyzer) is not None else None),
+            loc=loc)
     if isinstance(stmt, TpyAssign):
         if isinstance(stmt.target, TpyFieldAccess):
             # A borrow `T*` stored into a storage `optional<T>` field lifts
@@ -6648,11 +6931,22 @@ def _lower_stmt_dispatch(stmt: TpyStmt, lc: _LowerCtx,
         tgt_bytes = _resolved_bytes_value(tgt_type, analyzer)
         target = _lower_expr(stmt.target, lc)
         _, aug_rslot = _rb_operand_slots(stmt.resolved_binop)
+        # FixedInt += BigInt: the AST wraps the value in
+        # `({0}).to_fixed_check<T>()` BEFORE the binop substitution (sema
+        # resolved the binop over the target width) -- mirrored as the
+        # per-side operand cast. Same predicates as _gen_aug_assign_code's.
+        right_cast = None
+        if (is_fixed_int_type(analyzer.get_expr_type(stmt.target))
+                and is_big_int_type(analyzer.get_expr_type(stmt.value))):
+            _witness("narrow.aug_value")
+            right_cast = ("({0}).to_fixed_check<"
+                          f"{analyzer.get_expr_type(stmt.target).to_cpp()}>()")
         binop = THIRBinOp(
             result_type=tgt_type,
             left=_lower_expr(stmt.target, lc),
             op=stmt.op,
             right=_slot_literal_retype(_lower_expr(stmt.value, lc), aug_rslot),
+            right_cast=right_cast,
             resolved=stmt.resolved_binop,
             paren_wrap=False,
             form=(Form.STORAGE if tgt_bytes is not None
@@ -6777,7 +7071,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, lc: _LowerCtx,
             else_stmts = _lower_scoped_stmts(stmt.else_body, lc,
                                              dict(declared))
         return THIRIf(
-            condition=_lower_expr(stmt.condition, lc),
+            condition=_lower_truthy(stmt.condition, lc),
             then_body=_lower_scoped_stmts(stmt.then_body, lc, dict(declared)),
             else_body=else_stmts,
             else_is_nested=else_is_nested,
@@ -6794,15 +7088,19 @@ def _lower_stmt_dispatch(stmt: TpyStmt, lc: _LowerCtx,
         return THIRNoOpStmt(loc=loc)
     if isinstance(stmt, TpyDelItem):
         # `::tpy::__delitem__(c, k);` -- the AST's no-method-fi fallback in
-        # _gen_del_item_code. The index renders bare for the admitted shapes
-        # (gen_index_expr's BigInt narrow / view-key pin cannot fire).
+        # _gen_del_item_code. The index rides gen_index_expr: bare for the
+        # fixed-int / str-key shapes, the `.to_fixed_check<int32_t>()` narrow
+        # for a runtime-BigInt one (the view-key pin still cannot fire --
+        # view-typed keys are not admitted).
         sub = stmt.targets[0]
         return THIRExprStmt(
             expr=THIRCall(
                 result_type=VoidType(),
                 callee="__delitem__",
                 native_name="tpy::__delitem__",
-                args=(_lower_expr(sub.obj, lc), _lower_expr(sub.index, lc)),
+                args=(_lower_expr(sub.obj, lc),
+                      _narrow_bigint_index(_lower_expr(sub.index, lc),
+                                           sub.index, analyzer, loc)),
                 loc=loc),
             loc=loc)
     if isinstance(stmt, TpyWhile):
@@ -6820,7 +7118,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, lc: _LowerCtx,
                 loc=loc,
             )
         return THIRWhile(
-            condition=_lower_expr(stmt.condition, lc),
+            condition=_lower_truthy(stmt.condition, lc),
             body=_lower_scoped_stmts(stmt.body, lc, dict(declared)),
             loc=loc,
         )
@@ -6839,7 +7137,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, lc: _LowerCtx,
                 result_type=analyzer.get_expr_type(stmt.condition), value=True,
                 loc=getattr(stmt.condition, "loc", None))
         else:
-            cond = _lower_expr(stmt.condition, lc)
+            cond = _lower_truthy(stmt.condition, lc)
         return THIRAssert(condition=cond, message=msg, loc=loc)
     if isinstance(stmt, TpyForEach):
         it = stmt.iterable
@@ -6881,6 +7179,10 @@ def _lower_stmt_dispatch(stmt: TpyStmt, lc: _LowerCtx,
         else:
             body = _lower_scoped_stmts(stmt.body, lc, body_declared)
         if _is_range_call(it):
+            # Literal bounds retype to the elem slot (the AST's gen-args
+            # render threads the counter type): a no-op for fixed-int
+            # counters (bare token either way), the `::tpy::BigInt(N)`
+            # ctor wrap for a BigInt one.
             nargs = len(it.args)
             if nargs == 1:
                 start = None
@@ -6888,13 +7190,13 @@ def _lower_stmt_dispatch(stmt: TpyStmt, lc: _LowerCtx,
                 stop_arg = it.args[0]
             else:
                 start_arg = it.args[0]
-                start = _lower_expr(start_arg, lc)
+                start = _slot_literal_retype(_lower_expr(start_arg, lc), et)
                 start_is_literal = _range_bound_literal_value(start_arg) is not None
                 stop_arg = it.args[1]
             return THIRForRange(
                 var=stmt.var,
                 elem_type=et,
-                stop=_lower_expr(stop_arg, lc),
+                stop=_slot_literal_retype(_lower_expr(stop_arg, lc), et),
                 start=start,
                 start_is_literal=start_is_literal,
                 stop_is_literal=_range_bound_literal_value(stop_arg) is not None,

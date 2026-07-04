@@ -19,6 +19,8 @@ from .nodes import (
     THIRCharLiteral,
     THIRCoerce,
     THIRCtorCall,
+    THIREnumMember,
+    THIREnumWrap,
     THIRExpr,
     THIRFieldAccess,
     THIRForEach,
@@ -184,6 +186,13 @@ def _expr(e: THIRExpr) -> str:
     if isinstance(e, THIRNarrowedRead):
         deref = "*" if e.is_ptr_variant else ""
         return f"({deref}get<{e.member_cpp}>(%{e.variant_cpp}))"
+    if isinstance(e, THIREnumMember):
+        return f"enum_member({e.cpp})"
+    if isinstance(e, THIREnumWrap):
+        # The wrap template is the emit; a dropped operand (plain-enum
+        # truthiness) surfaces as an empty operand slot.
+        inner = "" if e.operand is None else f", {_expr(e.operand)}"
+        return f"enum_wrap({e.wrap!r}{inner})"
     return f"<{type(e).__name__}>"
 
 

@@ -52,6 +52,23 @@ THIR_FACES: frozenset[str] = frozenset({
     "self.this",                    # `self` name read -> `this`
     "call.self_method",             # `self.helper()` -> `this->helper()`
     "ctor.call",                    # THIRCtorCall bare ctor expansion
+    # Runtime-BigInt `.to_fixed_check<T>()` narrows (lowering; the AST's
+    # gen_index_expr / _gen_slice_bound / aug-assign / enum-from_value wraps).
+    "narrow.subscript_index",       # `i.to_fixed_check<int32_t>()` (reads + del)
+    "narrow.slice_bound",           # same wrap on a str/bytes slice bound
+    "narrow.aug_value",             # `({0}).to_fixed_check<T>()` aug-assign value
+    "narrow.enum_arg",              # `({0}).to_fixed_check<U>()` E(x) arg
+    # BigInt-counter range loop (gate admission; the render difference is
+    # the `::tpy::BigInt` cpp_elem + literal-bound retype, shared with the
+    # fixed-int emit).
+    "range.bigint_counter",
+    # Enum value-binding renders (lowering).
+    "enum.truthy_plain",            # plain-enum truthiness -> literal `true`
+    "enum.truthy_int",              # IntEnum truthiness `(static_cast<U>(x) != 0)`
+    "enum.neg",                     # IntEnum `-x` -> `(-static_cast<U>(x))`
+    "enum.value",                   # `.value` -> `static_cast<U>(x)`
+    "enum.repr_print",              # @native enum print arg -> `::tpy::__repr__`
+    "enum.nested_from_value",       # `Outer.Kind(v)` EnumUtil from_value
     # The five flushable statement positions, counted only when the
     # position's value actually hoists an arg temp.
     "flush.vardecl",

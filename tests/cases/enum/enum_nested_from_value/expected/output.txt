@@ -1,0 +1,3 @@
+Kind.TEXT
+TEXT
+True

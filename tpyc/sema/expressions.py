@@ -1948,6 +1948,10 @@ class ExpressionAnalyzer:
                 dotted_name, chain_type = chain
                 if is_enum_type(chain_type):
                     if expr.field in enum_info_of(chain_type).members:
+                        # Same fact the TpyName-receiver arm stamps: a
+                        # type-level member access (`Outer.Kind.TEXT`), so
+                        # downstream consumers need not re-derive the chain.
+                        expr.enum_member_of = chain_type
                         return chain_type
                     if expr.field in ("name", "value"):
                         pass  # fall through to normal field access

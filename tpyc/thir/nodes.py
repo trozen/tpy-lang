@@ -468,6 +468,25 @@ class THIREnumMember(THIRExpr):
 
 
 @dataclass(frozen=True)
+class THIREnumWrap(THIRExpr):
+    """An enum-value render through a `{0}` wrap computed at lowering:
+
+      * `.value`         -- `static_cast<U>({0})` (U = the underlying type);
+      * IntEnum `-x`     -- `(-static_cast<U>({0}))`;
+      * IntEnum truthy   -- `(static_cast<U>({0}) != 0)` (condition / `not`).
+
+    `.name` never reaches this node -- gate-rejected (its AST render is
+    ill-formed C++ at owned-str sinks; see _enum_prop_wrap).
+
+    A PLAIN-enum truthiness test renders the literal `true` with the operand
+    DROPPED (`operand is None`) -- mirroring gen_truthy_expr, which discards
+    the operand render (the gate admits only side-effect-free operands, so
+    nothing is lost)."""
+    wrap: str
+    operand: THIRExpr | None = None
+
+
+@dataclass(frozen=True)
 class THIRFieldAccess(THIRExpr):
     """Field read `receiver.field` / `receiver->field`.
 
@@ -526,8 +545,9 @@ class THIRSubscript(THIRExpr):
     dispatches to `::tpy::bytes_getitem(receiver, index)` -- bytes'
     `__getitem__(Int32)` is a @native free-function dunder, mirroring
     `_gen_subscript`'s fi lookup). The index is a value
-    scalar of fixed-int width (a runtime-BigInt index is not in the scalar
-    slice -- no `.to_fixed_check` narrow) or, for an owned-str-keyed dict, a
+    scalar (a runtime-BigInt one arrives pre-wrapped in its
+    `.to_fixed_check<int32_t>()` THIRCoerce from lowering) or, for an
+    owned-str-keyed dict, a
     str-slice expr rendered bare in the key slot (the static-storage literal
     pin fires only for view-typed keys, which the gate excludes)."""
     receiver: THIRExpr
@@ -876,6 +896,8 @@ class PrintForm(Enum):
       * `FLOAT32` -- `::tpy::print_float(static_cast<double>(...))` (the float
         overload takes double; gen_print's is_float32_type arm).
       * `BYTES`   -- `::tpy::BytesPrinter(...)` (Python-style `b'...'` repr).
+      * `REPR`    -- `::tpy::__repr__(...)` (an @native enum: no operator<< is
+        emitted for it, so gen_print routes through the EnumUtil-backed repr).
     """
     RAW = auto()
     INT8 = auto()
@@ -883,6 +905,7 @@ class PrintForm(Enum):
     FLOAT = auto()
     FLOAT32 = auto()
     BYTES = auto()
+    REPR = auto()
 
 
 @dataclass(frozen=True)
