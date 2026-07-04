@@ -1,0 +1,7 @@
+RED
+GREEN!
+RED 3
+True
+<RED>
+RED
+['GREEN']

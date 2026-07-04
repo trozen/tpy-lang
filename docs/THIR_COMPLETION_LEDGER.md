@@ -287,13 +287,15 @@ deferred (self-contained) / blocked-on-`<rung>`.
   plain-enum literal-`true` fold gate-rejects CALL operands -- the AST
   drops their side effects, BUGS.md), IntEnum unary minus, `.value`,
   nested `Outer.Kind(v)` from_value; IntEnum arithmetic rides
-  the existing resolved-binop operand casts. Still deferred: enum
-  ITERATION (`for c in Color:`, the `enum_iterable` for-loop arm),
-  match-over-enum (the match-statement axis), and `.name` -- RETRACTED
-  post-review: sema types it owned `str` while the value is a
-  static-storage view, so the AST renders it bare into owned-str sinks
-  (ill-formed C++, BUGS.md) and THIR's correct `std::string(...)` wrap
-  diverges byte-wise; re-admit once sema types `.name` as StrView.
+  the existing resolved-binop operand casts. `.name` (initially RETRACTED
+  post-review -- sema typed it owned `str` while the value is a
+  static-storage view, so the AST rendered it bare into owned-str sinks,
+  ill-formed C++) is RE-ADMITTED via `fix-enum-name-strview`: sema now
+  types `.name` StrView, both paths take the standard view->owned copy at
+  owned sinks, and the wrap lowers BORROW-tagged (`enum.name` face,
+  corpus-witnessed). Still deferred: enum ITERATION (`for c in Color:`,
+  the `enum_iterable` for-loop arm) and match-over-enum (the
+  match-statement axis).
 - F3 tuples: **PARTIAL** (increments 22-24) -- storage->borrow read
   (`tuple_to_pointer`: borrow-form tuple return + storage-tuple `auto&&` alias locals)
   + borrow->storage write (`tuple_to_storage`, tuple-field write off a borrow tuple
@@ -828,10 +830,13 @@ before claiming `gen_body`/`gen_expr` deletion is near.
    filed in BUGS.md ("mirrored, not endorsed") -- when the AST fix lands,
    both paths change together under the byte-diff. A shape whose AST render
    is ILL-FORMED C++ or where a byte-identical mirror is impossible (the
-   literal BigInt slice bounds, enum `.name` at owned sinks, the truthiness
-   CALL-operand drop) is GATE-REJECTED with the re-admission trigger noted
-   at the gate and in BUGS.md -- never mirrored (reproducing a build failure
-   or a lost side effect), never silently fixed (breaking byte-parity).
+   literal BigInt slice bounds, the truthiness CALL-operand drop) is
+   GATE-REJECTED with the re-admission trigger noted at the gate and in
+   BUGS.md -- never mirrored (reproducing a build failure or a lost side
+   effect), never silently fixed (breaking byte-parity). The enum `.name`
+   owned-sink shape ran the full course: gate-rejected at incr 77,
+   sema-fixed on `fix-enum-name-strview`, then re-admitted with the
+   byte-diff validating both paths' new copy in lockstep.
 
 ## Per-cell test convention (2026-07-02)
 

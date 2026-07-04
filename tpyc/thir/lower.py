@@ -300,6 +300,28 @@ def _coerce_disposition(e: TpyCoerce) -> 'str | None':
     return None
 
 
+def _peel_stale_view_owned_coerce(init: TpyExpr, binding_t: TpyType | None,
+                                  analyzer) -> TpyExpr:
+    """gen_expr's stale-coerce identity arm, mirrored at the decl/reassign
+    sink: a str/bytes view->owned coerce is attached against the ANNOTATED
+    owned type, but the binding's storage is decided later by the pending
+    view resolution -- when the binding resolved VIEW, materializing would
+    bind the view to an owned temporary dying at end of statement (dangling),
+    so the AST renders the source bare. Returns the peeled source (to lower
+    in the coerce's place) or the original init."""
+    if not isinstance(init, TpyCoerce):
+        return init
+    if init.coercion.name == "strview_to_str":
+        rt = _resolved_str_value(binding_t, analyzer)
+        if rt is not None and is_str_view_type(rt):
+            return init.expr
+    if init.coercion.name == "bytesview_to_bytes":
+        rt = _resolved_bytes_value(binding_t, analyzer)
+        if rt is not None and is_bytes_view_type(rt):
+            return init.expr
+    return init
+
+
 def _eligible_scalar(t: TpyType | None) -> bool:
     """A type the emitter can render and reason about without form facts.
 
@@ -1087,24 +1109,21 @@ def _enum_truthy_operand(e: TpyExpr, locals_: dict[str, TpyType],
 
 
 def _enum_prop_wrap(e: TpyFieldAccess, analyzer) -> 'str | None':
-    """The enum `.value` instance property read, as a `{0}` wrap over the
-    receiver render (gen_expr's enum property arm): `c.value` ->
-    `static_cast<U>({0})` (U = the underlying type). None when `e` is not
-    such a read. The receiver is an enum VALUE (never a pointer-local), so
-    the bare receiver render composes in any position.
-
-    `.name` is REJECTED wholesale: sema types it as owned `str` while its
-    value is a `string_view` into EnumUtil's static storage, so the AST path
-    renders it bare into owned-str sinks -- ill-formed C++ (a BUGS.md entry);
-    the type-keyed gates would admit it as an owned source while lowering's
-    shape-keyed BORROW tag fires the view->owned wrap, a byte divergence.
-    Re-admit (with the BORROW tag -- the correct emit already exists) once
-    sema types `.name` as StrView and the AST path gains the same wrap."""
-    if e.enum_member_of is not None or e.field != "value":
+    """An enum instance property read, as a `{0}` wrap over the receiver
+    render (gen_expr's enum property arms): `c.value` -> `static_cast<U>({0})`
+    (U = the underlying type), `c.name` -> `::tpy::EnumUtil<E>::name({0})`
+    (a `string_view` into EnumUtil's static member-name storage; sema types
+    it StrView, so lowering tags it BORROW and owned-str sinks fire the S1
+    view->owned copy like any other view source). None when `e` is not such
+    a read. The receiver is an enum VALUE (never a pointer-local), so the
+    bare receiver render composes in any position."""
+    if e.enum_member_of is not None or e.field not in ("name", "value"):
         return None
     et = _eligible_enum(analyzer.get_expr_type(e.obj), analyzer)
     if et is None:
         return None
+    if e.field == "name":
+        return f"::tpy::EnumUtil<{et.to_cpp()}>::name({{0}})"
     einfo = enum_info_of(et)
     return f"static_cast<{einfo.underlying_type.to_cpp()}>({{0}})"
 
@@ -5411,9 +5430,16 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx', *, temp_args: bool = False) -> THIR
                                   cpp=_enum_member_cpp(e, analyzer), loc=loc)
         prop = _enum_prop_wrap(e, analyzer)
         if prop is not None:
-            # `c.value`: a `{0}` wrap over the receiver render, a plain
-            # underlying-int value (`.name` never reaches lowering -- the
-            # gate rejects it, see _enum_prop_wrap).
+            # `c.value`: a plain underlying-int value. `c.name`: a
+            # static-storage string_view -- BORROW, so owned-str sinks
+            # copy it (the S1 view->owned convert), mirroring the AST's
+            # `_is_str_view_source` on the StrView-typed read.
+            if e.field == "name":
+                _witness("enum.name")
+                return THIREnumWrap(
+                    result_type=rtype, wrap=prop,
+                    operand=_lower_expr(e.obj, lc), form=Form.BORROW,
+                    loc=loc)
             _witness("enum.value")
             return THIREnumWrap(
                 result_type=rtype, wrap=prop, operand=_lower_expr(e.obj, lc),
@@ -6793,8 +6819,10 @@ def _lower_stmt_dispatch(stmt: TpyStmt, lc: _LowerCtx,
             # reassign of a Float32 local) takes the `f` suffix the same way.
             # A flushable statement position: a direct call init may hoist
             # arg temps (temp_args, inert for non-call inits).
+            src = _peel_stale_view_owned_coerce(
+                stmt.init, declared.get(stmt.name, vtype), analyzer)
             init = (_flush_witness("flush.vardecl",
-                                   _lower_char_targeted(stmt.init, vtype, lc,
+                                   _lower_char_targeted(src, vtype, lc,
                                                         temp_args=True))
                     if stmt.init else None)
             init = _slot_literal_retype(init, declared.get(stmt.name, vtype))

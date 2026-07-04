@@ -1,9 +1,8 @@
 """THIR enum value bindings: member access, locals/params/returns, compares
 (incl. the int-enum underlying casts), E(x) value lookup, fields/MIL,
 print/f-string args; the remainder rows -- cross-module / @native / nested
-spellings, truthiness, IntEnum unary minus and arithmetic, .value,
-nested Outer.Kind(v). `.name` is gate-rejected (the AST render is ill-formed
-C++ at owned-str sinks -- BUGS.md)."""
+spellings, truthiness, IntEnum unary minus and arithmetic, .value, .name
+(a BORROW-tagged static-storage view), nested Outer.Kind(v)."""
 
 from __future__ import annotations
 
@@ -238,24 +237,53 @@ class TestEnumProps:
         assert "int32_t v = static_cast<int32_t>(c);" in cpp
         assert 'std::format("v={}", static_cast<int32_t>(c))' in cpp
 
-    def test_name_stays_ast(self):
-        # `.name` is gate-rejected wholesale: sema types it owned `str` while
-        # the value is a static-storage string_view, so the AST renders it
-        # bare into owned-str sinks -- ill-formed C++ (BUGS.md). Mirroring
-        # would either reproduce the broken render or diverge (the THIR wrap
-        # is correct C++ but not byte-identical); reject until sema types
-        # `.name` as StrView.
-        src = (
-            _ENUM_PRELUDE
-            + "def f(c: Color) -> None:\n"
-            + "    print(c.name)\n"
-            + "def g(c: Color) -> str:\n"
-            + "    return c.name\n"
-            + "def main():\n    f(Color.RED)\n    print(g(Color.RED))\nmain()\n"
-        )
-        thir = _lower_ctx(src)
-        assert _fn(thir, "f") is None
-        assert _fn(thir, "g") is None
+    # `.name` sources: sema types the read StrView (the value IS a
+    # static-storage string_view), so lowering tags the wrap BORROW and the
+    # S1 owned-sink machinery fires -- print/view sinks render the wrap bare,
+    # an owned-str return arrives strview_to_str-coerce-wrapped
+    # (`std::string(...)`), a mutated annotated local resolves owned and
+    # copies at the decl init. A READ-ONLY annotated local resolves VIEW,
+    # so its stale coerce peels and the wrap renders bare (the
+    # _peel_stale_view_owned_coerce mirror).
+    NAME_SRC = (
+        _ENUM_PRELUDE
+        + "def f(c: Color) -> None:\n"
+        + "    print(c.name)\n"
+        + "def g(c: Color) -> str:\n"
+        + "    return c.name\n"
+        + "def h(c: Color) -> None:\n"
+        + "    v = c.name\n"
+        + "    label: str = c.name\n"
+        + '    label += "!"\n'
+        + "    print(v, label, v == label)\n"
+        + "def r(c: Color) -> None:\n"
+        + "    label: str = c.name\n"
+        + "    print(label)\n"
+        + "def main():\n    f(Color.RED)\n    print(g(Color.RED))\n"
+        + "    h(Color.GREEN)\n    r(Color.RED)\nmain()\n"
+    )
+
+    def test_name_routed_and_witnessed(self):
+        thir, w = _lower_ctx_witnessed(self.NAME_SRC)
+        for name in ("f", "g", "h", "r"):
+            assert _fn(thir, name) is not None, name
+        assert w.get("enum.name", 0) >= 5
+        wrap = _fn(thir, "f").body[0].args[0].expr
+        assert isinstance(wrap, THIREnumWrap)
+        assert wrap.wrap == "::tpy::EnumUtil<Color>::name({0})"
+
+    def test_name_emit_arms(self):
+        cpp = _cpp(self.NAME_SRC, thir=True)
+        assert cpp == _cpp(self.NAME_SRC, thir=False)
+        # Owned-str sinks copy the view explicitly; view sinks stay bare.
+        assert "return std::string(::tpy::EnumUtil<Color>::name(c));" in cpp
+        assert ("std::string label = "
+                "std::string(::tpy::EnumUtil<Color>::name(c));") in cpp
+        assert "std::string_view v = ::tpy::EnumUtil<Color>::name(c);" in cpp
+        # The read-only annotated local resolved VIEW: the stale coerce
+        # peels on both paths -- bare static view, no owned temporary.
+        assert ("std::string_view label = "
+                "::tpy::EnumUtil<Color>::name(c);") in cpp
 
 
 class TestNativeEnum:

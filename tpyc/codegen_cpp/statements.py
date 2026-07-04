@@ -2019,7 +2019,13 @@ class StatementGenerator:
                     init_expr = self.expressions._gen_dynamic_protocol_own_arg(
                         stmt.init, inner)
                     return f"{indent}{cpp_name} = {init_expr};\n"
-                init_expr = self.expressions.gen_expr(stmt.init)
+                # Thread the binding type for coerce inits only: a view-resolved
+                # frame field fed a stale view->owned coerce must render the
+                # source bare (gen_expr's stale-coerce arm), like the sync decl.
+                init_expr = self.expressions.gen_expr(
+                    stmt.init,
+                    self.ctx.var_types.get(stmt.name)
+                    if isinstance(stmt.init, TpyCoerce) else None)
                 if stmt.name in self.ctx.generator_frame_slot_locals:
                     # frame_slot<T> has no operator= for arbitrary T;
                     # writes route through emplace, which also destroys

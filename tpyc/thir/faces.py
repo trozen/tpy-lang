@@ -67,6 +67,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "enum.truthy_int",              # IntEnum truthiness `(static_cast<U>(x) != 0)`
     "enum.neg",                     # IntEnum `-x` -> `(-static_cast<U>(x))`
     "enum.value",                   # `.value` -> `static_cast<U>(x)`
+    "enum.name",                    # `.name` -> `EnumUtil<E>::name(x)` (BORROW)
     "enum.repr_print",              # @native enum print arg -> `::tpy::__repr__`
     "enum.nested_from_value",       # `Outer.Kind(v)` EnumUtil from_value
     # The five flushable statement positions, counted only when the

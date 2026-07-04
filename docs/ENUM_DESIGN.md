@@ -136,11 +136,12 @@ c: Color = Color.Red        # attribute access on the enum type
 
 ```python
 c = Color.Red
-print(c.name)      # "Red"   -- str
+print(c.name)      # "Red"   -- StrView
 print(c.value)     # 0       -- Int32 (underlying type)
 ```
 
-`.name` returns a `str` (compile-time known string literal).
+`.name` returns a `StrView` -- a view into the enum's static member-name
+storage (safe to hold indefinitely); owned-`str` sinks copy it implicitly.
 `.value` returns the underlying integer type (default `Int32`).
 
 ### Printing

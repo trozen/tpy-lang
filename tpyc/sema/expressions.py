@@ -1989,10 +1989,12 @@ class ExpressionAnalyzer:
                 expr,
             )
 
-        # Enum instance property access: c.name -> str, c.value -> underlying type
+        # Enum instance property access: c.name -> StrView (a view into
+        # EnumUtil's static member-name storage -- safe to hold; owned sinks
+        # copy via the standard view->owned machinery), c.value -> underlying type
         if is_enum_type(actual_type):
             if expr.field == "name":
-                return STR
+                return STRVIEW
             elif expr.field == "value":
                 return enum_info_of(actual_type).underlying_type
             raise self.ctx.error(

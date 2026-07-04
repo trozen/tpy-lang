@@ -472,11 +472,11 @@ class THIREnumWrap(THIRExpr):
     """An enum-value render through a `{0}` wrap computed at lowering:
 
       * `.value`         -- `static_cast<U>({0})` (U = the underlying type);
+      * `.name`          -- `::tpy::EnumUtil<E>::name({0})` (a static-storage
+                            `string_view`; BORROW form, so owned-str sinks
+                            fire the S1 view->owned copy);
       * IntEnum `-x`     -- `(-static_cast<U>({0}))`;
       * IntEnum truthy   -- `(static_cast<U>({0}) != 0)` (condition / `not`).
-
-    `.name` never reaches this node -- gate-rejected (its AST render is
-    ill-formed C++ at owned-str sinks; see _enum_prop_wrap).
 
     A PLAIN-enum truthiness test renders the literal `true` with the operand
     DROPPED (`operand is None`) -- mirroring gen_truthy_expr, which discards

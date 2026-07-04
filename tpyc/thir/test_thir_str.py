@@ -1223,6 +1223,44 @@ class TestStrCrossTypeCoercions:
         assert _emit_expr(decl.init) == (
             "std::string(::tpy::str_slice(s, ::tpy::BasicSlice{1, std::nullopt}))")
 
+    def test_annotated_view_resolved_local_peels_stale_coerce(self):
+        # `label: str = sv` never mutated resolves VIEW: the annotation's
+        # strview_to_str coerce is stale (materializing would dangle the view
+        # off a dying temporary) -- _peel_stale_view_owned_coerce lowers the
+        # bare source, mirroring gen_expr's identity arm. The decl and the
+        # view-source reassign both peel; the mutated sibling stays owned and
+        # still materializes.
+        src = (
+            "from tpy import StrView\n"
+            "def f(sv: StrView, sv2: StrView) -> None:\n"
+            "    label: str = sv\n"
+            "    label = sv2\n"
+            "    print(label)\n"
+            "def g(sv: StrView) -> str:\n"
+            "    m: str = sv\n"
+            '    m += "!"\n'
+            "    return m\n")
+        thir = _lower(src)
+        fn = _fn(thir, "f")
+        assert fn is not None
+        assert _emit_expr(fn.body[0].init) == "sv"
+        assert _emit_expr(fn.body[1].value) == "sv2"
+        decl_g = _fn(thir, "g").body[0]
+        assert isinstance(decl_g.init, THIRFormConvert)
+        assert _emit_expr(decl_g.init) == "std::string(sv)"
+
+        def cpp_for(thir_on: bool) -> str:
+            compiler, modules = _compile(src)
+            entry = _entry(modules)
+            _, cpp = compiler.generate_code_to_strings(
+                entry, options=CodeGenOptions(emit_source_comments=False,
+                                              thir_codegen=thir_on))
+            return cpp
+
+        cpp = cpp_for(True)
+        assert cpp == cpp_for(False)
+        assert "std::string_view label = sv;" in cpp
+
     def test_own_slot_coerce_ineligible(self):
         # An Own[str] ARG slot crosses the gen_call_arg auto-move cascade (its
         # own deferred frontier) -> the coerce is rejected, the caller stays AST.

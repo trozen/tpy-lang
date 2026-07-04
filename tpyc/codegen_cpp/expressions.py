@@ -20,7 +20,7 @@ from ..typesys import (
     TupleType, CallableType, ValueForm,
     INT32, BIGINT, FLOAT, CHAR, VOID, is_protocol_type, is_void_like_type, polymorphic_source_inner, polymorphic_source_is_pointer, polymorphic_subclass_into_optional, is_any_str_type, is_any_bytes_type, container_to_str_template,
     ResolvedBinop, get_covariant_params, unwrap_ref_type, RefType, ParamInfo,
-    yield_uses_borrow_slot, view_family_for_type, ViewTypeFamily, STR_FAMILY, BYTES_FAMILY,
+    yield_uses_borrow_slot, view_family_for_type, ViewTypeFamily, PendingViewType, STR_FAMILY, BYTES_FAMILY,
     is_float_type, is_readonly_span, is_dyn_protocol, contains_type_param)
 from ..type_def_registry import (
     is_dict_view, is_set, is_dict, is_array, is_span, is_varargs, is_spanlike_view, is_list,
@@ -1385,6 +1385,22 @@ class ExpressionGenerator:
                             and self.ctx.is_ptr_variant_union(cand_type)):
                         inner_expr = candidate
             gen_inner = self.gen_expr(inner_expr, inner_target)
+            # A str/bytes view->owned coerce is attached against the ANNOTATED
+            # owned type, but the binding's storage is decided later by the
+            # pending view resolution. When the sink resolved VIEW (the
+            # threaded decl/reassign/frame-field target -- possibly still the
+            # pending type, e.g. a branch-hoisted local), materializing would
+            # bind the view to an owned temporary dying at end of statement
+            # (dangling) -- the coerce is stale; the source renders bare.
+            # Mirrored by THIR's _peel_stale_view_owned_coerce.
+            sink_t = (self.types._resolve_pending_view(target_type)
+                      if isinstance(target_type, PendingViewType)
+                      else target_type)
+            if ((expr.coercion.name == "strview_to_str"
+                 and is_str_view_type(sink_t))
+                    or (expr.coercion.name == "bytesview_to_bytes"
+                        and is_bytes_view_type(sink_t))):
+                return gen_inner
             if is_span(coerce_target):
                 return self._gen_span_coercion(expr.expr, coerce_target, gen_inner)
             # IntLiteralType may be runtime BigInt; sema records this on the coercion.
