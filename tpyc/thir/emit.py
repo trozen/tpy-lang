@@ -24,8 +24,9 @@ from ..codegen_cpp.context import (
 )
 from ..codegen_cpp.forms import LocalBinding, is_plain_nonvalue
 from ..type_def_registry import (
-    is_bytes_type, is_bytes_view_type, is_dict, is_list, is_set, is_str_type,
-    is_string_type, view_to_owned_conv,
+    is_big_int_type, is_bytes_type, is_bytes_view_type, is_dict,
+    is_float32_type, is_list,
+    is_set, is_str_type, is_string_type, view_to_owned_conv,
 )
 from ..typesys import OptionalType, TupleType, UnionType, unwrap_qualifiers
 from .nodes import (
@@ -44,6 +45,7 @@ from .nodes import (
     THIRContainerLiteral,
     THIRContinue,
     THIRCtorCall,
+    THIREnumMember,
     THIRExpr,
     THIRExprStmt,
     THIRFieldAccess,
@@ -246,10 +248,25 @@ def _emit_literal(lit: THIRLiteral) -> str:
             return "std::monostate{}"
         return "std::nullopt" if lit.form is Form.STORAGE else "nullptr"
     if isinstance(v, float):
-        # Matches _gen_float_literal_value's double branch: repr() is the
-        # shortest round-tripping form and a valid C++ double literal. Float32
-        # (the `f`-suffixed branch) is excluded by the eligibility gate.
-        return repr(v)
+        # Matches the gen_expr float-literal arm: repr() is the shortest
+        # round-tripping form and a valid C++ double literal; a Float32-typed
+        # literal (retyped at lowering from its float_literal_to_float32
+        # coerce) takes the `f` suffix. inf/nan never reach here -- the
+        # eligibility gate admits finite literals only.
+        rendered = repr(v)
+        if is_float32_type(lit.result_type):
+            return rendered + "f"
+        return rendered
+    if is_big_int_type(lit.result_type):
+        # _gen_int_literal_value's BigInt arms. Arm 1 deliberately excludes
+        # INT32_MIN (the AST avoids a `long` vs `int64_t` overload ambiguity
+        # on macOS arm64); the gate's +-2^31 literal range keeps the
+        # from_str arm unreachable, kept for the exact-mirror discipline.
+        if -(2**31 - 1) <= v <= 2**31 - 1:
+            return f"::tpy::BigInt({v})"
+        if -2**63 <= v <= 2**63 - 1:
+            return f"::tpy::BigInt(static_cast<int64_t>({v}LL))"
+        return f'::tpy::BigInt::from_str("{v}")'
     return str(v)
 
 
@@ -260,6 +277,12 @@ def _emit_binop(e: THIRBinOp, state: _EmitState) -> str:
     # Comparisons reuse this path (their dunder carries a `{self} OP {0}`
     # template), so the same code emits both arithmetic and comparison binops.
     left, right = _emit_expr(e.left, state), _emit_expr(e.right, state)
+    # Post-generation operand casts (int-enum underlying / mixed BigInt-float),
+    # applied before the wrapper/template expansion like the AST's.
+    if e.left_cast is not None:
+        left = e.left_cast.format(left)
+    if e.right_cast is not None:
+        right = e.right_cast.format(right)
     rb = e.resolved
     if rb is None:
         # Derived comparison (`<= > >= !=`) or logical `&&`/`||` (incl. the
@@ -615,14 +638,19 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         return f"&({inner})" if e.addr_of else inner
     if isinstance(e, THIRMethodCall):
         return _emit_method_call(e, state)
+    if isinstance(e, THIREnumMember):
+        return e.cpp
     if isinstance(e, THIRContainerLiteral):
         return _emit_container_literal(e, state)
     if isinstance(e, THIRCoerce):
-        # The admitted coercions are all passthroughs: a literal renders in the
-        # target type's context (int/float literal coercions), and string_to_str
-        # is identity in every position (both spell std::string; the Coercion
-        # carries no codegen lambda).
-        return _emit_expr(e.expr, state)
+        # Passthrough coercions render the inner expression in the target
+        # type's context (int/float literal coercions, the identity str-family
+        # positions); the scalar-cast family formats the inner render through
+        # the `{0}` wrap computed at lowering (`static_cast<float>(x)` etc.).
+        inner = _emit_expr(e.expr, state)
+        if e.wrap is not None:
+            return e.wrap.format(inner)
+        return inner
     raise THIRCodeGenError(f"unhandled THIR expr: {type(e).__name__}")
 
 
@@ -865,6 +893,8 @@ def _emit_print_arg(a: THIRPrintArg, state: _EmitState) -> str:
         return f"::tpy::print_bool({inner})"
     if a.print_form is PrintForm.FLOAT:
         return f"::tpy::print_float({inner})"
+    if a.print_form is PrintForm.FLOAT32:
+        return f"::tpy::print_float(static_cast<double>({inner}))"
     if a.print_form is PrintForm.INT8:
         return f"static_cast<int>({inner})"
     if a.print_form is PrintForm.BYTES:

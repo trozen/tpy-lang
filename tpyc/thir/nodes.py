@@ -192,6 +192,13 @@ class THIRBinOp(THIRExpr):
     # (`x = (a + b)`); an augmented-assignment RHS is a full statement RHS where
     # the AST omits that wrap (`x = a + b;`). False reproduces the latter.
     paren_wrap: bool = True
+    # Per-side operand cast wraps (`{0}` templates), applied to the emitted
+    # operand strings before the wrapper/template expansion -- the AST's
+    # post-generation casts: int-enum operands cast to their underlying type
+    # (`static_cast<int32_t>(...)`), a BigInt operand of a mixed BigInt/float
+    # compare casts to the float operand's type. Computed at lowering.
+    left_cast: 'str | None' = None
+    right_cast: 'str | None' = None
 
 
 @dataclass(frozen=True)
@@ -430,18 +437,34 @@ class THIRContainerLiteral(THIRExpr):
 
 @dataclass(frozen=True)
 class THIRCoerce(THIRExpr):
-    """A sema-inserted coercion made explicit on the IR -- always an emit
-    PASSTHROUGH: the literal-into-typed-slot pair (`int_literal_to_fixed_int`,
-    `float_literal_to_float`) and the identity positions of the str-family
-    cross-type coercions (see lower.py `_coerce_disposition`), so the inner
-    expression renders directly in the target type. A MATERIALIZING position
-    (`std::string(x)`) never reaches this node -- it lowers to the view->owned
-    `THIRFormConvert` instead. `form` is the wrapped expression's form (a
-    passthrough changes type, never the value's shape), EXCEPT a view-target
-    coerce (`*_to_strview`), whose value is a view into the source's buffer
-    whatever the source's form -- it sets BORROW itself."""
+    """A sema-inserted coercion made explicit on the IR. Two emit shapes:
+
+    * PASSTHROUGH (`wrap is None`): the literal-into-typed-slot pair
+      (`int_literal_to_fixed_int`, `float_literal_to_float`) and the identity
+      positions of the str-family cross-type coercions (see lower.py
+      `_coerce_disposition`), so the inner expression renders directly in the
+      target type.
+    * TEMPLATE (`wrap` set): the scalar-cast family (`static_cast<float>({0})`
+      and friends) -- the coercion's codegen lambda mirrored as a positional
+      `{0}` template computed at lowering, where the target type's C++
+      spelling is at hand.
+
+    A MATERIALIZING position (`std::string(x)`) never reaches this node -- it
+    lowers to the view->owned `THIRFormConvert` instead. `form` is the wrapped
+    expression's form (a scalar cast changes type, never the value's shape),
+    EXCEPT a view-target coerce (`*_to_strview`), whose value is a view into
+    the source's buffer whatever the source's form -- it sets BORROW itself."""
     expr: THIRExpr
     coercion_name: str
+    wrap: 'str | None' = None
+
+
+@dataclass(frozen=True)
+class THIREnumMember(THIRExpr):
+    """Type-level enum member access `E.A` -> `E::A`. `cpp` is the full
+    rendered spelling (enum_cpp_name over the current module + the @native
+    member rename map), computed at lowering where the module context lives."""
+    cpp: str
 
 
 @dataclass(frozen=True)
@@ -846,16 +869,19 @@ class PrintForm(Enum):
     chosen wrapper without re-inspecting types (mirrors `gen_print`'s per-arg
     dispatch for the common-arg subset).
 
-      * `RAW`   -- direct `<<` (a wider fixed-int, or a `THIRStrLiteral`).
-      * `INT8`  -- `static_cast<int>(...)`, so an 8-bit int isn't printed as a char.
-      * `BOOL`  -- `::tpy::print_bool(...)` (Python-style `True`/`False`).
-      * `FLOAT` -- `::tpy::print_float(...)` (Python-style float formatting).
-      * `BYTES` -- `::tpy::BytesPrinter(...)` (Python-style `b'...'` repr).
+      * `RAW`     -- direct `<<` (a wider fixed-int, or a `THIRStrLiteral`).
+      * `INT8`    -- `static_cast<int>(...)`, so an 8-bit int isn't printed as a char.
+      * `BOOL`    -- `::tpy::print_bool(...)` (Python-style `True`/`False`).
+      * `FLOAT`   -- `::tpy::print_float(...)` (Python-style float formatting).
+      * `FLOAT32` -- `::tpy::print_float(static_cast<double>(...))` (the float
+        overload takes double; gen_print's is_float32_type arm).
+      * `BYTES`   -- `::tpy::BytesPrinter(...)` (Python-style `b'...'` repr).
     """
     RAW = auto()
     INT8 = auto()
     BOOL = auto()
     FLOAT = auto()
+    FLOAT32 = auto()
     BYTES = auto()
 
 

@@ -363,14 +363,14 @@ class TestConstructor:
             "S")
         assert ctor is None
 
-    def test_bigint_field_is_ineligible(self):
-        # Bare `int` -> BigInt is outside the eligible-scalar set (as everywhere in
-        # the THIR slice), so a BigInt-field ctor stays on the AST path.
+    def test_bigint_field_routes(self):
+        # A BigInt field rides the scalar MIL arm (`: n(n)`) -- BigInt is an
+        # eligible value scalar since the BigInt value-binding cell.
         ctor = _lower_ctor(
             "class C:\n    n: int\n"
             + "    def __init__(self, n: int):\n        self.n = n\n",
             "C")
-        assert ctor is None
+        assert ctor is not None
 
     def test_ineligible_param_with_scalar_fields_is_ineligible(self):
         # The PARAM gate must reject a ctor whose fields are all scalar but a param

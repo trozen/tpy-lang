@@ -1898,6 +1898,7 @@ class ExpressionAnalyzer:
                 if binding and binding.kind == BindingKind.ENUM:
                     enum_type = binding.enum_type
                     if expr.field in enum_info_of(enum_type).members:
+                        expr.enum_member_of = enum_type
                         return enum_type
                     raise self.ctx.error(
                         f"Enum '{enum_type.name}' has no member '{expr.field}'", expr)

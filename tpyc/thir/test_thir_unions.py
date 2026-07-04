@@ -21,7 +21,10 @@ from .nodes import (
 from .validate import (
     THIRValidationError, validate_constructor, validate_function,
 )
-from .testutil import _compile, _entry, _fn, _lower, _lower_ctor, _lower_ctx
+from .testutil import (
+    _compile, _entry, _fn, _lower, _lower_ctor, _lower_ctx,
+    _lower_ctx_witnessed,
+)
 
 _PRELUDE = "from tpy import Int32, Int64, Float64\n"
 
@@ -1423,6 +1426,20 @@ class TestUnionCallArgLift:
             "class S2:\n    u: W | A\n"
             "    def __init__(self, v: Own[W | A]):\n        self.u = v\n")
         assert _fn(thir, "f") is None
+
+    def test_witnesses_lift_faces(self):
+        # The monostate arm (None into `A | B | None`), the deep-const
+        # already-union conversion (`ptr_variant_to_const`), and the member
+        # address-of -- one per arm.
+        _, w = _lower_ctx_witnessed(
+            _CALLARG_RECORDS
+            + "def tr(v: readonly[A | B]) -> Int32:\n    return 0\n"
+            + "def f() -> Int32:\n    return take_opt(None)\n"
+            + "def g(v: A | B) -> Int32:\n    return tr(v)\n"
+            + "def h(a2: A) -> Int32:\n    return take(a2)\n")
+        assert w.get("unionlift.none", 0) == 1
+        assert w.get("unionlift.const_wrap", 0) == 1
+        assert "unionlift.member" in w
 
     def test_dump_renders_lift_arms_and_ctor(self):
         # All three THIRUnionArgLift arms (member address-of, monostate,

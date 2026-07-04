@@ -179,10 +179,11 @@ class TestEligibility:
                       + "    return 1\n")
         assert _fn(thir, "f") is None
 
-    def test_non_fixed_int_param_is_ineligible(self):
-        # `int` is BigInt, not a fixed-width scalar -> outside the slice.
+    def test_bigint_param_routes(self):
+        # `int` is BigInt -- an eligible value scalar (::tpy::BigInt renders
+        # bare like any fixed-width int).
         thir = _lower("def f(a: int) -> int:\n    b = a\n    return b\n")
-        assert _fn(thir, "f") is None
+        assert _fn(thir, "f") is not None
 
     def test_staticmethod_routes_like_free_function(self):
         # A staticmethod has no `self` receiver; its body lowers like a free
@@ -626,10 +627,11 @@ class TestPrintStmt:
         assert arg.print_form is PrintForm.RAW
         assert isinstance(arg.expr, THIRName) and arg.expr.form is Form.BORROW
 
-    def test_bigint_arg_ineligible(self):
-        # A plain `int` is BigInt, not an eligible fixed-int scalar -> AST path.
+    def test_bigint_arg_routes_raw(self):
+        # A BigInt print arg streams raw (operator<<), like the AST's
+        # runtime-bigint arm.
         thir = _lower("def f(x: int) -> None:\n    print(x)\n")
-        assert _fn(thir, "f") is None
+        assert _fn(thir, "f") is not None
 
     def test_kwargs_ineligible(self):
         # sep=/end=/file=/flush= take gen_print's richer path -> AST.
@@ -753,12 +755,13 @@ class TestFloat:
         thir = _lower("def f(a: float, b: float) -> float:\n    return a / b\n")
         assert _fn(thir, "f") is None
 
-    def test_float32_is_ineligible(self):
-        # Float32 literals need a `f` suffix the slice does not emit, so the
-        # whole Float32 family stays on the AST path.
+    def test_float32_values_route(self):
+        # Float32 params/locals/returns are eligible scalars (`float`); the
+        # `f`-suffix literal render rides the float_literal_to_float32 coerce.
         thir = _lower("from tpy import Float32\n"
                       "def f(a: Float32) -> Float32:\n    b = a\n    return b\n")
-        assert _fn(thir, "f") is None
+        fn = _fn(thir, "f")
+        assert fn is not None and fn.params[0].type.to_cpp() == "float"
 
 
 
@@ -1058,8 +1061,8 @@ class TestDump:
         )
 
     def test_dump_empty(self):
-        # `int` is BigInt -- not an eligible scalar, so nothing routes.
-        thir = _lower("def f(a: int) -> int:\n    return a\n")
+        # True division (AST op `div`) is outside the slice, so nothing routes.
+        thir = _lower("def f(a: float) -> float:\n    return a / a\n")
         assert "(no THIR-eligible functions)" in dump_thir(thir)
 
     def test_dump_for_range(self):
@@ -1529,11 +1532,13 @@ class TestGlobalStmt:
         assert _fn(thir, "bump_aug") is not None
         assert _fn(thir, "set_flag") is not None
 
-    def test_bigint_global_is_ineligible(self):
-        # `int` globals are BigInt -- outside the scalar slice; the unseeded
-        # name keeps the `global` statement (and so the body) on the AST path.
+    def test_bigint_global_routes(self):
+        # `int` globals are BigInt -- an eligible scalar since the BigInt
+        # value-binding cell, so the `global` declaration seeds and the write
+        # renders the same bare `big = ...;` (the class byte-identical test
+        # covers the render).
         thir = _lower(self.SRC)
-        assert _fn(thir, "big_write") is None
+        assert _fn(thir, "big_write") is not None
 
     def test_bare_global_read_without_decl_is_ineligible(self):
         # Read-only module-global access (no `global` statement) is the

@@ -13,8 +13,9 @@ from .lower import lower_module
 _STDLIB_DIRS = [get_lib_dir() / "tpy"]
 
 
-def _compile(source: str):
-    compiler = Compiler.from_source(source, lib_dirs=_STDLIB_DIRS)
+def _compile(source: str, extra_lib_dirs=None):
+    dirs = list(extra_lib_dirs or []) + _STDLIB_DIRS
+    compiler = Compiler.from_source(source, lib_dirs=dirs)
     return compiler, compiler.compile()
 
 
@@ -38,6 +39,20 @@ def _lower_ctx(source: str):
     entry = _entry(modules)
     with activate_compiler(compiler):
         return lower_module(entry.ast, entry.analyzer)
+
+
+def _lower_ctx_witnessed(source: str, extra_lib_dirs=None):
+    """_lower_ctx plus the per-face witness counts the run recorded
+    (faces.py, `compiler._thir_face_witnesses`). Lets a unit pin that its
+    shape actually reaches the gate/lowering face it exercises -- without
+    the pin, a refactor can silently un-witness a face while routing and
+    the byte-diff both stay green."""
+    from ..compilation_context import activate_compiler
+    compiler, modules = _compile(source, extra_lib_dirs)
+    entry = _entry(modules)
+    with activate_compiler(compiler):
+        thir = lower_module(entry.ast, entry.analyzer)
+    return thir, compiler._thir_face_witnesses
 
 
 def _fn(thir, name):

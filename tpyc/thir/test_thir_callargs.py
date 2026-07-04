@@ -9,7 +9,9 @@ from .nodes import (
     THIRArgTemp, THIRCall, THIRCtorCall, THIRExprStmt, THIRMethodCall,
     THIRName, THIRReturn,
 )
-from .testutil import _compile, _entry, _lower, _lower_ctx, _fn
+from .testutil import (
+    _compile, _entry, _lower, _lower_ctx, _lower_ctx_witnessed, _fn,
+)
 
 # Class A's body, open for extra methods (`_src(extra_a=...)` appends at the
 # end of the class); the free functions and sibling records follow.
@@ -138,7 +140,9 @@ class TestRecordCallArgs:
         assert _cpp(src, thir=True) == _cpp(src, thir=False)
         out = _cpp(src, thir=True)
         assert "return take_ro(A(7));" in out
-        assert _fn(_lower_ctx(src), "use") is not None
+        thir, w = _lower_ctx_witnessed(src)
+        assert _fn(thir, "use") is not None
+        assert "own.readonly_ctor" in w
 
     def test_upcast_name_arg_routes(self):
         # A Child NAME into a Parent ref slot emits the bare name on both
@@ -425,8 +429,8 @@ _VU_PRELUDE = (
 )
 
 
-def _cpp(src: str, thir: bool) -> str:
-    compiler, modules = _compile(src)
+def _cpp(src: str, thir: bool, extra_lib_dirs=None) -> str:
+    compiler, modules = _compile(src, extra_lib_dirs)
     entry = _entry(modules)
     hpp, cpp = compiler.generate_code_to_strings(
         entry, options=CodeGenOptions(emit_source_comments=False,
@@ -498,7 +502,9 @@ class TestArgTempEmit:
         out = _cpp(src, thir=True)
         assert ("std::variant<int32_t, double> __tmp_1 = v;\n"
                 "    k.n = take_vu(__tmp_1);") in out
-        assert _fn(_lower_ctx(src), "use") is not None
+        thir, w = _lower_ctx_witnessed(src)
+        assert _fn(thir, "use") is not None
+        assert "flush.field_write" in w
 
     def test_mixed_thir_ast_numbering_stays_continuous(self):
         # The load-bearing seam test: fn1 routes (its temp draws __tmp_1 from
@@ -628,6 +634,15 @@ class TestOwnSlotArgs:
         assert "move(%o)" in text                     # the temp-free move
         assert "%argtmp(auto move){%a}" in text       # the copy+move temp
         assert "__tmp" not in text                    # number-free by design
+
+    def test_witnesses_own_slot_faces(self):
+        # The copy+move temp fires per lvalue arm (copy_arm /
+        # scalar_name_arm / field_arm); the bare-rvalue gate admission fires
+        # for the coerced-literal arm (scalar_lit_arm).
+        _, w = _lower_ctx_witnessed(self.SRC)
+        assert w.get("argtemp.own_copy", 0) == 3
+        assert w.get("own.scalar_rvalue", 0) == 1
+        assert "move.own_last_use" in w               # move_arm
 
 
 class TestOwnSlotGateRejects:
@@ -767,6 +782,13 @@ class TestMethodUnionAndSelfArgs:
         # The self receiver renders arrow.
         assert "return this->helper();" in out
 
+    def test_witnesses_method_union_temp(self):
+        # One method-side variant temp per member-valued arg (use's two
+        # assigns + use_inherited's return); the free-call row is a separate
+        # face (argtemp.value_union) and must not absorb these.
+        _, w = _lower_ctx_witnessed(self.SRC)
+        assert w.get("argtemp.value_union_method", 0) == 3
+
     def test_method_union_temp_in_non_flushable_position_stays_ast(self):
         # A nested method-call arg has no flush point for the variant temp.
         src = (
@@ -837,6 +859,18 @@ class TestOptionalPtrArgs:
         assert "optptr{&(%a)}" in text
         assert "optptr{optional_to_ptr(" in text
         assert "%argtmp(A addr){ctor(A, " in text
+
+    def test_witnesses_optptr_faces(self):
+        # 'lift' fires for the storage-Optional field read (field_arm);
+        # 'pass' fires for the already-`T*` bindings (opt_local_arm's
+        # OPTIONAL_TO_PTR local + ptr_local_arm's F2 pointer-local, which
+        # classifies 'name' but splits to the bare pass at lowering).
+        _, w = _lower_ctx_witnessed(self.SRC)
+        assert w.get("optptr.lift", 0) == 1
+        assert w.get("optptr.pass", 0) == 2
+        assert "optptr.none" in w
+        assert "optptr.name" in w
+        assert "optptr.ctor_rvalue" in w
 
 
 class TestOptionalPtrNarrowedArgs:
@@ -1025,6 +1059,59 @@ class TestArgTempGateRejects:
                     "        other.x += 1\n"
                     "        self.x += other.x\n"))
         assert _fn(thir, "f") is None
+
+
+class TestMacroNameAssignFlush:
+    """flush.assign -- the name-target TpyAssign flush position. The parser
+    emits TpyVarDecl for every ordinary `name = expr` (reassignments
+    included), so a TpyAssign with a NAME target only arises from
+    macro-authored / frontend-IR ASTs. A @function_macro builds the shape
+    here (ast.assign over a live body slot) so the face has a witness: its
+    value call hoists the variant temp at the assign's own flush point."""
+
+    _MACRO_MOD = (
+        "# tpy: macro_module\n"
+        "from tpyc.macro_api import function_macro, FunctionMacroContext, ast\n"
+        "\n"
+        "\n"
+        "@function_macro\n"
+        "def rebind_via_assign(ctx: FunctionMacroContext) -> None:\n"
+        "    # ctx.body is the live statement list; swap the marker rebind\n"
+        "    # (`r = k`, a TpyVarDecl) for a raw name-target TpyAssign.\n"
+        "    ctx.body[1] = ast.assign(ast.name('r'),\n"
+        "                             ast.call('take_vu', [ast.name('k')]))\n"
+    )
+
+    _MAIN = (
+        "from thir_faces_macromod import rebind_via_assign\n"
+        "from tpy import Int32, Float64\n"
+        "def take_vu(v: Int32 | Float64) -> Int32:\n"
+        "    if isinstance(v, Int32):\n        return v\n"
+        "    return 0\n"
+        "@rebind_via_assign\n"
+        "def use(k: Int32) -> Int32:\n"
+        "    r = 0\n"
+        "    r = k\n"
+        "    return r\n"
+    )
+
+    def _dirs(self, tmp_path):
+        (tmp_path / "thir_faces_macromod.py").write_text(self._MACRO_MOD)
+        return [tmp_path]
+
+    def test_macro_name_assign_routes_and_witnesses(self, tmp_path):
+        thir, w = _lower_ctx_witnessed(self._MAIN,
+                                       extra_lib_dirs=self._dirs(tmp_path))
+        assert _fn(thir, "use") is not None
+        assert "flush.assign" in w
+        assert "argtemp.value_union" in w
+
+    def test_byte_identical(self, tmp_path):
+        dirs = self._dirs(tmp_path)
+        out = _cpp(self._MAIN, thir=True, extra_lib_dirs=dirs)
+        assert out == _cpp(self._MAIN, thir=False, extra_lib_dirs=dirs)
+        assert ("std::variant<int32_t, double> __tmp_1 = k;\n"
+                "    r = take_vu(__tmp_1);") in out
 
 
 class TestCtorShapeGateRejects:

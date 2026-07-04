@@ -83,7 +83,7 @@ deletion is the concrete milestone that forces its tail closed.
 | AST component to delete | Deletion gate (cells that must route) | Status |
 |---|---|---|
 | **Ctor MIL emit** -- `records.py` `_extract_field_inits` / `_extract_base_inits` / `_get_non_init_stmts` + the inline ` : f(v)... {}` write | every ctor MIL field cell + body: scalar (M3a), record/Optional copy+move (M3b), ctor-call / param-field-read sources + own-optional params (M3b-rvalue), docstring/`pass` trivia body (M3c-trivia), non-init body + demotion (M3c-demotion), inheritance -- single + multi base + inherited-field writes (M3d), and str/list/dict/tuple/union/bytes fields (F3+) + cross-module/native/generic records | **PARTIAL** -- the whole scalar/record/Optional + body + inheritance surface lands (ctor self-contained tail complete); deferred cells are cross-axis-blocked -- non-record demoted-field-writes + non-record fields (F3+) + native/generic records |
-| **Body statement + expression emit** -- `statements.py` `gen_body` per-statement path + `expressions.py` `gen_expr`, for routed callables | every statement shape + expression form across every callable kind | **PARTIAL** -- straight-line shapes over the F1/F2 + scalar/bool/double-float + str (F6 S1-S5 + cross-type coercions) + bytes (F6 S6 values + the incr-46 tail: subscript/slices/iteration/concat/aug-assign) slice, incl. logical/chained-compare exprs and scalar/slice-object type-constructor calls |
+| **Body statement + expression emit** -- `statements.py` `gen_body` per-statement path + `expressions.py` `gen_expr`, for routed callables | every statement shape + expression form across every callable kind | **PARTIAL** -- straight-line shapes over the F1/F2 + scalar (fixed-int/bool/both-float-widths/BigInt/same-module-enum, incr 73-75) + str (F6 S1-S5 + cross-type coercions) + bytes (F6 S6 values + the incr-46 tail: subscript/slices/iteration/concat/aug-assign) slice, incl. logical/chained-compare exprs and scalar/slice-object type-constructor calls |
 | **Form / conversion machinery** -- `context.py` `convert` + `CppForm`/`FormValue`, the ~12 detection predicates + ~22 local side-sets + the `RefType` wrapper (see `THIR_FORM_INVENTORY.md`) | **F-final**: the `Form` tag + `THIRFormConvert` subsume all form dispatch | **PARTIAL** -- F1/F2 forms carried + F3 tuple read/write + the F6 str+bytes view->owned converts (S1/S6 -- both `view_to_owned_conv` family arms validated; reused at container-element slots by S5; extended to the cross-type str-family coercions in incr 42, the materializing arms lowering to the same THIRFormConvert) + the F4 union arms (U1 value + U2 pointer-variant, incr 49-50: `to_[const_]ptr_variant` / `to_value_variant<...>` carried, plus the structural form validator as the second gate) + the U3 narrowing extractions (incr 51: `THIRIsinstance` / `THIRNarrowAlias`, the `narrowed_vars` rename mirrored as lowering scope) + the U2 write-arm tail (incr 52: monostate write arms + union field-to-field copies) + the U4 narrowing tail (incr 53-54: `THIRAssert` persistent extractions + re-assert bump, while-isinstance loop-entry aliases, compound-`and` `THIRNarrowedRead` inline reads); + the call-arg lifts and temps (incr 56-65: `THIRUnionArgLift` ptr-variant member/None arg lifts incl. the deep-const slot spelling + `ptr_variant_to_const`, `THIRCtorCall`, `THIRArgTemp` value-union/record-rvalue/Own-slot/optional-ptr arg temps with the `move`/`addr_of` wraps, `THIRMove` last-use moves, `THIROptionalPtrArg` nullptr/&(name)/optional_to_ptr faces, record-arg/method-receiver/self-receiver pass-throughs); F4 remainder (readonly narrowing subjects), F5, the remaining F6 tail, and RefType removal pending |
 
 These interlock: deleting `gen_body`/`gen_expr` requires the form machinery gone
@@ -251,6 +251,24 @@ deferred (self-contained) / blocked-on-`<rung>`.
 ### Form ladder (F) -- `IR_DESIGN.md` rung ladder + `THIR_FORM_INVENTORY.md`
 - F1 (record locals + Optional read), F2 (reseatable pointer-locals + Optional
   write/return + move): **DONE**.
+- **Value-scalar family widening DONE (increments 73-75)** -- `_eligible_scalar`
+  now spans fixed-ints, bool, BOTH float widths, and BigInt, plus the
+  `_eligible_enum` sibling (same-module non-@native top-level enums), so
+  every scalar-keyed gate admits them at once. Mechanisms (reused by any
+  future family): target-typed literal renders via `_slot_literal_retype`
+  at the slot sites (Float32 `f` suffix, BigInt ctor wraps),
+  `THIRCoerce.wrap` `{0}` templates for the scalar-cast coercion family
+  (incl. the previously-unrouted float64 casts + `fixed_int_widening` +
+  `bigint_to_fixed_int`), and per-side `THIRBinOp.left_cast`/`right_cast`
+  operand wraps (int-enum underlying casts, mixed BigInt/float compares).
+  Deferred rows: the runtime-BigInt NARROW positions (`_runtime_bigint`
+  pins: subscript indices / slice bounds `.to_fixed_check<int32_t>()`,
+  BigInt range counters, dict BigInt keys, FixedInt-target aug-assigns fed
+  BigInt values, BigInt-arg `E(x)`); cross-module / @native / nested
+  enums, enum truthiness, unary minus, IntEnum arithmetic,
+  enum `.value`/`.name`; Float32/enum/BigInt members in value unions are
+  admitted by the widened predicates wherever the union gates key on
+  `_eligible_scalar` (byte-diff-validated).
 - F3 tuples: **PARTIAL** (increments 22-24) -- storage->borrow read
   (`tuple_to_pointer`: borrow-form tuple return + storage-tuple `auto&&` alias locals)
   + borrow->storage write (`tuple_to_storage`, tuple-field write off a borrow tuple
@@ -382,16 +400,10 @@ deferred (self-contained) / blocked-on-`<rung>`.
   default int); the owned (STORAGE) result composes into every S1 sink (decl
   init, return, print/call arg, compare operand). S2-deferred rows (gate-
   rejected): `!r`/`!s` conversions, format specs, user/union `__str__`,
-  `_container_to_str` containers, Char. NB the BigInt `.to_string()` / enum
-  / Float32 `static_cast` arg rows are blocked on VALUE-BINDING admission,
-  not the wrap table: no BigInt/enum/Float32-typed expression is admissible
-  anywhere in the slice (`_eligible_scalar` excludes all three,
-  load-bearing for the subscript-index and literal-render gates), so they
-  are "BigInt/Float32/enum values" frontier cells, not f-string rows.
-  Pinned AST wrap shapes for that frontier: BigInt `({0}).to_string()`,
-  Float32 `::tpy::float_to_str(static_cast<double>({0}))`, enum
-  `static_cast<int>({0})` (spec-free; AST arg order: bool, float64,
-  float32, runtime-bigint, int8, enum). S4: str subscript `s[i]` -> Char (the checked
+  `_container_to_str` containers, Char. The BigInt `({0}).to_string()` /
+  enum `static_cast<int>({0})` / Float32
+  `::tpy::float_to_str(static_cast<double>({0}))` rows LANDED with the
+  value-binding frontier (increments 73-75) -- see that entry below. S4: str subscript `s[i]` -> Char (the checked
   `::tpy::__getitem__` / bounds-safe operator[] container emit verbatim),
   non-stepped slices `s[a:b]` -> `::tpy::str_slice` view results (`THIRStrSlice`,
   BORROW, view sinks only -- an owned sink arrives as a `strview_to_str`
@@ -807,7 +819,11 @@ byte-diff itself.
   which registered gate/lowering faces (currently the call-arg machinery's) had
   zero corpus witnesses. A zero-witness face is a byte-diff blind spot; give it a
   unit or a corpus witness before deleting its component's AST path. Register new
-  faces in `THIR_FACES` when adding gate arms / lowering renders.
+  faces in `THIR_FACES` when adding gate arms / lowering renders. All ten
+  originally-zero-witness faces are UNIT-pinned (increment 72: each unit asserts
+  the face fired via `testutil._lower_ctx_witnessed`); `flush.assign` stays on
+  the corpus zero-witness list permanently -- the parser emits `TpyVarDecl` for
+  every name-target assign, so only macro-built / frontend-IR ASTs reach it.
 - **Planned:** extend the tally further to per-component AST-fallback coverage
   (how much of each component still falls back to AST), so the gap to each
   deletion is *measured*, not estimated. Today the tally reports total routed

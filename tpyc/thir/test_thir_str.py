@@ -360,10 +360,10 @@ class TestFString:
         assert _fn(thir, "f") is None
         assert _fn(thir, "g") is None
 
-    def test_bigint_arg_ineligible(self):
-        # A runtime-BigInt arg takes the `.to_string()` row -- not mirrored.
+    def test_bigint_arg_routes(self):
+        # A runtime-BigInt arg takes the `({0}).to_string()` row.
         thir = _lower('def f(n: int) -> str:\n    return f"n={n}"\n')
-        assert _fn(thir, "f") is None
+        assert _fn(thir, "f") is not None
 
     def test_char_arg_ineligible(self):
         # Char has no mirrored wrapper row (S4 introduces Char values).

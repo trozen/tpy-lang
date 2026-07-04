@@ -444,6 +444,7 @@ class TpyFieldAccess(TpyExpr):
     module_var_access: Optional[tuple[str, str]] = None  # Set by sema for `pkg.sub.X` variable access on a dotted module: (module_qname, var_name)
     accessed_field_is_interior: bool = False  # Set by sema: matched field is `interior[...]` (outside the readonly boundary)
     native_field_name: Optional[str] = None  # Set by sema: the matched field's native_field() C++ rename (own-fields-first lookup, so a subclass redeclaration shadows an ancestor's rename)
+    enum_member_of: Optional[TpyType] = None  # Set by sema: type-level enum member access (Color.RED); the enum NominalType
 
     def children(self) -> list[TpyExpr]:
         return [self.obj]

@@ -186,7 +186,14 @@ def _iter_typed_children(node) -> list[TpyType]:
         d = getattr(cur, "__dict__", None)
         if not d:
             continue
-        for v in d.values():
+        for k, v in d.items():
+            # `enum_member_of` records WHICH enum a `E.A` access resolved
+            # through (a binding fact for codegen), not a type the module
+            # reaches on its own: surfacing it here would re-add the
+            # defining module's include past the aliased-re-export dedupe
+            # (the access reaches the enum through the import edge already).
+            if k == "enum_member_of":
+                continue
             if v is None or isinstance(v, (str, int, float, bool, bytes)):
                 continue
             if isinstance(v, TpyType):

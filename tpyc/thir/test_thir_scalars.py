@@ -8,7 +8,7 @@ from .nodes import (
     THIRBinOp, THIRCall, THIRCoerce, THIRForRange, THIRLiteral,
 )
 from .testutil import (
-    _compile, _entry, _lower, _fn,
+    _compile, _entry, _lower, _fn, _emit_expr,
 )
 
 # --- Bare numeric-literal call args + negated int literals (increment 45) ---
@@ -36,14 +36,22 @@ class TestNumericLiteralArgs:
         call = fn.body[0].value
         assert isinstance(call.args[0], THIRLiteral) and call.args[0].value == 1.5
 
-    def test_float32_slot_ineligible(self):
+    def test_float32_literal_arg_routes_suffixed(self):
         # A float literal into a Float32 slot arrives float_literal_to_float32
-        # coerce-wrapped (the `f`-suffix render) -> AST path.
+        # coerce-wrapped; lowering retypes the literal to Float32 so the
+        # emitter appends the `f` suffix.
         thir = _lower(
             _NUMLIT_PRELUDE
             + "def f(x: Float32) -> Float32:\n    return x\n"
-            + "def g() -> None:\n    v = f(1.5)\n    print(1)\n")
-        assert _fn(thir, "g") is None
+            + "def g() -> None:\n    v = f(1.5)\n    print(v)\n")
+        fn = _fn(thir, "g")
+        assert fn is not None
+        call = fn.body[0].init
+        lit = call.args[0]
+        while isinstance(lit, THIRCoerce):
+            lit = lit.expr
+        assert isinstance(lit, THIRLiteral) and lit.value == 1.5
+        assert _emit_expr(lit) == "1.5f"
 
     def test_inf_literal_arg_ineligible(self):
         # `1e400` parses to inf; repr(inf) is not valid C++ -> AST path.
@@ -53,13 +61,15 @@ class TestNumericLiteralArgs:
             + "def g() -> None:\n    v = f(1e400)\n    print(1)\n")
         assert _fn(thir, "g") is None
 
-    def test_bigint_slot_literal_ineligible(self):
-        # An int literal into a BigInt slot wraps `::tpy::BigInt(3)` -> AST.
+    def test_bigint_slot_literal_routes_wrapped(self):
+        # An int literal into a BigInt slot wraps `::tpy::BigInt(3)` -- the
+        # slot retype at _lower_call_arg's tail (see test_thir_bigint for the
+        # byte-identity pin).
         thir = _lower(
             _NUMLIT_PRELUDE
             + "def f(x: int) -> int:\n    return x\n"
-            + "def g() -> None:\n    v = f(3)\n    print(1)\n")
-        assert _fn(thir, "g") is None
+            + "def g() -> None:\n    v = f(3)\n    print(v)\n")
+        assert _fn(thir, "g") is not None
 
     def test_negated_int_literal_positions_route(self):
         # The fold covers every admitted literal position: decl init, call arg
@@ -198,11 +208,12 @@ class TestScalarCtorCall:
         ret = _fn(thir, "f").body[0].value
         assert isinstance(ret, THIRCall) and ret.cpp_template == "({0} != 0)"
 
-    def test_bigint_result_ineligible(self):
-        # int(x) constructs a BigInt -- not an eligible scalar result.
+    def test_bigint_result_routes(self):
+        # int(x) constructs a BigInt -- an eligible scalar result; the
+        # resolved __init__ template expands like any scalar ctor.
         thir = _lower(_CTOR_PRELUDE
                       + "def f(a: Int32) -> None:\n    x = int(a)\n    print(a)\n")
-        assert _fn(thir, "f") is None
+        assert _fn(thir, "f") is not None
 
     def test_str_result_ineligible(self):
         thir = _lower(_CTOR_PRELUDE
@@ -223,11 +234,13 @@ class TestScalarCtorCall:
                       + "def f() -> None:\n    c = Char(\"a\")\n    print(1)\n")
         assert _fn(thir, "f") is None
 
-    def test_float32_ctor_ineligible(self):
-        # Float32 literals need an `f` suffix the slice does not emit.
+    def test_float32_ctor_routes(self):
+        # Float32(1.5) routes: the result is an eligible scalar and the
+        # literal arg renders `f`-suffixed against its param slot (see
+        # TestFloat32AndCastCoercions for the byte-identity pin).
         thir = _lower("from tpy import Float32\n"
-                      + "def f() -> None:\n    x = Float32(1.5)\n    print(1)\n")
-        assert _fn(thir, "f") is None
+                      + "def f() -> None:\n    x = Float32(1.5)\n    print(x)\n")
+        assert _fn(thir, "f") is not None
 
     def test_wide_literal_arg_ineligible(self):
         # A literal outside int32 range renders with a static_cast wrap
@@ -310,3 +323,69 @@ class TestScalarCtorCallEmit:
         assert "double m = static_cast<double>(a);" in cpp
         assert "bool k = (1 != 0);" in cpp
         assert "use(9)" in cpp                   # ctor folded in a call arg
+
+
+# --- Float32 values + the scalar-cast template coercions (increment 73) ---
+
+
+class TestFloat32AndCastCoercions:
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+        return cpp
+
+    SRC = (
+        _NUMLIT_PRELUDE
+        + "def use32(v: Float32) -> Float32:\n    return v\n"
+        + "def use64(v: Float64) -> Float64:\n    return v\n"
+        + "def use_i64(v: Int64) -> Int64:\n    return v\n"
+        + "def mix(a: Float32, b: Float32, n: Int32) -> Float32:\n"
+        + "    c: Float32 = 1.5\n"
+        + "    d = a + b\n"
+        + "    e = use32(n)\n"
+        + "    w = use64(a)\n"
+        + "    k = use64(3)\n"
+        + "    g = use32(w)\n"
+        + "    h = use_i64(n)\n"
+        + "    if a < b:\n        return c + d\n"
+        + "    print(e, g, w)\n"
+        + '    print(f"a={a} n={n}")\n'
+        + "    return b\n"
+        + "def main():\n"
+        + "    print(mix(0.5, 2.5, 7))\n"
+        + "main()\n"
+    )
+
+    def test_routed(self):
+        thir = _lower(self.SRC)
+        assert _fn(thir, "mix") is not None
+
+    def test_byte_identical(self):
+        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
+
+    def test_emit_arms(self):
+        cpp = self._cpp(self.SRC, thir=True)
+        assert "float c = 1.5f;" in cpp                       # f-suffix literal
+        assert "float e = use32(static_cast<float>(n));" in cpp   # fixed_int_to_float32
+        assert "double w = use64(static_cast<double>(a));" in cpp  # float32_to_float
+        assert "double k = use64(static_cast<double>(3));" in cpp  # int_literal_to_float
+        assert "float g = use32(static_cast<float>(w));" in cpp    # float_to_float32
+        assert "int64_t h = use_i64(static_cast<int64_t>(n));" in cpp  # fixed_int_widening
+        assert "::tpy::print_float(static_cast<double>(e))" in cpp     # print float32
+        assert "::tpy::float_to_str(static_cast<double>(a))" in cpp    # f-string float32
+
+    def test_float32_ctor_call_byte_identical(self):
+        # Float32(x) / Float32(1.5) now pass the scalar-ctor gate (the result
+        # is an eligible scalar); pin the expansion against the AST render.
+        src = (
+            _NUMLIT_PRELUDE
+            + "def f(x: Float64, n: Int32) -> Float32:\n"
+            + "    a = Float32(1.5)\n"
+            + "    b = Float32(x)\n"
+            + "    c = Float32(n)\n"
+            + "    return a + b + c\n"
+            + "def main():\n    print(f(2.5, 3))\nmain()\n"
+        )
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
