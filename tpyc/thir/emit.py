@@ -80,7 +80,10 @@ from .nodes import (
     THIRUnionArgLift,
     THIRVarDecl,
     THIRWhile,
+    THIRWith,
+    WithTargetArm,
 )
+from .faces import witness as _witness
 
 
 class THIRCodeGenError(Exception):
@@ -165,6 +168,49 @@ class CtxTempSink(TempSink):
         self._ctx.temps.flush(out, indent)
 
 
+class WithCounter:
+    """Allocates `__ctx_N` ids for `with` statements. Unlike the per-function
+    counters below, `ctx.with_counter` is module-cumulative and never reset
+    (like `__tmp_N`), shared with AST-emitted bodies -- the codegen seam passes
+    `CtxWithCounter` so interleaved THIR/AST numbering stays continuous. This
+    default is the standalone / unit-test sink (first id is `__ctx_1`, a fresh
+    module's numbering)."""
+
+    def __init__(self) -> None:
+        self._n = 0
+
+    def next(self) -> int:
+        self._n += 1
+        return self._n
+
+
+class CtxWithCounter(WithCounter):
+    """WithCounter backed by the live CodeGenContext's `with_counter`
+    (duck-typed on `ctx` like CtxTempSink, keeping emit.py free of a
+    CodeGenContext import)."""
+
+    def __init__(self, ctx) -> None:
+        self._ctx = ctx
+
+    def next(self) -> int:
+        self._ctx.with_counter += 1
+        return self._ctx.with_counter
+
+
+@dataclass
+class _FinallyFrame:
+    """One enclosing `with` layer during body emission -- the emit-side
+    `FinallyContext` for the slice: a fixed `__ctx_N.__exit__(...)` call
+    instead of a re-emitted finally body (try/finally arrives with the
+    try-tier cells). `loop_depth` is the live loop-nesting count at push
+    (`len(ctx.loop_else_labels)` in the AST -- every loop appends an entry,
+    labeled or not), so break/continue walk only frames pushed inside the
+    innermost loop body."""
+    ctx_n: int
+    exc_null_arg: str
+    loop_depth: int
+
+
 @dataclass
 class _EmitState:
     """Per-function emit state. `iter_counter` reproduces `ctx.iter_counter`:
@@ -187,10 +233,20 @@ class _EmitState:
     module-cumulative across interleaved THIR/AST bodies."""
     comments: CommentSink
     temps: TempSink = field(default_factory=TempSink)
+    with_counter: WithCounter = field(default_factory=WithCounter)
+    return_cpp: 'str | None' = None
     iter_counter: int = 0
     slot_counter: int = 0
     unpack_counter: int = 0
     rebind_slots: dict[str, int] = field(default_factory=dict)
+    # Enclosing `with` layers, innermost last -- return/break/continue walk it
+    # to render the inline `__exit__` chain (the AST's `ctx.finally_stack`);
+    # `loop_depth` mirrors `len(ctx.loop_else_labels)` (bumped around every
+    # loop body) for the break/continue frame boundary. `return_cpp` is the
+    # signature's return spelling (`ctx.current_return_cpp`), read only by the
+    # finally-return temp.
+    finally_frames: list[_FinallyFrame] = field(default_factory=list)
+    loop_depth: int = 0
 
     def next_loop_index(self) -> int:
         n = self.iter_counter
@@ -705,7 +761,9 @@ def _emit_while(out: TextIO, stmt: THIRWhile, indent_level: int, state: _EmitSta
     # The `// while ...:` comment is emitted by the caller (_emit_stmts).
     indent = INDENT * indent_level
     out.write(f"{indent}while ({_emit_expr(stmt.condition, state)}) {{\n")
+    state.loop_depth += 1
     _emit_stmts(out, stmt.body, indent_level + 1, state)
+    state.loop_depth -= 1
     state.comments.trailing(out, stmt.body, INDENT * (indent_level + 1))
     out.write(f"{indent}}}\n")
 
@@ -731,7 +789,9 @@ def _emit_for_range(out: TextIO, stmt: THIRForRange, indent_level: int,
         stop_cpp = f"__stop_{n}"
     out.write(f"{indent}for ({cpp_elem} {var} = {start_cpp}; "
               f"{var} < {stop_cpp}; ++{var}) {{\n")
+    state.loop_depth += 1
     _emit_stmts(out, stmt.body, indent_level + 1, state)
+    state.loop_depth -= 1
     state.comments.trailing(out, stmt.body, INDENT * (indent_level + 1))
     out.write(f"{indent}}}\n")
 
@@ -758,9 +818,131 @@ def _emit_for_each(out: TextIO, stmt: THIRForEach, indent_level: int,
     binding = loop_var_binding(stmt.elem_type, escape_cpp_name(stmt.var),
                               f"*{beg}", stmt.const_loop_var)
     out.write(f"{inner}{binding}\n")
+    state.loop_depth += 1
     _emit_stmts(out, stmt.body, indent_level + 1, state)
+    state.loop_depth -= 1
     state.comments.trailing(out, stmt.body, inner)
     out.write(f"{indent}}}\n")
+
+
+def _emit_exit_chain(out: TextIO, indent: str, state: _EmitState,
+                     stop_at: int = 0) -> None:
+    # The with slice's `_emit_finally_chain`: render the __exit__ call for
+    # each frame innermost-first down to stop_at (exclusive). The stack itself
+    # is untouched (the AST snapshots and restores around the walk); with
+    # frames never terminate, so there is no early stop.
+    for fr in reversed(state.finally_frames[stop_at:]):
+        out.write(f"{indent}__ctx_{fr.ctx_n}.__exit__({{}}, "
+                  f"{fr.exc_null_arg}, {{}});\n")
+
+
+def _emit_finally_return(out: TextIO, stmt: THIRReturn, indent: str,
+                         state: _EmitState) -> None:
+    # Mirrors _make_return's finally-chain arm for `with` frames: the value
+    # lands in a signature-typed temp BEFORE the __exit__ calls (Python
+    # evaluates the return expression first), then the chain, then the temp
+    # returns. The temp draws from the same per-function iter_counter the AST
+    # uses. The [[maybe_unused]] / suppressed-return arms need a TERMINATING
+    # finally body -- a try-finally shape, out of the slice.
+    _witness("with.finally_return")
+    if stmt.value is None:
+        _emit_exit_chain(out, indent, state)
+        out.write(f"{indent}return;\n")
+        return
+    value_cpp = _emit_expr(stmt.value, state)
+    state.temps.flush(out, indent)
+    tmp = f"__tpy_ret_{state.iter_counter}"
+    state.iter_counter += 1
+    ret_cpp = state.return_cpp or "auto"
+    out.write(f"{indent}{ret_cpp} {tmp} = {value_cpp};\n")
+    _emit_exit_chain(out, indent, state)
+    out.write(f"{indent}return {tmp};\n")
+
+
+def _emit_loop_exit(out: TextIO, indent: str, state: _EmitState,
+                    *, is_break: bool) -> None:
+    # Mirrors _make_break_continue: only frames pushed inside the innermost
+    # active loop body run (the first index whose loop_depth >= the live loop
+    # count -- the stack is monotone non-decreasing in loop_depth). The tail
+    # is the bare statement: else-labels and match-switch labels are
+    # gate-rejected shapes.
+    boundary = len(state.finally_frames)
+    for i, fr in enumerate(state.finally_frames):
+        if fr.loop_depth >= state.loop_depth:
+            boundary = i
+            break
+    if boundary < len(state.finally_frames):
+        _witness("with.finally_loop_exit")
+    _emit_exit_chain(out, indent, state, stop_at=boundary)
+    out.write(f"{indent}break;\n" if is_break else f"{indent}continue;\n")
+
+
+def _emit_with(out: TextIO, stmt: THIRWith, indent_level: int,
+               state: _EmitState) -> None:
+    # Mirrors _gen_with + _emit_with_try_catch (see THIRWith for the shape):
+    # per-item header lines, then one try/catch layer per manager, closed
+    # innermost-first so the innermost __exit__ runs first. The header flush
+    # mirrors _gen_with's `ctx.temps.flush` (a no-op in the slice --
+    # temp-registering manager expressions are gate-rejected).
+    indent = INDENT * indent_level
+    state.temps.flush(out, indent)
+    ctx_ids: list[int] = []
+    for item in stmt.items:
+        n = state.with_counter.next()
+        ctx_ids.append(n)
+        ctx_cpp = _emit_expr(item.ctx_expr, state)
+        if item.deref_manager:
+            ctx_cpp = f"*({ctx_cpp})"
+        ctx_bind = "auto&" if item.manager_borrowed else "auto"
+        out.write(f"{indent}{ctx_bind} __ctx_{n} = {ctx_cpp};\n")
+        # The as-target spells the RAW source name (the AST arm does not
+        # escape it), while later reads escape -- mirrored, not fixed.
+        if item.target_arm is WithTargetArm.VALUE:
+            out.write(f"{indent}auto {item.target} = __ctx_{n}.__enter__();\n")
+        elif item.target_arm is WithTargetArm.REF:
+            out.write(f"{indent}auto& {item.target} = __ctx_{n}.__enter__();\n")
+        else:
+            out.write(f"{indent}__ctx_{n}.__enter__();\n")
+    # Per-layer terminates: the innermost layer carries body_terminates; once
+    # an inner layer may suppress, every layer outside it can fall through --
+    # the AST's layer_terminates propagation, folded here from node facts.
+    layer_term = [False] * len(stmt.items)
+    t = stmt.body_terminates
+    for k in range(len(stmt.items) - 1, -1, -1):
+        layer_term[k] = t
+        if stmt.items[k].can_suppress:
+            t = False
+    for k, (n, item) in enumerate(zip(ctx_ids, stmt.items)):
+        out.write(f"{INDENT * (indent_level + k)}try {{\n")
+        state.finally_frames.append(_FinallyFrame(
+            ctx_n=n,
+            exc_null_arg="nullptr" if item.takes_exc_val else "{}",
+            loop_depth=state.loop_depth))
+    _emit_stmts(out, stmt.body, indent_level + len(stmt.items), state)
+    for k in range(len(stmt.items) - 1, -1, -1):
+        n, item = ctx_ids[k], stmt.items[k]
+        ind = INDENT * (indent_level + k)
+        body_ind = INDENT * (indent_level + k + 1)
+        exc_null = "nullptr" if item.takes_exc_val else "{}"
+        if not layer_term[k]:
+            out.write(f"{body_ind}__ctx_{n}.__exit__({{}}, {exc_null}, {{}});\n")
+        # Popped before the catch arms, mirroring _emit_with_try_catch's pop
+        # discipline (the catches are fixed strings; nothing walks the stack).
+        state.finally_frames.pop()
+        if item.can_suppress or item.takes_exc_val:
+            exc_obj = f"&__exc_{n}" if item.takes_exc_val else "{}"
+            out.write(f"{ind}}} catch (::tpy::BaseException& __exc_{n}) {{\n")
+            if item.can_suppress:
+                out.write(f"{body_ind}if (!__ctx_{n}.__exit__({{}}, "
+                          f"{exc_obj}, {{}})) throw;\n")
+            else:
+                out.write(f"{body_ind}__ctx_{n}.__exit__({{}}, "
+                          f"{exc_obj}, {{}});\n")
+                out.write(f"{body_ind}throw;\n")
+        out.write(f"{ind}}} catch (...) {{\n")
+        out.write(f"{body_ind}__ctx_{n}.__exit__({{}}, {exc_null}, {{}});\n")
+        out.write(f"{body_ind}throw;\n")
+        out.write(f"{ind}}}\n")
 
 
 def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState) -> None:
@@ -854,7 +1036,9 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             throw = f'::tpy::raise_assertion_error("{msg}")'
         out.write(f"{indent}if (!({_emit_expr(stmt.condition, state)})) {throw};\n")
     elif isinstance(stmt, THIRReturn):
-        if stmt.value is None:
+        if state.finally_frames:
+            _emit_finally_return(out, stmt, indent, state)
+        elif stmt.value is None:
             out.write(f"{indent}return;\n")
         else:
             value_cpp = _emit_expr(stmt.value, state)
@@ -868,6 +1052,8 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
         _emit_for_range(out, stmt, indent_level, state)
     elif isinstance(stmt, THIRForEach):
         _emit_for_each(out, stmt, indent_level, state)
+    elif isinstance(stmt, THIRWith):
+        _emit_with(out, stmt, indent_level, state)
     elif isinstance(stmt, THIRPrint):
         _emit_print(out, stmt, indent_level, state)
     elif isinstance(stmt, THIRExprStmt):
@@ -887,9 +1073,9 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             out.write(f"{indent}{cpp} {escape_cpp_name(name)} = "
                       f"std::get<{i}>({tmp});\n")
     elif isinstance(stmt, THIRBreak):
-        out.write(f"{indent}break;\n")
+        _emit_loop_exit(out, indent, state, is_break=True)
     elif isinstance(stmt, THIRContinue):
-        out.write(f"{indent}continue;\n")
+        _emit_loop_exit(out, indent, state, is_break=False)
     elif isinstance(stmt, THIRNoOpStmt):
         # No code -- the `// pass` source comment (if any) is emitted by the
         # caller (_emit_stmts) from the node's loc.
@@ -942,19 +1128,27 @@ def _emit_stmts(out: TextIO, stmts, indent_level: int, state: _EmitState) -> Non
 
 def emit_thir_body(out: TextIO, fn: THIRFunction, indent_level: int = 1,
                    *, comments: CommentSink | None = None,
-                   temps: TempSink | None = None) -> None:
+                   temps: TempSink | None = None,
+                   with_counter: WithCounter | None = None,
+                   return_cpp: 'str | None' = None) -> None:
     """Emit `fn`'s body statements (no signature, no braces) at `indent_level`.
 
-    `temps` is the `__tmp_N` sink -- the codegen seam passes a CtxTempSink so
-    THIR bodies draw from the module-cumulative `ctx.temps` counter; the
-    default is a fresh local sink (standalone/unit callers)."""
+    `temps` is the `__tmp_N` sink and `with_counter` the `__ctx_N` sink --
+    both module-cumulative, so the codegen seam passes the ctx-backed
+    implementations (CtxTempSink / CtxWithCounter); the defaults are fresh
+    local sinks (standalone/unit callers). `return_cpp` is the signature's
+    return spelling (`ctx.current_return_cpp` at the seam), read only by the
+    return-inside-`with` temp decl."""
     _emit_stmts(out, fn.body, indent_level,
-                _EmitState(comments or _NO_COMMENTS, temps=temps or TempSink()))
+                _EmitState(comments or _NO_COMMENTS, temps=temps or TempSink(),
+                           with_counter=with_counter or WithCounter(),
+                           return_cpp=return_cpp))
 
 
 def emit_thir_constructor_tail(out: TextIO, ctor: THIRConstructor,
                                *, comments: CommentSink | None = None,
-                               temps: TempSink | None = None) -> None:
+                               temps: TempSink | None = None,
+                               with_counter: WithCounter | None = None) -> None:
     """Emit a constructor's member-init-list + body tail (the ` : f(v)... {}` that
     follows the signature). The THIR counterpart of gen_record_decl's AST MIL+body
     emit: the signature is written by the AST path before this is called (the M1
@@ -963,7 +1157,8 @@ def emit_thir_constructor_tail(out: TextIO, ctor: THIRConstructor,
     ` : inits {}`). MIL / base-init cells have no flush point, so arg temps
     never lower there (gate + validator enforced); the body shares the
     statement machinery and its sink."""
-    state = _EmitState(comments or _NO_COMMENTS, temps=temps or TempSink())
+    state = _EmitState(comments or _NO_COMMENTS, temps=temps or TempSink(),
+                       with_counter=with_counter or WithCounter())
     inits = [f"{bi.base_cpp}({', '.join(_emit_expr(a, state) for a in bi.args)})"
              for bi in ctor.base_inits]
     inits.extend(

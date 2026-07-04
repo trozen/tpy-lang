@@ -54,6 +54,7 @@ from .nodes import (
     THIRUnionArgLift,
     THIRVarDecl,
     THIRWhile,
+    THIRWith,
 )
 
 
@@ -246,6 +247,26 @@ def _stmt_lines(stmt: THIRStmt, depth: int) -> list[str]:
         const = " [const]" if stmt.const_loop_var else ""
         rval = "" if stmt.iterable_lvalue else " [rvalue]"
         lines = [f"{pad}for %{stmt.var}{const}{rval} in {_expr(stmt.iterable)}:"]
+        for s in stmt.body:
+            lines.extend(_stmt_lines(s, depth + 1))
+        return lines
+    if isinstance(stmt, THIRWith):
+        # Emit-relevant item facts surface as tags: the manager binding
+        # (borrowed/owned, deref), the target arm, and the __exit__ shape
+        # (suppress / exc_val pick the catch arms).
+        its = []
+        for it in stmt.items:
+            mgr = f"{'*' if it.deref_manager else ''}{_expr(it.ctx_expr)}"
+            mgr += " [borrowed]" if it.manager_borrowed else " [owned]"
+            if it.target is not None:
+                mgr += f" as %{it.target} [{it.target_arm.name.lower()}]"
+            if it.can_suppress:
+                mgr += " [suppress]"
+            if it.takes_exc_val:
+                mgr += " [exc_val]"
+            its.append(mgr)
+        term = " [terminates]" if stmt.body_terminates else ""
+        lines = [f"{pad}with {', '.join(its)}:{term}"]
         for s in stmt.body:
             lines.extend(_stmt_lines(s, depth + 1))
         return lines

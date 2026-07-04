@@ -76,6 +76,7 @@ from ..parse.nodes import (
     TpyUnaryOp,
     TpyVarDecl,
     TpyWhile,
+    TpyWith,
     VarLinkage,
     expr_reads_self_field,
     is_base_init_call,
@@ -116,6 +117,7 @@ from ..codegen_cpp.forms import (
 )
 from ..value_category import is_rvalue_source
 from ..codegen_cpp.context import enum_cpp_name, escape_cpp_name
+from ..liveness import stmts_terminate
 from .faces import witness as _witness
 from .validate import validate_constructor, validate_function
 # The chained-compare inline-vs-statement-expr trigger, imported (not mirrored)
@@ -178,6 +180,9 @@ from .nodes import (
     THIRUnionArgLift,
     THIRVarDecl,
     THIRWhile,
+    THIRWith,
+    THIRWithItem,
+    WithTargetArm,
 )
 
 # Arithmetic operators whose dunders carry a `@cpp_template` (`add_check`, ...).
@@ -3415,7 +3420,15 @@ def _ctor_shape_ok(e: TpyCall, analyzer) -> bool:
     # special member forms are read off the REAL __init__ (the synthetic fi
     # carries only params + mutation facts).
     overloads = ri.get_method_overloads("__init__")
-    if overloads is None or len(overloads) != 1:
+    if not overloads:
+        # No OWN __init__: the implicit default ctor. Reaching here with a
+        # non-None fi means sema attached the synthetic zero-param ctor fi
+        # (own-init-less records only -- a record with an INHERITED param-ful
+        # __init__ gets no fi and rejected above), so the arity gate pinned
+        # the call zero-arg, and a zero-arg call renders the same bare
+        # `Name()` -- no arg machinery to disagree with.
+        return True
+    if len(overloads) != 1:
         return False
     init_fi = overloads[0]
     if (init_fi.cpp_template or init_fi.native_function or init_fi.native_name
@@ -4830,6 +4843,101 @@ def _stmt_value_temps_call(e: TpyExpr, ws: _WalkState, analyzer) -> bool:
                                narrowed=ws.narrowed))
 
 
+def _with_target_arm(item, declared: dict[str, TpyType], prescan: _Prescan,
+                     analyzer) -> 'tuple[WithTargetArm, TpyType | None] | None':
+    """Classify a `with` item's as-target against `_gen_with`'s binding arms, or
+    None when the item is out of the slice. Only the fresh, never-reassigned
+    declaration arms are admitted: an already-declared target takes the AST's
+    assign / optional-slot arms (branch-hoist machinery the emitter does not
+    reproduce), and a reassigned non-value target takes the `T* name = &(...)`
+    pointer-local arm, whose only constructible trigger -- a second `with`
+    reusing the name -- puts an already-declared target in the same function
+    (other reseat sources are borrow-checker-rejected), so it rides the
+    already-declared cell."""
+    if item.target is None:
+        return WithTargetArm.NONE, None
+    et = item.enter_type
+    if not isinstance(et, TpyType):
+        return None
+    if item.target in declared:
+        return None
+    resolved = unwrap_readonly(unwrap_send_sync(et))
+    if et.is_value_type():
+        # `auto <name> = __enter__();` -- a value copy. Only the scalar slice
+        # routes; str/Char/enum enter types (their name-form classification)
+        # ride a later cell.
+        if not _eligible_scalar(resolved):
+            return None
+        return WithTargetArm.VALUE, resolved
+    if not _f1_record(resolved, analyzer) or item.target in prescan.reassigned:
+        return None
+    return WithTargetArm.REF, resolved
+
+
+def _with_eligible(stmt: TpyWith, analyzer, ws: _WalkState, prescan: _Prescan,
+                   *, in_branch: bool, in_loop: bool) -> bool:
+    """The sync `with` gate arm -- mirrors `_gen_with`'s fresh-declaration
+    slice. Rejected sub-shapes (each a later cell, not a redesign): async /
+    resumable lowerings (the function gate rejects those bodies; the is_async
+    check is defensive), bodies that first-declare variables (`if_branch_decls`
+    -- the `_emit_branch_decls` hoist), already-declared as-targets, non-F1
+    managers (cross-module / native / value-type managers, `self`, globals,
+    `Ptr[T]` sources, field-access lvalues), and temp-registering manager
+    expressions (the AST flushes temps BEFORE rendering managers with no
+    second flush -- see the BUGS.md walrus-manager entry; `_is_record_
+    rvalue_source`'s scalar-arg rule keeps those shapes out). Targets outlive
+    the block (Python scoping), so they extend the OUTER scope after a
+    successful walk -- which is why a first-declaring target inside a branch
+    rejects, like the var-decl rule."""
+    if stmt.is_async:
+        return False
+    if analyzer.if_branch_decls.get(id(stmt)):
+        return False
+    body_ws = ws.branch_copy()
+    arms: list[tuple] = []
+    for item in stmt.items:
+        arm_et = _with_target_arm(item, body_ws.declared, prescan, analyzer)
+        if arm_et is None:
+            return False
+        arm, et = arm_et
+        if arm is not WithTargetArm.NONE and in_branch:
+            return False
+        ctx = item.context_expr
+        if item.manager_borrowed:
+            # An lvalue manager: a declared F1-record name (plain, or an F2
+            # pointer-local -- the `*(...)` deref render). The other
+            # is_already_pointer_source shapes (`self`, globals, Ptr[T]) and
+            # field-access lvalue managers stay AST.
+            if not (isinstance(ctx, TpyName) and ctx.name in body_ws.declared
+                    and ctx.name not in body_ws.narrowed
+                    and _f1_record(body_ws.declared[ctx.name], analyzer)):
+                return False
+        else:
+            # An rvalue manager: a ctor call over scalar slots (literal args
+            # resolve against the slot, like every ctor-call face) or a
+            # by-value record-returning free call (`auto __ctx_N = CM(...);`).
+            # Both lower through _lower_expr's existing call arms.
+            if not (isinstance(ctx, TpyCall)
+                    and _f1_record(analyzer.get_expr_type(ctx), analyzer)
+                    and (_record_ctor_call_eligible(ctx, body_ws.declared,
+                                                    analyzer)
+                         or _is_record_rvalue_source(ctx, body_ws.declared,
+                                                     analyzer))):
+                return False
+        arms.append((item, arm, et))
+        if item.target is not None:
+            body_ws.declared[item.target] = et
+    if not _body_eligible(stmt.body, analyzer, body_ws, prescan,
+                          in_branch=True, in_loop=in_loop):
+        return False
+    # Targets are declared at the enclosing C++ scope and stay visible after
+    # the block -- extend the outer walk state like a top-level var-decl.
+    for item, arm, et in arms:
+        if item.target is not None:
+            ws.declared[item.target] = et
+    return True
+
+
 def _stmt_eligible(stmt: TpyStmt, analyzer, ws: _WalkState,
                    prescan: _Prescan, *, in_branch: bool,
                    in_loop: bool = False) -> bool:
@@ -5067,11 +5175,13 @@ def _stmt_eligible(stmt: TpyStmt, analyzer, ws: _WalkState,
             ws.persistent_narrowed.add(pf[0])
         return True
     if isinstance(stmt, (TpyBreak, TpyContinue)):
-        # Inside a routed loop the AST's `_make_break_continue` reduces to the
-        # bare `break;` / `continue;`: no else label (else-loops are
-        # gate-rejected), no finally chain (try is out of the slice), no match
-        # switch between the statement and the loop (match is out). Outside a
-        # loop (a shape sema rejects) stay AST defensively.
+        # Inside a routed loop the AST's `_make_break_continue` reduces to
+        # `break;` / `continue;` plus the `with` finally chain (the emitter's
+        # frame walk renders the `__exit__` calls for frames pushed inside the
+        # innermost loop): no else label (else-loops are gate-rejected), no
+        # try-finally frame (try is out of the slice), no match switch between
+        # the statement and the loop (match is out). Outside a loop (a shape
+        # sema rejects) stay AST defensively.
         return in_loop
     if isinstance(stmt, TpyWhile):
         # No while/else -- an else-loop breaks via `goto __after_else_N`.
@@ -5204,6 +5314,9 @@ def _stmt_eligible(stmt: TpyStmt, analyzer, ws: _WalkState,
                                          stmt_position=True, temps_ok=True,
                                          narrowed=ws.narrowed)
         return False
+    if isinstance(stmt, TpyWith):
+        return _with_eligible(stmt, analyzer, ws, prescan, in_branch=in_branch,
+                              in_loop=in_loop)
     return False
 
 
@@ -7263,7 +7376,61 @@ def _lower_stmt_dispatch(stmt: TpyStmt, lc: _LowerCtx,
                                 "flush.expr_stmt",
                                 _lower_expr(stmt.expr, lc, temp_args=True)),
                             loc=loc)
+    if isinstance(stmt, TpyWith):
+        return _lower_with(stmt, lc, declared, loc)
     raise AssertionError(f"ineligible stmt reached lowering: {type(stmt).__name__}")
+
+
+def _lower_with(stmt: TpyWith, lc: _LowerCtx, declared: dict[str, TpyType],
+                loc) -> THIRWith:
+    """Lower a sync `with` -- the item facts mirror `_gen_with`'s header arms
+    (see `THIRWith` for the emit shape). Targets are declared at the enclosing
+    C++ scope and stay visible after the block (Python scoping), so they extend
+    the CALLER's `declared` dict -- unlike branch bodies, which lower over a
+    copy. The body lowers under a narrowing-scope snapshot, mirroring the AST's
+    `narrowed_vars` / `declared_persistent_aliases` restore around the try
+    body. `body_terminates` calls the same `stmts_terminate` the AST reads, so
+    the per-layer normal-exit elision folds identically at emit."""
+    items: list[THIRWithItem] = []
+    for item in stmt.items:
+        ctx = item.context_expr
+        arm_et = _with_target_arm(item, declared, lc.prescan, lc.analyzer)
+        assert arm_et is not None, "ineligible with-item reached lowering"
+        arm, et = arm_et
+        deref = (item.manager_borrowed and isinstance(ctx, TpyName)
+                 and ctx.name in lc.pointers)
+        _witness("with.manager_borrowed" if item.manager_borrowed
+                 else "with.manager_owned")
+        if deref:
+            _witness("with.manager_deref")
+        _witness({WithTargetArm.NONE: "with.no_target",
+                  WithTargetArm.VALUE: "with.as_value",
+                  WithTargetArm.REF: "with.as_ref"}[arm])
+        if item.exit_can_suppress:
+            _witness("with.suppress")
+        if item.exit_takes_exc_val:
+            _witness("with.exc_val")
+        if not (item.exit_can_suppress or item.exit_takes_exc_val):
+            _witness("with.cleanup_only")
+        items.append(THIRWithItem(
+            ctx_expr=_lower_expr(ctx, lc),
+            manager_borrowed=item.manager_borrowed,
+            deref_manager=deref,
+            target=item.target,
+            target_arm=arm,
+            can_suppress=item.exit_can_suppress,
+            takes_exc_val=item.exit_takes_exc_val,
+        ))
+        if item.target is not None:
+            declared[item.target] = et
+    if len(stmt.items) > 1:
+        _witness("with.multi")
+    return THIRWith(
+        items=tuple(items),
+        body=_lower_scoped_stmts(stmt.body, lc, dict(declared)),
+        body_terminates=stmts_terminate(stmt.body),
+        loc=loc,
+    )
 
 
 def _lower_print_arg(a: TpyExpr, lc: _LowerCtx) -> THIRPrintArg:

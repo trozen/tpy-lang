@@ -457,11 +457,13 @@ class RecordGenerator:
 
             if thir_ctor is not None:
                 from ..thir.emit import (
-                    CtxCommentSink, CtxTempSink, emit_thir_constructor_tail,
+                    CtxCommentSink, CtxTempSink, CtxWithCounter,
+                    emit_thir_constructor_tail,
                 )
                 emit_thir_constructor_tail(out, thir_ctor,
                                            comments=CtxCommentSink(self.ctx),
-                                           temps=CtxTempSink(self.ctx))
+                                           temps=CtxTempSink(self.ctx),
+                                           with_counter=CtxWithCounter(self.ctx))
             else:
                 # Build member init list: base inits (if any) + field inits
                 all_inits = list(base_inits)

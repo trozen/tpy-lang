@@ -61,8 +61,9 @@ cell it touches is admitted:
   position, incr 33) / container-literal locals (list/Array/dict/set scalar
   elements, incr 34) / logical and-or-not + inline chained compares (bool slice,
   incr 36) / break-continue (else-free loops, incr 66) / del (trivial del-var +
-  list/dict del-item, incr 67) / global (scalar globals, incr 68) **(covered)**
-  vs match / with / try-except / for-over-container (generators) / async-await /
+  list/dict del-item, incr 67) / global (scalar globals, incr 68) / sync `with`
+  (fresh-target slice + the emit-side finally frames, incr 78) **(covered)**
+  vs match / try-except / for-over-container (generators) / async-await /
   yield / comprehension / nonlocal-raise + plain-assert messages **(not)**.
 
 A **deferred cell** is one `(kind x form x shape)` the eligibility gate rejects.
@@ -803,7 +804,35 @@ param family admitted ONLY as the unpack iterable) or `d.items()`).
 Unpack-deferred rows: ref/owned/const-ref elements, reused (was-declared)
 targets, record/str elements, standalone `a, b = expr` statements,
 generator/async frames.
-Uncovered shapes remaining: `match`, `with`, `try`/`except`/`finally`,
+**Sync `with` landed (incr 78, `THIRWith`/`THIRWithItem` -- the statement-axis
+wedge): +6 bodies solo (33319 -> 33325)** -- the first exception-shaped emit
+(the fixed `_emit_with_try_catch` template: suppress / exc-val / elided-catch
+cleanup-only arms, multi-manager LIFO nesting with the `layer_terminates`
+fold over a lowering-computed `body_terminates` via the same
+`stmts_terminate` the AST reads) and the first **emit-side finally-frame
+stack** (`_EmitState.finally_frames`), the two decisions the try/except tiers
+reuse: `return` in a with body renders the `__tpy_ret_N` capture (the shared
+per-function `iter_counter`) + the inline `__exit__` chain;
+`break`/`continue` walk only frames pushed inside the innermost loop (the
+mirrored `loop_depth` = `len(ctx.loop_else_labels)`). `__ctx_N` draws from
+the module-cumulative `ctx.with_counter` through a ctx-backed sink
+(`CtxWithCounter`, the CtxTempSink pattern). Slice: F1-record managers -- a
+declared borrowed name (incl. the F2 pointer-local `*(...)` deref) or a
+ctor / by-value scalar-arg call rvalue -- with fresh never-reassigned
+targets (scalar VALUE `auto` / F1-record REF `auto&`) or none. The cell also
+widened `_ctor_shape_ok` to no-`__init__` records (the implicit default
+ctor's zero-arg `Name()` render), unlocking default-ctor calls for every
+ctor face. Deferred with-rows: already-declared / reassigned targets (the
+assign / optional-slot / `T*` pointer-local arms -- one family: the reuse
+shape always puts an already-declared target in the function), bodies that
+first-declare post-with-visible vars (`_emit_branch_decls` hoist),
+str/Char/enum enter-type targets (name-form classification),
+str-arg-ctor / cross-module / field-access / `self` / value-type managers,
+temp-registering managers (a walrus manager is a pre-existing AST build
+failure -- see BUGS.md), and the async / resumable-generator lowerings
+(their own frontiers). Corpus witness: `control_flow/with_manager_shapes`
+(all with faces); units `tpyc/thir/test_thir_with.py`.
+Uncovered shapes remaining: `match`, `try`/`except`/`finally`,
 generator iterables, expression statements' deferred receiver/arg cells
 (listed above), `async`/`await`, `yield` / generators, comprehensions,
 `nonlocal`/`raise`, plain (non-isinstance) `assert` messages, chained

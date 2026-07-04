@@ -883,6 +883,76 @@ class THIRForEach(THIRStmt):
     iterable_lvalue: bool = True
 
 
+class WithTargetArm(Enum):
+    """Which `_gen_with` as-target binding arm a `with` item takes -- decided
+    at lowering. Only the fresh-declaration arms appear: the already-declared
+    assign arms, the branch-hoisted optional slot, AND the reassigned
+    pointer-local arm (`T* <name> = &(...)`) are gate-rejected -- the latter's
+    only constructible trigger is a second `with` over the same name, whose
+    already-declared target rejects the function anyway.
+
+      * `NONE`  -- no target: `__ctx_N.__enter__();`
+      * `VALUE` -- value enter type: `auto <name> = __ctx_N.__enter__();`
+      * `REF`   -- reference enter type: `auto& <name> = __ctx_N.__enter__();`
+    """
+    NONE = auto()
+    VALUE = auto()
+    REF = auto()
+
+
+@dataclass(frozen=True)
+class THIRWithItem:
+    """One `with` context manager: the manager binding + as-target facts.
+
+    `manager_borrowed` mirrors sema's fact (an lvalue non-value manager binds
+    `auto& __ctx_N = ...`; an rvalue owns via `auto`). `deref_manager` is the
+    already-pointer-source deref (`*(...)`) for a borrowed manager rendered as
+    `T*` (an F2 pointer-local name) -- mirrors `is_already_pointer_source` for
+    the admitted subset. `can_suppress` / `takes_exc_val` are sema's
+    `__exit__` facts (bool return / an `exc_val: Optional[BaseException]`
+    second param); they pick the catch arms and the exc argument spellings."""
+    ctx_expr: THIRExpr
+    manager_borrowed: bool
+    deref_manager: bool
+    target: 'str | None'
+    target_arm: WithTargetArm
+    can_suppress: bool
+    takes_exc_val: bool
+
+
+@dataclass(frozen=True)
+class THIRWith(THIRStmt):
+    """A sync `with` statement -- mirrors `_gen_with` + `_emit_with_try_catch`:
+
+        auto[&] __ctx_N = <manager>;
+        [<target binding>]
+        try {
+            <body>
+            __ctx_N.__exit__({}, nullptr|{}, {});   // unless the layer terminates
+        } catch (::tpy::BaseException& __exc_N) {   // only if suppress/exc_val
+            if (!__ctx_N.__exit__({}, &__exc_N, {})) throw;   // can_suppress
+            __ctx_N.__exit__({}, &__exc_N, {}); throw;        // else
+        } catch (...) {
+            __ctx_N.__exit__({}, nullptr|{}, {});
+            throw;
+        }
+
+    Multiple items nest one try/catch layer per manager (innermost `__exit__`
+    first). `N` draws from the module-cumulative `ctx.with_counter` via the
+    emit-side counter sink (shared with AST-emitted bodies). `body_terminates`
+    is the AST's `stmts_terminate(stmt.body)` fact, computed at lowering; the
+    emitter folds it with the items' `can_suppress` flags into the per-layer
+    normal-exit elision exactly like the AST's `layer_terminates` propagation.
+    While emitting the body, each layer sits on the emit-state finally-frame
+    stack so `return`/`break`/`continue` inside the body render the inline
+    `__exit__` chain (`_make_return` / `_make_break_continue`). The
+    async / resumable-generator lowerings of `TpyWith` are different emit
+    shapes entirely and stay gate-rejected (the function gate)."""
+    items: tuple[THIRWithItem, ...] = ()
+    body: tuple[THIRStmt, ...] = ()
+    body_terminates: bool = False
+
+
 class PrintForm(Enum):
     """How a `print()` argument is wrapped in the `std::cout << ...` chain --
     decided at lowering from the arg's resolved type, so the emitter renders the

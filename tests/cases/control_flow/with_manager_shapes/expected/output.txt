@@ -1,0 +1,36 @@
+enter 1
+enter 2
+body
+exit 2
+exit 1
+---
+before
+suppressed: boom
+after suppressed
+---
+inside: 11
+guard exit at 11
+after: 11
+---
+in: 1
+guard exit at 1
+mid: 1
+in2: 1
+guard exit at 1
+post: 1
+---
+enter 7
+i = 0
+exit 7
+enter 7
+exit 7
+enter 7
+i = 2
+exit 7
+enter 7
+exit 7
+loop done
+---
+enter 9
+exit 9
+42

@@ -70,6 +70,21 @@ THIR_FACES: frozenset[str] = frozenset({
     "enum.name",                    # `.name` -> `EnumUtil<E>::name(x)` (BORROW)
     "enum.repr_print",              # @native enum print arg -> `::tpy::__repr__`
     "enum.nested_from_value",       # `Outer.Kind(v)` EnumUtil from_value
+    # Sync `with` faces (lowering, per item / per statement).
+    "with.manager_borrowed",        # lvalue manager: `auto& __ctx_N = ...`
+    "with.manager_owned",           # rvalue manager: `auto __ctx_N = ...`
+    "with.manager_deref",           # pointer-local manager: `*(...)` deref
+    "with.as_value",                # `auto <name> = __enter__();`
+    "with.as_ref",                  # `auto& <name> = __enter__();`
+    "with.no_target",               # bare `__ctx_N.__enter__();`
+    "with.suppress",                # bool __exit__: `if (!...) throw;` catch
+    "with.exc_val",                 # `&__exc_N` passed to __exit__
+    "with.cleanup_only",            # elided BaseException catch (common shape)
+    "with.multi",                   # multiple managers in one statement
+    # Emit-side finally-frame walks (recorded at emission -- the chain is
+    # structural, so lowering never sees it; a no-op outside a compilation).
+    "with.finally_return",          # return in body: inline __exit__ chain
+    "with.finally_loop_exit",       # break/continue in body: partial chain
     # The five flushable statement positions, counted only when the
     # position's value actually hoists an arg temp.
     "flush.vardecl",
