@@ -43,7 +43,8 @@ void main() {
     // ist = timezone(timedelta(hours=5, minutes=30), "IST")
     ::tpystd::datetime::timezone ist = ::tpystd::datetime::timezone(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(30), ::tpy::BigInt(5)), "IST");
     // dt = datetime(2021, 3, 5, 14, 30, 15, 123456, tzinfo=ist)
-    ::tpystd::datetime::datetime dt = ::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5), ::tpy::BigInt(14), ::tpy::BigInt(30), ::tpy::BigInt(15), ::tpy::BigInt(123456), ist);
+    std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_1 = ist;
+    ::tpystd::datetime::datetime dt = ::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5), ::tpy::BigInt(14), ::tpy::BigInt(30), ::tpy::BigInt(15), ::tpy::BigInt(123456), __tmp_1);
     // print(dt.strftime("%Y-%m-%d %H:%M:%S.%f %z %Z"))
     std::cout << dt.strftime("%Y-%m-%d %H:%M:%S.%f %z %Z") << "\n";
     // print(dt.strftime("%c"))
@@ -51,12 +52,14 @@ void main() {
     // print(datetime(2021, 3, 5, 1, 2, 3,
     // tzinfo=timezone(timedelta(hours=-3, minutes=-30)))
     // .strftime("%z %Z"))
-    std::cout << ::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5), ::tpy::BigInt(1), ::tpy::BigInt(2), ::tpy::BigInt(3), ::tpy::BigInt(0), ::tpystd::datetime::timezone(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(-30), ::tpy::BigInt(-3)))).strftime("%z %Z") << "\n";
+    std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_2 = ::tpystd::datetime::timezone(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(-30), ::tpy::BigInt(-3)));
+    std::cout << ::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5), ::tpy::BigInt(1), ::tpy::BigInt(2), ::tpy::BigInt(3), ::tpy::BigInt(0), __tmp_2).strftime("%z %Z") << "\n";
     // print(datetime(2021, 3, 5,
     // tzinfo=timezone(timedelta(hours=5, minutes=30,
     // seconds=15)))
     // .strftime("%z %Z"))
-    std::cout << ::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpystd::datetime::timezone(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(15), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(30), ::tpy::BigInt(5)))).strftime("%z %Z") << "\n";
+    std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_3 = ::tpystd::datetime::timezone(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(15), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(30), ::tpy::BigInt(5)));
+    std::cout << ::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_3).strftime("%z %Z") << "\n";
     // print(datetime(2021, 3, 5, 14, 30).strftime("|%z %Z|"))
     std::cout << ::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5), ::tpy::BigInt(14), ::tpy::BigInt(30)).strftime("|%z %Z|") << "\n";
 }

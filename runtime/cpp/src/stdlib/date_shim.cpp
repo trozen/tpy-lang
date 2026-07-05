@@ -13,8 +13,11 @@
 
 #include <chrono>
 #include <cstdlib>
+#include <mutex>
 #include <optional>
 #include <string>
+#include <unordered_map>
+#include <vector>
 
 namespace tpy::stdlib::datetime {
 
@@ -84,6 +87,80 @@ date::sys_info info_at(std::int64_t epoch_seconds) {
     return p.zone->get_info(tp); // caller guards zone != nullptr
 }
 
+// Named-zone intern table (mirrors tz_intern: mutex-guarded, append-only,
+// stable positive ids, id 0 = not found). Keyed by the REQUESTED key so
+// zone_key round-trips what the user wrote even for tz-db links.
+struct ZoneTable {
+    std::mutex mu;
+    std::vector<const date::time_zone*> zones;
+    std::vector<std::string> keys;
+    std::unordered_map<std::string, std::int32_t> ids;
+};
+
+ZoneTable& zone_table() {
+    static ZoneTable t;
+    return t;
+}
+
+const date::time_zone* zone_at(std::int32_t zone_id) {
+    ZoneTable& t = zone_table();
+    std::lock_guard<std::mutex> lock(t.mu);
+    if (zone_id < 1 || static_cast<std::size_t>(zone_id) > t.zones.size()) {
+        return nullptr;
+    }
+    return t.zones[static_cast<std::size_t>(zone_id) - 1];
+}
+
+// PEP 495 selection over the provider's local_info: fold=0 takes the
+// pre-transition rule (gap) / first occurrence (fold), fold=1 the
+// post-transition rule / second occurrence.
+date::sys_info wall_info_at(const date::time_zone* zone,
+                            std::int64_t wall_seconds, std::int32_t fold) {
+    auto lp = date::local_seconds{std::chrono::seconds{wall_seconds}};
+    date::local_info li = zone->get_info(lp);
+    if (li.result == date::local_info::unique || fold == 0) {
+        return li.first;
+    }
+    return li.second;
+}
+
+// Under USE_OS_TZDB the tzfile carries only an is_dst FLAG, and the
+// library stores the sentinel save=1min for DST intervals -- the real
+// saving must be derived as this interval's offset minus a neighboring
+// standard interval's offset (CPython's zoneinfo uses the same
+// neighbor heuristic on the raw transitions).
+std::int64_t dst_seconds_for(const date::time_zone* zone,
+                             const date::sys_info& info) {
+    using std::chrono::minutes;
+    using std::chrono::seconds;
+    if (info.save == minutes{0}) {
+        return 0;
+    }
+    date::sys_info probe = info;
+    for (int i = 0; i < 8; ++i) {
+        if (probe.begin == date::sys_seconds::min()) {
+            break;
+        }
+        probe = zone->get_info(probe.begin - seconds{1});
+        if (probe.save == minutes{0}) {
+            return (info.offset - probe.offset).count();
+        }
+    }
+    probe = info;
+    for (int i = 0; i < 8; ++i) {
+        if (probe.end == date::sys_seconds::max()) {
+            break;
+        }
+        probe = zone->get_info(probe.end);
+        if (probe.save == minutes{0}) {
+            return (info.offset - probe.offset).count();
+        }
+    }
+    // No standard neighbor found (permanent-DST zone): CPython's
+    // heuristic falls back to a 1h saving.
+    return 3600;
+}
+
 } // namespace
 
 std::int64_t local_utc_offset_seconds(std::int64_t epoch_seconds) {
@@ -107,6 +184,116 @@ std::string local_zone_abbrev(std::int64_t epoch_seconds) {
         return info_at(epoch_seconds).abbrev;
     } catch (...) {
         return "UTC";
+    }
+}
+
+std::int32_t zone_lookup(std::string_view key_view) {
+    std::string key(key_view);
+    ZoneTable& t = zone_table();
+    std::lock_guard<std::mutex> lock(t.mu);
+    auto it = t.ids.find(key);
+    if (it != t.ids.end()) {
+        return it->second;
+    }
+    const date::time_zone* zone = nullptr;
+    try {
+        zone = date::locate_zone(key);
+    } catch (...) {
+        // locate_zone throws for unknown keys AND for a missing/corrupt
+        // tz database; both surface as "not found" and TPy raises.
+    }
+    if (zone == nullptr) {
+        return 0;
+    }
+    t.zones.push_back(zone);
+    t.keys.push_back(key);
+    auto id = static_cast<std::int32_t>(t.zones.size());
+    t.ids.emplace(key, id);
+    return id;
+}
+
+std::string zone_key(std::int32_t zone_id) {
+    ZoneTable& t = zone_table();
+    std::lock_guard<std::mutex> lock(t.mu);
+    if (zone_id < 1 || static_cast<std::size_t>(zone_id) > t.keys.size()) {
+        return "";
+    }
+    return t.keys[static_cast<std::size_t>(zone_id) - 1];
+}
+
+std::int64_t zone_wall_offset_seconds(std::int32_t zone_id,
+                                      std::int64_t wall_seconds,
+                                      std::int32_t fold) {
+    const date::time_zone* zone = zone_at(zone_id);
+    if (zone == nullptr) {
+        return 0;
+    }
+    try {
+        return wall_info_at(zone, wall_seconds, fold).offset.count();
+    } catch (...) {
+        return 0;
+    }
+}
+
+std::int64_t zone_wall_dst_seconds(std::int32_t zone_id,
+                                   std::int64_t wall_seconds,
+                                   std::int32_t fold) {
+    const date::time_zone* zone = zone_at(zone_id);
+    if (zone == nullptr) {
+        return 0;
+    }
+    try {
+        return dst_seconds_for(zone, wall_info_at(zone, wall_seconds, fold));
+    } catch (...) {
+        return 0;
+    }
+}
+
+std::string zone_wall_abbrev(std::int32_t zone_id,
+                             std::int64_t wall_seconds,
+                             std::int32_t fold) {
+    const date::time_zone* zone = zone_at(zone_id);
+    if (zone == nullptr) {
+        return "UTC";
+    }
+    try {
+        return wall_info_at(zone, wall_seconds, fold).abbrev;
+    } catch (...) {
+        return "UTC";
+    }
+}
+
+std::int64_t zone_utc_offset_seconds(std::int32_t zone_id,
+                                     std::int64_t epoch_seconds) {
+    const date::time_zone* zone = zone_at(zone_id);
+    if (zone == nullptr) {
+        return 0;
+    }
+    try {
+        auto tp = date::sys_seconds{std::chrono::seconds{epoch_seconds}};
+        return zone->get_info(tp).offset.count();
+    } catch (...) {
+        return 0;
+    }
+}
+
+std::int32_t zone_db_count() {
+    try {
+        return static_cast<std::int32_t>(date::get_tzdb().zones.size());
+    } catch (...) {
+        return 0;
+    }
+}
+
+std::string zone_db_key_at(std::int32_t index) {
+    try {
+        const auto& zones = date::get_tzdb().zones;
+        if (index < 0 || static_cast<std::size_t>(index) >= zones.size()) {
+            return "";
+        }
+        return zones[static_cast<std::size_t>(index)].name();
+    } catch (...) {
+        return "";
     }
 }
 

@@ -1,0 +1,8 @@
+0 1 2
+none
+fixed:60
+zone:7
+none
+fixed:5
+none
+dog 2

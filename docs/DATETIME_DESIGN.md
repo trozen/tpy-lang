@@ -22,7 +22,10 @@ is byte-compared against CPython directly, exactly like the `csv` module.
 | **v1-deferred** | `timedelta` float/rounding surface: float constructor args (`timedelta(hours=1.5)`), `td / number` (round-half-to-even -> timedelta), float `*`/`/`. Compile-error (rejects-valid) until landed, not silent. (The `/`-overload result-typing bug that also blocked `td / number` is fixed.) | Deferred |
 | **v2** | `datetime` and `time` (the `datetime.time` class), `now()`/`utcnow()`/`today()`/`fromtimestamp()`/`utcfromtimestamp()`/`combine()`, `date.today()`. Naive-only. Introduces the vendored Hinnant `date` backend behind the `stdlib/datetime.hpp` facade for the local-offset lookup. | **Done** (tests `stdlib/datetime_{time,datetime,now}`; byte-parity with CPython; `dt.date()`/`dt.time()` accessors excluded -- blocked on the member-name/type-name C++ collision bug in BUGS.md, follow-up once fixed) |
 | **v3** | `strftime`/`strptime`/`fromisoformat` (pure-TPy directive engine), fixed-offset `timezone` awareness (aware `datetime`, `astimezone`, offset-aware arithmetic/comparison/hash, runtime naive/aware mixing rules), `timestamp()` via the CPython `_mktime` iterative local-inverse, `replace()`, `isoformat(timespec=)`, `now`/`fromtimestamp`/`combine` tz params, TZ-env honoring in the backend + `local_zone_abbrev` facade primitive, `time.tzset()` no-op. | **Done** (tests `stdlib/datetime_{timezone,strftime,strptime,fromisoformat,timestamp,tzenv_posix,time_fromiso_offset}` + `error_datetime_timezone_utc_attr`; byte-parity with CPython incl. DST gap/fold timestamps under pinned TZ) |
-| **Deferred** | `fold`; `zoneinfo`/IANA DST (`ZoneInfo` value type backed by the tz db); aware `time` (the class keeps no tzinfo; `time.fromisoformat` rejects an offset suffix loudly); user-defined `tzinfo` subclasses; Windows tz backend. Filed, not silent. | Deferred |
+| **v4** | `zoneinfo.ZoneInfo` (IANA zones, per-instant DST offsets; value type = one interned zone id, equal-by-key; `lib/tpy/zoneinfo.py` re-exports the CPython import surface, the class lives in datetime.py because of the signature cycle) + PEP 495 `fold` (ctor/replace params, `.fold`, gap/fold offset selection, fold-honoring `timestamp()`, fromtimestamp/astimezone auto-fold on the second pass of a repeated wall time, CPython's same-tzinfo identity rule as same-zone-id: wall-field compare/subtract ignoring fold, hash always fold=0-normalized). tz slot = the closed value union `timezone \| ZoneInfo \| None`; facade grows `zone_lookup`/`zone_key`/`zone_wall_{offset,dst}_seconds`/`zone_wall_abbrev`/`zone_utc_offset_seconds` (DST derived from neighbor-interval offsets -- the OS tzfile only carries an is_dst flag). Prerequisite compiler fix: `= None` default on a 3+-arm value union emitted `nullptr`. | **Done** (tests `stdlib/datetime_zoneinfo_{basic,fold,convert,arith,errors}`; byte-parity with CPython incl. both fold values at the gap and fold wall instants) |
+| **v4.1** | `zoneinfo.available_timezones()` (facade grows `zone_db_count`/`zone_db_key_at` over the provider's zone database, so every listed key constructs; CPython's placeholder entries `Factory`/`localtime` are excluded -- declared) + `ZoneInfo.fromutc` (reuses `_from_epoch_us`, fold set on the second pass). Declared construction-side divergence: `ZoneInfo("posix/...")` / `ZoneInfo("right/...")` raise `ZoneInfoNotFoundError` even on hosts whose tzdata ships those legacy trees (the provider's db walk permanently skips them), where CPython's raw file lookup constructs them. Non-canonical keys; use the plain zone name. Spelling asymmetry: `from datetime import ZoneInfo` works in TPy (the class's forced home) but fails under CPython -- the portable spelling is `from zoneinfo import ZoneInfo`. | **Done** (test `stdlib/datetime_zoneinfo_api`) |
+| **Permanent** | `ZoneInfo.no_cache` / `clear_cache`: their whole observable effect is identity-distinct same-key instances (inexpressible in a value type -- exactly where CPython's identity-equality diverges from equal-by-key) and mid-run tz-db reload (conflicts with the pin-once provider; the tzset-re-resolve TODO item is the sanctioned reload path). Same tier as user `tzinfo` subclasses. Loud absences. | Permanently unsupported |
+| **Deferred** | `ZoneInfo.from_file` + `TZPATH`/`reset_tzpath` (backend work: no public TZif-stream parser in the vendored provider; custom search paths need provider support); `time.fold` (rides the aware-`time` deferral); aware `time` (the class keeps no tzinfo; `time.fromisoformat` rejects an offset suffix loudly); user-defined `tzinfo` subclasses (permanent); Windows tz backend. Filed, not silent. | Deferred |
 
 ## Goal
 
@@ -201,11 +204,25 @@ kinds** stored inside a single `datetime`, never an open subclassable base.
   a divergence). `timezone.utc` is spelled via the module-level `UTC` alias
   (CPython 3.11+); the class attribute is a loud compile error (a class
   constant of the record's own type is not expressible -- TODO.md).
-  `replace()` uses CPython's own `tzinfo=True` sentinel signature (a record
-  value cannot be a TPy param default; the bool arm means "keep").
-- Deferred: a value-typed `ZoneInfo` (interned zone id -> static DST tables,
-  backed by the tz db) as a closed-union widening
-  (`Optional[timezone | ZoneInfo]`).
+  `replace()` uses CPython's `tzinfo=True` sentinel signature (a record
+  value cannot be a TPy param default; the bool arm means "keep"). Note
+  the sentinel is the pure-Python `_pydatetime` reference behavior; the
+  C-accelerated CPython module rejects an explicit bool with TypeError,
+  so TPy accepting a spelled-out `tzinfo=True` is a declared
+  accepted-permissive nuance (the omitted-arg path is identical in all
+  three).
+- v4 (landed): the value-typed `ZoneInfo` widening -- the tz slot is the
+  closed value union `timezone | ZoneInfo | None`
+  (`std::variant<std::monostate, ZoneInfo, timezone>` at params/returns;
+  the packed datetime keeps scalars: a kind tag naive/fixed/zoneinfo +
+  fold packed in one Int8, with `_tz_name_id` doubling as the zone id).
+  `ZoneInfo` is one interned zone id (the provider pins the zone handle
+  process-globally), equal-by-key -- behaviorally CPython's per-key
+  instance cache; the divergence only becomes reachable if `no_cache()`
+  ever lands. Offsets are per-instant from wall time + fold; eq/ordering
+  use CPython's `mytz is ottz` identity rule translated to same-zone-id
+  (wall compare, fold ignored), hash normalizes to fold=0, and
+  subtraction short-circuits same-zone to the wall difference.
 
 **Permanent divergence:** user-defined `tzinfo` subclasses are unsupported
 (chrono gives this up too). Almost all real code uses `timezone.utc` or
@@ -225,9 +242,17 @@ TPy cannot do is read the OS's local UTC offset and the IANA zone rules.
   in prior work). It is also the reference implementation behind C++20
   `std::chrono`, so it aligns with an eventual standard-library migration.
 - **The facade decouples the provider.** The TPy `datetime` module talks only
-  to minimal facade primitives (`local_utc_offset_seconds(epoch)` and
-  `local_zone_abbrev(epoch)`; a future `zone_offset(zone_id, epoch)` for
-  ZoneInfo). The concrete C++ tz provider sits behind it, so it can be
+  to minimal facade primitives: `local_utc_offset_seconds(epoch)` /
+  `local_zone_abbrev(epoch)` for the local zone, and (v4/v4.1) the
+  named-zone set `zone_lookup(key)` / `zone_key(id)` /
+  `zone_wall_{offset,dst}_seconds(id, wall, fold)` /
+  `zone_wall_abbrev(id, wall, fold)` / `zone_utc_offset_seconds(id, epoch)`
+  / `zone_db_count()` / `zone_db_key_at(i)` (available_timezones)
+  over a process-global zone intern table (id 0 = not found; provider
+  errors never cross the facade -- `ZoneInfoNotFoundError` is raised in
+  TPy). DST savings are derived from neighboring standard intervals
+  (CPython's heuristic): under `USE_OS_TZDB` the tzfile carries only an
+  is_dst flag. The concrete C++ tz provider sits behind it, so it can be
   swapped without touching TPy stdlib or generated code.
 - **TZ resolution (v3).** The provider resolves the zone ONCE at first use
   and pins it for process life: `TZ` set -> POSIX rule strings via the
@@ -240,9 +265,12 @@ TPy cannot do is read the OS's local UTC offset and the IANA zone rules.
   libc rereads per call).
 - **Local-inverse operations.** Naive `timestamp()` and naive-source
   `astimezone()` share the CPython `_mktime` iterative fixed-point solve
-  over `local_utc_offset_seconds` -- a single forward lookup would be
-  silently wrong in the 1-2h window around DST transitions (gap resolves
-  to the later instant, fold to the earlier; fold=0 semantics).
+  over `local_utc_offset_seconds` (`_local_mktime_s`) -- a single forward
+  lookup would be silently wrong in the 1-2h window around DST
+  transitions. The value's `fold` picks the branch (fold=0: gap resolves
+  to the later instant, fold to the earlier; fold=1 the other way), and
+  the same solve at fold=0 doubles as the fold detector for naive-local
+  `fromtimestamp` (reproduces the instant iff it is the first pass).
 - **Coupling note:** the binding import is module-level, so ANY datetime
   import links the tz backend (and `--date=none` rejects the whole module),
   including pure-calendar use (`timedelta`/`date` arithmetic) that needs no
@@ -348,9 +376,11 @@ rounded in the runtime; it now matches CPython for all magnitudes.)
   `replace()` has no tzinfo param, and `time.fromisoformat` raises
   `ValueError` on an offset suffix where CPython returns an aware time
   (loud rejects-valid, not silent dropping).
-- **`fold` is deferred**: gap/fold resolution is fixed to CPython's
-  fold=0 default (which `timestamp()`/`astimezone()` implement exactly);
-  the attribute and fold=1 behavior are a designed widening.
+- **`fold` (landed in v4)**: the attribute, ctor/`replace()` params, and
+  PEP 495 gap/fold selection are implemented for `datetime` (naive-local
+  and zoneinfo alike). `time.fold` stays out with the aware-`time`
+  deferral (CPython's `time.fold` is inert for zone math anyway --
+  `ZoneInfo.utcoffset(None)` is None).
 
 Behavioral notes (matching CPython, recorded because the "obvious" choice
 differs): an out-of-range `fromtimestamp()`/`utcfromtimestamp()` raises

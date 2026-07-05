@@ -64,9 +64,11 @@ void main() {
     // print(repr(timezone(timedelta(hours=23, minutes=59, microseconds=999999))))
     std::cout << ::tpy::repr_of(::tpystd::datetime::timezone(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(999999), ::tpy::BigInt(0), ::tpy::BigInt(59), ::tpy::BigInt(23)))) << "\n";
     // dt = datetime(2021, 3, 5, 14, 30, 15, 123456, tzinfo=ist)
-    ::tpystd::datetime::datetime dt = ::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5), ::tpy::BigInt(14), ::tpy::BigInt(30), ::tpy::BigInt(15), ::tpy::BigInt(123456), ist);
+    std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_1 = ist;
+    ::tpystd::datetime::datetime dt = ::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5), ::tpy::BigInt(14), ::tpy::BigInt(30), ::tpy::BigInt(15), ::tpy::BigInt(123456), __tmp_1);
     // u = datetime(2021, 3, 5, 9, 0, 15, 123456, tzinfo=UTC)
-    ::tpystd::datetime::datetime u = ::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5), ::tpy::BigInt(9), ::tpy::BigInt(0), ::tpy::BigInt(15), ::tpy::BigInt(123456), ::tpystd::datetime::UTC);
+    std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_2 = ::tpystd::datetime::UTC;
+    ::tpystd::datetime::datetime u = ::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5), ::tpy::BigInt(9), ::tpy::BigInt(0), ::tpy::BigInt(15), ::tpy::BigInt(123456), __tmp_2);
     // print(repr(dt))
     std::cout << ::tpy::repr_of(dt) << "\n";
     // print(dt.isoformat(), str(dt))
@@ -78,7 +80,8 @@ void main() {
     // print(u - dt)
     std::cout << ((u) - (dt)) << "\n";
     // print(dt - datetime(2021, 3, 4, 9, 0, 15, 123456, tzinfo=UTC))
-    std::cout << ((dt) - (::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(4), ::tpy::BigInt(9), ::tpy::BigInt(0), ::tpy::BigInt(15), ::tpy::BigInt(123456), ::tpystd::datetime::UTC))) << "\n";
+    std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_3 = ::tpystd::datetime::UTC;
+    std::cout << ((dt) - (::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(4), ::tpy::BigInt(9), ::tpy::BigInt(0), ::tpy::BigInt(15), ::tpy::BigInt(123456), __tmp_3))) << "\n";
     // print(dt + timedelta(hours=2))
     std::cout << ((dt) + (::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(2)))) << "\n";
     // print(dt - timedelta(minutes=45))
@@ -140,30 +143,31 @@ void main() {
         }
     }
     // print(dt.replace(tzinfo=None))
-    std::variant<std::monostate, bool, ::tpystd::datetime::timezone> __tmp_1 = std::monostate{};
-    std::cout << dt.replace(std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, __tmp_1) << "\n";
+    std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, bool, ::tpystd::datetime::timezone> __tmp_4 = std::monostate{};
+    std::cout << dt.replace(std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, __tmp_4) << "\n";
     // print(dt.replace(tzinfo=UTC))
-    std::variant<std::monostate, bool, ::tpystd::datetime::timezone> __tmp_2 = ::tpystd::datetime::UTC;
-    std::cout << dt.replace(std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, __tmp_2) << "\n";
+    std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, bool, ::tpystd::datetime::timezone> __tmp_5 = ::tpystd::datetime::UTC;
+    std::cout << dt.replace(std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, __tmp_5) << "\n";
     // print(dt.replace(year=1999, minute=0, tzinfo=None))
-    std::variant<std::monostate, bool, ::tpystd::datetime::timezone> __tmp_3 = std::monostate{};
-    std::cout << dt.replace(1999, std::nullopt, std::nullopt, std::nullopt, 0, std::nullopt, std::nullopt, __tmp_3) << "\n";
+    std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, bool, ::tpystd::datetime::timezone> __tmp_6 = std::monostate{};
+    std::cout << dt.replace(1999, std::nullopt, std::nullopt, std::nullopt, 0, std::nullopt, std::nullopt, __tmp_6) << "\n";
     // print(naive.replace(tzinfo=ist))
-    std::variant<std::monostate, bool, ::tpystd::datetime::timezone> __tmp_4 = ist;
-    std::cout << naive.replace(std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, __tmp_4) << "\n";
+    std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, bool, ::tpystd::datetime::timezone> __tmp_7 = ist;
+    std::cout << naive.replace(std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, __tmp_7) << "\n";
     // try:
     {
         try {
             // print(dt.replace(tzinfo=False))
-            std::variant<std::monostate, bool, ::tpystd::datetime::timezone> __tmp_5 = false;
-            std::cout << dt.replace(std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, __tmp_5) << "\n";
+            std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, bool, ::tpystd::datetime::timezone> __tmp_8 = false;
+            std::cout << dt.replace(std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, __tmp_8) << "\n";
         } catch (const ::tpy::TypeError&) {
             // print("TypeError-replace-tzinfo")
             std::cout << "TypeError-replace-tzinfo" << "\n";
         }
     }
     // t = datetime(2021, 3, 5, 14, 30, 15, 999999, tzinfo=withsec)
-    ::tpystd::datetime::datetime t = ::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5), ::tpy::BigInt(14), ::tpy::BigInt(30), ::tpy::BigInt(15), ::tpy::BigInt(999999), withsec);
+    std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_9 = withsec;
+    ::tpystd::datetime::datetime t = ::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5), ::tpy::BigInt(14), ::tpy::BigInt(30), ::tpy::BigInt(15), ::tpy::BigInt(999999), __tmp_9);
     // print(t.isoformat())
     std::cout << t.isoformat() << "\n";
     // print(t.isoformat(timespec="hours"))
@@ -187,18 +191,25 @@ void main() {
         }
     }
     // print(datetime.combine(date(2021, 3, 5), time(9, 15), UTC))
-    std::cout << datetime::combine(::tpystd::datetime::date(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5)), ::tpystd::datetime::time(::tpy::BigInt(9), ::tpy::BigInt(15)), ::tpystd::datetime::UTC) << "\n";
+    std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_10 = ::tpystd::datetime::UTC;
+    std::cout << datetime::combine(::tpystd::datetime::date(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5)), ::tpystd::datetime::time(::tpy::BigInt(9), ::tpy::BigInt(15)), __tmp_10) << "\n";
     // print(datetime.fromtimestamp(1614937200.5, UTC))
-    std::cout << datetime::fromtimestamp(1614937200.5, ::tpystd::datetime::UTC) << "\n";
+    std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_11 = ::tpystd::datetime::UTC;
+    std::cout << datetime::fromtimestamp(1614937200.5, __tmp_11) << "\n";
     // print(datetime.fromtimestamp(1614937200.5, ist))
-    std::cout << datetime::fromtimestamp(1614937200.5, ist) << "\n";
+    std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_12 = ist;
+    std::cout << datetime::fromtimestamp(1614937200.5, __tmp_12) << "\n";
     // print(repr(ist.fromutc(datetime(2021, 3, 5, 9, 0, tzinfo=ist))))
-    std::cout << ::tpy::repr_of(ist.fromutc(::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5), ::tpy::BigInt(9), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ist))) << "\n";
+    std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_13 = ist;
+    std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_14 = ist;
+    std::cout << ::tpy::repr_of(ist.fromutc(::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5), ::tpy::BigInt(9), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_14))) << "\n";
     // try:
     {
         try {
             // ist.fromutc(datetime(2021, 3, 5, 9, 0, tzinfo=UTC))
-            ist.fromutc(::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5), ::tpy::BigInt(9), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpystd::datetime::UTC));
+            std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_15 = ::tpystd::datetime::UTC;
+            std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_16 = ::tpystd::datetime::UTC;
+            ist.fromutc(::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5), ::tpy::BigInt(9), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_16));
         } catch (const ::tpy::ValueError&) {
             // print("ValueError-fromutc")
             std::cout << "ValueError-fromutc" << "\n";

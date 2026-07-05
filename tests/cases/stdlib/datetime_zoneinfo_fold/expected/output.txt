@@ -1,0 +1,17 @@
+0 1
+2:00:00 1:00:00 CEST
+1:00:00 0:00:00 CET
+1698539400.0 1698543000.0
+1:00:00 0:00:00 CET
+2:00:00 1:00:00 CEST
+1679794200.0 1679790600.0
+True True
+False False
+0:00:00
+True True
+datetime.datetime(2023, 10, 29, 2, 30, fold=1)
+True True True True
+datetime.datetime(2023, 10, 29, 2, 30, fold=1, tzinfo=datetime.timezone(datetime.timedelta(seconds=7200)))
+2023-10-29 02:30:00+01:00 1
+ValueError-fold
+ValueError-replace-fold

@@ -24,7 +24,7 @@ MethodEmitMode = Literal["inline", "decl", "def_hpp", "def_cpp"]
 from ..typesys import (
     TpyType, NominalType, OwnType, ReadonlyType, OptionalType, PendingListType, IntLiteralType, is_fn_type, CallableType,
     UnionType, VoidType, NoneType, NONE,
-    BIGINT, BOOL, STR, is_protocol_type, is_dyn_protocol, FunctionInfo, TypeParamRef, unwrap_readonly, is_constexpr_eligible,
+    BIGINT, BOOL, STR, is_protocol_type, is_protocol_union, is_dyn_protocol, FunctionInfo, TypeParamRef, unwrap_readonly, is_constexpr_eligible,
     PtrType, LiteralType, LiteralValue, LiteralTag, is_any_str_type,
     is_primitive_type,
     resolve_int_literals, CONST_PARAMS_METHODS,
@@ -156,6 +156,13 @@ def default_to_cpp(ctx: 'CodeGenContext', expr: TpyExpr, ptype: TpyType) -> str:
         if isinstance(inner, OptionalType):
             if isinstance(ptype, OwnType) or not inner.uses_pointer_repr():
                 return "std::nullopt"
+        if isinstance(inner, UnionType):
+            # None-including unions keep std::monostate as the FIRST variant
+            # alternative in both reprs, so {} default-constructs to None.
+            # Protocol-member unions are the exception: they lower to a
+            # monomorphized template pointer param, so nullptr stands.
+            if not is_protocol_union(inner):
+                return "{}"
         return "nullptr"
     if isinstance(expr, TpyName):
         # Final[T] module constant in default position (sema validated).

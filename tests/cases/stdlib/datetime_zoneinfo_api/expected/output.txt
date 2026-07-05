@@ -1,0 +1,11 @@
+True
+True True True
+False
+False
+True
+2023-10-29 02:30:00+02:00 0
+2023-10-29 02:30:00+01:00 1
+3600.0
+2023-07-15 12:00:00+02:00 0
+ValueError-naive
+ValueError-other-zone

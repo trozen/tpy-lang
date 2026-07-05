@@ -29,7 +29,8 @@ void main() {
     std::cout << ::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(12), ::tpy::BigInt(0)).astimezone().strftime("%Z %z") << "\n";
     // print(datetime(2021, 7, 15, 16, 0, tzinfo=UTC).astimezone()
     // == datetime(2021, 7, 15, 12, 0).astimezone())
-    std::cout << ::tpy::print_bool(((::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(16), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpystd::datetime::UTC).astimezone()) == (::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(12), ::tpy::BigInt(0)).astimezone()))) << "\n";
+    std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_1 = ::tpystd::datetime::UTC;
+    std::cout << ::tpy::print_bool(((::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(16), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_1).astimezone()) == (::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(12), ::tpy::BigInt(0)).astimezone()))) << "\n";
 }
 
 void __tpy_init() {
