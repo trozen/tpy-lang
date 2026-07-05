@@ -99,6 +99,17 @@ THIR_FACES: frozenset[str] = frozenset({
     # Raise statements (lowering).
     "raise.ctor",                   # `raise X(args)` -> `throw <cpp>(...)`
     "raise.bare",                   # bare re-raise -> `throw;`
+    # Trivia (lowering): docstring / `pass` -> THIRNoOpStmt, body-wide.
+    "stmt.trivia",
+    # THIRComprehension (lowering, the C1+C2 slice).
+    "comp.list",                    # list comp -> vector stmt-expr
+    "comp.set",                     # set comp -> ordered_set stmt-expr
+    "comp.dict",                    # dict comp -> insert_or_assign loop
+    "comp.range",                   # 1/2-arg counter loop arm
+    "comp.begin_end",               # __obj/__beg/__end container loop arm
+    "comp.reserve",                 # sized begin/end list reserve line
+    "comp.filter",                  # &&-joined `if (conds)` wrapper
+    "comp.unpack",                  # inline __tup_N tuple-unpack binding
     # THIRMatch M1 -- the unguarded scalar switch tiers (lowering).
     "match.switch_enum",            # switch over enum-member case labels
     "match.switch_primitive",       # switch over int-literal case labels
@@ -116,7 +127,18 @@ THIR_FACES: frozenset[str] = frozenset({
     "match.union_none_arm",         # `case None:` -> the monostate index
     "match.union_default",          # wildcard/capture -> `default:` in place
     "match.guarded_union",          # per-index guard groups + goto end (M4b)
+    "match.if_elif_record",         # record-subject unguarded chain
+    "match.guarded_record",         # record standalone-if + goto tier
+    "match.record_or",              # or-pattern of condition-only class alts
+    "match.field_cond",             # literal field condition (`==` compare)
+    "match.field_none",             # field=None -> has_value/monostate check
+    "match.field_bind",             # field capture: `{base}.{f}` rhs binding
+    "match.union_field_cond",       # guarded-union entry with field conds
     "match.or_labels",              # or-pattern -> stacked case labels
+    "match.optional_partition",     # Optional-ptr subject: None/has-value split
+    "match.optional_none_arm",      # `case None:` prefix -> the nullptr block
+    "match.optional_value_only",    # no None arm -> bare `if (s != nullptr)`
+    "match.optional_inner_bind",    # capture/as vs the __match_inner_N alias
     "match.wildcard_default",       # `case _:` -> the `default:` block
     "match.synthetic_default",      # non-exhaustive: `default: break;`
     "match.unreachable_tail",       # exhaustive + terminating arms tail

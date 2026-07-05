@@ -893,6 +893,7 @@ def compile_with_diagnostics(src_file: Path, output_dir: Path, default_int: str 
         # Feed the --thir-codegen non-vacuity gate: 0 when the flag is off.
         record_thir_routed(compiler._thir_routed_bodies)
         record_thir_faces(compiler._thir_face_witnesses)
+        record_thir_fallback(compiler._thir_fallback)
         thir_routed_names = (dict(compiler._thir_routed_names)
                              if TEST_CODEGEN_OPTIONS.thir_codegen else None)
 
@@ -1696,6 +1697,20 @@ def record_thir_faces(witnesses: dict[str, int]) -> None:
         _thir_faces[face] = _thir_faces.get(face, 0) + n
 
 
+# THIR per-component AST-fallback tally (tpyc/thir/fallback.py) -- the
+# routed tally's complement: `component:reason` counts of bodies the gate
+# rejected, so the gap to each deletion target is measured. Aggregated
+# worker -> controller like the tallies above.
+_thir_fallback: dict[str, int] = {}
+_thir_fallback_agg: dict[str, int] = {}
+
+
+def record_thir_fallback(counts: dict[str, int]) -> None:
+    """Fold one case's fallback-reason counts (empty when the flag is off)."""
+    for key, n in counts.items():
+        _thir_fallback[key] = _thir_fallback.get(key, 0) + n
+
+
 # THIR divergence reporter -- one label per failed generated-code snapshot
 # under --thir-codegen ("<case> <file>: in `fn` [THIR-routed]"), aggregated
 # worker -> controller like the tallies and echoed in the terminal summary so
@@ -1734,6 +1749,7 @@ def pytest_sessionfinish(session):
         workeroutput["exec_tally"] = dict(_exec_tally)
         workeroutput["thir_tally"] = dict(_thir_tally)
         workeroutput["thir_faces"] = dict(_thir_faces)
+        workeroutput["thir_fallback"] = dict(_thir_fallback)
         workeroutput["thir_divergences"] = list(_thir_divergences)
         return
     if _thir_gate_verdict(session.config) == "fail":
@@ -1753,6 +1769,8 @@ def pytest_testnodedown(node, error):
             _thir_tally_agg[k] += thir.get(k, 0)
     for face, n in wo.get("thir_faces", {}).items():
         _thir_faces_agg[face] = _thir_faces_agg.get(face, 0) + n
+    for key, n in wo.get("thir_fallback", {}).items():
+        _thir_fallback_agg[key] = _thir_fallback_agg.get(key, 0) + n
     _thir_divergences_agg.extend(wo.get("thir_divergences", []))
 
 
@@ -1795,6 +1813,38 @@ def pytest_terminal_summary(terminalreporter, exitstatus, config):
                 terminalreporter.write_line(
                     f"{_LOG_PREFIX} thir faces: all {len(THIR_FACES)} "
                     f"witnessed"
+                )
+            # Per-component AST-fallback breakdown: how many candidate bodies
+            # the gate rejected, by first-reject reason -- the measured gap to
+            # each deletion target ("body" = gen_body/gen_expr, "ctor" = the
+            # MIL emit). Full counts dump to $THIR_FALLBACK_JSON when set.
+            fallback = dict(_thir_fallback)
+            for key, n in _thir_fallback_agg.items():
+                fallback[key] = fallback.get(key, 0) + n
+            for component in ("body", "ctor"):
+                pre = component + ":"
+                items = sorted(
+                    ((k[len(pre):], n) for k, n in fallback.items()
+                     if k.startswith(pre)),
+                    key=lambda kv: (-kv[1], kv[0]))
+                if not items:
+                    continue
+                total = sum(n for _, n in items)
+                top = ", ".join(f"{r} {n}" for r, n in items[:12])
+                more = len(items) - 12
+                tail = f", +{more} more kinds" if more > 0 else ""
+                terminalreporter.write_line(
+                    f"{_LOG_PREFIX} thir fallback: {component} {total} -- "
+                    f"{top}{tail}"
+                )
+            dump_path = os.environ.get("THIR_FALLBACK_JSON")
+            if dump_path and fallback:
+                Path(dump_path).write_text(
+                    json.dumps(dict(sorted(fallback.items())), indent=2)
+                    + "\n")
+                terminalreporter.write_line(
+                    f"{_LOG_PREFIX} thir fallback: full counts written to "
+                    f"{dump_path}"
                 )
         elif verdict == "warn":
             terminalreporter.write_line(

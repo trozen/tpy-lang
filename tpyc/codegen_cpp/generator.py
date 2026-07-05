@@ -440,20 +440,29 @@ class CodeGenerator:
                 lower_function as _thir_lower,
                 module_native_globals as _thir_native_globals,
             )
+            from ..thir.fallback import begin_attempt, fold_attempt
             _ng = _thir_native_globals(module)
-            self.ctx.thir_functions = {
-                id(f): tf for f, self_type in _thir_callables(module, self.analyzer)
-                if (tf := _thir_lower(f, self.analyzer, self.types.type_to_cpp,
-                                      self_type=self_type,
-                                      native_globals=_ng)) is not None
-            }
-            self.ctx.thir_constructors = {
-                id(init): tc
-                for rec, init, self_type in _thir_ctors(module, self.analyzer)
-                if (tc := _thir_lower_ctor(rec, init, self.analyzer,
-                                           self.types.type_to_cpp,
-                                           self_type=self_type)) is not None
-            }
+            self.ctx.thir_functions = {}
+            for f, self_type in _thir_callables(module, self.analyzer):
+                begin_attempt()
+                tf = _thir_lower(f, self.analyzer, self.types.type_to_cpp,
+                                 self_type=self_type, native_globals=_ng)
+                if tf is not None:
+                    self.ctx.thir_functions[id(f)] = tf
+                elif not (f.native_function or f.is_overload_stub):
+                    # Native decls and overload stubs have no body emit --
+                    # they are out of the migration's scope, not fallback.
+                    fold_attempt("body")
+            self.ctx.thir_constructors = {}
+            for rec, init, self_type in _thir_ctors(module, self.analyzer):
+                begin_attempt()
+                tc = _thir_lower_ctor(rec, init, self.analyzer,
+                                      self.types.type_to_cpp,
+                                      self_type=self_type)
+                if tc is not None:
+                    self.ctx.thir_constructors[id(init)] = tc
+                elif not init.native_function:
+                    fold_attempt("ctor")
 
         hpp = io.StringIO()
         cpp = io.StringIO()

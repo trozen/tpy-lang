@@ -67,12 +67,17 @@ cell it touches is admitted:
   branch-decl hoist, incr 79) / try/except throw tier + raise (catch arms,
   bindings, else labels, ctor/bare raise, incr 80) / match (the M1-M4
   ladder: scalar switches, if/elif chains, captures + all guard shapes,
-  union switches incl. guarded, incr 81-86; parked tail = record/field
-  patterns, optional partitions, polymorphic, str-switch, Literal
-  subjects, M4c wrapper subjects, resumable) **(covered)**
+  union switches incl. guarded, incr 81-86; record patterns + union
+  field conditions/bindings, incr 92; optional partitions over
+  pointer-repr subjects, incr 93; parked tail = the value-repr /
+  if-elif optional tiers, polymorphic, str-switch, Literal subjects,
+  M4c wrapper subjects, resumable) / docstring-`pass` trivia in any
+  body position (incr 90) / comprehensions (the C1+C2 decl-init
+  slice, incr 91; C3/C4 rows still open) **(covered)**
   vs try-except return tier (parked on the @error_return rung) /
   expression raise / for-over-container (generators) / async-await /
-  yield / comprehension / nonlocal + plain-assert messages **(not)**.
+  yield / genexpr + the comprehension C3/C4 rows / nonlocal +
+  plain-assert messages **(not)**.
 
 A **deferred cell** is one `(kind x form x shape)` the eligibility gate rejects.
 Two kinds, treated oppositely:
@@ -964,9 +969,11 @@ Match tiers still parked (the tail):
 `Literal[...]` subjects need the literal-fact fold in THIR expression
 lowering -- the same row that keeps them out of M1's switch (they are
 the corpus `mode: Literal[...]` dispatchers); value patterns
-(named-constant compares) still reject. PARKED: record patterns (36
-stmts; field conditions/bindings -- also the guarded-union field-
-condition arms), optional partitions (25; the `__match_inner_N` name),
+(named-constant compares) still reject. PARKED (record patterns and
+optional partitions LANDED as incr 92/93 -- see their entries): the
+optional tiers' remainder (value-repr subjects -- cross-axis on the
+std::optional local/param form; field-access subjects; the non-prefix
+if/elif-optional strategy),
 polymorphic/@dynamic (15), str-switch (8; discriminator machinery),
 overload-specialized (1), resumable (generator/async) matches (own
 frontier), M4c wrapper subjects (cross-axis, see above). Corpus
@@ -974,6 +981,34 @@ witnesses: the match/ group (`literal_int`, `enum_value`,
 `break_in_match_arm`, `two_matches_same_scope`, `guard_basic`, and the
 new `arm_declared_local` / `union_none_member` / `union_recursive_bare`);
 units `tpyc/thir/test_thir_match.py`.
+**INTEGRATED tally for the thir-compr-rock branch (increments 90-93 +
+the fallback tooling): 34383 -> 35874 bodies / 3344 cases (+1491)** --
+trivia +1447, comprehensions +7, record patterns +25, optional
+partitions +11 (incl. its witness case), +1 composition; combined
+whole-corpus byte-diff green (6806 passed).
+**Optional-partition tier landed (increment 93, the
+thir-match-optpart branch): +11 bodies (34383 -> 34394 / 3344 cases,
+incl. the new witness case)** -- pointer-repr Optional[F1-record] name
+subjects whose arms partition (a None prefix + narrowed non-None arm;
+`_gen_match_optimized_optional`, the `__match_inner_N` second name off
+the SAME counter draw as the subject). The partition routing fact
+is literally shared: `_partition_optional_cases` moved to module level
+(`partition_optional_cases`) and both paths call it (discipline #6,
+by identity rather than mirror). In: bare class arms (the no-field
+`{ }` block), wildcard, capture/`as` vs the deref alias
+(`auto& v = __match_inner_N;`, ref/copy modes), 0-1 unguarded
+binding-free None arms, the no-None-arm `if (subj != nullptr)` form,
+param + OPTIONAL_TO_PTR local subjects, nested matches (the inner name
+snapshots its draw before the None body emits). Out: value-repr
+subjects (their std::optional binding is function-gated -- ALL 25
+parked stmts turned out to be value-repr, keyword-pattern, or
+field-subject shapes, so the corpus witness `match/optional_partition_record`
+is new), guards, or-patterns, keyword patterns, and written-through
+captures -- the AST renders a capture-alias mutation against the const
+deref ref, ill-formed C++ (BUGS.md: sema's const verdict never sees
+capture-alias mutations; direct subject writes in the arm attribute
+fine and stay routed). Faces `match.optional_partition` /
+`optional_none_arm` / `optional_value_only` / `optional_inner_bind`.
 **with/ctor multiplier tail landed (increments 87-89, the
 thir-with-tail branch): +9 bodies (33910 -> 33919 / 3335 cases; +5
 ctor-str, +4 with-targets)** -- the three queued short-session cells. (1) Str-arg ctor slots:
@@ -1003,12 +1038,87 @@ decl-then-with, reuse-in-branch all stay AST). The value /
 value-repr-Optional target reuse is NOT a deferred cell but a BUGS.md
 gate-reject (the AST emits `x = &(__enter__())` into a value slot --
 ill-formed). Faces `with.ptr_target` / `with.ptr_target_reuse`.
+**match record patterns + union field conditions/bindings landed
+(increment 92, the thir-match-record branch): +25 bodies solo on the
+34383 base (34408 / 3343 cases pre-integration)** -- the parked record-pattern tier
+(if_elif_record 30 + guarded_record 6 stmts) plus the union tiers'
+keyword remainder: literal field conditions pre-rendered as
+(prefix, suffix) pairs around the emit-time base (`__match_subject_N` /
+`__case_{idx}`; `== v` compares + the `field=None` repr fold --
+has_value / monostate), field captures via
+`THIRMatchBinding.subject_suffix` (field type joins the arm scope;
+value scalars/Char/enums/resolved-str only), or-pattern record arms as
+per-alternative condition groups (`or_conds`; the AST's empty-alt skip
+and wildcard-alt clear mirrored). `_match_union_route` reuses
+`MatchGenerator._pattern_has_field_condition` (one shared routing
+fact); guarded-union truncation treats field conditions like guards,
+needs_extraction counts keywords, field-cond bindings emit INSIDE the
+composed `if (conds && guard)` block. Gate-rejected ill-formed AST
+renders (BUGS.md): record-subject or-pattern bindings (as-over-or +
+or-alt captures, silently dropped) and a guarded-union field-cond
+entry whose guard reads its own capture. Still deferred: class/`as`
+field sub-patterns (union field guards / nested records / type
+guards), union or-alt keywords (`__case_{i}_{j}` duplication), non-F1
+records, hoisted non-plain-value captures. Faces
+`match.if_elif_record` / `guarded_record` / `record_or` / `field_cond`
+/ `field_none` / `field_bind` / `union_field_cond`, all
+corpus-witnessed (record_basic, record_guard, field_none,
+union_field_binding, union_field_value*, union_positional*); units in
+`test_thir_match.py`.
 Remaining with-rows: bodies that first-declare post-with-visible vars
 (`_emit_branch_decls` hoist), cross-module / field-access / `self` /
 value-type managers, temp-registering managers (the BUGS.md walrus
 entry), async / resumable lowerings (own frontiers). Units
 `tpyc/thir/test_thir_with.py` (TestValueEnterTargets, TestPtrTargetReuse,
 TestStrArgManager) + `test_thir_callargs.py` (TestCtorStrArgSlots).
+**Body-wide trivia landed (increment 90): docstring / `pass` in ANY
+routed body position** -- the M3c-trivia arms moved from the ctor-only
+`_lower_ctor_body_stmt` seam into `_stmt_eligible` / `_lower_stmt`
+(the seam and its `stmt_fn` hook are deleted; ctor bodies route trivia
+through the shared path). `pass` keeps its `loc` (the `// pass` source
+line), a docstring lowers loc-less (the AST emits neither comment nor
+code for a bare string-literal statement at ANY position --
+`is_docstring` is exactly gen_stmt's skip predicate). Found by the
+fallback tally: `stmt.pass_stmt` first-blocked 850 body-compilations
+corpus-wide. Face `stmt.trivia`; units
+`test_thir_core.py::TestTriviaBodies`. Routing 34383 -> **35830 bodies /
+3343 cases** (+1447 -- the largest single-cell gain since incr 44:
+pass/docstring-ONLY bodies plus every body where trivia was the last
+blocker).
+**Comprehension frontier opened -- C1+C2 tiers landed (increment 91,
+`THIRComprehension`)**: list/set/dict comprehensions at a fresh local's
+decl-init, the `_gen_comprehension_iife` stmt-expr mirror. Slice
+(user-approved): range1/range2 counter loops (per-bound counter draws --
+the comprehension emitter's scheme, unlike the statement range-for's
+single draw; literal bounds inline strictly on `TpyIntLiteral`),
+bare-name container iterables the container gates admit,
+`d.values()`/`d.keys()` views (`d.items()` for the tuple-unpack form,
+the incr-69 `__tup_N` lines inlined), filters (`&&`-joined
+`_condition_eligible` conditions), scalar/str/F1-record loop vars,
+scalar/str element slots via the S5 `_lower_container_elem` wrap, and
+the sized-list reserve arms (incl. BigInt `to_size_checked`). ONE
+shared `_comp_route` computes the gate/lowering fact (discipline #6).
+Two structural notes: (1) the node is THIR's first multi-line
+EXPRESSION render -- inner lines indent off the new
+`_EmitState.stmt_indent_level`, stamped per statement; (2) elements
+and filters gate through the PLAIN `_expr_eligible` /
+`_condition_eligible` (no `temp_args` opt-in), so no arg-temp can
+arise inside the loop and the scoped `_emit_iter_temps` flush seam
+stays un-mirrored until the C3/C4 rows. Deferred (the approved
+follow-up): **C3** -- Array demotion (`array_from_index` lambda;
+NB literal-bound small range comps resolve to Arrays, so they reject
+today), non-decl positions (print/call arg, return -- 32 corpus
+list-comps sit in `print(...)`), field/subscript/call iterables,
+3-arg range, owned-move elements (`__dk_N` key sequencing +
+`_comp_owned_move_scope`), narrowed-Optional iterables, Char element
+slots; **C4** -- genexpr (the make_generator lambda family:
+range-counter captures, lvalue IIFE, moved-source; builtin-arg
+positions dominate the corpus). Faces
+`comp.{list,set,dict,range,begin_end,reserve,filter,unpack}`
+(`comp.unpack` is corpus-zero-witness -- unit-pinned only, the
+flush.assign precedent); units `test_thir_comprehensions.py`.
+Routing 35830 -> **35837 bodies / 3343 cases** (+7 solo -- the
+tally's ~47 first-blocked hosts mostly carry other blockers too).
 Uncovered shapes remaining: the parked match tail (above), the try
 return tier + expression raise (rows above),
 generator iterables, expression statements' deferred receiver/arg cells
@@ -1078,7 +1188,31 @@ byte-diff itself.
   the face fired via `testutil._lower_ctx_witnessed`); `flush.assign` stays on
   the corpus zero-witness list permanently -- the parser emits `TpyVarDecl` for
   every name-target assign, so only macro-built / frontend-IR ASTs reach it.
-- **Planned:** extend the tally further to per-component AST-fallback coverage
-  (how much of each component still falls back to AST), so the gap to each
-  deletion is *measured*, not estimated. Today the tally reports total routed
-  bodies/cases plus the per-face witness line above.
+- **Landed: per-component AST-fallback tally** (`tpyc/thir/fallback.py`): the
+  `--thir-codegen` summary prints `tpy| thir fallback: body N -- <top reasons>`
+  and `... ctor M -- ...` -- per deletion target, how many candidate bodies the
+  gate rejected, keyed by FIRST-reject reason (`sig.*` signature gates, `body.*`
+  function-level facts, `stmt.*` the first ineligible statement's shape,
+  `expr.*` a landmark construct inside it -- comprehension / genexpr / lambda /
+  await / walrus, `ctor.*` constructor gates). Full counts dump to
+  `$THIR_FALLBACK_JSON`. First-reason attribution is deliberately coarse (a
+  body may hold several blockers, and the landmark scan tags the first
+  landmark found anywhere in the rejecting statement -- the two
+  approximations compound), so read the counts as ORDINAL (which rocks
+  are big), not cardinal per-construct totals; they measure "what would
+  have to land first", which is the sequencing question. First full-corpus read
+  (2026-07-05, body-compilations summed over ~3.3k cases): the mass is
+  signature-level -- `sig.receiver_record` 2.85M (non-F1 records: cross-module
+  / native / value receivers), `sig.special_callable` 377k, `sig.generic_fn`
+  56k, `sig.linkage` 46k, `sig.param_type` 41k -- then `stmt.expr_stmt` 13.8k,
+  `stmt.if` 11k, `stmt.var_decl` 10.1k, `stmt.return` 8.1k; comprehension-
+  family landmarks first-block only ~67 (the statement-shape tail is small
+  next to the receiver/param form frontiers). NB that first read predates the
+  no-body exclusion (native decls / overload stubs / native ctors are not
+  fallback -- they have no body emit and are excluded from the fold since),
+  which deflates `sig.special_callable` and part of `sig.receiver_record` in
+  later runs. The `stmt.*` rows are per-case-compilation sums: a drill over
+  one all-stdlib compile found ~249 DISTINCT stdlib bodies first-blocked on
+  statement shapes (77 return / 67 var-decl / 54 if ...) -- each multiplies
+  across every importing case, so expression-level cells inside those bodies
+  are the highest-routing-leverage statement work.

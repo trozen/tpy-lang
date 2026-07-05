@@ -1,0 +1,85 @@
+"""Unit tests for the per-body AST-fallback tally (fallback.py): the
+helpers record on the active compiler and no-op without one, the
+signature gate notes first-reject reasons through a real lowering
+attempt, and classify_stmt tags landmark constructs."""
+
+from __future__ import annotations
+
+from ..compilation_context import _current_compiler, activate_compiler
+from .fallback import begin_attempt, classify_stmt, fold_attempt, note
+from .lower import iter_module_callables, lower_function
+from .testutil import _compile, _entry
+
+
+def test_note_and_fold_record_on_active_compiler():
+    compiler, _ = _compile("def f() -> None:\n    pass\n")
+    with activate_compiler(compiler):
+        begin_attempt()
+        assert note("sig.async") is False
+        # Set-if-empty: the first recorded reason wins the attempt.
+        assert note("stmt.for_each") is False
+        fold_attempt("body")
+        begin_attempt()
+        fold_attempt("ctor")  # no reason recorded -> unclassified
+    assert compiler._thir_fallback == {
+        "body:sig.async": 1,
+        "ctor:unclassified": 1,
+    }
+
+
+def test_noop_without_active_compiler():
+    # Outside a compilation the helpers record nowhere; note still returns
+    # False for gate positions. The autouse fixture activates a stub
+    # compiler, so clear the ContextVar explicitly.
+    token = _current_compiler.set(None)
+    try:
+        begin_attempt()
+        assert note("sig.async") is False
+        fold_attempt("body")
+    finally:
+        _current_compiler.reset(token)
+
+
+_SRC = (
+    "from tpy import Int32\n"
+    "async def af() -> None:\n"
+    "    pass\n"
+    "def comp(n: Int32) -> Int32:\n"
+    "    xs = [i for i in range(0, n, 2)]\n"  # 3-arg range: outside C1+C2
+    "    return len(xs)\n"
+    "def ok(n: Int32) -> Int32:\n"
+    "    return n + 1\n"
+)
+
+
+def test_end_to_end_first_reject_reasons():
+    compiler, modules = _compile(_SRC)
+    entry = _entry(modules)
+    routed = []
+    with activate_compiler(compiler):
+        for func, self_type in iter_module_callables(entry.ast, entry.analyzer):
+            begin_attempt()
+            fn = lower_function(func, entry.analyzer, self_type=self_type)
+            if fn is None:
+                fold_attempt("body")
+            else:
+                routed.append(fn.name)
+    fb = compiler._thir_fallback
+    assert fb.get("body:sig.async") == 1
+    # The comprehension local is the first-rejecting statement; the landmark
+    # scan names the frontier, not the host statement shape.
+    assert fb.get("body:expr.list_comp") == 1
+    assert "ok" in routed
+
+
+def test_classify_stmt_tags():
+    compiler, modules = _compile(
+        "from tpy import Int32\n"
+        "def g(n: Int32) -> None:\n"
+        "    d = {i: i for i in range(n)}\n"
+        "    print(n)\n"
+    )
+    entry = _entry(modules)
+    g = entry.ast.functions[0]
+    assert classify_stmt(g.body[0]) == "expr.dict_comp"
+    assert classify_stmt(g.body[1]) == "stmt.expr_stmt"

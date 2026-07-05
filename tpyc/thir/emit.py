@@ -41,6 +41,7 @@ from .nodes import (
     THIRBytesLiteral,
     THIRCall,
     THIRCharLiteral,
+    THIRComprehension,
     THIRCoerce,
     THIRConstructor,
     THIRContainerLiteral,
@@ -278,6 +279,11 @@ class _EmitState:
     match_counter: int = 0
     switch_depth: int = 0
     loop_break_labels: list[str] = field(default_factory=list)
+    # The current statement's indent level, stamped by _emit_stmt before its
+    # arms render expressions: the comprehension stmt-expr is the one
+    # multi-line EXPRESSION render, and its inner lines indent relative to
+    # the enclosing statement (the AST reads ctx.indent_level the same way).
+    stmt_indent_level: int = 0
 
     def next_loop_index(self) -> int:
         n = self.iter_counter
@@ -449,6 +455,106 @@ def _emit_method_call(e: THIRMethodCall, state: _EmitState) -> str:
         # runtime-check arm (type args are gate-excluded, so no {method_targs}).
         return f"::tpy::deref_check({recv}).{e.method_cpp}({', '.join(args)})"
     return f"{recv}{'->' if e.is_arrow else '.'}{e.method_cpp}({', '.join(args)})"
+
+
+def _emit_comprehension(e: 'THIRComprehension', state: _EmitState) -> str:
+    """The GCC stmt-expr comprehension render -- `_gen_comprehension_iife`'s
+    mirror for the C1+C2 slice. Inner lines indent relative to the enclosing
+    statement (`state.stmt_indent_level`, the AST's `ctx.indent_level`); the
+    first line is bare `({` (it renders inline after `= `). NB the range arm
+    draws one loop index PER non-literal bound (the comprehension emitter's
+    scheme -- unlike the statement range-for's single draw), start before
+    stop in source order."""
+    stmt_ind = INDENT * state.stmt_indent_level
+    ind1 = stmt_ind + INDENT
+    ind2 = ind1 + INDENT
+    ind3 = ind2 + INDENT
+    cpp_var = escape_cpp_name(e.var)
+    skip_reserve = e.kind != "list"
+    buf = io.StringIO()
+    buf.write("({\n")
+    buf.write(f"{ind1}{e.container_cpp} __result;\n")
+    if e.loop == "range":
+        cpp_elem = e.counter_cpp
+        if e.range_start is not None:
+            start_cpp = _emit_expr(e.range_start, state)
+            if e.range_start_literal:
+                start_var = start_cpp
+            else:
+                n = state.next_loop_index()
+                start_var = f"__start_{n}"
+                buf.write(f"{ind1}const {cpp_elem} {start_var} = {start_cpp};\n")
+        stop_cpp = _emit_expr(e.range_stop, state)
+        if e.range_stop_literal:
+            stop_var = stop_cpp
+        else:
+            n = state.next_loop_index()
+            stop_var = f"__stop_{n}"
+            buf.write(f"{ind1}const {cpp_elem} {stop_var} = {stop_cpp};\n")
+        if e.range_start is None:
+            if not skip_reserve:
+                if e.counter_bigint:
+                    buf.write(f"{ind1}{{ size_t __sz; if ({stop_var}"
+                              f".to_size_checked(__sz)) __result.reserve(__sz); }}\n")
+                else:
+                    buf.write(f"{ind1}if ({stop_var} > 0) __result.reserve("
+                              f"static_cast<size_t>({stop_var}));\n")
+            buf.write(f"{ind1}for ({cpp_elem} {cpp_var} = 0; "
+                      f"{cpp_var} < {stop_var}; ++{cpp_var}) {{\n")
+        else:
+            if not skip_reserve:
+                if e.counter_bigint:
+                    buf.write(f"{ind1}if ({stop_var} > {start_var}) {{ size_t __sz; "
+                              f"if (({stop_var} - {start_var}).to_size_checked(__sz)) "
+                              f"__result.reserve(__sz); }}\n")
+                else:
+                    buf.write(f"{ind1}if ({stop_var} > {start_var}) __result.reserve("
+                              f"static_cast<size_t>({stop_var} - {start_var}));\n")
+            buf.write(f"{ind1}for ({cpp_elem} {cpp_var} = {start_var}; "
+                      f"{cpp_var} < {stop_var}; ++{cpp_var}) {{\n")
+    else:
+        n = state.next_loop_index()
+        obj, beg, end = f"__obj_{n}", f"__beg_{n}", f"__end_{n}"
+        binding_kw = "auto&" if e.iterable_lvalue else "auto"
+        buf.write(f"{ind1}{binding_kw} {obj} = {_emit_expr(e.iterable, state)};\n")
+        if not skip_reserve and e.sized_reserve:
+            buf.write(f"{ind1}__result.reserve(static_cast<std::size_t>"
+                      f"({obj}.size()));\n")
+        buf.write(f"{ind1}auto {beg} = {obj}.begin();\n")
+        buf.write(f"{ind1}auto {end} = {obj}.end();\n")
+        buf.write(f"{ind1}for (; {beg} != {end}; ++{beg}) {{\n")
+        if e.unpack_targets:
+            un = state.next_unpack()
+            tmp = f"__tup_{un}"
+            ref = "const auto&" if e.const_loop_var else "auto&"
+            buf.write(f"{ind2}{ref} {tmp} = *{beg};\n")
+            for i, name in enumerate(e.unpack_targets):
+                if name is None:
+                    continue
+                buf.write(f"{ind2}{e.unpack_target_cpps[i]} "
+                          f"{escape_cpp_name(name)} = std::get<{i}>({tmp});\n")
+        else:
+            binding = loop_var_binding(e.elem_type, cpp_var, f"*{beg}",
+                                       e.const_loop_var)
+            buf.write(f"{ind2}{binding}\n")
+    if e.kind == "dict":
+        insert = (f"__result.insert_or_assign({_emit_expr(e.key, state)}, "
+                  f"{_emit_expr(e.value, state)})")
+    elif e.kind == "set":
+        insert = f"__result.insert({_emit_expr(e.element, state)})"
+    else:
+        insert = f"__result.push_back({_emit_expr(e.element, state)})"
+    if e.conditions:
+        cond_str = " && ".join(_emit_expr(c, state) for c in e.conditions)
+        buf.write(f"{ind2}if ({cond_str}) {{\n")
+        buf.write(f"{ind3}{insert};\n")
+        buf.write(f"{ind2}}}\n")
+    else:
+        buf.write(f"{ind2}{insert};\n")
+    buf.write(f"{ind1}}}\n")
+    buf.write(f"{ind1}std::move(__result);\n")
+    buf.write(f"{stmt_ind}}})")
+    return buf.getvalue()
 
 
 def _emit_container_literal(e: THIRContainerLiteral, state: _EmitState) -> str:
@@ -735,6 +841,8 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         return e.wrap.format(_emit_expr(e.operand, state))
     if isinstance(e, THIRContainerLiteral):
         return _emit_container_literal(e, state)
+    if isinstance(e, THIRComprehension):
+        return _emit_comprehension(e, state)
     if isinstance(e, THIRCoerce):
         # Passthrough coercions render the inner expression in the target
         # type's context (int/float literal coercions, the identity str-family
@@ -1162,6 +1270,12 @@ def _emit_match(out: TextIO, stmt: THIRMatch, indent_level: int,
         _emit_match_switch_union(out, stmt, indent_level, state, subject)
     elif stmt.strategy == "guarded_union":
         _emit_match_guarded_union(out, stmt, indent_level, state, subject)
+    elif stmt.strategy == "if_elif_record":
+        _emit_match_if_elif_record(out, stmt, indent_level, state, subject)
+    elif stmt.strategy == "guarded_record":
+        _emit_match_guarded_record(out, stmt, indent_level, state, subject)
+    elif stmt.strategy == "optional_partition":
+        _emit_match_optional(out, stmt, indent_level, state, subject)
     else:
         _emit_match_switch(out, stmt, indent_level, state, subject)
     if stmt.emit_unreachable:
@@ -1171,16 +1285,19 @@ def _emit_match(out: TextIO, stmt: THIRMatch, indent_level: int,
 def _emit_match_binding(out: TextIO, binding: 'THIRMatchBinding | None',
                         subject: str, inner: str) -> None:
     # _emit_binding's value-subject arms, mode folded at lowering (see
-    # THIRMatchBinding); the arm block's first line, before the body.
+    # THIRMatchBinding); the arm block's first line, before the body. A
+    # field capture composes the `.field` accessor onto the base spelling
+    # (_gen_match_field_bindings' `{case_var}.{field}` RHS).
     if binding is None:
         return
     name = escape_cpp_name(binding.name)
+    rhs = f"{subject}{binding.subject_suffix}"
     if binding.mode == "assign":
-        out.write(f"{inner}{name} = {subject};\n")
+        out.write(f"{inner}{name} = {rhs};\n")
     elif binding.mode == "copy":
-        out.write(f"{inner}auto {name} = {subject};\n")
+        out.write(f"{inner}auto {name} = {rhs};\n")
     else:
-        out.write(f"{inner}auto& {name} = {subject};\n")
+        out.write(f"{inner}auto& {name} = {rhs};\n")
 
 
 def _emit_match_switch(out: TextIO, stmt: THIRMatch, indent_level: int,
@@ -1280,6 +1397,9 @@ def _emit_match_switch_union(out: TextIO, stmt: THIRMatch, indent_level: int,
             get = f"{deref}std::get<{entry.variant_index}>({variant})"
         if entry.case_alias is not None:
             out.write(f"{inner}auto& {entry.case_alias} = {get};\n")
+        for fb in entry.field_bindings:
+            # Keyword captures always draw the alias, so the base is it.
+            _emit_match_binding(out, fb, entry.case_alias, inner)
         if entry.binding is not None:
             rhs = ((entry.case_alias or get)
                    if entry.binding.from_case_var else subject)
@@ -1329,13 +1449,32 @@ def _emit_match_guarded_union(out: TextIO, stmt: THIRMatch,
             state.comments.stmt(out, entry.loc, inner)
             if use_scope:
                 out.write(f"{inner}{{\n")
-            if entry.binding is not None:
-                rhs = alias if entry.binding.from_case_var else subject
-                _emit_match_binding(out, entry.binding, rhs, bind_indent)
-            if entry.guard is not None:
+            if not entry.field_conds:
+                # No field conditions: bindings precede the guard (it may
+                # read them). With conditions they move INSIDE the if block
+                # below (_gen_guarded_switch_arm_action's split).
+                for fb in entry.field_bindings:
+                    _emit_match_binding(out, fb, alias, bind_indent)
+                if entry.binding is not None:
+                    rhs = alias if entry.binding.from_case_var else subject
+                    _emit_match_binding(out, entry.binding, rhs, bind_indent)
+            if entry.field_conds or entry.guard is not None:
+                cond_parts = [f"{pre}{alias}{suf}"
+                              for pre, suf in entry.field_conds]
+                if entry.guard is not None:
+                    cond_parts.append(_emit_expr(entry.guard, state))
                 out.write(f"{bind_indent}if "
-                          f"({_emit_expr(entry.guard, state)}) {{\n")
+                          f"({' && '.join(cond_parts)}) {{\n")
                 lvl = indent_level + (3 if use_scope else 2)
+                if entry.field_conds:
+                    body_indent = INDENT * lvl
+                    for fb in entry.field_bindings:
+                        _emit_match_binding(out, fb, alias, body_indent)
+                    if entry.binding is not None:
+                        rhs = (alias if entry.binding.from_case_var
+                               else subject)
+                        _emit_match_binding(out, entry.binding, rhs,
+                                            body_indent)
                 _emit_stmts(out, entry.body, lvl, state)
                 out.write(f"{INDENT * lvl}goto {end_label};\n")
                 out.write(f"{bind_indent}}}\n")
@@ -1350,6 +1489,40 @@ def _emit_match_guarded_union(out: TextIO, stmt: THIRMatch,
     state.switch_depth -= 1
     out.write(f"{indent}}}\n")
     out.write(f"{end_label}:;\n")
+
+
+def _emit_match_optional(out: TextIO, stmt: THIRMatch, indent_level: int,
+                         state: _EmitState, subject: str) -> None:
+    # _gen_match_optimized_optional over the pointer-repr subject slice (see
+    # THIRMatch.none_entry): the None arm's comment at the OUTER indent, then
+    # `if (subj == nullptr) { <none body> } else {` (or the bare
+    # `if (subj != nullptr) {` when no None arm exists), the
+    # `__match_inner_N` deref alias, and the single always-match inner block
+    # -- `_emit_optional_inner_record`'s no-field `{` ... `}` (comment at the
+    # else level, binding vs the alias, body two levels in). The inner name
+    # must snapshot the subject's counter draw BEFORE the None body emits: a
+    # nested match in there bumps the counter (the AST saves/restores its
+    # names per gen_match the same way). No switch, so no switch_depth
+    # bracket -- a `break` in an arm body exits the loop directly.
+    indent = INDENT * indent_level
+    inner = INDENT * (indent_level + 1)
+    inner2 = INDENT * (indent_level + 2)
+    inner_name = f"__match_inner_{state.match_counter}"
+    if stmt.none_entry is not None:
+        state.comments.stmt(out, stmt.none_entry.loc, indent)
+        out.write(f"{indent}if ({subject} == nullptr) {{\n")
+        _emit_stmts(out, stmt.none_entry.body, indent_level + 1, state)
+        out.write(f"{indent}}} else {{\n")
+    else:
+        out.write(f"{indent}if ({subject} != nullptr) {{\n")
+    out.write(f"{inner}auto& {inner_name} = (*{subject});\n")
+    entry = stmt.arms[0].entries[0]
+    state.comments.stmt(out, entry.loc, inner)
+    out.write(f"{inner}{{\n")
+    _emit_match_binding(out, entry.binding, inner_name, inner2)
+    _emit_stmts(out, entry.body, indent_level + 2, state)
+    out.write(f"{inner}}}\n")
+    out.write(f"{indent}}}\n")
 
 
 def _emit_match_if_elif(out: TextIO, stmt: THIRMatch, indent_level: int,
@@ -1415,8 +1588,109 @@ def _emit_match_if_elif_guarded(out: TextIO, stmt: THIRMatch,
     out.write(f"{indent}{end_label}:;\n")
 
 
+def _record_or_cond(or_conds, subject: str) -> str:
+    # The or-branches' or_parts join: each alternative's conds &&-joined in
+    # parens (empty alternatives were skipped at lowering), ||-joined.
+    parts = ["(" + " && ".join(f"{pre}{subject}{suf}" for pre, suf in grp)
+             + ")" for grp in or_conds]
+    return " || ".join(parts)
+
+
+def _emit_match_if_elif_record(out: TextIO, stmt: THIRMatch,
+                               indent_level: int, state: _EmitState,
+                               subject: str) -> None:
+    # _gen_match_if_elif_record's unguarded chain, arms in source order: a
+    # class arm's field conditions &&-join into `if (...)` / `} else if
+    # (...)` (condition-free class arms and wildcards open bare `{` / `}
+    # else {`), then the field capture bindings, the whole-subject
+    # capture/`as` binding, and the body one level in; an or-pattern arm
+    # renders its ||-joined alternative groups and carries NO bindings.
+    # One closing brace ends the chain (the gate keeps the always-match
+    # arm last, so no `} else { ... } else if` can arise).
+    indent = INDENT * indent_level
+    inner = INDENT * (indent_level + 1)
+    for i, arm in enumerate(stmt.arms):
+        entry = arm.entries[0]
+        state.comments.stmt(out, entry.loc, indent)
+        keyword = "if" if i == 0 else "} else if"
+        if entry.or_conds is not None:
+            if entry.or_conds:
+                cond = _record_or_cond(entry.or_conds, subject)
+                out.write(f"{indent}{keyword} ({cond}) {{\n")
+            else:
+                out.write(f"{indent}{{\n" if i == 0
+                          else f"{indent}}} else {{\n")
+            _emit_stmts(out, entry.body, indent_level + 1, state)
+            continue
+        conds = [f"{pre}{subject}{suf}" for pre, suf in entry.field_conds]
+        if conds:
+            out.write(f"{indent}{keyword} ({' && '.join(conds)}) {{\n")
+        else:
+            out.write(f"{indent}{{\n" if i == 0
+                      else f"{indent}}} else {{\n")
+        for fb in entry.field_bindings:
+            _emit_match_binding(out, fb, subject, inner)
+        _emit_match_binding(out, entry.binding, subject, inner)
+        _emit_stmts(out, entry.body, indent_level + 1, state)
+    out.write(f"{indent}}}\n")
+
+
+def _emit_match_guarded_record(out: TextIO, stmt: THIRMatch,
+                               indent_level: int, state: _EmitState,
+                               subject: str) -> None:
+    # _gen_match_guarded_record's standalone-if + goto shape (the end label
+    # draws the second per-function counter bump): a class/wildcard arm
+    # opens `if (conds) {` (bare `{` without conditions), binds its fields
+    # and whole-subject name, then nests the guard as `if (guard) { <body>
+    # goto end; }` two levels in (unguarded: body + goto one level). An
+    # or-pattern arm composes the guard INTO the block condition
+    # (`(conds) && guard`, or the bare guard when its groups collapsed
+    # empty) with the body + goto one level in regardless.
+    indent = INDENT * indent_level
+    inner = INDENT * (indent_level + 1)
+    state.match_counter += 1
+    end_label = f"__match_end_{state.match_counter}"
+    for arm in stmt.arms:
+        entry = arm.entries[0]
+        state.comments.stmt(out, entry.loc, indent)
+        if entry.or_conds is not None:
+            if entry.or_conds:
+                cond = _record_or_cond(entry.or_conds, subject)
+                if entry.guard is not None:
+                    cond = f"({cond}) && {_emit_expr(entry.guard, state)}"
+                out.write(f"{indent}if ({cond}) {{\n")
+            elif entry.guard is not None:
+                out.write(f"{indent}if "
+                          f"({_emit_expr(entry.guard, state)}) {{\n")
+            else:
+                out.write(f"{indent}{{\n")
+            _emit_stmts(out, entry.body, indent_level + 1, state)
+            out.write(f"{inner}goto {end_label};\n")
+            out.write(f"{indent}}}\n")
+            continue
+        conds = [f"{pre}{subject}{suf}" for pre, suf in entry.field_conds]
+        if conds:
+            out.write(f"{indent}if ({' && '.join(conds)}) {{\n")
+        else:
+            out.write(f"{indent}{{\n")
+        for fb in entry.field_bindings:
+            _emit_match_binding(out, fb, subject, inner)
+        _emit_match_binding(out, entry.binding, subject, inner)
+        if entry.guard is not None:
+            out.write(f"{inner}if ({_emit_expr(entry.guard, state)}) {{\n")
+            _emit_stmts(out, entry.body, indent_level + 2, state)
+            out.write(f"{INDENT * (indent_level + 2)}goto {end_label};\n")
+            out.write(f"{inner}}}\n")
+        else:
+            _emit_stmts(out, entry.body, indent_level + 1, state)
+            out.write(f"{inner}goto {end_label};\n")
+        out.write(f"{indent}}}\n")
+    out.write(f"{indent}{end_label}:;\n")
+
+
 def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState) -> None:
     indent = INDENT * indent_level
+    state.stmt_indent_level = indent_level
     if isinstance(stmt, THIRVarDecl):
         name = escape_cpp_name(stmt.name)
         if stmt.cpp_local_representation is LocalBinding.REBIND_SLOT:

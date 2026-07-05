@@ -436,6 +436,52 @@ class THIRContainerLiteral(THIRExpr):
 
 
 @dataclass(frozen=True)
+class THIRComprehension(THIRExpr):
+    """A list/set/dict comprehension at a fresh local's decl-init -- the GCC
+    stmt-expr mirror of `_gen_comprehension_iife` (the C1+C2 slice):
+
+        ({ <container_cpp> __result; <loop head> { <binding>
+           [if (c1 && c2) {] <insert>; [}] } std::move(__result); })
+
+    Loop arms: `range` (1/2-arg counter loop; each NON-literal bound hoists
+    its own `const <counter> __start/__stop_N = ...;` -- NB the comprehension
+    emitter draws one loop index PER bound, unlike the statement range-for's
+    single draw) and `begin_end` (`__obj_N` capture with the lvalue verdict,
+    `__beg_N`/`__end_N`, the shared `loop_var_binding` or the inline
+    tuple-unpack `__tup_N` lines). A list result reserves (`sized_reserve`
+    for begin/end over sized iterables; the range arms' `> 0` / BigInt
+    `to_size_checked` guards); set/dict skip (the AST's `skip_reserve`).
+    Inserts: `push_back(elem)` / `insert(elem)` / `insert_or_assign(k, v)`;
+    elements arrive through the S5 per-slot owned-str wrap. Gate-excluded:
+    owned-move elements (`owns_elements` -- the `__dk_N` key-sequencing and
+    move-sink arms), Array demotion (`array_from_index`), genexpr,
+    temp-producing elements/filters (plain `_expr_eligible` admits none),
+    narrowed-Optional iterables, 3-arg range. The multi-line render reads
+    the enclosing statement indent off `_EmitState.stmt_indent_level`."""
+    kind: str = ""                        # "list" | "set" | "dict"
+    container_cpp: str = ""               # spelled result container type
+    var: str = ""                         # loop var (source name)
+    loop: str = ""                        # "range" | "begin_end"
+    elem_type: 'TpyType | None' = None    # loop-var binding type (begin_end)
+    const_loop_var: bool = False
+    counter_cpp: str = ""                 # range counter spelling
+    counter_bigint: bool = False          # BigInt reserve arm
+    range_start: 'THIRExpr | None' = None  # None for 1-arg range
+    range_stop: 'THIRExpr | None' = None
+    range_start_literal: bool = False     # bare TpyIntLiteral bounds inline
+    range_stop_literal: bool = False
+    iterable: 'THIRExpr | None' = None    # begin_end only
+    iterable_lvalue: bool = True
+    sized_reserve: bool = False           # list over a sized begin_end iterable
+    unpack_targets: tuple = ()            # ('a', None, 'b') -- None = discard
+    unpack_target_cpps: tuple = ()
+    conditions: tuple = ()                # &&-joined filter conditions
+    element: 'THIRExpr | None' = None     # list/set insert value
+    key: 'THIRExpr | None' = None         # dict
+    value: 'THIRExpr | None' = None       # dict
+
+
+@dataclass(frozen=True)
 class THIRCoerce(THIRExpr):
     """A sema-inserted coercion made explicit on the IR. Two emit shapes:
 
@@ -1043,10 +1089,15 @@ class THIRMatchBinding:
     -- `auto name = subject;`), 'ref' (`auto& name = subject;`). The name
     is raw; emit escapes. `from_case_var` (union tier) binds against the
     arm's `__case_{i}` extraction alias (or the composed `std::get` when
-    no alias was drawn) instead of the subject."""
+    no alias was drawn) instead of the subject. A FIELD capture
+    (`case C(f=name)`) carries `subject_suffix=".f"`: the emit composes
+    `{base}{suffix}` for the RHS (`_gen_match_field_bindings`' spelling),
+    the base being the subject (record tiers) or the alias (union
+    tiers)."""
     name: str
     mode: str  # 'assign' | 'copy' | 'ref'
     from_case_var: bool = False
+    subject_suffix: str = ""
 
 
 @dataclass(frozen=True)
@@ -1071,6 +1122,20 @@ class THIRMatchArmEntry:
     # subject were renamed to the alias at lowering (the U3 mechanic).
     variant_index: 'int | None' = None
     case_alias: 'str | None' = None
+    # Record/union field sub-patterns. `field_conds` are `_record_field_
+    # conditions`' literal arms as (prefix, suffix) pairs around the runtime
+    # base spelling (only known at emit: `__match_subject_N` for the record
+    # tiers, `__case_{idx}` for the guarded-union tier) -- the emit composes
+    # `{prefix}{base}{suffix}`, `&&`-joined. `field_bindings` are the
+    # keyword captures (`subject_suffix` carries the `.field` accessor).
+    # `or_conds` marks an or-pattern arm of condition-only class
+    # alternatives: one (possibly empty after the AST's wildcard-alt clear /
+    # empty-alt skip) tuple of cond groups, `||`-joined in parens; None for
+    # non-or arms. Or-arms never carry bindings (the AST drops them --
+    # gate-rejected, see BUGS.md).
+    field_conds: tuple[tuple[str, str], ...] = ()
+    field_bindings: tuple[THIRMatchBinding, ...] = ()
+    or_conds: 'tuple[tuple[tuple[str, str], ...], ...] | None' = None
 
 
 @dataclass(frozen=True)
@@ -1129,7 +1194,8 @@ class THIRMatch(THIRStmt):
     guarded groups' second counter draw (`__match_end_N` / `__match_default_N`)
     never happens in this tier."""
     # 'switch_enum' | 'switch_primitive' | 'if_elif' | 'if_elif_guarded'
-    # | 'switch_union'
+    # | 'switch_union' | 'guarded_union' | 'if_elif_record' | 'guarded_record'
+    # | 'optional_partition'
     strategy: str = "switch_enum"
     subject: 'THIRExpr | None' = None
     subject_ref: bool = True          # auto& (lvalue subject) vs auto
@@ -1150,6 +1216,18 @@ class THIRMatch(THIRStmt):
     # parked against the wrapper-form rung -- wrapper params/locals are
     # function-gated, so no wrapper match can reach this node yet).
     is_ptr_variant: bool = False
+    # optional_partition (O1): `_gen_match_optimized_optional` over a
+    # pointer-repr `Optional[F1-record]` name subject. The None prefix arm
+    # (body/loc; bindings gate-rejected -- a None-arm `as` is a sema error
+    # and a full-Optional capture defeats the partition) emits inside
+    # `if (subj == nullptr) { ... } else {`; None here is the no-None-arm
+    # form (`if (subj != nullptr) {`). The else block draws the
+    # `__match_inner_N` deref alias (SAME counter value as the subject --
+    # gen_match numbers both off one bump) and `arms` holds the single
+    # always-match inner arm (`_emit_optional_inner_record`'s no-field
+    # `{ }` block; sema's unreachable-arm rule caps the unguarded inner
+    # dispatch at one). Its binding binds vs the inner alias.
+    none_entry: 'THIRMatchArmEntry | None' = None
 
 
 class PrintForm(Enum):

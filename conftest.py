@@ -40,6 +40,8 @@ class _TestCompilerContext:
     dynamic_type_defs: dict[str, Any] = field(default_factory=dict)
     dynamic_created_qnames: set[str] = field(default_factory=set)
     _thir_face_witnesses: dict[str, int] = field(default_factory=dict)
+    _thir_reject_reason: str | None = None
+    _thir_fallback: dict[str, int] = field(default_factory=dict)
 
 
 @pytest.fixture(autouse=True)

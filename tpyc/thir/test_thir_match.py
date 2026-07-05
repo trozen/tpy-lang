@@ -6,9 +6,11 @@ per-function `__match_subject_N` numbering, the break-escaping-a-switch
 `goto __loop_break_N` interaction, in-switch guard chains + the
 `__match_default_N` fallback), the if/elif chain tiers (unguarded `==`
 chain; guarded standalone-if + `goto __match_end_N`), capture/`as`
-bindings (copy/ref/assign modes), and the gate rejections (Literal
-subjects, call-bearing/non-bool guards, two-binding shapes, non-name
-subjects)."""
+bindings (copy/ref/assign modes), the record tiers (field conditions /
+captures / or-pattern condition groups, if_elif_record + guarded_record)
+with the union tiers' field-keyword widening, and the gate rejections
+(Literal subjects, call-bearing/non-bool guards, two-binding shapes,
+non-name subjects, or-pattern bindings, nested field sub-patterns)."""
 
 from __future__ import annotations
 
@@ -643,8 +645,9 @@ class TestMatchSwitchUnion:
         cpp = _cpp(src, thir=True)
         assert cpp == _cpp(src, thir=False)
 
-    def test_field_subpattern_rejects(self):
-        # Field sub-patterns (bindings / value conditions) are deferred.
+    def test_field_binding_routes(self):
+        # A keyword field capture binds off the `__case_{i}` alias
+        # (previously a gate reject; the record-pattern cell admitted it).
         src = UNION_PREAMBLE + (
             "def legs(a: Cat | Dog) -> Int32:\n"
             "    match a:\n"
@@ -657,8 +660,12 @@ class TestMatchSwitchUnion:
             "main()\n"
         )
         thir = _lower_ctx(src)
-        assert _fn(thir, "legs") is None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+        m = _fn(thir, "legs").body[0]
+        fb = m.arms[0].entries[0].field_bindings
+        assert len(fb) == 1 and fb[0].subject_suffix == ".legs"
+        cpp = _cpp(src, thir=True)
+        assert "auto n = __case_0.legs;" in cpp
+        assert cpp == _cpp(src, thir=False)
 
     def test_guarded_union_routes(self):
         # M4b: per-index guard groups. Cat has a guarded + implicit
@@ -855,3 +862,653 @@ class TestMatchGateRejections:
         )
         assert not self._routed(src, "f")
         assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+
+RECORD_PREAMBLE = (
+    "from dataclasses import dataclass\n"
+    "from tpy import Int32\n"
+    "@dataclass\n"
+    "class Point:\n"
+    "    x: Int32\n"
+    "    y: Int32\n"
+)
+
+
+class TestMatchIfElifRecord:
+    SRC = RECORD_PREAMBLE + (
+        "def f(p: Point) -> Int32:\n"
+        "    match p:\n"
+        "        case Point(x=0, y=0):\n"
+        "            return 0\n"
+        "        case Point(x=x, y=0):\n"
+        "            return x\n"
+        "        case _:\n"
+        "            return 9\n"
+        "f(Point(1, 0))\n"
+    )
+
+    def test_routed_and_byte_identical(self):
+        thir = _lower_ctx(self.SRC)
+        assert _fn(thir, "f") is not None
+        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
+
+    def test_node_facts(self):
+        thir = _lower_ctx(self.SRC)
+        m = _fn(thir, "f").body[0]
+        assert isinstance(m, THIRMatch)
+        assert m.strategy == "if_elif_record"
+        e0, e1, e2 = (a.entries[0] for a in m.arms)
+        assert e0.field_conds == (("", ".x == 0"), ("", ".y == 0"))
+        assert e1.field_conds == (("", ".y == 0"),)
+        assert [b.subject_suffix for b in e1.field_bindings] == [".x"]
+        assert e2.field_conds == () and e2.or_conds is None
+        assert m.is_exhaustive and m.emit_unreachable
+
+    def test_emit_shape(self):
+        cpp = _cpp(self.SRC, thir=True)
+        body = cpp[cpp.index("int32_t f"):]
+        assert ("if (__match_subject_1.x == 0 && __match_subject_1.y == 0) {"
+                in body)
+        assert "} else if (__match_subject_1.y == 0) {" in body
+        assert "auto x = __match_subject_1.x;" in body
+        assert "} else {" in body
+        assert "::std::unreachable();" in body
+
+    def test_witness(self):
+        _, w = _lower_ctx_witnessed(self.SRC)
+        assert w.get("match.if_elif_record", 0) > 0
+        assert w.get("match.field_cond", 0) > 0
+        assert w.get("match.field_bind", 0) > 0
+
+
+class TestMatchGuardedRecord:
+    SRC = RECORD_PREAMBLE + (
+        "def f(p: Point) -> Int32:\n"
+        "    match p:\n"
+        "        case Point(x=0, y=0):\n"
+        "            return 0\n"
+        "        case Point(x=x) if x > 0:\n"
+        "            return x\n"
+        "        case _:\n"
+        "            return 9\n"
+        "f(Point(2, 3))\n"
+    )
+
+    def test_routed_and_byte_identical(self):
+        thir = _lower_ctx(self.SRC)
+        assert _fn(thir, "f") is not None
+        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
+
+    def test_node_facts(self):
+        thir = _lower_ctx(self.SRC)
+        m = _fn(thir, "f").body[0]
+        assert m.strategy == "guarded_record"
+        assert m.arms[1].entries[0].guard is not None
+        assert [b.subject_suffix
+                for b in m.arms[1].entries[0].field_bindings] == [".x"]
+
+    def test_emit_shape(self):
+        # Standalone blocks: the guarded arm binds its capture, then nests
+        # the guard; every arm tail is a goto to the second-counter label.
+        cpp = _cpp(self.SRC, thir=True)
+        body = cpp[cpp.index("int32_t f"):]
+        assert "if (__match_subject_1.x == 0 && __match_subject_1.y == 0) {" in body
+        assert "auto x = __match_subject_1.x;" in body
+        assert "if ((x > 0)) {" in body
+        assert body.count("goto __match_end_2;") == 3
+        assert "__match_end_2:;" in body
+        assert "} else" not in body
+
+    def test_witness(self):
+        _, w = _lower_ctx_witnessed(self.SRC)
+        assert w.get("match.guarded_record", 0) > 0
+        assert w.get("match.guard_arm", 0) > 0
+
+    def test_or_pattern_with_guard(self):
+        # The or-arm's guard composes INTO the block condition (no nested
+        # if), unlike class arms.
+        src = RECORD_PREAMBLE + (
+            "def f(p: Point, ok: bool) -> Int32:\n"
+            "    match p:\n"
+            "        case Point(x=0, y=0) | Point(x=1, y=1) if ok:\n"
+            "            return 1\n"
+            "        case _:\n"
+            "            return 0\n"
+            "f(Point(1, 1), True)\n"
+        )
+        thir = _lower_ctx(src)
+        m = _fn(thir, "f").body[0]
+        assert m.arms[0].entries[0].or_conds == (
+            (("", ".x == 0"), ("", ".y == 0")),
+            (("", ".x == 1"), ("", ".y == 1")))
+        cpp = _cpp(src, thir=True)
+        assert ("if (((__match_subject_1.x == 0 && __match_subject_1.y == 0)"
+                " || (__match_subject_1.x == 1 && __match_subject_1.y == 1))"
+                " && ok) {") in cpp
+        assert cpp == _cpp(src, thir=False)
+
+    def test_or_witness(self):
+        src = RECORD_PREAMBLE + (
+            "def f(p: Point) -> Int32:\n"
+            "    match p:\n"
+            "        case Point(x=0, y=0) | Point(x=1, y=1):\n"
+            "            return 1\n"
+            "        case _:\n"
+            "            return 0\n"
+            "f(Point(1, 1))\n"
+        )
+        _, w = _lower_ctx_witnessed(src)
+        assert w.get("match.record_or", 0) > 0
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+
+class TestMatchRecordFieldNone:
+    SRC = (
+        "class W:\n"
+        "    opt: \"str | None\"\n"
+        "    uni: \"int | str | None\"\n"
+        "    def __init__(self, opt: \"str | None\","
+        " uni: \"int | str | None\") -> None:\n"
+        "        self.opt = opt\n"
+        "        self.uni = uni\n"
+        "def f(w: W) -> Int32:\n"
+        "    match w:\n"
+        "        case W(opt=None):\n"
+        "            return 1\n"
+        "        case W(uni=None):\n"
+        "            return 2\n"
+        "        case _:\n"
+        "            return 3\n"
+        "from tpy import Int32\n"
+        "f(W(None, 1))\n"
+    )
+
+    def test_routed_and_byte_identical(self):
+        thir = _lower_ctx(self.SRC)
+        assert _fn(thir, "f") is not None
+        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
+
+    def test_node_facts_and_emit(self):
+        thir = _lower_ctx(self.SRC)
+        m = _fn(thir, "f").body[0]
+        assert m.arms[0].entries[0].field_conds == (
+            ("!", ".opt.has_value()"),)
+        assert m.arms[1].entries[0].field_conds == (
+            ("std::holds_alternative<std::monostate>(", ".uni)"),)
+        cpp = _cpp(self.SRC, thir=True)
+        assert "if (!__match_subject_1.opt.has_value()) {" in cpp
+        assert ("} else if (std::holds_alternative<std::monostate>"
+                "(__match_subject_1.uni)) {") in cpp
+
+    def test_witness(self):
+        _, w = _lower_ctx_witnessed(self.SRC)
+        assert w.get("match.field_none", 0) > 0
+
+
+class TestMatchGuardedUnionFieldCond:
+    SRC = UNION_PREAMBLE + (
+        "def f(a: Cat | Dog) -> Int32:\n"
+        "    match a:\n"
+        "        case Dog(legs=3):\n"
+        "            return 3\n"
+        "        case _:\n"
+        "            return 0\n"
+        "def main() -> None:\n"
+        "    print(f(Dog()))\n"
+        "main()\n"
+    )
+
+    def test_routed_and_byte_identical(self):
+        thir = _lower_ctx(self.SRC)
+        m = _fn(thir, "f").body[0]
+        assert m.strategy == "guarded_union"
+        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
+
+    def test_node_facts_and_emit(self):
+        # A field condition routes the union to the guarded path; the
+        # condition pre-renders against the group's variant-index alias
+        # and the wildcard broadcast keeps the Dog group two entries.
+        thir = _lower_ctx(self.SRC)
+        m = _fn(thir, "f").body[0]
+        dog = m.arms[0]
+        assert dog.labels == ("1",) and len(dog.entries) == 2
+        assert dog.entries[0].field_conds == (("", ".legs == 3"),)
+        cpp = _cpp(self.SRC, thir=True)
+        assert "auto& __case_1 = *std::get<1>(__match_subject_1);" in cpp
+        assert "if (__case_1.legs == 3) {" in cpp
+        assert "__match_end_2:;" in cpp
+
+    def test_witness(self):
+        _, w = _lower_ctx_witnessed(self.SRC)
+        assert w.get("match.union_field_cond", 0) > 0
+        assert w.get("match.guarded_union", 0) > 0
+
+    def test_cond_with_guard_composes(self):
+        # `if (cond && guard)` -- field conds first, then the guard.
+        src = UNION_PREAMBLE + (
+            "def f(a: Cat | Dog, ok: bool) -> Int32:\n"
+            "    match a:\n"
+            "        case Dog(legs=3) if ok:\n"
+            "            return 3\n"
+            "        case _:\n"
+            "            return 0\n"
+            "def main() -> None:\n"
+            "    print(f(Dog(), True))\n"
+            "main()\n"
+        )
+        cpp = _cpp(src, thir=True)
+        assert "if (__case_1.legs == 3 && ok) {" in cpp
+        assert cpp == _cpp(src, thir=False)
+
+    def test_cond_and_binding_binds_inside(self):
+        # With field conds the bindings move INSIDE the condition block
+        # (the AST declares them after the check).
+        src = UNION_PREAMBLE + (
+            "def f(a: Cat | Dog) -> Int32:\n"
+            "    match a:\n"
+            "        case Dog(legs=4) as d:\n"
+            "            return d.legs\n"
+            "        case _:\n"
+            "            return 0\n"
+            "def main() -> None:\n"
+            "    print(f(Dog()))\n"
+            "main()\n"
+        )
+        cpp = _cpp(src, thir=True)
+        i_cond = cpp.index("if (__case_1.legs == 4) {")
+        i_bind = cpp.index("auto& d = __case_1;")
+        assert i_cond < i_bind
+        assert cpp == _cpp(src, thir=False)
+
+
+class TestMatchRecordRejections:
+    def _routed(self, src: str, name: str) -> bool:
+        thir = _lower_ctx(src)
+        return _fn(thir, name) is not None
+
+    def test_as_over_or_rejects(self):
+        # The AST record or-branches never emit the `as` binding
+        # (ill-formed C++ when the body reads it -- BUGS.md).
+        src = RECORD_PREAMBLE + (
+            "def f(p: Point) -> Int32:\n"
+            "    match p:\n"
+            "        case Point(x=0) | Point(y=0) as q:\n"
+            "            return q.x\n"
+            "        case _:\n"
+            "            return 0\n"
+        )
+        assert not self._routed(src, "f")
+
+    def test_or_alt_capture_rejects(self):
+        # Field captures inside or-alternatives are silently dropped by
+        # the AST or-branches (ill-formed C++ -- BUGS.md).
+        src = RECORD_PREAMBLE + (
+            "def f(p: Point) -> Int32:\n"
+            "    match p:\n"
+            "        case Point(x=a, y=0) | Point(x=0, y=a):\n"
+            "            return a\n"
+            "        case _:\n"
+            "            return 0\n"
+        )
+        assert not self._routed(src, "f")
+
+    def test_union_field_guard_subpattern_rejects(self):
+        # A class sub-pattern on a union-typed field (holds_alternative +
+        # std::get extraction) is a deferred row.
+        src = (
+            "from tpy import Int32\n"
+            "class A:\n"
+            "    n: Int32\n"
+            "    def __init__(self) -> None:\n"
+            "        self.n = 1\n"
+            "class B:\n"
+            "    n: Int32\n"
+            "    def __init__(self) -> None:\n"
+            "        self.n = 2\n"
+            "class W:\n"
+            "    v: A | B\n"
+            "    def __init__(self, v: A | B) -> None:\n"
+            "        self.v = v\n"
+            "def f(w: W) -> Int32:\n"
+            "    match w:\n"
+            "        case W(v=A()):\n"
+            "            return 1\n"
+            "        case _:\n"
+            "            return 0\n"
+            "def main() -> None:\n"
+            "    print(f(W(A())))\n"
+            "main()\n"
+        )
+        assert not self._routed(src, "f")
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+    def test_field_as_subpattern_rejects(self):
+        # `field=(<pat> as v)` sub-patterns are a deferred row. (No arm may
+        # follow: sema counts the as-wrapped literal as non-constraining and
+        # flags any later arm unreachable.)
+        src = RECORD_PREAMBLE + (
+            "def f(p: Point) -> Int32:\n"
+            "    match p:\n"
+            "        case Point(x=(0 as v)):\n"
+            "            return v\n"
+            "    return 9\n"
+            "f(Point(0, 1))\n"
+        )
+        assert not self._routed(src, "f")
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+    def test_guarded_union_guard_reads_cond_capture_rejects(self):
+        # With field conds the AST composes `if (conds && guard)` and only
+        # then declares the captures inside the block, so a guard reading
+        # its own capture is ill-formed C++ (BUGS.md) -- gate-rejected.
+        src = UNION_PREAMBLE + (
+            "def f(a: Cat | Dog) -> Int32:\n"
+            "    match a:\n"
+            "        case Dog(legs=4, name=n) if n > 2:\n"
+            "            return n\n"
+            "        case _:\n"
+            "            return 0\n"
+        )
+        src = src.replace("class Dog:\n    legs: Int32\n",
+                          "class Dog:\n    legs: Int32\n    name: Int32\n")
+        src = src.replace("    def __init__(self) -> None:\n"
+                          "        self.legs = 4\nclass Cat",
+                          "    def __init__(self) -> None:\n"
+                          "        self.legs = 4\n        self.name = 4\n"
+                          "class Cat")
+        assert not self._routed(src, "f")
+
+    def test_hoisted_record_as_capture_rejects(self):
+        # A leaked record `as` capture hoists in pointer form on the AST
+        # (`Point* q;`) -- outside the plain-value hoist slice.
+        src = RECORD_PREAMBLE + (
+            "def f(p: Point) -> Int32:\n"
+            "    match p:\n"
+            "        case Point() as q:\n"
+            "            pass\n"
+            "    return q.x\n"
+            "f(Point(1, 2))\n"
+        )
+        assert not self._routed(src, "f")
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+        assert not self._routed(src, "f")
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+
+OPT_PREAMBLE = (
+    "from tpy import Int32\n"
+    "class Leaf:\n"
+    "    n: Int32\n"
+    "    def __init__(self, n: Int32):\n"
+    "        self.n = n\n"
+)
+
+
+class TestMatchOptionalPartition:
+    SRC = OPT_PREAMBLE + (
+        "def check(x: Leaf | None) -> None:\n"
+        "    match x:\n"
+        "        case None:\n"
+        "            print(0)\n"
+        "        case Leaf():\n"
+        "            print(x.n)\n"
+        "def main() -> None:\n"
+        "    check(Leaf(3))\n"
+        "main()\n"
+    )
+
+    def test_routed_and_byte_identical(self):
+        thir = _lower_ctx(self.SRC)
+        assert _fn(thir, "check") is not None
+        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
+
+    def test_node_facts(self):
+        thir = _lower_ctx(self.SRC)
+        m = _fn(thir, "check").body[0]
+        assert isinstance(m, THIRMatch)
+        assert m.strategy == "optional_partition"
+        assert m.none_entry is not None and m.none_entry.binding is None
+        assert len(m.arms) == 1 and m.arms[0].labels == ()
+        assert m.arms[0].entries[0].binding is None
+        # None + class arm covers both sides; non-terminating bodies keep
+        # the unreachable tail off.
+        assert m.is_exhaustive and not m.emit_unreachable
+        assert not m.synthetic_default and not m.default_goto
+
+    def test_emit_shape(self):
+        cpp = _cpp(self.SRC, thir=True)
+        body = cpp[cpp.index("void check"):]
+        assert "auto& __match_subject_1 = x;" in body
+        assert "if (__match_subject_1 == nullptr) {" in body
+        assert "auto& __match_inner_1 = (*__match_subject_1);" in body
+        # Subject reads in the narrowed arm keep the pointer name.
+        assert "x->n" in body
+
+    def test_witness(self):
+        _, w = _lower_ctx_witnessed(self.SRC)
+        assert w.get("match.optional_partition", 0) > 0
+        assert w.get("match.optional_none_arm", 0) > 0
+
+
+class TestMatchOptionalPartitionBindings:
+    def test_capture_binds_inner_ref(self):
+        src = OPT_PREAMBLE + (
+            "def check(x: Leaf | None) -> None:\n"
+            "    match x:\n"
+            "        case None:\n"
+            "            print(0)\n"
+            "        case v:\n"
+            "            print(v.n)\n"
+            "def main() -> None:\n"
+            "    check(Leaf(3))\n"
+            "main()\n"
+        )
+        thir = _lower_ctx(src)
+        m = _fn(thir, "check").body[0]
+        b = m.arms[0].entries[0].binding
+        assert b is not None and b.mode == "ref" and b.from_case_var
+        cpp = _cpp(src, thir=True)
+        assert "auto& v = __match_inner_1;" in cpp
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+        _, w = _lower_ctx_witnessed(src)
+        assert w.get("match.optional_inner_bind", 0) > 0
+        assert w.get("match.bind_ref", 0) > 0
+
+    def test_as_binding_and_terminating_tail(self):
+        src = OPT_PREAMBLE + (
+            "def pick(x: Leaf | None) -> Int32:\n"
+            "    match x:\n"
+            "        case None:\n"
+            "            return 0\n"
+            "        case Leaf() as v:\n"
+            "            return v.n\n"
+            "def main() -> None:\n"
+            "    print(pick(Leaf(3)))\n"
+            "main()\n"
+        )
+        thir = _lower_ctx(src)
+        m = _fn(thir, "pick").body[0]
+        assert m.arms[0].entries[0].binding.name == "v"
+        assert m.is_exhaustive and m.emit_unreachable
+        cpp = _cpp(src, thir=True)
+        assert "::std::unreachable();" in cpp
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+    def test_no_none_arm_has_value_guard(self):
+        src = OPT_PREAMBLE + (
+            "def check(x: Leaf | None) -> None:\n"
+            "    match x:\n"
+            "        case Leaf():\n"
+            "            print(x.n)\n"
+            "def main() -> None:\n"
+            "    check(Leaf(3))\n"
+            "main()\n"
+        )
+        thir = _lower_ctx(src)
+        m = _fn(thir, "check").body[0]
+        assert m.strategy == "optional_partition" and m.none_entry is None
+        cpp = _cpp(src, thir=True)
+        assert "if (__match_subject_1 != nullptr) {" in cpp
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+        _, w = _lower_ctx_witnessed(src)
+        assert w.get("match.optional_value_only", 0) > 0
+
+    def test_nested_in_none_body_counter_draws(self):
+        # A nested match in the None body draws counter 2; the outer inner
+        # alias must keep the OUTER draw (snapshot before the body emits).
+        src = OPT_PREAMBLE + (
+            "def check(x: Leaf | None, y: Leaf | None) -> None:\n"
+            "    match x:\n"
+            "        case None:\n"
+            "            match y:\n"
+            "                case None:\n"
+            "                    print(0)\n"
+            "                case v:\n"
+            "                    print(v.n)\n"
+            "        case v:\n"
+            "            print(v.n)\n"
+            "def main() -> None:\n"
+            "    check(Leaf(3), None)\n"
+            "main()\n"
+        )
+        cpp = _cpp(src, thir=True)
+        assert "auto& __match_inner_2 = (*__match_subject_2);" in cpp
+        assert "auto& __match_inner_1 = (*__match_subject_1);" in cpp
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+
+class TestMatchOptionalGateRejections:
+    def _routed(self, src: str, name: str) -> bool:
+        thir = _lower_ctx(src)
+        return _fn(thir, name) is not None
+
+    def test_value_repr_subject_rejects(self):
+        # A value-repr Optional subject's std::optional param binding is
+        # itself function-gated; nothing routes.
+        src = (
+            "from tpy import Int32\n"
+            "def check(x: Int32 | None) -> None:\n"
+            "    match x:\n"
+            "        case None:\n"
+            "            print(0)\n"
+            "        case 5:\n"
+            "            print(1)\n"
+            "        case _:\n"
+            "            print(2)\n"
+            "def main() -> None:\n"
+            "    check(5)\n"
+            "main()\n"
+        )
+        assert not self._routed(src, "check")
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+    def test_non_prefix_none_rejects(self):
+        # class-then-None defeats the partition: the AST takes the
+        # if/elif-optional tier (deferred).
+        src = OPT_PREAMBLE + (
+            "def check(x: Leaf | None) -> None:\n"
+            "    match x:\n"
+            "        case Leaf():\n"
+            "            print(x.n)\n"
+            "        case None:\n"
+            "            print(0)\n"
+            "def main() -> None:\n"
+            "    check(Leaf(3))\n"
+            "main()\n"
+        )
+        assert not self._routed(src, "check")
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+    def test_keyword_class_pattern_rejects(self):
+        # Field conditions are the record-pattern tier.
+        src = OPT_PREAMBLE + (
+            "def check(x: Leaf | None) -> None:\n"
+            "    match x:\n"
+            "        case None:\n"
+            "            print(0)\n"
+            "        case Leaf(n=3):\n"
+            "            print(1)\n"
+            "        case _:\n"
+            "            print(2)\n"
+            "def main() -> None:\n"
+            "    check(Leaf(3))\n"
+            "main()\n"
+        )
+        assert not self._routed(src, "check")
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+    def test_guarded_inner_arm_rejects(self):
+        src = OPT_PREAMBLE + (
+            "def check(x: Leaf | None, ok: bool) -> None:\n"
+            "    match x:\n"
+            "        case None:\n"
+            "            print(0)\n"
+            "        case Leaf() if ok:\n"
+            "            print(1)\n"
+            "        case _:\n"
+            "            print(2)\n"
+            "def main() -> None:\n"
+            "    check(Leaf(3), True)\n"
+            "main()\n"
+        )
+        assert not self._routed(src, "check")
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+    def test_capture_write_rejects(self):
+        # Mutation through the capture is ill-formed on the AST path when
+        # the subject is const (BUGS.md: capture-alias mutations never
+        # reach the subject's const verdict) -- gate-rejected, not
+        # mirrored.
+        src = OPT_PREAMBLE + (
+            "def check(x: Leaf | None) -> None:\n"
+            "    match x:\n"
+            "        case None:\n"
+            "            print(0)\n"
+            "        case v:\n"
+            "            v.n += 1\n"
+            "def main() -> None:\n"
+            "    check(Leaf(3))\n"
+            "main()\n"
+        )
+        assert not self._routed(src, "check")
+
+    def test_full_optional_capture_rejects(self):
+        # No None prefix + a catchall: the partition itself fails (the
+        # capture would bind the full Optional).
+        src = OPT_PREAMBLE + (
+            "def check(x: Leaf | None) -> None:\n"
+            "    match x:\n"
+            "        case v:\n"
+            "            print(1)\n"
+            "def main() -> None:\n"
+            "    check(Leaf(3))\n"
+            "main()\n"
+        )
+        assert not self._routed(src, "check")
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+
+class TestMatchRecordOrWildcardAlt:
+    # A record-subject or-pattern with a wildcard alternative clears the
+    # rendered condition list (or_conds == ()), taking the always-match
+    # emit branch of the record tiers -- legal only as the final arm.
+    SRC = RECORD_PREAMBLE + (
+        "def f(p: Point) -> Int32:\n"
+        "    match p:\n"
+        "        case Point(x=1, y=0):\n"
+        "            return 5\n"
+        "        case Point(x=0, y=0) | _:\n"
+        "            return 1\n"
+        "    return 9\n"
+        "def main():\n"
+        "    print(f(Point(1, 0)))\n    print(f(Point(2, 3)))\n"
+        "main()\n"
+    )
+
+    def test_routes(self):
+        thir = _lower_ctx(self.SRC)
+        assert _fn(thir, "f") is not None
+
+    def test_byte_identical(self):
+        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)

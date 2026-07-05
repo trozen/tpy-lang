@@ -281,6 +281,10 @@ def _stmt_lines(stmt: THIRStmt, depth: int) -> list[str]:
             tags += " [default_goto]"
         lines = [f"{pad}match {_expr(stmt.subject)}:{tags}"]
         arm_pad = "  " * (depth + 1)
+        if stmt.none_entry is not None:
+            lines.append(f"{arm_pad}case None:")
+            for s in stmt.none_entry.body:
+                lines.extend(_stmt_lines(s, depth + 2))
         for arm in stmt.arms:
             head = ", ".join(arm.labels) if arm.labels else "default"
             for entry in arm.entries:

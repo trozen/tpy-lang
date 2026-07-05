@@ -43,6 +43,7 @@ from ...typesys import (
     unwrap_send_sync,
 )
 from ...codegen_cpp.context import escape_cpp_name
+from ..fallback import note
 from ..validate import validate_constructor, validate_function
 from ..nodes import (
     Form,
@@ -55,7 +56,6 @@ from ..nodes import (
     THIRLiteral,
     THIRMilInit,
     THIRModule,
-    THIRNoOpStmt,
     THIRParam,
     THIRStmt,
     THIRTry,
@@ -93,7 +93,6 @@ from .expressions import (
 from .statements import (
     _body_eligible,
     _container_scalar_tuple_iter,
-    _lower_stmt,
     _lower_stmts,
 )
 
@@ -141,24 +140,24 @@ def _function_eligible(func: TpyFunction, analyzer,
     # method's FunctionInfo on the owning record -- see `_param_is_const`.
     if func.is_method:
         if self_type is None or not _f1_record(self_type, analyzer):
-            return False
+            return note("sig.receiver_record")
         # Inplace dunders (__iadd__ ...): the AST forces const params on them
         # (CONST_PARAMS_METHODS), a verdict `_param_is_const` does not mirror;
         # their mandatory `return self` (`return *this;`) is outside the slice
         # anyway.
         if func.name in CONST_PARAMS_METHODS:
-            return False
+            return note("sig.inplace_dunder")
         # @readonly on a @staticmethod is not sema-rejected but emits with the
         # readonly verdicts dropped (no const overload, no forced-const
         # params) -- an asymmetry the mirror does not reproduce.
         if func.is_staticmethod and func.is_readonly:
-            return False
+            return note("sig.readonly_static")
     elif func.is_staticmethod:
         # Defensive: the parser sets is_method=True on staticmethods, so a free
         # function should never carry the flag.
-        return False
+        return note("sig.staticmethod_flag")
     if func.is_overload_stub or func.native_function or func.is_consuming:
-        return False
+        return note("sig.special_callable")
     # An overload IMPL body is emitted once per stub with per-stub dead-branch
     # facts (literal_overload_facts / overload_param_types), but gen_body's THIR
     # interception keys on id(func) -- routing the shared impl would hijack
@@ -175,19 +174,23 @@ def _function_eligible(func: TpyFunction, analyzer,
                 and any(fi.is_property_getter for fi in overloads)
                 and any(fi.is_property_setter for fi in overloads))
             if not is_property_pair:
-                return False
+                return note("sig.overload_set")
     else:
         fis = analyzer.registry.get_function(func.name)
         if fis is not None and len(fis) > 1:
-            return False
+            return note("sig.overload_set")
     if func.builtin_decorator_key is not None:
-        return False
-    if func.is_async or func.is_generator:
-        return False
-    if func.error_return is not None or func.type_params:
-        return False
+        return note("sig.builtin_decorator")
+    if func.is_async:
+        return note("sig.async")
+    if func.is_generator:
+        return note("sig.generator")
+    if func.error_return is not None:
+        return note("sig.error_return")
+    if func.type_params:
+        return note("sig.generic_fn")
     if func.linkage != FunctionLinkage.DEFAULT:
-        return False
+        return note("sig.linkage")
     for _name, ptype in func.params:
         pt = ptype if isinstance(ptype, TpyType) else None
         # Free functions and instance methods both take F1-record params; the const
@@ -199,7 +202,7 @@ def _function_eligible(func: TpyFunction, analyzer,
         # readonly carve-out is needed (and a readonly callable cannot mutate a param
         # anyway, so its record params are uniformly const).
         if not _f1_param_eligible(pt, analyzer):
-            return False
+            return note("sig.param_type")
     # A reassigned param of a type flagged param_needs_copy_for_reassign (owned
     # str/bytes/String, BigInt -- const-ref params that cannot reassign in
     # place) gets a mutable owned copy hoisted by the AST prologue
@@ -215,9 +218,11 @@ def _function_eligible(func: TpyFunction, analyzer,
             pt = ptype if isinstance(ptype, TpyType) else None
             if (name in scan.reassigned and pt is not None
                     and pt.param_needs_copy_for_reassign()):
-                return False
+                return note("sig.param_reassign_copy")
     rt = func.return_type if isinstance(func.return_type, TpyType) else None
-    return _eligible_return(rt, analyzer) if func.return_type is not None else True
+    if func.return_type is not None and not _eligible_return(rt, analyzer):
+        return note("sig.return_type")
+    return True
 
 def _try_hoisted_names(body: list[TpyStmt], analyzer) -> set[str]:
     """Names hoisted by `if_branch_decls` on `try` statements anywhere in
@@ -265,6 +270,7 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
     # on the AST path.
     hoisted = analyzer.function_hoisted_vars.get(id(func))
     if hoisted and (hoisted - _try_hoisted_names(func.body, analyzer)):
+        note("body.hoisted_vars")
         return None
     is_record_method = self_type is not None and func.is_method
     # A static method has no receiver -- it lowers like a free function, but
@@ -480,6 +486,7 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
     otherwise it stays on the AST path, byte-identical. The signature stays on the AST path
     (the M1 method precedent); only the MIL + body tail routes here."""
     if self_type is None or not _f1_record(self_type, analyzer):
+        note("ctor.non_f1_record")
         return None
     # M3d: same-module F1 base(s) route -- each `super().__init__` / `BaseN.__init__`
     # call lowers to a base initializer (sorted by parent declaration order), and a
@@ -489,12 +496,15 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
     # emit paths the tail emitter does not reproduce.
     ri = analyzer.registry.get_record(record.name)
     if ri is None:
+        note("ctor.unregistered")
         return None
     if any(not _f1_record(p, analyzer) for p in ri.parents):
+        note("ctor.non_f1_base")
         return None
     if (init_method.is_overload_stub or init_method.native_function
             or init_method.is_async or init_method.is_generator
             or init_method.type_params):
+        note("ctor.special_init")
         return None
     # Params must be value scalars, F1-records, or pointer-repr Optional[F1-record]
     # (see `_ctor_param_eligible`). This keeps the AST-emitted signature a plain ctor
@@ -503,6 +513,7 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
     for _name, ptype in init_method.params:
         pt = ptype if isinstance(ptype, TpyType) else None
         if not _ctor_param_eligible(pt, analyzer):
+            note("ctor.param_type")
             return None
     # Own[T] / Own[T]|None params: their MIL sources move (M3b-move), so M3b-copy
     # rejects them as record-field sources (mirror `_extract_field_inits`'s set).
@@ -520,6 +531,7 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
     # declaration order (M3d); None if any is outside the slice -> AST path.
     base_inits = _lower_base_inits(init_method, ri, declared, lc)
     if base_inits is None:
+        note("ctor.base_init")
         return None
     field_inits: list[TpyAssign] = []
     body_stmts: list[TpyStmt] = []  # demoted inits + non-init stmts + trivia, source order
@@ -568,6 +580,7 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
         if (not chain_broken
                 and _is_self_own_field_assign(stmt, own_field_names)
                 and not expr_reads_self_field(stmt.value, body_written_self_fields)):
+            note("ctor.mil_field")
             return None
         # Demote to the body. Demoting breaks the chain (mirrors `_extract_field_inits`'s
         # `demote()`): the MIL runs before the body, so a later otherwise-hoistable init
@@ -590,8 +603,7 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
         mil_inits=tuple(_lower_ctor_mil_init(s, own_param_names, declared, lc)
                         for s in field_inits),
         base_inits=tuple(base_inits),
-        body=_lower_stmts(body_stmts, lc, body_declared,
-                          stmt_fn=_lower_ctor_body_stmt),
+        body=_lower_stmts(body_stmts, lc, body_declared),
     )
     validate_constructor(ctor)
     return ctor
@@ -669,18 +681,6 @@ def _lower_base_init(stmt: TpyStmt, declared: dict[str, TpyType],
     return (THIRBaseInit(base_cpp=parent_type.to_cpp(),
                          args=tuple(_lower_expr(a, lc) for a in expr.args)),
             parent_type)
-
-def _lower_ctor_body_stmt(stmt: TpyStmt, lc: _LowerCtx,
-                          declared: dict[str, TpyType]) -> THIRStmt:
-    """Lower one ctor-body statement: a docstring / `pass` to a no-op (its `loc`
-    drives the source comment as in M3c-trivia -- `pass` keeps it, a docstring
-    drops it); everything else (a demoted field init or a non-init statement)
-    through the shared `_lower_stmt`, the same machinery method bodies use."""
-    if is_docstring(stmt):
-        return THIRNoOpStmt()
-    if isinstance(stmt, TpyPassStmt):
-        return THIRNoOpStmt(loc=getattr(stmt, "loc", None))
-    return _lower_stmt(stmt, lc, declared)
 
 def _lower_ctor_mil_init(stmt: TpyAssign, own_param_names: set[str],
                          declared: dict[str, TpyType], lc: _LowerCtx) -> THIRMilInit:

@@ -17,8 +17,8 @@ from .nodes import (
     THIRReturn, THIRStrLiteral, THIRUnaryNot, THIRVarDecl, THIRWhile,
 )
 from .testutil import (
-    _compile, _entry, _lower, _lower_ctx, _fn, _lower_ctor, _PRELUDE,
-    _F1_RECORDS,
+    _compile, _entry, _lower, _lower_ctx, _fn, _lower_ctor,
+    _lower_ctx_witnessed, _PRELUDE, _F1_RECORDS,
 )
 
 class TestEligibility:
@@ -1605,3 +1605,46 @@ class TestBreakContinueEmit:
         thir = _lower(self.SRC)
         d = dump_thir(thir)
         assert "break" in d and "continue" in d
+
+
+class TestTriviaBodies:
+    """Docstring / `pass` trivia in function bodies (the M3c-trivia arm made
+    body-wide): pass-only and docstring-only bodies route; `pass` keeps its
+    source comment, a docstring emits neither comment nor code."""
+
+    def _cpp(self, src: str, thir: bool, comments: bool = False):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=comments,
+                                          thir_codegen=thir))
+        return cpp
+
+    SRC = (
+        _PRELUDE
+        + 'def noop() -> None:\n    pass\n'
+        + 'def documented() -> None:\n    """doc"""\n'
+        + 'def mid(n: Int32) -> Int32:\n    """doc"""\n    return n\n'
+        + 'def branch_pass(n: Int32) -> Int32:\n'
+        + '    if n > 0:\n        pass\n    return n\n'
+        + 'def main():\n    noop()\n    documented()\n    print(mid(1))\n'
+        + '    print(branch_pass(2))\nmain()\n'
+    )
+
+    def test_trivia_bodies_route(self):
+        thir = _lower(self.SRC)
+        names = {f.name for f in thir.functions}
+        assert {"noop", "documented", "mid", "branch_pass"} <= names
+
+    def test_byte_identical(self):
+        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
+
+    def test_byte_identical_with_comments(self):
+        # `pass` keeps its `// pass` source line; a docstring suppresses both
+        # comment and code -- parity must hold with comments on.
+        assert (self._cpp(self.SRC, thir=True, comments=True)
+                == self._cpp(self.SRC, thir=False, comments=True))
+
+    def test_trivia_face_witnessed(self):
+        _, witnessed = _lower_ctx_witnessed(self.SRC)
+        assert witnessed.get("stmt.trivia", 0) >= 4

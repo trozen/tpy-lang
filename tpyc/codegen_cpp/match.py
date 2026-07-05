@@ -82,6 +82,91 @@ if TYPE_CHECKING:
     from .statements import StatementGenerator
 
 
+def partition_optional_cases(
+    cases: list['TpyMatchCase'],
+) -> tuple[list['TpyMatchCase'], list['TpyMatchCase']] | None:
+    """Split cases into (none_cases, inner_cases) if None arms form a prefix.
+
+    Module-level so the THIR gate/lowering shares the exact routing fact
+    (the AST dispatches to `_gen_match_optimized_optional` iff this returns
+    non-None).
+
+    Returns None if the optimization cannot be applied:
+    - None arms don't form a contiguous prefix
+    - An or-pattern mixes None and non-None alternatives
+    - A None arm has a guard (guard failure needs fallthrough to later arms)
+    - A wildcard/capture arm is reachable for a None subject (no
+      unguarded None-arm prefix): the has_value-partitioned shape
+      cannot route None into it
+    - An arm carries both a guard and a binding (capture / as): the
+      inner dispatch emitters evaluate conditions before bindings, so
+      such arms need the standalone-if + goto chain instead
+    """
+    none_cases: list[TpyMatchCase] = []
+    inner_cases: list[TpyMatchCase] = []
+    seen_inner = False
+
+    for case in cases:
+        pat = case.pattern
+        if isinstance(pat, TpyAsPattern):
+            pat = pat.pattern
+
+        # Or-pattern mixing None and non-None -- bail out
+        if isinstance(pat, TpyOrPattern):
+            has_none = any(
+                isinstance(a, TpyLiteralPattern) and a.value is None
+                for a in pat.patterns
+            )
+            has_other = any(
+                not (isinstance(a, TpyLiteralPattern) and a.value is None)
+                for a in pat.patterns
+            )
+            if has_none and has_other:
+                return None
+            if has_none:
+                if seen_inner:
+                    return None
+                if case.guard is not None:
+                    return None
+                none_cases.append(case)
+            else:
+                seen_inner = True
+                inner_cases.append(case)
+            continue
+
+        is_none = isinstance(pat, TpyLiteralPattern) and pat.value is None
+        if is_none:
+            if seen_inner:
+                return None
+            # Guarded None arm needs fallthrough to later arms on guard failure
+            if case.guard is not None:
+                return None
+            none_cases.append(case)
+        else:
+            seen_inner = True
+            inner_cases.append(case)
+
+    if not inner_cases:
+        return None
+    for case in inner_cases:
+        pat = case.pattern
+        has_as = isinstance(pat, TpyAsPattern)
+        if has_as:
+            pat = pat.pattern
+        is_catch = isinstance(pat, (TpyWildcardPattern, TpyCapturePattern))
+        or_has_catch = (isinstance(pat, TpyOrPattern)
+                        and any(isinstance(a, (TpyWildcardPattern,
+                                               TpyCapturePattern))
+                                for a in pat.patterns))
+        if not none_cases and (is_catch or or_has_catch):
+            return None
+        if case.guard is not None and (
+                has_as or is_catch
+                or (isinstance(pat, TpyClassPattern) and pat.keywords)):
+            return None
+    return none_cases, inner_cases
+
+
 @dataclass
 class _PolyDispatch:
     """Cast context shared across the arms of a @dynamic / polymorphic match.
@@ -267,7 +352,7 @@ class MatchGenerator:
             else:
                 self._gen_match_if_elif_record(out, stmt, indent)
         elif isinstance(subject_type, OptionalType):
-            partition = self._partition_optional_cases(stmt.cases)
+            partition = partition_optional_cases(stmt.cases)
             if partition is not None:
                 none_cases, inner_cases = partition
                 self._gen_match_optimized_optional(
@@ -1847,86 +1932,6 @@ class MatchGenerator:
     # ------------------------------------------------------------------
     # Optimized Optional match: hoist null check, dispatch inner
     # ------------------------------------------------------------------
-
-    def _partition_optional_cases(
-        self, cases: list['TpyMatchCase'],
-    ) -> tuple[list['TpyMatchCase'], list['TpyMatchCase']] | None:
-        """Split cases into (none_cases, inner_cases) if None arms form a prefix.
-
-        Returns None if the optimization cannot be applied:
-        - None arms don't form a contiguous prefix
-        - An or-pattern mixes None and non-None alternatives
-        - A None arm has a guard (guard failure needs fallthrough to later arms)
-        - A wildcard/capture arm is reachable for a None subject (no
-          unguarded None-arm prefix): the has_value-partitioned shape
-          cannot route None into it
-        - An arm carries both a guard and a binding (capture / as): the
-          inner dispatch emitters evaluate conditions before bindings, so
-          such arms need the standalone-if + goto chain instead
-        """
-        none_cases: list[TpyMatchCase] = []
-        inner_cases: list[TpyMatchCase] = []
-        seen_inner = False
-
-        for case in cases:
-            pat = case.pattern
-            if isinstance(pat, TpyAsPattern):
-                pat = pat.pattern
-
-            # Or-pattern mixing None and non-None -- bail out
-            if isinstance(pat, TpyOrPattern):
-                has_none = any(
-                    isinstance(a, TpyLiteralPattern) and a.value is None
-                    for a in pat.patterns
-                )
-                has_other = any(
-                    not (isinstance(a, TpyLiteralPattern) and a.value is None)
-                    for a in pat.patterns
-                )
-                if has_none and has_other:
-                    return None
-                if has_none:
-                    if seen_inner:
-                        return None
-                    if case.guard is not None:
-                        return None
-                    none_cases.append(case)
-                else:
-                    seen_inner = True
-                    inner_cases.append(case)
-                continue
-
-            is_none = isinstance(pat, TpyLiteralPattern) and pat.value is None
-            if is_none:
-                if seen_inner:
-                    return None
-                # Guarded None arm needs fallthrough to later arms on guard failure
-                if case.guard is not None:
-                    return None
-                none_cases.append(case)
-            else:
-                seen_inner = True
-                inner_cases.append(case)
-
-        if not inner_cases:
-            return None
-        for case in inner_cases:
-            pat = case.pattern
-            has_as = isinstance(pat, TpyAsPattern)
-            if has_as:
-                pat = pat.pattern
-            is_catch = isinstance(pat, (TpyWildcardPattern, TpyCapturePattern))
-            or_has_catch = (isinstance(pat, TpyOrPattern)
-                            and any(isinstance(a, (TpyWildcardPattern,
-                                                   TpyCapturePattern))
-                                    for a in pat.patterns))
-            if not none_cases and (is_catch or or_has_catch):
-                return None
-            if case.guard is not None and (
-                    has_as or is_catch
-                    or (isinstance(pat, TpyClassPattern) and pat.keywords)):
-                return None
-        return none_cases, inner_cases
 
     def _gen_match_optimized_optional(
         self, out: TextIO, stmt: TpyMatch, subject_type: OptionalType,
