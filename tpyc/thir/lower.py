@@ -52,6 +52,7 @@ from ..parse.nodes import (
     TpyDelVar,
     TpyDictLiteral,
     TpyExpr,
+    TpyExceptHandler,
     TpyExprStmt,
     TpyFieldAccess,
     TpyFloatLiteral,
@@ -66,12 +67,14 @@ from ..parse.nodes import (
     TpyName,
     TpyNoneLiteral,
     TpyPassStmt,
+    TpyRaise,
     TpyReturn,
     TpySetLiteral,
     TpySlice,
     TpyStmt,
     TpyStrLiteral,
     TpySubscript,
+    TpyTry,
     TpyTupleUnpack,
     TpyUnaryOp,
     TpyVarDecl,
@@ -91,8 +94,11 @@ from ..typesys import (
     NominalType,
     OptionalType, OwnType, PendingViewType, ReadonlyType, STR_FAMILY, TpyType,
     TupleType,
-    TypeParamRef, UnionType, ValueForm, VoidType, is_float_type,
+    TypeParamRef, UnionType, ValueForm, VoidType,
+    error_return_to_cpp,
+    is_float_type,
     is_protocol_type,
+    is_return_exception,
     is_void_like_type,
     resolve_int_literals,
     unwrap_optional_own, unwrap_readonly, unwrap_ref_type, unwrap_send_sync,
@@ -167,7 +173,9 @@ from .nodes import (
     THIROptionalPtrArg,
     THIRParam,
     THIRPrint,
+    THIRExceptHandler,
     THIRPrintArg,
+    THIRRaise,
     THIRReturn,
     THIRSelf,
     THIRStmt,
@@ -175,6 +183,7 @@ from .nodes import (
     THIRStrLiteral,
     THIRStrSlice,
     THIRSubscript,
+    THIRTry,
     THIRTupleUnpack,
     THIRUnaryNot,
     THIRUnionArgLift,
@@ -1235,7 +1244,7 @@ class _Prescan:
                  "ret_storage_opt", "ret_ptr_opt", "ret_borrow_tuple",
                  "ret_str", "ret_bytes",
                  "ret_char", "ret_union", "ret_ptr_union", "param_names",
-                 "global_seeded")
+                 "global_seeded", "native_globals")
 
     def __init__(self, func: TpyFunction, analyzer) -> None:
         # Param names, for gates that must tell a param from a local (a str
@@ -1245,6 +1254,9 @@ class _Prescan:
         # `global`-declared names lower_function seeded into scope (eligible
         # same-module scalar globals); the TpyGlobal gate arm keys on it.
         self.global_seeded: frozenset[str] = frozenset()
+        # Module native-linkage global names (lower_function threads them
+        # through); the try hoist arm rejects a colliding predecl name.
+        self.native_globals: frozenset[str] = frozenset()
         scan = analyzer.function_scan_results.get(id(func))
         global_decls = analyzer.function_global_decls.get(id(func), set())
         self.reassigned = (scan.reassigned - global_decls) if scan else set()
@@ -4938,6 +4950,140 @@ def _with_eligible(stmt: TpyWith, analyzer, ws: _WalkState, prescan: _Prescan,
     return True
 
 
+def _try_hoist_type_ok(vtype: TpyType, analyzer) -> bool:
+    """A hoisted predecl type the slice renders -- the plain-value tail arm of
+    `_emit_branch_decls` (`{cpp_type} {name};`), restricted to the same value
+    family a first var-decl admits. Readonly/Optional wrappers reject: the AST
+    routes those through the const/pointer arms (or, for a value-repr
+    Optional, declares a slot whose later assigns are ineligible anyway)."""
+    if isinstance(vtype, (ReadonlyType, OptionalType)):
+        return False
+    return (_eligible_scalar(vtype) or _eligible_char(vtype)
+            or _eligible_enum(vtype, analyzer) is not None
+            or _resolved_str_value(vtype, analyzer) is not None
+            or _resolved_bytes_value(vtype, analyzer) is not None
+            or _is_string_owned(vtype)
+            or _eligible_value_union(vtype) is not None
+            or _slice_object_type(vtype))
+
+
+def _handler_binding_type(h: TpyExceptHandler, analyzer) -> 'NominalType | None':
+    """The `as`-binding's type, exactly as sema binds it (`NominalType` over
+    the registry record; `h.exception_type` is sema-qualified in place)."""
+    rec = analyzer.registry.find_record_by_qname(h.exception_type)
+    if rec is None:
+        return None
+    return NominalType(rec.name, _module_qname=rec.qualified_name())
+
+
+def _try_eligible(stmt: TpyTry, analyzer, ws: _WalkState, prescan: _Prescan,
+                  *, in_branch: bool, in_loop: bool) -> bool:
+    """The `try` gate arm -- the finally_only tier (T1) and the throw tier
+    (T2: C++ try/catch; handlers, bare `except:`, `as` bindings, `else`).
+    The return tier is parked on the @error_return call rung (every such
+    call is gate-rejected, and sema forces them into exactly these trys or
+    propagating callers).
+
+    Sema hoists EVERY name bound in the try/handler/else/finally bodies that
+    its scan scope didn't already hold into `if_branch_decls[id(stmt)]` --
+    including names declared OUTSIDE an enclosing loop (the loop body is its
+    own sema scope). The AST emit then SKIPS any name already in
+    `declared_vars`, so the gate mirrors both halves: an already-declared
+    name skips (no predecl, its assigns hit the existing slot), and a
+    genuinely fresh name is admitted for the plain-value tail arm of
+    `_emit_branch_decls` only, and only when the try sits in straight-line
+    function scope -- inside a branch the enclosing statement's own hoist
+    rules would interact, and inside a loop a post-loop use would layer the
+    scope_tracker storage hoist on top; both stay AST. Fresh names walk the
+    bodies as already-declared (their first assigns lower as reassigns
+    against the predecl slot) and stay visible after the statement per
+    Python scoping. A throw-tier try-body first-declare that sema did NOT
+    hoist (the da_new rule: no finally/else and some handler falls through)
+    declares inside the C++ try scope -- the in-branch first-declare reject
+    keeps it AST. Handler/else bodies walk fresh branch copies (the AST
+    restores narrowed state between sibling blocks); the binding enters the
+    handler's scope typed like sema binds it."""
+    if stmt.tier == "return":
+        return False
+    hoist_declared: dict[str, TpyType] = {}
+    for name, raw in analyzer.if_branch_decls.get(id(stmt), {}).items():
+        if name in ws.declared:
+            continue
+        if name in prescan.native_globals:
+            # The AST skips the predecl and renames later assigns to the C++
+            # native global -- a shape the slice does not reproduce.
+            return False
+        if in_branch or in_loop:
+            return False
+        vtype = unwrap_ref_type(raw)
+        if not _try_hoist_type_ok(vtype, analyzer):
+            return False
+        hoist_declared[name] = vtype
+    body_ws = ws.branch_copy()
+    body_ws.declared.update(hoist_declared)
+    if not _body_eligible(stmt.try_body, analyzer, body_ws, prescan,
+                          in_branch=True, in_loop=in_loop):
+        return False
+    for h in stmt.handlers:
+        h_ws = ws.branch_copy()
+        h_ws.declared.update(hoist_declared)
+        if h.binding:
+            bt = _handler_binding_type(h, analyzer)
+            if bt is None:
+                return False
+            h_ws.declared[h.binding] = bt
+        if not _body_eligible(h.body, analyzer, h_ws, prescan,
+                              in_branch=True, in_loop=in_loop):
+            return False
+    if stmt.else_body:
+        e_ws = ws.branch_copy()
+        e_ws.declared.update(hoist_declared)
+        if not _body_eligible(stmt.else_body, analyzer, e_ws, prescan,
+                              in_branch=True, in_loop=in_loop):
+            return False
+    fin_ws = ws.branch_copy()
+    fin_ws.declared.update(hoist_declared)
+    if not _body_eligible(stmt.finally_body, analyzer, fin_ws, prescan,
+                          in_branch=True, in_loop=in_loop):
+        return False
+    ws.declared.update(hoist_declared)
+    return True
+
+
+def _raise_eligible(stmt: TpyRaise, analyzer, ws: _WalkState) -> bool:
+    """Bare `raise` -> `throw;` and the ctor form `raise X(args)` ->
+    `throw <cpp>(args);` (fresh construction -- _gen_raise's peephole, the
+    static and dynamic types coincide). The expression form (`raise e` ->
+    `e.__raise__()` + deref chain) is a deferred row. Return-tier raises
+    (ReturnException -> make_unexpected through the finally-chain
+    _make_return) reject -- they only occur inside @error_return bodies or
+    return-tier trys, both gate-rejected, so the check is defensive. Ctor
+    args admit value-scalar / resolved-str slots with eligible sources into
+    non-mutated params, keeping every special `_gen_record_ctor_args` arm
+    structurally unreachable."""
+    if stmt.raise_expr is not None:
+        return False
+    if stmt.exception_type is None:
+        return True
+    if is_return_exception(stmt.exception_type):
+        return False
+    if stmt.args:
+        init = stmt.resolved_ctor_init
+        if init is None or len(stmt.args) > len(init.params):
+            return False
+        mutated = init.mutated_params or frozenset()
+        for a, p in zip(stmt.args, init.params):
+            if p.name in mutated:
+                return False
+            pt = unwrap_readonly(unwrap_ref_type(p.type))
+            if not (_eligible_scalar(pt)
+                    or _resolved_str_value(pt, analyzer) is not None):
+                return False
+            if not _expr_eligible(a, ws.declared, analyzer):
+                return False
+    return True
+
+
 def _stmt_eligible(stmt: TpyStmt, analyzer, ws: _WalkState,
                    prescan: _Prescan, *, in_branch: bool,
                    in_loop: bool = False) -> bool:
@@ -5317,6 +5463,11 @@ def _stmt_eligible(stmt: TpyStmt, analyzer, ws: _WalkState,
     if isinstance(stmt, TpyWith):
         return _with_eligible(stmt, analyzer, ws, prescan, in_branch=in_branch,
                               in_loop=in_loop)
+    if isinstance(stmt, TpyTry):
+        return _try_eligible(stmt, analyzer, ws, prescan, in_branch=in_branch,
+                             in_loop=in_loop)
+    if isinstance(stmt, TpyRaise):
+        return _raise_eligible(stmt, analyzer, ws)
     return False
 
 
@@ -7378,7 +7529,115 @@ def _lower_stmt_dispatch(stmt: TpyStmt, lc: _LowerCtx,
                             loc=loc)
     if isinstance(stmt, TpyWith):
         return _lower_with(stmt, lc, declared, loc)
+    if isinstance(stmt, TpyTry):
+        return _lower_try(stmt, lc, declared, loc)
+    if isinstance(stmt, TpyRaise):
+        return _lower_raise(stmt, lc, declared, loc)
     raise AssertionError(f"ineligible stmt reached lowering: {type(stmt).__name__}")
+
+
+def _lower_try(stmt: TpyTry, lc: _LowerCtx, declared: dict[str, TpyType],
+               loc) -> THIRTry:
+    """Lower a finally_only- or throw-tier `try` (see `THIRTry` for the emit
+    shapes). The hoisted predecls render here (`render_type`, codegen's
+    type_to_cpp; names spell RAW like the AST arm) in sema's sorted order,
+    and enter the CALLER's `declared` -- hoisted names are function-scope per
+    Python scoping, visible in every body and after the statement. Each body
+    lowers under its own narrowing-scope snapshot (the AST restores narrowed
+    state between sibling blocks); a handler's `as` binding enters its body's
+    scope typed like sema binds it, the catch parameter being the binding.
+    `finally_terminates` is the AST's last-stmt raise/return fact;
+    `body_terminates` is the frame-wrap fact (try body for finally_only, the
+    whole statement for the throw tier)."""
+    hoist_decls: list[tuple[str, str]] = []
+    for name, raw in lc.analyzer.if_branch_decls.get(id(stmt), {}).items():
+        if name in declared:
+            # Already a declared local (e.g. bound outside an enclosing
+            # loop): the AST's declared_vars check skips the predecl.
+            continue
+        vtype = unwrap_ref_type(raw)
+        # Render from the sema-resolved view type: codegen's type_to_cpp
+        # resolves a PendingStr/PendingBytes internally, but the analyzer-only
+        # render_type default (to_cpp) does not. `declared` keeps the raw
+        # binding type -- the same shape a normal str/bytes first-decl stores.
+        render_src = (_resolved_str_value(vtype, lc.analyzer)
+                      or _resolved_bytes_value(vtype, lc.analyzer)
+                      or vtype)
+        hoist_decls.append((name, lc.render_type(render_src)))
+        declared[name] = vtype
+    if hoist_decls:
+        _witness("try.hoist_decl")
+    if stmt.tier == "finally_only":
+        _witness("try.finally_only")
+        body_terminates = stmts_terminate(stmt.try_body)
+    else:
+        _witness("try.throw_tier")
+        if len(stmt.handlers) > 1:
+            _witness("try.multi_handler")
+        if any(h.exception_type is None for h in stmt.handlers):
+            _witness("try.bare_except")
+        if any(h.binding for h in stmt.handlers):
+            _witness("try.binding")
+        if stmt.else_body:
+            _witness("try.else")
+        if stmt.finally_body:
+            _witness("try.except_finally")
+        body_terminates = stmts_terminate([stmt])
+    handlers: list[THIRExceptHandler] = []
+    for h in stmt.handlers:
+        cpp = None
+        if h.exception_type is not None:
+            cpp = error_return_to_cpp(h.exception_type,
+                                      lc.analyzer.ctx.module_name,
+                                      lc.analyzer.registry)
+        h_declared = dict(declared)
+        if h.binding:
+            bt = _handler_binding_type(h, lc.analyzer)
+            assert bt is not None, "ineligible handler reached lowering"
+            h_declared[h.binding] = bt
+        handlers.append(THIRExceptHandler(
+            cpp_type=cpp, binding=h.binding,
+            body=_lower_scoped_stmts(h.body, lc, h_declared)))
+    last = stmt.finally_body[-1] if stmt.finally_body else None
+    finally_terminates = isinstance(last, (TpyRaise, TpyReturn))
+    if body_terminates and stmt.finally_body:
+        _witness("try.body_terminates")
+    if finally_terminates:
+        _witness("try.finally_terminates")
+    return THIRTry(
+        tier=stmt.tier,
+        try_body=_lower_scoped_stmts(stmt.try_body, lc, dict(declared)),
+        handlers=tuple(handlers),
+        else_body=_lower_scoped_stmts(stmt.else_body, lc, dict(declared)),
+        finally_body=_lower_scoped_stmts(stmt.finally_body, lc, dict(declared)),
+        hoist_decls=tuple(hoist_decls),
+        body_terminates=body_terminates,
+        finally_terminates=finally_terminates,
+        loc=loc,
+    )
+
+
+def _lower_raise(stmt: TpyRaise, lc: _LowerCtx, declared: dict[str, TpyType],
+                 loc) -> THIRRaise:
+    """Lower a bare re-raise or the ctor-form raise (see `THIRRaise`). Ctor
+    args lower against the resolved `__init__`'s param slots through the
+    shared call-arg machinery -- the gate admitted only scalar/str value
+    slots, where `_gen_record_ctor_args` and `gen_call_arg` coincide."""
+    if stmt.exception_type is None:
+        _witness("raise.bare")
+        return THIRRaise(loc=loc)
+    _witness("raise.ctor")
+    cpp = error_return_to_cpp(stmt.exception_type,
+                              lc.analyzer.ctx.module_name,
+                              lc.analyzer.registry)
+    init = stmt.resolved_ctor_init
+    params = init.params if init else []
+    return THIRRaise(
+        cpp_type=cpp,
+        args=tuple(_lower_call_arg(a, p.type, lc)
+                   for a, p in zip(stmt.args, params)),
+        loc=loc,
+    )
 
 
 def _lower_with(stmt: TpyWith, lc: _LowerCtx, declared: dict[str, TpyType],
@@ -7455,6 +7714,32 @@ def _lower_print_arg(a: TpyExpr, lc: _LowerCtx) -> THIRPrintArg:
     return THIRPrintArg(_lower_expr(a, lc), _print_arg_form(arg_type))
 
 
+def _try_hoisted_names(body: list[TpyStmt], analyzer) -> set[str]:
+    """Names hoisted by `if_branch_decls` on `try` statements anywhere in
+    `body` -- the subset of `function_hoisted_vars` the try gate arm can
+    mirror. Recurses only through the compound shapes the slice admits;
+    a try inside anything else keeps its names out of the set, which
+    (safely) keeps the function on the AST path."""
+    out: set[str] = set()
+    for s in body:
+        if isinstance(s, TpyTry):
+            out |= set(analyzer.if_branch_decls.get(id(s), {}))
+            out |= _try_hoisted_names(s.try_body, analyzer)
+            for h in s.handlers:
+                out |= _try_hoisted_names(h.body, analyzer)
+            out |= _try_hoisted_names(s.else_body, analyzer)
+            out |= _try_hoisted_names(s.finally_body, analyzer)
+        elif isinstance(s, TpyIf):
+            out |= _try_hoisted_names(s.then_body, analyzer)
+            out |= _try_hoisted_names(s.else_body, analyzer)
+        elif isinstance(s, (TpyWhile, TpyForEach)):
+            out |= _try_hoisted_names(s.body, analyzer)
+            out |= _try_hoisted_names(s.orelse, analyzer)
+        elif isinstance(s, TpyWith):
+            out |= _try_hoisted_names(s.body, analyzer)
+    return out
+
+
 def lower_function(func: TpyFunction, analyzer, render_type=None,
                    self_type: 'TpyType | None' = None,
                    native_globals: frozenset[str] = frozenset()) -> THIRFunction | None:
@@ -7469,9 +7754,13 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
     keeps only the record for its param-const lookups."""
     if not _function_eligible(func, analyzer, self_type):
         return None
-    # Branch-local hoisting is not reproduced -- a function that hoists any
-    # local out of a branch stays on the AST path.
-    if analyzer.function_hoisted_vars.get(id(func)):
+    # Branch-local hoisting is not reproduced, with one carve-out: try-
+    # statement predecls, mirrored as THIRTry.hoist_decls (the try gate arm
+    # re-checks each name and type). A hoisted name NOT accounted for by a
+    # try's if_branch_decls (the loop-body storage hoist) keeps the function
+    # on the AST path.
+    hoisted = analyzer.function_hoisted_vars.get(id(func))
+    if hoisted and (hoisted - _try_hoisted_names(func.body, analyzer)):
         return None
     is_record_method = self_type is not None and func.is_method
     # A static method has no receiver -- it lowers like a free function, but
@@ -7517,6 +7806,7 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
             params_set[n] = gt
             global_seeded.add(n)
     lc.prescan.global_seeded = frozenset(global_seeded)
+    lc.prescan.native_globals = native_globals
     if not _body_eligible(func.body, analyzer, _WalkState(params_set),
                           lc.prescan, in_branch=False):
         return None

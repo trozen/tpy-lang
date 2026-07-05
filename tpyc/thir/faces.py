@@ -81,10 +81,29 @@ THIR_FACES: frozenset[str] = frozenset({
     "with.exc_val",                 # `&__exc_N` passed to __exit__
     "with.cleanup_only",            # elided BaseException catch (common shape)
     "with.multi",                   # multiple managers in one statement
+    # Sync `try` faces (lowering, per statement).
+    "try.finally_only",             # the unified try/catch(...)/finally shape
+    "try.throw_tier",               # C++ try/catch over the handler arms
+    "try.multi_handler",            # 2+ catch arms
+    "try.bare_except",              # `except:` -> `catch (...)`
+    "try.binding",                  # `as e` -> the catch parameter
+    "try.else",                     # goto __after_else_N past the handlers
+    "try.except_finally",           # throw tier wrapped in the finally frame
+    "try.hoist_decl",               # sema-hoisted plain-value predecls
+    "try.body_terminates",          # normal-path finally copy elided
+    "try.finally_terminates",       # raise/return-ending finally: no rethrow
+    # Raise statements (lowering).
+    "raise.ctor",                   # `raise X(args)` -> `throw <cpp>(...)`
+    "raise.bare",                   # bare re-raise -> `throw;`
     # Emit-side finally-frame walks (recorded at emission -- the chain is
     # structural, so lowering never sees it; a no-op outside a compilation).
+    # The with/try prefix keys on the walked segment's frame arms, so a
+    # mixed stack witnesses both.
     "with.finally_return",          # return in body: inline __exit__ chain
     "with.finally_loop_exit",       # break/continue in body: partial chain
+    "try.finally_return",           # return in body: finally body re-emitted
+    "try.finally_loop_exit",        # break/continue in body: partial chain
+    "try.chain_terminated",         # terminating finally suppressed the exit
     # The five flushable statement positions, counted only when the
     # position's value actually hoists an arg temp.
     "flush.vardecl",

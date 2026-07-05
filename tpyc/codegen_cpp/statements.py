@@ -462,11 +462,13 @@ class StatementGenerator:
             thir_fn = self.ctx.thir_functions.get(id(func))
             if thir_fn is not None:
                 from ..thir.emit import (emit_thir_body, CtxCommentSink,
-                                         CtxTempSink, CtxWithCounter)
+                                         CtxTempSink, CtxTryCounter,
+                                         CtxWithCounter)
                 emit_thir_body(out, thir_fn, indent_level,
                                comments=CtxCommentSink(self.ctx),
                                temps=CtxTempSink(self.ctx),
                                with_counter=CtxWithCounter(self.ctx),
+                               try_counter=CtxTryCounter(self.ctx),
                                return_cpp=return_cpp)
                 return
 

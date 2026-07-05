@@ -1,0 +1,20 @@
+ok 8
+8
+value
+-1
+app 7
+-2
+-3
+-9
+else 10
+10
+ve
+-1
+fin 6
+12
+fin -3
+-1
+4
+-1
+outer caught
+fin-raise 101

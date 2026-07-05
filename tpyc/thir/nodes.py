@@ -953,6 +953,78 @@ class THIRWith(THIRStmt):
     body_terminates: bool = False
 
 
+@dataclass(frozen=True)
+class THIRExceptHandler:
+    """One throw-tier `except` clause -> a C++ catch arm. `cpp_type` is the
+    handler's exception type pre-rendered at lowering (`error_return_to_cpp`
+    over the sema-qualified name); None is the bare `except:` -> `catch (...)`.
+    `binding` is the `as` name (raw; emit escapes) -- the catch parameter IS
+    the binding, `catch (const T& name)`, no extra decl."""
+    cpp_type: 'str | None'
+    binding: 'str | None'
+    body: tuple[THIRStmt, ...] = ()
+
+
+@dataclass(frozen=True)
+class THIRTry(THIRStmt):
+    """A sync `try` statement -- the finally_only and throw tiers.
+
+    finally_only (no handlers) mirrors `_gen_try_finally_only` +
+    `_emit_try_with_finally`'s unified shape:
+
+        <hoist decls>       // plain-value predecls, _emit_branch_decls' tail arm
+        {
+            try {
+                <try body>
+            } catch (...) {
+                <finally body>      // frame popped: inner exits walk OUTER frames
+                throw;              // unless finally_terminates
+            }
+            <finally body>          // unless body_terminates
+        }
+
+    throw mirrors `_gen_try_throw`: a real C++ try with one catch arm per
+    handler, `else` jumping past via `goto __after_else_N` (N from the
+    module-cumulative `ctx.try_except_counter` through the emit-side sink),
+    the whole try/except wrapped in the finally frame above when a finally
+    is present. The return tier (goto dispatch around @error_return calls)
+    stays gate-rejected, parked on the @error_return call rung.
+
+    `hoist_decls` is the sema hoist (`if_branch_decls[id(stmt)]`) rendered at
+    lowering as `(name, cpp_type)` pairs in sema's sorted order -- names spell
+    RAW like the AST arm (no escape). The finally body re-emits at every exit
+    site through the emit-state finally-frame stack (the with frames' stmt-list
+    generalization): counters keep advancing per copy exactly like the AST's
+    repeated `gen_stmt` runs. `finally_terminates` is the AST's last-stmt
+    raise/return fact; `body_terminates` is the terminates fact of whatever
+    the finally frame wraps -- `stmts_terminate(try_body)` for finally_only,
+    `stmts_terminate([the whole statement])` for the throw tier -- driving the
+    normal-path finally elision. The async/resumable lowerings stay
+    gate-rejected."""
+    tier: str = "finally_only"
+    try_body: tuple[THIRStmt, ...] = ()
+    handlers: tuple[THIRExceptHandler, ...] = ()
+    else_body: tuple[THIRStmt, ...] = ()
+    finally_body: tuple[THIRStmt, ...] = ()
+    hoist_decls: tuple[tuple[str, str], ...] = ()
+    body_terminates: bool = False
+    finally_terminates: bool = False
+
+
+@dataclass(frozen=True)
+class THIRRaise(THIRStmt):
+    """`raise X(args)` -> `throw <cpp>(<args>);` / `raise X` -> `throw <cpp>{};`
+    (the AST's fresh-construction peephole: static and dynamic types coincide,
+    so no `__raise__()` virtual hop); bare `raise` -> `throw;` (a C++ rethrow;
+    sema restricts placement, and the return-tier `make_unexpected` arms are
+    unreachable -- return-tier trys and @error_return bodies are
+    gate-rejected). `cpp_type` pre-renders at lowering (`error_return_to_cpp`);
+    None is the bare form. The expression form (`raise e` ->
+    `e.__raise__()` + deref chain) is a deferred row."""
+    cpp_type: 'str | None' = None
+    args: tuple[THIRExpr, ...] = ()
+
+
 class PrintForm(Enum):
     """How a `print()` argument is wrapped in the `std::cout << ...` chain --
     decided at lowering from the arg's resolved type, so the emitter renders the

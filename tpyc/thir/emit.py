@@ -13,6 +13,7 @@ default so emission stays decoupled from the analyzer.
 
 from __future__ import annotations
 
+import io
 from dataclasses import dataclass, field
 from typing import TextIO
 
@@ -68,6 +69,7 @@ from .nodes import (
     THIROptionalPtrArg,
     THIRPrint,
     THIRPrintArg,
+    THIRRaise,
     THIRReturn,
     THIRSelf,
     THIRStmt,
@@ -75,6 +77,7 @@ from .nodes import (
     THIRStrLiteral,
     THIRStrSlice,
     THIRSubscript,
+    THIRTry,
     THIRTupleUnpack,
     THIRUnaryNot,
     THIRUnionArgLift,
@@ -197,18 +200,53 @@ class CtxWithCounter(WithCounter):
         return self._ctx.with_counter
 
 
+class TryCounter:
+    """Allocates `__after_else_N` ids for throw-tier try/except else labels.
+    Like `with_counter`, `ctx.try_except_counter` is module-cumulative and
+    never reset, shared with AST-emitted bodies (its other consumers --
+    `__try_tmp_N` / `__er_N` error_return unwraps and the return tier's
+    `__except_N` -- are all gate-rejected, so within a routed body only the
+    else label draws); the codegen seam passes CtxTryCounter. This default
+    is the standalone / unit-test sink."""
+
+    def __init__(self) -> None:
+        self._n = 0
+
+    def next(self) -> int:
+        self._n += 1
+        return self._n
+
+
+class CtxTryCounter(TryCounter):
+    """TryCounter backed by the live CodeGenContext's `try_except_counter`
+    (duck-typed on `ctx` like CtxWithCounter)."""
+
+    def __init__(self, ctx) -> None:
+        self._ctx = ctx
+
+    def next(self) -> int:
+        self._ctx.try_except_counter += 1
+        return self._ctx.try_except_counter
+
+
 @dataclass
 class _FinallyFrame:
-    """One enclosing `with` layer during body emission -- the emit-side
-    `FinallyContext` for the slice: a fixed `__ctx_N.__exit__(...)` call
-    instead of a re-emitted finally body (try/finally arrives with the
-    try-tier cells). `loop_depth` is the live loop-nesting count at push
-    (`len(ctx.loop_else_labels)` in the AST -- every loop appends an entry,
-    labeled or not), so break/continue walk only frames pushed inside the
-    innermost loop body."""
-    ctx_n: int
-    exc_null_arg: str
+    """One enclosing cleanup layer during body emission -- the emit-side
+    `FinallyContext`. Two arms: a `with` layer renders the fixed
+    `__ctx_N.__exit__(...)` call (`ctx_n`/`exc_null_arg`); a try/finally
+    layer re-emits its lowered finally body (`stmts`) at every exit site,
+    counters advancing per copy like the AST's repeated `gen_stmt` runs.
+    `terminates` is the AST's last-stmt raise/return fact -- a terminating
+    frame stops the chain walk and the caller suppresses its trailing exit
+    statement (with frames never terminate). `loop_depth` is the live
+    loop-nesting count at push (`len(ctx.loop_else_labels)` in the AST --
+    every loop appends an entry, labeled or not), so break/continue walk
+    only frames pushed inside the innermost loop body."""
     loop_depth: int
+    ctx_n: int | None = None
+    exc_null_arg: str = "{}"
+    stmts: 'tuple[THIRStmt, ...] | None' = None
+    terminates: bool = False
 
 
 @dataclass
@@ -234,6 +272,7 @@ class _EmitState:
     comments: CommentSink
     temps: TempSink = field(default_factory=TempSink)
     with_counter: WithCounter = field(default_factory=WithCounter)
+    try_counter: TryCounter = field(default_factory=TryCounter)
     return_cpp: 'str | None' = None
     iter_counter: int = 0
     slot_counter: int = 0
@@ -825,38 +864,73 @@ def _emit_for_each(out: TextIO, stmt: THIRForEach, indent_level: int,
     out.write(f"{indent}}}\n")
 
 
-def _emit_exit_chain(out: TextIO, indent: str, state: _EmitState,
-                     stop_at: int = 0) -> None:
-    # The with slice's `_emit_finally_chain`: render the __exit__ call for
-    # each frame innermost-first down to stop_at (exclusive). The stack itself
-    # is untouched (the AST snapshots and restores around the walk); with
-    # frames never terminate, so there is no early stop.
-    for fr in reversed(state.finally_frames[stop_at:]):
-        out.write(f"{indent}__ctx_{fr.ctx_n}.__exit__({{}}, "
-                  f"{fr.exc_null_arg}, {{}});\n")
+def _emit_finally_chain(out: TextIO, indent: str, state: _EmitState,
+                        stop_at: int = 0) -> bool:
+    # Mirrors _emit_finally_chain: render each frame's cleanup innermost-first
+    # down to stop_at (exclusive). A stmt frame emits with itself (and
+    # everything above) popped, so a return/break/continue inside the finally
+    # body walks the OUTER frames only; the stack is restored on exit (the
+    # AST snapshots and restores around the walk). Returns True when a frame
+    # terminates (its finally body ends in raise/return) -- the caller must
+    # suppress its own trailing exit statement, control already left.
+    snapshot = list(state.finally_frames)
+    terminated = False
+    try:
+        while len(state.finally_frames) > stop_at:
+            fr = state.finally_frames.pop()
+            if fr.stmts is not None:
+                _emit_stmts(out, fr.stmts, len(indent) // len(INDENT), state)
+            else:
+                out.write(f"{indent}__ctx_{fr.ctx_n}.__exit__({{}}, "
+                          f"{fr.exc_null_arg}, {{}});\n")
+            if fr.terminates:
+                terminated = True
+                break
+    finally:
+        state.finally_frames[:] = snapshot
+    return terminated
+
+
+def _witness_chain(kind: str, state: _EmitState, stop_at: int) -> None:
+    # Face the walked segment by frame arm, so with/try zero-witness
+    # reporting stays honest when both kinds of frame are live.
+    seg = state.finally_frames[stop_at:]
+    if any(fr.stmts is None for fr in seg):
+        _witness(f"with.finally_{kind}")
+    if any(fr.stmts is not None for fr in seg):
+        _witness(f"try.finally_{kind}")
 
 
 def _emit_finally_return(out: TextIO, stmt: THIRReturn, indent: str,
                          state: _EmitState) -> None:
-    # Mirrors _make_return's finally-chain arm for `with` frames: the value
-    # lands in a signature-typed temp BEFORE the __exit__ calls (Python
-    # evaluates the return expression first), then the chain, then the temp
-    # returns. The temp draws from the same per-function iter_counter the AST
-    # uses. The [[maybe_unused]] / suppressed-return arms need a TERMINATING
-    # finally body -- a try-finally shape, out of the slice.
-    _witness("with.finally_return")
+    # Mirrors _make_return's finally-chain arm: the value lands in a
+    # signature-typed temp BEFORE the chain runs (Python evaluates the return
+    # expression first -- and still evaluates it when a terminating finally
+    # overrides the return: the [[maybe_unused]] decl + suppressed trailing
+    # return). The temp draws from the same per-function iter_counter the AST
+    # uses; the chain buffers first like the AST so its own counter bumps land
+    # between the temp's allocation and the decl's write.
+    _witness_chain("return", state, 0)
     if stmt.value is None:
-        _emit_exit_chain(out, indent, state)
-        out.write(f"{indent}return;\n")
+        if _emit_finally_chain(out, indent, state):
+            _witness("try.chain_terminated")
+        else:
+            out.write(f"{indent}return;\n")
         return
     value_cpp = _emit_expr(stmt.value, state)
     state.temps.flush(out, indent)
     tmp = f"__tpy_ret_{state.iter_counter}"
     state.iter_counter += 1
     ret_cpp = state.return_cpp or "auto"
-    out.write(f"{indent}{ret_cpp} {tmp} = {value_cpp};\n")
-    _emit_exit_chain(out, indent, state)
-    out.write(f"{indent}return {tmp};\n")
+    chain = io.StringIO()
+    terminated = _emit_finally_chain(chain, indent, state)
+    maybe_unused = "[[maybe_unused]] " if terminated else ""
+    out.write(f"{indent}{maybe_unused}{ret_cpp} {tmp} = {value_cpp};\n")
+    out.write(chain.getvalue())
+    if terminated:
+        _witness("try.chain_terminated")
+    else:
+        out.write(f"{indent}return {tmp};\n")
 
 
 def _emit_loop_exit(out: TextIO, indent: str, state: _EmitState,
@@ -865,15 +939,18 @@ def _emit_loop_exit(out: TextIO, indent: str, state: _EmitState,
     # active loop body run (the first index whose loop_depth >= the live loop
     # count -- the stack is monotone non-decreasing in loop_depth). The tail
     # is the bare statement: else-labels and match-switch labels are
-    # gate-rejected shapes.
+    # gate-rejected shapes. A terminating finally suppresses the tail --
+    # control already left through it.
     boundary = len(state.finally_frames)
     for i, fr in enumerate(state.finally_frames):
         if fr.loop_depth >= state.loop_depth:
             boundary = i
             break
     if boundary < len(state.finally_frames):
-        _witness("with.finally_loop_exit")
-    _emit_exit_chain(out, indent, state, stop_at=boundary)
+        _witness_chain("loop_exit", state, boundary)
+    if _emit_finally_chain(out, indent, state, stop_at=boundary):
+        _witness("try.chain_terminated")
+        return
     out.write(f"{indent}break;\n" if is_break else f"{indent}continue;\n")
 
 
@@ -943,6 +1020,87 @@ def _emit_with(out: TextIO, stmt: THIRWith, indent_level: int,
         out.write(f"{body_ind}__ctx_{n}.__exit__({{}}, {exc_null}, {{}});\n")
         out.write(f"{body_ind}throw;\n")
         out.write(f"{ind}}}\n")
+
+
+def _emit_frame_wrapped(out: TextIO, inner_level: int, state: _EmitState,
+                        stmt: THIRTry, emit_body) -> None:
+    # _emit_try_with_finally's unified shape: the finally frame sits on the
+    # stack while the body emits; the catch-path and normal-path copies emit
+    # with the frame popped, so nested exits redirect through OUTER frames
+    # only. `stmt.body_terminates` is the terminates fact of whatever the
+    # frame wraps (see THIRTry) and elides the normal-path copy.
+    inner = INDENT * inner_level
+    state.finally_frames.append(_FinallyFrame(
+        loop_depth=state.loop_depth,
+        stmts=stmt.finally_body,
+        terminates=stmt.finally_terminates))
+    out.write(f"{inner}try {{\n")
+    emit_body(inner_level + 1)
+    out.write(f"{inner}}} catch (...) {{\n")
+    state.finally_frames.pop()
+    _emit_stmts(out, stmt.finally_body, inner_level + 1, state)
+    if not stmt.finally_terminates:
+        out.write(f"{INDENT * (inner_level + 1)}throw;\n")
+    out.write(f"{inner}}}\n")
+    if not stmt.body_terminates:
+        _emit_stmts(out, stmt.finally_body, inner_level, state)
+
+
+def _emit_try_except(out: TextIO, stmt: THIRTry, level: int,
+                     state: _EmitState) -> None:
+    # Mirrors _gen_try_throw's emit_try_except: the C++ try, one catch arm
+    # per handler (headers pre-rendered at lowering; the catch parameter IS
+    # the as-binding), else jumping past via the goto label drawn from the
+    # module-cumulative try_except_counter sink. Handlers close with `}` and
+    # the next header appends ` catch ... {` on the same line, the final `}`
+    # taking the newline -- the AST's exact write sequence.
+    ind = INDENT * level
+    label = ""
+    if stmt.else_body:
+        label = f"__after_else_{state.try_counter.next()}"
+    out.write(f"{ind}try {{\n")
+    _emit_stmts(out, stmt.try_body, level + 1, state)
+    out.write(f"{ind}}}")
+    for h in stmt.handlers:
+        if h.cpp_type is None:
+            out.write(" catch (...) {\n")
+        elif h.binding:
+            out.write(f" catch (const {h.cpp_type}& "
+                      f"{escape_cpp_name(h.binding)}) {{\n")
+        else:
+            out.write(f" catch (const {h.cpp_type}&) {{\n")
+        _emit_stmts(out, h.body, level + 1, state)
+        if stmt.else_body:
+            out.write(f"{INDENT * (level + 1)}goto {label};\n")
+        out.write(f"{ind}}}")
+    out.write("\n")
+    if stmt.else_body:
+        out.write(f"{ind}// else:\n")
+        _emit_stmts(out, stmt.else_body, level, state)
+        out.write(f"{ind}{label}:;\n")
+
+
+def _emit_try(out: TextIO, stmt: THIRTry, indent_level: int,
+              state: _EmitState) -> None:
+    # Mirrors _gen_try over the two routed tiers (see THIRTry). The hoisted
+    # predecls render first, like the AST's gen_stmt dispatch
+    # (_emit_branch_decls before _gen_try).
+    indent = INDENT * indent_level
+    for name, cpp_type in stmt.hoist_decls:
+        out.write(f"{indent}{cpp_type} {name};\n")
+    out.write(f"{indent}{{\n")
+    inner_level = indent_level + 1
+    if stmt.tier == "finally_only":
+        _emit_frame_wrapped(
+            out, inner_level, state, stmt,
+            lambda lvl: _emit_stmts(out, stmt.try_body, lvl, state))
+    elif stmt.finally_body:
+        _emit_frame_wrapped(
+            out, inner_level, state, stmt,
+            lambda lvl: _emit_try_except(out, stmt, lvl, state))
+    else:
+        _emit_try_except(out, stmt, inner_level, state)
+    out.write(f"{indent}}}\n")
 
 
 def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState) -> None:
@@ -1054,6 +1212,8 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
         _emit_for_each(out, stmt, indent_level, state)
     elif isinstance(stmt, THIRWith):
         _emit_with(out, stmt, indent_level, state)
+    elif isinstance(stmt, THIRTry):
+        _emit_try(out, stmt, indent_level, state)
     elif isinstance(stmt, THIRPrint):
         _emit_print(out, stmt, indent_level, state)
     elif isinstance(stmt, THIRExprStmt):
@@ -1076,6 +1236,17 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
         _emit_loop_exit(out, indent, state, is_break=True)
     elif isinstance(stmt, THIRContinue):
         _emit_loop_exit(out, indent, state, is_break=False)
+    elif isinstance(stmt, THIRRaise):
+        # Mirrors _gen_raise's throw-tier arms: a raise never walks the
+        # finally-frame stack -- the throw propagates through the emitted
+        # catch(...) arms, which run the finally bodies.
+        if stmt.cpp_type is None:
+            out.write(f"{indent}throw;\n")
+        elif stmt.args:
+            args = ", ".join(_emit_expr(a, state) for a in stmt.args)
+            out.write(f"{indent}throw {stmt.cpp_type}({args});\n")
+        else:
+            out.write(f"{indent}throw {stmt.cpp_type}{{}};\n")
     elif isinstance(stmt, THIRNoOpStmt):
         # No code -- the `// pass` source comment (if any) is emitted by the
         # caller (_emit_stmts) from the node's loc.
@@ -1130,25 +1301,29 @@ def emit_thir_body(out: TextIO, fn: THIRFunction, indent_level: int = 1,
                    *, comments: CommentSink | None = None,
                    temps: TempSink | None = None,
                    with_counter: WithCounter | None = None,
+                   try_counter: TryCounter | None = None,
                    return_cpp: 'str | None' = None) -> None:
     """Emit `fn`'s body statements (no signature, no braces) at `indent_level`.
 
-    `temps` is the `__tmp_N` sink and `with_counter` the `__ctx_N` sink --
-    both module-cumulative, so the codegen seam passes the ctx-backed
-    implementations (CtxTempSink / CtxWithCounter); the defaults are fresh
-    local sinks (standalone/unit callers). `return_cpp` is the signature's
-    return spelling (`ctx.current_return_cpp` at the seam), read only by the
-    return-inside-`with` temp decl."""
+    `temps` is the `__tmp_N` sink, `with_counter` the `__ctx_N` sink, and
+    `try_counter` the `__after_else_N` else-label sink -- all
+    module-cumulative, so the codegen seam passes the ctx-backed
+    implementations (CtxTempSink / CtxWithCounter / CtxTryCounter); the
+    defaults are fresh local sinks (standalone/unit callers). `return_cpp` is
+    the signature's return spelling (`ctx.current_return_cpp` at the seam),
+    read only by the finally-chain return temp decl."""
     _emit_stmts(out, fn.body, indent_level,
                 _EmitState(comments or _NO_COMMENTS, temps=temps or TempSink(),
                            with_counter=with_counter or WithCounter(),
+                           try_counter=try_counter or TryCounter(),
                            return_cpp=return_cpp))
 
 
 def emit_thir_constructor_tail(out: TextIO, ctor: THIRConstructor,
                                *, comments: CommentSink | None = None,
                                temps: TempSink | None = None,
-                               with_counter: WithCounter | None = None) -> None:
+                               with_counter: WithCounter | None = None,
+                               try_counter: TryCounter | None = None) -> None:
     """Emit a constructor's member-init-list + body tail (the ` : f(v)... {}` that
     follows the signature). The THIR counterpart of gen_record_decl's AST MIL+body
     emit: the signature is written by the AST path before this is called (the M1
@@ -1158,7 +1333,8 @@ def emit_thir_constructor_tail(out: TextIO, ctor: THIRConstructor,
     never lower there (gate + validator enforced); the body shares the
     statement machinery and its sink."""
     state = _EmitState(comments or _NO_COMMENTS, temps=temps or TempSink(),
-                       with_counter=with_counter or WithCounter())
+                       with_counter=with_counter or WithCounter(),
+                       try_counter=try_counter or TryCounter())
     inits = [f"{bi.base_cpp}({', '.join(_emit_expr(a, state) for a in bi.args)})"
              for bi in ctor.base_inits]
     inits.extend(

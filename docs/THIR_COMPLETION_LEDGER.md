@@ -62,9 +62,13 @@ cell it touches is admitted:
   elements, incr 34) / logical and-or-not + inline chained compares (bool slice,
   incr 36) / break-continue (else-free loops, incr 66) / del (trivial del-var +
   list/dict del-item, incr 67) / global (scalar globals, incr 68) / sync `with`
-  (fresh-target slice + the emit-side finally frames, incr 78) **(covered)**
-  vs match / try-except / for-over-container (generators) / async-await /
-  yield / comprehension / nonlocal-raise + plain-assert messages **(not)**.
+  (fresh-target slice + the emit-side finally frames, incr 78) / try/finally
+  (the finally_only tier + re-emittable finally frames + the plain-value
+  branch-decl hoist, incr 79) / try/except throw tier + raise (catch arms,
+  bindings, else labels, ctor/bare raise, incr 80) **(covered)**
+  vs match / try-except return tier (parked on the @error_return rung) /
+  expression raise / for-over-container (generators) / async-await /
+  yield / comprehension / nonlocal + plain-assert messages **(not)**.
 
 A **deferred cell** is one `(kind x form x shape)` the eligibility gate rejects.
 Two kinds, treated oppositely:
@@ -832,10 +836,70 @@ temp-registering managers (a walrus manager is a pre-existing AST build
 failure -- see BUGS.md), and the async / resumable-generator lowerings
 (their own frontiers). Corpus witness: `control_flow/with_manager_shapes`
 (all with faces); units `tpyc/thir/test_thir_with.py`.
-Uncovered shapes remaining: `match`, `try`/`except`/`finally`,
+**try/finally, finally_only tier landed (incr 79, `THIRTry` -- try tier
+T1): +6 bodies solo (33340 -> 33346; +15 more with the witness case,
+33361 / 3331 cases; the incr-78 entry's 33325 was the with branch's own
+pre-squash corpus -- 33340 is the tally re-measured on the master it
+landed as, 403389c2cf)** -- the unified
+`try { body } catch (...) { F; throw; } F;` emit
+(`_gen_try_finally_only` over `_emit_try_with_finally`), with
+`_FinallyFrame` generalized to the re-emittable stmt-list arm (the with
+frame's fixed `__exit__` render unchanged): the chain walker pops frames
+while walking (nested exits redirect through OUTER frames) and reports
+termination, adding the `[[maybe_unused]] __tpy_ret_N` capture +
+suppressed trailing return/break/continue arms the with cell deferred;
+counters advance per finally copy exactly like the AST's repeated
+`gen_stmt` runs. Sema hoists EVERY try/finally-bound name its scan scope
+didn't hold into `if_branch_decls` (incl. rebinds of names declared
+outside an enclosing loop -- the loop body is its own sema scope), and
+the AST emit skips already-declared names: the gate mirrors both halves
+(already-declared -> skip the predecl; fresh -> `_emit_branch_decls`'
+plain-value tail arm only, straight-line function scope only), and
+`lower_function`'s blanket hoisted-vars reject gained the try-covered
+carve-out. Corpus witness: `control_flow/try_finally_shapes`; units
+`tpyc/thir/test_thir_try.py`.
+**try/except throw tier + raise landed (incr 80): +493 bodies
+(33361 -> 33854 / 3332 cases)** -- `_gen_try_throw`'s C++ try/catch:
+one catch arm per handler (headers pre-rendered at lowering via
+`error_return_to_cpp` over the sema-qualified name; the catch parameter
+IS the `as` binding, entering the handler scope typed like sema binds
+it), bare `except:` -> `catch (...)`, `else` jumping past via
+`goto __after_else_N` with N drawn from the module-cumulative
+`ctx.try_except_counter` through a ctx-backed sink (`CtxTryCounter`, the
+third CtxTempSink instance; the counter's other consumers --
+`__try_tmp_N`/`__er_N` unwraps and the return tier's `__except_N` -- are
+all gate-rejected), and except+finally wrapping the whole try/except in
+the T1 finally frame (`body_terminates` = the WHOLE statement's fact
+there). `THIRRaise` mirrors `_gen_raise`'s throw-tier arms: ctor form
+`throw <cpp>(args);` (args through the shared call-arg machinery against
+the resolved `__init__` slots -- scalar/str value slots only, keeping
+every special `_gen_record_ctor_args` arm unreachable), no-arg
+`throw <cpp>{};`, bare `throw;` -- which also re-admits raise-terminated
+finally bodies (the suppressed-rethrow/[[maybe_unused]] arms now fire on
+raise too; a raise never walks the frame stack, the throw propagates
+through the emitted catches). Deferred try-rows: the **return tier**
+(PARKED on the @error_return call rung -- every such call is
+gate-rejected and sema forces them into exactly these trys, so the
+tier's goto dispatch `__except_N`/`__err_opt_N`/`try_except_label` lands
+with that rung); the **expression raise** (`raise e` -> `e.__raise__()`
++ deref chain); non-value hoist arms (optional-storage / pointer /
+rebind-slot / dynamic-base / borrow-tuple predecls); fresh hoists inside
+branches (the enclosing if's own hoist pre-declares and the AST skips
+the try's) or loops (the scope_tracker storage hoist layers on top);
+throw-tier try-body first-declares sema does NOT hoist (the da_new rule:
+no finally/else and a falling-through handler -> the decl lives inside
+the C++ try scope; the in-branch first-declare reject keeps it AST);
+async/generator trys (own frontiers). Corpus witnesses:
+`control_flow/try_finally_shapes` + `control_flow/try_except_shapes`
+(all 15 try/raise faces); units `tpyc/thir/test_thir_try.py`. The
+raising-finally-after-return shape is a pre-existing AST parity bug
+(finally runs twice, second exception wins) -- mirrored, not endorsed;
+BUGS.md entry filed with the THIR lockstep note.
+Uncovered shapes remaining: `match`, the try return tier + expression
+raise (rows above),
 generator iterables, expression statements' deferred receiver/arg cells
 (listed above), `async`/`await`, `yield` / generators, comprehensions,
-`nonlocal`/`raise`, plain (non-isinstance) `assert` messages, chained
+`nonlocal`, plain (non-isinstance) `assert` messages, chained
 comparisons with non-simple intermediates (the statement-expr arm) and
 value-semantics / non-bool-truthiness `and`/`or`/`not` (the bool slice landed
 incr 36). **Action:** continue enumerating + driving these as a tracked axis

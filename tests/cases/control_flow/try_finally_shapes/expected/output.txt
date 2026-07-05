@@ -1,0 +1,30 @@
+try 5 in-try
+finally in-finally
+after 5 in-try in-finally
+cleanup 5
+10
+no-return 1
+cleanup 1
+0
+bare-cleanup 1
+fell -1
+bare-cleanup -1
+-1
+neg -2
+-1
+402
+inner
+inner-finally
+between
+outer-finally
+enter 5
+try-cleanup 5
+exit 5
+5
+enter 1
+small 1
+try-cleanup 1
+exit 1
+-5
+term-cleanup
+4
