@@ -46,6 +46,7 @@ from ...typesys import (
     NominalType,
     OptionalType,
     OwnType,
+    ParamInfo,
     ReadonlyType,
     TpyType,
     TupleType,
@@ -1485,23 +1486,39 @@ def _own_union_ctor_arg(a: TpyExpr, ptype: TpyType | None,
 
 def _record_ctor_call_eligible(e: TpyCall, locals_: dict[str, TpyType],
                                analyzer) -> bool:
-    """The record-ctor shape core (`_ctor_shape_ok`) plus the plain-scalar-slot
+    """The record-ctor shape core (`_ctor_shape_ok`) plus the scalar/str-slot
     arg loop. Admitted as the `Own[union]`-slot ctor-rvalue arg
     (`_own_union_ctor_arg`), as a method arg into a const same-record slot
     (`_method_ctor_rvalue_arg`), and as the record-rvalue arg-temp init
     (`_record_rvalue_temp_arg`).
 
-    Args are eligible value scalars into PLAIN scalar slots: a scalar slot is
-    never a ref param (the `ctor_mutated` rvalue-temp arm cannot fire) and
-    never triggers the protocol/dynamic/covariant/optional-ptr/union arms; an
-    `Own[scalar]` slot copy+moves a NAME arg through a temp -> AST."""
+    Args are eligible value scalars into PLAIN scalar slots or str-slice
+    sources into str-family slots (the free-call pass-through rule): neither
+    slot kind triggers the protocol/dynamic/covariant/optional-ptr/union
+    arms, so both fall to `gen_call_arg`'s bare render exactly like a free
+    call's. A scalar/view slot is never a ref param, and a MUTATED `String`
+    slot (lowered `std::string&`, where the `ctor_mutated` rvalue-temp arm
+    could fire) rejects; an `Own[...]` slot copy+moves through a temp ->
+    AST."""
     if not _ctor_shape_ok(e, analyzer):
         return False
     fi = e.resolved_function_info
-    return all(_eligible_scalar(unwrap_readonly(unwrap_ref_type(p.type)))
-               and _resolved_scalar(analyzer.get_expr_type(a), analyzer)
-               and _expr_eligible(a, locals_, analyzer)
-               for a, p in zip(e.args, fi.params))
+    mut = fi.mutated_params
+
+    def _arg_ok(i: int, a: TpyExpr, p: ParamInfo) -> bool:
+        pt = unwrap_readonly(unwrap_ref_type(p.type))
+        if _eligible_scalar(pt):
+            return (_resolved_scalar(analyzer.get_expr_type(a), analyzer)
+                    and _expr_eligible(a, locals_, analyzer))
+        st = unwrap_send_sync(pt) if isinstance(pt, TpyType) else pt
+        if (isinstance(st, NominalType) and is_string_type(st)
+                and (mut is None or i in mut)):
+            return False
+        return (_str_pass_through_arg(a, p.type, locals_, analyzer)
+                and _witness("ctor.str_arg"))
+
+    return all(_arg_ok(i, a, p)
+               for i, (a, p) in enumerate(zip(e.args, fi.params)))
 
 def _ctor_shape_ok(e: TpyCall, analyzer) -> bool:
     """A bare-name SAME-MODULE plain user-record constructor call in the

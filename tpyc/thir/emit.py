@@ -1009,6 +1009,11 @@ def _emit_with(out: TextIO, stmt: THIRWith, indent_level: int,
             out.write(f"{indent}auto {item.target} = __ctx_{n}.__enter__();\n")
         elif item.target_arm is WithTargetArm.REF:
             out.write(f"{indent}auto& {item.target} = __ctx_{n}.__enter__();\n")
+        elif item.target_arm is WithTargetArm.PTR_DECL:
+            out.write(f"{indent}{item.target_cpp}* {item.target} = "
+                      f"&(__ctx_{n}.__enter__());\n")
+        elif item.target_arm is WithTargetArm.ASSIGN_PTR:
+            out.write(f"{indent}{item.target} = &(__ctx_{n}.__enter__());\n")
         else:
             out.write(f"{indent}__ctx_{n}.__enter__();\n")
     # Per-layer terminates: the innermost layer carries body_terminates; once

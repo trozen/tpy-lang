@@ -493,50 +493,79 @@ def _for_tuple_unpack_eligible(stmt: TpyForEach, analyzer, ws: _WalkState,
                           in_branch=True, in_loop=True)
 
 def _with_target_arm(item, declared: dict[str, TpyType], prescan: _Prescan,
-                     analyzer) -> 'tuple[WithTargetArm, TpyType | None] | None':
-    """Classify a `with` item's as-target against `_gen_with`'s binding arms, or
-    None when the item is out of the slice. Only the fresh, never-reassigned
-    declaration arms are admitted: an already-declared target takes the AST's
-    assign / optional-slot arms (branch-hoist machinery the emitter does not
-    reproduce), and a reassigned non-value target takes the `T* name = &(...)`
-    pointer-local arm, whose only constructible trigger -- a second `with`
-    reusing the name -- puts an already-declared target in the same function
-    (other reseat sources are borrow-checker-rejected), so it rides the
-    already-declared cell."""
+                     analyzer, pointers: 'set[str]',
+                     rebind_slots: 'set[str]',
+                     ) -> 'tuple[WithTargetArm, TpyType | None] | None':
+    """Classify a `with` item's as-target against `_gen_with`'s binding arms,
+    or None when the item is out of the slice -- the ONE routing fact shared
+    by the gate and lowering (both sides pass their own declared/pointer
+    state). A reassigned F1-record target takes the `T* name = &(...)`
+    pointer-local arm (PTR_DECL; the name joins the F2 pointer set), and a
+    REUSE of that name by a later `with` takes the already-declared
+    `name = &(...)` assign (ASSIGN_PTR) -- admitted only when the declared
+    entry is the SAME record (the AST keeps the first enter type for reads)
+    and the name is a plain pointer-local (a rebind-slot's reseats are rvalue
+    rebinds, a different render). Every other already-declared reuse -- a
+    value or optional-slot target -- is the BUGS.md ill-formed
+    `x = &(__enter__())` family: gate-rejected, never mirrored. Bodies that
+    first-declare post-with-visible vars still reject via `if_branch_decls`
+    (branch-hoist machinery the emitter does not reproduce)."""
     if item.target is None:
         return WithTargetArm.NONE, None
     et = item.enter_type
     if not isinstance(et, TpyType):
         return None
-    if item.target in declared:
-        return None
     resolved = unwrap_readonly(unwrap_send_sync(et))
+    if item.target in declared:
+        if (item.target in pointers
+                and item.target not in rebind_slots
+                and not et.is_value_type()
+                and _f1_record(resolved, analyzer)
+                and unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                    declared[item.target]))) == resolved):
+            return WithTargetArm.ASSIGN_PTR, resolved
+        return None
     if et.is_value_type():
-        # `auto <name> = __enter__();` -- a value copy. Only the scalar slice
-        # routes; str/Char/enum enter types (their name-form classification)
-        # ride a later cell.
-        if not _eligible_scalar(resolved):
+        # `auto <name> = __enter__();` -- a value copy. Scalars, Char, enums,
+        # and str-slice values route; the declared entry carries the RESOLVED
+        # enter type, so body reads classify exactly like the AST's
+        # `var_types[name] = enter_type` (an owned `str` return deduces
+        # `std::string` -> STORAGE, a `StrView` return `std::string_view` ->
+        # BORROW via `_str_name_form`; the target is never a param name).
+        if not (_eligible_scalar(resolved)
+                or _eligible_char(resolved)
+                or _eligible_enum(resolved, analyzer) is not None
+                or _resolved_str_value(resolved, analyzer) is not None):
             return None
         return WithTargetArm.VALUE, resolved
-    if not _f1_record(resolved, analyzer) or item.target in prescan.reassigned:
+    if not _f1_record(resolved, analyzer):
         return None
+    if item.target in prescan.reassigned:
+        # NB the scan also counts the with-rebind itself in
+        # `rvalue_reassigned`, so that set cannot distinguish the pure
+        # two-with shape from a mixed plain-rvalue reassign; the mixed
+        # family is kept out by the ASSIGN/rebind gates at the reassign
+        # site instead.
+        return WithTargetArm.PTR_DECL, resolved
     return WithTargetArm.REF, resolved
 
 def _with_eligible(stmt: TpyWith, analyzer, ws: _WalkState, prescan: _Prescan,
                    *, in_branch: bool, in_loop: bool) -> bool:
-    """The sync `with` gate arm -- mirrors `_gen_with`'s fresh-declaration
-    slice. Rejected sub-shapes (each a later cell, not a redesign): async /
-    resumable lowerings (the function gate rejects those bodies; the is_async
-    check is defensive), bodies that first-declare variables (`if_branch_decls`
-    -- the `_emit_branch_decls` hoist), already-declared as-targets, non-F1
-    managers (cross-module / native / value-type managers, `self`, globals,
-    `Ptr[T]` sources, field-access lvalues), and temp-registering manager
-    expressions (the AST flushes temps BEFORE rendering managers with no
-    second flush -- see the BUGS.md walrus-manager entry; `_is_record_
-    rvalue_source`'s scalar-arg rule keeps those shapes out). Targets outlive
-    the block (Python scoping), so they extend the OUTER scope after a
-    successful walk -- which is why a first-declaring target inside a branch
-    rejects, like the var-decl rule."""
+    """The sync `with` gate arm -- mirrors `_gen_with`'s declaration slice
+    (fresh targets plus the pointer-local reuse family). Rejected sub-shapes
+    (each a later cell, not a redesign): async / resumable lowerings (the
+    function gate rejects those bodies; the is_async check is defensive),
+    bodies that first-declare variables (`if_branch_decls` -- the
+    `_emit_branch_decls` hoist), value/optional-slot target reuse (the
+    BUGS.md ill-formed family), non-F1 managers (cross-module / native /
+    value-type managers, `self`, globals, `Ptr[T]` sources, field-access
+    lvalues), and temp-registering manager expressions (the AST flushes
+    temps BEFORE rendering managers with no second flush -- see the BUGS.md
+    walrus-manager entry; `_is_record_rvalue_source`'s scalar-arg rule keeps
+    those shapes out). Targets outlive the block (Python scoping), so they
+    extend the OUTER scope after a successful walk -- which is why a
+    first-declaring target inside a branch rejects, like the var-decl
+    rule."""
     if stmt.is_async:
         return False
     if analyzer.if_branch_decls.get(id(stmt)):
@@ -544,12 +573,15 @@ def _with_eligible(stmt: TpyWith, analyzer, ws: _WalkState, prescan: _Prescan,
     body_ws = ws.branch_copy()
     arms: list[tuple] = []
     for item in stmt.items:
-        arm_et = _with_target_arm(item, body_ws.declared, prescan, analyzer)
+        arm_et = _with_target_arm(item, body_ws.declared, prescan, analyzer,
+                                  body_ws.pointers, body_ws.rebind_slots)
         if arm_et is None:
             return False
         arm, et = arm_et
         if arm is not WithTargetArm.NONE and in_branch:
             return False
+        if arm is WithTargetArm.PTR_DECL:
+            body_ws.pointers.add(item.target)
         ctx = item.context_expr
         if item.manager_borrowed:
             # An lvalue manager: a declared F1-record name (plain, or an F2
@@ -583,6 +615,8 @@ def _with_eligible(stmt: TpyWith, analyzer, ws: _WalkState, prescan: _Prescan,
     for item, arm, et in arms:
         if item.target is not None:
             ws.declared[item.target] = et
+            if arm is WithTargetArm.PTR_DECL:
+                ws.pointers.add(item.target)
     return True
 
 def _try_hoist_type_ok(vtype: TpyType, analyzer) -> bool:
@@ -1139,8 +1173,8 @@ def _raise_eligible(stmt: TpyRaise, analyzer, ws: _WalkState) -> bool:
         if init is None or len(stmt.args) > len(init.params):
             return False
         mutated = init.mutated_params or frozenset()
-        for a, p in zip(stmt.args, init.params):
-            if p.name in mutated:
+        for i, (a, p) in enumerate(zip(stmt.args, init.params)):
+            if i in mutated:
                 return False
             pt = unwrap_readonly(unwrap_ref_type(p.type))
             if not (_eligible_scalar(pt)
@@ -2968,7 +3002,8 @@ def _lower_with(stmt: TpyWith, lc: _LowerCtx, declared: dict[str, TpyType],
     items: list[THIRWithItem] = []
     for item in stmt.items:
         ctx = item.context_expr
-        arm_et = _with_target_arm(item, declared, lc.prescan, lc.analyzer)
+        arm_et = _with_target_arm(item, declared, lc.prescan, lc.analyzer,
+                                  lc.pointers, lc.rebind_slot_locals)
         assert arm_et is not None, "ineligible with-item reached lowering"
         arm, et = arm_et
         deref = (item.manager_borrowed and isinstance(ctx, TpyName)
@@ -2979,7 +3014,15 @@ def _lower_with(stmt: TpyWith, lc: _LowerCtx, declared: dict[str, TpyType],
             _witness("with.manager_deref")
         _witness({WithTargetArm.NONE: "with.no_target",
                   WithTargetArm.VALUE: "with.as_value",
-                  WithTargetArm.REF: "with.as_ref"}[arm])
+                  WithTargetArm.REF: "with.as_ref",
+                  WithTargetArm.PTR_DECL: "with.ptr_target",
+                  WithTargetArm.ASSIGN_PTR: "with.ptr_target_reuse"}[arm])
+        if (arm is WithTargetArm.VALUE
+                and _resolved_str_value(et, lc.analyzer) is not None):
+            # The str-slice enter targets: the declared entry's resolved type
+            # drives the body's `_str_name_form` classification (owned
+            # `std::string` STORAGE vs `std::string_view` BORROW).
+            _witness("with.str_target")
         if item.exit_can_suppress:
             _witness("with.suppress")
         if item.exit_takes_exc_val:
@@ -2994,9 +3037,13 @@ def _lower_with(stmt: TpyWith, lc: _LowerCtx, declared: dict[str, TpyType],
             target_arm=arm,
             can_suppress=item.exit_can_suppress,
             takes_exc_val=item.exit_takes_exc_val,
+            target_cpp=(lc.render_type(et)
+                        if arm is WithTargetArm.PTR_DECL else None),
         ))
         if item.target is not None:
             declared[item.target] = et
+            if arm is WithTargetArm.PTR_DECL:
+                lc.pointers.add(item.target)
     if len(stmt.items) > 1:
         _witness("with.multi")
     return THIRWith(

@@ -52,6 +52,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "self.this",                    # `self` name read -> `this`
     "call.self_method",             # `self.helper()` -> `this->helper()`
     "ctor.call",                    # THIRCtorCall bare ctor expansion
+    "ctor.str_arg",                 # str-slice arg into a str-family ctor slot
+    "with.str_target",              # str/StrView __enter__ as-target
     # Runtime-BigInt `.to_fixed_check<T>()` narrows (lowering; the AST's
     # gen_index_expr / _gen_slice_bound / aug-assign / enum-from_value wraps).
     "narrow.subscript_index",       # `i.to_fixed_check<int32_t>()` (reads + del)
@@ -76,6 +78,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "with.manager_deref",           # pointer-local manager: `*(...)` deref
     "with.as_value",                # `auto <name> = __enter__();`
     "with.as_ref",                  # `auto& <name> = __enter__();`
+    "with.ptr_target",              # reassigned target: `T* <name> = &(...)`
+    "with.ptr_target_reuse",        # later with, same name: `<name> = &(...)`
     "with.no_target",               # bare `__ctx_N.__enter__();`
     "with.suppress",                # bool __exit__: `if (!...) throw;` catch
     "with.exc_val",                 # `&__exc_N` passed to __exit__

@@ -885,19 +885,24 @@ class THIRForEach(THIRStmt):
 
 class WithTargetArm(Enum):
     """Which `_gen_with` as-target binding arm a `with` item takes -- decided
-    at lowering. Only the fresh-declaration arms appear: the already-declared
-    assign arms, the branch-hoisted optional slot, AND the reassigned
-    pointer-local arm (`T* <name> = &(...)`) are gate-rejected -- the latter's
-    only constructible trigger is a second `with` over the same name, whose
-    already-declared target rejects the function anyway.
+    at lowering. The value-typed and optional-slot REUSE arms stay
+    gate-rejected: their AST renders assign `&(__enter__())` into a value /
+    `std::optional` slot -- the BUGS.md ill-formed with-target-reuse family.
 
-      * `NONE`  -- no target: `__ctx_N.__enter__();`
-      * `VALUE` -- value enter type: `auto <name> = __ctx_N.__enter__();`
-      * `REF`   -- reference enter type: `auto& <name> = __ctx_N.__enter__();`
+      * `NONE`       -- no target: `__ctx_N.__enter__();`
+      * `VALUE`      -- value enter type: `auto <name> = __ctx_N.__enter__();`
+      * `REF`        -- reference enter type: `auto& <name> = ...;`
+      * `PTR_DECL`   -- fresh reassigned record target:
+                        `T* <name> = &(__ctx_N.__enter__());` (the name joins
+                        the F2 pointer-locals; `target_cpp` carries `T`)
+      * `ASSIGN_PTR` -- reuse of a prior with's pointer-local target:
+                        `<name> = &(__ctx_N.__enter__());`
     """
     NONE = auto()
     VALUE = auto()
     REF = auto()
+    PTR_DECL = auto()
+    ASSIGN_PTR = auto()
 
 
 @dataclass(frozen=True)
@@ -910,7 +915,9 @@ class THIRWithItem:
     `T*` (an F2 pointer-local name) -- mirrors `is_already_pointer_source` for
     the admitted subset. `can_suppress` / `takes_exc_val` are sema's
     `__exit__` facts (bool return / an `exc_val: Optional[BaseException]`
-    second param); they pick the catch arms and the exc argument spellings."""
+    second param); they pick the catch arms and the exc argument spellings.
+    `target_cpp` is the PTR_DECL arm's pointee type, pre-rendered at lowering
+    (`lc.render_type`, the same source as an F2 borrow local's cpp_type)."""
     ctx_expr: THIRExpr
     manager_borrowed: bool
     deref_manager: bool
@@ -918,6 +925,7 @@ class THIRWithItem:
     target_arm: WithTargetArm
     can_suppress: bool
     takes_exc_val: bool
+    target_cpp: 'str | None' = None
 
 
 @dataclass(frozen=True)

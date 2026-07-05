@@ -1022,12 +1022,8 @@ class TestStrSubscriptSliceIterEmit:
     def test_s4_leftovers_routed(self):
         thir = _lower_ctx(self.SRC2)
         for name in ("stepped", "var_index", "ctor_locals", "take", "chars",
-                     "non_name", "iter_call", "char_at"):
+                     "non_name", "iter_call", "char_at", "main"):
             assert _fn(thir, name) is not None, name
-        # main stays AST: the record-ctor arg (`non_name(H("greetings"), ...)`)
-        # is not an admitted call-arg shape. (Slice-object ctor rvalue args
-        # route now -- see TestSliceCtorCallArg.)
-        assert _fn(thir, "main") is None
 
     def test_s4_leftovers_byte_identical(self):
         assert self._cpp(self.SRC2, thir=True) == self._cpp(self.SRC2, thir=False)

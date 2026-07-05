@@ -974,6 +974,41 @@ witnesses: the match/ group (`literal_int`, `enum_value`,
 `break_in_match_arm`, `two_matches_same_scope`, `guard_basic`, and the
 new `arm_declared_local` / `union_none_member` / `union_recursive_bare`);
 units `tpyc/thir/test_thir_match.py`.
+**with/ctor multiplier tail landed (increments 87-89, the
+thir-with-tail branch): +9 bodies (33910 -> 33919 / 3335 cases; +5
+ctor-str, +4 with-targets)** -- the three queued short-session cells. (1) Str-arg ctor slots:
+`_record_ctor_call_eligible`'s arg loop admits str-family slots via the
+free-call pass-through rule (`_str_pass_through_arg`), unlocking
+`Logger("A")`-style ctors at every consumer face at once (with
+managers, record-rvalue arg temps, Own[union]/method/readonly ctor
+args); a MUTATED `String` slot rejects -- the AST body emit for such a
+ctor is itself ill-formed C++ (BUGS.md: mutation rendered against the
+untouched `const std::string&` param). Face `ctor.str_arg`
+(corpus-witnessed). Also fixed the dead name-vs-index mutated check in
+`_raise_eligible`. (2) str/Char/enum with-enter targets:
+`_with_target_arm`'s VALUE arm widened; the declared entry carries the
+RESOLVED enter type so body reads classify like the AST's
+`var_types[name] = enter_type` (owned str -> STORAGE, StrView -> BORROW
+via `_str_name_form`). Face `with.str_target`. (3) The already-declared
+with-target family: `WithTargetArm.PTR_DECL`
+(`T* g = &(__enter__());`, the name joins the F2 pointer set) +
+`ASSIGN_PTR` (a later `with` over the same name: `g = &(__enter__());`),
+gated to plain pointer-locals over the SAME F1 record --
+`_with_target_arm` stays the ONE shared gate/lowering routing fact
+(discipline #6), now fed each side's pointer/rebind state. NB the sema
+scan counts the with-rebind itself in `rvalue_reassigned`, so that set
+cannot split pure two-with reuse from mixed rvalue reassigns; the mixed
+family rejects at the REASSIGN site instead (probed: with-then-rvalue,
+decl-then-with, reuse-in-branch all stay AST). The value /
+value-repr-Optional target reuse is NOT a deferred cell but a BUGS.md
+gate-reject (the AST emits `x = &(__enter__())` into a value slot --
+ill-formed). Faces `with.ptr_target` / `with.ptr_target_reuse`.
+Remaining with-rows: bodies that first-declare post-with-visible vars
+(`_emit_branch_decls` hoist), cross-module / field-access / `self` /
+value-type managers, temp-registering managers (the BUGS.md walrus
+entry), async / resumable lowerings (own frontiers). Units
+`tpyc/thir/test_thir_with.py` (TestValueEnterTargets, TestPtrTargetReuse,
+TestStrArgManager) + `test_thir_callargs.py` (TestCtorStrArgSlots).
 Uncovered shapes remaining: the parked match tail (above), the try
 return tier + expression raise (rows above),
 generator iterables, expression statements' deferred receiver/arg cells

@@ -1211,6 +1211,136 @@ class TestCtorShapeGateRejects:
         assert _fn(thir, "use") is None
 
 
+class TestCtorStrArgSlots:
+    """The str-family arm of `_record_ctor_call_eligible`'s arg loop -- the
+    free-call pass-through rule applied to ctor slots (`ctor.str_arg`)."""
+
+    _STR_R = (
+        "class R:\n"
+        "    name: str\n"
+        "    def __init__(self, name: str) -> None:\n"
+        "        self.name = name\n"
+        "def take_r(r: R) -> int:\n"
+        "    return 1\n"
+    )
+
+    def test_str_sources_route_byte_identical(self):
+        # Literal, view-param, and owned-local sources into a `str` slot all
+        # land bare, exactly like the free-call pass-through.
+        src = (
+            self._STR_R
+            + "def use_lit() -> int:\n"
+            + '    return take_r(R("a"))\n'
+            + "def use_param(s: str) -> int:\n"
+            + "    return take_r(R(s))\n"
+            + "def use_owned() -> int:\n"
+            + '    ow = "x" + "y"\n'
+            + "    return take_r(R(ow))\n"
+            + "print(use_lit())\n"
+        )
+        thir, w = _lower_ctx_witnessed(src)
+        for name in ("use_lit", "use_param", "use_owned"):
+            assert _fn(thir, name) is not None, name
+        assert w.get("ctor.str_arg", 0) >= 3
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+    def test_string_slot_routes_byte_identical(self):
+        # A non-mutated `String` slot is `const std::string&`; the literal
+        # arrives through the str_to_string coerce arm on both paths.
+        src = (
+            "from tpy import String\n"
+            "class S:\n"
+            "    name: String\n"
+            "    def __init__(self, name: String) -> None:\n"
+            "        self.name = name\n"
+            "def take_s(s: S) -> int:\n"
+            "    return 1\n"
+            "def use() -> int:\n"
+            '    return take_s(S("a"))\n'
+            "print(use())\n"
+        )
+        thir, w = _lower_ctx_witnessed(src)
+        assert _fn(thir, "use") is not None
+        assert w.get("ctor.str_arg", 0) > 0
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+    def test_string_slot_view_source_routes_byte_identical(self):
+        # A view source (str param) into a String slot arrives through the
+        # strview_to_string coerce arm on both paths.
+        src = (
+            "from tpy import String\n"
+            "class S:\n"
+            "    name: String\n"
+            "    def __init__(self, name: String) -> None:\n"
+            "        self.name = name\n"
+            "def take_s(s: S) -> int:\n"
+            "    return 1\n"
+            "def use(s: str) -> int:\n"
+            "    return take_s(S(s))\n"
+            'print(use("v"))\n'
+        )
+        thir, w = _lower_ctx_witnessed(src)
+        assert _fn(thir, "use") is not None
+        assert w.get("ctor.str_arg", 0) > 0
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+    def test_method_ctor_rvalue_str_arg_routes(self):
+        # The widened arg loop applies at the method-ctor-rvalue face too
+        # (a str-arg ctor rvalue into a const same-record method slot).
+        src = (
+            "class R:\n"
+            "    name: str\n"
+            "    def __init__(self, name: str) -> None:\n"
+            "        self.name = name\n"
+            '    def eat(self, other: "R") -> int:\n'
+            "        return 1\n"
+            "def use(a: R) -> int:\n"
+            '    return a.eat(R("z"))\n'
+            'print(use(R("a")))\n'
+        )
+        thir, w = _lower_ctx_witnessed(src)
+        assert _fn(thir, "use") is not None
+        assert w.get("ctor.str_arg", 0) > 0
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+    def test_mutated_string_slot_stays_ast(self):
+        # A MUTATED String slot lowers `std::string&`, where the AST's
+        # ctor_mutated rvalue-temp arm can fire. (Today the AST emit for the
+        # mutating ctor body is itself ill-formed C++ -- see the BUGS.md
+        # mutated-String-param entry -- so the shape must never route.)
+        src = (
+            "from tpy import String\n"
+            "class S:\n"
+            "    name: String\n"
+            "    def __init__(self, name: String) -> None:\n"
+            '        name += "!"\n'
+            "        self.name = name\n"
+            "def take_s(s: S) -> int:\n"
+            "    return 1\n"
+            "def use() -> int:\n"
+            '    return take_s(S("a"))\n'
+            "print(use())\n"
+        )
+        assert _fn(_lower_ctx(src), "use") is None
+
+    def test_own_str_slot_stays_ast(self):
+        # An Own[str] slot materializes an owned copy (the auto-move
+        # cascade); `_str_pass_through_arg` rejects Own.
+        src = (
+            "from tpy import Own\n"
+            "class O:\n"
+            "    name: str\n"
+            "    def __init__(self, name: Own[str]) -> None:\n"
+            "        self.name = name\n"
+            "def take_o(o: O) -> int:\n"
+            "    return 1\n"
+            "def use(s: str) -> int:\n"
+            "    return take_o(O(s))\n"
+            'print(use("a"))\n'
+        )
+        assert _fn(_lower_ctx(src), "use") is None
+
+
 class TestArgTempValidator:
     def _temp(self):
         from ..typesys import FLOAT, INT32, UnionType

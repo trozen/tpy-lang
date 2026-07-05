@@ -2,7 +2,7 @@
 try/catch emit (suppress / exc_val / cleanup-only), the emit-side
 finally-frame chain for return/break/continue, `__ctx_N` counter
 continuity across bodies, and the gate rejections (already-declared
-targets, first-declaring bodies, str-arg managers)."""
+targets, first-declaring bodies, walrus managers)."""
 
 from __future__ import annotations
 
@@ -361,25 +361,6 @@ class TestWithGateRejections:
         assert _fn(_lower_ctx(src), "f") is None
         assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
-    def test_str_arg_manager_stays_ast(self):
-        # A str ctor arg is outside every ctor-call face's scalar-slot rule.
-        src = (
-            "class M:\n"
-            "    name: str\n"
-            "    def __init__(self, name: str) -> None:\n"
-            "        self.name = name\n"
-            "    def __enter__(self) -> int:\n"
-            "        return 1\n"
-            "    def __exit__(self, t: None, v: None, tb: None) -> None:\n"
-            "        pass\n"
-            "def f() -> None:\n"
-            '    with M("a") as x:\n'
-            "        print(x)\n"
-            "f()\n"
-        )
-        assert _fn(_lower_ctx(src), "f") is None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
-
     def test_walrus_manager_stays_ast(self):
         # The temp-registering manager shape behind the BUGS.md pre-decl
         # flush-ordering bug -- gate-rejected, never mirrored.
@@ -404,6 +385,249 @@ class TestWithGateRejections:
             + "f(True)\n"
         )
         assert _fn(_lower_ctx(src), "f") is None
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+
+class TestValueEnterTargets:
+    """The widened VALUE target arm: str/StrView/Char/enum enter types.
+    The declared entry carries the RESOLVED enter type, so body reads
+    classify like the AST's `var_types[name] = enter_type` (owned str
+    STORAGE vs view BORROW)."""
+
+    _EXIT = "    def __exit__(self, t: None, v: None, tb: None) -> None:\n        pass\n"
+
+    def test_str_and_view_targets_route_byte_identical(self):
+        src = (
+            "from tpy import StrView\n"
+            "class SCM:\n"
+            "    def __enter__(self) -> str:\n"
+            '        return "owned"\n'
+            + self._EXIT
+            + "class VCM:\n"
+            + "    def __enter__(self) -> StrView:\n"
+            + '        return "view"\n'
+            + self._EXIT
+            + "def owned_target() -> None:\n"
+            + "    with SCM() as s:\n"
+            + '        s += "!"\n'
+            + "        print(s, len(s))\n"
+            + "    print(s)\n"
+            + "def view_target() -> None:\n"
+            + "    with VCM() as v:\n"
+            + "        print(v)\n"
+            + "owned_target()\n"
+            + "view_target()\n"
+        )
+        thir, w = _lower_ctx_witnessed(src)
+        assert _fn(thir, "owned_target") is not None
+        assert _fn(thir, "view_target") is not None
+        assert w.get("with.str_target", 0) >= 2
+        out = _cpp(src, thir=True)
+        assert out == _cpp(src, thir=False)
+        # The owned target appends in place; the view target reads bare.
+        assert 's += "!";' in out
+
+    def test_char_and_enum_targets_route_byte_identical(self):
+        src = (
+            "from enum import Enum\n"
+            "from tpy import Char\n"
+            "class Color(Enum):\n"
+            "    RED = 1\n"
+            "    BLUE = 2\n"
+            "class CCM:\n"
+            "    def __enter__(self) -> Char:\n"
+            '        return Char("c")\n'
+            + self._EXIT
+            + "class ECM:\n"
+            + "    def __enter__(self) -> Color:\n"
+            + "        return Color.BLUE\n"
+            + self._EXIT
+            + "def char_target() -> None:\n"
+            + "    with CCM() as c:\n"
+            + "        print(c)\n"
+            + "def enum_target() -> None:\n"
+            + "    with ECM() as e:\n"
+            + "        print(e.value)\n"
+            + "char_target()\n"
+            + "enum_target()\n"
+        )
+        thir = _lower_ctx(src)
+        assert _fn(thir, "char_target") is not None
+        assert _fn(thir, "enum_target") is not None
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+    def test_string_enter_type_stays_ast(self):
+        # `String` (owned const-ref-param family) is outside the widened
+        # value-target set -- its name-form classification is a later cell.
+        src = (
+            "from tpy import String\n"
+            "class GCM:\n"
+            "    def __enter__(self) -> String:\n"
+            '        return "a" + "b"\n'
+            + self._EXIT
+            + "def f() -> None:\n"
+            + "    with GCM() as g:\n"
+            + "        print(g)\n"
+            + "f()\n"
+        )
+        assert _fn(_lower_ctx(src), "f") is None
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+
+class TestPtrTargetReuse:
+    """The already-declared with-target family: a reassigned F1-record
+    target declares the F2 pointer-local (`T* g = &(__enter__());`), and a
+    later `with` over the same name reuses it (`g = &(__enter__());`).
+    Value / optional-slot reuse stays AST (the BUGS.md ill-formed family)."""
+
+    _G = (
+        "class G:\n"
+        "    n: int\n"
+        "    def __init__(self, n: int) -> None:\n"
+        "        self.n = n\n"
+        '    def __enter__(self) -> "G":\n'
+        "        return self\n"
+        "    def __exit__(self, t: None, v: None, tb: None) -> None:\n"
+        "        pass\n"
+    )
+
+    def test_two_withs_route_byte_identical(self):
+        src = (
+            self._G
+            + "def f() -> None:\n"
+            + "    with G(1) as g:\n"
+            + "        print(g.n)\n"
+            + "    with G(2) as g:\n"
+            + "        print(g.n)\n"
+            + "    print(g.n)\n"
+            + "f()\n"
+        )
+        thir, w = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert w.get("with.ptr_target", 0) > 0
+        assert w.get("with.ptr_target_reuse", 0) > 0
+        out = _cpp(src, thir=True)
+        assert out == _cpp(src, thir=False)
+        assert "G* g = &(__ctx_1.__enter__());" in out
+        assert "g = &(__ctx_2.__enter__());" in out
+        # Body and post-with reads go through the pointer-local.
+        assert "g->n" in out
+
+    def test_mixed_arms_and_chained_reuse_route(self):
+        # PTR_DECL and VALUE arms in ONE multi-item statement, then two
+        # chained reuses (ASSIGN_PTR firing twice).
+        src = (
+            self._G
+            + "class V:\n"
+            + "    def __enter__(self) -> int:\n"
+            + "        return 7\n"
+            + "    def __exit__(self, t: None, v: None, tb: None) -> None:\n"
+            + "        pass\n"
+            + "def f() -> None:\n"
+            + "    with G(1) as g, V() as x:\n"
+            + "        print(g.n, x)\n"
+            + "    with G(2) as g:\n"
+            + "        print(g.n)\n"
+            + "    with G(3) as g:\n"
+            + "        print(g.n)\n"
+            + "f()\n"
+        )
+        thir, w = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert w.get("with.ptr_target_reuse", 0) >= 2
+        assert w.get("with.as_value", 0) > 0
+        out = _cpp(src, thir=True)
+        assert out == _cpp(src, thir=False)
+        assert "G* g = &(__ctx_1.__enter__());" in out
+        assert "auto x = __ctx_2.__enter__();" in out
+        assert "g = &(__ctx_3.__enter__());" in out
+        assert "g = &(__ctx_4.__enter__());" in out
+
+    def test_value_target_reuse_stays_ast(self):
+        # The AST's already-declared arm emits `x = &(enter())` into an int
+        # slot -- ill-formed C++ (BUGS.md); never mirrored.
+        src = (
+            "class V:\n"
+            "    def __enter__(self) -> int:\n"
+            "        return 7\n"
+            "    def __exit__(self, t: None, v: None, tb: None) -> None:\n"
+            "        pass\n"
+            "def f() -> None:\n"
+            "    with V() as x:\n"
+            "        print(x)\n"
+            "    with V() as x:\n"
+            "        print(x)\n"
+            "f()\n"
+        )
+        assert _fn(_lower_ctx(src), "f") is None
+
+    def test_rebind_slot_target_stays_ast(self):
+        # A plain rvalue decl first makes the name an F2d rebind slot; the
+        # with-reuse arm must not reseat through it.
+        src = (
+            self._G
+            + "def f() -> None:\n"
+            + "    g = G(1)\n"
+            + "    print(g.n)\n"
+            + "    with G(2) as g:\n"
+            + "        print(g.n)\n"
+            + "f()\n"
+        )
+        assert _fn(_lower_ctx(src), "f") is None
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+    def test_with_then_rvalue_reassign_stays_ast(self):
+        # The mixed family is kept out at the reassign site (a pointer-local
+        # reseat from an rvalue), not the with site.
+        src = (
+            self._G
+            + "def f() -> None:\n"
+            + "    with G(1) as g:\n"
+            + "        print(g.n)\n"
+            + "    g = G(3)\n"
+            + "    print(g.n)\n"
+            + "f()\n"
+        )
+        assert _fn(_lower_ctx(src), "f") is None
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+    def test_reuse_inside_branch_stays_ast(self):
+        src = (
+            self._G
+            + "def f(b: bool) -> None:\n"
+            + "    with G(1) as g:\n"
+            + "        print(g.n)\n"
+            + "    if b:\n"
+            + "        with G(2) as g:\n"
+            + "            print(g.n)\n"
+            + "    print(g.n)\n"
+            + "f(True)\n"
+        )
+        assert _fn(_lower_ctx(src), "f") is None
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+
+class TestStrArgManager:
+    def test_str_arg_manager_routes(self):
+        # A str ctor arg rides the free-call pass-through rule at every
+        # ctor-call face, including the with-manager rvalue arm.
+        src = (
+            "class M:\n"
+            "    name: str\n"
+            "    def __init__(self, name: str) -> None:\n"
+            "        self.name = name\n"
+            "    def __enter__(self) -> int:\n"
+            "        return 1\n"
+            "    def __exit__(self, t: None, v: None, tb: None) -> None:\n"
+            "        pass\n"
+            "def f() -> None:\n"
+            '    with M("a") as x:\n'
+            "        print(x)\n"
+            "f()\n"
+        )
+        thir, w = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert w.get("ctor.str_arg", 0) > 0
         assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
 
