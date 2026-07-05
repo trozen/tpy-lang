@@ -65,8 +65,12 @@ cell it touches is admitted:
   (fresh-target slice + the emit-side finally frames, incr 78) / try/finally
   (the finally_only tier + re-emittable finally frames + the plain-value
   branch-decl hoist, incr 79) / try/except throw tier + raise (catch arms,
-  bindings, else labels, ctor/bare raise, incr 80) **(covered)**
-  vs match / try-except return tier (parked on the @error_return rung) /
+  bindings, else labels, ctor/bare raise, incr 80) / match (the M1-M4
+  ladder: scalar switches, if/elif chains, captures + all guard shapes,
+  union switches incl. guarded, incr 81-86; parked tail = record/field
+  patterns, optional partitions, polymorphic, str-switch, Literal
+  subjects, M4c wrapper subjects, resumable) **(covered)**
+  vs try-except return tier (parked on the @error_return rung) /
   expression raise / for-over-container (generators) / async-await /
   yield / comprehension / nonlocal + plain-assert messages **(not)**.
 
@@ -895,8 +899,83 @@ async/generator trys (own frontiers). Corpus witnesses:
 raising-finally-after-return shape is a pre-existing AST parity bug
 (finally runs twice, second exception wins) -- mirrored, not endorsed;
 BUGS.md entry filed with the THIR lockstep note.
-Uncovered shapes remaining: `match`, the try return tier + expression
-raise (rows above),
+**match frontier opened -- M1 scalar switch tiers landed (incr 81): +18
+bodies (33854 -> 33872 / 3333 cases)** -- `THIRMatch`/`THIRMatchArm`
+over enum + fixed-int subjects: pre-rendered case labels
+(`_enum_member_cpp` / `_switch_literal_label`), or-patterns as stacked
+labels, wildcard regrouped last as `default:`, the branch-decl hoist
+(try discipline verbatim), synthetic `default: break;`, the
+`::std::unreachable()` tail, and the break-escaping-a-switch
+`goto __loop_break_N` emit interaction (`_EmitState.switch_depth` +
+per-loop label slots on all three loop emitters). The match counter is
+per-FUNCTION (`reset_scope`), so emit numbers `__match_subject_N` off
+`_EmitState` (iter_counter precedent), not a ctx sink. Frontier
+inventory (instrumented, 263 codegen-reaching stmts across 220 cases):
+switch_union 97 / if_elif_record 30 / if_elif 25 / switch_enum 18 /
+switch_primitive 17 / guarded_union 17 / optional 25 / polymorphic 14 /
+switch_str 8 / guarded_record 6 / if_elif_guarded 5 / overload 1.
+**M2 if/elif tier landed (incr 82): +5 bodies (33872 -> 33877 / 3333
+cases)** -- the unguarded `==` chain over bool/BigInt/float/str
+subjects below the str switch-dispatch threshold (`_should_switch_str`
+mirrored); source-order arms, wildcard-last gate-enforced, labels carry
+`_gen_literal_cond`'s RHS. Faces `match.if_elif` + `match.if_elif_else`.
+**M3a+M3b captures + chain guards landed (incr 83): +6 bodies (33877 ->
+33883 / 3333 cases)** -- `THIRMatchBinding` (assign/copy/ref modes off
+`_emit_binding`'s value arms + `bind_by_value`), capture/`as` on all
+routed tiers, and the `if_elif_guarded` strategy (standalone-if + goto
+`__match_end_N`, the second per-function counter draw; guards gate to
+bool-typed call-free exprs -- rendered raw, no truthy wrap, no flush
+point in the arm block). Faces `match.bind_{copy,ref,assign}` +
+`match.if_elif_guarded` + `match.guard_arm`.
+**M3c in-switch guard chains landed (incr 84, M3 COMPLETE): +7 bodies
+(33883 -> 33890 / 3333 cases)** -- the THIRMatchArm group/entries
+restructure (`_SwitchEntry` mirror), same-label merging by rendered-
+label key, cross-entry binding dedup ahead of the guard chain,
+`__match_default_N` goto fallbacks (`default_goto` folded at lowering).
+Faces `match.switch_guard_chain` + `match.default_goto`. A live M3b
+lowering bug (unconditional if_elif_guarded promotion) was caught by
+the whole-corpus byte-diff mid-cell.
+**M4a union-subject switch landed (incr 85): +13 bodies (33890 -> 33903
+/ 3334 cases)** -- plain (non-wrapper) unions: source-order arms,
+numeric index labels, `__case_{i}` aliases through `lc.narrow` (subject
+retyped to sema's arm fact), `as` via `from_case_var`, or-pattern
+stacked indices, `case None:` monostate, in-place `default:`;
+`is_ptr_variant` folded type-level. Faces `match.switch_union` /
+`union_alias` / `union_none_arm` / `union_default`; new corpus witness
+`match/union_none_member`. **M4c (recursive-alias wrapper subjects,
+the `.value` indirection) is CROSS-AXIS-BLOCKED, parked against the
+wrapper-form rung:** wrapper-typed params/locals are themselves
+function-gated, so no wrapper match can route until that form lands --
+verified by building the widened arm and watching a bare-arm `Tree`
+match reject at the FUNCTION gate (the match arm never fired); the
+widening was reverted rather than shipping a dead emit arm + a
+permanently zero-witness face. `match/union_recursive_bare` (new case)
+is the ready witness for when the rung lands.
+**M4b guarded union landed (incr 86, the approved M1-M4 ladder
+COMPLETE): +7 bodies (33903 -> 33910 / 3335 cases)** -- per-variant-
+index guard groups (`__case_{idx}` -- VARIANT-index naming), wildcard
+broadcast + truncation + default coalescing, `__match_end_N` (2nd
+counter draw, before the switch head; the trailing label emits
+UNINDENTED -- a mirrored AST quirk), guards = M3b rule + subject-name
+reject (the AST renders guards before narrowing applies). Face
+`match.guarded_union`. Most corpus guarded-union stmts use FIELD
+conditions (gated with keywords), so the +7 is the guard-only subset.
+Match tiers still parked (the tail):
+`Literal[...]` subjects need the literal-fact fold in THIR expression
+lowering -- the same row that keeps them out of M1's switch (they are
+the corpus `mode: Literal[...]` dispatchers); value patterns
+(named-constant compares) still reject. PARKED: record patterns (36
+stmts; field conditions/bindings -- also the guarded-union field-
+condition arms), optional partitions (25; the `__match_inner_N` name),
+polymorphic/@dynamic (15), str-switch (8; discriminator machinery),
+overload-specialized (1), resumable (generator/async) matches (own
+frontier), M4c wrapper subjects (cross-axis, see above). Corpus
+witnesses: the match/ group (`literal_int`, `enum_value`,
+`break_in_match_arm`, `two_matches_same_scope`, `guard_basic`, and the
+new `arm_declared_local` / `union_none_member` / `union_recursive_bare`);
+units `tpyc/thir/test_thir_match.py`.
+Uncovered shapes remaining: the parked match tail (above), the try
+return tier + expression raise (rows above),
 generator iterables, expression statements' deferred receiver/arg cells
 (listed above), `async`/`await`, `yield` / generators, comprehensions,
 `nonlocal`, plain (non-isinstance) `assert` messages, chained
@@ -930,6 +1009,13 @@ before claiming `gen_body`/`gen_expr` deletion is near.
    owned-sink shape ran the full course: gate-rejected at incr 77,
    sema-fixed on `fix-enum-name-strview`, then re-admitted with the
    byte-diff validating both paths' new copy in lockstep.
+6. **When the gate and lowering must agree on a routing fact, ONE shared
+   function computes it** -- the byte-diff is the backstop, not the
+   mechanism: it only catches a drift where the corpus happens to witness
+   the disagreement region (the match frontier's M3b promotion bug was
+   caught by exactly one case, `guard_wildcard`). `_match_strategy` /
+   `_match_union_route` are the pattern; a condition hand-copied into both
+   sides is a latent drift.
 
 ## Per-cell test convention (2026-07-02)
 

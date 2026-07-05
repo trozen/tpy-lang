@@ -95,6 +95,28 @@ THIR_FACES: frozenset[str] = frozenset({
     # Raise statements (lowering).
     "raise.ctor",                   # `raise X(args)` -> `throw <cpp>(...)`
     "raise.bare",                   # bare re-raise -> `throw;`
+    # THIRMatch M1 -- the unguarded scalar switch tiers (lowering).
+    "match.switch_enum",            # switch over enum-member case labels
+    "match.switch_primitive",       # switch over int-literal case labels
+    "match.if_elif",                # unguarded `==` chain (M2)
+    "match.if_elif_else",           # the chain's wildcard `} else {` arm
+    "match.bind_copy",              # capture/as: `auto name = subject;`
+    "match.bind_ref",               # capture/as: `auto& name = subject;`
+    "match.bind_assign",            # pre-declared/hoisted: `name = subject;`
+    "match.if_elif_guarded",        # standalone-if + goto __match_end_N (M3b)
+    "match.guard_arm",              # a guarded arm's inner `if (guard)`
+    "match.switch_guard_chain",     # in-switch guard chain (grouped entries)
+    "match.default_goto",           # all-guarded group -> goto __match_default_N
+    "match.switch_union",           # switch (subject.index()) over variant tags
+    "match.union_alias",            # `auto& __case_i = [*]std::get<idx>(...)`
+    "match.union_none_arm",         # `case None:` -> the monostate index
+    "match.union_default",          # wildcard/capture -> `default:` in place
+    "match.guarded_union",          # per-index guard groups + goto end (M4b)
+    "match.or_labels",              # or-pattern -> stacked case labels
+    "match.wildcard_default",       # `case _:` -> the `default:` block
+    "match.synthetic_default",      # non-exhaustive: `default: break;`
+    "match.unreachable_tail",       # exhaustive + terminating arms tail
+    "match.hoist_decl",             # sema-hoisted plain-value predecls
     # Emit-side finally-frame walks (recorded at emission -- the chain is
     # structural, so lowering never sees it; a no-op outside a compilation).
     # The with/try prefix keys on the walked segment's frame arms, so a
@@ -104,6 +126,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "try.finally_return",           # return in body: finally body re-emitted
     "try.finally_loop_exit",        # break/continue in body: partial chain
     "try.chain_terminated",         # terminating finally suppressed the exit
+    "match.loop_break_goto",        # break escaping a switch: goto __loop_break_N
     # The five flushable statement positions, counted only when the
     # position's value actually hoists an arg temp.
     "flush.vardecl",

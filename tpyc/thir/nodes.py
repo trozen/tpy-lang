@@ -1025,6 +1025,125 @@ class THIRRaise(THIRStmt):
     args: tuple[THIRExpr, ...] = ()
 
 
+@dataclass(frozen=True)
+class THIRMatchBinding:
+    """A capture / `as` name bound to the whole subject in a scalar-tier
+    arm. `mode` folds `_emit_binding`'s value-subject arms at lowering:
+    'assign' (a hoisted / pre-declared local -- plain `name = subject;`;
+    the pointer/optional-local assign arms never fire for the admitted
+    scalar/str subjects), 'copy' (sema's `bind_by_value` free-copy scalar
+    -- `auto name = subject;`), 'ref' (`auto& name = subject;`). The name
+    is raw; emit escapes. `from_case_var` (union tier) binds against the
+    arm's `__case_{i}` extraction alias (or the composed `std::get` when
+    no alias was drawn) instead of the subject."""
+    name: str
+    mode: str  # 'assign' | 'copy' | 'ref'
+    from_case_var: bool = False
+
+
+@dataclass(frozen=True)
+class THIRMatchArmEntry:
+    """One source `case` inside a THIRMatchArm group -- the mirror of
+    `_group_switch_arms`' `_SwitchEntry`. `binding` is the arm block's
+    first line (a `case x:` capture or a `case <pattern> as z:` name);
+    `guard` is the lowered guard, rendered raw (`if (guard)`) -- bool-typed
+    and call-free by the gate, so no truthy wrap and no temp flush point
+    needed. `loc` feeds the source comment (the AST comments each group's
+    FIRST entry only; the chain tiers comment every arm -- their groups
+    are single-entry)."""
+    body: tuple[THIRStmt, ...] = ()
+    loc: 'SourceLocation | None' = None
+    binding: 'THIRMatchBinding | None' = None
+    guard: 'THIRExpr | None' = None
+    # Union tier: the arm's numeric variant index (`_variant_index` over
+    # the wrapper's full member ordering, computed at lowering) and the
+    # `__case_{i}` extraction alias -- emitted as
+    # `auto& __case_i = [*]std::get<idx>(subject);` when sema narrowing
+    # (or a field binding, deferred) needs it; arm-body reads of the
+    # subject were renamed to the alias at lowering (the U3 mechanic).
+    variant_index: 'int | None' = None
+    case_alias: 'str | None' = None
+
+
+@dataclass(frozen=True)
+class THIRMatchArm:
+    """One arm GROUP of a scalar-tier THIRMatch. `labels` are
+    per-alternative spellings pre-rendered at lowering: for the switch
+    tiers, C++ case labels (`_enum_member_cpp` for enum members -- the
+    AST's gen_expr ENUM arm -- or `_switch_literal_label`'s bare int
+    spelling; an or-pattern carries one label per alternative, stacked
+    `case A:` lines sharing one block); for the if/elif tiers,
+    `_gen_literal_cond`'s comparison RHS (the emit composes
+    `{subject} == {rhs}`, ||-joined for or-patterns). Empty `labels` is the
+    always-match arm -> `default:` (grouped last, like `_group_switch_arms`'
+    default_entries) or the chain's `} else {` / bare `{` block. The chain
+    tiers keep one source case per group (source order); the switch tiers
+    merge same-label cases into one group whose `entries` emit as
+    `_emit_switch_groups`' guard chain (guarded-first, unguarded-last --
+    sema's duplicate-case check enforces the order)."""
+    labels: tuple[str, ...] = ()
+    entries: tuple[THIRMatchArmEntry, ...] = ()
+
+
+@dataclass(frozen=True)
+class THIRMatch(THIRStmt):
+    """A `match` statement -- the unguarded scalar tiers: the switch tiers
+    (M1: switch_enum / switch_primitive) mirroring `_gen_match_dispatch` +
+    `_emit_switch_groups`' no-guard/no-capture shape, and the if/elif tier
+    (M2: bool/BigInt/float/str subjects below the str switch-dispatch
+    threshold) mirroring `_gen_match_if_elif`'s unguarded `==` chain --
+    source-order arms, wildcard as the final `} else {`, no end label, no
+    counter draw beyond the subject, and no `default:`/`break;` (a chain is
+    not a switch, so `break` in an arm needs no goto escape either). The
+    switch shape:
+
+        <hoist decls>                       // _emit_branch_decls' plain tail
+        auto& __match_subject_N = <subj>;   // auto for rvalue subjects
+        switch (__match_subject_N) {
+        // case A:
+        case A: {
+            <body>
+            break;                          // always, even after goto/continue
+        }
+        default: break;                     // synthetic, non-exhaustive only
+        }
+        ::std::unreachable();               // exhaustive + all arms terminate
+
+    `N` draws from the per-function emit-state match counter --
+    `ctx.match_counter` resets per function in `reset_scope` (the
+    iter_counter precedent), NOT the module-cumulative with/try sinks. The
+    emitter brackets the switch with the emit-state `switch_depth` (zeroed
+    around loop bodies like `ctx.match_switch_depth`) so a `break` in an arm
+    body inside a loop renders the AST's `goto __loop_break_M` escape (M off
+    the per-function iter_counter, the label after the loop's close brace)
+    instead of a switch-eating bare `break;`. Guards, captures/as bindings,
+    the if-elif tiers, and every non-scalar subject stay gate-rejected;
+    guarded groups' second counter draw (`__match_end_N` / `__match_default_N`)
+    never happens in this tier."""
+    # 'switch_enum' | 'switch_primitive' | 'if_elif' | 'if_elif_guarded'
+    # | 'switch_union'
+    strategy: str = "switch_enum"
+    subject: 'THIRExpr | None' = None
+    subject_ref: bool = True          # auto& (lvalue subject) vs auto
+    arms: tuple[THIRMatchArm, ...] = ()
+    hoist_decls: tuple[tuple[str, str], ...] = ()
+    is_exhaustive: bool = False
+    emit_unreachable: bool = False    # is_exhaustive AND every arm terminates
+    synthetic_default: bool = False   # no wildcard AND not exhaustive
+    # _emit_switch_groups' needs_default_goto fold: a user default exists
+    # AND some labeled group is entirely guarded -- its chain falls back via
+    # `goto __match_default_N;` onto the `default: __match_default_N: {`
+    # label, N drawing the second per-function counter bump (before the
+    # switch head).
+    default_goto: bool = False
+    # switch_union: the subject's runtime form -- `*std::get<I>(...)` vs
+    # `std::get<I>(...)` (`_subject_is_ptr_variant` folded at lowering;
+    # recursive-alias wrapper subjects, the `.value` indirection, are
+    # parked against the wrapper-form rung -- wrapper params/locals are
+    # function-gated, so no wrapper match can reach this node yet).
+    is_ptr_variant: bool = False
+
+
 class PrintForm(Enum):
     """How a `print()` argument is wrapped in the `std::cout << ...` chain --
     decided at lowering from the arg's resolved type, so the emitter renders the

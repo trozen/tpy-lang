@@ -34,6 +34,7 @@ from .nodes import (
     THIRContainerLiteral,
     THIRContinue,
     THIRLiteral,
+    THIRMatch,
     THIRMethodCall,
     THIRModule,
     THIRMove,
@@ -269,6 +270,28 @@ def _stmt_lines(stmt: THIRStmt, depth: int) -> list[str]:
         lines = [f"{pad}with {', '.join(its)}:{term}"]
         for s in stmt.body:
             lines.extend(_stmt_lines(s, depth + 1))
+        return lines
+    if isinstance(stmt, THIRMatch):
+        tags = f" [{stmt.strategy}]"
+        if stmt.emit_unreachable:
+            tags += " [unreachable]"
+        if stmt.synthetic_default:
+            tags += " [synthetic_default]"
+        if stmt.default_goto:
+            tags += " [default_goto]"
+        lines = [f"{pad}match {_expr(stmt.subject)}:{tags}"]
+        arm_pad = "  " * (depth + 1)
+        for arm in stmt.arms:
+            head = ", ".join(arm.labels) if arm.labels else "default"
+            for entry in arm.entries:
+                extra = ""
+                if entry.binding is not None:
+                    extra += f" as %{entry.binding.name} [{entry.binding.mode}]"
+                if entry.guard is not None:
+                    extra += f" if {_expr(entry.guard)}"
+                lines.append(f"{arm_pad}case {head}:{extra}")
+                for s in entry.body:
+                    lines.extend(_stmt_lines(s, depth + 2))
         return lines
     if isinstance(stmt, THIRTupleUnpack):
         tgts = ", ".join(n if n is not None else "_" for n in stmt.targets)
