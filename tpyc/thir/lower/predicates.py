@@ -282,13 +282,14 @@ def _eligible_value_union(t: TpyType | None) -> 'UnionType | None':
     return t
 
 def _eligible_ptr_union(t: TpyType | None, analyzer) -> 'UnionType | None':
-    """The F4 U2 slice: a pointer-repr union of F1-record members (`A | B
+    """The F4 U2 slice: a pointer-repr union of record members (`A | B
     [| None]` -> borrow `std::variant<[std::monostate, ]A*, B*>` / storage
     `std::variant<[std::monostate, ]A, B>`). Non-None members must be
-    F1-renderable (same-module plain records) so both C++ spellings stay off
-    cross-module/native/generic recursion; a None member is the monostate
-    slot -- both spellings render it `std::monostate`, so it adds no form
-    question. Recursive-alias wrappers and protocol unions ride later cells."""
+    `_f1_record`-renderable (any non-generic user record -- native / cross-module
+    type spelling agrees with the resolver; only generics stay off), so both C++
+    spellings render byte-identically; a None member is the monostate slot --
+    both spellings render it `std::monostate`, so it adds no form question.
+    Recursive-alias wrappers and protocol unions ride later cells."""
     if t is None:
         return None
     t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
@@ -917,10 +918,26 @@ def _eligible_return(t: TpyType | None, analyzer) -> bool:
             or _eligible_ptr_union(t, analyzer) is not None)
 
 def _f1_record(t: TpyType | None, analyzer) -> bool:
-    """A same-module, non-native, non-generic concrete user record -- the F1
-    record slice where `TpyType.to_cpp()` == `TypeResolver.type_to_cpp()` (no
-    cross-module qualification, no native name/field rename, no generic-arg
-    recursion). Other records stay on the AST path."""
+    """The byte-identical THIR record slice: any NON-GENERIC concrete user
+    record whose `TpyType.to_cpp()` == `TypeResolver.type_to_cpp()` and whose
+    field / method names THIR reproduces. Three record kinds all satisfy that
+    and fall out of the single non-generic check below:
+
+    - same-module records -- no qualification / rename at all;
+    - `@native` records -- type spelled via `Compiler.native_cpp_names` (the same
+      map the resolver reads), field renames via the AST's `native_field_name`
+      (stamped into THIR field access by `_field_cpp`), methods via
+      `fi.native_name` (already honored); the module axis is irrelevant
+      (native_cpp_names qualifies a cross-module native record too);
+    - cross-module non-native records -- `native_cpp_names` qualifies them by
+      qname exactly as the resolver's `imported_record_qualification_for_type`
+      does (corpus-verified byte-identical).
+
+    Only GENERIC records (type-arg recursion, overlaps the F5 rung) stay on the
+    AST path. A future native-specific carve-out would re-split this predicate by
+    kind (none is needed today -- native records cannot carry a TPy-emitted ctor
+    body, so the one native-only asymmetry, the ctor-MIL field name, is
+    unreachable)."""
     if t is None:
         return False
     t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
@@ -930,11 +947,7 @@ def _f1_record(t: TpyType | None, analyzer) -> bool:
         return False
     if t.type_args:
         return False
-    ri = analyzer.registry.get_record_for_type(t)
-    if ri is None or ri.is_native:
-        return False
-    return analyzer.registry.imported_record_qualification_for_type(
-        t, analyzer.ctx.module_name) is None
+    return analyzer.registry.get_record_for_type(t) is not None
 
 def _unwrap_own(t: TpyType) -> TpyType:
     """The payload of an `Own[T]` wrapper, else `t` unchanged -- the recurring unwrap

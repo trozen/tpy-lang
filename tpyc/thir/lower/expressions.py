@@ -1280,9 +1280,10 @@ def _call_eligible(e: TpyCall, locals_: dict[str, TpyType], analyzer,
         # is threaded. Admit only the shared kwarg-independent rows;
         # optional-ptr, union, readonly-ctor, and the arg-temp rows stay
         # AST here.
-        return all(_shared_pass_through_arg(a, p.type, locals_, analyzer)
-                   or note_detail("call.native_arg_shape")
-                   for a, p in zip(e.args, fi.params))
+        for a, p in zip(e.args, fi.params):
+            if not _shared_pass_through_arg(a, p.type, locals_, analyzer):
+                return note_detail(_native_arg_reject(a, p.type, analyzer))
+        return True
     return all(_shared_pass_through_arg(a, p.type, locals_, analyzer)
                or (temps_ok and _value_union_temp_arg(a, p.type, locals_,
                                                       narrowed, analyzer))
@@ -1299,6 +1300,34 @@ def _call_eligible(e: TpyCall, locals_: dict[str, TpyType], analyzer,
                or _own_union_ctor_arg(a, p.type, locals_, analyzer)
                or note_detail("call.arg_shape")
                for a, p in zip(e.args, fi.params))
+
+def _native_arg_reject(a: TpyExpr, ptype: 'TpyType | None', analyzer) -> str:
+    """Drilldown label for a native/template callee arg that fails the shared
+    pass-through set -- names WHICH plain-loop-only arg row it needs so the
+    fallback tally ranks the native_arg_shape mass by shape (optptr / union /
+    own / record-rvalue / other) rather than one opaque bucket."""
+    t = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
+         if ptype is not None else None)
+    if isinstance(t, OptionalType):
+        return "call.native_arg.optptr"
+    if isinstance(t, UnionType):
+        return "call.native_arg.union"
+    if isinstance(t, OwnType):
+        return "call.native_arg.own"
+    if isinstance(a, (TpyCall, TpyMethodCall)):
+        return "call.native_arg.call_rvalue"
+    at = analyzer.get_expr_type(a)
+    at = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
+          if at is not None else None)
+    if isinstance(at, NominalType):
+        # Split F1 vs non-F1: an F1 record name here means a slot mismatch
+        # (readonly/Own/unrelated slot); a non-F1 record is blocked on the
+        # non-F1-record frontier (the shared elephant with receiver.field_nonf1
+        # and sig.receiver_record).
+        return ("call.native_arg.record_nonf1"
+                if not _f1_record(at, analyzer)
+                else "call.native_arg.record_f1_slot")
+    return "call.native_arg.other"
 
 def _shared_pass_through_arg(a: TpyExpr, ptype: 'TpyType | None',
                              locals_: dict[str, TpyType], analyzer) -> bool:
@@ -1889,6 +1918,67 @@ def _slice_ctor_call_eligible(e: TpyCall, locals_: dict[str, TpyType],
                    and _expr_eligible(a, locals_, analyzer))
                for a in e.args)
 
+def _method_receiver_type(recv: TpyExpr, locals_: dict[str, TpyType],
+                          analyzer) -> 'TpyType | None':
+    """The method receiver's binding type. A bare name reads the declared
+    binding (`locals_`, the pre-resolution container type -- mirrors
+    `_method_call_eligible`'s docstring note); a field-access receiver reads
+    its sema-resolved type."""
+    if isinstance(recv, TpyName):
+        return locals_.get(recv.name)
+    return analyzer.get_expr_type(recv)
+
+def _method_field_receiver_ok(recv: TpyExpr, locals_: dict[str, TpyType],
+                              analyzer) -> bool:
+    """A one-level field-access method receiver `x.field.method(...)`: the field
+    is a plain value F1-record off an F1-record receiver name (self / a record
+    param / REF_ALIAS / F2 pointer-local, or a proven Optional-ptr borrow name
+    -- `_field_receiver_ok`'s admitted set). The field's record type routes the
+    call to the user-record arm, and the receiver renders bare as its own
+    THIRFieldAccess (`this->field.m()` / `p->field.m()`, the `.`/`->` decided by
+    that inner node) -- the outer method access is `.` (is_arrow keys on a NAME
+    receiver). Container / Optional / non-value field receivers are deferred: an
+    Optional field would need the outer `(*obj)` / deref_check unwrap, a
+    container field the name-only container arm."""
+    if not _field_receiver_ok(recv, locals_, analyzer):
+        return False
+    ft = analyzer.get_expr_type(recv)
+    ft = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ft)))
+    if isinstance(ft, OwnType):
+        ft = unwrap_readonly(ft.wrapped)
+    return isinstance(ft, NominalType) and _f1_record(ft, analyzer)
+
+def _recv_shape_reject(recv: TpyExpr, locals_: dict[str, TpyType],
+                       analyzer) -> str:
+    """Drilldown label for a non-admitted method receiver -- names *which*
+    receiver shape blocks so the fallback tally ranks the follow-on cells
+    (the method.receiver_shape total is first-reject-masked: one-level
+    value-record fields, the admitted shape, are the rare part; the mass is
+    non-F1-record fields and receiver chains)."""
+    if isinstance(recv, TpySubscript):
+        return "method.recv.subscript"
+    if isinstance(recv, TpyCall):
+        return "method.recv.call"
+    if isinstance(recv, TpyMethodCall):
+        return "method.recv.method"
+    if isinstance(recv, TpyFieldAccess):
+        if not isinstance(recv.obj, TpyName):
+            return "method.recv.field_chain"
+        # A one-level field whose parent receiver is not itself an admitted
+        # F1-record binding (a container elem, a non-slice local, ...).
+        if not _field_receiver_ok(recv, locals_, analyzer):
+            return "method.recv.field_parent"
+        ft = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+            analyzer.get_expr_type(recv))))
+        if isinstance(ft, OwnType):
+            ft = unwrap_readonly(ft.wrapped)
+        if isinstance(ft, OptionalType):
+            return "method.recv.field_optional"
+        if isinstance(ft, NominalType):
+            return "method.recv.field_nonf1"  # non-F1 / native / generic record
+        return "method.recv.field_nonrecord"  # container / str / tuple / ...
+    return "method.recv.other"
+
 def _method_call_eligible(e: TpyMethodCall, locals_: dict[str, TpyType], analyzer,
                           *, stmt_position: bool = False,
                           temps_ok: bool = False,
@@ -1914,10 +2004,18 @@ def _method_call_eligible(e: TpyMethodCall, locals_: dict[str, TpyType], analyze
     # receiver-name pin.
     if e.is_nested_enum_constructor:
         return _nested_enum_from_value_eligible(e, locals_, analyzer)
-    if not isinstance(e.obj, TpyName) or e.obj.name not in locals_:
-        return note_detail("method.receiver_shape")
+    # Markers first: a module-qualified / static / super receiver is a bare name
+    # not in `locals_`, so a receiver-shape check ahead of the marker check would
+    # misattribute the whole module-call tail to `recv.name_absent`. Filter those
+    # here so the receiver-shape drilldown counts only genuinely receiver-blocked
+    # calls.
     if not _plain_member_call_markers_ok(e):
         return note_detail("method.marker")
+    if isinstance(e.obj, TpyName):
+        if e.obj.name not in locals_:
+            return note_detail("method.recv.name_absent")
+    elif not _method_field_receiver_ok(e.obj, locals_, analyzer):
+        return note_detail(_recv_shape_reject(e.obj, locals_, analyzer))
     # The Optional runtime-check marker is mirrored only for a pointer-repr
     # Optional borrow receiver (`::tpy::deref_check(p).method(args)`, the
     # THIRMethodCall deref_check face); the storage-form Optional receivers
@@ -1934,8 +2032,10 @@ def _method_call_eligible(e: TpyMethodCall, locals_: dict[str, TpyType], analyze
     # The declared binding type, not get_expr_type: a container-literal local's
     # use sites carry the pre-resolution PendingListType (the AST path unwraps it
     # in TypeResolver.get_resolved_type); the binding type is post-resolution.
-    # Mirrors _is_len_call's locals_ lookup.
-    if not _container_scalar_read(locals_[e.obj.name], analyzer):
+    # Mirrors _is_len_call's locals_ lookup. A field-access receiver resolves to
+    # an F1 value record (the container arm is name-only), so it falls through.
+    if not _container_scalar_read(_method_receiver_type(e.obj, locals_, analyzer),
+                                  analyzer):
         return _record_method_call_eligible(e, fi, locals_, analyzer,
                                             stmt_position=stmt_position,
                                             temps_ok=temps_ok,
@@ -2017,8 +2117,9 @@ def _record_method_call_eligible(e: TpyMethodCall, fi, locals_: dict[str, TpyTyp
 
     Result: an eligible scalar / Char / str-slice value, or void (None) in
     statement position, mirroring `_call_eligible`'s value-position set."""
-    recv = e.obj  # a TpyName -- checked by the caller
-    recv_t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(locals_[recv.name])))
+    recv = e.obj  # a name or a one-level field access -- checked by the caller
+    recv_t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+        _method_receiver_type(recv, locals_, analyzer))))
     if isinstance(recv_t, OwnType):
         recv_t = unwrap_readonly(recv_t.wrapped)
     # An Optional-ptr borrow receiver dispatches methods on the inner record
@@ -2639,14 +2740,14 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx', *, temp_args: bool = False) -> THIR
                     if sub.form is Form.STORAGE else sub)
             return THIRFieldAccess(
                 result_type=rtype, receiver=recv,
-                field_cpp=escape_cpp_name(e.field), deref_check=True, loc=loc)
+                field_cpp=_field_cpp(e), deref_check=True, loc=loc)
         # Scalar field read off a borrow receiver (value-form result). A plain
         # non-null `T*` pointer-local receiver renders `recv->field`; the non-value
         # field source for a borrow-local binding is built in _lower_field_source.
         return THIRFieldAccess(
             result_type=rtype,
             receiver=_lower_expr(e.obj, lc),
-            field_cpp=escape_cpp_name(e.field),
+            field_cpp=_field_cpp(e),
             is_arrow=_field_is_arrow(e, lc),
             loc=loc,
         )
@@ -3404,6 +3505,16 @@ def _rb_operand_slots(rb) -> 'tuple[TpyType | None, TpyType | None]':
     recv = rb.receiver_type
     return (param, recv) if rb.is_reverse else (recv, param)
 
+def _field_cpp(e: TpyFieldAccess) -> str:
+    """The rendered C++ member name for a field access. A `@native` record
+    renames fields via `native_field("m_x")`; sema stamps the rename on
+    `native_field_name` (own-fields-first, so a subclass redeclaration shadows
+    an ancestor's) and `_gen_field_access` reads it -- mirror that here rather
+    than always escaping the source name, else native-record field reads
+    diverge."""
+    return (e.native_field_name if e.native_field_name is not None
+            else escape_cpp_name(e.field))
+
 def _lower_field_source(e: TpyFieldAccess, lc: '_LowerCtx') -> THIRFieldAccess:
     """The storage-form field read backing a borrow-local binding or an F3 tuple
     lift: `recv.field` where the field is a record (REF_ALIAS / POINTER), a
@@ -3416,7 +3527,7 @@ def _lower_field_source(e: TpyFieldAccess, lc: '_LowerCtx') -> THIRFieldAccess:
     return THIRFieldAccess(
         result_type=lc.analyzer.get_expr_type(e),
         receiver=_lower_expr(e.obj, lc),
-        field_cpp=escape_cpp_name(e.field),
+        field_cpp=_field_cpp(e),
         is_arrow=_field_is_arrow(e, lc),
         form=Form.STORAGE,
         loc=getattr(e, "loc", None),

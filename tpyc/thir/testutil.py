@@ -62,13 +62,14 @@ def _fn(thir, name):
     return next((f for f in thir.functions if f.name == name), None)
 
 
-def _lower_ctor(source: str, record_name: str):
+def _lower_ctor(source: str, record_name: str, extra_lib_dirs=None):
     """Lower one record's constructor to its THIRConstructor (or None if outside
     the M3 slice). Within the compiler context -- records resolve through the live
-    registry / native-name maps, like `_lower_ctx`."""
+    registry / native-name maps, like `_lower_ctx`. `extra_lib_dirs` lets the
+    entry import records from sibling modules (cross-module ctor-field tests)."""
     from ..compilation_context import activate_compiler
     from .lower import iter_module_constructors, lower_constructor
-    compiler, modules = _compile(source)
+    compiler, modules = _compile(source, extra_lib_dirs)
     entry = _entry(modules)
     with activate_compiler(compiler):
         for rec, init, self_type in iter_module_constructors(entry.ast, entry.analyzer):

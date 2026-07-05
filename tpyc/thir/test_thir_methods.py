@@ -6,11 +6,12 @@ from __future__ import annotations
 from ..codegen_cpp.context import CodeGenOptions
 from ..codegen_cpp.forms import LocalBinding
 from .nodes import (
-    Form, THIRAssign, THIRBinOp, THIRFieldAccess, THIRFormConvert, THIRName,
-    THIRReturn, THIRSelf, THIRStrAppend, THIRVarDecl,
+    Form, THIRAssign, THIRBinOp, THIRFieldAccess, THIRFormConvert, THIRMethodCall,
+    THIRName, THIRReturn, THIRSelf, THIRStrAppend, THIRVarDecl,
 )
 from .testutil import (
-    _compile, _entry, _lower, _lower_ctx, _fn, _F1_RECORDS,
+    _compile, _entry, _lower, _lower_ctx, _lower_ctx_witnessed, _lower_ctor,
+    _fn, _F1_RECORDS,
 )
 
 # --- M1 method frontier: instance methods with a `self` (`this`) receiver ---
@@ -686,3 +687,266 @@ class TestStaticPropertyDunderEmit:
         out = self._emit(src, thir=True)
         assert out == self._emit(src, thir=False)
         assert "return (this->v < other.v);" in out
+
+
+# --- Method receivers beyond a bare name: a one-level field access producing a
+# value F1-record (`self.field.method()` / `obj.field.method()`). The receiver
+# renders as its own THIRFieldAccess; the outer member access is `.` (is_arrow
+# keys on a NAME receiver). Container / Optional / deeper-chain field receivers
+# are deferred. ---
+
+_RECV_SHAPE = (
+    "from tpy import Int32\n"
+    "class Inner:\n    n: Int32\n"
+    "    def __init__(self, n: Int32):\n        self.n = n\n"
+    "    def get(self) -> Int32:\n        return self.n\n"
+    "    def bump(self, d: Int32) -> Int32:\n        self.n += d\n        return self.n\n"
+    "class Outer:\n    inner: Inner\n"
+    "    def __init__(self, x: Int32):\n        self.inner = Inner(x)\n"
+    "    def run(self) -> Int32:\n        self.inner.bump(5)\n        return self.inner.get()\n"
+    # off a record param in a free function (non-self field receiver, `.` access)
+    "def use(o: Outer) -> Int32:\n    o.inner.bump(2)\n    return o.inner.get()\n"
+)
+
+
+class TestMethodReceiverShape:
+    def test_self_field_receiver_routes_with_dot_over_arrow_field(self):
+        # `self.inner.bump(5)`: the outer method access is `.` (the receiver is
+        # not a name); the receiver field access itself is `this->inner`.
+        fn = _fn(_lower_ctx(_RECV_SHAPE), "run")
+        assert fn is not None
+        call = fn.body[0].expr
+        assert isinstance(call, THIRMethodCall)
+        assert not call.is_arrow and not call.deref_check
+        assert isinstance(call.receiver, THIRFieldAccess)
+        assert isinstance(call.receiver.receiver, THIRSelf) and call.receiver.is_arrow
+
+    def test_record_param_field_receiver_routes(self):
+        # `o.inner.get()` off a record param: the receiver field access is a
+        # plain `.` (o is a record param, not a pointer-local).
+        fn = _fn(_lower_ctx(_RECV_SHAPE), "use")
+        assert fn is not None
+        ret = fn.body[-1]
+        assert isinstance(ret, THIRReturn)
+        assert isinstance(ret.value, THIRMethodCall) and not ret.value.is_arrow
+        assert isinstance(ret.value.receiver, THIRFieldAccess)
+        assert not ret.value.receiver.is_arrow
+
+    def test_container_field_receiver_excluded(self):
+        # `self.items.append(x)`: a container field receiver would take the
+        # name-only container arm -> stays AST for now.
+        thir = _lower_ctx(
+            "from tpy import Int32\n"
+            "class C:\n    items: list[Int32]\n"
+            "    def __init__(self):\n        self.items = []\n"
+            "    def add(self, x: Int32):\n        self.items.append(x)\n")
+        assert _fn(thir, "add") is None
+
+    def test_optional_field_receiver_excluded(self):
+        # `self.opt.get()`: an Optional field receiver needs the outer deref /
+        # `(*obj)` unwrap the value-record arm does not emit -> AST.
+        thir = _lower_ctx(
+            _RECV_SHAPE
+            + "class Holder:\n    opt: Inner | None\n"
+            "    def __init__(self):\n        self.opt = None\n"
+            "    def peek(self) -> Int32:\n        return self.opt.get()\n")
+        assert _fn(thir, "peek") is None
+
+    def test_deep_chain_receiver_excluded(self):
+        # `o.mid.inner.get()`: a two-level field chain -- the receiver's own
+        # receiver is a field access, not a name -> only one level is admitted.
+        thir = _lower_ctx(
+            _RECV_SHAPE
+            + "class Mid:\n    inner: Inner\n"
+            "    def __init__(self, x: Int32):\n        self.inner = Inner(x)\n"
+            "class Deep:\n    mid: Mid\n"
+            "    def __init__(self, x: Int32):\n        self.mid = Mid(x)\n"
+            "def reach(d: Deep) -> Int32:\n    return d.mid.inner.get()\n")
+        assert _fn(thir, "reach") is None
+
+
+class TestMethodReceiverShapeEmit:
+    def _emit(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        hpp, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+        return hpp + cpp
+
+    SRC = (
+        _RECV_SHAPE
+        + "def main():\n    o = Outer(10)\n    print(o.run())\n    print(use(o))\n"
+        + "main()\n"
+    )
+
+    def test_byte_identical(self):
+        assert self._emit(self.SRC, thir=True) == self._emit(self.SRC, thir=False)
+
+    def test_self_field_receiver_emits_this_arrow_dot(self):
+        assert "this->inner.bump(5);" in self._emit(self.SRC, thir=True)
+
+    def test_param_field_receiver_emits_dot(self):
+        assert "o.inner.get()" in self._emit(self.SRC, thir=True)
+
+
+# --- Non-F1 record frontier, stage 1: @native records. Their C++ TYPE spelling
+# already agrees with the resolver (native_cpp_names), methods dispatch on
+# fi.native_name, and field renames ride native_field_name (stamped into THIR
+# field access via _field_cpp). So a native record renders byte-identically off
+# the same body slice as an F1 record -- admitted by the widened _f1_record. ---
+
+_NATIVE_REC = (
+    "from tpy.extern import native, native_field\n"
+    "from tpy import Int32\n"
+    "@native\nclass Vec2:\n"
+    "    x: Int32 = native_field(\"m_x\")\n"
+    "    y: Int32 = native_field(\"m_y\")\n"
+    "def read_x(v: Vec2) -> Int32:\n    return v.x\n"
+    "def add(v: Vec2) -> Int32:\n    return v.x + v.y\n"
+    "def take(v: Vec2) -> Int32:\n    return read_x(v)\n"
+)
+
+
+class TestNativeRecordFrontier:
+    def test_native_field_read_uses_rename(self):
+        # `v.x` on a @native record renders the native_field rename `m_x`, not
+        # the source name -- the _field_cpp stamp, the one native divergence.
+        ret = _fn(_lower_ctx(_NATIVE_REC), "read_x").body[0]
+        assert isinstance(ret, THIRReturn)
+        assert isinstance(ret.value, THIRFieldAccess)
+        assert ret.value.field_cpp == "m_x"
+
+    def test_native_record_body_routes(self):
+        # A body reading native-record fields + a binop routes (the record is a
+        # signature param -- AST -- but the body is now in the slice).
+        assert _fn(_lower_ctx(_NATIVE_REC), "add") is not None
+
+    def test_native_record_bare_name_arg_routes(self):
+        # A native-record name passed to a free callee renders bare on both
+        # paths -- _record_pass_through_arg admits it via the widened slice.
+        assert _fn(_lower_ctx(_NATIVE_REC), "take") is not None
+
+    def test_native_record_field_ctor_routes(self):
+        # The ctor-dominated win: a record with a @native-record-typed field
+        # copies it in the member-init list -- native records are now in the
+        # ctor slice, so the MIL routes.
+        ctor = _lower_ctor(
+            "from tpy.extern import native, native_field\n"
+            "from tpy import Int32\n"
+            "@native\nclass Vec2:\n    x: Int32 = native_field(\"m_x\")\n"
+            "class Holder:\n    v: Vec2\n"
+            "    def __init__(self, v: Vec2):\n        self.v = v\n",
+            "Holder")
+        assert ctor is not None
+
+    def test_native_record_plain_method_call_routes(self):
+        # A @native record's PLAIN method (no native_name / cpp_template, just a
+        # `...` declaration) passes `_plain_method_fi_ok`, so a bare `v.mag()`
+        # call routes byte-identically. (Only native methods WITH a native
+        # rename / cpp_template hit `method.fi_kind` and stay AST -- see
+        # test_thir_callargs.)
+        src = ("from tpy.extern import native\nfrom tpy import Int32\n"
+               "@native\nclass NV:\n    x: Int32\n"
+               "    def mag(self) -> Int32: ...\n"
+               "def call_mag(v: NV) -> Int32:\n    return v.mag()\n")
+        assert _fn(_lower_ctx(src), "call_mag") is not None
+        def emit(thir):
+            compiler, modules = _compile(src)
+            entry = _entry(modules)
+            hpp, cpp = compiler.generate_code_to_strings(
+                entry, options=CodeGenOptions(emit_source_comments=False,
+                                              thir_codegen=thir))
+            return hpp + cpp
+        assert emit(True) == emit(False)
+
+
+class TestNativeRecordFrontierEmit:
+    def _emit(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        hpp, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+        return hpp + cpp
+
+    def test_native_record_byte_identical(self):
+        assert self._emit(_NATIVE_REC, thir=True) == self._emit(_NATIVE_REC, thir=False)
+
+    def test_native_field_rename_in_emit(self):
+        out = self._emit(_NATIVE_REC, thir=True)
+        assert "v.m_x" in out and "v.m_y" in out
+
+
+# --- Non-F1 record frontier, stage 2: cross-module non-native records. Their
+# C++ type spelling qualifies via native_cpp_names exactly as the resolver's
+# imported_record_qualification does, so `_f1_record` admits them (only generic
+# records stay AST). ---
+
+_XMOD_GEO = (
+    "from tpy import Int32\n"
+    "class Point:\n    x: Int32\n    y: Int32\n"
+    "    def __init__(self, x: Int32, y: Int32):\n"
+    "        self.x = x\n        self.y = y\n"
+)
+
+
+class TestCrossModuleRecordFrontier:
+    def _setup(self, tmp_path):
+        (tmp_path / "geo.py").write_text(_XMOD_GEO)
+        return tmp_path
+
+    def test_cross_module_field_read_routes(self, tmp_path):
+        lib = self._setup(tmp_path)
+        src = ("from geo import Point\nfrom tpy import Int32\n"
+               "def read_x(p: Point) -> Int32:\n    return p.x\n"
+               "def sum2(p: Point) -> Int32:\n    return p.x + p.y\n")
+        thir, _ = _lower_ctx_witnessed(src, extra_lib_dirs=[lib])
+        assert _fn(thir, "read_x") is not None
+        assert _fn(thir, "sum2") is not None
+
+    def test_cross_module_record_byte_identical(self, tmp_path):
+        lib = self._setup(tmp_path)
+        src = ("from geo import Point\nfrom tpy import Int32\n"
+               "def read_x(p: Point) -> Int32:\n    return p.x\n"
+               "def make() -> Int32:\n    p = Point(3, 4)\n    return p.x\n")
+        def emit(thir_flag):
+            compiler, modules = _compile(src, extra_lib_dirs=[lib])
+            entry = _entry(modules)
+            hpp, cpp = compiler.generate_code_to_strings(
+                entry, options=CodeGenOptions(emit_source_comments=False,
+                                              thir_codegen=thir_flag))
+            return hpp + cpp
+        out = emit(True)
+        assert out == emit(False)
+        # the body spells the record fully qualified, like the resolver
+        assert "::tpyapp::geo::Point" in out
+
+    def test_cross_module_record_field_ctor_routes(self, tmp_path):
+        # Cross-module ctor-field storage: a local record with a field typed as
+        # another module's record, copied in the member-init list.
+        lib = self._setup(tmp_path)
+        ctor = _lower_ctor(
+            "from geo import Point\n"
+            "class Holder:\n    p: Point\n"
+            "    def __init__(self, p: Point):\n        self.p = p\n",
+            "Holder", extra_lib_dirs=[lib])
+        assert ctor is not None
+
+    def test_cross_module_method_call_routes(self, tmp_path):
+        # A cross-module TPy record's methods are regular (not @native) -> they
+        # route, unlike native-record methods.
+        (tmp_path / "geo.py").write_text(
+            _XMOD_GEO
+            + "    def mag(self) -> Int32:\n        return self.x\n")
+        src = ("from geo import Point\nfrom tpy import Int32\n"
+               "def call_mag(p: Point) -> Int32:\n    return p.mag()\n")
+        thir, _ = _lower_ctx_witnessed(src, extra_lib_dirs=[tmp_path])
+        assert _fn(thir, "call_mag") is not None
+
+    def test_generic_record_still_excluded(self, tmp_path):
+        # A generic record's C++ spelling recurses type args -> not the slice.
+        thir = _lower_ctx(
+            "from tpy import Int32\n"
+            "class Wrap[T]:\n    n: Int32\n"
+            "    def __init__(self, n: Int32):\n        self.n = n\n"
+            "def read(w: Wrap[Int32]) -> Int32:\n    return w.n\n")
+        assert _fn(thir, "read") is None

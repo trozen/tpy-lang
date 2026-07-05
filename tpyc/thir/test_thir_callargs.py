@@ -1177,8 +1177,11 @@ class TestCtorShapeGateRejects:
         assert _fn(thir, "use") is None
 
     def test_native_record_ctor_stays_ast(self):
-        # A @native record ctor renders the native C++ name, not the raw
-        # source name (also pre-rejected at the slot by `_f1_record`).
+        # A @native record CTOR-RVALUE arg (`NR(5)`) stays AST: the native
+        # ctor's construction/temp semantics aren't in the ctor-rvalue arg
+        # slice. The NR slot type itself IS now in-slice (`_f1_record` admits
+        # native records), so a NAME arg `take_nr(r)` routes -- only the ctor
+        # rvalue keeps `use` on the AST path.
         thir = _lower_ctx(
             "from tpy.extern import native\n"
             "from tpy import Int32\n"

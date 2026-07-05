@@ -58,7 +58,10 @@ cell it touches is admitted:
   incr 30, record-element incr 31, tuple-unpack + dict-view incr 69) / expression
   statements (print + bare free-function
   call, incr 32) / container method-calls (list/dict scalar slice, stmt + value
-  position, incr 33) / container-literal locals (list/Array/dict/set scalar
+  position, incr 33; one-level value-F1-record FIELD receivers
+  `self.field.method()`, incr 98 -- container/Optional/non-F1/chain/subscript/
+  call receivers deferred, the bulk `recv.field_nonf1` blocked on the
+  non-F1-record frontiers) / container-literal locals (list/Array/dict/set scalar
   elements, incr 34) / logical and-or-not + inline chained compares (bool slice,
   incr 36) / break-continue (else-free loops, incr 66) / del (trivial del-var +
   list/dict del-item, incr 67) / global (scalar globals, incr 68) / sync `with`
@@ -99,7 +102,7 @@ deletion is the concrete milestone that forces its tail closed.
 
 | AST component to delete | Deletion gate (cells that must route) | Status |
 |---|---|---|
-| **Ctor MIL emit** -- `records.py` `_extract_field_inits` / `_extract_base_inits` / `_get_non_init_stmts` + the inline ` : f(v)... {}` write | every ctor MIL field cell + body: scalar (M3a), record/Optional copy+move (M3b), ctor-call / param-field-read sources + own-optional params (M3b-rvalue), docstring/`pass` trivia body (M3c-trivia), non-init body + demotion (M3c-demotion), inheritance -- single + multi base + inherited-field writes (M3d), and str/list/dict/tuple/union/bytes fields (F3+) + cross-module/native/generic records | **PARTIAL** -- the whole scalar/record/Optional + body + inheritance surface lands (ctor self-contained tail complete); deferred cells are cross-axis-blocked -- non-record demoted-field-writes + non-record fields (F3+) + native/generic records |
+| **Ctor MIL emit** -- `records.py` `_extract_field_inits` / `_extract_base_inits` / `_get_non_init_stmts` + the inline ` : f(v)... {}` write | every ctor MIL field cell + body: scalar (M3a), record/Optional copy+move (M3b), ctor-call / param-field-read sources + own-optional params (M3b-rvalue), docstring/`pass` trivia body (M3c-trivia), non-init body + demotion (M3c-demotion), inheritance -- single + multi base + inherited-field writes (M3d), and str/list/dict/tuple/union/bytes fields (F3+) + cross-module/native/generic records | **PARTIAL** -- the whole scalar/record/Optional + body + inheritance surface lands (ctor self-contained tail complete); **native + cross-module record field/base MIL now routes (non-F1-record stages 1+2: `ctor.non_f1_record` 187938 -> ~70k, native-dominated; cross-module +463)**; deferred cells are cross-axis-blocked -- non-record demoted-field-writes + non-record fields (F3+) + GENERIC records (F5) |
 | **Body statement + expression emit** -- `statements.py` `gen_body` per-statement path + `expressions.py` `gen_expr`, for routed callables | every statement shape + expression form across every callable kind | **PARTIAL** -- straight-line shapes over the F1/F2 + scalar (fixed-int/bool/both-float-widths/BigInt incl. the runtime-BigInt `.to_fixed_check` narrows, incr 73-76; enums of every flavor incl. truthiness/`.value`/`.name`, incr 77) + str (F6 S1-S5 + cross-type coercions) + bytes (F6 S6 values + the incr-46 tail: subscript/slices/iteration/concat/aug-assign) slice, incl. logical/chained-compare exprs and scalar/slice-object type-constructor calls |
 | **Form / conversion machinery** -- `context.py` `convert` + `CppForm`/`FormValue`, the ~12 detection predicates + ~22 local side-sets + the `RefType` wrapper (see `THIR_FORM_INVENTORY.md`) | **F-final**: the `Form` tag + `THIRFormConvert` subsume all form dispatch | **PARTIAL** -- F1/F2 forms carried + F3 tuple read/write + the F6 str+bytes view->owned converts (S1/S6 -- both `view_to_owned_conv` family arms validated; reused at container-element slots by S5; extended to the cross-type str-family coercions in incr 42, the materializing arms lowering to the same THIRFormConvert) + the F4 union arms (U1 value + U2 pointer-variant, incr 49-50: `to_[const_]ptr_variant` / `to_value_variant<...>` carried, plus the structural form validator as the second gate) + the U3 narrowing extractions (incr 51: `THIRIsinstance` / `THIRNarrowAlias`, the `narrowed_vars` rename mirrored as lowering scope) + the U2 write-arm tail (incr 52: monostate write arms + union field-to-field copies) + the U4 narrowing tail (incr 53-54: `THIRAssert` persistent extractions + re-assert bump, while-isinstance loop-entry aliases, compound-`and` `THIRNarrowedRead` inline reads); + the call-arg lifts and temps (incr 56-65: `THIRUnionArgLift` ptr-variant member/None arg lifts incl. the deep-const slot spelling + `ptr_variant_to_const`, `THIRCtorCall`, `THIRArgTemp` value-union/record-rvalue/Own-slot/optional-ptr arg temps with the `move`/`addr_of` wraps, `THIRMove` last-use moves, `THIROptionalPtrArg` nullptr/&(name)/optional_to_ptr faces, record-arg/method-receiver/self-receiver pass-throughs); F4 remainder (readonly narrowing subjects), F5, the remaining F6 tail, and RefType removal pending |
 
@@ -131,7 +134,22 @@ deferred (self-contained) / blocked-on-`<rung>`.
   statements outside the statement-shape slice (match / with / try / for-container /
   method calls / ...; print + bare free-function calls now route, incr 32), and
   `str`/`list`/`dict`/`tuple`/`union` MIL fields (F3+) +
-  cross-module / native / generic records (their frontiers).
+  GENERIC records (F5 rung). **NATIVE + CROSS-MODULE records DONE
+  (non-F1-record stages 1+2)** -- `_f1_record` now admits any non-generic
+  concrete user record: native records need only the native_field-rename stamp
+  in THIR field access (`_field_cpp`; type via native_cpp_names, methods via
+  fi.native_name already agreed), cross-module records qualify via
+  native_cpp_names exactly as the resolver does (no stamp). +124012 (stage 1,
+  ctor-dominated) + 463 (stage 2) = 44745 -> 169220 bodies. Only generics
+  remain on the record axis. COVERAGE CAVEAT (/tpy-ready second-opinion):
+  `_f1_record` gates ~56 sites but the win is ctor-dominated, so some non-ctor
+  consumers (tuple element, union member, optional-ptr borrow) may be
+  zero-witness for the newly-admitted native/cross-module classes -- the
+  byte-diff proves identity only for witnessed flows. The high-risk shapes
+  (Optional/Own/native-in-union) were probe-verified byte-identical during
+  /tpy-review, and the byte-diff self-catches any divergence when a corpus case
+  reaches such a site; a systematic per-site witness pass over the new classes
+  is a cheap open followup.
 - Static / property / dunder-operator methods: **DONE** (increment 48) -- all
   method kinds funnel their bodies through `gen_body`, so the differences are
   signature-only (the `static` prefix, the setter's `set_` rename, the getter's
