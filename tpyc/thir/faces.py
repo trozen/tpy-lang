@@ -51,6 +51,10 @@ THIR_FACES: frozenset[str] = frozenset({
     # Self receiver / ctor-call renders (lowering).
     "self.this",                    # `self` name read -> `this`
     "call.self_method",             # `self.helper()` -> `this->helper()`
+    "call.imported",                # cross-module callee -> pre-rendered
+                                    # `::tpyapp::mod::f` (callee_cpp)
+    "call.native_free",             # C++ @native free callee -> `::native(args)`
+    "call.template_free",           # positional-only @cpp_template free callee
     "ctor.call",                    # THIRCtorCall bare ctor expansion
     "ctor.str_arg",                 # str-slice arg into a str-family ctor slot
     "with.str_target",              # str/StrView __enter__ as-target
@@ -64,6 +68,10 @@ THIR_FACES: frozenset[str] = frozenset({
     # the `::tpy::BigInt` cpp_elem + literal-bound retype, shared with the
     # fixed-int emit).
     "range.bigint_counter",
+    # Bool-field truthiness condition (gate admission; `if self.closed:` --
+    # a bool value's truthiness render IS its value render, so the admitted
+    # field-read emit carries the condition unchanged).
+    "cond.bool_field",
     # Enum value-binding renders (lowering).
     "enum.truthy_plain",            # plain-enum truthiness -> literal `true`
     "enum.truthy_int",              # IntEnum truthiness `(static_cast<U>(x) != 0)`
@@ -110,6 +118,10 @@ THIR_FACES: frozenset[str] = frozenset({
     "comp.reserve",                 # sized begin/end list reserve line
     "comp.filter",                  # &&-joined `if (conds)` wrapper
     "comp.unpack",                  # inline __tup_N tuple-unpack binding
+    "comp.range3",                  # 3-arg range: begin/end over the Range object
+    "comp.field_iter",              # field-access iterable (recv.items)
+    "comp.print_arg",               # comprehension print arg (container printer wrap)
+    "comp.array_range",             # Array demotion: array_from_index range lambda
     # THIRMatch M1 -- the unguarded scalar switch tiers (lowering).
     "match.switch_enum",            # switch over enum-member case labels
     "match.switch_primitive",       # switch over int-literal case labels

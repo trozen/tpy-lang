@@ -82,8 +82,14 @@ from ...type_def_registry import (
 from ...codegen_cpp.types import resolve_pending_container
 from ...codegen_cpp.forms import LocalBinding, classify_local_binding
 from ...value_category import is_rvalue_source
-from ...codegen_cpp.context import enum_cpp_name, escape_cpp_name
+from ...codegen_cpp.context import (
+    enum_cpp_name,
+    escape_cpp_name,
+    imported_free_callee_cpp,
+)
+from ... import qnames
 from ..faces import witness as _witness
+from ..fallback import expr_kind_tag, note_detail
 from ...codegen_cpp.expressions import ExpressionGenerator
 from ..nodes import (
     Form,
@@ -182,6 +188,7 @@ from .predicates import (
     _plain_method_fi_ok,
     _plain_own_slot,
     _plain_scalar_slot,
+    _positional_only_template,
     _record_rvalue_temp_slot,
     _resolve_pending_view,
     _resolved_bytes_value,
@@ -1080,47 +1087,110 @@ def _is_len_call(e: TpyExpr, locals_: dict[str, TpyType], analyzer) -> bool:
             or _resolved_bytes_value(t, analyzer) is not None  # span/vector overloads
             or is_string_type(t))  # a String local: same std::string overload
 
-def _plain_free_callee_ok(e: TpyCall, analyzer) -> bool:
-    """A bare-name call to a SAME-MODULE plain user free function -- the only
-    callee shape that emits as the raw `name(args)`. The callee-shape head
-    shared by `_call_eligible` and `_is_record_rvalue_source`'s by-value
-    record-returning call face. Every special form (constructor, generic,
-    cast, isinstance, macro, **kwargs, expression callee) or imported/builtin
-    callee takes a different emit path the slice does not reproduce."""
+_SPECIAL_BUILTIN_QNAMES = frozenset({qnames.COPY, qnames.COPY_ITER,
+                                     qnames.OWN_ITER, qnames.TRY_PARSE})
+
+
+def _free_callee_kind(e: TpyCall, analyzer) -> 'tuple[str, str] | None':
+    """Classify a bare-name free callee into its emit kind + pre-rendered
+    payload -- the ONE routing fact shared by the gate and lowering:
+    `("plain", "")` the raw same-module `name(args)`; `("imported", cpp)`
+    the cross-module qualified spelling (`imported_free_callee_cpp`, the
+    decision shared with the AST emit -- lowering stamps
+    `THIRCall.callee_cpp`); `("native", native_name)` gen_call_from_fi's
+    `::native(args)` arm (C++ @native imports only -- extern-C spells the
+    raw unqualified symbol, a different arm); `("template", tmpl)` the
+    positional-only @cpp_template expansion (gen_call_from_fi's template
+    arm with no substitution context). None = an emit shape the slice does
+    not reproduce. Shared by `_call_eligible` and (through the plain/
+    imported wrapper `_plain_free_callee_ok`) `_is_record_rvalue_source`'s
+    by-value record-returning call face."""
     if not isinstance(e.func, TpyName):
-        return False
+        note_detail("call.expr_callee")
+        return None
     if e.kwargs or e.double_star_unpack is not None:
-        return False
+        note_detail("call.kwargs")
+        return None
     if (e.call_type is not None or e.type_args or e.inferred_type_args
             or e.enum_from_value is not None or e.cast_target_type is not None
             or e.isinstance_var is not None or e.dunder_call is not None
             or e.macro_expansion is not None or e.compile_time_assert
             or e.subscript_callee is not None):
-        return False
-    if e.func_name in analyzer.imported_names:  # cross-module/builtin -> qualified
-        return False
+        note_detail("call.special_form")
+        return None
     fi = e.resolved_function_info
-    if fi is None or fi.cpp_template or fi.native_function or fi.native_name:
-        return False
-    # Only a DEFAULT-linkage function emits as a bare `name(args)`. @native /
-    # @native_c / @export(binding="C") get special name qualification the bare
-    # THIRCall emit doesn't reproduce (is_native_import renders `::name`; the
-    # extern-C forms use the raw symbol). Gate on the enum so a future linkage is
-    # rejected by default rather than silently mis-emitted.
-    if fi.linkage != FunctionLinkage.DEFAULT:
-        return False
+    if fi is None:
+        note_detail("call.unresolved")
+        return None
+    # Bespoke AST arms that fire BEFORE the fi dispatch: the four
+    # @builtin_function specials (_maybe_gen_special_builtin_call, keyed on
+    # qualified_name), the print stream chain (keyed on func_name), and the
+    # ord single-char-literal constant fold.
+    if fi.qualified_name in _SPECIAL_BUILTIN_QNAMES or e.func_name == "print":
+        note_detail("call.builtin_special")
+        return None
+    if e.func_name == "ord" and len(e.args) == 1:
+        a0 = _peel_coerce(e.args[0])
+        if isinstance(a0, TpyStrLiteral) and len(a0.value) == 1:
+            note_detail("call.builtin_special")
+            return None
     # A literal-specialized overload emits a mangled name (`f__lit_N`) the
-    # bare-name call does not reproduce. The error_return guard is defense in
-    # depth: sema already forces an @error_return call into a try/except or a
-    # propagating (@error_return) caller, both of which are ineligible anyway.
+    # pre-rendered spellings do not reproduce. The error_return guard is
+    # defense in depth: sema already forces an @error_return call into a
+    # try/except or a propagating caller, both ineligible anyway.
     if fi.error_return_type is not None:
-        return False
+        note_detail("call.error_return")
+        return None
     if any(isinstance(p.type, LiteralType) for p in fi.params):
-        return False
+        note_detail("call.literal_overload")
+        return None
     if (fi.type_params or fi.is_method or fi.is_staticmethod or fi.is_async
             or fi.is_generator or fi.is_property_getter or fi.is_property_setter):
-        return False
-    return True
+        note_detail("call.callee_kind")
+        return None
+    if fi.cpp_template:
+        # Only a fully-substituted positional-only template expands with no
+        # receiver/substitution context (the scalar-ctor cell's rule).
+        if _positional_only_template(fi.cpp_template, len(e.args)):
+            return ("template", fi.cpp_template)
+        note_detail("call.template_shape")
+        return None
+    if fi.native_function or fi.native_name:
+        # C++ @native imports spell `::native_name` -- gen_call_from_fi's
+        # two native arms coincide for a receiver-less call, so only the
+        # symbol matters. extern-C / @native_c (raw unqualified symbol), a
+        # native_function with no native_name (the bare `fi.name` tail),
+        # and a declared cpp_return_type (the AST wraps the call in the
+        # narrowing static_cast) stay AST.
+        if (fi.native_name and fi.linkage == FunctionLinkage.NATIVE
+                and fi.native_cpp_return_type is None):
+            return ("native", fi.native_name)
+        note_detail("call.native_shape")
+        return None
+    # Only a DEFAULT-linkage function emits as a bare/qualified `name(args)`.
+    # @export(binding="C") uses the raw symbol -- rejected by default so a
+    # future linkage is rejected rather than silently mis-emitted.
+    if fi.linkage != FunctionLinkage.DEFAULT:
+        note_detail("call.linkage")
+        return None
+    icc = imported_free_callee_cpp(analyzer.ctx.module_attributes, e.func_name)
+    if icc is not None:
+        return ("imported", icc)
+    if e.func_name in analyzer.imported_names:
+        # An implicitly-imported builtin-module callee: the AST's
+        # conditional-qualification arm (inert today, forward-looking for
+        # pure-TPy builtins) -> AST path.
+        note_detail("call.imported_symbol")
+        return None
+    return ("plain", "")
+
+
+def _plain_free_callee_ok(e: TpyCall, analyzer) -> bool:
+    """The plain/imported subset of `_free_callee_kind` -- the callee-shape
+    head of `_is_record_rvalue_source`'s by-value record-returning call
+    face (native/template record returns stay AST there)."""
+    kind = _free_callee_kind(e, analyzer)
+    return kind is not None and kind[0] in ("plain", "imported")
 
 def _call_eligible(e: TpyCall, locals_: dict[str, TpyType], analyzer,
                    *, stmt_position: bool = False,
@@ -1129,13 +1199,14 @@ def _call_eligible(e: TpyCall, locals_: dict[str, TpyType], analyzer,
                    narrowed: 'set[str] | frozenset[str]' = frozenset()) -> bool:
     if _is_len_call(e, locals_, analyzer):
         return True
-    if not _plain_free_callee_ok(e, analyzer):
+    kind = _free_callee_kind(e, analyzer)
+    if kind is None:
         return False
     fi = e.resolved_function_info
     # Exact positional arity -- no omitted defaults, no varargs (the AST would
     # synthesize the missing/packed args, which the slice does not).
     if len(e.args) != len(fi.params):
-        return False
+        return note_detail("call.arity_defaults")
     # In value position the result must be an eligible scalar, Char, or a
     # str-slice value (owned str returns by value, StrView by view -- both emit
     # the bare call); as a bare statement the result is discarded, so a `void`
@@ -1150,7 +1221,7 @@ def _call_eligible(e: TpyCall, locals_: dict[str, TpyType], analyzer,
             or _resolved_bytes_value(ret, analyzer) is not None
             or (stmt_position and is_void_like_type(ret))
             or (container_ret_ok and _nonvalue_container_ret(ret))):
-        return False
+        return note_detail("call.ret_type")
     # A str-LITERAL arg to a multi-overload callee is pinned to its param's view
     # form (`std::string_view("...")`, _wants_str_literal_pin) -- the bare-literal
     # emit does not reproduce that, so the shape stays on the AST path. The AST
@@ -1159,7 +1230,7 @@ def _call_eligible(e: TpyCall, locals_: dict[str, TpyType], analyzer,
     if any(isinstance(_peel_coerce(a), TpyStrLiteral) for a in e.args):
         fis = analyzer.registry.get_function(e.func_name)
         if fis is not None and len(fis) > 1:
-            return False
+            return note_detail("call.strlit_overload_pin")
     # Every argument is an eligible SCALAR (a value type: copied, never moved,
     # so the bare call is byte-identical), a bare numeric literal resolved
     # against its param slot (a float literal into a double slot renders
@@ -1201,35 +1272,59 @@ def _call_eligible(e: TpyCall, locals_: dict[str, TpyType], analyzer,
     # slot temps a bare name on the AST path, so slot-blind admission would
     # silently render it bare; the rvalue shapes that DO render bare ride
     # the explicit `_own_scalar_rvalue_arg` row.
-    return all((_eligible_scalar(analyzer.get_expr_type(a))
-                and not _member_valued_union_slot(a, p.type, analyzer)
-                and not _own_cascade_fires(p.type)
-                and _expr_eligible(a, locals_, analyzer))
+    if kind[0] in ("native", "template"):
+        # The builtins arg loop (gen_template_or_native_call) calls
+        # gen_call_arg DIRECTLY -- none of the plain loop's pre-arms
+        # (_gen_optional_ptr_arg / _gen_union_arg / protocol / covariant /
+        # ref-temp) run, and neither dcbp nor the str-literal overload pin
+        # is threaded. Admit only the shared kwarg-independent rows;
+        # optional-ptr, union, readonly-ctor, and the arg-temp rows stay
+        # AST here.
+        return all(_shared_pass_through_arg(a, p.type, locals_, analyzer)
+                   or note_detail("call.native_arg_shape")
+                   for a, p in zip(e.args, fi.params))
+    return all(_shared_pass_through_arg(a, p.type, locals_, analyzer)
                or (temps_ok and _value_union_temp_arg(a, p.type, locals_,
                                                       narrowed, analyzer))
                or (temps_ok and _record_rvalue_temp_arg(a, p.type, locals_,
                                                         analyzer))
                or (temps_ok and _own_lvalue_arg(a, p.type, locals_,
                                                 narrowed, analyzer))
-               or _own_scalar_rvalue_arg(a, p.type, locals_, analyzer)
-               or _own_record_rvalue_arg(a, p.type, locals_, analyzer)
                or _optional_ptr_arg(a, p.type, locals_, analyzer,
                                     temps_ok=temps_ok)
                or _readonly_record_ctor_arg(a, p.type, locals_, analyzer)
-               or _float_literal_pass_through_arg(a, p.type, locals_, analyzer)
-               or _int_literal_bigint_arg(a, p.type, locals_, analyzer)
-               or _str_pass_through_arg(a, p.type, locals_, analyzer)
-               or _bytes_pass_through_arg(a, p.type, locals_, analyzer)
-               or _char_pass_through_arg(a, p.type, locals_, analyzer)
-               or _container_pass_through_arg(a, p.type, locals_, analyzer)
                or _union_pass_through_arg(a, p.type, locals_, analyzer)
                or _union_member_lift_arg(a, p.type, locals_, analyzer)
                or _union_coerced_literal_arg(a, p.type, locals_, analyzer)
                or _own_union_ctor_arg(a, p.type, locals_, analyzer)
-               or _slice_ctor_pass_through_arg(a, p.type, locals_, analyzer)
-               or _enum_pass_through_arg(a, p.type, locals_, analyzer)
-               or _record_pass_through_arg(a, p.type, locals_, analyzer)
+               or note_detail("call.arg_shape")
                for a, p in zip(e.args, fi.params))
+
+def _shared_pass_through_arg(a: TpyExpr, ptype: 'TpyType | None',
+                             locals_: dict[str, TpyType], analyzer) -> bool:
+    """The arg rows whose render lives inside gen_call_arg itself --
+    independent of the plain loop's pre-arms and of the dcbp/pin kwargs
+    the builtins loop does not thread -- shared by the plain AND
+    native/template arg loops. Their slot domains are disjoint from the
+    plain-loop-only rows (arg-temps / optional-ptr / union / readonly-ctor),
+    so hoisting them ahead of those rows never changes admission. A new
+    arg row belongs here iff a native/template callee renders it
+    identically; otherwise it goes in the plain loop only."""
+    return ((_eligible_scalar(analyzer.get_expr_type(a))
+             and not _member_valued_union_slot(a, ptype, analyzer)
+             and not _own_cascade_fires(ptype)
+             and _expr_eligible(a, locals_, analyzer))
+            or _own_scalar_rvalue_arg(a, ptype, locals_, analyzer)
+            or _own_record_rvalue_arg(a, ptype, locals_, analyzer)
+            or _float_literal_pass_through_arg(a, ptype, locals_, analyzer)
+            or _int_literal_bigint_arg(a, ptype, locals_, analyzer)
+            or _str_pass_through_arg(a, ptype, locals_, analyzer)
+            or _bytes_pass_through_arg(a, ptype, locals_, analyzer)
+            or _char_pass_through_arg(a, ptype, locals_, analyzer)
+            or _container_pass_through_arg(a, ptype, locals_, analyzer)
+            or _slice_ctor_pass_through_arg(a, ptype, locals_, analyzer)
+            or _enum_pass_through_arg(a, ptype, locals_, analyzer)
+            or _record_pass_through_arg(a, ptype, locals_, analyzer))
 
 def _slice_ctor_pass_through_arg(a: TpyExpr, ptype: TpyType | None,
                                  locals_: dict[str, TpyType], analyzer) -> bool:
@@ -1820,9 +1915,9 @@ def _method_call_eligible(e: TpyMethodCall, locals_: dict[str, TpyType], analyze
     if e.is_nested_enum_constructor:
         return _nested_enum_from_value_eligible(e, locals_, analyzer)
     if not isinstance(e.obj, TpyName) or e.obj.name not in locals_:
-        return False
+        return note_detail("method.receiver_shape")
     if not _plain_member_call_markers_ok(e):
-        return False
+        return note_detail("method.marker")
     # The Optional runtime-check marker is mirrored only for a pointer-repr
     # Optional borrow receiver (`::tpy::deref_check(p).method(args)`, the
     # THIRMethodCall deref_check face); the storage-form Optional receivers
@@ -1832,10 +1927,10 @@ def _method_call_eligible(e: TpyMethodCall, locals_: dict[str, TpyType], analyze
         return False
     fi = e.resolved_function_info
     if fi is None or not _plain_method_fi_ok(fi):
-        return False
+        return note_detail("method.fi_kind")
     # Exact positional arity -- no omitted defaults, no varargs.
     if len(e.args) != len(fi.params):
-        return False
+        return note_detail("method.arity_defaults")
     # The declared binding type, not get_expr_type: a container-literal local's
     # use sites carry the pre-resolution PendingListType (the AST path unwraps it
     # in TypeResolver.get_resolved_type); the binding type is post-resolution.
@@ -1849,7 +1944,7 @@ def _method_call_eligible(e: TpyMethodCall, locals_: dict[str, TpyType], analyze
     # reproduced (the container family otherwise admits @native / @cpp_template
     # emits, its bread and butter).
     if fi.cpp_template is not None and "{cpp}" in fi.cpp_template:
-        return False
+        return note_detail("method.cpp_ret_substitution")
     # A void method's call carries no resolved expr type (None), unlike a void
     # free-function call (NoneType); both are discard-only, statement position.
     # An owned-str result (`xs.pop()` on list[str] -> `::tpy::pop_back(xs)`)
@@ -1858,7 +1953,7 @@ def _method_call_eligible(e: TpyMethodCall, locals_: dict[str, TpyType], analyze
     if not (_resolved_scalar(ret, analyzer)
             or _resolved_str_value(ret, analyzer) is not None
             or (stmt_position and (ret is None or is_void_like_type(ret)))):
-        return False
+        return note_detail("method.ret_type")
     # A str arg into a non-Own str-family slot passes bare, like a free-call arg
     # (`d.pop(k)` -> `::tpy::dict_pop(d, k)`; builtin-container methods never
     # take the `_wants_str_literal_pin` path -- that pin is the free-call /
@@ -1870,6 +1965,7 @@ def _method_call_eligible(e: TpyMethodCall, locals_: dict[str, TpyType], analyze
                 and _expr_eligible(a, locals_, analyzer))
                or _str_pass_through_arg(a, p.type, locals_, analyzer)
                or _container_pass_through_arg(a, p.type, locals_, analyzer)
+               or note_detail("method.arg_shape")
                for a, p in zip(e.args, fi.params))
 
 def _record_method_call_eligible(e: TpyMethodCall, fi, locals_: dict[str, TpyType],
@@ -1931,21 +2027,23 @@ def _record_method_call_eligible(e: TpyMethodCall, fi, locals_: dict[str, TpyTyp
     if opt_recv is not None:
         recv_t = unwrap_readonly(opt_recv.inner)
     if not (isinstance(recv_t, NominalType) and _f1_record(recv_t, analyzer)):
-        return False
+        # The drill's "which methods block" discriminant: name the receiver
+        # family AND the method, so e.g. str methods rank individually.
+        return note_detail(f"method.{_recv_family(recv_t, analyzer)}.{e.method}")
     if (fi.cpp_template is not None or fi.native_function or fi.native_name
             or fi.type_params or fi.is_staticmethod or not fi.is_method):
-        return False
+        return note_detail("method.fi_kind")
     ri = analyzer.registry.get_record_for_type(recv_t)
     if ri is None:
         return False
     overloads = analyzer.registry.get_method_overloads_with_parents(ri, e.method)
     if len(overloads) != 1:
-        return False
+        return note_detail("method.overload_set")
     ret = analyzer.get_expr_type(e)
     if not (_resolved_scalar(ret, analyzer) or _eligible_char(ret)
             or _resolved_str_value(ret, analyzer) is not None
             or (stmt_position and (ret is None or is_void_like_type(ret)))):
-        return False
+        return note_detail("method.ret_type")
     return all((_plain_scalar_slot(p.type, analyzer)
                 and _resolved_scalar(analyzer.get_expr_type(a), analyzer)
                 and _expr_eligible(a, locals_, analyzer))
@@ -1960,7 +2058,34 @@ def _record_method_call_eligible(e: TpyMethodCall, fi, locals_: dict[str, TpyTyp
                or _method_value_union_arg(a, p.type, locals_, analyzer)
                or (temps_ok and _value_union_temp_arg(a, p.type, locals_,
                                                       narrowed, analyzer))
+               or note_detail("method.arg_shape")
                for i, (a, p) in enumerate(zip(e.args, fi.params)))
+
+def _recv_family(t: 'TpyType | None', analyzer) -> str:
+    """Coarse receiver-family label for the method-call reject detail."""
+    if t is None:
+        return "untyped"
+    if is_str_type(t):
+        return "str"
+    if is_bytes_type(t):
+        return "bytes"
+    if is_list(t):
+        return "list"
+    if is_dict(t):
+        return "dict"
+    if is_set(t):
+        return "set"
+    if is_array(t):
+        return "array"
+    if isinstance(t, OptionalType):
+        return "optional"
+    if isinstance(t, UnionType):
+        return "union"
+    if isinstance(t, TupleType):
+        return "tuple"
+    if isinstance(t, NominalType):
+        return "record"  # non-F1 record (or protocol/native nominal)
+    return type(t).__name__.removesuffix("Type").lower()
 
 def _method_value_union_arg(a: TpyExpr, ptype: TpyType | None,
                             locals_: dict[str, TpyType], analyzer) -> bool:
@@ -2058,32 +2183,34 @@ def _print_arg_form(t: TpyType) -> PrintForm:
         return PrintForm.INT8
     return PrintForm.RAW
 
-def _print_eligible(e: TpyCall, locals_: dict[str, TpyType], analyzer) -> bool:
-    """A `print(<args>)` in the no-kwargs common-arg subset: every arg is a str
-    literal, an eligible scalar (fixed-int / bool / double), a Char (streamed
-    raw -- gen_print's direct-output arm; Char has no int_traits, so no int8
-    cast), or a str-slice value (a str/StrView name or str-returning call --
-    string and string_view stream raw, like the AST's is_any_str_type arm).
-    Any `sep=`/`end=`/`file=`/`flush=` kwarg, `**`-unpack, f-string, or other
-    non-scalar arg falls back to the AST path (gen_print's richer cases)."""
-    if e.kwargs or e.double_star_unpack is not None:
-        return False
-    for a in e.args:
-        if isinstance(a, (TpyStrLiteral, TpyBytesLiteral)):
-            # A bytes literal prints owned (gen_print threads no target).
-            continue
-        at = analyzer.get_expr_type(a)
-        if ((_resolved_scalar(at, analyzer) or _eligible_char(at)
+def _print_arg_ok(a: TpyExpr, locals_: dict[str, TpyType], analyzer) -> bool:
+    """One print arg in the no-kwargs common-arg subset: a str/bytes literal,
+    an eligible scalar (fixed-int / bool / double), a Char (streamed raw --
+    gen_print's direct-output arm; Char has no int_traits, so no int8 cast),
+    or a str-slice value (a str/StrView name or str-returning call -- string
+    and string_view stream raw, like the AST's is_any_str_type arm)."""
+    if isinstance(a, (TpyStrLiteral, TpyBytesLiteral)):
+        # A bytes literal prints owned (gen_print threads no target).
+        return True
+    at = analyzer.get_expr_type(a)
+    return ((_resolved_scalar(at, analyzer) or _eligible_char(at)
              # A tpy-defined enum streams via its emitted operator<< (RAW);
              # an @native enum takes `::tpy::__repr__` (PrintForm.REPR).
              or _eligible_enum(at, analyzer) is not None
              or _resolved_str_value(at, analyzer) is not None
              or _resolved_bytes_value(at, analyzer) is not None  # BytesPrinter
              or _is_string_owned(at))  # a concat result / String local: raw <<
-                and _expr_eligible(a, locals_, analyzer)):
-            continue
+            and _expr_eligible(a, locals_, analyzer))
+
+def _print_eligible(e: TpyCall, locals_: dict[str, TpyType], analyzer) -> bool:
+    """A `print(<args>)` in the no-kwargs common-arg subset (see
+    `_print_arg_ok`). Any `sep=`/`end=`/`file=`/`flush=` kwarg, `**`-unpack,
+    f-string, or other non-scalar arg falls back to the AST path (gen_print's
+    richer cases). The statement gate layers the comprehension-arg arm on top
+    of this (it needs the walk state the expression gates don't carry)."""
+    if e.kwargs or e.double_star_unpack is not None:
         return False
-    return True
+    return all(_print_arg_ok(a, locals_, analyzer) for a in e.args)
 
 # Sentinel for an f-string arg type outside the mirrored wrapper rows.
 _FSTRING_INELIGIBLE = object()
@@ -2143,11 +2270,11 @@ def _fstring_eligible(e: TpyFString, locals_: dict[str, TpyType],
         if isinstance(part, str):
             continue
         if part.conversion != FSTRING_CONV_NONE or part.format_spec is not None:
-            return False
+            return note_detail("fstring.conv_or_spec")
         if not _expr_eligible(part.expr, locals_, analyzer):
             return False
         if _fstring_arg_wrap(part.expr, analyzer) is _FSTRING_INELIGIBLE:
-            return False
+            return note_detail("fstring.arg_wrap")
     return True
 
 def _expr_eligible(e: TpyExpr, locals_: dict[str, TpyType], analyzer) -> bool:
@@ -2157,8 +2284,9 @@ def _expr_eligible(e: TpyExpr, locals_: dict[str, TpyType], analyzer) -> bool:
         # slice does not yet materialize. Reject -> stays on the AST path.
         # A narrowing-divergent union read (declared union, member-typed read)
         # is a pre-existing AST miscompile -> AST path (see the helper).
-        return (e.name in locals_
-                and not _union_binding_divergent(e, locals_, analyzer))
+        if e.name not in locals_:
+            return note_detail("name.global_read")
+        return not _union_binding_divergent(e, locals_, analyzer)
     if isinstance(e, TpyIntLiteral):
         # Only literals that emit as a bare value in any fixed-int slot. Wider
         # values need a `ull` suffix / `static_cast` that the slice's emitter
@@ -2208,12 +2336,14 @@ def _expr_eligible(e: TpyExpr, locals_: dict[str, TpyType], analyzer) -> bool:
         # var-decl branch, not here -- a non-value field read is not a value
         # expression.
         ft = analyzer.get_expr_type(e)
-        return ((_eligible_scalar(ft) or _eligible_char(ft)
-                 or _eligible_enum(ft, analyzer) is not None)
-                and (_field_receiver_ok(e, locals_, analyzer)
-                     or _optional_checked_field(e, locals_, analyzer)
-                     or _field_over_subscript_ok(e, locals_, analyzer)
-                     or _optional_field_over_subscript_ok(e, locals_, analyzer)))
+        if not (_eligible_scalar(ft) or _eligible_char(ft)
+                or _eligible_enum(ft, analyzer) is not None):
+            return note_detail("field.result_type")
+        return (_field_receiver_ok(e, locals_, analyzer)
+                or _optional_checked_field(e, locals_, analyzer)
+                or _field_over_subscript_ok(e, locals_, analyzer)
+                or _optional_field_over_subscript_ok(e, locals_, analyzer)
+                or note_detail("field.receiver_shape"))
     if isinstance(e, TpySubscript):
         # A value-result tuple subscript read `t[N]` (`std::get<N>(t)`) off an
         # eligible tuple receiver; a container subscript read `c[i]`
@@ -2226,14 +2356,15 @@ def _expr_eligible(e: TpyExpr, locals_: dict[str, TpyType], analyzer) -> bool:
                 or _container_subscript_value_read(e, locals_, analyzer)
                 or _str_subscript_char_read(e, locals_, analyzer)
                 or _bytes_subscript_read(e, locals_, analyzer)
-                or _str_slice_read(e, locals_, analyzer))
+                or _str_slice_read(e, locals_, analyzer)
+                or note_detail("subscript.read_shape"))
     if isinstance(e, TpyFString):
         # An owned-str-producing `std::format(...)` / `std::string("...")`
         # expression (STORAGE form) -- composes into the S1 owned-str sinks
         # (decl init, return, print/call arg, compare operand) bare.
         return _fstring_eligible(e, locals_, analyzer)
     if isinstance(e, TpyBinOp):
-        return _binop_eligible(e, locals_, analyzer)
+        return _binop_eligible(e, locals_, analyzer) or note_detail("binop.shape")
     if isinstance(e, TpyUnaryOp):
         # A negated int literal (`-3`) folds to a plain literal on both paths
         # (the AST's _gen_unaryop literal-negation branch); a negated FLOAT
@@ -2270,7 +2401,7 @@ def _expr_eligible(e: TpyExpr, locals_: dict[str, TpyType], analyzer) -> bool:
         # optional-wrap, Char) take emit paths the slice does not mirror.
         return (_coerce_disposition(e) is not None
                 and _expr_eligible(e.expr, locals_, analyzer))
-    return False
+    return note_detail(expr_kind_tag(e))  # unopened expression kind
 
 def _condition_eligible(cond: TpyExpr, declared: dict[str, TpyType], analyzer) -> bool:
     # An `if`/`while` condition: a bare bool local/param (`if flag:`), a scalar
@@ -2298,6 +2429,17 @@ def _condition_eligible(cond: TpyExpr, declared: dict[str, TpyType], analyzer) -
         return (isinstance(rt, OptionalType)
                 and _optional_ptr_borrow_name(cond, declared, analyzer)
                 is not None)
+    if isinstance(cond, TpyFieldAccess):
+        # A bool field read (`if self._needs_comma:`): a bool value's
+        # truthiness render IS its value render (_truthy_for_rendered's
+        # primitive arm), so any admitted field read carries the condition
+        # unchanged. Bool only, mirroring the name arm's scope pin: a
+        # non-bool scalar field's int-truthiness stays on the AST path.
+        rt = analyzer.get_expr_type(cond)
+        if rt is None or not is_bool_type(rt):
+            return note_detail("cond.field_nonbool")
+        return (_expr_eligible(cond, declared, analyzer)
+                and _witness("cond.bool_field"))
     if isinstance(cond, TpyBinOp) and cond.op in (_COMPARE_OPS | _LOGICAL_OPS
                                                   | _IS_OPS):
         return _binop_eligible(cond, declared, analyzer)
@@ -2305,7 +2447,7 @@ def _condition_eligible(cond: TpyExpr, declared: dict[str, TpyType], analyzer) -
         return _unary_not_eligible(cond, declared, analyzer)
     if isinstance(cond, TpyChainedCompare):
         return _chained_compare_eligible(cond, declared, analyzer)
-    return False
+    return note_detail("cond." + expr_kind_tag(cond).removeprefix("expr."))
 
 def _stmt_value_temps_call(e: TpyExpr, ws: _WalkState, analyzer) -> bool:
     """Re-try a DIRECT statement-value call (free or method) with the
@@ -2788,6 +2930,23 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx', *, temp_args: bool = False) -> THIR
         params = (fi.params if fi is not None
                   and len(fi.params) == len(e.args) else None)
         dcbp = fi.deep_const_borrow_params if fi is not None else None
+        # The callee's emit kind: the SAME classification the gate admitted
+        # on (`_free_callee_kind`) -- cross-module spelling on callee_cpp,
+        # a C++ @native symbol on native_name (joining the len hardcode),
+        # a positional-only @cpp_template on cpp_template.
+        callee_cpp = None
+        cpp_template = None
+        if native_name is None:
+            k = _free_callee_kind(e, analyzer)
+            if k is not None and k[0] == "imported":
+                callee_cpp = k[1]
+                _witness("call.imported")
+            elif k is not None and k[0] == "native":
+                native_name = k[1]
+                _witness("call.native_free")
+            elif k is not None and k[0] == "template":
+                cpp_template = k[1]
+                _witness("call.template_free")
         return THIRCall(
             result_type=rtype,
             callee=e.func_name,
@@ -2799,6 +2958,8 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx', *, temp_args: bool = False) -> THIR
                                                  and i in dcbp))
                 for i, a in enumerate(e.args)),
             native_name=native_name,
+            cpp_template=cpp_template,
+            callee_cpp=callee_cpp,
             form=form,
             loc=loc,
         )

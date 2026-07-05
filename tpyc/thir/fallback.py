@@ -23,6 +23,14 @@ failing sub-expression). That is the right resolution for sequencing --
 "what would have to land first" -- and keeps the instrumentation at two
 chokepoints instead of threaded through every predicate.
 
+A second, finer slot refines bare `stmt.*` tags: gate reject arms that
+know the blocking SUB-construct record it via `note_detail` (set-if-empty,
+cleared per statement by the body walk), and the statement chokepoint
+composes `stmt.<shape>:<detail>`. Details recorded during probes that a
+sibling arm later accepts can misattribute -- same coarseness contract as
+the first-reason slot; only the composition at a real statement reject
+makes a detail visible, so successful statements never leak one.
+
 Like faces.py: the registry-side helpers are pure, the mutable state lives
 on the active Compiler, so everything here is a no-op outside a
 compilation (standalone-lowering units still work) and the default
@@ -72,11 +80,31 @@ def note(reason: str) -> bool:
     return False
 
 
+def note_detail(reason: str) -> bool:
+    """Record the blocking sub-construct for the statement currently being
+    gated, if none is recorded yet (first reject wins, like `note`). Returns
+    False so reject arms can `return note_detail("call.linkage")`."""
+    compiler = get_current_compiler()
+    if compiler is not None and compiler._thir_reject_detail is None:
+        compiler._thir_reject_detail = reason
+    return False
+
+
+def begin_stmt() -> None:
+    """Clear the detail slot ahead of one statement's eligibility check, so
+    a detail left by an earlier (accepted) statement cannot leak into a
+    later statement's composed tag."""
+    compiler = get_current_compiler()
+    if compiler is not None:
+        compiler._thir_reject_detail = None
+
+
 def begin_attempt() -> None:
     """Clear the first-reject slot ahead of one body's lowering attempt."""
     compiler = get_current_compiler()
     if compiler is not None:
         compiler._thir_reject_reason = None
+        compiler._thir_reject_detail = None
 
 
 def fold_attempt(component: str) -> None:
@@ -124,3 +152,22 @@ def classify_stmt(stmt: TpyStmt) -> str:
                     return tag
     kind = _CAMEL_SPLIT.sub("_", type(stmt).__name__.removeprefix("Tpy")).lower()
     return f"stmt.{kind}"
+
+
+def expr_kind_tag(e: object) -> str:
+    """`expr.<snake_case_kind>` for an expression node -- the dispatch-tail
+    catch-all detail (an expression kind the gate has no arm for)."""
+    kind = _CAMEL_SPLIT.sub("_", type(e).__name__.removeprefix("Tpy")).lower()
+    return f"expr.{kind}"
+
+
+def stmt_reject_reason(stmt: TpyStmt) -> str:
+    """The composed tag for a statement the eligibility walk rejected:
+    a landmark tag stands alone; a bare `stmt.*` shape picks up the
+    sub-construct detail recorded during this statement's gating, if any."""
+    reason = classify_stmt(stmt)
+    compiler = get_current_compiler()
+    detail = compiler._thir_reject_detail if compiler is not None else None
+    if detail is not None and reason.startswith("stmt."):
+        return f"{reason}:{detail}"
+    return reason

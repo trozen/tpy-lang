@@ -7,6 +7,7 @@ from __future__ import annotations
 import io
 
 from ..codegen_cpp.context import CodeGenOptions
+from ..compilation_context import activate_compiler
 from ..parse.nodes import TpyCall
 from .dump import dump_thir
 from .emit import emit_thir_body
@@ -77,10 +78,16 @@ class TestEligibility:
         assert isinstance(ret.value, THIRBinOp)
         assert isinstance(ret.value.left, THIRCall) and ret.value.left.callee == "g"
 
-    def test_builtin_call_is_ineligible(self):
-        # `abs` is an imported builtin -> qualified/special emit, not bare.
+    def test_builtin_call_routes_via_resolved_symbol(self):
+        # `abs` is an imported builtin: it routes with the resolved
+        # @cpp_template/@native symbol pre-rendered -- never the bare name.
         thir = _lower(_PRELUDE + "def f(a: Int32) -> Int32:\n    return abs(a)\n")
-        assert _fn(thir, "f") is None
+        fn = _fn(thir, "f")
+        assert fn is not None
+        call = fn.body[0].value
+        assert isinstance(call, THIRCall)
+        assert (call.cpp_template is not None or call.native_name is not None
+                or call.callee_cpp is not None)
 
     def test_scalar_aug_assign_routes(self):
         # TpyAugAssign on a scalar local -- formerly ineligible, now admitted.
@@ -1648,3 +1655,246 @@ class TestTriviaBodies:
     def test_trivia_face_witnessed(self):
         _, witnessed = _lower_ctx_witnessed(self.SRC)
         assert witnessed.get("stmt.trivia", 0) >= 4
+
+
+class TestBoolFieldCondition:
+    """Bool-field truthiness conditions (`if self.open:` / `while g.open:`):
+    a bool value's truthiness render is its value render, so the admitted
+    field-read emit carries the condition unchanged. Mirrors the name arm's
+    bool-only scope pin (int-truthiness fields stay AST)."""
+
+    SRC = (
+        "from tpy import Int32\n"
+        "class Gate:\n"
+        "    open: bool\n"
+        "    count: Int32\n"
+        "    def __init__(self):\n"
+        "        self.open = True\n"
+        "        self.count = 3\n"
+        "    def tick(self) -> Int32:\n"
+        "        if self.open:\n"
+        "            self.count += 1\n"
+        "        return self.count\n"
+        "    def drain(self) -> Int32:\n"
+        "        total = 0\n"
+        "        while self.open:\n"
+        "            total += 1\n"
+        "            self.open = False\n"
+        "        return total\n"
+        "def main():\n"
+        "    g = Gate()\n"
+        "    t = g.tick()\n"
+        "    print(t)\n"
+        "    print(g.drain())\n"
+        "main()\n"
+    )
+
+    def test_routes_and_face_witnessed(self):
+        thir, witnessed = _lower_ctx_witnessed(self.SRC)
+        names = {f.name for f in thir.functions}
+        assert {"tick", "drain"} <= names
+        assert witnessed.get("cond.bool_field", 0) >= 2
+
+    def test_byte_identical(self):
+        compiler, modules = _compile(self.SRC)
+        entry = _entry(modules)
+        ast_out = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False))
+        thir_out = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=True))
+        assert thir_out == ast_out
+
+    def test_nonbool_field_condition_stays_ast(self):
+        src = (
+            "from tpy import Int32\n"
+            "class Tally:\n"
+            "    n: Int32\n"
+            "    def __init__(self):\n"
+            "        self.n = 2\n"
+            "    def spin(self) -> Int32:\n"
+            "        if self.n:\n"
+            "            return 1\n"
+            "        return 0\n"
+            "def main():\n"
+            "    print(Tally().spin())\n"
+            "main()\n"
+        )
+        thir, witnessed = _lower_ctx_witnessed(src)
+        assert _fn(thir, "spin") is None
+        assert witnessed.get("cond.bool_field", 0) == 0
+
+
+class TestImportedCallee:
+    """Cross-module free-function calls (`from helper import f; f(x)`):
+    the gate admits attribute-table-imported plain callees and lowering
+    stamps THIRCall.callee_cpp with the pre-rendered absolute spelling --
+    imported_free_callee_cpp, the ONE qualification decision shared with
+    the AST emit. Natives / extern-C / implicit builtins stay AST."""
+
+    HELPER = (
+        "from tpy import Int32\n"
+        "def triple(n: Int32) -> Int32:\n"
+        "    return n * 3\n"
+        "def shout(n: Int32) -> None:\n"
+        "    print(n)\n"
+    )
+    SRC = (
+        "from tpy import Int32\n"
+        "from helper import triple, shout\n"
+        "def use(n: Int32) -> Int32:\n"
+        "    m = triple(n)\n"
+        "    shout(m)\n"
+        "    return triple(m)\n"
+        "def main():\n"
+        "    print(use(2))\n"
+        "main()\n"
+    )
+
+    def _compiled(self, tmp_path):
+        (tmp_path / "helper.py").write_text(self.HELPER)
+        return _compile(self.SRC, extra_lib_dirs=[tmp_path])
+
+    def test_routes_with_prerendered_spelling(self, tmp_path):
+        compiler, modules = self._compiled(tmp_path)
+        entry = _entry(modules)
+        with activate_compiler(compiler):
+            thir = lower_module(entry.ast, entry.analyzer)
+            witnessed = dict(compiler._thir_face_witnesses)
+        fn = _fn(thir, "use")
+        assert fn is not None
+        decl = fn.body[0]
+        assert isinstance(decl.init, THIRCall)
+        assert decl.init.callee_cpp == "::tpyapp::helper::triple"
+        assert witnessed.get("call.imported", 0) >= 3
+
+    def test_byte_identical(self, tmp_path):
+        compiler, modules = self._compiled(tmp_path)
+        entry = _entry(modules)
+        ast_out = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False))
+        thir_out = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=True))
+        assert thir_out == ast_out
+        assert "::tpyapp::helper::triple(" in thir_out[1]
+
+    def test_same_module_call_stays_bare(self):
+        thir = _lower(_PRELUDE
+                      + "def one() -> Int32:\n    return 1\n"
+                      + "def two() -> Int32:\n    return one() + 1\n")
+        fn = _fn(thir, "two")
+        assert fn is not None
+        call = fn.body[0].value.left
+        assert isinstance(call, THIRCall)
+        assert call.callee_cpp is None
+
+    NATIVE_SRC = (
+        "from tpy import Float64\n"
+        "from math import sqrt\n"
+        "def f(x: Float64) -> Float64:\n"
+        "    return sqrt(x)\n"
+        "def main():\n"
+        "    print(f(4.0))\n"
+        "main()\n"
+    )
+
+    def test_native_free_callee_routes(self):
+        # A C++ @native stdlib free function (`math.sqrt`): the resolved
+        # symbol rides THIRCall.native_name -- the gen_call_from_fi arm the
+        # len hardcode uses. Exact-arm assertions: a classification flip to
+        # template/imported must fail here, not slide through an OR.
+        thir, witnessed = _lower_ctx_witnessed(self.NATIVE_SRC)
+        fn = _fn(thir, "f")
+        assert fn is not None
+        call = fn.body[0].value
+        assert isinstance(call, THIRCall)
+        assert call.native_name == "std::sqrt"
+        assert call.cpp_template is None and call.callee_cpp is None
+        assert witnessed.get("call.native_free", 0) >= 1
+        assert witnessed.get("call.template_free", 0) == 0
+
+    def test_native_free_byte_identical(self):
+        compiler, modules = _compile(self.NATIVE_SRC)
+        entry = _entry(modules)
+        ast_out = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False))
+        thir_out = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=True))
+        assert thir_out == ast_out
+        assert "::std::sqrt(" in thir_out[1]
+
+    TEMPLATE_SRC = (
+        "from tpy import Char, Int32\n"
+        "def f(c: Char) -> Int32:\n"
+        "    return ord(c)\n"
+        "def main():\n"
+        "    print(f('A'))\n"
+        "main()\n"
+    )
+
+    def test_template_free_callee_routes(self):
+        # A positional-only @cpp_template free function (`ord(c)` on a
+        # runtime Char -- the single-char-LITERAL constant fold is the
+        # rejected shape): the substituted template rides
+        # THIRCall.cpp_template, the scalar-ctor expansion arm.
+        thir, witnessed = _lower_ctx_witnessed(self.TEMPLATE_SRC)
+        fn = _fn(thir, "f")
+        assert fn is not None
+        call = fn.body[0].value
+        assert isinstance(call, THIRCall)
+        assert call.cpp_template is not None and "{0}" in call.cpp_template
+        assert call.native_name is None and call.callee_cpp is None
+        assert witnessed.get("call.template_free", 0) >= 1
+
+    def test_template_free_byte_identical(self):
+        compiler, modules = _compile(self.TEMPLATE_SRC)
+        entry = _entry(modules)
+        ast_out = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False))
+        thir_out = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=True))
+        assert thir_out == ast_out
+
+    def test_imported_literal_overload_stays_ast(self, tmp_path):
+        # A cross-module call resolving to a literal-specialized overload:
+        # the mangled-name reject (`call.literal_overload`) must fire BEFORE
+        # the imported arm -- routing it through the plain qualified
+        # spelling would drop the `__lit_N` mangling. AST keeps the shape;
+        # both paths stay byte-identical.
+        (tmp_path / "helper.py").write_text(
+            "from typing import Literal, overload\n"
+            "from tpy import Int32\n"
+            "@overload\n"
+            "def get_field(name: Literal[\"age\"]) -> Int32: ...\n"
+            "@overload\n"
+            "def get_field(name: Literal[\"name\"]) -> str: ...\n"
+            "@overload\n"
+            "def get_field(name: str) -> Int32 | str: ...\n"
+            "def get_field(name: str) -> Int32 | str:\n"
+            "    if name == \"age\":\n"
+            "        return 42\n"
+            "    return \"hello\"\n"
+        )
+        src = (
+            "from tpy import Int32\n"
+            "from helper import get_field\n"
+            "def use() -> Int32:\n"
+            "    return get_field(\"age\")\n"
+            "def main():\n"
+            "    print(use())\n"
+            "main()\n"
+        )
+        compiler, modules = _compile(src, extra_lib_dirs=[tmp_path])
+        entry = _entry(modules)
+        with activate_compiler(compiler):
+            thir = lower_module(entry.ast, entry.analyzer)
+        assert _fn(thir, "use") is None
+        ast_out = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False))
+        thir_out = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=True))
+        assert thir_out == ast_out

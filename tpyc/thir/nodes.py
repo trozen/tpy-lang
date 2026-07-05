@@ -229,10 +229,16 @@ class THIRUnaryNot(THIRExpr):
 
 @dataclass(frozen=True)
 class THIRCall(THIRExpr):
-    """Call to a same-module plain free function. `callee` is the source name;
-    the emitter renders `escape_cpp_name(callee)(args)`. Eligibility guarantees
-    bare-name emission -- no cross-module qualification, no generic/overload
-    name mangling.
+    """Call to a plain free function. `callee` is the source name; the
+    emitter renders `escape_cpp_name(callee)(args)` for the same-module
+    case. Eligibility guarantees no generic/overload name mangling.
+
+    `callee_cpp` (when set) is a cross-module callee's PRE-RENDERED
+    absolute spelling (`::tpyapp::mod::f` -- `imported_free_callee_cpp`,
+    the qualification decision shared with the AST emit): the emitter
+    renders it verbatim over the args. Mutually exclusive with
+    `native_name`/`cpp_template`; `callee` stays the source name for the
+    dump.
 
     `native_name` (when set) is a runtime-helper C++ symbol -- an fi-resolved
     `@native` free-function builtin (e.g. `tpy::__len__` for `len(c)`) or a
@@ -254,6 +260,7 @@ class THIRCall(THIRExpr):
     args: tuple[THIRExpr, ...]
     native_name: str | None = None
     cpp_template: str | None = None
+    callee_cpp: str | None = None
 
 
 @dataclass(frozen=True)
@@ -448,7 +455,10 @@ class THIRComprehension(THIRExpr):
     emitter draws one loop index PER bound, unlike the statement range-for's
     single draw) and `begin_end` (`__obj_N` capture with the lvalue verdict,
     `__beg_N`/`__end_N`, the shared `loop_var_binding` or the inline
-    tuple-unpack `__tup_N` lines). A list result reserves (`sized_reserve`
+    tuple-unpack `__tup_N` lines). A 3-arg range iterates begin/end over
+    the Range OBJECT (`iterable` is the substituted `::tpy::Range<T>(...)`
+    template call, an rvalue capture -- _gen_comp_range_loop's fallback).
+    A list result reserves (`sized_reserve`
     for begin/end over sized iterables; the range arms' `> 0` / BigInt
     `to_size_checked` guards); set/dict skip (the AST's `skip_reserve`).
     Inserts: `push_back(elem)` / `insert(elem)` / `insert_or_assign(k, v)`;
@@ -456,7 +466,7 @@ class THIRComprehension(THIRExpr):
     owned-move elements (`owns_elements` -- the `__dk_N` key-sequencing and
     move-sink arms), Array demotion (`array_from_index`), genexpr,
     temp-producing elements/filters (plain `_expr_eligible` admits none),
-    narrowed-Optional iterables, 3-arg range. The multi-line render reads
+    narrowed-Optional iterables. The multi-line render reads
     the enclosing statement indent off `_EmitState.stmt_indent_level`."""
     kind: str = ""                        # "list" | "set" | "dict"
     container_cpp: str = ""               # spelled result container type
@@ -470,6 +480,12 @@ class THIRComprehension(THIRExpr):
     range_stop: 'THIRExpr | None' = None
     range_start_literal: bool = False     # bare TpyIntLiteral bounds inline
     range_stop_literal: bool = False
+    # The array_from_index range arm (loop="array_range"): per-index lambda,
+    # `E var = start + E(__i_N) * (step); return elem;` -- the Array-demoted
+    # comprehension (the stop bound is encoded in N, never rendered).
+    array_elem_cpp: str = ""              # the array element spelling
+    array_size_cpp: str = ""              # the N template arg spelling
+    range_step: 'THIRExpr | None' = None  # 3-arg range step (untargeted render)
     iterable: 'THIRExpr | None' = None    # begin_end only
     iterable_lvalue: bool = True
     sized_reserve: bool = False           # list over a sized begin_end iterable
@@ -1245,6 +1261,9 @@ class PrintForm(Enum):
       * `BYTES`   -- `::tpy::BytesPrinter(...)` (Python-style `b'...'` repr).
       * `REPR`    -- `::tpy::__repr__(...)` (an @native enum: no operator<< is
         emitted for it, so gen_print routes through the EnumUtil-backed repr).
+      * `LIST`/`SET`/`DICT` -- the container-printer wraps (gen_print's
+        container arms); currently only comprehension args take these (the
+        C3 print-arg row).
     """
     RAW = auto()
     INT8 = auto()
@@ -1253,6 +1272,9 @@ class PrintForm(Enum):
     FLOAT32 = auto()
     BYTES = auto()
     REPR = auto()
+    LIST = auto()
+    SET = auto()
+    DICT = auto()
 
 
 @dataclass(frozen=True)

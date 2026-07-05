@@ -1126,6 +1126,7 @@ class Compiler:
         # harness's per-component AST-fallback breakdown (thir/fallback.py);
         # only ever written under --thir-codegen.
         self._thir_reject_reason: str | None = None
+        self._thir_reject_detail: str | None = None
         self._thir_fallback: dict[str, int] = {}
         self.shadowed_builtins: dict[str, set[tuple[str, int | None]]] = {}
         self.diagnostics: list[Diagnostic] = []

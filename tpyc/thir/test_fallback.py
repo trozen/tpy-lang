@@ -6,7 +6,15 @@ attempt, and classify_stmt tags landmark constructs."""
 from __future__ import annotations
 
 from ..compilation_context import _current_compiler, activate_compiler
-from .fallback import begin_attempt, classify_stmt, fold_attempt, note
+from .fallback import (
+    begin_attempt,
+    begin_stmt,
+    classify_stmt,
+    fold_attempt,
+    note,
+    note_detail,
+    stmt_reject_reason,
+)
 from .lower import iter_module_callables, lower_function
 from .testutil import _compile, _entry
 
@@ -41,11 +49,11 @@ def test_noop_without_active_compiler():
 
 
 _SRC = (
-    "from tpy import Int32\n"
+    "from tpy import Array, Int32\n"
     "async def af() -> None:\n"
     "    pass\n"
-    "def comp(n: Int32) -> Int32:\n"
-    "    xs = [i for i in range(0, n, 2)]\n"  # 3-arg range: outside C1+C2
+    "def comp(src: Array[Int32, 3]) -> Int32:\n"
+    "    xs = [v + 1 for v in src]\n"  # Array-SOURCE arm: outside the slice
     "    return len(xs)\n"
     "def ok(n: Int32) -> Int32:\n"
     "    return n + 1\n"
@@ -70,6 +78,47 @@ def test_end_to_end_first_reject_reasons():
     # scan names the frontier, not the host statement shape.
     assert fb.get("body:expr.list_comp") == 1
     assert "ok" in routed
+
+
+def test_detail_composes_into_stmt_tag():
+    compiler, modules = _compile(
+        "from tpy import Int32\n"
+        "def g(n: Int32) -> None:\n"
+        "    print(n)\n"
+    )
+    entry = _entry(modules)
+    g = entry.ast.functions[0]
+    stmt = g.body[0]
+    with activate_compiler(compiler):
+        begin_attempt()
+        begin_stmt()
+        assert note_detail("call.imported_symbol") is False
+        # Set-if-empty: a later detail loses to the first.
+        assert note_detail("call.arg_shape") is False
+        assert stmt_reject_reason(stmt) == "stmt.expr_stmt:call.imported_symbol"
+        # A fresh statement clears the slot: bare shape again.
+        begin_stmt()
+        assert stmt_reject_reason(stmt) == "stmt.expr_stmt"
+        # A landmark tag stands alone -- no detail suffix.
+        note_detail("call.imported_symbol")
+        comp_stmt = _compile(
+            "from tpy import Int32\n"
+            "def h(n: Int32) -> None:\n"
+            "    d = {i: i for i in range(n)}\n"
+        )[1]
+    entry2 = _entry(comp_stmt)
+    h = entry2.ast.functions[0]
+    with activate_compiler(compiler):
+        assert stmt_reject_reason(h.body[0]) == "expr.dict_comp"
+
+
+def test_detail_noop_without_active_compiler():
+    token = _current_compiler.set(None)
+    try:
+        begin_stmt()
+        assert note_detail("call.linkage") is False
+    finally:
+        _current_compiler.reset(token)
 
 
 def test_classify_stmt_tags():

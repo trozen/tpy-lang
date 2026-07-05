@@ -73,7 +73,10 @@ cell it touches is admitted:
   if-elif optional tiers, polymorphic, str-switch, Literal subjects,
   M4c wrapper subjects, resumable) / docstring-`pass` trivia in any
   body position (incr 90) / comprehensions (the C1+C2 decl-init
-  slice, incr 91; C3/C4 rows still open) **(covered)**
+  slice, incr 91; C3 routine rows -- 3-arg range, field iterables,
+  Char slots, print-arg position, Array range arm -- incr 94; open:
+  Array-source arm, call-arg/return positions, owned-move,
+  narrowed-Optional iterables, C4) **(covered)**
   vs try-except return tier (parked on the @error_return rung) /
   expression raise / for-over-container (generators) / async-await /
   yield / genexpr + the comprehension C3/C4 rows / nonlocal +
@@ -255,12 +258,13 @@ deferred (self-contained) / blocked-on-`<rung>`.
   add mechanism solely to reproduce a bug (the method mutated-ref rvalue
   arm). A rejected row cites its BUGS.md entry at the gate.
 - **Non-`DEFAULT`-linkage call symbols** (`@native` / `@native_c` / `@export(binding="C")`
-  callees): **deferred (self-contained)** -- `_call_eligible` gates `fi.linkage ==
-  DEFAULT` (incr 32), so any caller of a native/export-C free function stays on the AST
-  path permanently. THIR emits a bare `name(args)`; these need the `::`-qualified
-  (`qualify_native_name`) / raw extern-C symbol the AST call-emit produces. This gate is a
-  correctness fix today but a **completeness blocker**: the "delete AST call codegen"
-  target is unreachable until THIR learns to emit qualified/extern-C call symbols.
+  callees): **MOSTLY LANDED (incr 95+96)** -- `_free_callee_kind` classifies the
+  free-callee emit (plain / imported `callee_cpp` / native `native_name` / positional
+  `cpp_template`), so C++ `@native`, `@cpp_template`, and cross-module TPy callees all
+  route. Residual deferred rows: extern-C / `@native_c` (raw unqualified symbol -- a
+  different spelling arm), `@export(binding="C")` linkage, `native_cpp_return_type`
+  static_cast wraps, the bespoke-arm builtins, non-positional templates, and the
+  pre-arm/kwarg-dependent arg rows for native callees (`call.native_arg_shape`).
 
 ### Form ladder (F) -- `IR_DESIGN.md` rung ladder + `THIR_FORM_INVENTORY.md`
 - F1 (record locals + Optional read), F2 (reseatable pointer-locals + Optional
@@ -1119,6 +1123,54 @@ positions dominate the corpus). Faces
 flush.assign precedent); units `test_thir_comprehensions.py`.
 Routing 35830 -> **35837 bodies / 3343 cases** (+7 solo -- the
 tally's ~47 first-blocked hosts mostly carry other blockers too).
+**Bool-field truthiness conditions landed (incr 94, the thir-stmt-tail
+branch): +1268 bodies (35874 -> 37142)** -- `_condition_eligible`'s
+`TpyFieldAccess` arm admits BOOL-typed field reads the value gate
+already admits (a bool value's truthiness render IS its value render;
+`not <bool field>` was already in via the `_unary_not_eligible` bool
+arm -- a pre-existing positive/negative asymmetry, now closed). Bool
+only, mirroring the name arm's scope pin -- non-bool scalar fields
+(int truthiness) stay AST. Top ROUTINE cell of the stmt.*
+sub-classifier's first read; the cascade (condition-blocked bodies
+route whole) mirrors incr 36's conditions-gate-everything finding.
+Face `cond.bool_field`; units `test_thir_core.py::TestBoolFieldCondition`.
+**The free-callee symbol family landed (incr 95+96, thir-stmt-tail):
++7132 bodies (37142 -> 44274, the biggest single-cell gain to date)**
+-- `_plain_free_callee_ok` generalizes to the shared `_free_callee_kind`
+routing fact: cross-module TPy callees pre-render `THIRCall.callee_cpp`
+via the EXTRACTED `imported_free_callee_cpp` (the AST's `_gen_call`
+elif now calls the same helper), C++ `@native` frees ride the len
+hardcode's `native_name` arm, positional-only `@cpp_template` frees the
+scalar-ctor `cpp_template` arm. This closes the ledger's
+"DEFAULT-linkage call-symbol" completeness-blocker row for the C++
+native + template + imported-TPy subset; still parked: extern-C /
+@native_c raw symbols, `native_cpp_return_type` static_cast wraps,
+bespoke-arm builtins (copy/copy_iter/own_iter/try_parse/print/ord-fold),
+non-positional templates, and the pre-arm/kwarg-dependent arg rows for
+native callees (`call.native_arg_shape`, ~3k weighted). Faces
+`call.imported` / `call.native_free` / `call.template_free`.
+**Comprehension C3 routine rows landed (increment 97, the thir-comp-c3
+branch -- the session's parallel cell)**: 3-arg range (begin/end over the Range object -- the
+substituted `::tpy::Range<T>(...)` template call, rvalue capture),
+field-access iterables (`recv.items` off `_field_receiver_ok`
+receivers, typed on the DECLARED field type so narrowed
+Optional/union fields reject; `_lower_field_source` reuse), Char
+element slots, the print-arg position (PrintForm LIST/SET/DICT ->
+the container-printer wraps; `_comp_expr_ok` extracted
+position-independent, layered at the statement gate over
+`_print_arg_ok`), and the Array-demotion RANGE arm
+(`::tpy::array_from_index<E, N>` per-index lambda, bounds
+untargeted, stop encoded in N). Still open: the Array-SOURCE
+indexing arm (now test_fallback's canonical out-of-slice shape),
+call-arg position (container param-slot pins), RETURN position
+(blocked on the signature axis: container returns reject at
+`_eligible_return`; widening it is owned-name return moves, a
+signature row, not a comprehension row), owned-move elements,
+narrowed-Optional iterables, genexpr (C4). Faces
+`comp.{range3,field_iter,print_arg,array_range}` (`array_range`
+corpus-witnessed; the others unit-pinned). Routing 35874 -> 35884
+bodies / 3344 cases (+10 solo, pre-integration base; the integrated
+thir-stmt-tail tally is in the IR_DESIGN landing log).
 Uncovered shapes remaining: the parked match tail (above), the try
 return tier + expression raise (rows above),
 generator iterables, expression statements' deferred receiver/arg cells
@@ -1216,3 +1268,16 @@ byte-diff itself.
   statement shapes (77 return / 67 var-decl / 54 if ...) -- each multiplies
   across every importing case, so expression-level cells inside those bodies
   are the highest-routing-leverage statement work.
+- **Landed: stmt.* sub-classifier** (the detail slot in `fallback.py`): gate
+  reject arms record the blocking SUB-construct via `note_detail`
+  (set-if-empty, cleared per statement), and the chokepoint composes
+  `stmt.<shape>:<detail>` -- so the tally now names what's inside a bare
+  statement-shape row. First composed corpus read (2026-07-05, stmt.*
+  weighted total 47.8k): `call.imported_symbol` 14.2k +
+  `call.native_or_template` 1.8k = the call-symbol qualification blocker
+  (the completeness row below), `method.receiver_shape` 7.2k (non-bare-name
+  receivers: `self.field.method()` etc.), `cond.field_access` 2.4k (landed
+  as incr 94), `binop.shape` 2.2k, `assign.field_write_shape` 2.0k; str
+  methods rank individually (`method.str.rfind` 714, `.startswith` 693,
+  `.find` 346) and are NOT a big rock. The stdlib drill (distinct bodies)
+  gives the same ordinal ranking.

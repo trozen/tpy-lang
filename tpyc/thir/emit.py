@@ -411,6 +411,10 @@ def _emit_call(e: THIRCall, state: _EmitState) -> str:
         # A @native free-function builtin (e.g. `len(c)` -> `::tpy::__len__(c)`):
         # dispatch on the resolved symbol, mirroring gen_call_from_fi's native arm.
         return f"{qualify_native_name(e.native_name)}({args})"
+    if e.callee_cpp is not None:
+        # A cross-module callee: the pre-rendered absolute spelling
+        # (imported_free_callee_cpp, shared with the AST emit).
+        return f"{e.callee_cpp}({args})"
     return f"{escape_cpp_name(e.callee)}({args})"
 
 
@@ -470,6 +474,29 @@ def _emit_comprehension(e: 'THIRComprehension', state: _EmitState) -> str:
     ind2 = ind1 + INDENT
     ind3 = ind2 + INDENT
     cpp_var = escape_cpp_name(e.var)
+    if e.loop == "array_range":
+        # The array_from_index RANGE arm (_gen_array_comprehension): sema
+        # proved literal bounds, so start/step inline as index arithmetic
+        # inside the per-index lambda; no `({` prelude, no reserve, and the
+        # element renders directly after the binding (plain-`_expr_eligible`
+        # elements flush no temps).
+        n = state.next_loop_index()
+        idx = f"{e.counter_cpp}(__i_{n})"
+        if e.range_start is None:
+            var_init = idx
+        elif e.range_step is None:
+            var_init = f"{_emit_expr(e.range_start, state)} + {idx}"
+        else:
+            var_init = (f"{_emit_expr(e.range_start, state)} + {idx} * "
+                        f"({_emit_expr(e.range_step, state)})")
+        buf = io.StringIO()
+        buf.write(f"::tpy::array_from_index<{e.array_elem_cpp}, "
+                  f"{e.array_size_cpp}>("
+                  f"[&](std::size_t __i_{n}) -> {e.array_elem_cpp} {{\n")
+        buf.write(f"{ind1}{e.counter_cpp} {cpp_var} = {var_init};\n")
+        buf.write(f"{ind1}return {_emit_expr(e.element, state)};\n")
+        buf.write(f"{stmt_ind}}})")
+        return buf.getvalue()
     skip_reserve = e.kind != "list"
     buf = io.StringIO()
     buf.write("({\n")
@@ -1857,6 +1884,12 @@ def _emit_print_arg(a: THIRPrintArg, state: _EmitState) -> str:
         return f"::tpy::BytesPrinter({inner})"
     if a.print_form is PrintForm.REPR:
         return f"::tpy::__repr__({inner})"
+    if a.print_form is PrintForm.LIST:
+        return f"::tpy::ListPrinter({inner})"
+    if a.print_form is PrintForm.SET:
+        return f"::tpy::SetPrinter({inner})"
+    if a.print_form is PrintForm.DICT:
+        return f"::tpy::DictPrinter({inner})"
     return inner
 
 

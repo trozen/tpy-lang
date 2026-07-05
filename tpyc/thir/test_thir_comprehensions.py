@@ -102,6 +102,141 @@ class TestComprehensionRoutes:
         thir = _lower(src)
         assert _fn(thir, "owned") is not None
 
+    def test_three_arg_range_routes(self):
+        # C3 range3: begin/end over the Range object, rvalue capture, no
+        # reserve; bounds render against the counter slot.
+        src = (_PRELUDE
+               + "def f(n: Int32) -> Int32:\n"
+               + "    xs = [i for i in range(0, n, 2)]\n"
+               + "    return len(xs)\n"
+               + "def main():\n    print(f(9))\nmain()\n")
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+        thir = _lower(src)
+        assert _fn(thir, "f") is not None
+        _, w = _lower_ctx_witnessed(src)
+        assert w.get("comp.range3", 0) >= 1
+        cpp = _cpp(src, thir=True)
+        assert "auto __obj_0 = ::tpy::Range<int32_t>(0, n, 2);" in cpp
+
+    def test_array_range_comp_routes(self):
+        # C3 Array demotion, range arm: literal-bound range comps construct
+        # via the array_from_index per-index lambda (1/2/3-arg inits).
+        src = (_PRELUDE
+               + "def f() -> Int32:\n"
+               + "    xs = [i * 2 for i in range(3)]\n    return len(xs)\n"
+               + "def g() -> Int32:\n"
+               + "    ys = [i for i in range(1, 4)]\n    return len(ys)\n"
+               + "def h():\n"
+               + "    print([i for i in range(0, 6, 2)])\n"
+               + "def main():\n    print(f())\n    print(g())\n    h()\nmain()\n")
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+        thir = _lower(src)
+        for name in ("f", "g", "h"):
+            assert _fn(thir, name) is not None, name
+        _, w = _lower_ctx_witnessed(src)
+        assert w.get("comp.array_range", 0) >= 3
+        cpp = _cpp(src, thir=True)
+        assert "::tpy::array_from_index<int32_t, 3>(" in cpp
+        assert "int32_t i = 1 + int32_t(" in cpp          # 2-arg start offset
+        assert " * (2);" in cpp                           # 3-arg step arm
+        assert "::tpy::ListPrinter(::tpy::array_from_index" in cpp
+
+    def test_print_arg_comp_routes(self):
+        # C3 print-arg position: the stmt-expr render inside the container
+        # printer wrap (gen_print's ListPrinter/SetPrinter/DictPrinter arms).
+        src = (_PRELUDE
+               + "def f(xs: list[Int32], n: Int32):\n"
+               + "    print([x * 2 for x in xs])\n"
+               + "    print({x for x in xs}, {i: i for i in range(n)})\n"
+               + "def main():\n    f([1, 2], 2)\nmain()\n")
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+        thir = _lower(src)
+        assert _fn(thir, "f") is not None
+        _, w = _lower_ctx_witnessed(src)
+        assert w.get("comp.print_arg", 0) >= 3
+        cpp = _cpp(src, thir=True)
+        assert "::tpy::ListPrinter(({" in cpp
+        assert "::tpy::SetPrinter(({" in cpp
+        assert "::tpy::DictPrinter(({" in cpp
+
+    def test_char_elements_route(self):
+        # C3 Char element slots: `[c for c in s]` -> std::vector<char>,
+        # Char loop var + Char element through the targeted render.
+        src = (_PRELUDE
+               + "def f(s: str) -> Int32:\n"
+               + "    cs = [c for c in s]\n    return len(cs)\n"
+               + "def main():\n    print(f(\"ab\"))\nmain()\n")
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+        thir = _lower(src)
+        assert _fn(thir, "f") is not None
+        cpp = _cpp(src, thir=True)
+        assert "std::vector<char> __result;" in cpp
+        assert "__result.push_back(c);" in cpp
+
+    def test_bigint_range3_routes(self):
+        # BigInt counter: the Range<::tpy::BigInt> overload; literal bounds
+        # take the runtime-BigInt wrap on both paths.
+        src = (_PRELUDE
+               + "def f(n: int) -> Int32:\n"
+               + "    xs = [i for i in range(0, n, 2)]\n"
+               + "    return len(xs)\n"
+               + "def main():\n    print(f(9))\nmain()\n")
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+        cpp = _cpp(src, thir=True)
+        assert ("auto __obj_0 = ::tpy::Range<::tpy::BigInt>"
+                "(::tpy::BigInt(0), n, ::tpy::BigInt(2));") in cpp
+
+    def test_field_iterable_routes(self):
+        # C3 field iterable: `self.items` / `h.items` off an F1-record
+        # receiver -- lvalue capture (`auto& __obj_N = ...`), sized reserve.
+        src = (
+            "from tpy import Int32\n"
+            "class Holder:\n"
+            "    items: list[Int32]\n"
+            "    def __init__(self):\n        self.items = [1, 2, 3]\n"
+            "    def doubled(self) -> Int32:\n"
+            "        xs = [v * 2 for v in self.items]\n        return len(xs)\n"
+            "def outer(h: Holder) -> Int32:\n"
+            "    ys = [v + 1 for v in h.items]\n    return len(ys)\n"
+            "def main():\n"
+            "    h = Holder()\n    print(h.doubled())\n    print(outer(h))\n"
+            "main()\n")
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+        thir = _lower_ctx(src)
+        assert _fn(thir, "outer") is not None
+        assert _fn(thir, "doubled") is not None
+        _, w = _lower_ctx_witnessed(src)
+        assert w.get("comp.field_iter", 0) >= 2
+        cpp = _cpp(src, thir=True)
+        assert "auto& __obj_0 = h.items;" in cpp
+        # The method body emits in the header (inline method) -- byte-compare
+        # the hpp too, and pin the `this->` receiver render.
+        def hpp(thir: bool) -> str:
+            compiler, modules = _compile(src)
+            out, _ = compiler.generate_code_to_strings(
+                _entry(modules), options=CodeGenOptions(thir_codegen=thir))
+            return out
+        h_thir = hpp(True)
+        assert h_thir == hpp(False)
+        assert "auto& __obj_0 = this->items;" in h_thir
+
+    def test_narrowed_optional_field_iterable_rejects(self):
+        # A narrowed Optional field iterable takes the AST's `(*...)` unwrap
+        # -- the route types on the DECLARED field type and must reject.
+        src = (_PRELUDE
+               + "class H:\n"
+               + "    items: list[Int32] | None\n"
+               + "    def __init__(self):\n        self.items = None\n"
+               + "def f(h: H) -> Int32:\n"
+               + "    if h.items is not None:\n"
+               + "        xs = [v for v in h.items]\n"
+               + "        return len(xs)\n"
+               + "    return 0\n"
+               + "def main():\n    print(f(H()))\nmain()\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is None
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
     def test_record_iterable_routes(self):
         src = (
             _F1_RECORDS
@@ -125,11 +260,12 @@ class TestComprehensionRejects:
         # A rejected shape must still be byte-identical (it stays AST).
         assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
-    def test_array_demotion_rejects(self):
-        # Literal range bounds resolve to a stack Array -> array_from_index
-        # lambda emit (the C3 row).
-        self._rejects("def f() -> Int32:\n"
-                      "    xs = [i for i in range(3)]\n    return len(xs)\n")
+    def test_array_source_indexing_rejects(self):
+        # The array_from_index ARRAY-SOURCE arm (`__obj_N[__i_N]` random
+        # access) is a deferred row; only the range arm routes.
+        self._rejects("from tpy import Array\n"
+                      "def f(src: Array[Int32, 3]) -> Int32:\n"
+                      "    xs = [v + 1 for v in src]\n    return len(xs)\n")
 
     def test_reassigned_local_rejects(self):
         # A reassigned container local is a pointer-local on the AST path.
@@ -138,16 +274,12 @@ class TestComprehensionRejects:
                       "    xs = [i for i in range(n + 1)]\n"
                       "    return len(xs)\n")
 
-    def test_three_arg_range_rejects(self):
-        # 3-arg range takes the begin/end-over-Range emit -- deferred.
-        self._rejects("def f(n: Int32) -> Int32:\n"
-                      "    xs = [i for i in range(0, n, 2)]\n"
-                      "    return len(xs)\n")
 
-    def test_return_position_rejects(self):
-        # Only the fresh decl-init position routes (C3 widens positions).
-        self._rejects("def f(n: Int32) -> list[Int32]:\n"
-                      "    return [i for i in range(n)]\n")
+    def test_array_return_position_rejects(self):
+        # A literal-bound comp at return position resolves to an Array ->
+        # the array_from_index emit (deferred row).
+        self._rejects("def f() -> list[Int32]:\n"
+                      "    return [i for i in range(3)]\n")
 
     def test_genexpr_rejects(self):
         # A genexpr local is the make_generator lambda emit (C4).

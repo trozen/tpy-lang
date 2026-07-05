@@ -79,7 +79,7 @@ from ..prescan import match_is_none, _expr_to_narrowing_key
 from ..namespace import BindingKind
 from ..sema.numeric_lattice import fixed_int_range_contains
 from ..sema.literal_utils import literal_value_from_expr
-from .context import INDENT, escape_cpp_string, escape_cpp_char, escape_cpp_name, qualified_cpp_name, qualify_native_name, enum_cpp_name, loop_var_binding, is_lvalue_iterable, cpp_string_literal_expr, cpp_bytes_literal_span, cpp_bytes_literal_owned, view_key_target, CppForm, FormValue, expand_cpp_template
+from .context import INDENT, escape_cpp_string, escape_cpp_char, escape_cpp_name, qualified_cpp_name, qualify_native_name, imported_free_callee_cpp, enum_cpp_name, loop_var_binding, is_lvalue_iterable, cpp_string_literal_expr, cpp_bytes_literal_span, cpp_bytes_literal_owned, view_key_target, CppForm, FormValue, expand_cpp_template
 from .functions import literal_mangled_name
 from .. import qnames
 
@@ -3218,13 +3218,11 @@ class ExpressionGenerator:
                 # unqualified lookup can't bind to a lexical collision in
                 # the caller's scope (class method, namespace-member, ADL).
                 func_cpp_name = qualify_native_name(func_info.native_name or func_info.name)
-            elif (qual := lookup_imported(
-                    self.ctx.analyzer.ctx.module_attributes,
-                    expr.func_name, SymbolKind.FUNCTION)) is not None:
+            elif (imported_cpp := imported_free_callee_cpp(
+                    self.ctx.analyzer.ctx.module_attributes, expr.func_name,
+                    mangled if is_literal_mangled else None)) is not None:
                 # Cross-module call: qualify via the attribute table.
-                source_module, qual_name = qual
-                emit_name = mangled if is_literal_mangled else qual_name
-                func_cpp_name = qualified_cpp_name(source_module, emit_name)
+                func_cpp_name = imported_cpp
             elif expr.func_name in self.ctx.analyzer.imported_names:
                 # Implicit builtin-module function (e.g. pure-TPy helper in
                 # tpystd::builtins). Only qualify when the resolved function

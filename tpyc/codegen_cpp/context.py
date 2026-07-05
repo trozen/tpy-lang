@@ -309,6 +309,23 @@ def qualified_cpp_name(module_name: str, name: str) -> str:
     return f"::{module_to_cpp_namespace(module_name)}::{cpp_name}"
 
 
+def imported_free_callee_cpp(module_attributes, func_name: str,
+                             mangled: str | None = None) -> str | None:
+    """The cross-module free-callee spelling, or None when `func_name` is
+    not bound as an imported FUNCTION in the calling module's attribute
+    table (local definitions spell bare). The ONE qualification decision
+    shared by the AST call emit and the THIR gate/lowering mirror.
+    `mangled` overrides the canonical name for literal-specialized
+    overload stubs (the AST's `is_literal_mangled` arm; THIR-admitted
+    calls never pass it -- the gate rejects literal-param overloads)."""
+    qual = lookup_imported(module_attributes, func_name, SymbolKind.FUNCTION)
+    if qual is None:
+        return None
+    source_module, qual_name = qual
+    return qualified_cpp_name(source_module,
+                              mangled if mangled is not None else qual_name)
+
+
 def qualify_native_name(name: str) -> str:
     """Force @native call-site emission to absolute global scope.
 
