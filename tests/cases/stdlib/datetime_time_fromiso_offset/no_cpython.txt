@@ -1,0 +1,2 @@
+CPython returns an aware time for an offset suffix; TPy rejects it
+(aware time deferred -- documented divergence), so outputs differ by design.

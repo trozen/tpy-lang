@@ -1,0 +1,48 @@
+datetime.timezone.utc UTC
+datetime.timezone(datetime.timedelta(seconds=19800), 'IST') IST
+datetime.timezone(datetime.timedelta(days=-1, seconds=73800)) UTC-03:30
+datetime.timezone(datetime.timedelta(seconds=19815)) UTC+05:30:15
+datetime.timezone(datetime.timedelta(0), 'EMPTYOK')
+datetime.timezone(datetime.timedelta(seconds=3600), '') ''
+datetime.timezone(datetime.timedelta(seconds=3600)) UTC+01:00
+True
+5:30:00 IST True
+True
+True
+True
+ValueError-offset-hi
+ValueError-offset-lo
+datetime.timezone(datetime.timedelta(seconds=86340, microseconds=999999))
+datetime.datetime(2021, 3, 5, 14, 30, 15, 123456, tzinfo=datetime.timezone(datetime.timedelta(seconds=19800), 'IST'))
+2021-03-05T14:30:15.123456+05:30 2021-03-05 14:30:15.123456+05:30
+5:30:00 IST True
+True True True True
+0:00:00
+1 day, 0:00:00
+2021-03-05 16:30:15.123456+05:30
+2021-03-05 13:45:15.123456+05:30
+False True
+TypeError-order
+TypeError-sub
+2021-03-05 08:30:15.123456+05:30
+ValueError-replace-month
+ValueError-replace-hour
+ValueError-replace-day
+2021-03-05 14:30:15.123456
+2021-03-05 14:30:15.123456+00:00
+1999-03-05 14:00:15.123456
+2021-03-05 09:00:15.123456+05:30
+TypeError-replace-tzinfo
+2021-03-05T14:30:15.999999+05:30:15
+2021-03-05T14+05:30:15
+2021-03-05T14:30+05:30:15
+2021-03-05T14:30:15+05:30:15
+2021-03-05T14:30:15.999+05:30:15
+2021-03-05T14:30:15.999999+05:30:15
+ValueError-timespec
+2021-03-05 09:15:00+00:00
+2021-03-05 09:40:00.500000+00:00
+2021-03-05 15:10:00.500000+05:30
+datetime.datetime(2021, 3, 5, 14, 30, tzinfo=datetime.timezone(datetime.timedelta(seconds=19800), 'IST'))
+ValueError-fromutc
+2 b

@@ -1,7 +1,8 @@
 # datetime stdlib design
 
-Status: **v0 + v1 + v2 landed (timedelta, date, naive time/datetime + wall
-clock); v3 pending.**
+Status: **v0 + v1 + v2 + v3 landed (timedelta, date, time, datetime with
+fixed-offset timezone awareness, strftime/strptime/fromisoformat,
+timestamp/astimezone, TZ-honoring backend).**
 This document is the contract for the whole `datetime` track. It captures the
 type model, storage/representation, operator strategy, timezone model, and the
 phased build. Implementation lands rung-by-rung per the roadmap below; update
@@ -20,8 +21,8 @@ is byte-compared against CPython directly, exactly like the `csv` module.
 | **v1** | `timedelta` (integer-surface arithmetic: `+ - `, unary, `*int`, `//int`, `//td`, `/td`->float, `%td`, comparisons, `abs`, `total_seconds`, repr/str) and `date` (ctor+validation, attributes, `weekday`/`isoweekday`, `isoformat`/`str`, comparisons, `date +/- timedelta`, `date - date`, repr). Pure-TPy, **no native dependency**, no `today()`. Prerequisite compiler fixes: `abs()`->`__abs__` dispatch (P1), `/`-vs-`//` decoupling (P2). | **Done** (tests `stdlib/datetime_{timedelta,date}`; byte-parity with CPython) |
 | **v1-deferred** | `timedelta` float/rounding surface: float constructor args (`timedelta(hours=1.5)`), `td / number` (round-half-to-even -> timedelta), float `*`/`/`. Compile-error (rejects-valid) until landed, not silent. (The `/`-overload result-typing bug that also blocked `td / number` is fixed.) | Deferred |
 | **v2** | `datetime` and `time` (the `datetime.time` class), `now()`/`utcnow()`/`today()`/`fromtimestamp()`/`utcfromtimestamp()`/`combine()`, `date.today()`. Naive-only. Introduces the vendored Hinnant `date` backend behind the `stdlib/datetime.hpp` facade for the local-offset lookup. | **Done** (tests `stdlib/datetime_{time,datetime,now}`; byte-parity with CPython; `dt.date()`/`dt.time()` accessors excluded -- blocked on the member-name/type-name C++ collision bug in BUGS.md, follow-up once fixed) |
-| **v3** | `strftime`/`strptime`/`fromisoformat` (pure-TPy directive engine) and fixed-offset `timezone` awareness (aware `datetime`, `astimezone`, offset-aware arithmetic/comparison). | Not started |
-| **Deferred** | `fold`; `zoneinfo`/IANA DST (`ZoneInfo` value type backed by the tz db); user-defined `tzinfo` subclasses; Windows tz backend. Filed, not silent. | Deferred |
+| **v3** | `strftime`/`strptime`/`fromisoformat` (pure-TPy directive engine), fixed-offset `timezone` awareness (aware `datetime`, `astimezone`, offset-aware arithmetic/comparison/hash, runtime naive/aware mixing rules), `timestamp()` via the CPython `_mktime` iterative local-inverse, `replace()`, `isoformat(timespec=)`, `now`/`fromtimestamp`/`combine` tz params, TZ-env honoring in the backend + `local_zone_abbrev` facade primitive, `time.tzset()` no-op. | **Done** (tests `stdlib/datetime_{timezone,strftime,strptime,fromisoformat,timestamp,tzenv_posix,time_fromiso_offset}` + `error_datetime_timezone_utc_attr`; byte-parity with CPython incl. DST gap/fold timestamps under pinned TZ) |
+| **Deferred** | `fold`; `zoneinfo`/IANA DST (`ZoneInfo` value type backed by the tz db); aware `time` (the class keeps no tzinfo; `time.fromisoformat` rejects an offset suffix loudly); user-defined `tzinfo` subclasses; Windows tz backend. Filed, not silent. | Deferred |
 
 ## Goal
 
@@ -79,7 +80,22 @@ the frozen fields.
   10**9 legal max) exceeds Int64. CPython's own pure-Python `datetime.py`
   normalizes with arbitrary-precision `int` for exactly this reason; we port
   that.
-- **Field storage is Int32.** Date/time components are naturally bounded
+- **Field storage is narrow and private, behind Int32-widening
+  `@property` getters** (since the v3 packing pass): `date` stores
+  `Int16/Int8/Int8` (4 bytes), `time` `Int8 x3 + Int32` (8),
+  `datetime` adds the inline tz block -- offset `Int64` + interned
+  name id `Int32` + aware flag -- for 24 bytes total, all trivially
+  copyable. Public attribute types are unchanged (`d.year` is Int32 via
+  the getter), so user arithmetic never touches the narrow storage and
+  the sub-default-int promotion question stays orthogonal. `timezone`
+  is a 16-byte `(offset Int64, name id Int32)` mirror of datetime's tz
+  block; names live in a process-global append-only intern table
+  (`tpy/stdlib/tz_intern.hpp`, mutex-guarded, id 0 = unnamed --
+  distinct from an interned empty string), touched only on
+  construction-with-name and tzname/repr/%Z -- offset math never
+  consults it. The `.tzinfo` getter reconstructs the `timezone` value
+  on demand (cold path).
+- **Component ranges match CPython's attributes exactly.** Date/time components are naturally bounded
   (year 1..9999, month 1..12, hour 0..23, ...); `timedelta` stores the
   normalized triple `(days, seconds, microseconds)` with
   `days in [-999999999, 999999999]`, `seconds in [0, 86399]`,
@@ -173,9 +189,20 @@ CPython's non-generic `datetime`): the tz is a **closed set of value-typed
 kinds** stored inside a single `datetime`, never an open subclassable base.
 
 - v1/v2: naive only (`tzinfo=None`).
-- v3: fixed-offset `timezone` (a small frozen value: offset `timedelta` +
-  optional name). Stored as `Optional[timezone]`; `optional<value-type>` is
+- v3 (landed): fixed-offset `timezone` (a frozen value: offset `timedelta` +
+  optional name, eq/hash by offset only like CPython). Stored as
+  `Optional[timezone]` (`std::optional<timezone>`); `optional<value-type>` is
   still a value type, so `datetime` stays a value type end-to-end.
+  **Awareness is a runtime property** of the single `datetime` type: mixing
+  naive and aware raises `TypeError` at RUNTIME for ordering/subtraction and
+  compares unequal for `==`, exactly like CPython (the earlier design note
+  that mixing would be "rejected at compile time" was unimplementable with
+  one runtime-tagged type and is superseded -- this is now full parity, not
+  a divergence). `timezone.utc` is spelled via the module-level `UTC` alias
+  (CPython 3.11+); the class attribute is a loud compile error (a class
+  constant of the record's own type is not expressible -- TODO.md).
+  `replace()` uses CPython's own `tzinfo=True` sentinel signature (a record
+  value cannot be a TPy param default; the bool arm means "keep").
 - Deferred: a value-typed `ZoneInfo` (interned zone id -> static DST tables,
   backed by the tz db) as a closed-union widening
   (`Optional[timezone | ZoneInfo]`).
@@ -198,9 +225,24 @@ TPy cannot do is read the OS's local UTC offset and the IANA zone rules.
   in prior work). It is also the reference implementation behind C++20
   `std::chrono`, so it aligns with an eventual standard-library migration.
 - **The facade decouples the provider.** The TPy `datetime` module talks only
-  to minimal facade primitives (`local_utc_offset(epoch)`, later
-  `zone_offset(zone_id, epoch)`). The concrete C++ tz provider sits behind
-  it, so it can be swapped without touching TPy stdlib or generated code.
+  to minimal facade primitives (`local_utc_offset_seconds(epoch)` and
+  `local_zone_abbrev(epoch)`; a future `zone_offset(zone_id, epoch)` for
+  ZoneInfo). The concrete C++ tz provider sits behind it, so it can be
+  swapped without touching TPy stdlib or generated code.
+- **TZ resolution (v3).** The provider resolves the zone ONCE at first use
+  and pins it for process life: `TZ` set -> POSIX rule strings via the
+  provider's POSIX reader (`ptz.h`), IANA names via `locate_zone`, a
+  leading `:` forces the database lookup, empty or unparseable -> fixed
+  UTC (glibc semantics); `TZ` unset -> `current_zone()` (/etc/localtime).
+  `time.tzset()` exists as a CPython-parity no-op: the canonical
+  set-TZ-then-tzset-then-use pattern works unchanged, but a `TZ` change
+  AFTER local time was first used is not re-read (documented divergence;
+  libc rereads per call).
+- **Local-inverse operations.** Naive `timestamp()` and naive-source
+  `astimezone()` share the CPython `_mktime` iterative fixed-point solve
+  over `local_utc_offset_seconds` -- a single forward lookup would be
+  silently wrong in the 1-2h window around DST transitions (gap resolves
+  to the later instant, fold to the earlier; fold=0 semantics).
 - **Coupling note:** the binding import is module-level, so ANY datetime
   import links the tz backend (and `--date=none` rejects the whole module),
   including pure-calendar use (`timedelta`/`date` arithmetic) that needs no
@@ -231,10 +273,25 @@ repr(timedelta(days=1, seconds=30)) -> 'datetime.timedelta(days=1, seconds=30)'
 str(date(2021, 3, 5))               -> '2021-03-05'
 ```
 
-v3 `strftime`/`strptime` implement the directive set in TPy with hardcoded
-C-locale (English) month/day tables. Locale-dependent directives (`%c`,
-`%x`, `%X`) and tz directives (`%z`, `%Z`) are scoped when v3 is designed in
-detail.
+v3 `strftime`/`strptime` implement the full documented directive set in TPy
+with hardcoded C-locale (English) month/day tables (`LC_TIME` is never
+consulted -- see divergences): `%a %A %b %B %c %d %f %G %H %I %j %m %M %p
+%S %u %U %w %W %x %X %y %Y %z %Z %%`. `%c`/`%x`/`%X` are the C/POSIX-locale
+compositions. Verified strftime edge behaviors (byte-compared vs CPython on
+glibc): `%Y`/`%G` are NOT zero-padded (`'42'`) although isoformat is;
+unknown directives pass through verbatim incl. the `%`; a trailing lone `%`
+is kept; `%z`/`%Z` render empty for naive values and `%z` carries seconds
+(`+053015`) and microseconds when the offset has them. strptime mirrors
+`_strptime.py`: longest-first bounded numeric fields (space-padded `%d`),
+case-insensitive names and literals, format whitespace matches 1+ input
+whitespace, `%f` right-pads 1-6 digits (7+ digits leave unconverted data),
+`%y` pivots at 69, `%z` accepts `Z`(case-sensitive)/`+HH:MM[:SS[.f]]`/
+`+HHMM[SS]` with colon-consistency errors, week numbers resolve via
+`%U`/`%W`+weekday or ISO `%G`/`%V`/`%u` (incompatible mixes raise).
+`fromisoformat` ports the 3.11+ grammar (basic `YYYYMMDD`, week dates, any
+single separator char, comma fractions, 7+ fraction digits TRUNCATE --
+deliberately a separate fraction rule from strptime's `%f`), digit-strict
+like the C implementation.
 
 ## CPython parity: acknowledged divergences
 
@@ -253,20 +310,47 @@ rounded in the runtime; it now matches CPython for all magnitudes.)
   take `self`-typed operands) where CPython returns `False` / raises a runtime
   `TypeError`. Rejected either way; benign.
 - **User `tzinfo` subclasses unsupported** (see Timezone model).
-- **Naive-vs-aware mixing** is rejected at compile time (distinct handling)
-  rather than at runtime (v3).
+- **Naive-vs-aware mixing is full runtime parity, no divergence** (v3):
+  ordering and subtraction raise `TypeError`, `==` is `False`, matching
+  CPython exactly. (Supersedes the earlier compile-time-rejection note.)
 - **Extreme-arg construction** raises the correct catchable exception because
   we validate on BigInt before the Int32 store (no divergence -- noted here
   because the naive store-then-check ordering *would* have panicked).
-- **The `TZ` environment variable is not consulted** for local-time
-  conversions (`now()`, `fromtimestamp()`, `date.today()`): the Hinnant
-  backend's `current_zone()` reads `/etc/localtime` directly, while libc
-  (and therefore CPython) honors `TZ`. Identical on hosts that don't set
-  `TZ`; divergent for programs relying on a runtime `TZ` override. A
-  TZ-aware resolution (IANA-name `TZ` values via `locate_zone`, POSIX rule
-  strings via `ptz.h`) is a possible backend refinement behind the same
-  facade. Tests are TZ-agnostic (invariant-only), so no committed output
-  depends on it.
+- **A bare POSIX std/dst `TZ` pair without a rule suffix**
+  (`TZ=EST5EDT`, no `,M3.2.0,...`) yields a constant permanent-DST
+  offset: the vendored POSIX reader has no seasonal transitions for
+  that form, while glibc fills in default US DST rules. Rule-suffixed
+  strings and IANA names are unaffected. Spell the rules explicitly.
+- **`TZ` is honored but pinned at first use** (v3): IANA names, POSIX rule
+  strings, empty/unparseable->UTC all match glibc, and `time.tzset()`
+  before first local-time use completes the canonical CPython pattern --
+  but a `TZ` mutation AFTER local time was first used is not re-read
+  (libc rereads per call). Also, for degenerate `TZ` values (empty or
+  unparseable) the synthesized zone ABBREVIATION is `'UTC'` where glibc
+  invents host-specific names (`'Universal'`, the bad spec's text);
+  offsets always match.
+- **Locale-dependent directives are permanently C-locale**: `%a %A %b %B
+  %p %c %x %X` use hardcoded English tables; `LC_TIME` is never
+  consulted (CPython delegates to the platform strftime). Programs
+  running under a non-English `LC_TIME` diverge by design; tests never
+  set a locale, so committed output is host-independent.
+- **`strptime` `%Z` accepts only `UTC`/`GMT`** (case-insensitive).
+  CPython additionally accepts the host's live `time.tzname` pair, which
+  is itself host- and TZ-dependent; TPy pins the portable subset
+  (stricter, loud `ValueError` for other tokens).
+- **`timezone.utc` / `datetime.UTC` spelling**: the module-level `UTC`
+  alias (real CPython 3.11+ surface) is the supported spelling;
+  `timezone.utc` is a loud compile error (class-level constant of the
+  record's own type is not expressible; filed in TODO.md). Relatedly,
+  `tz is UTC` identity tests are compile errors on value types (existing
+  policy) -- use `==`.
+- **Aware `time` is deferred**: the `time` class carries no tzinfo, its
+  `replace()` has no tzinfo param, and `time.fromisoformat` raises
+  `ValueError` on an offset suffix where CPython returns an aware time
+  (loud rejects-valid, not silent dropping).
+- **`fold` is deferred**: gap/fold resolution is fixed to CPython's
+  fold=0 default (which `timestamp()`/`astimezone()` implement exactly);
+  the attribute and fold=1 behavior are a designed widening.
 
 Behavioral notes (matching CPython, recorded because the "obvious" choice
 differs): an out-of-range `fromtimestamp()`/`utcfromtimestamp()` raises
@@ -304,8 +388,15 @@ the cpy phase (no `no_cpython.txt` -- real CPython `datetime` is the oracle):
 - **v2:** `datetime`/`time` construction, `combine`, `fromtimestamp`,
   `isoformat`/`str`/repr; `now()`/`utcnow()`/`today()` tested by invariants
   (values are non-deterministic, so assert relationships, not literals).
-- **v3:** `strftime`/`strptime`/`fromisoformat` round-trips and directive
-  coverage; fixed-offset `timezone` arithmetic/comparison/`astimezone`.
+- **v3:** `strftime` directive matrix (year<1000 `%Y`, ISO rollovers,
+  midnight/noon `%I%p`, seconds-bearing `%z`), `strptime` acceptance rules +
+  error tokens, `fromisoformat` accept/reject matrix + round-trips,
+  fixed-offset `timezone`/aware core (mixing rules, UTC-normalized eq/hash,
+  replace forms), and deterministic local-time cases under a pinned `TZ`
+  (Europe/Warsaw incl. DST gap/fold timestamps; an EST5EDT POSIX rule
+  string) -- both toolchains honor the in-test `TZ` set via
+  `os.environ["TZ"]` + `time.tzset()` before first use, making the
+  previously "untestable" local-inverse behavior a committed byte-compare.
 
 Reference-type note does not apply (these are value types), but tests must
 still avoid host-dependent output (local-time cases print comparisons /
@@ -313,7 +404,18 @@ relationships, never absolute local timestamps).
 
 ## File layout
 
-- `lib/tpy/datetime.py` -- the module (single file; not a package).
+- `lib/tpy/datetime.py` -- the module: the five classes, UTC, wall-clock
+  and backend code. Not a package: a class-heavy package __init__ calling
+  submodule helpers from method bodies trips the circular-include
+  limitation filed in BUGS.md, so the engines live in flat private
+  siblings (the CPython `_strptime` shape).
+- `lib/tpy/_datetime_cal.py` -- calendar math + C-locale name tables
+  (leaf; shared by both engines and the classes).
+- `lib/tpy/_datetime_fmt.py` -- strftime engine, isoformat/offset/label
+  helpers (pure string builders over component values).
+- `lib/tpy/_datetime_parse.py` -- strptime scanner + fromisoformat
+  parsers; tuple-returning (construction happens in datetime.py, keeping
+  the parse layer free of the class layer).
 - `lib/tpy/_bindings/hinnant_date.py` -- `@native` binding over the facade
   (declares the tz-backend dep via `# tpy: link("date", managed=True)`).
 - `runtime/cpp/include/tpy/stdlib/datetime.hpp` -- hand-written facade over

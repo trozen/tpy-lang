@@ -122,7 +122,7 @@ Examples of the policy in action:
 |---|---|---|---|---|---|
 | [`builtins`](#builtins) | P0 | Partial | ~75% | mixed | Implicit import. Core types + most common functions + most exception types present and catchable (`Index/Key/Lookup/Value/Type/Attribute/Assertion/OS/FileNotFound/Permission/Connection (+BrokenPipe/Reset/Refused/Aborted)/ZeroDivision/Overflow/FloatingPoint/Arithmetic/Runtime/Recursion/EOF/NotImplemented/Memory/StopIteration`); fixed-int arithmetic overflow stays panic by design (future policy switch). Missing: `frozenset`, `complex`, `memoryview`, `input`, `format`, `ascii`, `callable`, `id`, `type(x)` runtime. D16 dyn-attrs (`getattr`/`setattr`/`delattr`/`hasattr` for both literal and runtime names) fully shipped. See [builtins](#builtins) for per-item status |
 | [`math`](#math) | P0 | Done | ~99% | mixed | Thin libc bindings + pure TPy wrappers. All CPython funcs present with matching signatures (`Iterable[float]` for fsum/sumprod/dist; `prod` has Int32 / int (BigInt) / float overloads). Remaining gap: tuple as iterable (blocked on tuple-iteration bundle) |
-| [`time`](#time) | P0 | Partial | ~50% | mixed | Thin clock/sleep syscalls. `time`, `sleep`, `perf_counter`, `monotonic`, `time_ns`, `perf_counter_ns`, `monotonic_ns`, `process_time` all done. Missing `struct_time`/`strftime`/`gmtime`/`localtime`/timezone constants |
+| [`time`](#time) | P0 | Partial | ~50% | mixed | Thin clock/sleep syscalls. `time`, `sleep`, `perf_counter`, `monotonic`, `time_ns`, `perf_counter_ns`, `monotonic_ns`, `process_time`, `tzset` (CPython-parity no-op: TPy's tz provider pins TZ at first use) all done. Missing `struct_time`/`strftime`/`gmtime`/`localtime`/timezone constants |
 | [`sys`](#sys) | P0 | Stub | ~20% | mixed | Thin syscall bindings + pure TPy. `argv`, `stdout`, `stderr`, `exit`, `maxsize` done; needs `stdin`/`path`/`version_info` |
 | [`os`](#os) | P0 | Partial | ~72% | mixed | Filesystem queries (`getcwd`/`chdir`/`listdir`/`scandir`/`getenv`) + `stat`/`lstat`/`fstat` -> `stat_result`, `scandir` -> `DirEntry`; mutating ops (`mkdir`/`makedirs`/`rmdir`/`removedirs`/`remove`/`unlink`/`rename`/`replace`/`symlink`/`readlink`/`link`/`truncate`/`ftruncate`/`chmod`/`chown`/`utime`/`fsync`) over raw POSIX with a full errno->OSError table; low-level fd I/O (`open`/`close`/`read`/`write`/`lseek`/`pipe`/`dup`/`dup2` + `O_*`/`SEEK_*`); `access`(+`*_OK`); `urandom`; process/system queries (`getpid`/`getppid`/`getuid` family/`getlogin`/`umask`/`cpu_count`/`strerror`/`isatty`/`get_terminal_size`); `fspath`; module constants (`name`/`sep`/...); `environ` snapshot mapping + `putenv`/`unsetenv` + `pop`/`setdefault`/`update`/`clear`/`copy`; `walk` (topdown + bottomup, `followlinks`, `onerror`-callback + default error-skip). Process spawning deferred |
 | [`os.path`](#ospath) | P0 | Partial | ~96% | mixed | Pure-string POSIX surface (`join`/`split`/`splitext`/`basename`/`dirname`/`isabs`/`normpath`/`splitdrive`/`commonprefix`/`commonpath`/`normcase` + constants) plus filesystem queries (`exists`/`lexists`/`isfile`/`isdir`/`islink`/`getsize`/`abspath`/`realpath`(+`strict=`)/`relpath`/`getmtime`/`getatime`/`getctime`/`samefile`/`samestat`/`ismount`/`expandvars`/`expanduser`). CPython byte-compatible against `posixpath` |
@@ -139,7 +139,7 @@ Examples of the policy in action:
 | [`enum`](#enum) | P1 | Partial | ~50% | macro | Enum/IntEnum/auto; missing functional API, lookup by name/value, iteration |
 | [`dataclasses`](#dataclasses) | P1 | Partial | ~80% | macro | frozen/order/inheritance/asdict/astuple/__post_init__; missing InitVar, replace(), metadata |
 | [`typing`](#typing) | P1 | Partial | ~60% | native | Protocols/Sized/Iterator/TypedDict/Unpack; missing Generic, TypeVar, ParamSpec, ClassVar |
-| [`datetime`](#datetime) | P1 | Partial | ~70% | pure | v1+v2 landed: `timedelta` + `date` (integer surface) + naive `time`/`datetime` with now/today/fromtimestamp/combine on the vendored Hinnant date tz backend. v3 formatting (strftime/strptime/fromisoformat) + fixed-offset `timezone` pending |
+| [`datetime`](#datetime) | P1 | Partial | ~90% | pure | v1+v2+v3 landed: `timedelta` + `date` + `time`/`datetime` incl. fixed-offset `timezone` awareness, strftime/strptime/fromisoformat, timestamp/astimezone (iterative local-inverse), TZ-honoring Hinnant date backend. Deferred: fold, ZoneInfo, aware `time`, dt.date()/dt.time() accessors (compiler bug), timedelta float surface |
 | [`csv`](#csv) | P1 | Partial | ~70% | pure | `reader` / `writer` (list[str] rows) + `DictReader` / `DictWriter` (dict[str, str] rows) over the io `Readable`/`Writable` protocols. Excel default dialect + delimiter/quotechar/doublequote/skipinitialspace/lineterminator kwargs; writer is QUOTE_MINIMAL. CPython byte-compatible. DictWriter matches CPython's write-side defaults (restval="" for a missing field, ValueError for a key not in fieldnames). Missing: escapechar, quoting constants, Dialect objects/register_dialect, Sniffer, DictReader restval/restkey (short rows pad "", long rows drop extras -- dict[str,str] can't hold None or a list), DictWriter extrasaction='ignore' |
 | [`base64`](#base64) | P1 | Partial | ~95% | pure | Pure-TPy b64/b32/b16 encode+decode + urlsafe/standard variants + altchars=/validate=/casefold=/map01= kwargs + encodebytes/decodebytes. bytes/bytearray/str accepted on decoders (matches CPython). Missing: b85/a85 (rare, separate algorithms); `memoryview` depends on builtin gap |
 | [`hashlib`](#hashlib) | P1 | Partial | ~20% | pure | SHA-256 pure-TPy. MD5/SHA-1/SHA-512 are straight follow-ups (same class pattern, different round functions / endian). BLAKE2/SHA-3 later. Optional OpenSSL backend also later |
@@ -991,27 +991,34 @@ Current: `lib/tpy/typing.py` -- re-export from `tpy._typing`.
 
 ### datetime
 
-**Partial (v1 + v2 landed).** See `docs/DATETIME_DESIGN.md` for the full design
-and phased roadmap (v0 `@overload`-operator codegen fix -> v1 `timedelta`+`date`
--> v2 `datetime`+`time` -> v3 formatting + fixed-offset `timezone`).
-Value-typed frozen dataclasses; pure-TPy calendar math and formatting. v2
-introduced the vendored Hinnant `date` tz backend (`--date=bundled|system|
-auto|none`) behind the `tpy/stdlib/datetime.hpp` facade -- the module's only
-OS dependencies are `time.time_ns()` and `local_utc_offset_seconds(epoch)`.
-Note: the backend reads `/etc/localtime` and does not consult the `TZ` env
-var (libc/CPython honor it) -- benign for invariant-style code, divergent for
-programs that set `TZ` at runtime.
+**Partial (v1 + v2 + v3 landed).** See `docs/DATETIME_DESIGN.md` for the full
+design and phased roadmap (v0 `@overload`-operator codegen fix -> v1
+`timedelta`+`date` -> v2 naive `datetime`+`time` with wall clock -> v3
+formatting/parsing + fixed-offset `timezone` awareness).
+Value-typed frozen dataclasses; pure-TPy calendar math, formatting, and
+parsing. The vendored Hinnant `date` tz backend (`--date=bundled|system|
+auto|none`) sits behind the `tpy/stdlib/datetime.hpp` facade -- the module's
+only OS dependencies are `time.time_ns()`, `local_utc_offset_seconds(epoch)`
+and `local_zone_abbrev(epoch)`. The backend honors `TZ` (IANA names via the
+tz database, POSIX rule strings via the provider's POSIX reader, empty or
+unparseable -> UTC, unset -> `/etc/localtime`), resolved ONCE at first use
+and pinned for process life -- a mid-run `TZ` change (libc rereads;
+`time.tzset()` is a TPy no-op) is the residual documented divergence.
 
 | Item | Status |
 |---|---|
 | `timedelta`, `date` | Done (v1, integer surface -- byte-parity with CPython) |
-| `time`, `datetime` | Done (v2, naive-only; hand-written `datetime` ordering, `@overload` `dt - dt` / `dt - td`) |
-| `datetime.now/utcnow/today/fromtimestamp/utcfromtimestamp/combine`, `date.today` | Done (v2; out-of-range timestamp raises `ValueError`, beyond-time_t raises `OverflowError` -- both catchable, matching CPython's stable bands) |
+| `time`, `datetime` | Done (v2, hand-written `datetime` ordering, `@overload` `dt - dt` / `dt - td`) |
+| `datetime.now/utcnow/today/fromtimestamp/utcfromtimestamp/combine`, `date.today` | Done (v2; v3 added the `tz` params to now/fromtimestamp/combine; out-of-range timestamp raises `ValueError`, beyond-time_t raises `OverflowError`) |
+| fixed-offset `timezone`, aware `datetime` (utcoffset/tzname/dst, aware arithmetic/comparison/hash, `astimezone`) | Done (v3; awareness is a runtime property, naive/aware ordering+subtraction raise `TypeError` like CPython; `timezone.utc` is spelled via the module-level `UTC` alias -- class attr is a loud compile error, see DATETIME_DESIGN divergences) |
+| `strftime` (`date`/`time`/`datetime`) | Done (v3; full documented directive set incl. `%c/%x/%X` C-locale compositions and ISO `%G/%V/%u`; hardcoded English tables, `LC_TIME` never consulted) |
+| `datetime.strptime` | Done (v3; `_strptime.py`-equivalent acceptance rules; `%Z` accepts UTC/GMT only -- stricter than CPython's host-dependent set) |
+| `fromisoformat` (`date`/`time`/`datetime`) | Done (v3, 3.11+ grammar; `time.fromisoformat` rejects an offset suffix -- aware `time` deferred) |
+| `isoformat` | Done (`sep` + `timespec` params; aware values append the offset) |
+| `datetime.timestamp()`, `replace()` | Done (v3; naive timestamp/astimezone use the CPython `_mktime` iterative local-inverse solve, exact across DST gaps/folds; `replace` uses CPython's own `tzinfo=True` sentinel signature) |
 | `dt.date()`, `dt.time()` accessors | Missing -- blocked on the member-name/type-name C++ collision bug (BUGS.md); follow-up once fixed |
-| `tzinfo`, `timezone`, aware datetimes, `fold` | Missing (v3; fixed-offset only) |
+| `fold`, `ZoneInfo`, aware `time`, user `tzinfo` subclasses | Deferred (fold + zoneinfo are the designed widenings; user subclasses permanently unsupported) |
 | `timedelta` arithmetic | Done (integer surface); `timedelta / number` + float args deferred |
-| `isoformat` | Done (`date`/`time`/`datetime`; `sep` supported, `timespec` param missing -- compile error, not silent) |
-| `strftime`, `strptime`, `fromisoformat`, `datetime.timestamp()` | Missing (v3) |
 
 ### csv
 

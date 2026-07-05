@@ -417,15 +417,23 @@ class StatementAnalyzer:
             return self.ctx.func.borrow_tracker.effective_storage(obj.name)
         return _storage_key(obj)
 
-    def _warn_all_caps_without_final(self, name: str, type_hint: str, node: TpyStmt) -> None:
-        """Warn on ALL_CAPS module-level variables without Final annotation."""
+    def _warn_all_caps_without_final(self, name: str, typ: TpyType | None,
+                                     node: TpyStmt) -> None:
+        """Warn on ALL_CAPS module-level variables without Final annotation.
+
+        Only for types Final can actually wrap -- suggesting Final[T] for a
+        type the Final validation rejects (e.g. a record constant like
+        datetime's UTC) would recommend an uncompilable spelling.
+        """
         if (not name.startswith("_")
                 and name.replace("_", "").isalpha()
                 and name == name.upper()
-                and len(name) >= 2):
+                and len(name) >= 2
+                and typ is not None
+                and is_final_allowed_inner(typ)):
             self.ctx.warning(
                 f"ALL_CAPS variable '{name}' without Final annotation; "
-                f"use Final[{type_hint}] if this is a constant",
+                f"use Final[{typ}] if this is a constant",
                 node
             )
 
@@ -3542,7 +3550,7 @@ class StatementAnalyzer:
         # an inferred (unannotated) decl warns after its init type is known
         # (below), so the suggestion can name that type instead of "<type>".
         if self.ctx.is_top_level and not stmt.is_final and stmt.type:
-            self._warn_all_caps_without_final(stmt.name, str(stmt.type), stmt)
+            self._warn_all_caps_without_final(stmt.name, stmt.type, stmt)
 
         # Protocol types can only be used for function parameters, not variables
         # Exception: @dynamic protocols can be used as variable types
@@ -3720,7 +3728,7 @@ class StatementAnalyzer:
             # the Final-suggestion can name it (the annotated case warned above).
             if (self.ctx.is_top_level and not stmt.is_final and stmt.type is None
                     and init_type is not None):
-                self._warn_all_caps_without_final(stmt.name, str(init_type), stmt)
+                self._warn_all_caps_without_final(stmt.name, init_type, stmt)
 
             # Deferred Final constant check: runs after init analysis so that
             # @call_macro expansions are available via macro_expansion attr.
@@ -4338,7 +4346,7 @@ class StatementAnalyzer:
                 decl_line = stmt.loc.line if stmt.loc else 0
                 if name not in self.ctx.top_level_decls:
                     self.ctx.top_level_decls[name] = decl_line
-                self._warn_all_caps_without_final(name, str(elem_type), stmt)
+                self._warn_all_caps_without_final(name, elem_type, stmt)
                 if stmt.loc:
                     display_type = unwrap_own(elem_type) if elem_type else elem_type
                     self.ctx.declared_var_types[(stmt.loc.line, name)] = display_type

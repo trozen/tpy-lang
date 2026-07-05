@@ -18,3 +18,7 @@ from tpy.extern import native
 
 @native("tpy::stdlib::datetime::local_utc_offset_seconds")
 def local_utc_offset_seconds(epoch_seconds: Int64) -> Int64: ...
+
+
+@native("tpy::stdlib::datetime::local_zone_abbrev")
+def local_zone_abbrev(epoch_seconds: Int64) -> str: ...

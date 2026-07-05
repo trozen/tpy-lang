@@ -15,7 +15,7 @@ void main() {
     // print(repr(d))                  # datetime.date(2021, 3, 5)
     std::cout << ::tpy::repr_of(d) << "\n";
     // print(d.year, d.month, d.day)   # 2021 3 5
-    std::cout << d.year << " " << d.month << " " << d.day << "\n";
+    std::cout << d.year() << " " << d.month() << " " << d.day() << "\n";
     // print(d.weekday())              # 4
     std::cout << d.weekday() << "\n";
     // print(d.isoweekday())           # 5

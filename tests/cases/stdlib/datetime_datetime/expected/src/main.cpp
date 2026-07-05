@@ -17,7 +17,7 @@ void main() {
     // print(repr(dt))                 # datetime.datetime(2026, 7, 3, 14, 30, 5)
     std::cout << ::tpy::repr_of(dt) << "\n";
     // print(dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second, dt.microsecond)
-    std::cout << dt.year << " " << dt.month << " " << dt.day << " " << dt.hour << " " << dt.minute << " " << dt.second << " " << dt.microsecond << "\n";
+    std::cout << dt.year() << " " << dt.month() << " " << dt.day() << " " << dt.hour() << " " << dt.minute() << " " << dt.second() << " " << dt.microsecond() << "\n";
     // print(datetime(2026, 7, 3))     # 2026-07-03 00:00:00
     std::cout << ::tpystd::datetime::datetime(::tpy::BigInt(2026), ::tpy::BigInt(7), ::tpy::BigInt(3)) << "\n";
     // print(repr(datetime(2026, 7, 3)))            # datetime.datetime(2026, 7, 3, 0, 0)

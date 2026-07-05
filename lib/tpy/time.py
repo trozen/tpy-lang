@@ -37,3 +37,9 @@ def monotonic_ns() -> Int64: ...
 # Process CPU time
 @native("tpy::stdlib::time::process_time")
 def process_time() -> float: ...
+
+# CPython-parity no-op: TPy's local-time provider reads TZ once at first
+# use, so set-TZ-then-tzset-then-use works; a tzset after local time was
+# already used cannot re-pin the zone (documented divergence).
+@native("tpy::stdlib::time::tzset")
+def tzset() -> None: ...

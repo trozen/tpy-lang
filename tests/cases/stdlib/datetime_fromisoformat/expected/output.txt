@@ -1,0 +1,48 @@
+datetime.date(2021, 3, 5)
+datetime.date(2021, 3, 5)
+datetime.date(2021, 1, 4)
+datetime.date(2021, 1, 4)
+datetime.date(2020, 12, 28)
+ValueError
+ValueError
+ValueError
+ValueError
+ValueError
+ValueError
+datetime.time(14, 30)
+datetime.time(14, 30, 15)
+datetime.time(14, 30, 15, 123000)
+datetime.time(14, 30, 15, 123456)
+datetime.time(14, 30)
+datetime.time(14, 30)
+datetime.time(14, 30, 15)
+datetime.time(14, 0)
+datetime.time(14, 30, 15, 500000)
+ValueError
+ValueError
+datetime.datetime(2021, 3, 5, 14, 30)
+datetime.datetime(2021, 3, 5, 14, 30, 15, 123456)
+datetime.datetime(2021, 3, 5, 14, 30)
+datetime.datetime(2021, 3, 5, 14, 30)
+datetime.datetime(2021, 3, 5, 14, 30)
+datetime.datetime(2021, 3, 5, 14, 30, 15)
+datetime.datetime(2021, 3, 5, 14, 30, 15, 123456, tzinfo=datetime.timezone(datetime.timedelta(seconds=18000)))
+datetime.datetime(2021, 3, 5, 14, 30, tzinfo=datetime.timezone.utc)
+ValueError
+datetime.datetime(2021, 3, 5, 14, 30, tzinfo=datetime.timezone.utc)
+datetime.datetime(2021, 3, 5, 14, 30, tzinfo=datetime.timezone(datetime.timedelta(days=-1, seconds=66600)))
+datetime.datetime(2021, 3, 5, 14, 30, tzinfo=datetime.timezone(datetime.timedelta(seconds=19800)))
+datetime.datetime(2021, 3, 5, 14, 30, tzinfo=datetime.timezone(datetime.timedelta(seconds=18000)))
+datetime.datetime(2021, 3, 5, 14, 30, tzinfo=datetime.timezone(datetime.timedelta(seconds=19815)))
+datetime.datetime(2021, 3, 5, 14, 30, tzinfo=datetime.timezone(datetime.timedelta(seconds=19815, microseconds=250000)))
+ValueError
+datetime.datetime(2021, 3, 5, 0, 0)
+datetime.datetime(2021, 1, 4, 14, 30)
+ValueError
+ValueError
+ValueError
+ValueError
+True
+True
+True
+True

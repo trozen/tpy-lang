@@ -59,4 +59,11 @@ inline void sleep_until_steady(double deadline_seconds) {
     std::this_thread::sleep_until(deadline);
 }
 
+// CPython-parity no-op. TPy's local-time provider (the datetime tz
+// backend) reads TZ once at first use, so the canonical CPython pattern
+// "set os.environ['TZ'], call time.tzset(), then use local time" works
+// unchanged; re-reading TZ *after* local time was already used is the
+// documented pin-once divergence and stays a no-op here.
+inline void tzset() noexcept {}
+
 } // namespace tpy::stdlib::time

@@ -5607,6 +5607,7 @@ VERSION: Final[tuple[Int32, Int32, Int32]] = (1, 2, 3)
 - Module level (class-level `Final[T] = value` is documented in the next section; not yet supported in function bodies)
 - Supported types: primitives (int, float, bool, str, StrView, Char, IntN) and tuple (no `Final[list[T]]`, `Final[SomeRecord]`)
 - Must use explicit type: `Final[T]` (bare `Final` not yet supported)
+- A record-typed module constant is spelled as a plain annotated global (`UTC: timezone = timezone(timedelta())` in the datetime stdlib is the model); it is exportable and importable but not `Final`-frozen. The ALL_CAPS-without-Final warning deliberately skips types `Final[T]` cannot wrap. Extending `Final` to value-type records is filed in TODO.md.
 
 ### Class-Level Final and ClassVar (Working)
 

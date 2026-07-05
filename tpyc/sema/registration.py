@@ -1800,18 +1800,14 @@ class TypeRegistrar:
                         f"Property setter 'set_{prop_name}' conflicts with method '{setter_cpp_name}'",
                         record.loc,
                     )
-        # Remove property methods from methods dict (not callable as obj.method())
-        # Prune the mutable getter clone when a single const overload suffices.
-        # Only mutable non-value types (records, containers) need dual overloads
-        # for T& vs const T& semantics.
-        for prop_name, prop_info in properties.items():
-            ret = prop_info.getter.return_type
-            if ret.is_value_type():
-                record.methods = [
-                    m for m in record.methods
-                    if not (m.is_property_getter and m.name == prop_name
-                            and m.is_auto_readonly_mutable_clone)
-                ]
+        # Remove property methods from methods dict (not callable as
+        # obj.method()). Pruning the redundant mutable getter clone for
+        # value-typed returns happens later, in prune_value_property_clones:
+        # a user record's is_value_type flag is only set during the protocol
+        # pass, so checking it here misclassifies value-record returns and
+        # leaves both clones alive (identical const C++ signatures ->
+        # redefinition error).
+        for prop_name in properties:
             methods.pop(prop_name, None)
 
         # Set provisional parent from bases (for get_all_fields during macro execution).
@@ -2514,6 +2510,28 @@ class TypeRegistrar:
                     method.return_type, allow_type_param_ref=is_generic,
                     loc=method.loc or record.loc,
                 )
+
+    def prune_value_property_clones(self, record: TpyRecord) -> None:
+        """Drop the mutable getter clone of a @property whose return is a
+        value type -- a single const overload suffices (no T& vs const T&
+        aliasing distinction), and keeping both emits two identical const
+        C++ signatures (redefinition error).
+
+        Runs with validate_value_type_fields, after the protocol pass, so
+        user-record ValueType flags are authoritative (register_record is
+        too early: a value record's flag is not yet set there).
+        """
+        record_info = self.ctx.registry.get_record(record.name)
+        if record_info is None or not record_info.properties:
+            return
+        for prop_name, prop_info in record_info.properties.items():
+            ret = prop_info.getter.return_type
+            if ret is not None and ret.is_value_type():
+                record.methods = [
+                    m for m in record.methods
+                    if not (m.is_property_getter and m.name == prop_name
+                            and m.is_auto_readonly_mutable_clone)
+                ]
 
     def validate_value_type_fields(self, record: TpyRecord) -> None:
         """Validate that all fields of a ValueType record are themselves value types,

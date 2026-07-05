@@ -1,0 +1,10 @@
+datetime.datetime(2021, 1, 15, 12, 0, tzinfo=datetime.timezone(datetime.timedelta(days=-1, seconds=68400), 'EST'))
+datetime.datetime(2021, 7, 15, 12, 0, tzinfo=datetime.timezone(datetime.timedelta(days=-1, seconds=72000), 'EDT'))
+1610730000.0
+1626364800.0
+1615707000.0
+1636263000.0
+2021-07-15 12:00:00
+ 
+EDT -0400
+True

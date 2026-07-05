@@ -1024,9 +1024,13 @@ class SemanticAnalyzer:
         for record in module.all_records():
             self.registrar.validate_method_error_returns(record)
 
-        # Validate ValueType fields in a second pass (all ValueType flags are set now)
+        # Second pass, after all ValueType flags are set: validate ValueType
+        # fields, then drop redundant property mutable clones (a structural
+        # record.methods edit, not a validation -- it needs the same settled
+        # flags, which is why it lives here and not in register_record).
         for record in module.all_records():
             self.registrar.validate_value_type_fields(record)
+            self.registrar.prune_value_property_clones(record)
 
         # Validate default_factory fields conform to Default protocol
         self._validate_factory_defaults(module)

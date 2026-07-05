@@ -19,9 +19,9 @@ void main() {
     // print(lo < utc, utc < hi)               # True True
     std::cout << ::tpy::print_bool(((lo) < (utc))) << " " << ::tpy::print_bool(((utc) < (hi))) << "\n";
     // print(0 <= now.hour, now.hour <= 23)    # True True
-    std::cout << ::tpy::print_bool((0 <= now.hour)) << " " << ::tpy::print_bool((now.hour <= 23)) << "\n";
+    std::cout << ::tpy::print_bool((0 <= now.hour())) << " " << ::tpy::print_bool((now.hour() <= 23)) << "\n";
     // print(0 <= now.microsecond, now.microsecond <= 999999)  # True True
-    std::cout << ::tpy::print_bool((0 <= now.microsecond)) << " " << ::tpy::print_bool((now.microsecond <= 999999)) << "\n";
+    std::cout << ::tpy::print_bool((0 <= now.microsecond())) << " " << ::tpy::print_bool((now.microsecond() <= 999999)) << "\n";
     // # now() and utcnow() differ by the local UTC offset plus the instant
     // # gap between the two calls; bound it by the tz db's physical range.
     // off = now - utc
@@ -36,11 +36,11 @@ void main() {
     // d2 = date.today()
     ::tpystd::datetime::date d2 = date::today();
     // print(d1 <= d2, d1.year >= 2026)        # True True
-    std::cout << ::tpy::print_bool(((d1) <= (d2))) << " " << ::tpy::print_bool((d1.year >= 2026)) << "\n";
+    std::cout << ::tpy::print_bool(((d1) <= (d2))) << " " << ::tpy::print_bool((d1.year() >= 2026)) << "\n";
     // print(d1 <= date(dt.year, dt.month, dt.day))  # True (no midnight race)
-    std::cout << ::tpy::print_bool(((d1) <= (::tpystd::datetime::date(::tpy::BigInt(dt.year), ::tpy::BigInt(dt.month), ::tpy::BigInt(dt.day))))) << "\n";
+    std::cout << ::tpy::print_bool(((d1) <= (::tpystd::datetime::date(::tpy::BigInt(dt.year()), ::tpy::BigInt(dt.month()), ::tpy::BigInt(dt.day()))))) << "\n";
     // print(date(dt.year, dt.month, dt.day) <= d2)  # True
-    std::cout << ::tpy::print_bool(((::tpystd::datetime::date(::tpy::BigInt(dt.year), ::tpy::BigInt(dt.month), ::tpy::BigInt(dt.day))) <= (d2))) << "\n";
+    std::cout << ::tpy::print_bool(((::tpystd::datetime::date(::tpy::BigInt(dt.year()), ::tpy::BigInt(dt.month()), ::tpy::BigInt(dt.day()))) <= (d2))) << "\n";
     // # Wall-clock never goes backwards across consecutive now() calls by more
     // # than a leap adjustment; assert monotone-ish ordering loosely.
     // n2 = datetime.now()
@@ -57,7 +57,7 @@ void main() {
     // delta = local - utcv
     ::tpystd::datetime::timedelta delta = ((local) - (utcv));
     // print(local.microsecond == utcv.microsecond)  # True (offset is whole seconds)
-    std::cout << ::tpy::print_bool((local.microsecond == utcv.microsecond)) << "\n";
+    std::cout << ::tpy::print_bool((local.microsecond() == utcv.microsecond())) << "\n";
     // print(-timedelta(hours=13) < delta, delta < timedelta(hours=15))  # True True
     std::cout << ::tpy::print_bool(((-(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(13)))) < (delta))) << " " << ::tpy::print_bool(((delta) < (::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(15))))) << "\n";
     // mins = delta // timedelta(minutes=1)

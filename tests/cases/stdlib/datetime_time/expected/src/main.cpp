@@ -15,7 +15,7 @@ void main() {
     // print(repr(t))                  # datetime.time(14, 30, 5)
     std::cout << ::tpy::repr_of(t) << "\n";
     // print(t.hour, t.minute, t.second, t.microsecond)  # 14 30 5 0
-    std::cout << t.hour << " " << t.minute << " " << t.second << " " << t.microsecond << "\n";
+    std::cout << t.hour() << " " << t.minute() << " " << t.second() << " " << t.microsecond() << "\n";
     // print(time())                   # 00:00:00 (all defaults)
     std::cout << ::tpystd::datetime::time() << "\n";
     // print(repr(time()))             # datetime.time(0, 0)

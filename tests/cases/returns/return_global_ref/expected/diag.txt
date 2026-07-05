@@ -1,1 +1,0 @@
-main.py:8: warning: ALL_CAPS variable 'ORIGIN' without Final annotation; use Final[Point] if this is a constant

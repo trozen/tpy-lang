@@ -11,12 +11,23 @@
 # float args + float * / /; deferred, see the roadmap).
 # v2: time + datetime (naive-only), now/utcnow/today/fromtimestamp/
 # utcfromtimestamp/combine, date.today.
+# v3: fixed-offset timezone + aware datetime (awareness is a runtime property;
+# naive/aware mixing raises TypeError like CPython), strftime/strptime/
+# fromisoformat, isoformat(timespec=), replace(), timestamp()/astimezone().
 from __future__ import annotations
 import time as _time
-from typing import overload
+from typing import Final, overload
 from dataclasses import dataclass
-from tpy import Int32, Int64, ValueType
-from _bindings import hinnant_date
+from tpy import Int8, Int16, Int32, Int64, String, ValueType
+from _bindings import hinnant_date, tz_intern
+from _datetime_cal import (
+    _MAXORDINAL, _days_in_month, _is_leap, _ymd2ord, _ord2ymd,
+)
+from _datetime_fmt import _format_time, _offset_str, _strftime, _tz_label
+from _datetime_parse import (
+    _find_iso_datetime_separator, _parse_iso_date, _parse_iso_time,
+    _strptime_impl,
+)
 
 _MAXORDINAL_DAYS = 999999999
 
@@ -135,58 +146,6 @@ class timedelta(ValueType):
         return s
 
 
-# Calendar constants/helpers, ported from CPython's datetime.py. The lists are
-# annotated list[int] (BigInt elements): the calendar math mixes them with
-# divmod-derived BigInt locals, and the inferred list[Int32] would not compare.
-_MAXORDINAL: int = 3652059  # date.max.toordinal(): 9999-12-31
-_DAYS_IN_MONTH: list[int] = [-1, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
-_DAYS_BEFORE_MONTH: list[int] = [-1, 0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334]
-
-
-def _is_leap(year: int) -> bool:
-    return year % 4 == 0 and (year % 100 != 0 or year % 400 == 0)
-
-
-def _days_in_month(year: int, month: int) -> int:
-    if month == 2 and _is_leap(year):
-        return 29
-    return _DAYS_IN_MONTH[month]
-
-
-def _days_before_year(year: int) -> int:
-    y = year - 1
-    return y * 365 + y // 4 - y // 100 + y // 400
-
-
-def _days_before_month(year: int, month: int) -> int:
-    extra = 1 if (month > 2 and _is_leap(year)) else 0
-    return _DAYS_BEFORE_MONTH[month] + extra
-
-
-def _ymd2ord(year: int, month: int, day: int) -> int:
-    return _days_before_year(year) + _days_before_month(year, month) + day
-
-
-def _ord2ymd(n: int) -> tuple[int, int, int]:
-    n = n - 1
-    n400, n = divmod(n, 146097)
-    year = n400 * 400 + 1
-    n100, n = divmod(n, 36524)
-    n4, n = divmod(n, 1461)
-    n1, n = divmod(n, 365)
-    year = year + n100 * 100 + n4 * 4 + n1
-    if n1 == 4 or n100 == 4:
-        return (year - 1, 12, 31)
-    leapyear = n1 == 3 and (n4 != 24 or n100 == 3)
-    month = (n + 50) >> 5
-    preceding = _DAYS_BEFORE_MONTH[month] + (1 if (month > 2 and leapyear) else 0)
-    if preceding > n:
-        month = month - 1
-        preceding = preceding - (_DAYS_IN_MONTH[month] + (1 if (month == 2 and leapyear) else 0))
-    n = n - preceding
-    return (year, month, n + 1)
-
-
 def _check_date_fields(year: int, month: int, day: int) -> None:
     if year < 1 or year > 9999:
         raise ValueError("year is out of range")
@@ -207,26 +166,100 @@ def _check_time_fields(hour: int, minute: int, second: int, microsecond: int) ->
         raise ValueError("microsecond must be in 0..999999")
 
 
-def _format_time(hh: Int32, mm: Int32, ss: Int32, us: Int32) -> str:
-    # CPython's timespec='auto': seconds always shown, microseconds only
-    # when non-zero.
-    s = f"{hh:02d}:{mm:02d}:{ss:02d}"
-    if us != 0:
-        s = s + f".{us:06d}"
-    return s
+@dataclass(frozen=True)
+class timezone(ValueType):
+    # Fixed-offset tz -- the only kind in the closed value-typed set
+    # (chrono-inspired; a ZoneInfo widening is deferred, user tzinfo
+    # subclasses are permanently unsupported). Packed to 16B, trivially
+    # copyable: the offset lives inline (hot: eq/hash/arithmetic), the
+    # name in the process-global intern table (cold: tzname/repr; id 0 =
+    # unnamed, so timezone(off) and timezone(off, "") stay distinct --
+    # CPython stores None vs ""). Field layout mirrors datetime's inline
+    # tz block so ingestion/reconstruction are raw field copies.
+    _off_us: Int64
+    _name_id: Int32
+
+    def __init__(self, offset: timedelta, name: str | None = None) -> None:
+        us = offset._to_microseconds()
+        if us <= -86400000000 or us >= 86400000000:
+            raise ValueError("offset must be a timedelta strictly between "
+                             "-timedelta(hours=24) and timedelta(hours=24).")
+        # The range check bounds us under 2**37, so the Int64 store is safe.
+        self._off_us = us
+        self._name_id = 0 if name is None else tz_intern.intern_name(name)
+
+    def utcoffset(self, dt: "datetime | None") -> timedelta:
+        return timedelta(microseconds=int(self._off_us))
+
+    def tzname(self, dt: "datetime | None") -> String:
+        if self._name_id != 0:
+            return tz_intern.name_at(self._name_id)
+        return _tz_label(int(self._off_us))
+
+    def dst(self, dt: "datetime | None") -> timedelta | None:
+        return None
+
+    def fromutc(self, dt: "datetime") -> "datetime":
+        tz = dt.tzinfo
+        if tz is None or tz != self:
+            raise ValueError("fromutc: dt.tzinfo is not self")
+        return dt + self.utcoffset(dt)
+
+    # CPython compares timezones by offset only; the name is cosmetic.
+    def __eq__(self, other: "timezone") -> bool:
+        return self._off_us == other._off_us
+
+    def __hash__(self) -> int:
+        return hash(self._off_us)
+
+    def __repr__(self) -> str:
+        if self._name_id == 0 and self._off_us == 0:
+            # Value-equal to CPython's interned timezone.utc singleton.
+            return "datetime.timezone.utc"
+        off_repr = repr(timedelta(microseconds=int(self._off_us)))
+        if self._name_id != 0:
+            name = tz_intern.name_at(self._name_id)
+            return f"datetime.timezone({off_repr}, {repr(name)})"
+        return f"datetime.timezone({off_repr})"
+
+    def __str__(self) -> str:
+        return self.tzname(None)
+
+
+# CPython 3.11+ module-level alias for timezone.utc (the class attribute
+# is not expressible: a class-level constant of the record's own type is
+# outside Final's constexpr model, so the attribute access is a loud
+# compile error and UTC is the supported spelling).
+UTC: timezone = timezone(timedelta())
 
 
 @dataclass(frozen=True, order=True)
 class date(ValueType):
-    year: Int32
-    month: Int32
-    day: Int32
+    # Packed to 4B: narrow private storage (validated ranges fit exactly),
+    # public attrs are Int32-widening properties so user arithmetic never
+    # touches the narrow types. Storage stays in significance order --
+    # order=True tuple comparison over it is the chronological order.
+    _y: Int16
+    _mo: Int8
+    _d: Int8
 
     def __init__(self, year: int, month: int, day: int) -> None:
         _check_date_fields(year, month, day)
-        self.year = year
-        self.month = month
-        self.day = day
+        self._y = year
+        self._mo = month
+        self._d = day
+
+    @property
+    def year(self) -> Int32:
+        return Int32(self._y)
+
+    @property
+    def month(self) -> Int32:
+        return Int32(self._mo)
+
+    @property
+    def day(self) -> Int32:
+        return Int32(self._d)
 
     @staticmethod
     def today() -> "date":
@@ -238,6 +271,17 @@ class date(ValueType):
         y, m, d = _ord2ymd(n)
         return date(y, m, d)
 
+    @staticmethod
+    def fromisoformat(date_string: str) -> "date":
+        n = len(date_string)
+        if n != 7 and n != 8 and n != 10:
+            raise ValueError(f"Invalid isoformat string: '{date_string}'")
+        try:
+            y, mo, d = _parse_iso_date(date_string)
+            return date(y, mo, d)
+        except ValueError:
+            raise ValueError(f"Invalid isoformat string: '{date_string}'")
+
     def toordinal(self) -> int:
         return _ymd2ord(int(self.year), int(self.month), int(self.day))
 
@@ -246,6 +290,17 @@ class date(ValueType):
 
     def isoweekday(self) -> int:
         return self.weekday() + 1
+
+    def replace(self, year: int | None = None, month: int | None = None,
+                day: int | None = None) -> "date":
+        y = year if year is not None else int(self.year)
+        mo = month if month is not None else int(self.month)
+        d = day if day is not None else int(self.day)
+        return date(y, mo, d)
+
+    def strftime(self, format: str) -> str:
+        return _strftime(format, self.year, self.month, self.day,
+                         0, 0, 0, 0, False, 0, "")
 
     def isoformat(self) -> str:
         return f"{self.year:04d}-{self.month:02d}-{self.day:02d}"
@@ -277,24 +332,76 @@ class date(ValueType):
 @dataclass(frozen=True, order=True)
 class time(ValueType):
     # Naive only (no tzinfo/fold; aware time is out of scope -- see the
-    # roadmap). Fields are declared in significance order, so order=True
-    # tuple comparison is the correct chronological order.
-    hour: Int32
-    minute: Int32
-    second: Int32
-    microsecond: Int32
+    # roadmap). Packed to 8B: narrow private storage in significance order
+    # (order=True tuple comparison stays chronological), public attrs are
+    # Int32-widening properties.
+    _hh: Int8
+    _mm: Int8
+    _ss: Int8
+    _us: Int32
 
     def __init__(self, hour: int = 0, minute: int = 0, second: int = 0,
                  microsecond: int = 0) -> None:
         _check_time_fields(hour, minute, second, microsecond)
-        self.hour = hour
-        self.minute = minute
-        self.second = second
-        self.microsecond = microsecond
+        self._hh = hour
+        self._mm = minute
+        self._ss = second
+        self._us = microsecond
 
-    def isoformat(self) -> str:
+    @property
+    def hour(self) -> Int32:
+        return Int32(self._hh)
+
+    @property
+    def minute(self) -> Int32:
+        return Int32(self._mm)
+
+    @property
+    def second(self) -> Int32:
+        return Int32(self._ss)
+
+    @property
+    def microsecond(self) -> Int32:
+        return self._us
+
+    @staticmethod
+    def fromisoformat(time_string: str) -> "time":
+        s = time_string
+        if s.startswith("T"):
+            s = s[1:]
+        try:
+            hh, mm, ss, us, off, has_tz = _parse_iso_time(s)
+        except ValueError:
+            raise ValueError(f"Invalid isoformat string: '{time_string}'")
+        if has_tz:
+            # CPython returns an aware time here; TPy's time is naive-only
+            # (aware time deferred) -- loud rejection, not silent dropping.
+            raise ValueError(
+                "aware time is not supported (offset suffix rejected; "
+                "aware time is deferred in TPy)")
+        try:
+            return time(hh, mm, ss, us)
+        except ValueError:
+            raise ValueError(f"Invalid isoformat string: '{time_string}'")
+
+    def replace(self, hour: int | None = None, minute: int | None = None,
+                second: int | None = None,
+                microsecond: int | None = None) -> "time":
+        # No tzinfo param: aware time is out of scope (see the roadmap).
+        hh = hour if hour is not None else int(self.hour)
+        mm = minute if minute is not None else int(self.minute)
+        ss = second if second is not None else int(self.second)
+        us = microsecond if microsecond is not None else int(self.microsecond)
+        return time(hh, mm, ss, us)
+
+    def strftime(self, format: str) -> str:
+        # CPython formats a time through the 1900-01-01 timetuple.
+        return _strftime(format, 1900, 1, 1, self.hour, self.minute,
+                         self.second, self.microsecond, False, 0, "")
+
+    def isoformat(self, timespec: str = "auto") -> str:
         return _format_time(self.hour, self.minute, self.second,
-                            self.microsecond)
+                            self.microsecond, timespec)
 
     def __str__(self) -> str:
         return self.isoformat()
@@ -314,6 +421,13 @@ _EPOCH_ORDINAL: int = 719163  # date(1970, 1, 1).toordinal()
 _TIME_T_MAX: int = 9223372036854775807  # 64-bit time_t, matching CPython's bound
 
 
+def _local_epoch_s(u: int) -> int:
+    # local(u) in CPython's _mktime: the wall-clock epoch second the local
+    # zone shows at UTC epoch second u. Callers pass values derived from
+    # in-range datetimes (|u| < ~3e11), so the Int64 narrowing cannot panic.
+    return u + int(hinnant_date.local_utc_offset_seconds(Int64(u)))
+
+
 def _timestamp_to_us(t: float) -> int:
     # CPython's _fromtimestamp split: whole seconds via truncation, then
     # round-half-even of the fractional part in microseconds. Keeping
@@ -327,42 +441,265 @@ def _timestamp_to_us(t: float) -> int:
 
 @dataclass(frozen=True)
 class datetime(ValueType):
-    # Naive only (no tzinfo/fold; fixed-offset awareness is v3 -- see the
-    # roadmap). Composed, not a date subclass: cross-type date/datetime
-    # comparison is a compile error (documented divergence). No order=True:
-    # once tzinfo is a field, tuple comparison is wrong, so the ordering
-    # operators are hand-written from the start.
-    year: Int32
-    month: Int32
-    day: Int32
-    hour: Int32
-    minute: Int32
-    second: Int32
-    microsecond: Int32
+    # Composed, not a date subclass: cross-type date/datetime comparison is
+    # a compile error (documented divergence). No order=True: awareness makes
+    # tuple comparison wrong, so ordering operators are hand-written.
+    # Awareness is a RUNTIME property; mixing naive and aware in ordering/
+    # subtraction raises TypeError exactly like CPython. No fold (deferred).
+    # Packed to 24B, trivially copyable: narrow private storage behind
+    # Int32-widening properties, and the tz inline as offset + interned
+    # name id (the timezone value is reconstructed only when .tzinfo is
+    # read -- cold; the offset drives all hot paths directly). Field order
+    # is packing order (widest first); nothing here relies on declaration
+    # order (all comparisons/hash/repr are hand-written).
+    _tz_off_us: Int64
+    _us: Int32
+    _tz_name_id: Int32
+    _y: Int16
+    _mo: Int8
+    _d: Int8
+    _hh: Int8
+    _mm: Int8
+    _ss: Int8
+    _aware: bool
 
     def __init__(self, year: int, month: int, day: int, hour: int = 0,
-                 minute: int = 0, second: int = 0,
-                 microsecond: int = 0) -> None:
+                 minute: int = 0, second: int = 0, microsecond: int = 0,
+                 tzinfo: timezone | None = None) -> None:
         _check_date_fields(year, month, day)
         _check_time_fields(hour, minute, second, microsecond)
-        self.year = year
-        self.month = month
-        self.day = day
-        self.hour = hour
-        self.minute = minute
-        self.second = second
-        self.microsecond = microsecond
+        self._y = year
+        self._mo = month
+        self._d = day
+        self._hh = hour
+        self._mm = minute
+        self._ss = second
+        self._us = microsecond
+        # Locals first, stores unconditional: a branch-assigned field
+        # draws the not-initialized-before-ctor-body warning.
+        tz_off = 0
+        tz_id = 0
+        if tzinfo is not None:
+            tz_off = int(tzinfo._off_us)
+            tz_id = int(tzinfo._name_id)
+        self._aware = tzinfo is not None
+        self._tz_off_us = tz_off
+        self._tz_name_id = tz_id
+
+    @property
+    def year(self) -> Int32:
+        return Int32(self._y)
+
+    @property
+    def month(self) -> Int32:
+        return Int32(self._mo)
+
+    @property
+    def day(self) -> Int32:
+        return Int32(self._d)
+
+    @property
+    def hour(self) -> Int32:
+        return Int32(self._hh)
+
+    @property
+    def minute(self) -> Int32:
+        return Int32(self._mm)
+
+    @property
+    def second(self) -> Int32:
+        return Int32(self._ss)
+
+    @property
+    def microsecond(self) -> Int32:
+        return self._us
+
+    @property
+    def tzinfo(self) -> timezone | None:
+        if not self._aware:
+            return None
+        off = timedelta(microseconds=int(self._tz_off_us))
+        if self._tz_name_id == 0:
+            return timezone(off)
+        return timezone(off, tz_intern.name_at(self._tz_name_id))
+
+    def _epoch_us(self) -> int:
+        # Wall-clock microseconds since the epoch, ignoring the tz.
+        secs = (int(self._hh) * 3600 + int(self._mm) * 60
+                + int(self._ss))
+        return (((self.toordinal() - _EPOCH_ORDINAL) * 86400 + secs)
+                * 1000000 + int(self._us))
+
+    def _utc_us(self) -> int:
+        # UTC microseconds since the epoch; equals wall clock when naive, so
+        # it doubles as the eq/hash key for both awareness states (naive and
+        # aware values never compare equal -- __eq__ dispatches first).
+        off = 0
+        if self._aware:
+            off = int(self._tz_off_us)
+        return self._epoch_us() - off
+
+    def utcoffset(self) -> timedelta | None:
+        if not self._aware:
+            return None
+        return timedelta(microseconds=int(self._tz_off_us))
+
+    def tzname(self) -> str | None:
+        if not self._aware:
+            return None
+        if self._tz_name_id != 0:
+            return tz_intern.name_at(self._tz_name_id)
+        return _tz_label(int(self._tz_off_us))
+
+    def dst(self) -> timedelta | None:
+        return None
+
+    def replace(self, year: int | None = None, month: int | None = None,
+                day: int | None = None, hour: int | None = None,
+                minute: int | None = None, second: int | None = None,
+                microsecond: int | None = None,
+                tzinfo: timezone | bool | None = True) -> "datetime":
+        # CPython's own sentinel: tzinfo defaults to True (keep current);
+        # passing a timezone sets it, passing None drops it. A record value
+        # cannot be a TPy param default, so the bool arm IS the omitted case.
+        y = year if year is not None else int(self.year)
+        mo = month if month is not None else int(self.month)
+        d = day if day is not None else int(self.day)
+        hh = hour if hour is not None else int(self.hour)
+        mm = minute if minute is not None else int(self.minute)
+        ss = second if second is not None else int(self.second)
+        us = microsecond if microsecond is not None else int(self.microsecond)
+        tz: timezone | None = None
+        if isinstance(tzinfo, bool):
+            if not tzinfo:
+                raise TypeError("tzinfo argument must be None or a timezone")
+            tz = self.tzinfo
+        elif isinstance(tzinfo, timezone):
+            tz = tzinfo
+        return datetime(y, mo, d, hh, mm, ss, us, tz)
+
+    def _mktime_s(self, fold: int) -> int:
+        # CPython's _mktime: iteratively solve t = local(u) for the UTC
+        # epoch second u whose local reading is this wall clock. A single
+        # forward offset lookup is silently wrong in the 1-2h window around
+        # every DST transition; the fixed-point probe handles gaps (fold=0
+        # resolves to the later instant) and folds (earlier instant).
+        t = self._epoch_us() // 1000000
+        a = _local_epoch_s(t) - t
+        u1 = t - a
+        t1 = _local_epoch_s(u1)
+        b = a
+        if t1 == t:
+            # One solution found; probe a day away to detect a fold.
+            u2 = u1 + (-86400 if fold == 0 else 86400)
+            b = _local_epoch_s(u2) - u2
+            if a == b:
+                return u1
+        else:
+            b = t1 - u1
+        u2 = t - b
+        t2 = _local_epoch_s(u2)
+        if t2 == t:
+            return u2
+        if t1 == t:
+            return u1
+        # Neither candidate reproduces t: the wall time is in a DST gap.
+        if fold == 0:
+            return max(u1, u2)
+        return min(u1, u2)
+
+    def timestamp(self) -> float:
+        if not self._aware:
+            # Naive means system-local wall clock (CPython semantics).
+            return self._mktime_s(0) + int(self._us) / 1000000
+        return self._utc_us() / 1000000
+
+    def _local_timezone(self) -> timezone:
+        # The system zone at this value's instant, as a fixed offset +
+        # libc-style abbreviation ("CET") -- what astimezone(None) attaches.
+        if not self._aware:
+            ts = self._mktime_s(0)
+            ts2 = self._mktime_s(1)
+            # In a gap or fold the two fold solves disagree; fold=0 picks
+            # the earlier offset's reading (CPython's rule).
+            if ts2 != ts and ts2 < ts:
+                ts = ts2
+        else:
+            ts = self._utc_us() // 1000000
+        off = int(hinnant_date.local_utc_offset_seconds(Int64(ts)))
+        name = hinnant_date.local_zone_abbrev(Int64(ts))
+        return timezone(timedelta(seconds=off), name)
+
+    def astimezone(self, tz: timezone | None = None) -> "datetime":
+        # A naive value is interpreted as system-local wall-clock time
+        # (CPython: astimezone does NOT raise on naive input -- unlike
+        # the mixing rules for comparison/subtraction).
+        if tz is None:
+            tz = self._local_timezone()
+        if self._aware:
+            my_off_us = int(self._tz_off_us)
+        else:
+            my_off_us = int(self._local_timezone()._off_us)
+        delta = int(tz._off_us) - my_off_us
+        shifted = self + timedelta(microseconds=delta)
+        return shifted.replace(tzinfo=tz)
 
     @staticmethod
-    def combine(d: date, t: time) -> "datetime":
+    def strptime(date_string: str, format: str) -> "datetime":
+        y, mo, d, hh, mm, ss, us, has_tz, off_us, zname = _strptime_impl(
+            date_string, format)
+        tz: timezone | None = None
+        if has_tz:
+            delta = timedelta(microseconds=off_us)
+            if zname != "":
+                tz = timezone(delta, zname)
+            else:
+                tz = timezone(delta)
+        return datetime(y, mo, d, hh, mm, ss, us, tz)
+
+    @staticmethod
+    def fromisoformat(date_string: str) -> "datetime":
+        if len(date_string) < 7:
+            raise ValueError(f"Invalid isoformat string: '{date_string}'")
+        try:
+            sep_loc = _find_iso_datetime_separator(date_string)
+            y, mo, d = _parse_iso_date(date_string[0:sep_loc])
+        except ValueError:
+            raise ValueError(f"Invalid isoformat string: '{date_string}'")
+        tstr = date_string[sep_loc + 1:]
+        # BigInt annotations: the unpack below yields BigInt; a bare 0
+        # would infer Int32 and fail the assignment.
+        hh: int = 0
+        mm: int = 0
+        ss: int = 0
+        us: int = 0
+        tz: timezone | None = None
+        if len(tstr) > 0:
+            try:
+                hh, mm, ss, us, off, has_tz = _parse_iso_time(tstr)
+                if has_tz:
+                    tz = timezone(timedelta(microseconds=off))
+            except ValueError:
+                raise ValueError(
+                    f"Invalid isoformat string: '{date_string}'")
+        # The ctor's own range errors surface unwrapped (CPython does not
+        # wrap them for datetime, unlike date.fromisoformat).
+        return datetime(y, mo, d, hh, mm, ss, us, tz)
+
+    @staticmethod
+    def combine(d: date, t: time,
+                tzinfo: timezone | None = None) -> "datetime":
         return datetime(int(d.year), int(d.month), int(d.day), int(t.hour),
-                        int(t.minute), int(t.second), int(t.microsecond))
+                        int(t.minute), int(t.second), int(t.microsecond),
+                        tzinfo)
 
     @staticmethod
-    def _from_epoch_us(us: int, use_local: bool) -> "datetime":
-        # Civil datetime from epoch microseconds. Local conversion adds the
-        # OS tz database's UTC offset for that instant; floor divmod keeps
-        # pre-1970 (negative) timestamps correct.
+    def _from_epoch_us(us: int, use_local: bool,
+                       tz: timezone | None = None) -> "datetime":
+        # Civil datetime from epoch microseconds, shifted by the fixed tz
+        # offset (aware result) or the OS tz database's local UTC offset for
+        # that instant (naive local result). Floor divmod keeps pre-1970
+        # (negative) timestamps correct.
         epoch_s = us // 1000000
         # Beyond time_t: CPython raises OverflowError. The check must run
         # before the Int64 narrowing at the native call below, which would
@@ -373,14 +710,19 @@ class datetime(ValueType):
         days, rem = divmod(us, 86400000000)
         o = days + _EPOCH_ORDINAL
         # CPython rejects a UTC instant outside year 1..9999 even when the
-        # local offset would shift it back into range (the pre-year-1 LMT
-        # band), so check before AND after applying the offset. ValueError
-        # matches CPython's type ("year N is out of range").
+        # offset would shift it back into range (the pre-year-1 LMT band),
+        # so check before AND after applying the offset. ValueError matches
+        # CPython's type ("year N is out of range").
         if o < 1 or o > _MAXORDINAL:
             raise ValueError("year is out of range")
-        if use_local:
-            offset = hinnant_date.local_utc_offset_seconds(Int64(epoch_s))
-            us = us + int(offset) * 1000000
+        off = 0
+        if tz is not None:
+            off = int(tz._off_us)
+        elif use_local:
+            off = int(hinnant_date.local_utc_offset_seconds(
+                Int64(epoch_s))) * 1000000
+        if off != 0:
+            us = us + off
             days, rem = divmod(us, 86400000000)
             o = days + _EPOCH_ORDINAL
             if o < 1 or o > _MAXORDINAL:
@@ -389,19 +731,20 @@ class datetime(ValueType):
         s, us_part = divmod(rem, 1000000)
         hh, rem_s = divmod(s, 3600)
         mm, ss = divmod(rem_s, 60)
-        return datetime(y, mo, d, hh, mm, ss, us_part)
+        return datetime(y, mo, d, hh, mm, ss, us_part, tz)
 
     @staticmethod
-    def fromtimestamp(t: float) -> "datetime":
-        return datetime._from_epoch_us(_timestamp_to_us(t), True)
+    def fromtimestamp(t: float, tz: timezone | None = None) -> "datetime":
+        return datetime._from_epoch_us(_timestamp_to_us(t), tz is None, tz)
 
     @staticmethod
     def utcfromtimestamp(t: float) -> "datetime":
         return datetime._from_epoch_us(_timestamp_to_us(t), False)
 
     @staticmethod
-    def now() -> "datetime":
-        return datetime._from_epoch_us(int(_time.time_ns()) // 1000, True)
+    def now(tz: timezone | None = None) -> "datetime":
+        return datetime._from_epoch_us(int(_time.time_ns()) // 1000,
+                                       tz is None, tz)
 
     @staticmethod
     def utcnow() -> "datetime":
@@ -420,26 +763,56 @@ class datetime(ValueType):
     def isoweekday(self) -> int:
         return self.weekday() + 1
 
-    def isoformat(self, sep: str = "T") -> str:
-        return (f"{self.year:04d}-{self.month:02d}-{self.day:02d}{sep}"
-                + _format_time(self.hour, self.minute, self.second,
-                               self.microsecond))
+    def strftime(self, format: str) -> str:
+        if not self._aware:
+            return _strftime(format, self.year, self.month, self.day,
+                             self.hour, self.minute, self.second,
+                             self.microsecond, False, 0, "")
+        zone = self.tzname()
+        return _strftime(format, self.year, self.month, self.day,
+                         self.hour, self.minute, self.second,
+                         self.microsecond, True,
+                         int(self._tz_off_us), zone if zone is not None else "")
+
+    def isoformat(self, sep: str = "T", timespec: str = "auto") -> str:
+        s = (f"{self.year:04d}-{self.month:02d}-{self.day:02d}{sep}"
+             + _format_time(self.hour, self.minute, self.second,
+                            self.microsecond, timespec))
+        if self._aware:
+            s = s + _offset_str(int(self._tz_off_us), ":")
+        return s
 
     def __str__(self) -> str:
         return self.isoformat(" ")
 
     def __repr__(self) -> str:
         # CPython trims trailing zero seconds/microseconds but always keeps
-        # year..minute.
+        # year..minute; an aware value appends the tzinfo keyword arg.
         s = (f"datetime.datetime({self.year}, {self.month}, {self.day}, "
              f"{self.hour}, {self.minute}")
         if self.second != 0 or self.microsecond != 0:
             s = s + f", {self.second}"
             if self.microsecond != 0:
                 s = s + f", {self.microsecond}"
+        tz = self.tzinfo
+        if tz is not None:
+            s = s + f", tzinfo={repr(tz)}"
         return s + ")"
 
     def _cmp(self, other: "datetime") -> int:
+        # Ordering across awareness states is a runtime TypeError (CPython
+        # parity); aware pairs compare by UTC instant.
+        self_aware = self._aware
+        other_aware = other._aware
+        if self_aware != other_aware:
+            raise TypeError(
+                "can't compare offset-naive and offset-aware datetimes")
+        if self_aware:
+            a = self._utc_us()
+            b = other._utc_us()
+            if a != b:
+                return -1 if a < b else 1
+            return 0
         if self.year != other.year:
             return -1 if self.year < other.year else 1
         if self.month != other.month:
@@ -456,6 +829,15 @@ class datetime(ValueType):
             return -1 if self.microsecond < other.microsecond else 1
         return 0
 
+    def __eq__(self, other: "datetime") -> bool:
+        # Unlike ordering, naive == aware is False, not an error.
+        if self._aware != other._aware:
+            return False
+        return self._cmp(other) == 0
+
+    def __hash__(self) -> int:
+        return hash(self._utc_us())
+
     def __lt__(self, other: "datetime") -> bool:
         return self._cmp(other) < 0
 
@@ -469,6 +851,7 @@ class datetime(ValueType):
         return self._cmp(other) >= 0
 
     def __add__(self, other: timedelta) -> "datetime":
+        # Wall-clock arithmetic: an aware value keeps its tzinfo untouched.
         delta = timedelta(self.toordinal(), hours=int(self.hour),
                           minutes=int(self.minute), seconds=int(self.second),
                           microseconds=int(self.microsecond))
@@ -478,15 +861,15 @@ class datetime(ValueType):
         y, mo, d = _ord2ymd(int(delta.days))
         hh, rem = divmod(int(delta.seconds), 3600)
         mm, ss = divmod(rem, 60)
-        return datetime(y, mo, d, hh, mm, ss, int(delta.microseconds))
+        return datetime(y, mo, d, hh, mm, ss, int(delta.microseconds),
+                        self.tzinfo)
 
     @overload
     def __sub__(self, other: "datetime") -> timedelta:
-        secs1 = int(self.second) + int(self.minute) * 60 + int(self.hour) * 3600
-        secs2 = int(other.second) + int(other.minute) * 60 + int(other.hour) * 3600
-        return timedelta(days=self.toordinal() - other.toordinal(),
-                         seconds=secs1 - secs2,
-                         microseconds=int(self.microsecond) - int(other.microsecond))
+        if self._aware != other._aware:
+            raise TypeError(
+                "can't subtract offset-naive and offset-aware datetimes")
+        return timedelta(microseconds=self._utc_us() - other._utc_us())
 
     @overload
     def __sub__(self, other: timedelta) -> "datetime":
