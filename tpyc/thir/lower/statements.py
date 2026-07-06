@@ -125,6 +125,7 @@ from .predicates import (
     _eligible_char,
     _eligible_enum,
     _eligible_ptr_union,
+    _eligible_ptr_value,
     _eligible_scalar,
     _eligible_value_union,
     _f1_is_const,
@@ -734,6 +735,25 @@ def _raise_eligible(stmt: TpyRaise, analyzer, ws: _WalkState) -> bool:
                 return False
     return True
 
+def _owned_record_decl_ok(stmt: TpyVarDecl, vtype: 'TpyType | None',
+                          prescan: _Prescan,
+                          declared: dict[str, TpyType], analyzer) -> bool:
+    """A single-assignment owned record local from a record-rvalue init --
+    `Box b = Box(n);` / `Box x = make(1);`, the binding classifier's
+    plain-value-local arm (no indirection, dot access; sema's movable set
+    already tracks it for last-use moves). Reassigned names take the
+    REBIND_SLOT machinery, hoisted / move-through ones their own AST arms.
+    Wrapper-annotated decls (`readonly[T]` / `Own[T]` locals) are sema
+    errors, so `_var_decl_type`'s unwrapping never smuggles one in; the
+    bare-NominalType check is defensive."""
+    return (stmt.name not in prescan.reassigned
+            and stmt.name not in prescan.hoisted
+            and stmt.name not in prescan.move_through
+            and isinstance(vtype, NominalType)
+            and _f1_record(vtype, analyzer)
+            and stmt.init is not None
+            and _is_record_rvalue_source(stmt.init, declared, analyzer))
+
 def _stmt_eligible(stmt: TpyStmt, analyzer, ws: _WalkState,
                    prescan: _Prescan, *, in_branch: bool,
                    in_loop: bool = False) -> bool:
@@ -801,6 +821,12 @@ def _stmt_eligible(stmt: TpyStmt, analyzer, ws: _WalkState,
             # method calls) light up on it.
             if _comprehensions._comp_decl_ok(stmt, ws, prescan, analyzer):
                 return True
+            # Owned record local (`b = Box(n)` / `x = make(1)`): a plain
+            # value decl in storage form; reads off it route via the
+            # declared-type-keyed receiver gates like a record param's.
+            if _owned_record_decl_ok(stmt, _var_decl_type(stmt, analyzer),
+                                     prescan, ws.declared, analyzer):
+                return True
         elif stmt.name in ws.rebind_slots:
             # F2d rebind-slot reseat: an rvalue F1-record ctor / by-value source.
             return _is_record_rvalue_source(stmt.init, ws.declared, analyzer)
@@ -860,6 +886,7 @@ def _stmt_eligible(stmt: TpyStmt, analyzer, ws: _WalkState,
                 or _is_string_owned(vtype)
                 or _eligible_value_union(vtype) is not None
                 or _slice_object_type(vtype)
+                or _eligible_ptr_value(vtype, analyzer)
                 or note_detail("decl.slot_type"))
     if isinstance(stmt, TpyAssign):
         if isinstance(stmt.target, TpyName):
@@ -937,6 +964,37 @@ def _stmt_eligible(stmt: TpyStmt, analyzer, ws: _WalkState,
             if isinstance(dt, OwnType):
                 return False  # an Own source's move arm is not mirrored
             return _f1_record(dt, analyzer)
+        if (prescan.ret_record_borrow is not None
+                or prescan.ret_record_storage is not None):
+            # A record return slot. BORROW (`-> Box` -> `Box&`) admits only a
+            # bare record borrow name -- a record param or a REF_ALIAS local,
+            # both rendering `return name;`. STORAGE (`-> Own[Box]` -> `Box`
+            # by value) admits bare names too (owned local NRVO / `Own`
+            # rvalue-ref-param implicit move -- both render bare; a borrowed
+            # source without copy() is a sema error, so no copy shape reaches
+            # this arm) plus a record-rvalue ctor / by-value call (`return
+            # Box(n);`, the bare expansion). `self` (`*this`), pointer-locals
+            # (`(*p)` deref + move), narrowed names, and field sources stay
+            # on the AST path; an Own-declared source at the BORROW slot
+            # would take a move arm the mirror lacks.
+            if (prescan.ret_record_storage is not None
+                    and _is_record_rvalue_source(stmt.value, ws.declared,
+                                                 analyzer)):
+                return _witness("ret.record_storage")
+            if (not isinstance(stmt.value, TpyName)
+                    or stmt.value.name == "self"
+                    or stmt.value.name in ws.narrowed
+                    or stmt.value.name in ws.pointers):
+                return note_detail("return.record_source")
+            dt = ws.declared.get(stmt.value.name)
+            dt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(dt)))
+                  if dt is not None else None)
+            if prescan.ret_record_borrow is not None and isinstance(dt, OwnType):
+                return note_detail("return.record_source")
+            face = ("ret.record_borrow" if prescan.ret_record_borrow is not None
+                    else "ret.record_storage")
+            return ((_f1_record(dt, analyzer) and _witness(face))
+                    or note_detail("return.record_source"))
         # `return None` at a value-union return slot -> `std::monostate{}`
         # (F4 U1). Union names/literals flow through the generic arm below.
         if prescan.ret_union is not None and isinstance(stmt.value, TpyNoneLiteral):
@@ -1585,6 +1643,19 @@ def _lower_stmt_dispatch(stmt: TpyStmt, lc: _LowerCtx,
                 declared[stmt.name] = vtype
                 return THIRVarDecl(name=stmt.name, resolved_type=vtype,
                                    init=comp, loc=loc)
+            # Owned record local: `Box b = Box(n);` -- the plain value decl,
+            # cpp_type spelled the way codegen does (render_type qualifies
+            # cross-module / native records). The name enters `declared` only
+            # (not `pointers`): reads render `.`, passes render bare, and
+            # sema's movable set drives its last-use moves.
+            if _owned_record_decl_ok(stmt, vtype, lc.prescan, declared,
+                                     lc.analyzer):
+                _witness("decl.owned_record")
+                declared[stmt.name] = vtype
+                return THIRVarDecl(
+                    name=stmt.name, resolved_type=vtype,
+                    init=_lower_expr(stmt.init, lc),
+                    cpp_type=lc.render_type(vtype), form=Form.STORAGE, loc=loc)
         # F2d rebind-slot reseat: an rvalue ctor / by-value source. It lowers as a
         # plain value-form call; emit wraps it as `p = &*(__slot_N = <value>)`
         # using the rebind slot allocated at the decl. Checked before the lvalue
@@ -1742,12 +1813,13 @@ def _lower_stmt_dispatch(stmt: TpyStmt, lc: _LowerCtx,
             # `None` literal stores as a STORAGE-form None (`std::nullopt`, F2c).
             # The target field-access renders `recv.field` / `recv->field`.
             ftype = analyzer.get_expr_type(stmt.target)
-            # A scalar / Char field is a plain value assign -- no
+            # A scalar / Char / Ptr field is a plain value assign -- no
             # borrow<->storage lift. The field write is the fifth flushable
             # statement position (`temp_args`, mirroring the gate's
             # `_scalar_field_write_ok` ws arm).
             if (_eligible_scalar(ftype) or _eligible_char(ftype)
-                    or _eligible_enum(ftype, analyzer) is not None):
+                    or _eligible_enum(ftype, analyzer) is not None
+                    or _eligible_ptr_value(ftype, analyzer)):
                 return THIRAssign(target=_lower_expr(stmt.target, lc),
                                   value=_slot_literal_retype(
                                       _flush_witness(

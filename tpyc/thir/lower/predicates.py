@@ -43,6 +43,7 @@ from ...typesys import (
     OptionalType,
     OwnType,
     PendingViewType,
+    PtrType,
     ReadonlyType,
     STR_FAMILY,
     TpyType,
@@ -937,6 +938,9 @@ def _eligible_return(t: TpyType | None, analyzer) -> bool:
             or _resolved_bytes_value(t, analyzer) is not None
             or _storage_optional_return_type(t, analyzer) is not None
             or _optional_ptr_borrow(t, analyzer) is not None
+            or _record_borrow_return(t, analyzer) is not None
+            or _record_storage_return(t, analyzer) is not None
+            or _eligible_ptr_value(t, analyzer)
             or _borrow_tuple_return_type(t, analyzer) is not None
             or _eligible_value_union(t) is not None
             or _eligible_ptr_union(t, analyzer) is not None)
@@ -988,6 +992,55 @@ def _f1_record(t: TpyType | None, analyzer) -> bool:
             _f1_record_type_arg_ok(a, analyzer) for a in t.type_args):
         return False
     return analyzer.registry.get_record_for_type(t) is not None
+
+def _record_borrow_return(t: TpyType | None, analyzer) -> 'NominalType | None':
+    """The borrow-form F1-record return slot (`-> Box` -> C++ `Box&` /
+    `const Box&`), or None. `Own[record]` is the storage (by-value) direction
+    (`_record_storage_return`) -- checked before `_f1_record`'s own Own-unwrap
+    can admit it."""
+    if t is None:
+        return None
+    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    if isinstance(t, OwnType) or not isinstance(t, NominalType):
+        return None
+    return t if _f1_record(t, analyzer) else None
+
+def _eligible_ptr_value(t: 'TpyType | None', analyzer) -> bool:
+    """A `Ptr[T]` value (`T*` by value -- copied around like a scalar),
+    admitted at the value slots (param / return / field-read result) when the
+    pointee spells byte-identically on both paths: an F1-record (native /
+    cross-module included via native_cpp_names), an eligible scalar, Char, or
+    void (`Ptr[None]` -> `void*`); `Ptr[readonly[T]]` -> `const T*` rides the
+    same arms. The slice renders only bare passes and field reads -- a MEMBER
+    access THROUGH the Ptr takes the AST's `::tpy::deref_check(p)` non-null
+    render (or the proven `->`), a mirror this cell does not carry, so such
+    bodies fall back on their own arms."""
+    if t is None:
+        return False
+    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    if not isinstance(t, PtrType):
+        return False
+    inner = t.inner_pointee
+    return ((is_void_like_type(inner) or _eligible_scalar(inner)
+             or _eligible_char(inner) or _f1_record(inner, analyzer))
+            and _witness("ptr.value_slot"))
+
+def _record_storage_return(t: TpyType | None, analyzer) -> 'NominalType | None':
+    """The storage-form F1-record return slot (`-> Own[Box]` -> C++ `Box` by
+    value), or None. Bare name sources return bare (`return b;` -- NRVO for an
+    owned local, C++ implicit move for an `Own` rvalue-ref param; a borrowed
+    source without copy() is a sema error, so no copy shape arises); a
+    record-rvalue ctor / by-value call returns its bare expansion
+    (`return Box(n);`)."""
+    if t is None:
+        return None
+    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    if not isinstance(t, OwnType):
+        return None
+    inner = unwrap_readonly(t.wrapped)
+    if not isinstance(inner, NominalType):
+        return None
+    return inner if _f1_record(inner, analyzer) else None
 
 def _unwrap_own(t: TpyType) -> TpyType:
     """The payload of an `Own[T]` wrapper, else `t` unchanged -- the recurring unwrap

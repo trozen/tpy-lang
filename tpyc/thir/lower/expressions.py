@@ -150,6 +150,7 @@ from .predicates import (
     _eligible_char,
     _eligible_enum,
     _eligible_ptr_union,
+    _eligible_ptr_value,
     _eligible_scalar,
     _eligible_value_union,
     _enum_compare_pair,
@@ -744,7 +745,8 @@ def _scalar_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
             return False
     elif not (_eligible_scalar(ftype)
               or _eligible_enum(ftype, analyzer) is not None
-              or _is_type_param_slot(ftype)):
+              or _is_type_param_slot(ftype)
+              or _eligible_ptr_value(ftype, analyzer)):
         # A generic record's `T` field write emits as a plain assign (`field = v`
         # / `field = std::move(v)`) -- the BORROW->STORAGE convert renders the
         # source bare/moved (its TypeParamRef emit arm), byte-identical to the
@@ -1225,6 +1227,7 @@ def _call_eligible(e: TpyCall, locals_: dict[str, TpyType], analyzer,
             or _eligible_enum(ret, analyzer) is not None
             or _resolved_str_value(ret, analyzer) is not None
             or _resolved_bytes_value(ret, analyzer) is not None
+            or _eligible_ptr_value(ret, analyzer)
             or (stmt_position and is_void_like_type(ret))
             or (container_ret_ok and _nonvalue_container_ret(ret))):
         return note_detail("call.ret_type")
@@ -1359,7 +1362,22 @@ def _shared_pass_through_arg(a: TpyExpr, ptype: 'TpyType | None',
             or _container_pass_through_arg(a, ptype, locals_, analyzer)
             or _slice_ctor_pass_through_arg(a, ptype, locals_, analyzer)
             or _enum_pass_through_arg(a, ptype, locals_, analyzer)
+            or _ptr_pass_through_arg(a, ptype, locals_, analyzer)
             or _record_pass_through_arg(a, ptype, locals_, analyzer))
+
+def _ptr_pass_through_arg(a: TpyExpr, ptype: 'TpyType | None',
+                          locals_: dict[str, TpyType], analyzer) -> bool:
+    """A `Ptr[T]` value (name / field read) into a Ptr value slot: the
+    ownership cascade never fires for the by-value pointer slot (`own is
+    None`), so both paths render the bare value. An `Own[...]` slot is not a
+    PtrType after the unwraps (auto-move cascade -> AST), a union slot lifts
+    (-> AST), and a coerce-wrapped arg (e.g. a const-adding conversion the
+    sema spells) falls back via `_expr_eligible`'s coerce dispositions."""
+    if not _eligible_ptr_value(ptype if isinstance(ptype, TpyType) else None,
+                               analyzer):
+        return False
+    return (_eligible_ptr_value(analyzer.get_expr_type(a), analyzer)
+            and _expr_eligible(a, locals_, analyzer))
 
 def _slice_ctor_pass_through_arg(a: TpyExpr, ptype: TpyType | None,
                                  locals_: dict[str, TpyType], analyzer) -> bool:
@@ -2445,7 +2463,8 @@ def _expr_eligible(e: TpyExpr, locals_: dict[str, TpyType], analyzer) -> bool:
         ft = analyzer.get_expr_type(e)
         if not (_eligible_scalar(ft) or _eligible_char(ft)
                 or _eligible_enum(ft, analyzer) is not None
-                or _is_type_param_slot(ft)):
+                or _is_type_param_slot(ft)
+                or _eligible_ptr_value(ft, analyzer)):
             return note_detail("field.result_type")
         return (_field_receiver_ok(e, locals_, analyzer)
                 or _optional_checked_field(e, locals_, analyzer)

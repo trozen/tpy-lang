@@ -46,8 +46,8 @@ from ..type_def_registry import (
     is_bytes_view_type, is_str_view_type,
 )
 from ..typesys import (
-    OptionalType, TupleType, unwrap_readonly, unwrap_ref_type,
-    unwrap_send_sync,
+    NominalType, OptionalType, OwnType, TupleType, unwrap_readonly,
+    unwrap_ref_type, unwrap_send_sync,
 )
 from .nodes import (
     Form, THIRArgTemp, THIRAssign, THIRCall, THIRCoerce, THIRConstructor,
@@ -114,6 +114,16 @@ def _borrow_legal_return(rt) -> bool:
     if rt is None:
         return True
     t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rt)))
+    # `return name;` into a by-value RECORD return (`Own[Box]` -> `Box`):
+    # C++ materializes the storage from the borrow source (NRVO / implicit
+    # move) with no spelled convert -- the borrow value is legal. Scoped to
+    # the record shape the storage-return gate produces; an Own[union] /
+    # Own[container] return would need its own conversion arm, and this
+    # check must keep catching a missing one.
+    if (isinstance(t, OwnType)
+            and isinstance(unwrap_readonly(t.wrapped), NominalType)
+            and not t.wrapped.is_value_type()):
+        return True
     if not t.is_value_type():
         return True
     if isinstance(t, TupleType) and t.has_pointer_repr_element():

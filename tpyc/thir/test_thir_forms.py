@@ -10,7 +10,7 @@ from .nodes import (
     THIRName, THIRReturn, THIRSelf, THIRVarDecl,
 )
 from .testutil import (
-    _compile, _entry, _lower_ctx, _fn, _F1_RECORDS,
+    _compile, _entry, _lower_ctx, _lower_ctx_witnessed, _fn, _F1_RECORDS,
 )
 
 # --- F1 form rung: single-assignment non-value record locals + field reads ---
@@ -639,13 +639,19 @@ class TestF2dRebindSlot:
         assert isinstance(reseat, THIRAssign) and reseat.target.name == "p"
         assert isinstance(reseat.value, THIRCtorCall) and reseat.value.type_cpp == "Inner"
 
-    def test_single_assignment_rvalue_is_ineligible(self):
+    def test_single_assignment_rvalue_is_plain_value_local(self):
         # No reassignment -> a plain value local (`Inner p = Inner(1);`), not a
-        # rebind-slot pointer-local -> stays on the AST path.
+        # rebind-slot pointer-local -- the owned-record decl arm routes it in
+        # storage form (no pointer indirection, `.` reads).
         thir = _lower_ctx(
             _F1_RECORDS
             + "def f() -> Int32:\n    p = Inner(1)\n    return p.value\n")
-        assert _fn(thir, "f") is None
+        fn = _fn(thir, "f")
+        assert fn is not None
+        decl = fn.body[0]
+        assert isinstance(decl, THIRVarDecl)
+        assert decl.cpp_local_representation is None
+        assert decl.form is Form.STORAGE and decl.cpp_type == "Inner"
 
     def test_kwarg_ctor_normalizes_and_routes(self):
         # sema rewrites a single-param ctor kwarg to a positional arg before
@@ -883,3 +889,289 @@ class TestF2eEmit:
 
     def test_return_move_emits_move_helper(self):
         assert "return ::tpy::ptr_to_optional_move(p);" in self._cpp(self.SRC, thir=True)
+
+
+
+class TestRecordBorrowReturn:
+    def test_param_return_routes(self):
+        # `-> Box` is a borrow-form record return (`Box&`); a bare record
+        # param name returns bare -- no form convert, no move.
+        thir, faces = _lower_ctx_witnessed(
+            _F1_RECORDS
+            + "def pick(a: Box, b: Box, flag: bool) -> Box:\n"
+            + "    if flag:\n        return a\n    return b\n")
+        fn = _fn(thir, "pick")
+        assert fn is not None
+        ret = fn.body[-1]
+        assert isinstance(ret, THIRReturn)
+        assert isinstance(ret.value, THIRName) and not ret.value.deref
+        assert ret.value.form is Form.BORROW
+        assert faces.get("ret.record_borrow", 0) == 2
+
+    def test_ref_alias_local_return_routes(self):
+        # A REF_ALIAS local (`x = b.inner` -> `Inner& x`) returns bare.
+        thir = _lower_ctx(
+            _F1_RECORDS
+            + "def g(b: Box) -> Inner:\n    x = b.inner\n    return x\n")
+        fn = _fn(thir, "g")
+        assert fn is not None
+        ret = fn.body[-1]
+        assert isinstance(ret, THIRReturn)
+        assert isinstance(ret.value, THIRName) and not ret.value.deref
+
+    def test_field_source_return_is_ineligible(self):
+        # A field read (`return b.inner`) is not a bare-name source.
+        thir = _lower_ctx(
+            _F1_RECORDS
+            + "def f(b: Box) -> Inner:\n    return b.inner\n")
+        assert _fn(thir, "f") is None
+
+    def test_pointer_local_return_is_ineligible(self):
+        # A reassigned record local is an F2 pointer-local (`Inner* x`); its
+        # return derefs (`return (*x);`) -- a render this cell does not mirror.
+        thir = _lower_ctx(
+            _F1_RECORDS
+            + "def f(b: Box, c: Box, flag: bool) -> Inner:\n"
+            + "    x = b.inner\n    if flag:\n        x = c.inner\n    return x\n")
+        assert _fn(thir, "f") is None
+
+    def test_self_return_is_ineligible(self):
+        # `return self` renders `return *this;` -- not mirrored.
+        thir = _lower_ctx(
+            _F1_RECORDS
+            + "class Chain:\n"
+            + "    n: Int32\n"
+            + "    def __init__(self):\n        self.n = 0\n"
+            + "    def bump(self) -> Chain:\n        self.n += 1\n        return self\n")
+        assert _fn(thir, "bump") is None
+
+    def test_narrowed_union_source_is_ineligible(self):
+        # An isinstance-narrowed union member read renames to the extraction
+        # alias on the AST path -- not the bare-name render; the return arm's
+        # `ws.narrowed` exclusion keeps such bodies on the AST path.
+        thir = _lower_ctx(
+            _F1_RECORDS
+            + "def f(u: Box | Inner, d: Inner) -> Inner:\n"
+            + "    if isinstance(u, Inner):\n        return u\n"
+            + "    return d\n")
+        assert _fn(thir, "f") is None
+
+    def test_own_return_takes_storage_arm(self):
+        # `-> Own[Inner]` is the storage (by-value) direction: the Own
+        # rvalue-ref param returns bare (`return a;`, C++ implicit move) via
+        # the storage arm, not the borrow one.
+        thir, faces = _lower_ctx_witnessed(
+            _F1_RECORDS
+            + "def f(a: Own[Inner]) -> Own[Inner]:\n    return a\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+        ret = fn.body[0]
+        assert isinstance(ret, THIRReturn)
+        assert isinstance(ret.value, THIRName) and not ret.value.deref
+        assert faces.get("ret.record_storage", 0) == 1
+        assert faces.get("ret.record_borrow", 0) == 0
+
+
+class TestRecordBorrowReturnEmit:
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+        return cpp
+
+    SRC = (
+        _F1_RECORDS
+        + "def pick(a: Box, b: Box, flag: bool) -> Box:\n"
+        + "    if flag:\n        return a\n    return b\n"
+        + "def main():\n"
+        + "    x = Box(Inner(1))\n    y = Box(Inner(2))\n"
+        + "    c = pick(x, y, True)\n    print(c.n)\n"
+        + "main()\n"
+    )
+
+    def test_byte_identical(self):
+        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
+
+    def test_returns_bare_name(self):
+        assert "return b;" in self._cpp(self.SRC, thir=True)
+
+
+class TestRecordStorageReturn:
+    def test_ctor_rvalue_return_routes(self):
+        # `return Inner(5)` into `-> Own[Inner]` -- the bare ctor expansion.
+        thir, faces = _lower_ctx_witnessed(
+            _F1_RECORDS
+            + "def f(n: Int32) -> Own[Inner]:\n    return Inner(n)\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+        ret = fn.body[0]
+        assert isinstance(ret, THIRReturn)
+        assert isinstance(ret.value, THIRCtorCall)
+        assert faces.get("ret.record_storage", 0) == 1
+
+    def test_owned_local_return_routes(self):
+        # `b = Inner(n); return b` -- owned decl + bare-name return (NRVO).
+        thir, faces = _lower_ctx_witnessed(
+            _F1_RECORDS
+            + "def f(n: Int32) -> Own[Inner]:\n    b = Inner(n)\n    return b\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+        assert isinstance(fn.body[-1].value, THIRName)
+        assert faces.get("decl.owned_record", 0) == 1
+
+class TestOwnedRecordDecl:
+    def test_reads_and_move_route(self):
+        # The owned local is a storage-form receiver: `.` field reads, and a
+        # last-use pass into an Own slot moves (`consume(std::move(i))`).
+        thir = _lower_ctx(
+            _F1_RECORDS
+            + "def consume(i: Own[Inner]) -> Int32:\n    return i.value\n"
+            + "def f(n: Int32) -> Int32:\n    i = Inner(n)\n    return consume(i)\n")
+        assert _fn(thir, "f") is not None
+
+    def test_reassigned_local_stays_rebind_slot(self):
+        # A reassigned rvalue local takes the F2d rebind-slot machinery, not
+        # the owned-decl arm.
+        thir = _lower_ctx(
+            _F1_RECORDS
+            + "def f(n: Int32) -> Int32:\n"
+            + "    p = Inner(n)\n    p = Inner(n)\n    return p.value\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+        decl = fn.body[0]
+        assert isinstance(decl, THIRVarDecl)
+        assert decl.cpp_local_representation is LocalBinding.REBIND_SLOT
+
+
+class TestRecordStorageReturnEmit:
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+        return cpp
+
+    SRC = (
+        _F1_RECORDS
+        + "def make(n: Int32) -> Own[Inner]:\n    b = Inner(n)\n    return b\n"
+        + "def make2(n: Int32) -> Own[Inner]:\n    return Inner(n)\n"
+        + "def consume(i: Own[Inner]) -> Int32:\n    return i.value\n"
+        + "def mv(n: Int32) -> Int32:\n    i = Inner(n)\n    return consume(i)\n"
+        + "def main():\n"
+        + "    a = make(1)\n    b = make2(2)\n    print(a.value + b.value + mv(3))\n"
+        + "main()\n"
+    )
+
+    def test_byte_identical(self):
+        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
+
+    def test_owned_decl_and_nrvo_return(self):
+        cpp = self._cpp(self.SRC, thir=True)
+        assert "Inner b = Inner(n);" in cpp
+        assert "return b;" in cpp
+
+    def test_ctor_rvalue_return(self):
+        assert "return Inner(n);" in self._cpp(self.SRC, thir=True)
+
+    def test_last_use_move(self):
+        assert "return consume(std::move(i));" in self._cpp(self.SRC, thir=True)
+
+
+_PTR_RECORDS = (
+    "from tpy import Int32, Ptr, readonly\n"
+    "class Node:\n"
+    "    val: Int32\n"
+    "    def __init__(self, v: Int32):\n        self.val = v\n"
+    "class Handle:\n"
+    "    _p: Ptr[Node]\n"
+    "    def __init__(self, p: Ptr[Node]):\n        self._p = p\n"
+    "    def get(self) -> Ptr[Node]:\n        return self._p\n"
+    "    def reset(self, p: Ptr[Node]):\n        self._p = p\n"
+)
+
+
+class TestPtrValueFamily:
+    def test_param_passthrough_routes(self):
+        thir, faces = _lower_ctx_witnessed(
+            _PTR_RECORDS
+            + "def pass_ptr(p: Ptr[Node]) -> Ptr[Node]:\n    return p\n")
+        fn = _fn(thir, "pass_ptr")
+        assert fn is not None
+        ret = fn.body[0]
+        assert isinstance(ret, THIRReturn)
+        assert isinstance(ret.value, THIRName) and not ret.value.deref
+        # One admission per Ptr slot across the module: Handle ctor param +
+        # MIL field, get's return sig + field-read result, reset's param +
+        # field write, pass_ptr's param+return (the sig gate checks param
+        # then return; the return check is the 7th). An exact pin so a
+        # dropped call site (e.g. the return-side check) fails loudly.
+        assert faces.get("ptr.value_slot", 0) == 7
+
+    def test_field_read_return_routes(self):
+        # `return self._p` -- the dominant stdlib shape (re.py handles).
+        thir = _lower_ctx(_PTR_RECORDS)
+        fn = _fn(thir, "get")
+        assert fn is not None
+        ret = fn.body[0]
+        assert isinstance(ret, THIRReturn)
+        assert isinstance(ret.value, THIRFieldAccess)
+
+    def test_field_write_routes_plain_assign(self):
+        # `self._p = p` -- a plain value assign, no borrow<->storage convert.
+        thir = _lower_ctx(_PTR_RECORDS)
+        fn = _fn(thir, "reset")
+        assert fn is not None
+        write = fn.body[0]
+        assert isinstance(write, THIRAssign)
+        assert isinstance(write.value, THIRName)  # bare, not a THIRFormConvert
+
+    def test_ptr_local_from_call_routes(self):
+        # `q = pass_ptr(p)` -- a Ptr value local (`Node* q = pass_ptr(p);`).
+        thir = _lower_ctx(
+            _PTR_RECORDS
+            + "def pass_ptr(p: Ptr[Node]) -> Ptr[Node]:\n    return p\n"
+            + "def chain(p: Ptr[Node]) -> Ptr[Node]:\n"
+            + "    q = pass_ptr(p)\n    return q\n")
+        fn = _fn(thir, "chain")
+        assert fn is not None
+        decl = fn.body[0]
+        assert isinstance(decl, THIRVarDecl)
+        assert decl.cpp_local_representation is None
+
+    def test_member_access_through_ptr_falls_back(self):
+        # `p.val` takes the AST's `::tpy::deref_check(p).val` non-null render
+        # -- not mirrored, the body stays on the AST path.
+        thir = _lower_ctx(
+            _PTR_RECORDS
+            + "def read_ptr(p: Ptr[readonly[Node]]) -> Int32:\n    return p.val\n")
+        assert _fn(thir, "read_ptr") is None
+
+
+class TestPtrValueFamilyEmit:
+    def _cpp(self, src: str, thir: bool):
+        # hpp + cpp: the inline method bodies (`get` / `reset`) land in the
+        # header, the free functions in the source.
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        hpp, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+        return hpp + cpp
+
+    SRC = (
+        _PTR_RECORDS
+        + "def pass_ptr(p: Ptr[Node]) -> Ptr[Node]:\n    return p\n"
+        + "def chain(p: Ptr[Node]) -> Ptr[Node]:\n"
+        + "    q = pass_ptr(p)\n    return q\n"
+        + "def main():\n    print(0)\n"
+        + "main()\n"
+    )
+
+    def test_byte_identical(self):
+        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
+
+    def test_ptr_local_decl_spelling(self):
+        cpp = self._cpp(self.SRC, thir=True)
+        assert "Node* q = pass_ptr(p);" in cpp
+        assert "return this->_p;" in cpp
+        assert "this->_p = p;" in cpp

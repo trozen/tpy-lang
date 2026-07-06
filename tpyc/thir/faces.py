@@ -64,6 +64,17 @@ THIR_FACES: frozenset[str] = frozenset({
     "narrow.slice_bound",           # same wrap on a str/bytes slice bound
     "narrow.aug_value",             # `({0}).to_fixed_check<T>()` aug-assign value
     "narrow.enum_arg",              # `({0}).to_fixed_check<U>()` E(x) arg
+    # Record return slots (gate admission; the renders -- bare name / bare
+    # ctor expansion -- are shared with the pass-through emits, so admission
+    # is the only distinguishing site).
+    "ret.record_borrow",
+    "ret.record_storage",
+    # Owned record local decl (lowering; the `{cpp_type} {name} = <rvalue>;`
+    # plain-value render).
+    "decl.owned_record",
+    # Ptr[T] value-slot admission (gate; bare passes / field reads share the
+    # scalar renders, so the predicate is the only distinguishing site).
+    "ptr.value_slot",
     # BigInt-counter range loop (gate admission; the render difference is
     # the `::tpy::BigInt` cpp_elem + literal-bound retype, shared with the
     # fixed-int emit).

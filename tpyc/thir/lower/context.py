@@ -17,6 +17,8 @@ from .predicates import (
     _eligible_ptr_union,
     _eligible_value_union,
     _optional_ptr_borrow,
+    _record_borrow_return,
+    _record_storage_return,
     _resolved_bytes_value,
     _resolved_str_value,
     _storage_optional_return_type,
@@ -30,6 +32,7 @@ class _Prescan:
     analyzer so lowering classifies identically without a CodeGenContext."""
     __slots__ = ("reassigned", "rvalue_reassigned", "hoisted", "move_through",
                  "ret_storage_opt", "ret_ptr_opt", "ret_borrow_tuple",
+                 "ret_record_borrow", "ret_record_storage",
                  "ret_str", "ret_bytes",
                  "ret_char", "ret_union", "ret_ptr_union", "param_names",
                  "global_seeded", "native_globals")
@@ -69,6 +72,14 @@ class _Prescan:
         # (`tuple[..., Ref]` -> `std::tuple<..., T*>`), so a `return <storage tuple
         # lvalue>` lifts via `tuple_to_pointer`. None for every other return type.
         self.ret_borrow_tuple = _borrow_tuple_return_type(rt, analyzer)
+        # The borrow-form F1-record return slot (`-> Box` -> `Box&`): only a
+        # bare record borrow name returns (`return name;`, render-identical);
+        # the return-stmt arm rejects every other source shape.
+        self.ret_record_borrow = _record_borrow_return(rt, analyzer)
+        # The storage-form F1-record return slot (`-> Own[Box]` -> `Box` by
+        # value): bare names and record-rvalue ctor / by-value calls return
+        # bare; everything else stays on the AST path.
+        self.ret_record_storage = _record_storage_return(rt, analyzer)
         # S1 str slice: the resolved str-family return type (owned `str` or
         # `StrView`), so a `return <view-form source>` into an owned `std::string`
         # return copies via the view->owned THIRFormConvert. None otherwise.

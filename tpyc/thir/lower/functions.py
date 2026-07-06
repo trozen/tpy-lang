@@ -68,6 +68,7 @@ from .predicates import (
     _eligible_char,
     _eligible_enum,
     _eligible_ptr_union,
+    _eligible_ptr_value,
     _eligible_return,
     _eligible_scalar,
     _eligible_value_union,
@@ -116,6 +117,7 @@ def _f1_param_eligible(ptype: TpyType | None, analyzer) -> bool:
     return (_eligible_scalar(ptype) or _eligible_char(ptype)
             or _is_type_param_slot(ptype)
             or _own_type_param_slot(ptype)
+            or _eligible_ptr_value(ptype, analyzer)
             or _f1_record(ptype, analyzer)
             or _optional_ptr_borrow(ptype, analyzer) is not None
             or _resolved_str_value(ptype, analyzer) is not None
@@ -434,7 +436,8 @@ def _ctor_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
         return False
     ftype = analyzer.get_expr_type(stmt.target)
     if (_eligible_scalar(ftype) or _eligible_char(ftype)
-            or _eligible_enum(ftype, analyzer) is not None):
+            or _eligible_enum(ftype, analyzer) is not None
+            or _eligible_ptr_value(ftype, analyzer)):
         # A str-literal source into a Char field is a sema type error; the
         # reject is defensive (the target-typed `'x'` render would diverge).
         if _eligible_char(ftype) and isinstance(stmt.value, TpyStrLiteral):

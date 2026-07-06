@@ -344,6 +344,41 @@ deferred (self-contained) / blocked-on-`<rung>`.
   runtime behavior (the while-condition stale-snapshot hoist) or would
   add mechanism solely to reproduce a bug (the method mutated-ref rvalue
   arm). A rejected row cites its BUGS.md entry at the gate.
+- **Record return slots, BOTH directions: LANDED.** BORROW (`-> Box` -> C++
+  `Box&`, `_record_borrow_return`): the return arm admits only bare record
+  borrow names (record params / REF_ALIAS locals -- `return name;`,
+  render-identical; face `ret.record_borrow`). STORAGE (`-> Own[Box]` -> `Box`
+  by value, `_record_storage_return`): bare names (owned local NRVO / `Own`
+  rvalue-ref-param C++ implicit move -- render bare) plus record-rvalue ctor /
+  by-value calls (`return Box(n);`, the bare expansion via
+  `_is_record_rvalue_source`; face `ret.record_storage`). `self` (`*this`),
+  pointer-locals (`(*p)` + move), and field sources stay AST
+  (`return.record_source`); sema itself rejects borrow returns of
+  locals/temporaries AND borrowed-source `Own` returns without `copy()`, so
+  those shapes never reach the gate. The validator's `_borrow_legal_return`
+  learned the storage direction (a BORROW name at an `Own[record]` return is
+  the spelled-convert-free NRVO/implicit-move shape). Landed WITH the
+  co-blocking **owned record local decl** (`_owned_record_decl_ok`, face
+  `decl.owned_record`): a single-assignment record-rvalue init lowers as the
+  plain value decl `Box b = Box(n);` / `Box x = make(1);` (the binding
+  classifier's OTHER arm -- no indirection, `.` reads via the existing
+  declared-type-keyed receiver gates, last-use moves via sema's movable set);
+  reassigned names keep the F2d REBIND_SLOT machinery, hoisted / move-through
+  ones stay AST. Still-deferred return-slot sibling: field / call sources at
+  record slots (`return.record_source` ~4.9k after the sig gates opened).
+- **Ptr[T] value family: LANDED.** `_eligible_ptr_value` (pointee must spell
+  byte-identically: F1-record / eligible scalar / Char / void; readonly
+  pointee -> `const T*`) joins every value-slot set at once: return + param
+  sig gates (ctor params via `_f1_param_eligible`), field-read results
+  (`return self._p`, the stdlib handle shape), field writes (plain value
+  assign -- the lowering dispatch gained the matching arm), ctor MIL value
+  fields, call returns, the shared pass-through arg row
+  (`_ptr_pass_through_arg`), and local decl slots (`Node* q = f(p);`). All
+  renders are the existing bare value renders; face `ptr.value_slot`.
+  MEMBER access through a Ptr (`p.val` -> `::tpy::deref_check(p).val`, the
+  non-null-proof render) is NOT mirrored -- such bodies fall back. Routing
+  +3448 bodies (300355 -> 303803); ctor fallback 19.4k -> 17.6k
+  (`ctor.param_type` 7.1k -> 5.0k).
 - **Non-`DEFAULT`-linkage call symbols** (`@native` / `@native_c` / `@export(binding="C")`
   callees): **MOSTLY LANDED (incr 95+96)** -- `_free_callee_kind` classifies the
   free-callee emit (plain / imported `callee_cpp` / native `native_name` / positional

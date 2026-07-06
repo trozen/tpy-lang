@@ -44,9 +44,12 @@ type-family -> the primary parallel-worktree lever.
 
 | Gate | leverage | distinct shapes | missing type-families |
 |------|---------:|----------------:|-----------------------|
-| `sig.param_type` | 50,937 | 631 | str, bytes, container, tuple, union, Own[non-record], protocol (scalar/record/opt done) |
-| `sig.return_type` | 34,853 | 402 | record, ptr, container, tuple, union, Own[T]/generic (scalar/str/opt/borrow-tuple done) |
-| `ctor.param_type` | 7,094 | 77 | same as param, at ctor params |
+| `sig.param_type` | 50,313 | 596 | str, bytes, container, tuple, union, Own[non-record], protocol (scalar/record/opt/ptr done) |
+| `sig.return_type` | 24,498 | 230 | container, tuple, union, own:protocol, own:container (scalar/str/opt/borrow-tuple/record/Own[record]/ptr done) |
+| `ctor.param_type` | 5,000 | -- | same as param, at ctor params (ptr done) |
+
+(Counts re-measured 2026-07-06 after the return-slot branch: record borrow +
+storage returns, owned record local decls, and the Ptr[T] value family landed.)
 
 ### B. Expression arms feeding var-decl / return / if / expr-stmt [mostly P]
 
