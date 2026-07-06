@@ -58,6 +58,7 @@ from .nodes import (
     THIRFString,
     THIRFunction,
     THIRIf,
+    THIRIfExpr,
     THIRIsNone,
     THIRIsinstance,
     THIRLiteral,
@@ -74,6 +75,7 @@ from .nodes import (
     THIRPrintArg,
     THIRRaise,
     THIRReturn,
+    THIRSetItem,
     THIRSelf,
     THIRStmt,
     THIRStrAppend,
@@ -81,6 +83,7 @@ from .nodes import (
     THIRStrSlice,
     THIRSubscript,
     THIRTry,
+    THIRTupleLiteral,
     THIRTupleUnpack,
     THIRUnaryNot,
     THIRUnionArgLift,
@@ -672,8 +675,13 @@ def _emit_fstring(e: THIRFString, state: _EmitState) -> str:
             decoded_fmt_parts.append(part.replace("{", "{{").replace("}", "}}"))
         else:
             all_literal = False
-            fmt_parts.append("{}")  # format specs are gate-excluded
-            decoded_fmt_parts.append("{}")
+            # A constant format spec splices into the placeholder verbatim
+            # (the AST arm's raw concatenation -- never brace-escaped or
+            # C++-escaped), in both the source and runtime-length views.
+            placeholder = ("{}" if part.format_spec is None
+                           else "{:" + part.format_spec + "}")
+            fmt_parts.append(placeholder)
+            decoded_fmt_parts.append(placeholder)
             inner = _emit_expr(part.expr, state)
             args.append(inner if part.wrap is None
                         else expand_cpp_template(part.wrap, None, inner))
@@ -840,6 +848,12 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
     if isinstance(e, THIRIsNone):
         op = "!=" if e.negate else "=="
         return f"({_emit_expr(e.operand, state)} {op} nullptr)"
+    if isinstance(e, THIRIfExpr):
+        # _gen_if_expr's render; arm targets and the mixed-arm str wraps were
+        # decided at lowering, so the emit is pure spelling.
+        return (f"(({_emit_expr(e.cond, state)}) ? "
+                f"({_emit_expr(e.then, state)}) : "
+                f"({_emit_expr(e.orelse, state)}))")
     if isinstance(e, THIRCall):
         return _emit_call(e, state)
     if isinstance(e, THIRUnionArgLift):
@@ -875,6 +889,12 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         return e.wrap.format(_emit_expr(e.operand, state))
     if isinstance(e, THIRContainerLiteral):
         return _emit_container_literal(e, state)
+    if isinstance(e, THIRTupleLiteral):
+        # The spelled value-tuple render (`std::tuple<...>{e1, e2}`);
+        # result_type is the slot TupleType, whose scalar/owned-str elements
+        # spell identically via to_cpp and the resolver.
+        elems = ", ".join(_emit_expr(x, state) for x in e.elements)
+        return f"{unwrap_qualifiers(e.result_type).to_cpp()}{{{elems}}}"
     if isinstance(e, THIRComprehension):
         return _emit_comprehension(e, state)
     if isinstance(e, THIRCoerce):
@@ -1790,6 +1810,22 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             value_cpp = _emit_expr(stmt.value, state)
             state.temps.flush(out, indent)
             out.write(f"{indent}{target_cpp} = {value_cpp};\n")
+    elif isinstance(stmt, THIRSetItem):
+        # Mirrors _gen_assign_code's subscript arm (and the aug-assign
+        # subscript arm, whose synthetic binop value arrives pre-built):
+        # bounds-safe writes share _emit_subscript's operator[] render;
+        # checked writes call the free-function dunder.
+        value_cpp = _emit_expr(stmt.value, state)
+        if stmt.target.bounds_safe:
+            target_cpp = _emit_subscript(stmt.target, state)
+            state.temps.flush(out, indent)
+            out.write(f"{indent}{target_cpp} = {value_cpp};\n")
+        else:
+            recv_cpp = _emit_expr(stmt.target.receiver, state)
+            idx_cpp = _emit_expr(stmt.target.index, state)
+            state.temps.flush(out, indent)
+            out.write(f"{indent}::tpy::__setitem__({recv_cpp}, {idx_cpp}, "
+                      f"{value_cpp});\n")
     elif isinstance(stmt, THIRStrAppend):
         # `t += v;` -- the str in-place append (the `+=` statement and the
         # `x = x + y` peephole share the emit).

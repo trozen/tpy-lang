@@ -31,7 +31,7 @@ from ..type_def_registry import (
     is_bool_type, is_dict, is_set, is_bytes_view_type, is_str_view_type,
     is_borrowing_view_type,
 )
-from ..symbol_binding import lookup_imported, SymbolKind
+from ..symbol_binding import lookup_imported, lookup_qualified, SymbolKind
 from ..modules.type_resolution import is_native_iterable
 from ..compilation_context import get_current_compiler
 from ..value_category import (
@@ -324,6 +324,52 @@ def imported_free_callee_cpp(module_attributes, func_name: str,
     source_module, qual_name = qual
     return qualified_cpp_name(source_module,
                               mangled if mangled is not None else qual_name)
+
+
+def module_qualified_callee_cpp(registry, module_attributes, module_name: str,
+                                user_module: str, method: str, fi) -> str:
+    """The plain cross-module dotted-call spelling (`import m; m.f(...)` ->
+    `::tpyapp::m::f`). The ONE qualification decision shared by the AST
+    method-call emit and the THIR gate/lowering mirror. A qualified `mod.X`
+    is authoritative for X's module: resolve X by its qname under `mod`
+    (records) or its sema-resolved originating module (functions) BEFORE the
+    bare-name attribute lookup -- that lookup collides when a same-named
+    symbol is imported from a different module. The bare-name lookup stays a
+    last resort for re-export chains the qname/fi resolution misses."""
+    rec = registry.find_record_by_qname(f"{user_module}.{method}")
+    rec_qual = (registry.record_qualification(rec, module_name)
+                if rec is not None else None)
+    qual = (rec_qual
+            or ((fi.originating_module, fi.name)
+                if fi and fi.originating_module else None)
+            or lookup_qualified(module_attributes, method, module_name))
+    if qual is not None:
+        qual_module, qual_name = qual
+    else:
+        qual_module = user_module
+        qual_name = fi.name if fi else method
+    return qualified_cpp_name(qual_module, qual_name)
+
+
+def static_method_callee_cpp(registry, implicit_stdlib_modules: 'set[str]',
+                             module_name: str, class_name: str, method: str,
+                             fi) -> str:
+    """The non-generic static-method-call spelling (`Rec.m(...)` ->
+    `Rec::m`), shared by the AST emit and the THIR gate/lowering mirror.
+    Native records spell the C++ class and any explicit method rename;
+    implicit-stdlib peers don't emit a `using ::ns::Foo;` alias (suppressed
+    to avoid include cycles), so the class qualifies explicitly there."""
+    record_info = registry.get_record(class_name)
+    if record_info and record_info.is_native:
+        cpp_method = (fi.native_name if fi and fi.native_name
+                      else escape_cpp_name(method))
+        return f"{record_info.native_name}::{cpp_method}"
+    if (record_info is not None
+            and record_info.module is not None
+            and record_info.module in implicit_stdlib_modules
+            and record_info.module != module_name):
+        class_name = qualified_cpp_name(record_info.module, record_info.name)
+    return f"{class_name}::{escape_cpp_name(method)}"
 
 
 def qualify_native_name(name: str) -> str:

@@ -484,39 +484,47 @@ class CodeGenerator:
             from ..thir.shape import record_shape
 
             def _is_bodyless_binding(fn) -> bool:
-                # A callable that dispatches to a runtime symbol / template at
-                # the call site -- method-style `@native("push_back")`
-                # (native_name), `@cpp_template(...)`, or free `@native(
-                # function=True)` (native_function) -- has NO gen_body / MIL
-                # emit, so it is out of the body-migration scope, not fallback.
-                # Covers the whole builtin-type method/ctor surface (str / int /
-                # list / dict / ...); a BODIED method on a builtin receiver still
-                # counts (a real deferred surface).
+                # A callable with NO gen_body / MIL emit is out of the
+                # body-migration scope, not fallback: a call-site dispatch to a
+                # runtime symbol / template -- method-style `@native(
+                # "push_back")` (native_name), `@cpp_template(...)`, free
+                # `@native(function=True)` (native_function) -- or any `...`
+                # stub (is_stub covers declaration-only stubs like `cast`,
+                # native-class method stubs, and bare-`@native` methods whose
+                # native_name stays None). Covers the whole builtin-type
+                # method/ctor surface (str / int / list / dict / ...); a
+                # BODIED method on a builtin receiver still counts (a real
+                # deferred surface).
                 return (fn.native_function or fn.native_name is not None
-                        or fn.cpp_template is not None)
+                        or fn.cpp_template is not None or fn.is_stub)
 
             _ng = _thir_native_globals(module)
             self.ctx.thir_functions = {}
             for f, self_type in _thir_callables(module, self.analyzer):
+                if _is_bodyless_binding(f) or f.is_overload_stub:
+                    continue
                 begin_attempt()
                 tf = _thir_lower(f, self.analyzer, self.types.type_to_cpp,
                                  self_type=self_type, native_globals=_ng)
                 if tf is not None:
                     self.ctx.thir_functions[id(f)] = tf
                     record_shape(f, "body", routed=True)
-                elif not (_is_bodyless_binding(f) or f.is_overload_stub):
+                else:
                     fold_attempt("body")
                     record_shape(f, "body", routed=False)
             self.ctx.thir_constructors = {}
             for rec, init, self_type in _thir_ctors(module, self.analyzer):
+                if _is_bodyless_binding(init):
+                    continue
                 begin_attempt()
                 tc = _thir_lower_ctor(rec, init, self.analyzer,
                                       self.types.type_to_cpp,
-                                      self_type=self_type)
+                                      self_type=self_type,
+                                      native_globals=_ng)
                 if tc is not None:
                     self.ctx.thir_constructors[id(init)] = tc
                     record_shape(init, "ctor", routed=True)
-                elif not _is_bodyless_binding(init):
+                else:
                     fold_attempt("ctor")
                     record_shape(init, "ctor", routed=False)
 

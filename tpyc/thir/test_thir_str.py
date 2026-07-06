@@ -8,11 +8,11 @@ from .testutil import _emit_expr
 from .nodes import (
     Form, PrintForm, THIRAssign, THIRBinOp, THIRCall, THIRCharLiteral,
     THIRCoerce, THIRContainerLiteral, THIRForEach, THIRFormConvert,
-    THIRFString, THIRFStringArg, THIRMethodCall, THIRName, THIRStrAppend,
-    THIRStrLiteral, THIRStrSlice, THIRSubscript, THIRVarDecl,
+    THIRFString, THIRFStringArg, THIRMethodCall, THIRName, THIRSetItem,
+    THIRStrAppend, THIRStrLiteral, THIRStrSlice, THIRSubscript, THIRVarDecl,
 )
 from .testutil import (
-    _compile, _entry, _lower, _lower_ctx, _fn, _PRELUDE,
+    _compile, _entry, _lower, _lower_ctx, _lower_ctx_witnessed, _fn, _PRELUDE,
 )
 
 # --- S1 str slice: str/StrView values (params, locals, print, compare, len,
@@ -351,25 +351,101 @@ class TestFString:
         assert isinstance(ret.value, THIRBinOp)
         assert isinstance(ret.value.left, THIRFString)
 
-    def test_conversion_ineligible(self):
-        # !r / !s and format specs change the placeholder/wrapper table -> AST.
+    def test_conv_repr_wraps(self):
+        # !r overrides every mirrored type row with repr_of (the AST chain's
+        # conv row precedes the type rows), including the rows that otherwise
+        # carry their own wrap (bool, float, BigInt).
         thir = _lower(
             "from tpy import Int32\n"
-            'def f(a: str) -> str:\n    return f"{a!r}"\n'
-            'def g(n: Int32) -> str:\n    return f"{n:04}"\n')
-        assert _fn(thir, "f") is None
-        assert _fn(thir, "g") is None
+            "def f(a: str, n: Int32, b: bool, x: float, m: int) -> str:\n"
+            '    return f"{a!r}{n!r}{b!r}{x!r}{m!r}{\'q\'!r}"\n')
+        fstr = _fn(thir, "f").body[0].value
+        args = [p for p in fstr.parts if isinstance(p, THIRFStringArg)]
+        assert [a.wrap for a in args] == ["::tpy::repr_of({0})"] * 6
+        assert _emit_expr(fstr) == (
+            'std::format("{}{}{}{}{}{}", ::tpy::repr_of(a), ::tpy::repr_of(n), '
+            "::tpy::repr_of(b), ::tpy::repr_of(x), ::tpy::repr_of(m), "
+            '::tpy::repr_of("q"))')
+
+    def test_conv_str_noop(self):
+        # !s on non-user types is a no-op in the AST chain (the __str__ row
+        # only fires for user types): each arg keeps its normal type row.
+        thir = _lower(
+            "from tpy import Int32\n"
+            "def f(a: str, n: Int32, b: bool, x: float) -> str:\n"
+            '    return f"{a!s}{n!s}{b!s}{x!s}"\n')
+        fstr = _fn(thir, "f").body[0].value
+        args = [p for p in fstr.parts if isinstance(p, THIRFStringArg)]
+        assert [a.wrap for a in args] == [
+            None, None, "::tpy::bool_to_str({0})", "::tpy::float_to_str({0})"]
+
+    def test_spec_placeholder(self):
+        # A constant format spec splices into the placeholder verbatim; the
+        # str/wide-int rows stay bare and std::format applies the spec.
+        thir = _lower(
+            "from tpy import Int32\n"
+            "def f(s: str, n: Int32) -> str:\n"
+            '    return f"{s:<10}|{n:>8}"\n')
+        fstr = _fn(thir, "f").body[0].value
+        args = [p for p in fstr.parts if isinstance(p, THIRFStringArg)]
+        assert [a.format_spec for a in args] == ["<10", ">8"]
+        assert _emit_expr(fstr) == 'std::format("{:<10}|{:>8}", s, n)'
+
+    def test_spec_flips_bool_and_float_rows(self):
+        # With a spec, bool takes static_cast<int> (bool_to_str would defeat
+        # numeric specs) and the float rows go bare (std::format handles the
+        # spec on double/float directly); the int8 cast applies spec-or-not.
+        thir = _lower(
+            "from tpy import Int8, Float32\n"
+            "def f(b: bool, x: float, y: Float32, m: Int8) -> str:\n"
+            '    return f"{b:>4}{x:.2f}{y:.3f}{m:04}"\n')
+        fstr = _fn(thir, "f").body[0].value
+        assert _emit_expr(fstr) == (
+            'std::format("{:>4}{:.2f}{:.3f}{:04}", static_cast<int>(b), '
+            "x, y, static_cast<int>(m))")
+
+    def test_conv_and_spec_combined(self):
+        # `{s!r:>10}`: repr_of wrap + spec placeholder; the spec then formats
+        # the repr'd string.
+        thir = _lower('def f(s: str) -> str:\n    return f"{s!r:>10}"\n')
+        fstr = _fn(thir, "f").body[0].value
+        assert _emit_expr(fstr) == 'std::format("{:>10}", ::tpy::repr_of(s))'
+
+    def test_spec_in_nul_vformat_arm(self):
+        # A NUL literal segment routes through vformat; the runtime-length
+        # count includes the spliced spec's bytes.
+        thir = _lower(
+            "from tpy import Int32\n"
+            'def f(n: Int32) -> str:\n    return f"a\\x00{n:>3}"\n')
+        fstr = _fn(thir, "f").body[0].value
+        assert _emit_expr(fstr) == (
+            'std::vformat(std::string_view{"a\\000{:>3}", 7}, '
+            "std::make_format_args(n))")
 
     def test_bigint_arg_routes(self):
         # A runtime-BigInt arg takes the `({0}).to_string()` row.
         thir = _lower('def f(n: int) -> str:\n    return f"n={n}"\n')
         assert _fn(thir, "f") is not None
 
-    def test_char_arg_ineligible(self):
-        # Char has no mirrored wrapper row (S4 introduces Char values).
+    def test_char_arg_routes(self):
+        # Char formats bare (char has no int_traits, so the AST's int8 cast
+        # row never fires); spec and !r compose like any mirrored row.
         thir = _lower(
             "from tpy import Char\n"
-            'def f(c: Char) -> str:\n    return f"c={c}"\n')
+            "def f(c: Char) -> str:\n"
+            '    return f"{c}{c:>3}{c!r}"\n')
+        fstr = _fn(thir, "f").body[0].value
+        assert _emit_expr(fstr) == (
+            'std::format("{}{:>3}{}", c, c, ::tpy::repr_of(c))')
+
+    def test_unmirrored_type_rejected_under_conversion(self):
+        # A conversion does not admit an unmirrored arg type: the inner
+        # render of a container is not pinned by the slice.
+        thir = _lower(
+            "from tpy import Int32\n"
+            "def f() -> str:\n"
+            "    xs: list[Int32] = [1, 2]\n"
+            '    return f"{xs!r}"\n')
         assert _fn(thir, "f") is None
 
     def test_container_arg_ineligible(self):
@@ -386,11 +462,12 @@ class TestFString:
         assert _fn(thir, "f") is None
 
     def test_ineligible_inner_expr_rejects(self):
-        # The interpolated expr itself must be in the slice (a global is not).
+        # The interpolated expr itself must be in the slice (a container
+        # global is not -- containers stay unseeded pointer slots).
         thir = _lower(
             "from tpy import Int32\n"
-            "G = 1\n"
-            'def f() -> str:\n    return f"{G}"\n')
+            "xs = [1, 2]\n"
+            'def f() -> str:\n    return f"{xs[0]}"\n')
         assert _fn(thir, "f") is None
 
     def test_string_concat_arg_routes(self):
@@ -444,6 +521,38 @@ class TestFStringEmit:
         for name in ("use", "f"):
             assert _fn(thir, name) is not None, name
         assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
+
+    CONV_SRC = (
+        "from tpy import Char, Int8, Int32, Float32\n"
+        "def f(s: str, n: Int32, m: Int8, b: bool, x: float, y: Float32,"
+        " c: Char, w: int) -> str:\n"
+        '    a = f"{s!r} {n!s} {b!r:>6} {w!r} {c!r}"\n'
+        '    a = f"{n:>8}|{x:.2f}|{y:.3f}|{b:>4}|{m:04}|{s:<10}|{c:>3}"\n'
+        '    return f"{a!s}{s!r:>12}nul\\x00{n:>3}"\n'
+        "def main() -> None:\n"
+        "    print(f(\"bob\", 3, 2, True, 1.5, Float32(0.5), 'x', 7))\n"
+        "main()\n"
+    )
+
+    def test_fstring_conv_spec_byte_identical(self):
+        thir = _lower(self.CONV_SRC)
+        assert _fn(thir, "f") is not None
+        assert (self._cpp(self.CONV_SRC, thir=True)
+                == self._cpp(self.CONV_SRC, thir=False))
+
+    def test_fstring_faces_witnessed(self):
+        # Pin that the conv/spec/char rows reach their faces -- a refactor
+        # can silently un-witness a face while routing and the byte-diff
+        # both stay green.
+        src = (
+            "from tpy import Char, Int32\n"
+            "def f(s: str, n: Int32, c: Char) -> str:\n"
+            '    return f"{s!r}{n!s}{c}{n:>4}"\n')
+        thir, wit = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        for face in ("fstr.conv_repr", "fstr.conv_str", "fstr.char_arg",
+                     "fstr.spec"):
+            assert wit.get(face, 0) > 0, face
 
 
 
@@ -809,16 +918,16 @@ class TestStrSubscriptSliceIter:
         assert g_decl.resolved_type.to_cpp() == "::tpy::Slice"
         assert _emit_expr(g_decl.init) == "::tpy::Slice{std::nullopt, n, 2}"
 
-    def test_slice_object_ctor_global_bound_ineligible(self):
-        # A module-global bound resolves to a qualified C++ symbol the slice
-        # does not materialize (the standard _expr_eligible name reject) -> AST
-        # path. (A BigInt bound never arises: sema rejects it at the ctor.)
+    def test_slice_object_ctor_global_bound_routes(self):
+        # A same-module scalar-global bound seeds read-only and renders bare,
+        # like a param bound. (A BigInt bound never arises: sema rejects it
+        # at the ctor.)
         thir = _lower(
             "from tpy import Int32, basic_slice\n"
             "G: Int32 = 2\n"
             "def f(s: str) -> None:\n"
             "    sl = basic_slice(G, 3)\n    print(s[sl])\n")
-        assert _fn(thir, "f") is None
+        assert _fn(thir, "f") is not None
 
     def test_field_receiver_slice_and_iteration_route(self):
         # A str-family field off an F1-record receiver as the sliced /
@@ -1457,13 +1566,13 @@ class TestDictStrContainers:
         for name in ("f", "g", "h"):
             assert _fn(thir, name) is None, name
 
-    def test_subscript_write_stays_ast(self):
-        # d[k] = v (__setitem__) is not a routed statement shape for ANY
-        # container family (pre-existing parked cell) -- unchanged by S5.
+    def test_subscript_write_routes(self):
+        # d[k] = v routes as a THIRSetItem (`::tpy::__setitem__(d, k, 3);`)
+        # -- the str key renders bare, like the read side.
         thir = _lower(
             _PRELUDE
             + "def f(d: dict[str, Int32], k: str) -> None:\n    d[k] = 3\n")
-        assert _fn(thir, "f") is None
+        assert isinstance(_fn(thir, "f").body[0], THIRSetItem)
 
 
 

@@ -77,6 +77,7 @@ from ...type_def_registry import (
     is_list,
     is_set,
     is_slice_type,
+    is_span,
     is_str_type,
     is_str_view_type,
     is_string_type,
@@ -719,6 +720,37 @@ def _eligible_char(t: TpyType | None) -> bool:
         return False
     return is_char_type(unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t))))
 
+def _readonly_global_type(gt: TpyType | None, analyzer) -> TpyType | None:
+    """The unwrapped type of a same-module VALUE global whose function-body
+    READ renders bare -- exactly a local/param read of the same resolved type
+    (value globals are plain namespace-scope objects; only non-value globals
+    take the `T*` pointer slot and its `(*g)` / `->` renders). Scalars and
+    Char render bare everywhere their arms admit them; str/bytes globals
+    carry the same view/owned form duality as locals (`_str_name_form` keys
+    on the resolved type, and a global is never in `param_names`, so an owned
+    `std::string` global is STORAGE and a `StrView` one BORROW -- both the
+    AST's `_is_str_view_source` verdicts); a `Ptr[T]` global is a `T*` VALUE
+    slot (PtrType is a value type, so no pointer-slot indirection arises).
+    Everything else stays AST: containers/records are pointer slots,
+    Optional-value globals hit the AST's broken narrowed-global read (no
+    `.value()` extraction -- and seeding one would let THIR's local-style
+    narrowing arms admit what the AST renders bare), and tuples/unions/enums
+    are unprobed. Returns None when out of the family."""
+    if gt is None:
+        return None
+    gt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(gt)))
+    # An unannotated literal-init global carries IntLiteralType; its storage
+    # resolves through the module default int (the AST's _resolve_global_type
+    # does the same), so resolve before the family check.
+    gt = resolve_int_literals(gt, analyzer.ctx.default_int_for_literal)
+    if _eligible_scalar(gt) or _eligible_char(gt):
+        return gt
+    if (_resolved_str_value(gt, analyzer) is not None
+            or _resolved_bytes_value(gt, analyzer) is not None
+            or _eligible_ptr_value(gt, analyzer)):
+        return gt
+    return None
+
 def _runtime_bigint(t: TpyType | None, analyzer) -> bool:
     """`TypeResolver.is_runtime_bigint`'s type half: a concrete BigInt value,
     or an IntLiteralType whose module default int is BigInt. Guards the
@@ -940,8 +972,11 @@ def _eligible_return(t: TpyType | None, analyzer) -> bool:
             or _optional_ptr_borrow(t, analyzer) is not None
             or _record_borrow_return(t, analyzer) is not None
             or _record_storage_return(t, analyzer) is not None
+            or _container_storage_return(t, analyzer) is not None
+            or _own_storage_viewfam_return(t, analyzer) is not None
             or _eligible_ptr_value(t, analyzer)
             or _borrow_tuple_return_type(t, analyzer) is not None
+            or _value_tuple(t, analyzer) is not None
             or _eligible_value_union(t) is not None
             or _eligible_ptr_union(t, analyzer) is not None)
 
@@ -1047,6 +1082,46 @@ def _unwrap_own(t: TpyType) -> TpyType:
     the `Optional`-inner helpers apply before an `_f1_record` check."""
     return t.wrapped if isinstance(t, OwnType) else t
 
+def _container_storage_return(t: TpyType | None, analyzer) -> 'TpyType | None':
+    """The storage-form container return slot (`-> Own[list[T]]` -> C++
+    `std::vector<T>` by value), or None: `Own` wrapping list / dict / set
+    (`Array` is a value type -- no Own return slot arises for it). Bare owned
+    container names return bare (NRVO / implicit move, like
+    `_record_storage_return`); container literals render position-independently
+    (the decl-init brace-init / spelled-ctor emits verbatim, including the
+    empty-list `std::vector<T>{}` spell -- probe-verified at the return slot).
+    Element families are bounded at the return ARM per source shape (a literal
+    re-checks the decl gate's element slice; a bare name spells nothing), not
+    here."""
+    if t is None:
+        return None
+    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    if not isinstance(t, OwnType):
+        return None
+    inner = unwrap_readonly(t.wrapped)
+    return inner if (is_list(inner) or is_dict(inner) or is_set(inner)) else None
+
+def _own_storage_viewfam_return(t: TpyType | None, analyzer) -> 'TpyType | None':
+    """The resolved owned str/bytes family behind an `Own[str]` / `Own[bytes]`
+    return slot, or None. The slot spells the same owned storage type the bare
+    `-> str` / `-> bytes` slot does (`std::string` / `std::vector<uint8_t>`),
+    so the S1/S6 return arms (bare owned-name render, view->owned convert,
+    owned bytes-literal render) apply unchanged; only the Own unwrap is new.
+    View inners (`Own[StrView]`) never arise -- sema rejects Own over a view."""
+    if t is None:
+        return None
+    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    if not isinstance(t, OwnType):
+        return None
+    inner = unwrap_readonly(t.wrapped)
+    st = _resolved_str_value(inner, analyzer)
+    if st is not None and is_str_type(st):
+        return st
+    bt = _resolved_bytes_value(inner, analyzer)
+    if bt is not None and is_bytes_type(bt):
+        return bt
+    return None
+
 def _optional_ptr_borrow(t: TpyType | None, analyzer) -> 'OptionalType | None':
     """The pointer-repr `Optional[F1-record]` BORROW binding type -- the C++
     shape of an `A | None` param or an OPTIONAL_TO_PTR local (a bare
@@ -1145,18 +1220,25 @@ def _is_borrow_form_name(t: TpyType | None) -> bool:
     inner = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
     return isinstance(inner, TupleType) and inner.has_pointer_repr_element()
 
-def _value_scalar_tuple(t: TpyType | None) -> bool:
-    """A pure value-scalar tuple (`tuple[int, bool, ...]`): a value type rendered
-    `std::tuple<...>` where borrow and storage forms coincide, so a subscript read
-    of any element needs no lift. Every element is an eligible value scalar -- a
-    non-value element makes it pointer-repr (the `_f1_tuple` family), and a
-    str/view/nested-tuple element rides a later cell. Admitting it as a param (whose
-    signature stays on the AST path) routes functions that read it by subscript."""
+def _value_tuple(t: TpyType | None, analyzer) -> 'TupleType | None':
+    """The value tuple of scalar / owned-str elements (`tuple[int, bool]` /
+    `tuple[str, int]`), or None: a value type rendered `std::tuple<...>`
+    where borrow and storage forms coincide at the tuple level, so a
+    subscript read of any element needs no lift (a str element is an owned
+    `std::string` inside the tuple storage; its read is an owned lvalue --
+    bare in every sink). Admitted at the param slot (`const std::tuple<...>&`,
+    the signature staying on the AST path), the return slot (a by-value
+    `std::tuple<...>`), and the subscript-read gate. A view (`StrView`) /
+    Char / record / nested-tuple element keeps the tuple outside this
+    family: views make the literal render pin static storage, non-value
+    elements make it pointer-repr (the `_f1_tuple` family)."""
     if t is None:
-        return False
+        return None
     t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
-    return (isinstance(t, TupleType)
-            and all(_eligible_scalar(e) for e in t.element_types))
+    if not isinstance(t, TupleType):
+        return None
+    return t if all(_eligible_scalar(e) or _owned_str_slot(e, analyzer)
+                    for e in t.element_types) else None
 
 def _const_index(index: TpyExpr) -> 'int | None':
     """The compile-time integer index of a tuple subscript, mirroring the AST's
@@ -1207,7 +1289,8 @@ def _subscript_recv_tuple(e: TpyExpr, locals_: dict[str, TpyType],
     if res is None:
         return None
     recv_t, _idx = res
-    if not (_value_scalar_tuple(recv_t) or _f1_tuple(recv_t, analyzer) is not None):
+    if not (_value_tuple(recv_t, analyzer) is not None
+            or _f1_tuple(recv_t, analyzer) is not None):
         return None
     return res
 
@@ -1220,7 +1303,12 @@ def _tuple_subscript_value_read(e: TpyExpr, locals_: dict[str, TpyType],
     if res is None:
         return None
     recv_t, idx = res
-    return idx if _eligible_scalar(recv_t.element_types[idx]) else None
+    el = recv_t.element_types[idx]
+    # An owned-str element reads as an owned lvalue (`std::get<N>(t)` yields
+    # `const std::string&`) -- bare in every sink on both paths, so it rides
+    # the same value-read arm as a scalar element.
+    return (idx if (_eligible_scalar(el) or _owned_str_slot(el, analyzer))
+            else None)
 
 def _subscript_record_field_recv(e: TpyExpr, locals_: dict[str, TpyType],
                                  analyzer) -> 'int | None':
@@ -1309,6 +1397,14 @@ def _container_scalar_read(t: TpyType | None, analyzer) -> bool:
     if is_list(t) or is_array(t):
         return bool(args) and (_eligible_scalar(args[0])
                                or _owned_str_slot(args[0], analyzer))
+    if is_span(t):
+        # `Span[scalar]` / `Span[readonly[scalar]]` (`std::span<T>` /
+        # `std::span<const T>`, a by-value view param): subscript / len /
+        # iteration emit exactly like list (the bounds-safe operator[] /
+        # `::tpy::__getitem__`, `::tpy::__len__`, the begin/end capture
+        # loop). Scalar elements only -- a str/record-element span's read
+        # sinks ride later cells.
+        return bool(args) and _eligible_scalar(unwrap_readonly(args[0]))
     if is_dict(t):
         if not args or len(args) < 2:
             return False

@@ -115,11 +115,16 @@ class THIRFStringArg:
     """One interpolated f-string value: the lowered expression plus its
     Python-compatible formatting wrapper as a positional `{0}` template
     (e.g. `::tpy::bool_to_str({0})`), decided at lowering from the arg's
-    resolved type -- the carried mirror of `_gen_fstring`'s per-arg wrapper
-    table. None passes the arg through unwrapped (str-family values, plain
-    fixed ints)."""
+    resolved type and conversion -- the carried mirror of `_gen_fstring`'s
+    per-arg wrapper table (`!r` carries `::tpy::repr_of({0})`; a format
+    spec flips the bool row to `static_cast<int>` and the float rows to
+    bare). None passes the arg through unwrapped (str-family values, plain
+    fixed ints, Char). `format_spec` is the parser-validated constant spec
+    text, spliced verbatim into the `{:spec}` placeholder exactly as the
+    AST arm concatenates it."""
     expr: THIRExpr
     wrap: str | None = None
+    format_spec: str | None = None
 
 
 @dataclass(frozen=True)
@@ -130,8 +135,8 @@ class THIRFString(THIRExpr):
     string function -- `std::string("joined")` for the all-literal shape,
     `std::format("fmt", args...)` otherwise, with the explicit-length
     `std::string("...", N)` / `std::vformat` arms when a literal segment embeds
-    a NUL byte. Conversions (`!r`/`!s`), format specs, and the non-mirrored
-    arg-type rows (BigInt / enum / user / union / container) are gate-excluded.
+    a NUL byte. The non-mirrored arg-type rows (user / union / container / Any)
+    are gate-excluded under any conversion.
     The result is an owned `str` (STORAGE form), landing bare in owned sinks
     like any owned-str call result."""
     parts: tuple['str | THIRFStringArg', ...]
@@ -228,6 +233,23 @@ class THIRUnaryNot(THIRExpr):
     bool. The arithmetic unaries (`- + ~`) and non-bool truthiness (int /
     Optional / `__bool__` wrappers) stay on the AST path."""
     operand: THIRExpr
+
+
+@dataclass(frozen=True)
+class THIRIfExpr(THIRExpr):
+    """Conditional expression `a if c else b` -> `((cond) ? (then) : (else))`.
+    `cond` is a truthiness position (same admitted set as if/while conditions,
+    where the truthy render equals the value render or the enum wrap). Arms are
+    lowered against the ternary's own resolved type -- the AST ignores the
+    consumer's target (`branch_target = result_type`), so the node needs no
+    position threading; a mixed view/owned str arm pair carries the view arm's
+    `std::string(...)` materialization as a THIRFormConvert built at lowering.
+    `form` is load-bearing for a str-family result: BORROW (a view result --
+    both arms runtime views) drives the owned-sink copy around the WHOLE
+    ternary, STORAGE (an owned rvalue) lands bare; value results are VALUE."""
+    cond: THIRExpr
+    then: THIRExpr
+    orelse: THIRExpr
 
 
 @dataclass(frozen=True)
@@ -443,6 +465,23 @@ class THIRContainerLiteral(THIRExpr):
     `movable_locals`), so the AST's `make_vector` move arm never arises."""
     elements: tuple[THIRExpr, ...]
     values: tuple[THIRExpr, ...] = ()
+
+
+@dataclass(frozen=True)
+class THIRTupleLiteral(THIRExpr):
+    """A value-tuple literal `(a, b)` at a fully-targeted slot -- the
+    all-VALUE-elements path of `_gen_tuple_literal` (`has_ref_elements`
+    False): the spelled `std::tuple<...>{e1, e2}` render, position-independent
+    (return / decl init / call arg). `result_type` is the SLOT TupleType, so
+    the spelled type is the target's resolved element list, matching the
+    AST's `resolved_elem_types` (target-provided). Elements are value scalars
+    or owned-str values, lowered per element slot (`_lower_container_elem`:
+    target-typed literal retypes -- the BigInt ctor wraps / Float32 `f`
+    suffix -- and the S1 view->owned `std::string(x)` wrap for view-form str
+    sources). Ref/const-ref element captures, borrow element slots
+    (pointer-repr Optional / record refs), TypeParamRef elements, and
+    target-less positions are gate-excluded."""
+    elements: tuple[THIRExpr, ...]
 
 
 @dataclass(frozen=True)
@@ -740,6 +779,24 @@ class THIRAssign(THIRStmt):
     a THIRName for the former and a THIRFieldAccess for the latter; emission
     renders the target expression directly, so both shapes share one node."""
     target: THIRExpr
+    value: THIRExpr
+
+
+@dataclass(frozen=True)
+class THIRSetItem(THIRStmt):
+    """A container subscript write `c[k] = v`. `target` is the lowered
+    subscript node (receiver + index + `bounds_safe`), reused for both emit
+    arms: the checked `::tpy::__setitem__(c, k, v);` (every admitted
+    family's `__setitem__` is the same @native free-function dunder --
+    list/Array/Span/dict alike), or -- when sema proved the index in
+    [0, len) -- the direct `c[static_cast<std::size_t>(k)] = v;` (a literal
+    index needs no cast), sharing `_emit_subscript`'s bounds-safe render.
+    An augmented `c[k] OP= v` lowers to the same node with `value` the
+    synthetic `c[k] OP v` binop and `bounds_safe` forced off on BOTH reads
+    -- the AST's `_gen_aug_assign_subscript_code` never takes the
+    bounds-safe form. `value` is a flushable position (arg temps hoist
+    before the line, like an assign value)."""
+    target: 'THIRSubscript'
     value: THIRExpr
 
 

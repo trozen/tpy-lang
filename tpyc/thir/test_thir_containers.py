@@ -8,9 +8,9 @@ import dataclasses
 from ..codegen_cpp.context import CodeGenOptions
 from .testutil import _emit_expr
 from .nodes import (
-    Form, THIRCall, THIRCoerce, THIRContainerLiteral, THIRExprStmt,
-    THIRForEach, THIRLiteral, THIRMethodCall, THIRName, THIRSubscript,
-    THIRVarDecl,
+    Form, THIRArgTemp, THIRBinOp, THIRCall, THIRCoerce, THIRContainerLiteral,
+    THIRExprStmt, THIRForEach, THIRFormConvert, THIRLiteral, THIRMethodCall,
+    THIRName, THIRSetItem, THIRStrLiteral, THIRSubscript, THIRVarDecl,
 )
 from .testutil import (
     _compile, _entry, _lower, _lower_ctx, _fn, _PRELUDE, _F1_RECORDS,
@@ -714,3 +714,343 @@ class TestContainerCallIterable:
         assert "auto __obj_0 = make_list(4);" in thir_cpp
         assert "auto& __obj_1 = get_list(items);" in thir_cpp
         assert "auto& __obj_2 = view(items);" in thir_cpp
+
+
+# --- Storage container returns (`-> Own[list/dict/set]`) + span params ---
+
+
+class TestContainerStorageReturn:
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+        return cpp
+
+    def test_bare_owned_name_routes(self):
+        thir = _lower(
+            "from tpy import Int32, Own\n"
+            "def make() -> Own[list[Int32]]:\n"
+            "    xs: list[Int32] = [1, 2]\n    xs.append(3)\n    return xs\n")
+        fn = _fn(thir, "make")
+        assert fn is not None
+        ret = fn.body[-1].value
+        assert isinstance(ret, THIRName) and ret.name == "xs"
+
+    def test_literal_returns_route(self):
+        thir = _lower(
+            "from tpy import Int32, Own\n"
+            "def rl() -> Own[list[Int32]]:\n    return [1, 2]\n"
+            "def re() -> Own[list[Int32]]:\n    return []\n"
+            "def rd() -> Own[dict[str, Int32]]:\n    return {'a': 1}\n"
+            "def rs() -> Own[set[Int32]]:\n    return {4, 5}\n")
+        for name in ("rl", "re", "rd", "rs"):
+            fn = _fn(thir, name)
+            assert fn is not None, name
+            assert isinstance(fn.body[0].value, THIRContainerLiteral), name
+
+    def test_own_container_param_still_ineligible(self):
+        # An `Own[list]` PARAM keeps the body on the AST path (the move-in
+        # ABI cell `_container_scalar_read` excludes) -- the return-slot
+        # widening must not have opened it. A BORROWED or reassigned-alias
+        # bare-name source cannot reach the return arm at all: sema rejects
+        # `return <borrowed>` at an Own slot without copy(), so the arm's
+        # reassigned/pointers checks are defensive.
+        thir = _lower(
+            "from tpy import Int32, Own\n"
+            "def f(xs: Own[list[Int32]]) -> Own[list[Int32]]:\n    return xs\n")
+        assert _fn(thir, "f") is None
+
+    def test_record_element_literal_return_ineligible(self):
+        # Elements outside the scalar/str slice keep the literal on the AST
+        # path (the decl gate's element checks, shared at the return arm).
+        thir = _lower(
+            "from tpy import Int32, Own\n"
+            "class P:\n    x: Int32\n"
+            "    def __init__(self, x: Int32):\n        self.x = x\n"
+            "def f() -> Own[list[P]]:\n    return [P(1)]\n")
+        assert _fn(thir, "f") is None
+
+    def test_byte_identical(self):
+        src = (
+            "from tpy import Int32, Own\n"
+            "def make() -> Own[list[Int32]]:\n"
+            "    xs: list[Int32] = [1, 2]\n    xs.append(3)\n    return xs\n"
+            "def rl() -> Own[list[Int32]]:\n    return [7, 8]\n"
+            "def re() -> Own[list[Int32]]:\n    return []\n"
+            "def rd() -> Own[dict[str, Int32]]:\n    return {'a': 1}\n"
+            "def rs() -> Own[set[Int32]]:\n    return {4, 5}\n"
+            "def main():\n"
+            "    print(len(make()), len(rl()), len(re()), len(rd()), len(rs()))\n"
+            "main()\n")
+        thir_cpp = self._cpp(src, thir=True)
+        assert thir_cpp == self._cpp(src, thir=False)
+        assert "return xs;" in thir_cpp                 # bare owned-name NRVO
+        assert "return {7, 8};" in thir_cpp
+        assert "return std::vector<int32_t>{};" in thir_cpp
+        assert ('return ::tpy::ordered_map<std::string, int32_t>({{"a", 1}});'
+                in thir_cpp)
+        assert "return ::tpy::ordered_set<int32_t>({4, 5});" in thir_cpp
+
+
+class TestOwnViewFamReturn:
+    def test_own_str_and_bytes_route(self):
+        thir = _lower(
+            "from tpy import Own\n"
+            "def rs() -> Own[str]:\n    return 'hi'\n"
+            "def rb() -> Own[bytes]:\n    return b'xy'\n")
+        assert _fn(thir, "rs") is not None
+        assert _fn(thir, "rb") is not None
+
+
+class TestSpanParam:
+    def test_span_scalar_param_routes(self):
+        # Subscript / len on a Span[scalar] param: the list-family emits
+        # (bounds-safe operator[], ::tpy::__len__) verbatim.
+        thir = _lower(
+            "from tpy import Int32, Span\n"
+            "def total(values: Span[Int32]) -> Int32:\n"
+            "    t: Int32 = 0\n    i: Int32 = 0\n"
+            "    while i < len(values):\n"
+            "        t += values[i]\n        i += 1\n"
+            "    return t\n")
+        assert _fn(thir, "total") is not None
+
+    def test_readonly_span_param_routes(self):
+        thir = _lower(
+            "from tpy import Int32, Span, readonly\n"
+            "def first(values: Span[readonly[Int32]]) -> Int32:\n"
+            "    return values[0]\n")
+        fn = _fn(thir, "first")
+        assert fn is not None
+        assert isinstance(fn.body[0].value, THIRSubscript)
+
+    def test_record_element_span_ineligible(self):
+        thir = _lower(
+            "from tpy import Int32, Span\n"
+            "class P:\n    x: Int32\n"
+            "    def __init__(self, x: Int32):\n        self.x = x\n"
+            "def f(ps: Span[P]) -> Int32:\n    return len(ps)\n")
+        assert _fn(thir, "f") is None
+
+
+# --- Container subscript writes: `c[k] = v` / `c[k] OP= v` (THIRSetItem) ---
+
+
+class TestContainerSetItem:
+    def test_list_setitem_routes(self):
+        thir = _lower(
+            _PRELUDE
+            + "def f(xs: list[Int32], i: Int32, v: Int32) -> None:\n"
+            + "    xs[i] = v\n")
+        stmt = _fn(thir, "f").body[0]
+        assert isinstance(stmt, THIRSetItem)
+        assert isinstance(stmt.target, THIRSubscript)
+        assert isinstance(stmt.target.receiver, THIRName)
+        assert stmt.target.receiver.name == "xs" and not stmt.target.bounds_safe
+        assert isinstance(stmt.value, THIRName) and stmt.value.name == "v"
+
+    def test_dict_str_key_routes(self):
+        thir = _lower(
+            _PRELUDE
+            + "def f(d: dict[str, Int32], k: str) -> None:\n    d[k] = 1\n"
+            + "def g(d: dict[Int32, Int32], k: Int32) -> None:\n    d[k] = 2\n")
+        assert isinstance(_fn(thir, "f").body[0], THIRSetItem)
+        assert isinstance(_fn(thir, "g").body[0], THIRSetItem)
+
+    def test_array_and_span_route(self):
+        thir = _lower(
+            "from tpy import Int32, Span, Array\n"
+            "def f(ar: Array[Int32, 4], sp: Span[Int32], i: Int32) -> None:\n"
+            "    ar[i] = 1\n    sp[i] = 2\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+        assert all(isinstance(s, THIRSetItem) for s in fn.body)
+
+    def test_bigint_index_narrows(self):
+        # A runtime-BigInt index takes the `.to_fixed_check<int32_t>()` wrap
+        # (gen_index_expr's narrow), like the read/del sides.
+        thir = _lower(
+            _PRELUDE
+            + "def f(xs: list[Int32], n: int) -> None:\n    xs[n] = 6\n")
+        stmt = _fn(thir, "f").body[0]
+        assert isinstance(stmt, THIRSetItem)
+        assert isinstance(stmt.target.index, THIRCoerce)
+
+    def test_str_value_view_source_copies(self):
+        # A view-form str source into an owned-str element takes the explicit
+        # `std::string(s)` copy (_view_source_to_owned); a literal lands bare.
+        thir = _lower(
+            _PRELUDE
+            + "def f(xs: list[str], s: str) -> None:\n"
+            + "    xs[0] = s\n    xs[1] = 'lit'\n")
+        fn = _fn(thir, "f")
+        copy = fn.body[0].value
+        assert isinstance(copy, THIRFormConvert) and copy.form is Form.STORAGE
+        assert isinstance(fn.body[1].value, THIRStrLiteral)
+
+    def test_flushable_value_position(self):
+        # A temp-hoisting call value routes: the write is a flushable
+        # statement position (the AST's single gen_stmt flush point).
+        thir = _lower_ctx(
+            _F1_RECORDS
+            + "def get(a: Leaf) -> Int32:\n    return a.n\n"
+            + "def f(xs: list[Int32]) -> None:\n    xs[0] = get(Leaf(4))\n")
+        stmt = _fn(thir, "f").body[0]
+        assert isinstance(stmt, THIRSetItem)
+        assert isinstance(stmt.value, THIRCall)
+        assert any(isinstance(a, THIRArgTemp) for a in stmt.value.args)
+
+    def test_slice_assign_ineligible(self):
+        thir = _lower(
+            _PRELUDE
+            + "def f(xs: list[Int32], ys: list[Int32]) -> None:\n"
+            + "    xs[0:2] = ys\n")
+        assert _fn(thir, "f") is None
+
+    def test_record_element_ineligible(self):
+        thir = _lower_ctx(
+            _F1_RECORDS
+            + "def f(xs: list[Leaf], a: Leaf) -> None:\n    xs[0] = a\n")
+        assert _fn(thir, "f") is None
+
+    def test_field_receiver_ineligible(self):
+        # `h.xs[0] = v` -- a non-name receiver stays AST (the dominant blocked
+        # mass; a later cell alongside the field-receiver subscript READ).
+        thir = _lower_ctx(
+            "from tpy import Int32\n"
+            "class H:\n    xs: list[Int32]\n"
+            "    def __init__(self):\n        self.xs = [1]\n"
+            "def f(h: H) -> None:\n    h.xs[0] = 2\n")
+        assert _fn(thir, "f") is None
+
+    def test_own_container_receiver_ineligible(self):
+        thir = _lower(
+            "from tpy import Int32, Own\n"
+            "def f(xs: Own[list[Int32]]) -> None:\n    xs[0] = 1\n")
+        assert _fn(thir, "f") is None
+
+
+class TestContainerAugSetItem:
+    def test_scalar_aug_routes(self):
+        thir = _lower(
+            _PRELUDE
+            + "def f(xs: list[Int32], i: Int32) -> None:\n    xs[i] += 7\n")
+        stmt = _fn(thir, "f").body[0]
+        assert isinstance(stmt, THIRSetItem)
+        binop = stmt.value
+        assert isinstance(binop, THIRBinOp) and not binop.paren_wrap
+        assert isinstance(binop.left, THIRSubscript)
+        assert not stmt.target.bounds_safe and not binop.left.bounds_safe
+
+    def test_bigint_value_takes_cast(self):
+        # FixedInt element += BigInt value -> the `({0}).to_fixed_check<T>()`
+        # cast on the value, like the name-target arm.
+        thir = _lower(
+            _PRELUDE
+            + "def f(xs: list[Int32], n: int) -> None:\n    xs[1] += n\n")
+        binop = _fn(thir, "f").body[0].value
+        assert binop.right_cast == "({0}).to_fixed_check<int32_t>()"
+
+    def test_str_element_aug_routes(self):
+        # `ys[0] += "a"` -- the read-modify-write pair over the resolved str
+        # concat (`::tpy::str_concat(<read>, "a")`), NOT the name-target
+        # in-place `+=` append.
+        thir = _lower(
+            _PRELUDE
+            + "def f(ys: list[str], t: dict[str, str], k: str) -> None:\n"
+            + "    ys[0] += 'a'\n    t['x'] += k\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+        assert all(isinstance(s, THIRSetItem)
+                   and isinstance(s.value, THIRBinOp) for s in fn.body)
+
+    def test_record_element_aug_ineligible(self):
+        thir = _lower_ctx(
+            _F1_RECORDS
+            + "def f(xs: list[Leaf]) -> None:\n    xs[0].n += 1\n")
+        fn = _fn(thir, "f")
+        # `xs[0].n += 1` is a FIELD target over a subscript receiver -- not
+        # the subscript-write shape; it must stay wherever the field gates
+        # put it (currently AST: the list-element receiver is not a tuple).
+        assert fn is None
+
+
+class TestContainerSetItemEmit:
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=thir))
+        return cpp
+
+    SRC = (
+        "from tpy import Int32, Span, Array\n"
+        "def f(xs: list[Int32], sp: Span[Int32], ar: Array[Int32, 4],"
+        " i: Int32, n: int) -> None:\n"
+        "    xs[0] = 1\n"
+        "    xs[i] = 2\n"
+        "    sp[i] = 3\n"
+        "    ar[i] = 4\n"
+        "    j = 0\n"
+        "    while j < len(xs):\n"
+        "        xs[j] = xs[j] + 1\n"
+        "        j += 1\n"
+        "    xs[n] = 6\n"
+        "    xs[i] += 7\n"
+        "    k = 0\n"
+        "    while k < len(xs):\n"
+        "        xs[k] += 1\n"
+        "        k += 1\n"
+        "def g(ys: list[str], d: dict[str, Int32], t: dict[str, str],"
+        " s: str) -> None:\n"
+        "    ys[0] = s\n"
+        "    ys[1] = 'lit'\n"
+        "    t['b'] = s\n"
+        "    d['x'] += 1\n"
+        "    del d['x']\n"
+        "def main() -> None:\n"
+        "    xs = [1, 2, 3]\n"
+        "    f(xs, xs, Array[Int32, 4](0), 1, 2)\n"
+        "    ys = ['a', 'b']\n"
+        "    d = {'x': 1}\n"
+        "    t = {'x': 'y'}\n"
+        "    g(ys, d, t, 's')\n"
+        "    print(xs[0], ys[0])\n"
+        "main()\n"
+    )
+
+    def test_byte_identical(self):
+        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
+
+    def test_emits_setitem_family(self):
+        cpp = self._cpp(self.SRC, thir=True)
+        assert "::tpy::__setitem__(xs, 0, 1);" in cpp        # literal index
+        assert "::tpy::__setitem__(xs, i, 2);" in cpp        # dynamic index
+        assert "::tpy::__setitem__(sp, i, 3);" in cpp        # span
+        assert "::tpy::__setitem__(ar, i, 4);" in cpp        # Array
+        # bounds-proven loop write takes the direct operator[] (both sides).
+        assert ("xs[static_cast<std::size_t>(j)] = "
+                "(::tpy::add_check<int32_t>("
+                "xs[static_cast<std::size_t>(j)], 1));" in cpp)
+        # BigInt index narrows inside the checked dunder.
+        assert ("::tpy::__setitem__(xs, n.to_fixed_check<int32_t>(), 6);"
+                in cpp)
+        # aug renders the checked read-modify-write pair...
+        assert ("::tpy::__setitem__(xs, i, "
+                "::tpy::add_check<int32_t>(::tpy::__getitem__(xs, i), 7));"
+                in cpp)
+        # ...even inside a bounds-proven loop (the AST aug arm never
+        # bounds-elides).
+        assert ("::tpy::__setitem__(xs, k, "
+                "::tpy::add_check<int32_t>(::tpy::__getitem__(xs, k), 1));"
+                in cpp)
+        # str values: view source copies, literal lands bare; str-keyed dict.
+        assert "::tpy::__setitem__(ys, 0, std::string(s));" in cpp
+        assert '::tpy::__setitem__(ys, 1, "lit");' in cpp
+        assert '::tpy::__setitem__(t, "b", std::string(s));' in cpp
+        assert ('::tpy::__setitem__(d, "x", '
+                '::tpy::add_check<int32_t>(::tpy::__getitem__(d, "x"), 1));'
+                in cpp)
+        assert '::tpy::__delitem__(d, "x");' in cpp

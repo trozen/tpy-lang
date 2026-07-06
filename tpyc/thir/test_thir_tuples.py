@@ -8,7 +8,7 @@ from ..codegen_cpp.forms import LocalBinding
 from .dump import dump_thir
 from .nodes import (
     Form, THIRAssign, THIRBinOp, THIRFieldAccess, THIRFormConvert, THIRName,
-    THIRReturn, THIRSubscript, THIRVarDecl,
+    THIRReturn, THIRSubscript, THIRTupleLiteral, THIRVarDecl,
 )
 from .testutil import (
     _compile, _entry, _lower, _lower_ctx, _fn, _lower_ctor, _PRELUDE,
@@ -44,13 +44,17 @@ class TestF3TupleReturn:
         assert ret.value.is_const is False  # mutable receiver -> mutable Leaf* elements
         assert ret.value.value.form is Form.STORAGE  # the h.pair storage read
 
-    def test_value_tuple_return_is_ineligible(self):
-        # An all-value-scalar tuple has no pointer-repr element (borrow == storage),
-        # so no tuple_to_pointer lift applies -- it stays on the AST path.
+    def test_value_tuple_return_takes_literal_not_lift(self):
+        # An all-value-scalar tuple has no pointer-repr element (borrow ==
+        # storage), so no tuple_to_pointer lift applies -- it routes via the
+        # value-tuple rung's spelled literal render instead.
         thir = _lower_ctx(
             _F3_RECORDS
             + "def ret_pair(h: Holder) -> tuple[Int32, Int32]:\n    return (1, 2)\n")
-        assert _fn(thir, "ret_pair") is None
+        ret = _fn(thir, "ret_pair").body[0]
+        assert isinstance(ret, THIRReturn)
+        assert isinstance(ret.value, THIRTupleLiteral)
+        assert not isinstance(ret.value, THIRFormConvert)
 
     def test_tuple_field_init_ctor_stays_on_ast_path(self):
         # Regression guard for the M3 ctor-frontier fix: `Holder.__init__` does
@@ -272,14 +276,16 @@ class TestTupleSubscriptRead:
         assert isinstance(sub, THIRSubscript) and sub.index.value == 0
         assert sub.form is Form.VALUE
 
-    def test_value_scalar_tuple_local_is_ineligible(self):
-        # Only value-tuple PARAMS are admitted in this cell; a value-tuple local
-        # (`t = (1, 2)`) needs literal construction / init-source eligibility, a
-        # later cell -- so a function building one stays on the AST path.
+    def test_value_scalar_tuple_local_routes(self):
+        # A value-tuple literal local (`t = (1, 2)`) routes via the tuple-rung
+        # decl arm: the spelled `std::tuple<...>{1, 2}` init, the local
+        # entering `declared` so the subscript read lights up.
         thir = _lower(
             _PRELUDE
             + "def f() -> Int32:\n    t = (1, 2)\n    return t[0]\n")
-        assert _fn(thir, "f") is None
+        fn = _fn(thir, "f")
+        assert fn is not None
+        assert isinstance(fn.body[0].init, THIRTupleLiteral)
 
 
 
@@ -584,3 +590,110 @@ class TestTupleSubscriptWriteEmit:
         assert "std::get<1>(a).n = 9;" in cpp                       # storage alias -> dot
         assert ("std::get<1>(a).n = ::tpy::add_check<int32_t>(std::get<1>(a).n, 2);"
                 in cpp)
+
+
+# --- Value-tuple slots: spelled literal renders + returns (the tuple rung) ---
+
+
+class TestValueTupleSlots:
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+        return cpp
+
+    def test_literal_return_routes(self):
+        thir = _lower(
+            _PRELUDE
+            + "def two(a: Int32, b: Int32) -> tuple[Int32, Int32]:\n"
+            + "    return (a, b)\n")
+        fn = _fn(thir, "two")
+        assert fn is not None
+        assert isinstance(fn.body[0].value, THIRTupleLiteral)
+
+    def test_bare_name_return_routes(self):
+        thir = _lower(
+            _PRELUDE
+            + "def echo(t: tuple[Int32, Int32]) -> tuple[Int32, Int32]:\n"
+            + "    return t\n")
+        fn = _fn(thir, "echo")
+        assert fn is not None
+        assert isinstance(fn.body[0].value, THIRName)
+
+    def test_str_element_param_and_return(self):
+        # tuple[str, Int32]: the str element reads as an owned lvalue (bare in
+        # every sink); a view-form element source wraps std::string(s).
+        thir = _lower(
+            _PRELUDE
+            + "def pick(t: tuple[str, Int32]) -> str:\n    return t[0]\n"
+            + "def make(s: str, n: Int32) -> tuple[str, Int32]:\n"
+            + "    return (s, n)\n")
+        assert _fn(thir, "pick") is not None
+        assert _fn(thir, "make") is not None
+
+    def test_view_element_tuple_ineligible(self):
+        # A StrView element keeps the tuple outside the value family (the
+        # literal render pins static storage for view slots).
+        thir = _lower(
+            _PRELUDE
+            + "from tpy import StrView\n"
+            + "def f(t: tuple[StrView, Int32]) -> Int32:\n    return t[1]\n")
+        assert _fn(thir, "f") is None
+
+    def test_nested_tuple_element_ineligible(self):
+        thir = _lower(
+            _PRELUDE
+            + "def f(t: tuple[Int32, tuple[Int32, Int32]]) -> Int32:\n"
+            + "    return t[0]\n")
+        assert _fn(thir, "f") is None
+
+    def test_byte_identical(self):
+        src = (
+            _PRELUDE
+            + "from tpy import Float32\n"
+            + "def two(a: Int32, b: Int32) -> tuple[Int32, Int32]:\n"
+            + "    return (a, b)\n"
+            + "def big() -> tuple[int, int]:\n    return (1, 2)\n"
+            + "def f32() -> tuple[Float32, Float32]:\n    return (1.5, 2.5)\n"
+            + "def mix(s: str, n: Int32) -> tuple[str, Int32]:\n"
+            + "    return (s, n)\n"
+            + "def pick(t: tuple[str, Int32]) -> str:\n    return t[0]\n"
+            + "def echo(t: tuple[Int32, Int32]) -> tuple[Int32, Int32]:\n"
+            + "    return t\n"
+            + "def locals_() -> Int32:\n"
+            + "    t = (1, 2)\n    t = (3, 4)\n    return t[0]\n"
+            + "def main():\n"
+            + "    print(two(1, 2)[1], big()[0], f32()[1], pick(mix('x', 3)),\n"
+            + "          echo((8, 9))[0], locals_())\n"
+            + "main()\n")
+        thir_cpp = self._cpp(src, thir=True)
+        assert thir_cpp == self._cpp(src, thir=False)
+        assert "return t;" in thir_cpp                  # bare value-tuple name
+        assert "return std::tuple<int32_t, int32_t>{a, b};" in thir_cpp
+        assert ("return std::tuple<::tpy::BigInt, ::tpy::BigInt>"
+                "{::tpy::BigInt(1), ::tpy::BigInt(2)};") in thir_cpp
+        assert "return std::tuple<float, float>{1.5f, 2.5f};" in thir_cpp
+        assert ("return std::tuple<std::string, int32_t>{std::string(s), n};"
+                in thir_cpp)
+        assert "t = std::tuple<int32_t, int32_t>{3, 4};" in thir_cpp
+
+    def test_tuple_call_args_route(self):
+        # A bare value-tuple name and a tuple literal both pass into a
+        # value-tuple param slot (the shared pass-through row -- gen_call_arg
+        # renders the bare name / the spelled brace-init on both paths).
+        src = (
+            _PRELUDE
+            + "def take(t: tuple[Int32, Int32]) -> Int32:\n"
+            + "    return t[0] + t[1]\n"
+            + "def pass_along(t: tuple[Int32, Int32]) -> Int32:\n"
+            + "    return take(t)\n"
+            + "def lit() -> Int32:\n    return take((3, 4))\n"
+            + "def main():\n    print(pass_along((1, 2)), lit())\nmain()\n")
+        thir = _lower(src)
+        for name in ("take", "pass_along", "lit"):
+            assert _fn(thir, name) is not None, name
+        cpp = self._cpp(src, thir=True)
+        assert cpp == self._cpp(src, thir=False)
+        assert "return take(t);" in cpp
+        assert "return take(std::tuple<int32_t, int32_t>{3, 4});" in cpp

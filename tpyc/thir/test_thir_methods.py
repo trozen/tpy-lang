@@ -6,8 +6,9 @@ from __future__ import annotations
 from ..codegen_cpp.context import CodeGenOptions
 from ..codegen_cpp.forms import LocalBinding
 from .nodes import (
-    Form, THIRAssign, THIRBinOp, THIRFieldAccess, THIRFormConvert, THIRMethodCall,
-    THIRName, THIRReturn, THIRSelf, THIRStrAppend, THIRVarDecl,
+    Form, THIRAssign, THIRBinOp, THIRCall, THIRFieldAccess, THIRFormConvert,
+    THIRMethodCall, THIRName, THIRReturn, THIRSelf, THIRSetItem, THIRStrAppend,
+    THIRVarDecl,
 )
 from .testutil import (
     _compile, _entry, _lower, _lower_ctx, _lower_ctx_witnessed, _lower_ctor,
@@ -455,12 +456,14 @@ class TestScalarAugAssign:
         stmt = _fn(thir, "cat").body[1]
         assert isinstance(stmt, THIRStrAppend)
 
-    def test_subscript_aug_assign_excluded(self):
-        # A subscript target takes the set_value/get_value path -> AST.
+    def test_subscript_aug_assign_routes(self):
+        # A subscript target takes the read-modify-write __setitem__ pair
+        # (THIRSetItem), not the name-target THIRAssign desugar.
         thir = _lower_ctx(
             "from tpy import Int32\n"
             "def at(xs: list[Int32], i: Int32):\n    xs[i] += 1\n")
-        assert _fn(thir, "at") is None
+        stmt = _fn(thir, "at").body[0]
+        assert isinstance(stmt, THIRSetItem)
 
     def test_float_local_aug_assign_routes(self):
         # A double `float` is an eligible scalar -- the value-scalar slice is not
@@ -1089,3 +1092,177 @@ class TestGenericRecordTValueMethods:
         assert ctor is not None
         assert len(ctor.mil_inits) == 2
         assert all(mi.move for mi in ctor.mil_inits)
+
+
+# --- Marker calls: module-qualified and static method-call shapes whose emit
+# is receiver-less (THIRCall with a pre-rendered callee_cpp / native symbol) ---
+
+_MARKER_HELPER = (
+    "from tpy import Int32\n"
+    "def bump(n: Int32) -> Int32:\n"
+    "    return n + 1\n"
+    "def shout(n: Int32) -> None:\n"
+    "    print(n)\n"
+    "def pick[T](a: T, b: T) -> T:\n"
+    "    return a\n"
+    "class Kit:\n"
+    "    @staticmethod\n"
+    "    def twice(n: Int32) -> Int32:\n"
+    "        return n * 2\n"
+)
+
+_MARKER_SRC = (
+    "from tpy import Int32\n"
+    "import helper\n"
+    "def use(n: Int32) -> Int32:\n"
+    "    m = helper.bump(n)\n"
+    "    helper.shout(m)\n"
+    "    if helper.bump(m) > 3:\n"
+    "        m = m + 1\n"
+    "    return helper.bump(m)\n"
+    "def gen(n: Int32) -> Int32:\n"
+    "    return helper.pick(n, 2)\n"
+    "def mstatic(n: Int32) -> Int32:\n"
+    "    return helper.Kit.twice(n)\n"
+    "def main():\n"
+    "    print(use(2))\n"
+    "    print(gen(1))\n"
+    "    print(mstatic(3))\n"
+    "main()\n"
+)
+
+
+class TestMarkerModuleCall:
+    """Module-qualified calls (`import helper; helper.bump(x)`) route as
+    THIRCall with the pre-rendered qualified spelling on callee_cpp --
+    module_qualified_callee_cpp, the ONE decision shared with the AST's
+    user_module_call arm. Generic and module-static forms stay AST."""
+
+    def _lowered(self, tmp_path):
+        (tmp_path / "helper.py").write_text(_MARKER_HELPER)
+        return _lower_ctx_witnessed(_MARKER_SRC, extra_lib_dirs=[tmp_path])
+
+    def test_routes_with_qualified_spelling(self, tmp_path):
+        thir, witnessed = self._lowered(tmp_path)
+        fn = _fn(thir, "use")
+        assert fn is not None
+        decl = fn.body[0]
+        assert isinstance(decl, THIRVarDecl)
+        assert isinstance(decl.init, THIRCall)
+        assert decl.init.callee_cpp == "::tpyapp::helper::bump"
+        assert decl.init.native_name is None
+        # value / stmt / condition / return positions all witnessed
+        assert witnessed.get("call.marker_qualified", 0) >= 4
+
+    def test_generic_module_call_stays_ast(self, tmp_path):
+        thir, _ = self._lowered(tmp_path)
+        assert _fn(thir, "gen") is None
+
+    def test_module_static_stays_ast(self, tmp_path):
+        # `helper.Kit.twice(n)` spells through the module-static arm
+        # (`::tpyapp::helper::Kit::twice`) -- not mirrored yet.
+        thir, _ = self._lowered(tmp_path)
+        assert _fn(thir, "mstatic") is None
+
+    def test_byte_identical(self, tmp_path):
+        (tmp_path / "helper.py").write_text(_MARKER_HELPER)
+        compiler, modules = _compile(_MARKER_SRC, extra_lib_dirs=[tmp_path])
+        entry = _entry(modules)
+        ast_out = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False))
+        thir_out = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=True))
+        assert thir_out == ast_out
+        assert "::tpyapp::helper::bump(" in thir_out[1]
+
+
+_NATIVE_MODULE_SRC = (
+    "from tpy import Float64\n"
+    "import math\n"
+    "def f(x: Float64) -> Float64:\n"
+    "    return math.sqrt(x)\n"
+    "def main():\n"
+    "    print(f(4.0))\n"
+    "main()\n"
+)
+
+
+class TestMarkerModuleNativeCall:
+    """A bare-@native cross-module callee (`import math; math.sqrt(x)`)
+    routes on the THIRCall native_name arm -- the same `::std::sqrt(x)`
+    render as the from-imported free call, reached through the
+    user_module_call marker."""
+
+    def test_routes_on_native_arm(self):
+        thir, witnessed = _lower_ctx_witnessed(_NATIVE_MODULE_SRC)
+        fn = _fn(thir, "f")
+        assert fn is not None
+        call = fn.body[0].value
+        assert isinstance(call, THIRCall)
+        assert call.native_name == "std::sqrt"
+        assert call.callee_cpp is None and call.cpp_template is None
+        assert witnessed.get("call.module_native", 0) >= 1
+
+    def test_byte_identical(self):
+        compiler, modules = _compile(_NATIVE_MODULE_SRC)
+        entry = _entry(modules)
+        ast_out = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False))
+        thir_out = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=True))
+        assert thir_out == ast_out
+        assert "::std::sqrt(" in thir_out[1]
+
+
+_STATIC_SRC = (
+    _F1_RECORDS
+    + "    @staticmethod\n"
+    + "    def make(n: Int32) -> Int32:\n"
+    + "        return n + 10\n"
+    + "def call_static(n: Int32) -> Int32:\n"
+    + "    return Box.make(n)\n"
+)
+
+
+class TestMarkerStaticCall:
+    """A same-module static call (`Box.make(n)`) routes as THIRCall with the
+    `Box::make` spelling on callee_cpp (static_method_callee_cpp). The args
+    interpolate the same first-pass loop as a plain free call (probe-verified:
+    the Own move cascade fires there), so the free-call arg rows apply."""
+
+    def test_routes_with_class_spelling(self):
+        thir, witnessed = _lower_ctx_witnessed(_STATIC_SRC)
+        fn = _fn(thir, "call_static")
+        assert fn is not None
+        ret = fn.body[0]
+        assert isinstance(ret.value, THIRCall)
+        assert ret.value.callee_cpp == "Box::make"
+        assert witnessed.get("call.marker_qualified", 0) >= 1
+
+    def test_byte_identical(self):
+        compiler, modules = _compile(_STATIC_SRC + "print(call_static(1))\n")
+        entry = _entry(modules)
+        ast_out = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False))
+        thir_out = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=True))
+        assert thir_out == ast_out
+        assert "Box::make(" in thir_out[1]
+
+    def test_super_call_stays_ast(self):
+        # The super marker takes the `this->Parent::method(...)` arm -- not
+        # a receiver-less spelling; _marker_call_kind rejects it.
+        thir = _lower_ctx(
+            "from tpy import Int32\n"
+            "class A:\n"
+            "    n: Int32\n"
+            "    def __init__(self):\n        self.n = 1\n"
+            "    def val(self) -> Int32:\n        return self.n\n"
+            "class B(A):\n"
+            "    def __init__(self):\n        super().__init__()\n"
+            "    def doubled(self) -> Int32:\n        return super().val() * 2\n")
+        assert _fn(thir, "val") is not None
+        assert _fn(thir, "doubled") is None

@@ -55,9 +55,19 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # `::tpyapp::mod::f` (callee_cpp)
     "call.native_free",             # C++ @native free callee -> `::native(args)`
     "call.template_free",           # positional-only @cpp_template free callee
+    "call.marker_qualified",        # module-qualified `m.f(x)` / static
+                                    # `Rec.m(x)` -> pre-rendered callee_cpp
+    "call.module_native",           # bare-@native module callee `m.f(x)`
+                                    # -> `::native(args)`
     "ctor.call",                    # THIRCtorCall bare ctor expansion
     "ctor.str_arg",                 # str-slice arg into a str-family ctor slot
     "with.str_target",              # str/StrView __enter__ as-target
+    # Container subscript writes (lowering; THIRSetItem's emit arms plus
+    # the owned-str element sink copy and the aug-assign desugar).
+    "setitem.checked",              # `::tpy::__setitem__(c, k, v);`
+    "setitem.bounds_safe",          # `c[static_cast<std::size_t>(k)] = v;`
+    "setitem.aug",                  # `c[k] OP= v` -> the getitem/setitem pair
+    "setitem.str_owned_copy",       # view source into a str element: std::string(v)
     # Runtime-BigInt `.to_fixed_check<T>()` narrows (lowering; the AST's
     # gen_index_expr / _gen_slice_bound / aug-assign / enum-from_value wraps).
     "narrow.subscript_index",       # `i.to_fixed_check<int32_t>()` (reads + del)
@@ -71,12 +81,28 @@ THIR_FACES: frozenset[str] = frozenset({
     "ret.record_storage",
     "ret.record_self",              # `return self` -> `return (*this);`
     "ret.record_field",             # `return recv.field` at the borrow slot
+    # Storage container return slot (`-> Own[list/dict/set]`; the renders --
+    # bare owned name / the decl-init literal emits -- are shared, so
+    # admission is the distinguishing site).
+    "ret.container_name",
+    "ret.container_literal",
+    # Value-tuple slots (`tuple[scalar|str, ...]`): the spelled
+    # `std::tuple<...>{...}` literal render at returns / decls, and the bare
+    # value-tuple name return.
+    "ret.tuple_literal",
+    "ret.tuple_name",
+    "decl.tuple_literal",
     # Owned record local decl (lowering; the `{cpp_type} {name} = <rvalue>;`
     # plain-value render).
     "decl.owned_record",
     # Ptr[T] value-slot admission (gate; bare passes / field reads share the
     # scalar renders, so the predicate is the only distinguishing site).
     "ptr.value_slot",
+    # `x = None` at a Ptr[T] value binding (lowering; the `nullptr` render).
+    "decl.ptr_none",
+    # A read of a read-only-seeded same-module value global (lowering; the
+    # bare-name render shared with locals, so the seed is what distinguishes).
+    "name.global_seeded",
     # BigInt-counter range loop (gate admission; the render difference is
     # the `::tpy::BigInt` cpp_elem + literal-bound retype, shared with the
     # fixed-int emit).
@@ -85,6 +111,17 @@ THIR_FACES: frozenset[str] = frozenset({
     # a bool value's truthiness render IS its value render, so the admitted
     # field-read emit carries the condition unchanged).
     "cond.bool_field",
+    # Bool-method-call truthiness condition (gate admission; `if g.is_open():`
+    # -- the same bare-render property as cond.bool_field, over the method
+    # call's value-position admission).
+    "cond.bool_method",
+    # Conditional-expression renders (lowering, except cond_pos at gate
+    # admission -- the condition-position render is shared with the value
+    # emit, so admission is the distinguishing site).
+    "ifexpr.value",                 # scalar / Char / enum result
+    "ifexpr.str",                   # str-family result (form-tagged)
+    "ifexpr.str_mixed",             # mixed view/owned arms: view-arm wrap
+    "ifexpr.cond_pos",              # bool ternary as an if/while condition
     # Enum value-binding renders (lowering).
     "enum.truthy_plain",            # plain-enum truthiness -> literal `true`
     "enum.truthy_int",              # IntEnum truthiness `(static_cast<U>(x) != 0)`
@@ -93,6 +130,14 @@ THIR_FACES: frozenset[str] = frozenset({
     "enum.name",                    # `.name` -> `EnumUtil<E>::name(x)` (BORROW)
     "enum.repr_print",              # @native enum print arg -> `::tpy::__repr__`
     "enum.nested_from_value",       # `Outer.Kind(v)` EnumUtil from_value
+    # F-string per-arg rows (the wrap table; witnessed at gate probe and
+    # again at lowering -- non-vacuity only needs a nonzero count).
+    "fstr.conv_repr",               # `!r` -> `::tpy::repr_of({0})` wrap
+    "fstr.conv_str",                # `!s` no-op passthrough (non-user types)
+    "fstr.char_arg",                # Char arg formats bare (`char` is
+                                    # std::formattable; no int8 cast)
+    "fstr.spec",                    # constant format spec -> `{:spec}`
+                                    # placeholder (lowering, routed args only)
     # Sync `with` faces (lowering, per item / per statement).
     "with.manager_borrowed",        # lvalue manager: `auto& __ctx_N = ...`
     "with.manager_owned",           # rvalue manager: `auto __ctx_N = ...`

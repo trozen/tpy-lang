@@ -6,6 +6,7 @@ with, try, raise, narrowing statements).
 from __future__ import annotations
 from dataclasses import replace
 from ...parse.nodes import (
+    TpyArrayLiteral,
     TpyAssert,
     TpyAssign,
     TpyAugAssign,
@@ -17,6 +18,7 @@ from ...parse.nodes import (
     TpyContinue,
     TpyDelItem,
     TpyDelVar,
+    TpyDictLiteral,
     TpyExpr,
     TpyExceptHandler,
     TpyExprStmt,
@@ -32,9 +34,12 @@ from ...parse.nodes import (
     TpyPassStmt,
     TpyRaise,
     TpyReturn,
+    TpySetLiteral,
     TpyStmt,
     TpyStrLiteral,
+    TpySubscript,
     TpyTry,
+    TpyTupleLiteral,
     TpyTupleUnpack,
     TpyUnaryOp,
     TpyVarDecl,
@@ -63,8 +68,10 @@ from ...type_def_registry import (
     is_array,
     is_big_int_type,
     is_bytes_type,
+    is_dict,
     is_fixed_int_type,
     is_list,
+    is_set,
     is_str_type,
 )
 from ...modules.type_resolution import is_native_iterable
@@ -104,6 +111,7 @@ from ..nodes import (
     THIRRaise,
     THIRReturn,
     THIRSelf,
+    THIRSetItem,
     THIRStmt,
     THIRStrAppend,
     THIRStrLiteral,
@@ -160,6 +168,7 @@ from .predicates import (
     _slice_object_type,
     _str_self_append_rhs,
     _unwrap_lit_coerce,
+    _value_tuple,
     _var_decl_type,
 )
 from .context import (
@@ -173,7 +182,10 @@ from .expressions import (
     _bytes_aug_concat_ok,
     _call_eligible,
     _condition_eligible,
+    _container_aug_setitem_ok,
     _container_literal_decl_ok,
+    _container_literal_ok,
+    _container_setitem_ok,
     _expr_eligible,
     _flush_witness,
     _is_builtin_print,
@@ -185,6 +197,7 @@ from .expressions import (
     _lower_expr,
     _lower_field_source,
     _lower_truthy,
+    _lower_tuple_literal,
     _method_call_eligible,
     _narrow_cond_info,
     _print_arg_form,
@@ -199,6 +212,7 @@ from .expressions import (
     _slot_literal_retype,
     _stmt_value_temps_call,
     _str_aug_append_ok,
+    _tuple_literal_ok,
 )
 from . import comprehensions as _comprehensions
 from . import match as _match
@@ -857,12 +871,24 @@ def _stmt_eligible(stmt: TpyStmt, analyzer, ws: _WalkState,
         # `x = None` at a union binding renders `std::monostate{}`
         # (target-typed, like the Char literal above) -- for a value union AND
         # a pointer variant (the monostate member is form-neutral: both
-        # spellings hold it directly). None at any other binding in the slice
-        # is ineligible (Optional locals are not admitted), so this is the
-        # only None-init arm.
+        # spellings hold it directly); at a `Ptr[T]` value binding it renders
+        # `nullptr` (the AST threads the declared PtrType into gen_expr).
+        # None at any other binding in the slice is ineligible (Optional
+        # locals are not admitted), so these are the only None-init arms.
         if isinstance(stmt.init, TpyNoneLiteral):
             return (_eligible_value_union(decl_tgt) is not None
-                    or _eligible_ptr_union(decl_tgt, analyzer) is not None)
+                    or _eligible_ptr_union(decl_tgt, analyzer) is not None
+                    or _eligible_ptr_value(decl_tgt, analyzer))
+        # A value-tuple literal local (`t = (1, 2)` / `p = (s, 1)`): decl and
+        # reassign alike render the spelled `std::tuple<...>{...}` (tuples
+        # are value types -- a reassign is a plain value assign, no
+        # pointer-local aliasing arises). The local enters `declared` with
+        # its TupleType, so the subscript-read gate lights up on it.
+        if isinstance(stmt.init, TpyTupleLiteral):
+            vt = _value_tuple(decl_tgt, analyzer)
+            return (vt is not None
+                    and _tuple_literal_ok(stmt.init, vt, ws.declared, analyzer)
+                    and _witness("decl.tuple_literal"))
         # F4 U2: a pointer-variant union local. Sources are same-union names
         # (bare borrow copy) or -- for single-assignment locals -- a
         # value-variant field lvalue (the to_[const_]ptr_variant lift; a
@@ -929,6 +955,10 @@ def _stmt_eligible(stmt: TpyStmt, analyzer, ws: _WalkState,
         # a plain scalar-field write `recv.field = <scalar>`; an F3 tuple-field
         # write `recv.field = <borrow tuple>` (tuple_to_storage); or an F4 U2
         # union-field write `recv.field = <borrow union name>` (to_value_variant).
+        # A subscript-target write gates separately from the field-write
+        # shapes (its own emit family: __setitem__ / bounds-safe operator[]).
+        if isinstance(stmt.target, TpySubscript):
+            return _container_setitem_ok(stmt, ws, analyzer)
         return (_f2b_optional_field_write_ok(stmt, ws.declared, ws.pointers, analyzer)
                 or _scalar_field_write_ok(stmt, ws.declared, analyzer, ws)
                 or _f1_tuple_field_write_ok(stmt, ws.declared,
@@ -1044,6 +1074,54 @@ def _stmt_eligible(stmt: TpyStmt, analyzer, ws: _WalkState,
                     else "ret.record_storage")
             return ((_f1_record(dt, analyzer) and _witness(face))
                     or note_detail("return.record_source"))
+        if prescan.ret_container_storage is not None:
+            # A storage container return (`-> Own[list[T]]` -> a by-value
+            # vector/map/set): a bare owned container name (NRVO / Own-param
+            # implicit move -- renders bare; narrowed / pointer-local /
+            # reassigned-alias names stay AST: a reassigned container local is
+            # a pointer-local on the AST path) or a container literal (the
+            # decl-init renders, position-independent -- incl. the empty-list
+            # `std::vector<T>{}` spell). Field / call / subscript sources ride
+            # later cells.
+            v = stmt.value
+            if isinstance(v, TpyName):
+                if (v.name in ws.narrowed or v.name in ws.pointers
+                        or v.name in prescan.reassigned
+                        or v.name not in ws.declared):
+                    return note_detail("return.container_source")
+                dt = unwrap_readonly(unwrap_ref_type(
+                    unwrap_send_sync(ws.declared[v.name])))
+                if isinstance(dt, OwnType):
+                    dt = unwrap_readonly(dt.wrapped)
+                return (((is_list(dt) or is_dict(dt) or is_set(dt))
+                         and _witness("ret.container_name"))
+                        or note_detail("return.container_source"))
+            if isinstance(v, (TpyArrayLiteral, TpyDictLiteral, TpySetLiteral)):
+                return ((_container_literal_ok(v, prescan.ret_container_storage,
+                                               ws.declared, analyzer)
+                         and _witness("ret.container_literal"))
+                        or note_detail("return.container_source"))
+            return note_detail("return.container_source")
+        if prescan.ret_value_tuple is not None:
+            # A value-tuple return (`-> tuple[int, str]` -> a by-value
+            # `std::tuple<...>`): a tuple literal renders the spelled
+            # brace-init with per-slot element targets; a bare value-tuple
+            # name returns bare (a value-type copy, param or local alike --
+            # no move/copy() machinery). Subscript / call / field sources
+            # ride later cells.
+            v = stmt.value
+            if isinstance(v, TpyTupleLiteral):
+                return ((_tuple_literal_ok(v, prescan.ret_value_tuple,
+                                           ws.declared, analyzer)
+                         and _witness("ret.tuple_literal"))
+                        or note_detail("return.tuple_source"))
+            if isinstance(v, TpyName):
+                if v.name in ws.narrowed or v.name not in ws.declared:
+                    return note_detail("return.tuple_source")
+                return ((_value_tuple(ws.declared[v.name], analyzer) is not None
+                         and _witness("ret.tuple_name"))
+                        or note_detail("return.tuple_source"))
+            return note_detail("return.tuple_source")
         # `return None` at a value-union return slot -> `std::monostate{}`
         # (F4 U1). Union names/literals flow through the generic arm below.
         if prescan.ret_union is not None and isinstance(stmt.value, TpyNoneLiteral):
@@ -1168,6 +1246,8 @@ def _stmt_eligible(stmt: TpyStmt, analyzer, ws: _WalkState,
         # the extraction alias on the AST path -- out of the U3 slice.
         if isinstance(stmt.target, TpyName) and stmt.target.name in ws.narrowed:
             return False
+        if isinstance(stmt.target, TpySubscript):
+            return _container_aug_setitem_ok(stmt, ws, analyzer)
         return (_scalar_aug_assign_ok(stmt, ws.declared, analyzer)
                 or _str_aug_append_ok(stmt, ws.declared, prescan, analyzer)
                 or _bytes_aug_concat_ok(stmt, ws.declared, prescan, analyzer))
@@ -1184,7 +1264,8 @@ def _stmt_eligible(stmt: TpyStmt, analyzer, ws: _WalkState,
         # irrelevant (the check reads prescan.global_seeded, and sema accepts
         # even a write BEFORE its `global` statement -- see lower_function's
         # seeding note), so no unseeded-global write survives to misroute.
-        return all(n in prescan.global_seeded for n in stmt.names)
+        return (all(n in prescan.global_seeded for n in stmt.names)
+                or note_detail("global.unseeded"))
     if isinstance(stmt, TpyDelVar):
         # Only the trivially-destructible face, where the AST's FIRST skip in
         # _gen_del_var_code emits no code (so no other codegen state -- alias
@@ -1779,12 +1860,26 @@ def _lower_stmt_dispatch(stmt: TpyStmt, lc: _LowerCtx,
                 return THIRStrAppend(target=stmt.name,
                                      value=_lower_expr(rhs, lc), loc=loc)
         # `x = None` at a value-union binding renders the monostate member --
-        # target-typed at lowering, like the Char decl below (F4 U1).
+        # target-typed at lowering, like the Char decl below (F4 U1). At a
+        # `Ptr[T]` value binding it renders `nullptr` (a VALUE-form None --
+        # _emit_literal's non-STORAGE arm; the gate pinned the binding type).
         if isinstance(stmt.init, TpyNoneLiteral):
-            ut = _eligible_value_union(declared[stmt.name]
-                                       if stmt.name in declared else vtype)
-            init: 'THIRExpr | None' = THIRLiteral(
-                result_type=ut, value=None, form=Form.STORAGE, loc=loc)
+            none_tgt = declared[stmt.name] if stmt.name in declared else vtype
+            ut = _eligible_value_union(none_tgt)
+            if ut is not None:
+                init: 'THIRExpr | None' = THIRLiteral(
+                    result_type=ut, value=None, form=Form.STORAGE, loc=loc)
+            else:
+                _witness("decl.ptr_none")
+                init = THIRLiteral(result_type=none_tgt, value=None,
+                                   form=Form.VALUE, loc=loc)
+        elif isinstance(stmt.init, TpyTupleLiteral):
+            # Gate-admitted value-tuple literal: the spelled brace-init against
+            # the binding slot (decl and reassign alike; per-element targets
+            # ride _lower_tuple_literal, so no outer retype applies).
+            init = _lower_tuple_literal(
+                stmt.init,
+                _value_tuple(declared.get(stmt.name, vtype), analyzer), lc)
         else:
             # A Char-annotated decl init lowers target-aware: `c: Char = 'x'` ->
             # `char c = 'x';` (the AST threads the decl type into the render);
@@ -1856,6 +1951,29 @@ def _lower_stmt_dispatch(stmt: TpyStmt, lc: _LowerCtx,
                       if _eligible_enum(vtype, analyzer) is not None else None),
             loc=loc)
     if isinstance(stmt, TpyAssign):
+        if isinstance(stmt.target, TpySubscript):
+            # Container subscript write: the target lowers to the same
+            # subscript node a read produces (bounds_safe + the BigInt index
+            # narrow ride along); the value renders against the element slot
+            # (literal retype), with the view->owned `std::string(v)` copy
+            # for a view-form str source into an owned-str element -- the
+            # AST's `_view_source_to_owned` chokepoint. A flushable position
+            # (temp_args), like a name assign.
+            target = _lower_expr(stmt.target, lc)
+            elem_t = analyzer.get_expr_type(stmt.target)
+            value = _slot_literal_retype(
+                _flush_witness("flush.assign",
+                               _lower_expr(stmt.value, lc, temp_args=True)),
+                elem_t)
+            elem_str = _resolved_str_value(elem_t, analyzer)
+            if (value.form is Form.BORROW and elem_str is not None
+                    and is_str_type(elem_str)):
+                _witness("setitem.str_owned_copy")
+                value = THIRFormConvert(result_type=elem_str, value=value,
+                                        form=Form.STORAGE, loc=loc)
+            _witness("setitem.bounds_safe" if target.bounds_safe
+                     else "setitem.checked")
+            return THIRSetItem(target=target, value=value, loc=loc)
         if isinstance(stmt.target, TpyFieldAccess):
             # A borrow `T*` stored into a storage `optional<T>` field lifts
             # borrow->storage via THIRFormConvert (`ptr_to_optional`, F2b); a
@@ -1943,20 +2061,36 @@ def _lower_stmt_dispatch(stmt: TpyStmt, lc: _LowerCtx,
         tgt_type = _resolve_pending_view(tgt_type, analyzer) or tgt_type
         tgt_bytes = _resolved_bytes_value(tgt_type, analyzer)
         target = _lower_expr(stmt.target, lc)
+        left = _lower_expr(stmt.target, lc)
+        cast_t = analyzer.get_expr_type(stmt.target)
+        if isinstance(stmt.target, TpySubscript):
+            # The subscript read-modify-write pair always renders the CHECKED
+            # dunders -- _gen_aug_assign_subscript_code never takes the
+            # bounds-safe operator[] -- so the node fact is forced off on
+            # both reads. The cast keys on the RESOLVED element scalar (the
+            # AST reads get_resolved_type(obj).get_element_type(); a
+            # literal-seeded local's element read is still an IntLiteralType
+            # here).
+            target = replace(target, bounds_safe=False)
+            left = replace(left, bounds_safe=False)
+            if cast_t is not None:
+                cast_t = resolve_int_literals(
+                    unwrap_readonly(unwrap_ref_type(unwrap_send_sync(cast_t))),
+                    analyzer.ctx.default_int_for_literal)
         _, aug_rslot = _rb_operand_slots(stmt.resolved_binop)
         # FixedInt += BigInt: the AST wraps the value in
         # `({0}).to_fixed_check<T>()` BEFORE the binop substitution (sema
         # resolved the binop over the target width) -- mirrored as the
         # per-side operand cast. Same predicates as _gen_aug_assign_code's.
         right_cast = None
-        if (is_fixed_int_type(analyzer.get_expr_type(stmt.target))
+        if (is_fixed_int_type(cast_t)
                 and is_big_int_type(analyzer.get_expr_type(stmt.value))):
             _witness("narrow.aug_value")
             right_cast = ("({0}).to_fixed_check<"
-                          f"{analyzer.get_expr_type(stmt.target).to_cpp()}>()")
+                          f"{cast_t.to_cpp()}>()")
         binop = THIRBinOp(
             result_type=tgt_type,
-            left=_lower_expr(stmt.target, lc),
+            left=left,
             op=stmt.op,
             right=_slot_literal_retype(_lower_expr(stmt.value, lc), aug_rslot),
             right_cast=right_cast,
@@ -1966,6 +2100,9 @@ def _lower_stmt_dispatch(stmt: TpyStmt, lc: _LowerCtx,
                   and is_bytes_type(tgt_bytes) else Form.VALUE),
             loc=loc,
         )
+        if isinstance(stmt.target, TpySubscript):
+            _witness("setitem.aug")
+            return THIRSetItem(target=target, value=binop, loc=loc)
         return THIRAssign(target=target, value=binop, loc=loc)
     if isinstance(stmt, TpyReturn):
         ret_tuple = lc.prescan.ret_borrow_tuple
@@ -2048,6 +2185,14 @@ def _lower_stmt_dispatch(stmt: TpyStmt, lc: _LowerCtx,
             if isinstance(stmt.value, TpyFieldAccess):
                 return THIRReturn(value=_lower_field_source(stmt.value, lc),
                                   loc=loc)
+        # A value-tuple return's literal source renders the spelled brace-init
+        # against the return slot (per-element targets ride
+        # _lower_tuple_literal); bare value-tuple names ride the generic tail.
+        ret_vt = lc.prescan.ret_value_tuple
+        if (stmt.value is not None and ret_vt is not None
+                and isinstance(stmt.value, TpyTupleLiteral)):
+            return THIRReturn(value=_lower_tuple_literal(stmt.value, ret_vt, lc),
+                              loc=loc)
         # `return None` at a union slot -> `std::monostate{}`, target-typed
         # (F4 U1 value / U2 pointer variant -- the monostate member renders
         # the same in both spellings).

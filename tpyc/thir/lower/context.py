@@ -13,15 +13,18 @@ from ...typesys import (
 from ..nodes import THIRFormConvert, THIRNarrowedRead, THIRSelf
 from .predicates import (
     _borrow_tuple_return_type,
+    _container_storage_return,
     _eligible_char,
     _eligible_ptr_union,
     _eligible_value_union,
     _optional_ptr_borrow,
+    _own_storage_viewfam_return,
     _record_borrow_return,
     _record_storage_return,
     _resolved_bytes_value,
     _resolved_str_value,
     _storage_optional_return_type,
+    _value_tuple,
 )
 
 # --- F1 form slice: single-assignment non-value record locals + field reads ---
@@ -33,9 +36,11 @@ class _Prescan:
     __slots__ = ("reassigned", "rvalue_reassigned", "hoisted", "move_through",
                  "ret_storage_opt", "ret_ptr_opt", "ret_borrow_tuple",
                  "ret_record_borrow", "ret_record_storage",
+                 "ret_container_storage", "ret_value_tuple",
                  "ret_str", "ret_bytes",
                  "ret_char", "ret_union", "ret_ptr_union", "param_names",
-                 "has_self", "global_seeded", "native_globals")
+                 "has_self", "global_seeded", "global_readonly",
+                 "native_globals")
 
     def __init__(self, func: TpyFunction, analyzer) -> None:
         # Param names, for gates that must tell a param from a local (a str
@@ -50,6 +55,9 @@ class _Prescan:
         # `global`-declared names lower_function seeded into scope (eligible
         # same-module scalar globals); the TpyGlobal gate arm keys on it.
         self.global_seeded: frozenset[str] = frozenset()
+        # Same-module value globals seeded READ-ONLY (never assigned in this
+        # body -- see _seed_readonly_globals); the name-read witness keys on it.
+        self.global_readonly: frozenset[str] = frozenset()
         # Module native-linkage global names (lower_function threads them
         # through); the try hoist arm rejects a colliding predecl name.
         self.native_globals: frozenset[str] = frozenset()
@@ -87,14 +95,33 @@ class _Prescan:
         # value): bare names and record-rvalue ctor / by-value calls return
         # bare; everything else stays on the AST path.
         self.ret_record_storage = _record_storage_return(rt, analyzer)
+        # The storage-form container return slot (`-> Own[list[T]]` -> a
+        # by-value vector/map/set): bare owned container names and container
+        # literals return bare (the decl-init renders, position-independent);
+        # every other source shape stays on the AST path.
+        self.ret_container_storage = _container_storage_return(rt, analyzer)
+        # The value-tuple return slot (`-> tuple[int, str]` -> a by-value
+        # `std::tuple<...>`): a tuple literal renders the spelled brace-init
+        # (THIRTupleLiteral) and a bare value-tuple name returns bare (a
+        # value-type copy -- no move/copy() machinery arises).
+        self.ret_value_tuple = _value_tuple(rt, analyzer)
         # S1 str slice: the resolved str-family return type (owned `str` or
         # `StrView`), so a `return <view-form source>` into an owned `std::string`
         # return copies via the view->owned THIRFormConvert. None otherwise.
+        # An `Own[str]` slot spells the same owned return; only the unwrap
+        # differs (`_own_storage_viewfam_return`).
         self.ret_str = _resolved_str_value(rt, analyzer)
         # S6: the resolved bytes-family return type -- an owned `bytes` return
         # copies a view-form source via `::tpy::bytes_copy`; a `BytesView`
-        # return renders a literal in its span form.
+        # return renders a literal in its span form. `Own[bytes]` rides the
+        # same arm via the unwrap.
         self.ret_bytes = _resolved_bytes_value(rt, analyzer)
+        own_viewfam = _own_storage_viewfam_return(rt, analyzer)
+        if own_viewfam is not None:
+            if _resolved_str_value(own_viewfam, analyzer) is not None:
+                self.ret_str = own_viewfam
+            else:
+                self.ret_bytes = own_viewfam
         # S4: a Char return slot -- `return "x"` renders a target-typed char
         # literal (`'x'`) on the AST path, a shape the return arm rejects.
         self.ret_char = _eligible_char(rt)

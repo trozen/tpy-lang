@@ -53,7 +53,7 @@ from .nodes import (
     Form, THIRArgTemp, THIRAssign, THIRCall, THIRCoerce, THIRConstructor,
     THIRExprStmt, THIRFieldAccess, THIRFormConvert, THIRFunction,
     THIRMethodCall, THIRNode,
-    THIRReturn, THIRVarDecl,
+    THIRReturn, THIRSetItem, THIRVarDecl,
 )
 
 
@@ -114,12 +114,13 @@ def _borrow_legal_return(rt) -> bool:
     if rt is None:
         return True
     t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rt)))
-    # `return name;` into a by-value RECORD return (`Own[Box]` -> `Box`):
-    # C++ materializes the storage from the borrow source (NRVO / implicit
-    # move) with no spelled convert -- the borrow value is legal. Scoped to
-    # the record shape the storage-return gate produces; an Own[union] /
-    # Own[container] return would need its own conversion arm, and this
-    # check must keep catching a missing one.
+    # `return name;` into a by-value RECORD or CONTAINER return (`Own[Box]` ->
+    # `Box`, `Own[list[T]]` -> `std::vector<T>`; containers are plain
+    # NominalTypes): C++ materializes the storage from the borrow source
+    # (NRVO / implicit move / copy-construct) with no spelled convert -- the
+    # borrow value is legal. An Own[union] return (a non-Nominal wrapped
+    # type) would need its own conversion arm, and this check must keep
+    # catching a missing one.
     if (isinstance(t, OwnType)
             and isinstance(unwrap_readonly(t.wrapped), NominalType)
             and not t.wrapped.is_value_type()):
@@ -194,6 +195,12 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
             _walk(owner, node.init, return_type, argtemp_ok=True)
         return
     if isinstance(node, THIRAssign):
+        _walk(owner, node.target, return_type)
+        _walk(owner, node.value, return_type, argtemp_ok=True)
+        return
+    if isinstance(node, THIRSetItem):
+        # The value is a flushable position (like an assign value); the
+        # target subscript's receiver/index never carry temps.
         _walk(owner, node.target, return_type)
         _walk(owner, node.value, return_type, argtemp_ok=True)
         return

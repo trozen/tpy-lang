@@ -28,6 +28,7 @@ from .nodes import (
     THIRFormConvert,
     THIRFString,
     THIRIf,
+    THIRIfExpr,
     THIRIsNone,
     THIRIsinstance,
     THIRExprStmt,
@@ -80,12 +81,14 @@ def _expr(e: THIRExpr) -> str:
         # The owned/span render verdict (the form tag) is emit-relevant.
         return f"bytes({e.value!r})" + ("" if e.form is Form.STORAGE else " [span]")
     if isinstance(e, THIRFString):
-        # Literal segments render repr'd; interpolated args in braces, with the
-        # carried wrap template when one applies (it is emit-relevant).
+        # Literal segments render repr'd; interpolated args in braces, with
+        # the carried wrap template and format spec when they apply (both are
+        # emit-relevant).
         parts = ", ".join(
             repr(p) if isinstance(p, str)
             else f"{{{_expr(p.expr)}}}"
             + (f" [wrap {p.wrap!r}]" if p.wrap is not None else "")
+            + (f" [spec {p.format_spec!r}]" if p.format_spec is not None else "")
             for p in e.parts)
         return f"fstring({parts})"
     if isinstance(e, THIRCharLiteral):
@@ -96,6 +99,12 @@ def _expr(e: THIRExpr) -> str:
         return f"not({_expr(e.operand)})"
     if isinstance(e, THIRIsNone):
         return f"is_none({_expr(e.operand)}{', negate' if e.negate else ''})"
+    if isinstance(e, THIRIfExpr):
+        # The form tag is emit-relevant for a str-family result (the
+        # owned-sink copy fires on BORROW), so surface it.
+        tag = "" if e.form is Form.VALUE else f" [{e.form.name.lower()}]"
+        return (f"ifexpr({_expr(e.cond)} ? {_expr(e.then)}"
+                f" : {_expr(e.orelse)}){tag}")
     if isinstance(e, THIRCall):
         # Surface the emit arm: a scalar-ctor cpp_template, a @native
         # free-function symbol, or the bare callee name.

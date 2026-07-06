@@ -12,6 +12,19 @@ progress. Leverage figures below are real-corpus blocked-body counts from a full
 `--thir-codegen` run (2026-07-06, master @ edc226168e; 691/5136 distinct shapes
 routed).
 
+**Tally-honesty correction (2026-07-06, container-rung branch):** the fallback
+attempt driver used to count (and sometimes route) `...`-stub callables the AST
+never gen_bodies -- declaration-only stubs (`cast`, `isinstance`, native-class
+method stubs) and bare-`@native` methods (`native_name` still None at codegen).
+Excluding them (`is_stub` in `_is_bodyless_binding`) shrank the routed tally
+~261k -> ~36k and body fallback ~200k -> ~143k; the DISTINCT-SHAPE meter barely
+moved, confirming it was the honest dial all along. Body-count leverage figures
+in this doc predate the fix and over-state per-case stdlib mass; headline items
+now known to be a handful of real bodies repeated per case: `sig.receiver_record`
+~17k = Poll's 5 bodies + Waker (builtin-receiver family), `sig.param_type`'s
+async plumbing ~8k = Waker/None-typed slots. Honest post-fix sig totals:
+`sig.param_type` 20,030 (582 shapes), `sig.return_type` 6,721 (157 shapes).
+
 ## Two hard findings up front
 
 **1. Under per-body routing, no AST emit function deletes until near-100%.**
@@ -44,12 +57,14 @@ type-family -> the primary parallel-worktree lever.
 
 | Gate | leverage | distinct shapes | missing type-families |
 |------|---------:|----------------:|-----------------------|
-| `sig.param_type` | 50,313 | 596 | str, bytes, container, tuple, union, Own[non-record], protocol (scalar/record/opt/ptr done) |
-| `sig.return_type` | 24,498 | 230 | container, tuple, union, own:protocol, own:container (scalar/str/opt/borrow-tuple/record/Own[record]/ptr done) |
-| `ctor.param_type` | 5,000 | -- | same as param, at ctor params (ptr done) |
+| `sig.param_type` | 20,030 | 582 | Waker/async plumbing (~8k, deferred), tuple, union, Own[non-record incl. Own[container]], protocol, generic-element containers `list[T]` (scalar/record/opt/ptr/container-scalar/span done) |
+| `sig.return_type` | 6,721 | 157 | tuple residue (~3.4k pre-value-tuple-rung; the remainder is non-value element families: record/nested-tuple/view elements), protocol/own:protocol, Waker, own:union (scalar/str/opt/borrow-tuple/record/Own[record]/Own[container]/Own[str]/Own[bytes]/ptr done) |
+| `ctor.param_type` | 4,395 | -- | same as param, at ctor params (ptr done) |
 
-(Counts re-measured 2026-07-06 after the return-slot branch: record borrow +
-storage returns, owned record local decls, and the Ptr[T] value family landed.)
+(Counts re-measured 2026-07-06 on the container-rung branch, post
+tally-honesty fix: storage container returns (`Own[list/dict/set]`, bare-name +
+literal sources), `Own[str]`/`Own[bytes]` returns, and `Span[scalar]` /
+`Span[readonly[scalar]]` params landed.)
 
 ### B. Expression arms feeding var-decl / return / if / expr-stmt [mostly P]
 
@@ -59,16 +74,16 @@ ported). The arms, by `gen_expr`/`gen_method_call` dispatch:
 
 | Arm | AST emit | status | biggest gaps | leverage | P/S |
 |-----|----------|--------|--------------|---------:|-----|
-| `TpyMethodCall` | expressions.py:3441 | partial | `method.marker` (static/super/module-qual) 8957; **str/bytes methods** (receiver not a nominal record -- new receiver-family dispatch) ~1.7k; non-F1/method receivers 4.5k; multi-overload; non-value returns | ~17k | P (grid) + S (str-family machinery, non-F1 receivers) |
+| `TpyMethodCall` | expressions.py:3441 | partial | `method.marker` module-qualified + static receivers LANDED (wave 2: `_marker_call_kind` + extracted spelling helpers; residual ~4.4k = generic statics 3.1k, deref chains 646, qualified arg/ret rows); **str/bytes methods** (receiver not a nominal record -- new receiver-family dispatch) ~1.7k; non-F1/method receivers 4.5k; multi-overload; non-value returns | ~12k | P (grid) + S (str-family machinery, non-F1 receivers) |
 | `TpyCall` | expressions.py:2874 | partial | non-scalar returns `call.ret_type` 2433 (grid-fill, return-slot); imported/cross-module/error_return/generic callees `call.callee_kind` 2087 (new machinery); `call.special_form` 1084 (bespoke cast/isinstance/enum/macro arms) | ~7k | mixed |
 | `TpyBinOp`/`ChainedCompare` | expressions.py:1883 | partial | mixed/widening arith (coercion node), Char concat, record operator-dunder indirection, non-bool logical (temp+ternary machinery) | ~3.9k | P (grid) + S (non-bool logical) |
-| `TpyFString` | expressions.py:6422 | partial | `!r`/`!s` conversions + format-spec fields (new per-arg render) | 1,892 | P |
-| `TpyName` global read | expressions.py:1432 | partial | module/native/imported/cross-module global reads (qualified-symbol resolution + non-value global indirection) | 1,113 | P (self-contained) |
+| `TpyFString` | expressions.py:6422 | done (wave 2) | `!r`/`!s` + constant format specs landed; unmirrored arg types under conv tagged `fstring.arg_wrap` | landed | P |
+| `TpyName` global read | expressions.py:1432 | mostly done (wave 2) | same-module value-global read seeding + Ptr[T] global writes landed; remaining: native spelling (304), imported qualification (~32), non-value pointer-slot indirection | ~350 | P (self-contained) |
 | `TpySubscript` | expressions.py:6094 | partial | non-value element reads (`list[record]`, dict->record/container), optional-runtime-check, narrowed/non-name receivers | 713 | P |
 | `TpyFieldAccess` | expressions.py:4319 | partial | non-value field reads (record/container/opt/union field), non-F1 receiver | ~1k | P |
-| `TpyIfExpr` (ternary) | expressions.py:6689 | **none** | whole arm unlowered | 747 | P |
+| `TpyIfExpr` (ternary) | expressions.py:6689 | done (wave 2) | `THIRIfExpr` for scalar/Char/enum/str results; non-value/bytes results tagged `ifexpr.result_type` (first-rejects 1073 -> 18) | landed | P |
 | list/dict/set literal (value position) | expressions.py:4510/4781/4826 | partial | only decl-init + print-arg today; value/return/call-arg positions + non-scalar elements missing | ~700 | P |
-| `TpyTupleLiteral` | expressions.py:5693 | **none** | whole arm unlowered (tuple family) | tuple | P |
+| `TpyTupleLiteral` | expressions.py:5693 | partial (value-tuple rung) | `THIRTupleLiteral` for all-VALUE scalar/owned-str elements at returns/decls/args; ref-capture elements + non-value element families stay AST | tuple residue | P |
 | `TpyListRepeat` `[0]*n` / walrus / lambda / genexpr | 4857/6514/6816/5170 | **none** | unlowered; walrus/lambda/list-repeat low-frequency, genexpr = serial | low | walrus/lambda S |
 
 Fully ported expr arms (no work): int/float/bool/str/bytes literals, `len()`,
@@ -165,11 +180,11 @@ trivially at integration order.
 
 | Cell | Scope | Primary files | Leverage |
 |------|-------|---------------|---------:|
-| **W1-container** | list/dict/set/Array/Span in param + return + field-read/write + local + subscript-element (incl. `list[record]`, dict->record); container literals in value position | predicates.py, lower/{statements,expressions}.py, emit.py | high (part of param/return + subscript 713) |
-| **W1-tuple** | `TpyTupleLiteral` (none today) + tuple in param/return/field/arg + tuple value-position | predicates.py `_f1_tuple`, lower/expressions.py, emit.py | tuple family (part of param/return) |
-| **W1-ifexpr** | `TpyIfExpr` ternary -- whole arm, currently `none` | lower/expressions.py, emit.py, nodes.py (new node) | 747 |
-| **W1-globalread** | `TpyName` module/native/imported/cross-module global reads (qualified-symbol resolution + non-value global indirection) | lower/expressions.py `name` arm, emit.py | 1,113 |
-| **W1-fstring** | fstring `!r`/`!s` conversions + format-spec fields | lower/expressions.py `_fstring_eligible`, emit.py | 1,892 |
+| **W1-container** | list/dict/set/Array/Span in param + return + field-read/write + local + subscript-element (incl. `list[record]`, dict->record); container literals in value position. PARTIAL: span params + `Own[list/dict/set]` returns (bare-name/literal sources) + `Own[str/bytes]` returns landed 2026-07-06; still open: container fields, `Own[container]` params, set membership, field-receiver subscript writes (`__setitem__` on name receivers landed in the wave-2 setitem cell), `list[T]` generic elements, call/field return sources | predicates.py, lower/{statements,expressions}.py, emit.py | container fields + subscript-elem remain |
+| **W1-tuple** | MOSTLY DONE (value-tuple rung): `THIRTupleLiteral` + value-tuple param/return/arg slots landed; remaining: tuple fields, ref-capture elements, non-value element families | predicates.py `_value_tuple`, lower/expressions.py, emit.py | residue only |
+| **W1-ifexpr** | DONE (wave 2): `THIRIfExpr` for scalar/Char/enum/str results; non-value/bytes results tagged `ifexpr.result_type` | lower/expressions.py, emit.py, nodes.py | first-rejects 1073 -> 18 |
+| **W1-globalread** | MOSTLY DONE (wave 2): same-module value-global read seeding (fn/method/ctor) + Ptr[T] global writes; remaining: native spelling (304), imported qualification (~32), non-value pointer-slot indirection, Optional-value globals (AST miscompile, BUGS.md) | lower/expressions.py `name` arm, emit.py | +1497 bodies |
+| **W1-fstring** | DONE (wave 2): `!r`/`!s` + constant format specs across all mirrored arg types; unmirrored types under conv tagged `fstring.arg_wrap` | lower/expressions.py `_fstring_eligible`, emit.py | landed |
 
 **Wave 2 -- start after the wave-1 gate arms land (they extend the same gates / need a family from W1):**
 
@@ -195,3 +210,10 @@ trivially at integration order.
 Integration cadence: one combined `--thir-codegen --no-exec` byte-diff after each
 cell merges; per-branch `/tpy-review` at each branch wrap (the byte-diff owns
 correctness). Re-measure the shape meter after each wave to track the curve.
+
+Drilldown convention (standardized after wave 2): when a cell's target bucket
+is a mixed tally, land the `note_detail` sub-classifier PERMANENTLY while the
+bucket has mass (the `_marker_reject` pattern -- it runs only on already-
+rejected calls, first-reject-wins, and self-documents the residue) and delete
+it when the bucket empties; hand-written temporary classifiers reverted before
+commit are the exception for one-off questions, not the default.

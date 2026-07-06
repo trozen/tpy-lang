@@ -8,10 +8,11 @@ import io
 
 from ..codegen_cpp.context import CodeGenOptions
 from ..compilation_context import activate_compiler
-from ..parse.nodes import TpyCall
+from ..parse.nodes import TpyCall, TpyExceptHandler, TpyPassStmt, TpyTry
 from .dump import dump_thir
 from .emit import emit_thir_body
 from .lower import _is_len_native, lower_module
+from .lower.functions import _shadow_bound_names
 from .nodes import (
     Form, PrintForm, THIRAssign, THIRBinOp, THIRCall, THIRExprStmt,
     THIRForEach, THIRForRange, THIRIf, THIRLiteral, THIRName, THIRPrint,
@@ -52,11 +53,11 @@ class TestEligibility:
         thir = _lower(_PRELUDE + "def f(a: Int32):\n    b = a\n")
         assert _fn(thir, "f") is not None
 
-    def test_global_reference_is_ineligible(self):
-        # A name resolving to a module global needs a qualified C++ symbol the
-        # slice does not yet materialize -> stays on the AST path.
+    def test_global_reference_routes(self):
+        # A read-only same-module value global seeds like a param; the read
+        # renders bare (`return G;`), exactly the AST's same-module spelling.
         thir = _lower(_PRELUDE + "G: Int32 = 5\ndef f() -> Int32:\n    return G\n")
-        assert _fn(thir, "f") is None
+        assert _fn(thir, "f") is not None
 
     def test_arith_binop_is_eligible(self):
         # c = a + b + 1; return c -- nested arithmetic with a literal
@@ -1547,11 +1548,12 @@ class TestGlobalStmt:
         thir = _lower(self.SRC)
         assert _fn(thir, "big_write") is not None
 
-    def test_bare_global_read_without_decl_is_ineligible(self):
-        # Read-only module-global access (no `global` statement) is the
-        # deferred row -- only explicitly `global`-declared names seed.
+    def test_bare_global_read_without_decl_routes(self):
+        # Read-only module-global access (no `global` statement): value-family
+        # globals a body never assigns seed read-only, so the bare read
+        # renders like a local of the same resolved type.
         thir = _lower(self.SRC)
-        assert _fn(thir, "read_no_decl") is None
+        assert _fn(thir, "read_no_decl") is not None
 
     def test_byte_identical_with_comments(self):
         compiler, modules = _compile(self.SRC)
@@ -1723,6 +1725,113 @@ class TestBoolFieldCondition:
         thir, witnessed = _lower_ctx_witnessed(src)
         assert _fn(thir, "spin") is None
         assert witnessed.get("cond.bool_field", 0) == 0
+
+
+class TestBoolMethodCondition:
+    """Bool-method-call truthiness conditions (`if g.is_open():` /
+    `while g.is_open():` / assert): a bool value's truthiness render is its
+    value render, so the method call's value-position admission carries the
+    condition unchanged. Bool only, mirroring the name/field arms' scope pin
+    (int/str/Optional results stay AST)."""
+
+    SRC = (
+        "from tpy import Int32\n"
+        "class Gate:\n"
+        "    open: bool\n"
+        "    count: Int32\n"
+        "    def __init__(self):\n"
+        "        self.open = True\n"
+        "        self.count = 3\n"
+        "    def is_open(self) -> bool:\n"
+        "        return self.open\n"
+        "    def shut(self):\n"
+        "        self.open = False\n"
+        "def tick(g: Gate, b: bool) -> Int32:\n"
+        "    n = 0\n"
+        "    if g.is_open():\n"
+        "        n += 1\n"
+        "    if not g.is_open():\n"
+        "        n += 2\n"
+        "    if g.is_open() and b:\n"
+        "        n += 4\n"
+        "    return n\n"
+        "def drain(g: Gate) -> Int32:\n"
+        "    total = 0\n"
+        "    while g.is_open():\n"
+        "        total += 1\n"
+        "        g.shut()\n"
+        "    return total\n"
+        "def check(g: Gate):\n"
+        "    assert g.is_open()\n"
+        "def main():\n"
+        "    g = Gate()\n"
+        "    check(g)\n"
+        "    print(tick(g, True))\n"
+        "    print(drain(g))\n"
+        "main()\n"
+    )
+
+    def test_routes_and_face_witnessed(self):
+        thir, witnessed = _lower_ctx_witnessed(self.SRC)
+        names = {f.name for f in thir.functions}
+        assert {"tick", "drain", "check"} <= names
+        # Direct if/while/assert conditions witness the face; the `not` /
+        # `and` positions route through the pre-existing operand arms.
+        assert witnessed.get("cond.bool_method", 0) >= 3
+
+    def test_byte_identical(self):
+        compiler, modules = _compile(self.SRC)
+        entry = _entry(modules)
+        ast_out = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False))
+        thir_out = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=True))
+        assert thir_out == ast_out
+
+    def test_nonbool_method_condition_stays_ast(self):
+        # An Int32 result also renders bare on the AST path, but the slice
+        # pins bool like the name/field arms.
+        src = (
+            "from tpy import Int32\n"
+            "class Tally:\n"
+            "    n: Int32\n"
+            "    def __init__(self):\n"
+            "        self.n = 2\n"
+            "    def size(self) -> Int32:\n"
+            "        return self.n\n"
+            "def spin(t: Tally) -> Int32:\n"
+            "    if t.size():\n"
+            "        return 1\n"
+            "    return 0\n"
+            "def main():\n"
+            "    print(spin(Tally()))\n"
+            "main()\n"
+        )
+        thir, witnessed = _lower_ctx_witnessed(src)
+        assert _fn(thir, "spin") is None
+        assert witnessed.get("cond.bool_method", 0) == 0
+
+    def test_str_method_condition_stays_ast(self):
+        # A str result takes the `.empty()` truthiness wrap on the AST path.
+        src = (
+            "class Box:\n"
+            "    s: str\n"
+            "    def __init__(self):\n"
+            "        self.s = \"x\"\n"
+            "    def name(self) -> str:\n"
+            "        return self.s\n"
+            "def probe(b: Box) -> bool:\n"
+            "    if b.name():\n"
+            "        return True\n"
+            "    return False\n"
+            "def main():\n"
+            "    print(probe(Box()))\n"
+            "main()\n"
+        )
+        thir, witnessed = _lower_ctx_witnessed(src)
+        assert _fn(thir, "probe") is None
+        assert witnessed.get("cond.bool_method", 0) == 0
 
 
 class TestImportedCallee:
@@ -1898,3 +2007,255 @@ class TestImportedCallee:
             entry, options=CodeGenOptions(emit_source_comments=False,
                                           thir_codegen=True))
         assert thir_out == ast_out
+
+
+class TestGlobalReadonlySeed:
+    """Read-only same-module value-global seeding: scalar / str / StrView /
+    Final / Ptr[T] globals a body never assigns read bare, exactly like a
+    local of the same resolved type. Names the body assigns or shadow-binds
+    are excluded (a seeded one would misroute its first local decl as a bare
+    global reassign); non-value / Optional / imported globals stay AST."""
+
+    SRC = (
+        "from tpy import Int32, StrView\n"
+        "from typing import Final\n"
+        "GI: Int32 = 10\n"
+        "GB = True\n"
+        "GS = \"own\"\n"
+        "GV: StrView = \"view\"\n"
+        "GBIG = 7\n"
+        "GC: Final[Int32] = 99\n"
+        "GL = [1, 2]\n"
+        "GO: Int32 | None = 5\n"
+        "def read_scalar() -> Int32:\n"
+        "    if GI > 5:\n"
+        "        return GI\n"
+        "    return 0\n"
+        "def read_bool() -> bool:\n"
+        "    return GB\n"
+        "def read_str() -> str:\n"
+        "    return GS\n"
+        "def read_view_owned_sink() -> str:\n"
+        "    return GV\n"
+        "def read_final() -> Int32:\n"
+        "    return GC\n"
+        "def shadow_only() -> Int32:\n"
+        "    GI = 1\n"
+        "    return GI\n"
+        "def read_then_shadow() -> Int32:\n"
+        "    y = GI\n"
+        "    GI = 5\n"
+        "    return y + GI\n"
+        "def aug_without_global() -> Int32:\n"
+        "    GI += 1\n"
+        "    return GI\n"
+        "def read_container() -> Int32:\n"
+        "    return GL[0]\n"
+        "def read_optional() -> Int32:\n"
+        "    if GO is not None:\n"
+        "        return GO\n"
+        "    return 0\n"
+        "def main():\n"
+        "    print(read_scalar(), read_bool(), read_str(), read_final())\n"
+        "    print(read_view_owned_sink(), shadow_only(), read_then_shadow())\n"
+        "    print(aug_without_global(), read_container(), read_optional())\n"
+        "main()\n"
+    )
+
+    def test_value_family_reads_route(self):
+        thir, witnessed = _lower_ctx_witnessed(self.SRC)
+        for name in ("read_scalar", "read_bool", "read_str",
+                     "read_view_owned_sink", "read_final"):
+            assert _fn(thir, name) is not None, name
+        assert witnessed.get("name.global_seeded", 0) >= 5
+
+    def test_reads_render_bare(self):
+        fn = _fn(_lower_ctx(self.SRC), "read_scalar")
+        ret = fn.body[0].then_body[0]
+        assert isinstance(ret, THIRReturn)
+        assert isinstance(ret.value, THIRName) and ret.value.name == "GI"
+
+    def test_view_global_is_borrow_form(self):
+        # A StrView global at an owned-str return takes the view->owned copy
+        # (`std::string(GV)`), driven by the BORROW form tag -- the byte-
+        # identical test pins the render; this pins the tag.
+        fn = _fn(_lower_ctx(self.SRC), "read_view_owned_sink")
+        assert fn is not None
+
+    def test_assigning_bodies_do_not_seed(self):
+        thir = _lower_ctx(self.SRC)
+        # A pure local shadow routes as a FRESH decl (not a bare global
+        # reassign) -- the name was excluded from seeding.
+        fn = _fn(thir, "shadow_only")
+        assert fn is not None
+        assert isinstance(fn.body[0], THIRVarDecl)
+        # A read BEFORE the shadowing assignment resolves to the global (a
+        # sema-accepted CPython-parity gap); the excluded name makes the read
+        # reject -> whole body stays AST.
+        assert _fn(thir, "read_then_shadow") is None
+        # TPy accepts an aug-assign to a global without `global` (mutates the
+        # global); the exclusion keeps the body on the AST path.
+        assert _fn(thir, "aug_without_global") is None
+
+    def test_nonvalue_and_optional_globals_reject(self):
+        thir = _lower_ctx(self.SRC)
+        # Containers are pointer slots ((*GL) reads) -- not seeded.
+        assert _fn(thir, "read_container") is None
+        # Optional-value globals must NOT seed: sema narrows the read, and the
+        # AST renders the narrowed global bare (a known AST miscompile) while
+        # THIR's local-style narrowing would extract -- a divergence.
+        assert _fn(thir, "read_optional") is None
+
+    def test_byte_identical(self):
+        compiler, modules = _compile(self.SRC)
+        entry = _entry(modules)
+        ast_out = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False))
+        thir_out = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=True))
+        assert thir_out == ast_out
+
+    def test_except_as_shadow_excluded(self):
+        # `_shadow_bound_names` excludes an except-`as` binder name from
+        # seeding: reads of the like-named global in that body stay AST.
+        src = (
+            "from tpy import Int32\n"
+            "GE: Int32 = 3\n"
+            "def f() -> Int32:\n"
+            "    x = GE\n"
+            "    return x\n"
+        )
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is not None
+        t = TpyTry(try_body=[TpyPassStmt()],
+                   handlers=[TpyExceptHandler(exception_type="ValueError",
+                                              binding="GE", body=[TpyPassStmt()])],
+                   else_body=[], finally_body=[])
+        assert _shadow_bound_names([t]) == {"GE"}
+
+
+class TestGlobalPtrSeed:
+    """Ptr[T] globals: `global`-declared writes (param / None sources) and
+    read-only returns route; `x = None` at a Ptr binding renders `nullptr`."""
+
+    SRC = (
+        "from tpy import Int32, Ptr, take_ptr\n"
+        "class Node:\n"
+        "    n: Int32\n"
+        "    def __init__(self) -> None:\n"
+        "        self.n = 5\n"
+        "head: Ptr[Node] = None\n"
+        "def set_head(p: Ptr[Node]) -> None:\n"
+        "    global head\n"
+        "    head = p\n"
+        "def clear_head() -> None:\n"
+        "    global head\n"
+        "    head = None\n"
+        "def get_head() -> Ptr[Node]:\n"
+        "    return head\n"
+        "def main() -> None:\n"
+        "    node = Node()\n"
+        "    set_head(take_ptr(node))\n"
+        "    print(get_head() is not None)\n"
+        "    clear_head()\n"
+        "main()\n"
+    )
+
+    def test_ptr_global_bodies_route(self):
+        thir, witnessed = _lower_ctx_witnessed(self.SRC)
+        assert _fn(thir, "set_head") is not None
+        assert _fn(thir, "clear_head") is not None
+        assert _fn(thir, "get_head") is not None
+        assert witnessed.get("decl.ptr_none", 0) >= 1
+
+    def test_none_write_lowers_to_nullptr_literal(self):
+        fn = _fn(_lower_ctx(self.SRC), "clear_head")
+        assign = fn.body[1]  # body[0] is the `global head` no-op
+        assert isinstance(assign, THIRAssign)
+        assert isinstance(assign.value, THIRLiteral)
+        assert assign.value.value is None
+        assert assign.value.form is not Form.STORAGE  # emits nullptr
+
+    def test_byte_identical(self):
+        compiler, modules = _compile(self.SRC)
+        entry = _entry(modules)
+        ast_out = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False))
+        thir_out = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=True))
+        assert thir_out == ast_out
+        assert "head = nullptr;" in thir_out[1]
+
+
+class TestGlobalCtorAndImports:
+    def test_ctor_body_global_read_stays_ast_on_mil(self):
+        # A leading `self.f = GLOBAL` is a bare-name RHS the AST DEMOTES to
+        # the body (`blocked_by_bare_name`); THIR does not mirror the demote,
+        # so the whole ctor stays AST (the ctor.mil_field reject) -- a hoist
+        # would emit `: n(LIMIT)` where the AST emits `this->n = LIMIT;`.
+        src = (
+            "from tpy import Int32\n"
+            "LIMIT: Int32 = 9\n"
+            "class Box2:\n"
+            "    n: Int32\n"
+            "    def __init__(self) -> None:\n"
+            "        self.n = LIMIT\n"
+            "b = Box2()\n"
+            "print(b.n)\n"
+        )
+        assert _lower_ctor(src, "Box2") is None
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        ast_out = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False))
+        thir_out = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=True))
+        assert thir_out == ast_out
+        assert "this->n = LIMIT;" in thir_out[0]
+
+    def test_ctor_nonleading_global_read_routes(self):
+        # After the leading-MIL chain, a body statement reading a seeded
+        # global routes through the shared statement machinery.
+        src = (
+            "from tpy import Int32\n"
+            "SCALE: Int32 = 4\n"
+            "class Acc:\n"
+            "    total: Int32\n"
+            "    def __init__(self, base: Int32) -> None:\n"
+            "        self.total = base\n"
+            "        self.total = self.total * SCALE\n"
+            "a = Acc(3)\n"
+            "print(a.total)\n"
+        )
+        ctor = _lower_ctor(src, "Acc")
+        assert ctor is not None
+
+    def test_imported_global_read_stays_ast(self, tmp_path):
+        # Cross-module imported-variable reads qualify (`::tpyapp::cfg::width`)
+        # -- a spelling the slice does not materialize yet; deferred.
+        (tmp_path / "cfg.py").write_text(
+            "from tpy import Int32\nwidth: Int32 = 100\n")
+        src = (
+            "from tpy import Int32\n"
+            "from cfg import width\n"
+            "def read_w() -> Int32:\n"
+            "    return width\n"
+            "def main():\n"
+            "    print(read_w())\n"
+            "main()\n"
+        )
+        compiler, modules = _compile(src, extra_lib_dirs=[tmp_path])
+        entry = _entry(modules)
+        with activate_compiler(compiler):
+            thir = lower_module(entry.ast, entry.analyzer)
+        assert _fn(thir, "read_w") is None
+        ast_out = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False))
+        thir_out = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=True))
+        assert thir_out == ast_out
+        assert "::tpyapp::cfg::width" in thir_out[1]

@@ -15,6 +15,7 @@ from ...parse.nodes import (
     TpyFunction,
     TpyGlobal,
     TpyIf,
+    TpyMatch,
     TpyMethodCall,
     TpyModule,
     TpyName,
@@ -30,7 +31,10 @@ from ...parse.nodes import (
     expr_reads_self_field,
     is_base_init_call,
     is_docstring,
+    iter_capture_bindings,
 )
+from ...namespace import BindingKind
+from ...prescan import scan_reassigned_vars
 from ...typesys import (
     CONST_PARAMS_METHODS,
     NominalType,
@@ -79,10 +83,11 @@ from .predicates import (
     _is_type_param_slot,
     _optional_ptr_borrow,
     _own_type_param_slot,
+    _readonly_global_type,
     _resolved_bytes_value,
     _resolved_str_value,
     _slice_object_type,
-    _value_scalar_tuple,
+    _value_tuple,
 )
 from .context import (
     _LowerCtx,
@@ -125,7 +130,7 @@ def _f1_param_eligible(ptype: TpyType | None, analyzer) -> bool:
             or _slice_object_type(ptype)
             or _eligible_enum(ptype, analyzer) is not None
             or _f1_tuple(ptype, analyzer) is not None
-            or _value_scalar_tuple(ptype)
+            or _value_tuple(ptype, analyzer) is not None
             or _eligible_value_union(ptype) is not None
             or _eligible_ptr_union(ptype, analyzer) is not None
             or _container_scalar_read(ptype, analyzer)
@@ -274,6 +279,77 @@ def _try_hoisted_names(body: list[TpyStmt], analyzer) -> set[str]:
             out |= _try_hoisted_names(s.body, analyzer)
     return out
 
+def _shadow_bound_names(stmts: list[TpyStmt]) -> set[str]:
+    """Names bound by the binder forms `scan_reassigned_vars` does not record:
+    except-`as` bindings and match captures. A candidate read-only global one
+    of these shadows must not seed -- the AST may hoist/predecl the binder at
+    function scope while the seeded walk state would keep treating later reads
+    of the name as the global."""
+    out: set[str] = set()
+
+    def walk(body: list[TpyStmt]) -> None:
+        for s in body:
+            if isinstance(s, TpyTry):
+                for h in s.handlers:
+                    if h.binding is not None:
+                        out.add(h.binding)
+            elif isinstance(s, TpyMatch):
+                for case in s.cases:
+                    for b in iter_capture_bindings(case.pattern):
+                        out.add(b.name)
+            for sub in s.sub_bodies():
+                walk(sub)
+
+    walk(stmts)
+    return out
+
+def _seed_readonly_globals(func: TpyFunction, analyzer,
+                           scope: dict[str, TpyType],
+                           native_globals: frozenset[str]) -> frozenset[str]:
+    """Seed the same-module VALUE globals `func` only ever READS into `scope`
+    (mutated in place); returns the seeded names.
+
+    Sema resolves an unassigned name to the module global, and the AST renders
+    a value global's read bare -- exactly a local read of the same resolved
+    type (`is_indirect_name` is False for value globals, and
+    `_maybe_convert_opt_view_param` is param-keyed), so a seeded name routes
+    through every existing name-read arm unchanged. Candidates come from
+    `top_level_decls` (the module's own top-level var/tuple-unpack names --
+    an imported name REDEFINED there also reads bare, matching the AST's
+    top_level_decls precedence over the import qualification). Excluded:
+    params (they shadow), native-linkage globals (native spelling),
+    `global`-declared names (the write-seeding path above owns them), sema-
+    hoisted names (a branch-local shadow with a function-scope predecl), and
+    -- via a prescan with the candidates pre-declared, plus the binder walk --
+    any name the function assigns or shadow-binds ANYWHERE (Python scoping
+    makes every such name a local; a seeded one would misroute its first
+    local decl as a bare global reassign)."""
+    cands: dict[str, TpyType] = {}
+    global_decls = analyzer.function_global_decls.get(id(func), set())
+    hoisted = analyzer.function_hoisted_vars.get(id(func), set())
+    for n in analyzer.ctx.top_level_decls:
+        if (n in scope or n in native_globals or n in global_decls
+                or n in hoisted):
+            continue
+        gt = analyzer.ctx.global_scope.lookup(n)
+        if gt is None:
+            # Unannotated top-level decls bind in global_ns only (the
+            # register_globals pass covers annotated ones in global_scope).
+            nb = analyzer.global_ns.lookup_local(n)
+            gt = (nb.type if nb is not None
+                  and nb.kind is BindingKind.VARIABLE else None)
+        st = _readonly_global_type(gt, analyzer)
+        if st is not None:
+            cands[n] = st
+    if not cands:
+        return frozenset()
+    scan = scan_reassigned_vars(func.body, pre_declared=set(cands))
+    for n in (scan.reassigned | scan.aug_assigned
+              | _shadow_bound_names(func.body)):
+        cands.pop(n, None)
+    scope.update(cands)
+    return frozenset(cands)
+
 def lower_function(func: TpyFunction, analyzer, render_type=None,
                    self_type: 'TpyType | None' = None,
                    native_globals: frozenset[str] = frozenset()) -> THIRFunction | None:
@@ -323,7 +399,9 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
     # seeding is WHOLE-function, mirroring the AST exactly: both paths key on
     # `function_global_decls`, so even a write textually BEFORE its `global`
     # statement (which sema accepts -- a CPython-parity gap, see BUGS.md)
-    # renders the same global assign. Only eligible scalars seed; an unseeded
+    # renders the same global assign. Only eligible scalars and `Ptr[T]`
+    # values seed (a Ptr global is a `T*` VALUE slot: writes render `g = v;`
+    # / `g = nullptr;` exactly like a Ptr local reassign); an unseeded
     # name keeps its `global` statement ineligible, which rejects the WHOLE
     # body regardless of statement order (the TpyGlobal arm reads
     # `prescan.global_seeded`, not walk state), so no unseeded-global write
@@ -337,11 +415,13 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
         if gt is None:
             continue
         gt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(gt)))
-        if _eligible_scalar(gt):
+        if _eligible_scalar(gt) or _eligible_ptr_value(gt, analyzer):
             params_set[n] = gt
             global_seeded.add(n)
     lc.prescan.global_seeded = frozenset(global_seeded)
     lc.prescan.native_globals = native_globals
+    lc.prescan.global_readonly = _seed_readonly_globals(
+        func, analyzer, params_set, native_globals)
     if not _body_eligible(func.body, analyzer, _WalkState(params_set),
                           lc.prescan, in_branch=False):
         return None
@@ -439,6 +519,17 @@ def _ctor_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
             and stmt.target.field in own_field_names
             and _field_receiver_ok(stmt.target, declared, analyzer)):
         return False
+    # The AST DEMOTES a bare-name RHS that is not a param (`blocked_by_bare_name`
+    # in _extract_field_inits -- a conservative "not in scope at MIL time" that
+    # covers read-only-seeded globals too), so hoisting one here would diverge.
+    # Returning False routes it to the ctor.mil_field reject (a clean leading
+    # own-field init THIR does not reproduce) -> whole ctor stays AST.
+    src_peeled = stmt.value
+    while isinstance(src_peeled, TpyCoerce):
+        src_peeled = src_peeled.expr
+    if (isinstance(src_peeled, TpyName)
+            and src_peeled.name not in lc.prescan.param_names):
+        return False
     ftype = analyzer.get_expr_type(stmt.target)
     if (_eligible_scalar(ftype) or _eligible_char(ftype)
             or _eligible_enum(ftype, analyzer) is not None
@@ -516,7 +607,9 @@ def _ctor_param_eligible(ptype: TpyType | None, analyzer) -> bool:
 
 def lower_constructor(record, init_method: TpyFunction, analyzer,
                       render_type=None,
-                      self_type: 'TpyType | None' = None) -> THIRConstructor | None:
+                      self_type: 'TpyType | None' = None,
+                      native_globals: frozenset[str] = frozenset(),
+                      ) -> THIRConstructor | None:
     """Lower a constructor to a THIRConstructor, or None if outside the slice.
 
     Same-module non-generic record, flat or with same-module F1 base(s) (M3d: each
@@ -578,6 +671,12 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
     # `analyzer.ctx.all_last_uses` through it.
     lc = _LowerCtx(init_method, analyzer, render_type, self_receiver="self",
                    record_name=record.name)
+    # Read-only value-global seeding, like lower_function's (ctors read module
+    # globals too). No `global`-write seeding here: a ctor's `global` names
+    # stay unseeded, so its TpyGlobal statement rejects the body -> AST path.
+    lc.prescan.native_globals = native_globals
+    lc.prescan.global_readonly = _seed_readonly_globals(
+        init_method, analyzer, declared, native_globals)
     # Base initializers (`super().__init__` / `BaseN.__init__`), sorted by parent
     # declaration order (M3d); None if any is outside the slice -> AST path.
     base_inits = _lower_base_inits(init_method, ri, declared, lc)

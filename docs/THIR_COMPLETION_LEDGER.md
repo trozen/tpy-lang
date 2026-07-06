@@ -645,11 +645,13 @@ deferred (self-contained) / blocked-on-`<rung>`.
   copies implicitly at owned sinks, bare on both paths). S5-deferred rows
   (gate-rejected): StrView/BytesView-keyed or -element containers (view
   containers; their literal keys DO pin to static storage via
-  `view_key_target`), bytes keys/elements (S6), `Own[str]` method-arg slots
-  (`xs.append(s)` / `st.add(s)` / `setdefault` defaults -- the owned-copy
-  wrap and the copy-into-temp + `std::move(__tmp_N)` shapes), and container
-  subscript WRITES (`d[k] = v`, `__setitem__` -- not a routed statement shape
-  for ANY container family, the pre-existing parked cell).
+  `view_key_target`), bytes keys/elements (S6), and `Own[str]` method-arg
+  slots (`xs.append(s)` / `st.add(s)` / `setdefault` defaults -- the
+  owned-copy wrap and the copy-into-temp + `std::move(__tmp_N)` shapes).
+  Container subscript WRITES landed in the wave-2 setitem cell
+  (`THIRSetItem`: `d[k] = v` + aug read-modify-write on name receivers of
+  the scalar/owned-str families; field-receiver targets `self.xs[i] = v`
+  remain the deferred cell, ~385 mass).
   **S6 bytes values DONE (increment 44)**: the bytes twin of S1 --
   bytes/BytesView params, literal-init locals (PendingBytesType through
   ViewVarInfo), owned-bytes returns, comparisons, `len(b)`, same-type call
@@ -802,7 +804,8 @@ None` -- the `_f2b`/`_f1_tuple` write gates still name-only); and, for container
 view-typed keys+indices (the `.to_fixed_check` narrow / static-storage literals), `dict[K,
 Any]` (`any_cast_or_panic`), record/Optional/container *element* results (borrow form),
 narrowed-`Optional` receivers, non-name receivers (container-literal-init locals landed
-incr 34), and the whole container-write side (`c[i] = v` / `+=` / `del` / slices). And **container iteration**
+incr 34), and the container-write residue (field-receiver targets + slices; name-receiver
+`c[i] = v` / `+=` / `del` landed in the wave-2 setitem cell). And **container iteration**
 (`for x in <NativeIterable>:` over a value-scalar element -> the begin/end loop, a new
 `THIRForEach`; + the `len(c)` builtin via a `native_name` on `THIRCall`; increment 30) --
 `range(len(c))` now routes, lighting up the bounds-safe subscript branch. The
@@ -836,8 +839,8 @@ locals as call args** (`f(xs)` -- the borrow-ref pass looks like another gen_cal
 pass-through for non-Own container params; keeps `main()`-shaped callers on AST), the
 `Int32(0)` constructor-init, and the str/BigInt/f-string print args. Literal-locals cells
 still deferred: `[0] * n` (`TpyListRepeat`), nested container literals, str/record/Optional
-elements, empty-`Array` literals, container reassignment + aliasing (`ys = xs`), subscript
-writes (`xs[i] = v`). **Container call args landed (incr 35,
+elements, empty-`Array` literals, container reassignment + aliasing (`ys = xs`); subscript
+writes on name receivers landed in the wave-2 setitem cell. **Container call args landed (incr 35,
 `_container_pass_through_arg`): +11 bodies (5678 -> 5689)** -- a bare-name arg with a
 builtin-container binding into a NON-Own concrete container param passes through as the bare
 name in `_call_eligible` + `_method_call_eligible` (no new node/emit); `Own[container]`

@@ -33,7 +33,7 @@ from ..type_def_registry import (
     is_enum_type, is_int_enum_type, enum_info_of,
     protocol_info_of,
 )
-from ..symbol_binding import lookup_qualified, lookup_imported, resolve_definer, SymbolKind
+from ..symbol_binding import lookup_imported, resolve_definer, SymbolKind
 from .variant_access import VariantAccess
 
 
@@ -80,7 +80,7 @@ from ..prescan import match_is_none, _expr_to_narrowing_key
 from ..namespace import BindingKind
 from ..sema.numeric_lattice import fixed_int_range_contains
 from ..sema.literal_utils import literal_value_from_expr
-from .context import INDENT, escape_cpp_string, escape_cpp_char, escape_cpp_name, qualified_cpp_name, qualify_native_name, imported_free_callee_cpp, enum_cpp_name, loop_var_binding, is_lvalue_iterable, cpp_string_literal_expr, cpp_bytes_literal_span, cpp_bytes_literal_owned, view_key_target, CppForm, FormValue, expand_cpp_template
+from .context import INDENT, escape_cpp_string, escape_cpp_char, escape_cpp_name, qualified_cpp_name, qualify_native_name, imported_free_callee_cpp, module_qualified_callee_cpp, static_method_callee_cpp, enum_cpp_name, loop_var_binding, is_lvalue_iterable, cpp_string_literal_expr, cpp_bytes_literal_span, cpp_bytes_literal_owned, view_key_target, CppForm, FormValue, expand_cpp_template
 from .functions import literal_mangled_name
 from .. import qnames
 
@@ -3669,34 +3669,18 @@ class ExpressionGenerator:
             # above. The binding's defining_module already encodes the
             # chain-flattened ultimate definer; cycle-aware codegen in
             # peers' .hpp may have suppressed the `using` for
-            # `expr.user_module_call`, so we cannot rely on it.
+            # `expr.user_module_call`, so we cannot rely on it. The
+            # qualification decision is shared with the THIR mirror.
             analyzer_ctx = self.ctx.analyzer.ctx
-            # A qualified `mod.X(...)` is authoritative for X's module. Resolve
-            # X by its qname under `mod` (records) or its sema-resolved
-            # originating module (functions) BEFORE the current-module bare-name
-            # lookup -- that lookup collides when a same-named symbol is imported
-            # from a different module (`from other import X`), wrongly qualifying
-            # the call to `other`. The bare-name lookup stays a last resort for
-            # re-export chains the qname/fi resolution misses.
-            rec = self.ctx.analyzer.registry.find_record_by_qname(
-                f"{expr.user_module_call}.{expr.method}")
-            rec_qual = (self.ctx.analyzer.registry.record_qualification(
-                rec, analyzer_ctx.module_name) if rec is not None else None)
-            qual = (rec_qual
-                    or ((fi.originating_module, fi.name)
-                        if fi and fi.originating_module else None)
-                    or lookup_qualified(analyzer_ctx.module_attributes,
-                                        expr.method, analyzer_ctx.module_name))
-            if qual is not None:
-                qual_module, qual_name = qual
-            else:
-                qual_module = expr.user_module_call
-                qual_name = fi.name if fi else expr.method
+            callee_cpp = module_qualified_callee_cpp(
+                self.ctx.analyzer.registry, analyzer_ctx.module_attributes,
+                analyzer_ctx.module_name, expr.user_module_call, expr.method,
+                fi)
             # Emit explicit template args for generic user-module calls
             if fi and fi.is_generic() and expr.inferred_type_args:
                 type_args_str = ", ".join(self.types.type_to_cpp(unwrap_ref_type(t)) for t in expr.inferred_type_args)
-                return f"{qualified_cpp_name(qual_module, qual_name)}<{type_args_str}>({_args()})"
-            return f"{qualified_cpp_name(qual_module, qual_name)}({_args()})"
+                return f"{callee_cpp}<{type_args_str}>({_args()})"
+            return f"{callee_cpp}({_args()})"
 
         # Handle builtin module function/type calls (e.g., time.time() or t.Int32() with import tpy as t)
         if expr.builtin_module_call is not None:
@@ -3784,6 +3768,14 @@ class ExpressionGenerator:
                 return self.builtins.gen_call_from_fi(
                     fi, None, gen_args,
                     type_args=expr.inferred_type_args)
+            # Non-generic calls (native and plain alike) share the spelling
+            # decision with the THIR mirror.
+            if not expr.inferred_type_args:
+                callee_cpp = static_method_callee_cpp(
+                    self.ctx.analyzer.registry,
+                    self.ctx.implicit_stdlib_modules, self.ctx.module_name,
+                    expr.obj.name, expr.method, fi)
+                return f"{callee_cpp}({_args()})"
             # For native records, use the C++ class and method names. The
             # class qname is always set on is_native records (see registration);
             # method names only have a `native_name` when explicitly renamed.
