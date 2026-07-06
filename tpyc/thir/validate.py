@@ -87,8 +87,14 @@ def _fail(owner: str, node: THIRNode, why: str) -> None:
 
 def _check_node(owner: str, node: THIRNode) -> None:
     if isinstance(node, THIRFormConvert):
+        # `move` is part of the node's identity (its helper is a pure function of
+        # family / form / is_const / move), so a same-form same-type convert that
+        # carries a move is NOT a no-op -- it materializes `std::move(x)` (an
+        # Own[T] param written into a `T` field is already STORAGE form, so the
+        # move is the whole operation). Only a move-free same-form convert is dead.
         if (node.form is node.value.form
-                and node.result_type == node.value.result_type):
+                and node.result_type == node.value.result_type
+                and not node.move):
             _fail(owner, node,
                   f"no-op form convert (form={node.form.name}, "
                   f"type={node.result_type})")

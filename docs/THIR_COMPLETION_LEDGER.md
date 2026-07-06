@@ -145,8 +145,8 @@ deferred (self-contained) / blocked-on-`<rung>`.
   + generics 169568 -> 245285 (F5 A-C) = 44745 -> 245285 bodies. The ctor MIL for
   a generic record's `T` field is DONE (bare-`T` copy / `Own[T]` move) and a
   method-body `T` field WRITE routes via the BORROW->STORAGE convert's
-  TypeParamRef emit arm; the residual is `T` local decls + `Own[T]` method params
-  (see the generic-record-methods cell below). COVERAGE CAVEAT (/tpy-ready second-opinion):
+  TypeParamRef emit arm; the residual is `T` local decls (`Own[T]` method params
+  now land -- see the `Own[T]` cell in the callable-kind axis). COVERAGE CAVEAT (/tpy-ready second-opinion):
   `_f1_record` gates ~56 sites but the win is ctor-dominated, so some non-ctor
   consumers (tuple element, union member, optional-ptr borrow) may be
   zero-witness for the newly-admitted native/cross-module classes -- the
@@ -187,17 +187,55 @@ deferred (self-contained) / blocked-on-`<rung>`.
   direction (a `T` field write via the BORROW->STORAGE convert's TypeParamRef
   emit arm -- a plain `field = v` copy / `field = std::move(v)` move, the same
   `e.move` decision as the sibling Optional/union/tuple arms). Routing
-  169568 -> 245285 bodies. **Remaining generic-user-record cells** (self-contained,
-  small): a `T` LOCAL decl (`x = self.value`) is unhandled, and `Own[T]` method
-  PARAMS are not admitted by `_f1_param_eligible` (so an `Own[T]`-param move-write
-  falls back -- the move emit arm is a correct mirror, witnessed once that param
-  lands); both fall back byte-identically.
+  169568 -> 245285 bodies. **Remaining generic-user-record cell** (self-contained,
+  small): a `T` LOCAL decl (`x = self.value`) is unhandled and falls back
+  byte-identically. (`Own[T]` method PARAMS now land -- see the `Own[T]` cell in
+  the callable-kind axis; landing them surfaced + fixed a latent no-op-move-convert
+  validator bug in this cell's `T`-field-write move arm.)
   **NB the `sig.receiver_record` mass (~1.65M) is NOT generic user records** --
   it is BUILTIN-type methods (str/int/list/dict/float/Char/Span/...), whose
   receiver is a builtin stub (not `is_user_record`) and whose bodies emit via
   specialization/native, OUT of the user-record body-migration scope. A prior
   survey conflated builtin generics (`list`/`dict`/`Span`) with generic user
   records; the generic-user-record surface is small and largely captured here.
+- Generic FREE functions (`def f[T](x: T) -> T`): **DONE** -- a routine gate
+  widening, no new machinery. `_function_eligible` no longer wholesale-rejects
+  `func.type_params` for free functions: the resolver already spells each `[T]`
+  param/return as a `TypeParamRef`, so F5's T-value arms (`_is_type_param_slot`,
+  `_f1_param_eligible` / `_eligible_return` admitting TypeParamRef, the field/name
+  read arms) route the body verbatim, and the template signature stays AST. The
+  whole generic-free-function slice routes: `sig.generic_fn` 33k -> 9.8k
+  (the 9.8k residual is method-level generics, kept out). Still rejected: a
+  method's OWN `[U]` params (a separate method-generic cell) and INT-kind params
+  (`[N: int]` -- N read as a value has no T-slot arm). The `T` LOCAL decl residual
+  is shared with the generic-record-methods cell (falls back byte-identically as
+  `T& y = x;`).
+- `Own[T]` params + returns (`def take[T](x: Own[T]) -> Own[T]`, and `Own[T]`
+  METHOD params -- F5's filed residual): **DONE** -- a routine gate widening,
+  `_own_type_param_slot` (predicates.py, the ownership-transfer sibling of
+  `_is_type_param_slot`) added to `_f1_param_eligible` + `_eligible_return`. A
+  direct `return <own-param>` passes bare (verified: no `std::move` on the
+  return -- the move only arises at an intermediate local decl, the deferred
+  `Own[T]` local-decl cell). Admitting the METHOD param surfaced a LATENT F5 bug:
+  an `Own[T]`-param written into a `T` field (`self.item = item`) lowers to a
+  STORAGE->STORAGE `THIRFormConvert` carrying `move=True` (emit already correct:
+  `std::move(item)`), but the validator's no-op check ignored `move` and rejected
+  it -- fixed to exempt move-carrying converts (aligns the validator with the
+  node's documented `move`-in-identity contract). A /tpy-review round then caught
+  the MIRROR case: a value-bound `T` (`T: ValueType`) `Own[T]` method param is
+  passed by value and COPIED at a field write (`move=False`, mirrors the AST
+  method body -- unlike the ctor MIL, which moves), so the field-write arm built a
+  `move=False` STORAGE->STORAGE convert that IS a genuine no-op and crashed the
+  validator. Fixed at the lowering site (statements.py): emit the bare source
+  instead of a no-op convert when the source is already storage-form of the
+  field's type with no move. Corpus-unwitnessed -> new case
+  tests/cases/generics/value_bound_own_param_method. `sig.param_type` 70k->51k +
+  `sig.return_type` 55k->35k (the own:typeparam param 19k + return 20k slices).
+  HYGIENE FOLLOWUP (not a bug -- the two paths correctly mirror an AST asymmetry):
+  the "is this `Own[T]` param movable" decision is computed twice -- unconditional
+  in the ctor MIL (`own_param_names`), value-type-excluded in ordinary statements
+  (`movable_locals`). Worth unifying into one helper so a future frontier can't
+  reintroduce a MIL-vs-statement mismatch.
 - Nested-record methods: **deferred (self-contained)** -- the feed walks top-level
   records only.
 - Non-value **call arguments** (the `gen_call_arg` coercion cascade: auto-move,
@@ -1322,7 +1360,10 @@ byte-diff itself.
   2.85M `sig.receiver_record` figures were dominated by bodyless builtin
   bindings, NOT generic user records -- a survey conflated the two. Post-fix top
   body reasons: `sig.param_type` 65k, `sig.return_type` 51k, `sig.generic_fn`
-  33k (generic FREE functions), then the `stmt.*` tail.
+  33k (generic FREE functions -- now routed, the row falls to 9.8k method-level
+  generics). The `Own[T]` param+return cell then took `sig.param_type` 70k->51k
+  and `sig.return_type` 55k->35k (the own:typeparam slices). Then the `stmt.*`
+  tail.
 - **Landed: stmt.* sub-classifier** (the detail slot in `fallback.py`): gate
   reject arms record the blocking SUB-construct via `note_detail`
   (set-if-empty, cleared per statement), and the chokepoint composes

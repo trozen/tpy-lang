@@ -273,6 +273,19 @@ def _is_type_param_slot(t: 'TpyType | int | None') -> bool:
     return isinstance(t, TpyType) and isinstance(
         unwrap_readonly(unwrap_ref_type(t)), TypeParamRef)
 
+def _own_type_param_slot(t: 'TpyType | int | None') -> bool:
+    """True if `t` is `Own[T]` for a bare generic type-param `T` -- the
+    ownership-transfer sibling of `_is_type_param_slot`. An `Own[T]` param
+    (`own_param_t<T>` == `T&&`) and return (`own_return_t<T>`) render
+    per-instantiation via the C++ traits, so a bare param read and a DIRECT
+    `return <own-param>` pass byte-identically (no `std::move` on the return --
+    the move only arises at an intermediate local decl, `y = std::move(x)`, the
+    deferred `Own[T]` local-decl cell)."""
+    if not isinstance(t, TpyType):
+        return False
+    inner = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    return isinstance(inner, OwnType) and _is_type_param_slot(inner.wrapped)
+
 def _eligible_value_union(t: TpyType | None) -> 'UnionType | None':
     """The F4 U1 slice: a value-form union of eligible scalar members
     (`Int32 | Float64 [| None]`) -- `std::variant<...>` with no borrow/storage
@@ -918,6 +931,7 @@ def _eligible_return(t: TpyType | None, analyzer) -> bool:
     return (t is None or isinstance(t, VoidType) or _eligible_scalar(t)
             or _eligible_char(t)
             or _is_type_param_slot(t)
+            or _own_type_param_slot(t)
             or _eligible_enum(t, analyzer) is not None
             or _resolved_str_value(t, analyzer) is not None
             or _resolved_bytes_value(t, analyzer) is not None

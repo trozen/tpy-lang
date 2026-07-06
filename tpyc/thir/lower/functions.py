@@ -77,6 +77,7 @@ from .predicates import (
     _is_borrow_ptr_local,
     _is_type_param_slot,
     _optional_ptr_borrow,
+    _own_type_param_slot,
     _resolved_bytes_value,
     _resolved_str_value,
     _slice_object_type,
@@ -114,6 +115,7 @@ def _f1_param_eligible(ptype: TpyType | None, analyzer) -> bool:
     native record params stay on the AST path."""
     return (_eligible_scalar(ptype) or _eligible_char(ptype)
             or _is_type_param_slot(ptype)
+            or _own_type_param_slot(ptype)
             or _f1_record(ptype, analyzer)
             or _optional_ptr_borrow(ptype, analyzer) is not None
             or _resolved_str_value(ptype, analyzer) is not None
@@ -192,7 +194,19 @@ def _function_eligible(func: TpyFunction, analyzer,
     if func.error_return is not None:
         return note("sig.error_return")
     if func.type_params:
-        return note("sig.generic_fn")
+        # A generic FREE function routes its body via the same TypeParamRef
+        # T-value arms F5 built for generic-record methods: the resolver spells
+        # each `[T]` param/return as a TypeParamRef, `_is_type_param_slot` gates
+        # it as a form-neutral value pass-through (`val_or_ref_t<T>` resolves
+        # value-vs-ref per instantiation), and the template signature stays AST.
+        # Still rejected: a method's OWN type params (`def m[U](self)` -- a
+        # separate method-generic cell; a generic-record method carries the T on
+        # the record, not here) and INT-kind params (`[N: int]` -- N read as a
+        # value has no T-slot arm yet).
+        if func.is_method:
+            return note("sig.generic_fn")
+        if any(k != TypeParamKind.TYPE for k in func.type_param_kinds):
+            return note("sig.generic_fn")
     if func.linkage != FunctionLinkage.DEFAULT:
         return note("sig.linkage")
     for _name, ptype in func.params:

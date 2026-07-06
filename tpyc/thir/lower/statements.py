@@ -1765,10 +1765,21 @@ def _lower_stmt_dispatch(stmt: TpyStmt, lc: _LowerCtx,
                 # storage-to-storage bare -- no to_value_variant lift.
                 fvalue = _lower_field_source(stmt.value, lc)
             else:
-                fvalue = THIRFormConvert(result_type=ftype,
-                                         value=_lower_expr(stmt.value, lc),
-                                         form=Form.STORAGE,
-                                         move=_is_move_source(stmt.value, lc), loc=loc)
+                lowered = _lower_expr(stmt.value, lc)
+                mv = _is_move_source(stmt.value, lc)
+                # A storage-form source of the field's own type needing no move
+                # is a bare copy (`field = v`); the borrow->storage convert would
+                # be a no-op (validate.py rejects it). This is the value-bound
+                # `Own[T]` field write: the param is passed by value and copied
+                # here, mirroring the AST method body -- unlike the ctor MIL,
+                # which moves. The movable case keeps the convert (it emits
+                # `std::move`).
+                if (not mv and lowered.form is Form.STORAGE
+                        and lowered.result_type == ftype):
+                    fvalue = lowered
+                else:
+                    fvalue = THIRFormConvert(result_type=ftype, value=lowered,
+                                             form=Form.STORAGE, move=mv, loc=loc)
             return THIRAssign(target=_lower_expr(stmt.target, lc), value=fvalue, loc=loc)
         # Name-target assign: the same self-append peephole as the var-decl
         # reassignment (the AST checks it at both sites).
