@@ -80,6 +80,25 @@ THIR_FACES: frozenset[str] = frozenset({
     # `::tpy::__getitem__(this->xs, i)` -- the receiver renders as its own
     # THIRFieldAccess inside the shared subscript emit).
     "subscript.field_recv",
+    # Bytes-family FIELD subscript read (lowering; the same field-receiver
+    # widening through the bytes dispatch -- `::tpy::bytes_getitem(this->b, i)`).
+    "subscript.bytes_field",
+    # Owned-BYTES element read off a list[bytes]/dict-value container
+    # (lowering; STORAGE form -- owned sinks copy implicitly, view bindings
+    # / span args convert implicitly, so every admitted sink lands it bare).
+    "subscript.bytes_elem",
+    # F1-record element read (`ps[i]` -> `T&` BORROW; lowering) -- consumed
+    # as a field-access receiver (`ps[i].x`, read/write/aug) or a REF_ALIAS
+    # borrow-local source (`p = ps[i]` -> `P& p = ...`).
+    "subscript.record_elem",
+    # `len(recv.field)` -- a container/str/bytes field arg to the builtin len
+    # (lowering; `::tpy::__len__(this->xs)`, the field renders as its own
+    # THIRFieldAccess inside the shared native-call emit).
+    "len.field_recv",
+    # Container-FIELD for-each iterable (lowering; `for x in self.xs:` -- the
+    # field renders inside the same lvalue `auto& __obj_N =` capture a name
+    # takes; str/bytes fields ride the older viewfam admission).
+    "foreach.container_field",
     # Runtime-BigInt `.to_fixed_check<T>()` narrows (lowering; the AST's
     # gen_index_expr / _gen_slice_bound / aug-assign / enum-from_value wraps).
     "narrow.subscript_index",       # `i.to_fixed_check<int32_t>()` (reads + del)
@@ -98,6 +117,20 @@ THIR_FACES: frozenset[str] = frozenset({
     # admission is the distinguishing site).
     "ret.container_name",
     "ret.container_literal",
+    "ret.container_call",           # `return make_list(n);` -- bare call source
+    "ret.tuple_call",               # `return make_pair(n);` -- bare call source
+
+    # Container-literal element families (lowering; the widened
+    # THIRContainerLiteral slots) plus the make_vector/make_ordered_* switch
+    # and the per-element last-use move.
+    "containerlit.enum_elem",       # `[Color.RED, ...]` / `{Color.RED, ...}`
+    "containerlit.optional_elem",   # `[1, None, 3]` -> `{1, std::nullopt, 3}`
+    "containerlit.tuple_elem",      # `[(1, 2), ...]` -> spelled std::tuple elems
+    "containerlit.container_elem",  # nested list element `[[1, 2], [3]]`
+    "containerlit.record_elem",     # `[P(1), p]` -- ctor rvalues / record names
+    "containerlit.bytes_elem",      # `[b"a", v]` -- owned render / bytes_copy
+    "containerlit.make",            # make_vector / make_ordered_map / _set
+    "containerlit.move",            # `std::move(name)` element at last use
     # Value-tuple slots (`tuple[scalar|str, ...]`): the spelled
     # `std::tuple<...>{...}` literal render at returns / decls, and the bare
     # value-tuple name return.
@@ -107,9 +140,20 @@ THIR_FACES: frozenset[str] = frozenset({
     # Owned record local decl (lowering; the `{cpp_type} {name} = <rvalue>;`
     # plain-value render).
     "decl.owned_record",
+    # Storage-call local decl (gate admission; a container/tuple/union-
+    # returning call init -- the bare `T x = f(...);` / plain reassign,
+    # rendered by the shared generic decl tail).
+    "decl.storage_call",
+    # REF_ALIAS from a borrow-record-returning call (lowering; the
+    # `T& p = shared(x);` bind of the callee's returned reference).
+    "decl.record_borrow_call",
     # Ptr[T] value-slot admission (gate; bare passes / field reads share the
     # scalar renders, so the predicate is the only distinguishing site).
     "ptr.value_slot",
+    # The @dynamic-protocol pointee arm of the same predicate (gate; the
+    # pointee spelling is the shared PtrType.to_cpp on both paths, so
+    # admission distinguishes it from the record/scalar pointees).
+    "ptr.dyn_proto_pointee",
     # `x = None` at a Ptr[T] value binding (lowering; the `nullptr` render).
     "decl.ptr_none",
     # A read of a read-only-seeded same-module value global (lowering; the

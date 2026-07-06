@@ -697,3 +697,62 @@ class TestValueTupleSlots:
         assert cpp == self._cpp(src, thir=False)
         assert "return take(t);" in cpp
         assert "return take(std::tuple<int32_t, int32_t>{3, 4});" in cpp
+
+
+# --- Value-tuple-returning calls at the decl-init / return sinks ---
+
+# A value-tuple-returning free call renders bare in both storage sinks:
+# `std::tuple<int32_t, int32_t> t = make(n);` at the decl (a plain
+# `t = make(n);` on a reassign -- tuples are value types, no pointer-local
+# machinery arises) and `return make(n);` at the tuple return slot.
+class TestTupleCallSlots:
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+        return cpp
+
+    SRC = (
+        _PRELUDE
+        + "def make(n: Int32) -> tuple[Int32, Int32]:\n    return (n, n + 1)\n"
+        + "def fwd(n: Int32) -> tuple[Int32, Int32]:\n    return make(n)\n"
+        + "def use(n: Int32) -> Int32:\n"
+        + "    t = make(n)\n"
+        + "    t = make(n + 1)\n"
+        + "    return t[0]\n"
+        + "def main():\n    print(use(2))\nmain()\n"
+    )
+
+    def test_decl_reassign_and_return_route(self):
+        from .testutil import _lower_ctx_witnessed
+        thir, faces = _lower_ctx_witnessed(self.SRC)
+        fn = _fn(thir, "use")
+        assert fn is not None
+        assert isinstance(fn.body[0], THIRVarDecl)      # first decl
+        assert isinstance(fn.body[1], THIRAssign)       # plain value reassign
+        assert _fn(thir, "fwd") is not None
+        assert faces.get("decl.storage_call", 0) >= 1
+        assert faces.get("ret.tuple_call", 0) == 1
+
+    def test_byte_identical(self):
+        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
+
+    def test_emits_bare_call(self):
+        cpp = self._cpp(self.SRC, thir=True)
+        assert "std::tuple<int32_t, int32_t> t = make(n);" in cpp
+        assert "t = make((::tpy::add_check<int32_t>(n, 1)));" in cpp
+        assert "return make(n);" in cpp
+
+    def test_pointer_repr_tuple_call_ineligible(self):
+        # A pointer-repr tuple (record element) return is outside the
+        # value-tuple family -- decl init and return slot both reject.
+        src = (
+            _F3_RECORDS
+            + "def pick(h: Holder) -> tuple[Int32, Leaf]:\n    return h.pair\n"
+            + "def use(h: Holder) -> Int32:\n"
+            + "    t = pick(h)\n"
+            + "    return t[0]\n"
+        )
+        thir = _lower_ctx(src)
+        assert _fn(thir, "use") is None

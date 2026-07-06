@@ -51,6 +51,7 @@ from ...typesys import (
     TypeParamRef,
     UnionType,
     VoidType,
+    is_dyn_protocol,
     is_float_type,
     is_protocol_type,
     is_void_like_type,
@@ -1062,21 +1063,46 @@ def _eligible_ptr_value(t: 'TpyType | None', analyzer) -> bool:
     """A `Ptr[T]` value (`T*` by value -- copied around like a scalar),
     admitted at the value slots (param / return / field-read result) when the
     pointee spells byte-identically on both paths: an F1-record (native /
-    cross-module included via native_cpp_names), an eligible scalar, Char, or
-    void (`Ptr[None]` -> `void*`); `Ptr[readonly[T]]` -> `const T*` rides the
-    same arms. The slice renders only bare passes and field reads -- a MEMBER
-    access THROUGH the Ptr takes the AST's `::tpy::deref_check(p)` non-null
-    render (or the proven `->`), a mirror this cell does not carry, so such
-    bodies fall back on their own arms."""
+    cross-module included via native_cpp_names), an eligible scalar, Char,
+    void (`Ptr[None]` -> `void*`), or a @dynamic-protocol base (`Ptr[
+    _RcCellBase]` -> `_RcCellBase*`); `Ptr[readonly[T]]` -> `const T*` rides
+    the same arms. The slice renders only bare passes and field reads -- a
+    MEMBER access THROUGH the Ptr takes the AST's `::tpy::deref_check(p)`
+    non-null render (or the proven `->`), a mirror the Ptr-receiver
+    method-call arm carries; other deref shapes fall back on their own arms.
+
+    The dyn-protocol arm needs no per-flavor spelling check: BOTH paths
+    spell a Ptr type through the one `PtrType.to_cpp()` (codegen's
+    `type_to_cpp` has no PtrType arm and falls through to it; THIR's
+    `render_type` IS `type_to_cpp`), so the pointee reads the same
+    `NominalType.to_cpp()` on both -- bare local name, cross-module and
+    @native(cpp_concept) protocols via the generator's `native_cpp_names`
+    registration. `get_dynamic_base_name` (bare-protocol locals / adapters)
+    is never consulted for a Ptr pointee. A STRUCTURAL protocol pointee has
+    no runtime C++ type at all (`to_cpp()` is the monomorphization
+    placeholder `T`) and stays excluded."""
     if t is None:
         return False
     t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
     if not isinstance(t, PtrType):
         return False
     inner = t.inner_pointee
+    if is_dyn_protocol(inner):
+        return _witness("ptr.value_slot") and _witness("ptr.dyn_proto_pointee")
     return ((is_void_like_type(inner) or _eligible_scalar(inner)
              or _eligible_char(inner) or _f1_record(inner, analyzer))
             and _witness("ptr.value_slot"))
+
+def _dyn_proto_ptr(t: 'TpyType | None') -> bool:
+    """A `Ptr[T]` whose pointee is a @dynamic protocol. The one Ptr-value
+    flavor whose LOCAL DECL the AST spells `auto` (`_cpp_decl_type`'s
+    contains_protocol_type arm recurses through the pointee), unlike the
+    record/scalar pointees' spelled `T*` -- lowering mirrors the `auto` and
+    the None-init first decl rejects (see the decl gate)."""
+    if not isinstance(t, TpyType):
+        return False
+    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    return isinstance(t, PtrType) and is_dyn_protocol(t.inner_pointee)
 
 def _record_storage_return(t: TpyType | None, analyzer) -> 'NominalType | None':
     """The storage-form F1-record return slot (`-> Own[Box]` -> C++ `Box` by
@@ -1406,6 +1432,21 @@ def _container_scalar_read(t: TpyType | None, analyzer) -> bool:
     `T&&` param) is excluded explicitly -- its ABI differs from the borrow shape
     this slice's emit assumes, and it rides a later cell (mirrors the Own unwrap
     in `_f1_record`, which admits Own where this deliberately does not)."""
+    return _container_elem_family(
+        t, analyzer,
+        lambda a: _eligible_scalar(a) or _owned_str_slot(a, analyzer),
+        span_ok=True)
+
+def _container_elem_family(t: 'TpyType | None', analyzer, elem_ok,
+                           *, span_ok: bool = False) -> bool:
+    """The shared container-shape dispatch behind the per-element-family
+    predicates (`_container_scalar_read` / `_bytes_elem_container` /
+    `_container_record_elem`): list/Array admit on `elem_ok(elem)`, dict on
+    the shared key slice (fixed-int / runtime-BigInt / owned-str) plus
+    `elem_ok(value)`, `Own[container]` always rejects (move-in ABI). Only
+    the scalar family admits `Span` (`span_ok`) -- span reads of str /
+    record / bytes elements ride later cells. Adding an element family
+    means one new thin front, not a fourth copy of this dispatch."""
     if t is None:
         return False
     t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
@@ -1413,15 +1454,13 @@ def _container_scalar_read(t: TpyType | None, analyzer) -> bool:
         return False
     args = getattr(t, "type_args", None)
     if is_list(t) or is_array(t):
-        return bool(args) and (_eligible_scalar(args[0])
-                               or _owned_str_slot(args[0], analyzer))
-    if is_span(t):
+        return bool(args) and elem_ok(args[0])
+    if span_ok and is_span(t):
         # `Span[scalar]` / `Span[readonly[scalar]]` (`std::span<T>` /
         # `std::span<const T>`, a by-value view param): subscript / len /
         # iteration emit exactly like list (the bounds-safe operator[] /
         # `::tpy::__getitem__`, `::tpy::__len__`, the begin/end capture
-        # loop). Scalar elements only -- a str/record-element span's read
-        # sinks ride later cells.
+        # loop).
         return bool(args) and _eligible_scalar(unwrap_readonly(args[0]))
     if is_dict(t):
         if not args or len(args) < 2:
@@ -1429,8 +1468,84 @@ def _container_scalar_read(t: TpyType | None, analyzer) -> bool:
         key, val = args[0], args[1]
         return ((is_fixed_int_type(key) or _runtime_bigint(key, analyzer)
                  or _owned_str_slot(key, analyzer))
-                and (_eligible_scalar(val) or _owned_str_slot(val, analyzer)))
+                and elem_ok(val))
     return False
+
+def _bytes_elem_container(t: TpyType | None, analyzer) -> bool:
+    """A container whose element/value is OWNED `bytes` -- admitted for
+    subscript READS only (the io.py `chunks[0]` family). The element lvalue
+    (`const std::vector<uint8_t>&`) lands bare in every admitted sink: an
+    owned decl/return copies implicitly, a view-resolved binding / span arg
+    converts implicitly, compare/print wrap by type -- so the read is STORAGE
+    form (never the S6 `::tpy::bytes_copy` view wrap). Writes / literals /
+    iteration keep `_container_scalar_read`'s families; `BytesView` elements
+    stay excluded (the static-storage literal key pin, like str-view slots)."""
+    def owned_bytes(a: 'TpyType | int') -> bool:
+        if not isinstance(a, TpyType):
+            return False
+        bt = _resolved_bytes_value(a, analyzer)
+        return bt is not None and is_bytes_type(bt)
+
+    return _container_elem_family(t, analyzer, owned_bytes)
+
+def _container_record_elem(t: TpyType | None, analyzer) -> bool:
+    """A container whose element/value is a plain F1-record -- the family half
+    of the record-element subscript read (`_container_record_elem_subscript`
+    in expressions.py owns the expression shape). `Optional`-element and
+    generic-record-element containers reject at `_f1_record` (the AST wraps
+    those reads differently)."""
+    return _container_elem_family(
+        t, analyzer, lambda a: _f1_record(a, analyzer))
+
+def _cpp_noncopyable_type(t: 'TpyType | None', analyzer) -> bool:
+    """Mirror of the AST's `_is_cpp_noncopyable` (sema facts only): @nocopy,
+    `__del__` (deletes copy ops in C++ though sema's nocopy system doesn't
+    track it), or a noncopyable field, with the `__copy__` escape hatch."""
+    if t is None:
+        return False
+    ctx = analyzer.ctx
+    if ctx.is_type_nocopy(t):
+        return True
+    record = ctx.registry.get_record_for_type(t)
+    if record is None:
+        return False
+    if record.has_copy:
+        return False
+    if record.has_del:
+        return True
+    return any(_cpp_noncopyable_type(f.type, analyzer) for f in record.fields)
+
+def _container_nocopy_elem(t: 'TpyType | None', analyzer) -> bool:
+    """Mirror of the AST's `_is_nocopy_container_element` over the
+    gate-admitted element slots: the union / recursive-alias arms are
+    unreachable (those slots are not admitted into container literals), so
+    the direct record check decides the make_vector/make_ordered_* switch."""
+    return _cpp_noncopyable_type(t, analyzer)
+
+def _container_enum_spell(t: 'TpyType | None', analyzer) -> bool:
+    """A container decl type carrying an enum anywhere in its args: the decl
+    C++ spelling must come from the resolver (render_type) like a plain enum
+    local's -- `to_cpp()` reads the native_cpp_names view, which an
+    aliased-import collision can skew."""
+    if t is None:
+        return False
+    u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    if not (is_list(u) or is_dict(u) or is_set(u) or is_array(u)):
+        return False
+
+    def has_enum(x: 'TpyType | int') -> bool:
+        if not isinstance(x, TpyType):
+            return False
+        x = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(x)))
+        if is_enum_type(x):
+            return True
+        if isinstance(x, OptionalType):
+            return has_enum(x.inner)
+        if isinstance(x, TupleType):
+            return any(has_enum(m) for m in x.element_types)
+        return any(has_enum(a) for a in getattr(x, "type_args", ()) or ())
+
+    return any(has_enum(a) for a in getattr(u, "type_args", ()) or ())
 
 def _container_record_iter(t: TpyType | None, analyzer) -> bool:
     """A `list[F1-record]` container -- iterated (`for x in c`) with a record loop var
@@ -1708,6 +1823,17 @@ def _f1_is_const(binding: 'LocalBinding', target_type: TpyType | None,
         if (recv.name in const_locals
                 or _param_is_const(recv.name, func, analyzer, record_name)):
             return True
+    # Element borrow off a const container NAME (`p = ps[i]` with `ps` a
+    # const-inferred param / const local): the AST's element-borrow const
+    # propagation -- a field-receiver subscript (`self.ps[i]`) deliberately
+    # does NOT propagate there (only the ReadonlyType arms above fire), so
+    # the name pin mirrors, not approximates.
+    if (binding is LocalBinding.REF_ALIAS and isinstance(stmt.init, TpySubscript)
+            and isinstance(stmt.init.obj, TpyName)):
+        recv = stmt.init.obj
+        if (recv.name in const_locals
+                or _param_is_const(recv.name, func, analyzer, record_name)):
+            return True
     return False
 
 def _operand_type(e: TpyExpr, locals_: dict[str, TpyType], analyzer) -> TpyType | None:
@@ -1787,6 +1913,38 @@ def _nonvalue_container_ret(ret: TpyType | None) -> bool:
     if ret is None:
         return False
     t = unwrap_readonly(unwrap_send_sync(ret))
+    return is_list(t) or is_dict(t) or is_set(t)
+
+def _storage_call_ret(ret: TpyType | None, analyzer) -> TpyType | None:
+    """A call result admitted at the storage decl-init / return sinks: an
+    owned builtin container (list/dict of the literal-decl families, or a
+    set of scalar/owned-str elements -- so the spelled decl type and the
+    downstream receiver gates line up), a value tuple, or a value union.
+    Each renders the bare `f(args)` into `T x = f(...);` / `return f(...);`
+    on both paths. Optional (the `__slot_N` + optional_to_ptr hoist),
+    pointer-variant unions (the to_ptr_variant lift), and Array/Span results
+    keep their own reject tags."""
+    if ret is None:
+        return None
+    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ret)))
+    if is_list(t) or is_dict(t):
+        return t if _container_scalar_read(t, analyzer) else None
+    if is_set(t):
+        args = getattr(t, "type_args", None)
+        if bool(args) and (_eligible_scalar(args[0])
+                           or _owned_str_slot(args[0], analyzer)):
+            return t
+        return None
+    if _value_tuple(t, analyzer) is not None:
+        return t
+    if _eligible_value_union(t) is not None:
+        return t
+    return None
+
+def _storage_call_container(t: TpyType) -> bool:
+    """Whether a `_storage_call_ret` verdict is the container family -- the
+    one whose reassigned locals take the AST's pointer-local machinery
+    (tuples/unions are value types; their reassign is a plain value assign)."""
     return is_list(t) or is_dict(t) or is_set(t)
 
 def _call_iterable_lvalue(e: TpyCall, analyzer) -> bool:

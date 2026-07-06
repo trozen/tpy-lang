@@ -128,10 +128,12 @@ from .predicates import (
     _call_iterable_lvalue,
     _chain_post_if_fact,
     _const_exact_field_receiver_ok,
+    _container_enum_spell,
     _container_scalar_read,
     _dict_view_iterable_ok,
     _elif_link,
     _eligible_char,
+    _dyn_proto_ptr,
     _eligible_enum,
     _eligible_ptr_union,
     _eligible_ptr_value,
@@ -144,6 +146,7 @@ from .predicates import (
     _f2_reseat_ok,
     _f2b_optional_field_write_ok,
     _facts_have_concrete,
+    _field_decl_type,
     _field_receiver_ok,
     _is_borrow_form_name,
     _is_borrow_ptr_local,
@@ -166,6 +169,8 @@ from .predicates import (
     _resolved_viewfam_value,
     _runtime_bigint,
     _slice_object_type,
+    _storage_call_container,
+    _storage_call_ret,
     _str_self_append_rhs,
     _subscript_container_recv_type,
     _unwrap_lit_coerce,
@@ -364,7 +369,9 @@ def _for_each_container_eligible(stmt: TpyForEach, analyzer, ws: _WalkState,
     # __obj_N =` capture; a borrow container return is an lvalue). Bytes-
     # returning calls and other non-name iterables (subscript) ride a later
     # cell.
-    if isinstance(it, TpyCall) and not _is_range_call(it):
+    if _is_range_call(it):
+        return False  # a range reject belongs to the range gate's tags
+    if isinstance(it, TpyCall):
         if not _call_eligible(it, ws.declared, analyzer, container_ret_ok=True):
             return False
         ret = analyzer.get_expr_type(it)
@@ -383,7 +390,7 @@ def _for_each_container_eligible(stmt: TpyForEach, analyzer, ws: _WalkState,
         it_type = analyzer.get_expr_type(it)
     elif isinstance(it, TpyName):
         if it.name not in ws.declared:
-            return False
+            return note_detail("foreach.name_global")
         # declared (the binding type) rather than get_expr_type: a container-literal
         # local's use sites carry the pre-resolution PendingListType (see
         # _method_call_eligible). A param binding is Ref/readonly-wrapped -- unwrap
@@ -396,14 +403,23 @@ def _for_each_container_eligible(stmt: TpyForEach, analyzer, ws: _WalkState,
             it_type = it_view
     elif isinstance(it, TpyFieldAccess):
         if not _field_receiver_ok(it, ws.declared, analyzer):
-            return False
+            return note_detail("foreach.field_parent")
         it_type = _resolved_viewfam_value(analyzer.get_expr_type(it), analyzer)
         if it_type is None:
-            return False
+            # Container field (`for x in self.xs:`): the DECLARED field type,
+            # unwrapped like the name arm -- a narrowed Optional[container]
+            # field (the AST's `(*recv.field)` unwrap) stays OptionalType here
+            # and rejects at is_native_iterable. The iterable renders as its
+            # own THIRFieldAccess inside the same lvalue `auto& __obj_N =`
+            # capture a name takes.
+            ft = _field_decl_type(it, ws.declared, analyzer)
+            if ft is None:
+                return note_detail("foreach.field_family")
+            it_type = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ft)))
     else:
-        return False
+        return note_detail("foreach.iter_shape")
     if not is_native_iterable(it_type, analyzer.registry):
-        return False
+        return note_detail("foreach.iter_family")
     # The loop var (list/set/Span/Array element, or dict key) is a value scalar (typed
     # copy) or an F1-record (a borrow alias -- `auto&&`/`const auto&`, read/written
     # `.field` exactly like a record param, so it flows through the body constructs
@@ -420,7 +436,7 @@ def _for_each_container_eligible(stmt: TpyForEach, analyzer, ws: _WalkState,
     if (not _eligible_scalar(et) and not _eligible_char(et)
             and _resolved_str_value(et, analyzer) is None
             and not _f1_record(et, analyzer)):
-        return False
+        return note_detail("foreach.elem_family")
     body_ws = ws.branch_copy()
     body_ws.declared[stmt.var] = et
     return _body_eligible(stmt.body, analyzer, body_ws, prescan, in_branch=True,
@@ -877,9 +893,18 @@ def _stmt_eligible(stmt: TpyStmt, analyzer, ws: _WalkState,
         # None at any other binding in the slice is ineligible (Optional
         # locals are not admitted), so these are the only None-init arms.
         if isinstance(stmt.init, TpyNoneLiteral):
-            return (_eligible_value_union(decl_tgt) is not None
-                    or _eligible_ptr_union(decl_tgt, analyzer) is not None
-                    or _eligible_ptr_value(decl_tgt, analyzer))
+            if (_eligible_value_union(decl_tgt) is not None
+                    or _eligible_ptr_union(decl_tgt, analyzer) is not None):
+                return True
+            if not _eligible_ptr_value(decl_tgt, analyzer):
+                return False
+            # A FIRST `q: Ptr[P] = None` decl at a @dynamic-protocol pointee:
+            # the AST spells the protocol-containing decl type `auto`, so it
+            # emits `auto q = nullptr;` -- a std::nullptr_t local, a
+            # pre-existing miscompile no green case can carry; rejected
+            # rather than mirrored. A REASSIGN renders the bare
+            # `q = nullptr;` on both paths and stays admitted.
+            return is_reassign or not _dyn_proto_ptr(decl_tgt)
         # A value-tuple literal local (`t = (1, 2)` / `p = (s, 1)`): decl and
         # reassign alike render the spelled `std::tuple<...>{...}` (tuples
         # are value types -- a reassign is a plain value assign, no
@@ -890,6 +915,26 @@ def _stmt_eligible(stmt: TpyStmt, analyzer, ws: _WalkState,
             return (vt is not None
                     and _tuple_literal_ok(stmt.init, vt, ws.declared, analyzer)
                     and _witness("decl.tuple_literal"))
+        # A direct call init returning a storage container / value tuple /
+        # value union: the bare `T x = f(...);` (a plain `x = f(...);` on a
+        # tuple/union reassign) on both paths -- a flushable position, so
+        # arg temps are admitted. A container local that is ever reassigned
+        # is a POINTER-LOCAL on the AST path (the two-slot rebind machinery)
+        # -> AST; tuples/unions are value types, so decl and reassign alike
+        # are plain value binds.
+        if isinstance(stmt.init, TpyCall):
+            fam = _storage_call_ret(analyzer.get_expr_type(stmt.init),
+                                    analyzer)
+            if fam is not None:
+                if _storage_call_container(fam) and (
+                        is_reassign or stmt.name in prescan.reassigned
+                        or stmt.name in prescan.hoisted
+                        or stmt.name in prescan.move_through):
+                    return note_detail("decl.container_call_reassigned")
+                return (_call_eligible(stmt.init, ws.declared, analyzer,
+                                       temps_ok=True, narrowed=ws.narrowed,
+                                       storage_ret_ok=True)
+                        and _witness("decl.storage_call"))
         # F4 U2: a pointer-variant union local. Sources are same-union names
         # (bare borrow copy) or -- for single-assignment locals -- a
         # value-variant field lvalue (the to_[const_]ptr_variant lift; a
@@ -1102,6 +1147,15 @@ def _stmt_eligible(stmt: TpyStmt, analyzer, ws: _WalkState,
                                                ws.declared, analyzer)
                          and _witness("ret.container_literal"))
                         or note_detail("return.container_source"))
+            # A container-returning call source (`return make_list(n);`):
+            # the bare call materializes the by-value return directly on
+            # both paths (copy elision -- no move/convert arm fires).
+            if isinstance(v, TpyCall):
+                return ((_call_eligible(v, ws.declared, analyzer,
+                                        temps_ok=True, narrowed=ws.narrowed,
+                                        storage_ret_ok=True)
+                         and _witness("ret.container_call"))
+                        or note_detail("return.container_source"))
             return note_detail("return.container_source")
         if prescan.ret_value_tuple is not None:
             # A value-tuple return (`-> tuple[int, str]` -> a by-value
@@ -1121,6 +1175,14 @@ def _stmt_eligible(stmt: TpyStmt, analyzer, ws: _WalkState,
                     return note_detail("return.tuple_source")
                 return ((_value_tuple(ws.declared[v.name], analyzer) is not None
                          and _witness("ret.tuple_name"))
+                        or note_detail("return.tuple_source"))
+            # A tuple-returning call source (`return make_pair(n);`): the
+            # bare call, like the container twin above.
+            if isinstance(v, TpyCall):
+                return ((_call_eligible(v, ws.declared, analyzer,
+                                        temps_ok=True, narrowed=ws.narrowed,
+                                        storage_ret_ok=True)
+                         and _witness("ret.tuple_call"))
                         or note_detail("return.tuple_source"))
             return note_detail("return.tuple_source")
         # `return None` at a value-union return slot -> `std::monostate{}`
@@ -1431,12 +1493,27 @@ def _lower_borrow_local(stmt: TpyVarDecl, vtype: TpyType, binding: 'LocalBinding
             name=stmt.name, resolved_type=vtype, init=_lower_expr(stmt.init, lc),
             cpp_type=lc.render_type(vtype), form=Form.BORROW, is_const=is_const,
             cpp_local_representation=binding, loc=loc)
-    field = _lower_field_source(stmt.init, lc)
-    if binding is LocalBinding.REF_ALIAS:
+    if isinstance(stmt.init, TpyCall):
+        # REF_ALIAS from a borrow-record-returning call: the `T&` binds the
+        # callee's returned reference directly (`Pair& p = shared(x);`), so
+        # the init is the plain value-form call -- no conversion node.
+        _witness("decl.record_borrow_call")
         return THIRVarDecl(
-            name=stmt.name, resolved_type=vtype, init=field,
+            name=stmt.name, resolved_type=vtype, init=_lower_expr(stmt.init, lc),
             cpp_type=lc.render_type(vtype), form=Form.BORROW, is_const=is_const,
             cpp_local_representation=binding, loc=loc)
+    if binding is LocalBinding.REF_ALIAS:
+        # A record-element container subscript source (`p = ps[i]`) lowers as
+        # the plain subscript read (the `T&` alias binds the element lvalue);
+        # a field source keeps the dedicated borrow-source build.
+        src = (_lower_expr(stmt.init, lc)
+               if isinstance(stmt.init, TpySubscript)
+               else _lower_field_source(stmt.init, lc))
+        return THIRVarDecl(
+            name=stmt.name, resolved_type=vtype, init=src,
+            cpp_type=lc.render_type(vtype), form=Form.BORROW, is_const=is_const,
+            cpp_local_representation=binding, loc=loc)
+    field = _lower_field_source(stmt.init, lc)
     if binding is LocalBinding.POINTER:
         convert = THIRFormConvert(result_type=vtype, value=field, form=Form.BORROW,
                                   is_const=is_const, loc=loc)
@@ -1950,10 +2027,20 @@ def _lower_stmt_dispatch(stmt: TpyStmt, lc: _LowerCtx,
         # spelling for cross-module (`::tpyapp::m::E`), @native (user qname),
         # and nested (`Outer::Kind`) enums; plain to_cpp() reads the
         # native_cpp_names view, which an aliased-import collision can skew.
+        # A @dynamic-protocol-pointee Ptr decl spells `auto`: the AST's
+        # `_cpp_decl_type` sends any protocol-containing decl type to `auto`
+        # (`auto q = p;`), unlike the spelled `T*` of record/scalar pointees.
+        # A container decl carrying an enum in its args needs the same
+        # render_type spelling rule as a bare enum decl.
+        if _dyn_proto_ptr(vtype):
+            cpp_type = "auto"
+        elif (_eligible_enum(vtype, analyzer) is not None
+              or _container_enum_spell(vtype, analyzer)):
+            cpp_type = lc.render_type(vtype)
+        else:
+            cpp_type = None
         return THIRVarDecl(
-            name=stmt.name, resolved_type=vtype, init=init,
-            cpp_type=(lc.render_type(vtype)
-                      if _eligible_enum(vtype, analyzer) is not None else None),
+            name=stmt.name, resolved_type=vtype, init=init, cpp_type=cpp_type,
             loc=loc)
     if isinstance(stmt, TpyAssign):
         if isinstance(stmt.target, TpySubscript):
@@ -2406,6 +2493,10 @@ def _lower_stmt_dispatch(stmt: TpyStmt, lc: _LowerCtx,
             iterable_lvalue = False
         else:
             iterable_lvalue = True
+            if (isinstance(it, TpyFieldAccess)
+                    and _resolved_viewfam_value(analyzer.get_expr_type(it),
+                                                analyzer) is None):
+                _witness("foreach.container_field")
         return THIRForEach(
             var=stmt.var,
             elem_type=et,

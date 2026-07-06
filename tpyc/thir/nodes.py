@@ -468,14 +468,28 @@ class THIRContainerLiteral(THIRExpr):
     - set -> `::tpy::ordered_set<T>({e1, e2})`; empty -> `()`
 
     `values` is used only by the dict family (zipped with `elements` as keys).
-    Elements are value scalars or str-slice values (S5): a view-form str source
-    into an owned `std::string` slot arrives wrapped in the S1 view->owned
-    `THIRFormConvert` (`std::string(x)`), decided at lowering -- everything else
-    lands bare. The movable / nocopy / union / protocol branches are
-    gate-excluded (scalars and the str family are value types, never in
-    `movable_locals`), so the AST's `make_vector` move arm never arises."""
+    Elements are value scalars, str/bytes-slice values (S5/S6: a view-form
+    source into an owned element slot arrives wrapped in the view->owned
+    `THIRFormConvert` -- `std::string(x)` / `::tpy::bytes_copy(x)`), enums,
+    Optional[scalar] (a None element is the STORAGE-form `std::nullopt`
+    literal), value-tuple literals (`THIRTupleLiteral`), nested list literals
+    (a nested `THIRContainerLiteral`; a demoted-Array outer adds the extra
+    aggregate brace level), and F1 records (ctor rvalues and names; a movable
+    name at its last use arrives wrapped in `THIRMove`).
+
+    `make_container` mirrors the AST's non-copyable / last-use-movable
+    switch: std::initializer_list elements are const, so a `std::move` in a
+    brace-init would silently copy -- the emit uses the reserve+emplace
+    helpers instead (`::tpy::make_vector<elem_cpp>(...)` for list, the
+    element type spelled via the resolver at lowering;
+    `::tpy::make_ordered_map`/`make_ordered_set` for dict/set, spelled from
+    result_type like the brace arms). std::array aggregate-init moves fine,
+    so the Array family never sets it. The union / protocol element branches
+    stay gate-excluded."""
     elements: tuple[THIRExpr, ...]
     values: tuple[THIRExpr, ...] = ()
+    make_container: bool = False
+    elem_cpp: str | None = None
 
 
 @dataclass(frozen=True)

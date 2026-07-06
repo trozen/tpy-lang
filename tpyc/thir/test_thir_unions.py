@@ -13,7 +13,7 @@ from ..compilation_context import activate_compiler
 from ..typesys import INT32, UnionType, VoidType
 from .lower import iter_module_constructors, lower_constructor, lower_module
 from .nodes import (
-    Form, THIRArgTemp, THIRAssert, THIRBinOp, THIRCoerce, THIRCtorCall,
+    Form, THIRArgTemp, THIRAssert, THIRAssign, THIRBinOp, THIRCoerce, THIRCtorCall,
     THIRFormConvert, THIRFunction, THIRFunctionLayout, THIRIf, THIRIsinstance,
     THIRLiteral, THIRName, THIRNarrowAlias, THIRNarrowedRead, THIRReturn,
     THIRSelf, THIRUnionArgLift, THIRVarDecl, THIRWhile,
@@ -1570,3 +1570,64 @@ class TestUnionCallArgEmit:
                 == self._cpp(self.NARROW_SKIP_SRC, thir=False))
         out = self._cpp(self.NARROW_SKIP_SRC, thir=True)
         assert "return tr(__v);" in out  # the is_narrowed wrap skip
+
+
+# --- Value-union-returning calls at the decl-init sink ---
+
+# A value-union-returning free call renders bare at a decl init
+# (`std::variant<int32_t, double> u = make(n);`) and a reassign (a plain
+# value assign -- value unions carry no pointer-local machinery). A
+# pointer-variant union return (record members) stays on the AST path.
+class TestUnionCallDecl:
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+        return cpp
+
+    SRC = (
+        _PRELUDE
+        + "def make(n: Int32) -> Int32 | Float64:\n"
+        + "    if n > 0:\n        return n\n"
+        + "    return 2.5\n"
+        + "def use(n: Int32) -> Int32:\n"
+        + "    u = make(n)\n"
+        + "    u = make(n - 1)\n"
+        + "    if isinstance(u, Int32):\n        return u\n"
+        + "    return 0\n"
+        + "def main():\n    print(use(1))\nmain()\n"
+    )
+
+    def test_decl_and_reassign_route(self):
+        thir, faces = _lower_ctx_witnessed(self.SRC)
+        fn = _fn(thir, "use")
+        assert fn is not None
+        assert isinstance(fn.body[0], THIRVarDecl)
+        assert isinstance(fn.body[1], THIRAssign)
+        assert faces.get("decl.storage_call", 0) >= 1
+
+    def test_byte_identical(self):
+        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
+
+    def test_emits_bare_call(self):
+        cpp = self._cpp(self.SRC, thir=True)
+        assert "std::variant<int32_t, double> u = make(n);" in cpp
+        assert "u = make((::tpy::sub_check<int32_t>(n, 1)));" in cpp
+
+    def test_ptr_union_call_decl_ineligible(self):
+        # A pointer-variant union return (record members) at a call decl
+        # stays on the AST path -- the docstring's claim, pinned like the
+        # sibling classes' _ineligible tests.
+        thir = _lower_ctx(
+            "from tpy import Int32\n"
+            "class A:\n    x: Int32\n"
+            "    def __init__(self, x: Int32):\n        self.x = x\n"
+            "class B:\n    y: Int32\n"
+            "    def __init__(self, y: Int32):\n        self.y = y\n"
+            "def pick(a: A, b: B, f: bool) -> A | B:\n"
+            "    if f:\n        return a\n    return b\n"
+            "def use(a: A, b: B) -> Int32:\n"
+            "    u = pick(a, b, True)\n"
+            "    return 1\n")
+        assert _fn(thir, "use") is None

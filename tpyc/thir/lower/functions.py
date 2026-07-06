@@ -8,6 +8,7 @@ from dataclasses import field, fields
 from ...parse.nodes import (
     FunctionLinkage,
     TpyAssign,
+    TpyBinOp,
     TpyCall,
     TpyCoerce,
     TpyExpr,
@@ -38,6 +39,7 @@ from ...typesys import (
     CONST_PARAMS_METHODS,
     NominalType,
     OptionalType,
+    UnionType,
     TpyType,
     TypeParamKind,
     TypeParamRef,
@@ -53,7 +55,7 @@ from ...codegen_cpp.context import (
     module_native_global_names,
     qualify_native_name,
 )
-from ..fallback import note
+from ..fallback import _walk as _fallback_walk, note
 from ..validate import validate_constructor, validate_function
 from ..nodes import (
     Form,
@@ -71,6 +73,7 @@ from ..nodes import (
     THIRTry,
 )
 from .predicates import (
+    _bytes_elem_container,
     _container_record_iter,
     _container_scalar_read,
     _eligible_char,
@@ -110,6 +113,59 @@ from .statements import (
     _lower_stmts,
 )
 
+def _overload_reject_detail(func: TpyFunction, stubs) -> str:
+    """Sub-classify an overload-set reject by WHICH per-stub emission fact
+    the impl body is sensitive to -- the slice-1 routing frontier. First
+    match wins, ordered by disqualification severity; `plain` marks the
+    candidates whose per-stub specializations are the same body modulo the
+    (AST-owned) signature:
+
+    - `generic_stub`: a stub carries type params (template specializations);
+    - `arity`: a stub is shorter than the impl (missing-param default locals);
+    - `ret_mismatch`: stub return types differ from the impl's (the return
+      arm strips/validates per-stub coercions);
+    - `db_isinstance`: isinstance/match anywhere in the body (the if-chain
+      dead-branch elimination can rewrite it per stub);
+    - `db_compare`: an equality compare on a bare param name (literal-stub
+      equality elimination) -- conservative: any param, literal or not;
+    - `narrow_param`: a union/Optional impl param (the narrowing extraction
+      skips differently under overload_param_types);
+    - `plain`: none of the above.
+
+    Tags extend the dot-hierarchical drilldown convention (like
+    `call.ret_type.*`), not the `stmt.<shape>:<detail>` colon composition
+    (which is fallback.py's auto-composed form, never hand-built)."""
+    if any(getattr(fi, "type_params", None) for fi in stubs):
+        return "sig.overload_set.generic_stub"
+    if any(len(fi.params) != len(func.params) for fi in stubs):
+        return "sig.overload_set.arity"
+    rt = func.return_type if isinstance(func.return_type, TpyType) else None
+    for fi in stubs:
+        if fi.return_type != rt:
+            return "sig.overload_set.ret_mismatch"
+    param_names = {n for n, _t in func.params}
+    detail = None
+    for stmt in func.body:
+        for node in _fallback_walk(stmt):
+            if isinstance(node, TpyMatch) or (
+                    isinstance(node, TpyCall)
+                    and getattr(node, "isinstance_var", None) is not None):
+                return "sig.overload_set.db_isinstance"
+            if (detail is None and isinstance(node, TpyBinOp)
+                    and node.op in ("==", "!=")
+                    and any(isinstance(s, TpyName) and s.name in param_names
+                            for s in (node.left, node.right))):
+                detail = "sig.overload_set.db_compare"
+    if detail is not None:
+        return detail
+    for _n, pt in func.params:
+        u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(pt))) \
+            if isinstance(pt, TpyType) else None
+        if isinstance(u, (UnionType, OptionalType)):
+            return "sig.overload_set.narrow_param"
+    return "sig.overload_set.plain"
+
+
 def _f1_param_eligible(ptype: TpyType | None, analyzer) -> bool:
     """An F1-eligible param: a value scalar, an F1-record passed by reference
     (`T&` / `const T&`, accessed `.`), an F3 borrow-form pointer-repr tuple
@@ -118,6 +174,8 @@ def _f1_param_eligible(ptype: TpyType | None, analyzer) -> bool:
     by-value slice object (`basic_slice` / `slice`, a str subscript index), a
     value-element container (`list[scalar|str]` / `Array[scalar|str, N]` /
     `dict[fixed-int|str, scalar|str]`, read by subscript),
+    a bytes-element container (`list[bytes]` / `dict[fixed-int|str, bytes]`,
+    read by subscript -- writes/iteration keep rejecting per-construct),
     a record-element list (`list[record]`, iterated by `for x in c` -- the signature
     stays on the AST path per M1), or a pointer-repr `Optional[F1-record]`
     (`A | None` -> a borrow `A*` / `const A*`; sema rejects its reassignment, so
@@ -138,6 +196,7 @@ def _f1_param_eligible(ptype: TpyType | None, analyzer) -> bool:
             or _eligible_value_union(ptype) is not None
             or _eligible_ptr_union(ptype, analyzer) is not None
             or _container_scalar_read(ptype, analyzer)
+            or _bytes_elem_container(ptype, analyzer)
             or _container_record_iter(ptype, analyzer)
             or _container_scalar_tuple_iter(ptype, analyzer))
 
@@ -175,13 +234,17 @@ def _function_eligible(func: TpyFunction, analyzer,
         return note("sig.staticmethod_flag")
     if func.is_overload_stub or func.native_function or func.is_consuming:
         return note("sig.special_callable")
-    # An overload IMPL body is emitted once per stub with per-stub dead-branch
-    # facts (literal_overload_facts / overload_param_types), but gen_body's THIR
-    # interception keys on id(func) -- routing the shared impl would hijack
-    # every specialization with the unspecialized body. Reject any callable in
-    # a multi-entry overload set (functions and methods alike). Sole carve-out:
-    # a property getter+setter pair shares one method name in the registry but
-    # each has its own body (no shared-impl hijack possible).
+    # An overload IMPL body is emitted once per stub with per-stub facts
+    # (overload_param_types / literal_overload_facts driving dead-branch
+    # elimination, missing-param default locals, and return-coercion
+    # stripping), but gen_body's THIR interception keys on id(func) --
+    # routing the shared impl would hijack every specialization with the
+    # unspecialized body. Reject any callable in a multi-entry overload set
+    # (functions and methods alike), sub-classified by WHICH per-stub fact
+    # the body is sensitive to (the slice-1 routing frontier: an impl
+    # sensitive to none of them lowers identically per stub). Sole
+    # carve-out: a property getter+setter pair shares one method name in
+    # the registry but each has its own body (no shared-impl hijack).
     if func.is_method:
         ri = analyzer.registry.get_record_for_type(self_type)
         overloads = ri.get_method_overloads(func.name) if ri is not None else []
@@ -190,8 +253,22 @@ def _function_eligible(func: TpyFunction, analyzer,
                 len(overloads) == 2
                 and any(fi.is_property_getter for fi in overloads)
                 and any(fi.is_property_setter for fi in overloads))
-            if not is_property_pair:
-                return note("sig.overload_set")
+            # An @auto_readonly / auto_own[Self] clone pair: method_expansion
+            # split one source method into two independent TpyFunctions (the
+            # second clone even deep-copies the body), so each entry owns its
+            # body and keys its own id(func) -- no shared-impl hijack, same
+            # argument as the property pair. Detected on the ATTEMPTED func:
+            # both auto_readonly clones carry auto_readonly_params_resolved;
+            # an auto_own pair's consuming half is already rejected as
+            # is_consuming, leaving the flagged borrowing clone. A COMPOSED
+            # set (a clone pair over genuine @overload stubs, 4+ entries)
+            # keeps rejecting.
+            is_clone_pair = (
+                len(overloads) == 2
+                and (func.auto_readonly_params_resolved
+                     or func.is_auto_own_borrowing_clone))
+            if not (is_property_pair or is_clone_pair):
+                return note(_overload_reject_detail(func, overloads))
         # A member shadowing a same-named local type forces the AST path to
         # render that type fully-qualified inside the record's scope (the
         # member-name/type-name collision fix). THIR renders local ctor callees
@@ -201,7 +278,7 @@ def _function_eligible(func: TpyFunction, analyzer,
     else:
         fis = analyzer.registry.get_function(func.name)
         if fis is not None and len(fis) > 1:
-            return note("sig.overload_set")
+            return note(_overload_reject_detail(func, fis))
     if func.builtin_decorator_key is not None:
         return note("sig.builtin_decorator")
     if func.is_async:

@@ -429,20 +429,6 @@ class TestContainerLiteralLocal:
             + "    a = [1, 2]\n    b = [3, 4]\n    a = b\n    a.append(5)\n")
         assert _fn(thir, "f") is None
 
-    def test_record_element_literal_ineligible(self):
-        thir = _lower(
-            "from tpy import Int32\n"
-            + "class P:\n    x: Int32\n"
-            + "    def __init__(self, x: Int32):\n        self.x = x\n"
-            + "def f() -> None:\n    ps = [P(1), P(2)]\n    ps.pop()\n")
-        assert _fn(thir, "f") is None
-
-    def test_nested_list_literal_ineligible(self):
-        thir = _lower(
-            _PRELUDE
-            + "def f() -> Int32:\n    m = [[1, 2], [3]]\n    return len(m)\n")
-        assert _fn(thir, "f") is None
-
     def test_list_repeat_ineligible(self):
         # `[0] * n` is a TpyListRepeat, a different node/emit -> AST path.
         thir = _lower(
@@ -523,6 +509,278 @@ class TestContainerLiteralLocalEmit:
         assert isinstance(fn.body[0].init, THIRContainerLiteral)
         assert isinstance(fn.body[2].init, THIRContainerLiteral)
         assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+
+
+# --- Container-literal element families (the widened THIRContainerLiteral
+# slots): F1 records (ctor rvalues / names / moves / make_vector), nested list
+# literals, enums, Optional[scalar], value tuples, owned bytes ---
+
+
+_ELEM_RECORDS = (
+    "from tpy import Int32, nocopy\n"
+    "class P:\n    x: Int32\n"
+    "    def __init__(self, x: Int32):\n        self.x = x\n"
+    "@nocopy\nclass Q:\n    x: Int32\n"
+    "    def __init__(self, x: Int32):\n        self.x = x\n"
+)
+
+
+class TestContainerLiteralElementFamilies:
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+        return cpp
+
+    def _both(self, src: str) -> str:
+        ast_cpp = self._cpp(src, thir=False)
+        assert self._cpp(src, thir=True) == ast_cpp
+        return ast_cpp
+
+    def test_record_ctor_rvalues_route(self):
+        # Read-only literal demotes to Array; ctor rvalues brace-init.
+        src = (_ELEM_RECORDS
+               + "def f() -> Int32:\n    ps = [P(1), P(2)]\n    return len(ps)\n"
+               + "def main():\n    print(f())\nmain()\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        fn = _fn(thir, "f")
+        assert fn is not None and isinstance(fn.body[0].init, THIRContainerLiteral)
+        assert faces.get("containerlit.record_elem")
+        cpp = self._both(src)
+        assert "std::array<P, 2> ps = {P(1), P(2)};" in cpp
+
+    def test_record_name_last_use_moves(self):
+        # Both names are movable owned locals at their last use -> per-element
+        # std::move in the std::array aggregate-init (no make_vector for Array).
+        src = (_ELEM_RECORDS
+               + "def f() -> Int32:\n"
+               + "    a = P(1)\n    b = P(2)\n    ps = [a, b]\n    return len(ps)\n"
+               + "def main():\n    print(f())\nmain()\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("containerlit.move")
+        cpp = self._both(src)
+        assert "std::array<P, 2> ps = {std::move(a), std::move(b)};" in cpp
+
+    def test_record_name_used_later_copies(self):
+        # `a` is read after the literal -> not a last use -> brace copy, and
+        # the field read keeps the body routed (scalar field off an F1 local).
+        src = (_ELEM_RECORDS
+               + "def f() -> Int32:\n"
+               + "    a = P(1)\n    b = P(2)\n    ps = [a, b]\n"
+               + "    return len(ps) + a.x\n"
+               + "def main():\n    print(f())\nmain()\n")
+        cpp = self._both(src)
+        assert "std::array<P, 2> ps = {a, std::move(b)};" in cpp
+
+    def test_movable_vector_takes_make_vector(self):
+        # An annotated list stays a vector; a moved element switches the whole
+        # literal to ::tpy::make_vector (const initializer_list would copy).
+        src = (_ELEM_RECORDS
+               + "def f() -> Int32:\n"
+               + "    a = P(1)\n    zs: list[P] = [a]\n    return len(zs)\n"
+               + "def main():\n    print(f())\nmain()\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        fn = _fn(thir, "f")
+        assert fn is not None
+        lit = fn.body[1].init
+        assert isinstance(lit, THIRContainerLiteral) and lit.make_container
+        assert faces.get("containerlit.make")
+        cpp = self._both(src)
+        assert "std::vector<P> zs = ::tpy::make_vector<P>(std::move(a));" in cpp
+
+    def test_nocopy_vector_takes_make_vector(self):
+        # A @nocopy element type forces make_vector even for rvalue elements.
+        src = (_ELEM_RECORDS
+               + "def f() -> Int32:\n"
+               + "    qs: list[Q] = [Q(1), Q(2)]\n    return len(qs)\n"
+               + "def main():\n    print(f())\nmain()\n")
+        cpp = self._both(src)
+        assert "std::vector<Q> qs = ::tpy::make_vector<Q>(Q(1), Q(2));" in cpp
+
+    def test_nocopy_array_keeps_brace_init(self):
+        # std::array aggregate-init moves fine -- no make arm for the demoted
+        # Array even with @nocopy elements.
+        src = (_ELEM_RECORDS
+               + "def f() -> Int32:\n    qs = [Q(1), Q(2)]\n    return len(qs)\n"
+               + "def main():\n    print(f())\nmain()\n")
+        cpp = self._both(src)
+        assert "std::array<Q, 2> qs = {Q(1), Q(2)};" in cpp
+
+    def test_record_field_access_element_ineligible(self):
+        # A field-read element (`[h.p]`) is not a name/ctor-rvalue shape.
+        thir = _lower(
+            _ELEM_RECORDS
+            + "class H:\n    p: P\n"
+            + "    def __init__(self):\n        self.p = P(1)\n"
+            + "def f(h: H) -> Int32:\n    ps = [h.p]\n    return len(ps)\n")
+        assert _fn(thir, "f") is None
+
+    def test_record_dict_value_ineligible(self):
+        # Record dict values stay tagged (container_lit.elem.record).
+        thir = _lower_ctx(
+            _ELEM_RECORDS
+            + "def f() -> Int32:\n    d = {1: P(1)}\n    return len(d)\n")
+        assert _fn(thir, "f") is None
+
+    def test_nested_list_array_outer_routes(self):
+        # Read-only outer demotes to Array; the emit adds the extra aggregate
+        # brace level around the vector elements.
+        src = (_PRELUDE
+               + "def f() -> Int32:\n    m = [[1, 2], [3, 4, 5]]\n    return len(m)\n"
+               + "def main():\n    print(f())\nmain()\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("containerlit.container_elem")
+        cpp = self._both(src)
+        assert ("std::array<std::vector<int32_t>, 2> m = {{{1, 2}, {3, 4, 5}}};"
+                in cpp)
+
+    def test_nested_list_vector_outer_routes(self):
+        # An annotated (vector) outer: inner literals render bare braces, no
+        # extra aggregate level.
+        src = (_PRELUDE
+               + "def f() -> Int32:\n"
+               + "    m: list[list[Int32]] = [[1, 2], [3]]\n    return len(m)\n"
+               + "def main():\n    print(f())\nmain()\n")
+        cpp = self._both(src)
+        assert "std::vector<std::vector<int32_t>> m = {{1, 2}, {3}};" in cpp
+
+    def test_nested_empty_inner_vector_outer_ineligible(self):
+        # An un-threaded (list-element) empty inner renders bare `{}` on the
+        # AST; the spelled THIR emit would diverge -> AST path.
+        thir = _lower(
+            _PRELUDE
+            + "def f() -> Int32:\n"
+            + "    m: list[list[Int32]] = [[], [1]]\n    return len(m)\n")
+        assert _fn(thir, "f") is None
+
+    def test_nested_view_source_ineligible(self):
+        # A view-form str element inside an un-threaded nested literal: the
+        # AST has no elem target there, so the S5 wrap never fires -> AST path
+        # (only literal elements stay admitted).
+        thir = _lower(
+            "from tpy import Int32, StrView\n"
+            + "def f(sv: StrView) -> Int32:\n"
+            + "    m: list[list[str]] = [[sv]]\n    return len(m)\n")
+        assert _fn(thir, "f") is None
+
+    def test_nested_str_literals_route(self):
+        src = (_PRELUDE
+               + "def f() -> Int32:\n"
+               + "    m = [[\"a\", \"b\"], [\"c\"]]\n    return len(m)\n"
+               + "def main():\n    print(f())\nmain()\n")
+        cpp = self._both(src)
+        assert ("std::array<std::vector<std::string>, 2> m = "
+                "{{{\"a\", \"b\"}, {\"c\"}}};" in cpp)
+
+    def test_enum_elements_route(self):
+        src = ("from tpy import Int32\n"
+               + "from enum import Enum\n"
+               + "class Color(Enum):\n    RED = 1\n    GREEN = 2\n    BLUE = 3\n"
+               + "def f() -> Int32:\n"
+               + "    xs = [Color.RED, Color.GREEN]\n"
+               + "    s = {Color.RED, Color.BLUE}\n"
+               + "    d = {1: Color.RED, 2: Color.GREEN}\n"
+               + "    return len(xs) + len(s) + len(d)\n"
+               + "def main():\n    print(f())\nmain()\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("containerlit.enum_elem")
+        cpp = self._both(src)
+        assert "std::array<Color, 2> xs = {Color::RED, Color::GREEN};" in cpp
+        assert ("::tpy::ordered_set<Color> s = "
+                "::tpy::ordered_set<Color>({Color::RED, Color::BLUE});") in cpp
+        assert ("::tpy::ordered_map<int32_t, Color> d = ::tpy::ordered_map<"
+                "int32_t, Color>({{1, Color::RED}, {2, Color::GREEN}});") in cpp
+
+    def test_optional_scalar_elements_route(self):
+        # None -> the STORAGE-form std::nullopt; scalar values land bare.
+        src = (_PRELUDE
+               + "def f() -> Int32:\n"
+               + "    xs: list[Int32 | None] = [1, None, 3]\n    return len(xs)\n"
+               + "def main():\n    print(f())\nmain()\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("containerlit.optional_elem")
+        cpp = self._both(src)
+        assert ("std::vector<std::optional<int32_t>> xs = "
+                "{1, std::nullopt, 3};") in cpp
+
+    def test_optional_record_elements_ineligible(self):
+        thir = _lower_ctx(
+            _ELEM_RECORDS
+            + "def f() -> Int32:\n"
+            + "    xs: list[P | None] = [None]\n    return len(xs)\n")
+        assert _fn(thir, "f") is None
+
+    def test_tuple_literal_elements_route(self):
+        src = (_PRELUDE
+               + "def f() -> Int32:\n"
+               + "    xs = [(1, 2), (3, 4)]\n    return len(xs)\n"
+               + "def main():\n    print(f())\nmain()\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("containerlit.tuple_elem")
+        cpp = self._both(src)
+        assert ("std::array<std::tuple<int32_t, int32_t>, 2> xs = "
+                "{std::tuple<int32_t, int32_t>{1, 2}, "
+                "std::tuple<int32_t, int32_t>{3, 4}};") in cpp
+
+    def test_tuple_name_element_ineligible(self):
+        # A value-tuple NAME element could be an owned-movable tuple param in
+        # the AST's movable set (not mirrored) -- literals only.
+        thir = _lower(
+            _PRELUDE
+            + "def f() -> Int32:\n"
+            + "    t = (1, 2)\n    xs = [t]\n    return len(xs)\n")
+        assert _fn(thir, "f") is None
+
+    def test_bytes_literal_elements_route(self):
+        # Owned-bytes element slots: literals render bytes_literal_owned.
+        src = (_PRELUDE
+               + "def f() -> Int32:\n    xs = [b\"ab\", b\"c\"]\n    return len(xs)\n"
+               + "def main():\n    print(f())\nmain()\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("containerlit.bytes_elem")
+        cpp = self._both(src)
+        assert ("std::array<std::vector<uint8_t>, 2> xs = "
+                "{::tpy::bytes_literal_owned(\"ab\", 2), "
+                "::tpy::bytes_literal_owned(\"c\", 1)};") in cpp
+
+    def test_bytes_view_source_copies(self):
+        # A BytesView param element copies into the owned slot (bytes_copy),
+        # mirroring the AST's _view_source_to_owned chokepoint.
+        src = ("from tpy import Int32, BytesView\n"
+               + "def f(v: BytesView) -> Int32:\n"
+               + "    xs: list[bytes] = [v]\n    return len(xs)\n"
+               + "def main():\n    print(f(b\"vv\"))\nmain()\n")
+        cpp = self._both(src)
+        assert ("std::vector<std::vector<uint8_t>> xs = "
+                "{::tpy::bytes_copy(v)};") in cpp
+
+    def test_promoted_view_local_does_not_move(self):
+        # A sema-movable but VALUE-typed local (a view-resolved promoted str)
+        # never enters codegen's movable set (the tier-1 non-value filter in
+        # _gen_var_decl), so the element takes the plain view->owned copy --
+        # no std::move, no make_vector switch. Regression: the unfiltered
+        # sema set moved it and diverged (str/str_pending_* corpus cases).
+        src = ("from tpy import Int32, Own\n"
+               + "def in_list() -> Own[list[str]]:\n"
+               + "    label: str = \"no\"\n    return [label]\n"
+               + "def main():\n    print(in_list())\nmain()\n")
+        cpp = self._both(src)
+        assert "return {std::string(label)};" in cpp
+
+    def test_union_elements_stay_ineligible(self):
+        thir = _lower(
+            _PRELUDE
+            + "from tpy import Float64\n"
+            + "def f() -> Int32:\n"
+            + "    xs: list[Int32 | Float64] = [1]\n    return len(xs)\n")
+        assert _fn(thir, "f") is None
 
 
 
@@ -957,15 +1215,16 @@ class TestContainerAugSetItem:
         assert all(isinstance(s, THIRSetItem)
                    and isinstance(s.value, THIRBinOp) for s in fn.body)
 
-    def test_record_element_aug_ineligible(self):
+    def test_record_element_aug_routes_as_field_target(self):
         thir = _lower_ctx(
             _F1_RECORDS
             + "def f(xs: list[Leaf]) -> None:\n    xs[0].n += 1\n")
         fn = _fn(thir, "f")
-        # `xs[0].n += 1` is a FIELD target over a subscript receiver -- not
-        # the subscript-write shape; it must stay wherever the field gates
-        # put it (currently AST: the list-element receiver is not a tuple).
-        assert fn is None
+        # `xs[0].n += 1` is a FIELD target over a record-element subscript
+        # receiver -- not the subscript-write shape (no THIRSetItem): it rides
+        # the scalar-aug field arm (`_field_over_container_subscript_ok`).
+        assert fn is not None
+        assert not any(isinstance(s, THIRSetItem) for s in fn.body)
 
 
 class TestContainerSetItemEmit:
@@ -1271,3 +1530,520 @@ class TestFieldReceiverSubscriptEmit:
                 "n.to_fixed_check<int32_t>());" in cpp)
         assert "::tpy::__setitem__(h.d, k, v);" in cpp    # record param recv
         assert "::tpy::__setitem__(h->xs, 0, v);" in cpp  # proven Optional-ptr
+
+
+# --- Storage-call decls and returns (container-returning free calls) ---
+
+# A container-returning free call in the two storage sinks: the decl init
+# (`xs = make_list(n)` -> `std::vector<int32_t> xs = make_list(n);`) and the
+# return slot (`return make_list(n);`) -- both render the bare call on both
+# paths. A reassigned container local is a POINTER-LOCAL on the AST path
+# (the two-slot rebind machinery), and a record-element container return is
+# outside the literal-decl families -- both stay on the AST path.
+class TestContainerCallSlots:
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+        return cpp
+
+    SRC = (
+        _PRELUDE.replace("import Int32", "import Own, Int32")
+        + "def make_list(n: Int32) -> Own[list[Int32]]:\n    return [n, n + 1]\n"
+        + "def make_dict() -> Own[dict[Int32, Int32]]:\n    return {1: 2}\n"
+        + "def make_set() -> Own[set[Int32]]:\n    return {3, 4}\n"
+        + "def fwd(n: Int32) -> Own[list[Int32]]:\n    return make_list(n)\n"
+        + "def use(n: Int32) -> Int32:\n"
+        + "    xs = make_list(n)\n"
+        + "    d = make_dict()\n"
+        + "    s = make_set()\n"
+        + "    print(len(s))\n"
+        + "    return xs[0] + d[1]\n"
+        + "def main():\n    print(use(3))\n    print(fwd(1)[1])\nmain()\n"
+    )
+
+    def test_decl_and_return_route(self):
+        thir, faces = _lower_ctx_witnessed(self.SRC)
+        fn = _fn(thir, "use")
+        assert fn is not None
+        decl = fn.body[0]
+        assert isinstance(decl, THIRVarDecl) and isinstance(decl.init, THIRCall)
+        assert _fn(thir, "fwd") is not None
+        assert faces.get("decl.storage_call", 0) >= 3   # list + dict + set decls
+        assert faces.get("ret.container_call", 0) == 1  # fwd's return
+
+    def test_byte_identical(self):
+        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
+
+    def test_emits_bare_call_decl(self):
+        cpp = self._cpp(self.SRC, thir=True)
+        assert "std::vector<int32_t> xs = make_list(n);" in cpp
+        assert "::tpy::ordered_map<int32_t, int32_t> d = make_dict();" in cpp
+        assert "::tpy::ordered_set<int32_t> s = make_set();" in cpp
+        assert "return make_list(n);" in cpp
+
+    def test_reassigned_container_local_ineligible(self):
+        # A reassigned container local takes the AST's pointer-local + rebind
+        # slot machinery -- the whole body stays on the AST path.
+        src = (
+            _PRELUDE.replace("import Int32", "import Own, Int32")
+            + "def make_list(n: Int32) -> Own[list[Int32]]:\n    return [n]\n"
+            + "def use(n: Int32) -> Int32:\n"
+            + "    xs = make_list(n)\n"
+            + "    xs = make_list(n + 1)\n"
+            + "    return xs[0]\n"
+        )
+        thir = _lower_ctx(src)
+        assert _fn(thir, "use") is None
+        cpp_t = self._cpp(src + "def main():\n    print(use(1))\nmain()\n", thir=True)
+        cpp_a = self._cpp(src + "def main():\n    print(use(1))\nmain()\n", thir=False)
+        assert cpp_t == cpp_a
+        assert "std::vector<int32_t>* xs" in cpp_t  # the AST pointer-local shape
+
+    def test_record_element_container_ineligible(self):
+        # `list[record]` is outside the literal-decl families (spelled decl
+        # type / receiver gates do not line up) -- decl and return reject.
+        src = (
+            _F1_RECORDS
+            + "def make(n: Int32) -> Own[list[Leaf]]:\n    return [Leaf(n)]\n"
+            + "def use(n: Int32) -> Int32:\n"
+            + "    xs = make(n)\n"
+            + "    return len(xs)\n"
+            + "def fwd(n: Int32) -> Own[list[Leaf]]:\n    return make(n)\n"
+        )
+        thir = _lower_ctx(src)
+        assert _fn(thir, "use") is None
+        assert _fn(thir, "fwd") is None
+
+
+class TestLenFieldReceiver:
+    """`len(recv.field)` -- the builtin len over one-level container/str/bytes
+    fields (the `for i in range(len(self.xs))` unblock)."""
+
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        hpp, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+        return hpp + cpp
+
+    SRC = (
+        _PRELUDE
+        + "class H:\n"
+        + "    xs: list[Int32]\n"
+        + "    name: str\n"
+        + "    data: bytes\n"
+        + "    def __init__(self):\n"
+        + "        self.xs = [1, 2]\n"
+        + "        self.name = 'ab'\n"
+        + "        self.data = b'xyz'\n"
+        + "    def total(self) -> Int32:\n"
+        + "        return len(self.xs)\n"
+        + "    def vlen(self) -> Int32:\n"
+        + "        return len(self.name) + len(self.data)\n"
+        + "    def sum_all(self) -> Int32:\n"
+        + "        acc = 0\n"
+        + "        for i in range(len(self.xs)):\n"
+        + "            acc += self.xs[i]\n"
+        + "        return acc\n"
+        + "def free_len(h: H) -> Int32:\n"
+        + "    return len(h.xs)\n"
+        + "def main():\n"
+        + "    h = H()\n"
+        + "    print(h.total(), h.vlen(), h.sum_all(), free_len(h))\n"
+        + "main()\n"
+    )
+
+    def test_byte_identical(self):
+        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
+
+    def test_routes_and_witnesses(self):
+        thir, wit = _lower_ctx_witnessed(self.SRC)
+        for name in ("total", "vlen", "sum_all", "free_len"):
+            assert _fn(thir, name) is not None, name
+        assert wit.get("len.field_recv", 0) >= 4
+
+    def test_emits_len_over_field(self):
+        cpp = self._cpp(self.SRC, thir=True)
+        assert "return ::tpy::__len__(this->xs);" in cpp
+        assert "return ::tpy::__len__(h.xs);" in cpp
+        # The range-len bound hoists to a stop temp like any non-literal bound.
+        assert "int32_t __stop_0 = ::tpy::__len__(this->xs);" in cpp
+
+    def test_two_level_chain_rejects(self):
+        # `len(h.inner.xs)` -- a chained receiver stays on the AST path.
+        src = (
+            _PRELUDE
+            + "class A:\n"
+            + "    xs: list[Int32]\n"
+            + "    def __init__(self):\n        self.xs = [1]\n"
+            + "class B:\n"
+            + "    a: A\n"
+            + "    def __init__(self):\n        self.a = A()\n"
+            + "def f(b: B) -> Int32:\n    return len(b.a.xs)\n"
+        )
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is None
+
+    def test_optional_container_field_rejects(self):
+        # An Optional[list] field types at the DECLARED Optional -> family
+        # reject (the AST unwraps the narrowed read differently).
+        src = (
+            _PRELUDE
+            + "from typing import Optional\n"
+            + "class H:\n"
+            + "    xs: Optional[list[Int32]]\n"
+            + "    def __init__(self):\n        self.xs = None\n"
+            + "def f(h: H) -> Int32:\n"
+            + "    if h.xs is not None:\n"
+            + "        return len(h.xs)\n"
+            + "    return 0\n"
+        )
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is None
+
+
+class TestContainerFieldIteration:
+    """`for x in recv.field:` over container fields -- the field renders inside
+    the same lvalue `auto& __obj_N =` capture a name iterable takes."""
+
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        hpp, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+        return hpp + cpp
+
+    SRC = (
+        _PRELUDE
+        + "class P:\n"
+        + "    v: Int32\n"
+        + "    def __init__(self, v: Int32):\n        self.v = v\n"
+        + "class H:\n"
+        + "    xs: list[Int32]\n"
+        + "    d: dict[Int32, Int32]\n"
+        + "    names: list[str]\n"
+        + "    ps: list[P]\n"
+        + "    def __init__(self):\n"
+        + "        self.xs = [1, 2]\n"
+        + "        self.d = {1: 10}\n"
+        + "        self.names = ['a', 'bb']\n"
+        + "        self.ps = [P(5)]\n"
+        + "    def sums(self) -> Int32:\n"
+        + "        acc = 0\n"
+        + "        for x in self.xs:\n"
+        + "            acc += x\n"
+        + "        for k in self.d:\n"
+        + "            acc += k\n"
+        + "        for s in self.names:\n"
+        + "            acc += len(s)\n"
+        + "        return acc\n"
+        + "    def bump(self) -> None:\n"
+        + "        for p in self.ps:\n"
+        + "            p.v += 1\n"
+        + "def free_iter(h: H) -> Int32:\n"
+        + "    acc = 0\n"
+        + "    for x in h.xs:\n"
+        + "        acc += x\n"
+        + "    return acc\n"
+        + "def main():\n"
+        + "    h = H()\n"
+        + "    h.bump()\n"
+        + "    print(h.sums(), free_iter(h), h.ps[0].v)\n"
+        + "main()\n"
+    )
+
+    def test_byte_identical(self):
+        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
+
+    def test_routes_and_witnesses(self):
+        thir, wit = _lower_ctx_witnessed(self.SRC)
+        for name in ("sums", "bump", "free_iter"):
+            assert _fn(thir, name) is not None, name
+        assert wit.get("foreach.container_field", 0) >= 4
+
+    def test_emits_field_capture(self):
+        cpp = self._cpp(self.SRC, thir=True)
+        assert "auto& __obj_0 = this->xs;" in cpp
+        assert "auto& __obj_0 = h.xs;" in cpp
+        # Record loop var stays the borrow alias off the field capture.
+        assert "auto&& p = *__beg_0;" in cpp
+
+    def test_field_iterable_node(self):
+        thir = _lower_ctx(self.SRC)
+        loop = _fn(thir, "free_iter").body[1]
+        assert isinstance(loop, THIRForEach) and loop.iterable_lvalue
+        assert isinstance(loop.iterable, THIRFieldAccess)
+
+    def test_optional_container_field_rejects(self):
+        src = (
+            _PRELUDE
+            + "from typing import Optional\n"
+            + "class H:\n"
+            + "    xs: Optional[list[Int32]]\n"
+            + "    def __init__(self):\n        self.xs = None\n"
+            + "def f(h: H) -> Int32:\n"
+            + "    acc = 0\n"
+            + "    if h.xs is not None:\n"
+            + "        for x in h.xs:\n"
+            + "            acc += x\n"
+            + "    return acc\n"
+        )
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is None
+
+
+class TestBytesFieldSubscript:
+    """Bytes-family FIELD subscript reads (`self.data[i]` -> UInt8) through the
+    `::tpy::bytes_getitem` dispatch, incl. the readonly-method const receiver."""
+
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        hpp, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+        return hpp + cpp
+
+    SRC = (
+        _PRELUDE
+        + "from tpy import readonly\n"
+        + "class H:\n"
+        + "    data: bytes\n"
+        + "    def __init__(self):\n"
+        + "        self.data = b'xyz'\n"
+        + "    @readonly\n"
+        + "    def first(self) -> UInt8:\n"
+        + "        return self.data[0]\n"
+        + "    def at(self, i: Int32) -> UInt8:\n"
+        + "        return self.data[i]\n"
+        + "def free_at(h: H, i: Int32) -> UInt8:\n"
+        + "    return h.data[i]\n"
+        + "def main():\n"
+        + "    h = H()\n"
+        + "    print(h.first(), h.at(1), free_at(h, 2))\n"
+        + "main()\n"
+    )
+
+    def test_byte_identical(self):
+        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
+
+    def test_routes_and_witnesses(self):
+        thir, wit = _lower_ctx_witnessed(self.SRC)
+        for name in ("first", "at", "free_at"):
+            assert _fn(thir, name) is not None, name
+        assert wit.get("subscript.bytes_field", 0) >= 3
+
+    def test_emits_bytes_getitem_over_field(self):
+        cpp = self._cpp(self.SRC, thir=True)
+        assert "return ::tpy::bytes_getitem(this->data, 0);" in cpp
+        assert "return ::tpy::bytes_getitem(this->data, i);" in cpp
+        assert "return ::tpy::bytes_getitem(h.data, i);" in cpp
+
+
+class TestBytesElementRead:
+    """Owned-bytes element subscript reads (`chunks[0]` on list[bytes], the
+    io.py family): STORAGE form -- owned decl/return sinks copy implicitly,
+    view-resolved bindings / span args convert implicitly, all bare."""
+
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        hpp, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+        return hpp + cpp
+
+    SRC = (
+        _PRELUDE
+        + "class B:\n"
+        + "    _chunks: list[bytes]\n"
+        + "    def __init__(self):\n"
+        + "        self._chunks = [b'ab', b'cde']\n"
+        + "    def owned(self) -> Int32:\n"
+        + "        buf: bytes = self._chunks[0]\n"
+        + "        return len(buf)\n"
+        + "    def first(self) -> bytes:\n"
+        + "        return self._chunks[0]\n"
+        + "def use(b: bytes) -> Int32:\n"
+        + "    return len(b)\n"
+        + "def viewed(parts: list[bytes]) -> Int32:\n"
+        + "    x = parts[1]\n"
+        + "    return len(x)\n"
+        + "def arg_pos(parts: list[bytes]) -> Int32:\n"
+        + "    return use(parts[0])\n"
+        + "def cmp_pos(parts: list[bytes]) -> bool:\n"
+        + "    return parts[0] == b'ab'\n"
+        + "def dict_val(d: dict[Int32, bytes]) -> Int32:\n"
+        + "    v: bytes = d[1]\n"
+        + "    return len(v)\n"
+        + "def main():\n"
+        + "    b = B()\n"
+        + "    parts = [b'ab', b'cde']\n"
+        + "    print(b.owned(), len(b.first()), viewed(parts))\n"
+        + "    print(arg_pos(parts), cmp_pos(parts), dict_val({1: b'q'}))\n"
+        + "main()\n"
+    )
+
+    def test_byte_identical(self):
+        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
+
+    def test_routes_and_witnesses(self):
+        thir, wit = _lower_ctx_witnessed(self.SRC)
+        for name in ("owned", "first", "viewed", "arg_pos", "cmp_pos",
+                     "dict_val"):
+            assert _fn(thir, name) is not None, name
+        assert wit.get("subscript.bytes_elem", 0) >= 6
+
+    def test_storage_form_no_copy_wrap(self):
+        # The element lvalue lands bare -- an owned decl copies implicitly and
+        # a return copies implicitly; no ::tpy::bytes_copy wrap on either path.
+        cpp = self._cpp(self.SRC, thir=True)
+        assert ("std::vector<uint8_t> buf = "
+                "::tpy::__getitem__(this->_chunks, 0);") in cpp
+        assert "return ::tpy::__getitem__(this->_chunks, 0);" in cpp
+        assert ("std::span<const uint8_t> x = "
+                "::tpy::__getitem__(parts, 1);") in cpp
+        assert "bytes_copy" not in cpp
+
+    def test_element_node_form(self):
+        thir = _lower_ctx(self.SRC)
+        ret = _fn(thir, "first").body[0]
+        assert isinstance(ret.value, THIRSubscript)
+        assert ret.value.form is Form.STORAGE
+
+    def test_bytes_view_element_rejects(self):
+        # A BytesView-element container keeps the static-storage literal-pin
+        # question open -> reject at the family gate.
+        src = (
+            _PRELUDE
+            + "from tpy import BytesView\n"
+            + "def f(parts: list[BytesView]) -> Int32:\n"
+            + "    x = parts[0]\n"
+            + "    return len(x)\n"
+        )
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is None
+
+    def test_bytes_element_write_rejects(self):
+        # Writes keep _container_scalar_read's families; a bytes VALUE write
+        # has its own AST wraps -> the body stays on the AST path.
+        src = (
+            _PRELUDE
+            + "def f(parts: list[bytes]) -> None:\n"
+            + "    parts[0] = b'zz'\n"
+        )
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is None
+
+
+class TestRecordElementSubscript:
+    """F1-record element reads (`ps[i]` -> `T&` BORROW): field read/write/aug
+    off the element, and the REF_ALIAS borrow-local bind with the AST's
+    element-borrow const propagation."""
+
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        hpp, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+        return hpp + cpp
+
+    SRC = (
+        _PRELUDE
+        + "from tpy import readonly\n"
+        + "class P:\n"
+        + "    x: Int32\n"
+        + "    def __init__(self, x: Int32):\n        self.x = x\n"
+        + "def read_field(ps: list[P]) -> Int32:\n"
+        + "    return ps[0].x\n"
+        + "def write_field(ps: list[P]) -> None:\n"
+        + "    ps[1].x = 42\n"
+        + "def aug_field(ps: list[P]) -> None:\n"
+        + "    ps[0].x += 1\n"
+        + "def bind_mut(ps: list[P]) -> Int32:\n"
+        + "    p = ps[0]\n"
+        + "    p.x += 5\n"
+        + "    return p.x\n"
+        + "def bind_ro(ps: list[P]) -> Int32:\n"
+        + "    p = ps[0]\n"
+        + "    return p.x\n"
+        + "def bind_ro_annot(ps: readonly[list[P]]) -> Int32:\n"
+        + "    p = ps[0]\n"
+        + "    return p.x\n"
+        + "def main():\n"
+        + "    ps = [P(1), P(2)]\n"
+        + "    write_field(ps)\n"
+        + "    aug_field(ps)\n"
+        + "    print(read_field(ps), bind_mut(ps), bind_ro(ps), bind_ro_annot(ps))\n"
+        + "main()\n"
+    )
+
+    def test_byte_identical(self):
+        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
+
+    def test_routes_and_witnesses(self):
+        thir, wit = _lower_ctx_witnessed(self.SRC)
+        for name in ("read_field", "write_field", "aug_field", "bind_mut",
+                     "bind_ro", "bind_ro_annot"):
+            assert _fn(thir, name) is not None, name
+        assert wit.get("subscript.record_elem", 0) >= 6
+
+    def test_emits_element_access(self):
+        cpp = self._cpp(self.SRC, thir=True)
+        assert "return ::tpy::__getitem__(ps, 0).x;" in cpp
+        assert "::tpy::__getitem__(ps, 1).x = 42;" in cpp
+        # Aug-assign doubles the target render like the AST substitution.
+        assert ("::tpy::__getitem__(ps, 0).x = "
+                "::tpy::add_check<int32_t>(::tpy::__getitem__(ps, 0).x, 1);"
+                in cpp)
+
+    def test_ref_alias_const_propagation(self):
+        # A read-only receiver (const-inferred or readonly-annotated) makes
+        # the element alias const; a mutated one binds mutable.
+        cpp = self._cpp(self.SRC, thir=True)
+        assert "P& p = ::tpy::__getitem__(ps, 0);" in cpp        # bind_mut
+        assert "const P& p = ::tpy::__getitem__(ps, 0);" in cpp  # bind_ro*
+        thir = _lower_ctx(self.SRC)
+        assert _fn(thir, "bind_mut").body[0].is_const is False
+        assert _fn(thir, "bind_ro").body[0].is_const is True
+        assert _fn(thir, "bind_ro_annot").body[0].is_const is True
+
+    def test_field_read_node_shape(self):
+        thir = _lower_ctx(self.SRC)
+        ret = _fn(thir, "read_field").body[0]
+        fa = ret.value
+        assert isinstance(fa, THIRFieldAccess) and not fa.is_arrow
+        assert isinstance(fa.receiver, THIRSubscript)
+        assert fa.receiver.form is Form.BORROW
+
+    def test_optional_element_rejects(self):
+        # `list[P | None]` elements take the AST's Optional wraps.
+        src = (
+            _PRELUDE
+            + "class P:\n"
+            + "    x: Int32\n"
+            + "    def __init__(self, x: Int32):\n        self.x = x\n"
+            + "def f(ps: list[P | None]) -> Int32:\n"
+            + "    q = ps[0]\n"
+            + "    if q is not None:\n"
+            + "        return q.x\n"
+            + "    return 0\n"
+        )
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is None
+
+    def test_reassigned_alias_rejects(self):
+        # A reassigned element alias is a POINTER (reseat) local -- the
+        # subscript source keeps the field-receiver pin there.
+        src = (
+            _PRELUDE
+            + "class P:\n"
+            + "    x: Int32\n"
+            + "    def __init__(self, x: Int32):\n        self.x = x\n"
+            + "def f(ps: list[P]) -> Int32:\n"
+            + "    p = ps[0]\n"
+            + "    p = ps[1]\n"
+            + "    return p.x\n"
+        )
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is None

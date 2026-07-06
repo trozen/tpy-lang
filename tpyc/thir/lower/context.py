@@ -269,6 +269,11 @@ class _LowerCtx:
         # mirrored -- no current consumer can see those names (the Own-slot
         # rows admit scalar/F1-record payloads only); a frontier that reuses
         # lc.movable_locals against tuple/Optional sources must extend this.
+        # CAVEAT (proven by a corpus divergence): this is the RAW sema set,
+        # while codegen registers movables only at NON-VALUE decl arms -- a
+        # consumer matching non-record sources must value-type-filter first
+        # (see _container_elem_move_source), else a sema-movable VALUE local
+        # (a view-resolved promoted str) over-moves.
         for pname, ptype in func.params:
             own = unwrap_optional_own(unwrap_readonly(unwrap_send_sync(ptype)))
             if own is not None and not own.wrapped.is_value_type():

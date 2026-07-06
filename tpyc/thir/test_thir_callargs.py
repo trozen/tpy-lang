@@ -330,18 +330,33 @@ class TestRecordMethodCalls:
         assert "return (::tpy::mul_check<int32_t>(this->get(), 2));" in out
         assert _fn(_lower_ctx(src), "twice") is not None
 
-    def test_multi_overload_method_stays_ast(self):
+    def test_auto_readonly_clone_pair_call_routes(self):
         # @auto_readonly clones a method into a same-name mutable + const
-        # overload pair; multi-overload sets are rejected wholesale.
-        thir = _lower_ctx(
+        # pair; the call renders the same plain `p.get_x()` whichever
+        # member sema resolved (C++ dispatches on receiver const-ness), so
+        # the clone-pair carve-out routes the CALLER. Genuine @overload
+        # stub sets keep rejecting (see TestAutoCloneOverloadCarveout).
+        src = (
             "from tpy import Int32, auto_readonly\n"
             "class P:\n"
             "    x: Int32\n"
             "    def __init__(self, x: Int32):\n        self.x = x\n"
             "    @auto_readonly\n"
             "    def get_x(self) -> Int32:\n        return self.x\n"
-            "def use(p: P) -> Int32:\n    return p.get_x()\n")
-        assert _fn(thir, "use") is None
+            "def use(p: P) -> Int32:\n    return p.get_x()\n"
+            "def main():\n    print(use(P(3)))\nmain()\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "use") is not None
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp_t = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=True))
+        compiler2, modules2 = _compile(src)
+        _, cpp_a = compiler2.generate_code_to_strings(
+            _entry(modules2), options=CodeGenOptions(emit_source_comments=False,
+                                                     thir_codegen=False))
+        assert cpp_t == cpp_a
 
     def test_own_scalar_method_slot_stays_ast(self):
         # A user method is not an inline template: gen_call_arg copies an

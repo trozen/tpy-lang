@@ -25,11 +25,12 @@ from ..codegen_cpp.context import (
 )
 from ..codegen_cpp.forms import LocalBinding, is_plain_nonvalue
 from ..type_def_registry import (
-    is_big_int_type, is_bytes_type, is_bytes_view_type, is_dict,
+    is_array, is_big_int_type, is_bytes_type, is_bytes_view_type, is_dict,
     is_float32_type, is_list,
     is_set, is_str_type, is_string_type, view_to_owned_conv,
 )
-from ..typesys import OptionalType, TupleType, TypeParamRef, UnionType, unwrap_qualifiers
+from ..typesys import (OptionalType, TpyType, TupleType, TypeParamRef,
+                       UnionType, unwrap_qualifiers)
 from .nodes import (
     Form,
     PrintForm,
@@ -588,30 +589,51 @@ def _emit_comprehension(e: 'THIRComprehension', state: _EmitState) -> str:
 
 
 def _emit_container_literal(e: THIRContainerLiteral, state: _EmitState) -> str:
-    # Dispatch on the resolved container family, mirroring the scalar branches of
-    # _gen_array_literal / _gen_dict_literal / _gen_set_literal. list/Array
-    # brace-inits are consumed by the spelled decl type; dict/set spell their
-    # runtime container constructor.
+    # Dispatch on the resolved container family, mirroring _gen_array_literal /
+    # _gen_dict_literal / _gen_set_literal. list/Array brace-inits are consumed
+    # by the spelled decl type; dict/set spell their runtime container
+    # constructor; `make_container` picks the reserve+emplace helpers (const
+    # std::initializer_list elements would copy a std::move / cannot hold a
+    # non-copyable element).
     t = unwrap_qualifiers(e.result_type)
     if is_dict(t):
         k_cpp = t.type_args[0].to_cpp()
         v_cpp = t.type_args[1].to_cpp()
         if not e.elements:
             return f"::tpy::ordered_map<{k_cpp}, {v_cpp}>()"
-        braces = ", ".join(f"{{{_emit_expr(k, state)}, {_emit_expr(v, state)}}}"
-                           for k, v in zip(e.elements, e.values))
+        pairs = [(_emit_expr(k, state), _emit_expr(v, state))
+                 for k, v in zip(e.elements, e.values)]
+        if e.make_container:
+            flat = ", ".join(f"{k}, {v}" for k, v in pairs)
+            return f"::tpy::make_ordered_map<{k_cpp}, {v_cpp}>({flat})"
+        braces = ", ".join(f"{{{k}, {v}}}" for k, v in pairs)
         return f"::tpy::ordered_map<{k_cpp}, {v_cpp}>({{{braces}}})"
     if is_set(t):
         cpp_elem = t.type_args[0].to_cpp()
         if not e.elements:
             return f"::tpy::ordered_set<{cpp_elem}>()"
         elems = ", ".join(_emit_expr(x, state) for x in e.elements)
+        if e.make_container:
+            return f"::tpy::make_ordered_set<{cpp_elem}>({elems})"
         return f"::tpy::ordered_set<{cpp_elem}>({{{elems}}})"
     # An empty list literal spells its type (the T*-assignment-ambiguity guard in
     # _gen_array_literal); an empty Array is gated out at eligibility.
     if not e.elements and is_list(t):
         return f"{t.to_cpp()}{{}}"
-    return f"{{{', '.join(_emit_expr(x, state) for x in e.elements)}}}"
+    elems = ", ".join(_emit_expr(x, state) for x in e.elements)
+    if e.make_container:
+        return f"::tpy::make_vector<{e.elem_cpp}>({elems})"
+    literal = f"{{{elems}}}"
+    # A std::array of a brace-initialised aggregate element (a nested list)
+    # needs the extra std::array brace level so each element copy-list-inits
+    # cleanly (mirrors _gen_array_literal's elem_target check; only a demoted
+    # Array threads a container element target).
+    if is_array(t):
+        args = getattr(t, "type_args", None)
+        et = args[0] if args else None
+        if isinstance(et, TpyType) and (is_list(et) or is_array(et)):
+            return f"{{{literal}}}"
+    return literal
 
 
 def _emit_field_access(e: THIRFieldAccess, state: _EmitState) -> str:

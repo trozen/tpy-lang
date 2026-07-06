@@ -1331,3 +1331,82 @@ class TestPtrValueFamilyEmit:
         assert "Node* q = pass_ptr(p);" in cpp
         assert "return this->_p;" in cpp
         assert "this->_p = p;" in cpp
+
+
+# --- REF_ALIAS from a borrow-record-returning call ---
+
+# A borrow-record-returning free call bound at a single-assignment local:
+# the classifier's lvalue-source REF_ALIAS verdict, rendered `Inner& q =
+# shared(b);` (const from a `readonly[T]` return via the raw-sema check --
+# the same `_is_const_indirect` branch the AST applies to a free call). A
+# reassigned name is the POINTER shape whose `&(call)` reseat the slice
+# does not carry -> AST path.
+class TestRecordBorrowCallAlias:
+    SRC = (
+        _F1_RECORDS
+        + "def shared(b: Box) -> Inner:\n    return b.inner\n"
+        + "def shared_ro(b: Box) -> readonly[Inner]:\n    return b.inner\n"
+        + "def go(b: Box) -> Int32:\n"
+        + "    q = shared(b)\n    return q.value\n"
+        + "def go_ro(b: Box) -> Int32:\n"
+        + "    r = shared_ro(b)\n    return r.value\n"
+    )
+
+    def test_ref_alias_routes(self):
+        thir, faces = _lower_ctx_witnessed(self.SRC)
+        fn = _fn(thir, "go")
+        assert fn is not None
+        decl = fn.body[0]
+        assert isinstance(decl, THIRVarDecl)
+        assert decl.cpp_local_representation is LocalBinding.REF_ALIAS
+        assert isinstance(decl.init, THIRCall)
+        assert not decl.is_const
+        assert faces.get("decl.record_borrow_call", 0) == 2
+
+    def test_readonly_return_binds_const(self):
+        thir = _lower_ctx(self.SRC)
+        decl = _fn(thir, "go_ro").body[0]
+        assert decl.cpp_local_representation is LocalBinding.REF_ALIAS
+        assert decl.is_const
+
+    def test_byte_identical(self):
+        compiler, modules = _compile(self.SRC + "def main():\n    print(0)\nmain()\n")
+        entry = _entry(modules)
+        hpp_t, cpp_t = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=True))
+        c2, m2 = _compile(self.SRC + "def main():\n    print(0)\nmain()\n")
+        e2 = _entry(m2)
+        hpp_a, cpp_a = c2.generate_code_to_strings(
+            e2, options=CodeGenOptions(emit_source_comments=False, thir_codegen=False))
+        assert (hpp_t, cpp_t) == (hpp_a, cpp_a)
+        assert "Inner& q = shared(b);" in cpp_t
+        assert "const Inner& r = shared_ro(b);" in cpp_t
+
+    def test_reassigned_alias_ineligible(self):
+        # POINTER-from-call: the `&(shared(b))` reseat is unmirrored.
+        src = (
+            _F1_RECORDS
+            + "def shared(b: Box) -> Inner:\n    return b.inner\n"
+            + "def go(b: Box, n: Int32) -> Int32:\n"
+            + "    q = shared(b)\n"
+            + "    if n > 0:\n        q = shared(b)\n"
+            + "    return q.value\n"
+        )
+        thir = _lower_ctx(src)
+        assert _fn(thir, "go") is None
+
+    def test_optional_return_call_ineligible(self):
+        # An Optional-returning call decl needs the `__slot_N` +
+        # optional_to_ptr hoist -- out of the slice.
+        src = (
+            _F1_RECORDS
+            + "def find(b: Box, n: Int32) -> Own[Inner | None]:\n"
+            + "    if n > 0:\n        return Inner(n)\n"
+            + "    return None\n"
+            + "def go(b: Box) -> Int32:\n"
+            + "    q = find(b, 1)\n"
+            + "    if q is not None:\n        return q.value\n"
+            + "    return 0\n"
+        )
+        thir = _lower_ctx(src)
+        assert _fn(thir, "go") is None

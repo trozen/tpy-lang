@@ -5,6 +5,8 @@ from __future__ import annotations
 
 from ..codegen_cpp.context import CodeGenOptions
 from ..codegen_cpp.forms import LocalBinding
+from ..typesys import NominalType, PtrType
+from .lower.predicates import _eligible_ptr_value
 from .nodes import (
     Form, THIRAssign, THIRBinOp, THIRCall, THIRFieldAccess, THIRFormConvert,
     THIRMethodCall, THIRName, THIRReturn, THIRSelf, THIRSetItem, THIRStrAppend,
@@ -1455,3 +1457,227 @@ class TestPtrDerefMethodCall:
             "def use_box(b: Box[A]) -> Int32:\n"
             "    return b.val()\n")
         assert _fn(thir, "use_box") is None
+
+
+# --- @auto_readonly / auto_own clone pairs (not overload-set hazards) ---
+
+
+class TestAutoCloneOverloadCarveout:
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+        return cpp
+
+    # A clone-pair method call in an otherwise-eligible body: the call
+    # renders the same plain `recv.method(args)` whichever clone sema
+    # resolved, so the body routes; the clone DEFS themselves gate on
+    # their own body content (honest re-attribution, not this test's
+    # concern).
+    SRC = (
+        "from tpy import Int32\n"
+        "from tplib import Box\n"
+        "def peek(b: Box[Int32]) -> Int32:\n"
+        "    return b.get()\n"
+        "def main() -> None:\n"
+        "    b = Box(Int32(41))\n"
+        "    print(peek(b) + 1)\n"
+        "main()\n")
+
+    def test_clone_pair_call_routes(self):
+        # _lower_ctx: Box is cross-module, so _f1_record needs the
+        # codegen-time native_cpp_names registration active.
+        thir = _lower_ctx(self.SRC)
+        assert _fn(thir, "peek") is not None
+
+    def test_byte_identical(self):
+        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
+
+    def test_genuine_overload_call_still_rejected(self):
+        # A real @overload stub set at the call site keeps rejecting: the
+        # literal-overload call render MANGLES the callee name, and the
+        # def side shares one impl body across stubs.
+        src = (
+            "from tpy import Int32\n"
+            "from typing import overload\n"
+            "class W:\n"
+            "    n: Int32\n"
+            "    def __init__(self):\n        self.n = 0\n"
+            "    @overload\n"
+            "    def m(self, x: Int32) -> Int32: ...\n"
+            "    @overload\n"
+            "    def m(self, x: bool) -> Int32: ...\n"
+            "    def m(self, x: Int32 | bool) -> Int32:\n        return self.n\n"
+            "def f(w: W) -> Int32:\n    return w.m(1)\n")
+        thir = _lower(src)
+        assert _fn(thir, "f") is None
+
+    def test_clone_def_carveout_reaches_body_gates(self):
+        # The clone DEFS pass the overload gate (the pair carve-out) and
+        # reject on body content instead -- pinned via the fallback tag:
+        # no sig.overload_set fold for a pure clone pair.
+        compiler, modules = _compile(self.SRC)
+        from ..codegen_cpp.context import CodeGenOptions as _O
+        compiler.generate_code_to_strings(
+            _entry(modules), options=_O(emit_source_comments=False,
+                                        thir_codegen=True))
+        ov = {k: v for k, v in compiler._thir_fallback.items()
+              if 'sig.overload_set' in k}
+        assert not ov, ov
+
+
+# rc.py's receiver shape: a @dynamic-protocol pointee behind Ptr, method
+# calls dispatching through the abstract base's virtuals.
+_PTR_DYN_PROTO_SRC = (
+    "from typing import Protocol\n"
+    "from tpy import Int32, Ptr, dynamic, take_ptr\n"
+    "@dynamic\n"
+    "class CellBase(Protocol):\n"
+    "    def incr(self) -> None: ...\n"
+    "    def release(self) -> bool: ...\n"
+    "class Cell(CellBase):\n"
+    "    n: Int32\n"
+    "    def __init__(self):\n        self.n = 1\n"
+    "    def incr(self):\n        self.n = self.n + 1\n"
+    "    def release(self) -> bool:\n"
+    "        self.n = self.n - 1\n        return self.n == 0\n"
+    "class Holder:\n"
+    "    cell: Ptr[CellBase]\n"
+    "    def __init__(self, c: Ptr[CellBase]):\n        self.cell = c\n"
+    "    def drop(self) -> bool:\n        return self.cell.release()\n"
+    "def f(p: Ptr[CellBase]) -> bool:\n"
+    "    p.incr()\n"
+    "    return p.release()\n"
+    "def copy_then_call(p: Ptr[CellBase]) -> bool:\n"
+    "    q = p\n"
+    "    return q.release()\n"
+    "def none_decl(p: Ptr[CellBase]) -> bool:\n"
+    "    q: Ptr[CellBase] = None\n"
+    "    q = p\n"
+    "    return q.release()\n"
+    "def main():\n"
+    "    c = Cell()\n"
+    "    print(f(take_ptr(c)))\n"
+    "    h = Holder(take_ptr(c))\n"
+    "    print(h.drop())\n"
+    "    c2 = Cell()\n"
+    "    print(copy_then_call(take_ptr(c2)))\n"
+    "main()\n"
+)
+
+
+class TestPtrDynProtoPointee:
+    """`Ptr[T]` value slots widened to @dynamic-protocol pointees: the same
+    THIRMethodCall deref_check / is_arrow arms as a record pointee, plus the
+    one dyn-proto-specific decl fact -- the AST spells a protocol-containing
+    decl type `auto` (`auto q = p;`), mirrored on THIRVarDecl.cpp_type. A
+    first `q: Ptr[P] = None` decl is the AST's `auto q = nullptr;`
+    (std::nullptr_t) miscompile -- gate-rejected, not mirrored."""
+
+    def test_ptr_name_receiver_routes_both_arms(self):
+        thir, witnessed = _lower_ctx_witnessed(_PTR_DYN_PROTO_SRC)
+        fn = _fn(thir, "f")
+        assert fn is not None
+        first = fn.body[0].expr
+        assert isinstance(first, THIRMethodCall)
+        assert first.deref_check and not first.is_arrow
+        ret = fn.body[1]
+        assert isinstance(ret, THIRReturn)
+        assert isinstance(ret.value, THIRMethodCall)
+        assert ret.value.is_arrow and not ret.value.deref_check
+        assert witnessed.get("ptr.dyn_proto_pointee", 0) >= 1
+
+    def test_ptr_field_receiver_routes(self):
+        # `self.cell.release()` -- the rc.py `self._cell` receiver shape.
+        fn = _fn(_lower_ctx(_PTR_DYN_PROTO_SRC), "drop")
+        assert fn is not None
+        ret = fn.body[0]
+        assert isinstance(ret, THIRReturn)
+        assert isinstance(ret.value, THIRMethodCall) and ret.value.deref_check
+        assert isinstance(ret.value.receiver, THIRFieldAccess)
+
+    def test_decl_spells_auto(self):
+        # The dyn-proto Ptr local decl mirrors _cpp_decl_type's protocol arm.
+        fn = _fn(_lower_ctx(_PTR_DYN_PROTO_SRC), "copy_then_call")
+        assert fn is not None
+        decl = fn.body[0]
+        assert isinstance(decl, THIRVarDecl) and decl.cpp_type == "auto"
+
+    def test_none_init_first_decl_stays_ast(self):
+        # `q: Ptr[P] = None` -> the AST's `auto q = nullptr;` miscompile;
+        # the whole body falls back.
+        assert _fn(_lower_ctx(_PTR_DYN_PROTO_SRC), "none_decl") is None
+
+    def test_byte_identical(self):
+        compiler, modules = _compile(_PTR_DYN_PROTO_SRC)
+        entry = _entry(modules)
+        ast_out = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False))
+        thir_out = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=True))
+        assert thir_out == ast_out
+        assert "::tpy::deref_check(p).incr()" in thir_out[1]
+        assert "p->release()" in thir_out[1]
+        # Methods emit inline in the header.
+        assert "::tpy::deref_check(this->cell).release()" in thir_out[0]
+        assert "auto q = p;" in thir_out[1]
+
+    def test_structural_protocol_pointee_rejected(self):
+        # A structural protocol has no runtime C++ type (to_cpp() is the
+        # monomorphization placeholder), so it must stay outside the family;
+        # the dynamic flag alone admits.
+        compiler, modules = _compile("def t() -> None:\n    pass\n")
+        analyzer = _entry(modules).analyzer
+        structural = PtrType(NominalType("P", is_protocol=True))
+        dyn = PtrType(NominalType("P", is_protocol=True,
+                                  is_dynamic_protocol=True))
+        assert not _eligible_ptr_value(structural, analyzer)
+        assert _eligible_ptr_value(dyn, analyzer)
+
+
+class TestAutoOwnCloneCarveout:
+    # The auto_own[Self] half of the clone-pair carve-out: the pair's
+    # borrowing member carries is_auto_own_borrowing_clone (its consuming
+    # twin is already rejected as is_consuming), and a general method call
+    # always resolves to the borrowing member (sema hardcodes
+    # is_consuming_receiver=False), so the call render is member-blind.
+    # Non-generic record: the generic auto_own_basic corpus case is
+    # excluded by the generics frontier, leaving this branch unit-only.
+    SRC = (
+        "from typing import Self\n"
+        "from tpy import Int32, auto_own\n"
+        "class Holder:\n"
+        "    n: Int32\n"
+        "    def __init__(self, n: Int32) -> None:\n        self.n = n\n"
+        "    def peek(self: auto_own[Self]) -> auto_own[Int32]:\n"
+        "        return self.n\n"
+        "def use(h: Holder) -> Int32:\n    return h.peek()\n"
+        "def main():\n    print(use(Holder(7)))\nmain()\n")
+
+    def test_borrowing_clone_def_passes_overload_gate(self):
+        # The DEF-side carve-out: no sig.overload_set fold for the pair
+        # (the borrowing clone body then gates on its own content).
+        compiler, modules = _compile(self.SRC)
+        compiler.generate_code_to_strings(
+            _entry(modules), options=CodeGenOptions(
+                emit_source_comments=False, thir_codegen=True))
+        ov = {k: v for k, v in compiler._thir_fallback.items()
+              if 'sig.overload_set' in k}
+        assert not ov, ov
+
+    def test_call_site_routes(self):
+        thir = _lower_ctx(self.SRC)
+        assert _fn(thir, "use") is not None
+
+    def test_byte_identical(self):
+        compiler, modules = _compile(self.SRC)
+        _, cpp_t = compiler.generate_code_to_strings(
+            _entry(modules), options=CodeGenOptions(
+                emit_source_comments=False, thir_codegen=True))
+        compiler2, modules2 = _compile(self.SRC)
+        _, cpp_a = compiler2.generate_code_to_strings(
+            _entry(modules2), options=CodeGenOptions(
+                emit_source_comments=False, thir_codegen=False))
+        assert cpp_t == cpp_a
