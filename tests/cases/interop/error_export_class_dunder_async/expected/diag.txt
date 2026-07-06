@@ -1,0 +1,1 @@
+main.py:13: error: exposed class 'C': '__repr__' cannot be async (a coroutine frame can't cross the CPython boundary; the wrapper needs a plain return value)

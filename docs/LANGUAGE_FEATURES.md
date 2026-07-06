@@ -6051,8 +6051,8 @@ API, floor 3.12, hand-rolled C-API glue, copy-in marshalling).
   marshal, a class-typed field, an `Own[Cls]` param (the host keeps its
   reference, so ownership can't transfer -- use the borrow form), a `@nocopy`
   class returned by reference (the boundary can't copy it out -- return
-  `Own[Cls]`), `@property`, static/async/generic/overloaded methods,
-  inheritance, generics, an exposed class defined in *another* module
+  `Own[Cls]`), `@property`, static/async/generic/overloaded/`@error_return`
+  methods, inheritance, generics, an exposed class defined in *another* module
   (cross-module exposed types are deferred, mirroring the cross-module enum
   guard below -- define and `@export` the class in the module that uses it),
   or `@export` on an exception class (those cross via the

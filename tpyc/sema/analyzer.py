@@ -36,6 +36,22 @@ from ..parse.nodes import (
     TpyReturn, expr_contains_self_method_call,
 )
 from .expressions import _collect_body_name_refs, _walk_body_stmts
+from .export_shape import (
+    EXPORT_CLASS_REPR_STR_DUNDERS as _EXPORT_CLASS_REPR_STR_DUNDERS,
+    EXPORT_CLASS_COMPARE_DUNDERS as _EXPORT_CLASS_COMPARE_DUNDERS,
+    EXPORT_CLASS_BINARY_ARITH_DUNDERS as _EXPORT_CLASS_BINARY_ARITH_DUNDERS,
+    EXPORT_CLASS_REFLECTED_ARITH_DUNDERS as _EXPORT_CLASS_REFLECTED_ARITH_DUNDERS,
+    EXPORT_CLASS_UNARY_ARITH_DUNDERS as _EXPORT_CLASS_UNARY_ARITH_DUNDERS,
+    EXPORT_CLASS_INPLACE_ARITH_DUNDERS as _EXPORT_CLASS_INPLACE_ARITH_DUNDERS,
+    EXPORT_CLASS_GETITEM_DUNDERS as _EXPORT_CLASS_GETITEM_DUNDERS,
+    EXPORT_CLASS_SETITEM_DUNDERS as _EXPORT_CLASS_SETITEM_DUNDERS,
+    EXPORT_CLASS_DELITEM_DUNDERS as _EXPORT_CLASS_DELITEM_DUNDERS,
+    EXPORT_CLASS_CONTAINS_DUNDERS as _EXPORT_CLASS_CONTAINS_DUNDERS,
+    EXPORT_CLASS_ITER_DUNDERS as _EXPORT_CLASS_ITER_DUNDERS,
+    EXPORT_CLASS_NEXT_DUNDERS as _EXPORT_CLASS_NEXT_DUNDERS,
+    EXPORT_CLASS_SUPPORTED_DUNDERS as _EXPORT_CLASS_SUPPORTED_DUNDERS,
+    export_method_shape_error, unsupported_boundary_param_form,
+)
 
 # Deferred-resolution placeholder types. After `LocalTypeDeduction.resolve_all()`
 # every resolution sink syncs the final type into the namespace, so a hoisted
@@ -44,75 +60,6 @@ from .expressions import _collect_body_name_refs, _walk_body_stmts
 _PENDING_LOCAL_TYPES = (
     PendingListType, PendingDictType, PendingSetType, PendingViewType,
 )
-
-# Dunders wired into an @export class's CPython type slots: repr/str ->
-# Py_tp_repr/Py_tp_str; the comparison group + __hash__ ->
-# Py_tp_richcompare/Py_tp_hash; arithmetic/ordering operators -> Py_nb_*;
-# the container protocol -> Py_mp_*/Py_sq_*/Py_tp_iter* (see the frozenset
-# below).
-_EXPORT_CLASS_REPR_STR_DUNDERS = frozenset({"__repr__", "__str__"})
-_EXPORT_CLASS_COMPARE_DUNDERS = frozenset(
-    {"__eq__", "__ne__", "__lt__", "__le__", "__gt__", "__ge__"})
-# Forward dunder -> its reflected counterpart (None if the op has no reflected
-# form, e.g. unary). Kept in sync with modules/defs.py's BINOP_TO_METHOD/
-# BINOP_TO_RMETHOD by construction (see the mirrored table in extension.py).
-_EXPORT_CLASS_BINARY_ARITH_DUNDERS = frozenset({
-    "__add__", "__sub__", "__mul__", "__truediv__", "__floordiv__", "__mod__",
-    "__pow__", "__lshift__", "__rshift__", "__and__", "__or__", "__xor__",
-})
-_EXPORT_CLASS_REFLECTED_ARITH_DUNDERS = frozenset({
-    "__radd__", "__rsub__", "__rmul__", "__rtruediv__", "__rfloordiv__",
-    "__rmod__", "__rpow__", "__rlshift__", "__rrshift__", "__rand__",
-    "__ror__", "__rxor__",
-})
-_EXPORT_CLASS_UNARY_ARITH_DUNDERS = frozenset({"__pos__", "__neg__", "__invert__"})
-_EXPORT_CLASS_INPLACE_ARITH_DUNDERS = frozenset({
-    "__iadd__", "__isub__", "__imul__", "__itruediv__", "__ifloordiv__",
-    "__imod__", "__ilshift__", "__irshift__", "__iand__", "__ior__", "__ixor__",
-})
-_EXPORT_CLASS_ARITH_DUNDERS = (
-    _EXPORT_CLASS_BINARY_ARITH_DUNDERS | _EXPORT_CLASS_REFLECTED_ARITH_DUNDERS
-    | _EXPORT_CLASS_UNARY_ARITH_DUNDERS | _EXPORT_CLASS_INPLACE_ARITH_DUNDERS)
-# Container protocol -> Py_mp_*/Py_sq_*/Py_tp_iter*.
-_EXPORT_CLASS_LEN_DUNDERS = frozenset({"__len__"})
-_EXPORT_CLASS_GETITEM_DUNDERS = frozenset({"__getitem__"})
-_EXPORT_CLASS_SETITEM_DUNDERS = frozenset({"__setitem__"})
-_EXPORT_CLASS_DELITEM_DUNDERS = frozenset({"__delitem__"})
-_EXPORT_CLASS_CONTAINS_DUNDERS = frozenset({"__contains__"})
-_EXPORT_CLASS_ITER_DUNDERS = frozenset({"__iter__"})
-_EXPORT_CLASS_NEXT_DUNDERS = frozenset({"__next__"})
-_EXPORT_CLASS_CONTAINER_DUNDERS = (
-    _EXPORT_CLASS_LEN_DUNDERS | _EXPORT_CLASS_GETITEM_DUNDERS
-    | _EXPORT_CLASS_SETITEM_DUNDERS | _EXPORT_CLASS_DELITEM_DUNDERS
-    | _EXPORT_CLASS_CONTAINS_DUNDERS | _EXPORT_CLASS_ITER_DUNDERS
-    | _EXPORT_CLASS_NEXT_DUNDERS)
-_EXPORT_CLASS_SUPPORTED_DUNDERS = (
-    _EXPORT_CLASS_REPR_STR_DUNDERS | _EXPORT_CLASS_COMPARE_DUNDERS
-    | {"__hash__"} | _EXPORT_CLASS_ARITH_DUNDERS
-    | _EXPORT_CLASS_CONTAINER_DUNDERS)
-
-
-def _unsupported_dunder_param_form(fn: 'TpyFunction') -> 'str | None':
-    """The argument forms an exposed class's dunder-slot wrappers don't cross
-    yet -- same shape as compiler.py's `_unsupported_param_form` for plain
-    @export methods/functions (duplicated here, not shared, since the two
-    validators live in different modules; see the TODO.md note on unifying
-    the "@export class shape" validators)."""
-    if fn.vararg_name is not None:
-        return "*args is not supported at the CPython boundary yet"
-    if fn.kwarg_name is not None:
-        return "**kwargs is not supported at the CPython boundary yet"
-    if any(d is not None for d in (fn.defaults or [])):
-        return ("default parameter values are not supported at the CPython "
-                "boundary yet (every parameter must be required)")
-    if fn.num_posonly_params:
-        return ("positional-only parameters (/) are not supported at the "
-                "CPython boundary yet")
-    if fn.keyword_only_start is not None:
-        return ("keyword-only parameters (*) are not supported at the "
-                "CPython boundary yet")
-    return None
-
 
 def _find_pending_leaf(typ: 'TpyType') -> 'TpyType | None':
     """Return the first Pending* leaf in a (possibly composite) type, else None.
@@ -669,9 +616,10 @@ class SemanticAnalyzer:
     def _validate_export_class_dunders(self, module: TpyModule) -> None:
         """In an ext_module, validate an @export class's repr/str/eq/ne/lt/le/
         gt/ge/hash dunders before codegen wires them into CPython type slots
-        (Py_tp_repr/Py_tp_str/Py_tp_richcompare/Py_tp_hash). Mirrors
-        `_validate_dyn_dunder_kind`'s decorator/kind rejections, plus the
-        boundary-marshalling shape the slot wrapper needs: a comparison
+        (Py_tp_repr/Py_tp_str/Py_tp_richcompare/Py_tp_hash). The decorator/
+        kind/arg-form rejections are shared with the plain-method validator via
+        `export_shape`; the rest is the per-dunder marshalling shape the slot
+        wrapper needs: a comparison
         dunder's other-operand type must cross the boundary, __hash__ must
         return a fixed-width int (not BigInt -- no defined truncation rule
         yet), repr/str must return str.
@@ -689,46 +637,22 @@ class SemanticAnalyzer:
                     raise SemanticError(
                         f"exposed class '{record.name}': '{m.name}' cannot be "
                         f"declared on an @native record", loc)
-                if m.is_staticmethod:
-                    raise SemanticError(
-                        f"exposed class '{record.name}': '{m.name}' cannot be "
-                        f"a @staticmethod", loc)
-                if m.is_property_getter or m.is_property_setter:
-                    raise SemanticError(
-                        f"exposed class '{record.name}': '{m.name}' cannot be "
-                        f"a @property", loc)
-                if m.is_overload_stub:
-                    raise SemanticError(
-                        f"exposed class '{record.name}': '{m.name}' cannot be "
-                        f"@overload", loc)
-                if m.type_params:
-                    raise SemanticError(
-                        f"exposed class '{record.name}': '{m.name}' cannot be "
-                        f"generic (a template can't cross the CPython "
-                        f"boundary, which needs one concrete method)", loc)
-                if m.is_generator:
-                    raise SemanticError(
-                        f"exposed class '{record.name}': '{m.name}' cannot be "
-                        f"a generator (no `yield` in body)", loc)
                 # __next__ is implicitly @error_return(StopIteration) (the
                 # parser default -- see parse/parser.py), so it is exempted
                 # from the blanket @error_return reject: the container-slot
                 # wrapper unwraps the resulting std::expected itself instead
                 # of the normal boundary catch.
-                if m.error_return and m.name != "__next__":
+                shape = export_method_shape_error(
+                    m, allow_error_return=m.name in _EXPORT_CLASS_NEXT_DUNDERS)
+                if shape is not None:
                     raise SemanticError(
-                        f"exposed class '{record.name}': '{m.name}' cannot "
-                        f"use @error_return", loc)
-                # Defaults/*args/**kwargs/posonly/kwonly all reach codegen
-                # silently otherwise -- e.g. a defaulted compare-dunder
-                # operand (`other: Vec2 = None`) passes this validator's
-                # count/type checks (a default doesn't change the arity or
-                # marshal a param needs) and then fails the actual C++ build
-                # with `could not convert 'nullptr' to 'const Vec2&'` instead
-                # of a located TPy error. Mirrors (duplicated, not shared --
-                # see the TODO.md note on unifying the "@export class shape"
-                # validators) compiler.py's `_unsupported_param_form`.
-                form = _unsupported_dunder_param_form(m)
+                        f"exposed class '{record.name}': {shape}", loc)
+                # A defaulted/starred operand reaches codegen silently otherwise
+                # -- e.g. a defaulted compare operand (`other: Vec2 = None`)
+                # passes the count/type checks below (a default changes neither
+                # the arity nor the marshal a param needs) and then fails the
+                # C++ build with `could not convert 'nullptr' to 'const Vec2&'`.
+                form = unsupported_boundary_param_form(m)
                 if form is not None:
                     raise SemanticError(
                         f"exposed class '{record.name}': '{m.name}': {form}",

@@ -24,6 +24,8 @@ from .parse.imports import _IMPLICIT_MODULES, _PRIVATE_MODULE_PUBLIC_NAMES, rout
 from .module_names import public_module_name as _public_module_name_of
 from .sema import SemanticAnalyzer, SemanticError, Diagnostic, DiagnosticLevel
 from .sema.reach_analysis import compute_reached_symbols
+from .sema.export_shape import (
+    export_method_shape_error, unsupported_boundary_param_form)
 from .modules.resolver import ModuleResolver, ResolvedModule
 from .modules import get_builtin_module_names
 from .frontend_plugin import (
@@ -4002,7 +4004,7 @@ class Compiler:
                 if not func.exposed_to_host:
                     continue
                 fline = func.loc.line if func.loc else None
-                form = self._unsupported_param_form(func)
+                form = unsupported_boundary_param_form(func)
                 if form is not None:
                     raise CompileError(
                         f"@export function '{func.name}': {form}",
@@ -4203,17 +4205,21 @@ class Compiler:
             if len(overloads) > 1:
                 reject(f"overloaded '{mname}' cannot be exposed yet (only a "
                        f"single signature crosses to CPython)", m_loc)
+            # Every non-dunder registry method has a backing AST node (the only
+            # AST-less registry entry is the synthesized `__iter__`, a dunder
+            # already `continue`d above), so gating the shape/param-form checks
+            # on `ast_m` never skips a method that should be validated.
             if ast_m is not None:
-                form = self._unsupported_param_form(ast_m)
+                # Decorator/kind/async/error-return forms the glue can't emit,
+                # shared with the dunder validator (sema/export_shape) so the
+                # two can't drift -- the shape message already names the method.
+                shape = export_method_shape_error(ast_m)
+                if shape is not None:
+                    reject(shape, m_loc)
+                form = unsupported_boundary_param_form(ast_m)
                 if form is not None:
                     reject(f"method '{mname}': {form}", m_loc)
             for m in overloads:
-                if m.is_staticmethod:
-                    reject(f"static method '{mname}' cannot be exposed yet", m_loc)
-                if m.is_async or m.is_generator:
-                    reject(f"async/generator method '{mname}' cannot be exposed", m_loc)
-                if m.type_params:
-                    reject(f"generic method '{mname}' cannot be exposed yet", m_loc)
                 # __init__'s "return" is the constructed instance (no value
                 # marshalled out); a plain method marshals its return, with
                 # `-> None` handed back as None.
@@ -4230,29 +4236,6 @@ class Compiler:
                     [(i, (p.name, p.type)) for i, p in enumerate(m.params)
                      if p.name != "self"],
                     m_loc)
-
-    def _unsupported_param_form(self, fn: 'TpyFunction') -> 'str | None':
-        """The argument forms the CPython glue's keyword-aware unpack does not
-        cross yet (only plain positional-or-keyword params marshal). Returns a
-        message tail for the first one present on this function/method node,
-        else None. Rejected loudly rather than silently mishandled: the glue
-        would otherwise require a defaulted param (PyArg unpack has no optional
-        slot) and drop *args/**kwargs entirely.
-        """
-        if fn.vararg_name is not None:
-            return "*args is not supported at the CPython boundary yet"
-        if fn.kwarg_name is not None:
-            return "**kwargs is not supported at the CPython boundary yet"
-        if any(d is not None for d in (fn.defaults or [])):
-            return ("default parameter values are not supported at the CPython "
-                    "boundary yet (every parameter must be required)")
-        if fn.num_posonly_params:
-            return ("positional-only parameters (/) are not supported at the "
-                    "CPython boundary yet")
-        if fn.keyword_only_start is not None:
-            return ("keyword-only parameters (*) are not supported at the "
-                    "CPython boundary yet")
-        return None
 
     def _exposed_form_error(self, typ, role: str, registry,
                             compiled: 'CompiledModule') -> 'str | None':
