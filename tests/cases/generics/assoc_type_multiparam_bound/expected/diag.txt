@@ -1,0 +1,3 @@
+main.py:25: warning: returns a copy of str field 'self.b'; use -> StrView for zero-copy access or -> String to silence this warning
+main.py:33: warning: copies list[int] into field; use copy() to make this explicit
+main.py:40: warning: returns a copy of str field 'self.s'; use -> StrView for zero-copy access or -> String to silence this warning

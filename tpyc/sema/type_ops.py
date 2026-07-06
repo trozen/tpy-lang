@@ -1064,49 +1064,62 @@ class TypeOperations:
             return True
 
         protocol_name = param_type.name
-        if param_type.qualified_name() == "typing.Iterator":
-            if is_protocol_type(arg_type) and arg_type.qualified_name() == "typing.Iterator" and arg_type.type_args:
-                elem_type = arg_type.type_args[0]
-            else:
-                elem_type = builtin_modules.get_extends_protocol_type_arg(
-                    arg_type, protocol_name, registry=self.ctx.registry)
-                if elem_type is None:
-                    elem_type = self._infer_protocol_type_arg_structurally(
-                        arg_type, protocol_name)
+        # Resolve the protocol's OWN params positionally (aligned to the
+        # protocol's type_params) from one of: the arg protocol's type_args,
+        # an extends declaration (single-valued -- multi-param extends is not
+        # resolved here), or structural inference from the conformer's methods.
+        is_iterator = param_type.qualified_name() == "typing.Iterator"
+        same_protocol = (
+            is_protocol_type(arg_type) and arg_type.type_args
+            and arg_type.qualified_name() == ("typing.Iterator" if is_iterator
+                                              else param_type.qualified_name()))
+        if same_protocol:
+            elem_types: list[TpyType | None] | None = list(arg_type.type_args)
         else:
-            # General path: direct protocol match, extends declarations,
-            # then structural inference from method signatures.
-            if is_protocol_type(arg_type) and arg_type.qualified_name() == param_type.qualified_name() and arg_type.type_args:
-                elem_type = arg_type.type_args[0]
-            else:
-                elem_type = builtin_modules.get_extends_protocol_type_arg(
-                    arg_type, protocol_name, registry=self.ctx.registry)
-                if elem_type is None:
-                    elem_type = self._infer_protocol_type_arg_structurally(
-                        arg_type, protocol_name)
-        if elem_type is None:
+            ext = builtin_modules.get_extends_protocol_type_arg(
+                arg_type, protocol_name, registry=self.ctx.registry)
+            elem_types = [ext] if ext is not None else \
+                self._infer_protocol_type_arg_structurally(arg_type, protocol_name)
+        if not elem_types:
             return False
-        # Single type_arg: use recursive matching to handle compound types
-        # like NativeIterable[tuple[K, V]] where the type_arg is a TupleType
+        # Single type_arg: recursive matching handles compound types like
+        # NativeIterable[tuple[K, V]] where the type_arg is a TupleType.
         if len(param_type.type_args) == 1:
-            return self.match_type_with_inference(param_type.type_args[0], elem_type, inferred)
-        for ta in param_type.type_args:
+            elem = elem_types[0]
+            return elem is not None and self.match_type_with_inference(
+                param_type.type_args[0], elem, inferred)
+        # Multi-param: bind each bound type_arg to its matching protocol param
+        # positionally. A None entry (protocol param the conformer didn't pin)
+        # leaves that bound arg unresolved for the caller's reject loop; but a
+        # conformer that pins NOTHING (every entry None) provided no evidence,
+        # so fail like the single-param gate above rather than matching vacuously.
+        bound_any = False
+        for ta, elem in zip(param_type.type_args, elem_types):
+            if elem is None:
+                continue
+            bound_any = True
             if isinstance(ta, TypeParamRef):
                 if ta.name in inferred:
-                    if not self.types_match_for_inference(inferred[ta.name], elem_type):
+                    if not self.types_match_for_inference(inferred[ta.name], elem):
                         return False
                 else:
-                    inferred[ta.name] = elem_type
-        return True
+                    inferred[ta.name] = elem
+            elif not self.match_type_with_inference(ta, elem, inferred):
+                return False
+        return bound_any
 
     def _infer_protocol_type_arg_structurally(
         self, arg_type: TpyType, protocol_name: str,
-    ) -> TpyType | None:
-        """Infer a protocol's type arg by matching method signatures structurally.
+    ) -> list[TpyType | None] | None:
+        """Infer a protocol's type args by matching method signatures structurally.
 
-        Uses match_type_with_inference to unify protocol method signatures
-        (containing TypeParamRefs like T) against the record's concrete method
-        signatures. Handles all compound return/param types (Span, Optional, etc.).
+        Returns the protocol's params resolved positionally (aligned to the
+        protocol's own type_params; an entry is None when the conformer's
+        signatures don't pin that param), or None when arg_type conforms to
+        nothing. Uses match_type_with_inference to unify protocol method
+        signatures (containing TypeParamRefs like T) against the record's
+        concrete method signatures. Handles all compound return/param types
+        (Span, Optional, etc.).
 
         Also handles protocol-to-protocol inference: when arg_type is a protocol
         (e.g. Iterator[Int32]) matching a different protocol (e.g. Iterable[T]),
@@ -1162,20 +1175,21 @@ class TypeOperations:
                         proto_ptype, _substitute(record_ptype), inferred)
                 break
 
-        first_param = protocol_info.type_params[0]
-        return inferred.get(first_param)
+        return [inferred.get(p) for p in protocol_info.type_params]
 
     def _infer_protocol_type_arg_from_protocol(
         self,
         arg_type: NominalType,
         arg_protocol: 'ProtocolInfo',
         target_protocol: 'ProtocolInfo',
-    ) -> TpyType | None:
-        """Infer target protocol's type arg from an arg protocol's method signatures.
+    ) -> list[TpyType | None]:
+        """Infer the target protocol's type args from an arg protocol's methods.
 
-        E.g. Iterator[Int32] matching Iterable[T]: looks up Iterator's __iter__
-        method (returns Self = Iterator[Int32]), matches against Iterable's
-        __iter__ (returns Iterator[T]) to infer T = Int32.
+        Returns the target protocol's params resolved positionally (aligned to
+        target_protocol.type_params; None per unpinned param). E.g. Iterator[Int32]
+        matching Iterable[T]: looks up Iterator's __iter__ method (returns Self =
+        Iterator[Int32]), matches against Iterable's __iter__ (returns Iterator[T])
+        to infer T = Int32.
         """
         # Build substitution for arg protocol: resolve Self and type params
         arg_subst: dict[str, TpyType] = {"Self": arg_type}
@@ -1201,10 +1215,7 @@ class TypeOperations:
                         target_ptype, resolved_ptype, inferred)
                 break
 
-        # Returns only the first type param -- callers handle multi-param
-        # protocols via match_type_with_inference on the full type_args tuple.
-        first_param = target_protocol.type_params[0]
-        return inferred.get(first_param)
+        return [inferred.get(p) for p in target_protocol.type_params]
 
     def _match_array_with_inference(
         self,

@@ -1,0 +1,1 @@
+main.py:29: error: Cannot infer type arguments for 'take_second'. Specify explicitly: take_second[K, V, T](...)
