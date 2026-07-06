@@ -12,7 +12,7 @@ from ..typesys import (
     TpyType, NominalType, TypeParamRef, TypeParamKind, ReadonlyType, VoidType, SelfType,
     OptionalType, UnionType, OwnType, MethodSignature, is_protocol_type,
     unwrap_readonly, unwrap_own, is_protocol_union, protocol_union_protocols,
-    protocol_union_has_none, unwrap_ref_type,
+    protocol_union_has_none, unwrap_ref_type, shadowed_local_cpp_name,
 )
 from ..parse import TpyProtocol, TpyRecord
 from .. import qnames
@@ -235,7 +235,11 @@ class ProtocolGenerator:
             source_module, original_name = qual
             base = qualified_cpp_name(source_module, original_name)
         else:
-            base = self._qualify_protocol_via_qname(protocol) or name
+            # A local @dynamic protocol whose name a member shadows must render
+            # fully-qualified (same shadow-qualification as records/enums).
+            base = (self._qualify_protocol_via_qname(protocol)
+                    or shadowed_local_cpp_name(protocol._module_qname)
+                    or name)
         if protocol.type_args:
             args_cpp = ", ".join(t.to_cpp() for t in protocol.type_args)
             return f"{base}<{args_cpp}>"

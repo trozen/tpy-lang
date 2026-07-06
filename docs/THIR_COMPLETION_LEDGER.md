@@ -410,6 +410,16 @@ deferred (self-contained) / blocked-on-`<rung>`.
   different spelling arm), `@export(binding="C")` linkage, `native_cpp_return_type`
   static_cast wraps, the bespoke-arm builtins, non-positional templates, and the
   pre-arm/kwarg-dependent arg rows for native callees (`call.native_arg_shape`).
+- **Shadow-colliding records** (a member named like a same-module type -- the
+  member/type-name collision fix): **whole-record reject** (`sig.member_shadows_type`
+  for method bodies, `ctor.member_shadows_type` for constructors). The AST path
+  qualifies local type references inside such a record (`::mod::day`) via the
+  `_qualify_shadowed_nominals` flag; THIR emit renders raw baked names (ctor-call
+  callee, base-init) that don't consult the flag, so it defers the whole record to
+  AST. Rare (currently ~just `datetime`). To CLOSE before AST deletion: teach THIR
+  emit to qualify a shadowed local ref -- read the same `RecordInfo.shadows_local_type`
+  fact and qualify the ctor-call/base-init/type sites under the flag, instead of
+  gate-rejecting. Surfaced by /tpy-review of the member/type-name collision fix.
 
 ### Form ladder (F) -- `IR_DESIGN.md` rung ladder + `THIR_FORM_INVENTORY.md`
 - F1 (record locals + Optional read), F2 (reseatable pointer-locals + Optional

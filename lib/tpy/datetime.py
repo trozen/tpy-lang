@@ -656,6 +656,14 @@ class datetime(ValueType):
     def microsecond(self) -> Int32:
         return self._us
 
+    def date(self) -> date:
+        return date(self._y, self._mo, self._d)
+
+    def time(self) -> time:
+        # Naive time; drops tzinfo (like CPython) and fold (TPy time is
+        # naive-only, no fold surface -- see the time class).
+        return time(self._hh, self._mm, self._ss, self._us)
+
     @property
     def tzinfo(self) -> timezone | ZoneInfo | None:
         k = self._tz_kind()

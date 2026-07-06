@@ -4339,6 +4339,15 @@ inherits from *its* ancestor.
 - **Field shadowing** (warning, not error) -- a child field that shadows an
   inherited same-name field emits a warning pointing at `AncestorN.field` for
   access to the ancestor's slot. Applies to any inheritance shape.
+- **Member sharing a name with a sibling type** (works) -- a member (method,
+  field, `@property`, class constant, static method, or a method-parameter
+  type) named identically to *another* local type (record, enum, or `@dynamic`
+  protocol) is allowed, matching CPython. In C++ the member would shadow the
+  same-named type in record scope, so codegen renders references to that type
+  fully-qualified (`::tpyapp::mod::day`) inside the colliding record only. This
+  is how `datetime.date()` / `datetime.time()` accessors work. Distinct from
+  the nested-type collision below (a nested type + a same-*class* member is
+  still rejected -- the shadow is unsalvageable there).
 - **Nested-type / field name collision** -- a class declaring both a nested
   type and a field/method with the same name is rejected: the generated C++
   is unsalvageable (the member shadows the nested type name, so even

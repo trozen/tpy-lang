@@ -15,7 +15,7 @@ from ..typesys import (
     TypeParamRef, TypeParamKind, RecordInfo, TupleType, UnionType,
     unwrap_readonly, unwrap_optional_own, unwrap_send_sync,
     get_covariant_params, PtrType,
-    bare_name,
+    bare_name, qualify_shadowed_nominals,
     del_suppresses_default_ctor, type_value_init_indeterminate,
 )
 from ..parse import (
@@ -253,7 +253,24 @@ class RecordGenerator:
         record_info = self.ctx.analyzer.registry.get_record(name)
         return record_info is not None and record_info.is_native
 
+    def _record_shadows_local_type(self, record: TpyRecord) -> bool:
+        """True if a member shadows a same-named local type in C++ record scope,
+        so type references inside must render fully-qualified. Reads the fact
+        sema computed once (`RecordInfo.shadows_local_type`) over the full C++
+        member set (own + MRO-inherited methods/fields/properties/class-constants)
+        -- codegen does not re-derive it."""
+        ri = self.ctx.analyzer.registry.get_record(record.name)
+        return ri is not None and ri.shadows_local_type
+
     def gen_record_decl(self, out: TextIO, record: TpyRecord) -> None:
+        """Generate a struct declaration for a record."""
+        if not self._is_native(record) and self._record_shadows_local_type(record):
+            with qualify_shadowed_nominals():
+                self._gen_record_decl(out, record)
+        else:
+            self._gen_record_decl(out, record)
+
+    def _gen_record_decl(self, out: TextIO, record: TpyRecord) -> None:
         """Generate a struct declaration for a record."""
         # Native records don't generate C++ structs -- they're defined in external headers
         if self._is_native(record):
@@ -810,6 +827,14 @@ class RecordGenerator:
         return cls._stmt_count(body[start:]) <= cls._SMALL_METHOD_STMT_THRESHOLD
 
     def gen_record_method_defs(self, out: TextIO, record: TpyRecord,
+                                *, mode: MethodEmitMode) -> None:
+        if not self._is_native(record) and self._record_shadows_local_type(record):
+            with qualify_shadowed_nominals():
+                self._gen_record_method_defs(out, record, mode=mode)
+        else:
+            self._gen_record_method_defs(out, record, mode=mode)
+
+    def _gen_record_method_defs(self, out: TextIO, record: TpyRecord,
                                 *, mode: MethodEmitMode) -> None:
         """Emit out-of-line method definitions for ``record`` at namespace
         scope. ``mode`` selects the partition: ``"def_hpp"`` emits the small

@@ -11,6 +11,7 @@ Defines the core types available in TurboPython:
 """
 
 from __future__ import annotations
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Callable, Iterator, Optional, TYPE_CHECKING
@@ -25,6 +26,25 @@ if TYPE_CHECKING:
 # Toggled (default off) only by qualified_type_str, so diagnostics can render
 # module-qualified nominals without changing ordinary str(type).
 _qualify_nominals_in_str = False
+
+# Toggled (default off) by codegen only while emitting a record whose member
+# name shadows a same-named local type. While set, a local record/enum leaf
+# renders as its fully-qualified C++ spelling (`::tpyapp::mod::Name`) so the
+# member can't shadow the type reference. Off everywhere else -> bare name.
+_qualify_shadowed_nominals = False
+
+
+@contextmanager
+def qualify_shadowed_nominals():
+    """Render local nominal leaves fully-qualified for the duration -- used
+    around the C++ emission of a record whose member shadows a same-named type."""
+    global _qualify_shadowed_nominals
+    prev = _qualify_shadowed_nominals
+    _qualify_shadowed_nominals = True
+    try:
+        yield
+    finally:
+        _qualify_shadowed_nominals = prev
 
 
 def qualified_type_str(t: 'TpyType') -> str:
@@ -194,6 +214,25 @@ def _native_cpp_names_view() -> dict[str, str]:
     if compiler is None:
         return _EMPTY_NATIVE_CPP_NAMES
     return compiler.native_cpp_names
+
+
+def _local_qualified_cpp_names_view() -> dict[str, str]:
+    """Read-side accessor for the active compiler's local-record qualified
+    spellings (qname -> `::tpyapp::mod::Name`), consulted only under
+    `_qualify_shadowed_nominals`."""
+    compiler = get_current_compiler()
+    if compiler is None:
+        return _EMPTY_NATIVE_CPP_NAMES
+    return compiler.local_qualified_cpp_names
+
+
+def shadowed_local_cpp_name(module_qname: 'str | None') -> 'str | None':
+    """Qualified C++ spelling for a local record/enum while shadow-qualification
+    is active, else None. For codegen sites that render a callee from a bare
+    name rather than through `NominalType.to_cpp()` (e.g. a local ctor call)."""
+    if not _qualify_shadowed_nominals or module_qname is None:
+        return None
+    return _local_qualified_cpp_names_view().get(module_qname)
 
 
 def ensure_qualified(name: str) -> str:
@@ -1012,6 +1051,13 @@ class NominalType(TpyType):
         two records sharing a short name imported from different modules;
         the canonical qname disambiguates them (codegen registers both keys).
         """
+        # Shadow-qualification: while emitting a record whose member name
+        # shadows a same-named local type, a local record/enum must render
+        # fully-qualified so the member can't hijack the type reference.
+        if _qualify_shadowed_nominals and self._module_qname is not None:
+            shadowed = _local_qualified_cpp_names_view().get(self._module_qname)
+            if shadowed is not None:
+                return shadowed
         view = _native_cpp_names_view()
         if self._module_qname is not None:
             qualified = view.get(self._module_qname)
@@ -4960,6 +5006,12 @@ class RecordInfo:
     type_factory: "Optional[Callable[..., TpyType]]" = None  # Factory to create concrete type from params
     parents: list['TpyType'] = field(default_factory=list)  # Direct base classes in source order (equals MRO tail order, enforced by _check_multi_base_order).
     mro_ancestors: list['TpyType'] = field(default_factory=list)  # C3 linearization of ancestors (self excluded), populated by validate_record_inheritance
+    # True if a C++ member (own or MRO-inherited method/field/property/class-
+    # constant) shares a name with a same-module record/enum/@dynamic-protocol,
+    # so the member shadows that type in record scope -- codegen/THIR then render
+    # local type references fully-qualified. Computed once by sema after
+    # inheritance validation; the single source both consumers read.
+    shadows_local_type: bool = False
     implemented_protocols: list['NominalType'] = field(default_factory=list)  # Explicit protocol implementations
     # Short names of every protocol this record implements directly OR
     # transitively via parent-protocol chains. Populated once by sema

@@ -1181,6 +1181,11 @@ class Compiler:
         self.union_display_names: dict[tuple[TpyType, ...], str] = {}
         self.union_wrapper_index: dict[tuple[TpyType, ...], RecursiveUnionInfo] = {}
         self.native_cpp_names: dict[str, str] = {}
+        # Qualified C++ spellings (`::tpyapp::mod::Name`) for LOCAL records/enums,
+        # keyed by qname. Consulted only when `_qualify_shadowed_nominals` is set
+        # (a record whose member shadows a same-named type -- see typesys), never
+        # by default; local records otherwise render as their bare short name.
+        self.local_qualified_cpp_names: dict[str, str] = {}
         # Cross-module render names for generic recursive alias wrappers, keyed
         # by canonical qname (`defining_module.original_name`) rather than the
         # short name -- the qualified `import m; m.Tree` form lets two distinct
@@ -1280,6 +1285,7 @@ class Compiler:
         self.namespace_map = {}
         self.include_path_map = {}
         self.native_cpp_names = {}
+        self.local_qualified_cpp_names = {}
         self.recursive_alias_cpp_names = {}
         self.union_alias_names = {}
         self.union_display_names = {}

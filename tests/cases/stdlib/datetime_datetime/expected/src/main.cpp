@@ -200,8 +200,7 @@ void __tpy_init() {
     // # utcfromtimestamp (fixed timestamps -> deterministic), arithmetic with
     // # timedelta and datetime, comparisons, weekday/toordinal, isoformat/str/repr
     // # trimming, hashability. Byte-compared against real CPython datetime.
-    // # (dt.date()/dt.time() accessors are a filed follow-up, blocked on the
-    // # member-name/type-name C++ collision bug.)
+    // # (dt.date()/dt.time() accessors are covered by stdlib/datetime_accessors.)
     // from datetime import date, time, datetime, timedelta
     ::tpystd::datetime::__tpy_init();
     // main()

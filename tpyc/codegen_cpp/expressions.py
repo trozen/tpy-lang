@@ -21,7 +21,8 @@ from ..typesys import (
     INT32, BIGINT, FLOAT, CHAR, VOID, is_protocol_type, is_void_like_type, polymorphic_source_inner, polymorphic_source_is_pointer, polymorphic_subclass_into_optional, is_any_str_type, is_any_bytes_type, container_to_str_template,
     ResolvedBinop, get_covariant_params, unwrap_ref_type, RefType, ParamInfo,
     yield_uses_borrow_slot, view_family_for_type, ViewTypeFamily, PendingViewType, STR_FAMILY, BYTES_FAMILY,
-    is_float_type, is_readonly_span, is_dyn_protocol, contains_type_param)
+    is_float_type, is_readonly_span, is_dyn_protocol, contains_type_param,
+    shadowed_local_cpp_name)
 from ..type_def_registry import (
     is_dict_view, is_set, is_dict, is_array, is_span, is_varargs, is_spanlike_view, is_list,
     is_fixed_int_type, is_big_int_type, is_bool_type, is_char_type,
@@ -3397,6 +3398,11 @@ class ExpressionGenerator:
             if qual is not None:
                 source_module, original_name = qual
                 return f"{qualified_cpp_name(source_module, original_name)}({args})"
+            # Local ctor call inside a record whose member shadows this type:
+            # qualify so the member can't hijack the name (mirrors the decl fix).
+            shadowed = shadowed_local_cpp_name(record_info.qualified_name())
+            if shadowed is not None:
+                return f"{shadowed}({args})"
             return f"{expr.func_name}({args})"
         # Callable variable call (possibly narrowed from Optional[Callable])
         fi = expr.resolved_function_info

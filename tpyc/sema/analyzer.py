@@ -887,6 +887,36 @@ class SemanticAnalyzer:
         # TpyType uniformly.
         self._advance_phase(self._PHASE_NONE, self._PHASE_BIND_IMPORTS)
 
+    def _compute_record_shadow_facts(self, module: TpyModule) -> None:
+        """Set `RecordInfo.shadows_local_type` for each record: true when a C++
+        member (own or MRO-inherited method/field/property/class-constant) shares
+        a name with a same-module record/enum/@dynamic-protocol, so the member
+        shadows that type in record scope and local type references inside must
+        render fully-qualified. The shadow name is a type's leading C++ component
+        (`Outer` for a nested `Outer.Inner`), which is what an unqualified member
+        can hijack."""
+        registry = self.ctx.registry
+        shadow_names: set[str] = set()
+        for rec in module.all_records():
+            shadow_names.add(rec.name.split(".", 1)[0])
+        for en in module.all_enums():
+            shadow_names.add(en.name.split(".", 1)[0])
+        for proto in module.protocols:
+            if proto.is_dynamic:
+                shadow_names.add(proto.name.split(".", 1)[0])
+        if not shadow_names:
+            return
+        for record in module.all_records():
+            ri = registry.get_record(record.name)
+            if ri is None:
+                continue
+            members = (set(ri.methods) | {f.name for f in ri.fields}
+                       | set(ri.properties) | set(ri.class_constants))
+            for anc in registry.iter_ancestor_records(ri):
+                members |= (set(anc.methods) | {f.name for f in anc.fields}
+                            | set(anc.properties) | set(anc.class_constants))
+            ri.shadows_local_type = not members.isdisjoint(shadow_names)
+
     def register_records_and_protocols(self, module: TpyModule) -> None:
         """Sub-phase 2: enums, records (incl. macro application), then
         protocols, inheritance + value-type validation, recursive-union
@@ -952,6 +982,11 @@ class SemanticAnalyzer:
         # are registered). Sets `implemented_protocols` / MRO on each record.
         for record in module.all_records():
             self.registrar.validate_record_inheritance(record)
+
+        # Compute the member-name/type-name shadow fact now that MRO is
+        # populated and every local type is registered -- one source both
+        # codegen and THIR read (see RecordInfo.shadows_local_type).
+        self._compute_record_shadow_facts(module)
 
         # Re-validate record field types now that protocols are registered AND
         # inheritance is finalized. Optional[@dynamic] / container-element /

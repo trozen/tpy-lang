@@ -222,6 +222,46 @@ class CodeGenerator:
             qual = self.analyzer.registry.record_qualification(record_info, current_module)
             if qual is not None:
                 register_native_cpp_name(qname, qualified_cpp_name(*qual))
+        # Qualified spellings for LOCAL records/enums, keyed by qname. Used only
+        # under `qualify_shadowed_nominals` (a record whose member shadows a
+        # same-named type); default rendering stays the bare short name.
+        # Value namespace uses the CODEGEN module name (the one the struct is
+        # emitted in, e.g. `repro` for a run entry point), not the analyzer's
+        # logical module name (`__main__`); the qname KEY stays the analyzer's.
+        emit_module = self.ctx.module_name
+        # Per-module: only the current module's local types can be shadowed by
+        # its own members (cross-module refs already qualify via native_cpp_names),
+        # so a stale entry from another module must not trip the collision gate.
+        local_qualified = require_current_compiler().local_qualified_cpp_names
+        local_qualified.clear()
+        for local_name, record_info in self.analyzer.registry.records.items():
+            if record_info.is_native:
+                continue
+            if self.analyzer.registry.imported_record_qualification(
+                    local_name, current_module) is None:
+                local_qualified[record_info.qualified_name()] = \
+                    qualified_cpp_name(emit_module, local_name)
+        for enum in module.all_enums():
+            enum_type = self.analyzer.registry.get_enum(enum.name)
+            if enum_type is None:
+                continue
+            einfo = enum_info_of(enum_type)
+            if einfo is not None and einfo.is_native:
+                continue
+            qname = enum_type.qualified_name()
+            if qname is not None:
+                local_qualified[qname] = qualified_cpp_name(emit_module, enum.name)
+        # Local @dynamic protocols render as a bare base-class name (get_dynamic_
+        # base_name), so a member shadowing one needs the qualified spelling too.
+        for local_name, proto_info in \
+                self.analyzer.registry._protocols_by_local_name.items():
+            if not proto_info.is_dynamic or proto_info.cpp_concept:
+                continue  # @native+@dynamic use their cpp_concept name
+            if self.analyzer.registry.imported_protocol_qualification(
+                    local_name, current_module) is not None:
+                continue  # imported -> already handled via native_cpp_names
+            local_qualified[f"{proto_info.module}.{local_name}"] = \
+                qualified_cpp_name(emit_module, local_name)
         # Cross-module @dynamic protocols (e.g. `Awaker` imported into
         # `asyncio._executor` from `tpy.coro`) need the same `native_cpp_names`
         # qualification as user records: `NominalType.to_cpp()` consults the
