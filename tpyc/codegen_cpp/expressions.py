@@ -3513,10 +3513,17 @@ class ExpressionGenerator:
                             break
             return f"{obj_code}.{field_name}({args})"
 
-        # Skip upfront arg generation when a later path will regenerate args:
-        # - cpp_template methods: handled by gen_method_from_function_info
-        # - user-record methods with known method: handled by TypeParamRef temp path
-        # Running the first-pass AND a later path creates duplicate TempState entries.
+        # The argument string is computed LAZILY (`_args()`), not eagerly.
+        # Many branches below regenerate the args their own way
+        # (gen_call_from_fi / gen_method_from_function_info / the
+        # instance-method gen_call_arg loop) and never read `_args()`; only
+        # the branches that interpolate the fallback string do. Computing it
+        # eagerly registered a TempState hoist (a value-union / protocol /
+        # list temp) that flushed even on the regenerating branches that
+        # discarded the string -- double-evaluating the arg's side effects
+        # (an evaluate-once divergence from CPython). `_skip_first_pass`
+        # keeps the fallback on the simple gen_expr_deref path for methods a
+        # later branch handles (cpp_template / native / user-record).
         _fi = expr.resolved_function_info
         _skip_first_pass = (_fi is not None
                             and (_fi.cpp_template is not None or _fi.native_function))
@@ -3527,61 +3534,73 @@ class ExpressionGenerator:
                 if _ri and _ri.get_method(expr.method):
                     _skip_first_pass = True
         _is_native_stub = _fi is not None and bool(_fi.native_name or _fi.cpp_template)
-        if not _skip_first_pass and _fi:
-            params = expr.resolved_function_info.params
-            gen_args = []
-            dcbp = _fi.deep_const_borrow_params
-            for i, arg in enumerate(expr.args):
-                ptype = params[i].type if i < len(params) else None
-                if isinstance(arg, TpyTypeParamConstruct):
-                    assert ptype is not None, f"No param type for TpyTypeParamConstruct at arg {i}"
-                    gen_args.append(f"{self.types.type_to_cpp(ptype)}{{}}")
-                elif isinstance(arg, TpyVarargPack):
-                    gen_args.append(self._gen_vararg_pack(arg, slot_type=ptype))
-                else:
-                    # @dynamic protocol params in method calls
-                    if ptype is not None:
-                        dynamic_arg = self._gen_dynamic_protocol_arg(arg, ptype)
-                        if dynamic_arg is not None:
-                            gen_args.append(dynamic_arg)
+        _args_memo: list[str] = []
+
+        def _args() -> str:
+            if _args_memo:
+                return _args_memo[0]
+            if not _skip_first_pass and _fi:
+                params = expr.resolved_function_info.params
+                gen_args = []
+                dcbp = _fi.deep_const_borrow_params
+                for i, arg in enumerate(expr.args):
+                    ptype = params[i].type if i < len(params) else None
+                    if isinstance(arg, TpyTypeParamConstruct):
+                        assert ptype is not None, f"No param type for TpyTypeParamConstruct at arg {i}"
+                        gen_args.append(f"{self.types.type_to_cpp(ptype)}{{}}")
+                    elif isinstance(arg, TpyVarargPack):
+                        gen_args.append(self._gen_vararg_pack(arg, slot_type=ptype))
+                    else:
+                        # @dynamic protocol params in method calls
+                        if ptype is not None:
+                            dynamic_arg = self._gen_dynamic_protocol_arg(arg, ptype)
+                            if dynamic_arg is not None:
+                                gen_args.append(dynamic_arg)
+                                continue
+                            covariant_arg = self._gen_covariant_arg(arg, ptype)
+                            if covariant_arg is not None:
+                                gen_args.append(covariant_arg)
+                                continue
+                        proto_arg = self._gen_protocol_arg(arg, ptype)
+                        if proto_arg is not None:
+                            gen_args.append(proto_arg)
                             continue
-                        covariant_arg = self._gen_covariant_arg(arg, ptype)
-                        if covariant_arg is not None:
-                            gen_args.append(covariant_arg)
+                        opt_arg = self._gen_optional_ptr_arg(arg, ptype)
+                        if opt_arg is not None:
+                            gen_args.append(opt_arg)
                             continue
-                    proto_arg = self._gen_protocol_arg(arg, ptype)
-                    if proto_arg is not None:
-                        gen_args.append(proto_arg)
-                        continue
-                    opt_arg = self._gen_optional_ptr_arg(arg, ptype)
-                    if opt_arg is not None:
-                        gen_args.append(opt_arg)
-                        continue
-                    union_arg = self._gen_union_arg(arg, ptype)
-                    if union_arg is not None:
-                        gen_args.append(union_arg)
-                        continue
-                    # Rvalue list literal -> protocol/TypeParamRef param: must
-                    # materialize to a named temp. C++ can't deduce a template
-                    # parameter from a braced-init-list, and protocol-typed
-                    # params expand to template T_xs&. Concrete ref-param
-                    # targets (list[T]&, dict[K,V]&, etc.) accept inline
-                    # braced-init natively, so don't hoist there -- it would
-                    # just bloat generated code.
-                    if (ptype is not None
-                            and self.ctx.is_temporary_expr(arg)
-                            and (is_protocol_type(ptype) or isinstance(ptype, TypeParamRef))):
-                        init_expr = self.gen_expr(arg, ptype)
-                        temp_name = self.ctx.temps.create(ptype, init_expr)
-                        gen_args.append(temp_name)
-                        continue
-                    tcb = dcbp is not None and i in dcbp
-                    gen_args.append(self.gen_call_arg(arg, ptype,
-                                                      inline_template=_is_native_stub,
-                                                      target_const_borrow=tcb))
-            args = ", ".join(gen_args)
-        else:
-            args = ", ".join(self.gen_expr_deref(a) for a in expr.args)
+                        union_arg = self._gen_union_arg(arg, ptype)
+                        if union_arg is not None:
+                            gen_args.append(union_arg)
+                            continue
+                        # Rvalue list literal -> protocol/TypeParamRef param: must
+                        # materialize to a named temp. C++ can't deduce a template
+                        # parameter from a braced-init-list, and protocol-typed
+                        # params expand to template T_xs&. Concrete ref-param
+                        # targets (list[T]&, dict[K,V]&, etc.) accept inline
+                        # braced-init natively, so don't hoist there -- it would
+                        # just bloat generated code.
+                        if (ptype is not None
+                                and self.ctx.is_temporary_expr(arg)
+                                and (is_protocol_type(ptype) or isinstance(ptype, TypeParamRef))):
+                            init_expr = self.gen_expr(arg, ptype)
+                            temp_name = self.ctx.temps.create(ptype, init_expr)
+                            gen_args.append(temp_name)
+                            continue
+                        tcb = dcbp is not None and i in dcbp
+                        gen_args.append(self.gen_call_arg(arg, ptype,
+                                                          inline_template=_is_native_stub,
+                                                          target_const_borrow=tcb))
+                result = ", ".join(gen_args)
+            else:
+                result = ", ".join(self.gen_expr_deref(a) for a in expr.args)
+            _args_memo.append(result)
+            return result
+
+        # The plain instance-method tail (bottom of this function) builds its
+        # own specialized `args` before emitting; other tail-reaching paths
+        # fall back to `_args()`. None means "not yet built".
+        args: str | None = None
 
         # Module-qualified static method call: m.Foo.method() or pkg.sub.Foo.method().
         # Sema sets is_static_call AND user_module_call together with a
@@ -3620,7 +3639,7 @@ class ExpressionGenerator:
                         for j, t in enumerate(method_args)) + ">"
                     if any(contains_type_param(t) for t in class_args):
                         template_kw = "template "
-            return f"{cpp_class}::{template_kw}{cpp_method}{static_method_targs}({args})"
+            return f"{cpp_class}::{template_kw}{cpp_method}{static_method_targs}({_args()})"
 
         # Handle user module function calls: module.func() -> ::tpyapp::module::func()
         if expr.user_module_call is not None:
@@ -3636,10 +3655,10 @@ class ExpressionGenerator:
                 # qualify_native_name forces leading :: so lookup can't
                 # bind to a namespace member or class method by accident.
                 if fi.is_native:
-                    return f"{qualify_native_name(func_name)}({args})"
+                    return f"{qualify_native_name(func_name)}({_args()})"
                 # @native(binding="C") / @export: extern "C" declaration lives in the
                 # module namespace, use module-qualified path
-                return f"{qualified_cpp_name(expr.user_module_call, func_name)}({args})"
+                return f"{qualified_cpp_name(expr.user_module_call, func_name)}({_args()})"
             # Cross-module dotted call: same path as the bare-call case
             # above. The binding's defining_module already encodes the
             # chain-flattened ultimate definer; cycle-aware codegen in
@@ -3670,8 +3689,8 @@ class ExpressionGenerator:
             # Emit explicit template args for generic user-module calls
             if fi and fi.is_generic() and expr.inferred_type_args:
                 type_args_str = ", ".join(self.types.type_to_cpp(unwrap_ref_type(t)) for t in expr.inferred_type_args)
-                return f"{qualified_cpp_name(qual_module, qual_name)}<{type_args_str}>({args})"
-            return f"{qualified_cpp_name(qual_module, qual_name)}({args})"
+                return f"{qualified_cpp_name(qual_module, qual_name)}<{type_args_str}>({_args()})"
+            return f"{qualified_cpp_name(qual_module, qual_name)}({_args()})"
 
         # Handle builtin module function/type calls (e.g., time.time() or t.Int32() with import tpy as t)
         if expr.builtin_module_call is not None:
@@ -3740,14 +3759,14 @@ class ExpressionGenerator:
             parent_cpp = expr.super_parent_type.to_cpp()
             # C++ requires 'template' keyword before dependent template names
             template_kw = "template " if method_targs else ""
-            return f"this->{parent_cpp}::{template_kw}{escape_cpp_name(expr.method)}{method_targs}({args})"
+            return f"this->{parent_cpp}::{template_kw}{escape_cpp_name(expr.method)}{method_targs}({_args()})"
         # Handle unbound-self dispatch: BaseN.method(self, args) -> this->BaseN::method(args).
         # sema stripped `self` from expr.args so the arg shape matches the
         # resolved FunctionInfo; the explicit receiver matches the super() form.
         if expr.unbound_self_parent_type is not None:
             parent_cpp = expr.unbound_self_parent_type.to_cpp()
             template_kw = "template " if method_targs else ""
-            return f"this->{parent_cpp}::{template_kw}{escape_cpp_name(expr.method)}{method_targs}({args})"
+            return f"this->{parent_cpp}::{template_kw}{escape_cpp_name(expr.method)}{method_targs}({_args()})"
         # Handle ClassName.staticmethod() -> ClassName::staticmethod()
         if expr.is_static_call and isinstance(expr.obj, TpyName):
             # @cpp_template on static methods: expand the template directly.
@@ -3766,7 +3785,7 @@ class ExpressionGenerator:
             if record_info and record_info.is_native:
                 cpp_class = record_info.native_name
                 cpp_method = fi.native_name if fi and fi.native_name else escape_cpp_name(expr.method)
-                return f"{cpp_class}::{cpp_method}({args})"
+                return f"{cpp_class}::{cpp_method}({_args()})"
             # Implicit-stdlib peers don't emit a `using ::ns::Foo;` alias
             # (suppressed in `_emit_alias_using_block` to avoid include
             # cycles), so the bare class name needs explicit qualification.
@@ -3798,7 +3817,7 @@ class ExpressionGenerator:
                     # name dependent inside the enclosing template.
                     if any(contains_type_param(t) for t in class_args):
                         template_kw = "template "
-            return f"{class_name}::{template_kw}{escape_cpp_name(expr.method)}{static_method_targs}({args})"
+            return f"{class_name}::{template_kw}{escape_cpp_name(expr.method)}{static_method_targs}({_args()})"
         # Handle module.function() (import X -> X.func())
         # Only if the name isn't shadowed by a variable, user-defined function, or record
         if isinstance(expr.obj, TpyName) and expr.obj.name in self.ctx.analyzer.imports:
@@ -3960,6 +3979,11 @@ class ExpressionGenerator:
                                                                   target_const_borrow=tcb,
                                                                   overloaded_call=str_pin_ok))
                     args = ", ".join(gen_args)
+
+        # Tail-reaching paths that didn't build a specialized `args` above
+        # (non-user-record method calls) use the fallback string.
+        if args is None:
+            args = _args()
 
         # Use -> for pointer-locals/globals (T*) and pointer-typed expressions
         # (OptionalType non-value expressions like function calls return T*)
@@ -5754,12 +5778,44 @@ class ExpressionGenerator:
                     and elem_target.uses_pointer_repr()
                     and elem_capture != TupleElemCapture.VALUE
                 )
+                # Rvalue element in a borrow slot: the helper path below
+                # (tuple_value_to_borrow) rebuilds it from the value form and
+                # discards the borrow-form render, so generate ONLY the value
+                # form -- once. Rendering the borrow form too would re-evaluate
+                # the element, doubling its side effects and leaking a
+                # duplicate hoisted temp. Detected before the elem_str dispatch
+                # below since that render would be dead.
+                is_borrow_slot = (
+                    want_pointer_form
+                    or slot_mode in (TupleElemCapture.REF, TupleElemCapture.CONST_REF)
+                )
+                is_rv_borrow = (
+                    is_borrow_slot
+                    and not isinstance(elem, TpyNoneLiteral)
+                    and self.ctx.is_rvalue_source(elem)
+                    and elem_target is not None
+                )
+                elem_rv_borrow.append(is_rv_borrow)
+                if is_rv_borrow:
+                    # Value-form: the pointee value (no &-of, no nullptr-lift).
+                    if isinstance(elem_target, OptionalType):
+                        value_target = elem_target.inner
+                    else:
+                        value_target = elem_target
+                    value_str = self.gen_expr_deref(elem, value_target)
+                    elem_value_strs.append(value_str)
+                    elem_value_cpps.append(self.types.type_to_cpp(value_target))
+                    # elem_strs[i] is read only on the non-helper path, which
+                    # is unreachable once any element is rv_borrow; append a
+                    # value to keep the per-element lists index-aligned.
+                    elem_strs.append(value_str)
+                    continue
                 # Plain non-value lvalue element in a borrow (pointer) slot:
                 # take its address (`&expr`) so the slot is `T*` (aliasing).
                 # Keyed on the resolved element type + slot mode, NOT
                 # elem_target, so it fires even with no consumer target tuple
                 # (e.g. a generator-local `t = (1, b)` assignment). Rvalues are
-                # left to the tuple_value_to_borrow path below (which addresses
+                # left to the tuple_value_to_borrow path above (which addresses
                 # the source-tuple temp's slot, keeping it valid).
                 elem_rt = resolved_elem_types[i]
                 want_borrow_ptr_form = (
@@ -5801,37 +5857,13 @@ class ExpressionGenerator:
                         and not slot_inner.is_value_type()):
                     elem_str = self._maybe_move(elem, elem_str)
                 elem_strs.append(elem_str)
-                # Detect rvalue + borrow-form combinations that need the
-                # helper-tuple path. None literals at pointer-form-Optional
-                # slots are already handled by emitting nullptr -- they pass
-                # through the helper as-is, no value-form rewrite needed.
-                # The helper requires a known value-form slot type, which we
-                # only have when the consumer supplied a target_tuple (so
-                # elem_target / resolved are concrete, not a synthetic
-                # placeholder).
-                is_borrow_slot = (
-                    want_pointer_form
-                    or slot_mode in (TupleElemCapture.REF, TupleElemCapture.CONST_REF)
-                )
-                is_rv_borrow = (
-                    is_borrow_slot
-                    and not isinstance(elem, TpyNoneLiteral)
-                    and self.ctx.is_rvalue_source(elem)
-                    and elem_target is not None
-                )
-                elem_rv_borrow.append(is_rv_borrow)
-                if is_rv_borrow:
-                    # Value-form: render as the pointee value (no &-of, no
-                    # nullptr-lift). Source slot type is the bare value type.
-                    if isinstance(elem_target, OptionalType):
-                        value_target = elem_target.inner
-                    else:
-                        value_target = elem_target
-                    elem_value_strs.append(self.gen_expr_deref(elem, value_target))
-                    elem_value_cpps.append(self.types.type_to_cpp(value_target))
-                else:
-                    elem_value_strs.append(elem_str)
-                    elem_value_cpps.append("")
+                # Non-rv-borrow element (rv-borrow ones were handled and
+                # `continue`d above): reuse the borrow-form render for the
+                # helper's value tuple. None literals at pointer-form-Optional
+                # slots pass through the helper as nullptr, no value-form
+                # rewrite needed.
+                elem_value_strs.append(elem_str)
+                elem_value_cpps.append("")
         if any(elem_rv_borrow):
             # Helper path: build a value-form source tuple and let
             # tuple_value_to_borrow take addresses / bind references inside.

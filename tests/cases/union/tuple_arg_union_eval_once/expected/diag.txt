@@ -1,0 +1,1 @@
+main.py:25: warning: field 'v' is not initialized before the constructor body; it will be default-constructed in C++ (in CPython, the attribute would not exist)

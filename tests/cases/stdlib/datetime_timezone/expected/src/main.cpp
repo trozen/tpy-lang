@@ -201,15 +201,13 @@ void main() {
     std::cout << datetime::fromtimestamp(1614937200.5, __tmp_12) << "\n";
     // print(repr(ist.fromutc(datetime(2021, 3, 5, 9, 0, tzinfo=ist))))
     std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_13 = ist;
-    std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_14 = ist;
-    std::cout << ::tpy::repr_of(ist.fromutc(::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5), ::tpy::BigInt(9), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_14))) << "\n";
+    std::cout << ::tpy::repr_of(ist.fromutc(::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5), ::tpy::BigInt(9), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_13))) << "\n";
     // try:
     {
         try {
             // ist.fromutc(datetime(2021, 3, 5, 9, 0, tzinfo=UTC))
-            std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_15 = ::tpystd::datetime::UTC;
-            std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_16 = ::tpystd::datetime::UTC;
-            ist.fromutc(::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5), ::tpy::BigInt(9), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_16));
+            std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_14 = ::tpystd::datetime::UTC;
+            ist.fromutc(::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5), ::tpy::BigInt(9), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_14));
         } catch (const ::tpy::ValueError&) {
             // print("ValueError-fromutc")
             std::cout << "ValueError-fromutc" << "\n";
