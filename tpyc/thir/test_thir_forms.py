@@ -919,12 +919,37 @@ class TestRecordBorrowReturn:
         assert isinstance(ret, THIRReturn)
         assert isinstance(ret.value, THIRName) and not ret.value.deref
 
-    def test_field_source_return_is_ineligible(self):
-        # A field read (`return b.inner`) is not a bare-name source.
-        thir = _lower_ctx(
+    def test_field_source_return_routes(self):
+        # A plain field read (`return b.inner`) renders the bare storage-form
+        # access (`return b.inner;`) at the borrow slot.
+        thir, faces = _lower_ctx_witnessed(
             _F1_RECORDS
             + "def f(b: Box) -> Inner:\n    return b.inner\n")
-        assert _fn(thir, "f") is None
+        fn = _fn(thir, "f")
+        assert fn is not None
+        ret = fn.body[0]
+        assert isinstance(ret, THIRReturn)
+        assert isinstance(ret.value, THIRFieldAccess)
+        assert ret.value.form is Form.STORAGE and not ret.value.is_arrow
+        assert faces.get("ret.record_field", 0) == 1
+
+    def test_self_field_source_return_routes(self):
+        # `return self.field` in a method -- the arrow access (`return
+        # this->inner;`).
+        thir, faces = _lower_ctx_witnessed(
+            _F1_RECORDS
+            + "class Wrap:\n"
+            + "    b: Box\n"
+            + "    def __init__(self):\n        self.b = Box(Inner(1))\n"
+            + "    def get(self) -> Box:\n        return self.b\n")
+        fn = _fn(thir, "get")
+        assert fn is not None
+        ret = fn.body[0]
+        assert isinstance(ret, THIRReturn)
+        assert isinstance(ret.value, THIRFieldAccess) and ret.value.is_arrow
+        assert isinstance(ret.value.receiver, THIRSelf)
+        assert not ret.value.receiver.deref
+        assert faces.get("ret.record_field", 0) == 1
 
     def test_pointer_local_return_is_ineligible(self):
         # A reassigned record local is an F2 pointer-local (`Inner* x`); its
@@ -935,15 +960,52 @@ class TestRecordBorrowReturn:
             + "    x = b.inner\n    if flag:\n        x = c.inner\n    return x\n")
         assert _fn(thir, "f") is None
 
-    def test_self_return_is_ineligible(self):
-        # `return self` renders `return *this;` -- not mirrored.
-        thir = _lower_ctx(
+    def test_self_return_routes(self):
+        # `return self` (builder pattern) renders the AST's indirect-name
+        # deref (`return (*this);`) via THIRSelf(deref=True), BORROW at the
+        # non-value slot.
+        thir, faces = _lower_ctx_witnessed(
             _F1_RECORDS
             + "class Chain:\n"
             + "    n: Int32\n"
             + "    def __init__(self):\n        self.n = 0\n"
             + "    def bump(self) -> Chain:\n        self.n += 1\n        return self\n")
-        assert _fn(thir, "bump") is None
+        fn = _fn(thir, "bump")
+        assert fn is not None
+        ret = fn.body[-1]
+        assert isinstance(ret, THIRReturn)
+        assert isinstance(ret.value, THIRSelf) and ret.value.deref
+        assert ret.value.form is Form.BORROW
+        assert faces.get("ret.record_self", 0) == 1
+
+    def test_self_rebind_body_stays_ast(self):
+        # `self = other` inside a method: codegen emits a SHADOWING decl (the
+        # receiver is not a scope name on the AST path) while the walk state
+        # would classify a reassign -- the gate rejects the write, keeping the
+        # whole body (record return or scalar return alike) on the AST path.
+        src = (
+            _F1_RECORDS
+            + "class Chain:\n"
+            + "    n: Int32\n"
+            + "    def __init__(self):\n        self.n = 0\n"
+            + "    def pick(self, other: Chain) -> Chain:\n"
+            + "        self = other\n        return self\n"
+            + "    def peek(self, other: Chain) -> Int32:\n"
+            + "        self = other\n        return self.n\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "pick") is None
+        assert _fn(thir, "peek") is None
+
+    def test_free_fn_param_named_self_stays_ast(self):
+        # A free function's param merely NAMED `self` is not the receiver:
+        # prescan.has_self is False, so the self-return arm never fires (no
+        # ret.record_self witness) and the bare-name path's conservative
+        # literal-"self" reject keeps the body on the AST path.
+        thir, faces = _lower_ctx_witnessed(
+            _F1_RECORDS
+            + "def f(self: Box) -> Box:\n    return self\n")
+        assert _fn(thir, "f") is None
+        assert faces.get("ret.record_self", 0) == 0
 
     def test_narrowed_union_source_is_ineligible(self):
         # An isinstance-narrowed union member read renames to the extraction
@@ -974,11 +1036,12 @@ class TestRecordBorrowReturn:
 
 class TestRecordBorrowReturnEmit:
     def _cpp(self, src: str, thir: bool):
+        # hpp + cpp: method bodies emit inline into the header.
         compiler, modules = _compile(src)
         entry = _entry(modules)
-        _, cpp = compiler.generate_code_to_strings(
+        hpp, cpp = compiler.generate_code_to_strings(
             entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
-        return cpp
+        return hpp + cpp
 
     SRC = (
         _F1_RECORDS
@@ -995,6 +1058,99 @@ class TestRecordBorrowReturnEmit:
 
     def test_returns_bare_name(self):
         assert "return b;" in self._cpp(self.SRC, thir=True)
+
+    SELF_FIELD_SRC = (
+        _F1_RECORDS
+        + "class Chain:\n"
+        + "    n: Int32\n"
+        + "    b: Box\n"
+        + "    def __init__(self):\n        self.n = 0\n        self.b = Box(Inner(1))\n"
+        + "    def bump(self) -> Chain:\n        self.n += 1\n        return self\n"
+        + "    def get(self) -> Box:\n        return self.b\n"
+        + "def main():\n"
+        + "    c = Chain()\n    c.bump().bump()\n    d = c.get()\n    print(c.n, d.n)\n"
+        + "main()\n"
+    )
+
+    def test_self_and_field_byte_identical(self):
+        assert (self._cpp(self.SELF_FIELD_SRC, thir=True)
+                == self._cpp(self.SELF_FIELD_SRC, thir=False))
+
+    def test_self_return_emits_deref(self):
+        assert "return (*this);" in self._cpp(self.SELF_FIELD_SRC, thir=True)
+
+    def test_field_return_emits_arrow_access(self):
+        assert "return this->b;" in self._cpp(self.SELF_FIELD_SRC, thir=True)
+
+
+class TestValueRecordReturn:
+    # A ValueType record's `-> Vec` slot returns BY VALUE even though
+    # `_record_borrow_return` classifies it borrow -- the rvalue / self / field
+    # sources all render the same bare forms (a non-value record rvalue at a
+    # plain slot is a sema error, so no dangling shape compiles).
+    VREC = (
+        "from tpy import Int32, ValueType\n"
+        "class Vec(ValueType):\n"
+        "    x: Int32\n"
+        "    def __init__(self, x: Int32):\n        self.x = x\n"
+    )
+
+    def test_ctor_rvalue_at_plain_slot_routes(self):
+        thir, faces = _lower_ctx_witnessed(
+            self.VREC + "def make(n: Int32) -> Vec:\n    return Vec(n)\n")
+        fn = _fn(thir, "make")
+        assert fn is not None
+        ret = fn.body[0]
+        assert isinstance(ret, THIRReturn)
+        assert isinstance(ret.value, THIRCtorCall)
+        assert faces.get("ret.record_storage", 0) == 1
+
+    def test_self_return_is_value_form(self):
+        # The deref'd receiver read as a value (copied into the by-value
+        # return) -- BORROW here would trip the validator's value-return rule.
+        thir = _lower_ctx(
+            self.VREC
+            + "    def me(self) -> Vec:\n        return self\n")
+        fn = _fn(thir, "me")
+        assert fn is not None
+        ret = fn.body[0]
+        assert isinstance(ret.value, THIRSelf) and ret.value.deref
+        assert ret.value.form is Form.VALUE
+
+    def test_field_return_at_value_slot_routes(self):
+        # `return h.v` where the return slot is a VALUE record (returns by
+        # value, copying the field): same bare access render as the borrow
+        # slot; the STORAGE form tag passes the validator (only BORROW at a
+        # value-typed return is rejected).
+        thir, faces = _lower_ctx_witnessed(
+            self.VREC
+            + "class Wrap(ValueType):\n"
+            + "    v: Vec\n"
+            + "    def __init__(self, v: Vec):\n        self.v = v\n"
+            + "def get(w: Wrap) -> Vec:\n    return w.v\n")
+        fn = _fn(thir, "get")
+        assert fn is not None
+        ret = fn.body[0]
+        assert isinstance(ret.value, THIRFieldAccess)
+        assert ret.value.form is Form.STORAGE
+        assert faces.get("ret.record_field", 0) == 1
+
+    def test_byte_identical(self):
+        src = (self.VREC
+               + "    def me(self) -> Vec:\n        return self\n"
+               + "def make(n: Int32) -> Vec:\n    return Vec(n)\n"
+               + "def main():\n    v = make(3)\n    w = v.me()\n    print(w.x)\n"
+               + "main()\n")
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        outs = []
+        for thir in (True, False):
+            hpp, cpp = compiler.generate_code_to_strings(
+                entry, options=CodeGenOptions(emit_source_comments=False,
+                                              thir_codegen=thir))
+            outs.append(hpp + cpp)
+        assert outs[0] == outs[1]
+        assert "return Vec(n);" in outs[0] and "return (*this);" in outs[0]
 
 
 class TestRecordStorageReturn:

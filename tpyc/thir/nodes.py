@@ -171,7 +171,10 @@ class THIRSelf(THIRExpr):
     keyword `escape_cpp_name` would mangle to `this_`, and because `self` is a
     pointer receiver: field reads off it render with `->`. Only arises in an
     instance method admitted to the slice (the free-function slice never sees
-    it)."""
+    it). `deref` renders `(*this)` -- the indirect-name deref a value position
+    applies (`return self` at a record borrow-return slot)."""
+
+    deref: bool = False
 
 
 @dataclass(frozen=True)

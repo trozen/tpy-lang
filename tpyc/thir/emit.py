@@ -787,7 +787,7 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         name = escape_cpp_name(e.name)
         return f"(*{name})" if e.deref else name
     if isinstance(e, THIRSelf):
-        return "this"
+        return "(*this)" if e.deref else "this"
     if isinstance(e, THIRLiteral):
         return _emit_literal(e)
     if isinstance(e, THIRStrLiteral):

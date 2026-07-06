@@ -196,17 +196,16 @@ def _function_eligible(func: TpyFunction, analyzer,
     if func.error_return is not None:
         return note("sig.error_return")
     if func.type_params:
-        # A generic FREE function routes its body via the same TypeParamRef
-        # T-value arms F5 built for generic-record methods: the resolver spells
-        # each `[T]` param/return as a TypeParamRef, `_is_type_param_slot` gates
-        # it as a form-neutral value pass-through (`val_or_ref_t<T>` resolves
-        # value-vs-ref per instantiation), and the template signature stays AST.
-        # Still rejected: a method's OWN type params (`def m[U](self)` -- a
-        # separate method-generic cell; a generic-record method carries the T on
-        # the record, not here) and INT-kind params (`[N: int]` -- N read as a
-        # value has no T-slot arm yet).
-        if func.is_method:
-            return note("sig.generic_fn")
+        # A generic callable routes its body via the same TypeParamRef T-value
+        # arms F5 built for generic-record methods: the resolver spells each
+        # `[T]` param/return as a TypeParamRef, `_is_type_param_slot` gates it
+        # as a form-neutral value pass-through (`val_or_ref_t<T>` resolves
+        # value-vs-ref per instantiation), and the template signature stays
+        # AST. A method's OWN type params (`def m[U](self, x: U)`) spell the
+        # same way -- on a generic record the record's T rides the F5
+        # self-feed while the method's U rides these slots, so both compose.
+        # Still rejected: INT-kind params (`[N: int]` -- N read as a value has
+        # no T-slot arm yet).
         if any(k != TypeParamKind.TYPE for k in func.type_param_kinds):
             return note("sig.generic_fn")
     if func.linkage != FunctionLinkage.DEFAULT:

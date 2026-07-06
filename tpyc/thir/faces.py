@@ -69,6 +69,8 @@ THIR_FACES: frozenset[str] = frozenset({
     # is the only distinguishing site).
     "ret.record_borrow",
     "ret.record_storage",
+    "ret.record_self",              # `return self` -> `return (*this);`
+    "ret.record_field",             # `return recv.field` at the borrow slot
     # Owned record local decl (lowering; the `{cpp_type} {name} = <rvalue>;`
     # plain-value render).
     "decl.owned_record",

@@ -1,8 +1,9 @@
-"""THIR generic frontier: generic FREE functions route their bodies via the
-TypeParamRef T-value arms F5 built for generic-record methods -- the template
-signature stays AST, the body's `T` param/return slots are form-neutral value
-pass-throughs. Method-level generics and INT-kind type params stay on the AST
-path (separate cells)."""
+"""THIR generic frontier: generic free functions AND method-level `[U]`
+generics route their bodies via the TypeParamRef T-value arms F5 built for
+generic-record methods -- the template signature stays AST, the body's `T`/`U`
+param/return slots are form-neutral value pass-throughs (on a generic record
+the record's T rides the F5 self-feed while the method's U rides these slots).
+INT-kind type params stay on the AST path (separate cell)."""
 
 from __future__ import annotations
 
@@ -31,15 +32,37 @@ class TestGenericFreeFunction:
         thir = _lower_ctx("def first[A, B](a: A, b: B) -> A:\n    return a\n")
         assert _fn(thir, "first") is not None
 
-    def test_method_level_generic_stays_ast(self):
-        # A method's OWN `[U]` is a separate cell; the gate still rejects it
-        # (a generic-record method carries its T on the record, not here).
+    def test_method_level_generic_routes(self):
+        # A method's OWN `[U]` spells its slots as TypeParamRef exactly like a
+        # free function's -- same arms, template signature stays AST.
         thir = _lower_ctx(
             "from tpy import Int32\n"
             "class Holder:\n    n: Int32\n"
             "    def __init__(self, n: Int32):\n        self.n = n\n"
             "    def echo[U](self, x: U) -> U:\n        return x\n")
-        assert _fn(thir, "echo") is None
+        fn = _fn(thir, "echo")
+        assert fn is not None
+        ret = fn.body[0]
+        assert isinstance(ret, THIRReturn) and isinstance(ret.value, THIRName)
+
+    def test_method_generic_on_generic_record_routes(self):
+        # `[U]` on a generic record's method: the record's T rides the F5
+        # self-feed, the method's U rides the free-fn arms -- both compose.
+        thir = _lower_ctx(
+            "from tpy import Own\n"
+            "class Pair[T]:\n    first: T\n"
+            "    def __init__(self, first: Own[T]):\n        self.first = first\n"
+            "    def echo[U](self, x: U) -> U:\n        return x\n")
+        assert _fn(thir, "echo") is not None
+
+    def test_own_u_method_param_routes(self):
+        # `Own[U]` method param + return -- the _own_type_param_slot arms.
+        thir = _lower_ctx(
+            "from tpy import Int32, Own\n"
+            "class Holder:\n    n: Int32\n"
+            "    def __init__(self, n: Int32):\n        self.n = n\n"
+            "    def take[U](self, v: Own[U]) -> Own[U]:\n        return v\n")
+        assert _fn(thir, "take") is not None
 
     def test_int_kind_type_param_stays_ast(self):
         # `[N: int]` (INT-kind) is out of the slice: N read as a value has no
@@ -49,6 +72,7 @@ class TestGenericFreeFunction:
             "def head[N: int](a: Array[Int32, N]) -> Int32:\n"
             "    return a[0]\n")
         assert _fn(thir, "head") is None
+
 
 
 class TestGenericFreeFunctionEmit:
@@ -68,10 +92,38 @@ class TestGenericFreeFunctionEmit:
         "main()\n"
     )
 
+    METHOD_SRC = (
+        "from tpy import Int32, Own\n"
+        "class Holder:\n    n: Int32\n"
+        "    def __init__(self, n: Int32):\n        self.n = n\n"
+        "    def echo[U](self, x: U) -> U:\n        return x\n"
+        "    def take[U](self, v: Own[U]) -> Own[U]:\n        return v\n"
+        "def main():\n    h = Holder(1)\n    print(h.echo(5))\n    print(h.take(7))\n"
+        "main()\n"
+    )
+
     def test_generic_free_fn_byte_identical(self):
         # The load-bearing contract: the routed body and the fallen-back body
         # both emit identically from THIR and the AST path.
         assert self._emit(self.SRC, thir=True) == self._emit(self.SRC, thir=False)
+
+    def test_method_generic_byte_identical(self):
+        assert (self._emit(self.METHOD_SRC, thir=True)
+                == self._emit(self.METHOD_SRC, thir=False))
+
+    def test_method_generic_renders_template_body(self):
+        # The method template SIGNATURE stays AST-owned (const-inferred:
+        # `val_or_cref_t<U>` / `const U&`); THIR renders only the body.
+        out = self._emit(self.METHOD_SRC, thir=True)
+        assert "::tpy::val_or_cref_t<U> echo(const U& x) const" in out
+        assert "return x;" in out
+
+    def test_own_u_method_passthrough_renders_bare(self):
+        # `Own[U]` method param returned directly: bare (no std::move -- the
+        # move only arises at an intermediate local decl).
+        out = self._emit(self.METHOD_SRC, thir=True)
+        assert "U take(::tpy::own_param_t<U> v) const" in out
+        assert "return v;" in out
 
     def test_identity_body_renders_bare_param_return(self):
         assert "::tpy::val_or_ref_t<T> gid(::tpy::param_val_or_ref_t<T> x) {\n    return x;\n}" \

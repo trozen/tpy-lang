@@ -35,13 +35,18 @@ class _Prescan:
                  "ret_record_borrow", "ret_record_storage",
                  "ret_str", "ret_bytes",
                  "ret_char", "ret_union", "ret_ptr_union", "param_names",
-                 "global_seeded", "native_globals")
+                 "has_self", "global_seeded", "native_globals")
 
     def __init__(self, func: TpyFunction, analyzer) -> None:
         # Param names, for gates that must tell a param from a local (a str
         # param's aug-assign would need the owned-copy prologue -- see
         # _str_aug_append_ok).
         self.param_names = {n for n, _t in func.params}
+        # Whether the callable has a `self` receiver (instance method) -- the
+        # gate arms that treat the name `self` specially (the return-self arm,
+        # the self-rebind rejects) key on this so a free function's local or
+        # param that merely SHARES the name is not misclassified.
+        self.has_self = bool(func.is_method and not func.is_staticmethod)
         # `global`-declared names lower_function seeded into scope (eligible
         # same-module scalar globals); the TpyGlobal gate arm keys on it.
         self.global_seeded: frozenset[str] = frozenset()
@@ -72,8 +77,10 @@ class _Prescan:
         # (`tuple[..., Ref]` -> `std::tuple<..., T*>`), so a `return <storage tuple
         # lvalue>` lifts via `tuple_to_pointer`. None for every other return type.
         self.ret_borrow_tuple = _borrow_tuple_return_type(rt, analyzer)
-        # The borrow-form F1-record return slot (`-> Box` -> `Box&`): only a
-        # bare record borrow name returns (`return name;`, render-identical);
+        # The borrow-form F1-record return slot (`-> Box` -> `Box&`): a bare
+        # record borrow name (`return name;`), `self` (`return (*this);`), a
+        # plain field read (`return recv.field;`), or -- value-type records
+        # only, where the slot actually returns by value -- a record rvalue;
         # the return-stmt arm rejects every other source shape.
         self.ret_record_borrow = _record_borrow_return(rt, analyzer)
         # The storage-form F1-record return slot (`-> Own[Box]` -> `Box` by

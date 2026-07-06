@@ -173,8 +173,10 @@ deferred (self-contained) / blocked-on-`<rung>`.
   friend wrappers delegating to them are structural emission, not bodies) --
   now pinned by units. Deferred rows: inplace dunders (`__iadd__` ...; the AST
   forces const params via CONST_PARAMS_METHODS, a verdict `_param_is_const`
-  does not mirror, and their `return self` -> `return *this;` is outside the
-  slice), `@readonly` statics (emitted with the readonly verdicts dropped),
+  does not mirror -- their `return self` render IS mirrored now, the
+  return-slot tail's `ret.record_self` arm, so the const-params verdict is
+  the sole remaining blocker), `@readonly` statics (emitted with the readonly
+  verdicts dropped),
   pointer-repr Optional/union getter returns (the `in_property_getter`
   return-the-field-storage arm; rejected by the general return gate),
   `@total_ordering`-synthesized comparison bodies (record compare operands,
@@ -208,12 +210,26 @@ deferred (self-contained) / blocked-on-`<rung>`.
   param/return as a `TypeParamRef`, so F5's T-value arms (`_is_type_param_slot`,
   `_f1_param_eligible` / `_eligible_return` admitting TypeParamRef, the field/name
   read arms) route the body verbatim, and the template signature stays AST. The
-  whole generic-free-function slice routes: `sig.generic_fn` 33k -> 9.8k
-  (the 9.8k residual is method-level generics, kept out). Still rejected: a
-  method's OWN `[U]` params (a separate method-generic cell) and INT-kind params
-  (`[N: int]` -- N read as a value has no T-slot arm). The `T` LOCAL decl residual
+  whole generic-free-function slice routes: `sig.generic_fn` 33k -> 9.8k.
+  INT-kind params (`[N: int]` -- N read as a value has no T-slot arm) stay
+  rejected. The `T` LOCAL decl residual
   is shared with the generic-record-methods cell (falls back byte-identically as
   `T& y = x;`).
+- Method-level `[U]` generics (`def m[U](self, x: U) -> U`): **DONE** -- the
+  same routine widening; the `func.is_method` reject under `func.type_params`
+  is dropped, leaving only the INT-kind rejection (shared with free
+  functions). A method's own `[U]` slots spell as `TypeParamRef` exactly like
+  a free function's; on a generic record the record's `T` rides the F5
+  self-feed while the method's `U` rides the same slots, so both compose with
+  no new arm. The method template SIGNATURE (const-inferred
+  `val_or_cref_t<U>` / `const U&`) stays AST-owned. `Own[U]` method params
+  ride `_own_type_param_slot` (already landed). `sig.generic_fn` -> 0 -- the
+  SIGNATURE axis of generics is closed. NB the 9.8k tally was first-reject
+  MASKING (the recurring lesson): only +11 bodies route solo; the mass
+  re-attributes to the generic-method BODY tail, now honestly visible --
+  T-typed binop returns (`stmt.return:binop.shape` +4.7k), `stmt.for_each`
+  +1.9k, call-rvalue args +0.9k. Units
+  `test_thir_generics.py::TestGenericFreeFunction{,Emit}` method rows.
 - `Own[T]` params + returns (`def take[T](x: Own[T]) -> Own[T]`, and `Own[T]`
   METHOD params -- F5's filed residual): **DONE** -- a routine gate widening,
   `_own_type_param_slot` (predicates.py, the ownership-transfer sibling of
@@ -351,8 +367,13 @@ deferred (self-contained) / blocked-on-`<rung>`.
   by value, `_record_storage_return`): bare names (owned local NRVO / `Own`
   rvalue-ref-param C++ implicit move -- render bare) plus record-rvalue ctor /
   by-value calls (`return Box(n);`, the bare expansion via
-  `_is_record_rvalue_source`; face `ret.record_storage`). `self` (`*this`),
-  pointer-locals (`(*p)` + move), and field sources stay AST
+  `_is_record_rvalue_source`; face `ret.record_storage`). The return-slot
+  TAIL then landed `return self` (`return (*this);` via THIRSelf(deref=True),
+  face `ret.record_self`), `return recv.field` (the bare storage-form field
+  read, face `ret.record_field`), and record-rvalue sources at the
+  borrow-classified slot (VALUE-type records only -- a non-value record
+  rvalue at a plain `-> Box` slot is a sema dangling-return error).
+  Pointer-locals (`(*p)` + move) and narrowed names stay AST
   (`return.record_source`); sema itself rejects borrow returns of
   locals/temporaries AND borrowed-source `Own` returns without `copy()`, so
   those shapes never reach the gate. The validator's `_borrow_legal_return`
@@ -364,8 +385,10 @@ deferred (self-contained) / blocked-on-`<rung>`.
   classifier's OTHER arm -- no indirection, `.` reads via the existing
   declared-type-keyed receiver gates, last-use moves via sema's movable set);
   reassigned names keep the F2d REBIND_SLOT machinery, hoisted / move-through
-  ones stay AST. Still-deferred return-slot sibling: field / call sources at
-  record slots (`return.record_source` ~4.9k after the sig gates opened).
+  ones stay AST. The `return.record_source` residual (~3.3k) is storage-slot
+  CALL sources blocked on the general call-arg rows (coerced-literal args,
+  nested-call rvalue args, ctor shapes) -- the call-arg axis, not
+  return-specific.
 - **Ptr[T] value family: LANDED.** `_eligible_ptr_value` (pointee must spell
   byte-identically: F1-record / eligible scalar / Char / void; readonly
   pointee -> `const T*`) joins every value-slot set at once: return + param

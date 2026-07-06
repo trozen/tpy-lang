@@ -103,6 +103,7 @@ from ..nodes import (
     THIRPrintArg,
     THIRRaise,
     THIRReturn,
+    THIRSelf,
     THIRStmt,
     THIRStrAppend,
     THIRStrLiteral,
@@ -136,6 +137,7 @@ from .predicates import (
     _f2b_optional_field_write_ok,
     _facts_have_concrete,
     _field_receiver_ok,
+    _is_borrow_form_name,
     _is_borrow_ptr_local,
     _is_string_owned,
     _narrow_bigint_index,
@@ -149,6 +151,7 @@ from .predicates import (
     _param_is_deep_const,
     _peel_stale_view_owned_coerce,
     _reassert_bump_info,
+    _record_borrow_return,
     _resolve_pending_view,
     _resolved_bytes_value,
     _resolved_str_value,
@@ -766,6 +769,14 @@ def _stmt_eligible(stmt: TpyStmt, analyzer, ws: _WalkState,
     if isinstance(stmt, TpyVarDecl):
         if stmt.linkage != VarLinkage.DEFAULT or stmt.init is None:
             return False
+        # A `self = ...` rebind in a method: codegen's scope never seeds the
+        # receiver as a NAME, so the AST emits a fresh SHADOWING decl
+        # (`const T& self = other;`) while the walk state -- which does seed
+        # `self` -- would classify a reassign and lower the bare (undeclared)
+        # `self = other;`. Out of the slice. (The AST's own post-rebind reads
+        # still target `this` -- a pre-existing divergence, see BUGS.md.)
+        if prescan.has_self and stmt.name == "self":
+            return False
         # A direct rebind of an isinstance-narrowed name: the AST write targets
         # the extraction alias / the variant inconsistently across shapes --
         # out of the U3 slice (field writes THROUGH the alias stay eligible;
@@ -896,6 +907,10 @@ def _stmt_eligible(stmt: TpyStmt, analyzer, ws: _WalkState,
             # ASTs can build this shape directly.
             if stmt.target.name in ws.narrowed:
                 return False
+            # A `self` rebind: same reject as the VarDecl arm (the receiver is
+            # never a declared NAME on the AST path).
+            if prescan.has_self and stmt.target.name == "self":
+                return False
             # Char-targeted str literal: target-typed `'x'` render -> AST path
             # (mirrors the var-decl reassign guard).
             if (isinstance(stmt.value, TpyStrLiteral)
@@ -966,21 +981,55 @@ def _stmt_eligible(stmt: TpyStmt, analyzer, ws: _WalkState,
             return _f1_record(dt, analyzer)
         if (prescan.ret_record_borrow is not None
                 or prescan.ret_record_storage is not None):
-            # A record return slot. BORROW (`-> Box` -> `Box&`) admits only a
-            # bare record borrow name -- a record param or a REF_ALIAS local,
-            # both rendering `return name;`. STORAGE (`-> Own[Box]` -> `Box`
-            # by value) admits bare names too (owned local NRVO / `Own`
-            # rvalue-ref-param implicit move -- both render bare; a borrowed
-            # source without copy() is a sema error, so no copy shape reaches
-            # this arm) plus a record-rvalue ctor / by-value call (`return
-            # Box(n);`, the bare expansion). `self` (`*this`), pointer-locals
-            # (`(*p)` deref + move), narrowed names, and field sources stay
-            # on the AST path; an Own-declared source at the BORROW slot
-            # would take a move arm the mirror lacks.
-            if (prescan.ret_record_storage is not None
-                    and _is_record_rvalue_source(stmt.value, ws.declared,
-                                                 analyzer)):
+            # A record return slot. BORROW (`-> Box` -> `Box&`) admits a bare
+            # record borrow name (a record param or REF_ALIAS local, rendering
+            # `return name;`), `self`, and a plain field read (arms below).
+            # STORAGE (`-> Own[Box]` -> `Box` by value) admits bare names too
+            # (owned local NRVO / `Own` rvalue-ref-param implicit move -- both
+            # render bare; a borrowed source without copy() is a sema error,
+            # so no copy shape reaches this arm). Pointer-locals (`(*p)` deref
+            # + move) and narrowed names stay on the AST path; an Own-declared
+            # source at the BORROW slot would take a move arm the mirror
+            # lacks.
+            # A record-rvalue ctor / by-value call source returns its bare
+            # expansion at EITHER record slot: the storage slot (`-> Own[Box]`)
+            # by design, and the borrow-classified slot only for a VALUE-type
+            # record (`-> Vec2` returns by value; `_record_borrow_return` does
+            # not exclude value records) -- a non-value record rvalue at a
+            # plain `-> Box` slot is a sema error ("cannot return local or
+            # temporary as reference"), so no dangling shape compiles.
+            if _is_record_rvalue_source(stmt.value, ws.declared, analyzer):
                 return _witness("ret.record_storage")
+            if prescan.ret_record_borrow is not None:
+                # `return self` (builder / __enter__-style methods): the AST's
+                # indirect-name deref renders `return (*this);`, mirrored by
+                # THIRSelf(deref=True). No move arm can fire (`self` is never
+                # movable; consuming methods never route). A subclass receiver
+                # at a base-record slot renders the same -- the derived-to-base
+                # bind lives in the C++ reference. `prescan.has_self` keeps a
+                # free function's param/local that merely SHARES the name on
+                # the bare-name path below (lowering agrees: it keys on
+                # lc.self_receiver and renders a non-receiver `self` bare,
+                # like the AST).
+                if (prescan.has_self
+                        and isinstance(stmt.value, TpyName)
+                        and stmt.value.name == "self"
+                        and _f1_record(ws.declared.get("self"), analyzer)):
+                    return _witness("ret.record_self")
+                # `return recv.field`: a plain F1-record field read at the
+                # borrow slot renders the bare access (`return this->box;` /
+                # `return h.box;`) -- the default field render, no move/copy
+                # wrap. (`Own[...]` on a field is itself a sema error, so the
+                # non-Own check in `_record_borrow_return` is type-shape
+                # gating, not a move-arm guard.) A marker-carrying access
+                # stays AST.
+                if (isinstance(stmt.value, TpyFieldAccess)
+                        and _field_receiver_ok(stmt.value, ws.declared,
+                                               analyzer)
+                        and _record_borrow_return(
+                            analyzer.get_expr_type(stmt.value), analyzer)
+                        is not None):
+                    return _witness("ret.record_field")
             if (not isinstance(stmt.value, TpyName)
                     or stmt.value.name == "self"
                     or stmt.value.name in ws.narrowed
@@ -1977,6 +2026,28 @@ def _lower_stmt_dispatch(stmt: TpyStmt, lc: _LowerCtx,
                                             value=_lower_expr(stmt.value, lc),
                                             addr_of=True, loc=loc)
             return THIRReturn(value=pvalue, loc=loc)
+        if lc.prescan.ret_record_borrow is not None and stmt.value is not None:
+            # The record borrow-return sources beyond a bare name: `return
+            # self` derefs the receiver pointer (`return (*this);`, the AST's
+            # indirect-name arm); `return recv.field` renders the bare
+            # storage-form field read. Bare names ride the generic tail below.
+            if (isinstance(stmt.value, TpyName)
+                    and stmt.value.name == lc.self_receiver):
+                # A VALUE record's slot returns by value -- the deref'd
+                # receiver is read as a value (like a value-record name),
+                # keeping the validator's no-BORROW-at-value-return rule
+                # honest; a non-value record's slot binds `Box&` (BORROW).
+                self_t = analyzer.get_expr_type(stmt.value)
+                return THIRReturn(
+                    value=THIRSelf(
+                        result_type=self_t,
+                        form=(Form.BORROW if _is_borrow_form_name(self_t)
+                              else Form.VALUE),
+                        deref=True, loc=loc),
+                    loc=loc)
+            if isinstance(stmt.value, TpyFieldAccess):
+                return THIRReturn(value=_lower_field_source(stmt.value, lc),
+                                  loc=loc)
         # `return None` at a union slot -> `std::monostate{}`, target-typed
         # (F4 U1 value / U2 pointer variant -- the monostate member renders
         # the same in both spellings).
