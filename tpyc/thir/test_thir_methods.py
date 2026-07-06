@@ -75,14 +75,17 @@ class TestMethodFrontier:
             + "    def with_box(self, other: Box) -> Int32:\n        return other.n\n")
         assert _fn(thir, "with_box") is not None
 
-    def test_generic_record_method_excluded(self):
-        # A generic record's `self` is templated -> outside the F1-record slice.
+    def test_generic_record_concrete_method_routes(self):
+        # A generic record's method with a fully CONCRETE body (a `Int32` field
+        # read + return, no `T`) routes: the `self` is templated but inline
+        # (`this`), so the body is byte-identical to the AST's. The gate opened
+        # once `_method_self_type` yields the generic `Wrap[T]` self.
         thir = _lower_ctx(
             "from tpy import Int32\n"
             "class Wrap[T]:\n    n: Int32\n"
             "    def __init__(self, n: Int32):\n        self.n = n\n"
             "    def get(self) -> Int32:\n        return self.n\n")
-        assert _fn(thir, "get") is None
+        assert _fn(thir, "get") is not None
 
     def test_constructor_excluded(self):
         # The ctor body is emitted via the member-init-list driver, not gen_body;
@@ -942,11 +945,147 @@ class TestCrossModuleRecordFrontier:
         thir, _ = _lower_ctx_witnessed(src, extra_lib_dirs=[tmp_path])
         assert _fn(thir, "call_mag") is not None
 
-    def test_generic_record_still_excluded(self, tmp_path):
-        # A generic record's C++ spelling recurses type args -> not the slice.
+
+# --- F5 stage A: generic records with CONCRETE type args (`Pair[Int32]`).
+# The base name resolves as for any user record and `to_cpp()`'s type-arg
+# recursion agrees with the resolver iff every arg is itself in the slice
+# (scalar / F1-record / INT). A body that only MENTIONS such an instantiation
+# routes; the generic record's OWN templated bodies (TypeParamRef args) stay AST
+# until stage B/C. ---
+
+_GEN_CONCRETE = (
+    "from tpy import Int32\n"
+    "class Pair[T]:\n    first: T\n    second: T\n"
+    "    def __init__(self, a: T, b: T):\n"
+    "        self.first = a\n        self.second = b\n"
+    "def read_first(p: Pair[Int32]) -> Int32:\n    return p.first\n"
+    "def sum_pair(p: Pair[Int32]) -> Int32:\n    return p.first + p.second\n"
+)
+
+
+class TestGenericRecordConcreteArgFrontier:
+    def _emit(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        hpp, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=thir))
+        return hpp + cpp
+
+    def test_concrete_arg_field_read_routes(self):
+        # `p.first` off a `Pair[Int32]` param resolves the substituted field type
+        # (Int32) -- a scalar read off a now-F1 generic instantiation.
+        thir = _lower_ctx(_GEN_CONCRETE)
+        assert _fn(thir, "read_first") is not None
+        assert _fn(thir, "sum_pair") is not None
+
+    def test_concrete_arg_byte_identical(self):
+        assert self._emit(_GEN_CONCRETE, thir=True) == self._emit(_GEN_CONCRETE, thir=False)
+        out = self._emit(_GEN_CONCRETE, thir=True)
+        assert "Pair<int32_t>" in out
+
+    def test_generic_record_own_ctor_routes(self):
+        # Stage B: the generic record's OWN ctor (`Pair[T].__init__`, TypeParamRef
+        # self + `T` fields fed by `T` params) routes -- a bare `T` param copies
+        # into a `T` field. Byte-identical (the AST-emitted template header /
+        # signature pairs with the THIR MIL tail).
+        assert _lower_ctor(_GEN_CONCRETE, "Pair") is not None
+        assert self._emit(_GEN_CONCRETE, thir=True) == self._emit(_GEN_CONCRETE, thir=False)
+
+    def test_nonslice_arg_still_excluded(self):
+        # A generic arg outside the byte-identical slice (a tuple) keeps the
+        # outer generic on the AST path (element qualification diverges).
         thir = _lower_ctx(
             "from tpy import Int32\n"
-            "class Wrap[T]:\n    n: Int32\n"
-            "    def __init__(self, n: Int32):\n        self.n = n\n"
-            "def read(w: Wrap[Int32]) -> Int32:\n    return w.n\n")
+            "class Box2[T]:\n    v: Int32\n"
+            "    def __init__(self, v: Int32):\n        self.v = v\n"
+            "def read(b: Box2[tuple[Int32, Int32]]) -> Int32:\n    return b.v\n")
         assert _fn(thir, "read") is None
+
+    def test_generic_field_in_nongeneric_ctor_routes(self):
+        # A non-generic record with a concrete-arg generic field (`Pair[Int32]`)
+        # copies it in the MIL -- the field type is now F1, so the ctor routes.
+        src = (
+            "from tpy import Int32\n"
+            "class Pair[T]:\n    first: T\n    second: T\n"
+            "    def __init__(self, a: T, b: T):\n"
+            "        self.first = a\n        self.second = b\n"
+            "class Holder:\n    p: Pair[Int32]\n"
+            "    def __init__(self, p: Pair[Int32]):\n        self.p = p\n")
+        assert _lower_ctor(src, "Holder") is not None
+        assert self._emit(src, thir=True) == self._emit(src, thir=False)
+
+    def test_int_kind_type_arg_routes(self):
+        # An INT-kind type param (`Buf[T, N: int]`, instantiated `Buf[Int32, 8]`)
+        # -- the raw-int arg `8` passes `_f1_record_type_arg_ok`'s isinstance(int)
+        # branch and the self-type carries the INT-kind TypeParamRef.
+        src = (
+            "from tpy import Int32\n"
+            "class Buf[T, N: int]:\n    n: Int32\n"
+            "    def __init__(self, n: Int32):\n        self.n = n\n"
+            "def read(b: Buf[Int32, 8]) -> Int32:\n    return b.n\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "read") is not None
+
+
+# --- F5 stage C: generic-record method bodies over `T` VALUES. A `T` field
+# read / `T` param read / `T` return / `T` field write is a form-neutral
+# pass-through (the C++ template's `val_or_ref_t<T>` / `param_val_or_ref_t<T>`
+# traits resolve value-vs-ref per instantiation, so the source-level render is
+# byte-identical to the AST for any `T`). A `T` field write emits as a plain
+# assign (`field = v` / `field = std::move(v)`, the BORROW->STORAGE convert's
+# TypeParamRef arm). A `T` local decl is still unhandled and falls back
+# byte-identically (a separate follow-up). ---
+
+_GEN_T_METHODS = (
+    "from tpy import Int32, Own\n"
+    "class Cell[T]:\n    value: T\n    other: T\n"
+    "    def __init__(self, v: Own[T], o: Own[T]):\n"
+    "        self.value = v\n        self.other = o\n"
+    "    def get(self) -> T:\n        return self.value\n"
+    "    def pick(self) -> T:\n        return self.other\n"
+    "    def echo(self, v: T) -> T:\n        return v\n"
+    "    def store(self, v: T) -> None:\n        self.value = v\n"
+    "    def copy_out(self) -> T:\n        x = self.value\n        return x\n"
+)
+
+
+class TestGenericRecordTValueMethods:
+    def _emit(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        hpp, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=thir))
+        return hpp + cpp
+
+    def test_t_field_read_return_routes(self):
+        thir = _lower_ctx(_GEN_T_METHODS)
+        assert _fn(thir, "get") is not None    # T field read + T return
+        assert _fn(thir, "pick") is not None   # a second T field
+        assert _fn(thir, "echo") is not None   # T param read + T return
+
+    def test_t_value_methods_byte_identical(self):
+        assert self._emit(_GEN_T_METHODS, thir=True) == self._emit(_GEN_T_METHODS, thir=False)
+
+    def test_t_field_write_routes(self):
+        # A `T` field write (`self.value = v`) routes: a plain assign via the
+        # BORROW->STORAGE convert's TypeParamRef arm (`this->value = v;`), byte
+        # identical to the AST's `param_val_or_ref_t<T>` copy.
+        thir = _lower_ctx(_GEN_T_METHODS)
+        assert _fn(thir, "store") is not None
+
+    def test_t_local_decl_falls_back(self):
+        # A `T` local decl (`x = self.value`) is unhandled -- falls back.
+        thir = _lower_ctx(_GEN_T_METHODS)
+        assert _fn(thir, "copy_out") is None
+
+    def test_own_t_param_ctor_moves(self):
+        # `Cell.__init__(self, v: Own[T], o: Own[T])` moves each Own[T] param
+        # into its `T` field -- the ctor routes and every MIL init is `move=True`
+        # (the TypeParamRef field arm's move path; a routing assertion, since the
+        # byte-identical test alone would pass even if the ctor fell back).
+        ctor = _lower_ctor(_GEN_T_METHODS, "Cell")
+        assert ctor is not None
+        assert len(ctor.mil_inits) == 2
+        assert all(mi.move for mi in ctor.mil_inits)

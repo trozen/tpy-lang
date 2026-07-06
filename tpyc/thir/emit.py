@@ -29,7 +29,7 @@ from ..type_def_registry import (
     is_float32_type, is_list,
     is_set, is_str_type, is_string_type, view_to_owned_conv,
 )
-from ..typesys import OptionalType, TupleType, UnionType, unwrap_qualifiers
+from ..typesys import OptionalType, TupleType, TypeParamRef, UnionType, unwrap_qualifiers
 from .nodes import (
     Form,
     PrintForm,
@@ -769,6 +769,13 @@ def _emit_form_convert(e: THIRFormConvert, state: _EmitState) -> str:
         # `String` is the same owned std::string spelled as a distinct type.
         if is_str_type(t) or is_string_type(t) or is_bytes_type(t):
             return f"{view_to_owned_conv(t)}({inner})"
+        # F5: a generic record's `T` field write. The C++ template's
+        # `param_val_or_ref_t<T>` / `own_param_t<T>` resolve the copy/move target
+        # per instantiation, so the source-level assign is a plain `field = v` (a
+        # bare copy) or `field = std::move(v)` (an Own param at last use) -- the
+        # same `e.move` decision the sibling arms make, no runtime helper.
+        if isinstance(t, TypeParamRef):
+            return f"std::move({inner})" if e.move else inner
     raise THIRCodeGenError(
         f"unhandled THIRFormConvert: {type(t).__name__} {e.value.form}->{e.form}")
 

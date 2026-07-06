@@ -306,17 +306,32 @@ class TestConstructor:
             + "def main():\n    d = Derived(1, 2)\n    print(d.a + d.b)\nmain()\n")
         assert self._hpp(src, thir=True) == self._hpp(src, thir=False)
 
-    def test_non_f1_base_is_ineligible(self):
-        # A non-F1 base (here generic) keeps the derived ctor on the AST path -- its
-        # `to_cpp()` would not match the bare render. Guards the `_f1_record(parent)`
-        # gate (no corpus byte-diff covers it -- the routed ctors all have F1 bases).
+    def test_concrete_arg_generic_base_routes(self):
+        # F5 stage A: a generic base with CONCRETE args (`Box[Int32]`) is now an
+        # F1 record (its `to_cpp()` recursion spells `Box<int32_t>`, matching the
+        # resolver), so a derived ctor over it routes byte-identically -- no corpus
+        # case covers a generic base, so this guards the `_f1_record(parent)` gate.
         src = (
             _PRELUDE
             + "class Box[T]:\n    v: T\n    def __init__(self, v: T):\n        self.v = v\n"
             + "class IntBox(Box[Int32]):\n    n: Int32\n"
             + "    def __init__(self, v: Int32, n: Int32):\n"
+            + "        super().__init__(v)\n        self.n = n\n"
+            + "def main():\n    b = IntBox(3, 4)\n    print(b.n)\nmain()\n")
+        assert _lower_ctor(src, "IntBox") is not None
+        assert self._hpp(src, thir=True) == self._hpp(src, thir=False)
+
+    def test_nonslice_arg_generic_base_is_ineligible(self):
+        # A generic base whose arg is OUTSIDE the byte-identical slice (a tuple --
+        # element qualification diverges) stays non-F1, keeping the derived ctor
+        # on the AST path. Guards the recursive `_f1_record_type_arg_ok` reject.
+        src = (
+            _PRELUDE
+            + "class Box[T]:\n    v: Int32\n    def __init__(self, v: Int32):\n        self.v = v\n"
+            + "class TupBox(Box[tuple[Int32, Int32]]):\n    n: Int32\n"
+            + "    def __init__(self, v: Int32, n: Int32):\n"
             + "        super().__init__(v)\n        self.n = n\n")
-        assert _lower_ctor(src, "IntBox") is None
+        assert _lower_ctor(src, "TupBox") is None
 
     def test_field_read_optional_byte_identical(self):
         # A param field-read into an Optional[record] field (`self.opt = b.inner`)

@@ -102,7 +102,7 @@ deletion is the concrete milestone that forces its tail closed.
 
 | AST component to delete | Deletion gate (cells that must route) | Status |
 |---|---|---|
-| **Ctor MIL emit** -- `records.py` `_extract_field_inits` / `_extract_base_inits` / `_get_non_init_stmts` + the inline ` : f(v)... {}` write | every ctor MIL field cell + body: scalar (M3a), record/Optional copy+move (M3b), ctor-call / param-field-read sources + own-optional params (M3b-rvalue), docstring/`pass` trivia body (M3c-trivia), non-init body + demotion (M3c-demotion), inheritance -- single + multi base + inherited-field writes (M3d), and str/list/dict/tuple/union/bytes fields (F3+) + cross-module/native/generic records | **PARTIAL** -- the whole scalar/record/Optional + body + inheritance surface lands (ctor self-contained tail complete); **native + cross-module record field/base MIL now routes (non-F1-record stages 1+2: `ctor.non_f1_record` 187938 -> ~70k, native-dominated; cross-module +463)**; deferred cells are cross-axis-blocked -- non-record demoted-field-writes + non-record fields (F3+) + GENERIC records (F5) |
+| **Ctor MIL emit** -- `records.py` `_extract_field_inits` / `_extract_base_inits` / `_get_non_init_stmts` + the inline ` : f(v)... {}` write | every ctor MIL field cell + body: scalar (M3a), record/Optional copy+move (M3b), ctor-call / param-field-read sources + own-optional params (M3b-rvalue), docstring/`pass` trivia body (M3c-trivia), non-init body + demotion (M3c-demotion), inheritance -- single + multi base + inherited-field writes (M3d), and str/list/dict/tuple/union/bytes fields (F3+) + cross-module/native/generic records | **PARTIAL** -- the whole scalar/record/Optional + body + inheritance surface lands (ctor self-contained tail complete); **native + cross-module record field/base MIL now routes (non-F1-record stages 1+2), and GENERIC-record ctor MIL now routes (F5 stages A-C: bare-`T` copy / `Own[T]` move field inits)**; deferred cells are cross-axis-blocked -- non-record demoted-field-writes + non-record fields (F3+) |
 | **Body statement + expression emit** -- `statements.py` `gen_body` per-statement path + `expressions.py` `gen_expr`, for routed callables | every statement shape + expression form across every callable kind | **PARTIAL** -- straight-line shapes over the F1/F2 + scalar (fixed-int/bool/both-float-widths/BigInt incl. the runtime-BigInt `.to_fixed_check` narrows, incr 73-76; enums of every flavor incl. truthiness/`.value`/`.name`, incr 77) + str (F6 S1-S5 + cross-type coercions) + bytes (F6 S6 values + the incr-46 tail: subscript/slices/iteration/concat/aug-assign) slice, incl. logical/chained-compare exprs and scalar/slice-object type-constructor calls |
 | **Form / conversion machinery** -- `context.py` `convert` + `CppForm`/`FormValue`, the ~12 detection predicates + ~22 local side-sets + the `RefType` wrapper (see `THIR_FORM_INVENTORY.md`) | **F-final**: the `Form` tag + `THIRFormConvert` subsume all form dispatch | **PARTIAL** -- F1/F2 forms carried + F3 tuple read/write + the F6 str+bytes view->owned converts (S1/S6 -- both `view_to_owned_conv` family arms validated; reused at container-element slots by S5; extended to the cross-type str-family coercions in incr 42, the materializing arms lowering to the same THIRFormConvert) + the F4 union arms (U1 value + U2 pointer-variant, incr 49-50: `to_[const_]ptr_variant` / `to_value_variant<...>` carried, plus the structural form validator as the second gate) + the U3 narrowing extractions (incr 51: `THIRIsinstance` / `THIRNarrowAlias`, the `narrowed_vars` rename mirrored as lowering scope) + the U2 write-arm tail (incr 52: monostate write arms + union field-to-field copies) + the U4 narrowing tail (incr 53-54: `THIRAssert` persistent extractions + re-assert bump, while-isinstance loop-entry aliases, compound-`and` `THIRNarrowedRead` inline reads); + the call-arg lifts and temps (incr 56-65: `THIRUnionArgLift` ptr-variant member/None arg lifts incl. the deep-const slot spelling + `ptr_variant_to_const`, `THIRCtorCall`, `THIRArgTemp` value-union/record-rvalue/Own-slot/optional-ptr arg temps with the `move`/`addr_of` wraps, `THIRMove` last-use moves, `THIROptionalPtrArg` nullptr/&(name)/optional_to_ptr faces, record-arg/method-receiver/self-receiver pass-throughs); F4 remainder (readonly narrowing subjects), F5, the remaining F6 tail, and RefType removal pending |
 
@@ -133,15 +133,20 @@ deferred (self-contained) / blocked-on-`<rung>`.
   `self.<record field>` read sources (MIL-ordering-sensitive), non-trivia body
   statements outside the statement-shape slice (match / with / try / for-container /
   method calls / ...; print + bare free-function calls now route, incr 32), and
-  `str`/`list`/`dict`/`tuple`/`union` MIL fields (F3+) +
-  GENERIC records (F5 rung). **NATIVE + CROSS-MODULE records DONE
-  (non-F1-record stages 1+2)** -- `_f1_record` now admits any non-generic
-  concrete user record: native records need only the native_field-rename stamp
-  in THIR field access (`_field_cpp`; type via native_cpp_names, methods via
-  fi.native_name already agreed), cross-module records qualify via
-  native_cpp_names exactly as the resolver does (no stamp). +124012 (stage 1,
-  ctor-dominated) + 463 (stage 2) = 44745 -> 169220 bodies. Only generics
-  remain on the record axis. COVERAGE CAVEAT (/tpy-ready second-opinion):
+  `str`/`list`/`dict`/`tuple`/`union` MIL fields (F3+). **NATIVE + CROSS-MODULE
+  records DONE (non-F1-record stages 1+2); GENERIC records DONE (F5 stages A-C):**
+  `_f1_record` now admits any non-generic concrete user record (native records
+  need only the native_field-rename stamp in THIR field access -- `_field_cpp`;
+  type via native_cpp_names, methods via fi.native_name already agreed;
+  cross-module records qualify via native_cpp_names exactly as the resolver does,
+  no stamp) AND generic user records whose args are in-slice (concrete: stage A;
+  TypeParamRef: stage B/C -- ctor MIL `T` fields + method-body `T` reads and
+  writes). Native +124012 (stage 1, ctor-dominated) + cross-module 463 (stage 2)
+  + generics 169568 -> 245285 (F5 A-C) = 44745 -> 245285 bodies. The ctor MIL for
+  a generic record's `T` field is DONE (bare-`T` copy / `Own[T]` move) and a
+  method-body `T` field WRITE routes via the BORROW->STORAGE convert's
+  TypeParamRef emit arm; the residual is `T` local decls + `Own[T]` method params
+  (see the generic-record-methods cell below). COVERAGE CAVEAT (/tpy-ready second-opinion):
   `_f1_record` gates ~56 sites but the win is ctor-dominated, so some non-ctor
   consumers (tuple element, union member, optional-ptr borrow) may be
   zero-witness for the newly-admitted native/cross-module classes -- the
@@ -170,7 +175,29 @@ deferred (self-contained) / blocked-on-`<rung>`.
   return-the-field-storage arm; rejected by the general return gate),
   `@total_ordering`-synthesized comparison bodies (record compare operands,
   the pinned gen_expr_deref divergence).
-- Generic-record methods (templated `self`): **blocked-on-F5** (generic-slot form).
+- Generic-record methods (templated `self`): **F5 stages A-C DONE** -- the whole
+  generic USER-record axis routes. `_method_self_type` now yields the templated
+  self `Record[T, ...]` (a TypeParamRef per type param) instead of None, opening
+  the sig/ctor feed; `_f1_record_type_arg_ok` admits concrete args (`Pair[int]`,
+  stage A -- external mentions) and TypeParamRef args (`Pair[T]`, stage B/C); the
+  ctor MIL handles `T` fields fed by `T`/`Own[T]` params (stage B); method bodies
+  route over `T` VALUES in the READ direction (stage C -- `T` field read / `T`
+  param / `T` return, a form-neutral VALUE pass-through since the C++
+  `val_or_ref_t<T>` traits resolve value-vs-ref per instantiation) AND the WRITE
+  direction (a `T` field write via the BORROW->STORAGE convert's TypeParamRef
+  emit arm -- a plain `field = v` copy / `field = std::move(v)` move, the same
+  `e.move` decision as the sibling Optional/union/tuple arms). Routing
+  169568 -> 245285 bodies. **Remaining generic-user-record cells** (self-contained,
+  small): a `T` LOCAL decl (`x = self.value`) is unhandled, and `Own[T]` method
+  PARAMS are not admitted by `_f1_param_eligible` (so an `Own[T]`-param move-write
+  falls back -- the move emit arm is a correct mirror, witnessed once that param
+  lands); both fall back byte-identically.
+  **NB the `sig.receiver_record` mass (~1.65M) is NOT generic user records** --
+  it is BUILTIN-type methods (str/int/list/dict/float/Char/Span/...), whose
+  receiver is a builtin stub (not `is_user_record`) and whose bodies emit via
+  specialization/native, OUT of the user-record body-migration scope. A prior
+  survey conflated builtin generics (`list`/`dict`/`Span`) with generic user
+  records; the generic-user-record surface is small and largely captured here.
 - Nested-record methods: **deferred (self-contained)** -- the feed walks top-level
   records only.
 - Non-value **call arguments** (the `gen_call_arg` coercion cascade: auto-move,
@@ -1286,6 +1313,16 @@ byte-diff itself.
   statement shapes (77 return / 67 var-decl / 54 if ...) -- each multiplies
   across every importing case, so expression-level cells inside those bodies
   are the highest-routing-leverage statement work.
+  **CORRECTED read (2026-07-06, after F5 + the bodyless-binding tally-exclusion
+  fix): `body` fallback 254097, `ctor` 19385.** The exclusion now drops
+  method-style `@native` / `@cpp_template` bindings (only `native_function` was
+  dropped before), so the whole builtin-type method/ctor surface leaves the
+  tally: `sig.receiver_record` 1648972 -> 30439 (the remainder is BODIED methods
+  on non-F1 receivers), `ctor.non_f1_record` 94108 -> 3631. The earlier 1.65M /
+  2.85M `sig.receiver_record` figures were dominated by bodyless builtin
+  bindings, NOT generic user records -- a survey conflated the two. Post-fix top
+  body reasons: `sig.param_type` 65k, `sig.return_type` 51k, `sig.generic_fn`
+  33k (generic FREE functions), then the `stmt.*` tail.
 - **Landed: stmt.* sub-classifier** (the detail slot in `fallback.py`): gate
   reject arms record the blocking SUB-construct via `note_detail`
   (set-if-empty, cleared per statement), and the chokepoint composes

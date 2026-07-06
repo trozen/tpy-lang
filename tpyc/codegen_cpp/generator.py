@@ -441,6 +441,19 @@ class CodeGenerator:
                 module_native_globals as _thir_native_globals,
             )
             from ..thir.fallback import begin_attempt, fold_attempt
+
+            def _is_bodyless_binding(fn) -> bool:
+                # A callable that dispatches to a runtime symbol / template at
+                # the call site -- method-style `@native("push_back")`
+                # (native_name), `@cpp_template(...)`, or free `@native(
+                # function=True)` (native_function) -- has NO gen_body / MIL
+                # emit, so it is out of the body-migration scope, not fallback.
+                # Covers the whole builtin-type method/ctor surface (str / int /
+                # list / dict / ...); a BODIED method on a builtin receiver still
+                # counts (a real deferred surface).
+                return (fn.native_function or fn.native_name is not None
+                        or fn.cpp_template is not None)
+
             _ng = _thir_native_globals(module)
             self.ctx.thir_functions = {}
             for f, self_type in _thir_callables(module, self.analyzer):
@@ -449,9 +462,7 @@ class CodeGenerator:
                                  self_type=self_type, native_globals=_ng)
                 if tf is not None:
                     self.ctx.thir_functions[id(f)] = tf
-                elif not (f.native_function or f.is_overload_stub):
-                    # Native decls and overload stubs have no body emit --
-                    # they are out of the migration's scope, not fallback.
+                elif not (_is_bodyless_binding(f) or f.is_overload_stub):
                     fold_attempt("body")
             self.ctx.thir_constructors = {}
             for rec, init, self_type in _thir_ctors(module, self.analyzer):
@@ -461,7 +472,7 @@ class CodeGenerator:
                                       self_type=self_type)
                 if tc is not None:
                     self.ctx.thir_constructors[id(init)] = tc
-                elif not init.native_function:
+                elif not _is_bodyless_binding(init):
                     fold_attempt("ctor")
 
         hpp = io.StringIO()

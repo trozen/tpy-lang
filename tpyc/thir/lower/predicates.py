@@ -264,6 +264,15 @@ def _eligible_scalar(t: TpyType | None) -> bool:
     return t is not None and (is_fixed_int_type(t) or is_bool_type(t)
                               or is_float_type(t) or is_big_int_type(t))
 
+def _is_type_param_slot(t: 'TpyType | int | None') -> bool:
+    """True if `t` is a bare generic type-param slot (`T` in a `Record[T]`),
+    seen through the readonly / Ref wrappers a param or field type carries. A
+    `T` slot takes no borrow/storage lift -- it renders per-instantiation via
+    the C++ template's `val_or_ref_t<T>` traits -- so every gate that admits one
+    keys on this single shape."""
+    return isinstance(t, TpyType) and isinstance(
+        unwrap_readonly(unwrap_ref_type(t)), TypeParamRef)
+
 def _eligible_value_union(t: TpyType | None) -> 'UnionType | None':
     """The F4 U1 slice: a value-form union of eligible scalar members
     (`Int32 | Float64 [| None]`) -- `std::variant<...>` with no borrow/storage
@@ -908,6 +917,7 @@ def _char_compare_operand(e: TpyExpr, t: TpyType | None, analyzer) -> bool:
 def _eligible_return(t: TpyType | None, analyzer) -> bool:
     return (t is None or isinstance(t, VoidType) or _eligible_scalar(t)
             or _eligible_char(t)
+            or _is_type_param_slot(t)
             or _eligible_enum(t, analyzer) is not None
             or _resolved_str_value(t, analyzer) is not None
             or _resolved_bytes_value(t, analyzer) is not None
@@ -917,11 +927,27 @@ def _eligible_return(t: TpyType | None, analyzer) -> bool:
             or _eligible_value_union(t) is not None
             or _eligible_ptr_union(t, analyzer) is not None)
 
+def _f1_record_type_arg_ok(a: 'TpyType | int', analyzer) -> bool:
+    """A generic user-record type-arg that THIR spells byte-identically to the
+    resolver. The resolver recurses args via `type_to_cpp`, THIR via each arg's
+    own `to_cpp()`; the two coincide only on this slice -- a raw INT type param,
+    an eligible value scalar, or a (recursively) F1-renderable record. Union /
+    enum / tuple / nested-container args diverge (union alias names, enum
+    renames, tuple element qualification) and keep the outer generic on the AST
+    path. A `TypeParamRef` arg (`Pair[T]` -- the generic record's OWN definition
+    context) renders `Pair<T>` byte-identically (both paths spell the bare param
+    name `T`); admitting it opens the sig/ctor gate for the record's templated
+    bodies (stage B/C), whose T-typed slots are gated separately."""
+    if isinstance(a, int):
+        return True
+    if _is_type_param_slot(a):
+        return True
+    return _eligible_scalar(a) or _f1_record(a, analyzer)
+
 def _f1_record(t: TpyType | None, analyzer) -> bool:
-    """The byte-identical THIR record slice: any NON-GENERIC concrete user
-    record whose `TpyType.to_cpp()` == `TypeResolver.type_to_cpp()` and whose
-    field / method names THIR reproduces. Three record kinds all satisfy that
-    and fall out of the single non-generic check below:
+    """The byte-identical THIR record slice: any concrete user record whose
+    `TpyType.to_cpp()` == `TypeResolver.type_to_cpp()` and whose field / method
+    names THIR reproduces. Record kinds that satisfy that:
 
     - same-module records -- no qualification / rename at all;
     - `@native` records -- type spelled via `Compiler.native_cpp_names` (the same
@@ -931,13 +957,12 @@ def _f1_record(t: TpyType | None, analyzer) -> bool:
       (native_cpp_names qualifies a cross-module native record too);
     - cross-module non-native records -- `native_cpp_names` qualifies them by
       qname exactly as the resolver's `imported_record_qualification_for_type`
-      does (corpus-verified byte-identical).
-
-    Only GENERIC records (type-arg recursion, overlaps the F5 rung) stay on the
-    AST path. A future native-specific carve-out would re-split this predicate by
-    kind (none is needed today -- native records cannot carry a TPy-emitted ctor
-    body, so the one native-only asymmetry, the ctor-MIL field name, is
-    unreachable)."""
+      does (corpus-verified byte-identical);
+    - GENERIC records with concrete args (`Pair[int]`) -- the base name resolves
+      as above and `to_cpp()`'s type-arg recursion agrees with the resolver iff
+      every arg is itself in the byte-identical slice (`_f1_record_type_arg_ok`:
+      scalar / F1-record / INT). This is the F5 rung's type-spelling half; the
+      generic record's OWN templated bodies (TypeParamRef args) ride Stage B/C."""
     if t is None:
         return False
     t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
@@ -945,7 +970,8 @@ def _f1_record(t: TpyType | None, analyzer) -> bool:
         t = t.wrapped
     if not (isinstance(t, NominalType) and t.is_user_record):
         return False
-    if t.type_args:
+    if t.type_args and not all(
+            _f1_record_type_arg_ok(a, analyzer) for a in t.type_args):
         return False
     return analyzer.registry.get_record_for_type(t) is not None
 
@@ -1871,8 +1897,7 @@ def _ctor_arg_slot_ok(ptype: TpyType | None, analyzer) -> bool:
     an eligible-scalar arg emits bare exactly as into a concrete scalar slot.
     The Ref/readonly peel mirrors gen_call_arg's own `ptype_inner` unwrap (the
     stub stores the generic param as `Ref(TypeParamRef)`)."""
-    if ptype is not None and isinstance(
-            unwrap_readonly(unwrap_ref_type(ptype)), TypeParamRef):
+    if _is_type_param_slot(ptype):
         return True
     return _scalar_pass_through_slot(ptype, analyzer)
 

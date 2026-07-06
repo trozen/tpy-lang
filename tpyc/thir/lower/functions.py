@@ -36,6 +36,8 @@ from ...typesys import (
     NominalType,
     OptionalType,
     TpyType,
+    TypeParamKind,
+    TypeParamRef,
     VoidType,
     unwrap_optional_own,
     unwrap_readonly,
@@ -73,6 +75,7 @@ from .predicates import (
     _f1_tuple,
     _field_receiver_ok,
     _is_borrow_ptr_local,
+    _is_type_param_slot,
     _optional_ptr_borrow,
     _resolved_bytes_value,
     _resolved_str_value,
@@ -110,6 +113,7 @@ def _f1_param_eligible(ptype: TpyType | None, analyzer) -> bool:
     no rebind machinery arises). Own-optional/view-keyed-container/cross-module/
     native record params stay on the AST path."""
     return (_eligible_scalar(ptype) or _eligible_char(ptype)
+            or _is_type_param_slot(ptype)
             or _f1_record(ptype, analyzer)
             or _optional_ptr_borrow(ptype, analyzer) is not None
             or _resolved_str_value(ptype, analyzer) is not None
@@ -422,6 +426,18 @@ def _ctor_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
         if _eligible_char(ftype) and isinstance(stmt.value, TpyStrLiteral):
             return False
         return _expr_eligible(stmt.value, declared, analyzer)
+    if isinstance(ftype, TypeParamRef):
+        # Stage B: a generic record's `T` field. An `Own[T]` param moves; a bare
+        # `T` param copies (`first(a)`). The source renders by name only -- a
+        # TypeParamRef slot takes no borrow/storage lift -- so the MIL is
+        # byte-identical to the AST's `gen_expr(name, T)`. A non-param source
+        # (`self.<field>` read, ctor rvalue) rides a later cell.
+        source = _unwrap_copy(stmt.value, analyzer)
+        if _is_move_source(source, lc, own_param_names):
+            return True
+        if isinstance(source, TpyName):
+            return _is_type_param_slot(declared.get(source.name))
+        return False
     pu = _eligible_ptr_union(ftype, analyzer)
     if pu is not None:
         # F4 U2: an `Own[A | B]` param moves into the value-variant field
@@ -454,18 +470,25 @@ def _ctor_param_eligible(ptype: TpyType | None, analyzer) -> bool:
     `Optional[F1-record]` field via the move arm). The raw types match what
     `declared` holds and `_is_borrow_ptr_local` tests. The field-init gate decides
     per-field whether the param is used in an admitted way; an unhandled use rejects
-    the whole ctor (-> AST path)."""
+    the whole ctor (-> AST path). A generic record's OWN ctor (stage B) also
+    admits a `TypeParamRef` param (`Pair[T].__init__(self, a: T)`) -- a bare `T`
+    copies into a `T` field, an `Own[T]` moves; the AST signature spells it
+    `param_val_or_ref_t<T>` / `T&&`, both signature-only, so the MIL just
+    references the name."""
+    # `_f1_param_eligible` already admits a bare `T` param (the type-param slot).
     if _f1_param_eligible(ptype, analyzer):
         return True
     # Own-optional: peel Own (and the inner/outer Optional) to the underlying
-    # record -- or, for the F4 U2 move cell, an eligible pointer-repr union
-    # (`Own[A | B]` moves into the value-variant field, M3b-move).
+    # record / type param -- or, for the F4 U2 move cell, an eligible
+    # pointer-repr union (`Own[A | B]` moves into the value-variant field,
+    # M3b-move).
     own = unwrap_optional_own(unwrap_readonly(ptype)) if isinstance(ptype, TpyType) else None
     if own is not None:
         inner = own.wrapped
         if isinstance(inner, OptionalType):
             inner = inner.inner
-        return (_f1_record(inner, analyzer)
+        return (isinstance(inner, TypeParamRef)
+                or _f1_record(inner, analyzer)
                 or _eligible_ptr_union(inner, analyzer) is not None)
     return False
 
@@ -722,17 +745,24 @@ def _lower_ctor_mil_init(stmt: TpyAssign, own_param_names: set[str],
     return THIRMilInit(field_cpp=field_cpp, value=_lower_expr(source, lc))
 
 def _method_self_type(record, analyzer) -> 'TpyType | None':
-    """The `self` receiver type for an M1 method feed: the record's canonical
-    qualified `NominalType` for a non-generic record, else None (a generic
-    record's `self` is templated, outside the F1-record slice). The qname is
+    """The `self` receiver type for an M1 method / ctor feed. The qname is
     load-bearing -- a bare `NominalType(name)` has no registry entry, so
-    `is_user_record` (hence `_f1_record`) is False. `_f1_record` applies the
-    remaining native / cross-module gates at lowering."""
-    if record.type_params:
-        return None
+    `is_user_record` (hence `_f1_record`) is False; `_f1_record` applies the
+    remaining native / cross-module / generic-arg gates at lowering. For a
+    generic record the self is `Record[T, ...]` (a `TypeParamRef` per type
+    param, kinds per-index like sema's own self-type mirror), which `_f1_record`
+    admits via `_f1_record_type_arg_ok` -- opening the sig/ctor gate for the
+    record's templated bodies (per-cell T-slot gating still falls a body back)."""
     ri = analyzer.registry.get_record(record.name)
     if ri is None:
         return None
+    if record.type_params:
+        kinds = record.type_param_kinds
+        args = tuple(
+            TypeParamRef(name=p, kind=kinds[i] if i < len(kinds) else TypeParamKind.TYPE)
+            for i, p in enumerate(record.type_params))
+        return NominalType(record.name, type_args=args,
+                           _module_qname=ri.qualified_name())
     return NominalType(record.name, _module_qname=ri.qualified_name())
 
 def iter_module_callables(module: TpyModule, analyzer):

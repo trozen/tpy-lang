@@ -163,6 +163,7 @@ from .predicates import (
     _folded_neg_int_literal,
     _is_borrow_form_name,
     _is_bytes_family,
+    _is_type_param_slot,
     _is_none_compare_operand,
     _is_string_owned,
     _isinstance_narrow_info,
@@ -742,7 +743,12 @@ def _scalar_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
         if isinstance(stmt.value, TpyStrLiteral):
             return False
     elif not (_eligible_scalar(ftype)
-              or _eligible_enum(ftype, analyzer) is not None):
+              or _eligible_enum(ftype, analyzer) is not None
+              or _is_type_param_slot(ftype)):
+        # A generic record's `T` field write emits as a plain assign (`field = v`
+        # / `field = std::move(v)`) -- the BORROW->STORAGE convert renders the
+        # source bare/moved (its TypeParamRef emit arm), byte-identical to the
+        # AST's `val_or_ref_t<T>` / `own_param_t<T>` copy/move per instantiation.
         return False
     if _expr_eligible(stmt.value, declared, analyzer):
         return True
@@ -2438,7 +2444,8 @@ def _expr_eligible(e: TpyExpr, locals_: dict[str, TpyType], analyzer) -> bool:
         # expression.
         ft = analyzer.get_expr_type(e)
         if not (_eligible_scalar(ft) or _eligible_char(ft)
-                or _eligible_enum(ft, analyzer) is not None):
+                or _eligible_enum(ft, analyzer) is not None
+                or _is_type_param_slot(ft)):
             return note_detail("field.result_type")
         return (_field_receiver_ok(e, locals_, analyzer)
                 or _optional_checked_field(e, locals_, analyzer)
