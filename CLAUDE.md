@@ -316,6 +316,18 @@ The tpyc front-end is fast enough for realistic dev workflow at this stage; the 
 
 **Watch for algorithmic cliffs.** The worst front-end regressions come from accidentally quadratic scaling in size-proportional places -- overload resolution, protocol conformance checking, mutation propagation. Invisible on small codebases, brutal on large ones. Changes touching these areas should consider worst-case size scaling even when benchmarks on the existing test corpus look fine.
 
+## THIR migration (ACTIVE -- delete this section when complete)
+
+Migrating all C++ codegen from the AST path to THIR (`tpyc/thir/`), then deleting the AST codegen so THIR is the single sema->codegen boundary. End state: 100% coverage, AST codegen deleted -- no permanent dual path.
+
+- **Maps:** `docs/THIR_EMIT_INVENTORY.md` (what-to-port checklist + fan-out plan -- start here); `docs/THIR_COMPLETION_LEDGER.md` (deletion tracker -- sequence against this, not routing %); `docs/IR_DESIGN.md` (design + landing log).
+- **Progress dial:** shape meter (`tpyc/thir/shape.py`) -- `THIR_SHAPES_JSON=/path uv run pytest --thir-codegen --no-exec` reports distinct-shape coverage; body count over-states it. Fallback reasons via `$THIR_FALLBACK_JSON`.
+- **Gate:** `uv run pytest --thir-codegen --no-exec` = a whole-corpus THIR-vs-AST byte-diff; must stay green. The correctness oracle -- don't relax it.
+- **Parallel cells:** construct-disjoint cells in their own worktrees (each with its own byte-diff), integrated **sequentially** with a combined byte-diff after each merge (never prune worktrees -- see above).
+- **Standing approval -- routine cells** (gate-widening / emit-mirror, no new invariant): run design->implement->review->commit end-to-end without pausing. **Architectural cells** (new machinery -- resumable frames, str receiver-family, a new form rung): present a design first (`/tpy-add-feature`).
+- **Review per branch**, not per cell -- the byte-diff owns correctness.
+- **Sequencing:** fan out the type-family grid first; generics frontier on the main thread; **defer resumable frames (generator/async) to last**. Deletion is near-all-or-nothing at the end (per-body routing), so track the shape %.
+
 ## Concept pointers
 
 Features this doc references or assumes, with one-line explanations and deeper-dive pointers:

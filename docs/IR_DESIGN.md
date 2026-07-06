@@ -28,7 +28,11 @@ Plan -> "Phase-1 spike validation".
 which AST body/form codegen component each rung is working toward deleting, what
 gates each deletion, and the registry of deferred cells. This doc is the design +
 landing log; the ledger is what is *left*. Sequence against the ledger, not against
-routing %.
+routing %. `THIR_EMIT_INVENTORY.md` maps the finite emit surface (the ~380 AST
+codegen dispatch arms to port) with parallel/serial tags and the fan-out plan;
+the shape meter (`tpyc/thir/shape.py`, `$THIR_SHAPES_JSON`) measures distinct-shape
+coverage, the honest progress dial (body-count over-states it -- the stdlib links
+into every case).
 
 ## Landing log
 

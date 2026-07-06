@@ -441,6 +441,7 @@ class CodeGenerator:
                 module_native_globals as _thir_native_globals,
             )
             from ..thir.fallback import begin_attempt, fold_attempt
+            from ..thir.shape import record_shape
 
             def _is_bodyless_binding(fn) -> bool:
                 # A callable that dispatches to a runtime symbol / template at
@@ -462,8 +463,10 @@ class CodeGenerator:
                                  self_type=self_type, native_globals=_ng)
                 if tf is not None:
                     self.ctx.thir_functions[id(f)] = tf
+                    record_shape(f, "body", routed=True)
                 elif not (_is_bodyless_binding(f) or f.is_overload_stub):
                     fold_attempt("body")
+                    record_shape(f, "body", routed=False)
             self.ctx.thir_constructors = {}
             for rec, init, self_type in _thir_ctors(module, self.analyzer):
                 begin_attempt()
@@ -472,8 +475,10 @@ class CodeGenerator:
                                       self_type=self_type)
                 if tc is not None:
                     self.ctx.thir_constructors[id(init)] = tc
+                    record_shape(init, "ctor", routed=True)
                 elif not _is_bodyless_binding(init):
                     fold_attempt("ctor")
+                    record_shape(init, "ctor", routed=False)
 
         hpp = io.StringIO()
         cpp = io.StringIO()

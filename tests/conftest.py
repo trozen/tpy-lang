@@ -894,6 +894,7 @@ def compile_with_diagnostics(src_file: Path, output_dir: Path, default_int: str 
         record_thir_routed(compiler._thir_routed_bodies)
         record_thir_faces(compiler._thir_face_witnesses)
         record_thir_fallback(compiler._thir_fallback)
+        record_thir_shapes(compiler._thir_shapes)
         thir_routed_names = (dict(compiler._thir_routed_names)
                              if TEST_CODEGEN_OPTIONS.thir_codegen else None)
 
@@ -1711,6 +1712,26 @@ def record_thir_fallback(counts: dict[str, int]) -> None:
         _thir_fallback[key] = _thir_fallback.get(key, 0) + n
 
 
+# THIR per-shape tally (tpyc/thir/shape.py) -- the distinct-shape complement of
+# the body-weighted routed count. `signature -> {slot: count}`; a signature is
+# fully routed iff it has no non-`routed` slot. Aggregated worker -> controller
+# by additive inner-dict merge, like the tallies above.
+_thir_shapes: dict[str, dict[str, int]] = {}
+_thir_shapes_agg: dict[str, dict[str, int]] = {}
+
+
+def _fold_shapes(dst: dict[str, dict[str, int]], src: dict[str, dict[str, int]]) -> None:
+    for sig, inner in src.items():
+        d = dst.setdefault(sig, {})
+        for slot, n in inner.items():
+            d[slot] = d.get(slot, 0) + n
+
+
+def record_thir_shapes(shapes: dict[str, dict[str, int]]) -> None:
+    """Fold one case's per-shape slot counts (empty when the flag is off)."""
+    _fold_shapes(_thir_shapes, shapes)
+
+
 # THIR divergence reporter -- one label per failed generated-code snapshot
 # under --thir-codegen ("<case> <file>: in `fn` [THIR-routed]"), aggregated
 # worker -> controller like the tallies and echoed in the terminal summary so
@@ -1750,6 +1771,7 @@ def pytest_sessionfinish(session):
         workeroutput["thir_tally"] = dict(_thir_tally)
         workeroutput["thir_faces"] = dict(_thir_faces)
         workeroutput["thir_fallback"] = dict(_thir_fallback)
+        workeroutput["thir_shapes"] = _thir_shapes
         workeroutput["thir_divergences"] = list(_thir_divergences)
         return
     if _thir_gate_verdict(session.config) == "fail":
@@ -1771,6 +1793,7 @@ def pytest_testnodedown(node, error):
         _thir_faces_agg[face] = _thir_faces_agg.get(face, 0) + n
     for key, n in wo.get("thir_fallback", {}).items():
         _thir_fallback_agg[key] = _thir_fallback_agg.get(key, 0) + n
+    _fold_shapes(_thir_shapes_agg, wo.get("thir_shapes", {}))
     _thir_divergences_agg.extend(wo.get("thir_divergences", []))
 
 
@@ -1846,6 +1869,42 @@ def pytest_terminal_summary(terminalreporter, exitstatus, config):
                     f"{_LOG_PREFIX} thir fallback: full counts written to "
                     f"{dump_path}"
                 )
+            # Distinct-SHAPE coverage: the de-inflated complement of the routed
+            # count (which repeats the stdlib body per case). `R/T distinct
+            # shapes routed` is the honest progress %; the top blocked shapes are
+            # ranked by which reject reason blocks the most DISTINCT shapes.
+            shapes = dict(_thir_shapes)
+            _fold_shapes(shapes, _thir_shapes_agg)
+            if shapes:
+                from tpyc.thir.shape import summarize_shapes
+                s = summarize_shapes(shapes)
+                by_reason: dict[str, int] = {}
+                for _sig, _n, reason in s["blocked"]:
+                    by_reason[reason] = by_reason.get(reason, 0) + 1
+                top = ", ".join(
+                    f"{r} {n}" for r, n in sorted(
+                        by_reason.items(), key=lambda kv: (-kv[1], kv[0]))[:10])
+                terminalreporter.write_line(
+                    f"{_LOG_PREFIX} thir shapes: {s['routed']}/{s['total']} "
+                    f"distinct shapes routed ({s['pct']:.1f}%); "
+                    f"{s['partial']} partial; {len(s['blocked'])} blocked "
+                    f"(top reasons by distinct shapes: {top})"
+                )
+                shapes_dump = os.environ.get("THIR_SHAPES_JSON")
+                if shapes_dump:
+                    Path(shapes_dump).write_text(
+                        json.dumps({
+                            "summary": {k: s[k] for k in ("total", "routed",
+                                                          "partial", "pct")},
+                            "blocked_by_leverage": [
+                                {"leverage": n, "reason": r, "shape": sig}
+                                for sig, n, r in s["blocked"]],
+                            "shapes": dict(sorted(shapes.items())),
+                        }, indent=2) + "\n")
+                    terminalreporter.write_line(
+                        f"{_LOG_PREFIX} thir shapes: full detail written to "
+                        f"{shapes_dump}"
+                    )
         elif verdict == "warn":
             terminalreporter.write_line(
                 f"{_LOG_PREFIX} thir: WARNING -- forced THIR routed 0 bodies "

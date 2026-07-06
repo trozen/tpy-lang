@@ -1128,6 +1128,10 @@ class Compiler:
         self._thir_reject_reason: str | None = None
         self._thir_reject_detail: str | None = None
         self._thir_fallback: dict[str, int] = {}
+        # Per-shape tally (thir/shape.py): signature -> {slot: count}, the
+        # distinct-shape complement of the body-weighted routed count. Only ever
+        # written under --thir-codegen.
+        self._thir_shapes: dict[str, dict[str, int]] = {}
         self.shadowed_builtins: dict[str, set[tuple[str, int | None]]] = {}
         self.diagnostics: list[Diagnostic] = []
         self._source_input: tuple[str, str] | None = None

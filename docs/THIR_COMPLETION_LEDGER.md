@@ -9,6 +9,10 @@ Companion docs, different jobs:
   rung ladder (what *has* landed).
 - `THIR_FORM_INVENTORY.md` -- the form-dispatch spec (the borrow/storage machinery
   THIR must subsume).
+- `THIR_EMIT_INVENTORY.md` -- the emit-arm map: the finite AST codegen surface
+  (~380 dispatch arms) with each arm's THIR status, parallel/serial tag, and
+  leverage. The *what-to-port* checklist + the fan-out/sequencing plan; the
+  shape meter (`tpyc/thir/shape.py`) measures progress against it.
 - **This ledger** -- the completion/deletion tracker (what is *left* and what gates
   each deletion). **Sequence against this, not against routing %.**
 
@@ -1323,6 +1327,29 @@ byte-diff itself.
   the face fired via `testutil._lower_ctx_witnessed`); `flush.assign` stays on
   the corpus zero-witness list permanently -- the parser emits `TpyVarDecl` for
   every name-target assign, so only macro-built / frontend-IR ASTs reach it.
+- **Landed: distinct-SHAPE tally** (`tpyc/thir/shape.py`): the routed-body count
+  (299k+) is body-weighted -- the stdlib links into every case, so one body
+  counts once per case; that measures throughput, not migration progress. The
+  shape tally fingerprints each candidate body (routed or fallback) with a
+  structural signature (`kind | <sorted AST node-kinds> | p:<param families> |
+  r:<return family>`), invariant across the stdlib-repeat AND cross-module
+  structural twins, then dedups. The `--thir-codegen` summary prints
+  `tpy| thir shapes: R/T distinct shapes routed (P%); K partial; M blocked (top
+  reasons by distinct shapes: ...)`; full per-signature detail dumps to
+  `$THIR_SHAPES_JSON`. FIRST FULL-CORPUS READ (2026-07-06, post-Own[T] merge):
+  **691 / 5136 distinct shapes routed = 13.5%** (vs ~57% by BODIES -- the routed
+  bodies are the common repeated ones; the long tail of 4445 distinct blocked
+  shapes is largely untouched). Excluding known out-of-scope frontiers
+  (async/generator/overload/builtin-receiver-method/...) the IN-SCOPE figure is
+  **691 / 4583 = 15.1%** (+184 partial). The distinct-shape view confirms the
+  frontier ranking: the biggest remaining shape mass is `sig.param_type` (631
+  distinct shapes) + `sig.return_type` (402) -- the param/return type-family
+  slots (records/ptr/containers/tuple/union) -- then a LONG low-leverage tail
+  (`stmt.var_decl:call.ret_type` 348 shapes / only 2446 bodies) that body-count
+  hides entirely. A "partial" shape (both routed + fallback bodies) means the
+  signature is too coarse to separate a type-driven routing split; counted as
+  not-yet-routed. Same coarseness contract as the fallback tally: an ORDINAL
+  instrument (which shapes are big), not a precise census.
 - **Landed: per-component AST-fallback tally** (`tpyc/thir/fallback.py`): the
   `--thir-codegen` summary prints `tpy| thir fallback: body N -- <top reasons>`
   and `... ctor M -- ...` -- per deletion target, how many candidate bodies the
