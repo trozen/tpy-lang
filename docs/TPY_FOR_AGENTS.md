@@ -557,7 +557,10 @@ yet available but are on the roadmap:
   hooks; they cannot create undeclared fields.
 - `match` sequence patterns (`case [a, b]:` / `case (a, b):`).
 - Threads: `threading` / `multiprocessing` are absent, and the asyncio
-  executor is single-threaded.
+  executor is single-threaded. Real OS threads exist via `tpy.thread.spawn`
+  (a Rust-style Send+move API, fully inferred: `h = spawn(task)` where
+  `task` has a `run()` method; `h.join()` returns the result) -- but no
+  shared mutable state across threads yet (`Arc`/`Mutex` are planned).
 
 If you're tempted to use one of these, pick the closest fully-annotated /
 single-threaded equivalent and leave a comment noting the dependency.

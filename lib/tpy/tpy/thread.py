@@ -11,9 +11,10 @@ Both the task and the result `R` cross the thread boundary, so both must be
 `Send`: the task via the `Send[Own[T]]` param wrapper (rejected at the call
 site with a why-not chain), `R` via the `R: Send` bound.
 
-Explicit type args are required at the call site (`spawn[R, T](task)`): `R`
-cannot be inferred through the `Send[]` wrapper. A generic function is not
-subscriptable under CPython, so V1 test cases are `no_cpython`.
+`spawn(task)` infers both type args: `T` through the `Send[]` wrapper and `R`
+from the task's `run()` return type (associated-type inference through the
+`ThreadTask[R]` bound). The explicit `spawn[R, T](task)` form still works but
+is not valid CPython (a generic function is not subscriptable at runtime).
 """
 from typing import Protocol
 from tpy import Own, Send, nocopy

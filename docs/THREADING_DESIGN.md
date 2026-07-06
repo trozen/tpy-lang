@@ -43,7 +43,7 @@ review findings are recorded inline so they do not get re-litigated.
 
 | ID | Increment | Scope | Status | Depends on |
 |----|-----------|-------|--------|------------|
-| V1 | `tpy.thread.spawn` (Runnable-struct) | `spawn[R: Send, T: ThreadTask[R]](task: Send[Own[T]]) -> Own[JoinHandle[R]]` (`ThreadTask` = structural `run() -> R`; `Send` via the `Send[Own[T]]` wrapper; `R: Send` bound since R crosses the thread boundary; explicit type args required -- inference gap filed). `JoinHandle`: `join() -> R`/`detach()`, abort-on-unconsumed-drop. | **BUILT** | -- |
+| V1 | `tpy.thread.spawn` (Runnable-struct) | `spawn[R: Send, T: ThreadTask[R]](task: Send[Own[T]]) -> Own[JoinHandle[R]]` (`ThreadTask` = structural `run() -> R`; `Send` via the `Send[Own[T]]` wrapper; `R: Send` bound since R crosses the thread boundary; `spawn(task)` fully inferred -- the marker-wrapper + associated-type inference gaps are closed). `JoinHandle`: `join() -> R`/`detach()`, abort-on-unconsumed-drop. | **BUILT** | -- |
 | V2 | `Arc[T]` / `Weak[T]` | Atomic sibling of `Rc`. Needs a new `@native` atomic-cell primitive (`std::atomic<uint32_t>`) -- not a pure-lib mirror of `rc.py`. Shared into a task by `arc.clone()` into a struct field. | **designed** | V1 |
 | V3 | `Mutex[T]` / `RwLock[T]` | `Sync` iff `T: Send`; shared as `Arc[Mutex[T]]`. Module placement decided here (`tpy.sync` vs extend `tplib.*`). | **designed** | V2 |
 | D1 | Closure `spawn` (ergonomic layer) | `spawn(lambda: work(data))` desugaring to the V1 core. Needs a **callable generic bound** + owning-capture. Own design pass; the current spelling is shaky (see "Deferred: closures"). Likely **post-THIR**. | **deferred** | V1, (THIR) |
@@ -118,7 +118,7 @@ later, never the safety boundary.
 def spawn[R: Send, T: ThreadTask[R]](task: Send[Own[T]]) -> Own[JoinHandle[R]]: ...
 # ThreadTask[R] is a structural Protocol with `def run(self) -> R`.
 # R: Send because the result crosses the thread boundary (worker -> joiner).
-# Called with explicit type args: spawn[int, Blur](Blur(...)) -- see the inference note.
+# Fully inferred at the call site: spawn(Blur(...)) -- see the inference note.
 ```
 
 - `[R, T: ThreadTask[R]]` -- `T` is bounded by a generic structural protocol
@@ -139,12 +139,16 @@ def spawn[R: Send, T: ThreadTask[R]](task: Send[Own[T]]) -> Own[JoinHandle[R]]: 
 - `task: Own[T]` -- the task is **moved** into the thread via the existing
   `Own`-move; the caller loses it. Data is carried as the struct's moved
   fields (the struct is the reified closure); no capture analysis needed.
-- **Explicit type args required** (`spawn[R, T](...)`): `R` can't be inferred
-  through the `Send[]` wrapper (marker-wrapper inference gap), and the
-  fully-inferred form additionally needs associated-type inference -- both
-  filed in TODO.md. Consequence: the call isn't valid CPython (a generic
-  function can't be subscripted at runtime), so V1 test cases are
-  `no_cpython`.
+- **Fully inferred at the call site** (`spawn(task)`): `T` is inferred
+  through the transparent `Send[]` wrapper and `R` via associated-type
+  inference from the conformer's `run()` return type (both gaps closed
+  post-V1; a fire-and-forget `run() -> None` task also works -- the
+  void-like `R` canonicalizes to `None` and the generated concept accepts
+  the void-returning conformer via `tpy::proto_result`). The explicit
+  `spawn[R, T](...)` form still works but isn't valid CPython (a generic
+  function can't be subscripted at runtime), so the V1-era test cases that
+  use it stay `no_cpython`; the inferred-form cases run under CPython
+  against the `lib/cpy/tpy/thread.py` stub.
 
 `JoinHandle[R]` (v1, minimal): `join(self) -> R`, `detach(self)`. Drop model
 (as built): `@nocopy` + `__del__` + a mutable `_consumed` flag (the `Rc`
@@ -203,9 +207,9 @@ type-system work and no THIR dependency.
 
 ### V1 tests
 
-Shipped under `tests/cases/threading/` (all `no_cpython` -- a generic
-function isn't subscriptable under CPython, and move-into-thread has no
-faithful CPython analog):
+Shipped under `tests/cases/threading/` (the explicit-type-args cases are
+`no_cpython` -- a generic function isn't subscriptable under CPython; the
+inferred-form cases run under CPython via `lib/cpy/tpy/thread.py`):
 
 - `spawn_join` -- move-in fork/join happy path: two `@nocopy` tasks run
   concurrently, each owns a `list` moved in and **mutated on the worker**,
@@ -219,6 +223,11 @@ faithful CPython analog):
 - `error_spawn_task_not_send` (non-`Send` task field, `Rc`) /
   `error_spawn_result_not_send` (non-`Send` `R`) -- compile-time rejection
   with the why-not chain.
+- Inferred-form cases (post-V1 inference work): `spawn_inferred` (fully
+  inferred `spawn(task)`, move observed via worker-side mutation; runs under
+  CPython), `spawn_inferred_none` (fire-and-forget `run() -> None`, explicit
+  + inferred forms, `@nocopy` task), `error_spawn_inferred_not_send` (Send
+  rejection still fires without explicit type args).
 
 ## V2 -- `Arc[T]` / `Weak[T]`
 

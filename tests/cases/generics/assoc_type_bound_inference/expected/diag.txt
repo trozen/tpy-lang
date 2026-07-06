@@ -1,0 +1,1 @@
+main.py:28: warning: returns a copy of str field 'self.s'; use -> StrView for zero-copy access or -> String to silence this warning

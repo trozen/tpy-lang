@@ -16,7 +16,7 @@ from ..typesys import (
     MethodSignature, FunctionInfo, FieldInfo, RecordInfo, PropertyInfo, is_protocol_type,
     ListRepeatType, GenExprType, make_list, TupleType, OptionalType, PtrType, IntLiteralType, FloatLiteralType, AnyType, PendingListType, UnknownElementType, BIGINT, FLOAT,
     impl_proto_matches_name, get_protocol_qname, unwrap_qualifiers,
-    del_suppresses_default_ctor,
+    del_suppresses_default_ctor, is_void_like_type,
 )
 from ..coercions import is_protocol_safe_coercion, is_protocol_type_arg_widening
 
@@ -832,6 +832,10 @@ class ProtocolChecker:
         else:
             unwrapped = actual
         if unwrapped != actual and unwrapped == expected:
+            return True
+        # A `-> None` method carries VoidType while an explicit `None` type
+        # arg substitutes NoneType -- both spell the same "no value" contract.
+        if is_void_like_type(unwrapped) and is_void_like_type(expected):
             return True
         if is_protocol_safe_coercion(actual, expected):
             return True

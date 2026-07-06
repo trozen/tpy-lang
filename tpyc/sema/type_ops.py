@@ -12,8 +12,8 @@ from ..typesys import (
     TpyType, TypeParamRef, NominalType, RecursiveAliasInstanceType, PtrType, is_readonly_ptr, OwnType, ReadonlyType, AutoReadonlyType, AutoOwnType, InteriorMutableType,
     make_array, make_list, PendingListType, PendingViewType, GenExprType, SelfType, OptionalType, UnionType,
     TupleType, FinalType, ClassVarType,
-    IntLiteralType, FloatLiteralType, TypeParamKind, BIGINT, UnknownElementType,
-    NoneType, VoidType, CallableType,
+    IntLiteralType, FloatLiteralType, TypeParamKind, BIGINT, NONE, UnknownElementType,
+    NoneType, VoidType, CallableType, SendType, SyncType, unwrap_send_sync,
     RecordInfo, FunctionInfo, ParamInfo, is_protocol_type, unwrap_readonly,
     unwrap_ref_type, unwrap_qualifiers, RefType, is_dyn_protocol,
     is_polymorphic_class_type, is_dynamic_dispatch_inner,
@@ -863,6 +863,14 @@ class TypeOperations:
 
         Returns True if types match (with inference), False otherwise.
         """
+        # Send/Sync markers are sema-only slot assertions enforced at the
+        # compatibility check, not here -- peel both sides so a marker never
+        # blocks a match or binds into an inferred type param.
+        if isinstance(param_type, (SendType, SyncType)):
+            param_type = unwrap_send_sync(param_type)
+        if isinstance(arg_type, (SendType, SyncType)):
+            arg_type = unwrap_send_sync(arg_type)
+
         # RefType wrapper on param: strip Ref from param side and also strip
         # from arg if present (Ref[T] param accepts both T and Ref[T] args).
         if isinstance(param_type, RefType):
@@ -1376,10 +1384,43 @@ class TypeOperations:
                 func.return_type, expected_return_type, inferred
             )
 
+        # Associated-type inference: a param still unresolved after arg
+        # matching may appear only inside a sibling's generic-protocol bound
+        # (`T: ThreadTask[R]` -- T inferred, R not). Solve it by unifying the
+        # protocol's member signatures against the inferred conformer, the
+        # same machinery protocol-typed params use. Gated to bounds that
+        # still name an unresolved param, so it cannot change the outcome of
+        # a call that already infers.
+        # MUST run before the resolve-pending loop below: a `-> None` conformer
+        # binds a sibling to VoidType, which that loop canonicalizes to NONE so
+        # it matches an explicit `None` type arg -- reordering silently
+        # mis-instantiates the fire-and-forget case.
+        if func.type_param_bounds:
+            unresolved = {tp for tp in func.type_params if tp not in inferred}
+            if unresolved:
+                for carrier, bound in func.type_param_bounds.items():
+                    if not (isinstance(bound, NominalType)
+                            and is_protocol_type(bound) and bound.type_args):
+                        continue
+                    if not any(isinstance(ta, TpyType)
+                               and contains_type_param(ta, unresolved)
+                               for ta in bound.type_args):
+                        continue
+                    conformer = inferred.get(carrier)
+                    if conformer is None or isinstance(conformer, UnknownElementType):
+                        continue
+                    self._match_protocol_type_args_with_inference(
+                        bound, conformer, inferred)
+
         # Resolve pending types for codegen.
         for k, v in list(inferred.items()):
             if isinstance(v, IntLiteralType):
                 inferred[k] = self.ctx.default_int_for_literal(v)
+            elif isinstance(v, VoidType):
+                # A `-> None` conformer method binds VoidType; the explicit
+                # `None` type arg spells NoneType -- canonicalize so both
+                # forms produce the same instantiation.
+                inferred[k] = NONE
             elif isinstance(v, PendingListType):
                 # Resolve PendingListType to list
                 elem_type = v.element_type

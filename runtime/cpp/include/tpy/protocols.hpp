@@ -16,6 +16,7 @@
 #include <iterator>
 #include <ranges>
 #include <type_traits>
+#include <variant>
 
 #include "dunder.hpp"
 #include "ranges.hpp"
@@ -45,6 +46,19 @@ template<typename T, typename ElemT>
 concept NativeRangeConstructible = requires(repeat_range<ElemT> r) {
     T(std::ranges::begin(r), std::ranges::end(r));
 };
+
+/**
+ * proto_result concept - return-type requirement for generated protocol
+ * concepts whose method returns a bare protocol type param.
+ *
+ * A TPy `-> None` method compiles to a void C++ function, while a `None`
+ * type argument substitutes std::monostate -- accept that pairing alongside
+ * plain convertibility so P[None] is satisfiable by a void-returning
+ * conformer.
+ */
+template<typename From, typename To>
+concept proto_result = std::convertible_to<From, To> ||
+    (std::is_void_v<From> && std::is_same_v<To, std::monostate>);
 
 /**
  * Fixed-width integer concepts - constrain generic functions to fixed-int types

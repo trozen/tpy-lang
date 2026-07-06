@@ -1,0 +1,1 @@
+covers the explicit spawn[None, T] subscript form, which is not valid CPython.

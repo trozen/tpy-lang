@@ -22,7 +22,9 @@
 
 #include <future>
 #include <thread>
+#include <type_traits>
 #include <utility>
+#include <variant>
 
 #include "core.hpp"
 
@@ -84,12 +86,22 @@ private:
 
 // Move the task onto a new OS thread and run task.run() there. R is deduced
 // from the task's run() so the TPy-side explicit R and the C++ result type
-// cannot drift apart.
+// cannot drift apart. A `-> None` run() deduces void, but the TPy side maps
+// None to std::monostate (JoinHandle[None] = JoinHandle<monostate>) -- adapt
+// so a fire-and-forget task deduces the same type the wrapper expects.
 template <typename T>
-auto spawn_thread(T task) -> JoinHandle<decltype(task.run())> {
-    using R = decltype(task.run());
+auto spawn_thread(T task) {
+    using Raw = decltype(task.run());
+    using R = std::conditional_t<std::is_void_v<Raw>, std::monostate, Raw>;
     std::packaged_task<R()> job(
-        [t = std::move(task)]() mutable -> R { return t.run(); });
+        [t = std::move(task)]() mutable -> R {
+            if constexpr (std::is_void_v<Raw>) {
+                t.run();
+                return std::monostate{};
+            } else {
+                return t.run();
+            }
+        });
     std::future<R> future = job.get_future();
     std::thread thread(std::move(job));
     return JoinHandle<R>(std::move(thread), std::move(future));

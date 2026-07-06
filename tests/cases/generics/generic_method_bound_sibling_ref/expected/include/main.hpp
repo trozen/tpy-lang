@@ -10,7 +10,7 @@ namespace tpyapp::main {
 // class Container[T](Protocol):
 template<typename T, typename _T0>
 concept Container = requires(T& t) {
-    { t.get() } -> std::convertible_to<_T0>;
+    { t.get() } -> ::tpy::proto_result<_T0>;
 };
 
 struct IntBox;

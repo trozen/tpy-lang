@@ -621,6 +621,12 @@ class ProtocolGenerator:
 
             if skip_return_check:
                 out.write(f"{INDENT}{call_expr};\n")
+            elif (isinstance(method_sig.return_type, TypeParamRef)
+                    and method_sig.return_type.name in type_param_map):
+                # A bare type-param return can be instantiated with None
+                # (monostate) while a `-> None` conformer compiles to void;
+                # proto_result accepts that pairing alongside convertibility.
+                out.write(f"{INDENT}{{ {call_expr} }} -> ::tpy::proto_result<{ret_cpp}>;\n")
             else:
                 out.write(f"{INDENT}{{ {call_expr} }} -> std::convertible_to<{ret_cpp}>;\n")
 

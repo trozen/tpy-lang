@@ -17,7 +17,7 @@ template<typename T> struct Cloneable;
 template<typename T, typename _T0>
 concept __Cloneable_Concept__ = requires(const T& t) {
     { t.replicate() } -> std::convertible_to<std::unique_ptr<Cloneable<_T0>>>;
-    { t.value() } -> std::convertible_to<_T0>;
+    { t.value() } -> ::tpy::proto_result<_T0>;
 };
 
 template<typename T>

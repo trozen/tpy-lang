@@ -12,7 +12,7 @@ template<typename T> struct Source;
 // class Source[T](Protocol):
 template<typename T, typename _T0>
 concept __Source_Concept__ = requires(T& t) {
-    { t.get() } -> std::convertible_to<_T0>;
+    { t.get() } -> ::tpy::proto_result<_T0>;
 };
 
 template<typename T>
@@ -27,7 +27,7 @@ template<typename T> struct Counter;
 template<typename T, typename _T0>
 concept __Counter_Concept__ = requires(T& t) {
     { t.bump() } -> std::convertible_to<void>;
-    { t.get() } -> std::convertible_to<_T0>;
+    { t.get() } -> ::tpy::proto_result<_T0>;
 };
 
 template<typename T>
