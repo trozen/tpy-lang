@@ -59,7 +59,7 @@ class Span[T](Iterable[T], NativeIterable[T], Spannable[T]):
     @readonly
     def __span__(self) -> Span[readonly[T]]: ...
 
-    @cpp_template("std::stable_sort({self}.begin(), {self}.end())")
+    @native("tpy::sort_in_place", function=True)
     def sort[T: Comparable](self) -> None: ...
 
 

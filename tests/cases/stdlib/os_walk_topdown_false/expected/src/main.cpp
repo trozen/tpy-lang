@@ -37,13 +37,13 @@ std::vector<std::string> walk_rows(std::string_view root) {
         // dn = list(dirnames)
         std::vector<std::string> dn = ::tpy::construct<std::vector<std::string>>(dirnames);
         // dn.sort()
-        std::stable_sort(dn.begin(), dn.end());
+        ::tpy::sort_in_place(dn);
         // rows.append(rel + " dirs=" + str(dn) + " files=" + str(len(filenames)))
         rows.push_back((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat(rel, " dirs=")), ::tpy::list_to_str(dn))), " files=")), ::tpy::fixed_to_str<int32_t>(::tpy::__len__(filenames)))));
         }
     }
     // rows.sort()
-    std::stable_sort(rows.begin(), rows.end());
+    ::tpy::sort_in_place(rows);
     // return rows
     return rows;
 }

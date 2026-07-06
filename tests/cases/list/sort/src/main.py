@@ -1,6 +1,7 @@
-# Test sort for list[T], ArrayList[T, N], user-defined types, and stability
+# Test sort for list[T], ArrayList[T, N], Span[T], user-defined types, and
+# stability; plus that a side-effecting sort receiver evaluates exactly once.
 from __future__ import annotations
-from tpy import Int32
+from tpy import Int32, Span
 from tplib import ArrayList
 
 class Pair:
@@ -50,10 +51,29 @@ def test_stable_sort() -> None:
     for p in a:
         print(p)
 
+def test_span_sort() -> None:
+    # Sorting a Span mutates the aliased backing list (view, not a copy).
+    lst: list[Int32] = [5, 3, 1, 4, 2]
+    s: Span[Int32] = Span[Int32](lst)
+    s.sort()
+    print(lst)
+
+def key() -> Int32:
+    # A side-effecting subscript index: must run once per sort receiver.
+    print("k")
+    return 0
+
+def test_sort_receiver_evaluated_once() -> None:
+    rows: list[list[Int32]] = [[3, 1, 2]]
+    rows[key()].sort()
+    print(rows)
+
 def main() -> None:
     test_list_sort()
     test_arraylist_sort()
     test_user_type_sort()
     test_stable_sort()
+    test_span_sort()
+    test_sort_receiver_evaluated_once()
 
 main()

@@ -299,6 +299,8 @@ def lambda_sum(a: Int32, b: Int32) -> Int32: ...
 
 A lone unescaped brace (or an out-of-range `{N}`) is a compile-time diagnostic, not an internal error.
 
+**A runtime-value placeholder (`{self}` or `{N}`) may appear at most once.** Substitution is a textual paste with no evaluate-once binding, so a repeated value placeholder would evaluate its argument twice -- side effects run twice, and a repeated side-effecting receiver makes `std::stable_sort({self}.begin(), {self}.end())` undefined (the two evaluations can view different containers). The compiler rejects this at parse time. Type placeholders (`{cpp}`, `{T}`) are inert and may repeat freely. When you need an evaluated argument more than once, bind a typed C++ helper with `@native` -- it evaluates each argument once by construction.
+
 ---
 
 ## Exporting: `@export`

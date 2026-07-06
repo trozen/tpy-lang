@@ -30,7 +30,7 @@ void main() {
         std::cout << p << " " << s << "\n";
     }
     // pairs.sort()
-    std::stable_sort(pairs.begin(), pairs.end());
+    ::tpy::sort_in_place(pairs);
     // print("---")
     std::cout << "---" << "\n";
     // for p, s in pairs:

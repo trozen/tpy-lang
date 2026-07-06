@@ -419,6 +419,17 @@ void list_reverse(std::vector<T>& v) {
 }
 
 /**
+ * sort_in_place - Python .sort() for any mutable random-access range
+ * (std::vector, std::span). Stable ascending sort to match CPython's Timsort.
+ * Forwarding-ref so a returned-by-value view (an rvalue std::span from
+ * __span__(), which still aliases the owner's buffer) binds too.
+ */
+template<typename C>
+void sort_in_place(C&& c) {
+    std::stable_sort(c.begin(), c.end());
+}
+
+/**
  * list_copy - Python list.copy() for std::vector.
  *
  * Returns a shallow copy of the list.

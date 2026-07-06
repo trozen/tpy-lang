@@ -19,6 +19,9 @@ void test_list_sort();
 void test_arraylist_sort();
 void test_user_type_sort();
 void test_stable_sort();
+void test_span_sort();
+int32_t key();
+void test_sort_receiver_evaluated_once();
 void main();
 
 // class Pair:

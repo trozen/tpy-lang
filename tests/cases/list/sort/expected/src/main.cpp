@@ -9,7 +9,7 @@ void test_list_sort() {
     // a: list[Int32] = [5, 3, 1, 4, 2]
     std::vector<int32_t> a = {5, 3, 1, 4, 2};
     // a.sort()
-    std::stable_sort(a.begin(), a.end());
+    ::tpy::sort_in_place(a);
     // print(a)
     std::cout << ::tpy::ListPrinter(a) << "\n";
 }
@@ -39,7 +39,7 @@ void test_user_type_sort() {
     // a: list[Pair] = [Pair(3, 0), Pair(1, 0), Pair(2, 0)]
     std::vector<Pair> a = {Pair(3, 0), Pair(1, 0), Pair(2, 0)};
     // a.sort()
-    std::stable_sort(a.begin(), a.end());
+    ::tpy::sort_in_place(a);
     // for p in a:
     auto& __obj_0 = a;
     auto __beg_0 = __obj_0.begin();
@@ -62,7 +62,7 @@ void test_stable_sort() {
     // ]
     std::vector<Pair> a = {Pair(2, 1), Pair(1, 1), Pair(2, 2), Pair(1, 2), Pair(2, 3)};
     // a.sort()
-    std::stable_sort(a.begin(), a.end());
+    ::tpy::sort_in_place(a);
     // for p in a:
     auto& __obj_0 = a;
     auto __beg_0 = __obj_0.begin();
@@ -72,6 +72,38 @@ void test_stable_sort() {
         // print(p)
         std::cout << p << "\n";
     }
+}
+
+// def test_span_sort() -> None:
+void test_span_sort() {
+    // # Sorting a Span mutates the aliased backing list (view, not a copy).
+    // lst: list[Int32] = [5, 3, 1, 4, 2]
+    std::vector<int32_t> lst = {5, 3, 1, 4, 2};
+    // s: Span[Int32] = Span[Int32](lst)
+    std::span<int32_t> s = std::span<int32_t>(lst);
+    // s.sort()
+    ::tpy::sort_in_place(s);
+    // print(lst)
+    std::cout << ::tpy::ListPrinter(lst) << "\n";
+}
+
+// def key() -> Int32:
+int32_t key() {
+    // # A side-effecting subscript index: must run once per sort receiver.
+    // print("k")
+    std::cout << "k" << "\n";
+    // return 0
+    return 0;
+}
+
+// def test_sort_receiver_evaluated_once() -> None:
+void test_sort_receiver_evaluated_once() {
+    // rows: list[list[Int32]] = [[3, 1, 2]]
+    std::vector<std::vector<int32_t>> rows = {{3, 1, 2}};
+    // rows[key()].sort()
+    ::tpy::sort_in_place(::tpy::__getitem__(rows, key()));
+    // print(rows)
+    std::cout << ::tpy::ListPrinter(rows) << "\n";
 }
 
 // def main() -> None:
@@ -84,6 +116,10 @@ void main() {
     test_user_type_sort();
     // test_stable_sort()
     test_stable_sort();
+    // test_span_sort()
+    test_span_sort();
+    // test_sort_receiver_evaluated_once()
+    test_sort_receiver_evaluated_once();
 }
 
 void __tpy_init() {

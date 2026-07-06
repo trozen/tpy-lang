@@ -71,7 +71,7 @@ std::vector<std::string> walk_rows(std::string_view root, std::optional<std::fun
         }
     }
     // rows.sort()
-    std::stable_sort(rows.begin(), rows.end());
+    ::tpy::sort_in_place(rows);
     // return rows
     return rows;
 }

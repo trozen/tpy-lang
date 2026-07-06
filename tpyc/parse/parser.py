@@ -169,6 +169,54 @@ def _validate_fstring_format_spec(spec: str) -> str | None:
     return None
 
 
+def _validate_cpp_template(template: str) -> str | None:
+    """Reject a @cpp_template that repeats a runtime-value placeholder.
+
+    Returns an error message, or None if valid. A runtime-value placeholder
+    (`{self}` or a positional `{N}`) is substituted with an *evaluated*
+    argument expression; repeating one double-evaluates that expression --
+    a C-macro footgun (side effects run twice; for a subscript receiver the
+    two evaluations can yield different containers, making std::stable_sort
+    over begin()/end() undefined). Type placeholders (`{cpp}` and named type
+    params like `{T}`) are inert -- resolved before argument expansion -- so
+    repeating them is safe and stays legal. Mirrors expand_cpp_template's
+    grammar (`{{`/`}}` are literal braces). @native binds a typed C++ symbol
+    that evaluates each argument once, so it is the escape hatch.
+    """
+    seen: set[str] = set()
+    i, n = 0, len(template)
+    while i < n:
+        c = template[i]
+        if c == '{':
+            if i + 1 < n and template[i + 1] == '{':
+                i += 2
+                continue
+            close = template.find('}', i + 1)
+            if close == -1:
+                return None  # malformed; expand_cpp_template reports it later
+            field = template[i + 1:close]
+            if field == 'self' or field.isdigit():
+                # Key on the arg index, not the raw text: expand_cpp_template
+                # resolves `{N}` via int(field), so `{0}` and `{00}` are the
+                # same argument and must both count against the one-use limit.
+                key = str(int(field)) if field.isdigit() else field
+                if key in seen:
+                    return (
+                        f"@cpp_template uses runtime-value placeholder "
+                        f"'{{{field}}}' more than once; a repeated placeholder "
+                        f"double-evaluates its argument (side effects run "
+                        f"twice). Use @native to bind a C++ helper that takes "
+                        f"the value as a typed argument instead."
+                    )
+                seen.add(key)
+            i = close + 1
+        elif c == '}' and i + 1 < n and template[i + 1] == '}':
+            i += 2
+        else:
+            i += 1
+    return None
+
+
 def _extract_subscript_slices(node: ast.Subscript) -> list[ast.expr]:
     """Extract individual type argument nodes from a subscript slice.
 
@@ -2418,6 +2466,9 @@ class Parser:
             if not self._is_stub_body(node.body):
                 raise ParseError(
                     f"@cpp_template method '{node.name}' must have `...` body", node)
+            err = _validate_cpp_template(cpp_template)
+            if err is not None:
+                raise ParseError(err, node)
         is_stub_body = self._is_stub_body(node.body)
         is_overload_stub_body = is_stub_body or self._is_pass_body(node.body)
         is_stub = (is_stub_body and not is_overload_stub) or cpp_template is not None
@@ -2766,6 +2817,9 @@ class Parser:
             if not self._is_stub_body(node.body):
                 raise ParseError(
                     f"@cpp_template function '{node.name}' must have `...` body", node)
+            err = _validate_cpp_template(cpp_template)
+            if err is not None:
+                raise ParseError(err, node)
             is_stub = True
             body = []
         elif is_overload_stub:

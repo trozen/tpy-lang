@@ -289,7 +289,7 @@ inline void SortableBox::fill(int32_t a, int32_t b) {
 // def sort_items(self) -> None:                  # self.field.method() -- must NOT be const
 inline void SortableBox::sort_items() {
     // self.items.sort()
-    std::stable_sort(this->items.begin(), this->items.end());
+    ::tpy::sort_in_place(this->items);
 }
 
 // def get_first(self) -> Int32:                  # only reads -- inferred const

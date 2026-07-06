@@ -17,7 +17,7 @@ void grow(std::vector<int32_t>& xs, int32_t n) {
     // xs.reverse()
     ::tpy::list_reverse(xs);
     // xs.sort()
-    std::stable_sort(xs.begin(), xs.end());
+    ::tpy::sort_in_place(xs);
     // xs.remove(5)
     ::tpy::list_remove(xs, 5);
 }

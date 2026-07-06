@@ -122,7 +122,7 @@ void test_sort() {
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
         // items.sort()  # tpyc: warning(/Mutation of 'items'.*'sort'/)
-        std::stable_sort(items.begin(), items.end());
+        ::tpy::sort_in_place(items);
     }
 }
 

@@ -15,6 +15,8 @@ void main() {
     std::cout << static_cast<int32_t>(static_cast<unsigned char>('Z')) << "\n";
     // print(add(10, 32))
     std::cout << 10 + 32 << "\n";
+    // print(round_trip[Int32](7))
+    std::cout << static_cast<int32_t>(static_cast<int32_t>(7)) << "\n";
 }
 
 void __tpy_init() {

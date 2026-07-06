@@ -114,6 +114,12 @@ inline Bytes bytes_from_size(int32_t n) {
     return Bytes(static_cast<size_t>(n), 0);
 }
 
+// Owned bytes from a raw byte buffer of `size` bytes (unsafe_bytes_from_buf).
+// Caller ensures [p, p + size) is valid for read.
+inline Bytes bytes_from_buf(const uint8_t* p, uint64_t size) {
+    return Bytes(p, p + size);
+}
+
 inline uint8_t int_to_byte(int32_t v) {
     if (v < 0 || v > 255) raise_value_error("bytes must be in range(0, 256)");
     return static_cast<uint8_t>(v);

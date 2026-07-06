@@ -35,7 +35,7 @@ void main() {
         }
     }
     // iter_keys.sort()
-    std::stable_sort(iter_keys.begin(), iter_keys.end());
+    ::tpy::sort_in_place(iter_keys);
     // print(iter_keys)
     std::cout << ::tpy::ListPrinter(iter_keys) << "\n";
     // # keys() matches __iter__.
@@ -54,7 +54,7 @@ void main() {
         }
     }
     // key_list.sort()
-    std::stable_sort(key_list.begin(), key_list.end());
+    ::tpy::sort_in_place(key_list);
     // print(key_list == iter_keys)
     std::cout << ::tpy::print_bool((key_list == iter_keys)) << "\n";
     // # items() pairs, filtered and sorted by key.
@@ -77,7 +77,7 @@ void main() {
         }
     }
     // pairs.sort()
-    std::stable_sort(pairs.begin(), pairs.end());
+    ::tpy::sort_in_place(pairs);
     // print(pairs)
     std::cout << ::tpy::ListPrinter(pairs) << "\n";
     // # values() for the keys we set, gathered via items() to pick the right ones.
@@ -101,7 +101,7 @@ void main() {
         }
     }
     // vals.sort()
-    std::stable_sort(vals.begin(), vals.end());
+    ::tpy::sort_in_place(vals);
     // # values() returns the same multiset.
     // vlist: list[str] = []
     std::vector<std::string> vlist = std::vector<std::string>{};

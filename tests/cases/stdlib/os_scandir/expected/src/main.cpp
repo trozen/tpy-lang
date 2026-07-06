@@ -81,7 +81,7 @@ void main() {
         }
     }
     // rows.sort()
-    std::stable_sort(rows.begin(), rows.end());
+    ::tpy::sort_in_place(rows);
     // for r in rows:
     auto& __obj_1 = rows;
     auto __beg_1 = __obj_1.begin();

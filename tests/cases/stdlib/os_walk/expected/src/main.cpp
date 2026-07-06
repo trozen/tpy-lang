@@ -153,7 +153,7 @@ void walk_sorted(std::string_view root) {
         }
     }
     // rows.sort()
-    std::stable_sort(rows.begin(), rows.end());
+    ::tpy::sort_in_place(rows);
     // for r in rows:
     auto& __obj_3 = rows;
     auto __beg_3 = __obj_3.begin();

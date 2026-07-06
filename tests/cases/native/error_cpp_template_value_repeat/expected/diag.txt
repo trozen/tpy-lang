@@ -1,0 +1,1 @@
+main.py:7: error: @cpp_template uses runtime-value placeholder '{0}' more than once; a repeated placeholder double-evaluates its argument (side effects run twice). Use @native to bind a C++ helper that takes the value as a typed argument instead.

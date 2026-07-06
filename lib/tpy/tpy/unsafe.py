@@ -191,5 +191,5 @@ def unsafe_str_from_buf(p: Ptr[readonly[UInt8]], size: UInt64) -> str: ...
 # CPython's `bytes()` does not accept raw pointers (no buffer protocol
 # exposure at that layer), so this can't be a bytes constructor overload;
 # it lives here alongside other raw-memory constructors.
-@cpp_template("std::vector<uint8_t>({0}, {0} + {1})")
+@native("tpy::bytes_from_buf")
 def unsafe_bytes_from_buf(p: Ptr[UInt8], size: UInt64) -> bytes: ...

@@ -220,14 +220,17 @@ class TestMethodCall:
         assert isinstance(mc, THIRMethodCall)
         assert mc.native_function_name == "tpy::pop_back"
 
-    def test_cpp_template_routes(self):
-        # `xs.sort()` -- @cpp_template body carried for expansion at emit.
+    def test_sort_native_function_routes(self):
+        # `xs.sort()` -- @native(tpy::sort_in_place, function=True): the receiver
+        # becomes the first arg (evaluate-once, no double-eval of a side-effecting
+        # receiver).
         thir = _lower(
             _PRELUDE
             + "def f(xs: list[Int32]) -> None:\n    xs.sort()\n")
         mc = _fn(thir, "f").body[0].expr
         assert isinstance(mc, THIRMethodCall)
-        assert mc.cpp_template == "std::stable_sort({self}.begin(), {self}.end())"
+        assert mc.native_function_name == "tpy::sort_in_place"
+        assert mc.cpp_template is None
 
     def test_plain_member_routes(self):
         # `xs.clear()` -- bare @native member (no rename): the escaped source name.
@@ -356,7 +359,7 @@ class TestMethodCallEmit:
         cpp = self._cpp(self.SRC, thir=True)
         assert "xs.push_back(n);" in cpp                      # @native member rename
         assert "::tpy::list_insert(xs, 0, 7);" in cpp         # @native free function
-        assert "std::stable_sort(xs.begin(), xs.end());" in cpp  # @cpp_template
+        assert "::tpy::sort_in_place(xs);" in cpp             # @native free function
         assert "xs.clear();" in cpp                           # plain member
         assert "int32_t a = ::tpy::pop_back(xs);" in cpp      # value position
         assert "return ::tpy::dict_pop_default(d, k, 0);" in cpp

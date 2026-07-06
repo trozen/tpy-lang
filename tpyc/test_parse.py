@@ -6,6 +6,7 @@ from .parse import RelativeImportKey, Parser, ParseError
 from .parse.imports import (
     get_tpy_exports, scan_star_exports, NonLiteralAllError, read_module_all,
 )
+from .parse.parser import _validate_cpp_template
 
 
 class TestRelativeImportKey:
@@ -317,3 +318,46 @@ class TestClassBodyTupleTargetRejected:
         p = Parser()
         with pytest.raises(ParseError, match="Invalid field declaration"):
             p.parse("class K:\n    a, b = (1, 2)\n")
+
+
+class TestValidateCppTemplate:
+    """`_validate_cpp_template` rejects a repeated runtime-value placeholder
+    ({self}/{N}); type placeholders ({cpp}, {T}) and single use stay legal."""
+
+    def test_single_use_ok(self):
+        assert _validate_cpp_template("{self}[{0}] = {1}") is None
+
+    def test_repeated_positional_rejected(self):
+        assert _validate_cpp_template("{0} + {0}") is not None
+
+    def test_repeated_self_rejected(self):
+        assert _validate_cpp_template(
+            "std::stable_sort({self}.begin(), {self}.end())") is not None
+
+    def test_index_normalized_before_dedup(self):
+        # {0} and {00} are the same argument to expand_cpp_template (int(field)),
+        # so a template mixing them must still be rejected.
+        assert _validate_cpp_template("{0} + {00}") is not None
+
+    def test_repeat_detected_across_literal_braces(self):
+        assert _validate_cpp_template("{{ return {0} + {0}; }}") is not None
+
+    def test_repeated_type_placeholder_ok(self):
+        # {cpp} and named type params are inert (resolved before arg expansion).
+        assert _validate_cpp_template("static_cast<{cpp}>(static_cast<{cpp}>({0}))") is None
+        assert _validate_cpp_template("::tpy::construct<{T}, {T}>({0})") is None
+
+    def test_malformed_defers_to_expand(self):
+        # An unmatched brace is expand_cpp_template's diagnostic, not ours.
+        assert _validate_cpp_template("{0} + {") is None
+
+    def test_method_site_rejects_via_parser(self):
+        # Exercises the method decorator call site (distinct from the free-fn site).
+        p = Parser()
+        with pytest.raises(ParseError, match="more than once"):
+            p.parse(
+                "from tpy.extern import cpp_template\n"
+                "from tpy import Int32\n"
+                "class K:\n"
+                "    @cpp_template(\"{self} + {self}\")\n"
+                "    def dbl(self) -> Int32: ...\n")

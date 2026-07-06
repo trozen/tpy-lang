@@ -13,7 +13,7 @@ int32_t grown() {
     // xs.insert(0, 7)
     ::tpy::list_insert(xs, 0, 7);
     // xs.sort()
-    std::stable_sort(xs.begin(), xs.end());
+    ::tpy::sort_in_place(xs);
     // total = 0
     int32_t total = 0;
     // for x in xs:

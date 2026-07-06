@@ -5515,6 +5515,17 @@ def game_tick(time: Int32) -> None:
 
 Cross-module imports of native functions work normally -- the compiler re-declares extern symbols in each module.
 
+### Inline C++ templates -- `@cpp_template` (Working)
+
+`@cpp_template("<C++ expression>")` binds a bodyless function/method to an inline C++ expression. Placeholders substitute textually: `{self}` (receiver) and positional `{0}`, `{1}`, ... (arguments) are *runtime values*; `{cpp}` (return-type spelling) and named type params `{T}` are *types*, resolved before argument expansion. `{{`/`}}` emit literal braces.
+
+```python
+@cpp_template("static_cast<char>({0})")
+def to_char(i: Int32) -> Char: ...
+```
+
+- **A runtime-value placeholder may appear at most once.** Because substitution is textual paste (no evaluate-once binding), repeating `{self}` or a `{N}` would evaluate that argument twice -- a C-macro footgun (`SQUARE(i++)`): side effects run twice, and a repeated side-effecting subscript receiver makes `std::stable_sort(x.begin(), x.end())` undefined (the two evaluations can view different containers). The compiler rejects a repeated value placeholder at parse time and points at `@native`. Repeated *type* placeholders (`{T}`, `{cpp}`) stay legal -- they are inert. When you need to reference an evaluated argument more than once, use `@native` to bind a typed C++ helper (evaluate-once by construction).
+
 ### Native Classes (Working)
 
 Import existing C++ classes and C structs so TPy code can declare their fields, call their methods, and pass them to native functions. No struct definition is generated -- the compiler trusts the external type exists.

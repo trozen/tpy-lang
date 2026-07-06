@@ -105,7 +105,7 @@ class list[T](Iterable[T], NativeIterable[T], NativeRangeConstructible[T], Spann
     @native("tpy::list_reverse", function=True)
     def reverse(self) -> None: ...
 
-    @cpp_template("std::stable_sort({self}.begin(), {self}.end())")
+    @native("tpy::sort_in_place", function=True)
     def sort[T: Comparable](self) -> None: ...
 
     @native("tpy::list_copy", function=True)
