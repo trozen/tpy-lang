@@ -22,8 +22,8 @@ from tplib import Box
 from tplib.rc import Rc
 from time import monotonic
 from socket import (
-    socket, SOL_SOCKET, SO_ERROR, SO_REUSEADDR, AF_INET, SOCK_STREAM,
-    _maybe_raise_connection_error, _socket_error, _strerror)
+    socket, SocketError, SOL_SOCKET, SO_ERROR, SO_REUSEADDR, AF_INET,
+    SOCK_STREAM, _maybe_raise_connection_error, _strerror)
 from _bindings import posix_signal
 from ._executor import (
     Task, AnyTask,
@@ -299,11 +299,13 @@ class _SockConnect:
         if err == 0:
             return poll_ready_none()
         # Same errno-keyed taxonomy as socket's own raise helpers: a refused
-        # connect surfaces as ConnectionRefusedError (CPython asyncio parity),
-        # any other errno as SocketError; all carry `.errno` / `.strerror`.
-        msg = _strerror(err)
-        _maybe_raise_connection_error(err, msg, "connect: " + msg)
-        raise _socket_error("connect: " + msg, err, msg)
+        # connect surfaces as ConnectionRefusedError (CPython asyncio parity).
+        # The message is CPython asyncio's own wording (its _sock_connect_cb
+        # raises OSError(err, f'Connect call failed {address}'), not the OS
+        # strerror text).
+        msg = f"Connect call failed {self._addr}"
+        _maybe_raise_connection_error(err, msg)
+        raise SocketError(err, msg)
 
 
 class SleepFuture:

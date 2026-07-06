@@ -530,6 +530,7 @@ These are orthogonal to the import/export system and remain unchanged:
 | `native_preserves_refs` | Marks native method as not invalidating iterators |
 | `copy_returns_warn` | Marks an `Own[V]` accessor that copies where its CPython namesake aliases; sema warns at call sites (silence with `copy()`) |
 | `value_ptr_coercion` | Type coercion annotation |
+| `virtual_raise` | Class marker: its hand-written C++ `__raise__` dispatches (is not `throw *this`), so `raise X(args)` routes through it instead of the fresh-throw peephole. Not inherited. Used by `OSError`'s errno -> subclass mapping |
 
 ---
 

@@ -44,8 +44,8 @@ HTTPS_PORT: Final[Int32] = 443
 
 
 class HTTPException(Exception):
-    # Explicit __init__ + String param mirror socket.SocketError (compiler-gap
-    # workaround for exception subclasses).
+    # Explicit __init__ + String param: compiler-gap workaround for
+    # exception subclasses (StrView default-arg on a user ctor).
     def __init__(self, message: String = "") -> None:
         super().__init__(message)
 

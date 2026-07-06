@@ -4998,6 +4998,7 @@ class RecordInfo:
     is_movable: bool = True         # False if a field/parent is non-movable and no __move__; derived by sema
     move_override: bool | None = None  # False from @nomove; None = structural auto-derive
     builtin_type_key: str | None = None  # e.g. "builtins.list" -- links .py class to type_factory
+    virtual_raise: bool = False  # @virtual_raise: `raise X(args)` routes through the dispatching C++ __raise__, not a fresh throw
     module: str | None = None  # Public module name (collapses private submodules via public_module_name); used for qualified_name() and codegen C++ namespace
     defining_module: str | None = None  # Raw (uncollapsed) module where the class was declared; used by re-export logic to look up the record through ModuleInfo.records
     exposed_to_host: bool = False  # True for a bare `@export` class in an ext_module: exposed as a CPython type (PyType_FromSpec). Mirrors TpyFunction.exposed_to_host.

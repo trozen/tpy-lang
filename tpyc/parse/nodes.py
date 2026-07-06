@@ -958,6 +958,9 @@ class TpyRaise(TpyStmt):
     # plain coercion fallback). mutated_params is read finalized at codegen via
     # this live reference.
     resolved_ctor_init: 'FunctionInfo | None' = None
+    # Set by sema when the raised class is @virtual_raise: codegen emits
+    # `X(args).__raise__();` so the class's dispatching __raise__ applies.
+    raise_via_virtual: bool = False
 
     def exprs(self) -> list[TpyExpr]:
         result = list(self.args)
@@ -1464,6 +1467,9 @@ class TpyRecord:
     is_typed_dict: bool = False
     is_total_false: bool = False  # TypedDict(total=False): all fields Optional
     builtin_type_key: str | None = None
+    # @virtual_raise: the class's C++ __raise__ dispatches (not `throw *this`),
+    # so `raise X(args)` must route through it, not the fresh-throw peephole.
+    virtual_raise: bool = False
     # @native(indirecting=True): record owns indirect (heap-backed) storage
     # of its type parameter that the compiler cannot introspect (e.g. list/
     # dict/set, or a user @native record wrapping a C++ unique_ptr).

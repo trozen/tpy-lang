@@ -508,25 +508,24 @@ raise make_error(42)       # same desugar on the call result
 raise self.exc             # Box[Throwable] -- auto-deref then __raise__
 ```
 
-Lowering rules (single path; no fast-path special case for fresh
-construction -- one unified codepath removes the divergence risk between
-two forms):
+Lowering rules:
 
-- **`raise <expr>` (any shape, including fresh construction)**: peel
+- **`raise <expr>` (bound values, call results, Box contents)**: peel
   `__deref__` until you hit a non-Deref type; if that type implements
   `Throwable`, emit `<peeled>.__raise__()` (virtual dispatch, throws the
-  dynamic type). For `raise X(args)`, this is `X(args).__raise__()` -- the
-  constructed exception's auto-emitted override does `throw *this`, throwing
-  as the concrete subclass.
+  dynamic type).
+- **`raise X(args)` (fresh construction)**: the implemented peephole emits a
+  direct `throw X(args)` -- static and dynamic types coincide for a fresh
+  construction whose `__raise__` is the auto-emitted `throw *this`, so the
+  virtual hop is skipped and the generated C++ stays idiomatic.
+  **EXCEPT for `@virtual_raise` classes** (declared in the stub; e.g.
+  `OSError`, whose hand-written C++ `__raise__` dispatches the ctor-time
+  PEP 3151 errno mapping): there the override is NOT equivalent to a fresh
+  throw, so codegen emits `X(args).__raise__();` -- the virtual hop IS the
+  semantics. Sema materializes the record flag as `TpyRaise.raise_via_virtual`;
+  the THIR path mirrors it (`THIRRaise.via_virtual`).
 - **Non-Throwable peeled type**: sema rejects with "no `__raise__` method on
   `<type>`; `raise` requires a Throwable expression."
-
-The one-virtual-call overhead vs the previous `throw X(args)` form is invisible
-against the cost of a thrown exception. If profiling later shows it matters,
-the fresh-construction fast path can be reintroduced as a peephole
-optimization (`raise X(args)` -> `throw X(args)`) -- but only after verifying
-catch matching, finally interaction, source locations, and debug info are
-identical between the two forms.
 
 Only throw-tier (non-ReturnException) exceptions are supported -- return-tier
 exceptions must use the direct `raise E(args)` form.

@@ -56,6 +56,7 @@ from .context import addr_taken_roots, expr_yields_non_null_ptr, record_stmt_bor
 from ..diagnostics import SemanticError, NOCOPY_REMEDIATION_HINT
 from .match import MatchAnalyzer
 from .narrowing import NarrowingTracker
+from .overloads import OverloadAmbiguityError, resolve_overload
 from .scope_tracker import ScopeTracker
 from .init_tracker import InitTracker
 from .value_range import ValueRange
@@ -1800,7 +1801,47 @@ class StatementAnalyzer:
 
         # Type-check constructor arguments against __init__ params
         if stmt.args:
-            if record.has_init:
+            init_overloads = record.get_method_overloads("__init__")
+            if not init_overloads and record.inherits_init_from is not None:
+                # No own __init__: the emitted struct inherits the parent's
+                # ctors (`using Base::Base`), so an overloaded parent group
+                # (e.g. the OSError builtin stubs) is this record's
+                # constructible surface; the inherited init_params copy only
+                # mirrors the first stub.
+                init_overloads = self.ctx.registry.get_method_overloads_with_parents(
+                    record, "__init__")
+            if init_overloads and len(init_overloads) > 1:
+                # Overloaded ctor (builtin-stub @overload groups, e.g. the
+                # OSError (errno, strerror[, filename]) forms): resolve the
+                # winning overload like the expression construction path;
+                # the single-init arity check below would only ever see the
+                # first stub's signature.
+                arg_types = [self.expr.analyze_expr(a) for a in stmt.args]
+                try:
+                    winner = resolve_overload(
+                        init_overloads, arg_types,
+                        protocol_checker=self.protocols.type_conforms_to_protocol,
+                        default_int_type=self.ctx.default_int_type,
+                        subclass_checker=self.ctx.registry.is_subclass_of,
+                        protocol_classifier=self.protocols.classify_protocol_conformance,
+                        type_ops=self.type_ops,
+                    )
+                except OverloadAmbiguityError as e:
+                    raise self.ctx.error(str(e), stmt)
+                if winner is None:
+                    types_str = ", ".join(str(t) for t in arg_types)
+                    raise self.ctx.error(
+                        f"No matching overload for '{stmt.exception_type}"
+                        f"({types_str})'", stmt)
+                for i, (arg, arg_type, (pname, ptype)) in enumerate(
+                        zip(stmt.args, arg_types, winner.params)):
+                    arg_type = self.expr.calls._restore_readonly_arg(arg, arg_type)
+                    self.expr.calls.check_own_param(arg, arg_type, pname, ptype)
+                    stmt.args[i] = self.compat.coerce_expr(
+                        arg, arg_type, ptype, f"argument '{pname}'",
+                        coercion_ctx=CoercionContext.ARG)
+                stmt.resolved_ctor_init = winner
+            elif record.has_init:
                 min_args = sum(1 for _, _, d in record.init_params if d is None)
                 max_args = len(record.init_params)
                 if len(stmt.args) < min_args or len(stmt.args) > max_args:
@@ -1831,6 +1872,10 @@ class StatementAnalyzer:
                 raise self.ctx.error(
                     f"'raise {stmt.exception_type}()' does not accept arguments",
                     stmt)
+        # @virtual_raise classes dispatch in their C++ __raise__ (e.g.
+        # OSError's ctor-time errno -> subclass mapping); the fresh
+        # construction must route through it, not the throw peephole.
+        stmt.raise_via_virtual = record.virtual_raise and not is_cf
         # Propagate qualified name to AST
         stmt.exception_type = qualified_exc
         self.init.mark_terminated()

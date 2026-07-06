@@ -1,0 +1,1 @@
+main.py:8: error: @virtual_raise on 'AppError' requires @native: it marks a hand-written C++ __raise__ as dispatching, and a plain TPy class cannot define one

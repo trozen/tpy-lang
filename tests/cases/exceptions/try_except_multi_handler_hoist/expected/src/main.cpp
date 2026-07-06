@@ -14,7 +14,7 @@ int32_t risky(int32_t n) {
     // if n == 2:
     if ((n == 2)) {
         // raise OSError("o")
-        throw ::tpy::OSError("o");
+        ::tpy::OSError("o").__raise__();
     }
     // return 10
     return 10;

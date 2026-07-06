@@ -2309,6 +2309,7 @@ def _lower_raise(stmt: TpyRaise, lc: _LowerCtx, declared: dict[str, TpyType],
         cpp_type=cpp,
         args=tuple(_lower_call_arg(a, p.type, lc)
                    for a, p in zip(stmt.args, params)),
+        via_virtual=stmt.raise_via_virtual,
         loc=loc,
     )
 

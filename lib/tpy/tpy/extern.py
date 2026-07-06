@@ -4,5 +4,5 @@ from ._bootstrap._extern import (
     native, export, cpp_template,
     value_ptr_coercion, native_preserves_refs,
     native_global, native_field, native_member,
-    type_param_default, DefaultInt,
+    type_param_default, DefaultInt, virtual_raise,
 )

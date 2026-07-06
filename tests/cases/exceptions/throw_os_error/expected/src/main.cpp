@@ -10,7 +10,7 @@ namespace tpyapp::main {
 // def fail() -> None:
 void fail() {
     // raise OSError("custom: simulated I/O failure")
-    throw ::tpy::OSError("custom: simulated I/O failure");
+    ::tpy::OSError("custom: simulated I/O failure").__raise__();
 }
 
 // def main() -> None:

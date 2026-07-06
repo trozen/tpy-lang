@@ -10,10 +10,12 @@
 
 #include "core.hpp"
 
+#include <cerrno>
 #include <fstream>
 #include <sstream>
 #include <string>
 #include <string_view>
+#include <system_error>
 #include <vector>
 
 namespace tpy {
@@ -79,9 +81,15 @@ class TextFile {
 
 public:
     TextFile(std::string_view path, FileFlags flags) : path_(path), flags_(flags) {
+        errno = 0;
         fs_.open(path_, flags_.mode);
         if (!fs_.is_open()) {
-            raise_file_not_found_error("open(): cannot open '{}'", path);
+            // fstream doesn't expose the failure reason, but the underlying
+            // open(2)'s errno survives in practice; 0 (no errno recorded) is
+            // treated as ENOENT, matching the previous hardcoded
+            // FileNotFoundError.
+            const int err = errno != 0 ? errno : ENOENT;
+            raise_mapped_os_error(err, std::generic_category().message(err), path);
         }
     }
 
@@ -171,9 +179,12 @@ class BinaryFile {
 
 public:
     BinaryFile(std::string_view path, FileFlags flags) : path_(path), flags_(flags) {
+        errno = 0;
         fs_.open(path_, flags_.mode);
         if (!fs_.is_open()) {
-            raise_file_not_found_error("open(): cannot open '{}'", path);
+            // Same errno recovery as TextFile above.
+            const int err = errno != 0 ? errno : ENOENT;
+            raise_mapped_os_error(err, std::generic_category().message(err), path);
         }
     }
 

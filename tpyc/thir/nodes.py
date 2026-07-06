@@ -1090,9 +1090,12 @@ class THIRRaise(THIRStmt):
     unreachable -- return-tier trys and @error_return bodies are
     gate-rejected). `cpp_type` pre-renders at lowering (`error_return_to_cpp`);
     None is the bare form. The expression form (`raise e` ->
-    `e.__raise__()` + deref chain) is a deferred row."""
+    `e.__raise__()` + deref chain) is a deferred row. `via_virtual`
+    mirrors sema's `raise_via_virtual` fact (@virtual_raise classes: the
+    peephole doesn't apply; emit `<cpp>(<args>).__raise__();`)."""
     cpp_type: 'str | None' = None
     args: tuple[THIRExpr, ...] = ()
+    via_virtual: bool = False
 
 
 @dataclass(frozen=True)

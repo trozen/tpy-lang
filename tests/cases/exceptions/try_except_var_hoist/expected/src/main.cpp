@@ -9,7 +9,7 @@ int32_t risky(bool fail) {
     // if fail:
     if (fail) {
         // raise OSError("boom")
-        throw ::tpy::OSError("boom");
+        ::tpy::OSError("boom").__raise__();
     }
     // return 5
     return 5;

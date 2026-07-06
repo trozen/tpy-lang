@@ -6,10 +6,10 @@
 # syscalls); the path-string surface lives in the `os.path` submodule. Raw
 # bindings live in `os._native`.
 #
-# Known gap: failures raise the right OSError subclass but do NOT populate
-# the structured `.errno`/`.strerror` attributes (the C++-side raise helpers
-# predate them) -- they carry the unset 0/"" defaults, so compare exception
-# TYPES, not `e.errno`, for os/file errors. Wiring is filed in TODO.md.
+# Failures raise the CPython OSError subclass (shared PEP 3151 table) with
+# the structured `.errno`/`.strerror`/`.filename` attributes populated and
+# CPython-exact `str(e)` text; `rename`/`replace`/`link`/`symlink` also set
+# `.filename2`.
 from typing import Final, overload, Iterator, Callable
 from tpy import Int64, Own, readonly
 from tpy.extern import native_global

@@ -1,0 +1,17 @@
+[Errno 2] No such file or directory
+2 No such file or directory
+[Errno 13] Permission denied: '/etc/shadow'
+13 Permission denied /etc/shadow
+plain msg True
+[Errno 2] No such file or directory: 'x.txt'
+[Errno 111] Connection refused
+111
+[Errno 17] File exists: 'out.txt' out.txt
+True True
+direct mapped: [Errno 2] No such file or directory
+bound mapped: [Errno 17] File exists
+unmapped errno stays plain: [Errno 5] Input/output error
+post-hoc stays plain: plain 2
+subclass kept: [Errno 1] Operation not permitted
+filename mapped: [Errno 2] No such file or directory: 'cfg.txt' cfg.txt
+zero-arg plain: True

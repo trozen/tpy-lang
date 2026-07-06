@@ -1,2 +1,2 @@
-open(): cannot open '/nonexistent/path/file.txt'
-open(): cannot open '/nonexistent/path/file.txt'
+[Errno 2] No such file or directory: '/nonexistent/path/file.txt'
+[Errno 2] No such file or directory: '/nonexistent/path/file.txt'

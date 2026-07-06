@@ -11,7 +11,7 @@ std::tuple<std::string, std::string> maybe_pair(bool fail) {
     // if fail:
     if (fail) {
         // raise OSError("x")
-        throw ::tpy::OSError("x");
+        ::tpy::OSError("x").__raise__();
     }
     // return ("hello-world-long", "another-long-str")
     return std::tuple<std::string, std::string>{"hello-world-long", "another-long-str"};

@@ -43,37 +43,21 @@ std::filesystem::path to_path(std::string_view p) {
     return std::filesystem::path(std::string(p));
 }
 
-// Maps an errno-domain error_code to the OSError subclass CPython raises for
-// it (the os-module errno table); anything else surfaces as plain OSError.
-[[noreturn]] void raise_fs_error(const std::error_code& ec,
-                                 std::string_view op, std::string_view path) {
-    const std::string m = ec.message();
-    if (ec == std::errc::no_such_file_or_directory)
-        ::tpy::raise_file_not_found_error("{}: '{}': {}", op, path, m);
-    if (ec == std::errc::file_exists)
-        ::tpy::raise_file_exists_error("{}: '{}': {}", op, path, m);
-    if (ec == std::errc::not_a_directory)
-        ::tpy::raise_not_a_directory_error("{}: '{}': {}", op, path, m);
-    if (ec == std::errc::is_a_directory)
-        ::tpy::raise_is_a_directory_error("{}: '{}': {}", op, path, m);
-    if (ec == std::errc::permission_denied ||
-        ec == std::errc::operation_not_permitted)
-        ::tpy::raise_permission_error("{}: '{}': {}", op, path, m);
-    // EAGAIN/EWOULDBLOCK -> BlockingIOError, matching CPython's os.read on a
-    // non-blocking fd. A recv-timeout on a socket fd also surfaces here as
-    // EAGAIN; the distinct subclass lets a reader tell it apart from a hard
-    // error and remap it to TimeoutError.
-    if (ec == std::errc::resource_unavailable_try_again ||
-        ec == std::errc::operation_would_block)
-        ::tpy::raise_blocking_io_error("{}: '{}': {}", op, path, m);
-    ::tpy::raise_os_error("{}: '{}': {}", op, path, m);
+// Raise the errno-keyed OSError subclass with CPython-exact message and
+// attributes ("[Errno N] strerror[: 'path'[ -> 'path2']]"); the errno ->
+// subclass table is the shared tpy::raise_mapped_os_error. The operation
+// name is deliberately absent: CPython's os errors don't carry it.
+[[noreturn]] void raise_fs_error(const std::error_code& ec, std::string_view path,
+                                 std::string_view path2 = "") {
+    ::tpy::raise_mapped_os_error(static_cast<int32_t>(ec.value()), ec.message(),
+                                 path, path2);
 }
 
 // Raise from the live errno for a failed syscall. MUST be called immediately
 // after the syscall with nothing in between (callers hold the path in a named
 // local so no destructor runs first): errno is read here, not captured upfront.
-[[noreturn]] void raise_errno(std::string_view op, std::string_view path) {
-    raise_fs_error(std::error_code(errno, std::generic_category()), op, path);
+[[noreturn]] void raise_errno(std::string_view path = "", std::string_view path2 = "") {
+    raise_fs_error(std::error_code(errno, std::generic_category()), path, path2);
 }
 
 } // namespace
@@ -81,14 +65,16 @@ std::filesystem::path to_path(std::string_view p) {
 std::string getcwd() {
     std::error_code ec;
     auto p = std::filesystem::current_path(ec);
-    if (ec) ::tpy::raise_os_error("getcwd: {}", ec.message());
+    // Through the mapped table like every other site: CPython's errno remap
+    // applies to getcwd too (a deleted cwd raises FileNotFoundError there).
+    if (ec) raise_fs_error(ec, "");
     return p.string();
 }
 
 void chdir(std::string_view path) {
     std::error_code ec;
     std::filesystem::current_path(to_path(path), ec);
-    if (ec) raise_fs_error(ec, "chdir", path);
+    if (ec) raise_fs_error(ec, path);
 }
 
 std::vector<std::string> listdir(std::string_view path) {
@@ -97,13 +83,13 @@ std::vector<std::string> listdir(std::string_view path) {
     // is not a TPy exception and would escape the FFI boundary uncaught.
     std::error_code ec;
     std::filesystem::directory_iterator it(to_path(path), ec);
-    if (ec) raise_fs_error(ec, "listdir", path);
+    if (ec) raise_fs_error(ec, path);
     const std::filesystem::directory_iterator end;
     std::vector<std::string> names;
     while (it != end) {
         names.push_back(it->path().filename().string());
         it.increment(ec);
-        if (ec) raise_fs_error(ec, "listdir", path);
+        if (ec) raise_fs_error(ec, path);
     }
     return names;
 }
@@ -111,7 +97,7 @@ std::vector<std::string> listdir(std::string_view path) {
 std::vector<std::tuple<std::string, int64_t>> scandir_raw(std::string_view path) {
     // Raw readdir (not directory_iterator) to surface d_type without a stat.
     DIR* dir = ::opendir(std::string(path).c_str());
-    if (dir == nullptr) raise_errno("scandir", path);
+    if (dir == nullptr) raise_errno(path);
     // RAII close so the descriptor is released even if an allocation below
     // throws (raise_fs_error throws too -- it must run after the close).
     struct DirGuard {
@@ -139,8 +125,7 @@ std::vector<std::tuple<std::string, int64_t>> scandir_raw(std::string_view path)
     if (errno != 0) {
         // errno is still the readdir error here -- the guard's closedir runs
         // only on scope exit, after this throw.
-        raise_fs_error(std::error_code(errno, std::generic_category()),
-                       "scandir", path);
+        raise_fs_error(std::error_code(errno, std::generic_category()), path);
     }
     return entries;
 }
@@ -183,8 +168,7 @@ int64_t path_getsize(std::string_view path) {
         // error_code(...) have unsequenced evaluation, so reading errno inline
         // could race a side effect in the other argument.
         int err = errno;
-        raise_fs_error(std::error_code(err, std::generic_category()),
-                       "getsize", path);
+        raise_fs_error(std::error_code(err, std::generic_category()), path);
     }
     return static_cast<int64_t>(st.st_size);
 }
@@ -203,7 +187,7 @@ std::string path_realpath(std::string_view path, bool strict) {
         // canonical requires the whole path to exist; map its error to the
         // matching OSError subclass (ENOENT -> FileNotFoundError, etc.).
         auto resolved = std::filesystem::canonical(abs, ec);
-        if (ec) raise_fs_error(ec, "realpath", path);
+        if (ec) raise_fs_error(ec, path);
         return resolved.string();
     }
     auto resolved = std::filesystem::weakly_canonical(abs, ec);
@@ -244,13 +228,15 @@ std::string env_get(std::string_view key) {
 void setenv(std::string_view key, std::string_view value) {
     // EINVAL (key contains '=' or is empty) / ENOMEM -> OSError, as CPython
     // raises for os.putenv / os.environ[k] = v; never silently no-op.
+    // No filename: CPython's putenv raises via bare posix_error (the env
+    // key is not a filename).
     if (::setenv(std::string(key).c_str(), std::string(value).c_str(), 1) != 0) {
-        raise_errno("putenv", key);
+        raise_errno();
     }
 }
 
 void unsetenv(std::string_view key) {
-    if (::unsetenv(std::string(key).c_str()) != 0) raise_errno("unsetenv", key);
+    if (::unsetenv(std::string(key).c_str()) != 0) raise_errno();
 }
 
 // getpwuid_r/getpwnam_r need a caller-provided buffer; _SC_GETPW_R_SIZE_MAX is
@@ -291,27 +277,27 @@ std::string user_home(std::string_view name) {
 void mkdir(std::string_view path, int64_t mode) {
     std::string p(path);
     if (::mkdir(p.c_str(), static_cast<::mode_t>(mode)) != 0)
-        raise_errno("mkdir", path);
+        raise_errno(path);
 }
 
 void rmdir(std::string_view path) {
     std::string p(path);
-    if (::rmdir(p.c_str()) != 0) raise_errno("rmdir", path);
+    if (::rmdir(p.c_str()) != 0) raise_errno(path);
 }
 
 void remove(std::string_view path) {
     std::string p(path);
-    if (::unlink(p.c_str()) != 0) raise_errno("remove", path);
+    if (::unlink(p.c_str()) != 0) raise_errno(path);
 }
 
 void rename(std::string_view src, std::string_view dst) {
     std::string s(src), d(dst);
-    if (::rename(s.c_str(), d.c_str()) != 0) raise_errno("rename", src);
+    if (::rename(s.c_str(), d.c_str()) != 0) raise_errno(src, dst);
 }
 
 void symlink(std::string_view target, std::string_view linkpath) {
     std::string t(target), l(linkpath);
-    if (::symlink(t.c_str(), l.c_str()) != 0) raise_errno("symlink", linkpath);
+    if (::symlink(t.c_str(), l.c_str()) != 0) raise_errno(target, linkpath);
 }
 
 std::string readlink(std::string_view path) {
@@ -321,7 +307,7 @@ std::string readlink(std::string_view path) {
     std::string buf(256, '\0');
     for (;;) {
         ssize_t n = ::readlink(p.c_str(), buf.data(), buf.size());
-        if (n < 0) raise_errno("readlink", path);
+        if (n < 0) raise_errno(path);
         if (static_cast<size_t>(n) < buf.size()) {
             buf.resize(static_cast<size_t>(n));
             return buf;
@@ -374,14 +360,14 @@ StatTuple to_tuple(const struct ::stat& st) {
 StatTuple stat_raw(std::string_view path) {
     std::string p(path);
     struct ::stat st;
-    if (::stat(p.c_str(), &st) != 0) raise_errno("stat", path);
+    if (::stat(p.c_str(), &st) != 0) raise_errno(path);
     return to_tuple(st);
 }
 
 StatTuple lstat_raw(std::string_view path) {
     std::string p(path);
     struct ::stat st;
-    if (::lstat(p.c_str(), &st) != 0) raise_errno("lstat", path);
+    if (::lstat(p.c_str(), &st) != 0) raise_errno(path);
     return to_tuple(st);
 }
 
@@ -391,29 +377,29 @@ StatTuple lstat_raw(std::string_view path) {
 double path_getmtime(std::string_view path) {
     std::string p(path);
     struct ::stat st;
-    if (::stat(p.c_str(), &st) != 0) raise_errno("getmtime", path);
+    if (::stat(p.c_str(), &st) != 0) raise_errno(path);
     return ts_secs(stat_mtime(st));
 }
 
 double path_getatime(std::string_view path) {
     std::string p(path);
     struct ::stat st;
-    if (::stat(p.c_str(), &st) != 0) raise_errno("getatime", path);
+    if (::stat(p.c_str(), &st) != 0) raise_errno(path);
     return ts_secs(stat_atime(st));
 }
 
 double path_getctime(std::string_view path) {
     std::string p(path);
     struct ::stat st;
-    if (::stat(p.c_str(), &st) != 0) raise_errno("getctime", path);
+    if (::stat(p.c_str(), &st) != 0) raise_errno(path);
     return ts_secs(stat_ctime(st));
 }
 
 bool path_samefile(std::string_view a, std::string_view b) {
     std::string pa(a), pb(b);
     struct ::stat sa, sb;
-    if (::stat(pa.c_str(), &sa) != 0) raise_errno("samefile", a);
-    if (::stat(pb.c_str(), &sb) != 0) raise_errno("samefile", b);
+    if (::stat(pa.c_str(), &sa) != 0) raise_errno(a);
+    if (::stat(pb.c_str(), &sb) != 0) raise_errno(b);
     return sa.st_ino == sb.st_ino && sa.st_dev == sb.st_dev;
 }
 
@@ -436,12 +422,12 @@ int64_t open_fd(std::string_view path, int64_t flags, int64_t mode) {
     std::string p(path);
     int fd = ::open(p.c_str(), static_cast<int>(flags),
                     static_cast<::mode_t>(mode));
-    if (fd < 0) raise_errno("open", path);
+    if (fd < 0) raise_errno(path);
     return fd;
 }
 
 void close_fd(int64_t fd) {
-    if (::close(static_cast<int>(fd)) != 0) raise_errno("close", "");
+    if (::close(static_cast<int>(fd)) != 0) raise_errno();
 }
 
 std::vector<uint8_t> read_fd(int64_t fd, int64_t n) {
@@ -449,45 +435,45 @@ std::vector<uint8_t> read_fd(int64_t fd, int64_t n) {
     if (n <= 0) return buf;
     ssize_t got = ::read(static_cast<int>(fd), buf.data(),
                          static_cast<size_t>(n));
-    if (got < 0) raise_errno("read", "");
+    if (got < 0) raise_errno();
     buf.resize(static_cast<size_t>(got));  // short read -> shrink to actual
     return buf;
 }
 
 int64_t write_fd(int64_t fd, std::span<const uint8_t> data) {
     ssize_t n = ::write(static_cast<int>(fd), data.data(), data.size());
-    if (n < 0) raise_errno("write", "");
+    if (n < 0) raise_errno();
     return n;
 }
 
 int64_t lseek_fd(int64_t fd, int64_t pos, int64_t how) {
     off_t r = ::lseek(static_cast<int>(fd), static_cast<off_t>(pos),
                       static_cast<int>(how));
-    if (r < 0) raise_errno("lseek", "");
+    if (r < 0) raise_errno();
     return static_cast<int64_t>(r);
 }
 
 std::tuple<int64_t, int64_t> pipe_fd() {
     int fds[2];
-    if (::pipe(fds) != 0) raise_errno("pipe", "");
+    if (::pipe(fds) != 0) raise_errno();
     return {fds[0], fds[1]};
 }
 
 int64_t dup_fd(int64_t fd) {
     int r = ::dup(static_cast<int>(fd));
-    if (r < 0) raise_errno("dup", "");
+    if (r < 0) raise_errno();
     return r;
 }
 
 int64_t dup2_fd(int64_t fd, int64_t fd2) {
     int r = ::dup2(static_cast<int>(fd), static_cast<int>(fd2));
-    if (r < 0) raise_errno("dup2", "");
+    if (r < 0) raise_errno();
     return r;
 }
 
 StatTuple fstat_fd(int64_t fd) {
     struct ::stat st;
-    if (::fstat(static_cast<int>(fd), &st) != 0) raise_errno("fstat", "");
+    if (::fstat(static_cast<int>(fd), &st) != 0) raise_errno();
     return to_tuple(st);
 }
 
@@ -522,7 +508,7 @@ int64_t getegid() { return ::getegid(); }
 
 std::string getlogin() {
     const char* name = ::getlogin();
-    if (name == nullptr) raise_errno("getlogin", "");
+    if (name == nullptr) raise_errno();
     return std::string(name);
 }
 
@@ -545,28 +531,28 @@ bool isatty(int64_t fd) {
 
 void link_path(std::string_view src, std::string_view dst) {
     std::string s(src), d(dst);
-    if (::link(s.c_str(), d.c_str()) != 0) raise_errno("link", src);
+    if (::link(s.c_str(), d.c_str()) != 0) raise_errno(src, dst);
 }
 
 void truncate_path(std::string_view path, int64_t length) {
     std::string p(path);
     if (::truncate(p.c_str(), static_cast<off_t>(length)) != 0)
-        raise_errno("truncate", path);
+        raise_errno(path);
 }
 
 void ftruncate_fd(int64_t fd, int64_t length) {
     if (::ftruncate(static_cast<int>(fd), static_cast<off_t>(length)) != 0)
-        raise_errno("ftruncate", "");
+        raise_errno();
 }
 
 void fsync_fd(int64_t fd) {
-    if (::fsync(static_cast<int>(fd)) != 0) raise_errno("fsync", "");
+    if (::fsync(static_cast<int>(fd)) != 0) raise_errno();
 }
 
 std::tuple<int64_t, int64_t> terminal_size_raw(int64_t fd) {
     struct ::winsize ws{};
     if (::ioctl(static_cast<int>(fd), TIOCGWINSZ, &ws) != 0)
-        raise_errno("get_terminal_size", "");
+        raise_errno();
     return {ws.ws_col, ws.ws_row};
 }
 
@@ -575,14 +561,14 @@ std::tuple<int64_t, int64_t> terminal_size_raw(int64_t fd) {
 void chmod_path(std::string_view path, int64_t mode) {
     std::string p(path);
     if (::chmod(p.c_str(), static_cast<::mode_t>(mode)) != 0)
-        raise_errno("chmod", path);
+        raise_errno(path);
 }
 
 void chown_path(std::string_view path, int64_t uid, int64_t gid) {
     std::string p(path);
     if (::chown(p.c_str(), static_cast<::uid_t>(uid),
                 static_cast<::gid_t>(gid)) != 0)
-        raise_errno("chown", path);
+        raise_errno(path);
 }
 
 void utime_path(std::string_view path, double atime, double mtime) {
@@ -599,7 +585,7 @@ void utime_path(std::string_view path, double atime, double mtime) {
     };
     struct timespec times[2] = {to_ts(atime), to_ts(mtime)};
     if (::utimensat(AT_FDCWD, p.c_str(), times, 0) != 0)
-        raise_errno("utime", path);
+        raise_errno(path);
 }
 
 bool access_path(std::string_view path, int64_t mode) {
@@ -614,10 +600,28 @@ std::vector<uint8_t> urandom(int64_t n) {
         // getentropy caps at 256 bytes per call on every platform.
         size_t chunk = std::min<size_t>(256, buf.size() - off);
         if (::getentropy(buf.data() + off, chunk) != 0)
-            raise_errno("urandom", "");
+            raise_errno();
         off += chunk;
     }
     return buf;
 }
 
 } // namespace tpy::stdlib::os
+
+extern "C" {
+
+// File-domain errno constant values for the `errno` facade module, sourced
+// from <errno.h> here for the same reason socket_impl.cpp exposes the
+// network-domain set: platform-correct values without pulling system headers
+// into TPy-generated TUs. Non-const so the type matches the `extern int32_t`
+// the native_global decl emits.
+std::int32_t tpy_const_enoent = ENOENT;
+std::int32_t tpy_const_eexist = EEXIST;
+std::int32_t tpy_const_eacces = EACCES;
+std::int32_t tpy_const_eperm = EPERM;
+std::int32_t tpy_const_eisdir = EISDIR;
+std::int32_t tpy_const_enotdir = ENOTDIR;
+std::int32_t tpy_const_ebadf = EBADF;
+std::int32_t tpy_const_etimedout = ETIMEDOUT;
+
+}  // extern "C"

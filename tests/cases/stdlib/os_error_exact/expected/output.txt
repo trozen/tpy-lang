@@ -1,0 +1,10 @@
+[Errno 2] No such file or directory: 'definitely_missing_tpy_xyz.txt'
+True No such file or directory definitely_missing_tpy_xyz.txt
+[Errno 2] No such file or directory: 'also_missing_tpy_xyz'
+[Errno 17] File exists: '/tmp/tpy_os_error_exact/d'
+True /tmp/tpy_os_error_exact/d
+[Errno 2] No such file or directory: 'missing_src_tpy_xyz' -> 'missing_dst_tpy_xyz'
+missing_src_tpy_xyz missing_dst_tpy_xyz
+[Errno 9] Bad file descriptor
+True True
+True True True True True

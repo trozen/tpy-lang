@@ -13,6 +13,7 @@ from typing import Final
 from tpy import Int32
 from tpy.extern import native_global
 
+# Network-domain constants (defined in socket_impl.cpp).
 EAGAIN:       Final[Int32] = native_global("tpy_const_eagain", binding="C")
 # EWOULDBLOCK == EAGAIN on Linux and macOS/BSD (POSIX allows them to differ,
 # but no supported platform does).
@@ -22,3 +23,13 @@ EPIPE:        Final[Int32] = native_global("tpy_const_epipe", binding="C")
 ECONNRESET:   Final[Int32] = native_global("tpy_const_econnreset", binding="C")
 ECONNREFUSED: Final[Int32] = native_global("tpy_const_econnrefused", binding="C")
 ECONNABORTED: Final[Int32] = native_global("tpy_const_econnaborted", binding="C")
+
+# File-domain constants (defined in os_impl.cpp).
+ENOENT:       Final[Int32] = native_global("tpy_const_enoent", binding="C")
+EEXIST:       Final[Int32] = native_global("tpy_const_eexist", binding="C")
+EACCES:       Final[Int32] = native_global("tpy_const_eacces", binding="C")
+EPERM:        Final[Int32] = native_global("tpy_const_eperm", binding="C")
+EISDIR:       Final[Int32] = native_global("tpy_const_eisdir", binding="C")
+ENOTDIR:      Final[Int32] = native_global("tpy_const_enotdir", binding="C")
+EBADF:        Final[Int32] = native_global("tpy_const_ebadf", binding="C")
+ETIMEDOUT:    Final[Int32] = native_global("tpy_const_etimedout", binding="C")

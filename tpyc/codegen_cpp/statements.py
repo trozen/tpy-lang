@@ -3678,9 +3678,16 @@ class StatementGenerator:
             # Peephole optimization documented in EXCEPTION_DESIGN.md:520+
             # -- keeps generated C++ idiomatic and avoids the extra inlined
             # virtual call in stack traces / debug info.
+            # EXCEPT for @virtual_raise classes, whose __raise__ dispatches
+            # (OSError's errno -> subclass mapping): there the equivalence
+            # doesn't hold and the virtual hop IS the semantics.
             if stmt.args:
                 args = self._gen_raise_ctor_args(stmt)
+                if stmt.raise_via_virtual:
+                    return f"{indent}{cpp_type}({args}).__raise__();\n"
                 return f"{indent}throw {cpp_type}({args});\n"
+            if stmt.raise_via_virtual:
+                return f"{indent}{cpp_type}{{}}.__raise__();\n"
             return f"{indent}throw {cpp_type}{{}};\n"
 
     def _gen_raise_ctor_args(self, stmt: TpyRaise) -> str:

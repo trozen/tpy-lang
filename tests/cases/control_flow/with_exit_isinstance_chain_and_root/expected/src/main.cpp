@@ -25,7 +25,7 @@ void main() {
     __ctx_2.__enter__();
     try {
         // raise OSError("io")
-        throw ::tpy::OSError("io");
+        ::tpy::OSError("io").__raise__();
     } catch (::tpy::BaseException& __exc_2) {
         if (!__ctx_2.__exit__({}, &__exc_2, {})) throw;
     } catch (...) {

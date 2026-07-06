@@ -1866,7 +1866,12 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             out.write(f"{indent}throw;\n")
         elif stmt.args:
             args = ", ".join(_emit_expr(a, state) for a in stmt.args)
-            out.write(f"{indent}throw {stmt.cpp_type}({args});\n")
+            if stmt.via_virtual:
+                out.write(f"{indent}{stmt.cpp_type}({args}).__raise__();\n")
+            else:
+                out.write(f"{indent}throw {stmt.cpp_type}({args});\n")
+        elif stmt.via_virtual:
+            out.write(f"{indent}{stmt.cpp_type}{{}}.__raise__();\n")
         else:
             out.write(f"{indent}throw {stmt.cpp_type}{{}};\n")
     elif isinstance(stmt, THIRNoOpStmt):

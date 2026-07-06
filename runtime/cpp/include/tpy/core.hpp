@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include <cerrno>
 #include <cmath>
 #include <concepts>
 #include <csignal>
@@ -49,15 +50,80 @@ struct BaseException : ::tpy::Throwable {
 };
 struct Exception : BaseException { using BaseException::BaseException; TPY_THROWABLE_VIRTUALS(Exception) };
 struct ValueError : Exception { using Exception::Exception; TPY_THROWABLE_VIRTUALS(ValueError) };
-// Carries CPython's structured `.errno` / `.strerror` OSError attributes.
-// The C++ members need different names: `errno` is a C macro. TPy-level
-// access maps through native_field renames in _builtins/_exceptions.py.
-// Unset defaults are 0 / "" (CPython uses None; TPy has no Optional here).
+// PEP 3151: the OSError subclass CPython's OSError.__new__ constructs for
+// an errno. The decision is made at CONSTRUCTION time (like CPython's
+// __new__) and stored on the object; TPy's value model can't change the
+// constructed static type, so the stored kind is applied when the object
+// is RAISED (OSError::__raise__ below throws the mapped subclass).
+enum class OSErrorSubclass : uint8_t {
+    none, blocking_io, broken_pipe, connection_aborted, connection_refused,
+    connection_reset, file_exists, file_not_found, is_a_directory,
+    not_a_directory, permission, timeout,
+};
+
+inline OSErrorSubclass os_error_subclass_for(int32_t err) {
+    switch (err) {
+        case EAGAIN: case EALREADY: case EINPROGRESS:
+#if EWOULDBLOCK != EAGAIN
+        case EWOULDBLOCK:
+#endif
+            return OSErrorSubclass::blocking_io;
+        case EPIPE: case ESHUTDOWN: return OSErrorSubclass::broken_pipe;
+        case ECONNABORTED: return OSErrorSubclass::connection_aborted;
+        case ECONNREFUSED: return OSErrorSubclass::connection_refused;
+        case ECONNRESET:   return OSErrorSubclass::connection_reset;
+        case EEXIST:  return OSErrorSubclass::file_exists;
+        case ENOENT:  return OSErrorSubclass::file_not_found;
+        case EISDIR:  return OSErrorSubclass::is_a_directory;
+        case ENOTDIR: return OSErrorSubclass::not_a_directory;
+        case EACCES: case EPERM: return OSErrorSubclass::permission;
+        case ETIMEDOUT: return OSErrorSubclass::timeout;
+        default: return OSErrorSubclass::none;
+    }
+}
+
+// Carries CPython's structured `.errno` / `.strerror` / `.filename` OSError
+// attributes. The C++ members need different names where `errno` is a C
+// macro. TPy-level access maps through native_field renames in
+// _builtins/_exceptions.py. Unset defaults are 0 / "" (CPython uses None;
+// TPy has no Optional here).
+//
+// The errno-taking ctors format `message` to CPython's exact str(e) at
+// construction time ("[Errno N] strerror[: 'filename'[ -> 'filename2']]");
+// a post-hoc attribute assignment does NOT reformat, unlike CPython's
+// attribute-driven __str__ (declared divergence in LANGUAGE_FEATURES).
+// The 4-arg form (filename2, CPython's 5-arg ctor minus winerror) exists
+// for the C++ rename/link raise sites and is not exposed at the TPy level.
 struct OSError : Exception {
     using Exception::Exception;
+    OSError(int32_t err, std::string_view strerror_arg)
+        : Exception(std::format("[Errno {}] {}", err, strerror_arg)),
+          error_number(err), strerror_text(strerror_arg),
+          mapped_kind(os_error_subclass_for(err)) {}
+    OSError(int32_t err, std::string_view strerror_arg, std::string_view filename_arg)
+        : Exception(std::format("[Errno {}] {}: '{}'", err, strerror_arg, filename_arg)),
+          error_number(err), strerror_text(strerror_arg), filename(filename_arg),
+          mapped_kind(os_error_subclass_for(err)) {}
+    OSError(int32_t err, std::string_view strerror_arg, std::string_view filename_arg,
+            std::string_view filename2_arg)
+        : Exception(std::format("[Errno {}] {}: '{}' -> '{}'", err, strerror_arg,
+                                filename_arg, filename2_arg)),
+          error_number(err), strerror_text(strerror_arg), filename(filename_arg),
+          filename2(filename2_arg), mapped_kind(os_error_subclass_for(err)) {}
     int32_t error_number = 0;
     std::string strerror_text;
-    TPY_THROWABLE_VIRTUALS(OSError)
+    std::string filename;
+    std::string filename2;
+    // Set only by the errno-taking ctors (message-only construction and
+    // post-hoc attribute assignment leave it none, like CPython where the
+    // subclass choice happens in __new__ and never re-evaluates).
+    OSErrorSubclass mapped_kind = OSErrorSubclass::none;
+    [[nodiscard]] std::unique_ptr<::tpy::Throwable> clone() const override {
+        return std::make_unique<OSError>(*this);
+    }
+    // Defined after the subclasses (it throws them); this override is what
+    // makes `raise` of an errno-form OSError surface the mapped subclass.
+    [[noreturn]] void __raise__() const override;
 };
 struct FileNotFoundError : OSError { using OSError::OSError; TPY_THROWABLE_VIRTUALS(FileNotFoundError) };
 struct PermissionError : OSError { using OSError::OSError; TPY_THROWABLE_VIRTUALS(PermissionError) };
@@ -138,6 +204,18 @@ template<typename E, typename T, typename... Rest>
                                Rest&&... rest) {
     throw E(std::format(fmt, std::forward<T>(arg), std::forward<Rest>(rest)...));
 }
+// Structured OSError form: picks the ctor arity by which optional parts are
+// present, so the message never carries an empty ": ''" segment ("" is TPy's
+// stand-in for CPython's None filename).
+template<typename E>
+    requires std::derived_from<E, OSError>
+[[noreturn]] inline void raise(int32_t err, std::string_view strerror_arg,
+                               std::string_view filename_arg = "",
+                               std::string_view filename2_arg = "") {
+    if (!filename2_arg.empty()) throw E(err, strerror_arg, filename_arg, filename2_arg);
+    if (!filename_arg.empty()) throw E(err, strerror_arg, filename_arg);
+    throw E(err, strerror_arg);
+}
 
 // `assert cond[, msg]` failure path. Thin wrapper around `raise<AssertionError>`
 // that supplies the no-message default `"assertion failed"`. Codegen emits
@@ -169,6 +247,18 @@ template<typename T, typename... Rest>
         raise<ExceptionClass>(fmt, std::forward<T>(arg), std::forward<Rest>(rest)...); \
     }
 
+// OSError-family helpers additionally accept CPython's structured
+// (errno, strerror[, filename[, filename2]]) form; the OSError ctor formats
+// the message exactly like CPython's str(e). Message-only forms remain for
+// non-syscall raises (e.g. mode errors) that carry no errno.
+#define TPY_DEFINE_RAISE_OS_HELPER(name, ExceptionClass)                            \
+    TPY_DEFINE_RAISE_HELPER(name, ExceptionClass)                                   \
+    [[noreturn]] inline void name(int32_t err, std::string_view strerror_arg,       \
+                                  std::string_view filename_arg = "",               \
+                                  std::string_view filename2_arg = "") {            \
+        raise<ExceptionClass>(err, strerror_arg, filename_arg, filename2_arg);      \
+    }
+
 TPY_DEFINE_RAISE_HELPER(raise_value_error,           ValueError)
 TPY_DEFINE_RAISE_HELPER(raise_type_error,            TypeError)
 TPY_DEFINE_RAISE_HELPER(raise_index_error,           IndexError)
@@ -177,19 +267,84 @@ TPY_DEFINE_RAISE_HELPER(raise_attribute_error,       AttributeError)
 TPY_DEFINE_RAISE_HELPER(raise_arithmetic_error,      ArithmeticError)
 TPY_DEFINE_RAISE_HELPER(raise_zero_division_error,   ZeroDivisionError)
 TPY_DEFINE_RAISE_HELPER(raise_overflow_error,        OverflowError)
-TPY_DEFINE_RAISE_HELPER(raise_os_error,              OSError)
-TPY_DEFINE_RAISE_HELPER(raise_file_not_found_error,  FileNotFoundError)
-TPY_DEFINE_RAISE_HELPER(raise_permission_error,      PermissionError)
-TPY_DEFINE_RAISE_HELPER(raise_file_exists_error,     FileExistsError)
-TPY_DEFINE_RAISE_HELPER(raise_not_a_directory_error, NotADirectoryError)
-TPY_DEFINE_RAISE_HELPER(raise_is_a_directory_error,  IsADirectoryError)
-TPY_DEFINE_RAISE_HELPER(raise_blocking_io_error,     BlockingIOError)
+TPY_DEFINE_RAISE_OS_HELPER(raise_os_error,              OSError)
+TPY_DEFINE_RAISE_OS_HELPER(raise_file_not_found_error,  FileNotFoundError)
+TPY_DEFINE_RAISE_OS_HELPER(raise_permission_error,      PermissionError)
+TPY_DEFINE_RAISE_OS_HELPER(raise_file_exists_error,     FileExistsError)
+TPY_DEFINE_RAISE_OS_HELPER(raise_not_a_directory_error, NotADirectoryError)
+TPY_DEFINE_RAISE_OS_HELPER(raise_is_a_directory_error,  IsADirectoryError)
+TPY_DEFINE_RAISE_OS_HELPER(raise_blocking_io_error,     BlockingIOError)
 TPY_DEFINE_RAISE_HELPER(raise_runtime_error,         RuntimeError)
 TPY_DEFINE_RAISE_HELPER(raise_not_implemented_error, NotImplementedError)
 TPY_DEFINE_RAISE_HELPER(raise_memory_error,          MemoryError)
 
 [[noreturn]] inline void raise_stop_iteration() {
     throw StopIteration{};
+}
+
+// Throw the OSError subclass for a pre-computed mapping kind. The shared
+// tail of raise_mapped_os_error (kind from a live errno) and
+// OSError::__raise__ (kind stored at construction time).
+[[noreturn]] inline void throw_os_error_as(OSErrorSubclass kind, int32_t err,
+                                           std::string_view strerror_arg,
+                                           std::string_view filename_arg = "",
+                                           std::string_view filename2_arg = "") {
+    switch (kind) {
+        case OSErrorSubclass::blocking_io:
+            raise<BlockingIOError>(err, strerror_arg, filename_arg, filename2_arg);
+        case OSErrorSubclass::broken_pipe:
+            raise<BrokenPipeError>(err, strerror_arg, filename_arg, filename2_arg);
+        case OSErrorSubclass::connection_aborted:
+            raise<ConnectionAbortedError>(err, strerror_arg, filename_arg, filename2_arg);
+        case OSErrorSubclass::connection_refused:
+            raise<ConnectionRefusedError>(err, strerror_arg, filename_arg, filename2_arg);
+        case OSErrorSubclass::connection_reset:
+            raise<ConnectionResetError>(err, strerror_arg, filename_arg, filename2_arg);
+        case OSErrorSubclass::file_exists:
+            raise<FileExistsError>(err, strerror_arg, filename_arg, filename2_arg);
+        case OSErrorSubclass::file_not_found:
+            raise<FileNotFoundError>(err, strerror_arg, filename_arg, filename2_arg);
+        case OSErrorSubclass::is_a_directory:
+            raise<IsADirectoryError>(err, strerror_arg, filename_arg, filename2_arg);
+        case OSErrorSubclass::not_a_directory:
+            raise<NotADirectoryError>(err, strerror_arg, filename_arg, filename2_arg);
+        case OSErrorSubclass::permission:
+            raise<PermissionError>(err, strerror_arg, filename_arg, filename2_arg);
+        case OSErrorSubclass::timeout:
+            raise<TimeoutError>(err, strerror_arg, filename_arg, filename2_arg);
+        case OSErrorSubclass::none:
+        default:
+            raise<OSError>(err, strerror_arg, filename_arg, filename2_arg);
+    }
+}
+
+// PEP 3151: map an errno to the OSError subclass CPython's OSError.__new__
+// constructs for it. Shared by the os-module raise sites (os_impl.cpp) and
+// the file.hpp open paths so both stay on one table. Errnos whose CPython
+// class TPy doesn't define (EINTR/ECHILD/ESRCH -> InterruptedError/
+// ChildProcessError/ProcessLookupError) fall through to plain OSError.
+[[noreturn]] inline void raise_mapped_os_error(int32_t err, std::string_view strerror_arg,
+                                               std::string_view filename_arg = "",
+                                               std::string_view filename2_arg = "") {
+    throw_os_error_as(os_error_subclass_for(err), err, strerror_arg,
+                      filename_arg, filename2_arg);
+}
+
+// Raising an errno-form OSError value surfaces the subclass CPython's
+// __new__ would have constructed: the kind was fixed at ctor time, the
+// attribute values travel as they are at raise time (both matching
+// CPython, where the instance -- with any post-hoc attribute mutations --
+// is what propagates). Message-only constructions (kind none) throw as
+// plain OSError. `throw *this` would slice the mapping away, which is why
+// this class does not use TPY_THROWABLE_VIRTUALS.
+// Lifetime: throw_os_error_as reads string_views into *this's own string
+// members; that is safe because [except.throw] fully constructs the thrown
+// object (copying the viewed chars into its own strings) BEFORE unwinding
+// -- and hence *this's destruction -- can begin. Keep the construction
+// eager; deferring it past the throw expression would dangle.
+inline void OSError::__raise__() const {
+    if (mapped_kind == OSErrorSubclass::none) throw *this;
+    throw_os_error_as(mapped_kind, error_number, strerror_text, filename, filename2);
 }
 
 // Fixed-width integer arithmetic overflow. CPython promotes to unbounded

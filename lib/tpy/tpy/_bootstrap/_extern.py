@@ -38,6 +38,16 @@ def native_preserves_refs(): ...
 @builtin_decorator("tpy.extern.copy_returns_warn")
 def copy_returns_warn(): ...
 
+# Marks a native class whose hand-written C++ __raise__ is NOT equivalent to
+# a fresh `throw ClassName(args)` (it dispatches -- e.g. OSError's ctor-time
+# errno -> subclass mapping), so codegen must route `raise ClassName(args)`
+# through __raise__ instead of the fresh-construction throw peephole.
+# Library-declared so the compiler holds no per-type knowledge. Applies to
+# the decorated class only, never inherited: subclasses' own __raise__
+# overrides are plain `throw *this`.
+@builtin_decorator("tpy.extern.virtual_raise")
+def virtual_raise(): ...
+
 # Workaround for Python 3.12 -- Python 3.13+ has native type param defaults
 # (PEP 696): def round[T = int](x: float) -> T: ...
 @builtin_decorator("tpy.extern.type_param_default")

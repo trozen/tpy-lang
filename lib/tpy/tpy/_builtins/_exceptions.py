@@ -1,8 +1,9 @@
 # tpy: native_module
 # tpy: cpp_namespace("tpystd::builtins")
 from .._bootstrap._decorators import readonly, Own
-from .._bootstrap._extern import native, native_field
+from .._bootstrap._extern import cpp_template, native, native_field, virtual_raise
 from .._core._types import Int32, ReturnException, StrView, Throwable
+from .._typing import overload
 
 
 # Python exception hierarchy (maps to ::tpy:: runtime structs in core.hpp).
@@ -51,62 +52,238 @@ class Exception(BaseException):
 class ValueError(Exception):
     def __init__(self, message: str = "") -> None: ...
 
-# Carries CPython's structured `.errno` / `.strerror` attributes (0 / ""
-# when unset -- TPy has no None default here). The C++ members are renamed:
-# `errno` is a C macro and cannot name a struct member.
+# Carries CPython's structured `.errno` / `.strerror` / `.filename`
+# attributes (0 / "" when unset -- TPy has no None default here). The C++
+# members are renamed where `errno` is a C macro. The errno-taking ctors
+# format the message to CPython's exact str(e) at construction time and
+# record the PEP 3151 subclass CPython's __new__ would construct; RAISING
+# the object surfaces that subclass via the dispatching C++ __raise__
+# (hence @virtual_raise). See the runtime struct comment for the declared
+# post-hoc-mutation divergence.
+@virtual_raise
 @native("tpy::OSError")
 class OSError(Exception):
     errno: Int32 = native_field("error_number")
     strerror: str = native_field("strerror_text")
+    filename: str
+    filename2: str
 
-    def __init__(self, message: str = "") -> None: ...
+    @overload
+    @cpp_template("tpy::OSError()")
+    def __init__(self) -> None: ...
+
+    @overload
+    @cpp_template("tpy::OSError({0})")
+    def __init__(self, message: str) -> None: ...
+
+    @overload
+    @cpp_template("tpy::OSError({0}, {1})")
+    def __init__(self, errno: Int32, strerror: str) -> None: ...
+
+    @overload
+    @cpp_template("tpy::OSError({0}, {1}, {2})")
+    def __init__(self, errno: Int32, strerror: str, filename: str) -> None: ...
 
 @native("tpy::FileNotFoundError")
 class FileNotFoundError(OSError):
-    def __init__(self, message: str = "") -> None: ...
+    @overload
+    @cpp_template("tpy::FileNotFoundError()")
+    def __init__(self) -> None: ...
+
+    @overload
+    @cpp_template("tpy::FileNotFoundError({0})")
+    def __init__(self, message: str) -> None: ...
+
+    @overload
+    @cpp_template("tpy::FileNotFoundError({0}, {1})")
+    def __init__(self, errno: Int32, strerror: str) -> None: ...
+
+    @overload
+    @cpp_template("tpy::FileNotFoundError({0}, {1}, {2})")
+    def __init__(self, errno: Int32, strerror: str, filename: str) -> None: ...
 
 @native("tpy::PermissionError")
 class PermissionError(OSError):
-    def __init__(self, message: str = "") -> None: ...
+    @overload
+    @cpp_template("tpy::PermissionError()")
+    def __init__(self) -> None: ...
+
+    @overload
+    @cpp_template("tpy::PermissionError({0})")
+    def __init__(self, message: str) -> None: ...
+
+    @overload
+    @cpp_template("tpy::PermissionError({0}, {1})")
+    def __init__(self, errno: Int32, strerror: str) -> None: ...
+
+    @overload
+    @cpp_template("tpy::PermissionError({0}, {1}, {2})")
+    def __init__(self, errno: Int32, strerror: str, filename: str) -> None: ...
 
 @native("tpy::FileExistsError")
 class FileExistsError(OSError):
-    def __init__(self, message: str = "") -> None: ...
+    @overload
+    @cpp_template("tpy::FileExistsError()")
+    def __init__(self) -> None: ...
+
+    @overload
+    @cpp_template("tpy::FileExistsError({0})")
+    def __init__(self, message: str) -> None: ...
+
+    @overload
+    @cpp_template("tpy::FileExistsError({0}, {1})")
+    def __init__(self, errno: Int32, strerror: str) -> None: ...
+
+    @overload
+    @cpp_template("tpy::FileExistsError({0}, {1}, {2})")
+    def __init__(self, errno: Int32, strerror: str, filename: str) -> None: ...
 
 @native("tpy::NotADirectoryError")
 class NotADirectoryError(OSError):
-    def __init__(self, message: str = "") -> None: ...
+    @overload
+    @cpp_template("tpy::NotADirectoryError()")
+    def __init__(self) -> None: ...
+
+    @overload
+    @cpp_template("tpy::NotADirectoryError({0})")
+    def __init__(self, message: str) -> None: ...
+
+    @overload
+    @cpp_template("tpy::NotADirectoryError({0}, {1})")
+    def __init__(self, errno: Int32, strerror: str) -> None: ...
+
+    @overload
+    @cpp_template("tpy::NotADirectoryError({0}, {1}, {2})")
+    def __init__(self, errno: Int32, strerror: str, filename: str) -> None: ...
 
 @native("tpy::IsADirectoryError")
 class IsADirectoryError(OSError):
-    def __init__(self, message: str = "") -> None: ...
+    @overload
+    @cpp_template("tpy::IsADirectoryError()")
+    def __init__(self) -> None: ...
+
+    @overload
+    @cpp_template("tpy::IsADirectoryError({0})")
+    def __init__(self, message: str) -> None: ...
+
+    @overload
+    @cpp_template("tpy::IsADirectoryError({0}, {1})")
+    def __init__(self, errno: Int32, strerror: str) -> None: ...
+
+    @overload
+    @cpp_template("tpy::IsADirectoryError({0}, {1}, {2})")
+    def __init__(self, errno: Int32, strerror: str, filename: str) -> None: ...
 
 # Connection-related OSError subclasses (PEP 3151).
 @native("tpy::ConnectionError")
 class ConnectionError(OSError):
-    def __init__(self, message: str = "") -> None: ...
+    @overload
+    @cpp_template("tpy::ConnectionError()")
+    def __init__(self) -> None: ...
+
+    @overload
+    @cpp_template("tpy::ConnectionError({0})")
+    def __init__(self, message: str) -> None: ...
+
+    @overload
+    @cpp_template("tpy::ConnectionError({0}, {1})")
+    def __init__(self, errno: Int32, strerror: str) -> None: ...
+
+    @overload
+    @cpp_template("tpy::ConnectionError({0}, {1}, {2})")
+    def __init__(self, errno: Int32, strerror: str, filename: str) -> None: ...
 
 @native("tpy::BrokenPipeError")
 class BrokenPipeError(ConnectionError):
-    def __init__(self, message: str = "") -> None: ...
+    @overload
+    @cpp_template("tpy::BrokenPipeError()")
+    def __init__(self) -> None: ...
+
+    @overload
+    @cpp_template("tpy::BrokenPipeError({0})")
+    def __init__(self, message: str) -> None: ...
+
+    @overload
+    @cpp_template("tpy::BrokenPipeError({0}, {1})")
+    def __init__(self, errno: Int32, strerror: str) -> None: ...
+
+    @overload
+    @cpp_template("tpy::BrokenPipeError({0}, {1}, {2})")
+    def __init__(self, errno: Int32, strerror: str, filename: str) -> None: ...
 
 @native("tpy::ConnectionResetError")
 class ConnectionResetError(ConnectionError):
-    def __init__(self, message: str = "") -> None: ...
+    @overload
+    @cpp_template("tpy::ConnectionResetError()")
+    def __init__(self) -> None: ...
+
+    @overload
+    @cpp_template("tpy::ConnectionResetError({0})")
+    def __init__(self, message: str) -> None: ...
+
+    @overload
+    @cpp_template("tpy::ConnectionResetError({0}, {1})")
+    def __init__(self, errno: Int32, strerror: str) -> None: ...
+
+    @overload
+    @cpp_template("tpy::ConnectionResetError({0}, {1}, {2})")
+    def __init__(self, errno: Int32, strerror: str, filename: str) -> None: ...
 
 @native("tpy::ConnectionRefusedError")
 class ConnectionRefusedError(ConnectionError):
-    def __init__(self, message: str = "") -> None: ...
+    @overload
+    @cpp_template("tpy::ConnectionRefusedError()")
+    def __init__(self) -> None: ...
+
+    @overload
+    @cpp_template("tpy::ConnectionRefusedError({0})")
+    def __init__(self, message: str) -> None: ...
+
+    @overload
+    @cpp_template("tpy::ConnectionRefusedError({0}, {1})")
+    def __init__(self, errno: Int32, strerror: str) -> None: ...
+
+    @overload
+    @cpp_template("tpy::ConnectionRefusedError({0}, {1}, {2})")
+    def __init__(self, errno: Int32, strerror: str, filename: str) -> None: ...
 
 @native("tpy::ConnectionAbortedError")
 class ConnectionAbortedError(ConnectionError):
-    def __init__(self, message: str = "") -> None: ...
+    @overload
+    @cpp_template("tpy::ConnectionAbortedError()")
+    def __init__(self) -> None: ...
+
+    @overload
+    @cpp_template("tpy::ConnectionAbortedError({0})")
+    def __init__(self, message: str) -> None: ...
+
+    @overload
+    @cpp_template("tpy::ConnectionAbortedError({0}, {1})")
+    def __init__(self, errno: Int32, strerror: str) -> None: ...
+
+    @overload
+    @cpp_template("tpy::ConnectionAbortedError({0}, {1}, {2})")
+    def __init__(self, errno: Int32, strerror: str, filename: str) -> None: ...
 
 # Raised on EAGAIN/EWOULDBLOCK/EINPROGRESS by non-blocking socket calls;
 # the asyncio reactor catches it to park on fd readiness (CPython parity).
 @native("tpy::BlockingIOError")
 class BlockingIOError(OSError):
-    def __init__(self, message: str = "") -> None: ...
+    @overload
+    @cpp_template("tpy::BlockingIOError()")
+    def __init__(self) -> None: ...
+
+    @overload
+    @cpp_template("tpy::BlockingIOError({0})")
+    def __init__(self, message: str) -> None: ...
+
+    @overload
+    @cpp_template("tpy::BlockingIOError({0}, {1})")
+    def __init__(self, errno: Int32, strerror: str) -> None: ...
+
+    @overload
+    @cpp_template("tpy::BlockingIOError({0}, {1}, {2})")
+    def __init__(self, errno: Int32, strerror: str, filename: str) -> None: ...
 
 @native("tpy::AttributeError")
 class AttributeError(Exception):
@@ -180,7 +357,21 @@ class StopAsyncIteration(Exception):
 # written `except OSError` catches socket/connection timeouts unchanged.
 @native("tpy::TimeoutError")
 class TimeoutError(OSError):
-    def __init__(self, message: str = "") -> None: ...
+    @overload
+    @cpp_template("tpy::TimeoutError()")
+    def __init__(self) -> None: ...
+
+    @overload
+    @cpp_template("tpy::TimeoutError({0})")
+    def __init__(self, message: str) -> None: ...
+
+    @overload
+    @cpp_template("tpy::TimeoutError({0}, {1})")
+    def __init__(self, errno: Int32, strerror: str) -> None: ...
+
+    @overload
+    @cpp_template("tpy::TimeoutError({0}, {1}, {2})")
+    def __init__(self, errno: Int32, strerror: str, filename: str) -> None: ...
 
 # CancelledError inherits BaseException directly (not Exception) so
 # `except Exception` does not silently swallow it -- matches CPython 3.8+.

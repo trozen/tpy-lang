@@ -963,6 +963,17 @@ class TypeRegistrar:
         is_native = record.linkage != RecordLinkage.DEFAULT
         is_native_c = record.linkage == RecordLinkage.NATIVE_C
 
+        # @virtual_raise promises a hand-written dispatching C++ __raise__,
+        # which only an @native class can supply -- plain TPy classes get the
+        # auto-emitted `throw *this` override and cannot define their own,
+        # so the marker would be accepted-then-meaningless there.
+        if record.virtual_raise and record.linkage != RecordLinkage.NATIVE:
+            raise SemanticError(
+                f"@virtual_raise on '{record.name}' requires @native: it marks "
+                f"a hand-written C++ __raise__ as dispatching, and a plain TPy "
+                f"class cannot define one",
+                record.loc)
+
         # For generic records, skip validation of TypeParamRef types
         is_generic = bool(record.type_params)
 
@@ -1864,6 +1875,7 @@ class TypeRegistrar:
             has_del=record.del_method is not None,
             has_copy=has_copy,
             builtin_type_key=record.builtin_type_key,
+            virtual_raise=record.virtual_raise,
             module=public_module_name(self.ctx.module_name, self.ctx.module_cpp_namespace) or None,
             defining_module=self.ctx.module_name,
             exposed_to_host=record.exposed_to_host,

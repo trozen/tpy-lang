@@ -1093,13 +1093,15 @@ class CallAnalyzer:
                         expr
                     )
 
-        # Fallback: Check if it's a record constructor
+        # Fallback: Check if it's a record constructor. Route through the
+        # full ctor analysis -- this catch-all used to just analyze args and
+        # return the type, which let implicit-builtin constructions (the
+        # exception classes reach here, not the namespace RECORD path) skip
+        # arity/type validation entirely: OSError(an_int64, "msg") emitted
+        # silently-narrowing C++.
         record = self._record_for_local_name(expr.func_name)
         if record:
-            # Analyze arguments
-            for arg in expr.args:
-                self.expr.analyze_expr(arg)
-            return NominalType(record.name, _module_qname=record.qualified_name())
+            return self._analyze_record_constructor(expr, record)
 
         # Fallback: Check if it's a function call
         func_infos = self.ctx.registry.get_function(expr.func_name)
@@ -5284,6 +5286,74 @@ class CallAnalyzer:
         )
         return union_type
 
+    def _resolve_ctor_overload_group(self, expr: TpyCall, record: RecordInfo) -> FunctionInfo | None:
+        """Resolve construction against an __init__ overload GROUP, own or
+        inherited.
+
+        A record with its own multi-stub group (the builtin exception
+        family) has an init_params copy that mirrors only the FIRST stub; a
+        record with no own __init__ emits `using Base::Base` and inherits
+        every base ctor. Both construct against the full overload set.
+        Returns the winning overload after coercing args, or None when the
+        record has a single (or no) ctor signature -- the init_params path
+        applies there.
+        """
+        if record.is_generic() or expr.kwargs:
+            return None
+        overloads = record.get_method_overloads("__init__")
+        if len(overloads) <= 1:
+            if overloads or record.inherits_init_from is None:
+                return None
+            overloads = self.ctx.registry.get_method_overloads_with_parents(
+                record, "__init__")
+            if len(overloads) <= 1:
+                return None
+        arg_types = [self.expr.analyze_expr(arg) for arg in expr.args]
+        try:
+            winner = resolve_overload(
+                overloads, arg_types,
+                protocol_checker=self.protocols.type_conforms_to_protocol,
+                protocol_classifier=self.protocols.classify_protocol_conformance,
+                default_int_type=self.ctx.default_int_type,
+                subclass_checker=self.ctx.registry.is_subclass_of,
+                type_ops=self.type_ops,
+            )
+        except OverloadAmbiguityError as e:
+            raise self._ambiguous_overload_error(expr, f"{record.name}.__init__", e)
+        if winner is None:
+            types_str = ", ".join(str(t) for t in arg_types)
+            raise self.ctx.error(
+                f"No matching overload for '{record.name}({types_str})'", expr)
+        for i, (arg, arg_type, (pname, ptype)) in enumerate(
+                zip(expr.args, arg_types, winner.params)):
+            arg_type = self._restore_readonly_arg(arg, arg_type)
+            self.check_own_param(arg, arg_type, pname, ptype)
+            expr.args[i] = self.compat.coerce_expr(
+                arg, arg_type, ptype, f"argument '{pname}'",
+                coercion_ctx=CoercionContext.ARG)
+        return winner
+
+    def _attach_ctor_overload_info(
+        self, expr: TpyCall, record: RecordInfo, return_type: TpyType,
+        winner: FunctionInfo,
+    ) -> None:
+        """`_set_record_constructor_info` for a resolved inherited-overload
+        ctor: attach the WINNING overload's params (not the first stub's) so
+        borrow/effect checks see the actual signature."""
+        expr.resolved_function_info = FunctionInfo(
+            name=record.name,
+            params=winner.params,
+            return_type=return_type,
+            is_readonly=False,
+            is_constructor=True,
+            mutated_params=winner.mutated_params,
+            structural_mutated_params=winner.structural_mutated_params,
+            canonical_fi=winner.root,
+        )
+        self._check_borrow_arg_conflicts(expr)
+        self._check_loop_var_arg_mutation(expr)
+        self._record_mutation_call_edges(expr)
+
     def _analyze_record_constructor(self, expr: TpyCall, record: RecordInfo) -> TpyType:
         """Analyze a call to a record constructor."""
         # `Any(value)` is constructor sugar for the INTO_ANY coercion.
@@ -5384,6 +5454,10 @@ class CallAnalyzer:
         if expr.call_type is not None and isinstance(expr.call_type, NominalType) and expr.call_type.is_record:
             # Analyze and type-check constructor arguments with type substitution
             type_subst = self.type_ops.build_type_substitution(expr.call_type)
+            winner = self._resolve_ctor_overload_group(expr, record)
+            if winner is not None:
+                self._attach_ctor_overload_info(expr, record, expr.call_type, winner)
+                return expr.call_type
             if record.init_params:
                 # Type-check constructor arguments (from __init__ or
                 # synthesized from fields for native records)
@@ -5567,6 +5641,11 @@ class CallAnalyzer:
                 expr
             )
         # Non-generic record
+        winner = self._resolve_ctor_overload_group(expr, record)
+        if winner is not None:
+            result_type = NominalType(record.name, _module_qname=record.qualified_name())
+            self._attach_ctor_overload_info(expr, record, result_type, winner)
+            return result_type
         if record.init_params:
             # Type-check constructor arguments (from __init__ or
             # synthesized from fields for native records)
