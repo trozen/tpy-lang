@@ -7,5 +7,5 @@ from tpy.extern import export
 
 
 @export
-def f(xs: list[Int32]) -> Span[readonly[Int32]]:  # tpyc: error(/return type.*not yet marshallable/)
+def f(xs: list[Int32]) -> Span[readonly[Int32]]:  # tpyc: error(/return of type.*cannot cross the CPython boundary/)
     return Span[readonly[Int32]](xs)

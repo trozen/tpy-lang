@@ -5919,7 +5919,8 @@ API, floor 3.12, hand-rolled C-API glue, copy-in marshalling).
   boundary (a view needs the deferred foreign-borrow primitive; `bytearray`'s
   aliasing a by-copy `PyBytes` would silently drop) and stay rejected; use
   `str` / `bytes`.
-- **Working (`list` / `dict` / `set` / `tuple`)**: functions taking and
+- **Working (`list` / `dict` / `set` / `tuple`)**: functions -- and
+  exposed-class methods and `__init__`, which share the same glue -- taking and
   returning containers, marshalled O(n) **by copy** recursively -- `std::vector`
   <-> PyList, `tpy::ordered_map` <-> PyDict (insertion order), `tpy::ordered_set`
   <-> PySet, `std::tuple` <-> PyTuple. Elements are the scalar/str/bytes leaves
@@ -5932,18 +5933,26 @@ API, floor 3.12, hand-rolled C-API glue, copy-in marshalling).
   bottoming out at `from_py<leaf>` / `to_py`; `marshal.hpp` supplies the
   element-fn-parameterized container helpers. `is_function_boundary_marshallable`
   (split from the base `is_boundary_marshallable`, which stays scalar/leaf-only
-  and still gates the exposed-class field/method and enum boundaries) recurses
-  into element/key/value types. **Three acknowledged divergences from the
+  and still gates exposed-class getset *fields* and enum getset boundaries)
+  recurses into element/key/value types and gates function AND method
+  params/returns -- so an exposed class can take/return a container in a
+  method but cannot *store* one in an exposed field. **Three acknowledged
+  divergences from the
   aliasing source** (the "container cliff"): (1) a param is an owned copy, so a
   mutation through it (`append`, `d[k] = v`) is not visible to the caller -- a
-  list/dict/set param sema proves is mutated **warns**; a read-only one stays
-  quiet; tuple is exempt. (2) strict-by-container-kind IN: a wrong container kind
+  list/dict/set param sema proves is mutated **warns** (functions and methods
+  alike); a read-only one stays quiet; tuple is exempt. The OUT direction
+  mirrors it: a *borrow-form* container return (`-> list[T]`, not
+  `-> Own[list[T]]`) marshals a fresh copy, losing write-through aliasing, and
+  **warns** at the return with `Own[...]` as the acknowledged spelling (same
+  model as the exposed-class `-> Cls` alias warning). (2)
+  strict-by-container-kind IN: a wrong container kind
   / tuple arity is a `TypeError` where the untyped source accepts any iterable.
   (3) per-element scalar coercion (`list[int]` coerces `True -> 1`), so distinct
   keys can collapse (`{1, True}` -> `set[int]`). Exposed class/enum types are
   valid top-level boundary types but **not yet** container elements (no
   per-element type handle); `list[SomeExportedClass]` is rejected. Verified in
-  `tests/interop/containers/`.
+  `tests/interop/containers/` and `tests/interop/class_method_containers/`.
 - **Working (`Span[T]` numeric, buffer protocol)**: a `Span[readonly[T]]` or
   `Span[T]` param (`T` a fixed-width int or `float`) binds to any
   buffer-protocol object -- `array.array`, `memoryview`, `bytes`/`bytearray`,
@@ -5953,7 +5962,8 @@ API, floor 3.12, hand-rolled C-API glue, copy-in marshalling).
   containers/enums); the bytes copy into a fresh `std::vector<T>`, which
   implicitly converts to the function's `std::span<T>`/`std::span<const T>`
   param -- the same owned-copy-converts-to-borrow-param trick `str`/`bytes`
-  use. **Span crosses only as a function PARAMETER, never a return type** --
+  use. **Span crosses only as a PARAMETER (of a function or an exposed-class
+  method/`__init__`), never a return type** --
   return numeric data via `list[T]` instead. v1 is copy-in for both the
   read-only and mutable forms (no `PyBUF_WRITABLE`, no write-back): a
   `Span[T]` (non-readonly) param sema proves is mutated **warns** at compile
@@ -6013,7 +6023,13 @@ API, floor 3.12, hand-rolled C-API glue, copy-in marshalling).
   TPy `__init__` (placement-new from marshalled args), `tp_dealloc` runs the
   C++ destructor (so `Own`/`Box`/`Rc`/container fields release). Baseline
   surface: construct from Python, plain instance methods (each a bound wrapper),
-  and every annotated field as a read/write getset descriptor. Because the
+  and every annotated field as a read/write getset descriptor. Method and
+  `__init__` params/returns admit the same boundary set as free `@export`
+  functions (scalars/str/bytes, exposed classes/enums, containers recursively,
+  a numeric `Span` as a param -- the method glue shares the free-function
+  marshal emit); getset *fields* stay scalar/str/bytes-only (the per-field
+  getter/setter path has no container emit, so an exposed class cannot store a
+  container in an exposed field). Because the
   PyObject *owns* the instance, a class crosses **IN as a borrow of the live
   embedded payload** -- a method call or a free function taking the instance
   (`def bump(c: Counter, ...)`) mutates through it and the change is visible on

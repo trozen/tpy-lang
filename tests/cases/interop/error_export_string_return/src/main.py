@@ -6,5 +6,5 @@ from tpy.extern import export
 
 
 @export
-def f() -> String:  # tpyc: error(/return type.*not yet marshallable/)
+def f() -> String:  # tpyc: error(/return of type.*cannot cross the CPython boundary/)
     return String("x")

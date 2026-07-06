@@ -53,11 +53,11 @@ progress -> ✅ done.
 | 1 | Marshalling layer + cpython facade (abi3) -- the keystone | **v1.0** | 🚧 all scalars (int/BigInt, float, bool, fixed-width ints) + void return + str/bytes (copy-in) + list/dict/set/tuple (copy-in, recursive) done |
 | 2 | Extension codegen; **free functions** end-to-end; local `.so` build | **v1.0** | 🚧 every scalar arg/return + void return + str/bytes + container arg/return done; positional + keyword args (PyArg_ParseTupleAndKeywords) |
 | 2.5 | PEP 517 backend -> abi3 wheel (packaging) | **v1.0** | 🔬 |
-| 3 | Buffer input -- numeric (copy-in in v1.0; zero-copy -> 3.5) | **v1.0** | ✅ done: `Span[readonly[T]]`/`Span[T]` (fixed-width int/`float`) as an @export fn PARAM only, via `PyObject_GetBuffer`; copy-in for both forms (no write-back for either); a mutated `Span[T]` param warns (copy-in, not visible to caller) |
+| 3 | Buffer input -- numeric (copy-in in v1.0; zero-copy -> 3.5) | **v1.0** | ✅ done: `Span[readonly[T]]`/`Span[T]` (fixed-width int/`float`) as an @export fn or exposed-class method PARAM only, via `PyObject_GetBuffer`; copy-in for both forms (no write-back for either); a mutated `Span[T]` param warns (copy-in, not visible to caller) |
 | 4 | **Classes + methods** (`PyType_FromSpec`; dunders per Q4) | **v1.1** | 🚧 baseline done: construct + plain methods + annotated fields as getset, instances as free-fn/method params (borrow) + returns (copy); dunders (Q4) DONE -- all three checkpoints (repr/str/eq/ne/lt/le/gt/ge/hash; arithmetic/ordering operators incl. in-place; container protocol) landed; inheritance/@property/class-typed fields still deferred |
 | 5 | **Enums + constants** | **v1.1** | 🚧 `@export` enums recreated as real CPython IntEnum/Enum (functional API, module= set); enum values cross as @export fn params/returns (member round-trip, strict-by-type IN); `Final` scalar/str constants as init-time module-attribute snapshots; nested/cross-module enums deferred |
 | 3.5 | Foreign-borrow primitive -> zero-copy str + buffer input | post-v1.0 (next) -- IR-gated | 🔬 |
-| 6 | Containers (`list`/`dict`/`set`/`tuple`, by-copy) | v1-adjacent | 🚧 done: list/dict/set/tuple cross as @export fn params/returns, O(n) recursive copy-in/out (str/bytes elements + arbitrary nesting); strict-by-container-kind IN; a mutated container param warns (copy-in, not visible to caller); exposed class/enum *elements* deferred |
+| 6 | Containers (`list`/`dict`/`set`/`tuple`, by-copy) | v1-adjacent | 🚧 done: list/dict/set/tuple cross as @export fn AND exposed-class method/`__init__` params/returns, O(n) recursive copy-in/out (str/bytes elements + arbitrary nesting); strict-by-container-kind IN; a mutated container param warns (copy-in, not visible to caller); a borrow-form container return warns (copy-out, Own[...] acknowledges); getset fields stay scalar-only; exposed class/enum *elements* deferred |
 | 7 | `nogil` / `with gil` (parallelism + GIL checking) | later | 🔬 |
 | 8 | Embedding, callbacks / opaque `PyRef`, async <-> `asyncio` | later | 🔬 |
 
@@ -320,8 +320,9 @@ state, not the v1 behavior.
 **Implemented (the Span rung).** `Span[readonly[T]]` and `Span[T]` (`T` a
 fixed-width int or `float`) bind to any object exposing the buffer protocol
 -- `array.array`, `memoryview`, `bytes`/`bytearray`, numpy arrays -- as an
-`@export` FUNCTION **parameter only** (never a return type -- return numeric
-data via `list[T]` instead; see "Resolved (Q2)" below).
+`@export` function or exposed-class method/`__init__` **parameter only**
+(never a return type -- return numeric data via `list[T]` instead; see
+"Resolved (Q2)" below).
 
 - `span_from_py<T>` (`runtime/cpp/include/tpy/interop/marshal.hpp`) calls
   `PyObject_GetBuffer` requesting `PyBUF_ND | PyBUF_FORMAT` (shape + format,
@@ -375,7 +376,11 @@ wrapping the vector, boxing per `__getitem__`) -- high complexity, and it
 fights the unboxing that is the whole point.
 
 **Implemented (the container rung).** `list`/`dict`/`set`/`tuple` cross as
-`@export` function params/returns, marshalled O(n) by-copy recursively:
+`@export` function params/returns -- and, since the method-boundary rung, as
+exposed-class method and `__init__` params/returns (the method glue shares
+the free-function marshal emit; getset **fields** stay scalar-only, so an
+exposed class cannot store a container) -- marshalled O(n) by-copy
+recursively:
 `std::vector` <-> PyList, `tpy::ordered_map` <-> PyDict (insertion order),
 `tpy::ordered_set` <-> PySet, `std::tuple` <-> PyTuple. Elements are the
 scalar/str/bytes leaves and arbitrarily nested containers of those. The
@@ -392,10 +397,14 @@ Three acknowledged, documented divergences from the aliasing CPython source:
 - **Copy-in mutation (the cliff itself).** A param is an owned copy, so a
   mutation through it (`append`, `d[k] = v`) is not visible to the caller. A
   list/dict/set param that sema proves is mutated **warns** at the `@export`
-  function (`mutated_params`); a read-only container param has no observable
-  divergence and stays quiet. tuple is exempt (value type, immutable). There
-  is no write-back escape hatch in v1; the zero-copy *read* path is `Span` +
-  buffer protocol (phase 3.5). A tuple whose element is itself a mutable
+  function or exposed-class method (`mutated_params`); a read-only container
+  param has no observable divergence and stays quiet. tuple is exempt (value
+  type, immutable). There is no write-back escape hatch in v1; the zero-copy
+  *read* path is `Span` + buffer protocol (phase 3.5). The OUT direction has
+  the same cliff: a *borrow-form* container return (`-> list[T]`, not
+  `-> Own[list[T]]`) marshals a fresh copy, so write-through aliasing is
+  lost -- warned at the return, mirroring the exposed-class `-> Cls` alias
+  warning, with `Own[...]` as the acknowledged spelling. A tuple whose element is itself a mutable
   container (`tuple[list[int], str]`) does not warn either, and mutating the
   inner container is likewise invisible to the caller -- but this is the
   pre-existing TPy value-vs-reference model (a tuple is a value type, so `p[0]`
@@ -479,7 +488,10 @@ call (same borrow story as `str`).
 *Scope dial:* baseline = `__init__` + plain methods + annotated fields as
 getset properties; then all four dunder groups (`__repr__`/`__str__`,
 `__eq__`/`__hash__`, ordering + arithmetic operators, container protocol --
-see Q4), landed roughly in that order. **Defer** inheritance of exposed
+see Q4), landed roughly in that order; then containers + `Span` at the
+method boundary (method/`__init__` params and returns admit the same
+boundary set as free `@export` functions -- getset fields stay scalar-only).
+**Defer** inheritance of exposed
 class *hierarchies* (each exposed class is flat in v1) and cross-module
 exposed classes (a foreign exposed class used as a param/field/return is a
 located error, mirroring the cross-module enum guard below).

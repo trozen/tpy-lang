@@ -1,0 +1,4 @@
+main.py:17: warning: exposed class 'Sink' method 'push': list parameter 'xs' is copied in at the CPython boundary; mutations to it are not visible to the caller
+main.py:20: warning: exposed class 'Sink' method 'fill': dict parameter 'd' is copied in at the CPython boundary; mutations to it are not visible to the caller
+main.py:23: warning: exposed class 'Sink' method 'toggle': set parameter 's' is copied in at the CPython boundary; mutations to it are not visible to the caller
+main.py:26: warning: exposed class 'Sink' method 'scale': Span parameter 'xs' is copied in at the CPython boundary; mutations to it are not visible to the caller

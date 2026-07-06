@@ -3982,7 +3982,7 @@ class Compiler:
         """
         from .type_def_registry import (
             is_function_boundary_marshallable, is_span_boundary_param,
-            boundary_cpp_type, boundary_unmarshallable_msg)
+            boundary_type_name, boundary_unmarshallable_msg)
         for compiled in self.modules.values():
             if not compiled.ast.directives.ext_module:
                 continue
@@ -4024,9 +4024,9 @@ class Compiler:
                         continue
                     if is_function_boundary_marshallable(typ, role == "return"):
                         continue
-                    cpp = boundary_cpp_type(typ)
                     raise CompileError(
-                        boundary_unmarshallable_msg(func.name, what, cpp),
+                        boundary_unmarshallable_msg(
+                            func.name, what, boundary_type_name(typ)),
                         compiled.name, compiled.path, lineno=fline)
                 self._warn_export_copy_boundary_mutation(compiled, func)
             for record in compiled.ast.records:
@@ -4045,18 +4045,30 @@ class Compiler:
         divergence and stays quiet. tuple is a value type (and immutable), so
         it is exempt; Span[readonly[T]] can never appear here (writing through
         it is already a compile error), so only a mutated Span[T] shows up."""
-        from .type_def_registry import (
-            is_list, is_dict, is_set, is_span, _boundary_inner)
         fis = compiled.analyzer.registry.functions.get(func.name)
         if not fis:
             return
         fi = next((f for f in fis if len(f.params) == len(func.params)), fis[0])
+        self._warn_copy_boundary_mutation(
+            compiled, f"@export function '{func.name}'", fi,
+            list(enumerate(func.params)), func.loc)
+
+    def _warn_copy_boundary_mutation(
+            self, compiled: 'CompiledModule', label: str, fi: FunctionInfo,
+            params: list[tuple[int, tuple[str, TpyType]]],
+            loc: SourceLocation | None) -> None:
+        """Shared core of the copy-in mutation warning for free @export
+        functions and exposed-class methods. `params` is a list of
+        (index, (name, type)) with indices aligned to `fi.mutated_params`
+        (so a method's entries keep their self-inclusive positions)."""
+        from .type_def_registry import (
+            is_list, is_dict, is_set, is_span, _boundary_inner)
         # `mutated_params` (not `structural_mutated_params`) is the caller-visible
         # write-back fact: it covers element assignment (d[k] = v) that the
         # narrower structural set omits. A reference-type container param is
         # passed by reference, so any mutation here would write through.
         mut = fi.mutated_params or frozenset()
-        for i, (pname, ptype) in enumerate(func.params):
+        for i, (pname, ptype) in params:
             if i not in mut:
                 continue
             inner = _boundary_inner(ptype)  # strip the auto-inserted Ref/borrow
@@ -4071,10 +4083,10 @@ class Compiler:
             # reads, matching the other @export diagnostics.
             compiled.analyzer.diagnostics.append(Diagnostic(
                 DiagnosticLevel.WARNING,
-                f"@export function '{func.name}': {kind} parameter '{pname}' is "
+                f"{label}: {kind} parameter '{pname}' is "
                 f"copied in at the CPython boundary; mutations to it are not "
                 f"visible to the caller",
-                func.loc))
+                loc))
 
     def _validate_exposed_enums(self, compiled: 'CompiledModule') -> None:
         """An `@export` enum is recreated as a CPython IntEnum/Enum at PyInit_.
@@ -4111,7 +4123,8 @@ class Compiler:
         them), and require every crossing field/param/return to marshal.
         """
         from .type_def_registry import (
-            is_boundary_marshallable, boundary_cpp_type,
+            is_boundary_marshallable, is_function_boundary_marshallable,
+            is_span_boundary_param, boundary_type_name,
             boundary_unmarshallable_msg)
         info = compiled.analyzer.registry.get_record(record.name)
         class_line = record.loc.line if record.loc else None
@@ -4145,11 +4158,21 @@ class Compiler:
             form_err = self._exposed_form_error(typ, role, reg, compiled)
             if form_err is not None:
                 reject(f"{what} {form_err}", loc)
-            if is_boundary_marshallable(typ, role == "return"):
+            # Method/__init__ params and returns share the free-function glue
+            # (_emit_marshal_in/_emit_call_return), so they admit the same
+            # boundary set: containers recursively, and Span[T] as a param
+            # only (buffer-protocol copy-in has no return direction). A getset
+            # FIELD keeps the scalar-only base admission -- the per-field
+            # getter/setter path has no container emit.
+            if role == "field":
+                if is_boundary_marshallable(typ, False):
+                    return
+            elif ((role == "param" and is_span_boundary_param(typ))
+                    or is_function_boundary_marshallable(typ, role == "return")):
                 return
-            cpp = boundary_cpp_type(typ)
             raise CompileError(
-                boundary_unmarshallable_msg(record.name, what, cpp, kind="class"),
+                boundary_unmarshallable_msg(
+                    record.name, what, boundary_type_name(typ), kind="class"),
                 compiled.name, compiled.path, lineno=line_of(loc))
 
         for fld in info.fields:
@@ -4197,6 +4220,12 @@ class Compiler:
                         continue
                     check(p.type, f"method '{mname}' parameter '{p.name}'",
                           "param", m_loc)
+                self._warn_copy_boundary_mutation(
+                    compiled,
+                    f"exposed class '{record.name}' method '{mname}'", m,
+                    [(i, (p.name, p.type)) for i, p in enumerate(m.params)
+                     if p.name != "self"],
+                    m_loc)
 
     def _unsupported_param_form(self, fn: 'TpyFunction') -> 'str | None':
         """The argument forms the CPython glue's keyword-aware unpack does not

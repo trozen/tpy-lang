@@ -8,4 +8,4 @@ from tpy.extern import export
 @export
 class Bad:
     def __init__(self, items: list[Int64]):
-        self.items = items  # tpyc: error(/field 'items'.*not yet marshallable/)
+        self.items = items  # tpyc: error(/field 'items'.*cannot cross the CPython boundary/)

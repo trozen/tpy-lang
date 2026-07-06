@@ -14,5 +14,5 @@ class Color(IntEnum):
 
 
 @export
-def f(xs: list[Color]) -> int:  # tpyc: error(/parameter 'xs'.*not yet marshallable/)
+def f(xs: list[Color]) -> int:  # tpyc: error(/parameter 'xs'.*cannot cross the CPython boundary/)
     return len(xs)

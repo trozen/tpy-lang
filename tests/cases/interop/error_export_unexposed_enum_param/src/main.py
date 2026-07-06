@@ -11,5 +11,5 @@ class Color(IntEnum):
 
 
 @export
-def step(c: Color) -> Color:  # tpyc: error(/not yet marshallable/)
+def step(c: Color) -> Color:  # tpyc: error(/cannot cross the CPython boundary/)
     return c

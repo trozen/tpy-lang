@@ -9,5 +9,5 @@ from tpy.extern import export
 
 
 @export
-def f() -> Own[bytearray]:  # tpyc: error(/return type.*not yet marshallable/)
+def f() -> Own[bytearray]:  # tpyc: error(/return of type.*cannot cross the CPython boundary/)
     return bytearray(b"x")

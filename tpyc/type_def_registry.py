@@ -546,19 +546,20 @@ def is_boundary_marshallable(t: "TpyType | None", allow_void: bool = False) -> b
     td = type_def_of(inner)
     # An @export class is admitted through the same per-type fact the scalars
     # use: sema sets boundary_marshal on its (dynamic) TypeDef. This is the BASE
-    # rule -- scalar/str/bytes leaves + @export classes/enums -- shared by the
-    # exposed-CLASS field/method boundary and enums, where container marshalling
-    # is not wired yet. The @export FUNCTION boundary additionally admits
-    # containers; see is_function_boundary_marshallable.
+    # rule -- scalar/str/bytes leaves + @export classes/enums -- kept by the
+    # exposed-CLASS getset FIELD and enum boundaries, where container
+    # marshalling is not wired. Function AND method params/returns additionally
+    # admit containers; see is_function_boundary_marshallable.
     return td is not None and td.boundary_marshal
 
 
 def is_function_boundary_marshallable(t: "TpyType | None",
                                       allow_void: bool = False) -> bool:
-    """The @export FUNCTION boundary: the base rule plus list/dict/set/tuple of
-    marshallable elements (O(n) recursive copy-in/out). Containers are not yet
-    wired at the exposed-class field/method or enum boundaries, so those keep the
-    base `is_boundary_marshallable`."""
+    """The @export function and exposed-class method/__init__ param/return
+    boundary: the base rule plus list/dict/set/tuple of marshallable elements
+    (O(n) recursive copy-in/out). Containers are not wired at the exposed-class
+    getset FIELD or enum boundaries, so those keep the base
+    `is_boundary_marshallable`."""
     inner = _boundary_inner(t) if t is not None else t
     if inner is not None:
         elems = _container_element_types(inner)
@@ -655,26 +656,35 @@ def is_exposed_enum(t: "TpyType | None") -> "bool":
 
 
 def boundary_cpp_type(t: "TpyType | None") -> str:
-    # The boundary cpp type used only to render the unmarshallable diagnostic (a
-    # missing return type is 'void'); admission is is_boundary_marshallable.
-    # Shared so the sema validator and the glue emitter derive it identically.
+    # The boundary cpp type used by the glue emitter (a missing return type is
+    # 'void'); admission is is_boundary_marshallable. Shared so the sema
+    # validator and the glue emitter derive it identically.
     return t.to_cpp() if t is not None else "void"
 
 
-def boundary_unmarshallable_msg(name: str, what: str, cpp: str,
+def boundary_type_name(t: "TpyType | None") -> str:
+    # The offending type as the user wrote it, for the unmarshallable
+    # diagnostic -- the TPy rendering (`StrView`), not the C++ one
+    # (`std::string_view`). Own/Ref/readonly wrappers are stripped so the name
+    # matches the annotation; a missing return type reads as `None`.
+    return str(_boundary_inner(t)) if t is not None else "None"
+
+
+def boundary_unmarshallable_msg(name: str, what: str, type_name: str,
                                 kind: str = "function") -> str:
     # `what` is "return" / "parameter '<name>'" (function) or "field '<name>'" /
     # "method '<name>' return" (class). Shared so the sema diagnostic and
     # codegen's drift assert read identically. An exposed class itself is a
-    # valid boundary type, so it never appears as the offending `cpp`.
-    return (f"@export {kind} '{name}': {what} type '{cpp}' is not yet "
-            f"marshallable across the CPython boundary "
-            f"(supported: the fixed-width int types, int, float, bool, str, "
-            f"bytes, @export classes/enums defined in this module, and -- for "
-            f"@export function params/returns -- list/dict/set/tuple of "
-            f"marshallable elements; a numeric Span[T]/Span[readonly[T]] is "
-            f"supported as a function PARAM only, via the buffer protocol -- "
-            f"return numeric data as list[T] instead)")
+    # valid boundary type, so it never appears as the offending `type_name`.
+    # The first line is the diagnosis; the supported set is an indented
+    # continuation so the short error scans on its own.
+    return (f"@export {kind} '{name}': {what} of type '{type_name}' cannot "
+            f"cross the CPython boundary yet\n"
+            f"  supported types: the fixed-width ints, int, float, bool, str, "
+            f"bytes, @export classes/enums defined in this module; "
+            f"list/dict/set/tuple of those as function/method params/returns "
+            f"(not fields); a numeric Span as a param only (return numeric "
+            f"data as list[T])")
 
 
 # Single-qname primitive predicates.

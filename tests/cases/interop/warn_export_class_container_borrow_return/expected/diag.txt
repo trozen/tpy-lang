@@ -1,0 +1,4 @@
+main.py:31: warning: @export function 'pick': returns a dict by reference, so it is copied across the CPython boundary -- the result is a new object; mutations to it are not visible on this side (write-through aliasing is not preserved); return Own[...] to make the copy explicit
+main.py:20: warning: exposed class 'Holder' method 'same': returns a list by reference, so it is copied across the CPython boundary -- the result is a new object; mutations to it are not visible on this side (write-through aliasing is not preserved); return Own[...] to make the copy explicit
+main.py:30: warning: @export function 'pick': dict parameter 'd' is copied in at the CPython boundary; mutations to it are not visible to the caller
+main.py:19: warning: exposed class 'Holder' method 'same': list parameter 'xs' is copied in at the CPython boundary; mutations to it are not visible to the caller

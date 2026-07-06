@@ -7,5 +7,5 @@ from tpy.extern import export
 
 
 @export
-def bad() -> StrView:  # tpyc: error(/not yet marshallable across the CPython boundary/)
+def bad() -> StrView:  # tpyc: error(/cannot cross the CPython boundary/)
     return "x"

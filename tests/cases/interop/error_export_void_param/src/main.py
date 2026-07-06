@@ -5,5 +5,5 @@ from tpy.extern import export
 
 
 @export
-def f(x: None) -> int:  # tpyc: error(/parameter 'x'.*not yet marshallable/)
+def f(x: None) -> int:  # tpyc: error(/parameter 'x'.*cannot cross the CPython boundary/)
     return 0

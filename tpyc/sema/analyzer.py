@@ -587,15 +587,18 @@ class SemanticAnalyzer:
 
     def _warn_export_class_return_alias(self, module: TpyModule) -> None:
         """In an ext_module, warn when an @export function or an exposed class's
-        method returns an exposed class *by borrow* -- declared `-> Cls` (sema
-        lowers this to RefType[Cls]), not `-> Own[Cls]`. The only thing
-        returnable by reference is an existing instance (a fresh local can't be
-        returned by reference, and a borrowed source can't be returned as Own
-        without copy()), so the boundary necessarily copies a caller-visible
-        object into a fresh PyObject: identity (`is`) and write-through aliasing
-        are not preserved. Returning `Own[Cls]` -- a freshly constructed or
-        copy()'d owned value -- is a distinct object on both sides and is the
-        acknowledged form (so it is not flagged).
+        method returns an exposed class or a list/dict/set *by borrow* --
+        declared `-> Cls` / `-> list[T]` (sema lowers these to RefType), not
+        `-> Own[...]`. The only thing returnable by reference is an existing
+        object (a fresh local can't be returned by reference, and a borrowed
+        source can't be returned as Own without copy()), so the boundary
+        necessarily copies a caller-visible object into a fresh PyObject:
+        identity (`is`) and write-through aliasing are not preserved. Returning
+        `Own[...]` -- a freshly constructed or copy()'d owned value -- is a
+        distinct object on both sides and is the acknowledged form (so it is
+        not flagged). tuple is a value type (never RefType-lowered) and str
+        crosses as a value; a borrow-form `bytes` return predates this warning
+        and stays unflagged for now (tracked in TODO.md).
         """
         if not module.directives.ext_module:
             return
@@ -610,21 +613,36 @@ class SemanticAnalyzer:
             return found[0] if found else None
 
         def warn_if_borrow_return(fn, label: str) -> None:
-            if not (isinstance(fn.return_type, RefType)
-                    and is_exposed_class(fn.return_type)):
+            if not isinstance(fn.return_type, RefType):
                 return
-            info = self.ctx.registry.get_record_for_type(
-                _boundary_inner(fn.return_type))
-            # A @nocopy class returned by reference is a hard error (the copy is
-            # deleted), reported by the validator -- don't also warn.
-            if info is not None and info.is_nocopy:
+            if is_exposed_class(fn.return_type):
+                info = self.ctx.registry.get_record_for_type(
+                    _boundary_inner(fn.return_type))
+                # A @nocopy class returned by reference is a hard error (the
+                # copy is deleted), reported by the validator -- don't also warn.
+                if info is not None and info.is_nocopy:
+                    return
+                self._warning(
+                    f"{label}: returns exposed class "
+                    f"'{getattr(fn.return_type.wrapped, 'name', '?')}' by "
+                    f"reference, so the instance is copied across the CPython "
+                    f"boundary -- the result is a new object (identity and "
+                    f"write-through aliasing are not preserved); return "
+                    f"Own[...] to make the copy explicit",
+                    first_return(fn.body))
+                return
+            inner = _boundary_inner(fn.return_type)
+            kind = ("list" if is_list(inner) else
+                    "dict" if is_dict(inner) else
+                    "set" if is_set(inner) else None)
+            if kind is None:
                 return
             self._warning(
-                f"{label}: returns exposed class "
-                f"'{getattr(fn.return_type.wrapped, 'name', '?')}' by reference, "
-                f"so the instance is copied across the CPython boundary -- the "
-                f"result is a new object (identity and write-through aliasing "
-                f"are not preserved); return Own[...] to make the copy explicit",
+                f"{label}: returns a {kind} by reference, so it is copied "
+                f"across the CPython boundary -- the result is a new object; "
+                f"mutations to it are not visible on this side (write-through "
+                f"aliasing is not preserved); return Own[...] to make the "
+                f"copy explicit",
                 first_return(fn.body))
 
         for func in module.functions:

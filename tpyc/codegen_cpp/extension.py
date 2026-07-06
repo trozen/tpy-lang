@@ -20,7 +20,8 @@ from ..typesys import TpyType, is_void_like_type, FinalType
 from ..type_def_registry import (
     is_boundary_marshallable, is_function_boundary_marshallable, is_exposed_class,
     is_exposed_enum, is_span_boundary_param, _boundary_inner, enum_info_of,
-    is_str_view_type, boundary_cpp_type, boundary_unmarshallable_msg,
+    is_str_view_type, boundary_cpp_type, boundary_type_name,
+    boundary_unmarshallable_msg,
     _container_element_types, is_list, is_dict, is_set,
 )
 from ..modules import BINOP_TO_METHOD, BINOP_TO_RMETHOD, AUGOP_TO_IMETHOD, UNARYOP_TO_METHOD
@@ -1126,7 +1127,7 @@ class ExtensionGenerator:
             if what != "return" and is_span_boundary_param(t):
                 return
             assert is_function_boundary_marshallable(t, allow_void), \
-                boundary_unmarshallable_msg(fn.name, what, boundary_cpp_type(t))
+                boundary_unmarshallable_msg(fn.name, what, boundary_type_name(t))
 
         wrappers: list[tuple[str, str, str, bool]] = []  # (pyname, wrap, flag, kw)
         for fn in exposed:
