@@ -9,11 +9,13 @@ from ..codegen_cpp.context import CodeGenOptions
 from .testutil import _emit_expr
 from .nodes import (
     Form, THIRArgTemp, THIRBinOp, THIRCall, THIRCoerce, THIRContainerLiteral,
-    THIRExprStmt, THIRForEach, THIRFormConvert, THIRLiteral, THIRMethodCall,
-    THIRName, THIRSetItem, THIRStrLiteral, THIRSubscript, THIRVarDecl,
+    THIRExprStmt, THIRFieldAccess, THIRForEach, THIRFormConvert, THIRLiteral,
+    THIRMethodCall, THIRName, THIRSelf, THIRSetItem, THIRStrLiteral,
+    THIRSubscript, THIRVarDecl,
 )
 from .testutil import (
-    _compile, _entry, _lower, _lower_ctx, _fn, _PRELUDE, _F1_RECORDS,
+    _compile, _entry, _lower, _lower_ctx, _lower_ctx_witnessed, _fn,
+    _PRELUDE, _F1_RECORDS,
 )
 
 # --- Statement-shape axis: container subscript reads (list[scalar] /
@@ -914,16 +916,6 @@ class TestContainerSetItem:
             + "def f(xs: list[Leaf], a: Leaf) -> None:\n    xs[0] = a\n")
         assert _fn(thir, "f") is None
 
-    def test_field_receiver_ineligible(self):
-        # `h.xs[0] = v` -- a non-name receiver stays AST (the dominant blocked
-        # mass; a later cell alongside the field-receiver subscript READ).
-        thir = _lower_ctx(
-            "from tpy import Int32\n"
-            "class H:\n    xs: list[Int32]\n"
-            "    def __init__(self):\n        self.xs = [1]\n"
-            "def f(h: H) -> None:\n    h.xs[0] = 2\n")
-        assert _fn(thir, "f") is None
-
     def test_own_container_receiver_ineligible(self):
         thir = _lower(
             "from tpy import Int32, Own\n"
@@ -1054,3 +1046,228 @@ class TestContainerSetItemEmit:
                 '::tpy::add_check<int32_t>(::tpy::__getitem__(d, "x"), 1));'
                 in cpp)
         assert '::tpy::__delitem__(d, "x");' in cpp
+
+
+# --- Field-access receivers: `self.xs[i]` / `h.d[k] = v` / `del self.d[k]` --
+# the subscript read/write/del gates widened past bare names to a one-level
+# container field off an admitted receiver name (_field_receiver_ok), typed at
+# the field's DECLARED type. ---
+
+_CONTAINER_FIELDS = (
+    "from tpy import Int32, readonly\n"
+    "from typing import Optional\n"
+    "class H:\n"
+    "    xs: list[Int32]\n"
+    "    d: dict[Int32, Int32]\n"
+    "    names: list[str]\n"
+    "    maybe: Optional[list[Int32]]\n"
+    "    def __init__(self):\n"
+    "        self.xs = [1, 2, 3]\n"
+    "        self.d = {1: 10}\n"
+    "        self.names = ['a', 'b']\n"
+    "        self.maybe = None\n"
+)
+
+
+class TestFieldReceiverSubscript:
+    def test_self_read_routes(self):
+        thir = _lower_ctx(
+            _CONTAINER_FIELDS
+            + "    def get(self, i: Int32) -> Int32:\n"
+            + "        return self.xs[i]\n"
+            + "    @readonly\n"
+            + "    def get_ro(self, i: Int32) -> Int32:\n"
+            + "        return self.xs[i]\n")
+        for name in ("get", "get_ro"):
+            sub = _fn(thir, name).body[0].value
+            assert isinstance(sub, THIRSubscript) and not sub.bounds_safe
+            recv = sub.receiver
+            assert isinstance(recv, THIRFieldAccess) and recv.field_cpp == "xs"
+            assert isinstance(recv.receiver, THIRSelf) and recv.is_arrow
+
+    def test_param_field_read_routes(self):
+        thir = _lower_ctx(
+            _CONTAINER_FIELDS
+            + "def f(h: H, k: Int32) -> Int32:\n    return h.d[k]\n")
+        sub = _fn(thir, "f").body[0].value
+        recv = sub.receiver
+        assert isinstance(recv, THIRFieldAccess) and not recv.is_arrow
+        assert isinstance(recv.receiver, THIRName) and recv.receiver.name == "h"
+
+    def test_optional_ptr_receiver_routes(self):
+        # A PROVEN Optional-ptr borrow receiver renders `h->xs` (the field
+        # node's arrow), inside the same subscript emit.
+        thir = _lower_ctx(
+            _CONTAINER_FIELDS
+            + "def f(h: Optional[H]) -> Int32:\n"
+            + "    if h is not None:\n        return h.xs[0]\n"
+            + "    return -1\n")
+        sub = _fn(thir, "f").body[0].then_body[0].value
+        assert isinstance(sub.receiver, THIRFieldAccess) and sub.receiver.is_arrow
+
+    def test_setitem_routes_with_witness(self):
+        thir, faces = _lower_ctx_witnessed(
+            _CONTAINER_FIELDS
+            + "    def put(self, i: Int32, v: Int32) -> None:\n"
+            + "        self.xs[i] = v\n"
+            + "def g(h: H, k: Int32, v: Int32) -> None:\n    h.d[k] = v\n")
+        for name in ("put", "g"):
+            stmt = _fn(thir, name).body[0]
+            assert isinstance(stmt, THIRSetItem)
+            assert isinstance(stmt.target.receiver, THIRFieldAccess)
+        assert faces.get("setitem.field_recv") == 2
+        assert faces.get("subscript.field_recv", 0) >= 2  # target lowering
+
+    def test_aug_routes(self):
+        # `self.d[k] += v` -- the checked read-modify-write pair; bounds_safe
+        # forced off on both reads like the name-receiver aug.
+        thir = _lower_ctx(
+            _CONTAINER_FIELDS
+            + "    def bump(self, k: Int32, v: Int32) -> None:\n"
+            + "        self.d[k] += v\n")
+        stmt = _fn(thir, "bump").body[0]
+        assert isinstance(stmt, THIRSetItem)
+        assert isinstance(stmt.value, THIRBinOp)
+        assert isinstance(stmt.value.left, THIRSubscript)
+        assert not stmt.target.bounds_safe and not stmt.value.left.bounds_safe
+
+    def test_str_element_write_copies(self):
+        # A view-form str source into an owned-str element keeps the explicit
+        # `std::string(s)` copy over the field receiver.
+        thir = _lower_ctx(
+            _CONTAINER_FIELDS
+            + "    def put(self, i: Int32, s: str) -> None:\n"
+            + "        self.names[i] = s\n")
+        stmt = _fn(thir, "put").body[0]
+        assert isinstance(stmt.value, THIRFormConvert)
+        assert stmt.value.form is Form.STORAGE
+
+    def test_del_routes(self):
+        thir = _lower_ctx(
+            _CONTAINER_FIELDS
+            + "    def drop(self, k: Int32) -> None:\n"
+            + "        del self.d[k]\n")
+        stmt = _fn(thir, "drop").body[0]
+        assert isinstance(stmt, THIRExprStmt)
+        assert isinstance(stmt.expr, THIRCall)
+        assert stmt.expr.native_name == "tpy::__delitem__"
+        assert isinstance(stmt.expr.args[0], THIRFieldAccess)
+
+    def test_bigint_index_narrows(self):
+        thir = _lower_ctx(
+            _CONTAINER_FIELDS
+            + "    def at(self, n: int) -> Int32:\n"
+            + "        return self.xs[n]\n")
+        sub = _fn(thir, "at").body[0].value
+        assert isinstance(sub.index, THIRCoerce)
+
+    def test_deep_chain_ineligible(self):
+        # `self.inner.ys[i]` -- a two-level receiver chain stays AST
+        # (_field_receiver_ok pins the receiver base to a bare name).
+        thir = _lower_ctx(
+            "from tpy import Int32\n"
+            "class G:\n    ys: list[Int32]\n"
+            "    def __init__(self):\n        self.ys = [5]\n"
+            "class H:\n    inner: G\n"
+            "    def __init__(self):\n        self.inner = G()\n"
+            "    def deep(self, i: Int32) -> Int32:\n"
+            "        return self.inner.ys[i]\n"
+            "    def deep_put(self, i: Int32) -> None:\n"
+            "        self.inner.ys[i] = 1\n")
+        assert _fn(thir, "deep") is None and _fn(thir, "deep_put") is None
+
+    def test_narrowed_optional_field_ineligible(self):
+        # A narrowed Optional[list] FIELD receiver renders `(*this->maybe)` on
+        # the AST path; the gates type at the DECLARED field type (Optional ->
+        # family reject) and the narrowing condition itself is unrouted, so
+        # the body stays AST.
+        thir = _lower_ctx(
+            _CONTAINER_FIELDS
+            + "    def read(self) -> Int32:\n"
+            + "        if self.maybe is not None:\n"
+            + "            return self.maybe[0]\n"
+            + "        return -1\n"
+            + "    def put(self, v: Int32) -> None:\n"
+            + "        if self.maybe is not None:\n"
+            + "            self.maybe[0] = v\n")
+        assert _fn(thir, "read") is None and _fn(thir, "put") is None
+
+    def test_checked_optional_field_ineligible(self):
+        # An UNPROVEN Optional[list] field receiver takes the AST's
+        # `::tpy::deref_optional_check(this->maybe)[...]` -- the subscript's
+        # runtime-check marker rejects it.
+        thir = _lower_ctx(
+            _CONTAINER_FIELDS
+            + "    def read(self) -> Int32:\n"
+            + "        return self.maybe[0]\n")
+        assert _fn(thir, "read") is None
+
+    def test_record_element_field_ineligible(self):
+        # A container field whose ELEMENT is a record: the family gate
+        # (_container_scalar_read) rejects it -- receiver widening does not
+        # open non-value elements.
+        thir = _lower_ctx(
+            _F1_RECORDS
+            + "class G:\n    rs: list[Leaf]\n"
+            + "    def __init__(self):\n        self.rs = []\n"
+            + "    def put(self, a: Leaf) -> None:\n        self.rs[0] = a\n")
+        assert _fn(thir, "put") is None
+
+
+class TestFieldReceiverSubscriptEmit:
+    def _cpp(self, src: str, thir: bool):
+        # hpp + cpp: methods of a record emit inline in the header.
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        hpp, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=thir))
+        return hpp + cpp
+
+    SRC = (
+        _CONTAINER_FIELDS
+        + "    def get(self, i: Int32) -> Int32:\n"
+        + "        return self.xs[i]\n"
+        + "    def put(self, i: Int32, v: Int32) -> None:\n"
+        + "        self.xs[i] = v\n"
+        + "    def bump(self, k: Int32, v: Int32) -> None:\n"
+        + "        self.d[k] += v\n"
+        + "    def rename(self, i: Int32, s: str) -> None:\n"
+        + "        self.names[i] = s\n"
+        + "    def drop(self, k: Int32) -> None:\n"
+        + "        del self.d[k]\n"
+        + "    def big(self, n: int) -> Int32:\n"
+        + "        return self.xs[n]\n"
+        + "def f(h: H, k: Int32, v: Int32) -> None:\n"
+        + "    h.d[k] = v\n"
+        + "def p(h: Optional[H], v: Int32) -> None:\n"
+        + "    if h is not None:\n"
+        + "        h.xs[0] = v\n"
+        + "def main() -> None:\n"
+        + "    h = H()\n"
+        + "    h.put(0, 4)\n"
+        + "    h.bump(1, 2)\n"
+        + "    h.rename(0, 'z')\n"
+        + "    h.drop(1)\n"
+        + "    f(h, 2, 5)\n"
+        + "    p(h, 6)\n"
+        + "    print(h.get(0), h.big(1))\n"
+        + "main()\n"
+    )
+
+    def test_byte_identical(self):
+        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
+
+    def test_emits_field_receiver_forms(self):
+        cpp = self._cpp(self.SRC, thir=True)
+        assert "return ::tpy::__getitem__(this->xs, i);" in cpp
+        assert "::tpy::__setitem__(this->xs, i, v);" in cpp
+        assert ("::tpy::__setitem__(this->d, k, "
+                "::tpy::add_check<int32_t>(::tpy::__getitem__(this->d, k), v));"
+                in cpp)
+        assert "::tpy::__setitem__(this->names, i, std::string(s));" in cpp
+        assert "::tpy::__delitem__(this->d, k);" in cpp
+        assert ("return ::tpy::__getitem__(this->xs, "
+                "n.to_fixed_check<int32_t>());" in cpp)
+        assert "::tpy::__setitem__(h.d, k, v);" in cpp    # record param recv
+        assert "::tpy::__setitem__(h->xs, 0, v);" in cpp  # proven Optional-ptr

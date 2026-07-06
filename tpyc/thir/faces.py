@@ -59,6 +59,12 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # `Rec.m(x)` -> pre-rendered callee_cpp
     "call.module_native",           # bare-@native module callee `m.f(x)`
                                     # -> `::native(args)`
+    "call.static_template",         # positional-only @cpp_template static
+                                    # (`UInt32.trunc(i)`) -> template expansion
+    # Ptr[T]-receiver Deref method calls (lowering; the THIRMethodCall
+    # is_arrow / deref_check renders over a pointer-VALUE receiver).
+    "method.ptr_arrow",             # proven non-null: `p->m(args)`
+    "method.ptr_checked",           # `::tpy::deref_check(p).m(args)`
     "ctor.call",                    # THIRCtorCall bare ctor expansion
     "ctor.str_arg",                 # str-slice arg into a str-family ctor slot
     "with.str_target",              # str/StrView __enter__ as-target
@@ -68,6 +74,12 @@ THIR_FACES: frozenset[str] = frozenset({
     "setitem.bounds_safe",          # `c[static_cast<std::size_t>(k)] = v;`
     "setitem.aug",                  # `c[k] OP= v` -> the getitem/setitem pair
     "setitem.str_owned_copy",       # view source into a str element: std::string(v)
+    "setitem.field_recv",           # write/aug receiver is a field access
+                                    # (`::tpy::__setitem__(this->xs, i, v);`)
+    # Container/str subscript read off a FIELD-ACCESS receiver (lowering;
+    # `::tpy::__getitem__(this->xs, i)` -- the receiver renders as its own
+    # THIRFieldAccess inside the shared subscript emit).
+    "subscript.field_recv",
     # Runtime-BigInt `.to_fixed_check<T>()` narrows (lowering; the AST's
     # gen_index_expr / _gen_slice_bound / aug-assign / enum-from_value wraps).
     "narrow.subscript_index",       # `i.to_fixed_check<int32_t>()` (reads + del)
@@ -103,6 +115,13 @@ THIR_FACES: frozenset[str] = frozenset({
     # A read of a read-only-seeded same-module value global (lowering; the
     # bare-name render shared with locals, so the seed is what distinguishes).
     "name.global_seeded",
+    # A read of a read-only-seeded NATIVE-linkage value global (lowering;
+    # the pre-rendered `::symbol` spelling on THIRName.cpp).
+    "name.global_native",
+    # A read of a read-only-seeded IMPORTED value global (lowering; the
+    # pre-rendered `::tpyapp::mod::g` / native_cpp_name spelling on
+    # THIRName.cpp -- imported_variable_cpp, shared with the AST render).
+    "name.global_imported",
     # BigInt-counter range loop (gate admission; the render difference is
     # the `::tpy::BigInt` cpp_elem + literal-bound retype, shared with the
     # fixed-int emit).
@@ -115,6 +134,11 @@ THIR_FACES: frozenset[str] = frozenset({
     # -- the same bare-render property as cond.bool_field, over the method
     # call's value-position admission).
     "cond.bool_method",
+    # @builtin_type record with a real body and no cpp_formatter (Poll;
+    # Waker's formatter-carrying TypeDef stays excluded) admitted as an F1
+    # record (gate admission; the user-record spelling path, so every
+    # render is shared).
+    "recv.builtin_record",
     # Conditional-expression renders (lowering, except cond_pos at gate
     # admission -- the condition-position render is shared with the value
     # emit, so admission is the distinguishing site).

@@ -16,8 +16,6 @@ from ...parse.nodes import (
 )
 from ...typesys import (
     IntLiteralType,
-    NominalType,
-    OptionalType,
     TpyType,
     TupleType,
     resolve_int_literals,
@@ -41,6 +39,7 @@ from .predicates import (
     _eligible_char,
     _eligible_scalar,
     _f1_record,
+    _field_decl_type,
     _field_receiver_ok,
     _owned_str_slot,
     _resolved_str_value,
@@ -80,29 +79,6 @@ class _CompRoute:
     iterable_lvalue: bool
     sized_reserve: bool
     unpack_types: 'tuple | None'
-
-def _comp_field_decl_type(e: TpyFieldAccess, declared: dict[str, TpyType],
-                          analyzer) -> 'TpyType | None':
-    """The field's DECLARED type off the gate's declared map -- the
-    `_resolve_field_declared_type` mirror for the admitted receiver shapes
-    (a record / proven Optional-ptr NAME; the receiver gate pinned that)."""
-    base = declared.get(e.obj.name)
-    if base is None:
-        return None
-    rt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(base)))
-    if isinstance(rt, OptionalType):
-        if rt.inner.is_value_type():
-            return None
-        rt = rt.inner
-    if not (isinstance(rt, NominalType) and rt.is_record):
-        return None
-    record = analyzer.registry.get_record_for_type(rt)
-    if record is None:
-        return None
-    for f in record.fields:
-        if f.name == e.field:
-            return f.type
-    return None
 
 def _comp_sized_iterable(t: TpyType) -> bool:
     # Mirror of `_is_sized_type` over the admitted iterable families (Span /
@@ -169,7 +145,7 @@ def _comp_route(init, declared: dict[str, TpyType], narrowed: 'set[str]',
             # iterable at that type and rejects below.
             if not _field_receiver_ok(it, declared, analyzer):
                 return None
-            ft = _comp_field_decl_type(it, declared, analyzer)
+            ft = _field_decl_type(it, declared, analyzer)
             if ft is None:
                 return None
             base = ft

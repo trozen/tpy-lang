@@ -167,6 +167,7 @@ from .predicates import (
     _runtime_bigint,
     _slice_object_type,
     _str_self_append_rhs,
+    _subscript_container_recv_type,
     _unwrap_lit_coerce,
     _value_tuple,
     _var_decl_type,
@@ -1276,9 +1277,11 @@ def _stmt_eligible(stmt: TpyStmt, analyzer, ws: _WalkState,
                    and _del_var_trivial(ws.declared[n], analyzer)
                    for n in stmt.names)
     if isinstance(stmt, TpyDelItem):
-        # `del c[k]` on a bare-name builtin list/dict binding the read gate
-        # already admits: the AST's fi lookup finds no `__delitem__` method fi
-        # for list/dict, so the render is the fallback
+        # `del c[k]` on a bare-name builtin list/dict binding -- or a
+        # one-level container field off an admitted receiver name
+        # (`del self.d[k]`, the subscript gates' receiver widening) -- that
+        # the read gate already admits: the AST's fi lookup finds no
+        # `__delitem__` method fi for list/dict, so the render is the fallback
         # `::tpy::__delitem__(c, k);` with the index through gen_index_expr --
         # bare for fixed-int / str keys, the `.to_fixed_check<int32_t>()`
         # narrow for a runtime-BigInt one (`_narrow_bigint_index` at lowering).
@@ -1290,10 +1293,12 @@ def _stmt_eligible(stmt: TpyStmt, analyzer, ws: _WalkState,
         if sub.needs_optional_runtime_check or sub.slice_function_info is not None:
             return False
         recv = sub.obj
-        if (not isinstance(recv, TpyName) or recv.name not in ws.declared
-                or recv.name in ws.pointers or recv.name in ws.narrowed):
+        if isinstance(recv, TpyName) and (recv.name in ws.pointers
+                                          or recv.name in ws.narrowed):
             return False
-        return (_container_scalar_read(ws.declared[recv.name], analyzer)
+        recv_t = _subscript_container_recv_type(recv, ws.declared, analyzer)
+        return (recv_t is not None
+                and _container_scalar_read(recv_t, analyzer)
                 and _bigint_index_disposition(sub.index, analyzer) != "reject"
                 and _expr_eligible(sub.index, ws.declared, analyzer))
     if isinstance(stmt, TpyExprStmt):
@@ -1973,6 +1978,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, lc: _LowerCtx,
                                         form=Form.STORAGE, loc=loc)
             _witness("setitem.bounds_safe" if target.bounds_safe
                      else "setitem.checked")
+            if isinstance(stmt.target.obj, TpyFieldAccess):
+                _witness("setitem.field_recv")
             return THIRSetItem(target=target, value=value, loc=loc)
         if isinstance(stmt.target, TpyFieldAccess):
             # A borrow `T*` stored into a storage `optional<T>` field lifts
@@ -2102,6 +2109,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, lc: _LowerCtx,
         )
         if isinstance(stmt.target, TpySubscript):
             _witness("setitem.aug")
+            if isinstance(stmt.target.obj, TpyFieldAccess):
+                _witness("setitem.field_recv")
             return THIRSetItem(target=target, value=binop, loc=loc)
         return THIRAssign(target=target, value=binop, loc=loc)
     if isinstance(stmt, TpyReturn):

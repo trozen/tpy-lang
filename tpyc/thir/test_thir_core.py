@@ -2233,9 +2233,10 @@ class TestGlobalCtorAndImports:
         ctor = _lower_ctor(src, "Acc")
         assert ctor is not None
 
-    def test_imported_global_read_stays_ast(self, tmp_path):
-        # Cross-module imported-variable reads qualify (`::tpyapp::cfg::width`)
-        # -- a spelling the slice does not materialize yet; deferred.
+    def test_imported_global_read_routes(self, tmp_path):
+        # Cross-module imported-variable reads qualify (`::tpyapp::cfg::width`):
+        # the read seeds like a same-module value global, the pre-rendered
+        # spelling riding THIRName.cpp.
         (tmp_path / "cfg.py").write_text(
             "from tpy import Int32\nwidth: Int32 = 100\n")
         src = (
@@ -2251,7 +2252,11 @@ class TestGlobalCtorAndImports:
         entry = _entry(modules)
         with activate_compiler(compiler):
             thir = lower_module(entry.ast, entry.analyzer)
-        assert _fn(thir, "read_w") is None
+        fn = _fn(thir, "read_w")
+        assert fn is not None
+        ret = fn.body[0]
+        assert isinstance(ret.value, THIRName)
+        assert ret.value.cpp == "::tpyapp::cfg::width"
         ast_out = compiler.generate_code_to_strings(
             entry, options=CodeGenOptions(emit_source_comments=False))
         thir_out = compiler.generate_code_to_strings(
@@ -2259,3 +2264,201 @@ class TestGlobalCtorAndImports:
                                           thir_codegen=True))
         assert thir_out == ast_out
         assert "::tpyapp::cfg::width" in thir_out[1]
+
+
+class TestGlobalSpelledSeed:
+    """Native-linkage and imported value globals seed READ-ONLY like the
+    same-module ones, the fixed spelling riding THIRName.cpp (rendered
+    verbatim by emit): `::symbol` via qualify_native_name for a module's own
+    @native globals, `::tpyapp::mod::g` / the registered native_cpp_name via
+    imported_variable_cpp -- the ONE decision shared with the AST render --
+    for imports (re-exports resolve to the defining module). The same-module
+    seeding exclusions apply identically (a shadowing assignment keeps the
+    name a plain local); non-value imported globals stay pointer-slot AST, and a
+    leading `self.f = IMPORTED` keeps the ctor on the AST path (the
+    bare-name MIL demote)."""
+
+    NATIVE_SRC = (
+        "from typing import Final\n"
+        "from tpy import Int32\n"
+        "from tpy.extern import native_global\n"
+        "COUNT: Int32 = native_global(\"g_count\")\n"
+        "LIMIT: Final[Int32] = native_global(\"tpy_limit\", binding=\"C\")\n"
+        "def read_count() -> Int32:\n"
+        "    return COUNT + 1\n"
+        "def read_limit() -> Int32:\n"
+        "    return LIMIT\n"
+        "def shadow() -> Int32:\n"
+        "    COUNT = 3\n"
+        "    return COUNT\n"
+        "def main() -> None:\n"
+        "    print(read_count(), read_limit(), shadow())\n"
+        "main()\n"
+    )
+
+    def test_native_reads_route_with_spelling(self):
+        thir, witnessed = _lower_ctx_witnessed(self.NATIVE_SRC)
+        fn = _fn(thir, "read_count")
+        assert fn is not None
+        read = fn.body[0].value.left
+        assert isinstance(read, THIRName) and read.cpp == "::g_count"
+        lim = _fn(thir, "read_limit").body[0].value
+        assert isinstance(lim, THIRName) and lim.cpp == "::tpy_limit"
+        assert witnessed.get("name.global_native", 0) >= 2
+
+    def test_native_shadow_excluded(self):
+        # An assigned name is a plain local for the whole body (Python
+        # scoping): fresh decl, bare read, no native spelling.
+        fn = _fn(_lower_ctx(self.NATIVE_SRC), "shadow")
+        assert fn is not None
+        assert isinstance(fn.body[0], THIRVarDecl)
+        ret = fn.body[1]
+        assert isinstance(ret.value, THIRName) and ret.value.cpp is None
+
+    def test_native_byte_identical(self):
+        compiler, modules = _compile(self.NATIVE_SRC)
+        entry = _entry(modules)
+        ast_out = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False))
+        thir_out = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=True))
+        assert thir_out == ast_out
+        assert "::g_count" in thir_out[1] and "::tpy_limit" in thir_out[1]
+
+    HELPER = (
+        "from typing import Final\n"
+        "from tpy import Int32, StrView\n"
+        "G: Int32 = 5\n"
+        "NAME: StrView = \"hello\"\n"
+        "BIG: Final[Int32] = 99\n"
+        "items: list[Int32] = [1, 2]\n"
+    )
+    SRC = (
+        "from tpy import Int32\n"
+        "from helper import G, NAME, BIG, items\n"
+        "def read_g() -> Int32:\n"
+        "    return G + 1\n"
+        "def read_final() -> Int32:\n"
+        "    return BIG\n"
+        "def name_owned() -> str:\n"
+        "    return NAME\n"
+        "def read_items() -> Int32:\n"
+        "    return items[0]\n"
+        "def shadow() -> Int32:\n"
+        "    G = 7\n"
+        "    return G\n"
+        "class C:\n"
+        "    x: Int32\n"
+        "    def __init__(self) -> None:\n"
+        "        self.x = G\n"
+        "    def m(self) -> Int32:\n"
+        "        return G * 2\n"
+        "def main() -> None:\n"
+        "    c = C()\n"
+        "    print(read_g(), read_final(), name_owned())\n"
+        "    print(read_items(), shadow(), c.m())\n"
+        "main()\n"
+    )
+
+    def _lowered(self, tmp_path):
+        (tmp_path / "helper.py").write_text(self.HELPER)
+        return _lower_ctx_witnessed(self.SRC, extra_lib_dirs=[tmp_path])
+
+    def test_imported_reads_route_with_spelling(self, tmp_path):
+        thir, witnessed = self._lowered(tmp_path)
+        fn = _fn(thir, "read_g")
+        assert fn is not None
+        read = fn.body[0].value.left
+        assert isinstance(read, THIRName)
+        assert read.cpp == "::tpyapp::helper::G"
+        fin = _fn(thir, "read_final").body[0].value
+        assert fin.cpp == "::tpyapp::helper::BIG"
+        # Methods seed the same way (ctor seeding exists too, but the MIL
+        # demote keeps this fixture's ctor on the AST path -- below).
+        assert _fn(thir, "m") is not None
+        assert witnessed.get("name.global_imported", 0) >= 3
+
+    def test_imported_view_global_owned_sink_copies(self, tmp_path):
+        # A StrView imported global keeps the BORROW form tag, so the owned
+        # -str return takes the view->owned copy AROUND the spelling
+        # (`std::string(::tpyapp::helper::NAME)`).
+        thir, _ = self._lowered(tmp_path)
+        assert _fn(thir, "name_owned") is not None
+
+    def test_nonvalue_and_shadowed_imported(self, tmp_path):
+        thir, _ = self._lowered(tmp_path)
+        # A list global is a pointer slot ((*::tpyapp::helper::items) reads)
+        # -- not in the value family, never seeded.
+        assert _fn(thir, "read_items") is None
+        # The shadowing assignment excludes the name: fresh local decl.
+        fn = _fn(thir, "shadow")
+        assert fn is not None
+        assert isinstance(fn.body[0], THIRVarDecl)
+
+    def test_imported_ctor_mil_demote_stays_ast(self, tmp_path):
+        # `self.x = G` leading a ctor: the AST demotes the bare-name RHS to a
+        # body assign (`this->x = ::tpyapp::helper::G;`), a shape the MIL
+        # slice does not reproduce -- whole ctor stays AST, byte-identical.
+        (tmp_path / "helper.py").write_text(self.HELPER)
+        assert _lower_ctor(self.SRC, "C", extra_lib_dirs=[tmp_path]) is None
+
+    def test_imported_byte_identical(self, tmp_path):
+        (tmp_path / "helper.py").write_text(self.HELPER)
+        compiler, modules = _compile(self.SRC, extra_lib_dirs=[tmp_path])
+        entry = _entry(modules)
+        ast_out = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False))
+        thir_out = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=True))
+        assert thir_out == ast_out
+        assert "std::string(::tpyapp::helper::NAME)" in thir_out[1]
+        assert "this->x = ::tpyapp::helper::G;" in thir_out[0]
+
+    def test_reexported_global_spells_definer(self, tmp_path):
+        # A re-exported global resolves through the chain to the module that
+        # actually emits the symbol (resolve_definer inside the shared
+        # helper): `from reexp import G` spells `::tpyapp::helper::G`.
+        (tmp_path / "helper.py").write_text(
+            "from tpy import Int32\nG: Int32 = 5\n")
+        (tmp_path / "reexp.py").write_text("from helper import G\n")
+        src = (
+            "from tpy import Int32\n"
+            "from reexp import G\n"
+            "def read_g() -> Int32:\n"
+            "    return G + 3\n"
+            "def main() -> None:\n"
+            "    print(read_g())\n"
+            "main()\n"
+        )
+        thir, witnessed = _lower_ctx_witnessed(src, extra_lib_dirs=[tmp_path])
+        fn = _fn(thir, "read_g")
+        assert fn is not None
+        read = fn.body[0].value.left
+        assert read.cpp == "::tpyapp::helper::G"
+        assert witnessed.get("name.global_imported", 0) >= 1
+
+    def test_imported_native_global_spells_symbol(self, tmp_path):
+        # Importing another module's @native global rides the SAME imported
+        # arm; the spelling is the registered native_cpp_name (`::g_count`),
+        # not the module-qualified qname.
+        (tmp_path / "natmod.py").write_text(
+            "from tpy import Int32\n"
+            "from tpy.extern import native_global\n"
+            "COUNT: Int32 = native_global(\"g_count\")\n")
+        src = (
+            "from tpy import Int32\n"
+            "from natmod import COUNT\n"
+            "def read_count() -> Int32:\n"
+            "    return COUNT * 2\n"
+            "def main() -> None:\n"
+            "    print(read_count())\n"
+            "main()\n"
+        )
+        thir, witnessed = _lower_ctx_witnessed(src, extra_lib_dirs=[tmp_path])
+        fn = _fn(thir, "read_count")
+        assert fn is not None
+        read = fn.body[0].value.left
+        assert read.cpp == "::g_count"
+        assert witnessed.get("name.global_imported", 0) >= 1

@@ -161,11 +161,19 @@ class THIRCharLiteral(THIRExpr):
 class THIRName(THIRExpr):
     """Local / param reference. `deref` marks an F2 pointer-local (`T*`) read
     in a value position (a record call arg), rendered `(*name)` -- the mirror
-    of `gen_expr_deref`'s indirect-name deref. Non-pointer names render bare."""
+    of `gen_expr_deref`'s indirect-name deref. Non-pointer names render bare.
+
+    `cpp` (when set) is a native-linkage or imported value global's
+    PRE-RENDERED spelling (`::g_count` via qualify_native_name /
+    `::tpyapp::mod::g` via imported_variable_cpp -- the THIRCall.callee_cpp
+    precedent), stamped at lowering from the seeding map and rendered
+    verbatim by emit; `name` keeps the Python name for the gate/scope
+    bookkeeping."""
     name: str
     is_last_use: bool = False
     is_movable: bool = False
     deref: bool = False
+    cpp: str | None = None
 
 
 @dataclass(frozen=True)
@@ -424,12 +432,15 @@ class THIRMethodCall(THIRExpr):
     temp is gate-excluded) -- so the emit is a pure function of the node.
     `is_arrow` renders a user-record F2 pointer-local receiver's member access
     (`p->get()`), like THIRFieldAccess; container receivers are never
-    pointer-locals. `deref_check` wraps an UNPROVEN pointer-repr Optional
-    borrow receiver in the runtime null check
-    (`::tpy::deref_check(p).method(args)`, _gen_method_call's runtime-check
-    arm) -- like THIRFieldAccess it is mutually exclusive with `is_arrow`
-    (the checked deref yields a reference, read with `.`). An owned-str
-    result (`xs.pop()`, S5) is STORAGE form, landing bare in owned sinks."""
+    pointer-locals. A `Ptr[T]` VALUE receiver's Deref call rides the same two
+    arms, picked by sema's `ptr_non_null` fact: proven non-null -> `is_arrow`
+    (`p->m(args)`), unproven -> `deref_check`. `deref_check` wraps an UNPROVEN
+    pointer receiver (pointer-repr Optional borrow, or that Ptr value) in the
+    runtime null check (`::tpy::deref_check(p).method(args)`,
+    _gen_method_call's runtime-check arm) -- like THIRFieldAccess it is
+    mutually exclusive with `is_arrow` (the checked deref yields a reference,
+    read with `.`). An owned-str result (`xs.pop()`, S5) is STORAGE form,
+    landing bare in owned sinks."""
     receiver: THIRExpr
     method_cpp: str
     args: tuple[THIRExpr, ...]

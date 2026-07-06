@@ -791,8 +791,10 @@ def _emit_form_convert(e: THIRFormConvert, state: _EmitState) -> str:
 def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
     if isinstance(e, THIRName):
         # `deref`: an F2 pointer-local read in a value position (a record call
-        # arg) -- gen_expr_deref's `(*p)` indirect render.
-        name = escape_cpp_name(e.name)
+        # arg) -- gen_expr_deref's `(*p)` indirect render. A pre-spelled
+        # native/imported global (`cpp`) renders verbatim -- the AST emits
+        # qualify_native_name / imported_variable_cpp output unescaped.
+        name = e.cpp if e.cpp is not None else escape_cpp_name(e.name)
         return f"(*{name})" if e.deref else name
     if isinstance(e, THIRSelf):
         return "(*this)" if e.deref else "this"

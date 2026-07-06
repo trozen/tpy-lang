@@ -1,6 +1,7 @@
 """Per-function lowering state: _Prescan, _WalkState, _NarrowScope, _LowerCtx."""
 
 from __future__ import annotations
+from collections.abc import Mapping
 from dataclasses import dataclass, field, fields
 from ...parse.nodes import TpyFunction, TpyGlobal
 from ...typesys import (
@@ -40,7 +41,7 @@ class _Prescan:
                  "ret_str", "ret_bytes",
                  "ret_char", "ret_union", "ret_ptr_union", "param_names",
                  "has_self", "global_seeded", "global_readonly",
-                 "native_globals")
+                 "global_cpp", "native_globals")
 
     def __init__(self, func: TpyFunction, analyzer) -> None:
         # Param names, for gates that must tell a param from a local (a str
@@ -58,9 +59,16 @@ class _Prescan:
         # Same-module value globals seeded READ-ONLY (never assigned in this
         # body -- see _seed_readonly_globals); the name-read witness keys on it.
         self.global_readonly: frozenset[str] = frozenset()
-        # Module native-linkage global names (lower_function threads them
-        # through); the try hoist arm rejects a colliding predecl name.
-        self.native_globals: frozenset[str] = frozenset()
+        # Read-only-seeded native/imported value globals: name -> the
+        # PRE-RENDERED spelling THIRName.cpp carries (qualify_native_name /
+        # imported_variable_cpp). Disjoint from global_readonly (those
+        # render bare).
+        self.global_cpp: dict[str, str] = {}
+        # Module native-linkage globals (name -> C/C++ symbol,
+        # module_native_global_names; lower_function threads them through);
+        # the try hoist arm rejects a colliding predecl name, and the
+        # spelled-read witness keys native vs imported on membership.
+        self.native_globals: 'Mapping[str, str] | frozenset[str]' = frozenset()
         scan = analyzer.function_scan_results.get(id(func))
         global_decls = analyzer.function_global_decls.get(id(func), set())
         self.reassigned = (scan.reassigned - global_decls) if scan else set()

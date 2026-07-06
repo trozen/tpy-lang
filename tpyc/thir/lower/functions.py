@@ -3,6 +3,7 @@ lowering, and the module iteration helpers the codegen seam calls.
 """
 
 from __future__ import annotations
+from collections.abc import Mapping
 from dataclasses import field, fields
 from ...parse.nodes import (
     FunctionLinkage,
@@ -24,10 +25,8 @@ from ...parse.nodes import (
     TpyStmt,
     TpyStrLiteral,
     TpyTry,
-    TpyVarDecl,
     TpyWhile,
     TpyWith,
-    VarLinkage,
     expr_reads_self_field,
     is_base_init_call,
     is_docstring,
@@ -48,7 +47,12 @@ from ...typesys import (
     unwrap_ref_type,
     unwrap_send_sync,
 )
-from ...codegen_cpp.context import escape_cpp_name
+from ...codegen_cpp.context import (
+    escape_cpp_name,
+    imported_variable_cpp,
+    module_native_global_names,
+    qualify_native_name,
+)
 from ..fallback import note
 from ..validate import validate_constructor, validate_function
 from ..nodes import (
@@ -303,33 +307,40 @@ def _shadow_bound_names(stmts: list[TpyStmt]) -> set[str]:
     walk(stmts)
     return out
 
-def _seed_readonly_globals(func: TpyFunction, analyzer,
-                           scope: dict[str, TpyType],
-                           native_globals: frozenset[str]) -> frozenset[str]:
-    """Seed the same-module VALUE globals `func` only ever READS into `scope`
-    (mutated in place); returns the seeded names.
+def _seed_readonly_globals(
+        func: TpyFunction, analyzer, scope: dict[str, TpyType],
+        native_globals: 'Mapping[str, str]',
+) -> tuple[frozenset[str], dict[str, str]]:
+    """Seed the VALUE globals `func` only ever READS into `scope` (mutated
+    in place); returns `(bare, spelled)`: the same-module names that render
+    bare, and the native/imported names mapped to their pre-rendered
+    spelling (THIRName.cpp).
 
-    Sema resolves an unassigned name to the module global, and the AST renders
-    a value global's read bare -- exactly a local read of the same resolved
-    type (`is_indirect_name` is False for value globals, and
-    `_maybe_convert_opt_view_param` is param-keyed), so a seeded name routes
-    through every existing name-read arm unchanged. Candidates come from
-    `top_level_decls` (the module's own top-level var/tuple-unpack names --
-    an imported name REDEFINED there also reads bare, matching the AST's
-    top_level_decls precedence over the import qualification). Excluded:
-    params (they shadow), native-linkage globals (native spelling),
-    `global`-declared names (the write-seeding path above owns them), sema-
-    hoisted names (a branch-local shadow with a function-scope predecl), and
-    -- via a prescan with the candidates pre-declared, plus the binder walk --
-    any name the function assigns or shadow-binds ANYWHERE (Python scoping
-    makes every such name a local; a seeded one would misroute its first
-    local decl as a bare global reassign)."""
+    Sema resolves an unassigned name to the module global, and the AST
+    renders a value global's read bare (`is_indirect_name` is False for
+    value globals, and `_maybe_convert_opt_view_param` is param-keyed) --
+    or, for a native-linkage / imported global, as a fixed spelling
+    (`qualify_native_name` / `imported_variable_cpp`) -- so a seeded name
+    routes through every existing name-read arm unchanged, the spelled ones
+    differing only in the verbatim-`cpp` render. Same-module candidates
+    come from `top_level_decls` (an imported name REDEFINED there reads
+    bare in functions, matching the AST's top_level_decls precedence over
+    the import qualification -- so it seeds as a same-module global, and
+    the imported loop skips it); imported candidates from the
+    `imported_names` history via the shared detection. Excluded: params
+    (they shadow), `global`-declared names (the write-seeding path above
+    owns them), sema-hoisted names (a branch-local shadow with a
+    function-scope predecl), and -- via a prescan with the candidates
+    pre-declared, plus the binder walk -- any name the function assigns or
+    shadow-binds ANYWHERE (Python scoping makes every such name a local; a
+    seeded one would misroute its first local decl as a bare global
+    reassign)."""
     cands: dict[str, TpyType] = {}
+    spelled: dict[str, str] = {}
     global_decls = analyzer.function_global_decls.get(id(func), set())
     hoisted = analyzer.function_hoisted_vars.get(id(func), set())
     for n in analyzer.ctx.top_level_decls:
-        if (n in scope or n in native_globals or n in global_decls
-                or n in hoisted):
+        if n in scope or n in global_decls or n in hoisted:
             continue
         gt = analyzer.ctx.global_scope.lookup(n)
         if gt is None:
@@ -339,20 +350,39 @@ def _seed_readonly_globals(func: TpyFunction, analyzer,
             gt = (nb.type if nb is not None
                   and nb.kind is BindingKind.VARIABLE else None)
         st = _readonly_global_type(gt, analyzer)
-        if st is not None:
-            cands[n] = st
+        if st is None:
+            continue
+        cands[n] = st
+        if n in native_globals:
+            spelled[n] = qualify_native_name(native_globals[n])
+    for n in analyzer.imported_names:
+        if (n in scope or n in cands or n in global_decls or n in hoisted
+                or n in analyzer.ctx.top_level_decls):
+            continue
+        cpp = imported_variable_cpp(analyzer.registry,
+                                    analyzer.imported_names, n)
+        if cpp is None:
+            continue
+        src_mod, orig = analyzer.imported_names[n]
+        vi = analyzer.registry.get_module(src_mod).variables[orig]
+        st = _readonly_global_type(vi.type, analyzer)
+        if st is None:
+            continue
+        cands[n] = st
+        spelled[n] = cpp
     if not cands:
-        return frozenset()
+        return frozenset(), {}
     scan = scan_reassigned_vars(func.body, pre_declared=set(cands))
     for n in (scan.reassigned | scan.aug_assigned
               | _shadow_bound_names(func.body)):
         cands.pop(n, None)
+        spelled.pop(n, None)
     scope.update(cands)
-    return frozenset(cands)
+    return frozenset(n for n in cands if n not in spelled), spelled
 
 def lower_function(func: TpyFunction, analyzer, render_type=None,
                    self_type: 'TpyType | None' = None,
-                   native_globals: frozenset[str] = frozenset()) -> THIRFunction | None:
+                   native_globals: 'Mapping[str, str]' = {}) -> THIRFunction | None:
     """Lower one function to THIR, or None if it falls outside the slice.
 
     `render_type` (codegen's `TypeResolver.type_to_cpp`) renders F1 borrow-local
@@ -420,7 +450,7 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
             global_seeded.add(n)
     lc.prescan.global_seeded = frozenset(global_seeded)
     lc.prescan.native_globals = native_globals
-    lc.prescan.global_readonly = _seed_readonly_globals(
+    lc.prescan.global_readonly, lc.prescan.global_cpp = _seed_readonly_globals(
         func, analyzer, params_set, native_globals)
     if not _body_eligible(func.body, analyzer, _WalkState(params_set),
                           lc.prescan, in_branch=False):
@@ -608,7 +638,7 @@ def _ctor_param_eligible(ptype: TpyType | None, analyzer) -> bool:
 def lower_constructor(record, init_method: TpyFunction, analyzer,
                       render_type=None,
                       self_type: 'TpyType | None' = None,
-                      native_globals: frozenset[str] = frozenset(),
+                      native_globals: 'Mapping[str, str]' = {},
                       ) -> THIRConstructor | None:
     """Lower a constructor to a THIRConstructor, or None if outside the slice.
 
@@ -675,7 +705,7 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
     # globals too). No `global`-write seeding here: a ctor's `global` names
     # stay unseeded, so its TpyGlobal statement rejects the body -> AST path.
     lc.prescan.native_globals = native_globals
-    lc.prescan.global_readonly = _seed_readonly_globals(
+    lc.prescan.global_readonly, lc.prescan.global_cpp = _seed_readonly_globals(
         init_method, analyzer, declared, native_globals)
     # Base initializers (`super().__init__` / `BaseN.__init__`), sorted by parent
     # declaration order (M3d); None if any is outside the slice -> AST path.
@@ -929,19 +959,15 @@ def iter_module_constructors(module: TpyModule, analyzer):
             continue
         yield record, init, self_type
 
-def module_native_globals(module: TpyModule) -> frozenset[str]:
-    """Module-level vars with non-DEFAULT linkage: their reads/writes render
-    through codegen's `native_global_names` mapping, so a `global` declaration
-    naming one never seeds (see lower_function). Keep the predicate in sync
-    with generator.py's native_globals collection (the same linkage filter,
-    re-derived here because THIR lowering runs before generator populates
-    `ctx.native_global_names`). Drift is conservative by construction: this
-    mirror skips generator's extra module_init_local/dedup filtering, so it
-    can only OVER-include -- an over-included name merely fails to seed and
-    the body stays AST (routing lost, never a byte divergence)."""
-    return frozenset(s.name for s in module.top_level_stmts
-                     if isinstance(s, TpyVarDecl)
-                     and s.linkage != VarLinkage.DEFAULT)
+def module_native_globals(module: TpyModule) -> dict[str, str]:
+    """Module-level vars with non-DEFAULT linkage, name -> C/C++ symbol:
+    the exact map codegen renders reads/writes through
+    (`ctx.native_global_names`), via the shared helper -- THIR lowering
+    runs before generator populates ctx, and read-only seeding stamps
+    `qualify_native_name(map[name])` on THIRName.cpp, so the map must
+    match byte-for-byte, not just over-approximate. A `global` declaration
+    naming one never write-seeds (see lower_function)."""
+    return module_native_global_names(module.top_level_stmts)
 
 def lower_module(module: TpyModule, analyzer, render_type=None) -> THIRModule:
     """Lower every eligible function and instance method in `module`; skip the rest."""

@@ -81,6 +81,7 @@ from ...type_def_registry import (
     is_str_type,
     is_str_view_type,
     is_string_type,
+    type_def_of,
 )
 from ...coercions import CoercionContext
 from ...codegen_cpp.type_resolution import resolve_stmt_binding_type
@@ -1015,18 +1016,35 @@ def _f1_record(t: TpyType | None, analyzer) -> bool:
       as above and `to_cpp()`'s type-arg recursion agrees with the resolver iff
       every arg is itself in the byte-identical slice (`_f1_record_type_arg_ok`:
       scalar / F1-record / INT). This is the F5 rung's type-spelling half; the
-      generic record's OWN templated bodies (TypeParamRef args) ride Stage B/C."""
+      generic record's OWN templated bodies (TypeParamRef args) ride Stage B/C;
+    - `@builtin_type` records WITH real bodies whose TypeDef carries no
+      `cpp_formatter` (Poll; Waker stays excluded -- its static TypeDef DOES
+      carry a formatter): `to_cpp()` then falls through to the same
+      `{name}<{args}>` + `native_cpp_names` path as a user record, so the
+      spelling invariant holds; `builtin_type_key` keys TypeDef payload
+      dispatch, never body-position rendering. A formatter-carrying builtin
+      (`list` -> `std::vector`) has a different C++ shape entirely and is
+      excluded by the formatter check, not by name."""
     if t is None:
         return False
     t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
     if isinstance(t, OwnType):
         t = t.wrapped
-    if not (isinstance(t, NominalType) and t.is_user_record):
+    if not isinstance(t, NominalType):
         return False
+    is_builtin_record = False
+    if not t.is_user_record:
+        td = type_def_of(t)
+        if (td is None or td.record is None or td.cpp_formatter is not None
+                or td.is_compile_time_only):
+            return False
+        is_builtin_record = True
     if t.type_args and not all(
             _f1_record_type_arg_ok(a, analyzer) for a in t.type_args):
         return False
-    return analyzer.registry.get_record_for_type(t) is not None
+    if analyzer.registry.get_record_for_type(t) is None:
+        return False
+    return not is_builtin_record or _witness("recv.builtin_record")
 
 def _record_borrow_return(t: TpyType | None, analyzer) -> 'NominalType | None':
     """The borrow-form F1-record return slot (`-> Box` -> C++ `Box&` /
@@ -1506,6 +1524,51 @@ def _field_markers_clean(e: TpyFieldAccess, *,
                 or e.unbound_self_parent_type is not None or e.deref_depth
                 or e.deref_narrowed_to is not None
                 or (e.needs_optional_runtime_check and not allow_optional_check))
+
+def _field_decl_type(e: TpyFieldAccess, declared: dict[str, TpyType],
+                     analyzer) -> 'TpyType | None':
+    """The field's DECLARED type off the gate's declared map -- the
+    `_resolve_field_declared_type` mirror for the admitted receiver shapes
+    (a record / proven Optional-ptr NAME; the receiver gate pinned that).
+    Consumers type on it rather than the flow-narrowed expr type, so a
+    narrowed Optional/union field -- whose AST render takes the
+    `(*recv.field)` unwrap -- types at the un-narrowed declared type and
+    rejects at the caller's family check."""
+    base = declared.get(e.obj.name)
+    if base is None:
+        return None
+    rt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(base)))
+    if isinstance(rt, OptionalType):
+        if rt.inner.is_value_type():
+            return None
+        rt = rt.inner
+    if not (isinstance(rt, NominalType) and rt.is_record):
+        return None
+    record = analyzer.registry.get_record_for_type(rt)
+    if record is None:
+        return None
+    for f in record.fields:
+        if f.name == e.field:
+            return f.type
+    return None
+
+def _subscript_container_recv_type(recv: TpyExpr, locals_: dict[str, TpyType],
+                                   analyzer) -> 'TpyType | None':
+    """The receiver binding type for a container subscript read/write/del: a
+    bare in-scope NAME (the DECLARED binding -- a literal-seeded local's use
+    sites carry the pre-resolution pending type) or a one-level field access
+    off an admitted receiver name (`_field_receiver_ok`), typed at the field's
+    DECLARED type (`_field_decl_type`). The family check
+    (`_container_scalar_read`) stays with the caller -- this only resolves the
+    receiver shape to a type. None for shapes outside the slice (deeper
+    chains, Optional-checked fields via the marker guard, subscript / call
+    receivers)."""
+    if isinstance(recv, TpyName):
+        return locals_.get(recv.name)
+    if (isinstance(recv, TpyFieldAccess)
+            and _field_receiver_ok(recv, locals_, analyzer)):
+        return _field_decl_type(recv, locals_, analyzer)
+    return None
 
 def _f2_reseat_ok(init: TpyExpr, declared: dict[str, TpyType], analyzer) -> bool:
     """A pointer-local reseat value: an lvalue field read off an F1-record receiver

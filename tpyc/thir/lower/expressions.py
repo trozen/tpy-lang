@@ -58,6 +58,7 @@ from ...typesys import (
     UnionType,
     ValueForm,
     VoidType,
+    contains_type_param,
     is_float_type,
     is_void_like_type,
     resolve_int_literals,
@@ -170,6 +171,7 @@ from .predicates import (
     _enum_prop_wrap,
     _enum_truthy_wrap,
     _f1_record,
+    _field_decl_type,
     _field_over_subscript_ok,
     _field_receiver_ok,
     _folded_neg_int_literal,
@@ -214,6 +216,7 @@ from .predicates import (
     _str_compare_operand,
     _str_concat_operand,
     _str_name_form,
+    _subscript_container_recv_type,
     _subscript_index_and_tuple,
     _template_init_call_fi,
     _tuple_subscript_value_read,
@@ -476,32 +479,35 @@ def _container_literal_ok(init: TpyExpr, t: TpyType, declared: dict[str, TpyType
 
 def _container_subscript_value_read(e: TpyExpr, locals_: dict[str, TpyType],
                                     analyzer) -> bool:
-    """A container subscript read `c[i]` off an in-scope container name whose
-    element/value is a value scalar or a str-slice value
-    (`::tpy::__getitem__(c, i)`, or the bounds-safe
-    `c[static_cast<std::size_t>(i)]`). The receiver is a plain name (a non-name or
-    narrowed-Optional receiver rides a later cell); the index is any eligible
-    value-scalar expr, or -- for an owned-str-keyed dict -- any eligible
-    str-slice expr (a literal / name / concat renders bare in the key slot; the
-    static-storage pin fires only for view-typed keys, which the receiver gate
-    excludes). A `readonly[container]` receiver routes too (byte-identical) --
-    sema readonly-wraps only non-value elements, so a scalar element read is never
-    `readonly[scalar]`; the result check is a defensive guard confirming the read
-    yields a value scalar / str value (redundant with the element check today,
-    robust if the container predicate later widens)."""
+    """A container subscript read `c[i]` off an in-scope container name -- or a
+    one-level container FIELD off an admitted receiver name (`self.xs[i]` /
+    `h.d[k]` / `p->xs[0]`; the receiver renders as its own THIRFieldAccess
+    inside the same subscript emit) -- whose element/value is a value scalar or
+    a str-slice value (`::tpy::__getitem__(c, i)`, or the bounds-safe
+    `c[static_cast<std::size_t>(i)]`). The index is any eligible value-scalar
+    expr, or -- for an owned-str-keyed dict -- any eligible str-slice expr (a
+    literal / name / concat renders bare in the key slot; the static-storage
+    pin fires only for view-typed keys, which the receiver gate excludes). A
+    `readonly[container]` receiver routes too (byte-identical) -- sema
+    readonly-wraps only non-value elements, so a scalar element read is never
+    `readonly[scalar]`; the result check is a defensive guard confirming the
+    read yields a value scalar / str value (redundant with the element check
+    today, robust if the container predicate later widens). The receiver type
+    comes from `_subscript_container_recv_type` -- the declared binding for a
+    name, the DECLARED field type for a field -- so a narrowed Optional/union
+    field receiver (the AST's `(*recv.field)` unwrap) rejects at the family
+    check; deeper chains (`a.b.c[i]`) and narrowed/checked receivers stay on
+    the AST path."""
     if not isinstance(e, TpySubscript) or e.needs_optional_runtime_check:
         return False
-    recv = e.obj
-    if not isinstance(recv, TpyName) or recv.name not in locals_:
+    recv_t = _subscript_container_recv_type(e.obj, locals_, analyzer)
+    if recv_t is None:
         return False
     ret = analyzer.get_expr_type(e)
-    # locals_ (the declared binding type) rather than get_expr_type: a
-    # container-literal local's use sites carry the pre-resolution
-    # PendingListType (see _method_call_eligible).
     # A runtime-BigInt index takes gen_index_expr's `.to_fixed_check<int32_t>()`
     # narrow (`_narrow_bigint_index`); only the out-of-int32-range literal
     # disposition rejects.
-    return (_container_scalar_read(locals_[recv.name], analyzer)
+    return (_container_scalar_read(recv_t, analyzer)
             and (_resolved_scalar(ret, analyzer)
                  or _resolved_str_value(ret, analyzer) is not None)
             and _bigint_index_disposition(e.index, analyzer) != "reject"
@@ -915,24 +921,79 @@ def _bytes_aug_concat_ok(stmt: TpyAugAssign, declared: dict[str, TpyType],
     return (_bytes_concat_operand(stmt.value, vt, analyzer)
             and _expr_eligible(stmt.value, declared, analyzer))
 
+def _subscript_recv_reject(recv: TpyExpr, locals_: dict[str, TpyType],
+                           analyzer) -> str:
+    """Drilldown suffix for a non-admitted subscript receiver -- shared by the
+    read (`subscript.recv.*`) and write (`setitem.recv.*`) gates so the
+    fallback tally names WHICH receiver shape blocks (the `_recv_shape_reject`
+    pattern: runs only on already-rejected shapes)."""
+    if isinstance(recv, TpyName):
+        return ("recv.name_absent" if recv.name not in locals_
+                else "recv.name_shape")  # pointer-local / narrowed binding
+    if isinstance(recv, TpyFieldAccess):
+        if not isinstance(recv.obj, TpyName):
+            return "recv.field_chain"
+        if not _field_receiver_ok(recv, locals_, analyzer):
+            return "recv.field_parent"
+        if _field_decl_type(recv, locals_, analyzer) is None:
+            return "recv.field_decl"
+        return "recv.field_family"
+    if isinstance(recv, TpySubscript):
+        return "recv.subscript"
+    if isinstance(recv, (TpyCall, TpyMethodCall)):
+        return "recv.call"
+    return "recv.other"
+
+def _subscript_read_reject(e: TpySubscript, locals_: dict[str, TpyType],
+                           analyzer) -> str:
+    """Drilldown label for a subscript read no arm admitted -- splits the old
+    `subscript.read_shape` bucket by blocking axis (receiver shape / index /
+    element family / slice), so the tally ranks the follow-on cells."""
+    if e.needs_optional_runtime_check:
+        return "subscript.optional_check"
+    if e.slice_function_info is not None or isinstance(e.index, TpySlice):
+        return "subscript.slice_shape"
+    recv_t = _subscript_container_recv_type(e.obj, locals_, analyzer)
+    if recv_t is None:
+        return "subscript." + _subscript_recv_reject(e.obj, locals_, analyzer)
+    if (_bigint_index_disposition(e.index, analyzer) == "reject"
+            or not _expr_eligible(e.index, locals_, analyzer)):
+        return "subscript.index"
+    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(recv_t)))
+    if isinstance(t, TupleType):
+        return "subscript.tuple_shape"  # non-const index / non-value element
+    if _resolved_viewfam_value(t, analyzer) is not None:
+        return "subscript.viewfam_shape"  # a str/bytes arm's own reject
+    if is_list(t) or is_array(t) or is_span(t) or is_dict(t):
+        return "subscript.elem_family"  # admitted kind, non-admitted elem/key
+    return "subscript.recv_type"
+
 def _setitem_target_ok(sub: TpySubscript, ws: '_WalkState', analyzer) -> bool:
     """The shared write-target half of the subscript-write gates: a
-    single-index (non-slice) subscript off a bare in-scope container name of
-    an admitted family (`_container_scalar_read`: list/Array/Span[scalar],
+    single-index (non-slice) subscript off a bare in-scope container name --
+    or a one-level container FIELD off an admitted receiver name
+    (`self.xs[i] = v` / `h.d[k] = v`, the read gate's receiver widening) --
+    of an admitted family (`_container_scalar_read`: list/Array/Span[scalar],
     dict[fixed-int|BigInt|str, scalar|str] -- so the written element/value
     slot is a value scalar or an owned str), with an eligible index. A
     TypedDict subscript writes a FIELD on the AST path; a narrowed/pointer
     receiver and slice assignment (`xs[a:b] = ...` -> list_set_slice) stay
-    AST."""
+    AST. A field receiver types at the DECLARED field type, so a narrowed
+    Optional/union field (the AST's `(*recv.field)` unwrap) rejects at the
+    family check."""
     if isinstance(sub.index, TpySlice) or sub.slice_function_info is not None:
         return note_detail("setitem.slice")
     if sub.typed_dict_field is not None or sub.needs_optional_runtime_check:
         return note_detail("setitem.receiver")
     recv = sub.obj
-    if (not isinstance(recv, TpyName) or recv.name not in ws.declared
-            or recv.name in ws.pointers or recv.name in ws.narrowed):
-        return note_detail("setitem.receiver")
-    if not _container_scalar_read(ws.declared[recv.name], analyzer):
+    if isinstance(recv, TpyName) and (recv.name in ws.pointers
+                                      or recv.name in ws.narrowed):
+        return note_detail("setitem.recv.name_shape")
+    recv_t = _subscript_container_recv_type(recv, ws.declared, analyzer)
+    if recv_t is None:
+        return note_detail(
+            "setitem." + _subscript_recv_reject(recv, ws.declared, analyzer))
+    if not _container_scalar_read(recv_t, analyzer):
         return note_detail("setitem.family")
     if (_bigint_index_disposition(sub.index, analyzer) == "reject"
             or not _expr_eligible(sub.index, ws.declared, analyzer)):
@@ -2159,7 +2220,7 @@ def _marker_reject(e: TpyMethodCall, analyzer) -> str:
         if fi is None:
             return "method.marker.static.unresolved"
         if e.type_args or e.inferred_type_args or fi.type_params:
-            return "method.marker.static.generic"
+            return _static_generic_reject(e, fi, analyzer)
         if fi.cpp_template:
             return "method.marker.static.template"
         if fi.native_function or fi.native_name:
@@ -2168,8 +2229,58 @@ def _marker_reject(e: TpyMethodCall, analyzer) -> str:
     if e.type_args or e.inferred_type_args:
         return "method.marker.type_args"
     if e.deref_depth or e.deref_narrowed_to is not None:
-        return "method.marker.deref"
+        return _deref_marker_reject(e, analyzer)
     return "method.marker.other"
+
+def _static_generic_reject(e: TpyMethodCall, fi, analyzer) -> str:
+    """Sub-split of a generic static call by what its AST spelling needs:
+    the cpp_template expansion (gen_call_from_fi), NO explicit type args
+    (the `if not expr.inferred_type_args` arm -- static_method_callee_cpp,
+    the same spelling the plain slice already mirrors), or explicit `<T>`
+    renders at the class / method level (type_to_cpp respectively
+    _render_method_type_arg -- the generics frontier). `_dep` marks type
+    args still containing a TypeParamRef (the dependent `template `
+    keyword decision rides them)."""
+    base = "method.marker.static.generic"
+    if fi.cpp_template:
+        # Positional-only templates are admitted upstream (_marker_call_kind),
+        # so this tag names the residue: a surviving {T}/{cpp} placeholder
+        # needing the substitution machinery.
+        return base + ".template_typed"
+    targs = e.type_args or e.inferred_type_args
+    if not targs:
+        return base + ".no_targs"
+    rec = (analyzer.registry.get_record(e.obj.name)
+           if isinstance(e.obj, TpyName) else None)
+    n_class = len(rec.type_params) if rec is not None and rec.type_params else 0
+    kind = (".both_targs" if targs[:n_class] and targs[n_class:]
+            else ".class_targs" if targs[:n_class] else ".method_targs")
+    dep = "_dep" if any(contains_type_param(t) for t in targs) else ""
+    return base + kind + dep
+
+def _deref_marker_reject(e: TpyMethodCall, analyzer) -> str:
+    """Sub-split of a Deref-chain method call by its _gen_method_call arm:
+    the narrowed-payload cast (_gen_deref_view_method_call), the Ptr[T]
+    receiver arm (`p->m` / `::tpy::deref_check(p).m` -- no `.__deref__()`
+    spelling), the builtin arm (cpp_template / native fi through
+    gen_method_from_function_info), or the plain member tail
+    (`recv.__deref__()...m(args)` over the _args() loop) -- split by
+    receiver shape (bare name vs field/chain)."""
+    if e.deref_narrowed_to is not None:
+        return "method.marker.deref.narrowed"
+    fi = e.resolved_function_info
+    if fi is None:
+        return "method.marker.deref.unresolved"
+    if fi.cpp_template is not None or fi.native_function:
+        return "method.marker.deref.builtin"
+    recv_t = analyzer.get_expr_type(e.obj)
+    if recv_t is not None:
+        recv_t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(recv_t)))
+    if recv_t is not None and recv_t.is_pointer():
+        return "method.marker.deref.ptr"
+    if not isinstance(e.obj, TpyName):
+        return "method.marker.deref.recv_shape"
+    return "method.marker.deref.plain"
 
 def _marker_call_kind(e: TpyMethodCall, analyzer) -> 'tuple[str, str] | None':
     """Classify a marker-carrying method call whose emit is RECEIVER-LESS --
@@ -2184,21 +2295,28 @@ def _marker_call_kind(e: TpyMethodCall, analyzer) -> 'tuple[str, str] | None':
     symbol) the `::symbol(args)` render for a bare-@native cross-module
     callee -- the same loop but with `inline_template` set (`_is_native_
     stub`), which skips the Own copy-temp, so Own-slot args are rejected by
-    the caller. None = an emit arm the slice does not reproduce (super /
-    typed-dict / macro / deref markers, module statics, generics, ctors,
+    the caller; ("template", tmpl) a same-module static `@cpp_template`
+    call (`UInt32.trunc(i)`) whose positional-only template expands over
+    gen_template_or_native_call's builtins arg loop -- generic statics
+    included, since the no-{T} template makes gen_call_from_fi's type-arg
+    substitution a no-op (the `_template_init_call_fi` rule). None = an
+    emit arm the slice does not reproduce (super / typed-dict / macro /
+    deref markers, module statics, `<T>`-spelled generics, ctors,
     extern-C / @native_c raw symbols, `function=True` natives whose args
-    render slot-BLIND via gen_expr_deref, cpp_template and builtin-module
-    arms -- gen_template_or_native_call's differently-threaded arg loop)."""
+    render slot-BLIND via gen_expr_deref, non-static cpp_template and
+    builtin-module arms)."""
     if e.kwargs or e.double_star_unpack is not None:
         return None
     # Every OTHER special marker takes its own _gen_method_call arm.
+    # EXPLICIT type args are rejected here; INFERRED ones flow to the
+    # per-branch generic decisions below.
     if (e.super_parent_type is not None
             or e.unbound_self_parent_type is not None
             or e.typed_dict_get_field is not None
             or e.is_nested_constructor or e.is_nested_enum_constructor
             or e.is_callable_field or e.macro_expansion is not None
             or e.fstr_expansion is not None or e.type_args
-            or e.inferred_type_args or e.deref_depth
+            or e.deref_depth
             or e.deref_narrowed_to is not None
             or e.needs_optional_runtime_check):
         return None
@@ -2220,10 +2338,7 @@ def _marker_call_kind(e: TpyMethodCall, analyzer) -> 'tuple[str, str] | None':
             or fi.native_cpp_return_type is not None
             or fi.is_async or fi.is_generator
             or fi.is_property_getter or fi.is_property_setter
-            or fi.type_params
             or any(isinstance(p.type, LiteralType) for p in fi.params)):
-        return None
-    if fi.cpp_template is not None:
         return None
     if e.is_static_call:
         # Same-module (or imported-name) `Rec.m(args)` only; the
@@ -2232,7 +2347,19 @@ def _marker_call_kind(e: TpyMethodCall, analyzer) -> 'tuple[str, str] | None':
             return None
         if not isinstance(e.obj, TpyName):
             return None
-        # A native/template static fi takes the receiver-threaded builtin
+        # A @cpp_template static takes the builtins arm (_gen_method_call's
+        # native/template block precedes its `Class::m` arm):
+        # gen_template_or_native_call expands the template over
+        # gen_call_arg(inline_template) args. Positional-only templates
+        # only -- a surviving {T}/{cpp} needs the substitution machinery
+        # (the generics frontier).
+        if fi.cpp_template is not None:
+            if _positional_only_template(fi.cpp_template, len(e.args)):
+                return ("template", fi.cpp_template)
+            return None
+        if e.inferred_type_args or fi.type_params:
+            return None
+        # A native static fi takes the receiver-threaded builtin
         # arm (gen_method_from_function_info) -- not the `Class::m` render.
         if fi.native_function or fi.native_name:
             return None
@@ -2244,6 +2371,10 @@ def _marker_call_kind(e: TpyMethodCall, analyzer) -> 'tuple[str, str] | None':
         return ("qualified", static_method_callee_cpp(
             analyzer.registry, implicit, analyzer.ctx.module_name,
             e.obj.name, e.method, fi))
+    if e.inferred_type_args or fi.type_params:
+        return None
+    if fi.cpp_template is not None:
+        return None
     if e.builtin_module_call is not None:
         return None
     if e.user_module_call is None:
@@ -2289,7 +2420,17 @@ def _marker_call_eligible(e: TpyMethodCall, kind: 'tuple[str, str]',
             or _resolved_bytes_value(ret, analyzer) is not None
             or _eligible_ptr_value(ret, analyzer)
             or (stmt_position and (ret is None or is_void_like_type(ret)))):
-        return note_detail("method.qualcall.ret_type")
+        return note_detail(_qualcall_ret_reject(ret, analyzer))
+    if kind[0] == "template":
+        # The builtins arg loop (gen_template_or_native_call) calls
+        # gen_call_arg directly with inline_template set -- none of the
+        # plain loop's pre-arms run and the Own copy-temp is skipped, so
+        # admit only the shared kwarg-independent rows (the free-call
+        # template branch's rule).
+        for a, p in zip(e.args, fi.params):
+            if not _shared_pass_through_arg(a, p.type, locals_, analyzer):
+                return note_detail(_native_arg_reject(a, p.type, analyzer))
+        return True
     own_ok = kind[0] == "qualified"
     return all(
         _shared_pass_through_arg(a, p.type, locals_, analyzer)
@@ -2303,8 +2444,108 @@ def _marker_call_eligible(e: TpyMethodCall, kind: 'tuple[str, str]',
         or _union_member_lift_arg(a, p.type, locals_, analyzer)
         or _union_coerced_literal_arg(a, p.type, locals_, analyzer)
         or (own_ok and _own_union_ctor_arg(a, p.type, locals_, analyzer))
-        or note_detail("method.qualcall.arg_shape")
+        or note_detail(_qualcall_arg_reject(a, p.type, analyzer))
         for a, p in zip(e.args, fi.params))
+
+def _qualcall_ret_reject(ret: 'TpyType | None', analyzer) -> str:
+    """Drilldown label for a marker-call result outside the value set --
+    names the blocking result FAMILY so the qualcall ret mass ranks by the
+    frontier it waits on (record / container / optional / union / tuple)."""
+    t = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ret)))
+         if ret is not None else None)
+    if isinstance(t, OwnType):
+        t = unwrap_readonly(t.wrapped)
+    if t is None or is_void_like_type(t):
+        return "method.qualcall.ret.void_value_pos"
+    if isinstance(t, OptionalType):
+        return "method.qualcall.ret.optional"
+    if isinstance(t, UnionType):
+        return "method.qualcall.ret.union"
+    if isinstance(t, TupleType):
+        return "method.qualcall.ret.tuple"
+    if isinstance(t, NominalType):
+        if is_list(t) or is_dict(t) or is_set(t) or is_array(t):
+            return "method.qualcall.ret.container"
+        return ("method.qualcall.ret.record_f1"
+                if _f1_record(t, analyzer)
+                else "method.qualcall.ret.record")
+    return "method.qualcall.ret.other"
+
+def _qualcall_arg_reject(a: TpyExpr, ptype: 'TpyType | None', analyzer) -> str:
+    """Drilldown label for a marker-call arg that fails every admitted row --
+    names the param-slot family (and the arg's kind for plain slots), like
+    `_native_arg_reject` for the native/template loop."""
+    t = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
+         if ptype is not None else None)
+    if isinstance(t, OwnType):
+        return "method.qualcall.arg.own"
+    if isinstance(t, OptionalType):
+        return "method.qualcall.arg.optional"
+    if isinstance(t, UnionType):
+        return "method.qualcall.arg.union"
+    if isinstance(a, (TpyCall, TpyMethodCall)):
+        return "method.qualcall.arg.call_rvalue"
+    at = analyzer.get_expr_type(a)
+    at = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
+          if at is not None else None)
+    if isinstance(at, NominalType) and at.is_user_record:
+        return ("method.qualcall.arg.record_f1"
+                if _f1_record(at, analyzer)
+                else "method.qualcall.arg.record_nonf1")
+    return f"method.qualcall.arg.other.{expr_kind_tag(a)}"
+
+def _ptr_deref_method_call(e: TpyMethodCall, analyzer) -> bool:
+    """A single-level Deref method call THROUGH a `Ptr[T]` receiver
+    (`cell.release_strong()` on `cell: Ptr[Cell]`): _gen_method_call's
+    pointer tail renders `p->m(args)` when sema proved the pointer non-null
+    (`e.ptr_non_null`) and `::tpy::deref_check(p).m(args)` otherwise -- the
+    existing THIRMethodCall is_arrow / deref_check renders; a pointer
+    receiver never spells the `.__deref__()` chain. The ONE discriminator
+    shared by gate and lowering; the gate adds receiver-shape and arg/result
+    admission on top (the qualified-marker rows: the same `_args()`
+    first-pass loop, Own cascade included). Rejected here: any other marker,
+    a deeper chain (the pointer arm emits ONE `->` regardless of depth, so a
+    `Ptr[Ptr[T]]` render is not reproduced), template/native/renamed fi
+    (the builtins arm / `_is_native_stub` arg loop), generics, and non-Ptr
+    wrapper receivers (Box/Rc -- the `.__deref__()` spelling)."""
+    if e.deref_depth != 1 or e.deref_narrowed_to is not None:
+        return False
+    if e.kwargs or e.double_star_unpack is not None:
+        return False
+    if (e.is_static_call or e.super_parent_type is not None
+            or e.unbound_self_parent_type is not None
+            or e.user_module_call is not None
+            or e.builtin_module_call is not None
+            or e.typed_dict_get_field is not None
+            or e.is_nested_constructor or e.is_nested_enum_constructor
+            or e.is_callable_field or e.macro_expansion is not None
+            or e.fstr_expansion is not None or e.type_args
+            or e.inferred_type_args or e.needs_optional_runtime_check):
+        return False
+    fi = e.resolved_function_info
+    if fi is None or not _plain_method_fi_ok(fi):
+        return False
+    if (fi.cpp_template is not None or fi.native_function or fi.native_name
+            or fi.type_params or fi.linkage != FunctionLinkage.DEFAULT):
+        return False
+    rt = analyzer.get_expr_type(e.obj)
+    return rt is not None and rt.is_pointer()
+
+def _ptr_deref_recv_ok(e: TpyMethodCall, locals_: dict[str, TpyType],
+                       analyzer) -> bool:
+    """Gate-side receiver admission for `_ptr_deref_method_call`: a bare
+    name declared as an eligible `Ptr[T]` value binding (renders raw, like
+    the AST's gen_expr -- Ptr locals are never indirect or assign-narrowed),
+    or an admitted field read whose value is such a Ptr (`self._cell.m()`
+    -- the F1 field-read render; sema's interior unwrap already happened in
+    get_expr_type)."""
+    if isinstance(e.obj, TpyName):
+        return (e.obj.name in locals_
+                and _eligible_ptr_value(locals_[e.obj.name], analyzer))
+    if isinstance(e.obj, TpyFieldAccess):
+        return (_eligible_ptr_value(analyzer.get_expr_type(e.obj), analyzer)
+                and _expr_eligible(e.obj, locals_, analyzer))
+    return False
 
 def _method_call_eligible(e: TpyMethodCall, locals_: dict[str, TpyType], analyzer,
                           *, stmt_position: bool = False,
@@ -2322,10 +2563,12 @@ def _method_call_eligible(e: TpyMethodCall, locals_: dict[str, TpyType], analyze
     or pass-through container names into
     non-Own container slots (`d.update(e)` -- see `_container_pass_through_arg`);
     the result is a value scalar or a str-slice value (or void, discarded, in
-    statement position). Every special-emit marker (static / super /
-    module-qualified / typed-dict / nested-ctor / callable-field / macro / fstr /
-    deref chain / Optional runtime check) takes a different `_gen_method_call`
-    path and is rejected."""
+    statement position). Special-emit markers take different `_gen_method_call`
+    paths: the receiver-less qualified/static/template arms are mirrored via
+    `_marker_call_kind`, the Ptr-receiver Deref call via
+    `_ptr_deref_method_call`; the rest (super / typed-dict / nested-ctor /
+    callable-field / macro / fstr / wrapper `.__deref__()` chains / generics)
+    are rejected."""
     # Nested enum value lookup `Outer.Kind(v)`: a method-call shape whose
     # receiver is the TYPE name, not a local -- checked before the
     # receiver-name pin.
@@ -2337,6 +2580,24 @@ def _method_call_eligible(e: TpyMethodCall, locals_: dict[str, TpyType], analyze
     # here so the receiver-shape drilldown counts only genuinely receiver-blocked
     # calls.
     if not _plain_member_call_markers_ok(e):
+        if _ptr_deref_method_call(e, analyzer):
+            # Result/arity/args mirror the qualified-marker rows exactly:
+            # the same `_args()` first-pass loop interpolates (native stub
+            # off, so the Own cascade fires -- own_ok).
+            if not _ptr_deref_recv_ok(e, locals_, analyzer):
+                # Split the reject: a pointer whose POINTEE is outside the
+                # Ptr value family (e.g. a @dynamic-protocol cell -- rc.py's
+                # `self._cell`) vs a receiver shape the slice doesn't carry.
+                return note_detail(
+                    "method.marker.deref.ptr_pointee"
+                    if not _eligible_ptr_value(analyzer.get_expr_type(e.obj),
+                                               analyzer)
+                    else "method.marker.deref.ptr_recv")
+            return _marker_call_eligible(e, ("qualified", ""), locals_,
+                                         analyzer,
+                                         stmt_position=stmt_position,
+                                         temps_ok=temps_ok,
+                                         narrowed=narrowed)
         kind = _marker_call_kind(e, analyzer)
         if kind is None:
             return note_detail(_marker_reject(e, analyzer))
@@ -2823,7 +3084,7 @@ def _expr_eligible(e: TpyExpr, locals_: dict[str, TpyType], analyzer) -> bool:
                 or _str_subscript_char_read(e, locals_, analyzer)
                 or _bytes_subscript_read(e, locals_, analyzer)
                 or _str_slice_read(e, locals_, analyzer)
-                or note_detail("subscript.read_shape"))
+                or note_detail(_subscript_read_reject(e, locals_, analyzer)))
     if isinstance(e, TpyFString):
         # An owned-str-producing `std::format(...)` / `std::string("...")`
         # expression (STORAGE form) -- composes into the S1 owned-str sinks
@@ -3059,7 +3320,13 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx', *, temp_args: bool = False) -> THIR
             # gated out), so its form tag is informational.
             _witness("self.this")
             return THIRSelf(result_type=rtype, form=Form.BORROW, loc=loc)
-        if e.name in lc.prescan.global_readonly:
+        gcpp = lc.prescan.global_cpp.get(e.name)
+        if gcpp is not None:
+            # A read-only-seeded native/imported value global: routes through
+            # the same arms below, the fixed spelling riding THIRName.cpp.
+            _witness("name.global_native" if e.name in lc.prescan.native_globals
+                     else "name.global_imported")
+        elif e.name in lc.prescan.global_readonly:
             # A read-only-seeded same-module value global: renders bare like a
             # local of the same resolved type (the arms below), so the witness
             # is the only distinguishing site.
@@ -3095,7 +3362,7 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx', *, temp_args: bool = False) -> THIR
         # local) suppresses it.
         str_t = _resolved_str_value(rtype, analyzer)
         if str_t is not None:
-            return THIRName(result_type=str_t, name=e.name,
+            return THIRName(result_type=str_t, name=e.name, cpp=gcpp,
                             form=_str_name_form(e.name, str_t,
                                                 lc.prescan.param_names),
                             loc=loc)
@@ -3104,7 +3371,7 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx', *, temp_args: bool = False) -> THIR
         # `::tpy::bytes_copy(x)`, STORAGE (owned vector local) suppresses it.
         bytes_t = _resolved_bytes_value(rtype, analyzer)
         if bytes_t is not None:
-            return THIRName(result_type=bytes_t, name=e.name,
+            return THIRName(result_type=bytes_t, name=e.name, cpp=gcpp,
                             form=_bytes_name_form(e.name, bytes_t,
                                                   lc.prescan.param_names),
                             loc=loc)
@@ -3112,8 +3379,8 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx', *, temp_args: bool = False) -> THIR
             # A String local (a concat-result binding): an owned std::string
             # lvalue, so STORAGE -- the owned-sink copy never fires on it and
             # the tag stays honest ( _is_borrow_form_name would mislabel it).
-            return THIRName(result_type=rtype, name=e.name, form=Form.STORAGE,
-                            loc=loc)
+            return THIRName(result_type=rtype, name=e.name, cpp=gcpp,
+                            form=Form.STORAGE, loc=loc)
         if e.name in lc.storage_tuple_locals:
             form = Form.STORAGE
         elif _is_own_param(e.name, lc):
@@ -3123,7 +3390,8 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx', *, temp_args: bool = False) -> THIR
             form = Form.STORAGE
         else:
             form = Form.BORROW if _is_borrow_form_name(rtype) else Form.VALUE
-        return THIRName(result_type=rtype, name=e.name, form=form, loc=loc)
+        return THIRName(result_type=rtype, name=e.name, cpp=gcpp, form=form,
+                        loc=loc)
     if isinstance(e, TpyFieldAccess):
         if e.enum_member_of is not None:
             # Type-level enum member access: `Color.RED` -> `Color::RED`
@@ -3257,6 +3525,8 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx', *, temp_args: bool = False) -> THIR
         # `const std::string&` element lands in owned sinks via the implicit
         # copy ctor, bare on both paths).
         sub_str = _resolved_str_value(rtype, analyzer)
+        if isinstance(e.obj, TpyFieldAccess):
+            _witness("subscript.field_recv")
         return THIRSubscript(
             result_type=rtype,
             receiver=_lower_expr(e.obj, lc),
@@ -3532,6 +3802,32 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx', *, temp_args: bool = False) -> THIR
                               "::from_value({0})"),
                 loc=loc)
         if not _plain_member_call_markers_ok(e):
+            if _ptr_deref_method_call(e, analyzer):
+                # The Ptr-receiver Deref call: `p->m(args)` when proven
+                # non-null, `::tpy::deref_check(p).m(args)` otherwise --
+                # the node fact `ptr_non_null` picks the arm. Args lower
+                # like the qualified-marker call's (the same first-pass
+                # loop); the receiver is a raw value read (a Ptr local /
+                # field renders bare -- never indirect).
+                _witness("method.ptr_arrow" if e.ptr_non_null
+                         else "method.ptr_checked")
+                pfi = e.resolved_function_info
+                p_str = _resolved_str_value(rtype, analyzer)
+                if p_str is None:
+                    p_str = _resolved_bytes_value(rtype, analyzer)
+                return THIRMethodCall(
+                    result_type=rtype if rtype is not None else VoidType(),
+                    receiver=_lower_expr(e.obj, lc),
+                    method_cpp=escape_cpp_name(e.method),
+                    args=tuple(
+                        _lower_call_arg(a, pfi.params[i].type, lc,
+                                        temp_args=temp_args)
+                        for i, a in enumerate(e.args)),
+                    is_arrow=e.ptr_non_null,
+                    deref_check=not e.ptr_non_null,
+                    form=_viewfam_result_form(p_str),
+                    loc=loc,
+                )
             # A receiver-less marker call (module-qualified / static): the
             # gate admitted it through _marker_call_kind, so the same
             # classification names the emit arm -- the pre-rendered
@@ -3544,6 +3840,7 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx', *, temp_args: bool = False) -> THIR
             assert mk is not None, "marker method call reached lowering unclassified"
             mfi = e.resolved_function_info
             _witness("call.module_native" if mk[0] == "native"
+                     else "call.static_template" if mk[0] == "template"
                      else "call.marker_qualified")
             mk_str = _resolved_str_value(rtype, analyzer)
             if mk_str is None:
@@ -3557,6 +3854,7 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx', *, temp_args: bool = False) -> THIR
                     for i, a in enumerate(e.args)),
                 native_name=mk[1] if mk[0] == "native" else None,
                 callee_cpp=mk[1] if mk[0] == "qualified" else None,
+                cpp_template=mk[1] if mk[0] == "template" else None,
                 form=_viewfam_result_form(mk_str),
                 loc=loc,
             )

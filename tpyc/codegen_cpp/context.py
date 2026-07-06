@@ -24,14 +24,14 @@ from ..parse import (
     TpyDictLiteral, TpySetLiteral, TpyDictComprehension, TpySetComprehension,
     TpyGeneratorExpression,
     TpyCoerce, TpyBinOp, TpyUnaryOp, TpyMethodCall, TpySubscript, TpySlice, TpyCall, TpyName, TpyFieldAccess,
-    TpyIfExpr, TpyAssign, TpyVarDecl, TpyStmt,
+    TpyIfExpr, TpyAssign, TpyVarDecl, TpyTupleUnpack, TpyStmt, VarLinkage,
 )
 from ..namespace import Namespace, BindingKind
 from ..type_def_registry import (
     is_bool_type, is_dict, is_set, is_bytes_view_type, is_str_view_type,
     is_borrowing_view_type,
 )
-from ..symbol_binding import lookup_imported, lookup_qualified, SymbolKind
+from ..symbol_binding import lookup_imported, lookup_qualified, resolve_definer, SymbolKind
 from ..modules.type_resolution import is_native_iterable
 from ..compilation_context import get_current_compiler
 from ..value_category import (
@@ -349,6 +349,59 @@ def module_qualified_callee_cpp(registry, module_attributes, module_name: str,
         qual_module = user_module
         qual_name = fi.name if fi else method
     return qualified_cpp_name(qual_module, qual_name)
+
+
+def imported_variable_cpp(registry, imported_names: 'dict[str, tuple[str, str]]',
+                          name: str) -> str | None:
+    """The cross-module imported-variable spelling, or None when `name` is
+    not an imported module-level VARIABLE. The ONE qualification decision
+    shared by the AST name render and the THIR seeding/lowering mirror.
+    Detection keys on the IMMEDIATE import source's `variables` dict (the
+    shadow-resilient `imported_names` history, not the attribute table);
+    the spelling follows the re-export chain to the ultimate defining
+    module so the qname renders against a module that actually emits the
+    symbol. A native_global variable spells its user-specified C++ symbol
+    name instead (already absolute-qualified at registration)."""
+    imp = imported_names.get(name)
+    if imp is None:
+        return None
+    src_mod, orig = imp
+    src_info = registry.get_module(src_mod)
+    if src_info is None or orig not in src_info.variables:
+        return None
+    source_module, original_name = resolve_definer(
+        registry, src_mod, orig, SymbolKind.VARIABLE)
+    source_info = registry.get_module(source_module)
+    if source_info is not None:
+        var_info = source_info.variables.get(original_name)
+        if var_info is not None and var_info.native_cpp_name is not None:
+            return var_info.native_cpp_name
+    return qualified_cpp_name(source_module, original_name)
+
+
+def module_native_global_names(top_level_stmts) -> dict[str, str]:
+    """Python name -> C/C++ symbol for module-level vars with non-DEFAULT
+    linkage -- the map behind every native-global read/write render
+    (`qualify_native_name(map[name])`), shared by the generator's
+    `ctx.native_global_names` seeding and the THIR seeding mirror (which
+    runs before the generator populates ctx). Mirrors the generator's
+    seen_globals dedup exactly: first decl of a name wins (a later native
+    re-decl of an already-seen DEFAULT name maps nothing), tuple-unpack
+    targets count as seen, module_init_local temps are skipped."""
+    seen: set[str] = set()
+    out: dict[str, str] = {}
+    for stmt in top_level_stmts:
+        if isinstance(stmt, TpyVarDecl):
+            if stmt.module_init_local or stmt.name in seen:
+                continue
+            seen.add(stmt.name)
+            if stmt.linkage != VarLinkage.DEFAULT:
+                out[stmt.name] = stmt.native_name or stmt.name
+        elif isinstance(stmt, TpyTupleUnpack):
+            for name in stmt.targets:
+                if name is not None:
+                    seen.add(name)
+    return out
 
 
 def static_method_callee_cpp(registry, implicit_stdlib_modules: 'set[str]',

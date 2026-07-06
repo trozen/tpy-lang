@@ -33,7 +33,7 @@ from ..type_def_registry import (
     is_enum_type, is_int_enum_type, enum_info_of,
     protocol_info_of,
 )
-from ..symbol_binding import lookup_imported, resolve_definer, SymbolKind
+from ..symbol_binding import lookup_imported, SymbolKind
 from .variant_access import VariantAccess
 
 
@@ -80,7 +80,7 @@ from ..prescan import match_is_none, _expr_to_narrowing_key
 from ..namespace import BindingKind
 from ..sema.numeric_lattice import fixed_int_range_contains
 from ..sema.literal_utils import literal_value_from_expr
-from .context import INDENT, escape_cpp_string, escape_cpp_char, escape_cpp_name, qualified_cpp_name, qualify_native_name, imported_free_callee_cpp, module_qualified_callee_cpp, static_method_callee_cpp, enum_cpp_name, loop_var_binding, is_lvalue_iterable, cpp_string_literal_expr, cpp_bytes_literal_span, cpp_bytes_literal_owned, view_key_target, CppForm, FormValue, expand_cpp_template
+from .context import INDENT, escape_cpp_string, escape_cpp_char, escape_cpp_name, qualified_cpp_name, qualify_native_name, imported_free_callee_cpp, imported_variable_cpp, module_qualified_callee_cpp, static_method_callee_cpp, enum_cpp_name, loop_var_binding, is_lvalue_iterable, cpp_string_literal_expr, cpp_bytes_literal_span, cpp_bytes_literal_owned, view_key_target, CppForm, FormValue, expand_cpp_template
 from .functions import literal_mangled_name
 from .. import qnames
 
@@ -1448,46 +1448,26 @@ class ExpressionGenerator:
             # Skip if shadowed by a local variable
             if expr.name in self.ctx.native_global_names and expr.name not in self.ctx.local_scope_names:
                 return qualify_native_name(self.ctx.native_global_names[expr.name])
-            # Imported variable from a user module. Read through
-            # `imported_names` (not the attribute table) because uses
-            # that source-precede a later top-level redefine still
-            # need to qualify to the import; `imported_names` is the
-            # shadow-resilient history tracker. Filter to variables by
-            # checking the immediate source's `variables` dict.
-            imp = self.ctx.analyzer.imported_names.get(expr.name)
-            if imp is not None:
-                src_mod_imm, orig_imm = imp
-                src_info_imm = self.ctx.analyzer.registry.get_module(src_mod_imm)
-                if src_info_imm is not None and orig_imm in src_info_imm.variables:
-                    # Don't qualify if shadowed by a local variable
-                    if expr.name in self.ctx.local_scope_names:
+            # Imported variable from a user module -- the detection +
+            # qualified spelling live in `imported_variable_cpp` (shared
+            # with the THIR seeding mirror). Pointer indirection for
+            # non-value globals is handled by is_indirect_name() ->
+            # gen_expr_deref() at call sites.
+            imp_cpp = imported_variable_cpp(
+                self.ctx.analyzer.registry, self.ctx.analyzer.imported_names,
+                expr.name)
+            if imp_cpp is not None:
+                # Don't qualify if shadowed by a local variable
+                if expr.name in self.ctx.local_scope_names:
+                    return escape_cpp_name(expr.name)
+                # Check if redefined at top level
+                if expr.name in self.ctx.top_level_decls:
+                    decl_line = self.ctx.top_level_decls[expr.name]
+                    # In a function (current_stmt_line == 0): always use local
+                    # At top level: use local only if current line >= declaration line
+                    if self.ctx.current_stmt_line == 0 or self.ctx.current_stmt_line >= decl_line:
                         return escape_cpp_name(expr.name)
-                    # Check if redefined at top level
-                    if expr.name in self.ctx.top_level_decls:
-                        decl_line = self.ctx.top_level_decls[expr.name]
-                        # In a function (current_stmt_line == 0): always use local
-                        # At top level: use local only if current line >= declaration line
-                        if self.ctx.current_stmt_line == 0 or self.ctx.current_stmt_line >= decl_line:
-                            return escape_cpp_name(expr.name)
-                    # Use qualified import reference (convert dotted name
-                    # to C++ namespace). Pointer indirection for non-value
-                    # globals is handled by is_indirect_name() ->
-                    # gen_expr_deref() at call sites. Follow the
-                    # re-export chain to the ultimate defining module so
-                    # the qname renders against a module that actually
-                    # emits the symbol (matters for facade re-exports).
-                    source_module, original_name = resolve_definer(
-                        self.ctx.analyzer.registry,
-                        src_mod_imm, orig_imm, SymbolKind.VARIABLE)
-                    source_info = self.ctx.analyzer.registry.get_module(source_module)
-                    # native_global variables use a user-specified C++ symbol name
-                    # (e.g. "engine::score") that's independent of the module's
-                    # cpp_namespace -- look it up in the source module's ModuleInfo.
-                    if source_info is not None:
-                        var_info = source_info.variables.get(original_name)
-                        if var_info is not None and var_info.native_cpp_name is not None:
-                            return var_info.native_cpp_name
-                    return qualified_cpp_name(source_module, original_name)
+                return imp_cpp
             # A forwarded proto-param alias (`xs = it`) has no field of its
             # own; every read resolves to the captured param it aliases.
             storage_name = (self.ctx.generator_storage_name(expr.name)

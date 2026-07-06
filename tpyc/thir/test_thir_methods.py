@@ -1266,3 +1266,192 @@ class TestMarkerStaticCall:
             "    def doubled(self) -> Int32:\n        return super().val() * 2\n")
         assert _fn(thir, "val") is not None
         assert _fn(thir, "doubled") is None
+
+
+# --- @builtin_type record receivers (the Poll/Waker family) ---
+
+
+class TestBuiltinRecordReceiver:
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+        return cpp
+
+    # A formatter-free @builtin_type record spells the user-record
+    # {name}<{args}> form, so its bodied methods route like a user
+    # record's; Poll itself is exercised by every async-importing corpus
+    # case, so the unit uses a local stand-in to isolate the gate.
+    SRC = (
+        "from tpy import Int32\n"
+        "from tpy.extern import builtin_type\n"
+        "@builtin_type('tpy.test.Gauge')\n"
+        "class Gauge:\n"
+        "    n: Int32\n"
+        "    def __init__(self, n: Int32):\n        self.n = n\n"
+        "    def bump(self) -> Int32:\n"
+        "        self.n += 1\n        return self.n\n"
+        "def main():\n    g = Gauge(1)\n    print(g.bump())\nmain()\n")
+
+    def test_builtin_record_method_routes(self):
+        thir, witnessed = _lower_ctx_witnessed(self.SRC)
+        assert _fn(thir, "bump") is not None
+        assert witnessed.get("recv.builtin_record", 0) > 0
+
+    def test_byte_identical(self):
+        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
+
+    def test_formatter_builtin_stays_excluded(self):
+        # A container receiver (list) carries a cpp_formatter -- its
+        # spelled C++ (std::vector) is not the nominal form, so the
+        # builtin-record arm must not admit it as an F1 record: a body
+        # taking `list[Int32]` still routes ONLY via the container
+        # family (probe: the record param gate, isolated by a body that
+        # reads a field off it, which no container family admits).
+        from .lower.predicates import _f1_record
+        from ..typesys import NominalType, make_list
+        compiler, modules = _compile(self.SRC)
+        from ..compilation_context import activate_compiler
+        with activate_compiler(compiler):
+            analyzer = compiler.modules[_entry(modules).name].analyzer
+            lt = make_list(NominalType("Int32", "tpy.Int32"))
+            assert not _f1_record(lt, analyzer)
+
+
+_STATIC_TEMPLATE_SRC = (
+    "from tpy import Int32, UInt32\n"
+    "class Util:\n"
+    "    @staticmethod\n"
+    "    def first[T](a: T, b: T) -> T:\n"
+    "        return a\n"
+    "def f(i: Int32) -> Int32:\n"
+    "    u = UInt32.trunc(i)\n"
+    "    v = UInt32.add_wrap(u, UInt32(1))\n"
+    "    return Int32.trunc(v)\n"
+    "def g(n: Int32) -> Int32:\n"
+    "    return Util.first(n, 2)\n"
+    "def main():\n"
+    "    print(f(41))\n"
+    "    print(g(7))\n"
+    "main()\n"
+)
+
+
+class TestMarkerStaticTemplate:
+    """A same-module static `@cpp_template` call (`UInt32.trunc(i)`) routes as
+    THIRCall with the positional-only template on cpp_template -- generic
+    statics included, since gen_call_from_fi's type-arg substitution is a
+    no-op on a {T}-free template. A generic static WITHOUT a template
+    (`Util.first(n, 2)` -> `Util::first<int32_t>(n, 2)`) needs the `<T>`
+    spelling and stays AST (the generics frontier)."""
+
+    def test_routes_with_template(self):
+        thir, witnessed = _lower_ctx_witnessed(_STATIC_TEMPLATE_SRC)
+        fn = _fn(thir, "f")
+        assert fn is not None
+        decl = fn.body[0]
+        assert isinstance(decl, THIRVarDecl)
+        assert isinstance(decl.init, THIRCall)
+        assert decl.init.cpp_template is not None
+        assert decl.init.callee_cpp is None and decl.init.native_name is None
+        assert witnessed.get("call.static_template", 0) >= 3
+
+    def test_generic_static_with_targs_stays_ast(self):
+        thir, _ = _lower_ctx_witnessed(_STATIC_TEMPLATE_SRC)
+        assert _fn(thir, "g") is None
+
+    def test_byte_identical(self):
+        compiler, modules = _compile(_STATIC_TEMPLATE_SRC)
+        entry = _entry(modules)
+        ast_out = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False))
+        thir_out = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=True))
+        assert thir_out == ast_out
+        assert "static_cast<uint32_t>(i)" in thir_out[1]
+
+
+_PTR_DEREF_SRC = (
+    "from tpy import Int32, Ptr, take_ptr\n"
+    "class Cell:\n"
+    "    n: Int32\n"
+    "    def __init__(self):\n        self.n = 3\n"
+    "    def val(self) -> Int32:\n        return self.n\n"
+    "    def bump(self, k: Int32) -> Int32:\n        return self.n + k\n"
+    "class Holder:\n"
+    "    cell: Ptr[Cell]\n"
+    "    def __init__(self, c: Ptr[Cell]):\n        self.cell = c\n"
+    "    def get(self) -> Int32:\n        return self.cell.val()\n"
+    "def f(p: Ptr[Cell]) -> Int32:\n"
+    "    a = p.val()\n"
+    "    b = p.bump(2)\n"
+    "    return a + b\n"
+    "def main():\n"
+    "    c = Cell()\n"
+    "    print(f(take_ptr(c)))\n"
+    "    h = Holder(take_ptr(c))\n"
+    "    print(h.get())\n"
+    "main()\n"
+)
+
+
+class TestPtrDerefMethodCall:
+    """A Deref method call through a `Ptr[T]` value receiver routes as
+    THIRMethodCall on the existing arms: unproven -> deref_check
+    (`::tpy::deref_check(p).val()`), sema-proven non-null (the post-access
+    narrowing after the first deref) -> is_arrow (`p->bump(2)`). A field-read
+    receiver (`self.cell.val()`) rides the same arms over the F1 field
+    render. Box/Rc wrapper receivers spell `.__deref__()` -- not mirrored,
+    stays AST (see test_box_deref_stays_ast)."""
+
+    def test_ptr_name_receiver_both_arms(self):
+        thir, witnessed = _lower_ctx_witnessed(_PTR_DEREF_SRC)
+        fn = _fn(thir, "f")
+        assert fn is not None
+        first = fn.body[0].init
+        second = fn.body[1].init
+        assert isinstance(first, THIRMethodCall)
+        assert first.deref_check and not first.is_arrow
+        assert isinstance(second, THIRMethodCall)
+        assert second.is_arrow and not second.deref_check
+        assert witnessed.get("method.ptr_checked", 0) >= 1
+        assert witnessed.get("method.ptr_arrow", 0) >= 1
+
+    def test_ptr_field_receiver_routes(self):
+        thir, _ = _lower_ctx_witnessed(_PTR_DEREF_SRC)
+        fn = _fn(thir, "get")
+        assert fn is not None
+        ret = fn.body[0]
+        assert isinstance(ret, THIRReturn)
+        assert isinstance(ret.value, THIRMethodCall)
+        assert ret.value.deref_check
+        assert isinstance(ret.value.receiver, THIRFieldAccess)
+
+    def test_byte_identical(self):
+        compiler, modules = _compile(_PTR_DEREF_SRC)
+        entry = _entry(modules)
+        ast_out = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False))
+        thir_out = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=True))
+        assert thir_out == ast_out
+        assert "::tpy::deref_check(p).val()" in thir_out[1]
+        assert "p->bump(2)" in thir_out[1]
+
+    def test_box_deref_stays_ast(self):
+        # A Box receiver resolves through the user `__deref__` chain and
+        # spells `b.__deref__().val()` -- the deref.plain residue, not the
+        # pointer arms.
+        thir = _lower_ctx(
+            "from tpy import Int32\n"
+            "from tplib.box import Box\n"
+            "class A:\n"
+            "    n: Int32\n"
+            "    def __init__(self):\n        self.n = 1\n"
+            "    def val(self) -> Int32:\n        return self.n\n"
+            "def use_box(b: Box[A]) -> Int32:\n"
+            "    return b.val()\n")
+        assert _fn(thir, "use_box") is None

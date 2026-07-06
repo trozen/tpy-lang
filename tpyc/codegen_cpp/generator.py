@@ -21,7 +21,7 @@ from .resumable_cfg import (
     ResumableShape, resumable_state,
 )
 
-from .context import CodeGenContext, CodeGenError, CodeGenOptions, module_to_cpp_namespace, module_has_cpp_namespace_override, qualified_cpp_name, qualify_native_name, escape_cpp_string, escape_cpp_name, cpp_string_literal_expr
+from .context import CodeGenContext, CodeGenError, CodeGenOptions, module_native_global_names, module_to_cpp_namespace, module_has_cpp_namespace_override, qualified_cpp_name, qualify_native_name, escape_cpp_string, escape_cpp_name, cpp_string_literal_expr
 from .types import TypeResolver
 from .protocols import ProtocolGenerator
 from .builtins import BuiltinGenerator
@@ -573,11 +573,11 @@ class CodeGenerator:
                         name=name, type=var_type, init=None, loc=stmt.loc)
                     global_decls.append(synthetic)
 
-        # Track native global name mappings (Python name -> C/C++ name)
-        self.ctx.native_global_names = {
-            stmt.name: (stmt.native_name or stmt.name)
-            for stmt in native_globals
-        }
+        # Track native global name mappings (Python name -> C/C++ name);
+        # the shared helper mirrors the seen_globals dedup above exactly
+        # (THIR seeding reads the same map before this method runs).
+        self.ctx.native_global_names = module_native_global_names(
+            module.top_level_stmts)
 
         if module.directives.native_module:
             # Native modules are declaration-only -- no .hpp or .cpp generated.
