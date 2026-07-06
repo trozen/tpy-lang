@@ -1,0 +1,7 @@
+True
+RED 1
+True
+True
+BLUE 3
+True
+True

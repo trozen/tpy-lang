@@ -6034,13 +6034,26 @@ API, floor 3.12, hand-rolled C-API glue, copy-in marshalling).
   TPy `__init__` (placement-new from marshalled args), `tp_dealloc` runs the
   C++ destructor (so `Own`/`Box`/`Rc`/container fields release). Baseline
   surface: construct from Python, plain instance methods (each a bound wrapper),
-  and every annotated field as a read/write getset descriptor. Method and
+  and every annotated field as a getset descriptor (read/write on a reference
+  class; read-only when the class is itself a value type -- see below). Method and
   `__init__` params/returns admit the same boundary set as free `@export`
   functions (scalars/str/bytes, exposed classes/enums, containers recursively,
   a numeric `Span` as a param -- the method glue shares the free-function
-  marshal emit); getset *fields* stay scalar/str/bytes-only (the per-field
-  getter/setter path has no container emit, so an exposed class cannot store a
-  container in an exposed field). Because the
+  marshal emit); getset *fields* admit scalars/str/bytes, an exposed **enum**,
+  and an exposed **value-type** class (an enum field round-trips its member
+  through the module enum type -- `enum_to_py` reconstructs the interned
+  singleton, so `w.color is Color.RED` holds through the getset copy; a
+  value-type field copies its immutable value out via `instance_to_py`; both
+  are strict-by-type on set, and both copies are behaviorally invisible because
+  the value is immutable). An exposed **value type is itself exposed read-only**
+  (its getset descriptors have no setter -- matching the language rule that a
+  value type's fields are set only in `__init__`), so on the holder the value
+  field is r/w (you can *replace* the whole value: `b.origin = Point(3, 4)`) but
+  the nested value's own fields loud-fail a mutation (`b.origin.x = 5` raises
+  `AttributeError`), and each read is a fresh copy (`b.origin is b.origin` is
+  `False`). A *container* field stays rejected (the per-field getter/setter path
+  has no container emit), and a *mutable* (reference) *class-typed* field stays
+  rejected (see the reject list). Because the
   PyObject *owns* the instance, a class crosses **IN as a borrow of the live
   embedded payload** -- a method call or a free function taking the instance
   (`def bump(c: Counter, ...)`) mutates through it and the change is visible on
@@ -6059,8 +6072,16 @@ API, floor 3.12, hand-rolled C-API glue, copy-in marshalling).
   -- declared divergences kept out of the parity driver and exercised in
   `ext_checks.py`. The ext-module validator rejects, with a located error, an
   exposed class the glue can't yet emit: a field/method type that doesn't
-  marshal, a class-typed field, an `Own[Cls]` param (the host keeps its
-  reference, so ownership can't transfer -- use the borrow form), a `@nocopy`
+  marshal, a **mutable (reference) class-typed field** (a nested *mutable* class
+  is stored inline by value, so a getset getter could only copy it out --
+  `outer.inner` would fabricate a fresh object every read and `outer.inner.x = 5`
+  would silently no-op where CPython aliases the real object; the diagnostic
+  steers to an accessor method that mutates through `self`, or an explicit
+  `copy()`, and faithful aliasing awaits the deferred foreign-borrow primitive.
+  A *value-type* class-typed field is exempt -- immutability makes the copy-out
+  invisible, so it is admitted, above), an `Own[Cls]` param (the host
+  keeps its reference, so ownership can't transfer -- use the borrow form), a
+  `@nocopy`
   class returned by reference (the boundary can't copy it out -- return
   `Own[Cls]`), `@property`, static/async/generic/overloaded/`@error_return`
   methods, inheritance, generics, an exposed class defined in *another* module
@@ -6069,8 +6090,10 @@ API, floor 3.12, hand-rolled C-API glue, copy-in marshalling).
   or `@export` on an exception class (those cross via the
   separate `PyErr_NewException` path). The exposed type is not subclassable from
   Python (no `Py_TPFLAGS_BASETYPE`) and carries no GC traversal (its fields are
-  scalar/str/bytes; `tp_traverse` becomes necessary only when class-typed fields
-  land). `__repr__`/`__str__` (-> `Py_tp_repr`/`Py_tp_str`, must return `str`),
+  scalar/str/bytes/enum or a nested value-type class -- all held by value, no
+  `PyObject` reference, so no reference cycle is possible; `tp_traverse` becomes necessary only if a future
+  *aliasing* class-typed field lands via the foreign-borrow primitive, which
+  would hold a real `PyObject` ref -- the current copy model would not). `__repr__`/`__str__` (-> `Py_tp_repr`/`Py_tp_str`, must return `str`),
   `__eq__`/`__ne__`/`__lt__`/`__le__`/`__gt__`/`__ge__` (-> one
   `Py_tp_richcompare` wrapper, one param beyond self typed as the record's
   OWN exposed-class type -- richcompare's one shared type-guard covers every

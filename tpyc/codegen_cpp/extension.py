@@ -501,14 +501,16 @@ class ExtensionGenerator:
 
         return slots
 
-    def _operand_decl_and_expr(self, typ: TpyType, src: str, sym: str) -> tuple[str, str]:
-        """The local's C++ declaration type and marshal expression for an
-        operator dunder's non-self operand (scalar/exposed-class/exposed-enum
-        -- containers/Span don't arise as arithmetic/comparison operands). An
-        exposed-class operand binds a const reference to the live embedded
-        payload (mirrors the record's own `const Cls&` param, no copy); a
-        scalar/enum operand is a fresh owned value, like a normal @export
-        function param."""
+    def _value_in_decl_expr(self, typ: TpyType, src: str, sym: str) -> tuple[str, str]:
+        """The local's C++ declaration type and marshal expression for a single
+        incoming value (scalar/exposed-class/exposed-enum -- containers/Span
+        don't reach here). Shared by an operator dunder's non-self operand and a
+        getset field setter. An exposed-class value binds a const reference to
+        the live embedded payload (mirrors the record's own `const Cls&` param,
+        no copy); a scalar/enum value is a fresh owned value, like a normal
+        @export function param. (For a getset field setter the exposed-class arm
+        is reached only by an immutable value-type field, where the copy-in is
+        sound; a mutable reference-class field is sema-rejected.)"""
         if is_exposed_class(typ):
             cpp, tv = self._class_cpp_var(typ, sym)
             return (f"const {cpp} &",
@@ -520,12 +522,15 @@ class ExtensionGenerator:
         cpp = boundary_cpp_type(_boundary_inner(typ))
         return f"{cpp} ", f"::tpy::interop::from_py<{cpp}>({src})"
 
-    def _nb_return_expr(self, call_expr: str, ret_typ: TpyType | None, sym: str) -> str:
-        """The C++ expression producing the returned PyObject* for an
-        operator-dunder call result -- an expression-form mirror of
-        `_emit_call_return`'s dispatch (needed here because the nb_* wrapper's
-        forward/reflected branches already sit inside their own try, so they
-        need a bare `return <expr>;`, not a multi-line statement emitter)."""
+    def _value_out_expr(self, call_expr: str, ret_typ: TpyType | None, sym: str) -> str:
+        """The C++ expression producing the PyObject* for a single outgoing
+        value -- an expression-form mirror of `_emit_call_return`'s dispatch,
+        used where the caller needs a bare `return <expr>;` rather than a
+        multi-line statement emitter: an operator-dunder result (its
+        forward/reflected branches already sit inside their own try) and a
+        getset field getter. (For a field getter the exposed-class arm is
+        reached only by an immutable value-type field, which copies out; a
+        mutable reference-class field is sema-rejected.)"""
         if ret_typ is not None and is_exposed_class(ret_typ):
             _cpp, tv = self._class_cpp_var(ret_typ, sym)
             return (f"::tpy::interop::instance_to_py("
@@ -586,11 +591,11 @@ class ExtensionGenerator:
                       f"Py_TYPE({self_var}), (::tpy::cpy::PyTypeObject *){tv}"
                       f") != 0) {{\n")
             out.write("            try {\n")
-            decl, expr = self._operand_decl_and_expr(operand_type, operand_var, sym)
+            decl, expr = self._value_in_decl_expr(operand_type, operand_var, sym)
             out.write(f"                {decl}__other = {expr};\n")
             call = (f"reinterpret_cast<::tpy::interop::Instance<{cpp}> *>"
                     f"({self_var})->payload.{meth}(__other)")
-            out.write(f"                return {self._nb_return_expr(call, ret_typ, sym)};\n")
+            out.write(f"                return {self._value_out_expr(call, ret_typ, sym)};\n")
             out.write("            } catch (const ::tpy::interop::MarshalError &) {\n")
             out.write("                if (!PyErr_ExceptionMatches(PyExc_TypeError)) "
                       "return nullptr;\n")
@@ -621,7 +626,7 @@ class ExtensionGenerator:
         out.write(f"PyObject *{wname}(PyObject *self) {{\n")
         out.write("    try {\n")
         call = f"{cppvar}->payload.{dunder}()"
-        out.write(f"        return {self._nb_return_expr(call, info.methods[dunder][0].return_type, sym)};\n")
+        out.write(f"        return {self._value_out_expr(call, info.methods[dunder][0].return_type, sym)};\n")
         self._emit_boundary_catch(out, reg_arg)
         out.write("}\n\n")
         return slot_id, wname
@@ -644,7 +649,7 @@ class ExtensionGenerator:
         operand_type = info.methods[dunder][0].params[0].type
         out.write(f"PyObject *{wname}(PyObject *self, PyObject *other) {{\n")
         out.write("    try {\n")
-        decl, expr = self._operand_decl_and_expr(operand_type, "other", sym)
+        decl, expr = self._value_in_decl_expr(operand_type, "other", sym)
         out.write(f"        {decl}__other = {expr};\n")
         out.write(f"        {cppvar}->payload.{dunder}(__other);\n")
         out.write("        Py_IncRef(self);\n")
@@ -726,10 +731,10 @@ class ExtensionGenerator:
         wname = f"{base}__getitem_slot"
         out.write(f"PyObject *{wname}(PyObject *self, PyObject *key) {{\n")
         out.write("    try {\n")
-        decl, expr = self._operand_decl_and_expr(key_type, "key", sym)
+        decl, expr = self._value_in_decl_expr(key_type, "key", sym)
         out.write(f"        {decl}__key = {expr};\n")
         call = f"{cppvar}->payload.__getitem__(__key)"
-        out.write(f"        return {self._nb_return_expr(call, m.return_type, sym)};\n")
+        out.write(f"        return {self._value_out_expr(call, m.return_type, sym)};\n")
         self._emit_boundary_catch(out, reg_arg)
         out.write("}\n\n")
         return "Py_mp_subscript", wname
@@ -754,7 +759,7 @@ class ExtensionGenerator:
         out.write("        if (value == nullptr) {\n")
         if has_del:
             key_type = info.methods["__delitem__"][0].params[0].type
-            decl, expr = self._operand_decl_and_expr(key_type, "key", sym)
+            decl, expr = self._value_in_decl_expr(key_type, "key", sym)
             out.write(f"            {decl}__key = {expr};\n")
             out.write(f"            {cppvar}->payload.__delitem__(__key);\n")
             out.write("            return 0;\n")
@@ -766,8 +771,8 @@ class ExtensionGenerator:
         if has_set:
             key_type, val_type = (p.type for p in
                                   info.methods["__setitem__"][0].params[:2])
-            kdecl, kexpr = self._operand_decl_and_expr(key_type, "key", sym)
-            vdecl, vexpr = self._operand_decl_and_expr(val_type, "value", sym)
+            kdecl, kexpr = self._value_in_decl_expr(key_type, "key", sym)
+            vdecl, vexpr = self._value_in_decl_expr(val_type, "value", sym)
             out.write(f"        {kdecl}__key = {kexpr};\n")
             out.write(f"        {vdecl}__value = {vexpr};\n")
             out.write(f"        {cppvar}->payload.__setitem__(__key, __value);\n")
@@ -803,7 +808,7 @@ class ExtensionGenerator:
         wname = f"{base}__contains_slot"
         out.write(f"int {wname}(PyObject *self, PyObject *value) {{\n")
         out.write("    try {\n")
-        decl, expr = self._operand_decl_and_expr(value_type, "value", sym)
+        decl, expr = self._value_in_decl_expr(value_type, "value", sym)
         out.write(f"        {decl}__v = {expr};\n")
         out.write(f"        return {cppvar}->payload.__contains__(__v) ? 1 : 0;\n")
         out.write("    } catch (const ::tpy::BaseException &__e) {\n")
@@ -841,7 +846,7 @@ class ExtensionGenerator:
         out.write("            return nullptr;\n")
         out.write("        }\n")
         call = "std::move(__r).value()"
-        out.write(f"        return {self._nb_return_expr(call, ret_typ, sym)};\n")
+        out.write(f"        return {self._value_out_expr(call, ret_typ, sym)};\n")
         self._emit_boundary_catch(out, reg_arg)
         out.write("}\n\n")
         return "Py_tp_iternext", wname
@@ -950,30 +955,38 @@ class ExtensionGenerator:
             self._emit_boundary_catch(out, reg_arg)
             out.write("}\n\n")
 
-        # getset: every annotated field as a read/write descriptor. Field types
-        # are scalar/str/bytes (the sema validator deferred class-typed fields),
-        # so the get copies a fresh PyObject and the set marshals back in.
+        # getset: every annotated field as a descriptor. Field types are
+        # scalar/str/bytes, an exposed enum, or (on a reference class) an exposed
+        # VALUE-type field; a reference-class field stays sema-rejected (its
+        # inline copy-out silently breaks write-through). The get/set reuse the
+        # same single-value marshal helpers the operator dunders use, so an enum
+        # or value-class field round-trips its value while a scalar field's
+        # getset still emits a plain `to_py`/`from_py` (the helpers' scalar arm).
+        # A VALUE-type record is
+        # immutable, so its own fields are exposed READ-ONLY (nullptr setter) --
+        # matching the language rule that its fields are set only in __init__.
+        read_only = info.is_value_type
         getset_entries: list[tuple[str, str, str]] = []
         for fld in info.fields:
             fcpp = escape_cpp_name(fld.name)
             getn = f"{sym}__{escape_cpp_name(cls['simple'])}__{fcpp}_get"
             setn = f"{sym}__{escape_cpp_name(cls['simple'])}__{fcpp}_set"
-            getset_entries.append((fld.name, getn, setn))
+            getset_entries.append((fld.name, getn, "nullptr" if read_only else setn))
             out.write(f"PyObject *{getn}(PyObject *self, void *) {{\n")
             out.write("    try {\n")
-            out.write(f"        return ::tpy::interop::to_py("
-                      f"{cppvar}->payload.{fcpp});\n")
+            out.write(f"        return {self._value_out_expr(f'{cppvar}->payload.{fcpp}', fld.type, sym)};\n")
             out.write("    } catch (...) {\n")
             out.write("        if (!PyErr_Occurred())\n")
             out.write('            PyErr_SetString(PyExc_RuntimeError, '
                       '"tpy extension: attribute read failed");\n')
             out.write("        return nullptr;\n")
             out.write("    }\n}\n")
-            fcpp_type = boundary_cpp_type(_boundary_inner(fld.type))
+            if read_only:
+                continue
+            _, fin = self._value_in_decl_expr(fld.type, "value", sym)
             out.write(f"int {setn}(PyObject *self, PyObject *value, void *) {{\n")
             out.write("    try {\n")
-            out.write(f"        {cppvar}->payload.{fcpp} = "
-                      f"::tpy::interop::from_py<{fcpp_type}>(value);\n")
+            out.write(f"        {cppvar}->payload.{fcpp} = {fin};\n")
             out.write("        return 0;\n")
             out.write("    } catch (...) {\n")
             out.write("        if (!PyErr_Occurred())\n")

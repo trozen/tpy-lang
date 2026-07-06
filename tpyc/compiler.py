@@ -4283,10 +4283,10 @@ class Compiler:
                 return ("is an exposed enum from another module, which cannot "
                         "cross the boundary yet (cross-module exposed types are "
                         "deferred -- define and @export the enum in this module)")
-            if role == "field":
-                return ("is an exposed-enum getset field, which is not supported "
-                        "yet (an enum crosses only as a function param/return, "
-                        "not as a class field)")
+            # A locally-defined exposed enum IS a valid getset field: enums are
+            # value types with interned singleton members, so the getset copy
+            # (enum_to_py reconstructs the member via `EnumType(value)`) is
+            # identity-preserving -- no aliasing divergence, unlike a class field.
             return None
         if not is_exposed_class(typ):
             return None
@@ -4307,9 +4307,21 @@ class Compiler:
             return ("is an exposed class from another module, which cannot "
                     "cross the boundary yet (cross-module exposed types are "
                     "deferred -- define and @export the class in this module)")
-        if role == "field":
+        if role == "field" and not _boundary_inner(typ).is_value_type():
+            # A nested MUTABLE (reference) exposed class is stored inline by
+            # value, so a getset getter could only copy it out -- `outer.inner`
+            # would fabricate a fresh object every read and `outer.inner.x = 5`
+            # would silently no-op (CPython aliases the real object). Faithful
+            # write-through aliasing needs the deferred foreign-borrow primitive
+            # (a PyObject pointing into the parent's storage); until then, steer
+            # to the honest forms. A value-type field is exempt: value types are
+            # immutable, so copy-out is behaviorally invisible (the exposed value
+            # presents read-only getset, so a mutation attempt loud-fails) -- it
+            # falls through to admission below, like an exposed-enum field.
             return (f"of exposed-class type '{cls}' cannot be exposed as a getset "
-                    f"yet (a nested class field needs per-instance marshalling)")
+                    f"field: a nested class stored inline can only copy out, "
+                    f"silently breaking write-through. Expose a method that "
+                    f"mutates it through 'self', or return an explicit copy()")
         if role == "param" and isinstance(typ, OwnType):
             return (f"is Own[{cls}], which is not a valid boundary type: the host "
                     f"keeps its reference, so ownership cannot transfer -- use "

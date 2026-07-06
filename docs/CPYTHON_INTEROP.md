@@ -54,10 +54,10 @@ progress -> ✅ done.
 | 2 | Extension codegen; **free functions** end-to-end; local `.so` build | **v1.0** | 🚧 every scalar arg/return + void return + str/bytes + container arg/return done; positional + keyword args (PyArg_ParseTupleAndKeywords) |
 | 2.5 | PEP 517 backend -> abi3 wheel (packaging) | **v1.0** | 🔬 |
 | 3 | Buffer input -- numeric (copy-in in v1.0; zero-copy -> 3.5) | **v1.0** | ✅ done: `Span[readonly[T]]`/`Span[T]` (fixed-width int/`float`) as an @export fn or exposed-class method PARAM only, via `PyObject_GetBuffer`; copy-in for both forms (no write-back for either); a mutated `Span[T]` param warns (copy-in, not visible to caller) |
-| 4 | **Classes + methods** (`PyType_FromSpec`; dunders per Q4) | **v1.1** | 🚧 baseline done: construct + plain methods + annotated fields as getset, instances as free-fn/method params (borrow) + returns (copy); dunders (Q4) DONE -- all three checkpoints (repr/str/eq/ne/lt/le/gt/ge/hash; arithmetic/ordering operators incl. in-place; container protocol) landed; inheritance/@property/class-typed fields still deferred |
+| 4 | **Classes + methods** (`PyType_FromSpec`; dunders per Q4) | **v1.1** | 🚧 baseline done: construct + plain methods + annotated fields as getset (scalars/str/bytes/exposed-enum/exposed-value-type; a value type is exposed read-only; a mutable reference class-typed field is rejected -- copy-out breaks write-through), instances as free-fn/method params (borrow) + returns (copy); dunders (Q4) DONE -- all three checkpoints (repr/str/eq/ne/lt/le/gt/ge/hash; arithmetic/ordering operators incl. in-place; container protocol) landed; inheritance/@property/reference-class fields still deferred |
 | 5 | **Enums + constants** | **v1.1** | 🚧 `@export` enums recreated as real CPython IntEnum/Enum (functional API, module= set); enum values cross as @export fn params/returns (member round-trip, strict-by-type IN); `Final` scalar/str constants as init-time module-attribute snapshots; nested/cross-module enums deferred |
 | 3.5 | Foreign-borrow primitive -> zero-copy str + buffer input | post-v1.0 (next) -- IR-gated | 🔬 |
-| 6 | Containers (`list`/`dict`/`set`/`tuple`, by-copy) | v1-adjacent | 🚧 done: list/dict/set/tuple cross as @export fn AND exposed-class method/`__init__` params/returns, O(n) recursive copy-in/out (str/bytes elements + arbitrary nesting); strict-by-container-kind IN; a mutated container param warns (copy-in, not visible to caller); a borrow-form container return warns (copy-out, Own[...] acknowledges); getset fields stay scalar-only; exposed class/enum *elements* deferred |
+| 6 | Containers (`list`/`dict`/`set`/`tuple`, by-copy) | v1-adjacent | 🚧 done: list/dict/set/tuple cross as @export fn AND exposed-class method/`__init__` params/returns, O(n) recursive copy-in/out (str/bytes elements + arbitrary nesting); strict-by-container-kind IN; a mutated container param warns (copy-in, not visible to caller); a borrow-form container return warns (copy-out, Own[...] acknowledges); a *container* getset field stays rejected (an enum or value-type field IS admitted -- see row 4); exposed class/enum *elements* deferred |
 | 7 | `nogil` / `with gil` (parallelism + GIL checking) | later | 🔬 |
 | 8 | Embedding, callbacks / opaque `PyRef`, async <-> `asyncio` | later | 🔬 |
 
@@ -378,8 +378,9 @@ fights the unboxing that is the whole point.
 **Implemented (the container rung).** `list`/`dict`/`set`/`tuple` cross as
 `@export` function params/returns -- and, since the method-boundary rung, as
 exposed-class method and `__init__` params/returns (the method glue shares
-the free-function marshal emit; getset **fields** stay scalar-only, so an
-exposed class cannot store a container) -- marshalled O(n) by-copy
+the free-function marshal emit; a getset **field** admits scalars/str/bytes and
+an exposed enum, but not a container, so an exposed class cannot store a
+container) -- marshalled O(n) by-copy
 recursively:
 `std::vector` <-> PyList, `tpy::ordered_map` <-> PyDict (insertion order),
 `tpy::ordered_set` <-> PySet, `std::tuple` <-> PyTuple. Elements are the
@@ -490,7 +491,21 @@ getset properties; then all four dunder groups (`__repr__`/`__str__`,
 `__eq__`/`__hash__`, ordering + arithmetic operators, container protocol --
 see Q4), landed roughly in that order; then containers + `Span` at the
 method boundary (method/`__init__` params and returns admit the same
-boundary set as free `@export` functions -- getset fields stay scalar-only).
+boundary set as free `@export` functions). A getset **field** admits
+scalars/str/bytes, an **exposed enum**, and an exposed **value-type** class
+(all value-correct: an enum member round-trips through the module enum type
+singleton-preserving, a value type copies its immutable value out via
+`instance_to_py`). An exposed value type is itself exposed **read-only** (no
+setter descriptors -- matching the rule that its fields are set only in
+`__init__`), so on the holder the value field is r/w for whole-value
+*replacement* (`b.origin = Point(3, 4)`) but a nested-field mutation
+(`b.origin.x = 5`) loud-fails with `AttributeError`, and each read is a fresh
+copy (`b.origin is b.origin` is `False`). A container field or a **mutable
+(reference) class-typed** field stays rejected -- a nested *mutable* class is
+stored inline by value, so a getset getter could only copy it out, silently
+breaking the write-through that `outer.inner.x = 5` expects; faithful aliasing
+needs the deferred foreign-borrow primitive, so the diagnostic steers to an
+accessor method (mutating through `self`) or an explicit `copy()`.
 **Defer** inheritance of exposed
 class *hierarchies* (each exposed class is flat in v1) and cross-module
 exposed classes (a foreign exposed class used as a param/field/return is a
