@@ -1,0 +1,6 @@
+200
+b'Cookie: sid=abc; k=v'
+200
+b'<no Cookie header>'
+200
+b'Cookie: manual=1'

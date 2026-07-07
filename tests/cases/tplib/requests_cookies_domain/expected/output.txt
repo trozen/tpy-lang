@@ -1,0 +1,8 @@
+b'<no Cookie header>'
+b'Cookie: sid=abc'
+b'Cookie: pref=x'
+b'<no Cookie header>'
+b'Cookie: tok=1'
+/foobar: ''
+/foo/bar: 'sid=abc'
+/foo: 'sid=abc'

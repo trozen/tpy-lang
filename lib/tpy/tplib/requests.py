@@ -53,8 +53,21 @@
 #     wrapped as requests.SSLError (a ConnectionError). verify=True trusts the
 #     vendored Mozilla root bundle, so a public https server verifies with no
 #     explicit CA path.
-# Not supported (yet): cookies, multipart files, streaming
-# (stream=/iter_content), proxies, auth schemes beyond Basic.
+#   - cookies: a `cookies=` dict is sent on the request (unscoped -- sent to
+#     every hop of that call), and a Session persists Set-Cookie responses in
+#     `Session.cookies` (a CookieJar), resending them domain/path/secure-matched
+#     on later requests; `Response.cookies` holds the cookies that response set.
+#     Expiry is honored: Max-Age (taking precedence over Expires, per RFC 6265)
+#     and an Expires date set the cookie's lifetime; an expired cookie is not
+#     sent, and a past expiry / Max-Age<=0 deletes the cookie. Narrowings, all
+#     declared: the jar is keyed by name only (a same-name/different-domain
+#     collision is last-wins, not both kept); the default cookie path is "/"
+#     (not the request-URI directory); the RFC 1123 and RFC 850 Expires forms
+#     are parsed (matching CPython's http.cookiejar) but not the asctime form
+#     (an asctime Expires is ignored, so the cookie is then session-lifetime);
+#     `cookies=` accepts a dict[str, str] only (not a whole CookieJar).
+# Not supported (yet): multipart files, streaming (stream=/iter_content),
+# proxies, auth schemes beyond Basic.
 # tpy: cpp_namespace("tpystd::tplib::requests")
 from __future__ import annotations
 from typing import Final, Iterator
@@ -65,7 +78,9 @@ from http.client import HTTPConnection, HTTPSConnection, _Connection
 import ssl
 from urllib.parse import urlsplit, urlencode, urljoin
 from json import loads, dumps, JsonValue
+from datetime import datetime, UTC
 import base64
+import time
 
 
 DEFAULT_HTTP_PORT: Final[Int32] = 80
@@ -230,6 +245,286 @@ class CaseInsensitiveDict:
         return True
 
 
+def _parse_maxage(raw: str) -> tuple[bool, int]:
+    # (ok, seconds) for a Set-Cookie Max-Age. RFC 6265: a non-integer value is
+    # ignored (ok=False); a <= 0 value means expire immediately.
+    try:
+        return (True, int(raw.strip()))
+    except ValueError:
+        return (False, 0)
+
+
+def _parse_http_date(raw: str) -> tuple[bool, float]:
+    # (ok, unix_ts) for a Set-Cookie Expires, matching what CPython's
+    # http.cookiejar parses: the RFC 1123 form ("Wdy, DD Mon YYYY HH:MM:SS GMT")
+    # and the legacy RFC 850 form ("Weekday, DD-Mon-YY HH:MM:SS GMT",
+    # 2-digit year). The asctime form is not parsed (ok=False -> the attribute
+    # is ignored and the cookie is session-lifetime), matching CPython. Expires
+    # is always GMT, so the naive parse is stamped UTC before the timestamp
+    # (a naive datetime.timestamp() would assume system-local time).
+    for fmt in ["%a, %d %b %Y %H:%M:%S GMT", "%A, %d-%b-%y %H:%M:%S GMT"]:
+        try:
+            dt = datetime.strptime(raw, fmt)
+        except ValueError:
+            continue
+        return (True, dt.replace(tzinfo=UTC).timestamp())
+    return (False, 0.0)
+
+
+def _path_match(req_path: str, cookie_path: str) -> bool:
+    # RFC 6265 5.1.4 path-match: equal, or the cookie path is a prefix ending in
+    # "/", or a prefix whose next request-path char is "/". A bare `startswith`
+    # would wrongly match `/foobar` against a `/foo` cookie.
+    if req_path == cookie_path:
+        return True
+    if not req_path.startswith(cookie_path):
+        return False
+    if cookie_path.endswith("/"):
+        return True
+    return req_path[len(cookie_path)] == '/'
+
+
+class Cookie:
+    """One stored cookie. `domain` encodes the match scope: "" = unscoped (an
+    explicit per-call `cookies=` entry, sent to every host), a leading "." =
+    domain cookie (suffix match, from `Set-Cookie: Domain=`), otherwise
+    host-only (exact host, a `Set-Cookie` with no `Domain=`). A `deleted` marker
+    (from `Max-Age<=0`) is carried so a merge into a persisted jar can drop the
+    entry; it is never sent and is invisible to the mapping accessors."""
+
+    name: str
+    value: str
+    domain: str
+    path: str
+    secure: bool
+    deleted: bool
+    # Absolute Unix expiry (seconds); 0.0 means a session cookie (no expiry).
+    expires_at: float
+
+    def __init__(self, name: str, value: str, domain: str, path: str,
+                 secure: bool, deleted: bool, expires_at: float) -> None:
+        self.name = name
+        self.value = value
+        self.domain = domain
+        self.path = path
+        self.secure = secure
+        self.deleted = deleted
+        self.expires_at = expires_at
+
+    def copy(self) -> Own[Cookie]:
+        return Cookie(self.name, self.value, self.domain, self.path,
+                      self.secure, self.deleted, self.expires_at)
+
+    def matches(self, host: str, path: str, is_https: bool, now: float) -> bool:
+        if self.deleted:
+            return False
+        if self.expires_at != 0.0 and now >= self.expires_at:
+            return False
+        if self.secure and not is_https:
+            return False
+        if not _path_match(path, self.path):
+            return False
+        d = self.domain
+        if d == "":
+            return True
+        if d.startswith("."):
+            return host == d[1:] or host.endswith(d)
+        return host == d
+
+    def pair(self) -> str:
+        return self.name + "=" + self.value
+
+    def __eq__(self, other: Cookie) -> bool:
+        # Cookie must be Equatable so a `name in jar._store` membership test on a
+        # const/readonly jar compiles -- an `in` over a const dict whose value
+        # type is not Equatable is rejected (BUGS.md, the const-dict `in` entry).
+        return (self.name == other.name and self.value == other.value
+                and self.domain == other.domain and self.path == other.path
+                and self.secure == other.secure and self.deleted == other.deleted
+                and self.expires_at == other.expires_at)
+
+
+class CookieJar:
+    """A cookie store keyed by name (requests.RequestsCookieJar-style dict
+    access). Narrowings vs CPython requests, all under static typing and
+    declared: keyed by name only (a same-name/different-domain collision is
+    last-wins, not both kept); no expiry beyond Max-Age<=0 delete (positive
+    Max-Age / Expires are ignored -- live cookies are session-lifetime);
+    default cookie path is "/" (not the request-URI directory)."""
+
+    # name -> Cookie; the Cookie carries its own domain/path/secure scope.
+    _store: dict[str, Cookie]
+
+    def __init__(self) -> None:
+        self._store = {}
+
+    def set(self, name: str, value: str, domain: str = "", path: str = "/",
+            secure: bool = False) -> None:
+        self._store[name] = Cookie(name, value, domain, path, secure, False, 0.0)
+
+    def __getitem__(self, name: str) -> str:
+        # A deleted marker is invisible to the accessors, so treat it as absent.
+        if name in self._store and not self._store[name].deleted:
+            return self._store[name].value
+        raise KeyError(name)
+
+    def __contains__(self, name: str) -> bool:
+        return name in self._store and not self._store[name].deleted
+
+    def __len__(self) -> Int32:
+        n: Int32 = 0
+        for name in self._store:
+            if not self._store[name].deleted:
+                n += 1
+        return n
+
+    def get(self, name: str, default: str | None = None) -> str | None:
+        if name in self._store and not self._store[name].deleted:
+            return self._store[name].value
+        return default
+
+    def keys(self) -> Own[list[str]]:
+        out: list[str] = []
+        for name in self._store:
+            if not self._store[name].deleted:
+                out.append(name)
+        return out
+
+    def items(self) -> Own[list[tuple[str, str]]]:
+        out: list[tuple[str, str]] = []
+        for name in self._store:
+            if not self._store[name].deleted:
+                out.append((name, self._store[name].value))
+        return out
+
+    def __iter__(self) -> Iterator[str]:
+        # Yield from a materialized key list rather than iterating self._store
+        # directly: a generator over the (const, in a readonly method) dict can't
+        # store the const key-iterator in its frame (BUGS.md).
+        names = self.keys()
+        for name in names:
+            yield name
+
+    def update(self, other: CookieJar) -> None:
+        # Merge another jar in. A deleted marker drops the entry here (a server
+        # deleting a cookie); otherwise the cookie is copied (rebuilt, so no
+        # move out of `other` is needed). Field/method access is on the subscript
+        # directly -- binding a named `Cookie` local off a const jar drops const
+        # (BUGS.md, the reference-type container-borrow entry).
+        for name in other._store:
+            if other._store[name].deleted:
+                if name in self._store:
+                    del self._store[name]
+            else:
+                self._store[name] = other._store[name].copy()
+
+    def clear(self) -> None:
+        self._store.clear()
+
+    def header_for(self, host: str, path: str, is_https: bool,
+                   now: float) -> str:
+        # The `Cookie:` request-header value for a target: every matching,
+        # unexpired cookie's `name=value`, joined with "; ". `now` is the
+        # current Unix time (threaded in so the request path reads the clock
+        # once, and tests can pin it).
+        parts: list[str] = []
+        for name in self._store:
+            if self._store[name].matches(host, path, is_https, now):
+                parts.append(self._store[name].pair())
+        return "; ".join(parts)
+
+    def _ingest(self, raw: str, req_host: str, req_path: str,
+                now: float) -> None:
+        # Parse one Set-Cookie header value into the jar. The first ";"-segment
+        # is name=value; the rest are attributes (Domain/Path/Secure/Max-Age/
+        # Expires honored; HttpOnly parsed-and-ignored). Defaults: host-only
+        # domain (the request host), path "/".
+        segs = raw.split(";")
+        if len(segs) == 0:
+            return
+        first = segs[0].strip()
+        eq = first.find("=")
+        if eq < 0:
+            return
+        name = first[:eq].strip()
+        if name == "":
+            return
+        value = first[eq + 1:].strip()
+        domain_attr: str = ""   # bare Domain= value; "" -> host-only cookie
+        path: str = "/"
+        secure = False
+        # Expiry: Max-Age takes precedence over Expires (RFC 6265). Track each
+        # separately and resolve after the loop.
+        max_age_set = False
+        max_age_secs = 0
+        bad_max_age = False
+        expires_ts = 0.0
+        expires_set = False
+        i = 1
+        while i < len(segs):
+            attr = segs[i].strip()
+            i += 1
+            aeq = attr.find("=")
+            if aeq < 0:
+                if attr.lower() == "secure":
+                    secure = True
+                continue
+            an = attr[:aeq].strip().lower()
+            av = attr[aeq + 1:].strip()
+            if an == "domain":
+                d = av
+                if d.startswith("."):
+                    d = d[1:]
+                domain_attr = d
+            elif an == "path":
+                if av != "":
+                    path = av
+            elif an == "max-age":
+                ok, secs = _parse_maxage(av)
+                if ok:
+                    max_age_set = True
+                    max_age_secs = secs
+                else:
+                    bad_max_age = True
+            elif an == "expires":
+                ok2, ts = _parse_http_date(av)
+                if ok2:
+                    expires_set = True
+                    expires_ts = ts
+        # A malformed Max-Age discards the whole Set-Cookie (CPython's
+        # http.cookiejar marks it a bad cookie), leaving any prior same-name
+        # cookie untouched -- not just the attribute ignored.
+        if bad_max_age:
+            return
+        domain: str = req_host   # host-only (exact-host match) by default
+        if domain_attr != "":
+            # RFC 6265: a Domain attribute must domain-match the responding host,
+            # else the cookie is rejected outright -- otherwise a host could
+            # plant a cookie scoped to an unrelated domain that the jar would
+            # then resend there.
+            if req_host == domain_attr or req_host.endswith("." + domain_attr):
+                domain = "." + domain_attr
+            else:
+                return
+        # Resolve expiry -> an absolute Unix time (0.0 = session cookie). An
+        # already-past expiry becomes a delete marker (drops the cookie and
+        # propagates the removal into a persisted jar on merge).
+        expires_at = 0.0
+        delete = False
+        if max_age_set:
+            if max_age_secs <= 0:
+                delete = True
+            else:
+                expires_at = now + float(max_age_secs)
+        elif expires_set:
+            if expires_ts <= now:
+                delete = True
+            else:
+                expires_at = expires_ts
+        self._store[name] = Cookie(name, value, domain, path, secure, delete,
+                                   expires_at)
+
+
 class Response:
     """The result of an HTTP request -- the body is fully read into `content`."""
 
@@ -238,18 +533,25 @@ class Response:
     url: str
     headers: CaseInsensitiveDict
     content: bytes
+    # Cookies this response set (parsed from its Set-Cookie headers), mirroring
+    # requests.Response.cookies. On a redirect chain each hop's response carries
+    # its own; the final returned response has the last hop's, and Session
+    # accumulates all of them.
+    cookies: CookieJar
     # The chain of responses that led here (oldest first); empty when the
     # request was not redirected. The final response carries the whole chain,
     # mirroring requests.Response.history. Recursive (list of Self).
     history: list[Response]
 
     def __init__(self, status_code: Int32, reason: str, url: str,
-                 headers: Own[CaseInsensitiveDict], content: bytes) -> None:
+                 headers: Own[CaseInsensitiveDict], content: bytes,
+                 cookies: Own[CookieJar]) -> None:
         self.status_code = status_code
         self.reason = reason
         self.url = url
         self.headers = headers
         self.content = content
+        self.cookies = cookies
         self.history = []
 
     @property
@@ -387,12 +689,20 @@ def _rebuild_method(method: str, status: Int32) -> str:
 def _request_on(conn: Box[_Connection], method: str, url: str,
                 params: dict[str, str] | None, data: bytes | None,
                 json: JsonValue | None, headers: dict[str, str] | None,
-                auth: tuple[str, str] | None) -> Own[Response]:
+                auth: tuple[str, str] | None,
+                send_cookies: CookieJar) -> Own[Response]:
     # Reads the full body, then closes the connection only when the server
     # ended keep-alive (will_close) or the request failed -- a still-open
     # connection is reusable and the caller may pool it.
     parts = urlsplit(url)
     target = _merge_query(parts.path, parts.query, params)
+    host = parts.hostname
+    if host is None:
+        host = ""
+    req_path = parts.path
+    if req_path == "":
+        req_path = "/"
+    is_https = parts.scheme == "https"
 
     body: bytes | None = data
     has_json = False
@@ -400,6 +710,14 @@ def _request_on(conn: Box[_Connection], method: str, url: str,
         body = dumps(json).encode()
         has_json = True
     hdrs = _prepare_headers(headers, auth, has_json)
+    # One clock read per request drives both the send-side expiry filter and
+    # the Set-Cookie expiry resolution below.
+    now = time.time()
+    # Attach matching cookies unless the caller set a Cookie header explicitly.
+    if "Cookie" not in hdrs:
+        cookie_header = send_cookies.header_for(host, req_path, is_https, now)
+        if cookie_header != "":
+            hdrs["Cookie"] = cookie_header
 
     # Re-wrap socket-level OSErrors into the requests exception surface. Order
     # matters -- each arm's exception is an OSError subclass and the first
@@ -424,7 +742,13 @@ def _request_on(conn: Box[_Connection], method: str, url: str,
     status = resp.status
     reason = resp.reason
     out_headers = CaseInsensitiveDict()
+    resp_cookies = CookieJar()
     for kv in resp.getheaders():
+        # Parse Set-Cookie from the raw header (before the ", "-join below --
+        # a cookie's Expires value contains a comma, so a joined Set-Cookie is
+        # unparseable). Each Set-Cookie is scoped to the request host/path.
+        if kv[0].lower() == "set-cookie":
+            resp_cookies._ingest(kv[1], host, req_path, now)
         # Join repeated header names with ", " rather than last-wins, matching
         # CPython requests (urllib3's HTTPHeaderDict).
         existing = out_headers.get(kv[0])
@@ -434,7 +758,7 @@ def _request_on(conn: Box[_Connection], method: str, url: str,
             out_headers[kv[0]] = kv[1]
     if resp.will_close:
         conn.close()
-    return Response(status, reason, url, out_headers, content)
+    return Response(status, reason, url, out_headers, content, resp_cookies)
 
 
 def _ssl_context_for(verify: bool | str) -> Own[ssl.SSLContext]:
@@ -501,14 +825,15 @@ def request(method: str, url: str, params: dict[str, str] | None = None,
             auth: tuple[str, str] | None = None,
             timeout: float | None = None,
             allow_redirects: bool = True,
-            verify: bool | str = True) -> Own[Response]:
+            verify: bool | str = True,
+            cookies: dict[str, str] | None = None) -> Own[Response]:
     # A fresh Session per call, like CPython requests' module-level API (its
     # pool dies with the call too; same-host redirect hops still reuse the
     # pooled connection within the call). Routing through Session keeps the
     # redirect engine in one place.
     s = Session()
     return s.request(method, url, params, data, json, headers, auth, timeout,
-                     allow_redirects, verify)
+                     allow_redirects, verify, cookies)
 
 
 def get(url: str, params: dict[str, str] | None = None,
@@ -516,9 +841,10 @@ def get(url: str, params: dict[str, str] | None = None,
         auth: tuple[str, str] | None = None,
         timeout: float | None = None,
         allow_redirects: bool = True,
-        verify: bool | str = True) -> Own[Response]:
+        verify: bool | str = True,
+        cookies: dict[str, str] | None = None) -> Own[Response]:
     return request("GET", url, params, None, None, headers, auth, timeout,
-                   allow_redirects, verify)
+                   allow_redirects, verify, cookies)
 
 
 def head(url: str, params: dict[str, str] | None = None,
@@ -526,9 +852,10 @@ def head(url: str, params: dict[str, str] | None = None,
          auth: tuple[str, str] | None = None,
          timeout: float | None = None,
          allow_redirects: bool = False,
-         verify: bool | str = True) -> Own[Response]:
+         verify: bool | str = True,
+         cookies: dict[str, str] | None = None) -> Own[Response]:
     return request("HEAD", url, params, None, None, headers, auth, timeout,
-                   allow_redirects, verify)
+                   allow_redirects, verify, cookies)
 
 
 def post(url: str, data: bytes | None = None, json: JsonValue | None = None,
@@ -537,9 +864,10 @@ def post(url: str, data: bytes | None = None, json: JsonValue | None = None,
          auth: tuple[str, str] | None = None,
          timeout: float | None = None,
          allow_redirects: bool = True,
-         verify: bool | str = True) -> Own[Response]:
+         verify: bool | str = True,
+         cookies: dict[str, str] | None = None) -> Own[Response]:
     return request("POST", url, params, data, json, headers, auth, timeout,
-                   allow_redirects, verify)
+                   allow_redirects, verify, cookies)
 
 
 def put(url: str, data: bytes | None = None, json: JsonValue | None = None,
@@ -548,9 +876,10 @@ def put(url: str, data: bytes | None = None, json: JsonValue | None = None,
         auth: tuple[str, str] | None = None,
         timeout: float | None = None,
         allow_redirects: bool = True,
-        verify: bool | str = True) -> Own[Response]:
+        verify: bool | str = True,
+        cookies: dict[str, str] | None = None) -> Own[Response]:
     return request("PUT", url, params, data, json, headers, auth, timeout,
-                   allow_redirects, verify)
+                   allow_redirects, verify, cookies)
 
 
 def patch(url: str, data: bytes | None = None, json: JsonValue | None = None,
@@ -559,9 +888,10 @@ def patch(url: str, data: bytes | None = None, json: JsonValue | None = None,
           auth: tuple[str, str] | None = None,
           timeout: float | None = None,
           allow_redirects: bool = True,
-          verify: bool | str = True) -> Own[Response]:
+          verify: bool | str = True,
+          cookies: dict[str, str] | None = None) -> Own[Response]:
     return request("PATCH", url, params, data, json, headers, auth, timeout,
-                   allow_redirects, verify)
+                   allow_redirects, verify, cookies)
 
 
 def delete(url: str, params: dict[str, str] | None = None,
@@ -569,9 +899,10 @@ def delete(url: str, params: dict[str, str] | None = None,
            auth: tuple[str, str] | None = None,
            timeout: float | None = None,
            allow_redirects: bool = True,
-           verify: bool | str = True) -> Own[Response]:
+           verify: bool | str = True,
+           cookies: dict[str, str] | None = None) -> Own[Response]:
     return request("DELETE", url, params, None, None, headers, auth, timeout,
-                   allow_redirects, verify)
+                   allow_redirects, verify, cookies)
 
 
 class Session:
@@ -589,6 +920,10 @@ class Session:
     headers: dict[str, str]
     params: dict[str, str]
     auth: tuple[str, str] | None
+    # Cookies persisted across requests: Set-Cookie responses accumulate here and
+    # are sent (domain/path/secure-matched) on later requests, like requests'
+    # Session.cookies.
+    cookies: CookieJar
     # Offline test seam: the tests can't run a threaded loopback server, so they
     # inject a pre-bound connection here instead of letting hop 0 do a real TCP
     # connect. Cleared after use and never pooled (single-use). Held as
@@ -606,6 +941,7 @@ class Session:
         self.headers = {}
         self.params = {}
         self.auth = None
+        self.cookies = CookieJar()
         self._connection = None
         self._redirect_connections = []
         self._pool = {}
@@ -634,19 +970,20 @@ class Session:
                       json: JsonValue | None, headers: dict[str, str],
                       auth: tuple[str, str] | None,
                       timeout: float | None, hop: Int32,
+                      send_cookies: CookieJar,
                       verify: bool | str = True) -> Own[Response]:
         if hop == 0 and self._connection is not None:
             # Clear even if the request raises -- the injected connection is
             # single-use and must not be reused after a failure.
             try:
                 return _request_on(self._connection, method, url, params, data,
-                                   json, headers, auth)
+                                   json, headers, auth, send_cookies)
             finally:
                 self._connection = None
         if len(self._redirect_connections) > 0:
             conn = self._redirect_connections.pop(0)
             return _request_on(conn, method, url, params, data, json, headers,
-                               auth)
+                               auth, send_cookies)
         # Pool pop -> use -> put back. A raise inside _request_on drops the
         # popped/fresh connection (RAII closes the socket); on success it goes
         # back in even if will_close closed it -- the pooled entry then acts as
@@ -655,12 +992,12 @@ class Session:
         if key in self._pool:
             pooled = self._pool.pop(key)
             resp = _request_on(pooled, method, url, params, data, json,
-                               headers, auth)
+                               headers, auth, send_cookies)
             self._pool[key] = pooled
             return resp
         fresh = _connect(url, timeout, verify)
         resp = _request_on(fresh, method, url, params, data, json, headers,
-                           auth)
+                           auth, send_cookies)
         self._pool[key] = fresh
         return resp
 
@@ -668,12 +1005,17 @@ class Session:
              data: bytes | None, json: JsonValue | None,
              headers: dict[str, str], auth: tuple[str, str] | None,
              timeout: float | None, history: Own[list[Response]],
-             hop: Int32, follow: bool, verify: bool | str = True) -> Own[Response]:
+             hop: Int32, follow: bool, send_cookies: CookieJar,
+             verify: bool | str = True) -> Own[Response]:
         # One request, then (when following) recurse on a 3xx Location. Recursion
         # rather than a loop so each `return resp` is a straight-line last use --
         # a loop-carried Own local trips the borrow checker's return guard.
         resp = self._send_for_hop(method, url, params, data, json, headers, auth,
-                                  timeout, hop, verify)
+                                  timeout, hop, send_cookies, verify)
+        # Persist cookies this response set (into the Session jar) and feed them
+        # to the send jar so a following redirect hop sends the ones that match.
+        self.cookies.update(resp.cookies)
+        send_cookies.update(resp.cookies)
         if not follow or not _is_redirect(resp.status_code):
             resp.history = history
             return resp
@@ -707,9 +1049,11 @@ class Session:
         if new_method != method:
             _drop_body_headers(headers)
             return self._hop(new_method, next_url, None, None, None, headers,
-                             next_auth, timeout, history, hop + 1, True, verify)
+                             next_auth, timeout, history, hop + 1, True,
+                             send_cookies, verify)
         return self._hop(new_method, next_url, None, data, json, headers,
-                         next_auth, timeout, history, hop + 1, True, verify)
+                         next_auth, timeout, history, hop + 1, True,
+                         send_cookies, verify)
 
     def request(self, method: str, url: str,
                 params: dict[str, str] | None = None,
@@ -718,23 +1062,34 @@ class Session:
                 auth: tuple[str, str] | None = None,
                 timeout: float | None = None,
                 allow_redirects: bool = True,
-                verify: bool | str = True) -> Own[Response]:
+                verify: bool | str = True,
+                cookies: dict[str, str] | None = None) -> Own[Response]:
         merged_headers = self._merge_headers(headers)
         merged_params = self._merge_params(params)
         use_auth = auth
         if use_auth is None:
             use_auth = self.auth
+        # The send jar for this call: the persisted Session cookies plus any
+        # per-call cookies= (unscoped -- domain "" sends them to every hop of
+        # this call). The per-call ones are NOT persisted into self.cookies.
+        send_cookies = CookieJar()
+        send_cookies.update(self.cookies)
+        if cookies is not None:
+            for kv in cookies.items():
+                send_cookies.set(kv[0], kv[1])
         history: list[Response] = []
         return self._hop(method, url, merged_params, data, json, merged_headers,
-                         use_auth, timeout, history, 0, allow_redirects, verify)
+                         use_auth, timeout, history, 0, allow_redirects,
+                         send_cookies, verify)
 
     def get(self, url: str, params: dict[str, str] | None = None,
             headers: dict[str, str] | None = None,
             timeout: float | None = None,
             allow_redirects: bool = True,
-            verify: bool | str = True) -> Own[Response]:
+            verify: bool | str = True,
+            cookies: dict[str, str] | None = None) -> Own[Response]:
         return self.request("GET", url, params, None, None, headers, None,
-                            timeout, allow_redirects, verify)
+                            timeout, allow_redirects, verify, cookies)
 
     def post(self, url: str, data: bytes | None = None,
              json: JsonValue | None = None,
@@ -742,9 +1097,10 @@ class Session:
              headers: dict[str, str] | None = None,
              timeout: float | None = None,
              allow_redirects: bool = True,
-             verify: bool | str = True) -> Own[Response]:
+             verify: bool | str = True,
+             cookies: dict[str, str] | None = None) -> Own[Response]:
         return self.request("POST", url, params, data, json, headers, None,
-                            timeout, allow_redirects, verify)
+                            timeout, allow_redirects, verify, cookies)
 
     def __enter__(self) -> "Session":
         return self

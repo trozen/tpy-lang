@@ -1,0 +1,7 @@
+200
+b'<no Cookie header>'
+200
+b'Cookie: sid=xyz'
+b'Cookie: tok=1'
+b'<no Cookie header>'
+False

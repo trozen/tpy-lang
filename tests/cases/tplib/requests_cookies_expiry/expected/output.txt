@@ -1,0 +1,13 @@
+past expires kept: False
+future kept: True
+future now: 'b=2'
+future after: ''
+maxage now: 'c=3'
+maxage later: ''
+maxage0 over expires: False
+maxage over past expires: True
+bad maxage kept: False
+rfc850 past kept: False
+asctime kept: True
+asctime now: 'h=8'
+b'Cookie: k=v'
