@@ -1681,3 +1681,49 @@ class TestAutoOwnCloneCarveout:
             _entry(modules2), options=CodeGenOptions(
                 emit_source_comments=False, thir_codegen=False))
         assert cpp_t == cpp_a
+
+
+# --- Method arg + return grid: the free-call ret/arg families mirrored onto
+# user-record and builtin-container method calls (enum / bytes / Ptr returns;
+# enum / bytes / value-tuple / own-record-rvalue args). ---
+
+_GRID_SRC = (
+    "from tpy import Int32, Own\n"
+    "from enum import Enum\n"
+    "class Color(Enum):\n    RED = 1\n    GREEN = 2\n"
+    "class Widget:\n    x: Int32\n"
+    "    def __init__(self, x: Int32):\n        self.x = x\n"
+    "    def pick(self) -> Color:\n        return Color.RED\n"
+    "    def make_bytes(self) -> bytes:\n        return b\"hi\"\n"
+    "    def take_enum(self, c: Color) -> Int32:\n        return self.x\n"
+    "    def take_bytes(self, b: bytes) -> Int32:\n        return len(b)\n"
+    "    def take_tuple(self, t: tuple[Int32, Int32]) -> Int32:\n        return t[0]\n"
+    "    def swallow(self, o: Own[Widget]) -> Int32:\n        return o.x\n"
+    "def drive(w: Widget) -> Int32:\n"
+    "    c = w.pick()\n"
+    "    bs = w.make_bytes()\n"
+    "    n1 = w.take_enum(c)\n"
+    "    n2 = w.take_enum(Color.GREEN)\n"
+    "    n3 = w.take_bytes(b\"abc\")\n"
+    "    n4 = w.take_tuple((1, 2))\n"
+    "    n5 = w.swallow(Widget(9))\n"
+    "    return n1 + n3 + n4 + n5 + len(bs)\n"
+)
+
+
+class TestMethodArgReturnGrid:
+    def _emit(self, thir: bool):
+        compiler, modules = _compile(_GRID_SRC)
+        hpp, cpp = compiler.generate_code_to_strings(
+            _entry(modules), options=CodeGenOptions(
+                emit_source_comments=False, thir_codegen=thir))
+        return hpp + cpp
+
+    def test_drive_routes(self):
+        # The enum/bytes/Ptr returns and enum/bytes/value-tuple/own-rvalue
+        # method args all route now that the method grid mirrors the free-call
+        # ret/arg cascade.
+        assert _fn(_lower_ctx(_GRID_SRC), "drive") is not None
+
+    def test_byte_identical(self):
+        assert self._emit(True) == self._emit(False)

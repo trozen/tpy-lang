@@ -61,6 +61,9 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # -> `::native(args)`
     "call.static_template",         # positional-only @cpp_template static
                                     # (`UInt32.trunc(i)`) -> template expansion
+    "call.macro_expansion",         # `@call_macro`/getattr/hasattr call ->
+                                    # its sema-synthesized replacement expr
+    "call.cast_passthrough",        # `typing.cast(T, x)` non-Any -> bare `x`
     # Ptr[T]-receiver Deref method calls (lowering; the THIRMethodCall
     # is_arrow / deref_check renders over a pointer-VALUE receiver).
     "method.ptr_arrow",             # proven non-null: `p->m(args)`
@@ -76,6 +79,10 @@ THIR_FACES: frozenset[str] = frozenset({
     "setitem.str_owned_copy",       # view source into a str element: std::string(v)
     "setitem.field_recv",           # write/aug receiver is a field access
                                     # (`::tpy::__setitem__(this->xs, i, v);`)
+    # Plain F1-record FIELD write from a record rvalue (a ctor STORAGE / a
+    # by-value record-returning call VALUE): a bare copy `recv.field =
+    # Inner(args);`, no borrow<->storage lift.
+    "field_write.record_rvalue",
     # Container/str subscript read off a FIELD-ACCESS receiver (lowering;
     # `::tpy::__getitem__(this->xs, i)` -- the receiver renders as its own
     # THIRFieldAccess inside the shared subscript emit).

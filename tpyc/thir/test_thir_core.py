@@ -2462,3 +2462,37 @@ class TestGlobalSpelledSeed:
         read = fn.body[0].value.left
         assert read.cpp == "::g_count"
         assert witnessed.get("name.global_imported", 0) >= 1
+
+
+class TestRecordFieldWrite:
+    # `recv.field = <record rvalue>` off an F1-record method body: a ctor
+    # (`Inner(n)`) or a by-value call (`mk(n)`) rvalue copies bare into the
+    # field (the field_write.record_rvalue rung). A bare record NAME source is
+    # not an rvalue -- the plain-record STORAGE emit form is deferred, so it
+    # stays on the AST path. (_lower_ctx: non-value records need the compiler.)
+    SRC = (
+        "from tpy import Int32, Own\n"
+        "class Inner:\n"
+        "    value: Int32\n"
+        "    def __init__(self, value: Int32):\n        self.value = value\n"
+        "def mk(n: Int32) -> Own[Inner]:\n    return Inner(n)\n"
+        "class Box:\n"
+        "    inner: Inner\n"
+        "    def __init__(self, first: Own[Inner]):\n        self.inner = first\n"
+        "    def set_ctor(self, n: Int32):\n        self.inner = Inner(n)\n"
+        "    def set_call(self, n: Int32):\n        self.inner = mk(n)\n"
+        "    def set_name(self, other: Inner):\n        self.inner = other\n"
+    )
+
+    def test_ctor_rvalue_field_write_routes(self):
+        fn = _fn(_lower_ctx(self.SRC), "set_ctor")
+        assert fn is not None
+        assert isinstance(fn.body[0], THIRAssign)
+
+    def test_call_rvalue_field_write_routes(self):
+        fn = _fn(_lower_ctx(self.SRC), "set_call")
+        assert fn is not None
+        assert isinstance(fn.body[0], THIRAssign)
+
+    def test_record_name_source_stays_ast(self):
+        assert _fn(_lower_ctx(self.SRC), "set_name") is None

@@ -40,7 +40,7 @@ class _Prescan:
                  "ret_container_storage", "ret_value_tuple",
                  "ret_str", "ret_bytes",
                  "ret_char", "ret_union", "ret_ptr_union", "param_names",
-                 "has_self", "global_seeded", "global_readonly",
+                 "has_self", "is_constructor", "global_seeded", "global_readonly",
                  "global_cpp", "native_globals")
 
     def __init__(self, func: TpyFunction, analyzer) -> None:
@@ -53,6 +53,11 @@ class _Prescan:
         # the self-rebind rejects) key on this so a free function's local or
         # param that merely SHARES the name is not misclassified.
         self.has_self = bool(func.is_method and not func.is_staticmethod)
+        # A constructor body: field writes here interact with the ctor MIL /
+        # non-default-constructible-field emit (a separate deletion target),
+        # so the plain-record field-write rung stays a method/function-body
+        # shape and rejects in this position.
+        self.is_constructor = bool(func.is_method and func.name == "__init__")
         # `global`-declared names lower_function seeded into scope (eligible
         # same-module scalar globals); the TpyGlobal gate arm keys on it.
         self.global_seeded: frozenset[str] = frozenset()

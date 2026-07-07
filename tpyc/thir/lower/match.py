@@ -70,8 +70,10 @@ from .context import (
     _Prescan,
     _WalkState,
 )
-from .expressions import (
+from .expr_gates import (
     _expr_eligible,
+)
+from .expressions import (
     _lower_expr,
 )
 from . import statements as _statements

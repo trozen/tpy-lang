@@ -155,6 +155,69 @@ class TestStrValues:
         assert _fn(thir, "f") is not None
 
 
+class TestStrReceiverMethods:
+    """A str/StrView value-view receiver's builtin @cpp_template /
+    @native(function=True) methods route through the general THIRMethodCall
+    arm (the gate widened at `_view_method_call_eligible`)."""
+
+    def test_startswith_cpp_template(self):
+        thir = _lower('def f(s: str) -> bool:\n    return s.startswith("hi")\n')
+        ret = _fn(thir, "f").body[0]
+        assert isinstance(ret.value, THIRMethodCall)
+        assert ret.value.cpp_template == "::tpy::str_startswith({self}, {0})"
+        assert _emit_expr(ret.value) == '::tpy::str_startswith(s, "hi")'
+
+    def test_find_scalar_result(self):
+        thir = _lower("from tpy import Int32\n"
+                      "def f(s: str) -> Int32:\n    return s.find(\"x\")\n")
+        ret = _fn(thir, "f").body[0]
+        assert isinstance(ret.value, THIRMethodCall)
+        assert _emit_expr(ret.value) == '::tpy::str_find(s, "x")'
+
+    def test_rfind_scalar_result(self):
+        thir = _lower("from tpy import Int32\n"
+                      "def f(s: str) -> Int32:\n    return s.rfind(\"x\")\n")
+        assert _emit_expr(_fn(thir, "f").body[0].value) == '::tpy::str_rfind(s, "x")'
+
+    def test_encode_native_function_prepends_receiver(self):
+        # @native(function=True): the receiver becomes the first C++ arg.
+        thir = _lower("def f(s: str) -> bytes:\n    return s.encode()\n")
+        ret = _fn(thir, "f").body[0]
+        assert isinstance(ret.value, THIRMethodCall)
+        assert ret.value.native_function_name == "tpy::bytes_from_str"
+        assert _emit_expr(ret.value) == "::tpy::bytes_from_str(s)"
+
+    def test_owned_str_result_routes(self):
+        # An owned-str method result (`s.upper()` -> std::string) is STORAGE.
+        thir = _lower("def f(s: str) -> str:\n    return s.upper()\n")
+        assert _fn(thir, "f") is not None
+
+    def test_str_arg_receiver(self):
+        # Both the receiver and the arg are str params -- each renders bare.
+        thir = _lower("def f(s: str, t: str) -> bool:\n    return s.startswith(t)\n")
+        assert _emit_expr(_fn(thir, "f").body[0].value) \
+            == "::tpy::str_startswith(s, t)"
+
+    def test_str_field_receiver_ineligible(self):
+        # A str FIELD receiver (`self.name.startswith(...)`) stays AST: the
+        # shared `_method_field_receiver_ok` admits only F1-record fields, so
+        # a str field is rejected at the receiver-shape check before the
+        # view-method fork. Widening that shared helper is a later cell.
+        src = (
+            "class Box:\n"
+            "    name: str\n"
+            "    def __init__(self, n: str):\n        self.name = n\n"
+            "    def check(self) -> bool:\n        return self.name.startswith(\"p\")\n"
+        )
+        thir = _lower_ctx(src)
+        assert _fn(thir, "check") is None
+
+    def test_split_list_result_ineligible(self):
+        # A container result (`s.split()` -> Own[list[str]]) is outside the
+        # value slice -- rejected at the result-type gate, stays AST.
+        thir = _lower("def f(s: str) -> None:\n    xs = s.split()\n    print(xs)\n")
+        assert _fn(thir, "f") is None
+
 
 class TestStrValuesEmit:
     def _cpp(self, src: str, thir: bool):

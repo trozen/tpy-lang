@@ -112,6 +112,47 @@ class TestRecordCallArgs:
         arg = fn.body[0].value.args[0]
         assert isinstance(arg, THIRArgTemp) and arg.cpp_type == "A"
 
+    def test_record_returning_call_arg_temps(self):
+        # A by-value record-RETURNING free call as a ref-param arg hoists the
+        # same `A __tmp_N = make_a(3);` the ctor rvalue does -- the record-
+        # rvalue arg-temp row is not ctor-only.
+        thir = _lower_ctx(
+            _PRELUDE
+            + "def make_a(k: Int32) -> Own[A]:\n    return A(k)\n"
+            + "def use() -> Int32:\n    return take_rec(make_a(3))\n")
+        fn = _fn(thir, "use")
+        assert fn is not None
+        arg = fn.body[0].value.args[0]
+        assert isinstance(arg, THIRArgTemp) and arg.cpp_type == "A"
+
+    def test_record_rvalue_arg_into_owned_record_decl_routes(self):
+        # `o = wrap(make_a(5))` -- a record-returning free call whose ref-param
+        # arg is itself a record rvalue; the owned-record decl position flushes
+        # the `A __tmp = make_a(5);` ahead of `wrap(__tmp)`.
+        thir = _lower_ctx(
+            _PRELUDE
+            + "def make_a(k: Int32) -> Own[A]:\n    return A(k)\n"
+            + "def wrap(a: A) -> Own[B]:\n    return B(a.x)\n"
+            + "def use() -> Int32:\n"
+            + "    o = wrap(make_a(5))\n    return o.y\n")
+        fn = _fn(thir, "use")
+        assert fn is not None
+        arg = fn.body[0].init.args[0]
+        assert isinstance(arg, THIRArgTemp) and arg.cpp_type == "A"
+
+    def test_record_rvalue_arg_into_ctor_outer_stays_ast(self):
+        # A record-rvalue arg into a CTOR outer call (`Sink(A(1))`, Sink's
+        # param mutated -> `A&`) hoists a temp on the AST path, but the ctor
+        # arg lowering has no temp arm -- the ctor face stays scalar-only.
+        thir = _lower_ctx(
+            _PRELUDE
+            + "def mut(a: A):\n    a.x += 1\n"
+            + "class Sink:\n    c: Int32\n"
+            + "    def __init__(self, a: A):\n        mut(a)\n        self.c = a.x\n"
+            + "def use() -> Int32:\n"
+            + "    s = Sink(A(1))\n    return s.c\n")
+        assert _fn(thir, "use") is None
+
     def test_own_record_slot_routes_via_move(self):
         # An Own[A] slot auto-moves its arg at last use (`sink(std::move(a))`)
         # -- the Own-slot cascade rows (see TestOwnSlotArgs).

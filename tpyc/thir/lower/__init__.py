@@ -1,17 +1,18 @@
 """AST -> THIR lowering, split by layer (one-directional imports):
 
-    predicates < context < expressions < statements < functions
+    predicates < context < expr_gates < expressions < statements < functions
 
 `predicates` holds the shared type/shape facts, `context` the per-function
-lowering state, `expressions`/`statements` the gate + lowering arms for
-their construct families (gate and lowering co-evolve per cell, so they
-live together per construct), and `functions` the entry points. The public
+lowering state, `expr_gates` the `_expr_eligible` routing predicates and
+`expressions` the `_lower_expr` arms (one-way: lowering imports the gate
+helpers it needs), `statements` the statement-level gate + lowering arms,
+and `functions` the entry points. The public
 surface below is what the codegen seam, dump, and units import -- it is
 the old single-file `lower.py` API, unchanged.
 """
 
 from .context import _LowerCtx, _Prescan, _WalkState
-from .expressions import _is_len_native
+from .expr_gates import _is_len_native
 from .functions import (
     iter_module_callables,
     iter_module_constructors,

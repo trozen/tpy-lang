@@ -100,10 +100,12 @@ from .context import (
     _LowerCtx,
     _WalkState,
 )
-from .expressions import (
+from .expr_gates import (
     _expr_eligible,
-    _is_move_source,
     _is_record_rvalue_source,
+)
+from .expressions import (
+    _is_move_source,
     _lower_expr,
     _slot_literal_retype,
 )

@@ -51,9 +51,11 @@ from .context import (
     _Prescan,
     _WalkState,
 )
-from .expressions import (
+from .expr_gates import (
     _condition_eligible,
     _expr_eligible,
+)
+from .expressions import (
     _lower_container_elem,
     _lower_expr,
     _lower_field_source,

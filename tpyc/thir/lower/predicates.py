@@ -85,6 +85,7 @@ from ...type_def_registry import (
     type_def_of,
 )
 from ...coercions import CoercionContext
+from ...value_category import is_rvalue_source
 from ...codegen_cpp.type_resolution import resolve_stmt_binding_type
 from ...codegen_cpp.forms import (
     LocalBinding,
@@ -2023,16 +2024,19 @@ def _value_union_temp_slot(a: TpyExpr, ptype: TpyType | None,
 def _record_rvalue_temp_slot(a: TpyExpr, ptype: TpyType | None,
                              analyzer) -> 'NominalType | None':
     """The record-rvalue arg-temp row (the free-call `is_ref_param() +
-    is_temporary_expr` cascade arm): a same-module record-ctor RVALUE into a
+    is_temporary_expr` cascade arm): a same-module record RVALUE -- a ctor
+    `A(7)` or a by-value record-returning call `make(7)` -- into a
     SAME-nominal plain record slot hoists `A __tmp_N = A(7);` and passes the
     temp name -- mutated (`A&`) and const (`const A&`) slots alike (the AST
     arm is mutation-blind). `TempState.create` renders the slot type's bare
     `to_cpp()`, which the F1 restriction keeps equal to the raw source name.
     A readonly slot (`const A` decl spelling) survives `unwrap_ref_type` as a
-    ReadonlyType and rejects; a SUBCLASS-typed ctor (the upcast temp declares
-    the CHILD's type) rejects on the same-nominal check. Shared by the gate
-    and `_lower_call_arg`; the gate adds `_record_ctor_call_eligible` (the
-    ctor's own arg/registry rejects) on top."""
+    ReadonlyType and rejects; a SUBCLASS-typed rvalue (the upcast temp declares
+    the CHILD's type) rejects on the same-nominal check. A borrow-returning
+    call is not an rvalue source (the AST binds/copies without this temp) and
+    rejects. Shared by the gate and `_lower_call_arg`; the gate adds the
+    rvalue's own arg/registry eligibility (`_record_ctor_call_eligible` /
+    `_is_record_rvalue_source`) on top."""
     pt = ptype if isinstance(ptype, TpyType) else None
     if pt is None:
         return None
@@ -2044,8 +2048,7 @@ def _record_rvalue_temp_slot(a: TpyExpr, ptype: TpyType | None,
         return None
     if not isinstance(a, TpyCall):
         return None
-    fi = a.resolved_function_info
-    if fi is None or not fi.is_constructor:
+    if not is_rvalue_source(analyzer, a):
         return None
     if analyzer.get_expr_type(a) != pt:
         return None

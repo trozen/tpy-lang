@@ -182,7 +182,7 @@ from .context import (
     _Prescan,
     _WalkState,
 )
-from .expressions import (
+from .expr_gates import (
     _assert_narrow_info,
     _borrow_local_binding,
     _bytes_aug_concat_ok,
@@ -193,35 +193,65 @@ from .expressions import (
     _container_literal_ok,
     _container_setitem_ok,
     _expr_eligible,
-    _flush_witness,
     _is_builtin_print,
     _is_len_call,
-    _is_move_source,
     _is_record_rvalue_source,
-    _lower_call_arg,
-    _lower_char_targeted,
-    _lower_expr,
-    _lower_field_source,
-    _lower_truthy,
-    _lower_tuple_literal,
     _method_call_eligible,
     _narrow_cond_info,
     _print_arg_form,
     _print_arg_ok,
     _ptr_union_field_write_ok,
     _ptr_union_source_ok,
-    _rb_operand_slots,
     _record_ctor_call_eligible,
-    _retag_bytes_literal_view,
+    _record_field_write_ok,
     _scalar_aug_assign_ok,
     _scalar_field_write_ok,
-    _slot_literal_retype,
     _stmt_value_temps_call,
     _str_aug_append_ok,
     _tuple_literal_ok,
 )
+from .expressions import (
+    _flush_witness,
+    _is_move_source,
+    _lower_call_arg,
+    _lower_char_targeted,
+    _lower_expr,
+    _lower_field_source,
+    _lower_truthy,
+    _lower_tuple_literal,
+    _rb_operand_slots,
+    _retag_bytes_literal_view,
+    _slot_literal_retype,
+)
 from . import comprehensions as _comprehensions
 from . import match as _match
+
+def _record_source_reject_detail(v: TpyExpr, ws: '_WalkState',
+                                 borrow_slot: bool) -> str:
+    """Sub-classify an unrouted record-return SOURCE for the fallback tally --
+    the coarse `return.record_source` mass is dominated by construct-disjoint
+    frontiers that sequence differently (record-valued ctor/call args, record
+    method-call value sources, deref/move of a pointer-local), so name the
+    shape and slot rather than collapsing them into one bucket. Diagnostic
+    only: `note_detail` feeds the summary tally, never lowering/emit."""
+    slot = "borrow" if borrow_slot else "storage"
+    if isinstance(v, TpyMethodCall):
+        return f"return.record_source.methodcall.{slot}"
+    if isinstance(v, TpyName):
+        if v.name in ws.pointers:
+            return f"return.record_source.ptrlocal.{slot}"
+        if v.name in ws.narrowed:
+            return f"return.record_source.narrowed.{slot}"
+        if v.name == "self":
+            return f"return.record_source.self.{slot}"
+        return f"return.record_source.name.{slot}"
+    if isinstance(v, TpyFieldAccess):
+        return f"return.record_source.field.{slot}"
+    if isinstance(v, TpySubscript):
+        return f"return.record_source.subscript.{slot}"
+    if isinstance(v, TpyCall):
+        return f"return.record_source.call.{slot}"
+    return f"return.record_source.{type(v).__name__}.{slot}"
 
 def _del_var_trivial(t: TpyType | None, analyzer) -> bool:
     """`del x` where x's resolved type is trivially destructible -- the AST's
@@ -786,7 +816,8 @@ def _owned_record_decl_ok(stmt: TpyVarDecl, vtype: 'TpyType | None',
             and isinstance(vtype, NominalType)
             and _f1_record(vtype, analyzer)
             and stmt.init is not None
-            and _is_record_rvalue_source(stmt.init, declared, analyzer))
+            and _is_record_rvalue_source(stmt.init, declared, analyzer,
+                                         temps_ok=True))
 
 def _stmt_eligible(stmt: TpyStmt, analyzer, ws: _WalkState,
                    prescan: _Prescan, *, in_branch: bool,
@@ -1010,6 +1041,8 @@ def _stmt_eligible(stmt: TpyStmt, analyzer, ws: _WalkState,
                 or _f1_tuple_field_write_ok(stmt, ws.declared,
                                             ws.storage_tuple_locals, analyzer)
                 or _ptr_union_field_write_ok(stmt, ws.declared, analyzer)
+                or _record_field_write_ok(stmt, ws.declared, analyzer,
+                                          prescan.is_constructor)
                 or note_detail("assign.field_write_shape"))
     if isinstance(stmt, TpyReturn):
         if stmt.value is None:
@@ -1110,16 +1143,17 @@ def _stmt_eligible(stmt: TpyStmt, analyzer, ws: _WalkState,
                     or stmt.value.name == "self"
                     or stmt.value.name in ws.narrowed
                     or stmt.value.name in ws.pointers):
-                return note_detail("return.record_source")
+                return note_detail(_record_source_reject_detail(
+                    stmt.value, ws, prescan.ret_record_borrow is not None))
             dt = ws.declared.get(stmt.value.name)
             dt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(dt)))
                   if dt is not None else None)
             if prescan.ret_record_borrow is not None and isinstance(dt, OwnType):
-                return note_detail("return.record_source")
+                return note_detail("return.record_source.own_at_borrow")
             face = ("ret.record_borrow" if prescan.ret_record_borrow is not None
                     else "ret.record_storage")
             return ((_f1_record(dt, analyzer) and _witness(face))
-                    or note_detail("return.record_source"))
+                    or note_detail("return.record_source.name_notf1"))
         if prescan.ret_container_storage is not None:
             # A storage container return (`-> Own[list[T]]` -> a by-value
             # vector/map/set): a bare owned container name (NRVO / Own-param
@@ -1866,7 +1900,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, lc: _LowerCtx,
                 declared[stmt.name] = vtype
                 return THIRVarDecl(
                     name=stmt.name, resolved_type=vtype,
-                    init=_lower_expr(stmt.init, lc),
+                    init=_lower_expr(stmt.init, lc, temp_args=True),
                     cpp_type=lc.render_type(vtype), form=Form.STORAGE, loc=loc)
         # F2d rebind-slot reseat: an rvalue ctor / by-value source. It lowers as a
         # plain value-form call; emit wraps it as `p = &*(__slot_N = <value>)`
@@ -2088,6 +2122,17 @@ def _lower_stmt_dispatch(stmt: TpyStmt, lc: _LowerCtx,
                                           _lower_expr(stmt.value, lc,
                                                       temp_args=True)),
                                       ftype), loc=loc)
+            # A plain F1-record field write (`_record_field_write_ok`): the
+            # record rvalue -- a ctor (STORAGE) or a by-value record-returning
+            # call (VALUE) of the field's own type -- copies bare into the
+            # field, no borrow<->storage lift (the AST's default field assign).
+            # A plain record ftype reaching here is uniquely this shape (scalar/
+            # char/enum/ptr handled above; Optional/tuple/union are not
+            # NominalType records, so `_f1_record` excludes them).
+            if _f1_record(ftype, analyzer):
+                _witness("field_write.record_rvalue")
+                return THIRAssign(target=_lower_expr(stmt.target, lc),
+                                  value=_lower_expr(stmt.value, lc), loc=loc)
             if isinstance(stmt.value, TpyNoneLiteral):
                 fvalue: THIRExpr = THIRLiteral(result_type=ftype, value=None,
                                                form=Form.STORAGE, loc=loc)
