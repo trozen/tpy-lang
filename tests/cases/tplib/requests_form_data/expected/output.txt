@@ -1,0 +1,6 @@
+200
+b'POST /login HTTP/1.1\r\nHost: api.test\r\nAccept-Encoding: identity\r\nContent-Length: 18\r\nUser-Agent: test-agent\r\nContent-Type: application/x-www-form-urlencoded\r\n\r\nuser=ann&pw=s3cret'
+200
+b'POST /empty HTTP/1.1\r\nHost: api.test\r\nAccept-Encoding: identity\r\nContent-Length: 0\r\nUser-Agent: test-agent\r\n\r\n'
+200
+b'POST /raw HTTP/1.1\r\nHost: api.test\r\nAccept-Encoding: identity\r\nContent-Length: 9\r\nUser-Agent: test-agent\r\n\r\nraw-bytes'

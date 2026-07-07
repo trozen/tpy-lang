@@ -34,8 +34,9 @@ std::tuple<std::vector<uint8_t>, bool, bool> run_redirect(std::span<const uint8_
     s._redirect_connections = ::tpy::make_vector<::tpystd::tplib::box::Box<::tpystd::http::client::_Connection>>(::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(h1)));
     // r = s.post("http://api.test/submit", b'{"x":1}', None, None,
     // {"Content-Type": "text/plain"})
-    ::tpy::ordered_map<std::string, std::string> __tmp_1 = ::tpy::ordered_map<std::string, std::string>({{"Content-Type", "text/plain"}});
-    ::tpystd::tplib::requests::Response r = s.post("http://api.test/submit", ::tpy::bytes_literal_owned("{\"x\":1}", 7), nullptr, nullptr, &(__tmp_1));
+    std::vector<uint8_t> __tmp_1 = ::tpy::bytes_literal_owned("{\"x\":1}", 7);
+    ::tpy::ordered_map<std::string, std::string> __tmp_2 = ::tpy::ordered_map<std::string, std::string>({{"Content-Type", "text/plain"}});
+    ::tpystd::tplib::requests::Response r = s.post("http://api.test/submit", std::variant<std::monostate, std::vector<uint8_t>*, ::tpy::ordered_map<std::string, std::string>*>{&__tmp_1}, nullptr, nullptr, &(__tmp_2));
     // print(r.status_code, r.url)
     std::cout << r.status_code << " " << r.url << "\n";
     // b.recv(65536)                         # drain hop-0 request

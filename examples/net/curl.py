@@ -78,7 +78,9 @@ def main() -> Int32:
     if args.user != "":
         auth = _split_user(args.user)
 
-    body: bytes | None = None
+    # bytes | dict[str, str] to match requests' widened data= param (a plain
+    # bytes | None won't implicitly widen to the union).
+    body: bytes | dict[str, str] | None = None
     if args.data != "":
         body = args.data.encode()
 

@@ -1,0 +1,12 @@
+200
+b'POST /upload HTTP/1.1\r\nHost: api.test\r\nAccept-Encoding: identity\r\nContent-Length: 189\r\nUser-Agent: test-agent\r\nContent-Type: multipart/form-data; boundary=----TPyFormBoundary7MA4YWxkTrZu0gW\r\n\r\n------TPyFormBoundary7MA4YWxkTrZu0gW\r\nContent-Disposition: form-data; name="doc"; filename="a.txt"\r\nContent-Type: application/octet-stream\r\n\r\nhello\r\n------TPyFormBoundary7MA4YWxkTrZu0gW--\r\n'
+200
+b'POST /upload HTTP/1.1\r\nHost: api.test\r\nAccept-Encoding: identity\r\nContent-Length: 416\r\nUser-Agent: test-agent\r\nContent-Type: multipart/form-data; boundary=----TPyFormBoundary7MA4YWxkTrZu0gW\r\n\r\n------TPyFormBoundary7MA4YWxkTrZu0gW\r\nContent-Disposition: form-data; name="caption"\r\n\r\nhi\r\n------TPyFormBoundary7MA4YWxkTrZu0gW\r\nContent-Disposition: form-data; name="doc"; filename="a.txt"\r\nContent-Type: application/octet-stream\r\n\r\nhello\r\n------TPyFormBoundary7MA4YWxkTrZu0gW\r\nContent-Disposition: form-data; name="pic"; filename="logo.png"\r\nContent-Type: image/png\r\n\r\nimg\r\n------TPyFormBoundary7MA4YWxkTrZu0gW--\r\n'
+200
+b'POST /upload HTTP/1.1\r\nHost: api.test\r\nAccept-Encoding: identity\r\nContent-Length: 189\r\nUser-Agent: test-agent\r\nContent-Type: multipart/form-data; boundary=----TPyFormBoundary7MA4YWxkTrZu0gW\r\n\r\n------TPyFormBoundary7MA4YWxkTrZu0gW\r\nContent-Disposition: form-data; name="doc"; filename="a.txt"\r\nContent-Type: application/octet-stream\r\n\r\nhello\r\n------TPyFormBoundary7MA4YWxkTrZu0gW--\r\n'
+200
+b'POST /upload HTTP/1.1\r\nHost: api.test\r\nAccept-Encoding: identity\r\nContent-Length: 7\r\nUser-Agent: test-agent\r\nContent-Type: application/x-www-form-urlencoded\r\n\r\nfield=v'
+200
+b'POST /upload HTTP/1.1\r\nHost: api.test\r\nAccept-Encoding: identity\r\nContent-Length: 200\r\nUser-Agent: test-agent\r\nContent-Type: multipart/form-data; boundary=----TPyFormBoundary7MA4YWxkTrZu0gW\r\n\r\n------TPyFormBoundary7MA4YWxkTrZu0gW\r\nContent-Disposition: form-data; name="na%22me"; filename="re%0D%0Aport.txt"\r\nContent-Type: application/octet-stream\r\n\r\nx\r\n------TPyFormBoundary7MA4YWxkTrZu0gW--\r\n'
+200 http://api.test/next
+b'POST /next HTTP/1.1\r\nHost: api.test\r\nAccept-Encoding: identity\r\nContent-Length: 189\r\nUser-Agent: test-agent\r\nContent-Type: multipart/form-data; boundary=----TPyFormBoundary7MA4YWxkTrZu0gW\r\n\r\n------TPyFormBoundary7MA4YWxkTrZu0gW\r\nContent-Disposition: form-data; name="doc"; filename="a.txt"\r\nContent-Type: application/octet-stream\r\n\r\nhello\r\n------TPyFormBoundary7MA4YWxkTrZu0gW--\r\n'

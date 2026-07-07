@@ -5,7 +5,19 @@
 # none silent):
 #   - params / headers are dict[str, str] (requests accepts many shapes); the
 #     request kwargs are a fixed typed set, not arbitrary **kwargs.
-#   - data is bytes (no form-dict / file-like / iterable body).
+#   - data is bytes | dict[str, str]: raw bytes are sent verbatim; a dict is
+#     urlencoded (application/x-www-form-urlencoded). No str body / file-like /
+#     iterable / list-valued form field. files= (dict[str, FileField]) adds
+#     multipart/form-data: each value is a FileField(filename, content,
+#     content_type="application/octet-stream") -- so a file part always carries
+#     a Content-Type (octet-stream by default, or the one given), unlike a
+#     requests bare 2-tuple which omits it. Any dict `data` folds in as plain
+#     form parts. The boundary is a fixed token (not randomized), so the wire
+#     bytes are deterministic. An empty files={} is falsy (like requests) -- it
+#     does not force a multipart body, so data= handling applies. When files= is
+#     non-empty a data=bytes body is ignored (only a dict data folds in). A
+#     field name / filename with a `"` or CR/LF is percent-escaped, as in
+#     requests/urllib3.
 #   - json= takes a JsonValue; an inline dict literal must be bound to a
 #     JsonValue local first (`payload: JsonValue = {...}`) -- the compiler
 #     rejects an implicit concrete-container -> recursive-union conversion.
@@ -66,8 +78,8 @@
 #     are parsed (matching CPython's http.cookiejar) but not the asctime form
 #     (an asctime Expires is ignored, so the cookie is then session-lifetime);
 #     `cookies=` accepts a dict[str, str] only (not a whole CookieJar).
-# Not supported (yet): multipart files, streaming (stream=/iter_content),
-# proxies, auth schemes beyond Basic.
+# Not supported (yet): streaming (stream=/iter_content), proxies, auth schemes
+# beyond Basic.
 # tpy: cpp_namespace("tpystd::tplib::requests")
 from __future__ import annotations
 from typing import Final, Iterator
@@ -85,6 +97,29 @@ import time
 
 DEFAULT_HTTP_PORT: Final[Int32] = 80
 DEFAULT_HTTPS_PORT: Final[Int32] = 443
+
+# The multipart/form-data boundary. Fixed (not randomized like urllib3) so the
+# emitted wire bytes are deterministic and snapshot-testable; as with urllib3
+# there is no scan for the token appearing inside a part's content, which for a
+# 30-char marker is not a practical collision risk. Plain `str` (not Final):
+# Final[str] lowers to a StrView, which has no .encode() for the body bytes.
+_MULTIPART_BOUNDARY: str = "----TPyFormBoundary7MA4YWxkTrZu0gW"
+
+
+class FileField:
+    """One multipart file part: a filename, its content bytes, and a MIME
+    content type (defaulting to application/octet-stream). Used as a files=
+    value: files={"avatar": FileField("me.png", data, "image/png")}."""
+
+    filename: str
+    content: bytes
+    content_type: str
+
+    def __init__(self, filename: str, content: Own[bytes],
+                 content_type: str = "application/octet-stream") -> None:
+        self.filename = filename
+        self.content = content
+        self.content_type = content_type
 
 
 class RequestException(OSError):
@@ -595,9 +630,75 @@ def _merge_query(path: str, query: str, params: dict[str, str] | None) -> str:
     return target
 
 
+def _escape_header_param(value: str) -> str:
+    # A field name / filename goes into a Content-Disposition quoted param, so a
+    # `"` or CR/LF would break the header (or inject into the wire body). Percent-
+    # escape those three, as requests/urllib3 do; other bytes pass through.
+    return value.replace('"', "%22").replace("\r", "%0D").replace("\n", "%0A")
+
+
+def _multipart_body(data: dict[str, str] | None,
+                    files: dict[str, FileField]) -> Own[bytes]:
+    # RFC 7578 multipart/form-data. Any dict `data` entries become plain form
+    # parts (no filename); each `files` entry is a file part carrying its
+    # filename and content type (application/octet-stream unless the FileField
+    # set one).
+    bnd = _MULTIPART_BOUNDARY.encode()
+    body = bytearray()
+    if data is not None:
+        for kv in data.items():
+            body += b"--" + bnd + b"\r\n"
+            body += (b'Content-Disposition: form-data; name="'
+                     + _escape_header_param(kv[0]).encode() + b'"\r\n\r\n')
+            body += kv[1].encode() + b"\r\n"
+    for k in files:
+        f = files[k]
+        body += b"--" + bnd + b"\r\n"
+        body += (b'Content-Disposition: form-data; name="'
+                 + _escape_header_param(k).encode() + b'"; filename="'
+                 + _escape_header_param(f.filename).encode() + b'"\r\n')
+        body += b"Content-Type: " + f.content_type.encode() + b"\r\n\r\n"
+        body += f.content + b"\r\n"
+    body += b"--" + bnd + b"--\r\n"
+    return bytes(body)
+
+
+def _encode_body(data: bytes | dict[str, str] | None,
+                 files: dict[str, FileField] | None,
+                 json: JsonValue | None) -> Own[tuple[bytes | None, str | None]]:
+    # Resolve (data, files, json) into the wire body and the Content-Type it
+    # implies (None = set no default, leaving it to the caller's headers). A raw
+    # bytes `data` carries no implied type; a dict `data` is urlencoded; `files`
+    # (folding any dict `data` in) is multipart; `json` is JSON. A falsy `data`
+    # (None / empty dict / empty bytes) is treated as no body -- matching
+    # requests' `elif data:` truthiness, so an empty dict is not an empty form
+    # and a `json=` body still fires alongside one. An empty `files` dict is
+    # likewise falsy (requests gates on `if files:`), so it does not force a
+    # multipart body -- data= handling applies instead.
+    if files is not None and len(files) > 0:
+        form: dict[str, str] | None = None
+        if data is not None and isinstance(data, dict) and len(data) > 0:
+            form = data
+        return (_multipart_body(form, files),
+                "multipart/form-data; boundary=" + _MULTIPART_BOUNDARY)
+    if data is not None:
+        if isinstance(data, dict):
+            if len(data) > 0:
+                return (urlencode(data).encode(),
+                        "application/x-www-form-urlencoded")
+        else:
+            # `else` (not `elif len...`) so `data` narrows to bytes here -- an
+            # isinstance-false narrows the else arm but not an elif condition.
+            if len(data) > 0:
+                return (data, None)
+    if json is not None:
+        return (dumps(json).encode(), "application/json")
+    return (None, None)
+
+
 def _prepare_headers(headers: dict[str, str] | None,
                      auth: tuple[str, str] | None,
-                     has_json_body: bool) -> Own[dict[str, str]]:
+                     content_type: str | None) -> Own[dict[str, str]]:
     out: dict[str, str] = {}
     if headers is not None:
         for kv in headers.items():
@@ -618,8 +719,8 @@ def _prepare_headers(headers: dict[str, str] | None,
                              + "." + str(_tpy_version_info[1]))
     if auth is not None:
         out["Authorization"] = _basic_auth_header(auth[0], auth[1])
-    if has_json_body and "Content-Type" not in out:
-        out["Content-Type"] = "application/json"
+    if content_type is not None and "Content-Type" not in out:
+        out["Content-Type"] = content_type
     return out
 
 
@@ -687,7 +788,9 @@ def _rebuild_method(method: str, status: Int32) -> str:
 
 
 def _request_on(conn: Box[_Connection], method: str, url: str,
-                params: dict[str, str] | None, data: bytes | None,
+                params: dict[str, str] | None,
+                data: bytes | dict[str, str] | None,
+                files: dict[str, FileField] | None,
                 json: JsonValue | None, headers: dict[str, str] | None,
                 auth: tuple[str, str] | None,
                 send_cookies: CookieJar) -> Own[Response]:
@@ -704,12 +807,8 @@ def _request_on(conn: Box[_Connection], method: str, url: str,
         req_path = "/"
     is_https = parts.scheme == "https"
 
-    body: bytes | None = data
-    has_json = False
-    if data is None and json is not None:
-        body = dumps(json).encode()
-        has_json = True
-    hdrs = _prepare_headers(headers, auth, has_json)
+    body, body_ctype = _encode_body(data, files, json)
+    hdrs = _prepare_headers(headers, auth, body_ctype)
     # One clock read per request drives both the send-side expiry filter and
     # the Set-Cookie expiry resolution below.
     now = time.time()
@@ -820,20 +919,24 @@ def _pool_key(url: str, verify: bool | str) -> str:
 
 
 def request(method: str, url: str, params: dict[str, str] | None = None,
-            data: bytes | None = None, json: JsonValue | None = None,
+            data: bytes | dict[str, str] | None = None,
+            json: JsonValue | None = None,
             headers: dict[str, str] | None = None,
             auth: tuple[str, str] | None = None,
             timeout: float | None = None,
             allow_redirects: bool = True,
             verify: bool | str = True,
-            cookies: dict[str, str] | None = None) -> Own[Response]:
+            cookies: dict[str, str] | None = None,
+            files: dict[str, FileField] | None = None
+            ) -> Own[Response]:
     # A fresh Session per call, like CPython requests' module-level API (its
     # pool dies with the call too; same-host redirect hops still reuse the
     # pooled connection within the call). Routing through Session keeps the
-    # redirect engine in one place.
+    # redirect engine in one place. files= is last so the existing positional
+    # param order (params/data/json/headers/...) is preserved for callers.
     s = Session()
     return s.request(method, url, params, data, json, headers, auth, timeout,
-                     allow_redirects, verify, cookies)
+                     allow_redirects, verify, cookies, files)
 
 
 def get(url: str, params: dict[str, str] | None = None,
@@ -858,40 +961,49 @@ def head(url: str, params: dict[str, str] | None = None,
                    allow_redirects, verify, cookies)
 
 
-def post(url: str, data: bytes | None = None, json: JsonValue | None = None,
+def post(url: str, data: bytes | dict[str, str] | None = None,
+         json: JsonValue | None = None,
          params: dict[str, str] | None = None,
          headers: dict[str, str] | None = None,
          auth: tuple[str, str] | None = None,
          timeout: float | None = None,
          allow_redirects: bool = True,
          verify: bool | str = True,
-         cookies: dict[str, str] | None = None) -> Own[Response]:
+         cookies: dict[str, str] | None = None,
+         files: dict[str, FileField] | None = None
+         ) -> Own[Response]:
     return request("POST", url, params, data, json, headers, auth, timeout,
-                   allow_redirects, verify, cookies)
+                   allow_redirects, verify, cookies, files)
 
 
-def put(url: str, data: bytes | None = None, json: JsonValue | None = None,
+def put(url: str, data: bytes | dict[str, str] | None = None,
+        json: JsonValue | None = None,
         params: dict[str, str] | None = None,
         headers: dict[str, str] | None = None,
         auth: tuple[str, str] | None = None,
         timeout: float | None = None,
         allow_redirects: bool = True,
         verify: bool | str = True,
-        cookies: dict[str, str] | None = None) -> Own[Response]:
+        cookies: dict[str, str] | None = None,
+        files: dict[str, FileField] | None = None
+        ) -> Own[Response]:
     return request("PUT", url, params, data, json, headers, auth, timeout,
-                   allow_redirects, verify, cookies)
+                   allow_redirects, verify, cookies, files)
 
 
-def patch(url: str, data: bytes | None = None, json: JsonValue | None = None,
+def patch(url: str, data: bytes | dict[str, str] | None = None,
+          json: JsonValue | None = None,
           params: dict[str, str] | None = None,
           headers: dict[str, str] | None = None,
           auth: tuple[str, str] | None = None,
           timeout: float | None = None,
           allow_redirects: bool = True,
           verify: bool | str = True,
-          cookies: dict[str, str] | None = None) -> Own[Response]:
+          cookies: dict[str, str] | None = None,
+          files: dict[str, FileField] | None = None
+          ) -> Own[Response]:
     return request("PATCH", url, params, data, json, headers, auth, timeout,
-                   allow_redirects, verify, cookies)
+                   allow_redirects, verify, cookies, files)
 
 
 def delete(url: str, params: dict[str, str] | None = None,
@@ -966,7 +1078,9 @@ class Session:
         return out
 
     def _send_for_hop(self, method: str, url: str,
-                      params: dict[str, str] | None, data: bytes | None,
+                      params: dict[str, str] | None,
+                      data: bytes | dict[str, str] | None,
+                      files: dict[str, FileField] | None,
                       json: JsonValue | None, headers: dict[str, str],
                       auth: tuple[str, str] | None,
                       timeout: float | None, hop: Int32,
@@ -977,13 +1091,13 @@ class Session:
             # single-use and must not be reused after a failure.
             try:
                 return _request_on(self._connection, method, url, params, data,
-                                   json, headers, auth, send_cookies)
+                                   files, json, headers, auth, send_cookies)
             finally:
                 self._connection = None
         if len(self._redirect_connections) > 0:
             conn = self._redirect_connections.pop(0)
-            return _request_on(conn, method, url, params, data, json, headers,
-                               auth, send_cookies)
+            return _request_on(conn, method, url, params, data, files, json,
+                               headers, auth, send_cookies)
         # Pool pop -> use -> put back. A raise inside _request_on drops the
         # popped/fresh connection (RAII closes the socket); on success it goes
         # back in even if will_close closed it -- the pooled entry then acts as
@@ -991,18 +1105,20 @@ class Session:
         key = _pool_key(url, verify)
         if key in self._pool:
             pooled = self._pool.pop(key)
-            resp = _request_on(pooled, method, url, params, data, json,
+            resp = _request_on(pooled, method, url, params, data, files, json,
                                headers, auth, send_cookies)
             self._pool[key] = pooled
             return resp
         fresh = _connect(url, timeout, verify)
-        resp = _request_on(fresh, method, url, params, data, json, headers,
-                           auth, send_cookies)
+        resp = _request_on(fresh, method, url, params, data, files, json,
+                           headers, auth, send_cookies)
         self._pool[key] = fresh
         return resp
 
     def _hop(self, method: str, url: str, params: dict[str, str] | None,
-             data: bytes | None, json: JsonValue | None,
+             data: bytes | dict[str, str] | None,
+             files: dict[str, FileField] | None,
+             json: JsonValue | None,
              headers: dict[str, str], auth: tuple[str, str] | None,
              timeout: float | None, history: Own[list[Response]],
              hop: Int32, follow: bool, send_cookies: CookieJar,
@@ -1010,8 +1126,9 @@ class Session:
         # One request, then (when following) recurse on a 3xx Location. Recursion
         # rather than a loop so each `return resp` is a straight-line last use --
         # a loop-carried Own local trips the borrow checker's return guard.
-        resp = self._send_for_hop(method, url, params, data, json, headers, auth,
-                                  timeout, hop, send_cookies, verify)
+        resp = self._send_for_hop(method, url, params, data, files, json,
+                                  headers, auth, timeout, hop, send_cookies,
+                                  verify)
         # Persist cookies this response set (into the Session jar) and feed them
         # to the send jar so a following redirect hop sends the ones that match.
         self.cookies.update(resp.cookies)
@@ -1043,27 +1160,30 @@ class Session:
             next_auth = None
         history.append(resp)
         # Redirect targets carry their own query in the Location, so the
-        # caller's params apply only to the first hop. The data/json body is
-        # forwarded directly (not via a reassignable local) so the recursive-
+        # caller's params apply only to the first hop. The data/files/json body
+        # is forwarded directly (not via a reassignable local) so the recursive-
         # union `json` param stays read-only (const) up the call chain.
         if new_method != method:
             _drop_body_headers(headers)
-            return self._hop(new_method, next_url, None, None, None, headers,
-                             next_auth, timeout, history, hop + 1, True,
+            return self._hop(new_method, next_url, None, None, None, None,
+                             headers, next_auth, timeout, history, hop + 1, True,
                              send_cookies, verify)
-        return self._hop(new_method, next_url, None, data, json, headers,
+        return self._hop(new_method, next_url, None, data, files, json, headers,
                          next_auth, timeout, history, hop + 1, True,
                          send_cookies, verify)
 
     def request(self, method: str, url: str,
                 params: dict[str, str] | None = None,
-                data: bytes | None = None, json: JsonValue | None = None,
+                data: bytes | dict[str, str] | None = None,
+                json: JsonValue | None = None,
                 headers: dict[str, str] | None = None,
                 auth: tuple[str, str] | None = None,
                 timeout: float | None = None,
                 allow_redirects: bool = True,
                 verify: bool | str = True,
-                cookies: dict[str, str] | None = None) -> Own[Response]:
+                cookies: dict[str, str] | None = None,
+                files: dict[str, FileField] | None = None
+                ) -> Own[Response]:
         merged_headers = self._merge_headers(headers)
         merged_params = self._merge_params(params)
         use_auth = auth
@@ -1078,9 +1198,9 @@ class Session:
             for kv in cookies.items():
                 send_cookies.set(kv[0], kv[1])
         history: list[Response] = []
-        return self._hop(method, url, merged_params, data, json, merged_headers,
-                         use_auth, timeout, history, 0, allow_redirects,
-                         send_cookies, verify)
+        return self._hop(method, url, merged_params, data, files, json,
+                         merged_headers, use_auth, timeout, history, 0,
+                         allow_redirects, send_cookies, verify)
 
     def get(self, url: str, params: dict[str, str] | None = None,
             headers: dict[str, str] | None = None,
@@ -1091,16 +1211,18 @@ class Session:
         return self.request("GET", url, params, None, None, headers, None,
                             timeout, allow_redirects, verify, cookies)
 
-    def post(self, url: str, data: bytes | None = None,
+    def post(self, url: str, data: bytes | dict[str, str] | None = None,
              json: JsonValue | None = None,
              params: dict[str, str] | None = None,
              headers: dict[str, str] | None = None,
              timeout: float | None = None,
              allow_redirects: bool = True,
              verify: bool | str = True,
-             cookies: dict[str, str] | None = None) -> Own[Response]:
+             cookies: dict[str, str] | None = None,
+             files: dict[str, FileField] | None = None
+             ) -> Own[Response]:
         return self.request("POST", url, params, data, json, headers, None,
-                            timeout, allow_redirects, verify, cookies)
+                            timeout, allow_redirects, verify, cookies, files)
 
     def __enter__(self) -> "Session":
         return self

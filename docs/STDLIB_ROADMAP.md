@@ -167,7 +167,7 @@ Examples of the policy in action:
 | [`http`](#httpclient) | P2 | Partial | ~60% | pure | `HTTPStatus` (full IntEnum code set; `.value`/`.name`/value-lookup/int-compare; no `.phrase`/`.description`/`.is_*` -- enum can't carry per-member data). Missing: `HTTPMethod` enum |
 | [`http.client`](#httpclient) | P2 | Partial | ~60% | pure | HTTP/1.1 over plaintext (`HTTPConnection`) and TLS (`HTTPSConnection`, via `ssl` -- secure-default context, `context=` override, default port 443): `request`/`getresponse`/`connect`/`close`, `HTTPResponse` (`status`/`reason`/`version`/`read`/`getheader`/`getheaders`), `HTTPException`/`BadStatusLine`/`UnknownProtocol`. Both connection classes nominally inherit a `@dynamic _Connection` protocol so a caller can hold either behind one `Box[_Connection]` and dispatch virtually (TPy method dispatch is static, so a plain subclass would not dispatch through a base reference; nominal inheritance stores the conformer directly as the base, no Adapter). Auto Host/Accept-Encoding/Content-Length (CPython byte-order); body framing via Content-Length, chunked, and connection-close. Reads through `makefile()` -> `io.BufferedReader`. `HTTPConnection(host, port, timeout=)` threads a socket timeout through `create_connection`. Connections are persistent (HTTP/1.1 keep-alive): the socket survives request/getresponse cycles, `HTTPResponse.will_close` mirrors CPython's `_check_close`, and `request()` after `close()` reconnects; the caller drains each response and closes on `will_close` (`getresponse()` does not auto-close on will_close as CPython does -- a declared divergence, since TPy's `SSLSocket.close()` sends close_notify immediately). Missing: low-level putrequest/putheader, str/file/iterable bodies, `email.message`-style `.headers`, proxy/`set_tunnel`, the `CannotSendRequest`/`ResponseNotReady` misuse guards, pipelining (see TODO.md). Note: importing `http.client` now links the TLS backend (mbedTLS) for all users -- TODO.md tracks the use-driven-linking follow-up to scope that to HTTPSConnection users |
 | [`urllib.request`](#urllibrequest) | P2 | Partial | ~20% | pure | Simplified `urlopen(url, data=None, timeout=None, context=None)` over `http.client` (GET/POST), returns `HTTPResponse`; `http`/`https` schemes (https routes to `HTTPSConnection` on 443, `context=` is the TLS context like CPython), other schemes -> `URLError` (an `OSError` subclass, like CPython). `timeout` (seconds) honored for connect/recv/send. No opener/handler stack, redirects, proxies, auth handlers, `_GLOBAL_DEFAULT_TIMEOUT` sentinel; `create_default_context()` trusts the vendored Mozilla root bundle, so real https verifies out of the box. See TODO.md |
-| [`tplib.requests`](#tplibrequests) | P2 | Partial | ~55% | pure | `requests`-style client on `http.client`. `get`/`post`/`put`/`patch`/`delete`/`head`/`request` with `params`/`headers`/`data`/`json`/`auth`/`timeout`/`allow_redirects`/`cookies`; `Response` (`.status_code`/`.ok`/`.text`/`.content`/`.json()`/`.headers` (`CaseInsensitiveDict`)/`.cookies` (`CookieJar`)/`.url`/`.history`/`.raise_for_status()`); `Session` (default headers/params, Basic `auth`, `max_redirects`, persistent `.cookies`); `RequestException`->`HTTPError`/`ConnectionError`/`Timeout`/`TooManyRedirects`, rooted at `OSError` like CPython requests, so `except OSError` catches them (`timeout` float raises `Timeout` on a slow connect/read; a socket-level connection failure -- refused/reset/broken-pipe/no-host -- is re-wrapped as `ConnectionError`). `allow_redirects=` follows 301/302/303/307/308 via `Location` (method/body rewrite + cross-host auth strip per requests), including http->https redirects. HTTPS: an `https://` URL (or redirect target) routes to `HTTPSConnection` on port 443; `verify: bool|str=True` maps to the TLS context (`True` verified default, `"<path>"` custom CA, `False` disables); `requests.SSLError(ConnectionError)` wraps `ssl.SSLError`. `Session` pools connections per `(scheme, host, port, verify)` and reuses them across requests (HTTP/1.1 keep-alive; a `will_close` response closes the socket, the pooled entry lazily reconnects). Divergences: typed kwargs, untyped `.json()`, no `(connect, read)` timeout tuple; cookies are name-keyed with expiry honored (Max-Age/Expires; RFC 1123 + RFC 850 Expires forms parsed, asctime not); a pooled connection keeps its creation timeout. `verify=True` trusts the vendored Mozilla root bundle, so public https verifies out of the box. A default `User-Agent` (`tpy-requests/<major.minor>`, from the compiler version) is sent unless the caller supplies one, matching requests. See TODO.md |
+| [`tplib.requests`](#tplibrequests) | P2 | Partial | ~57% | pure | `requests`-style client on `http.client`. `get`/`post`/`put`/`patch`/`delete`/`head`/`request` with `params`/`headers`/`data`/`files`/`json`/`auth`/`timeout`/`allow_redirects`/`cookies`; a `data=` body is raw `bytes` (sent verbatim) or a `dict[str, str]` (urlencoded, `application/x-www-form-urlencoded`); `files=` (`dict[str, FileField]`) uploads `multipart/form-data` -- each value is a `FileField(filename, content, content_type="application/octet-stream")`, so a file part always carries a `Content-Type`; any dict `data` folds in as form parts (fixed boundary token; a `bytes` data is ignored when `files=` is given); `Response` (`.status_code`/`.ok`/`.text`/`.content`/`.json()`/`.headers` (`CaseInsensitiveDict`)/`.cookies` (`CookieJar`)/`.url`/`.history`/`.raise_for_status()`); `Session` (default headers/params, Basic `auth`, `max_redirects`, persistent `.cookies`); `RequestException`->`HTTPError`/`ConnectionError`/`Timeout`/`TooManyRedirects`, rooted at `OSError` like CPython requests, so `except OSError` catches them (`timeout` float raises `Timeout` on a slow connect/read; a socket-level connection failure -- refused/reset/broken-pipe/no-host -- is re-wrapped as `ConnectionError`). `allow_redirects=` follows 301/302/303/307/308 via `Location` (method/body rewrite + cross-host auth strip per requests), including http->https redirects. HTTPS: an `https://` URL (or redirect target) routes to `HTTPSConnection` on port 443; `verify: bool|str=True` maps to the TLS context (`True` verified default, `"<path>"` custom CA, `False` disables); `requests.SSLError(ConnectionError)` wraps `ssl.SSLError`. `Session` pools connections per `(scheme, host, port, verify)` and reuses them across requests (HTTP/1.1 keep-alive; a `will_close` response closes the socket, the pooled entry lazily reconnects). Divergences: typed kwargs, untyped `.json()`, no `(connect, read)` timeout tuple; cookies are name-keyed with expiry honored (Max-Age/Expires; RFC 1123 + RFC 850 Expires forms parsed, asctime not); a pooled connection keeps its creation timeout. `verify=True` trusts the vendored Mozilla root bundle, so public https verifies out of the box. A default `User-Agent` (`tpy-requests/<major.minor>`, from the compiler version) is sent unless the caller supplies one, matching requests. See TODO.md |
 
 ---
 
@@ -1457,7 +1457,7 @@ response's dup-fd reader is exercised as in normal use). Test:
 
 Current: `lib/tpy/tplib/requests.py` -- a `requests`-style client (pure TPy)
 over `http.client`. Module fns `get`/`post`/`put`/`patch`/`delete`/`head` +
-`request(method, url, ...)` with `params`/`headers`/`data`/`json`/`auth`
+`request(method, url, ...)` with `params`/`headers`/`data`/`files`/`json`/`auth`
 kwargs. `Response` exposes `.status_code`/`.reason`/`.url`/`.ok`/`.text`
 (UTF-8)/`.content`/`.headers` (`CaseInsensitiveDict`)/`.json()` (untyped
 `JsonValue`)/`.raise_for_status()`. `Session` merges default headers/params and
@@ -1475,7 +1475,15 @@ drop the body, while 307/308 preserve both; a cross-host redirect drops
 `Authorization`; exceeding
 `Session.max_redirects` (default 30) raises `TooManyRedirects`. **Declarable
 divergences** (all compile-visible, none silent): kwargs are a fixed typed set
-(no `**kwargs`); `params`/`headers` are `dict[str, str]`; `data` is `bytes`;
+(no `**kwargs`); `params`/`headers` are `dict[str, str]`; `data` is
+`bytes | dict[str, str]` (raw bytes verbatim, or a dict urlencoded as
+`application/x-www-form-urlencoded`); `files=` is `dict[str, FileField]`
+(`FileField(filename, content, content_type="application/octet-stream")`)
+uploading `multipart/form-data`, with any dict `data` folded in as plain form
+parts (fixed boundary token; a `bytes` data is ignored when `files=` is
+non-empty; an empty `files={}` is falsy and does not force multipart; a name /
+filename with `"` or CR/LF is percent-escaped; per-part content-type control
+comes from `FileField`, not a bare tuple like requests);
 `json=` takes a `JsonValue` and an inline dict literal must be bound to a
 `JsonValue` local first; `.json()` is untyped (typed path
 `Model.from_json(r.text)`); `.text` is UTF-8 only; `.headers` is a
@@ -1505,9 +1513,10 @@ request-URI directory); the RFC 1123 and RFC 850 `Expires` forms are parsed
 (matching CPython's `http.cookiejar`), the asctime form is not (ignored -- the
 cookie is then session-lifetime); `cookies=` accepts a `dict[str, str]` only
 (not a whole `CookieJar`).
-**Deferred** (see TODO.md): multipart files, streaming, proxies,
-form-dict `data=`.
-Tests: `cases/tplib/requests_get`, `requests_post`, `requests_session`,
+**Deferred** (see TODO.md): streaming, proxies, per-part content-type on a bare
+tuple (files= is `FileField`-only), auth schemes beyond Basic.
+Tests: `cases/tplib/requests_get`, `requests_post`, `requests_form_data`,
+`requests_files`, `requests_session`,
 `requests_errors`, `requests_timeout`, `requests_redirect`,
 `requests_redirect_disabled`, `requests_redirect_method`,
 `requests_redirect_too_many`, `requests_redirect_cross_host`,

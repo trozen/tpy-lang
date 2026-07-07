@@ -4,3 +4,5 @@ b'POST /v1/items HTTP/1.1\r\nHost: api.test\r\nAccept-Encoding: identity\r\nCont
 b'PUT /v1/items/1 HTTP/1.1\r\nHost: api.test\r\nAccept-Encoding: identity\r\nContent-Length: 9\r\nUser-Agent: test-agent\r\n\r\nraw-bytes'
 201 True
 b'POST /secure HTTP/1.1\r\nHost: api.test\r\nAccept-Encoding: identity\r\nContent-Length: 0\r\nUser-Agent: test-agent\r\nAuthorization: Basic dXNlcjpwdw==\r\n\r\n'
+201 True
+b'POST /empty-data HTTP/1.1\r\nHost: api.test\r\nAccept-Encoding: identity\r\nContent-Length: 25\r\nUser-Agent: test-agent\r\nContent-Type: application/json\r\n\r\n{"name": "x", "count": 5}'

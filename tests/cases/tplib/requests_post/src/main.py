@@ -11,7 +11,8 @@ import tplib.requests as requests
 from json import JsonValue
 
 
-def send(method: str, url: str, data: bytes | None, body_json: JsonValue | None,
+def send(method: str, url: str, data: bytes | dict[str, str] | None,
+         body_json: JsonValue | None,
          auth: tuple[str, str] | None) -> None:
     a, b = socket.socketpair()
     b.sendall(b"HTTP/1.1 201 Created\r\nContent-Length: 2\r\n\r\nok")
@@ -33,6 +34,8 @@ def main() -> None:
     send("POST", "http://api.test/v1/items", None, payload, None)
     send("PUT", "http://api.test/v1/items/1", b"raw-bytes", None, None)
     send("POST", "http://api.test/secure", None, None, ("user", "pw"))
+    # data=b"" is falsy, so a json= body still fires (json Content-Type + body)
+    send("POST", "http://api.test/empty-data", b"", payload, None)
 
 
 main()

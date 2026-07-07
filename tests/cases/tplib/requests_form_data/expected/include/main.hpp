@@ -7,7 +7,6 @@
 #include "tpystd/tpy/version.hpp"
 #include "tpystd/http.hpp"
 #include "tpystd/http/client.hpp"
-#include "tpystd/json.hpp"
 #include "tpystd/socket.hpp"
 #include "tpystd/tplib.hpp"
 #include "tpystd/tplib/box.hpp"
@@ -20,9 +19,7 @@ using ::tpystd::http::client::HTTPConnection;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-using ::tpystd::json::JsonValue;
-
-void send(std::string_view method, std::string_view url, std::variant<std::monostate, std::vector<uint8_t>*, ::tpy::ordered_map<std::string, std::string>*> data, const ::tpystd::json::JsonValue* body_json, std::optional<std::tuple<std::string, std::string>> auth);
+void send(std::string_view url, std::variant<std::monostate, std::vector<uint8_t>*, ::tpy::ordered_map<std::string, std::string>*> data);
 void main();
 
 void __tpy_init();
