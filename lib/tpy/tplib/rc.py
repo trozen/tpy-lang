@@ -1,6 +1,10 @@
 # Rc[T] / Weak[T] -- non-atomic single-threaded shared-ownership smart
 # pointer with a non-owning companion.
 #
+# KEEP IN SYNC WITH tplib/arc.py: its atomic sibling copies the Rc/Weak handle
+# classes and dunders near-verbatim (only the cell's counters differ), so a fix
+# to the shared handle/dunder logic here belongs there too.
+#
 # Refcount invariant: live strong handles collectively own one weak
 # reference, so initial state is strong=1, weak=1 and the last strong
 # drop decrements weak once after destructing the payload. This decouples

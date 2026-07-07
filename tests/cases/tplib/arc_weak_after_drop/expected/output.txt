@@ -1,0 +1,5 @@
+--- pre ---
+Cell.__del__ 7
+--- post ---
+upgrade returned None
+--- done ---

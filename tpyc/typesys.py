@@ -1153,6 +1153,9 @@ class NominalType(TpyType):
             return self.is_value_type()
         if rec.send_override is not None:
             return rec.send_override
+        if (rec.send_override_when is not None
+                and _conditional_override_holds(rec.send_override_when, self.type_args)):
+            return True
         if not rec.type_params:
             return rec.is_send
         # Generic record: re-walk under use-site type_args. The cycle
@@ -1183,6 +1186,9 @@ class NominalType(TpyType):
             return self.is_value_type()
         if rec.sync_override is not None:
             return rec.sync_override
+        if (rec.sync_override_when is not None
+                and _conditional_override_holds(rec.sync_override_when, self.type_args)):
+            return True
         if not rec.type_params:
             return rec.is_sync
         if self in _evaluating_sync:
@@ -1424,6 +1430,30 @@ def _fields_and_parents_under_args(
         yield substitute_type_params_structural(f.type, subst) if subst else f.type
     for p in record.parents:
         yield substitute_type_params_structural(p, subst) if subst else p
+
+
+def _conditional_override_holds(required_traits: tuple[str, ...], type_args: tuple) -> bool:
+    """Back `@unsafe_send`/`@unsafe_sync` with if_params_* kwargs: True iff every (resolved)
+    type arg satisfies every listed marker trait (`tpy.Send` / `tpy.Sync`).
+
+    An arg that still contains a type parameter is treated as satisfying, so a
+    generic use (`Arc[T]` inside another generic) defers to the concrete
+    instantiation -- mirroring `_fields_and_parents_under_args`'s allowance.
+    An empty `type_args` (the bare, uninstantiated record) does not grant the
+    override; the caller falls through to the structural answer.
+    """
+    from tpyc import qnames
+    if not type_args:
+        return False
+    for ta in type_args:
+        if not isinstance(ta, TpyType) or contains_type_param(ta):
+            continue
+        for trait in required_traits:
+            if trait == qnames.SEND and not ta.is_send():
+                return False
+            if trait == qnames.SYNC and not ta.is_sync():
+                return False
+    return True
 
 
 class C3LinearizationError(Exception):
@@ -5083,6 +5113,13 @@ class RecordInfo:
     # for non-generic records registration folds them into is_send/is_sync.
     send_override: bool | None = None
     sync_override: bool | None = None
+    # Conditional overrides (@unsafe_send/@unsafe_sync with if_params_*): a tuple of
+    # marker-trait qnames (tpy.Send / tpy.Sync) every type param must satisfy
+    # for the trait to hold at a given instantiation; None = not conditional.
+    # Consulted by NominalType.is_send/is_sync between the unconditional
+    # override and the structural walk.
+    send_override_when: tuple[str, ...] | None = None
+    sync_override_when: tuple[str, ...] | None = None
     has_del: bool = False           # True if class declares __del__ (needs drop flag)
     has_copy: bool = False          # True if class defines __copy__ (custom copy semantics)
     has_move: bool = False          # True if class defines __move__ (custom relocating move)

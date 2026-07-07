@@ -1481,6 +1481,11 @@ class TpyRecord:
     # False from @nosend/@nosync, None = structural auto-derive
     send_override: bool | None = None
     sync_override: bool | None = None
+    # Conditional overrides from @unsafe_send/@unsafe_sync (if_params_*): a tuple of
+    # marker-trait qnames every type param must satisfy for the trait to hold;
+    # None = not conditional. Evaluated per instantiation.
+    send_override_when: tuple[str, ...] | None = None
+    sync_override_when: tuple[str, ...] | None = None
     move_override: bool | None = None   # False from @nomove; None = structural
     pending_macros: list[tuple[str, dict[str, Any]]] = field(default_factory=list)
     # Callbacks registered via `ClassInfo.defer_until_macros_complete()`.

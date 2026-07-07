@@ -1,0 +1,2 @@
+main.py:16: error: assert_sync assertion failed: Shared[Ptr[Int32]] is not Sync
++-- type parameter 'T' = Ptr[Int32] is not Sync (raw pointer, no ownership guarantee)

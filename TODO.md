@@ -2,6 +2,7 @@
 
 See `docs/FEATURE_ROADMAP.md` for bigger tasks and `BUGS.md` for known compiler defects.
 
+- **[ergonomics] Allow an enum member (and `Final[enum]` constant) as a default parameter value.** Today a default must be a literal / `None` / fixed-int ctor / `Final[primitive]` -- an enum-valued default like `def f(x: MyEnum = MyEnum.A)` is rejected ("must be a constant expression"), and `Final[MyEnum] = MyEnum.A` is rejected too ("only primitive types and tuple"). This is a common case; e.g. `tpy.atomic`'s `Atomic.load/store/fetch_*` want `order: MemoryOrder = MemoryOrder.SEQ_CST` but must instead take `order: MemoryOrder | None = None` and pick SEQ_CST in the body. An enum member IS a compile-time constant (its C++ form is a scoped enumerator), so the default-value validator should accept it (and a `Final[EnumType]` module constant). **Exact spots (traced):** (1) the default-value constant-expression check at `tpyc/parse/parser.py:4219` -- add an accepted form for an enum-member attribute access; (2) the defaulted-arg substitution at `tpyc/codegen_cpp/functions.py:168` (already handles literals + `Final[T]` module constants) -- emit the enum member's C++ scoped-enumerator form when a call omits the arg. The `Final[enum]` half additionally needs `tpyc/typesys.py:2631` (the "only primitive types and tuple" restriction) relaxed, but that's separable -- the enum-member default alone is what unblocks the `tpy.atomic` cleanup. Once done, drop `atomic.py`'s `order: MemoryOrder | None = None` sentinel + body ternaries for a plain `order: MemoryOrder = MemoryOrder.SEQ_CST`. Localized, no THIR dependency. Surfaced writing `tpy.atomic`.
 - **[thir][design-gate] One design pass remains before the next shape movement (the generics frontier landed as wave-7 on top of wave-6):**
   *Async/generator (resumable frames)* -- `sig.async` 366 + `sig.generator` 221 + most of `sig.param_type` 571 distinct shapes (~27% of all blocked), plus the ctor-side `Waker` params/fields (~790 bodies). The plan's known last-and-largest gate; a separate `/tpy-add-feature` design session.
 - **[thir] Wave-7 deferred generics residue** (see IR_DESIGN.md Wave-7 for context; each is a bounded rung): the plain-TPy explicit `f<T1,T2>(args)` spelling (`type_to_cpp_stored` per arg + the TypeParamRef ref-slot temp rule; the foundation seams -- `THIRCall.template_args_cpp` + its emit/validate arms AND the `lc.render_type_stored` threading -- are in place but deliberately UNCONSUMED until this rung lands); module/static method-call generic targs (the class/method-args split + the dependent `template ` keyword, ~195 tally); the `Box._ptr = heap_take(std::move(value))` MIL source (own-param move through call args in MIL context, ~475 tally); the NON-generic MIL source fams the wave-7 drilldown separated (`ctor.mil_field.optional.name` 652, `.nominal.call` 792, `.record.call` 277 -- sibling source rungs).
@@ -747,6 +748,34 @@ Benchmarked with CME MBO order book (15MB JSON, 20K messages). Library-level opt
 - Test gap: the set-literal / `set.add()` path for the value-tuple-with-pointer-repr-member copy warning is newly wired (`_analyze_set_literal` -> `_warn_storage_element_copy` and the `add` insert -> `T -> Own[T]` branch) but has no test case. Mostly unreachable today (set elements must be hashable + copyable, so the element type is constrained), but a user record with `__hash__`/`__eq__` whose tuple wraps a reference member would hit it. Add a `set[tuple[...]]` literal + `.add()` case once a clean hashable-record exemplar exists. Surfaced by /tpy-review of the tuple-member copy warning.
 - Comprehension copy-warning loc guard is inconsistent with the literal sink. The new comprehension warning sites (`_analyze_elem_comprehension` / `_analyze_dict_comprehension` in `tpyc/sema/expressions.py`) guard on the element/key/value sub-expression's `.loc`, while the literal-element sink (`_analyze_array_literal` etc.) guards on the container node's `expr.loc` to suppress macro/compiler-synthesized nodes. No macro synthesizes comprehensions today (the element-level loc is arguably the more precise guard), so this cannot bite yet, but the two sinks should express "is this user-written" the same way. Align to one guard during the THIR migration or when a macro first emits a comprehension. Surfaced by /tpy-review (architecture-fit) of the comprehension copy-warning fix.
 - Test gap: the comprehension copy-warning has no dedicated set-comprehension warn case, no dict-KEY reference-type warn case (the case covers only a value-type key), and no set/dict `@nocopy` error case. The chokepoint is shared (`_warn_storage_element_copy`, routed for list+set elements and dict key+value), so behavior is covered mechanically and the list/dict-value/error-list branches are directly exercised -- these are missing regression guards, not a current hole. Adding the set / dict-key cases needs a hashable reference type (`@dataclass(frozen=True)` or explicit `__hash__`/`__eq__`). Surfaced by /tpy-review (test-coverage, cpython-parity) of the comprehension copy-warning fix.
+
+- Threading V2 shipped `Atomic[T: AnyFixedInt]` (`tpy.atomic`) with the full
+  `std::atomic<integral>` op surface. Deliberately sliced for later, on demand:
+  (a) the remaining integral fetch ops `fetch_max` / `fetch_min` / `fetch_nand`
+  and `fetch_update` (Rust has them; C++ `std::atomic` lacks nand/update); (b)
+  `AtomicBool` / `AtomicPtr` equivalents -- `AnyFixedInt` excludes `bool`, `Char`,
+  and pointers, so those need their own conformance or a sibling type; (c) a
+  lock-free-restriction bound if we ever want to *enforce* (not just document)
+  that only lock-free scalars are wrapped. None blocks Arc; add when a real use
+  appears.
+- **[parser cleanup] Generalize `_schema_from_stub` so an all-defaulted, all-bool decorator stub validates through the generic path instead of a bespoke parser.** `tpyc/parse/parser.py`'s `_conditional_override_markers` hand-rolls bool-type / duplicate / unexpected-keyword validation for `@unsafe_send(if_params_send=..., if_params_sync=...)`, because `_schema_from_stub`'s "first param = positional" rule doesn't fit a kwargs-only signature. Teach the deriver to treat an all-defaulted signature (esp. all-bool) as kwargs-only, then route these decorators through `_validate_decorator_args` like the other builtin decorators. Pre-existing bypass shape (the old `@unsafe_send_if(*traits)` didn't fit the schema system either), so not a regression -- just a missed unification. Side effect worth fixing together: on a *method*/*function*, `@unsafe_send(if_params_send=True)` is (correctly) rejected, but the message is the schema's confusing "got unexpected keyword argument 'if_params_send'" (the all-bool signature makes the deriver treat `if_params_send` as positional). A kwargs-only-aware schema would let this read "if_params_* is generic-classes-only". Surfaced by /tpy-review (architecture-fit) of the conditional-decorator syntax reshape.
+- Test gaps from the Threading V2 Arc review (non-blocking): (a) the
+  `@unsafe_send`/`@unsafe_sync` conditional (`if_params_*`) parser diagnostics
+  are only partially exercised. Covered: positional arg, non-generic class,
+  kwargs on a method, kwargs on `@nosend`. Still uncovered: a non-bool flag
+  value (`if_params_send=1`), an unexpected kwarg, a repeated kwarg, an all-False
+  call, kwargs on a free *function* (same guard as the method case), and two
+  conditional decorators on the same trait; also the *Sync*-side of the
+  conditional-vs-unconditional conflict (`@unsafe_sync` + `@unsafe_sync(if_params_
+  sync=True)`) -- only the Send side (`error_conditional_conflict`) is tested.
+  (b) No `Arc` analog of `rc_readonly_clone` (readonly-handle `clone`/`downgrade`/
+  `upgrade` yielding a readonly payload) -- lower risk since the `auto_readonly`
+  mechanism is shared verbatim with Rc. Surfaced by /tpy-review (test-coverage).
+- Threading V3: `Mutex[T]` / `RwLock[T]` (Sync iff `T: Send`, canonical
+  `Arc[Mutex[T]]`). The conditional Send/Sync override V2 shipped
+  (`@unsafe_sync(if_params_send=True)`) is exactly the machinery Mutex needs; the remaining
+  work is the lock wrapper + guard types. Module-placement decision (`tpy.sync`
+  vs `tplib.*`) still open -- see `docs/THREADING_DESIGN.md` V3.
 
 ## Known Limitations
 - Subscript narrowing: `if items[i] is not None:` does not narrow `items[i]`. Hard to make sound due to index aliasing and container mutation; would need invalidation on any container write.

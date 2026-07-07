@@ -1,0 +1,2 @@
+main.py:15: error: assert_sync assertion failed: SendCell[Int32] is not Sync
++-- field 'p: Ptr[Int32]' is not Sync (raw pointer, no ownership guarantee)

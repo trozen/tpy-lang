@@ -44,7 +44,7 @@ review findings are recorded inline so they do not get re-litigated.
 | ID | Increment | Scope | Status | Depends on |
 |----|-----------|-------|--------|------------|
 | V1 | `tpy.thread.spawn` (Runnable-struct) | `spawn[R: Send, T: ThreadTask[R]](task: Send[Own[T]]) -> Own[JoinHandle[R]]` (`ThreadTask` = structural `run() -> R`; `Send` via the `Send[Own[T]]` wrapper; `R: Send` bound since R crosses the thread boundary; `spawn(task)` fully inferred -- the marker-wrapper + associated-type inference gaps are closed). `JoinHandle`: `join() -> R`/`detach()`, abort-on-unconsumed-drop. | **BUILT** | -- |
-| V2 | `Arc[T]` / `Weak[T]` | Atomic sibling of `Rc`. Needs a new `@native` atomic-cell primitive (`std::atomic<uint32_t>`) -- not a pure-lib mirror of `rc.py`. Shared into a task by `arc.clone()` into a struct field. | **designed** | V1 |
+| V2 | `Arc[T]` / `Weak[T]` | Atomic sibling of `Rc`, built on a new generic `Atomic[T: AnyFixedInt]` (`tpy.atomic`, wrapping `std::atomic<T>`). `Send + Sync` iff `T` is, via the conditional `@unsafe_send`/`@unsafe_sync` (if_params_*) override. Shared into a task by `arc.clone()` into a struct field. | **built** | V1 |
 | V3 | `Mutex[T]` / `RwLock[T]` | `Sync` iff `T: Send`; shared as `Arc[Mutex[T]]`. Module placement decided here (`tpy.sync` vs extend `tplib.*`). | **designed** | V2 |
 | D1 | Closure `spawn` (ergonomic layer) | `spawn(lambda: work(data))` desugaring to the V1 core. Needs a **callable generic bound** + owning-capture. Own design pass; the current spelling is shaky (see "Deferred: closures"). Likely **post-THIR**. | **deferred** | V1, (THIR) |
 | D2 | De-intrinsic `asyncio.create_task` | Shipped as "bound coroutines": move-only handle locals holding the concrete frame (zero-alloc; erasure only at typed boundaries), consumed by await/create_task/run/move; compile-time coroutine-only arg contract. See the SHIPPED section below. | **SHIPPED** | -- |
@@ -229,14 +229,50 @@ inferred-form cases run under CPython via `lib/cpy/tpy/thread.py`):
   + inferred forms, `@nocopy` task), `error_spawn_inferred_not_send` (Send
   rejection still fires without explicit type args).
 
-## V2 -- `Arc[T]` / `Weak[T]`
+## V2 -- `Arc[T]` / `Weak[T]` (BUILT)
 
-Atomic sibling of the shipped `Rc` (`tplib/rc.py`). The refcount cell must be
-`std::atomic<uint32_t>`; TPy cannot express an atomic field today, so V2's
-real work is a new `@native` atomic-cell primitive (a `std::atomic` wrapper),
-*not* a pure-library mirror of `rc.py`. `Arc[T]` requires `T: Send + Sync`
-and is itself `Send + Sync` (matches Rust). Shared into a task by
-`arc.clone()` into a struct field -- composes with V1 without closures.
+Atomic sibling of `Rc` (`tplib/arc.py`), a near-clone whose only behavioral
+delta is atomic refcounts. As shipped:
+
+- **`Atomic[T: AnyFixedInt]`** (`tpy.atomic`, `runtime/cpp/include/tpy/atomic.hpp`)
+  -- a generic wrapper over `std::atomic<T>`, not an Arc-private helper. The
+  `AnyFixedInt` bound is what let us pick generic-over-integers without C++'s
+  silent-mutex-for-big-`T` footgun (Rust enumerated concrete `AtomicU32/64/...`
+  only because it couldn't ergonomically bound the generic). `@nocopy` but
+  movable via a relaxed-load move ctor (a TPy move is exclusive, so it's
+  race-free) -- which keeps `_ArcCell` movable for the `unsafe_take` heap-build
+  idiom `Rc` uses. Memory orderings cross the boundary as `std::memory_order`
+  itself (a `@native("std::memory_order")` `MemoryOrder` enum), so no
+  translation layer. Full `std::atomic<integral>` surface; CAS returns
+  `(succeeded, observed)`. The user-facing `Atomic` is a thin TPy wrapper over
+  the raw `@native` core, which is what lets each op's `MemoryOrder` default to
+  `SEQ_CST` (via a `None` sentinel -- TPy can't default an enum param) and adds
+  in-place operators (`+=` etc., seq_cst RMW) and snapshot `str`/`repr` as plain
+  method bodies. Binary operators / implicit `int()` are withheld so the racy
+  `a = a + 1` (load/store, not atomic) stays a type error.
+- **Conditional Send/Sync** -- `Arc`/`Weak` carry
+  `@unsafe_send(if_params_send=True, if_params_sync=True)` / `@unsafe_sync(...)` (V2 rung 2), so
+  they are `Send + Sync` exactly when `T` is both, matching Rust's
+  `unsafe impl<T: Send + Sync>`. No constructor gate: `Arc[non-Send-Sync]` is a
+  legal *non-Send* value (like `Arc<Rc<_>>`), rejected only at the thread
+  boundary, where the why-not chain names the offending type parameter and the
+  marker it lacks.
+- **Ordering recipe** (matches `std::sync::Arc`): clone `fetch_add(1, Relaxed)`;
+  drop `fetch_sub(1, Release)` + an `Acquire` fence on the final decrement
+  before the payload destructor; `upgrade` a CAS loop with `Acquire`.
+
+Composes with V1 spawn by `arc.clone()` into a `@nocopy` task's field, no
+closures needed (`tests/cases/threading/arc_spawn` hammers the refcount from
+three threads).
+
+**Known limitation (pre-existing, tracked in `BUGS.md`):** a *self-referential*
+record holding an `Arc[Node]` (or `Arc[Node] | None`) field -- the natural
+Rust-style shared graph/tree node -- is currently mis-derived as **not Send/not
+Sync** (so it can't cross a thread boundary), because a non-generic
+self-referential record reads its own not-yet-computed Send answer during
+registration. This is a general Send/Sync fixpoint gap (it reproduces with
+`list[Node]` too, independent of Arc), not specific to Arc; it fails safe
+(rejects valid code, no miscompile). Fix pending via `/tpy-fix-bug`.
 
 ## V3 -- `Mutex[T]` / `RwLock[T]`
 

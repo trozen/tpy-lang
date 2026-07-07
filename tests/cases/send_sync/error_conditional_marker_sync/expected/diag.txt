@@ -1,0 +1,1 @@
+main.py:7: error: a conditional @unsafe_sync(if_params_...) conflicts with the 'Sync' base class on 'A' -- use one or the other

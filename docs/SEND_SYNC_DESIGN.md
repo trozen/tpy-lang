@@ -10,7 +10,7 @@
 | **Phase 4** | First enforcement site: `Channel[T]` (intra-process, `T: Send`) on top of the single-threaded executor | Done (SPSC; MPSC deferred -- see `docs/CHANNEL_DESIGN.md`) |
 | **Phase 4.5** | Second enforcement site: real OS threads -- `tpy.thread.spawn` (Runnable-struct form) Send-checks the task (`Send[Own[T]]`) and result (`R: Send`) at the call site | Done (V1; closure-based `spawn` deferred -- see `docs/THREADING_DESIGN.md`) |
 | **Phase 5** | Multi-threaded *async* executor; `Task[T]` requires `Send` frame for migration; closure-based `thread.spawn(fn)` requiring `Send` closure | Planned (v3+) |
-| **Phase 6** | `Arc[T]` (atomic shared ownership), synchronization primitives (`Mutex[T]`, `RwLock[T]`), `Sync`-required borrow sites | Planned (v3+) |
+| **Phase 6** | `Arc[T]` (atomic shared ownership) + the conditional Send/Sync override it needs -- Done; synchronization primitives (`Mutex[T]`, `RwLock[T]`), `Sync`-required borrow sites -- Planned (v3+) |
 
 Phases 2 and 3 are independent of any concurrency runtime and should land first. Phase 4 forces the open questions in Phase 2/3 to be answered against a concrete enforcement site; the rest is gated on the multi-threaded executor decision in `docs/ASYNC_DESIGN.md`.
 
@@ -422,7 +422,7 @@ The marker layer is unobservable until something *uses* it. The planned sites, i
 
 **Async** (`docs/ASYNC_DESIGN.md`): v1 / v1.5 are single-threaded; the marker layer is dormant. Phase 5 multi-thread executor reads coroutine-frame Send-ness from OQ3. The split between single-threaded `Task` (no Send constraint) and multi-threaded `Task` (Send required) is a v3+ design decision tracked there.
 
-**Rc / Arc** (`tplib/rc.py`, planned `Arc[T]`): `Rc[T]` is the canonical non-Send shared-ownership type. `Arc[T]` (Phase 6) is the Send/Sync counterpart. The two-type split mirrors Rust and avoids paying the atomic cost when threads aren't involved.
+**Rc / Arc** (`tplib/rc.py`, `tplib/arc.py`): `Rc[T]` is the canonical non-Send shared-ownership type. `Arc[T]` (Phase 6, shipped) is the Send/Sync counterpart -- Send + Sync iff `T` is both, via the conditional override. The two-type split mirrors Rust and avoids paying the atomic cost when threads aren't involved.
 
 **`@dynamic` protocols** (`docs/DYNAMIC_PROTOCOL_DESIGN.md`): see OQ5.
 
@@ -519,12 +519,21 @@ Gated on `docs/ASYNC_DESIGN.md` v3+ decision. Adds:
 
 ### Phase 6 -- Arc, Mutex, RwLock
 
-1. `Arc[T]` requires `T: Send + Sync`. Atomic counterpart to `Rc[T]`.
-2. `Mutex[T]` -- Sync iff `T: Send`. Locks expose `&mut T` / `readonly[T]` through guards.
-3. `RwLock[T]` -- same constraint, multi-reader shape.
+1. `Arc[T]` requires `T: Send + Sync`. Atomic counterpart to `Rc[T]`. **Done**
+   (`tplib/arc.py`; see `docs/THREADING_DESIGN.md` V2). Delivered the
+   **conditional Send/Sync override** the marker layer previously lacked:
+   `@unsafe_send(if_params_send=..., if_params_sync=...)` / `@unsafe_sync(...)` on a generic record
+   grant the trait iff every type param satisfies the listed markers, else fall
+   back to the structural answer -- the analog of Rust's
+   `unsafe impl<T: Send + Sync>`, and the machinery Mutex reuses below. The
+   why-not chain attributes a failure to the offending type param and the marker
+   it lacks. (The old kit only had the *unconditional* `@unsafe_send` / `@nosend`.)
+2. `Mutex[T]` -- Sync iff `T: Send` (a conditional override: `@unsafe_sync(if_params_send=True)`).
+   Locks expose `&mut T` / `readonly[T]` through guards. **Planned.**
+3. `RwLock[T]` -- same constraint, multi-reader shape. **Planned.**
 4. Channels gain MPMC variant if useful.
 
-**Effort:** L.
+**Effort:** L (Arc + conditional-override done; Mutex/RwLock remain).
 
 ## Implementation Notes
 

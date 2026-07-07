@@ -4,11 +4,14 @@
 #include <tpy/tpy.hpp>
 #include "tpystd/tpy/_types.hpp"
 #include "tpystd/typing/_typing.hpp"
+#include "tpystd/tpy/atomic.hpp"
 #include "tpystd/tplib.hpp"
+#include "tpystd/tplib/arc.hpp"
 #include "tpystd/tplib/rc.hpp"
 
 namespace tpyapp::main {
 
+using ::tpystd::tplib::arc::Arc;
 using ::tpystd::tplib::rc::Rc;
 
 struct State;

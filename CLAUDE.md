@@ -280,6 +280,8 @@ Full TurboPython -> C++ type mapping lives in `docs/LANGUAGE_FEATURES.md`. Types
 | `Box[T]` | Pure-TPy heap-allocated owning container (`tplib/box.py`); `@nocopy`, explicit `.clone()` to duplicate. Construct via `Box(value)` where `value: Own[T]`. |
 | `Rc[T]` | Pure-TPy non-atomic shared-ownership wrapper (`tplib/rc.py`); `@nocopy`, explicit `.clone()` to share. Construct via `Rc.new(value)`. |
 | `Weak[T]` | Non-owning companion to `Rc[T]`; shares the cell but doesn't keep payload alive. `@nocopy`. Mint via `rc.downgrade()`; recover a strong handle (or `None`) via `weak.upgrade()`. Imported as `from tplib.rc import Weak` (module-scoped so a future `tplib.arc.Weak` can coexist). |
+| `Arc[T]` / `Weak[T]` (arc) | Atomic-refcount sibling of `Rc`/`Weak` (`tplib/arc.py`); same shape, `std::atomic<uint32_t>` counters so handles cross threads. `@nocopy`; `Send + Sync` iff `T` is (conditional-override, matches Rust). Construct via `Arc.new(value)`; share via `arc.clone()`. Import as `from tplib.arc import Arc, Weak` (not re-exported from `tplib` -- keeps the atomic runtime out of non-threaded consumers; `Weak` coexists with `tplib.rc.Weak`). |
+| `Atomic[T]` (`T: AnyFixedInt`) | `std::atomic<T>` wrapper (`tpy.atomic`); `@nocopy` but movable, `Send + Sync`. Full `std::atomic<integral>` op surface; each op's `MemoryOrder` (a `@native("std::memory_order")` enum) defaults to `SEQ_CST`. CAS returns `(succeeded, observed)`. In-place operators (`+=` etc.) + `str`/`repr`; binary operators / implicit `int()` omitted (would make the racy `a = a + 1` look valid). |
 | `BytesView` | `std::span<const uint8_t>` |
 | `A \| B` (value types) | `std::variant<A, B>` |
 | `A \| B` (non-value, params/returns/locals) | `std::variant<A*, B*>` (pointer variant) |

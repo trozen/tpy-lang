@@ -1,0 +1,3 @@
+Arc + spawn move the @nocopy task across a real thread boundary; the
+CPython thread stub does not simulate the move/JoinHandle semantics (same
+reason as the other threading cases).

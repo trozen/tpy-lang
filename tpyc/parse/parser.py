@@ -1581,6 +1581,8 @@ class Parser:
         is_indirecting = False
         send_override: bool | None = None
         sync_override: bool | None = None
+        send_override_when: tuple[str, ...] | None = None
+        sync_override_when: tuple[str, ...] | None = None
         move_override: bool | None = None
         exposed_to_host = False
         pending_macros: list[tuple[str, dict[str, Any]]] = []
@@ -1628,10 +1630,25 @@ class Parser:
                 self._validate_decorator_args(qname, arg, dec)
                 move_override = False
             elif qname in self._SEND_SYNC_DECORATOR_MAP:
-                self._validate_decorator_args(qname, arg, dec)
-                send_override, sync_override = self._apply_send_sync_override(
-                    qname, send_override, sync_override,
-                    f"Class '{node.name}'", node)
+                # @unsafe_send / @unsafe_sync accept optional if_params_send /
+                # if_params_sync kwargs (conditional override); bare / @nosend /
+                # @nosync are unconditional.
+                when = self._conditional_override_markers(qname, dec)
+                if when is not None:
+                    if self._SEND_SYNC_DECORATOR_MAP[qname][0]:  # is_sync trait
+                        if sync_override_when is not None:
+                            raise ParseError(f"Class '{node.name}' has contradictory "
+                                             f"Sync-override decorators", node)
+                        sync_override_when = when
+                    else:
+                        if send_override_when is not None:
+                            raise ParseError(f"Class '{node.name}' has contradictory "
+                                             f"Send-override decorators", node)
+                        send_override_when = when
+                else:
+                    send_override, sync_override = self._apply_send_sync_override(
+                        qname, send_override, sync_override,
+                        f"Class '{node.name}'", node)
             elif qname == qnames.BUILTIN_TYPE:
                 pos, _ = self._validate_decorator_args(qname, arg, dec)
                 builtin_type_key = pos
@@ -1642,6 +1659,18 @@ class Parser:
                 # Treat as a macro decorator -- extract kwargs and store for later
                 macro_kwargs = self._extract_decorator_kwargs(dec, arg, node.name)
                 pending_macros.append((qname, macro_kwargs))
+
+        # A conditional override (@unsafe_send with if_params_*) and an
+        # unconditional one (bare @unsafe_send / @nosend) on the same trait
+        # contradict, regardless of decorator order.
+        if send_override is not None and send_override_when is not None:
+            raise ParseError(
+                f"Class '{node.name}': a conditional @unsafe_send(if_params_...) "
+                f"conflicts with an unconditional @unsafe_send / @nosend", node)
+        if sync_override is not None and sync_override_when is not None:
+            raise ParseError(
+                f"Class '{node.name}': a conditional @unsafe_sync(if_params_...) "
+                f"conflicts with an unconditional @unsafe_sync / @nosync", node)
 
         # Extract type parameters FIRST so they're in scope when parsing bases
         # Python 3.12+ syntax: class Foo[T, U]:
@@ -1666,6 +1695,16 @@ class Parser:
                         type_param_kinds.append(TypeParamKind.TYPE)
                 else:
                     raise ParseError(f"Only simple type parameters supported, got {type(tp).__name__}", node)
+
+        # A conditional override conditions the trait on type parameters, so it
+        # is meaningless on a non-generic class (it could never fire, silently
+        # no-opping). Reject it rather than let it look effective.
+        if (send_override_when is not None or sync_override_when is not None) and not type_params:
+            raise ParseError(
+                f"Class '{node.name}': @unsafe_send / @unsafe_sync with "
+                f"if_params_send / if_params_sync require type parameters (the "
+                f"trait is conditioned on them); drop the kwargs for an "
+                f"unconditional override", node)
 
         # Create a dict of type param names to kinds for scope during parsing
         type_param_scope = dict(zip(type_params, type_param_kinds)) if type_params else None
@@ -1836,7 +1875,7 @@ class Parser:
         # Restore scopes
         self._type_param_scope = old_scope
         self._nested_type_scope = old_nested_scope
-        return TpyRecord(name=node.name, fields=fields, methods=methods, type_params=type_params, type_param_kinds=type_param_kinds, type_param_bounds=type_param_bounds, bases=bases, linkage=linkage, native_name=native_name, is_nocopy=is_nocopy, builtin_type_key=builtin_type_key, virtual_raise=virtual_raise, is_indirecting=is_indirecting, send_override=send_override, sync_override=sync_override, move_override=move_override, pending_macros=pending_macros, nested_records=nested_records, nested_enums=nested_enums, is_typed_dict=is_typed_dict, is_total_false=is_total_false, exposed_to_host=exposed_to_host, loc=self._loc(node))
+        return TpyRecord(name=node.name, fields=fields, methods=methods, type_params=type_params, type_param_kinds=type_param_kinds, type_param_bounds=type_param_bounds, bases=bases, linkage=linkage, native_name=native_name, is_nocopy=is_nocopy, builtin_type_key=builtin_type_key, virtual_raise=virtual_raise, is_indirecting=is_indirecting, send_override=send_override, sync_override=sync_override, send_override_when=send_override_when, sync_override_when=sync_override_when, move_override=move_override, pending_macros=pending_macros, nested_records=nested_records, nested_enums=nested_enums, is_typed_dict=is_typed_dict, is_total_false=is_total_false, exposed_to_host=exposed_to_host, loc=self._loc(node))
 
     def _auto_declare_fields_from_init(
         self,
@@ -2214,6 +2253,42 @@ class Parser:
             return send_override, value
         return value, sync_override
 
+    def _conditional_override_markers(self, qname: str, dec: ast.expr) -> 'tuple[str, ...] | None':
+        """For `@unsafe_send(if_params_send=..., if_params_sync=...)` (and the
+        Sync variant), return the tuple of marker qnames every type param must
+        satisfy for the conditional override to grant the trait. Returns None for
+        the bare / empty-call form (unconditional). Rejects the kwargs on
+        @nosend/@nosync and any non-bool / unexpected argument."""
+        if not isinstance(dec, ast.Call) or (not dec.args and not dec.keywords):
+            return None  # bare @unsafe_send or @unsafe_send()
+        dec_name = bare_name(qname)
+        if qname not in (qnames.UNSAFE_SEND, qnames.UNSAFE_SYNC):
+            raise ParseError(f"@{dec_name} does not take arguments", dec)
+        if dec.args:
+            raise ParseError(
+                f"@{dec_name}() takes only the keyword arguments "
+                f"if_params_send / if_params_sync", dec)
+        markers: list[str] = []
+        seen: set[str] = set()
+        for kw in dec.keywords:
+            if kw.arg not in ("if_params_send", "if_params_sync"):
+                raise ParseError(
+                    f"@{dec_name}(): unexpected argument '{kw.arg}'; expected "
+                    f"if_params_send / if_params_sync", dec)
+            if kw.arg in seen:
+                raise ParseError(f"@{dec_name}() got '{kw.arg}' twice", dec)
+            seen.add(kw.arg)
+            if not (isinstance(kw.value, ast.Constant) and isinstance(kw.value.value, bool)):
+                raise ParseError(f"@{dec_name}({kw.arg}=...) must be True or False", dec)
+            if kw.value.value:
+                markers.append(qnames.SEND if kw.arg == "if_params_send" else qnames.SYNC)
+        if not markers:
+            raise ParseError(
+                f"@{dec_name}(): at least one of if_params_send / if_params_sync "
+                f"must be True (else the override has no effect)", dec)
+        markers.sort(key=lambda q: 0 if q == qnames.SEND else 1)
+        return tuple(markers)
+
     _METHOD_LINKAGE_MAP: dict[str, FunctionLinkage] = {
         qnames.NATIVE: FunctionLinkage.NATIVE,
     }
@@ -2284,6 +2359,9 @@ class Parser:
             elif qname == qnames.COPY_RETURNS_WARN:
                 copy_returns_warn = True
             elif qname in self._SEND_SYNC_DECORATOR_MAP:
+                # if_params_* kwargs are a generic-class-only feature; on a method
+                # they are rejected by the generic decorator-arg validation above
+                # (the conditional form never reaches this branch).
                 send_override, sync_override = self._apply_send_sync_override(
                     qname, send_override, sync_override,
                     f"Method '{node.name}'", node)
@@ -2630,6 +2708,9 @@ class Parser:
             elif qname == qnames.VALUE_PTR_COERCION:
                 value_ptr_coercion = True
             elif qname in self._SEND_SYNC_DECORATOR_MAP:
+                # if_params_* kwargs are a generic-class-only feature; on a
+                # function they are rejected by the generic decorator-arg
+                # validation above (never reaching this branch).
                 send_override, sync_override = self._apply_send_sync_override(
                     qname, send_override, sync_override,
                     f"Function '{node.name}'", node)

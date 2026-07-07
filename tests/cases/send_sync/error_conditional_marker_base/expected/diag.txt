@@ -1,0 +1,1 @@
+main.py:7: error: a conditional @unsafe_send(if_params_...) conflicts with the 'Send' base class on 'A' -- use one or the other

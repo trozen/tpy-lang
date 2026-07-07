@@ -1,0 +1,1 @@
+main.py:6: error: Class 'A': @unsafe_send / @unsafe_sync with if_params_send / if_params_sync require type parameters (the trait is conditioned on them); drop the kwargs for an unconditional override

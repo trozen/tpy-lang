@@ -1,0 +1,2 @@
+main.py:18: error: assert_send assertion failed: Shared[Ptr[Int32]] is not Send
++-- type parameter 'T' = Ptr[Int32] is not Send (raw pointer, no ownership guarantee)

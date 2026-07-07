@@ -16,6 +16,7 @@ sites, `assert_send[T]()` failures, and `--explain-send`.
 """
 from typing import Optional
 
+from tpyc import qnames
 from tpyc.typesys import (
     TpyType, NominalType, UnionType, TupleType, OptionalType, PtrType,
     OwnType, ReadonlyType, RefType, SendType, SyncType, FrameType,
@@ -90,6 +91,38 @@ def _attribute(t: TpyType, recurse: Recurse, send: bool) -> list[ChainNode]:
         override = rec.send_override if send else rec.sync_override
         if override is False:
             return []
+        # Conditional override (@unsafe_send/@unsafe_sync with if_params_*): reaching here
+        # means the condition failed (the override only ever grants the trait),
+        # so a type param lacks a required marker. Point at that param and the
+        # marker it lacks, not at the internal fields the override abstracts over.
+        when = rec.send_override_when if send else rec.sync_override_when
+        if when is not None:
+            outer_q = qnames.SEND if send else qnames.SYNC
+            out = []
+            for name, arg in zip(rec.type_params, t.type_args):
+                if not isinstance(arg, TpyType):
+                    continue
+                label = f"type parameter '{name}' = {arg}"
+                # When the arg fails the very trait being explained, recurse on
+                # it: the sub-chain renders cleanly under this trait's renderer.
+                if outer_q in when and not (arg.is_send() if send else arg.is_sync()):
+                    node = recurse(arg, label)
+                    if node is not None:
+                        out.append(node)
+                        continue
+                # Cross-trait: the arg satisfies the explained trait but lacks
+                # the *other* marker the bound also requires. Name it, since the
+                # single-trait renderer can't render that sub-chain correctly.
+                for trait_q in when:
+                    trait_send = (trait_q == qnames.SEND)
+                    if (arg.is_send() if trait_send else arg.is_sync()):
+                        continue
+                    tname = "Send" if trait_send else "Sync"
+                    out.append(ChainNode(
+                        label, f"the bound also requires {tname}, which {arg} lacks", ()))
+                    break
+            if out:
+                return out
         subst: dict[str, TpyType] = {}
         if rec.type_params and t.type_args:
             for name, arg in zip(rec.type_params, t.type_args):

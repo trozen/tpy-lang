@@ -1862,6 +1862,8 @@ class TypeRegistrar:
             is_nocopy=record.is_nocopy,
             send_override=record.send_override,
             sync_override=record.sync_override,
+            send_override_when=record.send_override_when,
+            sync_override_when=record.sync_override_when,
             move_override=record.move_override,
             match_args=(
                 record._macro_cls_info.get_match_args()
@@ -2332,12 +2334,12 @@ class TypeRegistrar:
             if qn == qnames.SEND:
                 self._check_marker_claim(
                     record, record_info, "Send", is_send,
-                    record_info.send_override,
+                    record_info.send_override, record_info.send_override_when,
                     lambda t: t.is_send() or contains_type_param(t))
             elif qn == qnames.SYNC:
                 self._check_marker_claim(
                     record, record_info, "Sync", is_sync,
-                    record_info.sync_override,
+                    record_info.sync_override, record_info.sync_override_when,
                     lambda t: t.is_sync() or contains_type_param(t))
 
         # Decorator overrides force the answer regardless of fields.
@@ -2381,12 +2383,14 @@ class TypeRegistrar:
 
     def _check_marker_claim(
         self, record: TpyRecord, record_info: 'RecordInfo', trait: str,
-        structural_ok: bool, override: 'bool | None', field_ok,
+        structural_ok: bool, override: 'bool | None',
+        override_when: 'tuple[str, ...] | None', field_ok,
     ) -> None:
         """Validate a `class Foo(Send)` / `class Foo(Sync)` opt-in marker:
         the structural derivation must agree (the claim is checked, not
         trusted), and trait-override decorators on the same record are
-        rejected (redundant for @unsafe_*, contradictory for @no*)."""
+        rejected (redundant for @unsafe_*, contradictory for @no*, conflicting
+        for a conditional @unsafe_* with if_params_* kwargs)."""
         unsafe_dec = f"@unsafe_{trait.lower()}"
         opt_out_dec = f"@no{trait.lower()}"
         if override is not None:
@@ -2396,6 +2400,13 @@ class TypeRegistrar:
                 f"{dec} {relation} the '{trait}' base class on "
                 f"'{record.name}' -- use one or the other",
                 record.loc)
+        # The marker base asserts an unconditional structural claim; the
+        # conditional override asserts a per-type-param one. They conflict.
+        if override_when is not None:
+            raise SemanticError(
+                f"a conditional @unsafe_{trait.lower()}(if_params_...) conflicts "
+                f"with the '{trait}' base class on '{record.name}' -- use one or "
+                f"the other", record.loc)
         if not structural_ok:
             offending = next(
                 (f for f in record_info.fields if not field_ok(f.type)), None)

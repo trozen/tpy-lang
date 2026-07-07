@@ -485,14 +485,23 @@ def nocopy(cls):
     return cls
 
 
-def unsafe_send(target):
-    """No-op in CPython. The compiler forces the Send answer to true."""
-    return target
+def unsafe_send(target=None, *, if_params_send=False, if_params_sync=False):
+    """No-op in CPython. Usable bare (`@unsafe_send`, target is the class) or as a
+    factory (`@unsafe_send(if_params_send=True)`, the conditional form)."""
+    if target is not None:
+        return target
+    def deco(cls):
+        return cls
+    return deco
 
 
-def unsafe_sync(target):
-    """No-op in CPython. The compiler forces the Sync answer to true."""
-    return target
+def unsafe_sync(target=None, *, if_params_send=False, if_params_sync=False):
+    """No-op in CPython. Bare or conditional-factory form, like unsafe_send."""
+    if target is not None:
+        return target
+    def deco(cls):
+        return cls
+    return deco
 
 
 def nosend(target):

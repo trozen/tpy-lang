@@ -1,0 +1,1 @@
+main.py:7: error: Class 'A': a conditional @unsafe_send(if_params_...) conflicts with an unconditional @unsafe_send / @nosend
