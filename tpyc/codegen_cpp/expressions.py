@@ -80,7 +80,7 @@ from ..prescan import match_is_none, _expr_to_narrowing_key
 from ..namespace import BindingKind
 from ..sema.numeric_lattice import fixed_int_range_contains
 from ..sema.literal_utils import literal_value_from_expr
-from .context import INDENT, escape_cpp_string, escape_cpp_char, escape_cpp_name, qualified_cpp_name, qualify_native_name, imported_free_callee_cpp, imported_variable_cpp, module_qualified_callee_cpp, static_method_callee_cpp, enum_cpp_name, loop_var_binding, is_lvalue_iterable, cpp_string_literal_expr, cpp_bytes_literal_span, cpp_bytes_literal_owned, view_key_target, CppForm, FormValue, expand_cpp_template
+from .context import INDENT, escape_cpp_string, escape_cpp_char, escape_cpp_name, qualified_cpp_name, qualify_native_name, imported_free_callee_cpp, imported_variable_cpp, module_qualified_callee_cpp, static_method_callee_cpp, enum_cpp_name, enum_member_cpp, loop_var_binding, is_lvalue_iterable, cpp_string_literal_expr, cpp_bytes_literal_span, cpp_bytes_literal_owned, view_key_target, CppForm, FormValue, expand_cpp_template
 from .functions import literal_mangled_name
 from .. import qnames
 
@@ -4365,12 +4365,7 @@ class ExpressionGenerator:
                 # map (Python name otherwise).
                 if binding and binding.kind == BindingKind.ENUM:
                     cur_module = self.ctx.analyzer.ctx.module_name
-                    einfo = enum_info_of(binding.enum_type)
-                    member_cpp = (
-                        einfo.cpp_member_name_map.get(expr.field, expr.field)
-                        if einfo is not None else expr.field
-                    )
-                    return f"{enum_cpp_name(binding.enum_type, cur_module, einfo=einfo)}::{member_cpp}"
+                    return enum_member_cpp(binding.enum_type, cur_module, expr.field)
 
                 # Nested type access on a record: Container.Kind -> Container::Kind
                 if binding and binding.kind in (BindingKind.RECORD, BindingKind.IMPORTED_NAME):

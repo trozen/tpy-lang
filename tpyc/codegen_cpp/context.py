@@ -475,6 +475,17 @@ def enum_cpp_name(enum_type: TpyType, current_module: str, *,
     return enum_type.name
 
 
+def enum_member_cpp(enum_type: TpyType, current_module: str, member: str) -> str:
+    """C++ spelling for a type-level enum member access (`Color.RED` ->
+    `Color::Red`, or the @native `native_member` rename). The single source
+    for member-access codegen and enum-member default parameter values."""
+    from ..type_def_registry import enum_info_of
+    einfo = enum_info_of(enum_type)
+    member_cpp = (einfo.cpp_member_name_map.get(member, member)
+                  if einfo is not None else member)
+    return f"{enum_cpp_name(enum_type, current_module, einfo=einfo)}::{member_cpp}"
+
+
 def loop_var_binding(
     elem_type: TpyType, cpp_var: str, deref_expr: str,
     const_loop_var: bool, hoisted: bool = False,

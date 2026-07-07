@@ -1,1 +1,1 @@
-main.py:2: error: Default parameter value must be a constant expression (literal, None, fixed-int constructor like Int32(5), or a Final[T] module constant)
+main.py:2: error: Default parameter value must be a constant expression (literal, None, fixed-int constructor like Int32(5), an enum member like Color.RED, or a Final[T] module constant)

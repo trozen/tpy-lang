@@ -246,7 +246,7 @@ delta is atomic refcounts. As shipped:
   translation layer. Full `std::atomic<integral>` surface; CAS returns
   `(succeeded, observed)`. The user-facing `Atomic` is a thin TPy wrapper over
   the raw `@native` core, which is what lets each op's `MemoryOrder` default to
-  `SEQ_CST` (via a `None` sentinel -- TPy can't default an enum param) and adds
+  `SEQ_CST` (a plain `order: MemoryOrder = MemoryOrder.SEQ_CST` default) and adds
   in-place operators (`+=` etc., seq_cst RMW) and snapshot `str`/`repr` as plain
   method bodies. Binary operators / implicit `int()` are withheld so the racy
   `a = a + 1` (load/store, not atomic) stays a type error.

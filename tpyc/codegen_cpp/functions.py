@@ -36,10 +36,10 @@ from ..type_def_registry import is_varargs, is_char_type, is_str_type, is_bytes_
 from ..parse.nodes import (
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral, TpyStrLiteral,
     TpyBytesLiteral, TpyNoneLiteral, TpyUnaryOp, TpyTypeParamConstruct,
-    TpyCall, TpyName,
+    TpyCall, TpyName, TpyFieldAccess,
 )
 from ..namespace import Namespace
-from .context import INDENT, module_to_cpp_namespace, escape_cpp_name, qualified_cpp_name, cpp_string_literal_expr, cpp_bytes_literal_span, cpp_bytes_literal_owned, expand_cpp_template, CodeGenError
+from .context import INDENT, module_to_cpp_namespace, escape_cpp_name, qualified_cpp_name, cpp_string_literal_expr, cpp_bytes_literal_span, cpp_bytes_literal_owned, expand_cpp_template, enum_member_cpp, CodeGenError
 from .param_const import decide_param_const, ParamConstDecision
 from .type_resolution import resolve_stmt_type_cascade
 
@@ -185,6 +185,17 @@ def default_to_cpp(ctx: 'CodeGenContext', expr: TpyExpr, ptype: TpyType) -> str:
             source_module, original_name = imp
             return qualified_cpp_name(source_module, original_name)
         return escape_cpp_name(expr.name)
+    if isinstance(expr, TpyFieldAccess) and isinstance(expr.obj, TpyName):
+        # Enum-member default: MemoryOrder.SEQ_CST -> the scoped enumerator.
+        # get_enum resolves both local and imported enums (parser accepts the
+        # Name.attr shape without type info, so a non-enum reaching here is a
+        # user error, not an internal one).
+        enum_type = ctx.analyzer.registry.get_enum(expr.obj.name)
+        if enum_type is not None:
+            return enum_member_cpp(enum_type, ctx.analyzer.ctx.module_name, expr.field)
+        raise CodeGenError(
+            f"default value '{expr.obj.name}.{expr.field}' is not a resolvable "
+            f"enum member", expr.loc)
     if isinstance(expr, TpyUnaryOp) and expr.op == "-":
         return f"-{default_to_cpp(ctx, expr.operand, ptype)}"
     if isinstance(expr, TpyCall):

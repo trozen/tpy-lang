@@ -62,52 +62,44 @@ class Atomic[T: AnyFixedInt]:
     def __init__(self, value: T) -> None:
         self._raw = _RawAtomic[T](value)
 
-    # `order: MemoryOrder | None = None` gives the SEQ_CST default without an
-    # enum-valued default parameter (which TPy forbids): None means "the default".
     @readonly
-    def load(self, order: MemoryOrder | None = None) -> T:
-        return self._raw.load(order if order is not None else MemoryOrder.SEQ_CST)
+    def load(self, order: MemoryOrder = MemoryOrder.SEQ_CST) -> T:
+        return self._raw.load(order)
 
-    def store(self, value: T, order: MemoryOrder | None = None) -> None:
-        self._raw.store(value, order if order is not None else MemoryOrder.SEQ_CST)
+    def store(self, value: T, order: MemoryOrder = MemoryOrder.SEQ_CST) -> None:
+        self._raw.store(value, order)
 
-    def exchange(self, value: T, order: MemoryOrder | None = None) -> T:
-        return self._raw.exchange(value, order if order is not None else MemoryOrder.SEQ_CST)
+    def exchange(self, value: T, order: MemoryOrder = MemoryOrder.SEQ_CST) -> T:
+        return self._raw.exchange(value, order)
 
-    def fetch_add(self, value: T, order: MemoryOrder | None = None) -> T:
-        return self._raw.fetch_add(value, order if order is not None else MemoryOrder.SEQ_CST)
+    def fetch_add(self, value: T, order: MemoryOrder = MemoryOrder.SEQ_CST) -> T:
+        return self._raw.fetch_add(value, order)
 
-    def fetch_sub(self, value: T, order: MemoryOrder | None = None) -> T:
-        return self._raw.fetch_sub(value, order if order is not None else MemoryOrder.SEQ_CST)
+    def fetch_sub(self, value: T, order: MemoryOrder = MemoryOrder.SEQ_CST) -> T:
+        return self._raw.fetch_sub(value, order)
 
-    def fetch_and(self, value: T, order: MemoryOrder | None = None) -> T:
-        return self._raw.fetch_and(value, order if order is not None else MemoryOrder.SEQ_CST)
+    def fetch_and(self, value: T, order: MemoryOrder = MemoryOrder.SEQ_CST) -> T:
+        return self._raw.fetch_and(value, order)
 
-    def fetch_or(self, value: T, order: MemoryOrder | None = None) -> T:
-        return self._raw.fetch_or(value, order if order is not None else MemoryOrder.SEQ_CST)
+    def fetch_or(self, value: T, order: MemoryOrder = MemoryOrder.SEQ_CST) -> T:
+        return self._raw.fetch_or(value, order)
 
-    def fetch_xor(self, value: T, order: MemoryOrder | None = None) -> T:
-        return self._raw.fetch_xor(value, order if order is not None else MemoryOrder.SEQ_CST)
+    def fetch_xor(self, value: T, order: MemoryOrder = MemoryOrder.SEQ_CST) -> T:
+        return self._raw.fetch_xor(value, order)
 
     # Returns (succeeded, observed): on success `observed` is the swapped-from
     # value; on failure the current value, so a CAS loop retries without a
     # separate re-load. The plain form is deterministic; the `weak` form may fail
     # spuriously (use it in a loop) for cheaper codegen on LL/SC architectures.
     def compare_exchange(self, expected: T, desired: T,
-                         success: MemoryOrder | None = None,
-                         failure: MemoryOrder | None = None) -> tuple[bool, T]:
-        return self._raw.compare_exchange(
-            expected, desired,
-            success if success is not None else MemoryOrder.SEQ_CST,
-            failure if failure is not None else MemoryOrder.SEQ_CST)
+                         success: MemoryOrder = MemoryOrder.SEQ_CST,
+                         failure: MemoryOrder = MemoryOrder.SEQ_CST) -> tuple[bool, T]:
+        return self._raw.compare_exchange(expected, desired, success, failure)
 
     def compare_exchange_weak(self, expected: T, desired: T,
-                              success: MemoryOrder | None = None,
-                              failure: MemoryOrder | None = None) -> tuple[bool, T]:
-        return self._raw.compare_exchange_weak(
-            expected, desired,
-            success if success is not None else MemoryOrder.SEQ_CST,
-            failure if failure is not None else MemoryOrder.SEQ_CST)
+                              success: MemoryOrder = MemoryOrder.SEQ_CST,
+                              failure: MemoryOrder = MemoryOrder.SEQ_CST) -> tuple[bool, T]:
+        return self._raw.compare_exchange_weak(expected, desired, success, failure)
 
     # Ergonomic in-place operators: atomic RMW at seq_cst, so `counter += 1` is a
     # single atomic op. Binary operators (`+`, `-`, ...) and implicit `int()` are
@@ -141,8 +133,8 @@ class Atomic[T: AnyFixedInt]:
         return f"Atomic({self._raw.load(MemoryOrder.RELAXED)})"
 
 
-def fence(order: MemoryOrder | None = None) -> None:
-    _atomic_fence(order if order is not None else MemoryOrder.SEQ_CST)
+def fence(order: MemoryOrder = MemoryOrder.SEQ_CST) -> None:
+    _atomic_fence(order)
 
 
 @native("tpy::atomic_fence")

@@ -30,7 +30,7 @@ from ..namespace import Namespace
 from .. import qnames
 from .context import (
     INDENT, DUNDER_TO_BINARY_OP, DUNDER_TO_REVERSE_BINARY_OP, CodeGenError,
-    escape_cpp_name, enum_cpp_name)
+    escape_cpp_name, enum_member_cpp)
 from .functions import factory_default_to_cpp
 from .resumable_cfg import ResumableShape
 from ..type_def_registry import (
@@ -1443,12 +1443,8 @@ class RecordGenerator:
         enum_type = self.ctx.analyzer.registry.get_enum(expr.obj.name)
         if enum_type is None:
             return None
-        einfo = enum_info_of(enum_type)
-        member_cpp = (einfo.cpp_member_name_map.get(expr.field, expr.field)
-                      if einfo is not None else expr.field)
-        cur_module = self.ctx.analyzer.ctx.module_name
-        return (f"{enum_cpp_name(enum_type, cur_module, einfo=einfo)}"
-                f"::{member_cpp}")
+        return enum_member_cpp(enum_type, self.ctx.analyzer.ctx.module_name,
+                               expr.field)
 
     def _all_fields_default_constructible(self, record: TpyRecord) -> bool:
         """Check if all own fields and the parent (if any) are C++-default-constructible.

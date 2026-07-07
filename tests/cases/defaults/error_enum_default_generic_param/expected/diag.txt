@@ -1,0 +1,1 @@
+main.py:13: error: an enum-member default requires a concrete enum-typed parameter; parameter 'x' has generic type 'T'

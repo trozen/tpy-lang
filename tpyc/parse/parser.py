@@ -4263,6 +4263,11 @@ class Parser:
         # Sema validates the binding (parser doesn't see globals or imports yet).
         if isinstance(expr, TpyName):
             return
+        # Enum-member access (MemoryOrder.SEQ_CST): a compile-time constant
+        # (its C++ form is a scoped enumerator). The parser has no type info
+        # yet, so accept the Name.attr shape; codegen resolves the enum.
+        if isinstance(expr, TpyFieldAccess) and isinstance(expr.obj, TpyName):
+            return
         if isinstance(expr, TpyUnaryOp) and expr.op == "-":
             if isinstance(expr.operand, (TpyIntLiteral, TpyFloatLiteral)):
                 return
@@ -4276,7 +4281,7 @@ class Parser:
         raise ParseError(
             f"Default parameter value must be a constant expression "
             f"(literal, None, fixed-int constructor like Int32(5), "
-            f"or a Final[T] module constant)", node)
+            f"an enum member like Color.RED, or a Final[T] module constant)", node)
 
     @staticmethod
     def _count_posonly_params(node: 'ast.FunctionDef | ast.AsyncFunctionDef',

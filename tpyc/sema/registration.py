@@ -158,34 +158,47 @@ def _enum_default_matches_field(field_type: TpyType, member_info: EnumInfo) -> b
                for inner in field_type.inner_types())
 
 
+def check_enum_member_default(expr: TpyExpr, target_type: 'TpyType | None',
+                              registry: 'TypeRegistry | None', loc: object,
+                              *, target_noun: str) -> bool:
+    """Validate a `Name.MEMBER` enum-member default against `target_type`.
+
+    Returns True when `expr` is a member of a registered enum matching
+    `target_type` (or `target_type` is None, e.g. a still-generic param slot).
+    Raises on a missing member or an enum that mismatches `target_type`
+    (codegen would otherwise emit a type-mismatched initializer C++ rejects
+    opaquely). Returns False when `expr` is not an enum-member shape -- not
+    `Name.attr`, or the base name is not a registered enum -- so the caller
+    applies its own handling. Shared by field- and parameter-default
+    validation so the two default surfaces stay consistent."""
+    if registry is None or not (
+            isinstance(expr, TpyFieldAccess) and isinstance(expr.obj, TpyName)):
+        return False
+    enum_t = registry.get_enum(expr.obj.name)
+    if enum_t is None:
+        return False
+    info = enum_info_of(enum_t)
+    if info is not None and expr.field in info.members:
+        if target_type is not None and not _enum_default_matches_field(target_type, info):
+            raise SemanticError(
+                f"Default '{expr.obj.name}.{expr.field}' has enum type "
+                f"'{expr.obj.name}', which does not match the declared "
+                f"{target_noun} type '{target_type}'", loc)
+        return True
+    raise SemanticError(
+        f"'{expr.field}' is not a member of enum '{expr.obj.name}'", loc)
+
+
 def _validate_const_field_default(expr: TpyExpr, loc: object,
                                   registry: 'TypeRegistry | None' = None,
                                   field_type: TpyType | None = None) -> None:
     """Validate that a field default expression is a compile-time constant."""
     if expr_to_cpp_default(expr) is not None:
         return
-    # Enum members are constants: `c: Color = Color.RED` emits a C++
-    # constant initializer. Type-aware: the base name must resolve to a
-    # registered enum and the member must exist.
-    if (registry is not None and isinstance(expr, TpyFieldAccess)
-            and isinstance(expr.obj, TpyName)):
-        enum_t = registry.get_enum(expr.obj.name)
-        if enum_t is not None:
-            info = enum_info_of(enum_t)
-            if info is not None and expr.field in info.members:
-                # Reject a member from a different enum than the field type
-                # (`status: Color = Mode.A`): codegen would emit a
-                # type-mismatched initializer that C++ then rejects opaquely.
-                if (field_type is not None
-                        and not _enum_default_matches_field(field_type, info)):
-                    raise SemanticError(
-                        f"Default '{expr.obj.name}.{expr.field}' has enum type "
-                        f"'{expr.obj.name}', which does not match the declared "
-                        f"field type '{field_type}'", loc)
-                return
-            raise SemanticError(
-                f"'{expr.field}' is not a member of enum "
-                f"'{expr.obj.name}'", loc)
+    # Enum members are constants: `c: Color = Color.RED` emits a C++ constant
+    # initializer. Type-aware -- see check_enum_member_default.
+    if check_enum_member_default(expr, field_type, registry, loc, target_noun="field"):
+        return
     # Resolved call from a macro module (e.g. field()) used outside its macro
     if isinstance(expr, (TpyCall, TpyMethodCall)) and getattr(expr, 'resolved_import', None) is not None:
         mod, name = expr.resolved_import
@@ -1419,6 +1432,7 @@ class TypeRegistrar:
             if method.kwarg_name is not None and method.kwarg_type is not None:
                 resolved_kwarg_type = self.type_ops.resolve_type(method.kwarg_type)
                 method_param_infos.append(ParamInfo(method.kwarg_name, resolved_kwarg_type))
+            self._validate_param_default_enums(method_param_infos)
             # async def method: callers see Cancellable[T]. Mirrors free async def
             # (line ~2603); the user's T stays on method.return_type for codegen
             # and the body-return checker. Cancellable structurally extends
@@ -3140,6 +3154,33 @@ class TypeRegistrar:
             and not is_owned_in_coro_frame(ptype)
         )
 
+    def _validate_param_default_enums(self, param_infos: 'list[ParamInfo]') -> None:
+        """Reject a `Name.MEMBER` parameter default that is not a valid enum
+        member, keeping parameter defaults consistent with field defaults (the
+        parser accepts the shape; this is the type-aware gate). Other default
+        forms are validated by the parser and at generic instantiation."""
+        for pi in param_infos:
+            default = pi.default_expr
+            if not isinstance(default, TpyFieldAccess):
+                continue
+            # An enum-member default is monomorphic: it is only meaningful when
+            # the parameter type IS that concrete enum. A type-param-containing
+            # type (bare `T`, `T | None`, ...) can't be checked here and would
+            # emit a `T x = Enum::M` initializer C++ rejects opaquely at
+            # instantiation, so reject it up front (unlike a literal default,
+            # which is legitimately polymorphic and deferred to instantiation).
+            if contains_type_param(pi.type):
+                raise SemanticError(
+                    f"an enum-member default requires a concrete enum-typed "
+                    f"parameter; parameter '{pi.name}' has generic type "
+                    f"'{pi.type}'", default.loc)
+            if not check_enum_member_default(
+                    default, pi.type, self.ctx.registry, default.loc,
+                    target_noun="parameter"):
+                raise SemanticError(
+                    f"default value '{default.obj.name}.{default.field}' is not "
+                    f"a resolvable enum member", default.loc)
+
     def register_function(self, func: TpyFunction) -> None:
         """Register a function."""
         # Allow TypeParamRef in params/return for generic functions
@@ -3273,6 +3314,8 @@ class TypeRegistrar:
         if func.vararg_name is not None and resolved_vararg_type is not None and (kw_start is None or kw_start >= len(resolved_params)):
             span_type = _vararg_span_type(resolved_vararg_type)
             param_infos.append(ParamInfo(func.vararg_name, span_type, is_variadic=True))
+
+        self._validate_param_default_enums(param_infos)
 
         # **kwargs: Unpack[TypedDict] -- append as TypedDict param at end
         resolved_kwarg_type = None

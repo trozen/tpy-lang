@@ -1,0 +1,1 @@
+main.py:8: error: default value 'Config.LIMIT' is not a resolvable enum member
