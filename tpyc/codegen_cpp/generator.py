@@ -500,8 +500,17 @@ class CodeGenerator:
 
             _ng = _thir_native_globals(module)
             self.ctx.thir_functions = {}
+            self.ctx.thir_resumables = {}
             for f, self_type in _thir_callables(module, self.analyzer):
                 if _is_bodyless_binding(f) or f.is_overload_stub:
+                    continue
+                if f.is_async or (f.is_generator and
+                                  not self.gen_generators.is_simple_generator(f)):
+                    # Resumable-frame bodies attempt at first frame emission
+                    # (lowering walks the CFG, which needs live codegen ctx);
+                    # they tally under the "resumable" component there.
+                    # Simple-peephole generators stay here and reject as
+                    # body:sig.generator_simple (their own deferred cell).
                     continue
                 begin_attempt()
                 tf = _thir_lower(f, self.analyzer, self.types.type_to_cpp,

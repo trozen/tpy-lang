@@ -3863,6 +3863,34 @@ class StatementGenerator:
                       is_const=self.ctx.is_const_storage_source(src)),
             dst_type=bare, dst_form=CppForm.BORROW)
 
+    def _async_return_value_cpp(self, stmt: TpyReturn, ret_type,
+                                *, to_borrow: bool) -> str:
+        """The value render for `_make_async_return`'s three scaffolding
+        sites (pending-slot store / pre-finally capture / direct ready) --
+        and the resumable THIR seam's return-value chokepoint: a routed
+        body renders the value from its lowered node, the scaffolding
+        around it is shared skeleton either way."""
+        leaf = self.ctx.thir_resumable_leaf
+        if leaf is not None:
+            # A routed body renders position-blind and never reaches the
+            # to_borrow=False (pending-slot) or _async_ret_to_borrow paths:
+            # lower_resumable rejects any region_stack (res.region) / finally
+            # (res.finally), and its value-scalar return gate excludes the
+            # Own[T] / pointer-repr-Optional slots to_borrow would convert. A
+            # future cell lifting either gate must revisit this seam (it drops
+            # to_borrow) -- see the THIRResumableBody return_values contract.
+            return leaf.render_return_value(stmt)
+        if isinstance(stmt.value, TpyNoneLiteral):
+            # The coroutine return slot is storage form: None needs the
+            # target-typed spelling (std::nullopt / monostate), not the
+            # borrow-form nullptr.
+            return self.expressions.gen_expr(stmt.value, target_type=ret_type)
+        expr_cpp = self.expressions.gen_expr_deref(stmt.value)
+        expr_cpp = self._wrap_view_to_storage(stmt.value, ret_type, expr_cpp)
+        if to_borrow:
+            expr_cpp = self._async_ret_to_borrow(stmt.value, ret_type, expr_cpp)
+        return expr_cpp
+
     def _make_async_return(self, stmt: TpyReturn, indent: str) -> str:
         """Lower `return v` inside an `async def` body. When a CFG-based
         finally is active, ctx state routes the return through the
@@ -3881,16 +3909,8 @@ class StatementGenerator:
             boundary = self.ctx.async_pending_return_boundary
             assert target_state is not None
             if pending_slot is not None and stmt.value is not None:
-                if isinstance(stmt.value, TpyNoneLiteral):
-                    # The pending slot is storage form: None needs the
-                    # target-typed spelling, not the borrow-form nullptr
-                    # (same rule as the direct-return branch below).
-                    expr_cpp = self.expressions.gen_expr(
-                        stmt.value, target_type=ret_type)
-                else:
-                    expr_cpp = self.expressions.gen_expr_deref(stmt.value)
-                    expr_cpp = self._wrap_view_to_storage(
-                        stmt.value, ret_type, expr_cpp)
+                expr_cpp = self._async_return_value_cpp(stmt, ret_type,
+                                                        to_borrow=False)
                 out.write(f"{indent}this->{pending_slot} = {expr_cpp};\n")
             out.write(f"{indent}this->{pending_flag} = true;\n")
             # Walk finally frames pushed by regions INSIDE the CFG-
@@ -3910,15 +3930,8 @@ class StatementGenerator:
         ret_cpp = self.ctx.async_coro_return_cpp or "void"
         if (not isinstance(ret_type, VoidType) and stmt.value is not None
                 and self.ctx.finally_stack):
-            if isinstance(stmt.value, TpyNoneLiteral):
-                expr_cpp = self.expressions.gen_expr(
-                    stmt.value, target_type=ret_type)
-            else:
-                expr_cpp = self.expressions.gen_expr_deref(stmt.value)
-                expr_cpp = self._wrap_view_to_storage(
-                    stmt.value, ret_type, expr_cpp)
-                expr_cpp = self._async_ret_to_borrow(
-                    stmt.value, ret_type, expr_cpp)
+            expr_cpp = self._async_return_value_cpp(stmt, ret_type,
+                                                    to_borrow=True)
             ret_tmp = f"__tpy_async_ret_{self.ctx.iter_counter}"
             self.ctx.iter_counter += 1
             chain = io.StringIO()
@@ -3941,18 +3954,8 @@ class StatementGenerator:
                     f"{indent}::tpy::tpy_panic(\"non-void async def used bare return\");\n")
             else:
                 if ret_tmp is None:
-                    if isinstance(stmt.value, TpyNoneLiteral):
-                        # The coroutine return slot is storage form, so None
-                        # needs the target-typed spelling (std::nullopt /
-                        # monostate), not the borrow-form nullptr.
-                        expr_cpp = self.expressions.gen_expr(
-                            stmt.value, target_type=ret_type)
-                    else:
-                        expr_cpp = self.expressions.gen_expr_deref(stmt.value)
-                        expr_cpp = self._wrap_view_to_storage(
-                            stmt.value, ret_type, expr_cpp)
-                        expr_cpp = self._async_ret_to_borrow(
-                            stmt.value, ret_type, expr_cpp)
+                    expr_cpp = self._async_return_value_cpp(stmt, ret_type,
+                                                            to_borrow=True)
                     # Bind to a local first so `std::move` has a typed source:
                     # `std::move({1, 2, 3})` (braced initializer) doesn't
                     # compile because the template parameter can't be deduced.

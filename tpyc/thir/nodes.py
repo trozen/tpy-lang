@@ -14,6 +14,7 @@ the form-carrying nodes slot in without reshaping the hierarchy.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import TYPE_CHECKING
@@ -178,16 +179,21 @@ class THIRName(THIRExpr):
 
 @dataclass(frozen=True)
 class THIRSelf(THIRExpr):
-    """The instance-method receiver `self`, rendered as the C++ `this` pointer.
+    """The instance-method receiver `self`.
 
-    A distinct node rather than a `THIRName("self")` because `this` is a C++
-    keyword `escape_cpp_name` would mangle to `this_`, and because `self` is a
-    pointer receiver: field reads off it render with `->`. Only arises in an
-    instance method admitted to the slice (the free-function slice never sees
-    it). `deref` renders `(*this)` -- the indirect-name deref a value position
-    applies (`return self` at a record borrow-return slot)."""
+    A distinct node rather than a `THIRName("self")` because the default
+    spelling `this` is a C++ keyword `escape_cpp_name` would mangle to
+    `this_`, and because a plain-method receiver is a POINTER: field reads
+    off it render with `->`. `cpp` is the receiver spelling -- `this` for a
+    plain method, `__self` for a resumable (async) method coro, whose frame
+    captures the receiver as a `Record&` reference (so field reads render
+    `.`, driven by `_LowerCtx.self_is_pointer=False`). `deref` renders
+    `(*{cpp})` -- the indirect-name deref a value position applies (`return
+    self` at a record borrow-return slot; a value out of the resumable
+    value-scalar slice, so a reference-self deref never arises)."""
 
     deref: bool = False
+    cpp: str = "this"
 
 
 @dataclass(frozen=True)
@@ -837,6 +843,24 @@ class THIRSetItem(THIRStmt):
 
 
 @dataclass(frozen=True)
+class THIRFrameSlotWrite(THIRStmt):
+    """A write to a resumable frame_slot local -- `name.emplace(value);` (R1c).
+
+    A non-value coro/generator local is stored as `tpy::frame_slot<T>`; both
+    the first init and every reassign write through `.emplace()`, which
+    destroys any prior payload before constructing the new one. `value`
+    renders normally (its arg temps flush before the emplace line, like a
+    THIRAssign value). `cpp_type` is the slot's element C++ type, used only
+    to reproduce the AST's `typed_brace_init` prefix when the value renders
+    as a bare brace-init (`{n, n}` -> `std::array<int32_t, 2>{n, n}`, so it
+    binds to `emplace`'s forwarding ref); a record-ctor value (non-brace)
+    ignores it."""
+    name: str
+    value: THIRExpr
+    cpp_type: str | None = None
+
+
+@dataclass(frozen=True)
 class THIRStrAppend(THIRStmt):
     """In-place append to an owned-str local -- `t += v;` (S3). Two AST sources
     share it: the str `+=` statement (`_gen_aug_assign_code`'s string branch)
@@ -1480,6 +1504,38 @@ class THIRConstructor:
     mil_inits: tuple[THIRMilInit, ...]
     base_inits: tuple[THIRBaseInit, ...] = ()
     body: tuple[THIRStmt, ...] = ()
+
+
+@dataclass(frozen=True)
+class THIRResumableBody:
+    """A routed resumable (async) body's lowered LEAF content, keyed by the
+    id() of the AST node the shared state-machine skeleton holds.
+
+    The skeleton (`resumable_cfg` + `gen_async`) owns the frame struct, case
+    labels, region replay and suspend/resume plumbing -- structural emission,
+    shared by both paths like signatures. Every user-source leaf it would
+    delegate to the AST emitters instead renders through these maps when the
+    body routed; a missing key is a hard error (gate and seam must agree),
+    never a silent per-leaf fallback.
+
+    `leaves` covers BB leaf statements and RaiseT terminator statements;
+    `conds` the Branch terminator conditions; `await_args` each suspension's
+    sub-coro emplace arguments (keyed by id() of the await's operand call);
+    `return_values` the value expression of ReturnT terminators and of
+    `_make_async_return`'s value renders (keyed by id() of the TpyReturn);
+    `yield_values` the generator-shape yield value (keyed by id() of the
+    TpyYield -- the coerce carrying the yield-type target is baked, so the
+    render is position-blind, unlike the async return)."""
+    leaves: 'Mapping[int, THIRStmt]'
+    conds: 'Mapping[int, THIRExpr]'
+    await_args: 'Mapping[int, tuple[THIRExpr, ...]]'
+    return_values: 'Mapping[int, THIRExpr]'
+    yield_values: 'Mapping[int, THIRExpr]' = field(default_factory=dict)
+    # ERASED/BORROWED await operands (keyed by id() of the operand expr) and
+    # bound-method await receivers (keyed by id() of the receiver expr, R5):
+    # the skeleton keeps its move / & / .get() / __self-prepend wrap, the leaf
+    # renders the bare expression.
+    suspend_exprs: 'Mapping[int, THIRExpr]' = field(default_factory=dict)
 
 
 @dataclass

@@ -164,11 +164,16 @@ class GeneratorCodegen:
             return f"__gen_{record_name}_{func.name}"
         return f"__gen_{func.name}"
 
-    def is_simple_generator(self, func: TpyFunction) -> bool:
+    @staticmethod
+    def is_simple_generator(func: TpyFunction) -> bool:
         """Check if a generator can use the lightweight lambda/wrapper path.
 
         Simple generators have exactly one yield inside a single while-loop or
         for-loop, with no early returns or nested control flow around the yield.
+
+        Static: the sole routing fact is the function itself, and the THIR
+        gate shares this predicate (its `sig.generator_*` sub-tags must split
+        exactly where the AST router splits peephole vs resumable).
         """
         if func.force_resumable:
             return False

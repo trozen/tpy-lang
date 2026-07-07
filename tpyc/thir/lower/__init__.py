@@ -1,12 +1,14 @@
 """AST -> THIR lowering, split by layer (one-directional imports):
 
     predicates < context < expr_gates < expressions < statements < functions
+    < resumable
 
 `predicates` holds the shared type/shape facts, `context` the per-function
 lowering state, `expr_gates` the `_expr_eligible` routing predicates and
 `expressions` the `_lower_expr` arms (one-way: lowering imports the gate
 helpers it needs), `statements` the statement-level gate + lowering arms,
-and `functions` the entry points. The public
+`functions` the entry points, and `resumable` the async-body leaf lowering
+consumed by the gen_async skeleton seam. The public
 surface below is what the codegen seam, dump, and units import -- it is
 the old single-file `lower.py` API, unchanged.
 """
@@ -21,6 +23,7 @@ from .functions import (
     lower_module,
     module_native_globals,
 )
+from .resumable import lower_resumable
 from .statements import _persistent_alias_name, _stmt_eligible
 
 __all__ = [
@@ -29,5 +32,6 @@ __all__ = [
     "lower_constructor",
     "lower_function",
     "lower_module",
+    "lower_resumable",
     "module_native_globals",
 ]

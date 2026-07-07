@@ -362,6 +362,16 @@ THIR_FACES: frozenset[str] = frozenset({
     "flush.field_write",
     "flush.return",
     "flush.expr_stmt",
+    # Resumable (async) leaf routing -- the gen_async seam. One face per
+    # leaf-render kind the skeleton delegates, plus the routed-body tally.
+    "res.body",                     # one routed resumable body
+    "res.decl_assign",              # hoisted frame-field decl -> assignment
+    "res.branch_cond",              # Branch terminator condition render
+    "res.await_args",               # sub-coro emplace argument renders
+    "res.return_value",             # ReturnT value render for _make_async_return
+    "res.yield_value",              # generator yield-value render
+    "res.frame_slot_write",         # frame_slot local `.emplace()` write (R1c)
+    "res.suspend_expr",             # ERASED/BORROWED operand + bound receiver (R5)
 })
 
 

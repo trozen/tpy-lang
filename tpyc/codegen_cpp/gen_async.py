@@ -1762,6 +1762,7 @@ class AsyncCoroCodegen:
         struct_name = self._struct_name_templated(func, record_name)
         cfg = self._build_resumable_cfg(func, record_name)
         has_yields = bool(cfg.yield_sites)
+        leaf = self._thir_resumable_leaf_emitter(func, record_name, cfg)
 
         self.ctx.emit_source_comment(out, func.loc)
         self._emit_template_header(out, func, record_name=record_name)
@@ -1777,9 +1778,78 @@ class AsyncCoroCodegen:
         with self._generator_finally_stop_scope(has_finally_stop):
             with self._resumable_frame_ctx(func, record_name):
                 with self._resumable_return_lowering(func):
-                    self._emit_state_machine(out, func, cfg)
+                    with self._thir_leaf_scope(leaf):
+                        self._emit_state_machine(out, func, cfg)
 
         out.write(f"}}\n")
+
+    # -- THIR resumable seam ----------------------------------------------
+    # The state-machine skeleton (this module + resumable_cfg) is SHARED
+    # machinery, like signatures and struct layout; only the user-source
+    # LEAVES route through THIR. A routed body swaps every leaf-delegation
+    # site (BB leaf stmts, RaiseT stmts, Branch conds, emplace args, the
+    # async-return value in _make_async_return) to the leaf emitter below;
+    # per-body routing stays all-or-nothing.
+
+    def _thir_resumable_attempt(self, func: TpyFunction,
+                                record_name: str | None,
+                                cfg: 'rcfg.CFG'):
+        """Attempt-once THIR leaf lowering for this frame body; returns the
+        THIRResumableBody or None (cached either way, so the fallback tally
+        folds exactly once per function)."""
+        if not self.ctx.thir_codegen:
+            return None
+        cache = self.ctx.thir_resumables
+        key = id(func)
+        if key in cache:
+            return cache[key]
+        from ..thir.fallback import begin_attempt, fold_attempt
+        from ..thir.shape import record_shape
+        from ..thir.lower.resumable import lower_resumable
+        begin_attempt()
+        # The skeleton's own borrow-alias classification (cached, idempotent):
+        # a plain-nonvalue local NOT in this set is an owning frame_slot the
+        # THIR path renders `.emplace()` / `(*name)`; one IN it is a `T*` alias
+        # (a later cell). Reusing the skeleton's set (vs re-deriving) keeps the
+        # frame-field form decision identical on both paths.
+        pointer_aliases = self._classify_pointer_alias_locals(func)
+        rb = lower_resumable(func, self.ctx.analyzer, self.types.type_to_cpp,
+                             cfg, record_name=record_name,
+                             render_type_stored=self.types.type_to_cpp_stored,
+                             pointer_aliases=pointer_aliases)
+        cache[key] = rb
+        if rb is not None:
+            record_shape(func, "resumable", routed=True)
+        else:
+            fold_attempt("resumable")
+            record_shape(func, "resumable", routed=False)
+        return rb
+
+    def _thir_resumable_leaf_emitter(self, func: TpyFunction,
+                                     record_name: str | None,
+                                     cfg: 'rcfg.CFG'):
+        """The routed body's leaf renderer bound to the live ctx sinks, or
+        None when the body stays on the AST leaf path."""
+        rb = self._thir_resumable_attempt(func, record_name, cfg)
+        if rb is None:
+            return None
+        from ..thir.emit import (CtxCommentSink, CtxCounter, CtxTempSink,
+                                 ResumableLeafEmitter)
+        return ResumableLeafEmitter(
+            rb,
+            comments=CtxCommentSink(self.ctx),
+            temps=CtxTempSink(self.ctx),
+            with_counter=CtxCounter(self.ctx, "with_counter"),
+            try_counter=CtxCounter(self.ctx, "try_except_counter"))
+
+    @contextlib.contextmanager
+    def _thir_leaf_scope(self, leaf):
+        old = self.ctx.thir_resumable_leaf
+        self.ctx.thir_resumable_leaf = leaf
+        try:
+            yield
+        finally:
+            self.ctx.thir_resumable_leaf = old
 
     # =====================================================================
     # CFG-based state-machine emitter (replaces _emit_switch_body).
@@ -3306,6 +3376,9 @@ class AsyncCoroCodegen:
                     self._emit_async_with_setup(out, body_indent, stmt)
                 elif isinstance(stmt, rcfg.AsyncFinallyExit):
                     self._emit_async_finally_exit(out, body_indent, stmt)
+                elif self.ctx.thir_resumable_leaf is not None:
+                    self.ctx.thir_resumable_leaf.emit_leaf_stmt(
+                        out, stmt, self.ctx.indent_level)
                 else:
                     self.statements.gen_stmt(out, stmt)
             t = bb.terminator
@@ -3316,13 +3389,18 @@ class AsyncCoroCodegen:
                 # gen_stmt routes a TpyReturn inside async-coro context
                 # through _make_async_return, which walks the active
                 # finally chain (ctx.finally_stack) before emitting the
-                # Poll<T>::ready(...).
+                # Poll<T>::ready(...). A routed body swaps only the VALUE
+                # render inside that scaffolding (_async_return_value_cpp).
                 self.statements.gen_stmt(out, t.return_stmt)
                 return
             if isinstance(t, rcfg.RaiseT):
                 # Emit the raise as an ordinary TpyRaise statement; the
                 # finally chain is run via C++ exception unwinding.
-                self.statements.gen_stmt(out, t.raise_stmt)
+                if self.ctx.thir_resumable_leaf is not None:
+                    self.ctx.thir_resumable_leaf.emit_leaf_stmt(
+                        out, t.raise_stmt, self.ctx.indent_level)
+                else:
+                    self.statements.gen_stmt(out, t.raise_stmt)
                 return
             if isinstance(t, rcfg.Unreachable):
                 self._emit_unreachable_tail(out, body_indent, func)
@@ -3340,7 +3418,10 @@ class AsyncCoroCodegen:
                 cur = t.next_bb
                 continue
             if isinstance(t, rcfg.Branch):
-                cond_cpp = self.expressions.gen_expr(t.cond)
+                if self.ctx.thir_resumable_leaf is not None:
+                    cond_cpp = self.ctx.thir_resumable_leaf.render_cond(t.cond)
+                else:
+                    cond_cpp = self.expressions.gen_expr(t.cond)
                 self.ctx.temps.flush(out, body_indent)
                 out.write(f"{body_indent}if ({cond_cpp}) {{\n")
                 self.ctx.indent_level += 1
@@ -3838,6 +3919,26 @@ class AsyncCoroCodegen:
             return escape_cpp_name(payload.prebuilt_slot)
         return AsyncCoroCodegen._sub_field_name(suspension_index)
 
+    def _emplace_args(self, call: 'TpyCall | TpyMethodCall') -> 'list[str]':
+        """All emplace args for a sub-coro construction -- the THIR leaf
+        seam's argument chokepoint (a routed body renders them from its
+        lowered nodes; the AST path mirrors sync call-arg coercions)."""
+        leaf = self.ctx.thir_resumable_leaf
+        if leaf is not None:
+            return leaf.render_await_args(call)
+        return [self._gen_coro_emplace_arg(a, i, call)
+                for i, a in enumerate(call.args)]
+
+    def _suspend_expr_cpp(self, expr: 'TpyExpr') -> str:
+        """Render a bound-method await receiver or an ERASED/BORROWED await
+        operand -- the THIR leaf seam's suspend-expression chokepoint (the
+        skeleton keeps its move / & / .get() / __self-prepend wrap around
+        this render)."""
+        leaf = self.ctx.thir_resumable_leaf
+        if leaf is not None:
+            return leaf.render_suspend_expr(expr)
+        return self.expressions.gen_expr(expr)
+
     def _gen_coro_emplace_arg(self, arg: 'TpyExpr', arg_index: int,
                                 call: 'TpyCall | TpyMethodCall') -> str:
         """Generate one arg for `__sub_N.emplace(...)` constructing a
@@ -3986,7 +4087,10 @@ class AsyncCoroCodegen:
             "YieldPayload built from a generator body always carries yield_stmt"
         if ys.loc is not None:
             self.ctx.emit_source_comment(out, ys.loc, indent)
-        yield_expr = self.statements.gen_yield_value(ys)
+        if self.ctx.thir_resumable_leaf is not None:
+            yield_expr = self.ctx.thir_resumable_leaf.render_yield_value(ys)
+        else:
+            yield_expr = self.statements.gen_yield_value(ys)
         self.ctx.temps.flush(out, indent)
         resume = _StateLabel(_StateKind.RESUME, t.suspension_index).cpp_name()
         out.write(f"{indent}__state = {resume};\n")
@@ -4028,8 +4132,7 @@ class AsyncCoroCodegen:
             else:
                 call = payload.operand_expr
                 if isinstance(call, TpyCall):
-                    args = [self._gen_coro_emplace_arg(arg, i, call)
-                            for i, arg in enumerate(call.args)]
+                    args = self._emplace_args(call)
                     self.ctx.temps.flush(out, indent)
                     out.write(f"{indent}{sub}.emplace({', '.join(args)});\n")
                 elif isinstance(call, TpyMethodCall):
@@ -4039,15 +4142,13 @@ class AsyncCoroCodegen:
                         # `module.func(...)` -- receiver is a namespace,
                         # not a value, so the sub-coro ctor takes only
                         # the function args.
-                        args = [self._gen_coro_emplace_arg(a, i, call)
-                                for i, a in enumerate(call.args)]
+                        args = self._emplace_args(call)
                         self.ctx.temps.flush(out, indent)
                         out.write(f"{indent}{sub}.emplace({', '.join(args)});\n")
                     else:
                         # Bound async method: prepend receiver as __self ctor arg.
-                        recv_cpp = self.expressions.gen_expr(call.obj)
-                        arg_cpps = [self._gen_coro_emplace_arg(a, i, call)
-                                    for i, a in enumerate(call.args)]
+                        recv_cpp = self._suspend_expr_cpp(call.obj)
+                        arg_cpps = self._emplace_args(call)
                         self.ctx.temps.flush(out, indent)
                         joined = ", ".join([recv_cpp] + arg_cpps)
                         out.write(f"{indent}{sub}.emplace({joined});\n")
@@ -4056,11 +4157,11 @@ class AsyncCoroCodegen:
                         "internal: inline-mode await operand is not a call",
                         loc=None)
         elif payload.mode is rcfg.AwaitMode.ERASED:
-            operand_cpp = self.expressions.gen_expr(payload.operand_expr)
+            operand_cpp = self._suspend_expr_cpp(payload.operand_expr)
             self.ctx.temps.flush(out, indent)
             out.write(f"{indent}{sub}.emplace(std::move({operand_cpp}));\n")
         elif payload.mode is rcfg.AwaitMode.BORROWED:
-            operand_cpp = self.expressions.gen_expr(payload.operand_expr)
+            operand_cpp = self._suspend_expr_cpp(payload.operand_expr)
             self.ctx.temps.flush(out, indent)
             declared = self.expressions._get_cpp_declared_type(payload.operand_expr)
             declared = unwrap_readonly(unwrap_send_sync(declared)) if declared else None

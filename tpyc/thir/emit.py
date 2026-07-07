@@ -79,6 +79,7 @@ from .nodes import (
     THIRSetItem,
     THIRSelf,
     THIRStmt,
+    THIRFrameSlotWrite,
     THIRStrAppend,
     THIRStrLiteral,
     THIRStrSlice,
@@ -830,7 +831,7 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         name = e.cpp if e.cpp is not None else escape_cpp_name(e.name)
         return f"(*{name})" if e.deref else name
     if isinstance(e, THIRSelf):
-        return "(*this)" if e.deref else "this"
+        return f"(*{e.cpp})" if e.deref else e.cpp
     if isinstance(e, THIRLiteral):
         return _emit_literal(e)
     if isinstance(e, THIRStrLiteral):
@@ -1866,6 +1867,17 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
         # `x = x + y` peephole share the emit).
         out.write(f"{indent}{escape_cpp_name(stmt.target)} += "
                   f"{_emit_expr(stmt.value, state)};\n")
+    elif isinstance(stmt, THIRFrameSlotWrite):
+        # `name.emplace(value);` -- a resumable frame_slot local write (R1c).
+        # Render the value first so its arg temps flush before the line
+        # (mirroring the AST frame_slot write's single flush point). A
+        # brace-init value takes the typed_brace_init type prefix so it binds
+        # to emplace's forwarding ref (a record-ctor value is self-describing).
+        value_cpp = _emit_expr(stmt.value, state)
+        if value_cpp.startswith("{") and stmt.cpp_type is not None:
+            value_cpp = f"{stmt.cpp_type}{value_cpp}"
+        state.temps.flush(out, indent)
+        out.write(f"{indent}{escape_cpp_name(stmt.name)}.emplace({value_cpp});\n")
     elif isinstance(stmt, THIRNarrowAlias):
         # The isinstance-narrowing extraction (F4 U3) -- mirrors
         # _emit_isinstance_extractions' variant arm (VariantAccess.get_by_type
@@ -2054,3 +2066,74 @@ def emit_thir_constructor_tail(out: TextIO, ctor: THIRConstructor,
         out.write(f"{INDENT}}}\n")
     else:
         out.write(" {}\n")
+
+
+class ResumableLeafEmitter:
+    """Per-routed-body leaf renderer driven by the shared resumable-frame
+    skeleton (`gen_async`). One instance per routed body holds one
+    `_EmitState`, so per-function streams (rebind slots, `__tup_N`) behave
+    as one body across leaf calls while the module-cumulative streams come
+    from the ctx-backed sinks -- the same contract as `emit_thir_body`.
+
+    The skeleton looks up exactly the leaves lowering stored, keyed by the
+    id() of the AST node it holds; a missing key means the gate and the
+    seam disagree on the routed body's shape -- a hard error, never a
+    silent per-leaf fallback (per-body routing is all-or-nothing)."""
+
+    def __init__(self, body, *, comments: 'CommentSink | None' = None,
+                 temps: 'TempSink | None' = None,
+                 with_counter: 'ModuleCounter | None' = None,
+                 try_counter: 'ModuleCounter | None' = None,
+                 return_cpp: 'str | None' = None) -> None:
+        self._body = body
+        self._state = _EmitState(comments or _NO_COMMENTS,
+                                 temps=temps or TempSink(),
+                                 with_counter=with_counter or ModuleCounter(),
+                                 try_counter=try_counter or ModuleCounter(),
+                                 return_cpp=return_cpp)
+
+    def _lookup(self, table, node, what: str):
+        if id(node) not in table:
+            raise THIRCodeGenError(
+                f"resumable seam: routed body has no lowered {what} for "
+                f"{type(node).__name__} (gate/seam disagreement)")
+        return table[id(node)]
+
+    def emit_leaf_stmt(self, out: TextIO, stmt, indent_level: int) -> None:
+        """Emit one BB leaf statement (or a RaiseT terminator's statement),
+        source comment included -- the seam replacement for the skeleton's
+        `statements.gen_stmt(out, stmt)` calls."""
+        node = self._lookup(self._body.leaves, stmt, "leaf statement")
+        _emit_stmts(out, (node,), indent_level, self._state)
+
+    def render_cond(self, cond) -> str:
+        """Render a Branch terminator's condition; arg temps queue on the
+        shared ctx sink and flush at the skeleton's existing flush point."""
+        return _emit_expr(self._lookup(self._body.conds, cond, "condition"),
+                          self._state)
+
+    def render_await_args(self, call) -> 'list[str]':
+        """Render a suspension's sub-coro emplace arguments (same flush
+        contract as `render_cond`)."""
+        args = self._lookup(self._body.await_args, call, "await args")
+        return [_emit_expr(a, self._state) for a in args]
+
+    def render_return_value(self, ret) -> str:
+        """Render a `return v`'s value for `_make_async_return`'s
+        scaffolding (the ret-tmp init / pending-slot store)."""
+        return _emit_expr(self._lookup(self._body.return_values, ret,
+                                       "return value"), self._state)
+
+    def render_yield_value(self, ys) -> str:
+        """Render a generator `yield v`'s value -- the seam replacement for
+        the skeleton's `statements.gen_yield_value(ys)`."""
+        return _emit_expr(self._lookup(self._body.yield_values, ys,
+                                       "yield value"), self._state)
+
+    def render_suspend_expr(self, expr) -> str:
+        """Render an ERASED/BORROWED await operand or a bound-method await
+        receiver -- the seam replacement for the skeleton's
+        `gen_expr(operand)` / `gen_expr(call.obj)` at the suspend site (the
+        skeleton keeps its move / & / .get() / __self-prepend wrap)."""
+        return _emit_expr(self._lookup(self._body.suspend_exprs, expr,
+                                       "suspend expr"), self._state)

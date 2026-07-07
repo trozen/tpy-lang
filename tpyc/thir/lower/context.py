@@ -223,13 +223,16 @@ class _LowerCtx:
     __slots__ = ("analyzer", "func", "prescan", "render_type",
                  "render_type_stored", "const_locals",
                  "pointers", "rebind_slot_locals", "movable_locals",
-                 "self_receiver", "record_name", "storage_tuple_locals",
+                 "self_receiver", "self_cpp", "self_is_pointer",
+                 "record_name", "storage_tuple_locals", "frame_slots",
                  "narrow", "inline_narrowed")
 
     def __init__(self, func: TpyFunction, analyzer, render_type,
                  self_receiver: str | None = None,
                  record_name: str | None = None,
-                 render_type_stored=None) -> None:
+                 render_type_stored=None,
+                 self_cpp: str = "this",
+                 self_is_pointer: bool = True) -> None:
         self.analyzer = analyzer
         self.func = func
         self.prescan = _Prescan(func, analyzer)
@@ -237,10 +240,15 @@ class _LowerCtx:
         self.render_type_stored = (render_type_stored
                                    or (lambda t: t.to_cpp_stored()))
         # The receiver name (`self`) when `func` is an instance method, else
-        # None: it lowers to a THIRSelf (`this`) and renders `->` field reads
-        # like a pointer-local, but unlike `pointers` it is not a liftable
-        # borrow source (`_is_borrow_ptr_local` must never treat it as one).
+        # None: it lowers to a THIRSelf and, unlike `pointers`, is not a
+        # liftable borrow source (`_is_borrow_ptr_local` must never treat it
+        # as one). `self_cpp` is its C++ spelling (`this` for a plain method,
+        # `__self` for a resumable method coro) and `self_is_pointer` selects
+        # `->` vs `.` field/method access -- a plain method's `this` is a
+        # pointer (`->`), a coro's `__self` is a `Record&` reference (`.`).
         self.self_receiver = self_receiver
+        self.self_cpp = self_cpp
+        self.self_is_pointer = self_is_pointer
         # The owning record's name when `func` is a method: `_param_is_const`
         # resolves a record param's const verdict from the method's FunctionInfo
         # on this record, not the free-function registry.
@@ -263,6 +271,12 @@ class _LowerCtx:
         # F2d rebind-slot subset of `pointers`: their reseats lower as rvalue
         # rebinds (`p = &*(__slot_N = ...)`), not lvalue `&(...)` reseats.
         self.rebind_slot_locals: set[str] = set()
+        # Resumable frame_slot locals (R1c): a non-value coro/generator local
+        # stored as `tpy::frame_slot<T>`. Reads render `(*name)` (deref=True on
+        # the THIRName; member access is `.` since the slot is not a pointer),
+        # writes render `name.emplace(value)` (THIRFrameSlotWrite). Populated
+        # only by `lower_resumable`; empty for every sync body.
+        self.frame_slots: set[str] = set()
         # F3 storage-tuple alias locals (`auto&& t = <storage tuple field>`): a read
         # off one is STORAGE form, lifted via `tuple_to_pointer` at borrow boundaries.
         self.storage_tuple_locals: set[str] = set()

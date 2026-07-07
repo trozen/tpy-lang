@@ -70,6 +70,7 @@ from ...codegen_cpp.context import (
     module_native_global_names,
     qualify_native_name,
 )
+from ...codegen_cpp.gen_generators import GeneratorCodegen
 from ...type_def_registry import (
     is_array,
     is_bytes_type,
@@ -237,7 +238,12 @@ def _f1_param_eligible(ptype: TpyType | None, analyzer) -> bool:
             or _container_scalar_tuple_iter(ptype, analyzer))
 
 def _function_eligible(func: TpyFunction, analyzer,
-                       self_type: 'TpyType | None' = None) -> bool:
+                       self_type: 'TpyType | None' = None,
+                       *, allow_resumable: bool = False) -> bool:
+    # `allow_resumable` is passed by `lower_resumable`: the async/generator
+    # arms below are that entry's whole point, but every other signature
+    # check (overloads, linkage, shadowing, param/return families) gates a
+    # resumable body exactly like a sync one.
     # A record-owned callable is admitted when its owning record is an
     # F1-record (`self_type` passed by the caller). All method kinds funnel
     # their bodies through gen_body, so only the receiver model differs:
@@ -317,10 +323,16 @@ def _function_eligible(func: TpyFunction, analyzer,
             return note(_overload_reject_detail(func, fis))
     if func.builtin_decorator_key is not None:
         return note("sig.builtin_decorator")
-    if func.is_async:
-        return note("sig.async")
-    if func.is_generator:
-        return note("sig.generator")
+    if not allow_resumable:
+        if func.is_async:
+            return note("sig.async")
+        if func.is_generator:
+            # Sub-tagged by the AST router's own peephole predicate (one
+            # shared routing fact): the two populations are different
+            # emitters, so each residue must be measurable separately.
+            return note("sig.generator_simple"
+                        if GeneratorCodegen.is_simple_generator(func)
+                        else "sig.generator_resumable")
     if func.error_return is not None:
         return note("sig.error_return")
     if func.type_params:
@@ -367,8 +379,13 @@ def _function_eligible(func: TpyFunction, analyzer,
                     and pt.param_needs_copy_for_reassign()):
                 return note("sig.param_reassign_copy")
     rt = func.return_type if isinstance(func.return_type, TpyType) else None
-    if func.return_type is not None and not _eligible_return(rt, analyzer):
-        return note("sig.return_type")
+    # A resumable generator's declared return type is the `Iterator[T]`
+    # wrapper, not a value slot -- `_eligible_return` would reject it. Its
+    # real value slot is the yield type, checked by `lower_resumable`
+    # (`res.yield_type`); skip the wrapper here.
+    if not (allow_resumable and func.is_generator):
+        if func.return_type is not None and not _eligible_return(rt, analyzer):
+            return note("sig.return_type")
     return True
 
 def _try_hoisted_names(body: list[TpyStmt], analyzer) -> set[str]:
@@ -1510,6 +1527,23 @@ def _method_self_type(record, analyzer) -> 'TpyType | None':
         return NominalType(record.name, type_args=args,
                            _module_qname=ri.qualified_name())
     return NominalType(record.name, _module_qname=ri.qualified_name())
+
+def method_self_type_by_name(record_name: str, analyzer) -> 'TpyType | None':
+    """`_method_self_type` from the record NAME (the resumable seam has the
+    record name, not the AST node) -- reads `type_params` / `type_param_kinds`
+    / the qname off the `RecordInfo`. None when the record is unregistered."""
+    ri = analyzer.registry.get_record(record_name)
+    if ri is None:
+        return None
+    if ri.type_params:
+        kinds = ri.type_param_kinds
+        args = tuple(
+            TypeParamRef(name=p,
+                         kind=kinds[i] if i < len(kinds) else TypeParamKind.TYPE)
+            for i, p in enumerate(ri.type_params))
+        return NominalType(record_name, type_args=args,
+                           _module_qname=ri.qualified_name())
+    return NominalType(record_name, _module_qname=ri.qualified_name())
 
 def iter_module_callables(module: TpyModule, analyzer):
     """Yield `(callable, self_type)` for every function / method the slice may

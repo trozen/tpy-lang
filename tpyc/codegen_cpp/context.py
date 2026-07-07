@@ -47,7 +47,8 @@ from .forms import (
 
 if TYPE_CHECKING:
     from ..sema import SemanticAnalyzer
-    from ..thir.nodes import THIRConstructor, THIRFunction
+    from ..thir.nodes import THIRConstructor, THIRFunction, THIRResumableBody
+    from ..thir.emit import ResumableLeafEmitter
 
 
 INDENT = "    "
@@ -962,6 +963,15 @@ class CodeGenContext:
     # tail emits from its THIRConstructor (the signature stays on the AST path).
     # Keyed by id() of the source __init__ TpyFunction; consumed in gen_record_decl.
     thir_constructors: dict[int, "THIRConstructor"] = field(default_factory=dict)
+    # THIR resumable frontier: attempt-once cache of async-body leaf lowerings,
+    # keyed by id() of the source TpyFunction; None records a rejected attempt
+    # (so the fallback tally folds once). Populated lazily at first frame
+    # emission (the CFG needs live codegen ctx), unlike the seeding-loop maps.
+    thir_resumables: dict[int, "THIRResumableBody | None"] = field(default_factory=dict)
+    # The active routed body's leaf renderer while gen_async emits its state
+    # machine; every seam site (leaf stmts, Branch conds, emplace args, the
+    # async-return value) consults it. None on the AST path.
+    thir_resumable_leaf: "ResumableLeafEmitter | None" = None
     # Peer modules in the same import-graph SCC. When a `<peer>.hpp`
     # would be included from this module's header (vs cpp file), the
     # codegen swaps it for `<peer>_fwd.hpp` to break the cyclic

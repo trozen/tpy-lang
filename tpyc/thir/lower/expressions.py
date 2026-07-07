@@ -213,7 +213,8 @@ def _field_is_arrow(e: TpyFieldAccess, lc: '_LowerCtx') -> bool:
     if isinstance(obj, TpySubscript):
         return _subscript_yields_borrow_ptr(obj, lc)
     return (isinstance(obj, TpyName)
-            and (obj.name in lc.pointers or obj.name == lc.self_receiver))
+            and (obj.name in lc.pointers
+                 or (obj.name == lc.self_receiver and lc.self_is_pointer)))
 
 def _is_own_param(name: str, lc: '_LowerCtx') -> bool:
     """Whether `name` is an `Own[...]`-declared param of the function being
@@ -240,11 +241,13 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx', *, temp_args: bool = False) -> THIR
     loc = getattr(e, "loc", None)
     if isinstance(e, TpyName):
         if e.name == lc.self_receiver:
-            # The method receiver -> `this`. A borrow (pointer) receiver; only
-            # ever reached as a field-access receiver (other `self` positions are
-            # gated out), so its form tag is informational.
+            # The method receiver -> `this` (plain method) or `__self` (a
+            # resumable method coro's `Record&` frame field). Only ever
+            # reached as a field-access / method-call receiver (other `self`
+            # positions are gated out), so its form tag is informational.
             _witness("self.this")
-            return THIRSelf(result_type=rtype, form=Form.BORROW, loc=loc)
+            return THIRSelf(result_type=rtype, form=Form.BORROW,
+                            cpp=lc.self_cpp, loc=loc)
         gcpp = lc.prescan.global_cpp.get(e.name)
         if gcpp is not None:
             # A read-only-seeded native/imported value global: routes through
@@ -315,8 +318,12 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx', *, temp_args: bool = False) -> THIR
             form = Form.STORAGE
         else:
             form = Form.BORROW if _is_borrow_form_name(rtype) else Form.VALUE
+        # A resumable frame_slot local (R1c): the read is `(*name)` (the
+        # slot's operator*). Member access off it is `.` (the slot is not a
+        # pointer, so `_field_is_arrow` / the method-call arrow stay False),
+        # giving `(*b).method()` -- the AST's frame_slot deref render.
         return THIRName(result_type=rtype, name=e.name, cpp=gcpp, form=form,
-                        loc=loc)
+                        deref=e.name in lc.frame_slots, loc=loc)
     if isinstance(e, TpyFieldAccess):
         if e.enum_member_of is not None:
             # Type-level enum member access: `Color.RED` -> `Color::RED`
@@ -979,7 +986,8 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx', *, temp_args: bool = False) -> THIR
             cpp_template=fi.cpp_template,
             is_arrow=not deref_check and isinstance(e.obj, TpyName)
                      and (e.obj.name in lc.pointers
-                          or e.obj.name == lc.self_receiver),
+                          or (e.obj.name == lc.self_receiver
+                              and lc.self_is_pointer)),
             deref_check=deref_check,
             form=_viewfam_result_form(m_str),
             loc=loc,
@@ -1467,7 +1475,8 @@ def _lower_union_arg_lift(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
     return THIRUnionArgLift(
         result_type=ut, variant_cpp=variant_cpp,
         value=_lower_expr(a, lc),
-        deref=a.name in lc.pointers or a.name == lc.self_receiver,
+        deref=a.name in lc.pointers or (a.name == lc.self_receiver
+                                        and lc.self_is_pointer),
         form=Form.BORROW, loc=loc)
 
 def _flush_witness(pos: str, value: THIRExpr) -> THIRExpr:

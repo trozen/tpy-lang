@@ -84,9 +84,14 @@ cell it touches is admitted:
   Char slots, print-arg position, Array range arm -- incr 94; open:
   Array-source arm, call-arg/return positions, owned-move,
   narrowed-Optional iterables, C4) **(covered)**
+  / async-await + yield (foundation + wave 2 route free/method async defs
+  and value-scalar generators incl. methods through the shared-skeleton
+  leaf seam, 2026-07-07 -- R2/R4/R4b/R1/R5b/R5c-param done; regions /
+  non-value yields+returns / generic-record methods / str-Own-tuple-union
+  params / ERASED-BORROWED awaits remain, TODO.md) **(covered)**
   vs try-except return tier (parked on the @error_return rung) /
-  expression raise / for-over-container (generators) / async-await /
-  yield / genexpr + the comprehension C3/C4 rows / nonlocal +
+  expression raise / for-over-container (generators) /
+  genexpr + the comprehension C3/C4 rows / nonlocal +
   plain-assert messages **(not)**.
 
 A **deferred cell** is one `(kind x form x shape)` the eligibility gate rejects.

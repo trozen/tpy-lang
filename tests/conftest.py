@@ -1844,7 +1844,7 @@ def pytest_terminal_summary(terminalreporter, exitstatus, config):
             fallback = dict(_thir_fallback)
             for key, n in _thir_fallback_agg.items():
                 fallback[key] = fallback.get(key, 0) + n
-            for component in ("body", "ctor"):
+            for component in ("body", "ctor", "resumable"):
                 pre = component + ":"
                 items = sorted(
                     ((k[len(pre):], n) for k, n in fallback.items()
