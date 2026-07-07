@@ -806,6 +806,13 @@ def _emit_form_convert(e: THIRFormConvert, state: _EmitState) -> str:
         # same `e.move` decision the sibling arms make, no runtime helper.
         if isinstance(t, TypeParamRef):
             return f"std::move({inner})" if e.move else inner
+        # A plain non-value record/container slot (a field write / MIL cell):
+        # the storage sink consumes the source directly -- `std::move(v)` for
+        # an owned source at its last use, the bare render (a copy) otherwise.
+        # The record sibling of the TypeParamRef arm; the AST spells both
+        # inline with no runtime helper.
+        if is_plain_nonvalue(t):
+            return f"std::move({inner})" if e.move else inner
     raise THIRCodeGenError(
         f"unhandled THIRFormConvert: {type(t).__name__} {e.value.form}->{e.form}")
 

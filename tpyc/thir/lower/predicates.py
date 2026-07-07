@@ -1197,6 +1197,43 @@ def _optional_ptr_borrow_name(e: TpyExpr, declared: dict[str, TpyType],
         return None
     return _optional_ptr_borrow(declared[e.name], analyzer)
 
+def _unrouted_binding_read(t: 'TpyType | None', analyzer) -> 'str | None':
+    """A declared binding kind whose bare NAME read has no THIR arm -- only
+    reachable through the widened ctor params (`_ctor_param_eligible` admits
+    these param TYPES so an unused-or-per-use-rejected param routes; function
+    signatures still reject them at sig.param_type, and no local-decl arm
+    produces such a binding). Returns the reject detail, or None for every
+    binding the slice routes today:
+
+    - a VALUE-repr Optional: the AST renders a narrowed read `(*p)`, prints
+      the un-narrowed value via `print_optional_val`, and moves an
+      expensive-copy inner at last use (`seed_param_locals`) -- none mirrored;
+    - an `Own[...]` whose payload has no routed read arm (anything but a
+      TypeParamRef / F1-record / eligible ptr-union, or an Optional of
+      those): `seed_param_locals` marks such a param movable, so the AST's
+      last-use read renders `std::move(p)` -- not mirrored. The ctor MIL move
+      arm is unaffected (it lowers the source name directly, not through the
+      expr gate)."""
+    if not isinstance(t, TpyType):
+        return None
+    u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    # Own-optional (`Own[X] | None` is value-repr too) classifies on the Own
+    # axis first, so a routed own-optional record param stays admitted.
+    own = unwrap_optional_own(u)
+    if own is not None:
+        inner = own.wrapped
+        if isinstance(inner, OptionalType):
+            inner = inner.inner
+        inner = unwrap_readonly(inner)
+        if (isinstance(inner, TypeParamRef)
+                or _f1_record(inner, analyzer)
+                or _eligible_ptr_union(inner, analyzer) is not None):
+            return None
+        return "name.own_read"
+    if isinstance(u, OptionalType) and not u.uses_pointer_repr():
+        return "name.optval_read"
+    return None
+
 def _storage_optional_return_type(t: TpyType | None, analyzer) -> 'OptionalType | None':
     """The storage-form `Optional[F1-record]` return slot (F2c): `Own[T] | None`,
     which lowers to a `std::optional<T>` returned by value. `Inner | None` is

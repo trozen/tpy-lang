@@ -140,18 +140,106 @@ class TestRecordCallArgs:
         arg = fn.body[0].init.args[0]
         assert isinstance(arg, THIRArgTemp) and arg.cpp_type == "A"
 
-    def test_record_rvalue_arg_into_ctor_outer_stays_ast(self):
-        # A record-rvalue arg into a CTOR outer call (`Sink(A(1))`, Sink's
-        # param mutated -> `A&`) hoists a temp on the AST path, but the ctor
-        # arg lowering has no temp arm -- the ctor face stays scalar-only.
+    def test_record_rvalue_arg_into_ctor_outer_mutated_temps(self):
+        # A record-rvalue arg into a CTOR outer call whose slot is MUTATED
+        # (`Sink(A(1))`, Sink's param -> `A&`): the ctor face keys the temp on
+        # the slot's mutation (_gen_record_ctor_args's ctor_mutated arm), so
+        # the decl position flushes `A __tmp_N = A(1);` ahead of the call.
         thir = _lower_ctx(
+            _PRELUDE
+            + "class Sink:\n    c: Int32\n"
+            + "    def __init__(self, a: A):\n        a.bump()\n        self.c = a.x\n"
+            + "def use() -> Int32:\n"
+            + "    s = Sink(A(1))\n    return s.c\n")
+        fn = _fn(thir, "use")
+        assert fn is not None
+        init = fn.body[0].init
+        assert isinstance(init, THIRCtorCall)
+        arg = init.args[0]
+        assert isinstance(arg, THIRArgTemp) and arg.cpp_type == "A"
+
+    def test_ctor_freefn_propagated_mutation_mirrors_ast(self):
+        # Mutation reaching the ctor param only through a FREE-fn call
+        # (`mut(a)`) updates the real __init__ fi (the `A&` signature) but
+        # NOT the synthetic ctor fi's `mutated_params` -- so the AST call
+        # site renders the rvalue INLINE against the `A&` slot, ill-formed
+        # C++ (BUGS.md, pre-existing). Both paths read the same synthetic
+        # fi, so THIR mirrors the render byte-identically; fixing the AST
+        # fact must update this mirror in tandem.
+        src = (
             _PRELUDE
             + "def mut(a: A):\n    a.x += 1\n"
             + "class Sink:\n    c: Int32\n"
             + "    def __init__(self, a: A):\n        mut(a)\n        self.c = a.x\n"
             + "def use() -> Int32:\n"
             + "    s = Sink(A(1))\n    return s.c\n")
+        thir = _lower_ctx(src)
+        fn = _fn(thir, "use")
+        assert fn is not None
+        assert isinstance(fn.body[0].init.args[0], THIRCtorCall)  # inline
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+    def test_record_rvalue_arg_into_ctor_outer_const_inlines(self):
+        # The const-slot sibling: the prvalue binds the `const A&` directly,
+        # so the expansion inlines with no temp (`SinkC(A(2))`).
+        thir = _lower_ctx(
+            _PRELUDE
+            + "class SinkC:\n    c: Int32\n"
+            + "    def __init__(self, a: A):\n        self.c = a.x\n"
+            + "def use() -> Int32:\n"
+            + "    s = SinkC(A(2))\n    return s.c\n")
+        fn = _fn(thir, "use")
+        assert fn is not None
+        init = fn.body[0].init
+        assert isinstance(init, THIRCtorCall)
+        assert isinstance(init.args[0], THIRCtorCall)
+
+    def test_call_rvalue_arg_into_ctor_outer_const_inlines(self):
+        # A by-value record-returning free call into a const ctor slot binds
+        # inline too (`SinkC(make_a(3))`).
+        thir = _lower_ctx(
+            _PRELUDE
+            + "def make_a(k: Int32) -> Own[A]:\n    return A(k)\n"
+            + "class SinkC:\n    c: Int32\n"
+            + "    def __init__(self, a: A):\n        self.c = a.x\n"
+            + "def use() -> Int32:\n"
+            + "    s = SinkC(make_a(3))\n    return s.c\n")
+        fn = _fn(thir, "use")
+        assert fn is not None
+        init = fn.body[0].init
+        assert isinstance(init, THIRCtorCall)
+        assert isinstance(init.args[0], THIRCall)
+
+    def test_ctor_mutated_slot_rvalue_nested_stays_ast(self):
+        # The mutated-slot temp needs a statement flush; as a NESTED arg
+        # (`WrapM(Sink(A(1)))`) there is none -> the whole body stays AST.
+        thir = _lower_ctx(
+            _PRELUDE
+            + "class Sink:\n    c: Int32\n"
+            + "    def __init__(self, a: A):\n        a.bump()\n        self.c = a.x\n"
+            + "class WrapM:\n    w: Int32\n"
+            + "    def __init__(self, s: Sink):\n        self.w = s.c\n"
+            + "def use() -> Int32:\n"
+            + "    o = WrapM(Sink(A(1)))\n    return o.w\n")
         assert _fn(thir, "use") is None
+
+    def test_ctor_const_chain_nested_routes(self):
+        # Const chains inline at any depth: `Wrap(SinkC(A(5)))`.
+        thir = _lower_ctx(
+            _PRELUDE
+            + "class SinkC:\n    c: Int32\n"
+            + "    def __init__(self, a: A):\n        self.c = a.x\n"
+            + "class Wrap:\n    w: Int32\n"
+            + "    def __init__(self, s: SinkC):\n        self.w = s.c\n"
+            + "def use() -> Int32:\n"
+            + "    o = Wrap(SinkC(A(5)))\n    return o.w\n")
+        fn = _fn(thir, "use")
+        assert fn is not None
+        init = fn.body[0].init
+        assert isinstance(init, THIRCtorCall)
+        inner = init.args[0]
+        assert isinstance(inner, THIRCtorCall)
+        assert isinstance(inner.args[0], THIRCtorCall)
 
     def test_own_record_slot_routes_via_move(self):
         # An Own[A] slot auto-moves its arg at last use (`sink(std::move(a))`)
@@ -541,6 +629,26 @@ class TestArgTempEmit:
         thir = _lower_ctx(src)
         assert _fn(thir, "use_ret") is not None
         assert _fn(thir, "use_mut") is not None
+
+    def test_ctor_outer_record_rvalue_emits(self):
+        # The ctor-face record-rvalue arms, emit-pinned: a MUTATED slot
+        # hoists the named temp, a const slot binds the inline prvalue.
+        src = (
+            _PRELUDE
+            + "class Sink:\n    c: Int32\n"
+            + "    def __init__(self, a: A):\n        a.bump()\n        self.c = a.x\n"
+            + "class SinkC:\n    c: Int32\n"
+            + "    def __init__(self, a: A):\n        self.c = a.x\n"
+            + "def use_mut() -> Int32:\n    s = Sink(A(1))\n    return s.c\n"
+            + "def use_const() -> Int32:\n    s = SinkC(A(2))\n    return s.c\n"
+        )
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+        out = _cpp(src, thir=True)
+        assert "A __tmp_1 = A(1);\n    Sink s = Sink(__tmp_1);" in out
+        assert "SinkC s = SinkC(A(2));" in out
+        thir = _lower_ctx(src)
+        assert _fn(thir, "use_mut") is not None
+        assert _fn(thir, "use_const") is not None
 
     def test_field_write_position_flushes(self):
         # The fifth flushable statement position: a scalar-field write's value

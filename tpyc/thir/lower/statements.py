@@ -189,6 +189,7 @@ from .expr_gates import (
     _call_eligible,
     _condition_eligible,
     _container_aug_setitem_ok,
+    _container_field_write_ok,
     _container_literal_decl_ok,
     _container_literal_ok,
     _container_setitem_ok,
@@ -208,6 +209,7 @@ from .expr_gates import (
     _scalar_field_write_ok,
     _stmt_value_temps_call,
     _str_aug_append_ok,
+    _str_field_write_ok,
     _tuple_literal_ok,
 )
 from .expressions import (
@@ -1041,8 +1043,10 @@ def _stmt_eligible(stmt: TpyStmt, analyzer, ws: _WalkState,
                 or _f1_tuple_field_write_ok(stmt, ws.declared,
                                             ws.storage_tuple_locals, analyzer)
                 or _ptr_union_field_write_ok(stmt, ws.declared, analyzer)
-                or _record_field_write_ok(stmt, ws.declared, analyzer,
-                                          prescan.is_constructor)
+                or _record_field_write_ok(stmt, ws.declared, analyzer, ws,
+                                          prescan)
+                or _container_field_write_ok(stmt, ws.declared, analyzer)
+                or _str_field_write_ok(stmt, ws.declared, analyzer)
                 or note_detail("assign.field_write_shape"))
     if isinstance(stmt, TpyReturn):
         if stmt.value is None:
@@ -2122,15 +2126,45 @@ def _lower_stmt_dispatch(stmt: TpyStmt, lc: _LowerCtx,
                                           _lower_expr(stmt.value, lc,
                                                       temp_args=True)),
                                       ftype), loc=loc)
-            # A plain F1-record field write (`_record_field_write_ok`): the
+            # A plain F1-record field write (`_record_field_write_ok`): a
             # record rvalue -- a ctor (STORAGE) or a by-value record-returning
             # call (VALUE) of the field's own type -- copies bare into the
-            # field, no borrow<->storage lift (the AST's default field assign).
-            # A plain record ftype reaching here is uniquely this shape (scalar/
-            # char/enum/ptr handled above; Optional/tuple/union are not
-            # NominalType records, so `_f1_record` excludes them).
+            # field, no borrow<->storage lift (the AST's default field assign);
+            # a record NAME source copies bare (`field = p;`) or moves at a
+            # movable name's last use (`std::move(p)`, the plain-record
+            # STORAGE convert arm -- `_maybe_move`'s mirror). A plain record
+            # ftype reaching here is uniquely these shapes (scalar/char/enum/
+            # ptr handled above; Optional/tuple/union are not NominalType
+            # records, so `_f1_record` excludes them).
             if _f1_record(ftype, analyzer):
+                if isinstance(stmt.value, TpyName):
+                    _witness("field_write.record_name")
+                    lowered = _lower_expr(stmt.value, lc)
+                    if _is_move_source(stmt.value, lc):
+                        lowered = THIRFormConvert(result_type=ftype,
+                                                  value=lowered,
+                                                  form=Form.STORAGE,
+                                                  move=True, loc=loc)
+                    return THIRAssign(target=_lower_expr(stmt.target, lc),
+                                      value=lowered, loc=loc)
                 _witness("field_write.record_rvalue")
+                return THIRAssign(target=_lower_expr(stmt.target, lc),
+                                  value=_lower_expr(stmt.value, lc), loc=loc)
+            # A container-literal field write (`_container_field_write_ok`):
+            # the target-threaded literal render assigns bare (a literal is
+            # never a movable name) -- the same THIRContainerLiteral emit a
+            # decl init gets, consumed by the field lvalue.
+            if isinstance(stmt.value, (TpyArrayLiteral, TpyDictLiteral,
+                                       TpySetLiteral)):
+                _witness("field_write.container_lit")
+                return THIRAssign(target=_lower_expr(stmt.target, lc),
+                                  value=_lower_expr(stmt.value, lc), loc=loc)
+            # A str-family field write (`_str_field_write_ok`): the value
+            # renders BARE -- `std::string::operator=(string_view)` absorbs a
+            # view source, so no view->owned construction and no move wrap
+            # (str names are never in codegen's movable set).
+            if _resolved_str_value(ftype, analyzer) is not None:
+                _witness("field_write.str")
                 return THIRAssign(target=_lower_expr(stmt.target, lc),
                                   value=_lower_expr(stmt.value, lc), loc=loc)
             if isinstance(stmt.value, TpyNoneLiteral):

@@ -9,8 +9,10 @@ from .nodes import (
     Form, THIRAssign, THIRCall, THIRCtorCall, THIRFieldAccess, THIRFormConvert, THIRLiteral,
     THIRName, THIRReturn, THIRSelf, THIRVarDecl,
 )
+from ..typesys import NominalType
 from .testutil import (
     _compile, _entry, _lower_ctx, _lower_ctx_witnessed, _fn, _F1_RECORDS,
+    _emit_expr,
 )
 
 # --- F1 form rung: single-assignment non-value record locals + field reads ---
@@ -1410,3 +1412,23 @@ class TestRecordBorrowCallAlias:
         )
         thir = _lower_ctx(src)
         assert _fn(thir, "go") is None
+
+
+class TestRecordStorageConvertEmit:
+    """The plain-record STORAGE arm of `_emit_form_convert` (the record
+    sibling of the TypeParamRef arm): `std::move(v)` for an owned source at
+    its last use, the bare render for a copy. Consumed source-level by the
+    record-NAME field-write row (`field_write.record_name`); pinned
+    node-level here so the arm's render survives independent of the gates."""
+
+    def _convert(self, move: bool) -> str:
+        t = NominalType("A")
+        name = THIRName(result_type=t, name="v", form=Form.STORAGE)
+        return _emit_expr(THIRFormConvert(result_type=t, value=name,
+                                          form=Form.STORAGE, move=move))
+
+    def test_move(self):
+        assert self._convert(True) == "std::move(v)"
+
+    def test_copy(self):
+        assert self._convert(False) == "v"

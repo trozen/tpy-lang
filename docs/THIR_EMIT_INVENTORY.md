@@ -39,10 +39,12 @@ not "delete components early."
 
 **2. The ctor-MIL target is LATE, not near-term** (corrects the ledger's
 "closest deletion target"). `_extract_field_inits` logic is fully ported, but
-its lone caller only goes dead when EVERY record's ctor routes -- gated on the
-union of generics (`ctor.non_f1_record`), all param form-rungs
-(`ctor.param_type`), all field form-rungs F3+ (`ctor.mil_field`), AND full
-body-statement coverage. It lands with the rest, not before.
+its lone caller only goes dead when EVERY record's ctor routes. Wave-6 closed
+the param form-rungs (`ctor.param_type` residual ~294: Waker/protocol) and the
+flat F3+ field form-rungs; the remaining gates are the generics frontier
+(`ctor.non_f1_record` + the `UninitStorage[T]`-family MIL mass inside
+`ctor.mil_field`), async plumbing (`Waker`), AND full body-statement coverage.
+It lands with the rest, not before.
 
 ## The work in four buckets
 
@@ -59,12 +61,17 @@ type-family -> the primary parallel-worktree lever.
 |------|---------:|----------------:|-----------------------|
 | `sig.param_type` | 20,030 | 582 | Waker/async plumbing (~8k, deferred), tuple, union, Own[non-record incl. Own[container]], protocol, generic-element containers `list[T]` (scalar/record/opt/ptr/container-scalar/span done) |
 | `sig.return_type` | 6,721 | 157 | tuple residue (~3.4k pre-value-tuple-rung; the remainder is non-value element families: record/nested-tuple/view elements), protocol/own:protocol, Waker, own:union (scalar/str/opt/borrow-tuple/record/Own[record]/Own[container]/Own[str]/Own[bytes]/ptr done) |
-| `ctor.param_type` | 4,395 | -- | same as param, at ctor params (ptr done) |
+| `ctor.param_type` | 294 | -- | DONE (wave-6 grid-fill: Own/String/Ptr/union/optval); residual = Waker + protocol/Callable params |
 
 (Counts re-measured 2026-07-06 on the container-rung branch, post
 tally-honesty fix: storage container returns (`Own[list/dict/set]`, bare-name +
 literal sources), `Own[str]`/`Own[bytes]` returns, and `Span[scalar]` /
-`Span[readonly[scalar]]` params landed.)
+`Span[readonly[scalar]]` params landed. Ctor rows re-measured 2026-07-07
+post wave-6 (the ctor frontier): `ctor` component 17,604 -> 12,025 (the
+wave-6 pre-foundation baseline had `ctor.param_type` at 4,116 -- the 4,395
+above was the older 2026-07-06 container-rung measure); `ctor.mil_field`
+residual 8,616 is mostly generics-gated (`UninitStorage[T]` fields,
+`Box._ptr = heap_take(...)`) + `Waker`; see IR_DESIGN.md Wave-6.)
 
 ### B. Expression arms feeding var-decl / return / if / expr-stmt [mostly P]
 
@@ -74,16 +81,16 @@ ported). The arms, by `gen_expr`/`gen_method_call` dispatch:
 
 | Arm | AST emit | status | biggest gaps | leverage | P/S |
 |-----|----------|--------|--------------|---------:|-----|
-| `TpyMethodCall` | expr_gates.py:2969 | partial | `method.marker` module-qualified + static receivers (wave 2) + static `@cpp_template` calls + Ptr-receiver deref calls (wave 3) LANDED; measured residue: `deref.ptr_pointee` 939 (Ptr[@dynamic-protocol] pointee family), `deref.recv_shape` 637, module/static generics ~226 (generics frontier), qualcall coerce-args 304 + optional/record returns; **str/bytes methods** (receiver not a nominal record -- new receiver-family dispatch) ~1.7k; non-F1/method receivers; multi-overload; non-value returns | ~8k | P (grid) + S (str-family machinery, non-F1 receivers) |
-| `TpyCall` | expr_gates.py:1719 | partial | non-scalar returns `call.ret_type` 2433 (grid-fill, return-slot); imported/cross-module/error_return/generic callees `call.callee_kind` 2087 (new machinery); `call.special_form` 1084 (bespoke cast/isinstance/enum/macro arms) | ~7k | mixed |
-| `TpyBinOp`/`ChainedCompare` | expr_gates.py:1381 | partial | mixed/widening arith (coercion node), Char concat, record operator-dunder indirection, non-bool logical (temp+ternary machinery) | ~3.9k | P (grid) + S (non-bool logical) |
-| `TpyFString` | expr_gates.py:3497 | done (wave 2) | `!r`/`!s` + constant format specs landed; unmirrored arg types under conv tagged `fstring.arg_wrap` | landed | P |
-| `TpyName` global read | expressions.py:217 | done for value globals (waves 2-3) | seeding + Ptr[T] writes + native/imported spelling (THIRName.cpp via the extracted imported_variable_cpp) landed; remaining: non-value pointer-slot indirection, Optional-value globals (BUGS.md miscompile), module-attr dotted reads (a field-access render path) | residue | P |
-| `TpySubscript` | expr_gates.py:1275 | partial | field-access receivers landed (wave 3, all four ops); remaining: non-value element reads (`subscript.elem_family` 321 -- the W2-subscript-elem cell), deeper receiver chains, `len(field)` / field iteration / bytes-field reads | ~400 | P |
-| `TpyFieldAccess` | expressions.py:1413 | partial | non-value field reads (record/container/opt/union field), non-F1 receiver | ~1k | P |
-| `TpyIfExpr` (ternary) | expr_gates.py:3655 | done (wave 2) | `THIRIfExpr` for scalar/Char/enum/str results; non-value/bytes results tagged `ifexpr.result_type` (first-rejects 1073 -> 18) | landed | P |
-| list/dict/set literal (value position) | expr_gates.py:433 | partial | only decl-init + print-arg today; value/return/call-arg positions + non-scalar elements missing | ~700 | P |
-| `TpyTupleLiteral` | expr_gates.py:3766 | partial (value-tuple rung) | `THIRTupleLiteral` for all-VALUE scalar/owned-str elements at returns/decls/args; ref-capture elements + non-value element families stay AST | tuple residue | P |
+| `TpyMethodCall` | expr_gates.py `_expr_eligible` method-call arm | partial | `method.marker` module-qualified + static receivers (wave 2) + static `@cpp_template` calls + Ptr-receiver deref calls (wave 3) LANDED; measured residue: `deref.ptr_pointee` 939 (Ptr[@dynamic-protocol] pointee family), `deref.recv_shape` 637, module/static generics ~226 (generics frontier), qualcall coerce-args 304 + optional/record returns; **str/bytes methods** (receiver not a nominal record -- new receiver-family dispatch) ~1.7k; non-F1/method receivers; multi-overload; non-value returns | ~8k | P (grid) + S (str-family machinery, non-F1 receivers) |
+| `TpyCall` | expr_gates.py `_call_eligible` | partial | non-scalar returns `call.ret_type` 2433 (grid-fill, return-slot); imported/cross-module/error_return/generic callees `call.callee_kind` 2087 (new machinery); `call.special_form` 1084 (bespoke cast/isinstance/enum/macro arms) | ~7k | mixed |
+| `TpyBinOp`/`ChainedCompare` | expr_gates.py `_expr_eligible` binop arm | partial | mixed/widening arith (coercion node), Char concat, record operator-dunder indirection, non-bool logical (temp+ternary machinery) | ~3.9k | P (grid) + S (non-bool logical) |
+| `TpyFString` | expr_gates.py `_fstring_eligible` | done (wave 2) | `!r`/`!s` + constant format specs landed; unmirrored arg types under conv tagged `fstring.arg_wrap` | landed | P |
+| `TpyName` global read | expressions.py `_lower_expr` name arm | done for value globals (waves 2-3) | seeding + Ptr[T] writes + native/imported spelling (THIRName.cpp via the extracted imported_variable_cpp) landed; remaining: non-value pointer-slot indirection, Optional-value globals (BUGS.md miscompile), module-attr dotted reads (a field-access render path) | residue | P |
+| `TpySubscript` | expr_gates.py `_subscript_read_reject` | partial | field-access receivers landed (wave 3, all four ops); remaining: non-value element reads (`subscript.elem_family` 321 -- the W2-subscript-elem cell), deeper receiver chains, `len(field)` / field iteration / bytes-field reads | ~400 | P |
+| `TpyFieldAccess` | expressions.py `_lower_field_source` | partial | non-value field reads (record/container/opt/union field), non-F1 receiver | ~1k | P |
+| `TpyIfExpr` (ternary) | expr_gates.py `_if_expr_eligible` | done (wave 2) | `THIRIfExpr` for scalar/Char/enum/str results; non-value/bytes results tagged `ifexpr.result_type` (first-rejects 1073 -> 18) | landed | P |
+| list/dict/set literal (value position) | expr_gates.py `_container_literal_ok` | partial | only decl-init + print-arg today; value/return/call-arg positions + non-scalar elements missing | ~700 | P |
+| `TpyTupleLiteral` | expr_gates.py `_tuple_literal_ok` | partial (value-tuple rung) | `THIRTupleLiteral` for all-VALUE scalar/owned-str elements at returns/decls/args; ref-capture elements + non-value element families stay AST | tuple residue | P |
 | `TpyListRepeat` `[0]*n` / walrus / lambda / genexpr | 4857/6514/6816/5170 | **none** | unlowered; walrus/lambda/list-repeat low-frequency, genexpr = serial | low | walrus/lambda S |
 
 Fully ported expr arms (no work): int/float/bool/str/bytes literals, `len()`,

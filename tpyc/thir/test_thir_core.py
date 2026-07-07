@@ -15,8 +15,9 @@ from .lower import _is_len_native, lower_module
 from .lower.functions import _shadow_bound_names
 from .nodes import (
     Form, PrintForm, THIRAssign, THIRBinOp, THIRCall, THIRExprStmt,
-    THIRForEach, THIRForRange, THIRIf, THIRLiteral, THIRName, THIRPrint,
-    THIRReturn, THIRStrLiteral, THIRUnaryNot, THIRVarDecl, THIRWhile,
+    THIRForEach, THIRForRange, THIRFormConvert, THIRIf, THIRLiteral,
+    THIRName, THIRPrint, THIRReturn, THIRStrLiteral, THIRUnaryNot,
+    THIRVarDecl, THIRWhile,
 )
 from .testutil import (
     _compile, _entry, _lower, _lower_ctx, _fn, _lower_ctor,
@@ -2190,11 +2191,11 @@ class TestGlobalPtrSeed:
 
 
 class TestGlobalCtorAndImports:
-    def test_ctor_body_global_read_stays_ast_on_mil(self):
+    def test_ctor_body_global_read_demotes_to_body(self):
         # A leading `self.f = GLOBAL` is a bare-name RHS the AST DEMOTES to
-        # the body (`blocked_by_bare_name`); THIR does not mirror the demote,
-        # so the whole ctor stays AST (the ctor.mil_field reject) -- a hoist
-        # would emit `: n(LIMIT)` where the AST emits `this->n = LIMIT;`.
+        # the body (`blocked_by_bare_name`); THIR mirrors the demote
+        # (`_ast_demotes_init`), so the ctor routes with an empty MIL and the
+        # body assign `this->n = LIMIT;` -- a hoist would emit `: n(LIMIT)`.
         src = (
             "from tpy import Int32\n"
             "LIMIT: Int32 = 9\n"
@@ -2205,7 +2206,10 @@ class TestGlobalCtorAndImports:
             "b = Box2()\n"
             "print(b.n)\n"
         )
-        assert _lower_ctor(src, "Box2") is None
+        ctor = _lower_ctor(src, "Box2")
+        assert ctor is not None
+        assert ctor.mil_inits == ()
+        assert len(ctor.body) == 1
         compiler, modules = _compile(src)
         entry = _entry(modules)
         ast_out = compiler.generate_code_to_strings(
@@ -2396,12 +2400,16 @@ class TestGlobalSpelledSeed:
         assert fn is not None
         assert isinstance(fn.body[0], THIRVarDecl)
 
-    def test_imported_ctor_mil_demote_stays_ast(self, tmp_path):
+    def test_imported_ctor_mil_demotes_to_body(self, tmp_path):
         # `self.x = G` leading a ctor: the AST demotes the bare-name RHS to a
-        # body assign (`this->x = ::tpyapp::helper::G;`), a shape the MIL
-        # slice does not reproduce -- whole ctor stays AST, byte-identical.
+        # body assign (`this->x = ::tpyapp::helper::G;`) -- THIR mirrors the
+        # demote (`_ast_demotes_init`), so the ctor routes with an empty MIL
+        # and the assign in the body.
         (tmp_path / "helper.py").write_text(self.HELPER)
-        assert _lower_ctor(self.SRC, "C", extra_lib_dirs=[tmp_path]) is None
+        ctor = _lower_ctor(self.SRC, "C", extra_lib_dirs=[tmp_path])
+        assert ctor is not None
+        assert ctor.mil_inits == ()
+        assert len(ctor.body) == 1
 
     def test_imported_byte_identical(self, tmp_path):
         (tmp_path / "helper.py").write_text(self.HELPER)
@@ -2467,9 +2475,10 @@ class TestGlobalSpelledSeed:
 class TestRecordFieldWrite:
     # `recv.field = <record rvalue>` off an F1-record method body: a ctor
     # (`Inner(n)`) or a by-value call (`mk(n)`) rvalue copies bare into the
-    # field (the field_write.record_rvalue rung). A bare record NAME source is
-    # not an rvalue -- the plain-record STORAGE emit form is deferred, so it
-    # stays on the AST path. (_lower_ctx: non-value records need the compiler.)
+    # field (the field_write.record_rvalue rung). A bare record NAME source
+    # routes too since the ctor-body cell -- the bare copy / std::move rows
+    # (field_write.record_name; routed units in test_thir_methods'
+    # TestFieldWriteFamilies). (_lower_ctx: non-value records need the compiler.)
     SRC = (
         "from tpy import Int32, Own\n"
         "class Inner:\n"
@@ -2494,5 +2503,9 @@ class TestRecordFieldWrite:
         assert fn is not None
         assert isinstance(fn.body[0], THIRAssign)
 
-    def test_record_name_source_stays_ast(self):
-        assert _fn(_lower_ctx(self.SRC), "set_name") is None
+    def test_record_name_source_routes_bare(self):
+        fn = _fn(_lower_ctx(self.SRC), "set_name")
+        assert fn is not None
+        st = fn.body[0]
+        assert isinstance(st, THIRAssign)
+        assert not isinstance(st.value, THIRFormConvert)  # bare copy, no move

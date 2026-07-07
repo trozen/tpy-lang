@@ -204,17 +204,21 @@ class TestConstructor:
             + "def main():\n    w = W(5)\n    print(w.a + w.b)\nmain()\n")
         assert self._hpp(src, thir=True) == self._hpp(src, thir=False)
 
-    def test_record_field_demotion_is_ineligible(self):
-        # A demoted *record*-field write is not a body-eligible statement
-        # (`_stmt_eligible` admits only scalar / Optional field writes), so the ctor
-        # stays on the AST path. Byte-safe; bounds the M3c-demotion slice.
+    def test_record_field_demotion_routes_with_move(self):
+        # A demoted record-field init from a body local routes since the
+        # ctor-body cell: `self.rec = m` at m's last use emits the AST demote's
+        # `this->rec = std::move(m);` (the field_write.record_name move row).
         ctor = _lower_ctor(
             self._INNER
             + "class W:\n    rec: Inner\n"
             + "    def __init__(self, v: Int32):\n"
             + "        m = Inner(v)\n        self.rec = m\n",
             "W")
-        assert ctor is None
+        assert ctor is not None
+        assert ctor.mil_inits == ()  # bare-name RHS demotes, like the AST
+        assert _ctor_tail(ctor) == (
+            " {\n        Inner m = Inner(v);\n"
+            "        this->rec = std::move(m);\n    }\n")
 
     def test_single_base_super_init_routes(self):
         # M3d-1: a single-F1-base ctor routes -- `super().__init__(a)` lowers to a
@@ -333,6 +337,182 @@ class TestConstructor:
             + "        super().__init__(v)\n        self.n = n\n")
         assert _lower_ctor(src, "TupBox") is None
 
+    # --- base-init args beyond scalars (target-less bare renders) ---
+
+    _STR_BASE = (
+        _PRELUDE
+        + "class Base:\n    name: str\n"
+        + "    def __init__(self, name: str):\n        self.name = name\n")
+
+    def test_base_init_str_param_arg_routes(self):
+        # The dominant corpus shape (exception hierarchies): a str param
+        # forwarded to super().__init__ renders as the bare name.
+        ctor = _lower_ctor(
+            self._STR_BASE
+            + "class E(Base):\n    n: Int32\n"
+            + "    def __init__(self, name: str, n: Int32):\n"
+            + "        super().__init__(name)\n        self.n = n\n",
+            "E")
+        assert ctor is not None
+        assert _ctor_tail(ctor) == " : Base(name), n(n) {}\n"
+
+    def test_base_init_str_literal_arg_routes(self):
+        ctor = _lower_ctor(
+            self._STR_BASE
+            + "class F(Base):\n"
+            + "    def __init__(self):\n        super().__init__(\"lit\")\n",
+            "F")
+        assert ctor is not None
+        assert _ctor_tail(ctor) == ' : Base("lit") {}\n'
+
+    def test_base_init_bigint_slot_int_literal_renders_bare(self):
+        # An int literal at a BigInt base slot stays IntLiteralType, so the
+        # target-less render is the bare digits (`Base(5)`, no BigInt wrap).
+        ctor = _lower_ctor(
+            "from tpy import Int32\n"
+            + "class Base:\n    n: int\n"
+            + "    def __init__(self, n: int):\n        self.n = n\n"
+            + "class G(Base):\n"
+            + "    def __init__(self):\n        super().__init__(5)\n",
+            "G")
+        assert ctor is not None
+        assert _ctor_tail(ctor) == " : Base(5) {}\n"
+
+    _REC_BASE = (
+        "from tpy import Int32, Own\n"
+        + "class Payload:\n    v: Int32\n"
+        + "    def __init__(self, v: Int32):\n        self.v = v\n"
+        + "class Base:\n    p: Payload\n    opt: Payload | None\n"
+        + "    def __init__(self, p: Payload, opt: Payload | None):\n"
+        + "        self.p = p\n        self.opt = opt\n")
+
+    def test_base_init_record_and_none_args_route(self):
+        # A record param renders bare; a None renders `nullptr` (the base's
+        # pointer-repr Optional param slot) -- both target-less gen_expr rows.
+        ctor = _lower_ctor(
+            self._REC_BASE
+            + "class C(Base):\n"
+            + "    def __init__(self, p: Payload):\n"
+            + "        super().__init__(p, None)\n",
+            "C")
+        assert ctor is not None
+        assert _ctor_tail(ctor) == " : Base(p, nullptr) {}\n"
+
+    def test_base_init_optional_param_arg_routes(self):
+        ctor = _lower_ctor(
+            self._REC_BASE
+            + "class D(Base):\n"
+            + "    def __init__(self, p: Payload, o: Payload | None):\n"
+            + "        super().__init__(p, o)\n",
+            "D")
+        assert ctor is not None
+        assert _ctor_tail(ctor) == " : Base(p, o) {}\n"
+
+    def test_base_init_own_param_arg_copies_mirrors_ast(self):
+        # PRE-EXISTING AST QUIRK, mirrored: an Own[T] param forwarded to a
+        # base init renders BARE (`Base(q, ...)` -- a COPY into the base's
+        # const-ref slot, no std::move), because _extract_base_inits renders
+        # target-less gen_expr with no _maybe_move. Pinned so a future AST
+        # fix flags the THIR lockstep update.
+        ctor = _lower_ctor(
+            self._REC_BASE
+            + "class M(Base):\n"
+            + "    def __init__(self, q: Own[Payload]):\n"
+            + "        super().__init__(q, None)\n",
+            "M")
+        assert ctor is not None
+        assert _ctor_tail(ctor) == " : Base(q, nullptr) {}\n"
+
+    def test_base_init_concat_arg_is_ineligible(self):
+        # A concat arg is a String rvalue -- not a bare-render row; the whole
+        # ctor stays on the AST path.
+        ctor = _lower_ctor(
+            self._STR_BASE
+            + "class H(Base):\n"
+            + "    def __init__(self, s: str):\n"
+            + "        super().__init__(s + \"!\")\n",
+            "H")
+        assert ctor is None
+
+    def test_base_init_huge_int_literal_is_ineligible(self):
+        # Outside the +-2^31-1 literal range the bare-digits render is not
+        # pinned -- stays on the AST path.
+        ctor = _lower_ctor(
+            "class Base:\n    n: int\n"
+            + "    def __init__(self, n: int):\n        self.n = n\n"
+            + "class G(Base):\n"
+            + "    def __init__(self):\n        super().__init__(4000000000)\n",
+            "G")
+        assert ctor is None
+
+    def test_base_init_str_arg_byte_identical(self):
+        src = (
+            self._STR_BASE
+            + "class E(Base):\n    n: Int32\n"
+            + "    def __init__(self, name: str, n: Int32):\n"
+            + "        super().__init__(name)\n        self.n = n\n"
+            + "def main():\n    e = E(\"x\", 2)\n    print(e.name, e.n)\nmain()\n")
+        assert self._hpp(src, thir=True) == self._hpp(src, thir=False)
+
+    def test_base_init_record_args_byte_identical(self):
+        src = (
+            self._REC_BASE
+            + "class C(Base):\n"
+            + "    def __init__(self, p: Payload):\n"
+            + "        super().__init__(p, None)\n"
+            + "class M(Base):\n"
+            + "    def __init__(self, q: Own[Payload]):\n"
+            + "        super().__init__(q, None)\n"
+            + "def main():\n    c = C(Payload(1))\n    m = M(Payload(2))\n"
+            + "    print(c.p.v + m.p.v)\nmain()\n")
+        assert self._hpp(src, thir=True) == self._hpp(src, thir=False)
+
+    # --- ctor demoted field writes (container / str / nondef record) ---
+
+    def test_ctor_demoted_container_and_str_writes_route(self):
+        # After a chain break the demoted container-literal / str field inits
+        # are ordinary body statements (the Semaphore shape).
+        ctor = _lower_ctor(
+            _PRELUDE
+            + "class S:\n    xs: list[Int32]\n    tag: str\n"
+            + "    def __init__(self, v: Int32, s: str):\n"
+            + "        if v < 0:\n            pass\n"
+            + "        self.xs = [v]\n        self.tag = s\n",
+            "S")
+        assert ctor is not None
+        assert ctor.mil_inits == ()
+
+    def test_ctor_reassigned_str_param_is_ineligible(self):
+        # A reassigned str param needs the AST's owned-copy prologue
+        # (`std::string s = std::string(__param_s);` -- itself emitted against
+        # an un-renamed ctor signature, a pre-existing AST bug), a shape the
+        # slice does not reproduce -> whole ctor stays on the AST path.
+        ctor = _lower_ctor(
+            _PRELUDE
+            + "class S:\n    tag: str\n"
+            + "    def __init__(self, s: str, v: Int32):\n"
+            + "        if v > 0:\n            s = \"pos\"\n"
+            + "        self.tag = s\n",
+            "S")
+        assert ctor is None
+
+    def test_ctor_demoted_nondef_record_field_is_ineligible(self):
+        # A demoted init of a field whose record type suppresses its default
+        # ctor (@nocopy + __del__) makes the AST raise a CodeGenError -- the
+        # gate must keep the whole ctor on the AST path so the diagnostic
+        # still fires.
+        ctor = _lower_ctor(
+            "from tpy import Int32, nocopy\n"
+            + "@nocopy\n"
+            + "class R:\n    v: Int32\n"
+            + "    def __init__(self, v: Int32):\n        self.v = v\n"
+            + "    def __del__(self):\n        pass\n"
+            + "class W:\n    rec: R\n"
+            + "    def __init__(self, v: Int32):\n"
+            + "        m = R(v)\n        self.rec = m\n",
+            "W")
+        assert ctor is None
+
     def test_field_read_optional_byte_identical(self):
         # A param field-read into an Optional[record] field (`self.opt = b.inner`)
         # constructs the optional directly -- the TpyFieldAccess arm of
@@ -370,11 +550,13 @@ class TestConstructor:
         assert self._hpp(src, thir=True) == self._hpp(src, thir=False)
 
     def test_non_scalar_field_is_ineligible(self):
-        # A str field is M3b+ form work, not M3a scalar.
+        # A value-repr Optional scalar field is outside the MIL slice
+        # (containers/str/bytes route via their family arms -- see
+        # TestConstructorContainerFields / TestCtorViewFamilyFields).
         ctor = _lower_ctor(
             _PRELUDE
-            + "class S:\n    name: str\n"
-            + "    def __init__(self, name: str):\n        self.name = name\n",
+            + "class S:\n    x: Int32 | None\n"
+            + "    def __init__(self, x: Int32 | None):\n        self.x = x\n",
             "S")
         assert ctor is None
 
@@ -391,11 +573,13 @@ class TestConstructor:
         # The PARAM gate must reject a ctor whose fields are all scalar but a param
         # is non-eligible: it would otherwise emit `: n(n) {}` byte-identically, so the
         # corpus byte-diff cannot guard a regression here -- only this unit test can.
-        # (An `Optional` param stays on the AST path; `list[scalar]` is now admitted.)
+        # (A Callable param takes the function-pointer signature emit path; the
+        # once-rejected Optional/union/Ptr/Own/String param TYPES are now
+        # admitted and gated per-use instead -- see test_thir_ctor_params.py.)
         ctor = _lower_ctor(
-            _PRELUDE
+            "from typing import Callable\n" + _PRELUDE
             + "class C:\n    n: Int32\n"
-            + "    def __init__(self, n: Int32, x: Int32 | None):\n"
+            + "    def __init__(self, n: Int32, f: Callable[[Int32], Int32]):\n"
             + "        self.n = n\n",
             "C")
         assert ctor is None
@@ -643,3 +827,595 @@ class TestConstructor:
             "H")
         assert ctor is not None
         assert _ctor_tail(ctor) == " : opt(::tpy::ptr_to_optional(m)) {}\n"
+
+
+def _lower_ctor_witnessed(source: str, record_name: str):
+    """`_lower_ctor` plus the face-witness counts the lowering recorded."""
+    from ..compilation_context import activate_compiler
+    from .lower import lower_constructor
+    from .lower.functions import iter_module_constructors
+    compiler, modules = _compile(source)
+    entry = _entry(modules)
+    with activate_compiler(compiler):
+        for rec, init, self_type in iter_module_constructors(entry.ast,
+                                                             entry.analyzer):
+            if rec.name == record_name:
+                ctor = lower_constructor(rec, init, entry.analyzer,
+                                         self_type=self_type)
+                return ctor, compiler._thir_face_witnesses
+    return None, compiler._thir_face_witnesses
+
+
+class TestCtorViewFamilyFields:
+    """Ctor MIL str / StrView / bytes field-init cells: the bare str-family
+    renders (std::string's explicit string_view ctor fires in the direct-init),
+    the bytes view->owned `::tpy::bytes_copy` copy, owned literal / `bytes()`
+    rvalues -- plus the stays-AST bounds (native `bytes(x)` init, String param,
+    `copy()` wrap, a param reassigned later in the body)."""
+
+    def _hpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        hpp, _ = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=thir))
+        return hpp
+
+    def test_str_field_from_str_param_routes_bare(self):
+        ctor, w = _lower_ctor_witnessed(
+            "class N:\n    name: str\n"
+            "    def __init__(self, name: str):\n        self.name = name\n",
+            "N")
+        assert ctor is not None
+        assert _ctor_tail(ctor) == " : name(name) {}\n"
+        assert w.get("mil.str_field", 0) == 1
+
+    def test_str_field_from_strview_param_materializes(self):
+        # The sema strview_to_str ASSIGN coerce materializes itself:
+        # `std::string(v)` -- the only wrapped str-family MIL render.
+        ctor = _lower_ctor(
+            "from tpy import StrView\n"
+            "class N:\n    name: str\n"
+            "    def __init__(self, v: StrView):\n        self.name = v\n",
+            "N")
+        assert ctor is not None
+        assert _ctor_tail(ctor) == " : name(std::string(v)) {}\n"
+
+    def test_str_field_from_literal_routes(self):
+        ctor = _lower_ctor(
+            "class N:\n    name: str\n"
+            '    def __init__(self):\n        self.name = "hello"\n',
+            "N")
+        assert ctor is not None
+        assert _ctor_tail(ctor) == ' : name("hello") {}\n'
+
+    def test_strview_field_from_param_routes_bare(self):
+        ctor = _lower_ctor(
+            "from tpy import StrView\n"
+            "class V:\n    view: StrView\n"
+            "    def __init__(self, v: StrView):\n        self.view = v\n",
+            "V")
+        assert ctor is not None
+        assert _ctor_tail(ctor) == " : view(v) {}\n"
+
+    def test_strview_field_from_literal_routes_bare(self):
+        # The literal arrives under the identity str_to_strview coerce.
+        ctor = _lower_ctor(
+            "from tpy import StrView\n"
+            "class V:\n    view: StrView\n"
+            '    def __init__(self):\n        self.view = "hi"\n',
+            "V")
+        assert ctor is not None
+        assert _ctor_tail(ctor) == ' : view("hi") {}\n'
+
+    def test_bytes_field_from_param_copies(self):
+        # The span param lifts through the S6 STORAGE convert -- vector has
+        # no span ctor (the AST's `_view_source_to_owned` chokepoint).
+        ctor, w = _lower_ctor_witnessed(
+            "class P:\n    data: bytes\n"
+            "    def __init__(self, data: bytes):\n        self.data = data\n",
+            "P")
+        assert ctor is not None
+        assert _ctor_tail(ctor) == " : data(::tpy::bytes_copy(data)) {}\n"
+        assert w.get("mil.bytes_field", 0) == 1
+
+    def test_bytes_field_from_bytesview_param_copies(self):
+        # The bytesview_to_bytes coerce's lambda IS the same copy render.
+        ctor = _lower_ctor(
+            "from tpy import BytesView\n"
+            "class P:\n    data: bytes\n"
+            "    def __init__(self, v: BytesView):\n        self.data = v\n",
+            "P")
+        assert ctor is not None
+        assert _ctor_tail(ctor) == " : data(::tpy::bytes_copy(v)) {}\n"
+
+    def test_bytes_field_from_literal_owned_render(self):
+        ctor = _lower_ctor(
+            "class P:\n    data: bytes\n"
+            '    def __init__(self):\n        self.data = b"ab"\n',
+            "P")
+        assert ctor is not None
+        assert _ctor_tail(ctor) == ' : data(::tpy::bytes_literal_owned("ab", 2)) {}\n'
+
+    def test_bytes_field_from_empty_literal(self):
+        ctor = _lower_ctor(
+            "class P:\n    data: bytes\n"
+            '    def __init__(self):\n        self.data = b""\n',
+            "P")
+        assert ctor is not None
+        assert _ctor_tail(ctor) == " : data(std::vector<uint8_t>{}) {}\n"
+
+    def test_bytes_field_from_empty_ctor_call(self):
+        # `bytes()` is the zero-arg @cpp_template __init__ expansion -- an
+        # owned rvalue landing bare (note parens, not the literal's braces).
+        ctor = _lower_ctor(
+            "class P:\n    data: bytes\n"
+            "    def __init__(self):\n        self.data = bytes()\n",
+            "P")
+        assert ctor is not None
+        assert _ctor_tail(ctor) == " : data(std::vector<uint8_t>()) {}\n"
+
+    def test_bytes_native_ctor_call_stays_ast(self):
+        # `bytes(x)` resolves to the @native(function=True) __init__ overload
+        # (`tpy::bytes_copy`) -- an emit the call slice does not spell.
+        ctor = _lower_ctor(
+            "class P:\n    data: bytes\n"
+            "    def __init__(self, src: bytes):\n        self.data = bytes(src)\n",
+            "P")
+        assert ctor is None
+
+    def test_string_param_stays_ast(self):
+        # A `String` param spells `const std::string&` -- rejected by the ctor
+        # param gate before the field arm is consulted.
+        ctor = _lower_ctor(
+            "from tpy import String\n"
+            "class N:\n    name: str\n"
+            "    def __init__(self, name: String):\n        self.name = name\n",
+            "N")
+        assert ctor is None
+
+    def test_param_reassigned_in_body_stays_ast(self):
+        # The AST DEMOTES an init whose RHS references a top-level body
+        # binding -- including a param reassigned later (blocked_by_body_local).
+        # THIR must not hoist it; the conservative verdict is the whole-ctor
+        # reject (the AST path also emits the demoted shape).
+        ctor = _lower_ctor(
+            "class N:\n    name: str\n"
+            "    def __init__(self, name: str):\n"
+            "        self.name = name\n"
+            '        name = "other"\n        print(name)\n',
+            "N")
+        assert ctor is None
+
+    def test_copy_wrapped_str_source_stays_ast(self):
+        # copy() at a view-family field is an unprobed wrap contract -> AST.
+        ctor = _lower_ctor(
+            "from tpy import copy\n"
+            "class N:\n    name: str\n"
+            "    def __init__(self, s: str):\n        self.name = copy(s)\n",
+            "N")
+        assert ctor is None
+
+    def test_fstring_str_source_stays_ast(self):
+        ctor = _lower_ctor(
+            "class N:\n    name: str\n"
+            "    def __init__(self, s: str):\n        self.name = f\"[{s}]\"\n",
+            "N")
+        assert ctor is None
+
+    def test_viewfam_fields_byte_identical(self):
+        # End-to-end byte-identity for every routed (field family x source)
+        # cell through the THIR seam vs the AST path.
+        src = (
+            "from tpy import StrView, BytesView\n"
+            "class N:\n    name: str\n    tag: str\n    view: StrView\n"
+            "    def __init__(self, name: str, v: StrView):\n"
+            "        self.name = name\n        self.tag = \"t\"\n"
+            "        self.view = v\n"
+            "class P:\n    data: bytes\n    lit: bytes\n    empty: bytes\n"
+            "    def __init__(self, data: bytes):\n"
+            "        self.data = data\n        self.lit = b\"ab\"\n"
+            "        self.empty = bytes()\n"
+            "def main():\n"
+            "    n = N(\"a\", \"b\")\n    print(n.name, n.tag, n.view)\n"
+            "    p = P(b\"xy\")\n    print(len(p.data), len(p.lit), len(p.empty))\n"
+            "main()\n")
+        assert self._hpp(src, thir=True) == self._hpp(src, thir=False)
+
+
+class TestConstructorContainerFields:
+    """MIL inits of builtin-container fields (list / dict / set / Array):
+    container-literal sources through the shared container-literal machinery
+    (the MIL is target-threaded like a decl init), and bare container-param
+    copies / Own moves."""
+
+    def _hpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        hpp, _ = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=thir))
+        return hpp
+
+    def test_list_literal_mil_routes(self):
+        ctor, wit = _lower_ctor_witnessed(
+            _PRELUDE
+            + "class A:\n    items: list[Int32]\n"
+            + "    def __init__(self):\n        self.items = [1, 2]\n",
+            "A")
+        assert ctor is not None
+        assert _ctor_tail(ctor) == " : items({1, 2}) {}\n"
+        assert wit.get("mil.container_literal", 0) >= 1
+
+    def test_empty_literals_spell_their_type(self):
+        # An empty list spells its vector type (the T*-assignment-ambiguity
+        # guard); an empty dict spells the runtime map ctor.
+        ctor = _lower_ctor(
+            _PRELUDE
+            + "class A:\n    items: list[Int32]\n    m: dict[str, Int32]\n"
+            + "    def __init__(self):\n"
+            + "        self.items = []\n        self.m = {}\n",
+            "A")
+        assert ctor is not None
+        assert _ctor_tail(ctor) == (
+            " : items(std::vector<int32_t>{}), "
+            "m(::tpy::ordered_map<std::string, int32_t>()) {}\n")
+
+    def test_dict_set_array_literal_tails(self):
+        ctor = _lower_ctor(
+            "from tpy import Array, Int32\n"
+            + "class A:\n    d: dict[Int32, Int32]\n    s: set[Int32]\n"
+            + "    arr: Array[Int32, 3]\n"
+            + "    def __init__(self):\n"
+            + "        self.d = {1: 2, 3: 4}\n        self.s = {1, 2}\n"
+            + "        self.arr = [1, 2, 3]\n",
+            "A")
+        assert ctor is not None
+        assert _ctor_tail(ctor) == (
+            " : d(::tpy::ordered_map<int32_t, int32_t>({{1, 2}, {3, 4}})), "
+            "s(::tpy::ordered_set<int32_t>({1, 2})), arr({1, 2, 3}) {}\n")
+
+    def test_str_view_elem_copies(self):
+        # A string_view param element into an owned std::string slot takes the
+        # S5 view->owned copy inside the MIL brace-init; the literal lands bare.
+        ctor = _lower_ctor(
+            "class A:\n    names: list[str]\n    m: dict[str, str]\n"
+            "    def __init__(self, prefix: str):\n"
+            "        self.names = [prefix, \"lit\"]\n"
+            "        self.m = {\"k\": prefix}\n",
+            "A")
+        assert ctor is not None
+        assert _ctor_tail(ctor) == (
+            " : names({std::string(prefix), \"lit\"}), "
+            "m(::tpy::ordered_map<std::string, std::string>"
+            "({{\"k\", std::string(prefix)}})) {}\n")
+
+    def test_own_record_elem_moves_via_make_vector(self):
+        # An Own record param element moves at its last use; a moved element in
+        # a const std::initializer_list would silently copy, so the lowering
+        # flips to the reserve+emplace make_vector helper (the AST's switch).
+        ctor = _lower_ctor(
+            "from tpy import Int32, Own\n"
+            "class P:\n    v: Int32\n"
+            "    def __init__(self, v: Int32):\n        self.v = v\n"
+            "class A:\n    ps: list[P]\n"
+            "    def __init__(self, q: Own[P]):\n        self.ps = [q]\n",
+            "A")
+        assert ctor is not None
+        assert _ctor_tail(ctor) == (
+            " : ps(::tpy::make_vector<P>(std::move(q))) {}\n")
+
+    def test_record_elems_and_nested_list_route(self):
+        ctor = _lower_ctor(
+            _PRELUDE
+            + "class P:\n    v: Int32\n"
+            + "    def __init__(self, v: Int32):\n        self.v = v\n"
+            + "class A:\n    ps: list[P]\n    grid: list[list[Int32]]\n"
+            + "    def __init__(self, p: P):\n"
+            + "        self.ps = [P(1), p]\n        self.grid = [[1], [2, 3]]\n",
+            "A")
+        assert ctor is not None
+        assert _ctor_tail(ctor) == (
+            " : ps({P(1), p}), grid({{1}, {2, 3}}) {}\n")
+
+    def test_container_param_copy_routes(self):
+        # A container param name copies bare into the field slot.
+        ctor, wit = _lower_ctor_witnessed(
+            _PRELUDE
+            + "class D:\n    items: list[Int32]\n    d: dict[Int32, Int32]\n"
+            + "    def __init__(self, items: list[Int32], d: dict[Int32, Int32]):\n"
+            + "        self.items = items\n        self.d = d\n",
+            "D")
+        assert ctor is not None
+        assert _ctor_tail(ctor) == " : items(items), d(d) {}\n"
+        assert wit.get("mil.container_name", 0) >= 1
+
+    def test_own_container_param_mil_move_routes(self):
+        # The composed shape the container cell + the ctor-params cell each
+        # pinned as stays-AST on their own trees: with `Own[list[T]]` admitted
+        # by `_ctor_param_eligible` AND the container name row in the MIL
+        # gate, the M3b-move arm renders `items(std::move(items))`.
+        src = (
+            "from tpy import Int32, Own\n"
+            "class E:\n    items: list[Int32]\n"
+            "    def __init__(self, items: Own[list[Int32]]):\n"
+            "        self.items = items\n"
+            "def main():\n    e = E([4])\n    print(len(e.items))\nmain()\n")
+        ctor = _lower_ctor(src, "E")
+        assert ctor is not None
+        assert _ctor_tail(ctor) == " : items(std::move(items)) {}\n"
+        assert self._hpp(src, thir=True) == self._hpp(src, thir=False)
+
+    def test_nested_empty_list_elem_stays_ast(self):
+        # An un-threaded nested EMPTY list renders bare `{}` on the AST (no
+        # elem target below a list slot); THIR's spelled empty emit would
+        # diverge, so the gate rejects and the whole ctor stays AST.
+        src = (
+            _PRELUDE
+            + "class A:\n    grid: list[list[Int32]]\n"
+            + "    def __init__(self):\n        self.grid = [[], [1]]\n"
+            + "def main():\n    a = A()\n    print(len(a.grid))\nmain()\n")
+        ctor = _lower_ctor(src, "A")
+        assert ctor is None
+        assert self._hpp(src, thir=True) == self._hpp(src, thir=False)
+
+    def test_list_repeat_stays_ast(self):
+        # `[0] * n` is a TpyListRepeat, not a container literal -- outside the
+        # slice on both the decl-init and MIL faces.
+        ctor = _lower_ctor(
+            _PRELUDE
+            + "class A:\n    items: list[Int32]\n"
+            + "    def __init__(self):\n        self.items = [0] * 3\n",
+            "A")
+        assert ctor is None
+
+    def test_float_key_dict_stays_ast(self):
+        # Dict keys keep the receiver-slice rule (fixed-int / BigInt / owned
+        # str); a float key is outside it, so the ctor stays AST.
+        ctor = _lower_ctor(
+            _PRELUDE
+            + "class A:\n    m: dict[float, Int32]\n"
+            + "    def __init__(self):\n        self.m = {1.5: 2}\n",
+            "A")
+        assert ctor is None
+
+    def test_body_local_elem_byte_identical(self):
+        # An element referencing a body local: the AST demotes the init to the
+        # body (`this->items = {tmp};`); THIR conservatively keeps the whole
+        # ctor on the AST path (the element name is not in `declared`), so the
+        # two paths stay byte-identical either way.
+        src = (
+            _PRELUDE
+            + "class C:\n    items: list[Int32]\n"
+            + "    def __init__(self):\n"
+            + "        tmp = 3\n        self.items = [tmp]\n"
+            + "def main():\n    c = C()\n    print(len(c.items))\nmain()\n")
+        assert self._hpp(src, thir=True) == self._hpp(src, thir=False)
+
+    def test_container_mil_byte_identical(self):
+        # End-to-end byte-identity for the whole container-MIL family in one
+        # record: literals (incl. empties, str views, records, nested lists,
+        # Own move) and container-param copies.
+        src = (
+            "from tpy import Array, Int32, Own\n"
+            "class P:\n    v: Int32\n"
+            "    def __init__(self, v: Int32):\n        self.v = v\n"
+            "class A:\n"
+            "    items: list[Int32]\n    names: list[str]\n"
+            "    d: dict[str, Int32]\n    s: set[Int32]\n"
+            "    arr: Array[Int32, 3]\n    ps: list[P]\n"
+            "    grid: list[list[Int32]]\n    empty_l: list[Int32]\n"
+            "    moved: list[P]\n    copied: list[Int32]\n"
+            "    def __init__(self, prefix: str, p: P, q: Own[P],\n"
+            "                 copied: list[Int32]):\n"
+            "        self.items = [1, 2]\n"
+            "        self.names = [prefix, \"lit\"]\n"
+            "        self.d = {\"k\": 1}\n"
+            "        self.s = {1, 2}\n"
+            "        self.arr = [1, 2, 3]\n"
+            "        self.ps = [P(1), p]\n"
+            "        self.grid = [[1], [2, 3]]\n"
+            "        self.empty_l = []\n"
+            "        self.moved = [q]\n"
+            "        self.copied = copied\n"
+            "def main():\n"
+            "    a = A(\"pre\", P(5), P(7), [9])\n"
+            "    print(len(a.items), len(a.d), len(a.s))\n"
+            "main()\n")
+        assert self._hpp(src, thir=True) == self._hpp(src, thir=False)
+
+
+class TestCtorMilSmallFamilies:
+    """The small value families of MIL field cells: None into any Optional /
+    Ptr / union field, value- and pointer-variant union sources, tuple
+    sources, and the AST-demote mirror."""
+
+    _AB = (
+        _PRELUDE
+        + "class A:\n    x: Int32\n    def __init__(self, x: Int32):\n        self.x = x\n"
+        + "class B:\n    y: Int32\n    def __init__(self, y: Int32):\n        self.y = y\n")
+
+    def _hpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        hpp, _ = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+        return hpp
+
+    def test_none_into_nonrecord_optional_routes(self):
+        # `f(std::nullopt)` is inner-independent: a pointer-repr Optional of a
+        # CONTAINER inner (outside the F1-record slice) still routes on a
+        # None source.
+        ctor = _lower_ctor(
+            _PRELUDE
+            + "class H:\n    items: list[Int32] | None\n"
+            + "    def __init__(self):\n        self.items = None\n",
+            "H")
+        assert ctor is not None
+        assert _ctor_tail(ctor) == " : items(std::nullopt) {}\n"
+
+    def test_none_into_value_optional_routes(self):
+        # A VALUE-repr Optional (`Optional[Int32]` -> std::optional<int32_t>)
+        # renders the same `f(std::nullopt)`.
+        ctor = _lower_ctor(
+            _PRELUDE
+            + "class H:\n    x: Int32 | None\n"
+            + "    def __init__(self):\n        self.x = None\n",
+            "H")
+        assert ctor is not None
+        assert _ctor_tail(ctor) == " : x(std::nullopt) {}\n"
+
+    def test_none_into_ptr_field_routes(self):
+        # None into a `Ptr[T]` cell renders `p(nullptr)` (the VALUE-form None).
+        ctor = _lower_ctor(
+            "from tpy import Int32, Ptr\n"
+            + "class H:\n    p: Ptr[Int32]\n"
+            + "    def __init__(self):\n        self.p = None\n",
+            "H")
+        assert ctor is not None
+        assert _ctor_tail(ctor) == " : p(nullptr) {}\n"
+
+    def test_value_union_sources_route(self):
+        # F4 U1 bare renders: a same-union param name, a scalar literal, and
+        # the monostate None.
+        ctor = _lower_ctor(
+            "from tpy import Int32, Float64\n"
+            + "class H:\n    u: Int32 | Float64\n    v: Int32 | Float64\n"
+            + "    w: Int32 | Float64 | None\n"
+            + "    def __init__(self, u: Int32 | Float64):\n"
+            + "        self.u = u\n        self.v = 5\n        self.w = None\n",
+            "H")
+        assert ctor is not None
+        assert _ctor_tail(ctor) == (
+            " : u(u), v(5), w(std::monostate{}) {}\n")
+
+    def test_value_union_bigint_member_literal_renders_bare(self):
+        # An int literal into an `int | float` union renders bare `u(5)` --
+        # the AST threads the UNION as the render target, so the BigInt ctor
+        # wrap keyed on the literal's own scalar type must not fire.
+        ctor = _lower_ctor(
+            "class H:\n    u: int | float\n"
+            + "    def __init__(self):\n        self.u = 5\n",
+            "H")
+        assert ctor is not None
+        assert _ctor_tail(ctor) == " : u(5) {}\n"
+
+    def test_ptr_union_sources_route(self):
+        # F4 U2: a borrow ptr-variant param lifts via to_value_variant; a
+        # member-record ctor rvalue constructs the variant directly; None is
+        # the monostate member.
+        ctor = _lower_ctor(
+            self._AB
+            + "class H:\n    u: A | B\n    v: A | B\n    w: A | B | None\n"
+            + "    def __init__(self, u: A | B):\n"
+            + "        self.u = u\n        self.v = A(3)\n        self.w = None\n",
+            "H")
+        assert ctor is not None
+        assert _ctor_tail(ctor) == (
+            " : u(::tpy::to_value_variant<std::variant<A, B>>(u)), "
+            "v(A(3)), w(std::monostate{}) {}\n")
+
+    def test_ptr_union_member_name_source_stays_ast(self):
+        # A member-typed record NAME source (`self.u = a` with `a: A`) is not
+        # the same-union borrow name `_ptr_union_source_ok` admits -- the AST
+        # emits a direct record copy the slice does not mirror -> AST path.
+        ctor = _lower_ctor(
+            self._AB
+            + "class H:\n    u: A | B\n"
+            + "    def __init__(self, a: A):\n        self.u = a\n",
+            "H")
+        assert ctor is None
+
+    def test_f1_tuple_param_storage_lift_routes(self):
+        # A borrow pointer-repr tuple param stores via tuple_to_storage,
+        # spelled with the field's storage type.
+        ctor = _lower_ctor(
+            self._AB
+            + "class H:\n    t: tuple[A, Int32]\n"
+            + "    def __init__(self, t: tuple[A, Int32]):\n        self.t = t\n",
+            "H")
+        assert ctor is not None
+        assert _ctor_tail(ctor) == (
+            " : t(::tpy::tuple_to_storage<std::tuple<A, int32_t>>(t)) {}\n")
+
+    def test_f1_tuple_copy_source_stays_ast(self):
+        # A copy() of a pointer-repr tuple takes the AST's storage-form
+        # _gen_copy_expr render, which the MIL slice does not mirror -> AST.
+        ctor = _lower_ctor(
+            "from tpy import Int32, copy\n"
+            + "class A:\n    x: Int32\n    def __init__(self, x: Int32):\n        self.x = x\n"
+            + "class H:\n    t: tuple[A, Int32]\n"
+            + "    def __init__(self, t: tuple[A, Int32]):\n        self.t = copy(t)\n",
+            "H")
+        assert ctor is None
+
+    def test_value_tuple_name_and_literal_route(self):
+        # A value tuple copies bare (`t(t)`); a literal spells the slot type.
+        ctor = _lower_ctor(
+            _PRELUDE
+            + "class H:\n    t: tuple[Int32, Int32]\n    u: tuple[Int32, Int32]\n"
+            + "    def __init__(self, t: tuple[Int32, Int32]):\n"
+            + "        self.t = t\n        self.u = (1, 2)\n",
+            "H")
+        assert ctor is not None
+        assert _ctor_tail(ctor) == (
+            " : t(t), u(std::tuple<int32_t, int32_t>{1, 2}) {}\n")
+
+    def test_demote_mirror_body_local_ref_stays_in_body(self):
+        # An init whose RHS reads a body-local demotes on the AST path
+        # (`blocked_by_body_local`); THIR mirrors the demote -- the ctor
+        # routes with the local decl AND the init in the body.
+        ctor = _lower_ctor(
+            _PRELUDE
+            + "class H:\n    n: Int32\n"
+            + "    def __init__(self, a: Int32):\n"
+            + "        b = a + 1\n        self.n = b\n",
+            "H")
+        assert ctor is not None
+        assert ctor.mil_inits == ()
+        assert len(ctor.body) == 2
+
+    def test_demote_nondefault_constructible_field_stays_ast(self):
+        # A demoted own-field init of a non-default-constructible field type
+        # raises CodeGenError on the AST path -- THIR must reject so that
+        # error still fires (never route around a diagnostic).
+        ctor = _lower_ctor(
+            "from tpy import Int32\n"
+            + "from tplib.box import Box\n"
+            + "G: Int32 = 7\n"
+            + "class H:\n    b: Box[Int32]\n"
+            + "    def __init__(self):\n        self.b = Box(G)\n",
+            "H")
+        assert ctor is None
+
+    def test_small_families_byte_identical(self):
+        # End-to-end byte-identity for the new MIL cells through the THIR seam
+        # vs the AST path: optional-None (container inner + value repr), Ptr
+        # None, both union families, both tuple families, and a demoted
+        # bare-name init.
+        src = (
+            self._AB
+            + "G: Int32 = 9\n"
+            + "class H:\n"
+            + "    items: list[Int32] | None\n"
+            + "    ox: Int32 | None\n"
+            + "    vu: Int32 | float\n"
+            + "    pu: A | B\n"
+            + "    pr: A | B\n"
+            + "    pn: A | B | None\n"
+            + "    ft: tuple[A, Int32]\n"
+            + "    vt: tuple[Int32, Int32]\n"
+            + "    def __init__(self, pu: A | B, ft: tuple[A, Int32]):\n"
+            + "        self.items = None\n        self.ox = None\n"
+            + "        self.vu = 5\n        self.pu = pu\n"
+            + "        self.pr = A(3)\n        self.pn = None\n"
+            + "        self.ft = ft\n        self.vt = (1, 2)\n"
+            + "class D:\n    n: Int32\n"
+            + "    def __init__(self):\n        self.n = G\n"
+            + "def main():\n"
+            + "    a = A(1)\n"
+            + "    h = H(a, (a, 2))\n"
+            + "    d = D()\n"
+            + "    print(d.n)\n"
+            + "main()\n")
+        assert self._hpp(src, thir=True) == self._hpp(src, thir=False)

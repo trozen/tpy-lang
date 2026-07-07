@@ -30,6 +30,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "argtemp.value_union",          # free-call value-union member temp
     "argtemp.value_union_method",   # method-call value-union member temp
     "argtemp.record_rvalue",        # record-ctor rvalue into a ref slot
+    "argtemp.ctor_mut_rvalue",      # record rvalue into a MUTATED ctor slot
+    "ctor.const_rvalue_arg",        # record rvalue inline into a const ctor slot
     "argtemp.own_copy",             # Own-slot copy+move `__tmp_N` temp
     # The temp-free last-use move (lowering).
     "move.own_last_use",            # `f(std::move(name))`
@@ -70,6 +72,15 @@ THIR_FACES: frozenset[str] = frozenset({
     "method.ptr_checked",           # `::tpy::deref_check(p).m(args)`
     "ctor.call",                    # THIRCtorCall bare ctor expansion
     "ctor.str_arg",                 # str-slice arg into a str-family ctor slot
+    # Ctor MIL view-family field inits (lowering; the per-family renders --
+    # bare str/StrView source vs the bytes view->owned bytes_copy convert).
+    "mil.str_field",                # str/StrView field: bare source render
+    "mil.bytes_field",              # bytes field: bytes_copy wrap / owned bare
+    # Ctor MIL container-field inits (lowering; the shared container-literal
+    # machinery at the target-threaded MIL cell, plus the bare
+    # container-param copy / Own-param move name row).
+    "mil.container_literal",        # `self.xs = [1, 2]` -> `xs({1, 2})`
+    "mil.container_name",           # `self.xs = p` -> `xs(p)` / `xs(std::move(p))`
     "with.str_target",              # str/StrView __enter__ as-target
     # Container subscript writes (lowering; THIRSetItem's emit arms plus
     # the owned-str element sink copy and the aug-assign desugar).
@@ -83,6 +94,39 @@ THIR_FACES: frozenset[str] = frozenset({
     # by-value record-returning call VALUE): a bare copy `recv.field =
     # Inner(args);`, no borrow<->storage lift.
     "field_write.record_rvalue",
+    # Plain F1-record FIELD write from a record NAME: the bare copy
+    # `recv.field = p;` or `std::move(p)` at a movable name's last use.
+    "field_write.record_name",
+    # Container-literal FIELD write: the decl-init literal render assigned
+    # into the field lvalue (`this->xs = {n};` / the ordered_map ctor form).
+    "field_write.container_lit",
+    # Str-family FIELD write from a name/literal: the bare
+    # `recv.field = s;` (operator=(string_view), no view->owned wrap).
+    "field_write.str",
+    # A base-init arg beyond the scalar row: str name/literal, None,
+    # IntLiteralType digits, record / Optional-ptr / Own param names --
+    # all the target-less bare renders of _extract_base_inits.
+    "baseinit.nonscalar_arg",
+    # Ctor member-init-list cells (lowering; the small value families beyond
+    # the scalar / record / Optional[record] arms).
+    "mil.optional_none",            # `f(std::nullopt)` -- any Optional field,
+                                    # inner-independent (incl. value-repr)
+    "mil.ptr_none",                 # `p(nullptr)` -- None into a Ptr[T] field
+    "mil.union_none",               # `u(std::monostate{})` -- None into a
+                                    # value-variant union field
+    "mil.union_lift",               # `u(::tpy::to_value_variant<...>(v))` --
+                                    # a borrow ptr-variant name source
+    "mil.union_rvalue",             # `u(A(3))` -- a member-record ctor rvalue
+                                    # constructs the variant directly
+    "mil.value_union",              # `u(u)` / `u(5)` -- value-union bare render
+    "mil.tuple_storage",            # `t(::tpy::tuple_to_storage<...>(t))` --
+                                    # a borrow pointer-repr tuple param
+    "mil.value_tuple_name",         # `t(t)` -- value-tuple param bare copy
+    "mil.value_tuple_literal",      # `t(std::tuple<...>{...})` spelled literal
+    # An own-field init the AST demotes to the ctor body (bare non-param name /
+    # nested-def name / body-local ref) -- THIR demotes identically instead of
+    # rejecting the whole ctor (gate verdict; the body machinery renders it).
+    "mil.demote_mirror",
     # Container/str subscript read off a FIELD-ACCESS receiver (lowering;
     # `::tpy::__getitem__(this->xs, i)` -- the receiver renders as its own
     # THIRFieldAccess inside the shared subscript emit).

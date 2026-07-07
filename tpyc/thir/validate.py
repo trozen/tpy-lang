@@ -51,8 +51,8 @@ from ..typesys import (
 )
 from .nodes import (
     Form, THIRArgTemp, THIRAssign, THIRCall, THIRCoerce, THIRConstructor,
-    THIRExprStmt, THIRFieldAccess, THIRFormConvert, THIRFunction,
-    THIRMethodCall, THIRNode,
+    THIRCtorCall, THIRExprStmt, THIRFieldAccess, THIRFormConvert,
+    THIRFunction, THIRMethodCall, THIRNode,
     THIRReturn, THIRSetItem, THIRVarDecl,
 )
 
@@ -167,15 +167,18 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
     """`argtemp_ok` marks the value expression of a flushable statement
     (expr stmt / var-decl init / assign value / return value) -- the only
     region where a THIRArgTemp may appear, and there only as a direct
-    free-call or method-call arg. Anywhere else (a condition, an iterable, a
-    MIL cell, a ctor arg, a non-call operand) a temp has no flush point on
-    the AST path -- a while-condition hoist is the stale-snapshot miscompile
-    -- so reaching one is a lowering bug."""
+    free-call, method-call, or ctor-call arg (the ctor face only for a
+    mutated ref slot). Anywhere else (a condition, an iterable, a MIL cell,
+    a non-call operand) a temp has no flush point on the AST path -- a
+    while-condition hoist is the stale-snapshot miscompile -- so reaching
+    one is a lowering bug."""
     _check_node(owner, node)
     _check_stmt(owner, node, return_type)
     if isinstance(node, THIRArgTemp):
         _fail(owner, node, "THIRArgTemp outside a call arg position")
-    if isinstance(node, (THIRCall, THIRMethodCall)):
+    if isinstance(node, (THIRCall, THIRMethodCall, THIRCtorCall)):
+        # A ctor call carries a temp only for its mutated-ref-slot record
+        # rvalue (the ctor_mutated arm); const-slot rvalues inline temp-free.
         if isinstance(node, THIRMethodCall):
             _walk(owner, node.receiver, return_type)
         for a in node.args:

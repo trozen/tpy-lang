@@ -1,0 +1,58 @@
+# Ctor member-init-list inits of builtin-container fields: list/dict/set/Array
+# literals (empty, str-view elements, record elements, nested lists, Own move)
+# and a container-param copy. The param copy and the record element are
+# INTENTIONAL copies at the field-storage boundary (TPy stores fields by
+# value; CPython would alias), so the test only observes the field's own
+# containers, never cross-mutation through the ctor arguments.
+from tpy import Array, Int32, Own
+
+
+class Point:
+    v: Int32
+
+    def __init__(self, v: Int32):
+        self.v = v
+
+
+class Holder:
+    items: list[Int32]
+    names: list[str]
+    counts: dict[str, Int32]
+    tags: set[Int32]
+    arr: Array[Int32, 3]
+    pts: list[Point]
+    grid: list[list[Int32]]
+    empty_l: list[Int32]
+    empty_d: dict[Int32, Int32]
+    moved: list[Point]
+    copied: list[Int32]
+
+    def __init__(self, prefix: str, p: Point, q: Own[Point], copied: list[Int32]):
+        self.items = [1, 2]
+        self.names = [prefix, "lit"]
+        self.counts = {"k": 1, "j": 2}
+        self.tags = {10, 20}
+        self.arr = [3, 4, 5]
+        self.pts = [Point(1), p]  # tpyc: warning(/copies Point into owned storage/)
+        self.grid = [[1], [2, 3]]
+        self.empty_l = []
+        self.empty_d = {}
+        self.moved = [q]
+        self.copied = copied  # tpyc: warning(/copies list\[Int32\] into field/)
+
+
+def main():
+    h = Holder("pre", Point(7), Point(9), [40, 41])
+    # Mutate the field-owned containers after construction and observe.
+    h.items.append(3)
+    h.tags.add(30)
+    h.grid[0].append(6)
+    h.empty_l.append(99)
+    print(h.items, len(h.empty_l), len(h.empty_d))
+    print(h.names[0], h.names[1], h.counts["k"] + h.counts["j"])
+    print(sorted(h.tags), h.arr[0] + h.arr[2])
+    print(h.pts[0].v, h.pts[1].v, h.moved[0].v)
+    print(h.grid[0], h.grid[1], h.copied)
+
+
+main()

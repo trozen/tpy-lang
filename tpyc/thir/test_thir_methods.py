@@ -408,6 +408,138 @@ class TestScalarFieldWriteEmit:
 
 
 
+# --- Field writes beyond scalars: record names, container literals, str ---
+
+_FW_RECORDS = (
+    "from tpy import Int32, Own, copy\n"
+    "class Inner:\n    v: Int32\n"
+    "    def __init__(self, v: Int32):\n        self.v = v\n"
+    "class Holder:\n    g: Inner\n    tag: str\n    items: list[Int32]\n"
+    "    def __init__(self, v: Int32):\n"
+    "        self.g = Inner(v)\n        self.tag = \"t\"\n        self.items = [v]\n"
+)
+
+
+class TestFieldWriteFamilies:
+    def test_record_name_param_write_routes(self):
+        # `self.g = p` off a borrow record param: the bare copy (sema's
+        # implicit-copy warning rides the shared sema pass, path-independent).
+        thir = _lower_ctx(
+            _FW_RECORDS
+            + "    def set_g(self, p: Inner):\n        self.g = p\n")
+        fn = _fn(thir, "set_g")
+        assert fn is not None
+        st = fn.body[0]
+        assert isinstance(st, THIRAssign)
+        assert isinstance(st.value, THIRName)  # bare copy, no convert
+
+    def test_record_name_own_param_write_moves(self):
+        # An Own param at its last use moves (`std::move(p)`, the plain-record
+        # STORAGE convert arm).
+        thir = _lower_ctx(
+            _FW_RECORDS
+            + "    def set_own(self, p: Own[Inner]):\n        self.g = p\n")
+        fn = _fn(thir, "set_own")
+        assert fn is not None
+        st = fn.body[0]
+        assert isinstance(st.value, THIRFormConvert) and st.value.move
+
+    def test_record_name_local_used_after_copies(self):
+        # A movable local NOT at its last use copies bare (the AST's
+        # `_maybe_move` fires on last use only).
+        thir = _lower_ctx(
+            _FW_RECORDS
+            + "    def set_local(self, v: Int32) -> Int32:\n"
+            + "        t = Inner(v)\n        self.g = t\n        return t.v\n")
+        fn = _fn(thir, "set_local")
+        assert fn is not None
+        st = fn.body[1]
+        assert isinstance(st.value, THIRName)
+
+    def test_record_copy_call_value_stays_ast(self):
+        # `self.g = copy(p)` renders `Inner(p)` via _gen_copy_expr -- an emit
+        # form the slice does not mirror; the body stays on the AST path.
+        thir = _lower_ctx(
+            _FW_RECORDS
+            + "    def set_copy(self, p: Inner):\n        self.g = copy(p)\n")
+        assert _fn(thir, "set_copy") is None
+
+    def test_record_pointer_local_source_stays_ast(self):
+        # A pointer-local source needs the `(*p)` deref (+ possible move) --
+        # kept on the AST path by the ws.pointers reject.
+        thir = _lower_ctx(
+            _F1_RECORDS
+            + "    def graft(self, other: Box):\n"
+            + "        x = self.inner\n        x = other.inner\n"
+            + "        self.inner = x\n")
+        assert _fn(thir, "graft") is None
+
+    def test_container_literal_write_routes(self):
+        thir = _lower_ctx(
+            _FW_RECORDS
+            + "    def reset(self):\n        self.items = []\n")
+        assert _fn(thir, "reset") is not None
+
+    def test_str_field_write_from_param_routes(self):
+        thir = _lower_ctx(
+            _FW_RECORDS
+            + "    def rename(self, s: str):\n        self.tag = s\n")
+        fn = _fn(thir, "rename")
+        assert fn is not None
+        st = fn.body[0]
+        # BARE assign: operator=(string_view), no view->owned FormConvert.
+        assert isinstance(st.value, THIRName)
+
+    def test_str_field_write_concat_value_stays_ast(self):
+        # A concat value is a String rvalue -- source shapes beyond
+        # names/literals stay on the AST path.
+        thir = _lower_ctx(
+            _FW_RECORDS
+            + "    def suffix(self, s: str):\n        self.tag = s + \"!\"\n")
+        assert _fn(thir, "suffix") is None
+
+
+class TestFieldWriteFamiliesEmit:
+    def _emit(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        hpp, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+        return hpp + cpp
+
+    SRC = (
+        _FW_RECORDS
+        + "    def set_g(self, p: Inner):\n        self.g = p\n"
+        + "    def set_own(self, p: Own[Inner]):\n        self.g = p\n"
+        + "    def set_local(self, v: Int32) -> Int32:\n"
+        + "        t = Inner(v)\n        self.g = t\n        return t.v\n"
+        + "    def reset(self):\n        self.items = []\n"
+        + "    def fill(self, v: Int32):\n        self.items = [v, 9]\n"
+        + "    def rename(self, s: str):\n        self.tag = s\n"
+        + "    def relabel(self):\n        self.tag = \"x\"\n"
+        + "def main():\n    h = Holder(1)\n    h.set_g(Inner(2))\n"
+        + "    h.set_own(Inner(3))\n    print(h.set_local(4))\n    h.reset()\n"
+        + "    h.fill(5)\n    h.rename(\"n\")\n    h.relabel()\n"
+        + "    print(h.g.v, h.tag, h.items[0])\nmain()\n"
+    )
+
+    def test_byte_identical(self):
+        assert self._emit(self.SRC, thir=True) == self._emit(self.SRC, thir=False)
+
+    def test_record_name_copy_and_move_renders(self):
+        out = self._emit(self.SRC, thir=True)
+        assert "this->g = p;" in out              # borrow param: bare copy
+        assert "this->g = std::move(p);" in out   # Own param at last use
+        assert "this->g = t;" in out              # non-last-use local: copy
+
+    def test_container_and_str_renders(self):
+        out = self._emit(self.SRC, thir=True)
+        assert "this->items = std::vector<int32_t>{};" in out  # spelled empty
+        assert "this->items = {v, 9};" in out                  # brace literal
+        assert "this->tag = s;" in out                         # bare view assign
+        assert 'this->tag = "x";' in out                       # bare literal
+
+
 # --- Augmented assignment: `x += y` / `recv.field += y` (scalar) ---
 
 _AUG = (

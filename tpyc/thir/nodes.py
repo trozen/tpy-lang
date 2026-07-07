@@ -352,10 +352,12 @@ class THIRCtorCall(THIRExpr):
     hoist). Renders
     `type_cpp(args)` -- `_gen_call`'s record-branch tail, which emits the RAW
     source name (no `escape_cpp_name`, no cross-module qualification; both
-    gate-enforced). Args are value scalars into plain scalar slots (every
-    `_gen_record_ctor_args` special arm is gate-excluded), so each renders
-    bare. STORAGE form -- a fresh self-contained value the slot's variant
-    converting ctor consumes."""
+    gate-enforced). Args are value scalars into plain scalar slots, str-slice
+    sources into view slots, or record rvalues into same-nominal record slots
+    (`_gen_record_ctor_args`'s ctor_mutated arm: a MUTATED ref slot carries a
+    `THIRArgTemp`, a const slot the inline prvalue expansion); every other
+    special arm is gate-excluded. STORAGE form -- a fresh self-contained
+    value the slot's variant converting ctor consumes."""
     type_cpp: str
     args: tuple[THIRExpr, ...] = ()
 

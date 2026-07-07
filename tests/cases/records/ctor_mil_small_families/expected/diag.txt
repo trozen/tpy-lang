@@ -1,0 +1,2 @@
+main.py:44: warning: copies A | B into field; use copy() to make this explicit
+main.py:47: warning: copies A into field (tuple element 0); use copy() to make this explicit

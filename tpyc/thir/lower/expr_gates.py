@@ -57,9 +57,11 @@ from ...typesys import (
     TupleType,
     UnionType,
     contains_type_param,
+    del_suppresses_default_ctor,
     is_float_type,
     is_void_like_type,
     resolve_int_literals,
+    unwrap_optional_own,
     unwrap_readonly,
     unwrap_ref_type,
     unwrap_send_sync,
@@ -184,6 +186,7 @@ from .predicates import (
     _template_init_call_fi,
     _tuple_subscript_value_read,
     _union_binding_divergent,
+    _unrouted_binding_read,
     _union_compare_pair,
     _unwrap_lit_coerce,
     _value_tuple,
@@ -946,10 +949,11 @@ def _is_record_rvalue_source(init: TpyExpr, declared: dict[str, TpyType],
     `temps_ok` (the flushable owned-record decl-init position) additionally
     admits a record-RVALUE arg into a ref-param record slot -- the AST hoists
     `Inner __tmp = make(7);` ahead of the outer `wrap(__tmp)`, mirrored by
-    `_lower_call_arg`'s record-temp arm. The nested rvalue's own args stay
-    scalar-only (`_record_rvalue_temp_arg` recurses at `temps_ok=False`): a
-    second-level record-rvalue arg would need another statement flush the
-    single hoist cannot reproduce."""
+    `_lower_call_arg`'s record-temp arm; on the CTOR face the hoist keys on
+    the slot's mutation (see `_rec_rvalue_arg_ok`), so a const slot inlines
+    the prvalue at any depth while a mutated slot needs the flush. A nested
+    MUTATED-slot rvalue (`temps_ok=False` recursion) would need another
+    statement flush the single hoist cannot reproduce -> AST."""
     if not isinstance(init, TpyCall):
         return False
     if init.kwargs or init.double_star_unpack is not None:
@@ -974,13 +978,20 @@ def _is_record_rvalue_source(init: TpyExpr, declared: dict[str, TpyType],
             return False
     elif not _plain_free_callee_ok(init, analyzer):
         return False
-    # The record-rvalue arg-temp row rides only the by-value FREE-call face:
-    # a free THIRCall lowers its args through `_lower_call_arg` (which hoists
-    # the `__tmp_N`), but a ctor's `_gen_record_ctor_args` lowering has no
-    # such temp arm, so a ctor OUTER call with a record-rvalue arg would emit
-    # the bare (unbound) expansion where the AST hoists a temp -- the ctor
-    # face stays scalar-only.
-    temp_arg_ok = temps_ok and not fi.is_constructor
+    # The record-rvalue arg rows: the by-value FREE-call face hoists a
+    # `__tmp_N` for every same-record ref slot (mutation-blind, so it needs a
+    # flush position); the CTOR face keys on the slot's mutation --
+    # `_gen_record_ctor_args` hoists the named temp only for a MUTATED ref
+    # slot (`i in ctor_mutated`, flush-position only), while a const slot
+    # binds the inline prvalue expansion, temp-free at any depth.
+    ctor_mut = (fi.mutated_params or frozenset()) if fi.is_constructor else None
+
+    def _rec_rvalue_arg_ok(i: int, a: TpyExpr, ptype: 'TpyType | None') -> bool:
+        if not _record_rvalue_temp_arg(a, ptype, declared, analyzer):
+            return False
+        if ctor_mut is None:
+            return temps_ok
+        return temps_ok if i in ctor_mut else True
     # Args must be eligible SCALARS or slot-resolved bare float literals
     # (mirror _call_eligible): a non-scalar arg (a record pointer-local /
     # Own[T]) needs the AST's `(*q)` deref or auto-move `std::move(q)`,
@@ -995,9 +1006,8 @@ def _is_record_rvalue_source(init: TpyExpr, declared: dict[str, TpyType],
                 and not _own_cascade_fires(p.type)
                 and _expr_eligible(a, declared, analyzer))
                or _float_literal_pass_through_arg(a, p.type, declared, analyzer)
-               or (temp_arg_ok
-                   and _record_rvalue_temp_arg(a, p.type, declared, analyzer))
-               for a, p in zip(init.args, fi.params))
+               or _rec_rvalue_arg_ok(i, a, p.type)
+               for i, (a, p) in enumerate(zip(init.args, fi.params)))
 
 def _scalar_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
                            analyzer, ws: '_WalkState | None' = None) -> bool:
@@ -1066,31 +1076,100 @@ def _ptr_union_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
     return _ptr_union_source_ok(stmt.value, declared, analyzer, u,
                                 allow_field=True)
 
+def _nondef_ctor_field(ftype: 'TpyType | None', analyzer) -> bool:
+    """The field's record type has a suppressed default ctor (`@nocopy` with
+    `__del__`): a DEMOTED init of such a field makes the AST's
+    `_reject_nondef_ctor_field_in_body` raise a CodeGenError, so THIR must
+    keep the whole ctor on the AST path (routing would silently emit the
+    uncompilable default-init instead of the diagnostic). Keyed on the field
+    TYPE only -- an inherited field of such a type over-rejects (the AST
+    skips non-own fields), which is safe."""
+    rec = analyzer.registry.get_record_for_type(ftype)
+    return rec is not None and del_suppresses_default_ctor(rec)
+
 def _record_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
-                           analyzer, in_constructor: bool) -> bool:
-    """A plain F1-record field write `recv.field = <record rvalue>`: a ctor /
-    by-value record-returning call (the `_is_record_rvalue_source` shape,
-    already admitted at var-decl and record-storage returns) stored into a
-    same-type F1-record field off an F1-record receiver. It emits as the AST's
-    default field assign -- a direct copy `recv.field = Inner(args);`, no
-    borrow<->storage lift (the rvalue is a STORAGE ctor / VALUE call value of
-    the field's own type). A moved/aliased/field source stays on the AST path;
-    the exact source-type == field-type check keeps a subclass rvalue (a
-    slicing copy) out. A constructor body is excluded: a `self.field =` there
-    interacts with the ctor MIL / non-default-constructible-field emit (a
-    separate deletion target) -- e.g. the AST rejects a non-hoistable init of a
-    field with no default ctor, which this rung would silently emit."""
-    if in_constructor:
-        return False
+                           analyzer, ws: '_WalkState',
+                           prescan: '_Prescan') -> bool:
+    """A plain F1-record field write `recv.field = <source>` off an F1-record
+    receiver -- the AST's default field assign, no borrow<->storage lift. Two
+    source rows:
+
+      * a **record rvalue** (the `_is_record_rvalue_source` shape -- a ctor /
+        by-value record-returning call): a direct copy
+        `recv.field = Inner(args);`. The exact source-type == field-type check
+        keeps a subclass rvalue (a slicing copy) out.
+      * a **record NAME** (a declared borrow param / owned local of a record
+        type, incl. `Own[T]` params): the bare copy `recv.field = p;` (plus
+        sema's implicit-copy warning, path-independent), or `std::move(p)` at
+        a movable name's last use (`_maybe_move`) -- the plain-record STORAGE
+        convert arm. Narrowed names (`(*o)` deref renders), pointer-locals
+        (`(*p)`), `self`, and coerce-wrapped sources stay on the AST path.
+
+    In a constructor body this gate sees only DEMOTED inits (the MIL hoist
+    already ran in `lower_constructor`), which the AST emits via the same
+    default assign -- routed, except a field type with a suppressed default
+    ctor (see `_nondef_ctor_field`: the AST raises there)."""
     target = stmt.target
     if not _field_receiver_ok(target, declared, analyzer):
         return False
     ftype = analyzer.get_expr_type(target)
     if not _f1_record(ftype, analyzer):
         return False
-    if not _is_record_rvalue_source(stmt.value, declared, analyzer):
+    if prescan.is_constructor and _nondef_ctor_field(ftype, analyzer):
         return False
-    return analyzer.get_expr_type(stmt.value) == ftype
+    if _is_record_rvalue_source(stmt.value, declared, analyzer):
+        return analyzer.get_expr_type(stmt.value) == ftype
+    v = stmt.value
+    if not (isinstance(v, TpyName) and v.name in declared
+            and v.name not in ws.narrowed and v.name not in ws.pointers
+            and not (prescan.has_self and v.name == "self")):
+        return False
+    vt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(declared[v.name])))
+    own = unwrap_optional_own(vt)
+    if own is not None:
+        vt = own.wrapped
+    return _f1_record(vt, analyzer)
+
+def _container_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
+                              analyzer) -> bool:
+    """A container-literal field write `recv.field = [...] / {...}` off an
+    F1-record receiver: the AST's default field assign renders
+    `gen_expr_deref(value, field_type)` -- the same target-threaded literal
+    render a decl init gets (`{e1, e2}` consumed by the vector lvalue, the
+    spelled empty list, the `::tpy::ordered_map<K, V>(...)` /
+    `ordered_set<T>(...)` constructor forms) with no move wrap (a literal is
+    never a movable name). Element admission is the shared
+    `_container_literal_ok` slice."""
+    if not isinstance(stmt.value, (TpyArrayLiteral, TpyDictLiteral,
+                                   TpySetLiteral)):
+        return False
+    if not _field_receiver_ok(stmt.target, declared, analyzer):
+        return False
+    ftype = unwrap_readonly(unwrap_ref_type(
+        unwrap_send_sync(analyzer.get_expr_type(stmt.target))))
+    return _container_literal_ok(stmt.value, ftype, declared, analyzer)
+
+def _str_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
+                        analyzer) -> bool:
+    """A str-family field write `recv.field = <str literal | str name>` off an
+    F1-record receiver: the AST's default field assign renders the value BARE
+    (`recv.field = s;` / `= "lit";`) -- `std::string::operator=(string_view)`
+    absorbs a view source into an owned field, so unlike a decl init there is
+    NO view->owned `std::string(...)` construction, and str names are never in
+    codegen's movable set (value-typed decl arms don't register), so no move
+    wrap either. Sources beyond names/literals (concats, calls, coerces) stay
+    on the AST path; `String`-typed fields/sources keep their own emit shapes
+    (excluded by `_resolved_str_value`)."""
+    if not _field_receiver_ok(stmt.target, declared, analyzer):
+        return False
+    if _resolved_str_value(analyzer.get_expr_type(stmt.target),
+                           analyzer) is None:
+        return False
+    v = stmt.value
+    if isinstance(v, TpyStrLiteral):
+        return True
+    return (isinstance(v, TpyName) and v.name in declared
+            and _resolved_str_value(declared[v.name], analyzer) is not None)
 
 def _scalar_aug_assign_ok(stmt: TpyAugAssign, declared: dict[str, TpyType],
                           analyzer) -> bool:
@@ -2253,6 +2332,16 @@ def _record_ctor_call_eligible(e: TpyCall, locals_: dict[str, TpyType],
         if _eligible_scalar(pt):
             return (_resolved_scalar(analyzer.get_expr_type(a), analyzer)
                     and _expr_eligible(a, locals_, analyzer))
+        # A record-rvalue arg into a same-nominal CONST record slot binds the
+        # inline prvalue expansion (temp-free, so admissible at any nesting
+        # depth); a MUTATED slot needs the named-temp flush that only the
+        # statement-position rows admit (`_is_record_rvalue_source`'s ctor
+        # face), so it rejects here.
+        if (_record_rvalue_temp_slot(a, p.type, analyzer) is not None
+                and (mut is None or i not in mut)):
+            return ((_record_ctor_call_eligible(a, locals_, analyzer)
+                     or _is_record_rvalue_source(a, locals_, analyzer))
+                    and _witness("ctor.const_rvalue_arg"))
         st = unwrap_send_sync(pt) if isinstance(pt, TpyType) else pt
         if (isinstance(st, NominalType) and is_string_type(st)
                 and (mut is None or i in mut)):
@@ -3527,6 +3616,11 @@ def _expr_eligible(e: TpyExpr, locals_: dict[str, TpyType], analyzer) -> bool:
         # is a pre-existing AST miscompile -> AST path (see the helper).
         if e.name not in locals_:
             return note_detail("name.global_read")
+        # A widened-ctor-param binding kind with no read arm (value-repr
+        # Optional / Own over a non-routed payload) -- see the helper.
+        unrouted = _unrouted_binding_read(locals_.get(e.name), analyzer)
+        if unrouted is not None:
+            return note_detail(unrouted)
         return not _union_binding_divergent(e, locals_, analyzer)
     if isinstance(e, TpyIntLiteral):
         # Only literals that emit as a bare value in any fixed-int slot. Wider
@@ -3695,7 +3789,11 @@ def _condition_eligible(cond: TpyExpr, declared: dict[str, TpyType], analyzer) -
     if isinstance(cond, TpyName):
         rt = analyzer.get_expr_type(cond)
         if cond.name in declared and rt is not None and is_bool_type(rt):
-            return True
+            # A narrowed value-repr Optional[bool] param reads bool here, but
+            # the AST renders the narrowed read `(*p)` -- reject like the
+            # value-position name arm does.
+            return _unrouted_binding_read(declared.get(cond.name),
+                                          analyzer) is None
         # A pointer-repr Optional borrow name's truthiness is the bare `T*`
         # (`if (p)`, gen_truthy_expr's pointer render). Only the UN-narrowed
         # read is admitted (rt still Optional): a narrowed record's truthiness

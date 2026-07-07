@@ -616,15 +616,32 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx', *, temp_args: bool = False) -> THIR
         if fi is not None and fi.is_constructor:
             # A same-module user-record ctor rvalue (the `Own[union]`-slot
             # arg): _gen_call's record-branch tail renders the RAW source
-            # name over the (gate-restricted, plain-scalar) args. `fi` is
-            # sema's synthetic constructor fi, whose params mirror the
-            # resolved __init__'s.
+            # name over the (gate-restricted) args. `fi` is sema's synthetic
+            # constructor fi, whose params mirror the resolved __init__'s.
+            # A record-rvalue arg keys on the slot's mutation
+            # (_gen_record_ctor_args's ctor_mutated arm): a MUTATED ref slot
+            # hoists the named temp (`A __tmp_N = A(1); Cls(__tmp_N)`,
+            # gate-admitted only at flush positions), a const slot binds the
+            # inline prvalue expansion through the plain arg path.
             _witness("ctor.call")
+            ctor_mut = fi.mutated_params or frozenset()
+            args = []
+            for i, (a, p) in enumerate(zip(e.args, fi.params)):
+                rec = (_record_rvalue_temp_slot(a, p.type, lc.analyzer)
+                       if i in ctor_mut else None)
+                if rec is not None:
+                    assert temp_args, \
+                        "ctor mutated-slot rvalue temp outside a flush position"
+                    _witness("argtemp.ctor_mut_rvalue")
+                    args.append(THIRArgTemp(
+                        result_type=rec, cpp_type=rec.to_cpp(),
+                        init=_lower_expr(a, lc), form=Form.BORROW,
+                        loc=getattr(a, "loc", None)))
+                else:
+                    args.append(_lower_call_arg(a, p.type, lc))
             return THIRCtorCall(
                 result_type=rtype, type_cpp=e.func_name,
-                args=tuple(_lower_call_arg(a, p.type, lc)
-                           for a, p in zip(e.args, fi.params)),
-                form=Form.STORAGE, loc=loc)
+                args=tuple(args), form=Form.STORAGE, loc=loc)
         if fi is not None and fi.is_method and fi.name == "__init__":
             # A scalar or slice-object type-constructor call (`Int32(x)` /
             # `basic_slice(1, 3)`): the emit is the resolved __init__ overload's
