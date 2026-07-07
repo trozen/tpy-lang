@@ -86,6 +86,13 @@ def _fail(owner: str, node: THIRNode, why: str) -> None:
 
 
 def _check_node(owner: str, node: THIRNode) -> None:
+    if isinstance(node, THIRCall):
+        # Explicit template args ride only the plain / imported spellings --
+        # the AST's native and cpp_template arms never emit them.
+        if node.template_args_cpp and (node.native_name is not None
+                                       or node.cpp_template is not None):
+            _fail(owner, node,
+                  "template_args_cpp combined with a native/template callee")
     if isinstance(node, THIRFormConvert):
         # `move` is part of the node's identity (its helper is a pure function of
         # family / form / is_const / move), so a same-form same-type convert that

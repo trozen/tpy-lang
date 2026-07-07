@@ -125,9 +125,9 @@ A single frontier gates a huge, dispersed leverage mass because non-F1 records
 | `ctor.non_f1_record` | 3,643 | generic/x-module/native record ctors |
 | `method.recv.field_nonf1` | 2,191 | method receiver = field of a non-F1 record |
 
-The **user-generic** slice of this (not builtins) unblocks with the generics
-frontier; it is the single highest-leverage serial main-thread target after the
-signature grid.
+The **user-generic** slice of this landed as wave-7 (`ctor.non_f1_record`
+residue is now essentially `Waker`); the remaining rows are the non-generic
+receiver/arg families.
 
 ## Out-of-scope / decisions needed
 
@@ -205,8 +205,14 @@ trivially at integration order.
 
 **Main thread (NOT fanned out -- serial, one owner each):**
 
-- **M-generics** (bucket D): the non-F1-record / user-generic frontier. Highest
-  serial leverage; gates ctor-MIL deletion. Design pass first (`/tpy-add-feature`).
+- **M-generics** (bucket D): LANDED as wave-7 (2026-07-07, branch
+  thir-wave7-generics; see IR_DESIGN.md's Wave-7 landing-log entry):
+  instantiation-template calls, the ctor instantiation form (incl. the
+  `UninitStorage[T]()` MIL hoist), generic native/template callees, and
+  type-param compares. Deferred residue, listed there: the plain-TPy
+  explicit `f<T>(args)` spelling, module/static method targs, the
+  `heap_take` own-param-move MIL source, `Waker` (async), and the
+  NON-generic MIL source fams the drilldown separated out.
 - **M-callee-kind** (part of B): imported / cross-module / `@error_return` /
   generic free callees (`call.callee_kind` 2,087) -- new callee-resolution
   machinery, too entangled with call lowering to parallelize safely.

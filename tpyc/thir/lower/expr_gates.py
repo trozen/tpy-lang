@@ -30,6 +30,7 @@ from ...parse.nodes import (
     TpyFString,
     TpyIfExpr,
     TpyIntLiteral,
+    TpyListRepeat,
     TpyMethodCall,
     TpyName,
     TpyNoneLiteral,
@@ -52,6 +53,7 @@ from ...typesys import (
     OptionalType,
     OwnType,
     ParamInfo,
+    PtrType,
     ReadonlyType,
     TpyType,
     TupleType,
@@ -96,6 +98,7 @@ from ...compilation_context import get_current_compiler
 from ... import qnames
 from ..faces import witness as _witness
 from ..fallback import expr_kind_tag, note_detail
+from .generics import expand_fi_template
 from ...codegen_cpp.expressions import ExpressionGenerator
 from ..nodes import (
     PrintForm,
@@ -176,14 +179,19 @@ from .predicates import (
     _resolved_scalar,
     _resolved_str_value,
     _resolved_viewfam_value,
+    _instantiation_call_fi,
+    _is_range_call,
+    _range_counter_type,
     _runtime_bigint,
     _scalar_pass_through_slot,
     _slice_object_type,
+    _storage_call_container,
     _storage_call_ret,
     _str_compare_operand,
     _str_concat_operand,
     _subscript_container_recv_type,
     _template_init_call_fi,
+    _tparam_value,
     _tuple_subscript_value_read,
     _union_binding_divergent,
     _unrouted_binding_read,
@@ -974,7 +982,8 @@ def _is_record_rvalue_source(init: TpyExpr, declared: dict[str, TpyType],
     # callee-shape head (linkage, literal-overload mangling, generics,
     # error_return -- shapes whose AST emit is not the bare `name(args)`).
     if fi.is_constructor:
-        if not _ctor_shape_ok(init, analyzer):
+        if not (_ctor_shape_ok(init, analyzer)
+                or _ctor_instantiation_ok(init, analyzer)):
             return False
     elif not _plain_free_callee_ok(init, analyzer):
         return False
@@ -1549,6 +1558,12 @@ def _binop_eligible(e: TpyBinOp, locals_: dict[str, TpyType], analyzer) -> bool:
                     and _bytes_compare_operand(e.right, rt_op, analyzer))
                 or (_char_compare_operand(e.left, lt, analyzer)
                     and _char_compare_operand(e.right, rt_op, analyzer))
+                # A T-typed pair (`self.get() < other.get()` under a
+                # Comparable/Equatable bound): rb is None (the derived
+                # bare-operator emit, same `(l OP r)` shape as scalars);
+                # T operands are method-call results or bare T names --
+                # never pointer-locals, so no indirection divergence.
+                or (_tparam_value(lt) and _tparam_value(rt_op))
                 or _union_compare_pair(lt, rt_op)
                 or _enum_compare_pair(e, lt, rt_op, analyzer)):
             return False
@@ -1585,6 +1600,24 @@ def _binop_eligible(e: TpyBinOp, locals_: dict[str, TpyType], analyzer) -> bool:
         return False
     return (_expr_eligible(e.left, locals_, analyzer)
             and _expr_eligible(e.right, locals_, analyzer))
+
+def _binop_operand_suffix(e: TpyBinOp, locals_: dict[str, TpyType],
+                          analyzer) -> str:
+    """`.tparam` / `.genrec` / `.record` when a rejected binop has a
+    type-param- or user-record-typed operand -- sizes the generics
+    frontier's binop bucket; delete the split when the bucket empties."""
+    fam = ""
+    for x in (e.left, e.right):
+        t = _operand_type(x, locals_, analyzer)
+        if t is None:
+            continue
+        t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+        if contains_type_param(t):
+            return ".tparam"
+        if isinstance(t, NominalType) and t.is_user_record and not fam:
+            fam = ".genrec" if t.type_args else ".record"
+    return fam
+
 
 def _chained_compare_eligible(e: TpyChainedCompare, locals_: dict[str, TpyType],
                               analyzer) -> bool:
@@ -1714,8 +1747,20 @@ def _free_callee_kind(e: TpyCall, analyzer) -> 'tuple[str, str] | None':
     if e.kwargs or e.double_star_unpack is not None:
         note_detail("call.kwargs")
         return None
-    if (e.call_type is not None or e.type_args or e.inferred_type_args
-            or e.enum_from_value is not None or e.cast_target_type is not None
+    if e.call_type is not None:
+        note_detail(f"call.special.call_type.{_call_type_fam(e.call_type)}")
+        return None
+    # Explicit / inferred type args ride only the NATIVE and cpp_template
+    # kinds: the AST skips explicit template args for native imports (C++
+    # deduction over natural param types) and substitutes them into the
+    # template ({T} via expand_fi_template) -- both targ-blind emits the
+    # existing arms carry. The plain `f<T>(args)` explicit spelling and the
+    # repr-subst adapter spelling are rejected at the tail / here.
+    has_targs = bool(e.type_args or e.inferred_type_args)
+    if has_targs and getattr(e, "representational_subst_params", None):
+        note_detail("call.special.type_args")
+        return None
+    if (e.enum_from_value is not None or e.cast_target_type is not None
             or e.isinstance_var is not None or e.dunder_call is not None
             or e.macro_expansion is not None or e.compile_time_assert
             or e.subscript_callee is not None):
@@ -1747,15 +1792,19 @@ def _free_callee_kind(e: TpyCall, analyzer) -> 'tuple[str, str] | None':
     if any(isinstance(p.type, LiteralType) for p in fi.params):
         note_detail("call.literal_overload")
         return None
-    if (fi.type_params or fi.is_method or fi.is_staticmethod or fi.is_async
+    if (fi.is_method or fi.is_staticmethod or fi.is_async
             or fi.is_generator or fi.is_property_getter or fi.is_property_setter):
         note_detail("call.callee_kind")
         return None
     if fi.cpp_template:
-        # Only a fully-substituted positional-only template expands with no
+        # A generic template substitutes its named {T} placeholders exactly
+        # like gen_call_from_fi (expand_fi_template); only a
+        # fully-substituted positional-only result expands with no
         # receiver/substitution context (the scalar-ctor cell's rule).
-        if _positional_only_template(fi.cpp_template, len(e.args)):
-            return ("template", fi.cpp_template)
+        tmpl = (expand_fi_template(fi, e.type_args or e.inferred_type_args)
+                if has_targs else fi.cpp_template)
+        if _positional_only_template(tmpl, len(e.args)):
+            return ("template", tmpl)
         note_detail("call.template_shape")
         return None
     if fi.native_function or fi.native_name:
@@ -1769,6 +1818,12 @@ def _free_callee_kind(e: TpyCall, analyzer) -> 'tuple[str, str] | None':
                 and fi.native_cpp_return_type is None):
             return ("native", fi.native_name)
         note_detail("call.native_shape")
+        return None
+    # A plain TPy generic callee spells explicit template args
+    # (`f<int32_t>(args)`, type_to_cpp_stored per arg + the TypeParamRef
+    # ref-slot temp rule) -- the remaining generic-callee frontier -> AST.
+    if fi.type_params or has_targs:
+        note_detail("call.callee_kind.generic")
         return None
     # Only a DEFAULT-linkage function emits as a bare/qualified `name(args)`.
     # @export(binding="C") uses the raw symbol -- rejected by default so a
@@ -1788,6 +1843,20 @@ def _free_callee_kind(e: TpyCall, analyzer) -> 'tuple[str, str] | None':
     return ("plain", "")
 
 
+def _call_type_fam(t: TpyType) -> str:
+    """Coarse `call_type` family for the special-form drilldown detail --
+    sizes the generics frontier's instantiation buckets; delete the split
+    when the bucket empties."""
+    if isinstance(t, PtrType):
+        return "ptr"
+    if isinstance(t, NominalType):
+        if t.is_user_record:
+            return "genrec" if t.type_args else "record"
+        if t.type_args:
+            return "builtin_generic"
+    return "other"
+
+
 def _plain_free_callee_ok(e: TpyCall, analyzer) -> bool:
     """The plain/imported subset of `_free_callee_kind` -- the callee-shape
     head of `_is_record_rvalue_source`'s by-value record-returning call
@@ -1803,6 +1872,10 @@ def _call_eligible(e: TpyCall, locals_: dict[str, TpyType], analyzer,
                    temps_ok: bool = False,
                    narrowed: 'set[str] | frozenset[str]' = frozenset()) -> bool:
     if _is_len_call(e, locals_, analyzer):
+        return True
+    # The generic-type instantiation face rides the storage sinks only (its
+    # container result lands bare at the decl-init / return slots).
+    if storage_ret_ok and _instantiation_call_eligible(e, locals_, analyzer):
         return True
     if (_is_len_native(e) and len(e.args) == 1 and not e.kwargs
             and e.double_star_unpack is None):
@@ -1849,7 +1922,7 @@ def _call_eligible(e: TpyCall, locals_: dict[str, TpyType], analyzer,
     # form (`std::string_view("...")`, _wants_str_literal_pin) -- the bare-literal
     # emit does not reproduce that, so the shape stays on the AST path. The AST
     # pin peels TpyCoerce wrappers, so a coerced literal must be caught too.
-    # (A generic callee never pins, but fi.type_params is already rejected above.)
+    # (A generic callee never pins; the plain kind still rejects fi.type_params.)
     if any(isinstance(_peel_coerce(a), TpyStrLiteral) for a in e.args):
         fis = analyzer.registry.get_function(e.func_name)
         if fis is not None and len(fis) > 1:
@@ -2429,6 +2502,53 @@ def _ctor_shape_ok(e: TpyCall, analyzer) -> bool:
         return False
     return True
 
+def _ctor_instantiation_ok(e: TpyCall, analyzer) -> bool:
+    """The INSTANTIATION form of a record-ctor call -- spelled
+    `Cell[Int32]()` / `Poll[T]()` or inferred `Pair(1, 2)` (`call_type`
+    set): `_gen_call`'s call_type-branch tail renders
+    `type_to_cpp(call_type)(args)`, mirrored as `THIRCtorCall.type_cpp =
+    lc.render_type(call_type)` -- byte-identical by construction, so
+    cross-module and generic spellings need no extra gating beyond
+    `_f1_record`'s type-arg slice. Shares the arg rows with the raw-name
+    face (the scalar / record-rvalue slice coincides across the two AST
+    arg loops); the None-literal / array-literal / `T()`-construct
+    targeted arms and protocol/union/optional slots are excluded by those
+    rows. Native records (native fi arms) and template/native ctor fis
+    take other emit arms -> AST."""
+    if not isinstance(e.func, TpyName):
+        return False
+    if e.kwargs or e.double_star_unpack is not None:
+        return False
+    ct = e.call_type
+    if ct is None or not isinstance(ct, NominalType):
+        return False
+    if (e.enum_from_value is not None or e.cast_target_type is not None
+            or e.isinstance_var is not None or e.dunder_call is not None
+            or e.macro_expansion is not None or e.compile_time_assert):
+        return False
+    if e.args and isinstance(e.args[0], TpyListRepeat):
+        return False
+    fi = e.resolved_function_info
+    if fi is None or not fi.is_constructor:
+        return False
+    if (fi.cpp_template or fi.native_function or fi.native_name
+            or fi.error_return_type is not None):
+        return False
+    if len(e.args) != len(fi.params):
+        return False
+    if not _f1_record(ct, analyzer):
+        return False
+    ri = analyzer.registry.get_record_for_type(ct)
+    if ri is None:
+        return False
+    # A NATIVE record's zero-arg instantiation (`UninitStorage[T]()`) renders
+    # the same `type_to_cpp(call_type)()` (native_cpp_names spelling) with no
+    # arg arms to diverge; an arg-ful native ctor may resolve @native/@
+    # cpp_template __init__ overloads with their own emit arms -> AST.
+    if ri.is_native and e.args:
+        return False
+    return True
+
 def _str_pass_through_arg(a: TpyExpr, ptype: TpyType | None,
                           locals_: dict[str, TpyType], analyzer) -> bool:
     """A str-slice arg into a non-Own `str`/`StrView`/`String` param slot. A
@@ -2604,6 +2724,51 @@ def _scalar_ctor_call_eligible(e: TpyCall, locals_: dict[str, TpyType],
                and _resolved_scalar(analyzer.get_expr_type(a), analyzer)
                and _expr_eligible(a, locals_, analyzer)
                for a, p in zip(e.args, fi.params))
+
+def _instantiation_call_eligible(e: TpyCall, locals_: dict[str, TpyType],
+                                 analyzer) -> bool:
+    """A generic-type INSTANTIATION call (`list(it)` / `set(xs)` -- the
+    `call_type` branch's resolved-template arm) at a storage sink: the
+    sema-substituted positional-only ctor @cpp_template
+    (`_instantiation_call_fi`) over per-slot args, result a storage
+    container (`_storage_call_ret`'s container families -- the same
+    families the decl/return sinks admit). Admitted args: a `range(...)`
+    call (the substituted Range-template render, the comprehension
+    begin/end iterable's shape) or a bare NON-LAST-USE container name (the
+    bare gen_call_arg pass-through; a last use may take the
+    consuming-`__iter__` / move renders, so it stays on the AST path --
+    conservatively keyed on last-use alone, movability unbound here)."""
+    fi = _instantiation_call_fi(e)
+    if fi is None:
+        return False
+    fam = _storage_call_ret(analyzer.get_expr_type(e), analyzer)
+    if fam is None or not _storage_call_container(fam):
+        return False
+    for a in e.args:
+        if _is_range_call(a):
+            rfi = a.resolved_function_info
+            if (len(a.args) not in (1, 2, 3) or rfi is None
+                    or not rfi.cpp_template
+                    or not _eligible_scalar(_range_counter_type(a, analyzer))):
+                return note_detail("call.inst_range_shape")
+            if not all(_expr_eligible(ra, locals_, analyzer)
+                       for ra in a.args):
+                return False
+            continue
+        # A bare container name renders bare on both paths (no gen_call_arg
+        # lift fires for the protocol slot); container locals in an eligible
+        # body are single-assignment value slots (a reassigned container
+        # local is an AST pointer-local and already rejected its body), and
+        # container names are never narrowed or pointer-locals.
+        if (not isinstance(a, TpyName) or a.name == "self"
+                or a.name not in locals_):
+            return note_detail("call.inst_arg_shape")
+        at = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(locals_[a.name])))
+        if not (is_list(at) or is_dict(at) or is_set(at)):
+            return note_detail("call.inst_arg_shape")
+        if id(a) in analyzer.ctx.all_last_uses:
+            return note_detail("call.inst_arg_lastuse")
+    return True
 
 def _slice_ctor_call_eligible(e: TpyCall, locals_: dict[str, TpyType],
                               analyzer) -> bool:
@@ -3271,11 +3436,16 @@ def _record_method_call_eligible(e: TpyMethodCall, fi, locals_: dict[str, TpyTyp
         if not is_clone_pair:
             return note_detail("method.overload_set")
     ret = analyzer.get_expr_type(e)
+    # A TypeParamRef result (`self.get() -> T` in a generic body) emits the
+    # same bare `recv.method(args)`; the POSITIONS it can compose into gate
+    # their own family checks (a T decl/arg rejects there), so admitting it
+    # here only opens the T-operand compares and their siblings.
     if not (_resolved_scalar(ret, analyzer) or _eligible_char(ret)
             or _eligible_enum(ret, analyzer) is not None
             or _eligible_ptr_value(ret, analyzer)
             or _resolved_str_value(ret, analyzer) is not None
             or _resolved_bytes_value(ret, analyzer) is not None
+            or _tparam_value(ret)
             or (stmt_position and (ret is None or is_void_like_type(ret)))):
         return note_detail("method.ret_type")
     return all((_plain_scalar_slot(p.type, analyzer)
@@ -3702,7 +3872,9 @@ def _expr_eligible(e: TpyExpr, locals_: dict[str, TpyType], analyzer) -> bool:
         # (decl init, return, print/call arg, compare operand) bare.
         return _fstring_eligible(e, locals_, analyzer)
     if isinstance(e, TpyBinOp):
-        return _binop_eligible(e, locals_, analyzer) or note_detail(f"binop.shape.{e.op}")
+        return (_binop_eligible(e, locals_, analyzer)
+                or note_detail(f"binop.shape.{e.op}"
+                               f"{_binop_operand_suffix(e, locals_, analyzer)}"))
     if isinstance(e, TpyUnaryOp):
         # A negated int literal (`-3`) folds to a plain literal on both paths
         # (the AST's _gen_unaryop literal-negation branch); a negated FLOAT

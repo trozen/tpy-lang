@@ -41,7 +41,9 @@ from .predicates import (
     _f1_record,
     _field_decl_type,
     _field_receiver_ok,
+    _is_range_call,
     _owned_str_slot,
+    _range_counter_type,
     _resolved_str_value,
     _resolved_viewfam_value,
     _var_decl_type,
@@ -59,6 +61,7 @@ from .expressions import (
     _lower_container_elem,
     _lower_expr,
     _lower_field_source,
+    _lower_range_object,
     _lower_truthy,
     _slot_literal_retype,
 )
@@ -106,7 +109,7 @@ def _comp_route(init, declared: dict[str, TpyType], narrowed: 'set[str]',
     if gen.owns_elements:
         return None
     it = gen.iterable
-    if _statements._is_range_call(it):
+    if _is_range_call(it):
         if gen.unpack_vars is not None or len(it.args) not in (1, 2, 3):
             return None
         counter = _range_counter_type(it, analyzer)
@@ -291,15 +294,6 @@ def _comp_expr_ok(init, t: 'TpyType | None', ws: _WalkState, analyzer) -> bool:
              else (init.element_expr,))
     return all(_expr_eligible(x, declared2, analyzer) for x in exprs)
 
-def _range_counter_type(call, analyzer) -> 'TpyType | None':
-    """The range call's counter type -- get_iterable_element_type over the
-    Range object type, IntLiteral resolved to the module default."""
-    counter = get_iterable_element_type(analyzer.get_expr_type(call),
-                                        registry=analyzer.registry)
-    if counter is None or isinstance(counter, IntLiteralType):
-        counter = analyzer.ctx.default_int_type
-    return counter
-
 def _comp_array_ok(init, t: TpyType, ws: _WalkState, analyzer) -> bool:
     """An Array-demoted comprehension -- the `array_from_index` RANGE arm
     only (a filter-less, unpack-less list comp over a literal-proven range;
@@ -313,7 +307,7 @@ def _comp_array_ok(init, t: TpyType, ws: _WalkState, analyzer) -> bool:
     if gen.owns_elements or gen.conditions or gen.unpack_vars is not None:
         return False
     it = gen.iterable
-    if not _statements._is_range_call(it) or len(it.args) not in (1, 2, 3):
+    if not _is_range_call(it) or len(it.args) not in (1, 2, 3):
         return False
     counter = _range_counter_type(it, analyzer)
     if not _eligible_scalar(counter):
@@ -361,24 +355,6 @@ def _lower_array_comprehension(init, lc: '_LowerCtx',
         element=_lower_container_elem(init.element_expr, elem_t, lc),
         loc=getattr(init, "loc", None),
     )
-
-def _lower_range_object(call, lc: '_LowerCtx') -> THIRCall:
-    """The 3-arg-range iterable: the resolved range overload's cpp_template
-    (`::tpy::Range<{T}>({0}, {1}, {2})`) with its type param substituted the
-    way gen_call_from_fi does (`to_cpp_stored`); bounds render against the
-    counter slot exactly like the 1/2-arg range-arm bounds."""
-    fi = call.resolved_function_info
-    template = fi.cpp_template
-    targs = getattr(call, "inferred_type_args", None)
-    if targs and fi.type_params:
-        for name, typ in zip(fi.type_params, targs):
-            template = template.replace(f"{{{name}}}", typ.to_cpp_stored())
-    counter = _range_counter_type(call, lc.analyzer)
-    args = tuple(_slot_literal_retype(_lower_expr(a, lc), counter)
-                 for a in call.args)
-    return THIRCall(result_type=lc.analyzer.get_expr_type(call),
-                    callee=call.func_name, args=args, cpp_template=template,
-                    loc=getattr(call, "loc", None))
 
 def _comp_result_type(t: 'TpyType | None', analyzer) -> TpyType:
     # `_resolve_int_literal`'s mirror: sema stamps the result element/key/value
@@ -438,7 +414,7 @@ def _lower_comprehension(init, lc: '_LowerCtx',
         range_stop = _slot_literal_retype(_lower_expr(stop_arg, lc),
                                           route.counter_type)
         stop_lit = isinstance(stop_arg, TpyIntLiteral)
-    elif _statements._is_range_call(gen.iterable):
+    elif _is_range_call(gen.iterable):
         _witness("comp.range3")
         iterable = _lower_range_object(gen.iterable, lc)
     elif isinstance(gen.iterable, TpyFieldAccess):

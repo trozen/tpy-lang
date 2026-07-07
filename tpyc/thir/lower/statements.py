@@ -167,6 +167,7 @@ from .predicates import (
     _resolved_bytes_value,
     _resolved_str_value,
     _resolved_viewfam_value,
+    _is_range_call,
     _runtime_bigint,
     _slice_object_type,
     _storage_call_container,
@@ -323,12 +324,6 @@ def _range_bound_eligible(arg: TpyExpr, declared: dict[str, TpyType],
     if _is_len_call(arg, declared, analyzer):
         return True
     return _range_bound_literal_value(arg) is not None
-
-def _is_range_call(it: TpyExpr) -> bool:
-    """The `range(...)` iterable form -- the for-loop cell's range-vs-container
-    discriminator. Shared by `_for_range_eligible` and `_lower_stmt` so eligibility and
-    lowering can't drift on which shape a for-loop takes."""
-    return isinstance(it, TpyCall) and it.func_name == "range"
 
 def _for_loop_shape_ok(stmt: TpyForEach, analyzer, declared: dict[str, TpyType]) -> bool:
     """The for-loop shape guards shared by the range-for and container-for cells: no

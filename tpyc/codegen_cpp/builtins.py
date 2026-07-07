@@ -14,6 +14,7 @@ from ..typesys import (
     TupleType, OwnType, is_protocol_type, unwrap_readonly, is_any_str_type, is_any_bytes_type,
     make_ref, view_family_for_type,
     is_float_type, is_integer_type,
+    expand_fi_template,
 )
 from ..parse import (
     TpyExpr, TpyCall, TpyStrLiteral, TpyArrayLiteral, TpyNoneLiteral, TpyCoerce,
@@ -82,26 +83,15 @@ class BuiltinGenerator:
         type_args: inferred type arguments paired with fi.type_params by position.
         """
         if fi.cpp_template:
-            template = fi.cpp_template
-            # Substitute method-level type params
-            effective_subst: dict[str, TpyType] | None = None
-            if type_args and fi.type_params:
-                effective_subst = dict(zip(fi.type_params, type_args))
-            if effective_subst:
-                for name, typ in effective_subst.items():
-                    placeholder = f"{{{name}}}"
-                    if placeholder in template and hasattr(typ, "to_cpp"):
-                        template = template.replace(placeholder, typ.to_cpp_stored())
-            # {cpp} substitutes the (substituted) return-type spelling.
-            # Used by free functions whose template needs the full
-            # return-type C++ shape rather than just `{T}` -- e.g.
-            # `unsafe_cast[T] -> Ptr[T]` wants `Ptr[None]` to lower to
-            # `void*` (PtrType's special-case) rather than `std::monostate*`.
-            if "{cpp}" in template and fi.return_type is not None:
-                ret_type = fi.return_type
-                if effective_subst:
-                    ret_type = self.types.substitute_type_params(ret_type, effective_subst)
-                template = template.replace("{cpp}", ret_type.to_cpp())
+            # Method-level type params ({T}) and the {cpp} return-type
+            # spelling substitute through the ONE shared rule (typesys.
+            # expand_fi_template -- the THIR mirror uses the same function,
+            # so the two emit paths cannot drift). {cpp} is used by free
+            # functions whose template needs the full return-type C++ shape
+            # rather than just `{T}` -- e.g. `unsafe_cast[T] -> Ptr[T]`
+            # wants `Ptr[None]` to lower to `void*` (PtrType's
+            # special-case) rather than `std::monostate*`.
+            template = expand_fi_template(fi, type_args)
             return expand_cpp_template(template, receiver, *gen_args,
                                        self_type=self_type)
         if fi.native_function and fi.native_name:

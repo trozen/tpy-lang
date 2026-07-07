@@ -51,12 +51,14 @@ from ...typesys import (
     IntLiteralType,
     NominalType,
     OptionalType,
+    OwnType,
     PtrType,
     UnionType,
     TpyType,
     TypeParamKind,
     TypeParamRef,
     VoidType,
+    contains_type_param,
     unwrap_optional_own,
     unwrap_readonly,
     unwrap_ref_type,
@@ -493,12 +495,16 @@ def _seed_readonly_globals(
 
 def lower_function(func: TpyFunction, analyzer, render_type=None,
                    self_type: 'TpyType | None' = None,
-                   native_globals: 'Mapping[str, str]' = {}) -> THIRFunction | None:
+                   native_globals: 'Mapping[str, str]' = {},
+                   render_type_stored=None) -> THIRFunction | None:
     """Lower one function to THIR, or None if it falls outside the slice.
 
     `render_type` (codegen's `TypeResolver.type_to_cpp`) renders F1 borrow-local
     decl types byte-identically; omit it only when no non-value local can arise
-    (dump / value-scalar standalone lowering). `self_type` is the owning record's
+    (dump / value-scalar standalone lowering). `render_type_stored`
+    (`TypeResolver.type_to_cpp_stored`) is its stored-form sibling for the
+    slots the AST spells that way (explicit template args on generic calls).
+    `self_type` is the owning record's
     type when `func` is a record method: for kinds with a receiver (instance /
     property / dunder) `self` is seeded as an F1-record receiver (a `this`
     pointer) so its field reads route the same as a param's; a static method
@@ -525,7 +531,8 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
                    if is_record_method and isinstance(self_type, NominalType)
                    else None)
     lc = _LowerCtx(func, analyzer, render_type, self_receiver=self_receiver,
-                   record_name=record_name)
+                   record_name=record_name,
+                   render_type_stored=render_type_stored)
     params_set: dict[str, TpyType] = {n: t for n, t in func.params}
     if has_self:
         params_set["self"] = self_type  # the record receiver, a field source
@@ -679,6 +686,46 @@ def _ctor_viewfam_source_ok(value: TpyExpr, fam_t: TpyType,
     return (isinstance(src, TpyName)
             and _resolved_str_value(declared.get(src.name),
                                     analyzer) is not None)
+
+def _mil_reject_detail(stmt: 'TpyAssign', analyzer) -> str:
+    """`ctor.mil_field.<field-fam>.<source-kind>` -- sizes the generics
+    frontier's ctor-MIL buckets; delete the split when the bucket empties."""
+    t = analyzer.get_expr_type(stmt.target)
+    if t is not None:
+        t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    if isinstance(t, OwnType):
+        fam = "own"
+    elif isinstance(t, TypeParamRef):
+        fam = "tparam"
+    elif is_list(t) or is_dict(t) or is_set(t) or is_array(t):
+        fam = "container"
+    elif isinstance(t, NominalType) and t.type_args:
+        fam = "genrec_open" if contains_type_param(t) else "genrec_concrete"
+    elif isinstance(t, NominalType):
+        fam = "record" if t.is_user_record else "nominal"
+    elif isinstance(t, OptionalType):
+        fam = "optional"
+    elif isinstance(t, UnionType):
+        fam = "union"
+    else:
+        fam = type(t).__name__.removesuffix("Type").lower() if t is not None else "untyped"
+    src = stmt.value
+    while isinstance(src, TpyCoerce):
+        src = src.expr
+    if isinstance(src, TpyCall):
+        fi = src.resolved_function_info
+        kind = ("native_call" if fi is not None
+                and (fi.native_function or fi.native_name) else "call")
+    elif isinstance(src, TpyMethodCall):
+        kind = "method"
+    elif isinstance(src, TpyFieldAccess):
+        kind = "field"
+    elif isinstance(src, TpyName):
+        kind = "name"
+    else:
+        kind = type(src).__name__.removeprefix("Tpy").lower()
+    return f"ctor.mil_field.{fam}.{kind}"
+
 
 def _mil_container_field(t) -> bool:
     """A builtin-container field type whose MIL init the container slice
@@ -948,6 +995,7 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
                       render_type=None,
                       self_type: 'TpyType | None' = None,
                       native_globals: 'Mapping[str, str]' = {},
+                      render_type_stored=None,
                       ) -> THIRConstructor | None:
     """Lower a constructor to a THIRConstructor, or None if outside the slice.
 
@@ -1033,7 +1081,8 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
     # lc is built before the gate loop: the move check (`_is_move_source`) reads
     # `analyzer.ctx.all_last_uses` through it.
     lc = _LowerCtx(init_method, analyzer, render_type, self_receiver="self",
-                   record_name=record.name)
+                   record_name=record.name,
+                   render_type_stored=render_type_stored)
     # Read-only value-global seeding, like lower_function's (ctors read module
     # globals too). No `global`-write seeding here: a ctor's `global` names
     # stay unseeded, so its TpyGlobal statement rejects the body -> AST path.
@@ -1102,7 +1151,7 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
         if (not chain_broken and is_own_init
                 and not expr_reads_self_field(stmt.value, body_written_self_fields)
                 and not ast_demotes):
-            note("ctor.mil_field")
+            note(_mil_reject_detail(stmt, analyzer))
             return None
         # A demoted own-field init of a non-default-constructible field type
         # raises CodeGenError on the AST path (_reject_nondef_ctor_field_in_body,

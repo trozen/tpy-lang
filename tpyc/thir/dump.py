@@ -114,6 +114,8 @@ def _expr(e: THIRExpr) -> str:
             name = f"{e.callee} [{e.native_name}]"
         else:
             name = e.callee
+        if e.template_args_cpp:
+            name += f"<{', '.join(e.template_args_cpp)}>"
         return f"call({name}, [{', '.join(_expr(a) for a in e.args)}])"
     if isinstance(e, THIRContainerLiteral):
         if e.values:  # dict: elements are keys

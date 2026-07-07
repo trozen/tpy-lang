@@ -415,11 +415,15 @@ def _emit_call(e: THIRCall, state: _EmitState) -> str:
         # A @native free-function builtin (e.g. `len(c)` -> `::tpy::__len__(c)`):
         # dispatch on the resolved symbol, mirroring gen_call_from_fi's native arm.
         return f"{qualify_native_name(e.native_name)}({args})"
+    # A generic TPy callee's explicit template-arg list (pre-rendered at
+    # lowering): `callee<T1, T2>(args)` over the plain / imported spelling.
+    targs = (f"<{', '.join(e.template_args_cpp)}>"
+             if e.template_args_cpp else "")
     if e.callee_cpp is not None:
         # A cross-module callee: the pre-rendered absolute spelling
         # (imported_free_callee_cpp, shared with the AST emit).
-        return f"{e.callee_cpp}({args})"
-    return f"{escape_cpp_name(e.callee)}({args})"
+        return f"{e.callee_cpp}{targs}({args})"
+    return f"{escape_cpp_name(e.callee)}{targs}({args})"
 
 
 def _emit_union_arg_lift(e: THIRUnionArgLift, state: _EmitState) -> str:

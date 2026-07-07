@@ -1315,15 +1315,21 @@ class TestCtorShapeGateRejects:
         assert _fn(thir, "use") is None
         assert _fn(thir, "use_full") is not None
 
-    def test_generic_record_ctor_stays_ast(self):
-        # A generic ctor spells substituted type args on the AST path.
+    def test_generic_record_ctor_routes_instantiation(self):
+        # A generic ctor rvalue spells the rendered instantiation
+        # (`G<int32_t>(5)`) -- the wave-7 _ctor_instantiation_ok face.
         thir = _lower_ctx(
             "from tpy import Int32, ValueType\n"
             "class G[T: ValueType]:\n    v: T\n"
             "    def __init__(self, v: T):\n        self.v = v\n"
             "def take_g(g: G[Int32]) -> Int32:\n    return g.v\n"
             "def use() -> Int32:\n    return take_g(G(5))\n")
-        assert _fn(thir, "use") is None
+        fn = _fn(thir, "use")
+        assert fn is not None
+        arg = fn.body[0].value.args[0]
+        assert isinstance(arg, THIRArgTemp) and arg.cpp_type == "G<int32_t>"
+        assert (isinstance(arg.init, THIRCtorCall)
+                and arg.init.type_cpp == "G<int32_t>")
 
     def test_multi_overload_init_stays_ast(self):
         # _gen_record_ctor_args reads the record's init_info params, which

@@ -137,11 +137,18 @@ deferred (self-contained) / blocked-on-`<rung>`.
   `Array`/`tuple`/`union`/`bytes` MIL fields (F3+), demoted field writes via the
   AST-demote mirror + the record/container/str field-write arms, the ctor param
   grid, widened base-init args, and the mutation-keyed ctor-arg record-rvalue
-  rows (see IR_DESIGN.md Wave-6). Still open on the ctor axis: `self.<record
+  rows (see IR_DESIGN.md Wave-6). Wave-7 (the generics frontier, 2026-07-07)
+  then routed the generics-gated remainder: the ctor INSTANTIATION form
+  (`Cell[Int32]()` / `Poll[T]()` / inferred, `THIRCtorCall.type_cpp =
+  render_type(call_type)`), the `UninitStorage[T]()`-family MIL hoists
+  (zero-arg native instantiation), generic native/template free callees
+  (`unsafe_take`/`unsafe_release`), and the T-operand compares
+  (see IR_DESIGN.md Wave-7). Still open on the ctor axis: `self.<record
   field>` read sources (MIL-ordering-sensitive), non-trivia body statements
   outside the statement-shape slice (match / with / try / for-container / ...),
-  and the generics-gated MIL remainder (`UninitStorage[T]`-family fields,
-  `Waker`). **NATIVE + CROSS-MODULE
+  the `heap_take(std::move(own_param))` MIL source (own-param move through
+  call args in MIL context), the non-generic MIL source fams (`optional.name`
+  / `nominal.call` / `record.call`), and `Waker` (async frontier). **NATIVE + CROSS-MODULE
   records DONE (non-F1-record stages 1+2); GENERIC records DONE (F5 stages A-C):**
   `_f1_record` now admits any non-generic concrete user record (native records
   need only the native_field-rename stamp in THIR field access -- `_field_cpp`;

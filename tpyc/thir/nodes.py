@@ -288,12 +288,21 @@ class THIRCall(THIRExpr):
     positional `{0}, {1}, ...` placeholders remain -- the eligibility gate
     enforces that. The emitter expands it over the args with no receiver
     (gen_call_from_fi's template arm); `callee` is the source type name, kept
-    for the dump only."""
+    for the dump only.
+
+    `template_args_cpp` (when set) is a generic TPy callee's explicit
+    template-arg list, pre-rendered at lowering the way the AST spells it
+    (`type_to_cpp_stored` per arg -- the render that avoids C++ deduction
+    against `param_val_or_ref_t<T>` slots): the emitter renders
+    `callee<T1, T2>(args)` over the plain or `callee_cpp` spelling. Never
+    combined with `native_name`/`cpp_template` (the AST emits no explicit
+    args for those arms)."""
     callee: str
     args: tuple[THIRExpr, ...]
     native_name: str | None = None
     cpp_template: str | None = None
     callee_cpp: str | None = None
+    template_args_cpp: tuple[str, ...] | None = None
 
 
 @dataclass(frozen=True)

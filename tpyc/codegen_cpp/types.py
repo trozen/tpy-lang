@@ -14,6 +14,7 @@ from ..typesys import (
     ConcreteCoroType,
     unwrap_readonly, unwrap_ref_type, is_protocol_type, resolve_int_literals,
     is_integer_type, is_float_type, is_numeric_type, is_void_like_type,
+    substitute_type_params_simple,
     INT32, BIGINT, FLOAT, FLOAT32, STR, BYTES,
 )
 from ..parse import TpyExpr, TpyName, TpyBinOp, TpyUnaryOp, TpyCoerce, TpyCall, TpyMethodCall, TpyIntLiteral, TpyIfExpr
@@ -315,11 +316,10 @@ class TypeResolver:
     def substitute_type_params(self, typ: TpyType, subst: dict[str, TpyType]) -> TpyType:
         """Substitute type parameters with concrete types for codegen.
 
-        This is simpler than the sema version - just applies the substitution.
+        Delegates to the shared `substitute_type_params_simple` (typesys) --
+        THIR lowering resolves call-site slots through the same function.
         """
-        if isinstance(typ, TypeParamRef):
-            return subst.get(typ.name, typ)
-        return typ.map_inner_types(lambda t: self.substitute_type_params(t, subst))
+        return substitute_type_params_simple(typ, subst)
 
     def involves_variables(self, expr: TpyExpr) -> bool:
         """Check if an expression involves any variable references."""

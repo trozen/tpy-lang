@@ -213,19 +213,29 @@ class _LowerCtx:
     the live module, which `TpyType.to_cpp()` does not, so it -- not `to_cpp()` --
     is the byte-identical source for an F1 borrow local's cpp_type. The default
     (`to_cpp`) is for analyzer-only callers (dump / standalone lowering) that
-    never hit a non-value local."""
-    __slots__ = ("analyzer", "func", "prescan", "render_type", "const_locals",
+    never hit a non-value local.
+
+    `render_type_stored` is the STORED-form sibling (`TypeResolver.
+    type_to_cpp_stored`): the AST spells explicit template args on generic
+    free-fn calls with it (val_or_ref<T> for Ref types, PendingView
+    resolution), so any THIR arm mirroring that spelling must use this --
+    not `render_type` -- for those slots."""
+    __slots__ = ("analyzer", "func", "prescan", "render_type",
+                 "render_type_stored", "const_locals",
                  "pointers", "rebind_slot_locals", "movable_locals",
                  "self_receiver", "record_name", "storage_tuple_locals",
                  "narrow", "inline_narrowed")
 
     def __init__(self, func: TpyFunction, analyzer, render_type,
                  self_receiver: str | None = None,
-                 record_name: str | None = None) -> None:
+                 record_name: str | None = None,
+                 render_type_stored=None) -> None:
         self.analyzer = analyzer
         self.func = func
         self.prescan = _Prescan(func, analyzer)
         self.render_type = render_type or (lambda t: t.to_cpp())
+        self.render_type_stored = (render_type_stored
+                                   or (lambda t: t.to_cpp_stored()))
         # The receiver name (`self`) when `func` is an instance method, else
         # None: it lowers to a THIRSelf (`this`) and renders `->` field reads
         # like a pointer-local, but unlike `pointers` it is not a liftable

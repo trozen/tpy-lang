@@ -10,6 +10,7 @@ callable from any other lower/ module.
 from __future__ import annotations
 from dataclasses import field, fields
 from ...parse.nodes import (
+    TpyArrayLiteral,
     TpyAssert,
     TpyAssign,
     TpyBinOp,
@@ -22,6 +23,7 @@ from ...parse.nodes import (
     TpyFunction,
     TpyIf,
     TpyIntLiteral,
+    TpyListRepeat,
     TpyMethodCall,
     TpyName,
     TpyNoneLiteral,
@@ -31,6 +33,7 @@ from ...parse.nodes import (
     TpyUnaryOp,
     TpyVarDecl,
 )
+from ...modules.type_resolution import get_iterable_element_type
 from ...typesys import (
     BYTES_FAMILY,
     CHAR,
@@ -1090,8 +1093,12 @@ def _eligible_ptr_value(t: 'TpyType | None', analyzer) -> bool:
     inner = t.inner_pointee
     if is_dyn_protocol(inner):
         return _witness("ptr.value_slot") and _witness("ptr.dyn_proto_pointee")
+    # A TypeParamRef pointee (`Ptr[T]` inside a generic body) spells the bare
+    # param name on both paths (`T*` -- the _f1_record_type_arg_ok rule), so
+    # the value slice is pointee-blind here like everywhere else.
     return ((is_void_like_type(inner) or _eligible_scalar(inner)
-             or _eligible_char(inner) or _f1_record(inner, analyzer))
+             or _eligible_char(inner) or _is_type_param_slot(inner)
+             or _f1_record(inner, analyzer))
             and _witness("ptr.value_slot"))
 
 def _dyn_proto_ptr(t: 'TpyType | None') -> bool:
@@ -2349,6 +2356,72 @@ def _template_init_call_fi(e: TpyCall) -> 'FunctionInfo | None':
         return None
     # Post-call wrappers / special member forms the bare template emit does not
     # reproduce (mirrors _method_call_eligible's fi rejects).
+    if (fi.is_consuming or fi.error_return_type is not None
+            or fi.native_cpp_return_type is not None
+            or fi.is_async or fi.is_generator
+            or any(isinstance(p.type, LiteralType) for p in fi.params)):
+        return None
+    if not fi.cpp_template or not _positional_only_template(fi.cpp_template,
+                                                            len(e.args)):
+        return None
+    if len(e.args) != len(fi.params):
+        return None
+    return fi
+
+def _tparam_value(t: 'TpyType | None') -> bool:
+    """A bare type-param value (`T` after the ro/ref/send unwraps): renders
+    by name on both paths (the `_f1_record_type_arg_ok` rule), so T-typed
+    results/operands are spelling-safe; POSITIONS still gate their own
+    family checks (a T decl/sink rejects on its declared-type family)."""
+    if t is None:
+        return False
+    return _is_type_param_slot(unwrap_readonly(unwrap_ref_type(
+        unwrap_send_sync(t))))
+
+def _is_range_call(it: TpyExpr) -> bool:
+    """The `range(...)` iterable form -- the range-vs-container discriminator
+    shared by the for-loop cell, the comprehension routes, and the
+    instantiation-arg face, so eligibility and lowering can't drift on which
+    shape a range takes."""
+    return isinstance(it, TpyCall) and it.func_name == "range"
+
+def _range_counter_type(call, analyzer) -> 'TpyType | None':
+    """The range call's counter type -- get_iterable_element_type over the
+    Range object type, IntLiteral resolved to the module default."""
+    counter = get_iterable_element_type(analyzer.get_expr_type(call),
+                                        registry=analyzer.registry)
+    if counter is None or isinstance(counter, IntLiteralType):
+        counter = analyzer.ctx.default_int_type
+    return counter
+
+def _instantiation_call_fi(e: TpyCall) -> 'FunctionInfo | None':
+    """The resolved `__init__` FunctionInfo of a generic-type INSTANTIATION
+    call (`list(it)` / `set(xs)` -- `call_type` set, bare-name form) whose
+    emit is the resolved `@cpp_template` ctor expanded over per-slot args:
+    `_gen_call`'s `call_type` branch's resolved-template arm (sema already
+    substituted the class type params, e.g. `::tpy::construct<std::vector<
+    int32_t>>({0})`), or None. The subscript-spelled form (`Stack[Int32]()`,
+    `subscript_callee` set), the Ptr null ctor, the list-repeat and
+    array-literal arms, native ctors, and the float-str constant fold all
+    take different renders -> AST path."""
+    if not isinstance(e.func, TpyName):
+        return None
+    if e.kwargs or e.double_star_unpack is not None:
+        return None
+    if e.call_type is None or isinstance(e.call_type, PtrType):
+        return None
+    if (e.subscript_callee is not None or e.type_args
+            or e.enum_from_value is not None or e.cast_target_type is not None
+            or e.isinstance_var is not None or e.dunder_call is not None
+            or e.macro_expansion is not None or e.compile_time_assert):
+        return None
+    if not e.args or isinstance(e.args[0], (TpyListRepeat, TpyArrayLiteral)):
+        return None
+    fi = e.resolved_function_info
+    if fi is None or not (fi.is_method and fi.name == "__init__"):
+        return None
+    if fi.owning_type_qname == "builtins.float":
+        return None  # the float("nan") constexpr fold takes its own render
     if (fi.is_consuming or fi.error_return_type is not None
             or fi.native_cpp_return_type is not None
             or fi.is_async or fi.is_generator

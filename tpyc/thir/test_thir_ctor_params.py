@@ -62,7 +62,7 @@ class TestOptvalParams:
                + "        self.x = p\n        self.y = 1\n")
         ctor, reason = _lower_ctor_reason(src, "C")
         assert ctor is None
-        assert reason == "ctor.mil_field"
+        assert reason.startswith("ctor.mil_field")
         assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_optval_narrowed_read_stays_ast(self):
@@ -177,7 +177,7 @@ class TestOwnParams:
                "        self.s = p\n        self.y = 1\n")
         ctor, reason = _lower_ctor_reason(src, "C")
         assert ctor is None
-        assert reason == "ctor.mil_field"
+        assert reason.startswith("ctor.mil_field")
         assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_own_container_mil_move_routes(self):
@@ -225,5 +225,5 @@ class TestUnionAndPtrParams:
                "        self.q = q\n        self.y = 1\n")
         ctor, reason = _lower_ctor_reason(src, "C")
         assert ctor is None
-        assert reason == "ctor.mil_field"
+        assert reason.startswith("ctor.mil_field")
         assert _cpp(src, thir=True) == _cpp(src, thir=False)

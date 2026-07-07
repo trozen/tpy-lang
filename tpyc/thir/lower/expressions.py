@@ -119,7 +119,9 @@ from .predicates import (
     _enum_truthy_wrap,
     _f1_record,
     _folded_neg_int_literal,
+    _instantiation_call_fi,
     _is_borrow_form_name,
+    _is_range_call,
     _is_none_compare_operand,
     _is_string_owned,
     _narrow_bigint_index,
@@ -128,6 +130,7 @@ from .predicates import (
     _own_lvalue_temp_slot,
     _peel_coerce,
     _plain_member_call_markers_ok,
+    _range_counter_type,
     _record_rvalue_temp_slot,
     _resolve_pending_view,
     _resolved_bytes_value,
@@ -140,6 +143,7 @@ from .predicates import (
     _value_union_temp_slot,
 )
 from .context import _LowerCtx
+from .generics import expand_fi_template
 
 
 from .expr_gates import (
@@ -623,7 +627,17 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx', *, temp_args: bool = False) -> THIR
             # hoists the named temp (`A __tmp_N = A(1); Cls(__tmp_N)`,
             # gate-admitted only at flush positions), a const slot binds the
             # inline prvalue expansion through the plain arg path.
-            _witness("ctor.call")
+            # The INSTANTIATION form (`Cell[Int32]()` / `Poll[T]()` /
+            # inferred `Pair(1, 2)`, call_type set) spells the rendered
+            # type over the same arg machinery (_gen_call's call_type-arm
+            # tail: `type_to_cpp(call_type)(args)`); the raw-name form
+            # renders the bare source name.
+            if e.call_type is not None:
+                _witness("ctor.instantiation")
+                type_cpp = lc.render_type(e.call_type)
+            else:
+                _witness("ctor.call")
+                type_cpp = e.func_name
             ctor_mut = fi.mutated_params or frozenset()
             args = []
             for i, (a, p) in enumerate(zip(e.args, fi.params)):
@@ -640,8 +654,29 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx', *, temp_args: bool = False) -> THIR
                 else:
                     args.append(_lower_call_arg(a, p.type, lc))
             return THIRCtorCall(
-                result_type=rtype, type_cpp=e.func_name,
+                result_type=rtype, type_cpp=type_cpp,
                 args=tuple(args), form=Form.STORAGE, loc=loc)
+        if e.call_type is not None:
+            # A generic-type INSTANTIATION (`list(it)` / `set(xs)`): the
+            # resolved ctor's sema-substituted @cpp_template expanded over
+            # per-slot args (the gate admitted only this arm's shape). A
+            # range(...) arg renders as its substituted Range template (the
+            # comprehension begin/end iterable's render); every other admitted
+            # arg lowers through the shared call-arg machinery.
+            inst_fi = _instantiation_call_fi(e)
+            assert inst_fi is not None, \
+                "instantiation call reached lowering outside the gate's shape"
+            _witness("call.instantiation_template")
+            return THIRCall(
+                result_type=rtype,
+                callee=e.func_name,
+                args=tuple(
+                    _lower_range_object(a, lc) if _is_range_call(a)
+                    else _lower_call_arg(a, p.type, lc)
+                    for a, p in zip(e.args, inst_fi.params)),
+                cpp_template=inst_fi.cpp_template,
+                loc=loc,
+            )
         if fi is not None and fi.is_method and fi.name == "__init__":
             # A scalar or slice-object type-constructor call (`Int32(x)` /
             # `basic_slice(1, 3)`): the emit is the resolved __init__ overload's
@@ -1059,6 +1094,23 @@ def _lower_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
             _lower_container_elem(x, slot.element_types[i], lc)
             for i, x in enumerate(e.elements)),
         loc=getattr(e, "loc", None))
+
+def _lower_range_object(call, lc: '_LowerCtx') -> THIRCall:
+    """A `range(...)` call in OBJECT position (a comprehension's begin/end
+    iterable, an instantiation arg): the resolved range overload's
+    cpp_template (`::tpy::Range<{T}>({0}, {1}, {2})`) with its type param
+    substituted the way gen_call_from_fi does (`expand_fi_template`); bounds
+    render against the counter slot exactly like the range-loop bounds."""
+    fi = call.resolved_function_info
+    template = expand_fi_template(
+        fi, getattr(call, "inferred_type_args", None))
+    counter = _range_counter_type(call, lc.analyzer)
+    args = tuple(_slot_literal_retype(_lower_expr(a, lc), counter)
+                 for a in call.args)
+    return THIRCall(result_type=lc.analyzer.get_expr_type(call),
+                    callee=call.func_name, args=args, cpp_template=template,
+                    loc=getattr(call, "loc", None))
+
 
 def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                     *, temp_args: bool = False,

@@ -57,6 +57,11 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # `::tpyapp::mod::f` (callee_cpp)
     "call.native_free",             # C++ @native free callee -> `::native(args)`
     "call.template_free",           # positional-only @cpp_template free callee
+    "call.instantiation_template",  # generic-type instantiation `list(it)` ->
+                                    # sema-substituted ctor template expansion
+    "ctor.instantiation",           # record-ctor instantiation form
+                                    # (`Cell[Int32]()` / `Poll[T]()`) ->
+                                    # rendered `type_to_cpp(call_type)(args)`
     "call.marker_qualified",        # module-qualified `m.f(x)` / static
                                     # `Rec.m(x)` -> pre-rendered callee_cpp
     "call.module_native",           # bare-@native module callee `m.f(x)`

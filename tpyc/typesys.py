@@ -1351,6 +1351,45 @@ def substitute_type_params_structural(
         lambda t: substitute_type_params_structural(t, subst))
 
 
+def substitute_type_params_simple(
+    typ: TpyType, subst: dict[str, TpyType],
+) -> TpyType:
+    """Replace TypeParamRef nodes via `map_inner_types` -- the codegen-side
+    substitution. `TypeResolver.substitute_type_params` delegates here and
+    THIR lowering resolves call-site param slots through the same function,
+    so the two emit paths cannot drift. Unlike the structural variant above
+    it does not special-case Array's raw-int `type_args` slot."""
+    if isinstance(typ, TypeParamRef):
+        return subst.get(typ.name, typ)
+    return typ.map_inner_types(
+        lambda t: substitute_type_params_simple(t, subst))
+
+
+def expand_fi_template(fi: 'FunctionInfo',
+                       type_args: 'tuple[TpyType, ...] | None') -> str:
+    """A `cpp_template`'s named-placeholder substitution -- the `{T}` slots
+    (each `to_cpp_stored()`) and the `{cpp}` return-type spelling
+    (substituted, `to_cpp()`) -- WITHOUT the positional expansion: the
+    caller expands `{0}, {1}, ...` over the args (`expand_cpp_template` /
+    THIR's cpp_template emit arm). The ONE substitution rule shared by
+    `gen_call_from_fi` and the THIR lowering mirror, so the two emit paths
+    cannot drift."""
+    template = fi.cpp_template
+    effective_subst = None
+    if type_args and fi.type_params:
+        effective_subst = dict(zip(fi.type_params, type_args))
+        for name, typ in effective_subst.items():
+            placeholder = f"{{{name}}}"
+            if placeholder in template and hasattr(typ, "to_cpp"):
+                template = template.replace(placeholder, typ.to_cpp_stored())
+    if "{cpp}" in template and fi.return_type is not None:
+        ret_type = fi.return_type
+        if effective_subst:
+            ret_type = substitute_type_params_simple(ret_type, effective_subst)
+        template = template.replace("{cpp}", ret_type.to_cpp())
+    return template
+
+
 # Re-entrancy guards for NominalType.is_send / is_sync. Generic records
 # can recurse into themselves through container fields (e.g.
 # `class Tree[T]: children: list[Tree[T]]`). Re-entry returns True --
