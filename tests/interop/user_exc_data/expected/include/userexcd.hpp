@@ -7,6 +7,29 @@
 
 namespace tpyapp::userexcd {
 
+enum class Severity : int32_t {
+    WARN = 1,
+    FATAL = 2,
+};
+
+} // namespace tpyapp::userexcd
+
+template<>
+struct tpy::EnumUtil<::tpyapp::userexcd::Severity> {
+    static constexpr std::string_view type_name = "Severity";
+    static std::string_view name(::tpyapp::userexcd::Severity e);
+    static const std::array<::tpyapp::userexcd::Severity, 2> members;
+    static ::tpyapp::userexcd::Severity from_value(int32_t v);
+    static ::tpyapp::userexcd::Severity from_name(std::string_view s);
+    static std::optional<::tpyapp::userexcd::Severity> try_parse(std::string_view s);
+};
+
+namespace tpyapp::userexcd {
+
+inline std::ostream& operator<<(std::ostream& __os, Severity __e) {
+    return __os << "Severity." << ::tpy::EnumUtil<Severity>::name(__e);
+}
+
 struct ParseError;
 
 inline constexpr std::string_view __name__ = "__main__";
@@ -15,9 +38,11 @@ int64_t parse(int64_t n);
 
 struct ParseError : ::tpy::ValueError {
     int32_t line;
+    std::string detail;
+    std::vector<uint8_t> payload;
+    Severity severity;
 
-    ParseError() = default;
-    explicit ParseError(std::string_view message, int32_t line) : line(line) {
+    explicit ParseError(std::string_view message, int32_t line, std::string_view detail, std::span<const uint8_t> payload, Severity severity) : line(line), detail(detail), payload(::tpy::bytes_copy(payload)), severity(severity) {
         this->message = message;
     }
 

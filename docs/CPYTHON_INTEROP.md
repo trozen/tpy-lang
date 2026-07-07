@@ -572,21 +572,29 @@ exception escaping an `@export` body (or `PyInit_`) crosses as the matching
 unlisted subclass to its nearest listed base. Still **planned** from the list
 below: `@error_return` Err -> raise and panic -> exception.
 
-**User exception classes are also implemented** (for the type, not yet the
-instance data). Each user exception class defined in an ext_module gets its own
-Python type at `PyInit_` via `PyErr_NewException` (inheriting its built-in
-base's `PyExc_*`, or an already-created user base, topo-ordered), added to the
-module (`PyModule_AddObjectRef`) so it imports as `mymod.MyError`, and recorded
-in an `ExcRegistry` (`typeid -> PyObject*`) the glue passes to `set_py_err_from`;
-the registry is consulted by exact dynamic type before the built-in cascade, so
-a user `class MyError(ValueError)` surfaces as `MyError` (catchable as
-`ValueError` too) instead of degrading. `PyErr_SetString(type, e.what())` still
-carries only the message field, so a **data-carrying** user exception (instance
-fields beyond the message) crosses by type + message field only -- its fields,
-and the full `args`/`str()` for a multi-arg constructor, do not cross. A direct
-`raise DataExc(...)` in an `@export` body warns. Faithful per-field crossing
-(the `PyErr_SetObject` + per-field marshalling path) is the deferred next rung;
-so are transitive-raise detection and cross-module user exceptions.
+**User exception classes are implemented, including their instance data.** Each
+user exception class defined in an ext_module gets its own Python type at
+`PyInit_` via `PyErr_NewException` (inheriting its built-in base's `PyExc_*`, or
+an already-created user base, topo-ordered), added to the module
+(`PyModule_AddObjectRef`) so it imports as `mymod.MyError`, and recorded in an
+`ExcRegistry` (`typeid -> PyObject* + setter`) the glue passes to
+`set_py_err_from`; the registry is consulted by exact dynamic type before the
+built-in cascade, so a user `class MyError(ValueError)` surfaces as `MyError`
+(catchable as `ValueError` too) instead of degrading. A **data-carrying** user
+exception's instance fields cross as **instance attributes**: the registered
+setter constructs an instance from the message (`pytype(e.what())`), marshals
+each data field (scalar / str / bytes / exposed-enum) to an attribute via
+`PyObject_SetAttrString`, then `PyErr_SetObject`. The crossing is *transitive*
+(registry-driven, fires wherever the exc is raised). **Acknowledged divergence:**
+`str(e)` and `e.args` reflect the message field only, not the full constructor
+argument tuple -- the C++ exception object holds typed fields, not the original
+call tuple, so `args` cannot be faithfully reconstructed (CPython-native keeps
+`args = (message, *fields)` for a multi-arg constructor). This is a documented
+divergence, not a warning: it is unavoidable under TPy's exception model (there
+is no escape hatch and no author-side action), so a per-raise warning would be
+non-actionable noise. Container and exposed-class data fields, full `args`
+fidelity, and exception chaining are the deferred rungs; so are cross-module
+user exceptions.
 
 - **Exceptions (`raise` / `except`).** A TPy `raise` that reaches the
   boundary sets a Python error and the wrapper returns the C-API error
@@ -594,12 +602,11 @@ so are transitive-raise detection and cross-module user exceptions.
   Python counterparts (`IndexError`, `ValueError`, ...). User exception types
   get a generated Python class per type at `PyInit` (`PyErr_NewException`),
   preserving the inheritance chain; a runtime registry (TPy exc type ->
-  `PyObject*` class) drives the boundary `catch`. **As implemented today this
-  uses `PyErr_SetString(type, e.what())`, so only the type and message field
-  cross.** The full-fidelity form -- `PyErr_SetObject` over a constructed
-  instance with data fields marshalled to instance attributes -- is the
-  deferred next rung (see the status note above and `TODO.md` 1a). See
-  "Resolved design questions" Q1 for the full mechanism.
+  `PyObject*` class + setter) drives the boundary `catch`. A data-carrying user
+  exception crosses its instance fields as attributes (`PyErr_SetObject` over a
+  constructed instance, per-field `PyObject_SetAttrString`); `str(e)`/`e.args`
+  reflect the message field only (acknowledged divergence). See the status note
+  above and "Resolved design questions" Q1 for the full mechanism.
 - **`@error_return`** functions exposed across the boundary: the `Err`
   branch surfaces as a *raised* Python exception (the natural Python idiom),
   the `Ok` branch as the unwrapped value.
@@ -999,8 +1006,11 @@ abstraction is frozen either way.)
   type (`PyErr_NewException`), preserving the inheritance chain (TPy
   `Exception` -> Python `Exception`; `class ParseError(ValueError)` ->
   `__bases__ = (ValueError,)`), registered as module attributes; data fields
-  map to instance attributes (+ `args`). Built-ins map to their Python
-  counterparts. A runtime registry (TPy exc type -> `PyObject*` class) drives
+  (scalar / str / bytes / exposed-enum) map to instance attributes. `str(e)`
+  and `e.args` reflect the message field only, not the full constructor arg
+  tuple (the C++ exception holds typed fields, not the original call tuple) --
+  an acknowledged divergence. Built-ins map to their Python counterparts. A
+  runtime registry (TPy exc type -> `PyObject*` class + setter) drives
   `PyErr_SetObject` from the boundary `catch` (and from the `@error_return`
   `Err` check). Generate for **all user exception types reachable in the
   extension** (thrown types aren't tracked per function; generation is cheap).

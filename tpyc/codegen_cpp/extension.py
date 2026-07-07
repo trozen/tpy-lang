@@ -118,13 +118,73 @@ class ExtensionGenerator:
                 base_simple = (info.parents[0].qualified_name().split(".")[-1]
                                if info.parents else "Exception")
                 base_expr = f'::tpy::interop::py_exc_by_name("{base_simple}")'
+            # A data-carrying exc (data fields beyond the base message, own OR
+            # inherited from a user exc base) gets a generated setter marshalling
+            # each field to an attribute; a message-only exc reuses the shared
+            # default setter.
+            fields = reg.user_declared_fields(info)
+            has_data = bool(fields)
+            setter = (var_for(record.name) + "_seterr" if has_data
+                      else "::tpy::interop::exc_set_err_message_only")
             result.append({
                 "var": var_for(record.name),
                 "cpp_type": qualified_cpp_name(call_ns, record.name),
                 "py_name": f"{module_name}.{record.name}",
                 "base_expr": base_expr,
+                "fields": fields,
+                "has_data": has_data,
+                "setter": setter,
             })
         return result
+
+    def _emit_user_exc_setters(self, out: TextIO, user_excs: list[dict],
+                               sym: str) -> None:
+        """One setter per data-carrying user exception: reconstruct a Python
+        instance from the message (`pytype(e.what())`), marshal each data field
+        to an instance attribute, then PyErr_SetObject. str()/args reflect the
+        message only -- the C++ exception holds fields, not the original
+        constructor arg tuple, so the full args cannot be reconstructed (an
+        acknowledged divergence). Field marshal reuses the getset/operator
+        single-value helper, so a scalar/str/bytes/enum field round-trips."""
+        for e in user_excs:
+            if not e["has_data"]:
+                continue
+            cpp = e["cpp_type"]
+            out.write(f'void {e["setter"]}(const ::tpy::BaseException &__base, '
+                      "PyObject *__pytype) noexcept {\n")
+            # Exact dynamic type matched in the registry, so the downcast is safe.
+            out.write(f"    const auto &__e = static_cast<const {cpp} &>(__base);\n")
+            # A field marshaller (e.g. a BigInt scalar's to_py) can throw under
+            # OOM; the setter is noexcept, so a leaked exception would terminate
+            # the host. Catch and degrade to a no-alloc MemoryError.
+            out.write("    PyObject *__inst = nullptr;\n")
+            out.write("    try {\n")
+            out.write('        PyObject *__args = ::tpy::cpy::Py_BuildValue("(s)", '
+                      "__e.what());\n")
+            out.write("        if (!__args) return;\n")
+            out.write("        __inst = ::tpy::cpy::PyObject_Call("
+                      "__pytype, __args, nullptr);\n")
+            out.write("        ::tpy::cpy::Py_DecRef(__args);\n")
+            out.write("        if (!__inst) return;\n")
+            for fld in e["fields"]:
+                vexpr = self._value_out_expr(
+                    f"__e.{escape_cpp_name(fld.name)}", fld.type, sym)
+                out.write(f"        {{ PyObject *__v = {vexpr};\n")
+                out.write("          if (!__v) { ::tpy::cpy::Py_DecRef(__inst); "
+                          "return; }\n")
+                out.write("          if (::tpy::cpy::PyObject_SetAttrString(__inst, "
+                          f'"{fld.name}", __v) < 0) {{\n')
+                out.write("            ::tpy::cpy::Py_DecRef(__v); "
+                          "::tpy::cpy::Py_DecRef(__inst); return; }\n")
+                out.write("          ::tpy::cpy::Py_DecRef(__v); }\n")
+            out.write("        ::tpy::cpy::PyErr_SetObject(__pytype, __inst);\n")
+            out.write("        ::tpy::cpy::Py_DecRef(__inst);\n")
+            out.write("    } catch (...) {\n")
+            out.write("        if (__inst) ::tpy::cpy::Py_DecRef(__inst);\n")
+            out.write("        if (!::tpy::cpy::PyErr_Occurred()) "
+                      "::tpy::cpy::PyErr_NoMemory();\n")
+            out.write("    }\n")
+            out.write("}\n\n")
 
     def _exposed_classes(self, module: TpyModule, module_name: str,
                          call_ns: str) -> list[dict]:
@@ -1222,6 +1282,8 @@ class ExtensionGenerator:
             self._emit_boundary_catch(out, reg_arg)
             out.write("}\n\n")
 
+        self._emit_user_exc_setters(out, user_excs, sym)
+
         for cls in exposed_classes:
             self._emit_exposed_class(out, cls, sym, reg_arg)
 
@@ -1272,7 +1334,8 @@ class ExtensionGenerator:
                           f'"{e["py_name"].split(".")[-1]}", {e["var"]}) < 0) '
                           f"{{ ::tpy::cpy::Py_DecRef(__m); return nullptr; }}\n")
                 out.write(f"        {registry}.push_back("
-                          f'{{std::type_index(typeid({e["cpp_type"]})), {e["var"]}}});\n')
+                          f'{{std::type_index(typeid({e["cpp_type"]})), '
+                          f'{e["var"]}, {e["setter"]}}});\n')
             for c in exposed_classes:
                 base = f"{sym}__{escape_cpp_name(c['simple'])}"
                 out.write(f'        {c["var"]} = ::tpy::cpy::PyType_FromSpec('

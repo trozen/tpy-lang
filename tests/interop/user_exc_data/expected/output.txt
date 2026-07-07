@@ -1,2 +1,8 @@
 ParseError
+True
+7
+unexpected token
+b'raw'
+True
+True
 5

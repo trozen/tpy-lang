@@ -6018,6 +6018,23 @@ class TypeRegistry:
             return list(record.fields)
         return self.get_all_fields(parent) + list(record.fields)
 
+    def user_declared_fields(self, record: RecordInfo) -> list[FieldInfo]:
+        """Fields declared on a record and its NON-native ancestor records,
+        base-first. Unlike get_all_fields, this skips native-base fields -- for a
+        user exception the native BaseException carries a `message` field that is
+        the what()/str() source, not a data attribute, so it must not be treated
+        as one. Used for the CPython-interop exception data-field crossing, which
+        marshals only user-declared data fields (own + inherited from user bases).
+        Post-registration only (walks mro_ancestors); every current caller
+        (sema validation + codegen) runs after registration.
+        """
+        result: list[FieldInfo] = []
+        for anc in self.iter_ancestor_records(record, reverse=True):
+            if not anc.is_native:
+                result.extend(anc.fields)
+        result.extend(record.fields)
+        return result
+
     def find_record_by_qname(self, qname: str) -> Optional[RecordInfo]:
         """Find a record by qualified name (e.g. 'builtins.Exception')."""
         # Check @builtin_type index first

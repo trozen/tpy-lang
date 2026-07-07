@@ -2,11 +2,14 @@
 #include "userexcd.hpp"
 #include "tpy/interop/marshal.hpp"
 #include "tpy/interop/exc_bridge.hpp"
+#include "tpy/interop/enum_bridge.hpp"
 
 namespace {
 using namespace ::tpy::cpy;
 
 ::tpy::interop::ExcRegistry userexcd__exc_registry;
+
+PyObject *userexcd__enum_Severity = nullptr;
 
 PyObject *userexcd__parse_pywrap(PyObject *self, PyObject *args, PyObject *kwargs) {
     static char *__kwlist[] = {const_cast<char *>("n"), nullptr};
@@ -22,6 +25,43 @@ PyObject *userexcd__parse_pywrap(PyObject *self, PyObject *args, PyObject *kwarg
         if (!PyErr_Occurred())
             PyErr_SetString(PyExc_RuntimeError, "tpy extension: unhandled error");
         return nullptr;
+    }
+}
+
+void userexcd__exc_ParseError_seterr(const ::tpy::BaseException &__base, PyObject *__pytype) noexcept {
+    const auto &__e = static_cast<const ::tpyapp::userexcd::ParseError &>(__base);
+    PyObject *__inst = nullptr;
+    try {
+        PyObject *__args = ::tpy::cpy::Py_BuildValue("(s)", __e.what());
+        if (!__args) return;
+        __inst = ::tpy::cpy::PyObject_Call(__pytype, __args, nullptr);
+        ::tpy::cpy::Py_DecRef(__args);
+        if (!__inst) return;
+        { PyObject *__v = ::tpy::interop::to_py(__e.line);
+          if (!__v) { ::tpy::cpy::Py_DecRef(__inst); return; }
+          if (::tpy::cpy::PyObject_SetAttrString(__inst, "line", __v) < 0) {
+            ::tpy::cpy::Py_DecRef(__v); ::tpy::cpy::Py_DecRef(__inst); return; }
+          ::tpy::cpy::Py_DecRef(__v); }
+        { PyObject *__v = ::tpy::interop::to_py(__e.detail);
+          if (!__v) { ::tpy::cpy::Py_DecRef(__inst); return; }
+          if (::tpy::cpy::PyObject_SetAttrString(__inst, "detail", __v) < 0) {
+            ::tpy::cpy::Py_DecRef(__v); ::tpy::cpy::Py_DecRef(__inst); return; }
+          ::tpy::cpy::Py_DecRef(__v); }
+        { PyObject *__v = ::tpy::interop::to_py(__e.payload);
+          if (!__v) { ::tpy::cpy::Py_DecRef(__inst); return; }
+          if (::tpy::cpy::PyObject_SetAttrString(__inst, "payload", __v) < 0) {
+            ::tpy::cpy::Py_DecRef(__v); ::tpy::cpy::Py_DecRef(__inst); return; }
+          ::tpy::cpy::Py_DecRef(__v); }
+        { PyObject *__v = ::tpy::interop::enum_to_py(userexcd__enum_Severity, static_cast<int32_t>(__e.severity));
+          if (!__v) { ::tpy::cpy::Py_DecRef(__inst); return; }
+          if (::tpy::cpy::PyObject_SetAttrString(__inst, "severity", __v) < 0) {
+            ::tpy::cpy::Py_DecRef(__v); ::tpy::cpy::Py_DecRef(__inst); return; }
+          ::tpy::cpy::Py_DecRef(__v); }
+        ::tpy::cpy::PyErr_SetObject(__pytype, __inst);
+        ::tpy::cpy::Py_DecRef(__inst);
+    } catch (...) {
+        if (__inst) ::tpy::cpy::Py_DecRef(__inst);
+        if (!::tpy::cpy::PyErr_Occurred()) ::tpy::cpy::PyErr_NoMemory();
     }
 }
 
@@ -47,7 +87,19 @@ extern "C" PyObject *PyInit_userexcd(void) {
         PyObject *userexcd__exc_ParseError = ::tpy::cpy::PyErr_NewException("userexcd.ParseError", ::tpy::interop::py_exc_by_name("ValueError"), nullptr);
         if (!userexcd__exc_ParseError) { ::tpy::cpy::Py_DecRef(__m); return nullptr; }
         if (::tpy::cpy::PyModule_AddObjectRef(__m, "ParseError", userexcd__exc_ParseError) < 0) { ::tpy::cpy::Py_DecRef(__m); return nullptr; }
-        userexcd__exc_registry.push_back({std::type_index(typeid(::tpyapp::userexcd::ParseError)), userexcd__exc_ParseError});
+        userexcd__exc_registry.push_back({std::type_index(typeid(::tpyapp::userexcd::ParseError)), userexcd__exc_ParseError, userexcd__exc_ParseError_seterr});
+        {
+            PyObject *__d = ::tpy::cpy::PyDict_New();
+            if (!__d) { ::tpy::cpy::Py_DecRef(__m); return nullptr; }
+            if (::tpy::interop::enum_dict_add(__d, "WARN", ::tpy::interop::to_py(static_cast<int32_t>(1))) < 0 ||
+            ::tpy::interop::enum_dict_add(__d, "FATAL", ::tpy::interop::to_py(static_cast<int32_t>(2))) < 0) {
+                ::tpy::cpy::Py_DecRef(__d); ::tpy::cpy::Py_DecRef(__m); return nullptr;
+            }
+            userexcd__enum_Severity = ::tpy::interop::make_enum("Severity", "userexcd", true, __d);
+            ::tpy::cpy::Py_DecRef(__d);
+            if (!userexcd__enum_Severity) { ::tpy::cpy::Py_DecRef(__m); return nullptr; }
+            if (::tpy::cpy::PyModule_AddObjectRef(__m, "Severity", userexcd__enum_Severity) < 0) { ::tpy::cpy::Py_DecRef(userexcd__enum_Severity); ::tpy::cpy::Py_DecRef(__m); return nullptr; }
+        }
         ::tpyapp::userexcd::__tpy_init();
         return __m;
     } catch (const ::tpy::BaseException &__e) {

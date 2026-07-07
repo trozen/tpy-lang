@@ -28,9 +28,9 @@
 #pragma once
 
 #include <string_view>
+#include <tuple>
 #include <typeindex>
 #include <typeinfo>
-#include <utility>
 #include <vector>
 
 #include "tpy/core.hpp"
@@ -54,14 +54,29 @@ namespace tpy::interop {
     X(StopIteration) X(StopAsyncIteration) X(GeneratorExit) \
     X(KeyboardInterrupt) X(Exception)
 
-// Maps a user exception's C++ type to its Python type, populated once at
-// PyInit_. A vector (not a map) -- a module has a handful of exception classes,
-// and exact type_index match is the only query. Each glue TU owns one static
-// registry holding strong PyObject* refs for the .so's lifetime (the type
-// objects live forever, like the interpreter's own exception singletons);
+// The per-type "raise this across the boundary" action: given the caught
+// exception and its Python type, set the Python error. A message-only exception
+// uses the default below (PyErr_SetString); a data-carrying one uses a glue-
+// generated setter that constructs an instance, marshals each data field to an
+// instance attribute, and PyErr_SetObject's it.
+using ExcSetErr = void (*)(const tpy::BaseException &, cpy::PyObject *) noexcept;
+
+// Maps a user exception's C++ type to its Python type + setter, populated once
+// at PyInit_. A vector (not a map) -- a module has a handful of exception
+// classes, and exact type_index match is the only query. Each glue TU owns one
+// static registry holding strong PyObject* refs for the .so's lifetime (the
+// type objects live forever, like the interpreter's own exception singletons);
 // type_index keys are globally unique, so multiple ext modules coexisting in
 // one interpreter never collide.
-using ExcRegistry = std::vector<std::pair<std::type_index, cpy::PyObject *>>;
+using ExcRegistry =
+    std::vector<std::tuple<std::type_index, cpy::PyObject *, ExcSetErr>>;
+
+// The default setter: message field only, no data attributes. Used for message-
+// only user exceptions and as the fallback for built-in exception types.
+inline void exc_set_err_message_only(const tpy::BaseException &e,
+                                     cpy::PyObject *pytype) noexcept {
+    cpy::PyErr_SetString(pytype, e.what());
+}
 
 // Maps a body-raised built-in exception to its PyExc_* by exact-then-base
 // dynamic type. An unlisted subclass degrades to its nearest listed base.
@@ -94,14 +109,14 @@ inline void set_py_err_from(const tpy::BaseException &e) noexcept {
 }
 
 // A user exception matches by EXACT dynamic type (typeid on the polymorphic
-// base), so its own Python type wins; an unregistered type (built-in, or a
-// user exc not defined in this module) falls to the built-in cascade.
+// base), so its own Python type + setter win; an unregistered type (built-in, or
+// a user exc not defined in this module) falls to the built-in cascade.
 inline void set_py_err_from(const tpy::BaseException &e,
                             const ExcRegistry &reg) noexcept {
     const std::type_index key(typeid(e));
-    for (const auto &[ti, pytype] : reg) {
+    for (const auto &[ti, pytype, set_err] : reg) {
         if (ti == key) {
-            cpy::PyErr_SetString(pytype, e.what());
+            set_err(e, pytype);
             return;
         }
     }

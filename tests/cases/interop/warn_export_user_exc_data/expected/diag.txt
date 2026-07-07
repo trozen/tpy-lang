@@ -1,1 +1,0 @@
-main.py:24: warning: @export function 'parse': raising 'ParseError' across the CPython boundary carries only its type and message; its data field(s) (line) do not cross

@@ -3077,7 +3077,6 @@ class Compiler:
         try:
             analyzer.analyze_bodies(compiled.ast)
             analyzer.run_phase2_fixpoint(compiled.ast)
-            analyzer._warn_export_user_exc_data(compiled.ast)
             analyzer._warn_export_class_return_alias(compiled.ast)
             analyzer._validate_export_class_dunders(compiled.ast)
             analyzer._warn_export_class_unexposed_dunders(compiled.ast)
@@ -4046,6 +4045,7 @@ class Compiler:
                     continue
                 self._validate_exposed_class(compiled, record)
             self._validate_exposed_enums(compiled)
+            self._validate_user_exc_data_fields(compiled)
 
     def _warn_export_copy_boundary_mutation(self, compiled: 'CompiledModule',
                                             func: 'TpyFunction') -> None:
@@ -4126,6 +4126,55 @@ class Compiler:
                         "exposed to CPython yet (only top-level module enums "
                         "are exposed)",
                         compiled.name, compiled.path, lineno=loc)
+
+    def _validate_user_exc_data_fields(self, compiled: 'CompiledModule') -> None:
+        """A data-carrying user exception crosses its instance fields to CPython
+        as attributes (PyErr_SetObject over a constructed instance). v1 marshals
+        scalar/str/bytes/exposed-enum fields via the getset single-value path; a
+        container or exposed-class field has no attribute-marshal emit yet, so
+        reject it (located) rather than emit a glue TU that won't compile.
+        """
+        from .type_def_registry import (
+            is_boundary_marshallable, is_exposed_class, is_exposed_enum,
+            boundary_type_name)
+        reg = compiled.analyzer.registry
+        for record in compiled.ast.records:
+            info = reg.get_record(record.name)
+            if info is None or info.is_native:
+                continue
+            if not (info.implements_throwable and info.inherits_base_exception):
+                continue
+
+            def line_of(fld) -> 'int | None':
+                return (fld.loc.line if fld.loc else
+                        (record.loc.line if record.loc else None))
+
+            for fld in reg.user_declared_fields(info):
+                if is_exposed_enum(fld.type):
+                    # A locally-defined exposed enum crosses; a cross-module one
+                    # has no type handle in this glue TU. Reuse the sibling
+                    # locality check so the two paths can't drift.
+                    form_err = self._exposed_form_error(
+                        fld.type, "field", reg, compiled)
+                    if form_err is not None:
+                        raise CompileError(
+                            f"user exception '{record.name}': data field "
+                            f"'{fld.name}' {form_err}",
+                            compiled.name, compiled.path, lineno=line_of(fld))
+                    continue
+                # Exposed-class fields are excluded explicitly (even value-type):
+                # the attribute path can't marshal a nested class instance yet
+                # (deferred). Containers fail the base marshallable check.
+                if (is_boundary_marshallable(fld.type, False)
+                        and not is_exposed_class(fld.type)):
+                    continue
+                raise CompileError(
+                    f"user exception '{record.name}': data field '{fld.name}' "
+                    f"of type {boundary_type_name(fld.type)} cannot cross the "
+                    f"CPython boundary as an instance attribute (only scalar, "
+                    f"str, bytes, and exposed-enum exception fields are "
+                    f"supported yet)",
+                    compiled.name, compiled.path, lineno=line_of(fld))
 
     def _validate_exposed_class(self, compiled: 'CompiledModule',
                                 record: 'TpyRecord') -> None:

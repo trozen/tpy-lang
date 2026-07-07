@@ -6039,22 +6039,25 @@ API, floor 3.12, hand-rolled C-API glue, copy-in marshalling).
   in an ext_module gets its own Python type, created at `PyInit_`
   (`PyErr_NewException`, inheriting its built-in base's `PyExc_*` or an already-
   created user base), added to the module (importable as `mymod.MyError`) and
-  registered `typeid -> PyObject*`; `set_py_err_from` consults that registry by
-  exact dynamic type before the built-in cascade. So `raise NotFound("k")`
-  (where `class NotFound(KeyError)`) reaches the caller as `mymod.NotFound`,
-  catchable as `NotFound` **and** as `KeyError` -- no longer degrading to
-  `KeyError`. **Message-only** exception classes (the message is the only state)
-  cross faithfully. A **data-carrying** exception class (instance fields beyond
-  the message) crosses by *type and message field* only -- its data fields do
-  not cross, and because the boundary reconstructs the instance from the message
-  alone, `str(e)` for a multi-arg constructor also differs from CPython (which
-  keeps the full `args` tuple). A direct `raise DataExc(...)` in an `@export`
-  body **warns** at compile time. Full per-field crossing is a deferred rung.
-  Excluded from v1 (deferred, tracked in `TODO.md`): faithful data-field
-  crossing; transitive raises (the warning catches only direct raises in
-  `@export` bodies); user exceptions defined in *another* module and raised at
-  the boundary (only ext_module-defined classes get a type -- imported ones
-  still degrade); a spelling to silence the data-carrying warning.
+  registered `typeid -> PyObject* + setter`; `set_py_err_from` consults that
+  registry by exact dynamic type before the built-in cascade. So `raise
+  NotFound("k")` (where `class NotFound(KeyError)`) reaches the caller as
+  `mymod.NotFound`, catchable as `NotFound` **and** as `KeyError` -- no longer
+  degrading to `KeyError`. A **data-carrying** exception class crosses its
+  instance fields (scalar / str / bytes / exposed-enum) as **instance
+  attributes**: the registered setter constructs an instance from the message
+  (`pytype(e.what())`), marshals each field via `PyObject_SetAttrString`, then
+  `PyErr_SetObject`s it. The crossing is *transitive* (registry-driven).
+  **Acknowledged divergence:** `str(e)` and `e.args` reflect the message field
+  only, not the full constructor arg tuple (the C++ exception holds typed
+  fields, not the original call tuple; CPython-native keeps `args =
+  (message, *fields)`). This is a documented divergence, not a warning --
+  unavoidable under TPy's model with no author-side action, so it does not warn.
+  Excluded from v1 (deferred, tracked in
+  `TODO.md`): container / exposed-class data fields (located error); full `args`
+  fidelity; exception chaining; user exceptions defined in *another* module and
+  raised at the boundary (only ext_module-defined classes get a type -- imported
+  ones still degrade).
 - **Working (exposed classes)**: a class marked `@export` in an ext_module is
   exposed as a real CPython type built at `PyInit_` via `PyType_FromSpec`
   (importable as `mymod.Counter`). The instance embeds the TPy C++ payload

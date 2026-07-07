@@ -65,6 +65,16 @@ void Py_DecRef(PyObject *o);
 void Py_IncRef(PyObject *o);
 PyObject *PyErr_Occurred(void);
 void PyErr_SetString(PyObject *type, const char *message);
+// Faithful data-carrying user exception crossing: construct an instance, set
+// each data field as an instance attribute (SetAttrString does not steal the
+// value ref), then raise it. SetObject normalizes a non-instance value, but the
+// glue always passes a constructed instance so attributes survive.
+void PyErr_SetObject(PyObject *type, PyObject *value);
+int PyObject_SetAttrString(PyObject *o, const char *attr, PyObject *v);
+// Sets MemoryError and returns NULL without allocating -- the safe fallback when
+// a data-field marshaller throws under OOM (a fresh PyErr_SetString would need
+// to allocate the very memory that just ran out).
+PyObject *PyErr_NoMemory(void);
 // Used by an arithmetic/ordering operator slot to downgrade a wrong-typed
 // operand's TypeError (from from_py/instance_payload/enum_from_py) into
 // NotImplemented, letting CPython try the reflected operand instead of

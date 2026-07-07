@@ -111,19 +111,19 @@ extern "C" PyObject *PyInit_userexc(void) {
         PyObject *userexc__exc_NotFound = ::tpy::cpy::PyErr_NewException("userexc.NotFound", ::tpy::interop::py_exc_by_name("KeyError"), nullptr);
         if (!userexc__exc_NotFound) { ::tpy::cpy::Py_DecRef(__m); return nullptr; }
         if (::tpy::cpy::PyModule_AddObjectRef(__m, "NotFound", userexc__exc_NotFound) < 0) { ::tpy::cpy::Py_DecRef(__m); return nullptr; }
-        userexc__exc_registry.push_back({std::type_index(typeid(::tpyapp::userexc::NotFound)), userexc__exc_NotFound});
+        userexc__exc_registry.push_back({std::type_index(typeid(::tpyapp::userexc::NotFound)), userexc__exc_NotFound, ::tpy::interop::exc_set_err_message_only});
         PyObject *userexc__exc_AppError = ::tpy::cpy::PyErr_NewException("userexc.AppError", ::tpy::interop::py_exc_by_name("Exception"), nullptr);
         if (!userexc__exc_AppError) { ::tpy::cpy::Py_DecRef(__m); return nullptr; }
         if (::tpy::cpy::PyModule_AddObjectRef(__m, "AppError", userexc__exc_AppError) < 0) { ::tpy::cpy::Py_DecRef(__m); return nullptr; }
-        userexc__exc_registry.push_back({std::type_index(typeid(::tpyapp::userexc::AppError)), userexc__exc_AppError});
+        userexc__exc_registry.push_back({std::type_index(typeid(::tpyapp::userexc::AppError)), userexc__exc_AppError, ::tpy::interop::exc_set_err_message_only});
         PyObject *userexc__exc_FatalError = ::tpy::cpy::PyErr_NewException("userexc.FatalError", ::tpy::interop::py_exc_by_name("BaseException"), nullptr);
         if (!userexc__exc_FatalError) { ::tpy::cpy::Py_DecRef(__m); return nullptr; }
         if (::tpy::cpy::PyModule_AddObjectRef(__m, "FatalError", userexc__exc_FatalError) < 0) { ::tpy::cpy::Py_DecRef(__m); return nullptr; }
-        userexc__exc_registry.push_back({std::type_index(typeid(::tpyapp::userexc::FatalError)), userexc__exc_FatalError});
+        userexc__exc_registry.push_back({std::type_index(typeid(::tpyapp::userexc::FatalError)), userexc__exc_FatalError, ::tpy::interop::exc_set_err_message_only});
         PyObject *userexc__exc_ConfigError = ::tpy::cpy::PyErr_NewException("userexc.ConfigError", userexc__exc_AppError, nullptr);
         if (!userexc__exc_ConfigError) { ::tpy::cpy::Py_DecRef(__m); return nullptr; }
         if (::tpy::cpy::PyModule_AddObjectRef(__m, "ConfigError", userexc__exc_ConfigError) < 0) { ::tpy::cpy::Py_DecRef(__m); return nullptr; }
-        userexc__exc_registry.push_back({std::type_index(typeid(::tpyapp::userexc::ConfigError)), userexc__exc_ConfigError});
+        userexc__exc_registry.push_back({std::type_index(typeid(::tpyapp::userexc::ConfigError)), userexc__exc_ConfigError, ::tpy::interop::exc_set_err_message_only});
         ::tpyapp::userexc::__tpy_init();
         return __m;
     } catch (const ::tpy::BaseException &__e) {
