@@ -1,2 +1,0 @@
-main.py:17: error: @export function 'f': parameter 'xs' of type 'list[Color]' cannot cross the CPython boundary yet
-  supported types: the fixed-width ints, int, float, bool, str, bytes, @export classes/enums defined in this module; list/dict/set/tuple of those as function/method params/returns (not fields); a numeric Span as a param only (return numeric data as list[T])

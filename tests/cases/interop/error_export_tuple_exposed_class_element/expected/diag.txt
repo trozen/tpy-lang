@@ -1,0 +1,1 @@
+main.py:17: error: @export function 'f': parameter 't' has an exposed-class tuple element 'Counter', which is not supported yet -- a tuple's non-value element uses borrow form (use a list/dict of the class, or a value-type/enum tuple element)

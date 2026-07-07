@@ -1,0 +1,1 @@
+main.py:18: error: @export function 'f': parameter 'hs' has a @nocopy exposed-class container element 'Handle', which cannot cross -- each element is copied at the boundary, but @nocopy forbids the copy

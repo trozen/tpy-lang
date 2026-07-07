@@ -1,0 +1,1 @@
+main.py:17: error: Type 'Counter' cannot be used as a set element (missing __hash__ and __eq__; use @dataclass(frozen=True) or define them explicitly)

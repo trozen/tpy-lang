@@ -1,0 +1,1 @@
+main.py:17: error: @export function 'f': parameter 'm' has an exposed-class element 'Counter' nested inside a container element, which is not supported yet -- only a top-level container element crosses (flatten the nesting)

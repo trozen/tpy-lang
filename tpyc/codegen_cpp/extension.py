@@ -254,6 +254,17 @@ class ExtensionGenerator:
         inner = _boundary_inner(typ)
         elems = _container_element_types(inner)
         if elems is None:
+            # A locally-exposed enum/class element marshals through its module
+            # type handle, exactly like a top-level param -- copy-in into the
+            # container's stored element. (Cross-module elements are rejected in
+            # the validator, so the handle is always this module's.)
+            if is_exposed_class(inner):
+                cpp, tv = self._class_cpp_var(inner, escape_cpp_name(self.ctx.module_name))
+                return (f"*::tpy::interop::instance_payload<{cpp}>("
+                        f"{src}, (::tpy::cpy::PyTypeObject *){tv})")
+            if is_exposed_enum(inner):
+                cpp, ev = self._enum_cpp_var(inner, escape_cpp_name(self.ctx.module_name))
+                return f"::tpy::interop::enum_from_py<{cpp}>({src}, {ev})"
             return f"::tpy::interop::from_py<{boundary_cpp_type(inner)}>({src})"
         if is_list(inner):
             return (f"::tpy::interop::list_from_py<{self._elem_cpp(elems[0])}>("
@@ -278,10 +289,18 @@ class ExtensionGenerator:
     def _marshal_out_expr(self, typ: TpyType, src: str, depth: int) -> str:
         """A C++ expression producing a new PyObject* (nullptr on failure) from
         the TPy value `src`. Mirror of _marshal_in_expr; container leaves are
-        scalar/str/bytes (exposed-class/enum elements are rejected at sema)."""
+        scalar/str/bytes or a locally-exposed enum/class element."""
         inner = _boundary_inner(typ)
         elems = _container_element_types(inner)
         if elems is None:
+            if is_exposed_class(inner):
+                _cpp, tv = self._class_cpp_var(inner, escape_cpp_name(self.ctx.module_name))
+                return (f"::tpy::interop::instance_to_py("
+                        f"(::tpy::cpy::PyTypeObject *){tv}, {src})")
+            if is_exposed_enum(inner):
+                _cpp, ev = self._enum_cpp_var(inner, escape_cpp_name(self.ctx.module_name))
+                und = enum_info_of(inner).underlying_type.to_cpp()
+                return f"::tpy::interop::enum_to_py({ev}, static_cast<{und}>({src}))"
             return f"::tpy::interop::to_py({src})"
         if is_list(inner):
             return (f"::tpy::interop::list_to_py("
@@ -304,8 +323,32 @@ class ExtensionGenerator:
     def _elem_cpp(self, et: TpyType) -> str:
         # Stored form: a container holds owned elements (str -> std::string,
         # bytes -> std::vector<uint8_t>), matching what the container's own C++
-        # render instantiates and what from_py<leaf>/to_py are keyed on.
-        return _boundary_inner(et).to_cpp_stored()
+        # render instantiates and what from_py<leaf>/to_py are keyed on. An
+        # exposed class/enum element needs its NAMESPACE-QUALIFIED C++ name (the
+        # same one the handle path uses) -- to_cpp_stored() yields the bare name,
+        # which is not visible in the glue's anonymous namespace.
+        inner = _boundary_inner(et)
+        if is_exposed_class(inner):
+            return self._class_cpp_var(inner, escape_cpp_name(self.ctx.module_name))[0]
+        if is_exposed_enum(inner):
+            return self._enum_cpp_var(inner, escape_cpp_name(self.ctx.module_name))[0]
+        return inner.to_cpp_stored()
+
+    def _container_has_exposed_element(self, typ: TpyType) -> bool:
+        """Whether a container type has (recursively) an exposed enum/class
+        element -- those render as bare namespace-local C++ names, so the glue
+        must qualify them / declare the local via `auto` instead of the bare
+        container render."""
+        elems = _container_element_types(_boundary_inner(typ))
+        if elems is None:
+            return False
+        for e in elems:
+            ei = _boundary_inner(e)
+            if is_exposed_class(ei) or is_exposed_enum(ei):
+                return True
+            if self._container_has_exposed_element(ei):
+                return True
+        return False
 
     def _span_elem_cpp(self, typ: TpyType) -> str:
         """The numeric C++ element type of a Span[T]/Span[readonly[T]] param
@@ -341,9 +384,18 @@ class ExtensionGenerator:
             out.write(f"        std::vector<{elem_cpp}> __p{idx} = "
                       f"::tpy::interop::span_from_py<{elem_cpp}>(a{idx});\n")
         elif _container_element_types(_boundary_inner(typ)) is not None:
-            cpp = boundary_cpp_type(_boundary_inner(typ))
-            out.write(f"        {cpp} __p{idx} = "
-                      f"{self._marshal_in_expr(typ, f'a{idx}', 0)};\n")
+            if self._container_has_exposed_element(_boundary_inner(typ)):
+                # An exposed class/enum element renders as a bare
+                # (namespace-local) C++ name that doesn't resolve in the glue's
+                # namespace; let the marshaller's qualified return type drive the
+                # local via `auto` (it is the same std::vector<...> the callee's
+                # in-namespace signature names).
+                out.write(f"        auto __p{idx} = "
+                          f"{self._marshal_in_expr(typ, f'a{idx}', 0)};\n")
+            else:
+                cpp = boundary_cpp_type(_boundary_inner(typ))
+                out.write(f"        {cpp} __p{idx} = "
+                          f"{self._marshal_in_expr(typ, f'a{idx}', 0)};\n")
         else:
             cpp = boundary_cpp_type(_boundary_inner(typ))
             out.write(f"        {cpp} __p{idx} = "

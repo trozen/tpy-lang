@@ -583,14 +583,19 @@ def _container_element_types(t: "TpyType") -> "list[TpyType] | None":
 
 def _is_marshallable_element(t: "TpyType") -> bool:
     """Whether `t` may appear as a container element/key/value: a scalar/str/
-    bytes leaf or a nested marshallable container. Unlike the top-level rule,
-    exposed class/enum types are rejected here -- they have no per-element type
-    handle yet (deferred)."""
+    bytes leaf, a nested marshallable container, or an exposed enum/class
+    (marshalled per-element through its module type handle). An exposed CLASS in
+    a Hashable-required position (a `set` element or dict key) is already
+    rejected upstream by the general Hashable check -- a class doesn't conform to
+    Hashable -- so no boundary-specific guard is needed here; an exposed enum
+    conforms and marshals in any position. (A cross-module exposed element passes
+    this shape check but is rejected with a located error in the validator, which
+    owns the module context.)"""
     inner = _boundary_inner(t)
     if _container_element_types(inner) is not None:
         return is_function_boundary_marshallable(inner)  # nested container
     if is_exposed_class(inner) or is_exposed_enum(inner):
-        return False
+        return True
     td = type_def_of(inner)
     return td is not None and td.boundary_marshal
 

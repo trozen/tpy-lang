@@ -1,0 +1,1 @@
+main.py:11: error: @export function 'f': parameter 'cs' has an exposed-enum container element from another module, which cannot cross the boundary yet (cross-module exposed types are deferred -- define and @export the enum in this module)

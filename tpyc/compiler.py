@@ -4266,10 +4266,93 @@ class Compiler:
             case -- the class's qualified C++ name and CPython type handle are
             keyed to the defining module's glue, not this one.
         """
-        from .typesys import OwnType, RefType
+        from .typesys import OwnType, RefType, TupleType
         from .type_def_registry import (
-            is_exposed_class, is_exposed_enum, _boundary_inner, enum_info_of)
+            is_exposed_class, is_exposed_enum, _boundary_inner, enum_info_of,
+            _container_element_types)
         module_name = compiled.analyzer.ctx.module_name
+
+        def _unsupported_exposed_element(t, depth: int = 0) -> 'str | None':
+            # Element shapes the per-element marshaller can't emit yet -- reject
+            # with a located error instead of an opaque C++ failure. depth 0 = a
+            # direct container element; depth > 0 = nested inside one. A copyable
+            # local exposed class/enum as a direct list/tuple(enum)/dict-value
+            # element crosses; the shapes below don't.
+            inner_t = _boundary_inner(t)
+            sub = _container_element_types(inner_t)
+            if sub is None:
+                return None
+            is_tuple = isinstance(inner_t, TupleType)
+            for et in sub:
+                ei = _boundary_inner(et)
+                if is_exposed_class(ei):
+                    info = registry.get_record_for_type(ei)
+                    cls = info.name if info is not None else "the class"
+                    if info is not None and info.is_nocopy:
+                        return (f"has a @nocopy exposed-class container element "
+                                f"'{cls}', which cannot cross -- each element is "
+                                f"copied at the boundary, but @nocopy forbids the "
+                                f"copy")
+                    if depth > 0:
+                        return (f"has an exposed-class element '{cls}' nested "
+                                f"inside a container element, which is not "
+                                f"supported yet -- only a top-level container "
+                                f"element crosses (flatten the nesting)")
+                    if is_tuple:
+                        return (f"has an exposed-class tuple element '{cls}', which "
+                                f"is not supported yet -- a tuple's non-value "
+                                f"element uses borrow form (use a list/dict of the "
+                                f"class, or a value-type/enum tuple element)")
+                elif is_exposed_enum(ei):
+                    if depth > 0:
+                        return ("has an exposed-enum element nested inside a "
+                                "container element, which is not supported yet -- "
+                                "only a top-level container element crosses "
+                                "(flatten the nesting)")
+                else:
+                    nested = _unsupported_exposed_element(et, depth + 1)
+                    if nested is not None:
+                        return nested
+            return None
+
+        def _foreign_exposed_element(t) -> 'str | None':
+            # A container element that is a cross-module exposed enum/class has
+            # no handle in this glue TU (same reason a top-level cross-module
+            # param is rejected) -- recurse so a nested element is caught too.
+            sub = _container_element_types(_boundary_inner(t))
+            if sub is None:
+                return None
+            for et in sub:
+                ei = _boundary_inner(et)
+                if is_exposed_enum(ei):
+                    einfo = enum_info_of(ei)
+                    if (einfo is not None and einfo.module_name is not None
+                            and einfo.module_name != module_name):
+                        return ("has an exposed-enum container element from "
+                                "another module, which cannot cross the boundary "
+                                "yet (cross-module exposed types are deferred -- "
+                                "define and @export the enum in this module)")
+                elif is_exposed_class(ei):
+                    if registry.imported_record_qualification_for_type(
+                            ei, module_name) is not None:
+                        return ("has an exposed-class container element from "
+                                "another module, which cannot cross the boundary "
+                                "yet (cross-module exposed types are deferred -- "
+                                "define and @export the class in this module)")
+                else:
+                    nested = _foreign_exposed_element(et)
+                    if nested is not None:
+                        return nested
+            return None
+
+        container_err = _foreign_exposed_element(typ)
+        if container_err is not None:
+            return container_err
+
+        unsupported_err = _unsupported_exposed_element(typ)
+        if unsupported_err is not None:
+            return unsupported_err
+
         if is_exposed_enum(typ):
             # Only enums DEFINED + @export-ed in this module get a handle in this
             # glue TU; an imported exposed enum is admitted by the shared

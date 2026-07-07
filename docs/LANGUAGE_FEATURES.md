@@ -5969,10 +5969,23 @@ API, floor 3.12, hand-rolled C-API glue, copy-in marshalling).
   strict-by-container-kind IN: a wrong container kind
   / tuple arity is a `TypeError` where the untyped source accepts any iterable.
   (3) per-element scalar coercion (`list[int]` coerces `True -> 1`), so distinct
-  keys can collapse (`{1, True}` -> `set[int]`). Exposed class/enum types are
-  valid top-level boundary types but **not yet** container elements (no
-  per-element type handle); `list[SomeExportedClass]` is rejected. Verified in
-  `tests/interop/containers/` and `tests/interop/class_method_containers/`.
+  keys can collapse (`{1, True}` -> `set[int]`). Exposed **enums and classes are
+  valid TOP-LEVEL container elements** (`list[Color]`, `list[Counter]`,
+  `dict[str, Counter]`, `set[Color]`, `dict[Color, V]`, `tuple[Color, Int64]`):
+  each element marshals through its module type handle, copy-in/out like every
+  other element. An enum element preserves the member singleton; a class element
+  copies, so a mutated class-element param is the same copy cliff -- the
+  mutated-param warning already covers element mutation. An exposed enum crosses
+  in any position; an exposed **class cannot be a `set` element or dict key** (a
+  class doesn't conform to Hashable). **Deferred (located errors, not
+  misbuilds):** an exposed **class as a tuple element** (a tuple's non-value
+  element uses borrow form -- use a list/dict, or a value-type/enum tuple
+  element), any exposed type **nested inside a container element**
+  (`dict[str, list[Counter]]` -- per-element qualification below the top level),
+  a **`@nocopy`** exposed class as a container element (each element is copied),
+  and a **cross-module** exposed element. Verified in `tests/interop/containers/`,
+  `tests/interop/class_method_containers/`, and
+  `tests/interop/container_exposed_elements/`.
 - **Working (`Span[T]` numeric, buffer protocol)**: a `Span[readonly[T]]` or
   `Span[T]` param (`T` a fixed-width int or `float`) binds to any
   buffer-protocol object -- `array.array`, `memoryview`, `bytes`/`bytearray`,

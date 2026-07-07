@@ -57,7 +57,7 @@ progress -> ✅ done.
 | 4 | **Classes + methods** (`PyType_FromSpec`; dunders per Q4) | **v1.1** | 🚧 baseline done: construct + plain methods + annotated fields as getset (scalars/str/bytes/exposed-enum/exposed-value-type; a value type is exposed read-only; a mutable reference class-typed field is rejected -- copy-out breaks write-through), instances as free-fn/method params (borrow) + returns (copy); dunders (Q4) DONE -- all three checkpoints (repr/str/eq/ne/lt/le/gt/ge/hash; arithmetic/ordering operators incl. in-place; container protocol) landed; inheritance/@property/reference-class fields still deferred |
 | 5 | **Enums + constants** | **v1.1** | 🚧 `@export` enums recreated as real CPython IntEnum/Enum (functional API, module= set); enum values cross as @export fn params/returns (member round-trip, strict-by-type IN); `Final` scalar/str constants as init-time module-attribute snapshots; nested/cross-module enums deferred |
 | 3.5 | Foreign-borrow primitive -> zero-copy str + buffer input | post-v1.0 (next) -- IR-gated | 🔬 |
-| 6 | Containers (`list`/`dict`/`set`/`tuple`, by-copy) | v1-adjacent | 🚧 done: list/dict/set/tuple cross as @export fn AND exposed-class method/`__init__` params/returns, O(n) recursive copy-in/out (str/bytes elements + arbitrary nesting); strict-by-container-kind IN; a mutated container param warns (copy-in, not visible to caller); a borrow-form container return warns (copy-out, Own[...] acknowledges); a *container* getset field stays rejected (an enum or value-type field IS admitted -- see row 4); exposed class/enum *elements* deferred |
+| 6 | Containers (`list`/`dict`/`set`/`tuple`, by-copy) | v1-adjacent | 🚧 done: list/dict/set/tuple cross as @export fn AND exposed-class method/`__init__` params/returns, O(n) recursive copy-in/out (str/bytes elements + arbitrary nesting); strict-by-container-kind IN; a mutated container param warns (copy-in, not visible to caller); a borrow-form container return warns (copy-out, Own[...] acknowledges); a *container* getset field stays rejected (an enum or value-type field IS admitted -- see row 4); exposed enum/class *top-level elements* now cross (deferred: class as a tuple element, nested-in-a-container element, @nocopy element, class set-element/dict-key) |
 | 7 | `nogil` / `with gil` (parallelism + GIL checking) | later | 🔬 |
 | 8 | Embedding, callbacks / opaque `PyRef`, async <-> `asyncio` | later | 🔬 |
 
@@ -423,9 +423,25 @@ Three acknowledged, documented divergences from the aliasing CPython source:
   `type(k)` flips) -- and two keys that collapse under the leaf conversion
   (`{1, True}` -> `set[int]`) merge.
 
-Exposed class/enum types are **not** yet admitted as container elements (the
-per-element converter has no module type handle to round-trip through);
-`list[SomeExportedClass]` is rejected with the unmarshallable diagnostic.
+Exposed enums and classes **are** admitted as TOP-LEVEL container elements
+(`list[Color]`, `list[Counter]`, `dict[str, Counter]`, `set[Color]`,
+`dict[Color, V]`, `tuple[Color, Int64]`): each element marshals through its
+module type handle threaded into the per-element converter, copy-in/out like
+every other element. An enum element preserves the member singleton; a class
+element copies (so a mutated class-element param is the same copy cliff -- the
+mutated-param warning covers element mutation). An exposed enum crosses in any
+position; an exposed **class cannot be a `set` element or dict key** (a class
+doesn't conform to Hashable, so the general set/dict-key check rejects it).
+**Deferred (each a located error, not a misbuild):** an exposed **class as a
+tuple element** (a tuple's non-value element uses borrow form `const Cls*` while
+the per-element marshal builds storage form -- use a list/dict, or a
+value-type/enum tuple element), any exposed type **nested inside a container
+element** (`dict[str, list[Counter]]` -- the per-element C++ render doesn't
+qualify an exposed leaf below the top level yet), a **`@nocopy`** exposed class
+as a container element (each element is copied at the boundary), a
+**cross-module** exposed element (its handle lives in the defining module's
+glue), exposed-class set/dict-key elements (need a copy-stable structural-hash
+story), and `frozenset` (not a boundary type).
 
 ## abi3 / limited API commitment
 
