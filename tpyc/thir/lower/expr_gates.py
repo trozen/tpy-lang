@@ -57,8 +57,10 @@ from ...typesys import (
     ReadonlyType,
     TpyType,
     TupleType,
+    TypeParamRef,
     UnionType,
     contains_type_param,
+    substitute_type_params_simple,
     del_suppresses_default_ctor,
     is_float_type,
     is_void_like_type,
@@ -90,6 +92,7 @@ from ...type_def_registry import (
 from ...codegen_cpp.forms import LocalBinding, classify_local_binding
 from ...value_category import is_rvalue_source
 from ...codegen_cpp.context import (
+    escape_cpp_name,
     imported_free_callee_cpp,
     module_qualified_callee_cpp,
     static_method_callee_cpp,
@@ -179,6 +182,7 @@ from .predicates import (
     _resolved_scalar,
     _resolved_str_value,
     _resolved_viewfam_value,
+    _generic_root_subst,
     _instantiation_call_fi,
     _is_range_call,
     _range_counter_type,
@@ -1819,12 +1823,6 @@ def _free_callee_kind(e: TpyCall, analyzer) -> 'tuple[str, str] | None':
             return ("native", fi.native_name)
         note_detail("call.native_shape")
         return None
-    # A plain TPy generic callee spells explicit template args
-    # (`f<int32_t>(args)`, type_to_cpp_stored per arg + the TypeParamRef
-    # ref-slot temp rule) -- the remaining generic-callee frontier -> AST.
-    if fi.type_params or has_targs:
-        note_detail("call.callee_kind.generic")
-        return None
     # Only a DEFAULT-linkage function emits as a bare/qualified `name(args)`.
     # @export(binding="C") uses the raw symbol -- rejected by default so a
     # future linkage is rejected rather than silently mis-emitted.
@@ -1832,6 +1830,26 @@ def _free_callee_kind(e: TpyCall, analyzer) -> 'tuple[str, str] | None':
         note_detail("call.linkage")
         return None
     icc = imported_free_callee_cpp(analyzer.ctx.module_attributes, e.func_name)
+    if fi.type_params or has_targs:
+        # A plain TPy generic callee spells explicit template args
+        # (`f<int32_t>(args)`, type_to_cpp_stored per arg) over the plain /
+        # imported spelling; the args resolve against the ROOT stub's params
+        # with the inferred substitution (the TypeParamRef ref-slot temp
+        # rule). Overload groups pick a different fi for the arg loop and
+        # literal-mangle the callee -> AST.
+        fis = analyzer.registry.get_function(e.func_name)
+        if fis is None or len(fis) != 1:
+            note_detail("call.callee_kind.generic")
+            return None
+        root = fis[0]
+        if (not root.type_params or not e.inferred_type_args
+                or len(e.inferred_type_args) != len(root.type_params)):
+            note_detail("call.callee_kind.generic")
+            return None
+        if icc is None and e.func_name in analyzer.imported_names:
+            note_detail("call.imported_symbol")
+            return None
+        return ("generic", icc or "")
     if icc is not None:
         return ("imported", icc)
     if e.func_name in analyzer.imported_names:
@@ -1977,14 +1995,18 @@ def _call_eligible(e: TpyCall, locals_: dict[str, TpyType], analyzer,
         # optional-ptr, union, readonly-ctor, and the arg-temp rows stay
         # AST here.
         for a, p in zip(e.args, fi.params):
-            if not _shared_pass_through_arg(a, p.type, locals_, analyzer):
+            if not (_shared_pass_through_arg(a, p.type, locals_, analyzer)
+                    or _own_move_arg(a, p.type, locals_, analyzer)):
                 return note_detail(_native_arg_reject(a, p.type, analyzer))
         return True
+    if kind[0] == "generic":
+        return _generic_plain_args_ok(e, locals_, analyzer, temps_ok=temps_ok)
     return all(_shared_pass_through_arg(a, p.type, locals_, analyzer)
                or (temps_ok and _value_union_temp_arg(a, p.type, locals_,
                                                       narrowed, analyzer))
                or (temps_ok and _record_rvalue_temp_arg(a, p.type, locals_,
                                                         analyzer))
+               or _own_move_arg(a, p.type, locals_, analyzer)
                or (temps_ok and _own_lvalue_arg(a, p.type, locals_,
                                                 narrowed, analyzer))
                or _optional_ptr_arg(a, p.type, locals_, analyzer,
@@ -2059,6 +2081,57 @@ def _native_arg_reject(a: TpyExpr, ptype: 'TpyType | None', analyzer) -> str:
                 if not _f1_record(at, analyzer)
                 else "call.native_arg.record_f1_slot")
     return "call.native_arg.other"
+
+def _generic_plain_args_ok(e: TpyCall, locals_: dict[str, TpyType],
+                           analyzer, *, temps_ok: bool) -> bool:
+    """The plain-generic-callee arg loop (`pick(1, 2)` ->
+    `pick<int32_t>(__tmp_1, __tmp_2)`): args resolve against the ROOT
+    stub's params with the inferred substitution, mirroring the AST's
+    registry-branch loop. A TypeParamRef slot resolves to `param_val_or_
+    ref_t<T>` in C++, so a TEMPORARY arg hoists a named temp typed at the
+    RESOLVED slot (`int32_t __tmp_1 = 1;` -- TempState.create's
+    `to_cpp()` render, flush positions only); an lvalue NAME binds bare.
+    The slice: TypeParamRef slots resolved to eligible scalars with
+    literal (temp) or scalar-name (bare) args, and concrete slots through
+    the shared pass-through rows (the AST's pre-arms -- protocol /
+    covariant / optional-ptr / union slots -- have no row here and
+    reject). A still-unresolved slot or a repr-subst-marked call never
+    reaches this loop (`_free_callee_kind` rejects both)."""
+    root, subst = _generic_root_subst(e, analyzer)
+    for a, p in zip(e.args, root.params):
+        ptype = unwrap_ref_type(p.type) if isinstance(p.type, TpyType) else None
+        if ptype is None:
+            return note_detail("call.generic_arg_slot")
+        resolved = substitute_type_params_simple(ptype, subst)
+        if contains_type_param(resolved):
+            return note_detail("call.generic_arg_slot")
+        if isinstance(ptype, TypeParamRef):
+            if not _eligible_scalar(resolved):
+                return note_detail("call.generic_arg_slot")
+            lit = _peel_coerce(a)
+            if isinstance(lit, (TpyIntLiteral, TpyFloatLiteral,
+                                TpyBoolLiteral)):
+                # A literal (possibly coerce-wrapped) is a temporary: the
+                # ref-slot temp rule hoists `<resolved> __tmp_N = <lit>;`
+                # -- flush positions only.
+                if not temps_ok:
+                    return note_detail("call.generic_arg_shape")
+                if not _expr_eligible(a, locals_, analyzer):
+                    return False
+                continue
+            if isinstance(a, TpyName):
+                # An lvalue name binds the `const T&`/`T&` slot bare.
+                if a.name == "self" or a.name not in locals_:
+                    return note_detail("call.generic_arg_shape")
+                if not (_resolved_scalar(locals_.get(a.name), analyzer)
+                        and _expr_eligible(a, locals_, analyzer)):
+                    return note_detail("call.generic_arg_shape")
+                continue
+            return note_detail("call.generic_arg_shape")
+        if not (_shared_pass_through_arg(a, resolved, locals_, analyzer)
+                or _own_move_arg(a, resolved, locals_, analyzer)):
+            return note_detail("call.generic_arg_shape")
+    return True
 
 def _shared_pass_through_arg(a: TpyExpr, ptype: 'TpyType | None',
                              locals_: dict[str, TpyType], analyzer) -> bool:
@@ -2237,6 +2310,26 @@ def _own_record_rvalue_arg(a: TpyExpr, ptype: TpyType | None,
                 and _witness("own.record_rvalue"))
     return (_is_record_rvalue_source(a, locals_, analyzer)
             and _witness("own.record_rvalue"))
+
+def _own_move_arg(a: TpyExpr, ptype: TpyType | None,
+                  locals_: dict[str, TpyType], analyzer) -> bool:
+    """The TEMP-FREE half of the Own-slot cascade: a movable OWN-param name
+    at its LAST USE renders `std::move(name)` in ANY position (gen_call_arg's
+    `_maybe_move` fires before the copy-temp arm, so no flush is needed) --
+    the `heap_take(value)` ctor-MIL shape. Gate-side movability mirrors
+    _LowerCtx's param seeding exactly: an `Own[...]`-declared binding of
+    NON-VALUE payload (a value payload is never seeded, so its last use
+    copies); body-movable locals keep riding the flushable copy+move row
+    (`_own_lvalue_arg`), whose lowering picks the move when it applies."""
+    if _own_lvalue_temp_slot(a, ptype, analyzer) is None:
+        return False
+    if not isinstance(a, TpyName) or a.name not in locals_:
+        return False
+    own = unwrap_optional_own(unwrap_readonly(unwrap_send_sync(
+        locals_[a.name])))
+    if own is None or own.wrapped.is_value_type():
+        return False
+    return id(a) in analyzer.ctx.all_last_uses
 
 def _own_lvalue_arg(a: TpyExpr, ptype: TpyType | None,
                     locals_: dict[str, TpyType],
@@ -3014,24 +3107,62 @@ def _marker_call_kind(e: TpyMethodCall, analyzer) -> 'tuple[str, str] | None':
             or any(isinstance(p.type, LiteralType) for p in fi.params)):
         return None
     if e.is_static_call:
-        # Same-module (or imported-name) `Rec.m(args)` only; the
-        # module-qualified static form spells through a different arm.
-        if e.user_module_call is not None or e.builtin_module_call is not None:
+        if e.builtin_module_call is not None:
             return None
+        if e.user_module_call is not None:
+            # The module-qualified static arm (`m.Cls.m(args)`): only its
+            # GENERIC form is mirrored (`::tpyapp::m::Cls<CA>::template
+            # m<MA>(args)`, composed at lowering); a template fi expands
+            # through the shared substitution; the PLAIN form is a separate
+            # pre-existing exclusion (method.marker.module_static.plain).
+            if not isinstance(e.obj, TpyFieldAccess):
+                return None
+            if (not e.inferred_type_args
+                    or getattr(e, "representational_subst_params", None)):
+                return None
+            if fi.cpp_template is not None:
+                tmpl = expand_fi_template(fi, e.inferred_type_args)
+                if _positional_only_template(tmpl, len(e.args)):
+                    return ("template", tmpl)
+                return None
+            if (fi.native_function
+                    or fi.linkage != FunctionLinkage.DEFAULT):
+                return None
+            return ("generic_module_static", "")
         if not isinstance(e.obj, TpyName):
             return None
         # A @cpp_template static takes the builtins arm (_gen_method_call's
         # native/template block precedes its `Class::m` arm):
         # gen_template_or_native_call expands the template over
-        # gen_call_arg(inline_template) args. Positional-only templates
-        # only -- a surviving {T}/{cpp} needs the substitution machinery
-        # (the generics frontier).
+        # gen_call_arg(inline_template) args; a GENERIC static template
+        # (`Poll.ready[T]`-style) substitutes its {T} placeholders through
+        # the shared expand_fi_template first. Positional-only results only.
         if fi.cpp_template is not None:
-            if _positional_only_template(fi.cpp_template, len(e.args)):
-                return ("template", fi.cpp_template)
+            tmpl = (expand_fi_template(fi, e.inferred_type_args)
+                    if e.inferred_type_args else fi.cpp_template)
+            if _positional_only_template(tmpl, len(e.args)):
+                return ("template", tmpl)
             return None
         if e.inferred_type_args or fi.type_params:
-            return None
+            # A generic static call spells the class/method targs split
+            # (`Cls<CA>::template m<MA>(args)`); the renders need the
+            # resolver, so lowering composes the spelling
+            # (_lower_generic_static_callee). A NATIVE record's static
+            # render is targ-blind (`cpp_class::method(args)`) and rides
+            # the plain qualified kind.
+            if (not e.inferred_type_args
+                    or getattr(e, "representational_subst_params", None)):
+                return None
+            ri = analyzer.registry.get_record(e.obj.name)
+            if ri is not None and ri.is_native:
+                cpp_method = (fi.native_name if fi.native_name
+                              else escape_cpp_name(e.method))
+                return ("qualified", f"{ri.native_name}::{cpp_method}")
+            if fi.native_function or fi.native_name:
+                return None
+            if fi.linkage != FunctionLinkage.DEFAULT:
+                return None
+            return ("generic_static", "")
         # A native static fi takes the receiver-threaded builtin
         # arm (gen_method_from_function_info) -- not the `Class::m` render.
         if fi.native_function or fi.native_name:
@@ -3044,8 +3175,6 @@ def _marker_call_kind(e: TpyMethodCall, analyzer) -> 'tuple[str, str] | None':
         return ("qualified", static_method_callee_cpp(
             analyzer.registry, implicit, analyzer.ctx.module_name,
             e.obj.name, e.method, fi))
-    if e.inferred_type_args or fi.type_params:
-        return None
     if fi.cpp_template is not None:
         return None
     if e.builtin_module_call is not None:
@@ -3056,6 +3185,8 @@ def _marker_call_kind(e: TpyMethodCall, analyzer) -> 'tuple[str, str] | None':
         # Bare-@native cross-module callee (`m.sqrt(x)` -> `::std::sqrt(x)`).
         # `function=True` natives take the slot-blind gen_expr_deref arg
         # render instead (_skip_first_pass) -- a different loop, stays AST.
+        # Targ-blind like the free-call native arm: the AST never spells
+        # explicit template args for a native import.
         if fi.native_function:
             return None
         return ("native", fi.native_name or fi.name)
@@ -3064,9 +3195,20 @@ def _marker_call_kind(e: TpyMethodCall, analyzer) -> 'tuple[str, str] | None':
         return None
     if fi.linkage != FunctionLinkage.DEFAULT:
         return None
-    return ("qualified", module_qualified_callee_cpp(
+    cpp = module_qualified_callee_cpp(
         analyzer.registry, analyzer.ctx.module_attributes,
-        analyzer.ctx.module_name, e.user_module_call, e.method, fi))
+        analyzer.ctx.module_name, e.user_module_call, e.method, fi)
+    if e.inferred_type_args or fi.type_params:
+        # A module-qualified generic call spells explicit template args
+        # over the SAME qualified callee (`::tpyapp::m::gf<int32_t>(args)`,
+        # targs = type_to_cpp(unwrap_ref_type) per inferred arg -- NOT the
+        # free-call arm's to_cpp_stored); the args are the same qualified
+        # first-pass loop over the RESOLVED (substituted) fi params.
+        if (not e.inferred_type_args
+                or getattr(e, "representational_subst_params", None)):
+            return None
+        return ("generic_qualified", cpp)
+    return ("qualified", cpp)
 
 def _marker_call_eligible(e: TpyMethodCall, kind: 'tuple[str, str]',
                           locals_: dict[str, TpyType], analyzer,
@@ -3104,11 +3246,16 @@ def _marker_call_eligible(e: TpyMethodCall, kind: 'tuple[str, str]',
             if not _shared_pass_through_arg(a, p.type, locals_, analyzer):
                 return note_detail(_native_arg_reject(a, p.type, analyzer))
         return True
-    own_ok = kind[0] == "qualified"
+    # The generic-qualified/static kinds ride the SAME qualified first-pass
+    # loop (the resolved fi's params are already substituted), so they share
+    # the qualified rows including the Own cascade.
+    own_ok = kind[0] in ("qualified", "generic_qualified", "generic_static",
+                         "generic_module_static")
     return all(
         _shared_pass_through_arg(a, p.type, locals_, analyzer)
         or (temps_ok and _value_union_temp_arg(a, p.type, locals_,
                                                narrowed, analyzer))
+        or (own_ok and _own_move_arg(a, p.type, locals_, analyzer))
         or (own_ok and temps_ok and _own_lvalue_arg(a, p.type, locals_,
                                                     narrowed, analyzer))
         or _optional_ptr_arg(a, p.type, locals_, analyzer, temps_ok=temps_ok)

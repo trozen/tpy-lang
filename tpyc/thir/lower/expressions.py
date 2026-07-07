@@ -39,10 +39,13 @@ from ...typesys import (
     OwnType,
     TpyType,
     TupleType,
+    TypeParamRef,
     ValueForm,
     VoidType,
+    contains_type_param,
     is_void_like_type,
     resolve_int_literals,
+    substitute_type_params_simple,
     unwrap_optional_own,
     unwrap_readonly,
     unwrap_ref_type,
@@ -62,7 +65,9 @@ from ...codegen_cpp.types import resolve_pending_container
 from ...codegen_cpp.context import (
     enum_cpp_name,
     escape_cpp_name,
+    qualified_cpp_name,
 )
+from ...compilation_context import get_current_compiler
 from ..faces import witness as _witness
 from ...codegen_cpp.expressions import ExpressionGenerator
 from ..nodes import (
@@ -119,6 +124,7 @@ from .predicates import (
     _enum_truthy_wrap,
     _f1_record,
     _folded_neg_int_literal,
+    _generic_root_subst,
     _instantiation_call_fi,
     _is_borrow_form_name,
     _is_range_call,
@@ -736,6 +742,17 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx', *, temp_args: bool = False) -> THIR
             elif k is not None and k[0] == "template":
                 cpp_template = k[1]
                 _witness("call.template_free")
+            elif k is not None and k[0] == "generic":
+                # A plain TPy generic callee: explicit template args
+                # (type_to_cpp_stored per inferred arg) over the plain /
+                # imported spelling; args resolve against the ROOT stub's
+                # params with the inferred substitution, a temporary arg
+                # into a TypeParamRef ref-slot hoisting the resolved-typed
+                # `__tmp_N` (TempState.create's to_cpp render).
+                _witness("call.generic_free")
+                return _lower_generic_plain_call(e, k[1] or None, lc,
+                                                 temp_args=temp_args,
+                                                 form=form, loc=loc)
         return THIRCall(
             result_type=rtype,
             callee=e.func_name,
@@ -874,10 +891,27 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx', *, temp_args: bool = False) -> THIR
             mfi = e.resolved_function_info
             _witness("call.module_native" if mk[0] == "native"
                      else "call.static_template" if mk[0] == "template"
+                     else "call.generic_qualified" if mk[0] == "generic_qualified"
+                     else "call.generic_static" if mk[0] in (
+                         "generic_static", "generic_module_static")
                      else "call.marker_qualified")
             mk_str = _resolved_str_value(rtype, analyzer)
             if mk_str is None:
                 mk_str = _resolved_bytes_value(rtype, analyzer)
+            # A module-qualified generic call spells explicit template args
+            # the way the AST does: type_to_cpp(unwrap_ref_type) per
+            # inferred arg (NOT the free-call arm's to_cpp_stored). A
+            # same-module generic STATIC splits them into class/method args
+            # over the composed callee (`Cls<CA>::template m<MA>`).
+            callee_cpp = mk[1] if mk[0] in ("qualified",
+                                            "generic_qualified") else None
+            mk_targs = (tuple(lc.render_type(unwrap_ref_type(t))
+                              for t in e.inferred_type_args)
+                        if mk[0] == "generic_qualified" else None)
+            if mk[0] == "generic_static":
+                callee_cpp, mk_targs = _generic_static_callee(e, lc)
+            elif mk[0] == "generic_module_static":
+                callee_cpp, mk_targs = _generic_module_static_callee(e, lc)
             return THIRCall(
                 result_type=rtype if rtype is not None else VoidType(),
                 callee=e.method,
@@ -886,8 +920,9 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx', *, temp_args: bool = False) -> THIR
                                     temp_args=temp_args)
                     for i, a in enumerate(e.args)),
                 native_name=mk[1] if mk[0] == "native" else None,
-                callee_cpp=mk[1] if mk[0] == "qualified" else None,
+                callee_cpp=callee_cpp,
                 cpp_template=mk[1] if mk[0] == "template" else None,
+                template_args_cpp=mk_targs,
                 form=_viewfam_result_form(mk_str),
                 loc=loc,
             )
@@ -1095,6 +1130,115 @@ def _lower_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
             for i, x in enumerate(e.elements)),
         loc=getattr(e, "loc", None))
 
+def _compose_static_targs(cpp_class: str, record_info, cpp_method: str,
+                          e, lc: '_LowerCtx') -> 'tuple[str, tuple[str, ...] | None]':
+    """The class/method targs split shared by the two generic-static
+    composers -- `_gen_method_call`'s static tails: class-level targs spell
+    on the class (`Cls<CA>`), method-level targs ride template_args_cpp, and
+    the dependent `template ` keyword fires ONLY when method targs follow
+    (the AST nests it under `if method_args:` -- a `template` keyword with
+    no following `<...>` would be a C++ syntax error). repr-subst-marked
+    calls were gate-rejected, so `_render_method_type_arg`'s adapter
+    override never applies."""
+    n_class = (len(record_info.type_params)
+               if record_info is not None and record_info.type_params else 0)
+    class_args = e.inferred_type_args[:n_class]
+    method_args = e.inferred_type_args[n_class:]
+    if class_args:
+        spelled = ", ".join(lc.render_type(unwrap_ref_type(t))
+                            for t in class_args)
+        cpp_class = f"{cpp_class}<{spelled}>"
+    template_kw = ("template "
+                   if method_args and any(contains_type_param(t)
+                                          for t in class_args)
+                   else "")
+    targs = (tuple(lc.render_type(unwrap_ref_type(t)) for t in method_args)
+             or None)
+    return (f"{cpp_class}::{template_kw}{cpp_method}", targs)
+
+
+def _generic_static_callee(e, lc: '_LowerCtx') -> 'tuple[str, tuple[str, ...] | None]':
+    """Compose a same-module generic STATIC call's callee spelling --
+    `_gen_method_call`'s static tail: the class name (implicit-stdlib peers
+    qualify) over the shared class/method targs split."""
+    analyzer = lc.analyzer
+    record_info = analyzer.registry.get_record(e.obj.name)
+    class_name = e.obj.name
+    compiler = get_current_compiler()
+    implicit = (compiler._implicit_stdlib_set() if compiler is not None
+                else set())
+    if (record_info is not None and record_info.module is not None
+            and record_info.module in implicit
+            and record_info.module != analyzer.ctx.module_name):
+        class_name = qualified_cpp_name(record_info.module, record_info.name)
+    return _compose_static_targs(class_name, record_info,
+                                 escape_cpp_name(e.method), e, lc)
+
+
+def _generic_module_static_callee(e, lc: '_LowerCtx') -> 'tuple[str, tuple[str, ...] | None]':
+    """Compose a module-qualified generic STATIC call's callee spelling --
+    `_gen_method_call`'s module-static arm: the class qualifies through the
+    module namespace (or the native rename) and the method spells its
+    @native rename when present, over the shared class/method targs split."""
+    analyzer = lc.analyzer
+    fi = e.resolved_function_info
+    class_short = e.obj.field
+    record_info = analyzer.registry.find_record_by_qname(
+        f"{e.user_module_call}.{class_short}")
+    if record_info is not None and record_info.is_native and record_info.native_name:
+        cpp_class = record_info.native_name
+    else:
+        cpp_class = qualified_cpp_name(e.user_module_call, class_short)
+    cpp_method = (fi.native_name if fi is not None and fi.native_name
+                  else escape_cpp_name(e.method))
+    return _compose_static_targs(cpp_class, record_info, cpp_method, e, lc)
+
+
+def _lower_generic_plain_call(e, callee_cpp, lc: '_LowerCtx', *,
+                              temp_args: bool, form, loc) -> THIRCall:
+    """Lower a plain TPy generic free call (`pick(1, 2)` ->
+    `pick<int32_t>(__tmp_1, __tmp_2)`): explicit template args rendered the
+    way the AST spells them (type_to_cpp_stored per inferred arg), args
+    against the ROOT stub's substituted param slots. A temporary arg into a
+    TypeParamRef slot (`param_val_or_ref_t<T>` in C++ -- an lvalue-ref
+    binding) hoists the AST's named temp: `<resolved.to_cpp()> __tmp_N =
+    <target-typed init>;` (TempState.create). The gate admitted only
+    literal temporaries and bare scalar names, so the init render is the
+    slot-retyped literal."""
+    analyzer = lc.analyzer
+    root, subst = _generic_root_subst(e, analyzer)
+    dcbp = root.deep_const_borrow_params
+    args = []
+    for i, (a, p) in enumerate(zip(e.args, root.params)):
+        ptype = unwrap_ref_type(p.type)
+        resolved = substitute_type_params_simple(ptype, subst)
+        if (isinstance(ptype, TypeParamRef)
+                and isinstance(_peel_coerce(a), (TpyIntLiteral,
+                                                 TpyFloatLiteral,
+                                                 TpyBoolLiteral))):
+            assert temp_args, \
+                "generic ref-slot literal temp outside a flush position"
+            _witness("argtemp.generic_ref_slot")
+            args.append(THIRArgTemp(
+                result_type=resolved, cpp_type=resolved.to_cpp(),
+                init=_slot_literal_retype(_lower_expr(a, lc), resolved),
+                form=Form.VALUE, loc=getattr(a, "loc", None)))
+        else:
+            args.append(_lower_call_arg(
+                a, resolved, lc, temp_args=temp_args,
+                readonly_target=dcbp is not None and i in dcbp))
+    return THIRCall(
+        result_type=lc.analyzer.get_expr_type(e),
+        callee=e.func_name,
+        args=tuple(args),
+        callee_cpp=callee_cpp,
+        template_args_cpp=tuple(lc.render_type_stored(t)
+                                for t in e.inferred_type_args),
+        form=form,
+        loc=loc,
+    )
+
+
 def _lower_range_object(call, lc: '_LowerCtx') -> THIRCall:
     """A `range(...)` call in OBJECT position (a comprehension's begin/end
     iterable, an instantiation arg): the resolved range overload's
@@ -1175,29 +1319,50 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                 result_type=ut, cpp_type=ut.to_cpp(),
                 init=_lower_expr(a, lc), form=Form.VALUE,
                 loc=getattr(a, "loc", None))
-        # The Own-slot copy+move row: `auto __tmp_N = <arg>;` + the move wrap
-        # at the arg position -- or the temp-free `std::move(name)` when the
-        # name is movable at its last use (`_maybe_move` fires before the
-        # copy arm on the AST path; a scalar / pointer-local / field read is
-        # never movable, so it always copies). A pointer-local name derefs in
-        # the temp init (`auto __tmp_N = (*p);`), like the plain record-arg
-        # retag below.
-        ow = _own_lvalue_temp_slot(a, ptype, lc.analyzer)
-        if ow is not None and not (isinstance(a, TpyName)
-                                   and (a.name in lc.narrow.narrowed
-                                        or a.name in lc.inline_narrowed)):
-            form = Form.VALUE if _eligible_scalar(ow) else Form.STORAGE
+    # The Own-slot copy+move row: `auto __tmp_N = <arg>;` + the move wrap
+    # at the arg position -- or the temp-free `std::move(name)` when the
+    # name is movable at its last use (`_maybe_move` fires before the
+    # copy arm on the AST path; a scalar / pointer-local / field read is
+    # never movable, so it always copies). A pointer-local name derefs in
+    # the temp init (`auto __tmp_N = (*p);`), like the plain record-arg
+    # retag below. The MOVE half is position-independent (no flush needed),
+    # so it runs outside `temp_args` too -- the `heap_take(value)` ctor-MIL
+    # shape; the copy half still needs the flush (gate-enforced).
+    ow = _own_lvalue_temp_slot(a, ptype, lc.analyzer)
+    if ow is not None and not (isinstance(a, TpyName)
+                               and (a.name in lc.narrow.narrowed
+                                    or a.name in lc.inline_narrowed)):
+        own_form = Form.VALUE if _eligible_scalar(ow) else Form.STORAGE
+        # VALUE payloads never move: lc.movable_locals is the RAW sema set
+        # (the _LowerCtx caveat), while codegen registers movables only at
+        # NON-VALUE decl arms -- a sema-movable scalar local would over-move
+        # (`xs.append(std::move(n))` where the AST renders bare). The filter
+        # keys on the ARG's own declared payload (like the gate row and the
+        # seeding), not the callee slot's type param: TypeParamRef.__eq__
+        # ignores bounds, so a caller's value-bound T can slot-match an
+        # unbound callee T while its OWN value-ness forbids the move.
+        at = lc.analyzer.get_expr_type(a)
+        at = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
+              if at is not None else None)
+        if isinstance(at, OwnType):
+            at = unwrap_readonly(at.wrapped)
+        if (at is not None and not at.is_value_type()
+                and _is_move_source(a, lc)):
             lowered = _lower_expr(a, lc)
             if isinstance(a, TpyName) and a.name in lc.pointers:
                 assert isinstance(lowered, THIRName)
                 lowered = replace(lowered, deref=True)
-            if _is_move_source(a, lc):
-                _witness("move.own_last_use")
-                return THIRMove(result_type=ow, value=lowered, form=form,
-                                loc=getattr(a, "loc", None))
+            _witness("move.own_last_use")
+            return THIRMove(result_type=ow, value=lowered, form=own_form,
+                            loc=getattr(a, "loc", None))
+        if temp_args:
+            lowered = _lower_expr(a, lc)
+            if isinstance(a, TpyName) and a.name in lc.pointers:
+                assert isinstance(lowered, THIRName)
+                lowered = replace(lowered, deref=True)
             _witness("argtemp.own_copy")
             return THIRArgTemp(result_type=ow, init=lowered, move=True,
-                               form=form, loc=getattr(a, "loc", None))
+                               form=own_form, loc=getattr(a, "loc", None))
     lift = _lower_union_arg_lift(a, ptype, lc, readonly_target=readonly_target)
     if lift is not None:
         return lift

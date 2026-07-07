@@ -1001,7 +1001,8 @@ def _f1_record_type_arg_ok(a: 'TpyType | int', analyzer) -> bool:
         return True
     if _is_type_param_slot(a):
         return True
-    return _eligible_scalar(a) or _f1_record(a, analyzer)
+    return (_eligible_scalar(a) or _eligible_char(a)
+            or _f1_record(a, analyzer))
 
 def _f1_record(t: TpyType | None, analyzer) -> bool:
     """The byte-identical THIR record slice: any concrete user record whose
@@ -2152,6 +2153,11 @@ def _own_lvalue_temp_slot(a: TpyExpr, ptype: TpyType | None,
         # Same-nominal is a slice guard: sema rejects an upcast into an Own
         # slot outright, so no other pairing reaches codegen.
         return w if at == w else None
+    if _is_type_param_slot(w):
+        # A TypeParamRef payload (`Own[T]` slot fed by an `Own[T]` param in
+        # a generic body): the copy renders the same `auto __tmp_N = <arg>;`
+        # and the movable last use the same temp-free `std::move(name)`.
+        return w if at == w else None
     return None
 
 def _optional_ptr_arg_slot(ptype: TpyType | None, analyzer) -> 'OptionalType | None':
@@ -2377,6 +2383,15 @@ def _tparam_value(t: 'TpyType | None') -> bool:
         return False
     return _is_type_param_slot(unwrap_readonly(unwrap_ref_type(
         unwrap_send_sync(t))))
+
+def _generic_root_subst(e: TpyCall, analyzer) -> 'tuple[FunctionInfo, dict[str, TpyType]]':
+    """The ROOT stub + inferred substitution for a plain generic free call
+    -- ONE derivation shared by the gate (`_generic_plain_args_ok`) and
+    lowering (`_lower_generic_plain_call`), so the two cannot drift. The
+    kind classifier already pinned the single-stub group and the
+    targs/type-params arity."""
+    root = analyzer.registry.get_function(e.func_name)[0]
+    return root, dict(zip(root.type_params, e.inferred_type_args))
 
 def _is_range_call(it: TpyExpr) -> bool:
     """The `range(...)` iterable form -- the range-vs-container discriminator

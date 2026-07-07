@@ -59,6 +59,14 @@ THIR_FACES: frozenset[str] = frozenset({
     "call.template_free",           # positional-only @cpp_template free callee
     "call.instantiation_template",  # generic-type instantiation `list(it)` ->
                                     # sema-substituted ctor template expansion
+    "call.generic_free",            # plain TPy generic callee -> explicit
+                                    # `f<T1, T2>(args)` template-arg spelling
+    "call.generic_qualified",       # module-qualified generic call ->
+                                    # `::tpyapp::m::gf<T>(args)`
+    "call.generic_static",          # same-module generic static ->
+                                    # `Cls<CA>::template m<MA>(args)`
+    "argtemp.generic_ref_slot",     # literal temporary into a TypeParamRef
+                                    # ref slot -> `<resolved> __tmp_N = <lit>;`
     "ctor.instantiation",           # record-ctor instantiation form
                                     # (`Cell[Int32]()` / `Poll[T]()`) ->
                                     # rendered `type_to_cpp(call_type)(args)`

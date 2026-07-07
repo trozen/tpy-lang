@@ -506,9 +506,11 @@ class TestGenericNativeCallee:
                         routed.setdefault(f.name, tf is not None)
         assert routed.get("__del__") is True
 
-    def test_plain_generic_callee_stays_ast(self):
-        # `pick(1, 2)` spells `pick<int32_t>(__tmp_1, __tmp_2)` -- the
-        # explicit-template-args + TypeParamRef ref-slot temp frontier.
+    def test_nested_generic_call_stays_ast(self):
+        # A generic call in a NESTED (non-flush) position -- a print arg --
+        # cannot hoist its TypeParamRef ref-slot literal temps, so the body
+        # stays AST; the direct decl-init shape routes (see
+        # TestGenericPlainCallee).
         src = ("def pick[T](a: T, b: T) -> T:\n"
                "    return b\n"
                "def use():\n"
@@ -555,3 +557,253 @@ class TestTypeParamCompare:
         thir = _lower_ctx(self._SRC)
         assert _fn(thir, "__lt__") is not None
         assert self._cpp(self._SRC, thir=True) == self._cpp(self._SRC, thir=False)
+
+
+class TestGenericPlainCallee:
+    """G1b: a plain TPy generic free callee spells explicit template args
+    (`pick<int32_t>(...)`, type_to_cpp_stored per inferred arg); a literal
+    arg into a TypeParamRef ref slot hoists the resolved-typed `__tmp_N`
+    at flush positions, a bare scalar name binds the ref slot bare."""
+
+    _PICK = ("from tpy import Int32\n"
+             "def pick[T](a: T, b: T) -> T:\n"
+             "    return b\n")
+
+    def _cpp(self, src: str, thir: bool) -> str:
+        from ..codegen_cpp.context import CodeGenOptions
+        from .testutil import _compile, _entry
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        hpp, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=thir))
+        return hpp + cpp
+
+    def test_literal_args_route_with_temps(self):
+        from .testutil import _lower_ctx_witnessed
+        src = (self._PICK
+               + "def use():\n"
+               + "    p = pick(1, 2)\n"
+               + "    print(p)\n"
+               + "use()\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        fn = _fn(thir, "use")
+        assert fn is not None
+        assert faces.get("call.generic_free", 0) >= 1
+        assert faces.get("argtemp.generic_ref_slot", 0) >= 2
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+
+    def test_name_args_route_bare(self):
+        src = (self._PICK
+               + "def use(x: Int32, y: Int32):\n"
+               + "    print(pick(x, y))\n"
+               + "use(3, 4)\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "use") is not None
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+
+    def test_template_args_spelled_on_call(self):
+        src = (self._PICK
+               + "def use(x: Int32, y: Int32):\n"
+               + "    print(pick(x, y))\n"
+               + "use(3, 4)\n")
+        thir = _lower_ctx(src)
+        fn = _fn(thir, "use")
+        call = fn.body[0].args[0].expr
+        assert call.template_args_cpp == ("int32_t",)
+
+
+class TestGenericStaticCalls:
+    """G3: generic STATIC calls -- same-module `Cls.m(args)` composes
+    `Cls<CA>::template m<MA>(args)` (class/method targs split, dependent
+    `template ` keyword); the module-qualified form qualifies the class
+    through the module namespace."""
+
+    def _cpp(self, src: str, thir: bool, libdir=None) -> str:
+        from ..codegen_cpp.context import CodeGenOptions
+        from .testutil import _compile, _entry
+        compiler, modules = _compile(src, [libdir] if libdir else None)
+        entry = _entry(modules)
+        hpp, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=thir))
+        return hpp + cpp
+
+    def test_same_module_static_generic_routes(self):
+        from .testutil import _lower_ctx_witnessed
+        src = ("from tpy import Int32\n"
+               "class Util:\n"
+               "    @staticmethod\n"
+               "    def smax[T](a: T, b: T) -> T:\n"
+               "        return b\n"
+               "def use(x: Int32, y: Int32):\n"
+               "    print(Util.smax(x, y))\n"
+               "use(5, 6)\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "use") is not None
+        assert faces.get("call.generic_static", 0) >= 1
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+
+    def test_module_static_generic_routes(self, tmp_path):
+        (tmp_path / "m2.py").write_text(
+            "class Util:\n"
+            "    @staticmethod\n"
+            "    def smax[T](a: T, b: T) -> T:\n"
+            "        return b\n")
+        src = ("import m2\n"
+               "from tpy import Int32\n"
+               "def use(x: Int32, y: Int32):\n"
+               "    print(m2.Util.smax(x, y))\n"
+               "use(5, 6)\n")
+        thir = None
+        from .testutil import _compile, _entry
+        from ..compilation_context import activate_compiler
+        from .lower import lower_module
+        compiler, modules = _compile(src, [tmp_path])
+        entry = _entry(modules)
+        with activate_compiler(compiler):
+            thir = lower_module(entry.ast, entry.analyzer)
+        assert _fn(thir, "use") is not None
+        assert (self._cpp(src, thir=True, libdir=tmp_path)
+                == self._cpp(src, thir=False, libdir=tmp_path))
+
+
+class TestOwnMoveArg:
+    """G5b: a movable OWN-param name at its LAST USE moves temp-free
+    (`std::move(name)`) into an Own slot in ANY position -- the
+    `Box._ptr = heap_take(std::move(value))` ctor-MIL shape. VALUE payloads
+    never move (codegen registers movables only at non-value decl arms)."""
+
+    def _cpp(self, src: str, thir: bool) -> str:
+        from ..codegen_cpp.context import CodeGenOptions
+        from .testutil import _compile, _entry
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        hpp, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=thir))
+        return hpp + cpp
+
+    def test_box_ctor_mil_native_move_routes(self):
+        # Box.__init__'s `self._ptr = heap_take(value)` hoists to the MIL as
+        # `_ptr(::tpy::heap_take(std::move(value)))` -- the generic native
+        # callee + own-param move + Ptr[T] field composition.
+        from pathlib import Path
+        from .testutil import _compile, _entry
+        from ..compilation_context import activate_compiler
+        from .lower import iter_module_constructors, lower_constructor
+        src = ("from tplib.box import Box\n"
+               "def main():\n"
+               "    b = Box(41)\n"
+               "    print(b.get())\n"
+               "main()\n")
+        compiler, modules = _compile(src)
+        routed = None
+        with activate_compiler(compiler):
+            for m in modules:
+                for rec, init, st in iter_module_constructors(
+                        m.ast, m.analyzer):
+                    if rec.name == "Box":
+                        routed = lower_constructor(
+                            rec, init, m.analyzer, self_type=st) is not None
+        assert routed is True
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+
+    def test_value_payload_last_use_does_not_move(self):
+        # Regression pin (caught by the corpus byte-diff): a sema-movable
+        # VALUE local at its last use renders BARE into an Own[scalar] slot
+        # (`xs.append(n)`, the AST's inline-template bare pass) -- the raw
+        # sema movable set over-moves without the value filter.
+        src = ("from tpy import UInt64\n"
+               "def f() -> UInt64:\n"
+               "    xs: list[UInt64] = []\n"
+               "    n = 19\n"
+               "    xs.append(n)\n"
+               "    return xs[0]\n"
+               "def main():\n"
+               "    print(f())\n"
+               "main()\n")
+        out = self._cpp(src, thir=True)
+        assert "push_back(n)" in out and "std::move(n)" not in out
+        assert out == self._cpp(src, thir=False)
+
+    def test_char_type_arg_instantiation_routes(self):
+        # `UninitArrayStorage[Char, N]()` -- a Char + INT-param type-arg pair
+        # (the FixStr MIL shape); Char spells `char` on both paths.
+        from .testutil import _compile, _entry
+        from ..compilation_context import activate_compiler
+        from .lower import iter_module_constructors, lower_constructor
+        src = ("from tplib.fix_str import FixStr\n"
+               "def main():\n"
+               "    s = FixStr[8]()\n"
+               "    print(len(s))\n"
+               "main()\n")
+        compiler, modules = _compile(src)
+        routed = None
+        with activate_compiler(compiler):
+            for m in modules:
+                for rec, init, st in iter_module_constructors(
+                        m.ast, m.analyzer):
+                    if rec.name == "FixStr":
+                        routed = lower_constructor(
+                            rec, init, m.analyzer, self_type=st) is not None
+        assert routed is True
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+
+
+class TestDependentStaticTargs:
+    """The dependent `template ` keyword: a generic static called from a
+    generic body with class args still carrying a TypeParamRef emits
+    `Pack<T>::template pair<int32_t>(...)` -- and ONLY when method targs
+    follow (the AST nests the keyword under `if method_args:`)."""
+
+    _SRC = ("from tpy import Int32, Own\n"
+            "class Pack[T]:\n"
+            "    v: T\n"
+            "    def __init__(self, v: Own[T]) -> None:\n"
+            "        self.v = v\n"
+            "    @staticmethod\n"
+            "    def pair[U](v: Own[T], u: U) -> U:\n"
+            "        return u\n"
+            "def mk[T](a: Own[T]) -> Int32:\n"
+            "    return Pack.pair(a, 7)\n"
+            "def main():\n"
+            "    print(mk(5))\n"
+            "main()\n")
+
+    def _cpp(self, src: str, thir: bool) -> str:
+        from ..codegen_cpp.context import CodeGenOptions
+        from .testutil import _compile, _entry
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        hpp, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=thir))
+        return hpp + cpp
+
+    def test_dependent_template_keyword_byte_identical(self):
+        out = self._cpp(self._SRC, thir=True)
+        assert out == self._cpp(self._SRC, thir=False)
+
+    def test_dependent_template_keyword_spelled(self):
+        # Pin the composed spelling when the shape routes; if the enclosing
+        # body falls back, the byte-identity above still owns correctness.
+        thir = _lower_ctx(self._SRC)
+        fn = _fn(thir, "mk")
+        if fn is not None:
+            call = fn.body[0].value
+            assert "::template pair" in call.callee_cpp
+            assert call.template_args_cpp == ("int32_t",)
+
+    def test_explicit_subscript_targs_byte_identical(self):
+        # `pick[Int32](1, 2)` -- the explicit-subscript spelling; pinned
+        # byte-identical whichever path carries it (explicit type_args
+        # without inferred stay AST via the kind classifier).
+        src = ("from tpy import Int32\n"
+               "def pick[T](a: T, b: T) -> T:\n"
+               "    return b\n"
+               "def use():\n"
+               "    p = pick[Int32](1, 2)\n"
+               "    print(p)\n"
+               "use()\n")
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)

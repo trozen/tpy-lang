@@ -1288,9 +1288,12 @@ class TestMarkerModuleCall:
         # value / stmt / condition / return positions all witnessed
         assert witnessed.get("call.marker_qualified", 0) >= 4
 
-    def test_generic_module_call_stays_ast(self, tmp_path):
-        thir, _ = self._lowered(tmp_path)
-        assert _fn(thir, "gen") is None
+    def test_generic_module_call_routes(self, tmp_path):
+        # `helper.pick(a, b)` spells `::tpyapp::helper::pick<int32_t>(a, b)`
+        # -- the wave-7 residue's generic_qualified kind.
+        thir, faces = self._lowered(tmp_path)
+        assert _fn(thir, "gen") is not None
+        assert faces.get("call.generic_qualified", 0) >= 1
 
     def test_module_static_stays_ast(self, tmp_path):
         # `helper.Kit.twice(n)` spells through the module-static arm
@@ -1491,9 +1494,11 @@ class TestMarkerStaticTemplate:
         assert decl.init.callee_cpp is None and decl.init.native_name is None
         assert witnessed.get("call.static_template", 0) >= 3
 
-    def test_generic_static_with_targs_stays_ast(self):
+    def test_generic_static_with_targs_routes(self):
+        # The generic static template substitutes {T} through the shared
+        # expand_fi_template and expands positionally -- wave-7 residue.
         thir, _ = _lower_ctx_witnessed(_STATIC_TEMPLATE_SRC)
-        assert _fn(thir, "g") is None
+        assert _fn(thir, "g") is not None
 
     def test_byte_identical(self):
         compiler, modules = _compile(_STATIC_TEMPLATE_SRC)
