@@ -35,6 +35,20 @@ from _datetime_parse import (
 _MAXORDINAL_DAYS = 999999999
 
 
+def _divide_and_round(a: int, b: int) -> int:
+    # a / b rounded to the nearest int, ties to even -- CPython's timedelta
+    # division rounding (Objects/longobject.c divmod_near).
+    q, r = divmod(a, b)
+    r = r * 2
+    if b > 0:
+        greater_than_half = r > b
+    else:
+        greater_than_half = r < b
+    if greater_than_half or (r == b and q % 2 == 1):
+        q = q + 1
+    return q
+
+
 @dataclass(frozen=True, order=True)
 class timedelta(ValueType):
     # Normalized: 0 <= seconds < 86400, 0 <= microseconds < 10**6,
@@ -46,11 +60,14 @@ class timedelta(ValueType):
     def __init__(self, days: int = 0, seconds: int = 0, microseconds: int = 0,
                  milliseconds: int = 0, minutes: int = 0, hours: int = 0,
                  weeks: int = 0) -> None:
+        # Integer components only; exact BigInt normalization. Float components
+        # (timedelta(hours=1.5)) are rejected -- use integer components, or the
+        # `timedelta / number` / `timedelta * float` operators, which round.
         d = days + weeks * 7
         s = seconds + minutes * 60 + hours * 3600
         us = microseconds + milliseconds * 1000
-        # Normalize with Python floor divmod so seconds/microseconds stay
-        # non-negative and the overflow carries into days.
+        # Python floor divmod keeps seconds/microseconds non-negative and carries
+        # any overflow into days.
         carry_s, us = divmod(us, 1000000)
         s = s + carry_s
         carry_d, s = divmod(s, 86400)
@@ -94,13 +111,25 @@ class timedelta(ValueType):
         return timedelta(days=self.days, seconds=self.seconds,
                          microseconds=self.microseconds)
 
+    @overload
     def __mul__(self, other: int) -> timedelta:
         return timedelta(days=self.days * other, seconds=self.seconds * other,
                          microseconds=self.microseconds * other)
 
+    @overload
+    def __mul__(self, other: float) -> timedelta:
+        a, b = other.as_integer_ratio()
+        return timedelta(microseconds=_divide_and_round(self._to_microseconds() * a, b))
+
+    @overload
     def __rmul__(self, other: int) -> timedelta:
         return timedelta(days=self.days * other, seconds=self.seconds * other,
                          microseconds=self.microseconds * other)
+
+    @overload
+    def __rmul__(self, other: float) -> timedelta:
+        a, b = other.as_integer_ratio()
+        return timedelta(microseconds=_divide_and_round(self._to_microseconds() * a, b))
 
     @overload
     def __floordiv__(self, other: timedelta) -> int:
@@ -110,10 +139,18 @@ class timedelta(ValueType):
     def __floordiv__(self, other: int) -> timedelta:
         return timedelta(microseconds=self._to_microseconds() // other)
 
-    # v1: true division only by another timedelta (the ratio). `td / number`
-    # (round-half-to-even -> timedelta) is deferred with the float surface.
+    @overload
     def __truediv__(self, other: timedelta) -> float:
         return self._to_microseconds() / other._to_microseconds()
+
+    @overload
+    def __truediv__(self, other: int) -> timedelta:
+        return timedelta(microseconds=_divide_and_round(self._to_microseconds(), other))
+
+    @overload
+    def __truediv__(self, other: float) -> timedelta:
+        a, b = other.as_integer_ratio()
+        return timedelta(microseconds=_divide_and_round(b * self._to_microseconds(), a))
 
     def __mod__(self, other: timedelta) -> timedelta:
         return timedelta(microseconds=self._to_microseconds() % other._to_microseconds())

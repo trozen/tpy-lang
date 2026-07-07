@@ -1397,6 +1397,46 @@ inline uint64_t __hash__(const BigInt& val) {
     return val.hash();
 }
 
+// int.as_integer_ratio(): a Python int is already integral, so the ratio
+// is (self, 1) -- CPython returns the value unchanged with denominator 1.
+inline std::tuple<BigInt, BigInt> bigint_as_integer_ratio(const BigInt& x) {
+    return {x, BigInt(1)};
+}
+
+// float.as_integer_ratio(): the exact (numerator, denominator) pair, in
+// lowest terms, with denominator > 0 -- matching CPython. A double is
+// m * 2^e with m an integer of at most 53 bits, so the ratio is always
+// mant / 2^k for some k; reducing mant's trailing zero bits into the
+// exponent leaves the two coprime (one side odd, the other a power of 2).
+inline std::tuple<BigInt, BigInt> float_as_integer_ratio(double x) {
+    if (std::isinf(x)) {
+        raise_overflow_error("cannot convert Infinity to integer ratio");
+    }
+    if (std::isnan(x)) {
+        raise_value_error("cannot convert NaN to integer ratio");
+    }
+    if (x == 0.0) {  // also folds -0.0 to (0, 1)
+        return {BigInt(0), BigInt(1)};
+    }
+    int exp;
+    double m = std::frexp(x, &exp);  // x == m * 2^exp, |m| in [0.5, 1)
+    // m * 2^53 is exactly integral (double carries <= 53 significant bits).
+    int64_t mant = static_cast<int64_t>(std::ldexp(m, 53));
+    exp -= 53;
+    while (mant != 0 && (mant & 1) == 0) {
+        mant >>= 1;
+        ++exp;
+    }
+    BigInt num(mant);
+    BigInt den(1);
+    if (exp >= 0) {
+        num = num << exp;
+    } else {
+        den = den << (-exp);
+    }
+    return {num, den};
+}
+
 // Correctly-rounded true division of two Python ints (CPython's
 // long_true_divide). Casting each operand to double and dividing rounds
 // twice and diverges from CPython once a magnitude exceeds 2^53; instead,

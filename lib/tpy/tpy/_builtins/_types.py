@@ -175,6 +175,10 @@ class int(Comparable, Equatable):
     @readonly
     @pure
     def bit_length(self) -> Int32: ...
+    @native("tpy::bigint_as_integer_ratio", function=True)
+    @readonly
+    @pure
+    def as_integer_ratio(self) -> tuple[int, int]: ...
 
 
 @builtin_type("builtins.float")
@@ -368,6 +372,10 @@ class float(Comparable, Equatable):
     @readonly
     @pure
     def __lt__(self, other: float) -> bool: ...
+    @native("tpy::float_as_integer_ratio", function=True)
+    @readonly
+    @pure
+    def as_integer_ratio(self) -> tuple[int, int]: ...
 @builtin_type("builtins.str")
 @native("std::string")
 class str(NativeIterable[Char], Iterable[Char], Comparable, Equatable):
