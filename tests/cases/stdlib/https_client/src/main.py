@@ -3,8 +3,9 @@
 # ssl.SSLSocket is moved into conn._tls, so request()/getresponse() run the
 # full HTTP/1.1 flow through mbedtls_ssl_read/write instead of a bare socket.
 # SSLSocket is @nocopy, so the move into the Optional field is a real move (a
-# silent copy would be a compile error). The peer is ssl._wrap_server over the
-# other end of a socketpair; it reads the encrypted request and replies with a
+# silent copy would be a compile error). The peer is a server-side SSLSocket
+# (load_cert_chain + wrap_socket(server_side=True)) over the other end of a
+# socketpair; it reads the encrypted request and replies with a
 # Content-Length response, which getresponse() parses through makefile().
 # A second request/response cycle on the same connection pins TLS keep-alive
 # (a fresh makefile reader per response over the shared Rc session).
@@ -57,7 +58,9 @@ def handshaken_pair() -> tuple[Own[SSLSocket], Own[SSLSocket]]:
     ctx = ssl.create_default_context()
     ctx.load_verify_locations(CERT_PATH)
     cli = ctx.wrap_socket(a, "localhost", False)
-    srv = ssl._wrap_server(b, CERT_PATH, KEY_PATH)
+    sctx = ssl.SSLContext()
+    sctx.load_cert_chain(CERT_PATH, KEY_PATH)
+    srv = sctx.wrap_socket(b, server_side=True, do_handshake_on_connect=False)
     i = 0
     cdone = False
     sdone = False

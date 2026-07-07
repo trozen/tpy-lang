@@ -1,0 +1,5 @@
+Drives a real mbedTLS handshake over socketpair with a public server-side
+SSLSocket (load_cert_chain + wrap_socket(server_side=True)) -- no CPython
+equivalent (CPython's ssl needs a real server / threads to handshake here,
+which the suite avoids). TLS correctness is validated by the exec phase (real
+crypto), not cpy parity.

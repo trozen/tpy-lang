@@ -1,0 +1,7 @@
+server handshake: TLSv1.3
+server recv: ping from client
+client recv: pong from server
+client eof: True
+no cert chain rejected
+malformed cert rejected
+server_hostname with server_side rejected

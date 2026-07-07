@@ -1,5 +1,5 @@
 Follows an http -> https redirect over a real mbedTLS handshake against an
-internal server peer (ssl._wrap_server) on a socketpair, via the _tls injection
+internal server peer (the public server path load_cert_chain + wrap_socket(server_side=True)) on a socketpair, via the _tls injection
 seam -- no CPython equivalent (CPython's ssl needs a real server / threads to
 handshake here, which the suite avoids). TLS + redirect correctness is validated
 by the exec phase, not cpy parity.

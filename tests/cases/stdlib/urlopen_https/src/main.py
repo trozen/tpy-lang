@@ -53,7 +53,9 @@ def handshaken_pair() -> tuple[Own[SSLSocket], Own[SSLSocket]]:
     ctx = ssl.create_default_context()
     ctx.load_verify_locations(CERT_PATH)
     cli = ctx.wrap_socket(a, "localhost", False)
-    srv = ssl._wrap_server(b, CERT_PATH, KEY_PATH)
+    sctx = ssl.SSLContext()
+    sctx.load_cert_chain(CERT_PATH, KEY_PATH)
+    srv = sctx.wrap_socket(b, server_side=True, do_handshake_on_connect=False)
     i = 0
     cdone = False
     sdone = False

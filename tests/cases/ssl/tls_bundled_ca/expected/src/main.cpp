@@ -60,8 +60,12 @@ void default_context_rejects_self_signed() {
     ::tpystd::ssl::SSLContext ctx = ::tpystd::ssl::create_default_context();
     // cli = ctx.wrap_socket(a, "localhost", False)
     ::tpystd::ssl::SSLSocket cli = ctx.wrap_socket(std::move(a), "localhost", false);
-    // srv = ssl._wrap_server(b, CERT_PATH, KEY_PATH)
-    ::tpystd::ssl::SSLSocket srv = ::tpystd::ssl::_wrap_server(std::move(b), CERT_PATH, KEY_PATH);
+    // sctx = ssl.SSLContext()
+    ::tpystd::ssl::SSLContext sctx = ::tpystd::ssl::SSLContext();
+    // sctx.load_cert_chain(CERT_PATH, KEY_PATH)
+    sctx.load_cert_chain(CERT_PATH, KEY_PATH);
+    // srv = sctx.wrap_socket(b, server_side=True, do_handshake_on_connect=False)
+    ::tpystd::ssl::SSLSocket srv = sctx.wrap_socket(std::move(b), "", false, true);
     // sdone = False
     bool sdone = false;
     // i = 0
@@ -128,8 +132,12 @@ void bare_context_trusts_nothing() {
     ::tpystd::ssl::SSLContext ctx = ::tpystd::ssl::SSLContext();
     // cli = ctx.wrap_socket(a, "localhost", False)
     ::tpystd::ssl::SSLSocket cli = ctx.wrap_socket(std::move(a), "localhost", false);
-    // srv = ssl._wrap_server(b, CERT_PATH, KEY_PATH)
-    ::tpystd::ssl::SSLSocket srv = ::tpystd::ssl::_wrap_server(std::move(b), CERT_PATH, KEY_PATH);
+    // sctx = ssl.SSLContext()
+    ::tpystd::ssl::SSLContext sctx = ::tpystd::ssl::SSLContext();
+    // sctx.load_cert_chain(CERT_PATH, KEY_PATH)
+    sctx.load_cert_chain(CERT_PATH, KEY_PATH);
+    // srv = sctx.wrap_socket(b, server_side=True, do_handshake_on_connect=False)
+    ::tpystd::ssl::SSLSocket srv = sctx.wrap_socket(std::move(b), "", false, true);
     // sdone = False
     bool sdone = false;
     // i = 0

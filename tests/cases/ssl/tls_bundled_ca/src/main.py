@@ -6,6 +6,10 @@
 # only possible rejection reason is the untrusted chain, not a hostname
 # mismatch. A real public-root handshake can't run offline, so this is the
 # strongest offline proof. no_cpython (same reason as tls_handshake).
+# Coverage limit: this can't distinguish "bundle wired into conf_ca_chain"
+# from "bundle present but unwired" (a bare empty-trust SSLContext() also
+# rejects the self-signed cert) -- proving the wiring needs a network-gated
+# handshake against a real Mozilla-rooted host. See docs/SSL_DESIGN.md.
 from typing import Final
 import ssl
 from ssl import SSLSocket  # qualified ssl.SSLSocket annotations are unsupported
@@ -55,7 +59,9 @@ def default_context_rejects_self_signed() -> None:
     b.setblocking(False)
     ctx = ssl.create_default_context()  # bundled roots only; NO load_verify_locations
     cli = ctx.wrap_socket(a, "localhost", False)
-    srv = ssl._wrap_server(b, CERT_PATH, KEY_PATH)
+    sctx = ssl.SSLContext()
+    sctx.load_cert_chain(CERT_PATH, KEY_PATH)
+    srv = sctx.wrap_socket(b, server_side=True, do_handshake_on_connect=False)
 
     sdone = False
     i = 0
@@ -89,7 +95,9 @@ def bare_context_trusts_nothing() -> None:
     b.setblocking(False)
     ctx = ssl.SSLContext()
     cli = ctx.wrap_socket(a, "localhost", False)
-    srv = ssl._wrap_server(b, CERT_PATH, KEY_PATH)
+    sctx = ssl.SSLContext()
+    sctx.load_cert_chain(CERT_PATH, KEY_PATH)
+    srv = sctx.wrap_socket(b, server_side=True, do_handshake_on_connect=False)
 
     sdone = False
     i = 0

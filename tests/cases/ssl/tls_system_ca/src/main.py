@@ -72,7 +72,9 @@ def try_verify(cafile: str = "") -> bool:
     if len(cafile) > 0:
         ctx.load_verify_locations(cafile)
     cli = ctx.wrap_socket(a, "localhost", False)
-    srv = ssl._wrap_server(b, CERT_PATH, KEY_PATH)
+    sctx = ssl.SSLContext()
+    sctx.load_cert_chain(CERT_PATH, KEY_PATH)
+    srv = sctx.wrap_socket(b, server_side=True, do_handshake_on_connect=False)
     sdone = False
     i = 0
     while i < 500:

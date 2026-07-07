@@ -24,8 +24,9 @@ keeps returning `b""` on a clean close, matching CPython's `SSLSocket.recv`).
 The system trust store ships: `load_default_certs()` resolves the platform
 CA bundle (`SSL_CERT_FILE` override, else well-known bundle paths) and
 `create_default_context()` loads it additively with the vendored roots via
-`tpy_tls_add_ca_file` (test `ssl/tls_system_ca`). The HTTPS-client track is
-now complete except for deferred surface (server-side TLS). This document
+`tpy_tls_add_ca_file` (test `ssl/tls_system_ca`). Server-side TLS ships as a
+public API: `SSLContext.load_cert_chain(certfile, keyfile)` +
+`wrap_socket(sock, server_side=True)` (test `ssl/tls_server`). This document
 is the contract for the whole track.
 
 ## Goal
@@ -53,9 +54,28 @@ plaintext = s.recv(4096)                        # decrypted in userspace
 `http.client.HTTPSConnection` sits between them; `requests` / `urlopen`
 route `https://` to it on port 443.
 
-**v1 is HTTPS client only.** No public server-side TLS, no async-reactor
-TLS, no broad `ssl` surface. (A minimal server path exists internally for
-the test harness only.)
+**Scope: HTTPS client + a minimal server-side TLS surface.** No async-reactor
+TLS, no broad `ssl` surface. The server path is the CPython-faithful
+`SSLContext().load_cert_chain(cert, key)` + `wrap_socket(sock,
+server_side=True)`; the context is role-agnostic (no `PROTOCOL_TLS_*` /
+`Purpose`), `server_side=True` requires a loaded cert chain and ignores the
+client-only verify/hostname config.
+
+Deferred surface (add on demand -- none is a near-term gap):
+
+- **Mutual TLS** -- a server verifying a client cert (`CERT_REQUIRED` +
+  `load_verify_locations` on the server context). The server path currently
+  ignores verify config; needs a `tls_config_server` authmode/CA wiring pass.
+- **`PROTOCOL_TLS_SERVER`/`PROTOCOL_TLS_CLIENT` + `Purpose.CLIENT_AUTH`/
+  `SERVER_AUTH` + `create_default_context(purpose=)`** -- TPy's context is
+  role-agnostic instead.
+- **`load_cert_chain(password=)`** for encrypted private keys.
+- **`SSLSyscallError`/`SSLEOFError`** exception subclasses.
+- A **network-gated smoke test** proving the bundled Mozilla CA store is
+  wired into an accepting verification (`ssl/tls_bundled_ca` can only prove
+  the blob is embedded + that an untrusted cert is rejected -- it can't
+  distinguish "wired in" from "present but unwired" offline, since no cert
+  chained to a real Mozilla root can be minted without network).
 
 `tpyc/` is **not** touched -- this is pure runtime + native-binding +
 stdlib work, which keeps it clear of the THIR/MIR migration moratorium.
@@ -272,9 +292,10 @@ Match CPython's `create_default_context()` + `requests` `verify=True`:
 - Escape hatch: `requests.get(..., verify=False)` and
   `SSLContext.verify_mode = CERT_NONE` (also disables hostname check);
   `verify="<path>"` -> `load_verify_locations`.
-- v1 `SSLContext` surface: `load_verify_locations(cafile)`,
-  `check_hostname`, `verify_mode`. Deferred: `set_ciphers`, client certs /
-  mTLS (`load_cert_chain`), CRL/OCSP, ALPN, fine-grained `minimum_version`.
+- `SSLContext` surface: `load_verify_locations(cafile)`, `check_hostname`,
+  `verify_mode`, and `load_cert_chain(certfile, keyfile)` (server identity).
+  Deferred: `set_ciphers`, client-cert / mutual TLS (`load_cert_chain` is a
+  no-op on the client path), CRL/OCSP, ALPN, fine-grained `minimum_version`.
 
 ## Exceptions
 
@@ -354,8 +375,9 @@ handshake over `socket.socketpair()`**:
 
 Requirements / costs:
 - A **server-side mbedTLS path for the test peer** (the raw bindings are
-  symmetric -- `config_defaults` takes a SERVER/CLIENT flag), kept behind
-  an internal/underscore helper, not the public surface.
+  symmetric -- `config_defaults` takes a SERVER/CLIENT flag). This is now the
+  public `load_cert_chain` + `wrap_socket(server_side=True)` surface; the test
+  peer drives it directly.
 - A committed **self-signed test cert + key** fixture (long-dated to avoid
   expiry flakiness) in a shared fixture dir. The client trusts it via
   `load_verify_locations` and sets a matching `server_hostname`, so the
@@ -410,4 +432,6 @@ end after `/tpy-review` + `/tpy-ready`.
 - `Rc`-unify plaintext `makefile` -- TLS keep-alive has landed (its former
   precondition), but dup still suffices under the drain-before-next-request
   discipline; tracked in TODO.md (io v2 makefile shared-fd item).
-- Server-side TLS as a public API; async-reactor TLS integration.
+- Async-reactor TLS integration. (Server-side TLS as a public API has
+  shipped -- see the "Deferred surface" section above for its remaining
+  sub-items: mutual TLS, `PROTOCOL_TLS_*`/`Purpose`, `password=`.)

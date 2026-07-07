@@ -1,6 +1,7 @@
 # ssl module end-to-end over a socketpair (single-threaded, step-wise, no
-# threads): SSLContext.wrap_socket (verifying client) + the internal
-# _wrap_server peer. Covers cert+hostname verify (happy), send/sendall,
+# threads): SSLContext.wrap_socket (verifying client) + the public server
+# path (load_cert_chain + wrap_socket(server_side=True)). Covers cert+hostname
+# verify (happy), send/sendall,
 # recv-EOF on close_notify, a hostname mismatch rejected, and CERT_NONE.
 # Self-signed localhost cert+key embedded + written at runtime (a committed
 # fixture). no_cpython: CPython's ssl needs a real server/threads here.
@@ -61,7 +62,9 @@ def handshake_ok() -> None:
     ctx = ssl.create_default_context()
     ctx.load_verify_locations(CERT_PATH)
     cli = ctx.wrap_socket(a, "localhost", False)
-    srv = ssl._wrap_server(b, CERT_PATH, KEY_PATH)
+    sctx = ssl.SSLContext()
+    sctx.load_cert_chain(CERT_PATH, KEY_PATH)
+    srv = sctx.wrap_socket(b, server_side=True, do_handshake_on_connect=False)
     if not drive(cli, srv):
         print("FAIL: handshake did not converge")
         return
@@ -87,7 +90,9 @@ def hostname_mismatch() -> None:
     ctx = ssl.create_default_context()
     ctx.load_verify_locations(CERT_PATH)
     cli = ctx.wrap_socket(a, "wronghost.example", False)
-    srv = ssl._wrap_server(b, CERT_PATH, KEY_PATH)
+    sctx = ssl.SSLContext()
+    sctx.load_cert_chain(CERT_PATH, KEY_PATH)
+    srv = sctx.wrap_socket(b, server_side=True, do_handshake_on_connect=False)
 
     sdone = False
     i = 0
@@ -119,7 +124,9 @@ def cert_none() -> None:
     ctx.verify_mode = ssl.CERT_NONE
     ctx.check_hostname = False
     cli = ctx.wrap_socket(a, "", False)
-    srv = ssl._wrap_server(b, CERT_PATH, KEY_PATH)
+    sctx = ssl.SSLContext()
+    sctx.load_cert_chain(CERT_PATH, KEY_PATH)
+    srv = sctx.wrap_socket(b, server_side=True, do_handshake_on_connect=False)
     if drive(cli, srv):
         print("no-verify handshake:", cli.version())
     else:

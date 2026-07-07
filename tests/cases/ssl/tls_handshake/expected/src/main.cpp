@@ -79,8 +79,12 @@ void handshake_ok() {
     ctx.load_verify_locations(CERT_PATH);
     // cli = ctx.wrap_socket(a, "localhost", False)
     ::tpystd::ssl::SSLSocket cli = ctx.wrap_socket(std::move(a), "localhost", false);
-    // srv = ssl._wrap_server(b, CERT_PATH, KEY_PATH)
-    ::tpystd::ssl::SSLSocket srv = ::tpystd::ssl::_wrap_server(std::move(b), CERT_PATH, KEY_PATH);
+    // sctx = ssl.SSLContext()
+    ::tpystd::ssl::SSLContext sctx = ::tpystd::ssl::SSLContext();
+    // sctx.load_cert_chain(CERT_PATH, KEY_PATH)
+    sctx.load_cert_chain(CERT_PATH, KEY_PATH);
+    // srv = sctx.wrap_socket(b, server_side=True, do_handshake_on_connect=False)
+    ::tpystd::ssl::SSLSocket srv = sctx.wrap_socket(std::move(b), "", false, true);
     // if not drive(cli, srv):
     if ((!(drive(cli, srv)))) {
         // print("FAIL: handshake did not converge")
@@ -127,8 +131,12 @@ void hostname_mismatch() {
     ctx.load_verify_locations(CERT_PATH);
     // cli = ctx.wrap_socket(a, "wronghost.example", False)
     ::tpystd::ssl::SSLSocket cli = ctx.wrap_socket(std::move(a), "wronghost.example", false);
-    // srv = ssl._wrap_server(b, CERT_PATH, KEY_PATH)
-    ::tpystd::ssl::SSLSocket srv = ::tpystd::ssl::_wrap_server(std::move(b), CERT_PATH, KEY_PATH);
+    // sctx = ssl.SSLContext()
+    ::tpystd::ssl::SSLContext sctx = ::tpystd::ssl::SSLContext();
+    // sctx.load_cert_chain(CERT_PATH, KEY_PATH)
+    sctx.load_cert_chain(CERT_PATH, KEY_PATH);
+    // srv = sctx.wrap_socket(b, server_side=True, do_handshake_on_connect=False)
+    ::tpystd::ssl::SSLSocket srv = sctx.wrap_socket(std::move(b), "", false, true);
     // sdone = False
     bool sdone = false;
     // i = 0
@@ -195,8 +203,12 @@ void cert_none() {
     ctx.check_hostname = false;
     // cli = ctx.wrap_socket(a, "", False)
     ::tpystd::ssl::SSLSocket cli = ctx.wrap_socket(std::move(a), "", false);
-    // srv = ssl._wrap_server(b, CERT_PATH, KEY_PATH)
-    ::tpystd::ssl::SSLSocket srv = ::tpystd::ssl::_wrap_server(std::move(b), CERT_PATH, KEY_PATH);
+    // sctx = ssl.SSLContext()
+    ::tpystd::ssl::SSLContext sctx = ::tpystd::ssl::SSLContext();
+    // sctx.load_cert_chain(CERT_PATH, KEY_PATH)
+    sctx.load_cert_chain(CERT_PATH, KEY_PATH);
+    // srv = sctx.wrap_socket(b, server_side=True, do_handshake_on_connect=False)
+    ::tpystd::ssl::SSLSocket srv = sctx.wrap_socket(std::move(b), "", false, true);
     // if drive(cli, srv):
     if (drive(cli, srv)) {
         // print("no-verify handshake:", cli.version())

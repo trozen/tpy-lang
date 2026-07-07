@@ -1,7 +1,7 @@
 # tpy: cpp_namespace("tpystd::ssl")
 """TLS for sockets -- a CPython-compatible `ssl` surface backed by mbedTLS.
 
-v1 is an HTTPS *client*: `create_default_context()` -> `SSLContext` ->
+The HTTPS *client* path: `create_default_context()` -> `SSLContext` ->
 `wrap_socket(sock, server_hostname=...)` -> `SSLSocket` (recv/send/sendall/
 do_handshake/close). Secure by default: certificate verification REQUIRED
 and the hostname checked against the peer cert's CN/SAN (which also drives
@@ -17,14 +17,45 @@ Architecture (see docs/SSL_DESIGN.md):
   * this module -- backend-agnostic facade; classes hold a single opaque
     session handle and map mbedTLS return codes to the exception tree.
 
-Known v1 gaps (filed in docs/SSL_DESIGN.md / TODO): the system trust store
+The server path: `SSLContext()` -> `load_cert_chain(certfile, keyfile)` ->
+`wrap_socket(sock, server_side=True)` -> `SSLSocket`. The context's
+client-only verify/hostname config is ignored on this path (no mutual-TLS
+client-cert verification yet -- see docs/SSL_DESIGN.md).
+
+Known gaps (see docs/SSL_DESIGN.md deferred surface): the system trust store
 is read as a bundle FILE (env override + well-known paths) -- macOS
 Keychain-only corporate CAs and `SSL_CERT_DIR` directory stores are not
-read; server-side TLS is internal-only (the test peer). `makefile()` returns
-a binary `BufferedReader` (the http.client read path); text mode follows.
+read. `makefile()` returns a binary `BufferedReader` (the http.client read
+path); text mode follows.
+
+Documented limitations (match CPython or a harmless teardown gap; not
+tracked as bugs):
+  * After `makefile()`, `recv()` and the returned reader both drive
+    `tls_read` on the same shared session, so interleaving reads across
+    the two handles splits the TLS byte-stream -- the same hazard as
+    CPython's `socket.recv` + `makefile`. TPy's `Rc` share additionally
+    keeps the reader (and the fd) alive past `close()`, so a stale reader
+    holds the connection open longer than CPython would.
+  * `SSLSocket` has no `__del__`, so dropping one without `close()` skips
+    the best-effort `close_notify` -- no leak (the fd + session free via
+    their field `__del__`s), just an incomplete TLS teardown.
 
 Deliberate divergences from CPython's `ssl` (so they are declared, not
 silent -- see docs/LANGUAGE_FEATURES.md):
+  * `SSLContext()` takes no protocol argument and is role-agnostic: the
+    client/server role is chosen at `wrap_socket(server_side=)`, where
+    CPython selects it via `PROTOCOL_TLS_CLIENT`/`PROTOCOL_TLS_SERVER`
+    (or `create_default_context(purpose=)`). `load_cert_chain` takes no
+    `password=` (tighter v1 signature).
+  * `load_cert_chain` supplies the SERVER identity only: it is consulted
+    solely on the `wrap_socket(server_side=True)` path. On the client path
+    it is a no-op -- TPy has no client-certificate / mutual-TLS support yet
+    (deferred; see docs/SSL_DESIGN.md), where CPython would present the
+    loaded cert to an mTLS server.
+  * `wrap_socket(server_hostname=..., server_side=True)` raises rather than
+    silently ignoring the hostname -- `server_hostname` is client-only (SNI
+    + CN/SAN match). CPython raises `ValueError` here; TPy raises `SSLError`
+    (no `ValueError` base).
   * `SSLSocket.do_handshake()` returns a bool (True done / False needs I/O)
     rather than returning None and raising `SSLWantReadError`/`Write` on a
     non-blocking socket; the blocking `wrap_socket(do_handshake_on_connect=
@@ -139,6 +170,13 @@ def _errstr(rc: Int32) -> str:
     return unsafe_str_from_cstr(unsafe_cast(buf.ptr()))
 
 
+def _fail(s: Ptr[mbedtls.Session], msg: str) -> None:
+    """Free a half-configured session, then raise -- the single home for the
+    free+raise pairing so no config error branch can leak `s`."""
+    mbedtls.tls_free(s)
+    raise SSLError(msg)
+
+
 def _raise_io_error(rc: Int32) -> None:
     """Map a negative mbedTLS I/O return to the CPython ssl exception:
     WANT_READ/WANT_WRITE -> SSLWantReadError/SSLWantWriteError (non-blocking
@@ -200,12 +238,16 @@ class _SslSession:
 
 
 class SSLContext:
-    """Client TLS configuration. Secure by default (verify + hostname on)."""
+    """TLS configuration, role-agnostic. Secure-by-default client config
+    (verify + hostname on); the server role is opted into per-wrap via
+    `wrap_socket(server_side=True)` over a `load_cert_chain` cert."""
     verify_mode: Int32
     check_hostname: bool
     _cafile: str
     _use_bundled_ca: bool
     _system_cafile: str
+    _certfile: str
+    _keyfile: str
 
     def __init__(self) -> None:
         self.verify_mode = CERT_REQUIRED
@@ -215,11 +257,22 @@ class SSLContext:
         # only create_default_context / load_default_certs load the roots).
         self._use_bundled_ca = False
         self._system_cafile = ""
+        # The server-role cert chain is empty until load_cert_chain; the
+        # client path never consults it.
+        self._certfile = ""
+        self._keyfile = ""
 
     def load_verify_locations(self, cafile: str) -> None:
         """Trust the CA certificates in `cafile` (PEM or DER). Additive to the
         bundled roots when those are also enabled (matches CPython)."""
         self._cafile = cafile
+
+    def load_cert_chain(self, certfile: str, keyfile: str) -> None:
+        """Load the server's certificate chain and private key (PEM files),
+        used when wrapping a socket with `server_side=True`. CPython's
+        `password=` parameter is not supported (tighter v1 signature)."""
+        self._certfile = certfile
+        self._keyfile = keyfile
 
     def load_default_certs(self) -> None:
         """Trust the default CA sets: the vendored Mozilla bundle plus the
@@ -232,25 +285,58 @@ class SSLContext:
         self._system_cafile = _resolve_system_ca_file()
 
     def wrap_socket(self, sock: Own[socket], server_hostname: str = "",
-                    do_handshake_on_connect: bool = True) -> Own[SSLSocket]:
-        # CPython rejects this combination too: you cannot verify the hostname
-        # without one. (CPython raises ValueError; TPy has no ValueError base.)
-        if self.check_hostname and len(server_hostname) == 0:
+                    do_handshake_on_connect: bool = True,
+                    server_side: bool = False) -> Own[SSLSocket]:
+        """Wrap `sock` in a TLS session. `server_side=False` (default) is the
+        verifying HTTPS-client path; `server_side=True` is the server path,
+        which requires a prior `load_cert_chain` and ignores the client-only
+        verify/hostname configuration."""
+        if server_side:
+            # server_hostname is client-only (SNI + CN/SAN match); CPython
+            # raises ValueError for this combination. (TPy has no ValueError
+            # base, so SSLError -- same as the check_hostname guard below.)
+            if len(server_hostname) > 0:
+                raise SSLError("server_hostname can only be specified in "
+                               "client mode")
+        elif self.check_hostname and len(server_hostname) == 0:
+            # CPython rejects this too: you cannot verify the hostname without
+            # one. (CPython raises ValueError; TPy has no ValueError base.)
             raise SSLError("check_hostname requires server_hostname")
         s = mbedtls.tls_new()
         if s is None:
             raise SSLError("could not allocate TLS session")
+        if server_side:
+            self._config_server(s)
+        else:
+            self._config_client(s)
+        if mbedtls.tls_setup(s) != 0:
+            _fail(s, "TLS setup failed")
+        mbedtls.tls_set_fd(s, sock.fileno())
+        if not server_side and len(server_hostname) > 0:
+            # set_hostname drives both SNI and the CN/SAN match -- a failure
+            # here would silently leave verification with neither, so it must
+            # raise.
+            host = server_hostname
+            if mbedtls.tls_set_hostname(s, unsafe_cast(unsafe_ptr(host)),
+                                        UInt64(len(host))) != 0:
+                _fail(s, "could not set TLS hostname")
+        wrapped = SSLSocket(Rc.new(_SslSession(s, sock)))
+        if do_handshake_on_connect:
+            wrapped.do_handshake_blocking()
+        return wrapped
+
+    def _config_client(self, s: Ptr[mbedtls.Session]) -> None:
+        """Apply the verifying-client config (trust store + verify mode) to a
+        fresh session. Frees `s` and raises on failure."""
         verify = Int32(1) if self.verify_mode == CERT_REQUIRED else Int32(0)
         ca = self._cafile  # "" -> no trust store loaded (len 0; shim skips it)
         rc = mbedtls.tls_config_client(
             s, unsafe_cast(unsafe_ptr(ca)), UInt64(len(ca)), verify)
         if rc != 0:
-            mbedtls.tls_free(s)
-            raise SSLError(_errstr(rc))
+            _fail(s, _errstr(rc))
         if self._use_bundled_ca:
             if mbedtls.tls_add_bundled_ca(s) != 0:
-                mbedtls.tls_free(s)
-                raise SSLError("could not load bundled CA store")
+                _fail(s, "could not load bundled CA store")
         if len(self._system_cafile) > 0:
             # Best-effort, matching CPython/OpenSSL: an unreadable or
             # unparseable system bundle (even an explicit SSL_CERT_FILE) is
@@ -259,22 +345,19 @@ class SSLContext:
             sp = self._system_cafile
             mbedtls.tls_add_ca_file(s, unsafe_cast(unsafe_ptr(sp)),
                                     UInt64(len(sp)))
-        if mbedtls.tls_setup(s) != 0:
-            mbedtls.tls_free(s)
-            raise SSLError("TLS setup failed")
-        mbedtls.tls_set_fd(s, sock.fileno())
-        # set_hostname drives both SNI and the CN/SAN match -- a failure here
-        # would silently leave verification with neither, so it must raise.
-        host = server_hostname
-        if len(host) > 0:
-            if mbedtls.tls_set_hostname(s, unsafe_cast(unsafe_ptr(host)),
-                                        UInt64(len(host))) != 0:
-                mbedtls.tls_free(s)
-                raise SSLError("could not set TLS hostname")
-        wrapped = SSLSocket(Rc.new(_SslSession(s, sock)))
-        if do_handshake_on_connect:
-            wrapped.do_handshake_blocking()
-        return wrapped
+
+    def _config_server(self, s: Ptr[mbedtls.Session]) -> None:
+        """Apply the server config (own cert chain + key) to a fresh session.
+        Frees `s` and raises on failure."""
+        if len(self._certfile) == 0:
+            _fail(s, "server_side wrap_socket requires load_cert_chain")
+        cf = self._certfile
+        kf = self._keyfile
+        rc = mbedtls.tls_config_server(
+            s, unsafe_cast(unsafe_ptr(cf)), UInt64(len(cf)),
+            unsafe_cast(unsafe_ptr(kf)), UInt64(len(kf)))
+        if rc != 0:
+            _fail(s, _errstr(rc))
 
 
 def create_default_context() -> Own[SSLContext]:
@@ -404,26 +487,3 @@ class SSLRawIO:
     def close(self) -> None:
         # The session/fd close when the last Rc holder drops; nothing here.
         pass
-
-
-def _wrap_server(sock: Own[socket], certfile: str, keyfile: str,
-                 do_handshake_on_connect: bool = False) -> Own[SSLSocket]:
-    """Internal: server-side TLS, for the in-process test peer only -- NOT a
-    public API (v1 is client-only). Mirrors wrap_socket with a server config."""
-    s = mbedtls.tls_new()
-    if s is None:
-        raise SSLError("could not allocate TLS session")
-    rc = mbedtls.tls_config_server(
-        s, unsafe_cast(unsafe_ptr(certfile)), UInt64(len(certfile)),
-        unsafe_cast(unsafe_ptr(keyfile)), UInt64(len(keyfile)))
-    if rc != 0:
-        mbedtls.tls_free(s)
-        raise SSLError(_errstr(rc))
-    if mbedtls.tls_setup(s) != 0:
-        mbedtls.tls_free(s)
-        raise SSLError("TLS setup failed")
-    mbedtls.tls_set_fd(s, sock.fileno())
-    wrapped = SSLSocket(Rc.new(_SslSession(s, sock)))
-    if do_handshake_on_connect:
-        wrapped.do_handshake_blocking()
-    return wrapped
