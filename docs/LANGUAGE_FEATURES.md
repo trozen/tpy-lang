@@ -6047,7 +6047,10 @@ API, floor 3.12, hand-rolled C-API glue, copy-in marshalling).
   instance fields (scalar / str / bytes / exposed-enum) as **instance
   attributes**: the registered setter constructs an instance from the message
   (`pytype(e.what())`), marshals each field via `PyObject_SetAttrString`, then
-  `PyErr_SetObject`s it. The crossing is *transitive* (registry-driven).
+  `PyErr_SetObject`s it. A field whose name begins with `_` is **internal** (the
+  same rule as exposed-class getset fields) -- it never crosses as an attribute
+  and may hold any type; an exception whose fields are all internal falls back to
+  the message-only setter. The crossing is *transitive* (registry-driven).
   **Acknowledged divergence:** `str(e)` and `e.args` reflect the message field
   only, not the full constructor arg tuple (the C++ exception holds typed
   fields, not the original call tuple; CPython-native keeps `args =
@@ -6082,9 +6085,15 @@ API, floor 3.12, hand-rolled C-API glue, copy-in marshalling).
   field is r/w (you can *replace* the whole value: `b.origin = Point(3, 4)`) but
   the nested value's own fields loud-fail a mutation (`b.origin.x = 5` raises
   `AttributeError`), and each read is a fresh copy (`b.origin is b.origin` is
-  `False`). A *container* field stays rejected (the per-field getter/setter path
-  has no container emit), and a *mutable* (reference) *class-typed* field stays
-  rejected (see the reject list). Because the
+  `False`). A *public* *container* field stays rejected (the per-field
+  getter/setter path has no container emit), and a *public* *mutable* (reference)
+  *class-typed* field stays rejected (see the reject list) -- but a field whose
+  name begins with `_` is **internal**: it never crosses as a Python attribute
+  (it stays live C++ payload state the class's own methods use), so it may hold
+  *any* type, including the reference-class and container members the getset path
+  rejects. Reach an internal member through a method rather than an attribute
+  (the reject diagnostic points here). The same `_`-prefix rule hides an
+  exception's internal data fields. Because the
   PyObject *owns* the instance, a class crosses **IN as a borrow of the live
   embedded payload** -- a method call or a free function taking the instance
   (`def bump(c: Counter, ...)`) mutates through it and the change is visible on
@@ -6103,14 +6112,17 @@ API, floor 3.12, hand-rolled C-API glue, copy-in marshalling).
   -- declared divergences kept out of the parity driver and exercised in
   `ext_checks.py`. The ext-module validator rejects, with a located error, an
   exposed class the glue can't yet emit: a field/method type that doesn't
-  marshal, a **mutable (reference) class-typed field** (a nested *mutable* class
-  is stored inline by value, so a getset getter could only copy it out --
+  marshal, a **public mutable (reference) class-typed field** (a nested *mutable*
+  class is stored inline by value, so a getset getter could only copy it out --
   `outer.inner` would fabricate a fresh object every read and `outer.inner.x = 5`
   would silently no-op where CPython aliases the real object; the diagnostic
-  steers to an accessor method that mutates through `self`, or an explicit
-  `copy()`, and faithful aliasing awaits the deferred foreign-borrow primitive.
+  steers to making the field *internal* -- a `_`-prefixed name never crosses as
+  an attribute, so it may hold any type -- plus an accessor method that mutates
+  through `self` or an explicit `copy()`, and faithful *aliasing* of a public
+  field awaits the deferred foreign-borrow primitive.
   A *value-type* class-typed field is exempt -- immutability makes the copy-out
-  invisible, so it is admitted, above), an `Own[Cls]` param (the host
+  invisible, so it is admitted, above; a `_`-prefixed field of *any* type is
+  exempt too -- it is internal payload state, never a Python attribute), an `Own[Cls]` param (the host
   keeps its reference, so ownership can't transfer -- use the borrow form), a
   `@nocopy`
   class returned by reference (the boundary can't copy it out -- return

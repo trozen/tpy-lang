@@ -660,6 +660,16 @@ def is_exposed_enum(t: "TpyType | None") -> "bool":
     return td is not None and td.enum is not None and td.boundary_marshal
 
 
+def is_internal_boundary_field(name: str) -> bool:
+    """A field whose name begins with `_` never crosses the CPython interop
+    boundary as an attribute (neither an exposed-class getset nor an exception
+    data-field). It stays live C++ payload state but is invisible to Python --
+    the compiler enforces what Python's own `_private` convention only advises.
+    The rule is uniform across every attribute site, with no override, so a
+    single predicate gates them all."""
+    return name.startswith("_")
+
+
 def boundary_cpp_type(t: "TpyType | None") -> str:
     # The boundary cpp type used by the glue emitter (a missing return type is
     # 'void'); admission is is_boundary_marshallable. Shared so the sema

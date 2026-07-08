@@ -4136,7 +4136,7 @@ class Compiler:
         """
         from .type_def_registry import (
             is_boundary_marshallable, is_exposed_class, is_exposed_enum,
-            boundary_type_name)
+            is_internal_boundary_field, boundary_type_name)
         reg = compiled.analyzer.registry
         for record in compiled.ast.records:
             info = reg.get_record(record.name)
@@ -4150,6 +4150,8 @@ class Compiler:
                         (record.loc.line if record.loc else None))
 
             for fld in reg.user_declared_fields(info):
+                if is_internal_boundary_field(fld.name):
+                    continue  # internal payload state; never crosses
                 if is_exposed_enum(fld.type):
                     # A locally-defined exposed enum crosses; a cross-module one
                     # has no type handle in this glue TU. Reuse the sibling
@@ -4185,8 +4187,8 @@ class Compiler:
         """
         from .type_def_registry import (
             is_boundary_marshallable, is_function_boundary_marshallable,
-            is_span_boundary_param, boundary_type_name,
-            boundary_unmarshallable_msg)
+            is_span_boundary_param, is_internal_boundary_field,
+            boundary_type_name, boundary_unmarshallable_msg)
         info = compiled.analyzer.registry.get_record(record.name)
         class_line = record.loc.line if record.loc else None
 
@@ -4237,6 +4239,8 @@ class Compiler:
                 compiled.name, compiled.path, lineno=line_of(loc))
 
         for fld in info.fields:
+            if is_internal_boundary_field(fld.name):
+                continue  # internal payload state; not exposed, any type allowed
             check(fld.type, f"field '{fld.name}'", "field", fld.loc)
 
         # AST nodes (not the FunctionInfo overloads) carry the arg-form facts
@@ -4458,8 +4462,10 @@ class Compiler:
             # falls through to admission below, like an exposed-enum field.
             return (f"of exposed-class type '{cls}' cannot be exposed as a getset "
                     f"field: a nested class stored inline can only copy out, "
-                    f"silently breaking write-through. Expose a method that "
-                    f"mutates it through 'self', or return an explicit copy()")
+                    f"silently breaking write-through. Make the field internal by "
+                    f"prefixing its name with '_' (kept as payload state, never a "
+                    f"Python attribute) and expose a method that mutates it "
+                    f"through 'self' or returns an explicit copy()")
         if role == "param" and isinstance(typ, OwnType):
             return (f"is Own[{cls}], which is not a valid boundary type: the host "
                     f"keeps its reference, so ownership cannot transfer -- use "

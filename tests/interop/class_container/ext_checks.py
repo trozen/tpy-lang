@@ -32,4 +32,8 @@ try:
 except TypeError:
     pass
 
+# `_i` is the internal iteration cursor: a `_`-named field never crosses as a
+# Python attribute (it stays live payload state driving __iter__/__next__).
+assert not hasattr(b, "_i"), "internal field _i leaked to Python"
+
 print("ext-only container checks: PASS")

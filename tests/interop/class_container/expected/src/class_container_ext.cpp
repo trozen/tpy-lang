@@ -93,26 +93,6 @@ int class_container__Box__c_set(PyObject *self, PyObject *value, void *) {
     }
 }
 
-PyObject *class_container__Box___i_get(PyObject *self, void *) {
-    try {
-        return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_container::Box> *>(self)->payload._i);
-    } catch (...) {
-        if (!PyErr_Occurred())
-            PyErr_SetString(PyExc_RuntimeError, "tpy extension: attribute read failed");
-        return nullptr;
-    }
-}
-int class_container__Box___i_set(PyObject *self, PyObject *value, void *) {
-    try {
-        reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_container::Box> *>(self)->payload._i = ::tpy::interop::from_py<int32_t>(value);
-        return 0;
-    } catch (...) {
-        if (!PyErr_Occurred())
-            PyErr_SetString(PyExc_RuntimeError, "tpy extension: attribute write failed");
-        return -1;
-    }
-}
-
 Py_ssize_t class_container__Box__len_slot(PyObject *self) {
     try {
         return static_cast<Py_ssize_t>(reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_container::Box> *>(self)->payload.__len__());
@@ -212,7 +192,6 @@ PyGetSetDef class_container__Box__getset[] = {
     {"a", class_container__Box__a_get, class_container__Box__a_set, nullptr, nullptr},
     {"b", class_container__Box__b_get, class_container__Box__b_set, nullptr, nullptr},
     {"c", class_container__Box__c_get, class_container__Box__c_set, nullptr, nullptr},
-    {"_i", class_container__Box___i_get, class_container__Box___i_set, nullptr, nullptr},
     {nullptr, nullptr, nullptr, nullptr, nullptr},
 };
 PyType_Slot class_container__Box__slots[] = {

@@ -54,7 +54,7 @@ progress -> ✅ done.
 | 2 | Extension codegen; **free functions** end-to-end; local `.so` build | **v1.0** | 🚧 every scalar arg/return + void return + str/bytes + container arg/return done; positional + keyword args (PyArg_ParseTupleAndKeywords) |
 | 2.5 | PEP 517 backend -> abi3 wheel (packaging) | **v1.0** | 🔬 |
 | 3 | Buffer input -- numeric (copy-in in v1.0; zero-copy -> 3.5) | **v1.0** | ✅ done: `Span[readonly[T]]`/`Span[T]` (fixed-width int/`float`) as an @export fn or exposed-class method PARAM only, via `PyObject_GetBuffer`; copy-in for both forms (no write-back for either); a mutated `Span[T]` param warns (copy-in, not visible to caller) |
-| 4 | **Classes + methods** (`PyType_FromSpec`; dunders per Q4) | **v1.1** | 🚧 baseline done: construct + plain methods + annotated fields as getset (scalars/str/bytes/exposed-enum/exposed-value-type; a value type is exposed read-only; a mutable reference class-typed field is rejected -- copy-out breaks write-through), instances as free-fn/method params (borrow) + returns (copy); dunders (Q4) DONE -- all three checkpoints (repr/str/eq/ne/lt/le/gt/ge/hash; arithmetic/ordering operators incl. in-place; container protocol) landed; inheritance/@property/reference-class fields still deferred |
+| 4 | **Classes + methods** (`PyType_FromSpec`; dunders per Q4) | **v1.1** | 🚧 baseline done: construct + plain methods + annotated fields as getset (scalars/str/bytes/exposed-enum/exposed-value-type; a value type is exposed read-only; a *public* mutable reference class-typed field is rejected -- copy-out breaks write-through, but a `_`-prefixed **internal** field of any type is kept as payload state and never crosses, so a class can hold reference-class/container members reached through methods), instances as free-fn/method params (borrow) + returns (copy); dunders (Q4) DONE -- all three checkpoints (repr/str/eq/ne/lt/le/gt/ge/hash; arithmetic/ordering operators incl. in-place; container protocol) landed; inheritance/@property/public-reference-class fields still deferred |
 | 5 | **Enums + constants** | **v1.1** | 🚧 `@export` enums recreated as real CPython IntEnum/Enum (functional API, module= set); enum values cross as @export fn params/returns (member round-trip, strict-by-type IN); `Final` scalar/str constants as init-time module-attribute snapshots; nested/cross-module enums deferred |
 | 3.5 | Foreign-borrow primitive -> zero-copy str + buffer input | post-v1.0 (next) -- IR-gated | 🔬 |
 | 6 | Containers (`list`/`dict`/`set`/`tuple`, by-copy) | v1-adjacent | 🚧 done: list/dict/set/tuple cross as @export fn AND exposed-class method/`__init__` params/returns, O(n) recursive copy-in/out (str/bytes elements + arbitrary nesting); strict-by-container-kind IN; a mutated container param warns (copy-in, not visible to caller); a borrow-form container return warns (copy-out, Own[...] acknowledges); a *container* getset field stays rejected (an enum or value-type field IS admitted -- see row 4); exposed enum/class *top-level elements* now cross (deferred: class as a tuple element, nested-in-a-container element, @nocopy element, class set-element/dict-key) |
@@ -516,12 +516,26 @@ setter descriptors -- matching the rule that its fields are set only in
 `__init__`), so on the holder the value field is r/w for whole-value
 *replacement* (`b.origin = Point(3, 4)`) but a nested-field mutation
 (`b.origin.x = 5`) loud-fails with `AttributeError`, and each read is a fresh
-copy (`b.origin is b.origin` is `False`). A container field or a **mutable
-(reference) class-typed** field stays rejected -- a nested *mutable* class is
-stored inline by value, so a getset getter could only copy it out, silently
-breaking the write-through that `outer.inner.x = 5` expects; faithful aliasing
-needs the deferred foreign-borrow primitive, so the diagnostic steers to an
-accessor method (mutating through `self`) or an explicit `copy()`.
+copy (`b.origin is b.origin` is `False`). A *public* container field or a
+**mutable (reference) class-typed** field stays rejected -- a nested *mutable*
+class is stored inline by value, so a getset getter could only copy it out,
+silently breaking the write-through that `outer.inner.x = 5` expects; faithful
+aliasing needs the deferred foreign-borrow primitive, so the diagnostic steers
+to making the field **internal** (see below) plus an accessor method (mutating
+through `self`) or an explicit `copy()`.
+
+**Internal (`_`-prefixed) fields.** A field whose name begins with `_` never
+crosses as a Python attribute -- it stays live C++ payload state (readable and
+mutable from the class's own methods) but is absent from the exposed type. This
+enforces at the boundary what Python's own `_private` convention only advises,
+and it is precisely what lets an exposed class hold a member of *any* type,
+including the reference-class and container fields the getset path rejects: name
+it `_inner` and reach it through a method rather than an attribute. The rule is
+uniform and has no override -- it applies identically to the exposed-class
+getset and to the exception data-fields below. Divergence (acknowledged, like
+`e.message`): under plain Python `_inner` is an ordinary attribute, so it is
+readable there but not on the `.so`; tests must not read a `_`-field across the
+boundary.
 **Defer** inheritance of exposed
 class *hierarchies* (each exposed class is flat in v1) and cross-module
 exposed classes (a foreign exposed class used as a param/field/return is a
@@ -584,7 +598,10 @@ built-in cascade, so a user `class MyError(ValueError)` surfaces as `MyError`
 exception's instance fields cross as **instance attributes**: the registered
 setter constructs an instance from the message (`pytype(e.what())`), marshals
 each data field (scalar / str / bytes / exposed-enum) to an attribute via
-`PyObject_SetAttrString`, then `PyErr_SetObject`. The crossing is *transitive*
+`PyObject_SetAttrString`, then `PyErr_SetObject`. A `_`-prefixed field is
+**internal** (same rule as the exposed-class getset above) -- it is skipped, so
+an exception may keep private state that never crosses; an exception whose only
+fields are internal is treated as message-only. The crossing is *transitive*
 (registry-driven, fires wherever the exc is raised). **Acknowledged divergence:**
 `str(e)` and `e.args` reflect the message field only, not the full constructor
 argument tuple -- the C++ exception object holds typed fields, not the original

@@ -21,7 +21,7 @@ from ..type_def_registry import (
     is_boundary_marshallable, is_function_boundary_marshallable, is_exposed_class,
     is_exposed_enum, is_span_boundary_param, _boundary_inner, enum_info_of,
     is_str_view_type, boundary_cpp_type, boundary_type_name,
-    boundary_unmarshallable_msg,
+    boundary_unmarshallable_msg, is_internal_boundary_field,
     _container_element_types, is_list, is_dict, is_set,
 )
 from ..modules import BINOP_TO_METHOD, BINOP_TO_RMETHOD, AUGOP_TO_IMETHOD, UNARYOP_TO_METHOD
@@ -121,8 +121,11 @@ class ExtensionGenerator:
             # A data-carrying exc (data fields beyond the base message, own OR
             # inherited from a user exc base) gets a generated setter marshalling
             # each field to an attribute; a message-only exc reuses the shared
-            # default setter.
-            fields = reg.user_declared_fields(info)
+            # default setter. `_`-named fields are internal payload state and
+            # never cross as attributes, so an exc carrying only those is
+            # message-only.
+            fields = [f for f in reg.user_declared_fields(info)
+                      if not is_internal_boundary_field(f.name)]
             has_data = bool(fields)
             setter = (var_for(record.name) + "_seterr" if has_data
                       else "::tpy::interop::exc_set_err_message_only")
@@ -1067,10 +1070,12 @@ class ExtensionGenerator:
             self._emit_boundary_catch(out, reg_arg)
             out.write("}\n\n")
 
-        # getset: every annotated field as a descriptor. Field types are
-        # scalar/str/bytes, an exposed enum, or (on a reference class) an exposed
-        # VALUE-type field; a reference-class field stays sema-rejected (its
-        # inline copy-out silently breaks write-through). The get/set reuse the
+        # getset: every crossing field as a descriptor. `_`-named fields are
+        # internal payload state and skipped here (never a Python attribute).
+        # Crossing field types are scalar/str/bytes, an exposed enum, or (on a
+        # reference class) an exposed VALUE-type field; a public reference-class
+        # field stays sema-rejected (its inline copy-out silently breaks
+        # write-through; make it internal with a `_` name to hold it). The get/set reuse the
         # same single-value marshal helpers the operator dunders use, so an enum
         # or value-class field round-trips its value while a scalar field's
         # getset still emits a plain `to_py`/`from_py` (the helpers' scalar arm).
@@ -1080,6 +1085,8 @@ class ExtensionGenerator:
         read_only = info.is_value_type
         getset_entries: list[tuple[str, str, str]] = []
         for fld in info.fields:
+            if is_internal_boundary_field(fld.name):
+                continue  # `_`-named field stays payload-only, never a getset
             fcpp = escape_cpp_name(fld.name)
             getn = f"{sym}__{escape_cpp_name(cls['simple'])}__{fcpp}_get"
             setn = f"{sym}__{escape_cpp_name(cls['simple'])}__{fcpp}_set"
