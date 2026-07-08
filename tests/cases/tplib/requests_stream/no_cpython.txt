@@ -1,0 +1,5 @@
+tplib.requests is a TPy-native module with no CPython counterpart on the
+cpy-phase import path (PYTHONPATH=lib/cpy/:src_dir, no lib/cpy/tplib stub),
+so `import tplib.requests` cannot run under CPython. The underlying wire
+behavior is parity-checked by the http.client / socket cases (real CPython
+stdlib); these cases drive tplib.requests over an injected socketpair seam.

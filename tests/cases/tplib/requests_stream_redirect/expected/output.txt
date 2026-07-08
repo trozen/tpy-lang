@@ -1,0 +1,5 @@
+final status: 200
+final url: http://api.test/v2/data
+history: 1 302
+intermediate not streamed: True
+streamed body: streamed-ok!

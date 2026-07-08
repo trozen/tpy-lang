@@ -1,0 +1,9 @@
+line: alpha
+line: beta
+line: gamma
+count: 2
+line: one
+line: two
+crlf: alpha len 5
+crlf: beta len 4
+crlf: gamma len 5

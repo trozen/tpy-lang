@@ -86,7 +86,7 @@ from typing import Final, Iterator
 from tpy import Int32, Own, String
 from tpy.version import version_info as _tpy_version_info
 from tplib import Box
-from http.client import HTTPConnection, HTTPSConnection, _Connection
+from http.client import HTTPConnection, HTTPSConnection, HTTPResponse, _Connection
 import ssl
 from urllib.parse import urlsplit, urlencode, urljoin
 from json import loads, dumps, JsonValue
@@ -97,6 +97,10 @@ import time
 
 DEFAULT_HTTP_PORT: Final[Int32] = 80
 DEFAULT_HTTPS_PORT: Final[Int32] = 443
+
+# Chunk size iter_lines pulls from the raw stream between newline scans. requests
+# uses 512 for iter_lines; iter_content has no default (see Response.iter_content).
+_ITER_LINES_CHUNK: Final[Int32] = 512
 
 # The multipart/form-data boundary. Fixed (not randomized like urllib3) so the
 # emitted wire bytes are deterministic and snapshot-testable; as with urllib3
@@ -561,7 +565,25 @@ class CookieJar:
 
 
 class Response:
-    """The result of an HTTP request -- the body is fully read into `content`."""
+    """The result of an HTTP request.
+
+    By default the body is fully read into `content` at request time. With
+    `stream=True` the body is left unread: `_raw` holds the live HTTPResponse
+    and the body is pulled on demand via `iter_content` / `iter_lines` / `raw`.
+    The reader outlives the source connection being dropped -- for a plaintext
+    connection because `socket.makefile` gives it its own dup'd fd, for TLS
+    because the reader shares the session via an `Rc[_SslSession]` refcount.
+
+    Divergences from real requests on a `stream=True` response (all declared):
+    - `.content` / `.text` / `.json()` do NOT auto-drain the stream; `.content`
+      stays `b""` until the caller consumes it via `iter_content` /
+      `iter_lines` / `r.raw.read(-1)` (requests lazily fills `.content` on
+      access -- blocked here on a mutable-property-getter compiler feature, see
+      TODO.md; reading `.content` before draining silently yields empty).
+    - A mid-stream socket failure surfaces as the raw socket exception
+      (`ConnectionResetError`, etc.), not a wrapped `requests.ConnectionError`
+      (requests re-wraps `raw.stream()` errors; see TODO.md).
+    """
 
     status_code: Int32
     reason: str
@@ -577,10 +599,15 @@ class Response:
     # request was not redirected. The final response carries the whole chain,
     # mirroring requests.Response.history. Recursive (list of Self).
     history: list[Response]
+    # The live body reader for a stream=True response; None for a fully-read
+    # one. Holding it makes Response non-copyable, which the redirect engine
+    # already respects (it only ever moves responses).
+    _raw: HTTPResponse | None
 
     def __init__(self, status_code: Int32, reason: str, url: str,
                  headers: Own[CaseInsensitiveDict], content: bytes,
-                 cookies: Own[CookieJar]) -> None:
+                 cookies: Own[CookieJar],
+                 raw: Own[HTTPResponse] | None = None) -> None:
         self.status_code = status_code
         self.reason = reason
         self.url = url
@@ -588,6 +615,7 @@ class Response:
         self.content = content
         self.cookies = cookies
         self.history = []
+        self._raw = raw
 
     @property
     def ok(self) -> bool:
@@ -607,6 +635,75 @@ class Response:
         if self.status_code >= 400:
             raise HTTPError(str(self.status_code) + " " + self.reason
                             + " for url: " + self.url)
+
+    @property
+    def raw(self) -> HTTPResponse | None:
+        # The underlying HTTPResponse for a stream=True response (None otherwise);
+        # its `.read(amt)` is the file-like access requests exposes as `.raw`.
+        return self._raw
+
+    def iter_content(self, chunk_size: Int32) -> Iterator[bytes]:
+        # chunk_size is required (no default): a generator method with a default
+        # parameter that narrows an Optional reference-type self field drops the
+        # default in codegen (BUGS.md). requests' chunk_size=1 default is
+        # pathological anyway -- real callers always pass a size.
+        r = self._raw
+        if r is not None:
+            while True:
+                chunk = r.read(chunk_size)
+                if len(chunk) == 0:
+                    break
+                yield chunk
+        else:
+            # Non-streamed response: chunk over the already-read body, so
+            # iter_content works regardless of stream= (matching requests).
+            data = self.content
+            n = len(data)
+            pos: Int32 = 0
+            while pos < n:
+                end = pos + chunk_size
+                if end > n:
+                    end = n
+                yield data[pos:end]
+                pos = end
+
+    def iter_lines(self) -> Iterator[bytes]:
+        # Yields body lines with the trailing line terminator stripped, buffering
+        # a partial line across chunk boundaries. Splits on "\n" and strips a
+        # preceding "\r" (so "\r\n" and "\n" both terminate), matching requests'
+        # splitlines-based default. Bytes, not decoded (decode_unicode=False).
+        # A lone "\r" (old-Mac) is NOT a terminator here -- declared divergence
+        # from requests' full splitlines.
+        pending = bytearray()
+        for chunk in self.iter_content(_ITER_LINES_CHUNK):
+            pending += chunk
+            buf = bytes(pending)
+            nl = buf.find(b"\n")
+            while nl >= 0:
+                end = nl
+                if end > 0 and buf[end - 1] == 13:  # strip a preceding CR ("\r\n")
+                    end = end - 1
+                yield buf[:end]
+                buf = bytes(buf[nl + 1:])
+                nl = buf.find(b"\n")
+            pending = bytearray(buf)
+        if len(pending) > 0:
+            tail = bytes(pending)
+            tend = len(tail)
+            if tend > 0 and tail[tend - 1] == 13:
+                tend = tend - 1
+            yield tail[:tend]
+
+    def close(self) -> None:
+        # Release the live reader (closing its dup'd fd). Idempotent; a no-op on
+        # a non-streamed response.
+        self._raw = None
+
+    def __enter__(self) -> "Response":
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        self.close()
 
 
 def _basic_auth_header(user: str, password: str) -> str:
@@ -787,16 +884,51 @@ def _rebuild_method(method: str, status: Int32) -> str:
     return method
 
 
+def _send_recv(conn: Box[_Connection], method: str, target: str,
+               body: bytes | None, hdrs: dict[str, str],
+               url: str) -> Own[HTTPResponse]:
+    # Send the request and read the response head, re-wrapping socket errors
+    # into the requests surface. Order matters -- each arm's exception is an
+    # OSError subclass and the first matching handler wins: ssl.SSLError
+    # (TLS/cert) before TimeoutError (a timed-out connect) before the generic
+    # OSError (CPython's SSLError/Timeout/ConnectionError split).
+    #
+    # Kept a separate function (not an inline try) so its result binds to a
+    # normal local in _request_on: a try-block-scoped Own local is stored in
+    # optional form and cannot be MOVED into the streamed Response's raw field
+    # afterwards -- it would silently copy, which the non-copyable HTTPResponse
+    # forbids. See BUGS.md on try-scoped-local moves.
+    try:
+        conn.request(method, target, body, hdrs)
+        return conn.getresponse()
+    except ssl.SSLError as e:
+        conn.close()
+        raise SSLError("TLS error for " + url + ": " + str(e))
+    except TimeoutError:
+        conn.close()
+        raise Timeout("request timed out: " + url)
+    except OSError:
+        conn.close()
+        raise ConnectionError("connection failed: " + url)
+
+
 def _request_on(conn: Box[_Connection], method: str, url: str,
                 params: dict[str, str] | None,
                 data: bytes | dict[str, str] | None,
                 files: dict[str, FileField] | None,
                 json: JsonValue | None, headers: dict[str, str] | None,
                 auth: tuple[str, str] | None,
-                send_cookies: CookieJar) -> Own[Response]:
-    # Reads the full body, then closes the connection only when the server
-    # ended keep-alive (will_close) or the request failed -- a still-open
-    # connection is reusable and the caller may pool it.
+                send_cookies: CookieJar,
+                stream: bool = False, follow: bool = False) -> Own[Response]:
+    # By default reads the full body, then closes the connection only when the
+    # server ended keep-alive (will_close) or the request failed -- a still-open
+    # connection is reusable and the caller may pool it. With stream=True the
+    # body is left unread and the live HTTPResponse is moved into the Response;
+    # the caller then drops (never pools) the connection, since its socket is
+    # mid-body -- the response reader holds its own dup'd fd and survives.
+    # stream is honored only on the terminal response: a followed redirect
+    # (follow and a 3xx carrying Location) is always drained + poolable, so only
+    # its status/headers matter, matching requests (which streams only the last).
     parts = urlsplit(url)
     target = _merge_query(parts.path, parts.query, params)
     host = parts.hostname
@@ -818,31 +950,24 @@ def _request_on(conn: Box[_Connection], method: str, url: str,
         if cookie_header != "":
             hdrs["Cookie"] = cookie_header
 
-    # Re-wrap socket-level OSErrors into the requests exception surface. Order
-    # matters -- each arm's exception is an OSError subclass and the first
-    # matching handler wins: ssl.SSLError (TLS/cert) before TimeoutError (a
-    # timed-out read) before the generic OSError (CPython's
-    # SSLError/Timeout/ConnectionError split).
-    try:
-        conn.request(method, target, body, hdrs)
-        resp = conn.getresponse()
-        content = resp.read()
-    except ssl.SSLError as e:
-        conn.close()
-        # Preserve the underlying TLS reason (e.g. "certificate verify failed")
-        # rather than collapsing every TLS failure to a generic message.
-        raise SSLError("TLS error for " + url + ": " + str(e))
-    except TimeoutError:
-        conn.close()
-        raise Timeout("request timed out: " + url)
-    except OSError:
-        conn.close()
-        raise ConnectionError("connection failed: " + url)
+    # resp binds to a normal (non-try-scoped) local so it can be moved into the
+    # streamed Response below; _send_recv owns the send/receive try + rewrapping.
+    resp = _send_recv(conn, method, target, body, hdrs, url)
+    # A followable redirect is never streamed (drained + poolable below); only a
+    # terminal response honors stream. Status + Location are eager (read by
+    # getresponse), so this decision needs no body read.
+    followable = (follow and _is_redirect(resp.status)
+                  and resp.getheader("location") is not None)
+    do_stream = stream and not followable
     status = resp.status
     reason = resp.reason
+    will_close = resp.will_close
+    # Materialize the header list before the loop so resp is not borrowed across
+    # it (the loop would otherwise extend resp's live range past the move below).
+    all_headers = resp.getheaders()
     out_headers = CaseInsensitiveDict()
     resp_cookies = CookieJar()
-    for kv in resp.getheaders():
+    for kv in all_headers:
         # Parse Set-Cookie from the raw header (before the ", "-join below --
         # a cookie's Expires value contains a comma, so a joined Set-Cookie is
         # unparseable). Each Set-Cookie is scoped to the request host/path.
@@ -855,7 +980,25 @@ def _request_on(conn: Box[_Connection], method: str, url: str,
             out_headers[kv[0]] = existing + ", " + kv[1]
         else:
             out_headers[kv[0]] = kv[1]
-    if resp.will_close:
+    if do_stream:
+        # Keep the reader alive; the connection is dropped (not pooled) by the
+        # caller since its socket is mid-body. Move resp into the Response.
+        return Response(status, reason, url, out_headers, b"", resp_cookies,
+                        resp)
+    # Non-stream: read the full body, re-wrapping read errors the same way the
+    # send phase does.
+    try:
+        content = resp.read()
+    except ssl.SSLError as e:
+        conn.close()
+        raise SSLError("TLS error for " + url + ": " + str(e))
+    except TimeoutError:
+        conn.close()
+        raise Timeout("request timed out: " + url)
+    except OSError:
+        conn.close()
+        raise ConnectionError("connection failed: " + url)
+    if will_close:
         conn.close()
     return Response(status, reason, url, out_headers, content, resp_cookies)
 
@@ -927,7 +1070,8 @@ def request(method: str, url: str, params: dict[str, str] | None = None,
             allow_redirects: bool = True,
             verify: bool | str = True,
             cookies: dict[str, str] | None = None,
-            files: dict[str, FileField] | None = None
+            files: dict[str, FileField] | None = None,
+            stream: bool = False
             ) -> Own[Response]:
     # A fresh Session per call, like CPython requests' module-level API (its
     # pool dies with the call too; same-host redirect hops still reuse the
@@ -936,7 +1080,7 @@ def request(method: str, url: str, params: dict[str, str] | None = None,
     # param order (params/data/json/headers/...) is preserved for callers.
     s = Session()
     return s.request(method, url, params, data, json, headers, auth, timeout,
-                     allow_redirects, verify, cookies, files)
+                     allow_redirects, verify, cookies, files, stream)
 
 
 def get(url: str, params: dict[str, str] | None = None,
@@ -945,9 +1089,10 @@ def get(url: str, params: dict[str, str] | None = None,
         timeout: float | None = None,
         allow_redirects: bool = True,
         verify: bool | str = True,
-        cookies: dict[str, str] | None = None) -> Own[Response]:
+        cookies: dict[str, str] | None = None,
+        stream: bool = False) -> Own[Response]:
     return request("GET", url, params, None, None, headers, auth, timeout,
-                   allow_redirects, verify, cookies)
+                   allow_redirects, verify, cookies, None, stream)
 
 
 def head(url: str, params: dict[str, str] | None = None,
@@ -956,9 +1101,10 @@ def head(url: str, params: dict[str, str] | None = None,
          timeout: float | None = None,
          allow_redirects: bool = False,
          verify: bool | str = True,
-         cookies: dict[str, str] | None = None) -> Own[Response]:
+         cookies: dict[str, str] | None = None,
+         stream: bool = False) -> Own[Response]:
     return request("HEAD", url, params, None, None, headers, auth, timeout,
-                   allow_redirects, verify, cookies)
+                   allow_redirects, verify, cookies, None, stream)
 
 
 def post(url: str, data: bytes | dict[str, str] | None = None,
@@ -970,10 +1116,11 @@ def post(url: str, data: bytes | dict[str, str] | None = None,
          allow_redirects: bool = True,
          verify: bool | str = True,
          cookies: dict[str, str] | None = None,
-         files: dict[str, FileField] | None = None
+         files: dict[str, FileField] | None = None,
+         stream: bool = False
          ) -> Own[Response]:
     return request("POST", url, params, data, json, headers, auth, timeout,
-                   allow_redirects, verify, cookies, files)
+                   allow_redirects, verify, cookies, files, stream)
 
 
 def put(url: str, data: bytes | dict[str, str] | None = None,
@@ -985,10 +1132,11 @@ def put(url: str, data: bytes | dict[str, str] | None = None,
         allow_redirects: bool = True,
         verify: bool | str = True,
         cookies: dict[str, str] | None = None,
-        files: dict[str, FileField] | None = None
+        files: dict[str, FileField] | None = None,
+        stream: bool = False
         ) -> Own[Response]:
     return request("PUT", url, params, data, json, headers, auth, timeout,
-                   allow_redirects, verify, cookies, files)
+                   allow_redirects, verify, cookies, files, stream)
 
 
 def patch(url: str, data: bytes | dict[str, str] | None = None,
@@ -1000,10 +1148,11 @@ def patch(url: str, data: bytes | dict[str, str] | None = None,
           allow_redirects: bool = True,
           verify: bool | str = True,
           cookies: dict[str, str] | None = None,
-          files: dict[str, FileField] | None = None
+          files: dict[str, FileField] | None = None,
+          stream: bool = False
           ) -> Own[Response]:
     return request("PATCH", url, params, data, json, headers, auth, timeout,
-                   allow_redirects, verify, cookies, files)
+                   allow_redirects, verify, cookies, files, stream)
 
 
 def delete(url: str, params: dict[str, str] | None = None,
@@ -1012,9 +1161,10 @@ def delete(url: str, params: dict[str, str] | None = None,
            timeout: float | None = None,
            allow_redirects: bool = True,
            verify: bool | str = True,
-           cookies: dict[str, str] | None = None) -> Own[Response]:
+           cookies: dict[str, str] | None = None,
+           stream: bool = False) -> Own[Response]:
     return request("DELETE", url, params, None, None, headers, auth, timeout,
-                   allow_redirects, verify, cookies)
+                   allow_redirects, verify, cookies, None, stream)
 
 
 class Session:
@@ -1085,34 +1235,44 @@ class Session:
                       auth: tuple[str, str] | None,
                       timeout: float | None, hop: Int32,
                       send_cookies: CookieJar,
-                      verify: bool | str = True) -> Own[Response]:
+                      verify: bool | str = True,
+                      stream: bool = False,
+                      follow: bool = False) -> Own[Response]:
+        # A streamed response (resp._raw is not None) is never pooled: its socket
+        # is mid-body, so reuse would interleave a new request into the unread
+        # stream. The connection Box is dropped instead (RAII closes its fd; the
+        # response reader's own dup keeps the socket alive).
         if hop == 0 and self._connection is not None:
             # Clear even if the request raises -- the injected connection is
             # single-use and must not be reused after a failure.
             try:
                 return _request_on(self._connection, method, url, params, data,
-                                   files, json, headers, auth, send_cookies)
+                                   files, json, headers, auth, send_cookies,
+                                   stream, follow)
             finally:
                 self._connection = None
         if len(self._redirect_connections) > 0:
             conn = self._redirect_connections.pop(0)
             return _request_on(conn, method, url, params, data, files, json,
-                               headers, auth, send_cookies)
+                               headers, auth, send_cookies, stream, follow)
         # Pool pop -> use -> put back. A raise inside _request_on drops the
-        # popped/fresh connection (RAII closes the socket); on success it goes
-        # back in even if will_close closed it -- the pooled entry then acts as
-        # a lazy-reconnect handle for the next request to the same target.
+        # popped/fresh connection (RAII closes the socket); on success a
+        # fully-read response goes back in even if will_close closed it -- the
+        # pooled entry then acts as a lazy-reconnect handle for the next request
+        # to the same target.
         key = _pool_key(url, verify)
         if key in self._pool:
             pooled = self._pool.pop(key)
             resp = _request_on(pooled, method, url, params, data, files, json,
-                               headers, auth, send_cookies)
-            self._pool[key] = pooled
+                               headers, auth, send_cookies, stream, follow)
+            if resp._raw is None:
+                self._pool[key] = pooled
             return resp
         fresh = _connect(url, timeout, verify)
         resp = _request_on(fresh, method, url, params, data, files, json,
-                           headers, auth, send_cookies)
-        self._pool[key] = fresh
+                           headers, auth, send_cookies, stream, follow)
+        if resp._raw is None:
+            self._pool[key] = fresh
         return resp
 
     def _hop(self, method: str, url: str, params: dict[str, str] | None,
@@ -1122,13 +1282,17 @@ class Session:
              headers: dict[str, str], auth: tuple[str, str] | None,
              timeout: float | None, history: Own[list[Response]],
              hop: Int32, follow: bool, send_cookies: CookieJar,
-             verify: bool | str = True) -> Own[Response]:
+             verify: bool | str = True,
+             stream: bool = False) -> Own[Response]:
         # One request, then (when following) recurse on a 3xx Location. Recursion
         # rather than a loop so each `return resp` is a straight-line last use --
         # a loop-carried Own local trips the borrow checker's return guard.
+        # `follow` gates whether _request_on may stream this hop: only a terminal
+        # (non-followed) response streams, so an intermediate redirect is always
+        # drained + poolable and never lands in history holding an open reader.
         resp = self._send_for_hop(method, url, params, data, files, json,
                                   headers, auth, timeout, hop, send_cookies,
-                                  verify)
+                                  verify, stream, follow)
         # Persist cookies this response set (into the Session jar) and feed them
         # to the send jar so a following redirect hop sends the ones that match.
         self.cookies.update(resp.cookies)
@@ -1167,10 +1331,10 @@ class Session:
             _drop_body_headers(headers)
             return self._hop(new_method, next_url, None, None, None, None,
                              headers, next_auth, timeout, history, hop + 1, True,
-                             send_cookies, verify)
+                             send_cookies, verify, stream)
         return self._hop(new_method, next_url, None, data, files, json, headers,
                          next_auth, timeout, history, hop + 1, True,
-                         send_cookies, verify)
+                         send_cookies, verify, stream)
 
     def request(self, method: str, url: str,
                 params: dict[str, str] | None = None,
@@ -1182,7 +1346,8 @@ class Session:
                 allow_redirects: bool = True,
                 verify: bool | str = True,
                 cookies: dict[str, str] | None = None,
-                files: dict[str, FileField] | None = None
+                files: dict[str, FileField] | None = None,
+                stream: bool = False
                 ) -> Own[Response]:
         merged_headers = self._merge_headers(headers)
         merged_params = self._merge_params(params)
@@ -1200,16 +1365,18 @@ class Session:
         history: list[Response] = []
         return self._hop(method, url, merged_params, data, files, json,
                          merged_headers, use_auth, timeout, history, 0,
-                         allow_redirects, send_cookies, verify)
+                         allow_redirects, send_cookies, verify, stream)
 
     def get(self, url: str, params: dict[str, str] | None = None,
             headers: dict[str, str] | None = None,
             timeout: float | None = None,
             allow_redirects: bool = True,
             verify: bool | str = True,
-            cookies: dict[str, str] | None = None) -> Own[Response]:
+            cookies: dict[str, str] | None = None,
+            stream: bool = False) -> Own[Response]:
         return self.request("GET", url, params, None, None, headers, None,
-                            timeout, allow_redirects, verify, cookies)
+                            timeout, allow_redirects, verify, cookies, None,
+                            stream)
 
     def post(self, url: str, data: bytes | dict[str, str] | None = None,
              json: JsonValue | None = None,
@@ -1219,10 +1386,12 @@ class Session:
              allow_redirects: bool = True,
              verify: bool | str = True,
              cookies: dict[str, str] | None = None,
-             files: dict[str, FileField] | None = None
+             files: dict[str, FileField] | None = None,
+             stream: bool = False
              ) -> Own[Response]:
         return self.request("POST", url, params, data, json, headers, None,
-                            timeout, allow_redirects, verify, cookies, files)
+                            timeout, allow_redirects, verify, cookies, files,
+                            stream)
 
     def __enter__(self) -> "Session":
         return self

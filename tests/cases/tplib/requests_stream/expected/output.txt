@@ -1,0 +1,14 @@
+status: 200
+not pooled: True
+chunk: 01234
+chunk: 56789
+chunk: ABCDE
+chunk: F
+full: 0123456789ABCDEF
+chunked: hello world
+raw.read: raw payload
+ctx body: abcd
+raw after close: True
+empty chunks: 0
+non-stream iter_content: 0123456789
+content intact: 0123456789
