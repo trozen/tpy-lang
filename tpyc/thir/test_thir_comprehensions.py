@@ -247,6 +247,80 @@ class TestComprehensionRoutes:
         thir = _lower_ctx(src)
         assert _fn(thir, "vals") is not None
 
+    def test_enum_loop_var_routes(self):
+        # Compositional loop-var gate: an enum element (a value type outside the
+        # old scalar/char/str/F1-record whitelist) binds through the shared
+        # loop_var_binding; the filter's enum comparison routes recursively.
+        src = (
+            "from tpy import Int32\nfrom enum import Enum\n"
+            "class Color(Enum):\n    RED = 0\n    GREEN = 1\n"
+            "def f() -> Int32:\n    xs = [Color.RED, Color.GREEN]\n"
+            "    ys = [1 for c in xs if c == Color.RED]\n    return len(ys)\n"
+            "def main():\n    print(f())\nmain()\n")
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is not None
+
+    def test_nested_container_loop_var_routes(self):
+        # A `list[list[...]]` local iterated binds the inner list `auto&&` (the
+        # shared non-value loop_var_binding arm); the element's read of the loop
+        # var (`len(row)`) is gated recursively -- no enumerated element family.
+        src = (_PRELUDE
+               + "def f() -> Int32:\n    xs = [[1, 2], [3, 4]]\n"
+               + "    ys = [len(row) for row in xs]\n    return len(ys)\n"
+               + "def main():\n    print(f())\nmain()\n")
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+        thir = _lower(src)
+        assert _fn(thir, "f") is not None
+
+    def test_enum_element_result_slot(self):
+        # Compositional element-slot gate: a `list[Color]` result -- an enum
+        # element slot (a value type, bare render) outside the old
+        # scalar/char/str whitelist.
+        src = (
+            "from tpy import Int32\nfrom enum import Enum\n"
+            "class Color(Enum):\n    RED = 0\n    GREEN = 1\n"
+            "def f() -> Int32:\n    xs = [Color.RED, Color.GREEN]\n"
+            "    ys = [c for c in xs]\n    return len(ys)\n"
+            "def main():\n    print(f())\nmain()\n")
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is not None
+
+    def test_record_ctor_element_slot_admitted_expr_gated(self):
+        # The compositional boundary: the `list[Inner]` record slot IS admitted
+        # by _comp_elem_slot_ok, but the constructor-call ELEMENT expr is not yet
+        # eligible via _expr_eligible, so the comp rejects overall and stays AST
+        # (byte-identical). Widening the slot did not force this shape to route.
+        src = (
+            _F1_RECORDS
+            + "def f(xs: list[Int32]) -> Int32:\n"
+            + "    ps = [Inner(x) for x in xs]\n    return len(ps)\n"
+            + "def main():\n    print(f([1, 2]))\nmain()\n")
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is None
+
+    def test_record_name_element_result_slot(self):
+        # A `list[Inner]` result whose element is the bare record loop var
+        # (a borrow alias): push_back copies, matching the AST.
+        src = (
+            _F1_RECORDS
+            + "def f(items: list[Inner]) -> Int32:\n"
+            + "    ps = [p for p in items]\n    return len(ps)\n"
+            + "def main():\n    print(f([Inner(1)]))\nmain()\n")
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is not None
+
+    def test_bytes_literal_element_result_slot(self):
+        # A `set[bytes]` result whose element is a bytes literal (owned bare).
+        src = (_PRELUDE
+               + "def f(xs: list[Int32]) -> Int32:\n"
+               + "    bs = {b'ab' for x in xs}\n    return len(bs)\n"
+               + "def main():\n    print(f([1, 2]))\nmain()\n")
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
     def test_dump(self):
         thir = _lower(SRC)
         assert dump_thir(thir)  # the node renders without crashing

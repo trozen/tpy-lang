@@ -10,8 +10,8 @@ from .testutil import _emit_expr
 from .nodes import (
     Form, THIRArgTemp, THIRBinOp, THIRCall, THIRCoerce, THIRContainerLiteral,
     THIRExprStmt, THIRFieldAccess, THIRForEach, THIRFormConvert, THIRLiteral,
-    THIRMethodCall, THIRName, THIRSelf, THIRSetItem, THIRStrLiteral,
-    THIRSubscript, THIRVarDecl,
+    THIRMembership, THIRMethodCall, THIRMove, THIRName, THIRReturn, THIRSelf,
+    THIRSetItem, THIRStrLiteral, THIRSubscript, THIRVarDecl,
 )
 from .testutil import (
     _compile, _entry, _lower, _lower_ctx, _lower_ctx_witnessed, _fn,
@@ -67,8 +67,11 @@ class TestContainerSubscriptRead:
         assert _fn(thir, "g") is not None
 
     def test_str_keyed_dict_param_routes(self):
-        # An owned-str dict key routes (S5); a StrView-keyed dict stays AST --
-        # its literal keys pin to static storage (view_key_target).
+        # An owned-str-keyed dict param routes; so does a StrView-keyed one under
+        # the compositional param gate (the signature renders identically). The
+        # view-key divergence -- literal keys pin to static storage -- lives in
+        # the body SUBSCRIPT gate now, not the param gate, so a body that does not
+        # subscript `d` routes for both key kinds.
         thir = _lower(
             _PRELUDE
             + "def g(d: dict[str, Int32], i: Int32) -> Int32:\n    return i\n")
@@ -77,18 +80,20 @@ class TestContainerSubscriptRead:
             _PRELUDE
             + "from tpy import StrView\n"
             + "def g(d: dict[StrView, Int32], i: Int32) -> Int32:\n    return i\n")
-        assert _fn(view, "g") is None
+        assert _fn(view, "g") is not None
 
-    def test_set_param_ineligible(self):
-        # `set` has no `__getitem__`; the param gate rejects it (the same shape with a
-        # `list` param routes -- the control below isolates the container-kind gate).
+    def test_set_subscript_ineligible(self):
+        # A `set[scalar]` param routes (membership/len/iteration -- see
+        # TestMembership), but `set` has no `__getitem__`, so a subscript keeps
+        # the body on the AST path (sema would error on real code; the reject is
+        # a slice guard). The subscript-free control routes.
         thir = _lower(
             _PRELUDE
-            + "def h(s: set[Int32], i: Int32) -> Int32:\n    return i\n")
+            + "def h(s: set[Int32], i: Int32) -> Int32:\n    return s[i]\n")
         assert _fn(thir, "h") is None
         ctrl = _lower(
             _PRELUDE
-            + "def h(s: list[Int32], i: Int32) -> Int32:\n    return i\n")
+            + "def h(s: set[Int32], i: Int32) -> Int32:\n    return i\n")
         assert _fn(ctrl, "h") is not None
 
     def test_container_local_with_ctor_elements_routes(self):
@@ -140,6 +145,48 @@ class TestContainerSubscriptRead:
         assert isinstance(ret.value, THIRSubscript)
         assert isinstance(ret.value.index, THIRLiteral)
         assert ret.value.index.value == -1
+
+    _ENUM = ("from enum import Enum\n"
+             "class Color(Enum):\n    Red = 0\n    Green = 1\n    Blue = 2\n")
+
+    def test_enum_element_read_routes(self):
+        # An enum element read is a bare VALUE-form read (`::tpy::__getitem__`),
+        # admitted by the compositional value-leaf gate alongside scalars. The
+        # container is a local (enum-element PARAM signatures ride the sibling
+        # signature cell); list and dict-value both route.
+        thir = _lower_ctx(
+            self._ENUM + _PRELUDE
+            + "def f() -> Color:\n"
+            + "    xs = [Color.Red, Color.Green]\n"
+            + "    return xs[1]\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+        sub = fn.body[1].value
+        assert isinstance(sub, THIRSubscript) and sub.form is Form.VALUE
+        thir_d = _lower_ctx(
+            self._ENUM + _PRELUDE
+            + "def g(k: Int32) -> Color:\n"
+            + "    d = {0: Color.Red, 1: Color.Blue}\n"
+            + "    return d[k]\n")
+        assert _fn(thir_d, "g") is not None
+
+    def test_optional_element_read_ineligible(self):
+        # An Optional-element container read is composite (`std::optional<T>`),
+        # not a bare value-leaf -- the naive read emit would mis-tag it VALUE, so
+        # it stays AST. The subscript-free control routes.
+        thir = _lower(
+            _PRELUDE
+            + "def f() -> Int32:\n"
+            + "    xs: list[Int32 | None] = [1, None]\n"
+            + "    y = xs[0]\n"
+            + "    return 1\n")
+        assert _fn(thir, "f") is None
+        ctrl = _lower(
+            _PRELUDE
+            + "def f() -> Int32:\n"
+            + "    xs: list[Int32 | None] = [1, None]\n"
+            + "    return 1\n")
+        assert _fn(ctrl, "f") is not None
 
 
 
@@ -270,21 +317,113 @@ class TestMethodCall:
             + "def f(xs: list[Int32]) -> None:\n    return xs.clear()\n")
         assert _fn(thir, "f") is None
 
-    def test_record_element_arg_ineligible(self):
-        # A record arg crosses an ownership boundary (Own move / borrow lift) -> AST.
-        thir = _lower(
+    def test_record_element_arg_routes(self):
+        # A record NAME into an Own[record] element slot renders bare
+        # (push_back takes the lvalue -- inline_template), so the container arm
+        # routes it once the record-element receiver is admitted.
+        thir = _lower_ctx(
             "from tpy import Int32\n"
             + "class P:\n    x: Int32\n"
             + "    def __init__(self, x: Int32):\n        self.x = x\n"
             + "def f(xs: list[P], p: P) -> None:\n    xs.append(p)\n")
-        assert _fn(thir, "f") is None
+        mc = _fn(thir, "f").body[0].expr
+        assert isinstance(mc, THIRMethodCall) and mc.method_cpp == "push_back"
+        assert isinstance(mc.args[0], THIRName) and mc.args[0].name == "p"
 
-    def test_str_arg_ineligible(self):
-        # A str arg into an Own[str] slot takes the owned-copy conversion -> AST.
+    def test_str_param_arg_routes(self):
+        # A str PARAM is a view (std::string_view) resolved `str`, not `StrView`,
+        # so the arg gate reads `param_names` to tell it from an owned str local;
+        # like a view local it materializes an owned copy `std::string(s)` at the
+        # Own[str] element slot.
         thir = _lower(
             "from tpy import Int32\n"
             + "def f(xs: list[str], s: str) -> None:\n    xs.append(s)\n")
+        mc = _fn(thir, "f").body[0].expr
+        assert isinstance(mc, THIRMethodCall) and mc.method_cpp == "push_back"
+        arg = mc.args[0]
+        assert isinstance(arg, THIRFormConvert) and arg.form is Form.STORAGE
+        assert isinstance(arg.value, THIRName) and arg.value.form is Form.BORROW
+
+    def test_reassigned_str_param_arg_ineligible(self):
+        # A reassigned str param hoists an owned-copy prologue in the AST, so the
+        # whole body is rejected -- the view form the append relies on is no
+        # longer stable.
+        thir = _lower(
+            "from tpy import Int32\n"
+            + "def f(xs: list[str], s: str) -> None:\n"
+            + "    s = 'x'\n    xs.append(s)\n")
         assert _fn(thir, "f") is None
+
+    def test_str_owned_local_arg_ineligible(self):
+        # An owned-str STORAGE source (a concat result) takes gen_call_arg's
+        # copy+move-temp cascade the bare/convert emit does not reproduce -> AST.
+        thir = _lower(
+            "from tpy import Int32\n"
+            + "def f(xs: list[str], a: str, b: str) -> None:\n"
+            + "    t = a + b\n    xs.append(t)\n")
+        assert _fn(thir, "f") is None
+
+    def test_str_view_local_arg_routes(self):
+        # A VIEW-form str local into an Own[str] slot materializes an owned copy
+        # `std::string(x)` via the S1 view->owned THIRFormConvert.
+        thir = _lower(
+            "from tpy import Int32\n"
+            + "def f(xs: list[str]) -> None:\n    s = 'hi'\n    xs.append(s)\n")
+        mc = _fn(thir, "f").body[1].expr
+        assert isinstance(mc, THIRMethodCall)
+        arg = mc.args[0]
+        assert isinstance(arg, THIRFormConvert) and arg.form is Form.STORAGE
+        assert isinstance(arg.value, THIRName) and arg.value.form is Form.BORROW
+
+    def test_str_literal_arg_routes(self):
+        # A str literal lands bare (const char[N] -> the vector's std::string ctor).
+        thir = _lower(
+            "from tpy import Int32\n"
+            + "def f(xs: list[str]) -> None:\n    xs.append('lit')\n")
+        mc = _fn(thir, "f").body[0].expr
+        assert isinstance(mc, THIRMethodCall)
+        assert isinstance(mc.args[0], THIRStrLiteral)
+
+    def test_record_ctor_arg_routes(self):
+        # A same-nominal ctor rvalue binds the Own[record] element slot bare.
+        thir = _lower_ctx(
+            "from tpy import Int32\n"
+            + "class P:\n    x: Int32\n"
+            + "    def __init__(self, x: Int32):\n        self.x = x\n"
+            + "def f(xs: list[P]) -> None:\n    xs.append(P(5))\n")
+        mc = _fn(thir, "f").body[0].expr
+        assert isinstance(mc, THIRMethodCall) and mc.method_cpp == "push_back"
+
+    def test_record_own_move_arg_routes(self):
+        # A movable Own[record] param at its last use moves into the slot.
+        thir = _lower_ctx(
+            "from tpy import Int32, Own\n"
+            + "class P:\n    x: Int32\n"
+            + "    def __init__(self, x: Int32):\n        self.x = x\n"
+            + "def f(xs: list[P], p: Own[P]) -> None:\n    xs.append(p)\n")
+        mc = _fn(thir, "f").body[0].expr
+        assert isinstance(mc, THIRMethodCall)
+        assert isinstance(mc.args[0], THIRMove)
+
+    def test_record_returning_method_ineligible(self):
+        # `xs.pop()` on a record-element list returns a record -- outside the
+        # arm's value-position ret set -> AST.
+        thir = _lower_ctx(
+            "from tpy import Int32\n"
+            + "class P:\n    x: Int32\n"
+            + "    def __init__(self, x: Int32):\n        self.x = x\n"
+            + "def f(xs: list[P]) -> None:\n    xs.pop()\n")
+        assert _fn(thir, "f") is None
+
+    def test_record_clear_routes(self):
+        # A no-arg mutator on a record-element receiver routes (void, no args).
+        thir = _lower_ctx(
+            "from tpy import Int32\n"
+            + "class P:\n    x: Int32\n"
+            + "    def __init__(self, x: Int32):\n        self.x = x\n"
+            + "def f(xs: list[P]) -> None:\n    xs.clear()\n")
+        mc = _fn(thir, "f").body[0].expr
+        assert isinstance(mc, THIRMethodCall) and mc.method_cpp == "clear"
 
     def test_field_receiver_ineligible(self):
         # `self.items.append(...)` -- a non-name receiver rides a later cell.
@@ -296,7 +435,8 @@ class TestMethodCall:
         assert _fn(thir, "add") is None
 
     def test_set_receiver_ineligible(self):
-        # set params are not in the admitted container family (ride a later cell).
+        # A set param is admitted (membership/len/iteration), but `.add()` has no
+        # set-mutation arm -- the whole body stays AST, byte-identically.
         thir = _lower(
             _PRELUDE
             + "def f(s: set[Int32], n: Int32) -> None:\n    s.add(n)\n")
@@ -366,6 +506,48 @@ class TestMethodCallEmit:
         assert "int32_t a = ::tpy::pop_back(xs);" in cpp      # value position
         assert "return ::tpy::dict_pop_default(d, k, 0);" in cpp
 
+
+# --- str / record element-slot append (the widened container-method arg arm) ---
+
+
+class TestContainerElementAppendEmit:
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+        return cpp
+
+    SRC = (
+        "from tpy import Int32\n"
+        + "class P:\n    x: Int32\n"
+        + "    def __init__(self, x: Int32):\n        self.x = x\n"
+        + "def grow_str(xs: list[str], sp: str) -> None:\n"
+        + "    s = 'hi'\n"
+        + "    xs.append(s)\n"           # view local -> std::string(s)
+        + "    xs.append(sp)\n"          # str param (view/BORROW) -> std::string(sp)
+        + "    xs.append('lit')\n"       # literal -> bare
+        + "def grow_rec(xs: list[P], p: P) -> None:\n"
+        + "    xs.append(p)\n"           # record name -> bare
+        + "    xs.append(P(5))\n"        # ctor rvalue -> bare
+        + "    xs.clear()\n"
+        + "def main():\n"
+        + "    xs: list[str] = []\n    grow_str(xs, 'yo')\n"
+        + "    ps: list[P] = []\n    grow_rec(ps, P(1))\n"
+        + "    print(len(xs))\n"
+        + "main()\n"
+    )
+
+    def test_byte_identical(self):
+        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
+
+    def test_emit_arms(self):
+        cpp = self._cpp(self.SRC, thir=True)
+        assert "xs.push_back(std::string(s));" in cpp   # view local owned copy
+        assert "xs.push_back(std::string(sp));" in cpp  # str param owned copy
+        assert 'xs.push_back("lit");' in cpp            # literal bare
+        assert "xs.push_back(p);" in cpp                # record name bare
+        assert "xs.push_back(P(5));" in cpp             # ctor rvalue bare
 
 
 # --- Container-literal locals (THIRContainerLiteral) ---
@@ -708,7 +890,30 @@ class TestContainerLiteralElementFamilies:
         assert ("std::vector<std::optional<int32_t>> xs = "
                 "{1, std::nullopt, 3};") in cpp
 
+    def test_optional_str_elements_route(self):
+        # Compositional Optional element gate (broadened from scalar-only): a
+        # value-repr Optional[str] slot's inner routes like the bare owned-str
+        # slot -- a str literal lands bare (the implicit std::string conversion),
+        # None -> std::nullopt. The wrap is a pure function of the slot type.
+        src = ("from tpy import Int32\nfrom typing import Optional\n"
+               + "def f() -> Int32:\n"
+               + "    xs: list[Optional[str]] = [\"a\", None, \"b\"]\n"
+               + "    d: dict[Int32, Optional[str]] = {1: \"x\", 2: None}\n"
+               + "    return len(xs) + len(d)\n"
+               + "def main():\n    print(f())\nmain()\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("containerlit.optional_elem")
+        cpp = self._both(src)
+        assert ("std::vector<std::optional<std::string>> xs = "
+                "{\"a\", std::nullopt, \"b\"};") in cpp
+        assert ("::tpy::ordered_map<int32_t, std::optional<std::string>> d = "
+                "::tpy::ordered_map<int32_t, std::optional<std::string>>("
+                "{{1, \"x\"}, {2, std::nullopt}});") in cpp
+
     def test_optional_record_elements_ineligible(self):
+        # Pointer-repr Optional (record inner -> std::variant<T*,...>) is the
+        # named exclusion: its storage-form lift is not the value-repr wrap.
         thir = _lower_ctx(
             _ELEM_RECORDS
             + "def f() -> Int32:\n"
@@ -837,8 +1042,13 @@ class TestContainerCallArgs:
         assert _fn(thir, "f") is None
 
     def test_protocol_param_method_arg_ineligible(self):
-        # list.extend(other: Iterable[Own[T]]) -- a protocol slot (adapter /
-        # consuming-iteration handling) -> AST.
+        # list.extend(other: Iterable[Own[T]]) -- the Iterable[Own[T]] slot's
+        # auto-consuming-iteration path diverges: a movable-last-use local arg
+        # emits `list_extend(xs, own_iter(std::move(ys)))`, not the bare
+        # `list_extend(xs, ys)`. A container PARAM (or non-last-use local) is
+        # never movable, so it DOES pass bare, but safely characterizing that
+        # subset needs the body movable-locals set the arg gate does not thread
+        # (it mirrors only Own-param seeding), so the whole shape stays AST.
         thir = _lower(
             _PRELUDE
             + "def f(xs: list[Int32], ys: list[Int32]) -> None:\n    xs.extend(ys)\n")
@@ -880,6 +1090,91 @@ class TestContainerCallArgs:
         )
         thir = _lower(src)
         assert _fn(thir, "f") is not None
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+
+
+# --- Value-view Span returns (`-> Span[scalar]` / `-> Span[readonly[scalar]]`,
+# `std::span<T>` / `std::span<const T>`) -- a value type, rendered bare, its
+# lifetime the caller's concern (same as the AST). Only byte-identical return
+# SOURCES route: a bare span NAME. A `Spannable`->span conversion source (Array
+# field -> `::tpy::as_mut_span`) and the `Span[T]`->`Span[readonly[T]]` widen
+# both carry a coerce outside `_coerce_disposition` -> AST path.
+
+
+class TestSpanReturn:
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+        return cpp
+
+    _SPAN = "from tpy import Int32, Span, Array, readonly\n"
+
+    def test_span_name_return_routes_bare(self):
+        thir = _lower(
+            self._SPAN
+            + "def passthru(buf: Span[Int32]) -> Span[Int32]:\n    return buf\n")
+        fn = _fn(thir, "passthru")
+        assert fn is not None
+        ret = fn.body[0]
+        assert isinstance(ret, THIRReturn) and isinstance(ret.value, THIRName)
+
+    def test_readonly_span_name_return_routes(self):
+        # Span[readonly[T]] -> Span[readonly[T]] is identical (no coerce).
+        thir = _lower(
+            self._SPAN
+            + "def ro(buf: Span[readonly[Int32]]) -> Span[readonly[Int32]]:\n"
+            + "    return buf\n")
+        assert _fn(thir, "ro") is not None
+
+    def test_span_multi_return_routes(self):
+        thir = _lower(
+            self._SPAN
+            + "def pick(a: Span[Int32], b: Span[Int32], f: bool) -> Span[Int32]:\n"
+            + "    if f:\n        return a\n    return b\n")
+        assert _fn(thir, "pick") is not None
+
+    def test_widen_coerce_return_ineligible(self):
+        # Span[T] -> Span[readonly[T]] widen carries span_to_readonly_span
+        # (outside _coerce_disposition) -> AST.
+        thir = _lower(
+            self._SPAN
+            + "def widen(buf: Span[Int32]) -> Span[readonly[Int32]]:\n"
+            + "    return buf\n")
+        assert _fn(thir, "widen") is None
+
+    def test_array_field_convert_return_ineligible(self):
+        # An Array field -> span conversion return (::tpy::as_mut_span) carries
+        # the spanlike_to_span RETURN coerce -> AST.
+        src = (
+            self._SPAN
+            + "class Buf:\n"
+            + "    data: Array[Int32, 4]\n"
+            + "    def __init__(self) -> None:\n"
+            + "        self.data = Array[Int32, 4]()\n"
+            + "    def view(self) -> Span[Int32]:\n        return self.data\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "view") is None
+
+    def test_span_span_return_ineligible(self):
+        # Span[Span[Int32]] -- the element is not a scalar -> AST.
+        thir = _lower(
+            self._SPAN
+            + "def outer(buf: Span[Span[Int32]]) -> Span[Span[Int32]]:\n"
+            + "    return buf\n")
+        assert _fn(thir, "outer") is None
+
+    def test_byte_identical(self):
+        src = (
+            self._SPAN
+            + "def passthru(buf: Span[Int32]) -> Span[Int32]:\n    return buf\n"
+            + "def ro(buf: Span[readonly[Int32]]) -> Span[readonly[Int32]]:\n"
+            + "    return buf\n"
+            + "def pick(a: Span[Int32], b: Span[Int32], f: bool) -> Span[Int32]:\n"
+            + "    if f:\n        return a\n    return b\n"
+            + "def main() -> None:\n    pass\nmain()\n"
+        )
         assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
 
@@ -974,6 +1269,74 @@ class TestContainerCallIterable:
         assert "auto __obj_0 = make_list(4);" in thir_cpp
         assert "auto& __obj_1 = get_list(items);" in thir_cpp
         assert "auto& __obj_2 = view(items);" in thir_cpp
+
+
+# --- str method returning `Own[list[str]]` as a for-each iterable
+#     (`for w in s.split():`) ---
+
+# The method result is an rvalue -- the owning `auto __obj_N =
+# ::tpy::str_split_whitespace(s);` capture (iterable_lvalue False, the dict-view
+# verdict). The str list ELEMENT resolves to a `std::string_view` loop var like
+# any list[str] name. Bytes-receiver splits (`data.split(sep)` -> list[bytes])
+# and non-name / field receivers defer.
+class TestStrListMethodIterable:
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+        return cpp
+
+    def test_whitespace_split_routes_rvalue_capture(self):
+        thir, faces = _lower_ctx_witnessed(
+            "def f(s: str) -> None:\n    for w in s.split():\n        print(w)\n")
+        loop = _fn(thir, "f").body[0]
+        assert isinstance(loop, THIRForEach) and not loop.iterable_lvalue
+        assert isinstance(loop.iterable, THIRMethodCall)
+        assert faces.get("foreach.str_list_method")
+
+    def test_sep_and_maxsplit_split_route(self):
+        thir = _lower_ctx(
+            "def f(s: str) -> None:\n"
+            "    for w in s.split(','):\n        print(w)\n"
+            "    for w in s.split(',', 1):\n        print(w)\n")
+        fn = _fn(thir, "f")
+        assert all(isinstance(st, THIRForEach) and not st.iterable_lvalue
+                   for st in fn.body)
+
+    def test_splitlines_routes(self):
+        thir = _lower_ctx(
+            "def f(s: str) -> None:\n    for line in s.splitlines():\n        print(line)\n")
+        assert _fn(thir, "f") is not None
+
+    def test_bytes_split_iterable_ineligible(self):
+        # A bytes receiver returns list[bytes] (a reference-element list); the
+        # str-receiver pin rejects it and the elem gate has no bytes-element arm.
+        thir = _lower_ctx(
+            "def f(data: bytes) -> None:\n"
+            "    for chunk in data.split(b','):\n        print(len(chunk))\n")
+        assert _fn(thir, "f") is None
+
+    def test_field_receiver_split_ineligible(self):
+        # A str-FIELD receiver (`self.name.split()`) is outside the bare-name pin.
+        thir = _lower_ctx(
+            "class H:\n    def __init__(self, name: str):\n        self.name = name\n"
+            "    def go(self) -> None:\n"
+            "        for w in self.name.split():\n            print(w)\n")
+        assert _fn(thir, "go") is None
+
+    def test_byte_identical(self):
+        src = (
+            "def f(s: str) -> None:\n"
+            "    for w in s.split():\n        print(w)\n"
+            "    for w in s.split(','):\n        print(w)\n"
+            "    for w in s.split(',', 1):\n        print(w)\n"
+            "    for line in s.splitlines():\n        print(line)\n"
+            "def main():\n    f('a b c')\nmain()\n")
+        thir_cpp = self._cpp(src, thir=True)
+        assert thir_cpp == self._cpp(src, thir=False)
+        assert "auto __obj_0 = ::tpy::str_split_whitespace(s);" in thir_cpp
+        assert "std::string_view w = *__beg_0;" in thir_cpp
 
 
 # --- Storage container returns (`-> Own[list/dict/set]`) + span params ---
@@ -1085,13 +1448,16 @@ class TestSpanParam:
         assert fn is not None
         assert isinstance(fn.body[0].value, THIRSubscript)
 
-    def test_record_element_span_ineligible(self):
-        thir = _lower(
+    def test_record_element_span_routes(self):
+        # A `Span[record]` param routes under the compositional gate: the
+        # `std::span<P>` by-value signature is AST-emitted and element-neutral,
+        # and `len(ps)` renders the bare `::tpy::__len__` on both paths.
+        thir = _lower_ctx(
             "from tpy import Int32, Span\n"
             "class P:\n    x: Int32\n"
             "    def __init__(self, x: Int32):\n        self.x = x\n"
             "def f(ps: Span[P]) -> Int32:\n    return len(ps)\n")
-        assert _fn(thir, "f") is None
+        assert _fn(thir, "f") is not None
 
 
 # --- Container subscript writes: `c[k] = v` / `c[k] OP= v` (THIRSetItem) ---
@@ -2047,3 +2413,213 @@ class TestRecordElementSubscript:
         )
         thir = _lower_ctx(src)
         assert _fn(thir, "f") is None
+
+
+# --- set params + dict/set membership (`needle in c` -> `(c.contains(needle))`,
+# the resolved_contains arm). A `set[scalar]` param is newly admitted; its len /
+# iteration reuse the container machinery, membership routes via `.contains`. ---
+class TestMembership:
+    def test_set_membership_routes(self):
+        thir, faces = _lower_ctx_witnessed(
+            _PRELUDE
+            + "def f(xs: set[Int32], n: Int32) -> bool:\n    return n in xs\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+        mem = fn.body[0].value
+        assert isinstance(mem, THIRMembership) and not mem.negate
+        assert mem.method_cpp == "contains"
+        assert isinstance(mem.receiver, THIRName) and mem.receiver.name == "xs"
+        assert isinstance(mem.needle, THIRName) and mem.needle.name == "n"
+        assert faces.get("binop.membership") and faces.get("param.container")
+
+    def test_set_not_in_negates(self):
+        thir = _lower(
+            _PRELUDE
+            + "def f(xs: set[Int32]) -> bool:\n    return 3 not in xs\n")
+        mem = _fn(thir, "f").body[0].value
+        assert isinstance(mem, THIRMembership) and mem.negate
+        assert isinstance(mem.needle, THIRLiteral) and mem.needle.value == 3
+
+    def test_membership_condition_routes(self):
+        # `if n in xs:` -- a bool membership's truthiness IS its value render.
+        thir = _lower(
+            _PRELUDE
+            + "def f(xs: set[Int32], n: Int32) -> Int32:\n"
+            + "    if n in xs:\n        return 1\n    return 0\n")
+        assert _fn(thir, "f") is not None
+
+    def test_dict_membership_routes(self):
+        # A dict param is already admitted; `k in d` newly routes via .contains.
+        thir = _lower(
+            _PRELUDE
+            + "def f(d: dict[Int32, Int32], k: Int32) -> bool:\n    return k in d\n")
+        mem = _fn(thir, "f").body[0].value
+        assert isinstance(mem, THIRMembership) and mem.method_cpp == "contains"
+
+    def test_bigint_set_membership_routes(self):
+        thir = _lower(
+            "def f(xs: set[int], b: int) -> bool:\n    return b in xs\n")
+        assert isinstance(_fn(thir, "f").body[0].value, THIRMembership)
+
+    def test_set_len_routes(self):
+        # len over a set reuses ::tpy::__len__ (element-agnostic); admitted now
+        # that the set param routes.
+        thir = _lower(
+            _PRELUDE
+            + "def f(xs: set[Int32]) -> Int32:\n    return len(xs)\n")
+        assert _fn(thir, "f") is not None
+
+    def test_set_iteration_routes(self):
+        thir = _lower(
+            _PRELUDE
+            + "def f(xs: set[Int32]) -> Int32:\n"
+            + "    total = 0\n    for x in xs:\n        total += x\n    return total\n")
+        fn = _fn(thir, "f")
+        assert fn is not None and isinstance(fn.body[1], THIRForEach)
+
+    def test_str_needle_rejects(self):
+        # A str-keyed dict membership (`k in d`) threads view_key_target=None but
+        # the str needle render rides a later cell -- the scalar-needle pin
+        # rejects it (whole body stays AST).
+        thir = _lower(
+            _PRELUDE
+            + "def f(d: dict[str, Int32], k: str) -> bool:\n    return k in d\n")
+        assert _fn(thir, "f") is None
+
+    def test_set_mutation_rejects(self):
+        # `.add()` is not in the set slice (no mutation arm) -- the whole body
+        # stays AST, byte-identically.
+        thir = _lower(
+            _PRELUDE
+            + "def f(xs: set[Int32], n: Int32) -> None:\n    xs.add(n)\n")
+        assert _fn(thir, "f") is None
+
+    def test_list_membership_stays_ast(self):
+        # list has no `__contains__` member (std::ranges::contains); no
+        # resolved_contains -> the membership arm rejects, body stays AST.
+        thir = _lower(
+            _PRELUDE
+            + "def f(xs: list[Int32]) -> bool:\n    return 3 in xs\n")
+        assert _fn(thir, "f") is None
+
+
+class TestMembershipEmit:
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+        return cpp
+
+    def _both(self, src: str) -> str:
+        ast_cpp = self._cpp(src, thir=False)
+        assert self._cpp(src, thir=True) == ast_cpp
+        return ast_cpp
+
+    SRC = (
+        _PRELUDE
+        + "def sm(xs: set[Int32], n: Int32) -> bool:\n    return n in xs\n"
+        + "def sn(xs: set[Int32]) -> bool:\n    return 3 not in xs\n"
+        + "def dm(d: dict[Int32, Int32], k: Int32) -> bool:\n    return k in d\n"
+        + "def si(xs: set[Int32]) -> Int32:\n"
+        + "    total = 0\n    for x in xs:\n        total += x\n    return total\n"
+        + "def main():\n"
+        + "    s = {1, 2}\n    print(sm(s, 1))\n    print(sn(s))\n    print(si(s))\n"
+        + "main()\n"
+    )
+
+    def test_byte_identical(self):
+        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
+
+    def test_emits_contains(self):
+        cpp = self._both(self.SRC)
+        assert "return (xs.contains(n));" in cpp
+        assert "return (!(xs.contains(3)));" in cpp
+        assert "return (d.contains(k));" in cpp
+
+
+# --- Compositional container-PARAM gate (`_container_param_renders`): a
+# `list`/`dict`/`set`/`Array`/`Span` param of ANY fully-concrete element routes
+# when its body's uses route, since the by-ref/by-span param signature is
+# AST-emitted and element-type-neutral. Replaces the enumerated element-family
+# whitelist; every case here is a container-of-nonscalar the old gate rejected at
+# `sig.param_type`. ---
+class TestCompositionalContainerParam:
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+        return cpp
+
+    def _routes_identical(self, src: str):
+        assert _fn(_lower_ctx(src), "f") is not None
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+
+    _P = ("from tpy import Int32\nclass P:\n    x: Int32\n"
+          "    def __init__(self, x: Int32):\n        self.x = x\n")
+
+    def test_dict_record_value_subscript(self):
+        # dict VALUE = record (old dict gate admitted only scalar/str/bytes values).
+        self._routes_identical(
+            self._P + "def f(d: dict[Int32, P], k: Int32) -> Int32:\n    return d[k].x\n")
+
+    def test_span_record_iter(self):
+        # Span[record] (old Span arm admitted only scalar elements).
+        self._routes_identical(
+            "from tpy import Int32, Span\nclass P:\n    x: Int32\n"
+            "    def __init__(self, x: Int32):\n        self.x = x\n"
+            "def f(rs: Span[P]) -> Int32:\n    t = 0\n"
+            "    for r in rs:\n        t += r.x\n    return t\n")
+
+    def test_nested_list_len(self):
+        # list[list[Int32]] -- a nested container, no enumerated arm covered it.
+        self._routes_identical(
+            _PRELUDE
+            + "def f(xs: list[list[Int32]]) -> Int32:\n    return len(xs)\n")
+
+    def test_list_union_element_len(self):
+        # list of a value union element.
+        self._routes_identical(
+            "from tpy import Int32, Float64\n"
+            "def f(xs: list[Int32 | Float64]) -> Int32:\n    return len(xs)\n")
+
+    def test_set_str_iter(self):
+        # set[str] (old set arm admitted only scalar elements).
+        self._routes_identical(
+            _PRELUDE
+            + "def f(rs: set[str]) -> Int32:\n    t = 0\n"
+            + "    for r in rs:\n        t += len(r)\n    return t\n")
+
+    def test_dict_char_key_len(self):
+        # A Char-keyed dict (old key check admitted only fixed-int/BigInt/owned-str).
+        self._routes_identical(
+            "from tpy import Int32, Char\n"
+            "def f(d: dict[Char, Int32]) -> Int32:\n    return len(d)\n")
+
+    def test_view_keyed_dict_len_routes_subscript_rejects(self):
+        # The compositional split: a StrView-keyed dict param is admitted (its
+        # signature renders identically), so a `len(d)` body routes -- while a
+        # `d["a"]` subscript body stays AST (the body subscript gate rejects the
+        # view-keyed static-storage pin). Widening the param gate never routes
+        # the divergent read.
+        ok = ("from tpy import Int32, StrView\n"
+              "def f(d: dict[StrView, Int32]) -> Int32:\n    return len(d)\n")
+        self._routes_identical(ok)
+        sub = ("from tpy import Int32, StrView\n"
+               "def f(d: dict[StrView, Int32]) -> Int32:\n    return d[\"a\"]\n")
+        assert _fn(_lower_ctx(sub), "f") is None
+
+    def test_generic_list_param_rejects(self):
+        # A generic `list[T]` param stays AST -- the generics frontier's
+        # territory (per-instantiation val_or_ref_t<T> element render), excluded
+        # by the TypeParamRef arg check.
+        src = (_PRELUDE
+               + "def f[T](xs: list[T]) -> Int32:\n    return len(xs)\n")
+        assert _fn(_lower_ctx(src), "f") is None
+
+    def test_own_container_param_rejects(self):
+        # `Own[list]` (move-in `T&&`, a distinct ABI) keeps its reject.
+        src = ("from tpy import Int32, Own\n"
+               "def f(xs: Own[list[Int32]]) -> Int32:\n    return len(xs)\n")
+        assert _fn(_lower_ctx(src), "f") is None

@@ -1608,18 +1608,23 @@ class TestDictStrContainers:
         assert isinstance(loop, THIRForEach)
         assert loop.elem_type.to_cpp() == "std::string"
 
-    def test_own_str_slot_arg_ineligible(self):
-        # xs.append(s) / st.add(s): an Own[str] slot materializes an owned copy
-        # (std::string(s)) or a copy-into-temp + std::move -- stays AST.
+    def test_own_str_slot_param_arg_routes(self):
+        # xs.append(s) where s is a str PARAM: a view (std::string_view) that
+        # resolves `str`, not `StrView` -- the arg gate reads `param_names` to
+        # tell it from an owned str local (which stays AST), then materializes an
+        # owned copy `std::string(s)` at the Own[str] element slot, like a view
+        # local. Node shape checked in test_thir_containers.
         thir = _lower(
-            "def f(xs: list[str], s: str) -> None:\n    xs.append(s)\n"
-            'def g(xs: list[str]) -> None:\n    xs.append("lit")\n')
-        assert _fn(thir, "f") is None
-        assert _fn(thir, "g") is None
+            "def f(xs: list[str], s: str) -> None:\n    xs.append(s)\n")
+        assert _fn(thir, "f") is not None
 
-    def test_view_and_bytes_containers_ineligible(self):
-        # StrView-keyed/valued dicts hold views (literal keys pin to static
-        # storage via view_key_target); bytes rides S6.
+    def test_view_and_bytes_container_params_route_without_element_use(self):
+        # View-keyed/valued and bytes-keyed container PARAMS are admitted by the
+        # compositional gate (their by-ref signatures are AST-emitted and
+        # element-neutral). A body that does not TOUCH the divergent element
+        # (`return i`) routes; the view-key static-storage pin / bytes element
+        # reads stay rejected in their own body-use gates, so a body reading such
+        # an element would reject there, not at the param.
         thir = _lower(
             _PRELUDE
             + "from tpy import StrView\n"
@@ -1627,7 +1632,7 @@ class TestDictStrContainers:
             + "def g(d: dict[bytes, Int32], i: Int32) -> Int32:\n    return i\n"
             + "def h(xs: list[StrView], i: Int32) -> Int32:\n    return i\n")
         for name in ("f", "g", "h"):
-            assert _fn(thir, name) is None, name
+            assert _fn(thir, name) is not None, name
 
     def test_subscript_write_routes(self):
         # d[k] = v routes as a THIRSetItem (`::tpy::__setitem__(d, k, 3);`)

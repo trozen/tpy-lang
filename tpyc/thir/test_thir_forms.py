@@ -7,7 +7,7 @@ from ..codegen_cpp.context import CodeGenOptions
 from ..codegen_cpp.forms import LocalBinding
 from .nodes import (
     Form, THIRAssign, THIRCall, THIRCtorCall, THIRFieldAccess, THIRFormConvert, THIRLiteral,
-    THIRName, THIRReturn, THIRSelf, THIRVarDecl,
+    THIRMethodCall, THIRName, THIRReturn, THIRSelf, THIRVarDecl,
 )
 from ..typesys import NominalType
 from .testutil import (
@@ -336,13 +336,19 @@ class TestF2bWrite:
         assert isinstance(st, THIRAssign) and isinstance(st.target, THIRFieldAccess)
         assert not isinstance(st.value, THIRFormConvert)
 
-    def test_ref_alias_value_is_ineligible(self):
-        # A `T&` REF_ALIAS value is not a `T*` pointer source (the AST path emits it
-        # differently), so an optional-field write from it stays on the AST path.
+    def test_ref_alias_value_routes_as_record_copy(self):
+        # A `T&` REF_ALIAS value is not a `T*` pointer source (no ptr_to_optional
+        # F2b lift), but it IS a record NAME into a value-storage Optional[record]
+        # field: it routes via the optrec record-name arm as a bare copy
+        # (`dst.opt = x;`, convert to the INNER record), byte-identical to the AST.
         thir = _lower_ctx(
             _F1_RECORDS
             + "def f(src: Box, dst: Box):\n    x = src.inner\n    dst.opt = x\n")
-        assert _fn(thir, "f") is None
+        write = _fn(thir, "f").body[1]
+        assert isinstance(write, THIRAssign)
+        assert isinstance(write.value, THIRFormConvert) and not write.value.move
+        # the convert lands on the inner record storage, not the Optional
+        assert isinstance(write.value.result_type, NominalType)
 
 
 
@@ -1234,6 +1240,72 @@ class TestRecordStorageReturnEmit:
 
     def test_last_use_move(self):
         assert "return consume(std::move(i));" in self._cpp(self.SRC, thir=True)
+
+
+# A method-call rvalue source (`Rec r = b.build();`) for the owned-record decl:
+# the method sibling of the free-call `x = make(1)` source.
+_METHOD_RECORD_SRC = (
+    _F1_RECORDS
+    + "class Builder:\n"
+    + "    seed: Int32\n"
+    + "    def __init__(self, seed: Int32):\n        self.seed = seed\n"
+    + "    def build(self) -> Own[Inner]:\n        return Inner(self.seed)\n"
+    + "    def build_n(self, k: Int32) -> Own[Inner]:\n"
+    + "        return Inner(self.seed + k)\n"
+    + "    def via_self(self) -> Int32:\n"
+    + "        r = self.build()\n        return r.value\n"
+    + "def consume(i: Own[Inner]) -> Int32:\n    return i.value\n"
+    + "def use(b: Builder) -> Int32:\n"
+    + "    r = b.build()\n    s = b.build_n(5)\n    return r.value + s.value\n"
+    + "def move_use(b: Builder) -> Int32:\n"
+    + "    r = b.build()\n    return consume(r)\n"
+)
+
+
+class TestOwnedRecordMethodDecl:
+    def _cpp(self, thir: bool) -> str:
+        compiler, modules = _compile(_METHOD_RECORD_SRC)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=thir))
+        return cpp
+
+    def test_byte_identical(self):
+        assert self._cpp(thir=True) == self._cpp(thir=False)
+
+    def test_decl_from_method_call_routes(self):
+        thir, faces = _lower_ctx_witnessed(_METHOD_RECORD_SRC)
+        fn = _fn(thir, "use")
+        assert fn is not None
+        decl = fn.body[0]
+        assert isinstance(decl, THIRVarDecl)
+        assert isinstance(decl.init, THIRMethodCall)
+        assert decl.form is Form.STORAGE
+        # A method source witnesses the dedicated face, not the free-call one.
+        assert faces.get("decl.owned_record_method", 0) >= 1
+
+    def test_self_receiver_and_move(self):
+        thir = _lower_ctx(_METHOD_RECORD_SRC)
+        assert _fn(thir, "via_self") is not None   # `r = self.build()`
+        assert _fn(thir, "move_use") is not None
+        cpp = self._cpp(thir=True)
+        assert "Inner r = b.build();" in cpp
+        assert "Inner s = b.build_n(5);" in cpp
+        # The owned local is moved at its last use into the Own[Inner] slot.
+        assert "consume(std::move(r))" in cpp
+
+    def test_return_position_stays_ast(self):
+        # record_ret_ok is pinned to the owned-record decl sink: a
+        # record-rvalue method call in RETURN / arg position stays AST.
+        src = (
+            _F1_RECORDS
+            + "class B:\n    s: Int32\n"
+            + "    def __init__(self, s: Int32):\n        self.s = s\n"
+            + "    def build(self) -> Own[Inner]:\n        return Inner(self.s)\n"
+            + "def r(b: B) -> Own[Inner]:\n    return b.build()\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "r") is None
 
 
 _PTR_RECORDS = (

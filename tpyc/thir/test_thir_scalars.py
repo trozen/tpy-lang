@@ -8,7 +8,7 @@ from .nodes import (
     THIRBinOp, THIRCall, THIRCoerce, THIRForRange, THIRLiteral,
 )
 from .testutil import (
-    _compile, _entry, _lower, _fn, _emit_expr,
+    _compile, _entry, _lower, _lower_ctx, _lower_ctx_witnessed, _fn, _emit_expr,
 )
 
 # --- Bare numeric-literal call args + negated int literals (increment 45) ---
@@ -389,3 +389,67 @@ class TestFloat32AndCastCoercions:
             + "def main():\n    print(f(2.5, 3))\nmain()\n"
         )
         assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+
+
+# --- Fixed-int bitwise ops (& | ^ << >>) at the scalar binop arm ---
+
+
+class TestBitwiseBinops:
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+        return cpp
+
+    SRC = (
+        "from tpy import Int32, UInt16, Int64\n"
+        + "def f_and(a: Int32, b: Int32) -> Int32:\n    return a & b\n"
+        + "def f_or(a: Int32, b: Int32) -> Int32:\n    return a | b\n"
+        + "def f_xor(a: Int64, b: Int64) -> Int64:\n    return a ^ b\n"
+        + "def f_shl(a: Int32, b: Int32) -> Int32:\n    return a << b\n"
+        + "def f_shr(a: UInt16, b: UInt16) -> UInt16:\n    return a >> b\n"
+        + "def f_mix(x: Int32) -> Int32:\n    return (x & 255) | 1\n"
+        + "def main():\n"
+        + "    print(int(f_and(6, 3)), int(f_or(4, 1)), int(f_xor(5, 1)))\n"
+        + "    print(int(f_shl(1, 4)), int(f_shr(256, 2)), int(f_mix(511)))\n"
+        + "main()\n"
+    )
+
+    def test_routed(self):
+        thir = _lower(self.SRC)
+        for name in ("f_and", "f_or", "f_xor", "f_shl", "f_shr", "f_mix"):
+            assert _fn(thir, name) is not None, name
+
+    def test_byte_identical(self):
+        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
+
+    def test_face_witnessed(self):
+        # Without the pin a refactor could un-witness the bitwise arm while the
+        # bodies still route via the shared arith tail and the byte-diff stays green.
+        _, witnessed = _lower_ctx_witnessed(self.SRC)
+        assert witnessed.get("binop.bitwise", 0) > 0
+
+    def test_emit_arms(self):
+        cpp = self._cpp(self.SRC, thir=True)
+        # `&`/`|`/`^` expand the fixed-int static_cast template; shifts take the
+        # checked helper -- both the resolved-binop template arm arithmetic uses.
+        assert "return (static_cast<int32_t>(a & b));" in cpp
+        assert "return (static_cast<int32_t>(a | b));" in cpp
+        assert "return (static_cast<int64_t>(a ^ b));" in cpp
+        assert "return (::tpy::lshift_check<int32_t>(a, b));" in cpp
+        assert "return (::tpy::rshift_check<uint16_t>(a, b));" in cpp
+        assert ("return (static_cast<int32_t>((static_cast<int32_t>(x & 255)) | 1));"
+                in cpp)
+
+    def test_set_intersection_ineligible(self):
+        # A set `&` returns a container, not a scalar -- rejected at the arm's
+        # `_resolved_scalar` result check, so it stays on the AST path.
+        src = (
+            "from tpy import Int32, Own\n"
+            + "def inter(a: set[Int32], b: set[Int32]) -> Own[set[Int32]]:\n"
+            + "    return a & b\n"
+            + "def main():\n    print(len(inter({1, 2}, {2, 3})))\nmain()\n"
+        )
+        thir = _lower_ctx(src)
+        assert _fn(thir, "inter") is None

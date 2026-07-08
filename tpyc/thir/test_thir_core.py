@@ -13,11 +13,12 @@ from .dump import dump_thir
 from .emit import emit_thir_body
 from .lower import _is_len_native, lower_module
 from .lower.functions import _shadow_bound_names
+from ..typesys import TupleType
 from .nodes import (
     Form, PrintForm, THIRAssign, THIRBinOp, THIRCall, THIRExprStmt,
-    THIRForEach, THIRForRange, THIRFormConvert, THIRIf, THIRLiteral,
-    THIRName, THIRPrint, THIRReturn, THIRStrLiteral, THIRUnaryNot,
-    THIRVarDecl, THIRWhile,
+    THIRFieldAccess, THIRForEach, THIRForRange, THIRFormConvert, THIRIf,
+    THIRLiteral, THIRMethodCall, THIRName, THIRPrint, THIRReturn,
+    THIRStrLiteral, THIRUnaryNot, THIRVarDecl, THIRWhile,
 )
 from .testutil import (
     _compile, _entry, _lower, _lower_ctx, _fn, _lower_ctor,
@@ -127,12 +128,45 @@ class TestEligibility:
         assert isinstance(outer, THIRIf)
         assert len(outer.else_body) == 1 and isinstance(outer.else_body[0], THIRIf)
 
-    def test_branch_local_first_decl_is_ineligible(self):
-        # `t` is first-declared inside the branch -> needs scope machinery.
+    def test_value_block_local_first_decl_routes(self):
+        # `t` first-declared inside the branch (not read after -> the if hoists
+        # nothing) is an in-place value block-local; it routes.
         thir = _lower(_PRELUDE
                       + "def f(a: Int32) -> Int32:\n    r = a\n"
                       + "    if a < 0:\n        t = 0 - a\n        r = t\n"
                       + "    return r\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+        # The block-local decl lowers in place inside the then-body.
+        assert isinstance(fn.body[1].then_body[0], THIRVarDecl)
+
+    def test_hoisted_value_branch_decl_routes(self):
+        # `x` is definitely-assigned after the if (both arms bind it) -> the AST
+        # HOISTS `int32_t x;` to function scope; Slice 2 mirrors the predecl and
+        # lowers the in-branch assigns as reassigns, so the body routes.
+        thir = _lower(_PRELUDE
+                      + "def f(c: bool) -> Int32:\n"
+                      + "    if c:\n        x = 5\n    else:\n        x = 7\n"
+                      + "    return x\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+        assert fn.body[0].hoist_decls == (("x", "int32_t"),)
+
+    def test_hoisted_nonvalue_branch_decl_is_ineligible(self):
+        # A hoisted container/reference name registers pointer-local walk state
+        # the slice does not reproduce -> the whole if stays AST.
+        thir = _lower(_PRELUDE
+                      + "def f(c: bool) -> Int32:\n"
+                      + "    if c:\n        xs = [1]\n    else:\n        xs = [2]\n"
+                      + "    return xs[0]\n")
+        assert _fn(thir, "f") is None
+
+    def test_nonvalue_container_block_local_is_ineligible(self):
+        # A container-literal block-local is a pointer-local whose lowering
+        # mutates function-scoped walk state -> stays AST.
+        thir = _lower(_PRELUDE
+                      + "def f(c: bool) -> None:\n"
+                      + "    if c:\n        xs = [1, 2]\n        print(len(xs))\n")
         assert _fn(thir, "f") is None
 
     def test_truthiness_condition_is_ineligible(self):
@@ -297,10 +331,78 @@ class TestForRange:
                       + "    for i in range(n):\n        last = i\n    return last + i\n")
         assert _fn(thir, "f") is None
 
-    def test_stepped_range_is_ineligible(self):
-        # 3-arg range -> step handling (overflow checks etc.) outside the slice.
+    def test_literal_pos_step_routes(self):
+        # 3-arg range with a non-unit positive literal step.
         thir = _lower(_PRELUDE
                       + "def f(n: Int32) -> Int32:\n    acc = 0\n"
+                      + "    for i in range(0, n, 2):\n        acc = acc + i\n    return acc\n")
+        loop = _fn(thir, "f").body[1]
+        assert isinstance(loop, THIRForRange) and loop.step_kind == "literal_pos"
+        assert loop.step is not None
+
+    def test_literal_neg_step_routes(self):
+        thir = _lower(_PRELUDE
+                      + "def f(n: Int32) -> Int32:\n    acc = 0\n"
+                      + "    for i in range(n, 0, -3):\n        acc = acc + i\n    return acc\n")
+        loop = _fn(thir, "f").body[1]
+        assert isinstance(loop, THIRForRange) and loop.step_kind == "literal_neg"
+
+    def test_unit_neg_step_routes(self):
+        # A literal -1 step collapses to the descending `--` loop (no step ref).
+        thir = _lower(_PRELUDE
+                      + "def f(n: Int32) -> Int32:\n    acc = 0\n"
+                      + "    for i in range(n, 0, -1):\n        acc = acc + i\n    return acc\n")
+        loop = _fn(thir, "f").body[1]
+        assert isinstance(loop, THIRForRange) and loop.step_kind == "unit_neg"
+        assert loop.step is None
+
+    def test_unit_pos_step_routes(self):
+        # A literal +1 step collapses to the ascending `++` loop.
+        thir = _lower(_PRELUDE
+                      + "def f(n: Int32) -> Int32:\n    acc = 0\n"
+                      + "    for i in range(0, n, 1):\n        acc = acc + i\n    return acc\n")
+        loop = _fn(thir, "f").body[1]
+        assert isinstance(loop, THIRForRange) and loop.step_kind == "plus_one"
+        assert loop.step is None
+
+    def test_variable_step_routes(self):
+        # A bare fixed-int-name step -> the captured `__step_N` / ternary arm.
+        thir = _lower(_PRELUDE
+                      + "def f(n: Int32, s: Int32) -> Int32:\n    acc = 0\n"
+                      + "    for i in range(0, n, s):\n        acc = acc + i\n    return acc\n")
+        loop = _fn(thir, "f").body[1]
+        assert isinstance(loop, THIRForRange) and loop.step_kind == "variable"
+        assert isinstance(loop.step, THIRName) and loop.step.name == "s"
+
+    def test_zero_literal_step_is_ineligible(self):
+        # A zero literal step panics at runtime; the AST emits the Range ctor
+        # path there, not this counter loop -- deferred.
+        thir = _lower(_PRELUDE
+                      + "def f(n: Int32) -> Int32:\n    acc = 0\n"
+                      + "    for i in range(0, n, 0):\n        acc = acc + i\n    return acc\n")
+        assert _fn(thir, "f") is None
+
+    def test_ctor_literal_step_is_ineligible(self):
+        # `Int32(2)` step: the AST folds it via _extract_int_literal (which the
+        # slice's _range_bound_literal_value does not), so it is deferred to
+        # avoid a variable-vs-literal classification divergence.
+        thir = _lower(_PRELUDE
+                      + "def f(n: Int32) -> Int32:\n    acc = 0\n"
+                      + "    for i in range(0, n, Int32(2)):\n        acc = acc + i\n    return acc\n")
+        assert _fn(thir, "f") is None
+
+    def test_binop_step_is_ineligible(self):
+        # An arithmetic step is deferred (net-confidence, like the bound slice).
+        thir = _lower(_PRELUDE
+                      + "def f(n: Int32, s: Int32) -> Int32:\n    acc = 0\n"
+                      + "    for i in range(0, n, s + 1):\n        acc = acc + i\n    return acc\n")
+        assert _fn(thir, "f") is None
+
+    def test_bigint_counter_stepped_is_ineligible(self):
+        # A BigInt counter's stepped emit differs (literal-step temp, no
+        # overflow check); deferred to the AST path.
+        thir = _lower(_PRELUDE
+                      + "def f(n: int) -> int:\n    acc = 0\n"
                       + "    for i in range(0, n, 2):\n        acc = acc + i\n    return acc\n")
         assert _fn(thir, "f") is None
 
@@ -326,13 +428,165 @@ class TestForRange:
                       + "    for i in range(n):\n        acc = acc + i\n    return acc\n")
         assert _fn(thir, "f") is None
 
-    def test_binop_bound_is_ineligible(self):
-        # A non-literal, non-name bound (binop) is deferred: gen_range_args'
-        # _gen_expr_deref(arg, ptype) rendering is not yet net-confirmed vs _emit_expr.
+    def test_binop_stop_bound_routes(self):
+        # An arithmetic stop bound (`range(n + 1)`) hoists into a `__stop_N`
+        # temp like a name/len bound; the binop render is target-independent.
         thir = _lower(_PRELUDE
                       + "def f(n: Int32) -> Int32:\n    acc = 0\n"
                       + "    for i in range(n + 1):\n        acc = acc + i\n    return acc\n")
-        assert _fn(thir, "f") is None
+        loop = _fn(thir, "f").body[1]
+        assert isinstance(loop, THIRForRange)
+        assert isinstance(loop.stop, THIRBinOp) and loop.stop_is_literal is False
+        assert loop.start is None
+
+    def test_len_minus_one_stop_bound_routes(self):
+        # `range(len(xs) - 1)` -- a len() call inside an arithmetic bound.
+        thir = _lower(_PRELUDE
+                      + "def f(xs: list[Int32]) -> Int32:\n    acc = 0\n"
+                      + "    for i in range(len(xs) - 1):\n        acc = acc + xs[i]\n    return acc\n")
+        loop = _fn(thir, "f").body[1]
+        assert isinstance(loop, THIRForRange) and loop.stop_is_literal is False
+
+    def test_arith_start_and_stop_bounds_route(self):
+        # Both bounds arithmetic (`range(a + 1, len(xs) - 1)`) -> two hoisted temps.
+        thir = _lower(_PRELUDE
+                      + "def f(xs: list[Int32], a: Int32) -> Int32:\n    acc = 0\n"
+                      + "    for i in range(a + 1, len(xs) - 1):\n        acc = acc + i\n    return acc\n")
+        loop = _fn(thir, "f").body[1]
+        assert isinstance(loop, THIRForRange)
+        assert loop.start_is_literal is False and loop.stop_is_literal is False
+
+    def test_call_bound_routes(self):
+        # A builtin call bound (`range(abs(n))`) routes -- its own param slots
+        # thread the render, target-independently.
+        thir = _lower(_PRELUDE
+                      + "def f(n: Int32) -> Int32:\n    acc = 0\n"
+                      + "    for i in range(abs(n)):\n        acc = acc + i\n    return acc\n")
+        loop = _fn(thir, "f").body[1]
+        assert isinstance(loop, THIRForRange) and loop.stop_is_literal is False
+
+    def test_bigint_arith_bound_routes(self):
+        # A runtime-BigInt counter with an arithmetic bound shares the step-1
+        # emit shape -- the temp renders `::tpy::BigInt`.
+        thir = _lower(_PRELUDE
+                      + "def f(n: int) -> int:\n    acc = 0\n"
+                      + "    for i in range(n - 1):\n        acc = acc + i\n    return acc\n")
+        loop = _fn(thir, "f").body[1]
+        assert isinstance(loop, THIRForRange) and loop.stop_is_literal is False
+
+
+class TestIfHoistDeclEmit:
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+        return cpp
+
+    def _witnesses(self, src: str):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=True))
+        return compiler._thir_face_witnesses
+
+    # if/elif/else: one scalar hoist + one str hoist, definitely-assigned
+    # after the chain and read past it.
+    SRC = (
+        _PRELUDE
+        + "def f(c: Int32) -> Int32:\n"
+        + "    if c == 0:\n        x = 5\n        s = \"a\"\n"
+        + "    elif c == 1:\n        x = 7\n        s = \"b\"\n"
+        + "    else:\n        x = 9\n        s = \"c\"\n"
+        + "    print(s)\n    return x\n"
+        + "def main():\n    print(f(0))\nmain()\n"
+    )
+
+    def test_byte_identical(self):
+        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
+
+    def test_predecls_precede_chain(self):
+        cpp = self._cpp(self.SRC, thir=True)
+        body = cpp[cpp.index("f("):]
+        decl = body.index("int32_t x;")
+        # predecls sit before the `if (` head, and the in-branch writes are
+        # bare reassigns against the slot (no re-declaration).
+        assert decl < body.index("if (")
+        assert "x = 5;" in body and "int32_t x = 5;" not in body
+
+    def test_witness(self):
+        assert self._witnesses(self.SRC).get("if.hoist_decl", 0) > 0
+
+
+class TestForRangeArithBoundEmit:
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+        return cpp
+
+    SRC = (
+        _PRELUDE
+        + "def f(xs: list[Int32], a: Int32) -> Int32:\n    acc = 0\n"
+        + "    for i in range(len(xs) - 1):\n        acc = acc + xs[i]\n"
+        + "    for j in range(a + 1, len(xs) - 1):\n        acc = acc + j\n"
+        + "    for k in range(abs(a)):\n        acc = acc + k\n"
+        + "    return acc\n"
+        + "def main():\n    print(f([1, 2, 3], 1))\nmain()\n"
+    )
+
+    def test_byte_identical(self):
+        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
+
+    def test_emits_hoisted_temps(self):
+        cpp = self._cpp(self.SRC, thir=True)
+        # arithmetic stop bound -> a `__stop_N` temp holding the sub_check expr
+        assert "int32_t __stop_0 = (::tpy::sub_check<int32_t>(::tpy::__len__(xs), 1));" in cpp
+        # arithmetic start + stop -> both temps for the second loop
+        assert "__start_1 = " in cpp and "__stop_1 = " in cpp
+        # call bound -> hoisted temp too
+        assert "__stop_2 = " in cpp
+
+
+class TestForRangeSteppedEmit:
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+        return cpp
+
+    SRC = (
+        _PRELUDE
+        + "def f(n: Int32, s: Int32) -> Int32:\n    acc = 0\n"
+        + "    for i in range(0, n, 2):\n        acc = acc + i\n"        # literal_pos
+        + "    for j in range(n, 0, -3):\n        acc = acc + j\n"       # literal_neg
+        + "    for k in range(n, 0, -1):\n        acc = acc + k\n"       # unit_neg
+        + "    for m in range(0, n, 1):\n        acc = acc + m\n"        # plus_one
+        + "    for p in range(0, n, s):\n        acc = acc + p\n"        # variable
+        + "    for q in range(0, 100, 5):\n        acc = acc + q\n"      # both bounds literal
+        + "    return acc\n"
+        + "def main():\n    print(f(10, 3))\nmain()\n"
+    )
+
+    def test_byte_identical(self):
+        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
+
+    def test_emits_step_shapes(self):
+        cpp = self._cpp(self.SRC, thir=True)
+        # non-unit literal step -> upfront overflow check + `i += step`
+        assert "::tpy::range_check_overflow<int32_t>(0, __stop_0, 2);" in cpp
+        assert "i += 2)" in cpp
+        # negative non-unit literal -> descending comparison (stop 0 inlined)
+        assert "j > 0; j += -3)" in cpp
+        # unit steps carry no overflow check / step ref
+        assert "k > 0; --k)" in cpp
+        assert "m < __stop_3; ++m)" in cpp
+        # variable step -> captured temp, nonzero + overflow checks, ternary
+        assert "int32_t __step_4 = s;" in cpp
+        assert "::tpy::range_check_step_nonzero(__step_4);" in cpp
+        assert "__step_4 > 0 ? p < __stop_4 : p > __stop_4; p += __step_4)" in cpp
 
 
 
@@ -383,15 +637,18 @@ class TestForEachContainer:
         loop = _fn(thir, "f").body[0]
         assert isinstance(loop, THIRForEach) and loop.var == "p"
 
-    def test_dict_record_value_ineligible(self):
-        # `for k in d` over dict[int, record] yields scalar KEYS, but the param itself
-        # isn't admitted: `_container_scalar_read` requires a scalar VALUE, and record
-        # values ride a later cell (`dict[int, record]` key iteration), so it stays AST.
+    def test_dict_record_value_key_iter_routes(self):
+        # `for k in d` over dict[int, record] yields scalar KEYS. The
+        # `dict[Int32, Inner]` PARAM is admitted by the compositional gate (its
+        # by-ref signature is AST-emitted and value-type-neutral), so the whole
+        # function -- key loop included -- routes. A body that TOUCHED the record
+        # value (`d[k].value`) would still route via the record-value subscript
+        # gate; one that did not would reject there.
         thir = _lower_ctx(
             _F1_RECORDS
             + "def f(d: dict[Int32, Inner]) -> Int32:\n    s = 0\n"
             + "    for k in d:\n        s = s + k\n    return s\n")
-        assert _fn(thir, "f") is None
+        assert _fn(thir, "f") is not None
 
     def test_str_keyed_dict_iteration_routes(self):
         # An owned-str dict key routes (S5): the loop var is a fresh view var,
@@ -411,6 +668,103 @@ class TestForEachContainer:
             _PRELUDE
             + "def f(d: dict[Int32, Int32]) -> Int32:\n    s = 0\n"
             + "    for k, v in d.items():\n        s = s + k\n    return s\n")
+        assert _fn(thir, "f") is not None
+
+    def test_value_tuple_element_routes(self):
+        # A `list[tuple[scalar, ...]]` element binds `auto&& t` (the composite
+        # borrow alias); subscript reads render `std::get<i>(t)` bare.
+        thir, wit = _lower_ctx_witnessed(
+            _PRELUDE
+            + "def f(xs: list[tuple[Int32, Int32]]) -> None:\n"
+            + "    for t in xs:\n        print(t[0])\n        print(t[1])\n")
+        loop = _fn(thir, "f").body[0]
+        assert isinstance(loop, THIRForEach) and loop.var == "t"
+        assert isinstance(loop.elem_type, TupleType)
+        assert wit.get("foreach.value_tuple_elem")
+
+    def test_items_single_target_routes(self):
+        # `for kv in d.items()` (no unpack) -- the items view is an rvalue
+        # capture and the loop var is the whole value tuple.
+        thir = _lower(
+            _PRELUDE
+            + "def f(d: dict[Int32, Int32]) -> None:\n"
+            + "    for kv in d.items():\n        print(kv[0])\n        print(kv[1])\n")
+        loop = _fn(thir, "f").body[0]
+        assert isinstance(loop, THIRForEach) and not loop.iterable_lvalue
+        assert isinstance(loop.iterable, THIRMethodCall)
+
+    def test_nested_container_param_routes(self):
+        # A `list[list[Int32]]` param routes under the compositional gate (the
+        # by-ref signature is AST-emitted and element-neutral, and the element
+        # args are fully concrete), and the element gate binds the inner
+        # `list[Int32]` loop var byte-identically. The element gate counterpart
+        # over a local is below.
+        thir = _lower(
+            _PRELUDE
+            + "def f(xs: list[list[Int32]]) -> Int32:\n    n = 0\n"
+            + "    for row in xs:\n        n = n + 1\n    return n\n")
+        assert _fn(thir, "f") is not None
+
+    def test_nested_container_local_element_routes(self):
+        # Compositional element gate: a `list[list[...]]` local iterated binds
+        # the inner list as `auto&&` (the shared loop_var_binding non-value arm,
+        # byte-identical to the AST path); the body's own reads of the loop var
+        # are gated recursively. No enumerated element family is consulted.
+        thir = _lower(
+            _PRELUDE
+            + "def f() -> Int32:\n    xs = [[1, 2], [3, 4]]\n    n = 0\n"
+            + "    for row in xs:\n        n = n + 1\n    return n\n")
+        loop = next(s for s in _fn(thir, "f").body if isinstance(s, THIRForEach))
+        assert loop.var == "row"
+
+    def test_local_enum_element_routes(self):
+        # An enum element (a value type: `Color c = *b`, the value-copy binding
+        # arm) was outside the old enumerated whitelist; the compositional gate
+        # admits it since the shared loop_var_binding renders it identically.
+        thir = _lower_ctx(
+            "from tpy import Int32\nfrom enum import Enum\n"
+            "class Color(Enum):\n    RED = 0\n    GREEN = 1\n"
+            "def f() -> Int32:\n    xs = [Color.RED, Color.GREEN]\n    n = 0\n"
+            "    for c in xs:\n        if c == Color.RED:\n            n = n + 1\n"
+            "    return n\n")
+        loop = next(s for s in _fn(thir, "f").body if isinstance(s, THIRForEach))
+        assert loop.var == "c"
+
+    def test_bytes_element_ineligible(self):
+        # A bytes-view loop var stays on the AST path: its element `et` survives
+        # as a PendingViewType (str is pre-resolved, bytes is not), which THIR
+        # would spell before the AST's resolve_type concretizes it -- the one
+        # form the compositional gate must still exclude.
+        thir = _lower(
+            _PRELUDE
+            + "def f() -> Int32:\n    rows = [b'ab', b'cd']\n    n = 0\n"
+            + "    for r in rows:\n        n = n + 1\n    return n\n")
+        assert _fn(thir, "f") is None
+
+    def test_optional_element_ineligible(self):
+        # An `Optional` loop var is excluded from the compositional element gate:
+        # a body that narrows it (`if item is None: continue`) then reads it needs
+        # the value-repr deref (`(*item)`) the loop-var binding does not seed, so
+        # THIR renders the narrowed read bare and diverges. The whole-Optional
+        # read binds/prints fine, but the gate cannot see the body's narrowing, so
+        # it rejects the family. The `list[Int32 | None]` PARAM is still admitted
+        # (a `len(items)` body routes); only the iterating body rejects here.
+        thir = _lower(
+            _PRELUDE
+            + "def f(items: list[Int32 | None]) -> Int32:\n    total = 0\n"
+            + "    for item in items:\n        if item is None:\n            continue\n"
+            + "        total = total + item\n    return total\n")
+        assert _fn(thir, "f") is None
+
+    def test_union_element_narrow_routes(self):
+        # A narrowable (non-Optional) UNION loop var IS admitted: its isinstance
+        # extraction reads the shared `declared` map the loop var populates, so
+        # the narrowed read mirrors byte-identically (unlike the Optional deref).
+        thir = _lower(
+            "from tpy import Int32, Float64\n"
+            + "def f(xs: list[Int32 | Float64]) -> Int32:\n    t = 0\n"
+            + "    for x in xs:\n        if isinstance(x, Int32):\n            t += x\n"
+            + "    return t\n")
         assert _fn(thir, "f") is not None
 
     def test_len_call_routes(self):
@@ -572,6 +926,32 @@ class TestForEachContainerEmit:
         assert _lower_ctor(src, "Sum") is not None
         assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
+    # A value-tuple element loop over a `list[tuple[...]]` name and over a
+    # `d.items()` view. Both bind the whole tuple as `auto&& t = *__beg_0;`;
+    # the items view is an owning rvalue capture (`::tpy::dict_items(d)`).
+    TUP_SRC = (
+        _PRELUDE
+        + "def pairs(xs: list[tuple[Int32, Int32]]) -> None:\n"
+        + "    for t in xs:\n        print(t[0])\n        print(t[1])\n"
+        + "def entries(d: dict[Int32, Int32]) -> None:\n"
+        + "    for kv in d.items():\n        print(kv[0])\n        print(kv[1])\n"
+        + "def main():\n"
+        + "    pairs([(1, 2), (3, 4)])\n"
+        + "    d: dict[Int32, Int32] = {5: 6}\n    entries(d)\nmain()\n"
+    )
+
+    def test_value_tuple_byte_identical(self):
+        assert self._cpp(self.TUP_SRC, thir=True) == self._cpp(self.TUP_SRC, thir=False)
+
+    def test_value_tuple_emits_alias_binding(self):
+        cpp = self._cpp(self.TUP_SRC, thir=True)
+        assert "auto& __obj_0 = xs;" in cpp
+        assert "auto&& t = *__beg_0;" in cpp
+        # The items view is an owning capture (rvalue), and its tuple loop var
+        # binds the same `auto&&` alias.
+        assert "auto __obj_0 = ::tpy::dict_items(d);" in cpp
+        assert "auto&& kv = *__beg_0;" in cpp
+
 
 
 # --- Statement-shape axis: expression statements (print + bare eligible call) ---
@@ -641,6 +1021,86 @@ class TestPrintStmt:
         # runtime-bigint arm.
         thir = _lower("def f(x: int) -> None:\n    print(x)\n")
         assert _fn(thir, "f") is not None
+
+    def test_optval_scalar_param_plain(self):
+        # `print(p)` on an un-narrowed value-repr Optional[scalar] param -> the
+        # plain `::tpy::print_optional_val(p)` over the bare optional (no deref).
+        for ann in ("Int32 | None", "int | None", "Char | None"):
+            thir = _lower(
+                "from tpy import Int32, Char\n"
+                + f"def f(p: {ann}) -> None:\n    print(p)\n")
+            arg = _fn(thir, "f").body[0].args[0]
+            assert arg.print_form is PrintForm.OPT_VAL
+            assert arg.opt_inner_cpp is None
+            assert isinstance(arg.expr, THIRName) and arg.expr.name == "p"
+            assert not arg.expr.deref
+
+    def test_optval_bool_templated(self):
+        thir = _lower(_PRELUDE + "def f(p: bool | None) -> None:\n    print(p)\n")
+        arg = _fn(thir, "f").body[0].args[0]
+        assert arg.print_form is PrintForm.OPT_VAL_BOOL
+        assert arg.opt_inner_cpp == "bool"
+
+    def test_optval_float_templated(self):
+        # Both float widths take the float branch; the inner C++ spelling
+        # distinguishes them (double vs float), no static_cast (the wrapper
+        # converts internally).
+        thir = _lower(_PRELUDE + "def f(p: float | None) -> None:\n    print(p)\n")
+        arg = _fn(thir, "f").body[0].args[0]
+        assert arg.print_form is PrintForm.OPT_VAL_FLOAT
+        assert arg.opt_inner_cpp == "double"
+        thir32 = _lower(
+            "from tpy import Float32\n"
+            + "def f(p: Float32 | None) -> None:\n    print(p)\n")
+        arg32 = _fn(thir32, "f").body[0].args[0]
+        assert arg32.print_form is PrintForm.OPT_VAL_FLOAT
+        assert arg32.opt_inner_cpp == "float"
+
+    def test_optval_str_param_plain(self):
+        # A value-repr Optional[str] param (`std::optional<std::string_view>`)
+        # prints via the plain form too.
+        thir = _lower("def f(p: str | None) -> None:\n    print(p)\n")
+        arg = _fn(thir, "f").body[0].args[0]
+        assert arg.print_form is PrintForm.OPT_VAL
+        assert arg.opt_inner_cpp is None
+
+    def test_optval_field_routes(self):
+        # An un-narrowed value-repr Optional field read prints via
+        # `print_optional_val(this->fi)` (bare std::optional storage).
+        thir = _lower_ctx(
+            "from tpy import Int32\n"
+            "class C:\n"
+            "    fi: Int32 | None\n"
+            "    def __init__(self) -> None:\n        self.fi = None\n"
+            "    def show(self) -> None:\n        print(self.fi)\n")
+        arg = _fn(thir, "show").body[0].args[0]
+        assert arg.print_form is PrintForm.OPT_VAL
+        assert isinstance(arg.expr, THIRFieldAccess)
+
+    def test_optval_witnessed(self):
+        _, w = _lower_ctx_witnessed(
+            _PRELUDE + "def f(p: Int32 | None) -> None:\n    print(p)\n")
+        assert w.get("print.optval", 0) >= 1
+
+    def test_optval_bool_emit_mirrors_ast(self):
+        src = _PRELUDE + "def f(p: bool | None) -> None:\n    print(p)\n"
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+        assert "print_optional_val<::tpy::print_bool, bool>(p)" in self._cpp(src, thir=True)
+
+    def test_optval_float_emit_mirrors_ast(self):
+        src = _PRELUDE + "def f(p: float | None) -> None:\n    print(p)\n"
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+        assert "print_optional_val<::tpy::print_float, double>(p)" in self._cpp(src, thir=True)
+
+    def test_narrowed_optval_print_defers(self):
+        # A NARROWED read (`if p is not None: print(p)`) resolves to the inner
+        # scalar; its AST render is the deref `(*p)`, a separate face. The body
+        # must stay on the AST path (not silently route the whole-optional wrap).
+        thir = _lower(
+            _PRELUDE
+            + "def f(p: Int32 | None) -> None:\n"
+            + "    if p is not None:\n        print(p)\n")
+        assert _fn(thir, "f") is None
 
     def test_kwargs_ineligible(self):
         # sep=/end=/file=/flush= take gen_print's richer path -> AST.
@@ -1344,6 +1804,144 @@ class TestByteIdentical:
         assert thir == ast
 
 
+class TestBranchBlockLocals:
+    """Slice 1: a VALUE local first-declared inside an if/elif/else/for/while
+    body (the construct hoisting nothing) lowers in place, byte-identically to
+    the AST path. Hoisted and non-value block-locals stay AST."""
+
+    def _identical(self, src: str, ctx: bool = False):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        opts_ast = CodeGenOptions(emit_source_comments=True)
+        opts_thir = CodeGenOptions(emit_source_comments=True, thir_codegen=True)
+        if ctx:
+            with activate_compiler(compiler):
+                ast = compiler.generate_code_to_strings(entry, options=opts_ast)
+                thir = compiler.generate_code_to_strings(entry, options=opts_thir)
+        else:
+            ast = compiler.generate_code_to_strings(entry, options=opts_ast)
+            thir = compiler.generate_code_to_strings(entry, options=opts_thir)
+        return ast, thir
+
+    def _routes(self, src: str, name: str = "f", ctx: bool = False) -> bool:
+        if ctx:
+            compiler, modules = _compile(src)
+            entry = _entry(modules)
+            with activate_compiler(compiler):
+                thir = lower_module(entry.ast, entry.analyzer)
+            return any(fn.name == name for fn in thir.functions)
+        return _fn(_lower(src), name) is not None
+
+    def test_if_scalar_block_local_routes_identical(self):
+        src = (_PRELUDE
+               + "def f(c: bool) -> None:\n"
+               + "    if c:\n        x = 5\n        print(x)\n    print(1)\n"
+               + "f(True)\n")
+        assert self._routes(src)
+        ast, thir = self._identical(src)
+        assert thir == ast
+
+    def test_if_char_block_local_routes_identical(self):
+        src = ("from tpy import Char\n"
+               + "def f(c: bool) -> None:\n"
+               + "    if c:\n        ch: Char = 'x'\n        print(ch)\n"
+               + "f(True)\n")
+        assert self._routes(src)
+        ast, thir = self._identical(src)
+        assert thir == ast
+
+    def test_if_owned_str_block_local_routes_identical(self):
+        src = ("def f(c: bool) -> None:\n"
+               + "    if c:\n        name = 'hi'\n        print(name)\n"
+               + "f(True)\n")
+        assert self._routes(src)
+        ast, thir = self._identical(src)
+        assert thir == ast
+
+    def test_if_enum_block_local_routes_identical(self):
+        # Enums resolve through the active compiler -> ctx lowering.
+        src = ("from enum import Enum\n"
+               + "class Color(Enum):\n    RED = 0\n    GREEN = 1\n"
+               + "def f(c: bool) -> Color:\n"
+               + "    if c:\n        col = Color.RED\n        return col\n"
+               + "    return Color.GREEN\n"
+               + "print(int(f(True).value))\n")
+        assert self._routes(src, ctx=True)
+        ast, thir = self._identical(src, ctx=True)
+        assert thir == ast
+
+    def test_else_block_local_routes_identical(self):
+        src = (_PRELUDE
+               + "def f(c: bool) -> Int32:\n"
+               + "    if c:\n        a = 1\n        return a\n"
+               + "    else:\n        b = 2\n        return b\n"
+               + "print(int(f(False)))\n")
+        assert self._routes(src)
+        ast, thir = self._identical(src)
+        assert thir == ast
+
+    def test_elif_block_local_routes_identical(self):
+        src = (_PRELUDE
+               + "def f(c: Int32) -> Int32:\n"
+               + "    if c == 0:\n        a = 1\n        return a\n"
+               + "    elif c == 1:\n        b = 2\n        return b\n"
+               + "    else:\n        d = 3\n        return d\n"
+               + "print(int(f(1)))\n")
+        assert self._routes(src)
+        ast, thir = self._identical(src)
+        assert thir == ast
+
+    def test_for_block_local_routes_identical(self):
+        src = (_PRELUDE
+               + "def f(n: Int32) -> Int32:\n    total = 0\n"
+               + "    for i in range(n):\n        y = i * 2\n        total = total + y\n"
+               + "    return total\n"
+               + "print(int(f(5)))\n")
+        assert self._routes(src)
+        ast, thir = self._identical(src)
+        assert thir == ast
+
+    def test_while_block_local_routes_identical(self):
+        src = (_PRELUDE
+               + "def f(n: Int32) -> Int32:\n    i = 0\n"
+               + "    while i < n:\n        z = i + 1\n        i = z\n"
+               + "    return i\n"
+               + "print(int(f(5)))\n")
+        assert self._routes(src)
+        ast, thir = self._identical(src)
+        assert thir == ast
+
+    def test_narrowing_if_block_local_routes_identical(self):
+        # A block-local inside an isinstance-narrowed branch routes for free.
+        src = ("from tpy import Int32\n"
+               + "class A:\n    x: Int32\n    def __init__(self, x: Int32):\n        self.x = x\n"
+               + "class B:\n    y: Int32\n    def __init__(self, y: Int32):\n        self.y = y\n"
+               + "def f(v: A | B) -> Int32:\n"
+               + "    if isinstance(v, A):\n        t = v.x + 1\n        return t\n"
+               + "    return 0\n"
+               + "print(int(f(A(3))))\n")
+        assert self._routes(src, ctx=True)
+        ast, thir = self._identical(src, ctx=True)
+        assert thir == ast
+
+    def test_nested_if_in_for_block_local_routes(self):
+        src = (_PRELUDE
+               + "def f(n: Int32) -> Int32:\n    t = 0\n"
+               + "    for i in range(n):\n        if i > 2:\n            q = i * 3\n            t = t + q\n"
+               + "    return t\n")
+        assert self._routes(src)
+
+    def test_nonhoisted_try_body_block_local_stays_ast(self):
+        # A try-body first-decl used ONLY inside the try (handler falls through,
+        # no else/finally) is NOT hoisted and declares inside the C++ try scope
+        # -- deferred (try bodies never enable value block-locals).
+        src = (_PRELUDE
+               + "def f(n: Int32) -> None:\n"
+               + "    try:\n        w = n + 1\n        print(w)\n"
+               + "    except Exception:\n        print(0)\n")
+        assert not self._routes(src)
+
+
 class TestDelStmt:
     def test_del_scalar_local_routes_as_noop(self):
         # Trivially-destructible target: the AST emits no code, THIR a NoOp.
@@ -1488,12 +2086,14 @@ class TestForTails:
         thir = _lower(self.SRC)
         assert _fn(thir, "reused_target") is None
 
-    def test_standalone_unpack_stmt_is_ineligible(self):
-        # `a, b = t` outside a for-loop head is not the loop-shadow shape.
+    def test_standalone_unpack_stmt_routes(self):
+        # `a, b = t` outside a for-loop head reuses the same THIRTupleUnpack head
+        # (const-ref bind + per-target scalar decls) -- the value-scalar-tuple
+        # source arm. Full coverage lives in test_thir_tuples.py.
         thir = _lower(_PRELUDE
                       + "def f(t: tuple[Int32, Int32]) -> Int32:\n"
                       + "    a, b = t\n    return a + b\n")
-        assert _fn(thir, "f") is None
+        assert _fn(thir, "f") is not None
 
     def test_byte_identical_with_comments(self):
         compiler, modules = _compile(self.SRC)

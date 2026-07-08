@@ -98,10 +98,8 @@ from ..nodes import (
     THIRTry,
 )
 from .predicates import (
-    _bytes_elem_container,
     _coerce_disposition,
-    _container_record_iter,
-    _container_scalar_read,
+    _container_param_renders,
     _eligible_char,
     _eligible_enum,
     _eligible_ptr_union,
@@ -124,6 +122,8 @@ from .predicates import (
     _resolved_str_value,
     _slice_object_type,
     _template_init_call_fi,
+    _value_opt_scalar,
+    _value_opt_str,
     _value_tuple,
 )
 from .context import (
@@ -146,7 +146,6 @@ from .expressions import (
 )
 from .statements import (
     _body_eligible,
-    _container_scalar_tuple_iter,
     _lower_stmts,
 )
 
@@ -209,21 +208,31 @@ def _f1_param_eligible(ptype: TpyType | None, analyzer) -> bool:
     (`std::tuple<..., T*>`, a borrow source for a `tuple_to_storage` field write), a
     pure value-scalar tuple (`const std::tuple<...>&`, read by subscript), a
     by-value slice object (`basic_slice` / `slice`, a str subscript index), a
-    value-element container (`list[scalar|str]` / `Array[scalar|str, N]` /
-    `dict[fixed-int|str, scalar|str]`, read by subscript),
-    a bytes-element container (`list[bytes]` / `dict[fixed-int|str, bytes]`,
-    read by subscript -- writes/iteration keep rejecting per-construct),
-    a record-element list (`list[record]`, iterated by `for x in c` -- the signature
-    stays on the AST path per M1), or a pointer-repr `Optional[F1-record]`
+    compositional container param (`list`/`dict`/`set`/`Array`/`Span` of any
+    fully-concrete element/key/value -- `_container_param_renders`; the by-ref
+    (`T&`/`const T&`) / by-value-span param signature is AST-emitted and
+    type-keyed, so it renders byte-identically for every element type, and every
+    body USE of the param is gated recursively by `_body_eligible`/
+    `_expr_eligible`, which rejects any read a given element does not route), a
+    pointer-repr `Optional[F1-record]`
     (`A | None` -> a borrow `A*` / `const A*`; sema rejects its reassignment, so
-    no rebind machinery arises). Own-optional/view-keyed-container/cross-module/
-    native record params stay on the AST path."""
+    no rebind machinery arises), a value-repr `Optional[cheap scalar]`
+    (`Int32 | None` -> `std::optional<T>`; None-tests render `has_value()`,
+    narrowed reads `(*p)`, truthiness `is_truthy(p)`), or a value-repr
+    `Optional[str]` (`str | None` -> `std::optional<std::string_view>`; the same
+    None-test/truthiness renders, a narrowed read `(*s)`, and a pass into another
+    `Optional[str]` slot takes the `_maybe_convert_opt_view_param` shim -- the
+    decl/return-of-whole/print sinks reject per-use, keeping those bodies AST).
+    Own-optional/cross-module/native record params, and `Own[container]` /
+    generic (`list[T]`) container params, stay on the AST path."""
     return (_eligible_scalar(ptype) or _eligible_char(ptype)
             or _is_type_param_slot(ptype)
             or _own_type_param_slot(ptype)
             or _eligible_ptr_value(ptype, analyzer)
             or _f1_record(ptype, analyzer)
             or _optional_ptr_borrow(ptype, analyzer) is not None
+            or _value_opt_scalar(ptype, analyzer) is not None
+            or _value_opt_str(ptype, analyzer) is not None
             or _resolved_str_value(ptype, analyzer) is not None
             or _resolved_bytes_value(ptype, analyzer) is not None
             or _slice_object_type(ptype)
@@ -232,10 +241,8 @@ def _f1_param_eligible(ptype: TpyType | None, analyzer) -> bool:
             or _value_tuple(ptype, analyzer) is not None
             or _eligible_value_union(ptype) is not None
             or _eligible_ptr_union(ptype, analyzer) is not None
-            or _container_scalar_read(ptype, analyzer)
-            or _bytes_elem_container(ptype, analyzer)
-            or _container_record_iter(ptype, analyzer)
-            or _container_scalar_tuple_iter(ptype, analyzer))
+            or (_container_param_renders(ptype, analyzer)
+                and _witness("param.container")))
 
 def _function_eligible(func: TpyFunction, analyzer,
                        self_type: 'TpyType | None' = None,

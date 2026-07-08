@@ -41,9 +41,10 @@ class TestIntegrationReviewUnits:
         assert isinstance(decl.init, THIRCtorCall) and decl.init.type_cpp == "P"
         assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
-    def test_omitted_default_ctor_rvalue_ineligible(self):
-        # An omitted default is synthesized by the AST arg emit; the bare
-        # THIRCall does not reproduce it -> the fi/arity gate rejects.
+    def test_omitted_default_ctor_rvalue_routes(self):
+        # An omitted TRAILING default rides the C++ ctor signature, so both the
+        # decl and the rebind-slot reseat pass only the provided args --
+        # byte-identical to the full-arity `Q(a, b)` emit.
         src = (
             "from tpy import Int32\n"
             "class Q:\n"
@@ -53,8 +54,11 @@ class TestIntegrationReviewUnits:
             "        self.a = a\n        self.b = b\n"
             "def f() -> Int32:\n"
             "    q = Q(1)\n    x = q.a\n    q = Q(3)\n    return x + q.a\n")
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
         thir = _lower_ctx(src)
-        assert _fn(thir, "f") is None
+        fn = _fn(thir, "f")
+        assert fn is not None
+        assert isinstance(fn.body[0].init, THIRCtorCall)
 
     def test_array_str_literal_routes(self):
         # A read-only str-element list literal demotes to Array[str, N] (the

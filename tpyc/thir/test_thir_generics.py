@@ -807,3 +807,134 @@ class TestDependentStaticTargs:
                "    print(p)\n"
                "use()\n")
         assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+
+
+class TestArgfulGenericInstantiation:
+    """A generic-record ctor instantiation with a PRVALUE arg
+    (`Box(5)` / `Box(a + b)` / `Box(h())` / `Box(Inner(3))`) binds the
+    substituted `Own[Int32]` / `Own[Inner]` slot directly (no temp), so the
+    `THIRCtorCall(type_cpp=Box<...>)` renders bare like the AST's
+    `type_to_cpp(call_type)(args)`. The decl-init and the ctor-MIL
+    field-source positions share the `_is_record_rvalue_source` arg row. A
+    bare lvalue-NAME / str-view arg stays on the copy+move / owned-wrap AST
+    path."""
+
+    def _cpp(self, src: str, thir: bool) -> str:
+        from ..codegen_cpp.context import CodeGenOptions
+        from .testutil import _compile, _entry
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        hpp, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=thir))
+        return hpp + cpp
+
+    _HEAD = ("from tplib.box import Box\n"
+             "from tpy import Int32, Own\n")
+
+    def _decl(self, arg_src: str, sig: str = "") -> str:
+        return (self._HEAD
+                + f"def mk({sig}) -> Own[Box[Int32]]:\n"
+                + f"    b = Box({arg_src})\n"
+                + "    return b\n")
+
+    def test_scalar_literal_routes(self):
+        from .testutil import _lower_ctx_witnessed
+        thir, faces = _lower_ctx_witnessed(self._decl("5"))
+        assert _fn(thir, "mk") is not None
+        assert faces.get("own.scalar_rvalue", 0) >= 1
+        assert faces.get("ctor.instantiation", 0) >= 1
+
+    def test_scalar_arith_routes(self):
+        src = self._decl("a + c", sig="a: Int32, c: Int32")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "mk") is not None
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+
+    def test_scalar_call_routes(self):
+        src = (self._HEAD
+               + "def h() -> Int32:\n    return 7\n"
+               + "def mk() -> Own[Box[Int32]]:\n"
+               + "    b = Box(h())\n"
+               + "    return b\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "mk") is not None
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+
+    def test_record_ctor_arg_routes(self):
+        from .testutil import _lower_ctx_witnessed
+        src = ("from tplib.box import Box\n"
+               "from tpy import Int32, Own\n"
+               "class Inner:\n    x: Int32\n"
+               "    def __init__(self, x: Int32):\n        self.x = x\n"
+               "def mk() -> Own[Box[Inner]]:\n"
+               "    b = Box(Inner(3))\n"
+               "    return b\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "mk") is not None
+        assert faces.get("own.record_rvalue", 0) >= 1
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+
+    def test_scalar_literal_byte_identical(self):
+        # The whole program: routed decl + the surrounding get()/print.
+        src = (self._HEAD
+               + "def mk() -> Own[Box[Int32]]:\n"
+               + "    b = Box(5)\n"
+               + "    return b\n"
+               + "def main():\n"
+               + "    print(mk().get())\n"
+               + "main()\n")
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+
+    def test_mil_field_source_instantiation_routes(self):
+        # `self.b = Box(n + 1)` / `self.r = Box(Inner(3))` -- the same arg
+        # row at the ctor-MIL field-source position, hoisted into the
+        # initializer list.
+        from .testutil import _compile, _entry
+        from ..compilation_context import activate_compiler
+        from .lower import iter_module_constructors, lower_constructor
+        src = ("from tplib.box import Box\n"
+               "from tpy import Int32\n"
+               "class Inner:\n    x: Int32\n"
+               "    def __init__(self, x: Int32):\n        self.x = x\n"
+               "class Holder:\n"
+               "    b: Box[Int32]\n"
+               "    r: Box[Inner]\n"
+               "    def __init__(self, n: Int32):\n"
+               "        self.b = Box(n + 1)\n"
+               "        self.r = Box(Inner(3))\n"
+               "def main():\n"
+               "    h = Holder(4)\n"
+               "    print(h.b.get())\n"
+               "    print(h.r.get().x)\n"
+               "main()\n")
+        compiler, modules = _compile(src)
+        routed = None
+        with activate_compiler(compiler):
+            for m in modules:
+                for rec, init, st in iter_module_constructors(
+                        m.ast, m.analyzer):
+                    if rec.name == "Holder":
+                        routed = lower_constructor(
+                            rec, init, m.analyzer, self_type=st) is not None
+        assert routed is True
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+
+    def test_name_arg_stays_ast(self):
+        # A bare lvalue name copies into a temp then moves
+        # (`auto __tmp = n; Box<int32_t>(std::move(__tmp))`) -- not the bare
+        # render, so it stays on the AST path.
+        src = self._decl("n", sig="n: Int32")
+        assert _fn(_lower_ctx(src), "mk") is None
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+
+    def test_strview_arg_stays_ast(self):
+        # A str-view arg into an `Own[str]` slot materializes an owned copy
+        # the bare emit does not reproduce -> AST.
+        src = ("from tplib.box import Box\n"
+               "def mk(s: str) -> None:\n"
+               "    b = Box(s)\n"
+               "    print(b.get())\n"
+               "mk('hi')\n")
+        assert _fn(_lower_ctx(src), "mk") is None
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)

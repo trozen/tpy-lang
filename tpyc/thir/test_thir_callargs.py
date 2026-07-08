@@ -6,9 +6,10 @@ from __future__ import annotations
 
 from ..codegen_cpp.context import CodeGenOptions
 from .nodes import (
-    THIRArgTemp, THIRCall, THIRCtorCall, THIRExprStmt, THIRMethodCall,
-    THIRName, THIRReturn,
+    THIRArgTemp, THIRCall, THIRCtorCall, THIRExprStmt, THIRLiteral,
+    THIRMethodCall, THIRName, THIRReturn,
 )
+from .nodes import Form
 from .testutil import (
     _compile, _entry, _lower, _lower_ctx, _lower_ctx_witnessed, _fn,
 )
@@ -1302,17 +1303,20 @@ class TestCtorShapeGateRejects:
         assert isinstance(arg, THIRArgTemp)
         assert isinstance(arg.init, THIRCtorCall) and arg.init.type_cpp == "R"
 
-    def test_omitted_default_arity_stays_ast(self):
-        # An omitted default is synthesized by the AST arg emit, which the
-        # bare THIRCtorCall does not do; the full-arity call still routes.
-        thir = _lower_ctx(
+    def test_omitted_default_arity_routes(self):
+        # An omitted TRAILING default rides the C++ ctor signature (records.py
+        # emits it via emit_defaults), so the call passes only the provided args
+        # -- byte-identical to the full-arity `Name(args)` emit.
+        src = (
             "from tpy import Int32\n"
             "class R:\n    x: Int32\n"
             "    def __init__(self, x: Int32 = 0):\n        self.x = x\n"
             "def take_r(r: R) -> Int32:\n    return r.x\n"
             "def use() -> Int32:\n    return take_r(R())\n"
             "def use_full() -> Int32:\n    return take_r(R(5))\n")
-        assert _fn(thir, "use") is None
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+        thir = _lower_ctx(src)
+        assert _fn(thir, "use") is not None
         assert _fn(thir, "use_full") is not None
 
     def test_generic_record_ctor_routes_instantiation(self):
@@ -1590,3 +1594,63 @@ class TestArgTempValidator:
         with pytest.raises(THIRValidationError,
                            match="outside a call arg position"):
             validate_function(fn)
+
+
+class TestNoneValueOptArg:
+    # A bare `None` into a value-repr Optional param slot -> `f(std::nullopt)`,
+    # for every non-pointer-repr inner (scalar / Char / float / BigInt / str /
+    # bytes-view / value-tuple). The value-optional twin of the pointer-repr
+    # `nullptr` None arg (which already routed via the optional-ptr face).
+    _OPT = (
+        "from tpy import Int32, Float32, Char, BytesView\n"
+        "class Box:\n"
+        "    x: Int32\n"
+        "    def __init__(self, x: Int32):\n        self.x = x\n"
+        "def use_scalar(n: Int32 | None):\n    print(1)\n"
+        "def use_str(s: str | None):\n    print(1)\n"
+        "def use_char(c: Char | None):\n    print(1)\n"
+        "def use_bigint(n: int | None):\n    print(1)\n"
+        "def use_tuple(t: tuple[Int32, Box] | None):\n    print(1)\n"
+    )
+    SRC = (
+        _OPT
+        + "def scalar_none():\n    use_scalar(None)\n"
+        + "def str_none():\n    use_str(None)\n"
+        + "def char_none():\n    use_char(None)\n"
+        + "def bigint_none():\n    use_bigint(None)\n"
+        + "def tuple_none():\n    use_tuple(None)\n"
+    )
+
+    def test_byte_identical(self):
+        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
+
+    def test_emits_nullopt(self):
+        out = _cpp(self.SRC, thir=True)
+        assert "use_scalar(std::nullopt);" in out
+        assert "use_str(std::nullopt);" in out
+        assert "use_char(std::nullopt);" in out
+        assert "use_bigint(std::nullopt);" in out
+        assert "use_tuple(std::nullopt);" in out
+
+    def test_lowers_to_storage_none_literal(self):
+        thir, witnesses = _lower_ctx_witnessed(self.SRC)
+        for name in ("scalar_none", "str_none", "char_none", "bigint_none",
+                     "tuple_none"):
+            fn = _fn(thir, name)
+            assert fn is not None, name
+            arg = fn.body[0].expr.args[0]
+            assert isinstance(arg, THIRLiteral) and arg.value is None
+            assert arg.form is Form.STORAGE
+        assert witnesses.get("call.none_value_opt", 0) >= 5
+
+    def test_pointer_repr_optional_none_unchanged(self):
+        # `Box | None` is pointer-repr -> `nullptr` (the optional-ptr None
+        # face), NOT `std::nullopt`; the new value-repr row must not claim it.
+        src = (
+            self._OPT
+            + "def use_rec(b: Box | None):\n    print(1)\n"
+            + "def rec_none():\n    use_rec(None)\n"
+        )
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+        out = _cpp(src, thir=True)
+        assert "use_rec(nullptr);" in out

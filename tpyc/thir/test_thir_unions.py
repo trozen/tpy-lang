@@ -121,13 +121,89 @@ class TestValueUnionEligibility:
             "    print(v)\n"))
         assert _fn(thir, "p") is None
 
-    def test_str_member_union_rejected(self):
-        # A str/view member makes the union form-relevant per slot -> later
-        # F4 cell.
+    def test_str_member_union_whole_variant_routes(self):
+        # A str member is owned `std::string` in the value variant (no
+        # borrow/storage duality at the WHOLE-variant positions -- param read,
+        # return, same-union pass-through), so those render bare like a scalar
+        # union. Only member INSERT (a view->owned arg temp) is form-relevant
+        # and self-rejects via `_value_union_temp_slot`'s scalar-only check.
         thir = _lower(_PRELUDE + (
-            "def f(v: Int32 | str) -> Int32:\n"
-            "    return 0\n"))
+            "def take(v: Int32 | str) -> Int32:\n    return 0\n"
+            "def f(v: Int32 | str) -> Int32 | str:\n    return v\n"
+            "def g(v: Int32 | str) -> Int32:\n    return take(v)\n"))
+        for name in ("take", "f", "g"):
+            assert _fn(thir, name) is not None, name
+
+    def test_char_member_union_routes(self):
+        thir = _lower("from tpy import Int32, Char\n" + (
+            "def f(v: Int32 | Char) -> Int32 | Char:\n    return v\n"
+            "def c(a: Int32 | Char, b: Int32 | Char) -> bool:\n    return a == b\n"))
+        for name in ("f", "c"):
+            assert _fn(thir, name) is not None, name
+
+    def test_str_member_valued_view_arg_rejects(self):
+        # A str-view VALUE into a `Int32 | str` slot is a view->owned member
+        # insert (`std::variant<...> __tmp = view;`) -- form-relevant, so the
+        # arg temp stays on the AST path and the caller body rejects.
+        thir = _lower(_PRELUDE + (
+            "def take(v: Int32 | str) -> Int32:\n    return 0\n"
+            "def f(s: str) -> Int32:\n    return take(s)\n"))
         assert _fn(thir, "f") is None
+
+    def test_str_union_narrowed_print_rejects(self):
+        # Printing a narrowed union subject takes the AST's `__str__` wrap
+        # (`__str__(__r)`) even after extraction, not the member's bare stream
+        # form -- a text divergence the print slice does not reproduce.
+        thir = _lower(_PRELUDE + (
+            "def f(v: Int32 | str) -> None:\n"
+            "    if isinstance(v, Int32):\n        print(v)\n"
+            "    else:\n        print(v)\n"))
+        assert _fn(thir, "f") is None
+
+    def test_member_literal_return_routes(self):
+        # A member LITERAL returned into a value union renders bare -- the
+        # variant converting ctor takes `1` / `"x"` directly (no BigInt /
+        # Float32 slot wrap; lowering retypes the literal to the union).
+        thir = _lower(_PRELUDE + (
+            "def f(b: bool) -> Int32 | str:\n"
+            "    if b:\n        return 1\n"
+            "    return \"x\"\n"))
+        assert _fn(thir, "f") is not None
+
+    def test_member_scalar_name_return_routes(self):
+        # A member-typed scalar NAME returned into the union (`return v`, v a
+        # bare Int32) is value-form -- renders bare like the whole-variant read.
+        thir = _lower(_PRELUDE + (
+            "def f(v: Int32) -> Int32 | Float64:\n    return v\n"))
+        assert _fn(thir, "f") is not None
+
+    def test_char_member_literal_return_routes(self):
+        thir = _lower("from tpy import Int32, Char\n" + (
+            "def f(b: bool, c: Char) -> Int32 | Char:\n"
+            "    if b:\n        return 1\n"
+            "    return c\n"))
+        assert _fn(thir, "f") is not None
+
+    def test_three_member_str_union_return_routes(self):
+        thir = _lower(_PRELUDE + (
+            "def f(b: bool) -> Int32 | Float64 | str:\n"
+            "    if b:\n        return 1\n"
+            "    return \"x\"\n"))
+        assert _fn(thir, "f") is not None
+
+    def test_str_view_source_into_union_return_deferred(self):
+        # A str param / local (std::string_view / pending view) returned into a
+        # `... | str` slot is a view->owned member INSERT the union return arm
+        # does not wire -- the same form-relevant boundary `_value_union_temp_
+        # slot` rejects for arg inserts. The AST's bare `return s;` is itself a
+        # miscompile here (BUGS.md), so DEFER: the whole body stays on the AST
+        # path. An owned `str` LITERAL (value-form, target-typed) still routes.
+        param = _lower(_PRELUDE + (
+            "def f(s: str) -> Int32 | str:\n    return s\n"))
+        assert _fn(param, "f") is None
+        local = _lower(_PRELUDE + (
+            "def f() -> Int32 | str:\n    s: str = \"hi\"\n    return s\n"))
+        assert _fn(local, "f") is None
 
 
 class TestValueUnionEmit:
@@ -175,6 +251,31 @@ class TestValueUnionEmit:
         # back to AST -- the byte-diff alone cannot tell.
         thir = _lower(self.SRC)
         for name in ("f", "g", "n", "c", "h"):
+            assert _fn(thir, name) is not None, name
+
+    RET_SRC = _PRELUDE + (
+        "def pick(b: bool) -> Int32 | str:\n"
+        "    if b:\n        return 1\n"
+        "    return \"x\"\n"
+        "def scalar(v: Int32) -> Int32 | Float64:\n"
+        "    return v\n"
+        "def main():\n"
+        "    pick(True)\n    scalar(3)\n"
+        "main()\n")
+
+    def test_member_return_byte_identical(self):
+        assert self._cpp(self.RET_SRC, thir=True) \
+            == self._cpp(self.RET_SRC, thir=False)
+
+    def test_member_return_renders_bare(self):
+        cpp = self._cpp(self.RET_SRC, thir=True)
+        assert "return 1;" in cpp
+        assert 'return "x";' in cpp
+        assert "return v;" in cpp
+
+    def test_member_return_routes(self):
+        thir = _lower(self.RET_SRC)
+        for name in ("pick", "scalar"):
             assert _fn(thir, name) is not None, name
 
 
@@ -570,6 +671,17 @@ class TestNarrowingEligibility:
         # the else branch extracts the complement member
         el = node.else_body[0]
         assert isinstance(el, THIRNarrowAlias) and el.member_cpp == "B*"
+
+    def test_isinstance_narrow_with_hoist_is_ineligible(self):
+        # An isinstance-narrowing condition combined with a sema-hoisted
+        # branch-decl (`x` definitely-assigned after the if) is deferred: the
+        # alias-scope / predecl interaction is not part of this slice.
+        thir = self._lower(
+            "def f(v: A | B) -> Int32:\n"
+            "    if isinstance(v, A):\n        x = v.x\n"
+            "    else:\n        x = v.y\n"
+            "    return x\n")
+        assert _fn(thir, "f") is None
 
     def test_post_if_alias_and_scope(self):
         thir = self._lower(

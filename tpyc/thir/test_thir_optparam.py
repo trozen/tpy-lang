@@ -7,11 +7,12 @@ from __future__ import annotations
 
 from ..codegen_cpp.context import CodeGenOptions
 from .nodes import (
-    THIRArgTemp, THIRAssert, THIRAssign, THIRCall, THIRFieldAccess, THIRIf,
-    THIRIsNone, THIRLiteral, THIRMethodCall, THIRName, THIROptionalPtrArg,
-    THIRReturn, THIRUnaryNot, THIRWhile,
+    Form, PrintForm, THIRArgTemp, THIRAssert, THIRAssign, THIRCall, THIRFieldAccess,
+    THIRIf, THIRIsNone, THIRLiteral, THIRMethodCall, THIRMove, THIRName,
+    THIROptTruthy, THIROptViewArg, THIROptionalPtrArg, THIRReturn,
+    THIRUnaryNot, THIRWhile,
 )
-from .testutil import _compile, _entry, _fn, _lower_ctx
+from .testutil import _compile, _entry, _fn, _lower_ctx, _lower_ctx_witnessed
 
 _PRELUDE = (
     "from tpy import Int32, Own\n"
@@ -360,6 +361,530 @@ class TestGateRejects:
             + "    if p:\n        return p.x\n"
             + "    return 1\n")
         assert _fn(thir, "use") is None
+
+
+class TestValueReprOptionalParam:
+    """A value-repr `Optional[cheap scalar]` param (`Int32 | None` ->
+    `std::optional<T>`): narrowed reads unwrap `(*p)`, None-tests render
+    `has_value()`, truthiness `is_truthy(p)`, bare passes stay bare. A BigInt
+    (expensive-copy) inner routes too, moving `std::move((*p))` at its narrowed
+    last use; the str-view inner routes its own read/None-test/truthiness/arg-
+    split faces (see TestValueReprOptionalStrParam)."""
+
+    def test_narrowed_read_derefs(self):
+        thir = _lower_ctx(
+            "from tpy import Int32\n"
+            "def use(p: Int32 | None) -> Int32:\n"
+            "    if p is None:\n        return 0\n"
+            "    return p\n")
+        ret = _fn(thir, "use").body[-1]
+        assert isinstance(ret, THIRReturn)
+        assert isinstance(ret.value, THIRName) and ret.value.deref
+
+    def test_bare_pass_to_optional_slot(self):
+        thir = _lower_ctx(
+            "from tpy import Int32\n"
+            "def sink(q: Int32 | None) -> Int32:\n"
+            "    if q is None:\n        return -1\n"
+            "    return q\n"
+            "def use(p: Int32 | None) -> Int32:\n"
+            "    if p is None:\n        return 0\n"
+            "    return sink(p)\n")
+        arg = _fn(thir, "use").body[-1].value.args[0]
+        # narrowed name passed into a value-repr optional slot stays bare
+        assert isinstance(arg, THIRName) and arg.name == "p" and not arg.deref
+
+    def test_is_none_uses_has_value(self):
+        thir = _lower_ctx(
+            "from tpy import Int32\n"
+            "def use(p: Int32 | None) -> bool:\n    return p is None\n")
+        ret = _fn(thir, "use").body[0]
+        assert isinstance(ret.value, THIRIsNone)
+        assert ret.value.value_repr and not ret.value.negate
+
+    def test_is_not_none_negates(self):
+        thir = _lower_ctx(
+            "from tpy import Float64\n"
+            "def use(p: Float64 | None) -> bool:\n    return p is not None\n")
+        ret = _fn(thir, "use").body[0]
+        assert isinstance(ret.value, THIRIsNone)
+        assert ret.value.value_repr and ret.value.negate
+
+    def test_truthiness_wraps_is_truthy(self):
+        thir = _lower_ctx(
+            "from tpy import Int32\n"
+            "def use(p: Int32 | None) -> Int32:\n"
+            "    if p:\n        return p\n"
+            "    return 0\n")
+        cond = _fn(thir, "use").body[0].condition
+        assert isinstance(cond, THIROptTruthy)
+        assert isinstance(cond.operand, THIRName) and not cond.operand.deref
+
+    def test_not_truthiness(self):
+        thir = _lower_ctx(
+            "from tpy import Int32\n"
+            "def use(p: Int32 | None) -> Int32:\n"
+            "    if not p:\n        return 0\n"
+            "    return p\n")
+        cond = _fn(thir, "use").body[0].condition
+        assert isinstance(cond, THIRUnaryNot)
+        assert isinstance(cond.operand, THIROptTruthy)
+
+    def test_reassign_strips_deref(self):
+        # The AST reassignment RHS threads no target type, so a narrowed read is
+        # NOT unwrapped (`q = p;`, a pre-existing AST bug mirrored here).
+        thir = _lower_ctx(
+            "from tpy import Int32\n"
+            "def use(p: Int32 | None) -> Int32:\n"
+            "    q = 0\n"
+            "    if p is not None:\n        q = p\n"
+            "    return q\n")
+        assign = _fn(thir, "use").body[1].then_body[0]
+        assert isinstance(assign, THIRAssign)
+        assert isinstance(assign.value, THIRName) and not assign.value.deref
+
+    def test_bigint_return_moves_at_last_use(self):
+        # BigInt is expensive-copy -- the narrowed last-use read moves.
+        thir = _lower_ctx(
+            "def use(p: int | None) -> int:\n"
+            "    if p is None:\n        return 0\n"
+            "    return p\n")
+        ret = _fn(thir, "use").body[-1]
+        assert isinstance(ret, THIRReturn)
+        assert isinstance(ret.value, THIRMove)
+        assert isinstance(ret.value.value, THIRName) and ret.value.value.deref
+
+    def test_bigint_call_arg_does_not_move(self):
+        # A narrowed read into a const-ref scalar slot binds directly -- no move
+        # (the AST renders `take((*p))`, not `take(std::move((*p)))`).
+        thir = _lower_ctx(
+            "def take(x: int) -> int:\n    return x + 1\n"
+            "def use(p: int | None) -> int:\n"
+            "    if p is None:\n        return 0\n"
+            "    return take(p)\n")
+        ret = _fn(thir, "use").body[-1]
+        arg = ret.value.args[0]
+        assert isinstance(arg, THIRName) and arg.deref
+
+    def test_bigint_container_elem_moves(self):
+        # A container-literal element moves the narrowed value-Optional param
+        # despite BigInt being a value type (seed_param_locals movable face).
+        thir = _lower_ctx(
+            "def use(p: int | None) -> int:\n"
+            "    if p is None:\n        return 0\n"
+            "    xs = [p]\n"
+            "    return xs[0]\n")
+        decl = _fn(thir, "use").body[1]
+        elem = decl.init.elements[0]
+        assert isinstance(elem, THIRMove)
+        assert isinstance(elem.value, THIRName) and elem.value.deref
+
+    def test_bigint_plain_decl_does_not_move(self):
+        # A plain var-decl RHS threads no move (`q = (*p);`) -- the AST var-decl
+        # path never calls _maybe_move.
+        thir = _lower_ctx(
+            "def use(p: int | None) -> int:\n"
+            "    if p is None:\n        return 0\n"
+            "    q = p\n"
+            "    return q\n")
+        decl = _fn(thir, "use").body[1]
+        assert isinstance(decl.init, THIRName) and decl.init.deref
+
+    def test_str_view_inner_none_test_routes(self):
+        # The str-view inner's None-test renders identically to the scalar's
+        # (`has_value()`), so it routes -- see TestValueReprOptionalStrParam for
+        # the read / truthiness / arg-split faces.
+        thir = _lower_ctx(
+            "def use(p: str | None) -> bool:\n    return p is None\n")
+        ret = _fn(thir, "use").body[0]
+        assert isinstance(ret.value, THIRIsNone) and ret.value.value_repr
+
+
+class TestValueReprOptionalParamEmit:
+    def _emit(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        hpp, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=thir))
+        return hpp + cpp
+
+    SRC = (
+        "from tpy import Int32, Float64\n"
+        "def sink(q: Int32 | None) -> Int32:\n"
+        "    if q is None:\n        return -1\n"
+        "    return q\n"
+        "def narrowed(p: Int32 | None) -> Int32:\n"
+        "    if p is None:\n        return 0\n"
+        "    return p + 1\n"
+        "def is_none(p: Int32 | None) -> bool:\n    return p is None\n"
+        "def is_not_none(p: Float64 | None) -> bool:\n    return p is not None\n"
+        "def truthy(p: Int32 | None) -> Int32:\n"
+        "    if not p:\n        return 0\n"
+        "    return p\n"
+        "def pass_through(p: Int32 | None) -> Int32:\n"
+        "    if p is None:\n        return 0\n"
+        "    return sink(p)\n"
+        "def reassign(p: Int32 | None) -> Int32:\n"
+        "    q = 0\n"
+        "    if p is not None:\n        q = p\n"
+        "    return q\n"
+        "def main():\n    print(narrowed(3))\nmain()\n"
+    )
+
+    def test_byte_identical(self):
+        assert self._emit(self.SRC, thir=True) == self._emit(self.SRC, thir=False)
+
+    def test_renders(self):
+        out = self._emit(self.SRC, thir=True)
+        assert "if ((!p.has_value()))" in out
+        assert "return (!p.has_value());" in out
+        assert "return (p.has_value());" in out
+        assert "if ((!(::tpy::is_truthy(p))))" in out
+        assert "return sink(p);" in out       # bare pass into optional slot
+        assert "q = p;" in out                 # reassign strips the deref
+
+
+class TestValueReprOptionalStrParam:
+    """A value-repr `Optional[str]` param (`str | None` ->
+    `std::optional<std::string_view>`): the None-test/truthiness render exactly
+    like the scalar twin (`has_value()` / `is_truthy(s)`); a NARROWED read
+    unwraps `(*s)` as a BORROW string_view (feeding str sinks); and a pass into
+    another `Optional[str]` slot takes the `_maybe_convert_opt_view_param` ARG
+    split. A `StrView`-inner source passes bare there (not the shim). The
+    print / return-of-whole / decl / un-narrowed-value read sinks defer."""
+
+    def test_narrowed_read_derefs_into_str_slot(self):
+        thir = _lower_ctx(
+            "from tpy import Int32\n"
+            "def take(x: str) -> Int32:\n    return len(x)\n"
+            "def use(s: str | None) -> Int32:\n"
+            "    if s is None:\n        return 0\n"
+            "    return take(s)\n")
+        arg = _fn(thir, "use").body[-1].value.args[0]
+        assert isinstance(arg, THIRName) and arg.deref and arg.form is Form.BORROW
+
+    def test_is_none_uses_has_value(self):
+        thir = _lower_ctx(
+            "def use(s: str | None) -> bool:\n    return s is None\n")
+        ret = _fn(thir, "use").body[0]
+        assert isinstance(ret.value, THIRIsNone)
+        assert ret.value.value_repr and not ret.value.negate
+
+    def test_is_not_none_negates(self):
+        thir = _lower_ctx(
+            "def use(s: str | None) -> bool:\n    return s is not None\n")
+        ret = _fn(thir, "use").body[0]
+        assert isinstance(ret.value, THIRIsNone)
+        assert ret.value.value_repr and ret.value.negate
+
+    def test_truthiness_wraps_is_truthy(self):
+        thir = _lower_ctx(
+            "from tpy import Int32\n"
+            "def use(s: str | None) -> Int32:\n"
+            "    if s:\n        return 1\n"
+            "    return 0\n")
+        cond = _fn(thir, "use").body[0].condition
+        assert isinstance(cond, THIROptTruthy)
+        assert isinstance(cond.operand, THIRName) and not cond.operand.deref
+
+    def test_not_truthiness(self):
+        thir = _lower_ctx(
+            "from tpy import Int32\n"
+            "def use(s: str | None) -> Int32:\n"
+            "    if not s:\n        return 0\n"
+            "    return 1\n")
+        cond = _fn(thir, "use").body[0].condition
+        assert isinstance(cond, THIRUnaryNot)
+        assert isinstance(cond.operand, THIROptTruthy)
+
+    def test_pass_to_optional_str_slot_takes_shim(self):
+        thir = _lower_ctx(
+            "from tpy import Int32\n"
+            "def sink(q: str | None) -> Int32:\n"
+            "    if q is None:\n        return -1\n"
+            "    return len(q)\n"
+            "def use(s: str | None) -> Int32:\n    return sink(s)\n")
+        arg = _fn(thir, "use").body[0].value.args[0]
+        assert isinstance(arg, THIROptViewArg) and arg.name == "s"
+
+    def test_narrowed_pass_to_optional_str_slot_still_shim(self):
+        # The shim renders on the WHOLE optional even after narrowing.
+        thir = _lower_ctx(
+            "from tpy import Int32\n"
+            "def sink(q: str | None) -> Int32:\n"
+            "    if q is None:\n        return -1\n"
+            "    return len(q)\n"
+            "def use(s: str | None) -> Int32:\n"
+            "    if s is None:\n        return 0\n"
+            "    return sink(s)\n")
+        arg = _fn(thir, "use").body[-1].value.args[0]
+        assert isinstance(arg, THIROptViewArg)
+
+    def test_strview_inner_none_test_routes(self):
+        thir = _lower_ctx(
+            "from tpy import StrView\n"
+            "def use(s: StrView | None) -> bool:\n    return s is None\n")
+        ret = _fn(thir, "use").body[0]
+        assert isinstance(ret.value, THIRIsNone) and ret.value.value_repr
+
+    def test_strview_inner_pass_stays_ast(self):
+        # `StrView | None` into `StrView | None`: the AST passes BARE (the shim's
+        # `view_family_for_type(StrView)` is None), a shape this cell defers.
+        thir = _lower_ctx(
+            "from tpy import StrView, Int32\n"
+            "def sink(q: StrView | None) -> Int32:\n"
+            "    if q is None:\n        return -1\n"
+            "    return 0\n"
+            "def use(s: StrView | None) -> Int32:\n    return sink(s)\n")
+        assert _fn(thir, "use") is None
+
+    def test_print_whole_optional_routes(self):
+        # `print(s)` on an UN-narrowed value-repr Optional[str] param renders the
+        # bare optional inside `::tpy::print_optional_val(s)` (gen_print threads
+        # no target). A narrowed read (`(*s)`) stays its own face.
+        thir = _lower_ctx(
+            "def use(s: str | None) -> None:\n    print(s)\n")
+        arg = _fn(thir, "use").body[0].args[0]
+        assert arg.print_form is PrintForm.OPT_VAL and arg.opt_inner_cpp is None
+
+    def test_return_whole_optional_defers(self):
+        # `-> str | None` returning the whole optional is the return-shim, out
+        # of `_eligible_return` -- the whole function stays AST.
+        thir = _lower_ctx(
+            "def use(s: str | None) -> str | None:\n    return s\n")
+        assert _fn(thir, "use") is None
+
+    def test_optional_str_local_decl_defers(self):
+        # A value-repr Optional[str] LOCAL (the decl-shim target) classifies
+        # OTHER at its decl -- the whole body stays AST.
+        thir = _lower_ctx(
+            "def use(s: str | None) -> None:\n    t = s\n    print(t)\n")
+        assert _fn(thir, "use") is None
+
+    def test_faces_witnessed(self):
+        thir, wit = _lower_ctx_witnessed(
+            "from tpy import Int32\n"
+            "def sink(q: str | None) -> Int32:\n"
+            "    if q is None:\n        return -1\n"
+            "    return len(q)\n"
+            "def use(s: str | None) -> Int32:\n"
+            "    if not s:\n        return 0\n"
+            "    return sink(s)\n")
+        assert _fn(thir, "use") is not None
+
+
+class TestValueReprOptionalStrParamEmit:
+    def _emit(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        hpp, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=thir))
+        return hpp + cpp
+
+    SRC = (
+        "from tpy import Int32, StrView\n"
+        "def take(x: str) -> Int32:\n    return len(x)\n"
+        "def sink(q: str | None) -> Int32:\n"
+        "    if q is None:\n        return -1\n"
+        "    return take(q)\n"
+        "def read_narrow(s: str | None) -> Int32:\n"
+        "    if s is None:\n        return 0\n"
+        "    return take(s)\n"
+        "def is_none(s: str | None) -> bool:\n    return s is None\n"
+        "def is_not_none(s: str | None) -> bool:\n    return s is not None\n"
+        "def truthy(s: str | None) -> Int32:\n"
+        "    if not s:\n        return 0\n"
+        "    return 1\n"
+        "def pass_through(s: str | None) -> Int32:\n    return sink(s)\n"
+        "def narrowed_pass(s: str | None) -> Int32:\n"
+        "    if s is None:\n        return 0\n"
+        "    return sink(s)\n"
+        "def sv_none(s: StrView | None) -> bool:\n    return s is None\n"
+        "def main():\n    print(read_narrow(\"hi\"))\nmain()\n"
+    )
+
+    def test_byte_identical(self):
+        assert self._emit(self.SRC, thir=True) == self._emit(self.SRC, thir=False)
+
+    def test_renders(self):
+        out = self._emit(self.SRC, thir=True)
+        assert "return (!s.has_value());" in out           # is_none
+        assert "return (s.has_value());" in out            # is_not_none
+        assert "if ((!(::tpy::is_truthy(s))))" in out       # not-truthy
+        assert "return take((*s));" in out                  # narrowed read deref
+        assert ("return sink(s ? std::make_optional(std::string(*s)) : "
+                "std::nullopt);" in out)                     # the arg-split shim
+
+
+class TestValueReprOptionalReturn:
+    """A value-repr `Optional[cheap scalar]` RETURN slot (`-> Int32 | None` ->
+    `std::optional<T>`): `return None` -> `std::nullopt`, a value-opt param name
+    passes the WHOLE optional bare (deref-on-narrow stripped), other scalar
+    sources ride the generic tail. BigInt / str-view inners stay AST."""
+
+    def test_none_returns_nullopt(self):
+        thir = _lower_ctx(
+            "from tpy import Int32\n"
+            "def f(x: Int32) -> Int32 | None:\n"
+            "    if x > 0:\n        return x\n"
+            "    return None\n")
+        ret = _fn(thir, "f").body[-1]
+        assert isinstance(ret, THIRReturn)
+        assert isinstance(ret.value, THIRLiteral) and ret.value.value is None
+        from .nodes import Form
+        assert ret.value.form is Form.STORAGE      # -> std::nullopt
+
+    def test_narrowed_param_passes_whole_optional_bare(self):
+        # `return p` at a value-optional return keeps the WHOLE optional (`p`),
+        # not the narrowed `(*p)` -- the deref-on-narrow is stripped.
+        thir = _lower_ctx(
+            "from tpy import Int32\n"
+            "def f(p: Int32 | None) -> Int32 | None:\n"
+            "    if p is not None:\n        return p\n"
+            "    return None\n")
+        ret = _fn(thir, "f").body[0].then_body[-1]
+        assert isinstance(ret, THIRReturn)
+        assert isinstance(ret.value, THIRName) and not ret.value.deref
+
+    def test_identity_param_pass_routes(self):
+        thir = _lower_ctx(
+            "from tpy import Int32\n"
+            "def ident(p: Int32 | None) -> Int32 | None:\n    return p\n")
+        ret = _fn(thir, "ident").body[-1]
+        assert isinstance(ret.value, THIRName) and not ret.value.deref
+
+    def test_scalar_expr_source_derefs_operand(self):
+        # `return p + 1` derefs the narrowed operand `(*p)` inside the binop,
+        # then implicitly converts the scalar result into the optional slot.
+        thir = _lower_ctx(
+            "from tpy import Int32\n"
+            "def g(p: Int32 | None) -> Int32 | None:\n"
+            "    if p is None:\n        return None\n"
+            "    return p + 1\n")
+        assert _fn(thir, "g") is not None
+
+    def test_faces_witnessed(self):
+        thir, wit = _lower_ctx_witnessed(
+            "from tpy import Int32\n"
+            "def f(p: Int32 | None) -> Int32 | None:\n"
+            "    if p is not None:\n        return p\n"
+            "    return None\n")
+        assert wit.get("ret.value_opt_none", 0) >= 1
+        assert wit.get("ret.value_opt_name", 0) >= 1
+
+    def test_bigint_inner_routes(self):
+        # BigInt joined the value slice (the param move face admits it), and the
+        # return arm shares `_value_opt_scalar`, so a BigInt-inner Optional return
+        # routes too -- byte-identically (a borrow source copies, an owned last-use
+        # source moves through the generic return tail's own last-use machinery).
+        thir = _lower_ctx(
+            "def bi(x: int) -> int | None:\n"
+            "    if x > 0:\n        return x\n"
+            "    return None\n")
+        assert _fn(thir, "bi") is not None
+
+    def test_str_inner_stays_ast(self):
+        # `Optional[str]` is the owned/view-split return -- out of the value slice.
+        thir = _lower_ctx(
+            "from tpy import Int32\n"
+            "def h(x: Int32) -> str | None:\n"
+            "    if x > 0:\n        return \"y\"\n"
+            "    return None\n")
+        assert _fn(thir, "h") is None
+
+    def test_cross_width_param_pass_stays_ast(self):
+        # `Int8 | None` -> `Int32 | None` casts the WHOLE optional
+        # (`static_cast<optional<int32>>(p)`); the coerce-wrapped narrowed read
+        # would deref the inner instead, so this shape defers to the AST.
+        thir = _lower_ctx(
+            "from tpy import Int8, Int32\n"
+            "def widen(p: Int8 | None) -> Int32 | None:\n"
+            "    if p is not None:\n        return p\n"
+            "    return None\n")
+        assert _fn(thir, "widen") is None
+
+
+class TestValueReprOptionalParamBigIntEmit:
+    """The expensive-copy (BigInt) value-Optional param move faces: a narrowed
+    last-use return / container element moves `std::move((*p))`; a const-ref
+    call arg and a plain var-decl copy `(*p)`."""
+
+    def _emit(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        hpp, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=thir))
+        return hpp + cpp
+
+    SRC = (
+        "def take(x: int) -> int:\n    return x + 1\n"
+        "def ret_move(p: int | None) -> int:\n"
+        "    if p is None:\n        return 0\n"
+        "    return p\n"
+        "def call_arg(p: int | None) -> int:\n"
+        "    if p is None:\n        return 0\n"
+        "    return take(p)\n"
+        "def container(p: int | None) -> int:\n"
+        "    if p is None:\n        return 0\n"
+        "    xs = [p]\n"
+        "    return xs[0]\n"
+        "def plain_decl(p: int | None) -> int:\n"
+        "    if p is None:\n        return 0\n"
+        "    q = p\n"
+        "    return q\n"
+        "def main():\n    print(ret_move(3))\nmain()\n"
+    )
+
+    def test_byte_identical(self):
+        assert self._emit(self.SRC, thir=True) == self._emit(self.SRC, thir=False)
+
+    def test_renders(self):
+        out = self._emit(self.SRC, thir=True)
+        assert "return std::move((*p));" in out            # narrowed return move
+        assert "return take((*p));" in out                 # const-ref arg: copy
+        assert "{std::move((*p))}" in out                  # container elem move
+        assert "::tpy::BigInt q = (*p);" in out            # var-decl: copy
+
+
+class TestValueReprOptionalReturnEmit:
+    def _emit(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        hpp, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=thir))
+        return hpp + cpp
+
+    SRC = (
+        "from tpy import Int32, Int8, Float64\n"
+        "def basic(x: Int32) -> Int32 | None:\n"
+        "    if x > 0:\n        return x\n"
+        "    return None\n"
+        "def expr_src(p: Int32 | None) -> Int32 | None:\n"
+        "    if p is None:\n        return None\n"
+        "    return p + 1\n"
+        "def ident(p: Int32 | None) -> Int32 | None:\n    return p\n"
+        "def widen(x: Int8) -> Int32 | None:\n"
+        "    if x > 0:\n        return x\n"
+        "    return None\n"
+        "def flt(x: Int32) -> Float64 | None:\n"
+        "    if x > 0:\n        return 1.5\n"
+        "    return None\n"
+        "def main():\n    print(basic(3))\nmain()\n"
+    )
+
+    def test_byte_identical(self):
+        assert self._emit(self.SRC, thir=True) == self._emit(self.SRC, thir=False)
+
+    def test_renders(self):
+        out = self._emit(self.SRC, thir=True)
+        assert "return std::nullopt;" in out
+        assert "return (::tpy::add_check<int32_t>((*p), 1));" in out
+        assert "return p;" in out                              # bare optional pass
+        assert "return static_cast<std::optional<int32_t>>(x);" in out  # widen
 
 
 class TestOptionalParamEmit:

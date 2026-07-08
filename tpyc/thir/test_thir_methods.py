@@ -499,6 +499,89 @@ class TestFieldWriteFamilies:
         assert _fn(thir, "suffix") is None
 
 
+# A value-storage Optional[record] field (`std::optional<Inner>`): the
+# record-field-write shape at an Optional slot -- a record NAME copies/moves
+# the inner, a record RVALUE copies bare; `None` keeps its own nullopt arm.
+_OPTREC = (
+    "from tpy import Int32, Own\n"
+    "class Inner:\n    v: Int32\n"
+    "    def __init__(self, v: Int32):\n        self.v = v\n"
+    "class Box:\n    opt: Inner | None\n"
+    "    def __init__(self):\n        self.opt = None\n"
+)
+
+
+class TestOptionalRecordFieldWrite:
+    def test_record_name_copy_routes(self):
+        thir = _lower_ctx(
+            _OPTREC + "    def stash(self, i: Inner):\n        self.opt = i\n")
+        fn = _fn(thir, "stash")
+        assert fn is not None
+        st = fn.body[0]
+        assert isinstance(st, THIRAssign) and isinstance(st.target, THIRFieldAccess)
+        # Convert to the INNER record storage -> bare copy (NOT ptr_to_optional).
+        assert isinstance(st.value, THIRFormConvert) and not st.value.move
+
+    def test_own_param_moves(self):
+        thir = _lower_ctx(
+            _OPTREC + "    def stash_own(self, i: Own[Inner]):\n        self.opt = i\n")
+        st = _fn(thir, "stash_own").body[0]
+        assert isinstance(st.value, THIRFormConvert) and st.value.move
+
+    def test_record_rvalue_routes(self):
+        thir = _lower_ctx(
+            _OPTREC + "    def fresh(self, v: Int32):\n        self.opt = Inner(v)\n")
+        st = _fn(thir, "fresh").body[0]
+        assert isinstance(st, THIRAssign)
+        # An rvalue is STORAGE form already -- copied bare, no convert.
+        assert not isinstance(st.value, THIRFormConvert)
+
+    def test_none_keeps_nullopt_arm(self):
+        thir = _lower_ctx(
+            _OPTREC + "    def clear(self):\n        self.opt = None\n")
+        assert _fn(thir, "clear") is not None
+
+    def test_value_record_optional_stays_ast(self):
+        # A VALUE-record inner has no plain-non-value convert arm -> AST.
+        src = ("from tpy import Int32, ValueType\n"
+               "class V(ValueType):\n    x: Int32\n"
+               "    def __init__(self, x: Int32):\n        self.x = x\n"
+               "class W:\n    o: V | None\n"
+               "    def __init__(self):\n        self.o = None\n"
+               "    def put(self, v: V):\n        self.o = v\n")
+        assert _fn(_lower_ctx(src), "put") is None
+
+
+class TestOptionalRecordFieldWriteEmit:
+    def _emit(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        hpp, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+        return hpp + cpp
+
+    SRC = (
+        _OPTREC
+        + "    def set_name(self, i: Inner):\n        self.opt = i\n"
+        + "    def set_own(self, i: Own[Inner]):\n        self.opt = i\n"
+        + "    def set_new(self, v: Int32):\n        self.opt = Inner(v)\n"
+        + "    def clear(self):\n        self.opt = None\n"
+        + "def main():\n    b = Box()\n    b.set_name(Inner(1))\n"
+        + "    b.set_own(Inner(2))\n    b.set_new(3)\n    b.clear()\n"
+        + "    print(0)\nmain()\n"
+    )
+
+    def test_byte_identical(self):
+        assert self._emit(self.SRC, thir=True) == self._emit(self.SRC, thir=False)
+
+    def test_renders(self):
+        out = self._emit(self.SRC, thir=True)
+        assert "this->opt = i;" in out               # borrow param: bare copy
+        assert "this->opt = std::move(i);" in out    # Own param at last use
+        assert "this->opt = Inner(v);" in out        # rvalue
+        assert "this->opt = std::nullopt;" in out    # None -> nullopt arm
+
+
 class TestFieldWriteFamiliesEmit:
     def _emit(self, src: str, thir: bool):
         compiler, modules = _compile(src)
@@ -872,14 +955,81 @@ class TestMethodReceiverShape:
         assert isinstance(ret.value.receiver, THIRFieldAccess)
         assert not ret.value.receiver.is_arrow
 
-    def test_container_field_receiver_excluded(self):
-        # `self.items.append(x)`: a container field receiver would take the
-        # name-only container arm -> stays AST for now.
+    def test_container_field_receiver_routes(self):
+        # `self.items.append(x)` / `self.m.pop(k)`: a scalar-read container field
+        # receiver routes the container arm over a bare `this->field` receiver.
+        thir, w = _lower_ctx_witnessed(
+            "from tpy import Int32\n"
+            "class C:\n    items: list[Int32]\n    m: dict[Int32, Int32]\n"
+            "    def __init__(self):\n        self.items = []\n        self.m = {}\n"
+            "    def add(self, x: Int32):\n        self.items.append(x)\n"
+            "    def take(self) -> Int32:\n        return self.items.pop()\n"
+            "    def dpop(self, k: Int32) -> Int32:\n        return self.m.pop(k)\n")
+        for name in ("add", "take", "dpop"):
+            fn = _fn(thir, name)
+            assert fn is not None, name
+        assert w.get("method.recv.container_field", 0) >= 3
+        # The receiver is a bare `this->field` THIRFieldAccess (`.`, not `->`
+        # from the outer call; the field access itself is arrow off self).
+        call = _fn(thir, "add").body[0].expr
+        assert isinstance(call, THIRMethodCall) and not call.is_arrow
+        assert isinstance(call.receiver, THIRFieldAccess)
+        assert isinstance(call.receiver.receiver, THIRSelf) and call.receiver.is_arrow
+
+    def test_value_record_field_receiver_witnesses_record_field(self):
+        # The plain value F1-record field receiver rides its own face
+        # (`method.recv.record_field`) -- distinct from the container-field
+        # and subscript/method-chain receiver faces.
+        thir, w = _lower_ctx_witnessed(_RECV_SHAPE)
+        assert _fn(thir, "run") is not None
+        assert w.get("method.recv.record_field", 0) >= 1
+
+    def test_generic_record_field_receiver_routes(self):
+        # `self.w.get_n()` where `w: Wrap[Int32]` -- a concrete-arg generic
+        # record field. `_f1_record` admits the generic (Int32 is an F1 type
+        # arg), so the receiver renders bare (`this->w`) and the call routes
+        # the user-record arm exactly as a plain record field would.
+        thir, w = _lower_ctx_witnessed(
+            "from tpy import Int32\n"
+            "class Wrap[T]:\n    n: Int32\n"
+            "    def __init__(self, n: Int32):\n        self.n = n\n"
+            "    def get_n(self) -> Int32:\n        return self.n\n"
+            "class Holder:\n    w: Wrap[Int32]\n"
+            "    def __init__(self, w: Wrap[Int32]):\n        self.w = w\n"
+            "    def read(self) -> Int32:\n        return self.w.get_n()\n")
+        fn = _fn(thir, "read")
+        assert fn is not None
+        assert w.get("method.recv.record_field", 0) >= 1
+        call = fn.body[-1].value
+        assert isinstance(call, THIRMethodCall) and not call.is_arrow
+        assert isinstance(call.receiver, THIRFieldAccess)
+        assert isinstance(call.receiver.receiver, THIRSelf) and call.receiver.is_arrow
+
+    def test_native_record_field_receiver_routes(self):
+        # `self.v.total()` where `v: Vec2` (@native record). `_f1_record` admits
+        # native records (spelled via native_cpp_names), so the field receiver
+        # routes like a same-module one.
+        thir, w = _lower_ctx_witnessed(
+            "from tpy.extern import native\n"
+            "from tpy import Int32\n"
+            "@native\n"
+            "class Vec2:\n    x: Int32\n    y: Int32\n"
+            "    def total(self) -> Int32: ...\n"
+            "class Holder:\n    v: Vec2\n"
+            "    def __init__(self, v: Vec2):\n        self.v = v\n"
+            "    def read(self) -> Int32:\n        return self.v.total()\n")
+        fn = _fn(thir, "read")
+        assert fn is not None
+        assert w.get("method.recv.record_field", 0) >= 1
+
+    def test_set_field_receiver_excluded(self):
+        # `self.s.add(x)`: a set has no `__getitem__` -- outside the
+        # container-scalar-read admit set -> stays AST.
         thir = _lower_ctx(
             "from tpy import Int32\n"
-            "class C:\n    items: list[Int32]\n"
-            "    def __init__(self):\n        self.items = []\n"
-            "    def add(self, x: Int32):\n        self.items.append(x)\n")
+            "class S:\n    s: set[Int32]\n"
+            "    def __init__(self):\n        self.s = set()\n"
+            "    def add(self, x: Int32):\n        self.s.add(x)\n")
         assert _fn(thir, "add") is None
 
     def test_optional_field_receiver_excluded(self):
@@ -927,6 +1077,61 @@ class TestMethodReceiverShapeEmit:
 
     def test_param_field_receiver_emits_dot(self):
         assert "o.inner.get()" in self._emit(self.SRC, thir=True)
+
+    GENERIC_SRC = (
+        "from tpy import Int32\n"
+        "class Wrap[T]:\n    n: Int32\n"
+        "    def __init__(self, n: Int32):\n        self.n = n\n"
+        "    def get_n(self) -> Int32:\n        return self.n\n"
+        "class Holder:\n    w: Wrap[Int32]\n"
+        "    def __init__(self, w: Wrap[Int32]):\n        self.w = w\n"
+        "    def read(self) -> Int32:\n        return self.w.get_n()\n"
+        "def main():\n    print(Holder(Wrap(7)).read())\n"
+        "main()\n"
+    )
+
+    def test_generic_record_field_receiver_byte_identical(self):
+        assert (self._emit(self.GENERIC_SRC, thir=True)
+                == self._emit(self.GENERIC_SRC, thir=False))
+
+
+class TestContainerFieldReceiverEmit:
+    def _emit(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        hpp, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+        return hpp + cpp
+
+    # Container field receiver off self (self.data.append / .pop, self.m.pop)
+    # AND off a record param (b.data.append / .pop) -- both render the receiver
+    # as its bare field access.
+    SRC = (
+        "from tpy import Int32\n"
+        "class Buf:\n    data: list[Int32]\n    m: dict[Int32, Int32]\n"
+        "    def __init__(self):\n        self.data = []\n        self.m = {}\n"
+        "    def add(self, x: Int32):\n        self.data.append(x)\n"
+        "    def take(self) -> Int32:\n        return self.data.pop()\n"
+        "    def dpop(self, k: Int32) -> Int32:\n        return self.m.pop(k)\n"
+        "def fill(b: Buf, x: Int32):\n    b.data.append(x)\n"
+        "def drain(b: Buf) -> Int32:\n    return b.data.pop()\n"
+        "def main():\n    b = Buf()\n    fill(b, 7)\n    print(drain(b))\n    print(b.take())\n"
+        "main()\n"
+    )
+
+    def test_byte_identical(self):
+        assert self._emit(self.SRC, thir=True) == self._emit(self.SRC, thir=False)
+
+    def test_self_container_field_emits_this_arrow_receiver(self):
+        out = self._emit(self.SRC, thir=True)
+        assert "this->data.push_back(x);" in out
+        assert "::tpy::pop_back(this->data)" in out
+        assert "::tpy::dict_pop(this->m, k)" in out
+
+    def test_param_container_field_emits_dot_receiver(self):
+        out = self._emit(self.SRC, thir=True)
+        assert "b.data.push_back(x);" in out
+        assert "::tpy::pop_back(b.data)" in out
 
 
 # --- Non-F1 record frontier, stage 1: @native records. Their C++ TYPE spelling
@@ -1861,6 +2066,87 @@ class TestMethodArgReturnGrid:
         # method args all route now that the method grid mirrors the free-call
         # ret/arg cascade.
         assert _fn(_lower_ctx(_GRID_SRC), "drive") is not None
+
+    def test_byte_identical(self):
+        assert self._emit(True) == self._emit(False)
+
+
+# A container-element-record subscript receiver (`ps[i].m()`) in stmt / var_decl
+# / return positions: the subscript is a plain-record borrow lvalue
+# (`::tpy::__getitem__(ps, i)`, `.` access), so the outer method routes the
+# user-record arm identically.
+_RECV_SUBSCRIPT_SRC = (
+    "from tpy import Int32\n"
+    "class P:\n"
+    "    x: Int32\n"
+    "    def __init__(self, x: Int32):\n        self.x = x\n"
+    "    def bump(self) -> Int32:\n        return self.x + 1\n"
+    "    def touch(self):\n        self.x = 9\n"
+    "def run(ps: list[P], i: Int32) -> Int32:\n"
+    "    ps[i].touch()\n"
+    "    r = ps[i].bump()\n"
+    "    return r + ps[i].bump()\n"
+    "def main():\n"
+    "    ps = [P(1), P(2)]\n"
+    "    print(run(ps, 0))\n"
+    "main()\n"
+)
+
+
+class TestSubscriptMethodReceiver:
+    def _emit(self, thir: bool):
+        compiler, modules = _compile(_RECV_SUBSCRIPT_SRC)
+        hpp, cpp = compiler.generate_code_to_strings(
+            _entry(modules), options=CodeGenOptions(
+                emit_source_comments=False, thir_codegen=thir))
+        return hpp + cpp
+
+    def test_routes_and_witnesses(self):
+        thir, witnessed = _lower_ctx_witnessed(_RECV_SUBSCRIPT_SRC)
+        assert _fn(thir, "run") is not None
+        # touch (stmt) + bump (var_decl) + bump (return) all off `ps[i]`.
+        assert witnessed.get("method.recv.subscript", 0) >= 3
+
+    def test_byte_identical(self):
+        assert self._emit(True) == self._emit(False)
+
+
+# A method-call receiver (`self.b.get().m()`): `Box.get()` yields a plain-record
+# borrow (`this->b.get()`, `.` access), so the outer method routes identically.
+_RECV_METHOD_SRC = (
+    "from tpy import Int32, Own\n"
+    "from tplib.box import Box\n"
+    "class Node:\n"
+    "    x: Int32\n"
+    "    def __init__(self, x: Int32):\n        self.x = x\n"
+    "    def bump(self) -> Int32:\n        return self.x + 1\n"
+    "    def touch(self):\n        self.x = 9\n"
+    "class Holder:\n"
+    "    b: Box[Node]\n"
+    "    def __init__(self, b: Own[Box[Node]]):\n        self.b = b\n"
+    "    def go(self) -> Int32:\n"
+    "        self.b.get().touch()\n"
+    "        c = self.b.get().bump()\n"
+    "        return c + self.b.get().bump()\n"
+    "def main():\n"
+    "    h = Holder(Box(Node(1)))\n"
+    "    print(h.go())\n"
+    "main()\n"
+)
+
+
+class TestMethodCallReceiver:
+    def _emit(self, thir: bool):
+        compiler, modules = _compile(_RECV_METHOD_SRC)
+        hpp, cpp = compiler.generate_code_to_strings(
+            _entry(modules), options=CodeGenOptions(
+                emit_source_comments=False, thir_codegen=thir))
+        return hpp + cpp
+
+    def test_routes_and_witnesses(self):
+        thir, witnessed = _lower_ctx_witnessed(_RECV_METHOD_SRC)
+        assert _fn(thir, "go") is not None
+        assert witnessed.get("method.recv.method", 0) >= 3
 
     def test_byte_identical(self):
         assert self._emit(True) == self._emit(False)

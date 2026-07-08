@@ -5,6 +5,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field, fields
 from ...parse.nodes import TpyFunction, TpyGlobal
 from ...typesys import (
+    ReadonlyType,
     TpyType,
     UnionType,
     unwrap_optional_own,
@@ -25,7 +26,8 @@ from .predicates import (
     _resolved_bytes_value,
     _resolved_str_value,
     _storage_optional_return_type,
-    _value_tuple,
+    _value_opt_scalar,
+    _value_tuple_return,
 )
 
 # --- F1 form slice: single-assignment non-value record locals + field reads ---
@@ -39,7 +41,8 @@ class _Prescan:
                  "ret_record_borrow", "ret_record_storage",
                  "ret_container_storage", "ret_value_tuple",
                  "ret_str", "ret_bytes",
-                 "ret_char", "ret_union", "ret_ptr_union", "param_names",
+                 "ret_char", "ret_union", "ret_ptr_union",
+                 "ret_value_opt", "value_opt_params", "param_names",
                  "has_self", "is_constructor", "global_seeded", "global_readonly",
                  "global_cpp", "native_globals")
 
@@ -48,6 +51,13 @@ class _Prescan:
         # param's aug-assign would need the owned-copy prologue -- see
         # _str_aug_append_ok).
         self.param_names = {n for n, _t in func.params}
+        # Value-repr Optional[cheap scalar] params (`Int32 | None`): a
+        # `return <param>` into a value-optional return slot passes the WHOLE
+        # optional bare (deref-on-narrow stripped), so the return gate keys on
+        # this to admit a narrowed param name the generic tail would deref.
+        self.value_opt_params = {
+            n for n, t in func.params
+            if _value_opt_scalar(t, analyzer) is not None}
         # Whether the callable has a `self` receiver (instance method) -- the
         # gate arms that treat the name `self` specially (the return-self arm,
         # the self-rebind rejects) key on this so a free function's local or
@@ -94,6 +104,12 @@ class _Prescan:
         # `nullptr`, an already-pointer name -> bare, an F1-record name ->
         # `&(name)` (_optional_pointer_form_value's admitted subset).
         self.ret_ptr_opt = _optional_ptr_borrow(rt, analyzer)
+        # The value-repr Optional[cheap scalar] return slot (`-> Int32 | None`
+        # -> `std::optional<T>`): `return None` -> `std::nullopt`, a value-opt
+        # param name passes the whole optional bare, every other scalar source
+        # rides the generic return tail (its type-exact / coerce-wrapped
+        # rendering matches the AST's `gen_expr_deref`).
+        self.ret_value_opt = _value_opt_scalar(rt, analyzer)
         # F3: the function's borrow-form pointer-repr tuple return slot, if any
         # (`tuple[..., Ref]` -> `std::tuple<..., T*>`), so a `return <storage tuple
         # lvalue>` lifts via `tuple_to_pointer`. None for every other return type.
@@ -115,9 +131,11 @@ class _Prescan:
         self.ret_container_storage = _container_storage_return(rt, analyzer)
         # The value-tuple return slot (`-> tuple[int, str]` -> a by-value
         # `std::tuple<...>`): a tuple literal renders the spelled brace-init
-        # (THIRTupleLiteral) and a bare value-tuple name returns bare (a
-        # value-type copy -- no move/copy() machinery arises).
-        self.ret_value_tuple = _value_tuple(rt, analyzer)
+        # (THIRTupleLiteral) recursively -- the return element set is widened
+        # over the narrow `_value_tuple` (nested value-tuple / value-Optional[
+        # scalar] elements). A bare value-tuple name return stays on the narrow
+        # arm (no bare-copy read arm for a widened-element receiver).
+        self.ret_value_tuple = _value_tuple_return(rt, analyzer)
         # S1 str slice: the resolved str-family return type (owned `str` or
         # `StrView`), so a `return <view-form source>` into an owned `std::string`
         # return copies via the view->owned THIRFormConvert. None otherwise.
@@ -293,19 +311,28 @@ class _LowerCtx:
         # mirrors that seeding here. Consumed by the Own-slot call-arg row's
         # move-vs-copy pick; the F2b/F2e write/return converts only ever see
         # borrow-pointer sources, which are never Own params. DELIBERATELY
-        # PARTIAL: seed_param_locals' sibling movable branches (owned-movable
-        # tuple params, expensive-copy value-Optional params) are NOT
+        # PARTIAL: seed_param_locals' owned-movable tuple-param branch is NOT
         # mirrored -- no current consumer can see those names (the Own-slot
         # rows admit scalar/F1-record payloads only); a frontier that reuses
-        # lc.movable_locals against tuple/Optional sources must extend this.
+        # lc.movable_locals against tuple sources must extend this.
         # CAVEAT (proven by a corpus divergence): this is the RAW sema set,
         # while codegen registers movables only at NON-VALUE decl arms -- a
         # consumer matching non-record sources must value-type-filter first
         # (see _container_elem_move_source), else a sema-movable VALUE local
-        # (a view-resolved promoted str) over-moves.
+        # (a view-resolved promoted str) over-moves. The value-Optional param
+        # arm below is the deliberate exception: seed_param_locals adds it to
+        # codegen's movable set too, so it moves at its narrowed last-use read.
         for pname, ptype in func.params:
             own = unwrap_optional_own(unwrap_readonly(unwrap_send_sync(ptype)))
             if own is not None and not own.wrapped.is_value_type():
+                self.movable_locals.add(pname)
+            # A value-repr Optional[expensive-copy scalar] param (`int | None`
+            # -> std::optional<BigInt>) is movable at its narrowed last use --
+            # seed_param_locals' value-optional arm. readonly params are
+            # excluded to honor the no-mutation contract.
+            vopt = _value_opt_scalar(ptype, analyzer)
+            if (vopt is not None and vopt.inner.is_expensive_copy()
+                    and not isinstance(ptype, ReadonlyType)):
                 self.movable_locals.add(pname)
         # U3/U4 isinstance-narrowing scope (see _NarrowScope's docstring),
         # snapshot/restored around branch and loop bodies.

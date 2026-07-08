@@ -5,7 +5,7 @@ answers *"what stands between us and retiring the AST body/form codegen path, an
 what is the status of each piece."*
 
 Companion docs, different jobs:
-- `IR_DESIGN.md` -- the design + the per-increment landing log + the F1->F-final
+- `IR_DESIGN.md` -- the design + the distilled migration findings + the F1->F-final
   rung ladder (what *has* landed).
 - `THIR_FORM_INVENTORY.md` -- the form-dispatch spec (the borrow/storage machinery
   THIR must subsume).
@@ -112,7 +112,7 @@ deletion is the concrete milestone that forces its tail closed.
 | AST component to delete | Deletion gate (cells that must route) | Status |
 |---|---|---|
 | **Ctor MIL emit** -- `records.py` `_extract_field_inits` / `_extract_base_inits` / `_get_non_init_stmts` + the inline ` : f(v)... {}` write | every ctor MIL field cell + body: scalar (M3a), record/Optional copy+move (M3b), ctor-call / param-field-read sources + own-optional params (M3b-rvalue), docstring/`pass` trivia body (M3c-trivia), non-init body + demotion (M3c-demotion), inheritance -- single + multi base + inherited-field writes (M3d), and str/list/dict/tuple/union/bytes fields (F3+) + cross-module/native/generic records | **PARTIAL** -- the whole scalar/record/Optional + body + inheritance surface lands (ctor self-contained tail complete); native + cross-module record field/base MIL routes (non-F1-record stages 1+2); GENERIC-record ctor MIL routes (F5 stages A-C); **wave-6 (the ctor frontier, 2026-07-07) routed the F3+ field families -- str/StrView/bytes, container literals + param copies/moves, `None` into any Optional/Ptr, unions, tuples -- plus the AST-demote mirror (bare-name / nested-def / body-local inits demote to the body like the AST), the ctor param grid (`_ctor_param_eligible`: any Own / String / Ptr / union / value-repr Optional), widened base-init args, record/container/str field writes, and the mutation-keyed ctor-arg record-rvalue rows**; the remaining `ctor.mil_field` mass (8,616 bodies) is generics-gated (`UninitStorage[T]`-family fields, `Box._ptr = heap_take(...)`) + async plumbing (`Waker`) -- see IR_DESIGN.md Wave-6 |
-| **Body statement + expression emit** -- `statements.py` `gen_body` per-statement path + `expressions.py` `gen_expr`, for routed callables | every statement shape + expression form across every callable kind | **PARTIAL** -- straight-line shapes over the F1/F2 + scalar (fixed-int/bool/both-float-widths/BigInt incl. the runtime-BigInt `.to_fixed_check` narrows, incr 73-76; enums of every flavor incl. truthiness/`.value`/`.name`, incr 77) + str (F6 S1-S5 + cross-type coercions) + bytes (F6 S6 values + the incr-46 tail: subscript/slices/iteration/concat/aug-assign) slice, incl. logical/chained-compare exprs and scalar/slice-object type-constructor calls |
+| **Body statement + expression emit** -- `statements.py` `gen_body` per-statement path + `expressions.py` `gen_expr`, for routed callables | every statement shape + expression form across every callable kind | **PARTIAL** -- straight-line shapes over the F1/F2 + scalar (fixed-int/bool/both-float-widths/BigInt incl. the runtime-BigInt `.to_fixed_check` narrows, incr 73-76; enums of every flavor incl. truthiness/`.value`/`.name`, incr 77) + str (F6 S1-S5 + cross-type coercions) + bytes (F6 S6 values + the incr-46 tail: subscript/slices/iteration/concat/aug-assign) slice, incl. logical/chained-compare exprs and scalar/slice-object type-constructor calls; + the thir-param-grid waves' value-repr Optional/union params+returns, membership, container params (now compositional -- see narrative below), tuple returns/unpack, method receivers incl field-chains, stepped range, str/bytes ctor decls + bitwise binops, generic-record instantiation, in-branch first-decls, Optional[record] field writes, print_optional_val |
 | **Form / conversion machinery** -- `context.py` `convert` + `CppForm`/`FormValue`, the ~12 detection predicates + ~22 local side-sets + the `RefType` wrapper (see `THIR_FORM_INVENTORY.md`) | **F-final**: the `Form` tag + `THIRFormConvert` subsume all form dispatch | **PARTIAL** -- F1/F2 forms carried + F3 tuple read/write + the F6 str+bytes view->owned converts (S1/S6 -- both `view_to_owned_conv` family arms validated; reused at container-element slots by S5; extended to the cross-type str-family coercions in incr 42, the materializing arms lowering to the same THIRFormConvert) + the F4 union arms (U1 value + U2 pointer-variant, incr 49-50: `to_[const_]ptr_variant` / `to_value_variant<...>` carried, plus the structural form validator as the second gate) + the U3 narrowing extractions (incr 51: `THIRIsinstance` / `THIRNarrowAlias`, the `narrowed_vars` rename mirrored as lowering scope) + the U2 write-arm tail (incr 52: monostate write arms + union field-to-field copies) + the U4 narrowing tail (incr 53-54: `THIRAssert` persistent extractions + re-assert bump, while-isinstance loop-entry aliases, compound-`and` `THIRNarrowedRead` inline reads); + the call-arg lifts and temps (incr 56-65: `THIRUnionArgLift` ptr-variant member/None arg lifts incl. the deep-const slot spelling + `ptr_variant_to_const`, `THIRCtorCall`, `THIRArgTemp` value-union/record-rvalue/Own-slot/optional-ptr arg temps with the `move`/`addr_of` wraps, `THIRMove` last-use moves, `THIROptionalPtrArg` nullptr/&(name)/optional_to_ptr faces, record-arg/method-receiver/self-receiver pass-throughs); F4 remainder (readonly narrowing subjects), F5, the remaining F6 tail, and RefType removal pending |
 
 These interlock: deleting `gen_body`/`gen_expr` requires the form machinery gone
@@ -1344,7 +1344,30 @@ narrowed-Optional iterables, genexpr (C4). Faces
 `comp.{range3,field_iter,print_arg,array_range}` (`array_range`
 corpus-witnessed; the others unit-pinned). Routing 35874 -> 35884
 bodies / 3344 cases (+10 solo, pre-integration base; the integrated
-thir-stmt-tail tally is in the IR_DESIGN landing log).
+thir-stmt-tail tally was in the since-dropped per-increment history).
+
+**THIR param/return/compositional waves landed (branch thir-param-grid,
+8 waves)**: value-repr `Optional[scalar]`/`Optional[str]`/union params +
+returns, dict/set membership + set/container params, str/Char value-unions,
+tuple returns + tuple-unpack, `list.append` str/record elems, method
+receivers (incl field-access chains `self.buf.append` / `self.field.m()`),
+range arith + stepped literal/variable bounds, str/bytes ctor decls +
+bitwise binops, generic-record arg-ful instantiation into `Own[T]` slots,
+in-branch first-decls (Slice 1 in-place value decls, Slice 2 if/elif/else
+value hoists reusing the try/match hoist scaffold), `Optional[record]`
+field writes, and un-narrowed `print_optional_val`. **Container PARAM
+admission is now COMPOSITIONAL**: one `_container_param_renders` predicate
+("`list`/`dict`/`set`/`Array`/`Span` of any fully-concrete element, each
+element USE gated by the body walk") replaces the enumerated
+element-family whitelist -- `_container_record_iter` / `_set_scalar_read`
+deleted. The read / for-each / comprehension-loop-var / subscript-value-leaf
+sides likewise collapsed to compositional predicates
+(`_for_each_elem_binding_ok`); FORM-sensitive sides (call-args,
+field-writes, container-literal element STORAGE, and container
+MUTATION/setitem, still enumerated on `_container_scalar_read`) do NOT
+collapse until the form fact is materialized on the node.
+Shapes ~21% -> ~24% (1,087 -> ~1,239 of 5,179); bodies 43.6% -> ~47.4%.
+
 Uncovered shapes remaining: the parked match tail (above), the try
 return tier + expression raise (rows above),
 generator iterables, expression statements' deferred receiver/arg cells

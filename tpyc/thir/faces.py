@@ -41,6 +41,9 @@ THIR_FACES: frozenset[str] = frozenset({
     "optptr.lift",                  # `::tpy::optional_to_ptr(...)`
     "optptr.pass",                  # already-`T*` binding passes bare
     "optptr.name",                  # `&(name)`
+    # Value-repr Optional slot None arg (lowering): the value-optional twin
+    # of `optptr.none` -- `f(std::nullopt)`.
+    "call.none_value_opt",
     # Pointer-variant union-slot lifts (lowering).
     "unionlift.none",               # `pv{std::monostate{}}`
     "unionlift.const_wrap",         # `ptr_variant_to_const(...)`
@@ -83,8 +86,28 @@ THIR_FACES: frozenset[str] = frozenset({
     # is_arrow / deref_check renders over a pointer-VALUE receiver).
     "method.ptr_arrow",             # proven non-null: `p->m(args)`
     "method.ptr_checked",           # `::tpy::deref_check(p).m(args)`
+    # Container-field method receiver (`self.buf.append(x)` -> the container arm
+    # over a bare `this->buf` THIRFieldAccess receiver, same emit as a bare-name
+    # container receiver).
+    "method.recv.container_field",
+    # Container-element-record subscript method receiver (`xs[i].m()` -> the
+    # user-record arm over a `::tpy::__getitem__(xs, i)` borrow lvalue, `.`
+    # access -- never `->`, mirroring the field-access-off-subscript receiver).
+    "method.recv.subscript",
+    # Method-call method receiver (`a.b().c()` -> the user-record arm over an
+    # inner-call receiver whose result is a plain non-pointer record, `.`
+    # access; the inner call renders via the shared method lowering).
+    "method.recv.method",
+    # Value-record field method receiver (`self.field.m()` -> the user-record
+    # arm over a bare `this->field` / `p->field` THIRFieldAccess receiver). The
+    # field's record spells byte-identically (`_f1_record`: same-module,
+    # cross-module, @native, and concrete-arg generic records all qualify), so
+    # native / generic field receivers ride the same face as a plain one.
+    "method.recv.record_field",
     "ctor.call",                    # THIRCtorCall bare ctor expansion
     "ctor.str_arg",                 # str-slice arg into a str-family ctor slot
+    "ctor.omit_defaults",           # ctor call omitting trailing default args
+                                    # (defaults ride the C++ ctor signature)
     # Ctor MIL view-family field inits (lowering; the per-family renders --
     # bare str/StrView source vs the bytes view->owned bytes_copy convert).
     "mil.str_field",                # str/StrView field: bare source render
@@ -116,6 +139,13 @@ THIR_FACES: frozenset[str] = frozenset({
     # Str-family FIELD write from a name/literal: the bare
     # `recv.field = s;` (operator=(string_view), no view->owned wrap).
     "field_write.str",
+    # Value-storage Optional[record] FIELD write (`std::optional<inner>`) from
+    # a record NAME: the bare copy `recv.opt = p;` (optional::operator=) or
+    # `std::move(p)` at a movable name's last use.
+    "field_write.optrec_name",
+    # The Optional[record] FIELD write from a record RVALUE (ctor / by-value
+    # call of the inner type): the bare copy `recv.opt = Inner(args);`.
+    "field_write.optrec_rvalue",
     # A base-init arg beyond the scalar row: str name/literal, None,
     # IntLiteralType digits, record / Optional-ptr / Own param names --
     # all the target-less bare renders of _extract_base_inits.
@@ -147,6 +177,11 @@ THIR_FACES: frozenset[str] = frozenset({
     # Bytes-family FIELD subscript read (lowering; the same field-receiver
     # widening through the bytes dispatch -- `::tpy::bytes_getitem(this->b, i)`).
     "subscript.bytes_field",
+    # A value scalar/Char/enum/typeparam/Ptr field read off a value F1-record
+    # field CHAIN receiver (gate admission; `o.mid.inner.v` -- `_lower_expr`
+    # recurses through the receiver, so every link's render is shared with the
+    # single-level field read, and admission is the distinguishing site).
+    "field.chain_recv",
     # Owned-BYTES element read off a list[bytes]/dict-value container
     # (lowering; STORAGE form -- owned sinks copy implicitly, view bindings
     # / span args convert implicitly, so every admitted sink lands it bare).
@@ -163,6 +198,14 @@ THIR_FACES: frozenset[str] = frozenset({
     # field renders inside the same lvalue `auto& __obj_N =` capture a name
     # takes; str/bytes fields ride the older viewfam admission).
     "foreach.container_field",
+    # A str method returning `Own[list[str]]` as a for-each iterable (lowering;
+    # `for w in s.split():` -- the owning `auto __obj_N = ::tpy::str_split...(s)`
+    # rvalue capture, iterated like any list[str]).
+    "foreach.str_list_method",
+    # Value-tuple element for-each loop var (lowering; a `list[tuple[...]]`
+    # element or a `d.items()` key/value pair -- binds the whole tuple as
+    # `auto&& t = *__beg_N;`, subscript reads render `std::get<i>(t)` bare).
+    "foreach.value_tuple_elem",
     # Runtime-BigInt `.to_fixed_check<T>()` narrows (lowering; the AST's
     # gen_index_expr / _gen_slice_bound / aug-assign / enum-from_value wraps).
     "narrow.subscript_index",       # `i.to_fixed_check<int32_t>()` (reads + del)
@@ -183,6 +226,11 @@ THIR_FACES: frozenset[str] = frozenset({
     "ret.container_literal",
     "ret.container_call",           # `return make_list(n);` -- bare call source
     "ret.tuple_call",               # `return make_pair(n);` -- bare call source
+    # Value-repr Optional[cheap scalar] return slot (`-> Int32 | None`): the
+    # None-literal `std::nullopt` arm and the whole-optional bare param pass
+    # (deref-on-narrow stripped); other scalar sources ride the generic tail.
+    "ret.value_opt_none",
+    "ret.value_opt_name",
 
     # Container-literal element families (lowering; the widened
     # THIRContainerLiteral slots) plus the make_vector/make_ordered_* switch
@@ -201,9 +249,21 @@ THIR_FACES: frozenset[str] = frozenset({
     "ret.tuple_literal",
     "ret.tuple_name",
     "decl.tuple_literal",
+    # Widened value-tuple RETURN elements: a NESTED value-tuple element (spelled
+    # recursively) and a value-`Optional[scalar]` element (`None`->`std::nullopt`
+    # / a scalar value bare). Return-slot only.
+    "ret.tuple_nested_elem",
+    "ret.tuple_opt_elem",
+    # A value-`Optional[str]` RETURN element: a str-view source wraps
+    # `std::string(view)` through the Optional slot; `None`->`std::nullopt`, a
+    # str literal bare.
+    "ret.tuple_opt_str_elem",
     # Owned record local decl (lowering; the `{cpp_type} {name} = <rvalue>;`
     # plain-value render).
     "decl.owned_record",
+    # Owned record local decl from a method-call rvalue source (`Rec r =
+    # b.build();`) -- the method sibling of the free-call `decl.owned_record`.
+    "decl.owned_record_method",
     # Storage-call local decl (gate admission; a container/tuple/union-
     # returning call init -- the bare `T x = f(...);` / plain reassign,
     # rendered by the shared generic decl tail).
@@ -234,6 +294,13 @@ THIR_FACES: frozenset[str] = frozenset({
     # the `::tpy::BigInt` cpp_elem + literal-bound retype, shared with the
     # fixed-int emit).
     "range.bigint_counter",
+    # 3-arg stepped range loop, by step arm (gate admission; each arm's emit
+    # is a distinct overflow / direction shape mirroring _gen_range_counter_loop).
+    "range.step_plus_one",          # literal +1 step -> the ascending ++ loop
+    "range.step_unit_neg",          # literal -1 step -> the descending -- loop
+    "range.step_literal_pos",       # non-unit positive literal step
+    "range.step_literal_neg",       # non-unit negative literal step
+    "range.step_variable",          # fixed-int-name step (captured `__step_N`)
     # Bool-field truthiness condition (gate admission; `if self.closed:` --
     # a bool value's truthiness render IS its value render, so the admitted
     # field-read emit carries the condition unchanged).
@@ -294,11 +361,32 @@ THIR_FACES: frozenset[str] = frozenset({
     "try.hoist_decl",               # sema-hoisted plain-value predecls
     "try.body_terminates",          # normal-path finally copy elided
     "try.finally_terminates",       # raise/return-ending finally: no rethrow
+    # if/elif/else (lowering, per statement).
+    "if.hoist_decl",                # sema-hoisted plain-value branch predecls
     # Raise statements (lowering).
     "raise.ctor",                   # `raise X(args)` -> `throw <cpp>(...)`
     "raise.bare",                   # bare re-raise -> `throw;`
+    # dict/set membership (`needle in c` -> `(c.contains(needle))`, the
+    # resolved_contains arm; witnessed at gate admission and again at
+    # lowering -- non-vacuity only needs a nonzero count).
+    "binop.membership",
+    # A fixed-int bitwise op (`a & b`, `a << b`, ...) admitted at the scalar
+    # arm -- same resolved-binop template emit as arithmetic (gate admission).
+    "binop.bitwise",
+    # A compositional container param (`list`/`dict`/`set`/`Array`/`Span` of any
+    # fully-concrete element) admitted so its subscript / len / iteration /
+    # membership route (gate admission; the by-ref signature is AST-emitted and
+    # element-type-neutral, so admission is the distinguishing site for the
+    # newly-reachable bodies -- each element USE is gated by the body walk).
+    "param.container",
     # Trivia (lowering): docstring / `pass` -> THIRNoOpStmt, body-wide.
     "stmt.trivia",
+    # Standalone `a, b = <name>` unpack of a value-scalar tuple (lowering):
+    # `const auto& __tup_N = name;` + per-target scalar decls.
+    "stmt.tuple_unpack",
+    # A non-name unpack source (lowering): a value-tuple-returning call or a
+    # value-tuple field read -> `auto __tup_N = <expr>;` (value capture).
+    "stmt.tuple_unpack.rvalue_source",
     # THIRComprehension (lowering, the C1+C2 slice).
     "comp.list",                    # list comp -> vector stmt-expr
     "comp.set",                     # set comp -> ordered_set stmt-expr
@@ -311,6 +399,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "comp.range3",                  # 3-arg range: begin/end over the Range object
     "comp.field_iter",              # field-access iterable (recv.items)
     "comp.print_arg",               # comprehension print arg (container printer wrap)
+    "print.optval",                 # un-narrowed value-repr Optional[scalar/str]
+                                    # print arg -> bare `::tpy::print_optional_val`
     "comp.array_range",             # Array demotion: array_from_index range lambda
     # THIRMatch M1 -- the unguarded scalar switch tiers (lowering).
     "match.switch_enum",            # switch over enum-member case labels

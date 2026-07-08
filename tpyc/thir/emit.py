@@ -30,7 +30,7 @@ from ..type_def_registry import (
     is_set, is_str_type, is_string_type, view_to_owned_conv,
 )
 from ..typesys import (OptionalType, TpyType, TupleType, TypeParamRef,
-                       UnionType, unwrap_qualifiers)
+                       UnionType, unwrap_qualifiers, view_family_for_type)
 from .nodes import (
     Form,
     PrintForm,
@@ -61,6 +61,7 @@ from .nodes import (
     THIRIf,
     THIRIfExpr,
     THIRIsNone,
+    THIRMembership,
     THIRIsinstance,
     THIRLiteral,
     THIRMatch,
@@ -87,6 +88,8 @@ from .nodes import (
     THIRTry,
     THIRTupleLiteral,
     THIRTupleUnpack,
+    THIROptTruthy,
+    THIROptViewArg,
     THIRUnaryNot,
     THIRUnionArgLift,
     THIRVarDecl,
@@ -881,9 +884,33 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         # name's truthiness render is the bare `T*` (gen_truthy_expr), so the
         # same wrap serves `not p` too.
         return f"(!({_emit_expr(e.operand, state)}))"
+    if isinstance(e, THIRMembership):
+        # _gen_binop's resolved_contains arm: `(recv.contains(needle))`, the
+        # negation wrapping the already-parenthesized find expr.
+        inner = (f"({_emit_expr(e.receiver, state)}.{e.method_cpp}"
+                 f"({_emit_expr(e.needle, state)}))")
+        return f"(!{inner})" if e.negate else inner
     if isinstance(e, THIRIsNone):
+        inner = _emit_expr(e.operand, state)
+        if e.value_repr:
+            # `std::optional<T>` param: `is None` -> `(!p.has_value())`,
+            # `is not None` -> `(p.has_value())` (_gen_binop's has_value arm).
+            return f"({inner}.has_value())" if e.negate else f"(!{inner}.has_value())"
         op = "!=" if e.negate else "=="
-        return f"({_emit_expr(e.operand, state)} {op} nullptr)"
+        return f"({inner} {op} nullptr)"
+    if isinstance(e, THIROptTruthy):
+        return f"::tpy::is_truthy({_emit_expr(e.operand, state)})"
+    if isinstance(e, THIROptViewArg):
+        # `_maybe_convert_opt_view_param`'s same-TPy-type ARG split: the
+        # borrow-form `optional<view>` param -> the owned-storage
+        # `optional<owned>` slot. The owned copy spelling keys on the view
+        # FAMILY's owned type (`std::string` for str, incl. a `StrView` inner
+        # whose family owned_type is still `str`), matching the AST's
+        # `view_to_owned_conv(family.owned_type)`.
+        n = escape_cpp_name(e.name)
+        fam = view_family_for_type(e.result_type.inner)
+        conv = view_to_owned_conv(fam.owned_type)
+        return f"{n} ? std::make_optional({conv}(*{n})) : std::nullopt"
     if isinstance(e, THIRIfExpr):
         # _gen_if_expr's render; arm targets and the mixed-arm str wraps were
         # decided at lowering, so the emit is pure spelling.
@@ -963,6 +990,10 @@ def _emit_if(out: TextIO, stmt: THIRIf, indent_level: int, state: _EmitState) ->
     # Flatten the elif chain into `} else if (...)`, matching the AST path.
     indent = INDENT * indent_level
     body_indent = INDENT * (indent_level + 1)
+    # Hoisted predecls precede the whole chain, like the AST's
+    # _emit_branch_decls run before _gen_if (see _emit_try).
+    for name, cpp_type in stmt.hoist_decls:
+        out.write(f"{indent}{cpp_type} {name};\n")
     chain = [stmt]
     while (len(chain[-1].else_body) == 1
            and isinstance(chain[-1].else_body[0], THIRIf)
@@ -1042,8 +1073,33 @@ def _emit_for_range(out: TextIO, stmt: THIRForRange, indent_level: int,
     if not stmt.stop_is_literal:
         out.write(f"{indent}{cpp_elem} __stop_{n} = {stop_cpp};\n")
         stop_cpp = f"__stop_{n}"
-    out.write(f"{indent}for ({cpp_elem} {var} = {start_cpp}; "
-              f"{var} < {stop_cpp}; ++{var}) {{\n")
+    # Mirror _gen_range_counter_loop's step arms. The unit steps are the plain
+    # ascending / descending loop; the non-unit literal / variable steps add the
+    # AST's upfront range_check_overflow (fixed-int only -- the gate admits no
+    # other counter here) and, for a variable step, a `__step_N` capture with a
+    # nonzero check and a ternary direction condition.
+    if stmt.step_kind == "plus_one":
+        out.write(f"{indent}for ({cpp_elem} {var} = {start_cpp}; "
+                  f"{var} < {stop_cpp}; ++{var}) {{\n")
+    elif stmt.step_kind == "unit_neg":
+        out.write(f"{indent}for ({cpp_elem} {var} = {start_cpp}; "
+                  f"{var} > {stop_cpp}; --{var}) {{\n")
+    elif stmt.step_kind in ("literal_pos", "literal_neg"):
+        step_cpp = _emit_expr(stmt.step, state)
+        out.write(f"{indent}::tpy::range_check_overflow<{cpp_elem}>("
+                  f"{start_cpp}, {stop_cpp}, {step_cpp});\n")
+        cmp = "<" if stmt.step_kind == "literal_pos" else ">"
+        out.write(f"{indent}for ({cpp_elem} {var} = {start_cpp}; "
+                  f"{var} {cmp} {stop_cpp}; {var} += {step_cpp}) {{\n")
+    else:  # variable
+        step_cpp = _emit_expr(stmt.step, state)
+        out.write(f"{indent}{cpp_elem} __step_{n} = {step_cpp};\n")
+        out.write(f"{indent}::tpy::range_check_step_nonzero(__step_{n});\n")
+        out.write(f"{indent}::tpy::range_check_overflow<{cpp_elem}>("
+                  f"{start_cpp}, {stop_cpp}, __step_{n});\n")
+        out.write(f"{indent}for ({cpp_elem} {var} = {start_cpp}; "
+                  f"__step_{n} > 0 ? {var} < {stop_cpp} : {var} > {stop_cpp}; "
+                  f"{var} += __step_{n}) {{\n")
     state.loop_depth += 1
     _emit_stmts(out, stmt.body, indent_level + 1, state)
     state.loop_depth -= 1
@@ -1926,12 +1982,20 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
         state.temps.flush(out, indent)
         out.write(f"{indent}{expr_cpp};\n")
     elif isinstance(stmt, THIRTupleUnpack):
-        # Mirrors _gen_tuple_unpack's slice arm: a bare-name loop-shadow
-        # source binds `const auto&` (no owned/ref elements), each non-discard
-        # target declares a fresh value-scalar local.
+        # Mirrors _gen_tuple_unpack's slice arm: each non-discard target
+        # declares a fresh value-scalar local. The source bind splits on shape
+        # -- a bare-name / loop-shadow source is ref-bound (`const auto&`, no
+        # owned/ref elements), a call / field rvalue is materialized by value
+        # (`auto`, the AST's non-name `else` arm; its arg temps flush before the
+        # bind line, exactly like a bare expr statement).
         tmp = f"__tup_{state.next_unpack()}"
-        out.write(f"{indent}const auto& {tmp} = "
-                  f"{escape_cpp_name(stmt.source)};\n")
+        if stmt.source_expr is not None:
+            src_cpp = _emit_expr(stmt.source_expr, state)
+            state.temps.flush(out, indent)
+            out.write(f"{indent}auto {tmp} = {src_cpp};\n")
+        else:
+            out.write(f"{indent}const auto& {tmp} = "
+                      f"{escape_cpp_name(stmt.source)};\n")
         for i, (name, cpp) in enumerate(zip(stmt.targets, stmt.target_cpps)):
             if name is None:
                 continue
@@ -1985,6 +2049,12 @@ def _emit_print_arg(a: THIRPrintArg, state: _EmitState) -> str:
         return f"::tpy::SetPrinter({inner})"
     if a.print_form is PrintForm.DICT:
         return f"::tpy::DictPrinter({inner})"
+    if a.print_form is PrintForm.OPT_VAL:
+        return f"::tpy::print_optional_val({inner})"
+    if a.print_form is PrintForm.OPT_VAL_BOOL:
+        return f"::tpy::print_optional_val<::tpy::print_bool, {a.opt_inner_cpp}>({inner})"
+    if a.print_form is PrintForm.OPT_VAL_FLOAT:
+        return f"::tpy::print_optional_val<::tpy::print_float, {a.opt_inner_cpp}>({inner})"
     return inner
 
 

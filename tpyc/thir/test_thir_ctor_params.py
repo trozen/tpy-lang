@@ -65,14 +65,27 @@ class TestOptvalParams:
         assert reason.startswith("ctor.mil_field")
         assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
-    def test_optval_narrowed_read_stays_ast(self):
-        # A narrowed read renders `(*p)` on the AST path -- the name-read
-        # guard rejects it, so the body statement (and the ctor) falls back.
+    def test_optval_narrowed_read_routes(self):
+        # A narrowed read of a value-repr Optional[cheap scalar] param unwraps
+        # `(*p)` (deref-on-narrow), so the ctor body routes byte-identically.
         src = _ctor_src("Int32 | None",
                         "        if p is not None:\n"
                         "            self.y = p + 1\n")
         ctor, _ = _lower_ctor_reason(src, "C")
-        assert ctor is None
+        assert ctor is not None
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+    def test_optval_bigint_block_local_read_routes(self):
+        # A BigInt block-local first-declared inside the narrowed branch
+        # (`x = p`, the if hoists nothing) is a value block-local -- it lowers
+        # in place, byte-identically to the AST read.
+        src = _ctor_src("int | None",
+                        "        if p is not None:\n"
+                        "            self.y = 1\n"
+                        "            x = p\n"
+                        "            print(x)\n")
+        ctor, _ = _lower_ctor_reason(src, "C")
+        assert ctor is not None
         assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_optval_bytes_unused_routes(self):

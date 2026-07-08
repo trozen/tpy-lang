@@ -225,16 +225,60 @@ class THIRBinOp(THIRExpr):
 
 @dataclass(frozen=True)
 class THIRIsNone(THIRExpr):
-    """A `name is None` / `name is not None` identity test on a pointer-repr
+    """A `name is None` / `name is not None` identity test. On a pointer-repr
     Optional borrow name (an `Optional[record]` param or an OPTIONAL_TO_PTR
-    local -- a bare `T*`), rendered as the pointer comparison
+    local -- a bare `T*`) it renders the pointer comparison
     `(operand == nullptr)` / `(operand != nullptr)` -- _gen_binop's identity
-    arm over an indirect name. The AST canonicalizes the operand order (the
+    arm over an indirect name. On a value-repr `Optional[scalar]` /
+    `Optional[str]` param (`std::optional<T>` / `std::optional<std::string_view>`,
+    `value_repr=True`) it renders `(!operand.has_value())` /
+    `(operand.has_value())`. The AST canonicalizes the operand order (the
     Optional side renders first whichever side of `is` it appears on), so the
-    node carries only the Optional operand; the storage-form sources
-    (`has_value()`) and protocol slots (typed null) are gate-rejected.
-    `result_type` is always bool; VALUE form."""
+    node carries only the Optional operand; the storage-form record sources and
+    protocol slots (typed null) are gate-rejected. `result_type` is always
+    bool; VALUE form."""
     operand: THIRExpr
+    negate: bool = False
+    value_repr: bool = False
+
+
+@dataclass(frozen=True)
+class THIROptTruthy(THIRExpr):
+    """The truthiness wrap `::tpy::is_truthy(operand)` for an UN-narrowed
+    value-repr `Optional[scalar]` / `Optional[str]` read in a condition or
+    `not` operand (gen_truthy_expr's optional arm). `if p:` ->
+    `::tpy::is_truthy(p)`, and `not p` -> `(!(::tpy::is_truthy(p)))` (the
+    THIRUnaryNot wrap over this). result_type is always bool; VALUE form."""
+    operand: THIRExpr
+
+
+@dataclass(frozen=True)
+class THIROptViewArg(THIRExpr):
+    """A value-repr `Optional[str]` param NAME passed into another value-repr
+    `Optional[str]` slot -- the AST's `_maybe_convert_opt_view_param` same-TPy-
+    type ARG split. The borrow-form `std::optional<std::string_view>` binding
+    is converted to the owned-storage `std::optional<std::string>` the callee
+    slot's boundary needs: `s ? std::make_optional(std::string(*s)) :
+    std::nullopt`. Fires for the WHOLE optional (narrowed or not -- gen_expr
+    threads the slot type, not the narrowed read). `result_type` is the
+    Optional slot, whose inner drives the owned-copy spelling
+    (`view_to_owned_conv`); VALUE form."""
+    name: str = ""
+
+
+@dataclass(frozen=True)
+class THIRMembership(THIRExpr):
+    """A `needle in c` / `needle not in c` test over a dict/set container name
+    whose `__contains__` is a plain @native member -- `(c.contains(needle))`,
+    optionally negated `(!(c.contains(needle)))`, mirroring _gen_binop's
+    resolved_contains arm. `method_cpp` is the member spelling (the
+    `@native("contains")` name). The needle renders bare: the admitted
+    containers carry fixed-int / owned-str keys and scalar set members, never a
+    StrView key, so the AST's `view_key_target` is None and the needle takes the
+    plain value render. `result_type` is always bool; VALUE form."""
+    receiver: THIRExpr
+    needle: THIRExpr
+    method_cpp: str
     negate: bool = False
 
 
@@ -940,11 +984,18 @@ class THIRIf(THIRStmt):
     `} else if (...)` (the alias must be declared inside the else block), so
     the chain breaks and the inner if emits as a nested statement --
     `} else {` + its own source comment + `if (...)` one level deeper
-    (`_gen_if`'s `_has_concrete_isinstance_facts` chain-collect gate)."""
+    (`_gen_if`'s `_has_concrete_isinstance_facts` chain-collect gate).
+
+    `hoist_decls` mirrors `THIRTry.hoist_decls`: a value var first-declared
+    in a branch and definitely-assigned-after is predeclared `T v;` at the
+    chain head (the AST's `_emit_branch_decls` before `_gen_if`), the
+    in-branch assigns lowering as bare reassigns against the slot. The
+    narrowing-condition path never carries hoists (deferred)."""
     condition: THIRExpr
     then_body: tuple[THIRStmt, ...]
     else_body: tuple[THIRStmt, ...] = ()
     else_is_nested: bool = False
+    hoist_decls: tuple[tuple[str, str], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -976,15 +1027,24 @@ class THIRAssert(THIRStmt):
 
 @dataclass(frozen=True)
 class THIRForRange(THIRStmt):
-    """`for <var> in range(...)` lowered to a C-style counter loop, step 1.
+    """`for <var> in range(...)` lowered to a C-style counter loop.
 
-    Mirrors the AST path's `_gen_range_counter_loop` plus_one / non-hoisted
-    branch. `start` is None for `range(stop)` (implicit 0). A non-literal bound
-    is hoisted by the emitter into a `__start_N`/`__stop_N` temp, where N is the
-    per-function loop index reproducing `ctx.iter_counter`; `*_is_literal`
-    mirrors `_is_literal_range_arg`'s inline-vs-hoist decision (`start_is_literal`
-    is unused when `start` is None). Slice: fixed-int counter, loop var not used
-    after the loop, no for/else, bounds restricted to bare literal or name."""
+    Mirrors the AST path's `_gen_range_counter_loop`. `start` is None for
+    `range(stop)` (implicit 0). A non-literal bound is hoisted by the emitter
+    into a `__start_N`/`__stop_N` temp, where N is the per-function loop index
+    reproducing `ctx.iter_counter`; `*_is_literal` mirrors `_is_literal_range_arg`'s
+    inline-vs-hoist decision (`start_is_literal` is unused when `start` is None).
+
+    `step_kind` selects the AST emit arm: `plus_one` (`i < stop; ++i`, also a
+    literal +1 step), `unit_neg` (`i > stop; --i`, literal -1 step), `literal_pos`
+    / `literal_neg` (a non-unit literal step -- upfront overflow check then
+    `i +/-> stop; i += step`), or `variable` (a fixed-int-name step captured into
+    `__step_N`, nonzero + overflow checks, ternary direction condition). `step`
+    carries the lowered step expr for the three non-unit arms, None otherwise.
+
+    Slice: fixed-int counter, loop var not used after the loop, no for/else,
+    bounds restricted to bare literal / name / arith / call, step restricted to
+    a bare (negated) int literal or a bare fixed-int name."""
     var: str
     elem_type: TpyType
     stop: THIRExpr
@@ -992,27 +1052,38 @@ class THIRForRange(THIRStmt):
     start_is_literal: bool = True
     stop_is_literal: bool = True
     body: tuple[THIRStmt, ...] = ()
+    step: THIRExpr | None = None
+    step_kind: str = "plus_one"
 
 
 @dataclass(frozen=True)
 class THIRTupleUnpack(THIRStmt):
-    """The `a, b = __for_tup_M` head statement of a tuple-unpack for loop --
-    mirrors `_gen_tuple_unpack`'s slice arm (bare-name loop-shadow source,
-    all-new plain value-scalar targets, no ref/owned/const-ref elements):
+    """A standalone `a, b = <source>` (or the `a, b = __for_tup_M` head of a
+    tuple-unpack for loop) over a value-scalar tuple -- mirrors
+    `_gen_tuple_unpack`'s slice arm (all-new plain value-scalar targets, no
+    ref/owned/const-ref elements). The SOURCE bind splits on shape, exactly as
+    the AST's `isinstance(stmt.value, TpyName)` discriminator:
 
-        const auto& __tup_N = __for_tup_M;
+        const auto& __tup_N = <name>;   // a bare name / loop-shadow source
+        auto __tup_N = <expr>;          // a call / field rvalue source
+
+    followed by a per-target scalar decl:
+
         int32_t a = std::get<0>(__tup_N);
         int32_t b = std::get<1>(__tup_N);
 
-    `N` reproduces `ctx.unpack_counter` (per-function, pre-incremented). The
-    counter's other consumers (expression-position `__tup_`/`__dk_` temps)
-    are all gate-rejected, so a per-body emit counter numbers identically.
-    A None target is the `_` discard -- its slot emits nothing. `target_cpps`
-    carries the rendered decl types (render_type at lowering), None at
-    discard slots."""
+    `source_expr` carries the non-name rvalue (a value-tuple-returning call, a
+    value-tuple field read); when it is None the `source` name takes the
+    ref-binding form. `N` reproduces `ctx.unpack_counter` (per-function,
+    pre-incremented). The counter's other consumers (expression-position
+    `__tup_`/`__dk_` temps) are all gate-rejected, so a per-body emit counter
+    numbers identically. A None target is the `_` discard -- its slot emits
+    nothing. `target_cpps` carries the rendered decl types (render_type at
+    lowering), None at discard slots."""
     source: str
     targets: tuple[str | None, ...]
     target_cpps: tuple[str | None, ...]
+    source_expr: 'THIRExpr | None' = None
 
 
 @dataclass(frozen=True)
@@ -1049,12 +1120,11 @@ class THIRForEach(THIRStmt):
     rvalues: `iterable_lvalue=False`, the owning `auto __obj_N =` capture; a
     borrow container return is an lvalue -- `is_lvalue_iterable`'s call arm;
     bytes-returning calls stay gate-excluded); loop var not reassigned/moved
-    (a record alias can't reseat) and not used after the loop. Container params reaching here are
-    `list[scalar|str]` / `dict[fixed-int|str key]` (`_container_scalar_read`) and
-    `list[record]`
-    (`_container_record_iter`); `set` / `Span` / `Array` pass `is_native_iterable` but are
-    inert as params (a `set[scalar|str]` LITERAL local iterates). Generators / user
-    iterators (the
+    (a record alias can't reseat) and not used after the loop. Any
+    `list`/`dict`/`set`/`Span`/`Array` param of a fully-concrete element reaches
+    here (`_container_param_renders` admits the param; the loop var binds through
+    the shared `loop_var_binding`, and the element USE gates decide). Generators
+    / user iterators (the
     `__iter__`/`__next__` fallback), `dict.items()` / tuple-unpack, and hoisted loop vars
     ride later cells."""
     var: str
@@ -1387,6 +1457,13 @@ class PrintForm(Enum):
       * `LIST`/`SET`/`DICT` -- the container-printer wraps (gen_print's
         container arms); currently only comprehension args take these (the
         C3 print-arg row).
+      * `OPT_VAL` -- `::tpy::print_optional_val(...)` on the whole (bare,
+        un-narrowed) value-repr `Optional[int/Char/str]` (gen_print's
+        value-repr Optional arm, plain form).
+      * `OPT_VAL_BOOL`/`OPT_VAL_FLOAT` -- the same on `Optional[bool]` /
+        `Optional[float]`, taking an explicit Formatter + inner-type template
+        (`<::tpy::print_bool, T>` / `<::tpy::print_float, T>`); the inner C++
+        type rides `THIRPrintArg.opt_inner_cpp`.
     """
     RAW = auto()
     INT8 = auto()
@@ -1398,15 +1475,21 @@ class PrintForm(Enum):
     LIST = auto()
     SET = auto()
     DICT = auto()
+    OPT_VAL = auto()
+    OPT_VAL_BOOL = auto()
+    OPT_VAL_FLOAT = auto()
 
 
 @dataclass(frozen=True)
 class THIRPrintArg:
     """One `print()` argument: the lowered expression + how the emitter wraps it.
     `print_form` is named distinctly from `THIRExpr.form` (the unrelated
-    borrow/storage axis) to keep the two from being conflated."""
+    borrow/storage axis) to keep the two from being conflated. `opt_inner_cpp`
+    carries the Optional inner's C++ spelling for the templated
+    `OPT_VAL_BOOL`/`OPT_VAL_FLOAT` wrappers (None for every other form)."""
     expr: THIRExpr
     print_form: PrintForm
+    opt_inner_cpp: str | None = None
 
 
 @dataclass(frozen=True)

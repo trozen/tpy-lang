@@ -6,11 +6,18 @@ Drives the work by the **finite emit surface we must port** (~236 emit functions
 combinatorial ~5,100 body *shapes* those arms generate. Shapes are the products;
 arms are the generators. Chasing shapes is asymptotic; porting arms is bounded.
 
-Companion to `THIR_COMPLETION_LEDGER.md` (deletion-target model + landing log)
+Companion to `THIR_COMPLETION_LEDGER.md` (deletion-target model)
 and the shape meter (`tpyc/thir/shape.py`, `$THIR_SHAPES_JSON`) which measures
 progress. Leverage figures below are real-corpus blocked-body counts from a full
 `--thir-codegen` run (2026-07-06, master @ edc226168e; 691/5136 distinct shapes
-routed).
+routed). **Updated 2026-07-08 (branch thir-param-grid):** ~1,239/5,179 distinct
+shapes routed (~24%) after the 8 param/return/compositional waves. Note: the
+COMPOSITIONAL-GATE approach (a single "type renders identically AND sub-exprs
+route" predicate for type-keyed constructs -- container params, for-each
+elements, comprehension loop vars, subscript value-leaf reads) reduces the
+effective arm count for those constructs from a per-family whitelist to one
+predicate; form-sensitive constructs (call-args, field-writes, container-literal
+element storage) do not collapse until the form fact is on the node.
 
 **Tally-honesty correction (2026-07-06, container-rung branch):** the fallback
 attempt driver used to count (and sometimes route) `...`-stub callables the AST

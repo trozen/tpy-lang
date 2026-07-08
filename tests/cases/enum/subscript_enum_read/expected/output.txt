@@ -1,0 +1,4 @@
+Color.Red
+Color.Blue
+Color.Blue
+Color.Green

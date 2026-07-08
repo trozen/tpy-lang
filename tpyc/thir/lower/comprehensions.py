@@ -26,6 +26,7 @@ from ...typesys import (
 from ...type_def_registry import (
     is_array,
     is_big_int_type,
+    is_bytes_type,
     is_dict,
     is_dict_view,
     is_list,
@@ -37,13 +38,16 @@ from ..nodes import THIRCall, THIRComprehension
 from .predicates import (
     _dict_view_iterable_ok,
     _eligible_char,
+    _eligible_enum,
     _eligible_scalar,
     _f1_record,
     _field_decl_type,
     _field_receiver_ok,
+    _for_each_elem_binding_ok,
     _is_range_call,
     _owned_str_slot,
     _range_counter_type,
+    _resolved_bytes_value,
     _resolved_str_value,
     _resolved_viewfam_value,
     _var_decl_type,
@@ -195,19 +199,54 @@ def _comp_route(init, declared: dict[str, TpyType], narrowed: 'set[str]',
     str_et = _resolved_str_value(et, analyzer)
     if str_et is not None:
         et = str_et
-    elif not (_eligible_scalar(et) or _eligible_char(et)
-              or _f1_record(et, analyzer)):
+    # Compositional loop-var gate (the for-each twin): the begin/end comp loop
+    # binds the loop var through the SAME shared loop_var_binding, so any
+    # resolved element renders identically; the element/key/value/filter reads
+    # of the var route recursively through the expr gates. Only an unresolved
+    # pending element (spelled before the AST's resolve_type concretizes it)
+    # stays on the AST path.
+    if not _for_each_elem_binding_ok(et):
         return None
     return _CompRoute(kind=kind, loop="begin_end", counter_type=None,
                       it_type=it_type, et=et, iterable_lvalue=lvalue,
                       sized_reserve=sized, unpack_types=None)
 
 def _comp_slot_ok(slot: 'TpyType | None', analyzer) -> bool:
-    # Char slots ride the same targeted element render as scalars
-    # (gen_expr_deref(elem, Char) -- the comp elements ARE target-typed,
+    # The NARROW slot predicate, kept for dict KEYS (the hashable-key axis:
+    # widening keys to enum/bytes/record is the container-literal cell's
+    # separate key-family concern -- a record key isn't hashable, an enum/bytes
+    # key rides a later row). Char slots ride the same targeted element render
+    # as scalars (gen_expr_deref(elem, Char) -- comp elements ARE target-typed,
     # unlike list-literal elements).
     return (_eligible_scalar(slot) or _eligible_char(slot)
             or _owned_str_slot(slot, analyzer))
+
+def _comp_elem_slot_ok(slot: 'TpyType | None', analyzer) -> bool:
+    """The list/set element + dict VALUE result slot whose
+    `_lower_container_elem` render is element-SHAPE-independent, so ANY routed
+    element expr into it is byte-identical -- the compositional twin of the
+    for-each loop-var gate on the append/insert side. The wrap keys on the
+    element's FORM, not its node kind:
+
+    - value scalar / Char -- bare / target-typed literal retype;
+    - owned str / bytes slot -- a BORROW source copies (`std::string(x)` /
+      `::tpy::bytes_copy`), a STORAGE/literal source lands bare;
+    - enum -- a value type, bare;
+    - F1-record -- a name derefs/moves off the same movable_locals facts the
+      AST reads, an rvalue lands bare (no owned-slot wrap for records).
+
+    The SHAPE-sensitive families stay on the AST path (`_lower_container_elem`
+    branches on the element NODE for them, so a general routed element could
+    diverge): Optional (`None` -> `std::nullopt` vs a scalar value), value-tuple
+    (a tuple LITERAL only), nested container (an Array LITERAL only), union, and
+    a str/bytes VIEW slot (owned-only here)."""
+    if _comp_slot_ok(slot, analyzer):
+        return True
+    bt = _resolved_bytes_value(slot, analyzer)
+    if bt is not None and is_bytes_type(bt):
+        return True
+    return (_eligible_enum(slot, analyzer) is not None
+            or _f1_record(slot, analyzer))
 
 def _comp_decl_ok(stmt: TpyVarDecl, ws: _WalkState, prescan: _Prescan,
                   analyzer) -> bool:
@@ -253,15 +292,15 @@ def _comp_expr_ok(init, t: 'TpyType | None', ws: _WalkState, analyzer) -> bool:
     if not args:
         return False
     if route.kind == "list" and not (is_list(t)
-                                     and _comp_slot_ok(args[0], analyzer)):
+                                     and _comp_elem_slot_ok(args[0], analyzer)):
         return False
     if route.kind == "set" and not (is_set(t)
-                                    and _comp_slot_ok(args[0], analyzer)):
+                                    and _comp_elem_slot_ok(args[0], analyzer)):
         return False
     if route.kind == "dict" and not (
             is_dict(t) and len(args) == 2
-            and _comp_slot_ok(args[0], analyzer)
-            and _comp_slot_ok(args[1], analyzer)):
+            and _comp_slot_ok(args[0], analyzer)          # key: narrow
+            and _comp_elem_slot_ok(args[1], analyzer)):   # value: widened
         return False
     gen = init.generator
     # The comp vars shadow same-named outer locals for the element/filter
@@ -313,7 +352,7 @@ def _comp_array_ok(init, t: TpyType, ws: _WalkState, analyzer) -> bool:
     if not _eligible_scalar(counter):
         return False
     args_t = getattr(t, "type_args", None)
-    if not args_t or not _comp_slot_ok(args_t[0], analyzer):
+    if not args_t or not _comp_elem_slot_ok(args_t[0], analyzer):
         return False
     # Bounds render untargeted (the AST's bare gen_expr_deref) -- only the
     # start/step spellings reach the emit; the stop is encoded in N.

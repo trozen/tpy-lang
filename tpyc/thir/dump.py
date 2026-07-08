@@ -52,6 +52,8 @@ from .nodes import (
     THIRStrSlice,
     THIRSubscript,
     THIRTupleUnpack,
+    THIROptTruthy,
+    THIROptViewArg,
     THIRUnaryNot,
     THIRUnionArgLift,
     THIRVarDecl,
@@ -98,7 +100,12 @@ def _expr(e: THIRExpr) -> str:
     if isinstance(e, THIRUnaryNot):
         return f"not({_expr(e.operand)})"
     if isinstance(e, THIRIsNone):
-        return f"is_none({_expr(e.operand)}{', negate' if e.negate else ''})"
+        return (f"is_none({_expr(e.operand)}{', negate' if e.negate else ''}"
+                f"{', value_repr' if e.value_repr else ''})")
+    if isinstance(e, THIROptTruthy):
+        return f"opt_truthy({_expr(e.operand)})"
+    if isinstance(e, THIROptViewArg):
+        return f"opt_view_arg({e.name})"
     if isinstance(e, THIRIfExpr):
         # The form tag is emit-relevant for a str-family result (the
         # owned-sink copy fires on BORROW), so surface it.
@@ -248,7 +255,8 @@ def _stmt_lines(stmt: THIRStmt, depth: int) -> list[str]:
         return lines
     if isinstance(stmt, THIRForRange):
         start = "0" if stmt.start is None else _expr(stmt.start)
-        lines = [f"{pad}for %{stmt.var} in range({start}, {_expr(stmt.stop)}):"]
+        step = f", {_expr(stmt.step)}" if stmt.step is not None else ""
+        lines = [f"{pad}for %{stmt.var} in range({start}, {_expr(stmt.stop)}{step}):"]
         for s in stmt.body:
             lines.extend(_stmt_lines(s, depth + 1))
         return lines
@@ -310,7 +318,9 @@ def _stmt_lines(stmt: THIRStmt, depth: int) -> list[str]:
         return lines
     if isinstance(stmt, THIRTupleUnpack):
         tgts = ", ".join(n if n is not None else "_" for n in stmt.targets)
-        return [f"{pad}{tgts} = %{stmt.source}"]
+        src = _expr(stmt.source_expr) if stmt.source_expr is not None \
+            else f"%{stmt.source}"
+        return [f"{pad}{tgts} = {src}"]
     if isinstance(stmt, THIRBreak):
         return [f"{pad}break"]
     if isinstance(stmt, THIRContinue):

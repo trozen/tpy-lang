@@ -89,6 +89,9 @@ from ..nodes import (
     THIRFString,
     THIRFStringArg,
     THIRIsNone,
+    THIRMembership,
+    THIROptTruthy,
+    THIROptViewArg,
     THIRLiteral,
     THIRMethodCall,
     THIRMove,
@@ -110,6 +113,7 @@ from .predicates import (
     _COMPARE_OPS,
     _FLOAT32_LIT_COERCION,
     _IS_OPS,
+    _MEMBERSHIP_OPS,
     _arg_ptr_union_slot,
     _binop_operand_casts,
     _bytes_name_form,
@@ -136,6 +140,7 @@ from .predicates import (
     _own_lvalue_temp_slot,
     _peel_coerce,
     _plain_member_call_markers_ok,
+    _plain_own_slot,
     _range_counter_type,
     _record_rvalue_temp_slot,
     _resolve_pending_view,
@@ -145,7 +150,13 @@ from .predicates import (
     _runtime_bigint,
     _str_name_form,
     _subscript_index_and_tuple,
+    _opt_view_arg_shim,
+    _none_value_opt_arg,
+    _value_opt_scalar,
+    _value_opt_scalar_name,
+    _value_opt_str,
     _value_tuple,
+    _value_tuple_return,
     _value_union_temp_slot,
 )
 from .context import _LowerCtx
@@ -225,6 +236,33 @@ def _is_own_param(name: str, lc: '_LowerCtx') -> bool:
                     and unwrap_optional_own(unwrap_readonly(t)) is not None)
     return False
 
+def _value_opt_scalar_param(name: str, lc: '_LowerCtx') -> bool:
+    """Whether `name` is a value-repr `Optional[cheap scalar]` param
+    (`std::optional<T>`) of the function being lowered -- the binding whose
+    reads render bare (un-narrowed) / `(*p)` (narrowed) and whose None-test
+    and truthiness carry the value-repr renders."""
+    for n, t in lc.func.params:
+        if n == name:
+            return _value_opt_scalar(t, lc.analyzer) is not None
+    return False
+
+def _value_opt_str_param(name: str, lc: '_LowerCtx') -> bool:
+    """Whether `name` is a value-repr `Optional[str]` param
+    (`std::optional<std::string_view>`) of the function being lowered -- the str
+    twin of `_value_opt_scalar_param`. A narrowed read unwraps `(*s)` (a borrow
+    string_view), the None-test/truthiness carry the same value-repr renders,
+    and a pass into another `Optional[str]` slot takes the arg-split shim."""
+    return _value_opt_str(_param_declared_type(name, lc), lc.analyzer) is not None
+
+def _param_declared_type(name: str, lc: '_LowerCtx') -> 'TpyType | None':
+    """The declared type of param `name` on the function being lowered, or None
+    when `name` is not a param -- the source-type lookup the arg-split shim keys
+    its family match on."""
+    for n, t in lc.func.params:
+        if n == name:
+            return t if isinstance(t, TpyType) else None
+    return None
+
 def _lower_expr(e: TpyExpr, lc: '_LowerCtx', *, temp_args: bool = False) -> THIRExpr:
     # `temp_args` admits the arg-temp rows for THIS expression's args only
     # when it is a free call: set by the five flushable statement positions
@@ -279,6 +317,30 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx', *, temp_args: bool = False) -> THIR
                 result_type=rtype, name=alias,
                 form=Form.BORROW if _is_borrow_form_name(rtype) else Form.VALUE,
                 loc=loc)
+        if _value_opt_scalar_param(e.name, lc):
+            # A value-repr Optional[scalar] param (`std::optional<T>`). An
+            # UN-narrowed read renders the bare optional (`p`, into an optional
+            # slot); a NARROWED read (sema retyped it to the inner scalar,
+            # `rtype` no longer Optional) unwraps `(*p)` -- gen_expr_deref's
+            # value-optional deref. The bare-target positions where the AST does
+            # NOT deref a narrowed read (a value-optional call slot) strip this
+            # deref at the arg boundary (_lower_call_arg).
+            narrowed = not isinstance(unwrap_readonly(rtype), OptionalType)
+            return THIRName(result_type=rtype, name=e.name, cpp=gcpp,
+                            form=Form.VALUE, deref=narrowed, loc=loc)
+        if _value_opt_str_param(e.name, lc):
+            # A value-repr Optional[str] param (`std::optional<std::string_view>`).
+            # A NARROWED read (sema retyped it to the inner StrView, `rtype` no
+            # longer Optional) unwraps `(*s)` -- a BORROW-form string_view, so an
+            # owned-str sink still gets the `std::string((*s))` copy. An UN-narrowed
+            # read stays the bare whole optional (VALUE), reached only inside the
+            # None-test / truthiness / arg-shim wrappers (the bare value position
+            # is gate-rejected). This must precede the str-name arm below, which
+            # keys on the narrowed `str` rtype and would drop the deref.
+            narrowed = not isinstance(unwrap_readonly(rtype), OptionalType)
+            return THIRName(result_type=rtype, name=e.name, cpp=gcpp,
+                            form=Form.BORROW if narrowed else Form.VALUE,
+                            deref=narrowed, loc=loc)
         # A non-value name (a record param / REF_ALIAS / POINTER local used as a
         # field receiver) is a borrow; scalars are value form. A pointer-repr tuple
         # name is a borrow tuple param (`std::tuple<..., T*>`) UNLESS it is an F3
@@ -524,6 +586,18 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx', *, temp_args: bool = False) -> THIR
         # result (`::tpy::bytes_concat`, std::vector<uint8_t> by value) are
         # owned rvalues (STORAGE): they land bare in every owned sink, never
         # wrapped.
+        if e.op in _MEMBERSHIP_OPS:
+            # `needle in c` over a dict/set name -- `(c.contains(needle))`. The
+            # needle renders bare (view_key_target is None for the admitted
+            # containers), so it lowers with no slot target.
+            _witness("binop.membership")
+            return THIRMembership(
+                result_type=rtype,
+                receiver=_lower_expr(e.right, lc),
+                needle=_lower_expr(e.left, lc),
+                method_cpp=e.resolved_contains.native_name,
+                negate=e.op == "not in",
+                loc=loc)
         if e.op in _IS_OPS:
             # The None identity test on an Optional-ptr borrow name -- the
             # gate (`_is_none_compare_operand`) pinned the shape to exactly
@@ -532,9 +606,13 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx', *, temp_args: bool = False) -> THIR
             # (the AST canonicalizes `None is p` to the same
             # `(p ==|!= nullptr)` render).
             operand = e.right if isinstance(e.left, TpyNoneLiteral) else e.left
+            value_repr = (isinstance(operand, TpyName)
+                          and (_value_opt_scalar_param(operand.name, lc)
+                               or _value_opt_str_param(operand.name, lc)))
             return THIRIsNone(result_type=rtype,
                               operand=_lower_expr(operand, lc),
                               negate=e.op == "is not",
+                              value_repr=value_repr,
                               form=Form.VALUE, loc=loc)
         if e.op in _COMPARE_OPS:
             left = _lower_char_targeted(e.left, analyzer.get_expr_type(e.right), lc)
@@ -1068,10 +1146,12 @@ def _lower_container_elem(e: TpyExpr, slot: TpyType | None,
         return THIRLiteral(result_type=su, value=None, form=Form.STORAGE,
                            loc=getattr(e, "loc", None))
     if isinstance(e, TpyTupleLiteral):
-        # A value-tuple element lowers against its slot TupleType (the gate
-        # admitted only _tuple_literal_ok shapes); tuple literals have no
-        # generic _lower_expr arm.
-        vt = _value_tuple(slot, lc.analyzer)
+        # A NESTED value-tuple element lowers against its slot TupleType (the
+        # gate admitted only _tuple_literal_ok shapes); tuple literals have no
+        # generic _lower_expr arm. The widened return slot (`_value_tuple_
+        # return`) is used so a deeper nesting / value-Optional inner element
+        # resolves its own slot for the recursive spell.
+        vt = _value_tuple_return(slot, lc.analyzer)
         assert vt is not None, "tuple element without a value-tuple slot"
         return _lower_tuple_literal(e, vt, lc)
     el = _lower_expr(e, lc)
@@ -1088,7 +1168,17 @@ def _lower_container_elem(e: TpyExpr, slot: TpyType | None,
         _witness("containerlit.move")
         el = THIRMove(result_type=el.result_type, value=el, form=el.form,
                       loc=getattr(e, "loc", None))
-    st = _resolved_str_value(slot, lc.analyzer) if slot is not None else None
+    # A value-`Optional[str]` slot (a widened value-tuple RETURN element) wraps
+    # its str-view source exactly like the bare owned-str slot: the tuple
+    # brace-init relies on the implicit `std::string -> std::optional<std::string>`
+    # conversion, so the element renders `std::string(view)` (not a spelled
+    # optional wrap), matching the AST. Resolve the str target through the
+    # Optional inner.
+    ou = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(slot)))
+          if slot is not None else None)
+    str_slot = (ou.inner if isinstance(ou, OptionalType)
+                and not ou.uses_pointer_repr() else slot)
+    st = _resolved_str_value(str_slot, lc.analyzer) if str_slot is not None else None
     if st is not None and is_str_type(st) and el.form is Form.BORROW:
         return THIRFormConvert(result_type=st, value=el, form=Form.STORAGE,
                                loc=getattr(e, "loc", None))
@@ -1108,9 +1198,14 @@ def _container_elem_move_source(e: TpyExpr, lc: '_LowerCtx') -> bool:
     arms (the tier-1 `not is_value_type()` filter in _gen_var_decl), so a
     sema-movable VALUE local (e.g. a view-resolved promoted `str`) never
     moves on the AST path -- `lc.movable_locals` (the unfiltered sema set)
-    must not move it here either."""
+    must not move it here either. The value-Optional param exception:
+    seed_param_locals adds its (value-typed but expensive-copy) name to
+    codegen's movable set, so a narrowed `(*p)` element does move despite the
+    value-type filter."""
     if not _is_move_source(e, lc):
         return False
+    if isinstance(e, TpyName) and _value_opt_scalar_param(e.name, lc):
+        return True
     t = lc.analyzer.get_expr_type(e)
     if t is None:
         return False
@@ -1282,6 +1377,34 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
     indirect-name render -- only records become pointer-locals, so the
     membership test alone keys the retag); every other arg lowers
     position-blind."""
+    if (isinstance(a, TpyName) and _value_opt_scalar_param(a.name, lc)
+            and _value_opt_scalar(ptype, lc.analyzer) is not None):
+        # A value-repr Optional[scalar] name into a value-repr Optional slot
+        # passes the WHOLE optional bare (`take_opt(p)`), even when sema
+        # narrowed the read -- the AST's gen_call_arg derefs only for a
+        # NON-optional slot. Strip the name arm's deref-on-narrow.
+        return replace(_lower_expr(a, lc), deref=False)
+    if (isinstance(a, TpyName)
+            and _opt_view_arg_shim(_param_declared_type(a.name, lc), ptype,
+                                   lc.analyzer)):
+        # A value-repr Optional[str] name into another value-repr Optional[str]
+        # slot takes `_maybe_convert_opt_view_param`'s ARG split on the WHOLE
+        # optional (narrowed or not): the borrow `optional<string_view>` binding
+        # -> the owned `optional<string>` the slot needs (`s ? std::make_optional(
+        # std::string(*s)) : std::nullopt`). The family match (str inner, not the
+        # bare `StrView` spelling) is pinned by `_opt_view_arg_shim`.
+        return THIROptViewArg(
+            result_type=ptype, name=a.name, form=Form.VALUE,
+            loc=getattr(a, "loc", None))
+    none_opt = _none_value_opt_arg(a, ptype, lc.analyzer)
+    if none_opt is not None:
+        # A `None` literal into a value-repr Optional slot -> `std::nullopt`
+        # (STORAGE-form None), whatever the inner -- gen_call_arg's
+        # gen_expr_deref of a bare None at a value-optional target. A bare None
+        # has no `_lower_expr` arm, so this must intercept before the tail.
+        _witness("call.none_value_opt")
+        return THIRLiteral(result_type=none_opt, value=None, form=Form.STORAGE,
+                           loc=getattr(a, "loc", None))
     if isinstance(a, TpyStrLiteral) and _eligible_char(ptype):
         return _lower_char_targeted(a, ptype, lc)
     if isinstance(a, TpyTupleLiteral):
@@ -1327,6 +1450,20 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                 result_type=ut, cpp_type=ut.to_cpp(),
                 init=_lower_expr(a, lc), form=Form.VALUE,
                 loc=getattr(a, "loc", None))
+    # A str-slice arg into an `Own[str]` container element slot
+    # (`xs.append(s)`): a VIEW-form source (BORROW -- a str param / StrView
+    # local) materializes an owned copy `std::string(x)` via the S1 view->owned
+    # THIRFormConvert, exactly like `_lower_container_elem`'s element wrap; a
+    # str literal (VALUE, const char[N]) lands bare. The gate
+    # (`_str_owned_slot_arg`) admits only these two -- an owned STORAGE source
+    # takes gen_call_arg's copy+move temp cascade, left on the AST path.
+    ow_str = _plain_own_slot(ptype)
+    if ow_str is not None and is_str_type(ow_str):
+        lowered = _lower_expr(a, lc)
+        if lowered.form is Form.BORROW:
+            return THIRFormConvert(result_type=ow_str, value=lowered,
+                                   form=Form.STORAGE, loc=getattr(a, "loc", None))
+        return lowered
     # The Own-slot copy+move row: `auto __tmp_N = <arg>;` + the move wrap
     # at the arg position -- or the temp-free `std::move(name)` when the
     # name is movable at its last use (`_maybe_move` fires before the
@@ -1522,6 +1659,16 @@ def _lower_truthy(e: TpyExpr, lc: '_LowerCtx') -> THIRExpr:
     the plain-enum arm renders `true` and DROPS the operand, mirroring
     gen_truthy_expr); every other admitted shape's truthiness render equals
     its value render, so it lowers as a plain expression."""
+    if isinstance(e, TpyName) and (_value_opt_scalar_param(e.name, lc)
+                                   or _value_opt_str_param(e.name, lc)):
+        # A value-repr Optional[scalar] / Optional[str] read in a condition /
+        # `not` operand takes gen_truthy_expr's optional arm: `::tpy::is_truthy(p)`
+        # on the BARE optional, narrowed or not -- codegen's `narrowed_vars` is
+        # not populated for Optional None-narrowing, so the truthiness always sees
+        # the `std::optional<...>` binding (the deref-on-narrow is stripped here).
+        return THIROptTruthy(result_type=BOOL,
+                             operand=replace(_lower_expr(e, lc), deref=False),
+                             loc=getattr(e, "loc", None))
     wrap = _enum_truthy_wrap(lc.analyzer.get_expr_type(e), lc.analyzer)
     if wrap is None:
         return _lower_expr(e, lc)
@@ -1549,6 +1696,14 @@ def _str_view_arm(e: TpyExpr, lc: '_LowerCtx') -> bool:
         pt = next((t for n, t in lc.func.params if n == e.name), None)
         if is_str_type(pt) or (isinstance(pt, LiteralType)
                                and pt.is_str_base()):
+            return True
+        # A value-repr Optional[str] param arm is the narrowed `(*s)` read -- a
+        # string_view view. The AST reads this off `get_resolved_type` (which
+        # narrows the read to StrView); sema's `get_expr_type` leaves the arm
+        # Optional-typed, so key on the param binding instead. (An un-narrowed
+        # whole-optional arm never reaches here -- it would make the ternary
+        # Optional-typed, so `_lower_if_expr`'s str-result guard would not run.)
+        if _value_opt_str(pt, lc.analyzer) is not None:
             return True
     if isinstance(e, TpyCoerce):
         rt = e.expected_type

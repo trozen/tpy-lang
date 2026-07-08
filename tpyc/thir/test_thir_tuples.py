@@ -8,10 +8,11 @@ from ..codegen_cpp.forms import LocalBinding
 from .dump import dump_thir
 from .nodes import (
     Form, THIRAssign, THIRBinOp, THIRFieldAccess, THIRFormConvert, THIRName,
-    THIRReturn, THIRSubscript, THIRTupleLiteral, THIRVarDecl,
+    THIRReturn, THIRSubscript, THIRTupleLiteral, THIRTupleUnpack, THIRVarDecl,
 )
 from .testutil import (
-    _compile, _entry, _lower, _lower_ctx, _fn, _lower_ctor, _PRELUDE,
+    _compile, _entry, _lower, _lower_ctx, _fn, _lower_ctor,
+    _lower_ctx_witnessed, _PRELUDE,
 )
 
 # --- F3 form rung: storage->borrow tuple read (tuple_to_pointer) ---
@@ -756,3 +757,390 @@ class TestTupleCallSlots:
         )
         thir = _lower_ctx(src)
         assert _fn(thir, "use") is None
+
+
+# --- Widened value-tuple RETURN elements: nested value-tuple / value-Optional ---
+
+# The value-tuple return slot admits, beyond scalar / owned-str elements, a
+# NESTED value-tuple element (spelled recursively), a value-`Optional[scalar]`
+# element (`None`->`std::nullopt` / a scalar value bare), and a value-
+# `Optional[str]` element (a view source wraps `std::string(view)`). Return-slot
+# only: the param / decl / subscript-read / bare-name-return sinks stay on the
+# narrow value-tuple family (no bare-copy read arm for a widened-element receiver).
+class TestWidenedValueTupleReturn:
+    def test_nested_tuple_literal_return_routes(self):
+        thir = _lower(
+            _PRELUDE
+            + "def f(a: Int32, b: Int32, s: str) -> tuple[Int32, tuple[Int32, str]]:\n"
+            + "    return (a, (b, s))\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+        ret = fn.body[0]
+        assert isinstance(ret, THIRReturn)
+        outer = ret.value
+        assert isinstance(outer, THIRTupleLiteral) and len(outer.elements) == 2
+        assert isinstance(outer.elements[1], THIRTupleLiteral)  # nested spell
+
+    def test_value_optional_scalar_element_routes(self):
+        # A scalar value and a bare None both land in the Optional[scalar] slot.
+        thir = _lower(
+            _PRELUDE
+            + "def val(a: Int32, b: Int32) -> tuple[Int32, Int32 | None]:\n"
+            + "    return (a, b)\n"
+            + "def none(a: Int32) -> tuple[Int32, Int32 | None]:\n"
+            + "    return (a, None)\n")
+        assert _fn(thir, "val") is not None
+        assert _fn(thir, "none") is not None
+
+    def test_deep_nesting_and_optional_inner_route(self):
+        # Three-level nesting, and a nested tuple carrying a value-Optional inner:
+        # both resolve their own slot recursively (the widened `_value_tuple_
+        # return` at the recursive lowering site).
+        thir = _lower(
+            _PRELUDE
+            + "def deep(a: Int32) -> tuple[Int32, tuple[Int32, tuple[Int32, str]]]:\n"
+            + "    return (a, (a, (a, 'x')))\n"
+            + "def nopt(a: Int32, b: Int32) -> tuple[Int32, tuple[Int32, Int32 | None]]:\n"
+            + "    return (a, (b, None))\n")
+        assert _fn(thir, "deep") is not None
+        assert _fn(thir, "nopt") is not None
+
+    def test_faces_witnessed(self):
+        from .testutil import _lower_ctx_witnessed
+        _thir, faces = _lower_ctx_witnessed(
+            _PRELUDE
+            + "def n(a: Int32, b: Int32) -> tuple[Int32, tuple[Int32, Int32]]:\n"
+            + "    return (a, (b, b))\n"
+            + "def o(a: Int32, b: Int32) -> tuple[Int32, Int32 | None]:\n"
+            + "    return (a, b)\n")
+        assert faces.get("ret.tuple_nested_elem", 0) >= 1
+        assert faces.get("ret.tuple_opt_elem", 0) >= 1
+
+    def test_widened_param_ineligible(self):
+        # A widened-element tuple as a PARAM has no bare-copy read arm -- the
+        # narrow `_value_tuple` param gate rejects, so the body stays on AST.
+        thir = _lower(
+            _PRELUDE
+            + "def f(t: tuple[Int32, tuple[Int32, Int32]]) -> Int32:\n"
+            + "    return t[0]\n")
+        assert _fn(thir, "f") is None
+
+    def test_widened_bare_name_return_ineligible(self):
+        # A bare-name return of a widened tuple keys on the narrow value-tuple
+        # name arm -> rejects (the param is ineligible anyway).
+        thir = _lower(
+            _PRELUDE
+            + "def f(t: tuple[Int32, tuple[Int32, Int32]])"
+            + " -> tuple[Int32, tuple[Int32, Int32]]:\n    return t\n")
+        assert _fn(thir, "f") is None
+
+    def test_optional_str_element_routes(self):
+        # An `Optional[str]` element: the str-view source takes the
+        # `std::string(view)` wrap threaded through the Optional slot (the tuple
+        # brace-init's implicit `std::string -> std::optional<std::string>`),
+        # `None` renders `std::nullopt`, a str literal lands bare.
+        thir = _lower(
+            _PRELUDE
+            + "def f(a: Int32, s: str) -> tuple[Int32, str | None]:\n"
+            + "    return (a, s)\n"
+            + "def g(a: Int32) -> tuple[Int32, str | None]:\n"
+            + "    return (a, None)\n"
+            + "def h(a: Int32) -> tuple[Int32, str | None]:\n"
+            + "    return (a, 'x')\n")
+        assert _fn(thir, "f") is not None
+        assert _fn(thir, "g") is not None
+        assert _fn(thir, "h") is not None
+
+    def test_optional_str_view_annotated_element_routes(self):
+        # A `StrView | None` element renders `std::optional<std::string_view>`; a
+        # view source lands bare (no owned wrap -- `is_str_type` filters to the
+        # owned slot), matching the AST.
+        thir = _lower(
+            _PRELUDE
+            + "from tpy import StrView\n"
+            + "def f(a: Int32, s: str) -> tuple[Int32, StrView | None]:\n"
+            + "    return (a, s)\n")
+        assert _fn(thir, "f") is not None
+
+    def test_optional_str_element_faces_witnessed(self):
+        from .testutil import _lower_ctx_witnessed
+        _thir, faces = _lower_ctx_witnessed(
+            _PRELUDE
+            + "def f(a: Int32, s: str) -> tuple[Int32, str | None]:\n"
+            + "    return (a, s)\n")
+        assert faces.get("ret.tuple_opt_str_elem", 0) >= 1
+
+    def test_optional_str_param_ineligible(self):
+        # Return-slot only: an `Optional[str]` tuple PARAM has no bare-copy read
+        # arm (the narrow `_value_tuple` param gate rejects), so it stays on AST.
+        thir = _lower(
+            _PRELUDE
+            + "def f(t: tuple[Int32, str | None]) -> Int32:\n"
+            + "    return t[0]\n")
+        assert _fn(thir, "f") is None
+
+    def test_view_nested_element_deferred(self):
+        # A StrView (view) element keeps the nested tuple outside the value family
+        # (static-storage literal pin) -- deferred.
+        thir = _lower(
+            _PRELUDE
+            + "from tpy import StrView\n"
+            + "def f(a: Int32, s: StrView) -> tuple[Int32, tuple[Int32, StrView]]:\n"
+            + "    return (a, (a, s))\n")
+        assert _fn(thir, "f") is None
+
+    def test_optional_record_element_deferred(self):
+        # An `Optional[record]` element is pointer-repr (not a value scalar), so
+        # `_value_opt_scalar` rejects it -- the tuple stays on the AST path.
+        thir = _lower_ctx(
+            "from tpy import Int32\n"
+            "class R:\n    x: Int32\n"
+            "    def __init__(self, x: Int32) -> None:\n        self.x = x\n"
+            "def f(a: Int32) -> tuple[Int32, R | None]:\n    return (a, None)\n")
+        assert _fn(thir, "f") is None
+
+
+class TestWidenedValueTupleReturnEmit:
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+        return cpp
+
+    SRC = (
+        _PRELUDE
+        + "def nested(a: Int32, b: Int32, s: str) -> tuple[Int32, tuple[Int32, str]]:\n"
+        + "    return (a, (b, s))\n"
+        + "def deep(a: Int32) -> tuple[Int32, tuple[Int32, tuple[Int32, str]]]:\n"
+        + "    return (a, (a, (a, 'x')))\n"
+        + "def val(a: Int32, b: Int32) -> tuple[Int32, Int32 | None]:\n"
+        + "    return (a, b)\n"
+        + "def none(a: Int32) -> tuple[Int32, Int32 | None]:\n"
+        + "    return (a, None)\n"
+        + "def lit(a: Int32) -> tuple[Int32, Int32 | None]:\n"
+        + "    return (a, 5)\n"
+        + "def nopt(a: Int32, b: Int32) -> tuple[Int32, tuple[Int32, Int32 | None]]:\n"
+        + "    return (a, (b, None))\n"
+        + "def ostr(a: Int32, s: str) -> tuple[Int32, str | None]:\n"
+        + "    return (a, s)\n"
+        + "def ostr_none(a: Int32) -> tuple[Int32, str | None]:\n"
+        + "    return (a, None)\n"
+        + "def ostr_lit(a: Int32) -> tuple[Int32, str | None]:\n"
+        + "    return (a, 'x')\n"
+        + "def main():\n    print(0)\nmain()\n"
+    )
+
+    def test_byte_identical(self):
+        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
+
+    def test_emits_nested_spell(self):
+        cpp = self._cpp(self.SRC, thir=True)
+        assert ("return std::tuple<int32_t, std::tuple<int32_t, std::string>>"
+                "{a, std::tuple<int32_t, std::string>{b, std::string(s)}};" in cpp)
+        assert ("return std::tuple<int32_t, std::optional<int32_t>>{a, std::nullopt};"
+                in cpp)
+        assert ("return std::tuple<int32_t, std::optional<int32_t>>{a, b};" in cpp)
+
+    def test_emits_optional_str_wrap(self):
+        cpp = self._cpp(self.SRC, thir=True)
+        # A view source wraps `std::string(s)` (implicit optional conversion),
+        # `None`->`std::nullopt`, a str literal bare.
+        assert ("return std::tuple<int32_t, std::optional<std::string>>"
+                "{a, std::string(s)};" in cpp)
+        assert ("return std::tuple<int32_t, std::optional<std::string>>"
+                "{a, std::nullopt};" in cpp)
+        assert ("return std::tuple<int32_t, std::optional<std::string>>"
+                "{a, \"x\"};" in cpp)
+
+
+# --- Standalone tuple-unpack assignment: `a, b = <value-scalar-tuple name>` ---
+
+# The statement form (not the for-loop head): `a, b = t` unpacking a value-scalar
+# tuple param / local reuses the THIRTupleUnpack node -- `const auto& __tup_N = t;`
+# then a fresh `T a = std::get<i>(__tup_N);` per non-discard target. A value-tuple
+# call-result (`a, b = mk(n)`) or field read (`a, b = h.pair`) captures the rvalue
+# by value (`auto __tup_N = <expr>;`). Swap / literal-parallel / nested / starred /
+# record-element / Optional-element / str / reused-target forms take other arms.
+class TestStandaloneTupleUnpack:
+    def test_param_source_routes(self):
+        thir = _lower(
+            _PRELUDE
+            + "def g(t: tuple[Int32, Int32]) -> Int32:\n    a, b = t\n    return a + b\n")
+        fn = _fn(thir, "g")
+        assert fn is not None
+        up = fn.body[0]
+        assert isinstance(up, THIRTupleUnpack)
+        assert up.source == "t"
+        assert up.targets == ("a", "b")
+        assert up.target_cpps == ("int32_t", "int32_t")
+
+    def test_local_tuple_source_routes(self):
+        # The source is a value-tuple LOCAL (`p = (3, 4)`), itself an already-routed
+        # value-tuple decl; the unpack binds `const auto& __tup = p`.
+        thir = _lower(
+            _PRELUDE
+            + "def h() -> Int32:\n    p = (3, 4)\n    a, b = p\n    return a - b\n")
+        fn = _fn(thir, "h")
+        assert fn is not None
+        assert isinstance(fn.body[0], THIRVarDecl)      # the tuple local
+        assert isinstance(fn.body[1], THIRTupleUnpack)  # the unpack
+
+    def test_discard_slot_skips(self):
+        # A `_` discard slot carries None through targets/target_cpps (its
+        # std::get emits nothing).
+        thir = _lower(
+            _PRELUDE
+            + "def f(t: tuple[Int32, Int32, Int32]) -> Int32:\n"
+            + "    a, _, c = t\n    return a + c\n")
+        up = _fn(thir, "f").body[0]
+        assert up.targets == ("a", None, "c")
+        assert up.target_cpps == ("int32_t", None, "int32_t")
+
+    def test_readonly_tuple_source_routes(self):
+        thir = _lower(
+            _PRELUDE
+            + "from tpy import readonly\n"
+            + "def f(t: readonly[tuple[Int32, Int32]]) -> Int32:\n"
+            + "    a, b = t\n    return a + b\n")
+        assert _fn(thir, "f") is not None
+
+    def test_target_reassigned_after_unpack(self):
+        # A same-name re-`decl` of an unpack target (sema keeps `a = a + 1` a
+        # TpyVarDecl) must lower as a reassign -- the unpack seeded `a` into scope.
+        thir = _lower(
+            _PRELUDE
+            + "def f(t: tuple[Int32, Int32]) -> Int32:\n"
+            + "    a, b = t\n    a = a + 100\n    return a - b\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+        reassign = fn.body[1]
+        assert isinstance(reassign, THIRAssign)  # NOT a second THIRVarDecl
+
+    def test_face_witnessed(self):
+        _thir, faces = _lower_ctx_witnessed(
+            _PRELUDE
+            + "def g(t: tuple[Int32, Int32]) -> Int32:\n    a, b = t\n    return a + b\n")
+        assert faces.get("stmt.tuple_unpack", 0) >= 1
+
+    def test_call_result_source_routes(self):
+        # `a, b = mk(n)` -- a value-scalar-tuple call result captures by value
+        # (`auto __tup = mk(n)`) via `source_expr`; the targets are fresh scalars.
+        thir = _lower(
+            _PRELUDE
+            + "def mk(n: Int32) -> tuple[Int32, Int32]:\n    return (n, n)\n"
+            + "def f(n: Int32) -> Int32:\n    a, b = mk(n)\n    return a + b\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+        up = fn.body[0]
+        assert isinstance(up, THIRTupleUnpack)
+        assert up.source == "" and up.source_expr is not None
+        assert up.targets == ("a", "b")
+        assert up.target_cpps == ("int32_t", "int32_t")
+
+    def test_field_source_routes(self):
+        # `a, b = h.pair` -- a value-scalar-tuple field read off an F1-record
+        # receiver captures by value (`auto __tup = h.pair`) via `source_expr`.
+        # `_lower_ctx`: an F1-record receiver resolves through the live registry.
+        thir = _lower_ctx(
+            _PRELUDE
+            + "class H:\n    pair: tuple[Int32, Int32]\n"
+            + "    def __init__(self):\n        self.pair = (3, 4)\n"
+            + "def f(h: H) -> Int32:\n    a, b = h.pair\n    return a + b\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+        up = fn.body[0]
+        assert isinstance(up, THIRTupleUnpack)
+        assert up.source == "" and up.source_expr is not None
+
+    def test_rvalue_source_face_witnessed(self):
+        _thir, faces = _lower_ctx_witnessed(
+            _PRELUDE
+            + "def mk(n: Int32) -> tuple[Int32, Int32]:\n    return (n, n)\n"
+            + "def f(n: Int32) -> Int32:\n    a, b = mk(n)\n    return a + b\n")
+        assert faces.get("stmt.tuple_unpack.rvalue_source", 0) >= 1
+
+    def test_str_element_ineligible(self):
+        # An owned-str target is not `_eligible_scalar` -- the owned-string copy
+        # arm is deferred.
+        thir = _lower(
+            _PRELUDE
+            + "def f(t: tuple[str, Int32]) -> Int32:\n    a, b = t\n    return b\n")
+        assert _fn(thir, "f") is None
+
+    def test_reused_target_ineligible(self):
+        # A target shadowing an outer local (`a` predeclared) takes the AST's
+        # was-declared assign path -- out of the slice.
+        thir = _lower(
+            _PRELUDE
+            + "def f(t: tuple[Int32, Int32]) -> Int32:\n"
+            + "    a = 0\n    a, b = t\n    return a + b\n")
+        assert _fn(thir, "f") is None
+
+    def test_record_element_source_ineligible(self):
+        # A pointer-repr (record-element) tuple source is not a value-scalar
+        # tuple -- the borrow/std::move unpack arms are deferred.
+        thir = _lower_ctx(
+            _F3_RECORDS
+            + "def f(t: tuple[Int32, Leaf]) -> Int32:\n    a, b = t\n    return a\n")
+        assert _fn(thir, "f") is None
+
+
+class TestStandaloneTupleUnpackEmit:
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+        return cpp
+
+    SRC = (
+        _PRELUDE
+        + "def g(t: tuple[Int32, Int32]) -> Int32:\n    a, b = t\n    return a + b\n"
+        + "def h() -> Int32:\n    p = (10, 20)\n    a, b = p\n    return a - b\n"
+        + "def disc(t: tuple[Int32, Int32, Int32]) -> Int32:\n"
+        + "    a, _, c = t\n    return a + c\n"
+        + "def twice(t: tuple[Int32, Int32], u: tuple[Int32, Int32]) -> Int32:\n"
+        + "    a, b = t\n    c, d = u\n    return a + b + c + d\n"
+        + "def main():\n"
+        + "    print(g((1, 2)), h(), disc((4, 5, 6)), twice((1, 2), (3, 4)))\n"
+        + "main()\n"
+    )
+
+    def test_byte_identical(self):
+        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
+
+    def test_emits_const_ref_bind_and_gets(self):
+        cpp = self._cpp(self.SRC, thir=True)
+        assert "const auto& __tup_1 = t;" in cpp
+        assert "int32_t a = std::get<0>(__tup_1);" in cpp
+        assert "int32_t b = std::get<1>(__tup_1);" in cpp
+
+    def test_per_function_counter_continuous(self):
+        # Two unpacks in one body -> __tup_1 then __tup_2 (the counter mirrors
+        # the AST's per-function ctx.unpack_counter).
+        cpp = self._cpp(self.SRC, thir=True)
+        assert "const auto& __tup_2 = u;" in cpp
+
+    RVALUE_SRC = (
+        _PRELUDE
+        + "class H:\n    pair: tuple[Int32, Int32]\n"
+        + "    def __init__(self):\n        self.pair = (3, 4)\n"
+        + "def mk(n: Int32) -> tuple[Int32, Int32]:\n    return (n, n)\n"
+        + "def fromcall(n: Int32) -> Int32:\n    a, b = mk(n)\n    return a + b\n"
+        + "def fromfield(h: H) -> Int32:\n    a, b = h.pair\n    return a + b\n"
+        + "def main():\n    print(fromcall(2), fromfield(H()))\n"
+        + "main()\n"
+    )
+
+    def test_rvalue_source_byte_identical(self):
+        assert (self._cpp(self.RVALUE_SRC, thir=True)
+                == self._cpp(self.RVALUE_SRC, thir=False))
+
+    def test_rvalue_source_emits_auto_value_bind(self):
+        # A call / field rvalue source materializes by value (`auto __tup_N =
+        # <expr>;`), not the name arm's `const auto&`.
+        cpp = self._cpp(self.RVALUE_SRC, thir=True)
+        assert "auto __tup_1 = mk(n);" in cpp
+        assert "auto __tup_1 = h.pair;" in cpp
+        assert "const auto& __tup_1 = mk(n);" not in cpp
