@@ -7,6 +7,7 @@ import pytest
 from . import get_lib_dir, get_runtime_dir
 from .compiler import Compiler, BuildLayout
 from .compilation_context import activate_compiler
+from .codegen_cpp import CodeGenOptions
 from .diagnostics import SemanticError
 from .typesys import (
     INT32, INT64, BIGINT, BOOL, FLOAT, STR, STRVIEW, CHAR, VOID, BYTEARRAY,
@@ -92,6 +93,77 @@ class TestCompilerFromSource:
             _, cpp = compiler.generate_code_to_strings(mod)
             assert cpp == ""
 
+
+
+class TestThirScoping:
+    """The per-module THIR scoping gate (compiler.py `_generate_code_impl`):
+    with thir_codegen on, USER modules route THIR while non-user (stdlib)
+    modules stay on the AST path. Guards against a silent scope inversion --
+    the byte-diff can't catch that (THIR output is byte-identical to AST
+    regardless of routing), so this asserts the routing DECISION, not output."""
+
+    def test_user_routes_thir_stdlib_stays_ast(self, tmp_path):
+        src_file = tmp_path / "main.py"
+        src_file.write_text("def f(x: int) -> int:\n    return x + 1\n\nprint(f(1))\n")
+        compiler = Compiler(src_file, lib_dirs=_STDLIB_DIRS)
+        modules = compiler.compile()
+        entry = next(m for m in modules if m.is_entry_point)
+        for m in modules:
+            compiler.generate_code(m, tmp_path / "out",
+                                   entry_module_name=entry.name,
+                                   options=CodeGenOptions(thir_codegen=True))
+        routed = compiler._thir_routed_names
+        # The user entry actually routed THIR bodies -- guards against a silent
+        # all-AST fall-through (THIR never running for user code).
+        assert routed.get(entry.name), "user entry module routed no THIR bodies"
+        # No non-user (stdlib) module routed THIR -- the scoping gate holds; an
+        # inversion would surface a stdlib module here.
+        for m in modules:
+            if not compiler.is_user_module(m):
+                assert not routed.get(m.name), (
+                    f"non-user module {m.name!r} routed THIR -- scoping gate failed")
+
+    def test_clean_body_has_zero_fallback(self, tmp_path):
+        """The THIR ratchet's PASS condition: a fully-routable user body records
+        zero fallback -- so an unmarked case built from it has thir_ratchet_fell
+        == 0 and does not trip the comp-phase failure. The fallback>0 side is
+        exercised live by every no_thir-marked corpus case, so this only pins the
+        clean side (stable: a trivial arithmetic body stays routable forever)."""
+        src_file = tmp_path / "main.py"
+        src_file.write_text("def f(x: int) -> int:\n    return x + 1\n\nprint(f(1))\n")
+        compiler = Compiler(src_file, lib_dirs=_STDLIB_DIRS)
+        modules = compiler.compile()
+        entry = next(m for m in modules if m.is_entry_point)
+        for m in modules:
+            compiler.generate_code(m, tmp_path / "out",
+                                   entry_module_name=entry.name,
+                                   options=CodeGenOptions(thir_codegen=True))
+        # User-scoped: stdlib is forced to AST, so this counts only user bodies.
+        assert sum(compiler._thir_fallback.values()) == 0, (
+            f"clean body recorded fallback: {compiler._thir_fallback}")
+
+    def test_unmigrated_body_records_fallback(self, tmp_path):
+        """The THIR ratchet's FIRE signal: a user body outside the THIR slice
+        records a fallback (sum(_thir_fallback) > 0), so an UNMARKED case using
+        it trips the comp-phase ratchet. Pins the >0 side (the pass side is
+        test_clean_body_has_zero_fallback) so an inverted/broken fallback counter
+        can't slip through -- no corpus case can exercise the fire side, since
+        unmarked <=> already clean. Uses an async def (the resumable frontier,
+        deferred last); if resumable is ever migrated, swap in another
+        un-migrated construct."""
+        src_file = tmp_path / "main.py"
+        src_file.write_text(
+            "async def f() -> None:\n    return None\n\nprint('x')\n")
+        compiler = Compiler(src_file, lib_dirs=_STDLIB_DIRS)
+        modules = compiler.compile()
+        entry = next(m for m in modules if m.is_entry_point)
+        for m in modules:
+            compiler.generate_code(m, tmp_path / "out",
+                                   entry_module_name=entry.name,
+                                   options=CodeGenOptions(thir_codegen=True))
+        assert sum(compiler._thir_fallback.values()) > 0, (
+            "un-migrated (async) body recorded no fallback -- either resumable "
+            "was migrated (swap the construct) or the fallback counter broke")
 
 
 class TestCodegenRegression:

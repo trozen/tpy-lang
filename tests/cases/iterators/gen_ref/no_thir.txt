@@ -1,0 +1,3 @@
+user module has bodies outside the THIR slice; not yet migrated.
+Auto-managed by --thir-classify; run --thir-check-flip to see if this
+case is now clean enough to un-mark (delete this file).

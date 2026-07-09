@@ -170,31 +170,59 @@ def test_case(case_dir, main_src, request):
             pytrace=False,
         )
 
-    # Generated code snapshots (.hpp / .cpp) for every local module
-    for mod_name, hpp_path, cpp_path, is_local in result.all_modules:
-        if not is_local:
-            continue
+    def _snapshot_pairs(hpp_path, cpp_path) -> list[tuple[str, Path]]:
         pairs: list[tuple[str, Path]] = []
         if hpp_path is not None:  # None for native_module
             pairs.append((".hpp", hpp_path))
-            # Cycle members get a sibling `<mod>_fwd.hpp`. It only
-            # exists for actual cycle peers, so probe the filesystem
-            # rather than threading a separate compiler-side flag.
+            # Cycle members get a sibling `<mod>_fwd.hpp`. It only exists for
+            # actual cycle peers, so probe the filesystem rather than threading
+            # a separate compiler-side flag.
             fwd_path = hpp_path.with_name(hpp_path.stem + "_fwd.hpp")
             if fwd_path.exists():
                 pairs.append(("_fwd.hpp", fwd_path))
         if cpp_path is not None:
             pairs.append((".cpp", cpp_path))
-        # Routed names activate the THIR divergence reporter (None when
-        # --thir-codegen is off; empty set = module routed no bodies).
-        thir_names = (result.thir_routed_names.get(mod_name, frozenset())
-                      if result.thir_routed_names is not None else None)
-        for ext, gen_path in pairs:
+        return pairs
+
+    # AST (oracle) snapshots: every local module, byte-compared to the AST-
+    # authored expected files. This check holds for EVERY case -- migrated or not
+    # -- so a regression in the AST codegen path can't hide behind THIR (the AST
+    # path is the snapshot oracle as long as snapshots are AST-authored).
+    for mod_name, hpp_path, cpp_path, is_local in result.all_modules:
+        if not is_local:
+            continue
+        for ext, gen_path in _snapshot_pairs(hpp_path, cpp_path):
             expected_file = _module_to_expected_path(expected_dir, mod_name, ext)
             if not gen_path.exists():
                 pytest.fail(f"{gen_path} not generated", pytrace=False)
-            check_or_update(gen_path.read_text(), expected_file, f"{mod_name}{ext}",
-                            thir_routed_names=thir_names)
+            check_or_update(gen_path.read_text(), expected_file, f"{mod_name}{ext}")
+
+    # THIR overlay snapshots: the migrated user modules regenerated through THIR,
+    # byte-compared to the SAME expected files. A mismatch here is a THIR
+    # divergence (labeled with the routed function), not an oracle regression.
+    if not UPDATE_EXPECTED and result.thir_modules is not None:
+        for mod_name, hpp_path, cpp_path in result.thir_modules:
+            thir_names = (result.thir_routed_names.get(mod_name, frozenset())
+                          if result.thir_routed_names is not None else None)
+            for ext, gen_path in _snapshot_pairs(hpp_path, cpp_path):
+                expected_file = _module_to_expected_path(expected_dir, mod_name, ext)
+                if not gen_path.exists():
+                    pytest.fail(f"{gen_path} (THIR overlay) not generated",
+                                pytrace=False)
+                check_or_update(gen_path.read_text(), expected_file,
+                                f"{mod_name}{ext} (THIR)", thir_routed_names=thir_names)
+
+    # THIR ratchet: an unmarked (migrated) case must route every user body
+    # through THIR. A fallback emits byte-identical AST, so the snapshot compare
+    # above is blind to a silent THIR->AST regression -- assert zero fallback.
+    if not UPDATE_EXPECTED and result.thir_ratchet_fell:
+        pytest.fail(
+            f"THIR ratchet: {main_src} is not marked no_thir but "
+            f"{result.thir_ratchet_fell} user body/bodies fell back to the AST "
+            f"path. Either migrate the construct (widen THIR lowering) or mark "
+            f"the case (run `uv run pytest --thir-classify` to add no_thir.txt).",
+            pytrace=False,
+        )
 
     # Additional semantic annotations
     if not UPDATE_EXPECTED:

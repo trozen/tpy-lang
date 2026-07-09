@@ -698,10 +698,19 @@ class CompileResult:
     third_party_include_dirs: list[Path] = field(default_factory=list)
     third_party_link_flags: list[str] = field(default_factory=list)
     third_party_c_sources: list[tuple[Path, list[str]]] = field(default_factory=list)
-    # Per-module names of THIR-routed bodies (None when --thir-codegen is off).
+    # Per-module names of THIR-routed bodies (None when THIR is off for the case).
     # Feeds the divergence reporter: a snapshot mismatch is labeled with the
     # enclosing function and whether THIR routed it.
     thir_routed_names: dict[str, frozenset[str]] | None = None
+    # THIR-overlay generated paths for local modules: (name, hpp, cpp). None when
+    # THIR is off for the case. Byte-compared to the same AST-authored snapshot as
+    # all_modules -- so the AST (oracle) and THIR paths are both checked per run.
+    thir_modules: list[tuple[str, Path | None, Path | None]] | None = None
+    # THIR ratchet count: user-body fallbacks when THIR is the emitted artifact
+    # for this case (default run, unmarked). None when the ratchet doesn't apply
+    # (marked case, whole-corpus/classify runs, or --update-snapshots). >0 fails
+    # the comp phase -- an unmarked case must route every user body through THIR.
+    thir_ratchet_fell: int | None = None
 
 
 def _validate_default_int_name(name: str) -> str:
@@ -872,14 +881,25 @@ def compile_with_diagnostics(src_file: Path, output_dir: Path, default_int: str 
         if has_errors:
             return CompileResult(success=False, diagnostics=diagnostics)
 
-        # Generate code for all modules and track paths
+        # AST is ALWAYS the emitted + oracle artifact: it feeds exec and is
+        # byte-compared to the (AST-authored) snapshot, so the oracle path is
+        # exercised for EVERY case -- migrated or not. THIR, when active, is an
+        # OVERLAY generated alongside for the migrated user modules and compared
+        # to the SAME snapshot (a divergence is a THIR bug), so migrating a case
+        # never silently drops AST coverage of the oracle.
         entry_module = next(m for m in compiled_modules if m.is_entry_point)
         src_dir = src_file.parent.resolve()
+        case_dir = (src_file.parent.parent if src_file.parent.name == "src"
+                    else src_file.parent)
+        no_thir = (case_dir / "no_thir.txt").exists()
+
+        ast_opts = dataclasses.replace(TEST_CODEGEN_OPTIONS, thir_codegen=False)
         all_modules = []
+        local_mods = []
         for mod in compiled_modules:
             hpp_path, cpp_path = compiler.generate_code(
                 mod, output_dir, entry_module_name=entry_module.name,
-                options=TEST_CODEGEN_OPTIONS
+                options=ast_opts
             )
             is_local = False
             try:
@@ -889,14 +909,55 @@ def compile_with_diagnostics(src_file: Path, output_dir: Path, default_int: str 
                 pass
             # cpp_path is None for native_module (binding-only) modules
             all_modules.append((mod.name, hpp_path, cpp_path, is_local))
+            if is_local:
+                local_mods.append(mod)
 
-        # Feed the --thir-codegen non-vacuity gate: 0 when the flag is off.
+        # THIR overlay: regenerate the migrated USER modules through THIR to a
+        # separate dir (stdlib is user-scoped-out and already AST-tested above);
+        # test_case byte-compares these to the same snapshot. Fills the THIR
+        # tallies (_thir_fallback / _thir_routed_names) read below.
+        case_no_thir = no_thir and not THIR_IGNORE_MARKERS  # a marker in effect
+        thir_active = TEST_CODEGEN_OPTIONS.thir_codegen and not case_no_thir
+        thir_modules = None
+        thir_ratchet_fell = None
+        if thir_active:
+            thir_dir = output_dir / "_thir"
+            thir_modules = []
+            for mod in local_mods:
+                hpp_path, cpp_path = compiler.generate_code(
+                    mod, thir_dir, entry_module_name=entry_module.name,
+                    options=TEST_CODEGEN_OPTIONS
+                )
+                thir_modules.append((mod.name, hpp_path, cpp_path))
+
+        # Feed the THIR non-vacuity gate + per-case ratchet/dial (the overlay
+        # filled the tallies above; all 0 when THIR is off).
         record_thir_routed(compiler._thir_routed_bodies)
         record_thir_faces(compiler._thir_face_witnesses)
         record_thir_fallback(compiler._thir_fallback)
         record_thir_shapes(compiler._thir_shapes)
+        if thir_active:
+            fell = sum(compiler._thir_fallback.values())
+            if THIR_CLASSIFY_WRITE:
+                _apply_no_thir_marker(case_dir, dirty=(fell > 0))
+            elif THIR_CHECK_FLIP:
+                if no_thir and fell == 0:
+                    record_thir_flip_candidate(str(case_dir))
+            elif not THIR_IGNORE_MARKERS:  # default per-case run, UNMARKED case
+                # A fallback emits byte-identical AST, so the THIR snapshot
+                # compare can't see a silent THIR->AST regression. Surface the
+                # count so the comp phase fails the case (the ratchet): unmarked
+                # => every user body must route THIR.
+                thir_ratchet_fell = fell
+                record_thir_case(fell)
+            # else --thir-codegen whole-corpus: aggregate tallies only
+        elif TEST_CODEGEN_OPTIONS.thir_codegen and case_no_thir:
+            # Marked case on the default run: emitted via AST, counted not-clean
+            # from the marker (marked <=> has fallback), no measurement pass, so
+            # the N/M dial spans the whole corpus without taxing the run.
+            record_thir_case_marked()
         thir_routed_names = (dict(compiler._thir_routed_names)
-                             if TEST_CODEGEN_OPTIONS.thir_codegen else None)
+                             if thir_active else None)
 
         # Return paths for the entry point module
         layout = BuildLayout(output_dir, entry_module.name)
@@ -934,6 +995,8 @@ def compile_with_diagnostics(src_file: Path, output_dir: Path, default_int: str 
         )
         return CompileResult(success=True, diagnostics=diagnostics, hpp_path=hpp_path, cpp_path=cpp_path,
                              thir_routed_names=thir_routed_names,
+                             thir_modules=thir_modules,
+                             thir_ratchet_fell=thir_ratchet_fell,
                              all_modules=all_modules, declared_var_types=declared_var_types,
                              ptr_deref_facts=ptr_deref_facts,
                              subscript_bounds_facts=subscript_bounds_facts,
@@ -1026,11 +1089,45 @@ def pytest_addoption(parser):
         action="store_true",
         default=False,
         help=(
-            "Force the THIR codegen path (mirrors `tpyc --thir-codegen`) for "
-            "every case, turning the per-module snapshot compare into a "
-            "whole-corpus byte-identity check of THIR vs the AST-generated "
-            "snapshots. The pre-merge gate for THIR work; pair with --no-exec "
-            "for a fast comp-only diff. Conflicts with --update-snapshots."
+            "THIR is ON BY DEFAULT (unmarked user cases byte-diff THIR vs the "
+            "AST snapshots; a case's no_thir.txt keeps it on AST). This flag "
+            "runs THIR on ALL user cases IGNORING no_thir.txt -- the whole-corpus "
+            "byte-diff, the safety net while the eligibility gate is being "
+            "removed. Pair with --no-exec for a fast comp-only diff. Off (and "
+            "conflicting) under --update-snapshots (snapshots must be AST-authored)."
+        ),
+    )
+    parser.addoption(
+        "--no-thir",
+        action="store_true",
+        default=False,
+        help=(
+            "Disable THIR entirely: every case emits + byte-diffs via the AST "
+            "path only (no THIR overlay, no ratchet). The pure-AST mode for fast "
+            "iteration on AST codegen. Mirror-opposite of --thir-codegen; "
+            "conflicts with it and with --thir-classify / --thir-check-flip."
+        ),
+    )
+    parser.addoption(
+        "--thir-check-flip",
+        action="store_true",
+        default=False,
+        help=(
+            "Run THIR on ALL cases (ignoring no_thir.txt) and list the marked "
+            "cases whose user modules now route clean -- candidates to un-mark "
+            "(delete no_thir.txt). Read-only; the porting-progress query. Pair "
+            "with --no-exec."
+        ),
+    )
+    parser.addoption(
+        "--thir-classify",
+        action="store_true",
+        default=False,
+        help=(
+            "(Re)write no_thir.txt markers: add for a case whose user module has "
+            "any THIR fallback, remove for a clean one. The one-time bootstrap / "
+            "maintenance of the per-case migration state (writes files, like "
+            "--update-snapshots does)."
         ),
     )
 
@@ -1060,18 +1157,52 @@ def _cgroup_cpu_quota() -> int | None:
     return max(1, (quota + period - 1) // period)
 
 
+def _thir_flag_conflict(config, updating: bool) -> str | None:
+    """Return the error message for a conflicting THIR-flag combination, or None.
+    Extracted from pytest_configure so the flag-conflict logic is unit-testable
+    without invoking the whole (side-effecting) configure hook. `updating` is the
+    resolved --update-snapshots / UPDATE_EXPECTED state."""
+    forcing = (config.getoption("--thir-codegen")
+               or config.getoption("--thir-classify")
+               or config.getoption("--thir-check-flip"))
+    if forcing and updating:
+        return ("--thir-codegen / --thir-classify / --thir-check-flip conflict "
+                "with --update-snapshots: snapshots must capture the default "
+                "(AST) codegen path, never THIR -- the byte diff is the gate, "
+                "not the baseline")
+    if config.getoption("--no-thir") and forcing:
+        return ("--no-thir conflicts with --thir-codegen / --thir-classify / "
+                "--thir-check-flip: it disables THIR, they force it on")
+    return None
+
+
 def pytest_configure(config):
     """Print ccache status; manage session fingerprint file."""
     global UPDATE_EXPECTED  # assigned below; declared here so the guard can read it
     global TEST_CODEGEN_OPTIONS
 
-    # --thir-codegen routes every case through THIR lowering so the existing
-    # per-local-module snapshot compare doubles as a whole-corpus byte-identity
-    # check (snapshots are AST-generated, so any diff is a THIR divergence).
-    # Flip before the worker guard below: xdist workers do the compiling.
-    if config.getoption("--thir-codegen"):
+    # THIR is woven into the DEFAULT run: every UNMARKED user case (no
+    # no_thir.txt) asserts THIR via the per-local-module snapshot compare
+    # (snapshots are AST-generated, so any diff is a THIR divergence). It is off
+    # only while regenerating snapshots (which must be AST-authored). Flip before
+    # the worker guard below: xdist workers do the compiling.
+    global THIR_IGNORE_MARKERS, THIR_CLASSIFY_WRITE, THIR_CHECK_FLIP
+    updating = bool(config.getoption("--update-snapshots")) or UPDATE_EXPECTED
+    # THIR is off while regenerating snapshots (must be AST-authored) and under
+    # --no-thir (pure-AST mode: emit + diff via AST only, no overlay, no ratchet).
+    if not updating and not config.getoption("--no-thir"):
         TEST_CODEGEN_OPTIONS = dataclasses.replace(
             TEST_CODEGEN_OPTIONS, thir_codegen=True)
+    # --thir-codegen / --thir-check-flip / --thir-classify run THIR on ALL user
+    # cases (ignoring no_thir.txt) -- the whole-corpus check / classification;
+    # the default run respects the markers so only migrated cases assert THIR.
+    if (config.getoption("--thir-codegen") or config.getoption("--thir-check-flip")
+            or config.getoption("--thir-classify")):
+        THIR_IGNORE_MARKERS = True
+    if config.getoption("--thir-classify"):
+        THIR_CLASSIFY_WRITE = True
+    if config.getoption("--thir-check-flip"):
+        THIR_CHECK_FLIP = True
 
     is_master = os.environ.get("PYTEST_XDIST_WORKER") is None
     if not is_master:
@@ -1088,15 +1219,10 @@ def pytest_configure(config):
             returncode=1,
         )
 
-    if config.getoption("--thir-codegen") and (
-        config.getoption("--update-snapshots") or UPDATE_EXPECTED
-    ):
-        pytest.exit(
-            "--thir-codegen conflicts with --update-snapshots: snapshots must "
-            "capture the default (AST) codegen path, never THIR -- the byte "
-            "diff is the gate, not the baseline",
-            returncode=1,
-        )
+    conflict = _thir_flag_conflict(
+        config, bool(config.getoption("--update-snapshots")) or UPDATE_EXPECTED)
+    if conflict:
+        pytest.exit(conflict, returncode=1)
 
     # Resolve the C++ toolchain first: --cxx rebuilds CPP_CONFIG (which the
     # ccache status, cache keys, and prewarm below all read) and is propagated
@@ -1210,19 +1336,28 @@ def pytest_report_header(config):
     else:
         exec_state = "verify-once-then-cache per case"
 
-    if config.getoption("--thir-codegen"):
-        thir_state = "FORCED -- every case lowered via THIR"
+    if not TEST_CODEGEN_OPTIONS.thir_codegen:
+        thir_state = ("off (--no-thir: pure AST)"
+                      if config.getoption("--no-thir")
+                      else "off (regenerating AST snapshots)")
+    elif THIR_IGNORE_MARKERS:
+        thir_state = "whole corpus (all user cases, ignore no_thir.txt)"
     else:
-        thir_state = "off (default AST codegen path)"
+        thir_state = "default: unmarked cases byte-diff vs AST; no_thir.txt -> AST"
 
+    # Short lines (hints on their own indented lines) so nothing wraps at ~80 cols.
     return [
-        f"{_LOG_PREFIX} toolchain: {CPP_CONFIG.compiler_name}  "
-        f"(--cxx=<gcc|clang|gcc-14|clang-18|zig|...>; --cxx=list to enumerate)",
+        f"{_LOG_PREFIX} toolchain: {CPP_CONFIG.compiler_name}",
+        f"{_LOG_PREFIX}   --cxx=<gcc|clang|gcc-14|zig|...> or --cxx=list to enumerate",
         f"{_LOG_PREFIX} C++ compilation: {ccache_state}",
-        f"{_LOG_PREFIX} exec: {exec_state}  (--force-exec re-run all; "
-        f"--no-exec skip; --clean wipe caches; --update-snapshots regenerate expected)",
-        f"{_LOG_PREFIX} thir: {thir_state}  (--thir-codegen forces THIR so the "
-        f"comp-phase snapshot compare becomes a whole-corpus THIR-vs-AST byte-diff)",
+        f"{_LOG_PREFIX} exec: {exec_state}",
+        f"{_LOG_PREFIX}   --force-exec re-run all / --no-exec skip / --clean wipe caches",
+        f"{_LOG_PREFIX}   --update-snapshots regenerate expected",
+        f"{_LOG_PREFIX} thir: {thir_state}",
+        f"{_LOG_PREFIX}   --no-thir          pure AST (no THIR overlay, no ratchet)",
+        f"{_LOG_PREFIX}   --thir-codegen     whole corpus (ignore no_thir.txt)",
+        f"{_LOG_PREFIX}   --thir-check-flip  list marked cases now clean (un-mark)",
+        f"{_LOG_PREFIX}   --thir-classify    (re)write no_thir.txt markers",
     ]
 
 
@@ -1684,6 +1819,62 @@ def record_thir_routed(bodies: int) -> None:
         _thir_tally["cases"] += 1
 
 
+# Per-case user-module THIR cleanliness (THIR is scoped to user modules; lib/
+# stdlib stay AST). A case is "clean" when zero user bodies fell back -- i.e.
+# the gate isn't hiding any gap, so it stays byte-green when the gate is
+# dropped -> a THIR-active candidate (no_thir=false). The starting count is the
+# migration's real per-case metric (see CLAUDE.md "THIR migration").
+_thir_cases: dict[str, int] = {"clean": 0, "total": 0}
+_thir_cases_agg: dict[str, int] = {"clean": 0, "total": 0}
+
+
+def record_thir_case(fell_back: int) -> None:
+    """One THIR-active (non-no_thir) case: clean iff no user body fell back."""
+    _thir_cases["total"] += 1
+    if fell_back == 0:
+        _thir_cases["clean"] += 1
+
+
+def record_thir_case_marked() -> None:
+    """One no_thir-marked case on the default run: counted not-clean in the
+    denominator without a measurement pass -- the marker IS the fallback signal
+    (marked <=> not yet migrated), so N/M spans the whole corpus for free."""
+    _thir_cases["total"] += 1
+
+
+# --thir-codegen / --thir-check-flip / --thir-classify run THIR on every case
+# ignoring markers; classify (re)writes them; check-flip reports un-mark
+# candidates. Set in pytest_configure.
+THIR_IGNORE_MARKERS = False
+THIR_CLASSIFY_WRITE = False
+THIR_CHECK_FLIP = False
+
+# no_thir.txt-marked cases that came back clean under --thir-check-flip: the
+# un-mark candidates. Aggregated worker -> controller like the tallies.
+_thir_flip: list[str] = []
+_thir_flip_agg: list[str] = []
+
+
+def record_thir_flip_candidate(case: str) -> None:
+    _thir_flip.append(case)
+
+
+_NO_THIR_BODY = (
+    "user module has bodies outside the THIR slice; not yet migrated.\n"
+    "Auto-managed by --thir-classify; run --thir-check-flip to see if this\n"
+    "case is now clean enough to un-mark (delete this file).\n"
+)
+
+
+def _apply_no_thir_marker(case_dir: Path, dirty: bool) -> None:
+    """Add no_thir.txt for a dirty case, remove it for a clean one."""
+    marker = case_dir / "no_thir.txt"
+    if dirty and not marker.exists():
+        marker.write_text(_NO_THIR_BODY)
+    elif not dirty and marker.exists():
+        marker.unlink()
+
+
 # THIR per-face witness tally (tpyc/thir/faces.py) -- byte-diff green only
 # proves the ROUTED code matched; a face no corpus case reaches is invisible
 # to it, so the summary names registered faces with zero witnesses across the
@@ -1745,10 +1936,11 @@ def record_thir_divergence(label: str) -> None:
 
 
 def _thir_gate_verdict(config) -> str:
-    """Verdict for the --thir-codegen non-vacuity gate: 'off' (flag unset),
-    'ok' (routed > 0), 'warn' (routed 0 on a filtered run), or 'fail' (routed 0
-    over a full run -- a regression made the byte-diff gate vacuous)."""
-    if not config.getoption("--thir-codegen"):
+    """Verdict for the THIR non-vacuity gate: 'off' (THIR disabled, e.g.
+    --update-snapshots), 'ok' (routed > 0), 'warn' (routed 0 on a filtered run),
+    or 'fail' (routed 0 over a full run -- a regression made the byte-diff gate
+    vacuous). THIR is on by default now, so this keys on the resolved option."""
+    if not TEST_CODEGEN_OPTIONS.thir_codegen:
         return "off"
     if _thir_tally["bodies"] + _thir_tally_agg["bodies"] > 0:
         return "ok"
@@ -1773,6 +1965,8 @@ def pytest_sessionfinish(session):
         workeroutput["thir_fallback"] = dict(_thir_fallback)
         workeroutput["thir_shapes"] = _thir_shapes
         workeroutput["thir_divergences"] = list(_thir_divergences)
+        workeroutput["thir_cases"] = dict(_thir_cases)
+        workeroutput["thir_flip"] = list(_thir_flip)
         return
     if _thir_gate_verdict(session.config) == "fail":
         session.exitstatus = pytest.ExitCode.TESTS_FAILED
@@ -1795,6 +1989,11 @@ def pytest_testnodedown(node, error):
         _thir_fallback_agg[key] = _thir_fallback_agg.get(key, 0) + n
     _fold_shapes(_thir_shapes_agg, wo.get("thir_shapes", {}))
     _thir_divergences_agg.extend(wo.get("thir_divergences", []))
+    tc = wo.get("thir_cases")
+    if tc:
+        for k in _thir_cases_agg:
+            _thir_cases_agg[k] += tc.get(k, 0)
+    _thir_flip_agg.extend(wo.get("thir_flip", []))
 
 
 def pytest_terminal_summary(terminalreporter, exitstatus, config):
@@ -1811,6 +2010,15 @@ def pytest_terminal_summary(terminalreporter, exitstatus, config):
             f"{total['skipped']} skipped via cache ({considered} cases)"
         )
 
+    if THIR_CHECK_FLIP:
+        flips = sorted(set(_thir_flip) | set(_thir_flip_agg))
+        terminalreporter.write_line(
+            f"{_LOG_PREFIX} thir flip candidates: {len(flips)} no_thir case(s) "
+            f"now clean -- remove no_thir.txt to make THIR-active:"
+        )
+        for c in flips:
+            terminalreporter.write_line(f"{_LOG_PREFIX}   {c}")
+
     verdict = _thir_gate_verdict(config)
     if verdict != "off":
         bodies = _thir_tally["bodies"] + _thir_tally_agg["bodies"]
@@ -1820,23 +2028,34 @@ def pytest_terminal_summary(terminalreporter, exitstatus, config):
                 f"{_LOG_PREFIX} thir: {bodies} bodies routed via THIR "
                 f"across {cases} cases"
             )
-            # Per-face coverage: which registered gate/lowering faces the run
-            # actually exercised. Zero-witness faces are the byte-diff's blind
-            # spots (a latent bug there has no corpus witness). On a filtered
-            # run the list is naturally long -- read it against full runs.
-            hit = set(_thir_faces) | set(_thir_faces_agg)
-            zero = sorted(THIR_FACES - hit)
-            if zero:
+            tcl = _thir_cases["clean"] + _thir_cases_agg["clean"]
+            ttot = _thir_cases["total"] + _thir_cases_agg["total"]
+            if ttot:
+                marked = ttot - tcl
                 terminalreporter.write_line(
-                    f"{_LOG_PREFIX} thir faces: "
-                    f"{len(THIR_FACES) - len(zero)}/{len(THIR_FACES)} "
-                    f"witnessed; zero-witness: {', '.join(zero)}"
+                    f"{_LOG_PREFIX} thir cases: {tcl}/{ttot} migrated "
+                    f"(unmarked, zero fallback); {marked} on AST (no_thir)"
                 )
-            else:
-                terminalreporter.write_line(
-                    f"{_LOG_PREFIX} thir faces: all {len(THIR_FACES)} "
-                    f"witnessed"
-                )
+            # Per-face coverage (and shape % below) are WHOLE-CORPUS metrics:
+            # they measure coverage across all cases, so they're only meaningful
+            # under --thir-codegen / -classify / -check-flip (THIR_IGNORE_MARKERS).
+            # In the default per-case run only the clean cases route, so most
+            # faces are trivially unwitnessed and shapes is trivially 100% --
+            # noise -- so skip both there.
+            if THIR_IGNORE_MARKERS:
+                hit = set(_thir_faces) | set(_thir_faces_agg)
+                zero = sorted(THIR_FACES - hit)
+                if zero:
+                    terminalreporter.write_line(
+                        f"{_LOG_PREFIX} thir faces: "
+                        f"{len(THIR_FACES) - len(zero)}/{len(THIR_FACES)} "
+                        f"witnessed; zero-witness: {', '.join(zero)}"
+                    )
+                else:
+                    terminalreporter.write_line(
+                        f"{_LOG_PREFIX} thir faces: all {len(THIR_FACES)} "
+                        f"witnessed"
+                    )
             # Per-component AST-fallback breakdown: how many candidate bodies
             # the gate rejected, by first-reject reason -- the measured gap to
             # each deletion target ("body" = gen_body/gen_expr, "ctor" = the
@@ -1875,7 +2094,7 @@ def pytest_terminal_summary(terminalreporter, exitstatus, config):
             # ranked by which reject reason blocks the most DISTINCT shapes.
             shapes = dict(_thir_shapes)
             _fold_shapes(shapes, _thir_shapes_agg)
-            if shapes:
+            if shapes and THIR_IGNORE_MARKERS:  # whole-corpus metric (see faces)
                 from tpyc.thir.shape import summarize_shapes
                 s = summarize_shapes(shapes)
                 by_reason: dict[str, int] = {}
@@ -1907,12 +2126,12 @@ def pytest_terminal_summary(terminalreporter, exitstatus, config):
                     )
         elif verdict == "warn":
             terminalreporter.write_line(
-                f"{_LOG_PREFIX} thir: WARNING -- forced THIR routed 0 bodies "
+                f"{_LOG_PREFIX} thir: WARNING -- THIR routed 0 bodies "
                 f"(filtered run; the subset may hold no eligible case)"
             )
         else:
             terminalreporter.write_line(
-                f"{_LOG_PREFIX} thir: ERROR -- forced THIR routed 0 bodies over "
+                f"{_LOG_PREFIX} thir: ERROR -- THIR routed 0 bodies over "
                 f"the full corpus; the byte-diff gate is vacuous (wiring "
                 f"regression?). Session failed."
             )

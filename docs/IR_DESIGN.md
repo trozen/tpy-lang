@@ -7,7 +7,7 @@
 | THIR node definitions (`tpyc/thir/nodes.py`) | Increments 1-5 -- value-scalar slice (+ range-for, double float, bool, comparison-as-value) |
 | AST + sema -> THIR lowering (`tpyc/thir/lower/`) | Increments 1-5 -- value-scalar slice (+ range-for, double float, bool, comparison-as-value w/ resolved-local-type tracking) |
 | `--dump-thir` debug output | Done (increment 1) |
-| THIR-backed codegen context | Increment 1 -- flag-gated (`tpyc/thir/emit.py`) |
+| THIR-backed codegen context | Increments 1-5+ -- default-on per-case for user modules (`tpyc/thir/emit.py`) |
 | Codegen migration from analyzer/AST to THIR | Increments 1-5 -- value-scalar bodies incl. if/elif/else, while, range-for, double float, bool, comparison-as-value |
 | THIR form fact (Open Q 9/11/12) | **Rungs F1-F2 (2026-06) onward landed; form ladder well past F6/unions/tuples** -- the per-increment history has been distilled into "Migration findings (distilled)" under the Rollout Plan; the dated blow-by-blow log was dropped |
 | MIR node definitions (`tpyc/mir/nodes.py`) | Not started |
@@ -835,6 +835,96 @@ Those should be separated in phases. The key sequencing principle:
 THIR is structurally close to the current codegen input, so it is the right first
 boundary. MIR should first become the analysis source of truth, and only later the
 emission source of truth.
+
+#### Migration-shape exploration + decision (2026-07)
+
+A spike (branch `spike-thir-invert-gate`) explored two ways to escape the
+original "gate-first, whole-body routing, delete at ~100%" shape, whose payoff
+(AST deletion) is all-or-nothing at the very end:
+
+- **Lever A -- try-lower-then-fall-back.** Replace the ~358KB predictive
+  eligibility gate (`expr_gates.py` + `predicates.py`) with: attempt to lower
+  any body, raise `ThirUnsupported` at the point a construct can't be carried,
+  catch at the body boundary, fall back to the AST path. An audit confirmed THIR
+  lowering is side-effect-free w.r.t. codegen state (all working state on a
+  per-call `_LowerCtx`; analyzer/registry access read-only; no AST-node tagging),
+  so abandoning a partial attempt leaves no residue. Self-contained arms (`del`)
+  invert byte-identically. **Caveat found:** `_lower_expr` arms *assume*
+  eligibility -- dropping the gate without hardening them produces silent
+  miscompiles (not clean rejects), so inline asserts/rejects are required as the
+  gate is removed.
+
+- **Lever B -- mixed-mode per-statement AST-escape.** A `THIRAstEscapeStmt` wraps
+  a statement THIR can't lower and emits it by re-entering the AST emitter, so a
+  body routes *partly* through THIR with islands of AST. Validated
+  byte-identical over the corpus; the mid-body scope bridge (an escaped statement
+  reading a THIR-declared local) is tractable for plain-value locals via a small
+  ctx-registering `ScopeSink`, and mechanical (mirror `cpp_local_representation`)
+  for non-plain. **DEFERRED / reverted from the working branch**, for two reasons:
+  (1) escape-*first* as a sequencing strategy costs weeks of scaffolding for the
+  same porting work, and (2) escaped constructs count as "routed," which corrupts
+  the honest per-case "this case's user code is fully THIR" metric. It remains a
+  validated option to revisit if whole-body fallback proves too coarse.
+
+**Decision: per-case incremental migration, whole-body fallback.** THIR is
+scoped to *user* modules (lib/tpy + stdlib stay AST -- a stable leaf behind the
+user-code boundary, so a case migrates on its own code, not its imports). A body
+either fully routes THIR or falls back whole to AST (Lever A). Per-case
+`no_thir.txt` markers (managed by `--thir-classify`, un-mark candidates surfaced
+by `--thir-check-flip`) track migration; a case is "clean" iff every user body
+routes with zero fallback. The predictive gate is dropped in favour of Lever A +
+inline asserts. The real-build flip to THIR-primary (the enforced sema->codegen
+boundary) is deferred until porting velocity earns it; stdlib THIR is needed only
+for the eventual full AST deletion, not for the near-term separation/debuggability
+win.
+
+##### Ratchet + tiered measurement (2026-07 refinement)
+
+The default-on byte-diff proves the emitted C++ is *correct*, but NOT that THIR
+was *used*: a whole-body fallback emits byte-identical AST, so a migrated case can
+silently regress THIR->AST with a green diff. The marker is therefore a
+**contract, not just a routing switch**: an *unmarked* case that falls back any
+user body FAILS the comp phase (the ratchet). Byte-diff catches divergence; the
+ratchet catches fallback. A new case using an un-migrated construct fails until
+migrated or marked (`--thir-classify`).
+
+Measurement is separated from emission and tiered so the always-on cost is ~zero:
+
+- **Tier 0 -- ratchet (free, always).** Unmarked cases already *emit* via THIR, so
+  asserting zero fallback adds no pass. This is the correctness win.
+- **Tier 1 -- full-corpus dial (free, always).** `tpy| thir cases: N/M migrated`
+  spans the whole corpus, but marked cases are counted not-migrated *from the
+  marker* (marked <=> has fallback), with no measurement pass -- so the dial's
+  denominator costs nothing per run. It trusts the marker; `--thir-check-flip`
+  surfaces marked-but-now-clean drift.
+- **Tier 2 -- exact sweep (expensive, on cadence).** Real THIR emit + byte-compare
+  + faces/shapes over the whole corpus stays behind `--thir-codegen` (run
+  nightly), not folded into every default run.
+
+A cheap "gate-only, no-emit" probe to *re-measure* marked cases every run was
+considered and rejected: the `resumable` (async/generator) eligibility is coupled
+to emission (it needs the live codegen ctx), so a gate-only probe would undercount
+async fallback and mint false-clean cases -- and counting marked cases from the
+marker makes the probe unnecessary anyway. NB the ratchet/probe is crash-safe only
+while the predictive gate is present (it pre-rejects the resumable path); Lever A's
+resumable try-lower-catch remains the prerequisite before the gate is removed.
+
+##### AST stays the oracle: emit AST, overlay THIR (2026-07 correction)
+
+The first cut of this made THIR the *emitted* artifact for unmarked cases -- so
+their AST codegen was no longer exercised at all in the default run (it was
+replaced, not supplemented). But the snapshot is AST-authored, so **AST is the
+oracle and must be tested every run**: a regression in the AST codegen path for a
+migrated case would otherwise go unseen until the next `--update-snapshots`. Fixed
+by making AST the always-emitted artifact (it feeds exec and the oracle byte-diff
+for every case) and running THIR as an **overlay**: unmarked cases regenerate their
+user modules through THIR to a scratch dir and byte-diff that against the same
+snapshot. So each migrated case is checked on both paths -- AST vs snapshot
+(oracle) and THIR vs snapshot (divergence) -- and the ratchet still catches
+fallback. The second codegen pass is user-modules-only (stdlib is user-scoped-out
+and already AST-tested); measured cost on the whole corpus is within run-to-run
+noise (front-end codegen is a small fraction of a comp-only run). `--no-thir` skips
+the overlay for a pure-AST run.
 
 #### Phase-1 spike validation (2026-06)
 

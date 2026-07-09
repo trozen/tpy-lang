@@ -1,5 +1,12 @@
 # THIR Emit-Arm Inventory
 
+> **Operating model (2026-07):** porting is now per-case and opportunistic
+> (see CLAUDE.md "THIR migration"). The emit-arm inventory, leverage tables,
+> and deletion targets below are current -- they're the per-construct
+> what-to-port reference. The fan-out/wave *sequencing* plan and the
+> "maximize throughput to near-100%" framing describe the earlier coordinated
+> campaign and are no longer how the work is driven.
+
 The map for completing the THIR migration (deleting the AST codegen path).
 Drives the work by the **finite emit surface we must port** (~236 emit functions
 / ~380 dispatch arms / ~36k lines in `tpyc/codegen_cpp/`), not by the

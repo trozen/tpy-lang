@@ -129,7 +129,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | F7 | Decorator definitions in library code | M-L | 🚧 Phase 1 done | [V](#decorator-definitions-in-library-code) |
 | F8 | Compile-time conditional compilation / build profiles | M | 🆕 Not started | [V](#compile-time-conditional-compilation--build-profiles) |
 | F9 | Frontend plugin API (DSL / non-Python source) | XL | ✅ v1 shipped | [V](#frontend-plugin-api) |
-| F10 | IR migration (THIR / MIR) | XL | 🆕 Not started | [V](#ir-migration-thir--mir) |
+| F10 | IR migration (THIR / MIR) | XL | 🚧 In progress (THIR active) | [V](#ir-migration-thir--mir) |
 | F11 | Compile-time module parameters (`compile_param`/`instantiate`) | L | 🚧 Phase 0 POC (CPython); sema/codegen not started | [V](#compile-time-module-parameters) |
 
 ### Phase G: Concurrency (Future)
@@ -2007,12 +2007,15 @@ Beyond the immediate fixes, THIR is the natural cache boundary for any future
 incremental compilation work, and MIR is what the planned LSP target depends on
 (structured per-construct facts that survive across compiler versions).
 
-**Current state**: Not started. See `docs/IR_DESIGN.md` for the full design --
+**Current state**: IN PROGRESS -- THIR is active, on by default per-case (see
+CLAUDE.md "THIR migration" for the operating model and `docs/IR_DESIGN.md`'s
+increment-by-increment landing log). See `docs/IR_DESIGN.md` for the full design --
 THIR node set, lowering plan, MIR node set, liveness + move/copy + borrow
 passes, rollout phasing, and what *doesn't* change. Per the design doc's
-status table, every step (THIR nodes, lowering, codegen migration, MIR nodes,
+status table, the THIR half has landed and is default-on per-case (THIR nodes,
+lowering, codegen migration -- increments 1-5+); the MIR half (MIR nodes,
 liveness, move lowering, borrow checker, opt-in safe mode, MIR-backed codegen,
-retirement of old logic) is "Not started".
+retirement of old AST codegen) is not started.
 
 **Dependencies**: None within tpyc (it's a self-contained refactor). Blocks:
 LSP target (per CLAUDE.md), incremental front-end caching, and any future

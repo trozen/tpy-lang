@@ -1451,6 +1451,10 @@ class Compiler:
 
     def is_user_module(self, compiled: CompiledModule) -> bool:
         """True if the module is user code (lives under the entry point directory)."""
+        # The entry point is always user code, even with a synthetic path (e.g.
+        # `<stdin>` from Compiler.from_source, which isn't under base_dir).
+        if compiled.is_entry_point:
+            return True
         if not self.resolver:
             return True
         try:
@@ -1458,6 +1462,19 @@ class Compiler:
             return True
         except ValueError:
             return False
+
+    def _make_codegen(self, compiled: CompiledModule,
+                      options: "CodeGenOptions | None") -> "CodeGenerator":
+        """Build a CodeGenerator with THIR scoped to USER modules: lib/tpy +
+        stdlib stay on the AST path (a stable AST leaf behind the user-code
+        boundary), so a case migrates on its own code's portability, not its
+        imports'. Shared by the build path (generate_code) and the string path
+        (generate_code_to_strings, i.e. --dump-code / -vv) so the two never
+        diverge on the routing decision."""
+        codegen = CodeGenerator(compiled.analyzer, options)
+        if codegen.ctx.thir_codegen and not self.is_user_module(compiled):
+            codegen.ctx.thir_codegen = False
+        return codegen
 
     def _discover_implicit_stdlib(self) -> None:
         """Discover implicit stdlib modules that builtins depend on."""
@@ -3837,7 +3854,7 @@ class Compiler:
         cpp_path = layout.cpp_path(mod_name)
 
         assert compiled.analyzer is not None
-        codegen = CodeGenerator(compiled.analyzer, options)
+        codegen = self._make_codegen(compiled, options)
         # Pass actual user modules (those in self.modules, not builtins without user files)
         actual_user_modules = set(self.modules.keys())
         implicit_stdlib = self._implicit_stdlib_set()
@@ -3895,7 +3912,7 @@ class Compiler:
         with activate_compiler(self):
             self._check_no_errors(compiled)
             assert compiled.analyzer is not None
-            codegen = CodeGenerator(compiled.analyzer, options)
+            codegen = self._make_codegen(compiled, options)
             actual_user_modules = set(self.modules.keys())
             implicit_stdlib = self._implicit_stdlib_set()
             return codegen.generate(

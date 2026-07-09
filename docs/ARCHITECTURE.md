@@ -17,12 +17,13 @@ analyze bodies     -> per-function/method body sema      [sema/, sub-phases 4-5]
 codegen            -> C++ .hpp / .cpp                    [codegen_cpp/]
 ```
 
-An optional flag-gated path inserts a Typed High-level IR between sema and
-codegen: with `--thir-codegen`, an eligible slice of functions -- value-scalar
-bodies plus form rung F1 (single-assignment non-value record locals + field
-reads) -- lowers to immutable THIR (`tpyc/thir/`) and emits from it with no
-analyzer reference, byte-identical to the AST codegen path. Off by default; the
-first step of the THIR/MIR migration (`docs/IR_DESIGN.md`).
+A Typed High-level IR sits between sema and codegen: THIR (`tpyc/thir/`) lowers
+a body to immutable IR and emits from it with no analyzer reference,
+byte-identical to the AST codegen path. It is ON BY DEFAULT for migrated
+(non-`no_thir`) user-module bodies -- the per-case migration model (see CLAUDE.md
+"THIR migration"); un-migrated bodies and stdlib stay on the AST path, and the
+eligibility gate still routes per-body under the hood. The first step of the
+THIR/MIR migration (`docs/IR_DESIGN.md`).
 
 The sema half runs as a workspace-wide two-pass loop: every module
 finalizes declarations first, then bodies run as a second sweep.
