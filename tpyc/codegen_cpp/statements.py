@@ -167,7 +167,12 @@ class StatementGenerator:
                     self.ctx.const_indirect_locals.add(pname)
             elif isinstance(actual, OptionalType) and actual.uses_pointer_repr():
                 self.ctx.pointer_locals.add(pname)
-                if isinstance(ptype, ReadonlyType):
+                # `const P*` when annotated `readonly[...]` OR when the inferred
+                # verdict const-consts it (readonly fn/method whose param address
+                # does not escape) -- same addr-escape-aware verdict the signature
+                # renders, so borrow-locals off this receiver spell const to match.
+                if (isinstance(ptype, ReadonlyType)
+                        or pname in deep_const_borrow_params):
                     self.ctx.const_indirect_locals.add(pname)
             # Own[OptionalType[P_ref]]: param renders as `std::optional<P>&&`
             # (storage form), but body access patterns are the same as a

@@ -336,9 +336,15 @@ deferred (self-contained) / blocked-on-`<rung>`.
   Optional-adjacent faces: const-SPELLING borrow-local decls off an
   Optional-ptr receiver (REF_ALIAS / OPTIONAL_TO_PTR / tuple-alias /
   union locals + borrow-tuple returns -- gate-rejected via
-  `_const_exact_field_receiver_ok`; the AST drops the receiver's
-  INFERRED constness there, the BUGS.md narrowed-Optional-receiver
-  entry), `readonly[A | None]` sources at
+  `_const_exact_field_receiver_ok`; the AST const is now correct here
+  (the narrowed-Optional-receiver seeding bug is fixed by seeding
+  `const_indirect_locals` from `deep_const_borrow_params`). Widening this
+  gate is now unblocked BUT requires a matching THIR change: an Optional-ptr
+  param lands in `deep_const_borrow_params`, NOT `const_borrow_params`, so
+  `_f1_const_rooted_source` (which consults `_param_is_const` =
+  `const_borrow_params`) must also consult `_param_is_deep_const` for the
+  Optional-ptr param base name -- else THIR spells the routed borrow-local
+  non-const while the AST spells it const and the byte-diff diverges), `readonly[A | None]` sources at
   `_is_borrow_ptr_local` (the write/return `ptr_to_optional` gate does
   not unwrap readonly), narrowed Optional names into UNION slots
   (`_union_member_lift_arg` keys on the declared type), and the
