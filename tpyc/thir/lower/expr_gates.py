@@ -1052,29 +1052,42 @@ def _is_record_rvalue_source(init: TpyExpr, declared: dict[str, TpyType],
         # The CTOR arg face keys the record-rvalue temp on the slot's mutation
         # -- `_gen_record_ctor_args` hoists the named temp only for a MUTATED
         # ref slot (flush-position only), while a const slot binds the inline
-        # prvalue expansion, temp-free at any depth. This differs from the
-        # free-call face's mutation-blind hoist, so the ctor face keeps its own
-        # arg loop rather than sharing the plain-call cascade below.
+        # prvalue expansion, temp-free at any depth. So a const slot shares the
+        # free-call face's `_shared_pass_through_arg` cascade, but a mutated slot
+        # keeps only the by-value rows (a temp/prvalue binds a non-const ref
+        # ill-formed) plus the mutation-keyed record-rvalue.
         ctor_mut = fi.mutated_params or frozenset()
 
         def _rec_rvalue_arg_ok(i: int, a: TpyExpr, ptype: 'TpyType | None') -> bool:
             if not _record_rvalue_temp_arg(a, ptype, declared, analyzer):
                 return False
             return temps_ok if i in ctor_mut else True
-        # Eligible scalars / slot-resolved float literals / the mutation-keyed
-        # record-rvalue temp / Own scalar+record rvalues. A non-scalar lvalue
-        # (record pointer-local / Own name) needs a deref or auto-move the bare
-        # THIRCall arg emit does not reproduce, and an `Own[scalar]`/union slot
-        # temps a bare name -- both left to the copy+move / member-lift rows the
-        # ctor emit does not carry.
-        return all((_eligible_scalar(analyzer.get_expr_type(a))
-                    and not _member_valued_union_slot(a, p.type, analyzer)
-                    and not _own_cascade_fires(p.type)
-                    and _expr_eligible(a, declared, analyzer))
-                   or _float_literal_pass_through_arg(a, p.type, declared, analyzer)
+
+        def _const_slot_arg_ok(a: TpyExpr, ptype: 'TpyType | None') -> bool:
+            # A non-mutated slot lowers `const T&` (or a value slot), which binds
+            # any prvalue/lvalue -- so the WHOLE shared pass-through cascade the
+            # free-call face renders bare applies (scalar/float/Own rvalue PLUS
+            # str/bytes/char/Ptr/container/slice/enum/value-tuple/record-NAME).
+            # The ctor lowering already emits these via `_lower_call_arg`.
+            return _shared_pass_through_arg(a, ptype, declared, analyzer)
+
+        def _mut_slot_arg_ok(a: TpyExpr, ptype: 'TpyType | None') -> bool:
+            # A MUTATED slot lowers `T&` (non-const ref): a temp / literal /
+            # owned-conversion source binds ill-formed (the mutated-String-param
+            # AST miscompile, BUGS.md), so only the BY-VALUE rows (scalars pass by
+            # value, Own moves/copies) are safe -- the ctor's former hand-rolled
+            # set. Reference-type shared rows (str->String, container, record)
+            # stay off; the mutation-keyed record-rvalue rides `_rec_rvalue_arg_ok`.
+            return ((_eligible_scalar(analyzer.get_expr_type(a))
+                     and not _member_valued_union_slot(a, ptype, analyzer)
+                     and not _own_cascade_fires(ptype)
+                     and _expr_eligible(a, declared, analyzer))
+                    or _float_literal_pass_through_arg(a, ptype, declared, analyzer)
+                    or _own_scalar_rvalue_arg(a, ptype, declared, analyzer)
+                    or _own_record_rvalue_arg(a, ptype, declared, analyzer))
+        return all((_mut_slot_arg_ok(a, p.type) if i in ctor_mut
+                    else _const_slot_arg_ok(a, p.type))
                    or _rec_rvalue_arg_ok(i, a, p.type)
-                   or _own_scalar_rvalue_arg(a, p.type, declared, analyzer)
-                   or _own_record_rvalue_arg(a, p.type, declared, analyzer)
                    for i, (a, p) in enumerate(zip(init.args, fi.params)))
     # The by-value record-returning FREE-call face: the same callee-shape head
     # as `_call_eligible` (linkage / literal-overload / generics / error_return

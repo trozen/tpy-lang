@@ -389,7 +389,16 @@ deferred (self-contained) / blocked-on-`<rung>`.
   by value, `_record_storage_return`): bare names (owned local NRVO / `Own`
   rvalue-ref-param C++ implicit move -- render bare) plus record-rvalue ctor /
   by-value calls (`return Box(n);`, the bare expansion via
-  `_is_record_rvalue_source`; face `ret.record_storage`). The return-slot
+  `_is_record_rvalue_source`; face `ret.record_storage`). Its ctor face's arg
+  loop was UNIFIED onto the shared pass-through cascade
+  (`_shared_pass_through_arg`, the free-call face's set): a non-mutated (const)
+  ctor slot admits every temp-free row the ctor lowering already emits via
+  `_lower_call_arg` -- adding Ptr/str/bytes/char/container/slice/enum/value-tuple/
+  record-NAME to the former scalar-only subset (`return Rec(self.ptr)` etc., the
+  dominant `return.record_source.call` blocker). A MUTATED slot (`T&`) keeps only
+  the by-value rows: a temp/literal/owned-conversion into a non-const ref is the
+  mutated-String-param AST miscompile (BUGS.md), so reference-type rows reject
+  there; the record-rvalue arg stays mutation-keyed. The return-slot
   TAIL then landed `return self` (`return (*this);` via THIRSelf(deref=True),
   face `ret.record_self`), `return recv.field` (the bare storage-form field
   read, face `ret.record_field`), and record-rvalue sources at the

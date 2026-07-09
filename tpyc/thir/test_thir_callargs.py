@@ -1517,6 +1517,42 @@ class TestCtorStrArgSlots:
         )
         assert _fn(_lower_ctx(src), "use") is None
 
+    def test_record_rvalue_return_const_string_slot_routes(self):
+        # `return S("a")` at an Own[S] record slot with a NON-mutated String
+        # slot: `_is_record_rvalue_source`'s ctor face shares the free-call
+        # cascade for const slots, so the str-literal arg routes bare.
+        src = (
+            "from tpy import String, Own\n"
+            "class S:\n"
+            "    name: String\n"
+            "    def __init__(self, name: String) -> None:\n"
+            "        self.name = name\n"
+            "def use() -> Own[S]:\n"
+            '    return S("a")\n'
+            "print(use().name)\n"
+        )
+        thir = _lower_ctx(src)
+        assert _fn(thir, "use") is not None
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+    def test_record_rvalue_return_mutated_string_slot_stays_ast(self):
+        # The mutated-slot guard on `_is_record_rvalue_source`'s ctor face: a
+        # MUTATED String slot (`std::string&`) rejects the str-literal arg (a
+        # temp into a non-const ref is the mutated-String-param miscompile),
+        # keeping the whole `return S("a")` body on the AST path.
+        src = (
+            "from tpy import String, Own\n"
+            "class S:\n"
+            "    name: String\n"
+            "    def __init__(self, name: String) -> None:\n"
+            '        name += "!"\n'
+            "        self.name = name\n"
+            "def use() -> Own[S]:\n"
+            '    return S("a")\n'
+            "print(use().name)\n"
+        )
+        assert _fn(_lower_ctx(src), "use") is None
+
 
 class TestArgTempValidator:
     def _temp(self):
