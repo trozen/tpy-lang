@@ -412,7 +412,7 @@ The marker layer is unobservable until something *uses* it. The planned sites, i
 
 4. **`Arc[T]`** (Phase 6) -- requires `T: Send + Sync`. The standard atomic shared-ownership requirement.
 
-5. **`Mutex[T]` / `RwLock[T]`** (Phase 6, shipped) -- the Sync uplift primitives. Both are Sync iff `T` is Send. For `RwLock` this is looser than Rust's `T: Send + Sync`, and correct for TPy: the read guard hands out `readonly[T]`, and a not-Sync `T` is either a container (not-Sync from shared-mutability, removed by the readonly guard) or an interior-mutable type from the unsafe `interior` hatch (user owns Send/Sync). Rust needs `T: Sync` only because its `Cell` is *safe* interior mutability. Both enable shared-mutable across threads safely. (A precise bound distinguishing the two not-Sync reasons -- a `readonly[container]: Sync` refinement, OQ1 -- is a deferred design fork.)
+5. **`Mutex[T]` / `RwLock[T]`** (Phase 6, shipped) -- the Sync uplift primitives. Both are Sync iff `T` is Send. For `RwLock` this is looser than Rust's `T: Send + Sync`, and correct for TPy: the read guard hands out `readonly[T]`, and a not-Sync `T` is either a container (not-Sync from shared-mutability, removed by the readonly guard) or an interior-mutable type from the unsafe `unsafe_interior_mutable` hatch (user owns Send/Sync). Rust needs `T: Sync` only because its `Cell` is *safe* interior mutability. Both enable shared-mutable across threads safely. (A precise bound distinguishing the two not-Sync reasons -- a `readonly[container]: Sync` refinement, OQ1 -- is a deferred design fork.)
 
 ## Interaction with Other Features
 
@@ -541,7 +541,7 @@ Gated on `docs/ASYNC_DESIGN.md` v3+ decision. Adds:
    *container* (not-Sync purely from shared-mutability, which the `readonly`
    read guard removes) and an *interior-mutable* type (not-Sync because it
    mutates through `readonly` -- TPy's only such types come from the unsafe
-   `interior`/`unsafe_interior` hatch). (Other not-Sync safe forms -- e.g. a
+   `unsafe_interior_mutable` hatch). (Other not-Sync safe forms -- e.g. a
    `Send[Callable[...]]`-wrapped closure, structurally not-Sync -- reduce to the
    *container* case for this argument: an ordinary lambda's by-value captures
    are not `mutable` and pointer/reference captures are excluded from `Send`, so

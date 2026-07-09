@@ -1,9 +1,9 @@
-# Error: interior[...] is only valid on a class field declaration, not a
+# Error: unsafe_interior_mutable[...] is only valid on a class field declaration, not a
 # parameter (it marks a field outside the owner's readonly boundary).
-from tpy import Int32, Ptr, interior
+from tpy import Int32, Ptr, unsafe_interior_mutable
 
 
-def f(p: interior[Ptr[Int32]]) -> None:  # tpyc: error(/only valid on a class field/)
+def f(p: unsafe_interior_mutable[Ptr[Int32]]) -> None:  # tpyc: error(/only valid on a class field/)
     pass
 
 

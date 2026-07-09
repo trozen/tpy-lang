@@ -1,1 +1,1 @@
-main.py:7: error: interior[interior[...]] on field 'p' is redundant
+main.py:8: error: unsafe_interior_mutable[unsafe_interior_mutable[...]] on field 'p' is redundant

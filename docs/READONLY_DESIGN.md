@@ -466,9 +466,9 @@ never-mutated-local const-binding (see TODO).
   are different concepts)
 - `@pure` remains separate (single const overload, no propagation)
 
-## Interior mutability: `interior[Ptr[T]]` fields
+## Interior mutability: `unsafe_interior_mutable[Ptr[T]]` fields
 
-`interior[Ptr[T]]` is the dual of `readonly[T]`: it marks one field as
+`unsafe_interior_mutable[Ptr[T]]` is the dual of `readonly[T]`: it marks one field as
 *outside* its owning object's readonly boundary. TPy's readonly is deep --
 it propagates through the reachable object graph, including into `Ptr[T]`
 fields (a readonly borrow yields readonly sub-borrows). That deepness is
@@ -478,10 +478,10 @@ load-bearing (`Rc.get()` returning `self._payload` is only sound because a
 through a control-block pointer -- and should be mutable even through a
 readonly handle. In C++ this is automatic: `const` does not cross a raw
 pointer (`_cell` is `T* const`, `*_cell` stays non-const), exactly like
-`std::shared_ptr` being const-copyable. `interior` opts a single field out of
-TPy's stricter propagation to match.
+`std::shared_ptr` being const-copyable. `unsafe_interior_mutable` opts a single field
+out of TPy's stricter propagation to match.
 
-**Semantics.** On a field typed `interior[Ptr[T]]`:
+**Semantics.** On a field typed `unsafe_interior_mutable[Ptr[T]]`:
 
 - Accessing it through a `readonly[Self]` receiver does **not** wrap the
   pointee in `readonly` (the field keeps its declared mutable shape).
@@ -490,10 +490,10 @@ TPy's stricter propagation to match.
   `@auto_readonly`.
 - Reassigning the slot (`self._cell = other`) through a readonly receiver is
   **still rejected** -- that is enforced on the receiver's readonly-ness, which
-  `interior` never touches. The hatch is for mutation *beyond* the field
+  `unsafe_interior_mutable` never touches. The hatch is for mutation *beyond* the field
   boundary, not for the field slot itself.
 
-**Soundness contract.** `interior` is an unsafe assertion: the author
+**Soundness contract.** `unsafe_interior_mutable` is an unsafe assertion: the author
 guarantees the field's mutation is unobservable through a readonly read.
 For `Rc`, the refcount feeds no readonly-observable result, and the payload
 (`_payload`) is deliberately *not* interior, so `readonly[Rc[T]].get()` still

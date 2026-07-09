@@ -1,1 +1,1 @@
-main.py:8: error: interior[...] on field 'x' is only supported on a Ptr[T] field, not 'Int32'
+main.py:8: error: unsafe_interior_mutable[...] on field 'x' is only supported on a Ptr[T] field, not 'Int32'

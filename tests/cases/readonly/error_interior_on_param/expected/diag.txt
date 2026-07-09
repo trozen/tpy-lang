@@ -1,1 +1,1 @@
-main.py:6: error: interior[...] is only valid on a class field declaration
+main.py:6: error: unsafe_interior_mutable[...] is only valid on a class field declaration

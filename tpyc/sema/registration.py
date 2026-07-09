@@ -878,12 +878,12 @@ class TypeRegistrar:
         )
 
     def _strip_interior_field_markers(self, record: TpyRecord) -> None:
-        """Lower `interior[Ptr[T]]` field annotations to a FieldInfo flag.
+        """Lower `unsafe_interior_mutable[Ptr[T]]` field annotations to a FieldInfo flag.
 
-        `interior[...]` is an unsafe escape hatch from the readonly boundary;
-        only `interior[Ptr[T]]` on a field is meaningful (the refcount-cell
-        pattern). Reject the forms that would silently widen the hatch --
-        nested interior, readonly/Own inside, or a non-pointer payload -- so
+        `unsafe_interior_mutable[...]` is an unsafe escape hatch from the readonly
+        boundary; only `unsafe_interior_mutable[Ptr[T]]` on a field is meaningful (the
+        refcount-cell pattern). Reject the forms that would silently widen the
+        hatch -- nested markers, readonly/Own inside, or a non-pointer payload -- so
         misuse fails at the declaration with a clear message rather than
         surfacing as wrong const-ness later.
         """
@@ -893,19 +893,20 @@ class TypeRegistrar:
             inner = fld.type.wrapped
             if isinstance(inner, InteriorMutableType):
                 raise SemanticError(
-                    f"interior[interior[...]] on field '{fld.name}' is redundant",
+                    f"unsafe_interior_mutable[unsafe_interior_mutable[...]] on field "
+                    f"'{fld.name}' is redundant",
                     loc=fld.loc,
                 )
             if isinstance(inner, (ReadonlyType, OwnType)):
                 raise SemanticError(
-                    f"interior[...] on field '{fld.name}' cannot wrap "
-                    f"'{inner}'; interior applies to a plain Ptr[T] field",
+                    f"unsafe_interior_mutable[...] on field '{fld.name}' cannot wrap "
+                    f"'{inner}'; unsafe_interior_mutable applies to a plain Ptr[T] field",
                     loc=fld.loc,
                 )
             if not isinstance(inner, PtrType):
                 raise SemanticError(
-                    f"interior[...] on field '{fld.name}' is only supported on "
-                    f"a Ptr[T] field, not '{inner}'",
+                    f"unsafe_interior_mutable[...] on field '{fld.name}' is only "
+                    f"supported on a Ptr[T] field, not '{inner}'",
                     loc=fld.loc,
                 )
             fld.type = inner

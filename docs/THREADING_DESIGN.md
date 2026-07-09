@@ -48,7 +48,7 @@ review findings are recorded inline so they do not get re-litigated.
 |----|-----------|-------|--------|------------|
 | V1 | `tpy.thread.spawn` (Runnable-struct) | `spawn[R: Send, T: ThreadTask[R]](task: Send[Own[T]]) -> Own[JoinHandle[R]]` (`ThreadTask` = structural `run() -> R`; `Send` via the `Send[Own[T]]` wrapper; `R: Send` bound since R crosses the thread boundary; `spawn(task)` fully inferred -- the marker-wrapper + associated-type inference gaps are closed). `JoinHandle`: `join() -> R`/`detach()`, abort-on-unconsumed-drop. | **BUILT** | -- |
 | V2 | `Arc[T]` / `Weak[T]` | Atomic sibling of `Rc`, built on a new generic `Atomic[T: AnyFixedInt]` (`tpy.atomic`, wrapping `std::atomic<T>`). `Send + Sync` iff `T` is, via the conditional `@unsafe_send`/`@unsafe_sync` (if_params_*) override. Shared into a task by `arc.clone()` into a struct field. | **built** | V1 |
-| V3 | `Mutex[T]` / `RwLock[T]` | Both `Send + Sync` iff `T: Send` (RwLock looser than Rust's `T: Send + Sync` -- correct because TPy interior mutability is unsafe/user-owned). Shared as `Arc[Mutex[T]]`. `@readonly` lock/read/write hand out a `Deref[T]` context-manager guard (interior mutability via `interior[Ptr[cell]]`). Module placement decided: `tpy.sync` (native-primitive layer, parallel to `tpy.atomic`; `Arc` stays pure-TPy in `tplib.arc`). | **BUILT** | V2 |
+| V3 | `Mutex[T]` / `RwLock[T]` | Both `Send + Sync` iff `T: Send` (RwLock looser than Rust's `T: Send + Sync` -- correct because TPy interior mutability is unsafe/user-owned). Shared as `Arc[Mutex[T]]`. `@readonly` lock/read/write hand out a `Deref[T]` context-manager guard (interior mutability via `unsafe_interior_mutable[Ptr[cell]]`). Module placement decided: `tpy.sync` (native-primitive layer, parallel to `tpy.atomic`; `Arc` stays pure-TPy in `tplib.arc`). | **BUILT** | V2 |
 | D1 | Closure `spawn` (ergonomic layer) | `spawn(lambda: work(data))` desugaring to the V1 core. Needs a **callable generic bound** + owning-capture. Own design pass; the current spelling is shaky (see "Deferred: closures"). Likely **post-THIR**. | **deferred** | V1, (THIR) |
 | D2 | De-intrinsic `asyncio.create_task` | Shipped as "bound coroutines": move-only handle locals holding the concrete frame (zero-alloc; erasure only at typed boundaries), consumed by await/create_task/run/move; compile-time coroutine-only arg contract. See the SHIPPED section below. | **SHIPPED** | -- |
 | D3 | Movable `Callable` | Re-back `Callable` with C++23 `std::move_only_function`. Independent; breaking (~47 snapshots + real copy sites). | **filed, decoupled** | -- |
@@ -289,7 +289,7 @@ registration. This is a general Send/Sync fixpoint gap (it reproduces with
   `Mutex`, and `.lock()` still acquires and hands out a *mutable* borrow of the
   payload. This is the interior mutability SEND_SYNC_DESIGN.md flagged Mutex
   would provide (TPy has no `Cell`/`RefCell`). The mechanism is the same
-  `interior[Ptr[cell]]` escape hatch `Rc`/`Arc` use for their refcount: the
+  `unsafe_interior_mutable[Ptr[cell]]` escape hatch `Rc`/`Arc` use for their refcount: the
   lock and payload live in a heap `_MutexCell` reached through a raw `Ptr`, so
   readonly does not propagate into the pointee.
 - **Guard = context manager.** `lock()` returns a `@nocopy` `Deref[T]` guard;
@@ -309,7 +309,7 @@ registration. This is a general Send/Sync fixpoint gap (it reproduces with
   guard hands out `readonly[T]` to concurrent readers, and a TPy not-`Sync` `T`
   is either (a) a container whose not-`Sync`-ness is shared-mutability -- which
   the readonly guard removes, so concurrent reads are safe -- or (b) an
-  interior-mutable type built with the unsafe `interior`/`unsafe_interior`
+  interior-mutable type built with the unsafe `unsafe_interior_mutable`
   escape hatch, where the user already owns `Send`/`Sync` correctness. Rust
   needs `T: Sync` because its `Cell` is *safe* interior mutability the compiler
   must defend against; TPy's is unsafe, so the readonly read guard suffices for
@@ -336,8 +336,8 @@ packages, honestly reflecting the layering.
 
 **Known cost (filed perf TODO).** `Arc[Mutex[T]]` is two heap allocations (the
 Arc cell + the Mutex cell) vs Rust's one. A single-alloc fusion needs either an
-address-of-inline-field primitive or `interior` support on a non-`Ptr` inline
-field; neither exists today. Correctness-neutral; deferred.
+address-of-inline-field primitive or `unsafe_interior_mutable` support on a non-`Ptr`
+inline field; neither exists today. Correctness-neutral; deferred.
 
 **Guard-lock enforcement + residual limitations (BUGS.md, `/tpy-review` of V3).**
 Payload access is gated on the lock being held: each guard carries a `_locked`

@@ -2463,7 +2463,7 @@ def has_auto_own(t: 'TpyType') -> bool:
 
 @dataclass(frozen=True)
 class InteriorMutableType(TpyType):
-    """Transient field-declaration marker for `interior[T]`.
+    """Transient field-declaration marker for `unsafe_interior_mutable[T]`.
 
     Marks a field as outside its owning object's readonly boundary: readonly
     does not propagate into the field's pointee and mutating *through* the
@@ -2481,14 +2481,14 @@ class InteriorMutableType(TpyType):
 
     def to_cpp(self) -> str:
         raise RuntimeError(
-            "interior[...] is only valid on a class field declaration"
+            "unsafe_interior_mutable[...] is only valid on a class field declaration"
         )
 
     def is_value_type(self) -> bool:
         return self.wrapped.is_value_type()
 
     def __str__(self) -> str:
-        return f"interior[{self.wrapped}]"
+        return f"unsafe_interior_mutable[{self.wrapped}]"
 
     def inner_types(self) -> tuple['TpyType', ...]:
         return (self.wrapped,)
@@ -5020,7 +5020,7 @@ class FieldInfo:
     is_factory_default: bool = False  # True for field(default_factory=...)
     loc: Optional[Any] = None  # SourceLocation from parse.py (avoid circular import)
     native_name: Optional[str] = None  # C++ member name override from native_field(...)
-    # `interior[T]` marker, stripped from `type` at registration: mutations
+    # `unsafe_interior_mutable[T]` marker, stripped from `type` at registration: mutations
     # reached *through* this field don't count against the owner's readonly-ness
     # and readonly does not propagate into the field. See InteriorMutableType.
     is_interior_mutable: bool = False

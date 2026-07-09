@@ -580,11 +580,11 @@ class auto_own:
         return item
 
 
-class interior:
+class unsafe_interior_mutable:
     """Field type modifier marking a field outside the readonly boundary.
 
-    `interior[Ptr[T]]` lets refcount-style bookkeeping be mutated through a
-    readonly handle (the std::shared_ptr const-copy pattern). In CPython the
+    `unsafe_interior_mutable[Ptr[T]]` lets refcount-style bookkeeping be mutated through
+    a readonly handle (the std::shared_ptr const-copy pattern). In CPython the
     subscript returns the type unchanged.
     """
     def __class_getitem__(cls, item):

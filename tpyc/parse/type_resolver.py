@@ -354,7 +354,7 @@ class TypeResolver:
         # generic path where the resolver's unresolved-name error fires.
         if ref.args and name in (
             "tpy:Ptr", "tpy:Own", "tpy:readonly", "tpy:auto_readonly",
-            "tpy:auto_own", "tpy:interior", "tpy:Send", "tpy:Sync",
+            "tpy:auto_own", "tpy:unsafe_interior_mutable", "tpy:Send", "tpy:Sync",
             "typing:Optional", "typing:Final", "typing:ClassVar",
         ):
             inner_arg = ref.args[0]
@@ -367,7 +367,7 @@ class TypeResolver:
             # depth they appear.
             inner_is_type_arg = name in (
                 "tpy:Ptr", "tpy:Own", "tpy:readonly",
-                "tpy:auto_readonly", "tpy:auto_own", "tpy:interior",
+                "tpy:auto_readonly", "tpy:auto_own", "tpy:unsafe_interior_mutable",
                 "tpy:Send", "tpy:Sync",
             ) or is_type_arg
             inner = self.resolve(
@@ -397,7 +397,7 @@ class TypeResolver:
                 return AutoReadonlyType(inner)
             if name == "tpy:auto_own":
                 return AutoOwnType(inner)
-            if name == "tpy:interior":
+            if name == "tpy:unsafe_interior_mutable":
                 return InteriorMutableType(inner)
             if name == "typing:Optional":
                 if isinstance(inner, AnyType):

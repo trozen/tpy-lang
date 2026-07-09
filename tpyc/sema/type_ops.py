@@ -310,13 +310,14 @@ class TypeOperations:
                 check_hashable_constraints=check_hashable_constraints,
             )
 
-        # `interior[T]` is a field-only marker; field registration strips it
-        # before this runs, so reaching here means it was written on a param,
+        # `unsafe_interior_mutable[T]` is a field-only marker; field registration strips
+        # it before this runs, so reaching here means it was written on a param,
         # return, local, or container -- reject with a clear message instead of
         # letting the unstripped marker crash codegen.
         if isinstance(typ, InteriorMutableType):
             raise SemanticError(
-                "interior[...] is only valid on a class field declaration", loc)
+                "unsafe_interior_mutable[...] is only valid on a class field declaration",
+                loc)
 
         if isinstance(typ, TypeParamRef):
             if not allow_type_param_ref:

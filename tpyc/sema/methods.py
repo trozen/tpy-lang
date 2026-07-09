@@ -869,7 +869,7 @@ class MethodAnalyzer:
                 # (`return o.b.get().v`) to a mutable receiver. The actual mutation is
                 # rooted back to the receiver at the mutation site, where
                 # _root_name_of_expr is transparent to the accessor call.
-                # A method call through an `interior` field (e.g.
+                # A method call through an `unsafe_interior_mutable` field (e.g.
                 # `self._cell.incr_strong()`) mutates bookkeeping the owner
                 # declared outside its readonly boundary -- it must not demote
                 # the enclosing method. Reassigning the slot is a separate path

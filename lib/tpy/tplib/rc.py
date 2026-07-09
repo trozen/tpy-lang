@@ -28,7 +28,7 @@
 #   __init__ isn't supported; `clone()` covers the share path internally.
 from __future__ import annotations
 from typing import Protocol
-from tpy import Own, Ptr, UInt32, UInt64, Deref, Covariant, Equatable, Comparable, Hashable, dynamic, nocopy, auto_readonly, interior
+from tpy import Own, Ptr, UInt32, UInt64, Deref, Covariant, Equatable, Comparable, Hashable, dynamic, nocopy, auto_readonly, unsafe_interior_mutable
 from tpy.mem import UninitStorage
 from tpy.unsafe import unsafe_take, unsafe_release
 
@@ -116,7 +116,7 @@ class Rc[T](Deref[T], Covariant[T]):
     # behind it): clone/downgrade bump it through a readonly handle, the
     # std::shared_ptr const-copy pattern. `_payload` stays inside the boundary
     # so a readonly handle still yields readonly T.
-    _cell: interior[Ptr[_RcCellBase]]
+    _cell: unsafe_interior_mutable[Ptr[_RcCellBase]]
     _payload: Ptr[T]
 
     # TODO: package-private once TPy gains a private-method mechanism;
@@ -193,7 +193,7 @@ class Rc[T](Deref[T], Covariant[T]):
 
 @nocopy
 class Weak[T]:
-    _cell: interior[Ptr[_RcCellBase]]
+    _cell: unsafe_interior_mutable[Ptr[_RcCellBase]]
     # _payload dangles between strong=0 and weak=0, but is only dereferenced
     # via upgrade() after the strong-count check confirms the payload is live.
     _payload: Ptr[T]

@@ -19,13 +19,13 @@ matches `Mutex`'s Rust rule; for `RwLock` it is *looser* than Rust's
 `unsafe impl<T: Send + Sync>`, and correct for TPy: a not-`Sync` `T` is either a
 container whose not-`Sync`-ness is shared-mutability that the readonly read
 guard removes, or an interior-mutable type built with the unsafe
-`interior`/`unsafe_interior` escape hatch, where the user owns `Send`/`Sync`.
+`unsafe_interior_mutable` escape hatch, where the user owns `Send`/`Sync`.
 Rust needs `T: Sync` because its `Cell` is *safe* interior mutability; TPy's is
 unsafe, so the readonly read guard suffices for every safe payload.
 """
 from __future__ import annotations
 from typing import Self
-from tpy import (Own, Ptr, UInt32, Deref, nocopy, readonly, interior,
+from tpy import (Own, Ptr, UInt32, Deref, nocopy, readonly, unsafe_interior_mutable,
                  unsafe_send, unsafe_sync)
 from tpy.mem import UninitStorage
 from tpy.unsafe import unsafe_take, unsafe_release, unsafe_store
@@ -102,13 +102,13 @@ class _RwLockCell[T]:
 @unsafe_send(if_params_send=True)
 @unsafe_sync(if_params_send=True)
 class Mutex[T]:
-    # Both fields are `interior` so lock() (a @readonly method reached through a
-    # shared Arc handle) can mutate the lock and hand out a mutable payload
-    # borrow: readonly does not propagate into an interior field's pointee.
-    # `_payload` aliases into the cell's storage; the mutable borrow it yields is
-    # exactly what the lock's runtime exclusion makes sound.
-    _cell: interior[Ptr[_MutexCell[T]]]
-    _payload: interior[Ptr[T]]
+    # Both fields are `unsafe_interior_mutable` so lock() (a @readonly method reached
+    # through a shared Arc handle) can mutate the lock and hand out a mutable
+    # payload borrow: readonly does not propagate into an interior field's
+    # pointee. `_payload` aliases into the cell's storage; the mutable borrow it
+    # yields is exactly what the lock's runtime exclusion makes sound.
+    _cell: unsafe_interior_mutable[Ptr[_MutexCell[T]]]
+    _payload: unsafe_interior_mutable[Ptr[T]]
 
     def __init__(self, value: Own[T]) -> None:
         cell = unsafe_take(_MutexCell[T]())
@@ -183,15 +183,15 @@ class MutexGuard[T](Deref[T]):
 # Sync iff T: Send -- same as Mutex, and correct for TPy (unlike Rust's
 # RwLock<T>, which needs T: Send + Sync). A TPy not-Sync T is either a container
 # whose not-Sync-ness is shared-mutability that the readonly read guard removes,
-# or an interior-mutable type built with the unsafe `interior`/`unsafe_interior`
+# or an interior-mutable type built with the unsafe `unsafe_interior_mutable`
 # escape hatch, where the user owns Send/Sync. Rust requires T: Sync because its
 # Cell is *safe* interior mutability the compiler must defend against; TPy's is
 # unsafe, so the readonly read guard suffices for every safe payload. See
 # docs/SEND_SYNC_DESIGN.md (RwLock Sync bound) for the precise-bound follow-up.
 @unsafe_sync(if_params_send=True)
 class RwLock[T]:
-    _cell: interior[Ptr[_RwLockCell[T]]]
-    _payload: interior[Ptr[T]]
+    _cell: unsafe_interior_mutable[Ptr[_RwLockCell[T]]]
+    _payload: unsafe_interior_mutable[Ptr[T]]
 
     def __init__(self, value: Own[T]) -> None:
         cell = unsafe_take(_RwLockCell[T]())

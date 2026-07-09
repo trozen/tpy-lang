@@ -25,7 +25,7 @@
 # std::sync::Weak vs std::rc::Weak in Rust.
 from __future__ import annotations
 from typing import Protocol
-from tpy import Own, Ptr, UInt32, UInt64, Deref, Covariant, Equatable, Comparable, Hashable, dynamic, nocopy, auto_readonly, interior, unsafe_send, unsafe_sync
+from tpy import Own, Ptr, UInt32, UInt64, Deref, Covariant, Equatable, Comparable, Hashable, dynamic, nocopy, auto_readonly, unsafe_interior_mutable, unsafe_send, unsafe_sync
 from tpy.mem import UninitStorage
 from tpy.atomic import Atomic, MemoryOrder, fence
 from tpy.unsafe import unsafe_take, unsafe_release
@@ -110,7 +110,7 @@ class Arc[T](Deref[T], Covariant[T]):
     # behind it): clone/downgrade bump it through a readonly handle, the
     # std::shared_ptr const-copy pattern. `_payload` stays inside the boundary
     # so a readonly handle still yields readonly T.
-    _cell: interior[Ptr[_ArcCellBase]]
+    _cell: unsafe_interior_mutable[Ptr[_ArcCellBase]]
     _payload: Ptr[T]
 
     def __init__(self, cell: Ptr[_ArcCellBase], payload: Ptr[T]) -> None:
@@ -179,7 +179,7 @@ class Arc[T](Deref[T], Covariant[T]):
 @unsafe_send(if_params_send=True, if_params_sync=True)
 @unsafe_sync(if_params_send=True, if_params_sync=True)
 class Weak[T]:
-    _cell: interior[Ptr[_ArcCellBase]]
+    _cell: unsafe_interior_mutable[Ptr[_ArcCellBase]]
     # _payload dangles between strong=0 and weak=0, but is only dereferenced
     # via upgrade() after the strong-count check confirms the payload is live.
     _payload: Ptr[T]

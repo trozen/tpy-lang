@@ -2031,7 +2031,7 @@ class ExpressionAnalyzer:
                 # Propagate readonly: accessing a non-value field through a
                 # readonly reference yields a readonly result.
                 # Ptr[T] fields become Ptr[readonly[T]], Span[T] -> Span[readonly[T]].
-                # An `interior` field is outside the readonly boundary: it keeps
+                # An `unsafe_interior_mutable` field is outside the readonly boundary: it keeps
                 # its declared (mutable) shape so refcount-style bookkeeping can
                 # be touched through a readonly receiver (the C++ `mutable`-via-
                 # raw-pointer pattern). Reassigning the slot is still rejected --
