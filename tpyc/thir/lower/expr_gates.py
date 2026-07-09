@@ -208,7 +208,7 @@ from .predicates import (
     _value_opt_scalar,
     _value_opt_scalar_name,
     _value_opt_str,
-    _value_opt_str_name,
+    _value_opt_view_name,
     _value_tuple,
     _value_union_temp_slot,
     _var_decl_type,
@@ -1821,7 +1821,7 @@ def _unary_not_eligible(e: TpyUnaryOp, locals_: dict[str, TpyType],
     if isinstance(ot, OptionalType) and (
             _optional_ptr_borrow_name(e.operand, locals_, analyzer) is not None
             or _value_opt_scalar_name(e.operand, locals_, analyzer) is not None
-            or _value_opt_str_name(e.operand, locals_, analyzer) is not None):
+            or _value_opt_view_name(e.operand, locals_, analyzer) is not None):
         return True
     # An enum operand's truthiness render slots under the same `(!(...))`
     # wrap: `not c` -> `(!(true))` (plain) / `(!((static_cast<U>(p) != 0)))`
@@ -4205,9 +4205,12 @@ def _print_arg_ok(a: TpyExpr, locals_: dict[str, TpyType], analyzer) -> bool:
         # rt already the inner scalar) prints its deref-on-narrow `(*p)` -- a
         # separate face; the un-narrowed whole-optional read routed above.
         return note_detail("print.optval")
-    if _value_opt_str_name(a, locals_, analyzer) is not None:
-        # A NARROWED value-repr Optional[str] param read prints `(*s)` -- keep it
-        # deferred so the narrowed-read routing never emits `print((*s))`.
+    if _value_opt_view_name(a, locals_, analyzer) is not None:
+        # A value-repr Optional[str]/Optional[bytes] read in print position stays
+        # deferred: a NARROWED read would print `(*s)`/`(*b)` (never routed), and
+        # an UN-narrowed Optional[bytes] read is excluded from the str-only
+        # `_print_optval_opt` route above, so it must not fall to the raw
+        # BytesPrinter arm below. (Un-narrowed Optional[str] already routed.)
         return note_detail("print.optstr")
     at = analyzer.get_expr_type(a)
     return ((_resolved_scalar(at, analyzer) or _eligible_char(at)
@@ -4348,13 +4351,13 @@ def _expr_eligible(e: TpyExpr, locals_: dict[str, TpyType], analyzer) -> bool:
             # Only the NARROWED read (`(*p)`, rt already the inner scalar) routes
             # here; the None-test / truthiness / bare-pass ride their own gates.
             return note_detail("name.optval_unproven_read")
-        if _value_opt_str_name(e, locals_, analyzer) is not None and \
+        if _value_opt_view_name(e, locals_, analyzer) is not None and \
                 isinstance(unwrap_readonly(analyzer.get_expr_type(e)),
                            OptionalType):
-            # The str twin of the arm above: an UN-narrowed value-repr
-            # Optional[str] read in a value position is the AST's
+            # The view twin of the arm above: an UN-narrowed value-repr
+            # Optional[str]/Optional[bytes] read in a value position is the AST's
             # `deref_optional_check(s)` -- deferred. Only the NARROWED read
-            # (`(*s)`, rt the inner StrView) routes past here; the None-test /
+            # (`(*s)`/`(*b)`, rt the inner view) routes past here; the None-test /
             # truthiness / arg-shim ride their own gates.
             return note_detail("name.optstr_unproven_read")
         return not _union_binding_divergent(e, locals_, analyzer)
@@ -4528,8 +4531,8 @@ def _condition_eligible(cond: TpyExpr, declared: dict[str, TpyType], analyzer) -
     if isinstance(cond, TpyName):
         rt = analyzer.get_expr_type(cond)
         if (_value_opt_scalar_name(cond, declared, analyzer) is not None
-                or _value_opt_str_name(cond, declared, analyzer) is not None):
-            # A value-repr Optional[scalar] / Optional[str] name's truthiness is
+                or _value_opt_view_name(cond, declared, analyzer) is not None):
+            # A value-repr Optional[scalar] / Optional[view] name's truthiness is
             # `::tpy::is_truthy(p)` on the bare optional (THIROptTruthy),
             # narrowed or not: codegen's `narrowed_vars` is not populated for
             # Optional None-narrowing, so gen_truthy_expr always sees the

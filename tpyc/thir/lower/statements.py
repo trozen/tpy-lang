@@ -107,6 +107,7 @@ from ..nodes import (
     THIRNarrowAlias,
     THIRNoOpStmt,
     THIROptionalPtrArg,
+    THIROptViewArg,
     THIRPrint,
     THIRExceptHandler,
     THIRPrintArg,
@@ -130,6 +131,7 @@ from .predicates import (
     _call_iterable_lvalue,
     _chain_post_if_fact,
     _const_exact_field_receiver_ok,
+    _opt_view_arg_shim,
     _container_enum_spell,
     _container_scalar_read,
     _dict_view_iterable_ok,
@@ -236,6 +238,7 @@ from .expressions import (
     _retag_bytes_literal_view,
     _slot_literal_retype,
     _value_opt_scalar_param,
+    _value_opt_view_param,
 )
 from . import comprehensions as _comprehensions
 from . import match as _match
@@ -1305,6 +1308,33 @@ def _stmt_eligible(stmt: TpyStmt, analyzer, ws: _WalkState,
             if (isinstance(peeled, TpyName)
                     and peeled.name in prescan.value_opt_params):
                 return note_detail("return.optval_coerced_param")
+        if prescan.ret_value_opt_view is not None:
+            # A value-repr Optional[view] return -- str (`-> str | None` ->
+            # `std::optional<std::string>`) or bytes (`-> bytes | None` ->
+            # `std::optional<std::vector<uint8_t>>`): `None` -> `std::nullopt`; a
+            # value-repr Optional[view] PARAM name of the same family takes the
+            # view->owned arg-split shim (`x ? std::make_optional(<conv>(*x)) :
+            # std::nullopt`, THIROptViewArg -- the WHOLE optional, narrowed or
+            # not, like the arg slot). A str/bytes LITERAL lands bare via the
+            # general tail (the owned literal / implicit conversion).
+            if isinstance(stmt.value, TpyNoneLiteral):
+                return _witness("ret.value_opt_view_none")
+            if (isinstance(stmt.value, TpyName)
+                    and stmt.value.name in prescan.param_names
+                    and _opt_view_arg_shim(ws.declared.get(stmt.value.name),
+                                           prescan.ret_value_opt_view, analyzer)):
+                return _witness("ret.value_opt_view_shim")
+            if isinstance(stmt.value, (TpyStrLiteral, TpyBytesLiteral)):
+                # `return "lit"` / `return b"lit"` -> bare (the owned literal /
+                # implicit conversion into the optional); rides the generic tail.
+                return _witness("ret.value_opt_view_literal")
+            # Any other source (a view-form `StrView`/`BytesView` local/param, an
+            # owned `String` / owned-bytes result) is deferred: a bare
+            # `return <view>;` is a pre-existing AST miscompile at this slot (a
+            # view does not convert to the owned optional, BUGS.md), and owned
+            # results ride a later widening. Reject so the body falls to AST
+            # rather than the validator's BORROW-at-value-return catch.
+            return note_detail("return.opt_view_source")
         if (prescan.ret_record_borrow is not None
                 or prescan.ret_record_storage is not None):
             # A record return slot. BORROW (`-> Box` -> `Box&`) admits a bare
@@ -2694,6 +2724,23 @@ def _lower_stmt_dispatch(stmt: TpyStmt, lc: _LowerCtx,
                 return THIRReturn(
                     value=replace(_lower_expr(stmt.value, lc), deref=False),
                     loc=loc)
+        ret_vopt_view = lc.prescan.ret_value_opt_view
+        if stmt.value is not None and ret_vopt_view is not None:
+            # `None` -> `std::nullopt` (STORAGE None literal, target-typed); a
+            # value-repr Optional[view] param name -> the view->owned shim
+            # (`x ? std::make_optional(<conv>(*x)) : std::nullopt`, family conv),
+            # passing the whole optional. A str/bytes literal rides the generic
+            # tail (the owned literal lands bare into the optional).
+            if isinstance(stmt.value, TpyNoneLiteral):
+                return THIRReturn(
+                    value=THIRLiteral(result_type=ret_vopt_view, value=None,
+                                      form=Form.STORAGE, loc=loc), loc=loc)
+            if (isinstance(stmt.value, TpyName)
+                    and _value_opt_view_param(stmt.value.name, lc)):
+                return THIRReturn(
+                    value=THIROptViewArg(result_type=ret_vopt_view,
+                                         name=stmt.value.name, form=Form.VALUE,
+                                         loc=loc), loc=loc)
         if lc.prescan.ret_record_borrow is not None and stmt.value is not None:
             # The record borrow-return sources beyond a bare name: `return
             # self` derefs the receiver pointer (`return (*this);`, the AST's

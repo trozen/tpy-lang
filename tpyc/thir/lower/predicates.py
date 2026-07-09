@@ -1060,6 +1060,7 @@ def _eligible_return(t: TpyType | None, analyzer) -> bool:
             or _resolved_bytes_value(t, analyzer) is not None
             or _storage_optional_return_type(t, analyzer) is not None
             or _value_opt_scalar(t, analyzer) is not None
+            or _value_opt_view(t, analyzer) is not None
             or _optional_ptr_borrow(t, analyzer) is not None
             or _record_borrow_return(t, analyzer) is not None
             or _record_storage_return(t, analyzer) is not None
@@ -1383,7 +1384,7 @@ def _unrouted_binding_read(t: 'TpyType | None', analyzer) -> 'str | None':
         # blanket-reject it here. Own-optional inners still reject (Own-axis
         # faces not mirrored).
         if (_value_opt_scalar(u, analyzer) is not None
-                or _value_opt_str(u, analyzer) is not None):
+                or _value_opt_view(u, analyzer) is not None):
             return None
         return "name.optval_read"
     return None
@@ -1491,12 +1492,13 @@ def _value_opt_str(t: 'TpyType | None', analyzer) -> 'OptionalType | None':
     - the tuple RETURN element (`_value_tuple_return_element_ok`): a str-view
       source wraps via `std::string(view)`, `None` renders `std::nullopt`, a
       str literal lands bare;
-    - the value-repr `Optional[str]` PARAM read/None-test/truthiness/arg-shim
-      slice (`_value_opt_str_name` / `_value_opt_str_param`): a narrowed read
-      unwraps `(*s)` (a borrow string_view), None-tests render `has_value()`,
-      truthiness `is_truthy(s)`, and a pass into another `Optional[str]` slot
-      takes the shim (`s ? std::make_optional(std::string(*s)) :
-      std::nullopt`). The decl/return-of-whole-optional/print sinks stay AST."""
+    - the value-repr `Optional[view]` PARAM read/None-test/truthiness/arg-shim
+      slice (`_value_opt_view` / `_value_opt_view_name` / `_value_opt_view_param`,
+      shared with the bytes twin `_value_opt_bytes`): a narrowed read unwraps
+      `(*s)` (a borrow string_view), None-tests render `has_value()`, truthiness
+      `is_truthy(s)`, and a pass into another `Optional[str]` slot takes the shim
+      (`s ? std::make_optional(std::string(*s)) : std::nullopt`). The str return
+      sink is `_value_opt_view`-routed; the decl/print sinks stay AST."""
     if not isinstance(t, TpyType):
         return None
     t = unwrap_readonly(unwrap_send_sync(t))
@@ -1504,28 +1506,57 @@ def _value_opt_str(t: 'TpyType | None', analyzer) -> 'OptionalType | None':
         return None
     return t if _resolved_str_value(t.inner, analyzer) is not None else None
 
-def _value_opt_str_name(e: TpyExpr, declared: dict[str, TpyType],
-                        analyzer) -> 'OptionalType | None':
-    """`e` is a bare name whose DECLARED type is a value-repr `Optional[str]`
-    -- an optional-str-view param (a value-optional LOCAL classifies OTHER at
-    its decl, so only params qualify). Keyed on the declared type, not the
-    flow-narrowed read type: the None-test / truthiness / arg-shim dispatch keys
-    on the `std::optional<std::string_view>` binding shape, which narrowing does
-    not change (the str twin of `_value_opt_scalar_name`)."""
+def _value_opt_bytes(t: 'TpyType | None', analyzer) -> 'OptionalType | None':
+    """The value-repr `Optional[bytes]` type: `bytes | None` / `BytesView | None`,
+    bound `std::optional<std::span<const uint8_t>>` at the param boundary (borrow
+    form) and an owned `std::optional<std::vector<uint8_t>>` elsewhere -- the
+    bytes twin of `_value_opt_str`. Every position renders family-neutrally
+    (`has_value()`, the narrowed `(*b)` span read, `::tpy::is_truthy(b)`) except
+    the view->owned copy, which the view-family emit spells `::tpy::bytes_copy`
+    instead of `std::string` (the arg-split shim / owned sinks). Consumed only at
+    the family-NEUTRAL value-optional sites via `_value_opt_view`; the
+    str-specific arms (if-expr str-result, `print_optional_val`, value-tuple
+    element) stay `_value_opt_str`-keyed."""
+    if not isinstance(t, TpyType):
+        return None
+    t = unwrap_readonly(unwrap_send_sync(t))
+    if not (isinstance(t, OptionalType) and not t.uses_pointer_repr()):
+        return None
+    return t if _resolved_bytes_value(t.inner, analyzer) is not None else None
+
+def _value_opt_view(t: 'TpyType | None', analyzer) -> 'OptionalType | None':
+    """A value-repr `Optional[view]` -- str OR bytes -- the shared family-neutral
+    predicate for the value-optional read / None-test / truthiness / arg-shim /
+    param+return-gate sites. The view-family emit (`view_to_owned_conv`) resolves
+    the `std::string` vs `::tpy::bytes_copy` split, so these sites need no
+    per-family branch."""
+    return (_value_opt_str(t, analyzer)
+            or _value_opt_bytes(t, analyzer))
+
+def _value_opt_view_name(e: TpyExpr, declared: dict[str, TpyType],
+                         analyzer) -> 'OptionalType | None':
+    """`e` is a bare name whose DECLARED type is a value-repr `Optional[view]`
+    (str or bytes) -- a value-optional-view param (a value-optional LOCAL
+    classifies OTHER at its decl, so only params qualify). Keyed on the declared
+    type, not the flow-narrowed read type: the None-test / truthiness / arg-shim
+    dispatch keys on the `std::optional<view>` binding shape, which narrowing
+    does not change (the view twin of `_value_opt_scalar_name`)."""
     if not (isinstance(e, TpyName) and e.name in declared):
         return None
-    return _value_opt_str(declared[e.name], analyzer)
+    return _value_opt_view(declared[e.name], analyzer)
 
 def _opt_view_arg_shim(src: 'TpyType | None', slot: 'TpyType | None',
                        analyzer) -> bool:
     """Whether passing a value-repr `Optional[str]` param typed `src` into slot
     `slot` fires `_maybe_convert_opt_view_param`'s ARG split -- mirrored exactly:
     both must be value-repr Optional whose inner resolves to an OWNED view family
-    (`view_family_for_type` non-None, e.g. `str`), of the SAME family. A `StrView`
-    inner keys `view_family_for_type` to None (the map is owned-qname-keyed), so
-    the AST passes it BARE -- excluded here, keeping that shape on the AST path."""
-    so = _value_opt_str(src, analyzer)
-    to = _value_opt_str(slot, analyzer)
+    (`view_family_for_type` non-None, e.g. `str` / `bytes`), of the SAME family. A
+    `StrView` / `BytesView` inner keys `view_family_for_type` to None (the map is
+    owned-qname-keyed), so the AST passes it BARE -- excluded here, keeping that
+    shape on the AST path. The same-family check routes a str src to a str slot
+    and a bytes src to a bytes slot (their families differ)."""
+    so = _value_opt_view(src, analyzer)
+    to = _value_opt_view(slot, analyzer)
     if so is None or to is None:
         return False
     sfam = view_family_for_type(so.inner)
@@ -2243,7 +2274,7 @@ def _is_none_compare_operand(e: TpyBinOp, locals_: dict[str, TpyType],
     operand = e.right if left_none else e.left
     if (_optional_ptr_borrow_name(operand, locals_, analyzer) is None
             and _value_opt_scalar_name(operand, locals_, analyzer) is None
-            and _value_opt_str_name(operand, locals_, analyzer) is None):
+            and _value_opt_view_name(operand, locals_, analyzer) is None):
         return None
     return operand
 

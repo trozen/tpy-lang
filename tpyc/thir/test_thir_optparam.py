@@ -648,12 +648,42 @@ class TestValueReprOptionalStrParam:
         arg = _fn(thir, "use").body[0].args[0]
         assert arg.print_form is PrintForm.OPT_VAL and arg.opt_inner_cpp is None
 
-    def test_return_whole_optional_defers(self):
-        # `-> str | None` returning the whole optional is the return-shim, out
-        # of `_eligible_return` -- the whole function stays AST.
+    def test_return_whole_optional_routes_shim(self):
+        # `-> str | None` returning a value-repr Optional[str] PARAM whole takes
+        # the view->owned arg-split shim (`s ? std::make_optional(std::string(*s))
+        # : std::nullopt`, THIROptViewArg) at the return.
         thir = _lower_ctx(
             "def use(s: str | None) -> str | None:\n    return s\n")
+        ret = _fn(thir, "use").body[0]
+        assert isinstance(ret, THIRReturn)
+        assert isinstance(ret.value, THIROptViewArg) and ret.value.name == "s"
+
+    def test_return_none_routes(self):
+        # `return None` at an Optional[str] slot -> `std::nullopt`.
+        thir = _lower_ctx(
+            "def use(b: bool) -> str | None:\n"
+            "    if b:\n        return \"x\"\n"
+            "    return None\n")
+        assert _fn(thir, "use") is not None
+
+    def test_return_view_local_defers(self):
+        # `return <StrView local>` at an Optional[str] slot is a pre-existing
+        # AST miscompile (string_view does not convert to optional<string>) --
+        # gate-rejected, so the whole function stays AST.
+        thir = _lower_ctx(
+            "def use() -> str | None:\n    x = \"made\"\n    return x\n")
         assert _fn(thir, "use") is None
+
+    def test_return_faces_witnessed(self):
+        thir, wit = _lower_ctx_witnessed(
+            "def none_arm(b: bool) -> str | None:\n"
+            "    if b:\n        return \"lit\"\n"
+            "    return None\n"
+            "def shim(s: str | None) -> str | None:\n    return s\n")
+        assert wit.get("ret.value_opt_view_none", 0) >= 1
+        assert wit.get("ret.value_opt_view_literal", 0) >= 1
+        assert wit.get("ret.value_opt_view_shim", 0) >= 1
+
 
     def test_optional_str_local_decl_defers(self):
         # A value-repr Optional[str] LOCAL (the decl-shim target) classifies
@@ -672,6 +702,117 @@ class TestValueReprOptionalStrParam:
             "    if not s:\n        return 0\n"
             "    return sink(s)\n")
         assert _fn(thir, "use") is not None
+
+
+class TestValueReprOptionalBytes:
+    """The bytes twin of the value-repr Optional[str] param+return slice --
+    `bytes | None` binds `std::optional<std::span<const uint8_t>>` (borrow) /
+    `std::optional<std::vector<uint8_t>>` (return), sharing the view-family
+    machinery (`_value_opt_view`)."""
+
+    def test_none_test_param_routes(self):
+        # `b is None` on an Optional[bytes] param -> `!b.has_value()`.
+        thir = _lower_ctx(
+            "def use(b: bytes | None) -> bool:\n    return b is None\n")
+        ret = _fn(thir, "use").body[0]
+        assert isinstance(ret.value, THIRIsNone) and ret.value.value_repr
+
+    def test_return_sinks_route(self):
+        # `return None` -> nullopt, `return b"lit"` -> owned bytes literal.
+        thir = _lower_ctx(
+            "def use(keep: bool) -> bytes | None:\n"
+            "    if keep:\n        return b\"x\"\n"
+            "    return None\n")
+        assert _fn(thir, "use") is not None
+
+    def test_return_shim_routes(self):
+        # `return b` of an Optional[bytes] param -> the view->owned shim
+        # (`b ? std::make_optional(::tpy::bytes_copy(*b)) : std::nullopt`).
+        thir = _lower_ctx(
+            "def use(b: bytes | None) -> bytes | None:\n    return b\n")
+        ret = _fn(thir, "use").body[0]
+        assert isinstance(ret, THIRReturn)
+        assert isinstance(ret.value, THIROptViewArg) and ret.value.name == "b"
+
+    def test_narrowed_read_derefs_into_bytes_slot(self):
+        # A narrowed Optional[bytes] read passed into a `bytes` slot derefs to a
+        # BORROW span `(*b)` -- the bytes twin of the str narrowed-read arm.
+        thir = _lower_ctx(
+            "from tpy import Int32\n"
+            "def take(x: bytes) -> Int32:\n    return len(x)\n"
+            "def use(b: bytes | None) -> Int32:\n"
+            "    if b is None:\n        return 0\n"
+            "    return take(b)\n")
+        arg = _fn(thir, "use").body[-1].value.args[0]
+        assert isinstance(arg, THIRName) and arg.deref and arg.form is Form.BORROW
+
+    def test_bytesview_inner_none_test_routes(self):
+        # A `BytesView | None` inner shares the `_resolved_bytes_value` gate; its
+        # None-test routes like the owned-bytes inner.
+        thir = _lower_ctx(
+            "from tpy import BytesView\n"
+            "def use(b: BytesView | None) -> bool:\n    return b is None\n")
+        assert _fn(thir, "use") is not None
+
+    def test_bytesview_inner_pass_stays_ast(self):
+        # Passing a `BytesView | None` whole into another `BytesView | None` slot
+        # is bare on the AST path (view_family_for_type is None for the view
+        # spelling), so the shim does not fire and the body stays AST -- the
+        # bytes twin of test_strview_inner_pass_stays_ast.
+        thir = _lower_ctx(
+            "from tpy import BytesView\n"
+            "def sink(q: BytesView | None) -> bool:\n    return q is None\n"
+            "def use(b: BytesView | None) -> bool:\n    return sink(b)\n")
+        assert _fn(thir, "use") is None
+
+    def test_print_whole_optional_defers(self):
+        # `print(b)` on a whole Optional[bytes] stays AST: there is no
+        # print_optional_val route for bytes (the str-only `_print_optval_opt`),
+        # so `_value_opt_view_name` defers it in `_print_arg_ok`.
+        thir = _lower_ctx(
+            "def use(b: bytes | None) -> None:\n    print(b)\n")
+        assert _fn(thir, "use") is None
+
+    def test_faces_witnessed(self):
+        thir, wit = _lower_ctx_witnessed(
+            "def none_arm(keep: bool) -> bytes | None:\n"
+            "    if keep:\n        return b\"x\"\n"
+            "    return None\n"
+            "def shim(b: bytes | None) -> bytes | None:\n    return b\n")
+        assert wit.get("ret.value_opt_view_none", 0) >= 1
+        assert wit.get("ret.value_opt_view_literal", 0) >= 1
+        assert wit.get("ret.value_opt_view_shim", 0) >= 1
+
+
+class TestValueReprOptionalBytesEmit:
+    """Bytes twin of TestValueReprOptionalStrParamEmit: the routed C++ for an
+    Optional[bytes] param+return is byte-identical to the AST path, and the
+    view->owned shim spells `::tpy::bytes_copy` (not `std::string`)."""
+
+    def _emit(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        hpp, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=thir))
+        return hpp + cpp
+
+    SRC = (
+        "def pick(keep: bool) -> bytes | None:\n"
+        "    if keep:\n        return b\"data\"\n"
+        "    return None\n"
+        "def forward(b: bytes | None) -> bytes | None:\n    return b\n"
+        "def is_absent(b: bytes | None) -> bool:\n    return b is None\n"
+        "def main():\n    print(forward(b\"z\") is None)\nmain()\n"
+    )
+
+    def test_byte_identical(self):
+        assert self._emit(self.SRC, thir=True) == self._emit(self.SRC, thir=False)
+
+    def test_renders(self):
+        out = self._emit(self.SRC, thir=True)
+        assert "b ? std::make_optional(::tpy::bytes_copy(*b)) : std::nullopt" in out
+        assert "return std::nullopt;" in out
 
 
 class TestValueReprOptionalStrParamEmit:
@@ -785,14 +926,15 @@ class TestValueReprOptionalReturn:
             "    return None\n")
         assert _fn(thir, "bi") is not None
 
-    def test_str_inner_stays_ast(self):
-        # `Optional[str]` is the owned/view-split return -- out of the value slice.
+    def test_str_inner_literal_and_none_routes(self):
+        # `Optional[str]` return routes its literal (`return "y"` -> bare) and
+        # None (`std::nullopt`) sources; view-form sources still defer.
         thir = _lower_ctx(
             "from tpy import Int32\n"
             "def h(x: Int32) -> str | None:\n"
             "    if x > 0:\n        return \"y\"\n"
             "    return None\n")
-        assert _fn(thir, "h") is None
+        assert _fn(thir, "h") is not None
 
     def test_cross_width_param_pass_stays_ast(self):
         # `Int8 | None` -> `Int32 | None` casts the WHOLE optional

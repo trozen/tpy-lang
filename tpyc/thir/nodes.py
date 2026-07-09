@@ -254,15 +254,18 @@ class THIROptTruthy(THIRExpr):
 
 @dataclass(frozen=True)
 class THIROptViewArg(THIRExpr):
-    """A value-repr `Optional[str]` param NAME passed into another value-repr
-    `Optional[str]` slot -- the AST's `_maybe_convert_opt_view_param` same-TPy-
-    type ARG split. The borrow-form `std::optional<std::string_view>` binding
-    is converted to the owned-storage `std::optional<std::string>` the callee
-    slot's boundary needs: `s ? std::make_optional(std::string(*s)) :
-    std::nullopt`. Fires for the WHOLE optional (narrowed or not -- gen_expr
-    threads the slot type, not the narrowed read). `result_type` is the
-    Optional slot, whose inner drives the owned-copy spelling
-    (`view_to_owned_conv`); VALUE form."""
+    """A value-repr `Optional[view]` param NAME (str or bytes) passed into
+    another value-repr `Optional[view]` slot of the same family (a call arg or a
+    return) -- the AST's `_maybe_convert_opt_view_param` same-TPy-type ARG split.
+    The borrow-form `std::optional<std::string_view>` /
+    `std::optional<std::span<const uint8_t>>` binding is converted to the
+    owned-storage `std::optional<std::string>` / `std::optional<std::vector<
+    uint8_t>>` the slot's boundary needs: `x ? std::make_optional(<conv>(*x)) :
+    std::nullopt`, where `<conv>` is `std::string` / `::tpy::bytes_copy` per the
+    view family. Fires for the WHOLE optional (narrowed or not -- gen_expr
+    threads the slot type, not the narrowed read). `result_type` is the Optional
+    slot, whose inner drives the owned-copy spelling (`view_to_owned_conv`);
+    VALUE form."""
     name: str = ""
 
 

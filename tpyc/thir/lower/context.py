@@ -27,6 +27,7 @@ from .predicates import (
     _resolved_str_value,
     _storage_optional_return_type,
     _value_opt_scalar,
+    _value_opt_view,
     _value_tuple_return,
 )
 
@@ -42,7 +43,8 @@ class _Prescan:
                  "ret_container_storage", "ret_value_tuple",
                  "ret_str", "ret_bytes",
                  "ret_char", "ret_union", "ret_ptr_union",
-                 "ret_value_opt", "value_opt_params", "param_names",
+                 "ret_value_opt", "ret_value_opt_view",
+                 "value_opt_params", "param_names",
                  "has_self", "is_constructor", "global_seeded", "global_readonly",
                  "global_cpp", "native_globals")
 
@@ -110,6 +112,15 @@ class _Prescan:
         # rides the generic return tail (its type-exact / coerce-wrapped
         # rendering matches the AST's `gen_expr_deref`).
         self.ret_value_opt = _value_opt_scalar(rt, analyzer)
+        # The value-repr Optional[view] return slot -- str (`-> str | None` ->
+        # `std::optional<std::string>`) OR bytes (`-> bytes | None` ->
+        # `std::optional<std::vector<uint8_t>>`): `return None` -> `std::nullopt`,
+        # a value-repr Optional[view] param name takes the view->owned shim
+        # (`x ? std::make_optional(<conv>(*x)) : std::nullopt`, THIROptViewArg;
+        # `<conv>` = `std::string` / `::tpy::bytes_copy`), and a str/bytes literal
+        # lands bare (the owned literal / implicit conversion). The owned-view
+        # twin of ret_value_opt.
+        self.ret_value_opt_view = _value_opt_view(rt, analyzer)
         # F3: the function's borrow-form pointer-repr tuple return slot, if any
         # (`tuple[..., Ref]` -> `std::tuple<..., T*>`), so a `return <storage tuple
         # lvalue>` lifts via `tuple_to_pointer`. None for every other return type.

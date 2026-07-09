@@ -155,6 +155,7 @@ from .predicates import (
     _value_opt_scalar,
     _value_opt_scalar_name,
     _value_opt_str,
+    _value_opt_view,
     _value_tuple,
     _value_tuple_return,
     _value_union_temp_slot,
@@ -246,13 +247,14 @@ def _value_opt_scalar_param(name: str, lc: '_LowerCtx') -> bool:
             return _value_opt_scalar(t, lc.analyzer) is not None
     return False
 
-def _value_opt_str_param(name: str, lc: '_LowerCtx') -> bool:
-    """Whether `name` is a value-repr `Optional[str]` param
-    (`std::optional<std::string_view>`) of the function being lowered -- the str
-    twin of `_value_opt_scalar_param`. A narrowed read unwraps `(*s)` (a borrow
-    string_view), the None-test/truthiness carry the same value-repr renders,
-    and a pass into another `Optional[str]` slot takes the arg-split shim."""
-    return _value_opt_str(_param_declared_type(name, lc), lc.analyzer) is not None
+def _value_opt_view_param(name: str, lc: '_LowerCtx') -> bool:
+    """Whether `name` is a value-repr `Optional[view]` param -- str OR bytes
+    (`std::optional<std::string_view>` / `std::optional<std::span<const
+    uint8_t>>`) -- of the function being lowered, the view twin of
+    `_value_opt_scalar_param`. A narrowed read unwraps `(*x)` (a borrow view),
+    the None-test/truthiness carry the same value-repr renders, and a pass into
+    another same-family `Optional[view]` slot takes the arg-split shim."""
+    return _value_opt_view(_param_declared_type(name, lc), lc.analyzer) is not None
 
 def _param_declared_type(name: str, lc: '_LowerCtx') -> 'TpyType | None':
     """The declared type of param `name` on the function being lowered, or None
@@ -328,15 +330,17 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx', *, temp_args: bool = False) -> THIR
             narrowed = not isinstance(unwrap_readonly(rtype), OptionalType)
             return THIRName(result_type=rtype, name=e.name, cpp=gcpp,
                             form=Form.VALUE, deref=narrowed, loc=loc)
-        if _value_opt_str_param(e.name, lc):
-            # A value-repr Optional[str] param (`std::optional<std::string_view>`).
-            # A NARROWED read (sema retyped it to the inner StrView, `rtype` no
-            # longer Optional) unwraps `(*s)` -- a BORROW-form string_view, so an
-            # owned-str sink still gets the `std::string((*s))` copy. An UN-narrowed
-            # read stays the bare whole optional (VALUE), reached only inside the
-            # None-test / truthiness / arg-shim wrappers (the bare value position
-            # is gate-rejected). This must precede the str-name arm below, which
-            # keys on the narrowed `str` rtype and would drop the deref.
+        if _value_opt_view_param(e.name, lc):
+            # A value-repr Optional[view] param -- str
+            # (`std::optional<std::string_view>`) or bytes
+            # (`std::optional<std::span<const uint8_t>>`).
+            # A NARROWED read (sema retyped it to the inner view, `rtype` no
+            # longer Optional) unwraps `(*s)` -- a BORROW-form view, so an
+            # owned sink still gets the family copy (`std::string`/`bytes_copy`).
+            # An UN-narrowed read stays the bare whole optional (VALUE), reached
+            # only inside the None-test / truthiness / arg-shim wrappers (the bare
+            # value position is gate-rejected). This must precede the str-name arm
+            # below, which keys on the narrowed view rtype and would drop the deref.
             narrowed = not isinstance(unwrap_readonly(rtype), OptionalType)
             return THIRName(result_type=rtype, name=e.name, cpp=gcpp,
                             form=Form.BORROW if narrowed else Form.VALUE,
@@ -608,7 +612,7 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx', *, temp_args: bool = False) -> THIR
             operand = e.right if isinstance(e.left, TpyNoneLiteral) else e.left
             value_repr = (isinstance(operand, TpyName)
                           and (_value_opt_scalar_param(operand.name, lc)
-                               or _value_opt_str_param(operand.name, lc)))
+                               or _value_opt_view_param(operand.name, lc)))
             return THIRIsNone(result_type=rtype,
                               operand=_lower_expr(operand, lc),
                               negate=e.op == "is not",
@@ -1660,8 +1664,8 @@ def _lower_truthy(e: TpyExpr, lc: '_LowerCtx') -> THIRExpr:
     gen_truthy_expr); every other admitted shape's truthiness render equals
     its value render, so it lowers as a plain expression."""
     if isinstance(e, TpyName) and (_value_opt_scalar_param(e.name, lc)
-                                   or _value_opt_str_param(e.name, lc)):
-        # A value-repr Optional[scalar] / Optional[str] read in a condition /
+                                   or _value_opt_view_param(e.name, lc)):
+        # A value-repr Optional[scalar] / Optional[view] read in a condition /
         # `not` operand takes gen_truthy_expr's optional arm: `::tpy::is_truthy(p)`
         # on the BARE optional, narrowed or not -- codegen's `narrowed_vars` is
         # not populated for Optional None-narrowing, so the truthiness always sees

@@ -231,6 +231,12 @@ THIR_FACES: frozenset[str] = frozenset({
     # (deref-on-narrow stripped); other scalar sources ride the generic tail.
     "ret.value_opt_none",
     "ret.value_opt_name",
+    # Value-repr Optional[view] return (str or bytes): `None` -> `std::nullopt`,
+    # a same-family Optional[view] param -> the view->owned arg-split shim
+    # (THIROptViewArg), and a str/bytes literal -> bare owned literal.
+    "ret.value_opt_view_none",
+    "ret.value_opt_view_shim",
+    "ret.value_opt_view_literal",
 
     # Container-literal element families (lowering; the widened
     # THIRContainerLiteral slots) plus the make_vector/make_ordered_* switch

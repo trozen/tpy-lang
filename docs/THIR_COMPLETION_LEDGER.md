@@ -1368,6 +1368,30 @@ MUTATION/setitem, still enumerated on `_container_scalar_read`) do NOT
 collapse until the form fact is materialized on the node.
 Shapes ~21% -> ~24% (1,087 -> ~1,239 of 5,179); bodies 43.6% -> ~47.4%.
 
+**Value-repr `Optional[str]` RETURN + `Optional[bytes]` param/return landed**
+(the owned-view twin of the value-repr `Optional[scalar]` return; the str
+param cell landed in the 8-wave batch but the RETURN sink stayed AST, and
+bytes was absent entirely). Generalized to the str-OR-bytes VIEW FAMILY via a
+shared `_value_opt_view` (`_value_opt_str` + the new `_value_opt_bytes`) at the
+family-neutral sites (param + return gates, name read, None-test, truthiness,
+`!`/is-None operands, arg-split shim, name.optval rejects, return arms); the
+view-family emit already spells the owned copy per family (`std::string` vs
+`::tpy::bytes_copy`). `-> str|None` -> `std::optional<std::string>`,
+`-> bytes|None` -> `std::optional<std::vector<uint8_t>>`; `bytes|None` param ->
+`std::optional<std::span<const uint8_t>>`. Return sources: `return None` ->
+`std::nullopt`, `return "lit"`/`b"lit"` -> bare owned literal, and
+`return <Optional[view] param>` -> the arg-split shim
+(`x ? std::make_optional(<conv>(*x)) : std::nullopt`, `THIROptViewArg`). A
+view-form value SOURCE (`x = "y"; return x`) is GATE-REJECTED (a pre-existing
+AST miscompile -- a view does not convert to the owned optional, BUGS.md); owned
+results (f-string/concat) ride a later widening. Three str-SPECIFIC sinks stay
+`_value_opt_str`-keyed (if-expr str-result, `print_optional_val`, value-tuple
+return element). Bytes-optional `print` stays AST; bytes-optional truthiness
+stays ROUTED, mirroring the pre-existing AST miscompile byte-identically (no
+`is_truthy(span)` overload, BUGS.md -- the shape can never reach a green exec
+case, so the AST-miscompile mirror criterion keeps it routed). Shapes
+1,241 -> 1,249 of 5,186 (24.1%).
+
 Uncovered shapes remaining: the parked match tail (above), the try
 return tier + expression raise (rows above),
 generator iterables, expression statements' deferred receiver/arg cells

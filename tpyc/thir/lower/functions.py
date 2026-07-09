@@ -123,7 +123,7 @@ from .predicates import (
     _slice_object_type,
     _template_init_call_fi,
     _value_opt_scalar,
-    _value_opt_str,
+    _value_opt_view,
     _value_tuple,
 )
 from .context import (
@@ -219,10 +219,12 @@ def _f1_param_eligible(ptype: TpyType | None, analyzer) -> bool:
     no rebind machinery arises), a value-repr `Optional[cheap scalar]`
     (`Int32 | None` -> `std::optional<T>`; None-tests render `has_value()`,
     narrowed reads `(*p)`, truthiness `is_truthy(p)`), or a value-repr
-    `Optional[str]` (`str | None` -> `std::optional<std::string_view>`; the same
-    None-test/truthiness renders, a narrowed read `(*s)`, and a pass into another
-    `Optional[str]` slot takes the `_maybe_convert_opt_view_param` shim -- the
-    decl/return-of-whole/print sinks reject per-use, keeping those bodies AST).
+    `Optional[view]` -- str (`str | None` -> `std::optional<std::string_view>`) or
+    bytes (`bytes | None` -> `std::optional<std::span<const uint8_t>>`); the same
+    None-test/truthiness renders, a narrowed read `(*x)`, and a pass into another
+    `Optional[view]` slot of the same family takes the
+    `_maybe_convert_opt_view_param` shim (`std::string` / `::tpy::bytes_copy`
+    copy) -- the decl / print sinks reject per-use, keeping those bodies AST).
     Own-optional/cross-module/native record params, and `Own[container]` /
     generic (`list[T]`) container params, stay on the AST path."""
     return (_eligible_scalar(ptype) or _eligible_char(ptype)
@@ -232,7 +234,7 @@ def _f1_param_eligible(ptype: TpyType | None, analyzer) -> bool:
             or _f1_record(ptype, analyzer)
             or _optional_ptr_borrow(ptype, analyzer) is not None
             or _value_opt_scalar(ptype, analyzer) is not None
-            or _value_opt_str(ptype, analyzer) is not None
+            or _value_opt_view(ptype, analyzer) is not None
             or _resolved_str_value(ptype, analyzer) is not None
             or _resolved_bytes_value(ptype, analyzer) is not None
             or _slice_object_type(ptype)
