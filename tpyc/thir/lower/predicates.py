@@ -2197,17 +2197,29 @@ def _f1_is_const(binding: 'LocalBinding', target_type: TpyType | None,
         if (recv.name in const_locals
                 or _param_is_const(recv.name, func, analyzer, record_name)):
             return True
-    # Element borrow off a const container NAME (`p = ps[i]` with `ps` a
-    # const-inferred param / const local): the AST's element-borrow const
-    # propagation -- a field-receiver subscript (`self.ps[i]`) deliberately
-    # does NOT propagate there (only the ReadonlyType arms above fire), so
-    # the name pin mirrors, not approximates.
-    if (binding is LocalBinding.REF_ALIAS and isinstance(stmt.init, TpySubscript)
-            and isinstance(stmt.init.obj, TpyName)):
-        recv = stmt.init.obj
-        if (recv.name in const_locals
-                or _param_is_const(recv.name, func, analyzer, record_name)):
-            return True
+    # Borrow-alias of an lvalue rooted in a const source (`p = ps[i]`,
+    # `r = obj.field`, `c = self.store[k]`): mirror of the AST REF_ALIAS
+    # const propagation via `_is_const_union_source` -- recurse through
+    # chained field/subscript access to the base name.
+    if binding is LocalBinding.REF_ALIAS and _f1_const_rooted_source(
+            stmt.init, func, analyzer, const_locals, record_name):
+        return True
+    return False
+
+def _f1_const_rooted_source(expr: TpyExpr, func: TpyFunction, analyzer,
+                            const_locals: set[str],
+                            record_name: str | None) -> bool:
+    """Mirror of codegen's `_is_const_union_source`: True when `expr` is an
+    lvalue rooted in a const source (param in `const_borrow_params` / const F1
+    local), recursing through chained field/subscript access to the base name."""
+    if isinstance(expr, TpyCoerce):
+        return _f1_const_rooted_source(expr.expr, func, analyzer, const_locals, record_name)
+    if isinstance(expr, (TpyFieldAccess, TpySubscript)):
+        obj = expr.obj
+        if isinstance(obj, TpyName):
+            return (obj.name in const_locals
+                    or _param_is_const(obj.name, func, analyzer, record_name))
+        return _f1_const_rooted_source(obj, func, analyzer, const_locals, record_name)
     return False
 
 def _operand_type(e: TpyExpr, locals_: dict[str, TpyType], analyzer) -> TpyType | None:

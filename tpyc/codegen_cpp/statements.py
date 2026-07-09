@@ -51,7 +51,7 @@ from ..liveness import stmts_terminate
 from .context import INDENT, CodeGenError, FinallyContext, LocalCppForm, CppForm, FormValue, escape_cpp_name, qualified_cpp_name, loop_var_binding, is_lvalue_iterable, view_key_target
 from .forms import classify_local_binding, LocalBinding
 from ..type_def_registry import (
-    is_list,
+    is_list, is_dict,
     is_fixed_int_type, is_big_int_type, is_bytes_type, is_str_type,
     is_str_view_type, is_bytes_view_type, is_string_type,
     protocol_info_of,
@@ -1409,6 +1409,16 @@ class StatementGenerator:
             # a value -- the direct-pointer assignment below would produce
             # `T* x = T-val`. Fall through to the rvalue-slot path.
             if not self.ctx.is_value_emit_rvalue(init):
+                # A mapping accessor (`d.get(k)`) borrows into its receiver, so
+                # its `V*` return is `const V*` when the receiver is const --
+                # the local decl must match (C++ overload resolution already
+                # picks the `const` dict_get overload on a const receiver).
+                if (not const_pfx and isinstance(init, TpyMethodCall)
+                        and init.method == "get"
+                        and is_dict(unwrap_readonly(self.ctx.get_expr_type(init.obj)))
+                        and self._is_const_union_source(init.obj)):
+                    const_pfx = "const "
+                    self.ctx.const_indirect_locals.add(name)
                 init_expr = self.expressions.gen_expr(init, target_type)
                 return f"{indent}{const_pfx}{cpp_type}* {name} = {init_expr};\n"
 
@@ -1616,7 +1626,12 @@ class StatementGenerator:
             return f"{indent}{cpp_name} = &({init_expr});\n"
 
     def _is_const_union_source(self, expr: TpyExpr) -> bool:
-        """Check if an expression yields a const value-variant (needs to_const_ptr_variant)."""
+        """True when `expr` is an lvalue rooted in a const source -- a field /
+        container element off a const-ref param or const-indirect local,
+        recursing through chained field/subscript access to the base name.
+        The general "rooted in a const source" predicate: consulted by the
+        value-variant lift (needs `to_const_ptr_variant`), the storage-optional
+        lift, the REF_ALIAS borrow-local arm, and the `.get()` accessor local."""
         if isinstance(expr, TpyCoerce):
             return self._is_const_union_source(expr.expr)
         if isinstance(expr, (TpyFieldAccess, TpySubscript)):
@@ -2345,30 +2360,16 @@ class StatementGenerator:
                 self.ctx.ref_bound_locals.add(stmt.name)
                 init_expr = self.expressions.gen_expr_deref(stmt.init, target_type)
                 init_inner = stmt.init.expr if isinstance(stmt.init, TpyCoerce) else stmt.init
-                # 8a.5: for element borrow locals, determine const from the source.
-                # Check whether the container param (or a const-ref local) is const T&
-                # so the element borrow gets the matching explicit type.
-                if (not is_const
-                        and isinstance(init_inner, TpySubscript)
-                        and not isinstance(init_inner.index, TpySlice)):
-                    src_obj = init_inner.obj
-                    src_is_const = (
-                        isinstance(src_obj, TpyName)
-                        and (src_obj.name in self.ctx.const_ref_params
-                             or src_obj.name in self.ctx.const_indirect_locals)
-                    )
-                    if src_is_const:
-                        # Propagate: downstream element borrows of this local are also const.
-                        self.ctx.const_indirect_locals.add(stmt.name)
-                        return f"{indent}const {cpp_type}& {cpp_name} = {init_expr};\n"
-                # Alias/field borrow of a const ref: propagate const so the alias
-                # also binds as const T& (required when source is const T&).
-                if not is_const and isinstance(init_inner, TpyName):
-                    src = init_inner.name
-                    if (src in self.ctx.const_ref_params
-                            or src in self.ctx.const_indirect_locals):
-                        self.ctx.const_indirect_locals.add(stmt.name)
-                        return f"{indent}const {cpp_type}& {cpp_name} = {init_expr};\n"
+                # A borrow-local aliasing an lvalue rooted in a const source
+                # (param / field / container element off a const-inferred
+                # receiver) must bind `const T&` -- else a mutable reference is
+                # taken from a `const T`. `_is_const_union_source` computes the
+                # general "rooted in a const source" predicate, recursing through
+                # chained field/subscript access to the base name -- the same one
+                # the value-variant and Optional lifts consult.
+                if not is_const and self._is_const_union_source(init_inner):
+                    self.ctx.const_indirect_locals.add(stmt.name)
+                    return f"{indent}const {cpp_type}& {cpp_name} = {init_expr};\n"
                 return f"{indent}{const_pfx}{cpp_type}& {cpp_name} = {init_expr};\n"
 
         # Tier 1 non-value-type locals are eligible for auto-move at last use
