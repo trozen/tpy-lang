@@ -10,7 +10,7 @@
 | **Phase 4** | First enforcement site: `Channel[T]` (intra-process, `T: Send`) on top of the single-threaded executor | Done (SPSC; MPSC deferred -- see `docs/CHANNEL_DESIGN.md`) |
 | **Phase 4.5** | Second enforcement site: real OS threads -- `tpy.thread.spawn` (Runnable-struct form) Send-checks the task (`Send[Own[T]]`) and result (`R: Send`) at the call site | Done (V1; closure-based `spawn` deferred -- see `docs/THREADING_DESIGN.md`) |
 | **Phase 5** | Multi-threaded *async* executor; `Task[T]` requires `Send` frame for migration; closure-based `thread.spawn(fn)` requiring `Send` closure | Planned (v3+) |
-| **Phase 6** | `Arc[T]` (atomic shared ownership) + the conditional Send/Sync override it needs -- Done; synchronization primitives (`Mutex[T]`, `RwLock[T]`), `Sync`-required borrow sites -- Planned (v3+) |
+| **Phase 6** | `Arc[T]` (atomic shared ownership) + the conditional Send/Sync override it needs -- Done; synchronization primitives (`Mutex[T]`, `RwLock[T]`, `Send + Sync` iff `T: Send`, in `tpy.sync`) -- Done (see `docs/THREADING_DESIGN.md` V3); `Sync`-required borrow sites -- Planned (v3+) |
 
 Phases 2 and 3 are independent of any concurrency runtime and should land first. Phase 4 forces the open questions in Phase 2/3 to be answered against a concrete enforcement site; the rest is gated on the multi-threaded executor decision in `docs/ASYNC_DESIGN.md`.
 
@@ -412,7 +412,7 @@ The marker layer is unobservable until something *uses* it. The planned sites, i
 
 4. **`Arc[T]`** (Phase 6) -- requires `T: Send + Sync`. The standard atomic shared-ownership requirement.
 
-5. **`Mutex[T]` / `RwLock[T]`** (Phase 6) -- the Sync uplift primitive. `Mutex[T]` is Sync iff `T` is Send (Rust rule); enables shared-mutable across threads safely.
+5. **`Mutex[T]` / `RwLock[T]`** (Phase 6, shipped) -- the Sync uplift primitives. Both are Sync iff `T` is Send. For `RwLock` this is looser than Rust's `T: Send + Sync`, and correct for TPy: the read guard hands out `readonly[T]`, and a not-Sync `T` is either a container (not-Sync from shared-mutability, removed by the readonly guard) or an interior-mutable type from the unsafe `interior` hatch (user owns Send/Sync). Rust needs `T: Sync` only because its `Cell` is *safe* interior mutability. Both enable shared-mutable across threads safely. (A precise bound distinguishing the two not-Sync reasons -- a `readonly[container]: Sync` refinement, OQ1 -- is a deferred design fork.)
 
 ## Interaction with Other Features
 
@@ -529,11 +529,36 @@ Gated on `docs/ASYNC_DESIGN.md` v3+ decision. Adds:
    why-not chain attributes a failure to the offending type param and the marker
    it lacks. (The old kit only had the *unconditional* `@unsafe_send` / `@nosend`.)
 2. `Mutex[T]` -- Sync iff `T: Send` (a conditional override: `@unsafe_sync(if_params_send=True)`).
-   Locks expose `&mut T` / `readonly[T]` through guards. **Planned.**
-3. `RwLock[T]` -- same constraint, multi-reader shape. **Planned.**
+   Exposes a mutable-`T` guard. **Shipped** (`tpy.sync`).
+3. `RwLock[T]` -- multi-reader shape, exposing a `readonly[T]` read guard and a
+   mutable-`T` write guard. Sync iff `T: Send` -- same as `Mutex`, looser than
+   Rust's `T: Send + Sync` and correct for TPy (interior mutability is unsafe,
+   so the readonly read guard suffices for every safe payload; see the RwLock
+   Sync bound follow-up below). **Shipped** (`tpy.sync`).
+
+   **RwLock Sync bound -- future precision (design fork).** The `Sync iff T:
+   Send` bound treats all not-Sync `T` alike, but there are two kinds: a
+   *container* (not-Sync purely from shared-mutability, which the `readonly`
+   read guard removes) and an *interior-mutable* type (not-Sync because it
+   mutates through `readonly` -- TPy's only such types come from the unsafe
+   `interior`/`unsafe_interior` hatch). (Other not-Sync safe forms -- e.g. a
+   `Send[Callable[...]]`-wrapped closure, structurally not-Sync -- reduce to the
+   *container* case for this argument: an ordinary lambda's by-value captures
+   are not `mutable` and pointer/reference captures are excluded from `Send`, so
+   concurrent readonly calls can't race, and any capture that *could* is behind
+   the same unsafe hatch.) The current bound is sound for the whole
+   *safe* surface (safe not-Sync types are all container-shaped), and defers
+   correctness for unsafe interior-mutable payloads to the user who reached for
+   the escape hatch. A fully-precise bound would key RwLock's Sync on
+   "`readonly[T]` is concurrently-shareable" -- i.e. refine OQ1's
+   `readonly[T]: Sync` so a truly read-only container with Sync elements is Sync
+   (its shared-mutability is gone) while an interior-mutable `readonly[T]` stays
+   not-Sync. That refinement touches the `readonly`/container Sync model broadly;
+   deferred.
 4. Channels gain MPMC variant if useful.
 
-**Effort:** L (Arc + conditional-override done; Mutex/RwLock remain).
+**Effort:** L (Arc + conditional-override, Mutex, and RwLock all shipped; the
+precise RwLock Sync bound (item 3 above) and MPMC channels remain).
 
 ## Implementation Notes
 

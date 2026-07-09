@@ -808,11 +808,77 @@ Benchmarked with CME MBO order book (15MB JSON, 20K messages). Library-level opt
   (b) No `Arc` analog of `rc_readonly_clone` (readonly-handle `clone`/`downgrade`/
   `upgrade` yielding a readonly payload) -- lower risk since the `auto_readonly`
   mechanism is shared verbatim with Rc. Surfaced by /tpy-review (test-coverage).
-- Threading V3: `Mutex[T]` / `RwLock[T]` (Sync iff `T: Send`, canonical
-  `Arc[Mutex[T]]`). The conditional Send/Sync override V2 shipped
-  (`@unsafe_sync(if_params_send=True)`) is exactly the machinery Mutex needs; the remaining
-  work is the lock wrapper + guard types. Module-placement decision (`tpy.sync`
-  vs `tplib.*`) still open -- see `docs/THREADING_DESIGN.md` V3.
+- **[perf] Inline the Mutex/RwLock cell (fuse `Arc[Mutex[T]]` to one alloc).**
+  (Threading V3 `Mutex`/`RwLock` shipped -- see `docs/THREADING_DESIGN.md` V3;
+  this is the one open perf follow-up.) A bare `Mutex[T]` is one heap alloc --
+  the `_MutexCell` reached via `interior[Ptr[...]]`, same shape and cost as
+  `Rc.new`. The "two allocs" is only `Arc[Mutex[T]]`, and that is plain
+  composition (`Arc[X]` = the Arc cell + whatever `X` allocs; `Arc[Rc[T]]` is
+  two allocs for the same reason), not a Mutex-specific wart. The difference
+  from Rc: Rc's cell is *fundamental* (shared ownership needs a cell outliving
+  individual handles), whereas Mutex's cell is *incidental* -- a Mutex solely
+  owns its `T`; the heap indirection exists only to hand out a mutable payload
+  borrow through a readonly handle. So unlike Rc, Mutex could go fully inline
+  (`{_RawMutex, T}` by value, Rust's shape), which would make `Arc[Mutex[T]]`
+  one alloc. Blocked on a missing primitive: there is no address-of-an-inline-
+  field op, and `interior[...]` is `Ptr[T]`-only (`tpyc/sema/registration.py`
+  `_strip_interior_field_markers`), so an inline `{lock, payload}` can't be
+  reached by a mutable pointer through a readonly handle. Add `interior` support
+  on a non-`Ptr` inline field (or an address-of-field op) and drop the
+  `_MutexCell`. Correctness-neutral; deferred until a workload cares.
+
+- **[naming] Rename the `interior` marker to `unsafe_interior`.** `interior[Ptr[T]]`
+  is a soundness escape hatch -- it lets a field be mutated *through* a readonly
+  handle (maps to a C++ `mutable` member / raw-pointer const-bypass), silently
+  bypassing the aliasing guarantees the readonly system enforces. It is
+  user-reachable (exported from `tpy.__all__`; a sanctioned user path exists in
+  `tests/cases/readonly/interior_user_field`), yet it lacks the `unsafe_` prefix
+  the rest of the escape-hatch surface carries (`unsafe_send`/`unsafe_sync`/
+  `unsafe_take`/`unsafe_ptr`/`unsafe_cast`) -- Rust makes the same point with
+  `UnsafeCell`. Rename the user-facing keyword to `unsafe_interior` (keep the
+  internal `InteriorMutableType` class name). Touches: the qname, the parser
+  keyword list (`tpyc/parse/parser.py` ~3163), the `tpy.__all__` export
+  (`lib/tpy/tpy/__init__.py`), the CPython shim (`class interior` in
+  `lib/cpy/tpy/__init__.py`), the diag-message text, all call sites
+  (`lib/tpy/tpy/sync.py`, `tplib/arc.py`, `tplib/rc.py`), and the
+  `readonly/interior_*` + `error_interior_*` tests (their `diag.txt` snapshots
+  change -- snapshot-policy heads-up). Deferred to a followup session.
+
+- **[feature] Extend `Deref[T]` transparency to consumption-site dispatch (not
+  just method-call + attribute-access).** Today the deref chain
+  (`tpyc/sema/methods.py` ~828, `tpyc/sema/expressions.py` ~2004) forwards
+  *method calls* and *attribute access* through any `Deref[T]` (depth 8), so
+  `box.method()` / `arc.field` / `guard.append(x)` all reach the payload -- but
+  other protocol-dispatch sites resolve *directly on the wrapper type* and do
+  NOT walk the chain, so a wrapper/smart-pointer type (`Box`/`Rc`/`Arc`/lock
+  guards) stops being transparent there. Confirmed gaps: iteration (`for v in
+  guard:` -> "Cannot iterate over type ReadGuard"; the for-loop resolves
+  iterability on the source type) and the `with` context-manager protocol
+  (`_analyze_with` looks up `__enter__`/`__exit__` directly, `sema/statements.py`
+  ~2545, so `with arc_holding_a_cm:` wouldn't find the payload's `__enter__`).
+  Surfaced writing `tests/cases/threading/rwlock_shared` (`for v in r.get()` /
+  `data.get().read()`), where the missing forwarding forces explicit `.get()`.
+  - **First step: a SWEEP across all language constructs / protocol-dispatch
+    sites** to enumerate where a user would reasonably expect deref to apply and
+    where it's *feasible* -- e.g. iteration, `with`, subscript (`x[i]` /
+    `x[i] = v`), membership (`in`), `len()`, truthiness (`if x:`), tuple/iterable
+    unpacking, slicing, `str()`/`repr()`/f-string, `del x[i]`, augmented
+    subscript. For each: does the payload's protocol satisfy it, is deref-through
+    sound (borrow/lifetime), and does the wrapper's own surface (e.g. a guard
+    IS itself a context manager) collide? The sweep decides the in-scope set;
+    don't assume it.
+  - **Design constraints (for the `/tpy-add-feature` pass):** route every
+    in-scope site through ONE shared deref-resolution helper (factor/extend the
+    existing `methods.py` chain -- do NOT hand-roll a parallel deref walk per
+    site, the recurring drift slop). Operators (`==`/`<`/`+`/...) most likely
+    stay OUT: `Arc`/`Box` deliberately hand-write `__eq__`/`__lt__`/... to gate
+    content-comparison on `Equatable`/`Comparable`, and Rust doesn't deref-coerce
+    operators either -- but the sweep should confirm. Borrow-checker rule: an
+    iterate/enter/subscript *through* a Deref keeps the wrapper alive for the
+    region and yields borrows into the payload. THIR: each dispatch site is a
+    lowering point, so materialize this as a first-class "deref transparent at
+    consumption sites" fact rather than N ad-hoc consumer checks. Route via
+    `/tpy-add-feature` (scope assessment: architectural).
 
 ## Known Limitations
 - Subscript narrowing: `if items[i] is not None:` does not narrow `items[i]`. Hard to make sound due to index aliasing and container mutation; would need invalidation on any container write.

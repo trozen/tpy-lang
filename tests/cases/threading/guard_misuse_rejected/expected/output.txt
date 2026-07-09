@@ -1,0 +1,6 @@
+mutex unlocked-get rejected
+mutex unlocked-append rejected
+mutex post-exit rejected
+rwlock unlocked-read rejected
+rwlock unlocked-write rejected
+[1, 2, 9]

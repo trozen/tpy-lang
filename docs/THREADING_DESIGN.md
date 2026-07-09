@@ -1,8 +1,11 @@
 # Threading design (owned-only, Send/Sync-checked)
 
-Status: **V1 BUILT** (branch `thread-spawn-v1`). `tpy.thread.spawn` /
-`JoinHandle` ship: `runtime/cpp/include/tpy/threading.hpp` +
-`lib/tpy/tpy/thread.py`, tests under `tests/cases/threading/`. The
+Status: **V1-V3 BUILT.** `tpy.thread.spawn` / `JoinHandle` (V1), `Arc`/`Weak`
++ `Atomic` (V2), and `Mutex`/`RwLock` (V3) all ship:
+`runtime/cpp/include/tpy/threading.hpp` + `lib/tpy/tpy/thread.py`,
+`tplib/arc.py` + `tpy/atomic.py`, and `runtime/cpp/include/tpy/sync.hpp` +
+`lib/tpy/tpy/sync.py`, tests under `tests/cases/threading/`. The V1 notes
+below are retained as the historical contract. The
 prerequisite generic-protocol *sibling*-bound fix was merged earlier
 (`bf1f47bb41`); building V1 additionally required a second compiler fix --
 a `Send[Own[T]]` param was not recognized as movable (the transparent
@@ -45,7 +48,7 @@ review findings are recorded inline so they do not get re-litigated.
 |----|-----------|-------|--------|------------|
 | V1 | `tpy.thread.spawn` (Runnable-struct) | `spawn[R: Send, T: ThreadTask[R]](task: Send[Own[T]]) -> Own[JoinHandle[R]]` (`ThreadTask` = structural `run() -> R`; `Send` via the `Send[Own[T]]` wrapper; `R: Send` bound since R crosses the thread boundary; `spawn(task)` fully inferred -- the marker-wrapper + associated-type inference gaps are closed). `JoinHandle`: `join() -> R`/`detach()`, abort-on-unconsumed-drop. | **BUILT** | -- |
 | V2 | `Arc[T]` / `Weak[T]` | Atomic sibling of `Rc`, built on a new generic `Atomic[T: AnyFixedInt]` (`tpy.atomic`, wrapping `std::atomic<T>`). `Send + Sync` iff `T` is, via the conditional `@unsafe_send`/`@unsafe_sync` (if_params_*) override. Shared into a task by `arc.clone()` into a struct field. | **built** | V1 |
-| V3 | `Mutex[T]` / `RwLock[T]` | `Sync` iff `T: Send`; shared as `Arc[Mutex[T]]`. Module placement decided here (`tpy.sync` vs extend `tplib.*`). | **designed** | V2 |
+| V3 | `Mutex[T]` / `RwLock[T]` | Both `Send + Sync` iff `T: Send` (RwLock looser than Rust's `T: Send + Sync` -- correct because TPy interior mutability is unsafe/user-owned). Shared as `Arc[Mutex[T]]`. `@readonly` lock/read/write hand out a `Deref[T]` context-manager guard (interior mutability via `interior[Ptr[cell]]`). Module placement decided: `tpy.sync` (native-primitive layer, parallel to `tpy.atomic`; `Arc` stays pure-TPy in `tplib.arc`). | **BUILT** | V2 |
 | D1 | Closure `spawn` (ergonomic layer) | `spawn(lambda: work(data))` desugaring to the V1 core. Needs a **callable generic bound** + owning-capture. Own design pass; the current spelling is shaky (see "Deferred: closures"). Likely **post-THIR**. | **deferred** | V1, (THIR) |
 | D2 | De-intrinsic `asyncio.create_task` | Shipped as "bound coroutines": move-only handle locals holding the concrete frame (zero-alloc; erasure only at typed boundaries), consumed by await/create_task/run/move; compile-time coroutine-only arg contract. See the SHIPPED section below. | **SHIPPED** | -- |
 | D3 | Movable `Callable` | Re-back `Callable` with C++23 `std::move_only_function`. Independent; breaking (~47 snapshots + real copy sites). | **filed, decoupled** | -- |
@@ -274,13 +277,81 @@ registration. This is a general Send/Sync fixpoint gap (it reproduces with
 `list[Node]` too, independent of Arc), not specific to Arc; it fails safe
 (rejects valid code, no miscompile). Fix pending via `/tpy-fix-bug`.
 
-## V3 -- `Mutex[T]` / `RwLock[T]`
+## V3 -- `Mutex[T]` / `RwLock[T]` (BUILT)
 
-`std::mutex` / `std::shared_mutex` wrappers; `Sync` iff `T: Send`. Canonical
-use is `Arc[Mutex[T]]`. Module-placement decision made here: mirror Rust
-(`tpy.sync`, with `Arc` in it -- Rust puts `Arc` in `std::sync`, only `Rc` in
-`std::rc`) vs extend TPy's existing `tplib.*` convention (`tplib.rc` shipped,
-`tplib.arc` reserved).
+`std::mutex` / `std::shared_mutex` wrappers in `tpy.sync`
+(`runtime/cpp/include/tpy/sync.hpp` + `lib/tpy/tpy/sync.py`), tests under
+`tests/cases/threading/mutex_*` and `rwlock_shared`. As shipped:
+
+- **The interior-mutability primitives.** `lock()` / `read()` / `write()` are
+  `@readonly` -- you acquire through a *shared* handle, not an exclusive one --
+  so the canonical `Arc[Mutex[T]]` works: `arc.get()` yields a readonly
+  `Mutex`, and `.lock()` still acquires and hands out a *mutable* borrow of the
+  payload. This is the interior mutability SEND_SYNC_DESIGN.md flagged Mutex
+  would provide (TPy has no `Cell`/`RefCell`). The mechanism is the same
+  `interior[Ptr[cell]]` escape hatch `Rc`/`Arc` use for their refcount: the
+  lock and payload live in a heap `_MutexCell` reached through a raw `Ptr`, so
+  readonly does not propagate into the pointee.
+- **Guard = context manager.** `lock()` returns a `@nocopy` `Deref[T]` guard;
+  `with m.lock() as g:` acquires in `__enter__` and releases in `__exit__` (via
+  the compiler's try/catch scope guard, so release is guaranteed on every exit
+  path, including exceptions and early return). A guard that is never entered
+  never blocks, so a stray `g = m.lock()` outside a `with` holds no lock.
+  Payload access is the `Deref` chain: `with m.lock() as g: g.append(x)`
+  forwards through the guard to the list; value-type payloads use
+  `g.get()`/`g.set()`. `RwLock`'s read guard yields `readonly[T]`, its write
+  guard mutable `T`.
+- **Both `Send + Sync` iff `T: Send`** (`@unsafe_send(if_params_send=True)` /
+  `@unsafe_sync(if_params_send=True)` on each). For `Mutex` this is Rust's rule
+  (`unsafe impl<T: Send>`) -- exclusive access makes a `Send`-but-not-`Sync` `T`
+  shareable. For `RwLock` it is *looser* than Rust's
+  `unsafe impl<T: Send + Sync> Sync for RwLock<T>`, and correct for TPy: the read
+  guard hands out `readonly[T]` to concurrent readers, and a TPy not-`Sync` `T`
+  is either (a) a container whose not-`Sync`-ness is shared-mutability -- which
+  the readonly guard removes, so concurrent reads are safe -- or (b) an
+  interior-mutable type built with the unsafe `interior`/`unsafe_interior`
+  escape hatch, where the user already owns `Send`/`Sync` correctness. Rust
+  needs `T: Sync` because its `Cell` is *safe* interior mutability the compiler
+  must defend against; TPy's is unsafe, so the readonly read guard suffices for
+  every safe payload (this is also why `Arc[RwLock[list]]` compiles, mirroring
+  `Arc[Mutex[list]]`). A *precise* bound -- accepting a safe container while
+  rejecting a hypothetical safe interior-mutable type -- would need to
+  distinguish the two not-`Sync` reasons (an `readonly[container]: Sync`
+  refinement, `docs/SEND_SYNC_DESIGN.md` OQ1); deferred as a larger design fork.
+  No constructor gate; rejected only at the thread boundary, with the why-not
+  chain naming the offending type parameter (`error_mutex_not_send`).
+- **Movable lock.** `std::mutex` / `std::shared_mutex` delete their move ctors,
+  so the cell holding one inline would be non-movable -- but the cell is
+  move-constructed once into heap storage at `Mutex.__init__` while still
+  exclusively owned and unlocked. `tpy::MovableMutex` / `MovableSharedMutex`
+  add that single move ctor (default-construct a fresh lock), exactly the
+  `tpy::MovableAtomic` trick.
+
+**Module placement (decided).** `tpy.sync`, parallel to `tpy.atomic`: the
+principle is *native-primitive wrappers (a `# tpy: include` header, not
+expressible in pure TPy) live in `tpy.*`; pure-TPy smart pointers live in
+`tplib.*`*. So `Mutex`/`RwLock` are `tpy.sync` and `Arc` correctly stays
+`tplib.arc` (pure-TPy, built on `tpy.atomic`). The canonical pair spans two
+packages, honestly reflecting the layering.
+
+**Known cost (filed perf TODO).** `Arc[Mutex[T]]` is two heap allocations (the
+Arc cell + the Mutex cell) vs Rust's one. A single-alloc fusion needs either an
+address-of-inline-field primitive or `interior` support on a non-`Ptr` inline
+field; neither exists today. Correctness-neutral; deferred.
+
+**Guard-lock enforcement + residual limitations (BUGS.md, `/tpy-review` of V3).**
+Payload access is gated on the lock being held: each guard carries a `_locked`
+flag (set in `__enter__`, cleared in `__exit__`), and `get`/`set`/`__deref__`
+raise `RuntimeError` if it isn't set -- so a guard used *outside* its `with`
+block (bound but never entered, or read after the block) aborts loudly instead
+of racing the payload unsynchronized (`tests/cases/threading/guard_misuse_rejected`;
+the CPython stub mirrors the check). What remains is the *lifetime* half: a guard
+outliving a dropped bare (non-`Arc`) `Mutex`/`RwLock` still dangles (the flag
+lives on the guard, so it can't catch the cell being freed) -- region/lifetime-
+model-gated, the known no-region borrow gap. Also `set()` on a reference-type
+payload copies where CPython aliases (parity divergence; value-type `set()` is
+fine -- mutate reference payloads in place). Both residuals await their model /
+design pass.
 
 ## Deferred: closures (D1) -- the ergonomic layer, own design pass
 

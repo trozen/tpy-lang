@@ -351,6 +351,7 @@ Full mapping of TurboPython types to their C++ representation. Where parameter r
 | `Atomic[T]` (`T: AnyFixedInt`) | `@nocopy` but movable, `Send + Sync` wrapper over `std::atomic<T>`. `from tpy.atomic import Atomic, MemoryOrder`. Full `std::atomic<integral>` op surface (`load`/`store`/`exchange`, `fetch_add/sub/and/or/xor`, `compare_exchange[/_weak]`) plus a module-level `fence`. Each op takes a `MemoryOrder` (a `@native("std::memory_order")` enum) that **defaults to `SEQ_CST`**, so casual use needs no ordering (`c.fetch_add(1)`); CAS returns `(succeeded, observed)`. Ergonomic in-place operators `+= -= &= |= ^=` (atomic RMW at seq_cst) and `str`/`repr` (snapshot print); binary operators and implicit `int()` are deliberately omitted (they'd make the non-atomic `a = a + 1` look valid). |
 | `Arc[T]` (arc) | TPy class mirroring `Rc[T]` (`tplib/arc.py`) but with `Atomic[UInt32]` strong/weak counters, so handles cross threads. `@nocopy`; `Send + Sync` iff `T` is (conditional override). Construct via `Arc.new(value)`; share via `arc.clone()`. `from tplib.arc import Arc` (not re-exported from `tplib` -- keeps the atomic runtime out of non-threaded consumers). |
 | `Weak[T]` (arc) | Non-owning atomic companion to `Arc[T]`. `@nocopy`. `from tplib.arc import Weak` -- module-scoped, coexists with `tplib.rc.Weak`. |
+| `Mutex[T]` / `RwLock[T]` | Blocking locks wrapping `std::mutex` / `std::shared_mutex` (`tpy.sync`, `from tpy.sync import Mutex, RwLock`). `@nocopy`; the interior-mutability primitives. both `Mutex[T]` and `RwLock[T]` are `Send + Sync` iff `T: Send` (conditional override). For `RwLock` this is looser than Rust's `RwLock<T>: Sync iff T: Send + Sync`, and correct for TPy: a not-`Sync` `T` is either a container (not-`Sync` only from shared-mutability, which the readonly read guard removes) or an interior-mutable type built with the unsafe `interior`/`unsafe_interior` escape hatch (user owns `Send`/`Sync`); Rust needs `T: Sync` only because its `Cell` is *safe* interior mutability the compiler must defend against. `lock()` (Mutex) / `read()` / `write()` (RwLock) are `@readonly` -- you lock through a shared handle, so `arc.lock()` works -- and return a `@nocopy` `Deref[T]` guard used as a context manager: `with m.lock() as g: g.append(x)` (deref forwards to the payload; value-type payloads use `g.get()`/`g.set()`). The guard acquires the lock in `__enter__` and releases in `__exit__`; a guard never entered never blocks. Canonical shared-mutable form is `Arc[Mutex[T]]`, which each spawned thread reaches through its own `arc.clone()`. |
 | `bytes` | `std::vector<uint8_t>` |
 | `bytearray` | `std::vector<uint8_t>` (mutable) |
 | `BytesView` | `std::span<const uint8_t>` |
@@ -6364,8 +6365,8 @@ The full marker-layer design lives in `docs/SEND_SYNC_DESIGN.md`; Phase 2
   else it falls back to the structural answer. The analog of Rust's
   `unsafe impl<T: Send + Sync> Send for Arc<T>` -- lets a structurally
   non-Send handle (raw-pointer fields) be Send/Sync exactly for the type
-  args that make it sound. Backs `Arc[T]` (Send + Sync iff `T` is) and the
-  future `Mutex[T]` (Sync iff `T: Send`). The why-not chain attributes a
+  args that make it sound. Backs `Arc[T]` (Send + Sync iff `T` is) and
+  `Mutex[T]` / `RwLock[T]` (Send + Sync iff `T: Send`). The why-not chain attributes a
   failure to the offending type parameter and the marker it lacks (naming
   the *other* required marker on a cross-trait miss), not to the internal
   fields the override abstracts over. Conflicts with the unconditional
@@ -6410,7 +6411,35 @@ The full marker-layer design lives in `docs/SEND_SYNC_DESIGN.md`; Phase 2
   `spawn[R, T](...)` form remains TPy-only.
   `-lpthread` is import-gated. This is Rust's Send+move model, not CPython
   threading -- see `docs/THREADING_DESIGN.md`.
-- **Planned**: `Mutex[T]`/`RwLock[T]` (V3); closure `spawn`,
+- **Working (V3)**: `Mutex[T]` / `RwLock[T]` (in `tpy.sync`, over `std::mutex`
+  / `std::shared_mutex`). The interior-mutability primitives: `@nocopy`.
+  both `Mutex[T]` and `RwLock[T]` are `Send + Sync` iff `T: Send` (conditional
+  override). For `RwLock` this is looser than Rust's `T: Send + Sync` and correct
+  for TPy -- a not-`Sync` `T` is either a container (not-`Sync` from
+  shared-mutability, removed by the readonly read guard) or an interior-mutable
+  type built with the unsafe `interior` hatch (user owns `Send`/`Sync`); Rust
+  needs `T: Sync` only because its `Cell` is safe interior mutability. `lock()`
+  / `read()` / `write()` are `@readonly` -- acquired through a shared handle, so
+  `arc.lock()` works via Arc's deref chain -- and return a `@nocopy`
+  `Deref[T]` guard used as a context manager (`with m.lock() as g:
+  g.append(x)`, deref forwarding to the payload; value-type payloads via
+  `g.get()`/`g.set()`; RwLock read guard yields `readonly[T]`, write guard
+  mutable `T`). The guard acquires in `__enter__` and releases in `__exit__`,
+  so release is guaranteed on every exit path; a guard never entered never
+  blocks. Canonical shared-mutable form is `Arc[Mutex[T]]`, reached per-thread
+  via `arc.clone()`. `-lpthread` import-gated; CPython-parity via
+  `lib/cpy/tpy/sync.py`. See `docs/THREADING_DESIGN.md` V3. (Current cost:
+  `Arc[Mutex[T]]` is two heap allocations vs Rust's one -- a single-alloc
+  fusion is a filed perf TODO.) **Guard misuse is caught at runtime:** a guard
+  carries a `_locked` flag and payload access (`get`/`set`/`__deref__`) raises
+  `RuntimeError` if the lock isn't held, so a guard used outside its `with`
+  block -- bound but never entered, or read after the block -- aborts loudly
+  instead of racing the payload. **Residual limitations (BUGS.md):** a guard
+  outliving a dropped *bare* (non-`Arc`) `Mutex`/`RwLock` still dangles (the
+  lifetime half, region-model-gated -- the flag can't catch it), and `set()` on
+  a reference-type payload copies where CPython aliases (mutate reference
+  payloads in place instead).
+- **Planned**: closure `spawn`,
   scoped threads / `TaskGroup`, multi-threaded executor, MPSC channels
   (deferred -- see `docs/THREADING_DESIGN.md`). `Arc[T]` (V2) is now Working
   (see the `Arc[T]` / `Weak[T]` entry above).

@@ -1,0 +1,1 @@
+main.py:11: error: Cannot call non-readonly method 'append' on readonly reference
