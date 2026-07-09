@@ -166,6 +166,88 @@ class TestThirScoping:
             "was migrated (swap the construct) or the fallback counter broke")
 
 
+class TestCodegenStateIsolation:
+    """Per-module codegen state (`clear_codegen_state`) must not leak across
+    module passes. The AST pipeline emits in topological order, so a definer
+    never follows its importer -- the leak stays invisible there and only
+    surfaces when a module is emitted twice (the THIR overlay's re-emit)."""
+
+    _TREELIB = "type Tree[T] = T | list[Tree[T]]\n"
+    _MAIN = (
+        "from treelib import Tree\n\n\n"
+        "def count(t: Tree[int]) -> int:\n"
+        "    return 1\n"
+    )
+    # `mid` is both a definer (its own `Tree`) and an import target (`main`
+    # imports `mid.Tree`), so a leaked entry hits it while the imported
+    # `base.Tree` must stay qualified -- both colliding qnames in one re-emit.
+    _MID = (
+        "import base\n\n"
+        "type Tree[T] = T | list[Tree[T]]\n\n\n"
+        "def count(mine: Tree[int], theirs: base.Tree[int]) -> int:\n"
+        "    return 1\n"
+    )
+    _MAIN_VIA_MID = (
+        "from mid import Tree\n\n\n"
+        "def go(t: Tree[int]) -> int:\n"
+        "    return 1\n"
+    )
+
+    def _compile(self, tmp_path):
+        (tmp_path / "treelib.py").write_text(self._TREELIB)
+        src_file = tmp_path / "main.py"
+        src_file.write_text(self._MAIN)
+        compiler = Compiler(src_file, lib_dirs=_STDLIB_DIRS)
+        return compiler, compiler.compile()
+
+    def _compile_chain(self, tmp_path):
+        (tmp_path / "base.py").write_text(self._TREELIB)
+        (tmp_path / "mid.py").write_text(self._MID)
+        src_file = tmp_path / "main.py"
+        src_file.write_text(self._MAIN_VIA_MID)
+        compiler = Compiler(src_file, lib_dirs=_STDLIB_DIRS)
+        return compiler, compiler.compile()
+
+    def test_definer_reemit_after_importer_is_stable(self, tmp_path):
+        """A generic recursive alias renders bare in its DEFINING module. Only
+        importers register it in `recursive_alias_cpp_names`, so a stale entry
+        would make the definer qualify against itself on a second pass."""
+        compiler, modules = self._compile(tmp_path)
+        treelib = next(m for m in modules if m.name == "treelib")
+
+        first, _ = compiler.generate_code_to_strings(treelib)
+        for mod in modules:  # importer's pass registers `treelib.Tree`
+            compiler.generate_code_to_strings(mod)
+        second, _ = compiler.generate_code_to_strings(treelib)
+
+        assert first == second, "definer re-emit diverged after importer's pass"
+        assert "::tpyapp::treelib::Tree" not in second
+
+    def test_importer_still_qualifies(self, tmp_path):
+        """The inverse: clearing must not under-register -- an importing module
+        still spells the imported alias with its defining module's namespace."""
+        compiler, modules = self._compile(tmp_path)
+        entry = next(m for m in modules if m.is_entry_point)
+        hpp, cpp = compiler.generate_code_to_strings(entry)
+        assert "::tpyapp::treelib::Tree" in hpp + cpp
+
+    def test_colliding_aliases_stay_distinct_across_passes(self, tmp_path):
+        """Two same-short-named `Tree`s meeting in one module's re-emit: `mid`
+        renders its own bare and `base`'s qualified. `main` imports `mid.Tree`,
+        so mid's own qname is the one a leak would strand in the map."""
+        compiler, modules = self._compile_chain(tmp_path)
+        mid = next(m for m in modules if m.name == "mid")
+
+        first, _ = compiler.generate_code_to_strings(mid)
+        for mod in modules:  # main's pass registers `mid.Tree`
+            compiler.generate_code_to_strings(mod)
+        second, _ = compiler.generate_code_to_strings(mid)
+
+        assert first == second, "collision re-emit diverged after import registration"
+        assert "::tpyapp::base::Tree" in second  # the imported one stays qualified
+        assert "::tpyapp::mid::Tree" not in second  # the local one stays bare
+
+
 class TestCodegenRegression:
     def test_generic_ctor_invalid_arg_rejected(self, tmp_path):
         """Invalid generic constructor arg (Int32 for Span[T] param) must be rejected by sema."""

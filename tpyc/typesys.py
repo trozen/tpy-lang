@@ -392,11 +392,12 @@ def clear_codegen_state() -> None:
     if compiler is not None:
         compiler.native_cpp_names.clear()
         compiler.union_alias_names.clear()
-        # `recursive_alias_cpp_names` is deliberately NOT cleared here: it is
-        # keyed by canonical qname (not the per-module short name), so its
-        # entries are stable across modules and re-registered idempotently each
-        # pass. Clearing it would be harmless but pointless; adding a clear that
-        # assumed short-name semantics would be the actual bug.
+        # Presence in `recursive_alias_cpp_names` is itself the per-module
+        # signal: only *imported* aliases are registered, so the defining
+        # module's own alias must be absent to render bare. Qname keying makes
+        # entries collision-proof, not module-independent -- a stale entry from
+        # an importer's pass would qualify the definer against itself.
+        compiler.recursive_alias_cpp_names.clear()
 
 
 def clear_all_compilation_state() -> None:

@@ -625,9 +625,12 @@ qualified.
 - Rendering is keyed by **canonical qname**, not the short name:
   `Compiler.recursive_alias_cpp_names` maps `defining_module.original_name` to
   the qualified C++ wrapper, populated per codegen-module pass for *imported*
-  aliases (from both `imported_type_alias_info` and qualified module imports).
+  aliases (from both `imported_type_alias_info` and qualified module imports)
+  and reset by `clear_codegen_state` at the head of each pass.
   `RecursiveAliasInstanceType.to_cpp` looks up by `self.qname`; a same-module
-  alias is absent and renders bare. This is collision-proof: a module with a
+  alias is absent and renders bare -- so the reset is load-bearing, not
+  cosmetic: an importer's leftover entry would qualify the definer against
+  itself on any later pass over it. This is collision-proof: a module with a
   local `Tree[T]` and a qualified `other.Tree[int]` emits a bare `Tree<...>`
   and `::tpyapp::other::Tree<...>` respectively (the qualified form is the only
   one that lets two same-short-named wrappers coexist in one module, which the
