@@ -1008,7 +1008,9 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
     return binding if _f1_record(inner, analyzer) else None
 
 def _is_record_rvalue_source(init: TpyExpr, declared: dict[str, TpyType],
-                             analyzer, *, temps_ok: bool = False) -> bool:
+                             analyzer, *, temps_ok: bool = False,
+                             narrowed: 'set[str] | frozenset[str]'
+                             = frozenset()) -> bool:
     """An F2d rebind-slot source: an rvalue call producing an F1-record (a ctor
     `Inner(...)` or a by-value record-returning call) with eligible scalar args.
     It emits as the bare `Name(args)` the two-slot init / reseat wraps. kwargs /
@@ -1047,45 +1049,49 @@ def _is_record_rvalue_source(init: TpyExpr, declared: dict[str, TpyType],
         if not (_ctor_shape_ok(init, analyzer)
                 or _ctor_instantiation_ok(init, analyzer)):
             return False
-    elif len(init.args) != len(fi.params) or not _plain_free_callee_ok(init, analyzer):
-        return False
-    # The record-rvalue arg rows: the by-value FREE-call face hoists a
-    # `__tmp_N` for every same-record ref slot (mutation-blind, so it needs a
-    # flush position); the CTOR face keys on the slot's mutation --
-    # `_gen_record_ctor_args` hoists the named temp only for a MUTATED ref
-    # slot (`i in ctor_mutated`, flush-position only), while a const slot
-    # binds the inline prvalue expansion, temp-free at any depth.
-    ctor_mut = (fi.mutated_params or frozenset()) if fi.is_constructor else None
+        # The CTOR arg face keys the record-rvalue temp on the slot's mutation
+        # -- `_gen_record_ctor_args` hoists the named temp only for a MUTATED
+        # ref slot (flush-position only), while a const slot binds the inline
+        # prvalue expansion, temp-free at any depth. This differs from the
+        # free-call face's mutation-blind hoist, so the ctor face keeps its own
+        # arg loop rather than sharing the plain-call cascade below.
+        ctor_mut = fi.mutated_params or frozenset()
 
-    def _rec_rvalue_arg_ok(i: int, a: TpyExpr, ptype: 'TpyType | None') -> bool:
-        if not _record_rvalue_temp_arg(a, ptype, declared, analyzer):
+        def _rec_rvalue_arg_ok(i: int, a: TpyExpr, ptype: 'TpyType | None') -> bool:
+            if not _record_rvalue_temp_arg(a, ptype, declared, analyzer):
+                return False
+            return temps_ok if i in ctor_mut else True
+        # Eligible scalars / slot-resolved float literals / the mutation-keyed
+        # record-rvalue temp / Own scalar+record rvalues. A non-scalar lvalue
+        # (record pointer-local / Own name) needs a deref or auto-move the bare
+        # THIRCall arg emit does not reproduce, and an `Own[scalar]`/union slot
+        # temps a bare name -- both left to the copy+move / member-lift rows the
+        # ctor emit does not carry.
+        return all((_eligible_scalar(analyzer.get_expr_type(a))
+                    and not _member_valued_union_slot(a, p.type, analyzer)
+                    and not _own_cascade_fires(p.type)
+                    and _expr_eligible(a, declared, analyzer))
+                   or _float_literal_pass_through_arg(a, p.type, declared, analyzer)
+                   or _rec_rvalue_arg_ok(i, a, p.type)
+                   or _own_scalar_rvalue_arg(a, p.type, declared, analyzer)
+                   or _own_record_rvalue_arg(a, p.type, declared, analyzer)
+                   for i, (a, p) in enumerate(zip(init.args, fi.params)))
+    # The by-value record-returning FREE-call face: the same callee-shape head
+    # as `_call_eligible` (linkage / literal-overload / generics / error_return
+    # via `_plain_free_callee_ok`) + exact arity, then the SHARED plain-call arg
+    # cascade -- so `return make_rec(s, xs, r)` routes the str / container /
+    # record / Own-move / optional-ptr / union arg shapes a free call already
+    # carries, not the reduced scalar-only subset. Guard: a str-literal into a
+    # multi-overload callee pins to the view form (`string_view("...")`), which
+    # the bare emit does not reproduce -- mirror `_call_eligible`'s pin.
+    if len(init.args) != len(fi.params) or not _plain_free_callee_ok(init, analyzer):
+        return False
+    if any(isinstance(_peel_coerce(a), TpyStrLiteral) for a in init.args):
+        fis = analyzer.registry.get_function(init.func_name)
+        if fis is not None and len(fis) > 1:
             return False
-        if ctor_mut is None:
-            return temps_ok
-        return temps_ok if i in ctor_mut else True
-    # Args must be eligible SCALARS or slot-resolved bare float literals
-    # (mirror _call_eligible): a non-scalar arg (a record pointer-local /
-    # Own[T]) needs the AST's `(*q)` deref or auto-move `std::move(q)`,
-    # neither of which the bare THIRCall arg emit reproduces. A union slot
-    # hoists a member-valued scalar into a variant temp (mirror
-    # _call_eligible's `_member_valued_union_slot` guard), and an
-    # `Own[scalar]` SLOT temps a bare-name arg the same way (mirror the
-    # `_own_cascade_fires` guard -- `_gen_record_ctor_args` shares the
-    # copy+move shape). A PRVALUE scalar / record-ctor arg into that
-    # `Own[scalar]` / `Own[record]` slot binds the T&& directly (no temp),
-    # so both paths render bare -- the arg-ful generic-record instantiation
-    # `Box(5)` / `Box(a + b)` / `Box(Inner(3))` (sema substitutes the ctor's
-    # `Own[T]` to `Own[Int32]` / `Own[Inner]` at the call). A bare lvalue
-    # NAME stays on the copy+move `_own_cascade_fires` reject above.
-    return all((_eligible_scalar(analyzer.get_expr_type(a))
-                and not _member_valued_union_slot(a, p.type, analyzer)
-                and not _own_cascade_fires(p.type)
-                and _expr_eligible(a, declared, analyzer))
-               or _float_literal_pass_through_arg(a, p.type, declared, analyzer)
-               or _rec_rvalue_arg_ok(i, a, p.type)
-               or _own_scalar_rvalue_arg(a, p.type, declared, analyzer)
-               or _own_record_rvalue_arg(a, p.type, declared, analyzer)
-               for i, (a, p) in enumerate(zip(init.args, fi.params)))
+    return _plain_call_args_ok(init, declared, analyzer, temps_ok=temps_ok,
+                               narrowed=narrowed)
 
 def _is_record_rvalue_method_source(init: TpyExpr, declared: dict[str, TpyType],
                                     analyzer, *, temps_ok: bool = False) -> bool:
@@ -2169,6 +2175,24 @@ def _call_eligible(e: TpyCall, locals_: dict[str, TpyType], analyzer,
         return True
     if kind[0] == "generic":
         return _generic_plain_args_ok(e, locals_, analyzer, temps_ok=temps_ok)
+    return _plain_call_args_ok(e, locals_, analyzer, temps_ok=temps_ok,
+                               narrowed=narrowed)
+
+def _plain_call_args_ok(e: TpyCall, locals_: dict[str, TpyType], analyzer,
+                        *, temps_ok: bool,
+                        narrowed: 'set[str] | frozenset[str]') -> bool:
+    """The plain/imported free-callee ARG cascade -- the tail shared by
+    `_call_eligible`'s plain branch and `_is_record_rvalue_source`'s by-value
+    record-returning free-call face (both spell the bare `name(args)`, so the
+    per-arg pass-through/temp decisions are identical). The callee-shape HEAD
+    (linkage / literal-overload / generics / arity) and the str-literal
+    overload pin stay at each caller -- the pin is per-call and threads
+    `fi`/`func_name`, and `_call_eligible` also gates native/template kinds a
+    record-return source never reaches. `temps_ok` admits the flush-position
+    temp rows (value-union / record-rvalue / Own copy / optional-ptr ctor);
+    `narrowed` keeps a narrowed subject off the temp rows (its read renames to
+    the extraction alias, which lowering renders bare)."""
+    fi = e.resolved_function_info
     return all(_shared_pass_through_arg(a, p.type, locals_, analyzer)
                or (temps_ok and _value_union_temp_arg(a, p.type, locals_,
                                                       narrowed, analyzer))
@@ -3913,6 +3937,20 @@ def _record_method_call_eligible(e: TpyMethodCall, fi, locals_: dict[str, TpyTyp
                or _slice_ctor_pass_through_arg(a, p.type, locals_, analyzer)
                or _own_scalar_rvalue_arg(a, p.type, locals_, analyzer)
                or _own_record_rvalue_arg(a, p.type, locals_, analyzer)
+               # The temp-free half of the Own-slot cascade -- a movable
+               # Own-param name at last use renders `std::move(name)` in any
+               # position (the move half of `_lower_call_arg` runs outside
+               # temp_args). The copy half (`_own_lvalue_arg`, `__tmp_N`) needs
+               # a flush-position temp the method-arg lowering does not thread
+               # yet -> that lvalue shape stays AST.
+               or _own_move_arg(a, p.type, locals_, analyzer)
+               # Pointer-repr Optional[record] slots, NON-ctor faces only
+               # (none / bare-pass / `&(name)` / field lift): temps_ok=False
+               # rejects the 'ctor' face, whose `&(__tmp_N)` addr-of temp needs
+               # a flush the method-arg lowering does not thread (the same gap
+               # that keeps the Own copy half AST).
+               or _optional_ptr_arg(a, p.type, locals_, analyzer,
+                                    temps_ok=False)
                or _container_pass_through_arg(a, p.type, locals_, analyzer)
                or _record_pass_through_arg(a, p.type, locals_, analyzer)
                or _method_ctor_rvalue_arg(a, p.type, i, overloads[0],

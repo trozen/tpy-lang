@@ -959,7 +959,9 @@ def _raise_eligible(stmt: TpyRaise, analyzer, ws: _WalkState) -> bool:
 
 def _owned_record_decl_ok(stmt: TpyVarDecl, vtype: 'TpyType | None',
                           prescan: _Prescan,
-                          declared: dict[str, TpyType], analyzer) -> bool:
+                          declared: dict[str, TpyType], analyzer,
+                          narrowed: 'set[str] | frozenset[str]'
+                          = frozenset()) -> bool:
     """A single-assignment owned record local from a record-rvalue init --
     `Box b = Box(n);` / `Box x = make(1);`, the binding classifier's
     plain-value-local arm (no indirection, dot access; sema's movable set
@@ -975,7 +977,7 @@ def _owned_record_decl_ok(stmt: TpyVarDecl, vtype: 'TpyType | None',
             and _f1_record(vtype, analyzer)
             and stmt.init is not None
             and (_is_record_rvalue_source(stmt.init, declared, analyzer,
-                                          temps_ok=True)
+                                          temps_ok=True, narrowed=narrowed)
                  or _is_record_rvalue_method_source(stmt.init, declared,
                                                     analyzer, temps_ok=True)))
 
@@ -1070,7 +1072,8 @@ def _stmt_eligible(stmt: TpyStmt, analyzer, ws: _WalkState,
             # value decl in storage form; reads off it route via the
             # declared-type-keyed receiver gates like a record param's.
             if _owned_record_decl_ok(stmt, _var_decl_type(stmt, analyzer),
-                                     prescan, ws.declared, analyzer):
+                                     prescan, ws.declared, analyzer,
+                                     narrowed=ws.narrowed):
                 return True
         elif stmt.name in ws.rebind_slots:
             # F2d rebind-slot reseat: an rvalue F1-record ctor / by-value source.
@@ -2220,7 +2223,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, lc: _LowerCtx,
             # (not `pointers`): reads render `.`, passes render bare, and
             # sema's movable set drives its last-use moves.
             if _owned_record_decl_ok(stmt, vtype, lc.prescan, declared,
-                                     lc.analyzer):
+                                     lc.analyzer, narrowed=lc.narrow.narrowed):
                 _witness("decl.owned_record_method"
                          if isinstance(stmt.init, TpyMethodCall)
                          else "decl.owned_record")

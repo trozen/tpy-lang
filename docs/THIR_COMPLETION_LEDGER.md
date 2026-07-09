@@ -957,10 +957,33 @@ Upcast Child->Parent NAME args pass bare; method ctor-rvalues into CONST
 same-record slots inline via `THIRCtorCall` (`const_borrow_params`-keyed);
 deep-const ptr-union slots spell const pointees + the
 `ptr_variant_to_const` wrap (`THIRUnionArgLift.const_wrap`). Still
-deferred: the Own copy+move arms, protocol / optional-ptr `&(__tmp)`,
-covariant slots, elif-chain-abandon + statement-expr temp relocation, the
-field-write flush position, readonly ref-slot ctor temps, `self.helper()`
-sites, method union-slot args.
+deferred: the Own COPY arm (the last-use MOVE now lands on record-method
+calls -- see the call-arg-completeness wave below), protocol / optional-ptr
+CTOR `&(__tmp)` (the non-ctor optional-ptr faces now land on record-method
+calls, same wave), covariant slots, elif-chain-abandon + statement-expr
+temp relocation, the field-write flush position, readonly ref-slot ctor
+temps, `self.helper()` sites, method union-slot args.
+**Call-arg-completeness wave (branch `thir-call-arg-completeness`)**: three
+cells bringing the fuller call-arg cascade to paths that carried a reduced
+subset. (1) A movable `Own[T]` param forwarded into a user-record method
+moves at last use (`recv.m(std::move(p))`) -- `_own_move_arg` on
+`_record_method_call_eligible` (the copy half stays AST: the method-arg
+lowering does not thread `temp_args`). (2) Pointer-repr `Optional[record]`
+NON-ctor arg faces (`nullptr` / `&(name)` / bare-pass / `optional_to_ptr`
+lift) on record-method calls -- `_optional_ptr_arg(temps_ok=False)` (the
+ctor `&(__tmp)` face stays AST, same reason). (3) UNIFICATION: the
+by-value record-returning FREE-call face of `_is_record_rvalue_source`
+now delegates to a shared `_plain_call_args_ok` (extracted from
+`_call_eligible`'s plain-callee arg tail), so `return build(s, xs, r)` /
+`x = build(...)` route the str / container / record / Own-move /
+optional-ptr / union arg shapes a free call already carries, not just
+scalars; the constructor face keeps its own mutation-keyed loop, a
+str-literal-multi-overload pin guards the view-form pin, and a `narrowed`
+set is threaded through `_owned_record_decl_ok` (gate + lowering) so a
+narrowed subject stays off the `temps_ok` temp rows. Byte-diff-neutral by
+construction; whole-body routing gain is marginal (these arg shapes
+co-occur with other per-body blockers -- first-reject masking), the value
+is the duplication removal + compositional readiness.
 Deferred container-iteration cells: `dict[int, record]` key iteration (param not admitted --
 its value read is a record borrow), `set`/`Span`/`Array` containers (params not yet admitted),
 str/bytes-key dicts, `dict.items()`/tuple-unpack, non-name iterables (str-family FIELDS off
