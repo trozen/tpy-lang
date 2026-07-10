@@ -81,13 +81,14 @@ class TestBuildCacheTracking:
     every loaded macro file, plus _resolve_macro_import probe outcomes."""
 
     def test_load_module_records_file(self, tmp_path):
-        from pathlib import Path
         from .macro_loader import MacroRegistry
         mac = tmp_path / "mymac.py"
         mac.write_text("# tpy: macro_module\nX = 1\n")
         reg = MacroRegistry()
         reg.load_module("mymac", mac)
         assert reg.loaded_files == {"mymac": str(mac)}
+        # Read-time manifest entry captured for the executed file.
+        assert str(mac) in reg.input_entries
         # Re-loading must not duplicate or error.
         reg.load_module("mymac", mac)
         assert reg.loaded_files == {"mymac": str(mac)}
@@ -104,6 +105,11 @@ class TestBuildCacheTracking:
         assert reg._resolve_macro_import("dep") is None
         assert reg.probe_missing == [str(first / "dep.py")]
         assert reg.probe_rejected == [str(second / "dep.py")]
+        # The consulted-but-rejected file's content was read: it must get
+        # a read-time manifest entry (its content becoming a macro module
+        # later must invalidate); the never-existing probe must not.
+        assert str(second / "dep.py") in reg.input_entries
+        assert str(first / "dep.py") not in reg.input_entries
 
     def test_resolve_import_loads_and_records_macro(self, tmp_path):
         from .macro_loader import MacroRegistry
@@ -115,3 +121,15 @@ class TestBuildCacheTracking:
         assert reg.loaded_files == {"helper": str(libdir / "helper.py")}
         assert reg.probe_missing == []
         assert reg.probe_rejected == []
+        assert str(libdir / "helper.py") in reg.input_entries
+
+    def test_shared_input_entries_table(self, tmp_path):
+        # The Compiler hands its own table in; captures must land there.
+        from .macro_loader import MacroRegistry
+        mac = tmp_path / "mymac.py"
+        mac.write_text("# tpy: macro_module\nX = 1\n")
+        shared: dict[str, dict] = {}
+        reg = MacroRegistry(input_entries=shared)
+        reg.load_module("mymac", mac)
+        assert reg.input_entries is shared
+        assert str(mac) in shared

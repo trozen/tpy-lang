@@ -2,6 +2,7 @@
 
 import json
 import os
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -208,3 +209,93 @@ def test_resolver_logs_hits_and_misses(tmp_path):
     assert resolver.resolve("nope") is None
     assert resolver.resolution_log == {"util": str(tmp_path / "util.py"),
                                        "nope": None}
+
+
+# --- read-time input capture (the mid-build-edit staleness fix) ---------
+#
+# The manifest must certify the content the compiler READ, not the on-disk
+# state when the manifest is written after the C++ build -- a file edited
+# in between must MISS on the next run (rebuild), never warm-hit the stale
+# binary. These drive the real Compiler front-end (no C++ toolchain) and
+# then record through the same helper the CLI uses.
+
+MACRO_SRC = ("# tpy: macro_module\n"
+             "from tpyc.macro_api import ClassInfo, class_macro\n"
+             "\n"
+             "\n"
+             "@class_macro\n"
+             "def tag(cls: ClassInfo) -> None:\n"
+             "    pass\n")
+
+
+def _compile_and_record(tmp_path: Path, with_macro: bool = False,
+                        edit_before_record: Callable[[Path], None] | None = None):
+    from types import SimpleNamespace
+
+    from tpyc import get_lib_dir, get_runtime_dir
+    from tpyc.cli import _record_build_manifest
+    from tpyc.compiler import Compiler
+    from tpyc.toolchain import CppCompilerConfig
+
+    app = tmp_path / "app"
+    app.mkdir()
+    if with_macro:
+        (app / "tagmac.py").write_text(MACRO_SRC)
+        (app / "prog.py").write_text(
+            "from tagmac import tag\n"
+            "\n"
+            "\n"
+            "@tag\n"
+            "class Thing:\n"
+            "    x: int\n"
+            "\n"
+            "\n"
+            "print(1)\n")
+    else:
+        (app / "util.py").write_text('def f() -> None:\n    print("A")\n')
+        (app / "prog.py").write_text("import util\n\nutil.f()\n")
+
+    compiler = Compiler(app / "prog.py", lib_dirs=[get_lib_dir() / "tpy"])
+    modules = compiler.compile()
+
+    if edit_before_record is not None:
+        edit_before_record(app)  # simulates the mid-C++-build edit
+
+    build = tmp_path / "build"
+    build.mkdir()
+    binary = build / "prog"
+    binary.write_text("BINARY")
+    key = {"k": 1}
+    _record_build_manifest(
+        key, build, app / "prog.py", modules, compiler,
+        CppCompilerConfig(compiler=["sh"]),  # any stat-able binary
+        runtime_dir=get_runtime_dir(), runtime_cpp_sources=[],
+        third_party_plan=SimpleNamespace(c_sources=[], extra_include_dirs=[]),
+        warning_messages=[], binary_path=binary)
+    return build, key
+
+
+def _edit(path: Path, text: str) -> None:
+    path.write_text(text)
+    os.utime(path, ns=(999, 999))  # deterministic stat mismatch
+
+
+def test_record_after_compile_no_edit_hits(tmp_path):
+    build, key = _compile_and_record(tmp_path)
+    assert check_up_to_date(build, key) is not None
+
+
+def test_module_edited_after_compile_misses(tmp_path):
+    build, key = _compile_and_record(
+        tmp_path,
+        edit_before_record=lambda app: _edit(
+            app / "util.py", 'def f() -> None:\n    print("B")\n'))
+    assert check_up_to_date(build, key) is None
+
+
+def test_macro_edited_after_compile_misses(tmp_path):
+    build, key = _compile_and_record(
+        tmp_path, with_macro=True,
+        edit_before_record=lambda app: _edit(
+            app / "tagmac.py", MACRO_SRC + "\n# changed\n"))
+    assert check_up_to_date(build, key) is None

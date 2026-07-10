@@ -48,6 +48,7 @@ from .typesys import (
 from .type_def_registry import protocol_info_of, enum_info_of
 from .module_names import module_from_qname, public_module_name
 from .macro_loader import MacroRegistry, is_macro_module_source
+from .build_cache import capture_input
 from . import DEFAULT_INT_CHOICES  # noqa: F401 -- canonical home is tpyc/__init__ (light CLI import)
 from .toolchain import (  # noqa: F401 -- re-exported: external callers import these via tpyc.compiler
     CompilerNotFoundError, CppCompilerConfig, list_compilers,
@@ -670,10 +671,16 @@ class Compiler:
         self.shadowed_builtins: dict[str, set[tuple[str, int | None]]] = {}
         self.diagnostics: list[Diagnostic] = []
         self._source_input: tuple[str, str] | None = None
+        # Build-cache manifest entries for every consumed source file,
+        # captured at read time (keyed by absolute path). One table shared
+        # with the macro registry so module and macro reads land in the
+        # same place with one idempotency rule (earliest capture wins).
+        self.input_file_entries: dict[str, dict] = {}
         search_dirs = []
         if self.resolver is not None:
             search_dirs = [self.resolver.base_dir] + self.resolver.extra_dirs
-        self._macro_registry = MacroRegistry(search_dirs=search_dirs)
+        self._macro_registry = MacroRegistry(
+            search_dirs=search_dirs, input_entries=self.input_file_entries)
         # Decorator arg schemas derived from @builtin_decorator stubs,
         # accumulated across parsed modules and passed to subsequent parsers.
         self._decorator_schemas: dict = {}
@@ -1069,6 +1076,10 @@ class Compiler:
                 is_package_init=is_package_init,
             )
             return
+
+        # Build-cache input capture, BEFORE the read (capture_input
+        # documents the fail-safe rationale).
+        capture_input(self.input_file_entries, path)
 
         # Check for macro module directive before parsing (macro modules
         # contain Python code that the TPy parser can't handle)

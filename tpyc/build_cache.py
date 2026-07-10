@@ -63,6 +63,23 @@ def file_entry(path: str) -> dict | None:
             "hash": digest}
 
 
+def capture_input(entries: dict[str, dict], path: Path | str) -> None:
+    """Record a read-time manifest entry for a consumed source file.
+
+    Call BEFORE reading the file: the manifest must certify the content
+    the compiler consumed, not the on-disk state after the C++ build, and
+    capture-before-read makes the residual race window fail safe (an edit
+    inside it records the pre-edit entry against post-edit content, so
+    the next run misses and rebuilds instead of warm-hitting stale).
+    Earliest capture wins -- it is the one closest to the first read.
+    """
+    key = os.path.abspath(str(path))
+    if key not in entries:
+        entry = file_entry(key)
+        if entry is not None:
+            entries[key] = entry
+
+
 def _entry_fresh(entry: dict) -> bool:
     """Hybrid freshness check: trust the hash when (size, mtime) match,
     re-hash the content otherwise (ccache-style)."""

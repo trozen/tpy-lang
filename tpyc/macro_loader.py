@@ -19,6 +19,7 @@ from typing import Any, Callable
 import builtins as _builtins_module
 
 from . import macro_api as _macro_api
+from .build_cache import capture_input
 
 
 # ---------------------------------------------------------------------------
@@ -368,7 +369,8 @@ class MacroRegistry:
     implements the macro.
     """
 
-    def __init__(self, search_dirs: list[Path] | None = None) -> None:
+    def __init__(self, search_dirs: list[Path] | None = None,
+                 input_entries: dict[str, dict] | None = None) -> None:
         self._macros: dict[tuple[str, str], Callable] = {}
         self._call_macros: dict[tuple[str, str], Callable] = {}
         # Function-level (body) macros: (module, name) -> callable
@@ -387,9 +389,14 @@ class MacroRegistry:
         # Build-cache inputs: every loaded macro file, plus the probe
         # outcomes of _resolve_macro_import (paths that must stay absent
         # and existing-but-not-macro files whose content was consulted).
+        # input_entries holds each consulted file's read-time manifest
+        # entry (see build_cache.capture_input); the Compiler passes its
+        # own table so module and macro captures share one dict.
         self.loaded_files: dict[str, str] = {}
         self.probe_missing: list[str] = []
         self.probe_rejected: list[str] = []
+        self.input_entries: dict[str, dict] = (
+            input_entries if input_entries is not None else {})
 
     def register(self, module: str, name: str, func: Callable) -> None:
         self._macros[(module, name)] = func
@@ -443,6 +450,7 @@ class MacroRegistry:
         for d in self._search_dirs:
             path = d / Path(name.replace(".", "/")).with_suffix(".py")
             if path.is_file():
+                capture_input(self.input_entries, path)  # before the read
                 source = path.read_text()
                 if is_macro_module_source(source):
                     self.load_module(name, path)
@@ -463,6 +471,7 @@ class MacroRegistry:
         if module_name in self._loaded_modules:
             return
         self.loaded_files[module_name] = str(file_path)
+        capture_input(self.input_entries, file_path)  # before exec's read
 
         # Ensure tpyc is importable (macro modules import from tpyc.macro_api)
         tpyc_parent = str(Path(__file__).resolve().parent.parent)

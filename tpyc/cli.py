@@ -318,10 +318,28 @@ def _record_build_manifest(cache_key: dict, build_dir: Path, input_path: Path,
     macro_reg = compiler.macro_registry
     pkg_dir = Path(__file__).parent
     include_dir = runtime_dir / "cpp" / "include"
-    inputs: list = [input_path]
-    inputs += (m.path for m in compiled_modules if m.path is not None)
-    inputs += macro_reg.loaded_files.values()
-    inputs += macro_reg.probe_rejected
+
+    # Source files the compiler consumed use their READ-TIME entries
+    # (captured before each read): the manifest must certify the content
+    # the binary was built from, not the on-disk state after a
+    # multi-second C++ build (a mid-build edit must miss, not warm-hit).
+    # Module and macro captures share one table (the macro registry is
+    # constructed with the Compiler's dict).
+    captured = compiler.input_file_entries
+    consumed: list = [input_path]
+    consumed += (m.path for m in compiled_modules if m.path is not None)
+    consumed += macro_reg.loaded_files.values()
+    consumed += macro_reg.probe_rejected
+    for p in consumed:
+        ap = os.path.abspath(str(p))
+        entry = captured.get(ap)
+        if entry is None:
+            return  # no read-time capture -> don't certify this build
+        files.setdefault(ap, entry)
+
+    # Inputs not user-edited mid-build (compiler's own sources, runtime,
+    # vendored third-party) are safe to stat/hash post-link.
+    inputs: list = []
     inputs += pkg_dir.rglob("*.py")
     inputs += (p for p in include_dir.rglob("*") if p.is_file())
     inputs += runtime_cpp_sources
