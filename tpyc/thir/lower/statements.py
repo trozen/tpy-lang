@@ -83,7 +83,13 @@ from ...codegen_cpp.forms import (
 )
 from ...liveness import stmts_terminate
 from ..faces import witness as _witness
-from ..fallback import begin_stmt, note, note_detail, stmt_reject_reason
+from ..fallback import (
+    begin_stmt,
+    expr_kind_tag,
+    note,
+    note_detail,
+    stmt_reject_reason,
+)
 from ..nodes import (
     Form,
     PrintForm,
@@ -179,6 +185,7 @@ from .predicates import (
     _storage_call_ret,
     _str_field_value_read,
     _str_self_append_rhs,
+    _type_family_tag,
     _peel_coerce,
     _subscript_container_recv_type,
     _unwrap_lit_coerce,
@@ -212,6 +219,7 @@ from .expr_gates import (
     _optional_record_field_write_ok,
     _print_arg_form,
     _print_arg_ok,
+    _wrap_print_form,
     _print_optval_form,
     _print_optval_opt,
     _ptr_union_field_write_ok,
@@ -243,6 +251,13 @@ from .expressions import (
 )
 from . import comprehensions as _comprehensions
 from . import match as _match
+
+def _kind_detail(prefix: str, e: TpyExpr) -> bool:
+    """`note_detail` with the expr's node kind as the suffix -- the
+    dispatch-tail catch-all for a gate arm with no finer reject reason
+    (set-if-empty, so a finer inner detail always wins)."""
+    return note_detail(prefix + expr_kind_tag(e).removeprefix("expr."))
+
 
 def _record_source_reject_detail(v: TpyExpr, ws: '_WalkState',
                                  borrow_slot: bool) -> str:
@@ -645,26 +660,30 @@ def _tuple_unpack_targets(stmt: TpyTupleUnpack, ws: _WalkState
 def _tuple_unpack_source(stmt: TpyTupleUnpack, analyzer,
                          ws: _WalkState) -> 'TupleType | None':
     """The value-scalar tuple type of an admitted `a, b = <source>` source, or
-    None. Three source shapes render byte-identically to `_gen_tuple_unpack`:
+    None. Four source shapes render byte-identically to `_gen_tuple_unpack`:
 
     - a bare name (or synthetic loop var) -> `const auto& __tup_N = name;`;
     - a value-tuple-returning free call -> `auto __tup_N = f(args);`;
+    - a value-tuple-returning method call -> `auto __tup_N = obj.m(args);`
+      (the same rvalue capture; storage_ret_ok threads the tuple return
+      past the method result gate);
     - a value-tuple field read off an F1-record receiver -> `auto __tup_N =
       recv.field;`.
 
-    The call/field arms admit exactly the shapes the `T t = f()` / `T t =
-    recv.field` value-tuple decl already routes (`_storage_call_ret` +
-    `_call_eligible`, `_field_receiver_ok`), so the source expr lowers the same;
-    only the source bind differs (`auto` rvalue capture vs the name's const-ref).
-    Every element must be a plain scalar -- an owned-str element (a `_value_tuple`
-    member) leaves the targets outside `_tuple_unpack_targets`' scalar slice, so
-    it is rejected here to keep the source and target families aligned (str is
-    deferred). Swap / literal-parallel / nested / starred / record-element /
-    Optional-element / method-call / reused-target forms take other arms."""
+    The call/method/field arms admit exactly the shapes the `T t = f()` /
+    `T t = recv.field` value-tuple decl already routes (`_storage_call_ret` +
+    `_call_eligible` / `_method_call_eligible`, `_field_receiver_ok`), so the
+    source expr lowers the same; only the source bind differs (`auto` rvalue
+    capture vs the name's const-ref). Every element must be a plain scalar --
+    an owned-str element (a `_value_tuple` member) leaves the targets outside
+    `_tuple_unpack_targets`' scalar slice, so it is rejected here to keep the
+    source and target families aligned (str is deferred). Swap /
+    literal-parallel / nested / starred / record-element / Optional-element /
+    reused-target forms take other arms."""
     v = stmt.value
     if isinstance(v, TpyName):
         if v.name not in ws.declared or v.name in ws.pointers or v.name in ws.narrowed:
-            note_detail("tuple_unpack.source_shape")
+            _kind_detail("tuple_unpack.src_", v)
             return None
         src_raw: 'TpyType | None' = ws.declared[v.name]
     elif (isinstance(v, TpyCall)
@@ -672,11 +691,21 @@ def _tuple_unpack_source(stmt: TpyTupleUnpack, analyzer,
           and _call_eligible(v, ws.declared, analyzer, temps_ok=True,
                              storage_ret_ok=True, narrowed=ws.narrowed)):
         src_raw = analyzer.get_expr_type(v)
+    elif (isinstance(v, TpyMethodCall)
+          and _storage_call_ret(analyzer.get_expr_type(v), analyzer) is not None
+          and _method_call_eligible(v, ws.declared, analyzer, temps_ok=True,
+                                    storage_ret_ok=True,
+                                    narrowed=ws.narrowed)):
+        # The method sibling of the free-call arm: `a, b = obj.pair()` binds
+        # the same `auto __tup_N = <rvalue call>;` capture.
+        src_raw = analyzer.get_expr_type(v)
     elif (isinstance(v, TpyFieldAccess)
           and _field_receiver_ok(v, ws.declared, analyzer)):
         src_raw = analyzer.get_expr_type(v)
     else:
-        note_detail("tuple_unpack.source_shape")
+        # The source's node kind (a call that failed its gates keeps any
+        # finer detail those noted -- set-if-empty).
+        _kind_detail("tuple_unpack.src_", v)
         return None
     src_t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(src_raw)))
     if not (isinstance(src_t, TupleType)
@@ -993,8 +1022,10 @@ def _stmt_eligible(stmt: TpyStmt, analyzer, ws: _WalkState,
     if is_docstring(stmt) or isinstance(stmt, TpyPassStmt):
         return True
     if isinstance(stmt, TpyVarDecl):
-        if stmt.linkage != VarLinkage.DEFAULT or stmt.init is None:
-            return False
+        if stmt.linkage != VarLinkage.DEFAULT:
+            return note_detail("decl.linkage")
+        if stmt.init is None:
+            return note_detail("decl.no_init")
         # A `self = ...` rebind in a method: codegen's scope never seeds the
         # receiver as a NAME, so the AST emits a fresh SHADOWING decl
         # (`const T& self = other;`) while the walk state -- which does seed
@@ -1002,13 +1033,13 @@ def _stmt_eligible(stmt: TpyStmt, analyzer, ws: _WalkState,
         # `self = other;`. Out of the slice. (The AST's own post-rebind reads
         # still target `this` -- a pre-existing divergence, see BUGS.md.)
         if prescan.has_self and stmt.name == "self":
-            return False
+            return note_detail("decl.self_rebind")
         # A direct rebind of an isinstance-narrowed name: the AST write targets
         # the extraction alias / the variant inconsistently across shapes --
         # out of the U3 slice (field writes THROUGH the alias stay eligible;
         # they rename like reads).
         if stmt.name in ws.narrowed:
-            return False
+            return note_detail("decl.narrowed_rebind")
         is_reassign = stmt.name in ws.declared
         # A value local FIRST-declared inside an if/elif/else/for/while body
         # emits in place (lowering walks each branch/loop body under its own
@@ -1025,7 +1056,7 @@ def _stmt_eligible(stmt: TpyStmt, analyzer, ws: _WalkState,
         # declares inside the C++ try scope -- unverified for the slice).
         in_branch_first = in_branch and not is_reassign and branch_decls_ok
         if in_branch and not is_reassign and not branch_decls_ok:
-            return False
+            return note_detail("decl.branch_first_decl")
         if not is_reassign and not in_branch:
             # First decl of a non-value local (REF_ALIAS / OPTIONAL_TO_PTR /
             # POINTER), bound from a field read off an F1-record receiver. Its
@@ -1078,10 +1109,12 @@ def _stmt_eligible(stmt: TpyStmt, analyzer, ws: _WalkState,
                 return True
         elif stmt.name in ws.rebind_slots:
             # F2d rebind-slot reseat: an rvalue F1-record ctor / by-value source.
-            return _is_record_rvalue_source(stmt.init, ws.declared, analyzer)
+            return (_is_record_rvalue_source(stmt.init, ws.declared, analyzer)
+                    or note_detail("decl.rebind_source"))
         elif stmt.name in ws.pointers:
             # F2a pointer-local reseat: an lvalue F1-record field source only.
-            return _f2_reseat_ok(stmt.init, ws.declared, analyzer)
+            return (_f2_reseat_ok(stmt.init, ws.declared, analyzer)
+                    or note_detail("decl.reseat_source"))
         # A str literal in a Char-typed slot renders as a target-typed C++
         # char literal (`c: Char = 'x'` -> `char c = 'x';`, lowered to
         # THIRCharLiteral). Only the single-char annotated DECL converts;
@@ -1091,7 +1124,7 @@ def _stmt_eligible(stmt: TpyStmt, analyzer, ws: _WalkState,
                     else _var_decl_type(stmt, analyzer))
         if isinstance(stmt.init, TpyStrLiteral) and _eligible_char(decl_tgt):
             if is_reassign or len(stmt.init.value) != 1:
-                return False
+                return note_detail("decl.char_literal")
         # `x = None` at a union binding renders `std::monostate{}`
         # (target-typed, like the Char literal above) -- for a value union AND
         # a pointer variant (the monostate member is form-neutral: both
@@ -1109,14 +1142,15 @@ def _stmt_eligible(stmt: TpyStmt, analyzer, ws: _WalkState,
                     and _eligible_ptr_union(decl_tgt, analyzer) is not None):
                 return True
             if not _eligible_ptr_value(decl_tgt, analyzer):
-                return False
+                return note_detail("decl.none_init_slot")
             # A FIRST `q: Ptr[P] = None` decl at a @dynamic-protocol pointee:
             # the AST spells the protocol-containing decl type `auto`, so it
             # emits `auto q = nullptr;` -- a std::nullptr_t local, a
             # pre-existing miscompile no green case can carry; rejected
             # rather than mirrored. A REASSIGN renders the bare
             # `q = nullptr;` on both paths and stays admitted.
-            return is_reassign or not _dyn_proto_ptr(decl_tgt)
+            return (is_reassign or not _dyn_proto_ptr(decl_tgt)
+                    or note_detail("decl.dyn_ptr_none"))
         # A value-tuple literal local (`t = (1, 2)` / `p = (s, 1)`): decl and
         # reassign alike render the spelled `std::tuple<...>{...}` (tuples
         # are value types -- a reassign is a plain value assign, no
@@ -1124,9 +1158,10 @@ def _stmt_eligible(stmt: TpyStmt, analyzer, ws: _WalkState,
         # its TupleType, so the subscript-read gate lights up on it.
         if isinstance(stmt.init, TpyTupleLiteral):
             vt = _value_tuple(decl_tgt, analyzer)
-            return (vt is not None
-                    and _tuple_literal_ok(stmt.init, vt, ws.declared, analyzer)
-                    and _witness("decl.tuple_literal"))
+            return ((vt is not None
+                     and _tuple_literal_ok(stmt.init, vt, ws.declared, analyzer)
+                     and _witness("decl.tuple_literal"))
+                    or note_detail("decl.tuple_literal_shape"))
         # A direct call init returning a storage container / value tuple /
         # value union: the bare `T x = f(...);` (a plain `x = f(...);` on a
         # tuple/union reassign) on both paths -- a flushable position, so
@@ -1161,12 +1196,13 @@ def _stmt_eligible(stmt: TpyStmt, analyzer, ws: _WalkState,
         if ptr_u is not None:
             if in_branch_first:
                 return note_detail("decl.branch_ptr_union")
-            return _ptr_union_source_ok(
-                stmt.init, ws.declared, analyzer, ptr_u,
-                allow_field=stmt.name not in prescan.reassigned)
+            return (_ptr_union_source_ok(
+                        stmt.init, ws.declared, analyzer, ptr_u,
+                        allow_field=stmt.name not in prescan.reassigned)
+                    or note_detail("decl.ptr_union_source"))
         if not (_expr_eligible(stmt.init, ws.declared, analyzer)
                 or _stmt_value_temps_call(stmt.init, ws, analyzer)):
-            return False
+            return _kind_detail("decl.init_", stmt.init)
         # First declaration: the local's type must be an eligible scalar (a
         # bare-literal init analyzes as IntLiteralType, pinning no width -> out)
         # / Char, or a str-slice binding (a `PendingStrType` whose view/owned
@@ -1532,17 +1568,17 @@ def _stmt_eligible(stmt: TpyStmt, analyzer, ws: _WalkState,
         hoists = analyzer.if_branch_decls.get(id(stmt))
         if hoists:
             if info is not None:
-                return False
+                return note_detail("if.narrow_hoist")
             for name, raw in hoists.items():
                 if name in ws.declared:
                     continue
                 if name in prescan.native_globals:
                     # The AST renames later assigns to the C++ native global
                     # (no predecl) -- a shape the slice does not reproduce.
-                    return False
+                    return note_detail("if.hoist_native_global")
                 vtype = unwrap_ref_type(raw)
                 if not _try_hoist_type_ok(vtype, analyzer):
-                    return False
+                    return note_detail("if.hoist_type")
                 hoist_declared[name] = vtype
             # Seed the branch walk (and the persistent scope) so in-branch
             # assigns classify as reassigns and post-if reads see the name.
@@ -1550,8 +1586,20 @@ def _stmt_eligible(stmt: TpyStmt, analyzer, ws: _WalkState,
         if info is not None:
             ok = _narrow_if_eligible(stmt, info, analyzer, ws, prescan,
                                      in_loop=in_loop)
+            # A nested-body reject already noted its own statement (set-if-
+            # empty); this fires only for the narrow-if's own silent shape
+            # rejects.
+            if not ok:
+                note_detail("if.narrow_shape")
         elif not _condition_eligible(stmt.condition, ws.declared, analyzer):
-            return False
+            # The condition's node kind -- a binop splits by operator +
+            # operand families -- unless a finer gate detail fired.
+            c = stmt.condition
+            if isinstance(c, TpyBinOp):
+                lf = _type_family_tag(analyzer.get_expr_type(c.left), analyzer)
+                rf = _type_family_tag(analyzer.get_expr_type(c.right), analyzer)
+                return note_detail(f"if.cond_binop.{c.op}.{lf}_{rf}")
+            return _kind_detail("if.cond_", c)
         else:
             # Branches do not extend the outer scope with names visible after
             # the if, so each is checked against the same declared-so-far set;
@@ -1662,9 +1710,12 @@ def _stmt_eligible(stmt: TpyStmt, analyzer, ws: _WalkState,
                 or _str_aug_append_ok(stmt, ws.declared, prescan, analyzer)
                 or _bytes_aug_concat_ok(stmt, ws.declared, prescan, analyzer))
     if isinstance(stmt, TpyForEach):
+        # The iterable's node kind, unless an arm noted a finer reject (a
+        # nested-body reject already noted its own statement).
         return (_for_range_eligible(stmt, analyzer, ws, prescan)
                 or _for_each_container_eligible(stmt, analyzer, ws, prescan)
-                or _for_tuple_unpack_eligible(stmt, analyzer, ws, prescan))
+                or _for_tuple_unpack_eligible(stmt, analyzer, ws, prescan)
+                or _kind_detail("foreach.iter_", stmt.iterable))
     if isinstance(stmt, TpyTupleUnpack):
         return _tuple_unpack_eligible(stmt, analyzer, ws)
     if isinstance(stmt, TpyGlobal):
@@ -1718,7 +1769,7 @@ def _stmt_eligible(stmt: TpyStmt, analyzer, ws: _WalkState,
         if _is_builtin_print(stmt.expr, ws.declared, analyzer):
             e = stmt.expr
             if e.kwargs or e.double_star_unpack is not None:
-                return False
+                return note_detail("print.kwargs")
             # Printing a narrowed union SUBJECT (a bare name currently
             # isinstance-narrowed to a member) takes the AST's union `__str__`
             # wrap even after extraction (`__str__(__r)`), not the member's
@@ -1726,14 +1777,28 @@ def _stmt_eligible(stmt: TpyStmt, analyzer, ws: _WalkState,
             # reproduce, so keep such a print on the AST path.
             if any(isinstance(a, TpyName) and a.name in ws.narrowed
                    for a in e.args):
-                return False
+                return note_detail("print.narrowed_arg")
             # A comprehension arg (C3) gates through the comp machinery (it
             # needs the walk state); every other arg keeps the per-arg check.
-            return all(
-                _comprehensions._comp_print_arg_ok(a, ws, analyzer)
-                if type(a) in _comprehensions._COMP_KINDS
-                else _print_arg_ok(a, ws.declared, analyzer)
-                for a in e.args)
+            # A reject names the first failing arg's type family + node kind
+            # (an admitted FAMILY failing here means the arg's SHAPE is the
+            # blocker -- e.g. a str field read), unless a finer detail fired.
+            for a in e.args:
+                ok = (_comprehensions._comp_print_arg_ok(a, ws, analyzer)
+                      if type(a) in _comprehensions._COMP_KINDS
+                      else (_print_arg_ok(a, ws.declared, analyzer)
+                            # A container / value-tuple / record NAME inside
+                            # its printer wrap; a pointer-local's AST render
+                            # derefs, so it stays off the bare-name row.
+                            or (isinstance(a, TpyName)
+                                and a.name not in ws.pointers
+                                and _wrap_print_form(a, ws.declared, analyzer)
+                                is not None
+                                and _witness("print.wrap_arg"))))
+                if not ok:
+                    fam = _type_family_tag(analyzer.get_expr_type(a), analyzer)
+                    return _kind_detail(f"print.arg.{fam}_", a)
+            return True
         if isinstance(stmt.expr, TpyCall):
             return _call_eligible(stmt.expr, ws.declared, analyzer,
                                   stmt_position=True, temps_ok=True,
@@ -1748,7 +1813,8 @@ def _stmt_eligible(stmt: TpyStmt, analyzer, ws: _WalkState,
                                          stmt_position=True, temps_ok=True,
                                          narrowed=ws.narrowed,
                                          param_names=prescan.param_names)
-        return False
+        # Not a print / free call / method call: name the expr kind.
+        return _kind_detail("expr_stmt.", stmt.expr)
     if isinstance(stmt, TpyWith):
         return _with_eligible(stmt, analyzer, ws, prescan, in_branch=in_branch,
                               in_loop=in_loop)
@@ -3292,6 +3358,12 @@ def _lower_print_arg(a: TpyExpr, lc: _LowerCtx,
         _witness("print.optval")
         form, inner_cpp = _print_optval_form(opt)
         return THIRPrintArg(_lower_expr(a, lc), form, inner_cpp)
+    # A container / value-tuple / F1-record NAME: the kind-keyed printer
+    # wrap (or the record's raw operator<<) around the bare name -- the
+    # same routing fact the gate admitted on (`_wrap_print_form`).
+    wrap = _wrap_print_form(a, declared, lc.analyzer)
+    if wrap is not None:
+        return THIRPrintArg(_lower_expr(a, lc), wrap)
     # resolve_int_literals: an IntLiteral-typed arg (a literal-seeded container's
     # loop var / pop result) must derive its stream form from the resolved type.
     arg_type = resolve_int_literals(

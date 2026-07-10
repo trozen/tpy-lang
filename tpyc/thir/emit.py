@@ -955,9 +955,14 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
     if isinstance(e, THIRTupleLiteral):
         # The spelled value-tuple render (`std::tuple<...>{e1, e2}`);
         # result_type is the slot TupleType, whose scalar/owned-str elements
-        # spell identically via to_cpp and the resolver.
+        # spell identically via to_cpp and the resolver. A single-element
+        # tuple parenthesizes instead (GCC brace-init ambiguity with
+        # std::tuple constructors in C++23 -- _gen_tuple_literal's tail).
         elems = ", ".join(_emit_expr(x, state) for x in e.elements)
-        return f"{unwrap_qualifiers(e.result_type).to_cpp()}{{{elems}}}"
+        cpp_type = unwrap_qualifiers(e.result_type).to_cpp()
+        if len(e.elements) == 1:
+            return f"{cpp_type}({elems})"
+        return f"{cpp_type}{{{elems}}}"
     if isinstance(e, THIRComprehension):
         return _emit_comprehension(e, state)
     if isinstance(e, THIRCoerce):
@@ -2049,6 +2054,8 @@ def _emit_print_arg(a: THIRPrintArg, state: _EmitState) -> str:
         return f"::tpy::SetPrinter({inner})"
     if a.print_form is PrintForm.DICT:
         return f"::tpy::DictPrinter({inner})"
+    if a.print_form is PrintForm.TUPLE:
+        return f"::tpy::TuplePrinter({inner})"
     if a.print_form is PrintForm.OPT_VAL:
         return f"::tpy::print_optional_val({inner})"
     if a.print_form is PrintForm.OPT_VAL_BOOL:

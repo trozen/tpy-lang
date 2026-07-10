@@ -1109,11 +1109,13 @@ class TestPrintStmt:
             + "def f(n: Int32) -> None:\n    print(n, end=\"\")\n")
         assert _fn(thir, "f") is None
 
-    def test_container_arg_ineligible(self):
+    def test_container_arg_routes_via_wrap(self):
+        # A container NAME arg routes inside its printer wrap since the
+        # print.wrap_arg cell (see TestPrintWrapArgs for the emit pins).
         thir = _lower(
             _PRELUDE
             + "def f(xs: list[Int32]) -> None:\n    print(xs)\n")
-        assert _fn(thir, "f") is None
+        assert _fn(thir, "f") is not None
 
     def test_shadowed_print_ineligible(self):
         # A user function named `print` is not the builtin; conservatively stays AST

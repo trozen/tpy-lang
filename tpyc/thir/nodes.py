@@ -1478,6 +1478,7 @@ class PrintForm(Enum):
     LIST = auto()
     SET = auto()
     DICT = auto()
+    TUPLE = auto()  # `::tpy::TuplePrinter(...)` -- a value-tuple name arg
     OPT_VAL = auto()
     OPT_VAL_BOOL = auto()
     OPT_VAL_FLOAT = auto()
@@ -1499,8 +1500,9 @@ class THIRPrintArg:
 class THIRPrint(THIRStmt):
     """A `print(<args>)` statement with default `sep=" "`, `end="\\n"`, sink
     `std::cout` -- the slice excludes `sep=`/`end=`/`file=`/`flush=` kwargs.
-    Emits `std::cout << a0 << " " << a1 << ... << "\\n";`. Args are the common
-    subset (str literal / fixed-int / bool / double); everything else stays AST."""
+    Emits `std::cout << a0 << " " << a1 << ... << "\\n";`. Each arg carries
+    its PrintForm wrap (scalar/str/bytes/enum forms, the container/tuple
+    printer wraps, records raw); args outside the wrap set stay AST."""
     args: tuple[THIRPrintArg, ...] = ()
 
 

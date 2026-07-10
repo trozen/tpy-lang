@@ -1650,3 +1650,191 @@ class TestRecordStorageConvertEmit:
 
     def test_copy(self):
         assert self._convert(False) == "v"
+
+
+class TestPrintWrapArgs:
+    """Container / value-tuple / F1-record NAME print args route inside their
+    kind-keyed printer wraps (print.wrap_arg); pointer-locals and `self` stay
+    AST (their AST renders deref/(*this), not the bare name)."""
+
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=thir))
+        return cpp
+
+    def test_container_names_route(self):
+        # list / dict / set / Array names -> List/Dict/SetPrinter wraps.
+        src = (
+            "from tpy import Int32, Array\n"
+            "def use(xs: list[Int32], d: dict[Int32, Int32],\n"
+            "        s: set[Int32], a: Array[Int32, 2]) -> None:\n"
+            "    print(xs)\n"
+            "    print(d)\n"
+            "    print(s)\n"
+            "    print(a)\n"
+            "use([1], {1: 2}, {3}, Array[Int32, 2](0))\n"
+        )
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "use") is not None
+        assert faces.get("print.wrap_arg", 0) == 4
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+
+    def test_pending_container_local_routes(self):
+        # A literal-seeded local's binding resolves through the shared
+        # receiver-type resolver, so the pending type is no blocker.
+        src = (
+            "def use() -> None:\n"
+            "    xs = [1, 2]\n"
+            "    print(xs)\n"
+            "use()\n"
+        )
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "use") is not None
+        assert faces.get("print.wrap_arg", 0) == 1
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+
+    def test_tuple_and_record_names_route(self):
+        # A value-tuple name -> TuplePrinter; an F1-record name streams raw
+        # via its emitted operator<<.
+        src = (
+            _F1_RECORDS
+            + "def use(b: Box) -> None:\n"
+            + "    t = (1, 2)\n"
+            + "    print(t)\n"
+            + "    print(b)\n"
+            + "use(Box(Inner(1)))\n"
+        )
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "use") is not None
+        assert faces.get("print.wrap_arg", 0) == 2
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+
+    def test_pointer_local_container_stays_ast(self):
+        # A reassigned record local is a pointer-local; printing it derefs
+        # on the AST path -- the bare-name row must not admit it. (Container
+        # locals reassign in place, so the pointer shape needs a RECORD.)
+        src = (
+            _F1_RECORDS
+            + "def use(b: Box, c: Box, flag: bool) -> None:\n"
+            + "    x = b.inner\n"
+            + "    if flag:\n        x = c.inner\n"
+            + "    print(x)\n"
+            + "use(Box(Inner(1)), Box(Inner(2)), True)\n"
+        )
+        thir = _lower_ctx(src)
+        assert _fn(thir, "use") is None
+
+    def test_self_print_stays_ast(self):
+        # `print(self)` renders `(*this)` on the AST path -- excluded.
+        src = (
+            _F1_RECORDS
+            + "class W:\n"
+            + "    n: Int32\n"
+            + "    def __init__(self):\n        self.n = 1\n"
+            + "    def show(self) -> None:\n        print(self)\n"
+            + "W().show()\n"
+        )
+        thir = _lower_ctx(src)
+        assert _fn(thir, "show") is None
+
+    def test_bytearray_name_stays_ast(self):
+        # bytearray prints via ByteArrayPrinter -- an excluded kind; the
+        # container arms must not catch it.
+        src = (
+            "def use(b: bytearray) -> None:\n"
+            "    print(b)\n"
+            "use(bytearray(b'x'))\n"
+        )
+        thir = _lower_ctx(src)
+        assert _fn(thir, "use") is None
+
+    def test_span_name_stays_ast(self):
+        # Span prints via ListPrinter on the AST path but is outside the
+        # admitted container kinds -- stays AST.
+        src = (
+            "from tpy import Int32, Span\n"
+            "def use(s: Span[Int32]) -> None:\n"
+            "    print(s)\n"
+            "xs = [1, 2]\n"
+            "use(xs)\n"
+        )
+        thir = _lower_ctx(src)
+        assert _fn(thir, "use") is None
+
+    def test_dict_view_name_stays_ast(self):
+        # A dict-view binding prints via its own operator<< -- excluded.
+        src = (
+            "from tpy import Int32\n"
+            "def use(d: dict[Int32, Int32]) -> None:\n"
+            "    kv = d.items()\n"
+            "    print(kv)\n"
+            "use({1: 2})\n"
+        )
+        thir = _lower_ctx(src)
+        assert _fn(thir, "use") is None
+
+    def test_single_element_tuple_decl_routes(self):
+        # A single-element tuple literal parenthesizes its init on both
+        # paths (GCC brace-init ambiguity with std::tuple ctors in C++23).
+        src = (
+            "from tpy import Int32\n"
+            "def use() -> None:\n"
+            "    t = (Int32(42),)\n"
+            "    print(t)\n"
+            "use()\n"
+        )
+        thir = _lower_ctx(src)
+        assert _fn(thir, "use") is not None
+        out = self._cpp(src, thir=True)
+        assert out == self._cpp(src, thir=False)
+        assert "std::tuple<int32_t>(42)" in out
+
+
+class TestTupleUnpackMethodSource:
+    """`a, b = obj.method()` -- the method sibling of the free-call unpack
+    source (storage_ret_ok threaded through _method_call_eligible)."""
+
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=thir))
+        return cpp
+
+    _REC = (
+        "from tpy import Int32\n"
+        "class P:\n"
+        "    x: Int32\n"
+        "    def __init__(self, x: Int32):\n"
+        "        self.x = x\n"
+        "    def pair(self) -> tuple[Int32, Int32]:\n"
+        "        return (self.x, self.x + 1)\n"
+    )
+
+    def test_record_method_source_routes(self):
+        src = (
+            self._REC
+            + "def use(p: P) -> Int32:\n"
+            + "    a, b = p.pair()\n"
+            + "    return a + b\n"
+            + "print(use(P(1)))\n"
+        )
+        thir = _lower_ctx(src)
+        assert _fn(thir, "use") is not None
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+
+    def test_value_position_method_tuple_still_ast(self):
+        # The storage escape is position-pinned: a tuple-returning method
+        # call in a general value position stays gate-rejected.
+        src = (
+            self._REC
+            + "def use(p: P) -> Int32:\n"
+            + "    return len(str(p.pair()))\n"
+            + "print(use(P(1)))\n"
+        )
+        thir = _lower_ctx(src)
+        assert _fn(thir, "use") is None

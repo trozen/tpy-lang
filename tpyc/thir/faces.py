@@ -413,6 +413,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "comp.print_arg",               # comprehension print arg (container printer wrap)
     "print.optval",                 # un-narrowed value-repr Optional[scalar/str]
                                     # print arg -> bare `::tpy::print_optional_val`
+    "print.wrap_arg",               # container / value-tuple / F1-record NAME
+                                    # print arg -> its kind-keyed printer wrap
     "comp.array_range",             # Array demotion: array_from_index range lambda
     # THIRMatch M1 -- the unguarded scalar switch tiers (lowering).
     "match.switch_enum",            # switch over enum-member case labels

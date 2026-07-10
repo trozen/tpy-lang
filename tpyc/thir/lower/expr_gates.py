@@ -3700,6 +3700,7 @@ def _method_call_eligible(e: TpyMethodCall, locals_: dict[str, TpyType], analyze
                           *, stmt_position: bool = False,
                           temps_ok: bool = False,
                           record_ret_ok: bool = False,
+                          storage_ret_ok: bool = False,
                           narrowed: 'set[str] | frozenset[str]' = frozenset(),
                           param_names: 'set[str] | frozenset[str]' = frozenset()) -> bool:
     """A method call on a bare-name builtin-container or user-record receiver
@@ -3792,6 +3793,7 @@ def _method_call_eligible(e: TpyMethodCall, locals_: dict[str, TpyType], analyze
                                             stmt_position=stmt_position,
                                             temps_ok=temps_ok,
                                             record_ret_ok=record_ret_ok,
+                                            storage_ret_ok=storage_ret_ok,
                                             narrowed=narrowed)
     # A `{cpp}` template placeholder substitutes the return type -- not
     # reproduced (the container family otherwise admits @native / @cpp_template
@@ -3809,6 +3811,11 @@ def _method_call_eligible(e: TpyMethodCall, locals_: dict[str, TpyType], analyze
             or _eligible_ptr_value(ret, analyzer)
             or _resolved_str_value(ret, analyzer) is not None
             or _resolved_bytes_value(ret, analyzer) is not None
+            # Storage sinks only (the tuple-unpack source; mirrors
+            # `_call_eligible`'s storage_ret_ok escape): the container/
+            # tuple/union result lands bare in an `auto __tup_N = ...` bind.
+            or (storage_ret_ok
+                and _storage_call_ret(ret, analyzer) is not None)
             or (stmt_position and (ret is None or is_void_like_type(ret)))):
         return note_detail("method.ret_type")
     # A str arg into a non-Own str-family slot passes bare, like a free-call arg
@@ -3842,6 +3849,7 @@ def _record_method_call_eligible(e: TpyMethodCall, fi, locals_: dict[str, TpyTyp
                                  analyzer, *, stmt_position: bool,
                                  temps_ok: bool = False,
                                  record_ret_ok: bool = False,
+                                 storage_ret_ok: bool = False,
                                  narrowed: 'set[str] | frozenset[str]' = frozenset()) -> bool:
     """A plain user-record method call `recv.method(args)` -- the
     `_gen_method_call` user-record arm reduced to its pass-through subset. The
@@ -3942,6 +3950,10 @@ def _record_method_call_eligible(e: TpyMethodCall, fi, locals_: dict[str, TpyTyp
             # `_is_record_rvalue_source`'s by-value free-call face. `is_rvalue_source`
             # (checked at the decl gate) keeps a `T&` borrow return out.
             or (record_ret_ok and _f1_record(ret, analyzer))
+            # Storage sinks only (the tuple-unpack source; the record-method
+            # sibling of _call_eligible's storage_ret_ok escape).
+            or (storage_ret_ok
+                and _storage_call_ret(ret, analyzer) is not None)
             or (stmt_position and (ret is None or is_void_like_type(ret)))):
         return note_detail("method.ret_type")
     return all((_plain_scalar_slot(p.type, analyzer)
@@ -4244,6 +4256,39 @@ def _print_optval_form(opt: 'OptionalType') -> 'tuple[PrintForm, str | None]':
     if is_float_type(inner):
         return PrintForm.OPT_VAL_FLOAT, inner.to_cpp()
     return PrintForm.OPT_VAL, None
+
+def _wrap_print_form(a: TpyExpr, declared: dict[str, TpyType],
+                     analyzer) -> 'PrintForm | None':
+    """The kind-keyed printer wrap for a container / value-tuple / F1-record
+    NAME print arg, or None outside the slice -- gen_print's per-kind arms:
+    `Dict/Set/ListPrinter` (Array shares ListPrinter), `TuplePrinter`, a
+    record streaming raw via its emitted operator<<. The ONE routing fact
+    shared by the gate and `_lower_print_arg`, so admission and form
+    selection cannot drift. NAMES only (call/subscript/field sources ride
+    `_expr_eligible`'s tail; the gate excludes pointer-locals); bytearray /
+    Span / dict-view / varargs printers stay AST; `self` renders `(*this)`,
+    not the bare name -- excluded."""
+    if not isinstance(a, TpyName) or a.name == "self":
+        return None
+    ct = _subscript_container_recv_type(a, declared, analyzer)
+    if ct is not None:
+        ct = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ct)))
+        if is_dict(ct):
+            return PrintForm.DICT
+        if is_set(ct):
+            return PrintForm.SET
+        if is_list(ct) or is_array(ct):
+            return PrintForm.LIST
+        # A subscriptable non-container binding (tuple/...) falls through.
+    t = declared.get(a.name)
+    if t is None:
+        return None
+    if _value_tuple(t, analyzer) is not None:
+        return PrintForm.TUPLE
+    u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    if isinstance(u, NominalType) and _f1_record(u, analyzer):
+        return PrintForm.RAW
+    return None
 
 def _print_arg_ok(a: TpyExpr, locals_: dict[str, TpyType], analyzer) -> bool:
     """One print arg in the no-kwargs common-arg subset: a str/bytes literal,

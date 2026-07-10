@@ -1511,6 +1511,24 @@ byte-diff itself.
   the face fired via `testutil._lower_ctx_witnessed`); `flush.assign` stays on
   the corpus zero-witness list permanently -- the parser emits `TpyVarDecl` for
   every name-target assign, so only macro-built / frontend-IR ASTs reach it.
+- **Landed: print wrap-arg cell** (`print.wrap_arg`): container / value-tuple /
+  F1-record NAME print args route inside their kind-keyed printer wraps
+  (`_wrap_print_form` in expr_gates.py, the one routing fact shared by gate and
+  `_lower_print_arg`; Dict/Set/ListPrinter with Array on ListPrinter, the new
+  `PrintForm.TUPLE` -> `::tpy::TuplePrinter`, records raw via their emitted
+  operator<<). Excluded (deferred rungs): pointer-local names (AST derefs),
+  `self` (`(*this)`), bytearray / Span / dict-view / varargs printers,
+  call/subscript/field print sources. Landing it unmasked + fixed a real THIR
+  emit divergence: SINGLE-element tuple literals parenthesize
+  (`std::tuple<T>(x)`, the GCC C++23 brace-init ambiguity) -- the
+  THIRTupleLiteral emit now mirrors `_gen_tuple_literal`'s tail.
+- **Landed: tuple-unpack method-call sources** (`tuple_unpack.src_method_call`):
+  `a, b = obj.pair()` routes via a `storage_ret_ok` escape threaded through
+  `_method_call_eligible` / `_record_method_call_eligible`'s result gates
+  (mirroring `_call_eligible`'s; position-pinned to the unpack source) + the
+  method arm in `_tuple_unpack_source`. Residual rocks in that row:
+  `src_call` (free calls failing their own gates) and `source_family`
+  (non-scalar elements, str first).
 - **Landed: distinct-SHAPE tally** (`tpyc/thir/shape.py`): the routed-body count
   (299k+) is body-weighted -- the stdlib links into every case, so one body
   counts once per case; that measures throughput, not migration progress. The
