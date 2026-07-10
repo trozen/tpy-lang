@@ -16,12 +16,14 @@ the canonical `Arc[Mutex[T]]` works: `arc.get()` yields a readonly `Mutex`, and
 
 `Mutex[T]` and `RwLock[T]` are both `Send + Sync` iff `T` is `Send`. This
 matches `Mutex`'s Rust rule; for `RwLock` it is *looser* than Rust's
-`unsafe impl<T: Send + Sync>`, and correct for TPy: a not-`Sync` `T` is either a
-container whose not-`Sync`-ness is shared-mutability that the readonly read
-guard removes, or an interior-mutable type built with the unsafe
-`unsafe_interior_mutable` escape hatch, where the user owns `Send`/`Sync`.
-Rust needs `T: Sync` because its `Cell` is *safe* interior mutability; TPy's is
-unsafe, so the readonly read guard suffices for every safe payload.
+`unsafe impl<T: Send + Sync>`, and sound on the safe surface: a safe not-`Sync`
+`T` is always a container whose not-`Sync`-ness is shared-mutability that the
+readonly read guard removes (TPy has no safe interior mutability, unlike Rust's
+`Cell`, so the guard suffices for every safe payload). It is NOT sound in
+general: a `Send`-but-not-`Sync` interior-mutable payload from the unsafe
+`unsafe_interior_mutable` hatch (a user `Cell`-analog) gets a `Sync` the author
+never asserted, and concurrent readonly reads race -- a latent hole, low
+priority. See docs/SEND_SYNC_DESIGN.md (RwLock Sync bound) and BUGS.md.
 """
 from __future__ import annotations
 from typing import Self
@@ -180,14 +182,14 @@ class MutexGuard[T](Deref[T]):
 
 @nocopy
 @unsafe_send(if_params_send=True)
-# Sync iff T: Send -- same as Mutex, and correct for TPy (unlike Rust's
-# RwLock<T>, which needs T: Send + Sync). A TPy not-Sync T is either a container
-# whose not-Sync-ness is shared-mutability that the readonly read guard removes,
-# or an interior-mutable type built with the unsafe `unsafe_interior_mutable`
-# escape hatch, where the user owns Send/Sync. Rust requires T: Sync because its
-# Cell is *safe* interior mutability the compiler must defend against; TPy's is
-# unsafe, so the readonly read guard suffices for every safe payload. See
-# docs/SEND_SYNC_DESIGN.md (RwLock Sync bound) for the precise-bound follow-up.
+# Sync iff T: Send -- same as Mutex. Looser than Rust's RwLock<T> (needs
+# T: Send + Sync) and sound on the safe surface: a safe not-Sync T is always a
+# container whose shared-mutability the readonly read guard removes, and TPy has
+# no safe interior mutability (unlike Rust's Cell). NOT sound in general: a
+# Send-but-not-Sync interior-mutable payload from the unsafe
+# `unsafe_interior_mutable` hatch (a user Cell-analog) gets a Sync the author
+# never asserted -- a latent hole, low priority. See docs/SEND_SYNC_DESIGN.md
+# (RwLock Sync bound) and BUGS.md.
 @unsafe_sync(if_params_send=True)
 class RwLock[T]:
     _cell: unsafe_interior_mutable[Ptr[_RwLockCell[T]]]

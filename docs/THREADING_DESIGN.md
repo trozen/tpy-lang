@@ -305,19 +305,21 @@ registration. This is a general Send/Sync fixpoint gap (it reproduces with
   `@unsafe_sync(if_params_send=True)` on each). For `Mutex` this is Rust's rule
   (`unsafe impl<T: Send>`) -- exclusive access makes a `Send`-but-not-`Sync` `T`
   shareable. For `RwLock` it is *looser* than Rust's
-  `unsafe impl<T: Send + Sync> Sync for RwLock<T>`, and correct for TPy: the read
-  guard hands out `readonly[T]` to concurrent readers, and a TPy not-`Sync` `T`
-  is either (a) a container whose not-`Sync`-ness is shared-mutability -- which
-  the readonly guard removes, so concurrent reads are safe -- or (b) an
-  interior-mutable type built with the unsafe `unsafe_interior_mutable`
-  escape hatch, where the user already owns `Send`/`Sync` correctness. Rust
-  needs `T: Sync` because its `Cell` is *safe* interior mutability the compiler
-  must defend against; TPy's is unsafe, so the readonly read guard suffices for
-  every safe payload (this is also why `Arc[RwLock[list]]` compiles, mirroring
-  `Arc[Mutex[list]]`). A *precise* bound -- accepting a safe container while
-  rejecting a hypothetical safe interior-mutable type -- would need to
-  distinguish the two not-`Sync` reasons (an `readonly[container]: Sync`
-  refinement, `docs/SEND_SYNC_DESIGN.md` OQ1); deferred as a larger design fork.
+  `unsafe impl<T: Send + Sync> Sync for RwLock<T>`, and sound on the whole *safe*
+  surface: the read guard hands out `readonly[T]` to concurrent readers, and a
+  safe not-`Sync` `T` is always a container whose not-`Sync`-ness is
+  shared-mutability -- which the readonly guard removes, so concurrent reads are
+  safe (this is why `Arc[RwLock[list]]` compiles, mirroring `Arc[Mutex[list]]`).
+  Rust needs `T: Sync` because its `Cell` is *safe* interior mutability the
+  compiler must defend against; TPy has no safe interior mutability, so the
+  readonly read guard suffices for every safe payload. It is **not** sound in
+  general: for a `Send`-but-not-`Sync` interior-mutable payload built with the
+  unsafe `unsafe_interior_mutable` hatch -- a user `Cell`-analog -- the bound
+  fabricates a `Sync` the author never asserted, and concurrent readonly reads
+  race. Latent today (no such type exists yet), opens on the first user `Cell`.
+  The precise fix is RwLock-local -- `Sync iff T: Send AND (freezable(T) OR
+  T: Sync)`, *not* the OQ1 `readonly[container]: Sync` refinement -- and low
+  priority; see `docs/SEND_SYNC_DESIGN.md` (RwLock Sync bound) and `BUGS.md`.
   No constructor gate; rejected only at the thread boundary, with the why-not
   chain naming the offending type parameter (`error_mutex_not_send`).
 - **Movable lock.** `std::mutex` / `std::shared_mutex` delete their move ctors,
