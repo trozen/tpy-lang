@@ -430,11 +430,18 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx', *, temp_args: bool = False) -> THIR
         # Scalar field read off a borrow receiver (value-form result). A plain
         # non-null `T*` pointer-local receiver renders `recv->field`; the non-value
         # field source for a borrow-local binding is built in _lower_field_source.
+        # An owned-`str` field is STORAGE (a `std::string` member): the bare
+        # read binds a view slot implicitly and copies into an owned slot by
+        # value, so no form seam fires on it -- but the tag keeps the fact
+        # honest for form-keyed sinks (the return BORROW-wrap stays off).
+        fa_str = _resolved_str_value(rtype, analyzer)
         return THIRFieldAccess(
             result_type=rtype,
             receiver=_lower_expr(e.obj, lc),
             field_cpp=_field_cpp(e),
             is_arrow=_field_is_arrow(e, lc),
+            form=(Form.STORAGE if fa_str is not None and is_str_type(fa_str)
+                  else Form.VALUE),
             loc=loc,
         )
     if isinstance(e, TpySubscript):

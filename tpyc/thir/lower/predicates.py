@@ -1139,6 +1139,55 @@ def _f1_record(t: TpyType | None, analyzer) -> bool:
         return False
     return not is_builtin_record or _witness("recv.builtin_record")
 
+def _type_family_tag(t: 'TpyType | None', analyzer) -> str:
+    """Coarse type-family tag for the fallback drilldown sub-classifiers
+    (diagnostic labels only, never a gate/emit fact): one shared chain so
+    the sig.param_type / call.arg_shape tallies name families consistently.
+    Splits the record family by F1 membership (an F1 record here means the
+    blocker is elsewhere in the signature/args, not the record spelling)."""
+    if t is None:
+        return "untyped"
+    u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    if isinstance(u, OwnType):
+        return "own_" + _type_family_tag(u.wrapped, analyzer)
+    if isinstance(u, TypeParamRef):
+        return "generic"
+    if isinstance(u, OptionalType):
+        return "optional"
+    if isinstance(u, UnionType):
+        return "union"
+    if isinstance(u, TupleType):
+        return "tuple"
+    if isinstance(u, PtrType):
+        return "ptr"
+    if (_eligible_scalar(u) or is_char_type(u) or is_big_int_type(u)
+            or is_float_type(u) or is_bool_type(u)):
+        # An admitted-family slot: the blocker is the ARG shape (or a
+        # sibling slot), not the slot's type family.
+        return "scalar"
+    if is_list(u) or is_dict(u) or is_set(u) or is_array(u):
+        return "container"
+    if is_span(u):
+        return "span"
+    if is_enum_type(u):
+        return "enum"
+    if is_str_type(u) or is_str_view_type(u) or is_string_type(u):
+        return "str"
+    if is_bytes_type(u) or is_bytes_view_type(u):
+        return "bytes"
+    if is_protocol_type(u):
+        return "protocol"
+    if isinstance(u, NominalType):
+        if _f1_record(u, analyzer):
+            return "record_f1"
+        ri = analyzer.registry.get_record(u.name)
+        if ri is not None and getattr(ri, "is_native", False):
+            return "record_native"
+        return "record_nonf1"
+    # Self-describing residue: the type-class name keeps the catch-all
+    # drillable without a new arm per exotic type.
+    return "other_" + type(u).__name__.lower()
+
 def _record_borrow_return(t: TpyType | None, analyzer) -> 'NominalType | None':
     """The borrow-form F1-record return slot (`-> Box` -> C++ `Box&` /
     `const Box&`), or None. `Own[record]` is the storage (by-value) direction
@@ -1960,6 +2009,21 @@ def _field_receiver_ok(e: TpyExpr, declared: dict[str, TpyType], analyzer) -> bo
         return False
     return (_f1_record(declared.get(recv.name), analyzer)
             or _optional_ptr_borrow_name(recv, declared, analyzer) is not None)
+
+def _str_field_value_read(e: TpyExpr, declared: dict[str, TpyType],
+                          analyzer) -> bool:
+    """A value-position read of an owned-`str` field off an admitted receiver
+    (`recv.field`, `_field_receiver_ok`): a STORAGE `std::string` member whose
+    bare access binds a view sink implicitly and copies into an owned sink by
+    value -- byte-identical bare on both paths at the positions that admit it
+    (the str-family return slot, an f-string arg). A `StrView` field is BORROW
+    (owned sinks need the explicit view->owned copy) and a `String` field
+    resolves outside the str slice -- both excluded."""
+    if not (isinstance(e, TpyFieldAccess)
+            and _field_receiver_ok(e, declared, analyzer)):
+        return False
+    st = _resolved_str_value(analyzer.get_expr_type(e), analyzer)
+    return st is not None and is_str_type(st)
 
 def _const_exact_field_receiver_ok(e: TpyExpr, declared: dict[str, TpyType],
                                    analyzer) -> bool:

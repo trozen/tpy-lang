@@ -122,6 +122,7 @@ from .predicates import (
     _resolved_str_value,
     _slice_object_type,
     _template_init_call_fi,
+    _type_family_tag,
     _value_opt_scalar,
     _value_opt_view,
     _value_tuple,
@@ -370,7 +371,9 @@ def _function_eligible(func: TpyFunction, analyzer,
         # readonly carve-out is needed (and a readonly callable cannot mutate a param
         # anyway, so its record params are uniformly const).
         if not _f1_param_eligible(pt, analyzer):
-            return note("sig.param_type")
+            # Sub-tagged by the FIRST failing param's type family, mirroring
+            # the sole-blocker attribution the migration sequencing reads.
+            return note("sig.param_type." + _type_family_tag(pt, analyzer))
     # A reassigned param of a type flagged param_needs_copy_for_reassign (owned
     # str/bytes/String, BigInt -- const-ref params that cannot reassign in
     # place) gets a mutable owned copy hoisted by the AST prologue
@@ -394,7 +397,8 @@ def _function_eligible(func: TpyFunction, analyzer,
     # (`res.yield_type`); skip the wrapper here.
     if not (allow_resumable and func.is_generator):
         if func.return_type is not None and not _eligible_return(rt, analyzer):
-            return note("sig.return_type")
+            # Sub-tagged by the return's type family, like the param drill.
+            return note("sig.return_type." + _type_family_tag(rt, analyzer))
     return True
 
 def _try_hoisted_names(body: list[TpyStmt], analyzer) -> set[str]:

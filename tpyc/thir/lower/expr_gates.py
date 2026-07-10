@@ -197,9 +197,11 @@ from .predicates import (
     _str_compare_operand,
     _str_concat_operand,
     _subscript_container_recv_type,
+    _str_field_value_read,
     _template_init_call_fi,
     _tparam_value,
     _tuple_subscript_value_read,
+    _type_family_tag,
     _union_binding_divergent,
     _unrouted_binding_read,
     _union_compare_pair,
@@ -1052,10 +1054,12 @@ def _is_record_rvalue_source(init: TpyExpr, declared: dict[str, TpyType],
         # The CTOR arg face keys the record-rvalue temp on the slot's mutation
         # -- `_gen_record_ctor_args` hoists the named temp only for a MUTATED
         # ref slot (flush-position only), while a const slot binds the inline
-        # prvalue expansion, temp-free at any depth. So a const slot shares the
-        # free-call face's `_shared_pass_through_arg` cascade, but a mutated slot
-        # keeps only the by-value rows (a temp/prvalue binds a non-const ref
-        # ill-formed) plus the mutation-keyed record-rvalue.
+        # prvalue expansion, temp-free at any depth. Both slot kinds share
+        # `_shared_pass_through_arg` (the ctor lowering already emits its rows
+        # via `_lower_call_arg`); a mutated slot lowers `T&` (non-const ref),
+        # so `mutated` gates off the temp-producing rows a prvalue/temp binds
+        # ill-formed (see its docstring), keeping the by-value and lvalue-NAME
+        # rows. The mutation-keyed record-rvalue rides `_rec_rvalue_arg_ok`.
         ctor_mut = fi.mutated_params or frozenset()
 
         def _rec_rvalue_arg_ok(i: int, a: TpyExpr, ptype: 'TpyType | None') -> bool:
@@ -1063,30 +1067,8 @@ def _is_record_rvalue_source(init: TpyExpr, declared: dict[str, TpyType],
                 return False
             return temps_ok if i in ctor_mut else True
 
-        def _const_slot_arg_ok(a: TpyExpr, ptype: 'TpyType | None') -> bool:
-            # A non-mutated slot lowers `const T&` (or a value slot), which binds
-            # any prvalue/lvalue -- so the WHOLE shared pass-through cascade the
-            # free-call face renders bare applies (scalar/float/Own rvalue PLUS
-            # str/bytes/char/Ptr/container/slice/enum/value-tuple/record-NAME).
-            # The ctor lowering already emits these via `_lower_call_arg`.
-            return _shared_pass_through_arg(a, ptype, declared, analyzer)
-
-        def _mut_slot_arg_ok(a: TpyExpr, ptype: 'TpyType | None') -> bool:
-            # A MUTATED slot lowers `T&` (non-const ref): a temp / literal /
-            # owned-conversion source binds ill-formed (the mutated-String-param
-            # AST miscompile, BUGS.md), so only the BY-VALUE rows (scalars pass by
-            # value, Own moves/copies) are safe -- the ctor's former hand-rolled
-            # set. Reference-type shared rows (str->String, container, record)
-            # stay off; the mutation-keyed record-rvalue rides `_rec_rvalue_arg_ok`.
-            return ((_eligible_scalar(analyzer.get_expr_type(a))
-                     and not _member_valued_union_slot(a, ptype, analyzer)
-                     and not _own_cascade_fires(ptype)
-                     and _expr_eligible(a, declared, analyzer))
-                    or _float_literal_pass_through_arg(a, ptype, declared, analyzer)
-                    or _own_scalar_rvalue_arg(a, ptype, declared, analyzer)
-                    or _own_record_rvalue_arg(a, ptype, declared, analyzer))
-        return all((_mut_slot_arg_ok(a, p.type) if i in ctor_mut
-                    else _const_slot_arg_ok(a, p.type))
+        return all(_shared_pass_through_arg(a, p.type, declared, analyzer,
+                                            mutated=i in ctor_mut)
                    or _rec_rvalue_arg_ok(i, a, p.type)
                    for i, (a, p) in enumerate(zip(init.args, fi.params)))
     # The by-value record-returning FREE-call face: the same callee-shape head
@@ -2222,7 +2204,8 @@ def _plain_call_args_ok(e: TpyCall, locals_: dict[str, TpyType], analyzer,
                or _union_coerced_literal_arg(a, p.type, locals_, analyzer)
                or _own_union_ctor_arg(a, p.type, locals_, analyzer)
                or _none_value_opt_arg(a, p.type, analyzer) is not None
-               or note_detail("call.arg_shape")
+               or note_detail(
+                   "call.arg_shape." + _type_family_tag(p.type, analyzer))
                for a, p in zip(e.args, fi.params))
 
 def _call_ret_reject(e: TpyCall, ret: 'TpyType | None', analyzer) -> str:
@@ -2340,7 +2323,8 @@ def _generic_plain_args_ok(e: TpyCall, locals_: dict[str, TpyType],
     return True
 
 def _shared_pass_through_arg(a: TpyExpr, ptype: 'TpyType | None',
-                             locals_: dict[str, TpyType], analyzer) -> bool:
+                             locals_: dict[str, TpyType], analyzer,
+                             *, mutated: bool = False) -> bool:
     """The arg rows whose render lives inside gen_call_arg itself --
     independent of the plain loop's pre-arms and of the dcbp/pin kwargs
     the builtins loop does not thread -- shared by the plain AND
@@ -2348,7 +2332,17 @@ def _shared_pass_through_arg(a: TpyExpr, ptype: 'TpyType | None',
     plain-loop-only rows (arg-temps / optional-ptr / union / readonly-ctor),
     so hoisting them ahead of those rows never changes admission. A new
     arg row belongs here iff a native/template callee renders it
-    identically; otherwise it goes in the plain loop only."""
+    identically; otherwise it goes in the plain loop only.
+
+    `mutated` marks a MUTATED ctor slot (`T&`, non-const ref): a temp /
+    prvalue source binds it ill-formed (the mutated-String-param AST
+    miscompile, BUGS.md), so the temp-producing rows gate off -- the
+    str->String coerce half, the opt-str shim, the bytes-literal pin, and
+    the value-tuple literal. The by-value rows (scalars / float / BigInt
+    literal / char / enum / Ptr / slice-rvalue / Own rvalues -- mutation
+    is callee-local, the slot stays by value) and the lvalue-NAME rows
+    (record / container / owned-String names bind a `T&` legally; sema's
+    readonly system rejects a const violation upstream) stay admitted."""
     return ((_eligible_scalar(analyzer.get_expr_type(a))
              and not _member_valued_union_slot(a, ptype, analyzer)
              and not _own_cascade_fires(ptype)
@@ -2357,20 +2351,24 @@ def _shared_pass_through_arg(a: TpyExpr, ptype: 'TpyType | None',
             or _own_record_rvalue_arg(a, ptype, locals_, analyzer)
             or _float_literal_pass_through_arg(a, ptype, locals_, analyzer)
             or _int_literal_bigint_arg(a, ptype, locals_, analyzer)
-            or _str_pass_through_arg(a, ptype, locals_, analyzer)
-            or _opt_str_shim_arg(a, ptype, locals_, analyzer)
-            or _bytes_pass_through_arg(a, ptype, locals_, analyzer)
+            or _str_pass_through_arg(a, ptype, locals_, analyzer,
+                                     mutated=mutated)
+            or (not mutated
+                and _opt_str_shim_arg(a, ptype, locals_, analyzer))
+            or (not mutated
+                and _bytes_pass_through_arg(a, ptype, locals_, analyzer))
             or _char_pass_through_arg(a, ptype, locals_, analyzer)
             or _container_pass_through_arg(a, ptype, locals_, analyzer)
             or _slice_ctor_pass_through_arg(a, ptype, locals_, analyzer)
             or _enum_pass_through_arg(a, ptype, locals_, analyzer)
             or _ptr_pass_through_arg(a, ptype, locals_, analyzer)
-            or _value_tuple_pass_through_arg(a, ptype, locals_, analyzer)
+            or _value_tuple_pass_through_arg(a, ptype, locals_, analyzer,
+                                             mutated=mutated)
             or _record_pass_through_arg(a, ptype, locals_, analyzer))
 
 def _value_tuple_pass_through_arg(a: TpyExpr, ptype: 'TpyType | None',
                                   locals_: dict[str, TpyType],
-                                  analyzer) -> bool:
+                                  analyzer, *, mutated: bool = False) -> bool:
     """A value-tuple arg into a value-tuple slot (`const std::tuple<...>&`):
     a bare in-scope name of the same value-tuple family (an lvalue binding
     the ref slot directly -- bare on both paths; tuples are value types, so
@@ -2378,14 +2376,16 @@ def _value_tuple_pass_through_arg(a: TpyExpr, ptype: 'TpyType | None',
     render, target-threaded per element by gen_call_arg -- identical for
     plain and native/template callees, so the row is shared). An
     `Own[tuple]` slot is outside `_value_tuple` (the Own wrapper is not a
-    TupleType), so the move cascade never reaches this row."""
+    TupleType), so the move cascade never reaches this row. A MUTATED slot
+    (an address-escaped tuple param can drop the const) keeps the lvalue
+    name and rejects the literal (a prvalue into a non-const ref)."""
     vt = _value_tuple(ptype, analyzer)
     if vt is None:
         return False
     if isinstance(a, TpyName):
         return (a.name in locals_
                 and _value_tuple(locals_[a.name], analyzer) is not None)
-    return _tuple_literal_ok(a, vt, locals_, analyzer)
+    return not mutated and _tuple_literal_ok(a, vt, locals_, analyzer)
 
 def _ptr_pass_through_arg(a: TpyExpr, ptype: 'TpyType | None',
                           locals_: dict[str, TpyType], analyzer) -> bool:
@@ -2869,14 +2869,19 @@ def _ctor_instantiation_ok(e: TpyCall, analyzer) -> bool:
     return True
 
 def _str_pass_through_arg(a: TpyExpr, ptype: TpyType | None,
-                          locals_: dict[str, TpyType], analyzer) -> bool:
+                          locals_: dict[str, TpyType], analyzer,
+                          *, mutated: bool = False) -> bool:
     """A str-slice arg into a non-Own `str`/`StrView`/`String` param slot. A
     `str`/`StrView` param renders `std::string_view`, and every slice source
     lands in it bare: a param/view local IS a string_view, an owned local
     converts implicitly, a literal is const char[N]. A `String` slot takes
     String values bare and coerced str/StrView sources through the coerce
     arm. An `Own[...]` slot materializes an owned copy the bare emit does not
-    reproduce (the gen_call_arg auto-move cascade) -> AST path."""
+    reproduce (the gen_call_arg auto-move cascade) -> AST path.
+    A MUTATED String slot (`std::string&`) keeps only an owned-String NAME
+    (an lvalue binding the ref legally): the coerce half materializes a
+    `std::string(x)` temp -- the mutated-String-param miscompile. The
+    view-slot branch is mutation-blind (`std::string_view` stays by value)."""
     pt = ptype if isinstance(ptype, TpyType) else None
     if pt is None:
         return False
@@ -2887,6 +2892,9 @@ def _str_pass_through_arg(a: TpyExpr, ptype: TpyType | None,
         # strview_to_string coerce (identity for a NUL-free literal,
         # `std::string(x)` otherwise) -- rendered by the coerce arm itself.
         at = analyzer.get_expr_type(a)
+        if mutated:
+            return (isinstance(a, TpyName) and _is_string_owned(at)
+                    and _expr_eligible(a, locals_, analyzer))
         return ((_resolved_str_value(at, analyzer) is not None
                  or _is_string_owned(at))
                 and _expr_eligible(a, locals_, analyzer))
@@ -4370,7 +4378,12 @@ def _fstring_eligible(e: TpyFString, locals_: dict[str, TpyType],
         if part.conversion not in (FSTRING_CONV_NONE, FSTRING_CONV_STR,
                                    FSTRING_CONV_REPR):
             return note_detail("fstring.conversion")
-        if not _expr_eligible(part.expr, locals_, analyzer):
+        # An owned-str FIELD arg formats bare like a str name (the wrap
+        # table's str row); the format sink is read-only, so no form seam
+        # fires on the STORAGE member read.
+        if not (_expr_eligible(part.expr, locals_, analyzer)
+                or (_str_field_value_read(part.expr, locals_, analyzer)
+                    and _witness("fstr.str_field"))):
             return False
         if _fstring_arg_wrap(part.expr, analyzer, part.conversion,
                              part.format_spec is not None) is _FSTRING_INELIGIBLE:

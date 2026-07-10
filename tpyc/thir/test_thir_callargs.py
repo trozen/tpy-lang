@@ -1554,6 +1554,117 @@ class TestCtorStrArgSlots:
         assert _fn(_lower_ctx(src), "use") is None
 
 
+class TestCtorMutatedSlotArgs:
+    """The mutated-slot half of `_is_record_rvalue_source`'s ctor face:
+    `_shared_pass_through_arg(mutated=True)` admits the by-value and
+    lvalue-NAME rows into a `T&` slot and keeps the temp rows off."""
+
+    def test_record_name_into_mutated_ctor_slot_routes(self):
+        # An lvalue record NAME binds the mutated `A&` slot legally -- the
+        # bare-name emit on both paths.
+        src = (
+            "from tpy import Int32, Own\n"
+            "class A:\n"
+            "    x: Int32\n"
+            "    def __init__(self, x: Int32):\n"
+            "        self.x = x\n"
+            "class W:\n"
+            "    total: Int32\n"
+            "    def __init__(self, a: A):\n"
+            "        a.x += 1\n"
+            "        self.total = a.x\n"
+            "def use(a: A) -> Own[W]:\n"
+            "    return W(a)\n"
+            "print(use(A(1)).total)\n"
+        )
+        thir = _lower_ctx(src)
+        assert _fn(thir, "use") is not None
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+    def test_container_name_into_mutated_ctor_slot_routes(self):
+        # An lvalue container NAME binds the mutated `std::vector<T>&` slot
+        # legally -- the bare-name emit on both paths.
+        src = (
+            "from tpy import Int32, Own\n"
+            "class W:\n"
+            "    n: Int32\n"
+            "    def __init__(self, xs: list[Int32]):\n"
+            "        xs.append(9)\n"
+            "        self.n = len(xs)\n"
+            "def use(xs: list[Int32]) -> Own[W]:\n"
+            "    return W(xs)\n"
+            "print(use([1, 2]).n)\n"
+        )
+        thir = _lower_ctx(src)
+        assert _fn(thir, "use") is not None
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+    def test_view_str_source_into_mutated_string_slot_stays_ast(self):
+        # A str (view) source into a MUTATED String slot arrives through the
+        # strview_to_string coerce -- a temp into `std::string&` -- so the
+        # coerce half stays gate-rejected under mutated.
+        src = (
+            "from tpy import String, Own\n"
+            "class S:\n"
+            "    name: String\n"
+            "    def __init__(self, name: String) -> None:\n"
+            '        name += "!"\n'
+            "        self.name = name\n"
+            "def use(s: str) -> Own[S]:\n"
+            "    return S(s)\n"
+            'print(use("a").name)\n'
+        )
+        assert _fn(_lower_ctx(src), "use") is None
+
+    def test_int_literal_into_mutated_bigint_slot_routes(self):
+        # A BigInt slot stays by value regardless of the mutation fact
+        # (mutation is callee-local), so the slot-typed literal render
+        # (`::tpy::BigInt(5)`) is safe -- the row the old hand-rolled
+        # mutated arm omitted.
+        src = (
+            "from tpy import Own\n"
+            "class S:\n"
+            "    n: int\n"
+            "    def __init__(self, n: int) -> None:\n"
+            "        n += 1\n"
+            "        self.n = n\n"
+            "def use() -> Own[S]:\n"
+            "    return S(5)\n"
+            "print(use().n)\n"
+        )
+        thir = _lower_ctx(src)
+        assert _fn(thir, "use") is not None
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+    def test_value_rows_alongside_mutated_slot_route(self):
+        # Value-family args (enum member, float literal) ride their by-value
+        # rows while a SIBLING mutated container slot exercises the mutated
+        # arm -- value slots never lower `T&` (mutation is callee-local), so
+        # the cascade admits them mutation-blind.
+        src = (
+            "from tpy import Int32, Own, Float64\n"
+            "from enum import Enum\n"
+            "class Color(Enum):\n"
+            "    RED = 1\n"
+            "    BLUE = 2\n"
+            "class W:\n"
+            "    n: Int32\n"
+            "    c: Color\n"
+            "    f: Float64\n"
+            "    def __init__(self, xs: list[Int32], c: Color, f: Float64):\n"
+            "        xs.append(9)\n"
+            "        self.n = len(xs)\n"
+            "        self.c = c\n"
+            "        self.f = f\n"
+            "def use(xs: list[Int32], c: Color) -> Own[W]:\n"
+            "    return W(xs, c, 1.5)\n"
+            "print(use([1], Color.RED).n)\n"
+        )
+        thir = _lower_ctx(src)
+        assert _fn(thir, "use") is not None
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+
 class TestArgTempValidator:
     def _temp(self):
         from ..typesys import FLOAT, INT32, UnionType

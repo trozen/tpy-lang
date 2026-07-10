@@ -219,6 +219,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "ret.record_storage",
     "ret.record_self",              # `return self` -> `return (*this);`
     "ret.record_field",             # `return recv.field` at the borrow slot
+    "ret.str_field",                # `return recv.field` (owned-str member,
+                                    # STORAGE) at a str-family return slot
     # Storage container return slot (`-> Own[list/dict/set]`; the renders --
     # bare owned name / the decl-init literal emits -- are shared, so
     # admission is the distinguishing site).
@@ -339,6 +341,7 @@ THIR_FACES: frozenset[str] = frozenset({
     # again at lowering -- non-vacuity only needs a nonzero count).
     "fstr.conv_repr",               # `!r` -> `::tpy::repr_of({0})` wrap
     "fstr.conv_str",                # `!s` no-op passthrough (non-user types)
+    "fstr.str_field",               # owned-str field arg formats bare
     "fstr.char_arg",                # Char arg formats bare (`char` is
                                     # std::formattable; no int8 cast)
     "fstr.spec",                    # constant format spec -> `{:spec}`

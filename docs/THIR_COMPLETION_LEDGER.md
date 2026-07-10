@@ -626,7 +626,13 @@ deferred (self-contained) / blocked-on-`<rung>`.
   call args DONE, for/call-arg cell)**
   -- S1: str/StrView params,
   literal-init locals (PendingStrType resolved through ViewVarInfo at lowering),
-  print args, comparisons, `len(s)`, owned-str returns, same-type call args; the
+  print args, comparisons, `len(s)`, owned-str returns, same-type call args,
+  and owned-str FIELD reads at the return slot + f-string args
+  (`ret.str_field` / `fstr.str_field` via the shared `_str_field_value_read`;
+  the STORAGE member read renders bare -- StrView fields (BORROW, need the
+  view->owned copy at owned sinks) and String fields are the follow-up rungs,
+  as are the remaining value positions: print args, compare operands,
+  call-arg slots); the
   view->owned copy is an explicit `THIRFormConvert` (str BORROW -> STORAGE,
   `std::string(x)`). **S2 f-strings DONE (increment 39, `THIRFString`)**: the
   `_gen_fstring` mirror -- all-literal `std::string("...")` (incl. the

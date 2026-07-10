@@ -16,6 +16,7 @@ from .fallback import (
     stmt_reject_reason,
 )
 from .lower import iter_module_callables, lower_function
+from .lower.predicates import _type_family_tag
 from .testutil import _compile, _entry
 
 
@@ -132,3 +133,24 @@ def test_classify_stmt_tags():
     g = entry.ast.functions[0]
     assert classify_stmt(g.body[0]) == "expr.dict_comp"
     assert classify_stmt(g.body[1]) == "stmt.expr_stmt"
+
+
+def test_type_family_tag_on_signature_types():
+    # The shared drilldown family chain, pinned per family so a tag-chain
+    # regression (wrong label, broken Own recursion) fails loudly.
+    compiler, modules = _compile(
+        "from tpy import Int32, Own, Ptr\n"
+        "def f(a: Int32, b: Int32 | None, c: list[Int32],\n"
+        "      d: tuple[Int32, str], e: Ptr[Int32], g: str,\n"
+        "      i: Own[list[Int32]]) -> None:\n"
+        "    pass\n"
+    )
+    entry = _entry(modules)
+    an = entry.analyzer
+    func = next(fn for fn in entry.ast.functions if fn.name == "f")
+    tags = {name: _type_family_tag(pt, an) for name, pt in func.params}
+    assert tags == {
+        "a": "scalar", "b": "optional", "c": "container", "d": "tuple",
+        "e": "ptr", "g": "str", "i": "own_container",
+    }
+    assert _type_family_tag(None, an) == "untyped"

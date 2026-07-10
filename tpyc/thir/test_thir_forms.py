@@ -1042,6 +1042,152 @@ class TestRecordBorrowReturn:
         assert faces.get("ret.record_borrow", 0) == 0
 
 
+class TestStrFieldReturn:
+    """`return recv.field` for an owned-`str` field at a str-family return
+    slot (ret.str_field): the bare STORAGE member read on both paths."""
+
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=thir))
+        return cpp
+
+    _REC = (
+        "class A:\n"
+        "    name: str\n"
+        "    def __init__(self, name: str) -> None:\n"
+        "        self.name = name\n"
+    )
+
+    def test_self_str_field_return_routes(self):
+        # `return self.name` at `-> str` -> `return this->name;` (bare owned
+        # copy-by-value; the sema copy warning is path-independent).
+        src = (
+            self._REC
+            + "    def get(self) -> str:\n"
+            + "        return self.name\n"
+            + 'print(A("x").get())\n'
+        )
+        thir, faces = _lower_ctx_witnessed(src)
+        fn = _fn(thir, "get")
+        assert fn is not None
+        ret = fn.body[0]
+        assert isinstance(ret, THIRReturn)
+        assert isinstance(ret.value, THIRFieldAccess) and ret.value.is_arrow
+        assert ret.value.form is Form.STORAGE
+        assert faces.get("ret.str_field", 0) == 1
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+
+    def test_param_receiver_str_field_return_routes(self):
+        # `return a.name` off a record param at `-> str` -- the `.` access.
+        src = (
+            self._REC
+            + "def read(a: A) -> str:\n"
+            + "    return a.name\n"
+            + 'print(read(A("x")))\n'
+        )
+        thir, faces = _lower_ctx_witnessed(src)
+        fn = _fn(thir, "read")
+        assert fn is not None
+        ret = fn.body[0]
+        assert isinstance(ret, THIRReturn)
+        assert isinstance(ret.value, THIRFieldAccess) and not ret.value.is_arrow
+        assert faces.get("ret.str_field", 0) == 1
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+
+    def test_own_str_return_slot_routes(self):
+        # `-> Own[str]` spells the same owned `std::string` return; the field
+        # read returns bare on both paths (probe-verified).
+        src = (
+            "from tpy import Own\n"
+            + self._REC
+            + "def take(a: A) -> Own[str]:\n"
+            + "    return a.name\n"
+            + 'print(take(A("x")))\n'
+        )
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "take") is not None
+        assert faces.get("ret.str_field", 0) == 1
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+
+    def test_strview_field_stays_ast(self):
+        # A `StrView` field is BORROW -- an owned return slot needs the
+        # explicit view->owned copy this arm does not wire. Reject.
+        src = (
+            "from tpy import StrView\n"
+            "class V:\n"
+            "    v: StrView\n"
+            "    def __init__(self, v: StrView) -> None:\n"
+            "        self.v = v\n"
+            "    def get(self) -> str:\n"
+            "        return self.v\n"
+            'print(V("x").get())\n'
+        )
+        thir = _lower_ctx(src)
+        assert _fn(thir, "get") is None
+
+    def test_string_field_stays_ast(self):
+        # A `String` field resolves outside the str slice
+        # (_resolved_str_value is None) -- stays AST.
+        src = (
+            "from tpy import String\n"
+            "class S:\n"
+            "    s: String\n"
+            "    def __init__(self, s: String) -> None:\n"
+            "        self.s = s\n"
+            "    def get(self) -> str:\n"
+            "        return self.s\n"
+            'print(S("x").get())\n'
+        )
+        thir = _lower_ctx(src)
+        assert _fn(thir, "get") is None
+
+    def test_fstring_str_field_arg_routes(self):
+        # `f"...{self.name}..."` -- the owned-str field formats bare via the
+        # wrap table's str row (fstr.str_field), here at a str return slot.
+        src = (
+            self._REC
+            + "    def label(self) -> str:\n"
+            + '        return f"name={self.name}!"\n'
+            + 'print(A("x").label())\n'
+        )
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "label") is not None
+        assert faces.get("fstr.str_field", 0) == 1
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+
+    def test_fstring_str_field_repr_conv_routes(self):
+        # `{self.name!r}` -- the repr wrap composes over the field row.
+        src = (
+            self._REC
+            + "    def show(self) -> str:\n"
+            + '        return f"{self.name!r}"\n'
+            + 'print(A("x").show())\n'
+        )
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "show") is not None
+        assert faces.get("fstr.str_field", 0) == 1
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+
+    def test_fstring_strview_field_stays_ast(self):
+        # A StrView field arg stays off the fstring rung (the shared helper
+        # is owned-str only; the view-field row is a follow-up rung).
+        src = (
+            "from tpy import StrView\n"
+            "class V:\n"
+            "    v: StrView\n"
+            "    def __init__(self, v: StrView) -> None:\n"
+            "        self.v = v\n"
+            "    def label(self) -> str:\n"
+            '        return f"v={self.v}"\n'
+            'print(V("x").label())\n'
+        )
+        thir = _lower_ctx(src)
+        assert _fn(thir, "label") is None
+
+
 class TestRecordBorrowReturnEmit:
     def _cpp(self, src: str, thir: bool):
         # hpp + cpp: method bodies emit inline into the header.

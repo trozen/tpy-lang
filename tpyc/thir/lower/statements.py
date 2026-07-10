@@ -177,6 +177,7 @@ from .predicates import (
     _slice_object_type,
     _storage_call_container,
     _storage_call_ret,
+    _str_field_value_read,
     _str_self_append_rhs,
     _peel_coerce,
     _subscript_container_recv_type,
@@ -1507,6 +1508,17 @@ def _stmt_eligible(stmt: TpyStmt, analyzer, ws: _WalkState,
         # (`'x'`) on the AST path -- not reproduced outside compare position.
         if prescan.ret_char and isinstance(stmt.value, TpyStrLiteral):
             return False
+        # `return recv.field` at a str-family return slot: an owned-`str`
+        # field returns the bare STORAGE member read on both paths
+        # (probe-verified for `-> str` and `-> Own[str]` alike; see
+        # `_str_field_value_read`). A receiver-admitted field of another
+        # str-family form (StrView / String) names the follow-up rung.
+        if (prescan.ret_str is not None
+                and isinstance(stmt.value, TpyFieldAccess)):
+            if _str_field_value_read(stmt.value, ws.declared, analyzer):
+                return _witness("ret.str_field")
+            if _field_receiver_ok(stmt.value, ws.declared, analyzer):
+                return note_detail("return.str_field_form")
         return (_expr_eligible(stmt.value, ws.declared, analyzer)
                 or _stmt_value_temps_call(stmt.value, ws, analyzer))
     if isinstance(stmt, TpyIf):
