@@ -893,19 +893,23 @@ Measurement is separated from emission and tiered so the always-on cost is ~zero
 - **Tier 0 -- ratchet (free, always).** Unmarked cases already *emit* via THIR, so
   asserting zero fallback adds no pass. This is the correctness win.
 - **Tier 1 -- full-corpus dial (free, always).** `tpy| thir cases: N/M migrated`
-  spans the whole corpus, but marked cases are counted not-migrated *from the
-  marker* (marked <=> has fallback), with no measurement pass -- so the dial's
-  denominator costs nothing per run. It trusts the marker; `--thir-check-flip`
-  surfaces marked-but-now-clean drift.
-- **Tier 2 -- exact sweep (expensive, on cadence).** Real THIR emit + byte-compare
-  + faces/shapes over the whole corpus stays behind `--thir-codegen` (run
-  nightly), not folded into every default run.
+  spans the whole corpus, and marked cases are counted not-migrated *from the
+  marker* (marked <=> has fallback). The overlay does now yield a per-case
+  fallback count for them, but the dial ignores it on purpose: the marker is the
+  contract, and a marked-but-clean case is benign porting progress, not a
+  regression to fail on. `--thir-check-flip` turns that drift into un-mark
+  candidates.
+- **Tier 2 -- exact sweep (whole corpus).** THIR emit + byte-compare runs for
+  EVERY case on a plain run -- the marker gates the ratchet, not the overlay,
+  because fallback is per-body and a marked case still routes bodies that must be
+  diffed. Only the faces/shapes coverage metrics and the marker-ignoring
+  (no-ratchet) mode stay behind `--thir-codegen`.
 
 A cheap "gate-only, no-emit" probe to *re-measure* marked cases every run was
 considered and rejected: the `resumable` (async/generator) eligibility is coupled
 to emission (it needs the live codegen ctx), so a gate-only probe would undercount
-async fallback and mint false-clean cases -- and counting marked cases from the
-marker makes the probe unnecessary anyway. NB the ratchet/probe is crash-safe only
+async fallback and mint false-clean cases. The overlay measures them by real emit
+instead, which is exact and (measured) under a second over the corpus. NB the ratchet/probe is crash-safe only
 while the predictive gate is present (it pre-rejects the resumable path); Lever A's
 resumable try-lower-catch remains the prerequisite before the gate is removed.
 
@@ -917,9 +921,9 @@ replaced, not supplemented). But the snapshot is AST-authored, so **AST is the
 oracle and must be tested every run**: a regression in the AST codegen path for a
 migrated case would otherwise go unseen until the next `--update-snapshots`. Fixed
 by making AST the always-emitted artifact (it feeds exec and the oracle byte-diff
-for every case) and running THIR as an **overlay**: unmarked cases regenerate their
-user modules through THIR to a scratch dir and byte-diff that against the same
-snapshot. So each migrated case is checked on both paths -- AST vs snapshot
+for every case) and running THIR as an **overlay**: every case regenerates its
+user modules through THIR to a scratch dir and byte-diffs that against the same
+snapshot. So each case is checked on both paths -- AST vs snapshot
 (oracle) and THIR vs snapshot (divergence) -- and the ratchet still catches
 fallback. The second codegen pass is user-modules-only (stdlib is user-scoped-out
 and already AST-tested); measured cost on the whole corpus is within run-to-run
@@ -1065,15 +1069,16 @@ by theme; each is a rule the next cell should apply.
 
 **Byte-diff as the correctness oracle.**
 
-- The whole-corpus `--thir-codegen --no-exec` byte-diff is the oracle; the
-  gate/lowering *mirror discipline* exists to feed it. It repeatedly caught real
+- The whole-corpus byte-diff is the oracle -- every case's overlay is diffed on a
+  plain `uv run pytest`, so a `--no-exec` run is the fast form; the gate/lowering
+  *mirror discipline* exists to feed it. It repeatedly caught real
   mid-cell divergences (a guarded match mis-promoted to the if-elif-guarded chain;
   a view-resolved promoted str local over-moved; a container-element over-move; a
   BigInt frame-field write rendered position-blind). Trust the diff, not the reasoning.
-- The per-case byte-diff covers a case's **local** modules only. Stdlib bodies route
-  through THIR but are not snapshotted per case, so byte divergence there is invisible
-  to `--no-exec`; `--thir-codegen --force-exec` builds+runs the THIR-rendered stdlib
-  and catches *behavioral* (not byte) divergence.
+- The byte-diff covers a case's **local** modules only, and that is the whole scope
+  THIR has: `compiler.py` forces non-user modules to the AST path, so `lib/tpy` and
+  the stdlib never lower through THIR and a case migrates on its OWN code's
+  portability, not its imports'.
 - **Green byte-diff does not mean a face is covered.** A gate arm or render no corpus
   case reaches is invisible to the diff -- several latent call-arg bugs, and a
   template-keyword miscompile, sat in exactly such witness-free faces. Register each

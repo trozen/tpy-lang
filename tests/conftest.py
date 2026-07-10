@@ -698,18 +698,19 @@ class CompileResult:
     third_party_include_dirs: list[Path] = field(default_factory=list)
     third_party_link_flags: list[str] = field(default_factory=list)
     third_party_c_sources: list[tuple[Path, list[str]]] = field(default_factory=list)
-    # Per-module names of THIR-routed bodies (None when THIR is off for the case).
+    # Per-module names of THIR-routed bodies (None when THIR is off entirely).
     # Feeds the divergence reporter: a snapshot mismatch is labeled with the
     # enclosing function and whether THIR routed it.
     thir_routed_names: dict[str, frozenset[str]] | None = None
-    # THIR-overlay generated paths for local modules: (name, hpp, cpp). None when
-    # THIR is off for the case. Byte-compared to the same AST-authored snapshot as
+    # THIR-overlay generated paths for local modules: (name, hpp, cpp). None only
+    # when THIR is off entirely (--no-thir / --update-snapshots) -- a no_thir case
+    # still gets an overlay. Byte-compared to the same AST-authored snapshot as
     # all_modules -- so the AST (oracle) and THIR paths are both checked per run.
     thir_modules: list[tuple[str, Path | None, Path | None]] | None = None
-    # THIR ratchet count: user-body fallbacks when THIR is the emitted artifact
-    # for this case (default run, unmarked). None when the ratchet doesn't apply
-    # (marked case, whole-corpus/classify runs, or --update-snapshots). >0 fails
-    # the comp phase -- an unmarked case must route every user body through THIR.
+    # THIR ratchet count: user-body fallbacks for a case the ratchet governs
+    # (default run, unmarked). None when it doesn't apply (marked case,
+    # whole-corpus/classify runs, or --update-snapshots). >0 fails the comp
+    # phase -- an unmarked case must route every user body through THIR.
     thir_ratchet_fell: int | None = None
 
 
@@ -912,12 +913,15 @@ def compile_with_diagnostics(src_file: Path, output_dir: Path, default_int: str 
             if is_local:
                 local_mods.append(mod)
 
-        # THIR overlay: regenerate the migrated USER modules through THIR to a
-        # separate dir (stdlib is user-scoped-out and already AST-tested above);
+        # THIR overlay: regenerate the USER modules through THIR to a separate
+        # dir (stdlib is user-scoped-out and already AST-tested above);
         # test_case byte-compares these to the same snapshot. Fills the THIR
-        # tallies (_thir_fallback / _thir_routed_names) read below.
-        case_no_thir = no_thir and not THIR_IGNORE_MARKERS  # a marker in effect
-        thir_active = TEST_CODEGEN_OPTIONS.thir_codegen and not case_no_thir
+        # tallies (_thir_fallback / _thir_routed_names) read below. Runs for
+        # EVERY case -- a marked case still routes bodies (see _thir_case_mode).
+        thir_active, thir_ratchet = _thir_case_mode(
+            thir_codegen=TEST_CODEGEN_OPTIONS.thir_codegen, no_thir=no_thir,
+            ignore_markers=THIR_IGNORE_MARKERS, classify=THIR_CLASSIFY_WRITE,
+            check_flip=THIR_CHECK_FLIP)
         thir_modules = None
         thir_ratchet_fell = None
         if thir_active:
@@ -943,19 +947,20 @@ def compile_with_diagnostics(src_file: Path, output_dir: Path, default_int: str 
             elif THIR_CHECK_FLIP:
                 if no_thir and fell == 0:
                     record_thir_flip_candidate(str(case_dir))
-            elif not THIR_IGNORE_MARKERS:  # default per-case run, UNMARKED case
+            elif thir_ratchet:  # default per-case run, UNMARKED case
                 # A fallback emits byte-identical AST, so the THIR snapshot
                 # compare can't see a silent THIR->AST regression. Surface the
                 # count so the comp phase fails the case (the ratchet): unmarked
                 # => every user body must route THIR.
                 thir_ratchet_fell = fell
                 record_thir_case(fell)
+            elif not THIR_IGNORE_MARKERS:
+                # Marked case on the default run: its overlay still byte-diffs
+                # the bodies THIR does route, but the ratchet stays off (the
+                # case is allowed to fall back) and the dial counts it
+                # not-migrated from the marker, not from this measurement.
+                record_thir_case_marked()
             # else --thir-codegen whole-corpus: aggregate tallies only
-        elif TEST_CODEGEN_OPTIONS.thir_codegen and case_no_thir:
-            # Marked case on the default run: emitted via AST, counted not-clean
-            # from the marker (marked <=> has fallback), no measurement pass, so
-            # the N/M dial spans the whole corpus without taxing the run.
-            record_thir_case_marked()
         thir_routed_names = (dict(compiler._thir_routed_names)
                              if thir_active else None)
 
@@ -1089,12 +1094,13 @@ def pytest_addoption(parser):
         action="store_true",
         default=False,
         help=(
-            "THIR is ON BY DEFAULT (unmarked user cases byte-diff THIR vs the "
-            "AST snapshots; a case's no_thir.txt keeps it on AST). This flag "
-            "runs THIR on ALL user cases IGNORING no_thir.txt -- the whole-corpus "
-            "byte-diff, the safety net while the eligibility gate is being "
-            "removed. Pair with --no-exec for a fast comp-only diff. Off (and "
-            "conflicting) under --update-snapshots (snapshots must be AST-authored)."
+            "THIR is ON BY DEFAULT and every user case byte-diffs THIR vs the "
+            "AST snapshots; no_thir.txt only exempts a case from the RATCHET "
+            "(it may fall back bodies), not from the diff. This flag ignores "
+            "the markers entirely: no ratchet anywhere, plus the whole-corpus "
+            "faces/shapes coverage metrics. Pair with --no-exec for a fast "
+            "comp-only run. Off (and conflicting) under --update-snapshots "
+            "(snapshots must be AST-authored)."
         ),
     )
     parser.addoption(
@@ -1104,8 +1110,8 @@ def pytest_addoption(parser):
         help=(
             "Disable THIR entirely: every case emits + byte-diffs via the AST "
             "path only (no THIR overlay, no ratchet). The pure-AST mode for fast "
-            "iteration on AST codegen. Mirror-opposite of --thir-codegen; "
-            "conflicts with it and with --thir-classify / --thir-check-flip."
+            "iteration on AST codegen. Conflicts with --thir-codegen and with "
+            "--thir-classify / --thir-check-flip."
         ),
     )
     parser.addoption(
@@ -1341,9 +1347,9 @@ def pytest_report_header(config):
                       if config.getoption("--no-thir")
                       else "off (regenerating AST snapshots)")
     elif THIR_IGNORE_MARKERS:
-        thir_state = "whole corpus (all user cases, ignore no_thir.txt)"
+        thir_state = "no ratchet (ignore no_thir.txt) + coverage metrics"
     else:
-        thir_state = "default: unmarked cases byte-diff vs AST; no_thir.txt -> AST"
+        thir_state = "default: all cases byte-diff vs AST; ratchet on unmarked"
 
     # Short lines (hints on their own indented lines) so nothing wraps at ~80 cols.
     return [
@@ -1355,7 +1361,7 @@ def pytest_report_header(config):
         f"{_LOG_PREFIX}   --update-snapshots regenerate expected",
         f"{_LOG_PREFIX} thir: {thir_state}",
         f"{_LOG_PREFIX}   --no-thir          pure AST (no THIR overlay, no ratchet)",
-        f"{_LOG_PREFIX}   --thir-codegen     whole corpus (ignore no_thir.txt)",
+        f"{_LOG_PREFIX}   --thir-codegen     no ratchet + coverage metrics",
         f"{_LOG_PREFIX}   --thir-check-flip  list marked cases now clean (un-mark)",
         f"{_LOG_PREFIX}   --thir-classify    (re)write no_thir.txt markers",
     ]
@@ -1837,8 +1843,10 @@ def record_thir_case(fell_back: int) -> None:
 
 def record_thir_case_marked() -> None:
     """One no_thir-marked case on the default run: counted not-clean in the
-    denominator without a measurement pass -- the marker IS the fallback signal
-    (marked <=> not yet migrated), so N/M spans the whole corpus for free."""
+    denominator from the MARKER, deliberately ignoring the fallback count the
+    overlay just measured for it. Marked-but-clean is benign porting progress
+    (`--thir-check-flip` turns it into un-mark candidates), so the dial must not
+    read it as migrated on its own."""
     _thir_cases["total"] += 1
 
 
@@ -1864,6 +1872,26 @@ _NO_THIR_BODY = (
     "Auto-managed by --thir-classify; run --thir-check-flip to see if this\n"
     "case is now clean enough to un-mark (delete this file).\n"
 )
+
+
+def _thir_case_mode(*, thir_codegen: bool, no_thir: bool, ignore_markers: bool,
+                    classify: bool, check_flip: bool) -> tuple[bool, bool]:
+    """`(overlay_runs, ratchet_applies)` for one case -- the two decisions the
+    marker used to conflate.
+
+    The overlay runs for EVERY case whenever THIR is on. `no_thir.txt` is
+    per-CASE but fallback is per-BODY: a marked case still routes the bodies
+    that do lower, and those must be byte-diffed against the AST oracle or they
+    can silently regress to AST (a fallback emits byte-identical C++, so no
+    other check sees it).
+
+    The ratchet stays marker-gated: only an unmarked case must route every user
+    body. Classify/check-flip consume the raw fallback count instead.
+    """
+    overlay = thir_codegen
+    ratchet = (thir_codegen and not no_thir and not ignore_markers
+               and not classify and not check_flip)
+    return overlay, ratchet
 
 
 def _apply_no_thir_marker(case_dir: Path, dirty: bool) -> None:
@@ -2032,16 +2060,16 @@ def pytest_terminal_summary(terminalreporter, exitstatus, config):
             ttot = _thir_cases["total"] + _thir_cases_agg["total"]
             if ttot:
                 marked = ttot - tcl
+                # "un-migrated", not "on AST": every case's overlay is
+                # byte-diffed; the marker only exempts a case from the ratchet.
                 terminalreporter.write_line(
                     f"{_LOG_PREFIX} thir cases: {tcl}/{ttot} migrated "
-                    f"(unmarked, zero fallback); {marked} on AST (no_thir)"
+                    f"(unmarked, zero fallback); {marked} un-migrated (no_thir)"
                 )
-            # Per-face coverage (and shape % below) are WHOLE-CORPUS metrics:
-            # they measure coverage across all cases, so they're only meaningful
-            # under --thir-codegen / -classify / -check-flip (THIR_IGNORE_MARKERS).
-            # In the default per-case run only the clean cases route, so most
-            # faces are trivially unwitnessed and shapes is trivially 100% --
-            # noise -- so skip both there.
+            # Per-face coverage (and shape % below) stay behind the explicit
+            # metrics flags: the default run now routes the whole corpus too, so
+            # these ARE meaningful there -- but they are long, slow-moving lines
+            # that belong to a coverage query, not to every test run.
             if THIR_IGNORE_MARKERS:
                 hit = set(_thir_faces) | set(_thir_faces_agg)
                 zero = sorted(THIR_FACES - hit)
@@ -2059,26 +2087,31 @@ def pytest_terminal_summary(terminalreporter, exitstatus, config):
             # Per-component AST-fallback breakdown: how many candidate bodies
             # the gate rejected, by first-reject reason -- the measured gap to
             # each deletion target ("body" = gen_body/gen_expr, "ctor" = the
-            # MIL emit). Full counts dump to $THIR_FALLBACK_JSON when set.
+            # MIL emit). A coverage-query metric like faces/shapes, so it hides
+            # behind the same flag: the default run's fallback is dominated by
+            # the marked cases it now also routes, which is three long lines of
+            # standing backlog, not news about this run. ($THIR_FALLBACK_JSON
+            # still dumps whole-corpus counts from any run that asks for them.)
             fallback = dict(_thir_fallback)
             for key, n in _thir_fallback_agg.items():
                 fallback[key] = fallback.get(key, 0) + n
-            for component in ("body", "ctor", "resumable"):
-                pre = component + ":"
-                items = sorted(
-                    ((k[len(pre):], n) for k, n in fallback.items()
-                     if k.startswith(pre)),
-                    key=lambda kv: (-kv[1], kv[0]))
-                if not items:
-                    continue
-                total = sum(n for _, n in items)
-                top = ", ".join(f"{r} {n}" for r, n in items[:12])
-                more = len(items) - 12
-                tail = f", +{more} more kinds" if more > 0 else ""
-                terminalreporter.write_line(
-                    f"{_LOG_PREFIX} thir fallback: {component} {total} -- "
-                    f"{top}{tail}"
-                )
+            if THIR_IGNORE_MARKERS:
+                for component in ("body", "ctor", "resumable"):
+                    pre = component + ":"
+                    items = sorted(
+                        ((k[len(pre):], n) for k, n in fallback.items()
+                         if k.startswith(pre)),
+                        key=lambda kv: (-kv[1], kv[0]))
+                    if not items:
+                        continue
+                    total = sum(n for _, n in items)
+                    top = ", ".join(f"{r} {n}" for r, n in items[:12])
+                    more = len(items) - 12
+                    tail = f", +{more} more kinds" if more > 0 else ""
+                    terminalreporter.write_line(
+                        f"{_LOG_PREFIX} thir fallback: {component} {total} -- "
+                        f"{top}{tail}"
+                    )
             dump_path = os.environ.get("THIR_FALLBACK_JSON")
             if dump_path and fallback:
                 Path(dump_path).write_text(

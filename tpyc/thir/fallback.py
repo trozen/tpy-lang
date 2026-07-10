@@ -1,4 +1,4 @@
-"""Per-body AST-fallback tally for the --thir-codegen summary.
+"""Per-body AST-fallback tally; reported by the --thir-codegen summary.
 
 The routed-body tally says how many bodies THIR carries; this module says
 what blocks the rest, so the gap to each deletion target (ctor MIL emit /
@@ -6,8 +6,11 @@ gen_body+gen_expr / form machinery) is measured, not estimated. Each
 lowering attempt records the FIRST reject reason it hits (set-if-empty, so
 the innermost/earliest gate wins) and the attempt driver folds a
 `component:reason` count onto the active Compiler; the test harness
-aggregates the counts across cases and xdist workers and prints a
-per-component breakdown next to the routed tally.
+aggregates the counts across cases and xdist workers. Recording runs on
+every case of every run with THIR on; the per-component breakdown PRINTS
+only under the marker-ignoring metrics flags (it measures standing
+migration backlog, not the run that emitted it). `$THIR_FALLBACK_JSON`
+dumps the full counts from any run that asks.
 
 Reason namespaces: `sig.*` (signature-level rejects in _function_eligible),
 `body.*` (function-level body facts), `stmt.*` (the first ineligible
@@ -33,8 +36,7 @@ makes a detail visible, so successful statements never leak one.
 
 Like faces.py: the registry-side helpers are pure, the mutable state lives
 on the active Compiler, so everything here is a no-op outside a
-compilation (standalone-lowering units still work) and the default
-(non---thir-codegen) path never reaches it at all.
+compilation (standalone-lowering units still work).
 """
 
 from __future__ import annotations

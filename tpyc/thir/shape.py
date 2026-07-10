@@ -1,19 +1,21 @@
-"""Per-body distinct-SHAPE tally for the --thir-codegen summary.
+"""Per-body distinct-SHAPE tally; reported by the --thir-codegen summary.
 
-The routed-body count (299k+) is body-weighted: the stdlib links into every
-case, so one `Box.clone` body counts once per case. That measures throughput,
-not migration progress. This module answers the other question -- of the
-DISTINCT body shapes the corpus contains, what fraction routes -- by
-fingerprinting each candidate body (routed or fallback) with a structural
-signature that is invariant across the stdlib-linked-everywhere repetition and
-across cross-module structural twins, then deduping by signature.
+The routed-body count is body-weighted: thousands of cases spell the same
+handful of body shapes, so a construct already carried by THIR keeps adding to
+the tally with every case that repeats it. That measures throughput, not
+migration progress. This module answers the other question -- of the DISTINCT
+body shapes the corpus contains, what fraction routes -- by fingerprinting each
+candidate body (routed or fallback) with a structural signature invariant across
+that cross-case repetition and across structural twins, then deduping by
+signature. (Only USER-module bodies are candidates: `compiler.py` forces the
+stdlib to the AST path, so nothing here sees a `lib/tpy` body.)
 
 A shape signature is `kind | <sorted AST node-kinds> | p:<param families> |
 r:<return family>`: the callable kind, the set of statement/expression
 constructs the body uses, and the coarse type-families of its signature. Two
-bodies with the same signature are "the same shape"; the same function compiled
-in 3000 cases collapses to one, and two structurally-identical getters over
-different records collapse to one.
+bodies with the same signature are "the same shape": the same `def main()` body
+spelled in a hundred cases collapses to one, and two structurally-identical
+getters over different records collapse to one.
 
 Reported: `distinct routed / distinct total` (the honest %), plus the
 top BLOCKED shapes ranked by leverage (how many bodies each gates -- the
@@ -22,8 +24,10 @@ and fallback bodies is "partial" -- the signature is too coarse to separate a
 type-driven routing split, or a real one; counted as not-yet-routed.
 
 Like faces.py / fallback.py: the helpers are pure and the mutable state lives on
-the active Compiler, so this is a no-op outside a compilation and the default
-(non---thir-codegen) path never reaches it.
+the active Compiler, so this is a no-op outside a compilation. Recording is not
+flag-gated -- it runs wherever lowering runs, i.e. every case of every run with
+THIR on; only the REPORT is behind the marker-ignoring metrics flags, since a
+distinct-shape percentage is a whole-corpus measure.
 """
 
 from __future__ import annotations

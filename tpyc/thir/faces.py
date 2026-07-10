@@ -1,4 +1,4 @@
-"""Per-face witness tally for the --thir-codegen non-vacuity report.
+"""Per-face witness tally; reported by the --thir-codegen zero-witness summary.
 
 The corpus byte-diff proves routed bodies emit byte-identical C++, but says
 nothing about a face (a gate arm / a lowering render) that NO corpus case
@@ -17,8 +17,11 @@ statement position's lowered value actually carries a hoisted arg temp.
 
 The registry is immutable metadata (module-level by design); the mutable
 counts live on the active Compiler (`_thir_face_witnesses`), so the helper
-is a no-op outside a compilation and the default (non---thir-codegen) path
-never reaches it at all -- lowering and gating only run under the flag.
+is a no-op outside a compilation. Recording is NOT flag-gated: it happens
+wherever lowering and gating run, which is every case of every run with
+THIR on. Only the zero-witness REPORT is behind the marker-ignoring metrics
+flags -- it is a whole-corpus question, so a `-k`-filtered run would name
+faces no selected case could reach.
 """
 
 from __future__ import annotations
