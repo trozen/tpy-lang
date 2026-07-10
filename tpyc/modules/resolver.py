@@ -55,6 +55,10 @@ class ModuleResolver:
     base_dir: Path
     extra_dirs: list[Path] = field(default_factory=list)
     extra_extensions: tuple[str, ...] = ()
+    # Every resolve() outcome, misses included -- the build cache replays
+    # these against a fresh resolver to detect resolution drift (e.g. a
+    # newly created file shadowing a stdlib module) without re-parsing.
+    resolution_log: dict[str, str | None] = field(default_factory=dict)
 
     def resolve(self, module_path: str) -> ResolvedModule | None:
         """Resolve a module path to a file.
@@ -67,6 +71,11 @@ class ModuleResolver:
         Returns:
             ResolvedModule with path and metadata, or None if not found.
         """
+        result = self._do_resolve(module_path)
+        self.resolution_log[module_path] = str(result.path) if result else None
+        return result
+
+    def _do_resolve(self, module_path: str) -> ResolvedModule | None:
         result = self._resolve_in(self.base_dir, module_path)
         if result:
             return result

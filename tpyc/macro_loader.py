@@ -384,6 +384,12 @@ class MacroRegistry:
         self._search_dirs: list[Path] = list(search_dirs or [])
         # Guard against circular macro imports
         self._loading: set[str] = set()
+        # Build-cache inputs: every loaded macro file, plus the probe
+        # outcomes of _resolve_macro_import (paths that must stay absent
+        # and existing-but-not-macro files whose content was consulted).
+        self.loaded_files: dict[str, str] = {}
+        self.probe_missing: list[str] = []
+        self.probe_rejected: list[str] = []
 
     def register(self, module: str, name: str, func: Callable) -> None:
         self._macros[(module, name)] = func
@@ -441,6 +447,9 @@ class MacroRegistry:
                 if is_macro_module_source(source):
                     self.load_module(name, path)
                     return self._modules.get(name)
+                self.probe_rejected.append(str(path))
+            else:
+                self.probe_missing.append(str(path))
         return None
 
     def is_loaded(self, module_name: str) -> bool:
@@ -453,6 +462,7 @@ class MacroRegistry:
         """
         if module_name in self._loaded_modules:
             return
+        self.loaded_files[module_name] = str(file_path)
 
         # Ensure tpyc is importable (macro modules import from tpyc.macro_api)
         tpyc_parent = str(Path(__file__).resolve().parent.parent)

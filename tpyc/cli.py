@@ -43,19 +43,22 @@ import sys
 import tempfile
 import time
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-from .parse import ParseError
-from .sema import SemanticError, DiagnosticLevel
-from .explain import explain_send_sync
-from .codegen_cpp import CodeGenOptions, CodeGenError
-from .compiler import (
-    Compiler, CompileError, CompilerNotFoundError, BuildLayout, CppCompilerConfig,
-    DEFAULT_INT_CHOICES, list_compilers, get_or_build_pch,
+if TYPE_CHECKING:
+    from .build.third_party import ThirdPartyBuildPlan
+    from .compiler import Compiler, CompiledModule
+
+# Only light modules at top level: the build cache's warm path (unchanged
+# inputs -> exec the recorded binary) must not pay the compiler machinery's
+# ~250ms import cost. Everything heavy (parse/sema/codegen/compiler,
+# frontend plugins) is imported inside _run_cli after the warm-path check.
+from . import (
+    __version__, DEFAULT_INT_CHOICES, get_git_commit, get_runtime_dir,
+    get_lib_dir, get_docs_dir,
 )
-from . import __version__, get_git_commit, get_runtime_dir, get_lib_dir, get_docs_dir
-from .frontend_plugin import (
-    FrontendPluginError, FrontendRegistry, resolve_plugin_class,
-    route_dsl_opts,
+from .toolchain import (
+    CompilerNotFoundError, CppCompilerConfig, list_compilers, get_or_build_pch,
 )
 
 
@@ -207,6 +210,10 @@ def _build_frontend_registry(plugin_specs: list[str],
     after construction wouldn't trigger that path. Returns None when
     no plugins were requested.
     """
+    from .frontend_plugin import (
+        FrontendPluginError, FrontendRegistry, resolve_plugin_class,
+        route_dsl_opts,
+    )
     if not plugin_specs:
         if dsl_opts:
             from .diagnostics import Diagnostic, DiagnosticLevel
@@ -239,6 +246,125 @@ def _split_tpyc_argv(argv: list[str]) -> tuple[list[str], list[str]]:
     return argv[:i], argv[i + 1:]
 
 
+class _VersionAction(argparse.Action):
+    """`--version` with the git commit resolved only when requested --
+    `get_git_commit` shells out to `git describe` in dev checkouts, which
+    would otherwise tax every run (the warm path in particular)."""
+
+    def __call__(self, parser, namespace, values, option_string=None):
+        print(f"{parser.prog} {__version__} ({get_git_commit()})")
+        parser.exit()
+
+
+def _cache_options_key(args: argparse.Namespace, input_path: Path,
+                       lib_dirs: list[Path],
+                       config: CppCompilerConfig) -> dict:
+    """Output-affecting configuration that isn't a tracked input file.
+
+    Must be derivable identically before compilation (warm path) and after
+    (record time), so raw args/config only -- no compile results.
+    """
+    return {
+        "tpyc_version": __version__,
+        "entry": str(input_path),
+        "variant": "release" if args.release else "debug",
+        "default_int": args.default_int,
+        "compiler": list(config.compiler),
+        "std": config.std,
+        "ccache": config.ccache,
+        "extra_flags": list(config.extra_flags),
+        "warn_flags": list(config.warn_flags),
+        "pch": bool(args.pch),
+        "no_main": bool(args.no_main),
+        "emit_source": bool(args.emit_source),
+        "thir_codegen": bool(args.thir_codegen),
+        "lib_dirs": [str(d) for d in lib_dirs],
+        "third_party": {"pcre2": args.pcre2, "mbedtls": args.mbedtls,
+                        "date": args.date},
+    }
+
+
+def _record_build_manifest(cache_key: dict, build_dir: Path, input_path: Path,
+                           compiled_modules: list[CompiledModule],
+                           compiler: Compiler, cpp_config: CppCompilerConfig,
+                           runtime_dir: Path, runtime_cpp_sources: list[Path],
+                           third_party_plan: ThirdPartyBuildPlan,
+                           warning_messages: list[str],
+                           binary_path: Path) -> None:
+    """Write the up-to-date manifest after a successful build.
+
+    Best-effort: failing to record must never fail the build (the next run
+    just rebuilds cold).
+    """
+    from . import build_cache as bc
+
+    # Known blind spot (documented at --rebuild): system-mode third-party
+    # libs (-lfoo) resolve at link time outside these inputs, like ccache.
+    toolchain = bc.toolchain_entry(cpp_config.compiler[0])
+    if toolchain is None:
+        return
+
+    files: dict[str, dict] = {}
+
+    def add(path: Path | str) -> bool:
+        p = os.path.abspath(str(path))
+        if p not in files:
+            entry = bc.file_entry(p)
+            if entry is None:
+                return False
+            files[p] = entry
+        return True
+
+    macro_reg = compiler.macro_registry
+    pkg_dir = Path(__file__).parent
+    include_dir = runtime_dir / "cpp" / "include"
+    inputs: list = [input_path]
+    inputs += (m.path for m in compiled_modules if m.path is not None)
+    inputs += macro_reg.loaded_files.values()
+    inputs += macro_reg.probe_rejected
+    inputs += pkg_dir.rglob("*.py")
+    inputs += (p for p in include_dir.rglob("*") if p.is_file())
+    inputs += runtime_cpp_sources
+    inputs += (src for src, _flags in (third_party_plan.c_sources or []))
+    for d in (third_party_plan.extra_include_dirs or []):
+        inputs += (p for p in Path(d).rglob("*") if p.is_file())
+    for p in inputs:
+        if not add(p):
+            return  # an input vanished mid-build; skip recording
+
+    # Name-set fingerprints catch files *added* to enumerated input sets,
+    # which per-file stats can't see.
+    listings = [bc.dir_listing_entry(pkg_dir, "*.py"),
+                bc.dir_listing_entry(include_dir, "*")]
+    runtime_src_dir = runtime_dir / "cpp" / "src"
+    if runtime_src_dir.is_dir():
+        listings.append(bc.dir_listing_entry(runtime_src_dir, "*"))
+
+    binary_entry = bc.file_entry(os.path.abspath(str(binary_path)))
+    if binary_entry is None:
+        return
+    resolver = compiler.resolver
+    manifest = bc.BuildManifest(
+        options_key=cache_key,
+        toolchain=toolchain,
+        files=list(files.values()),
+        dir_listings=listings,
+        resolver={
+            "base_dir": str(resolver.base_dir),
+            "extra_dirs": [str(d) for d in resolver.extra_dirs],
+            "extra_extensions": list(resolver.extra_extensions),
+        },
+        resolutions=dict(resolver.resolution_log),
+        must_not_exist=list(macro_reg.probe_missing),
+        warnings=list(warning_messages),
+        binary=binary_entry,
+    )
+    try:
+        bc.write_manifest(build_dir, manifest)
+    except OSError:
+        pass
+
+
 def _run_cli(is_runner: bool) -> int:
     prog_name = "tpy" if is_runner else "tpyc"
     parser = argparse.ArgumentParser(
@@ -249,8 +375,11 @@ def _run_cli(is_runner: bool) -> int:
             "TurboPython Compiler - compiles TurboPython to C++"
         ),
     )
-    parser.add_argument("--version", action="version",
-                        version=f"%(prog)s {__version__} ({get_git_commit()})")
+    # NOTE: any new option that affects the emitted C++ or the binary must
+    # also be added to _cache_options_key, or the build cache will serve
+    # stale binaries across flag changes.
+    parser.add_argument("--version", action=_VersionAction, nargs=0,
+                        help="show program's version number and exit")
     parser.add_argument("input", nargs="?", help="Input TurboPython source file (.py)")
     if is_runner:
         # tpy: REMAINDER captures everything after the input positional, including
@@ -312,6 +441,9 @@ def _run_cli(is_runner: bool) -> int:
                               help="Disable ccache")
     parser.add_argument("--no-pch", dest="pch", action="store_false", default=True,
                         help="Disable precompiled header caching")
+    parser.add_argument("--rebuild", action="store_true",
+                        help="Ignore the up-to-date check and rebuild from scratch "
+                             "(escape hatch, e.g. after upgrading a system library)")
     parser.add_argument("--no-bundle-runtime", dest="bundle_runtime",
                         action="store_false", default=True,
                         help="Don't copy runtime headers into the output directory")
@@ -470,12 +602,15 @@ def _run_cli(is_runner: bool) -> int:
 
     # Load frontend plugins, if any, before deriving the module name so
     # that plugin-claimed extensions (e.g. `.pas`) are stripped.
-    try:
-        frontend_registry = _build_frontend_registry(
-            args.dsl_plugin or [], args.dsl_opt or [])
-    except FrontendPluginError as e:
-        print(f"error: {e.diagnostic.message}", file=sys.stderr)
-        return 1
+    frontend_registry = None
+    if args.dsl_plugin or args.dsl_opt:
+        from .frontend_plugin import FrontendPluginError
+        try:
+            frontend_registry = _build_frontend_registry(
+                args.dsl_plugin or [], args.dsl_opt or [])
+        except FrontendPluginError as e:
+            print(f"error: {e.diagnostic.message}", file=sys.stderr)
+            return 1
     plugin_extensions = (frontend_registry.all_extensions()
                          if frontend_registry is not None else frozenset())
     # Plugins may contribute extra library search dirs (e.g. the
@@ -535,6 +670,60 @@ def _run_cli(is_runner: bool) -> int:
     n_jobs = args.jobs or os.cpu_count() or 1
     progress = ProgressPrinter(enabled=not quiet)
 
+    # Up-to-date check: a binary-producing run whose recorded inputs are all
+    # unchanged skips the whole pipeline (front-end, codegen, C++ build) and
+    # executes the recorded binary directly. Caching is off for stdin/-c
+    # input (fresh temp dir every run), frontend plugins (plugin-side module
+    # resolution isn't replayable without loading the plugin), and -vv
+    # (wants the generated C++ printed).
+    cache_key: dict | None = None
+    key_config: CppCompilerConfig | None = None
+    if (building and not reading_from_stdin
+            and frontend_registry is None and args.verbose < 2):
+        from . import build_cache
+        try:
+            key_config = CppCompilerConfig.from_env(cxx=args.cxx)
+        except CompilerNotFoundError:
+            key_config = None  # cold path reports the error properly
+        if key_config is not None:
+            if args.ccache is not None:
+                key_config.ccache = args.ccache
+            cache_key = _cache_options_key(args, input_path, lib_dirs, key_config)
+        # --rebuild skips the check but still falls through to record a
+        # fresh manifest, so the *next* plain run can go warm.
+        if cache_key is not None and not args.rebuild:
+            cache_build_dir = build_cache.compute_build_dir(
+                output_dir, module_name,
+                "release" if args.release else "debug", flat=explicit_output)
+            hit = build_cache.check_up_to_date(cache_build_dir, cache_key)
+            if hit is not None:
+                # Diagnostics stay consistent across warm runs: replay the
+                # warnings recorded at build time.
+                for msg in hit.warnings:
+                    print(msg, file=sys.stderr)
+                if args.verbose >= 1:
+                    print(f"  cached: {hit.binary} (inputs unchanged)",
+                          file=sys.stderr)
+                if args.exec:
+                    sys.stdout.flush()
+                    sys.stderr.flush()
+                    try:
+                        os.execv(hit.binary, [hit.binary, *args.script_args])
+                    except OSError:
+                        pass  # binary vanished since the check -> rebuild
+                else:
+                    label = ("Built extension" if hit.binary.endswith(".so")
+                             else "Built")
+                    print(f"{label}: {hit.binary}")
+                    return 0
+
+    # Heavy imports, deferred past the warm path (see top-of-module note).
+    from .parse import ParseError
+    from .sema import SemanticError, DiagnosticLevel
+    from .explain import explain_send_sync
+    from .codegen_cpp import CodeGenOptions, CodeGenError
+    from .compiler import Compiler, CompileError, BuildLayout
+
     try:
         options = CodeGenOptions(emit_source_comments=args.emit_source,
                                  no_main=args.no_main,
@@ -543,9 +732,14 @@ def _run_cli(is_runner: bool) -> int:
 
         cpp_config: CppCompilerConfig | None = None
         if building:
-            cpp_config = CppCompilerConfig.from_env(cxx=args.cxx)
-            if args.ccache is not None:
-                cpp_config.ccache = args.ccache
+            # Reuse the warm-check resolution when it ran: the recorded key
+            # and the actual build config stay identical by construction.
+            if key_config is not None:
+                cpp_config = key_config
+            else:
+                cpp_config = CppCompilerConfig.from_env(cxx=args.cxx)
+                if args.ccache is not None:
+                    cpp_config.ccache = args.ccache
             progress.header(cpp_config, args.release, n_jobs)
         else:
             progress.header()
@@ -838,6 +1032,12 @@ def _run_cli(is_runner: bool) -> int:
 
             for msg in warning_messages:
                 print(msg, file=sys.stderr)
+
+            if cache_key is not None:
+                _record_build_manifest(
+                    cache_key, layout.build_dir, input_path, compiled_modules,
+                    compiler, cpp_config, runtime_dir, runtime_cpp_sources,
+                    third_party_plan, warning_messages, binary_path)
 
             if not args.exec:
                 label = "Built extension" if ext_module_build else "Built"

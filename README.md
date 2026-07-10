@@ -117,6 +117,19 @@ tpyc hello.py                    # compile only -- emit .hpp/.cpp into __tpyc__/
 tpyc -o out/ hello.py            # compile only, custom output directory
 ```
 
+Re-running an unchanged program skips the whole pipeline: after a
+successful build, `tpy` records every input (sources, imported modules,
+compiler and toolchain identity, options) next to the binary and, when
+nothing changed, executes the binary directly (~100ms startup instead of a
+rebuild). Anything changed -- a source edit, a new file that shadows an
+imported module, a compiler upgrade, different flags -- triggers a normal
+rebuild. `--rebuild` forces one; it's also the escape hatch for the
+(ccache-grade) blind spots: system-mode third-party libraries
+(`--pcre2=system` etc.) resolve at link time outside the tracked inputs,
+and compile-affecting environment variables (`CPATH`,
+`CPLUS_INCLUDE_PATH`, `LIBRARY_PATH`, `CCACHE_*`) are not part of the
+key -- after changing either, run once with `--rebuild`.
+
 A `sources.cmake` file is generated alongside the C++ output for easy CMake integration.
 By default, the tpy runtime headers are bundled into the output directory so the
 result is self-contained and can be committed or copied to another machine.

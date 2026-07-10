@@ -35,6 +35,10 @@ def get_docs_dir() -> Path:
 # can re-export them without hitting a circular-import partial-init state.
 __version__ = "0.5.0.dev0"
 
+# Lives here (not compiler.py) so the CLI's argument parser can offer the
+# choices without importing the compiler machinery.
+DEFAULT_INT_CHOICES = ("Int32", "Int64", "BigInt")
+
 
 def _parse_version_info(v: str) -> tuple[int, int, int, str, int]:
     """Parse a PEP 440 version string into a CPython-style version_info tuple.
@@ -66,13 +70,28 @@ def _parse_version_info(v: str) -> tuple[int, int, int, str, int]:
 VERSION_INFO: tuple[int, int, int, str, int] = _parse_version_info(__version__)
 
 
-from .typesys import (
-    TpyType, VoidType, NominalType, PtrType, is_readonly_ptr,
-    INT32, VOID, TypeRegistry
-)
-from .parse import Parser, ParseError, TpyModule
-from .sema import SemanticAnalyzer, SemanticError
-from .codegen_cpp import CodeGenerator
+# Re-exports resolve lazily (PEP 562): pulling typesys/parse/sema/codegen
+# eagerly costs ~250ms on EVERY `import tpyc.<anything>`, defeating the
+# build cache's warm path (which must decide "binary is up to date, exec
+# it" without loading the compiler at all).
+_LAZY_EXPORTS = {
+    "TpyType": "typesys", "VoidType": "typesys", "NominalType": "typesys",
+    "PtrType": "typesys", "is_readonly_ptr": "typesys",
+    "INT32": "typesys", "VOID": "typesys", "TypeRegistry": "typesys",
+    "Parser": "parse", "ParseError": "parse", "TpyModule": "parse",
+    "SemanticAnalyzer": "sema", "SemanticError": "sema",
+    "CodeGenerator": "codegen_cpp",
+}
+
+
+def __getattr__(name: str):
+    submodule = _LAZY_EXPORTS.get(name)
+    if submodule is None:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    import importlib
+    value = getattr(importlib.import_module(f".{submodule}", __name__), name)
+    globals()[name] = value
+    return value
 
 
 def get_git_commit() -> str:

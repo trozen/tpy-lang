@@ -223,11 +223,15 @@ TurboPython Source (.py) -> Parser -> Semantic Analyzer -> Code Generator -> C++
 
 **C++ build** (`compiler.py` / `cli.py`): After codegen, the CLI generates a CMake sources file or invokes the C++ compiler directly. Object files are compiled in parallel (`-j`), then linked. Optional ccache integration.
 
+**Whole-run build cache** (`build_cache.py`): after a successful binary-producing build the CLI writes a manifest next to the binary (every input file, module-resolution outcomes, toolchain identity, options key); an unchanged rerun skips the whole pipeline, replays recorded warnings, and `os.execv`s the binary (~100ms). To keep that warm path fast, `tpyc/__init__.py` and `tpyc/modules/__init__.py` re-export lazily (PEP 562) and the C++ toolchain block lives in light `toolchain.py` -- don't add heavy imports to those or to `cli.py`'s module level. `--rebuild` bypasses the cache.
+
 ### Source layout
 
 The compiler lives in `tpyc/`. Modules are grouped by phase -- browse `tpyc/` to see the full layout. Key top-level entries:
 
 - `cli.py` -- CLI entry point
+- `build_cache.py` -- whole-run up-to-date check (manifest + warm-path exec); light imports only
+- `toolchain.py` -- C++ toolchain discovery/config (CppCompilerConfig, warn flags, PCH); light imports only
 - `parse/` -- parser package (`parser.py`, `nodes.py`, `imports.py`)
 - `typesys.py`, `type_resolver.py` -- type system and resolver for parser-emitted `TypeRefNode`s
 - `sema/` -- multi-pass semantic analysis (analyzer, statements, expressions, calls, methods, protocols, narrowing, mutation_propagation, value_range, flow_facts, match, ...)
