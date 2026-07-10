@@ -72,6 +72,14 @@ _LANDMARKS: tuple[tuple[type, str], ...] = (
 _CAMEL_SPLIT = re.compile(r"(?<!^)(?=[A-Z])")
 
 
+class ThirUnsupported(Exception):
+    """A lowering-time rejection that routes the whole body to AST codegen."""
+
+    def __init__(self, reason: str) -> None:
+        super().__init__(reason)
+        self.reason = reason
+
+
 def note(reason: str) -> bool:
     """Record `reason` as the current attempt's first reject, if none is
     recorded yet. Returns False so gate sites can `return note("sig.x")`

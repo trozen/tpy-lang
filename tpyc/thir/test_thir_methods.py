@@ -365,8 +365,8 @@ class TestScalarFieldWrite:
         assert isinstance(st.target, THIRFieldAccess) and st.target.is_arrow
 
     def test_mixed_scalar_and_optional_write_body(self):
-        # Both write forms in one body exercise the `or`-dispatch in
-        # `_stmt_eligible` -- neither blocks the other's eligibility.
+        # Both write forms in one body exercise sequential assignment
+        # validation -- neither blocks the other's lowering.
         thir = _lower_ctx(
             _F1_RECORDS + "def mixed(b: Box):\n    b.n = 7\n    b.opt = None\n")
         assert _fn(thir, "mixed") is not None

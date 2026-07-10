@@ -353,3 +353,35 @@ class _LowerCtx:
         # condition-scoped -- installed and popped by _lower_narrow_cond,
         # never live across statements (deliberately OUTSIDE _NarrowScope).
         self.inline_narrowed: dict[str, tuple[str, bool]] = {}
+
+
+@dataclass
+class _LowerScope:
+    """The complete live statement-lowering view.
+
+    Function-wide representation state remains owned by `_LowerCtx`; lexical
+    bindings and control position vary per nested body. Keeping both behind
+    one carrier lets lowering become the authoritative sequential walk without
+    cloning the old eligibility walk's state model.
+    """
+    lc: _LowerCtx
+    declared: dict[str, TpyType]
+    in_branch: bool = False
+    branch_decls_ok: bool = False
+    loop_depth: int = 0
+
+    def walk_state(self) -> _WalkState:
+        """Snapshot the compatibility state consumed by unmigrated guards."""
+        gate_pointers = {
+            name for name in self.lc.pointers
+            if _optional_ptr_borrow(self.declared.get(name),
+                                    self.lc.analyzer) is None
+        }
+        return _WalkState(
+            declared=dict(self.declared),
+            pointers=gate_pointers,
+            rebind_slots=set(self.lc.rebind_slot_locals),
+            storage_tuple_locals=set(self.lc.storage_tuple_locals),
+            narrowed=set(self.lc.narrow.narrowed),
+            persistent_narrowed=set(self.lc.narrow.persistent_narrowed),
+        )

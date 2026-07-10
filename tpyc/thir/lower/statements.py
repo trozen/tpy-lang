@@ -1,6 +1,5 @@
-"""Statement gate + lowering: _stmt_eligible/_body_eligible and
-_lower_stmt(s) with the per-shape arms (var-decl, branches, loops,
-with, try, raise, narrowing statements).
+"""Sequential statement lowering with per-shape validation for declarations,
+branches, loops, with, try, raise, and narrowing statements.
 """
 
 from __future__ import annotations
@@ -84,6 +83,7 @@ from ...codegen_cpp.forms import (
 from ...liveness import stmts_terminate
 from ..faces import witness as _witness
 from ..fallback import (
+    ThirUnsupported,
     begin_stmt,
     expr_kind_tag,
     note,
@@ -194,6 +194,7 @@ from .predicates import (
 )
 from .context import (
     _LowerCtx,
+    _LowerScope,
     _Prescan,
     _WalkState,
 )
@@ -448,10 +449,7 @@ def _for_range_eligible(stmt: TpyForEach, analyzer, ws: _WalkState,
     stop_arg = it.args[0] if nargs == 1 else it.args[1]
     if not _range_bound_eligible(stop_arg, ws.declared, analyzer):
         return False
-    body_ws = ws.branch_copy()
-    body_ws.declared[stmt.var] = et  # loop var's resolved (fixed-int) type
-    return _body_eligible(stmt.body, analyzer, body_ws, prescan, in_branch=True,
-                          in_loop=True, branch_decls_ok=True)
+    return True
 
 def _for_each_container_eligible(stmt: TpyForEach, analyzer, ws: _WalkState,
                                  prescan: _Prescan) -> bool:
@@ -553,14 +551,10 @@ def _for_each_container_eligible(stmt: TpyForEach, analyzer, ws: _WalkState,
         et = str_et
     # Compositional element gate: admit any element with a byte-identical
     # loop_var_binding arm (every resolved concrete type -- the shared helper
-    # picks the form), then let the body's own reads of the loop var route
-    # recursively. Unresolved pending elements stay on the AST path.
+    # picks the form). Unresolved pending elements stay on the AST path.
     if not _for_each_elem_binding_ok(et):
         return note_detail("foreach.elem_family")
-    body_ws = ws.branch_copy()
-    body_ws.declared[stmt.var] = et
-    return _body_eligible(stmt.body, analyzer, body_ws, prescan, in_branch=True,
-                          in_loop=True, branch_decls_ok=True)
+    return True
 
 def _for_tuple_unpack_eligible(stmt: TpyForEach, analyzer, ws: _WalkState,
                                prescan: _Prescan) -> bool:
@@ -592,17 +586,14 @@ def _for_tuple_unpack_eligible(stmt: TpyForEach, analyzer, ws: _WalkState,
         return False
     if not all(up.is_new):
         return False
-    target_types = []
     for i, name in enumerate(up.targets):
         tt = unwrap_ref_type(up.target_types[i])
         if name is None:
-            target_types.append(None)
             continue
         if name in ws.declared or name in ws.narrowed:
             return False
         if not _eligible_scalar(tt):
             return False
-        target_types.append(tt)
     it = stmt.iterable
     if isinstance(it, TpyMethodCall):
         # `for k, v in d.items():` -- the items view is an rvalue capture.
@@ -624,13 +615,18 @@ def _for_tuple_unpack_eligible(stmt: TpyForEach, analyzer, ws: _WalkState,
         return False
     if not is_native_iterable(it_type, analyzer.registry):
         return False
-    body_ws = ws.branch_copy()
-    body_ws.declared[stmt.var] = unwrap_ref_type(stmt.elem_type)
-    for name, tt in zip(up.targets, target_types):
-        if name is not None:
-            body_ws.declared[name] = tt
-    return _body_eligible(stmt.body[1:], analyzer, body_ws, prescan,
-                          in_branch=True, in_loop=True, branch_decls_ok=True)
+    return True
+
+
+def _for_each_stmt_eligible(stmt: TpyForEach, analyzer, ws: _WalkState,
+                            prescan: _Prescan) -> bool:
+    return (_for_range_eligible(
+                stmt, analyzer, ws, prescan)
+            or _for_each_container_eligible(
+                stmt, analyzer, ws, prescan)
+            or _for_tuple_unpack_eligible(
+                stmt, analyzer, ws, prescan)
+            or _kind_detail("foreach.iter_", stmt.iterable))
 
 def _tuple_unpack_targets(stmt: TpyTupleUnpack, ws: _WalkState
                           ) -> 'list[TpyType | None] | None':
@@ -845,9 +841,6 @@ def _with_eligible(stmt: TpyWith, analyzer, ws: _WalkState, prescan: _Prescan,
         arms.append((item, arm, et))
         if item.target is not None:
             body_ws.declared[item.target] = et
-    if not _body_eligible(stmt.body, analyzer, body_ws, prescan,
-                          in_branch=True, in_loop=in_loop):
-        return False
     # Targets are declared at the enclosing C++ scope and stay visible after
     # the block -- extend the outer walk state like a top-level var-decl.
     for item, arm, et in arms:
@@ -924,33 +917,9 @@ def _try_eligible(stmt: TpyTry, analyzer, ws: _WalkState, prescan: _Prescan,
         if not _try_hoist_type_ok(vtype, analyzer):
             return False
         hoist_declared[name] = vtype
-    body_ws = ws.branch_copy()
-    body_ws.declared.update(hoist_declared)
-    if not _body_eligible(stmt.try_body, analyzer, body_ws, prescan,
-                          in_branch=True, in_loop=in_loop):
-        return False
     for h in stmt.handlers:
-        h_ws = ws.branch_copy()
-        h_ws.declared.update(hoist_declared)
-        if h.binding:
-            bt = _handler_binding_type(h, analyzer)
-            if bt is None:
-                return False
-            h_ws.declared[h.binding] = bt
-        if not _body_eligible(h.body, analyzer, h_ws, prescan,
-                              in_branch=True, in_loop=in_loop):
+        if h.binding and _handler_binding_type(h, analyzer) is None:
             return False
-    if stmt.else_body:
-        e_ws = ws.branch_copy()
-        e_ws.declared.update(hoist_declared)
-        if not _body_eligible(stmt.else_body, analyzer, e_ws, prescan,
-                              in_branch=True, in_loop=in_loop):
-            return False
-    fin_ws = ws.branch_copy()
-    fin_ws.declared.update(hoist_declared)
-    if not _body_eligible(stmt.finally_body, analyzer, fin_ws, prescan,
-                          in_branch=True, in_loop=in_loop):
-        return False
     ws.declared.update(hoist_declared)
     return True
 
@@ -987,6 +956,668 @@ def _raise_eligible(stmt: TpyRaise, analyzer, ws: _WalkState) -> bool:
                 return False
     return True
 
+
+def _while_eligible(stmt: TpyWhile, analyzer, ws: _WalkState,
+                    prescan: _Prescan) -> bool:
+    if stmt.orelse:
+        return False
+    if analyzer.if_branch_decls.get(id(stmt)):
+        return False
+    info = _narrow_cond_info(stmt.condition, ws.declared, analyzer)
+    if info is not None:
+        var, u, _members, folded, _isin = info
+        if folded or var in ws.narrowed:
+            return False
+        if not _narrow_facts_ok(u, stmt.then_type_facts, var):
+            return False
+        return True
+    return _condition_eligible(stmt.condition, ws.declared, analyzer)
+
+
+def _expr_stmt_eligible(stmt: TpyExprStmt, analyzer, ws: _WalkState,
+                        prescan: _Prescan) -> bool:
+    """A print or discarded call whose statement-position render is mirrored.
+
+    Narrowed union subjects keep the AST print wrapper. `param_names` keeps a
+    str parameter's view form distinct from an owned local at mutation calls.
+    """
+    if _is_builtin_print(stmt.expr, ws.declared, analyzer):
+        e = stmt.expr
+        if e.kwargs or e.double_star_unpack is not None:
+            return note_detail("print.kwargs")
+        if any(isinstance(a, TpyName) and a.name in ws.narrowed
+               for a in e.args):
+            return note_detail("print.narrowed_arg")
+        for a in e.args:
+            ok = (_comprehensions._comp_print_arg_ok(a, ws, analyzer)
+                  if type(a) in _comprehensions._COMP_KINDS
+                  else (_print_arg_ok(a, ws.declared, analyzer)
+                        or (isinstance(a, TpyName)
+                            and a.name not in ws.pointers
+                            and _wrap_print_form(a, ws.declared, analyzer)
+                            is not None
+                            and _witness("print.wrap_arg"))))
+            if not ok:
+                fam = _type_family_tag(analyzer.get_expr_type(a), analyzer)
+                return _kind_detail(f"print.arg.{fam}_", a)
+        return True
+    if isinstance(stmt.expr, TpyCall):
+        return _call_eligible(stmt.expr, ws.declared, analyzer,
+                              stmt_position=True, temps_ok=True,
+                              narrowed=ws.narrowed)
+    if isinstance(stmt.expr, TpyMethodCall):
+        return _method_call_eligible(
+            stmt.expr, ws.declared, analyzer,
+            stmt_position=True, temps_ok=True, narrowed=ws.narrowed,
+            param_names=prescan.param_names)
+    return _kind_detail("expr_stmt.", stmt.expr)
+
+
+def _aug_assign_eligible(stmt: TpyAugAssign, analyzer, ws: _WalkState,
+                         prescan: _Prescan) -> bool:
+    if isinstance(stmt.target, TpyName) and stmt.target.name in ws.narrowed:
+        return False
+    if isinstance(stmt.target, TpySubscript):
+        return _container_aug_setitem_ok(stmt, ws, analyzer)
+    return (_scalar_aug_assign_ok(stmt, ws.declared, analyzer)
+            or _str_aug_append_ok(stmt, ws.declared, prescan, analyzer)
+            or _bytes_aug_concat_ok(stmt, ws.declared, prescan, analyzer))
+
+
+def _assign_eligible(stmt: TpyAssign, analyzer, ws: _WalkState,
+                     prescan: _Prescan) -> bool:
+    if isinstance(stmt.target, TpyName):
+        if stmt.target.name in ws.narrowed:
+            return False
+        if prescan.has_self and stmt.target.name == "self":
+            return False
+        if (isinstance(stmt.value, TpyStrLiteral)
+                and _eligible_char(ws.declared.get(stmt.target.name))):
+            return False
+        if isinstance(stmt.value, TpyBytesLiteral):
+            return False
+        return (stmt.target.name in ws.declared
+                and (_expr_eligible(stmt.value, ws.declared, analyzer)
+                     or _stmt_value_temps_call(stmt.value, ws, analyzer)))
+    if isinstance(stmt.target, TpySubscript):
+        return _container_setitem_ok(stmt, ws, analyzer)
+    return (_f2b_optional_field_write_ok(
+                stmt, ws.declared, ws.pointers, analyzer)
+            or _scalar_field_write_ok(
+                stmt, ws.declared, analyzer, ws)
+            or _f1_tuple_field_write_ok(
+                stmt, ws.declared, ws.storage_tuple_locals, analyzer)
+            or _ptr_union_field_write_ok(stmt, ws.declared, analyzer)
+            or _record_field_write_ok(
+                stmt, ws.declared, analyzer, ws, prescan)
+            or _optional_record_field_write_ok(
+                stmt, ws.declared, ws.pointers, analyzer, ws, prescan)
+            or _container_field_write_ok(stmt, ws.declared, analyzer)
+            or _str_field_write_ok(stmt, ws.declared, analyzer)
+            or note_detail("assign.field_write_shape"))
+
+
+def _return_eligible(stmt: TpyReturn, analyzer, ws: _WalkState,
+                     prescan: _Prescan) -> bool:
+    if stmt.value is None:
+        return True
+    if prescan.ret_borrow_tuple is not None:
+        # A borrow-form tuple return lifts a storage tuple lvalue via
+        # `tuple_to_pointer` (F3). The source is a storage tuple lvalue: a field
+        # read off an F1-record receiver, or a storage-tuple alias local (`auto&&`).
+        # Subscript / call sources ride later F3 cells and stay on the AST path.
+        if isinstance(stmt.value, TpyName):
+            return stmt.value.name in ws.storage_tuple_locals
+        return (_const_exact_field_receiver_ok(stmt.value, ws.declared,
+                                               analyzer)
+                and _f1_tuple(analyzer.get_expr_type(stmt.value), analyzer)
+                is not None)
+    if prescan.ret_storage_opt is not None:
+        # A storage-form Optional[F1-record] return admits `None`
+        # (-> std::nullopt, F2c) or a borrow `T*` lift (-> ptr_to_optional[_move],
+        # copy or move per last-use; F2c copy / F2e move). Storage-field / call
+        # sources stay on the AST path.
+        return (isinstance(stmt.value, TpyNoneLiteral)
+                or _is_borrow_ptr_local(stmt.value, ws.declared, ws.pointers))
+    if prescan.ret_ptr_opt is not None:
+        # A pointer-repr Optional[F1-record] return (`A | None` -> `A*`)
+        # admits `None` (-> `nullptr`), an already-pointer borrow name
+        # (an Optional-ptr param / OPTIONAL_TO_PTR local / F2
+        # pointer-local -- bare, whether or not sema narrowed the read),
+        # or a plain F1-record name (`&(name)`). Field / call / Own /
+        # `self` / union-narrowed sources take other
+        # _optional_pointer_form_value arms -> AST path.
+        if isinstance(stmt.value, TpyNoneLiteral):
+            return True
+        if (not isinstance(stmt.value, TpyName)
+                or stmt.value.name == "self"
+                or stmt.value.name in ws.narrowed):
+            return False
+        if _optional_ptr_borrow_name(stmt.value, ws.declared,
+                                     analyzer) is not None:
+            return True
+        dt = ws.declared.get(stmt.value.name)
+        dt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(dt)))
+              if dt is not None else None)
+        if isinstance(dt, OwnType):
+            return False  # an Own source's move arm is not mirrored
+        return _f1_record(dt, analyzer)
+    if prescan.ret_value_opt is not None:
+        # A value-repr Optional[cheap scalar] return (`-> Int32 | None` ->
+        # `std::optional<T>`): `None` -> `std::nullopt`; a value-opt param
+        # name passes the WHOLE optional bare (deref-on-narrow stripped,
+        # like the value-optional call slot); every other scalar source
+        # rides the generic expr tail below, whose type-exact / coerce-
+        # wrapped rendering matches the AST's `gen_expr_deref` at a
+        # value-optional target (no extra cast fires).
+        if isinstance(stmt.value, TpyNoneLiteral):
+            return _witness("ret.value_opt_none")
+        if (isinstance(stmt.value, TpyName)
+                and stmt.value.name in prescan.value_opt_params):
+            return _witness("ret.value_opt_name")
+        # A cross-width value-opt param source (`Int8 | None` ->
+        # `Int32 | None`) arrives coerce-wrapped: the AST casts the WHOLE
+        # optional (`static_cast<optional<int32>>(p)`), but the generic tail
+        # would deref the narrowed inner (`(*p)`) before the cast. Defer.
+        peeled = _peel_coerce(stmt.value)
+        if (isinstance(peeled, TpyName)
+                and peeled.name in prescan.value_opt_params):
+            return note_detail("return.optval_coerced_param")
+    if prescan.ret_value_opt_view is not None:
+        # A value-repr Optional[view] return -- str (`-> str | None` ->
+        # `std::optional<std::string>`) or bytes (`-> bytes | None` ->
+        # `std::optional<std::vector<uint8_t>>`): `None` -> `std::nullopt`; a
+        # value-repr Optional[view] PARAM name of the same family takes the
+        # view->owned arg-split shim (`x ? std::make_optional(<conv>(*x)) :
+        # std::nullopt`, THIROptViewArg -- the WHOLE optional, narrowed or
+        # not, like the arg slot). A str/bytes LITERAL lands bare via the
+        # general tail (the owned literal / implicit conversion).
+        if isinstance(stmt.value, TpyNoneLiteral):
+            return _witness("ret.value_opt_view_none")
+        if (isinstance(stmt.value, TpyName)
+                and stmt.value.name in prescan.param_names
+                and _opt_view_arg_shim(ws.declared.get(stmt.value.name),
+                                       prescan.ret_value_opt_view, analyzer)):
+            return _witness("ret.value_opt_view_shim")
+        if isinstance(stmt.value, (TpyStrLiteral, TpyBytesLiteral)):
+            # `return "lit"` / `return b"lit"` -> bare (the owned literal /
+            # implicit conversion into the optional); rides the generic tail.
+            return _witness("ret.value_opt_view_literal")
+        # Any other source (a view-form `StrView`/`BytesView` local/param, an
+        # owned `String` / owned-bytes result) is deferred: a bare
+        # `return <view>;` is a pre-existing AST miscompile at this slot (a
+        # view does not convert to the owned optional, BUGS.md), and owned
+        # results ride a later widening. Reject so the body falls to AST
+        # rather than the validator's BORROW-at-value-return catch.
+        return note_detail("return.opt_view_source")
+    if (prescan.ret_record_borrow is not None
+            or prescan.ret_record_storage is not None):
+        # A record return slot. BORROW (`-> Box` -> `Box&`) admits a bare
+        # record borrow name (a record param or REF_ALIAS local, rendering
+        # `return name;`), `self`, and a plain field read (arms below).
+        # STORAGE (`-> Own[Box]` -> `Box` by value) admits bare names too
+        # (owned local NRVO / `Own` rvalue-ref-param implicit move -- both
+        # render bare; a borrowed source without copy() is a sema error,
+        # so no copy shape reaches this arm). Pointer-locals (`(*p)` deref
+        # + move) and narrowed names stay on the AST path; an Own-declared
+        # source at the BORROW slot would take a move arm the mirror
+        # lacks.
+        # A record-rvalue ctor / by-value call source returns its bare
+        # expansion at EITHER record slot: the storage slot (`-> Own[Box]`)
+        # by design, and the borrow-classified slot only for a VALUE-type
+        # record (`-> Vec2` returns by value; `_record_borrow_return` does
+        # not exclude value records) -- a non-value record rvalue at a
+        # plain `-> Box` slot is a sema error ("cannot return local or
+        # temporary as reference"), so no dangling shape compiles.
+        if _is_record_rvalue_source(stmt.value, ws.declared, analyzer):
+            return _witness("ret.record_storage")
+        if prescan.ret_record_borrow is not None:
+            # `return self` (builder / __enter__-style methods): the AST's
+            # indirect-name deref renders `return (*this);`, mirrored by
+            # THIRSelf(deref=True). No move arm can fire (`self` is never
+            # movable; consuming methods never route). A subclass receiver
+            # at a base-record slot renders the same -- the derived-to-base
+            # bind lives in the C++ reference. `prescan.has_self` keeps a
+            # free function's param/local that merely SHARES the name on
+            # the bare-name path below (lowering agrees: it keys on
+            # lc.self_receiver and renders a non-receiver `self` bare,
+            # like the AST).
+            if (prescan.has_self
+                    and isinstance(stmt.value, TpyName)
+                    and stmt.value.name == "self"
+                    and _f1_record(ws.declared.get("self"), analyzer)):
+                return _witness("ret.record_self")
+            # `return recv.field`: a plain F1-record field read at the
+            # borrow slot renders the bare access (`return this->box;` /
+            # `return h.box;`) -- the default field render, no move/copy
+            # wrap. (`Own[...]` on a field is itself a sema error, so the
+            # non-Own check in `_record_borrow_return` is type-shape
+            # gating, not a move-arm guard.) A marker-carrying access
+            # stays AST.
+            if (isinstance(stmt.value, TpyFieldAccess)
+                    and _field_receiver_ok(stmt.value, ws.declared,
+                                           analyzer)
+                    and _record_borrow_return(
+                        analyzer.get_expr_type(stmt.value), analyzer)
+                    is not None):
+                return _witness("ret.record_field")
+        if (not isinstance(stmt.value, TpyName)
+                or stmt.value.name == "self"
+                or stmt.value.name in ws.narrowed
+                or stmt.value.name in ws.pointers):
+            return note_detail(_record_source_reject_detail(
+                stmt.value, ws, prescan.ret_record_borrow is not None))
+        dt = ws.declared.get(stmt.value.name)
+        dt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(dt)))
+              if dt is not None else None)
+        if prescan.ret_record_borrow is not None and isinstance(dt, OwnType):
+            return note_detail("return.record_source.own_at_borrow")
+        face = ("ret.record_borrow" if prescan.ret_record_borrow is not None
+                else "ret.record_storage")
+        return ((_f1_record(dt, analyzer) and _witness(face))
+                or note_detail("return.record_source.name_notf1"))
+    if prescan.ret_container_storage is not None:
+        # A storage container return (`-> Own[list[T]]` -> a by-value
+        # vector/map/set): a bare owned container name (NRVO / Own-param
+        # implicit move -- renders bare; narrowed / pointer-local /
+        # reassigned-alias names stay AST: a reassigned container local is
+        # a pointer-local on the AST path) or a container literal (the
+        # decl-init renders, position-independent -- incl. the empty-list
+        # `std::vector<T>{}` spell). Field / call / subscript sources ride
+        # later cells.
+        v = stmt.value
+        if isinstance(v, TpyName):
+            if (v.name in ws.narrowed or v.name in ws.pointers
+                    or v.name in prescan.reassigned
+                    or v.name not in ws.declared):
+                return note_detail("return.container_source")
+            dt = unwrap_readonly(unwrap_ref_type(
+                unwrap_send_sync(ws.declared[v.name])))
+            if isinstance(dt, OwnType):
+                dt = unwrap_readonly(dt.wrapped)
+            return (((is_list(dt) or is_dict(dt) or is_set(dt))
+                     and _witness("ret.container_name"))
+                    or note_detail("return.container_source"))
+        if isinstance(v, (TpyArrayLiteral, TpyDictLiteral, TpySetLiteral)):
+            return ((_container_literal_ok(v, prescan.ret_container_storage,
+                                           ws.declared, analyzer)
+                     and _witness("ret.container_literal"))
+                    or note_detail("return.container_source"))
+        # A container-returning call source (`return make_list(n);`):
+        # the bare call materializes the by-value return directly on
+        # both paths (copy elision -- no move/convert arm fires).
+        if isinstance(v, TpyCall):
+            return ((_call_eligible(v, ws.declared, analyzer,
+                                    temps_ok=True, narrowed=ws.narrowed,
+                                    storage_ret_ok=True)
+                     and _witness("ret.container_call"))
+                    or note_detail("return.container_source"))
+        return note_detail("return.container_source")
+    if prescan.ret_value_tuple is not None:
+        # A value-tuple return (`-> tuple[int, str]` -> a by-value
+        # `std::tuple<...>`): a tuple literal renders the spelled
+        # brace-init with per-slot element targets; a bare value-tuple
+        # name returns bare (a value-type copy, param or local alike --
+        # no move/copy() machinery). Subscript / call / field sources
+        # ride later cells.
+        v = stmt.value
+        if isinstance(v, TpyTupleLiteral):
+            return ((_tuple_literal_ok(v, prescan.ret_value_tuple,
+                                       ws.declared, analyzer)
+                     and _witness("ret.tuple_literal"))
+                    or note_detail("return.tuple_source"))
+        if isinstance(v, TpyName):
+            if v.name in ws.narrowed or v.name not in ws.declared:
+                return note_detail("return.tuple_source")
+            return ((_value_tuple(ws.declared[v.name], analyzer) is not None
+                     and _witness("ret.tuple_name"))
+                    or note_detail("return.tuple_source"))
+        # A tuple-returning call source (`return make_pair(n);`): the
+        # bare call, like the container twin above.
+        if isinstance(v, TpyCall):
+            return ((_call_eligible(v, ws.declared, analyzer,
+                                    temps_ok=True, narrowed=ws.narrowed,
+                                    storage_ret_ok=True)
+                     and _witness("ret.tuple_call"))
+                    or note_detail("return.tuple_source"))
+        return note_detail("return.tuple_source")
+    # `return None` at a value-union return slot -> `std::monostate{}`
+    # (F4 U1). Union names/literals flow through the generic arm below.
+    if prescan.ret_union is not None and isinstance(stmt.value, TpyNoneLiteral):
+        return True
+    # A str/StrView member SOURCE read into a value union (a str param /
+    # local / field, not a literal) is a view->owned member INSERT the
+    # union return arm does not wire -- the same form-relevant boundary
+    # `_value_union_temp_slot` rejects for arg inserts. The AST's bare
+    # `return name;` is itself a miscompile at this slot (no view->owned
+    # conversion emitted, BUGS.md), so no green corpus case exercises it.
+    # A str LITERAL renders bare (target-typed) and a whole-union / scalar
+    # / Char source is value-form; `_resolved_str_value` matches exactly
+    # the view/pending (BORROW-form) str sources (owned `String` -- STORAGE
+    # -- resolves None and routes). Bytes is a reference type, never a
+    # value-union member, so no bytes twin is needed.
+    if prescan.ret_union is not None:
+        src = stmt.value
+        while isinstance(src, TpyCoerce):
+            src = src.expr
+        if (not isinstance(src, TpyStrLiteral)
+                and _resolved_str_value(analyzer.get_expr_type(src),
+                                        analyzer) is not None):
+            return note_detail("return.union_view_insert")
+    # A pointer-variant return (F4 U2) admits same-union borrow names
+    # (bare) and `None` (`std::monostate{}`, target-typed -- the U1
+    # return arm's pointer-variant twin). A MEMBER record name takes the
+    # `&(...)` address-of lift, a storage field the (miscompiled,
+    # BUGS.md) `&(h.u)` -- both AST-path shapes.
+    if prescan.ret_ptr_union is not None:
+        if isinstance(stmt.value, TpyNoneLiteral):
+            return True
+        return _ptr_union_source_ok(stmt.value, ws.declared, analyzer,
+                                    prescan.ret_ptr_union,
+                                    allow_field=False)
+    # `return "x"` at a Char return renders a target-typed char literal
+    # (`'x'`) on the AST path -- not reproduced outside compare position.
+    if prescan.ret_char and isinstance(stmt.value, TpyStrLiteral):
+        return False
+    # An owned-str field read is already STORAGE form and renders bare at a
+    # str-family return slot. Other admitted field receivers keep their more
+    # specific fallback classification.
+    if prescan.ret_str is not None and isinstance(stmt.value, TpyFieldAccess):
+        if _str_field_value_read(stmt.value, ws.declared, analyzer):
+            return _witness("ret.str_field")
+        if _field_receiver_ok(stmt.value, ws.declared, analyzer):
+            return note_detail("return.str_field_form")
+    return (_expr_eligible(stmt.value, ws.declared, analyzer)
+            or _stmt_value_temps_call(stmt.value, ws, analyzer))
+
+
+def _var_decl_eligible(stmt: TpyVarDecl, analyzer, ws: _WalkState,
+                       prescan: _Prescan, *, in_branch: bool,
+                       branch_decls_ok: bool = False) -> bool:
+    if stmt.linkage != VarLinkage.DEFAULT:
+        return note_detail("decl.linkage")
+    if stmt.init is None:
+        return note_detail("decl.no_init")
+    # A `self = ...` rebind in a method: codegen's scope never seeds the
+    # receiver as a NAME, so the AST emits a fresh SHADOWING decl
+    # (`const T& self = other;`) while the walk state -- which does seed
+    # `self` -- would classify a reassign and lower the bare (undeclared)
+    # `self = other;`. Out of the slice. (The AST's own post-rebind reads
+    # still target `this` -- a pre-existing divergence, see BUGS.md.)
+    if prescan.has_self and stmt.name == "self":
+        return note_detail("decl.self_rebind")
+    # A direct rebind of an isinstance-narrowed name: the AST write targets
+    # the extraction alias / the variant inconsistently across shapes --
+    # out of the U3 slice (field writes THROUGH the alias stay eligible;
+    # they rename like reads).
+    if stmt.name in ws.narrowed:
+        return note_detail("decl.narrowed_rebind")
+    is_reassign = stmt.name in ws.declared
+    # A value local FIRST-declared inside an if/elif/else/for/while body
+    # emits in place (lowering walks each branch/loop body under its own
+    # declared-scope copy). Admit it only when the enclosing construct
+    # hoists nothing (its gate cleared `if_branch_decls` -> passes
+    # `branch_decls_ok`) and the decl is a VALUE form whose lowering
+    # touches no function-scoped walk state: the non-value first-decl arms
+    # below (borrow / storage-tuple / container / comprehension / owned-
+    # record / ptr-union / storage-call) add to `lc.pointers` /
+    # `rebind_slots` / `storage_tuple_locals` / `const_locals`, which
+    # lowering does NOT branch-restore, so a first-decl of one would leak
+    # past the branch. try/with bodies never pass `branch_decls_ok`, so
+    # their in-branch first-decls stay AST (a non-hoisted try-body decl
+    # declares inside the C++ try scope -- unverified for the slice).
+    in_branch_first = in_branch and not is_reassign and branch_decls_ok
+    if in_branch and not is_reassign and not branch_decls_ok:
+        return note_detail("decl.branch_first_decl")
+    if not is_reassign and not in_branch:
+        # First decl of a non-value local (REF_ALIAS / OPTIONAL_TO_PTR /
+        # POINTER), bound from a field read off an F1-record receiver. Its
+        # non-value field init is not a value expression, so it is admitted
+        # here, not via _expr_eligible (which rejects it). A POINTER local is
+        # recorded so its later reassignments lower as reseats.
+        binding = _borrow_local_binding(
+            stmt, _var_decl_type(stmt, analyzer), ws.declared, prescan, analyzer)
+        if binding is not None:
+            if binding is LocalBinding.POINTER:
+                ws.pointers.add(stmt.name)
+            elif binding is LocalBinding.REBIND_SLOT:
+                # An F2d rebind-slot local: in `pointers` for its `->` reads,
+                # in `rebind_slots` so its reseats lower as rvalue rebinds.
+                ws.pointers.add(stmt.name)
+                ws.rebind_slots.add(stmt.name)
+            return True
+        # F3 storage-tuple alias (`t = <storage tuple field>` -> `auto&& t = ...`):
+        # a pointer-repr tuple local aliasing a storage tuple field off an
+        # F1-record receiver. Tracked so its reads lift via tuple_to_pointer at
+        # borrow boundaries (e.g. `return t`) and so the borrow-tuple write source
+        # excludes it (it is storage form, a direct copy).
+        if (is_storage_tuple_alias_decl(
+                _var_decl_type(stmt, analyzer), stmt.init, name=stmt.name,
+                reassigned=prescan.reassigned, hoisted=prescan.hoisted,
+                move_through=prescan.move_through)
+                and _const_exact_field_receiver_ok(stmt.init, ws.declared,
+                                                   analyzer)
+                and _f1_tuple(analyzer.get_expr_type(stmt.init), analyzer) is not None):
+            ws.storage_tuple_locals.add(stmt.name)
+            return True
+        # Container-literal local (`xs = [1, 2]` / `d = {k: v}`): the local
+        # enters `declared` with its resolved container type, so the
+        # receiver gates (subscript / len / iteration / method calls)
+        # admit it exactly like a container param.
+        if _container_literal_decl_ok(stmt, ws.declared, prescan, analyzer):
+            return True
+        # C1+C2 comprehension local: routes like a container-literal
+        # local -- the name enters `declared` with its resolved container
+        # type, so the receiver gates (len / subscript / iteration /
+        # method calls) light up on it.
+        if _comprehensions._comp_decl_ok(stmt, ws, prescan, analyzer):
+            return True
+        # Owned record local (`b = Box(n)` / `x = make(1)`): a plain
+        # value decl in storage form; reads off it route via the
+        # declared-type-keyed receiver gates like a record param's.
+        if _owned_record_decl_ok(stmt, _var_decl_type(stmt, analyzer),
+                                 prescan, ws.declared, analyzer,
+                                 narrowed=ws.narrowed):
+            return True
+    elif stmt.name in ws.rebind_slots:
+        # F2d rebind-slot reseat: an rvalue F1-record ctor / by-value source.
+        return (_is_record_rvalue_source(stmt.init, ws.declared, analyzer)
+                or note_detail("decl.rebind_source"))
+    elif stmt.name in ws.pointers:
+        # F2a pointer-local reseat: an lvalue F1-record field source only.
+        return (_f2_reseat_ok(stmt.init, ws.declared, analyzer)
+                or note_detail("decl.reseat_source"))
+    # A str literal in a Char-typed slot renders as a target-typed C++
+    # char literal (`c: Char = 'x'` -> `char c = 'x';`, lowered to
+    # THIRCharLiteral). Only the single-char annotated DECL converts;
+    # a reassign (`c = 'y'`) or multi-char literal is a sema type error,
+    # so those rejects are defensive.
+    decl_tgt = (ws.declared.get(stmt.name) if is_reassign
+                else _var_decl_type(stmt, analyzer))
+    if isinstance(stmt.init, TpyStrLiteral) and _eligible_char(decl_tgt):
+        if is_reassign or len(stmt.init.value) != 1:
+            return note_detail("decl.char_literal")
+    # `x = None` at a union binding renders `std::monostate{}`
+    # (target-typed, like the Char literal above) -- for a value union AND
+    # a pointer variant (the monostate member is form-neutral: both
+    # spellings hold it directly); at a `Ptr[T]` value binding it renders
+    # `nullptr` (the AST threads the declared PtrType into gen_expr).
+    # None at any other binding in the slice is ineligible (Optional
+    # locals are not admitted), so these are the only None-init arms.
+    if isinstance(stmt.init, TpyNoneLiteral):
+        if _eligible_value_union(decl_tgt) is not None:
+            return True
+        # A ptr-union None binding stays AST for an in-branch first-decl
+        # (out of the value-block slice); a reassign / top-level decl
+        # remains admitted.
+        if (not in_branch_first
+                and _eligible_ptr_union(decl_tgt, analyzer) is not None):
+            return True
+        if not _eligible_ptr_value(decl_tgt, analyzer):
+            return note_detail("decl.none_init_slot")
+        # A FIRST `q: Ptr[P] = None` decl at a @dynamic-protocol pointee:
+        # the AST spells the protocol-containing decl type `auto`, so it
+        # emits `auto q = nullptr;` -- a std::nullptr_t local, a
+        # pre-existing miscompile no green case can carry; rejected
+        # rather than mirrored. A REASSIGN renders the bare
+        # `q = nullptr;` on both paths and stays admitted.
+        return (is_reassign or not _dyn_proto_ptr(decl_tgt)
+                or note_detail("decl.dyn_ptr_none"))
+    # A value-tuple literal local (`t = (1, 2)` / `p = (s, 1)`): decl and
+    # reassign alike render the spelled `std::tuple<...>{...}` (tuples
+    # are value types -- a reassign is a plain value assign, no
+    # pointer-local aliasing arises). The local enters `declared` with
+    # its TupleType, so the subscript-read gate lights up on it.
+    if isinstance(stmt.init, TpyTupleLiteral):
+        vt = _value_tuple(decl_tgt, analyzer)
+        return ((vt is not None
+                 and _tuple_literal_ok(stmt.init, vt, ws.declared, analyzer)
+                 and _witness("decl.tuple_literal"))
+                or note_detail("decl.tuple_literal_shape"))
+    # A direct call init returning a storage container / value tuple /
+    # value union: the bare `T x = f(...);` (a plain `x = f(...);` on a
+    # tuple/union reassign) on both paths -- a flushable position, so
+    # arg temps are admitted. A container local that is ever reassigned
+    # is a POINTER-LOCAL on the AST path (the two-slot rebind machinery)
+    # -> AST; tuples/unions are value types, so decl and reassign alike
+    # are plain value binds.
+    if isinstance(stmt.init, TpyCall):
+        fam = _storage_call_ret(analyzer.get_expr_type(stmt.init),
+                                analyzer)
+        if fam is not None:
+            # A storage container/tuple/union call init first-declared in a
+            # value block stays AST for the slice (the container sub-case is
+            # a two-slot pointer-local on the AST path).
+            if in_branch_first:
+                return note_detail("decl.branch_storage_call")
+            if _storage_call_container(fam) and (
+                    is_reassign or stmt.name in prescan.reassigned
+                    or stmt.name in prescan.hoisted
+                    or stmt.name in prescan.move_through):
+                return note_detail("decl.container_call_reassigned")
+            return (_call_eligible(stmt.init, ws.declared, analyzer,
+                                   temps_ok=True, narrowed=ws.narrowed,
+                                   storage_ret_ok=True)
+                    and _witness("decl.storage_call"))
+    # F4 U2: a pointer-variant union local. Sources are same-union names
+    # (bare borrow copy) or -- for single-assignment locals -- a
+    # value-variant field lvalue (the to_[const_]ptr_variant lift; a
+    # reseat's const verdict would come from its own receiver, a chain
+    # the slice does not reproduce).
+    ptr_u = _eligible_ptr_union(decl_tgt, analyzer)
+    if ptr_u is not None:
+        if in_branch_first:
+            return note_detail("decl.branch_ptr_union")
+        return (_ptr_union_source_ok(
+                    stmt.init, ws.declared, analyzer, ptr_u,
+                    allow_field=stmt.name not in prescan.reassigned)
+                or note_detail("decl.ptr_union_source"))
+    if not (_expr_eligible(stmt.init, ws.declared, analyzer)
+            or _stmt_value_temps_call(stmt.init, ws, analyzer)):
+        return _kind_detail("decl.init_", stmt.init)
+    # First declaration: the local's type must be an eligible scalar (a
+    # bare-literal init analyzes as IntLiteralType, pinning no width -> out)
+    # / Char, or a str-slice binding (a `PendingStrType` whose view/owned
+    # resolution is final pre-lowering -- `std::string_view` or
+    # `std::string`).
+    # A reassignment targets an already-validated local (its value just
+    # renders into the existing slot), so the type check does not apply.
+    if is_reassign:
+        return True
+    vtype = _var_decl_type(stmt, analyzer)
+    if in_branch_first:
+        # Slice 1 value-block first-decl: restrict to the value core the
+        # in-place arms handle with no shared-state mutation -- scalar /
+        # Char / enum / owned-or-view str. Broader value forms (bytes /
+        # value-union / slice / ptr-value) stay AST for now.
+        return (_eligible_scalar(vtype) or _eligible_char(vtype)
+                or _eligible_enum(vtype, analyzer) is not None
+                or _resolved_str_value(vtype, analyzer) is not None
+                or _is_string_owned(vtype)
+                or note_detail("decl.branch_slot_type"))
+    # A `String` local only ever arises from an already-validated eligible
+    # init (a concat result or another String local -- the only String
+    # producers in the slice); it declares as `std::string`, byte-identical
+    # to an owned str local.
+    return (_eligible_scalar(vtype) or _eligible_char(vtype)
+            or _eligible_enum(vtype, analyzer) is not None
+            or _resolved_str_value(vtype, analyzer) is not None
+            or _resolved_bytes_value(vtype, analyzer) is not None
+            or _is_string_owned(vtype)
+            or _eligible_value_union(vtype) is not None
+            or _slice_object_type(vtype)
+            or _eligible_ptr_value(vtype, analyzer)
+            or note_detail("decl.slot_type"))
+
+
+def _assert_eligible(stmt: TpyAssert, analyzer, ws: _WalkState) -> bool:
+    if stmt.message is not None and not isinstance(stmt.message, TpyStrLiteral):
+        return False
+    if isinstance(stmt.condition, (TpyBoolLiteral, TpyNoneLiteral)):
+        return False
+    info = _narrow_cond_info(stmt.condition, ws.declared, analyzer)
+    if info is not None:
+        var, u, _members, folded, _isin = info
+        if folded or var in ws.narrowed:
+            return False
+        if not _narrow_facts_ok(u, stmt.then_type_facts, var):
+            return False
+        m = _narrow_fact_member(u, stmt.then_type_facts, var)
+        if m is not None:
+            ws.declared[var] = m
+            ws.narrowed.add(var)
+            ws.persistent_narrowed.add(var)
+        return True
+    if _reassert_bump_info(stmt, ws.declared, ws.persistent_narrowed,
+                           analyzer) is not None:
+        return True
+    if stmt.then_type_facts and not _optional_narrow_facts_ok(
+            stmt.then_type_facts, ws.declared, analyzer):
+        return False
+    return _condition_eligible(stmt.condition, ws.declared, analyzer)
+
+
+def _if_eligible(stmt: TpyIf, analyzer, ws: _WalkState,
+                 prescan: _Prescan, *, in_loop: bool) -> bool:
+    info = _narrow_cond_info(stmt.condition, ws.declared, analyzer)
+    hoist_declared: dict[str, TpyType] = {}
+    hoists = analyzer.if_branch_decls.get(id(stmt))
+    if hoists:
+        if info is not None:
+            return note_detail("if.narrow_hoist")
+        for name, raw in hoists.items():
+            if name in ws.declared:
+                continue
+            if name in prescan.native_globals:
+                return note_detail("if.hoist_native_global")
+            vtype = unwrap_ref_type(raw)
+            if not _try_hoist_type_ok(vtype, analyzer):
+                return note_detail("if.hoist_type")
+            hoist_declared[name] = vtype
+        ws.declared.update(hoist_declared)
+    if info is not None:
+        ok = _narrow_if_eligible(stmt, info, analyzer, ws, prescan,
+                                 in_loop=in_loop)
+        if not ok:
+            note_detail("if.narrow_shape")
+    elif not _condition_eligible(stmt.condition, ws.declared, analyzer):
+        c = stmt.condition
+        if isinstance(c, TpyBinOp):
+            lf = _type_family_tag(analyzer.get_expr_type(c.left), analyzer)
+            rf = _type_family_tag(analyzer.get_expr_type(c.right), analyzer)
+            return note_detail(f"if.cond_binop.{c.op}.{lf}_{rf}")
+        return _kind_detail("if.cond_", c)
+    else:
+        ok = True
+    if not ok:
+        return False
+    pf = _chain_post_if_fact(stmt, ws.declared, ws.narrowed, analyzer)
+    if pf is not None:
+        ws.declared[pf[0]] = pf[2]
+        ws.narrowed.add(pf[0])
+        ws.persistent_narrowed.add(pf[0])
+    return True
+
 def _owned_record_decl_ok(stmt: TpyVarDecl, vtype: 'TpyType | None',
                           prescan: _Prescan,
                           declared: dict[str, TpyType], analyzer,
@@ -1010,856 +1641,6 @@ def _owned_record_decl_ok(stmt: TpyVarDecl, vtype: 'TpyType | None',
                                           temps_ok=True, narrowed=narrowed)
                  or _is_record_rvalue_method_source(stmt.init, declared,
                                                     analyzer, temps_ok=True)))
-
-def _stmt_eligible(stmt: TpyStmt, analyzer, ws: _WalkState,
-                   prescan: _Prescan, *, in_branch: bool,
-                   in_loop: bool = False,
-                   branch_decls_ok: bool = False) -> bool:
-    # Trivia first (a docstring IS a TpyExprStmt, so it must win that arm):
-    # the AST emits no code for either -- `pass` keeps its source comment, a
-    # bare string-literal statement (any position, mirroring gen_stmt's skip)
-    # emits neither comment nor code. Both lower to THIRNoOpStmt.
-    if is_docstring(stmt) or isinstance(stmt, TpyPassStmt):
-        return True
-    if isinstance(stmt, TpyVarDecl):
-        if stmt.linkage != VarLinkage.DEFAULT:
-            return note_detail("decl.linkage")
-        if stmt.init is None:
-            return note_detail("decl.no_init")
-        # A `self = ...` rebind in a method: codegen's scope never seeds the
-        # receiver as a NAME, so the AST emits a fresh SHADOWING decl
-        # (`const T& self = other;`) while the walk state -- which does seed
-        # `self` -- would classify a reassign and lower the bare (undeclared)
-        # `self = other;`. Out of the slice. (The AST's own post-rebind reads
-        # still target `this` -- a pre-existing divergence, see BUGS.md.)
-        if prescan.has_self and stmt.name == "self":
-            return note_detail("decl.self_rebind")
-        # A direct rebind of an isinstance-narrowed name: the AST write targets
-        # the extraction alias / the variant inconsistently across shapes --
-        # out of the U3 slice (field writes THROUGH the alias stay eligible;
-        # they rename like reads).
-        if stmt.name in ws.narrowed:
-            return note_detail("decl.narrowed_rebind")
-        is_reassign = stmt.name in ws.declared
-        # A value local FIRST-declared inside an if/elif/else/for/while body
-        # emits in place (lowering walks each branch/loop body under its own
-        # declared-scope copy). Admit it only when the enclosing construct
-        # hoists nothing (its gate cleared `if_branch_decls` -> passes
-        # `branch_decls_ok`) and the decl is a VALUE form whose lowering
-        # touches no function-scoped walk state: the non-value first-decl arms
-        # below (borrow / storage-tuple / container / comprehension / owned-
-        # record / ptr-union / storage-call) add to `lc.pointers` /
-        # `rebind_slots` / `storage_tuple_locals` / `const_locals`, which
-        # lowering does NOT branch-restore, so a first-decl of one would leak
-        # past the branch. try/with bodies never pass `branch_decls_ok`, so
-        # their in-branch first-decls stay AST (a non-hoisted try-body decl
-        # declares inside the C++ try scope -- unverified for the slice).
-        in_branch_first = in_branch and not is_reassign and branch_decls_ok
-        if in_branch and not is_reassign and not branch_decls_ok:
-            return note_detail("decl.branch_first_decl")
-        if not is_reassign and not in_branch:
-            # First decl of a non-value local (REF_ALIAS / OPTIONAL_TO_PTR /
-            # POINTER), bound from a field read off an F1-record receiver. Its
-            # non-value field init is not a value expression, so it is admitted
-            # here, not via _expr_eligible (which rejects it). A POINTER local is
-            # recorded so its later reassignments lower as reseats.
-            binding = _borrow_local_binding(
-                stmt, _var_decl_type(stmt, analyzer), ws.declared, prescan, analyzer)
-            if binding is not None:
-                if binding is LocalBinding.POINTER:
-                    ws.pointers.add(stmt.name)
-                elif binding is LocalBinding.REBIND_SLOT:
-                    # An F2d rebind-slot local: in `pointers` for its `->` reads,
-                    # in `rebind_slots` so its reseats lower as rvalue rebinds.
-                    ws.pointers.add(stmt.name)
-                    ws.rebind_slots.add(stmt.name)
-                return True
-            # F3 storage-tuple alias (`t = <storage tuple field>` -> `auto&& t = ...`):
-            # a pointer-repr tuple local aliasing a storage tuple field off an
-            # F1-record receiver. Tracked so its reads lift via tuple_to_pointer at
-            # borrow boundaries (e.g. `return t`) and so the borrow-tuple write source
-            # excludes it (it is storage form, a direct copy).
-            if (is_storage_tuple_alias_decl(
-                    _var_decl_type(stmt, analyzer), stmt.init, name=stmt.name,
-                    reassigned=prescan.reassigned, hoisted=prescan.hoisted,
-                    move_through=prescan.move_through)
-                    and _const_exact_field_receiver_ok(stmt.init, ws.declared,
-                                                       analyzer)
-                    and _f1_tuple(analyzer.get_expr_type(stmt.init), analyzer) is not None):
-                ws.storage_tuple_locals.add(stmt.name)
-                return True
-            # Container-literal local (`xs = [1, 2]` / `d = {k: v}`): the local
-            # enters `declared` with its resolved container type, so the
-            # receiver gates (subscript / len / iteration / method calls)
-            # admit it exactly like a container param.
-            if _container_literal_decl_ok(stmt, ws.declared, prescan, analyzer):
-                return True
-            # C1+C2 comprehension local: routes like a container-literal
-            # local -- the name enters `declared` with its resolved container
-            # type, so the receiver gates (len / subscript / iteration /
-            # method calls) light up on it.
-            if _comprehensions._comp_decl_ok(stmt, ws, prescan, analyzer):
-                return True
-            # Owned record local (`b = Box(n)` / `x = make(1)`): a plain
-            # value decl in storage form; reads off it route via the
-            # declared-type-keyed receiver gates like a record param's.
-            if _owned_record_decl_ok(stmt, _var_decl_type(stmt, analyzer),
-                                     prescan, ws.declared, analyzer,
-                                     narrowed=ws.narrowed):
-                return True
-        elif stmt.name in ws.rebind_slots:
-            # F2d rebind-slot reseat: an rvalue F1-record ctor / by-value source.
-            return (_is_record_rvalue_source(stmt.init, ws.declared, analyzer)
-                    or note_detail("decl.rebind_source"))
-        elif stmt.name in ws.pointers:
-            # F2a pointer-local reseat: an lvalue F1-record field source only.
-            return (_f2_reseat_ok(stmt.init, ws.declared, analyzer)
-                    or note_detail("decl.reseat_source"))
-        # A str literal in a Char-typed slot renders as a target-typed C++
-        # char literal (`c: Char = 'x'` -> `char c = 'x';`, lowered to
-        # THIRCharLiteral). Only the single-char annotated DECL converts;
-        # a reassign (`c = 'y'`) or multi-char literal is a sema type error,
-        # so those rejects are defensive.
-        decl_tgt = (ws.declared.get(stmt.name) if is_reassign
-                    else _var_decl_type(stmt, analyzer))
-        if isinstance(stmt.init, TpyStrLiteral) and _eligible_char(decl_tgt):
-            if is_reassign or len(stmt.init.value) != 1:
-                return note_detail("decl.char_literal")
-        # `x = None` at a union binding renders `std::monostate{}`
-        # (target-typed, like the Char literal above) -- for a value union AND
-        # a pointer variant (the monostate member is form-neutral: both
-        # spellings hold it directly); at a `Ptr[T]` value binding it renders
-        # `nullptr` (the AST threads the declared PtrType into gen_expr).
-        # None at any other binding in the slice is ineligible (Optional
-        # locals are not admitted), so these are the only None-init arms.
-        if isinstance(stmt.init, TpyNoneLiteral):
-            if _eligible_value_union(decl_tgt) is not None:
-                return True
-            # A ptr-union None binding stays AST for an in-branch first-decl
-            # (out of the value-block slice); a reassign / top-level decl
-            # remains admitted.
-            if (not in_branch_first
-                    and _eligible_ptr_union(decl_tgt, analyzer) is not None):
-                return True
-            if not _eligible_ptr_value(decl_tgt, analyzer):
-                return note_detail("decl.none_init_slot")
-            # A FIRST `q: Ptr[P] = None` decl at a @dynamic-protocol pointee:
-            # the AST spells the protocol-containing decl type `auto`, so it
-            # emits `auto q = nullptr;` -- a std::nullptr_t local, a
-            # pre-existing miscompile no green case can carry; rejected
-            # rather than mirrored. A REASSIGN renders the bare
-            # `q = nullptr;` on both paths and stays admitted.
-            return (is_reassign or not _dyn_proto_ptr(decl_tgt)
-                    or note_detail("decl.dyn_ptr_none"))
-        # A value-tuple literal local (`t = (1, 2)` / `p = (s, 1)`): decl and
-        # reassign alike render the spelled `std::tuple<...>{...}` (tuples
-        # are value types -- a reassign is a plain value assign, no
-        # pointer-local aliasing arises). The local enters `declared` with
-        # its TupleType, so the subscript-read gate lights up on it.
-        if isinstance(stmt.init, TpyTupleLiteral):
-            vt = _value_tuple(decl_tgt, analyzer)
-            return ((vt is not None
-                     and _tuple_literal_ok(stmt.init, vt, ws.declared, analyzer)
-                     and _witness("decl.tuple_literal"))
-                    or note_detail("decl.tuple_literal_shape"))
-        # A direct call init returning a storage container / value tuple /
-        # value union: the bare `T x = f(...);` (a plain `x = f(...);` on a
-        # tuple/union reassign) on both paths -- a flushable position, so
-        # arg temps are admitted. A container local that is ever reassigned
-        # is a POINTER-LOCAL on the AST path (the two-slot rebind machinery)
-        # -> AST; tuples/unions are value types, so decl and reassign alike
-        # are plain value binds.
-        if isinstance(stmt.init, TpyCall):
-            fam = _storage_call_ret(analyzer.get_expr_type(stmt.init),
-                                    analyzer)
-            if fam is not None:
-                # A storage container/tuple/union call init first-declared in a
-                # value block stays AST for the slice (the container sub-case is
-                # a two-slot pointer-local on the AST path).
-                if in_branch_first:
-                    return note_detail("decl.branch_storage_call")
-                if _storage_call_container(fam) and (
-                        is_reassign or stmt.name in prescan.reassigned
-                        or stmt.name in prescan.hoisted
-                        or stmt.name in prescan.move_through):
-                    return note_detail("decl.container_call_reassigned")
-                return (_call_eligible(stmt.init, ws.declared, analyzer,
-                                       temps_ok=True, narrowed=ws.narrowed,
-                                       storage_ret_ok=True)
-                        and _witness("decl.storage_call"))
-        # F4 U2: a pointer-variant union local. Sources are same-union names
-        # (bare borrow copy) or -- for single-assignment locals -- a
-        # value-variant field lvalue (the to_[const_]ptr_variant lift; a
-        # reseat's const verdict would come from its own receiver, a chain
-        # the slice does not reproduce).
-        ptr_u = _eligible_ptr_union(decl_tgt, analyzer)
-        if ptr_u is not None:
-            if in_branch_first:
-                return note_detail("decl.branch_ptr_union")
-            return (_ptr_union_source_ok(
-                        stmt.init, ws.declared, analyzer, ptr_u,
-                        allow_field=stmt.name not in prescan.reassigned)
-                    or note_detail("decl.ptr_union_source"))
-        if not (_expr_eligible(stmt.init, ws.declared, analyzer)
-                or _stmt_value_temps_call(stmt.init, ws, analyzer)):
-            return _kind_detail("decl.init_", stmt.init)
-        # First declaration: the local's type must be an eligible scalar (a
-        # bare-literal init analyzes as IntLiteralType, pinning no width -> out)
-        # / Char, or a str-slice binding (a `PendingStrType` whose view/owned
-        # resolution is final pre-lowering -- `std::string_view` or
-        # `std::string`).
-        # A reassignment targets an already-validated local (its value just
-        # renders into the existing slot), so the type check does not apply.
-        if is_reassign:
-            return True
-        vtype = _var_decl_type(stmt, analyzer)
-        if in_branch_first:
-            # Slice 1 value-block first-decl: restrict to the value core the
-            # in-place arms handle with no shared-state mutation -- scalar /
-            # Char / enum / owned-or-view str. Broader value forms (bytes /
-            # value-union / slice / ptr-value) stay AST for now.
-            return (_eligible_scalar(vtype) or _eligible_char(vtype)
-                    or _eligible_enum(vtype, analyzer) is not None
-                    or _resolved_str_value(vtype, analyzer) is not None
-                    or _is_string_owned(vtype)
-                    or note_detail("decl.branch_slot_type"))
-        # A `String` local only ever arises from an already-validated eligible
-        # init (a concat result or another String local -- the only String
-        # producers in the slice); it declares as `std::string`, byte-identical
-        # to an owned str local.
-        return (_eligible_scalar(vtype) or _eligible_char(vtype)
-                or _eligible_enum(vtype, analyzer) is not None
-                or _resolved_str_value(vtype, analyzer) is not None
-                or _resolved_bytes_value(vtype, analyzer) is not None
-                or _is_string_owned(vtype)
-                or _eligible_value_union(vtype) is not None
-                or _slice_object_type(vtype)
-                or _eligible_ptr_value(vtype, analyzer)
-                or note_detail("decl.slot_type"))
-    if isinstance(stmt, TpyAssign):
-        if isinstance(stmt.target, TpyName):
-            # A rebind of an isinstance-narrowed name: same reject as the
-            # VarDecl/AugAssign arms. The parser emits TpyVarDecl for every
-            # ordinary name-target assign, but macro-authored / frontend-IR
-            # ASTs can build this shape directly.
-            if stmt.target.name in ws.narrowed:
-                return False
-            # A `self` rebind: same reject as the VarDecl arm (the receiver is
-            # never a declared NAME on the AST path).
-            if prescan.has_self and stmt.target.name == "self":
-                return False
-            # Char-targeted str literal: target-typed `'x'` render -> AST path
-            # (mirrors the var-decl reassign guard).
-            if (isinstance(stmt.value, TpyStrLiteral)
-                    and _eligible_char(ws.declared.get(stmt.target.name))):
-                return False
-            # A bytes-literal value: this name-target TpyAssign only arises
-            # from desugars (tuple-literal unpack), whose target-type threading
-            # the owned/span flag does not mirror -> AST path. Plain
-            # `name = b"..."` parses as TpyVarDecl and is handled there.
-            if isinstance(stmt.value, TpyBytesLiteral):
-                return False
-            return (stmt.target.name in ws.declared
-                    and (_expr_eligible(stmt.value, ws.declared, analyzer)
-                         or _stmt_value_temps_call(stmt.value, ws, analyzer)))
-        # F2b/F2c/F2e: an optional-field write `recv.field = <borrow>` / `= None`;
-        # a plain scalar-field write `recv.field = <scalar>`; an F3 tuple-field
-        # write `recv.field = <borrow tuple>` (tuple_to_storage); or an F4 U2
-        # union-field write `recv.field = <borrow union name>` (to_value_variant).
-        # A subscript-target write gates separately from the field-write
-        # shapes (its own emit family: __setitem__ / bounds-safe operator[]).
-        if isinstance(stmt.target, TpySubscript):
-            return _container_setitem_ok(stmt, ws, analyzer)
-        return (_f2b_optional_field_write_ok(stmt, ws.declared, ws.pointers, analyzer)
-                or _scalar_field_write_ok(stmt, ws.declared, analyzer, ws)
-                or _f1_tuple_field_write_ok(stmt, ws.declared,
-                                            ws.storage_tuple_locals, analyzer)
-                or _ptr_union_field_write_ok(stmt, ws.declared, analyzer)
-                or _record_field_write_ok(stmt, ws.declared, analyzer, ws,
-                                          prescan)
-                or _optional_record_field_write_ok(stmt, ws.declared,
-                                                   ws.pointers, analyzer, ws,
-                                                   prescan)
-                or _container_field_write_ok(stmt, ws.declared, analyzer)
-                or _str_field_write_ok(stmt, ws.declared, analyzer)
-                or note_detail("assign.field_write_shape"))
-    if isinstance(stmt, TpyReturn):
-        if stmt.value is None:
-            return True
-        if prescan.ret_borrow_tuple is not None:
-            # A borrow-form tuple return lifts a storage tuple lvalue via
-            # `tuple_to_pointer` (F3). The source is a storage tuple lvalue: a field
-            # read off an F1-record receiver, or a storage-tuple alias local (`auto&&`).
-            # Subscript / call sources ride later F3 cells and stay on the AST path.
-            if isinstance(stmt.value, TpyName):
-                return stmt.value.name in ws.storage_tuple_locals
-            return (_const_exact_field_receiver_ok(stmt.value, ws.declared,
-                                                   analyzer)
-                    and _f1_tuple(analyzer.get_expr_type(stmt.value), analyzer)
-                    is not None)
-        if prescan.ret_storage_opt is not None:
-            # A storage-form Optional[F1-record] return admits `None`
-            # (-> std::nullopt, F2c) or a borrow `T*` lift (-> ptr_to_optional[_move],
-            # copy or move per last-use; F2c copy / F2e move). Storage-field / call
-            # sources stay on the AST path.
-            return (isinstance(stmt.value, TpyNoneLiteral)
-                    or _is_borrow_ptr_local(stmt.value, ws.declared, ws.pointers))
-        if prescan.ret_ptr_opt is not None:
-            # A pointer-repr Optional[F1-record] return (`A | None` -> `A*`)
-            # admits `None` (-> `nullptr`), an already-pointer borrow name
-            # (an Optional-ptr param / OPTIONAL_TO_PTR local / F2
-            # pointer-local -- bare, whether or not sema narrowed the read),
-            # or a plain F1-record name (`&(name)`). Field / call / Own /
-            # `self` / union-narrowed sources take other
-            # _optional_pointer_form_value arms -> AST path.
-            if isinstance(stmt.value, TpyNoneLiteral):
-                return True
-            if (not isinstance(stmt.value, TpyName)
-                    or stmt.value.name == "self"
-                    or stmt.value.name in ws.narrowed):
-                return False
-            if _optional_ptr_borrow_name(stmt.value, ws.declared,
-                                         analyzer) is not None:
-                return True
-            dt = ws.declared.get(stmt.value.name)
-            dt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(dt)))
-                  if dt is not None else None)
-            if isinstance(dt, OwnType):
-                return False  # an Own source's move arm is not mirrored
-            return _f1_record(dt, analyzer)
-        if prescan.ret_value_opt is not None:
-            # A value-repr Optional[cheap scalar] return (`-> Int32 | None` ->
-            # `std::optional<T>`): `None` -> `std::nullopt`; a value-opt param
-            # name passes the WHOLE optional bare (deref-on-narrow stripped,
-            # like the value-optional call slot); every other scalar source
-            # rides the generic expr tail below, whose type-exact / coerce-
-            # wrapped rendering matches the AST's `gen_expr_deref` at a
-            # value-optional target (no extra cast fires).
-            if isinstance(stmt.value, TpyNoneLiteral):
-                return _witness("ret.value_opt_none")
-            if (isinstance(stmt.value, TpyName)
-                    and stmt.value.name in prescan.value_opt_params):
-                return _witness("ret.value_opt_name")
-            # A cross-width value-opt param source (`Int8 | None` ->
-            # `Int32 | None`) arrives coerce-wrapped: the AST casts the WHOLE
-            # optional (`static_cast<optional<int32>>(p)`), but the generic tail
-            # would deref the narrowed inner (`(*p)`) before the cast. Defer.
-            peeled = _peel_coerce(stmt.value)
-            if (isinstance(peeled, TpyName)
-                    and peeled.name in prescan.value_opt_params):
-                return note_detail("return.optval_coerced_param")
-        if prescan.ret_value_opt_view is not None:
-            # A value-repr Optional[view] return -- str (`-> str | None` ->
-            # `std::optional<std::string>`) or bytes (`-> bytes | None` ->
-            # `std::optional<std::vector<uint8_t>>`): `None` -> `std::nullopt`; a
-            # value-repr Optional[view] PARAM name of the same family takes the
-            # view->owned arg-split shim (`x ? std::make_optional(<conv>(*x)) :
-            # std::nullopt`, THIROptViewArg -- the WHOLE optional, narrowed or
-            # not, like the arg slot). A str/bytes LITERAL lands bare via the
-            # general tail (the owned literal / implicit conversion).
-            if isinstance(stmt.value, TpyNoneLiteral):
-                return _witness("ret.value_opt_view_none")
-            if (isinstance(stmt.value, TpyName)
-                    and stmt.value.name in prescan.param_names
-                    and _opt_view_arg_shim(ws.declared.get(stmt.value.name),
-                                           prescan.ret_value_opt_view, analyzer)):
-                return _witness("ret.value_opt_view_shim")
-            if isinstance(stmt.value, (TpyStrLiteral, TpyBytesLiteral)):
-                # `return "lit"` / `return b"lit"` -> bare (the owned literal /
-                # implicit conversion into the optional); rides the generic tail.
-                return _witness("ret.value_opt_view_literal")
-            # Any other source (a view-form `StrView`/`BytesView` local/param, an
-            # owned `String` / owned-bytes result) is deferred: a bare
-            # `return <view>;` is a pre-existing AST miscompile at this slot (a
-            # view does not convert to the owned optional, BUGS.md), and owned
-            # results ride a later widening. Reject so the body falls to AST
-            # rather than the validator's BORROW-at-value-return catch.
-            return note_detail("return.opt_view_source")
-        if (prescan.ret_record_borrow is not None
-                or prescan.ret_record_storage is not None):
-            # A record return slot. BORROW (`-> Box` -> `Box&`) admits a bare
-            # record borrow name (a record param or REF_ALIAS local, rendering
-            # `return name;`), `self`, and a plain field read (arms below).
-            # STORAGE (`-> Own[Box]` -> `Box` by value) admits bare names too
-            # (owned local NRVO / `Own` rvalue-ref-param implicit move -- both
-            # render bare; a borrowed source without copy() is a sema error,
-            # so no copy shape reaches this arm). Pointer-locals (`(*p)` deref
-            # + move) and narrowed names stay on the AST path; an Own-declared
-            # source at the BORROW slot would take a move arm the mirror
-            # lacks.
-            # A record-rvalue ctor / by-value call source returns its bare
-            # expansion at EITHER record slot: the storage slot (`-> Own[Box]`)
-            # by design, and the borrow-classified slot only for a VALUE-type
-            # record (`-> Vec2` returns by value; `_record_borrow_return` does
-            # not exclude value records) -- a non-value record rvalue at a
-            # plain `-> Box` slot is a sema error ("cannot return local or
-            # temporary as reference"), so no dangling shape compiles.
-            if _is_record_rvalue_source(stmt.value, ws.declared, analyzer):
-                return _witness("ret.record_storage")
-            if prescan.ret_record_borrow is not None:
-                # `return self` (builder / __enter__-style methods): the AST's
-                # indirect-name deref renders `return (*this);`, mirrored by
-                # THIRSelf(deref=True). No move arm can fire (`self` is never
-                # movable; consuming methods never route). A subclass receiver
-                # at a base-record slot renders the same -- the derived-to-base
-                # bind lives in the C++ reference. `prescan.has_self` keeps a
-                # free function's param/local that merely SHARES the name on
-                # the bare-name path below (lowering agrees: it keys on
-                # lc.self_receiver and renders a non-receiver `self` bare,
-                # like the AST).
-                if (prescan.has_self
-                        and isinstance(stmt.value, TpyName)
-                        and stmt.value.name == "self"
-                        and _f1_record(ws.declared.get("self"), analyzer)):
-                    return _witness("ret.record_self")
-                # `return recv.field`: a plain F1-record field read at the
-                # borrow slot renders the bare access (`return this->box;` /
-                # `return h.box;`) -- the default field render, no move/copy
-                # wrap. (`Own[...]` on a field is itself a sema error, so the
-                # non-Own check in `_record_borrow_return` is type-shape
-                # gating, not a move-arm guard.) A marker-carrying access
-                # stays AST.
-                if (isinstance(stmt.value, TpyFieldAccess)
-                        and _field_receiver_ok(stmt.value, ws.declared,
-                                               analyzer)
-                        and _record_borrow_return(
-                            analyzer.get_expr_type(stmt.value), analyzer)
-                        is not None):
-                    return _witness("ret.record_field")
-            if (not isinstance(stmt.value, TpyName)
-                    or stmt.value.name == "self"
-                    or stmt.value.name in ws.narrowed
-                    or stmt.value.name in ws.pointers):
-                return note_detail(_record_source_reject_detail(
-                    stmt.value, ws, prescan.ret_record_borrow is not None))
-            dt = ws.declared.get(stmt.value.name)
-            dt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(dt)))
-                  if dt is not None else None)
-            if prescan.ret_record_borrow is not None and isinstance(dt, OwnType):
-                return note_detail("return.record_source.own_at_borrow")
-            face = ("ret.record_borrow" if prescan.ret_record_borrow is not None
-                    else "ret.record_storage")
-            return ((_f1_record(dt, analyzer) and _witness(face))
-                    or note_detail("return.record_source.name_notf1"))
-        if prescan.ret_container_storage is not None:
-            # A storage container return (`-> Own[list[T]]` -> a by-value
-            # vector/map/set): a bare owned container name (NRVO / Own-param
-            # implicit move -- renders bare; narrowed / pointer-local /
-            # reassigned-alias names stay AST: a reassigned container local is
-            # a pointer-local on the AST path) or a container literal (the
-            # decl-init renders, position-independent -- incl. the empty-list
-            # `std::vector<T>{}` spell). Field / call / subscript sources ride
-            # later cells.
-            v = stmt.value
-            if isinstance(v, TpyName):
-                if (v.name in ws.narrowed or v.name in ws.pointers
-                        or v.name in prescan.reassigned
-                        or v.name not in ws.declared):
-                    return note_detail("return.container_source")
-                dt = unwrap_readonly(unwrap_ref_type(
-                    unwrap_send_sync(ws.declared[v.name])))
-                if isinstance(dt, OwnType):
-                    dt = unwrap_readonly(dt.wrapped)
-                return (((is_list(dt) or is_dict(dt) or is_set(dt))
-                         and _witness("ret.container_name"))
-                        or note_detail("return.container_source"))
-            if isinstance(v, (TpyArrayLiteral, TpyDictLiteral, TpySetLiteral)):
-                return ((_container_literal_ok(v, prescan.ret_container_storage,
-                                               ws.declared, analyzer)
-                         and _witness("ret.container_literal"))
-                        or note_detail("return.container_source"))
-            # A container-returning call source (`return make_list(n);`):
-            # the bare call materializes the by-value return directly on
-            # both paths (copy elision -- no move/convert arm fires).
-            if isinstance(v, TpyCall):
-                return ((_call_eligible(v, ws.declared, analyzer,
-                                        temps_ok=True, narrowed=ws.narrowed,
-                                        storage_ret_ok=True)
-                         and _witness("ret.container_call"))
-                        or note_detail("return.container_source"))
-            return note_detail("return.container_source")
-        if prescan.ret_value_tuple is not None:
-            # A value-tuple return (`-> tuple[int, str]` -> a by-value
-            # `std::tuple<...>`): a tuple literal renders the spelled
-            # brace-init with per-slot element targets; a bare value-tuple
-            # name returns bare (a value-type copy, param or local alike --
-            # no move/copy() machinery). Subscript / call / field sources
-            # ride later cells.
-            v = stmt.value
-            if isinstance(v, TpyTupleLiteral):
-                return ((_tuple_literal_ok(v, prescan.ret_value_tuple,
-                                           ws.declared, analyzer)
-                         and _witness("ret.tuple_literal"))
-                        or note_detail("return.tuple_source"))
-            if isinstance(v, TpyName):
-                if v.name in ws.narrowed or v.name not in ws.declared:
-                    return note_detail("return.tuple_source")
-                return ((_value_tuple(ws.declared[v.name], analyzer) is not None
-                         and _witness("ret.tuple_name"))
-                        or note_detail("return.tuple_source"))
-            # A tuple-returning call source (`return make_pair(n);`): the
-            # bare call, like the container twin above.
-            if isinstance(v, TpyCall):
-                return ((_call_eligible(v, ws.declared, analyzer,
-                                        temps_ok=True, narrowed=ws.narrowed,
-                                        storage_ret_ok=True)
-                         and _witness("ret.tuple_call"))
-                        or note_detail("return.tuple_source"))
-            return note_detail("return.tuple_source")
-        # `return None` at a value-union return slot -> `std::monostate{}`
-        # (F4 U1). Union names/literals flow through the generic arm below.
-        if prescan.ret_union is not None and isinstance(stmt.value, TpyNoneLiteral):
-            return True
-        # A str/StrView member SOURCE read into a value union (a str param /
-        # local / field, not a literal) is a view->owned member INSERT the
-        # union return arm does not wire -- the same form-relevant boundary
-        # `_value_union_temp_slot` rejects for arg inserts. The AST's bare
-        # `return name;` is itself a miscompile at this slot (no view->owned
-        # conversion emitted, BUGS.md), so no green corpus case exercises it.
-        # A str LITERAL renders bare (target-typed) and a whole-union / scalar
-        # / Char source is value-form; `_resolved_str_value` matches exactly
-        # the view/pending (BORROW-form) str sources (owned `String` -- STORAGE
-        # -- resolves None and routes). Bytes is a reference type, never a
-        # value-union member, so no bytes twin is needed.
-        if prescan.ret_union is not None:
-            src = stmt.value
-            while isinstance(src, TpyCoerce):
-                src = src.expr
-            if (not isinstance(src, TpyStrLiteral)
-                    and _resolved_str_value(analyzer.get_expr_type(src),
-                                            analyzer) is not None):
-                return note_detail("return.union_view_insert")
-        # A pointer-variant return (F4 U2) admits same-union borrow names
-        # (bare) and `None` (`std::monostate{}`, target-typed -- the U1
-        # return arm's pointer-variant twin). A MEMBER record name takes the
-        # `&(...)` address-of lift, a storage field the (miscompiled,
-        # BUGS.md) `&(h.u)` -- both AST-path shapes.
-        if prescan.ret_ptr_union is not None:
-            if isinstance(stmt.value, TpyNoneLiteral):
-                return True
-            return _ptr_union_source_ok(stmt.value, ws.declared, analyzer,
-                                        prescan.ret_ptr_union,
-                                        allow_field=False)
-        # `return "x"` at a Char return renders a target-typed char literal
-        # (`'x'`) on the AST path -- not reproduced outside compare position.
-        if prescan.ret_char and isinstance(stmt.value, TpyStrLiteral):
-            return False
-        # `return recv.field` at a str-family return slot: an owned-`str`
-        # field returns the bare STORAGE member read on both paths
-        # (probe-verified for `-> str` and `-> Own[str]` alike; see
-        # `_str_field_value_read`). A receiver-admitted field of another
-        # str-family form (StrView / String) names the follow-up rung.
-        if (prescan.ret_str is not None
-                and isinstance(stmt.value, TpyFieldAccess)):
-            if _str_field_value_read(stmt.value, ws.declared, analyzer):
-                return _witness("ret.str_field")
-            if _field_receiver_ok(stmt.value, ws.declared, analyzer):
-                return note_detail("return.str_field_form")
-        return (_expr_eligible(stmt.value, ws.declared, analyzer)
-                or _stmt_value_temps_call(stmt.value, ws, analyzer))
-    if isinstance(stmt, TpyIf):
-        info = _narrow_cond_info(stmt.condition, ws.declared, analyzer)
-        # A branch-first-decl the AST HOISTS to function scope (definitely-
-        # assigned after the if) predeclares `T v;` at the chain head; a
-        # construct that hoists nothing walks its bodies with value
-        # block-locals admitted (`branch_decls_ok`). Narrowing-if + hoist
-        # (the alias-scope interaction) stays deferred.
-        hoist_declared: dict[str, TpyType] = {}
-        hoists = analyzer.if_branch_decls.get(id(stmt))
-        if hoists:
-            if info is not None:
-                return note_detail("if.narrow_hoist")
-            for name, raw in hoists.items():
-                if name in ws.declared:
-                    continue
-                if name in prescan.native_globals:
-                    # The AST renames later assigns to the C++ native global
-                    # (no predecl) -- a shape the slice does not reproduce.
-                    return note_detail("if.hoist_native_global")
-                vtype = unwrap_ref_type(raw)
-                if not _try_hoist_type_ok(vtype, analyzer):
-                    return note_detail("if.hoist_type")
-                hoist_declared[name] = vtype
-            # Seed the branch walk (and the persistent scope) so in-branch
-            # assigns classify as reassigns and post-if reads see the name.
-            ws.declared.update(hoist_declared)
-        if info is not None:
-            ok = _narrow_if_eligible(stmt, info, analyzer, ws, prescan,
-                                     in_loop=in_loop)
-            # A nested-body reject already noted its own statement (set-if-
-            # empty); this fires only for the narrow-if's own silent shape
-            # rejects.
-            if not ok:
-                note_detail("if.narrow_shape")
-        elif not _condition_eligible(stmt.condition, ws.declared, analyzer):
-            # The condition's node kind -- a binop splits by operator +
-            # operand families -- unless a finer gate detail fired.
-            c = stmt.condition
-            if isinstance(c, TpyBinOp):
-                lf = _type_family_tag(analyzer.get_expr_type(c.left), analyzer)
-                rf = _type_family_tag(analyzer.get_expr_type(c.right), analyzer)
-                return note_detail(f"if.cond_binop.{c.op}.{lf}_{rf}")
-            return _kind_detail("if.cond_", c)
-        else:
-            # Branches do not extend the outer scope with names visible after
-            # the if, so each is checked against the same declared-so-far set;
-            # a value block-local first-decl (admitted via `branch_decls_ok`)
-            # lives only within its own branch walk.
-            ok = (_body_eligible(stmt.then_body, analyzer, ws, prescan,
-                                 in_branch=True, in_loop=in_loop,
-                                 branch_decls_ok=True)
-                  and _body_eligible(stmt.else_body, analyzer, ws, prescan,
-                                     in_branch=True, in_loop=in_loop,
-                                     branch_decls_ok=True))
-        if not ok:
-            return False
-        # The early-return implicit else of the (possibly plain-headed) elif
-        # chain retypes its subject for the rest of the enclosing walk --
-        # mutated in place like a POINTER decl mutates `pointers`.
-        pf = _chain_post_if_fact(stmt, ws.declared, ws.narrowed, analyzer)
-        if pf is not None:
-            ws.declared[pf[0]] = pf[2]
-            ws.narrowed.add(pf[0])
-            ws.persistent_narrowed.add(pf[0])
-        return True
-    if isinstance(stmt, (TpyBreak, TpyContinue)):
-        # Inside a routed loop the emit side carries every exit shape the
-        # slice admits: the finally-frame walk renders the with/try cleanup
-        # for frames pushed inside the innermost loop, and a `break` under a
-        # live match switch reroutes via the lazily allocated
-        # `goto __loop_break_N` (`_EmitState.switch_depth`). Only else-loops
-        # (`goto __after_else_N`) stay gate-rejected. Outside a loop (a
-        # shape sema rejects) stay AST defensively.
-        return in_loop
-    if isinstance(stmt, TpyWhile):
-        # No while/else -- an else-loop breaks via `goto __after_else_N`.
-        if stmt.orelse:
-            return False
-        # Defensive: loops never hoist a body var, but mirror the for-loop /
-        # if guard so any hoisted-body while stays AST.
-        if analyzer.if_branch_decls.get(id(stmt)):
-            return False
-        info = _narrow_cond_info(stmt.condition, ws.declared, analyzer)
-        if info is not None:
-            # U4 `while isinstance(v, A)`: the loop-entry extraction is the
-            # branch-alias shape (fresh block, non-persistent), popped at the
-            # closing brace. A folded condition (`while (true)`) or an
-            # already-narrowed subject stays AST (the re-extraction would
-            # need the bump machinery at a non-statement scope).
-            var, u, _members, folded, _isin = info
-            if folded or var in ws.narrowed:
-                return False
-            if not _narrow_facts_ok(u, stmt.then_type_facts, var):
-                return False
-            m = _narrow_fact_member(u, stmt.then_type_facts, var)
-            body_ws = ws.branch_copy()
-            if m is not None:
-                body_ws.declared[var] = m
-                body_ws.narrowed.add(var)  # loop-scoped: NOT persistent
-            return _body_eligible(stmt.body, analyzer, body_ws, prescan,
-                                  in_branch=True, in_loop=True,
-                                  branch_decls_ok=True)
-        if not _condition_eligible(stmt.condition, ws.declared, analyzer):
-            return False
-        return _body_eligible(stmt.body, analyzer, ws, prescan, in_branch=True,
-                              in_loop=True, branch_decls_ok=True)
-    if isinstance(stmt, TpyAssert):
-        # A computed message evaluates lazily inside an if block (a temps
-        # shape the slice defers); constant conditions fold on the AST path
-        # (`assert True` elides entirely) -- both stay AST.
-        if stmt.message is not None and not isinstance(stmt.message,
-                                                       TpyStrLiteral):
-            return False
-        if isinstance(stmt.condition, (TpyBoolLiteral, TpyNoneLiteral)):
-            return False
-        info = _narrow_cond_info(stmt.condition, ws.declared, analyzer)
-        if info is not None:
-            var, u, _members, folded, _isin = info
-            # A fold on a still-union subject (exhaustiveness) stays AST;
-            # the persistent re-assert rides _reassert_bump_info below
-            # (its subject's declared type is the member, so no union is
-            # found here). `var in ws.narrowed` is defensive: a narrowed
-            # subject's declared type is never a routed union.
-            if folded or var in ws.narrowed:
-                return False
-            if not _narrow_facts_ok(u, stmt.then_type_facts, var):
-                return False
-            m = _narrow_fact_member(u, stmt.then_type_facts, var)
-            if m is not None:
-                # Persistent: the subject retypes for the REST of the
-                # enclosing walk (statement-level, like a post-if fact).
-                ws.declared[var] = m
-                ws.narrowed.add(var)
-                ws.persistent_narrowed.add(var)
-            return True
-        if _reassert_bump_info(stmt, ws.declared, ws.persistent_narrowed,
-                               analyzer) is not None:
-            return True
-        if stmt.then_type_facts and not _optional_narrow_facts_ok(
-                stmt.then_type_facts, ws.declared, analyzer):
-            return False  # non-mirrored narrowing facts stay AST
-        return _condition_eligible(stmt.condition, ws.declared, analyzer)
-    if isinstance(stmt, TpyAugAssign):
-        # An aug-assign targeting an isinstance-narrowed name writes through
-        # the extraction alias on the AST path -- out of the U3 slice.
-        if isinstance(stmt.target, TpyName) and stmt.target.name in ws.narrowed:
-            return False
-        if isinstance(stmt.target, TpySubscript):
-            return _container_aug_setitem_ok(stmt, ws, analyzer)
-        return (_scalar_aug_assign_ok(stmt, ws.declared, analyzer)
-                or _str_aug_append_ok(stmt, ws.declared, prescan, analyzer)
-                or _bytes_aug_concat_ok(stmt, ws.declared, prescan, analyzer))
-    if isinstance(stmt, TpyForEach):
-        # The iterable's node kind, unless an arm noted a finer reject (a
-        # nested-body reject already noted its own statement).
-        return (_for_range_eligible(stmt, analyzer, ws, prescan)
-                or _for_each_container_eligible(stmt, analyzer, ws, prescan)
-                or _for_tuple_unpack_eligible(stmt, analyzer, ws, prescan)
-                or _kind_detail("foreach.iter_", stmt.iterable))
-    if isinstance(stmt, TpyTupleUnpack):
-        return _tuple_unpack_eligible(stmt, analyzer, ws)
-    if isinstance(stmt, TpyGlobal):
-        # Emits only its source comment (the AST returns "" -- comment, no
-        # code). Admitted iff every name was seeded at entry (an eligible
-        # same-module scalar global): the seeding is what makes the function's
-        # reads/writes route as bare-name reassignments. An unseeded name
-        # rejects here, which rejects the WHOLE body -- statement order is
-        # irrelevant (the check reads prescan.global_seeded, and sema accepts
-        # even a write BEFORE its `global` statement -- see lower_function's
-        # seeding note), so no unseeded-global write survives to misroute.
-        return (all(n in prescan.global_seeded for n in stmt.names)
-                or note_detail("global.unseeded"))
-    if isinstance(stmt, TpyDelVar):
-        # Only the trivially-destructible face, where the AST's FIRST skip in
-        # _gen_del_var_code emits no code (so no other codegen state -- alias
-        # sets, params, globals -- can disagree). The move-sink face for
-        # owning locals (`{ auto __del_sink = std::move(x); }`) reads alias
-        # bookkeeping the slice does not track -- those bodies stay AST.
-        return all(n in ws.declared and n not in ws.narrowed
-                   and _del_var_trivial(ws.declared[n], analyzer)
-                   for n in stmt.names)
-    if isinstance(stmt, TpyDelItem):
-        # `del c[k]` on a bare-name builtin list/dict binding -- or a
-        # one-level container field off an admitted receiver name
-        # (`del self.d[k]`, the subscript gates' receiver widening) -- that
-        # the read gate already admits: the AST's fi lookup finds no
-        # `__delitem__` method fi for list/dict, so the render is the fallback
-        # `::tpy::__delitem__(c, k);` with the index through gen_index_expr --
-        # bare for fixed-int / str keys, the `.to_fixed_check<int32_t>()`
-        # narrow for a runtime-BigInt one (`_narrow_bigint_index` at lowering).
-        # Multi-target del shares ONE source comment across N lines
-        # -- a shape one THIR statement cannot carry -- so it stays AST.
-        if len(stmt.targets) != 1:
-            return False
-        sub = stmt.targets[0]
-        if sub.needs_optional_runtime_check or sub.slice_function_info is not None:
-            return False
-        recv = sub.obj
-        if isinstance(recv, TpyName) and (recv.name in ws.pointers
-                                          or recv.name in ws.narrowed):
-            return False
-        recv_t = _subscript_container_recv_type(recv, ws.declared, analyzer)
-        return (recv_t is not None
-                and _container_scalar_read(recv_t, analyzer)
-                and _bigint_index_disposition(sub.index, analyzer) != "reject"
-                and _expr_eligible(sub.index, ws.declared, analyzer))
-    if isinstance(stmt, TpyExprStmt):
-        # A bare expression statement: a builtin `print(...)` (common-arg subset)
-        # or a same-module free-function call discarded for its side effects.
-        if _is_builtin_print(stmt.expr, ws.declared, analyzer):
-            e = stmt.expr
-            if e.kwargs or e.double_star_unpack is not None:
-                return note_detail("print.kwargs")
-            # Printing a narrowed union SUBJECT (a bare name currently
-            # isinstance-narrowed to a member) takes the AST's union `__str__`
-            # wrap even after extraction (`__str__(__r)`), not the member's
-            # bare stream form -- a text divergence the print slice does not
-            # reproduce, so keep such a print on the AST path.
-            if any(isinstance(a, TpyName) and a.name in ws.narrowed
-                   for a in e.args):
-                return note_detail("print.narrowed_arg")
-            # A comprehension arg (C3) gates through the comp machinery (it
-            # needs the walk state); every other arg keeps the per-arg check.
-            # A reject names the first failing arg's type family + node kind
-            # (an admitted FAMILY failing here means the arg's SHAPE is the
-            # blocker -- e.g. a str field read), unless a finer detail fired.
-            for a in e.args:
-                ok = (_comprehensions._comp_print_arg_ok(a, ws, analyzer)
-                      if type(a) in _comprehensions._COMP_KINDS
-                      else (_print_arg_ok(a, ws.declared, analyzer)
-                            # A container / value-tuple / record NAME inside
-                            # its printer wrap; a pointer-local's AST render
-                            # derefs, so it stays off the bare-name row.
-                            or (isinstance(a, TpyName)
-                                and a.name not in ws.pointers
-                                and _wrap_print_form(a, ws.declared, analyzer)
-                                is not None
-                                and _witness("print.wrap_arg"))))
-                if not ok:
-                    fam = _type_family_tag(analyzer.get_expr_type(a), analyzer)
-                    return _kind_detail(f"print.arg.{fam}_", a)
-            return True
-        if isinstance(stmt.expr, TpyCall):
-            return _call_eligible(stmt.expr, ws.declared, analyzer,
-                                  stmt_position=True, temps_ok=True,
-                                  narrowed=ws.narrowed)
-        if isinstance(stmt.expr, TpyMethodCall):
-            # A container mutation call discarded for its side effect
-            # (`xs.append(v)` / `xs.pop()` / ...). `param_names` distinguishes a
-            # str PARAM arg (view/BORROW -- an owned copy at the Own[str] element
-            # slot) from an owned str local (STORAGE); only the statement
-            # position needs it (a void append never lands in a value position).
-            return _method_call_eligible(stmt.expr, ws.declared, analyzer,
-                                         stmt_position=True, temps_ok=True,
-                                         narrowed=ws.narrowed,
-                                         param_names=prescan.param_names)
-        # Not a print / free call / method call: name the expr kind.
-        return _kind_detail("expr_stmt.", stmt.expr)
-    if isinstance(stmt, TpyWith):
-        return _with_eligible(stmt, analyzer, ws, prescan, in_branch=in_branch,
-                              in_loop=in_loop)
-    if isinstance(stmt, TpyTry):
-        return _try_eligible(stmt, analyzer, ws, prescan, in_branch=in_branch,
-                             in_loop=in_loop)
-    if isinstance(stmt, TpyMatch):
-        return _match._match_eligible(stmt, analyzer, ws, prescan,
-                               in_branch=in_branch, in_loop=in_loop)
-    if isinstance(stmt, TpyRaise):
-        return _raise_eligible(stmt, analyzer, ws)
-    return False
-
-def _body_eligible(body, analyzer, ws: _WalkState, prescan: _Prescan, *,
-                   in_branch: bool, in_loop: bool = False,
-                   branch_decls_ok: bool = False) -> bool:
-    """Walk a statement list in source order, mirroring lowering's declared-scope
-    growth: a top-level new-name var-decl extends scope; branch bodies don't --
-    except an admitted value block-local, whose name is seeded into THIS walk's
-    own `branch_copy()` (discarded at branch end, so no sibling/outer leak).
-    Walks its own `branch_copy()` so sibling branches never see each other's
-    state (see `_WalkState` for what each container carries). `in_loop` is set
-    while walking (any depth inside) a loop body -- the break/continue arm
-    keys on it. `branch_decls_ok` is passed by the if/elif/else/for/while gates
-    (never by try/with) to admit value block-local first-decls."""
-    ws = ws.branch_copy()
-    for stmt in body:
-        begin_stmt()  # fresh detail slot -- no leak from an accepted sibling
-        if not _stmt_eligible(stmt, analyzer, ws, prescan, in_branch=in_branch,
-                              in_loop=in_loop, branch_decls_ok=branch_decls_ok):
-            # Fallback tally: tag the first-rejecting statement (set-if-empty,
-            # so a nested walk's inner tag survives this outer one), composed
-            # with the gate-recorded sub-construct detail when one fired.
-            note(stmt_reject_reason(stmt))
-            return False
-        if (isinstance(stmt, TpyVarDecl)
-                and stmt.name not in ws.declared):  # first decl -- keep retro-widened type
-            ws.declared[stmt.name] = _var_decl_type(stmt, analyzer)
-        elif isinstance(stmt, TpyTupleUnpack):
-            # An admitted standalone unpack introduces its fresh scalar targets
-            # into scope for the rest of the walk (the reads/writes downstream).
-            for i, name in enumerate(stmt.targets):
-                if name is not None and name not in ws.declared:
-                    ws.declared[name] = unwrap_ref_type(stmt.target_types[i])
-    return True
 
 def _narrow_if_eligible(stmt: TpyIf, info, analyzer, ws: _WalkState,
                         prescan: _Prescan, *, in_loop: bool = False) -> bool:
@@ -1890,32 +1671,6 @@ def _narrow_if_eligible(stmt: TpyIf, info, analyzer, ws: _WalkState,
     if not (_narrow_facts_ok(u, stmt.then_type_facts, var)
             and _narrow_facts_ok(u, stmt.else_type_facts, var)):
         return False
-    then_fact = _narrow_fact_member(u, stmt.then_type_facts, var)
-    then_ws = ws.branch_copy()
-    if then_fact is not None:
-        then_ws.declared[var] = then_fact
-        then_ws.narrowed.add(var)
-    if not _body_eligible(stmt.then_body, analyzer, then_ws, prescan,
-                          in_branch=True, in_loop=in_loop,
-                          branch_decls_ok=True):
-        return False
-    if stmt.else_body:
-        inner = _elif_link(stmt)
-        if inner is not None:
-            # Elif continuation: no extraction at this level
-            # (is_elif_continuation) -- the inner if narrows for itself
-            # against the original variant.
-            return _stmt_eligible(inner, analyzer, ws.branch_copy(), prescan,
-                                  in_branch=True, in_loop=in_loop,
-                                  branch_decls_ok=True)
-        else_fact = _narrow_fact_member(u, stmt.else_type_facts, var)
-        else_ws = ws.branch_copy()
-        if else_fact is not None:
-            else_ws.declared[var] = else_fact
-            else_ws.narrowed.add(var)
-        return _body_eligible(stmt.else_body, analyzer, else_ws, prescan,
-                              in_branch=True, in_loop=in_loop,
-                              branch_decls_ok=True)
     return True
 
 def _lower_borrow_local(stmt: TpyVarDecl, vtype: TpyType, binding: 'LocalBinding',
@@ -1969,14 +1724,21 @@ def _lower_borrow_local(stmt: TpyVarDecl, vtype: TpyType, binding: 'LocalBinding
         cpp_type=lc.render_type(inner), form=Form.BORROW, is_const=is_const,
         cpp_local_representation=binding, loc=loc)
 
-def _lower_stmt(stmt: TpyStmt, lc: _LowerCtx, declared: dict[str, TpyType]) -> THIRStmt:
+def _lower_stmt(stmt: TpyStmt, lc: _LowerCtx, declared: dict[str, TpyType],
+                *, in_branch: bool = False,
+                branch_decls_ok: bool = False,
+                loop_depth: int = 0) -> THIRStmt:
     # Single chokepoint: lower the statement, then carry the AST's
     # `no_source_comment` desugar flag onto the THIR node so the emitter dedups
     # the shared source comment (nested statements route through here too).
-    result = _lower_stmt_dispatch(stmt, lc, declared)
+    scope = _LowerScope(lc, declared, in_branch=in_branch,
+                        branch_decls_ok=branch_decls_ok,
+                        loop_depth=loop_depth)
+    result = _lower_stmt_dispatch(stmt, scope)
     if getattr(stmt, "no_source_comment", False) and not result.no_source_comment:
         return replace(result, no_source_comment=True)
     return result
+
 
 def _persistent_alias_name(var: str, lc: _LowerCtx) -> str:
     """Mirror of `_fresh_alias_local(persistent=True)`: `__{var}`, suffix-bumped
@@ -2005,7 +1767,10 @@ def _make_narrow_alias(alias: str, var: str, member: TpyType, u: UnionType,
                            is_ptr_variant=is_ptr, const_ref=const_ref,
                            no_source_comment=True, loc=loc)
 
-def _lower_stmts(body, lc: _LowerCtx, declared: dict[str, TpyType]) -> tuple[THIRStmt, ...]:
+def _lower_stmts(body, lc: _LowerCtx, declared: dict[str, TpyType],
+                 *, in_branch: bool = False,
+                 branch_decls_ok: bool = False,
+                 loop_depth: int = 0) -> tuple[THIRStmt, ...]:
     """Lower a statement list, appending the U3 post-if extraction after an
     early-return narrowing `if` (`_gen_if`'s post-narrowing arm: a persistent,
     comment-less, statement-level alias) and extending the narrowing scope /
@@ -2013,7 +1778,9 @@ def _lower_stmts(body, lc: _LowerCtx, declared: dict[str, TpyType]) -> tuple[THI
     save-restore pops both (the AST's scope-snapshot semantics)."""
     out: list[THIRStmt] = []
     for s in body:
-        out.append(_lower_stmt(s, lc, declared))
+        out.append(_lower_stmt(s, lc, declared, in_branch=in_branch,
+                               branch_decls_ok=branch_decls_ok,
+                               loop_depth=loop_depth))
         if isinstance(s, TpyAssert):
             _append_assert_narrow(s, out, lc, declared)
         if not isinstance(s, TpyIf):
@@ -2066,20 +1833,25 @@ def _append_assert_narrow(stmt: TpyAssert, out: 'list[THIRStmt]',
     lc.narrow.narrowed[var] = alias
 
 def _lower_scoped_stmts(body, lc: _LowerCtx,
-                        declared: dict[str, TpyType]) -> tuple[THIRStmt, ...]:
+                        declared: dict[str, TpyType], *,
+                        branch_decls_ok: bool = False,
+                        loop_depth: int = 0) -> tuple[THIRStmt, ...]:
     """`_lower_stmts` under a narrowing-scope snapshot: a branch or loop body.
     A post-if / assert narrowing made inside pops at the closing brace (the
     AST's `narrowed_vars` / `declared_persistent_aliases` body restores)."""
     saved = lc.narrow.snapshot()
     try:
-        return _lower_stmts(body, lc, declared)
+        return _lower_stmts(body, lc, declared, in_branch=True,
+                            branch_decls_ok=branch_decls_ok,
+                            loop_depth=loop_depth)
     finally:
         lc.narrow = saved
 
 def _lower_narrowed_branch(body, fact: 'TpyType | None', var: str,
                            u: UnionType, lc: _LowerCtx,
                            declared: dict[str, TpyType],
-                           alias_loc) -> tuple[THIRStmt, ...]:
+                           alias_loc, *,
+                           loop_depth: int = 0) -> tuple[THIRStmt, ...]:
     """Lower one narrow-if branch under a narrowing-scope snapshot: a concrete
     member fact prepends the extraction alias (reads rename via
     `lc.narrow.narrowed`, the subject retypes for the branch walk); the
@@ -2096,7 +1868,9 @@ def _lower_narrowed_branch(body, fact: 'TpyType | None', var: str,
             out.append(_make_narrow_alias(alias, var, fact, u, lc, alias_loc))
             lc.narrow.narrowed[var] = alias
             branch_declared[var] = fact
-        out.extend(_lower_stmts(body, lc, branch_declared))
+        out.extend(_lower_stmts(body, lc, branch_declared, in_branch=True,
+                                branch_decls_ok=True,
+                                loop_depth=loop_depth))
     finally:
         lc.narrow = saved
     return tuple(out)
@@ -2186,7 +1960,8 @@ def _lower_narrow_cond(cinfo, condition: TpyExpr, lc: _LowerCtx) -> THIRExpr:
         lc.inline_narrowed = saved
 
 def _lower_narrow_if(stmt: TpyIf, info, lc: _LowerCtx,
-                     declared: dict[str, TpyType], loc) -> THIRIf:
+                     declared: dict[str, TpyType], loc, *,
+                     loop_depth: int = 0) -> THIRIf:
     """Lower a U3 isinstance-narrowing `if` (gate-admitted by
     `_narrow_if_eligible`). The condition is the holds_alternative test (or
     the exhaustiveness fold's bare `true`); each branch lowers via
@@ -2197,7 +1972,7 @@ def _lower_narrow_if(stmt: TpyIf, info, lc: _LowerCtx,
     cond = _lower_narrow_cond(info, stmt.condition, lc)
     then_fact = _narrow_fact_member(u, stmt.then_type_facts, var)
     then_stmts = _lower_narrowed_branch(stmt.then_body, then_fact, var, u, lc,
-                                        declared, loc)
+                                        declared, loc, loop_depth=loop_depth)
     else_stmts: tuple[THIRStmt, ...] = ()
     else_is_nested = False
     if stmt.else_body:
@@ -2211,22 +1986,29 @@ def _lower_narrow_if(stmt: TpyIf, info, lc: _LowerCtx,
                 # early-return post-if alias emits inside the block and its
                 # narrowing scope pops at the closing brace.
                 else_stmts = _lower_scoped_stmts(stmt.else_body, lc,
-                                                 dict(declared))
+                                                 dict(declared),
+                                                 branch_decls_ok=True,
+                                                 loop_depth=loop_depth)
             else:
                 # Flat chain: the chain-level post-if belongs to the enclosing
                 # statement walk (_lower_stmts' _chain_post_if_fact pass), so
                 # the link lowers bare.
-                else_stmts = (_lower_stmt(inner, lc, dict(declared)),)
+                else_stmts = (_lower_stmt(
+                    inner, lc, dict(declared), in_branch=True,
+                    branch_decls_ok=True,
+                    loop_depth=loop_depth),)
         else:
             else_fact = _narrow_fact_member(u, stmt.else_type_facts, var)
             else_stmts = _lower_narrowed_branch(
                 stmt.else_body, else_fact, var, u, lc, declared,
-                getattr(stmt.else_body[0], "loc", None))
+                getattr(stmt.else_body[0], "loc", None),
+                loop_depth=loop_depth)
     return THIRIf(condition=cond, then_body=then_stmts,
                   else_body=else_stmts, else_is_nested=else_is_nested, loc=loc)
 
-def _lower_stmt_dispatch(stmt: TpyStmt, lc: _LowerCtx,
-                         declared: dict[str, TpyType]) -> THIRStmt:
+def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
+    lc = scope.lc
+    declared = scope.declared
     analyzer = lc.analyzer
     loc = getattr(stmt, "loc", None)
     # Trivia (docstring before the TpyExprStmt arm): loc drives the source
@@ -2238,6 +2020,12 @@ def _lower_stmt_dispatch(stmt: TpyStmt, lc: _LowerCtx,
         _witness("stmt.trivia")
         return THIRNoOpStmt(loc=loc)
     if isinstance(stmt, TpyVarDecl):
+        begin_stmt()
+        if not _var_decl_eligible(
+                stmt, analyzer, scope.walk_state(), lc.prescan,
+                in_branch=scope.in_branch,
+                branch_decls_ok=scope.branch_decls_ok):
+            raise ThirUnsupported(stmt_reject_reason(stmt))
         vtype = _var_decl_type(stmt, analyzer)
         # First decl of a non-value borrow local (REF_ALIAS / OPTIONAL_TO_PTR /
         # POINTER).
@@ -2495,6 +2283,10 @@ def _lower_stmt_dispatch(stmt: TpyStmt, lc: _LowerCtx,
             name=stmt.name, resolved_type=vtype, init=init, cpp_type=cpp_type,
             loc=loc)
     if isinstance(stmt, TpyAssign):
+        begin_stmt()
+        if not _assign_eligible(stmt, analyzer, scope.walk_state(),
+                                lc.prescan):
+            raise ThirUnsupported(stmt_reject_reason(stmt))
         if isinstance(stmt.target, TpySubscript):
             # Container subscript write: the target lowers to the same
             # subscript node a read produces (bounds_safe + the BigInt index
@@ -2660,6 +2452,9 @@ def _lower_stmt_dispatch(stmt: TpyStmt, lc: _LowerCtx,
             loc=loc,
         )
     if isinstance(stmt, TpyAugAssign):
+        ws = scope.walk_state()
+        if not _aug_assign_eligible(stmt, analyzer, ws, lc.prescan):
+            raise ThirUnsupported("stmt.aug_assign")
         # str `t += v`: the in-place append (the AST's string branch inside the
         # resolved-binop arm), not the synthetic binop below. The target-type
         # dispatch mirrors _str_aug_append_ok's admission.
@@ -2729,6 +2524,10 @@ def _lower_stmt_dispatch(stmt: TpyStmt, lc: _LowerCtx,
             return THIRSetItem(target=target, value=binop, loc=loc)
         return THIRAssign(target=target, value=binop, loc=loc)
     if isinstance(stmt, TpyReturn):
+        begin_stmt()
+        if not _return_eligible(stmt, analyzer, scope.walk_state(),
+                                lc.prescan):
+            raise ThirUnsupported(stmt_reject_reason(stmt))
         ret_tuple = lc.prescan.ret_borrow_tuple
         if stmt.value is not None and ret_tuple is not None:
             # Lift a storage tuple lvalue into the borrow-form tuple return via
@@ -2901,9 +2700,15 @@ def _lower_stmt_dispatch(stmt: TpyStmt, lc: _LowerCtx,
                                         form=Form.STORAGE, loc=loc)
         return THIRReturn(value=value, loc=loc)
     if isinstance(stmt, TpyIf):
+        begin_stmt()
+        ws = scope.walk_state()
+        if not _if_eligible(stmt, analyzer, ws, lc.prescan,
+                            in_loop=scope.loop_depth > 0):
+            raise ThirUnsupported(stmt_reject_reason(stmt))
         info = _narrow_cond_info(stmt.condition, declared, analyzer)
         if info is not None:
-            return _lower_narrow_if(stmt, info, lc, declared, loc)
+            return _lower_narrow_if(stmt, info, lc, declared, loc,
+                                    loop_depth=scope.loop_depth)
         # Hoisted predecls render at the chain head (see THIRIf); mirrors
         # _lower_try's loop -- names spell RAW, enter the CALLER's `declared`
         # (function-scope, visible in every branch and after the if).
@@ -2931,27 +2736,43 @@ def _lower_stmt_dispatch(stmt: TpyStmt, lc: _LowerCtx,
         inner = _elif_link(stmt)
         if inner is not None and not _facts_have_concrete(stmt.else_type_facts):
             else_stmts: tuple[THIRStmt, ...] = (
-                _lower_stmt(inner, lc, dict(declared)),)
+                _lower_stmt(inner, lc, dict(declared), in_branch=True,
+                            branch_decls_ok=True,
+                            loop_depth=scope.loop_depth),)
         else:
             else_is_nested = inner is not None
             else_stmts = _lower_scoped_stmts(stmt.else_body, lc,
-                                             dict(declared))
+                                             dict(declared),
+                                             branch_decls_ok=True,
+                                             loop_depth=scope.loop_depth)
         return THIRIf(
             condition=_lower_truthy(stmt.condition, lc),
-            then_body=_lower_scoped_stmts(stmt.then_body, lc, dict(declared)),
+            then_body=_lower_scoped_stmts(
+                stmt.then_body, lc, dict(declared),
+                branch_decls_ok=True,
+                loop_depth=scope.loop_depth),
             else_body=else_stmts,
             else_is_nested=else_is_nested,
             hoist_decls=tuple(hoist_decls),
             loc=loc,
         )
     if isinstance(stmt, TpyBreak):
+        if scope.loop_depth == 0:
+            raise ThirUnsupported("stmt.break")
         return THIRBreak(loc=loc)
     if isinstance(stmt, TpyContinue):
+        if scope.loop_depth == 0:
+            raise ThirUnsupported("stmt.continue")
         return THIRContinue(loc=loc)
     if isinstance(stmt, (TpyDelVar, TpyGlobal)):
-        # Both gates admit only the no-code faces (trivially-destructible del
-        # targets; seeded `global` names) -- the AST emits the source comment
-        # and no code, exactly the `pass` shape.
+        # Both no-code faces emit only the source comment.
+        if isinstance(stmt, TpyDelVar):
+            for name in stmt.names:
+                if (name not in declared or name in lc.narrow.narrowed
+                        or not _del_var_trivial(declared[name], analyzer)):
+                    raise ThirUnsupported("stmt.del_var:nontrivial")
+        elif not all(name in lc.prescan.global_seeded for name in stmt.names):
+            raise ThirUnsupported("stmt.global:global.unseeded")
         return THIRNoOpStmt(loc=loc)
     if isinstance(stmt, TpyDelItem):
         # `::tpy::__delitem__(c, k);` -- the AST's no-method-fi fallback in
@@ -2959,7 +2780,21 @@ def _lower_stmt_dispatch(stmt: TpyStmt, lc: _LowerCtx,
         # fixed-int / str-key shapes, the `.to_fixed_check<int32_t>()` narrow
         # for a runtime-BigInt one (the view-key pin still cannot fire --
         # view-typed keys are not admitted).
+        if len(stmt.targets) != 1:
+            raise ThirUnsupported("stmt.del_item:multi_target")
         sub = stmt.targets[0]
+        if sub.needs_optional_runtime_check or sub.slice_function_info is not None:
+            raise ThirUnsupported("stmt.del_item:subscript_shape")
+        recv = sub.obj
+        if isinstance(recv, TpyName) and (recv.name in lc.pointers
+                                          or recv.name in lc.narrow.narrowed):
+            raise ThirUnsupported("stmt.del_item:recv_shape")
+        recv_t = _subscript_container_recv_type(recv, declared, analyzer)
+        if not (recv_t is not None
+                and _container_scalar_read(recv_t, analyzer)
+                and _bigint_index_disposition(sub.index, analyzer) != "reject"
+                and _expr_eligible(sub.index, declared, analyzer)):
+            raise ThirUnsupported("stmt.del_item:recv_or_index")
         return THIRExprStmt(
             expr=THIRCall(
                 result_type=VoidType(),
@@ -2971,6 +2806,9 @@ def _lower_stmt_dispatch(stmt: TpyStmt, lc: _LowerCtx,
                 loc=loc),
             loc=loc)
     if isinstance(stmt, TpyWhile):
+        ws = scope.walk_state()
+        if not _while_eligible(stmt, analyzer, ws, lc.prescan):
+            raise ThirUnsupported("stmt.while")
         info = _narrow_cond_info(stmt.condition, declared, analyzer)
         if info is not None:
             # U4 while-isinstance: the loop-entry extraction is the branch
@@ -2981,15 +2819,22 @@ def _lower_stmt_dispatch(stmt: TpyStmt, lc: _LowerCtx,
             return THIRWhile(
                 condition=_lower_narrow_cond(info, stmt.condition, lc),
                 body=_lower_narrowed_branch(stmt.body, m, var, u, lc,
-                                            declared, loc),
+                                            declared, loc,
+                                            loop_depth=scope.loop_depth + 1),
                 loc=loc,
             )
         return THIRWhile(
             condition=_lower_truthy(stmt.condition, lc),
-            body=_lower_scoped_stmts(stmt.body, lc, dict(declared)),
+            body=_lower_scoped_stmts(
+                stmt.body, lc, dict(declared),
+                branch_decls_ok=True,
+                loop_depth=scope.loop_depth + 1),
             loc=loc,
         )
     if isinstance(stmt, TpyAssert):
+        ws = scope.walk_state()
+        if not _assert_eligible(stmt, analyzer, ws):
+            raise ThirUnsupported("stmt.assert")
         # The narrowing alias (if any) is appended by _lower_stmts'
         # _append_assert_narrow pass -- statement-level, like the post-if
         # alias. A re-assert's condition was sema-folded to `true`
@@ -3007,6 +2852,9 @@ def _lower_stmt_dispatch(stmt: TpyStmt, lc: _LowerCtx,
             cond = _lower_truthy(stmt.condition, lc)
         return THIRAssert(condition=cond, message=msg, loc=loc)
     if isinstance(stmt, TpyTupleUnpack):
+        ws = scope.walk_state()
+        if not _tuple_unpack_eligible(stmt, analyzer, ws):
+            raise ThirUnsupported("stmt.tuple_unpack")
         # Standalone `a, b = <source>`: the same node the for-loop head builds.
         # A bare name binds by const-ref (the loop-head path too); a call / field
         # rvalue is captured by value via `source_expr` (the AST's non-name
@@ -3034,6 +2882,9 @@ def _lower_stmt_dispatch(stmt: TpyStmt, lc: _LowerCtx,
             target_cpps=tuple(target_cpps),
             source_expr=_lower_expr(stmt.value, lc, temp_args=True), loc=loc)
     if isinstance(stmt, TpyForEach):
+        ws = scope.walk_state()
+        if not _for_each_stmt_eligible(stmt, analyzer, ws, lc.prescan):
+            raise ThirUnsupported("stmt.for_each")
         it = stmt.iterable
         # Loop var is C++-for-scoped: visible in the body but not the outer scope
         # (a fresh declared copy, so a body decl can't leak past the loop).
@@ -3069,9 +2920,14 @@ def _lower_stmt_dispatch(stmt: TpyStmt, lc: _LowerCtx,
                 target_cpps=tuple(target_cpps),
                 loc=getattr(up, "loc", None))
             body = (head,) + _lower_scoped_stmts(stmt.body[1:], lc,
-                                                 body_declared)
+                                                 body_declared,
+                                                 branch_decls_ok=True,
+                                                 loop_depth=scope.loop_depth + 1)
         else:
-            body = _lower_scoped_stmts(stmt.body, lc, body_declared)
+            body = _lower_scoped_stmts(
+                stmt.body, lc, body_declared,
+                branch_decls_ok=True,
+                loop_depth=scope.loop_depth + 1)
         if _is_range_call(it):
             # Literal bounds retype to the elem slot (the AST's gen-args
             # render threads the counter type): a no-op for fixed-int
@@ -3141,6 +2997,10 @@ def _lower_stmt_dispatch(stmt: TpyStmt, lc: _LowerCtx,
             loc=loc,
         )
     if isinstance(stmt, TpyExprStmt):
+        begin_stmt()
+        ws = scope.walk_state()
+        if not _expr_stmt_eligible(stmt, analyzer, ws, lc.prescan):
+            raise ThirUnsupported(stmt_reject_reason(stmt))
         if _is_builtin_print(stmt.expr, declared, lc.analyzer):
             return THIRPrint(
                 args=tuple(_lower_print_arg(a, lc, declared)
@@ -3151,17 +3011,38 @@ def _lower_stmt_dispatch(stmt: TpyStmt, lc: _LowerCtx,
                                 _lower_expr(stmt.expr, lc, temp_args=True)),
                             loc=loc)
     if isinstance(stmt, TpyWith):
-        return _lower_with(stmt, lc, declared, loc)
+        begin_stmt()
+        if not _with_eligible(
+                stmt, analyzer, scope.walk_state(), lc.prescan,
+                in_branch=scope.in_branch,
+                in_loop=scope.loop_depth > 0):
+            raise ThirUnsupported(stmt_reject_reason(stmt))
+        return _lower_with(stmt, lc, declared, loc,
+                           loop_depth=scope.loop_depth)
     if isinstance(stmt, TpyTry):
-        return _lower_try(stmt, lc, declared, loc)
+        begin_stmt()
+        if not _try_eligible(
+                stmt, analyzer, scope.walk_state(), lc.prescan,
+                in_branch=scope.in_branch,
+                in_loop=scope.loop_depth > 0):
+            raise ThirUnsupported(stmt_reject_reason(stmt))
+        return _lower_try(stmt, lc, declared, loc,
+                          loop_depth=scope.loop_depth)
     if isinstance(stmt, TpyMatch):
-        return _match._lower_match(stmt, lc, declared, loc)
+        begin_stmt()
+        if not _match._match_eligible(
+                stmt, analyzer, scope.walk_state(), lc.prescan,
+                in_branch=scope.in_branch,
+                in_loop=scope.loop_depth > 0):
+            raise ThirUnsupported(stmt_reject_reason(stmt))
+        return _match._lower_match(stmt, lc, declared, loc,
+                                   loop_depth=scope.loop_depth)
     if isinstance(stmt, TpyRaise):
         return _lower_raise(stmt, lc, declared, loc)
-    raise AssertionError(f"ineligible stmt reached lowering: {type(stmt).__name__}")
+    raise ThirUnsupported(f"stmt.unhandled:{type(stmt).__name__}")
 
 def _lower_try(stmt: TpyTry, lc: _LowerCtx, declared: dict[str, TpyType],
-               loc) -> THIRTry:
+               loc, *, loop_depth: int = 0) -> THIRTry:
     """Lower a finally_only- or throw-tier `try` (see `THIRTry` for the emit
     shapes). The hoisted predecls render here (`render_type`, codegen's
     type_to_cpp; names spell RAW like the AST arm) in sema's sorted order,
@@ -3221,7 +3102,8 @@ def _lower_try(stmt: TpyTry, lc: _LowerCtx, declared: dict[str, TpyType],
             h_declared[h.binding] = bt
         handlers.append(THIRExceptHandler(
             cpp_type=cpp, binding=h.binding,
-            body=_lower_scoped_stmts(h.body, lc, h_declared)))
+            body=_lower_scoped_stmts(
+                h.body, lc, h_declared, loop_depth=loop_depth)))
     last = stmt.finally_body[-1] if stmt.finally_body else None
     finally_terminates = isinstance(last, (TpyRaise, TpyReturn))
     if body_terminates and stmt.finally_body:
@@ -3230,10 +3112,13 @@ def _lower_try(stmt: TpyTry, lc: _LowerCtx, declared: dict[str, TpyType],
         _witness("try.finally_terminates")
     return THIRTry(
         tier=stmt.tier,
-        try_body=_lower_scoped_stmts(stmt.try_body, lc, dict(declared)),
+        try_body=_lower_scoped_stmts(
+            stmt.try_body, lc, dict(declared), loop_depth=loop_depth),
         handlers=tuple(handlers),
-        else_body=_lower_scoped_stmts(stmt.else_body, lc, dict(declared)),
-        finally_body=_lower_scoped_stmts(stmt.finally_body, lc, dict(declared)),
+        else_body=_lower_scoped_stmts(
+            stmt.else_body, lc, dict(declared), loop_depth=loop_depth),
+        finally_body=_lower_scoped_stmts(
+            stmt.finally_body, lc, dict(declared), loop_depth=loop_depth),
         hoist_decls=tuple(hoist_decls),
         body_terminates=body_terminates,
         finally_terminates=finally_terminates,
@@ -3246,6 +3131,8 @@ def _lower_raise(stmt: TpyRaise, lc: _LowerCtx, declared: dict[str, TpyType],
     args lower against the resolved `__init__`'s param slots through the
     shared call-arg machinery -- the gate admitted only scalar/str value
     slots, where `_gen_record_ctor_args` and `gen_call_arg` coincide."""
+    if not _raise_eligible(stmt, lc.analyzer, _WalkState(declared)):
+        raise ThirUnsupported("stmt.raise")
     if stmt.exception_type is None:
         _witness("raise.bare")
         return THIRRaise(loc=loc)
@@ -3264,7 +3151,7 @@ def _lower_raise(stmt: TpyRaise, lc: _LowerCtx, declared: dict[str, TpyType],
     )
 
 def _lower_with(stmt: TpyWith, lc: _LowerCtx, declared: dict[str, TpyType],
-                loc) -> THIRWith:
+                loc, *, loop_depth: int = 0) -> THIRWith:
     """Lower a sync `with` -- the item facts mirror `_gen_with`'s header arms
     (see `THIRWith` for the emit shape). Targets are declared at the enclosing
     C++ scope and stay visible after the block (Python scoping), so they extend
@@ -3322,7 +3209,8 @@ def _lower_with(stmt: TpyWith, lc: _LowerCtx, declared: dict[str, TpyType],
         _witness("with.multi")
     return THIRWith(
         items=tuple(items),
-        body=_lower_scoped_stmts(stmt.body, lc, dict(declared)),
+        body=_lower_scoped_stmts(
+            stmt.body, lc, dict(declared), loop_depth=loop_depth),
         body_terminates=stmts_terminate(stmt.body),
         loc=loc,
     )

@@ -79,7 +79,7 @@ from ...type_def_registry import (
     is_list,
     is_set,
 )
-from ..fallback import _walk as _fallback_walk, note
+from ..fallback import ThirUnsupported, _walk as _fallback_walk, note
 from ..faces import witness as _witness
 from ..validate import validate_constructor, validate_function
 from ..nodes import (
@@ -129,7 +129,6 @@ from .predicates import (
 )
 from .context import (
     _LowerCtx,
-    _WalkState,
 )
 from .expr_gates import (
     _container_literal_ok,
@@ -146,7 +145,6 @@ from .expressions import (
     _slot_literal_retype,
 )
 from .statements import (
-    _body_eligible,
     _lower_stmts,
 )
 
@@ -213,8 +211,8 @@ def _f1_param_eligible(ptype: TpyType | None, analyzer) -> bool:
     fully-concrete element/key/value -- `_container_param_renders`; the by-ref
     (`T&`/`const T&`) / by-value-span param signature is AST-emitted and
     type-keyed, so it renders byte-identically for every element type, and every
-    body USE of the param is gated recursively by `_body_eligible`/
-    `_expr_eligible`, which rejects any read a given element does not route), a
+    body USE of the param is checked by the statement-lowering guards and
+    `_expr_eligible`, which reject any read a given element does not route), a
     pointer-repr `Optional[F1-record]`
     (`A | None` -> a borrow `A*` / `const A*`; sema rejects its reassignment, so
     no rebind machinery arises), a value-repr `Optional[cheap scalar]`
@@ -600,23 +598,24 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
     lc.prescan.native_globals = native_globals
     lc.prescan.global_readonly, lc.prescan.global_cpp = _seed_readonly_globals(
         func, analyzer, params_set, native_globals)
-    if not _body_eligible(func.body, analyzer, _WalkState(params_set),
-                          lc.prescan, in_branch=False):
-        return None
     params = tuple(THIRParam(name=n, type=t) for n, t in func.params)
     rt = func.return_type if isinstance(func.return_type, TpyType) else VoidType()
     # Seeded with params (and `self`): a write to such a name is a reassignment.
     declared: dict[str, TpyType] = dict(params_set)
-    body = _lower_stmts(func.body, lc, declared)
-    fn = THIRFunction(
-        name=func.name,
-        params=params,
-        return_type=rt,
-        body=body,
-        layout=THIRFunctionLayout(),
-    )
-    validate_function(fn)
-    return fn
+    try:
+        body = _lower_stmts(func.body, lc, declared)
+        fn = THIRFunction(
+            name=func.name,
+            params=params,
+            return_type=rt,
+            body=body,
+            layout=THIRFunctionLayout(),
+        )
+        validate_function(fn)
+        return fn
+    except ThirUnsupported as ex:
+        note(ex.reason)
+        return None
 
 def _unwrap_copy(expr: TpyExpr, analyzer) -> TpyExpr:
     """Mirror of `CodeGenContext.unwrap_copy`: peel a `tpy.copy(x)` (the explicit
@@ -984,8 +983,8 @@ def _ctor_param_eligible(ptype: TpyType | None, analyzer) -> bool:
     AST-emitted signature with the THIR MIL+body tail. Unlike the function
     gate (`_f1_param_eligible`, whose bodies must carry every param READ),
     the ctor gate only decides whether the whole ctor MAY route: every USE
-    is still gated per-site (the MIL field arms, `_body_eligible`'s
-    statement/expression gates, and the `_unrouted_binding_read` name-read
+    is still gated per-site (the MIL field arms, the statement-lowering
+    guards, and the `_unrouted_binding_read` name-read
     guard), so an unhandled use rejects the whole ctor -> AST path.
 
     The method-param set routes fully (scalar / F1-record / pointer-repr
@@ -1036,7 +1035,7 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
     initializers (the M3a/M3b field-source slice) goes to the member-init-list; the rest
     of the body -- docstring / `pass` trivia (M3c-trivia), non-init statements, and field
     inits that cannot hoist or follow a chain break (M3c-demotion) -- lowers through the
-    shared statement machinery (`_body_eligible` / `_lower_stmt`), the same path method
+    shared statement machinery (`_lower_stmt`), the same path method
     bodies use. The ctor routes only when every non-trivia body statement is in the slice;
     otherwise it stays on the AST path, byte-identical. The signature stays on the AST path
     (the M1 method precedent); only the MIL + body tail routes here."""
@@ -1119,105 +1118,104 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
     lc.prescan.native_globals = native_globals
     lc.prescan.global_readonly, lc.prescan.global_cpp = _seed_readonly_globals(
         init_method, analyzer, declared, native_globals)
-    # Base initializers (`super().__init__` / `BaseN.__init__`), sorted by parent
-    # declaration order (M3d); None if any is outside the slice -> AST path.
-    base_inits = _lower_base_inits(init_method, ri, declared, lc)
-    if base_inits is None:
-        note("ctor.base_init")
-        return None
-    field_inits: list[TpyAssign] = []
-    body_stmts: list[TpyStmt] = []  # demoted inits + non-init stmts + trivia, source order
-    body_written_self_fields: set[str] = set()
-    # The AST's demote triggers (`_extract_field_inits`): a nested-def-name /
-    # bare non-param-name source, or any body-local reference in the RHS.
-    nested_def_names = {s.func.name for s in init_method.body
-                        if isinstance(s, TpyNestedDef)}
-    body_local_names = collect_top_level_local_names(init_method.body)
-    chain_broken = False
-    for stmt in init_method.body:
-        if is_base_init_call(stmt):  # handled above; breaks no chain
-            continue
-        # Docstring / `pass` (M3c-trivia): emit no code and break no hoist chain,
-        # but stay in the body so its braces are non-empty (` {\n    }`, not ` {}`).
-        if is_docstring(stmt) or isinstance(stmt, TpyPassStmt):
-            body_stmts.append(stmt)
-            continue
-        # An inherited-field write (`self.<base field> = expr`, M3d) goes to the body --
-        # the base ctor owns the MIL slot -- WITHOUT breaking the hoist chain. It is
-        # tracked so a later own-field hoist that reads it demotes (below). A property
-        # setter (also a non-own self field) lands here too and rejects via body
-        # ineligibility (`_field_receiver_ok`). NB the AST checks this only on a live
-        # chain (after `chain_broken` it demotes instead, skipping the tracking set); the
-        # divergence is inert -- once the chain is broken every later own-field init
-        # demotes regardless, so the set is never consulted.
-        if _is_self_nonown_field_assign(stmt, own_field_names):
-            body_written_self_fields.add(stmt.target.field)
-            body_stmts.append(stmt)
-            continue
-        # A leading own-field init whose (field, source) the MIL reproduces hoists.
-        # `_ctor_field_init_ok` already returns False for a non-init statement / a field
-        # init with a non-hoistable source (body-local / bare-name RHS / ineligible
-        # value), so the gate distinguishes hoist from demote. An init reading an
-        # inherited field written earlier in the body must demote (the MIL runs first,
-        # before that write) -- the `expr_reads_self_field` trigger (no-op until an
-        # inherited-field write populates the set).
-        if (not chain_broken
-                and _ctor_field_init_ok(stmt, own_field_names, own_param_names,
-                                        declared, body_local_names, lc)
-                and not expr_reads_self_field(stmt.value, body_written_self_fields)):
-            field_inits.append(stmt)
-            continue
-        # A clean leading own-field init (live chain, not reading an earlier
-        # inherited-field write) the AST hoists into the MIL but THIR can't reproduce
-        # there -- an F3+ field type (str / list / dict) or a source outside
-        # the MIL slice -- must keep the whole ctor on the AST path. Demoting it into
-        # the body would diverge from the AST's MIL hoist (the AST never demotes a
-        # clean leading own-field init). After a chain break, when the init reads an
-        # earlier inherited-field write, or when the AST itself demotes the source
-        # (`_ast_demotes_init`), the AST demotes too -- those fall through.
-        is_own_init = _is_self_own_field_assign(stmt, own_field_names)
-        ast_demotes = is_own_init and _ast_demotes_init(
-            stmt, lc.prescan.param_names, nested_def_names, body_local_names)
-        if (not chain_broken and is_own_init
-                and not expr_reads_self_field(stmt.value, body_written_self_fields)
-                and not ast_demotes):
-            note(_mil_reject_detail(stmt, analyzer))
+    # Every lowering call sits inside this boundary: a gate admits a shape by TYPE
+    # (`_base_init_arg_ok`) or defers the shape check to lowering (`_expr_eligible`'s
+    # tail), so any lowering call can raise -- a raise outside here would crash the
+    # compile instead of falling back.
+    try:
+        # Base initializers (`super().__init__` / `BaseN.__init__`), sorted by parent
+        # declaration order (M3d); None if any is outside the slice -> AST path.
+        base_inits = _lower_base_inits(init_method, ri, declared, lc)
+        if base_inits is None:
+            note("ctor.base_init")
             return None
-        # A demoted own-field init of a non-default-constructible field type
-        # raises CodeGenError on the AST path (_reject_nondef_ctor_field_in_body,
-        # the MIL would default-init an uncompilable state) -- reject so the AST
-        # path still raises it.
-        if is_own_init:
-            if _nondef_ctor_field(analyzer.get_expr_type(stmt.target), analyzer):
-                note("ctor.demote_nondefault_field")
+        field_inits: list[TpyAssign] = []
+        body_stmts: list[TpyStmt] = []  # demoted inits + non-init stmts + trivia, source order
+        body_written_self_fields: set[str] = set()
+        # The AST's demote triggers (`_extract_field_inits`): a nested-def-name /
+        # bare non-param-name source, or any body-local reference in the RHS.
+        nested_def_names = {s.func.name for s in init_method.body
+                            if isinstance(s, TpyNestedDef)}
+        body_local_names = collect_top_level_local_names(init_method.body)
+        chain_broken = False
+        for stmt in init_method.body:
+            if is_base_init_call(stmt):  # handled above; breaks no chain
+                continue
+            # Docstring / `pass` (M3c-trivia): emit no code and break no hoist chain,
+            # but stay in the body so its braces are non-empty (` {\n    }`, not ` {}`).
+            if is_docstring(stmt) or isinstance(stmt, TpyPassStmt):
+                body_stmts.append(stmt)
+                continue
+            # An inherited-field write (`self.<base field> = expr`, M3d) goes to the body --
+            # the base ctor owns the MIL slot -- WITHOUT breaking the hoist chain. It is
+            # tracked so a later own-field hoist that reads it demotes (below). A property
+            # setter (also a non-own self field) lands here too and rejects via body
+            # ineligibility (`_field_receiver_ok`). NB the AST checks this only on a live
+            # chain (after `chain_broken` it demotes instead, skipping the tracking set); the
+            # divergence is inert -- once the chain is broken every later own-field init
+            # demotes regardless, so the set is never consulted.
+            if _is_self_nonown_field_assign(stmt, own_field_names):
+                body_written_self_fields.add(stmt.target.field)
+                body_stmts.append(stmt)
+                continue
+            # A leading own-field init whose (field, source) the MIL reproduces hoists.
+            # `_ctor_field_init_ok` already returns False for a non-init statement / a field
+            # init with a non-hoistable source (body-local / bare-name RHS / ineligible
+            # value), so the gate distinguishes hoist from demote. An init reading an
+            # inherited field written earlier in the body must demote (the MIL runs first,
+            # before that write) -- the `expr_reads_self_field` trigger (no-op until an
+            # inherited-field write populates the set).
+            if (not chain_broken
+                    and _ctor_field_init_ok(stmt, own_field_names, own_param_names,
+                                            declared, body_local_names, lc)
+                    and not expr_reads_self_field(stmt.value, body_written_self_fields)):
+                field_inits.append(stmt)
+                continue
+            # A clean leading own-field init (live chain, not reading an earlier
+            # inherited-field write) the AST hoists into the MIL but THIR can't reproduce
+            # there -- an F3+ field type (str / list / dict) or a source outside
+            # the MIL slice -- must keep the whole ctor on the AST path. Demoting it into
+            # the body would diverge from the AST's MIL hoist (the AST never demotes a
+            # clean leading own-field init). After a chain break, when the init reads an
+            # earlier inherited-field write, or when the AST itself demotes the source
+            # (`_ast_demotes_init`), the AST demotes too -- those fall through.
+            is_own_init = _is_self_own_field_assign(stmt, own_field_names)
+            ast_demotes = is_own_init and _ast_demotes_init(
+                stmt, lc.prescan.param_names, nested_def_names, body_local_names)
+            if (not chain_broken and is_own_init
+                    and not expr_reads_self_field(stmt.value, body_written_self_fields)
+                    and not ast_demotes):
+                note(_mil_reject_detail(stmt, analyzer))
                 return None
-            if not chain_broken and ast_demotes:
-                _witness("mil.demote_mirror")
-        # Demote to the body. Demoting breaks the chain (mirrors `_extract_field_inits`'s
-        # `demote()`): the MIL runs before the body, so a later otherwise-hoistable init
-        # must also demote to preserve source evaluation order.
-        chain_broken = True
-        body_stmts.append(stmt)
-    # The demoted inits + non-init statements lower through THIR's statement machinery
-    # (the trivia are admitted directly); a body statement outside the slice keeps the
-    # whole ctor on the AST path. The trivia carry no `declared`-scope growth, so the
-    # gate runs over the non-trivia subset.
-    body_non_trivia = [s for s in body_stmts
-                       if not (is_docstring(s) or isinstance(s, TpyPassStmt))]
-    if not _body_eligible(body_non_trivia, analyzer, _WalkState(declared),
-                          lc.prescan, in_branch=False):
+            # A demoted own-field init of a non-default-constructible field type
+            # raises CodeGenError on the AST path (_reject_nondef_ctor_field_in_body,
+            # the MIL would default-init an uncompilable state) -- reject so the AST
+            # path still raises it.
+            if is_own_init:
+                if _nondef_ctor_field(analyzer.get_expr_type(stmt.target), analyzer):
+                    note("ctor.demote_nondefault_field")
+                    return None
+                if not chain_broken and ast_demotes:
+                    _witness("mil.demote_mirror")
+            # Demote to the body. Demoting breaks the chain (mirrors `_extract_field_inits`'s
+            # `demote()`): the MIL runs before the body, so a later otherwise-hoistable init
+            # must also demote to preserve source evaluation order.
+            chain_broken = True
+            body_stmts.append(stmt)
+        body_declared = dict(declared)
+        ctor = THIRConstructor(
+            record_name=record.name,
+            params=tuple(THIRParam(name=n, type=t) for n, t in init_method.params),
+            mil_inits=tuple(_lower_ctor_mil_init(s, own_param_names, declared, lc)
+                            for s in field_inits),
+            base_inits=tuple(base_inits),
+            body=_lower_stmts(body_stmts, lc, body_declared),
+        )
+        validate_constructor(ctor)
+        return ctor
+    except ThirUnsupported as ex:
+        note(ex.reason)
         return None
-    body_declared = dict(declared)
-    ctor = THIRConstructor(
-        record_name=record.name,
-        params=tuple(THIRParam(name=n, type=t) for n, t in init_method.params),
-        mil_inits=tuple(_lower_ctor_mil_init(s, own_param_names, declared, lc)
-                        for s in field_inits),
-        base_inits=tuple(base_inits),
-        body=_lower_stmts(body_stmts, lc, body_declared),
-    )
-    validate_constructor(ctor)
-    return ctor
 
 def _is_self_nonown_field_assign(stmt: TpyStmt, own_field_names: set[str]) -> bool:
     """A `self.<field> = expr` whose field is not an own field -- an inherited-field

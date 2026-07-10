@@ -257,6 +257,27 @@ class TestEligibility:
                 container.add("x")
             assert "x" not in getattr(ws, f.name)
 
+    def test_lower_scope_snapshots_compatibility_state(self):
+        from .lower import _LowerCtx, _LowerScope
+        _compiler, modules = _compile(
+            _PRELUDE + "def f(n: Int32) -> Int32:\n    return n\n")
+        entry = _entry(modules)
+        func = entry.ast.functions[0]
+        lc = _LowerCtx(func, entry.analyzer, None)
+        lc.pointers.add("p")
+        scope = _LowerScope(lc, {"n": func.params[0][1]},
+                            in_branch=True, branch_decls_ok=True,
+                            loop_depth=2)
+        ws = scope.walk_state()
+        assert ws.declared == scope.declared
+        assert ws.pointers == {"p"}
+        assert scope.in_branch and scope.branch_decls_ok
+        assert scope.loop_depth == 2
+        ws.declared["x"] = func.params[0][1]
+        ws.pointers.add("q")
+        assert "x" not in scope.declared
+        assert "q" not in lc.pointers
+
 
 class TestForRange:
     def test_range_stop_eligible(self):

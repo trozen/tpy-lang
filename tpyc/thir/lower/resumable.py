@@ -26,7 +26,7 @@ inside THIR emit -- a cell).
 
 from __future__ import annotations
 
-from ..fallback import begin_stmt, note, stmt_reject_reason
+from ..fallback import ThirUnsupported, begin_stmt, note, stmt_reject_reason
 from ..faces import witness as _witness
 from ..nodes import (
     THIRAssign,
@@ -73,7 +73,12 @@ from .predicates import (
     _resolved_bytes_value,
     _resolved_str_value,
 )
-from .statements import _lower_stmt, _stmt_eligible, _var_decl_type
+from .statements import (
+    _lower_stmt,
+    _return_eligible,
+    _var_decl_eligible,
+    _var_decl_type,
+)
 
 
 def _res_value_ok(t: 'TpyType | None', analyzer) -> bool:
@@ -204,6 +209,24 @@ def lower_resumable(func: TpyFunction, analyzer, render_type,
                     render_type_stored=None,
                     pointer_aliases: 'set[str] | None' = None,
                     ) -> 'THIRResumableBody | None':
+    """Lower a resumable body, falling back cleanly on a lowering reject."""
+    try:
+        return _lower_resumable(
+            func, analyzer, render_type, cfg,
+            record_name=record_name,
+            render_type_stored=render_type_stored,
+            pointer_aliases=pointer_aliases,
+        )
+    except ThirUnsupported as ex:
+        return _reject(ex.reason)
+
+
+def _lower_resumable(func: TpyFunction, analyzer, render_type,
+                     cfg: 'rcfg.CFG',
+                     record_name: 'str | None' = None,
+                     render_type_stored=None,
+                     pointer_aliases: 'set[str] | None' = None,
+                     ) -> 'THIRResumableBody | None':
     """Lower one resumable body's leaves, or None if outside the slice.
 
     `record_name` is the owning record for a method coro (R2): its frame
@@ -351,10 +374,12 @@ def lower_resumable(func: TpyFunction, analyzer, render_type,
         shape_reason = _leaf_shape_reject(stmt)
         if shape_reason is not None:
             return note(shape_reason)
-        begin_stmt()
-        if not _stmt_eligible(stmt, analyzer, _WalkState(dict(declared)),
-                              lc.prescan, in_branch=False):
-            return note(stmt_reject_reason(stmt))
+        if isinstance(stmt, TpyVarDecl) and stmt.name in frame_fields:
+            begin_stmt()
+            if not _var_decl_eligible(
+                    stmt, analyzer, _WalkState(dict(declared)), lc.prescan,
+                    in_branch=False):
+                return note(stmt_reject_reason(stmt))
         return True
 
     def _lower_leaf(stmt: TpyStmt) -> THIRStmt:
@@ -407,8 +432,8 @@ def lower_resumable(func: TpyFunction, analyzer, render_type,
                 # on the resume BB is never consumed by the emitter.
                 continue
             begin_stmt()
-            if not _stmt_eligible(ret, analyzer, _WalkState(dict(declared)),
-                                  lc.prescan, in_branch=False):
+            if not _return_eligible(
+                    ret, analyzer, _WalkState(dict(declared)), lc.prescan):
                 note(stmt_reject_reason(ret))
                 return None
             # POSITION-BLIND value render: `_make_async_return` binds the

@@ -462,6 +462,63 @@ class TestSlicedOutShapes:
                + "def main() -> None:\n    pass\nmain()\n")
         assert _res_fallback(src).get("res.local_storage") == 1
 
+    def test_lowering_reject_falls_back_after_await(self):
+        src = (_PRE
+               + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
+               + "async def f(n: Int32) -> Int32:\n"
+               + "    n = await step(n)\n"
+               + "    xs = [n]\n"
+               + "    del xs\n"
+               + "    return n\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        _, fallback = _assert_identical(src)
+        assert fallback.get("resumable:stmt.del_var:nontrivial") == 1
+
+    def test_global_lowering_reject_falls_back_after_await(self):
+        src = (_PRE
+               + "message = 'before'\n\n"
+               + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
+               + "async def f(n: Int32) -> Int32:\n"
+               + "    global message\n"
+               + "    n = await step(n)\n"
+               + "    return n\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        _, fallback = _assert_identical(src)
+        assert fallback.get("resumable:stmt.global:global.unseeded") == 1
+
+    def test_raise_lowering_reject_falls_back_after_await(self):
+        src = (_PRE
+               + "err = ValueError('bad')\n\n"
+               + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
+               + "async def f(n: Int32) -> Int32:\n"
+               + "    n = await step(n)\n"
+               + "    raise err\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        _, fallback = _assert_identical(src)
+        assert fallback.get("resumable:stmt.raise") == 1
+
+    def test_numeric_literal_lowering_reject_falls_back_after_await(self):
+        src = (_PRE
+               + "def widen(n: Int64) -> Int64:\n    return n\n\n"
+               + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
+               + "async def f(n: Int32) -> Int64:\n"
+               + "    n = await step(n)\n"
+               + "    return widen(2147483648)\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        _, fallback = _assert_identical(src)
+        assert fallback.get("resumable:expr.int_literal.range") == 1
+
+    def test_unhandled_expression_lowering_reject_falls_back_after_await(self):
+        src = (_PRE
+               + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
+               + "async def f(n: Int32) -> Int32:\n"
+               + "    n = await step(n)\n"
+               + "    x = (y := n)\n"
+               + "    return x\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        _, fallback = _assert_identical(src)
+        assert fallback.get("resumable:expr.named_expr") == 1
+
     def test_try_region_rejects(self):
         src = (_PRE
                + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"

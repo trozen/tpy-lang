@@ -285,8 +285,8 @@ def _for_each_elem_binding_ok(et: TpyType | None) -> bool:
     chosen INSIDE the shared `loop_var_binding` off `is_value_type()` and
     Union/Tuple-ness, and both the AST and THIR for-each call that same helper
     with the same resolved `et`. So the binding line matches for ANY concrete
-    element; the element gate need not enumerate nominal families, and every use
-    the body makes of the loop var is gated recursively by `_body_eligible`.
+    element; the element gate need not enumerate nominal families, and sequential
+    body lowering rejects any use of the loop var it cannot route.
 
     The one divergence risk is an UNRESOLVED pending element type: THIR spells
     its `et` before the AST's `resolve_type` would concretize it, so the binding
@@ -1834,8 +1834,8 @@ def _container_param_renders(t: TpyType | None, analyzer) -> bool:
     for the reference-type containers, by-value `std::span` for `Span` -- is
     emitted by the (AST-owned) function signature, TYPE-keyed and identical for
     every element type; and every body USE of the param (subscript, iteration,
-    `len`, membership, method call) is gated recursively by `_body_eligible` /
-    `_expr_eligible`, which rejects any element form it cannot route. So the gate
+    `len`, membership, method call) is validated by statement lowering and
+    `_expr_eligible`, which reject any element form they cannot route. So the gate
     need only ensure the container TYPE renders identically -- it must NOT
     enumerate element families. `Own[container]` (a move-in `T&&` param, a
     distinct ABI) and any generic (`list[T]`) container -- the generics

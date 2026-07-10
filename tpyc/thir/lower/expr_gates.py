@@ -6,7 +6,6 @@ of gate helpers it needs from here -- the dependency is one-way.
 """
 
 from __future__ import annotations
-import math
 from dataclasses import field
 from ...parse.nodes import (
     FSTRING_CONV_NONE,
@@ -961,7 +960,7 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
     F1-record receiver and an F1-record local (REF_ALIAS / POINTER) / inner
     (OPTIONAL_TO_PTR) type. REF_ALIAS and POINTER are the single-assignment and
     reassigned shapes of the same plain-record lvalue lift; POINTER's reseats are
-    gated separately in `_stmt_eligible`."""
+    validated by declaration lowering."""
     binding = classify_local_binding(
         target_type, stmt.init, analyzer, name=stmt.name,
         reassigned=prescan.reassigned, rvalue_reassigned=prescan.rvalue_reassigned,
@@ -4436,6 +4435,10 @@ def _fstring_eligible(e: TpyFString, locals_: dict[str, TpyType],
     return True
 
 def _expr_eligible(e: TpyExpr, locals_: dict[str, TpyType], analyzer) -> bool:
+    """Not a total predicate: some admitted shapes (numeric literals, unopened
+    expression kinds) are only rejected by `_lower_expr`, which raises. A caller
+    that admits on this alone must still route the node through `_lower_expr`
+    inside a `ThirUnsupported` boundary, or the reject escapes as a crash."""
     if isinstance(e, TpyName):
         # A name outside the local/param set is an unseeded global: a
         # non-value (pointer-slot) / Optional / native / cross-module global
@@ -4471,16 +4474,11 @@ def _expr_eligible(e: TpyExpr, locals_: dict[str, TpyType], analyzer) -> bool:
             return note_detail("name.optstr_unproven_read")
         return not _union_binding_divergent(e, locals_, analyzer)
     if isinstance(e, TpyIntLiteral):
-        # Only literals that emit as a bare value in any fixed-int slot. Wider
-        # values need a `ull` suffix / `static_cast` that the slice's emitter
-        # does not reproduce (see ExpressionGenerator._gen_int_literal_value).
-        return -2**31 <= e.value <= 2**31 - 1
+        # Lowering owns the bare-render range check.
+        return True
     if isinstance(e, TpyFloatLiteral):
-        # A finite float literal renders as repr(value) in a double slot, byte
-        # for byte (the AST path's _gen_float_literal_value double branch). inf/
-        # nan only arise from float(...) calls, never a bare literal, but guard
-        # anyway -- repr(inf)/repr(nan) are not valid C++.
-        return math.isfinite(e.value)
+        # Lowering owns the finite-value check.
+        return True
     if isinstance(e, TpyBoolLiteral):
         return True  # True/False -> true/false; no target-type dependence
     if isinstance(e, TpyStrLiteral):
@@ -4595,7 +4593,9 @@ def _expr_eligible(e: TpyExpr, locals_: dict[str, TpyType], analyzer) -> bool:
     if isinstance(e, TpyIfExpr):
         # `a if c else b` -> `((cond) ? (then) : (else))` (_gen_if_expr).
         return _if_expr_eligible(e, locals_, analyzer)
-    return note_detail(expr_kind_tag(e))  # unopened expression kind
+    # Unopened expression kinds enter lowering; its dispatch tail rejects
+    # them and the body boundary discards the partial attempt.
+    return True
 
 def _if_expr_eligible(e: TpyIfExpr, locals_: dict[str, TpyType],
                       analyzer) -> bool:
@@ -4766,4 +4766,3 @@ def _tuple_literal_element_ok(x: TpyExpr, slot_el: TpyType,
             return ok and _witness("ret.tuple_opt_str_elem")
         return ok and _witness("ret.tuple_opt_elem")
     return _expr_eligible(x, declared, analyzer)
-

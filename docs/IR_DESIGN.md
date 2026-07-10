@@ -909,9 +909,19 @@ A cheap "gate-only, no-emit" probe to *re-measure* marked cases every run was
 considered and rejected: the `resumable` (async/generator) eligibility is coupled
 to emission (it needs the live codegen ctx), so a gate-only probe would undercount
 async fallback and mint false-clean cases. The overlay measures them by real emit
-instead, which is exact and (measured) under a second over the corpus. NB the ratchet/probe is crash-safe only
-while the predictive gate is present (it pre-rejects the resumable path); Lever A's
-resumable try-lower-catch remains the prerequisite before the gate is removed.
+instead, which is exact and (measured) under a second over the corpus. Lever A
+catches lowering rejects at the sync-function, constructor, and resumable
+boundaries, so converted gate families can defer their decision to lowering
+without crashing the ratchet.
+
+With those boundaries in place the whole-body (`_body_eligible`) and per-statement
+(`_stmt_eligible`) predictive gates were removed outright, not merely converted
+family-by-family: each statement kind's rejection checks now run beside its lowering
+arm in `_lower_stmt_dispatch`. The remaining gate surface is `_expr_eligible`, the
+per-kind `_<kind>_eligible` helpers, and the `match`/`with`/`try` structure gates.
+A caller of `_expr_eligible` must route the node through `_lower_expr` inside one of
+those boundaries -- it admits numeric literals and unopened expression kinds that
+only `_lower_expr` rejects, so a reject raised outside a boundary escapes as a crash.
 
 ##### AST stays the oracle: emit AST, overlay THIR (2026-07 correction)
 

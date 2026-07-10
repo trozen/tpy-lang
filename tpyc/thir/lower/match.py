@@ -455,9 +455,6 @@ def _match_guarded_union_arms_ok(stmt: TpyMatch, analyzer, ws: _WalkState,
                     _expr_mentions_name(case.guard, n)
                     for n in capture_names):
                 return False
-        if not _statements._body_eligible(case.body, analyzer, arm_ws, prescan,
-                              in_branch=True, in_loop=in_loop):
-            return False
     return True
 
 def _match_union_arms_ok(stmt: TpyMatch, analyzer, ws: _WalkState,
@@ -534,9 +531,6 @@ def _match_union_arms_ok(stmt: TpyMatch, analyzer, ws: _WalkState,
                 return False
             arm_ws.declared[bnode.name] = (member if member is not None
                                            else arm_ws.declared[subj.name])
-        if not _statements._body_eligible(case.body, analyzer, arm_ws, prescan,
-                              in_branch=True, in_loop=in_loop):
-            return False
     return True
 
 def _match_record_arm_always(test) -> bool:
@@ -625,9 +619,6 @@ def _match_record_arms_ok(stmt: TpyMatch, analyzer, ws: _WalkState,
         if case.guard is not None and not _match_guard_ok(
                 case.guard, arm_ws.declared, analyzer):
             return False
-        if not _statements._body_eligible(case.body, analyzer, arm_ws, prescan,
-                              in_branch=True, in_loop=in_loop):
-            return False
     return True
 
 def _stmts_write_name(body, name: str) -> bool:
@@ -705,11 +696,6 @@ def _match_optional_arms_ok(stmt: TpyMatch, analyzer, ws: _WalkState,
         # out; the partition already bars None-arm guards.
         if bnode is not None or not isinstance(test, TpyLiteralPattern):
             return False
-        arm_ws = ws.branch_copy()
-        arm_ws.declared.update(hoist_declared)
-        if not _statements._body_eligible(case.body, analyzer, arm_ws, prescan,
-                              in_branch=True, in_loop=in_loop):
-            return False
     case = inner_cases[0]
     if case.guard is not None:
         return False
@@ -745,9 +731,6 @@ def _match_optional_arms_ok(stmt: TpyMatch, analyzer, ws: _WalkState,
         if _stmts_write_name(case.body, bnode.name):
             return False
         arm_ws.declared[bnode.name] = inner_type
-    if not _statements._body_eligible(case.body, analyzer, arm_ws, prescan,
-                          in_branch=True, in_loop=in_loop):
-        return False
     return True
 
 def _match_eligible(stmt: TpyMatch, analyzer, ws: _WalkState,
@@ -866,9 +849,6 @@ def _match_eligible(stmt: TpyMatch, analyzer, ws: _WalkState,
         if case.guard is not None and not _match_guard_ok(
                 case.guard, arm_ws.declared, analyzer):
             return False
-        if not _statements._body_eligible(case.body, analyzer, arm_ws, prescan,
-                              in_branch=True, in_loop=in_loop):
-            return False
     # Within each switch group, an unguarded entry only in the final
     # position (sema's duplicate-case rule guarantees it; a violated order
     # would emit an else-chain with no opened if) -- defensive.
@@ -897,7 +877,7 @@ def _match_case_label(pattern, kind: str, analyzer) -> str:
     return str(val)
 
 def _lower_match(stmt: TpyMatch, lc: _LowerCtx, declared: dict[str, TpyType],
-                 loc) -> THIRMatch:
+                 loc, *, loop_depth: int = 0) -> THIRMatch:
     """Lower a scalar-tier `match` (see `THIRMatch` for the emit shapes).
     Labels/condition-RHS pre-render here. Switch tiers regroup the wildcard
     arm LAST regardless of source position (`_group_switch_arms` appends
@@ -929,13 +909,16 @@ def _lower_match(stmt: TpyMatch, lc: _LowerCtx, declared: dict[str, TpyType],
         u = unwrap_readonly(stmt.subject_type)
         if _match_union_route(stmt, u) == "guarded_union":
             return _lower_match_guarded_union(stmt, lc, declared, loc,
-                                              hoist_decls)
-        return _lower_match_union(stmt, lc, declared, loc, hoist_decls)
+                                              hoist_decls,
+                                              loop_depth=loop_depth)
+        return _lower_match_union(stmt, lc, declared, loc, hoist_decls,
+                                  loop_depth=loop_depth)
     if kind in ("if_elif_record", "guarded_record"):
         return _lower_match_record(stmt, lc, declared, loc, hoist_decls,
-                                   kind)
+                                   kind, loop_depth=loop_depth)
     if kind == "optional_partition":
-        return _lower_match_optional(stmt, lc, declared, loc, hoist_decls)
+        return _lower_match_optional(stmt, lc, declared, loc, hoist_decls,
+                                     loop_depth=loop_depth)
     subj_type = declared.get(stmt.subject.name)
     is_chain = kind in ("if_elif", "if_elif_guarded")
     arms: list[THIRMatchArm] = []
@@ -957,7 +940,8 @@ def _lower_match(stmt: TpyMatch, lc: _LowerCtx, declared: dict[str, TpyType],
             _witness("match.guard_arm")
             guard = _lower_expr(case.guard, lc)
         entry = THIRMatchArmEntry(
-            body=_statements._lower_scoped_stmts(case.body, lc, arm_declared),
+            body=_statements._lower_scoped_stmts(
+                case.body, lc, arm_declared, loop_depth=loop_depth),
             loc=case.loc, binding=binding, guard=guard)
         if test is None:
             labels: tuple[str, ...] = ()
@@ -1086,7 +1070,7 @@ def _lower_or_field_conds(test: TpyOrPattern, lc: _LowerCtx,
 def _lower_match_record(stmt: TpyMatch, lc: _LowerCtx,
                         declared: dict[str, TpyType], loc,
                         hoist_decls: 'list[tuple[str, str]]',
-                        kind: str) -> THIRMatch:
+                        kind: str, *, loop_depth: int = 0) -> THIRMatch:
     """Lower a record-tier `match` (if_elif_record / guarded_record):
     source-order single-entry arms; per class arm the pre-rendered literal
     field conditions (`&&`-joined at emit around `__match_subject_N`) and
@@ -1122,7 +1106,8 @@ def _lower_match_record(stmt: TpyMatch, lc: _LowerCtx,
             _witness("match.guard_arm")
             guard = _lower_expr(case.guard, lc)
         arms.append(THIRMatchArm(labels=(), entries=(THIRMatchArmEntry(
-            body=_statements._lower_scoped_stmts(case.body, lc, arm_declared),
+            body=_statements._lower_scoped_stmts(
+                case.body, lc, arm_declared, loop_depth=loop_depth),
             loc=case.loc, binding=binding, guard=guard,
             field_conds=field_conds, field_bindings=field_bindings,
             or_conds=or_conds),)))
@@ -1144,7 +1129,8 @@ def _lower_match_record(stmt: TpyMatch, lc: _LowerCtx,
 
 def _lower_match_optional(stmt: TpyMatch, lc: _LowerCtx,
                           declared: dict[str, TpyType], loc,
-                          hoist_decls: 'list[tuple[str, str]]') -> THIRMatch:
+                          hoist_decls: 'list[tuple[str, str]]', *,
+                          loop_depth: int = 0) -> THIRMatch:
     """Lower an optional_partition `match` (O1) -- see THIRMatch's
     `none_entry` block comment for the emit shape. The None arm's body/loc
     become `none_entry` (its comment renders at the OUTER indent, the AST's
@@ -1162,7 +1148,8 @@ def _lower_match_optional(stmt: TpyMatch, lc: _LowerCtx,
         _witness("match.optional_none_arm")
         ncase = none_cases[0]
         none_entry = THIRMatchArmEntry(
-            body=_statements._lower_scoped_stmts(ncase.body, lc, dict(declared)),
+            body=_statements._lower_scoped_stmts(
+                ncase.body, lc, dict(declared), loop_depth=loop_depth),
             loc=ncase.loc)
     else:
         _witness("match.optional_value_only")
@@ -1178,7 +1165,8 @@ def _lower_match_optional(stmt: TpyMatch, lc: _LowerCtx,
                                    from_case_var=True)
         arm_declared[bnode.name] = inner_type
     arm = THIRMatchArm(labels=(), entries=(THIRMatchArmEntry(
-        body=_statements._lower_scoped_stmts(case.body, lc, arm_declared),
+        body=_statements._lower_scoped_stmts(
+            case.body, lc, arm_declared, loop_depth=loop_depth),
         loc=case.loc, binding=binding),))
     emit_unreachable = (stmt.is_exhaustive and bool(stmt.cases)
                         and all(stmts_terminate(c.body) for c in stmt.cases))
@@ -1199,7 +1187,8 @@ def _lower_match_optional(stmt: TpyMatch, lc: _LowerCtx,
 
 def _lower_match_union(stmt: TpyMatch, lc: _LowerCtx,
                        declared: dict[str, TpyType], loc,
-                       hoist_decls: 'list[tuple[str, str]]') -> THIRMatch:
+                       hoist_decls: 'list[tuple[str, str]]', *,
+                       loop_depth: int = 0) -> THIRMatch:
     """Lower a switch_union `match` (M4a): arms in SOURCE order (no default
     regrouping -- `_gen_match_switch_union` emits `default:` in place),
     labels are numeric variant indices (`_variant_index` over the full
@@ -1264,7 +1253,9 @@ def _lower_match_union(stmt: TpyMatch, lc: _LowerCtx,
                                            from_case_var=member is not None)
                 arm_declared[bnode.name] = (member if member is not None
                                             else arm_declared[subj_name])
-            body = _statements._lower_stmts(case.body, lc, arm_declared)
+            body = _statements._lower_stmts(
+                case.body, lc, arm_declared, in_branch=True,
+                loop_depth=loop_depth)
         finally:
             lc.narrow = saved
         arms.append(THIRMatchArm(labels=labels, entries=(THIRMatchArmEntry(
@@ -1291,6 +1282,7 @@ def _lower_match_union(stmt: TpyMatch, lc: _LowerCtx,
 def _lower_match_guarded_union(stmt: TpyMatch, lc: _LowerCtx,
                                declared: dict[str, TpyType], loc,
                                hoist_decls: 'list[tuple[str, str]]',
+                               *, loop_depth: int = 0,
                                ) -> THIRMatch:
     """Lower a guarded_union `match` (M4b) -- `_gen_match_guarded_union`'s
     per-index grouping: class arms land on their variant index, or-pattern
@@ -1385,7 +1377,9 @@ def _lower_match_guarded_union(stmt: TpyMatch, lc: _LowerCtx,
             if case.guard is not None:
                 _witness("match.guard_arm")
                 guard = _lower_expr(case.guard, lc)
-            body = _statements._lower_stmts(case.body, lc, arm_declared)
+            body = _statements._lower_stmts(
+                case.body, lc, arm_declared, in_branch=True,
+                loop_depth=loop_depth)
         finally:
             lc.narrow = saved
         return THIRMatchArmEntry(

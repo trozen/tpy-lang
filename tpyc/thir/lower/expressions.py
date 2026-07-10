@@ -4,6 +4,7 @@ a body routes at all live in `expr_gates.py`.
 """
 
 from __future__ import annotations
+import math
 from dataclasses import field, replace
 from ...parse.nodes import (
     TpyArrayLiteral,
@@ -68,6 +69,7 @@ from ...codegen_cpp.context import (
     qualified_cpp_name,
 )
 from ...compilation_context import get_current_compiler
+from ..fallback import ThirUnsupported, expr_kind_tag
 from ..faces import witness as _witness
 from ...codegen_cpp.expressions import ExpressionGenerator
 from ..nodes import (
@@ -559,6 +561,10 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx', *, temp_args: bool = False) -> THIR
             loc=loc,
         )
     if isinstance(e, (TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral)):
+        if isinstance(e, TpyIntLiteral) and not -2**31 <= e.value <= 2**31 - 1:
+            raise ThirUnsupported("expr.int_literal.range")
+        if isinstance(e, TpyFloatLiteral) and not math.isfinite(e.value):
+            raise ThirUnsupported("expr.float_literal.nonfinite")
         return THIRLiteral(result_type=rtype, value=e.value, loc=loc)
     if isinstance(e, TpyStrLiteral):
         # const char[N] via cpp_string_literal_expr; VALUE form -- implicitly
@@ -1119,7 +1125,7 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx', *, temp_args: bool = False) -> THIR
             form=vform,
             loc=loc,
         )
-    raise AssertionError(f"ineligible expr reached lowering: {type(e).__name__}")
+    raise ThirUnsupported(expr_kind_tag(e))
 
 def _viewfam_result_form(t: 'TpyType | None') -> Form:
     """The form of a RESOLVED str/bytes-family result value: a view

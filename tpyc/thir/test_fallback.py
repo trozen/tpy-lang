@@ -15,7 +15,12 @@ from .fallback import (
     note_detail,
     stmt_reject_reason,
 )
-from .lower import iter_module_callables, lower_function
+from .lower import (
+    iter_module_callables,
+    iter_module_constructors,
+    lower_constructor,
+    lower_function,
+)
 from .lower.predicates import _type_family_tag
 from .testutil import _compile, _entry
 
@@ -79,6 +84,477 @@ def test_end_to_end_first_reject_reasons():
     # scan names the frontier, not the host statement shape.
     assert fb.get("body:expr.list_comp") == 1
     assert "ok" in routed
+
+
+def test_function_lowering_reject_falls_back_without_scope_residue():
+    compiler, modules = _compile(
+        "from tpy import Int32\n"
+        "def rejected(s: str) -> Int32:\n"
+        "    t = s + 'x'\n"
+        "    del t\n"
+        "    return 1\n"
+        "def clean(n: Int32) -> Int32:\n"
+        "    return n + 1\n"
+    )
+    entry = _entry(modules)
+    routed = []
+    with activate_compiler(compiler):
+        for func, self_type in iter_module_callables(entry.ast, entry.analyzer):
+            begin_attempt()
+            fn = lower_function(func, entry.analyzer, self_type=self_type)
+            if fn is None:
+                fold_attempt("body")
+            else:
+                routed.append(fn.name)
+    assert compiler._thir_fallback.get(
+        "body:stmt.del_var:nontrivial") == 1
+    assert "clean" in routed
+
+
+def test_constructor_lowering_reject_falls_back():
+    compiler, modules = _compile(
+        "from tpy import Int32\n"
+        "class R:\n"
+        "    n: Int32\n"
+        "    def __init__(self, n: Int32):\n"
+        "        self.n = n\n"
+        "        s = 'x' + 'y'\n"
+        "        del s\n"
+    )
+    entry = _entry(modules)
+    with activate_compiler(compiler):
+        record, init, self_type = next(
+            iter_module_constructors(entry.ast, entry.analyzer))
+        begin_attempt()
+        ctor = lower_constructor(
+            record, init, entry.analyzer, self_type=self_type)
+        if ctor is None:
+            fold_attempt("ctor")
+    assert ctor is None
+    assert compiler._thir_fallback.get(
+        "ctor:stmt.del_var:nontrivial") == 1
+
+
+def test_base_init_arg_lowering_reject_falls_back():
+    # A base-init arg is admitted by TYPE (`_base_init_arg_ok` -> `_expr_eligible`),
+    # so a structurally-unhandled scalar shape reaches `_lower_expr` and only rejects
+    # there -- it must land on the ctor's fallback boundary, not escape as a crash.
+    compiler, modules = _compile(
+        "from tpy import Int32\n"
+        "class Base:\n"
+        "    x: Int32\n"
+        "    def __init__(self, x: Int32):\n"
+        "        self.x = x\n"
+        "class Derived(Base):\n"
+        "    y: Int32\n"
+        "    def __init__(self, n: Int32):\n"
+        "        super().__init__(m := n)\n"
+        "        self.y = n\n"
+    )
+    entry = _entry(modules)
+    with activate_compiler(compiler):
+        ctors = {rec.name: (rec, init, st) for rec, init, st
+                 in iter_module_constructors(entry.ast, entry.analyzer)}
+        record, init, self_type = ctors["Derived"]
+        begin_attempt()
+        ctor = lower_constructor(
+            record, init, entry.analyzer, self_type=self_type)
+        if ctor is None:
+            fold_attempt("ctor")
+    assert ctor is None
+    assert compiler._thir_fallback.get("ctor:expr.named_expr") == 1
+
+
+def test_global_lowering_reject_falls_back_at_sync_boundary():
+    compiler, modules = _compile(
+        "from tpy import Int32\n"
+        "message = 'before'\n"
+        "def rejected(n: Int32) -> Int32:\n"
+        "    global message\n"
+        "    return n\n"
+        "def clean(n: Int32) -> Int32:\n"
+        "    return n + 1\n"
+    )
+    entry = _entry(modules)
+    routed = []
+    with activate_compiler(compiler):
+        for func, self_type in iter_module_callables(entry.ast, entry.analyzer):
+            begin_attempt()
+            fn = lower_function(func, entry.analyzer, self_type=self_type)
+            if fn is None:
+                fold_attempt("body")
+            else:
+                routed.append(fn.name)
+    assert compiler._thir_fallback.get(
+        "body:stmt.global:global.unseeded") == 1
+    assert "clean" in routed
+
+
+def test_global_lowering_reject_falls_back_at_constructor_boundary():
+    compiler, modules = _compile(
+        "from tpy import Int32\n"
+        "message = 'before'\n"
+        "class R:\n"
+        "    n: Int32\n"
+        "    def __init__(self, n: Int32):\n"
+        "        global message\n"
+        "        self.n = n\n"
+    )
+    entry = _entry(modules)
+    with activate_compiler(compiler):
+        record, init, self_type = next(
+            iter_module_constructors(entry.ast, entry.analyzer))
+        begin_attempt()
+        ctor = lower_constructor(
+            record, init, entry.analyzer, self_type=self_type)
+        if ctor is None:
+            fold_attempt("ctor")
+    assert ctor is None
+    assert compiler._thir_fallback.get(
+        "ctor:stmt.global:global.unseeded") == 1
+
+
+def test_raise_lowering_reject_falls_back_at_sync_boundary():
+    compiler, modules = _compile(
+        "from tpy import Int32\n"
+        "err = ValueError('bad')\n"
+        "def rejected(n: Int32) -> Int32:\n"
+        "    raise err\n"
+        "def clean(n: Int32) -> Int32:\n"
+        "    return n + 1\n"
+    )
+    entry = _entry(modules)
+    routed = []
+    with activate_compiler(compiler):
+        for func, self_type in iter_module_callables(entry.ast, entry.analyzer):
+            begin_attempt()
+            fn = lower_function(func, entry.analyzer, self_type=self_type)
+            if fn is None:
+                fold_attempt("body")
+            else:
+                routed.append(fn.name)
+    assert compiler._thir_fallback.get("body:stmt.raise") == 1
+    assert "clean" in routed
+
+
+def test_numeric_literal_lowering_rejects_have_precise_reasons():
+    compiler, modules = _compile(
+        "from tpy import Float64, Int64\n"
+        "def take_int(n: Int64) -> Int64:\n"
+        "    return n\n"
+        "def take_float(n: Float64) -> Float64:\n"
+        "    return n\n"
+        "def wide() -> Int64:\n"
+        "    return take_int(2147483648)\n"
+        "def nonfinite() -> Float64:\n"
+        "    return take_float(1e400)\n"
+    )
+    entry = _entry(modules)
+    with activate_compiler(compiler):
+        for func, self_type in iter_module_callables(entry.ast, entry.analyzer):
+            begin_attempt()
+            fn = lower_function(func, entry.analyzer, self_type=self_type)
+            if fn is None:
+                fold_attempt("body")
+    assert compiler._thir_fallback.get("body:expr.int_literal.range") == 1
+    assert compiler._thir_fallback.get(
+        "body:expr.float_literal.nonfinite") == 1
+
+
+def test_unhandled_expression_rejects_from_lowering_tail():
+    compiler, modules = _compile(
+        "from tpy import Int32\n"
+        "def rejected(n: Int32) -> Int32:\n"
+        "    x = (y := n)\n"
+        "    return x\n"
+        "def clean(n: Int32) -> Int32:\n"
+        "    return n + 1\n"
+    )
+    entry = _entry(modules)
+    routed = []
+    with activate_compiler(compiler):
+        for func, self_type in iter_module_callables(entry.ast, entry.analyzer):
+            begin_attempt()
+            fn = lower_function(func, entry.analyzer, self_type=self_type)
+            if fn is None:
+                fold_attempt("body")
+            else:
+                routed.append(fn.name)
+    assert compiler._thir_fallback.get("body:expr.named_expr") == 1
+    assert "clean" in routed
+
+
+def test_while_lowering_reject_falls_back_at_sync_boundary():
+    compiler, modules = _compile(
+        "from tpy import Int32\n"
+        "def rejected(n: Int32) -> Int32:\n"
+        "    while True:\n"
+        "        n = n + 1\n"
+        "    return n\n"
+        "def clean(n: Int32) -> Int32:\n"
+        "    return n + 1\n"
+    )
+    entry = _entry(modules)
+    routed = []
+    with activate_compiler(compiler):
+        for func, self_type in iter_module_callables(entry.ast, entry.analyzer):
+            begin_attempt()
+            fn = lower_function(func, entry.analyzer, self_type=self_type)
+            if fn is None:
+                fold_attempt("body")
+            else:
+                routed.append(fn.name)
+    assert compiler._thir_fallback.get("body:stmt.while") == 1
+    assert "clean" in routed
+
+
+def test_while_lowering_reject_falls_back_at_constructor_boundary():
+    compiler, modules = _compile(
+        "from tpy import Int32\n"
+        "class R:\n"
+        "    n: Int32\n"
+        "    def __init__(self, n: Int32):\n"
+        "        while True:\n"
+        "            n = n + 1\n"
+        "        self.n = n\n"
+    )
+    entry = _entry(modules)
+    with activate_compiler(compiler):
+        record, init, self_type = next(
+            iter_module_constructors(entry.ast, entry.analyzer))
+        begin_attempt()
+        ctor = lower_constructor(
+            record, init, entry.analyzer, self_type=self_type)
+        if ctor is None:
+            fold_attempt("ctor")
+    assert ctor is None
+    assert compiler._thir_fallback.get("ctor:stmt.while") == 1
+
+
+def test_for_lowering_reject_falls_back_at_sync_boundary():
+    compiler, modules = _compile(
+        "from tpy import Int32\n"
+        "def rejected(n: Int32) -> Int32:\n"
+        "    for i in range(n):\n"
+        "        n = n + i\n"
+        "    else:\n"
+        "        n = n + 1\n"
+        "    return n\n"
+        "def clean(n: Int32) -> Int32:\n"
+        "    return n + 1\n"
+    )
+    entry = _entry(modules)
+    routed = []
+    with activate_compiler(compiler):
+        for func, self_type in iter_module_callables(entry.ast, entry.analyzer):
+            begin_attempt()
+            fn = lower_function(func, entry.analyzer, self_type=self_type)
+            if fn is None:
+                fold_attempt("body")
+            else:
+                routed.append(fn.name)
+    assert compiler._thir_fallback.get("body:stmt.for_each") == 1
+    assert "clean" in routed
+
+
+def test_tuple_unpack_lowering_reject_falls_back_at_sync_boundary():
+    compiler, modules = _compile(
+        "from tpy import Int32\n"
+        "def rejected(pairs: list[tuple[Int32, Int32]]) -> Int32:\n"
+        "    a, b = pairs[0]\n"
+        "    return a + b\n"
+        "def clean(n: Int32) -> Int32:\n"
+        "    return n + 1\n"
+    )
+    entry = _entry(modules)
+    routed = []
+    with activate_compiler(compiler):
+        for func, self_type in iter_module_callables(entry.ast, entry.analyzer):
+            begin_attempt()
+            fn = lower_function(func, entry.analyzer, self_type=self_type)
+            if fn is None:
+                fold_attempt("body")
+            else:
+                routed.append(fn.name)
+    assert compiler._thir_fallback.get("body:stmt.tuple_unpack") == 1
+    assert "clean" in routed
+
+
+def test_expr_stmt_lowering_reject_falls_back_at_sync_boundary():
+    compiler, modules = _compile(
+        "from tpy import Int32\n"
+        "def rejected(n: Int32) -> Int32:\n"
+        "    n + 1\n"
+        "    return n\n"
+        "def clean(n: Int32) -> Int32:\n"
+        "    return n + 1\n"
+    )
+    entry = _entry(modules)
+    routed = []
+    with activate_compiler(compiler):
+        for func, self_type in iter_module_callables(entry.ast, entry.analyzer):
+            begin_attempt()
+            fn = lower_function(func, entry.analyzer, self_type=self_type)
+            if fn is None:
+                fold_attempt("body")
+            else:
+                routed.append(fn.name)
+    assert compiler._thir_fallback.get(
+        "body:stmt.expr_stmt:expr_stmt.bin_op") == 1
+    assert "clean" in routed
+
+
+def test_aug_assign_lowering_reject_falls_back_at_sync_boundary():
+    compiler, modules = _compile(
+        "from tpy import Int32\n"
+        "def rejected(s: str) -> Int32:\n"
+        "    s += 'x'\n"
+        "    return Int32(len(s))\n"
+        "def clean(n: Int32) -> Int32:\n"
+        "    return n + 1\n"
+    )
+    entry = _entry(modules)
+    routed = []
+    with activate_compiler(compiler):
+        for func, self_type in iter_module_callables(entry.ast, entry.analyzer):
+            begin_attempt()
+            fn = lower_function(func, entry.analyzer, self_type=self_type)
+            if fn is None:
+                fold_attempt("body")
+            else:
+                routed.append(fn.name)
+    assert compiler._thir_fallback.get("body:stmt.aug_assign") == 1
+    assert "clean" in routed
+
+
+def test_assert_lowering_reject_falls_back_at_sync_boundary():
+    compiler, modules = _compile(
+        "from tpy import Int32\n"
+        "def rejected(n: Int32) -> Int32:\n"
+        "    assert True\n"
+        "    return n\n"
+        "def clean(n: Int32) -> Int32:\n"
+        "    return n + 1\n"
+    )
+    entry = _entry(modules)
+    routed = []
+    with activate_compiler(compiler):
+        for func, self_type in iter_module_callables(entry.ast, entry.analyzer):
+            begin_attempt()
+            fn = lower_function(func, entry.analyzer, self_type=self_type)
+            if fn is None:
+                fold_attempt("body")
+            else:
+                routed.append(fn.name)
+    assert compiler._thir_fallback.get("body:stmt.assert") == 1
+    assert "clean" in routed
+
+
+def test_if_lowering_reject_falls_back_at_sync_boundary():
+    compiler, modules = _compile(
+        "from tpy import Int32\n"
+        "def rejected(n: Int32) -> Int32:\n"
+        "    if True:\n"
+        "        n = n + 1\n"
+        "    return n\n"
+        "def clean(n: Int32) -> Int32:\n"
+        "    return n + 1\n"
+    )
+    entry = _entry(modules)
+    routed = []
+    with activate_compiler(compiler):
+        for func, self_type in iter_module_callables(entry.ast, entry.analyzer):
+            begin_attempt()
+            fn = lower_function(func, entry.analyzer, self_type=self_type)
+            if fn is None:
+                fold_attempt("body")
+            else:
+                routed.append(fn.name)
+    assert compiler._thir_fallback.get("body:stmt.if:cond.bool_literal") == 1
+    assert "clean" in routed
+
+
+def test_assign_lowering_reject_falls_back_at_sync_boundary():
+    compiler, modules = _compile(
+        "from tpy import Int32\n"
+        "class R:\n"
+        "    xs: list[Int32]\n"
+        "    def __init__(self, xs: list[Int32]):\n"
+        "        self.xs = xs\n"
+        "def rejected(r: R, xs: list[Int32]) -> None:\n"
+        "    r.xs = xs\n"
+    )
+    entry = _entry(modules)
+    with activate_compiler(compiler):
+        func, self_type = next(iter_module_callables(entry.ast, entry.analyzer))
+        begin_attempt()
+        fn = lower_function(func, entry.analyzer, self_type=self_type)
+        if fn is None:
+            fold_attempt("body")
+    assert fn is None
+    assert compiler._thir_fallback == {
+        "body:stmt.assign:assign.field_write_shape": 1,
+    }
+
+
+def test_return_lowering_reject_falls_back_at_sync_boundary():
+    compiler, modules = _compile(
+        "def rejected(s: str) -> str | None:\n"
+        "    return s\n"
+    )
+    entry = _entry(modules)
+    with activate_compiler(compiler):
+        func, self_type = next(iter_module_callables(entry.ast, entry.analyzer))
+        begin_attempt()
+        fn = lower_function(func, entry.analyzer, self_type=self_type)
+        if fn is None:
+            fold_attempt("body")
+    assert fn is None
+    assert compiler._thir_fallback == {
+        "body:stmt.return:return.opt_view_source": 1,
+    }
+
+
+def test_sync_lowering_reports_first_reject_in_source_order():
+    compiler, modules = _compile(
+        "from tpy import Int32\n"
+        "def rejected(n: Int32) -> Int32:\n"
+        "    assert True\n"
+        "    x = (y := n)\n"
+        "    return x\n"
+    )
+    entry = _entry(modules)
+    with activate_compiler(compiler):
+        func, self_type = next(iter_module_callables(entry.ast, entry.analyzer))
+        begin_attempt()
+        fn = lower_function(func, entry.analyzer, self_type=self_type)
+        if fn is None:
+            fold_attempt("body")
+    assert fn is None
+    assert compiler._thir_fallback == {"body:stmt.assert": 1}
+
+
+def test_constructor_lowering_reports_first_reject_in_source_order():
+    compiler, modules = _compile(
+        "from tpy import Int32\n"
+        "class R:\n"
+        "    n: Int32\n"
+        "    def __init__(self, n: Int32):\n"
+        "        assert True\n"
+        "        x = (y := n)\n"
+        "        self.n = x\n"
+    )
+    entry = _entry(modules)
+    with activate_compiler(compiler):
+        record, init, self_type = next(
+            iter_module_constructors(entry.ast, entry.analyzer))
+        begin_attempt()
+        ctor = lower_constructor(
+            record, init, entry.analyzer, self_type=self_type)
+        if ctor is None:
+            fold_attempt("ctor")
+    assert ctor is None
+    assert compiler._thir_fallback == {"ctor:stmt.assert": 1}
 
 
 def test_detail_composes_into_stmt_tag():
