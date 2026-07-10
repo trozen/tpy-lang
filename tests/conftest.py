@@ -1295,6 +1295,9 @@ def pytest_configure(config):
     # session file exists (first-ever bootstrap).
     recorded = read_session_fingerprints()
     if recorded and compute_session_fingerprints()["cpy_stubs"] != recorded.get("cpy_stubs"):
+        # This start-of-session line scrolls off the top of a long run, so also
+        # record it for the end-of-run banner (surfaced in terminal_summary).
+        _session_stale["cpy_stubs"] = True
         _log(
             "WARNING: cpy-stub fingerprint stale; the CPython phase will re-run "
             "for every applicable case. Refresh via update_snapshots.py.",
@@ -1808,6 +1811,30 @@ def record_exec_outcome(outcome: str) -> None:
         _exec_tally[outcome] += 1
 
 
+# Cases whose committed cpy fingerprint was stale (forced a cpy re-run). A
+# plain warnings.warn is easy to miss mid-run and leaves the session GREEN, so
+# these are also tallied and surfaced as a bold-yellow banner at session end.
+_stale_fp: list[str] = []
+_stale_fp_agg: list[str] = []
+
+# Session-global stale-fingerprint flags (currently just the cpy-stub hash).
+# Set in pytest_configure, read by the end-of-run banner. Unlike the per-case
+# tally these need no worker->controller plumbing: pytest_configure and
+# pytest_terminal_summary both run on the controller, so the value set there is
+# the one the banner reads.
+_session_stale = {"cpy_stubs": False}
+
+
+def record_stale_fingerprint(case_id: str) -> None:
+    """Tally one case whose committed cpy fingerprint was stale."""
+    _stale_fp.append(case_id)
+
+
+def stale_fingerprint_cases() -> list[str]:
+    """Sorted, de-duplicated union of this process's and folded workers' stale cases."""
+    return sorted(set(_stale_fp) | set(_stale_fp_agg))
+
+
 # THIR routed-body tally -- the non-vacuity guard for the --thir-codegen gate.
 # Mirrors the exec tally's per-worker -> controller aggregation. Under forced
 # THIR a full run that routes zero bodies means the flag stopped reaching
@@ -1995,6 +2022,7 @@ def pytest_sessionfinish(session):
         workeroutput["thir_divergences"] = list(_thir_divergences)
         workeroutput["thir_cases"] = dict(_thir_cases)
         workeroutput["thir_flip"] = list(_thir_flip)
+        workeroutput["stale_fp"] = list(_stale_fp)
         return
     if _thir_gate_verdict(session.config) == "fail":
         session.exitstatus = pytest.ExitCode.TESTS_FAILED
@@ -2022,9 +2050,49 @@ def pytest_testnodedown(node, error):
         for k in _thir_cases_agg:
             _thir_cases_agg[k] += tc.get(k, 0)
     _thir_flip_agg.extend(wo.get("thir_flip", []))
+    _stale_fp_agg.extend(wo.get("stale_fp", []))
+
+
+def _emit_stale_fingerprint_banner(terminalreporter):
+    """Emit the bold-yellow STALE FINGERPRINTS banner (a no-op when nothing is
+    stale). Stale committed fingerprints only warn (the session stays GREEN) and
+    the signals scatter -- the cpy-stub line scrolls off the top at session
+    start, the per-case warnings hide in the warnings summary -- so one banner
+    collects both, and a stale fingerprint can't be missed whichever kind fired.
+
+    Kept standalone (not inline in pytest_terminal_summary) so it can be tested
+    against a fake reporter in isolation: driving the whole summary would also
+    emit the exec/thir tally lines from shared session state, coupling any
+    banner assertion to unrelated globals.
+    """
+    stale_cases = stale_fingerprint_cases()
+    if not (_session_stale["cpy_stubs"] or stale_cases):
+        return
+    terminalreporter.write_sep(
+        "=", "STALE FINGERPRINTS", yellow=True, bold=True)
+    if _session_stale["cpy_stubs"]:
+        terminalreporter.write_line(
+            f"{_LOG_PREFIX} cpy-stub fingerprint stale -- the CPython phase "
+            f"re-ran for every applicable case. Refresh the whole suite:",
+            yellow=True, bold=True)
+        terminalreporter.write_line(
+            f"{_LOG_PREFIX}   uv run python tests/update_snapshots.py",
+            yellow=True)
+    if stale_cases:
+        terminalreporter.write_line(
+            f"{_LOG_PREFIX} {len(stale_cases)} case(s) re-ran cpy on a stale "
+            f"committed fingerprint -- refresh individually:",
+            yellow=True, bold=True)
+        for c in stale_cases:
+            terminalreporter.write_line(
+                f"{_LOG_PREFIX}   uv run python "
+                f"tests/update_snapshots.py -k {c}",
+                yellow=True)
 
 
 def pytest_terminal_summary(terminalreporter, exitstatus, config):
+    _emit_stale_fingerprint_banner(terminalreporter)
+
     total = {k: _exec_tally[k] + _exec_tally_agg[k] for k in _exec_tally}
     considered = total["ran"] + total["skipped"]
     if total["disabled"]:

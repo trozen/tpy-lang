@@ -64,6 +64,7 @@ from conftest import (
     exec_pass_is_cached,
     record_exec_pass,
     record_exec_outcome,
+    record_stale_fingerprint,
 )
 
 
@@ -410,6 +411,7 @@ def test_case(case_dir, main_src, request):
             and cpy_stubs_unchanged
             and not main_unchanged
         ):
+            record_stale_fingerprint(case_dir.name)
             warnings.warn(
                 f"Test '{case_dir.name}': main fingerprint stale -- "
                 f"the next non-forced run will re-execute cpy. "
