@@ -41,6 +41,7 @@ compilation (standalone-lowering units still work).
 
 from __future__ import annotations
 
+import os
 import re
 from dataclasses import fields as dataclass_fields, is_dataclass
 
@@ -70,6 +71,10 @@ _LANDMARKS: tuple[tuple[type, str], ...] = (
 )
 
 _CAMEL_SPLIT = re.compile(r"(?<!^)(?=[A-Z])")
+
+# The arm-residual instrument walks every FALLBACK unit, so it is gated on its
+# dump env-var to keep normal runs free of the AST-walk cost.
+_ARM_RESIDUAL_ON = bool(os.environ.get("THIR_ARM_RESIDUAL_JSON"))
 
 
 class ThirUnsupported(Exception):
@@ -128,6 +133,30 @@ def fold_attempt(component: str) -> None:
     key = f"{component}:{compiler._thir_reject_reason or 'unclassified'}"
     fb = compiler._thir_fallback
     fb[key] = fb.get(key, 0) + 1
+
+
+def record_arm_residual(body: 'list') -> None:
+    """Tally, per AST construct kind, how many FALLBACK units CONTAIN it -- the
+    deletion residual for that construct's AST emit arm (smallest = closest to
+    deletable). NOT the first-reject reason: a fallback emits its WHOLE tree via
+    AST, so it keeps alive every arm its constructs use regardless of WHY it fell
+    back (a body blocked on a call still keeps its for-each arm alive). Deduped
+    per unit; called at all three fallback seams (body / ctor / resumable), so
+    the population is every un-routed unit. Gated on $THIR_ARM_RESIDUAL_JSON to
+    keep normal runs free of the AST walk."""
+    if not _ARM_RESIDUAL_ON:
+        return
+    compiler = get_current_compiler()
+    if compiler is None:
+        return
+    kinds: set[str] = set()
+    for stmt in body:
+        for node in _walk(stmt):
+            kinds.add(_CAMEL_SPLIT.sub("_", type(node).__name__
+                                      .removeprefix("Tpy")).lower())
+    r = compiler._thir_arm_residual
+    for k in kinds:
+        r[k] = r.get(k, 0) + 1
 
 
 def _is_node(x: object) -> bool:

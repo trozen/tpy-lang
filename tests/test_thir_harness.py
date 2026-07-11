@@ -99,7 +99,7 @@ def test_thir_case_mode_whole_corpus_and_writers_suppress_ratchet() -> None:
 
 
 _TALLIES = ("_thir_tally", "_thir_cases", "_thir_faces", "_thir_fallback",
-            "_thir_shapes", "_thir_flip")
+            "_thir_arm_residual", "_thir_shapes", "_thir_flip")
 
 
 @contextlib.contextmanager

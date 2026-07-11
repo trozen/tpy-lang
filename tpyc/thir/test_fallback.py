@@ -6,6 +6,7 @@ attempt, and classify_stmt tags landmark constructs."""
 from __future__ import annotations
 
 from ..compilation_context import _current_compiler, activate_compiler
+from . import fallback as _fb
 from .fallback import (
     begin_attempt,
     begin_stmt,
@@ -13,6 +14,7 @@ from .fallback import (
     fold_attempt,
     note,
     note_detail,
+    record_arm_residual,
     stmt_reject_reason,
 )
 from .lower import (
@@ -50,6 +52,51 @@ def test_noop_without_active_compiler():
         begin_attempt()
         assert note("sig.async") is False
         fold_attempt("body")
+    finally:
+        _current_compiler.reset(token)
+
+
+def _fn_body(src, name):
+    compiler, modules = _compile(src)
+    entry = _entry(modules)
+    f = next(fn for fn, _ in iter_module_callables(entry.ast, entry.analyzer)
+             if fn.name == name)
+    return compiler, entry, f
+
+
+def test_arm_residual_records_deduped(monkeypatch):
+    # The construct is counted ONCE per fallback unit even with two for-loops
+    # -- the residual is "units containing the construct", not occurrences.
+    monkeypatch.setattr(_fb, "_ARM_RESIDUAL_ON", True)
+    compiler, _, f = _fn_body(
+        "from tpy import Int32\n"
+        "def f(xs: list[Int32]) -> Int32:\n"
+        "    t = 0\n"
+        "    for a in xs:\n        t += a\n"
+        "    for b in xs:\n        if b > 0:\n            t += b\n"
+        "    return t\n", "f")
+    with activate_compiler(compiler):
+        record_arm_residual(f.body)
+    r = compiler._thir_arm_residual
+    assert r["for_each"] == 1   # two loops -> deduped to one unit
+    assert r["if"] == 1 and r["return"] == 1
+
+
+def test_arm_residual_inert_when_gate_off(monkeypatch):
+    monkeypatch.setattr(_fb, "_ARM_RESIDUAL_ON", False)
+    compiler, _, f = _fn_body(
+        "from tpy import Int32\n"
+        "def f(xs: list[Int32]) -> None:\n    for x in xs:\n        pass\n", "f")
+    with activate_compiler(compiler):
+        record_arm_residual(f.body)
+    assert compiler._thir_arm_residual == {}
+
+
+def test_arm_residual_noop_without_active_compiler(monkeypatch):
+    monkeypatch.setattr(_fb, "_ARM_RESIDUAL_ON", True)
+    token = _current_compiler.set(None)
+    try:
+        record_arm_residual([])  # no active compiler -> no error, no record
     finally:
         _current_compiler.reset(token)
 

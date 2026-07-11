@@ -664,6 +664,10 @@ class Compiler:
         self._thir_reject_reason: str | None = None
         self._thir_reject_detail: str | None = None
         self._thir_fallback: dict[str, int] = {}
+        # Per-construct arm-residual (fallback bodies CONTAINING each construct
+        # -- the deletion metric; see fallback.record_arm_residual). Populated
+        # only when $THIR_ARM_RESIDUAL_JSON is set.
+        self._thir_arm_residual: dict[str, int] = {}
         # Per-shape tally (thir/shape.py): signature -> {slot: count}, the
         # distinct-shape complement of the body-weighted routed count. Only ever
         # written under --thir-codegen.

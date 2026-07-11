@@ -480,7 +480,8 @@ class CodeGenerator:
                 lower_function as _thir_lower,
                 module_native_globals as _thir_native_globals,
             )
-            from ..thir.fallback import begin_attempt, fold_attempt
+            from ..thir.fallback import (begin_attempt, fold_attempt,
+                                         record_arm_residual)
             from ..thir.shape import record_shape
 
             def _is_bodyless_binding(fn) -> bool:
@@ -521,6 +522,7 @@ class CodeGenerator:
                     record_shape(f, "body", routed=True)
                 else:
                     fold_attempt("body")
+                    record_arm_residual(f.body)
                     record_shape(f, "body", routed=False)
             self.ctx.thir_constructors = {}
             for rec, init, self_type in _thir_ctors(module, self.analyzer):
@@ -537,6 +539,7 @@ class CodeGenerator:
                     record_shape(init, "ctor", routed=True)
                 else:
                     fold_attempt("ctor")
+                    record_arm_residual(init.body)
                     record_shape(init, "ctor", routed=False)
 
         hpp = io.StringIO()

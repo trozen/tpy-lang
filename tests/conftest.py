@@ -939,6 +939,7 @@ def compile_with_diagnostics(src_file: Path, output_dir: Path, default_int: str 
         record_thir_routed(compiler._thir_routed_bodies)
         record_thir_faces(compiler._thir_face_witnesses)
         record_thir_fallback(compiler._thir_fallback)
+        record_thir_arm_residual(compiler._thir_arm_residual)
         record_thir_shapes(compiler._thir_shapes)
         if thir_active:
             fell = sum(compiler._thir_fallback.values())
@@ -1958,6 +1959,19 @@ def record_thir_fallback(counts: dict[str, int]) -> None:
         _thir_fallback[key] = _thir_fallback.get(key, 0) + n
 
 
+# Per-construct arm residual: fallback bodies CONTAINING each construct (the
+# deletion metric, gated on $THIR_ARM_RESIDUAL_JSON). See
+# tpyc/thir/fallback.record_arm_residual.
+_thir_arm_residual: dict[str, int] = {}
+_thir_arm_residual_agg: dict[str, int] = {}
+
+
+def record_thir_arm_residual(counts: dict[str, int]) -> None:
+    """Fold one case's per-construct arm-residual (empty when the flag is off)."""
+    for key, n in counts.items():
+        _thir_arm_residual[key] = _thir_arm_residual.get(key, 0) + n
+
+
 # THIR per-shape tally (tpyc/thir/shape.py) -- the distinct-shape complement of
 # the body-weighted routed count. `signature -> {slot: count}`; a signature is
 # fully routed iff it has no non-`routed` slot. Aggregated worker -> controller
@@ -2018,6 +2032,7 @@ def pytest_sessionfinish(session):
         workeroutput["thir_tally"] = dict(_thir_tally)
         workeroutput["thir_faces"] = dict(_thir_faces)
         workeroutput["thir_fallback"] = dict(_thir_fallback)
+        workeroutput["thir_arm_residual"] = dict(_thir_arm_residual)
         workeroutput["thir_shapes"] = _thir_shapes
         workeroutput["thir_divergences"] = list(_thir_divergences)
         workeroutput["thir_cases"] = dict(_thir_cases)
@@ -2043,6 +2058,8 @@ def pytest_testnodedown(node, error):
         _thir_faces_agg[face] = _thir_faces_agg.get(face, 0) + n
     for key, n in wo.get("thir_fallback", {}).items():
         _thir_fallback_agg[key] = _thir_fallback_agg.get(key, 0) + n
+    for key, n in wo.get("thir_arm_residual", {}).items():
+        _thir_arm_residual_agg[key] = _thir_arm_residual_agg.get(key, 0) + n
     _fold_shapes(_thir_shapes_agg, wo.get("thir_shapes", {}))
     _thir_divergences_agg.extend(wo.get("thir_divergences", []))
     tc = wo.get("thir_cases")
@@ -2188,6 +2205,29 @@ def pytest_terminal_summary(terminalreporter, exitstatus, config):
                 terminalreporter.write_line(
                     f"{_LOG_PREFIX} thir fallback: full counts written to "
                     f"{dump_path}"
+                )
+            # Per-construct ARM RESIDUAL: fallback bodies containing each
+            # construct -- the deletion metric (CLAUDE.md THIR loop step 1).
+            # The SMALLEST residual is the arm closest to deletable; report it
+            # ascending so the next target reads off the top.
+            arm_dump = os.environ.get("THIR_ARM_RESIDUAL_JSON")
+            residual = dict(_thir_arm_residual)
+            for key, n in _thir_arm_residual_agg.items():
+                residual[key] = residual.get(key, 0) + n
+            if arm_dump and residual:
+                Path(arm_dump).write_text(
+                    json.dumps(dict(sorted(residual.items(),
+                                           key=lambda kv: kv[1])), indent=2)
+                    + "\n")
+                smallest = sorted(residual.items(), key=lambda kv: kv[1])[:10]
+                nearest = ", ".join(f"{k} {v}" for k, v in smallest)
+                terminalreporter.write_line(
+                    f"{_LOG_PREFIX} thir arm-residual (bodies keeping each AST "
+                    f"arm alive; smallest = closest to deletable): {nearest}"
+                )
+                terminalreporter.write_line(
+                    f"{_LOG_PREFIX} thir arm-residual: full counts written to "
+                    f"{arm_dump}"
                 )
             # Distinct-SHAPE coverage: the de-inflated complement of the routed
             # count (which repeats the stdlib body per case). `R/T distinct

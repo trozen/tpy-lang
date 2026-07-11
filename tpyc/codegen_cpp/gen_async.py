@@ -1803,7 +1803,8 @@ class AsyncCoroCodegen:
         key = id(func)
         if key in cache:
             return cache[key]
-        from ..thir.fallback import begin_attempt, fold_attempt
+        from ..thir.fallback import (begin_attempt, fold_attempt,
+                                     record_arm_residual)
         from ..thir.shape import record_shape
         from ..thir.lower.resumable import lower_resumable
         begin_attempt()
@@ -1822,6 +1823,7 @@ class AsyncCoroCodegen:
             record_shape(func, "resumable", routed=True)
         else:
             fold_attempt("resumable")
+            record_arm_residual(func.body)
             record_shape(func, "resumable", routed=False)
         return rb
 
