@@ -1,10 +1,12 @@
 # THIR Migration Completion Ledger
 
-> **Operating model (2026-07):** porting is now per-case and opportunistic
-> (see CLAUDE.md "THIR migration"). The deletion targets and completion model
-> below are current -- they're the technical map of what-blocks-deletion. The
-> "sequence against routing %" / push-to-completion campaign framing predates
-> the per-case operating model and is no longer how the work is driven.
+> **Operating model (2026-07-11):** the goal is COMPLETION (deleting the AST
+> codegen), driven by the deletion-first loop in CLAUDE.md "THIR migration"
+> (metric = AST-arms-remaining, target = smallest per-construct residual, per-case
+> machinery keeps it honest). The deletion targets and completion model below are
+> the technical map of what-blocks-deletion. The "sequence against routing %" /
+> throughput-campaign framing predates this and is no longer how the work is
+> driven.
 
 The **deletion roadmap** for the THIR codegen migration: the single place that
 answers *"what stands between us and retiring the AST body/form codegen path, and

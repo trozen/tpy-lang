@@ -302,9 +302,34 @@ def _del_var_trivial(t: TpyType | None, analyzer) -> bool:
         t = resolved
     return t.is_trivially_destructible()
 
+def _scalar_or_str_unpack_elem(t: TpyType | None, analyzer) -> bool:
+    """A tuple-unpack target / source-tuple element this cell admits: a value
+    scalar, or a str -- the view-form target `std::string_view name =
+    std::get<i>(tup)` binds a view into the source tuple's element, valid for
+    the tuple's scope (which encloses the targets), exactly as a str loop var /
+    str decl views its source. `render_type(target_types[i])` spells the view
+    (the same `type_to_cpp` the AST arm calls), so the lowering needs no str
+    arm. Record / bytes / Optional / union elements take the borrow-alias /
+    other _gen_tuple_unpack branches -- deferred rungs."""
+    return (_eligible_scalar(t)
+            or _resolved_str_value(unwrap_ref_type(t) if t is not None else None,
+                                   analyzer) is not None)
+
+def _unpack_target_decl(tt: TpyType, analyzer, render_type
+                        ) -> 'tuple[TpyType, str]':
+    """Resolve a tuple-unpack target type (a str PendingStrType -> its concrete
+    view, which params never resolve in place) and render it. Shared by the
+    standalone and for-each unpack lowerings so both spell a str target the
+    same `std::string_view`; scalars pass through unchanged."""
+    resolved = _resolved_str_value(tt, analyzer)
+    if resolved is not None:
+        tt = resolved
+    return tt, render_type(tt)
+
 def _container_scalar_tuple_iter(t: TpyType | None, analyzer) -> bool:
-    """A `list[tuple[scalar, ...]]` / `Array[tuple[scalar, ...], N]` binding --
-    admitted as the tuple-unpack loop's iterable. Element-TOUCHING read gates
+    """A `list[tuple[scalar-or-str, ...]]` / `Array[tuple[scalar-or-str, ...], N]`
+    binding -- admitted as the tuple-unpack loop's iterable (element family gated
+    by `_scalar_or_str_unpack_elem`). Element-TOUCHING read gates
     (subscript, plain iteration, method calls) check their own element family
     and reject tuple elements; `len(xs)` IS lit up (`_is_len_call` is
     element-agnostic) but renders the identical bare-name `::tpy::__len__`
@@ -319,7 +344,8 @@ def _container_scalar_tuple_iter(t: TpyType | None, analyzer) -> bool:
         return False
     elem = unwrap_readonly(args[0])
     return (isinstance(elem, TupleType) and bool(elem.element_types)
-            and all(_eligible_scalar(et) for et in elem.element_types))
+            and all(_scalar_or_str_unpack_elem(et, analyzer)
+                    for et in elem.element_types))
 
 def _range_bound_literal_value(arg: TpyExpr) -> int | None:
     # The AST's inline-vs-hoist decision for a range bound (_is_literal_range_arg):
@@ -565,11 +591,11 @@ def _for_tuple_unpack_eligible(
                                prescan: _Prescan) -> bool:
     """`for a, b in <iterable>:` -- the parser desugars to a ForEach over a
     synthetic `__for_tup_N` var whose body leads with a TpyTupleUnpack from
-    it. Slice: an lvalue `list[tuple[scalar]]`-family name or a `d.items()`
-    dict-view call as the iterable; all-new plain value-scalar targets (no
-    ref/owned/const-ref elements, no discard restrictions -- `_` slots skip).
-    Record/str elements take the borrow/view target branches of
-    _gen_tuple_unpack -- deferred rows."""
+    it. Slice: an lvalue `list[tuple[scalar-or-str]]`-family name or a
+    `d.items()` dict-view call as the iterable; all-new plain value scalar-or-str
+    targets (no ref/owned/const-ref elements, no discard restrictions -- `_`
+    slots skip). Record elements take the borrow target branch of
+    _gen_tuple_unpack -- a deferred row."""
     if not stmt.is_tuple_unpack:
         return False
     if (stmt.is_async or stmt.orelse or stmt.enum_iterable is not None
@@ -597,7 +623,7 @@ def _for_tuple_unpack_eligible(
             continue
         if name in declared or name in narrowed:
             return False
-        if not _eligible_scalar(tt):
+        if not _scalar_or_str_unpack_elem(tt, analyzer):
             return False
     it = stmt.iterable
     if isinstance(it, TpyMethodCall):
@@ -639,16 +665,17 @@ def _classify_for_each(
     _kind_detail("foreach.iter_", stmt.iterable)
     return None
 
-def _tuple_unpack_targets(stmt: TpyTupleUnpack,
+def _tuple_unpack_targets(stmt: TpyTupleUnpack, analyzer,
                           declared: dict[str, TpyType],
                           narrowed: AbstractSet[str]
                           ) -> 'list[TpyType | None] | None':
-    """The all-new plain value-scalar target slice of `_gen_tuple_unpack`'s
-    `const auto& __tup_N = <name>;` arm: no ref/owned/const-ref elements, every
-    target a fresh scalar local (a discard `_` slot skips). Returns the
-    per-target unwrapped scalar types (None at a discard slot), or None when a
-    target takes another _gen_tuple_unpack branch (borrow/str/reused) -- deferred
-    rows. The source-form check (a value-scalar tuple name) is the caller's."""
+    """The all-new plain value-scalar-or-str target slice of
+    `_gen_tuple_unpack`'s `const auto& __tup_N = <name>;` arm: no
+    ref/owned/const-ref elements, every target a fresh scalar or str local (a
+    discard `_` slot skips). Returns the per-target unwrapped types (None at a
+    discard slot), or None when a target takes another _gen_tuple_unpack branch
+    (borrow/record/reused) -- deferred rows. The source-form check (a value
+    scalar-or-str tuple name) is the caller's."""
     if any(stmt.is_ref) or any(stmt.is_owned) or any(stmt.is_const_ref):
         return None
     if not all(stmt.is_new):
@@ -661,7 +688,7 @@ def _tuple_unpack_targets(stmt: TpyTupleUnpack,
         if name in declared or name in narrowed:
             return None
         tt = unwrap_ref_type(stmt.target_types[i])
-        if not _eligible_scalar(tt):
+        if not _scalar_or_str_unpack_elem(tt, analyzer):
             return None
         types.append(tt)
     return types
@@ -684,12 +711,12 @@ def _tuple_unpack_source(
     `T t = recv.field` value-tuple decl already routes (`_storage_call_ret` +
     `_call_eligible` / `_method_call_eligible`, `_field_receiver_ok`), so the
     source expr lowers the same; only the source bind differs (`auto` rvalue
-    capture vs the name's const-ref). Every element must be a plain scalar --
-    an owned-str element (a `_value_tuple` member) leaves the targets outside
-    `_tuple_unpack_targets`' scalar slice, so it is rejected here to keep the
-    source and target families aligned (str is deferred). Swap /
-    literal-parallel / nested / starred / record-element / Optional-element /
-    reused-target forms take other arms."""
+    capture vs the name's const-ref). Every element must be a scalar or a str
+    (`_scalar_or_str_unpack_elem`): a str element's view-form target aliases the
+    source tuple's element for the tuple's scope, kept aligned with
+    `_tuple_unpack_targets`' matching family. Swap / literal-parallel / nested /
+    starred / record-element / Optional-element / reused-target forms take other
+    arms."""
     v = stmt.value
     if isinstance(v, TpyName):
         if v.name not in declared or v.name in pointers or v.name in narrowed:
@@ -719,7 +746,8 @@ def _tuple_unpack_source(
         return None
     src_t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(src_raw)))
     if not (isinstance(src_t, TupleType)
-            and all(_eligible_scalar(e) for e in src_t.element_types)):
+            and all(_scalar_or_str_unpack_elem(e, analyzer)
+                    for e in src_t.element_types)):
         note_detail("tuple_unpack.source_family")
         return None
     return src_t
@@ -2448,7 +2476,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 or len(source_type.element_types) != len(stmt.targets)):
             raise ThirUnsupported("stmt.tuple_unpack")
         target_types = _tuple_unpack_targets(
-            stmt, declared, lc.narrow.narrowed.keys())
+            stmt, analyzer, declared, lc.narrow.narrowed.keys())
         if target_types is None:
             note_detail("tuple_unpack.target_form")
             raise ThirUnsupported("stmt.tuple_unpack")
@@ -2466,8 +2494,12 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 continue
             tt = target_types[i]
             assert tt is not None
+            # A str target's type is still a PendingStrType (params never
+            # resolve it in place); resolve it to the concrete view before
+            # render, else `render_type` raises. Scalars pass through.
+            tt, cpp = _unpack_target_decl(tt, analyzer, lc.render_type)
             declared[name] = tt
-            target_cpps.append(lc.render_type(tt))
+            target_cpps.append(cpp)
         _witness("stmt.tuple_unpack")
         if isinstance(stmt.value, TpyName):
             return THIRTupleUnpack(
@@ -2517,9 +2549,10 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 if name is None:
                     target_cpps.append(None)
                     continue
-                tt = unwrap_ref_type(up.target_types[i])
+                tt, cpp = _unpack_target_decl(
+                    unwrap_ref_type(up.target_types[i]), analyzer, lc.render_type)
                 body_declared[name] = tt
-                target_cpps.append(lc.render_type(tt))
+                target_cpps.append(cpp)
             head = THIRTupleUnpack(
                 source=stmt.var,
                 targets=tuple(up.targets),

@@ -933,13 +933,37 @@ class TestContainerLiteralElementFamilies:
                 "{std::tuple<int32_t, int32_t>{1, 2}, "
                 "std::tuple<int32_t, int32_t>{3, 4}};") in cpp
 
-    def test_tuple_name_element_ineligible(self):
-        # A value-tuple NAME element could be an owned-movable tuple param in
-        # the AST's movable set (not mirrored) -- literals only.
+    def test_value_tuple_name_element_routes(self):
+        # A value-tuple NAME element copies into the slot (value type, no
+        # aliasing, never moved) -- byte-identical to the AST's copy. (Was
+        # deferred: literals only.)
         thir = _lower(
             _PRELUDE
             + "def f() -> Int32:\n"
             + "    t = (1, 2)\n    xs = [t]\n    return len(xs)\n")
+        assert _fn(thir, "f") is not None
+
+    def test_value_tuple_str_element_name_copies_not_moves(self):
+        # The observable shape: a value-tuple with an OWNED-STR element. Copy vs
+        # std::move is distinguishable here (a moved-from string), so the
+        # byte-diff pins that THIR copies -- never moves -- exactly like the AST
+        # (a value-tuple is `is_value_type()`, so `_container_elem_move_source`
+        # never fires and no AST movable path marks it).
+        src = (_PRELUDE
+               + "def f() -> Int32:\n"
+               + "    t = (\"a\", 1)\n    xs = [t]\n    return len(xs)\n"
+               + "def main():\n    print(f())\nmain()\n")
+        assert _fn(_lower(src), "f") is not None
+        self._both(src)  # asserts THIR == AST emit
+
+    def test_own_tuple_element_name_ineligible(self):
+        # The divergence risk the arm's comment names: an `Own[tuple[...]]`
+        # element param the AST would MOVE (move-in ABI) is not a value-tuple
+        # binding, so it must NOT reach the value-tuple-name arm -- stays AST.
+        thir = _lower(
+            "from tpy import Int32, Own\n"
+            "def f(t: Own[tuple[Int32, Int32]]) -> Int32:\n"
+            "    xs = [t]\n    return len(xs)\n")
         assert _fn(thir, "f") is None
 
     def test_bytes_literal_elements_route(self):

@@ -986,6 +986,39 @@ class TestStandaloneTupleUnpack:
         assert isinstance(fn.body[0], THIRVarDecl)      # the tuple local
         assert isinstance(fn.body[1], THIRTupleUnpack)  # the unpack
 
+    def test_str_target_routes_view_form(self):
+        # A str tuple-unpack target binds view-form (`std::string_view a =
+        # std::get<0>(...)`, a view into the source tuple element) -- the scalar
+        # arm renders it via the same `render_type`, so it routes.
+        thir = _lower(
+            _PRELUDE
+            + "def f(t: tuple[str, Int32]) -> Int32:\n"
+            + "    a, b = t\n    print(a)\n    return b\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+        assert isinstance(fn.body[0], THIRTupleUnpack)
+        assert fn.body[0].target_cpps[0] == "std::string_view"
+
+    def test_str_target_for_each_routes(self):
+        # The for-each sibling: `for name, count in pairs:` over a
+        # list[tuple[str, Int32]] -- same view-form target.
+        thir = _lower(
+            _PRELUDE
+            + "def f(pairs: list[tuple[str, Int32]]) -> None:\n"
+            + "    for name, count in pairs:\n        print(name, count)\n")
+        assert _fn(thir, "f") is not None
+
+    def test_record_target_still_ineligible(self):
+        # The deferred rung: a record (borrow) target takes the `&std::get<i>`
+        # alias arm -- stays AST.
+        thir = _lower_ctx(
+            "from tpy import Int32\n"
+            "class Leaf:\n    n: Int32\n"
+            "    def __init__(self, n: Int32):\n        self.n = n\n"
+            "def f(t: tuple[Leaf, Int32]) -> Int32:\n"
+            "    a, b = t\n    return b\n")
+        assert _fn(thir, "f") is None
+
     def test_discard_slot_skips(self):
         # A `_` discard slot carries None through targets/target_cpps (its
         # std::get emits nothing).
@@ -1059,14 +1092,6 @@ class TestStandaloneTupleUnpack:
             + "def mk(n: Int32) -> tuple[Int32, Int32]:\n    return (n, n)\n"
             + "def f(n: Int32) -> Int32:\n    a, b = mk(n)\n    return a + b\n")
         assert faces.get("stmt.tuple_unpack.rvalue_source", 0) >= 1
-
-    def test_str_element_ineligible(self):
-        # An owned-str target is not `_eligible_scalar` -- the owned-string copy
-        # arm is deferred.
-        thir = _lower(
-            _PRELUDE
-            + "def f(t: tuple[str, Int32]) -> Int32:\n    a, b = t\n    return b\n")
-        assert _fn(thir, "f") is None
 
     def test_reused_target_ineligible(self):
         # A target shadowing an outer local (`a` predeclared) takes the AST's

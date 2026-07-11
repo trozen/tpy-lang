@@ -1,11 +1,13 @@
 # THIR Emit-Arm Inventory
 
-> **Operating model (2026-07):** porting is now per-case and opportunistic
-> (see CLAUDE.md "THIR migration"). The emit-arm inventory, leverage tables,
-> and deletion targets below are current -- they're the per-construct
-> what-to-port reference. The fan-out/wave *sequencing* plan and the
-> "maximize throughput to near-100%" framing describe the earlier coordinated
-> campaign and are no longer how the work is driven.
+> **Operating model (2026-07-11):** the goal is COMPLETION (deleting the AST
+> codegen), not a hybrid -- and the direction is now the deletion-first loop in
+> CLAUDE.md "THIR migration" (metric = AST-arms-remaining, target = smallest
+> per-construct residual, per-case machinery keeps it honest). The emit-arm
+> inventory, leverage tables, and deletion targets below are the current
+> per-construct what-to-port reference. The fan-out/wave *sequencing* plan and
+> the "maximize throughput to near-100%" framing describe the earlier
+> coordinated campaign and are no longer how the work is driven.
 
 The map for completing the THIR migration (deleting the AST codegen path).
 Drives the work by the **finite emit surface we must port** (~236 emit functions

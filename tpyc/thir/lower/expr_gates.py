@@ -604,10 +604,17 @@ def _container_lit_elem_ok(e: TpyExpr, slot: 'TpyType | None',
         vt = _value_tuple(su, analyzer)
         if vt is None or not threaded:
             return note_detail("container_lit.elem.tuple") if note else False
-        # Tuple LITERAL elements only: a value-tuple NAME could be an
-        # owned-movable tuple param in the AST's movable set
-        # (seed_param_locals), which lc.movable_locals deliberately does not
-        # mirror -- the make_vector switch would diverge silently.
+        # A value-tuple NAME copies into the element slot (value type -- no
+        # aliasing); `_container_elem_move_source` value-type-filters, so it
+        # never moves, matching the AST's copy for a value-tuple. (An owned
+        # `std::tuple<...>&&` param the AST's seed_param_locals would MOVE is
+        # not a value-tuple binding, so it never resolves here.)
+        if isinstance(e, TpyName):
+            bt = declared.get(e.name)
+            if bt is not None and _value_tuple(
+                    unwrap_readonly(unwrap_ref_type(unwrap_send_sync(bt))),
+                    analyzer) is not None:
+                return True
         return (_tuple_literal_ok(e, vt, declared, analyzer)
                 or (note_detail("container_lit.elem.tuple") if note else False))
     if fam == "container":
