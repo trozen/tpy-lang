@@ -769,7 +769,7 @@ class TestNarrowingEligibility:
         # ASTs. Lowering must reject a narrowed-subject rebind there too -- a
         # routed rebind would leave later reads on the stale extraction alias.
         from ..parse.nodes import TpyAssign, TpyName
-        from .lower import _Prescan, _WalkState
+        from .lower import _Prescan
         from .lower.statements import _assign_eligible
         compiler, modules = _compile(_PRELUDE + (
             "def f(v: Int32 | Float64, v2: Int32 | Float64) -> Int32:\n"
@@ -782,10 +782,9 @@ class TestNarrowingEligibility:
         synthetic = TpyAssign(target=TpyName("v"), value=fn.body[0].init)
         prescan = _Prescan(fn, an)
         assert _assign_eligible(
-            synthetic, an, _WalkState(dict(declared)), prescan)
+            synthetic, an, declared, set(), set(), set(), prescan)
         assert not _assign_eligible(
-            synthetic, an,
-            _WalkState(dict(declared), narrowed={"v"}), prescan)
+            synthetic, an, declared, set(), set(), {"v"}, prescan)
 
     def test_narrowing_inside_loop_body_scopes(self):
         # Narrow inside a for body; the scope pops at the loop's closing

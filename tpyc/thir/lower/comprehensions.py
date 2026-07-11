@@ -3,6 +3,7 @@ _comp_decl_ok (gate) and _lower_comprehension (emit mirror).
 """
 
 from __future__ import annotations
+from collections.abc import Set as AbstractSet
 from dataclasses import dataclass
 from ...parse.nodes import (
     TpyDictComprehension,
@@ -57,7 +58,6 @@ from .context import (
     _ExprUse,
     _LowerCtx,
     _Prescan,
-    _WalkState,
 )
 from .expr_gates import (
     _condition_eligible,
@@ -246,8 +246,11 @@ def _comp_elem_slot_ok(slot: 'TpyType | None', analyzer) -> bool:
     return (_eligible_enum(slot, analyzer) is not None
             or _f1_record(slot, analyzer))
 
-def _comp_decl_ok(stmt: TpyVarDecl, ws: _WalkState, prescan: _Prescan,
-                  analyzer) -> bool:
+def _comp_decl_ok(
+        stmt: TpyVarDecl, declared: dict[str, TpyType],
+        pointers: AbstractSet[str], rebind_slots: AbstractSet[str],
+        storage_tuple_locals: AbstractSet[str], narrowed: AbstractSet[str],
+        prescan: _Prescan, analyzer) -> bool:
     """First decl of a comprehension local (`xs = [f(i) for i in ...]`), the
     C1+C2 slice. Same decl-position rules as the container-literal cell (a
     reassigned local is a pointer-local on the AST path); the result must be
@@ -260,9 +263,15 @@ def _comp_decl_ok(stmt: TpyVarDecl, ws: _WalkState, prescan: _Prescan,
             or stmt.name in prescan.move_through):
         return False
     t = _var_decl_type(stmt, analyzer)
-    return _comp_expr_ok(init, t, ws, analyzer)
+    return _comp_expr_ok(
+        init, t, declared, pointers, rebind_slots,
+        storage_tuple_locals, narrowed, analyzer)
 
-def _comp_print_arg_ok(a, ws: _WalkState, analyzer) -> bool:
+def _comp_print_arg_ok(
+        a, declared: dict[str, TpyType], pointers: AbstractSet[str],
+        rebind_slots: AbstractSet[str],
+        storage_tuple_locals: AbstractSet[str],
+        narrowed: AbstractSet[str], analyzer) -> bool:
     """A comprehension print arg (C3): wraps in its container printer
     (`::tpy::ListPrinter` / `SetPrinter` / `DictPrinter`); admissibility is
     the position-independent gate over the expr's own resolved result (an
@@ -270,9 +279,15 @@ def _comp_print_arg_ok(a, ws: _WalkState, analyzer) -> bool:
     NB the return position stays deferred: container RETURN types reject at
     the signature gate (`_eligible_return`), and widening that is the
     signature axis, not a comprehension row."""
-    return _comp_expr_ok(a, analyzer.get_expr_type(a), ws, analyzer)
+    return _comp_expr_ok(
+        a, analyzer.get_expr_type(a), declared, pointers, rebind_slots,
+        storage_tuple_locals, narrowed, analyzer)
 
-def _comp_expr_ok(init, t: 'TpyType | None', ws: _WalkState, analyzer) -> bool:
+def _comp_expr_ok(
+        init, t: 'TpyType | None', declared: dict[str, TpyType],
+        pointers: AbstractSet[str], rebind_slots: AbstractSet[str],
+        storage_tuple_locals: AbstractSet[str],
+        narrowed: AbstractSet[str], analyzer) -> bool:
     """Position-independent comprehension admissibility against result type
     `t`: the route fact, result slots, comp-var shadow checks, and the
     element/filter gates. Filters retain their condition-shape gate; element
@@ -280,8 +295,10 @@ def _comp_expr_ok(init, t: 'TpyType | None', ws: _WalkState, analyzer) -> bool:
     if t is None:
         return False
     if is_array(t):
-        return _comp_array_ok(init, t, ws, analyzer)
-    route = _comp_route(init, ws.declared, ws.narrowed, analyzer)
+        return _comp_array_ok(
+            init, t, declared, pointers, rebind_slots,
+            storage_tuple_locals, narrowed, analyzer)
+    route = _comp_route(init, declared, narrowed, analyzer)
     if route is None:
         return False
     args = getattr(t, "type_args", None)
@@ -303,9 +320,8 @@ def _comp_expr_ok(init, t: 'TpyType | None', ws: _WalkState, analyzer) -> bool:
     # walk; a var shadowing a specially-classified local (pointer / rebind /
     # tuple-alias / narrowed) would need render-state save-restore the slice
     # does not carry -- reject.
-    special = (ws.pointers | ws.rebind_slots | ws.storage_tuple_locals
-               | ws.narrowed)
-    declared2 = dict(ws.declared)
+    special = (pointers | rebind_slots | storage_tuple_locals | narrowed)
+    declared2 = dict(declared)
     if route.unpack_types is not None:
         for name, tt in zip(gen.unpack_vars, route.unpack_types):
             if name is None:
@@ -322,7 +338,11 @@ def _comp_expr_ok(init, t: 'TpyType | None', ws: _WalkState, analyzer) -> bool:
         return False
     return True
 
-def _comp_array_ok(init, t: TpyType, ws: _WalkState, analyzer) -> bool:
+def _comp_array_ok(
+        init, t: TpyType, declared: dict[str, TpyType],
+        pointers: AbstractSet[str], rebind_slots: AbstractSet[str],
+        storage_tuple_locals: AbstractSet[str],
+        narrowed: AbstractSet[str], analyzer) -> bool:
     """An Array-demoted comprehension -- the `array_from_index` RANGE arm
     only (a filter-less, unpack-less list comp over a literal-proven range;
     sema's _try_comp_array_size did the proving, so the bounds are
@@ -343,11 +363,10 @@ def _comp_array_ok(init, t: TpyType, ws: _WalkState, analyzer) -> bool:
     args_t = getattr(t, "type_args", None)
     if not args_t or not _comp_elem_slot_ok(args_t[0], analyzer):
         return False
-    special = (ws.pointers | ws.rebind_slots | ws.storage_tuple_locals
-               | ws.narrowed)
+    special = (pointers | rebind_slots | storage_tuple_locals | narrowed)
     if gen.var in special:
         return False
-    declared2 = dict(ws.declared)
+    declared2 = dict(declared)
     declared2[gen.var] = counter
     return True
 

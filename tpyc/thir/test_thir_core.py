@@ -240,44 +240,47 @@ class TestEligibility:
         thir = _lower("def f[T](a: T) -> T:\n    b = a\n    return b\n")
         assert _fn(thir, "f") is None
 
-    def test_walk_state_branch_copy_isolates_every_field(self):
-        # branch_copy must deep-copy EVERY container field: a branch mutation
-        # leaking into the parent scope would let a branch-local fact (a
-        # POINTER decl, a narrowing) survive past the branch. Field-generic
-        # so a sixth field added for a later cell can't be silently shared.
-        from dataclasses import fields
-        from .lower import _WalkState
-        ws = _WalkState({"a": None})
-        copy = ws.branch_copy()
-        for f in fields(_WalkState):
-            container = getattr(copy, f.name)
-            if isinstance(container, dict):
-                container["x"] = None
-            else:
-                container.add("x")
-            assert "x" not in getattr(ws, f.name)
-
-    def test_lower_scope_snapshots_compatibility_state(self):
-        from .lower import _LowerCtx, _LowerScope
-        _compiler, modules = _compile(
-            _PRELUDE + "def f(n: Int32) -> Int32:\n    return n\n")
+    def test_statement_admission_gates_do_not_mutate_live_state(self):
+        # The _WalkState snapshot is gone: gates now read the LIVE
+        # declared/narrowed containers by reference, so a gate that wrote
+        # through one would corrupt real lowering state (pre-refactor the
+        # same write hit a throwaway per-call copy and was harmless). Pin the
+        # read-only contract on the two gates that historically mutated the
+        # snapshot -- an isinstance narrowing whose admission used to add the
+        # subject to declared/narrowed/persistent_narrowed.
+        from ..parse.nodes import TpyAssert, TpyIf
+        from .lower import _LowerCtx, _Prescan
+        from .lower.statements import _assert_eligible, _if_eligible
+        _compiler, modules = _compile(_F1_RECORDS + (
+            "def g(v: Leaf | Inner) -> Int32:\n"
+            "    assert isinstance(v, Leaf)\n"
+            "    return v.n\n"
+            "def h(v: Leaf | Inner) -> Int32:\n"
+            "    if isinstance(v, Inner):\n        return v.value\n"
+            "    return v.n\n"))
         entry = _entry(modules)
-        func = entry.ast.functions[0]
-        lc = _LowerCtx(func, entry.analyzer, None)
-        lc.pointers.add("p")
-        scope = _LowerScope(lc, {"n": func.params[0][1]},
-                            in_branch=True, branch_decls_ok=True,
-                            loop_depth=2)
-        ws = scope.walk_state()
-        assert ws.declared == scope.declared
-        assert ws.pointers == {"p"}
-        assert scope.in_branch and scope.branch_decls_ok
-        assert scope.loop_depth == 2
-        ws.declared["x"] = func.params[0][1]
-        ws.pointers.add("q")
-        assert "x" not in scope.declared
-        assert "q" not in lc.pointers
+        an = entry.analyzer
+        with activate_compiler(_compiler):
+            g, h = entry.ast.functions[0], entry.ast.functions[1]
 
+            declared = {n: t for n, t in g.params}
+            narrowed: set[str] = set()
+            persistent: set[str] = set()
+            snapshot = (dict(declared), set(narrowed), set(persistent))
+            assert_stmt = g.body[0]
+            assert isinstance(assert_stmt, TpyAssert)
+            assert _assert_eligible(assert_stmt, an, declared, narrowed,
+                                    persistent)
+            assert (declared, narrowed, persistent) == snapshot
+
+            declared = {n: t for n, t in h.params}
+            narrowed = set()
+            snapshot = (dict(declared), set(narrowed))
+            if_stmt = h.body[0]
+            assert isinstance(if_stmt, TpyIf)
+            assert _if_eligible(if_stmt, an, declared, narrowed,
+                                _Prescan(h, an), in_loop=False)
+            assert (declared, narrowed) == snapshot
 
 class TestForRange:
     def test_range_stop_eligible(self):

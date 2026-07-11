@@ -5,6 +5,7 @@ slot, call, method, condition, and statement shape classifiers they consume.
 """
 
 from __future__ import annotations
+from collections.abc import Set as AbstractSet
 from dataclasses import field
 from ...parse.nodes import (
     FSTRING_CONV_NONE,
@@ -219,7 +220,6 @@ from .predicates import (
 )
 from .context import (
     _Prescan,
-    _WalkState,
 )
 
 def _ptr_union_source_ok(e: TpyExpr, declared: dict[str, TpyType], analyzer,
@@ -1094,7 +1094,7 @@ def _is_record_rvalue_method_source(init: TpyExpr, declared: dict[str, TpyType],
                                  record_ret_ok=True, temps_ok=temps_ok)
 
 def _scalar_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
-                           analyzer, ws: '_WalkState | None' = None) -> bool:
+                           analyzer) -> bool:
     """A scalar-field write `recv.field = <scalar>`: a value-scalar field off an
     F1-record receiver (`_field_receiver_ok` also rejects the property-setter /
     __setattr__ write target), written with an eligible scalar expression. The
@@ -1106,11 +1106,6 @@ def _scalar_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
     markers reject it). A Char field writes identically (`recv.c = z`); its
     str-literal value guard is defensive -- sema type-errors a literal into a
     Char field, but the target-typed `'x'` render would otherwise diverge.
-
-    `ws` (when passed -- the statement-walk call site) admits a direct
-    temp-hoisting call value: the field write is the fifth flushable
-    statement position (the AST's single gen_stmt flush point covers every
-    assign target shape).
 
     An Optional-ptr-receiver target is admitted on both faces: proven ->
     `p->field = <value>;` (arrow via _field_receiver_ok), unproven ->
@@ -1169,9 +1164,10 @@ def _nondef_ctor_field(ftype: 'TpyType | None', analyzer) -> bool:
     rec = analyzer.registry.get_record_for_type(ftype)
     return rec is not None and del_suppresses_default_ctor(rec)
 
-def _record_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
-                           analyzer, ws: '_WalkState',
-                           prescan: '_Prescan') -> bool:
+def _record_field_write_ok(
+        stmt: TpyAssign, declared: dict[str, TpyType], analyzer,
+        pointers: set[str], narrowed: AbstractSet[str],
+        prescan: '_Prescan') -> bool:
     """A plain F1-record field write `recv.field = <source>` off an F1-record
     receiver -- the AST's default field assign, no borrow<->storage lift. Two
     source rows:
@@ -1203,7 +1199,7 @@ def _record_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
         return analyzer.get_expr_type(stmt.value) == ftype
     v = stmt.value
     if not (isinstance(v, TpyName) and v.name in declared
-            and v.name not in ws.narrowed and v.name not in ws.pointers
+            and v.name not in narrowed and v.name not in pointers
             and not (prescan.has_self and v.name == "self")):
         return False
     vt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(declared[v.name])))
@@ -1224,9 +1220,9 @@ def _optional_record_field_inner(t: 'TpyType | None', analyzer) -> 'TpyType | No
         return u.inner
     return None
 
-def _optional_record_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
-                                    pointers: set[str], analyzer, ws: '_WalkState',
-                                    prescan: '_Prescan') -> bool:
+def _optional_record_field_write_ok(
+        stmt: TpyAssign, declared: dict[str, TpyType], pointers: set[str],
+        analyzer, narrowed: AbstractSet[str], prescan: '_Prescan') -> bool:
     """A value-storage `Optional[record]` field write `recv.opt = <record>` off
     an F1-record receiver: the field stores `std::optional<inner>`, and the
     source is a record RVALUE (ctor / by-value call of the inner type -- copied
@@ -1247,7 +1243,7 @@ def _optional_record_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType
     if _is_record_rvalue_source(v, declared, analyzer):
         return analyzer.get_expr_type(v) == inner
     if not (isinstance(v, TpyName) and v.name in declared
-            and v.name not in pointers and v.name not in ws.narrowed
+            and v.name not in pointers and v.name not in narrowed
             and not (prescan.has_self and v.name == "self")):
         return False
     vt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(declared[v.name])))
@@ -1498,7 +1494,9 @@ def _subscript_read_reject(e: TpySubscript, locals_: dict[str, TpyType],
         return "subscript." + _subscript_elem_reject(t, analyzer)
     return "subscript.recv_type"
 
-def _setitem_target_ok(sub: TpySubscript, ws: '_WalkState', analyzer) -> bool:
+def _setitem_target_ok(
+        sub: TpySubscript, declared: dict[str, TpyType], pointers: set[str],
+        narrowed: AbstractSet[str], analyzer) -> bool:
     """The shared write-target half of the subscript-write gates: a
     single-index (non-slice) subscript off a bare in-scope container name --
     or a one-level container FIELD off an admitted receiver name
@@ -1516,20 +1514,22 @@ def _setitem_target_ok(sub: TpySubscript, ws: '_WalkState', analyzer) -> bool:
     if sub.typed_dict_field is not None or sub.needs_optional_runtime_check:
         return note_detail("setitem.receiver")
     recv = sub.obj
-    if isinstance(recv, TpyName) and (recv.name in ws.pointers
-                                      or recv.name in ws.narrowed):
+    if isinstance(recv, TpyName) and (recv.name in pointers
+                                      or recv.name in narrowed):
         return note_detail("setitem.recv.name_shape")
-    recv_t = _subscript_container_recv_type(recv, ws.declared, analyzer)
+    recv_t = _subscript_container_recv_type(recv, declared, analyzer)
     if recv_t is None:
         return note_detail(
-            "setitem." + _subscript_recv_reject(recv, ws.declared, analyzer))
+            "setitem." + _subscript_recv_reject(recv, declared, analyzer))
     if not _container_scalar_read(recv_t, analyzer):
         return note_detail("setitem.family")
     if (_bigint_index_disposition(sub.index, analyzer) == "reject"):
         return note_detail("setitem.index")
     return True
 
-def _container_setitem_ok(stmt: TpyAssign, ws: '_WalkState', analyzer) -> bool:
+def _container_setitem_ok(
+        stmt: TpyAssign, declared: dict[str, TpyType], pointers: set[str],
+        narrowed: AbstractSet[str], analyzer) -> bool:
     """A container subscript write `c[k] = v` -> the checked
     `::tpy::__setitem__(c, k, v);` or (index proven in-bounds) the direct
     `c[static_cast<std::size_t>(k)] = v;`. The value is any eligible scalar /
@@ -1541,12 +1541,14 @@ def _container_setitem_ok(stmt: TpyAssign, ws: '_WalkState', analyzer) -> bool:
     here: elements of admitted families are value scalars / owned str, so
     the tuple/Optional/union storage lifts and the last-use move
     (non-value-type locals only) have no admitted source."""
-    if not _setitem_target_ok(stmt.target, ws, analyzer):
+    if not _setitem_target_ok(
+            stmt.target, declared, pointers, narrowed, analyzer):
         return False
     return True
 
-def _container_aug_setitem_ok(stmt: TpyAugAssign, ws: '_WalkState',
-                              analyzer) -> bool:
+def _container_aug_setitem_ok(
+        stmt: TpyAugAssign, declared: dict[str, TpyType], pointers: set[str],
+        narrowed: AbstractSet[str], analyzer) -> bool:
     """An augmented container subscript write `c[k] OP= v` -> the AST's
     read-modify-write pair `::tpy::__setitem__(c, k, <read> OP v);` with the
     read the CHECKED `::tpy::__getitem__(c, k)` -- the aug arm never takes
@@ -1558,7 +1560,8 @@ def _container_aug_setitem_ok(stmt: TpyAugAssign, ws: '_WalkState',
     `({0}).to_fixed_check<T>()` cast, like the name arm) or an owned str
     (op `+` -- the resolved concat renders `::tpy::str_concat(<read>, v)`,
     pinned to the concat-operand slice like the name append)."""
-    if not _setitem_target_ok(stmt.target, ws, analyzer):
+    if not _setitem_target_ok(
+            stmt.target, declared, pointers, narrowed, analyzer):
         return False
     if stmt.resolved_inplace is not None:
         return note_detail("setitem.aug_inplace")

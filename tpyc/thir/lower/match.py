@@ -5,6 +5,7 @@ guarded-union).
 """
 
 from __future__ import annotations
+from collections.abc import Set as AbstractSet
 from dataclasses import fields as dataclass_fields
 from ...parse.nodes import (
     TpyAsPattern,
@@ -68,7 +69,6 @@ from .predicates import (
 from .context import (
     _LowerCtx,
     _Prescan,
-    _WalkState,
 )
 from .expressions import (
     _lower_expr,
@@ -295,8 +295,10 @@ def _match_capture_field_ok(ft: TpyType, analyzer) -> bool:
             or _eligible_enum(t, analyzer) is not None
             or _resolved_str_value(t, analyzer) is not None)
 
-def _match_keywords_ok(pattern: TpyClassPattern, analyzer, ws: _WalkState,
-                       arm_ws: _WalkState, *, allow_conds: bool) -> bool:
+def _match_keywords_ok(
+        pattern: TpyClassPattern, analyzer, pointers: AbstractSet[str],
+        narrowed: AbstractSet[str], storage_tuple_locals: AbstractSet[str],
+        arm_declared: dict[str, TpyType], *, allow_conds: bool) -> bool:
     """The field sub-pattern slice for one class pattern: literal conditions
     (the record tiers and the guarded-union tier; the unconditional union
     switch has no `&&` position, so its walk passes allow_conds=False --
@@ -319,13 +321,13 @@ def _match_keywords_ok(pattern: TpyClassPattern, analyzer, ws: _WalkState,
                 return False
             continue
         if isinstance(sub, TpyCapturePattern):
-            if (sub.name in ws.pointers or sub.name in ws.narrowed
-                    or sub.name in ws.storage_tuple_locals):
+            if (sub.name in pointers or sub.name in narrowed
+                    or sub.name in storage_tuple_locals):
                 return False
             ft = _match_record_field_type(pattern, fname, analyzer)
             if ft is None or not _match_capture_field_ok(ft, analyzer):
                 return False
-            arm_ws.declared[sub.name] = ft
+            arm_declared[sub.name] = ft
             continue
         return False
     return True
@@ -371,8 +373,10 @@ def _match_union_route(stmt: TpyMatch, u: UnionType) -> str:
         return "guarded_union"
     return "switch_union"
 
-def _match_guarded_union_arms_ok(stmt: TpyMatch, analyzer, ws: _WalkState,
-                                 prescan: _Prescan, subj: TpyName,
+def _match_guarded_union_arms_ok(
+        stmt: TpyMatch, analyzer, declared: dict[str, TpyType],
+        pointers: AbstractSet[str], narrowed: AbstractSet[str],
+        storage_tuple_locals: AbstractSet[str], subj: TpyName,
                                  u: UnionType, hoist_declared: dict, *,
                                  in_loop: bool) -> bool:
     """The guarded_union (M4b) arm walk -- `_gen_match_guarded_union`'s
@@ -398,8 +402,8 @@ def _match_guarded_union_arms_ok(stmt: TpyMatch, analyzer, ws: _WalkState,
         if parts is None:
             return False
         test, bnode = parts
-        arm_ws = ws.branch_copy()
-        arm_ws.declared.update(hoist_declared)
+        arm_declared = dict(declared)
+        arm_declared.update(hoist_declared)
         member = None
         has_field_conds = False
         capture_names: list[str] = []
@@ -411,7 +415,9 @@ def _match_guarded_union_arms_ok(stmt: TpyMatch, analyzer, ws: _WalkState,
                 return False
             if _union_member_index(members, member) is None:
                 return False
-            if not _match_keywords_ok(test, analyzer, ws, arm_ws,
+            if not _match_keywords_ok(
+                    test, analyzer, pointers, narrowed,
+                    storage_tuple_locals, arm_declared,
                                       allow_conds=True):
                 return False
             has_field_conds = MatchGenerator._pattern_has_field_condition(test)
@@ -435,16 +441,15 @@ def _match_guarded_union_arms_ok(stmt: TpyMatch, analyzer, ws: _WalkState,
         if facts:
             if set(facts) != {subj.name} or member is None:
                 return False
-            arm_ws.declared[subj.name] = facts[subj.name]
-            arm_ws.narrowed.add(subj.name)
+            arm_declared[subj.name] = facts[subj.name]
         if bnode is not None:
-            if (bnode.name in ws.pointers or bnode.name in ws.narrowed
-                    or bnode.name in ws.storage_tuple_locals):
+            if (bnode.name in pointers or bnode.name in narrowed
+                    or bnode.name in storage_tuple_locals):
                 return False
-            arm_ws.declared[bnode.name] = (member if member is not None
-                                           else arm_ws.declared[subj.name])
+            arm_declared[bnode.name] = (member if member is not None
+                                        else arm_declared[subj.name])
         if case.guard is not None:
-            if not _match_guard_ok(case.guard, arm_ws.declared, analyzer):
+            if not _match_guard_ok(case.guard, arm_declared, analyzer):
                 return False
             if _expr_mentions_name(case.guard, subj.name):
                 return False
@@ -454,8 +459,10 @@ def _match_guarded_union_arms_ok(stmt: TpyMatch, analyzer, ws: _WalkState,
                 return False
     return True
 
-def _match_union_arms_ok(stmt: TpyMatch, analyzer, ws: _WalkState,
-                         prescan: _Prescan, subj: TpyName, u: UnionType,
+def _match_union_arms_ok(
+        stmt: TpyMatch, analyzer, declared: dict[str, TpyType],
+        pointers: AbstractSet[str], narrowed: AbstractSet[str],
+        storage_tuple_locals: AbstractSet[str], subj: TpyName, u: UnionType,
                          hoist_declared: dict, *, in_loop: bool) -> bool:
     """The switch_union (M4a) arm walk: class patterns (sema resolved the
     member; keyword field CAPTURES bind off the `__case_{i}` alias -- field
@@ -478,8 +485,8 @@ def _match_union_arms_ok(stmt: TpyMatch, analyzer, ws: _WalkState,
         if parts is None:
             return False
         test, bnode = parts
-        arm_ws = ws.branch_copy()
-        arm_ws.declared.update(hoist_declared)
+        arm_declared = dict(declared)
+        arm_declared.update(hoist_declared)
         member = None
         if test is None:
             pass  # wildcard/capture -> the `default:` arm
@@ -491,7 +498,9 @@ def _match_union_arms_ok(stmt: TpyMatch, analyzer, ws: _WalkState,
             if idx is None or idx in seen:
                 return False
             seen.add(idx)
-            if not _match_keywords_ok(test, analyzer, ws, arm_ws,
+            if not _match_keywords_ok(
+                    test, analyzer, pointers, narrowed,
+                    storage_tuple_locals, arm_declared,
                                       allow_conds=False):
                 return False
         elif isinstance(test, TpyOrPattern):
@@ -520,14 +529,13 @@ def _match_union_arms_ok(stmt: TpyMatch, analyzer, ws: _WalkState,
         if facts:
             if set(facts) != {subj.name} or member is None:
                 return False
-            arm_ws.declared[subj.name] = facts[subj.name]
-            arm_ws.narrowed.add(subj.name)
+            arm_declared[subj.name] = facts[subj.name]
         if bnode is not None:
-            if (bnode.name in ws.pointers or bnode.name in ws.narrowed
-                    or bnode.name in ws.storage_tuple_locals):
+            if (bnode.name in pointers or bnode.name in narrowed
+                    or bnode.name in storage_tuple_locals):
                 return False
-            arm_ws.declared[bnode.name] = (member if member is not None
-                                           else arm_ws.declared[subj.name])
+            arm_declared[bnode.name] = (member if member is not None
+                                        else arm_declared[subj.name])
     return True
 
 def _match_record_arm_always(test) -> bool:
@@ -548,8 +556,10 @@ def _match_record_arm_always(test) -> bool:
                    if isinstance(a, TpyClassPattern)
                    for _, s in a.keywords)
 
-def _match_record_arms_ok(stmt: TpyMatch, analyzer, ws: _WalkState,
-                          prescan: _Prescan, subj: TpyName, kind: str,
+def _match_record_arms_ok(
+        stmt: TpyMatch, analyzer, declared: dict[str, TpyType],
+        pointers: AbstractSet[str], narrowed: AbstractSet[str],
+        storage_tuple_locals: AbstractSet[str], subj: TpyName, kind: str,
                           hoist_declared: dict, *, in_loop: bool) -> bool:
     """The record tiers' (if_elif_record / guarded_record) arm walk: class
     patterns over the concrete record with the field condition/capture
@@ -571,14 +581,16 @@ def _match_record_arms_ok(stmt: TpyMatch, analyzer, ws: _WalkState,
         if parts is None:
             return False
         test, bnode = parts
-        arm_ws = ws.branch_copy()
-        arm_ws.declared.update(hoist_declared)
+        arm_declared = dict(declared)
+        arm_declared.update(hoist_declared)
         if test is None:
             pass
         elif isinstance(test, TpyClassPattern):
             if test.resolved_type is None or test.positional:
                 return False
-            if not _match_keywords_ok(test, analyzer, ws, arm_ws,
+            if not _match_keywords_ok(
+                    test, analyzer, pointers, narrowed,
+                    storage_tuple_locals, arm_declared,
                                       allow_conds=True):
                 return False
         elif isinstance(test, TpyOrPattern):
@@ -609,12 +621,12 @@ def _match_record_arms_ok(stmt: TpyMatch, analyzer, ws: _WalkState,
                                              or i != len(stmt.cases) - 1):
                 return False
         if bnode is not None:
-            if (bnode.name in ws.pointers or bnode.name in ws.narrowed
-                    or bnode.name in ws.storage_tuple_locals):
+            if (bnode.name in pointers or bnode.name in narrowed
+                    or bnode.name in storage_tuple_locals):
                 return False
-            arm_ws.declared[bnode.name] = arm_ws.declared[subj.name]
+            arm_declared[bnode.name] = arm_declared[subj.name]
         if case.guard is not None and not _match_guard_ok(
-                case.guard, arm_ws.declared, analyzer):
+                case.guard, arm_declared, analyzer):
             return False
     return True
 
@@ -656,8 +668,10 @@ def _stmts_write_name(body, name: str) -> bool:
                 stack.extend(x for x in v if isinstance(x, TpyStmt))
     return False
 
-def _match_optional_arms_ok(stmt: TpyMatch, analyzer, ws: _WalkState,
-                            prescan: _Prescan, subj: TpyName,
+def _match_optional_arms_ok(
+        stmt: TpyMatch, analyzer, declared: dict[str, TpyType],
+        pointers: AbstractSet[str], narrowed: AbstractSet[str],
+        storage_tuple_locals: AbstractSet[str], subj: TpyName,
                             hoist_declared: dict, *,
                             in_loop: bool) -> bool:
     """The optional_partition (O1) arm walk -- `_gen_match_optimized_optional`
@@ -709,16 +723,16 @@ def _match_optional_arms_ok(stmt: TpyMatch, analyzer, ws: _WalkState,
             return False
     else:
         return False
-    arm_ws = ws.branch_copy()
-    arm_ws.declared.update(hoist_declared)
+    arm_declared = dict(declared)
+    arm_declared.update(hoist_declared)
     if bnode is not None:
         # Only the fresh `auto&` deref binding is in the slice: a
         # pre-declared name would take `_emit_binding`'s assign/pointer
         # arms against the deref (and its record-typed hoist already
         # rejects upstream -- defensive).
-        if (bnode.name in ws.declared or bnode.name in ws.pointers
-                or bnode.name in ws.narrowed
-                or bnode.name in ws.storage_tuple_locals):
+        if (bnode.name in declared or bnode.name in pointers
+                or bnode.name in narrowed
+                or bnode.name in storage_tuple_locals):
             return False
         # A write through the capture is ILL-FORMED on the AST path when
         # the subject binding is const (sema's const verdict never sees
@@ -727,11 +741,14 @@ def _match_optional_arms_ok(stmt: TpyMatch, analyzer, ws: _WalkState,
         # sema attributes those.
         if _stmts_write_name(case.body, bnode.name):
             return False
-        arm_ws.declared[bnode.name] = inner_type
+        arm_declared[bnode.name] = inner_type
     return True
 
-def _match_eligible(stmt: TpyMatch, analyzer, ws: _WalkState,
-                    prescan: _Prescan, *, in_branch: bool,
+def _match_eligible(
+        stmt: TpyMatch, analyzer, declared: dict[str, TpyType],
+        pointers: AbstractSet[str], narrowed: AbstractSet[str],
+        storage_tuple_locals: AbstractSet[str], prescan: _Prescan,
+        *, in_branch: bool,
                     in_loop: bool) -> bool:
     """The `match` gate arm -- M1: the unguarded scalar switch tiers
     (switch_enum / switch_primitive), no captures. The subject is a bare
@@ -752,14 +769,14 @@ def _match_eligible(stmt: TpyMatch, analyzer, ws: _WalkState,
     if kind is None:
         return False
     subj = stmt.subject
-    if not isinstance(subj, TpyName) or subj.name not in ws.declared:
+    if not isinstance(subj, TpyName) or subj.name not in declared:
         return False
-    if (subj.name in ws.pointers or subj.name in ws.narrowed
-            or subj.name in ws.storage_tuple_locals):
+    if (subj.name in pointers or subj.name in narrowed
+            or subj.name in storage_tuple_locals):
         return False
     hoist_declared: dict[str, TpyType] = {}
     for name, raw in analyzer.if_branch_decls.get(id(stmt), {}).items():
-        if name in ws.declared:
+        if name in declared:
             continue
         if name in prescan.native_globals:
             return False
@@ -774,30 +791,33 @@ def _match_eligible(stmt: TpyMatch, analyzer, ws: _WalkState,
         arms_ok = (_match_guarded_union_arms_ok
                    if _match_union_route(stmt, u) == "guarded_union"
                    else _match_union_arms_ok)
-        if not arms_ok(stmt, analyzer, ws, prescan, subj, u,
+        if not arms_ok(
+                stmt, analyzer, declared, pointers, narrowed,
+                storage_tuple_locals, subj, u,
                        hoist_declared, in_loop=in_loop):
             return False
-        ws.declared.update(hoist_declared)
         return True
     if kind in ("if_elif_record", "guarded_record"):
         if not _f1_record(unwrap_readonly(stmt.subject_type), analyzer):
             return False
-        if not _match_record_arms_ok(stmt, analyzer, ws, prescan, subj,
-                                     kind, hoist_declared, in_loop=in_loop):
+        if not _match_record_arms_ok(
+                stmt, analyzer, declared, pointers, narrowed,
+                storage_tuple_locals, subj, kind, hoist_declared,
+                in_loop=in_loop):
             return False
-        ws.declared.update(hoist_declared)
         return True
     if kind == "optional_partition":
         # Only the pointer-repr Optional[F1-record] subject form is in the
         # slice; a value-repr subject's std::optional local/param binding
         # is itself function-gated, so this reject is the (defensive)
         # boundary for expression-position subjects that ever widen in.
-        if _optional_ptr_borrow_name(subj, ws.declared, analyzer) is None:
+        if _optional_ptr_borrow_name(subj, declared, analyzer) is None:
             return False
-        if not _match_optional_arms_ok(stmt, analyzer, ws, prescan, subj,
-                                       hoist_declared, in_loop=in_loop):
+        if not _match_optional_arms_ok(
+                stmt, analyzer, declared, pointers, narrowed,
+                storage_tuple_locals, subj, hoist_declared,
+                in_loop=in_loop):
             return False
-        ws.declared.update(hoist_declared)
         return True
     always_match_arms = 0
     group_guards: dict[str, list[bool]] = {}
@@ -831,18 +851,18 @@ def _match_eligible(stmt: TpyMatch, analyzer, ws: _WalkState,
             key = _match_case_label(test, kind, analyzer)
         if kind in ("switch_enum", "switch_primitive"):
             group_guards.setdefault(key, []).append(case.guard is not None)
-        arm_ws = ws.branch_copy()
-        arm_ws.declared.update(hoist_declared)
+        arm_declared = dict(declared)
+        arm_declared.update(hoist_declared)
         if bnode is not None:
             # The binding aliases the whole subject; only _emit_binding's
             # value arms are in the slice -- a pointer/narrowed/tuple-alias
             # name would take the aliasing arms.
-            if (bnode.name in ws.pointers or bnode.name in ws.narrowed
-                    or bnode.name in ws.storage_tuple_locals):
+            if (bnode.name in pointers or bnode.name in narrowed
+                    or bnode.name in storage_tuple_locals):
                 return False
-            arm_ws.declared[bnode.name] = arm_ws.declared[subj.name]
+            arm_declared[bnode.name] = arm_declared[subj.name]
         if case.guard is not None and not _match_guard_ok(
-                case.guard, arm_ws.declared, analyzer):
+                case.guard, arm_declared, analyzer):
             return False
     # Within each switch group, an unguarded entry only in the final
     # position (sema's duplicate-case rule guarantees it; a violated order
@@ -850,7 +870,6 @@ def _match_eligible(stmt: TpyMatch, analyzer, ws: _WalkState,
     for guards in group_guards.values():
         if any(not g for g in guards[:-1]):
             return False
-    ws.declared.update(hoist_declared)
     return True
 
 def _match_case_label(pattern, kind: str, analyzer) -> str:

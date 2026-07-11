@@ -13,7 +13,7 @@ surface below is what the codegen seam, dump, and units import -- it is
 the old single-file `lower.py` API, unchanged.
 """
 
-from .context import _LowerCtx, _LowerScope, _Prescan, _WalkState
+from .context import _LowerCtx, _LowerScope, _Prescan
 from .expr_gates import _is_len_native
 from .functions import (
     iter_module_callables,

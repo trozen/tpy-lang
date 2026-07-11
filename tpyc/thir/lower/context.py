@@ -1,4 +1,4 @@
-"""Per-function lowering state: _Prescan, _WalkState, _NarrowScope, _LowerCtx."""
+"""Per-function lowering state: _Prescan, _NarrowScope, and _LowerCtx."""
 
 from __future__ import annotations
 from collections.abc import Mapping
@@ -198,43 +198,11 @@ class _Prescan:
         self.ret_ptr_union = _eligible_ptr_union(rt, analyzer)
 
 @dataclass
-class _WalkState:
-    """Compatibility state for node-local statement admission checks.
-
-    `declared` maps each in-scope name to its resolved (possibly
-    narrowed) type; `pointers` carries the F2 pointer-local names a reseat
-    reads, `rebind_slots` the F2d subset whose reseats are rvalue rebinds,
-    `storage_tuple_locals` the F3 `auto&&` tuple aliases a borrow read lifts,
-    `narrowed` the U3 isinstance-narrowed names whose reads rename to the
-    extraction alias (writes to them are out of the slice),
-    `persistent_narrowed` the subset whose live alias is statement-level
-    (assert / early-return post-if -- registered in the AST's
-    `declared_persistent_aliases`): only those admit the U4 re-assert bump;
-    a branch/loop-scoped alias would collide instead (the BUGS.md
-    `_gen_while` redeclaration). Admission helpers mutate the snapshot in place
-    (a POINTER decl extends `pointers`, a post-if fact retypes in
-    `declared`); each branch/loop body walks a `branch_copy()` so siblings
-    don't see each other."""
-    declared: dict[str, TpyType]
-    pointers: set[str] = field(default_factory=set)
-    rebind_slots: set[str] = field(default_factory=set)
-    storage_tuple_locals: set[str] = field(default_factory=set)
-    narrowed: set[str] = field(default_factory=set)
-    persistent_narrowed: set[str] = field(default_factory=set)
-
-    def branch_copy(self) -> '_WalkState':
-        # Field-generic so a new container can't be silently shared: every
-        # field is a dict/set, shallow-copied per branch.
-        return _WalkState(**{f.name: getattr(self, f.name).copy()
-                             for f in fields(self)})
-
-@dataclass
 class _NarrowScope:
     """Lowering's branch/loop-scoped isinstance-narrowing state.
 
-    `_WalkState` snapshots these facts for remaining statement admission
-    helpers. `narrowed` maps each U3
-    isinstance-narrowed source var to its live extraction alias
+    `narrowed` maps each U3 isinstance-narrowed source var to its live
+    extraction alias
     (`ctx.narrowed_vars`); reads rename, the isinstance condition keeps the
     original variant. `persistent_aliases` mirrors
     `ctx.declared_persistent_aliases` for the post-if statement-level
@@ -242,8 +210,7 @@ class _NarrowScope:
     each persistently narrowed subject's ORIGINAL union (assert / post-if),
     read by the U4 re-assert bump to render the replacement alias after
     `declared` was retyped to the member. `persistent_narrowed` is the
-    var-level subset whose live alias is statement-level -- the 1:1 mirror of
-    `_WalkState.persistent_narrowed` (same registration and restore points).
+    var-level subset whose live alias is statement-level.
     A branch/loop body lowers under a `snapshot()`, restored at the closing
     brace (the AST's scope-snapshot semantics). NB `_LowerCtx.inline_narrowed`
     stays outside the bundle: it is condition-scoped (its own snapshot in
@@ -386,8 +353,7 @@ class _LowerScope:
 
     Function-wide representation state remains owned by `_LowerCtx`; lexical
     bindings and control position vary per nested body. Keeping both behind
-    one carrier keeps lowering as the authoritative sequential walk while
-    remaining admission helpers receive compatibility snapshots.
+    one carrier keeps lowering as the authoritative sequential walk.
     """
     lc: _LowerCtx
     declared: dict[str, TpyType]
@@ -395,18 +361,10 @@ class _LowerScope:
     branch_decls_ok: bool = False
     loop_depth: int = 0
 
-    def walk_state(self) -> _WalkState:
-        """Snapshot the compatibility state consumed by unmigrated guards."""
-        gate_pointers = {
+    def admission_pointers(self) -> set[str]:
+        """Pointer locals whose statement admission follows pointer rules."""
+        return {
             name for name in self.lc.pointers
             if _optional_ptr_borrow(self.declared.get(name),
                                     self.lc.analyzer) is None
         }
-        return _WalkState(
-            declared=dict(self.declared),
-            pointers=gate_pointers,
-            rebind_slots=set(self.lc.rebind_slot_locals),
-            storage_tuple_locals=set(self.lc.storage_tuple_locals),
-            narrowed=set(self.lc.narrow.narrowed),
-            persistent_narrowed=set(self.lc.narrow.persistent_narrowed),
-        )

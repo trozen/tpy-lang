@@ -584,7 +584,7 @@ deferred (self-contained) / blocked-on-`<rung>`.
   member, OR-joined; template args carry the ptr `*` + the U2
   const-pointee chain), `THIRNarrowAlias` branch-entry extractions
   (`auto& __v = *std::get<A*>(v);` / value-union `const auto&` for
-  params) with reads renamed via the lowering-scoped `lc.narrowed`
+  params) with reads renamed via the lowering-scoped `lc.narrow.narrowed`
   mirror of `ctx.narrowed_vars`; the else complement alias, the flat
   elif chain + the concrete-else-fact chain break
   (`THIRIf.else_is_nested`), the exhaustiveness constant-fold
@@ -603,7 +603,7 @@ deferred (self-contained) / blocked-on-`<rung>`.
   str-literal messages; the alias appended by `_lower_stmts` like the
   post-if alias; a re-assert on a persistently extracted subject mirrors
   the sema fold `if (!(true))` + the suffix-bumped `__v_2` re-extraction,
-  gated by `_WalkState.persistent_narrowed` / `lc.narrow_subject_union`),
+  gated by `lc.narrow.persistent_narrowed` / `lc.narrow.subject_union`),
   and compound `and` conditions in if/while/assert position
   (`_compound_narrow_info`: one isinstance leaf in the `&&` tree, other
   leaves eligible bool conditions; subject reads after the leaf lower to

@@ -61,7 +61,7 @@ from ...typesys import (
 )
 from ...codegen_cpp import resumable_cfg as rcfg
 from ...codegen_cpp.forms import is_plain_nonvalue
-from .context import _ExprResultUse, _ExprUse, _LowerCtx, _WalkState
+from .context import _ExprResultUse, _ExprUse, _LowerCtx
 from .expr_gates import _condition_eligible
 from .expressions import _lower_call_arg, _lower_expr
 from .functions import _function_eligible, method_self_type_by_name
@@ -377,7 +377,8 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
         if isinstance(stmt, TpyVarDecl) and stmt.name in frame_fields:
             begin_stmt()
             if not _var_decl_eligible(
-                    stmt, analyzer, _WalkState(dict(declared)), lc.prescan,
+                    stmt, analyzer, declared, set(), set(), set(), set(),
+                    lc.prescan,
                     in_branch=False):
                 return note(stmt_reject_reason(stmt))
         return True
@@ -433,7 +434,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 continue
             begin_stmt()
             if not _return_eligible(
-                    ret, analyzer, _WalkState(dict(declared)), lc.prescan):
+                    ret, analyzer, declared, set(), set(), set(), lc.prescan):
                 note(stmt_reject_reason(ret))
                 return None
             # POSITION-BLIND value render: `_make_async_return` binds the
