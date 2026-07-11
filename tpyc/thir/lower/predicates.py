@@ -615,7 +615,7 @@ def _resolved_scalar(t: TpyType | None, analyzer) -> bool:
     type, never `get_expr_type` on the name -- a literal-seeded local's use sites
     carry the pre-resolution pending container type (see `_is_len_call`,
     `_method_call_eligible`, `_container_subscript_value_read`,
-    `_for_each_container_eligible`)."""
+    `_for_each_container_plan`)."""
     if t is None:
         return False
     t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))

@@ -246,7 +246,7 @@ class _LowerCtx:
                  "pointers", "rebind_slot_locals", "movable_locals",
                  "self_receiver", "self_cpp", "self_is_pointer",
                  "record_name", "storage_tuple_locals", "frame_slots",
-                 "narrow", "inline_narrowed")
+                 "resumable_leaf_mode", "narrow", "inline_narrowed")
 
     def __init__(self, func: TpyFunction, analyzer, render_type,
                  self_receiver: str | None = None,
@@ -298,6 +298,10 @@ class _LowerCtx:
         # writes render `name.emplace(value)` (THIRFrameSlotWrite). Populated
         # only by `lower_resumable`; empty for every sync body.
         self.frame_slots: set[str] = set()
+        # Resumable CFG leaves reuse statement lowering for compound bodies.
+        # Their nested frame writes and async-return shapes reject at the
+        # statement arm rather than through a predictive leaf-tree scan.
+        self.resumable_leaf_mode = False
         # F3 storage-tuple alias locals (`auto&& t = <storage tuple field>`): a read
         # off one is STORAGE form, lifted via `tuple_to_pointer` at borrow boundaries.
         self.storage_tuple_locals: set[str] = set()

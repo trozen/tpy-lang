@@ -1,6 +1,4 @@
-"""Comprehension gate + lowering: the _CompRoute routing fact shared by
-_comp_decl_ok (gate) and _lower_comprehension (emit mirror).
-"""
+"""Comprehension classification and lowering."""
 
 from __future__ import annotations
 from collections.abc import Set as AbstractSet
@@ -89,6 +87,16 @@ class _CompRoute:
     iterable_lvalue: bool
     sized_reserve: bool
     unpack_types: 'tuple | None'
+
+
+@dataclass(frozen=True)
+class _CompPlan:
+    """Concrete comprehension route consumed by lowering."""
+    kind: str
+    result_type: TpyType
+    route: '_CompRoute | None'
+    array_counter_type: 'TpyType | None' = None
+
 
 def _comp_sized_iterable(t: TpyType) -> bool:
     # Mirror of `_is_sized_type` over the admitted iterable families (Span /
@@ -246,11 +254,11 @@ def _comp_elem_slot_ok(slot: 'TpyType | None', analyzer) -> bool:
     return (_eligible_enum(slot, analyzer) is not None
             or _f1_record(slot, analyzer))
 
-def _comp_decl_ok(
+def _comp_decl_plan(
         stmt: TpyVarDecl, declared: dict[str, TpyType],
         pointers: AbstractSet[str], rebind_slots: AbstractSet[str],
         storage_tuple_locals: AbstractSet[str], narrowed: AbstractSet[str],
-        prescan: _Prescan, analyzer) -> bool:
+        prescan: _Prescan, analyzer) -> '_CompPlan | None':
     """First decl of a comprehension local (`xs = [f(i) for i in ...]`), the
     C1+C2 slice. Same decl-position rules as the container-literal cell (a
     reassigned local is a pointer-local on the AST path); the result must be
@@ -258,20 +266,20 @@ def _comp_decl_ok(
     `array_from_index` lambda emit -- the C3 row)."""
     init = stmt.init
     if type(init) not in _COMP_KINDS:
-        return False
+        return None
     if (stmt.name in prescan.reassigned or stmt.name in prescan.hoisted
             or stmt.name in prescan.move_through):
-        return False
+        return None
     t = _var_decl_type(stmt, analyzer)
-    return _comp_expr_ok(
+    return _comp_plan(
         init, t, declared, pointers, rebind_slots,
         storage_tuple_locals, narrowed, analyzer)
 
-def _comp_print_arg_ok(
+def _comp_print_arg_plan(
         a, declared: dict[str, TpyType], pointers: AbstractSet[str],
         rebind_slots: AbstractSet[str],
         storage_tuple_locals: AbstractSet[str],
-        narrowed: AbstractSet[str], analyzer) -> bool:
+        narrowed: AbstractSet[str], analyzer) -> '_CompPlan | None':
     """A comprehension print arg (C3): wraps in its container printer
     (`::tpy::ListPrinter` / `SetPrinter` / `DictPrinter`); admissibility is
     the position-independent gate over the expr's own resolved result (an
@@ -279,42 +287,42 @@ def _comp_print_arg_ok(
     NB the return position stays deferred: container RETURN types reject at
     the signature gate (`_eligible_return`), and widening that is the
     signature axis, not a comprehension row."""
-    return _comp_expr_ok(
+    return _comp_plan(
         a, analyzer.get_expr_type(a), declared, pointers, rebind_slots,
         storage_tuple_locals, narrowed, analyzer)
 
-def _comp_expr_ok(
+def _comp_plan(
         init, t: 'TpyType | None', declared: dict[str, TpyType],
         pointers: AbstractSet[str], rebind_slots: AbstractSet[str],
         storage_tuple_locals: AbstractSet[str],
-        narrowed: AbstractSet[str], analyzer) -> bool:
+        narrowed: AbstractSet[str], analyzer) -> '_CompPlan | None':
     """Position-independent comprehension admissibility against result type
     `t`: the route fact, result slots, comp-var shadow checks, and the
     element/filter gates. Filters retain their condition-shape gate; element
     admission happens while lowering without temp-arg opt-in."""
     if t is None:
-        return False
+        return None
     if is_array(t):
-        return _comp_array_ok(
+        return _comp_array_plan(
             init, t, declared, pointers, rebind_slots,
             storage_tuple_locals, narrowed, analyzer)
     route = _comp_route(init, declared, narrowed, analyzer)
     if route is None:
-        return False
+        return None
     args = getattr(t, "type_args", None)
     if not args:
-        return False
+        return None
     if route.kind == "list" and not (is_list(t)
                                      and _comp_elem_slot_ok(args[0], analyzer)):
-        return False
+        return None
     if route.kind == "set" and not (is_set(t)
                                     and _comp_elem_slot_ok(args[0], analyzer)):
-        return False
+        return None
     if route.kind == "dict" and not (
             is_dict(t) and len(args) == 2
             and _comp_slot_ok(args[0], analyzer)          # key: narrow
             and _comp_elem_slot_ok(args[1], analyzer)):   # value: widened
-        return False
+        return None
     gen = init.generator
     # The comp vars shadow same-named outer locals for the element/filter
     # walk; a var shadowing a specially-classified local (pointer / rebind /
@@ -327,22 +335,22 @@ def _comp_expr_ok(
             if name is None:
                 continue
             if name in special:
-                return False
+                return None
             declared2[name] = tt
     else:
         if gen.var in special:
-            return False
+            return None
         declared2[gen.var] = route.et
     if not all(_condition_eligible(c, declared2, analyzer)
                for c in gen.conditions):
-        return False
-    return True
+        return None
+    return _CompPlan(kind=route.kind, result_type=t, route=route)
 
-def _comp_array_ok(
+def _comp_array_plan(
         init, t: TpyType, declared: dict[str, TpyType],
         pointers: AbstractSet[str], rebind_slots: AbstractSet[str],
         storage_tuple_locals: AbstractSet[str],
-        narrowed: AbstractSet[str], analyzer) -> bool:
+        narrowed: AbstractSet[str], analyzer) -> '_CompPlan | None':
     """An Array-demoted comprehension -- the `array_from_index` RANGE arm
     only (a filter-less, unpack-less list comp over a literal-proven range;
     sema's _try_comp_array_size did the proving, so the bounds are
@@ -350,36 +358,36 @@ def _comp_array_ok(
     deferred row. No conditions can appear (a filtered comp has no static
     size, so sema never demotes one) -- rejected defensively anyway."""
     if not isinstance(init, TpyListComprehension):
-        return False
+        return None
     gen = init.generator
     if gen.owns_elements or gen.conditions or gen.unpack_vars is not None:
-        return False
+        return None
     it = gen.iterable
     if not _is_range_call(it) or len(it.args) not in (1, 2, 3):
-        return False
+        return None
     counter = _range_counter_type(it, analyzer)
     if not _eligible_scalar(counter):
-        return False
+        return None
     args_t = getattr(t, "type_args", None)
     if not args_t or not _comp_elem_slot_ok(args_t[0], analyzer):
-        return False
+        return None
     special = (pointers | rebind_slots | storage_tuple_locals | narrowed)
     if gen.var in special:
-        return False
-    declared2 = dict(declared)
-    declared2[gen.var] = counter
-    return True
+        return None
+    return _CompPlan(kind="list", result_type=t, route=None,
+                     array_counter_type=counter)
 
-def _lower_array_comprehension(init, lc: '_LowerCtx',
+def _lower_array_comprehension(init, plan: _CompPlan, lc: '_LowerCtx',
                                declared: dict[str, TpyType]) -> THIRComprehension:
     """The array_from_index range arm: a per-index lambda constructs each
     slot (`E var = start + E(__i_N) * (step); return elem;`)."""
     analyzer = lc.analyzer
-    t = analyzer.get_expr_type(init)
+    t = plan.result_type
     gen = init.generator
     it = gen.iterable
     _witness("comp.array_range")
-    counter = _range_counter_type(it, analyzer)
+    counter = plan.array_counter_type
+    assert counter is not None
     elem_t = _comp_result_type(init.result_elem_type, analyzer)
     args = it.args
     body_declared = dict(declared)
@@ -408,20 +416,18 @@ def _comp_result_type(t: 'TpyType | None', analyzer) -> TpyType:
         return analyzer.ctx.default_int_type
     return t
 
-def _lower_comprehension(init, lc: '_LowerCtx',
+def _lower_comprehension(init, plan: _CompPlan, lc: '_LowerCtx',
                          declared: dict[str, TpyType]) -> THIRComprehension:
-    """Build the THIRComprehension node (the gate admitted the shape). The
+    """Build the THIRComprehension node from its classified route. The
     container spelling composes from the node's sema-stamped result types
     exactly like `_gen_list/dict/set_comprehension`; elements/keys/values
     lower through the S5 per-slot owned-str wrap (`_lower_container_elem`,
     target-typed like the AST's `gen_expr_deref(elem, elem_type)`)."""
     analyzer = lc.analyzer
     loc = getattr(init, "loc", None)
-    if is_array(analyzer.get_expr_type(init)):
-        return _lower_array_comprehension(init, lc, declared)
-    # The gate rejected narrowed iterables, so the route facts recompute
-    # identically with an empty narrowed set here.
-    route = _comp_route(init, declared, set(), analyzer)
+    if plan.route is None:
+        return _lower_array_comprehension(init, plan, lc, declared)
+    route = plan.route
     assert route is not None
     gen = init.generator
     body_declared = dict(declared)
@@ -487,7 +493,7 @@ def _lower_comprehension(init, lc: '_LowerCtx',
         unpack_cpps = tuple(None if tt is None else lc.render_type(tt)
                             for tt in route.unpack_types)
     return THIRComprehension(
-        result_type=analyzer.get_expr_type(init),
+        result_type=plan.result_type,
         kind=route.kind,
         container_cpp=container,
         var=gen.var,

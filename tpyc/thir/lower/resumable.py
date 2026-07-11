@@ -40,17 +40,11 @@ from ...parse.nodes import (
     TpyAwait,
     TpyCall,
     TpyFunction,
-    TpyMatch,
     TpyMethodCall,
-    TpyNestedDef,
     TpyReturn,
     TpyStrLiteral,
     TpyStmt,
-    TpyTry,
-    TpyTupleUnpack,
     TpyVarDecl,
-    TpyWith,
-    stmts_have_any_return,
 )
 from ...typesys import (
     NominalType,
@@ -119,45 +113,6 @@ def _res_local_ok(t: 'TpyType | None', analyzer) -> bool:
     return bool(_res_value_ok(t, analyzer)
                 or _resolved_str_value(t, analyzer) is not None
                 or _resolved_bytes_value(t, analyzer) is not None)
-
-
-def _leaf_shape_reject(stmt: TpyStmt, *, nested: bool = False) -> str | None:
-    """Resumable-only shape rejects INSIDE a leaf statement, checked before
-    the shared statement gate. Returns the `res.*` reason or None.
-
-    A leaf's nested `return` needs the async-return scaffolding
-    (`_make_async_return`), which THIR's plain `return` render does not
-    reproduce; a NESTED name-write (every local is a frame field) would go
-    through the shared assign arm's target-typed render while the AST frame
-    arm renders position-blind (`total = 7;`, never `::tpy::BigInt(7)`) --
-    top-of-BB writes get the position-blind render in the walk below, but
-    inside a leaf compound that needs the frame fact threaded through the
-    shared lowering (the R1 cell); tuple-unpack targets and
-    `with`/`try`/`match` interact with frame-field storage forms the slice
-    does not carry yet."""
-    if stmts_have_any_return([stmt]):
-        return "res.leaf_return"
-    if nested and isinstance(stmt, TpyVarDecl):
-        return "res.leaf_field_write"
-    if isinstance(stmt, TpyTupleUnpack):
-        return "res.unpack"
-    if isinstance(stmt, TpyTry):
-        return "res.leaf_try"
-    if isinstance(stmt, TpyWith):
-        return "res.leaf_with"
-    if isinstance(stmt, TpyMatch):
-        return "res.leaf_match"
-    if isinstance(stmt, TpyNestedDef):
-        return "res.nested_def"
-    if hasattr(stmt, "sub_bodies"):
-        for body in stmt.sub_bodies():
-            for s in body:
-                r = _leaf_shape_reject(s, nested=True)
-                if r is not None:
-                    return r
-    return None
-
-
 
 
 def _payload_reject(payload: 'rcfg.SuspensionPayload', analyzer) -> str | None:
@@ -346,6 +301,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     # R1c: frame_slot local reads render `(*name)` (THIRName.deref) and writes
     # `name.emplace(value)` (THIRFrameSlotWrite).
     lc.frame_slots = frame_slots
+    lc.resumable_leaf_mode = True
     # Scope grows like the sync walk: params seed, each leaf's own decl
     # registers as it lowers (so a first `total = 0` takes the DECL arm's
     # init render, which is what the AST frame path assigns -- pre-seeding
@@ -368,12 +324,6 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     return_values: dict[int, THIRExpr] = {}
     yield_values: dict[int, THIRExpr] = {}
     suspend_exprs: dict[int, THIRExpr] = {}
-
-    def _gate_leaf(stmt: TpyStmt) -> bool:
-        shape_reason = _leaf_shape_reject(stmt)
-        if shape_reason is not None:
-            return note(shape_reason)
-        return True
 
     def _lower_leaf(stmt: TpyStmt) -> THIRStmt:
         if isinstance(stmt, TpyVarDecl) and stmt.name in frame_fields:
@@ -417,8 +367,6 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     for bb_id in sorted(cfg.blocks):
         bb = cfg.blocks[bb_id]
         for stmt in bb.stmts:
-            if not _gate_leaf(stmt):
-                return None
             leaves[id(stmt)] = _lower_leaf(stmt)
         t = bb.terminator
         if isinstance(t, rcfg.ReturnT):
@@ -445,8 +393,6 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
             return_values[id(ret)] = _lower_expr(ret.value, lc, declared)
             _witness("res.return_value")
         elif isinstance(t, rcfg.RaiseT):
-            if not _gate_leaf(t.raise_stmt):
-                return None
             leaves[id(t.raise_stmt)] = _lower_leaf(t.raise_stmt)
         elif isinstance(t, rcfg.Branch):
             if not _condition_eligible(t.cond, declared, analyzer):

@@ -1,10 +1,10 @@
-"""Match classification and lowering, with per-tier arm walkers for scalar
+"""Match planning and lowering, with per-tier arm walkers for scalar
 switch/chain, record, optional-partition, union, and guarded-union.
 """
 
 from __future__ import annotations
 from collections.abc import Set as AbstractSet
-from dataclasses import fields as dataclass_fields
+from dataclasses import dataclass, fields as dataclass_fields
 from ...parse.nodes import (
     TpyAsPattern,
     TpyAssign,
@@ -742,13 +742,20 @@ def _match_optional_arms_ok(
         arm_declared[bnode.name] = inner_type
     return True
 
-def _classify_match(
+@dataclass(frozen=True)
+class _MatchPlan:
+    kind: str
+    hoist_types: tuple[tuple[str, TpyType], ...]
+    union_route: 'str | None' = None
+
+
+def _match_plan(
         stmt: TpyMatch, analyzer, declared: dict[str, TpyType],
         pointers: AbstractSet[str], narrowed: AbstractSet[str],
         storage_tuple_locals: AbstractSet[str], prescan: _Prescan,
         *, in_branch: bool,
-                    in_loop: bool) -> "str | None":
-    """Return the lowering strategy for an admitted match, or None.
+                     in_loop: bool) -> "_MatchPlan | None":
+    """Return the validated lowering plan for a match, or None.
 
     M1 covers the unguarded scalar switch tiers
     (switch_enum / switch_primitive), no captures. The subject is a bare
@@ -786,17 +793,20 @@ def _classify_match(
         if not _statements._try_hoist_type_ok(vtype, analyzer):
             return None
         hoist_declared[name] = vtype
+    hoist_types = tuple(hoist_declared.items())
     if kind == "switch_union":
         u = unwrap_readonly(stmt.subject_type)
+        union_route = _match_union_route(stmt, u)
         arms_ok = (_match_guarded_union_arms_ok
-                   if _match_union_route(stmt, u) == "guarded_union"
+                   if union_route == "guarded_union"
                    else _match_union_arms_ok)
         if not arms_ok(
                 stmt, analyzer, declared, pointers, narrowed,
                 storage_tuple_locals, subj, u,
                        hoist_declared, in_loop=in_loop):
             return None
-        return kind
+        return _MatchPlan(kind=kind, hoist_types=hoist_types,
+                          union_route=union_route)
     if kind in ("if_elif_record", "guarded_record"):
         if not _f1_record(unwrap_readonly(stmt.subject_type), analyzer):
             return None
@@ -805,7 +815,7 @@ def _classify_match(
                 storage_tuple_locals, subj, kind, hoist_declared,
                 in_loop=in_loop):
             return None
-        return kind
+        return _MatchPlan(kind=kind, hoist_types=hoist_types)
     if kind == "optional_partition":
         # Only the pointer-repr Optional[F1-record] subject form is in the
         # slice; a value-repr subject's std::optional local/param binding
@@ -818,7 +828,7 @@ def _classify_match(
                 storage_tuple_locals, subj, hoist_declared,
                 in_loop=in_loop):
             return None
-        return kind
+        return _MatchPlan(kind=kind, hoist_types=hoist_types)
     always_match_arms = 0
     group_guards: dict[str, list[bool]] = {}
     for i, case in enumerate(stmt.cases):
@@ -870,7 +880,7 @@ def _classify_match(
     for guards in group_guards.values():
         if any(not g for g in guards[:-1]):
             return None
-    return kind
+    return _MatchPlan(kind=kind, hoist_types=hoist_types)
 
 def _match_case_label(pattern, kind: str, analyzer) -> str:
     """One pre-rendered arm spelling. Switch tiers: the AST's
@@ -890,7 +900,7 @@ def _match_case_label(pattern, kind: str, analyzer) -> str:
             return cpp_string_literal_expr(val)
     return str(val)
 
-def _lower_match(stmt: TpyMatch, kind: str, lc: _LowerCtx,
+def _lower_match(stmt: TpyMatch, plan: _MatchPlan, lc: _LowerCtx,
                  declared: dict[str, TpyType], loc, *,
                  loop_depth: int = 0) -> THIRMatch:
     """Lower a scalar-tier `match` (see `THIRMatch` for the emit shapes).
@@ -904,13 +914,11 @@ def _lower_match(stmt: TpyMatch, kind: str, lc: _LowerCtx,
     `emit_unreachable` folds the AST's `_emit_match_unreachable_tail`
     condition at lowering; `synthetic_default` its `default: break;` rule
     (switch tiers only -- the if/elif chain has no default)."""
+    kind = plan.kind
     if kind != "switch_union":  # the union lowerers witness their route
         _witness(f"match.{kind}")
     hoist_decls: list[tuple[str, str]] = []
-    for name, raw in lc.analyzer.if_branch_decls.get(id(stmt), {}).items():
-        if name in declared:
-            continue
-        vtype = unwrap_ref_type(raw)
+    for name, vtype in plan.hoist_types:
         render_src = (_resolved_str_value(vtype, lc.analyzer)
                       or _resolved_bytes_value(vtype, lc.analyzer)
                       or vtype)
@@ -919,8 +927,7 @@ def _lower_match(stmt: TpyMatch, kind: str, lc: _LowerCtx,
     if hoist_decls:
         _witness("match.hoist_decl")
     if kind == "switch_union":
-        u = unwrap_readonly(stmt.subject_type)
-        if _match_union_route(stmt, u) == "guarded_union":
+        if plan.union_route == "guarded_union":
             return _lower_match_guarded_union(stmt, lc, declared, loc,
                                               hoist_decls,
                                               loop_depth=loop_depth)

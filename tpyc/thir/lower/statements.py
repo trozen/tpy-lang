@@ -4,7 +4,7 @@ branches, loops, with, try, raise, and narrowing statements.
 
 from __future__ import annotations
 from collections.abc import Set as AbstractSet
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from ...parse.nodes import (
     TpyArrayLiteral,
     TpyAssert,
@@ -31,6 +31,7 @@ from ...parse.nodes import (
     TpyMatch,
     TpyMethodCall,
     TpyName,
+    TpyNestedDef,
     TpyNoneLiteral,
     TpyPassStmt,
     TpyRaise,
@@ -437,9 +438,21 @@ def _for_loop_shape_ok(stmt: TpyForEach, analyzer, declared: dict[str, TpyType])
         return False
     return stmt.var not in declared
 
-def _for_range_eligible(stmt: TpyForEach, analyzer,
-                        declared: dict[str, TpyType],
-                        prescan: _Prescan) -> bool:
+@dataclass(frozen=True)
+class _ForEachPlan:
+    route: str
+    elem_type: TpyType
+    iterable_lvalue: bool = False
+    step_kind: str = "plus_one"
+    unpack_target_types: tuple['TpyType | None', ...] = ()
+    str_list_method: bool = False
+    container_field: bool = False
+    value_tuple_elem: bool = False
+    bigint_counter: bool = False
+
+
+def _for_range_plan(stmt: TpyForEach, analyzer,
+                    declared: dict[str, TpyType]) -> '_ForEachPlan | None':
     # `for v in range(stop | start, stop [, step])` over a fixed-int or runtime-
     # BigInt counter (loop var not used after the loop). The shared shape guards
     # exclude the other richer for-shapes. A 3-arg stepped range is admitted only
@@ -448,9 +461,9 @@ def _for_range_eligible(stmt: TpyForEach, analyzer,
     # overflow check) stays on the AST path.
     it = stmt.iterable
     if not _is_range_call(it) or not _for_loop_shape_ok(stmt, analyzer, declared):
-        return False
+        return None
     if it.kwargs or it.double_star_unpack is not None or len(it.args) not in (1, 2, 3):
-        return False
+        return None
     et = unwrap_ref_type(stmt.elem_type) if stmt.elem_type is not None else None
     # A BigInt counter (a BigInt bound / module default int) shares the step-1
     # emit shape -- `cpp_elem` renders `::tpy::BigInt`, literal bounds retype
@@ -458,30 +471,46 @@ def _for_range_eligible(stmt: TpyForEach, analyzer,
     # `__start/__stop` temps like fixed ints. The overflow-check helpers only
     # fire for step != +-1, admitted below for a fixed-int counter only.
     if not _eligible_scalar(et):
-        return False
-    if _runtime_bigint(et, analyzer):
-        _witness("range.bigint_counter")
+        return None
+    bigint_counter = _runtime_bigint(et, analyzer)
     nargs = len(it.args)
+    step_kind = "plus_one"
     if nargs == 3:
         # The stepped emit's overflow / nonzero checks are fixed-int only; the
         # BigInt-counter variant differs (a literal-step temp, no overflow) and
         # is deferred.
         if not is_fixed_int_type(et):
-            return False
+            return None
         step_kind = _range_step_kind(it.args[2], declared)
         if step_kind is None:
-            return False
-        _witness(f"range.step_{step_kind}")
+            return None
     if nargs >= 2 and not _range_bound_eligible(it.args[0], declared, analyzer):
-        return False
+        return None
     stop_arg = it.args[0] if nargs == 1 else it.args[1]
     if not _range_bound_eligible(stop_arg, declared, analyzer):
-        return False
-    return True
+        return None
+    lowered_et = resolve_int_literals(
+        et, analyzer.ctx.default_int_for_literal)
+    return _ForEachPlan(
+        route="range", elem_type=lowered_et, step_kind=step_kind,
+        bigint_counter=bigint_counter)
 
-def _for_each_container_eligible(stmt: TpyForEach, analyzer,
-                                 declared: dict[str, TpyType],
-                                 prescan: _Prescan) -> bool:
+def _resolved_loop_elem_type(stmt: TpyForEach, analyzer) -> 'TpyType | None':
+    # resolve_int_literals: a literal-seeded container's elem_type is still
+    # IntLiteral (IntLiteralType.to_cpp() would emit the VALUE); the AST binding
+    # emits the resolved default-int spelling. A str loop var (list[str] element
+    # / owned-str dict key) resolves its PendingStrType like the AST's
+    # resolve_type, matching the lowering's `et`.
+    if stmt.elem_type is None:
+        return None
+    et = resolve_int_literals(unwrap_ref_type(stmt.elem_type),
+                              analyzer.ctx.default_int_for_literal)
+    str_et = _resolved_str_value(et, analyzer)
+    return str_et if str_et is not None else et
+
+def _for_each_container_plan(
+        stmt: TpyForEach, analyzer,
+        declared: dict[str, TpyType]) -> '_ForEachPlan | None':
     # `for v in <container>` over a NativeIterable with a value-scalar (`list[scalar]` /
     # `dict[fixed-int-key]`, a typed copy; bytes/BytesView are
     # NativeIterable[UInt8] -- the same typed-copy loop var), Char (str/StrView,
@@ -493,7 +522,7 @@ def _for_each_container_eligible(stmt: TpyForEach, analyzer,
     # (the `__iter__`/`__next__` fallback) and the
     # shared richer for-shapes stay on the AST path.
     if not _for_loop_shape_ok(stmt, analyzer, declared):
-        return False
+        return None
     it = stmt.iterable
     # A plain in-scope container name, or a str/bytes-family field off an
     # F1-record receiver (`for c in h.name:`) -- both C++ lvalues
@@ -506,32 +535,40 @@ def _for_each_container_eligible(stmt: TpyForEach, analyzer,
     # returning calls and other non-name iterables (subscript) ride a later
     # cell.
     if _is_range_call(it):
-        return False  # a range reject belongs to the range gate's tags
+        return None
+    iterable_lvalue = True
+    str_list_method = False
+    container_field = False
     if isinstance(it, TpyCall):
         if not _call_eligible(it, declared, analyzer, container_ret_ok=True):
-            return False
+            return None
         ret = analyzer.get_expr_type(it)
         it_type = _resolved_str_value(ret, analyzer)
         if it_type is None:
             # container_ret_ok widened _call_eligible past str returns; the
             # bytes returns it admits in value position are filtered here.
             if not _nonvalue_container_ret(ret):
-                return False
+                return None
             it_type = unwrap_readonly(unwrap_send_sync(ret))
+        iterable_lvalue = _call_iterable_lvalue(it, analyzer)
     elif isinstance(it, TpyMethodCall):
         # `for v in d.values():` / `for k in d.keys():` / `for kv in d.items():`
         # (dict view -- items yields a value tuple, admitted by the elem gate
         # below) or `for w in s.split():` (a str method returning
         # `Own[list[str]]`) -- all rvalues (owning `auto __obj_N =` capture,
         # iterable_lvalue=False).
-        if not (_dict_view_iterable_ok(it, declared, analyzer,
-                                       methods=("values", "keys", "items"))
-                or _str_list_method_iterable_ok(it, declared, analyzer)):
-            return False
+        dict_view = _dict_view_iterable_ok(
+            it, declared, analyzer, methods=("values", "keys", "items"))
+        str_list_method = _str_list_method_iterable_ok(
+            it, declared, analyzer)
+        if not (dict_view or str_list_method):
+            return None
         it_type = analyzer.get_expr_type(it)
+        iterable_lvalue = False
     elif isinstance(it, TpyName):
         if it.name not in declared:
-            return note_detail("foreach.name_global")
+            note_detail("foreach.name_global")
+            return None
         # declared (the binding type) rather than get_expr_type: a container-literal
         # local's use sites carry the pre-resolution PendingListType (see
         # _method_call_eligible). A param binding is Ref/readonly-wrapped -- unwrap
@@ -544,7 +581,8 @@ def _for_each_container_eligible(stmt: TpyForEach, analyzer,
             it_type = it_view
     elif isinstance(it, TpyFieldAccess):
         if not _field_receiver_ok(it, declared, analyzer):
-            return note_detail("foreach.field_parent")
+            note_detail("foreach.field_parent")
+            return None
         it_type = _resolved_viewfam_value(analyzer.get_expr_type(it), analyzer)
         if it_type is None:
             # Container field (`for x in self.xs:`): the DECLARED field type,
@@ -555,40 +593,39 @@ def _for_each_container_eligible(stmt: TpyForEach, analyzer,
             # capture a name takes.
             ft = _field_decl_type(it, declared, analyzer)
             if ft is None:
-                return note_detail("foreach.field_family")
+                note_detail("foreach.field_family")
+                return None
             it_type = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ft)))
+            container_field = True
     else:
-        return note_detail("foreach.iter_shape")
+        note_detail("foreach.iter_shape")
+        return None
     if not is_native_iterable(it_type, analyzer.registry):
-        return note_detail("foreach.iter_family")
+        note_detail("foreach.iter_family")
+        return None
     # The loop var (list/set/Span/Array element, or dict key) binds through the
     # SHARED loop_var_binding: a value scalar/tuple is a typed copy, a record a
     # borrow alias (`auto&&`/`const auto&`), a union the composite-ref arm. No
     # rebinding guard is needed: sema forbids reassigning a non-value loop var
     # (`_check_nonvalue_rebinding`), so a reference loop var is only read or
     # field-mutated through the alias, matching Python's reference semantics.
-    # resolve_int_literals: a literal-seeded container's elem_type is still
-    # IntLiteral (IntLiteralType.to_cpp() would emit the VALUE); the AST binding
-    # emits the resolved default-int spelling. A str loop var (list[str] element
-    # / owned-str dict key) resolves its PendingStrType like the AST's
-    # resolve_type, matching the lowering's `et`.
-    et = (resolve_int_literals(unwrap_ref_type(stmt.elem_type),
-                               analyzer.ctx.default_int_for_literal)
-          if stmt.elem_type is not None else None)
-    str_et = _resolved_str_value(et, analyzer)
-    if str_et is not None:
-        et = str_et
+    et = _resolved_loop_elem_type(stmt, analyzer)
     # Compositional element gate: admit any element with a byte-identical
     # loop_var_binding arm (every resolved concrete type -- the shared helper
     # picks the form). Unresolved pending elements stay on the AST path.
     if not _for_each_elem_binding_ok(et):
-        return note_detail("foreach.elem_family")
-    return True
+        note_detail("foreach.elem_family")
+        return None
+    return _ForEachPlan(
+        route="container", elem_type=et,
+        iterable_lvalue=iterable_lvalue,
+        str_list_method=str_list_method,
+        container_field=container_field,
+        value_tuple_elem=_value_tuple(et, analyzer) is not None)
 
-def _for_tuple_unpack_eligible(
+def _for_tuple_unpack_plan(
         stmt: TpyForEach, analyzer, declared: dict[str, TpyType],
-        narrowed: AbstractSet[str],
-                               prescan: _Prescan) -> bool:
+        narrowed: AbstractSet[str]) -> '_ForEachPlan | None':
     """`for a, b in <iterable>:` -- the parser desugars to a ForEach over a
     synthetic `__for_tup_N` var whose body leads with a TpyTupleUnpack from
     it. Slice: an lvalue `list[tuple[scalar-or-str]]`-family name or a
@@ -597,73 +634,67 @@ def _for_tuple_unpack_eligible(
     slots skip). Record elements take the borrow target branch of
     _gen_tuple_unpack -- a deferred row."""
     if not stmt.is_tuple_unpack:
-        return False
+        return None
     if (stmt.is_async or stmt.orelse or stmt.enum_iterable is not None
             or stmt.consuming_iter_fi is not None or stmt.hoist_loop_var):
-        return False
+        return None
     if analyzer.if_branch_decls.get(id(stmt)):
-        return False
+        return None
     if stmt.var in declared:
-        return False
+        return None
     if not stmt.body or not isinstance(stmt.body[0], TpyTupleUnpack):
-        return False
+        return None
     up = stmt.body[0]
     if not (isinstance(up.value, TpyName) and up.value.name == stmt.var):
-        return False
-    # All-new plain value targets: the ref/owned/const-ref element forms and
-    # reused (predeclared/assign) targets take other _gen_tuple_unpack
-    # branches.
-    if any(up.is_ref) or any(up.is_owned) or any(up.is_const_ref):
-        return False
-    if not all(up.is_new):
-        return False
-    for i, name in enumerate(up.targets):
-        tt = unwrap_ref_type(up.target_types[i])
-        if name is None:
-            continue
-        if name in declared or name in narrowed:
-            return False
-        if not _scalar_or_str_unpack_elem(tt, analyzer):
-            return False
+        return None
+    target_types = _tuple_unpack_targets(up, analyzer, declared, narrowed)
+    if target_types is None:
+        return None
     it = stmt.iterable
     if isinstance(it, TpyMethodCall):
         # `for k, v in d.items():` -- the items view is an rvalue capture.
         if not _dict_view_iterable_ok(it, declared, analyzer,
                                       methods=("items",)):
-            return False
+            return None
         it_type = analyzer.get_expr_type(it)
+        iterable_lvalue = False
     elif isinstance(it, TpyName):
         if it.name not in declared:
-            return False
+            return None
         it_type = unwrap_readonly(unwrap_ref_type(
             unwrap_send_sync(declared[it.name])))
         if not _container_scalar_tuple_iter(it_type, analyzer):
-            return False
+            return None
         elem = unwrap_readonly(it_type.type_args[0])
         if len(elem.element_types) != len(up.targets):
-            return False  # defensive: sema errors on arity mismatch
+            return None  # defensive: sema errors on arity mismatch
+        iterable_lvalue = True
     else:
-        return False
+        return None
     if not is_native_iterable(it_type, analyzer.registry):
-        return False
-    return True
+        return None
+    et = _resolved_loop_elem_type(stmt, analyzer)
+    if et is None:
+        return None
+    return _ForEachPlan(
+        route="tuple_unpack", elem_type=et,
+        iterable_lvalue=iterable_lvalue,
+        unpack_target_types=tuple(target_types),
+        value_tuple_elem=_value_tuple(et, analyzer) is not None)
 
 
 def _classify_for_each(
         stmt: TpyForEach, analyzer, declared: dict[str, TpyType],
-        narrowed: AbstractSet[str],
-                            prescan: _Prescan) -> 'str | None':
+        narrowed: AbstractSet[str]) -> '_ForEachPlan | None':
     if _is_range_call(stmt.iterable):
-        if _for_range_eligible(stmt, analyzer, declared, prescan):
-            return "range"
+        plan = _for_range_plan(stmt, analyzer, declared)
     elif stmt.is_tuple_unpack:
-        if _for_tuple_unpack_eligible(
-                stmt, analyzer, declared, narrowed, prescan):
-            return "tuple_unpack"
-    elif _for_each_container_eligible(stmt, analyzer, declared, prescan):
-        return "container"
-    _kind_detail("foreach.iter_", stmt.iterable)
-    return None
+        plan = _for_tuple_unpack_plan(stmt, analyzer, declared, narrowed)
+    else:
+        plan = _for_each_container_plan(stmt, analyzer, declared)
+    if plan is None:
+        _kind_detail("foreach.iter_", stmt.iterable)
+    return plan
 
 def _tuple_unpack_targets(stmt: TpyTupleUnpack, analyzer,
                           declared: dict[str, TpyType],
@@ -1226,6 +1257,21 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
     if isinstance(stmt, TpyPassStmt):
         _witness("stmt.trivia")
         return THIRNoOpStmt(loc=loc)
+    if lc.resumable_leaf_mode:
+        if isinstance(stmt, TpyReturn):
+            raise ThirUnsupported("res.leaf_return")
+        if scope.in_branch and isinstance(stmt, TpyVarDecl):
+            raise ThirUnsupported("res.leaf_field_write")
+        if isinstance(stmt, TpyTupleUnpack):
+            raise ThirUnsupported("res.unpack")
+        if isinstance(stmt, TpyTry):
+            raise ThirUnsupported("res.leaf_try")
+        if isinstance(stmt, TpyWith):
+            raise ThirUnsupported("res.leaf_with")
+        if isinstance(stmt, TpyMatch):
+            raise ThirUnsupported("res.leaf_match")
+        if isinstance(stmt, TpyNestedDef):
+            raise ThirUnsupported("res.nested_def")
     if isinstance(stmt, TpyVarDecl):
         begin_stmt()
         if stmt.linkage != VarLinkage.DEFAULT:
@@ -1304,12 +1350,14 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             # C1+C2 comprehension local: the init renders as the whole
             # stmt-expr; the decl line itself is the plain-value arm.
             if type(stmt.init) in _comprehensions._COMP_KINDS:
-                if not _comprehensions._comp_decl_ok(
+                comp_plan = _comprehensions._comp_decl_plan(
                         stmt, declared, scope.admission_pointers(),
                         lc.rebind_slot_locals, lc.storage_tuple_locals,
-                        lc.narrow.narrowed.keys(), lc.prescan, analyzer):
+                        lc.narrow.narrowed.keys(), lc.prescan, analyzer)
+                if comp_plan is None:
                     raise ThirUnsupported(stmt_reject_reason(stmt))
-                comp = _comprehensions._lower_comprehension(stmt.init, lc, declared)
+                comp = _comprehensions._lower_comprehension(
+                    stmt.init, comp_plan, lc, declared)
                 declared[stmt.name] = vtype
                 return THIRVarDecl(name=stmt.name, resolved_type=vtype,
                                    init=comp, loc=loc)
@@ -2518,28 +2566,17 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 field_prechecked=isinstance(stmt.value, TpyFieldAccess)),
             loc=loc)
     if isinstance(stmt, TpyForEach):
-        route = _classify_for_each(
-                stmt, analyzer, declared, lc.narrow.narrowed.keys(),
-                lc.prescan)
-        if route is None:
+        plan = _classify_for_each(
+            stmt, analyzer, declared, lc.narrow.narrowed.keys())
+        if plan is None:
             raise ThirUnsupported("stmt.for_each")
         it = stmt.iterable
         # Loop var is C++-for-scoped: visible in the body but not the outer scope
         # (a fresh declared copy, so a body decl can't leak past the loop).
-        # resolve_int_literals mirrors the eligibility gate: a literal-seeded
-        # container's elem_type is still IntLiteral, whose to_cpp() emits the
-        # value -- the binding must spell the resolved default int. A str loop
-        # var (list[str] element / owned-str dict key) is a PendingStrType;
-        # resolve it to its concrete view/owned type like the AST's
-        # `resolve_type` does before loop_var_binding spells the binding (S5).
-        et = resolve_int_literals(unwrap_ref_type(stmt.elem_type),
-                                  analyzer.ctx.default_int_for_literal)
-        str_et = _resolved_str_value(et, analyzer)
-        if str_et is not None:
-            et = str_et
+        et = plan.elem_type
         body_declared = dict(declared)
         body_declared[stmt.var] = et
-        if route == "tuple_unpack":
+        if plan.route == "tuple_unpack":
             # The head TpyTupleUnpack lowers to the dedicated node (a
             # per-target decl list); its targets enter the body scope. The
             # discard slots keep None through both tuples.
@@ -2549,8 +2586,10 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 if name is None:
                     target_cpps.append(None)
                     continue
+                tt = plan.unpack_target_types[i]
+                assert tt is not None
                 tt, cpp = _unpack_target_decl(
-                    unwrap_ref_type(up.target_types[i]), analyzer, lc.render_type)
+                    tt, analyzer, lc.render_type)
                 body_declared[name] = tt
                 target_cpps.append(cpp)
             head = THIRTupleUnpack(
@@ -2567,7 +2606,9 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 stmt.body, lc, body_declared,
                 branch_decls_ok=True,
                 loop_depth=scope.loop_depth + 1)
-        if route == "range":
+        if plan.route == "range":
+            if plan.bigint_counter:
+                _witness("range.bigint_counter")
             # Literal bounds retype to the elem slot (the AST's gen-args
             # render threads the counter type): a no-op for fixed-int
             # counters (bare token either way), the `::tpy::BigInt(N)`
@@ -2583,9 +2624,9 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 start_is_literal = _range_bound_literal_value(start_arg) is not None
                 stop_arg = it.args[1]
             step = None
-            step_kind = "plus_one"
+            step_kind = plan.step_kind
             if nargs == 3:
-                step_kind = _range_step_kind(it.args[2], declared)
+                _witness(f"range.step_{step_kind}")
                 # The unit-step arms (plus_one / unit_neg) reference no step expr;
                 # the other three render it (retype is a no-op for the fixed-int
                 # counter this arm requires).
@@ -2603,28 +2644,11 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 step_kind=step_kind,
                 loc=loc,
             )
-        # Container iteration -> the begin/end loop. The admitted iterable
-        # shapes decide lvalue-ness statically (mirrors is_lvalue_iterable
-        # over them): a name / F1-field read is an lvalue (`auto&` capture);
-        # a call defers to `_call_iterable_lvalue` (a str return / `Own[...]`
-        # container return is an rvalue -- owning `auto` capture; a borrow
-        # container return is an lvalue).
-        if isinstance(it, TpyCall):
-            iterable_lvalue = _call_iterable_lvalue(it, lc.analyzer)
-        elif isinstance(it, TpyMethodCall):
-            # A dict-view method result (`d.values()` / `d.keys()`) or a str
-            # `Own[list[str]]` return (`s.split()`) is an rvalue -- the owning
-            # `auto __obj_N =` capture.
-            iterable_lvalue = False
-            if _str_list_method_iterable_ok(it, declared, analyzer):
-                _witness("foreach.str_list_method")
-        else:
-            iterable_lvalue = True
-            if (isinstance(it, TpyFieldAccess)
-                    and _resolved_viewfam_value(analyzer.get_expr_type(it),
-                                                analyzer) is None):
-                _witness("foreach.container_field")
-        if _value_tuple(et, analyzer) is not None:
+        if plan.str_list_method:
+            _witness("foreach.str_list_method")
+        if plan.container_field:
+            _witness("foreach.container_field")
+        if plan.value_tuple_elem:
             _witness("foreach.value_tuple_elem")
         return THIRForEach(
             var=stmt.var,
@@ -2635,7 +2659,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 field_prechecked=isinstance(it, TpyFieldAccess)),
             body=body,
             const_loop_var=stmt.const_loop_var,
-            iterable_lvalue=iterable_lvalue,
+            iterable_lvalue=plan.iterable_lvalue,
             loc=loc,
         )
     if isinstance(stmt, TpyExprStmt):
@@ -2651,24 +2675,31 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                    for a in e.args):
                 note_detail("print.narrowed_arg")
                 raise ThirUnsupported(stmt_reject_reason(stmt))
+            comp_plans: dict[int, _comprehensions._CompPlan] = {}
             for arg in e.args:
-                ok = (_comprehensions._comp_print_arg_ok(
-                          arg, declared, pointers, lc.rebind_slot_locals,
-                          lc.storage_tuple_locals, narrowed, analyzer)
-                      if type(arg) in _comprehensions._COMP_KINDS
-                      else (_print_arg_ok(arg, declared, analyzer)
-                            or (isinstance(arg, TpyName)
-                                and arg.name not in pointers
-                                and _wrap_print_form(
-                                    arg, declared, analyzer) is not None
-                                and _witness("print.wrap_arg"))))
+                if type(arg) in _comprehensions._COMP_KINDS:
+                    comp_plan = _comprehensions._comp_print_arg_plan(
+                        arg, declared, pointers, lc.rebind_slot_locals,
+                        lc.storage_tuple_locals, narrowed, analyzer)
+                    ok = comp_plan is not None
+                    if comp_plan is not None:
+                        comp_plans[id(arg)] = comp_plan
+                else:
+                    ok = (_print_arg_ok(arg, declared, analyzer)
+                          or (isinstance(arg, TpyName)
+                              and arg.name not in pointers
+                              and _wrap_print_form(
+                                  arg, declared, analyzer) is not None
+                              and _witness("print.wrap_arg")))
                 if not ok:
                     fam = _type_family_tag(
                         analyzer.get_expr_type(arg), analyzer)
                     _kind_detail(f"print.arg.{fam}_", arg)
                     raise ThirUnsupported(stmt_reject_reason(stmt))
             return THIRPrint(
-                args=tuple(_lower_print_arg(a, lc, declared) for a in e.args),
+                args=tuple(_lower_print_arg(
+                    a, lc, declared, comp_plan=comp_plans.get(id(a)))
+                    for a in e.args),
                 loc=loc)
         narrowed = lc.narrow.narrowed.keys()
         if isinstance(stmt.expr, TpyCall):
@@ -2704,15 +2735,15 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                           loop_depth=scope.loop_depth)
     if isinstance(stmt, TpyMatch):
         begin_stmt()
-        kind = _match._classify_match(
+        match_plan = _match._match_plan(
                 stmt, analyzer, declared, scope.admission_pointers(),
                 lc.narrow.narrowed.keys(), lc.storage_tuple_locals,
                 lc.prescan,
                 in_branch=scope.in_branch,
                 in_loop=scope.loop_depth > 0)
-        if kind is None:
+        if match_plan is None:
             raise ThirUnsupported(stmt_reject_reason(stmt))
-        return _match._lower_match(stmt, kind, lc, declared, loc,
+        return _match._lower_match(stmt, match_plan, lc, declared, loc,
                                    loop_depth=scope.loop_depth)
     if isinstance(stmt, TpyRaise):
         return _lower_raise(stmt, lc, declared, loc)
@@ -2943,7 +2974,9 @@ def _lower_with(stmt: TpyWith, lc: _LowerCtx, declared: dict[str, TpyType],
     )
 
 def _lower_print_arg(a: TpyExpr, lc: _LowerCtx,
-                     declared: dict[str, TpyType]) -> THIRPrintArg:
+                     declared: dict[str, TpyType], *,
+                     comp_plan: '_comprehensions._CompPlan | None' = None,
+                     ) -> THIRPrintArg:
     """Lower one print arg + tag its `std::cout <<` wrapper form. A str literal
     lowers to a THIRStrLiteral (RAW: emitted via cpp_string_literal_expr); an
     eligible scalar lowers normally with its type-derived form."""
@@ -2951,10 +2984,12 @@ def _lower_print_arg(a: TpyExpr, lc: _LowerCtx,
         # C3 comp print arg: the stmt-expr render inside its container
         # printer (List/Set/DictPrinter -- gen_print's container arms).
         _witness("comp.print_arg")
+        assert comp_plan is not None
         form = {"list": PrintForm.LIST, "set": PrintForm.SET,
-                "dict": PrintForm.DICT}[_comprehensions._COMP_KINDS[type(a)]]
+                "dict": PrintForm.DICT}[comp_plan.kind]
         return THIRPrintArg(
-            _comprehensions._lower_comprehension(a, lc, declared), form)
+            _comprehensions._lower_comprehension(
+                a, comp_plan, lc, declared), form)
     if isinstance(a, TpyStrLiteral):
         return THIRPrintArg(
             THIRStrLiteral(value=a.value, result_type=lc.analyzer.get_expr_type(a)),
