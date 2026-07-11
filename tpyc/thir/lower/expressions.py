@@ -143,6 +143,9 @@ from .predicates import (
     _peel_coerce,
     _plain_member_call_markers_ok,
     _plain_own_slot,
+    _protocol_arg_slot,
+    _protocol_arg_temp,
+    _protocol_binding,
     _range_counter_type,
     _record_rvalue_temp_slot,
     _resolve_pending_view,
@@ -861,6 +864,11 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx', *, temp_args: bool = False) -> THIR
             args=tuple(
                 _lower_call_arg(a, params[i].type if params else None, lc,
                                 temp_args=temp_args,
+                                # `gen_template_or_native_call` returns before
+                                # the plain loop, so a native/@cpp_template
+                                # callee runs NO protocol pre-arm: its protocol
+                                # slot renders through bare `gen_call_arg`.
+                                protocol_slots=not (native_name or cpp_template),
                                 readonly_target=(params is not None
                                                  and dcbp is not None
                                                  and i in dcbp))
@@ -1050,6 +1058,15 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx', *, temp_args: bool = False) -> THIR
         # temp rows are free-call shapes -- a method ctor rvalue INLINES).
         params = (fi.params if fi is not None
                   and len(fi.params) == len(e.args) else None)
+        # A protocol receiver misses `_gen_method_call`'s user-record arg loop
+        # (guarded by `is_user_record`) and falls to the lazy `_args()`
+        # fallback, which renders args like a FREE call's -- literals take
+        # their slot's coercion instead of the method path's target-less
+        # spelling. Same source of truth as the gate's `_protocol_binding`
+        # check: a narrowed subject reads as its member on both sides.
+        proto_recv = _protocol_binding(analyzer.get_expr_type(e.obj)) is not None
+        if proto_recv:
+            _witness("method.protocol")
 
         def _method_arg(a: TpyExpr, ptype: 'TpyType | None') -> THIRExpr:
             if temp_args:
@@ -1061,7 +1078,7 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx', *, temp_args: bool = False) -> THIR
                     return THIRArgTemp(result_type=ut, cpp_type=ut.to_cpp(),
                                        init=_lower_expr(a, lc), form=Form.VALUE,
                                        loc=getattr(a, "loc", None))
-            return _lower_call_arg(a, ptype, lc, method_arg=True)
+            return _lower_call_arg(a, ptype, lc, method_arg=not proto_recv)
 
         if isinstance(e.obj, TpyName) and e.obj.name == lc.self_receiver:
             _witness("call.self_method")
@@ -1379,7 +1396,8 @@ def _lower_range_object(call, lc: '_LowerCtx') -> THIRCall:
 def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                     *, temp_args: bool = False,
                     readonly_target: bool = False,
-                    method_arg: bool = False) -> THIRExpr:
+                    method_arg: bool = False,
+                    protocol_slots: bool = False) -> THIRExpr:
     """Lower one call argument against its param slot. A str literal into a
     Char slot renders as a target-typed char literal (gen_expr's char arm,
     via `_lower_char_targeted`); a bytes literal into a bytes/BytesView slot
@@ -1450,6 +1468,30 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
     # scalar-member slice). A narrowed subject reads its extraction alias
     # while the AST's `already_union` verdict renders it bare -- gate-rejected
     # (`_value_union_temp_arg`); the check here is defense in depth.
+    # The protocol-slot wrap (`_gen_dynamic_protocol_arg` / the free-call
+    # protocol temp arm). A bare verdict means the arg renders like any other
+    # -- fall through to the tail, which carries the pointer-local deref retag.
+    # `protocol_slots` marks the loops that actually run those pre-arms; the
+    # builtins loop does not, and renders a protocol slot bare.
+    proto = _protocol_arg_slot(ptype) if protocol_slots else None
+    if proto is not None:
+        at = lc.analyzer.get_expr_type(a)
+        rvalue = not isinstance(a, TpyName)
+        spec = _protocol_arg_temp(proto, at, lc.render_type(at), lc.analyzer,
+                                  rvalue=rvalue)
+        if spec is not None:
+            # The gate admits the temp rows only under `temps_ok`; a silent
+            # fall-through would drop the adapter wrap and pass the concrete.
+            assert temp_args, "protocol arg-temp outside a flush position"
+            cpp_type, brace_init = spec
+            init = _lower_expr(a, lc)
+            if isinstance(a, TpyName) and a.name in lc.pointers:
+                assert isinstance(init, THIRName)
+                init = replace(init, deref=True)
+            _witness("argtemp.protocol")
+            return THIRArgTemp(result_type=proto, cpp_type=cpp_type,
+                               init=init, brace_init=brace_init,
+                               form=Form.BORROW, loc=getattr(a, "loc", None))
     if temp_args:
         rec_pt = _record_rvalue_temp_slot(a, ptype, lc.analyzer)
         if rec_pt is not None:

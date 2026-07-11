@@ -100,6 +100,11 @@ from ...codegen_cpp.forms import (
     reads_storage_form_optional,
 )
 from ...codegen_cpp.context import enum_cpp_name
+from ...codegen_cpp.protocols import (
+    dynamic_adapter_type,
+    dynamic_ref_adapter_type,
+    record_inherits_dynamic,
+)
 from ..faces import witness as _witness
 from ..nodes import (
     Form,
@@ -1139,6 +1144,75 @@ def _f1_record(t: TpyType | None, analyzer) -> bool:
         return False
     return not is_builtin_record or _witness("recv.builtin_record")
 
+def _protocol_binding(t: 'TpyType | None') -> 'NominalType | None':
+    """The protocol a bare protocol-typed binding names, or None.
+
+    Both flavors bind as a C++ REFERENCE -- a structural protocol param is the
+    template `T_p&` / `const T_p&`, a @dynamic one the abstract `Base&` -- so a
+    bare name reads bare and a method call takes the `.` accessor, exactly like
+    an F1-record binding. `Own[P]` is deliberately NOT unwrapped: it lowers to
+    `std::unique_ptr<P>` (structural: a `T_p&&` forwarding ref), whose method
+    calls render `->` and whose reads move.
+    """
+    if not isinstance(t, TpyType):
+        return None
+    u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    return u if is_protocol_type(u) else None
+
+def _protocol_arg_slot(ptype: 'TpyType | None') -> 'NominalType | None':
+    """The protocol a call-arg SLOT names, when its arg render is one this
+    slice reproduces, else None.
+
+    Admits a bare (or `readonly[P]` / `Send[P]`) protocol slot -- @dynamic
+    (`_gen_dynamic_protocol_arg`) or single required structural (which
+    `_gen_protocol_arg` explicitly hands back to `gen_call_arg`). Rejects
+    `Own[P]` (`::tpy::make_adapter<Base>` / `std::make_unique`) and the
+    `Optional[P]` / protocol-union slots, whose `_gen_protocol_arg` renders
+    (typed null, `&(...)` address-of, `optional_to_ptr`) are their own rung.
+
+    An `Own[...]` TYPE ARG also rejects: `Iterable[Own[T]]` is a `T_p&&`
+    forwarding-ref slot, and `gen_call_arg` -- not the protocol pre-arms --
+    rewrites a last-use arg into the consuming `::tpy::own_iter(std::move(x))`.
+    """
+    if not isinstance(ptype, TpyType):
+        return None
+    u = unwrap_readonly(unwrap_send_sync(ptype))
+    if isinstance(u, OwnType) or not is_protocol_type(u):
+        return None
+    if any(isinstance(t, OwnType) for t in u.type_args):
+        return None
+    return u
+
+def _protocol_arg_temp(proto: 'NominalType', arg_type: 'TpyType | None',
+                       arg_cpp_type: str, analyzer, *,
+                       rvalue: bool) -> 'tuple[str | None, bool] | None':
+    """The `(cpp_type, brace_init)` of the `__tmp_N` a protocol slot hoists for
+    this arg, or None when the arg passes bare.
+
+    Mirrors `_gen_dynamic_protocol_arg` / the free-call `is_ref_param() +
+    is_temporary_expr` temp arm. `arg_cpp_type` is the arg's rendered concrete
+    C++ spelling (the caller renders it; the gate never needs the string):
+
+    - the arg is already protocol-typed -> bare (`gen_expr_deref` forwards);
+    - @dynamic slot, INHERITANCE conformer (the C++ struct derives from the
+      abstract base): an lvalue binds `Base&` directly -> bare; an rvalue
+      materializes the concrete `Dog __tmp_N{Dog()};`
+    - @dynamic slot, STRUCTURAL conformer (no C++ base): always a temp -- an
+      owning `::tpy::Adapter<Base, C> __tmp_N{C()};` for an rvalue, a
+      zero-copy `::tpy::RefAdapter<Base, C> __tmp_N{p};` for an lvalue;
+    - structural slot: an lvalue deduces `T_p` from the arg -> bare; an rvalue
+      hoists the un-spelled `auto __tmp_N = C(...);` (a braced-init-list cannot
+      deduce a template param, and the temp must outlive the call).
+    """
+    if is_protocol_type(arg_type):
+        return None
+    if not is_dyn_protocol(proto):
+        return (None, False) if rvalue else None
+    if record_inherits_dynamic(arg_type, proto, analyzer):
+        return (arg_cpp_type, True) if rvalue else None
+    wrap = dynamic_adapter_type if rvalue else dynamic_ref_adapter_type
+    return (wrap(proto, arg_cpp_type, analyzer), True)
+
 def _type_family_tag(t: 'TpyType | None', analyzer) -> str:
     """Coarse type-family tag for the fallback drilldown sub-classifiers
     (diagnostic labels only, never a gate/emit fact): one shared chain so
@@ -1176,7 +1250,10 @@ def _type_family_tag(t: 'TpyType | None', analyzer) -> str:
     if is_bytes_type(u) or is_bytes_view_type(u):
         return "bytes"
     if is_protocol_type(u):
-        return "protocol"
+        # The two protocol flavors take different SIGNATURE emits (a
+        # monomorphized `T_p&` template param vs a `Base&` vtable ref), so the
+        # drill ranks them apart even though their BODY renders coincide.
+        return "protocol.dyn" if is_dyn_protocol(u) else "protocol.static"
     if isinstance(u, NominalType):
         if _f1_record(u, analyzer):
             return "record_f1"

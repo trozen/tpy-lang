@@ -33,6 +33,9 @@ THIR_FACES: frozenset[str] = frozenset({
     "argtemp.value_union",          # free-call value-union member temp
     "argtemp.value_union_method",   # method-call value-union member temp
     "argtemp.record_rvalue",        # record-ctor rvalue into a ref slot
+    # Protocol-slot arg wrap: the @dynamic Adapter / RefAdapter / concrete
+    # materialization, and the structural slot's `auto __tmp_N` rvalue temp.
+    "argtemp.protocol",
     "argtemp.ctor_mut_rvalue",      # record rvalue into a MUTATED ctor slot
     "ctor.const_rvalue_arg",        # record rvalue inline into a const ctor slot
     "argtemp.own_copy",             # Own-slot copy+move `__tmp_N` temp
@@ -391,6 +394,21 @@ THIR_FACES: frozenset[str] = frozenset({
     # element-type-neutral, so admission is the distinguishing site for the
     # newly-reachable bodies -- each element USE is gated by the body walk).
     "param.container",
+    # Bare protocol param (gate admission; like param.container the signature
+    # is AST-emitted, so admission is the distinguishing site -- each USE of
+    # the binding is gated by the body walk).
+    "param.protocol",
+    # Method call on a bare protocol receiver (gate + lowering): `p.m(args)`,
+    # monomorphized for a structural protocol, a vtable call for a @dynamic
+    # one -- one render either way. Args take the FREE-call literal rules
+    # (`_gen_method_call`'s `_args()` fallback loop, not the user-record loop).
+    "method.protocol",
+    # Protocol-slot arg that renders BARE (gate; a structural-slot lvalue, an
+    # inheritance-conformer lvalue, or an already-protocol name forwarded on).
+    "protoarg.bare",
+    # `len(p)` on a protocol binding -- the same `::tpy::__len__(p)` a
+    # container emits (a protocol binding is a reference, never a pointer).
+    "len.protocol",
     # Trivia (lowering): docstring / `pass` -> THIRNoOpStmt, body-wide.
     "stmt.trivia",
     # Standalone `a, b = <name>` unpack of a value-scalar tuple (lowering):

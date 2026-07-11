@@ -355,9 +355,15 @@ deferred (self-contained) / blocked-on-`<rung>`.
   not unwrap readonly), narrowed Optional names into UNION slots
   (`_union_member_lift_arg` keys on the declared type), and the
   storage-field / call return sources above.
+  **Protocol slots LANDED** (`thir-protocol-boundary`, `_protocol_arg_slot` /
+  `_protocol_arg_temp`): a bare @dynamic or single-required-structural slot
+  takes the Adapter / RefAdapter / concrete-materialization / `auto`-rvalue
+  temp rows. `Own[P]` and the typed-null `Optional[P]` / protocol-union
+  spellings stay deferred; so does an `Iterable[Own[T]]` slot, whose
+  `::tpy::own_iter(std::move(x))` rewrite lives in `gen_call_arg` itself
+  rather than in a protocol pre-arm.
   **Still deferred**: the elif-chain-abandon + statement-expr temp
-  relocation (ARCHITECTURAL -- design first), protocol slots (adapter
-  machinery; typed-null spelling), method POINTER-variant union slots
+  relocation (ARCHITECTURAL -- design first), method POINTER-variant union slots
   (the deep-const threading differs between the AST's own-record and
   inherited first-pass arg loops), coerce-wrapped lvalues into Own slots
   (the AST's rendered-identity `needs_copy` split), record field reads

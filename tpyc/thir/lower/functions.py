@@ -117,6 +117,7 @@ from .predicates import (
     _optional_ptr_borrow,
     _optional_ptr_borrow_name,
     _own_type_param_slot,
+    _protocol_binding,
     _readonly_global_type,
     _resolved_bytes_value,
     _resolved_str_value,
@@ -224,6 +225,18 @@ def _f1_param_eligible(ptype: TpyType | None, analyzer) -> bool:
     `Optional[view]` slot of the same family takes the
     `_maybe_convert_opt_view_param` shim (`std::string` / `::tpy::bytes_copy`
     copy) -- the decl / print sinks reject per-use, keeping those bodies AST).
+
+    A bare protocol param (`_protocol_binding` -- structural or @dynamic,
+    `readonly[P]` included) is admitted the way `_ctor_param_eligible` admits
+    its widened set: gen_body emits the BODY only, so the template header, the
+    `const T_p&` / `Base&` slot and the header-inline placement stay AST-emitted
+    whether or not the body routes; the param then binds as a reference exactly
+    like an F1 record, and every body-side USE is gated at its own site (the
+    protocol receiver's method call by `_protocol_method_call_eligible`,
+    everything else by the arm it reaches). `Own[P]` (a `T_p&&` / unique_ptr
+    slot whose reads move and whose calls render `->`) and `Optional[P]` (a
+    pointer-repr borrow) are not protocol bindings and keep rejecting.
+
     Own-optional/cross-module/native record params, and `Own[container]` /
     generic (`list[T]`) container params, stay on the AST path."""
     return (_eligible_scalar(ptype) or _eligible_char(ptype)
@@ -243,7 +256,9 @@ def _f1_param_eligible(ptype: TpyType | None, analyzer) -> bool:
             or _eligible_value_union(ptype) is not None
             or _eligible_ptr_union(ptype, analyzer) is not None
             or (_container_param_renders(ptype, analyzer)
-                and _witness("param.container")))
+                and _witness("param.container"))
+            or (_protocol_binding(ptype) is not None
+                and _witness("param.protocol")))
 
 def _function_eligible(func: TpyFunction, analyzer,
                        self_type: 'TpyType | None' = None,
@@ -1003,9 +1018,9 @@ def _ctor_param_eligible(ptype: TpyType | None, analyzer) -> bool:
       pointees/members reject at each sink, incl. the protocol-member union
       whose reads have no arm at all).
 
-    Still rejected: protocol / callable / Waker / reference-container params
-    (their SIGNATURE takes the protocol-template / adapter emit paths) and
-    pointer-repr optionals of non-F1 inners."""
+    Still rejected: callable / Waker / reference-container params and
+    pointer-repr optionals of non-F1 inners. (Protocol params ride
+    `_f1_param_eligible`'s own bare-protocol arm.)"""
     # `_f1_param_eligible` already admits a bare `T` param (the type-param slot).
     if _f1_param_eligible(ptype, analyzer):
         return True

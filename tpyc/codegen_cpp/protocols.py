@@ -79,6 +79,122 @@ def is_marker_only_bound(bound: NominalType) -> bool:
     return bound.qualified_name() in qnames.SEMA_ONLY_MARKER_PROTOCOLS
 
 
+def _qualify_protocol_via_qname(protocol: NominalType, analyzer) -> str | None:
+    """Fallback qualification for protocols not bound in the current
+    module's attributes -- e.g. implicit-stdlib protocols referenced
+    only through a sema-synthesized type like `Cancellable[T]`
+    constructed by `make_cancellable` for async-def returns. Skips
+    when the protocol lives in the current module (the bare local
+    name is correct there)."""
+    qname = protocol._module_qname
+    if not qname or "." not in qname:
+        return None
+    source_module, original_name = qname.rsplit(".", 1)
+    if source_module == analyzer.ctx.module_name:
+        return None
+    return qualified_cpp_name(source_module, original_name)
+
+
+def dynamic_base_name(protocol: NominalType, analyzer) -> str:
+    """The (possibly qualified) C++ base class name for a @dynamic protocol.
+
+    Type args render through `t.to_cpp()`; for unresolved TypeParamRef
+    args (inside a nested template emission) this is the bare name `T`,
+    so the same helper covers both call-site instantiations
+    (`Awaitable<int32_t>`) and nested-template references (`Awaitable<T>`).
+
+    For protocols that are both @dynamic and @native (cpp_concept set),
+    the C++ class name comes from the @native annotation -- the abstract
+    base lives in a runtime header rather than codegen output. Used by
+    Throwable (`@native("tpy::Throwable") @dynamic`) to bridge to
+    `runtime/cpp/include/tpy/throwable.hpp::tpy::Throwable`.
+    """
+    protocol_info = protocol_info_of(protocol)
+    if protocol_info and protocol_info.cpp_concept:
+        base = protocol_info.cpp_concept
+        if protocol.type_args:
+            args_cpp = ", ".join(t.to_cpp() for t in protocol.type_args)
+            return f"{base}<{args_cpp}>"
+        return base
+    name = protocol.name
+    qual = lookup_imported(
+        analyzer.ctx.module_attributes, name,
+        SymbolKind.PROTOCOL_STATIC, SymbolKind.PROTOCOL_DYNAMIC)
+    if qual is not None:
+        source_module, original_name = qual
+        base = qualified_cpp_name(source_module, original_name)
+    else:
+        # A local @dynamic protocol whose name a member shadows must render
+        # fully-qualified (same shadow-qualification as records/enums).
+        base = (_qualify_protocol_via_qname(protocol, analyzer)
+                or shadowed_local_cpp_name(protocol._module_qname)
+                or name)
+    if protocol.type_args:
+        args_cpp = ", ".join(t.to_cpp() for t in protocol.type_args)
+        return f"{base}<{args_cpp}>"
+    return base
+
+
+def dynamic_adapter_type(protocol: NominalType, concrete_cpp: str,
+                         analyzer) -> str:
+    """The owning adapter type: `::tpy::Adapter<Base, Concrete>`."""
+    return f"::tpy::Adapter<{dynamic_base_name(protocol, analyzer)}, {concrete_cpp}>"
+
+
+def dynamic_ref_adapter_type(protocol: NominalType, concrete_cpp: str,
+                             analyzer) -> str:
+    """The non-owning adapter type: `::tpy::RefAdapter<Base, Concrete>`."""
+    return f"::tpy::RefAdapter<{dynamic_base_name(protocol, analyzer)}, {concrete_cpp}>"
+
+
+def record_inherits_dynamic(concrete_type: TpyType, protocol: NominalType,
+                            analyzer) -> bool:
+    """Whether concrete_type inherits a @dynamic protocol (directly or transitively).
+
+    True when the record explicitly implements a @dynamic protocol that
+    is (or transitively inherits from) `protocol`. This means the C++ struct
+    inherits the protocol base class through the inheritance chain and no adapter
+    wrapping is needed.
+
+    Match is by short name; type_args are ignored. Cross-instantiation
+    mismatches (e.g. assigning `Container[Int32]` into `Container[str]`)
+    are already rejected by sema before this helper runs.
+
+    The ``is_dynamic`` filter is applied at the IMPLEMENTED-protocol level
+    (chain root), not at the target. A non-@dynamic protocol contributes no
+    C++ base, so a chain rooted in a non-@dynamic implemented protocol
+    cannot make ``concrete_type`` C++-inherit anything -- even if a
+    @dynamic ancestor sits further up the chain. This differs from
+    ``sema/type_ops._inherits_protocol`` (which filters on the target,
+    not the root); the closure cached on ``RecordInfo.transitive_supertypes``
+    encodes the unfiltered closure used by the latter, so this helper keeps
+    an explicit per-element walk and uses ``is_subtype`` only for the
+    per-protocol ancestor step.
+
+    @native records are excluded: their C++ representation is opaque to
+    codegen (the struct is hand-written elsewhere), so even when the TPy
+    declaration claims `class NativeRec(SomeDynProto)`, the C++ struct
+    almost certainly does NOT inherit the codegen-emitted protocol base.
+    Routing through Adapter is the only safe lowering for those types.
+    Example: `BaseException` inherits `Throwable` at the TPy level for
+    polymorphism dispatch on `Optional[BaseException]`, but
+    `::tpy::BaseException` in core.hpp does not inherit `tpystd::tpy::Throwable`.
+    """
+    if not isinstance(concrete_type, NominalType) or not concrete_type.is_user_record:
+        return False
+    record_info = analyzer.registry.get_record(concrete_type.name)
+    if record_info is None or record_info.is_native:
+        return False
+    proto_name = protocol.name
+    for p in record_info.implemented_protocols:
+        pi = protocol_info_of(p)
+        if pi is None or not pi.is_dynamic:
+            continue
+        if p.name == proto_name or is_subtype(pi, proto_name):
+            return True
+    return False
+
+
 class ProtocolGenerator:
     """Generates C++20 concepts from TurboPython protocols."""
 
@@ -207,68 +323,13 @@ class ProtocolGenerator:
         return f"__{protocol.name}_Concept__" if is_dynamic else protocol.name
 
     def get_dynamic_base_name(self, protocol: NominalType) -> str:
-        """Get the (possibly qualified) C++ base class name for a @dynamic protocol.
-
-        Type args render through `t.to_cpp()`; for unresolved TypeParamRef
-        args (inside a nested template emission) this is the bare name `T`,
-        so the same helper covers both call-site instantiations
-        (`Awaitable<int32_t>`) and nested-template references (`Awaitable<T>`).
-
-        For protocols that are both @dynamic and @native (cpp_concept set),
-        the C++ class name comes from the @native annotation -- the abstract
-        base lives in a runtime header rather than codegen output. Used by
-        Throwable (`@native("tpy::Throwable") @dynamic`) to bridge to
-        `runtime/cpp/include/tpy/throwable.hpp::tpy::Throwable`.
-        """
-        protocol_info = protocol_info_of(protocol)
-        if protocol_info and protocol_info.cpp_concept:
-            base = protocol_info.cpp_concept
-            if protocol.type_args:
-                args_cpp = ", ".join(t.to_cpp() for t in protocol.type_args)
-                return f"{base}<{args_cpp}>"
-            return base
-        name = protocol.name
-        qual = lookup_imported(
-            self.ctx.analyzer.ctx.module_attributes, name,
-            SymbolKind.PROTOCOL_STATIC, SymbolKind.PROTOCOL_DYNAMIC)
-        if qual is not None:
-            source_module, original_name = qual
-            base = qualified_cpp_name(source_module, original_name)
-        else:
-            # A local @dynamic protocol whose name a member shadows must render
-            # fully-qualified (same shadow-qualification as records/enums).
-            base = (self._qualify_protocol_via_qname(protocol)
-                    or shadowed_local_cpp_name(protocol._module_qname)
-                    or name)
-        if protocol.type_args:
-            args_cpp = ", ".join(t.to_cpp() for t in protocol.type_args)
-            return f"{base}<{args_cpp}>"
-        return base
-
-    def _qualify_protocol_via_qname(self, protocol: NominalType) -> str | None:
-        """Fallback qualification for protocols not bound in the current
-        module's attributes -- e.g. implicit-stdlib protocols referenced
-        only through a sema-synthesized type like `Cancellable[T]`
-        constructed by `make_cancellable` for async-def returns. Skips
-        when the protocol lives in the current module (the bare local
-        name is correct there)."""
-        qname = protocol._module_qname
-        if not qname or "." not in qname:
-            return None
-        source_module, original_name = qname.rsplit(".", 1)
-        if source_module == self.ctx.analyzer.ctx.module_name:
-            return None
-        return qualified_cpp_name(source_module, original_name)
+        return dynamic_base_name(protocol, self.ctx.analyzer)
 
     def get_dynamic_adapter_type(self, protocol: NominalType, concrete_cpp: str) -> str:
-        """Get the full C++ type for an owning adapter: ::tpy::Adapter<Base, Concrete>."""
-        base = self.get_dynamic_base_name(protocol)
-        return f"::tpy::Adapter<{base}, {concrete_cpp}>"
+        return dynamic_adapter_type(protocol, concrete_cpp, self.ctx.analyzer)
 
     def get_dynamic_ref_adapter_type(self, protocol: NominalType, concrete_cpp: str) -> str:
-        """Get the full C++ type for a ref adapter: ::tpy::RefAdapter<Base, Concrete>."""
-        base = self.get_dynamic_base_name(protocol)
-        return f"::tpy::RefAdapter<{base}, {concrete_cpp}>"
+        return dynamic_ref_adapter_type(protocol, concrete_cpp, self.ctx.analyzer)
 
     def dynamic_narrow_cast_rhs(
         self, cpp_type: str, check_type: TpyType, source_inner: 'TpyType | None',
@@ -310,50 +371,7 @@ class ProtocolGenerator:
         )
 
     def directly_implements_dynamic(self, concrete_type: TpyType, protocol: NominalType) -> bool:
-        """Check if concrete_type inherits a @dynamic protocol (directly or transitively).
-
-        Returns True when the record explicitly implements a @dynamic protocol that
-        is (or transitively inherits from) `protocol`. This means the C++ struct
-        inherits the protocol base class through the inheritance chain and no adapter
-        wrapping is needed.
-
-        Match is by short name; type_args are ignored. Cross-instantiation
-        mismatches (e.g. assigning `Container[Int32]` into `Container[str]`)
-        are already rejected by sema before this helper runs.
-
-        The ``is_dynamic`` filter is applied at the IMPLEMENTED-protocol level
-        (chain root), not at the target. A non-@dynamic protocol contributes no
-        C++ base, so a chain rooted in a non-@dynamic implemented protocol
-        cannot make ``concrete_type`` C++-inherit anything -- even if a
-        @dynamic ancestor sits further up the chain. This differs from
-        ``sema/type_ops._inherits_protocol`` (which filters on the target,
-        not the root); the closure cached on ``RecordInfo.transitive_supertypes``
-        encodes the unfiltered closure used by the latter, so this helper keeps
-        an explicit per-element walk and uses ``is_subtype`` only for the
-        per-protocol ancestor step.
-
-        @native records are excluded: their C++ representation is opaque to
-        codegen (the struct is hand-written elsewhere), so even when the TPy
-        declaration claims `class NativeRec(SomeDynProto)`, the C++ struct
-        almost certainly does NOT inherit the codegen-emitted protocol base.
-        Routing through Adapter is the only safe lowering for those types.
-        Example: `BaseException` inherits `Throwable` at the TPy level for
-        polymorphism dispatch on `Optional[BaseException]`, but
-        `::tpy::BaseException` in core.hpp does not inherit `tpystd::tpy::Throwable`.
-        """
-        if not isinstance(concrete_type, NominalType) or not concrete_type.is_user_record:
-            return False
-        record_info = self.ctx.analyzer.registry.get_record(concrete_type.name)
-        if record_info is None or record_info.is_native:
-            return False
-        proto_name = protocol.name
-        for p in record_info.implemented_protocols:
-            pi = protocol_info_of(p)
-            if pi is None or not pi.is_dynamic:
-                continue
-            if p.name == proto_name or is_subtype(pi, proto_name):
-                return True
-        return False
+        return record_inherits_dynamic(concrete_type, protocol, self.ctx.analyzer)
 
     def gen_record_template_parts(
         self,

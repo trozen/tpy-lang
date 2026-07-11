@@ -62,6 +62,7 @@ from ...typesys import (
     substitute_type_params_simple,
     del_suppresses_default_ctor,
     is_float_type,
+    is_protocol_type,
     is_void_like_type,
     resolve_int_literals,
     unwrap_optional_own,
@@ -179,6 +180,9 @@ from .predicates import (
     _plain_own_slot,
     _plain_scalar_slot,
     _positional_only_template,
+    _protocol_arg_slot,
+    _protocol_arg_temp,
+    _protocol_binding,
     _record_rvalue_temp_slot,
     _resolved_bytes_value,
     _resolved_scalar,
@@ -1852,7 +1856,11 @@ def _is_len_call(e: TpyExpr, locals_: dict[str, TpyType], analyzer) -> bool:
     that emits bare, but a record (or `Optional`) with `__len__` bound to a
     pointer-local would need `(*p)` (the AST's is_indirect_name deref) that the
     bare emit misses -- so only list/dict/set/Array/str (never pointer-locals)
-    are admitted. A field arg types at the DECLARED field type, so a narrowed
+    are admitted. A protocol binding joins them from the other side, for the
+    same reason: it is always a C++ reference (`const T_x&` / `Base&`), so it
+    too can never be a pointer-local, and `len(items)` on a `Measurable` param
+    emits the same `::tpy::__len__(items)`. A field arg types at the DECLARED
+    field type, so a narrowed
     Optional[container] field (the AST's `(*recv.field)` unwrap) rejects at the
     family check. A non-name arg (literal, subscript, call) rides a later
     cell."""
@@ -1874,7 +1882,9 @@ def _is_len_call(e: TpyExpr, locals_: dict[str, TpyType], analyzer) -> bool:
     return (is_list(t) or is_dict(t) or is_set(t) or is_array(t) or is_span(t)
             or _resolved_str_value(t, analyzer) is not None
             or _resolved_bytes_value(t, analyzer) is not None  # span/vector overloads
-            or is_string_type(t))  # a String local: same std::string overload
+            or is_string_type(t)  # a String local: same std::string overload
+            or (_protocol_binding(t) is not None
+                and _witness("len.protocol")))
 
 def _len_arg_reject(arg: TpyExpr, locals_: dict[str, TpyType],
                     analyzer) -> str:
@@ -2203,6 +2213,8 @@ def _plain_call_args_ok(e: TpyCall, locals_: dict[str, TpyType], analyzer,
                or _union_coerced_literal_arg(a, p.type, locals_, analyzer)
                or _own_union_ctor_arg(a, p.type, locals_, analyzer)
                or _none_value_opt_arg(a, p.type, analyzer) is not None
+               or _protocol_slot_arg(a, p.type, locals_, analyzer,
+                                     temps_ok=temps_ok)
                or note_detail(
                    "call.arg_shape." + _type_family_tag(p.type, analyzer))
                for a, p in zip(e.args, fi.params))
@@ -2458,6 +2470,47 @@ def _value_union_temp_arg(a: TpyExpr, ptype: TpyType | None,
     if isinstance(a, TpyName) and a.name in narrowed:
         return False
     return _expr_eligible(a, locals_, analyzer)
+
+def _protocol_slot_arg(a: TpyExpr, ptype: 'TpyType | None',
+                       locals_: dict[str, TpyType], analyzer, *,
+                       temps_ok: bool) -> bool:
+    """An arg crossing into a protocol param slot -- the `_gen_protocol_arg` /
+    `_gen_dynamic_protocol_arg` pre-arms of the plain call loop, reduced to the
+    two arg shapes whose wrap `_protocol_arg_temp` spells: a bare in-scope NAME
+    (lvalue) and a record-ctor RVALUE.
+
+    A bare arg (a structural-slot lvalue, an inheritance-conformer lvalue, or
+    an already-protocol name being forwarded) needs no lowering arm at all --
+    it falls through `_lower_call_arg`'s ordinary tail, which carries the
+    pointer-local `(*p)` retag exactly as `gen_call_arg` does. Every other
+    shape hoists a `__tmp_N` and so needs a flushable position (`temps_ok`);
+    note the @dynamic STRUCTURAL-conformer lvalue is in that set -- its
+    zero-copy `RefAdapter` is still a temp.
+
+    Out of slice: `Own[P]` / `Optional[P]` / protocol-union slots (rejected by
+    `_protocol_arg_slot`), and any arg that is neither a name nor a ctor rvalue
+    (a field read, a subscript, a nested call)."""
+    proto = _protocol_arg_slot(ptype)
+    if proto is None:
+        return False
+    at = analyzer.get_expr_type(a)
+    if at is None:
+        return False
+    if isinstance(a, TpyName):
+        if not _expr_eligible(a, locals_, analyzer):
+            return False
+        rvalue = False
+    elif isinstance(a, TpyCall) and _record_ctor_call_eligible(a, locals_,
+                                                               analyzer):
+        rvalue = True
+    else:
+        return False
+    # The rendered concrete spelling only matters at lowering; the gate's
+    # temp-vs-bare verdict is spelling-independent.
+    spec = _protocol_arg_temp(proto, at, "", analyzer, rvalue=rvalue)
+    if spec is None:
+        return _witness("protoarg.bare")
+    return temps_ok and _witness("argtemp.protocol")
 
 def _record_rvalue_temp_arg(a: TpyExpr, ptype: TpyType | None,
                             locals_: dict[str, TpyType], analyzer) -> bool:
@@ -3781,6 +3834,13 @@ def _method_call_eligible(e: TpyMethodCall, locals_: dict[str, TpyType], analyze
     recv_type = _method_receiver_type(e.obj, locals_, analyzer)
     if not (_container_scalar_read(recv_type, analyzer)
             or _container_record_elem(recv_type, analyzer)):
+        # A protocol receiver dispatches on the PROTOCOL's method, not a
+        # record's -- `_gen_method_call`'s user-record arg loop never runs for
+        # it, so its args take the free-call renders. Checked before the record
+        # arm, whose `_f1_record` receiver pin would reject it.
+        if _protocol_binding(recv_type) is not None:
+            return _protocol_method_call_eligible(e, fi, locals_, analyzer,
+                                                  stmt_position=stmt_position)
         # A str/StrView value-view receiver dispatches builtin @cpp_template /
         # @native(function=True) methods (`s.startswith(p)`, `s.find(x)`,
         # `s.encode()`) through the SAME general THIRMethodCall arm as a record
@@ -3843,6 +3903,64 @@ def _method_call_eligible(e: TpyMethodCall, locals_: dict[str, TpyType], analyze
                or _own_lvalue_arg(a, p.type, locals_, narrowed, analyzer)
                or note_detail("method.arg_shape")
                for a, p in zip(e.args, fi.params))
+
+def _protocol_method_call_eligible(e: TpyMethodCall, fi, locals_: dict[str, TpyType],
+                                   analyzer, *, stmt_position: bool) -> bool:
+    """A method call on a bare protocol receiver -- `pet.make_noise()` on a
+    `@dynamic` `Base&` (a vtable call) or `count.length()` on a structural
+    `const T_c&` (monomorphized). Both spell `recv.method(args)`: the flavor
+    lives entirely in the AST-emitted param slot, not in the body.
+
+    `_gen_method_call` has no protocol arm -- its user-record arg loop is
+    guarded by `is_user_record`, so a protocol receiver falls to the LAZY
+    `_args()` fallback loop, whose renders are the FREE call's, not the record
+    method's. Two consequences the mirror must honor: literal args take their
+    slot's coercion (an int literal into a BigInt slot wraps, a float literal
+    into a Float32 slot gets the `f` suffix) rather than the method path's
+    target-less spelling, and `overloaded_call` is never threaded -- harmless,
+    since the str-literal pin fires only on overload sets, which reject here.
+
+    The shared marker / receiver-shape / fi-kind / arity rejects already ran in
+    `_method_call_eligible`; `_plain_member_call_markers_ok` also disposed of
+    the deref chain, the explicit/inferred type args, and the kwargs, and the
+    Optional runtime-check marker cannot reach a protocol name.
+
+    Receiver: a bare in-scope name (a protocol param or a routed protocol
+    local), never indirect -- `is_arrow` keys on the lowering pointer set,
+    which a protocol binding never joins. An `Own[P]` receiver renders `->`
+    (`_receiver_is_own_dyn`) and is not a protocol binding, so it never lands
+    here.
+
+    Method: a plain instance method. The member name is always
+    `escape_cpp_name(e.method)` -- `_plain_method_fi_ok` already rejected the
+    LiteralType params that would mangle it, and the @native rename is rejected
+    below -- so no overload-set check is needed here (unlike the record arm,
+    whose arg-temp decisions read `overloads[0]`).
+
+    Args: the shared pass-through rows only (`_shared_pass_through_arg` -- the
+    rows whose render lives inside `gen_call_arg` itself, so the `_args()`
+    loop's missing dcbp/pin kwargs cannot change them). Result: the
+    value-position set, or void in statement position.
+    """
+    if not isinstance(e.obj, TpyName):
+        # A protocol-typed field / subscript / call receiver: the AST reads it
+        # through its own deref rules, which this arm does not carry.
+        return note_detail("method.protocol.recv_shape")
+    if (fi.cpp_template is not None or fi.native_function or fi.native_name
+            or fi.type_params or fi.is_staticmethod or not fi.is_method):
+        return note_detail("method.fi_kind")
+    ret = analyzer.get_expr_type(e)
+    if not (_resolved_scalar(ret, analyzer) or _eligible_char(ret)
+            or _eligible_enum(ret, analyzer) is not None
+            or _resolved_str_value(ret, analyzer) is not None
+            or _resolved_bytes_value(ret, analyzer) is not None
+            or (stmt_position and (ret is None or is_void_like_type(ret)))):
+        return note_detail("method.protocol.ret_type")
+    if not all(_shared_pass_through_arg(a, p.type, locals_, analyzer)
+               or note_detail("method.protocol.arg_shape")
+               for a, p in zip(e.args, fi.params)):
+        return False
+    return _witness("method.protocol")
 
 def _record_method_call_eligible(e: TpyMethodCall, fi, locals_: dict[str, TpyType],
                                  analyzer, *, stmt_position: bool,
@@ -4122,8 +4240,10 @@ def _recv_family(t: 'TpyType | None', analyzer) -> str:
         return "union"
     if isinstance(t, TupleType):
         return "tuple"
+    if is_protocol_type(t):
+        return "protocol"
     if isinstance(t, NominalType):
-        return "record"  # non-F1 record (or protocol/native nominal)
+        return "record"  # non-F1 record (or native nominal)
     return type(t).__name__.removesuffix("Type").lower()
 
 def _method_value_union_arg(a: TpyExpr, ptype: TpyType | None,
