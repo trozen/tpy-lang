@@ -3,6 +3,7 @@
 from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass, field, fields
+from enum import Enum, auto
 from ...parse.nodes import TpyFunction, TpyGlobal
 from ...typesys import (
     ReadonlyType,
@@ -30,6 +31,27 @@ from .predicates import (
     _value_opt_view,
     _value_tuple_return,
 )
+
+
+class _ExprResultUse(Enum):
+    VALUE = auto()
+    DISCARD = auto()
+    CONDITION = auto()
+    STORAGE = auto()
+    BORROW_BIND = auto()
+    ITERABLE = auto()
+
+
+@dataclass(frozen=True, slots=True)
+class _ExprUse:
+    """How the immediate consumer will use one lowered expression result.
+
+    `allow_temps` applies only to the expression passed to `_lower_expr`;
+    recursive operands get the default value use unless their own consumer
+    explicitly supplies another use.
+    """
+    result: _ExprResultUse = _ExprResultUse.VALUE
+    allow_temps: bool = False
 
 # --- F1 form slice: single-assignment non-value record locals + field reads ---
 
@@ -177,8 +199,9 @@ class _Prescan:
 
 @dataclass
 class _WalkState:
-    """The eligibility walk's copy-per-branch scope state, mirroring lowering's
-    scope growth. `declared` maps each in-scope name to its resolved (possibly
+    """Compatibility state for node-local statement admission checks.
+
+    `declared` maps each in-scope name to its resolved (possibly
     narrowed) type; `pointers` carries the F2 pointer-local names a reseat
     reads, `rebind_slots` the F2d subset whose reseats are rvalue rebinds,
     `storage_tuple_locals` the F3 `auto&&` tuple aliases a borrow read lifts,
@@ -188,7 +211,7 @@ class _WalkState:
     (assert / early-return post-if -- registered in the AST's
     `declared_persistent_aliases`): only those admit the U4 re-assert bump;
     a branch/loop-scoped alias would collide instead (the BUGS.md
-    `_gen_while` redeclaration). Walk arms mutate the active state in place
+    `_gen_while` redeclaration). Admission helpers mutate the snapshot in place
     (a POINTER decl extends `pointers`, a post-if fact retypes in
     `declared`); each branch/loop body walks a `branch_copy()` so siblings
     don't see each other."""
@@ -207,8 +230,10 @@ class _WalkState:
 
 @dataclass
 class _NarrowScope:
-    """Lowering's branch/loop-scoped isinstance-narrowing state, the mirror of
-    the eligibility walk's `_WalkState` bundle. `narrowed` maps each U3
+    """Lowering's branch/loop-scoped isinstance-narrowing state.
+
+    `_WalkState` snapshots these facts for remaining statement admission
+    helpers. `narrowed` maps each U3
     isinstance-narrowed source var to its live extraction alias
     (`ctx.narrowed_vars`); reads rename, the isinstance condition keeps the
     original variant. `persistent_aliases` mirrors
@@ -361,8 +386,8 @@ class _LowerScope:
 
     Function-wide representation state remains owned by `_LowerCtx`; lexical
     bindings and control position vary per nested body. Keeping both behind
-    one carrier lets lowering become the authoritative sequential walk without
-    cloning the old eligibility walk's state model.
+    one carrier keeps lowering as the authoritative sequential walk while
+    remaining admission helpers receive compatibility snapshots.
     """
     lc: _LowerCtx
     declared: dict[str, TpyType]

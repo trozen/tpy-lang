@@ -193,6 +193,8 @@ from .predicates import (
     _var_decl_type,
 )
 from .context import (
+    _ExprResultUse,
+    _ExprUse,
     _LowerCtx,
     _LowerScope,
     _Prescan,
@@ -209,7 +211,6 @@ from .expr_gates import (
     _container_literal_decl_ok,
     _container_literal_ok,
     _container_setitem_ok,
-    _expr_eligible,
     _is_builtin_print,
     _is_len_call,
     _is_record_rvalue_method_source,
@@ -229,7 +230,6 @@ from .expr_gates import (
     _record_field_write_ok,
     _scalar_aug_assign_ok,
     _scalar_field_write_ok,
-    _stmt_value_temps_call,
     _str_aug_append_ok,
     _str_field_write_ok,
     _str_list_method_iterable_ok,
@@ -367,7 +367,7 @@ def _range_bound_eligible(arg: TpyExpr, declared: dict[str, TpyType],
         rt = analyzer.get_expr_type(arg)
         if not (is_fixed_int_type(rt) or _runtime_bigint(rt, analyzer)):
             return False
-        return _expr_eligible(arg, declared, analyzer)
+        return True
     return _range_bound_literal_value(arg) is not None
 
 def _range_step_kind(step_arg: TpyExpr, declared: dict[str, TpyType]) -> str | None:
@@ -952,8 +952,6 @@ def _raise_eligible(stmt: TpyRaise, analyzer, ws: _WalkState) -> bool:
             if not (_eligible_scalar(pt)
                     or _resolved_str_value(pt, analyzer) is not None):
                 return False
-            if not _expr_eligible(a, ws.declared, analyzer):
-                return False
     return True
 
 
@@ -1036,9 +1034,7 @@ def _assign_eligible(stmt: TpyAssign, analyzer, ws: _WalkState,
             return False
         if isinstance(stmt.value, TpyBytesLiteral):
             return False
-        return (stmt.target.name in ws.declared
-                and (_expr_eligible(stmt.value, ws.declared, analyzer)
-                     or _stmt_value_temps_call(stmt.value, ws, analyzer)))
+        return stmt.target.name in ws.declared
     if isinstance(stmt.target, TpySubscript):
         return _container_setitem_ok(stmt, ws, analyzer)
     return (_f2b_optional_field_write_ok(
@@ -1327,8 +1323,7 @@ def _return_eligible(stmt: TpyReturn, analyzer, ws: _WalkState,
             return _witness("ret.str_field")
         if _field_receiver_ok(stmt.value, ws.declared, analyzer):
             return note_detail("return.str_field_form")
-    return (_expr_eligible(stmt.value, ws.declared, analyzer)
-            or _stmt_value_temps_call(stmt.value, ws, analyzer))
+    return True
 
 
 def _var_decl_eligible(stmt: TpyVarDecl, analyzer, ws: _WalkState,
@@ -1372,9 +1367,8 @@ def _var_decl_eligible(stmt: TpyVarDecl, analyzer, ws: _WalkState,
     if not is_reassign and not in_branch:
         # First decl of a non-value local (REF_ALIAS / OPTIONAL_TO_PTR /
         # POINTER), bound from a field read off an F1-record receiver. Its
-        # non-value field init is not a value expression, so it is admitted
-        # here, not via _expr_eligible (which rejects it). A POINTER local is
-        # recorded so its later reassignments lower as reseats.
+        # non-value field init is admitted by its binding shape. A POINTER
+        # local is recorded so its later reassignments lower as reseats.
         binding = _borrow_local_binding(
             stmt, _var_decl_type(stmt, analyzer), ws.declared, prescan, analyzer)
         if binding is not None:
@@ -1512,9 +1506,6 @@ def _var_decl_eligible(stmt: TpyVarDecl, analyzer, ws: _WalkState,
                     stmt.init, ws.declared, analyzer, ptr_u,
                     allow_field=stmt.name not in prescan.reassigned)
                 or note_detail("decl.ptr_union_source"))
-    if not (_expr_eligible(stmt.init, ws.declared, analyzer)
-            or _stmt_value_temps_call(stmt.init, ws, analyzer)):
-        return _kind_detail("decl.init_", stmt.init)
     # First declaration: the local's type must be an eligible scalar (a
     # bare-literal init analyzes as IntLiteralType, pinning no width -> out)
     # / Char, or a str-slice binding (a `PendingStrType` whose view/owned
@@ -1674,7 +1665,8 @@ def _narrow_if_eligible(stmt: TpyIf, info, analyzer, ws: _WalkState,
     return True
 
 def _lower_borrow_local(stmt: TpyVarDecl, vtype: TpyType, binding: 'LocalBinding',
-                        is_const: bool, lc: _LowerCtx, loc) -> THIRVarDecl:
+                        is_const: bool, lc: _LowerCtx,
+                        declared: dict[str, TpyType], loc) -> THIRVarDecl:
     """Lower a non-value borrow local's first declaration. REF_ALIAS binds a `T&`
     alias of the field's storage directly (no conversion node). POINTER lifts a
     plain-record lvalue to a reseatable `T*` via THIRFormConvert (`&(...)`).
@@ -1685,7 +1677,10 @@ def _lower_borrow_local(stmt: TpyVarDecl, vtype: TpyType, binding: 'LocalBinding
     as a plain value-form call (no conversion node)."""
     if binding is LocalBinding.REBIND_SLOT:
         return THIRVarDecl(
-            name=stmt.name, resolved_type=vtype, init=_lower_expr(stmt.init, lc),
+            name=stmt.name, resolved_type=vtype,
+            init=_lower_expr(
+                stmt.init, lc, declared,
+                use=_ExprUse(result=_ExprResultUse.BORROW_BIND)),
             cpp_type=lc.render_type(vtype), form=Form.BORROW, is_const=is_const,
             cpp_local_representation=binding, loc=loc)
     if isinstance(stmt.init, TpyCall):
@@ -1694,21 +1689,24 @@ def _lower_borrow_local(stmt: TpyVarDecl, vtype: TpyType, binding: 'LocalBinding
         # the init is the plain value-form call -- no conversion node.
         _witness("decl.record_borrow_call")
         return THIRVarDecl(
-            name=stmt.name, resolved_type=vtype, init=_lower_expr(stmt.init, lc),
+            name=stmt.name, resolved_type=vtype,
+            init=_lower_expr(
+                stmt.init, lc, declared,
+                use=_ExprUse(result=_ExprResultUse.BORROW_BIND)),
             cpp_type=lc.render_type(vtype), form=Form.BORROW, is_const=is_const,
             cpp_local_representation=binding, loc=loc)
     if binding is LocalBinding.REF_ALIAS:
         # A record-element container subscript source (`p = ps[i]`) lowers as
         # the plain subscript read (the `T&` alias binds the element lvalue);
         # a field source keeps the dedicated borrow-source build.
-        src = (_lower_expr(stmt.init, lc)
+        src = (_lower_expr(stmt.init, lc, declared, subscript_prechecked=True)
                if isinstance(stmt.init, TpySubscript)
-               else _lower_field_source(stmt.init, lc))
+               else _lower_field_source(stmt.init, lc, declared))
         return THIRVarDecl(
             name=stmt.name, resolved_type=vtype, init=src,
             cpp_type=lc.render_type(vtype), form=Form.BORROW, is_const=is_const,
             cpp_local_representation=binding, loc=loc)
-    field = _lower_field_source(stmt.init, lc)
+    field = _lower_field_source(stmt.init, lc, declared)
     if binding is LocalBinding.POINTER:
         convert = THIRFormConvert(result_type=vtype, value=field, form=Form.BORROW,
                                   is_const=is_const, loc=loc)
@@ -1734,7 +1732,13 @@ def _lower_stmt(stmt: TpyStmt, lc: _LowerCtx, declared: dict[str, TpyType],
     scope = _LowerScope(lc, declared, in_branch=in_branch,
                         branch_decls_ok=branch_decls_ok,
                         loop_depth=loop_depth)
-    result = _lower_stmt_dispatch(stmt, scope)
+    begin_stmt()
+    try:
+        result = _lower_stmt_dispatch(stmt, scope)
+    except ThirUnsupported as ex:
+        if not ex.detail:
+            raise
+        raise ThirUnsupported(stmt_reject_reason(stmt, ex.reason)) from None
     if getattr(stmt, "no_source_comment", False) and not result.no_source_comment:
         return replace(result, no_source_comment=True)
     return result
@@ -1921,7 +1925,8 @@ def _narrow_member_cpp(var: str, member: TpyType, u: UnionType,
     return member_cpp, is_ptr
 
 def _lower_compound_cond(cond: TpyExpr, isin: TpyExpr, info,
-                         lc: _LowerCtx) -> THIRExpr:
+                         lc: _LowerCtx,
+                         declared: dict[str, TpyType]) -> THIRExpr:
     """Lower the U4 compound narrowing condition (`&&` tree with one
     isinstance leaf) in source order: the isinstance leaf renders as the
     holds test, and subject reads in leaves AFTER it lower to
@@ -1937,14 +1942,22 @@ def _lower_compound_cond(cond: TpyExpr, isin: TpyExpr, info,
             lc.inline_narrowed[var] = _narrow_member_cpp(var, members[0], u, lc)
         return lowered
     if isinstance(cond, TpyBinOp) and cond.op == "&&":
-        left = _lower_compound_cond(cond.left, isin, info, lc)
-        right = _lower_compound_cond(cond.right, isin, info, lc)
+        left = _lower_compound_cond(cond.left, isin, info, lc, declared)
+        right = _lower_compound_cond(cond.right, isin, info, lc, declared)
         return THIRBinOp(result_type=lc.analyzer.get_expr_type(cond),
                          left=left, op="&&", right=right, resolved=None,
                          loc=getattr(cond, "loc", None))
-    return _lower_expr(cond, lc)
+    active_declared = declared
+    var, _u, members, _folded = info
+    if var in lc.inline_narrowed and len(members) == 1:
+        active_declared = dict(declared)
+        active_declared[var] = members[0]
+    return _lower_expr(
+        cond, lc, active_declared,
+        use=_ExprUse(result=_ExprResultUse.CONDITION))
 
-def _lower_narrow_cond(cinfo, condition: TpyExpr, lc: _LowerCtx) -> THIRExpr:
+def _lower_narrow_cond(cinfo, condition: TpyExpr, lc: _LowerCtx,
+                       declared: dict[str, TpyType]) -> THIRExpr:
     """Lower a narrowing condition from `_narrow_cond_info`'s 5-tuple: the
     simple form is the bare isinstance render; the compound form walks the
     `&&` tree (under an `lc.inline_narrowed` snapshot -- the inline-read
@@ -1955,7 +1968,8 @@ def _lower_narrow_cond(cinfo, condition: TpyExpr, lc: _LowerCtx) -> THIRExpr:
         return _lower_isinstance_cond((var, u, members, folded), condition, lc)
     saved = dict(lc.inline_narrowed)
     try:
-        return _lower_compound_cond(condition, isin, (var, u, members, folded), lc)
+        return _lower_compound_cond(
+            condition, isin, (var, u, members, folded), lc, declared)
     finally:
         lc.inline_narrowed = saved
 
@@ -1969,7 +1983,7 @@ def _lower_narrow_if(stmt: TpyIf, info, lc: _LowerCtx,
     emitter's flat `else if` chain when the outer else-fact would extract
     (`else_is_nested` -- the AST's `_has_concrete_isinstance_facts` gate)."""
     var, u, _members, _folded, _isin = info
-    cond = _lower_narrow_cond(info, stmt.condition, lc)
+    cond = _lower_narrow_cond(info, stmt.condition, lc, declared)
     then_fact = _narrow_fact_member(u, stmt.then_type_facts, var)
     then_stmts = _lower_narrowed_branch(stmt.then_body, then_fact, var, u, lc,
                                         declared, loc, loop_depth=loop_depth)
@@ -2038,7 +2052,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     lc.pointers.add(stmt.name)
                     lc.rebind_slot_locals.add(stmt.name)
                     declared[stmt.name] = vtype
-                    return _lower_borrow_local(stmt, vtype, binding, False, lc, loc)
+                    return _lower_borrow_local(
+                        stmt, vtype, binding, False, lc, declared, loc)
                 is_const = _f1_is_const(binding, vtype, stmt, lc.func, analyzer,
                                         lc.const_locals, lc.record_name)
                 if is_const:
@@ -2052,7 +2067,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     # Optional local classifies OTHER at the gate).
                     lc.pointers.add(stmt.name)
                 declared[stmt.name] = vtype
-                return _lower_borrow_local(stmt, vtype, binding, is_const, lc, loc)
+                return _lower_borrow_local(
+                    stmt, vtype, binding, is_const, lc, declared, loc)
             # F3 storage-tuple alias: `auto&& t = <storage tuple field>`. The local
             # aliases the source's storage, so a read off it is STORAGE form (lifted
             # via tuple_to_pointer at a borrow boundary); the init is the storage tuple
@@ -2074,7 +2090,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 declared[stmt.name] = vtype
                 return THIRVarDecl(
                     name=stmt.name, resolved_type=vtype,
-                    init=_lower_field_source(stmt.init, lc), form=Form.STORAGE,
+                    init=_lower_field_source(stmt.init, lc, declared), form=Form.STORAGE,
                     cpp_local_representation=LocalBinding.STORAGE_TUPLE_ALIAS, loc=loc)
             # C1+C2 comprehension local: the init renders as the whole
             # stmt-expr; the decl line itself is the plain-value arm.
@@ -2096,7 +2112,11 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 declared[stmt.name] = vtype
                 return THIRVarDecl(
                     name=stmt.name, resolved_type=vtype,
-                    init=_lower_expr(stmt.init, lc, temp_args=True),
+                    init=_lower_expr(
+                        stmt.init, lc, declared,
+                        use=_ExprUse(
+                            result=_ExprResultUse.BORROW_BIND,
+                            allow_temps=True)),
                     cpp_type=lc.render_type(vtype), form=Form.STORAGE, loc=loc)
         # F2d rebind-slot reseat: an rvalue ctor / by-value source. It lowers as a
         # plain value-form call; emit wraps it as `p = &*(__slot_N = <value>)`
@@ -2105,7 +2125,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         if stmt.name in lc.rebind_slot_locals:
             return THIRAssign(
                 target=THIRName(result_type=vtype, name=stmt.name, loc=loc),
-                value=_lower_expr(stmt.init, lc), loc=loc)
+                value=_lower_expr(stmt.init, lc, declared), loc=loc)
         # F2a pointer-local reseat: lift the new lvalue field source to `T*` via
         # `&(...)` (the same storage->borrow convert as the first decl). Eligibility
         # admitted only an F1-record field source here. result_type is the stripped
@@ -2115,7 +2135,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         if stmt.name in lc.pointers:
             convert = THIRFormConvert(
                 result_type=vtype,
-                value=_lower_field_source(stmt.init, lc), form=Form.BORROW,
+                value=_lower_field_source(stmt.init, lc, declared), form=Form.BORROW,
                 is_const=stmt.name in lc.const_locals, loc=loc)
             return THIRAssign(
                 target=THIRName(result_type=vtype, name=stmt.name, loc=loc),
@@ -2142,11 +2162,11 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                            or _param_is_const(recv.name, lc.func, lc.analyzer,
                                               lc.record_name))
                 u_init = THIRFormConvert(
-                    result_type=ptr_u, value=_lower_field_source(stmt.init, lc),
+                    result_type=ptr_u, value=_lower_field_source(stmt.init, lc, declared),
                     form=Form.BORROW, is_const=u_const, loc=loc)
             else:
                 u_const = False
-                u_init = _lower_expr(stmt.init, lc)
+                u_init = _lower_expr(stmt.init, lc, declared)
             if stmt.name in declared:
                 return THIRAssign(
                     target=THIRName(result_type=ptr_u, name=stmt.name,
@@ -2170,7 +2190,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             rhs = _str_self_append_rhs(stmt.name, stmt.init)
             if rhs is not None:
                 return THIRStrAppend(target=stmt.name,
-                                     value=_lower_expr(rhs, lc), loc=loc)
+                                     value=_lower_expr(rhs, lc, declared), loc=loc)
         # `x = None` at a value-union binding renders the monostate member --
         # target-typed at lowering, like the Char decl below (F4 U1). At a
         # `Ptr[T]` value binding it renders `nullptr` (a VALUE-form None --
@@ -2191,7 +2211,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             # ride _lower_tuple_literal, so no outer retype applies).
             init = _lower_tuple_literal(
                 stmt.init,
-                _value_tuple(declared.get(stmt.name, vtype), analyzer), lc)
+                _value_tuple(declared.get(stmt.name, vtype), analyzer), lc, declared)
         else:
             # A Char-annotated decl init lowers target-aware: `c: Char = 'x'` ->
             # `char c = 'x';` (the AST threads the decl type into the render);
@@ -2201,10 +2221,25 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             # arg temps (temp_args, inert for non-call inits).
             src = _peel_stale_view_owned_coerce(
                 stmt.init, declared.get(stmt.name, vtype), analyzer)
-            init = (_flush_witness("flush.vardecl",
-                                   _lower_char_targeted(src, vtype, lc,
-                                                        temp_args=True))
-                    if stmt.init else None)
+            whole_optional_reassign = (
+                stmt.name in declared
+                and isinstance(src, TpyName)
+                and _value_opt_scalar_param(src.name, lc))
+            if whole_optional_reassign:
+                init = _flush_witness(
+                    "flush.vardecl",
+                    _lower_expr(
+                        src, lc, declared, use=_ExprUse(allow_temps=True),
+                        allow_whole_optional=True))
+            else:
+                init = (_flush_witness(
+                            "flush.vardecl",
+                            _lower_char_targeted(
+                                src, vtype, lc, declared,
+                                use=_ExprUse(
+                                    result=_ExprResultUse.STORAGE,
+                                    allow_temps=True)))
+                        if stmt.init else None)
             init = _slot_literal_retype(init, declared.get(stmt.name, vtype))
         # A str/bytes local's binding type is a Pending view type; carry the
         # RESOLVED view/owned type (string_view/string, span/vector) on the nodes.
@@ -2287,6 +2322,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         if not _assign_eligible(stmt, analyzer, scope.walk_state(),
                                 lc.prescan):
             raise ThirUnsupported(stmt_reject_reason(stmt))
+        target_prechecked = isinstance(stmt.target, TpyFieldAccess)
         if isinstance(stmt.target, TpySubscript):
             # Container subscript write: the target lowers to the same
             # subscript node a read produces (bounds_safe + the BigInt index
@@ -2295,11 +2331,17 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             # for a view-form str source into an owned-str element -- the
             # AST's `_view_source_to_owned` chokepoint. A flushable position
             # (temp_args), like a name assign.
-            target = _lower_expr(stmt.target, lc)
+            target = _lower_expr(
+                stmt.target, lc, declared,
+                field_prechecked=target_prechecked)
             elem_t = analyzer.get_expr_type(stmt.target)
             value = _slot_literal_retype(
                 _flush_witness("flush.assign",
-                               _lower_expr(stmt.value, lc, temp_args=True)),
+                               _lower_expr(
+                                   stmt.value, lc, declared,
+                                   use=_ExprUse(
+                                       result=_ExprResultUse.STORAGE,
+                                       allow_temps=True))),
                 elem_t)
             elem_str = _resolved_str_value(elem_t, analyzer)
             if (value.form is Form.BORROW and elem_str is not None
@@ -2325,12 +2367,16 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             if (_eligible_scalar(ftype) or _eligible_char(ftype)
                     or _eligible_enum(ftype, analyzer) is not None
                     or _eligible_ptr_value(ftype, analyzer)):
-                return THIRAssign(target=_lower_expr(stmt.target, lc),
+                return THIRAssign(target=_lower_expr(
+                                      stmt.target, lc, declared,
+                                      field_prechecked=target_prechecked),
                                   value=_slot_literal_retype(
                                       _flush_witness(
                                           "flush.field_write",
-                                          _lower_expr(stmt.value, lc,
-                                                      temp_args=True)),
+                                          _lower_expr(stmt.value, lc, declared,
+                                                      use=_ExprUse(
+                                                          result=_ExprResultUse.STORAGE,
+                                                          allow_temps=True))),
                                       ftype), loc=loc)
             # A plain F1-record field write (`_record_field_write_ok`): a
             # record rvalue -- a ctor (STORAGE) or a by-value record-returning
@@ -2345,17 +2391,21 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             if _f1_record(ftype, analyzer):
                 if isinstance(stmt.value, TpyName):
                     _witness("field_write.record_name")
-                    lowered = _lower_expr(stmt.value, lc)
+                    lowered = _lower_expr(stmt.value, lc, declared)
                     if _is_move_source(stmt.value, lc):
                         lowered = THIRFormConvert(result_type=ftype,
                                                   value=lowered,
                                                   form=Form.STORAGE,
                                                   move=True, loc=loc)
-                    return THIRAssign(target=_lower_expr(stmt.target, lc),
+                    return THIRAssign(target=_lower_expr(
+                                          stmt.target, lc, declared,
+                                          field_prechecked=target_prechecked),
                                       value=lowered, loc=loc)
                 _witness("field_write.record_rvalue")
-                return THIRAssign(target=_lower_expr(stmt.target, lc),
-                                  value=_lower_expr(stmt.value, lc), loc=loc)
+                return THIRAssign(target=_lower_expr(
+                                      stmt.target, lc, declared,
+                                      field_prechecked=target_prechecked),
+                                  value=_lower_expr(stmt.value, lc, declared), loc=loc)
             # A container-literal field write (`_container_field_write_ok`):
             # the target-threaded literal render assigns bare (a literal is
             # never a movable name) -- the same THIRContainerLiteral emit a
@@ -2363,16 +2413,20 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             if isinstance(stmt.value, (TpyArrayLiteral, TpyDictLiteral,
                                        TpySetLiteral)):
                 _witness("field_write.container_lit")
-                return THIRAssign(target=_lower_expr(stmt.target, lc),
-                                  value=_lower_expr(stmt.value, lc), loc=loc)
+                return THIRAssign(target=_lower_expr(
+                                      stmt.target, lc, declared,
+                                      field_prechecked=target_prechecked),
+                                  value=_lower_expr(stmt.value, lc, declared), loc=loc)
             # A str-family field write (`_str_field_write_ok`): the value
             # renders BARE -- `std::string::operator=(string_view)` absorbs a
             # view source, so no view->owned construction and no move wrap
             # (str names are never in codegen's movable set).
             if _resolved_str_value(ftype, analyzer) is not None:
                 _witness("field_write.str")
-                return THIRAssign(target=_lower_expr(stmt.target, lc),
-                                  value=_lower_expr(stmt.value, lc), loc=loc)
+                return THIRAssign(target=_lower_expr(
+                                      stmt.target, lc, declared,
+                                      field_prechecked=target_prechecked),
+                                  value=_lower_expr(stmt.value, lc, declared), loc=loc)
             # A value-storage Optional[record] field (`std::optional<inner>`):
             # a record RVALUE / record NAME source copies bare
             # (optional::operator= absorbs the inner lvalue/rvalue) or moves the
@@ -2387,7 +2441,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                              and stmt.value.name in lc.pointers)):
                 if isinstance(stmt.value, TpyName):
                     _witness("field_write.optrec_name")
-                    lowered = _lower_expr(stmt.value, lc)
+                    lowered = _lower_expr(stmt.value, lc, declared)
                     mv = _is_move_source(stmt.value, lc)
                     # A BORROW source (a borrow record param / REF_ALIAS) lifts to
                     # the INNER record storage -- the `is_plain_nonvalue` STORAGE
@@ -2403,11 +2457,15 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                                                   value=lowered,
                                                   form=Form.STORAGE, move=mv,
                                                   loc=loc)
-                    return THIRAssign(target=_lower_expr(stmt.target, lc),
+                    return THIRAssign(target=_lower_expr(
+                                          stmt.target, lc, declared,
+                                          field_prechecked=target_prechecked),
                                       value=lowered, loc=loc)
                 _witness("field_write.optrec_rvalue")
-                return THIRAssign(target=_lower_expr(stmt.target, lc),
-                                  value=_lower_expr(stmt.value, lc), loc=loc)
+                return THIRAssign(target=_lower_expr(
+                                      stmt.target, lc, declared,
+                                      field_prechecked=target_prechecked),
+                                  value=_lower_expr(stmt.value, lc, declared), loc=loc)
             if isinstance(stmt.value, TpyNoneLiteral):
                 fvalue: THIRExpr = THIRLiteral(result_type=ftype, value=None,
                                                form=Form.STORAGE, loc=loc)
@@ -2416,9 +2474,9 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 # F4 U2 field-to-field union copy: a field source is not a
                 # ptr-variant source on the AST path, so it assigns
                 # storage-to-storage bare -- no to_value_variant lift.
-                fvalue = _lower_field_source(stmt.value, lc)
+                fvalue = _lower_field_source(stmt.value, lc, declared)
             else:
-                lowered = _lower_expr(stmt.value, lc)
+                lowered = _lower_expr(stmt.value, lc, declared)
                 mv = _is_move_source(stmt.value, lc)
                 # A storage-form source of the field's own type needing no move
                 # is a bare copy (`field = v`); the borrow->storage convert would
@@ -2433,7 +2491,11 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 else:
                     fvalue = THIRFormConvert(result_type=ftype, value=lowered,
                                              form=Form.STORAGE, move=mv, loc=loc)
-            return THIRAssign(target=_lower_expr(stmt.target, lc), value=fvalue, loc=loc)
+            return THIRAssign(
+                target=_lower_expr(
+                    stmt.target, lc, declared,
+                    field_prechecked=target_prechecked),
+                value=fvalue, loc=loc)
         # Name-target assign: the same self-append peephole as the var-decl
         # reassignment (the AST checks it at both sites).
         if (isinstance(stmt.target, TpyName)
@@ -2442,12 +2504,18 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             rhs = _str_self_append_rhs(stmt.target.name, stmt.value)
             if rhs is not None:
                 return THIRStrAppend(target=stmt.target.name,
-                                     value=_lower_expr(rhs, lc), loc=loc)
+                                     value=_lower_expr(rhs, lc, declared), loc=loc)
         return THIRAssign(
-            target=_lower_expr(stmt.target, lc),
+            target=_lower_expr(
+                stmt.target, lc, declared,
+                field_prechecked=target_prechecked),
             value=_slot_literal_retype(
                 _flush_witness("flush.assign",
-                               _lower_expr(stmt.value, lc, temp_args=True)),
+                               _lower_expr(
+                                   stmt.value, lc, declared,
+                                   use=_ExprUse(
+                                       result=_ExprResultUse.STORAGE,
+                                       allow_temps=True))),
                 analyzer.get_expr_type(stmt.target)),
             loc=loc,
         )
@@ -2462,7 +2530,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 and _owned_str_append_target(
                     analyzer.get_expr_type(stmt.target), analyzer)):
             return THIRStrAppend(target=stmt.target.name,
-                                 value=_lower_expr(stmt.value, lc), loc=loc)
+                                 value=_lower_expr(stmt.value, lc, declared), loc=loc)
         # `target OP= value` lowers to `target = (target OP value)`, matching the
         # AST's `_gen_aug_assign_code` scalar branch -- and the bytes
         # concat-and-assign (`t = ::tpy::bytes_concat(t, v);`, the same
@@ -2477,8 +2545,13 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         tgt_type = analyzer.get_expr_type(stmt.target)
         tgt_type = _resolve_pending_view(tgt_type, analyzer) or tgt_type
         tgt_bytes = _resolved_bytes_value(tgt_type, analyzer)
-        target = _lower_expr(stmt.target, lc)
-        left = _lower_expr(stmt.target, lc)
+        target_prechecked = isinstance(stmt.target, TpyFieldAccess)
+        target = _lower_expr(
+            stmt.target, lc, declared,
+            field_prechecked=target_prechecked)
+        left = _lower_expr(
+            stmt.target, lc, declared,
+            field_prechecked=target_prechecked)
         cast_t = analyzer.get_expr_type(stmt.target)
         if isinstance(stmt.target, TpySubscript):
             # The subscript read-modify-write pair always renders the CHECKED
@@ -2509,7 +2582,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             result_type=tgt_type,
             left=left,
             op=stmt.op,
-            right=_slot_literal_retype(_lower_expr(stmt.value, lc), aug_rslot),
+            right=_slot_literal_retype(_lower_expr(stmt.value, lc, declared), aug_rslot),
             right_cast=right_cast,
             resolved=stmt.resolved_binop,
             paren_wrap=False,
@@ -2538,13 +2611,13 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             # a storage-tuple alias local (`return t`) or a field read (`return h.pair`).
             if isinstance(stmt.value, TpyName):
                 is_const = stmt.value.name in lc.const_locals
-                inner: THIRExpr = _lower_expr(stmt.value, lc)  # STORAGE-form alias
+                inner: THIRExpr = _lower_expr(stmt.value, lc, declared)  # STORAGE-form alias
             else:
                 recv = stmt.value.obj  # TpyName (validated by _field_receiver_ok)
                 is_const = (recv.name in lc.const_locals
                             or _param_is_const(recv.name, lc.func, analyzer,
                                                lc.record_name))
-                inner = _lower_field_source(stmt.value, lc)
+                inner = _lower_field_source(stmt.value, lc, declared)
             value: THIRExpr = THIRFormConvert(
                 result_type=ret_tuple, value=inner,
                 form=Form.BORROW, is_const=is_const, loc=loc)
@@ -2561,7 +2634,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                                               form=Form.STORAGE, loc=loc)
             else:
                 value = THIRFormConvert(result_type=ret_opt,
-                                        value=_lower_expr(stmt.value, lc),
+                                        value=_lower_expr(stmt.value, lc, declared),
                                         form=Form.STORAGE,
                                         move=_is_move_source(stmt.value, lc), loc=loc)
             return THIRReturn(value=value, loc=loc)
@@ -2579,11 +2652,11 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                                                form=Form.BORROW, loc=loc)
             elif (isinstance(stmt.value, TpyName)
                     and stmt.value.name in lc.pointers):
-                pvalue = _lower_expr(stmt.value, lc)  # already `T*` -- bare
+                pvalue = _lower_expr(stmt.value, lc, declared)  # already `T*` -- bare
             else:
                 pvalue = THIROptionalPtrArg(result_type=ret_popt,
                                             form=Form.BORROW,
-                                            value=_lower_expr(stmt.value, lc),
+                                            value=_lower_expr(stmt.value, lc, declared),
                                             addr_of=True, loc=loc)
             return THIRReturn(value=pvalue, loc=loc)
         ret_vopt = lc.prescan.ret_value_opt
@@ -2602,7 +2675,11 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             if (isinstance(stmt.value, TpyName)
                     and _value_opt_scalar_param(stmt.value.name, lc)):
                 return THIRReturn(
-                    value=replace(_lower_expr(stmt.value, lc), deref=False),
+                    value=replace(
+                        _lower_expr(
+                            stmt.value, lc, declared,
+                            allow_whole_optional=True),
+                        deref=False),
                     loc=loc)
         ret_vopt_view = lc.prescan.ret_value_opt_view
         if stmt.value is not None and ret_vopt_view is not None:
@@ -2641,7 +2718,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                         deref=True, loc=loc),
                     loc=loc)
             if isinstance(stmt.value, TpyFieldAccess):
-                return THIRReturn(value=_lower_field_source(stmt.value, lc),
+                return THIRReturn(value=_lower_field_source(stmt.value, lc, declared),
                                   loc=loc)
         # A value-tuple return's literal source renders the spelled brace-init
         # against the return slot (per-element targets ride
@@ -2649,7 +2726,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         ret_vt = lc.prescan.ret_value_tuple
         if (stmt.value is not None and ret_vt is not None
                 and isinstance(stmt.value, TpyTupleLiteral)):
-            return THIRReturn(value=_lower_tuple_literal(stmt.value, ret_vt, lc),
+            return THIRReturn(value=_lower_tuple_literal(stmt.value, ret_vt, lc, declared),
                               loc=loc)
         # `return None` at a union slot -> `std::monostate{}`, target-typed
         # (F4 U1 value / U2 pointer variant -- the monostate member renders
@@ -2660,8 +2737,18 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             return THIRReturn(
                 value=THIRLiteral(result_type=ret_any_union, value=None,
                                   form=Form.STORAGE, loc=loc), loc=loc)
-        value = (_flush_witness("flush.return",
-                                _lower_expr(stmt.value, lc, temp_args=True))
+        field_prechecked = (
+            isinstance(stmt.value, TpyFieldAccess)
+            and lc.prescan.ret_str is not None
+            and _str_field_value_read(stmt.value, declared, analyzer))
+        value = (_flush_witness(
+                    "flush.return",
+                    _lower_expr(
+                        stmt.value, lc, declared,
+                        use=_ExprUse(
+                            result=_ExprResultUse.STORAGE,
+                            allow_temps=True),
+                        field_prechecked=field_prechecked))
                  if stmt.value else None)
         # A float literal returned from a Float32 function takes the `f`
         # suffix (the AST threads the return type into the render).
@@ -2746,7 +2833,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                                              branch_decls_ok=True,
                                              loop_depth=scope.loop_depth)
         return THIRIf(
-            condition=_lower_truthy(stmt.condition, lc),
+            condition=_lower_truthy(stmt.condition, lc, declared),
             then_body=_lower_scoped_stmts(
                 stmt.then_body, lc, dict(declared),
                 branch_decls_ok=True,
@@ -2792,16 +2879,18 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         recv_t = _subscript_container_recv_type(recv, declared, analyzer)
         if not (recv_t is not None
                 and _container_scalar_read(recv_t, analyzer)
-                and _bigint_index_disposition(sub.index, analyzer) != "reject"
-                and _expr_eligible(sub.index, declared, analyzer)):
+                and _bigint_index_disposition(sub.index, analyzer) != "reject"):
             raise ThirUnsupported("stmt.del_item:recv_or_index")
         return THIRExprStmt(
             expr=THIRCall(
                 result_type=VoidType(),
                 callee="__delitem__",
                 native_name="tpy::__delitem__",
-                args=(_lower_expr(sub.obj, lc),
-                      _narrow_bigint_index(_lower_expr(sub.index, lc),
+                args=(_lower_expr(
+                          sub.obj, lc, declared,
+                          field_prechecked=isinstance(
+                              sub.obj, TpyFieldAccess)),
+                      _narrow_bigint_index(_lower_expr(sub.index, lc, declared),
                                            sub.index, analyzer, loc)),
                 loc=loc),
             loc=loc)
@@ -2817,14 +2906,15 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             var, u, _members, _folded, _isin = info
             m = _narrow_fact_member(u, stmt.then_type_facts, var)
             return THIRWhile(
-                condition=_lower_narrow_cond(info, stmt.condition, lc),
+                condition=_lower_narrow_cond(
+                    info, stmt.condition, lc, declared),
                 body=_lower_narrowed_branch(stmt.body, m, var, u, lc,
                                             declared, loc,
                                             loop_depth=scope.loop_depth + 1),
                 loc=loc,
             )
         return THIRWhile(
-            condition=_lower_truthy(stmt.condition, lc),
+            condition=_lower_truthy(stmt.condition, lc, declared),
             body=_lower_scoped_stmts(
                 stmt.body, lc, dict(declared),
                 branch_decls_ok=True,
@@ -2842,14 +2932,14 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         msg = stmt.message.value if isinstance(stmt.message, TpyStrLiteral) else None
         info = _narrow_cond_info(stmt.condition, declared, analyzer)
         if info is not None:
-            cond = _lower_narrow_cond(info, stmt.condition, lc)
+            cond = _lower_narrow_cond(info, stmt.condition, lc, declared)
         elif (isinstance(stmt.condition, TpyCall)
               and stmt.condition.isinstance_var is not None):
             cond = THIRLiteral(
                 result_type=analyzer.get_expr_type(stmt.condition), value=True,
                 loc=getattr(stmt.condition, "loc", None))
         else:
-            cond = _lower_truthy(stmt.condition, lc)
+            cond = _lower_truthy(stmt.condition, lc, declared)
         return THIRAssert(condition=cond, message=msg, loc=loc)
     if isinstance(stmt, TpyTupleUnpack):
         ws = scope.walk_state()
@@ -2880,7 +2970,13 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         return THIRTupleUnpack(
             source="", targets=tuple(stmt.targets),
             target_cpps=tuple(target_cpps),
-            source_expr=_lower_expr(stmt.value, lc, temp_args=True), loc=loc)
+            source_expr=_lower_expr(
+                stmt.value, lc, declared,
+                use=_ExprUse(
+                    result=_ExprResultUse.STORAGE,
+                    allow_temps=True),
+                field_prechecked=isinstance(stmt.value, TpyFieldAccess)),
+            loc=loc)
     if isinstance(stmt, TpyForEach):
         ws = scope.walk_state()
         if not _for_each_stmt_eligible(stmt, analyzer, ws, lc.prescan):
@@ -2940,7 +3036,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 stop_arg = it.args[0]
             else:
                 start_arg = it.args[0]
-                start = _slot_literal_retype(_lower_expr(start_arg, lc), et)
+                start = _slot_literal_retype(_lower_expr(start_arg, lc, declared), et)
                 start_is_literal = _range_bound_literal_value(start_arg) is not None
                 stop_arg = it.args[1]
             step = None
@@ -2951,11 +3047,11 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 # the other three render it (retype is a no-op for the fixed-int
                 # counter this arm requires).
                 if step_kind in ("literal_pos", "literal_neg", "variable"):
-                    step = _slot_literal_retype(_lower_expr(it.args[2], lc), et)
+                    step = _slot_literal_retype(_lower_expr(it.args[2], lc, declared), et)
             return THIRForRange(
                 var=stmt.var,
                 elem_type=et,
-                stop=_slot_literal_retype(_lower_expr(stop_arg, lc), et),
+                stop=_slot_literal_retype(_lower_expr(stop_arg, lc, declared), et),
                 start=start,
                 start_is_literal=start_is_literal,
                 stop_is_literal=_range_bound_literal_value(stop_arg) is not None,
@@ -2990,7 +3086,10 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         return THIRForEach(
             var=stmt.var,
             elem_type=et,
-            iterable=_lower_expr(it, lc),
+            iterable=_lower_expr(
+                it, lc, declared,
+                use=_ExprUse(result=_ExprResultUse.ITERABLE),
+                field_prechecked=isinstance(it, TpyFieldAccess)),
             body=body,
             const_loop_var=stmt.const_loop_var,
             iterable_lvalue=iterable_lvalue,
@@ -3008,7 +3107,11 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 loc=loc)
         return THIRExprStmt(expr=_flush_witness(
                                 "flush.expr_stmt",
-                                _lower_expr(stmt.expr, lc, temp_args=True)),
+                                _lower_expr(
+                                    stmt.expr, lc, declared,
+                                    use=_ExprUse(
+                                        result=_ExprResultUse.DISCARD,
+                                        allow_temps=True))),
                             loc=loc)
     if isinstance(stmt, TpyWith):
         begin_stmt()
@@ -3144,7 +3247,7 @@ def _lower_raise(stmt: TpyRaise, lc: _LowerCtx, declared: dict[str, TpyType],
     params = init.params if init else []
     return THIRRaise(
         cpp_type=cpp,
-        args=tuple(_lower_call_arg(a, p.type, lc)
+        args=tuple(_lower_call_arg(a, p.type, lc, declared)
                    for a, p in zip(stmt.args, params)),
         via_virtual=stmt.raise_via_virtual,
         loc=loc,
@@ -3191,7 +3294,7 @@ def _lower_with(stmt: TpyWith, lc: _LowerCtx, declared: dict[str, TpyType],
         if not (item.exit_can_suppress or item.exit_takes_exc_val):
             _witness("with.cleanup_only")
         items.append(THIRWithItem(
-            ctx_expr=_lower_expr(ctx, lc),
+            ctx_expr=_lower_expr(ctx, lc, declared),
             manager_borrowed=item.manager_borrowed,
             deref_manager=deref,
             target=item.target,
@@ -3245,16 +3348,28 @@ def _lower_print_arg(a: TpyExpr, lc: _LowerCtx,
         # wrap (gen_print's value-repr Optional arm).
         _witness("print.optval")
         form, inner_cpp = _print_optval_form(opt)
-        return THIRPrintArg(_lower_expr(a, lc), form, inner_cpp)
+        return THIRPrintArg(
+            _lower_expr(
+                a, lc, declared, allow_whole_optional=True,
+                field_prechecked=isinstance(a, TpyFieldAccess)),
+            form, inner_cpp)
     # A container / value-tuple / F1-record NAME: the kind-keyed printer
     # wrap (or the record's raw operator<<) around the bare name -- the
     # same routing fact the gate admitted on (`_wrap_print_form`).
     wrap = _wrap_print_form(a, declared, lc.analyzer)
     if wrap is not None:
-        return THIRPrintArg(_lower_expr(a, lc), wrap)
+        return THIRPrintArg(
+            _lower_expr(
+                a, lc, declared,
+                field_prechecked=isinstance(a, TpyFieldAccess)),
+            wrap)
     # resolve_int_literals: an IntLiteral-typed arg (a literal-seeded container's
     # loop var / pop result) must derive its stream form from the resolved type.
     arg_type = resolve_int_literals(
         unwrap_readonly(lc.analyzer.get_expr_type(a)),
         lc.analyzer.ctx.default_int_for_literal)
-    return THIRPrintArg(_lower_expr(a, lc), _print_arg_form(arg_type))
+    return THIRPrintArg(
+        _lower_expr(
+            a, lc, declared,
+            field_prechecked=isinstance(a, TpyFieldAccess)),
+        _print_arg_form(arg_type))

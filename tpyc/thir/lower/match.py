@@ -70,9 +70,6 @@ from .context import (
     _Prescan,
     _WalkState,
 )
-from .expr_gates import (
-    _expr_eligible,
-)
 from .expressions import (
     _lower_expr,
 )
@@ -210,7 +207,7 @@ def _match_guard_ok(guard, declared: dict[str, TpyType], analyzer) -> bool:
         return False
     if _expr_contains_call(guard):
         return False
-    return _expr_eligible(guard, declared, analyzer)
+    return True
 
 def _match_arm_parts(case) -> 'tuple | None':
     """Split an arm into (test_pattern, binding_node): the label-generating
@@ -760,8 +757,6 @@ def _match_eligible(stmt: TpyMatch, analyzer, ws: _WalkState,
     if (subj.name in ws.pointers or subj.name in ws.narrowed
             or subj.name in ws.storage_tuple_locals):
         return False
-    if not _expr_eligible(subj, ws.declared, analyzer):
-        return False
     hoist_declared: dict[str, TpyType] = {}
     for name, raw in analyzer.if_branch_decls.get(id(stmt), {}).items():
         if name in ws.declared:
@@ -938,7 +933,7 @@ def _lower_match(stmt: TpyMatch, lc: _LowerCtx, declared: dict[str, TpyType],
         guard = None
         if case.guard is not None:
             _witness("match.guard_arm")
-            guard = _lower_expr(case.guard, lc)
+            guard = _lower_expr(case.guard, lc, arm_declared)
         entry = THIRMatchArmEntry(
             body=_statements._lower_scoped_stmts(
                 case.body, lc, arm_declared, loop_depth=loop_depth),
@@ -997,7 +992,7 @@ def _lower_match(stmt: TpyMatch, lc: _LowerCtx, declared: dict[str, TpyType],
         _witness("match.unreachable_tail")
     return THIRMatch(
         strategy=kind,
-        subject=_lower_expr(stmt.subject, lc),
+        subject=_lower_expr(stmt.subject, lc, declared),
         subject_ref=True,
         arms=tuple(arms),
         hoist_decls=tuple(hoist_decls),
@@ -1104,7 +1099,7 @@ def _lower_match_record(stmt: TpyMatch, lc: _LowerCtx,
         guard = None
         if case.guard is not None:
             _witness("match.guard_arm")
-            guard = _lower_expr(case.guard, lc)
+            guard = _lower_expr(case.guard, lc, arm_declared)
         arms.append(THIRMatchArm(labels=(), entries=(THIRMatchArmEntry(
             body=_statements._lower_scoped_stmts(
                 case.body, lc, arm_declared, loop_depth=loop_depth),
@@ -1117,7 +1112,7 @@ def _lower_match_record(stmt: TpyMatch, lc: _LowerCtx,
         _witness("match.unreachable_tail")
     return THIRMatch(
         strategy=kind,
-        subject=_lower_expr(stmt.subject, lc),
+        subject=_lower_expr(stmt.subject, lc, declared),
         subject_ref=True,
         arms=tuple(arms),
         hoist_decls=tuple(hoist_decls),
@@ -1174,7 +1169,7 @@ def _lower_match_optional(stmt: TpyMatch, lc: _LowerCtx,
         _witness("match.unreachable_tail")
     return THIRMatch(
         strategy="optional_partition",
-        subject=_lower_expr(stmt.subject, lc),
+        subject=_lower_expr(stmt.subject, lc, declared),
         subject_ref=True,
         arms=(arm,),
         hoist_decls=tuple(hoist_decls),
@@ -1268,7 +1263,7 @@ def _lower_match_union(stmt: TpyMatch, lc: _LowerCtx,
         _witness("match.unreachable_tail")
     return THIRMatch(
         strategy="switch_union",
-        subject=_lower_expr(stmt.subject, lc),
+        subject=_lower_expr(stmt.subject, lc, declared),
         subject_ref=True,
         arms=tuple(arms),
         hoist_decls=tuple(hoist_decls),
@@ -1376,7 +1371,7 @@ def _lower_match_guarded_union(stmt: TpyMatch, lc: _LowerCtx,
             guard = None
             if case.guard is not None:
                 _witness("match.guard_arm")
-                guard = _lower_expr(case.guard, lc)
+                guard = _lower_expr(case.guard, lc, arm_declared)
             body = _statements._lower_stmts(
                 case.body, lc, arm_declared, in_branch=True,
                 loop_depth=loop_depth)
@@ -1421,7 +1416,7 @@ def _lower_match_guarded_union(stmt: TpyMatch, lc: _LowerCtx,
         _witness("match.unreachable_tail")
     return THIRMatch(
         strategy="guarded_union",
-        subject=_lower_expr(stmt.subject, lc),
+        subject=_lower_expr(stmt.subject, lc, declared),
         subject_ref=True,
         arms=tuple(arms),
         hoist_decls=tuple(hoist_decls),

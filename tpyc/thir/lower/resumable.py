@@ -61,8 +61,8 @@ from ...typesys import (
 )
 from ...codegen_cpp import resumable_cfg as rcfg
 from ...codegen_cpp.forms import is_plain_nonvalue
-from .context import _LowerCtx, _WalkState
-from .expr_gates import _condition_eligible, _expr_eligible
+from .context import _ExprResultUse, _ExprUse, _LowerCtx, _WalkState
+from .expr_gates import _condition_eligible
 from .expressions import _lower_call_arg, _lower_expr
 from .functions import _function_eligible, method_self_type_by_name
 from .predicates import (
@@ -164,7 +164,7 @@ def _leaf_shape_reject(stmt: TpyStmt, *, nested: bool = False) -> str | None:
 def _payload_reject(payload: 'rcfg.SuspensionPayload', analyzer) -> str | None:
     """Await-payload gate (async bodies). INLINE (statically-known async def,
     incl. bound methods -- R5b) is admitted; the receiver/args are lowered in
-    the Yield loop (rejecting there via `_expr_eligible`). Deferred: generic
+    the Yield loop. Deferred: generic
     awaited callees, kwargs, non-value INLINE arg slots (R5c), and
     ERASED/BORROWED awaitables (res.await_mode -- an ERASED/BORROWED operand is
     a Task/Future that is either a non-value param or built via a gated
@@ -384,7 +384,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
 
     def _lower_leaf(stmt: TpyStmt) -> THIRStmt:
         if isinstance(stmt, TpyVarDecl) and stmt.name in frame_fields:
-            value = _lower_expr(stmt.init, lc)
+            value = _lower_expr(stmt.init, lc, declared)
             if stmt.name not in declared:
                 declared[stmt.name] = _var_decl_type(stmt, analyzer)
             if stmt.name in frame_slots:
@@ -443,7 +443,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
             # NOT the sync-return arm's target-typed `::tpy::BigInt(42)`.
             # Lower the value directly (== the AST's `gen_expr_deref`),
             # bypassing _lower_stmt's return-coercion arm.
-            return_values[id(ret)] = _lower_expr(ret.value, lc)
+            return_values[id(ret)] = _lower_expr(ret.value, lc, declared)
             _witness("res.return_value")
         elif isinstance(t, rcfg.RaiseT):
             if not _gate_leaf(t.raise_stmt):
@@ -452,7 +452,9 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
         elif isinstance(t, rcfg.Branch):
             if not _condition_eligible(t.cond, declared, analyzer):
                 return _reject("res.cond")
-            conds[id(t.cond)] = _lower_expr(t.cond, lc)
+            conds[id(t.cond)] = _lower_expr(
+                t.cond, lc, declared,
+                use=_ExprUse(result=_ExprResultUse.CONDITION))
             _witness("res.branch_cond")
         elif isinstance(t, rcfg.Yield) and is_generator:
             # Generator suspension: the skeleton emits `__state = S_RESUME_i;
@@ -465,9 +467,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
             ys = t.payload.yield_stmt
             if ys is None or ys.value is None:
                 return _reject("res.bare_yield")
-            if not _expr_eligible(ys.value, declared, analyzer):
-                return _reject("res.yield_value")
-            yield_values[id(ys)] = _lower_expr(ys.value, lc)
+            yield_values[id(ys)] = _lower_expr(ys.value, lc, declared)
             _witness("res.yield_value")
         elif isinstance(t, rcfg.Yield):
             payload = t.payload
@@ -480,15 +480,11 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
             if (isinstance(operand, TpyMethodCall)
                     and operand.user_module_call is None
                     and operand.builtin_module_call is None):
-                if not _expr_eligible(operand.obj, declared, analyzer):
-                    return _reject("res.await_receiver")
-                suspend_exprs[id(operand.obj)] = _lower_expr(operand.obj, lc)
+                suspend_exprs[id(operand.obj)] = _lower_expr(operand.obj, lc, declared)
                 _witness("res.suspend_expr")
             lowered_args = []
             for i, a in enumerate(operand.args):
-                if not _expr_eligible(a, declared, analyzer):
-                    return _reject("res.await_arg")
-                lowered_args.append(_lower_call_arg(a, fi.params[i].type, lc))
+                lowered_args.append(_lower_call_arg(a, fi.params[i].type, lc, declared))
             await_args[id(operand)] = tuple(lowered_args)
             if lowered_args:
                 _witness("res.await_args")

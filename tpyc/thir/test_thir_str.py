@@ -1040,7 +1040,7 @@ class TestStrSubscriptSliceIter:
         # `s[i]` char reads off the shared receiver set: a str-family field
         # off an F1-record receiver and an eligible str-returning call (both
         # render bare into the checked dunder). A global-name receiver stays
-        # out (the standard _expr_eligible name reject).
+        # out (the standard name reject in `_lower_expr`).
         thir = _lower_ctx(
             "from tpy import Char, Int32\n"
             "class H:\n"

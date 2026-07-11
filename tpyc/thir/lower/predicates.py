@@ -1505,10 +1505,9 @@ def _unrouted_binding_read(t: 'TpyType | None', analyzer) -> 'str | None':
         # read the value unwrap `(*p)` (deref-on-narrow at name lowering); an
         # expensive-copy (BigInt) inner moves `std::move((*p))` at its last use.
         # A value-repr Optional[str] param routes its narrowed read too (`(*s)`,
-        # a borrow string_view); the un-narrowed value read (deref_optional_check)
-        # rejects at `_expr_eligible`'s name branch, so this predicate must not
-        # blanket-reject it here. Own-optional inners still reject (Own-axis
-        # faces not mirrored).
+        # a borrow string_view); the un-narrowed value read rejects during name
+        # lowering, so this predicate must not blanket-reject it here.
+        # Own-optional inners still reject (Own-axis faces not mirrored).
         if (_value_opt_scalar(u, analyzer) is not None
                 or _value_opt_view(u, analyzer) is not None):
             return None
@@ -1911,8 +1910,7 @@ def _container_param_renders(t: TpyType | None, analyzer) -> bool:
     for the reference-type containers, by-value `std::span` for `Span` -- is
     emitted by the (AST-owned) function signature, TYPE-keyed and identical for
     every element type; and every body USE of the param (subscript, iteration,
-    `len`, membership, method call) is validated by statement lowering and
-    `_expr_eligible`, which reject any element form they cannot route. So the gate
+    `len`, membership, method call) is validated during lowering. So the gate
     need only ensure the container TYPE renders identically -- it must NOT
     enumerate element families. `Own[container]` (a move-in `T&&` param, a
     distinct ABI) and any generic (`list[T]`) container -- the generics

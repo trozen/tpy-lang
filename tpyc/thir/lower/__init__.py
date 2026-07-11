@@ -4,9 +4,9 @@
     < resumable
 
 `predicates` holds the shared type/shape facts, `context` the per-function
-lowering state, `expr_gates` the `_expr_eligible` routing predicates and
-`expressions` the `_lower_expr` arms (one-way: lowering imports the gate
-helpers it needs), `statements` the statement-level gate + lowering arms,
+lowering state, `expr_gates` consumer-shape admission helpers, and
+`expressions` the `_lower_expr` arms (one-way: lowering imports the admission
+helpers it needs), `statements` statement admission plus lowering arms,
 `functions` the entry points, and `resumable` the async-body leaf lowering
 consumed by the gen_async skeleton seam. The public
 surface below is what the codegen seam, dump, and units import -- it is

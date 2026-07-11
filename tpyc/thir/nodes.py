@@ -596,7 +596,8 @@ class THIRComprehension(THIRExpr):
     elements arrive through the S5 per-slot owned-str wrap. Gate-excluded:
     owned-move elements (`owns_elements` -- the `__dk_N` key-sequencing and
     move-sink arms), Array demotion (`array_from_index`), genexpr,
-    temp-producing elements/filters (plain `_expr_eligible` admits none),
+    temp-producing elements/filters (the comprehension admission helpers admit
+    none),
     narrowed-Optional iterables. The multi-line render reads
     the enclosing statement indent off `_EmitState.stmt_indent_level`."""
     kind: str = ""                        # "list" | "set" | "dict"

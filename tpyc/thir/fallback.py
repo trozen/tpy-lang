@@ -75,9 +75,10 @@ _CAMEL_SPLIT = re.compile(r"(?<!^)(?=[A-Z])")
 class ThirUnsupported(Exception):
     """A lowering-time rejection that routes the whole body to AST codegen."""
 
-    def __init__(self, reason: str) -> None:
+    def __init__(self, reason: str, *, detail: bool = False) -> None:
         super().__init__(reason)
         self.reason = reason
+        self.detail = detail
 
 
 def note(reason: str) -> bool:
@@ -152,7 +153,7 @@ def _walk(root: object):
 
 
 def classify_stmt(stmt: TpyStmt) -> str:
-    """Reason tag for a statement the eligibility walk rejected: the first
+    """Reason tag for a statement lowering rejected: the first
     landmark construct found inside it, else the statement's own shape
     (`stmt.<snake_case_kind>`)."""
     if is_dataclass(stmt) and not isinstance(stmt, type):
@@ -171,13 +172,15 @@ def expr_kind_tag(e: object) -> str:
     return f"expr.{kind}"
 
 
-def stmt_reject_reason(stmt: TpyStmt) -> str:
-    """The composed tag for a statement the eligibility walk rejected:
+def stmt_reject_reason(stmt: TpyStmt, detail: str | None = None) -> str:
+    """The composed tag for a statement lowering rejected:
     a landmark tag stands alone; a bare `stmt.*` shape picks up the
-    sub-construct detail recorded during this statement's gating, if any."""
+    sub-construct detail recorded during this statement's admission, if any."""
     reason = classify_stmt(stmt)
     compiler = get_current_compiler()
-    detail = compiler._thir_reject_detail if compiler is not None else None
+    if detail is None:
+        detail = (compiler._thir_reject_detail
+                  if compiler is not None else None)
     if detail is not None and reason.startswith("stmt."):
         return f"{reason}:{detail}"
     return reason

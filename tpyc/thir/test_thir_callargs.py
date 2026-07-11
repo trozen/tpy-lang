@@ -838,8 +838,8 @@ class TestOwnSlotGateRejects:
 
     def test_record_field_arg_stays_ast(self):
         # A RECORD-typed field read into an Own slot copies through the temp
-        # on the AST path (`auto __tmp = h.a;`), but a record field read is
-        # not `_expr_eligible` in arbitrary expression position -- deferred.
+        # on the AST path (`auto __tmp = h.a;`), but a record field read in
+        # arbitrary expression position rejects during lowering -- deferred.
         src = (
             _PRELUDE
             + "def take_own(o: Own[A]) -> Int32:\n    return o.x\n"
@@ -1042,10 +1042,9 @@ class TestOptionalPtrNarrowedArgs:
     def test_narrowed_subject_arg_routes_via_alias_addr(self):
         # A narrowed union subject into an `A | None` slot classifies 'name':
         # the read renames to the extraction alias and both paths wrap the
-        # address-of (`take_opt(&(__u))`). The temp-free face is reachable
-        # from _expr_eligible (no narrowed threading), so the render MIRRORS
-        # rather than rejects -- a reject only at lowering was the
-        # gate/lowering drift this test pins against.
+        # address-of (`take_opt(&(__u))`). The temp-free face lowers directly
+        # (no narrowed threading), so the render MIRRORS rather than rejects --
+        # a reject only at lowering was the drift this test pins against.
         src = (
             _PRELUDE
             + "def take_opt(o: A | None) -> Int32:\n"

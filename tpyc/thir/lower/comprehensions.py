@@ -53,13 +53,14 @@ from .predicates import (
     _var_decl_type,
 )
 from .context import (
+    _ExprResultUse,
+    _ExprUse,
     _LowerCtx,
     _Prescan,
     _WalkState,
 )
 from .expr_gates import (
     _condition_eligible,
-    _expr_eligible,
 )
 from .expressions import (
     _lower_container_elem,
@@ -124,9 +125,6 @@ def _comp_route(init, declared: dict[str, TpyType], narrowed: 'set[str]',
             # begin/end loop over the Range object (an rvalue capture, never
             # sized). Bounds render against the counter slot like the 1/2-arg
             # arms, so they gate the same way.
-            if not all(_expr_eligible(a, declared, analyzer)
-                       for a in it.args):
-                return None
             return _CompRoute(kind=kind, loop="begin_end", counter_type=None,
                               it_type=analyzer.get_expr_type(it), et=counter,
                               iterable_lvalue=False, sized_reserve=False,
@@ -277,10 +275,8 @@ def _comp_print_arg_ok(a, ws: _WalkState, analyzer) -> bool:
 def _comp_expr_ok(init, t: 'TpyType | None', ws: _WalkState, analyzer) -> bool:
     """Position-independent comprehension admissibility against result type
     `t`: the route fact, result slots, comp-var shadow checks, and the
-    element/filter gates. Elements/filters gate through the PLAIN
-    `_expr_eligible` / `_condition_eligible` (no temp_args opt-in), so no
-    arg-temp can arise inside the loop -- the scoped `_emit_iter_temps`
-    flush seam stays un-mirrored until the owned-move/genexpr rows."""
+    element/filter gates. Filters retain their condition-shape gate; element
+    admission happens while lowering without temp-arg opt-in."""
     if t is None:
         return False
     if is_array(t):
@@ -321,17 +317,10 @@ def _comp_expr_ok(init, t: 'TpyType | None', ws: _WalkState, analyzer) -> bool:
         if gen.var in special:
             return False
         declared2[gen.var] = route.et
-    if route.loop == "range":
-        # Bounds evaluate outside the loop-var scope.
-        if not all(_expr_eligible(a, ws.declared, analyzer)
-                   for a in gen.iterable.args):
-            return False
     if not all(_condition_eligible(c, declared2, analyzer)
                for c in gen.conditions):
         return False
-    exprs = ((init.key_expr, init.value_expr) if route.kind == "dict"
-             else (init.element_expr,))
-    return all(_expr_eligible(x, declared2, analyzer) for x in exprs)
+    return True
 
 def _comp_array_ok(init, t: TpyType, ws: _WalkState, analyzer) -> bool:
     """An Array-demoted comprehension -- the `array_from_index` RANGE arm
@@ -354,24 +343,18 @@ def _comp_array_ok(init, t: TpyType, ws: _WalkState, analyzer) -> bool:
     args_t = getattr(t, "type_args", None)
     if not args_t or not _comp_elem_slot_ok(args_t[0], analyzer):
         return False
-    # Bounds render untargeted (the AST's bare gen_expr_deref) -- only the
-    # start/step spellings reach the emit; the stop is encoded in N.
-    if not all(_expr_eligible(a, ws.declared, analyzer) for a in it.args):
-        return False
     special = (ws.pointers | ws.rebind_slots | ws.storage_tuple_locals
                | ws.narrowed)
     if gen.var in special:
         return False
     declared2 = dict(ws.declared)
     declared2[gen.var] = counter
-    return _expr_eligible(init.element_expr, declared2, analyzer)
+    return True
 
 def _lower_array_comprehension(init, lc: '_LowerCtx',
                                declared: dict[str, TpyType]) -> THIRComprehension:
     """The array_from_index range arm: a per-index lambda constructs each
-    slot (`E var = start + E(__i_N) * (step); return elem;`). Elements gate
-    through the plain `_expr_eligible`, so `_emit_iter_temps` has nothing to
-    flush and the lambda body is exactly the binding + return."""
+    slot (`E var = start + E(__i_N) * (step); return elem;`)."""
     analyzer = lc.analyzer
     t = analyzer.get_expr_type(init)
     gen = init.generator
@@ -380,6 +363,8 @@ def _lower_array_comprehension(init, lc: '_LowerCtx',
     counter = _range_counter_type(it, analyzer)
     elem_t = _comp_result_type(init.result_elem_type, analyzer)
     args = it.args
+    body_declared = dict(declared)
+    body_declared[gen.var] = counter
     return THIRComprehension(
         result_type=t,
         kind="list",
@@ -389,9 +374,10 @@ def _lower_array_comprehension(init, lc: '_LowerCtx',
         counter_cpp=counter.to_cpp(),
         array_elem_cpp=lc.render_type(elem_t),
         array_size_cpp=str(t.type_args[1]),
-        range_start=_lower_expr(args[0], lc) if len(args) >= 2 else None,
-        range_step=_lower_expr(args[2], lc) if len(args) == 3 else None,
-        element=_lower_container_elem(init.element_expr, elem_t, lc),
+        range_start=_lower_expr(args[0], lc, declared) if len(args) >= 2 else None,
+        range_step=_lower_expr(args[2], lc, declared) if len(args) == 3 else None,
+        element=_lower_container_elem(
+            init.element_expr, elem_t, lc, body_declared),
         loc=getattr(init, "loc", None),
     )
 
@@ -419,6 +405,13 @@ def _lower_comprehension(init, lc: '_LowerCtx',
     route = _comp_route(init, declared, set(), analyzer)
     assert route is not None
     gen = init.generator
+    body_declared = dict(declared)
+    if route.unpack_types is not None:
+        for name, tt in zip(gen.unpack_vars, route.unpack_types):
+            if name is not None:
+                body_declared[name] = tt
+    else:
+        body_declared[gen.var] = route.et
     _witness(f"comp.{route.kind}")
     _witness(f"comp.{route.loop}")
     if gen.conditions:
@@ -431,14 +424,16 @@ def _lower_comprehension(init, lc: '_LowerCtx',
         container = (f"::tpy::ordered_map<{lc.render_type(kt)}, "
                      f"{lc.render_type(vt)}>")
         element = None
-        key = _lower_container_elem(init.key_expr, kt, lc)
-        value = _lower_container_elem(init.value_expr, vt, lc)
+        key = _lower_container_elem(init.key_expr, kt, lc, body_declared)
+        value = _lower_container_elem(
+            init.value_expr, vt, lc, body_declared)
     else:
         elem_t = _comp_result_type(init.result_elem_type, analyzer)
         cpp_elem = lc.render_type(elem_t)
         container = (f"std::vector<{cpp_elem}>" if route.kind == "list"
                      else f"::tpy::ordered_set<{cpp_elem}>")
-        element = _lower_container_elem(init.element_expr, elem_t, lc)
+        element = _lower_container_elem(
+            init.element_expr, elem_t, lc, body_declared)
         key = value = None
     range_start = range_stop = None
     start_lit = stop_lit = False
@@ -446,23 +441,25 @@ def _lower_comprehension(init, lc: '_LowerCtx',
     if route.loop == "range":
         a = gen.iterable.args
         if len(a) == 2:
-            range_start = _slot_literal_retype(_lower_expr(a[0], lc),
+            range_start = _slot_literal_retype(_lower_expr(a[0], lc, declared),
                                                route.counter_type)
             start_lit = isinstance(a[0], TpyIntLiteral)
         stop_arg = a[1] if len(a) == 2 else a[0]
-        range_stop = _slot_literal_retype(_lower_expr(stop_arg, lc),
+        range_stop = _slot_literal_retype(_lower_expr(stop_arg, lc, declared),
                                           route.counter_type)
         stop_lit = isinstance(stop_arg, TpyIntLiteral)
     elif _is_range_call(gen.iterable):
         _witness("comp.range3")
-        iterable = _lower_range_object(gen.iterable, lc)
+        iterable = _lower_range_object(gen.iterable, lc, declared)
     elif isinstance(gen.iterable, TpyFieldAccess):
         # The non-value field read (storage form) -- gen_expr_deref's plain
         # `recv.field` / `recv->field` render.
         _witness("comp.field_iter")
-        iterable = _lower_field_source(gen.iterable, lc)
+        iterable = _lower_field_source(gen.iterable, lc, declared)
     else:
-        iterable = _lower_expr(gen.iterable, lc)
+        iterable = _lower_expr(
+            gen.iterable, lc, declared,
+            use=_ExprUse(result=_ExprResultUse.ITERABLE))
     unpack_targets: tuple = ()
     unpack_cpps: tuple = ()
     if route.unpack_types is not None:
@@ -491,7 +488,8 @@ def _lower_comprehension(init, lc: '_LowerCtx',
         sized_reserve=route.sized_reserve,
         unpack_targets=unpack_targets,
         unpack_target_cpps=unpack_cpps,
-        conditions=tuple(_lower_truthy(c, lc) for c in gen.conditions),
+        conditions=tuple(
+            _lower_truthy(c, lc, body_declared) for c in gen.conditions),
         element=element,
         key=key,
         value=value,

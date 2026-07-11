@@ -215,10 +215,19 @@ class TestScalarCtorCall:
                       + "def f(a: Int32) -> None:\n    x = int(a)\n    print(a)\n")
         assert _fn(thir, "f") is not None
 
-    def test_str_result_ineligible(self):
-        thir = _lower(_CTOR_PRELUDE
-                      + "def f(a: Int32) -> None:\n    s = str(a)\n    print(a)\n")
-        assert _fn(thir, "f") is None
+    def test_str_result_routes(self):
+        src = (_CTOR_PRELUDE
+               + "def f(a: Int32) -> None:\n    s = str(a)\n    print(a)\n")
+        assert _fn(_lower(src), "f") is not None
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        ast = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(
+                emit_source_comments=False, thir_codegen=False))
+        thir = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(
+                emit_source_comments=False, thir_codegen=True))
+        assert thir == ast
 
     def test_float_str_arg_ineligible(self):
         # float("nan") folds to a numeric_limits constant on the AST path -- the

@@ -779,8 +779,8 @@ stay deferred. **M3c-trivia (landed, increment 18)** -- docstring / `pass` non-i
 bodies (`THIRNoOpStmt`, no code; the body-brace shape is the only output difference),
 the first ctor-body statement shape. **M3c-demotion (landed, increment 19)** -- the
 hoist/demotion split: non-hoistable / post-chain-break field inits demote into the body
-(lowered via the shared `_body_eligible`/`_lower_stmt` path); only the `chain_broken`
-cascade needed explicit reproduction, the rest subsumed by the eligibility gate.
+(lowered via the shared `_lower_stmts`/`_lower_stmt` path); only the `chain_broken`
+cascade needed explicit reproduction, the rest subsumed by node-local admission.
 **M3d-1 (landed, increment 20)** -- a single F1 base: `super().__init__` -> a structured
 `THIRBaseInit` prepended to the MIL. **M3d-2 (landed, increment 21)** -- multi-base
 (parent-order-sorted base inits + the `BaseN.__init__` form) + inherited-field writes
@@ -914,14 +914,14 @@ catches lowering rejects at the sync-function, constructor, and resumable
 boundaries, so converted gate families can defer their decision to lowering
 without crashing the ratchet.
 
-With those boundaries in place the whole-body (`_body_eligible`) and per-statement
-(`_stmt_eligible`) predictive gates were removed outright, not merely converted
-family-by-family: each statement kind's rejection checks now run beside its lowering
-arm in `_lower_stmt_dispatch`. The remaining gate surface is `_expr_eligible`, the
-per-kind `_<kind>_eligible` helpers, and the `match`/`with`/`try` structure gates.
-A caller of `_expr_eligible` must route the node through `_lower_expr` inside one of
-those boundaries -- it admits numeric literals and unopened expression kinds that
-only `_lower_expr` rejects, so a reject raised outside a boundary escapes as a crash.
+With those boundaries in place the whole-body (`_body_eligible`), per-statement
+(`_stmt_eligible`), and expression (`_expr_eligible`) predictive traversals were
+removed outright. Each statement and expression kind now checks admission beside
+its lowering arm; recursive lowering discovers the first unsupported child and the
+body boundary discards the partial attempt. The remaining gate surface consists of
+consumer-shape helpers (slot, call, method, condition, and statement policy) plus
+the `match`/`with`/`try` structure gates. These helpers no longer walk an expression
+tree to predict whether lowering will succeed.
 
 ##### AST stays the oracle: emit AST, overlay THIR (2026-07 correction)
 

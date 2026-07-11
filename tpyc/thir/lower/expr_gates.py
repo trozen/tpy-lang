@@ -1,8 +1,7 @@
-"""Expression eligibility gates: `_expr_eligible` and the
-call/method/ctor/arg + literal/subscript/condition predicates it
-recurses through (the gate half of the expression family). The
-`_lower_*` arms live in `expressions.py`, which imports the handful
-of gate helpers it needs from here -- the dependency is one-way.
+"""Legacy consumer-shape predicates shared by expression and statement lowering.
+
+Expression nodes decide admission in `expressions.py`; this module retains the
+slot, call, method, condition, and statement shape classifiers they consume.
 """
 
 from __future__ import annotations
@@ -239,7 +238,7 @@ def _ptr_union_source_ok(e: TpyExpr, declared: dict[str, TpyType], analyzer,
         if bt is None:
             return False
         bt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(bt)))
-        return bt == u and _expr_eligible(e, declared, analyzer)
+        return bt == u
     if allow_field and isinstance(e, TpyFieldAccess):
         # Strict receiver: the local-decl consumer spells the receiver's
         # const verdict (see _const_exact_field_receiver_ok); the field-write
@@ -345,7 +344,7 @@ def _enum_pass_through_arg(a: TpyExpr, ptype: TpyType | None,
     if et is None:
         return False
     at = _eligible_enum(analyzer.get_expr_type(a), analyzer)
-    return at == et and _expr_eligible(a, locals_, analyzer)
+    return at == et
 
 def _enum_truthy_operand(e: TpyExpr, locals_: dict[str, TpyType],
                          analyzer) -> bool:
@@ -359,7 +358,7 @@ def _enum_truthy_operand(e: TpyExpr, locals_: dict[str, TpyType],
         return False
     if _enum_truthy_wrap(analyzer.get_expr_type(e), analyzer) is None:
         return False
-    return _expr_eligible(e, locals_, analyzer)
+    return True
 
 def _enum_from_value_eligible(e: TpyCall, locals_: dict[str, TpyType],
                               analyzer) -> bool:
@@ -380,7 +379,7 @@ def _enum_from_value_eligible(e: TpyCall, locals_: dict[str, TpyType],
     if (_runtime_bigint(at, analyzer)
             and _const_index(_unwrap_lit_coerce(e.args[0])) is not None):
         return False
-    return _expr_eligible(e.args[0], locals_, analyzer)
+    return True
 
 def _cast_passthrough_eligible(e: TpyCall, locals_: dict[str, TpyType],
                                analyzer) -> bool:
@@ -393,7 +392,7 @@ def _cast_passthrough_eligible(e: TpyCall, locals_: dict[str, TpyType],
         return False
     if len(e.args) != 2 or e.kwargs or e.double_star_unpack is not None:
         return False
-    return _expr_eligible(e.args[1], locals_, analyzer)
+    return True
 
 
 def _macro_expansion_eligible(e: TpyCall, locals_: dict[str, TpyType],
@@ -404,7 +403,7 @@ def _macro_expansion_eligible(e: TpyCall, locals_: dict[str, TpyType],
     lowering it in place."""
     if e.macro_expansion is None:
         return False
-    return _expr_eligible(e.macro_expansion, locals_, analyzer)
+    return True
 
 
 def _nested_enum_from_value_eligible(e: TpyMethodCall,
@@ -424,8 +423,7 @@ def _nested_enum_from_value_eligible(e: TpyMethodCall,
         return False
     at = analyzer.get_expr_type(e.args[0])
     return (_resolved_scalar(at, analyzer)
-            and not _runtime_bigint(at, analyzer)
-            and _expr_eligible(e.args[0], locals_, analyzer))
+            and not _runtime_bigint(at, analyzer))
 
 def _container_literal_decl_ok(stmt: TpyVarDecl, declared: dict[str, TpyType],
                                prescan: '_Prescan', analyzer) -> bool:
@@ -479,8 +477,7 @@ def _container_literal_ok(init: TpyExpr, t: TpyType, declared: dict[str, TpyType
 
     `note` (the decl gate only) records the `container_lit.*` sub-classifier
     detail on a family/slot reject, so the fallback tally splits the residue
-    by blocking element family; element-EXPR rejects keep the detail
-    `_expr_eligible` records."""
+    by blocking element family."""
     if isinstance(init, TpyDictLiteral):
         args = getattr(t, "type_args", None)
         if not is_dict(t) or not args or len(args) < 2:
@@ -497,12 +494,11 @@ def _container_literal_ok(init: TpyExpr, t: TpyType, declared: dict[str, TpyType
             return False
         # _gen_dict_literal threads k_type/v_type into every render
         # position-independently, so keys and values are always threaded.
-        return (all(_expr_eligible(k, declared, analyzer) for k in init.keys)
-                and all(_container_lit_elem_ok(v, val, declared, analyzer,
-                                               threaded=True, forced=True,
-                                               allow_nested=True,
-                                               allow_optional=True, note=note)
-                        for v in init.values))
+        return all(_container_lit_elem_ok(v, val, declared, analyzer,
+                                          threaded=True, forced=True,
+                                          allow_nested=True,
+                                          allow_optional=True, note=note)
+                   for v in init.values)
     if isinstance(init, TpySetLiteral):
         args = getattr(t, "type_args", None)
         if not (is_set(t) and bool(args)):
@@ -528,9 +524,7 @@ def _container_literal_ok(init: TpyExpr, t: TpyType, declared: dict[str, TpyType
         if is_span(t):
             # Span slots keep the scalar-only receiver rule (mirrors
             # _container_scalar_read's span arm).
-            return (bool(args) and _eligible_scalar(unwrap_readonly(args[0]))
-                    and all(_expr_eligible(x, declared, analyzer)
-                            for x in init.elements))
+            return bool(args) and _eligible_scalar(unwrap_readonly(args[0]))
         if not (is_list(t) or is_array(t)) or not args:
             return _note_container_lit_reject(init, t, analyzer) if note else False
         # A demoted Array threads every element target; a list threads only
@@ -574,7 +568,7 @@ def _container_lit_elem_ok(e: TpyExpr, slot: 'TpyType | None',
             # the S5 view->owned wrap does not fire there; only the
             # form-neutral literal render is byte-identical.
             return note_detail("container_lit.nested_view") if note else False
-        return _expr_eligible(e, declared, analyzer)
+        return True
     su = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(slot)))
     if fam == "bytes":
         bt = _resolved_bytes_value(su, analyzer)
@@ -585,10 +579,9 @@ def _container_lit_elem_ok(e: TpyExpr, slot: 'TpyType | None',
             # fires only at threaded positions (a bytes literal renders its
             # owned form target-free, so it stays admitted).
             return note_detail("container_lit.nested_view") if note else False
-        return _expr_eligible(e, declared, analyzer)
+        return True
     if fam == "enum":
-        if (_eligible_enum(analyzer.get_expr_type(e), analyzer) is not None
-                and _expr_eligible(e, declared, analyzer)):
+        if (_eligible_enum(analyzer.get_expr_type(e), analyzer) is not None):
             return True
         return note_detail("container_lit.elem.enum") if note else False
     if fam == "optional":
@@ -606,8 +599,7 @@ def _container_lit_elem_ok(e: TpyExpr, slot: 'TpyType | None',
             return note_detail("container_lit.elem.optional") if note else False
         if isinstance(e, TpyNoneLiteral):
             return True  # -> std::nullopt (the STORAGE-form None)
-        return (_expr_eligible(e, declared, analyzer)
-                or (note_detail("container_lit.elem.optional") if note else False))
+        return True
     if fam == "tuple":
         vt = _value_tuple(su, analyzer)
         if vt is None or not threaded:
@@ -632,8 +624,7 @@ def _container_lit_elem_ok(e: TpyExpr, slot: 'TpyType | None',
             # pointer-local, and moves at a movable local's last use -- all
             # mirrored at lowering off the same facts the AST reads.
             bt = declared.get(e.name)
-            if (bt is not None and _f1_record(bt, analyzer)
-                    and _expr_eligible(e, declared, analyzer)):
+            if (bt is not None and _f1_record(bt, analyzer)):
                 return True
             return note_detail("container_lit.elem.record") if note else False
         return (_is_record_rvalue_source(e, declared, analyzer)
@@ -699,8 +690,7 @@ def _container_record_elem_subscript(e: TpyExpr, locals_: dict[str, TpyType],
     recv_t = _subscript_container_recv_type(e.obj, locals_, analyzer)
     if recv_t is None or not _container_record_elem(recv_t, analyzer):
         return False
-    return (_bigint_index_disposition(e.index, analyzer) != "reject"
-            and _expr_eligible(e.index, locals_, analyzer))
+    return (_bigint_index_disposition(e.index, analyzer) != "reject")
 
 def _field_over_container_subscript_ok(e: TpyExpr, locals_: dict[str, TpyType],
                                        analyzer) -> bool:
@@ -793,8 +783,7 @@ def _container_subscript_value_read(e: TpyExpr, locals_: dict[str, TpyType],
              or _eligible_ptr_value(ret, analyzer)
              or _resolved_str_value(ret, analyzer) is not None
              or _resolved_bytes_value(ret, analyzer) is not None)
-            and _bigint_index_disposition(e.index, analyzer) != "reject"
-            and _expr_eligible(e.index, locals_, analyzer))
+            and _bigint_index_disposition(e.index, analyzer) != "reject")
 
 def _str_subscript_char_read(e: TpyExpr, locals_: dict[str, TpyType],
                              analyzer) -> bool:
@@ -818,8 +807,7 @@ def _str_subscript_char_read(e: TpyExpr, locals_: dict[str, TpyType],
     if not _str_slice_receiver_ok(e.obj, locals_, analyzer):
         return False
     return (_eligible_char(analyzer.get_expr_type(e))
-            and _bigint_index_disposition(e.index, analyzer) != "reject"
-            and _expr_eligible(e.index, locals_, analyzer))
+            and _bigint_index_disposition(e.index, analyzer) != "reject")
 
 def _bytes_subscript_read(e: TpyExpr, locals_: dict[str, TpyType],
                           analyzer) -> bool:
@@ -850,8 +838,7 @@ def _bytes_subscript_read(e: TpyExpr, locals_: dict[str, TpyType],
     else:
         return False
     return (_eligible_scalar(analyzer.get_expr_type(e))
-            and _bigint_index_disposition(e.index, analyzer) != "reject"
-            and _expr_eligible(e.index, locals_, analyzer))
+            and _bigint_index_disposition(e.index, analyzer) != "reject")
 
 def _slice_bound_ok(b: 'TpyExpr | None', locals_: dict[str, TpyType],
                     analyzer) -> bool:
@@ -866,8 +853,6 @@ def _slice_bound_ok(b: 'TpyExpr | None', locals_: dict[str, TpyType],
     mirroring it would just reproduce the build failure."""
     if b is None:
         return True
-    if not _expr_eligible(b, locals_, analyzer):
-        return False
     bt = analyzer.get_expr_type(b)
     if bt is None:
         return False
@@ -1149,9 +1134,7 @@ def _scalar_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
         # source bare/moved (its TypeParamRef emit arm), byte-identical to the
         # AST's `val_or_ref_t<T>` / `own_param_t<T>` copy/move per instantiation.
         return False
-    if _expr_eligible(stmt.value, declared, analyzer):
-        return True
-    return ws is not None and _stmt_value_temps_call(stmt.value, ws, analyzer)
+    return True
 
 def _ptr_union_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
                               analyzer) -> bool:
@@ -1362,7 +1345,7 @@ def _scalar_aug_assign_ok(stmt: TpyAugAssign, declared: dict[str, TpyType],
     # FixedInt += BigInt converts the value via `.to_fixed_check<T>()` before
     # the binop -- mirrored as the synthetic THIRBinOp's right_cast at lowering
     # (the same target-type/value-type pair keys both, so gate and emit agree).
-    return _expr_eligible(stmt.value, declared, analyzer)
+    return True
 
 def _str_aug_append_ok(stmt: TpyAugAssign, declared: dict[str, TpyType],
                        prescan: _Prescan, analyzer) -> bool:
@@ -1391,8 +1374,7 @@ def _str_aug_append_ok(stmt: TpyAugAssign, declared: dict[str, TpyType],
     if not _owned_str_append_target(analyzer.get_expr_type(target), analyzer):
         return False
     vt = analyzer.get_expr_type(stmt.value)
-    return (_str_concat_operand(stmt.value, vt, analyzer)
-            and _expr_eligible(stmt.value, declared, analyzer))
+    return (_str_concat_operand(stmt.value, vt, analyzer))
 
 def _bytes_aug_concat_ok(stmt: TpyAugAssign, declared: dict[str, TpyType],
                          prescan: _Prescan, analyzer) -> bool:
@@ -1428,8 +1410,7 @@ def _bytes_aug_concat_ok(stmt: TpyAugAssign, declared: dict[str, TpyType],
     if bt is None or not is_bytes_type(bt):
         return False
     vt = analyzer.get_expr_type(stmt.value)
-    return (_bytes_concat_operand(stmt.value, vt, analyzer)
-            and _expr_eligible(stmt.value, declared, analyzer))
+    return (_bytes_concat_operand(stmt.value, vt, analyzer))
 
 def _subscript_recv_reject(recv: TpyExpr, locals_: dict[str, TpyType],
                            analyzer) -> str:
@@ -1506,8 +1487,7 @@ def _subscript_read_reject(e: TpySubscript, locals_: dict[str, TpyType],
     recv_t = _subscript_container_recv_type(e.obj, locals_, analyzer)
     if recv_t is None:
         return "subscript." + _subscript_recv_reject(e.obj, locals_, analyzer)
-    if (_bigint_index_disposition(e.index, analyzer) == "reject"
-            or not _expr_eligible(e.index, locals_, analyzer)):
+    if (_bigint_index_disposition(e.index, analyzer) == "reject"):
         return "subscript.index"
     t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(recv_t)))
     if isinstance(t, TupleType):
@@ -1545,8 +1525,7 @@ def _setitem_target_ok(sub: TpySubscript, ws: '_WalkState', analyzer) -> bool:
             "setitem." + _subscript_recv_reject(recv, ws.declared, analyzer))
     if not _container_scalar_read(recv_t, analyzer):
         return note_detail("setitem.family")
-    if (_bigint_index_disposition(sub.index, analyzer) == "reject"
-            or not _expr_eligible(sub.index, ws.declared, analyzer)):
+    if (_bigint_index_disposition(sub.index, analyzer) == "reject"):
         return note_detail("setitem.index")
     return True
 
@@ -1564,10 +1543,7 @@ def _container_setitem_ok(stmt: TpyAssign, ws: '_WalkState', analyzer) -> bool:
     (non-value-type locals only) have no admitted source."""
     if not _setitem_target_ok(stmt.target, ws, analyzer):
         return False
-    if (_expr_eligible(stmt.value, ws.declared, analyzer)
-            or _stmt_value_temps_call(stmt.value, ws, analyzer)):
-        return True
-    return note_detail("setitem.value")
+    return True
 
 def _container_aug_setitem_ok(stmt: TpyAugAssign, ws: '_WalkState',
                               analyzer) -> bool:
@@ -1596,9 +1572,7 @@ def _container_aug_setitem_ok(stmt: TpyAugAssign, ws: '_WalkState',
             return note_detail("setitem.aug_value")
     elif not _resolved_scalar(et, analyzer):
         return note_detail("setitem.aug_elem")
-    if _expr_eligible(stmt.value, ws.declared, analyzer):
-        return True
-    return note_detail("setitem.aug_value")
+    return True
 
 def _membership_eligible(e: TpyBinOp, locals_: dict[str, TpyType],
                          analyzer) -> bool:
@@ -1625,7 +1599,6 @@ def _membership_eligible(e: TpyBinOp, locals_: dict[str, TpyType],
         return False
     lt = _operand_type(e.left, locals_, analyzer)
     return (_resolved_scalar(lt, analyzer)
-            and _expr_eligible(e.left, locals_, analyzer)
             and _witness("binop.membership"))
 
 def _binop_eligible(e: TpyBinOp, locals_: dict[str, TpyType], analyzer) -> bool:
@@ -1769,9 +1742,6 @@ def _binop_eligible(e: TpyBinOp, locals_: dict[str, TpyType], analyzer) -> bool:
     else:
         # An unhandled op family takes another emit path -> AST path.
         return False
-    if not (_expr_eligible(e.left, locals_, analyzer)
-            and _expr_eligible(e.right, locals_, analyzer)):
-        return False
     if e.op in _BITWISE_OPS:
         _witness("binop.bitwise")
     return True
@@ -1832,8 +1802,7 @@ def _unary_not_eligible(e: TpyUnaryOp, locals_: dict[str, TpyType],
     # (IntEnum) -- gen_truthy_expr's enum arms.
     if _enum_truthy_operand(e.operand, locals_, analyzer):
         return True
-    return (ot is not None and is_bool_type(ot)
-            and _expr_eligible(e.operand, locals_, analyzer))
+    return (ot is not None and is_bool_type(ot))
 
 def _is_len_native(e: TpyExpr) -> bool:
     """Whether `e` is the builtin `len(...)` call -- it resolves to the `tpy::__len__`
@@ -2060,6 +2029,16 @@ def _plain_free_callee_ok(e: TpyCall, analyzer) -> bool:
     kind = _free_callee_kind(e, analyzer)
     return kind is not None and kind[0] in ("plain", "imported")
 
+
+def _call_arity_ok(e: 'TpyCall | TpyMethodCall', fi) -> bool:
+    n = len(e.args)
+    if n == len(fi.params):
+        return True
+    if n != 0:
+        return False
+    return all(p.has_default and not p.is_variadic for p in fi.params)
+
+
 def _call_eligible(e: TpyCall, locals_: dict[str, TpyType], analyzer,
                    *, stmt_position: bool = False,
                    container_ret_ok: bool = False,
@@ -2084,9 +2063,7 @@ def _call_eligible(e: TpyCall, locals_: dict[str, TpyType], analyzer,
     if kind is None:
         return False
     fi = e.resolved_function_info
-    # Exact positional arity -- no omitted defaults, no varargs (the AST would
-    # synthesize the missing/packed args, which the slice does not).
-    if len(e.args) != len(fi.params):
+    if not _call_arity_ok(e, fi):
         return note_detail("call.arity_defaults")
     # In value position the result must be an eligible scalar, Char, or a
     # str-slice value (owned str returns by value, StrView by view -- both emit
@@ -2316,15 +2293,12 @@ def _generic_plain_args_ok(e: TpyCall, locals_: dict[str, TpyType],
                 # -- flush positions only.
                 if not temps_ok:
                     return note_detail("call.generic_arg_shape")
-                if not _expr_eligible(a, locals_, analyzer):
-                    return False
                 continue
             if isinstance(a, TpyName):
                 # An lvalue name binds the `const T&`/`T&` slot bare.
                 if a.name == "self" or a.name not in locals_:
                     return note_detail("call.generic_arg_shape")
-                if not (_resolved_scalar(locals_.get(a.name), analyzer)
-                        and _expr_eligible(a, locals_, analyzer)):
+                if not (_resolved_scalar(locals_.get(a.name), analyzer)):
                     return note_detail("call.generic_arg_shape")
                 continue
             return note_detail("call.generic_arg_shape")
@@ -2356,8 +2330,7 @@ def _shared_pass_through_arg(a: TpyExpr, ptype: 'TpyType | None',
     readonly system rejects a const violation upstream) stay admitted."""
     return ((_eligible_scalar(analyzer.get_expr_type(a))
              and not _member_valued_union_slot(a, ptype, analyzer)
-             and not _own_cascade_fires(ptype)
-             and _expr_eligible(a, locals_, analyzer))
+             and not _own_cascade_fires(ptype))
             or _own_scalar_rvalue_arg(a, ptype, locals_, analyzer)
             or _own_record_rvalue_arg(a, ptype, locals_, analyzer)
             or _float_literal_pass_through_arg(a, ptype, locals_, analyzer)
@@ -2404,13 +2377,11 @@ def _ptr_pass_through_arg(a: TpyExpr, ptype: 'TpyType | None',
     ownership cascade never fires for the by-value pointer slot (`own is
     None`), so both paths render the bare value. An `Own[...]` slot is not a
     PtrType after the unwraps (auto-move cascade -> AST), a union slot lifts
-    (-> AST), and a coerce-wrapped arg (e.g. a const-adding conversion the
-    sema spells) falls back via `_expr_eligible`'s coerce dispositions."""
+    (-> AST), and unsupported coerce-wrapped args reject during lowering."""
     if not _eligible_ptr_value(ptype if isinstance(ptype, TpyType) else None,
                                analyzer):
         return False
-    return (_eligible_ptr_value(analyzer.get_expr_type(a), analyzer)
-            and _expr_eligible(a, locals_, analyzer))
+    return (_eligible_ptr_value(analyzer.get_expr_type(a), analyzer))
 
 def _slice_ctor_pass_through_arg(a: TpyExpr, ptype: TpyType | None,
                                  locals_: dict[str, TpyType], analyzer) -> bool:
@@ -2457,19 +2428,18 @@ def _union_pass_through_arg(a: TpyExpr, ptype: TpyType | None,
     if not isinstance(a, TpyName) or a.name not in locals_:
         return False
     at = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(locals_[a.name])))
-    return at == ut and _expr_eligible(a, locals_, analyzer)
+    return at == ut
 
 def _value_union_temp_arg(a: TpyExpr, ptype: TpyType | None,
                           locals_: dict[str, TpyType],
                           narrowed: 'set[str] | frozenset[str]',
                           analyzer) -> bool:
-    """Gate arm for the value-union temp row -- the slot/shape verdict plus
-    the gate-side arg checks (`_expr_eligible`, the narrowed-name reject)."""
+    """Gate arm for the value-union temp row and narrowed-name reject."""
     if _value_union_temp_slot(a, ptype, analyzer) is None:
         return False
     if isinstance(a, TpyName) and a.name in narrowed:
         return False
-    return _expr_eligible(a, locals_, analyzer)
+    return True
 
 def _protocol_slot_arg(a: TpyExpr, ptype: 'TpyType | None',
                        locals_: dict[str, TpyType], analyzer, *,
@@ -2497,8 +2467,6 @@ def _protocol_slot_arg(a: TpyExpr, ptype: 'TpyType | None',
     if at is None:
         return False
     if isinstance(a, TpyName):
-        if not _expr_eligible(a, locals_, analyzer):
-            return False
         rvalue = False
     elif isinstance(a, TpyCall) and _record_ctor_call_eligible(a, locals_,
                                                                analyzer):
@@ -2541,7 +2509,7 @@ def _own_scalar_rvalue_arg(a: TpyExpr, ptype: TpyType | None,
     if isinstance(_peel_coerce(a), (TpyName, TpyFieldAccess)):
         return False
     at = analyzer.get_expr_type(a)
-    return (_eligible_scalar(at) and _expr_eligible(a, locals_, analyzer)
+    return (_eligible_scalar(at)
             and _witness("own.scalar_rvalue"))
 
 def _own_record_rvalue_arg(a: TpyExpr, ptype: TpyType | None,
@@ -2604,7 +2572,7 @@ def _own_lvalue_arg(a: TpyExpr, ptype: TpyType | None,
     if isinstance(a, TpyName):
         if a.name == "self" or a.name in narrowed or a.name not in locals_:
             return False
-    return _expr_eligible(a, locals_, analyzer)
+    return True
 
 def _readonly_record_ctor_arg(a: TpyExpr, ptype: TpyType | None,
                               locals_: dict[str, TpyType], analyzer) -> bool:
@@ -2637,9 +2605,7 @@ def _optional_ptr_arg(a: TpyExpr, ptype: TpyType | None,
     too: its read renames to the `T&` extraction alias inside `_lower_expr`,
     and the AST's `_gen_optional_ptr_arg` tail wraps the same alias
     (`&(__u)`) -- the render mirrors, so no narrowed reject (the face is
-    temp-free and reachable from `_expr_eligible`, where `narrowed` is not
-    threaded; a reject here but not there would be exactly the gate/lowering
-    drift the shared verdict exists to prevent)."""
+    temp-free; rejecting it here would drift from lowering's shared verdict)."""
     face = _optional_ptr_arg_face(a, ptype, analyzer)
     if face is None:
         return False
@@ -2652,7 +2618,7 @@ def _optional_ptr_arg(a: TpyExpr, ptype: TpyType | None,
     # 'name' / 'pass'
     if a.name not in locals_:
         return False
-    return _expr_eligible(a, locals_, analyzer)
+    return True
 
 def _union_member_lift_arg(a: TpyExpr, ptype: TpyType | None,
                            locals_: dict[str, TpyType], analyzer) -> bool:
@@ -2680,8 +2646,7 @@ def _union_member_lift_arg(a: TpyExpr, ptype: TpyType | None,
     if not isinstance(a, TpyName) or a.name not in locals_:
         return False
     at = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(locals_[a.name])))
-    return (any(at == m for m in ut.members if not is_void_like_type(m))
-            and _expr_eligible(a, locals_, analyzer))
+    return (any(at == m for m in ut.members if not is_void_like_type(m)))
 
 def _union_coerced_literal_arg(a: TpyExpr, ptype: TpyType | None,
                                locals_: dict[str, TpyType], analyzer) -> bool:
@@ -2701,7 +2666,7 @@ def _union_coerced_literal_arg(a: TpyExpr, ptype: TpyType | None,
     at = analyzer.get_expr_type(a)
     at = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
           if at is not None else None)
-    return at == ut and _expr_eligible(a, locals_, analyzer)
+    return at == ut
 
 def _own_union_ctor_arg(a: TpyExpr, ptype: TpyType | None,
                         locals_: dict[str, TpyType], analyzer) -> bool:
@@ -2755,8 +2720,7 @@ def _record_ctor_call_eligible(e: TpyCall, locals_: dict[str, TpyType],
     def _arg_ok(i: int, a: TpyExpr, p: ParamInfo) -> bool:
         pt = unwrap_readonly(unwrap_ref_type(p.type))
         if _eligible_scalar(pt):
-            return (_resolved_scalar(analyzer.get_expr_type(a), analyzer)
-                    and _expr_eligible(a, locals_, analyzer))
+            return (_resolved_scalar(analyzer.get_expr_type(a), analyzer))
         # A record-rvalue arg into a same-nominal CONST record slot binds the
         # inline prvalue expansion (temp-free, so admissible at any nesting
         # depth); a MUTATED slot needs the named-temp flush that only the
@@ -2786,15 +2750,13 @@ def _ctor_arity_ok(e: TpyCall, fi) -> bool:
     variadic slot has no positional default to fall back on, and more args than
     params is a resolution the raw-name shape never produces -> AST."""
     n = len(e.args)
-    params = fi.params
-    if n == len(params):
-        return True
-    if n > len(params):
+    if n > len(fi.params):
         return False
-    tail = params[n:]
-    if not all(p.has_default and not p.is_variadic for p in tail):
+    if not all(p.has_default and not p.is_variadic for p in fi.params[n:]):
         return False
-    return _witness("ctor.omit_defaults")
+    if n < len(fi.params):
+        return _witness("ctor.omit_defaults")
+    return True
 
 def _ctor_shape_ok(e: TpyCall, analyzer) -> bool:
     """A bare-name SAME-MODULE plain user-record constructor call in the
@@ -2945,17 +2907,14 @@ def _str_pass_through_arg(a: TpyExpr, ptype: TpyType | None,
         # `std::string(x)` otherwise) -- rendered by the coerce arm itself.
         at = analyzer.get_expr_type(a)
         if mutated:
-            return (isinstance(a, TpyName) and _is_string_owned(at)
-                    and _expr_eligible(a, locals_, analyzer))
+            return (isinstance(a, TpyName) and _is_string_owned(at))
         return ((_resolved_str_value(at, analyzer) is not None
-                 or _is_string_owned(at))
-                and _expr_eligible(a, locals_, analyzer))
+                 or _is_string_owned(at)))
     if not (isinstance(pt, NominalType) and (is_str_type(pt) or is_str_view_type(pt))):
         return False
     if isinstance(a, TpyStrLiteral):
         return True
-    return (_resolved_str_value(analyzer.get_expr_type(a), analyzer) is not None
-            and _expr_eligible(a, locals_, analyzer))
+    return (_resolved_str_value(analyzer.get_expr_type(a), analyzer) is not None)
 
 def _opt_str_shim_arg(a: TpyExpr, ptype: TpyType | None,
                       locals_: dict[str, TpyType], analyzer) -> bool:
@@ -2998,7 +2957,7 @@ def _str_owned_slot_arg(a: TpyExpr, ptype: TpyType | None,
     if isinstance(a, TpyStrLiteral):
         return True
     at = _resolved_str_value(analyzer.get_expr_type(a), analyzer)
-    if at is None or not _expr_eligible(a, locals_, analyzer):
+    if at is None:
         return False
     if is_str_view_type(at):
         return True
@@ -3028,8 +2987,7 @@ def _bytes_pass_through_arg(a: TpyExpr, ptype: TpyType | None,
     pt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(pt)))
     if not (isinstance(pt, NominalType) and (is_bytes_type(pt) or is_bytes_view_type(pt))):
         return False
-    return (_resolved_bytes_value(analyzer.get_expr_type(a), analyzer) is not None
-            and _expr_eligible(a, locals_, analyzer))
+    return (_resolved_bytes_value(analyzer.get_expr_type(a), analyzer) is not None)
 
 def _char_pass_through_arg(a: TpyExpr, ptype: TpyType | None,
                            locals_: dict[str, TpyType], analyzer) -> bool:
@@ -3045,8 +3003,7 @@ def _char_pass_through_arg(a: TpyExpr, ptype: TpyType | None,
         return False
     if isinstance(a, TpyStrLiteral):
         return len(a.value) == 1
-    return (_eligible_char(analyzer.get_expr_type(a))
-            and _expr_eligible(a, locals_, analyzer))
+    return (_eligible_char(analyzer.get_expr_type(a)))
 
 def _int_literal_bigint_arg(a: TpyExpr, ptype: TpyType | None,
                             locals_: dict[str, TpyType], analyzer) -> bool:
@@ -3062,7 +3019,7 @@ def _int_literal_bigint_arg(a: TpyExpr, ptype: TpyType | None,
     if pt is None:
         return False
     pt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(pt)))
-    return is_big_int_type(pt) and _expr_eligible(a, locals_, analyzer)
+    return is_big_int_type(pt)
 
 def _float_literal_pass_through_arg(a: TpyExpr, ptype: TpyType | None,
                                     locals_: dict[str, TpyType],
@@ -3072,14 +3029,14 @@ def _float_literal_pass_through_arg(a: TpyExpr, ptype: TpyType | None,
     repr(v) bare on both paths (gen_expr's TpyFloatLiteral double branch ==
     _emit_literal's float arm); a Float32 slot takes the `f` suffix via the
     `_slot_literal_retype` at `_lower_call_arg`'s tail. inf/nan literals
-    (`1e400`) are rejected by _expr_eligible's isfinite check."""
+    (`1e400`) reject during literal lowering."""
     if not isinstance(a, TpyFloatLiteral):
         return False
     pt = ptype if isinstance(ptype, TpyType) else None
     if pt is None:
         return False
     pt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(pt)))
-    return is_float_type(pt) and _expr_eligible(a, locals_, analyzer)
+    return is_float_type(pt)
 
 def _record_pass_through_arg(a: TpyExpr, ptype: TpyType | None,
                              locals_: dict[str, TpyType], analyzer) -> bool:
@@ -3121,8 +3078,7 @@ def _record_pass_through_arg(a: TpyExpr, ptype: TpyType | None,
     pt = unwrap_ref_type(unwrap_send_sync(ptype))
     if isinstance(pt, (ReadonlyType, OwnType)):
         return False
-    return ((pt == at or analyzer.registry.is_subclass_of(at, pt))
-            and _expr_eligible(a, locals_, analyzer))
+    return ((pt == at or analyzer.registry.is_subclass_of(at, pt)))
 
 def _scalar_ctor_call_eligible(e: TpyCall, locals_: dict[str, TpyType],
                                analyzer) -> bool:
@@ -3151,7 +3107,6 @@ def _scalar_ctor_call_eligible(e: TpyCall, locals_: dict[str, TpyType],
         return False
     return all(_ctor_arg_slot_ok(p.type, analyzer)
                and _resolved_scalar(analyzer.get_expr_type(a), analyzer)
-               and _expr_eligible(a, locals_, analyzer)
                for a, p in zip(e.args, fi.params))
 
 def _instantiation_call_eligible(e: TpyCall, locals_: dict[str, TpyType],
@@ -3180,9 +3135,6 @@ def _instantiation_call_eligible(e: TpyCall, locals_: dict[str, TpyType],
                     or not rfi.cpp_template
                     or not _eligible_scalar(_range_counter_type(a, analyzer))):
                 return note_detail("call.inst_range_shape")
-            if not all(_expr_eligible(ra, locals_, analyzer)
-                       for ra in a.args):
-                return False
             continue
         # A bare container name renders bare on both paths (no gen_call_arg
         # lift fires for the protocol slot); container locals in an eligible
@@ -3207,17 +3159,15 @@ def _slice_ctor_call_eligible(e: TpyCall, locals_: dict[str, TpyType],
     stub params are `Int32 | None` (value-repr Optional) slots, into which
     gen_call_arg passes every admitted arg bare: an in-range int literal / a
     fixed-int name renders itself, a `None` literal renders `std::nullopt` (the
-    value-repr Optional render, THIRLiteral's STORAGE-form None). Coerced
-    (widening / BigInt) bound sources fail `_expr_eligible`'s coerce gate and
-    stay on the AST path."""
+    value-repr Optional render, THIRLiteral's STORAGE-form None). Unsupported
+    coerced bounds reject during lowering."""
     fi = _template_init_call_fi(e)
     if fi is None:
         return False
     if not _slice_object_type(analyzer.get_expr_type(e)):
         return False
     return all(isinstance(a, TpyNoneLiteral)
-               or (_resolved_scalar(analyzer.get_expr_type(a), analyzer)
-                   and _expr_eligible(a, locals_, analyzer))
+               or (_resolved_scalar(analyzer.get_expr_type(a), analyzer))
                for a in e.args)
 
 def _method_receiver_type(recv: TpyExpr, locals_: dict[str, TpyType],
@@ -3744,8 +3694,7 @@ def _ptr_deref_recv_ok(e: TpyMethodCall, locals_: dict[str, TpyType],
         return (e.obj.name in locals_
                 and _eligible_ptr_value(locals_[e.obj.name], analyzer))
     if isinstance(e.obj, TpyFieldAccess):
-        return (_eligible_ptr_value(analyzer.get_expr_type(e.obj), analyzer)
-                and _expr_eligible(e.obj, locals_, analyzer))
+        return (_eligible_ptr_value(analyzer.get_expr_type(e.obj), analyzer))
     return False
 
 def _method_call_eligible(e: TpyMethodCall, locals_: dict[str, TpyType], analyzer,
@@ -3823,8 +3772,7 @@ def _method_call_eligible(e: TpyMethodCall, locals_: dict[str, TpyType], analyze
     fi = e.resolved_function_info
     if fi is None or not _plain_method_fi_ok(fi):
         return note_detail("method.fi_kind")
-    # Exact positional arity -- no omitted defaults, no varargs.
-    if len(e.args) != len(fi.params):
+    if not _call_arity_ok(e, fi):
         return note_detail("method.arity_defaults")
     # The declared binding type, not get_expr_type: a container-literal local's
     # use sites carry the pre-resolution PendingListType (the AST path unwraps it
@@ -3889,8 +3837,7 @@ def _method_call_eligible(e: TpyMethodCall, locals_: dict[str, TpyType], analyze
     # record NAME renders bare (inline_template -- push_back takes the lvalue),
     # a movable Own-param record name moves, a ctor rvalue binds bare.
     return all((_scalar_pass_through_slot(p.type, analyzer)
-                and _resolved_scalar(analyzer.get_expr_type(a), analyzer)
-                and _expr_eligible(a, locals_, analyzer))
+                and _resolved_scalar(analyzer.get_expr_type(a), analyzer))
                or _str_pass_through_arg(a, p.type, locals_, analyzer)
                or _str_owned_slot_arg(a, p.type, locals_, param_names, analyzer)
                or _bytes_pass_through_arg(a, p.type, locals_, analyzer)
@@ -4074,8 +4021,7 @@ def _record_method_call_eligible(e: TpyMethodCall, fi, locals_: dict[str, TpyTyp
             or (stmt_position and (ret is None or is_void_like_type(ret)))):
         return note_detail("method.ret_type")
     return all((_plain_scalar_slot(p.type, analyzer)
-                and _resolved_scalar(analyzer.get_expr_type(a), analyzer)
-                and _expr_eligible(a, locals_, analyzer))
+                and _resolved_scalar(analyzer.get_expr_type(a), analyzer))
                or _float_literal_pass_through_arg(a, p.type, locals_, analyzer)
                or _int_literal_bigint_arg(a, p.type, locals_, analyzer)
                or _str_pass_through_arg(a, p.type, locals_, analyzer)
@@ -4159,8 +4105,7 @@ def _view_method_call_eligible(e: TpyMethodCall, fi, locals_: dict[str, TpyType]
             or (stmt_position and (ret is None or is_void_like_type(ret)))):
         return note_detail("method.view.ret_type")
     return all((_scalar_pass_through_slot(p.type, analyzer)
-                and _resolved_scalar(analyzer.get_expr_type(a), analyzer)
-                and _expr_eligible(a, locals_, analyzer))
+                and _resolved_scalar(analyzer.get_expr_type(a), analyzer))
                or _str_pass_through_arg(a, p.type, locals_, analyzer)
                or _bytes_pass_through_arg(a, p.type, locals_, analyzer)
                or _char_pass_through_arg(a, p.type, locals_, analyzer)
@@ -4209,8 +4154,7 @@ def _str_list_method_iterable_ok(e: TpyMethodCall, locals_: dict[str, TpyType],
     if not is_list(st):
         return False
     return all((_scalar_pass_through_slot(p.type, analyzer)
-                and _resolved_scalar(analyzer.get_expr_type(a), analyzer)
-                and _expr_eligible(a, locals_, analyzer))
+                and _resolved_scalar(analyzer.get_expr_type(a), analyzer))
                or _str_pass_through_arg(a, p.type, locals_, analyzer)
                or _bytes_pass_through_arg(a, p.type, locals_, analyzer)
                or _char_pass_through_arg(a, p.type, locals_, analyzer)
@@ -4383,8 +4327,8 @@ def _wrap_print_form(a: TpyExpr, declared: dict[str, TpyType],
     `Dict/Set/ListPrinter` (Array shares ListPrinter), `TuplePrinter`, a
     record streaming raw via its emitted operator<<. The ONE routing fact
     shared by the gate and `_lower_print_arg`, so admission and form
-    selection cannot drift. NAMES only (call/subscript/field sources ride
-    `_expr_eligible`'s tail; the gate excludes pointer-locals); bytearray /
+    selection cannot drift. NAMES only; the gate excludes pointer-locals.
+    Bytearray /
     Span / dict-view / varargs printers stay AST; `self` renders `(*this)`,
     not the bare name -- excluded."""
     if not isinstance(a, TpyName) or a.name == "self":
@@ -4436,6 +4380,9 @@ def _print_arg_ok(a: TpyExpr, locals_: dict[str, TpyType], analyzer) -> bool:
         # BytesPrinter arm below. (Un-narrowed Optional[str] already routed.)
         return note_detail("print.optstr")
     at = analyzer.get_expr_type(a)
+    expr_ok = (_field_value_reject(a, locals_, analyzer) is None
+               if isinstance(a, TpyFieldAccess)
+               else True)
     return ((_resolved_scalar(at, analyzer) or _eligible_char(at)
              # A tpy-defined enum streams via its emitted operator<< (RAW);
              # an @native enum takes `::tpy::__repr__` (PrintForm.REPR).
@@ -4443,7 +4390,7 @@ def _print_arg_ok(a: TpyExpr, locals_: dict[str, TpyType], analyzer) -> bool:
              or _resolved_str_value(at, analyzer) is not None
              or _resolved_bytes_value(at, analyzer) is not None  # BytesPrinter
              or _is_string_owned(at))  # a concat result / String local: raw <<
-            and _expr_eligible(a, locals_, analyzer))
+            and expr_ok)
 
 def _print_eligible(e: TpyCall, locals_: dict[str, TpyType], analyzer) -> bool:
     """A `print(<args>)` in the no-kwargs common-arg subset (see
@@ -4545,7 +4492,10 @@ def _fstring_eligible(e: TpyFString, locals_: dict[str, TpyType],
         # An owned-str FIELD arg formats bare like a str name (the wrap
         # table's str row); the format sink is read-only, so no form seam
         # fires on the STORAGE member read.
-        if not (_expr_eligible(part.expr, locals_, analyzer)
+        expr_ok = (_field_value_reject(part.expr, locals_, analyzer) is None
+                   if isinstance(part.expr, TpyFieldAccess)
+                   else True)
+        if not (expr_ok
                 or (_str_field_value_read(part.expr, locals_, analyzer)
                     and _witness("fstr.str_field"))):
             return False
@@ -4554,168 +4504,27 @@ def _fstring_eligible(e: TpyFString, locals_: dict[str, TpyType],
             return note_detail("fstring.arg_wrap")
     return True
 
-def _expr_eligible(e: TpyExpr, locals_: dict[str, TpyType], analyzer) -> bool:
-    """Not a total predicate: some admitted shapes (numeric literals, unopened
-    expression kinds) are only rejected by `_lower_expr`, which raises. A caller
-    that admits on this alone must still route the node through `_lower_expr`
-    inside a `ThirUnsupported` boundary, or the reject escapes as a crash."""
-    if isinstance(e, TpyName):
-        # A name outside the local/param set is an unseeded global: a
-        # non-value (pointer-slot) / Optional / native / cross-module global
-        # whose read the slice does not yet materialize (value-family
-        # same-module globals seed into scope at lower_function and never
-        # reach this reject). Reject -> stays on the AST path.
-        # A narrowing-divergent union read (declared union, member-typed read)
-        # is a pre-existing AST miscompile -> AST path (see the helper).
-        if e.name not in locals_:
-            return note_detail("name.global_read")
-        # A widened-ctor-param binding kind with no read arm (value-repr
-        # Optional / Own over a non-routed payload) -- see the helper.
-        unrouted = _unrouted_binding_read(locals_.get(e.name), analyzer)
-        if unrouted is not None:
-            return note_detail(unrouted)
-        if _value_opt_scalar_name(e, locals_, analyzer) is not None and \
-                isinstance(unwrap_readonly(analyzer.get_expr_type(e)),
-                           OptionalType):
-            # An UN-narrowed value-repr Optional[scalar] read reaching a value
-            # position: the AST emits `::tpy::deref_optional_check(p)` (unproven,
-            # panics on None) -- a target-driven runtime deref this cell defers.
-            # Only the NARROWED read (`(*p)`, rt already the inner scalar) routes
-            # here; the None-test / truthiness / bare-pass ride their own gates.
-            return note_detail("name.optval_unproven_read")
-        if _value_opt_view_name(e, locals_, analyzer) is not None and \
-                isinstance(unwrap_readonly(analyzer.get_expr_type(e)),
-                           OptionalType):
-            # The view twin of the arm above: an UN-narrowed value-repr
-            # Optional[str]/Optional[bytes] read in a value position is the AST's
-            # `deref_optional_check(s)` -- deferred. Only the NARROWED read
-            # (`(*s)`/`(*b)`, rt the inner view) routes past here; the None-test /
-            # truthiness / arg-shim ride their own gates.
-            return note_detail("name.optstr_unproven_read")
-        return not _union_binding_divergent(e, locals_, analyzer)
-    if isinstance(e, TpyIntLiteral):
-        # Lowering owns the bare-render range check.
-        return True
-    if isinstance(e, TpyFloatLiteral):
-        # Lowering owns the finite-value check.
-        return True
-    if isinstance(e, TpyBoolLiteral):
-        return True  # True/False -> true/false; no target-type dependence
-    if isinstance(e, TpyStrLiteral):
-        # const char[N] via cpp_string_literal_expr -- implicitly convertible to
-        # every str-slice slot (string_view AND string), so never wrapped. The
-        # positions that reach here are gated by their slot checks (a str-slice
-        # decl init / compare operand / call arg / print arg / return value).
-        return True
-    if isinstance(e, TpyBytesLiteral):
-        # Unlike a str literal, the render is TARGET-dependent (owned vector vs
-        # static-storage span), so every admitting position threads the owned
-        # flag at lowering: decl inits/reassigns and returns key on the resolved
-        # binding/return type, call args on the param slot (the gen_call_arg
-        # span pin), and the target-less positions (print args, compare
-        # operands) render owned -- gen_expr's default arm. Positions outside
-        # that set reject the literal on their own type checks (a bytes value
-        # is not a scalar / str / container).
-        return True
-    if isinstance(e, TpyFieldAccess):
-        # Type-level enum member access (`Color.RED` -> `Color::RED`) -- the
-        # sema-stamped fact, not a field read; the receiver is the enum TYPE
-        # name, never a local (sema's namespace lookup already handled any
-        # shadowing).
-        if e.enum_member_of is not None:
-            return _eligible_enum(e.enum_member_of, analyzer) is not None
-        # Enum instance property read (`c.value` / `c.name`): the receiver is
-        # any eligible enum-valued expr (name, member access, field read).
-        if _enum_prop_wrap(e, analyzer) is not None:
-            return _expr_eligible(e.obj, locals_, analyzer)
-        # A scalar or Char field read off an F1-record receiver (`recv.field`,
-        # value form -- the access render is type-independent, and a Char value
-        # lands only in positions whose own gates admit it) or off a pointer-repr
-        # Optional borrow name (proven -> `p->field` via _field_receiver_ok;
-        # unproven -> `::tpy::deref_check(p).field` via _optional_checked_field).
-        # The non-value field source for a borrow-local binding is handled in the
-        # var-decl branch, not here -- a non-value field read is not a value
-        # expression.
-        ft = analyzer.get_expr_type(e)
-        if not (_eligible_scalar(ft) or _eligible_char(ft)
-                or _eligible_enum(ft, analyzer) is not None
-                or _is_type_param_slot(ft)
-                or _eligible_ptr_value(ft, analyzer)):
-            return note_detail("field.result_type")
-        return (_field_receiver_ok(e, locals_, analyzer)
-                or _optional_checked_field(e, locals_, analyzer)
-                or _field_over_subscript_ok(e, locals_, analyzer)
-                or _optional_field_over_subscript_ok(e, locals_, analyzer)
-                or _field_over_container_subscript_ok(e, locals_, analyzer)
-                or _field_over_field_ok(e, locals_, analyzer)
-                or note_detail("field.receiver_shape"))
-    if isinstance(e, TpySubscript):
-        # A value-result tuple subscript read `t[N]` (`std::get<N>(t)`) off an
-        # eligible tuple receiver; a container subscript read `c[i]`
-        # (`::tpy::__getitem__(c, i)` / bounds-safe operator[]) off a
-        # list[scalar] / dict[int, scalar] receiver; a str subscript `s[i]`
-        # (-> Char, same emit shapes); a bytes subscript `b[i]` (-> UInt8,
-        # `::tpy::bytes_getitem`); or a str/bytes slice (`::tpy::str_slice` /
-        # `::tpy::bytes_slice` views, the stepped owned variants).
-        return (_tuple_subscript_value_read(e, locals_, analyzer) is not None
-                or _container_subscript_value_read(e, locals_, analyzer)
-                or _str_subscript_char_read(e, locals_, analyzer)
-                or _bytes_subscript_read(e, locals_, analyzer)
-                or _str_slice_read(e, locals_, analyzer)
-                or note_detail(_subscript_read_reject(e, locals_, analyzer)))
-    if isinstance(e, TpyFString):
-        # An owned-str-producing `std::format(...)` / `std::string("...")`
-        # expression (STORAGE form) -- composes into the S1 owned-str sinks
-        # (decl init, return, print/call arg, compare operand) bare.
-        return _fstring_eligible(e, locals_, analyzer)
-    if isinstance(e, TpyBinOp):
-        return (_binop_eligible(e, locals_, analyzer)
-                or note_detail(f"binop.shape.{e.op}"
-                               f"{_binop_operand_suffix(e, locals_, analyzer)}"))
-    if isinstance(e, TpyUnaryOp):
-        # A negated int literal (`-3`) folds to a plain literal on both paths
-        # (the AST's _gen_unaryop literal-negation branch); a negated FLOAT
-        # literal takes the resolved __neg__ template (`-(1.5)`), a render the
-        # slice does not reproduce -> AST path.
-        if _folded_neg_int_literal(e, analyzer) is not None:
-            return True
-        # IntEnum negation: `(-static_cast<U>(p))`, a plain underlying-int
-        # value composing in any scalar sink.
-        if (_enum_neg_wrap(e, analyzer) is not None
-                and _expr_eligible(e.operand, locals_, analyzer)):
-            return True
-        return _unary_not_eligible(e, locals_, analyzer)
-    if isinstance(e, TpyChainedCompare):
-        return _chained_compare_eligible(e, locals_, analyzer)
-    if isinstance(e, TpyCall):
-        # A same-module free-function call, a builtin scalar / slice-object
-        # type-constructor call (`Int32(x)` / `basic_slice(1, 3)`, emitted via
-        # its resolved __init__ @cpp_template), or an enum value lookup
-        # (`E(x)` -> `::tpy::EnumUtil<E>::from_value(x)`).
-        return (_call_eligible(e, locals_, analyzer)
-                or _scalar_ctor_call_eligible(e, locals_, analyzer)
-                or _slice_ctor_call_eligible(e, locals_, analyzer)
-                or _enum_from_value_eligible(e, locals_, analyzer)
-                or _cast_passthrough_eligible(e, locals_, analyzer)
-                or _macro_expansion_eligible(e, locals_, analyzer))
-    if isinstance(e, TpyMethodCall):
-        # A value-scalar-returning container method call (`x = xs.pop()`).
-        return _method_call_eligible(e, locals_, analyzer)
-    if isinstance(e, TpyCoerce):
-        # The literal-into-typed-slot pair, the str-family cross-type
-        # coercions (position-disposed: identity passthrough vs the
-        # `std::string(x)` materialization -- see _coerce_disposition), and
-        # the scalar-cast template family (float widths / fixed-int widening,
-        # rendered through the `{0}` wrap). Other coercions (bigint,
-        # optional-wrap, Char) take emit paths the slice does not mirror.
-        return (_coerce_disposition(e) is not None
-                and _expr_eligible(e.expr, locals_, analyzer))
-    if isinstance(e, TpyIfExpr):
-        # `a if c else b` -> `((cond) ? (then) : (else))` (_gen_if_expr).
-        return _if_expr_eligible(e, locals_, analyzer)
-    # Unopened expression kinds enter lowering; its dispatch tail rejects
-    # them and the body boundary discards the partial attempt.
-    return True
+def _field_value_reject(e: TpyFieldAccess, locals_: dict[str, TpyType],
+                        analyzer) -> str | None:
+    if e.enum_member_of is not None:
+        return (None if _eligible_enum(e.enum_member_of, analyzer) is not None
+                else "field.enum_member")
+    if _enum_prop_wrap(e, analyzer) is not None:
+        return None
+    ft = analyzer.get_expr_type(e)
+    if not (_eligible_scalar(ft) or _eligible_char(ft)
+            or _eligible_enum(ft, analyzer) is not None
+            or _is_type_param_slot(ft)
+            or _eligible_ptr_value(ft, analyzer)):
+        return "field.result_type"
+    if (_field_receiver_ok(e, locals_, analyzer)
+            or _optional_checked_field(e, locals_, analyzer)
+            or _field_over_subscript_ok(e, locals_, analyzer)
+            or _optional_field_over_subscript_ok(e, locals_, analyzer)
+            or _field_over_container_subscript_ok(e, locals_, analyzer)
+            or _field_over_field_ok(e, locals_, analyzer)):
+        return None
+    return "field.receiver_shape"
 
 def _if_expr_eligible(e: TpyIfExpr, locals_: dict[str, TpyType],
                       analyzer) -> bool:
@@ -4739,8 +4548,7 @@ def _if_expr_eligible(e: TpyIfExpr, locals_: dict[str, TpyType],
         return note_detail("ifexpr.result_type")
     if not _condition_eligible(e.condition, locals_, analyzer):
         return note_detail("ifexpr.cond")
-    return (_expr_eligible(e.then_expr, locals_, analyzer)
-            and _expr_eligible(e.else_expr, locals_, analyzer))
+    return True
 
 def _condition_eligible(cond: TpyExpr, declared: dict[str, TpyType], analyzer) -> bool:
     # An `if`/`while` condition: a bare bool local/param (`if flag:`), a scalar
@@ -4789,8 +4597,7 @@ def _condition_eligible(cond: TpyExpr, declared: dict[str, TpyType], analyzer) -
         rt = analyzer.get_expr_type(cond)
         if rt is None or not is_bool_type(rt):
             return note_detail("cond.field_nonbool")
-        return (_expr_eligible(cond, declared, analyzer)
-                and _witness("cond.bool_field"))
+        return (_witness("cond.bool_field"))
     if isinstance(cond, TpyBinOp) and cond.op in (_COMPARE_OPS | _LOGICAL_OPS
                                                   | _IS_OPS | _MEMBERSHIP_OPS):
         # A membership condition (`if n in xs:`) is bool-result, and a bool's
@@ -4826,23 +4633,6 @@ def _condition_eligible(cond: TpyExpr, declared: dict[str, TpyType], analyzer) -
                 and _witness("ifexpr.cond_pos"))
     return note_detail("cond." + expr_kind_tag(cond).removeprefix("expr."))
 
-def _stmt_value_temps_call(e: TpyExpr, ws: _WalkState, analyzer) -> bool:
-    """Re-try a DIRECT statement-value call (free or method) with the
-    arg-temp rows admitted (`temps_ok`). Only the flushable statement
-    positions call this -- expr stmt / var-decl init / name assign /
-    scalar field write / subscript write / return, where the AST's single
-    pre-statement flush point places the `__tmp_N` decls; a nested call (a
-    binop operand, a print arg, another call's arg) walks `_expr_eligible`
-    and never admits temps, mirroring lowering's non-propagating
-    `temp_args`."""
-    if isinstance(e, TpyMethodCall):
-        return _method_call_eligible(e, ws.declared, analyzer, temps_ok=True,
-                                     narrowed=ws.narrowed)
-    return (isinstance(e, TpyCall)
-            and _call_eligible(e, ws.declared, analyzer, temps_ok=True,
-                               narrowed=ws.narrowed))
-
-
 def _tuple_literal_ok(e: TpyExpr, slot: 'TupleType',
                       declared: dict[str, TpyType], analyzer) -> bool:
     """A value-tuple literal into a fully-targeted value-tuple slot -- the
@@ -4868,21 +4658,17 @@ def _tuple_literal_element_ok(x: TpyExpr, slot_el: TpyType,
                               declared: dict[str, TpyType], analyzer) -> bool:
     """One tuple-literal element against its slot. A nested value-tuple slot
     requires a nested literal source (spelled recursively). A value-`Optional`
-    slot admits a bare `None` (`std::nullopt`) or an eligible scalar value
-    source. Every other slot (scalar / owned-str) rides `_expr_eligible`, so
-    the narrow sinks keep their exact prior behaviour -- these branches only
-    fire on the widened return slot's element types."""
+    slot admits a bare `None` (`std::nullopt`) or a scalar value source. Other
+    element admission happens during lowering."""
     su = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(slot_el)))
     if isinstance(su, TupleType):
         return (_tuple_literal_ok(x, su, declared, analyzer)
                 and _witness("ret.tuple_nested_elem"))
     if isinstance(su, OptionalType) and not su.uses_pointer_repr():
-        ok = (isinstance(x, TpyNoneLiteral)
-              or _expr_eligible(x, declared, analyzer))
         # An `Optional[str]` inner takes a distinct face: a view source rides the
         # `std::string(view)` wrap `_lower_container_elem` threads through the
         # Optional slot, where the scalar inner lands bare.
         if _resolved_str_value(su.inner, analyzer) is not None:
-            return ok and _witness("ret.tuple_opt_str_elem")
-        return ok and _witness("ret.tuple_opt_elem")
-    return _expr_eligible(x, declared, analyzer)
+            return _witness("ret.tuple_opt_str_elem")
+        return _witness("ret.tuple_opt_elem")
+    return True

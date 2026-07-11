@@ -136,8 +136,8 @@ def test_constructor_lowering_reject_falls_back():
 
 
 def test_base_init_arg_lowering_reject_falls_back():
-    # A base-init arg is admitted by TYPE (`_base_init_arg_ok` -> `_expr_eligible`),
-    # so a structurally-unhandled scalar shape reaches `_lower_expr` and only rejects
+    # A base-init arg is admitted by TYPE (`_base_init_arg_ok`), so a
+    # structurally-unhandled scalar shape reaches `_lower_expr` and only rejects
     # there -- it must land on the ctor's fallback boundary, not escape as a crash.
     compiler, modules = _compile(
         "from tpy import Int32\n"
@@ -576,6 +576,8 @@ def test_detail_composes_into_stmt_tag():
         # A fresh statement clears the slot: bare shape again.
         begin_stmt()
         assert stmt_reject_reason(stmt) == "stmt.expr_stmt"
+        assert stmt_reject_reason(
+            stmt, "name.global_read") == "stmt.expr_stmt:name.global_read"
         # A landmark tag stands alone -- no detail suffix.
         note_detail("call.imported_symbol")
         comp_stmt = _compile(

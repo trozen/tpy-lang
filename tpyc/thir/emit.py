@@ -490,8 +490,8 @@ def _emit_comprehension(e: 'THIRComprehension', state: _EmitState) -> str:
         # The array_from_index RANGE arm (_gen_array_comprehension): sema
         # proved literal bounds, so start/step inline as index arithmetic
         # inside the per-index lambda; no `({` prelude, no reserve, and the
-        # element renders directly after the binding (plain-`_expr_eligible`
-        # elements flush no temps).
+        # element renders directly after the binding (this arm admits no
+        # temp-producing elements).
         n = state.next_loop_index()
         idx = f"{e.counter_cpp}(__i_{n})"
         if e.range_start is None:

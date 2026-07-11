@@ -310,8 +310,8 @@ deferred (self-contained) / blocked-on-`<rung>`.
   `optional_to_ptr` field lift / ctor-rvalue `&(__tmp_N)` -- incl.
   NARROWED union subjects, which mirror as `&(<alias / inline get>)` on
   both paths (the review-round fix: the temp-free name face is
-  reachable from `_expr_eligible`, where `narrowed` is not threaded, so
-  the face must mirror rather than reject); readonly-slot
+  lowered directly, so the face must mirror rather than reject);
+  readonly-slot
   ctor rvalues route bare (incr 63 -- the ref-param temp arm keys on
   `is_ref_param()`, which the readonly wrapper defeats; the old
   "`const A` temp" note was wrong, probe-verified); field writes are the
@@ -367,7 +367,7 @@ deferred (self-contained) / blocked-on-`<rung>`.
   (the deep-const threading differs between the AST's own-record and
   inherited first-pass arg loops), coerce-wrapped lvalues into Own slots
   (the AST's rendered-identity `needs_copy` split), record field reads
-  into Own slots (not `_expr_eligible`), `Own[T] | None` slots
+  into Own slots (unsupported during lowering), `Own[T] | None` slots
   (`ptr_to_optional[_move]` wrap arms), borrow-returning callee args
   (copy-through-temp), the `Own[Opt[P_ref]]` param lift at optional-ptr
   slots, and subscript sources. Two structural notes for future rows:
@@ -1335,7 +1335,7 @@ shared `_comp_route` computes the gate/lowering fact (discipline #6).
 Two structural notes: (1) the node is THIR's first multi-line
 EXPRESSION render -- inner lines indent off the new
 `_EmitState.stmt_indent_level`, stamped per statement; (2) elements
-and filters gate through the PLAIN `_expr_eligible` /
+lower through ordinary `_lower_expr`, while filters use
 `_condition_eligible` (no `temp_args` opt-in), so no arg-temp can
 arise inside the loop and the scoped `_emit_iter_temps` flush seam
 stays un-mirrored until the C3/C4 rows. Deferred (the approved

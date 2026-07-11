@@ -133,7 +133,6 @@ from .context import (
 )
 from .expr_gates import (
     _container_literal_ok,
-    _expr_eligible,
     _is_record_rvalue_source,
     _nondef_ctor_field,
     _ptr_union_source_ok,
@@ -212,8 +211,7 @@ def _f1_param_eligible(ptype: TpyType | None, analyzer) -> bool:
     fully-concrete element/key/value -- `_container_param_renders`; the by-ref
     (`T&`/`const T&`) / by-value-span param signature is AST-emitted and
     type-keyed, so it renders byte-identically for every element type, and every
-    body USE of the param is checked by the statement-lowering guards and
-    `_expr_eligible`, which reject any read a given element does not route), a
+    body USE of the param is checked by statement and expression lowering), a
     pointer-repr `Optional[F1-record]`
     (`A | None` -> a borrow `A*` / `const A*`; sema rejects its reassignment, so
     no rebind machinery arises), a value-repr `Optional[cheap scalar]`
@@ -810,8 +808,7 @@ def _ctor_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
     `copy()` is unwrapped before the Optional check too (so `self.opt = copy(m)`
     routes like the record arm). Further small value families:
 
-      * **Ptr[T]** -- a `None` source (`p(nullptr)`) on top of the
-        `_expr_eligible` sources.
+      * **Ptr[T]** -- a `None` source (`p(nullptr)`).
       * **pointer-repr union** (F4 U2): the own-param move, `None`
         (`u(std::monostate{})`), a borrow ptr-variant name
         (`to_value_variant`), or a member-record ctor rvalue (`u(A(3))`).
@@ -860,12 +857,12 @@ def _ctor_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
         if _eligible_char(ftype) and isinstance(stmt.value, TpyStrLiteral):
             return False
         # `self.p = None` into a Ptr[T] field renders `p(nullptr)` --
-        # pointee-independent, so it needs no _expr_eligible source arm.
+        # pointee-independent.
         if (_eligible_ptr_value(ftype, analyzer)
                 and isinstance(_unwrap_copy(stmt.value, analyzer),
                                TpyNoneLiteral)):
             return True
-        return _expr_eligible(stmt.value, declared, analyzer)
+        return True
     view_t = _resolved_str_value(ftype, analyzer)
     if view_t is None:
         view_t = _resolved_bytes_value(ftype, analyzer)
@@ -943,9 +940,8 @@ def _ctor_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
             peeled = peeled.expr
         if isinstance(peeled, TpyNoneLiteral):
             return True
-        return (isinstance(peeled, (TpyIntLiteral, TpyFloatLiteral,
-                                    TpyBoolLiteral, TpyName))
-                and _expr_eligible(stmt.value, declared, analyzer))
+        return isinstance(peeled, (TpyIntLiteral, TpyFloatLiteral,
+                                   TpyBoolLiteral, TpyName))
     ft_tuple = _f1_tuple(ftype, analyzer)
     if ft_tuple is not None:
         # F3: a borrow pointer-repr tuple param stores via `tuple_to_storage`
@@ -1133,10 +1129,8 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
     lc.prescan.native_globals = native_globals
     lc.prescan.global_readonly, lc.prescan.global_cpp = _seed_readonly_globals(
         init_method, analyzer, declared, native_globals)
-    # Every lowering call sits inside this boundary: a gate admits a shape by TYPE
-    # (`_base_init_arg_ok`) or defers the shape check to lowering (`_expr_eligible`'s
-    # tail), so any lowering call can raise -- a raise outside here would crash the
-    # compile instead of falling back.
+    # Every lowering call sits inside this boundary: expression admission can
+    # raise, and a raise outside here would crash instead of falling back.
     try:
         # Base initializers (`super().__init__` / `BaseN.__init__`), sorted by parent
         # declaration order (M3d); None if any is outside the slice -> AST path.
@@ -1320,7 +1314,7 @@ def _base_init_arg_ok(a: TpyExpr, declared: dict[str, TpyType], lc: _LowerCtx) -
     analyzer = lc.analyzer
     at = analyzer.get_expr_type(a)
     if _eligible_scalar(at):
-        return _expr_eligible(a, declared, analyzer)
+        return True
     if isinstance(a, (TpyStrLiteral, TpyNoneLiteral)):
         return True
     if isinstance(a, TpyIntLiteral):
@@ -1341,7 +1335,8 @@ def _base_init_arg_ok(a: TpyExpr, declared: dict[str, TpyType], lc: _LowerCtx) -
             vt = vt.inner
     return _f1_record(vt, analyzer)
 
-def _lower_base_init_arg(a: TpyExpr, lc: _LowerCtx) -> THIRExpr:
+def _lower_base_init_arg(a: TpyExpr, lc: _LowerCtx,
+                         declared: dict[str, TpyType]) -> THIRExpr:
     """Lower one admitted base-init arg. A bare `None` has no generic
     `_lower_expr` arm (its render is always slot-derived elsewhere), so it
     lowers here to the VALUE-form None literal (`nullptr` -- the AST's
@@ -1350,7 +1345,7 @@ def _lower_base_init_arg(a: TpyExpr, lc: _LowerCtx) -> THIRExpr:
     if isinstance(a, TpyNoneLiteral):
         return THIRLiteral(result_type=lc.analyzer.get_expr_type(a),
                            value=None, loc=getattr(a, "loc", None))
-    return _lower_expr(a, lc)
+    return _lower_expr(a, lc, declared)
 
 def _lower_base_init(stmt: TpyStmt, declared: dict[str, TpyType],
                      lc: _LowerCtx) -> 'tuple[THIRBaseInit, TpyType] | None':
@@ -1379,7 +1374,8 @@ def _lower_base_init(stmt: TpyStmt, declared: dict[str, TpyType],
             _witness("baseinit.nonscalar_arg")
             break
     return (THIRBaseInit(base_cpp=parent_type.to_cpp(),
-                         args=tuple(_lower_base_init_arg(a, lc) for a in expr.args)),
+                         args=tuple(_lower_base_init_arg(a, lc, declared)
+                                    for a in expr.args)),
             parent_type)
 
 def _lower_ctor_mil_init(stmt: TpyAssign, own_param_names: set[str],
@@ -1422,7 +1418,11 @@ def _lower_ctor_mil_init(stmt: TpyAssign, own_param_names: set[str],
                                         TpySetLiteral))
                  else "mil.container_name")
     if _is_move_source(source, lc, own_param_names):
-        return THIRMilInit(field_cpp=field_cpp, value=_lower_expr(source, lc), move=True)
+        return THIRMilInit(
+            field_cpp=field_cpp,
+            value=_lower_expr(
+                source, lc, declared, allow_unrouted_name=True),
+            move=True)
     if (_eligible_ptr_value(ftype, analyzer)
             and isinstance(source, TpyNoneLiteral)):
         # None into a `Ptr[T]` cell: a non-STORAGE None renders `nullptr`.
@@ -1434,7 +1434,7 @@ def _lower_ctor_mil_init(stmt: TpyAssign, own_param_names: set[str],
             or _eligible_enum(ftype, analyzer) is not None):
         return THIRMilInit(field_cpp=field_cpp,
                            value=_slot_literal_retype(
-                               _lower_expr(stmt.value, lc), ftype))
+                               _lower_expr(stmt.value, lc, declared), ftype))
     bytes_t = _resolved_bytes_value(ftype, analyzer)
     if bytes_t is not None:
         _witness("mil.bytes_field")
@@ -1444,10 +1444,10 @@ def _lower_ctor_mil_init(stmt: TpyAssign, own_param_names: set[str],
             # spell it through the S6 STORAGE convert (the identical
             # `::tpy::bytes_copy(...)` render) over the inner name.
             v = THIRFormConvert(result_type=bytes_t,
-                                value=_lower_expr(source.expr, lc),
+                                value=_lower_expr(source.expr, lc, declared),
                                 form=Form.STORAGE, move=False, loc=loc)
         else:
-            v = _lower_expr(source, lc)
+            v = _lower_expr(source, lc, declared)
             # A view (span) source into the owned vector field copies via the
             # AST's `_view_source_to_owned` chokepoint -- vector has no span
             # ctor; owned sources (literal / `bytes()` rvalue) land bare.
@@ -1460,7 +1460,7 @@ def _lower_ctor_mil_init(stmt: TpyAssign, own_param_names: set[str],
         # string_view ctor fires in the MIL direct-init (the AST adds no wrap
         # there); a sema `strview_to_str` coerce materializes itself.
         _witness("mil.str_field")
-        return THIRMilInit(field_cpp=field_cpp, value=_lower_expr(source, lc))
+        return THIRMilInit(field_cpp=field_cpp, value=_lower_expr(source, lc, declared))
     pu = _eligible_ptr_union(ftype, analyzer)
     if pu is not None:
         # F4 U2 cells: monostate `None`; a borrow ptr-variant name lifting via
@@ -1473,11 +1473,11 @@ def _lower_ctor_mil_init(stmt: TpyAssign, own_param_names: set[str],
                                       form=Form.STORAGE, loc=loc)
         elif isinstance(source, TpyName):
             _witness("mil.union_lift")
-            v = THIRFormConvert(result_type=ftype, value=_lower_expr(source, lc),
+            v = THIRFormConvert(result_type=ftype, value=_lower_expr(source, lc, declared),
                                 form=Form.STORAGE, move=False, loc=loc)
         else:
             _witness("mil.union_rvalue")
-            v = _lower_expr(source, lc)
+            v = _lower_expr(source, lc, declared)
         return THIRMilInit(field_cpp=field_cpp, value=v)
     vu = _eligible_value_union(ftype)
     if vu is not None:
@@ -1496,7 +1496,7 @@ def _lower_ctor_mil_init(stmt: TpyAssign, own_param_names: set[str],
                                value=THIRLiteral(result_type=vu, value=None,
                                                  form=Form.STORAGE, loc=loc))
         _witness("mil.value_union")
-        v = _lower_expr(source, lc)
+        v = _lower_expr(source, lc, declared)
         if isinstance(v, THIRLiteral) and isinstance(v.value, (int, float)):
             v = replace(v, result_type=vu)
         return THIRMilInit(field_cpp=field_cpp, value=v)
@@ -1508,30 +1508,34 @@ def _lower_ctor_mil_init(stmt: TpyAssign, own_param_names: set[str],
         return THIRMilInit(
             field_cpp=field_cpp,
             value=THIRFormConvert(result_type=ftype,
-                                  value=_lower_expr(stmt.value, lc),
+                                  value=_lower_expr(stmt.value, lc, declared),
                                   form=Form.STORAGE, move=False, loc=loc))
     vt = _value_tuple(ftype, analyzer)
     if vt is not None:
         if isinstance(source, TpyTupleLiteral):
             _witness("mil.value_tuple_literal")
             return THIRMilInit(field_cpp=field_cpp,
-                               value=_lower_tuple_literal(source, vt, lc))
+                               value=_lower_tuple_literal(source, vt, lc, declared))
         _witness("mil.value_tuple_name")
-        return THIRMilInit(field_cpp=field_cpp, value=_lower_expr(source, lc))
+        return THIRMilInit(field_cpp=field_cpp, value=_lower_expr(source, lc, declared))
     if isinstance(ftype, OptionalType):
         if isinstance(source, TpyNoneLiteral):
             _witness("mil.optional_none")
             v: THIRExpr = THIRLiteral(result_type=ftype, value=None,
                                       form=Form.STORAGE, loc=loc)
         elif _is_borrow_ptr_local(source, declared, set()):
-            v = THIRFormConvert(result_type=ftype, value=_lower_expr(source, lc),
+            v = THIRFormConvert(result_type=ftype, value=_lower_expr(source, lc, declared),
                                 form=Form.STORAGE, move=False, loc=loc)
         else:
             # A record-value source constructs the optional directly -- no
             # ptr_to_optional (that lifts a borrow `T*`, not a record prvalue/copy).
-            v = _lower_expr(source, lc)
+            v = _lower_expr(source, lc, declared)
         return THIRMilInit(field_cpp=field_cpp, value=v)
-    return THIRMilInit(field_cpp=field_cpp, value=_lower_expr(source, lc))
+    return THIRMilInit(
+        field_cpp=field_cpp,
+        value=_lower_expr(
+            source, lc, declared,
+            field_prechecked=isinstance(source, TpyFieldAccess)))
 
 def _method_self_type(record, analyzer) -> 'TpyType | None':
     """The `self` receiver type for an M1 method / ctor feed. The qname is

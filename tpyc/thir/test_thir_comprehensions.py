@@ -287,11 +287,9 @@ class TestComprehensionRoutes:
         thir = _lower_ctx(src)
         assert _fn(thir, "f") is not None
 
-    def test_record_ctor_element_slot_admitted_expr_gated(self):
-        # The compositional boundary: the `list[Inner]` record slot IS admitted
-        # by _comp_elem_slot_ok, but the constructor-call ELEMENT expr is not yet
-        # eligible via _expr_eligible, so the comp rejects overall and stays AST
-        # (byte-identical). Widening the slot did not force this shape to route.
+    def test_record_ctor_element_slot_routes(self):
+        # The record slot admits the constructor element, whose admission now
+        # runs when the comprehension actually lowers the element expression.
         src = (
             _F1_RECORDS
             + "def f(xs: list[Int32]) -> Int32:\n"
@@ -299,7 +297,7 @@ class TestComprehensionRoutes:
             + "def main():\n    print(f([1, 2]))\nmain()\n")
         assert _cpp(src, thir=True) == _cpp(src, thir=False)
         thir = _lower_ctx(src)
-        assert _fn(thir, "f") is None
+        assert _fn(thir, "f") is not None
 
     def test_record_name_element_result_slot(self):
         # A `list[Inner]` result whose element is the bare record loop var
