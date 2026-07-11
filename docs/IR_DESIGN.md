@@ -918,10 +918,12 @@ With those boundaries in place the whole-body (`_body_eligible`), per-statement
 (`_stmt_eligible`), and expression (`_expr_eligible`) predictive traversals were
 removed outright. Each statement and expression kind now checks admission beside
 its lowering arm; recursive lowering discovers the first unsupported child and the
-body boundary discards the partial attempt. The remaining gate surface consists of
-consumer-shape helpers (slot, call, method, condition, and statement policy) plus
-the `match`/`with`/`try` structure gates. These helpers no longer walk an expression
-tree to predict whether lowering will succeed.
+body boundary discards the partial attempt. Statement policy and the
+`match`/`with`/`try` structure gates have since been removed: statement rejection
+happens in the lowering arm, while `match` and `for` classifiers return a strategy
+that lowering consumes. The remaining gate surface consists of expression
+consumer-shape helpers (slot, call, method, and condition). These helpers no
+longer provide a separate whole-expression preflight.
 
 ##### AST stays the oracle: emit AST, overlay THIR (2026-07 correction)
 

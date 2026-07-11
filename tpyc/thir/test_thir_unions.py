@@ -769,8 +769,9 @@ class TestNarrowingEligibility:
         # ASTs. Lowering must reject a narrowed-subject rebind there too -- a
         # routed rebind would leave later reads on the stale extraction alias.
         from ..parse.nodes import TpyAssign, TpyName
-        from .lower import _Prescan
-        from .lower.statements import _assign_eligible
+        from .fallback import ThirUnsupported
+        from .lower import _LowerCtx
+        from .lower.statements import _lower_stmt
         compiler, modules = _compile(_PRELUDE + (
             "def f(v: Int32 | Float64, v2: Int32 | Float64) -> Int32:\n"
             "    x = v2\n"
@@ -780,11 +781,10 @@ class TestNarrowingEligibility:
         fn = entry.ast.functions[0]
         declared = {n: t for n, t in fn.params}
         synthetic = TpyAssign(target=TpyName("v"), value=fn.body[0].init)
-        prescan = _Prescan(fn, an)
-        assert _assign_eligible(
-            synthetic, an, declared, set(), set(), set(), prescan)
-        assert not _assign_eligible(
-            synthetic, an, declared, set(), set(), {"v"}, prescan)
+        lc = _LowerCtx(fn, an, None)
+        lc.narrow.narrowed["v"] = "__v"
+        with pytest.raises(ThirUnsupported, match="stmt.assign"):
+            _lower_stmt(synthetic, lc, declared)
 
     def test_narrowing_inside_loop_body_scopes(self):
         # Narrow inside a for body; the scope pops at the loop's closing

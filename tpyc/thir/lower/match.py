@@ -1,7 +1,5 @@
-"""Match gate + lowering: the _match_strategy tier discriminant shared by
-_match_eligible (gate) and _lower_match (emit mirror), with the per-tier
-arm walkers (scalar switch/chain, record, optional-partition, union,
-guarded-union).
+"""Match classification and lowering, with per-tier arm walkers for scalar
+switch/chain, record, optional-partition, union, and guarded-union.
 """
 
 from __future__ import annotations
@@ -744,13 +742,15 @@ def _match_optional_arms_ok(
         arm_declared[bnode.name] = inner_type
     return True
 
-def _match_eligible(
+def _classify_match(
         stmt: TpyMatch, analyzer, declared: dict[str, TpyType],
         pointers: AbstractSet[str], narrowed: AbstractSet[str],
         storage_tuple_locals: AbstractSet[str], prescan: _Prescan,
         *, in_branch: bool,
-                    in_loop: bool) -> bool:
-    """The `match` gate arm -- M1: the unguarded scalar switch tiers
+                    in_loop: bool) -> "str | None":
+    """Return the lowering strategy for an admitted match, or None.
+
+    M1 covers the unguarded scalar switch tiers
     (switch_enum / switch_primitive), no captures. The subject is a bare
     declared name (an lvalue -- `auto&`; pointer-local / narrowed /
     tuple-alias names render indirect and reject). Arms are enum-member /
@@ -764,27 +764,27 @@ def _match_eligible(
     straight-line function scope only, and every arm body walks with them
     in scope."""
     if stmt.polymorphic_dispatch:
-        return False
+        return None
     kind = _match_strategy(stmt, analyzer)
     if kind is None:
-        return False
+        return None
     subj = stmt.subject
     if not isinstance(subj, TpyName) or subj.name not in declared:
-        return False
+        return None
     if (subj.name in pointers or subj.name in narrowed
             or subj.name in storage_tuple_locals):
-        return False
+        return None
     hoist_declared: dict[str, TpyType] = {}
     for name, raw in analyzer.if_branch_decls.get(id(stmt), {}).items():
         if name in declared:
             continue
         if name in prescan.native_globals:
-            return False
+            return None
         if in_branch or in_loop:
-            return False
+            return None
         vtype = unwrap_ref_type(raw)
         if not _statements._try_hoist_type_ok(vtype, analyzer):
-            return False
+            return None
         hoist_declared[name] = vtype
     if kind == "switch_union":
         u = unwrap_readonly(stmt.subject_type)
@@ -795,38 +795,38 @@ def _match_eligible(
                 stmt, analyzer, declared, pointers, narrowed,
                 storage_tuple_locals, subj, u,
                        hoist_declared, in_loop=in_loop):
-            return False
-        return True
+            return None
+        return kind
     if kind in ("if_elif_record", "guarded_record"):
         if not _f1_record(unwrap_readonly(stmt.subject_type), analyzer):
-            return False
+            return None
         if not _match_record_arms_ok(
                 stmt, analyzer, declared, pointers, narrowed,
                 storage_tuple_locals, subj, kind, hoist_declared,
                 in_loop=in_loop):
-            return False
-        return True
+            return None
+        return kind
     if kind == "optional_partition":
         # Only the pointer-repr Optional[F1-record] subject form is in the
         # slice; a value-repr subject's std::optional local/param binding
         # is itself function-gated, so this reject is the (defensive)
         # boundary for expression-position subjects that ever widen in.
         if _optional_ptr_borrow_name(subj, declared, analyzer) is None:
-            return False
+            return None
         if not _match_optional_arms_ok(
                 stmt, analyzer, declared, pointers, narrowed,
                 storage_tuple_locals, subj, hoist_declared,
                 in_loop=in_loop):
-            return False
-        return True
+            return None
+        return kind
     always_match_arms = 0
     group_guards: dict[str, list[bool]] = {}
     for i, case in enumerate(stmt.cases):
         if case.type_facts:
-            return False
+            return None
         parts = _match_arm_parts(case)
         if parts is None:
-            return False
+            return None
         test, bnode = parts
         if test is None:
             # An always-matching arm: the switch `default:` / the plain
@@ -838,15 +838,15 @@ def _match_eligible(
             always_match_arms += 1
             if kind == "if_elif" and (always_match_arms > 1
                                       or i != len(stmt.cases) - 1):
-                return False
+                return None
             key = ""
         elif isinstance(test, TpyOrPattern):
             if not all(_match_label_ok(alt, kind) for alt in test.patterns):
-                return False
+                return None
             key = "|".join(_match_case_label(alt, kind, analyzer)
                            for alt in test.patterns)
         elif not _match_label_ok(test, kind):
-            return False
+            return None
         else:
             key = _match_case_label(test, kind, analyzer)
         if kind in ("switch_enum", "switch_primitive"):
@@ -859,18 +859,18 @@ def _match_eligible(
             # name would take the aliasing arms.
             if (bnode.name in pointers or bnode.name in narrowed
                     or bnode.name in storage_tuple_locals):
-                return False
+                return None
             arm_declared[bnode.name] = arm_declared[subj.name]
         if case.guard is not None and not _match_guard_ok(
                 case.guard, arm_declared, analyzer):
-            return False
+            return None
     # Within each switch group, an unguarded entry only in the final
     # position (sema's duplicate-case rule guarantees it; a violated order
     # would emit an else-chain with no opened if) -- defensive.
     for guards in group_guards.values():
         if any(not g for g in guards[:-1]):
-            return False
-    return True
+            return None
+    return kind
 
 def _match_case_label(pattern, kind: str, analyzer) -> str:
     """One pre-rendered arm spelling. Switch tiers: the AST's
@@ -890,8 +890,9 @@ def _match_case_label(pattern, kind: str, analyzer) -> str:
             return cpp_string_literal_expr(val)
     return str(val)
 
-def _lower_match(stmt: TpyMatch, lc: _LowerCtx, declared: dict[str, TpyType],
-                 loc, *, loop_depth: int = 0) -> THIRMatch:
+def _lower_match(stmt: TpyMatch, kind: str, lc: _LowerCtx,
+                 declared: dict[str, TpyType], loc, *,
+                 loop_depth: int = 0) -> THIRMatch:
     """Lower a scalar-tier `match` (see `THIRMatch` for the emit shapes).
     Labels/condition-RHS pre-render here. Switch tiers regroup the wildcard
     arm LAST regardless of source position (`_group_switch_arms` appends
@@ -903,8 +904,6 @@ def _lower_match(stmt: TpyMatch, lc: _LowerCtx, declared: dict[str, TpyType],
     `emit_unreachable` folds the AST's `_emit_match_unreachable_tail`
     condition at lowering; `synthetic_default` its `default: break;` rule
     (switch tiers only -- the if/elif chain has no default)."""
-    kind = _match_strategy(stmt, lc.analyzer)
-    assert kind is not None, "ineligible match reached lowering"
     if kind != "switch_union":  # the union lowerers witness their route
         _witness(f"match.{kind}")
     hoist_decls: list[tuple[str, str]] = []

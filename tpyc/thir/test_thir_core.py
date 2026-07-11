@@ -240,47 +240,28 @@ class TestEligibility:
         thir = _lower("def f[T](a: T) -> T:\n    b = a\n    return b\n")
         assert _fn(thir, "f") is None
 
-    def test_statement_admission_gates_do_not_mutate_live_state(self):
-        # The _WalkState snapshot is gone: gates now read the LIVE
-        # declared/narrowed containers by reference, so a gate that wrote
-        # through one would corrupt real lowering state (pre-refactor the
-        # same write hit a throwaway per-call copy and was harmless). Pin the
-        # read-only contract on the two gates that historically mutated the
-        # snapshot -- an isinstance narrowing whose admission used to add the
-        # subject to declared/narrowed/persistent_narrowed.
-        from ..parse.nodes import TpyAssert, TpyIf
-        from .lower import _LowerCtx, _Prescan
-        from .lower.statements import _assert_eligible, _if_eligible
-        _compiler, modules = _compile(_F1_RECORDS + (
-            "def g(v: Leaf | Inner) -> Int32:\n"
-            "    assert isinstance(v, Leaf)\n"
+    def test_reject_inside_narrow_if_falls_whole_body_back(self):
+        # Read-only admission: rejection now raises ThirUnsupported INSIDE
+        # lowering (no pre-gate), so a reject reached partway through a
+        # narrowing `if` -- after admission has already mutated the live
+        # narrowed/declared state for `v` -- must fall the WHOLE body back
+        # to AST, and must not leak that partial state into a sibling body
+        # lowered afterward. `bad` narrows `v` then hits an out-of-range
+        # subscript reject; `good` (lowered next) reuses the same narrow and
+        # must still route cleanly.
+        thir = _lower_ctx(_F1_RECORDS + (
+            "def bad(v: Leaf | Inner, xs: list[Int32]) -> Int32:\n"
+            "    if isinstance(v, Inner):\n"
+            "        return xs[9999999999]\n"
             "    return v.n\n"
-            "def h(v: Leaf | Inner) -> Int32:\n"
-            "    if isinstance(v, Inner):\n        return v.value\n"
+            "def good(v: Leaf | Inner) -> Int32:\n"
+            "    if isinstance(v, Inner):\n"
+            "        return v.value\n"
             "    return v.n\n"))
-        entry = _entry(modules)
-        an = entry.analyzer
-        with activate_compiler(_compiler):
-            g, h = entry.ast.functions[0], entry.ast.functions[1]
-
-            declared = {n: t for n, t in g.params}
-            narrowed: set[str] = set()
-            persistent: set[str] = set()
-            snapshot = (dict(declared), set(narrowed), set(persistent))
-            assert_stmt = g.body[0]
-            assert isinstance(assert_stmt, TpyAssert)
-            assert _assert_eligible(assert_stmt, an, declared, narrowed,
-                                    persistent)
-            assert (declared, narrowed, persistent) == snapshot
-
-            declared = {n: t for n, t in h.params}
-            narrowed = set()
-            snapshot = (dict(declared), set(narrowed))
-            if_stmt = h.body[0]
-            assert isinstance(if_stmt, TpyIf)
-            assert _if_eligible(if_stmt, an, declared, narrowed,
-                                _Prescan(h, an), in_loop=False)
-            assert (declared, narrowed) == snapshot
+        assert _fn(thir, "bad") is None            # whole-body fallback
+        good = _fn(thir, "good")
+        assert good is not None                    # sibling uncorrupted
+        assert isinstance(good.body[0], THIRIf)
 
 class TestForRange:
     def test_range_stop_eligible(self):

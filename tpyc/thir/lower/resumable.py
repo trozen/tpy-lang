@@ -44,6 +44,7 @@ from ...parse.nodes import (
     TpyMethodCall,
     TpyNestedDef,
     TpyReturn,
+    TpyStrLiteral,
     TpyStmt,
     TpyTry,
     TpyTupleUnpack,
@@ -75,8 +76,6 @@ from .predicates import (
 )
 from .statements import (
     _lower_stmt,
-    _return_eligible,
-    _var_decl_eligible,
     _var_decl_type,
 )
 
@@ -374,17 +373,13 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
         shape_reason = _leaf_shape_reject(stmt)
         if shape_reason is not None:
             return note(shape_reason)
-        if isinstance(stmt, TpyVarDecl) and stmt.name in frame_fields:
-            begin_stmt()
-            if not _var_decl_eligible(
-                    stmt, analyzer, declared, set(), set(), set(), set(),
-                    lc.prescan,
-                    in_branch=False):
-                return note(stmt_reject_reason(stmt))
         return True
 
     def _lower_leaf(stmt: TpyStmt) -> THIRStmt:
         if isinstance(stmt, TpyVarDecl) and stmt.name in frame_fields:
+            begin_stmt()
+            if stmt.init is None:
+                raise ThirUnsupported("stmt.decl.no_init")
             value = _lower_expr(stmt.init, lc, declared)
             if stmt.name not in declared:
                 declared[stmt.name] = _var_decl_type(stmt, analyzer)
@@ -404,9 +399,12 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
             # alike): the AST frame arm emits an assignment to the struct
             # member with a POSITION-BLIND init render (plain gen_expr; a
             # BigInt literal stays `0`, never the sync arms' target-typed
-            # `::tpy::BigInt(0)`). Char-literal and None-typed inits whose
-            # position-blind render would be wrong are already rejected by
-            # the shared gate / the value-family gate above.
+            # `::tpy::BigInt(0)`). No char/None reject guards this arm: a
+            # reassign or multi-char char literal, and None at a scalar/Char
+            # slot, are sema type errors that never reach lowering; a single-
+            # char `c: Char = 'a'` first decl does reach it and renders
+            # position-blind identically to the AST frame arm (so THIR
+            # mirrors it rather than diverging).
             _witness("res.decl_assign")
             return THIRAssign(
                 target=THIRName(name=stmt.name,
@@ -433,8 +431,8 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 # on the resume BB is never consumed by the emitter.
                 continue
             begin_stmt()
-            if not _return_eligible(
-                    ret, analyzer, declared, set(), set(), set(), lc.prescan):
+            if (lc.prescan.ret_char
+                    and isinstance(ret.value, TpyStrLiteral)):
                 note(stmt_reject_reason(ret))
                 return None
             # POSITION-BLIND value render: `_make_async_return` binds the
