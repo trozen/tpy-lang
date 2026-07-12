@@ -102,7 +102,6 @@ from ... import qnames
 from ..faces import witness as _witness
 from ..fallback import expr_kind_tag, note_detail
 from .generics import expand_fi_template
-from ...codegen_cpp.expressions import ExpressionGenerator
 from ..nodes import (
     PrintForm,
     THIRBinOp,
@@ -132,6 +131,8 @@ from .predicates import (
     _const_exact_field_receiver_ok,
     _const_index,
     _container_pass_through_arg,
+    _native_iterable_container_arg,
+    _native_iterable_genexpr_arg,
     _container_record_elem,
     _container_scalar_read,
     _container_value_leaf_read,
@@ -1775,17 +1776,16 @@ def _binop_operand_suffix(e: TpyBinOp, locals_: dict[str, TpyType],
 
 def _chained_compare_eligible(e: TpyChainedCompare, locals_: dict[str, TpyType],
                               analyzer) -> bool:
-    """The inline arm of `_gen_chained_compare`: every INTERMEDIATE operand is
-    side-effect-free (`_is_simple_expr` -- imported, so the trigger cannot drift),
-    letting the chain desugar to a left-folded `&&` over the sema-synthesized
-    pairs (`((a < b) && (b < c))`); endpoints may be complex (evaluated once).
-    A non-simple intermediate takes the GCC statement-expression arm
-    (`({ auto&& _cmp1 = ...; ... && ...; })`) -> AST path. Each pair is gated
-    exactly like a single comparison (`_binop_eligible`: bool result, template
-    dunder or bare operator, mixed-sign exclusion, operand eligibility)."""
+    """Both arms of `_gen_chained_compare`. Simple intermediates fold inline to a
+    left-folded `&&` over the sema pairs (`((a < b) && (b < c))`); a non-simple
+    intermediate (`a < f() < b`) takes the GCC statement-expression arm that
+    binds each non-simple operand to an `auto&& _cmpI` temp. Lowering picks the
+    arm; both need every pair gated exactly like a single comparison
+    (`_binop_eligible`: bool result, template dunder or bare operator, mixed-sign
+    exclusion, operand eligibility). An operand `_binop_eligible` admits by type
+    but that lowering can't render raises inside the stmt-expr build -> body
+    fallback (no separate operand-shape preflight here)."""
     if e.pairs is None:
-        return False
-    if not all(ExpressionGenerator._is_simple_expr(c) for c in e.comparators[:-1]):
         return False
     return all(_binop_eligible(p, locals_, analyzer) for p in e.pairs)
 
@@ -2160,7 +2160,9 @@ def _call_eligible(e: TpyCall, locals_: dict[str, TpyType], analyzer,
         # AST here.
         for a, p in zip(e.args, fi.params):
             if not (_shared_pass_through_arg(a, p.type, locals_, analyzer)
-                    or _own_move_arg(a, p.type, locals_, analyzer)):
+                    or _own_move_arg(a, p.type, locals_, analyzer)
+                    or _native_iterable_container_arg(a, p.type, locals_)
+                    or _native_iterable_genexpr_arg(a, p.type)):
                 return note_detail(_native_arg_reject(a, p.type, analyzer))
         return True
     if kind[0] == "generic":

@@ -4,13 +4,17 @@ from __future__ import annotations
 from collections.abc import Set as AbstractSet
 from dataclasses import dataclass
 from ...parse.nodes import (
+    TpyArrayLiteral,
+    TpyCall,
     TpyDictComprehension,
     TpyFieldAccess,
+    TpyGeneratorExpression,
     TpyIntLiteral,
     TpyListComprehension,
     TpyMethodCall,
     TpyName,
     TpySetComprehension,
+    collect_name_refs,
 )
 from ...typesys import (
     IntLiteralType,
@@ -20,6 +24,7 @@ from ...typesys import (
     unwrap_readonly,
     unwrap_ref_type,
     unwrap_send_sync,
+    yield_uses_borrow_slot,
 )
 from ...type_def_registry import (
     is_array,
@@ -29,11 +34,13 @@ from ...type_def_registry import (
     is_dict_view,
     is_list,
     is_set,
+    is_span,
 )
 from ...modules.type_resolution import get_iterable_element_type, is_native_iterable
-from ..faces import witness as _witness
+from ...codegen_cpp.context import escape_cpp_name, loop_var_binding
 from ..fallback import ThirUnsupported
-from ..nodes import THIRComprehension
+from ..faces import witness as _witness
+from ..nodes import THIRComprehension, THIRGenExpr
 from .predicates import (
     _dict_view_iterable_ok,
     _eligible_char,
@@ -467,5 +474,115 @@ def _lower_comprehension(
         element=element,
         key=key,
         value=value,
+        loc=loc,
+    )
+
+
+def _genexpr_captures(element, conditions, extra_refs, declared, comp_vars,
+                      self_receiver) -> str:
+    """Mirror ExpressionGenerator._genexpr_outer_captures: the `&local, ` prefix
+    for the outer names a genexpr lambda reads. Refs come from the element
+    (+ filter conditions, + `extra_refs` for the IIFE's iterable refs); keep only
+    function locals not shadowed by the comprehension scope; `self` maps to the
+    captured `this`."""
+    refs = collect_name_refs(element)
+    for c in conditions:
+        refs |= collect_name_refs(c)
+    if extra_refs:
+        refs |= extra_refs
+    needs_this = "self" in refs and self_receiver is not None
+    refs.discard("self")
+    parts: list[str] = []
+    if needs_this:
+        parts.append("this")
+    parts.extend(f"&{escape_cpp_name(n)}"
+                 for n in sorted((refs & set(declared)) - comp_vars))
+    if not parts:
+        return ""
+    return ", ".join(parts) + ", "
+
+
+def _lower_genexpr(expr: TpyGeneratorExpression, lc: '_LowerCtx',
+                   declared: dict[str, TpyType]) -> THIRGenExpr:
+    """Lower a generator expression to the make_generator render
+    (`_gen_generator_expression`). Current slice: single loop var, no filter,
+    scalar element/binding, over an LVALUE bare-name container OR a NON-LVALUE
+    container literal. Everything else raises ThirUnsupported so the enclosing
+    body falls back to AST."""
+    analyzer = lc.analyzer
+    gen = expr.generator
+    loc = getattr(expr, "loc", None)
+    if gen.unpack_vars is not None:
+        raise ThirUnsupported("genexpr.unpack")
+    if gen.conditions:
+        raise ThirUnsupported("genexpr.filter")
+    it = gen.iterable
+    if isinstance(it, TpyCall) and it.func_name == "range":
+        raise ThirUnsupported("genexpr.range")
+    if isinstance(it, TpyName):
+        if it.name not in declared or it.name in lc.narrow.narrowed:
+            raise ThirUnsupported("genexpr.iterable_shape")
+        it_type = declared[it.name]
+        moved = False
+    elif isinstance(it, TpyArrayLiteral):
+        # A container literal is a prvalue: it moves into the lambda's storage.
+        it_type = analyzer.get_expr_type(it)
+        moved = True
+    else:
+        raise ThirUnsupported("genexpr.iterable_shape")
+    it_type = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(it_type)))
+    # dict deferred: its `*__beg` yields a key/value pair, so the scalar
+    # loop-var binding would need the AST's key-extraction shape (a later rung).
+    if not (is_list(it_type) or is_set(it_type)
+            or is_array(it_type) or is_span(it_type)):
+        raise ThirUnsupported("genexpr.iterable_shape")
+    if not is_native_iterable(it_type, analyzer.registry):
+        raise ThirUnsupported("genexpr.iterable_shape")
+    et = get_iterable_element_type(it_type, registry=analyzer.registry)
+    if et is None:
+        raise ThirUnsupported("genexpr.elem_type")
+    sema_elem = resolve_int_literals(unwrap_ref_type(et),
+                                     analyzer.ctx.default_int_for_literal)
+    if not (_eligible_scalar(sema_elem) or _eligible_char(sema_elem)):
+        raise ThirUnsupported("genexpr.binding_shape")
+    elem_type = _comp_result_type(expr.result_elem_type, analyzer)
+    if yield_uses_borrow_slot(elem_type):
+        raise ThirUnsupported("genexpr.borrow_slot")
+    slot_cpp = lc.render_type(elem_type)
+    binding_cpp = loop_var_binding(sema_elem, escape_cpp_name(gen.var),
+                                   "*__beg++", gen.const_loop_var)
+    body_declared = dict(declared)
+    body_declared[gen.var] = sema_elem
+    element = _lower_expr(expr.element_expr, lc, body_declared)
+    comp_vars = {gen.var}
+    inner_captures = _genexpr_captures(expr.element_expr, gen.conditions,
+                                       None, declared, comp_vars,
+                                       lc.self_receiver)
+    _witness("genexpr.native_iterable")
+    if moved:
+        elements = tuple(_lower_container_elem(el, sema_elem, lc, declared)
+                         for el in it.elements)
+        return THIRGenExpr(
+            result_type=analyzer.get_expr_type(expr),
+            element=element,
+            slot_cpp=slot_cpp,
+            binding_cpp=binding_cpp,
+            inner_captures=inner_captures,
+            moved_source=True,
+            cpp_iterable=lc.render_type(it_type),
+            iterable_elements=elements,
+            loc=loc,
+        )
+    iife_captures = _genexpr_captures(expr.element_expr, gen.conditions,
+                                      {it.name}, declared, comp_vars,
+                                      lc.self_receiver)
+    return THIRGenExpr(
+        result_type=analyzer.get_expr_type(expr),
+        iterable=_lower_expr(it, lc, declared),
+        element=element,
+        slot_cpp=slot_cpp,
+        binding_cpp=binding_cpp,
+        iife_captures=iife_captures,
+        inner_captures=inner_captures,
         loc=loc,
     )

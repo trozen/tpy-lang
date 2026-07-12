@@ -38,11 +38,13 @@ from .nodes import (
     THIRAssert,
     THIRAssign,
     THIRBinOp,
+    THIRChainedCompareStmtExpr,
     THIRBreak,
     THIRBytesLiteral,
     THIRCall,
     THIRCharLiteral,
     THIRComprehension,
+    THIRGenExpr,
     THIRCoerce,
     THIRConstructor,
     THIRContainerLiteral,
@@ -372,6 +374,42 @@ def _emit_literal(lit: THIRLiteral) -> str:
     return str(v)
 
 
+def _emit_chained_compare_stmtexpr(e: THIRChainedCompareStmtExpr,
+                                   state: _EmitState) -> str:
+    # Mirrors _gen_chained_compare_lambda: bind each non-simple operand to an
+    # `auto&& _cmpI` temp, then interleave bindings with the left-folded `&&`
+    # chain so operands after a failed pair never evaluate. Each pair renders
+    # `_gen_comparison_pair` (bare op + per-side `{0}` casts) over the operand
+    # REPRs (temp name or inline render).
+    n = len(e.ops)
+    reprs: list[str] = []
+    binds: list[str | None] = []
+    for i in range(n + 1):
+        code = _emit_expr(e.inits[i], state)
+        if e.bound[i]:
+            reprs.append(f"_cmp{i}")
+            binds.append(f"auto&& _cmp{i} = {code};")
+        else:
+            reprs.append(code)
+            binds.append(None)
+
+    def render_pair(i: int, left: str, right: str) -> str:
+        if e.left_casts[i] is not None:
+            left = e.left_casts[i].format(left)
+        if e.right_casts[i] is not None:
+            right = e.right_casts[i].format(right)
+        return f"({left} {e.ops[i]} {right})"
+
+    inner = render_pair(n - 1, reprs[n - 1], reprs[n])
+    for i in range(n - 2, 0, -1):
+        inner = ("({ " + binds[i + 1] + " "
+                 + render_pair(i, reprs[i], reprs[i + 1])
+                 + " && " + inner + "; })")
+    outer_parts = [b for b in binds[:2] if b]
+    outer_parts.append(render_pair(0, reprs[0], reprs[1]) + " && " + inner + ";")
+    return "({ " + " ".join(outer_parts) + " })"
+
+
 def _emit_binop(e: THIRBinOp, state: _EmitState) -> str:
     # Mirrors ExpressionGenerator._gen_binop_from_result: apply the operand
     # wrappers, expand the operator's cpp_template, swap the checked div/mod
@@ -593,6 +631,59 @@ def _emit_comprehension(e: 'THIRComprehension', state: _EmitState) -> str:
     buf.write(f"{ind1}}}\n")
     buf.write(f"{ind1}std::move(__result);\n")
     buf.write(f"{stmt_ind}}})")
+    return buf.getvalue()
+
+
+def _emit_genexpr(e: 'THIRGenExpr', state: _EmitState) -> str:
+    """The make_generator render of _gen_generator_expression: an inner mutable
+    lambda binds each element and yields `optional<slot>`. An LVALUE source
+    aliases through an outer `[caps]()` IIFE; a NON-LVALUE source moves into the
+    lambda's init-captures under an `if (!__started)` seed. Indents relative to
+    the enclosing statement (stmt_indent_level)."""
+    stmt_ind = INDENT * state.stmt_indent_level
+    ind1 = stmt_ind + INDENT
+    elem = _emit_expr(e.element, state)
+    if e.moved_source:
+        lambda_ind = ind1
+        ind2i = lambda_ind + INDENT
+        ind3i = ind2i + INDENT
+        elems = ", ".join(_emit_expr(el, state) for el in e.iterable_elements)
+        buf = io.StringIO()
+        buf.write(f"::tpy::make_generator<{e.slot_cpp}>(\n")
+        buf.write(f"{lambda_ind}[{e.inner_captures}__src = {e.cpp_iterable}"
+                  f"({{{elems}}}), __started = false, "
+                  f"__beg = {e.cpp_iterable}::iterator(), "
+                  f"__end = {e.cpp_iterable}::iterator()]() mutable -> "
+                  f"std::optional<{e.slot_cpp}> {{\n")
+        buf.write(f"{ind2i}if (!__started) {{ __beg = __src.begin(); "
+                  f"__end = __src.end(); __started = true; }}\n")
+        buf.write(f"{ind2i}while (__beg != __end) {{\n")
+        buf.write(f"{ind3i}{e.binding_cpp}\n")
+        buf.write(f"{ind3i}return std::optional<{e.slot_cpp}>({elem});\n")
+        buf.write(f"{ind2i}}}\n")
+        buf.write(f"{ind2i}return std::nullopt;\n")
+        buf.write(f"{lambda_ind}}}\n")
+        buf.write(f"{stmt_ind})")
+        return buf.getvalue()
+    lambda_ind = ind1 + INDENT
+    ind2i = lambda_ind + INDENT
+    ind3i = ind2i + INDENT
+    iife = e.iife_captures.removesuffix(", ")
+    src = _emit_expr(e.iterable, state)
+    buf = io.StringIO()
+    buf.write(f"[{iife}]() {{\n")
+    buf.write(f"{ind1}auto& __src = {src};\n")
+    buf.write(f"{ind1}return ::tpy::make_generator<{e.slot_cpp}>(\n")
+    buf.write(f"{lambda_ind}[{e.inner_captures}__beg = __src.begin(), "
+              f"__end = __src.end()]() mutable -> std::optional<{e.slot_cpp}> {{\n")
+    buf.write(f"{ind2i}while (__beg != __end) {{\n")
+    buf.write(f"{ind3i}{e.binding_cpp}\n")
+    buf.write(f"{ind3i}return std::optional<{e.slot_cpp}>({elem});\n")
+    buf.write(f"{ind2i}}}\n")
+    buf.write(f"{ind2i}return std::nullopt;\n")
+    buf.write(f"{lambda_ind}}}\n")
+    buf.write(f"{ind1});\n")
+    buf.write(f"{stmt_ind}}}()")
     return buf.getvalue()
 
 
@@ -878,6 +969,8 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         return _emit_form_convert(e, state)
     if isinstance(e, THIRBinOp):
         return _emit_binop(e, state)
+    if isinstance(e, THIRChainedCompareStmtExpr):
+        return _emit_chained_compare_stmtexpr(e, state)
     if isinstance(e, THIRUnaryNot):
         # Mirrors _gen_unaryop's `!` arm over a bool operand, whose truthiness
         # render is the plain value render. A pointer-repr Optional borrow
@@ -965,6 +1058,8 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         return f"{cpp_type}{{{elems}}}"
     if isinstance(e, THIRComprehension):
         return _emit_comprehension(e, state)
+    if isinstance(e, THIRGenExpr):
+        return _emit_genexpr(e, state)
     if isinstance(e, THIRCoerce):
         # Passthrough coercions render the inner expression in the target
         # type's context (int/float literal coercions, the identity str-family

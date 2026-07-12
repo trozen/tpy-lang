@@ -17,6 +17,7 @@ from ...parse.nodes import (
     TpyCoerce,
     TpyDictLiteral,
     TpyExpr,
+    TpyGeneratorExpression,
     TpyFieldAccess,
     TpyFloatLiteral,
     TpyFString,
@@ -78,6 +79,7 @@ from ..nodes import (
     Form,
     THIRArgTemp,
     THIRBinOp,
+    THIRChainedCompareStmtExpr,
     THIRBytesLiteral,
     THIRCall,
     THIRCharLiteral,
@@ -845,16 +847,20 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
     if isinstance(e, TpyChainedCompare):
         if not _chained_compare_eligible(e, declared, analyzer):
             raise ThirUnsupported("expr.chained_compare")
-        # Inline arm of _gen_chained_compare: left-fold the sema pairs with the
-        # bare && (resolved None), reproducing `((a < b) && (b < c))`. Each pair
-        # is a full TpyBinOp (sema-analyzed), so it lowers like any comparison.
         assert e.pairs is not None
-        folded = _lower_expr(e.pairs[0], lc, declared)
-        for pair in e.pairs[1:]:
-            folded = THIRBinOp(result_type=rtype, left=folded, op="&&",
-                               right=_lower_expr(pair, lc, declared), resolved=None,
-                               loc=loc)
-        return folded
+        if all(ExpressionGenerator._is_simple_expr(c)
+               for c in e.comparators[:-1]):
+            # Inline arm of _gen_chained_compare: left-fold the sema pairs with
+            # the bare && (resolved None), reproducing `((a < b) && (b < c))`.
+            # Each pair is a full TpyBinOp (sema-analyzed), so it lowers like any
+            # comparison.
+            folded = _lower_expr(e.pairs[0], lc, declared)
+            for pair in e.pairs[1:]:
+                folded = THIRBinOp(result_type=rtype, left=folded, op="&&",
+                                   right=_lower_expr(pair, lc, declared),
+                                   resolved=None, loc=loc)
+            return folded
+        return _lower_chained_compare_stmtexpr(e, rtype, lc, declared, loc)
     if isinstance(e, TpyIfExpr):
         if not _if_expr_eligible(e, declared, analyzer):
             raise ThirUnsupported("expr.ifexpr")
@@ -1518,6 +1524,44 @@ def _generic_module_static_callee(e, lc: '_LowerCtx') -> 'tuple[str, tuple[str, 
     return _compose_static_targs(cpp_class, record_info, cpp_method, e, lc)
 
 
+def _lower_chained_compare_stmtexpr(e, rtype, lc: '_LowerCtx',
+                                    declared: dict[str, TpyType], loc):
+    """The complex-intermediate arm of _gen_chained_compare (the GCC stmt-expr
+    with single-eval `auto&& _cmpI` temps). Each pair lowers through the shared
+    comparison path (`_lower_expr` -> THIRBinOp), so operand targets and the
+    per-side casts are byte-identical to a standalone comparison; the temp-vs-
+    inline binding decision mirrors the AST (`_gen_chained_compare_lambda`):
+    intermediates always bind, the first endpoint binds iff non-simple, the last
+    is always inlined. Operand i's init is read off its owning pair (pair 0's
+    left for i=0, pair i-1's right otherwise) so its target matches the AST's
+    `operand_code`."""
+    _witness("chained_compare.stmt_expr")
+    pairs = [_lower_expr(p, lc, declared) for p in e.pairs]
+    n = len(pairs)
+    all_operands = [e.left] + e.comparators
+    inits = [pairs[0].left]
+    for j in range(1, n + 1):
+        inits.append(pairs[j - 1].right)
+    bound = []
+    for i in range(n + 1):
+        if 0 < i < n:
+            bound.append(True)
+        elif i == 0:
+            bound.append(not ExpressionGenerator._is_simple_expr(all_operands[0]))
+        else:
+            bound.append(False)
+    return THIRChainedCompareStmtExpr(
+        result_type=rtype,
+        inits=tuple(inits),
+        bound=tuple(bound),
+        ops=tuple(p.op for p in pairs),
+        left_casts=tuple(p.left_cast for p in pairs),
+        right_casts=tuple(p.right_cast for p in pairs),
+        form=Form.VALUE,
+        loc=loc,
+    )
+
+
 def _lower_generic_plain_call(e, callee_cpp, lc: '_LowerCtx',
                               declared: dict[str, TpyType], *,
                               temp_args: bool, form, loc) -> THIRCall:
@@ -1602,6 +1646,12 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
     indirect-name render -- only records become pointer-locals, so the
     membership test alone keys the retag); every other arg lowers
     position-blind."""
+    if isinstance(a, TpyGeneratorExpression):
+        # A genexpr into a native builtin's Iterable slot -> the make_generator
+        # IIFE (`all(x > 0 for x in xs)`). Late import: comprehensions imports
+        # this module.
+        from .comprehensions import _lower_genexpr
+        return _lower_genexpr(a, lc, declared)
     if (isinstance(a, TpyName) and _value_opt_scalar_param(a.name, lc)
             and _value_opt_scalar(ptype, lc.analyzer) is not None):
         # A value-repr Optional[scalar] name into a value-repr Optional slot

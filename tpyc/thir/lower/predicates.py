@@ -24,6 +24,7 @@ from ...parse.nodes import (
     TpyIntLiteral,
     TpyListRepeat,
     TpyMethodCall,
+    TpyGeneratorExpression,
     TpyName,
     TpyNoneLiteral,
     TpyReturn,
@@ -2738,6 +2739,35 @@ def _container_pass_through_arg(a: TpyExpr, ptype: TpyType | None,
     if isinstance(pt, (OwnType, OptionalType)):
         return False
     return is_list(pt) or is_dict(pt) or is_set(pt) or is_array(pt)
+
+def _native_iterable_container_arg(a: TpyExpr, ptype: 'TpyType | None',
+                                   locals_: dict[str, TpyType]) -> bool:
+    """A builtin-container name into a NATIVE builtin's structural `Iterable[T]`
+    protocol param (`all(xs)` / `any(xs)` / `sum(xs)` -> `::tpy::builtin_all(xs)`):
+    the runtime overload is a C++ template that binds the container BARE, so no
+    adapter/span conversion runs -- unlike a plain-TPy `Iterable` param, which
+    `_container_pass_through_arg` leaves on the AST path for exactly that
+    conversion. Native/@cpp_template loop ONLY (the caller gates the branch); in
+    the plain loop the same slot would need the adapter wrap."""
+    if not isinstance(a, TpyName) or a.name not in locals_:
+        return False
+    at = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(locals_[a.name])))
+    if not (is_list(at) or is_dict(at) or is_set(at) or is_array(at)
+            or is_span(at)):
+        return False
+    pb = _protocol_binding(ptype)
+    return pb is not None and pb.name == "Iterable"
+
+def _native_iterable_genexpr_arg(a: TpyExpr, ptype: 'TpyType | None') -> bool:
+    """A generator expression into a NATIVE builtin's `Iterable[T]` slot
+    (`all(x > 0 for x in xs)`): the make_generator IIFE binds directly. Admitted
+    broadly here; `_lower_genexpr` raises for the shapes outside its slice
+    (range / filter / non-lvalue / unpack / owned / narrowed), so an unsupported
+    genexpr falls the whole body back rather than misrouting."""
+    if not isinstance(a, TpyGeneratorExpression):
+        return False
+    pb = _protocol_binding(ptype)
+    return pb is not None and pb.name == "Iterable"
 
 def _positional_only_template(tmpl: str, n_args: int) -> bool:
     """Whether a `@cpp_template` body contains only in-range positional

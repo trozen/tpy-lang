@@ -388,6 +388,9 @@ THIR_FACES: frozenset[str] = frozenset({
     # A fixed-int bitwise op (`a & b`, `a << b`, ...) admitted at the scalar
     # arm -- same resolved-binop template emit as arithmetic (gate admission).
     "binop.bitwise",
+    # A chained comparison with a non-simple intermediate (`a < f() < b`) ->
+    # the GCC stmt-expr single-eval form (_gen_chained_compare_lambda).
+    "chained_compare.stmt_expr",
     # Method call on a bare protocol receiver (gate + lowering): `p.m(args)`,
     # monomorphized for a structural protocol, a vtable call for a @dynamic
     # one -- one render either way. Args take the FREE-call literal rules
@@ -419,6 +422,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "comp.range3",                  # 3-arg range: begin/end over the Range object
     "comp.field_iter",              # field-access iterable (recv.items)
     "comp.print_arg",               # comprehension print arg (container printer wrap)
+    "genexpr.native_iterable",      # genexpr into a native Iterable consumer ->
+                                    # the make_generator IIFE (all/any/sum arg)
     "print.optval",                 # un-narrowed value-repr Optional[scalar/str]
                                     # print arg -> bare `::tpy::print_optional_val`
     "print.wrap_arg",               # container / value-tuple / F1-record NAME

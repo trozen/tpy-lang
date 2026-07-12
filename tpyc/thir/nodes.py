@@ -224,6 +224,23 @@ class THIRBinOp(THIRExpr):
 
 
 @dataclass(frozen=True)
+class THIRChainedCompareStmtExpr(THIRExpr):
+    """The complex-intermediate chained comparison
+    (`_gen_chained_compare_lambda`): a GCC statement-expression that binds each
+    non-simple operand to an `auto&& _cmpI` temp so it evaluates exactly once,
+    interleaving bindings with the left-folded `&&` chain (operands after a
+    failed pair never evaluate). `inits[i]` is operand i's lowered value (the
+    temp init, or the inline render when `bound[i]` is False); the n pairs carry
+    the operator and the per-side `{0}`-cast wraps of `_gen_comparison_pair`
+    (BigInt/float + IntEnum), applied to the operand REPRs (`_cmpI` or inline)."""
+    inits: tuple[THIRExpr, ...]
+    bound: tuple[bool, ...]
+    ops: tuple[str, ...]
+    left_casts: tuple['str | None', ...]
+    right_casts: tuple['str | None', ...]
+
+
+@dataclass(frozen=True)
 class THIRIsNone(THIRExpr):
     """A `name is None` / `name is not None` identity test. On a pointer-repr
     Optional borrow name (an `Optional[record]` param or an OPTIONAL_TO_PTR
@@ -627,6 +644,40 @@ class THIRComprehension(THIRExpr):
     element: 'THIRExpr | None' = None     # list/set insert value
     key: 'THIRExpr | None' = None         # dict
     value: 'THIRExpr | None' = None       # dict
+
+
+@dataclass(frozen=True)
+class THIRGenExpr(THIRExpr):
+    """A lazy generator expression (`x > 0 for x in xs`) as the make_generator
+    render of `_gen_generator_expression` -- an argument to a native Iterable
+    consumer (`all`/`any`/`sum`). Slice: single loop var, NO filter, scalar
+    element/binding. Two source shapes:
+
+    * LVALUE (`moved_source` False, a bare-name container): an outer IIFE
+      captures the refs (`iife_captures`), aliases the source
+      (`auto& __src = <iterable>`), returns `make_generator<slot>` over the
+      inner lambda.
+    * NON-LVALUE (`moved_source` True, a container literal): no IIFE -- the
+      source MOVES into the lambda's init-capture (`__src =
+      <cpp_iterable>({<iterable_elements>}), __started = false, __beg/__end =
+      <cpp_iterable>::iterator()`) with an `if (!__started)` guard that lazily
+      seeds begin/end on the first call.
+
+    Both inner lambdas bind each element (`binding_cpp`, the shared
+    loop_var_binding) and yield `std::optional<slot>(<element>)` until exhausted;
+    `inner_captures` are the outer locals the element reads (none when it only
+    reads the loop var). The multi-line render reads the enclosing statement
+    indent off `_EmitState.stmt_indent_level`. Range / filtered / unpack / owned /
+    narrowed-Optional / dict shapes raise ThirUnsupported (body fallback)."""
+    iterable: 'THIRExpr | None' = None       # lvalue source
+    element: 'THIRExpr | None' = None
+    slot_cpp: str = ""
+    binding_cpp: str = ""
+    iife_captures: str = ""
+    inner_captures: str = ""
+    moved_source: bool = False               # non-lvalue container-literal source
+    cpp_iterable: str = ""                    # container type (moved_source)
+    iterable_elements: tuple = ()            # brace-init elems (moved_source)
 
 
 @dataclass(frozen=True)

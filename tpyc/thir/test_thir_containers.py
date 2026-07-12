@@ -9,9 +9,9 @@ from ..codegen_cpp.context import CodeGenOptions
 from .testutil import _emit_expr
 from .nodes import (
     Form, THIRArgTemp, THIRBinOp, THIRCall, THIRCoerce, THIRContainerLiteral,
-    THIRExprStmt, THIRFieldAccess, THIRForEach, THIRFormConvert, THIRLiteral,
-    THIRMembership, THIRMethodCall, THIRMove, THIRName, THIRReturn, THIRSelf,
-    THIRSetItem, THIRStrLiteral, THIRSubscript, THIRVarDecl,
+    THIRExprStmt, THIRFieldAccess, THIRForEach, THIRFormConvert, THIRGenExpr,
+    THIRLiteral, THIRMembership, THIRMethodCall, THIRMove, THIRName, THIRReturn,
+    THIRSelf, THIRSetItem, THIRStrLiteral, THIRSubscript, THIRVarDecl,
 )
 from .testutil import (
     _compile, _entry, _lower, _lower_ctx, _lower_ctx_witnessed, _fn,
@@ -1292,6 +1292,126 @@ class TestContainerCallIterable:
         assert "auto __obj_0 = make_list(4);" in thir_cpp
         assert "auto& __obj_1 = get_list(items);" in thir_cpp
         assert "auto& __obj_2 = view(items);" in thir_cpp
+
+
+class TestNativeIterableBuiltins:
+    # `all`/`any`/`sum` are @native builtins over a structural `Iterable[T]`
+    # param; the C++ overload is a template that binds a builtin-container arg
+    # BARE (`::tpy::builtin_all(xs)`), no adapter/span wrap -- so a container name
+    # into that native slot routes, unlike a plain-TPy Iterable param.
+    def test_all_over_name_routes_bare(self):
+        thir = _lower(_PRELUDE + "def f(xs: list[bool]) -> bool:\n"
+                      "    return all(xs)\n")
+        v = _fn(thir, "f").body[0].value
+        assert isinstance(v, THIRCall) and v.native_name == "tpy::builtin_all"
+        assert isinstance(v.args[0], THIRName) and v.args[0].name == "xs"
+
+    def test_any_over_name_routes_bare(self):
+        thir = _lower(_PRELUDE + "def f(xs: list[bool]) -> bool:\n"
+                      "    return any(xs)\n")
+        v = _fn(thir, "f").body[0].value
+        assert isinstance(v, THIRCall) and v.native_name == "tpy::builtin_any"
+        assert isinstance(v.args[0], THIRName)
+
+    def test_sum_over_name_routes(self):
+        thir = _lower(_PRELUDE + "def f(xs: list[Int32]) -> Int32:\n"
+                      "    return sum(xs)\n")
+        assert _fn(thir, "f") is not None
+
+    # A genexpr into that Iterable consumer lowers to the make_generator IIFE
+    # (`all(x > 0 for x in xs)`), restricted to the lvalue-container / single-var
+    # / no-filter / scalar slice.
+    def test_genexpr_over_name_routes(self):
+        thir = _lower(_PRELUDE + "def f(xs: list[Int32]) -> bool:\n"
+                      "    return all(x > 0 for x in xs)\n")
+        v = _fn(thir, "f").body[0].value
+        assert isinstance(v, THIRCall)
+        assert isinstance(v.args[0], THIRGenExpr)
+
+    def test_genexpr_emit_byte_identical(self):
+        src = (_PRELUDE + "def f(xs: list[Int32]) -> bool:\n"
+               "    return all(x > 0 for x in xs)\n")
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        ast_cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=False))[1]
+        thir_cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=True))[1]
+        assert ast_cpp == thir_cpp
+        assert "make_generator<bool>" in thir_cpp
+
+    def test_genexpr_literal_source_moves(self):
+        # A container-literal source is a prvalue -> moved_source form (no IIFE).
+        thir = _lower(_PRELUDE + "def f() -> Int32:\n"
+                      "    return sum(x * x for x in [1, 2, 3, 4])\n")
+        v = _fn(thir, "f").body[0].value
+        assert isinstance(v.args[0], THIRGenExpr) and v.args[0].moved_source
+
+    def test_genexpr_literal_emit_byte_identical(self):
+        src = (_PRELUDE + "def f() -> Int32:\n"
+               "    return sum(x * x for x in [1, 2, 3, 4])\n")
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        ast_cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=False))[1]
+        thir_cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=True))[1]
+        assert ast_cpp == thir_cpp
+        assert "__started = false" in thir_cpp
+
+    def test_genexpr_range_stays_ast(self):
+        # A range() source uses the counter-lambda arm -- outside the slice.
+        thir = _lower(_PRELUDE + "def f(n: Int32) -> bool:\n"
+                      "    return all(x > 0 for x in range(n))\n")
+        assert _fn(thir, "f") is None
+
+    def test_genexpr_filter_stays_ast(self):
+        # A filter condition takes the per-iteration temp-flush arm -- deferred.
+        thir = _lower(_PRELUDE + "def f(xs: list[Int32]) -> bool:\n"
+                      "    return all(x > 0 for x in xs if x < 10)\n")
+        assert _fn(thir, "f") is None
+
+    def test_genexpr_dict_source_stays_ast(self):
+        # A dict `*__beg` yields a key/value pair, so the scalar loop-var binding
+        # would misroute -- the slice excludes dict sources (guards the exclusion:
+        # re-adding dict without key-extraction would route + emit wrong C++).
+        thir = _lower(_PRELUDE + "def f(d: dict[Int32, Int32]) -> bool:\n"
+                      "    return all(k for k in d)\n")
+        assert _fn(thir, "f") is None
+
+    def test_genexpr_narrowed_source_stays_ast(self):
+        # A narrowed-Optional source is outside the slice -- stays AST.
+        thir = _lower(_PRELUDE + "def f(xs: list[Int32] | None) -> bool:\n"
+                      "    if xs is None:\n        return False\n"
+                      "    return all(x > 0 for x in xs)\n")
+        assert _fn(thir, "f") is None
+
+    def test_genexpr_set_source_routes(self):
+        # A non-list builtin container (set) routes the lvalue genexpr too.
+        thir = _lower(_PRELUDE + "def f(s: set[Int32]) -> bool:\n"
+                      "    return all(x > 0 for x in s)\n")
+        assert isinstance(_fn(thir, "f").body[0].value.args[0], THIRGenExpr)
+
+    def test_genexpr_captures_outer_local(self):
+        # An element reading an outer local captures it (`&t`) in both the IIFE
+        # and the inner lambda -- exercises _genexpr_captures past the trivial
+        # empty-capture form.
+        src = (_PRELUDE + "def f(xs: list[Int32], t: Int32) -> bool:\n"
+               "    return all(x > t for x in xs)\n")
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        ast_cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=False))[1]
+        thir_cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=True))[1]
+        assert ast_cpp == thir_cpp
+        assert "&t" in thir_cpp
 
 
 # --- str method returning `Own[list[str]]` as a for-each iterable

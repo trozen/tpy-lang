@@ -15,7 +15,8 @@ from .lower import _is_len_native, lower_module
 from .lower.functions import _shadow_bound_names
 from ..typesys import TupleType
 from .nodes import (
-    Form, PrintForm, THIRAssign, THIRBinOp, THIRCall, THIRExprStmt,
+    Form, PrintForm, THIRAssign, THIRBinOp, THIRCall,
+    THIRChainedCompareStmtExpr, THIRExprStmt,
     THIRFieldAccess, THIRForEach, THIRForRange, THIRFormConvert, THIRIf,
     THIRLiteral, THIRMethodCall, THIRName, THIRPrint, THIRReturn,
     THIRStrLiteral, THIRUnaryNot, THIRVarDecl, THIRWhile,
@@ -1470,18 +1471,26 @@ class TestChainedCompare:
                       "    return a + 1 < b < c + 2\n")
         assert _fn(thir, "f") is not None
 
-    def test_complex_intermediate_is_ineligible(self):
+    def test_complex_intermediate_routes_stmtexpr(self):
         # A non-simple intermediate (`b + 1`) binds a `_cmp1` temp inside a GCC
-        # statement expression (`({ auto&& _cmp1 = ...; ... })`) -> AST path.
+        # statement expression; the simple endpoints stay inline.
         thir = _lower(_PRELUDE + "def f(a: Int32, b: Int32, c: Int32) -> bool:\n"
                       "    return a < b + 1 < c\n")
-        assert _fn(thir, "f") is None
+        fn = _fn(thir, "f")
+        assert fn is not None
+        v = fn.body[0].value
+        assert isinstance(v, THIRChainedCompareStmtExpr)
+        assert v.bound == (False, True, False) and v.ops == ("<", "<")
 
-    def test_call_intermediate_is_ineligible(self):
+    def test_call_intermediate_routes_stmtexpr(self):
         # A call intermediate (`len(xs)`) is non-simple -> statement-expr arm.
         thir = _lower(_PRELUDE + "def f(a: Int32, c: Int32) -> bool:\n"
                       "    xs = [1, 2, 3]\n    return a < len(xs) < c\n")
-        assert _fn(thir, "f") is None
+        fn = _fn(thir, "f")
+        assert fn is not None
+        v = fn.body[-1].value
+        assert isinstance(v, THIRChainedCompareStmtExpr)
+        assert v.bound == (False, True, False)
 
     def test_mixed_sign_pair_is_ineligible(self):
         # Each pair gets the single-comparison gates (mixed-sign -> std::cmp_*).
@@ -1524,6 +1533,31 @@ class TestChainedCompareEmit:
             "        return i;\n"
             "    }\n"
             "    return 0;\n")
+
+    def test_emit_call_intermediate_stmtexpr(self):
+        # `a < g() < c`: the middle call binds `_cmp1` (single eval); endpoints
+        # stay inline (`a`, `c`). The GCC stmt-expr yields the folded `&&`.
+        thir = _lower(_PRELUDE + "def g() -> Int32:\n    return 5\n"
+                      "def f(a: Int32, c: Int32) -> bool:\n"
+                      "    return a < g() < c\n")
+        buf = io.StringIO()
+        emit_thir_body(buf, _fn(thir, "f"))
+        assert buf.getvalue() == (
+            "    return ({ auto&& _cmp1 = g(); "
+            "(a < _cmp1) && (_cmp1 < c); });\n")
+
+    def test_emit_triple_call_stmtexpr(self):
+        # Three complex intermediates nest: each inner block binds the next
+        # operand so it evaluates only after the prior compare passes.
+        thir = _lower(_PRELUDE + "def g() -> Int32:\n    return 5\n"
+                      "def f() -> bool:\n"
+                      "    return g() < g() < g() < g()\n")
+        buf = io.StringIO()
+        emit_thir_body(buf, _fn(thir, "f"))
+        assert buf.getvalue() == (
+            "    return ({ auto&& _cmp0 = g(); auto&& _cmp1 = g(); "
+            "(_cmp0 < _cmp1) && ({ auto&& _cmp2 = g(); "
+            "(_cmp1 < _cmp2) && (_cmp2 < g()); }); });\n")
 
 
 
