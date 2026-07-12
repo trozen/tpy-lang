@@ -8,7 +8,6 @@ callable from any other lower/ module.
 """
 
 from __future__ import annotations
-from dataclasses import field, fields
 from ...parse.nodes import (
     TpyArrayLiteral,
     TpyAssert,
@@ -35,8 +34,8 @@ from ...parse.nodes import (
 )
 from ...modules.type_resolution import get_iterable_element_type
 from ...typesys import (
+    AnyType,
     BYTES_FAMILY,
-    CHAR,
     FLOAT,
     FloatLiteralType,
     INT32,
@@ -56,7 +55,8 @@ from ...typesys import (
     TupleType,
     TypeParamRef,
     UnionType,
-    VoidType,
+    is_any_bytes_type,
+    is_any_str_type,
     is_dyn_protocol,
     is_float_type,
     is_protocol_type,
@@ -105,6 +105,7 @@ from ...codegen_cpp.protocols import (
     dynamic_ref_adapter_type,
     record_inherits_dynamic,
 )
+from ..fallback import ThirUnsupported
 from ..faces import witness as _witness
 from ..nodes import (
     Form,
@@ -982,6 +983,44 @@ def _enum_truthy_wrap(t: TpyType | None, analyzer) -> 'str | None':
         return f"(static_cast<{u_cpp}>({{0}}) != 0)"
     return "true"
 
+def _reject_nonbare_truthy(t: TpyType | None, analyzer) -> None:
+    """Fall a body back to AST when a truthiness operand's Python-truthiness
+    render differs from its plain value render and THIR has no wrap node for it.
+    Mirrors gen_truthy_expr/_truthy_for_rendered: bool/int/float/char/ptr and a
+    pointer-repr Optional render bare (truthy render == value render), so they
+    lower unwrapped; str/bytes (`!x.empty()`), a storage Optional
+    (`::tpy::is_truthy`), Any (`::tpy::to_bool`), an enum the value-opt/enum arms
+    could not wrap, and a record with __bool__/__len__ or a plain user record
+    (`true`) each need a wrap those arms did not supply -- rejecting here keeps
+    the emitted C++ byte-identical to the AST oracle instead of dropping the
+    wrap."""
+    u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t))) if t is not None else None
+    if u is None:
+        return
+    if is_enum_type(u):
+        raise ThirUnsupported("truthy.enum")
+    if isinstance(u, AnyType):
+        raise ThirUnsupported("truthy.any")
+    if isinstance(u, OptionalType) and not u.uses_pointer_repr():
+        raise ThirUnsupported("truthy.storage_optional")
+    if is_any_str_type(u):
+        raise ThirUnsupported("truthy.str")
+    if is_any_bytes_type(u):
+        raise ThirUnsupported("truthy.bytes")
+    # Primitives render bare -- and _truthy_for_rendered short-circuits them
+    # BEFORE the __bool__/__len__ record probe, so `bool` (which carries a
+    # __bool__ stub overload) must be admitted here, not caught below.
+    if (is_bool_type(u) or is_fixed_int_type(u) or is_big_int_type(u)
+            or is_float_type(u) or is_char_type(u)
+            or isinstance(u, IntLiteralType)):
+        return
+    record = analyzer.registry.get_record_for_type(u)
+    if record and (record.get_method_overloads("__bool__")
+                   or record.get_method_overloads("__len__")):
+        raise ThirUnsupported("truthy.record_dunder")
+    if isinstance(u, NominalType) and u.is_user_record:
+        raise ThirUnsupported("truthy.user_record")
+
 def _enum_prop_wrap(e: TpyFieldAccess, analyzer) -> 'str | None':
     """An enum instance property read, as a `{0}` wrap over the receiver
     render (gen_expr's enum property arms): `c.value` -> `static_cast<U>({0})`
@@ -1054,29 +1093,6 @@ def _span_return(t: TpyType | None) -> bool:
         return False
     args = getattr(u, "type_args", None)
     return bool(args) and _eligible_scalar(unwrap_readonly(args[0]))
-
-def _eligible_return(t: TpyType | None, analyzer) -> bool:
-    return (t is None or isinstance(t, VoidType) or _eligible_scalar(t)
-            or _eligible_char(t)
-            or _is_type_param_slot(t)
-            or _own_type_param_slot(t)
-            or _eligible_enum(t, analyzer) is not None
-            or _resolved_str_value(t, analyzer) is not None
-            or _resolved_bytes_value(t, analyzer) is not None
-            or _storage_optional_return_type(t, analyzer) is not None
-            or _value_opt_scalar(t, analyzer) is not None
-            or _value_opt_view(t, analyzer) is not None
-            or _optional_ptr_borrow(t, analyzer) is not None
-            or _record_borrow_return(t, analyzer) is not None
-            or _record_storage_return(t, analyzer) is not None
-            or _container_storage_return(t, analyzer) is not None
-            or _own_storage_viewfam_return(t, analyzer) is not None
-            or _eligible_ptr_value(t, analyzer)
-            or _borrow_tuple_return_type(t, analyzer) is not None
-            or _value_tuple_return(t, analyzer) is not None
-            or _eligible_value_union(t) is not None
-            or _eligible_ptr_union(t, analyzer) is not None
-            or _span_return(t))
 
 def _f1_record_type_arg_ok(a: 'TpyType | int', analyzer) -> bool:
     """A generic user-record type-arg that THIR spells byte-identically to the
@@ -1465,12 +1481,10 @@ def _none_value_opt_arg(a: TpyExpr, ptype: 'TpyType | None',
     return t if isinstance(t, OptionalType) and not t.uses_pointer_repr() else None
 
 def _unrouted_binding_read(t: 'TpyType | None', analyzer) -> 'str | None':
-    """A declared binding kind whose bare NAME read has no THIR arm -- only
-    reachable through the widened ctor params (`_ctor_param_eligible` admits
-    these param TYPES so an unused-or-per-use-rejected param routes; function
-    signatures still reject them at sig.param_type, and no local-decl arm
-    produces such a binding). Returns the reject detail, or None for every
-    binding the slice routes today:
+    """A declared binding kind whose bare NAME read has no THIR arm -- reachable
+    through function and constructor parameters (no local-decl arm produces such
+    a binding). Actual uses decide whether the body routes. Returns the reject
+    detail, or None for every binding the slice routes today:
 
     - a VALUE-repr Optional whose inner the scalar slice does not admit (a
       str/bytes view -- the `optional<string_view>`/`optional<string>` ARG
@@ -1486,8 +1500,10 @@ def _unrouted_binding_read(t: 'TpyType | None', analyzer) -> 'str | None':
     if not isinstance(t, TpyType):
         return None
     u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
-    # Own-optional (`Own[X] | None` is value-repr too) classifies on the Own
-    # axis first, so a routed own-optional record param stays admitted.
+    if ((isinstance(u, OwnType) and isinstance(u.wrapped, OptionalType))
+            or (isinstance(u, OptionalType)
+                and isinstance(u.inner, OwnType))):
+        return "name.own_optional_read"
     own = unwrap_optional_own(u)
     if own is not None:
         inner = own.wrapped
@@ -1512,6 +1528,9 @@ def _unrouted_binding_read(t: 'TpyType | None', analyzer) -> 'str | None':
                 or _value_opt_view(u, analyzer) is not None):
             return None
         return "name.optval_read"
+    if (isinstance(u, OptionalType) and u.uses_pointer_repr()
+            and _optional_ptr_borrow(u, analyzer) is None):
+        return "name.optional_ptr_read"
     return None
 
 def _storage_optional_return_type(t: TpyType | None, analyzer) -> 'OptionalType | None':
@@ -1871,62 +1890,6 @@ def _container_scalar_read(t: TpyType | None, analyzer) -> bool:
         t, analyzer,
         lambda a: _eligible_scalar(a) or _owned_str_slot(a, analyzer),
         span_ok=True)
-
-def _container_arg_concrete(a: 'TpyType | int', analyzer) -> bool:
-    """A container type-arg (element / key / value, or an `Array` size slot)
-    that is FULLY concrete: no still-pending view/container (`Pending*`, which
-    THIR would spell before the resolver concretizes it) and no generic
-    `TypeParamRef` anywhere within it. Composite args (Optional / union / tuple /
-    nested container / `Own` / any generic nominal) recurse into their members,
-    so a `list[tuple[int, T]]` or `dict[int, list[Pending]]` arg is caught.
-    Non-`TpyType` args (an `Array`'s integer dimension) are inert -- they carry
-    no element render."""
-    if not isinstance(a, TpyType):
-        return True
-    bare = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(a)))
-    if isinstance(bare, (PendingViewType, PendingListType, PendingDictType,
-                         PendingSetType, TypeParamRef)):
-        return False
-    if isinstance(bare, OptionalType):
-        return _container_arg_concrete(bare.inner, analyzer)
-    if isinstance(bare, UnionType):
-        return all(_container_arg_concrete(m, analyzer) for m in bare.members)
-    if isinstance(bare, TupleType):
-        return all(_container_arg_concrete(m, analyzer)
-                   for m in bare.element_types)
-    if isinstance(bare, OwnType):
-        return _container_arg_concrete(bare.wrapped, analyzer)
-    return all(_container_arg_concrete(sub, analyzer)
-               for sub in getattr(bare, "type_args", ()) or ())
-
-def _container_param_renders(t: TpyType | None, analyzer) -> bool:
-    """The compositional container-PARAM gate: a `list`/`dict`/`set`/`Array`/
-    `Span` param whose element/key/value args are all fully concrete
-    (`_container_arg_concrete`). It REPLACES the enumerated element-family arms
-    (`_container_scalar_read` / `_bytes_elem_container` / the record-list /
-    scalar-tuple / set-scalar predicates), which over-constrained the param gate
-    to a whitelist of element nominals. The justification mirrors the for-each
-    element gate: a container param's C++ signature -- by-ref (`T&`/`const T&`)
-    for the reference-type containers, by-value `std::span` for `Span` -- is
-    emitted by the (AST-owned) function signature, TYPE-keyed and identical for
-    every element type; and every body USE of the param (subscript, iteration,
-    `len`, membership, method call) is validated during lowering. So the gate
-    need only ensure the container TYPE renders identically -- it must NOT
-    enumerate element families. `Own[container]` (a move-in `T&&` param, a
-    distinct ABI) and any generic (`list[T]`) container -- the generics
-    frontier's territory, whose per-instantiation `val_or_ref_t<T>` element
-    render is out of scope here -- stay on the AST path."""
-    if t is None:
-        return False
-    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
-    if isinstance(t, OwnType):
-        return False
-    if not (is_list(t) or is_dict(t) or is_set(t) or is_array(t) or is_span(t)):
-        return False
-    args = getattr(t, "type_args", None)
-    if not args:
-        return False
-    return all(_container_arg_concrete(a, analyzer) for a in args)
 
 def _container_elem_family(t: 'TpyType | None', analyzer, elem_ok,
                            *, span_ok: bool = False) -> bool:

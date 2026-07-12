@@ -1361,8 +1361,7 @@ def _str_aug_append_ok(stmt: TpyAugAssign, declared: dict[str, TpyType],
     concat-operand slice.
 
     The target must be a declared LOCAL: a str param's aug-assign would need
-    the AST's owned-copy prologue -- which `_function_eligible`'s reassigned-
-    param reject does NOT cover, because the prescan tracks aug-assign targets
+    the AST's owned-copy prologue. The prescan tracks aug-assign targets
     in `aug_assigned`, not `reassigned`. (The AST path itself emits `a += v` on
     the untouched `std::string_view` param there -- an invalid-C++ miscompile,
     tracked in BUGS.md -- so the reject also avoids reproducing it.)"""

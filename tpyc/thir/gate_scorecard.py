@@ -8,119 +8,101 @@ from pathlib import Path
 
 
 _LOWER = Path("tpyc/thir/lower")
+_EXPR_GATES = _LOWER / "expr_gates.py"
 
-_MILESTONES: tuple[tuple[str, frozenset[str], frozenset[Path]], ...] = (
-    ("root traversals", frozenset({
-        "_body_eligible", "_stmt_eligible", "_expr_eligible",
-    }), frozenset()),
-    ("statement preflights", frozenset({
-        "_raise_eligible", "_while_eligible", "_assert_eligible",
-        "_tuple_unpack_eligible", "_expr_stmt_eligible", "_assign_eligible",
-        "_aug_assign_eligible", "_return_eligible", "_var_decl_eligible",
-        "_if_eligible", "_narrow_if_eligible", "_with_eligible",
-        "_try_eligible", "_match_eligible", "_for_each_stmt_eligible",
-    }), frozenset()),
-    ("resumable leaf preflight", frozenset({
-        "_gate_leaf", "_leaf_shape_reject",
-    }), frozenset()),
-    ("comprehension preflight", frozenset({
-        "_comp_decl_ok", "_comp_print_arg_ok",
-        "_comp_decl_plan", "_comp_print_arg_plan",
-    }), frozenset()),
-    ("foreach preflight", frozenset({
-        "_for_range_eligible", "_for_each_container_eligible",
-        "_for_tuple_unpack_eligible",
-        "_classify_for_each", "_for_range_plan",
-        "_for_each_container_plan", "_for_tuple_unpack_plan",
-    }), frozenset()),
-    ("match prevalidation", frozenset({
-        "_classify_match", "_match_plan",
-    }), frozenset()),
-    ("expression gate layer", frozenset(), frozenset({
-        _LOWER / "expr_gates.py",
-    })),
-    ("callable preflights", frozenset({
-        "_function_eligible", "_f1_param_eligible", "_ctor_param_eligible",
-        "_eligible_return",
-    }), frozenset()),
-)
-
-_FACT_QUERY_NAMES = frozenset({
-    "_eligible_scalar", "_eligible_value_union", "_eligible_ptr_union",
-    "_eligible_char", "_eligible_enum", "_eligible_ptr_value",
+_REMOVED_PREFLIGHTS = frozenset({
+    "_body_eligible", "_stmt_eligible", "_expr_eligible",
+    "_raise_eligible", "_while_eligible", "_assert_eligible",
+    "_tuple_unpack_eligible", "_expr_stmt_eligible", "_assign_eligible",
+    "_aug_assign_eligible", "_return_eligible", "_var_decl_eligible",
+    "_if_eligible", "_narrow_if_eligible", "_with_eligible",
+    "_try_eligible", "_match_eligible", "_for_each_stmt_eligible",
+    "_gate_leaf", "_leaf_shape_reject",
+    "_comp_decl_ok", "_comp_print_arg_ok",
+    "_comp_decl_plan", "_comp_print_arg_plan",
+    "_for_range_eligible", "_for_each_container_eligible",
+    "_for_tuple_unpack_eligible", "_classify_for_each",
+    "_for_range_plan", "_for_each_container_plan",
+    "_for_tuple_unpack_plan", "_classify_match", "_match_plan",
+    "_function_eligible", "_f1_param_eligible", "_ctor_param_eligible",
+    "_eligible_return",
 })
 
 
 @dataclass(frozen=True)
 class GateScorecard:
-    completed: tuple[str, ...]
-    remaining: tuple[str, ...]
-    remaining_symbols: int
-    remaining_lines: int
-    policy_helpers: int
+    preflight_symbols: tuple[str, ...]
+    expression_gate_lines: int
+    expression_gate_imports: int
+    expression_gate_consumers: tuple[tuple[str, int], ...]
+
+    @property
+    def expression_gate_present(self) -> bool:
+        return self.expression_gate_lines > 0
 
 
-def _function_lines(path: Path) -> dict[str, int]:
+def _defined_names(path: Path) -> set[str]:
     tree = ast.parse(path.read_text(), filename=str(path))
     return {
-        node.name: node.end_lineno - node.lineno + 1
+        node.name
         for node in ast.walk(tree)
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
-        and node.end_lineno is not None
     }
+
+
+def _expr_gate_imports(path: Path) -> int:
+    tree = ast.parse(path.read_text(), filename=str(path))
+    return sum(
+        len(node.names)
+        for node in ast.walk(tree)
+        if isinstance(node, ast.ImportFrom)
+        and node.level == 1
+        and node.module == "expr_gates"
+    )
 
 
 def collect_gate_scorecard(repo_root: Path | None = None) -> GateScorecard:
     root = repo_root or Path(__file__).parents[2]
-    # Keyed by (file, name) so a name reused across two lower/*.py files is
-    # counted per-definition, not silently overwritten by dict.update.
-    definitions: dict[tuple[Path, str], int] = {}
-    for path in (root / _LOWER).rglob("*.py"):
-        for name, lines in _function_lines(path).items():
-            definitions[(path, name)] = lines
-    defined_names = {name for _, name in definitions}
+    lower = root / _LOWER
+    paths = tuple(lower.rglob("*.py"))
+    defined_names = set().union(*(_defined_names(path) for path in paths))
+    preflight_symbols = tuple(sorted(_REMOVED_PREFLIGHTS & defined_names))
 
-    completed: list[str] = []
-    remaining: list[str] = []
-    remaining_symbols = 0
-    remaining_lines = 0
-    for name, symbols, files in _MILESTONES:
-        present = symbols & defined_names
-        present_files = tuple(path for path in files if (root / path).exists())
-        if present or present_files:
-            remaining.append(name)
-            remaining_symbols += len(present)
-            remaining_lines += sum(
-                lines for (_, sym), lines in definitions.items()
-                if sym in present)
-            remaining_lines += sum(
-                len((root / path).read_text().splitlines())
-                for path in present_files)
-        else:
-            completed.append(name)
-
-    policy_helpers = sum(
-        name.endswith("_eligible") and name not in _FACT_QUERY_NAMES
-        for _, name in definitions
-    )
+    gate_path = root / _EXPR_GATES
+    expression_gate_lines = (
+        len(gate_path.read_text().splitlines()) if gate_path.exists() else 0)
+    consumers = tuple(sorted(
+        (str(path.relative_to(lower)), count)
+        for path in paths
+        if path != gate_path
+        if (count := _expr_gate_imports(path))
+    ))
     return GateScorecard(
-        completed=tuple(completed),
-        remaining=tuple(remaining),
-        remaining_symbols=remaining_symbols,
-        remaining_lines=remaining_lines,
-        policy_helpers=policy_helpers,
+        preflight_symbols=preflight_symbols,
+        expression_gate_lines=expression_gate_lines,
+        expression_gate_imports=sum(count for _, count in consumers),
+        expression_gate_consumers=consumers,
     )
 
 
 def format_gate_scorecard(score: GateScorecard) -> str:
-    total = len(score.completed) + len(score.remaining)
-    return "\n".join((
-        f"tpy| no-gate: {len(score.completed)}/{total} milestones complete",
-        f"tpy| no-gate: {score.remaining_symbols} preflight symbols; "
-        f"{score.policy_helpers} policy helpers; "
-        f"{score.remaining_lines} gate lines",
-        "tpy| no-gate remaining: " + ", ".join(score.remaining),
-    ))
+    gate_state = "present" if score.expression_gate_present else "removed"
+    lines = [
+        "tpy| no-gate: "
+        f"{len(score.preflight_symbols)} known predictive preflight symbols",
+        "tpy| expression gates: "
+        f"{gate_state}; {score.expression_gate_lines} lines; "
+        f"{score.expression_gate_imports} imported symbols across "
+        f"{len(score.expression_gate_consumers)} consumers",
+    ]
+    if score.preflight_symbols:
+        lines.append("tpy| predictive preflights: "
+                     + ", ".join(score.preflight_symbols))
+    if score.expression_gate_consumers:
+        lines.append("tpy| expression gate consumers: " + ", ".join(
+            f"{path}={count}"
+            for path, count in score.expression_gate_consumers))
+    return "\n".join(lines)
 
 
 if __name__ == "__main__":

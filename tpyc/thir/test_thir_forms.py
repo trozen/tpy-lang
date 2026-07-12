@@ -1477,12 +1477,9 @@ class TestPtrValueFamily:
         ret = fn.body[0]
         assert isinstance(ret, THIRReturn)
         assert isinstance(ret.value, THIRName) and not ret.value.deref
-        # One admission per Ptr slot across the module: Handle ctor param +
-        # MIL field, get's return sig + field-read result, reset's param +
-        # field write, pass_ptr's param+return (the sig gate checks param
-        # then return; the return check is the 7th). An exact pin so a
-        # dropped call site (e.g. the return-side check) fails loudly.
-        assert faces.get("ptr.value_slot", 0) == 7
+        # Only lowering sites witness the representation; signatures do not.
+        # Exact count guards against a silently-dropped lowering site.
+        assert faces.get("ptr.value_slot") == 5
 
     def test_field_read_return_routes(self):
         # `return self._p` -- the dominant stdlib shape (re.py handles).

@@ -569,20 +569,18 @@ class TestConstructor:
             "C")
         assert ctor is not None
 
-    def test_ineligible_param_with_scalar_fields_is_ineligible(self):
-        # The PARAM gate must reject a ctor whose fields are all scalar but a param
-        # is non-eligible: it would otherwise emit `: n(n) {}` byte-identically, so the
-        # corpus byte-diff cannot guard a regression here -- only this unit test can.
-        # (A Callable param takes the function-pointer signature emit path; the
-        # once-rejected Optional/union/Ptr/Own/String param TYPES are now
-        # admitted and gated per-use instead -- see test_thir_ctor_params.py.)
-        ctor = _lower_ctor(
+    def test_unused_callable_param_routes(self):
+        # Constructor signatures stay AST-emitted, so an unused Callable param
+        # does not constrain lowering of the scalar member initializer.
+        src = (
             "from typing import Callable\n" + _PRELUDE
             + "class C:\n    n: Int32\n"
             + "    def __init__(self, n: Int32, f: Callable[[Int32], Int32]):\n"
-            + "        self.n = n\n",
-            "C")
-        assert ctor is None
+            + "        self.n = n\n")
+        ctor = _lower_ctor(src, "C")
+        assert ctor is not None
+        assert _ctor_tail(ctor) == " : n(n) {}\n"
+        assert self._hpp(src, thir=True) == self._hpp(src, thir=False)
 
     def _hpp(self, src: str, thir: bool):
         compiler, modules = _compile(src)
@@ -1132,9 +1130,8 @@ class TestConstructorContainerFields:
 
     def test_own_container_param_mil_move_routes(self):
         # The composed shape the container cell + the ctor-params cell each
-        # pinned as stays-AST on their own trees: with `Own[list[T]]` admitted
-        # by `_ctor_param_eligible` AND the container name row in the MIL
-        # gate, the M3b-move arm renders `items(std::move(items))`.
+        # pinned as stays-AST on their own trees: the container name row in the
+        # MIL lowering renders `items(std::move(items))`.
         src = (
             "from tpy import Int32, Own\n"
             "class E:\n    items: list[Int32]\n"

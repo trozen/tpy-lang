@@ -142,12 +142,11 @@ class TestStrValues:
         assert ret.form is Form.BORROW
         assert _emit_expr(ret) == "a"
 
-    def test_string_param_ineligible(self):
-        # tpy.String (const std::string&) is outside the S1 slice.
+    def test_string_param_print_routes(self):
         thir = _lower(
             "from tpy import String\n"
             "def f(s: String) -> None:\n    print(s)\n")
-        assert _fn(thir, "f") is None
+        assert _fn(thir, "f") is not None
 
     def test_fstring_routes(self):
         # F6 S2: an f-string is an owned-str expr (STORAGE) -- see TestFString.
@@ -699,13 +698,11 @@ class TestStrConcat:
             "def f(a: str, n: Int32) -> str:\n    return a * n\n")
         assert _fn(thir, "f") is None
 
-    def test_string_param_still_ineligible(self):
-        # The concat slice admits String locals/operands but must not widen the
-        # param gate: a String param spells `const std::string&`.
+    def test_unused_string_param_routes(self):
         thir = _lower(
             "from tpy import String\n"
             "def f(s: String, a: str) -> str:\n    return a\n")
-        assert _fn(thir, "f") is None
+        assert _fn(thir, "f") is not None
 
     def test_concat_in_compare_routes(self):
         # A String concat result is a compare operand like any str value --
@@ -1487,12 +1484,11 @@ class TestStrCrossTypeCoercionEmit:
 
     def test_str_coercions_byte_identical(self):
         thir = _lower(self.SRC)
-        # take_string stays AST (String params are an S3 deferral); every
-        # coercion SOURCE shape routes.
+        # Signatures stay AST-emitted; every body routes.
         for name in ("ret_slice", "init_slice", "cmp_concat", "fstr_concat",
-                     "calls", "slice_compare", "string_arg_pass", "take_view"):
+                     "calls", "slice_compare", "string_arg_pass", "take_view",
+                     "take_string"):
             assert _fn(thir, name) is not None, name
-        assert _fn(thir, "take_string") is None
         assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
 
 

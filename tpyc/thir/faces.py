@@ -388,16 +388,6 @@ THIR_FACES: frozenset[str] = frozenset({
     # A fixed-int bitwise op (`a & b`, `a << b`, ...) admitted at the scalar
     # arm -- same resolved-binop template emit as arithmetic (gate admission).
     "binop.bitwise",
-    # A compositional container param (`list`/`dict`/`set`/`Array`/`Span` of any
-    # fully-concrete element) admitted so its subscript / len / iteration /
-    # membership route (gate admission; the by-ref signature is AST-emitted and
-    # element-type-neutral, so admission is the distinguishing site for the
-    # newly-reachable bodies -- each element USE is gated by the body walk).
-    "param.container",
-    # Bare protocol param (gate admission; like param.container the signature
-    # is AST-emitted, so admission is the distinguishing site -- each USE of
-    # the binding is gated by the body walk).
-    "param.protocol",
     # Method call on a bare protocol receiver (gate + lowering): `p.m(args)`,
     # monomorphized for a structural protocol, a vtable call for a @dynamic
     # one -- one render either way. Args take the FREE-call literal rules

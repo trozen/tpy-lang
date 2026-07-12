@@ -12,7 +12,7 @@ only under the marker-ignoring metrics flags (it measures standing
 migration backlog, not the run that emitted it). `$THIR_FALLBACK_JSON`
 dumps the full counts from any run that asks.
 
-Reason namespaces: `sig.*` (signature-level rejects in _function_eligible),
+Reason namespaces: `sig.*` (callable-structure rejects),
 `body.*` (function-level body facts), `stmt.*` (the first ineligible
 statement's shape), `expr.*` (a landmark construct found inside that
 statement -- comprehensions, genexpr, lambda, await, walrus), `ctor.*`

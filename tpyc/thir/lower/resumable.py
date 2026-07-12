@@ -59,7 +59,7 @@ from ...codegen_cpp.forms import is_plain_nonvalue
 from .context import _ExprResultUse, _ExprUse, _LowerCtx
 from .expr_gates import _condition_eligible
 from .expressions import _lower_call_arg, _lower_expr
-from .functions import _function_eligible, method_self_type_by_name
+from .functions import _check_callable_structure, method_self_type_by_name
 from .predicates import (
     _eligible_char,
     _eligible_enum,
@@ -77,8 +77,8 @@ from .statements import (
 def _res_value_ok(t: 'TpyType | None', analyzer) -> bool:
     """Foundation value families: plain value scalars, Char, and enums.
 
-    Deliberately tighter than `_f1_param_eligible`: a resumable param is
-    captured as a frame FIELD, and only these families capture and read
+    A resumable param is captured as a frame FIELD, and only these families
+    capture and read
     with the same spelling as a sync param (str captures owned, records
     borrow, Own moves -- each a fan-out cell of its own)."""
     if t is None:
@@ -214,8 +214,11 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
         self_type = method_self_type_by_name(record_name, analyzer)
         if self_type is None:
             return _reject("res.method")
-    if not _function_eligible(func, analyzer, self_type, allow_resumable=True):
-        return None
+    try:
+        _check_callable_structure(
+            func, analyzer, self_type, allow_resumable=True)
+    except ThirUnsupported as ex:
+        return _reject(ex.reason)
     if func.type_params:
         # Generic async def: the frame is a template (M7); a cell.
         return _reject("res.generic")

@@ -497,12 +497,10 @@ class TestPtrUnionNoneEligibility:
         for name in ("fwd", "wf", "cp"):
             assert _fn(thir, name) is not None, name
 
-    def test_non_f1_member_union_still_rejects(self):
-        # A scalar member (Int32 | A | None) is outside the F1-record slice;
-        # only None gets the monostate carve-out.
+    def test_unused_non_f1_member_union_routes(self):
         thir = self._lower(
             "def f(v: Int32 | A | None) -> Int32:\n    return 0\n")
-        assert _fn(thir, "f") is None
+        assert _fn(thir, "f") is not None
 
 
 class TestPtrUnionNoneEmit:

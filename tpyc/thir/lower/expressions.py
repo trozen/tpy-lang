@@ -131,6 +131,7 @@ from .predicates import (
     _enum_neg_wrap,
     _enum_prop_wrap,
     _enum_truthy_wrap,
+    _reject_nonbare_truthy,
     _f1_record,
     _folded_neg_int_literal,
     _generic_root_subst,
@@ -398,7 +399,10 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
     if isinstance(e, TpyName):
         if e.name not in declared:
             raise ThirUnsupported("name.global_read", detail=True)
-        unrouted = _unrouted_binding_read(declared.get(e.name), analyzer)
+        binding_type = _param_declared_type(e.name, lc)
+        if binding_type is None:
+            binding_type = declared.get(e.name)
+        unrouted = _unrouted_binding_read(binding_type, analyzer)
         if unrouted is not None and not allow_unrouted_name:
             raise ThirUnsupported(unrouted, detail=True)
         if (not allow_whole_optional
@@ -921,8 +925,12 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                 rec = (_record_rvalue_temp_slot(a, p.type, lc.analyzer)
                        if i in ctor_mut else None)
                 if rec is not None:
-                    assert temp_args, \
-                        "ctor mutated-slot rvalue temp outside a flush position"
+                    if not temp_args:
+                        # A match guard admits calls but is never a flush point,
+                        # so an arg needing a hoisted temp here cannot be lowered
+                        # -- fall the body back rather than drop the temp.
+                        raise ThirUnsupported(
+                            "ctor mutated-slot rvalue temp outside a flush position")
                     _witness("argtemp.ctor_mut_rvalue")
                     args.append(THIRArgTemp(
                         result_type=rec, cpp_type=rec.to_cpp(),
@@ -966,10 +974,7 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                 result_type=rtype,
                 callee=e.func_name,
                 args=tuple(
-                    THIRLiteral(result_type=p.type, value=None,
-                                form=Form.STORAGE, loc=loc)
-                    if isinstance(a, TpyNoneLiteral)
-                    else _slot_literal_retype(_lower_expr(a, lc, declared), p.type)
+                    _lower_call_arg(a, p.type, lc, declared)
                     for a, p in zip(e.args, fi.params)),
                 cpp_template=fi.cpp_template,
                 loc=loc,
@@ -1536,8 +1541,9 @@ def _lower_generic_plain_call(e, callee_cpp, lc: '_LowerCtx',
                 and isinstance(_peel_coerce(a), (TpyIntLiteral,
                                                  TpyFloatLiteral,
                                                  TpyBoolLiteral))):
-            assert temp_args, \
-                "generic ref-slot literal temp outside a flush position"
+            if not temp_args:
+                raise ThirUnsupported(
+                    "generic ref-slot literal temp outside a flush position")
             _witness("argtemp.generic_ref_slot")
             args.append(THIRArgTemp(
                 result_type=resolved, cpp_type=resolved.to_cpp(),
@@ -1666,9 +1672,11 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         spec = _protocol_arg_temp(proto, at, lc.render_type(at), lc.analyzer,
                                   rvalue=rvalue)
         if spec is not None:
-            # The gate admits the temp rows only under `temps_ok`; a silent
-            # fall-through would drop the adapter wrap and pass the concrete.
-            assert temp_args, "protocol arg-temp outside a flush position"
+            # Admitted only under `temps_ok`; a silent fall-through would drop
+            # the adapter wrap and pass the concrete. A match guard admits calls
+            # but is never a flush point, so reject here instead of asserting.
+            if not temp_args:
+                raise ThirUnsupported("protocol arg-temp outside a flush position")
             cpp_type, brace_init = spec
             init = _lower_expr(a, lc, declared)
             if isinstance(a, TpyName) and a.name in lc.pointers:
@@ -1769,10 +1777,11 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
             _witness("optptr.none")
             return THIROptionalPtrArg(result_type=ot, form=Form.BORROW, loc=loc)
         if opt_face == 'ctor':
-            # The gate admits the ctor face only under temps_ok, so a
-            # non-flushable position can never reach here -- a silent
-            # fall-through would render the bare (un-addressed) ctor.
-            assert temp_args, "optional-ptr ctor face outside a flush position"
+            # Admitted only under temps_ok; a silent fall-through would render
+            # the bare (un-addressed) ctor. A match guard admits calls but is
+            # never a flush point, so reject here instead of asserting.
+            if not temp_args:
+                raise ThirUnsupported("optional-ptr ctor face outside a flush position")
             inner = unwrap_readonly(ot.inner)
             _witness("optptr.ctor_rvalue")
             return THIRArgTemp(result_type=inner, cpp_type=inner.to_cpp(),
@@ -1921,8 +1930,14 @@ def _lower_truthy(e: TpyExpr, lc: '_LowerCtx',
                                      allow_whole_optional=True),
                                  deref=False),
                              loc=getattr(e, "loc", None))
-    wrap = _enum_truthy_wrap(lc.analyzer.get_expr_type(e), lc.analyzer)
+    et = lc.analyzer.get_expr_type(e)
+    wrap = _enum_truthy_wrap(et, lc.analyzer)
     if wrap is None:
+        # Non-enum, non-value-opt-param shapes whose truthiness render is not the
+        # bare value render (str/bytes, storage Optional, record __bool__/__len__)
+        # have no THIR wrap node yet -- reject so the body falls back to AST
+        # rather than emitting the value bare (`if (s)` on a std::string).
+        _reject_nonbare_truthy(et, lc.analyzer)
         return _lower_expr(
             e, lc, declared,
             use=_ExprUse(result=_ExprResultUse.CONDITION))

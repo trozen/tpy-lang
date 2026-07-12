@@ -1,4 +1,4 @@
-"""Match planning and lowering, with per-tier arm walkers for scalar
+"""Match routing and lowering, with per-tier arm walkers for scalar
 switch/chain, record, optional-partition, union, and guarded-union.
 """
 
@@ -9,7 +9,6 @@ from ...parse.nodes import (
     TpyAsPattern,
     TpyAssign,
     TpyAugAssign,
-    TpyCall,
     TpyCapturePattern,
     TpyClassPattern,
     TpyDelItem,
@@ -18,7 +17,6 @@ from ...parse.nodes import (
     TpyFieldAccess,
     TpyLiteralPattern,
     TpyMatch,
-    TpyMethodCall,
     TpyName,
     TpyOrPattern,
     TpyStmt,
@@ -38,17 +36,16 @@ from ...typesys import (
     unwrap_readonly,
     unwrap_ref_type,
 )
-from ...type_def_registry import (
-    is_bool_type,
-    is_fixed_int_type,
-)
+from ...type_def_registry import is_bool_type, is_fixed_int_type
 from ...codegen_cpp.forms import is_ptr_variant_union
 from ...codegen_cpp.context import cpp_string_literal_expr
 from ...codegen_cpp.match import MatchGenerator, partition_optional_cases
 from ...codegen_cpp.string_dispatch import STRING_SWITCH_THRESHOLD
 from ...liveness import stmts_terminate
 from ..faces import witness as _witness
+from ..fallback import ThirUnsupported
 from ..nodes import (
+    THIRExpr,
     THIRMatch,
     THIRMatchArm,
     THIRMatchArmEntry,
@@ -65,6 +62,8 @@ from .predicates import (
     _resolved_str_value,
 )
 from .context import (
+    _ExprResultUse,
+    _ExprUse,
     _LowerCtx,
     _Prescan,
 )
@@ -188,24 +187,8 @@ def _expr_any(e, pred) -> bool:
                 stack.extend(x for x in v if isinstance(x, TpyExpr))
     return False
 
-def _expr_contains_call(e) -> bool:
-    return _expr_any(e, lambda n: isinstance(n, (TpyCall, TpyMethodCall)))
-
 def _expr_mentions_name(e, name: str) -> bool:
     return _expr_any(e, lambda n: isinstance(n, TpyName) and n.name == name)
-
-def _match_guard_ok(guard, declared: dict[str, TpyType], analyzer) -> bool:
-    """A guard the slice renders: the AST emits `if ({gen_expr(guard)})` raw
-    -- no truthy wrap -- so only a bool-TYPED expression is mirror-safe (a
-    non-bool guard leans on C++ contextual conversion / operator bool).
-    Call-free keeps arg temps out: the guard sits inside the arm block with
-    no statement flush point (the same reason while-conditions gate them)."""
-    t = analyzer.get_expr_type(guard)
-    if t is None or not is_bool_type(unwrap_readonly(t)):
-        return False
-    if _expr_contains_call(guard):
-        return False
-    return True
 
 def _match_arm_parts(case) -> 'tuple | None':
     """Split an arm into (test_pattern, binding_node): the label-generating
@@ -447,8 +430,6 @@ def _match_guarded_union_arms_ok(
             arm_declared[bnode.name] = (member if member is not None
                                         else arm_declared[subj.name])
         if case.guard is not None:
-            if not _match_guard_ok(case.guard, arm_declared, analyzer):
-                return False
             if _expr_mentions_name(case.guard, subj.name):
                 return False
             if has_field_conds and any(
@@ -623,9 +604,6 @@ def _match_record_arms_ok(
                     or bnode.name in storage_tuple_locals):
                 return False
             arm_declared[bnode.name] = arm_declared[subj.name]
-        if case.guard is not None and not _match_guard_ok(
-                case.guard, arm_declared, analyzer):
-            return False
     return True
 
 def _stmts_write_name(body, name: str) -> bool:
@@ -743,19 +721,19 @@ def _match_optional_arms_ok(
     return True
 
 @dataclass(frozen=True)
-class _MatchPlan:
+class _MatchRoute:
     kind: str
     hoist_types: tuple[tuple[str, TpyType], ...]
     union_route: 'str | None' = None
 
 
-def _match_plan(
+def _match_route(
         stmt: TpyMatch, analyzer, declared: dict[str, TpyType],
         pointers: AbstractSet[str], narrowed: AbstractSet[str],
         storage_tuple_locals: AbstractSet[str], prescan: _Prescan,
         *, in_branch: bool,
-                     in_loop: bool) -> "_MatchPlan | None":
-    """Return the validated lowering plan for a match, or None.
+                     in_loop: bool) -> "_MatchRoute | None":
+    """Return the strategy data consumed while lowering a match, or None.
 
     M1 covers the unguarded scalar switch tiers
     (switch_enum / switch_primitive), no captures. The subject is a bare
@@ -805,7 +783,7 @@ def _match_plan(
                 storage_tuple_locals, subj, u,
                        hoist_declared, in_loop=in_loop):
             return None
-        return _MatchPlan(kind=kind, hoist_types=hoist_types,
+        return _MatchRoute(kind=kind, hoist_types=hoist_types,
                           union_route=union_route)
     if kind in ("if_elif_record", "guarded_record"):
         if not _f1_record(unwrap_readonly(stmt.subject_type), analyzer):
@@ -815,7 +793,7 @@ def _match_plan(
                 storage_tuple_locals, subj, kind, hoist_declared,
                 in_loop=in_loop):
             return None
-        return _MatchPlan(kind=kind, hoist_types=hoist_types)
+        return _MatchRoute(kind=kind, hoist_types=hoist_types)
     if kind == "optional_partition":
         # Only the pointer-repr Optional[F1-record] subject form is in the
         # slice; a value-repr subject's std::optional local/param binding
@@ -828,7 +806,7 @@ def _match_plan(
                 storage_tuple_locals, subj, hoist_declared,
                 in_loop=in_loop):
             return None
-        return _MatchPlan(kind=kind, hoist_types=hoist_types)
+        return _MatchRoute(kind=kind, hoist_types=hoist_types)
     always_match_arms = 0
     group_guards: dict[str, list[bool]] = {}
     for i, case in enumerate(stmt.cases):
@@ -871,16 +849,13 @@ def _match_plan(
                     or bnode.name in storage_tuple_locals):
                 return None
             arm_declared[bnode.name] = arm_declared[subj.name]
-        if case.guard is not None and not _match_guard_ok(
-                case.guard, arm_declared, analyzer):
-            return None
     # Within each switch group, an unguarded entry only in the final
     # position (sema's duplicate-case rule guarantees it; a violated order
     # would emit an else-chain with no opened if) -- defensive.
     for guards in group_guards.values():
         if any(not g for g in guards[:-1]):
             return None
-    return _MatchPlan(kind=kind, hoist_types=hoist_types)
+    return _MatchRoute(kind=kind, hoist_types=hoist_types)
 
 def _match_case_label(pattern, kind: str, analyzer) -> str:
     """One pre-rendered arm spelling. Switch tiers: the AST's
@@ -900,7 +875,18 @@ def _match_case_label(pattern, kind: str, analyzer) -> str:
             return cpp_string_literal_expr(val)
     return str(val)
 
-def _lower_match(stmt: TpyMatch, plan: _MatchPlan, lc: _LowerCtx,
+
+def _lower_match_guard(guard: TpyExpr, lc: _LowerCtx,
+                       declared: dict[str, TpyType]) -> THIRExpr:
+    lowered = _lower_expr(
+        guard, lc, declared,
+        use=_ExprUse(result=_ExprResultUse.CONDITION))
+    if not is_bool_type(unwrap_readonly(lowered.result_type)):
+        raise ThirUnsupported("match.guard_type", detail=True)
+    return lowered
+
+
+def _lower_match(stmt: TpyMatch, route: _MatchRoute, lc: _LowerCtx,
                  declared: dict[str, TpyType], loc, *,
                  loop_depth: int = 0) -> THIRMatch:
     """Lower a scalar-tier `match` (see `THIRMatch` for the emit shapes).
@@ -914,11 +900,11 @@ def _lower_match(stmt: TpyMatch, plan: _MatchPlan, lc: _LowerCtx,
     `emit_unreachable` folds the AST's `_emit_match_unreachable_tail`
     condition at lowering; `synthetic_default` its `default: break;` rule
     (switch tiers only -- the if/elif chain has no default)."""
-    kind = plan.kind
+    kind = route.kind
     if kind != "switch_union":  # the union lowerers witness their route
         _witness(f"match.{kind}")
     hoist_decls: list[tuple[str, str]] = []
-    for name, vtype in plan.hoist_types:
+    for name, vtype in route.hoist_types:
         render_src = (_resolved_str_value(vtype, lc.analyzer)
                       or _resolved_bytes_value(vtype, lc.analyzer)
                       or vtype)
@@ -927,7 +913,7 @@ def _lower_match(stmt: TpyMatch, plan: _MatchPlan, lc: _LowerCtx,
     if hoist_decls:
         _witness("match.hoist_decl")
     if kind == "switch_union":
-        if plan.union_route == "guarded_union":
+        if route.union_route == "guarded_union":
             return _lower_match_guarded_union(stmt, lc, declared, loc,
                                               hoist_decls,
                                               loop_depth=loop_depth)
@@ -958,7 +944,7 @@ def _lower_match(stmt: TpyMatch, plan: _MatchPlan, lc: _LowerCtx,
         guard = None
         if case.guard is not None:
             _witness("match.guard_arm")
-            guard = _lower_expr(case.guard, lc, arm_declared)
+            guard = _lower_match_guard(case.guard, lc, arm_declared)
         entry = THIRMatchArmEntry(
             body=_statements._lower_scoped_stmts(
                 case.body, lc, arm_declared, loop_depth=loop_depth),
@@ -1124,7 +1110,7 @@ def _lower_match_record(stmt: TpyMatch, lc: _LowerCtx,
         guard = None
         if case.guard is not None:
             _witness("match.guard_arm")
-            guard = _lower_expr(case.guard, lc, arm_declared)
+            guard = _lower_match_guard(case.guard, lc, arm_declared)
         arms.append(THIRMatchArm(labels=(), entries=(THIRMatchArmEntry(
             body=_statements._lower_scoped_stmts(
                 case.body, lc, arm_declared, loop_depth=loop_depth),
@@ -1396,7 +1382,7 @@ def _lower_match_guarded_union(stmt: TpyMatch, lc: _LowerCtx,
             guard = None
             if case.guard is not None:
                 _witness("match.guard_arm")
-                guard = _lower_expr(case.guard, lc, arm_declared)
+                guard = _lower_match_guard(case.guard, lc, arm_declared)
             body = _statements._lower_stmts(
                 case.body, lc, arm_declared, in_branch=True,
                 loop_depth=loop_depth)

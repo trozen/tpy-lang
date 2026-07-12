@@ -123,14 +123,13 @@ class TestContainerSubscriptRead:
             + "def r(d: readonly[dict[Int32, Int32]], k: Int32) -> Int32:\n    return d[k]\n")
         assert _fn(rd, "r") is not None
 
-    def test_own_container_param_ineligible(self):
-        # `Own[list]` (a move-in `T&&` param) is excluded explicitly -- its ABI differs
-        # from the borrow shape this slice assumes; it rides a later cell. Isolated by a
-        # trivial body so only the param gate decides.
+    def test_unused_own_container_param_routes(self):
+        # The signature owns the move-in ABI; an unused parameter does not
+        # constrain lowering of the scalar return.
         thir = _lower(
             _PRELUDE + "from tpy import Own\n"
             + "def o(items: Own[list[Int32]], i: Int32) -> Int32:\n    return i\n")
-        assert _fn(thir, "o") is None
+        assert _fn(thir, "o") is not None
 
     def test_negative_literal_index_routes(self):
         # A negative literal index `items[-1]` folds to a plain literal (the
@@ -2454,7 +2453,7 @@ class TestMembership:
         assert mem.method_cpp == "contains"
         assert isinstance(mem.receiver, THIRName) and mem.receiver.name == "xs"
         assert isinstance(mem.needle, THIRName) and mem.needle.name == "n"
-        assert faces.get("binop.membership") and faces.get("param.container")
+        assert faces.get("binop.membership")
 
     def test_set_not_in_negates(self):
         thir = _lower(
@@ -2562,12 +2561,10 @@ class TestMembershipEmit:
         assert "return (d.contains(k));" in cpp
 
 
-# --- Compositional container-PARAM gate (`_container_param_renders`): a
-# `list`/`dict`/`set`/`Array`/`Span` param of ANY fully-concrete element routes
-# when its body's uses route, since the by-ref/by-span param signature is
-# AST-emitted and element-type-neutral. Replaces the enumerated element-family
-# whitelist; every case here is a container-of-nonscalar the old gate rejected at
-# `sig.param_type`. ---
+# --- Container PARAM routing: a `list`/`dict`/`set`/`Array`/`Span` param of ANY
+# fully-concrete element routes when its body's uses route, since the by-ref/
+# by-span param signature is AST-emitted and element-type-neutral. Each case here
+# is a container-of-nonscalar the old element-family gate rejected. ---
 class TestCompositionalContainerParam:
     def _cpp(self, src: str, thir: bool):
         compiler, modules = _compile(src)
@@ -2634,13 +2631,12 @@ class TestCompositionalContainerParam:
                "def f(d: dict[StrView, Int32]) -> Int32:\n    return d[\"a\"]\n")
         assert _fn(_lower_ctx(sub), "f") is None
 
-    def test_generic_list_param_rejects(self):
-        # A generic `list[T]` param stays AST -- the generics frontier's
-        # territory (per-instantiation val_or_ref_t<T> element render), excluded
-        # by the TypeParamRef arg check.
+    def test_generic_list_param_len_routes(self):
+        # The signature renders the generic parameter; len() lowering consumes
+        # the container without needing its element representation.
         src = (_PRELUDE
                + "def f[T](xs: list[T]) -> Int32:\n    return len(xs)\n")
-        assert _fn(_lower_ctx(src), "f") is None
+        self._routes_identical(src)
 
     def test_own_container_param_rejects(self):
         # `Own[list]` (move-in `T&&`, a distinct ABI) keeps its reject.

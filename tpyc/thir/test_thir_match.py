@@ -8,8 +8,8 @@ per-function `__match_subject_N` numbering, the break-escaping-a-switch
 chain; guarded standalone-if + `goto __match_end_N`), capture/`as`
 bindings (copy/ref/assign modes), the record tiers (field conditions /
 captures / or-pattern condition groups, if_elif_record + guarded_record)
-with the union tiers' field-keyword widening, and the gate rejections
-(Literal subjects, call-bearing/non-bool guards, two-binding shapes,
+with the union tiers' field-keyword widening, and the route rejections
+(Literal subjects, non-bool guards, two-binding shapes,
 non-name subjects, or-pattern bindings, nested field sub-patterns)."""
 
 from __future__ import annotations
@@ -512,8 +512,8 @@ class TestMatchIfElifGuarded:
         assert "if ((x > 5)) {" in cpp and "} else {" in cpp
         assert cpp == _cpp(src, thir=False)
 
-    def test_guard_with_call_rejects(self):
-        # No flush point inside the arm block: call-bearing guards reject.
+    def test_guard_with_call_lowers(self):
+        # A call that needs no argument temps lowers in the arm condition.
         src = (
             "def ok(v: bool) -> bool:\n"
             "    return v\n"
@@ -526,7 +526,7 @@ class TestMatchIfElifGuarded:
             "f(\"a\", True)\n"
         )
         thir = _lower_ctx(src)
-        assert _fn(thir, "f") is None
+        assert _fn(thir, "f") is not None
         assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_non_bool_guard_rejects(self):

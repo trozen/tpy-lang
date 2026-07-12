@@ -50,7 +50,7 @@ class TestProtocolParams:
         # A protocol binding is a reference, never a pointer: `.`, not `->`.
         assert not call.is_arrow and not call.deref_check
         assert isinstance(call.receiver, THIRName)
-        assert faces.get("param.protocol") and faces.get("method.protocol")
+        assert faces.get("method.protocol")
 
     def test_dynamic_param_routes_with_dot_accessor(self):
         thir = _lower_ctx(_src(

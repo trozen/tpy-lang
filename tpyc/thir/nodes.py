@@ -1126,8 +1126,9 @@ class THIRForEach(THIRStmt):
     bytes-returning calls stay gate-excluded); loop var not reassigned/moved
     (a record alias can't reseat) and not used after the loop. Any
     `list`/`dict`/`set`/`Span`/`Array` param of a fully-concrete element reaches
-    here (`_container_param_renders` admits the param; the loop var binds through
-    the shared `loop_var_binding`, and the element USE gates decide). Generators
+    here (the param is admitted structurally now that signatures stay AST-emitted;
+    the loop var binds through the shared `loop_var_binding`, and the element USE
+    gates decide). Generators
     / user iterators (the
     `__iter__`/`__next__` fallback), `dict.items()` / tuple-unpack, and hoisted loop vars
     ride later cells."""

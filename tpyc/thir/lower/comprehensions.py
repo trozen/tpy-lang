@@ -11,7 +11,6 @@ from ...parse.nodes import (
     TpyMethodCall,
     TpyName,
     TpySetComprehension,
-    TpyVarDecl,
 )
 from ...typesys import (
     IntLiteralType,
@@ -33,7 +32,8 @@ from ...type_def_registry import (
 )
 from ...modules.type_resolution import get_iterable_element_type, is_native_iterable
 from ..faces import witness as _witness
-from ..nodes import THIRCall, THIRComprehension
+from ..fallback import ThirUnsupported
+from ..nodes import THIRComprehension
 from .predicates import (
     _dict_view_iterable_ok,
     _eligible_char,
@@ -49,16 +49,11 @@ from .predicates import (
     _resolved_bytes_value,
     _resolved_str_value,
     _resolved_viewfam_value,
-    _var_decl_type,
 )
 from .context import (
     _ExprResultUse,
     _ExprUse,
     _LowerCtx,
-    _Prescan,
-)
-from .expr_gates import (
-    _condition_eligible,
 )
 from .expressions import (
     _lower_container_elem,
@@ -87,15 +82,6 @@ class _CompRoute:
     iterable_lvalue: bool
     sized_reserve: bool
     unpack_types: 'tuple | None'
-
-
-@dataclass(frozen=True)
-class _CompPlan:
-    """Concrete comprehension route consumed by lowering."""
-    kind: str
-    result_type: TpyType
-    route: '_CompRoute | None'
-    array_counter_type: 'TpyType | None' = None
 
 
 def _comp_sized_iterable(t: TpyType) -> bool:
@@ -254,56 +240,16 @@ def _comp_elem_slot_ok(slot: 'TpyType | None', analyzer) -> bool:
     return (_eligible_enum(slot, analyzer) is not None
             or _f1_record(slot, analyzer))
 
-def _comp_decl_plan(
-        stmt: TpyVarDecl, declared: dict[str, TpyType],
-        pointers: AbstractSet[str], rebind_slots: AbstractSet[str],
-        storage_tuple_locals: AbstractSet[str], narrowed: AbstractSet[str],
-        prescan: _Prescan, analyzer) -> '_CompPlan | None':
-    """First decl of a comprehension local (`xs = [f(i) for i in ...]`), the
-    C1+C2 slice. Same decl-position rules as the container-literal cell (a
-    reassigned local is a pointer-local on the AST path); the result must be
-    the sema-RESOLVED vector/set/dict (an Array demotion takes the
-    `array_from_index` lambda emit -- the C3 row)."""
-    init = stmt.init
-    if type(init) not in _COMP_KINDS:
-        return None
-    if (stmt.name in prescan.reassigned or stmt.name in prescan.hoisted
-            or stmt.name in prescan.move_through):
-        return None
-    t = _var_decl_type(stmt, analyzer)
-    return _comp_plan(
-        init, t, declared, pointers, rebind_slots,
-        storage_tuple_locals, narrowed, analyzer)
-
-def _comp_print_arg_plan(
-        a, declared: dict[str, TpyType], pointers: AbstractSet[str],
-        rebind_slots: AbstractSet[str],
-        storage_tuple_locals: AbstractSet[str],
-        narrowed: AbstractSet[str], analyzer) -> '_CompPlan | None':
-    """A comprehension print arg (C3): wraps in its container printer
-    (`::tpy::ListPrinter` / `SetPrinter` / `DictPrinter`); admissibility is
-    the position-independent gate over the expr's own resolved result (an
-    Array-demoted result takes the array_from_index emit -- deferred row).
-    NB the return position stays deferred: container RETURN types reject at
-    the signature gate (`_eligible_return`), and widening that is the
-    signature axis, not a comprehension row."""
-    return _comp_plan(
-        a, analyzer.get_expr_type(a), declared, pointers, rebind_slots,
-        storage_tuple_locals, narrowed, analyzer)
-
-def _comp_plan(
+def _comp_lowering_route(
         init, t: 'TpyType | None', declared: dict[str, TpyType],
         pointers: AbstractSet[str], rebind_slots: AbstractSet[str],
         storage_tuple_locals: AbstractSet[str],
-        narrowed: AbstractSet[str], analyzer) -> '_CompPlan | None':
-    """Position-independent comprehension admissibility against result type
-    `t`: the route fact, result slots, comp-var shadow checks, and the
-    element/filter gates. Filters retain their condition-shape gate; element
-    admission happens while lowering without temp-arg opt-in."""
+        narrowed: AbstractSet[str], analyzer) -> '_CompRoute | None':
+    """Resolve the route data consumed while lowering a comprehension."""
     if t is None:
         return None
     if is_array(t):
-        return _comp_array_plan(
+        return _comp_array_route(
             init, t, declared, pointers, rebind_slots,
             storage_tuple_locals, narrowed, analyzer)
     route = _comp_route(init, declared, narrowed, analyzer)
@@ -329,28 +275,22 @@ def _comp_plan(
     # tuple-alias / narrowed) would need render-state save-restore the slice
     # does not carry -- reject.
     special = (pointers | rebind_slots | storage_tuple_locals | narrowed)
-    declared2 = dict(declared)
     if route.unpack_types is not None:
-        for name, tt in zip(gen.unpack_vars, route.unpack_types):
+        for name in gen.unpack_vars:
             if name is None:
                 continue
             if name in special:
                 return None
-            declared2[name] = tt
     else:
         if gen.var in special:
             return None
-        declared2[gen.var] = route.et
-    if not all(_condition_eligible(c, declared2, analyzer)
-               for c in gen.conditions):
-        return None
-    return _CompPlan(kind=route.kind, result_type=t, route=route)
+    return route
 
-def _comp_array_plan(
+def _comp_array_route(
         init, t: TpyType, declared: dict[str, TpyType],
         pointers: AbstractSet[str], rebind_slots: AbstractSet[str],
         storage_tuple_locals: AbstractSet[str],
-        narrowed: AbstractSet[str], analyzer) -> '_CompPlan | None':
+        narrowed: AbstractSet[str], analyzer) -> '_CompRoute | None':
     """An Array-demoted comprehension -- the `array_from_index` RANGE arm
     only (a filter-less, unpack-less list comp over a literal-proven range;
     sema's _try_comp_array_size did the proving, so the bounds are
@@ -374,19 +314,22 @@ def _comp_array_plan(
     special = (pointers | rebind_slots | storage_tuple_locals | narrowed)
     if gen.var in special:
         return None
-    return _CompPlan(kind="list", result_type=t, route=None,
-                     array_counter_type=counter)
+    return _CompRoute(
+        kind="list", loop="array_range", counter_type=counter,
+        it_type=None, et=counter, iterable_lvalue=True,
+        sized_reserve=False, unpack_types=None)
 
-def _lower_array_comprehension(init, plan: _CompPlan, lc: '_LowerCtx',
-                               declared: dict[str, TpyType]) -> THIRComprehension:
+def _lower_array_comprehension(
+        init, result_type: TpyType, route: _CompRoute, lc: '_LowerCtx',
+        declared: dict[str, TpyType]) -> THIRComprehension:
     """The array_from_index range arm: a per-index lambda constructs each
     slot (`E var = start + E(__i_N) * (step); return elem;`)."""
     analyzer = lc.analyzer
-    t = plan.result_type
+    t = result_type
     gen = init.generator
     it = gen.iterable
     _witness("comp.array_range")
-    counter = plan.array_counter_type
+    counter = route.counter_type
     assert counter is not None
     elem_t = _comp_result_type(init.result_elem_type, analyzer)
     args = it.args
@@ -416,8 +359,10 @@ def _comp_result_type(t: 'TpyType | None', analyzer) -> TpyType:
         return analyzer.ctx.default_int_type
     return t
 
-def _lower_comprehension(init, plan: _CompPlan, lc: '_LowerCtx',
-                         declared: dict[str, TpyType]) -> THIRComprehension:
+def _lower_comprehension(
+        init, result_type: 'TpyType | None', lc: '_LowerCtx',
+        declared: dict[str, TpyType],
+        pointers: AbstractSet[str]) -> THIRComprehension:
     """Build the THIRComprehension node from its classified route. The
     container spelling composes from the node's sema-stamped result types
     exactly like `_gen_list/dict/set_comprehension`; elements/keys/values
@@ -425,10 +370,14 @@ def _lower_comprehension(init, plan: _CompPlan, lc: '_LowerCtx',
     target-typed like the AST's `gen_expr_deref(elem, elem_type)`)."""
     analyzer = lc.analyzer
     loc = getattr(init, "loc", None)
-    if plan.route is None:
-        return _lower_array_comprehension(init, plan, lc, declared)
-    route = plan.route
-    assert route is not None
+    route = _comp_lowering_route(
+        init, result_type, declared, pointers, lc.rebind_slot_locals,
+        lc.storage_tuple_locals, lc.narrow.narrowed.keys(), analyzer)
+    if route is None or result_type is None:
+        raise ThirUnsupported("comp.route", detail=True)
+    if route.loop == "array_range":
+        return _lower_array_comprehension(
+            init, result_type, route, lc, declared)
     gen = init.generator
     body_declared = dict(declared)
     if route.unpack_types is not None:
@@ -493,7 +442,7 @@ def _lower_comprehension(init, plan: _CompPlan, lc: '_LowerCtx',
         unpack_cpps = tuple(None if tt is None else lc.render_type(tt)
                             for tt in route.unpack_types)
     return THIRComprehension(
-        result_type=plan.result_type,
+        result_type=result_type,
         kind=route.kind,
         container_cpp=container,
         var=gen.var,

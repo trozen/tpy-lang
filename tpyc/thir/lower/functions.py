@@ -1,10 +1,10 @@
-"""Entry points: the function-level gate, function/constructor/module
+"""Entry points: function/constructor/module
 lowering, and the module iteration helpers the codegen seam calls.
 """
 
 from __future__ import annotations
 from collections.abc import Mapping
-from dataclasses import field, fields, replace
+from dataclasses import replace
 from ...parse.nodes import (
     FunctionLinkage,
     TpyArrayLiteral,
@@ -20,7 +20,6 @@ from ...parse.nodes import (
     TpyFloatLiteral,
     TpyForEach,
     TpyFunction,
-    TpyGlobal,
     TpyIf,
     TpyIntLiteral,
     TpyMatch,
@@ -52,7 +51,6 @@ from ...typesys import (
     NominalType,
     OptionalType,
     OwnType,
-    PtrType,
     UnionType,
     TpyType,
     TypeParamKind,
@@ -94,17 +92,13 @@ from ..nodes import (
     THIRMilInit,
     THIRModule,
     THIRParam,
-    THIRStmt,
-    THIRTry,
 )
 from .predicates import (
     _coerce_disposition,
-    _container_param_renders,
     _eligible_char,
     _eligible_enum,
     _eligible_ptr_union,
     _eligible_ptr_value,
-    _eligible_return,
     _eligible_scalar,
     _eligible_value_union,
     _f1_record,
@@ -114,18 +108,11 @@ from .predicates import (
     _is_borrow_tuple_source,
     _is_string_owned,
     _is_type_param_slot,
-    _optional_ptr_borrow,
     _optional_ptr_borrow_name,
-    _own_type_param_slot,
-    _protocol_binding,
     _readonly_global_type,
     _resolved_bytes_value,
     _resolved_str_value,
-    _slice_object_type,
     _template_init_call_fi,
-    _type_family_tag,
-    _value_opt_scalar,
-    _value_opt_view,
     _value_tuple,
 )
 from .context import (
@@ -201,70 +188,13 @@ def _overload_reject_detail(func: TpyFunction, stubs) -> str:
     return "sig.overload_set.plain"
 
 
-def _f1_param_eligible(ptype: TpyType | None, analyzer) -> bool:
-    """An F1-eligible param: a value scalar, an F1-record passed by reference
-    (`T&` / `const T&`, accessed `.`), an F3 borrow-form pointer-repr tuple
-    (`std::tuple<..., T*>`, a borrow source for a `tuple_to_storage` field write), a
-    pure value-scalar tuple (`const std::tuple<...>&`, read by subscript), a
-    by-value slice object (`basic_slice` / `slice`, a str subscript index), a
-    compositional container param (`list`/`dict`/`set`/`Array`/`Span` of any
-    fully-concrete element/key/value -- `_container_param_renders`; the by-ref
-    (`T&`/`const T&`) / by-value-span param signature is AST-emitted and
-    type-keyed, so it renders byte-identically for every element type, and every
-    body USE of the param is checked by statement and expression lowering), a
-    pointer-repr `Optional[F1-record]`
-    (`A | None` -> a borrow `A*` / `const A*`; sema rejects its reassignment, so
-    no rebind machinery arises), a value-repr `Optional[cheap scalar]`
-    (`Int32 | None` -> `std::optional<T>`; None-tests render `has_value()`,
-    narrowed reads `(*p)`, truthiness `is_truthy(p)`), or a value-repr
-    `Optional[view]` -- str (`str | None` -> `std::optional<std::string_view>`) or
-    bytes (`bytes | None` -> `std::optional<std::span<const uint8_t>>`); the same
-    None-test/truthiness renders, a narrowed read `(*x)`, and a pass into another
-    `Optional[view]` slot of the same family takes the
-    `_maybe_convert_opt_view_param` shim (`std::string` / `::tpy::bytes_copy`
-    copy) -- the decl / print sinks reject per-use, keeping those bodies AST).
-
-    A bare protocol param (`_protocol_binding` -- structural or @dynamic,
-    `readonly[P]` included) is admitted the way `_ctor_param_eligible` admits
-    its widened set: gen_body emits the BODY only, so the template header, the
-    `const T_p&` / `Base&` slot and the header-inline placement stay AST-emitted
-    whether or not the body routes; the param then binds as a reference exactly
-    like an F1 record, and every body-side USE is gated at its own site (the
-    protocol receiver's method call by `_protocol_method_call_eligible`,
-    everything else by the arm it reaches). `Own[P]` (a `T_p&&` / unique_ptr
-    slot whose reads move and whose calls render `->`) and `Optional[P]` (a
-    pointer-repr borrow) are not protocol bindings and keep rejecting.
-
-    Own-optional/cross-module/native record params, and `Own[container]` /
-    generic (`list[T]`) container params, stay on the AST path."""
-    return (_eligible_scalar(ptype) or _eligible_char(ptype)
-            or _is_type_param_slot(ptype)
-            or _own_type_param_slot(ptype)
-            or _eligible_ptr_value(ptype, analyzer)
-            or _f1_record(ptype, analyzer)
-            or _optional_ptr_borrow(ptype, analyzer) is not None
-            or _value_opt_scalar(ptype, analyzer) is not None
-            or _value_opt_view(ptype, analyzer) is not None
-            or _resolved_str_value(ptype, analyzer) is not None
-            or _resolved_bytes_value(ptype, analyzer) is not None
-            or _slice_object_type(ptype)
-            or _eligible_enum(ptype, analyzer) is not None
-            or _f1_tuple(ptype, analyzer) is not None
-            or _value_tuple(ptype, analyzer) is not None
-            or _eligible_value_union(ptype) is not None
-            or _eligible_ptr_union(ptype, analyzer) is not None
-            or (_container_param_renders(ptype, analyzer)
-                and _witness("param.container"))
-            or (_protocol_binding(ptype) is not None
-                and _witness("param.protocol")))
-
-def _function_eligible(func: TpyFunction, analyzer,
-                       self_type: 'TpyType | None' = None,
-                       *, allow_resumable: bool = False) -> bool:
+def _check_callable_structure(func: TpyFunction, analyzer,
+                              self_type: 'TpyType | None' = None,
+                              *, allow_resumable: bool = False) -> None:
     # `allow_resumable` is passed by `lower_resumable`: the async/generator
     # arms below are that entry's whole point, but every other signature
-    # check (overloads, linkage, shadowing, param/return families) gates a
-    # resumable body exactly like a sync one.
+    # checks (overloads, linkage, shadowing) apply to a resumable body exactly
+    # like a sync one.
     # A record-owned callable is admitted when its owning record is an
     # F1-record (`self_type` passed by the caller). All method kinds funnel
     # their bodies through gen_body, so only the receiver model differs:
@@ -274,29 +204,29 @@ def _function_eligible(func: TpyFunction, analyzer,
     # lower with a `self` (`this`) receiver; static methods lower like free
     # functions (no receiver -- the `static` prefix, the setter's `set_` rename
     # and the getter's ref-return arm are all signature-only; the getter's
-    # body-side return arm needs a pointer-repr Optional/union return, which
-    # _eligible_return rejects). A record param's const verdict comes from the
-    # method's FunctionInfo on the owning record -- see `_param_is_const`.
+    # body-side return arm determines whether a return shape routes. A record
+    # param's const verdict comes from the method's FunctionInfo on the owning
+    # record -- see `_param_is_const`.
     if func.is_method:
         if self_type is None or not _f1_record(self_type, analyzer):
-            return note("sig.receiver_record")
+            raise ThirUnsupported("sig.receiver_record")
         # Inplace dunders (__iadd__ ...): the AST forces const params on them
         # (CONST_PARAMS_METHODS), a verdict `_param_is_const` does not mirror;
         # their mandatory `return self` (`return *this;`) is outside the slice
         # anyway.
         if func.name in CONST_PARAMS_METHODS:
-            return note("sig.inplace_dunder")
+            raise ThirUnsupported("sig.inplace_dunder")
         # @readonly on a @staticmethod is not sema-rejected but emits with the
         # readonly verdicts dropped (no const overload, no forced-const
         # params) -- an asymmetry the mirror does not reproduce.
         if func.is_staticmethod and func.is_readonly:
-            return note("sig.readonly_static")
+            raise ThirUnsupported("sig.readonly_static")
     elif func.is_staticmethod:
         # Defensive: the parser sets is_method=True on staticmethods, so a free
         # function should never carry the flag.
-        return note("sig.staticmethod_flag")
+        raise ThirUnsupported("sig.staticmethod_flag")
     if func.is_overload_stub or func.native_function or func.is_consuming:
-        return note("sig.special_callable")
+        raise ThirUnsupported("sig.special_callable")
     # An overload IMPL body is emitted once per stub with per-stub facts
     # (overload_param_types / literal_overload_facts driving dead-branch
     # elimination, missing-param default locals, and return-coercion
@@ -331,31 +261,32 @@ def _function_eligible(func: TpyFunction, analyzer,
                 and (func.auto_readonly_params_resolved
                      or func.is_auto_own_borrowing_clone))
             if not (is_property_pair or is_clone_pair):
-                return note(_overload_reject_detail(func, overloads))
+                raise ThirUnsupported(_overload_reject_detail(func, overloads))
         # A member shadowing a same-named local type forces the AST path to
         # render that type fully-qualified inside the record's scope (the
         # member-name/type-name collision fix). THIR renders local ctor callees
         # as the raw name, so a colliding record's body would diverge -- reject.
         if ri is not None and ri.shadows_local_type:
-            return note("sig.member_shadows_type")
+            raise ThirUnsupported("sig.member_shadows_type")
     else:
         fis = analyzer.registry.get_function(func.name)
         if fis is not None and len(fis) > 1:
-            return note(_overload_reject_detail(func, fis))
+            raise ThirUnsupported(_overload_reject_detail(func, fis))
     if func.builtin_decorator_key is not None:
-        return note("sig.builtin_decorator")
+        raise ThirUnsupported("sig.builtin_decorator")
     if not allow_resumable:
         if func.is_async:
-            return note("sig.async")
+            raise ThirUnsupported("sig.async")
         if func.is_generator:
             # Sub-tagged by the AST router's own peephole predicate (one
             # shared routing fact): the two populations are different
             # emitters, so each residue must be measurable separately.
-            return note("sig.generator_simple"
-                        if GeneratorCodegen.is_simple_generator(func)
-                        else "sig.generator_resumable")
+            raise ThirUnsupported(
+                "sig.generator_simple"
+                if GeneratorCodegen.is_simple_generator(func)
+                else "sig.generator_resumable")
     if func.error_return is not None:
-        return note("sig.error_return")
+        raise ThirUnsupported("sig.error_return")
     if func.type_params:
         # A generic callable routes its body via the same TypeParamRef T-value
         # arms F5 built for generic-record methods: the resolver spells each
@@ -368,23 +299,9 @@ def _function_eligible(func: TpyFunction, analyzer,
         # Still rejected: INT-kind params (`[N: int]` -- N read as a value has
         # no T-slot arm yet).
         if any(k != TypeParamKind.TYPE for k in func.type_param_kinds):
-            return note("sig.generic_fn")
+            raise ThirUnsupported("sig.generic_fn")
     if func.linkage != FunctionLinkage.DEFAULT:
-        return note("sig.linkage")
-    for _name, ptype in func.params:
-        pt = ptype if isinstance(ptype, TpyType) else None
-        # Free functions and instance methods both take F1-record params; the const
-        # verdict comes from the function's own const_borrow_params (a method's read
-        # via the owning record at lowering). This holds for readonly callables too:
-        # for a plain F1-record (ref) param the readonly forced-const verdict and the
-        # inferred const_borrow_params verdict coincide (both const iff the param is
-        # not directly mutated / address-escaped -- see decide_param_const), so no
-        # readonly carve-out is needed (and a readonly callable cannot mutate a param
-        # anyway, so its record params are uniformly const).
-        if not _f1_param_eligible(pt, analyzer):
-            # Sub-tagged by the FIRST failing param's type family, mirroring
-            # the sole-blocker attribution the migration sequencing reads.
-            return note("sig.param_type." + _type_family_tag(pt, analyzer))
+        raise ThirUnsupported("sig.linkage")
     # A reassigned param of a type flagged param_needs_copy_for_reassign (owned
     # str/bytes/String, BigInt -- const-ref params that cannot reassign in
     # place) gets a mutable owned copy hoisted by the AST prologue
@@ -400,17 +317,7 @@ def _function_eligible(func: TpyFunction, analyzer,
             pt = ptype if isinstance(ptype, TpyType) else None
             if (name in scan.reassigned and pt is not None
                     and pt.param_needs_copy_for_reassign()):
-                return note("sig.param_reassign_copy")
-    rt = func.return_type if isinstance(func.return_type, TpyType) else None
-    # A resumable generator's declared return type is the `Iterator[T]`
-    # wrapper, not a value slot -- `_eligible_return` would reject it. Its
-    # real value slot is the yield type, checked by `lower_resumable`
-    # (`res.yield_type`); skip the wrapper here.
-    if not (allow_resumable and func.is_generator):
-        if func.return_type is not None and not _eligible_return(rt, analyzer):
-            # Sub-tagged by the return's type family, like the param drill.
-            return note("sig.return_type." + _type_family_tag(rt, analyzer))
-    return True
+                raise ThirUnsupported("sig.param_reassign_copy")
 
 def _try_hoisted_names(body: list[TpyStmt], analyzer) -> set[str]:
     """Names hoisted by `if_branch_decls` on `try` statements anywhere in
@@ -550,7 +457,10 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
     property / dunder) `self` is seeded as an F1-record receiver (a `this`
     pointer) so its field reads route the same as a param's; a static method
     keeps only the record for its param-const lookups."""
-    if not _function_eligible(func, analyzer, self_type):
+    try:
+        _check_callable_structure(func, analyzer, self_type)
+    except ThirUnsupported as ex:
+        note(ex.reason)
         return None
     # Branch-local hoisting is not reproduced, with one carve-out: try-
     # statement predecls, mirrored as THIRTry.hoist_decls (the try gate arm
@@ -989,48 +899,6 @@ def _ctor_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
                 or _is_record_value_source(source, declared, own_param_names, lc))
     return _is_record_value_source(source, declared, own_param_names, lc)
 
-def _ctor_param_eligible(ptype: TpyType | None, analyzer) -> bool:
-    """A ctor param TYPE that cannot by itself break the pairing of the
-    AST-emitted signature with the THIR MIL+body tail. Unlike the function
-    gate (`_f1_param_eligible`, whose bodies must carry every param READ),
-    the ctor gate only decides whether the whole ctor MAY route: every USE
-    is still gated per-site (the MIL field arms, the statement-lowering
-    guards, and the `_unrouted_binding_read` name-read
-    guard), so an unhandled use rejects the whole ctor -> AST path.
-
-    The method-param set routes fully (scalar / F1-record / pointer-repr
-    `Optional[F1-record]` / str / bytes / containers / routed unions / `T`);
-    on top of it the ctor admits, per-use-gated:
-
-    - any `Own[...]` (the record / ptr-union / `T` / own-optional payloads
-      feed the M3b-move MIL arm; every other payload's reads reject via
-      `_unrouted_binding_read`);
-    - an owned `String` (`const std::string&` -- reads render bare like an
-      owned local; the mutated/reassigned shapes reject in
-      `lower_constructor`);
-    - a value-repr Optional (`std::optional<T>` by value; reads reject via
-      `_unrouted_binding_read` -- the AST renders narrowed reads `(*p)`);
-    - any `Ptr` / union (bare `T*` / variant values; the non-routed
-      pointees/members reject at each sink, incl. the protocol-member union
-      whose reads have no arm at all).
-
-    Still rejected: callable / Waker / reference-container params and
-    pointer-repr optionals of non-F1 inners. (Protocol params ride
-    `_f1_param_eligible`'s own bare-protocol arm.)"""
-    # `_f1_param_eligible` already admits a bare `T` param (the type-param slot).
-    if _f1_param_eligible(ptype, analyzer):
-        return True
-    if not isinstance(ptype, TpyType):
-        return False
-    if unwrap_optional_own(unwrap_readonly(ptype)) is not None:
-        return True
-    u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
-    if _is_string_owned(u):
-        return True
-    if isinstance(u, OptionalType) and not u.uses_pointer_repr():
-        return True
-    return isinstance(u, (PtrType, UnionType))
-
 def lower_constructor(record, init_method: TpyFunction, analyzer,
                       render_type=None,
                       self_type: 'TpyType | None' = None,
@@ -1077,14 +945,6 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
             or init_method.type_params):
         note("ctor.special_init")
         return None
-    # Param TYPES that pair with the THIR tail (see `_ctor_param_eligible`);
-    # a param used in an unhandled way is caught per-use (the field-init gate,
-    # the body statement gates, the name-read guard).
-    for _name, ptype in init_method.params:
-        pt = ptype if isinstance(ptype, TpyType) else None
-        if not _ctor_param_eligible(pt, analyzer):
-            note("ctor.param_type")
-            return None
     # A reassigned param needing the owned-copy prologue (String/BigInt/owned
     # bytes...): gen_body emits the `T name = __param_name;` body local for a
     # ctor too -- while the ctor signature never takes the `__param_` rename

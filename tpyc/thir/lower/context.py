@@ -9,6 +9,7 @@ from ...typesys import (
     ReadonlyType,
     TpyType,
     UnionType,
+    VoidType,
     unwrap_optional_own,
     unwrap_readonly,
     unwrap_send_sync,
@@ -18,15 +19,21 @@ from .predicates import (
     _borrow_tuple_return_type,
     _container_storage_return,
     _eligible_char,
+    _eligible_enum,
     _eligible_ptr_union,
+    _eligible_ptr_value,
+    _eligible_scalar,
     _eligible_value_union,
+    _is_type_param_slot,
     _optional_ptr_borrow,
     _own_storage_viewfam_return,
+    _own_type_param_slot,
     _record_borrow_return,
     _record_storage_return,
     _resolved_bytes_value,
     _resolved_str_value,
     _storage_optional_return_type,
+    _span_return,
     _value_opt_scalar,
     _value_opt_view,
     _value_tuple_return,
@@ -65,6 +72,7 @@ class _Prescan:
                  "ret_container_storage", "ret_value_tuple",
                  "ret_str", "ret_bytes",
                  "ret_char", "ret_union", "ret_ptr_union",
+                 "ret_supported",
                  "ret_value_opt", "ret_value_opt_view",
                  "value_opt_params", "param_names",
                  "has_self", "is_constructor", "global_seeded", "global_readonly",
@@ -196,6 +204,27 @@ class _Prescan:
         # names return bare; a MEMBER record name takes the AST's `&(...)`
         # address-of lift, which the slice does not reproduce.
         self.ret_ptr_union = _eligible_ptr_union(rt, analyzer)
+        # A value-bearing return must select one of the representations the
+        # return arm consumes. Signatures remain AST-emitted; this fact is
+        # checked only when lowering reaches an actual return value.
+        self.ret_supported = bool(
+            rt is None or isinstance(rt, VoidType)
+            or _eligible_scalar(rt) or _eligible_char(rt)
+            or _is_type_param_slot(rt) or _own_type_param_slot(rt)
+            or _eligible_enum(rt, analyzer) is not None
+            or _eligible_ptr_value(rt, analyzer)
+            or _span_return(rt)
+            or self.ret_storage_opt is not None
+            or self.ret_ptr_opt is not None
+            or self.ret_value_opt is not None
+            or self.ret_value_opt_view is not None
+            or self.ret_borrow_tuple is not None
+            or self.ret_record_borrow is not None
+            or self.ret_record_storage is not None
+            or self.ret_container_storage is not None
+            or self.ret_value_tuple is not None
+            or self.ret_str is not None or self.ret_bytes is not None
+            or self.ret_union is not None or self.ret_ptr_union is not None)
 
 @dataclass
 class _NarrowScope:
