@@ -201,6 +201,10 @@ PyObject *class_method_containers__Stats__total_get(PyObject *self, void *) {
     }
 }
 int class_method_containers__Stats__total_set(PyObject *self, PyObject *value, void *) {
+    if (value == nullptr) {
+        PyErr_SetString(PyExc_AttributeError, "attribute 'total' cannot be deleted");
+        return -1;
+    }
     try {
         reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_method_containers::Stats> *>(self)->payload.total = ::tpy::interop::from_py<int64_t>(value);
         return 0;

@@ -1,0 +1,1 @@
+main.py:29: error: @export class 'Holder': property 'origin' setter takes exposed class 'Point': the value arrives as a borrow of the live argument, which the setter's ownership-transfer parameter cannot move from -- use a plain method

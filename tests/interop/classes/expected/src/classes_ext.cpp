@@ -128,6 +128,10 @@ PyObject *classes__Counter__value_get(PyObject *self, void *) {
     }
 }
 int classes__Counter__value_set(PyObject *self, PyObject *value, void *) {
+    if (value == nullptr) {
+        PyErr_SetString(PyExc_AttributeError, "attribute 'value' cannot be deleted");
+        return -1;
+    }
     try {
         reinterpret_cast<::tpy::interop::Instance<::tpyapp::classes::Counter> *>(self)->payload.value = ::tpy::interop::from_py<int64_t>(value);
         return 0;
@@ -148,6 +152,10 @@ PyObject *classes__Counter__label_get(PyObject *self, void *) {
     }
 }
 int classes__Counter__label_set(PyObject *self, PyObject *value, void *) {
+    if (value == nullptr) {
+        PyErr_SetString(PyExc_AttributeError, "attribute 'label' cannot be deleted");
+        return -1;
+    }
     try {
         reinterpret_cast<::tpy::interop::Instance<::tpyapp::classes::Counter> *>(self)->payload.label = ::tpy::interop::from_py<std::string>(value);
         return 0;

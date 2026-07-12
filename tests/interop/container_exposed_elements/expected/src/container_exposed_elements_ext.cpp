@@ -195,6 +195,10 @@ PyObject *container_exposed_elements__Counter__value_get(PyObject *self, void *)
     }
 }
 int container_exposed_elements__Counter__value_set(PyObject *self, PyObject *value, void *) {
+    if (value == nullptr) {
+        PyErr_SetString(PyExc_AttributeError, "attribute 'value' cannot be deleted");
+        return -1;
+    }
     try {
         reinterpret_cast<::tpy::interop::Instance<::tpyapp::container_exposed_elements::Counter> *>(self)->payload.value = ::tpy::interop::from_py<int64_t>(value);
         return 0;

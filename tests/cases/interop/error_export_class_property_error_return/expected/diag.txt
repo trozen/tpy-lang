@@ -1,0 +1,1 @@
+main.py:22: error: @export class 'Box': 'val' cannot use @error_return

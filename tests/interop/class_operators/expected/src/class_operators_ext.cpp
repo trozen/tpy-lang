@@ -41,6 +41,10 @@ PyObject *class_operators__Vec2__x_get(PyObject *self, void *) {
     }
 }
 int class_operators__Vec2__x_set(PyObject *self, PyObject *value, void *) {
+    if (value == nullptr) {
+        PyErr_SetString(PyExc_AttributeError, "attribute 'x' cannot be deleted");
+        return -1;
+    }
     try {
         reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_operators::Vec2> *>(self)->payload.x = ::tpy::interop::from_py<int64_t>(value);
         return 0;
@@ -61,6 +65,10 @@ PyObject *class_operators__Vec2__y_get(PyObject *self, void *) {
     }
 }
 int class_operators__Vec2__y_set(PyObject *self, PyObject *value, void *) {
+    if (value == nullptr) {
+        PyErr_SetString(PyExc_AttributeError, "attribute 'y' cannot be deleted");
+        return -1;
+    }
     try {
         reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_operators::Vec2> *>(self)->payload.y = ::tpy::interop::from_py<int64_t>(value);
         return 0;

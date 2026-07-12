@@ -117,6 +117,10 @@ PyObject *kwargs__Vec__x_get(PyObject *self, void *) {
     }
 }
 int kwargs__Vec__x_set(PyObject *self, PyObject *value, void *) {
+    if (value == nullptr) {
+        PyErr_SetString(PyExc_AttributeError, "attribute 'x' cannot be deleted");
+        return -1;
+    }
     try {
         reinterpret_cast<::tpy::interop::Instance<::tpyapp::kwargs::Vec> *>(self)->payload.x = ::tpy::interop::from_py<int64_t>(value);
         return 0;
@@ -137,6 +141,10 @@ PyObject *kwargs__Vec__y_get(PyObject *self, void *) {
     }
 }
 int kwargs__Vec__y_set(PyObject *self, PyObject *value, void *) {
+    if (value == nullptr) {
+        PyErr_SetString(PyExc_AttributeError, "attribute 'y' cannot be deleted");
+        return -1;
+    }
     try {
         reinterpret_cast<::tpy::interop::Instance<::tpyapp::kwargs::Vec> *>(self)->payload.y = ::tpy::interop::from_py<int64_t>(value);
         return 0;

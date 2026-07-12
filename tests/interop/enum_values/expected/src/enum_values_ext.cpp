@@ -143,6 +143,10 @@ PyObject *enum_values__Toggle__n_get(PyObject *self, void *) {
     }
 }
 int enum_values__Toggle__n_set(PyObject *self, PyObject *value, void *) {
+    if (value == nullptr) {
+        PyErr_SetString(PyExc_AttributeError, "attribute 'n' cannot be deleted");
+        return -1;
+    }
     try {
         reinterpret_cast<::tpy::interop::Instance<::tpyapp::enum_values::Toggle> *>(self)->payload.n = ::tpy::interop::from_py<int64_t>(value);
         return 0;

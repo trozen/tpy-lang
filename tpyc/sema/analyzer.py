@@ -117,7 +117,7 @@ from ..type_def_registry import (
     is_array, is_enum_type, is_list, is_dict, is_set, is_span,
     protocol_info_of, is_exposed_class, _boundary_inner,
     is_bool_type, is_fixed_int_type, is_function_boundary_marshallable,
-    type_def_of,
+    is_internal_boundary_field, type_def_of,
 )
 from ..typesys import unwrap_own, is_protocol_type, is_protocol_union, RefType
 from ..parse.resolve_refs import (
@@ -578,8 +578,20 @@ class SemanticAnalyzer:
                     # CONST_PARAMS_METHODS rejects any other) never loses
                     # identity; the borrow-return warning doesn't apply.
                     continue
+                if m.is_property_setter or (m.is_property_getter
+                                            and m.is_readonly):
+                    # Setter returns None; the const getter clone shares the
+                    # mutable clone's return (one warning per property).
+                    continue
+                if m.is_property_getter and is_internal_boundary_field(m.name):
+                    # A `_`-named property never crosses as an attribute, so
+                    # there is no boundary copy to warn about. (`_`-named
+                    # METHODS still cross -- the `_` rule gates attribute
+                    # sites only -- so this skip is getter-specific.)
+                    continue
+                what = "property" if m.is_property_getter else "method"
                 warn_if_borrow_return(
-                    m, f"exposed class '{record.name}' method '{m.name}'")
+                    m, f"exposed class '{record.name}' {what} '{m.name}'")
 
     def _validate_export_class_dunders(self, module: TpyModule) -> None:
         """In an ext_module, validate an @export class's repr/str/eq/ne/lt/le/

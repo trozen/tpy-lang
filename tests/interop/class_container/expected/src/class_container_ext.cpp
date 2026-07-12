@@ -43,6 +43,10 @@ PyObject *class_container__Box__a_get(PyObject *self, void *) {
     }
 }
 int class_container__Box__a_set(PyObject *self, PyObject *value, void *) {
+    if (value == nullptr) {
+        PyErr_SetString(PyExc_AttributeError, "attribute 'a' cannot be deleted");
+        return -1;
+    }
     try {
         reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_container::Box> *>(self)->payload.a = ::tpy::interop::from_py<int64_t>(value);
         return 0;
@@ -63,6 +67,10 @@ PyObject *class_container__Box__b_get(PyObject *self, void *) {
     }
 }
 int class_container__Box__b_set(PyObject *self, PyObject *value, void *) {
+    if (value == nullptr) {
+        PyErr_SetString(PyExc_AttributeError, "attribute 'b' cannot be deleted");
+        return -1;
+    }
     try {
         reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_container::Box> *>(self)->payload.b = ::tpy::interop::from_py<int64_t>(value);
         return 0;
@@ -83,6 +91,10 @@ PyObject *class_container__Box__c_get(PyObject *self, void *) {
     }
 }
 int class_container__Box__c_set(PyObject *self, PyObject *value, void *) {
+    if (value == nullptr) {
+        PyErr_SetString(PyExc_AttributeError, "attribute 'c' cannot be deleted");
+        return -1;
+    }
     try {
         reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_container::Box> *>(self)->payload.c = ::tpy::interop::from_py<int64_t>(value);
         return 0;
@@ -245,6 +257,10 @@ PyObject *class_container__Slot__value_get(PyObject *self, void *) {
     }
 }
 int class_container__Slot__value_set(PyObject *self, PyObject *value, void *) {
+    if (value == nullptr) {
+        PyErr_SetString(PyExc_AttributeError, "attribute 'value' cannot be deleted");
+        return -1;
+    }
     try {
         reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_container::Slot> *>(self)->payload.value = ::tpy::interop::from_py<int64_t>(value);
         return 0;
@@ -265,6 +281,10 @@ PyObject *class_container__Slot__filled_get(PyObject *self, void *) {
     }
 }
 int class_container__Slot__filled_set(PyObject *self, PyObject *value, void *) {
+    if (value == nullptr) {
+        PyErr_SetString(PyExc_AttributeError, "attribute 'filled' cannot be deleted");
+        return -1;
+    }
     try {
         reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_container::Slot> *>(self)->payload.filled = ::tpy::interop::from_py<bool>(value);
         return 0;

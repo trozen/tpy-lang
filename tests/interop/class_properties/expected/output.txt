@@ -1,0 +1,17 @@
+12
+3
+10 40
+rect
+[10, 4]
+[10, 4]
+b'pb'
+{'w': 10, 'h': 4}
+True
+True
+[7, 8]
+area write: AttributeError
+del width: AttributeError
+del area: AttributeError
+setter raise: negative width
+10
+getter raise: too wide to label

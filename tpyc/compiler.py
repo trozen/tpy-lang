@@ -3752,13 +3752,15 @@ class Compiler:
     def _validate_exposed_class(self, compiled: 'CompiledModule',
                                 record: 'TpyRecord') -> None:
         """An `@export` class is exposed as a flat PyType_FromSpec type with
-        __init__ + plain methods + annotated fields as getset. Reject the
-        constructs the glue does not yet emit (rather than silently dropping
-        them), and require every crossing field/param/return to marshal.
+        __init__ + plain methods + annotated fields and @property accessors as
+        getset. Reject the constructs the glue does not yet emit (rather than
+        silently dropping them), and require every crossing field/param/return
+        to marshal.
         """
         from .type_def_registry import (
             is_boundary_marshallable, is_function_boundary_marshallable,
             is_span_boundary_param, is_internal_boundary_field,
+            is_exposed_class, _boundary_inner,
             boundary_type_name, boundary_unmarshallable_msg)
         info = compiled.analyzer.registry.get_record(record.name)
         class_line = record.loc.line if record.loc else None
@@ -3782,9 +3784,6 @@ class Compiler:
         if info.parents:
             reject("inheritance of exposed classes is not supported yet (the "
                    "class must be flat)")
-        if info.properties:
-            reject("@property on an exposed class is not supported yet (use a "
-                   "plain annotated field or a method)")
 
         reg = compiled.analyzer.registry
 
@@ -3866,6 +3865,50 @@ class Compiler:
                     [(i, (p.name, p.type)) for i, p in enumerate(m.params)
                      if p.name != "self"],
                     m_loc)
+
+        # Properties cross as computed getset: the getter is a zero-arg method
+        # return site, the setter a one-param method param site -- same
+        # admission, no property-specific boundary set (two setter carve-outs
+        # below, both because a setter's purpose is STORING its value).
+        for pname, prop in info.properties.items():
+            if is_internal_boundary_field(pname):
+                continue  # `_`-named property: payload-only, never an attribute
+            accessors = [rm for rm in record.methods if rm.name == pname]
+            p_loc = accessors[0].loc if accessors else None
+            for rm in accessors:
+                shape = export_method_shape_error(rm, allow_property=True)
+                if shape is not None:
+                    reject(shape, rm.loc)
+            check(prop.getter.return_type, f"property '{pname}'", "return",
+                  p_loc)
+            if prop.setter is None:
+                continue
+            s_loc = next((rm.loc for rm in accessors if rm.is_property_setter),
+                         p_loc)
+            # The parser guarantees a setter takes exactly one value param.
+            sp = next(p for p in prop.setter.params if p.name != "self")
+            if is_exposed_class(sp.type):
+                # Every class-typed setter param is an ownership transfer (the
+                # property Own auto-wrap runs before a user record's ValueType
+                # flag is known, so value classes are wrapped too), but a class
+                # value arrives as a borrow of the live argument payload --
+                # nothing to move from. The generic Own[Cls] message would
+                # advise "use the borrow form", which a setter cannot spell.
+                cls_name = _boundary_inner(sp.type).name
+                reject(f"property '{pname}' setter takes exposed class "
+                       f"'{cls_name}': the value arrives as a borrow of the "
+                       f"live argument, which the setter's ownership-transfer "
+                       f"parameter cannot move from -- use a plain method",
+                       s_loc)
+            if is_span_boundary_param(sp.type):
+                # A method Span param reads a caller buffer for the call's
+                # duration; a setter's canonical body STORES its value, and the
+                # buffer copy-in's backing vector dies when the wrapper
+                # returns -- the stored span would dangle.
+                reject(f"property '{pname}' setter cannot take a Span (the "
+                       f"buffer copy-in lives only for the call; store "
+                       f"list[T] instead)", s_loc)
+            check(sp.type, f"property '{pname}' setter value", "param", s_loc)
 
     def _exposed_form_error(self, typ, role: str, registry,
                             compiled: 'CompiledModule') -> 'str | None':

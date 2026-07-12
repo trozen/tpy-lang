@@ -75,6 +75,10 @@ PyObject *enum_typed_fields__Widget__color_get(PyObject *self, void *) {
     }
 }
 int enum_typed_fields__Widget__color_set(PyObject *self, PyObject *value, void *) {
+    if (value == nullptr) {
+        PyErr_SetString(PyExc_AttributeError, "attribute 'color' cannot be deleted");
+        return -1;
+    }
     try {
         reinterpret_cast<::tpy::interop::Instance<::tpyapp::enum_typed_fields::Widget> *>(self)->payload.color = ::tpy::interop::enum_from_py<::tpyapp::enum_typed_fields::Color>(value, enum_typed_fields__enum_Color);
         return 0;

@@ -164,6 +164,10 @@ PyObject *value_typed_fields__Box__origin_get(PyObject *self, void *) {
     }
 }
 int value_typed_fields__Box__origin_set(PyObject *self, PyObject *value, void *) {
+    if (value == nullptr) {
+        PyErr_SetString(PyExc_AttributeError, "attribute 'origin' cannot be deleted");
+        return -1;
+    }
     try {
         reinterpret_cast<::tpy::interop::Instance<::tpyapp::value_typed_fields::Box> *>(self)->payload.origin = *::tpy::interop::instance_payload<::tpyapp::value_typed_fields::Point>(value, (::tpy::cpy::PyTypeObject *)value_typed_fields__type_Point);
         return 0;

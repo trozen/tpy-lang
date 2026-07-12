@@ -16,7 +16,7 @@ import io
 from typing import TYPE_CHECKING, TextIO
 
 from ..parse import TpyModule, TpyVarDecl
-from ..typesys import TpyType, is_void_like_type, FinalType
+from ..typesys import TpyType, is_void_like_type, FinalType, OwnType
 from ..type_def_registry import (
     is_boundary_marshallable, is_function_boundary_marshallable, is_exposed_class,
     is_exposed_enum, is_span_boundary_param, _boundary_inner, enum_info_of,
@@ -1104,9 +1104,74 @@ class ExtensionGenerator:
                 continue
             _, fin = self._value_in_decl_expr(fld.type, "value", sym)
             out.write(f"int {setn}(PyObject *self, PyObject *value, void *) {{\n")
+            # `del obj.attr` invokes the setter with value == NULL (the getset
+            # delete protocol) -- guard before the marshaller dereferences it.
+            out.write("    if (value == nullptr) {\n")
+            out.write(f'        PyErr_SetString(PyExc_AttributeError, '
+                      f'"attribute \'{fld.name}\' cannot be deleted");\n')
+            out.write("        return -1;\n    }\n")
             out.write("    try {\n")
             out.write(f"        {cppvar}->payload.{fcpp} = {fin};\n")
             out.write("        return 0;\n")
+            out.write("    } catch (...) {\n")
+            out.write("        if (!PyErr_Occurred())\n")
+            out.write('            PyErr_SetString(PyExc_RuntimeError, '
+                      '"tpy extension: attribute write failed");\n')
+            out.write("        return -1;\n")
+            out.write("    }\n}\n\n")
+
+        # @property accessors as computed getset. The getter body is the
+        # zero-arg method emit (same _emit_call_return, so the return admits
+        # the full method boundary set incl. containers); the setter body is
+        # the one-param method emit, its single value fed to _emit_marshal_in
+        # through an `a0` alias in place of the arg-unpack local. A getter
+        # raising a TPy exception crosses like a method raise (boundary catch);
+        # the setter mirrors tp_init's -1-sentinel catch. `_`-named properties
+        # are internal like `_`-named fields. A getter-only property gets a
+        # nullptr setter (AttributeError on write, as in CPython -- message
+        # text differs).
+        for pname, prop in info.properties.items():
+            if is_internal_boundary_field(pname):
+                continue
+            pcpp = escape_cpp_name(pname)
+            getn = f"{sym}__{escape_cpp_name(cls['simple'])}__{pcpp}_get"
+            setn = f"{sym}__{escape_cpp_name(cls['simple'])}__{pcpp}_set"
+            has_setter = prop.setter is not None
+            getset_entries.append((pname, getn, setn if has_setter
+                                   else "nullptr"))
+            out.write(f"PyObject *{getn}(PyObject *self, void *) {{\n")
+            out.write("    try {\n")
+            out.write(f"        auto &__self = {cppvar}->payload;\n")
+            self._emit_call_return(out, prop.getter.return_type,
+                                   f"__self.{pcpp}()", sym)
+            self._emit_boundary_catch(out, reg_arg)
+            out.write("}\n\n")
+            if not has_setter:
+                continue
+            sp_type = next(p.type for p in prop.setter.params
+                           if p.name != "self")
+            out.write(f"int {setn}(PyObject *self, PyObject *value, "
+                      f"void *) {{\n")
+            # `del obj.prop` invokes the setter with value == NULL (the getset
+            # delete protocol) -- AttributeError like CPython's deleter-less
+            # property, instead of the marshaller dereferencing NULL.
+            out.write("    if (value == nullptr) {\n")
+            out.write(f'        PyErr_SetString(PyExc_AttributeError, '
+                      f'"property \'{pname}\' has no deleter");\n')
+            out.write("        return -1;\n    }\n")
+            out.write("    PyObject *a0 = value;\n")
+            out.write("    try {\n")
+            out.write(f"        auto &__self = {cppvar}->payload;\n")
+            tok = self._emit_marshal_in(out, 0, sp_type, sym)
+            # A non-value setter param is an ownership transfer (Own
+            # auto-wrap, C++ T&&) -- move the marshalled owned local in.
+            if isinstance(sp_type, OwnType):
+                tok = f"::std::move({tok})"
+            out.write(f"        __self.set_{pcpp}({tok});\n")
+            out.write("        return 0;\n")
+            out.write("    } catch (const ::tpy::BaseException &__e) {\n")
+            out.write(f"        ::tpy::interop::set_py_err_from(__e{reg_arg});\n")
+            out.write("        return -1;\n")
             out.write("    } catch (...) {\n")
             out.write("        if (!PyErr_Occurred())\n")
             out.write('            PyErr_SetString(PyExc_RuntimeError, '

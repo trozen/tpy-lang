@@ -1,0 +1,1 @@
+main.py:22: error: @export class 'Buf': property 'data' setter cannot take a Span (the buffer copy-in lives only for the call; store list[T] instead)

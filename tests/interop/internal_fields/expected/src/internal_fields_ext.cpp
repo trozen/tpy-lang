@@ -100,6 +100,10 @@ PyObject *internal_fields__Entry__v_get(PyObject *self, void *) {
     }
 }
 int internal_fields__Entry__v_set(PyObject *self, PyObject *value, void *) {
+    if (value == nullptr) {
+        PyErr_SetString(PyExc_AttributeError, "attribute 'v' cannot be deleted");
+        return -1;
+    }
     try {
         reinterpret_cast<::tpy::interop::Instance<::tpyapp::internal_fields::Entry> *>(self)->payload.v = ::tpy::interop::from_py<int64_t>(value);
         return 0;
@@ -223,6 +227,10 @@ PyObject *internal_fields__Vault__owner_get(PyObject *self, void *) {
     }
 }
 int internal_fields__Vault__owner_set(PyObject *self, PyObject *value, void *) {
+    if (value == nullptr) {
+        PyErr_SetString(PyExc_AttributeError, "attribute 'owner' cannot be deleted");
+        return -1;
+    }
     try {
         reinterpret_cast<::tpy::interop::Instance<::tpyapp::internal_fields::Vault> *>(self)->payload.owner = ::tpy::interop::from_py<int64_t>(value);
         return 0;

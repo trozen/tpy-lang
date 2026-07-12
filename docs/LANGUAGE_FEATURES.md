@@ -6094,7 +6094,23 @@ API, floor 3.12, hand-rolled C-API glue, copy-in marshalling).
   *any* type, including the reference-class and container members the getset path
   rejects. Reach an internal member through a method rather than an attribute
   (the reject diagnostic points here). The same `_`-prefix rule hides an
-  exception's internal data fields. Because the
+  exception's internal data fields. A **`@property`** crosses as a *computed*
+  getset: the getter is a zero-arg method return site (full method boundary
+  set, containers included), the setter a one-param method param site, so
+  `r.area` computes on every read and `r.width = 5` runs the setter (a raise
+  inside an accessor crosses like a method raise). A getter-only property is
+  read-only (`AttributeError` on write, as in CPython -- message text
+  differs), and `del` on any property raises `AttributeError` (there are no
+  deleters; matches CPython's deleter-less property). Two setter carve-outs,
+  both located errors because a setter's purpose is storing its value: a
+  setter typed as an exposed class -- value-type or reference -- cannot cross
+  (the value arrives as a borrow, but the setter's parameter is an ownership
+  transfer; use a plain method), and a `Span[T]` setter is rejected (the
+  buffer copy-in dies at the call boundary; store `list[T]`). A `_`-prefixed
+  property is internal like a `_`-prefixed field. A getter returning a borrow
+  (`-> list[T]` / `-> Cls`) copies out and warns, exactly like a method
+  borrow-return. Introspection divergence: on the `.so` the descriptor is a
+  `getset_descriptor`, not a `property` object (no `fget`/`fset`). Because the
   PyObject *owns* the instance, a class crosses **IN as a borrow of the live
   embedded payload** -- a method call or a free function taking the instance
   (`def bump(c: Counter, ...)`) mutates through it and the change is visible on
@@ -6127,8 +6143,9 @@ API, floor 3.12, hand-rolled C-API glue, copy-in marshalling).
   keeps its reference, so ownership can't transfer -- use the borrow form), a
   `@nocopy`
   class returned by reference (the boundary can't copy it out -- return
-  `Own[Cls]`), `@property`, static/async/generic/overloaded/`@error_return`
-  methods, inheritance, generics, an exposed class defined in *another* module
+  `Own[Cls]`), static/async/generic/overloaded/`@error_return`
+  methods (the same shape checks cover property accessors),
+  inheritance, generics, an exposed class defined in *another* module
   (cross-module exposed types are deferred, mirroring the cross-module enum
   guard below -- define and `@export` the class in the module that uses it),
   or `@export` on an exception class (those cross via the
@@ -6218,10 +6235,9 @@ API, floor 3.12, hand-rolled C-API glue, copy-in marshalling).
   error), `bytes`/`BytesView` constants, and `int(enum)` conversion inside a
   body (orthogonal to the boundary).
 - **Planned**: zero-copy `str`/`bytes` view input (`StrView`/`BytesView` via
-  the phase-3.5 foreign-borrow primitive), faithful data-field crossing for
-  user exception classes (the same per-instance field marshalling), class-typed
-  fields / `@property` / inheritance for exposed classes,
-  container and buffer input at the exposed-class boundary, the PEP 517
+  the phase-3.5 foreign-borrow primitive), class-typed
+  fields / inheritance for exposed classes,
+  container getset fields at the exposed-class boundary, the PEP 517
   wheel backend, and the `nogil` GIL capability. See `docs/CPYTHON_INTEROP.md`.
 
 ---

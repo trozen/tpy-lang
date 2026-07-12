@@ -77,7 +77,8 @@ def unsupported_boundary_param_form(fn: 'TpyFunction') -> 'str | None':
     return None
 
 
-def export_method_shape_error(fn: 'TpyFunction', *, allow_error_return: bool = False) -> 'str | None':
+def export_method_shape_error(fn: 'TpyFunction', *, allow_error_return: bool = False,
+                              allow_property: bool = False) -> 'str | None':
     """The decorator/kind/async forms a method or dunder cannot take to cross
     the CPython boundary as a PyType slot or PyMethodDef wrapper. Returns a
     message tail (`'name' cannot ...`) for the first violated form, else None.
@@ -87,10 +88,14 @@ def export_method_shape_error(fn: 'TpyFunction', *, allow_error_return: bool = F
     std::expected itself (`__next__`, implicitly @error_return(StopIteration));
     every other callable is rejected, since the plain method/free-function glue
     marshals the raw C++ return with no expected-unwrap step.
+
+    `allow_property` exempts property accessors: an exposed class's @property
+    crosses as a computed getset (its accessors still need every OTHER check
+    here); everywhere else -- free functions, dunders -- a property is rejected.
     """
     if fn.is_staticmethod:
         return f"'{fn.name}' cannot be a @staticmethod"
-    if fn.is_property_getter or fn.is_property_setter:
+    if (fn.is_property_getter or fn.is_property_setter) and not allow_property:
         return f"'{fn.name}' cannot be a @property"
     if fn.is_overload_stub:
         return f"'{fn.name}' cannot be @overload"
