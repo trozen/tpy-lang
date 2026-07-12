@@ -1682,18 +1682,21 @@ def record_exec_pass(fingerprint: str, case_id: str) -> None:
 def discover_interop_cases() -> list[tuple[str, Path, Path]]:
     """Discover (name, case_dir, module_py) for every ext-exec interop case.
 
-    A case is any tests/interop/<case>/ directory holding a driver.py; the
-    module source is the lone `# tpy: ext_module` .py beside it (driver.py and
-    ext_checks.py are excluded).
+    A case is any tests/interop/<case>/ directory whose src/ holds a
+    driver.py; the module source is the lone `# tpy: ext_module` .py beside
+    it (driver.py and ext_checks.py are excluded). Inputs live under src/,
+    mirroring tests/cases; expected/ and the gitignored __tpyc__/ build
+    output stay at the case root.
     """
     cases: list[tuple[str, Path, Path]] = []
     if not INTEROP_DIR.is_dir():
         return cases
     for case_dir in sorted(p for p in INTEROP_DIR.iterdir() if p.is_dir()):
-        if not (case_dir / "driver.py").exists():
+        src_dir = case_dir / "src"
+        if not (src_dir / "driver.py").exists():
             continue
         mod_py: Path | None = None
-        for py in sorted(case_dir.glob("*.py")):
+        for py in sorted(src_dir.glob("*.py")):
             if py.name in ("driver.py", "ext_checks.py"):
                 continue
             if "# tpy: ext_module" in py.read_text():

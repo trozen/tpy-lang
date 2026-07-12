@@ -1,8 +1,9 @@
 """CPython-extension ext-exec harness: the runtime half of interop testing.
 
-Each tests/interop/<case>/ holds an `# tpy: ext_module` source plus a
-driver.py (and optional ext_checks.py). For every case this proves, in the
-shape of the main snapshot harness:
+Each tests/interop/<case>/src/ holds an `# tpy: ext_module` source plus a
+driver.py (and optional ext_checks.py), mirroring the tests/cases input/
+output split; expected/ and the gitignored __tpyc__/ stay at the case root.
+For every case this proves, in the shape of the main snapshot harness:
 
   - COMP/SNAPSHOT (always): tpyc emits the module .hpp/.cpp + the CPython glue
     `_ext.cpp`; all three are snapshotted into expected/. This alone catches
@@ -143,8 +144,8 @@ def test_interop_exec(case_dir, mod_py, request):
     build_dir = case_dir / "__tpyc__"
     expected_dir = case_dir / "expected"
     mod = mod_py.stem
-    driver = case_dir / "driver.py"
-    ext_checks = case_dir / "ext_checks.py"
+    driver = case_dir / "src" / "driver.py"
+    ext_checks = case_dir / "src" / "ext_checks.py"
     cxx = request.config.getoption("--cxx")
     force = (
         UPDATE_EXPECTED
@@ -210,9 +211,10 @@ def test_interop_exec(case_dir, mod_py, request):
 
     # ----- CPY-PARITY (always) -----------------------------------------------
     # The SAME driver over the TPy source via lib/cpy stubs must reproduce the
-    # ext-exec snapshot. run_cpython puts lib/cpy + the case dir (holding the
-    # source) on PYTHONPATH, so `import {mod}` binds the .py here. Compares to
-    # the committed output.txt (under --no-exec the build didn't refresh it).
+    # ext-exec snapshot. run_cpython puts lib/cpy + the driver's src/ dir
+    # (holding the source) on PYTHONPATH, so `import {mod}` binds the .py
+    # here. Compares to the committed output.txt (under --no-exec the build
+    # didn't refresh it).
     if output_txt.exists():
         cpy_out = run_cpython(driver)
         check_or_update(cpy_out, output_txt, "cpy-parity output", compare_only=True)

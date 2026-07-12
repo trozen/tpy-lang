@@ -923,7 +923,8 @@ net for interop. Shipped as a dedicated `tests/test_interop_exec.py` over
 rather than folding into `tests/cases/`); the comp-phase rejection cases stay
 under `tests/cases/interop/`. See `tests/interop/README.md`.
 
-- **Layout.** An `ext_module` `<mod>.py` (compiled) + a plain Python
+- **Layout.** Under the case's `src/`: an `ext_module` `<mod>.py` (compiled;
+  the filename is the import name) + a plain Python
   **`driver.py`** that imports and exercises it
   (`assert mod.add(a, b) == ...; print(...)`), plus an optional `ext_checks.py`
   for ext-only marshalling-error cases. The driver is *identical* across both

@@ -13,8 +13,11 @@ uv run pytest tests/test_interop_exec.py --no-exec  # codegen/snapshot only
 uv run python tests/update_snapshots.py -k funcs    # regenerate expected/
 ```
 
-For each case directory (any `tests/interop/<case>/` with a `driver.py`) the
-harness mirrors the main snapshot harness:
+For each case directory (any `tests/interop/<case>/` whose `src/` holds a
+`driver.py`) the harness mirrors the main snapshot harness. Inputs -- the
+`# tpy: ext_module` module, `driver.py`, optional `ext_checks.py` -- live in
+`src/`, mirroring the `tests/cases` input/output split; `expected/` and the
+gitignored `__tpyc__/` build output stay at the case root:
 
 - **comp/snapshot** (always): `tpyc` emits the module `.hpp`/`.cpp` and the
   CPython glue `<mod>_ext.cpp`; all three are snapshotted into `expected/`.
@@ -41,7 +44,7 @@ under the host interpreter.
 
 `driver.py` is byte-identical across the ext-exec and cpy-parity runs; only
 what `import <mod>` resolves to changes (compiled `.so` vs interpreted source).
-Adding a case is just a new directory with a `driver.py` -- the harness
+Adding a case is just a new directory with a `src/driver.py` -- the harness
 discovers it. Generated C++ and the built `.so` land in the gitignored
 `tests/interop/<case>/__tpyc__/` for inspection.
 
@@ -50,7 +53,7 @@ self-check additionally requires `Python.h`.
 
 ## Cases
 
-- **`funcs/`** (`funcs.py`) -- the free-function surface: `answer()` (no-arg
+- **`funcs/`** (`src/funcs.py`) -- the free-function surface: `answer()` (no-arg
   `Int64`, `METH_NOARGS`), `add(a: Int64, b: Int64)` (rung 1, argument
   marshalling, `METH_VARARGS`), and `big_square`/`negate` over `int` (rung 2,
   BigInt, including values beyond int64 that cross via the hex round-trip).
