@@ -1106,8 +1106,7 @@ class TestNarrowingEligibility:
         assert fn.body[1].then_body[0].alias == "__v"
 
     def test_compound_not_and_chained_leaves(self):
-        # `not` and chained-compare leaves ride _condition_eligible; the
-        # chained pair reads the narrowed subject through the inline get.
+        # The chained pair reads the narrowed subject through the inline get.
         thir = self._lower(
             "def f(v: A | B, flag: bool) -> Int32:\n"
             "    if isinstance(v, A) and not flag:\n        return v.x\n"

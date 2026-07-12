@@ -206,7 +206,6 @@ from .expr_gates import (
     _borrow_local_binding,
     _bytes_aug_concat_ok,
     _call_eligible,
-    _condition_eligible,
     _container_aug_setitem_ok,
     _container_field_write_ok,
     _container_literal_decl_ok,
@@ -234,7 +233,6 @@ from .expr_gates import (
     _str_aug_append_ok,
     _str_field_write_ok,
     _str_list_method_iterable_ok,
-    _tuple_literal_ok,
 )
 from .expressions import (
     _flush_witness,
@@ -1136,9 +1134,7 @@ def _lower_compound_cond(cond: TpyExpr, isin: TpyExpr, info,
     if var in lc.inline_narrowed and len(members) == 1:
         active_declared = dict(declared)
         active_declared[var] = members[0]
-    return _lower_expr(
-        cond, lc, active_declared,
-        use=_ExprUse(result=_ExprResultUse.CONDITION))
+    return _lower_truthy(cond, lc, active_declared)
 
 def _lower_narrow_cond(cinfo, condition: TpyExpr, lc: _LowerCtx,
                        declared: dict[str, TpyType]) -> THIRExpr:
@@ -1478,17 +1474,16 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 init = THIRLiteral(result_type=none_tgt, value=None,
                                    form=Form.VALUE, loc=loc)
         elif isinstance(stmt.init, TpyTupleLiteral):
-            # Gate-admitted value-tuple literal: the spelled brace-init against
-            # the binding slot (decl and reassign alike; per-element targets
-            # ride _lower_tuple_literal, so no outer retype applies).
             tuple_t = _value_tuple(declared.get(stmt.name, vtype), analyzer)
-            if (tuple_t is None
-                    or not _tuple_literal_ok(
-                        stmt.init, tuple_t, declared, analyzer)):
+            if tuple_t is None:
                 note_detail("decl.tuple_literal_shape")
                 raise ThirUnsupported(stmt_reject_reason(stmt))
             _witness("decl.tuple_literal")
-            init = _lower_tuple_literal(stmt.init, tuple_t, lc, declared)
+            try:
+                init = _lower_tuple_literal(stmt.init, tuple_t, lc, declared)
+            except ThirUnsupported:
+                note_detail("decl.tuple_literal_shape")
+                raise ThirUnsupported(stmt_reject_reason(stmt)) from None
         else:
             if not is_reassign and not container_literal and not storage_call:
                 if in_branch_first:
@@ -2168,9 +2163,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             source = stmt.value
             tuple_ok = False
             if isinstance(source, TpyTupleLiteral):
-                tuple_ok = bool(_tuple_literal_ok(
-                    source, ret_vt, declared, analyzer)
-                    and _witness("ret.tuple_literal"))
+                tuple_ok = True
             elif isinstance(source, TpyName):
                 tuple_ok = bool(
                     source.name not in narrowed
@@ -2187,9 +2180,13 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 note_detail("return.tuple_source")
                 raise ThirUnsupported(stmt_reject_reason(stmt))
             if isinstance(source, TpyTupleLiteral):
-                return THIRReturn(
-                    value=_lower_tuple_literal(source, ret_vt, lc, declared),
-                    loc=loc)
+                try:
+                    value = _lower_tuple_literal(source, ret_vt, lc, declared)
+                except ThirUnsupported:
+                    note_detail("return.tuple_source")
+                    raise ThirUnsupported(stmt_reject_reason(stmt)) from None
+                _witness("ret.tuple_literal")
+                return THIRReturn(value=value, loc=loc)
         if stmt.value is not None and lc.prescan.ret_union is not None:
             source = stmt.value
             while isinstance(source, TpyCoerce):
@@ -2305,14 +2302,17 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 raise ThirUnsupported(stmt_reject_reason(stmt))
             return _lower_narrow_if(stmt, info, lc, declared, loc,
                                     loop_depth=scope.loop_depth)
-        if not _condition_eligible(stmt.condition, admitted_declared, analyzer):
+        try:
+            condition = _lower_truthy(
+                stmt.condition, lc, admitted_declared)
+        except ThirUnsupported:
             c = stmt.condition
             if isinstance(c, TpyBinOp):
                 lf = _type_family_tag(analyzer.get_expr_type(c.left), analyzer)
                 rf = _type_family_tag(analyzer.get_expr_type(c.right), analyzer)
                 note_detail(f"if.cond_binop.{c.op}.{lf}_{rf}")
             else:
-                _kind_detail("if.cond_", c)
+                _kind_detail("cond.", c)
             raise ThirUnsupported(stmt_reject_reason(stmt))
         # Hoisted predecls render at the chain head (see THIRIf); mirrors
         # _lower_try's loop -- names spell RAW, enter the CALLER's `declared`
@@ -2351,7 +2351,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                                              branch_decls_ok=True,
                                              loop_depth=scope.loop_depth)
         return THIRIf(
-            condition=_lower_truthy(stmt.condition, lc, declared),
+            condition=condition,
             then_body=_lower_scoped_stmts(
                 stmt.then_body, lc, dict(declared),
                 branch_decls_ok=True,
@@ -2434,10 +2434,12 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                                             loop_depth=scope.loop_depth + 1),
                 loc=loc,
             )
-        if not _condition_eligible(stmt.condition, declared, analyzer):
-            raise ThirUnsupported("stmt.while")
+        try:
+            condition = _lower_truthy(stmt.condition, lc, declared)
+        except ThirUnsupported:
+            raise ThirUnsupported("stmt.while") from None
         return THIRWhile(
-            condition=_lower_truthy(stmt.condition, lc, declared),
+            condition=condition,
             body=_lower_scoped_stmts(
                 stmt.body, lc, dict(declared),
                 branch_decls_ok=True,
@@ -2473,8 +2475,6 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             if (stmt.then_type_facts
                     and not _optional_narrow_facts_ok(
                         stmt.then_type_facts, declared, analyzer)):
-                raise ThirUnsupported("stmt.assert")
-            if not _condition_eligible(stmt.condition, declared, analyzer):
                 raise ThirUnsupported("stmt.assert")
             cond = _lower_truthy(stmt.condition, lc, declared)
         return THIRAssert(condition=cond, message=msg, loc=loc)
@@ -2637,6 +2637,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                    for a in e.args):
                 note_detail("print.narrowed_arg")
                 raise ThirUnsupported(stmt_reject_reason(stmt))
+            lowered_args = []
             for arg in e.args:
                 if type(arg) in _comprehensions._COMP_KINDS:
                     ok = True
@@ -2652,10 +2653,15 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                         analyzer.get_expr_type(arg), analyzer)
                     _kind_detail(f"print.arg.{fam}_", arg)
                     raise ThirUnsupported(stmt_reject_reason(stmt))
-            return THIRPrint(
-                args=tuple(_lower_print_arg(a, lc, declared, pointers)
-                           for a in e.args),
-                loc=loc)
+                try:
+                    lowered_args.append(
+                        _lower_print_arg(arg, lc, declared, pointers))
+                except ThirUnsupported:
+                    fam = _type_family_tag(
+                        analyzer.get_expr_type(arg), analyzer)
+                    _kind_detail(f"print.arg.{fam}_", arg)
+                    raise ThirUnsupported(stmt_reject_reason(stmt)) from None
+            return THIRPrint(args=tuple(lowered_args), loc=loc)
         narrowed = lc.narrow.narrowed.keys()
         if isinstance(stmt.expr, TpyCall):
             eligible = _call_eligible(
@@ -2981,7 +2987,5 @@ def _lower_print_arg(a: TpyExpr, lc: _LowerCtx,
         unwrap_readonly(lc.analyzer.get_expr_type(a)),
         lc.analyzer.ctx.default_int_for_literal)
     return THIRPrintArg(
-        _lower_expr(
-            a, lc, declared,
-            field_prechecked=isinstance(a, TpyFieldAccess)),
+        _lower_expr(a, lc, declared),
         _print_arg_form(arg_type))

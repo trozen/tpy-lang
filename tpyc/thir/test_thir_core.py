@@ -1220,13 +1220,13 @@ class TestFloat:
         assert _fn(thir, "f") is not None
 
     def test_float_comparison_as_value_eligible(self):
-        # _binop_eligible admits comparisons for any eligible scalar incl. float.
+        # _lower_binop admits comparisons for any eligible scalar incl. float.
         thir = _lower("def f(a: float, b: float) -> bool:\n    r = a < b\n    return r\n")
         assert _fn(thir, "f") is not None
 
     def test_float_truediv_is_ineligible(self):
         # `/` (true division) has AST op `div`, absent from _ARITH_OPS (which
-        # lists `/`, a token the parser never emits), so _binop_eligible rejects
+        # lists `/`, a token the parser never emits), so _lower_binop rejects
         # it -- AST path. (truediv DOES carry a `::tpy::truediv` cpp_template;
         # contrast `//`, op `//`, which is eligible. See TODO re: enabling it.)
         thir = _lower("def f(a: float, b: float) -> float:\n    return a / b\n")

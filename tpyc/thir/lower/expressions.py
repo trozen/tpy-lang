@@ -8,6 +8,9 @@ from __future__ import annotations
 import math
 from dataclasses import field, replace
 from ...parse.nodes import (
+    FSTRING_CONV_NONE,
+    FSTRING_CONV_REPR,
+    FSTRING_CONV_STR,
     TpyArrayLiteral,
     TpyBinOp,
     TpyBoolLiteral,
@@ -30,6 +33,7 @@ from ...parse.nodes import (
     TpySlice,
     TpyStrLiteral,
     TpySubscript,
+    TupleElemCapture,
     TpyTupleLiteral,
     TpyUnaryOp,
 )
@@ -37,7 +41,9 @@ from ...typesys import (
     BOOL,
     CHAR,
     INT32,
+    IntLiteralType,
     LiteralType,
+    NominalType,
     OptionalType,
     OwnType,
     TpyType,
@@ -61,9 +67,14 @@ from ...type_def_registry import (
     is_bool_type,
     is_bytes_type,
     is_bytes_view_type,
+    is_dict,
     is_float32_type,
+    is_fixed_int_type,
+    is_list,
+    is_span,
     is_str_type,
     is_str_view_type,
+    is_set,
 )
 from ...codegen_cpp.types import resolve_pending_container
 from ...codegen_cpp.context import (
@@ -72,7 +83,7 @@ from ...codegen_cpp.context import (
     qualified_cpp_name,
 )
 from ...compilation_context import get_current_compiler
-from ..fallback import ThirUnsupported, expr_kind_tag
+from ..fallback import ThirUnsupported, expr_kind_tag, note_detail
 from ..faces import witness as _witness
 from ...codegen_cpp.expressions import ExpressionGenerator
 from ..nodes import (
@@ -116,36 +127,56 @@ from .predicates import (
     _BIGINT_INDEX_NARROW_WRAP,
     _BIGINT_LIT_COERCION,
     _BIGINT_NARROW,
+    _ARITH_OPS,
+    _BITWISE_OPS,
     _COMPARE_OPS,
     _FLOAT32_LIT_COERCION,
     _IS_OPS,
+    _LOGICAL_OPS,
     _MEMBERSHIP_OPS,
     _arg_ptr_union_slot,
+    _bigint_index_disposition,
     _binop_operand_casts,
+    _bytes_compare_operand,
+    _bytes_concat_operand,
+    _char_compare_operand,
     _bytes_name_form,
     _coerce_disposition,
     _coerce_wrap,
     _container_nocopy_elem,
+    _container_value_leaf_read,
+    _const_index,
     _dict_view_iterable_ok,
     _eligible_char,
+    _eligible_enum,
+    _eligible_ptr_value,
     _eligible_scalar,
+    _enum_compare_pair,
     _enum_member_cpp,
     _enum_neg_wrap,
     _enum_prop_wrap,
     _enum_truthy_wrap,
     _reject_nonbare_truthy,
     _f1_record,
+    _field_over_subscript_ok,
+    _field_receiver_ok,
     _folded_neg_int_literal,
     _generic_root_subst,
     _instantiation_call_fi,
     _is_borrow_form_name,
+    _is_type_param_slot,
     _is_range_call,
     _is_none_compare_operand,
     _is_string_owned,
+    _mixed_sign_compare,
     _narrow_bigint_index,
     _optional_ptr_arg_face,
     _optional_ptr_arg_slot,
+    _optional_ptr_borrow_name,
+    _optional_checked_field,
+    _optional_field_over_subscript_ok,
     _own_lvalue_temp_slot,
+    _operand_type,
     _peel_coerce,
     _plain_member_call_markers_ok,
     _plain_own_slot,
@@ -156,13 +187,20 @@ from .predicates import (
     _record_rvalue_temp_slot,
     _resolve_pending_view,
     _resolved_bytes_value,
+    _resolved_scalar,
     _resolved_str_value,
     _resolved_viewfam_value,
     _runtime_bigint,
+    _slice_object_type,
+    _str_compare_operand,
+    _str_concat_operand,
+    _str_field_value_read,
     _str_name_form,
     _subscript_index_and_tuple,
+    _subscript_container_recv_type,
     _template_init_call_fi,
     _tuple_subscript_value_read,
+    _tparam_value,
     _opt_view_arg_shim,
     _none_value_opt_arg,
     _value_opt_scalar,
@@ -173,7 +211,9 @@ from .predicates import (
     _value_tuple_return,
     _value_union_temp_slot,
     _union_binding_divergent,
+    _union_compare_pair,
     _unrouted_binding_read,
+    _unwrap_lit_coerce,
     _value_opt_view_name,
 )
 from .context import _ExprResultUse, _ExprUse, _LowerCtx
@@ -182,22 +222,16 @@ from .generics import expand_fi_template
 
 from .expr_gates import (
     _FSTRING_INELIGIBLE,
-    _binop_eligible,
-    _binop_operand_suffix,
-    _bytes_subscript_read,
     _call_eligible,
     _cast_passthrough_eligible,
-    _chained_compare_eligible,
-    _container_subscript_value_read,
     _container_lit_slot_family,
     _enum_from_value_eligible,
-    _field_value_reject,
+    _field_over_container_subscript_ok,
+    _field_over_field_ok,
     _free_callee_kind,
-    _fstring_eligible,
     _fstring_arg_wrap,
     _is_len_native,
     _instantiation_call_eligible,
-    _if_expr_eligible,
     _is_record_rvalue_source,
     _macro_expansion_eligible,
     _marker_call_kind,
@@ -207,13 +241,10 @@ from .expr_gates import (
     _record_ctor_call_eligible,
     _scalar_ctor_call_eligible,
     _slice_ctor_call_eligible,
-    _str_slice_read,
-    _str_subscript_char_read,
-    _subscript_read_reject,
+    _subscript_elem_reject,
+    _subscript_recv_reject,
     _str_aug_append_ok,
     _str_list_method_iterable_ok,
-    _tuple_literal_ok,
-    _unary_not_eligible,
     _value_tuple_pass_through_arg,
     _value_union_temp_arg,
 )
@@ -277,16 +308,36 @@ def _method_call_use_eligible(
     return ok
 
 
-def _subscript_reject(e: TpySubscript, lc: '_LowerCtx',
-                      declared: dict[str, TpyType]) -> str | None:
+def _slice_bound_supported(b: 'TpyExpr | None', analyzer) -> bool:
+    if b is None:
+        return True
+    bt = analyzer.get_expr_type(b)
+    if bt is None:
+        return False
+    if _runtime_bigint(bt, analyzer):
+        return _const_index(_unwrap_lit_coerce(b)) is None
+    bt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(bt)))
+    return is_fixed_int_type(
+        resolve_int_literals(bt, analyzer.ctx.default_int_for_literal))
+
+
+def _str_slice_receiver_supported(
+        recv: TpyExpr, lc: '_LowerCtx',
+        declared: dict[str, TpyType]) -> bool:
     analyzer = lc.analyzer
-    if (_tuple_subscript_value_read(e, declared, analyzer) is not None
-            or _container_subscript_value_read(e, declared, analyzer)
-            or _str_subscript_char_read(e, declared, analyzer)
-            or _bytes_subscript_read(e, declared, analyzer)
-            or _str_slice_read(e, declared, analyzer)):
-        return None
-    return _subscript_read_reject(e, declared, analyzer)
+    if isinstance(recv, TpyName):
+        return (recv.name in declared
+                and _resolved_viewfam_value(
+                    declared[recv.name], analyzer) is not None)
+    if isinstance(recv, TpyFieldAccess):
+        return (_field_receiver_ok(recv, declared, analyzer)
+                and _resolved_viewfam_value(
+                    analyzer.get_expr_type(recv), analyzer) is not None)
+    if isinstance(recv, TpyCall):
+        return (_call_eligible(recv, declared, analyzer)
+                and _resolved_viewfam_value(
+                    analyzer.get_expr_type(recv), analyzer) is not None)
+    return False
 
 
 def _subscript_yields_borrow_ptr(sub: TpySubscript, lc: '_LowerCtx') -> bool:
@@ -346,6 +397,160 @@ def _is_own_param(name: str, lc: '_LowerCtx') -> bool:
                     and unwrap_optional_own(unwrap_readonly(t)) is not None)
     return False
 
+
+def _binop_operand_suffix(e: TpyBinOp, declared: dict[str, TpyType],
+                          analyzer) -> str:
+    fam = ""
+    for operand in (e.left, e.right):
+        t = _operand_type(operand, declared, analyzer)
+        if t is None:
+            continue
+        t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+        if contains_type_param(t):
+            return ".tparam"
+        if isinstance(t, NominalType) and t.is_user_record and not fam:
+            fam = ".genrec" if t.type_args else ".record"
+    return fam
+
+
+def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
+                 declared: dict[str, TpyType], loc) -> THIRExpr:
+    analyzer = lc.analyzer
+
+    def reject() -> None:
+        raise ThirUnsupported(
+            f"binop.shape.{e.op}"
+            f"{_binop_operand_suffix(e, declared, analyzer)}",
+            detail=True)
+
+    rb = e.resolved_binop
+    if e.op in _ARITH_OPS or e.op in _BITWISE_OPS:
+        if rb is None or not getattr(rb.method, "cpp_template", None):
+            if (rb is None or e.op != "+"
+                    or not rb.method.native_function
+                    or not rb.method.native_name):
+                reject()
+            bt = _resolved_bytes_value(rtype, analyzer)
+            lt = _operand_type(e.left, declared, analyzer)
+            rt = _operand_type(e.right, declared, analyzer)
+            if (bt is None or not is_bytes_type(bt)
+                    or not _bytes_concat_operand(e.left, lt, analyzer)
+                    or not _bytes_concat_operand(e.right, rt, analyzer)):
+                reject()
+        elif e.op == "+" and _is_string_owned(rtype):
+            lt = _operand_type(e.left, declared, analyzer)
+            rt = _operand_type(e.right, declared, analyzer)
+            if (not _str_concat_operand(e.left, lt, analyzer)
+                    or not _str_concat_operand(e.right, rt, analyzer)):
+                reject()
+        elif not _resolved_scalar(rtype, analyzer):
+            reject()
+        elif (isinstance(analyzer.get_expr_type(e.left), IntLiteralType)
+              and not isinstance(e.left, TpyName)
+              and isinstance(analyzer.get_expr_type(e.right), IntLiteralType)
+              and not isinstance(e.right, TpyName)):
+            reject()
+        if e.op in _BITWISE_OPS:
+            _witness("binop.bitwise")
+    elif e.op in _COMPARE_OPS:
+        if rtype is None or not is_bool_type(rtype):
+            reject()
+        if (rb is not None and not getattr(rb.method, "cpp_template", None)
+                and not (rb.method.native_function
+                         and rb.method.native_name)):
+            reject()
+        lt = _operand_type(e.left, declared, analyzer)
+        rt = _operand_type(e.right, declared, analyzer)
+        if not ((_resolved_scalar(lt, analyzer)
+                 and _resolved_scalar(rt, analyzer))
+                or (_str_compare_operand(e.left, lt, analyzer)
+                    and _str_compare_operand(e.right, rt, analyzer))
+                or (_bytes_compare_operand(e.left, lt, analyzer)
+                    and _bytes_compare_operand(e.right, rt, analyzer))
+                or (_char_compare_operand(e.left, lt, analyzer)
+                    and _char_compare_operand(e.right, rt, analyzer))
+                or (_tparam_value(lt) and _tparam_value(rt))
+                or _union_compare_pair(lt, rt)
+                or _enum_compare_pair(e, lt, rt, analyzer)):
+            reject()
+        if _mixed_sign_compare(lt, rt):
+            reject()
+    elif e.op in _LOGICAL_OPS:
+        lt = _operand_type(e.left, declared, analyzer)
+        rt = _operand_type(e.right, declared, analyzer)
+        if (rtype is None or not is_bool_type(rtype)
+                or lt is None or not is_bool_type(lt)
+                or rt is None or not is_bool_type(rt)):
+            reject()
+    elif e.op in _IS_OPS:
+        if _is_none_compare_operand(e, declared, analyzer) is None:
+            reject()
+    elif e.op in _MEMBERSHIP_OPS:
+        fi = e.resolved_contains
+        if (fi is None or e.typed_dict_in_field is not None
+                or fi.cpp_template or fi.native_function
+                or not fi.native_name
+                or not isinstance(e.right, TpyName)
+                or e.right.name not in declared):
+            reject()
+        ct = unwrap_readonly(unwrap_ref_type(
+            unwrap_send_sync(declared[e.right.name])))
+        lt = _operand_type(e.left, declared, analyzer)
+        if not ((is_dict(ct) or is_set(ct))
+                and _resolved_scalar(lt, analyzer)):
+            reject()
+    else:
+        reject()
+
+    if e.op in _MEMBERSHIP_OPS:
+        _witness("binop.membership")
+        return THIRMembership(
+            result_type=rtype,
+            receiver=_lower_expr(e.right, lc, declared),
+            needle=_lower_expr(e.left, lc, declared),
+            method_cpp=e.resolved_contains.native_name,
+            negate=e.op == "not in",
+            loc=loc)
+    if e.op in _IS_OPS:
+        operand = e.right if isinstance(e.left, TpyNoneLiteral) else e.left
+        value_repr = (
+            isinstance(operand, TpyName)
+            and (_value_opt_scalar_param(operand.name, lc)
+                 or _value_opt_view_param(operand.name, lc)))
+        return THIRIsNone(
+            result_type=rtype,
+            operand=_lower_expr(
+                operand, lc, declared, allow_whole_optional=True),
+            negate=e.op == "is not",
+            value_repr=value_repr,
+            form=Form.VALUE,
+            loc=loc)
+    if e.op in _COMPARE_OPS:
+        left = _lower_char_targeted(
+            e.left, analyzer.get_expr_type(e.right), lc, declared)
+        right = _lower_char_targeted(
+            e.right, analyzer.get_expr_type(e.left), lc, declared)
+    else:
+        lslot, rslot = _rb_operand_slots(e.resolved_binop)
+        left = _slot_literal_retype(
+            _lower_expr(e.left, lc, declared), lslot)
+        right = _slot_literal_retype(
+            _lower_expr(e.right, lc, declared), rslot)
+    bt = _resolved_bytes_value(rtype, analyzer)
+    lcast, rcast = _binop_operand_casts(e, analyzer)
+    return THIRBinOp(
+        result_type=rtype,
+        left=left,
+        op=e.op,
+        right=right,
+        resolved=e.resolved_binop,
+        divisor_non_zero=e.divisor_non_zero,
+        left_cast=lcast,
+        right_cast=rcast,
+        form=(Form.STORAGE if _is_string_owned(rtype)
+              or (bt is not None and is_bytes_type(bt)) else Form.VALUE),
+        loc=loc)
+
 def _value_opt_scalar_param(name: str, lc: '_LowerCtx') -> bool:
     """Whether `name` is a value-repr `Optional[cheap scalar]` param
     (`std::optional<T>`) of the function being lowered -- the binding whose
@@ -380,6 +585,7 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                 allow_whole_optional: bool = False,
                 allow_unrouted_name: bool = False,
                 field_prechecked: bool = False,
+                field_owned_str_ok: bool = False,
                 subscript_prechecked: bool = False) -> THIRExpr:
     # `allow_temps` admits the arg-temp rows for THIS expression's args only
     # when it is a free call: set by the five flushable statement positions
@@ -531,9 +737,31 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                         deref=e.name in lc.frame_slots, loc=loc)
     if isinstance(e, TpyFieldAccess):
         if not field_prechecked:
-            reject = _field_value_reject(e, declared, analyzer)
-            if reject is not None:
-                raise ThirUnsupported(reject, detail=True)
+            if e.enum_member_of is not None:
+                if _eligible_enum(e.enum_member_of, analyzer) is None:
+                    raise ThirUnsupported("field.enum_member", detail=True)
+            elif _enum_prop_wrap(e, analyzer) is None:
+                result_ok = (
+                    _eligible_scalar(rtype)
+                    or _eligible_char(rtype)
+                    or _eligible_enum(rtype, analyzer) is not None
+                    or _is_type_param_slot(rtype)
+                    or _eligible_ptr_value(rtype, analyzer)
+                    or (field_owned_str_ok
+                        and _str_field_value_read(e, declared, analyzer)
+                        and _witness("fstr.str_field")))
+                if not result_ok:
+                    raise ThirUnsupported("field.result_type", detail=True)
+                if not (
+                        _field_receiver_ok(e, declared, analyzer)
+                        or _optional_checked_field(e, declared, analyzer)
+                        or _field_over_subscript_ok(e, declared, analyzer)
+                        or _optional_field_over_subscript_ok(
+                            e, declared, analyzer)
+                        or _field_over_container_subscript_ok(
+                            e, declared, analyzer)
+                        or _field_over_field_ok(e, declared, analyzer)):
+                    raise ThirUnsupported("field.receiver_shape", detail=True)
         if e.enum_member_of is not None:
             # Type-level enum member access: `Color.RED` -> `Color::RED`
             # (gen_expr's BindingKind.ENUM arm, spelled at lowering).
@@ -591,11 +819,39 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
             loc=loc,
         )
     if isinstance(e, TpySubscript):
-        if not subscript_prechecked:
-            reject = _subscript_reject(e, lc, declared)
-            if reject is not None:
-                raise ThirUnsupported(reject, detail=True)
+        if not subscript_prechecked and e.needs_optional_runtime_check:
+            raise ThirUnsupported("subscript.optional_check", detail=True)
         if e.slice_function_info is not None:
+            if not subscript_prechecked:
+                fi = e.slice_function_info
+                slice_ok = (
+                    bool(fi.cpp_template)
+                    and "{cpp}" not in fi.cpp_template
+                    and _str_slice_receiver_supported(e.obj, lc, declared)
+                    and _resolved_viewfam_value(rtype, analyzer) is not None)
+                if slice_ok and isinstance(e.index, TpySlice):
+                    sl = e.index
+                    rt = _resolved_viewfam_value(rtype, analyzer)
+                    if e.is_stepped_slice:
+                        slice_ok = (
+                            (is_str_type(rt) or is_bytes_type(rt))
+                            and _slice_bound_supported(sl.step, analyzer))
+                    else:
+                        slice_ok = (
+                            sl.step is None
+                            and (is_str_view_type(rt)
+                                 or is_bytes_view_type(rt)))
+                    slice_ok = (
+                        slice_ok
+                        and _slice_bound_supported(sl.lower, analyzer)
+                        and _slice_bound_supported(sl.upper, analyzer))
+                elif slice_ok:
+                    slice_ok = (
+                        isinstance(e.index, TpyName)
+                        and e.index.name in declared
+                        and _slice_object_type(declared[e.index.name]))
+                if not slice_ok:
+                    raise ThirUnsupported("subscript.slice_shape", detail=True)
             # Str/bytes slice -> the resolved slice __getitem__'s @cpp_template
             # over a BasicSlice/Slice initializer (or a slice-typed variable
             # index rendered bare). The view result (string_view / span) is
@@ -648,6 +904,10 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
             )
         tup = _subscript_index_and_tuple(e, analyzer)
         if tup is not None:
+            if (not subscript_prechecked
+                    and _tuple_subscript_value_read(
+                        e, declared, analyzer) is None):
+                raise ThirUnsupported("subscript.tuple_shape", detail=True)
             # Tuple subscript -> `std::get<N>(t)`. Eligibility guaranteed a const index
             # and an eligible-tuple receiver; the shared helper re-derives the
             # normalized index (negatives folded), mirroring _gen_subscript. The
@@ -669,6 +929,60 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                 form=form,
                 loc=loc,
             )
+        if not subscript_prechecked:
+            recv_t = _subscript_container_recv_type(
+                e.obj, declared, analyzer)
+            index_ok = (
+                _bigint_index_disposition(e.index, analyzer) != "reject")
+            ret_ok = (
+                _resolved_scalar(rtype, analyzer)
+                or _eligible_char(rtype)
+                or _eligible_enum(rtype, analyzer) is not None
+                or _eligible_ptr_value(rtype, analyzer)
+                or _resolved_str_value(rtype, analyzer) is not None
+                or _resolved_bytes_value(rtype, analyzer) is not None)
+            container_ok = (
+                recv_t is not None
+                and _container_value_leaf_read(recv_t, analyzer)
+                and ret_ok and index_ok)
+            str_ok = (
+                _str_slice_receiver_supported(e.obj, lc, declared)
+                and _eligible_char(rtype) and index_ok)
+            recv = e.obj
+            bytes_recv_ok = False
+            if isinstance(recv, TpyName):
+                bytes_recv_ok = (
+                    recv.name in declared
+                    and _resolved_bytes_value(
+                        declared[recv.name], analyzer) is not None)
+            elif isinstance(recv, TpyFieldAccess):
+                bytes_recv_ok = (
+                    _field_receiver_ok(recv, declared, analyzer)
+                    and _resolved_bytes_value(
+                        analyzer.get_expr_type(recv), analyzer) is not None)
+            bytes_ok = (
+                bytes_recv_ok and _eligible_scalar(rtype) and index_ok)
+            if not (container_ok or str_ok or bytes_ok):
+                if recv_t is None:
+                    detail = "subscript." + _subscript_recv_reject(
+                        e.obj, declared, analyzer)
+                elif not index_ok:
+                    detail = "subscript.index"
+                else:
+                    bare_recv = unwrap_readonly(unwrap_ref_type(
+                        unwrap_send_sync(recv_t)))
+                    if isinstance(bare_recv, TupleType):
+                        detail = "subscript.tuple_shape"
+                    elif _resolved_viewfam_value(
+                            bare_recv, analyzer) is not None:
+                        detail = "subscript.viewfam_shape"
+                    elif (is_list(bare_recv) or is_array(bare_recv)
+                          or is_span(bare_recv) or is_dict(bare_recv)):
+                        detail = "subscript." + _subscript_elem_reject(
+                            bare_recv, analyzer)
+                    else:
+                        detail = "subscript.recv_type"
+                raise ThirUnsupported(detail, detail=True)
         # Container or str subscript -> the checked dunder
         # `::tpy::__getitem__(c, i)` (str's __getitem__ @cpp_template spells the
         # same) or, when sema proved the index in-bounds,
@@ -731,97 +1045,39 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
         # their own lowering sites (_retag_bytes_literal_view / _lower_call_arg).
         return THIRBytesLiteral(result_type=rtype, value=e.value, loc=loc)
     if isinstance(e, TpyFString):
-        if not _fstring_eligible(e, declared, analyzer):
-            raise ThirUnsupported("expr.fstring")
         parts: list[str | THIRFStringArg] = []
         for part in e.parts:
             if isinstance(part, str):
                 parts.append(part)
             else:
+                if part.conversion not in (
+                        FSTRING_CONV_NONE, FSTRING_CONV_STR,
+                        FSTRING_CONV_REPR):
+                    note_detail("fstring.conversion")
+                    raise ThirUnsupported("expr.fstring")
                 wrap = _fstring_arg_wrap(part.expr, analyzer, part.conversion,
                                          part.format_spec is not None)
-                assert wrap is not _FSTRING_INELIGIBLE
+                if wrap is _FSTRING_INELIGIBLE:
+                    note_detail("fstring.arg_wrap")
+                    raise ThirUnsupported("expr.fstring")
                 if part.format_spec is not None:
                     _witness("fstr.spec")
-                parts.append(THIRFStringArg(expr=_lower_expr(
-                                                part.expr, lc, declared,
-                                                field_prechecked=isinstance(
-                                                    part.expr, TpyFieldAccess)),
-                                            wrap=wrap,
-                                            format_spec=part.format_spec))
+                try:
+                    lowered_part = _lower_expr(
+                        part.expr, lc, declared,
+                        field_owned_str_ok=isinstance(
+                            part.expr, TpyFieldAccess))
+                except ThirUnsupported:
+                    raise ThirUnsupported("expr.fstring") from None
+                parts.append(THIRFStringArg(
+                    expr=lowered_part, wrap=wrap,
+                    format_spec=part.format_spec))
         # An owned std::string result: STORAGE form, so it lands bare in owned
         # sinks (no view->owned wrap), like an owned-str call result.
         return THIRFString(result_type=rtype, parts=tuple(parts),
                            form=Form.STORAGE, loc=loc)
     if isinstance(e, TpyBinOp):
-        if not _binop_eligible(e, declared, analyzer):
-            raise ThirUnsupported(
-                f"binop.shape.{e.op}"
-                f"{_binop_operand_suffix(e, declared, analyzer)}",
-                detail=True)
-        # and/or lower here too: sema leaves resolved_binop None for &&/||, so
-        # the emit takes the bare-operator arm (`(l && r)`), matching the AST's
-        # bool-result logical branch. Compare operands lower target-aware: a
-        # str literal opposite a Char-typed operand renders as a char literal.
-        # A str concat's String result and a bytes concat's owned `bytes`
-        # result (`::tpy::bytes_concat`, std::vector<uint8_t> by value) are
-        # owned rvalues (STORAGE): they land bare in every owned sink, never
-        # wrapped.
-        if e.op in _MEMBERSHIP_OPS:
-            # `needle in c` over a dict/set name -- `(c.contains(needle))`. The
-            # needle renders bare (view_key_target is None for the admitted
-            # containers), so it lowers with no slot target.
-            _witness("binop.membership")
-            return THIRMembership(
-                result_type=rtype,
-                receiver=_lower_expr(e.right, lc, declared),
-                needle=_lower_expr(e.left, lc, declared),
-                method_cpp=e.resolved_contains.native_name,
-                negate=e.op == "not in",
-                loc=loc)
-        if e.op in _IS_OPS:
-            # The None identity test on an Optional-ptr borrow name -- the
-            # gate (`_is_none_compare_operand`) pinned the shape to exactly
-            # one None literal against such a name, so the structural pick
-            # here cannot drift; the node carries only the Optional operand
-            # (the AST canonicalizes `None is p` to the same
-            # `(p ==|!= nullptr)` render).
-            operand = e.right if isinstance(e.left, TpyNoneLiteral) else e.left
-            value_repr = (isinstance(operand, TpyName)
-                          and (_value_opt_scalar_param(operand.name, lc)
-                               or _value_opt_view_param(operand.name, lc)))
-            return THIRIsNone(result_type=rtype,
-                              operand=_lower_expr(
-                                  operand, lc, declared,
-                                  allow_whole_optional=True),
-                              negate=e.op == "is not",
-                              value_repr=value_repr,
-                              form=Form.VALUE, loc=loc)
-        if e.op in _COMPARE_OPS:
-            left = _lower_char_targeted(e.left, analyzer.get_expr_type(e.right), lc, declared)
-            right = _lower_char_targeted(e.right, analyzer.get_expr_type(e.left), lc, declared)
-        else:
-            # Arithmetic operands render against the resolved dunder's
-            # receiver/param types (gen_expr_deref's targets) -- a float
-            # literal opposite a Float32 operand takes the `f` suffix.
-            lslot, rslot = _rb_operand_slots(e.resolved_binop)
-            left = _slot_literal_retype(_lower_expr(e.left, lc, declared), lslot)
-            right = _slot_literal_retype(_lower_expr(e.right, lc, declared), rslot)
-        bt = _resolved_bytes_value(rtype, analyzer)
-        lcast, rcast = _binop_operand_casts(e, analyzer)
-        return THIRBinOp(
-            result_type=rtype,
-            left=left,
-            op=e.op,
-            right=right,
-            resolved=e.resolved_binop,
-            divisor_non_zero=e.divisor_non_zero,
-            left_cast=lcast,
-            right_cast=rcast,
-            form=(Form.STORAGE if _is_string_owned(rtype)
-                  or (bt is not None and is_bytes_type(bt)) else Form.VALUE),
-            loc=loc,
-        )
+        return _lower_binop(e, rtype, lc, declared, loc)
     if isinstance(e, TpyUnaryOp):
         # A negated int literal folds to a plain literal (the AST's
         # _gen_unaryop literal-negation branch renders the negated value
@@ -831,8 +1087,7 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
             return THIRLiteral(result_type=rtype, value=neg, loc=loc)
         # IntEnum negation: `(-static_cast<U>(p))` (_gen_unaryop's enum arm).
         enum_neg = _enum_neg_wrap(e, analyzer)
-        if (enum_neg is None
-                and not _unary_not_eligible(e, declared, analyzer)):
+        if enum_neg is None and e.op != "!":
             raise ThirUnsupported("expr.unary")
         if enum_neg is not None:
             _witness("enum.neg")
@@ -842,10 +1097,12 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
         # bool / Optional-ptr operands lower bare (their truthiness render is
         # their value render).
         return THIRUnaryNot(result_type=rtype,
-                            operand=_lower_truthy(e.operand, lc, declared),
+                            operand=_lower_truthy(
+                                e.operand, lc, declared,
+                                unary_operand=True),
                             loc=loc)
     if isinstance(e, TpyChainedCompare):
-        if not _chained_compare_eligible(e, declared, analyzer):
+        if e.pairs is None:
             raise ThirUnsupported("expr.chained_compare")
         assert e.pairs is not None
         if all(ExpressionGenerator._is_simple_expr(c)
@@ -862,7 +1119,11 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
             return folded
         return _lower_chained_compare_stmtexpr(e, rtype, lc, declared, loc)
     if isinstance(e, TpyIfExpr):
-        if not _if_expr_eligible(e, declared, analyzer):
+        if not (_resolved_scalar(rtype, analyzer) or _eligible_char(rtype)
+                or _eligible_enum(rtype, analyzer) is not None
+                or _resolved_str_value(rtype, analyzer) is not None
+                or _is_string_owned(rtype)):
+            note_detail("ifexpr.result_type")
             raise ThirUnsupported("expr.ifexpr")
         return _lower_if_expr(e, rtype, lc, declared, loc)
     if isinstance(e, TpyCall):
@@ -1372,13 +1633,11 @@ def _lower_container_elem(e: TpyExpr, slot: TpyType | None,
         return THIRLiteral(result_type=su, value=None, form=Form.STORAGE,
                            loc=getattr(e, "loc", None))
     if isinstance(e, TpyTupleLiteral):
-        # A NESTED value-tuple element lowers against its slot TupleType (the
-        # gate admitted only _tuple_literal_ok shapes); tuple literals have no
-        # generic _lower_expr arm. The widened return slot (`_value_tuple_
-        # return`) is used so a deeper nesting / value-Optional inner element
-        # resolves its own slot for the recursive spell.
+        # A nested value-tuple element lowers against its slot TupleType;
+        # tuple literals have no generic _lower_expr arm.
         vt = _value_tuple_return(slot, lc.analyzer)
-        assert vt is not None, "tuple element without a value-tuple slot"
+        if vt is None:
+            raise ThirUnsupported("expr.tuple_literal.slot")
         return _lower_tuple_literal(e, vt, lc, declared)
     el = _lower_expr(e, lc, declared)
     if retype_scalars:
@@ -1449,15 +1708,29 @@ def _witness_container_elem_fam(slot: 'TpyType | None', analyzer) -> None:
 def _lower_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
                          lc: '_LowerCtx',
                          declared: dict[str, TpyType]) -> THIRExpr:
-    """Lower a gate-admitted value-tuple literal against its slot: each
-    element lowers into its own slot type (the target-typed literal retypes
-    and the S1 view->owned `std::string(x)` wrap ride
-    `_lower_container_elem`); the node spells the slot TupleType."""
+    """Lower a value-tuple literal against its slot or reject its shape."""
+    if (len(e.elements) != len(slot.element_types)
+            or (e.elem_capture
+                and any(c is not TupleElemCapture.VALUE
+                        for c in e.elem_capture))):
+        raise ThirUnsupported("expr.tuple_literal")
+
+    def lower_element(i: int) -> THIRExpr:
+        elem_slot = slot.element_types[i]
+        bare = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(elem_slot)))
+        if isinstance(bare, TupleType):
+            _witness("ret.tuple_nested_elem")
+        elif isinstance(bare, OptionalType) and not bare.uses_pointer_repr():
+            if _resolved_str_value(bare.inner, lc.analyzer) is not None:
+                _witness("ret.tuple_opt_str_elem")
+            else:
+                _witness("ret.tuple_opt_elem")
+        return _lower_container_elem(
+            e.elements[i], elem_slot, lc, declared)
+
     return THIRTupleLiteral(
         result_type=slot,
-        elements=tuple(
-            _lower_container_elem(x, slot.element_types[i], lc, declared)
-            for i, x in enumerate(e.elements)),
+        elements=tuple(lower_element(i) for i in range(len(e.elements))),
         loc=getattr(e, "loc", None))
 
 def _compose_static_targs(cpp_class: str, record_info, cpp_method: str,
@@ -1960,12 +2233,17 @@ def _lower_char_targeted(e: TpyExpr, target: TpyType | None,
     return _lower_expr(e, lc, declared, use=use)
 
 def _lower_truthy(e: TpyExpr, lc: '_LowerCtx',
-                  declared: dict[str, TpyType]) -> THIRExpr:
+                  declared: dict[str, TpyType], *,
+                  unary_operand: bool = False) -> THIRExpr:
     """Lower a truthiness position (an if/while/assert condition, or a `not`
     operand). An enum-typed operand takes its truthiness wrap (THIREnumWrap;
     the plain-enum arm renders `true` and DROPS the operand, mirroring
     gen_truthy_expr); every other admitted shape's truthiness render equals
     its value render, so it lowers as a plain expression."""
+    if isinstance(e, (TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral,
+                      TpyStrLiteral, TpyBytesLiteral, TpyNoneLiteral)):
+        if not (unary_operand and isinstance(e, TpyBoolLiteral)):
+            raise ThirUnsupported("truthy.literal")
     if isinstance(e, TpyName) and (_value_opt_scalar_param(e.name, lc)
                                    or _value_opt_view_param(e.name, lc)):
         # A value-repr Optional[scalar] / Optional[view] read in a condition /
@@ -1982,7 +2260,41 @@ def _lower_truthy(e: TpyExpr, lc: '_LowerCtx',
                              loc=getattr(e, "loc", None))
     et = lc.analyzer.get_expr_type(e)
     wrap = _enum_truthy_wrap(et, lc.analyzer)
+    if wrap is not None and not isinstance(e, (TpyName, TpyFieldAccess)):
+        raise ThirUnsupported("truthy.enum_shape")
     if wrap is None:
+        ptr_optional = (
+            isinstance(e, TpyName) and isinstance(et, OptionalType)
+            and _optional_ptr_borrow_name(
+                e, declared, lc.analyzer) is not None)
+        if ptr_optional:
+            pass
+        elif unary_operand:
+            if et is None or not is_bool_type(et):
+                raise ThirUnsupported("truthy.unary_operand")
+        elif isinstance(e, TpyName):
+            if (e.name not in declared or et is None or not is_bool_type(et)
+                    or _unrouted_binding_read(
+                        declared.get(e.name), lc.analyzer) is not None):
+                raise ThirUnsupported("truthy.name")
+        elif isinstance(e, TpyFieldAccess):
+            if et is None or not is_bool_type(et):
+                raise ThirUnsupported("truthy.field_nonbool")
+            _witness("cond.bool_field")
+        elif isinstance(e, TpyBinOp):
+            if e.op not in (_COMPARE_OPS | _LOGICAL_OPS
+                            | _IS_OPS | _MEMBERSHIP_OPS):
+                raise ThirUnsupported("truthy.binop")
+        elif isinstance(e, TpyMethodCall):
+            if et is None or not is_bool_type(et):
+                raise ThirUnsupported("truthy.method_nonbool")
+            _witness("cond.bool_method")
+        elif isinstance(e, TpyIfExpr):
+            if et is None or not is_bool_type(et):
+                raise ThirUnsupported("truthy.ifexpr_nonbool")
+            _witness("ifexpr.cond_pos")
+        elif not isinstance(e, (TpyUnaryOp, TpyChainedCompare)):
+            raise ThirUnsupported("truthy.shape")
         # Non-enum, non-value-opt-param shapes whose truthiness render is not the
         # bare value render (str/bytes, storage Optional, record __bool__/__len__)
         # have no THIR wrap node yet -- reject so the body falls back to AST

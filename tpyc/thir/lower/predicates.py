@@ -129,7 +129,7 @@ _ARITH_OPS = frozenset({"+", "-", "*", "/", "//", "%"})
 # Bitwise operators. Their fixed-int dunders carry a `@cpp_template` too
 # (`::tpy::lshift_check<T>`, `static_cast<T>({self} & {0})`, ...), and the emit
 # is the same resolved-binop template expansion arithmetic uses, so they ride
-# the scalar arm of `_binop_eligible` (a set `&`/`|`/`^` returns a container, not
+# the scalar arm of `_lower_binop` (a set `&`/`|`/`^` returns a container, not
 # a scalar, and rejects there). None of these is `+`, so the arm's bytes/str
 # concat special cases stay inert for them.
 _BITWISE_OPS = frozenset({"&", "|", "^", "<<", ">>"})
@@ -616,7 +616,7 @@ def _resolved_scalar(t: TpyType | None, analyzer) -> bool:
     Companion convention: a RECEIVER gate reads the declared/`locals_` BINDING
     type, never `get_expr_type` on the name -- a literal-seeded local's use sites
     carry the pre-resolution pending container type (see `_is_len_call`,
-    `_method_call_eligible`, `_container_subscript_value_read`,
+    `_method_call_eligible`, subscript lowering,
     `_for_each_container_plan`)."""
     if t is None:
         return False
@@ -678,7 +678,7 @@ def _bytes_compare_operand(e: TpyExpr, t: TpyType | None, analyzer) -> bool:
     """A bytes-slice comparison operand: a bytes literal (rendered OWNED --
     `_comparison_targets` threads no target for bytes, so the AST's
     `gen_expr(lit, None)` takes the owned arm) or a bytes/BytesView value.
-    Guards the compare arm's operand pin -- see `_binop_eligible`."""
+    Guards the compare arm's operand pin -- see `_lower_binop`."""
     if isinstance(e, TpyBytesLiteral):
         return True
     return _resolved_bytes_value(t, analyzer) is not None
@@ -688,7 +688,7 @@ def _str_compare_operand(e: TpyExpr, t: TpyType | None, analyzer) -> bool:
     `LiteralType[str]`, but the const char[N] emit is position-independent),
     a str/StrView value, or a `String` value (a concat result -- std::string
     takes the same compare templates / bare operators, rendered bare). Guards
-    the compare arm's operand pin -- see `_binop_eligible`."""
+    the compare arm's operand pin -- see `_lower_binop`."""
     if isinstance(e, TpyStrLiteral):
         return True
     return (_resolved_str_value(t, analyzer) is not None
@@ -2380,7 +2380,7 @@ def _is_none_compare_operand(e: TpyBinOp, locals_: dict[str, TpyType],
     `get_resolved_type` -- a flow-narrowed `p` still renders the pointer
     compare). Storage-form / protocol / overload-folded operands never bind
     such a name in a routed body, so the name check pins the
-    `(p ==|!= nullptr)` render. Shared by the gate (`_binop_eligible`) and
+    `(p ==|!= nullptr)` render. Shared by `_lower_binop` and
     the lowering (`_lower_expr`'s is-arm) so both key one verdict."""
     left_none = isinstance(e.left, TpyNoneLiteral)
     right_none = isinstance(e.right, TpyNoneLiteral)

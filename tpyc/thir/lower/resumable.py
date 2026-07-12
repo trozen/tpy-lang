@@ -56,9 +56,8 @@ from ...typesys import (
 )
 from ...codegen_cpp import resumable_cfg as rcfg
 from ...codegen_cpp.forms import is_plain_nonvalue
-from .context import _ExprResultUse, _ExprUse, _LowerCtx
-from .expr_gates import _condition_eligible
-from .expressions import _lower_call_arg, _lower_expr
+from .context import _LowerCtx
+from .expressions import _lower_call_arg, _lower_expr, _lower_truthy
 from .functions import _check_callable_structure, method_self_type_by_name
 from .predicates import (
     _eligible_char,
@@ -398,11 +397,10 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
         elif isinstance(t, rcfg.RaiseT):
             leaves[id(t.raise_stmt)] = _lower_leaf(t.raise_stmt)
         elif isinstance(t, rcfg.Branch):
-            if not _condition_eligible(t.cond, declared, analyzer):
+            try:
+                conds[id(t.cond)] = _lower_truthy(t.cond, lc, declared)
+            except ThirUnsupported:
                 return _reject("res.cond")
-            conds[id(t.cond)] = _lower_expr(
-                t.cond, lc, declared,
-                use=_ExprUse(result=_ExprResultUse.CONDITION))
             _witness("res.branch_cond")
         elif isinstance(t, rcfg.Yield) and is_generator:
             # Generator suspension: the skeleton emits `__state = S_RESUME_i;

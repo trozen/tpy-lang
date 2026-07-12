@@ -123,7 +123,6 @@ from .expr_gates import (
     _is_record_rvalue_source,
     _nondef_ctor_field,
     _ptr_union_source_ok,
-    _tuple_literal_ok,
 )
 from .expressions import (
     _is_move_source,
@@ -874,7 +873,7 @@ def _ctor_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
                   if dt is not None else None)
             return dt == vt
         if isinstance(source, TpyTupleLiteral):
-            return _tuple_literal_ok(source, vt, declared, analyzer)
+            return True
         return False
     if isinstance(ftype, OptionalType) and isinstance(
             _unwrap_copy(stmt.value, analyzer), TpyNoneLiteral):
@@ -1374,8 +1373,11 @@ def _lower_ctor_mil_init(stmt: TpyAssign, own_param_names: set[str],
     if vt is not None:
         if isinstance(source, TpyTupleLiteral):
             _witness("mil.value_tuple_literal")
-            return THIRMilInit(field_cpp=field_cpp,
-                               value=_lower_tuple_literal(source, vt, lc, declared))
+            try:
+                value = _lower_tuple_literal(source, vt, lc, declared)
+            except ThirUnsupported:
+                raise ThirUnsupported(_mil_reject_detail(stmt, analyzer)) from None
+            return THIRMilInit(field_cpp=field_cpp, value=value)
         _witness("mil.value_tuple_name")
         return THIRMilInit(field_cpp=field_cpp, value=_lower_expr(source, lc, declared))
     if isinstance(ftype, OptionalType):

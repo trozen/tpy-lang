@@ -922,8 +922,9 @@ body boundary discards the partial attempt. Statement policy and the
 `match`/`with`/`try` structure gates have since been removed: statement rejection
 happens in the lowering arm, while `match` and `for` classifiers return a strategy
 that lowering consumes. The remaining gate surface consists of expression
-consumer-shape helpers (slot, call, method, and condition). These helpers no
-longer provide a separate whole-expression preflight.
+consumer-shape helpers (slot, call, and method); condition and binary-operator
+lowering now check admission inline and raise `ThirUnsupported` directly. These
+helpers no longer provide a separate whole-expression preflight.
 
 ##### AST stays the oracle: emit AST, overlay THIR (2026-07 correction)
 
