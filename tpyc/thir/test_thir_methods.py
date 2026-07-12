@@ -1287,6 +1287,75 @@ class TestCrossModuleRecordFrontier:
         thir, _ = _lower_ctx_witnessed(src, extra_lib_dirs=[tmp_path])
         assert _fn(thir, "call_mag") is not None
 
+    def test_cross_module_ctor_qualified_spelling(self, tmp_path):
+        # An imported record's ctor call routes and spells the declaring
+        # module's qualification (ctor.cross_module) -- `_gen_call`'s
+        # record-branch qual arm, mirrored on THIRCtorCall.type_cpp.
+        lib = self._setup(tmp_path)
+        src = ("from geo import Point\nfrom tpy import Int32\n"
+               "def make() -> Int32:\n    p = Point(3, 4)\n    return p.x\n")
+        thir, witnesses = _lower_ctx_witnessed(src, extra_lib_dirs=[lib])
+        assert _fn(thir, "make") is not None
+        assert witnesses.get("ctor.cross_module", 0) >= 1
+        def emit(thir_flag):
+            compiler, modules = _compile(src, extra_lib_dirs=[lib])
+            entry = _entry(modules)
+            hpp, cpp = compiler.generate_code_to_strings(
+                entry, options=CodeGenOptions(emit_source_comments=False,
+                                              thir_codegen=thir_flag))
+            return hpp + cpp
+        out = emit(True)
+        assert out == emit(False)
+        assert "= ::tpyapp::geo::Point(3, 4);" in out
+
+    def test_import_alias_ctor_spells_canonical_name(self, tmp_path):
+        # `from geo import Point as Pt`: the qual arm spells the CANONICAL
+        # record name from record_qualification, not the alias.
+        lib = self._setup(tmp_path)
+        src = ("from geo import Point as Pt\nfrom tpy import Int32\n"
+               "def make() -> Int32:\n    p = Pt(3, 4)\n    return p.x\n")
+        thir, witnesses = _lower_ctx_witnessed(src, extra_lib_dirs=[lib])
+        assert _fn(thir, "make") is not None
+        assert witnesses.get("ctor.cross_module", 0) >= 1
+        compiler, modules = _compile(src, extra_lib_dirs=[lib])
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=True))
+        assert "= ::tpyapp::geo::Point(3, 4);" in cpp
+
+    def test_short_name_collision_falls_back(self, tmp_path):
+        # Two records both named Tag in different modules: the ambiguous
+        # short-name lookup (`Tag(5)` resolving to a DIFFERENT record than
+        # sema's result type) rejects at `_ctor_shape_ok` -> that body falls
+        # back; the unambiguous alias (`BlueTag(10)`) routes qualified. The
+        # collision guard is what keeps the lowering's qual spelling honest.
+        (tmp_path / "red.py").write_text(
+            "from tpy import Int32\n"
+            "class Tag:\n    n: Int32\n"
+            "    def __init__(self, n: Int32):\n        self.n = n\n")
+        (tmp_path / "blue.py").write_text(
+            "from tpy import Int32\n"
+            "class Tag:\n    n: Int32\n"
+            "    def __init__(self, n: Int32):\n        self.n = n\n")
+        src = ("from red import Tag\n"
+               "from blue import Tag as BlueTag\n"
+               "def make_red() -> None:\n    t = Tag(5)\n    print(t.n)\n"
+               "def make_blue() -> None:\n    b = BlueTag(10)\n    print(b.n)\n")
+        thir = _lower_ctx_witnessed(src, extra_lib_dirs=[tmp_path])[0]
+        assert _fn(thir, "make_red") is None
+        assert _fn(thir, "make_blue") is not None
+        def emit(thir_flag):
+            compiler, modules = _compile(src, extra_lib_dirs=[tmp_path])
+            entry = _entry(modules)
+            hpp, cpp = compiler.generate_code_to_strings(
+                entry, options=CodeGenOptions(emit_source_comments=False,
+                                              thir_codegen=thir_flag))
+            return hpp + cpp
+        out = emit(True)
+        assert out == emit(False)
+        assert "= ::tpyapp::blue::Tag(10);" in out
+
 
 # --- F5 stage A: generic records with CONCRETE type args (`Pair[Int32]`).
 # The base name resolves as for any user record and `to_cpp()`'s type-arg

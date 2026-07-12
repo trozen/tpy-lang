@@ -423,15 +423,16 @@ class THIROptionalPtrArg(THIRExpr):
 
 @dataclass(frozen=True)
 class THIRCtorCall(THIRExpr):
-    """A same-module user-record constructor call rvalue (`A(7)`), admitted
+    """A user-record constructor call rvalue (`A(7)`), admitted
     only as a call arg: into an `Own[union]` value-variant slot (bare), as a
     method arg into a const same-record ref slot (`a.combine(A(9))` -- the
     method arg loop inlines the expansion, unlike the free-fn rvalue-temp
     arm), or as a `THIRArgTemp` init (the free-fn same-record ref-slot
     hoist). Renders
-    `type_cpp(args)` -- `_gen_call`'s record-branch tail, which emits the RAW
-    source name (no `escape_cpp_name`, no cross-module qualification; both
-    gate-enforced). Args are value scalars into plain scalar slots, str-slice
+    `type_cpp(args)` -- `_gen_call`'s record-branch tail: the RAW source
+    name (no `escape_cpp_name`; gate-enforced) for a same-module record, or
+    the `record_qualification` spelling (`::ns::Name`) for an imported
+    one. Args are value scalars into plain scalar slots, str-slice
     sources into view slots, or record rvalues into same-nominal record slots
     (`_gen_record_ctor_args`'s ctor_mutated arm: a MUTATED ref slot carries a
     `THIRArgTemp`, a const slot the inline prvalue expansion); every other

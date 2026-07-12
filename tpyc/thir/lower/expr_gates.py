@@ -783,8 +783,8 @@ def _is_record_rvalue_source(init: TpyExpr, declared: dict[str, TpyType],
         return False
     # The ctor face shares the shape/registry core with
     # `_record_ctor_call_eligible` (same-name free-fn collision, generic /
-    # native / multi-overload / special-form `__init__`, cross-module
-    # qualification -- shapes whose AST emit is not the raw `Name(args)`). It
+    # native / multi-overload / special-form `__init__` -- shapes whose AST
+    # emit is not the `Name(args)` / qualified `::ns::Name(args)` form). It
     # owns the arity verdict too (`_ctor_shape_ok`'s `_ctor_arity_ok`): the
     # raw-name form admits omitted trailing defaults, the instantiation form
     # stays exact. The by-value record-returning free-call face shares
@@ -815,6 +815,7 @@ def _is_record_rvalue_source(init: TpyExpr, declared: dict[str, TpyType],
         return all(_shared_pass_through_arg(a, p.type, declared, analyzer,
                                             mutated=i in ctor_mut)
                    or _rec_rvalue_arg_ok(i, a, p.type)
+                   or _none_value_opt_arg(a, p.type, analyzer) is not None
                    for i, (a, p) in enumerate(zip(init.args, fi.params)))
     # The by-value record-returning FREE-call face: the same callee-shape head
     # as `_call_eligible` (linkage / literal-overload / generics / error_return
@@ -2267,15 +2268,17 @@ def _ctor_arity_ok(e: TpyCall, fi) -> bool:
     return True
 
 def _ctor_shape_ok(e: TpyCall, analyzer) -> bool:
-    """A bare-name SAME-MODULE plain user-record constructor call in the
-    `Name(args)` emit shape -- `_gen_call`'s record-branch tail: the RAW source
-    name (no escape, no qualification), args through `_gen_record_ctor_args`
-    with every special arm structurally unreachable. This is the arg-blind
+    """A bare-name plain user-record constructor call in the `Name(args)` /
+    qualified `::ns::Name(args)` emit shape -- `_gen_call`'s record-branch
+    tail: the RAW source name for a same-module record, or the
+    `record_qualification` spelling for an imported one (mirrored at the
+    THIRCtorCall lowering), args through `_gen_record_ctor_args` with every
+    special arm structurally unreachable. This is the arg-blind
     shape/registry core shared by `_record_ctor_call_eligible` (which adds
     its plain-scalar-slot arg loop) and `_is_record_rvalue_source`'s ctor
     face (whose arg loop admits the F2d source shapes). Native /
-    cpp_template / cross-module / multi-overload / TypedDict ctors take
-    other emit shapes -> AST."""
+    cpp_template / multi-overload / TypedDict ctors take other emit
+    shapes -> AST."""
     if not isinstance(e.func, TpyName):
         return False
     if e.kwargs or e.double_star_unpack is not None:
@@ -2287,10 +2290,8 @@ def _ctor_shape_ok(e: TpyCall, analyzer) -> bool:
             or e.subscript_callee is not None):
         return False
     # A same-name free function wins _gen_call's registry branch before the
-    # record lookup; a name resolved through the import table qualifies.
+    # record lookup.
     if analyzer.registry.get_function(e.func_name):
-        return False
-    if e.func_name in analyzer.imported_names:
         return False
     # Sema attaches a SYNTHETIC constructor fi (`is_constructor`, named after
     # the record, params = the resolved __init__'s); a builtin type ctor
@@ -2315,10 +2316,6 @@ def _ctor_shape_ok(e: TpyCall, analyzer) -> bool:
     if not (isinstance(rt, NominalType) and rt.is_user_record):
         return False
     if analyzer.registry.get_record_for_type(rt) is not ri:
-        return False
-    # Cross-module ctors qualify to the declaring module -> AST.
-    if analyzer.registry.record_qualification(
-            ri, analyzer.ctx.module_name) is not None:
         return False
     # A multi-overload __init__ set: _gen_record_ctor_args reads the record's
     # init_info params, which may disagree with the resolved stub -> AST. The

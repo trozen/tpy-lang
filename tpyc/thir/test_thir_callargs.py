@@ -1284,9 +1284,9 @@ class TestCtorShapeGateRejects:
     record-rvalue arg-temp row (`take_x(X(...))` in return position). Arms
     NOT expressible in this single-module harness: the same-name free-fn
     collision (sema resolves the call to the free fn, so a record-slot
-    program is a sema type error before the gate is consulted) and the
-    imported-name / cross-module-qualification arms (need a second module;
-    also pre-rejected by `_f1_record` on the slot)."""
+    program is a sema type error before the gate is consulted). Cross-module
+    ctors ROUTE (the qualified spelling) -- see
+    TestCrossModuleRecordFrontier in test_thir_methods.py."""
 
     def test_plain_scalar_ctor_routes(self):
         # The route baseline the reject arms are paired against.
@@ -1800,3 +1800,37 @@ class TestNoneValueOptArg:
         assert _cpp(src, thir=True) == _cpp(src, thir=False)
         out = _cpp(src, thir=True)
         assert "use_rec(nullptr);" in out
+
+
+class TestCtorValueOptNoneArg:
+    # The CTOR face of the None-into-value-Optional row: `P(None)` with a
+    # `Int32 | None` __init__ slot renders `P(std::nullopt)` -- the same
+    # `_none_value_opt_arg` row the free-call cascade admits, opened on
+    # `_is_record_rvalue_source`'s ctor arg loop (the owned-record decl init).
+    SRC = (
+        "from tpy import Int32\n"
+        "class P:\n"
+        "    n: Int32\n"
+        "    def __init__(self, n: Int32 | None = None):\n"
+        "        self.n = 0 if n is None else n\n"
+        "def make() -> None:\n    p = P(None)\n    print(p.n)\n"
+    )
+
+    def test_routes_with_none_witness(self):
+        thir, witnesses = _lower_ctx_witnessed(self.SRC)
+        assert _fn(thir, "make") is not None
+        assert witnesses.get("call.none_value_opt", 0) >= 1
+
+    def test_byte_identical_emits_nullopt(self):
+        out = _cpp(self.SRC, thir=True)
+        assert out == _cpp(self.SRC, thir=False)
+        assert "P p = P(std::nullopt);" in out
+
+    def test_coerced_scalar_into_optional_slot_stays_ast(self):
+        # `P(1)` -- sema types the arg as the WHOLE optional, and no arg row
+        # admits the coerced-scalar shape yet -> the body falls back (and the
+        # fallback emit stays byte-identical by construction).
+        src = self.SRC.replace("P(None)", "P(1)")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "make") is None
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)

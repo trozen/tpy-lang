@@ -2514,12 +2514,14 @@ def _value_union_temp_slot(a: TpyExpr, ptype: TpyType | None,
 def _record_rvalue_temp_slot(a: TpyExpr, ptype: TpyType | None,
                              analyzer) -> 'NominalType | None':
     """The record-rvalue arg-temp row (the free-call `is_ref_param() +
-    is_temporary_expr` cascade arm): a same-module record RVALUE -- a ctor
+    is_temporary_expr` cascade arm): a record RVALUE -- a ctor
     `A(7)` or a by-value record-returning call `make(7)` -- into a
     SAME-nominal plain record slot hoists `A __tmp_N = A(7);` and passes the
     temp name -- mutated (`A&`) and const (`const A&`) slots alike (the AST
     arm is mutation-blind). `TempState.create` renders the slot type's bare
-    `to_cpp()`, which the F1 restriction keeps equal to the raw source name.
+    `to_cpp()`, which the F1 restriction keeps equal to the ctor's own
+    spelling (raw name same-module, `native_cpp_names` qualification
+    cross-module).
     A readonly slot (`const A` decl spelling) survives `unwrap_ref_type` as a
     ReadonlyType and rejects; a SUBCLASS-typed rvalue (the upcast temp declares
     the CHILD's type) rejects on the same-nominal check. A borrow-returning

@@ -111,6 +111,8 @@ THIR_FACES: frozenset[str] = frozenset({
     # native / generic field receivers ride the same face as a plain one.
     "method.recv.record_field",
     "ctor.call",                    # THIRCtorCall bare ctor expansion
+    "ctor.cross_module",            # imported-record ctor: the qualified
+                                    # `::ns::Name(args)` spelling
     "ctor.str_arg",                 # str-slice arg into a str-family ctor slot
     "ctor.omit_defaults",           # ctor call omitting trailing default args
                                     # (defaults ride the C++ ctor signature)

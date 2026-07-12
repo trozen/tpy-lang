@@ -1184,8 +1184,23 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                 _witness("ctor.instantiation")
                 type_cpp = lc.render_type(e.call_type)
             else:
-                _witness("ctor.call")
-                type_cpp = e.func_name
+                # A cross-module record spells the declaring module's
+                # qualification (_gen_call's record-branch qual arm); the
+                # same-module face keeps the RAW source name. Derive the
+                # record from the ctor's sema RESULT type -- the AST's
+                # qname-corrected lookup -- so a short-name collision can't
+                # split the two paths (the gate rejects those shapes, but
+                # the spelling must not lean on that from afar).
+                ri = lc.analyzer.registry.get_record_for_type(rtype)
+                assert ri is not None, "gate admitted a ctor with no record"
+                qual = lc.analyzer.registry.record_qualification(
+                    ri, lc.analyzer.ctx.module_name)
+                if qual is not None:
+                    _witness("ctor.cross_module")
+                    type_cpp = qualified_cpp_name(*qual)
+                else:
+                    _witness("ctor.call")
+                    type_cpp = e.func_name
             ctor_mut = fi.mutated_params or frozenset()
             args = []
             for i, (a, p) in enumerate(zip(e.args, fi.params)):

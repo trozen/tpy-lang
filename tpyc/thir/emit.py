@@ -486,8 +486,9 @@ def _emit_union_arg_lift(e: THIRUnionArgLift, state: _EmitState) -> str:
 
 
 def _emit_ctor_call(e: THIRCtorCall, state: _EmitState) -> str:
-    # _gen_call's record-branch tail for a same-module plain record: the RAW
-    # source name over bare scalar args.
+    # _gen_call's record-branch tail: the RAW source name (same-module) or
+    # the qualified `::ns::Name` spelling (imported record), decided at
+    # lowering, over the gate-restricted args.
     return f"{e.type_cpp}({', '.join(_emit_expr(a, state) for a in e.args)})"
 
 
