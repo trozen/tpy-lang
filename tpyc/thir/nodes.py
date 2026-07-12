@@ -355,8 +355,8 @@ class THIRCall(THIRExpr):
     `cpp_template` (when set) is a scalar type-constructor call's resolved
     `__init__` template (`Int32(x)` -> `::tpy::int_cast_check<int32_t>({0})`),
     already fully substituted by sema ({cpp} / class type params) so only
-    positional `{0}, {1}, ...` placeholders remain -- the eligibility gate
-    enforces that. The emitter expands it over the args with no receiver
+    positional `{0}, {1}, ...` placeholders remain -- lowering enforces that.
+    The emitter expands it over the args with no receiver
     (gen_call_from_fi's template arm); `callee` is the source type name, kept
     for the dump only.
 
@@ -430,7 +430,7 @@ class THIRCtorCall(THIRExpr):
     arm), or as a `THIRArgTemp` init (the free-fn same-record ref-slot
     hoist). Renders
     `type_cpp(args)` -- `_gen_call`'s record-branch tail: the RAW source
-    name (no `escape_cpp_name`; gate-enforced) for a same-module record, or
+    name (no `escape_cpp_name`; lowering-enforced) for a same-module record, or
     the `record_qualification` spelling (`::ns::Name`) for an imported
     one. Args are value scalars into plain scalar slots, str-slice
     sources into view slots, or record rvalues into same-nominal record slots
@@ -505,7 +505,7 @@ class THIRMethodCall(THIRExpr):
     member rename or the escaped source name, e.g. `xs.append(v)` ->
     `xs.push_back(v)`; `a.combine(b)` -> `a.combine(b)`).
 
-    The eligibility gate admits only the AST path's pass-through shapes -- a
+    Lowering admits only the AST path's pass-through shapes -- a
     bare-name receiver, value-scalar args into scalar / `Own[scalar]` slots
     (plain scalar only for user records: their non-template callees temp+move
     an Own[scalar] arg), str-slice args into non-Own str-family slots, and
@@ -1564,8 +1564,8 @@ class THIRPrint(THIRStmt):
 class THIRExprStmt(THIRStmt):
     """A bare expression statement evaluated for its side effects (`foo(x)`).
     Currently only a same-module free-function call reaches here (via the
-    `_call_eligible` guards, statement position -- a discarded scalar or `None`
-    return); the emitter renders `<expr>;`."""
+    call-lowering admission checks, statement position -- a discarded scalar
+    or `None` return); the emitter renders `<expr>;`."""
     expr: THIRExpr
 
 
@@ -1657,7 +1657,7 @@ class THIRResumableBody:
     labels, region replay and suspend/resume plumbing -- structural emission,
     shared by both paths like signatures. Every user-source leaf it would
     delegate to the AST emitters instead renders through these maps when the
-    body routed; a missing key is a hard error (gate and seam must agree),
+    body routed; a missing key is a hard error (lowering and seam must agree),
     never a silent per-leaf fallback.
 
     `leaves` covers BB leaf statements and RaiseT terminator statements;

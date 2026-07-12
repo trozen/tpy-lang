@@ -1,7 +1,7 @@
 """Per-face witness tally; reported by the --thir-codegen zero-witness summary.
 
 The corpus byte-diff proves routed bodies emit byte-identical C++, but says
-nothing about a face (a gate arm / a lowering render) that NO corpus case
+nothing about a face (a lowering classifier / render) that NO corpus case
 reaches -- a latent bug there stays invisible until its first witness
 arrives. The test harness folds these counts across cases and xdist workers
 (like the routed-body tally) and reports registered faces with zero
@@ -9,7 +9,8 @@ witnesses over the whole corpus run.
 
 Witness semantics differ by face kind (encoded in the registry comment):
 lowering faces record at THIR-node construction (the render actually
-fired); the `own.*` gate rows record at gate ADMISSION -- their render is
+fired); the `own.*` classifier rows record at lowering admission -- their
+render is
 the bare arg shared with the pass-through emit, so admission is the only
 distinguishing site (an admit in a body later rejected elsewhere still
 counts, a deliberate over-approximation); `flush.*` record when a flushable
@@ -18,7 +19,7 @@ statement position's lowered value actually carries a hoisted arg temp.
 The registry is immutable metadata (module-level by design); the mutable
 counts live on the active Compiler (`_thir_face_witnesses`), so the helper
 is a no-op outside a compilation. Recording is NOT flag-gated: it happens
-wherever lowering and gating run, which is every case of every run with
+wherever lowering runs, which is every case of every run with
 THIR on. Only the zero-witness REPORT is behind the marker-ignoring metrics
 flags -- it is a whole-corpus question, so a `-k`-filtered run would name
 faces no selected case could reach.
@@ -54,7 +55,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "unionlift.none",               # `pv{std::monostate{}}`
     "unionlift.const_wrap",         # `ptr_variant_to_const(...)`
     "unionlift.member",             # `pv{&(name)}`
-    # Own-cascade bare rows + the readonly ctor tail (gate admission).
+    # Own-cascade bare rows + the readonly ctor tail (lowering admission).
     "own.scalar_rvalue",            # rvalue scalar into Own[scalar]
     "own.record_rvalue",            # record rvalue call into Own[record]
     "own.union_ctor",               # record-ctor rvalue into Own[union]
@@ -176,7 +177,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "mil.value_tuple_literal",      # `t(std::tuple<...>{...})` spelled literal
     # An own-field init the AST demotes to the ctor body (bare non-param name /
     # nested-def name / body-local ref) -- THIR demotes identically instead of
-    # rejecting the whole ctor (gate verdict; the body machinery renders it).
+    # rejecting the whole ctor (lowering verdict; the body machinery renders it).
     "mil.demote_mirror",
     # Container/str subscript read off a FIELD-ACCESS receiver (lowering;
     # `::tpy::__getitem__(this->xs, i)` -- the receiver renders as its own
@@ -186,7 +187,7 @@ THIR_FACES: frozenset[str] = frozenset({
     # widening through the bytes dispatch -- `::tpy::bytes_getitem(this->b, i)`).
     "subscript.bytes_field",
     # A value scalar/Char/enum/typeparam/Ptr field read off a value F1-record
-    # field CHAIN receiver (gate admission; `o.mid.inner.v` -- `_lower_expr`
+    # field CHAIN receiver (lowering admission; `o.mid.inner.v` -- `_lower_expr`
     # recurses through the receiver, so every link's render is shared with the
     # single-level field read, and admission is the distinguishing site).
     "field.chain_recv",
@@ -220,7 +221,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "narrow.slice_bound",           # same wrap on a str/bytes slice bound
     "narrow.aug_value",             # `({0}).to_fixed_check<T>()` aug-assign value
     "narrow.enum_arg",              # `({0}).to_fixed_check<U>()` E(x) arg
-    # Record return slots (gate admission; the renders -- bare name / bare
+    # Record return slots (lowering admission; the renders -- bare name / bare
     # ctor expansion -- are shared with the pass-through emits, so admission
     # is the only distinguishing site).
     "ret.record_borrow",
@@ -280,17 +281,17 @@ THIR_FACES: frozenset[str] = frozenset({
     # Owned record local decl from a method-call rvalue source (`Rec r =
     # b.build();`) -- the method sibling of the free-call `decl.owned_record`.
     "decl.owned_record_method",
-    # Storage-call local decl (gate admission; a container/tuple/union-
+    # Storage-call local decl (lowering admission; a container/tuple/union-
     # returning call init -- the bare `T x = f(...);` / plain reassign,
     # rendered by the shared generic decl tail).
     "decl.storage_call",
     # REF_ALIAS from a borrow-record-returning call (lowering; the
     # `T& p = shared(x);` bind of the callee's returned reference).
     "decl.record_borrow_call",
-    # Ptr[T] value-slot admission (gate; bare passes / field reads share the
+    # Ptr[T] value-slot admission (bare passes / field reads share the
     # scalar renders, so the predicate is the only distinguishing site).
     "ptr.value_slot",
-    # The @dynamic-protocol pointee arm of the same predicate (gate; the
+    # The @dynamic-protocol pointee arm of the same predicate (the
     # pointee spelling is the shared PtrType.to_cpp on both paths, so
     # admission distinguishes it from the record/scalar pointees).
     "ptr.dyn_proto_pointee",
@@ -306,31 +307,31 @@ THIR_FACES: frozenset[str] = frozenset({
     # pre-rendered `::tpyapp::mod::g` / native_cpp_name spelling on
     # THIRName.cpp -- imported_variable_cpp, shared with the AST render).
     "name.global_imported",
-    # BigInt-counter range loop (gate admission; the render difference is
+    # BigInt-counter range loop (lowering admission; the render difference is
     # the `::tpy::BigInt` cpp_elem + literal-bound retype, shared with the
     # fixed-int emit).
     "range.bigint_counter",
-    # 3-arg stepped range loop, by step arm (gate admission; each arm's emit
+    # 3-arg stepped range loop, by step arm (lowering admission; each arm's emit
     # is a distinct overflow / direction shape mirroring _gen_range_counter_loop).
     "range.step_plus_one",          # literal +1 step -> the ascending ++ loop
     "range.step_unit_neg",          # literal -1 step -> the descending -- loop
     "range.step_literal_pos",       # non-unit positive literal step
     "range.step_literal_neg",       # non-unit negative literal step
     "range.step_variable",          # fixed-int-name step (captured `__step_N`)
-    # Bool-field truthiness condition (gate admission; `if self.closed:` --
+    # Bool-field truthiness condition (lowering admission; `if self.closed:` --
     # a bool value's truthiness render IS its value render, so the admitted
     # field-read emit carries the condition unchanged).
     "cond.bool_field",
-    # Bool-method-call truthiness condition (gate admission; `if g.is_open():`
-    # -- the same bare-render property as cond.bool_field, over the method
+    # Bool-method-call truthiness condition (lowering admission;
+    # `if g.is_open():` -- the same bare-render property as cond.bool_field, over the method
     # call's value-position admission).
     "cond.bool_method",
     # @builtin_type record with a real body and no cpp_formatter (Poll;
     # Waker's formatter-carrying TypeDef stays excluded) admitted as an F1
-    # record (gate admission; the user-record spelling path, so every
+    # record (lowering admission; the user-record spelling path, so every
     # render is shared).
     "recv.builtin_record",
-    # Conditional-expression renders (lowering, except cond_pos at gate
+    # Conditional-expression renders (lowering; cond_pos records at local
     # admission -- the condition-position render is shared with the value
     # emit, so admission is the distinguishing site).
     "ifexpr.value",                 # scalar / Char / enum result
@@ -345,8 +346,9 @@ THIR_FACES: frozenset[str] = frozenset({
     "enum.name",                    # `.name` -> `EnumUtil<E>::name(x)` (BORROW)
     "enum.repr_print",              # @native enum print arg -> `::tpy::__repr__`
     "enum.nested_from_value",       # `Outer.Kind(v)` EnumUtil from_value
-    # F-string per-arg rows (the wrap table; witnessed at gate probe and
-    # again at lowering -- non-vacuity only needs a nonzero count).
+    # F-string per-arg rows (the wrap table; witnessed during local
+    # classification and again at lowering -- non-vacuity only needs a
+    # nonzero count).
     "fstr.conv_repr",               # `!r` -> `::tpy::repr_of({0})` wrap
     "fstr.conv_str",                # `!s` no-op passthrough (non-user types)
     "fstr.str_field",               # owned-str field arg formats bare
@@ -384,21 +386,21 @@ THIR_FACES: frozenset[str] = frozenset({
     "raise.ctor",                   # `raise X(args)` -> `throw <cpp>(...)`
     "raise.bare",                   # bare re-raise -> `throw;`
     # dict/set membership (`needle in c` -> `(c.contains(needle))`, the
-    # resolved_contains arm; witnessed at gate admission and again at
+    # resolved_contains arm; witnessed at lowering admission and again at
     # lowering -- non-vacuity only needs a nonzero count).
     "binop.membership",
     # A fixed-int bitwise op (`a & b`, `a << b`, ...) admitted at the scalar
-    # arm -- same resolved-binop template emit as arithmetic (gate admission).
+    # arm -- same resolved-binop template emit as arithmetic (lowering admission).
     "binop.bitwise",
     # A chained comparison with a non-simple intermediate (`a < f() < b`) ->
     # the GCC stmt-expr single-eval form (_gen_chained_compare_lambda).
     "chained_compare.stmt_expr",
-    # Method call on a bare protocol receiver (gate + lowering): `p.m(args)`,
+    # Method call on a bare protocol receiver: `p.m(args)`,
     # monomorphized for a structural protocol, a vtable call for a @dynamic
     # one -- one render either way. Args take the FREE-call literal rules
     # (`_gen_method_call`'s `_args()` fallback loop, not the user-record loop).
     "method.protocol",
-    # Protocol-slot arg that renders BARE (gate; a structural-slot lvalue, an
+    # Protocol-slot arg that renders BARE (a structural-slot lvalue, an
     # inheritance-conformer lvalue, or an already-protocol name forwarded on).
     "protoarg.bare",
     # `len(p)` on a protocol binding -- the same `::tpy::__len__(p)` a
@@ -496,8 +498,8 @@ THIR_FACES: frozenset[str] = frozenset({
 
 def witness(face: str) -> bool:
     """Record one hit of `face` on the active compiler; no-op (but still
-    True) when no compilation is in flight. Returns True so gate arms can
-    tack it onto their admission conjunction (`... and witness("own.x")`)
+    True) when no compilation is in flight. Returns True so classifiers can
+    tack it onto their local conjunction (`... and witness("own.x")`)
     without restructuring."""
     assert face in THIR_FACES, f"unregistered THIR face: {face}"
     compiler = get_current_compiler()

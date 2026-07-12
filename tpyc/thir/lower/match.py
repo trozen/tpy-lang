@@ -4,26 +4,18 @@ switch/chain, record, optional-partition, union, and guarded-union.
 
 from __future__ import annotations
 from collections.abc import Set as AbstractSet
-from dataclasses import dataclass, fields as dataclass_fields
+from dataclasses import dataclass
 from ...parse.nodes import (
     TpyAsPattern,
-    TpyAssign,
-    TpyAugAssign,
     TpyCapturePattern,
     TpyClassPattern,
-    TpyDelItem,
-    TpyDelVar,
     TpyExpr,
     TpyFieldAccess,
     TpyLiteralPattern,
     TpyMatch,
     TpyName,
     TpyOrPattern,
-    TpyStmt,
-    TpySubscript,
-    TpyTupleUnpack,
     TpyValuePattern,
-    TpyVarDecl,
     TpyWildcardPattern,
 )
 from ...typesys import (
@@ -74,10 +66,9 @@ from . import statements as _statements
 
 def _match_strategy(stmt: TpyMatch, analyzer) -> 'str | None':
     """The routed-tier discriminant -- the SINGLE complete mirror of
-    _gen_match_dispatch's scalar routing, shared by the gate and lowering
-    (an M3b bug came from each holding its own copy of the guard
-    promotion; when both sides must agree on a routing fact, one function
-    computes it and the byte-diff is only the backstop): a registered enum
+    _gen_match_dispatch's scalar routing, consumed by lowering. Keeping one
+    classifier avoids drift in guard promotion; the byte-diff is the
+    backstop. A registered enum
     subject -> switch_enum, a plain fixed-int subject -> switch_primitive,
     and the remaining value scalars (bool -- -Wswitch-bool keeps it off
     the switch -- BigInt, floats) plus resolved-str subjects -> the `==`
@@ -92,7 +83,7 @@ def _match_strategy(stmt: TpyMatch, analyzer) -> 'str | None':
     Union guard/shared-index/field-condition routing is
     `_match_union_route`; a user-record subject takes the record tiers
     (if_elif_record, or guarded_record when any arm has a guard) --
-    polymorphic dispatch is checked at the gate before strategy, mirroring
+    polymorphic dispatch is checked before strategy selection, mirroring
     `_gen_match_dispatch`'s early poly branch. An Optional subject routes
     on the shared partition fact (optional_partition vs the deferred
     if/elif-optional tier); polymorphic subjects are their own tier
@@ -106,9 +97,8 @@ def _match_strategy(stmt: TpyMatch, analyzer) -> 'str | None':
         # Recursive-alias wrappers (bare `Tree` unions, `Tree[Int32]`
         # instances -- the `.value` indirection) are PARKED against the
         # wrapper-form rung: wrapper-typed params/locals are themselves
-        # function-gated, so no wrapper match can route until that form
-        # lands (verified: a bare-arm Tree match rejects at the function
-        # gate, never reaching this arm).
+        # unsupported at the callable boundary, so no wrapper match can route
+        # until that form lands.
         if t.needs_wrapper():
             return None
         return "switch_union"
@@ -120,8 +110,8 @@ def _match_strategy(stmt: TpyMatch, analyzer) -> 'str | None':
         # The AST dispatches on the SHARED partition fact: a None-arm prefix
         # takes `_gen_match_optimized_optional` (the `__match_inner_N`
         # second name); anything else is the if/elif-optional tier
-        # (deferred). Which subject/arm shapes the slice mirrors is the
-        # gate's business (`_match_optional_arms_ok`).
+        # (deferred). The selected lowerer rejects unsupported arm shapes as
+        # it builds the partition.
         if partition_optional_cases(stmt.cases) is not None:
             return "optional_partition"
         return None
@@ -170,25 +160,6 @@ def _match_str_switches(stmt: TpyMatch, analyzer) -> bool:
                    and isinstance(a.value, str) for a in pat.patterns):
                 count += len(pat.patterns)
     return count >= STRING_SWITCH_THRESHOLD
-
-def _expr_any(e, pred) -> bool:
-    """Whether `pred` holds for any node of the expression tree (generic
-    dataclass walk over the TpyExpr children)."""
-    stack = [e]
-    while stack:
-        cur = stack.pop()
-        if pred(cur):
-            return True
-        for f in dataclass_fields(cur):
-            v = getattr(cur, f.name)
-            if isinstance(v, TpyExpr):
-                stack.append(v)
-            elif isinstance(v, (list, tuple)):
-                stack.extend(x for x in v if isinstance(x, TpyExpr))
-    return False
-
-def _expr_mentions_name(e, name: str) -> bool:
-    return _expr_any(e, lambda n: isinstance(n, TpyName) and n.name == name)
 
 def _match_arm_parts(case) -> 'tuple | None':
     """Split an arm into (test_pattern, binding_node): the label-generating
@@ -354,167 +325,116 @@ def _match_union_route(stmt: TpyMatch, u: UnionType) -> str:
         return "guarded_union"
     return "switch_union"
 
-def _match_guarded_union_arms_ok(
-        stmt: TpyMatch, analyzer, declared: dict[str, TpyType],
+def _guarded_union_arm_ok(
+        case, analyzer, declared: dict[str, TpyType],
         pointers: AbstractSet[str], narrowed: AbstractSet[str],
         storage_tuple_locals: AbstractSet[str], subj: TpyName,
-                                 u: UnionType, hoist_declared: dict, *,
-                                 in_loop: bool) -> bool:
-    """The guarded_union (M4b) arm walk -- `_gen_match_guarded_union`'s
-    per-index grouping over class patterns (bare, or with the field
-    condition/capture slice -- `_match_keywords_ok`), or-patterns of BARE
-    class alternatives (wildcard ALTERNATIVES inside an or-pattern -- the
-    broadcast-to-uncovered machinery -- stay out, and so do or-alt
-    keywords), `case None:`, and wildcard/capture arms (broadcast to every
-    index; all-wildcard indices coalesce into `default:`). Guards are the
-    M3b rule (bool-typed, call-free) plus a subject-name reject: the AST
-    renders the guard BEFORE the arm's narrowing applies, so a guard
-    reading the subject would spell the raw variant name. A field-COND
-    entry whose guard reads one of its own captures also rejects: the AST
-    composes `if (conds && guard)` and only then declares the captures
-    inside the block -- ill-formed C++ (BUGS.md). Bodies walk once per
-    source case (broadcast copies re-emit the same lowered body;
-    truncated-away entries were still walked -- conservative)."""
-    members = _union_index_members(u)
-    if members is None:
+        members: tuple) -> bool:
+    """Admit one guarded-union arm while its lowering group is built."""
+    parts = _match_arm_parts(case)
+    if parts is None:
         return False
-    for case in stmt.cases:
-        parts = _match_arm_parts(case)
-        if parts is None:
+    test, bnode = parts
+    arm_declared = dict(declared)
+    member = None
+    if test is None:
+        pass
+    elif isinstance(test, TpyClassPattern):
+        member = test.resolved_type
+        if member is None or test.positional:
             return False
-        test, bnode = parts
-        arm_declared = dict(declared)
-        arm_declared.update(hoist_declared)
-        member = None
-        has_field_conds = False
-        capture_names: list[str] = []
-        if test is None:
-            pass
-        elif isinstance(test, TpyClassPattern):
-            member = test.resolved_type
-            if member is None or test.positional:
-                return False
-            if _union_member_index(members, member) is None:
-                return False
-            if not _match_keywords_ok(
-                    test, analyzer, pointers, narrowed,
-                    storage_tuple_locals, arm_declared,
-                                      allow_conds=True):
-                return False
-            has_field_conds = MatchGenerator._pattern_has_field_condition(test)
-            capture_names = _match_pattern_captures(test)
-        elif isinstance(test, TpyOrPattern):
-            if bnode is not None:
-                return False
-            for alt in test.patterns:
-                if not (isinstance(alt, TpyClassPattern)
-                        and alt.resolved_type is not None
-                        and not alt.keywords and not alt.positional):
-                    return False
-                if _union_member_index(members, alt.resolved_type) is None:
-                    return False
-        elif isinstance(test, TpyLiteralPattern) and test.value is None:
-            if _union_member_index(members, NoneType()) is None:
-                return False
-        else:
+        if _union_member_index(members, member) is None:
             return False
-        facts = case.type_facts or {}
-        if facts:
-            if set(facts) != {subj.name} or member is None:
-                return False
-            arm_declared[subj.name] = facts[subj.name]
+        if not _match_keywords_ok(
+                test, analyzer, pointers, narrowed,
+                storage_tuple_locals, arm_declared, allow_conds=True):
+            return False
+    elif isinstance(test, TpyOrPattern):
         if bnode is not None:
-            if (bnode.name in pointers or bnode.name in narrowed
-                    or bnode.name in storage_tuple_locals):
+            return False
+        for alt in test.patterns:
+            if not (isinstance(alt, TpyClassPattern)
+                    and alt.resolved_type is not None
+                    and not alt.keywords and not alt.positional):
                 return False
-            arm_declared[bnode.name] = (member if member is not None
-                                        else arm_declared[subj.name])
-        if case.guard is not None:
-            if _expr_mentions_name(case.guard, subj.name):
+            if _union_member_index(members, alt.resolved_type) is None:
                 return False
-            if has_field_conds and any(
-                    _expr_mentions_name(case.guard, n)
-                    for n in capture_names):
-                return False
+    elif isinstance(test, TpyLiteralPattern) and test.value is None:
+        if _union_member_index(members, NoneType()) is None:
+            return False
+    else:
+        return False
+    facts = case.type_facts or {}
+    if facts:
+        if set(facts) != {subj.name} or member is None:
+            return False
+        arm_declared[subj.name] = facts[subj.name]
+    if bnode is not None:
+        if (bnode.name in pointers or bnode.name in narrowed
+                or bnode.name in storage_tuple_locals):
+            return False
+        arm_declared[bnode.name] = (member if member is not None
+                                    else arm_declared[subj.name])
     return True
 
-def _match_union_arms_ok(
-        stmt: TpyMatch, analyzer, declared: dict[str, TpyType],
+def _union_arm_ok(
+        case, analyzer, declared: dict[str, TpyType],
         pointers: AbstractSet[str], narrowed: AbstractSet[str],
-        storage_tuple_locals: AbstractSet[str], subj: TpyName, u: UnionType,
-                         hoist_declared: dict, *, in_loop: bool) -> bool:
-    """The switch_union (M4a) arm walk: class patterns (sema resolved the
-    member; keyword field CAPTURES bind off the `__case_{i}` alias -- field
-    value conditions route to the guarded path via `_match_union_route`, so
-    the walk passes allow_conds=False), or-patterns of BARE class
-    alternatives, `case None:` (the monostate index), and the
-    wildcard/capture default; `as` binds the extracted member. Guards and
-    shared variant indices route to `_gen_match_guarded_union` on the AST
-    path -- rejected (M4b). Each class arm's body walks with the subject
-    retyped to sema's arm fact and marked narrowed (reads rename to the
-    `__case_{i}` alias at lowering, the U3 mechanic)."""
-    if any(c.guard is not None for c in stmt.cases):
+        storage_tuple_locals: AbstractSet[str], subj: TpyName,
+        members: tuple, seen: set[int]) -> bool:
+    """Admit one switch-union arm while that arm is lowered."""
+    if case.guard is not None:
         return False
-    members = _union_index_members(u)
-    if members is None:
+    parts = _match_arm_parts(case)
+    if parts is None:
         return False
-    seen: set[int] = set()
-    for case in stmt.cases:
-        parts = _match_arm_parts(case)
-        if parts is None:
+    test, bnode = parts
+    arm_declared = dict(declared)
+    member = None
+    if test is None:
+        pass
+    elif isinstance(test, TpyClassPattern):
+        member = test.resolved_type
+        if member is None or test.positional:
             return False
-        test, bnode = parts
-        arm_declared = dict(declared)
-        arm_declared.update(hoist_declared)
-        member = None
-        if test is None:
-            pass  # wildcard/capture -> the `default:` arm
-        elif isinstance(test, TpyClassPattern):
-            member = test.resolved_type
-            if member is None or test.positional:
-                return False
-            idx = _union_member_index(members, member)
-            if idx is None or idx in seen:
-                return False
-            seen.add(idx)
-            if not _match_keywords_ok(
-                    test, analyzer, pointers, narrowed,
-                    storage_tuple_locals, arm_declared,
-                                      allow_conds=False):
-                return False
-        elif isinstance(test, TpyOrPattern):
-            if bnode is not None:
-                # The AST or-pattern branch never emits the `as` binding.
-                return False
-            for alt in test.patterns:
-                if not (isinstance(alt, TpyClassPattern)
-                        and alt.resolved_type is not None
-                        and not alt.keywords and not alt.positional):
-                    return False
-                idx = _union_member_index(members, alt.resolved_type)
-                if idx is None or idx in seen:
-                    return False
-                seen.add(idx)
-        elif isinstance(test, TpyLiteralPattern) and test.value is None:
-            idx = _union_member_index(members, NoneType())
-            if idx is None or idx in seen:
-                return False
-            seen.add(idx)
-        else:
+        idx = _union_member_index(members, member)
+        if idx is None or idx in seen:
             return False
-        # The arm's narrowing fact must be exactly sema's {subject: member}
-        # (or filtered away); any other shape is out of the slice.
-        facts = case.type_facts or {}
-        if facts:
-            if set(facts) != {subj.name} or member is None:
-                return False
-            arm_declared[subj.name] = facts[subj.name]
+        seen.add(idx)
+        if not _match_keywords_ok(
+                test, analyzer, pointers, narrowed,
+                storage_tuple_locals, arm_declared, allow_conds=False):
+            return False
+    elif isinstance(test, TpyOrPattern):
         if bnode is not None:
-            if (bnode.name in pointers or bnode.name in narrowed
-                    or bnode.name in storage_tuple_locals):
+            return False
+        for alt in test.patterns:
+            if not (isinstance(alt, TpyClassPattern)
+                    and alt.resolved_type is not None
+                    and not alt.keywords and not alt.positional):
                 return False
-            arm_declared[bnode.name] = (member if member is not None
-                                        else arm_declared[subj.name])
+            idx = _union_member_index(members, alt.resolved_type)
+            if idx is None or idx in seen:
+                return False
+            seen.add(idx)
+    elif isinstance(test, TpyLiteralPattern) and test.value is None:
+        idx = _union_member_index(members, NoneType())
+        if idx is None or idx in seen:
+            return False
+        seen.add(idx)
+    else:
+        return False
+    facts = case.type_facts or {}
+    if facts:
+        if set(facts) != {subj.name} or member is None:
+            return False
+        arm_declared[subj.name] = facts[subj.name]
+    if bnode is not None:
+        if (bnode.name in pointers or bnode.name in narrowed
+                or bnode.name in storage_tuple_locals):
+            return False
+        arm_declared[bnode.name] = (member if member is not None
+                                    else arm_declared[subj.name])
     return True
 
 def _match_record_arm_always(test) -> bool:
@@ -535,189 +455,52 @@ def _match_record_arm_always(test) -> bool:
                    if isinstance(a, TpyClassPattern)
                    for _, s in a.keywords)
 
-def _match_record_arms_ok(
-        stmt: TpyMatch, analyzer, declared: dict[str, TpyType],
+def _record_arm_ok(
+        case, analyzer, declared: dict[str, TpyType],
         pointers: AbstractSet[str], narrowed: AbstractSet[str],
-        storage_tuple_locals: AbstractSet[str], subj: TpyName, kind: str,
-                          hoist_declared: dict, *, in_loop: bool) -> bool:
-    """The record tiers' (if_elif_record / guarded_record) arm walk: class
-    patterns over the concrete record with the field condition/capture
-    slice (`_match_keywords_ok`), `as`/capture/wildcard whole-subject
-    bindings, or-patterns of CONDITION-ONLY class alternatives, and the
-    M3b guard rule (guards render after the arm's bindings on this tier,
-    so a guard reading a field capture is fine). An `as` over an
-    or-pattern, or a capture inside an or-alternative, is silently dropped
-    by the AST or-branches (ill-formed C++, BUGS.md) -- both reject. The
-    plain chain (if_elif_record) emits source order, so an always-matching
-    arm anywhere but last would emit `} else {` mid-chain -- rejected
-    defensively, mirroring the scalar chain's rule (sema's
-    unreachable-case check already refuses the shape)."""
-    always_arms = 0
-    for i, case in enumerate(stmt.cases):
-        if case.type_facts:
-            return False
-        parts = _match_arm_parts(case)
-        if parts is None:
-            return False
-        test, bnode = parts
-        arm_declared = dict(declared)
-        arm_declared.update(hoist_declared)
-        if test is None:
-            pass
-        elif isinstance(test, TpyClassPattern):
-            if test.resolved_type is None or test.positional:
-                return False
-            if not _match_keywords_ok(
-                    test, analyzer, pointers, narrowed,
-                    storage_tuple_locals, arm_declared,
-                                      allow_conds=True):
-                return False
-        elif isinstance(test, TpyOrPattern):
-            if bnode is not None:
-                return False  # `as` over an or-pattern: dropped on the AST
-            for alt in test.patterns:
-                if isinstance(alt, TpyWildcardPattern):
-                    continue
-                if (not isinstance(alt, TpyClassPattern)
-                        or alt.resolved_type is None or alt.positional):
-                    return False
-                if alt.keywords and not _f1_record(alt.resolved_type,
-                                                   analyzer):
-                    return False
-                for fname, sub in alt.keywords:
-                    if isinstance(sub, TpyWildcardPattern):
-                        continue
-                    if not isinstance(sub, TpyLiteralPattern):
-                        return False  # or-alt captures: dropped on the AST
-                    if _match_field_cond(alt, fname, sub.value,
-                                         analyzer) is None:
-                        return False
-        else:
-            return False
-        if _match_record_arm_always(test):
-            always_arms += 1
-            if kind == "if_elif_record" and (always_arms > 1
-                                             or i != len(stmt.cases) - 1):
-                return False
-        if bnode is not None:
-            if (bnode.name in pointers or bnode.name in narrowed
-                    or bnode.name in storage_tuple_locals):
-                return False
-            arm_declared[bnode.name] = arm_declared[subj.name]
-    return True
-
-def _stmts_write_name(body, name: str) -> bool:
-    """Whether any (nested) statement writes through `name`: an
-    assign / aug-assign / var-decl / tuple-unpack / del whose target chain
-    roots at it. The optional-capture gate rejects such captures: sema's
-    const verdict for the SUBJECT ignores mutations made through a
-    match-capture alias, so the AST path renders the write against the
-    `const` deref ref -- ill-formed C++ (BUGS.md). Read-only captures are
-    unaffected."""
-    def _root(e) -> 'str | None':
-        while isinstance(e, (TpyFieldAccess, TpySubscript)):
-            e = e.obj
-        return e.name if isinstance(e, TpyName) else None
-    stack = list(body)
-    while stack:
-        s = stack.pop()
-        if isinstance(s, (TpyAssign, TpyAugAssign)):
-            if _root(s.target) == name:
-                return True
-        elif isinstance(s, TpyVarDecl):
-            if s.name == name:
-                return True
-        elif isinstance(s, TpyTupleUnpack):
-            if name in s.targets:
-                return True
-        elif isinstance(s, TpyDelVar):
-            if name in s.names:
-                return True
-        elif isinstance(s, TpyDelItem):
-            if any(_root(t) == name for t in s.targets):
-                return True
-        for f in dataclass_fields(s):
-            v = getattr(s, f.name)
-            if isinstance(v, TpyStmt):
-                stack.append(v)
-            elif isinstance(v, (list, tuple)):
-                stack.extend(x for x in v if isinstance(x, TpyStmt))
-    return False
-
-def _match_optional_arms_ok(
-        stmt: TpyMatch, analyzer, declared: dict[str, TpyType],
-        pointers: AbstractSet[str], narrowed: AbstractSet[str],
-        storage_tuple_locals: AbstractSet[str], subj: TpyName,
-                            hoist_declared: dict, *,
-                            in_loop: bool) -> bool:
-    """The optional_partition (O1) arm walk -- `_gen_match_optimized_optional`
-    over a pointer-repr `Optional[F1-record]` name subject (an `A | None`
-    param or OPTIONAL_TO_PTR local; a value-repr subject's std::optional
-    local/param form is outside the slice, so it never gets here). Admitted:
-    at most ONE unguarded, binding-free `case None:` prefix arm, then
-    EXACTLY ONE always-matching inner arm -- a bare class pattern over the
-    inner record (`_emit_optional_inner_record`'s no-field `{ }` block;
-    keyword/positional sub-patterns are the record-pattern tier), a
-    wildcard, or a capture/`as` binding the dereferenced inner
-    (`auto& v = __match_inner_N;`). Guards reject: the partition admits
-    some, but the guarded inner chains (`_emit_switch_groups` fallbacks /
-    the `cond && guard` folds) are unwitnessed shapes -- and sema's
-    unreachable-arm rule caps the UNGUARDED inner dispatch at one arm, so
-    the single-arm restriction loses nothing. The None body walks
-    un-narrowed; the inner body walks like an `x is not None` branch (no
-    rename -- reads keep the pointer name; sema's per-node facts drive the
-    deref render on both paths)."""
-    partition = partition_optional_cases(stmt.cases)
-    if partition is None:
-        return False  # defensive -- the strategy fact checked it
-    none_cases, inner_cases = partition
-    if len(none_cases) > 1 or len(inner_cases) != 1:
-        return False
-    inner_type = unwrap_readonly(stmt.subject_type).inner
-    for case in none_cases:
-        parts = _match_arm_parts(case)
-        if parts is None:
-            return False
-        test, bnode = parts
-        # Or-pattern None spellings (`case None | None:`) and bindings stay
-        # out; the partition already bars None-arm guards.
-        if bnode is not None or not isinstance(test, TpyLiteralPattern):
-            return False
-    case = inner_cases[0]
-    if case.guard is not None:
+        storage_tuple_locals: AbstractSet[str], subj: TpyName) -> bool:
+    """Admit one record arm while that arm is lowered."""
+    if case.type_facts:
         return False
     parts = _match_arm_parts(case)
     if parts is None:
         return False
     test, bnode = parts
+    arm_declared = dict(declared)
     if test is None:
-        pass  # wildcard/capture -- always-matching, like the bare class arm
+        pass
     elif isinstance(test, TpyClassPattern):
-        if test.keywords or test.positional:
+        if test.resolved_type is None or test.positional:
             return False
-        if test.resolved_type is None or test.resolved_type != inner_type:
+        if not _match_keywords_ok(
+                test, analyzer, pointers, narrowed,
+                storage_tuple_locals, arm_declared, allow_conds=True):
             return False
+    elif isinstance(test, TpyOrPattern):
+        if bnode is not None:
+            return False
+        for alt in test.patterns:
+            if isinstance(alt, TpyWildcardPattern):
+                continue
+            if (not isinstance(alt, TpyClassPattern)
+                    or alt.resolved_type is None or alt.positional):
+                return False
+            if alt.keywords and not _f1_record(alt.resolved_type, analyzer):
+                return False
+            for fname, sub in alt.keywords:
+                if isinstance(sub, TpyWildcardPattern):
+                    continue
+                if not isinstance(sub, TpyLiteralPattern):
+                    return False
+                if _match_field_cond(alt, fname, sub.value, analyzer) is None:
+                    return False
     else:
         return False
-    arm_declared = dict(declared)
-    arm_declared.update(hoist_declared)
     if bnode is not None:
-        # Only the fresh `auto&` deref binding is in the slice: a
-        # pre-declared name would take `_emit_binding`'s assign/pointer
-        # arms against the deref (and its record-typed hoist already
-        # rejects upstream -- defensive).
-        if (bnode.name in declared or bnode.name in pointers
-                or bnode.name in narrowed
+        if (bnode.name in pointers or bnode.name in narrowed
                 or bnode.name in storage_tuple_locals):
             return False
-        # A write through the capture is ILL-FORMED on the AST path when
-        # the subject binding is const (sema's const verdict never sees
-        # capture-alias mutations -- BUGS.md); reject rather than mirror
-        # the broken emit. Direct subject writes (`x.n = ...`) are fine --
-        # sema attributes those.
-        if _stmts_write_name(case.body, bnode.name):
-            return False
-        arm_declared[bnode.name] = inner_type
+        arm_declared[bnode.name] = arm_declared[subj.name]
     return True
 
 @dataclass(frozen=True)
@@ -775,87 +558,35 @@ def _match_route(
     if kind == "switch_union":
         u = unwrap_readonly(stmt.subject_type)
         union_route = _match_union_route(stmt, u)
-        arms_ok = (_match_guarded_union_arms_ok
-                   if union_route == "guarded_union"
-                   else _match_union_arms_ok)
-        if not arms_ok(
-                stmt, analyzer, declared, pointers, narrowed,
-                storage_tuple_locals, subj, u,
-                       hoist_declared, in_loop=in_loop):
-            return None
         return _MatchRoute(kind=kind, hoist_types=hoist_types,
                           union_route=union_route)
     if kind in ("if_elif_record", "guarded_record"):
         if not _f1_record(unwrap_readonly(stmt.subject_type), analyzer):
             return None
-        if not _match_record_arms_ok(
-                stmt, analyzer, declared, pointers, narrowed,
-                storage_tuple_locals, subj, kind, hoist_declared,
-                in_loop=in_loop):
-            return None
         return _MatchRoute(kind=kind, hoist_types=hoist_types)
     if kind == "optional_partition":
         # Only the pointer-repr Optional[F1-record] subject form is in the
         # slice; a value-repr subject's std::optional local/param binding
-        # is itself function-gated, so this reject is the (defensive)
+        # is itself rejected at the callable boundary, so this is the defensive
         # boundary for expression-position subjects that ever widen in.
         if _optional_ptr_borrow_name(subj, declared, analyzer) is None:
             return None
-        if not _match_optional_arms_ok(
-                stmt, analyzer, declared, pointers, narrowed,
-                storage_tuple_locals, subj, hoist_declared,
-                in_loop=in_loop):
-            return None
         return _MatchRoute(kind=kind, hoist_types=hoist_types)
-    always_match_arms = 0
-    group_guards: dict[str, list[bool]] = {}
-    for i, case in enumerate(stmt.cases):
-        if case.type_facts:
-            return None
-        parts = _match_arm_parts(case)
-        if parts is None:
-            return None
-        test, bnode = parts
-        if test is None:
-            # An always-matching arm: the switch `default:` / the plain
-            # chain's final `} else {`. The plain chain emits source order,
-            # so a non-final one would strand later arms. The guarded
-            # chain's standalone blocks take any position and any count (a
-            # failed guard falls through); the switch tiers merge them into
-            # one default group, order-checked below.
-            always_match_arms += 1
-            if kind == "if_elif" and (always_match_arms > 1
-                                      or i != len(stmt.cases) - 1):
-                return None
-            key = ""
-        elif isinstance(test, TpyOrPattern):
-            if not all(_match_label_ok(alt, kind) for alt in test.patterns):
-                return None
-            key = "|".join(_match_case_label(alt, kind, analyzer)
-                           for alt in test.patterns)
-        elif not _match_label_ok(test, kind):
-            return None
-        else:
-            key = _match_case_label(test, kind, analyzer)
-        if kind in ("switch_enum", "switch_primitive"):
-            group_guards.setdefault(key, []).append(case.guard is not None)
-        arm_declared = dict(declared)
-        arm_declared.update(hoist_declared)
-        if bnode is not None:
-            # The binding aliases the whole subject; only _emit_binding's
-            # value arms are in the slice -- a pointer/narrowed/tuple-alias
-            # name would take the aliasing arms.
-            if (bnode.name in pointers or bnode.name in narrowed
-                    or bnode.name in storage_tuple_locals):
-                return None
-            arm_declared[bnode.name] = arm_declared[subj.name]
-    # Within each switch group, an unguarded entry only in the final
-    # position (sema's duplicate-case rule guarantees it; a violated order
-    # would emit an else-chain with no opened if) -- defensive.
-    for guards in group_guards.values():
-        if any(not g for g in guards[:-1]):
-            return None
     return _MatchRoute(kind=kind, hoist_types=hoist_types)
+
+def _select_match_route(
+        stmt: TpyMatch, analyzer, declared: dict[str, TpyType],
+        pointers: AbstractSet[str], narrowed: AbstractSet[str],
+        storage_tuple_locals: AbstractSet[str], prescan: _Prescan, *,
+        in_branch: bool, in_loop: bool) -> _MatchRoute:
+    """Select a match lowering strategy or reject at the lowering boundary."""
+    route = _match_route(
+        stmt, analyzer, declared, pointers, narrowed,
+        storage_tuple_locals, prescan,
+        in_branch=in_branch, in_loop=in_loop)
+    if route is None:
+        raise ThirUnsupported("stmt.match")
+    return route
 
 def _match_case_label(pattern, kind: str, analyzer) -> str:
     """One pre-rendered arm spelling. Switch tiers: the AST's
@@ -887,13 +618,13 @@ def _lower_match_guard(guard: TpyExpr, lc: _LowerCtx,
 
 
 def _lower_match(stmt: TpyMatch, route: _MatchRoute, lc: _LowerCtx,
-                 declared: dict[str, TpyType], loc, *,
+                 declared: dict[str, TpyType], pointers: AbstractSet[str], loc, *,
                  loop_depth: int = 0) -> THIRMatch:
     """Lower a scalar-tier `match` (see `THIRMatch` for the emit shapes).
     Labels/condition-RHS pre-render here. Switch tiers regroup the wildcard
     arm LAST regardless of source position (`_group_switch_arms` appends
     default_entries after the label groups); the if/elif tier keeps source
-    order (its wildcard is the final `} else {` -- gate-enforced last). Arm
+    order (its wildcard is the final `} else {` -- checked while lowering). Arm
     bodies lower under narrowing-scope snapshots like every branch body
     (the AST's `_emit_case_body` narrowed_vars/alias restores); the hoisted
     predecls follow the try arm exactly and enter the caller's `declared`.
@@ -903,6 +634,7 @@ def _lower_match(stmt: TpyMatch, route: _MatchRoute, lc: _LowerCtx,
     kind = route.kind
     if kind != "switch_union":  # the union lowerers witness their route
         _witness(f"match.{kind}")
+    predeclared = set(declared)
     hoist_decls: list[tuple[str, str]] = []
     for name, vtype in route.hoist_types:
         render_src = (_resolved_str_value(vtype, lc.analyzer)
@@ -915,15 +647,17 @@ def _lower_match(stmt: TpyMatch, route: _MatchRoute, lc: _LowerCtx,
     if kind == "switch_union":
         if route.union_route == "guarded_union":
             return _lower_match_guarded_union(stmt, lc, declared, loc,
-                                              hoist_decls,
+                                              pointers, hoist_decls,
                                               loop_depth=loop_depth)
-        return _lower_match_union(stmt, lc, declared, loc, hoist_decls,
+        return _lower_match_union(stmt, lc, declared, loc, pointers,
+                                  hoist_decls,
                                   loop_depth=loop_depth)
     if kind in ("if_elif_record", "guarded_record"):
-        return _lower_match_record(stmt, lc, declared, loc, hoist_decls,
-                                   kind, loop_depth=loop_depth)
+        return _lower_match_record(stmt, lc, declared, loc, pointers,
+                                   hoist_decls, kind, loop_depth=loop_depth)
     if kind == "optional_partition":
-        return _lower_match_optional(stmt, lc, declared, loc, hoist_decls,
+        return _lower_match_optional(stmt, lc, declared, loc, pointers,
+                                     predeclared, hoist_decls,
                                      loop_depth=loop_depth)
     subj_type = declared.get(stmt.subject.name)
     is_chain = kind in ("if_elif", "if_elif_guarded")
@@ -931,11 +665,41 @@ def _lower_match(stmt: TpyMatch, route: _MatchRoute, lc: _LowerCtx,
     groups: dict[str, tuple[tuple[str, ...], list[THIRMatchArmEntry]]] = {}
     group_order: list[str] = []
     default_entries: list[THIRMatchArmEntry] = []
-    for case in stmt.cases:
-        test, bnode = _match_arm_parts(case)
+    always_match_arms = 0
+    for i, case in enumerate(stmt.cases):
+        if case.type_facts:
+            raise ThirUnsupported("stmt.match")
+        parts = _match_arm_parts(case)
+        if parts is None:
+            raise ThirUnsupported("stmt.match")
+        test, bnode = parts
+        if test is None:
+            always_match_arms += 1
+            if kind == "if_elif" and (
+                    always_match_arms > 1 or i != len(stmt.cases) - 1):
+                raise ThirUnsupported("stmt.match")
+            labels: tuple[str, ...] = ()
+        elif isinstance(test, TpyOrPattern):
+            if not all(_match_label_ok(alt, kind) for alt in test.patterns):
+                raise ThirUnsupported("stmt.match")
+            _witness("match.or_labels")
+            labels = tuple(_match_case_label(alt, kind, lc.analyzer)
+                           for alt in test.patterns)
+        else:
+            if not _match_label_ok(test, kind):
+                raise ThirUnsupported("stmt.match")
+            labels = (_match_case_label(test, kind, lc.analyzer),)
+        if not is_chain:
+            prior = (default_entries if not labels
+                     else groups.get("|".join(labels), ((), []))[1])
+            if prior and prior[-1].guard is None:
+                raise ThirUnsupported("stmt.match")
         binding = None
         arm_declared = dict(declared)
         if bnode is not None:
+            if (bnode.name in pointers or bnode.name in lc.narrow.narrowed
+                    or bnode.name in lc.storage_tuple_locals):
+                raise ThirUnsupported("stmt.match")
             mode = ("assign" if bnode.name in declared
                     else "copy" if bnode.bind_by_value else "ref")
             _witness(f"match.bind_{mode}")
@@ -949,14 +713,6 @@ def _lower_match(stmt: TpyMatch, route: _MatchRoute, lc: _LowerCtx,
             body=_statements._lower_scoped_stmts(
                 case.body, lc, arm_declared, loop_depth=loop_depth),
             loc=case.loc, binding=binding, guard=guard)
-        if test is None:
-            labels: tuple[str, ...] = ()
-        elif isinstance(test, TpyOrPattern):
-            _witness("match.or_labels")
-            labels = tuple(_match_case_label(alt, kind, lc.analyzer)
-                           for alt in test.patterns)
-        else:
-            labels = (_match_case_label(test, kind, lc.analyzer),)
         if is_chain:
             # Source order, one entry per group (the always-match arm is
             # the plain chain's final `} else {` / a guarded standalone
@@ -1075,6 +831,7 @@ def _lower_or_field_conds(test: TpyOrPattern, lc: _LowerCtx,
 
 def _lower_match_record(stmt: TpyMatch, lc: _LowerCtx,
                         declared: dict[str, TpyType], loc,
+                        pointers: AbstractSet[str],
                         hoist_decls: 'list[tuple[str, str]]',
                         kind: str, *, loop_depth: int = 0) -> THIRMatch:
     """Lower a record-tier `match` (if_elif_record / guarded_record):
@@ -1089,8 +846,19 @@ def _lower_match_record(stmt: TpyMatch, lc: _LowerCtx,
     block condition)."""
     subj_type = declared.get(stmt.subject.name)
     arms: list[THIRMatchArm] = []
-    for case in stmt.cases:
+    always_arms = 0
+    for i, case in enumerate(stmt.cases):
+        if not _record_arm_ok(
+                case, lc.analyzer, declared, pointers,
+                lc.narrow.narrowed.keys(), lc.storage_tuple_locals,
+                stmt.subject):
+            raise ThirUnsupported("stmt.match")
         test, bnode = _match_arm_parts(case)
+        if _match_record_arm_always(test):
+            always_arms += 1
+            if kind == "if_elif_record" and (
+                    always_arms > 1 or i != len(stmt.cases) - 1):
+                raise ThirUnsupported("stmt.match")
         arm_declared = dict(declared)
         field_conds: tuple = ()
         field_bindings: tuple = ()
@@ -1135,6 +903,8 @@ def _lower_match_record(stmt: TpyMatch, lc: _LowerCtx,
 
 def _lower_match_optional(stmt: TpyMatch, lc: _LowerCtx,
                           declared: dict[str, TpyType], loc,
+                          pointers: AbstractSet[str],
+                          predeclared: AbstractSet[str],
                           hoist_decls: 'list[tuple[str, str]]', *,
                           loop_depth: int = 0) -> THIRMatch:
     """Lower an optional_partition `match` (O1) -- see THIRMatch's
@@ -1147,12 +917,23 @@ def _lower_match_optional(stmt: TpyMatch, lc: _LowerCtx,
     `auto&`), `from_case_var` says "bind the extracted value, not the
     subject". Bodies lower under narrowing-scope snapshots like every
     branch body."""
-    none_cases, inner_cases = partition_optional_cases(stmt.cases)
+    partition = partition_optional_cases(stmt.cases)
+    if partition is None:
+        raise ThirUnsupported("stmt.match")
+    none_cases, inner_cases = partition
+    if len(none_cases) > 1 or len(inner_cases) != 1:
+        raise ThirUnsupported("stmt.match")
     inner_type = unwrap_readonly(stmt.subject_type).inner
     none_entry = None
     if none_cases:
         _witness("match.optional_none_arm")
         ncase = none_cases[0]
+        parts = _match_arm_parts(ncase)
+        if parts is None:
+            raise ThirUnsupported("stmt.match")
+        test, bnode = parts
+        if bnode is not None or not isinstance(test, TpyLiteralPattern):
+            raise ThirUnsupported("stmt.match")
         none_entry = THIRMatchArmEntry(
             body=_statements._lower_scoped_stmts(
                 ncase.body, lc, dict(declared), loop_depth=loop_depth),
@@ -1160,19 +941,42 @@ def _lower_match_optional(stmt: TpyMatch, lc: _LowerCtx,
     else:
         _witness("match.optional_value_only")
     case = inner_cases[0]
-    _test, bnode = _match_arm_parts(case)
+    if case.guard is not None:
+        raise ThirUnsupported("stmt.match")
+    parts = _match_arm_parts(case)
+    if parts is None:
+        raise ThirUnsupported("stmt.match")
+    test, bnode = parts
+    if isinstance(test, TpyClassPattern):
+        if (test.keywords or test.positional
+                or test.resolved_type is None
+                or test.resolved_type != inner_type):
+            raise ThirUnsupported("stmt.match")
+    elif test is not None:
+        raise ThirUnsupported("stmt.match")
     binding = None
     arm_declared = dict(declared)
     if bnode is not None:
+        if (bnode.name in predeclared or bnode.name in pointers
+                or bnode.name in lc.narrow.narrowed
+                or bnode.name in lc.storage_tuple_locals):
+            raise ThirUnsupported("stmt.match")
         mode = "copy" if bnode.bind_by_value else "ref"
         _witness(f"match.bind_{mode}")
         _witness("match.optional_inner_bind")
         binding = THIRMatchBinding(name=bnode.name, mode=mode,
                                    from_case_var=True)
         arm_declared[bnode.name] = inner_type
+    saved_forbidden = lc.forbidden_writes.copy()
+    if bnode is not None:
+        lc.forbidden_writes.add(bnode.name)
+    try:
+        body = _statements._lower_scoped_stmts(
+            case.body, lc, arm_declared, loop_depth=loop_depth)
+    finally:
+        lc.forbidden_writes = saved_forbidden
     arm = THIRMatchArm(labels=(), entries=(THIRMatchArmEntry(
-        body=_statements._lower_scoped_stmts(
-            case.body, lc, arm_declared, loop_depth=loop_depth),
+        body=body,
         loc=case.loc, binding=binding),))
     emit_unreachable = (stmt.is_exhaustive and bool(stmt.cases)
                         and all(stmts_terminate(c.body) for c in stmt.cases))
@@ -1193,6 +997,7 @@ def _lower_match_optional(stmt: TpyMatch, lc: _LowerCtx,
 
 def _lower_match_union(stmt: TpyMatch, lc: _LowerCtx,
                        declared: dict[str, TpyType], loc,
+                       pointers: AbstractSet[str],
                        hoist_decls: 'list[tuple[str, str]]', *,
                        loop_depth: int = 0) -> THIRMatch:
     """Lower a switch_union `match` (M4a): arms in SOURCE order (no default
@@ -1209,9 +1014,17 @@ def _lower_match_union(stmt: TpyMatch, lc: _LowerCtx,
     u = unwrap_readonly(stmt.subject_type)
     _witness("match.switch_union")
     members = _union_index_members(u)
+    if members is None:
+        raise ThirUnsupported("stmt.match")
     subj_name = stmt.subject.name
     arms: list[THIRMatchArm] = []
+    seen: set[int] = set()
     for i, case in enumerate(stmt.cases):
+        if not _union_arm_ok(
+                case, lc.analyzer, declared, pointers,
+                lc.narrow.narrowed.keys(), lc.storage_tuple_locals,
+                stmt.subject, members, seen):
+            raise ThirUnsupported("stmt.match")
         test, bnode = _match_arm_parts(case)
         facts = case.type_facts or {}
         binding = None
@@ -1287,6 +1100,7 @@ def _lower_match_union(stmt: TpyMatch, lc: _LowerCtx,
 
 def _lower_match_guarded_union(stmt: TpyMatch, lc: _LowerCtx,
                                declared: dict[str, TpyType], loc,
+                               pointers: AbstractSet[str],
                                hoist_decls: 'list[tuple[str, str]]',
                                *, loop_depth: int = 0,
                                ) -> THIRMatch:
@@ -1311,11 +1125,18 @@ def _lower_match_guarded_union(stmt: TpyMatch, lc: _LowerCtx,
     u = unwrap_readonly(stmt.subject_type)
     _witness("match.guarded_union")
     members = _union_index_members(u)
+    if members is None:
+        raise ThirUnsupported("stmt.match")
     n = len(members)
     subj_name = stmt.subject.name
 
     type_arms: dict[int, list] = {i: [] for i in range(n)}
     for case in stmt.cases:
+        if not _guarded_union_arm_ok(
+                case, lc.analyzer, declared, pointers,
+                lc.narrow.narrowed.keys(), lc.storage_tuple_locals,
+                stmt.subject, members):
+            raise ThirUnsupported("stmt.match")
         test, bnode = _match_arm_parts(case)
         if test is None:
             for idx in range(n):
@@ -1358,6 +1179,7 @@ def _lower_match_guarded_union(stmt: TpyMatch, lc: _LowerCtx,
     def lower_entry(case, kind, member, bnode, pattern, alias, idx):
         arm_declared = dict(declared)
         saved = lc.narrow.snapshot()
+        saved_reads = lc.forbidden_reads.copy()
         try:
             facts = case.type_facts or {}
             if kind == "class" and facts and alias is not None:
@@ -1382,12 +1204,20 @@ def _lower_match_guarded_union(stmt: TpyMatch, lc: _LowerCtx,
             guard = None
             if case.guard is not None:
                 _witness("match.guard_arm")
-                guard = _lower_match_guard(case.guard, lc, arm_declared)
+                lc.forbidden_reads.add(subj_name)
+                if field_conds and pattern is not None:
+                    lc.forbidden_reads.update(
+                        _match_pattern_captures(pattern))
+                try:
+                    guard = _lower_match_guard(case.guard, lc, arm_declared)
+                finally:
+                    lc.forbidden_reads = saved_reads.copy()
             body = _statements._lower_stmts(
                 case.body, lc, arm_declared, in_branch=True,
                 loop_depth=loop_depth)
         finally:
             lc.narrow = saved
+            lc.forbidden_reads = saved_reads
         return THIRMatchArmEntry(
             body=body, loc=case.loc, binding=binding, guard=guard,
             variant_index=idx if kind == "class" else None,

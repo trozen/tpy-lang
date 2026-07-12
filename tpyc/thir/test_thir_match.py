@@ -1218,6 +1218,22 @@ class TestMatchRecordRejections:
                           "class Cat")
         assert not self._routed(src, "f")
 
+    def test_guarded_union_guard_reads_subject_rejects(self):
+        # The AST renders the guard BEFORE the arm's narrowing applies, so
+        # a guard reading the SUBJECT would spell the raw variant name --
+        # rejected inline via `forbidden_reads`.
+        src = UNION_PREAMBLE + (
+            "def f(a: Cat | Dog) -> Int32:\n"
+            "    match a:\n"
+            "        case Dog() if a.legs > 2:\n"
+            "            return 1\n"
+            "        case _:\n"
+            "            return 0\n"
+            "f(Dog())\n"
+        )
+        assert not self._routed(src, "f")
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
     def test_hoisted_record_as_capture_rejects(self):
         # A leaked record `as` capture hoists in pointer form on the AST
         # (`Point* q;`) -- outside the plain-value hoist slice.

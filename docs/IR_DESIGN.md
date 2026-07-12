@@ -843,7 +843,7 @@ original "gate-first, whole-body routing, delete at ~100%" shape, whose payoff
 (AST deletion) is all-or-nothing at the very end:
 
 - **Lever A -- try-lower-then-fall-back.** Replace the ~358KB predictive
-  eligibility gate (`expr_gates.py` + `predicates.py`) with: attempt to lower
+  former eligibility gate (`checks.py` + `predicates.py`) with: attempt to lower
   any body, raise `ThirUnsupported` at the point a construct can't be carried,
   catch at the body boundary, fall back to the AST path. An audit confirmed THIR
   lowering is side-effect-free w.r.t. codegen state (all working state on a
@@ -921,10 +921,29 @@ its lowering arm; recursive lowering discovers the first unsupported child and t
 body boundary discards the partial attempt. Statement policy and the
 `match`/`with`/`try` structure gates have since been removed: statement rejection
 happens in the lowering arm, while `match` and `for` classifiers return a strategy
-that lowering consumes. The remaining gate surface consists of expression
-consumer-shape helpers (slot, call, and method); condition and binary-operator
-lowering now check admission inline and raise `ThirUnsupported` directly. These
-helpers no longer provide a separate whole-expression preflight.
+that lowering consumes. Expression consumer-shape helpers (slot, call, and method)
+remain as local classifiers consumed by lowering; condition and binary-operator
+lowering check admission inline and raise `ThirUnsupported` directly. None of these
+helpers provides a separate whole-expression preflight.
+
+Here, **predictive admission traversal** means walking descendants only to
+answer "can this lower?" and then walking the same descendants again to build
+THIR. It does not include:
+
+- semantic prescans needed to establish Python function scope (reassignment,
+  shadowing, and whole-function local bindings);
+- strategy classifiers whose result is consumed by lowering (match dispatch,
+  comprehension/for-loop shape, and constructor MIL-vs-body placement);
+- walks that construct emitted metadata (generator captures and termination
+  flags); or
+- fallback diagnostic classification after rejection is already decided.
+
+A strict post-conversion sweep removed the remaining constructor duplicate:
+MIL admission no longer repeats the recursive body-local reference check after
+the constructor strategy has already selected the initializer for MIL lowering.
+Unsupported nested statements and expressions are now discovered by recursive
+lowering and reported with `ThirUnsupported`; there is no separate recursive
+admission pass.
 
 ##### AST stays the oracle: emit AST, overlay THIR (2026-07 correction)
 

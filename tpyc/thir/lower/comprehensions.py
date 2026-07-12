@@ -77,8 +77,9 @@ _COMP_KINDS = {TpyListComprehension: "list", TpySetComprehension: "set",
 
 @dataclass(frozen=True)
 class _CompRoute:
-    """The shared gate/lowering routing fact for a comprehension decl-init
-    (discipline #6): everything both sides must agree on. `unpack_types` is
+    """The routing fact consumed by comprehension lowering.
+
+    `unpack_types` is
     None for a plain loop var, else the per-target tuple element types
     (None entries = `_` discards)."""
     kind: str                        # "list" | "set" | "dict"
@@ -93,7 +94,7 @@ class _CompRoute:
 
 def _comp_sized_iterable(t: TpyType) -> bool:
     # Mirror of `_is_sized_type` over the admitted iterable families (Span /
-    # varargs never reach the comprehension gate; str/bytes are not sized on
+    # varargs never reach this comprehension route; str/bytes are not sized on
     # the AST side either, so no reserve fires for them).
     t = unwrap_readonly(t)
     return (is_array(t) or is_list(t) or is_dict(t) or is_set(t)
@@ -104,7 +105,7 @@ def _comp_route(init, declared: dict[str, TpyType], narrowed: 'set[str]',
     """Classify a comprehension init into the C1+C2(+C3 range3) slice, or
     None. Slice: range1/range2 counter loops (eligible-scalar counter), 3-arg
     range as a begin/end loop over the Range object, bare-name container
-    iterables the container gates admit, and `d.values()`/`d.keys()` dict
+    iterables the container classifiers admit, and `d.values()`/`d.keys()` dict
     views (`d.items()` for the tuple-unpack form). Owned-move element sources
     (`owns_elements`), field/subscript/call iterables, and narrowed-Optional
     iterables stay on the AST path (C3/C4 rows)."""
@@ -125,7 +126,7 @@ def _comp_route(init, declared: dict[str, TpyType], narrowed: 'set[str]',
             # 3-arg range: the AST's _gen_comp_range_loop falls back to a
             # begin/end loop over the Range object (an rvalue capture, never
             # sized). Bounds render against the counter slot like the 1/2-arg
-            # arms, so they gate the same way.
+            # arms, so they classify the same way.
             return _CompRoute(kind=kind, loop="begin_end", counter_type=None,
                               it_type=analyzer.get_expr_type(it), et=counter,
                               iterable_lvalue=False, sized_reserve=False,
@@ -198,10 +199,10 @@ def _comp_route(init, declared: dict[str, TpyType], narrowed: 'set[str]',
     str_et = _resolved_str_value(et, analyzer)
     if str_et is not None:
         et = str_et
-    # Compositional loop-var gate (the for-each twin): the begin/end comp loop
+    # Compositional loop-var classifier (the for-each twin): the begin/end comp loop
     # binds the loop var through the SAME shared loop_var_binding, so any
     # resolved element renders identically; the element/key/value/filter reads
-    # of the var route recursively through the expr gates. Only an unresolved
+    # of the var route recursively through expression lowering. Only an unresolved
     # pending element (spelled before the AST's resolve_type concretizes it)
     # stays on the AST path.
     if not _for_each_elem_binding_ok(et):
@@ -224,7 +225,7 @@ def _comp_elem_slot_ok(slot: 'TpyType | None', analyzer) -> bool:
     """The list/set element + dict VALUE result slot whose
     `_lower_container_elem` render is element-SHAPE-independent, so ANY routed
     element expr into it is byte-identical -- the compositional twin of the
-    for-each loop-var gate on the append/insert side. The wrap keys on the
+    for-each loop-var classifier on the append/insert side. The wrap keys on the
     element's FORM, not its node kind:
 
     - value scalar / Char -- bare / target-typed literal retype;

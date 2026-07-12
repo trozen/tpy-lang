@@ -88,7 +88,7 @@ class ThirUnsupported(Exception):
 
 def note(reason: str) -> bool:
     """Record `reason` as the current attempt's first reject, if none is
-    recorded yet. Returns False so gate sites can `return note("sig.x")`
+    recorded yet. Returns False so admission sites can `return note("sig.x")`
     without restructuring."""
     compiler = get_current_compiler()
     if compiler is not None and compiler._thir_reject_reason is None:

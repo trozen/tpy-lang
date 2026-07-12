@@ -194,11 +194,11 @@ class TestProtocolArgSlots:
 
 
 class TestProtocolMethodCallRejects:
-    # `_protocol_method_call_eligible`'s own reject exits -- each must fall the
+    # `_protocol_method_call_supported`'s own reject exits -- each must fall the
     # whole body back to AST. A routed body that mis-emits one of these would
     # be a silent divergence, so the fallback is pinned rather than left
     # incidental. (These reach the protocol arm; the receiver-shape /
-    # arity / fi-kind exits are guarded EARLIER by `_method_call_eligible`, so
+    # arity / fi-kind exits are guarded earlier by `_method_call_receiver_ok`, so
     # a non-name or native-method protocol receiver never reaches this arm --
     # not a gap, just not this arm's job.)
     _P = (

@@ -18,9 +18,7 @@ from ...parse.nodes import (
     TpyExpr,
     TpyFieldAccess,
     TpyFloatLiteral,
-    TpyForEach,
     TpyFunction,
-    TpyIf,
     TpyIntLiteral,
     TpyMatch,
     TpyMethodCall,
@@ -34,8 +32,6 @@ from ...parse.nodes import (
     TpyStrLiteral,
     TpyTry,
     TpyTupleLiteral,
-    TpyWhile,
-    TpyWith,
     collect_name_refs,
     collect_top_level_local_names,
     expr_reads_self_field,
@@ -118,9 +114,9 @@ from .predicates import (
 from .context import (
     _LowerCtx,
 )
-from .expr_gates import (
-    _container_literal_ok,
-    _is_record_rvalue_source,
+from .checks import (
+    _container_literal_shape_ok,
+    _record_rvalue_source_shape,
     _nondef_ctor_field,
     _ptr_union_source_ok,
 )
@@ -289,7 +285,7 @@ def _check_callable_structure(func: TpyFunction, analyzer,
     if func.type_params:
         # A generic callable routes its body via the same TypeParamRef T-value
         # arms F5 built for generic-record methods: the resolver spells each
-        # `[T]` param/return as a TypeParamRef, `_is_type_param_slot` gates it
+        # `[T]` param/return as a TypeParamRef, `_is_type_param_slot` checks it
         # as a form-neutral value pass-through (`val_or_ref_t<T>` resolves
         # value-vs-ref per instantiation), and the template signature stays
         # AST. A method's OWN type params (`def m[U](self, x: U)`) spell the
@@ -317,31 +313,6 @@ def _check_callable_structure(func: TpyFunction, analyzer,
             if (name in scan.reassigned and pt is not None
                     and pt.param_needs_copy_for_reassign()):
                 raise ThirUnsupported("sig.param_reassign_copy")
-
-def _try_hoisted_names(body: list[TpyStmt], analyzer) -> set[str]:
-    """Names hoisted by `if_branch_decls` on `try` statements anywhere in
-    `body` -- the subset of `function_hoisted_vars` the try gate arm can
-    mirror. Recurses only through the compound shapes the slice admits;
-    a try inside anything else keeps its names out of the set, which
-    (safely) keeps the function on the AST path."""
-    out: set[str] = set()
-    for s in body:
-        if isinstance(s, TpyTry):
-            out |= set(analyzer.if_branch_decls.get(id(s), {}))
-            out |= _try_hoisted_names(s.try_body, analyzer)
-            for h in s.handlers:
-                out |= _try_hoisted_names(h.body, analyzer)
-            out |= _try_hoisted_names(s.else_body, analyzer)
-            out |= _try_hoisted_names(s.finally_body, analyzer)
-        elif isinstance(s, TpyIf):
-            out |= _try_hoisted_names(s.then_body, analyzer)
-            out |= _try_hoisted_names(s.else_body, analyzer)
-        elif isinstance(s, (TpyWhile, TpyForEach)):
-            out |= _try_hoisted_names(s.body, analyzer)
-            out |= _try_hoisted_names(s.orelse, analyzer)
-        elif isinstance(s, TpyWith):
-            out |= _try_hoisted_names(s.body, analyzer)
-    return out
 
 def _shadow_bound_names(stmts: list[TpyStmt]) -> set[str]:
     """Names bound by the binder forms `scan_reassigned_vars` does not record:
@@ -461,15 +432,6 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
     except ThirUnsupported as ex:
         note(ex.reason)
         return None
-    # Branch-local hoisting is not reproduced, with one carve-out: try-
-    # statement predecls, mirrored as THIRTry.hoist_decls (the try gate arm
-    # re-checks each name and type). A hoisted name NOT accounted for by a
-    # try's if_branch_decls (the loop-body storage hoist) keeps the function
-    # on the AST path.
-    hoisted = analyzer.function_hoisted_vars.get(id(func))
-    if hoisted and (hoisted - _try_hoisted_names(func.body, analyzer)):
-        note("body.hoisted_vars")
-        return None
     is_record_method = self_type is not None and func.is_method
     # A static method has no receiver -- it lowers like a free function, but
     # keeps `record_name` so `_param_is_const` resolves its param verdicts from
@@ -526,6 +488,8 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
     declared: dict[str, TpyType] = dict(params_set)
     try:
         body = _lower_stmts(func.body, lc, declared)
+        if lc.unhandled_hoists:
+            raise ThirUnsupported("body.hoisted_vars")
         fn = THIRFunction(
             name=func.name,
             params=params,
@@ -564,7 +528,7 @@ def _is_record_value_source(source: TpyExpr, declared: dict[str, TpyType],
 
       * a non-own **F1-record param name** (`other`) -- an implicit MIL copy;
       * an **F1-record ctor-call rvalue** (`Inner(scalars)`) -- the F2d
-        `_is_record_rvalue_source` shape, emitted as the bare `Name(args)` prvalue;
+        `_record_rvalue_source_shape`, emitted as the bare `Name(args)` prvalue;
       * an **F1-record field-read off a param** receiver (`other.g`) -- a field copy.
 
     Own params (which move) and `self.<field>` reads (their pointee may be
@@ -574,7 +538,7 @@ def _is_record_value_source(source: TpyExpr, declared: dict[str, TpyType],
         return (source.name not in own_param_names
                 and _f1_record(declared.get(source.name), analyzer))
     if isinstance(source, TpyCall):
-        return _is_record_rvalue_source(source, declared, analyzer)
+        return _record_rvalue_source_shape(source, analyzer)
     if isinstance(source, TpyFieldAccess):
         return (isinstance(source.obj, TpyName)
                 and source.obj.name != lc.self_receiver
@@ -689,7 +653,7 @@ def _mil_container_field(t) -> bool:
 
 def _ctor_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
                         own_param_names: set[str], declared: dict[str, TpyType],
-                        body_local_names: set[str], lc: _LowerCtx) -> bool:
+                        lc: _LowerCtx) -> bool:
     """A hoistable own-field initializer the ctor MIL slice admits -- a
     `self`-targeted own-field assign whose (field type, source) pair the tail
     emitter reproduces byte-for-byte.
@@ -749,14 +713,6 @@ def _ctor_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
     if (isinstance(src_peeled, TpyName)
             and src_peeled.name not in lc.prescan.param_names):
         return False
-    # The AST also DEMOTES an init whose RHS references any top-level body
-    # binding (`blocked_by_body_local`) -- including a PARAM reassigned later
-    # in the body, which the param-name check above admits. Hoisting one here
-    # would diverge, so return False (whole ctor stays AST, the same
-    # conservative verdict as the bare-name arm). `body_local_names` is
-    # computed once per ctor by the caller (shared with `_ast_demotes_init`).
-    if body_local_names and (collect_name_refs(stmt.value) & body_local_names):
-        return False
     ftype = analyzer.get_expr_type(stmt.target)
     if (_eligible_scalar(ftype) or _eligible_char(ftype)
             or _eligible_enum(ftype, analyzer) is not None
@@ -794,16 +750,16 @@ def _ctor_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
         if isinstance(source, (TpyArrayLiteral, TpyDictLiteral, TpySetLiteral)):
             # The MIL is a target-threaded position like a decl init (the AST
             # renders `gen_expr(source, fld_type)`), so the shared container-
-            # literal gate applies verbatim. Admitted element rows are all
+            # literal classifier applies verbatim. Admitted element rows are all
             # temps_ok=False shapes, so the AST's temps-rollback demote cannot
             # fire on an admitted literal. A TpyListRepeat / comprehension /
             # coerce-wrapped source falls through to the reject.
-            return _container_literal_ok(source, ftype, declared, analyzer,
-                                         threaded=True)
+            return _container_literal_shape_ok(
+                source, ftype, analyzer, threaded=True)
         if isinstance(source, TpyName):
             # A container param copies bare into the field (`f(p)`); an Own
             # container param at its last use moves (`f(std::move(p))`, the
-            # M3b-move arm; the param gate admits any Own payload). Exact-shape
+            # M3b-move arm; the param classifier admits any Own payload). Exact-shape
             # pin: a family or element-type mismatch could carry a conversion
             # the bare-name MIL render does not, so only a to_cpp-identical
             # container param is admitted.
@@ -833,7 +789,7 @@ def _ctor_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
         if _ptr_union_source_ok(source, declared, analyzer, pu,
                                 allow_field=False):
             return True
-        return (_is_record_rvalue_source(source, declared, analyzer)
+        return (_record_rvalue_source_shape(source, analyzer)
                 and analyzer.get_expr_type(source) in pu.members)
     vu = _eligible_value_union(ftype)
     if vu is not None:
@@ -879,7 +835,7 @@ def _ctor_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
             _unwrap_copy(stmt.value, analyzer), TpyNoneLiteral):
         # `self.f = None` renders `f(std::nullopt)` for EVERY Optional field
         # (pointer-repr or value-repr) -- inner-independent, so the F1-record
-        # inner gate below does not apply.
+        # inner classifier below does not apply.
         return True
     is_opt = (isinstance(ftype, OptionalType) and ftype.uses_pointer_repr()
               and _f1_record(ftype.inner, analyzer))
@@ -932,7 +888,7 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
         return None
     # A colliding record qualifies local type references (incl. a base name in
     # the member-init list) on the AST path; THIR renders them raw, so reject
-    # the whole ctor -- mirrors the method-body gate (sig.member_shadows_type).
+    # the whole ctor -- mirrors the method-body reject (sig.member_shadows_type).
     if ri.shadows_local_type:
         note("ctor.member_shadows_type")
         return None
@@ -960,8 +916,8 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
     # A MUTATED `String` param: the AST emits the mutation against the
     # untouched `const std::string&` param (ill-formed C++, see BUGS.md) --
     # keep the whole shape AST-owned rather than mirror it. Mirrors
-    # `_record_ctor_call_eligible`'s mutated-String slot reject; the indices
-    # are the same synthetic-ctor mutation facts the AST signature reads.
+    # TpyCall lowering rejects the same mutated-String slots using these
+    # synthetic-constructor mutation facts.
     init_fis = ri.get_method_overloads("__init__")
     mut = init_fis[-1].mutated_params if init_fis else None
     if mut:
@@ -977,7 +933,7 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
     declared: dict[str, TpyType] = {n: t for n, t in init_method.params}
     declared["self"] = self_type
     own_field_names = {f.name for f in record.fields}
-    # lc is built before the gate loop: the move check (`_is_move_source`) reads
+    # lc is built before the lowering loop: the move check (`_is_move_source`) reads
     # `analyzer.ctx.all_last_uses` through it.
     lc = _LowerCtx(init_method, analyzer, render_type, self_receiver="self",
                    record_name=record.name,
@@ -997,7 +953,7 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
         if base_inits is None:
             note("ctor.base_init")
             return None
-        field_inits: list[TpyAssign] = []
+        field_inits: list[THIRMilInit] = []
         body_stmts: list[TpyStmt] = []  # demoted inits + non-init stmts + trivia, source order
         body_written_self_fields: set[str] = set()
         # The AST's demote triggers (`_extract_field_inits`): a nested-def-name /
@@ -1026,35 +982,19 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
                 body_written_self_fields.add(stmt.target.field)
                 body_stmts.append(stmt)
                 continue
-            # A leading own-field init whose (field, source) the MIL reproduces hoists.
-            # `_ctor_field_init_ok` already returns False for a non-init statement / a field
-            # init with a non-hoistable source (body-local / bare-name RHS / ineligible
-            # value), so the gate distinguishes hoist from demote. An init reading an
-            # inherited field written earlier in the body must demote (the MIL runs first,
-            # before that write) -- the `expr_reads_self_field` trigger (no-op until an
-            # inherited-field write populates the set).
-            if (not chain_broken
-                    and _ctor_field_init_ok(stmt, own_field_names, own_param_names,
-                                            declared, body_local_names, lc)
-                    and not expr_reads_self_field(stmt.value, body_written_self_fields)):
-                field_inits.append(stmt)
-                continue
-            # A clean leading own-field init (live chain, not reading an earlier
-            # inherited-field write) the AST hoists into the MIL but THIR can't reproduce
-            # there -- an F3+ field type (str / list / dict) or a source outside
-            # the MIL slice -- must keep the whole ctor on the AST path. Demoting it into
-            # the body would diverge from the AST's MIL hoist (the AST never demotes a
-            # clean leading own-field init). After a chain break, when the init reads an
-            # earlier inherited-field write, or when the AST itself demotes the source
-            # (`_ast_demotes_init`), the AST demotes too -- those fall through.
             is_own_init = _is_self_own_field_assign(stmt, own_field_names)
             ast_demotes = is_own_init and _ast_demotes_init(
                 stmt, lc.prescan.param_names, nested_def_names, body_local_names)
+            reads_written_field = (
+                is_own_init
+                and expr_reads_self_field(
+                    stmt.value, body_written_self_fields))
             if (not chain_broken and is_own_init
-                    and not expr_reads_self_field(stmt.value, body_written_self_fields)
-                    and not ast_demotes):
-                note(_mil_reject_detail(stmt, analyzer))
-                return None
+                    and not reads_written_field and not ast_demotes):
+                field_inits.append(_lower_ctor_mil_init(
+                    stmt, own_param_names, own_field_names, declared,
+                    lc))
+                continue
             # A demoted own-field init of a non-default-constructible field type
             # raises CodeGenError on the AST path (_reject_nondef_ctor_field_in_body,
             # the MIL would default-init an uncompilable state) -- reject so the AST
@@ -1074,8 +1014,7 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
         ctor = THIRConstructor(
             record_name=record.name,
             params=tuple(THIRParam(name=n, type=t) for n, t in init_method.params),
-            mil_inits=tuple(_lower_ctor_mil_init(s, own_param_names, declared, lc)
-                            for s in field_inits),
+            mil_inits=tuple(field_inits),
             base_inits=tuple(base_inits),
             body=_lower_stmts(body_stmts, lc, body_declared),
         )
@@ -1104,8 +1043,8 @@ def _ast_demotes_init(stmt: TpyAssign, param_names: set[str],
     module globals and `self`), or any body-local reference in the RHS. THIR
     must demote identically -- rejecting the ctor here would be safe but
     needlessly conservative; hoisting would diverge. The temps trigger
-    (`temps.rollback` -> demote) is NOT mirrored: the gate cannot predict it
-    exactly, so temp-registering sources reject the whole ctor instead."""
+    (`temps.rollback` -> demote) is NOT mirrored: lowering rejects
+    temp-registering sources instead."""
     src = stmt.value
     while isinstance(src, TpyCoerce):
         src = src.expr
@@ -1162,7 +1101,7 @@ def _base_init_arg_ok(a: TpyExpr, declared: dict[str, TpyType], lc: _LowerCtx) -
       * a str literal (`"lit"`) / a `None` literal (`nullptr`);
       * an int literal still typed `IntLiteralType` (a BigInt base slot:
         the target-less render is the bare digits), pinned to the +-2^31-1
-        literal range like the sibling literal gates;
+        literal range like the sibling literal checks;
       * a declared PARAM name of a str-family / F1-record / pointer-repr
         Optional[F1-record] type, incl. `Own[...]` params -- all render as
         the bare name. NB an `Own` param arg renders bare (a COPY into the
@@ -1226,21 +1165,23 @@ def _lower_base_init(stmt: TpyStmt, declared: dict[str, TpyType],
         return None
     if expr.kwargs or expr.double_star_unpack is not None:
         return None
-    if not all(_base_init_arg_ok(a, declared, lc) for a in expr.args):
-        return None
+    args: list[THIRExpr] = []
     for a in expr.args:
+        if not _base_init_arg_ok(a, declared, lc):
+            return None
         if not _eligible_scalar(analyzer.get_expr_type(a)):
             _witness("baseinit.nonscalar_arg")
-            break
+        args.append(_lower_base_init_arg(a, lc, declared))
     return (THIRBaseInit(base_cpp=parent_type.to_cpp(),
-                         args=tuple(_lower_base_init_arg(a, lc, declared)
-                                    for a in expr.args)),
+                         args=tuple(args)),
             parent_type)
 
-def _lower_ctor_mil_init(stmt: TpyAssign, own_param_names: set[str],
-                         declared: dict[str, TpyType], lc: _LowerCtx) -> THIRMilInit:
-    """Build one member-init-list entry from a hoisted field initializer (the gate
-    already admitted it). Mirrors the record/Optional arms of `_extract_field_inits`:
+def _lower_ctor_mil_init(
+        stmt: TpyAssign, own_param_names: set[str], own_field_names: set[str],
+        declared: dict[str, TpyType], lc: _LowerCtx) -> THIRMilInit:
+    """Lower one AST-hoisted field initializer into a member-init-list entry.
+
+    Mirrors the record/Optional arms of `_extract_field_inits`:
 
       * an **own-param at last use** moves (`move=True`, plain source -- never
         `ptr_to_optional`, per the cascade) [M3b-move];
@@ -1267,6 +1208,9 @@ def _lower_ctor_mil_init(stmt: TpyAssign, own_param_names: set[str],
         copy / spelled literal, and `None` into any other Optional
         (`std::nullopt`)."""
     analyzer = lc.analyzer
+    if not _ctor_field_init_ok(
+            stmt, own_field_names, own_param_names, declared, lc):
+        raise ThirUnsupported(_mil_reject_detail(stmt, analyzer))
     ftype = analyzer.get_expr_type(stmt.target)
     loc = getattr(stmt, "loc", None)
     field_cpp = escape_cpp_name(stmt.target.field)
@@ -1361,7 +1305,7 @@ def _lower_ctor_mil_init(stmt: TpyAssign, own_param_names: set[str],
         return THIRMilInit(field_cpp=field_cpp, value=v)
     if _f1_tuple(ftype, analyzer) is not None:
         # F3: the borrow pointer-repr tuple param stores via
-        # `tuple_to_storage` (a STORAGE convert; the gate admitted only the
+        # `tuple_to_storage` (a STORAGE convert; lowering admitted only the
         # bare borrow-name source).
         _witness("mil.tuple_storage")
         return THIRMilInit(
@@ -1397,17 +1341,18 @@ def _lower_ctor_mil_init(stmt: TpyAssign, own_param_names: set[str],
         field_cpp=field_cpp,
         value=_lower_expr(
             source, lc, declared,
-            field_prechecked=isinstance(source, TpyFieldAccess)))
+            field_prechecked=isinstance(source, TpyFieldAccess),
+            target_type=(ftype if _mil_container_field(ftype) else None)))
 
 def _method_self_type(record, analyzer) -> 'TpyType | None':
     """The `self` receiver type for an M1 method / ctor feed. The qname is
     load-bearing -- a bare `NominalType(name)` has no registry entry, so
     `is_user_record` (hence `_f1_record`) is False; `_f1_record` applies the
-    remaining native / cross-module / generic-arg gates at lowering. For a
+    remaining native / cross-module / generic-arg checks at lowering. For a
     generic record the self is `Record[T, ...]` (a `TypeParamRef` per type
     param, kinds per-index like sema's own self-type mirror), which `_f1_record`
-    admits via `_f1_record_type_arg_ok` -- opening the sig/ctor gate for the
-    record's templated bodies (per-cell T-slot gating still falls a body back)."""
+    admits via `_f1_record_type_arg_ok`, opening lowering for the record's
+    templated bodies. Unsupported T-slot cells still fall a body back."""
     ri = analyzer.registry.get_record(record.name)
     if ri is None:
         return None
@@ -1440,8 +1385,8 @@ def method_self_type_by_name(record_name: str, analyzer) -> 'TpyType | None':
 def iter_module_callables(module: TpyModule, analyzer):
     """Yield `(callable, self_type)` for every function / method the slice may
     admit -- the single feed list shared by `lower_module` and codegen so the
-    two never drift. The eligibility gate still has the final say; this only
-    enumerates candidates. Free functions yield `self_type=None`; record methods
+    two never drift. Lowering still has the final say; this only enumerates
+    candidates. Free functions yield `self_type=None`; record methods
     (instance / static / property / dunder) yield the owning record's type
     (None-skipped for generic records). The constructor is excluded -- its body
     is emitted via the member-init-list driver (the M3 ctor frontier), not
@@ -1463,8 +1408,8 @@ def iter_module_constructors(module: TpyModule, analyzer):
     `iter_module_callables` (which excludes the ctor because its body is emitted by
     the member-init-list driver, not `gen_body`). `self_type` is the owning
     record's F1-record receiver (None-skipped for generic records, which
-    `lower_constructor` also rejects). The eligibility gate in `lower_constructor`
-    has the final say; this only enumerates candidates."""
+    `lower_constructor` also rejects). Constructor lowering has the final say;
+    this only enumerates candidates."""
     for record in module.records:
         init = record.init_method
         if init is None:
@@ -1485,7 +1430,7 @@ def module_native_globals(module: TpyModule) -> dict[str, str]:
     return module_native_global_names(module.top_level_stmts)
 
 def lower_module(module: TpyModule, analyzer, render_type=None) -> THIRModule:
-    """Lower every eligible function and instance method in `module`; skip the rest."""
+    """Try to lower every function and method in `module`; skip fallbacks."""
     out = THIRModule(module_name=getattr(analyzer.ctx, "module_name", "generated"))
     ng = module_native_globals(module)
     for func, self_type in iter_module_callables(module, analyzer):

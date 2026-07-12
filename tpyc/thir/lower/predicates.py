@@ -1,10 +1,10 @@
-"""Shared type/shape facts for the THIR gate and lowering.
+"""Shared type/shape facts for THIR lowering.
 
 Leaf predicates over resolved types and small expression shapes: the
 eligible-scalar/str/bytes/enum/union/tuple families, F1/F2 record facts,
 field/receiver/write facts, narrowing condition info, and the coercion
-dispositions. No gate recursion and no lowering -- everything here is
-callable from any other lower/ module.
+dispositions. These leaf classifiers do not recurse through an expression or
+body and do not construct THIR; lowering arms consume their results locally.
 """
 
 from __future__ import annotations
@@ -616,8 +616,8 @@ def _resolved_scalar(t: TpyType | None, analyzer) -> bool:
     Companion convention: a RECEIVER gate reads the declared/`locals_` BINDING
     type, never `get_expr_type` on the name -- a literal-seeded local's use sites
     carry the pre-resolution pending container type (see `_is_len_call`,
-    `_method_call_eligible`, subscript lowering,
-    `_for_each_container_plan`)."""
+    method-call lowering, subscript lowering,
+    `_for_each_container_route`)."""
     if t is None:
         return False
     t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
@@ -1057,7 +1057,7 @@ def _slice_object_type(t: TpyType | None) -> bool:
     `::tpy::Slice`): a by-value C++ type whose only admitted use is as a str
     subscript index (`s[sl]`, rendered bare into the resolved slice
     `__getitem__` template). Admitted as a param and as a ctor-initialized
-    local (`sl = basic_slice(1, 3)`, the `_slice_ctor_call_eligible` shape)."""
+    local (`sl = basic_slice(1, 3)`, validated by TpyCall lowering)."""
     if t is None:
         return False
     t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
@@ -1743,7 +1743,7 @@ def _const_index(index: TpyExpr) -> 'int | None':
     """The compile-time integer index of a tuple subscript, mirroring the AST's
     `_extract_compile_time_index`: a bare int literal or a negated int literal. A
     non-constant tuple index never reaches lowering (sema rejects it); the
-    eligibility gate uses this to confirm the literal form regardless."""
+    lowering uses this to confirm the literal form regardless."""
     if isinstance(index, TpyIntLiteral):
         return index.value
     if (isinstance(index, TpyUnaryOp) and index.op == "-"
@@ -1756,8 +1756,8 @@ def _subscript_index_and_tuple(sub: TpySubscript,
     """`(tuple_type, normalized_idx)` for a tuple subscript with a compile-time-const,
     in-bounds index (a negative literal folded by the tuple arity), or None if the
     receiver is not a tuple or the index is not such a constant. The receiver-type
-    resolution + index fold written once, shared by the eligibility gate, the arrow
-    decision, and lowering so the three can never drift."""
+    resolution + index fold written once and consumed by lowering and its arrow
+    decision so the two can never drift."""
     recv_t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
         analyzer.get_expr_type(sub.obj))))
     if not isinstance(recv_t, TupleType):
@@ -2482,8 +2482,8 @@ def _value_union_temp_slot(a: TpyExpr, ptype: TpyType | None,
     same default render on both paths. An already-union arg (a same-union
     name, the union-coerced int literal) is not member-valued and rides its
     pass-through arms; membership is a slice guard (sema already typed the
-    arg against the union). Shared by the eligibility gate and
-    `_lower_call_arg` so both key the temp on one verdict; the NAME-narrowing
+    arg against the union). Consumed by `_lower_call_arg` so admission and
+    temp selection key on one verdict; the NAME-narrowing
     reject (a narrowed subject reads the extraction alias while the AST's
     `already_union` verdict renders it bare, temp-free) stays site-specific
     -- the gate reads `ws.narrowed`, lowering `lc.narrow`."""
@@ -2526,9 +2526,8 @@ def _record_rvalue_temp_slot(a: TpyExpr, ptype: TpyType | None,
     ReadonlyType and rejects; a SUBCLASS-typed rvalue (the upcast temp declares
     the CHILD's type) rejects on the same-nominal check. A borrow-returning
     call is not an rvalue source (the AST binds/copies without this temp) and
-    rejects. Shared by the gate and `_lower_call_arg`; the gate adds the
-    rvalue's own arg/registry eligibility (`_record_ctor_call_eligible` /
-    `_is_record_rvalue_source`) on top."""
+    rejects. Shared by the local slot classifier and `_lower_call_arg`;
+    recursive lowering validates the source call's arguments."""
     pt = ptype if isinstance(ptype, TpyType) else None
     if pt is None:
         return None
@@ -2637,8 +2636,8 @@ def _optional_ptr_arg_face(a: TpyExpr, ptype: TpyType | None,
     inside `_lower_expr` and both paths wrap `&(...)` -- the render mirrors.
     None rejects: subscript sources, coerced args, `self`, non-ctor
     rvalues (`Ptr[T]`-typed calls etc. stay AST). Shared by the eligibility
-    gate (which adds `_record_ctor_call_eligible` / receiver checks) and
-    `_lower_call_arg` so both key one verdict."""
+    gate (which adds receiver checks) and `_lower_call_arg` so both key one
+    verdict; constructor args are validated during recursive lowering."""
     ot = _optional_ptr_arg_slot(ptype, analyzer)
     if ot is None:
         return None
@@ -2681,9 +2680,8 @@ def _arg_ptr_union_slot(ptype: TpyType | None, analyzer,
     `readonly_target` -- the AST's `is_readonly_target`), or None. A
     deep-const slot spells const pointees on the lift and takes the
     `ptr_variant_to_const` wrap on already-union args. An `Own[union]` slot
-    is the value-variant auto-move cascade -> AST path. Shared by the
-    eligibility gate and `_lower_call_arg` so both key the lift on one
-    verdict."""
+    is the value-variant auto-move cascade -> AST path. Consumed by
+    `_lower_call_arg` so admission and lift selection key on one verdict."""
     pt = ptype if isinstance(ptype, TpyType) else None
     if pt is None:
         return None
@@ -2837,7 +2835,7 @@ def _template_init_call_fi(e: TpyCall) -> 'FunctionInfo | None':
     if fi is None or not (fi.is_method and fi.name == "__init__"):
         return None
     # Post-call wrappers / special member forms the bare template emit does not
-    # reproduce (mirrors _method_call_eligible's fi rejects).
+    # reproduce (mirrors method-call lowering's fi rejects).
     if (fi.is_consuming or fi.error_return_type is not None
             or fi.native_cpp_return_type is not None
             or fi.is_async or fi.is_generator
@@ -2862,7 +2860,7 @@ def _tparam_value(t: 'TpyType | None') -> bool:
 
 def _generic_root_subst(e: TpyCall, analyzer) -> 'tuple[FunctionInfo, dict[str, TpyType]]':
     """The ROOT stub + inferred substitution for a plain generic free call
-    -- ONE derivation shared by the gate (`_generic_plain_args_ok`) and
+    -- ONE derivation shared by the gate (`_generic_plain_arg_ok`) and
     lowering (`_lower_generic_plain_call`), so the two cannot drift. The
     kind classifier already pinned the single-stub group and the
     targs/type-params arity."""

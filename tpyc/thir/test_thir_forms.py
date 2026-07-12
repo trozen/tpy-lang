@@ -679,7 +679,7 @@ class TestF2dRebindSlot:
     def test_record_arg_ctor_source_is_ineligible(self):
         # A rebind-slot ctor whose arg is a non-scalar (a record value-local) needs
         # the AST's arg deref / auto-move, which the bare THIRCall arg emit does not
-        # reproduce -- so the arg gate (mirroring _call_eligible) rejects it -> AST
+        # reproduce -- so the arg check (mirroring free-call admission) rejects it -> AST
         # path. (Box's ctor takes Own[Inner]; `a` is a record value-local.)
         thir = _lower_ctx(
             _F1_RECORDS
@@ -716,7 +716,7 @@ class TestF2dRebindSlot:
 
     def test_generic_call_rebind_source_is_ineligible(self):
         # A generic record-returning callee spells inferred type args on the
-        # AST path -- the free-call face shares `_call_eligible`'s
+        # AST path -- the free-call face shares the free-call admission's
         # callee-shape head (`_plain_free_callee_ok`), so it rejects -> AST.
         thir = _lower_ctx(
             _F1_RECORDS
@@ -1792,7 +1792,7 @@ class TestPrintWrapArgs:
 
 class TestTupleUnpackMethodSource:
     """`a, b = obj.method()` -- the method sibling of the free-call unpack
-    source (storage_ret_ok threaded through _method_call_eligible)."""
+    source (storage_ret_ok threaded through method-call validation)."""
 
     def _cpp(self, src: str, thir: bool):
         compiler, modules = _compile(src)

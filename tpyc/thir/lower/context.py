@@ -47,6 +47,13 @@ class _ExprResultUse(Enum):
     STORAGE = auto()
     BORROW_BIND = auto()
     ITERABLE = auto()
+    RECEIVER = auto()
+
+
+class _RecordCtorUse(Enum):
+    DIRECT = auto()
+    NESTED_ARG = auto()
+    RECORD_TEMP = auto()
 
 
 @dataclass(frozen=True, slots=True)
@@ -59,6 +66,7 @@ class _ExprUse:
     """
     result: _ExprResultUse = _ExprResultUse.VALUE
     allow_temps: bool = False
+    record_ctor: _RecordCtorUse = _RecordCtorUse.DIRECT
 
 # --- F1 form slice: single-assignment non-value record locals + field reads ---
 
@@ -79,19 +87,19 @@ class _Prescan:
                  "global_cpp", "native_globals")
 
     def __init__(self, func: TpyFunction, analyzer) -> None:
-        # Param names, for gates that must tell a param from a local (a str
+        # Param names, for checks that must tell a param from a local (a str
         # param's aug-assign would need the owned-copy prologue -- see
         # _str_aug_append_ok).
         self.param_names = {n for n, _t in func.params}
         # Value-repr Optional[cheap scalar] params (`Int32 | None`): a
         # `return <param>` into a value-optional return slot passes the WHOLE
-        # optional bare (deref-on-narrow stripped), so the return gate keys on
+        # optional bare (deref-on-narrow stripped), so return lowering keys on
         # this to admit a narrowed param name the generic tail would deref.
         self.value_opt_params = {
             n for n, t in func.params
             if _value_opt_scalar(t, analyzer) is not None}
         # Whether the callable has a `self` receiver (instance method) -- the
-        # gate arms that treat the name `self` specially (the return-self arm,
+        # lowering arms that treat the name `self` specially (the return-self arm,
         # the self-rebind rejects) key on this so a free function's local or
         # param that merely SHARES the name is not misclassified.
         self.has_self = bool(func.is_method and not func.is_staticmethod)
@@ -101,7 +109,7 @@ class _Prescan:
         # shape and rejects in this position.
         self.is_constructor = bool(func.is_method and func.name == "__init__")
         # `global`-declared names lower_function seeded into scope (eligible
-        # same-module scalar globals); the TpyGlobal gate arm keys on it.
+        # same-module scalar globals); the TpyGlobal lowering arm keys on it.
         self.global_seeded: frozenset[str] = frozenset()
         # Same-module value globals seeded READ-ONLY (never assigned in this
         # body -- see _seed_readonly_globals); the name-read witness keys on it.
@@ -275,7 +283,8 @@ class _LowerCtx:
                  "pointers", "rebind_slot_locals", "movable_locals",
                  "self_receiver", "self_cpp", "self_is_pointer",
                  "record_name", "storage_tuple_locals", "frame_slots",
-                 "resumable_leaf_mode", "narrow", "inline_narrowed")
+                 "resumable_leaf_mode", "unhandled_hoists", "narrow",
+                 "inline_narrowed", "forbidden_reads", "forbidden_writes")
 
     def __init__(self, func: TpyFunction, analyzer, render_type,
                  self_receiver: str | None = None,
@@ -331,6 +340,8 @@ class _LowerCtx:
         # Their nested frame writes and async-return shapes reject at the
         # statement arm rather than through a predictive leaf-tree scan.
         self.resumable_leaf_mode = False
+        self.unhandled_hoists = set(
+            analyzer.function_hoisted_vars.get(id(func), ()))
         # F3 storage-tuple alias locals (`auto&& t = <storage tuple field>`): a read
         # off one is STORAGE form, lifted via `tuple_to_pointer` at borrow boundaries.
         self.storage_tuple_locals: set[str] = set()
@@ -378,6 +389,8 @@ class _LowerCtx:
         # condition-scoped -- installed and popped by _lower_narrow_cond,
         # never live across statements (deliberately OUTSIDE _NarrowScope).
         self.inline_narrowed: dict[str, tuple[str, bool]] = {}
+        self.forbidden_reads: set[str] = set()
+        self.forbidden_writes: set[str] = set()
 
 
 @dataclass

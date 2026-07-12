@@ -59,8 +59,8 @@ from .nodes import (
 
 class THIRValidationError(Exception):
     """A lowered node violates a THIR structural invariant -- a lowering bug,
-    never an eligibility miss (ineligible shapes must be gate-rejected, not
-    lowered inconsistently)."""
+    never an unsupported shape (those must raise during lowering, not produce
+    inconsistent THIR)."""
 
 
 def _iter_children(node: THIRNode):

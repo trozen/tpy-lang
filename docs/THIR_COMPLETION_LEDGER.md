@@ -298,7 +298,7 @@ deferred (self-contained) / blocked-on-`<rung>`.
   `deep_const_borrow_params`) ptr-union slots incl. `ptr_variant_to_const`,
   upcast Child->Parent NAME args, method ctor-rvalues into const slots.
   **Wave-3 tails landed (incr 60-65)**: the F2d non-ctor source face now
-  shares `_call_eligible`'s callee-shape head (`_plain_free_callee_ok`,
+  shares free-call lowering's callee-shape head (`_plain_free_callee_ok`,
   incr 60); the Own[T]-slot cascade (incr 61) -- lvalue copy+move temps
   (`THIRArgTemp.move`), the temp-free last-use `std::move(name)`
   (`THIRMove`, Own params seeded into `lc.movable_locals` mirroring
@@ -403,7 +403,7 @@ deferred (self-contained) / blocked-on-`<rung>`.
   by value, `_record_storage_return`): bare names (owned local NRVO / `Own`
   rvalue-ref-param C++ implicit move -- render bare) plus record-rvalue ctor /
   by-value calls (`return Box(n);`, the bare expansion via
-  `_is_record_rvalue_source`; face `ret.record_storage`). Its ctor face's arg
+  `_record_rvalue_source_shape`; face `ret.record_storage`). Its ctor face's arg
   loop was UNIFIED onto the shared pass-through cascade
   (`_shared_pass_through_arg`, the free-call face's set): a non-mutated (const)
   ctor slot admits every temp-free row the ctor lowering already emits via
@@ -792,9 +792,9 @@ deferred (self-contained) / blocked-on-`<rung>`.
   deferred).
   **S4 leftovers wave 2 DONE (increment 47)**: slice-object ctor
   LOCALS (`sl = basic_slice(1, 3)` / `slice(a, b, c)` -- the same
-  pure-@cpp_template expansion as the scalar ctors, gated by
-  `_slice_ctor_call_eligible` over the shared `_template_init_call_fi`
-  shape check; a `None` bound in the value-repr `Int32 | None` slot lowers
+  pure-@cpp_template expansion as the scalar ctors, admitted by the TpyCall
+  slice-object lowering arm over the shared `_template_init_call_fi` shape
+  check; a `None` bound in the value-repr `Int32 | None` slot lowers
   to a STORAGE-form None -> `std::nullopt`, int literals / fixed-int names
   render bare -- a BigInt bound never arises, sema rejects it at the ctor;
   the local declares as `resolved_type.to_cpp()` -> `::tpy::BasicSlice` /
@@ -811,7 +811,7 @@ deferred (self-contained) / blocked-on-`<rung>`.
   `_str_slice_receiver_ok` set: names, str-family F1-record fields,
   eligible str-returning calls).
   **S4 leftovers wave 3 DONE (incr 55, for/call-arg cell)**: container-returning
-  call iterables (`for x in make_list():` -- `_call_eligible` widened with
+  call iterables (`for x in make_list():` -- call lowering widened with
   `container_ret_ok` for list/dict/set returns; the capture verdict rides
   `THIRForEach.iterable_lvalue` via `_call_iterable_lvalue`, mirroring
   is_lvalue_iterable's call arm: an `Own[...]` return is a by-value rvalue
@@ -894,7 +894,7 @@ elements, empty-`Array` literals, container reassignment + aliasing (`ys = xs`);
 writes on name receivers landed in the wave-2 setitem cell. **Container call args landed (incr 35,
 `_container_pass_through_arg`): +11 bodies (5678 -> 5689)** -- a bare-name arg with a
 builtin-container binding into a NON-Own concrete container param passes through as the bare
-name in `_call_eligible` + `_method_call_eligible` (no new node/emit); `Own[container]`
+name in free-call + method-call validation (no new node/emit); `Own[container]`
 (auto-move), `Span` (as_mut_span conversion), and protocol (`Iterable`) slots stay AST.
 **F-strings landed (incr 39, `THIRFString`): +27 bodies (22165 -> 22192 solo)** --
 the last measured co-blocker for `main()`-shaped functions (str VALUES landed with
@@ -944,8 +944,8 @@ bare FLOAT literal (FloatLiteralType) into a double param slot passes through
 (`f(3, 1.5)` -- repr(v) bare on both paths; Float32 slots arrive
 `float_literal_to_float32`-coerce-wrapped and stay AST, a BigInt slot's
 `::tpy::BigInt(v)` wrap stays AST, inf/nan literals reject), for free calls
-AND record-ctor rvalue sources (`P(1.5, ...)`; `_is_record_rvalue_source` also
-gained the missing fi/arity gate -- an omitted-default ctor call no longer
+AND record-ctor rvalue sources (`P(1.5, ...)`; `_record_rvalue_source_shape` also
+gained the missing fi/arity check -- an omitted-default ctor call no longer
 routes). Negated INT literals (`-3`) fold to plain literals at lowering
 (mirroring `_gen_unaryop`'s literal-negation branch), lighting up every
 admitted literal position at once: call/method/ctor args, decl inits, compare
@@ -956,7 +956,7 @@ render `-(1.5)`), `-x` over names (same template arm), negations outside the
 +-int32 literal range (suffix/cast renders).
 **Temp-free call-arg rows landed (incr 56-57, the Wave-1 cells; integrated
 28935 -> 28999 bodies / 3295 -> 3299 cases)**. Incr 56 (cell A,
-`_record_pass_through_arg` + `_record_method_call_eligible`): bare-name
+`_record_pass_through_arg` + `_record_method_call_supported`): bare-name
 F1-record args into non-Own same-record ref slots (bare name for `const A&`
 AND `A&`; F2 pointer-locals render `(*p)` via `THIRName.deref`; narrowed
 aliases rename through `lc.narrow`), and user-record method calls on
@@ -996,14 +996,14 @@ temps, `self.helper()` sites, method union-slot args.
 cells bringing the fuller call-arg cascade to paths that carried a reduced
 subset. (1) A movable `Own[T]` param forwarded into a user-record method
 moves at last use (`recv.m(std::move(p))`) -- `_own_move_arg` on
-`_record_method_call_eligible` (the copy half stays AST: the method-arg
+`_record_method_call_supported` (the copy half stays AST: the method-arg
 lowering does not thread `temp_args`). (2) Pointer-repr `Optional[record]`
 NON-ctor arg faces (`nullptr` / `&(name)` / bare-pass / `optional_to_ptr`
 lift) on record-method calls -- `_optional_ptr_arg(temps_ok=False)` (the
 ctor `&(__tmp)` face stays AST, same reason). (3) UNIFICATION: the
-by-value record-returning FREE-call face of `_is_record_rvalue_source`
-now delegates to a shared `_plain_call_args_ok` (extracted from
-`_call_eligible`'s plain-callee arg tail), so `return build(s, xs, r)` /
+by-value record-returning FREE-call face of `_record_rvalue_source_shape`
+now shares the plain-callee argument classifiers used by free-call lowering,
+so `return build(s, xs, r)` /
 `x = build(...)` route the str / container / record / Own-move /
 optional-ptr / union arg shapes a free call already carries, not just
 scalars; the constructor face keeps its own mutation-keyed loop, a
@@ -1248,7 +1248,7 @@ fine and stay routed). Faces `match.optional_partition` /
 **with/ctor multiplier tail landed (increments 87-89, the
 thir-with-tail branch): +9 bodies (33910 -> 33919 / 3335 cases; +5
 ctor-str, +4 with-targets)** -- the three queued short-session cells. (1) Str-arg ctor slots:
-`_record_ctor_call_eligible`'s arg loop admits str-family slots via the
+`_record_ctor_arg_supported` admits str-family slots via the
 free-call pass-through rule (`_str_pass_through_arg`), unlocking
 `Logger("A")`-style ctors at every consumer face at once (with
 managers, record-rvalue arg temps, Own[union]/method/readonly ctor
@@ -1521,7 +1521,7 @@ byte-diff itself.
   every name-target assign, so only macro-built / frontend-IR ASTs reach it.
 - **Landed: print wrap-arg cell** (`print.wrap_arg`): container / value-tuple /
   F1-record NAME print args route inside their kind-keyed printer wraps
-  (`_wrap_print_form` in expr_gates.py, the one routing fact shared by gate and
+  (`_wrap_print_form` in checks.py, the routing fact shared by validation and
   `_lower_print_arg`; Dict/Set/ListPrinter with Array on ListPrinter, the new
   `PrintForm.TUPLE` -> `::tpy::TuplePrinter`, records raw via their emitted
   operator<<). Excluded (deferred rungs): pointer-local names (AST derefs),
@@ -1532,8 +1532,9 @@ byte-diff itself.
   THIRTupleLiteral emit now mirrors `_gen_tuple_literal`'s tail.
 - **Landed: tuple-unpack method-call sources** (`tuple_unpack.src_method_call`):
   `a, b = obj.pair()` routes via a `storage_ret_ok` escape threaded through
-  `_method_call_eligible` / `_record_method_call_eligible`'s result gates
-  (mirroring `_call_eligible`'s; position-pinned to the unpack source) + the
+  `_container_method_call_supported` / `_record_method_call_supported` result
+  checks (mirroring free-call lowering's; position-pinned to the unpack
+  source) + the
   method arm in `_tuple_unpack_source`. Residual rocks in that row:
   `src_call` (free calls failing their own gates) and `source_family`
   (non-scalar elements, str first).

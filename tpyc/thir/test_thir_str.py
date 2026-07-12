@@ -157,7 +157,7 @@ class TestStrValues:
 class TestStrReceiverMethods:
     """A str/StrView value-view receiver's builtin @cpp_template /
     @native(function=True) methods route through the general THIRMethodCall
-    arm (the gate widened at `_view_method_call_eligible`)."""
+    arm (validation widened at `_view_method_call_supported`)."""
 
     def test_startswith_cpp_template(self):
         thir = _lower('def f(s: str) -> bool:\n    return s.startswith("hi")\n')

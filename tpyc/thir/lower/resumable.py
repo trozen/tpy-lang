@@ -9,8 +9,8 @@ statements, Branch terminator conditions, ReturnT value renders, and the
 sub-coro emplace arguments at each suspension.
 
 `lower_resumable` walks the already-built CFG (cached on the function by
-`gen_async._build_resumable_cfg`), gates every leaf through the shared
-statement/expression gates plus the resumable-only rejects below, and
+`gen_async._build_resumable_cfg`), lowers every leaf through the shared
+statement/expression lowering plus the resumable-only rejects below, and
 returns a `THIRResumableBody` keyed by id() of the AST nodes the skeleton
 holds -- or None (with a `res.*` / composed `stmt.*` fallback reason) when
 any leaf or frame feature falls outside the slice.
@@ -264,7 +264,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     if cfg.finally_helpers:
         return _reject("res.finally")
 
-    # -- CFG shape gate ---------------------------------------------------
+    # -- CFG shape classification ----------------------------------------
     for bb in cfg.blocks.values():
         if bb.region_stack:
             return _reject("res.region")
@@ -293,7 +293,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 if reason is not None:
                     return _reject(reason)
 
-    # -- Leaf gate + lowering ---------------------------------------------
+    # -- Leaf lowering ----------------------------------------------------
     has_self = self_type is not None
     lc = _LowerCtx(func, analyzer, render_type,
                    render_type_stored=render_type_stored,

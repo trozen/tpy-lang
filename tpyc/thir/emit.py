@@ -105,8 +105,8 @@ from .faces import witness as _witness
 class THIRCodeGenError(Exception):
     """A THIR node the slice's emitter does not handle reached emission.
 
-    Lowering's eligibility gate should make this unreachable; it firing means
-    the gate and the emitter disagree on the supported set.
+    Lowering should make this unreachable; it firing means lowering and the
+    emitter disagree on the supported set.
     """
 
 
@@ -356,7 +356,7 @@ def _emit_literal(lit: THIRLiteral) -> str:
         # round-tripping form and a valid C++ double literal; a Float32-typed
         # literal (retyped at lowering from its float_literal_to_float32
         # coerce) takes the `f` suffix. inf/nan never reach here -- the
-        # eligibility gate admits finite literals only.
+        # Lowering admits finite literals only.
         rendered = repr(v)
         if is_float32_type(lit.result_type):
             return rendered + "f"
@@ -488,7 +488,7 @@ def _emit_union_arg_lift(e: THIRUnionArgLift, state: _EmitState) -> str:
 def _emit_ctor_call(e: THIRCtorCall, state: _EmitState) -> str:
     # _gen_call's record-branch tail: the RAW source name (same-module) or
     # the qualified `::ns::Name` spelling (imported record), decided at
-    # lowering, over the gate-restricted args.
+    # lowering, over the lowering-admitted args.
     return f"{e.type_cpp}({', '.join(_emit_expr(a, state) for a in e.args)})"
 
 
@@ -2269,7 +2269,7 @@ class ResumableLeafEmitter:
         if id(node) not in table:
             raise THIRCodeGenError(
                 f"resumable seam: routed body has no lowered {what} for "
-                f"{type(node).__name__} (gate/seam disagreement)")
+                f"{type(node).__name__} (lowering/seam disagreement)")
         return table[id(node)]
 
     def emit_leaf_stmt(self, out: TextIO, stmt, indent_level: int) -> None:

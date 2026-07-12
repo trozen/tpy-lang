@@ -1280,7 +1280,7 @@ class TestMacroNameAssignFlush:
 
 class TestCtorShapeGateRejects:
     """Reject arms of the record-ctor shape core (`_ctor_shape_ok`) and the
-    scalar-slot arg loop (`_record_ctor_call_eligible`), pinned through the
+    scalar-slot arg loop (`_record_ctor_arg_supported`), pinned through the
     record-rvalue arg-temp row (`take_x(X(...))` in return position). Arms
     NOT expressible in this single-module harness: the same-name free-fn
     collision (sema resolves the call to the free fn, so a record-slot
@@ -1388,7 +1388,7 @@ class TestCtorShapeGateRejects:
 
 
 class TestCtorStrArgSlots:
-    """The str-family arm of `_record_ctor_call_eligible`'s arg loop -- the
+    """The str-family arm of `_record_ctor_arg_supported`'s arg loop -- the
     free-call pass-through rule applied to ctor slots (`ctor.str_arg`)."""
 
     _STR_R = (
@@ -1805,8 +1805,8 @@ class TestNoneValueOptArg:
 class TestCtorValueOptNoneArg:
     # The CTOR face of the None-into-value-Optional row: `P(None)` with a
     # `Int32 | None` __init__ slot renders `P(std::nullopt)` -- the same
-    # `_none_value_opt_arg` row the free-call cascade admits, opened on
-    # `_is_record_rvalue_source`'s ctor arg loop (the owned-record decl init).
+    # `_none_value_opt_arg` row the free-call cascade admits, consumed by
+    # constructor argument lowering for the owned-record declaration init.
     SRC = (
         "from tpy import Int32\n"
         "class P:\n"

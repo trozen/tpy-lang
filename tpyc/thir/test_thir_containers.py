@@ -1089,7 +1089,7 @@ class TestContainerCallArgs:
         assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
     def test_method_call_container_arg_routes(self):
-        # The _method_call_eligible half of the widening: d.update(e) -- the
+        # The method-call validation half of the widening: d.update(e) -- the
         # param is dict[K, Own[V]] (Own wraps only the VALUE type arg, so the
         # slot is still a non-Own concrete dict).
         thir = _lower(
@@ -1265,7 +1265,7 @@ class TestContainerCallIterable:
         assert isinstance(loop, THIRForEach) and loop.iterable_lvalue
 
     def test_bytes_returning_call_iterable_ineligible(self):
-        # _call_eligible admits a bytes return in value position; the for-each
+        # Call lowering admits a bytes return in value position; the for-each
         # arm filters it (the owned-vs-view capture shape is a deferred cell).
         thir = _lower(
             _PRELUDE
