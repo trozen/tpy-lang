@@ -1,6 +1,6 @@
 """Scaffold units for the C1+C2 comprehension slice (THIRComprehension):
 gate routes/rejects, byte-identical emit per arm, face pins. Deferred rows
-(Array demotion, 3-arg range, owned-move elements, non-decl positions,
+(Array demotion, owned-move elements, unsupported expression positions,
 genexpr) stay on the AST path."""
 
 from __future__ import annotations
@@ -92,6 +92,19 @@ class TestComprehensionRoutes:
         assert "auto& __tup_1 = *__beg_0;" in cpp
         assert "int32_t a = std::get<0>(__tup_1);" in cpp
 
+    def test_owned_str_unpack_binding(self):
+        src = (
+            _PRELUDE
+            + "def f(pairs: list[tuple[str, Int32]]) -> Int32:\n"
+            + "    names = {name for name, _ in pairs}\n"
+            + "    return len(names)\n"
+            + "def main():\n    print(f([(\"a\", 1)]))\nmain()\n")
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is not None
+        cpp = _cpp(src, thir=True)
+        assert "std::string name = std::get<0>(__tup_1);" in cpp
+
     def test_str_elements_route(self):
         src = (
             _PRELUDE
@@ -158,6 +171,28 @@ class TestComprehensionRoutes:
         assert "::tpy::ListPrinter(({" in cpp
         assert "::tpy::SetPrinter(({" in cpp
         assert "::tpy::DictPrinter(({" in cpp
+
+    def test_storage_container_return_comp_routes(self):
+        src = (
+            _PRELUDE
+            + "from tpy import Own\n"
+            + "def ret_list(n: Int32) -> Own[list[Int32]]:\n"
+            + "    return [i for i in range(n)]\n"
+            + "def ret_set(n: Int32) -> Own[set[Int32]]:\n"
+            + "    return {i for i in range(n)}\n"
+            + "def ret_dict(n: Int32) -> Own[dict[Int32, Int32]]:\n"
+            + "    return {i: i + 1 for i in range(n)}\n"
+            + "def main():\n"
+            + "    print(len(ret_list(2)))\n"
+            + "    print(len(ret_set(2)))\n"
+            + "    print(len(ret_dict(2)))\n"
+            + "main()\n")
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+        thir = _lower_ctx(src)
+        for name in ("ret_list", "ret_set", "ret_dict"):
+            assert _fn(thir, name) is not None, name
+        _, witnessed = _lower_ctx_witnessed(src)
+        assert witnessed.get("ret.container_comp", 0) >= 3
 
     def test_char_elements_route(self):
         # C3 Char element slots: `[c for c in s]` -> std::vector<char>,

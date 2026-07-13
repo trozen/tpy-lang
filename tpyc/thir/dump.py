@@ -232,7 +232,11 @@ def _stmt_lines(stmt: THIRStmt, depth: int) -> list[str]:
         return [f"{pad}%{stmt.alias} = {cst}&{deref}get<{stmt.member_cpp}>"
                 f"(%{stmt.variant_cpp})"]
     if isinstance(stmt, THIRAssert):
-        msg = f", {stmt.message!r}" if stmt.message is not None else ""
+        msg = ""
+        if isinstance(stmt.message, str):
+            msg = f", {stmt.message!r}"
+        elif stmt.message is not None:
+            msg = f", {_expr(stmt.message)}"
         return [f"{pad}assert {_expr(stmt.condition)}{msg}"]
     if isinstance(stmt, THIRReturn):
         return [f"{pad}return {_expr(stmt.value)}" if stmt.value is not None

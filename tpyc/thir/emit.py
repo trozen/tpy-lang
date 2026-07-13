@@ -2079,15 +2079,33 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
         out.write(f"{indent}{qualifier} {stmt.alias} = {deref}"
                   f"std::get<{stmt.member_cpp}>({stmt.variant_cpp});\n")
     elif isinstance(stmt, THIRAssert):
-        # Mirrors _gen_assert's non-constant, non-lazy-message arm; the
-        # narrowing alias (if any) follows as its own THIRNarrowAlias
-        # statement. The message escape mirrors _gen_assert_throw.
+        # The narrowing alias (if any) follows as its own THIRNarrowAlias.
         if stmt.message is None:
             throw = "::tpy::raise_assertion_error()"
-        else:
+        elif isinstance(stmt.message, str):
             msg = stmt.message.replace("\\", "\\\\").replace('"', '\\"')
             throw = f'::tpy::raise_assertion_error("{msg}")'
-        out.write(f"{indent}if (!({_emit_expr(stmt.condition, state)})) {throw};\n")
+        else:
+            throw = None
+        if (stmt.fold_constant and isinstance(stmt.condition, THIRLiteral)
+                and stmt.condition.value in (True, False, None)):
+            if stmt.condition.value is True:
+                return
+            if throw is None:
+                throw = ("::tpy::raise_assertion_error("
+                         f"{_emit_expr(stmt.message, state)})")
+                state.temps.flush(out, indent)
+            out.write(f"{indent}{throw};\n")
+        elif throw is not None:
+            out.write(
+                f"{indent}if (!({_emit_expr(stmt.condition, state)})) {throw};\n")
+        else:
+            out.write(f"{indent}if (!({_emit_expr(stmt.condition, state)})) {{\n")
+            inner = indent + INDENT
+            message = _emit_expr(stmt.message, state)
+            state.temps.flush(out, inner)
+            out.write(f"{inner}::tpy::raise_assertion_error({message});\n")
+            out.write(f"{indent}}}\n")
     elif isinstance(stmt, THIRReturn):
         if state.finally_frames:
             _emit_finally_return(out, stmt, indent, state)

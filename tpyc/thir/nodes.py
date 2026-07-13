@@ -1088,19 +1088,20 @@ class THIRNestedDef(THIRStmt):
 
 @dataclass(frozen=True)
 class THIRAssert(THIRStmt):
-    """assert statement -- mirrors `_gen_assert`'s non-constant arm:
+    """Assert statement with constant folding and lazy computed messages.
 
         if (!(<cond>)) ::tpy::raise_assertion_error(["<msg>"]);
 
-    `message` is the raw str-literal text (escaped at emit; a computed
-    message evaluates lazily inside an if block, a shape the slice defers).
+    A str-literal message keeps its raw text for escaping at emit; a computed
+    message is a THIR expression evaluated inside the failing branch.
     An isinstance-narrowing assert is followed by a persistent
     `THIRNarrowAlias` statement appended by `_lower_stmts` (the same
     statement-level pass as the early-return post-if alias); a re-assert on
     an already-extracted subject carries the sema-folded `true` condition
     (`THIRLiteral`) and a suffix-bumped alias."""
     condition: THIRExpr
-    message: str | None = None
+    message: str | THIRExpr | None = None
+    fold_constant: bool = False
 
 
 @dataclass(frozen=True)

@@ -18,6 +18,7 @@ from ...parse.nodes import (
     TpyCall,
     TpyCoerce,
     TpyContinue,
+    TpyDelAttr,
     TpyDelItem,
     TpyDelVar,
     TpyDictLiteral,
@@ -2589,6 +2590,21 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         if scope.loop_depth == 0:
             raise ThirUnsupported("stmt.continue")
         return THIRContinue(loc=loc)
+    if isinstance(stmt, TpyDelAttr):
+        if len(stmt.targets) != 1:
+            raise ThirUnsupported("stmt.del_attr:multi_target")
+        call = stmt.targets[0].dyn_delattr_call
+        if call is None:
+            raise ThirUnsupported("stmt.del_attr:unresolved")
+        return THIRExprStmt(
+            expr=_flush_witness(
+                "flush.expr_stmt",
+                _lower_expr(
+                    call, lc, declared,
+                    use=_ExprUse(
+                        result=_ExprResultUse.DISCARD, allow_temps=True))),
+            loc=loc,
+        )
     if isinstance(stmt, (TpyDelVar, TpyGlobal, TpyNonlocal)):
         # All three no-code faces emit only the source comment (nonlocal's
         # semantics live entirely in the capture list -- sema's node facts).
@@ -2669,16 +2685,37 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             loc=loc,
         )
     if isinstance(stmt, TpyAssert):
-        if (stmt.message is not None
-                and not isinstance(stmt.message, TpyStrLiteral)):
-            raise ThirUnsupported("stmt.assert")
-        if isinstance(stmt.condition, (TpyBoolLiteral, TpyNoneLiteral)):
-            raise ThirUnsupported("stmt.assert")
         # The narrowing alias (if any) is appended by _lower_stmts'
         # _append_assert_narrow pass -- statement-level, like the post-if
         # alias. A re-assert's condition was sema-folded to `true`
         # (gate-admitted only via _reassert_bump_info).
-        msg = stmt.message.value if isinstance(stmt.message, TpyStrLiteral) else None
+        if isinstance(stmt.condition, TpyBoolLiteral) and stmt.condition.value:
+            msg = None
+        elif isinstance(stmt.message, TpyStrLiteral):
+            msg = stmt.message.value
+        elif isinstance(stmt.message, TpyFieldAccess):
+            # Same eligibility as every other _lower_field_source site: a
+            # marker-bearing access (property / dyn attr / unproven Optional
+            # deref_check / ...) takes its own AST emit path.
+            if not _field_receiver_ok(stmt.message, declared, analyzer):
+                raise ThirUnsupported("stmt.assert")
+            msg = _lower_field_source(stmt.message, lc, declared)
+        elif stmt.message is not None:
+            msg = _lower_expr(stmt.message, lc, declared)
+        else:
+            msg = None
+        if isinstance(stmt.condition, TpyBoolLiteral):
+            cond = THIRLiteral(
+                result_type=analyzer.get_expr_type(stmt.condition),
+                value=stmt.condition.value, loc=getattr(stmt.condition, "loc", None))
+            return THIRAssert(condition=cond, message=msg, fold_constant=True,
+                              loc=loc)
+        if isinstance(stmt.condition, TpyNoneLiteral):
+            cond = THIRLiteral(
+                result_type=analyzer.get_expr_type(stmt.condition), value=None,
+                loc=getattr(stmt.condition, "loc", None))
+            return THIRAssert(condition=cond, message=msg, fold_constant=True,
+                              loc=loc)
         info = _narrow_cond_info(stmt.condition, declared, analyzer)
         if info is not None:
             var, u, _members, folded, _isin = info

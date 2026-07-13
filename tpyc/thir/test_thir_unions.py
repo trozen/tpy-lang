@@ -963,19 +963,19 @@ class TestNarrowingEligibility:
         assert isinstance(alias, THIRNarrowAlias) and alias.alias == "__v"
         assert ret.value.receiver.name == "__v"
 
-    def test_assert_message_routes_computed_rejects(self):
+    def test_assert_messages_route(self):
         thir = self._lower(
             "def f(v: A | B) -> Int32:\n"
             '    assert isinstance(v, A), "want A"\n'
             "    return v.x\n")
         fn = _fn(thir, "f")
         assert fn is not None and fn.body[0].message == "want A"
-        # A computed message evaluates lazily inside an if block -- stays AST.
         thir = self._lower(
             "def g(v: A | B, m: str) -> Int32:\n"
             "    assert isinstance(v, A), m\n"
             "    return v.x\n")
-        assert _fn(thir, "g") is None
+        g = _fn(thir, "g")
+        assert g is not None and isinstance(g.body[0].message, THIRName)
 
     def test_reassert_suffix_bump(self):
         # Sema folds the second condition to `true`; the extraction re-runs

@@ -524,6 +524,87 @@ class TestIfHoistDeclEmit:
         assert self._witnesses(self.SRC).get("if.hoist_decl", 0) > 0
 
 
+class TestBoolLiteralFoldEmit:
+    """The constant-condition slivers no corpus case reaches: `assert True`
+    emits nothing, bare `assert False` raises without a message, and the
+    False side of the bool-literal if/while routing."""
+
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+        return cpp
+
+    SRC = (
+        _PRELUDE
+        + "def t(n: Int32) -> Int32:\n    assert True\n    return n\n"
+        + "def boom() -> None:\n    assert False\n"
+        + "def dead(n: Int32) -> Int32:\n"
+        + "    if False:\n        n = n + 1\n"
+        + "    return n\n"
+        + "def spin(n: Int32) -> Int32:\n"
+        + "    while False:\n        n = n + 1\n"
+        + "    return n\n"
+        + "def main():\n    print(t(1))\n    print(dead(2))\n    print(spin(3))\nmain()\n"
+    )
+
+    def test_byte_identical(self):
+        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
+
+    def test_folds_render(self):
+        cpp = self._cpp(self.SRC, thir=True)
+        # `assert True` emits nothing: the only raise is boom()'s bare one.
+        assert cpp.count("raise_assertion_error") == 1
+        assert "::tpy::raise_assertion_error();" in cpp
+        assert "if (false) {" in cpp
+        assert "while (false) {" in cpp
+
+    def test_routing_is_non_vacuous(self):
+        thir = _lower_ctx(self.SRC)
+        for name in ("t", "boom", "dead", "spin"):
+            assert _fn(thir, name) is not None, name
+
+
+class TestDelAttrEmit:
+    """Dynamic `del obj.attr` -> the sema-synthesized `__delattr__` call.
+    No migrated corpus case reaches this emit (the dynamic_attrs cases all
+    fall back on an earlier statement), so pin it here."""
+
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+        return cpp
+
+    SRC = (
+        "from tpy import Int32\n"
+        "from typing import Any\n"
+        "class Bag:\n"
+        "    _data: dict[str, Any]\n"
+        "    def __init__(self):\n"
+        "        d: dict[str, Any] = {}\n"
+        "        self._data = d\n"
+        "    def __delattr__(self, name: str) -> None:\n"
+        "        del self._data[name]\n"
+        "def drop(b: Bag) -> None:\n"
+        "    del b.x\n"
+        "def main():\n    b = Bag()\n    drop(b)\nmain()\n"
+    )
+
+    def test_byte_identical(self):
+        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
+
+    def test_delattr_call_renders(self):
+        cpp = self._cpp(self.SRC, thir=True)
+        assert 'b.__delattr__("x");' in cpp
+
+    def test_routing_is_non_vacuous(self):
+        thir = _lower_ctx(self.SRC)
+        assert _fn(thir, "drop") is not None
+
+
 class TestForRangeArithBoundEmit:
     def _cpp(self, src: str, thir: bool):
         compiler, modules = _compile(src)
@@ -1310,12 +1391,13 @@ class TestBool:
         assert isinstance(fn.body[1].condition, THIRName)
         assert fn.body[1].condition.name == "go"
 
-    def test_bool_literal_condition_is_ineligible(self):
-        # `if True:` is excluded -- the AST path may dead-branch-eliminate a
-        # bool-literal condition, which a bare `if (true)` would not reproduce.
+    def test_bool_literal_condition_routes(self):
         thir = _lower("def f(a: bool) -> bool:\n    r = a\n"
                       "    if True:\n        r = a\n    return r\n")
-        assert _fn(thir, "f") is None
+        fn = _fn(thir, "f")
+        assert fn is not None and isinstance(fn.body[1], THIRIf)
+        assert isinstance(fn.body[1].condition, THIRLiteral)
+        assert fn.body[1].condition.value is True
 
 
 

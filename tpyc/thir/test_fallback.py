@@ -331,7 +331,7 @@ def test_unhandled_expression_rejects_from_lowering_tail():
     assert "clean" in routed
 
 
-def test_while_lowering_reject_falls_back_at_sync_boundary():
+def test_while_bool_literal_routes_at_sync_boundary():
     compiler, modules = _compile(
         "from tpy import Int32\n"
         "def rejected(n: Int32) -> Int32:\n"
@@ -351,11 +351,12 @@ def test_while_lowering_reject_falls_back_at_sync_boundary():
                 fold_attempt("body")
             else:
                 routed.append(fn.name)
-    assert compiler._thir_fallback.get("body:stmt.while") == 1
+    assert compiler._thir_fallback == {}
+    assert "rejected" in routed
     assert "clean" in routed
 
 
-def test_while_lowering_reject_falls_back_at_constructor_boundary():
+def test_while_bool_literal_routes_at_constructor_boundary():
     compiler, modules = _compile(
         "from tpy import Int32\n"
         "class R:\n"
@@ -374,8 +375,8 @@ def test_while_lowering_reject_falls_back_at_constructor_boundary():
             record, init, entry.analyzer, self_type=self_type)
         if ctor is None:
             fold_attempt("ctor")
-    assert ctor is None
-    assert compiler._thir_fallback.get("ctor:stmt.while") == 1
+    assert ctor is not None
+    assert compiler._thir_fallback == {}
 
 
 def test_for_lowering_reject_falls_back_at_sync_boundary():
@@ -474,7 +475,7 @@ def test_aug_assign_lowering_reject_falls_back_at_sync_boundary():
     assert "clean" in routed
 
 
-def test_assert_lowering_reject_falls_back_at_sync_boundary():
+def test_assert_lowering_routes_at_sync_boundary():
     compiler, modules = _compile(
         "from tpy import Int32\n"
         "def rejected(n: Int32) -> Int32:\n"
@@ -493,11 +494,130 @@ def test_assert_lowering_reject_falls_back_at_sync_boundary():
                 fold_attempt("body")
             else:
                 routed.append(fn.name)
-    assert compiler._thir_fallback.get("body:stmt.assert") == 1
+    assert compiler._thir_fallback == {}
+    assert "rejected" in routed
     assert "clean" in routed
 
 
-def test_if_lowering_reject_falls_back_at_sync_boundary():
+_ASSERT_MSG_RECORD = (
+    "from tpy import Int32\n"
+    "class E:\n"
+    "    message: str\n"
+    "    def __init__(self, message: str):\n"
+    "        self.message = message\n"
+)
+
+
+def test_assert_message_clean_field_routes():
+    compiler, entry, f = _fn_body(
+        _ASSERT_MSG_RECORD
+        + "def checked(n: Int32, e: E) -> Int32:\n"
+        "    assert n > 0, e.message\n"
+        "    return n\n",
+        "checked")
+    with activate_compiler(compiler):
+        begin_attempt()
+        fn = lower_function(f, entry.analyzer, self_type=None)
+    assert fn is not None
+    assert compiler._thir_fallback == {}
+
+
+def test_assert_message_optional_field_falls_back():
+    # Unproven Optional receiver: the AST render is
+    # `::tpy::deref_check(e).message` -- out of the admitted slice.
+    compiler, entry, f = _fn_body(
+        _ASSERT_MSG_RECORD
+        + "def rejected(n: Int32, e: E | None) -> Int32:\n"
+        "    assert n > 0, e.message\n"
+        "    return n\n",
+        "rejected")
+    with activate_compiler(compiler):
+        begin_attempt()
+        fn = lower_function(f, entry.analyzer, self_type=None)
+        if fn is None:
+            fold_attempt("body")
+    assert fn is None
+    assert compiler._thir_fallback == {"body:stmt.assert": 1}
+
+
+def test_assert_message_property_field_falls_back():
+    # A property message is a getter CALL on the AST path, not a member read.
+    compiler, entry, f = _fn_body(
+        "from tpy import Int32\n"
+        "class F:\n"
+        "    _m: str\n"
+        "    def __init__(self, m: str):\n"
+        "        self._m = m\n"
+        "    @property\n"
+        "    def msg(self) -> str:\n"
+        "        return self._m\n"
+        "def rejected(n: Int32, f: F) -> Int32:\n"
+        "    assert n > 0, f.msg\n"
+        "    return n\n",
+        "rejected")
+    with activate_compiler(compiler):
+        begin_attempt()
+        fn = lower_function(f, entry.analyzer, self_type=None)
+        if fn is None:
+            fold_attempt("body")
+    assert fn is None
+    assert compiler._thir_fallback == {"body:stmt.assert": 1}
+
+
+_DELATTR_RECORD = (
+    "from tpy import Int32\n"
+    "from typing import Any\n"
+    "class Bag:\n"
+    "    _data: dict[str, Any]\n"
+    "    def __init__(self):\n"
+    "        d: dict[str, Any] = {}\n"
+    "        self._data = d\n"
+    "    def __delattr__(self, name: str) -> None:\n"
+    "        del self._data[name]\n"
+)
+
+
+def test_del_attr_routes_at_sync_boundary():
+    compiler, entry, f = _fn_body(
+        _DELATTR_RECORD + "def drop(b: Bag) -> None:\n    del b.x\n",
+        "drop")
+    with activate_compiler(compiler):
+        begin_attempt()
+        fn = lower_function(f, entry.analyzer, self_type=None)
+    assert fn is not None
+    assert compiler._thir_fallback == {}
+
+
+def test_del_attr_multi_target_falls_back():
+    compiler, entry, f = _fn_body(
+        _DELATTR_RECORD + "def drop(b: Bag) -> None:\n    del b.x, b.y\n",
+        "drop")
+    with activate_compiler(compiler):
+        begin_attempt()
+        fn = lower_function(f, entry.analyzer, self_type=None)
+        if fn is None:
+            fold_attempt("body")
+    assert fn is None
+    assert compiler._thir_fallback == {"body:stmt.del_attr:multi_target": 1}
+
+
+def test_del_attr_unresolved_falls_back():
+    # Defensive: sema always sets dyn_delattr_call or errors; clear it to
+    # pin the guard.
+    compiler, entry, f = _fn_body(
+        _DELATTR_RECORD + "def drop(b: Bag) -> None:\n    del b.x\n",
+        "drop")
+    f.body[0].targets[0].dyn_delattr_call = None
+    with activate_compiler(compiler):
+        begin_attempt()
+        fn = lower_function(f, entry.analyzer, self_type=None)
+        if fn is None:
+            fold_attempt("body")
+    assert fn is None
+    assert compiler._thir_fallback == {"body:stmt.del_attr:unresolved": 1}
+
+
+def test_if_bool_literal_routes_at_sync_boundary():
     compiler, modules = _compile(
         "from tpy import Int32\n"
         "def rejected(n: Int32) -> Int32:\n"
@@ -517,7 +637,8 @@ def test_if_lowering_reject_falls_back_at_sync_boundary():
                 fold_attempt("body")
             else:
                 routed.append(fn.name)
-    assert compiler._thir_fallback.get("body:stmt.if:cond.bool_literal") == 1
+    assert compiler._thir_fallback == {}
+    assert "rejected" in routed
     assert "clean" in routed
 
 
@@ -578,7 +699,7 @@ def test_sync_lowering_reports_first_reject_in_source_order():
         if fn is None:
             fold_attempt("body")
     assert fn is None
-    assert compiler._thir_fallback == {"body:stmt.assert": 1}
+    assert compiler._thir_fallback == {"body:expr.named_expr": 1}
 
 
 def test_constructor_lowering_reports_first_reject_in_source_order():
@@ -601,7 +722,7 @@ def test_constructor_lowering_reports_first_reject_in_source_order():
         if ctor is None:
             fold_attempt("ctor")
     assert ctor is None
-    assert compiler._thir_fallback == {"ctor:stmt.assert": 1}
+    assert compiler._thir_fallback == {"ctor:expr.named_expr": 1}
 
 
 def test_detail_composes_into_stmt_tag():

@@ -154,7 +154,8 @@ _IS_OPS = frozenset({"is", "is not"})
 
 # Membership. Admitted only over a dict/set container NAME whose `__contains__`
 # is a plain @native member (`c.contains(needle)`, the `resolved_contains`
-# render): `needle in c` / `needle not in c`. list membership (`std::ranges::
+# render) with scalar or string needles: `needle in c` / `needle not in c`.
+# list membership (`std::ranges::
 # contains`, no `__contains__` member), bytes membership (a @native FREE
 # function), str `.find()`, TypedDict/tuple-literal/global receivers, and the
 # universal `__iter__`/`__next__` fallback take other _gen_binop arms -> AST path.

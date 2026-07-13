@@ -962,6 +962,15 @@ and already AST-tested); measured cost on the whole corpus is within run-to-run
 noise (front-end codegen is a small fraction of a comp-only run). `--no-thir` skips
 the overlay for a pure-AST run.
 
+The overlay remains whole-body during migration: a lowering rejection discards
+that body's partial THIR and the complete AST emitter handles it. Consequently,
+individual AST emit arms are not deleted when their construct reaches zero corpus
+residual -- an unrelated rejection can still send a body containing that construct
+through AST codegen. Arm residuals prioritize THIR work and audit the remaining
+surface. After every in-scope body kind has zero fallback and the completion ledger
+is closed, THIR becomes mandatory and the AST body/form emitter is deleted as one
+atomic cutover.
+
 #### Phase-1 spike validation (2026-06)
 
 A throwaway probe lowered one arithmetic function (`def add(a, b): c = a + b + 1;

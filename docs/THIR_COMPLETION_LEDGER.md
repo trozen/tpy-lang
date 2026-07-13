@@ -1,10 +1,11 @@
 # THIR Migration Completion Ledger
 
-> **Operating model (2026-07-11):** the goal is COMPLETION (deleting the AST
-> codegen), driven by the deletion-first loop in CLAUDE.md "THIR migration"
-> (metric = AST-arms-remaining, target = smallest per-construct residual, per-case
-> machinery keeps it honest). The deletion targets and completion model below are
-> the technical map of what-blocks-deletion. The "sequence against routing %" /
+> **Operating model (2026-07-12):** the goal is COMPLETION (deleting the AST
+> codegen), driven by the zero-whole-body-fallback loop in CLAUDE.md "THIR
+> migration" (metric = migrated cases/fallback bodies, smallest per-construct
+> residual prioritizes the next cluster, per-case machinery keeps it honest). AST
+> body emit arms stay intact until the final atomic cutover. The deletion targets
+> and completion model below map what blocks that cutover. The "sequence against routing %" /
 > throughput-campaign framing predates this and is no longer how the work is
 > driven.
 
@@ -33,8 +34,9 @@ is not "route N% of bodies," it is "delete the AST body/form codegen," and the t
 part ways exactly in the low-ROI tail. "Circle back later" does not happen on its
 own. This ledger keeps the tail visible and the end-state in view.
 
-The real done-signal is per-component **deletion**, not routing count. Routing % is
-a proxy that overstates progress in the tail.
+The real done-signal is zero fallback across every in-scope body kind plus a closed
+ledger. Routing count is a useful dial but overstates progress in the tail; physical
+AST deletion happens once, at the final cutover.
 
 ## North star and scope
 
@@ -76,7 +78,8 @@ cell it touches is admitted:
   non-F1-record frontiers) / container-literal locals (list/Array/dict/set scalar
   elements, incr 34) / logical and-or-not + inline chained compares (bool slice,
   incr 36) / break-continue (else-free loops, incr 66) / del (trivial del-var +
-  list/dict del-item, incr 67) / global (scalar globals, incr 68) / sync `with`
+  list/dict del-item, incr 67; dynamic `del obj.attr` via the sema-synthesized
+  `__delattr__` call) / global (scalar globals, incr 68) / sync `with`
   (fresh-target slice + the emit-side finally frames, incr 78) / try/finally
   (the finally_only tier + re-emittable finally frames + the plain-value
   branch-decl hoist, incr 79) / try/except throw tier + raise (catch arms,
@@ -97,10 +100,12 @@ cell it touches is admitted:
   leaf seam, 2026-07-07 -- R2/R4/R4b/R1/R5b/R5c-param done; regions /
   non-value yields+returns / generic-record methods / str-Own-tuple-union
   params / ERASED-BORROWED awaits remain, TODO.md) **(covered)**
+  / nonlocal (no-code face) + plain-assert messages (computed/lazy
+  messages incl. gated clean-receiver field reads, constant-condition
+  folds) **(covered)**
   vs try-except return tier (parked on the @error_return rung) /
   expression raise / for-over-container (generators) /
-  genexpr + the comprehension C3/C4 rows / nonlocal +
-  plain-assert messages **(not)**.
+  genexpr + the comprehension C3/C4 rows **(not)**.
 
 A **deferred cell** is one `(kind x form x shape)` the eligibility gate rejects.
 Two kinds, treated oppositely:

@@ -2597,10 +2597,9 @@ def _lower_truthy(e: TpyExpr, lc: '_LowerCtx',
     the plain-enum arm renders `true` and DROPS the operand, mirroring
     gen_truthy_expr); every other admitted shape's truthiness render equals
     its value render, so it lowers as a plain expression."""
-    if isinstance(e, (TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral,
-                      TpyStrLiteral, TpyBytesLiteral, TpyNoneLiteral)):
-        if not (unary_operand and isinstance(e, TpyBoolLiteral)):
-            raise ThirUnsupported("truthy.literal")
+    if isinstance(e, (TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
+                      TpyBytesLiteral, TpyNoneLiteral)):
+        raise ThirUnsupported("truthy.literal")
     if isinstance(e, TpyName) and (_value_opt_scalar_param(e.name, lc)
                                    or _value_opt_view_param(e.name, lc)):
         # A value-repr Optional[scalar] / Optional[view] read in a condition /
@@ -2629,6 +2628,8 @@ def _lower_truthy(e: TpyExpr, lc: '_LowerCtx',
         elif unary_operand:
             if et is None or not is_bool_type(et):
                 raise ThirUnsupported("truthy.unary_operand")
+        elif isinstance(e, TpyBoolLiteral):
+            pass
         elif isinstance(e, TpyName):
             if (e.name not in declared or et is None or not is_bool_type(et)
                     or _unrouted_binding_read(

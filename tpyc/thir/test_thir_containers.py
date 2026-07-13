@@ -2684,6 +2684,8 @@ class TestMembershipEmit:
         + "def sm(xs: set[Int32], n: Int32) -> bool:\n    return n in xs\n"
         + "def sn(xs: set[Int32]) -> bool:\n    return 3 not in xs\n"
         + "def dm(d: dict[Int32, Int32], k: Int32) -> bool:\n    return k in d\n"
+        + "def ss(xs: set[str], s: str) -> bool:\n    return s in xs\n"
+        + "def ds(d: dict[str, Int32]) -> bool:\n    return \"x\" in d\n"
         + "def si(xs: set[Int32]) -> Int32:\n"
         + "    total = 0\n    for x in xs:\n        total += x\n    return total\n"
         + "def main():\n"
@@ -2699,6 +2701,8 @@ class TestMembershipEmit:
         assert "return (xs.contains(n));" in cpp
         assert "return (!(xs.contains(3)));" in cpp
         assert "return (d.contains(k));" in cpp
+        assert "return (xs.contains(s));" in cpp
+        assert 'return (d.contains("x"));' in cpp
 
 
 # --- Container PARAM routing: a `list`/`dict`/`set`/`Array`/`Span` param of ANY

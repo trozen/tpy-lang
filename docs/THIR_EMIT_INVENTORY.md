@@ -1,10 +1,10 @@
 # THIR Emit-Arm Inventory
 
-> **Operating model (2026-07-11):** the goal is COMPLETION (deleting the AST
-> codegen), not a hybrid -- and the direction is now the deletion-first loop in
-> CLAUDE.md "THIR migration" (metric = AST-arms-remaining, target = smallest
-> per-construct residual, per-case machinery keeps it honest). The emit-arm
-> inventory, leverage tables, and deletion targets below are the current
+> **Operating model (2026-07-12):** the goal is COMPLETION (deleting the AST
+> codegen), not a permanent hybrid -- and the direction is now the zero-whole-body-
+> fallback loop in CLAUDE.md "THIR migration". The smallest per-construct residual
+> prioritizes a dependency cluster; it does not authorize deleting an individual
+> AST arm. The emit-arm inventory, leverage tables, and final deletion targets are the current
 > per-construct what-to-port reference. The fan-out/wave *sequencing* plan and
 > the "maximize throughput to near-100%" framing describe the earlier
 > coordinated campaign and are no longer how the work is driven.
