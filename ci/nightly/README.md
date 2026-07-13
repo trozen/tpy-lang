@@ -115,8 +115,11 @@ system-lib bump on the system-deps config).
 6. **Cron entry** (`crontab -e`):
 
    ```
-   0 1 * * * $HOME/tpy-nightly/repo/ci/nightly/cron-nightly.sh >> $HOME/tpy-nightly/cron.log 2>&1
+   0 1 * * * $HOME/tpy-nightly/repo/ci/nightly/cron-nightly.sh
    ```
+
+   The wrapper self-logs: without a terminal it appends its own output to
+   `~/tpy-nightly/cron.log` (interactive runs print normally).
 
 ## Operation notes
 

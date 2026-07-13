@@ -10,6 +10,16 @@
 main() {
     set -uo pipefail
 
+    # Under cron (no tty), self-log: append everything to the cron log so
+    # the crontab entry stays a bare script path. Interactive runs keep
+    # printing to the terminal. Gated to the pre-lock parent -- the flock
+    # child inherits the redirected fds and must not re-add a header.
+    if [ ! -t 1 ] && [ "${TPY_NIGHTLY_LOCKED:-}" != 1 ]; then
+        mkdir -p "$HOME/tpy-nightly"
+        exec >>"$HOME/tpy-nightly/cron.log" 2>&1
+        echo "=== $(date) cron-nightly"
+    fi
+
     # Re-run under an exclusive lock: overlapping nightlies would fight over
     # CPU and the docker cache volume. Lock lives in $HOME (a /tmp path is
     # squattable by other local users), and a skipped overlap says so in
