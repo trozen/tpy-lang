@@ -144,7 +144,10 @@ factory-result tuple into its own movable local.
 
 **`T` must be written explicitly** (`channel[Int32](4)`): `capacity` gives
 no inference source for `T`, so a bare `channel(4)` is a "cannot infer"
-error -- expected, matching `list[int]()`.
+error. The explicit `channel[Int32](...)` subscript is a tpyc-only spelling --
+a generic *function* is not subscriptable in CPython (`TypeError`), unlike a
+generic *type* like `list[int]` -- which is why these runtime cases are
+`no_cpython` (see also the `spawn[R, T]` note in `docs/THREADING_DESIGN.md`).
 
 ### Why no `try_send` in v1
 
@@ -289,6 +292,45 @@ The split API makes MPSC purely additive, with no surface change:
 
 Existing SPSC programs keep compiling unchanged; only `Sender.clone()`
 becomes newly available.
+
+## Blocking cross-thread MPSC channel (`tplib.channel`) -- DRAFTED, BLOCKED
+
+A separate, *blocking* channel over real OS threads (`tpy.thread.spawn`),
+distinct from the async SPSC channel above. This is the "Go-style channel"
+form: `thread.spawn` is the goroutine, `channel[T: Send](cap)` returns a
+`(Sender[T], Receiver[T])` pair, and `send`/`recv` block the OS thread. TPy has
+no M:N scheduler, so each producer is an OS thread; select and unbuffered
+(rendezvous) are out of scope; v1 is multi-producer / **single**-consumer.
+
+**Design (implemented, correct modulo the compiler gaps below):**
+- Prerequisite **shipped**: `tpy.sync.Condvar` (blocking condition variable over
+  `std::condition_variable`; see `docs/LANGUAGE_FEATURES.md` and the
+  `condvar_ping_pong` test).
+- State: `Arc[_ChanState[T: Send]]` where `_ChanState` = `Mutex[_Buf[T]]`
+  (fixed-cap ring + `head`/`count`/`closed`/`senders`) + a `_not_full` and a
+  `_not_empty` `Condvar`. Handles are `Arc`-backed, hence `Send` iff `T` is, so
+  they cross threads -- unlike the `Rc`-backed async channel.
+- `Sender`: `send` (blocks while full; standard `while full and not closed:
+  not_full.wait(g)`), `clone()` (bumps a `_senders` count),
+  `close()`; `Receiver`: `recv() -> Own[T]` raising `ChannelClosed` when empty
+  and closed, plus a generator `__iter__` (`for v in rx:`). Lives in `tplib`
+  (not `tpy.thread`) because it composes `tplib.arc.Arc`: the low-level `tpy.*`
+  layer must not depend on the higher `tplib.*` layer.
+- Close semantics (agreed): drop a `Sender` = "this producer is done"; the last
+  sender's drop auto-closes; any `close()` force-closes channel-wide.
+- `no_cpython`: `tplib` is a symlinked shared source (no separate cpy stub), and
+  the `channel[T](cap)` factory needs an explicit type argument (capacity gives
+  no inference for `T`) which is not valid Python -- same as the async channel.
+
+**Blocked on two compiler gaps (`BUGS.md`), paused pending fixes:**
+1. A `with` inside `__del__` lowers to a rethrow -> non-`noexcept` destructor
+   (`-Werror=terminate`); `Sender`/`Receiver.__del__` need the lock to close +
+   notify safely. Codegen should swallow (not rethrow) in a destructor context.
+2. `for v in rx:` over the generator `__iter__` fails because the receiver is
+   inferred `const` (the const-receiver-blocks-lowering family).
+
+`Condvar` (the prerequisite) shipped independently; resume the channel once the
+two gaps are fixed.
 
 ## CPython parity
 

@@ -45,6 +45,9 @@ class _Guard(Generic[T]):
         self._require_locked()
         self._mutex._value = value
 
+    def _raw_mutex(self):
+        return self._mutex._lock
+
     def __getattr__(self, name):
         # Private/dunder lookups fall through to normal attribute machinery;
         # payload names (append, keys, ...) forward to the aliased payload but
@@ -82,3 +85,32 @@ class RwLock(Generic[T]):
 
     def write(self) -> "_Guard[T]":
         return _Guard(self, self._lock.acquire, self._lock.release)
+
+
+class Condvar:
+    """threading.Condition over the guard's mutex lock, mirroring the C++
+    Condvar waiting on the caller-held lock. The Condition is (re)bound whenever
+    a different lock is passed, so one Condvar works with successive mutexes; a
+    notify with no prior waiter is a no-op. The (re)bind and every _cond access
+    happen while the caller holds the lock, so there is no race."""
+
+    def __init__(self) -> None:
+        self._lock = None
+        self._cond = None
+
+    def wait(self, guard) -> None:
+        # Pass the live guard (matches TPy's `_CondvarLock`); pull its raw lock.
+        # The caller holds it, so Condition.wait over it releases + reacquires.
+        lock = guard._raw_mutex()
+        if self._lock is not lock:
+            self._lock = lock
+            self._cond = threading.Condition(lock)
+        self._cond.wait()
+
+    def notify_one(self) -> None:
+        if self._cond is not None:
+            self._cond.notify()
+
+    def notify_all(self) -> None:
+        if self._cond is not None:
+            self._cond.notify_all()

@@ -26,9 +26,9 @@ never asserted, and concurrent readonly reads race -- a latent hole, low
 priority. See docs/SEND_SYNC_DESIGN.md (RwLock Sync bound) and BUGS.md.
 """
 from __future__ import annotations
-from typing import Self
-from tpy import (Own, Ptr, UInt32, Deref, nocopy, readonly, unsafe_interior_mutable,
-                 unsafe_send, unsafe_sync)
+from typing import Protocol, Self
+from tpy import (Own, Ptr, UInt32, Deref, nocopy, readonly, take_ptr,
+                 unsafe_interior_mutable, unsafe_send, unsafe_sync)
 from tpy.mem import UninitStorage
 from tpy.unsafe import unsafe_take, unsafe_release, unsafe_store
 from tpy.extern import native
@@ -50,6 +50,15 @@ class _RawSharedMutex:
     def unlock(self) -> None: ...
     def lock_shared(self) -> None: ...
     def unlock_shared(self) -> None: ...
+
+
+@native("tpy::MovableConditionVariable")
+@nocopy
+class _RawCondvar:
+    def __init__(self) -> None: ...
+    def wait(self, m: Ptr[_RawMutex]) -> None: ...
+    def notify_one(self) -> None: ...
+    def notify_all(self) -> None: ...
 
 
 # The heap cell holding the lock next to its payload. Reached only through the
@@ -149,11 +158,18 @@ class MutexGuard[T](Deref[T]):
     _cell: Ptr[_MutexCell[T]]
     _payload: Ptr[T]
     _locked: bool
+    # A pointer to the cell's raw lock, for Condvar.wait's `_CondvarLock` hook.
+    # Interior-mutable (only this pointer, not `_cell`) so `_raw_mutex` can be
+    # @readonly -- callable through wait's readonly param -- without exposing a
+    # mutable path to the payload from a readonly guard. Points into the cell
+    # (no allocation); the cell outlives the guard.
+    _raw_mu: unsafe_interior_mutable[Ptr[_RawMutex]]
 
     def __init__(self, cell: Ptr[_MutexCell[T]], payload: Ptr[T]) -> None:
         self._cell = cell
         self._payload = payload
         self._locked = False
+        self._raw_mu = take_ptr(cell._mu)
 
     # Acquire on enter (not at lock()): a guard that is never entered never
     # blocks, so a stray `g = m.lock()` outside a `with` holds no lock -- and
@@ -178,6 +194,19 @@ class MutexGuard[T](Deref[T]):
     def set(self, value: T) -> None:
         _require_locked(self._locked)
         unsafe_store(self._payload, UInt32(0), value)
+
+    # Internal hook for `Condvar.wait` (`_CondvarLock` structural conformance):
+    # hands out the raw lock this guard holds so users never touch `_RawMutex`.
+    # @readonly (via the interior-mutable `_raw_mu` pointer) so it stays callable
+    # through wait's readonly param. Only the exclusive Mutex guard conforms;
+    # RwLock's shared_mutex guards don't (a condvar pairs with an exclusive lock).
+    @readonly
+    def _raw_mutex(self) -> Ptr[_RawMutex]:
+        # Gated like every other accessor: handing out the raw lock from a guard
+        # that never acquired it would let Condvar.wait unlock a std::mutex this
+        # thread doesn't hold (UB), instead of a loud RuntimeError.
+        _require_locked(self._locked)
+        return self._raw_mu
 
 
 @nocopy
@@ -278,3 +307,50 @@ class WriteGuard[T](Deref[T]):
     def set(self, value: T) -> None:
         _require_locked(self._locked)
         unsafe_store(self._payload, UInt32(0), value)
+
+
+class _CondvarLock(Protocol):
+    # A held exclusive lock a Condvar can wait on. MutexGuard conforms; this
+    # keeps `_RawMutex` out of Condvar.wait's signature -- callers pass the guard
+    # and wait extracts the raw lock through the hook. Plain (non-@dynamic)
+    # Protocol -> monomorphized per guard type, so the call is static, no vtable.
+    @readonly
+    def _raw_mutex(self) -> Ptr[_RawMutex]: ...
+
+
+@nocopy
+@unsafe_send
+@unsafe_sync
+class Condvar:
+    # `_cv` is interior-mutable like Mutex's `_cell`: wait()/notify() mutate the
+    # underlying std::condition_variable through a shared (readonly) handle,
+    # sound because the primitive is internally synchronized -- exactly how a
+    # @readonly Mutex.lock() mutates its std::mutex. Send+Sync unconditionally
+    # (the C++ primitive is thread-safe), matching Atomic.
+    # TODO: the Ptr (and its heap alloc via unsafe_take) is here only because the
+    # hatch is Ptr-only. Unlike Mutex/Rc/Arc, nothing holds a pointer INTO the
+    # Condvar, so once unsafe_interior_mutable accepts an inline `mutable` member
+    # (TODO.md), this becomes an alloc-free `unsafe_interior_mutable[_RawCondvar]`.
+    _cv: unsafe_interior_mutable[Ptr[_RawCondvar]]
+
+    def __init__(self) -> None:
+        self._cv = unsafe_take(_RawCondvar())
+
+    def __del__(self) -> None:
+        unsafe_release(self._cv)
+
+    # Atomically release the lock the caller holds (pass the live guard), block
+    # until notified, then reacquire before returning. Takes the guard via the
+    # `_CondvarLock` structural hook -- static (monomorphized), and `_RawMutex`
+    # never appears in the signature. Spurious wakeups possible -> loop.
+    @readonly
+    def wait(self, lock: _CondvarLock) -> None:
+        self._cv.wait(lock._raw_mutex())
+
+    @readonly
+    def notify_one(self) -> None:
+        self._cv.notify_one()
+
+    @readonly
+    def notify_all(self) -> None:
+        self._cv.notify_all()

@@ -21,6 +21,7 @@
 
 #include <mutex>
 #include <shared_mutex>
+#include <condition_variable>
 
 namespace tpy {
 
@@ -48,6 +49,34 @@ struct MovableSharedMutex : std::shared_mutex {
     MovableSharedMutex(MovableSharedMutex&&) noexcept : std::shared_mutex() {}
     MovableSharedMutex(const MovableSharedMutex&) = delete;
     MovableSharedMutex& operator=(const MovableSharedMutex&) = delete;
+};
+
+// `tpy.sync._RawCondvar` maps here. Plain `std::condition_variable` (not
+// `condition_variable_any`): the wait target is always a `std::mutex`
+// (MovableMutex), so a trivial `unique_lock<std::mutex>` adapter in `wait`
+// suffices and the cv itself allocates nothing -- whereas condition_variable_any
+// heap-allocates a shared_ptr<mutex> per instance in libstdc++. `condition_
+// variable()` is noexcept, so the move ctor (default-constructs a fresh cv, per
+// the MovableSharedMutex convention) has no real throw path. The move runs once
+// at heap construction via unsafe_take from a fresh, waiter-less temporary.
+struct MovableConditionVariable : std::condition_variable {
+    using std::condition_variable::condition_variable;
+    MovableConditionVariable(MovableConditionVariable&&) noexcept
+        : std::condition_variable() {}
+    MovableConditionVariable(const MovableConditionVariable&) = delete;
+    MovableConditionVariable& operator=(const MovableConditionVariable&) = delete;
+
+    // Concrete non-template `wait` over a MovableMutex pointer (hides the
+    // inherited `wait` overloads so @native _RawCondvar.wait maps to one member;
+    // takes a pointer so the TPy side threads a mutable Ptr through). The caller
+    // holds `*m` locked via a live guard: adopt that ownership into a unique_lock,
+    // wait (unlocks/relocks around the block), then RELEASE it without unlocking
+    // so the lock stays held on return. Spurious wakeups possible -> callers loop.
+    void wait(MovableMutex* m) {
+        std::unique_lock<std::mutex> lk(*m, std::adopt_lock);
+        std::condition_variable::wait(lk);
+        lk.release();
+    }
 };
 
 }  // namespace tpy

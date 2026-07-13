@@ -352,6 +352,7 @@ Full mapping of TurboPython types to their C++ representation. Where parameter r
 | `Arc[T]` (arc) | TPy class mirroring `Rc[T]` (`tplib/arc.py`) but with `Atomic[UInt32]` strong/weak counters, so handles cross threads. `@nocopy`; `Send + Sync` iff `T` is (conditional override). Construct via `Arc.new(value)`; share via `arc.clone()`. `from tplib.arc import Arc` (not re-exported from `tplib` -- keeps the atomic runtime out of non-threaded consumers). |
 | `Weak[T]` (arc) | Non-owning atomic companion to `Arc[T]`. `@nocopy`. `from tplib.arc import Weak` -- module-scoped, coexists with `tplib.rc.Weak`. |
 | `Mutex[T]` / `RwLock[T]` | Blocking locks wrapping `std::mutex` / `std::shared_mutex` (`tpy.sync`, `from tpy.sync import Mutex, RwLock`). `@nocopy`; the interior-mutability primitives. both `Mutex[T]` and `RwLock[T]` are `Send + Sync` iff `T: Send` (conditional override). For `RwLock` this is looser than Rust's `RwLock<T>: Sync iff T: Send + Sync`, and sound on the safe surface (a safe not-`Sync` `T` is always a container whose shared-mutability the readonly read guard removes; TPy has no safe interior mutability, unlike Rust's `Cell`). It is *not* sound for a `Send`-but-not-`Sync` interior-mutable payload built with the unsafe `unsafe_interior_mutable` hatch (a user `Cell`-analog): the bound fabricates a `Sync` the author never asserted -- a latent hole, low priority; see `BUGS.md` / `docs/SEND_SYNC_DESIGN.md`. `lock()` (Mutex) / `read()` / `write()` (RwLock) are `@readonly` -- you lock through a shared handle, so `arc.lock()` works -- and return a `@nocopy` `Deref[T]` guard used as a context manager: `with m.lock() as g: g.append(x)` (deref forwards to the payload; value-type payloads use `g.get()`/`g.set()`). The guard acquires the lock in `__enter__` and releases in `__exit__`; a guard never entered never blocks. Canonical shared-mutable form is `Arc[Mutex[T]]`, which each spawned thread reaches through its own `arc.clone()`. |
+| `Condvar` | Blocking condition variable (`tpy.sync`, `from tpy.sync import Condvar`) over `std::condition_variable`. `@nocopy`, `Send + Sync` unconditionally (the primitive is internally synchronized, like `Atomic`). `@readonly` `wait(guard)` / `notify_one()` / `notify_all()`. `wait` takes the live `Mutex` guard directly (`with m.lock() as g: cv.wait(g)`), atomically releases the lock it holds, blocks until notified, then reacquires; callers re-check their predicate in a loop (spurious wakeups possible). The guard is taken via a monomorphized structural hook, so `wait(g)` is a static call and `_RawMutex` never appears in the surface. Pairs with `Mutex` for blocking producer/consumer handoff across threads. |
 | `bytes` | `std::vector<uint8_t>` |
 | `bytearray` | `std::vector<uint8_t>` (mutable) |
 | `BytesView` | `std::span<const uint8_t>` |
@@ -6484,6 +6485,12 @@ The full marker-layer design lives in `docs/SEND_SYNC_DESIGN.md`; Phase 2
   borrow pulled out of a guard and used past the `with` block races/dangles even
   under `Arc` (also region-model-gated); and `set()` on a reference-type payload
   copies where CPython aliases (mutate reference payloads in place instead).
+- **Working**: `Condvar` (in `tpy.sync`, over `std::condition_variable`) --
+  a blocking condition variable pairing with `Mutex` for producer/consumer
+  handoff. `@nocopy`, unconditionally `Send + Sync`. `wait(g)`
+  releases the held lock, blocks, and reacquires; `notify_one`/`notify_all`
+  wake waiters. It is the prerequisite for the (in-progress) blocking
+  cross-thread MPSC channel; see `docs/CHANNEL_DESIGN.md`.
 - **Planned**: closure `spawn`,
   scoped threads / `TaskGroup`, multi-threaded executor, MPSC channels
   (deferred -- see `docs/THREADING_DESIGN.md`). `Arc[T]` (V2) is now Working
