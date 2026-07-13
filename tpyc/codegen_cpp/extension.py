@@ -192,15 +192,50 @@ class ExtensionGenerator:
     def _exposed_classes(self, module: TpyModule, module_name: str,
                          call_ns: str) -> list[dict]:
         """User classes marked `@export` in this ext_module. Each drives one
-        PyType_FromSpec type created + registered at PyInit_ and one set of
-        method/getset wrappers. (Disjoint from _ordered_user_exc_classes: the
-        sema validator rejects @export on a throwable.)"""
+        PyType_FromSpec(WithBases) type created + registered at PyInit_ and one
+        set of method/getset wrappers. (Disjoint from _ordered_user_exc_classes:
+        the sema validator rejects @export on a throwable.)
+
+        Ordered base-before-derived (a derived type's creation call references
+        its base's already-created handle); classes without an exposed base
+        keep source order, so a flat module's glue is unchanged. `base_simple`/
+        `base_var` name the single exposed base (the validator rejected
+        multiple / unexposed / cross-module bases); `basetype` marks a class
+        some other exposed class inherits -- its spec carries
+        Py_TPFLAGS_BASETYPE and its tp_init the exact-type guard."""
         reg = self.ctx.analyzer.registry
         sym = escape_cpp_name(module_name)
+        exposed = [r for r in module.records if r.exposed_to_host]
+        by_name = {r.name: r for r in exposed}
+        base_of: dict[str, str | None] = {}
+        for r in exposed:
+            info = reg.get_record(r.name)
+            parent = None
+            for p in info.parents:
+                pinfo = reg.get_record_for_type(p)
+                if pinfo is not None and pinfo.name in by_name:
+                    parent = pinfo.name
+            base_of[r.name] = parent
+        base_names = set(base_of.values())
+
+        ordered: list = []
+        seen: set[str] = set()
+
+        def visit(r) -> None:
+            if r.name in seen:
+                return
+            seen.add(r.name)
+            base = base_of[r.name]
+            if base is not None:
+                visit(by_name[base])
+            ordered.append(r)
+
+        for r in exposed:
+            visit(r)
+
         result = []
-        for r in module.records:
-            if not r.exposed_to_host:
-                continue
+        for r in ordered:
+            base = base_of[r.name]
             result.append({
                 "record": r,
                 "info": reg.get_record(r.name),
@@ -208,6 +243,10 @@ class ExtensionGenerator:
                 "cpp_type": qualified_cpp_name(call_ns, r.name),
                 "py_name": f"{module_name}.{r.name}",
                 "simple": r.name,
+                "base_simple": base,
+                "base_var": (f"{sym}__type_{escape_cpp_name(base)}"
+                             if base is not None else None),
+                "basetype": r.name in base_names,
             })
         return result
 
@@ -516,6 +555,33 @@ class ExtensionGenerator:
         ("__ne__", "Py_NE"), ("__gt__", "Py_GT"), ("__ge__", "Py_GE"),
     )
 
+    def _ancestor_compare_dispatcher(self, cls: dict, sym: str) -> str | None:
+        """The richcompare dispatcher symbol of the nearest exposed ancestor
+        that defines any comparison dunder, or None. A derived dispatcher
+        delegates the ops it doesn't resolve itself there (tp_richcompare is
+        one slot; per-op delegation restores Python's per-dunder MRO lookup)."""
+        reg = self.ctx.analyzer.registry
+        for anc in reg.iter_ancestor_records(cls["info"]):
+            if any(m in anc.methods for m, _op in self._COMPARE_DUNDER_OPS):
+                return f"{sym}__{escape_cpp_name(anc.name)}__richcompare_slot"
+        return None
+
+    def _ancestor_defines(self, info, name: str) -> bool:
+        """True when any ancestor record defines `name` itself (own methods
+        of the MRO tail; exposed hierarchies have all-user ancestors)."""
+        reg = self.ctx.analyzer.registry
+        return any(name in anc.methods for anc in reg.iter_ancestor_records(info))
+
+    def _method_with_ancestors(self, info, name: str):
+        """MRO-faithful single-method lookup for a combined-slot half: own
+        first, then ancestors. The generated `payload.<name>(...)` call
+        resolves the inherited C++ method the same way, so a derived slot can
+        serve a half the class only inherits (a partial override would
+        otherwise shadow the base's whole slot and lose the other half)."""
+        overloads = self.ctx.analyzer.registry.get_method_overloads_with_parents(
+            info, name)
+        return overloads[0] if overloads else None
+
     def _emit_export_class_dunder_slots(self, out: TextIO, cls: dict, sym: str,
                                         reg_arg: str, cppvar: str
                                         ) -> list[tuple[str, str]]:
@@ -546,11 +612,37 @@ class ExtensionGenerator:
 
         compare_defined = [m for m, _op in self._COMPARE_DUNDER_OPS
                            if m in info.methods]
+        anc = self._ancestor_compare_dispatcher(cls, sym)
         if compare_defined:
             wname = f"{base}__richcompare_slot"
             slots.append(("Py_tp_richcompare", wname))
             out.write(f"PyObject *{wname}(PyObject *self, PyObject *other, "
                       f"int op) {{\n")
+            # tp_richcompare is one slot for all six ops, so a derived class
+            # defining SOME ops would otherwise shadow the base's dispatcher
+            # for the rest. Route the ops this class doesn't resolve itself to
+            # the nearest ancestor dispatcher up front -- before this class's
+            # operand-type guard, so the ancestor applies its own (wider)
+            # operand check, mirroring Python's per-dunder MRO lookup.
+            # __ne__ is resolved here (as !__eq__) only when no ancestor
+            # defines an explicit __ne__ -- Python's MRO would dispatch != to
+            # that ancestor's real body, not to a negation of the (possibly
+            # overridden) __eq__; object.__ne__'s auto-derivation applies only
+            # when no class in the MRO defines __ne__ itself.
+            ne_own = "__ne__" in info.methods or (
+                "__eq__" in info.methods
+                and not self._ancestor_defines(info, "__ne__"))
+            if anc is not None:
+                own_ops = [opconst for opname, opconst
+                           in self._COMPARE_DUNDER_OPS
+                           if opname in info.methods
+                           or (opname == "__ne__" and ne_own)]
+                out.write("    switch (op) {\n")
+                out.write(f"    {' '.join(f'case {oc}:' for oc in own_ops)}\n")
+                out.write("        break;\n")
+                out.write("    default:\n")
+                out.write(f"        return {anc}(self, other, op);\n")
+                out.write("    }\n")
             out.write("    auto *__ot = Py_TYPE(other);\n")
             out.write(f"    if (__ot != (::tpy::cpy::PyTypeObject *){tv} && "
                       f"PyType_IsSubtype(__ot, (::tpy::cpy::PyTypeObject *){tv}) "
@@ -566,7 +658,7 @@ class ExtensionGenerator:
                 if opname in info.methods:
                     out.write(f"            return ::tpy::interop::to_py("
                               f"__self.{opname}(__other));\n")
-                elif opname == "__ne__" and "__eq__" in info.methods:
+                elif opname == "__ne__" and ne_own and "__eq__" in info.methods:
                     out.write("            return ::tpy::interop::to_py("
                               "!__self.__eq__(__other));\n")
                 else:
@@ -595,6 +687,13 @@ class ExtensionGenerator:
                       '"tpy extension: __hash__ failed");\n')
             out.write("        return -1;\n")
             out.write("    }\n}\n\n")
+            # PyType_Ready inherits tp_hash and tp_richcompare only as a PAIR
+            # (both-NULL), so an own __hash__ with no own comparisons would
+            # silently block the ancestor's comparisons from inheriting --
+            # wire the ancestor dispatcher explicitly to keep them (its own
+            # operand guard already admits subtype instances).
+            if not compare_defined and anc is not None:
+                slots.append(("Py_tp_richcompare", anc))
         elif compare_defined:
             # Any richcompare dunder without __hash__: the type becomes
             # unhashable. This mirrors PyType_Ready's OWN behavior for a
@@ -679,10 +778,16 @@ class ExtensionGenerator:
         info = cls["info"]
         cpp = cls["cpp_type"]
         tv = cls["var"]
-        has_fwd = dunder in info.methods
-        has_rev = reflected is not None and reflected in info.methods
-        if not has_fwd and not has_rev:
+        # Emit only when the class ITSELF defines a half (full inheritance
+        # keeps the base's slot); each emitted half then resolves
+        # MRO-faithfully, so a partial override still serves the inherited
+        # other half instead of shadowing it behind NotImplemented.
+        if dunder not in info.methods and (
+                reflected is None or reflected not in info.methods):
             return None
+        fwd_m = self._method_with_ancestors(info, dunder)
+        rev_m = (self._method_with_ancestors(info, reflected)
+                 if reflected is not None else None)
         base = f"{sym}__{escape_cpp_name(cls['simple'])}"
         wname = f"{base}__{dunder.strip('_')}_slot"
         is_pow = dunder == "__pow__"
@@ -697,8 +802,7 @@ class ExtensionGenerator:
             out.write("        return ::tpy::interop::notimplemented_to_py();\n")
         out.write("    try {\n")
 
-        def branch(operand_var: str, self_var: str, meth: str) -> None:
-            m = info.methods[meth][0]
+        def branch(operand_var: str, self_var: str, meth: str, m) -> None:
             operand_type = m.params[0].type
             ret_typ = m.return_type
             out.write(f"        if (Py_TYPE({self_var}) == "
@@ -718,10 +822,10 @@ class ExtensionGenerator:
             out.write("            }\n")
             out.write("        }\n")
 
-        if has_fwd:
-            branch("b", "a", dunder)
-        if has_rev:
-            branch("a", "b", reflected)
+        if fwd_m is not None:
+            branch("b", "a", dunder, fwd_m)
+        if rev_m is not None:
+            branch("a", "b", reflected, rev_m)
         out.write("        return ::tpy::interop::notimplemented_to_py();\n")
         self._emit_boundary_catch(out, reg_arg)
         out.write("}\n\n")
@@ -859,21 +963,25 @@ class ExtensionGenerator:
                                          ) -> tuple[str, str] | None:
         """Emit __setitem__/__delitem__ -> ONE Py_mp_ass_subscript wrapper
         (objobjargproc: self, key, value); CPython calls this with value ==
-        nullptr for `del obj[k]`. Emitted whenever either dunder is defined;
-        the branch for whichever one is missing raises the same TypeError
-        CPython itself gives a type with only one of the pair."""
+        nullptr for `del obj[k]`. Emitted whenever either dunder is defined
+        by the class ITSELF (a class inheriting both keeps the base's slot);
+        each half then resolves MRO-faithfully, so a partial override still
+        serves the inherited other half instead of shadowing it. A half
+        defined nowhere in the hierarchy raises the same TypeError CPython
+        itself gives a type without it."""
         info = cls["info"]
-        has_set = "__setitem__" in info.methods
-        has_del = "__delitem__" in info.methods
-        if not has_set and not has_del:
+        if ("__setitem__" not in info.methods
+                and "__delitem__" not in info.methods):
             return None
+        set_m = self._method_with_ancestors(info, "__setitem__")
+        del_m = self._method_with_ancestors(info, "__delitem__")
         base = f"{sym}__{escape_cpp_name(cls['simple'])}"
         wname = f"{base}__ass_subscript_slot"
         out.write(f"int {wname}(PyObject *self, PyObject *key, PyObject *value) {{\n")
         out.write("    try {\n")
         out.write("        if (value == nullptr) {\n")
-        if has_del:
-            key_type = info.methods["__delitem__"][0].params[0].type
+        if del_m is not None:
+            key_type = del_m.params[0].type
             decl, expr = self._value_in_decl_expr(key_type, "key", sym)
             out.write(f"            {decl}__key = {expr};\n")
             out.write(f"            {cppvar}->payload.__delitem__(__key);\n")
@@ -883,9 +991,8 @@ class ExtensionGenerator:
                       '"object doesn\'t support item deletion");\n')
             out.write("            return -1;\n")
         out.write("        }\n")
-        if has_set:
-            key_type, val_type = (p.type for p in
-                                  info.methods["__setitem__"][0].params[:2])
+        if set_m is not None:
+            key_type, val_type = (p.type for p in set_m.params[:2])
             kdecl, kexpr = self._value_in_decl_expr(key_type, "key", sym)
             vdecl, vexpr = self._value_in_decl_expr(val_type, "value", sym)
             out.write(f"        {kdecl}__key = {kexpr};\n")
@@ -1006,13 +1113,35 @@ class ExtensionGenerator:
         # the destroy, so a marshalling failure leaves the existing payload
         # intact. `initialized` is cleared across the rebuild so a throwing
         # constructor can't leave tp_dealloc to double-destroy.
-        init_params = [(p.name, p.type) for p in info.methods["__init__"][0].params
-                       if p.name != "self"] if "__init__" in info.methods else []
+        if "__init__" in info.methods:
+            init_params = [(p.name, p.type)
+                           for p in info.methods["__init__"][0].params
+                           if p.name != "self"]
+        elif info.inherits_init_from is not None:
+            # Ctor inheritance: no own __init__, so the signature comes from
+            # the registration-copied init_params (the C++ record inherits the
+            # ctor via `using Base::Base`, so the placement-new call matches).
+            init_params = [(pn, pt) for pn, pt, _default in info.init_params]
+        else:
+            init_params = []
         n_init = len(init_params)
         init_fn = f"{sym}__{escape_cpp_name(cls['simple'])}_init"
         kw_param = "kwargs" if n_init else ""
         out.write(f"int {init_fn}(PyObject *self, PyObject *args, "
                   f"PyObject *{kw_param}) {{\n")
+        if cls["basetype"]:
+            # BASETYPE (required to be another exposed class's tp_base) also
+            # legalizes a Python-side `class Mine(mymod.Cls)` statement; its
+            # inherited tp_init would placement-new a payload the C++ side
+            # never dispatches to Python overrides on, so reject the subclass
+            # loudly at instantiation. Exposed TPy subclasses never enter:
+            # each has its own tp_init guarded against its own type.
+            out.write(f"    if (Py_TYPE(self) != "
+                      f"(::tpy::cpy::PyTypeObject *){cls['var']}) {{\n")
+            out.write(f'        PyErr_SetString(PyExc_TypeError, '
+                      f'"Python-defined subclasses of exposed class '
+                      f'\'{cls["py_name"]}\' are not supported");\n')
+            out.write("        return -1;\n    }\n")
         if n_init:
             self._emit_arg_unpack(out, [pn for pn, _t in init_params], "-1",
                                   cls['simple'])
@@ -1206,10 +1335,13 @@ class ExtensionGenerator:
             out.write(f"    {{{slot_id}, (void *){expr}}},\n")
         out.write("    {Py_tp_new, (void *)::tpy::cpy::PyType_GenericNew},\n")
         out.write("    {0, nullptr},\n};\n")
+        flags = "Py_TPFLAGS_DEFAULT"
+        if cls["basetype"]:
+            flags += " | Py_TPFLAGS_BASETYPE"
         out.write(f"PyType_Spec {base}__spec = {{\n")
         out.write(f'    "{cls["py_name"]}", '
                   f"(int)sizeof(::tpy::interop::Instance<{cpp}>), 0,\n")
-        out.write(f"    Py_TPFLAGS_DEFAULT, {base}__slots,\n}};\n\n")
+        out.write(f"    {flags}, {base}__slots,\n}};\n\n")
 
     def _emit_enum_create(self, out: TextIO, e: dict, module_name: str) -> None:
         """Emit the PyInit_ block that builds one @export enum's value dict and
@@ -1410,8 +1542,15 @@ class ExtensionGenerator:
                           f'{e["var"]}, {e["setter"]}}});\n')
             for c in exposed_classes:
                 base = f"{sym}__{escape_cpp_name(c['simple'])}"
-                out.write(f'        {c["var"]} = ::tpy::cpy::PyType_FromSpec('
-                          f"&{base}__spec);\n")
+                if c["base_var"] is not None:
+                    # Wire the exposed base as tp_base (created above -- the
+                    # class list is ordered base-before-derived).
+                    out.write(f'        {c["var"]} = ::tpy::cpy::'
+                              f"PyType_FromSpecWithBases(&{base}__spec, "
+                              f'{c["base_var"]});\n')
+                else:
+                    out.write(f'        {c["var"]} = ::tpy::cpy::PyType_FromSpec('
+                              f"&{base}__spec);\n")
                 out.write(f'        if (!{c["var"]}) {{ ::tpy::cpy::Py_DecRef(__m); '
                           f"return nullptr; }}\n")
                 out.write(f'        if (::tpy::cpy::PyModule_AddObjectRef(__m, '

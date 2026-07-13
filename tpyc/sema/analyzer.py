@@ -542,7 +542,8 @@ class SemanticAnalyzer:
                     f"'{getattr(fn.return_type.wrapped, 'name', '?')}' by "
                     f"reference, so the instance is copied across the CPython "
                     f"boundary -- the result is a new object (identity and "
-                    f"write-through aliasing are not preserved); return "
+                    f"write-through aliasing are not preserved; a derived "
+                    f"instance is sliced to the declared type); return "
                     f"Own[...] to make the copy explicit",
                     first_return(fn.body))
                 return

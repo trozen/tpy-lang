@@ -55,6 +55,10 @@ int PyObject_IsInstance(PyObject *inst, PyObject *cls);
 // instance_to_py to mint a fresh instance). PyType_GetSlot fetches tp_free in
 // the generic deallocator; PyType_IsSubtype backs the instance type-check.
 PyObject *PyType_FromSpec(PyType_Spec *spec);
+// Exposed-class inheritance: the derived type is created with its (already
+// created) exposed base wired as tp_base. `bases` accepts a single class
+// object as well as a tuple, so the glue passes the base handle directly.
+PyObject *PyType_FromSpecWithBases(PyType_Spec *spec, PyObject *bases);
 PyObject *PyType_GenericNew(PyTypeObject *type, PyObject *args, PyObject *kwds);
 PyObject *PyType_GenericAlloc(PyTypeObject *type, Py_ssize_t nitems);
 void *PyType_GetSlot(PyTypeObject *type, int slot);

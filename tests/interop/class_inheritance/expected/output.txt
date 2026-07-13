@@ -1,0 +1,17 @@
+True True
+['Circle', 'Shape', 'object']
+c 2.0
+circle c 12.0
+c2 circle c2
+shape s
+big
+True True
+spinning d circle d d 1.0
+shape:big shape:d
+4 4 mid leaf
+True
+False False
+True
+False
+True
+no ordering vs base

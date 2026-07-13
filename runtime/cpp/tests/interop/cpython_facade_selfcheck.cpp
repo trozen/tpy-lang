@@ -36,6 +36,7 @@ constexpr int tp_str = Py_tp_str;
 constexpr int tp_getset = Py_tp_getset;
 constexpr int tp_free = Py_tp_free;
 constexpr unsigned long tpflags_default = Py_TPFLAGS_DEFAULT;
+constexpr unsigned long tpflags_basetype = Py_TPFLAGS_BASETYPE;
 constexpr int pybuf_nd = PyBUF_ND;
 constexpr int pybuf_format = PyBUF_FORMAT;
 constexpr int py_lt = Py_LT;
@@ -93,6 +94,7 @@ constexpr int tp_iternext = Py_tp_iternext;
 #undef Py_tp_getset
 #undef Py_tp_free
 #undef Py_TPFLAGS_DEFAULT
+#undef Py_TPFLAGS_BASETYPE
 #undef PyBUF_ND
 #undef PyBUF_FORMAT
 #undef Py_LT
@@ -222,6 +224,8 @@ static_assert(tpy::cpy::Py_tp_getset == real_abi::tp_getset,
               "Py_tp_getset value mismatch");
 static_assert(tpy::cpy::Py_tp_free == real_abi::tp_free,
               "Py_tp_free value mismatch");
+static_assert(tpy::cpy::Py_TPFLAGS_BASETYPE == real_abi::tpflags_basetype,
+              "Py_TPFLAGS_BASETYPE mismatch");
 static_assert(tpy::cpy::Py_TPFLAGS_DEFAULT == real_abi::tpflags_default,
               "Py_TPFLAGS_DEFAULT value mismatch");
 static_assert(tpy::cpy::Py_LT == real_abi::py_lt, "Py_LT value mismatch");

@@ -202,12 +202,19 @@ inline constexpr int Py_sq_length = 45;
 inline constexpr int Py_tp_iter = 62;
 inline constexpr int Py_tp_iternext = 63;
 
-// Exposed classes are final (not subclassable from Python): partial
+// A leaf exposed class is final (not subclassable from Python): partial
 // subclassability would silently diverge in method dispatch (the C++ payload
 // method is called directly, bypassing a Python override). Under the limited
 // API Py_TPFLAGS_DEFAULT is 0; spelling it documents the choice and matches
 // CPython's macro (asserted in the self-check).
 inline constexpr unsigned int Py_TPFLAGS_DEFAULT = 0;
+
+// An exposed class with an exposed TPy subclass must carry BASETYPE
+// (PyType_FromSpecWithBases rejects a non-BASETYPE base). That unavoidably
+// makes a Python-side `class Mine(mymod.Base)` statement legal too; the
+// generated tp_init of every BASETYPE'd class carries an exact-type guard so
+// instantiating such a subclass still fails loudly (dispatch divergence above).
+inline constexpr unsigned int Py_TPFLAGS_BASETYPE = 1U << 10;
 
 // Py_TYPE: the limited API hides the macro, but ob_type is a stable PyObject
 // field, so read it directly.

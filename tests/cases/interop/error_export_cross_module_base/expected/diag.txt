@@ -1,0 +1,1 @@
+main.py:11: error: @export class 'Derived': base class 'Imported' is defined in another module, which cannot cross the boundary yet (cross-module exposed types are deferred -- define and @export the base in this module)

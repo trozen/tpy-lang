@@ -3781,11 +3781,40 @@ class Compiler:
         if info.type_params:
             reject("generic classes cannot be exposed yet (the class must be "
                    "non-generic)")
-        if info.parents:
-            reject("inheritance of exposed classes is not supported yet (the "
-                   "class must be flat)")
 
         reg = compiled.analyzer.registry
+
+        # Inheritance: a single exposed same-module base wires as the CPython
+        # tp_base (real MRO inheritance of the base's methods/getsets/slots).
+        # Multiple bases can never cross -- CPython rejects two bases with
+        # distinct C instance layouts ("multiple bases have instance lay-out
+        # conflict") -- and a non-@export base has no CPython type to wire.
+        if len(info.parents) > 1:
+            reject("multiple inheritance cannot be exposed (CPython allows "
+                   "only one base with a C instance layout)")
+        for parent in info.parents:
+            pinfo = reg.get_record_for_type(parent)
+            pname = pinfo.name if pinfo is not None else str(parent)
+            if not is_exposed_class(parent):
+                reject(f"base class '{pname}' is not exposed -- @export the "
+                       f"base too (an exposed class can only inherit an "
+                       f"exposed class)")
+            if reg.imported_record_qualification_for_type(
+                    parent, compiled.analyzer.ctx.module_name) is not None:
+                reject(f"base class '{pname}' is defined in another module, "
+                       f"which cannot cross the boundary yet (cross-module "
+                       f"exposed types are deferred -- define and @export "
+                       f"the base in this module)")
+
+        # A declared @dynamic protocol base becomes a virtual C++ base: the
+        # vptr displaces the base subobject the boundary's Instance<T> casts
+        # rely on (rejected by a static_assert in class_bridge.hpp; this is
+        # the located diagnostic in front of it).
+        for proto in info.implemented_protocols:
+            if proto.is_dynamic_protocol:
+                reject(f"implementing @dynamic protocol '{proto.name}' cannot "
+                       f"be exposed (the virtual-dispatch layout is "
+                       f"incompatible with the CPython instance embedding)")
 
         def check(typ, what: str, role: str, loc=None) -> None:
             form_err = self._exposed_form_error(typ, role, reg, compiled)

@@ -6119,10 +6119,32 @@ API, floor 3.12, hand-rolled C-API glue, copy-in marshalling).
   (`instance_to_py`), so identity is not preserved across a return: returning a
   fresh/`copy()`'d `Own[Counter]` is the normal form, while returning a borrow
   (`-> Counter`, i.e. `return self`/`return <param>`) copies a caller-visible
-  object and **warns** (return `Own[...]` to make the copy explicit). The
-  exposed type is **final** (no `Py_TPFLAGS_BASETYPE`): not subclassable from
+  object and **warns** (return `Own[...]` to make the copy explicit; a
+  derived instance returned as `-> Base` additionally slices to the declared
+  type). **Inheritance**: an `@export class Derived(Base)` whose single base
+  is itself an `@export` class in the same module crosses as a real CPython
+  subtype (`PyType_FromSpecWithBases` wires the base as `tp_base`):
+  `isinstance`/`issubclass`/`__mro__`, inherited methods/fields/dunders, and
+  ctor inheritance (a derived class with no own `__init__` accepts the base's
+  signature) all behave as real Python inheritance, and a base-typed param
+  borrows a derived payload with write-through. Partial dunder sets resolve across the hierarchy for every
+  combined CPython slot: the derived richcompare dispatcher delegates ops it
+  doesn't define to the nearest ancestor's (`__ne__` derives from `__eq__`
+  only when no ancestor defines an explicit `__ne__`), and a partial
+  override of the `__setitem__`/`__delitem__` or `__add__`/`__radd__`-style
+  pairs keeps the inherited other half working, as does an own `__hash__`
+  next to inherited comparisons (the `tp_hash`/`tp_richcompare` slot pair is
+  re-wired explicitly). TPy's static
+  dispatch still applies INSIDE the module (a base method calling an
+  overridden method runs the base version -- the method-hiding warning fires
+  at the override site; `@dynamic` is the hatch); Python-side calls dispatch
+  via the MRO and match CPython. A **leaf** exposed type is **final** (no
+  `Py_TPFLAGS_BASETYPE`): not subclassable from
   Python (an honest `TypeError` rather than partial subclassing that would
-  silently diverge in method dispatch), and it has **no instance `__dict__`**
+  silently diverge in method dispatch); a class that IS another exposed
+  class's base carries `BASETYPE` (the C-API requires it), which legalizes a
+  Python-side subclass *statement* -- instantiating one raises `TypeError`
+  from the tp_init exact-type guard. An exposed instance has **no instance `__dict__`**
   (fixed layout -- ad-hoc attribute assignment raises `AttributeError`); a
   wrong-typed field set or `__init__` arg raises `TypeError`. These last three
   diverge from the plain Python source class (subclassable, `__dict__`, untyped)
@@ -6145,16 +6167,20 @@ API, floor 3.12, hand-rolled C-API glue, copy-in marshalling).
   class returned by reference (the boundary can't copy it out -- return
   `Own[Cls]`), static/async/generic/overloaded/`@error_return`
   methods (the same shape checks cover property accessors),
-  inheritance, generics, an exposed class defined in *another* module
+  multiple bases (CPython rejects two bases with distinct C instance
+  layouts -- permanent), a non-`@export` base, a cross-module base, a
+  declared `@dynamic` protocol base (the vptr breaks the embedded payload
+  layout), generics, an exposed class defined in *another* module
   (cross-module exposed types are deferred, mirroring the cross-module enum
   guard below -- define and `@export` the class in the module that uses it),
   or `@export` on an exception class (those cross via the
-  separate `PyErr_NewException` path). The exposed type is not subclassable from
-  Python (no `Py_TPFLAGS_BASETYPE`) and carries no GC traversal (its fields are
+  separate `PyErr_NewException` path). The exposed type carries no GC traversal (its fields are
   scalar/str/bytes/enum or a nested value-type class -- all held by value, no
   `PyObject` reference, so no reference cycle is possible; `tp_traverse` becomes necessary only if a future
   *aliasing* class-typed field lands via the foreign-borrow primitive, which
-  would hold a real `PyObject` ref -- the current copy model would not). `__repr__`/`__str__` (-> `Py_tp_repr`/`Py_tp_str`, must return `str`),
+  would hold a real `PyObject` ref -- the current copy model would not;
+  a Python-side subclass could add referencing attributes, but instantiating
+  one is rejected). `__repr__`/`__str__` (-> `Py_tp_repr`/`Py_tp_str`, must return `str`),
   `__eq__`/`__ne__`/`__lt__`/`__le__`/`__gt__`/`__ge__` (-> one
   `Py_tp_richcompare` wrapper, one param beyond self typed as the record's
   OWN exposed-class type -- richcompare's one shared type-guard covers every

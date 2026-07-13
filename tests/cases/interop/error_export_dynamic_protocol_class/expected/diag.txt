@@ -1,0 +1,1 @@
+main.py:16: error: @export class 'Bag': implementing @dynamic protocol 'Countable' cannot be exposed (the virtual-dispatch layout is incompatible with the CPython instance embedding)

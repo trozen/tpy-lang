@@ -54,7 +54,7 @@ progress -> ✅ done.
 | 2 | Extension codegen; **free functions** end-to-end; local `.so` build | **v1.0** | 🚧 every scalar arg/return + void return + str/bytes + container arg/return done; positional + keyword args (PyArg_ParseTupleAndKeywords) |
 | 2.5 | PEP 517 backend -> abi3 wheel (packaging) | **v1.0** | 🔬 |
 | 3 | Buffer input -- numeric (copy-in in v1.0; zero-copy -> 3.5) | **v1.0** | ✅ done: `Span[readonly[T]]`/`Span[T]` (fixed-width int/`float`) as an @export fn or exposed-class method PARAM only, via `PyObject_GetBuffer`; copy-in for both forms (no write-back for either); a mutated `Span[T]` param warns (copy-in, not visible to caller) |
-| 4 | **Classes + methods** (`PyType_FromSpec`; dunders per Q4) | **v1.1** | 🚧 baseline done: construct + plain methods + annotated fields as getset (scalars/str/bytes/exposed-enum/exposed-value-type; a value type is exposed read-only; a *public* mutable reference class-typed field is rejected -- copy-out breaks write-through, but a `_`-prefixed **internal** field of any type is kept as payload state and never crosses, so a class can hold reference-class/container members reached through methods), instances as free-fn/method params (borrow) + returns (copy); dunders (Q4) DONE -- all three checkpoints (repr/str/eq/ne/lt/le/gt/ge/hash; arithmetic/ordering operators incl. in-place; container protocol) landed; @property DONE (computed getset, full method boundary set); inheritance/public-reference-class fields still deferred |
+| 4 | **Classes + methods** (`PyType_FromSpec`; dunders per Q4) | **v1.1** | 🚧 baseline done: construct + plain methods + annotated fields as getset (scalars/str/bytes/exposed-enum/exposed-value-type; a value type is exposed read-only; a *public* mutable reference class-typed field is rejected -- copy-out breaks write-through, but a `_`-prefixed **internal** field of any type is kept as payload state and never crosses, so a class can hold reference-class/container members reached through methods), instances as free-fn/method params (borrow) + returns (copy); dunders (Q4) DONE -- all three checkpoints (repr/str/eq/ne/lt/le/gt/ge/hash; arithmetic/ordering operators incl. in-place; container protocol) landed; @property DONE (computed getset, full method boundary set); inheritance DONE (single exposed same-module base -> real `tp_base`); public-reference-class fields still deferred |
 | 5 | **Enums + constants** | **v1.1** | 🚧 `@export` enums recreated as real CPython IntEnum/Enum (functional API, module= set); enum values cross as @export fn params/returns (member round-trip, strict-by-type IN); `Final` scalar/str constants as init-time module-attribute snapshots; nested/cross-module enums deferred |
 | 3.5 | Foreign-borrow primitive -> zero-copy str + buffer input | post-v1.0 (next) -- IR-gated | 🔬 |
 | 6 | Containers (`list`/`dict`/`set`/`tuple`, by-copy) | v1-adjacent | 🚧 done: list/dict/set/tuple cross as @export fn AND exposed-class method/`__init__` params/returns, O(n) recursive copy-in/out (str/bytes elements + arbitrary nesting); strict-by-container-kind IN; a mutated container param warns (copy-in, not visible to caller); a borrow-form container return warns (copy-out, Own[...] acknowledges); a *container* getset field stays rejected (an enum or value-type field IS admitted -- see row 4); exposed enum/class *top-level elements* now cross (deferred: class as a tuple element, nested-in-a-container element, @nocopy element, class set-element/dict-key) |
@@ -540,10 +540,13 @@ getset and to the exception data-fields below. Divergence (acknowledged, like
 `e.message`): under plain Python `_inner` is an ordinary attribute, so it is
 readable there but not on the `.so`; tests must not read a `_`-field across the
 boundary.
-**Defer** inheritance of exposed
-class *hierarchies* (each exposed class is flat in v1) and cross-module
-exposed classes (a foreign exposed class used as a param/field/return is a
-located error, mirroring the cross-module enum guard below).
+**Implemented** (inheritance rung): an `@export class Derived(Base)` whose
+single base is itself an `@export` class in the same module crosses as a real
+CPython subtype (see the inheritance block in phase 4). Multiple exposed bases
+stay a located error permanently (CPython rejects two bases with distinct C
+instance layouts). **Defer** cross-module
+exposed classes (a foreign exposed class used as a param/field/return -- or as
+a base -- is a located error, mirroring the cross-module enum guard below).
 
 **3 + 4. Enums + constants** -- mostly bookkeeping at `PyInit`. **Implemented**
 (this rung): an `@export` enum is rebuilt at `PyInit_` as a **real** CPython enum
@@ -1055,8 +1058,10 @@ abstraction is frozen either way.)
   Suggested landing order by cost/dependency -- repr/str + eq/hash first
   (cheap, universal), then operators, then container -- but all four are
   in-scope for the classes work. Inheritance of exposed class *hierarchies*
-  stays deferred (each exposed class is flat in v1); `@dynamic` protocols are
-  not exposed as Python ABCs. **All three checkpoints implemented** (repr/str
+  has since landed (single exposed base -> real `tp_base`); `@dynamic`
+  protocols are not exposed as Python ABCs (and an exposed class declaring a
+  @dynamic protocol base is a located error -- the vptr breaks the embedded
+  payload layout). **All three checkpoints implemented** (repr/str
   + eq/hash; arithmetic/ordering operators incl. in-place; container
   protocol) -- see phase 4 above for the slot mapping and the one
   acknowledged divergence (a wrong-typed operand raises the
@@ -1127,8 +1132,10 @@ Detail for the tracker table in "v1 plan and status" (top). **v1.0 = phases
    + annotated fields as read/write getset; instances cross as free-fn/method
    params (a borrow of the live payload -- mutation writes through) and returns
    (copy/move into a fresh instance via `instance_to_py`, so a borrow-form
-   `-> Cls` return warns; `Own[Cls]` is the acknowledged form). The type is
-   final (no `BASETYPE`) with no instance `__dict__`. `@property` crosses as a
+   `-> Cls` return warns; `Own[Cls]` is the acknowledged form). A leaf type is
+   final (no `BASETYPE`; a class serving as another exposed class's base
+   carries the flag -- see the inheritance block below) with no instance
+   `__dict__`. `@property` crosses as a
    computed getset: the getter is a zero-arg method return site (full method
    boundary set, containers included), the setter a one-param method param
    site; a getter-only property is read-only (`AttributeError` on write, as in
@@ -1139,9 +1146,60 @@ Detail for the tracker table in "v1 plan and status" (top). **v1.0 = phases
    a `Span[T]` setter is rejected (the buffer copy-in dies at the call; store
    `list[T]`); `_`-prefixed properties are internal like `_`-prefixed
    fields; a borrow-return getter warns like a method. Deferred:
-   inheritance of exposed hierarchies, class-typed fields,
-   static/classmethods. Folds in faithful exception data-field crossing
-   (exc TODO 1a -- same per-instance field marshalling).
+   class-typed fields, static/classmethods. Folds in faithful exception
+   data-field crossing (exc TODO 1a -- same per-instance field marshalling).
+
+   **Inheritance implemented**: `@export class Derived(Base)` -- with `Base`
+   itself an `@export` class in the same module -- creates the derived type
+   via `PyType_FromSpecWithBases` with the base's (already created,
+   base-before-derived order) type as `tp_base`, so `isinstance`/
+   `issubclass`/`__mro__` and attribute/method lookup are real CPython
+   inheritance. Each type's tables carry OWN members only; inherited
+   methods, getset fields, and dunder slots resolve through the base type
+   (CPython slot inheritance + MRO). The layout contract making that sound:
+   `Instance<T>` pins the payload at a type-independent offset
+   (`alignas(std::max_align_t)`), and the base subobject sits at offset 0 of
+   a derived payload (Itanium ABI, single non-virtual base -- GCC/Clang are
+   the compiler floor; a polymorphic payload is rejected by a static_assert
+   and, for a declared @dynamic protocol base, a located sema error).
+   `tp_init`/`tp_dealloc` stay per-concrete-class (a derived class with no
+   own `__init__` gets a tp_init built from the inherited ctor signature,
+   matching `using Base::Base` on the C++ side). CPython packs several dunders
+   into single slots, and a derived type's slot shadows the base's whole
+   slot -- so every combined-slot family resolves MRO-faithfully: the
+   richcompare dispatcher delegates ops the class doesn't resolve itself to
+   the nearest ancestor dispatcher up front (before its own operand guard),
+   and `__ne__` is derived from `__eq__` only when no ancestor defines an
+   explicit `__ne__` (Python would dispatch `!=` to that body); the
+   `__setitem__`/`__delitem__` pair (`mp_ass_subscript`) and each
+   `__add__`/`__radd__`-style binary pair (`nb_*`) emit a slot only when the
+   class itself defines a half, and each emitted half resolves through the
+   MRO (the C++ call reaches the inherited method), so a partial override
+   keeps the inherited other half working. `PyType_Ready` inherits
+   `tp_hash`/`tp_richcompare` only as a PAIR (both unset), so a subclass
+   defining only `__hash__` gets the ancestor's comparison dispatcher wired
+   into its own slot explicitly -- inherited comparisons survive an own
+   hash, as in plain Python. Two small strictness notes: an explicit
+   `Base.__init__(derived_obj, ...)` call from Python raises `TypeError`
+   (the tp_init exact-type guard; placement-new of a base payload into a
+   derived instance would be unsound), and a derived field shadowing a base
+   field (already compile-warned on the normal path) crosses as two distinct
+   getset storages -- base-emitted code keeps reading the base field, unlike
+   plain Python's single attribute. An exposed class that is another exposed class's
+   base carries `Py_TPFLAGS_BASETYPE` (required by
+   `PyType_FromSpecWithBases`), which also legalizes a Python-side
+   `class Mine(mymod.Base)` statement -- its tp_init has an exact-type guard
+   so instantiating such a subclass raises `TypeError` (a leaf exposed class
+   stays final: the class statement itself is rejected). Rejected with
+   located errors: multiple bases (CPython's C-layout conflict -- permanent),
+   a non-`@export` base, a cross-module base. Divergences, both
+   pre-existing/acknowledged: TPy's static dispatch means a base method (or
+   a base-typed param) invoking an overridden method runs the BASE version
+   inside the module -- the method-hiding warning fires at the override site
+   (`@dynamic` is the hatch); and a borrow-form `-> Base` return of a live
+   derived object copies AND slices to the declared type (the return-alias
+   warning names it). Python-side calls of overridden methods dispatch via
+   MRO and match CPython.
 
    **Dunders (Q4), checkpoint 1 implemented**: `__repr__`/`__str__` ->
    `Py_tp_repr`/`Py_tp_str` (must return `str`); `__eq__`/`__ne__`/`__lt__`/
@@ -1167,7 +1225,12 @@ Detail for the tracker table in "v1 plan and status" (top). **v1.0 = phases
    `AttributeError`) -- this is TPy's pre-existing static-typing divergence
    from CPython's duck-typed dispatch surfacing cleanly, not a new one; no
    new escape hatch needed (declare the param type you want to accept, as
-   TPy already requires). (2) unhashable-without-`__hash__` is **not**
+   TPy already requires). Inheritance makes the same guard reachable from
+   ordinary polymorphic code: comparing a base-typed operand against a
+   derived-typed dunder (`circle < shape` with `__lt__(self, other:
+   Circle)`) returns `NotImplemented` at the guard where plain Python would
+   run the body -- type the operand as the base (`other: Shape`) to compare
+   across the hierarchy. (2) unhashable-without-`__hash__` is **not**
    `__eq__`-specific the way a plain Python class-statement's rule is:
    `PyType_Ready` (the mechanism `PyType_FromSpec` relies on) nulls
    `tp_hash` whenever `tp_richcompare` is populated AT ALL, because there is
@@ -1175,7 +1238,10 @@ Detail for the tracker table in "v1 plan and status" (top). **v1.0 = phases
    `type_new`, which specifically checks the class dict for an `__eq__`
    key) -- so a class defining only `__lt__` becomes unhashable once
    exposed, even though the same class as plain Python source stays
-   hashable. Unavoidable given `PyType_FromSpec`'s mechanics; no escape
+   hashable. Under inheritance the same mechanic can *revoke an inherited
+   custom hash*: a derived class adding only an ordering dunder keeps its
+   base's `__hash__` as plain Python but is unhashable on the `.so`.
+   Unavoidable given `PyType_FromSpec`'s mechanics; no escape
    hatch exists (declare `__hash__` explicitly to keep the type hashable).
 
    **Checkpoint 2 implemented**: arithmetic/ordering operators ->
@@ -1211,9 +1277,9 @@ Detail for the tracker table in "v1 plan and status" (top). **v1.0 = phases
    wrong-typed key's `TypeError` just propagates; `__getitem__(self, s:
    slice)` -- slicing -- is out of scope); `__setitem__`/`__delitem__` share
    ONE `Py_mp_ass_subscript` wrapper (CPython calls it with `value ==
-   nullptr` for `del obj[k]`; if only one of the pair is defined, the other
-   direction raises `TypeError`, matching a plain Python class with the same
-   shape); `__contains__` -> `Py_sq_contains` (omitted entirely when
+   nullptr` for `del obj[k]`; if only one of the pair is defined anywhere in
+   the hierarchy, the other direction raises `TypeError`, matching a plain
+   Python class with the same shape -- an inherited half keeps working); `__contains__` -> `Py_sq_contains` (omitted entirely when
    undefined -- `in` then falls back to CPython's own iterate-via-`tp_iter`
    behavior, `PySequence_Contains`, for free); `__iter__` -> `Py_tp_iter`
    (reuses the unary-op shape -- no special self-identity handling: `__iter__`

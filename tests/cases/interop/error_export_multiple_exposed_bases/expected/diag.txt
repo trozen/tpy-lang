@@ -1,0 +1,1 @@
+main.py:22: error: @export class 'Both': multiple inheritance cannot be exposed (CPython allows only one base with a C instance layout)

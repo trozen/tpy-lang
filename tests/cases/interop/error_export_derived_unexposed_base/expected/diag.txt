@@ -1,0 +1,1 @@
+main.py:17: error: @export class 'Derived': base class 'Plain' is not exposed -- @export the base too (an exposed class can only inherit an exposed class)

@@ -18,7 +18,8 @@
 //              into its payload -- identity is NOT preserved across a return
 //              (the declared in-aliases / out-copies asymmetry).
 
-#include <memory>  // std::destroy_at (the generated tp_init re-init path)
+#include <cstddef>  // std::max_align_t (the hierarchy-uniform payload offset)
+#include <memory>   // std::destroy_at (the generated tp_init re-init path)
 #include <new>
 #include <type_traits>
 #include <utility>
@@ -38,15 +39,29 @@ namespace tpy::interop {
 // `Cls.__new__(Cls)`), and tp_init can run more than once (an explicit
 // `obj.__init__(...)`). Both the destructor and re-init must consult it so they
 // never destroy a payload that was never constructed, nor leak one being
-// overwritten. The cast is sound because Instance<T> is standard-layout.
+// overwritten.
+//
+// Inheritance contract: a base-emitted wrapper may receive a derived instance
+// and read it through Instance<Base>. That is sound because (a) the payload
+// member is pinned to a T-independent offset (the alignas below, guarded by
+// the alignment assert), and (b) the Base subobject sits at offset 0 of a
+// derived payload -- guaranteed by the Itanium C++ ABI for a single
+// non-virtual base (GCC/Clang are already the compiler floor; polymorphic
+// payloads, whose vptr would displace the base, are rejected below and the
+// boundary validator rejects multiple exposed bases). A derived payload is
+// not standard-layout, so the casts here lean on that ABI layout rather than
+// the standard's blessing.
 template <class T>
 struct Instance {
-    static_assert(std::is_standard_layout_v<T>,
-                  "an exposed class payload must be standard-layout for the "
-                  "PyObject-header reinterpret_cast to be defined");
+    static_assert(!std::is_polymorphic_v<T>,
+                  "an exposed class payload must not be polymorphic -- a vptr "
+                  "would displace the base subobject the boundary casts rely on");
+    static_assert(alignof(T) <= alignof(std::max_align_t),
+                  "an over-aligned exposed class payload would break the "
+                  "hierarchy-uniform payload offset");
     cpy::PyObject ob_base;
     bool initialized;
-    T payload;
+    alignas(std::max_align_t) T payload;
 };
 
 // tp_dealloc: run the C++ destructor (so Own/Box/Rc/container fields release),
