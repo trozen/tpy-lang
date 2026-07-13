@@ -1,1 +1,1 @@
-main.py:17: warning: copies PendingList[P, 1]#1 into owned storage; use copy() to make this explicit
+main.py:17: warning: copies list[P] into owned storage; use copy() to make this explicit

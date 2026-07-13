@@ -1,2 +1,2 @@
-main.py:14: warning: copies PendingList[IntLiteral(7), 2]#2 into owned storage; use copy() to make this explicit
-main.py:29: warning: copies PendingList[IntLiteral(7), 2]#6 into owned storage; use copy() to make this explicit
+main.py:14: warning: copies list[Int32] into owned storage; use copy() to make this explicit
+main.py:29: warning: copies list[Int32] into owned storage; use copy() to make this explicit

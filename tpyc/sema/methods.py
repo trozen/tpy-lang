@@ -362,6 +362,7 @@ class MethodAnalyzer:
             self.calls._maybe_coerce_empty_list_to_protocol(at, ptype)
             at = self.calls._restore_readonly_arg(arg, at, target_is_readonly)
             self.calls.check_own_param(arg, at, pname, ptype)
+            self.calls.mark_pending_arg_context(arg, at, ptype)
             expr.args[i] = self.compat.coerce_expr(arg, at, ptype, f"argument '{pname}'",
                                                     coercion_ctx=CoercionContext.ARG)
 

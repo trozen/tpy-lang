@@ -1082,7 +1082,7 @@ class TypeCompatibility:
                     return self._check_compat(actual, ew, context, loc,
                                               source_expr, is_return,
                                               coercion_ctx, target_is_storage_form)
-                value_type = self.ctx.get_expr_type(source_expr)
+                value_type = self._copy_diag_type(self.ctx.get_expr_type(source_expr))
                 if self.ctx.is_type_non_copyable(expected.wrapped):
                     verb = "may copy" if isinstance(expected.wrapped, TypeParamRef) else "cannot copy"
                     if value_type == expected.wrapped:
@@ -1881,6 +1881,26 @@ class TypeCompatibility:
     def _is_auto_moved(self, source_expr: 'TpyExpr | None') -> bool:
         """Last-use of an owned local: auto-move makes the copy invisible."""
         return self.is_auto_move_use(source_expr)
+
+    def _copy_diag_type(self, t: TpyType) -> TpyType:
+        """User-facing type for copy diagnostics: a pending container local is
+        unresolved during body analysis, so render the concrete type it
+        resolves to instead of the internal Pending* repr."""
+        def elem(e: TpyType) -> TpyType:
+            if isinstance(e, IntLiteralType):
+                return self.ctx.default_int_for_literal(e)
+            if isinstance(e, FloatLiteralType):
+                return FLOAT
+            if isinstance(e, LiteralType):
+                return e.base_type
+            return e
+        if isinstance(t, PendingListType):
+            return make_list(elem(t.element_type))
+        if isinstance(t, PendingDictType):
+            return make_dict(elem(t.key_type), elem(t.value_type))
+        if isinstance(t, PendingSetType):
+            return make_set(elem(t.element_type))
+        return t
 
     def is_auto_move_use(self, expr: 'TpyExpr | None') -> bool:
         """Single authority for "this name read auto-moves": a last-use mark

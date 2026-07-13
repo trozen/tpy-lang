@@ -2833,6 +2833,20 @@ class CallAnalyzer:
             self.compat.check_own_consumption(arg)
         self._warn_unnecessary_copy(arg)
 
+    def mark_pending_arg_context(self, arg: TpyExpr, arg_type: TpyType,
+                                 ptype: TpyType) -> None:
+        """Record param context for a pending literal/view arg so it resolves
+        against the param type (a bare `[..]` local passed to a list[T] slot
+        must become list, not Array; empty-`[]` element inference and dict/set
+        element widening flow the same way). Call from every arg-check loop --
+        an unmarked path leaves the literal defaulting to Array and fails the
+        C++ build.
+        """
+        if isinstance(arg_type, PENDING_CONTAINER_TYPES):
+            self.deduction.mark_container_param_context(arg, arg_type, ptype)
+        if isinstance(arg_type, PendingViewType):
+            self.deduction.mark_view_param_context(arg, ptype, arg_type.family)
+
     def _check_own_tuple_literal_arg(
         self, literal: 'TpyTupleLiteral',
         ptype: 'OwnType | TupleType', pname: str,
@@ -4468,6 +4482,7 @@ class CallAnalyzer:
             for i, (arg, arg_t, (pname, ptype)) in enumerate(zip(expr.args, arg_types, matched.params)):
                 self._maybe_coerce_empty_list_to_protocol(arg_t, ptype)
                 self.check_own_param(arg, arg_t, pname, ptype)
+                self.mark_pending_arg_context(arg, arg_t, ptype)
                 if arg_t != ptype:
                     expr.args[i] = self.compat.coerce_expr(arg, arg_t, ptype,
                                                             f"argument '{pname}'",
@@ -4887,10 +4902,7 @@ class CallAnalyzer:
                                                        coercion_ctx=CoercionContext.ARG)
                 expr.args[i] = coerced_arg
 
-            if isinstance(arg_type, PENDING_CONTAINER_TYPES):
-                self.deduction.mark_container_param_context(arg, arg_type, ptype)
-            if isinstance(arg_type, PendingViewType):
-                self.deduction.mark_view_param_context(arg, ptype, arg_type.family)
+            self.mark_pending_arg_context(arg, arg_type, ptype)
 
     def _typecheck_and_coerce_arg(
         self, arg: TpyExpr, pname: str, ptype: TpyType, func_is_readonly: bool,
@@ -4905,13 +4917,7 @@ class CallAnalyzer:
             self._reject_coro_handle_borrow(arg, arg_type, pname)
             arg_type = arg_type.wrapped
         self.check_own_param(arg, arg_type, pname, ptype)
-        # Pending literals/views resolve against the param context (a bare
-        # `[..]` literal passed to a list[T] slot must become list, not
-        # Array) -- same marks the non-variadic path applies.
-        if isinstance(arg_type, PENDING_CONTAINER_TYPES):
-            self.deduction.mark_container_param_context(arg, arg_type, ptype)
-        if isinstance(arg_type, PendingViewType):
-            self.deduction.mark_view_param_context(arg, ptype, arg_type.family)
+        self.mark_pending_arg_context(arg, arg_type, ptype)
         if (is_char_type(ptype) and is_any_str_type(arg_type)
                 and isinstance(arg, TpyStrLiteral) and len(arg.value) == 1):
             return arg
@@ -5224,10 +5230,7 @@ class CallAnalyzer:
                     self.ctx.set_expr_type(vpc_node, resolved_ptype)
                     expr.args[i] = vpc_node
 
-                if isinstance(arg_type, PENDING_CONTAINER_TYPES):
-                    self.deduction.mark_container_param_context(arg, arg_type, resolved_ptype)
-                if isinstance(arg_type, PendingViewType):
-                    self.deduction.mark_view_param_context(arg, resolved_ptype, arg_type.family)
+                self.mark_pending_arg_context(arg, arg_type, resolved_ptype)
 
         # Resolve return type
         resolved_return = self.type_ops.substitute_type_params(func.return_type, type_subst)
@@ -5328,6 +5331,7 @@ class CallAnalyzer:
                 zip(expr.args, arg_types, winner.params)):
             arg_type = self._restore_readonly_arg(arg, arg_type)
             self.check_own_param(arg, arg_type, pname, ptype)
+            self.mark_pending_arg_context(arg, arg_type, ptype)
             expr.args[i] = self.compat.coerce_expr(
                 arg, arg_type, ptype, f"argument '{pname}'",
                 coercion_ctx=CoercionContext.ARG)
@@ -5473,6 +5477,7 @@ class CallAnalyzer:
                     arg_type = self.expr.analyze_expr_with_hint(arg, resolved_ptype)
                     arg_type = self._restore_readonly_arg(arg, arg_type)
                     self.check_own_param(arg, arg_type, pname, resolved_ptype)
+                    self.mark_pending_arg_context(arg, arg_type, resolved_ptype)
                     expr.args[i] = self.compat.coerce_expr(arg, arg_type, resolved_ptype, f"argument '{pname}'",
                                                            coercion_ctx=CoercionContext.ARG)
             elif expr.args:
@@ -5583,6 +5588,7 @@ class CallAnalyzer:
                         resolved_ptype = self.type_ops.substitute_type_params(ptype, type_subst)
                         at = self._restore_readonly_arg(arg, arg_types[i])
                         self.check_own_param(arg, at, pname, resolved_ptype)
+                        self.mark_pending_arg_context(arg, at, resolved_ptype)
                         expr.args[i] = self.compat.coerce_expr(
                             arg, at, resolved_ptype,
                             f"argument '{pname}'", coercion_ctx=CoercionContext.ARG
@@ -5660,6 +5666,7 @@ class CallAnalyzer:
                 arg_type = self.expr.analyze_expr_with_hint(arg, ptype)
                 arg_type = self._restore_readonly_arg(arg, arg_type)
                 self.check_own_param(arg, arg_type, pname, ptype)
+                self.mark_pending_arg_context(arg, arg_type, ptype)
                 expr.args[i] = self.compat.coerce_expr(arg, arg_type, ptype, f"argument '{pname}'",
                                                         coercion_ctx=CoercionContext.ARG)
         elif expr.args:

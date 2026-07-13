@@ -1837,6 +1837,7 @@ class StatementAnalyzer:
                         zip(stmt.args, arg_types, winner.params)):
                     arg_type = self.expr.calls._restore_readonly_arg(arg, arg_type)
                     self.expr.calls.check_own_param(arg, arg_type, pname, ptype)
+                    self.expr.calls.mark_pending_arg_context(arg, arg_type, ptype)
                     stmt.args[i] = self.compat.coerce_expr(
                         arg, arg_type, ptype, f"argument '{pname}'",
                         coercion_ctx=CoercionContext.ARG)
@@ -1854,6 +1855,7 @@ class StatementAnalyzer:
                 for i, (arg, (pname, ptype, _)) in enumerate(
                         zip(stmt.args, record.init_params)):
                     arg_type = self.expr.analyze_expr_with_hint(arg, ptype)
+                    self.expr.calls.mark_pending_arg_context(arg, arg_type, ptype)
                     stmt.args[i] = self.compat.coerce_expr(
                         arg, arg_type, ptype, f"argument '{pname}'",
                         coercion_ctx=CoercionContext.ARG)
