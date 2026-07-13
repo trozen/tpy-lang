@@ -45,6 +45,16 @@ class Form(Enum):
     STORAGE = auto()
 
 
+class TruthinessMode(Enum):
+    """A non-identity Python truthiness render selected during lowering."""
+    NONEMPTY = auto()
+    IS_TRUTHY = auto()
+    TO_BOOL = auto()
+    RECORD_BOOL = auto()
+    RECORD_LEN = auto()
+    ALWAYS_TRUE = auto()
+
+
 @dataclass(frozen=True)
 class THIRNode:
     # kw_only so subclasses can declare required positional fields after it
@@ -263,13 +273,18 @@ class THIRIsNone(THIRExpr):
 
 
 @dataclass(frozen=True)
-class THIROptTruthy(THIRExpr):
-    """The truthiness wrap `::tpy::is_truthy(operand)` for an UN-narrowed
-    value-repr `Optional[scalar]` / `Optional[str]` read in a condition or
-    `not` operand (gen_truthy_expr's optional arm). `if p:` ->
-    `::tpy::is_truthy(p)`, and `not p` -> `(!(::tpy::is_truthy(p)))` (the
-    THIRUnaryNot wrap over this). result_type is always bool; VALUE form."""
-    operand: THIRExpr
+class THIRTruthy(THIRExpr):
+    """A non-identity `_truthy_for_rendered` arm.
+
+    `mode` selects one analyzer-free emit spelling. `operand` is absent only
+    for the constant-true user-record arm, whose lowering admits inert reads
+    only because the AST spelling drops the operand. `deref` mirrors
+    `gen_truthy_expr`'s indirect-record adjustment before dunder dispatch.
+    `result_type` is always bool; VALUE form.
+    """
+    mode: TruthinessMode
+    operand: THIRExpr | None = None
+    deref: bool = False
 
 
 @dataclass(frozen=True)

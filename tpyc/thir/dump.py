@@ -9,6 +9,7 @@ from __future__ import annotations
 from ..typesys import TpyType
 from .nodes import (
     Form,
+    TruthinessMode,
     THIRArgTemp,
     THIRAssert,
     THIRAssign,
@@ -52,7 +53,7 @@ from .nodes import (
     THIRStrSlice,
     THIRSubscript,
     THIRTupleUnpack,
-    THIROptTruthy,
+    THIRTruthy,
     THIROptViewArg,
     THIRUnaryNot,
     THIRUnionArgLift,
@@ -102,8 +103,12 @@ def _expr(e: THIRExpr) -> str:
     if isinstance(e, THIRIsNone):
         return (f"is_none({_expr(e.operand)}{', negate' if e.negate else ''}"
                 f"{', value_repr' if e.value_repr else ''})")
-    if isinstance(e, THIROptTruthy):
-        return f"opt_truthy({_expr(e.operand)})"
+    if isinstance(e, THIRTruthy):
+        if e.mode is TruthinessMode.ALWAYS_TRUE:
+            return "truthy[always_true]()"
+        assert e.operand is not None
+        deref = "*" if e.deref else ""
+        return f"truthy[{e.mode.name.lower()}]({deref}{_expr(e.operand)})"
     if isinstance(e, THIROptViewArg):
         return f"opt_view_arg({e.name})"
     if isinstance(e, THIRIfExpr):

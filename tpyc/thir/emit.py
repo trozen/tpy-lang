@@ -34,6 +34,7 @@ from ..typesys import (OptionalType, TpyType, TupleType, TypeParamRef,
 from .nodes import (
     Form,
     PrintForm,
+    TruthinessMode,
     THIRArgTemp,
     THIRAssert,
     THIRAssign,
@@ -91,7 +92,7 @@ from .nodes import (
     THIRTry,
     THIRTupleLiteral,
     THIRTupleUnpack,
-    THIROptTruthy,
+    THIRTruthy,
     THIROptViewArg,
     THIRUnaryNot,
     THIRUnionArgLift,
@@ -991,8 +992,24 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
             return f"({inner}.has_value())" if e.negate else f"(!{inner}.has_value())"
         op = "!=" if e.negate else "=="
         return f"({inner} {op} nullptr)"
-    if isinstance(e, THIROptTruthy):
-        return f"::tpy::is_truthy({_emit_expr(e.operand, state)})"
+    if isinstance(e, THIRTruthy):
+        if e.mode is TruthinessMode.ALWAYS_TRUE:
+            return "true"
+        assert e.operand is not None
+        inner = _emit_expr(e.operand, state)
+        if e.deref:
+            inner = f"(*{inner})"
+        if e.mode is TruthinessMode.NONEMPTY:
+            return f"(!{inner}.empty())"
+        if e.mode is TruthinessMode.IS_TRUTHY:
+            return f"::tpy::is_truthy({inner})"
+        if e.mode is TruthinessMode.TO_BOOL:
+            return f"::tpy::to_bool({inner})"
+        if e.mode is TruthinessMode.RECORD_BOOL:
+            return f"::tpy::__bool__({inner})"
+        if e.mode is TruthinessMode.RECORD_LEN:
+            return f"(::tpy::__len__({inner}) != 0)"
+        raise THIRCodeGenError(f"unknown truthiness mode: {e.mode}")
     if isinstance(e, THIROptViewArg):
         # `_maybe_convert_opt_view_param`'s same-TPy-type ARG split: the
         # borrow-form `optional<view>` param -> the owned-storage

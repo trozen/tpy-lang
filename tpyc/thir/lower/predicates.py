@@ -101,6 +101,7 @@ from ...codegen_cpp.forms import (
     is_ptr_variant_union,
     reads_storage_form_optional,
 )
+from ...codegen_cpp.types import resolve_pending_container
 from ...codegen_cpp.context import enum_cpp_name
 from ...codegen_cpp.protocols import (
     dynamic_adapter_type,
@@ -111,6 +112,7 @@ from ..fallback import ThirUnsupported
 from ..faces import witness as _witness
 from ..nodes import (
     Form,
+    TruthinessMode,
     THIRArgTemp,
     THIRCoerce,
     THIRExpr,
@@ -994,43 +996,41 @@ def _enum_truthy_wrap(t: TpyType | None, analyzer) -> 'str | None':
         return f"(static_cast<{u_cpp}>({{0}}) != 0)"
     return "true"
 
-def _reject_nonbare_truthy(t: TpyType | None, analyzer) -> None:
-    """Fall a body back to AST when a truthiness operand's Python-truthiness
-    render differs from its plain value render and THIR has no wrap node for it.
-    Mirrors gen_truthy_expr/_truthy_for_rendered: bool/int/float/char/ptr and a
-    pointer-repr Optional render bare (truthy render == value render), so they
-    lower unwrapped; str/bytes (`!x.empty()`), a storage Optional
-    (`::tpy::is_truthy`), Any (`::tpy::to_bool`), an enum the value-opt/enum arms
-    could not wrap, and a record with __bool__/__len__ or a plain user record
-    (`true`) each need a wrap those arms did not supply -- rejecting here keeps
-    the emitted C++ byte-identical to the AST oracle instead of dropping the
-    wrap."""
-    u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t))) if t is not None else None
-    if u is None:
-        return
+def _truthiness_mode(t: TpyType | None, analyzer) -> TruthinessMode | None:
+    """Mirror the non-identity arms of `_truthy_for_rendered`.
+
+    None means the truthiness render is the ordinary value render. Enum
+    truthiness stays on `_enum_truthy_wrap`, which also carries its underlying
+    C++ type spelling.
+    """
+    if t is None:
+        return None
+    resolved = resolve_pending_container(t, analyzer) or _resolve_pending_view(
+        t, analyzer) or t
+    u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(resolved)))
     if is_enum_type(u):
-        raise ThirUnsupported("truthy.enum")
+        return None
     if isinstance(u, AnyType):
-        raise ThirUnsupported("truthy.any")
+        return TruthinessMode.TO_BOOL
     if isinstance(u, OptionalType) and not u.uses_pointer_repr():
-        raise ThirUnsupported("truthy.storage_optional")
-    if is_any_str_type(u):
-        raise ThirUnsupported("truthy.str")
-    if is_any_bytes_type(u):
-        raise ThirUnsupported("truthy.bytes")
-    # Primitives render bare -- and _truthy_for_rendered short-circuits them
-    # BEFORE the __bool__/__len__ record probe, so `bool` (which carries a
-    # __bool__ stub overload) must be admitted here, not caught below.
+        return TruthinessMode.IS_TRUTHY
+    if is_any_str_type(u) or is_any_bytes_type(u):
+        return TruthinessMode.NONEMPTY
+    # The AST checks primitives before record lookup; bool's builtin record
+    # carries __bool__, but still renders bare here.
     if (is_bool_type(u) or is_fixed_int_type(u) or is_big_int_type(u)
             or is_float_type(u) or is_char_type(u)
             or isinstance(u, IntLiteralType)):
-        return
+        return None
     record = analyzer.registry.get_record_for_type(u)
-    if record and (record.get_method_overloads("__bool__")
-                   or record.get_method_overloads("__len__")):
-        raise ThirUnsupported("truthy.record_dunder")
+    if record:
+        if record.get_method_overloads("__bool__"):
+            return TruthinessMode.RECORD_BOOL
+        if record.get_method_overloads("__len__"):
+            return TruthinessMode.RECORD_LEN
     if isinstance(u, NominalType) and u.is_user_record:
-        raise ThirUnsupported("truthy.user_record")
+        return TruthinessMode.ALWAYS_TRUE
+    return None
 
 def _enum_prop_wrap(e: TpyFieldAccess, analyzer) -> 'str | None':
     """An enum instance property read, as a `{0}` wrap over the receiver

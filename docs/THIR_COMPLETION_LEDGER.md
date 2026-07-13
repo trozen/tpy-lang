@@ -922,9 +922,23 @@ compare arm + deferred rows in the F6 row above.
 **Logical and/or/not + inline chained
 compares landed (incr 36, `THIRUnaryNot`): +2435 bodies (5689 -> 8124) -- the biggest
 single-cell gain to date** (conditions gate everything); bool-result `&&`/`||` over bool
-operands and the chained-compare pair fold reuse `THIRBinOp`'s bare-operator arm. Deferred
-by design: value-semantics `and`/`or` (non-bool result -> `_gen_logical_value` temp+ternary),
-non-bool truthiness operands (incl. `not <int>`), the statement-expr chained arm (a
+operands and the chained-compare pair fold reuse `THIRBinOp`'s bare-operator arm. The
+truthiness arm-deletion rung later replaced the remaining type predictor with structured
+`THIRTruthy` modes for str/bytes emptiness, value-form Optional, Any, record `__bool__`,
+record `__len__`, and always-true user records. These modes are consumed uniformly by
+if/while/assert, unary `not`, logical operands, ternary conditions, and comprehension
+filters. Optional dotted-field truthiness deliberately remains a lowering-time fallback:
+the true branch needs a dotted-path narrowing fact that THIR does not yet carry. TRAP for
+whoever routes dotted-path narrowing: the field guard (`truthy.optional_field_narrow`)
+keys on MODE (fires only while the occurrence type is still Optional -> IS_TRUTHY),
+unlike the name guard (`truthy.optional_name_narrow`), which keys on the DECLARED type.
+An already-narrowed Optional field classifies RECORD_BOOL/RECORD_LEN and slips past the
+field guard; that shape is unreachable today only because field `is`-checks themselves
+reject the body -- routing them arms the divergence (AST unwraps `(*box->f)`, THIR would
+emit the bare optional) with no guard firing. Make the field guard declared-type-keyed
+(symmetric with the name guard) before or with that widening. Still
+deferred: value-semantics `and`/`or` (non-bool result -> `_gen_logical_value` temp+ternary),
+the statement-expr chained arm (a
 non-`_is_simple_expr` intermediate binds `_cmp` temps), bool-literal conditions
 (dead-branch elimination). The incr-36 byte-diff also exposed and closed a latent compare
 gap: the rb=None derived-comparison arm admitted RECORD operands (`not (self <= other)` from
@@ -1465,8 +1479,9 @@ generator iterables, expression statements' deferred receiver/arg cells
 (listed above), `async`/`await`, `yield` / generators, comprehensions,
 `nonlocal`, plain (non-isinstance) `assert` messages, chained
 comparisons with non-simple intermediates (the statement-expr arm) and
-value-semantics / non-bool-truthiness `and`/`or`/`not` (the bool slice landed
-incr 36). **Action:** continue enumerating + driving these as a tracked axis
+value-semantics `and`/`or` (the bool-result and structured-truthiness slices landed;
+Optional dotted-field narrowing remains a deliberate fallback). **Action:** continue
+enumerating + driving these as a tracked axis
 before claiming `gen_body`/`gen_expr` deletion is near.
 
 ## Sequencing discipline (the plan)

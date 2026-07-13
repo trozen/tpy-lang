@@ -7,9 +7,10 @@ from __future__ import annotations
 
 from ..codegen_cpp.context import CodeGenOptions
 from .nodes import (
-    Form, PrintForm, THIRArgTemp, THIRAssert, THIRAssign, THIRCall, THIRFieldAccess,
+    Form, PrintForm, TruthinessMode, THIRArgTemp, THIRAssert, THIRAssign,
+    THIRCall, THIRFieldAccess,
     THIRIf, THIRIsNone, THIRLiteral, THIRMethodCall, THIRMove, THIRName,
-    THIROptTruthy, THIROptViewArg, THIROptionalPtrArg, THIRReturn,
+    THIRTruthy, THIROptViewArg, THIROptionalPtrArg, THIRReturn,
     THIRUnaryNot, THIRWhile,
 )
 from .testutil import _compile, _entry, _fn, _lower_ctx, _lower_ctx_witnessed
@@ -351,9 +352,10 @@ class TestGateRejects:
             + "    if h is not None:\n        h.f = None\n")
         assert _fn(thir, "scalar_write") is not None
 
-    def test_narrowed_truthiness_rejects(self):
-        # `if p:` on an already-narrowed read takes a different gen_truthy
-        # arm -- only the un-narrowed Optional read is admitted.
+    def test_narrowed_truthiness_stays_ast(self):
+        # The AST renders name truthiness through the declared Optional
+        # binding (`if (p)`), so a mode from the narrowed record type would
+        # diverge -- the whole body falls back.
         thir = _lower_ctx(
             _PRELUDE
             + "def use(p: A | None) -> Int32:\n"
@@ -417,7 +419,8 @@ class TestValueReprOptionalParam:
             "    if p:\n        return p\n"
             "    return 0\n")
         cond = _fn(thir, "use").body[0].condition
-        assert isinstance(cond, THIROptTruthy)
+        assert isinstance(cond, THIRTruthy)
+        assert cond.mode is TruthinessMode.IS_TRUTHY
         assert isinstance(cond.operand, THIRName) and not cond.operand.deref
 
     def test_not_truthiness(self):
@@ -428,7 +431,8 @@ class TestValueReprOptionalParam:
             "    return p\n")
         cond = _fn(thir, "use").body[0].condition
         assert isinstance(cond, THIRUnaryNot)
-        assert isinstance(cond.operand, THIROptTruthy)
+        assert isinstance(cond.operand, THIRTruthy)
+        assert cond.operand.mode is TruthinessMode.IS_TRUTHY
 
     def test_reassign_strips_deref(self):
         # The AST reassignment RHS threads no target type, so a narrowed read is
@@ -585,7 +589,8 @@ class TestValueReprOptionalStrParam:
             "    if s:\n        return 1\n"
             "    return 0\n")
         cond = _fn(thir, "use").body[0].condition
-        assert isinstance(cond, THIROptTruthy)
+        assert isinstance(cond, THIRTruthy)
+        assert cond.mode is TruthinessMode.IS_TRUTHY
         assert isinstance(cond.operand, THIRName) and not cond.operand.deref
 
     def test_not_truthiness(self):
@@ -596,7 +601,8 @@ class TestValueReprOptionalStrParam:
             "    return 1\n")
         cond = _fn(thir, "use").body[0].condition
         assert isinstance(cond, THIRUnaryNot)
-        assert isinstance(cond.operand, THIROptTruthy)
+        assert isinstance(cond.operand, THIRTruthy)
+        assert cond.operand.mode is TruthinessMode.IS_TRUTHY
 
     def test_pass_to_optional_str_slot_takes_shim(self):
         thir = _lower_ctx(

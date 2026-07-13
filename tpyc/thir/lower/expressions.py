@@ -93,6 +93,7 @@ from ...codegen_cpp.expressions import ExpressionGenerator
 from ...codegen_cpp.int_literals import render_int_literal_value
 from ..nodes import (
     Form,
+    TruthinessMode,
     THIRArgTemp,
     THIRBinOp,
     THIRChainedCompareStmtExpr,
@@ -112,7 +113,7 @@ from ..nodes import (
     THIRFStringArg,
     THIRIsNone,
     THIRMembership,
-    THIROptTruthy,
+    THIRTruthy,
     THIROptViewArg,
     THIRLiteral,
     THIRMethodCall,
@@ -165,7 +166,7 @@ from .predicates import (
     _enum_neg_wrap,
     _enum_prop_wrap,
     _enum_truthy_wrap,
-    _reject_nonbare_truthy,
+    _truthiness_mode,
     _f1_record,
     _field_over_subscript_ok,
     _field_receiver_ok,
@@ -863,6 +864,8 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                     or _eligible_ptr_value(rtype, analyzer)
                     or (use.result is _ExprResultUse.RECEIVER
                         and _f1_record(rtype, analyzer))
+                    or (use.result is _ExprResultUse.TRUTHY
+                        and _truthiness_mode(rtype, analyzer) is not None)
                     or (field_owned_str_ok
                         and _str_field_value_read(e, declared, analyzer)
                         and _witness("fstr.str_field")))
@@ -2750,32 +2753,43 @@ def _lower_char_targeted(e: TpyExpr, target: TpyType | None,
 def _lower_truthy(e: TpyExpr, lc: '_LowerCtx',
                   declared: dict[str, TpyType], *,
                   unary_operand: bool = False) -> THIRExpr:
-    """Lower a truthiness position (an if/while/assert condition, or a `not`
-    operand). An enum-typed operand takes its truthiness wrap (THIREnumWrap;
-    the plain-enum arm renders `true` and DROPS the operand, mirroring
-    gen_truthy_expr); every other admitted shape's truthiness render equals
-    its value render, so it lowers as a plain expression."""
+    """Lower one Python-truthiness position without condition temps."""
     if isinstance(e, (TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
                       TpyBytesLiteral, TpyNoneLiteral)):
         raise ThirUnsupported("truthy.literal")
-    if isinstance(e, TpyName) and (_value_opt_scalar_param(e.name, lc)
-                                   or _value_opt_view_param(e.name, lc)):
-        # A value-repr Optional[scalar] / Optional[view] read in a condition /
-        # `not` operand takes gen_truthy_expr's optional arm: `::tpy::is_truthy(p)`
-        # on the BARE optional, narrowed or not -- codegen's `narrowed_vars` is
-        # not populated for Optional None-narrowing, so the truthiness always sees
-        # the `std::optional<...>` binding (the deref-on-narrow is stripped here).
-        return THIROptTruthy(result_type=BOOL,
-                             operand=replace(
-                                 _lower_expr(
-                                     e, lc, declared,
-                                     allow_whole_optional=True),
-                                 deref=False),
-                             loc=getattr(e, "loc", None))
     et = lc.analyzer.get_expr_type(e)
+    if isinstance(e, TpyBinOp) and e.op in _LOGICAL_OPS:
+        return THIRBinOp(
+            result_type=BOOL,
+            left=_lower_truthy(e.left, lc, declared),
+            op=e.op,
+            right=_lower_truthy(e.right, lc, declared),
+            resolved=None,
+            loc=getattr(e, "loc", None),
+        )
     wrap = _enum_truthy_wrap(et, lc.analyzer)
     if wrap is not None and not isinstance(e, (TpyName, TpyFieldAccess)):
         raise ThirUnsupported("truthy.enum_shape")
+    mode = _truthiness_mode(et, lc.analyzer)
+    if (mode is TruthinessMode.IS_TRUTHY
+            and isinstance(e, TpyFieldAccess)):
+        # A truthy Optional field narrows its dotted path for later reads. THIR
+        # does not carry that path fact yet, so routing the condition alone can
+        # drop the AST's `(*field)` unwrap in the branch.
+        raise ThirUnsupported("truthy.optional_field_narrow")
+    if mode is TruthinessMode.ALWAYS_TRUE and not isinstance(e, TpyName):
+        raise ThirUnsupported("truthy.constant_shape")
+    if isinstance(e, TpyName) and e.name in declared:
+        du = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+            declared[e.name])))
+        eu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(et)))
+              if et is not None else None)
+        if isinstance(du, OptionalType) and not isinstance(eu, OptionalType):
+            # The AST renders name truthiness through the declared binding
+            # (var_types), which narrowing never changes -- a mode computed
+            # from the narrowed occurrence type would diverge (`if (p)` vs
+            # `if (true)` / a dereffed `__bool__` call).
+            raise ThirUnsupported("truthy.optional_name_narrow")
     if wrap is None:
         ptr_optional = (
             isinstance(e, TpyName) and isinstance(et, OptionalType)
@@ -2784,41 +2798,66 @@ def _lower_truthy(e: TpyExpr, lc: '_LowerCtx',
         if ptr_optional:
             pass
         elif unary_operand:
-            if et is None or not is_bool_type(et):
+            if mode is None and (et is None or not is_bool_type(et)):
                 raise ThirUnsupported("truthy.unary_operand")
         elif isinstance(e, TpyBoolLiteral):
             pass
         elif isinstance(e, TpyName):
-            if (e.name not in declared or et is None or not is_bool_type(et)
-                    or _unrouted_binding_read(
-                        declared.get(e.name), lc.analyzer) is not None):
+            unrouted = _unrouted_binding_read(
+                declared.get(e.name), lc.analyzer)
+            storage_optional = (
+                mode is TruthinessMode.IS_TRUTHY
+                and et is not None
+                and isinstance(unwrap_readonly(unwrap_ref_type(
+                    unwrap_send_sync(et))), OptionalType))
+            if (e.name not in declared or et is None
+                    or (mode is None and not is_bool_type(et))
+                    or (unrouted is not None and not storage_optional)):
                 raise ThirUnsupported("truthy.name")
         elif isinstance(e, TpyFieldAccess):
-            if et is None or not is_bool_type(et):
+            if mode is None and (et is None or not is_bool_type(et)):
                 raise ThirUnsupported("truthy.field_nonbool")
-            _witness("cond.bool_field")
+            if mode is None:
+                _witness("cond.bool_field")
         elif isinstance(e, TpyBinOp):
             if e.op not in (_COMPARE_OPS | _LOGICAL_OPS
                             | _IS_OPS | _MEMBERSHIP_OPS):
                 raise ThirUnsupported("truthy.binop")
         elif isinstance(e, TpyMethodCall):
-            if et is None or not is_bool_type(et):
+            if mode is None and (et is None or not is_bool_type(et)):
                 raise ThirUnsupported("truthy.method_nonbool")
-            _witness("cond.bool_method")
+            if mode is None:
+                _witness("cond.bool_method")
         elif isinstance(e, TpyIfExpr):
-            if et is None or not is_bool_type(et):
+            if mode is None and (et is None or not is_bool_type(et)):
                 raise ThirUnsupported("truthy.ifexpr_nonbool")
             _witness("ifexpr.cond_pos")
         elif not isinstance(e, (TpyUnaryOp, TpyChainedCompare)):
             raise ThirUnsupported("truthy.shape")
-        # Non-enum, non-value-opt-param shapes whose truthiness render is not the
-        # bare value render (str/bytes, storage Optional, record __bool__/__len__)
-        # have no THIR wrap node yet -- reject so the body falls back to AST
-        # rather than emitting the value bare (`if (s)` on a std::string).
-        _reject_nonbare_truthy(et, lc.analyzer)
-        return _lower_expr(
+        operand = _lower_expr(
             e, lc, declared,
-            use=_ExprUse(result=_ExprResultUse.CONDITION))
+            use=_ExprUse(result=_ExprResultUse.TRUTHY),
+            allow_whole_optional=mode is TruthinessMode.IS_TRUTHY,
+            allow_unrouted_name=mode is TruthinessMode.IS_TRUTHY,
+        )
+        if (mode is TruthinessMode.IS_TRUTHY
+                and isinstance(operand, THIRName)):
+            operand = replace(operand, deref=False)
+        if mode is None:
+            return operand
+        deref = (
+            mode in (TruthinessMode.RECORD_BOOL, TruthinessMode.RECORD_LEN)
+            and isinstance(e, TpyName)
+            and (e.name in lc.pointers
+                 or (e.name == lc.self_receiver and lc.self_is_pointer)))
+        _witness("truthy." + mode.name.lower())
+        return THIRTruthy(
+            result_type=BOOL,
+            mode=mode,
+            operand=None if mode is TruthinessMode.ALWAYS_TRUE else operand,
+            deref=deref,
+            loc=getattr(e, "loc", None),
+        )
     loc = getattr(e, "loc", None)
     if wrap == "true":
         _witness("enum.truthy_plain")

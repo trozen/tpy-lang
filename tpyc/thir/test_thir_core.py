@@ -2537,8 +2537,7 @@ class TestBoolMethodCondition:
         assert _fn(thir, "spin") is None
         assert witnessed.get("cond.bool_method", 0) == 0
 
-    def test_str_method_condition_stays_ast(self):
-        # A str result takes the `.empty()` truthiness wrap on the AST path.
+    def test_str_method_condition_routes_with_nonempty_wrap(self):
         src = (
             "class Box:\n"
             "    s: str\n"
@@ -2555,8 +2554,9 @@ class TestBoolMethodCondition:
             "main()\n"
         )
         thir, witnessed = _lower_ctx_witnessed(src)
-        assert _fn(thir, "probe") is None
-        assert witnessed.get("cond.bool_method", 0) == 0
+        fn = _fn(thir, "probe")
+        assert fn is not None
+        assert witnessed.get("truthy.nonempty", 0) >= 1
 
 
 class TestImportedCallee:

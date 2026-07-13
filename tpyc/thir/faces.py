@@ -350,6 +350,13 @@ THIR_FACES: frozenset[str] = frozenset({
     # `if g.is_open():` -- the same bare-render property as cond.bool_field, over the method
     # call's value-position admission).
     "cond.bool_method",
+    # Non-identity `_truthy_for_rendered` arms carried by THIRTruthy.
+    "truthy.nonempty",
+    "truthy.is_truthy",
+    "truthy.to_bool",
+    "truthy.record_bool",
+    "truthy.record_len",
+    "truthy.always_true",
     # @builtin_type record with a real body and no cpp_formatter (Poll;
     # Waker's formatter-carrying TypeDef stays excluded) admitted as an F1
     # record (lowering admission; the user-record spelling path, so every

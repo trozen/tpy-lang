@@ -45,6 +45,7 @@ class _ExprResultUse(Enum):
     VALUE = auto()
     DISCARD = auto()
     CONDITION = auto()
+    TRUTHY = auto()
     STORAGE = auto()
     BORROW_BIND = auto()
     ITERABLE = auto()
