@@ -37,6 +37,7 @@ from ...modules.type_resolution import get_iterable_element_type
 from ...typesys import (
     AnyType,
     BYTES_FAMILY,
+    CallableType,
     FLOAT,
     FloatLiteralType,
     INT32,
@@ -332,6 +333,17 @@ def _eligible_scalar(t: TpyType | None) -> bool:
     """
     return t is not None and (is_fixed_int_type(t) or is_bool_type(t)
                               or is_float_type(t) or is_big_int_type(t))
+
+def _callable_value(t: 'TpyType | None') -> bool:
+    """A non-template `Callable[[...], R]` value slot (`std::function<...>`
+    by value): decls, call results, and bare-name passes all render bare --
+    the lambda/std::function converts implicitly. `Fn` templates (no to_cpp)
+    and wrapper-marked slots stay out."""
+    if not isinstance(t, TpyType):
+        return False
+    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    return isinstance(t, CallableType) and not t.is_template
+
 
 def _is_type_param_slot(t: 'TpyType | int | None') -> bool:
     """True if `t` is a bare generic type-param slot (`T` in a `Record[T]`),

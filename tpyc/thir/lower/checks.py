@@ -108,6 +108,7 @@ from ..nodes import (
     THIRStrSlice,
 )
 from .predicates import (
+    _callable_value,
     _arg_ptr_union_slot,
     _bigint_index_disposition,
     _bytes_concat_operand,
@@ -1265,6 +1266,20 @@ def _free_callee_kind(e: TpyCall, analyzer) -> 'tuple[str, str] | None':
     if any(isinstance(p.type, LiteralType) for p in fi.params):
         note_detail("call.literal_overload")
         return None
+    if fi.frame_captures is not None:
+        # A closure local (nested def): the bare lambda-variable call --
+        # spelled exactly like the plain arm, decided BEFORE the registry /
+        # import spellings (the AST's nested_def_locals arm order). A
+        # closure shadowing an imported OR builtin name is ambiguous here
+        # (the AST's imported/builtin arm precedes its nested-def arm and
+        # would call the BUILTIN, a pre-existing CPython divergence --
+        # BUGS.md) -> reject the shadow, keeping the bytes on the AST path.
+        if (e.func_name in analyzer.imported_names
+                or imported_free_callee_cpp(analyzer.ctx.module_attributes,
+                                            e.func_name)):
+            note_detail("call.closure_import_shadow")
+            return None
+        return ("plain", "")
     if (fi.is_method or fi.is_staticmethod or fi.is_async
             or fi.is_generator or fi.is_property_getter or fi.is_property_setter):
         note_detail("call.callee_kind")
@@ -2786,6 +2801,7 @@ def _container_method_call_supported(
             or _eligible_ptr_value(ret, analyzer)
             or _resolved_str_value(ret, analyzer) is not None
             or _resolved_bytes_value(ret, analyzer) is not None
+            or _callable_value(ret)
             or (storage_ret_ok
                 and _storage_call_ret(ret, analyzer) is not None)
             or (stmt_position and (ret is None or is_void_like_type(ret)))
@@ -2992,6 +3008,7 @@ def _record_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyTy
             or _resolved_str_value(ret, analyzer) is not None
             or _resolved_bytes_value(ret, analyzer) is not None
             or _tparam_value(ret)
+            or _callable_value(ret)
             # An F1-record rvalue return is admitted only at the owned-record
             # decl sink (`Rec r = b.build();`, record_ret_ok): the bare
             # `recv.method(args)` prvalue stored directly, the method sibling of
@@ -3261,12 +3278,16 @@ def _print_arg_form(t: TpyType) -> PrintForm:
         return PrintForm.INT8
     return PrintForm.RAW
 
-def _print_optval_opt(a: TpyExpr, analyzer) -> 'OptionalType | None':
+def _print_optval_opt(a: TpyExpr, analyzer,
+                      locals_: dict[str, TpyType]) -> 'OptionalType | None':
     """`a` is a print arg whose RESOLVED type is a value-repr `Optional[scalar]`
     or `Optional[str]` -- an UN-narrowed read that gen_print renders via
-    `::tpy::print_optional_val(...)` over the whole optional (bare, no deref). A
-    narrowed read resolves to the inner scalar (not Optional), so it is excluded
-    here and the deref-on-narrow `(*p)` face stays on its own gates. Limited to a
+    `::tpy::print_optional_val(...)` over the whole optional (bare, no deref).
+    A NARROWED value-opt SCALAR name takes the SAME whole-optional wrap (the
+    AST's gen_print ignores narrowing there -- `print_optional_val(r)` for
+    params and locals alike, probe-verified), keyed on the DECLARED binding
+    type when `locals_` is threaded; a narrowed Optional[str] read stays on
+    its own (`(*s)`) face. Limited to a
     bare name (param / local) or a plain field read -- the positions gen_print
     lowers via `_gen_expr` (bare optional storage). A container/tuple inner takes
     an explicit Formatter (a separate face) and is excluded: `_value_opt_scalar`/
@@ -3277,7 +3298,13 @@ def _print_optval_opt(a: TpyExpr, analyzer) -> 'OptionalType | None':
         return None
     t = analyzer.get_expr_type(a)
     opt = _value_opt_scalar(t, analyzer)
-    return opt if opt is not None else _value_opt_str(t, analyzer)
+    if opt is None:
+        opt = _value_opt_str(t, analyzer)
+    if opt is not None:
+        return opt
+    if isinstance(a, TpyName) and a.name in locals_:
+        return _value_opt_scalar(locals_[a.name], analyzer)
+    return None
 
 def _print_optval_form(opt: 'OptionalType') -> 'tuple[PrintForm, str | None]':
     """The `print_optional_val` wrapper for a value-repr Optional print arg,
@@ -3337,7 +3364,7 @@ def _print_arg_ok(a: TpyExpr, locals_: dict[str, TpyType], analyzer) -> bool:
     if isinstance(a, (TpyStrLiteral, TpyBytesLiteral)):
         # A bytes literal prints owned (gen_print threads no target).
         return True
-    if _print_optval_opt(a, analyzer) is not None:
+    if _print_optval_opt(a, analyzer, locals_) is not None:
         # An UN-narrowed value-repr Optional[scalar/str] read -> the bare
         # `::tpy::print_optional_val(...)` over the whole optional (witnessed at
         # lowering, where the wrapper render actually fires).

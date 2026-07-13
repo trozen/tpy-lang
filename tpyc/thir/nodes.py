@@ -1065,6 +1065,28 @@ class THIRWhile(THIRStmt):
 
 
 @dataclass(frozen=True)
+class THIRNestedDef(THIRStmt):
+    """A nested function definition -- `_gen_nested_def`'s lambda:
+
+        auto <name> = <capture_cpp>(<params_cpp>)[ -> <ret_cpp>] {
+            <body>
+        };
+
+    `capture_cpp` is spelled at lowering purely from sema's node facts
+    (captured_names / escapes / ref_captures / move_captures -- THIR does
+    no capture analysis of its own); params and the non-void trailing
+    return type are the resolver's spellings. The body is lowered under
+    the nested function's own per-function state (its prescan return
+    slots, fresh classification sets) over the outer `declared` -- the
+    mirror of `nested_def_emission_scope` + the local-scope snapshot."""
+    name: str
+    capture_cpp: str
+    params_cpp: tuple[str, ...] = ()
+    ret_cpp: 'str | None' = None
+    body: tuple[THIRStmt, ...] = ()
+
+
+@dataclass(frozen=True)
 class THIRAssert(THIRStmt):
     """assert statement -- mirrors `_gen_assert`'s non-constant arm:
 

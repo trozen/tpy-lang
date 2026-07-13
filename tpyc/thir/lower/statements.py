@@ -4,6 +4,7 @@ branches, loops, with, try, raise, and narrowing statements.
 
 from __future__ import annotations
 from collections.abc import Set as AbstractSet
+from contextlib import contextmanager
 from dataclasses import dataclass, replace
 from ...parse.nodes import (
     TpyArrayLiteral,
@@ -30,9 +31,11 @@ from ...parse.nodes import (
     TpyIntLiteral,
     TpyMatch,
     TpyMethodCall,
+    TpyFunction,
     TpyName,
     TpyNestedDef,
     TpyNoneLiteral,
+    TpyNonlocal,
     TpyPassStmt,
     TpyRaise,
     TpyReturn,
@@ -82,6 +85,7 @@ from ...codegen_cpp.forms import (
     is_ptr_variant_union,
     is_storage_tuple_alias_decl,
 )
+from ...codegen_cpp.context import escape_cpp_name
 from ...liveness import stmts_terminate
 from ...value_category import is_rvalue_source
 from ..faces import witness as _witness
@@ -114,6 +118,7 @@ from ..nodes import (
     THIRMove,
     THIRName,
     THIRNarrowAlias,
+    THIRNestedDef,
     THIRNoOpStmt,
     THIROptionalPtrArg,
     THIROptViewArg,
@@ -169,10 +174,12 @@ from .predicates import (
     _narrow_fact_member,
     _narrow_facts_ok,
     _nonvalue_container_ret,
+    _callable_value,
     _optional_narrow_facts_ok,
     _optional_ptr_borrow_name,
     _owned_str_append_target,
     _param_is_const,
+    _value_opt_scalar,
     _param_is_deep_const,
     _peel_stale_view_owned_coerce,
     _reassert_bump_info,
@@ -796,11 +803,14 @@ def _with_target_arm(item, declared: dict[str, TpyType], prescan: _Prescan,
 def _try_hoist_type_ok(vtype: TpyType, analyzer) -> bool:
     """A hoisted predecl type the slice renders -- the plain-value tail arm of
     `_emit_branch_decls` (`{cpp_type} {name};`), restricted to the same value
-    family a first var-decl admits. Readonly/Optional wrappers reject: the AST
-    routes those through the const/pointer arms (or, for a value-repr
-    Optional, declares a slot whose later assigns are ineligible anyway)."""
-    if isinstance(vtype, (ReadonlyType, OptionalType)):
+    family a first var-decl admits. Readonly wrappers reject: the AST routes
+    those through the const/pointer arms. A VALUE-repr Optional[scalar]
+    predecls the bare `std::optional<T> r;` slot (default-empty), its later
+    assigns riding the value-opt rows; pointer-repr Optionals stay out."""
+    if isinstance(vtype, ReadonlyType):
         return False
+    if isinstance(vtype, OptionalType):
+        return _value_opt_scalar(vtype, analyzer) is not None
     return (_eligible_scalar(vtype) or _eligible_char(vtype)
             or _eligible_enum(vtype, analyzer) is not None
             or _resolved_str_value(vtype, analyzer) is not None
@@ -898,6 +908,173 @@ def _lower_borrow_local(stmt: TpyVarDecl, vtype: TpyType, binding: 'LocalBinding
         name=stmt.name, resolved_type=vtype, init=convert,
         cpp_type=lc.render_type(inner), form=Form.BORROW, is_const=is_const,
         cpp_local_representation=binding, loc=loc)
+
+@contextmanager
+def _nested_def_lowering_scope(lc: _LowerCtx, func: TpyFunction):
+    """The mirror of codegen's `nested_def_emission_scope` + the local-scope
+    snapshot: swap in the nested function's per-function state (its own
+    prescan return slots / reassigned sets, param-seeded pointer and movable
+    entries), INHERIT the outer classification sets (the AST lambda body
+    inherits ctx local state -- a captured name keeps its outer render), and
+    restore everything after so body-added classifications don't leak out.
+    The receiver is cleared: a `self` read inside the lambda has no capture
+    (gate-rejected up front; clearing keeps a slipped-through read failing
+    loudly instead of spelling `this->`)."""
+    saved = (lc.func, lc.prescan, lc.self_receiver,
+             set(lc.const_locals), set(lc.pointers),
+             set(lc.rebind_slot_locals), set(lc.storage_tuple_locals),
+             set(lc.movable_locals), lc.narrow, dict(lc.inline_narrowed))
+    # The hoist-residue bookkeeping is per-function: seed the NESTED
+    # function's own hoist facts (its try lowering drains them;
+    # `_lower_nested_def` residue-checks after the body, mirroring
+    # lower_function) and restore the OUTER set object untouched -- a
+    # same-named nested try-hoist must not drain the outer's entry.
+    saved_hoists = lc.unhandled_hoists
+    lc.unhandled_hoists = set(
+        lc.analyzer.function_hoisted_vars.get(id(func), ()))
+    outer_prescan = lc.prescan
+    prescan = _Prescan(func, lc.analyzer)
+    # Module-level facts carry over; the nested func has no global decls
+    # (gate-rejected), so the seeded-globals gating fields stay empty.
+    prescan.native_globals = outer_prescan.native_globals
+    prescan.global_readonly = outer_prescan.global_readonly
+    prescan.global_cpp = outer_prescan.global_cpp
+    # codegen's nested_def_emission_scope swaps ONLY the return/error/frame
+    # facts -- the reassigned/hoisted/move-through seeding stays the OUTER
+    # function's (setup_body_scope runs once per outer body), so the body's
+    # binding classification must read the same sets to stay byte-identical.
+    prescan.reassigned = outer_prescan.reassigned
+    prescan.rvalue_reassigned = outer_prescan.rvalue_reassigned
+    prescan.hoisted = outer_prescan.hoisted
+    prescan.move_through = outer_prescan.move_through
+    lc.func = func
+    lc.prescan = prescan
+    lc.self_receiver = None
+    # Deliberately NO param seeding: the AST's `_gen_nested_def` never runs
+    # `seed_param_locals` for a lambda (it only adds names to
+    # local_scope_names), so a nested param must not enter `pointers` /
+    # `movable_locals` -- THIR classifying it would move/deref where the AST
+    # does not. The param shapes that would NEED seeding (Optional / Own /
+    # value-opt) are rejected by `_lower_nested_def`'s param gate.
+    # NB `function_movable_locals` / `function_hoisted_vars` hold NO entries
+    # for nested funcs today (sema's nested_def_scope discards the nested
+    # body's facts unstored), so the hoist seed above is empty by
+    # construction -- kept so the residue check self-activates if sema ever
+    # stores them.
+    lc.narrow = lc.narrow.snapshot()
+    lc.inline_narrowed = {}
+    try:
+        yield
+    finally:
+        (lc.func, lc.prescan, lc.self_receiver, lc.const_locals, lc.pointers,
+         lc.rebind_slot_locals, lc.storage_tuple_locals, lc.movable_locals,
+         lc.narrow, lc.inline_narrowed) = saved
+        lc.unhandled_hoists = saved_hoists
+
+
+def _lower_nested_def(stmt: TpyNestedDef, scope: '_LowerScope') -> THIRStmt:
+    """Lower `def name(...)` in a function body to `_gen_nested_def`'s lambda:
+    the capture list spelled purely from sema's node facts, params and the
+    non-void trailing return type through the resolver, and the body lowered
+    under the nested function's own per-function state over the outer
+    `declared`. Out-of-slice shapes raise and fall the OUTER body back."""
+    lc = scope.lc
+    analyzer = lc.analyzer
+    func = stmt.func
+    loc = getattr(stmt, "loc", None)
+    begin_stmt()
+    if func.is_async or func.is_generator:
+        note_detail("nesteddef.resumable_func")
+        raise ThirUnsupported(stmt_reject_reason(stmt))
+    if func.type_params or func.error_return is not None:
+        note_detail("nesteddef.signature")
+        raise ThirUnsupported(stmt_reject_reason(stmt))
+    if any(d is not None for d in func.defaults):
+        note_detail("nesteddef.param_default")
+        raise ThirUnsupported(stmt_reject_reason(stmt))
+    if analyzer.function_global_decls.get(id(func)):
+        note_detail("nesteddef.global_decl")
+        raise ThirUnsupported(stmt_reject_reason(stmt))
+    if "self" in stmt.captured_names:
+        note_detail("nesteddef.self_capture")
+        raise ThirUnsupported(stmt_reject_reason(stmt))
+    # A narrowed capture's reads rename to an OUTER extraction alias the
+    # capture list does not carry -> AST path.
+    if any(n in lc.narrow.narrowed for n in stmt.captured_names):
+        note_detail("nesteddef.narrowed_capture")
+        raise ThirUnsupported(stmt_reject_reason(stmt))
+    # Capture list -- _gen_nested_def's spelling over the node facts.
+    if stmt.captured_names:
+        if stmt.escapes:
+            parts = []
+            for n in stmt.captured_names:
+                cpp_n = escape_cpp_name(n)
+                if n in stmt.ref_captures:
+                    parts.append(f"&{cpp_n}")
+                elif n in stmt.move_captures:
+                    parts.append(f"{cpp_n} = std::move({cpp_n})")
+                else:
+                    parts.append(cpp_n)
+            capture = f"[{', '.join(parts)}]"
+        else:
+            capture = "[" + ", ".join(
+                f"&{escape_cpp_name(n)}" for n in stmt.captured_names) + "]"
+    else:
+        capture = "[]"
+    # A nested func whose name collides with a registry function (or the
+    # owning record's methods) makes the body's const-verdict lookups
+    # (`_param_is_const` keyed by name) consult the WRONG FunctionInfo ->
+    # AST path rather than risk a wrong spelling.
+    if (analyzer.registry.get_function(func.name)
+            or (lc.record_name is not None
+                and (ri := analyzer.registry.get_record(lc.record_name))
+                is not None
+                and ri.get_method_overloads(func.name))):
+        note_detail("nesteddef.name_collision")
+        raise ThirUnsupported(stmt_reject_reason(stmt))
+    params_cpp = []
+    body_declared = dict(scope.declared)
+    for pname, ptype in func.params:
+        if not isinstance(ptype, TpyType):
+            note_detail("nesteddef.param_unresolved")
+            raise ThirUnsupported(stmt_reject_reason(stmt))
+        # Param families the lambda body renders EXACTLY like a top-level
+        # function without any param seeding (the AST never seeds lambda
+        # params): value scalars / Char / enums, str family, and F1-record
+        # refs. Optional (either repr) / Own / value-opt / union / tuple
+        # params would need the pointer/movable classification the AST
+        # does not perform -- and their AST emit is ill-formed today
+        # (BUGS.md) -- so they reject.
+        pt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
+        if not (_eligible_scalar(pt) or _eligible_char(pt)
+                or _eligible_enum(pt, analyzer) is not None
+                or _resolved_str_value(pt, analyzer) is not None
+                or _resolved_bytes_value(pt, analyzer) is not None
+                or _f1_record(pt, analyzer)):
+            note_detail("nesteddef.param_type")
+            raise ThirUnsupported(stmt_reject_reason(stmt))
+        resolved = lc.render_resolve(ptype)
+        params_cpp.append(resolved.to_cpp_param(escape_cpp_name(pname)))
+        body_declared[pname] = ptype
+    rt = func.return_type if isinstance(func.return_type, TpyType) else VoidType()
+    resolved_ret = lc.render_resolve(rt)
+    ret_cpp = (None if isinstance(resolved_ret, VoidType)
+               else lc.render_type(resolved_ret))
+    # The name binds BEFORE the body (matching the AST) and survives the
+    # scope restore -- a later sibling closure captures it like any local.
+    lc.nested_def_locals.add(func.name)
+    with _nested_def_lowering_scope(lc, func):
+        body = _lower_stmts(func.body, lc, body_declared)
+        # lower_function's hoist-residue mirror: a nested-body hoisted name
+        # no try predecl accounted for is a shape THIR does not reproduce.
+        if lc.unhandled_hoists:
+            note_detail("nesteddef.hoisted_vars")
+            raise ThirUnsupported(stmt_reject_reason(stmt))
+    _witness("stmt.nested_def")
+    return THIRNestedDef(name=escape_cpp_name(func.name), capture_cpp=capture,
+                         params_cpp=tuple(params_cpp), ret_cpp=ret_cpp,
+                         body=body, loc=loc)
+
 
 def _lower_stmt(stmt: TpyStmt, lc: _LowerCtx, declared: dict[str, TpyType],
                 *, in_branch: bool = False,
@@ -1247,6 +1424,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             raise ThirUnsupported("res.leaf_match")
         if isinstance(stmt, TpyNestedDef):
             raise ThirUnsupported("res.nested_def")
+    if isinstance(stmt, TpyNestedDef):
+        return _lower_nested_def(stmt, scope)
     if isinstance(stmt, TpyVarDecl):
         begin_stmt()
         if stmt.linkage != VarLinkage.DEFAULT:
@@ -1516,7 +1695,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                         or _is_string_owned(vtype)
                         or _eligible_value_union(vtype) is not None
                         or _slice_object_type(vtype)
-                        or _eligible_ptr_value(vtype, analyzer))
+                        or _eligible_ptr_value(vtype, analyzer)
+                        or _callable_value(vtype))
                     detail = "decl.slot_type"
                 if not slot_ok:
                     note_detail(detail)
@@ -1618,7 +1798,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         if _dyn_proto_ptr(vtype):
             cpp_type = "auto"
         elif (_eligible_enum(vtype, analyzer) is not None
-              or _container_enum_spell(vtype, analyzer)):
+              or _container_enum_spell(vtype, analyzer)
+              or _callable_value(vtype)):
             cpp_type = lc.render_type(vtype)
         else:
             cpp_type = None
@@ -2164,9 +2345,33 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     and _witness("ret.container_literal"))
             elif isinstance(source, TpyCall):
                 container_ok = bool(_witness("ret.container_call"))
+            elif type(source) in _comprehensions._COMP_KINDS:
+                # A comprehension source renders the same position-independent
+                # stmt-expr as the decl-init arm, target-typed by the storage
+                # container slot; an out-of-slice comp raises inside the
+                # lowering and falls the body back.
+                comp = _comprehensions._lower_comprehension(
+                    source, lc.prescan.ret_container_storage, lc, declared,
+                    pointers)
+                _witness("ret.container_comp")
+                return THIRReturn(value=comp, loc=loc)
             if not container_ok:
                 note_detail("return.container_source")
                 raise ThirUnsupported(stmt_reject_reason(stmt))
+        if stmt.value is not None and lc.prescan.ret_callable:
+            # A Callable return slot: the only admitted source is a closure
+            # local's bare name (`return add;` -- the lambda converts to
+            # std::function implicitly, the plain return tail).
+            if not (isinstance(stmt.value, TpyName)
+                    and stmt.value.name in lc.nested_def_locals):
+                note_detail("return.callable_source")
+                raise ThirUnsupported(stmt_reject_reason(stmt))
+            _witness("ret.closure_name")
+            return THIRReturn(
+                value=THIRName(result_type=analyzer.get_expr_type(stmt.value),
+                               name=stmt.value.name, form=Form.VALUE,
+                               loc=getattr(stmt.value, "loc", None)),
+                loc=loc)
         # A value-tuple return's literal source renders the spelled brace-init
         # against the return slot (per-element targets ride
         # _lower_tuple_literal); bare value-tuple names ride the generic tail.
@@ -2384,14 +2589,16 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         if scope.loop_depth == 0:
             raise ThirUnsupported("stmt.continue")
         return THIRContinue(loc=loc)
-    if isinstance(stmt, (TpyDelVar, TpyGlobal)):
-        # Both no-code faces emit only the source comment.
+    if isinstance(stmt, (TpyDelVar, TpyGlobal, TpyNonlocal)):
+        # All three no-code faces emit only the source comment (nonlocal's
+        # semantics live entirely in the capture list -- sema's node facts).
         if isinstance(stmt, TpyDelVar):
             for name in stmt.names:
                 if (name not in declared or name in lc.narrow.narrowed
                         or not _del_var_trivial(declared[name], analyzer)):
                     raise ThirUnsupported("stmt.del_var:nontrivial")
-        elif not all(name in lc.prescan.global_seeded for name in stmt.names):
+        elif isinstance(stmt, TpyGlobal) and not all(
+                name in lc.prescan.global_seeded for name in stmt.names):
             raise ThirUnsupported("stmt.global:global.unseeded")
         return THIRNoOpStmt(loc=loc)
     if isinstance(stmt, TpyDelItem):
@@ -2965,18 +3172,21 @@ def _lower_print_arg(a: TpyExpr, lc: _LowerCtx,
         return THIRPrintArg(
             THIRBytesLiteral(value=a.value, result_type=lc.analyzer.get_expr_type(a)),
             PrintForm.BYTES)
-    opt = _print_optval_opt(a, lc.analyzer)
+    opt = _print_optval_opt(a, lc.analyzer, declared)
     if opt is not None:
-        # An un-narrowed value-repr Optional[scalar/str] read -> the bare optional
+        # A value-repr Optional[scalar/str] read -> the bare optional
         # (`p` / `this->fi`, no deref) inside a `::tpy::print_optional_val(...)`
-        # wrap (gen_print's value-repr Optional arm).
+        # wrap (gen_print's value-repr Optional arm). A NARROWED name's
+        # deref-on-narrow is stripped -- gen_print wraps the WHOLE optional
+        # regardless of narrowing (params and locals alike, probe-verified).
         _witness("print.optval")
         form, inner_cpp = _print_optval_form(opt)
-        return THIRPrintArg(
-            _lower_expr(
-                a, lc, declared, allow_whole_optional=True,
-                field_prechecked=isinstance(a, TpyFieldAccess)),
-            form, inner_cpp)
+        lowered = _lower_expr(
+            a, lc, declared, allow_whole_optional=True,
+            field_prechecked=isinstance(a, TpyFieldAccess))
+        if isinstance(lowered, THIRName) and lowered.deref:
+            lowered = replace(lowered, deref=False)
+        return THIRPrintArg(lowered, form, inner_cpp)
     # A container / value-tuple / F1-record NAME: the kind-keyed printer
     # wrap (or the record's raw operator<<) around the bare name -- the
     # same routing fact lowering consumed (`_wrap_print_form`).

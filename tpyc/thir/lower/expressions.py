@@ -82,6 +82,7 @@ from ...codegen_cpp.context import (
     enum_cpp_name,
     escape_cpp_name,
     qualified_cpp_name,
+    view_key_target,
 )
 from ...compilation_context import get_current_compiler
 from ..fallback import ThirUnsupported, expr_kind_tag, note_detail
@@ -211,6 +212,7 @@ from .predicates import (
     _tparam_value,
     _opt_view_arg_shim,
     _none_value_opt_arg,
+    _callable_value,
     _value_opt_scalar,
     _value_opt_scalar_name,
     _value_opt_str,
@@ -303,6 +305,11 @@ def _call_use_supported(e: TpyCall, lc: '_LowerCtx',
               or _resolved_str_value(ret, analyzer) is not None
               or _resolved_bytes_value(ret, analyzer) is not None
               or _eligible_ptr_value(ret, analyzer)
+              or _callable_value(ret)
+              # A value-repr Optional[scalar] result lands bare in its
+              # value-optional slot (`r = h(true);`); mismatched consumers
+              # reject at their own slot arms.
+              or _value_opt_scalar(ret, analyzer) is not None
               or (result is _ExprResultUse.DISCARD
                   and is_void_like_type(ret))
               or (result is _ExprResultUse.ITERABLE
@@ -582,8 +589,15 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
         ct = unwrap_readonly(unwrap_ref_type(
             unwrap_send_sync(declared[e.right.name])))
         lt = _operand_type(e.left, declared, analyzer)
+        # A str needle renders bare into `contains(...)` on both paths
+        # (literal / view name / owned local -- the container's transparent
+        # lookup absorbs the form), exactly like a scalar needle. A VIEW-keyed
+        # container (`set[StrView]`) threads view_key_target into the needle's
+        # literal render (the static-storage pin) -- not mirrored, reject.
         if not ((is_dict(ct) or is_set(ct))
-                and _resolved_scalar(lt, analyzer)):
+                and (_resolved_scalar(lt, analyzer)
+                     or (_resolved_str_value(lt, analyzer) is not None
+                         and view_key_target(ct) is None))):
             reject()
     else:
         reject()
@@ -599,10 +613,16 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
             loc=loc)
     if e.op in _IS_OPS:
         operand = e.right if isinstance(e.left, TpyNoneLiteral) else e.left
+        # A value-repr Optional binding (param OR declared local -- e.g. a
+        # try-hoisted `std::optional<T> r;` slot) None-tests via has_value;
+        # pointer-repr bindings via `!= nullptr`.
         value_repr = (
             isinstance(operand, TpyName)
             and (_value_opt_scalar_param(operand.name, lc)
-                 or _value_opt_view_param(operand.name, lc)))
+                 or _value_opt_view_param(operand.name, lc)
+                 or (operand.name in declared
+                     and _value_opt_scalar(declared[operand.name],
+                                           lc.analyzer) is not None)))
         return THIRIsNone(
             result_type=rtype,
             operand=_lower_expr(
@@ -1392,7 +1412,8 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                 raise ThirUnsupported("expr.call")
             scalar_ctor = _eligible_scalar(rtype)
             slice_ctor = _slice_object_type(rtype)
-            if not (scalar_ctor or slice_ctor
+            owned_str_ctor = _is_string_owned(rtype)
+            if not (scalar_ctor or slice_ctor or owned_str_ctor
                     or _resolved_viewfam_value(rtype, analyzer) is not None):
                 raise ThirUnsupported("expr.call")
             lowered_args = []
@@ -1406,6 +1427,11 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                         isinstance(a, TpyNoneLiteral)
                         or _resolved_scalar(
                             analyzer.get_expr_type(a), analyzer)):
+                    raise ThirUnsupported("expr.call")
+                if owned_str_ctor and not _str_pass_through_arg(
+                        a, p.type, declared, analyzer):
+                    # `String(view)` -- the positional `std::string({0})`
+                    # expansion over a bare str-family arg.
                     raise ThirUnsupported("expr.call")
                 lowered_args.append(_lower_call_arg(a, p.type, lc, declared))
             return THIRCall(

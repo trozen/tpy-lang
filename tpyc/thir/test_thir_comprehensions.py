@@ -360,3 +360,51 @@ class TestComprehensionRejects:
                       "    c = 0\n"
                       "    for x in g:\n        c = c + x\n"
                       "    return c\n")
+
+
+class TestCompReturnPosition:
+    # A comprehension at a storage-container return slot (`-> Own[set[T]]`)
+    # renders the same position-independent stmt-expr the decl-init arm emits.
+    def test_return_comp_routes(self):
+        src = (_PRELUDE + "from tpy import Own\n"
+               "def f(n: Int32) -> Own[set[Int32]]:\n"
+               "    return {i for i in range(n)}\n"
+               "print(len(f(3)))\n")
+        thir, witnesses = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert witnesses.get("ret.container_comp", 0) >= 1
+        out = _cpp(src, thir=True)
+        assert out == _cpp(src, thir=False)
+        assert "return ({" in out
+
+    def test_return_comp_out_of_slice_falls_back(self):
+        # A call iterable is outside the comp route -> the raise inside the
+        # return arm falls the body back (byte-identical via AST).
+        src = (_PRELUDE + "from tpy import Own\n"
+               "def make() -> Own[list[Int32]]:\n    return [1, 2]\n"
+               "def f() -> Own[set[Int32]]:\n"
+               "    return {x for x in make()}\n"
+               "print(len(f()))\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is None
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+
+class TestCompStrUnpackTarget:
+    # A str tuple element unpack target COPIES the stored element
+    # (`std::string k = std::get<0>(tup);` -- the AST's is_value_type branch),
+    # and the owned declared type keeps its reads STORAGE-form (bare insert).
+    SRC = (
+        _PRELUDE
+        + "def f(pairs: list[tuple[str, Int32]]) -> Int32:\n"
+        + "    names = {k for k, _ in pairs}\n    return len(names)\n"
+        + "print(f([(\"a\", 1), (\"b\", 2)]))\n"
+    )
+
+    def test_str_unpack_target_routes(self):
+        thir = _lower_ctx(self.SRC)
+        assert _fn(thir, "f") is not None
+        out = _cpp(self.SRC, thir=True)
+        assert out == _cpp(self.SRC, thir=False)
+        assert "std::string k = std::get<0>(" in out
+        assert "__result.insert(k)" in out

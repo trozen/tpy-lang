@@ -190,7 +190,12 @@ def _comp_route(init, declared: dict[str, TpyType], narrowed: 'set[str]',
             if name is None:
                 types.append(None)
                 continue
-            if not _eligible_scalar(tt):
+            # A str element target COPIES the stored element (`std::string k =
+            # std::get<i>(tup);` -- the AST's is_value_type branch over the
+            # tuple's OWNED element spelling), unlike the for-each unpack's
+            # view binding; the owned declared type keeps the target's reads
+            # STORAGE-form (bare inserts).
+            if not (_eligible_scalar(tt) or _owned_str_slot(tt, analyzer)):
                 return None
             types.append(tt)
         return _CompRoute(kind=kind, loop="begin_end", counter_type=None,

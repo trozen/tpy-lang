@@ -6,6 +6,7 @@ from dataclasses import dataclass, field, fields
 from enum import Enum, auto
 from ...parse.nodes import TpyFunction, TpyGlobal
 from ...typesys import (
+    CallableType,
     ReadonlyType,
     TpyType,
     UnionType,
@@ -80,7 +81,7 @@ class _Prescan:
                  "ret_container_storage", "ret_value_tuple",
                  "ret_str", "ret_bytes",
                  "ret_char", "ret_union", "ret_ptr_union",
-                 "ret_supported",
+                 "ret_supported", "ret_callable",
                  "ret_value_opt", "ret_value_opt_view",
                  "value_opt_params", "param_names",
                  "has_self", "is_constructor", "global_seeded", "global_readonly",
@@ -215,8 +216,14 @@ class _Prescan:
         # A value-bearing return must select one of the representations the
         # return arm consumes. Signatures remain AST-emitted; this fact is
         # checked only when lowering reaches an actual return value.
+        # A non-template Callable return slot (`std::function<...>` by
+        # value): the only admitted source is a closure local's bare name
+        # (`return add;` -- the lambda converts implicitly).
+        self.ret_callable = bool(
+            isinstance(rt, CallableType) and not rt.is_template)
         self.ret_supported = bool(
             rt is None or isinstance(rt, VoidType)
+            or self.ret_callable
             or _eligible_scalar(rt) or _eligible_char(rt)
             or _is_type_param_slot(rt) or _own_type_param_slot(rt)
             or _eligible_enum(rt, analyzer) is not None
@@ -279,25 +286,33 @@ class _LowerCtx:
     resolution), so any THIR arm mirroring that spelling must use this --
     not `render_type` -- for those slots."""
     __slots__ = ("analyzer", "func", "prescan", "render_type",
-                 "render_type_stored", "const_locals",
+                 "render_type_stored", "render_resolve", "const_locals",
                  "pointers", "rebind_slot_locals", "movable_locals",
                  "self_receiver", "self_cpp", "self_is_pointer",
                  "record_name", "storage_tuple_locals", "frame_slots",
                  "resumable_leaf_mode", "unhandled_hoists", "narrow",
-                 "inline_narrowed", "forbidden_reads", "forbidden_writes")
+                 "inline_narrowed", "forbidden_reads", "forbidden_writes",
+                 "nested_def_locals")
 
     def __init__(self, func: TpyFunction, analyzer, render_type,
                  self_receiver: str | None = None,
                  record_name: str | None = None,
                  render_type_stored=None,
                  self_cpp: str = "this",
-                 self_is_pointer: bool = True) -> None:
+                 self_is_pointer: bool = True,
+                 render_resolve=None) -> None:
         self.analyzer = analyzer
         self.func = func
         self.prescan = _Prescan(func, analyzer)
         self.render_type = render_type or (lambda t: t.to_cpp())
         self.render_type_stored = (render_type_stored
                                    or (lambda t: t.to_cpp_stored()))
+        # `TypeResolver.resolve_type` (Pending view/container resolution) --
+        # the nested-def lambda header spells params/returns through it
+        # (`resolve_type(t).to_cpp_param(name)`), exactly like _gen_nested_def.
+        # Identity for analyzer-only callers, whose value-scalar fixtures
+        # never carry a Pending type.
+        self.render_resolve = render_resolve or (lambda t: t)
         # The receiver name (`self`) when `func` is an instance method, else
         # None: it lowers to a THIRSelf and, unlike `pointers`, is not a
         # liftable borrow source (`_is_borrow_ptr_local` must never treat it
@@ -391,6 +406,12 @@ class _LowerCtx:
         self.inline_narrowed: dict[str, tuple[str, bool]] = {}
         self.forbidden_reads: set[str] = set()
         self.forbidden_writes: set[str] = set()
+        # Closure locals bound by a lowered TpyNestedDef -- mirrors codegen's
+        # `ctx.nested_def_locals`. Sole consumer: the Callable-return arm
+        # (`return add;`); closure CALLS key on `fi.frame_captures` in
+        # `_free_callee_kind` instead. The name survives the nested scope,
+        # exactly like the AST's re-add.
+        self.nested_def_locals: set[str] = set()
 
 
 @dataclass

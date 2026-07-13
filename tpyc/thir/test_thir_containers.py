@@ -2604,6 +2604,18 @@ class TestMembership:
             "def f(xs: set[int], b: int) -> bool:\n    return b in xs\n")
         assert isinstance(_fn(thir, "f").body[0].value, THIRMembership)
 
+    def test_str_needle_routes(self):
+        # A str needle (literal or view name) renders bare into
+        # `contains(...)` on both paths, like a scalar needle.
+        src = (_PRELUDE
+               + "def lit(xs: set[str]) -> bool:\n    return \"a\" in xs\n"
+               + "def name(xs: set[str], k: str) -> bool:\n    return k in xs\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "lit") is not None
+        assert _fn(thir, "name") is not None
+        mem = _fn(thir, "lit").body[0].value
+        assert isinstance(mem, THIRMembership)
+
     def test_set_len_routes(self):
         # len over a set reuses ::tpy::__len__ (element-agnostic); admitted now
         # that the set param routes.
@@ -2620,13 +2632,21 @@ class TestMembership:
         fn = _fn(thir, "f")
         assert fn is not None and isinstance(fn.body[1], THIRForEach)
 
-    def test_str_needle_rejects(self):
-        # A str-keyed dict membership (`k in d`) threads view_key_target=None but
-        # the str needle render rides a later cell -- the scalar-needle pin
-        # rejects it (whole body stays AST).
-        thir = _lower(
+    def test_str_dict_needle_routes(self):
+        # An owned-str-keyed dict membership (`k in d`, view_key_target=None)
+        # renders the bare needle -- routes with the set-needle widening.
+        thir = _lower_ctx(
             _PRELUDE
             + "def f(d: dict[str, Int32], k: str) -> bool:\n    return k in d\n")
+        assert _fn(thir, "f") is not None
+
+    def test_view_keyed_needle_rejects(self):
+        # A VIEW-keyed container threads view_key_target into the needle's
+        # literal render (static-storage pin) -- not mirrored, so the body
+        # stays AST.
+        thir = _lower_ctx(
+            "from tpy import StrView\n"
+            "def f(xs: set[StrView]) -> bool:\n    return \"a\" in xs\n")
         assert _fn(thir, "f") is None
 
     def test_set_mutation_rejects(self):

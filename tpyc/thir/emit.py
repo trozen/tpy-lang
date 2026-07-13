@@ -72,6 +72,7 @@ from .nodes import (
     THIRMove,
     THIRName,
     THIRNarrowAlias,
+    THIRNestedDef,
     THIRNarrowedRead,
     THIRNoOpStmt,
     THIROptionalPtrArg,
@@ -1141,6 +1142,40 @@ def _pop_loop_frame(out: TextIO, indent: str, state: _EmitState,
         out.write(f"{indent}{break_label}:;\n")
 
 
+def _emit_nested_def(out: TextIO, stmt: THIRNestedDef, indent_level: int,
+                     state: _EmitState) -> None:
+    # _gen_nested_def's lambda: header spelled at lowering (capture list from
+    # sema's node facts, resolver param/return spellings), body one level
+    # deeper. Name counters continue across the lambda, exactly like the AST
+    # (nested_def_emission_scope leaves them alone) -- but the PER-FUNCTION
+    # emission state must not leak in: the lambda is its own function, so a
+    # return inside it must not walk the enclosing finally chain, its
+    # finally-return temps spell ITS return type, and loop/switch frames
+    # reset (the emit-state half of nested_def_emission_scope).
+    indent = INDENT * indent_level
+    ret = f" -> {stmt.ret_cpp}" if stmt.ret_cpp is not None else ""
+    out.write(f"{indent}auto {stmt.name} = {stmt.capture_cpp}"
+              f"({', '.join(stmt.params_cpp)}){ret} {{\n")
+    saved = (state.finally_frames, state.return_cpp, state.loop_depth,
+             state.switch_depth, state.loop_break_labels,
+             dict(state.rebind_slots))
+    state.finally_frames = []
+    state.return_cpp = stmt.ret_cpp
+    state.loop_depth = 0
+    state.switch_depth = 0
+    state.loop_break_labels = []
+    try:
+        # No trailing-comment emission: _gen_nested_def raw-loops gen_stmt
+        # with no emit_block_trailing_comments call, so a comment after the
+        # lambda's last statement stays OUTSIDE the closing brace.
+        _emit_stmts(out, stmt.body, indent_level + 1, state)
+    finally:
+        (state.finally_frames, state.return_cpp, state.loop_depth,
+         state.switch_depth, state.loop_break_labels,
+         state.rebind_slots) = saved
+    out.write(f"{indent}}};\n")
+
+
 def _emit_while(out: TextIO, stmt: THIRWhile, indent_level: int, state: _EmitState) -> None:
     # The `// while ...:` comment is emitted by the caller (_emit_stmts).
     indent = INDENT * indent_level
@@ -2066,6 +2101,8 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
         _emit_if(out, stmt, indent_level, state)
     elif isinstance(stmt, THIRWhile):
         _emit_while(out, stmt, indent_level, state)
+    elif isinstance(stmt, THIRNestedDef):
+        _emit_nested_def(out, stmt, indent_level, state)
     elif isinstance(stmt, THIRForRange):
         _emit_for_range(out, stmt, indent_level, state)
     elif isinstance(stmt, THIRForEach):

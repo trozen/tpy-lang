@@ -414,7 +414,8 @@ def _seed_readonly_globals(
 def lower_function(func: TpyFunction, analyzer, render_type=None,
                    self_type: 'TpyType | None' = None,
                    native_globals: 'Mapping[str, str]' = {},
-                   render_type_stored=None) -> THIRFunction | None:
+                   render_type_stored=None,
+                   render_resolve=None) -> THIRFunction | None:
     """Lower one function to THIR, or None if it falls outside the slice.
 
     `render_type` (codegen's `TypeResolver.type_to_cpp`) renders F1 borrow-local
@@ -444,7 +445,8 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
                    else None)
     lc = _LowerCtx(func, analyzer, render_type, self_receiver=self_receiver,
                    record_name=record_name,
-                   render_type_stored=render_type_stored)
+                   render_type_stored=render_type_stored,
+                   render_resolve=render_resolve)
     params_set: dict[str, TpyType] = {n: t for n, t in func.params}
     if has_self:
         params_set["self"] = self_type  # the record receiver, a field source
@@ -859,6 +861,7 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
                       self_type: 'TpyType | None' = None,
                       native_globals: 'Mapping[str, str]' = {},
                       render_type_stored=None,
+                      render_resolve=None,
                       ) -> THIRConstructor | None:
     """Lower a constructor to a THIRConstructor, or None if outside the slice.
 
@@ -937,7 +940,8 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
     # `analyzer.ctx.all_last_uses` through it.
     lc = _LowerCtx(init_method, analyzer, render_type, self_receiver="self",
                    record_name=record.name,
-                   render_type_stored=render_type_stored)
+                   render_type_stored=render_type_stored,
+                   render_resolve=render_resolve)
     # Read-only value-global seeding, like lower_function's (ctors read module
     # globals too). No `global`-write seeding here: a ctor's `global` names
     # stay unseeded, so its TpyGlobal statement rejects the body -> AST path.

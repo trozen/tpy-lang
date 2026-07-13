@@ -236,6 +236,10 @@ THIR_FACES: frozenset[str] = frozenset({
     "ret.container_name",
     "ret.container_literal",
     "ret.container_call",           # `return make_list(n);` -- bare call source
+    "ret.container_comp",           # `return {x for ...}` -- the decl-init
+                                    # stmt-expr render at the return slot
+    "ret.closure_name",             # `return add;` -- a closure local's bare
+                                    # name at a Callable return slot
     "ret.tuple_call",               # `return make_pair(n);` -- bare call source
     # Value-repr Optional[cheap scalar] return slot (`-> Int32 | None`): the
     # None-literal `std::nullopt` arm and the whole-optional bare param pass
@@ -408,6 +412,9 @@ THIR_FACES: frozenset[str] = frozenset({
     "len.protocol",
     # Trivia (lowering): docstring / `pass` -> THIRNoOpStmt, body-wide.
     "stmt.trivia",
+    # THIRNestedDef (lowering): a nested `def` -> the AST's lambda emit,
+    # capture list spelled from sema's node facts.
+    "stmt.nested_def",
     # Standalone `a, b = <name>` unpack of a value-scalar tuple (lowering):
     # `const auto& __tup_N = name;` + per-target scalar decls.
     "stmt.tuple_unpack",

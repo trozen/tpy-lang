@@ -1098,15 +1098,19 @@ class TestPrintStmt:
         assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
         assert "print_optional_val<::tpy::print_float, double>(p)" in self._cpp(src, thir=True)
 
-    def test_narrowed_optval_print_defers(self):
-        # A NARROWED read (`if p is not None: print(p)`) resolves to the inner
-        # scalar; its AST render is the deref `(*p)`, a separate face. The body
-        # must stay on the AST path (not silently route the whole-optional wrap).
-        thir = _lower(
-            _PRELUDE
-            + "def f(p: Int32 | None) -> None:\n"
-            + "    if p is not None:\n        print(p)\n")
-        assert _fn(thir, "f") is None
+    def test_narrowed_optval_print_routes_whole_optional(self):
+        # A NARROWED read (`if p is not None: print(p)`) still prints the
+        # WHOLE optional -- gen_print ignores narrowing (probe-verified for
+        # params and locals): `print_optional_val(p)`, deref stripped.
+        src = (_PRELUDE
+               + "def f(p: Int32 | None) -> None:\n"
+               + "    if p is not None:\n        print(p)\n"
+               + "f(3)\n")
+        thir = _lower(src)
+        assert _fn(thir, "f") is not None
+        out = self._cpp(src, thir=True)
+        assert out == self._cpp(src, thir=False)
+        assert "print_optional_val(p)" in out
 
     def test_kwargs_ineligible(self):
         # sep=/end=/file=/flush= take gen_print's richer path -> AST.
