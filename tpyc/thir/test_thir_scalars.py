@@ -156,6 +156,43 @@ class TestNumericLiteralArgs:
                 "i < __stop_0; ++i)") in cpp
         assert cpp == self._cpp(src, thir=False)
 
+    def test_ctor_literal_range_bounds_inline_byte_identical(self):
+        src = (
+            _NUMLIT_PRELUDE
+            + "def positive(n: Int32) -> None:\n"
+            + "    for i in range(Int32(1), n):\n        print(i)\n"
+            + "def negative(n: Int32) -> None:\n"
+            + "    for i in range(Int32(-2), n):\n        print(i)\n"
+        )
+        thir = _lower(src)
+        for name in ("positive", "negative"):
+            rng = _fn(thir, name).body[0]
+            assert isinstance(rng, THIRForRange)
+            assert rng.start_is_literal and not rng.stop_is_literal
+        cpp = self._cpp(src, thir=True)
+        assert "__start_" not in cpp
+        assert cpp == self._cpp(src, thir=False)
+
+    def test_wide_ctor_literal_range_bounds_inline_byte_identical(self):
+        # Ctor arm x literal width: the shared extraction folds a wide value
+        # inside a fixed-int ctor the same as a bare wide literal.
+        src = (
+            _NUMLIT_PRELUDE
+            + "def wide(n: Int64) -> None:\n"
+            + "    for i in range(Int64(2147483648), n):\n        print(i)\n"
+            + "def minimum(n: Int64) -> None:\n"
+            + "    for i in range(Int64(-9223372036854775808), n):\n"
+            + "        print(i)\n"
+        )
+        thir = _lower(src)
+        for name in ("wide", "minimum"):
+            rng = _fn(thir, name).body[0]
+            assert isinstance(rng, THIRForRange)
+            assert rng.start_is_literal and not rng.stop_is_literal
+        cpp = self._cpp(src, thir=True)
+        assert "__start_" not in cpp
+        assert cpp == self._cpp(src, thir=False)
+
     def test_wide_literal_step_defers(self):
         # The stepped arms' overflow-check render is pinned only for the
         # int32-range step subset -- a wide literal step keeps the whole body

@@ -17,7 +17,7 @@ from ..typesys import (
     INT32, BIGINT, FLOAT, is_protocol_type, is_dyn_protocol, ConcreteCoroType,
     polymorphic_source_is_pointer, polymorphic_subclass_into_optional,
     polymorphic_source_inner,
-    is_polymorphic_subclass_fact, ALL_FIXED_INTS,
+    is_polymorphic_subclass_fact,
     ReadonlyType, unwrap_readonly, unwrap_optional_own, unwrap_send_sync, TypeParamRef, UnionType, LiteralType, LiteralTag,
     is_own_pointer_repr_optional,
     resolve_int_literals,
@@ -41,7 +41,10 @@ from dataclasses import fields as dc_fields
 from ..namespace import Namespace
 from ..symbol_binding import SymbolKind
 from ..sema.context import PENDING_CONTAINER_TYPES
-from ..sema.literal_utils import literal_value_from_expr
+from ..sema.literal_utils import (
+    fixed_int_literal_value_from_expr,
+    literal_value_from_expr,
+)
 from ..sema.registration import build_record_self_type
 from ..typesys import view_family_for_type
 from .variant_access import VariantAccess
@@ -5696,13 +5699,6 @@ class StatementGenerator:
         if scope_outer is not None:
             out.write(f"{scope_outer}}}\n")
 
-    @staticmethod
-    def _unwrap_coerce(expr: TpyExpr) -> TpyExpr:
-        """Unwrap TpyCoerce nodes to get the underlying expression."""
-        while isinstance(expr, TpyCoerce):
-            expr = expr.expr
-        return expr
-
     def _is_lvalue_iterable(self, expr: TpyExpr) -> bool:
         """Check if the iterable expression is a C++ lvalue."""
         return is_lvalue_iterable(
@@ -5719,8 +5715,6 @@ class StatementGenerator:
         """
         return StatementGenerator._extract_int_literal(expr) is not None
 
-    _FIXED_INT_NAMES = frozenset(str(t) for t in ALL_FIXED_INTS)
-
     @staticmethod
     def _extract_int_literal(expr: TpyExpr) -> int | None:
         """Extract a compile-time integer value from a range argument.
@@ -5729,20 +5723,7 @@ class StatementGenerator:
         constructor calls with a literal arg (Int32(3)).
         Returns the integer value or None if not a compile-time constant.
         """
-        expr = StatementGenerator._unwrap_coerce(expr)
-        if isinstance(expr, TpyIntLiteral):
-            return expr.value
-        if isinstance(expr, TpyUnaryOp) and expr.op == '-' and isinstance(expr.operand, TpyIntLiteral):
-            return -expr.operand.value
-        # Int32(3), UInt8(10), etc. — constructor call with a single literal arg
-        if (isinstance(expr, TpyCall) and len(expr.args) == 1
-                and isinstance(expr.func, TpyName) and expr.func_name in StatementGenerator._FIXED_INT_NAMES):
-            inner = StatementGenerator._unwrap_coerce(expr.args[0])
-            if isinstance(inner, TpyIntLiteral):
-                return inner.value
-            if isinstance(inner, TpyUnaryOp) and inner.op == '-' and isinstance(inner.operand, TpyIntLiteral):
-                return -inner.operand.value
-        return None
+        return fixed_int_literal_value_from_expr(expr)
 
     def _gen_range_counter_loop(self, out: TextIO, stmt: TpyForEach,
                                  indent: str, elem_type: TpyType) -> bool:

@@ -5,9 +5,13 @@ Handles bare `str` / `int` / `bool` literals plus the unary-minus form
 and peels a single `TpyCoerce` wrapper so callers don't have to.
 """
 from ..parse import (
-    TpyExpr, TpyStrLiteral, TpyIntLiteral, TpyBoolLiteral, TpyUnaryOp, TpyCoerce,
+    TpyCall, TpyExpr, TpyName, TpyStrLiteral, TpyIntLiteral, TpyBoolLiteral,
+    TpyUnaryOp, TpyCoerce,
 )
-from ..typesys import LiteralValue, LiteralTag
+from ..typesys import ALL_FIXED_INTS, LiteralValue, LiteralTag
+
+
+_FIXED_INT_NAMES = frozenset(str(t) for t in ALL_FIXED_INTS)
 
 
 def literal_value_from_expr(expr: TpyExpr | None) -> LiteralValue | None:
@@ -24,4 +28,25 @@ def literal_value_from_expr(expr: TpyExpr | None) -> LiteralValue | None:
     if (isinstance(inner, TpyUnaryOp) and inner.op == "-"
             and isinstance(inner.operand, TpyIntLiteral)):
         return LiteralValue(LiteralTag.INT, -inner.operand.value)
+    return None
+
+
+def fixed_int_literal_value_from_expr(expr: TpyExpr) -> int | None:
+    """Extract a bare integer literal or fixed-int ctor of one."""
+    while isinstance(expr, TpyCoerce):
+        expr = expr.expr
+    value = literal_value_from_expr(expr)
+    if value is not None and value.tag is LiteralTag.INT:
+        assert isinstance(value.value, int) and not isinstance(value.value, bool)
+        return value.value
+    if (isinstance(expr, TpyCall) and len(expr.args) == 1
+            and isinstance(expr.func, TpyName)
+            and expr.func_name in _FIXED_INT_NAMES):
+        inner = expr.args[0]
+        while isinstance(inner, TpyCoerce):
+            inner = inner.expr
+        value = literal_value_from_expr(inner)
+        if value is not None and value.tag is LiteralTag.INT:
+            assert isinstance(value.value, int) and not isinstance(value.value, bool)
+            return value.value
     return None

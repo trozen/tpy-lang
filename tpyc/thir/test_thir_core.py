@@ -387,9 +387,8 @@ class TestForRange:
         assert _fn(thir, "f") is None
 
     def test_ctor_literal_step_is_ineligible(self):
-        # `Int32(2)` step: the AST folds it via _extract_int_literal (which the
-        # slice's _range_bound_literal_value does not), so it is deferred to
-        # avoid a variable-vs-literal classification divergence.
+        # `Int32(2)` bounds fold, but the step classifier deliberately accepts
+        # only bare literals until the stepped overflow arm is pinned.
         thir = _lower(_PRELUDE
                       + "def f(n: Int32) -> Int32:\n    acc = 0\n"
                       + "    for i in range(0, n, Int32(2)):\n        acc = acc + i\n    return acc\n")

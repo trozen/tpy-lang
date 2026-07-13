@@ -33,7 +33,9 @@ from tpyc.type_def_registry import (
 from tpyc.type_def_registry import IntTraits, FloatTraits
 from tpyc.typesys import ALL_FIXED_INTS
 from tpyc.parse.parser import _FIXED_INT_NAMES as PARSER_FIXED_INT_NAMES
-from tpyc.codegen_cpp.statements import StatementGenerator
+from tpyc.sema.literal_utils import (
+    _FIXED_INT_NAMES as LITERAL_UTILS_FIXED_INT_NAMES,
+)
 from tpyc.macro_api import _FIXED_INT_NAMES as MACRO_FIXED_INT_NAMES
 from tpyc.compilation_context import activate_compiler
 
@@ -1212,8 +1214,8 @@ def test_find_factory_helpers_match_old_lookup():
 
 def test_fixed_int_names_stay_in_sync():
     """Three modules carry a `_FIXED_INT_NAMES` set (one hardcoded in
-    parser after F.3f.3; two derived from ALL_FIXED_INTS in codegen
-    statements and macro_api). If a new fixed-int width ever lands in
+    parser after F.3f.3; two derived from ALL_FIXED_INTS in literal_utils
+    and macro_api). If a new fixed-int width ever lands in
     typesys.ALL_FIXED_INTS, the hardcoded copy in parser must update in
     lockstep; this test pins the invariant so a single addition surfaces
     all sites at once.
@@ -1228,7 +1230,7 @@ def test_fixed_int_names_stay_in_sync():
         f"missing={expected - PARSER_FIXED_INT_NAMES}, "
         f"extra={PARSER_FIXED_INT_NAMES - expected}"
     )
-    assert StatementGenerator._FIXED_INT_NAMES == expected
+    assert LITERAL_UTILS_FIXED_INT_NAMES == expected
     assert MACRO_FIXED_INT_NAMES == expected
 
 

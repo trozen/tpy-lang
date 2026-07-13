@@ -48,7 +48,6 @@ from ...parse.nodes import (
     TpyTry,
     TpyTupleLiteral,
     TpyTupleUnpack,
-    TpyUnaryOp,
     TpyVarDecl,
     TpyWhile,
     TpyWith,
@@ -67,6 +66,7 @@ from ...typesys import (
     VoidType,
     error_return_to_cpp,
     is_return_exception,
+    LiteralTag,
     resolve_int_literals,
     unwrap_readonly,
     unwrap_ref_type,
@@ -83,6 +83,10 @@ from ...type_def_registry import (
     is_str_type,
 )
 from ...modules.type_resolution import is_native_iterable
+from ...sema.literal_utils import (
+    fixed_int_literal_value_from_expr,
+    literal_value_from_expr,
+)
 from ...codegen_cpp.forms import (
     LocalBinding,
     is_ptr_variant_union,
@@ -523,17 +527,8 @@ def _range_bound_literal_value(arg: TpyExpr) -> int | None:
     # an inlinable bare int literal (possibly behind the int_literal coerce) vs a
     # name/expr hoisted to a temp. No magnitude clamp: both paths render the bound
     # through the shared literal rules, so only this choice must agree with
-    # _extract_int_literal, which folds any width. Its ctor-literal arm
-    # (`Int32(3)`) is not mirrored here.
-    arg = _unwrap_lit_coerce(arg)
-    if isinstance(arg, TpyIntLiteral):
-        return arg.value
-    # A negated literal (`range(-3, 3)`) is inlined by the AST too
-    # (_extract_int_literal's negated arm).
-    if (isinstance(arg, TpyUnaryOp) and arg.op == "-"
-            and isinstance(arg.operand, TpyIntLiteral)):
-        return -arg.operand.value
-    return None
+    # _extract_int_literal, including fixed-int ctor literals (`Int32(3)`).
+    return fixed_int_literal_value_from_expr(arg)
 
 def _range_step_kind(step_arg: TpyExpr, declared: dict[str, TpyType]) -> str | None:
     # Classify a 3-arg range's step into the AST's _gen_range_counter_loop arm,
@@ -543,11 +538,14 @@ def _range_step_kind(step_arg: TpyExpr, declared: dict[str, TpyType]) -> str | N
     #     literal_pos / literal_neg; a zero step is rejected (the AST falls to the
     #     Range ctor there, not this counter loop).
     #   * a bare fixed-int name -> variable (captured into `__step_N`).
-    # A ctor-literal step (`Int32(2)`) is deferred: the AST folds it via
-    # _extract_int_literal (which _range_bound_literal_value does not), so
-    # admitting it as a variable step would diverge. Binop/call steps are
-    # deferred for the same net-confidence reason as the bound slice.
-    lit = _range_bound_literal_value(step_arg)
+    # A ctor-literal step (`Int32(2)`) remains deferred even though bounds fold
+    # it: the stepped arms need their overflow-check rendering pinned first.
+    # Binop/call steps are deferred for the same net-confidence reason.
+    value = literal_value_from_expr(_unwrap_lit_coerce(step_arg))
+    lit = None
+    if value is not None and value.tag is LiteralTag.INT:
+        assert isinstance(value.value, int) and not isinstance(value.value, bool)
+        lit = value.value
     if lit is not None:
         # A wide literal step is deferred: the stepped arms thread the step
         # token through the overflow-check helpers, a render pinned only for
