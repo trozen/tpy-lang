@@ -1435,11 +1435,14 @@ class TestUnionCallArgLift:
         assert isinstance(arg, THIRArgTemp)
         assert isinstance(arg.init, THIRBinOp) and arg.init.paren_wrap
 
-    def test_record_rvalue_ptr_union_arg_rejects(self):
-        # `take(A(n))` hoists a named record temp (`A __tmp_N = A(n);`) on
-        # the AST path -> AST.
+    def test_record_rvalue_ptr_union_arg_temps(self):
+        # `take(A(n))` hoists a named record temp (`A __tmp_N = A(n);`) and
+        # lifts its address -- the ctor-rvalue temp arm (flush positions
+        # only; the return statement flushes).
         thir = self._lower("def f(n: Int32) -> Int32:\n    return take(A(n))\n")
-        assert _fn(thir, "f") is None
+        arg = self._arg(thir, "f")
+        assert isinstance(arg, THIRUnionArgLift) and arg.temp_cpp == "A"
+        assert isinstance(arg.value, THIRCtorCall)
 
     def test_readonly_slot_member_arg_lifts_const(self):
         # A readonly ptr-variant slot spells const pointees on the lift

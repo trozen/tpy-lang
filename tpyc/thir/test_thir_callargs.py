@@ -1157,14 +1157,18 @@ class TestArgTempGateRejects:
         assert _fn(thir, "f") is None
 
     def test_nested_call_positions_stay_ast(self):
-        # A temp-needing call nested under a print arg or a binop operand is
-        # not the direct statement value -- temps never propagate inward.
-        thir = _lower(_VU_PRELUDE
-                      + "def f(k: Int32):\n    print(take_vu(k))\n"
-                      + "def g(k: Int32) -> Int32:\n"
-                      + "    return take_vu(k) + 1\n")
-        assert _fn(thir, "f") is None
+        # A print arg is a flush position (temps hoist before the cout
+        # chain), but a binop operand is not the direct statement value --
+        # temps never propagate inward there.
+        src = (_VU_PRELUDE
+               + "def f(k: Int32):\n    print(take_vu(k))\n"
+               + "def g(k: Int32) -> Int32:\n"
+               + "    return take_vu(k) + 1\n")
+        thir = _lower(src)
+        assert _fn(thir, "f") is not None
         assert _fn(thir, "g") is None
+        # The print-arg temp must FLUSH before the cout line, not just route.
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_scalar_field_write_value_routes(self):
         # A field-write assign is the fifth flushable position (see

@@ -598,7 +598,8 @@ def test_del_attr_multi_target_falls_back():
         if fn is None:
             fold_attempt("body")
     assert fn is None
-    assert compiler._thir_fallback == {"body:stmt.del_attr:multi_target": 1}
+    assert compiler._thir_fallback == {
+        "body:stmt.del_attr:del_attr.multi_target": 1}
 
 
 def test_del_attr_unresolved_falls_back():
@@ -614,7 +615,8 @@ def test_del_attr_unresolved_falls_back():
         if fn is None:
             fold_attempt("body")
     assert fn is None
-    assert compiler._thir_fallback == {"body:stmt.del_attr:unresolved": 1}
+    assert compiler._thir_fallback == {
+        "body:stmt.del_attr:del_attr.unresolved": 1}
 
 
 def test_if_bool_literal_routes_at_sync_boundary():
@@ -649,8 +651,8 @@ def test_assign_lowering_reject_falls_back_at_sync_boundary():
         "    xs: list[Int32]\n"
         "    def __init__(self, xs: list[Int32]):\n"
         "        self.xs = xs\n"
-        "def rejected(r: R, xs: list[Int32]) -> None:\n"
-        "    r.xs = xs\n"
+        "def rejected(r: R, r2: R) -> None:\n"
+        "    r.xs = r2.xs\n"
     )
     entry = _entry(modules)
     with activate_compiler(compiler):

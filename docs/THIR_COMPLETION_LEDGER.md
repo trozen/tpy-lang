@@ -1211,10 +1211,12 @@ Match tiers still parked (the tail):
 lowering -- the same row that keeps them out of M1's switch (they are
 the corpus `mode: Literal[...]` dispatchers); value patterns
 (named-constant compares) still reject. PARKED (record patterns and
-optional partitions LANDED as incr 92/93 -- see their entries): the
-optional tiers' remainder (value-repr subjects -- cross-axis on the
-std::optional local/param form; field-access subjects; the non-prefix
-if/elif-optional strategy),
+optional partitions LANDED as incr 92/93; value-repr optional subjects
+LANDED as the O2 multi-arm dispatch on thir-nested-defs -- the
+has_value split + inner switch/chain over `__match_inner_N`, scalar
+and str inners; record inners, guarded inner chains, and
+`Optional[enum]` names still reject): the optional tiers' remainder
+(field-access subjects; the non-prefix if/elif-optional strategy),
 polymorphic/@dynamic (15), str-switch (8; discriminator machinery),
 overload-specialized (1), resumable (generator/async) matches (own
 frontier), M4c wrapper subjects (cross-axis, see above). Corpus
@@ -1299,8 +1301,10 @@ renders (BUGS.md): record-subject or-pattern bindings (as-over-or +
 or-alt captures, silently dropped) and a guarded-union field-cond
 entry whose guard reads its own capture. Still deferred: class/`as`
 field sub-patterns (union field guards / nested records / type
-guards), union or-alt keywords (`__case_{i}_{j}` duplication), non-F1
-records, hoisted non-plain-value captures. Faces
+guards), non-F1 records, hoisted non-plain-value captures. (Union
+or-alt keywords LANDED on thir-nested-defs: the switch tier's
+`__case_{i}_{j}` per-alternative duplication and the guarded tier's
+keyword-bearing alternative distribution.) Faces
 `match.if_elif_record` / `guarded_record` / `record_or` / `field_cond`
 / `field_none` / `field_bind` / `union_field_cond`, all
 corpus-witnessed (record_basic, record_guard, field_none,

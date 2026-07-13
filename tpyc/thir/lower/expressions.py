@@ -49,6 +49,7 @@ from ...typesys import (
     TpyType,
     TupleType,
     TypeParamRef,
+    UnionType,
     ValueForm,
     VoidType,
     contains_type_param,
@@ -85,6 +86,7 @@ from ...codegen_cpp.context import (
     view_key_target,
 )
 from ...compilation_context import get_current_compiler
+from ...value_category import is_rvalue_source
 from ..fallback import ThirUnsupported, expr_kind_tag, note_detail
 from ..faces import witness as _witness
 from ...codegen_cpp.expressions import ExpressionGenerator
@@ -2206,6 +2208,110 @@ def _lower_generic_plain_call(e, callee_cpp, lc: '_LowerCtx',
     )
 
 
+def _value_opt_member_arg(a: TpyExpr, ptype: 'TpyType | None',
+                          declared: dict[str, TpyType], analyzer) -> bool:
+    """A member-typed arg into a VALUE-repr Optional slot (`std::optional<T>`
+    by value): gen_call_arg has no value-optional arm at all, so the arg
+    falls to the generic tail and the optional's converting ctor absorbs the
+    bare member render (`f(5)`, `f("hi")`, `f(Color.Red)`, a bytes rvalue) --
+    position-blind, mirrored by `_lower_call_arg`'s own tail. Excluded:
+    `Optional[Own[...]]` slots (gen_call_arg's Own cascade), optional-typed
+    args (the whole-optional rows), and any NAME/FIELD whose C++ binding is
+    still the optional (a narrowed read -- the AST passes the WHOLE optional
+    bare there, while the plain lowered read would deref)."""
+    pt = ptype if isinstance(ptype, TpyType) else None
+    if pt is None:
+        return False
+    u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(pt)))
+    if not isinstance(u, OptionalType) or u.uses_pointer_repr():
+        return False
+    if isinstance(unwrap_readonly(unwrap_send_sync(u.inner)), OwnType):
+        return False
+    # Shape checks run on the peeled expr: a slot-coerced arg is stamped with
+    # the OPTIONAL itself (`5` / `b"a" + b"b"` -> `T | None`) but still
+    # renders as the bare member through the coerce arm.
+    peeled = _peel_coerce(a)
+    if isinstance(peeled, (TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral,
+                           TpyStrLiteral, TpyBytesLiteral)):
+        return True
+    at = analyzer.get_expr_type(peeled)
+    if at is None:
+        return False
+    at_u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
+    if isinstance(at_u, (OptionalType, UnionType)):
+        return False
+    if isinstance(peeled, TpyName):
+        dt = declared.get(peeled.name)
+        if dt is None or peeled.name == "self":
+            return False
+        du = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(dt)))
+        return not isinstance(du, (OptionalType, UnionType))
+    if isinstance(peeled, TpyFieldAccess):
+        # Only the type-level enum-member read (a fixed spelling); a data
+        # field could be a narrowed optional field -> keep rejecting.
+        return getattr(peeled, "enum_member_of", None) is not None
+    # Member-typed rvalues (a scalar ctor, a bytes/str binop, a call): the
+    # recursive lowering validates the expression itself.
+    return isinstance(peeled, (TpyCall, TpyMethodCall, TpyBinOp, TpyUnaryOp))
+
+
+def _optional_ptr_container_slot(ptype: 'TpyType | None',
+                                 analyzer) -> 'OptionalType | None':
+    """A pointer-repr Optional slot with a CONTAINER inner (`list[T] | None`
+    -> `const std::vector<T>*`), or None -- the container twin of
+    `_optional_ptr_arg_slot` (which is F1-record-only). Only the two faces
+    the AST renders position-blind are lowered for it: the `nullptr` literal
+    and the bare-container-name address-of (`&(name)`)."""
+    pt = ptype if isinstance(ptype, TpyType) else None
+    if pt is None:
+        return None
+    pt = unwrap_readonly(pt)
+    if not (isinstance(pt, OptionalType) and pt.uses_pointer_repr()):
+        return None
+    inner = unwrap_readonly(pt.inner)
+    if is_list(inner) or is_dict(inner) or is_set(inner):
+        return pt
+    return None
+
+
+def _optional_ptr_container_arg(a: TpyExpr, ptype: 'TpyType | None',
+                                declared: dict[str, TpyType],
+                                analyzer) -> bool:
+    """Admission twin of the container-inner optional-ptr rows in
+    `_lower_call_arg`: a `None` literal, or a NAME declared as the matching
+    bare container (an optional-declared or narrowed name stays rejected --
+    its C++ binding is already the pointer / needs the pass face)."""
+    ot = _optional_ptr_container_slot(ptype, analyzer)
+    if ot is None:
+        return False
+    if isinstance(a, TpyNoneLiteral):
+        return True
+    if not isinstance(a, TpyName) or a.name == "self":
+        return False
+    dt = declared.get(a.name)
+    if dt is None:
+        return False
+    du = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(dt)))
+    return du == unwrap_readonly(ot.inner)
+
+
+def _union_ctor_temp_arg(a: TpyExpr, ptype: 'TpyType | None', analyzer) -> bool:
+    """A member-typed record-ctor rvalue into a (non-Own) pointer-variant
+    union slot -- `_gen_union_arg`'s rvalue branch: the ctor hoists a named
+    temp and the variant lifts its address (`pv{&__tmp_N}`). Temp-hoisting,
+    so the caller admits it only under `temp_args`."""
+    slot = _arg_ptr_union_slot(ptype, analyzer)
+    if slot is None:
+        return False
+    ut, _deep_const = slot
+    if not isinstance(a, TpyCall) or not _ctor_shape_ok(a, analyzer):
+        return False
+    if not is_rvalue_source(analyzer, a):
+        return False
+    at = analyzer.get_expr_type(a)
+    return any(at == m for m in ut.members if not is_void_like_type(m))
+
+
 def _lower_free_call_arg(e: TpyCall, a: TpyExpr,
                          ptype: 'TpyType | None', kind: 'tuple[str, str] | None',
                          lc: '_LowerCtx', declared: dict[str, TpyType], *,
@@ -2220,6 +2326,14 @@ def _lower_free_call_arg(e: TpyCall, a: TpyExpr,
             ok = _plain_call_arg_ok(
                 a, ptype, declared, analyzer, temps_ok=temp_args,
                 narrowed=frozenset(lc.narrow.narrowed))
+            if not ok and _value_opt_member_arg(a, ptype, declared, analyzer):
+                ok = _witness("call.optval_member")
+            if not ok and _optional_ptr_container_arg(
+                    a, ptype, declared, analyzer):
+                ok = True  # witnessed at the lowering rows (optptr.none/name)
+            if not ok and temp_args and _union_ctor_temp_arg(
+                    a, ptype, analyzer):
+                ok = True  # witnessed at the lowering arm (unionlift.ctor_temp)
         if not ok:
             raise ThirUnsupported("expr.call")
     if (_is_len_native(e) and isinstance(a, TpyFieldAccess)):
@@ -2434,9 +2548,27 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
             _witness("argtemp.own_copy")
             return THIRArgTemp(result_type=ow, init=lowered, move=True,
                                form=own_form, loc=getattr(a, "loc", None))
-    lift = _lower_union_arg_lift(a, ptype, lc, declared, readonly_target=readonly_target)
+    lift = _lower_union_arg_lift(a, ptype, lc, declared,
+                                 readonly_target=readonly_target,
+                                 temp_args=temp_args)
     if lift is not None:
         return lift
+    # The container twin of the pointer-repr Optional faces below: only the
+    # `nullptr` literal and the bare-container-name address-of are lowered
+    # (`sum_list(&(data))` / `sum_list(nullptr)`); admission pinned the shape.
+    cont_ot = _optional_ptr_container_slot(ptype, lc.analyzer)
+    if cont_ot is not None and _optional_ptr_container_arg(
+            a, cont_ot, declared, lc.analyzer):
+        loc = getattr(a, "loc", None)
+        if isinstance(a, TpyNoneLiteral):
+            _witness("optptr.none")
+            return THIROptionalPtrArg(result_type=cont_ot, form=Form.BORROW,
+                                      loc=loc)
+        _witness("optptr.name")
+        return THIROptionalPtrArg(result_type=cont_ot, form=Form.BORROW,
+                                  value=_lower_expr(a, lc, declared,
+                                                    use=_NESTED_ARG_USE),
+                                  addr_of=True, loc=loc)
     # The pointer-repr Optional slot faces (must run BEFORE the pointer-local
     # deref retag: an already-pointer name passes BARE into the `T*` slot).
     # A narrowed subject is NOT skipped: its read renames to the extraction
@@ -2504,10 +2636,13 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
 def _lower_union_arg_lift(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                           declared: dict[str, TpyType], *,
                           readonly_target: bool = False,
+                          temp_args: bool = False,
                           ) -> 'THIRUnionArgLift | None':
     """The pointer-variant union-slot arg lift, or None when the arg renders
     bare. Mirrors `_gen_union_arg`'s dispatch over the gate-admitted shapes:
-    a None literal is the monostate member; a member-typed name lifts
+    a None literal is the monostate member; a member-typed ctor RVALUE hoists
+    a named temp and lifts its address (`pv{&__tmp_N}`, the rvalue branch --
+    flush positions only); a member-typed name lifts
     `pv{&(name)}` with the indirect deref for a pointer-local / `self`
     receiver (`&((*p))` / `&((*this))`, gen_expr_deref's render); an
     already-union name into a DEEP-CONST slot (a `readonly[...]` annotation
@@ -2530,6 +2665,21 @@ def _lower_union_arg_lift(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         _witness("unionlift.none")
         return THIRUnionArgLift(result_type=ut, variant_cpp=variant_cpp,
                                 form=Form.BORROW, loc=loc)
+    if _union_ctor_temp_arg(a, ptype, lc.analyzer):
+        # `_gen_union_arg`'s rvalue branch: the member ctor hoists a named
+        # temp, the variant lifts its address. Admitted only under a flush
+        # position; a match guard admits calls but is never a flush point,
+        # so reject here instead of falling through to a bare render.
+        if not temp_args:
+            raise ThirUnsupported(
+                "union ctor arg-temp outside a flush position")
+        at = unwrap_ref_type(lc.analyzer.get_expr_type(a))
+        _witness("unionlift.ctor_temp")
+        return THIRUnionArgLift(
+            result_type=ut, variant_cpp=variant_cpp,
+            value=_lower_expr(a, lc, declared, use=_RECORD_TEMP_USE),
+            temp_cpp=at.to_cpp(),
+            form=Form.BORROW, loc=loc)
     if (not isinstance(a, TpyName) or a.name in lc.narrow.narrowed
             or a.name in lc.inline_narrowed):
         return None

@@ -51,10 +51,15 @@ THIR_FACES: frozenset[str] = frozenset({
     # Value-repr Optional slot None arg (lowering): the value-optional twin
     # of `optptr.none` -- `f(std::nullopt)`.
     "call.none_value_opt",
+    # Value-repr Optional slot member-typed arg (lowering admission): the
+    # generic tail render, the optional's converting ctor absorbing the bare
+    # member -- `f(5)`, `f("hi")`, `f(Color.Red)`.
+    "call.optval_member",
     # Pointer-variant union-slot lifts (lowering).
     "unionlift.none",               # `pv{std::monostate{}}`
     "unionlift.const_wrap",         # `ptr_variant_to_const(...)`
     "unionlift.member",             # `pv{&(name)}`
+    "unionlift.ctor_temp",          # ctor rvalue temp + `pv{&__tmp_N}`
     # Own-cascade bare rows + the readonly ctor tail (lowering admission).
     "own.scalar_rvalue",            # rvalue scalar into Own[scalar]
     "own.record_rvalue",            # record rvalue call into Own[record]
@@ -155,6 +160,21 @@ THIR_FACES: frozenset[str] = frozenset({
     # The Optional[record] FIELD write from a record RVALUE (ctor / by-value
     # call of the inner type): the bare copy `recv.opt = Inner(args);`.
     "field_write.optrec_rvalue",
+    # Dynamic-attrs (D16) family faces.
+    "setitem.any_value",            # `d[k] = v` into a dict[K, Any] slot from
+                                    # an Any-typed name (bare, no make_any)
+    "delitem.any_value",            # `del d[k]` on a dict[K, Any] receiver
+    "field_write.container_name",   # container FIELD write from a same-family
+                                    # NAME: bare copy or std::move at last use
+    "method.dyn_setattr",           # `obj.x = v` -> the synthesized
+                                    # `obj.__setattr__("x", make_any(...))`
+    "stmt.del_attr",                # `del obj.attr` -> the synthesized
+                                    # `obj.__delattr__("attr");` statement
+    "ret.any_subscript",            # `return d[k]` at an Any return slot ->
+                                    # bare `::tpy::__getitem__(d, k)`
+    "expr_stmt.macro_discard",      # void stmt-position macro expansion
+                                    # (setattr/delattr builtins) dispatched
+                                    # with the DISCARD use
     # A base-init arg beyond the scalar row: str name/literal, None,
     # IntLiteralType digits, record / Optional-ptr / Own param names --
     # all the target-less bare renders of _extract_base_inits.
@@ -465,7 +485,9 @@ THIR_FACES: frozenset[str] = frozenset({
     "match.field_bind",             # field capture: `{base}.{f}` rhs binding
     "match.union_field_cond",       # guarded-union entry with field conds
     "match.or_labels",              # or-pattern -> stacked case labels
+    "match.union_or_bind",          # binding or-arm -> one block per alt
     "match.optional_partition",     # Optional-ptr subject: None/has-value split
+    "match.optional_value_dispatch",  # value-repr subject: multi-arm inner tier
     "match.optional_none_arm",      # `case None:` prefix -> the nullptr block
     "match.optional_value_only",    # no None arm -> bare `if (s != nullptr)`
     "match.optional_inner_bind",    # capture/as vs the __match_inner_N alias

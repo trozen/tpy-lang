@@ -475,6 +475,10 @@ class StatementGenerator:
                                try_counter=CtxCounter(self.ctx,
                                                       "try_except_counter"),
                                return_cpp=return_cpp)
+                # The function-level trailing-comment walk runs for THIR
+                # bodies too (this early return skips the AST tail's call).
+                self.ctx.emit_block_trailing_comments(
+                    out, body, INDENT * indent_level)
                 return
 
         scan = self.setup_body_scope(

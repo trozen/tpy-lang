@@ -1164,9 +1164,9 @@ by theme; each is a rule the next cell should apply.
   return-value arm render position-blind (a literal at a wider slot stays bare `42`, never
   `::tpy::BigInt(42)`), unlike the sync target-typed arms. Lower these through `_lower_expr`,
   not the return-coercion path.
-- Arg-temps flush only at the five simple-statement positions (expr-stmt / var-decl init /
-  name assign / return / field write); nested-call and while/elif-condition args have no
-  flush point and stay AST.
+- Arg-temps flush only at the simple-statement positions (expr-stmt / var-decl init /
+  name assign / return / field write / print arg); nested-call and while/elif-condition
+  args have no flush point and stay AST.
 
 **Anti-drift: extract shared facts, don't mirror.**
 

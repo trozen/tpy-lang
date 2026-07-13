@@ -41,6 +41,7 @@ from ...parse.nodes import (
     TpyRaise,
     TpyReturn,
     TpySetLiteral,
+    TpySlice,
     TpyStmt,
     TpyStrLiteral,
     TpySubscript,
@@ -55,6 +56,7 @@ from ...parse.nodes import (
     is_docstring,
 )
 from ...typesys import (
+    AnyType,
     NominalType,
     OptionalType,
     OwnType,
@@ -107,6 +109,7 @@ from ..nodes import (
     THIRBreak,
     THIRBytesLiteral,
     THIRCall,
+    THIRCoerce,
     THIRContinue,
     THIRExpr,
     THIRExprStmt,
@@ -116,6 +119,7 @@ from ..nodes import (
     THIRIf,
     THIRIsinstance,
     THIRLiteral,
+    THIRMethodCall,
     THIRMove,
     THIRName,
     THIRNarrowAlias,
@@ -179,6 +183,9 @@ from .predicates import (
     _optional_narrow_facts_ok,
     _optional_ptr_borrow_name,
     _owned_str_append_target,
+    _owned_str_slot,
+    _plain_member_call_markers_ok,
+    _plain_method_fi_ok,
     _param_is_const,
     _value_opt_scalar,
     _param_is_deep_const,
@@ -306,6 +313,165 @@ def _del_var_trivial(t: TpyType | None, analyzer) -> bool:
     if resolved is not None:
         t = resolved
     return t.is_trivially_destructible()
+
+def _is_any_type(t: 'TpyType | None') -> bool:
+    return isinstance(
+        unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t))), AnyType
+    ) if isinstance(t, TpyType) else False
+
+def _any_value_dict(t: 'TpyType | None', analyzer) -> bool:
+    """A `dict[K, Any]` whose KEY is in the shared key slice (fixed-int /
+    runtime-BigInt / owned-str -- `_container_elem_family`'s dict keys). The
+    `Any` VALUE keeps the family out of `_container_scalar_read`, but the
+    del-item / setitem-of-Any / return-of-read emits never construct or
+    convert the value slot, so the key alone decides byte-parity there."""
+    if t is None:
+        return False
+    u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    if isinstance(u, OwnType) or not is_dict(u):
+        return False
+    args = getattr(u, "type_args", None)
+    if not args or len(args) < 2:
+        return False
+    key, val = args[0], args[1]
+    return ((is_fixed_int_type(key) or _runtime_bigint(key, analyzer)
+             or _owned_str_slot(key, analyzer))
+            and _is_any_type(val))
+
+def _any_dict_subscript_shape_ok(
+        sub: TpySubscript, declared: dict[str, TpyType], pointers: set[str],
+        narrowed: 'AbstractSet[str]', analyzer) -> bool:
+    """The shared receiver/index half of the dict-Any subscript positions
+    (setitem target / del-item / the Any-return read) -- `_setitem_target_ok`'s
+    shape checks over the `_any_value_dict` family."""
+    if isinstance(sub.index, TpySlice) or sub.slice_function_info is not None:
+        return False
+    if sub.typed_dict_field is not None or sub.needs_optional_runtime_check:
+        return False
+    recv = sub.obj
+    if isinstance(recv, TpyName) and (recv.name in pointers
+                                      or recv.name in narrowed):
+        return False
+    if not _any_value_dict(
+            _subscript_container_recv_type(recv, declared, analyzer),
+            analyzer):
+        return False
+    return _bigint_index_disposition(sub.index, analyzer) != "reject"
+
+def _any_dict_setitem_ok(
+        stmt: TpyAssign, declared: dict[str, TpyType], pointers: set[str],
+        narrowed: 'AbstractSet[str]', analyzer) -> bool:
+    """`d[k] = v` into a `dict[K, Any]` value slot: the value must ALREADY be
+    Any-typed (a bare name -- an `Any` param/local), so the AST's element-slot
+    `wrap_into_any` chokepoint cannot fire and the value renders bare
+    (`::tpy::__setitem__(d, k, v);`). A not-yet-Any value arrives as an
+    `into_any` coerce and stays on the AST path."""
+    if not _any_dict_subscript_shape_ok(
+            stmt.target, declared, pointers, narrowed, analyzer):
+        return False
+    v = stmt.value
+    return (isinstance(v, TpyName) and v.name in declared
+            and v.name not in pointers and v.name not in narrowed
+            and _is_any_type(analyzer.get_expr_type(v))
+            and _witness("setitem.any_value"))
+
+def _container_name_field_write_ok(
+        stmt: TpyAssign, declared: dict[str, TpyType], pointers: set[str],
+        narrowed: 'AbstractSet[str]', analyzer) -> bool:
+    """`recv.field = name` where field and name are the same builtin container
+    family: the AST's default field assign renders the bare name and
+    `_maybe_move` moves an owned local at its last use
+    (`this->_data = std::move(d);`) -- the container sibling of the F1
+    record-name field write, riding the generic storage-convert tail."""
+    v = stmt.value
+    if not isinstance(v, TpyName):
+        return False
+    if not _field_receiver_ok(stmt.target, declared, analyzer):
+        return False
+    ft = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+        analyzer.get_expr_type(stmt.target))))
+    if not (is_dict(ft) or is_list(ft) or is_set(ft)):
+        return False
+    if v.name in pointers or v.name in narrowed or v.name not in declared:
+        return False
+    vt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(declared[v.name])))
+    return (((is_dict(ft) and is_dict(vt)) or (is_list(ft) and is_list(vt))
+             or (is_set(ft) and is_set(vt)))
+            and _witness("field_write.container_name"))
+
+def _lower_dyn_setattr_call(call: TpyMethodCall, lc: '_LowerCtx',
+                            declared: dict[str, TpyType]) -> THIRExpr:
+    """The sema-synthesized `obj.__setattr__("name", <value>)` behind a
+    dynamic-attr write (`obj.x = v`, D16). The generic method-call arm cannot
+    admit it -- the `Any` value slot is outside the arg-family slice -- so
+    this narrow mirror reproduces `_gen_method_call`'s user-record tail for a
+    bare non-pointer F1-record receiver name, the literal name arg, and an
+    `into_any`-coerced str-literal value (the coercion's `make_any` wrap
+    carried as the THIRCoerce `{0}` template -- the same codegen lambda the
+    AST calls, applied to a placeholder)."""
+    analyzer = lc.analyzer
+    loc = getattr(call, "loc", None)
+    recv = call.obj
+    if not (isinstance(recv, TpyName) and recv.name in declared
+            and recv.name != lc.self_receiver
+            and recv.name not in lc.pointers
+            and recv.name not in lc.narrow.narrowed
+            and recv.name not in lc.frame_slots
+            and _f1_record(declared.get(recv.name), analyzer)):
+        note_detail("setattr.recv_shape")
+        raise ThirUnsupported("stmt.assign")
+    fi = call.resolved_function_info
+    if (fi is None or not _plain_member_call_markers_ok(call)
+            or call.needs_optional_runtime_check
+            or not _plain_method_fi_ok(fi)
+            or fi.cpp_template is not None or fi.native_function
+            or fi.native_name or fi.type_params or fi.is_staticmethod
+            or not fi.is_method
+            or len(call.args) != 2 or len(fi.params) != 2):
+        note_detail("setattr.call_shape")
+        raise ThirUnsupported("stmt.assign")
+    recv_t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+        declared[recv.name])))
+    ri = analyzer.registry.get_record_for_type(recv_t)
+    if ri is None or len(analyzer.registry.get_method_overloads_with_parents(
+            ri, call.method)) != 1:
+        note_detail("setattr.overloads")
+        raise ThirUnsupported("stmt.assign")
+    name_arg, value_arg = call.args
+    if not isinstance(name_arg, TpyStrLiteral):
+        note_detail("setattr.name_shape")
+        raise ThirUnsupported("stmt.assign")
+    # Only str/int-literal sources pin the coercion lambda's wrap to a
+    # placeholder-transparent template (`::tpy::make_any(std::string({0}))` /
+    # `::tpy::make_any(::tpy::BigInt({0}))`) with a bare inner render on both
+    # paths; other actual types take value-dependent renders.
+    if not (isinstance(value_arg, TpyCoerce)
+            and value_arg.coercion.name == "into_any"
+            and isinstance(value_arg.expr, (TpyStrLiteral, TpyIntLiteral))):
+        note_detail("setattr.value_shape")
+        raise ThirUnsupported("stmt.assign")
+    wrap = value_arg.coercion.codegen(
+        "{0}", value_arg.actual_type, value_arg.expected_type,
+        value_arg.context_kind)
+    lowered_value = THIRCoerce(
+        result_type=analyzer.get_expr_type(value_arg),
+        expr=_lower_expr(value_arg.expr, lc, declared),
+        coercion_name=value_arg.coercion.name,
+        wrap=wrap,
+        loc=getattr(value_arg, "loc", None),
+    )
+    _witness("method.dyn_setattr")
+    return THIRMethodCall(
+        result_type=VoidType(),
+        receiver=_lower_expr(
+            recv, lc, declared,
+            use=_ExprUse(result=_ExprResultUse.BORROW_BIND)),
+        method_cpp=escape_cpp_name(call.method),
+        args=(_lower_call_arg(name_arg, fi.params[0].type, lc, declared,
+                              method_arg=True),
+              lowered_value),
+        loc=loc,
+    )
 
 def _scalar_or_str_unpack_elem(t: TpyType | None, analyzer) -> bool:
     """A tuple-unpack target / source-tuple element this cell admits: a value
@@ -1821,9 +1987,20 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     or stmt.target.name not in declared):
                 raise ThirUnsupported(stmt_reject_reason(stmt))
         elif isinstance(stmt.target, TpySubscript):
-            if not _container_setitem_ok(
-                    stmt, declared, pointers, narrowed, analyzer):
+            any_dict_write = _any_dict_setitem_ok(
+                stmt, declared, pointers, narrowed, analyzer)
+            if not (any_dict_write or _container_setitem_ok(
+                    stmt, declared, pointers, narrowed, analyzer)):
                 raise ThirUnsupported(stmt_reject_reason(stmt))
+        elif (isinstance(stmt.target, TpyFieldAccess)
+              and stmt.target.dyn_setattr_call is not None):
+            # D16 dyn-attr write: the statement IS the sema-synthesized
+            # `obj.__setattr__("name", <value>)` (the AST's early-return
+            # method-call arm in _gen_assign_code).
+            return THIRExprStmt(
+                expr=_lower_dyn_setattr_call(
+                    stmt.target.dyn_setattr_call, lc, declared),
+                loc=loc)
         elif not (
                 _f2b_optional_field_write_ok(
                     stmt, declared, pointers, analyzer)
@@ -1836,7 +2013,9 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 or _optional_record_field_write_ok(
                     stmt, declared, pointers, analyzer, narrowed, lc.prescan)
                 or _container_field_write_ok(stmt, declared, analyzer)
-                or _str_field_write_ok(stmt, declared, analyzer)):
+                or _str_field_write_ok(stmt, declared, analyzer)
+                or _container_name_field_write_ok(
+                    stmt, declared, pointers, narrowed, analyzer)):
             note_detail("assign.field_write_shape")
             raise ThirUnsupported(stmt_reject_reason(stmt))
         target_prechecked = isinstance(stmt.target, TpyFieldAccess)
@@ -1850,7 +2029,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             # (temp_args), like a name assign.
             target = _lower_expr(
                 stmt.target, lc, declared,
-                field_prechecked=target_prechecked)
+                field_prechecked=target_prechecked,
+                subscript_prechecked=any_dict_write)
             elem_t = analyzer.get_expr_type(stmt.target)
             value = _slot_literal_retype(
                 _flush_witness("flush.assign",
@@ -2130,6 +2310,29 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
     if isinstance(stmt, TpyReturn):
         begin_stmt()
         if stmt.value is not None and not lc.prescan.ret_supported:
+            # An `Any` return slot (`::tpy::Any` by value) has exactly one
+            # routed source: an Any-valued dict subscript read
+            # (`return self._data[name];` -> the bare checked
+            # `::tpy::__getitem__(recv, k)` rvalue, no wrap -- both slot and
+            # value are already Any, so no coercion can fire on either path).
+            ret_t = (lc.func.return_type
+                     if isinstance(lc.func.return_type, TpyType) else None)
+            if (_is_any_type(ret_t)
+                    and isinstance(stmt.value, TpySubscript)
+                    and _is_any_type(analyzer.get_expr_type(stmt.value))
+                    and _any_dict_subscript_shape_ok(
+                        stmt.value, declared, scope.admission_pointers(),
+                        lc.narrow.narrowed.keys(), analyzer)):
+                _witness("ret.any_subscript")
+                return THIRReturn(
+                    value=_flush_witness(
+                        "flush.return",
+                        _lower_expr(stmt.value, lc, declared,
+                                    use=_ExprUse(
+                                        result=_ExprResultUse.STORAGE,
+                                        allow_temps=True),
+                                    subscript_prechecked=True)),
+                    loc=loc)
             note_detail("return.slot_type")
             raise ThirUnsupported(stmt_reject_reason(stmt))
         pointers = scope.admission_pointers()
@@ -2590,21 +2793,6 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         if scope.loop_depth == 0:
             raise ThirUnsupported("stmt.continue")
         return THIRContinue(loc=loc)
-    if isinstance(stmt, TpyDelAttr):
-        if len(stmt.targets) != 1:
-            raise ThirUnsupported("stmt.del_attr:multi_target")
-        call = stmt.targets[0].dyn_delattr_call
-        if call is None:
-            raise ThirUnsupported("stmt.del_attr:unresolved")
-        return THIRExprStmt(
-            expr=_flush_witness(
-                "flush.expr_stmt",
-                _lower_expr(
-                    call, lc, declared,
-                    use=_ExprUse(
-                        result=_ExprResultUse.DISCARD, allow_temps=True))),
-            loc=loc,
-        )
     if isinstance(stmt, (TpyDelVar, TpyGlobal, TpyNonlocal)):
         # All three no-code faces emit only the source comment (nonlocal's
         # semantics live entirely in the capture list -- sema's node facts).
@@ -2633,8 +2821,13 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                                           or recv.name in lc.narrow.narrowed):
             raise ThirUnsupported("stmt.del_item:recv_shape")
         recv_t = _subscript_container_recv_type(recv, declared, analyzer)
+        # A dict[K, Any] receiver is admitted alongside the scalar families:
+        # the del emit never touches the value slot, so the key slice alone
+        # decides byte-parity.
         if not (recv_t is not None
-                and _container_scalar_read(recv_t, analyzer)
+                and (_container_scalar_read(recv_t, analyzer)
+                     or (_any_value_dict(recv_t, analyzer)
+                         and _witness("delitem.any_value")))
                 and _bigint_index_disposition(sub.index, analyzer) != "reject"):
             raise ThirUnsupported("stmt.del_item:recv_or_index")
         return THIRExprStmt(
@@ -2649,6 +2842,27 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                       _narrow_bigint_index(_lower_expr(sub.index, lc, declared),
                                            sub.index, analyzer, loc)),
                 loc=loc),
+            loc=loc)
+    if isinstance(stmt, TpyDelAttr):
+        begin_stmt()
+        # `del obj.attr` (D16): sema resolved each target to a synthesized
+        # `obj.__delattr__("attr")` call; the AST arm renders one method-call
+        # statement line per target. The generic method-call arm reproduces
+        # the emit (a str-literal arg into a str slot, void result).
+        if len(stmt.targets) != 1:
+            note_detail("del_attr.multi_target")
+            raise ThirUnsupported(stmt_reject_reason(stmt))
+        call = stmt.targets[0].dyn_delattr_call
+        if call is None:
+            note_detail("del_attr.unresolved")
+            raise ThirUnsupported(stmt_reject_reason(stmt))
+        _witness("stmt.del_attr")
+        return THIRExprStmt(
+            expr=_flush_witness(
+                "flush.expr_stmt",
+                _lower_expr(call, lc, declared,
+                            use=_ExprUse(result=_ExprResultUse.DISCARD,
+                                         allow_temps=True))),
             loc=loc)
     if isinstance(stmt, TpyWhile):
         if (stmt.orelse or analyzer.if_branch_decls.get(id(stmt))):
@@ -2919,6 +3133,24 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     raise ThirUnsupported(stmt_reject_reason(stmt)) from None
             return THIRPrint(args=tuple(lowered_args), loc=loc)
         narrowed = lc.narrow.narrowed.keys()
+        if (isinstance(stmt.expr, TpyCall)
+                and isinstance(stmt.expr.macro_expansion, TpyMethodCall)):
+            rt = analyzer.get_expr_type(stmt.expr)
+            if rt is None or isinstance(rt, VoidType):
+                # A void statement-position macro expansion (the setattr /
+                # delattr builtins): the AST renders the expansion in place;
+                # the expression macro arm drops the DISCARD use (a void
+                # method call rejects in value position), so the expansion
+                # dispatches here in statement position instead.
+                _witness("expr_stmt.macro_discard")
+                return THIRExprStmt(
+                    expr=_flush_witness(
+                        "flush.expr_stmt",
+                        _lower_expr(
+                            stmt.expr.macro_expansion, lc, declared,
+                            use=_ExprUse(result=_ExprResultUse.DISCARD,
+                                         allow_temps=True))),
+                    loc=loc)
         if isinstance(stmt.expr, TpyCall):
             eligible = True
         elif isinstance(stmt.expr, TpyMethodCall):
@@ -3239,6 +3471,8 @@ def _lower_print_arg(a: TpyExpr, lc: _LowerCtx,
     arg_type = resolve_int_literals(
         unwrap_readonly(lc.analyzer.get_expr_type(a)),
         lc.analyzer.ctx.default_int_for_literal)
+    # A print statement is a flush position on the AST path (arg temps hoist
+    # before the statement), so temp-hoisting arg rows admit here.
     return THIRPrintArg(
-        _lower_expr(a, lc, declared),
+        _lower_expr(a, lc, declared, use=_ExprUse(allow_temps=True)),
         _print_arg_form(arg_type))

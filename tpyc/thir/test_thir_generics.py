@@ -506,18 +506,17 @@ class TestGenericNativeCallee:
                         routed.setdefault(f.name, tf is not None)
         assert routed.get("__del__") is True
 
-    def test_nested_generic_call_stays_ast(self):
-        # A generic call in a NESTED (non-flush) position -- a print arg --
-        # cannot hoist its TypeParamRef ref-slot literal temps, so the body
-        # stays AST; the direct decl-init shape routes (see
-        # TestGenericPlainCallee).
+    def test_nested_generic_call_in_print_routes(self):
+        # A print arg is a flush position: the generic call's TypeParamRef
+        # ref-slot literal temps hoist before the cout chain, so the body
+        # routes like the direct decl-init shape (TestGenericPlainCallee).
         src = ("def pick[T](a: T, b: T) -> T:\n"
                "    return b\n"
                "def use():\n"
                "    print(pick(1, 2))\n"
                "use()\n")
         thir = _lower_ctx(src)
-        assert _fn(thir, "use") is None
+        assert _fn(thir, "use") is not None
         assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
 

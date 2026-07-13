@@ -719,6 +719,90 @@ class TestMatchSwitchUnion:
         assert cpp == _cpp(src, thir=False)
 
 
+class TestMatchUnionOrBindings:
+    SRC = UNION_PREAMBLE + (
+        "def legs(a: Cat | Dog) -> Int32:\n"
+        "    match a:\n"
+        "        case Cat(legs=n) | Dog(legs=n):\n"
+        "            return n\n"
+        "def main() -> None:\n"
+        "    print(legs(Cat()))\n"
+        "main()\n"
+    )
+
+    def test_routed_and_byte_identical(self):
+        thir = _lower_ctx(self.SRC)
+        assert _fn(thir, "legs") is not None
+        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
+
+    def test_node_facts(self):
+        # One case block PER alternative, each with its own alias and a
+        # re-lowered body; the source comment stays on the first only.
+        thir = _lower_ctx(self.SRC)
+        m = _fn(thir, "legs").body[0]
+        assert [a.labels for a in m.arms] == [("0",), ("1",)]
+        assert [a.entries[0].case_alias for a in m.arms] == [
+            "__case_0_0", "__case_0_1"]
+        assert m.arms[0].entries[0].loc is not None
+        assert m.arms[1].entries[0].loc is None
+        assert all(a.entries[0].field_bindings[0].subject_suffix == ".legs"
+                   for a in m.arms)
+
+    def test_emit_shape(self):
+        cpp = _cpp(self.SRC, thir=True)
+        assert "auto& __case_0_0 = *std::get<0>(__match_subject_1);" in cpp
+        assert "auto& __case_0_1 = *std::get<1>(__match_subject_1);" in cpp
+        assert cpp.count("auto n = ") == 2
+
+    def test_witness(self):
+        _, w = _lower_ctx_witnessed(self.SRC)
+        assert w.get("match.union_or_bind", 0) > 0
+
+    def test_guarded_or_captures(self):
+        # Or-alternatives with captures + a guard reading them distribute
+        # per index group on the guarded tier.
+        src = UNION_PREAMBLE + (
+            "def legs(a: Cat | Dog) -> Int32:\n"
+            "    match a:\n"
+            "        case Cat(legs=n) | Dog(legs=n) if n > 3:\n"
+            "            return n\n"
+            "        case Cat(legs=n) | Dog(legs=n):\n"
+            "            return n + 1\n"
+            "def main() -> None:\n"
+            "    print(legs(Cat()))\n"
+            "main()\n"
+        )
+        thir = _lower_ctx(src)
+        m = _fn(thir, "legs").body[0]
+        assert m.strategy == "guarded_union"
+        assert [a.labels for a in m.arms] == [("0",), ("1",)]
+        assert all(len(a.entries) == 2 for a in m.arms)
+        cpp = _cpp(src, thir=True)
+        assert "if ((n > 3)) {" in cpp
+        assert cpp == _cpp(src, thir=False)
+
+    def test_guarded_or_field_cond(self):
+        # A literal field condition inside an or-alternative routes the
+        # match to the guarded tier and emits the per-index compare.
+        src = UNION_PREAMBLE + (
+            "def kind(a: Cat | Dog) -> str:\n"
+            "    match a:\n"
+            "        case Cat(legs=4) | Dog():\n"
+            "            return \"quad-or-dog\"\n"
+            "        case _:\n"
+            "            return \"other\"\n"
+            "def main() -> None:\n"
+            "    print(kind(Cat()))\n"
+            "main()\n"
+        )
+        thir = _lower_ctx(src)
+        m = _fn(thir, "kind").body[0]
+        assert m.strategy == "guarded_union"
+        cpp = _cpp(src, thir=True)
+        assert "__case_0.legs == 4" in cpp
+        assert cpp == _cpp(src, thir=False)
+
+
 class TestMatchGateRejections:
     def _routed(self, src: str, name: str) -> bool:
         thir = _lower_ctx(src)
@@ -1307,6 +1391,181 @@ class TestMatchOptionalPartition:
         assert w.get("match.optional_none_arm", 0) > 0
 
 
+class TestMatchOptionalValueDispatch:
+    SRC = (
+        "from tpy import Int32\n"
+        "def classify(x: Int32 | None) -> str:\n"
+        "    match x:\n"
+        "        case None:\n"
+        "            return \"nothing\"\n"
+        "        case 0:\n"
+        "            return \"zero\"\n"
+        "        case _:\n"
+        "            return \"something\"\n"
+        "    return \"\"\n"
+        "def main() -> None:\n"
+        "    print(classify(None))\n"
+        "main()\n"
+    )
+
+    def test_routed_and_byte_identical(self):
+        thir = _lower_ctx(self.SRC)
+        assert _fn(thir, "classify") is not None
+        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
+
+    def test_node_facts(self):
+        thir = _lower_ctx(self.SRC)
+        m = _fn(thir, "classify").body[0]
+        assert m.strategy == "optional_partition"
+        assert m.optional_value_repr
+        assert m.inner_strategy == "switch_primitive"
+        assert m.none_entry is not None
+        assert [a.labels for a in m.arms] == [("0",), ()]
+        # A user default exists, so no synthetic `default: break;`.
+        assert not m.synthetic_default
+
+    def test_emit_shape(self):
+        cpp = _cpp(self.SRC, thir=True)
+        body = cpp[cpp.index("classify"):]
+        assert "if (!__match_subject_1.has_value()) {" in body
+        assert "auto& __match_inner_1 = (*__match_subject_1);" in body
+        assert "switch (__match_inner_1) {" in body
+        assert "default: {" in body
+
+    def test_witness(self):
+        _, w = _lower_ctx_witnessed(self.SRC)
+        assert w.get("match.optional_value_dispatch", 0) > 0
+        assert w.get("match.optional_none_arm", 0) > 0
+
+    def test_str_inner_if_elif_chain(self):
+        # A str inner takes the `==` chain over the deref alias; no None
+        # arm means the bare has_value() guard with no else.
+        src = (
+            "def pick(s: str | None) -> str:\n"
+            "    match s:\n"
+            "        case \"a\" | \"b\":\n"
+            "            return \"early\"\n"
+            "        case \"z\":\n"
+            "            return \"late\"\n"
+            "    return \"none\"\n"
+            "def main() -> None:\n"
+            "    print(pick(\"a\"))\n"
+            "main()\n"
+        )
+        thir = _lower_ctx(src)
+        m = _fn(thir, "pick").body[0]
+        assert m.optional_value_repr and m.inner_strategy == "if_elif"
+        assert m.none_entry is None
+        cpp = _cpp(src, thir=True)
+        assert "if (__match_subject_1.has_value()) {" in cpp
+        assert ('if (__match_inner_1 == "a" || __match_inner_1 == "b") {'
+                in cpp)
+        assert cpp == _cpp(src, thir=False)
+
+    def test_enum_inner_rejects(self):
+        # Optional[enum] names are outside the value-optional binding slice
+        # (_unrouted_binding_read's name.optval_read), so the subject read
+        # rejects before the dispatch shape matters.
+        src = ENUM_PREAMBLE + (
+            "def label(c: Color | None) -> str:\n"
+            "    match c:\n"
+            "        case None:\n"
+            "            return \"none\"\n"
+            "        case Color.Red:\n"
+            "            return \"r\"\n"
+            "        case _:\n"
+            "            return \"other\"\n"
+            "    return \"\"\n"
+            "def main() -> None:\n"
+            "    print(label(Color.Red))\n"
+            "main()\n"
+        )
+        thir = _lower_ctx(src)
+        assert _fn(thir, "label") is None
+
+    def test_inner_guarded_group_default_goto(self):
+        # An all-guarded labeled inner group backed by a user default draws
+        # the goto __match_default_N fallback exactly like the top-level
+        # switch tiers (the fact must survive into the THIRMatch node).
+        src = (
+            "from tpy import Int32\n"
+            "def pick(x: Int32 | None, ok: bool) -> str:\n"
+            "    match x:\n"
+            "        case None:\n"
+            "            return \"none\"\n"
+            "        case 5 if ok:\n"
+            "            return \"five\"\n"
+            "        case _:\n"
+            "            return \"other\"\n"
+            "    return \"\"\n"
+            "def main() -> None:\n"
+            "    print(pick(5, True))\n"
+            "main()\n"
+        )
+        thir = _lower_ctx(src)
+        m = _fn(thir, "pick").body[0]
+        assert m.default_goto
+        cpp = _cpp(src, thir=True)
+        assert "goto __match_default_" in cpp
+        assert cpp == _cpp(src, thir=False)
+
+    def test_str_inner_guard_rejects(self):
+        # The optional inner `==` chain inlines `cond && guard` on the AST
+        # path, a shape the scalar chain tier never emits -- rejected.
+        src = (
+            "def pick(s: str | None, ok: bool) -> str:\n"
+            "    match s:\n"
+            "        case \"a\" if ok:\n"
+            "            return \"guarded\"\n"
+            "        case _:\n"
+            "            return \"other\"\n"
+            "    return \"\"\n"
+            "def main() -> None:\n"
+            "    print(pick(\"a\", True))\n"
+            "main()\n"
+        )
+        thir = _lower_ctx(src)
+        assert _fn(thir, "pick") is None
+
+    def test_record_inner_rejects(self):
+        src = OPT_PREAMBLE + (
+            "def check(x: Leaf | None, ok: bool) -> None:\n"
+            "    match x:\n"
+            "        case None:\n"
+            "            print(0)\n"
+            "        case Leaf() if ok:\n"
+            "            print(1)\n"
+            "        case _:\n"
+            "            print(2)\n"
+            "def main() -> None:\n"
+            "    check(Leaf(3), True)\n"
+            "main()\n"
+        )
+        thir = _lower_ctx(src)
+        assert _fn(thir, "check") is None
+
+    def test_non_prefix_none_rejects(self):
+        # A trailing None arm defeats the partition (the AST takes the
+        # if/elif-optional tier there, not yet mirrored).
+        src = (
+            "from tpy import Int32\n"
+            "def classify(x: Int32 | None) -> str:\n"
+            "    match x:\n"
+            "        case 0:\n"
+            "            return \"zero\"\n"
+            "        case None:\n"
+            "            return \"nothing\"\n"
+            "        case _:\n"
+            "            return \"something\"\n"
+            "    return \"\"\n"
+            "def main() -> None:\n"
+            "    print(classify(None))\n"
+            "main()\n"
+        )
+        thir = _lower_ctx(src)
+        assert _fn(thir, "classify") is None
+
+
 class TestMatchOptionalPartitionBindings:
     def test_capture_binds_inner_ref(self):
         src = OPT_PREAMBLE + (
@@ -1399,9 +1658,9 @@ class TestMatchOptionalGateRejections:
         thir = _lower_ctx(src)
         return _fn(thir, name) is not None
 
-    def test_value_repr_subject_rejects(self):
-        # A value-repr Optional subject's std::optional param binding is
-        # itself function-gated; nothing routes.
+    def test_value_repr_subject_routes(self):
+        # Value-repr Optional[scalar] subjects take the O2 multi-arm
+        # dispatch (see TestMatchOptionalValueDispatch).
         src = (
             "from tpy import Int32\n"
             "def check(x: Int32 | None) -> None:\n"
@@ -1416,7 +1675,7 @@ class TestMatchOptionalGateRejections:
             "    check(5)\n"
             "main()\n"
         )
-        assert not self._routed(src, "check")
+        assert self._routed(src, "check")
         assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_non_prefix_none_rejects(self):

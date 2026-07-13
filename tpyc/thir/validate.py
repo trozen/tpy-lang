@@ -53,7 +53,7 @@ from .nodes import (
     Form, THIRArgTemp, THIRAssign, THIRCall, THIRCoerce, THIRConstructor,
     THIRCtorCall, THIRExprStmt, THIRFieldAccess, THIRFormConvert,
     THIRFunction, THIRMethodCall, THIRNode,
-    THIRReturn, THIRSetItem, THIRVarDecl,
+    THIRPrint, THIRReturn, THIRSetItem, THIRUnionArgLift, THIRVarDecl,
 )
 
 
@@ -172,7 +172,8 @@ def _check_stmt(owner: str, stmt: THIRNode, return_type) -> None:
 def _walk(owner: str, node: THIRNode, return_type=None, *,
           argtemp_ok: bool = False) -> None:
     """`argtemp_ok` marks the value expression of a flushable statement
-    (expr stmt / var-decl init / assign value / return value) -- the only
+    (expr stmt / var-decl init / assign value / return value / print arg)
+    -- the only
     region where a THIRArgTemp may appear, and there only as a direct
     free-call, method-call, or ctor-call arg (the ctor face only for a
     mutated ref slot). Anywhere else (a condition, an iterable, a MIL cell,
@@ -183,6 +184,12 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
     _check_stmt(owner, node, return_type)
     if isinstance(node, THIRArgTemp):
         _fail(owner, node, "THIRArgTemp outside a call arg position")
+    if isinstance(node, THIRUnionArgLift) and node.temp_cpp is not None:
+        # The temp-bearing lift hoists a decl like THIRArgTemp does, so it
+        # is legal only where a temp has a flush point (checked in the
+        # call-arm loop below, which returns before re-reaching this node).
+        _fail(owner, node, "temp-bearing THIRUnionArgLift outside a call "
+                           "arg position")
     if isinstance(node, (THIRCall, THIRMethodCall, THIRCtorCall)):
         # A ctor call carries a temp only for its mutated-ref-slot record
         # rvalue (the ctor_mutated arm); const-slot rvalues inline temp-free.
@@ -194,11 +201,24 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
                     _fail(owner, a, "THIRArgTemp under a non-flushable "
                                     "statement position")
                 _walk(owner, a.init, return_type)  # nested temps are illegal
+            elif (isinstance(a, THIRUnionArgLift)
+                    and a.temp_cpp is not None):
+                if not argtemp_ok:
+                    _fail(owner, a, "temp-bearing THIRUnionArgLift under a "
+                                    "non-flushable statement position")
+                if a.value is not None:
+                    _walk(owner, a.value, return_type)
             else:
                 _walk(owner, a, return_type)  # temps never nest deeper
         return
     if isinstance(node, THIRExprStmt):
         _walk(owner, node.expr, return_type, argtemp_ok=True)
+        return
+    if isinstance(node, THIRPrint):
+        # A print statement is a flush position on the AST path (arg temps
+        # hoist before the `std::cout` chain).
+        for a in node.args:
+            _walk(owner, a.expr, return_type, argtemp_ok=True)
         return
     if isinstance(node, THIRVarDecl):
         if node.init is not None:

@@ -479,6 +479,12 @@ def _emit_union_arg_lift(e: THIRUnionArgLift, state: _EmitState) -> str:
     if e.value is None:
         return f"{e.variant_cpp}{{std::monostate{{}}}}"
     inner = _emit_expr(e.value, state)
+    if e.temp_cpp is not None:
+        # The rvalue branch: hoist the member-typed ctor into a named temp at
+        # the statement flush and lift its address -- `pv{&__tmp_N}`, no
+        # parens (TempState's temp-arm spelling, unlike the name lift below).
+        name = state.temps.create(e.temp_cpp, inner)
+        return f"{e.variant_cpp}{{&{name}}}"
     if e.deref:
         inner = f"(*{inner})"
     if e.const_wrap:
@@ -1790,25 +1796,36 @@ def _emit_match_optional(out: TextIO, stmt: THIRMatch, indent_level: int,
     inner = INDENT * (indent_level + 1)
     inner2 = INDENT * (indent_level + 2)
     inner_name = f"__match_inner_{state.match_counter}"
+    null_cond = (f"!{subject}.has_value()" if stmt.optional_value_repr
+                 else f"{subject} == nullptr")
+    has_value_cond = (f"{subject}.has_value()" if stmt.optional_value_repr
+                      else f"{subject} != nullptr")
     if stmt.none_entry is not None:
         state.comments.stmt(out, stmt.none_entry.loc, indent)
-        out.write(f"{indent}if ({subject} == nullptr) {{\n")
+        out.write(f"{indent}if ({null_cond}) {{\n")
         _emit_stmts(out, stmt.none_entry.body, indent_level + 1, state)
         out.write(f"{indent}}} else {{\n")
     else:
-        out.write(f"{indent}if ({subject} != nullptr) {{\n")
+        out.write(f"{indent}if ({has_value_cond}) {{\n")
     out.write(f"{inner}auto& {inner_name} = (*{subject});\n")
-    entry = stmt.arms[0].entries[0]
-    state.comments.stmt(out, entry.loc, inner)
-    out.write(f"{inner}{{\n")
-    _emit_match_binding(out, entry.binding, inner_name, inner2)
-    _emit_stmts(out, entry.body, indent_level + 2, state)
-    out.write(f"{inner}}}\n")
+    if stmt.inner_strategy is None:
+        entry = stmt.arms[0].entries[0]
+        state.comments.stmt(out, entry.loc, inner)
+        out.write(f"{inner}{{\n")
+        _emit_match_binding(out, entry.binding, inner_name, inner2)
+        _emit_stmts(out, entry.body, indent_level + 2, state)
+        out.write(f"{inner}}}\n")
+    elif stmt.inner_strategy == "if_elif":
+        _emit_match_if_elif(out, stmt, indent_level + 1, state, inner_name,
+                            paren_or=False)
+    else:  # switch_enum / switch_primitive over the inner alias
+        _emit_match_switch(out, stmt, indent_level + 1, state, inner_name)
     out.write(f"{indent}}}\n")
 
 
 def _emit_match_if_elif(out: TextIO, stmt: THIRMatch, indent_level: int,
-                        state: _EmitState, subject: str) -> None:
+                        state: _EmitState, subject: str,
+                        paren_or: bool = True) -> None:
     # _gen_match_if_elif's unguarded chain, arms in source order: per arm the
     # comment, then `if (cond) {` / `} else if (cond) {` (the wildcard arm is
     # `{` / `} else {`), the body one level in; one closing brace ends the
@@ -1826,7 +1843,12 @@ def _emit_match_if_elif(out: TextIO, stmt: THIRMatch, indent_level: int,
             out.write(f"{indent}{{\n" if i == 0 else f"{indent}}} else {{\n")
         else:
             conds = [f"{subject} == {rhs}" for rhs in arm.labels]
-            cond = conds[0] if len(conds) == 1 else "(" + " || ".join(conds) + ")"
+            # The optional inner chain joins or-alternatives bare
+            # (_emit_optional_inner_if_elif); the top-level chain wraps
+            # (_gen_match_if_elif_cond's join).
+            joined = " || ".join(conds)
+            cond = (conds[0] if len(conds) == 1
+                    else joined if not paren_or else f"({joined})")
             keyword = "if" if i == 0 else "} else if"
             out.write(f"{indent}{keyword} ({cond}) {{\n")
         _emit_match_binding(out, entry.binding, subject, inner)
@@ -2228,6 +2250,9 @@ def _emit_print(out: TextIO, stmt: THIRPrint, indent_level: int,
             parts.append('" "')
         parts.append(_emit_print_arg(a, state))
     parts.append('"\\n"')
+    # Args render first: their hoisted temps flush before the cout line
+    # (the AST's pre-statement `ctx.temps.flush`).
+    state.temps.flush(out, indent)
     out.write(f"{indent}std::cout << " + " << ".join(parts) + ";\n")
 
 

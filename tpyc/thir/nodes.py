@@ -393,11 +393,17 @@ class THIRUnionArgLift(THIRExpr):
     render is const-blind on the AST path (it spells the callee's variant
     whatever the source's const-ness -- a const source into a MUTABLE slot is
     a pre-existing AST miscompile the mirror reproduces, see BUGS.md). BORROW
-    form -- the variant aliases the named source."""
+    form -- the variant aliases the named source.
+
+    `temp_cpp` set marks `_gen_union_arg`'s RVALUE branch instead: `value` is
+    a member-typed ctor rvalue hoisted into a `temp_cpp __tmp_N = <value>;`
+    decl at the statement flush, the variant lifting the temp's address
+    (`pv{&__tmp_N}` -- no parens, the AST's temp-arm spelling)."""
     variant_cpp: str
     value: THIRExpr | None = None  # None -> the monostate member
     deref: bool = False
     const_wrap: bool = False
+    temp_cpp: str | None = None
 
 
 @dataclass(frozen=True)
@@ -1517,6 +1523,16 @@ class THIRMatch(THIRStmt):
     # `{ }` block; sema's unreachable-arm rule caps the unguarded inner
     # dispatch at one). Its binding binds vs the inner alias.
     none_entry: 'THIRMatchArmEntry | None' = None
+    # optional_partition, value-repr widening (O2): a value-repr scalar/str
+    # Optional subject spells the split `!subj.has_value()` / `subj.has_value()`
+    # instead of the pointer nullptr compares, and `inner_strategy` selects the
+    # multi-arm inner dispatch over the `__match_inner_N` alias --
+    # 'switch_enum' / 'switch_primitive' reuse the grouped-switch emit,
+    # 'if_elif' the unguarded `==` chain (the AST's `_emit_switch_groups` /
+    # `_emit_optional_inner_if_elif` inner calls). None keeps the O1
+    # single-arm pointer-repr shape.
+    optional_value_repr: bool = False
+    inner_strategy: 'str | None' = None
 
 
 class PrintForm(Enum):
