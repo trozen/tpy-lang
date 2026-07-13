@@ -764,10 +764,10 @@ def _for_each_container_route(
             it_type = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ft)))
             container_field = True
     else:
-        note_detail("foreach.iter_shape")
+        # Unhandled node kinds and non-native iterable families are
+        # sub-classified at the reject boundary (_for_each_reject_detail).
         return None
     if not is_native_iterable(it_type, analyzer.registry):
-        note_detail("foreach.iter_family")
         return None
     # The loop var (list/set/Span/Array element, or dict key) binds through the
     # SHARED loop_var_binding: a value scalar/tuple is a typed copy, a record a
@@ -780,7 +780,7 @@ def _for_each_container_route(
     # loop_var_binding arm (every resolved concrete type -- the shared helper
     # picks the form). Unresolved pending elements stay on the AST path.
     if not _for_each_elem_binding_ok(et):
-        note_detail("foreach.elem_family")
+        note_detail("foreach.elem_family." + _type_family_tag(et, analyzer))
         return None
     return _ForEachRoute(
         route="container", elem_type=et,
@@ -849,6 +849,106 @@ def _for_tuple_unpack_route(
         value_tuple_elem=_value_tuple(et, analyzer) is not None)
 
 
+def _user_iterator_iterable(u: 'TpyType | None', analyzer) -> bool:
+    """The `__iter__`/`__next__` protocol-loop family: a protocol
+    Iterator/Iterable value, or a user record declaring (or inheriting)
+    either dunder -- the AST's universal `::tpy::__iter__` default."""
+    if not isinstance(u, NominalType):
+        return False
+    if u.is_protocol:
+        return u.name in ("Iterator", "Iterable")
+    rec = analyzer.registry.get_record_for_type(u)
+    if rec is None:
+        return False
+    return bool(
+        analyzer.registry.get_method_overloads_with_parents(rec, "__iter__")
+        or analyzer.registry.get_method_overloads_with_parents(rec, "__next__"))
+
+
+def _tuple_unpack_reject_tag(stmt: TpyForEach, analyzer,
+                             declared: dict[str, TpyType],
+                             narrowed: AbstractSet[str]) -> str:
+    """Name the blocked rung of a tuple-unpack loop head -- mirrors
+    `_for_tuple_unpack_route`'s reject order, tags only."""
+    up = stmt.body[0] if stmt.body else None
+    if not (isinstance(up, TpyTupleUnpack) and isinstance(up.value, TpyName)
+            and up.value.name == stmt.var):
+        return "tuple.head_shape"
+    if any(up.is_owned):
+        return "tuple.own_target"
+    if any(up.is_ref) or any(up.is_const_ref):
+        return "tuple.ref_target"
+    if not all(up.is_new):
+        return "tuple.reused_target"
+    for i, name in enumerate(up.targets):
+        if name is None:
+            continue
+        if name in declared or name in narrowed:
+            return "tuple.reused_target"
+        tt = unwrap_ref_type(up.target_types[i])
+        if not _scalar_or_str_unpack_elem(tt, analyzer):
+            return "tuple.target_family." + _type_family_tag(tt, analyzer)
+    return "tuple.iter_shape"
+
+
+def _for_each_reject_detail(stmt: TpyForEach, analyzer,
+                            declared: dict[str, TpyType],
+                            narrowed: AbstractSet[str]) -> str:
+    """Sub-classify a rejected for-each for the fallback tally (diagnostic
+    only: the tag feeds `note_detail`, never route selection). The orthogonal
+    pre-route flags come first -- they fail `_for_loop_shape_ok` (or the
+    tuple-unpack probe's inline copy) silently, BEFORE any iterable
+    classification, so a shape-derived tag would misattribute those bodies
+    to their iterable's node kind. Then the iterable's node/type family,
+    then the tuple-unpack target rungs. The probes' finer set-if-empty
+    details (name_global / field_parent / elem_family.*) win over this
+    classifier's tag at the note_detail slot."""
+    if stmt.is_async:
+        return "foreach.async"
+    if stmt.enum_iterable is not None:
+        return "foreach.enum_iterable"
+    if stmt.consuming_iter_fi is not None:
+        return "foreach.consuming_iter"
+    if stmt.hoist_loop_var:
+        return "foreach.hoist_loop_var"
+    if analyzer.if_branch_decls.get(id(stmt)):
+        return "foreach.branch_decls"
+    if stmt.var in declared:
+        return "foreach.var_shadow"
+    it = stmt.iterable
+    if _is_range_call(it):
+        # Flags passed, so the blocker is the range call's own shape
+        # (kwargs / arg count / counter or step family).
+        return "iter.range_shape"
+    kind = expr_kind_tag(it).removeprefix("expr.")
+    t = analyzer.get_expr_type(it)
+    u = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+         if t is not None else None)
+    if isinstance(u, OwnType):
+        u = unwrap_readonly(u.wrapped)
+    if u is not None:
+        u = resolve_pending_container(u, analyzer) or u
+        rv = _resolved_viewfam_value(u, analyzer)
+        if rv is not None:
+            u = rv
+    if u is None or not is_native_iterable(u, analyzer.registry):
+        if isinstance(it, (TpyCall, TpyMethodCall)):
+            fi = it.resolved_function_info
+            return ("iter.call.generator"
+                    if fi is not None and fi.is_generator
+                    else "iter.call.plain")
+        if isinstance(u, TupleType):
+            return f"iter.tuple.{kind}"
+        if _user_iterator_iterable(u, analyzer):
+            return f"iter.user_iterator.{kind}"
+        return f"iter.{kind}_family.{_type_family_tag(u, analyzer)}"
+    if stmt.is_tuple_unpack:
+        return _tuple_unpack_reject_tag(stmt, analyzer, declared, narrowed)
+    # Admitted iterable family with no flags: the blocker is the node
+    # shape / lvalue-ness or the element binding.
+    return f"iter.{kind}_shape"
+
+
 def _select_for_each_route(
         stmt: TpyForEach, analyzer, declared: dict[str, TpyType],
         narrowed: AbstractSet[str]) -> _ForEachRoute:
@@ -860,8 +960,8 @@ def _select_for_each_route(
     else:
         route = _for_each_container_route(stmt, analyzer, declared)
     if route is None:
-        _kind_detail("foreach.iter_", stmt.iterable)
-        raise ThirUnsupported("stmt.for_each")
+        note_detail(_for_each_reject_detail(stmt, analyzer, declared, narrowed))
+        raise ThirUnsupported(stmt_reject_reason(stmt))
     return route
 
 def _tuple_unpack_targets(stmt: TpyTupleUnpack, analyzer,

@@ -406,8 +406,151 @@ def test_for_lowering_reject_falls_back_at_sync_boundary():
                 fold_attempt("body")
             else:
                 routed.append(fn.name)
-    assert compiler._thir_fallback.get("body:stmt.for_each") == 1
+    assert compiler._thir_fallback.get(
+        "body:stmt.for_each:foreach.hoist_loop_var") == 1
     assert "clean" in routed
+
+
+def test_for_each_generator_call_iterable_sub_tag():
+    # The pre-route flags pass and the call's Iterator[T] return is not a
+    # native iterable, so the sub-classifier names the generator-call family.
+    compiler, entry, f = _fn_body(
+        "from tpy import Int32\n"
+        "from typing import Iterator\n"
+        "def gen(n: Int32) -> Iterator[Int32]:\n"
+        "    yield n\n"
+        "def rejected(n: Int32) -> Int32:\n"
+        "    t = 0\n"
+        "    for x in gen(n):\n"
+        "        t = t + x\n"
+        "    return t\n",
+        "rejected")
+    with activate_compiler(compiler):
+        begin_attempt()
+        fn = lower_function(f, entry.analyzer, self_type=None)
+        if fn is None:
+            fold_attempt("body")
+    assert fn is None
+    assert compiler._thir_fallback.get(
+        "body:stmt.for_each:iter.call.generator") == 1
+
+
+def test_for_each_user_iterator_name_sub_tag():
+    # A name iterable whose record takes the __iter__/__next__ protocol-loop
+    # default folds under the user_iterator family, not a bare family tag.
+    compiler, entry, f = _fn_body(
+        "from __future__ import annotations\n"
+        "from tpy import Int32\n"
+        "class Ticker:\n"
+        "    n: Int32\n"
+        "    def __init__(self, n: Int32) -> None:\n"
+        "        self.n = n\n"
+        "    def __iter__(self) -> Ticker:\n"
+        "        return self\n"
+        "    def __next__(self) -> Int32:\n"
+        "        if self.n <= 0:\n"
+        "            raise StopIteration\n"
+        "        self.n -= 1\n"
+        "        return self.n\n"
+        "def rejected(t: Ticker) -> Int32:\n"
+        "    total = 0\n"
+        "    for v in t:\n"
+        "        total = total + v\n"
+        "    return total\n",
+        "rejected")
+    with activate_compiler(compiler):
+        begin_attempt()
+        fn = lower_function(f, entry.analyzer, self_type=None)
+        if fn is None:
+            fold_attempt("body")
+    assert fn is None
+    assert compiler._thir_fallback.get(
+        "body:stmt.for_each:iter.user_iterator.name") == 1
+
+
+def test_for_each_protocol_iterator_param_sub_tag():
+    # The protocol branch of the user_iterator family: a bare Iterator-typed
+    # PARAM (no user record in sight) folds under the same protocol-loop tag
+    # as a dunder-declaring record.
+    compiler, entry, f = _fn_body(
+        "from tpy import Int32\n"
+        "from typing import Iterator\n"
+        "def rejected(it: Iterator[Int32]) -> Int32:\n"
+        "    total = 0\n"
+        "    for v in it:\n"
+        "        total = total + v\n"
+        "    return total\n",
+        "rejected")
+    with activate_compiler(compiler):
+        begin_attempt()
+        fn = lower_function(f, entry.analyzer, self_type=None)
+        if fn is None:
+            fold_attempt("body")
+    assert fn is None
+    assert compiler._thir_fallback.get(
+        "body:stmt.for_each:iter.user_iterator.name") == 1
+
+
+def test_for_each_plain_call_iterable_sub_tag():
+    # A NON-generator callee returning a user-iterator record splits from
+    # its generator sibling: the call-node check precedes the user_iterator
+    # family and fi.is_generator is False, so the tag names the plain-call
+    # family.
+    compiler, entry, f = _fn_body(
+        "from __future__ import annotations\n"
+        "from tpy import Int32, Own\n"
+        "class Ticker:\n"
+        "    n: Int32\n"
+        "    def __init__(self, n: Int32) -> None:\n"
+        "        self.n = n\n"
+        "    def __iter__(self) -> Ticker:\n"
+        "        return self\n"
+        "    def __next__(self) -> Int32:\n"
+        "        if self.n <= 0:\n"
+        "            raise StopIteration\n"
+        "        self.n -= 1\n"
+        "        return self.n\n"
+        "def make_ticker(n: Int32) -> Own[Ticker]:\n"
+        "    return Ticker(n)\n"
+        "def rejected(n: Int32) -> Int32:\n"
+        "    t = 0\n"
+        "    for x in make_ticker(n):\n"
+        "        t = t + x\n"
+        "    return t\n",
+        "rejected")
+    with activate_compiler(compiler):
+        begin_attempt()
+        fn = lower_function(f, entry.analyzer, self_type=None)
+        if fn is None:
+            fold_attempt("body")
+    assert fn is None
+    assert compiler._thir_fallback.get(
+        "body:stmt.for_each:iter.call.plain") == 1
+
+
+def test_for_each_tuple_unpack_ref_target_sub_tag():
+    # The tuple-unpack rung classifier: a record element target is a borrow
+    # (`is_ref`) the unpack cell defers, so the tag names the ref-target rung.
+    compiler, entry, f = _fn_body(
+        "from tpy import Int32\n"
+        "class Point:\n"
+        "    x: Int32\n"
+        "    def __init__(self, x: Int32) -> None:\n"
+        "        self.x = x\n"
+        "def rejected(pairs: list[tuple[Int32, Point]]) -> Int32:\n"
+        "    total = 0\n"
+        "    for i, p in pairs:\n"
+        "        total = total + i + p.x\n"
+        "    return total\n",
+        "rejected")
+    with activate_compiler(compiler):
+        begin_attempt()
+        fn = lower_function(f, entry.analyzer, self_type=None)
+        if fn is None:
+            fold_attempt("body")
+    assert fn is None
+    assert compiler._thir_fallback.get(
+        "body:stmt.for_each:tuple.ref_target") == 1
 
 
 def test_tuple_unpack_lowering_reject_falls_back_at_sync_boundary():

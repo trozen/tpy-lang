@@ -2837,7 +2837,7 @@ class TestForEachLiteralIterableEmit:
 
     def test_set_literal_iterable_falls_back(self):
         # Only the list-literal shape is admitted; a set-literal iterable
-        # stays on the AST path (foreach.iter_shape).
+        # stays on the AST path (iter.set_literal_shape).
         thir = _lower(
             _PRELUDE
             + "def f() -> Int32:\n    t = 0\n"
