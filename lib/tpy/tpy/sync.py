@@ -191,7 +191,10 @@ class MutexGuard[T](Deref[T]):
         _require_locked(self._locked)
         return self._payload
 
-    def set(self, value: T) -> None:
+    # `Own[T]`, not `T`: this writes into the lock's owned storage, so a borrowed
+    # reference payload would be copied where CPython aliases the passed object.
+    # Moving in consumes the source, so the two models are indistinguishable.
+    def set(self, value: Own[T]) -> None:
         _require_locked(self._locked)
         unsafe_store(self._payload, UInt32(0), value)
 
@@ -304,7 +307,10 @@ class WriteGuard[T](Deref[T]):
         _require_locked(self._locked)
         return self._payload
 
-    def set(self, value: T) -> None:
+    # `Own[T]`, not `T`: this writes into the lock's owned storage, so a borrowed
+    # reference payload would be copied where CPython aliases the passed object.
+    # Moving in consumes the source, so the two models are indistinguishable.
+    def set(self, value: Own[T]) -> None:
         _require_locked(self._locked)
         unsafe_store(self._payload, UInt32(0), value)
 

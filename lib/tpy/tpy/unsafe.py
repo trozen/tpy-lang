@@ -46,9 +46,11 @@ def unsafe_load[T](p: Ptr[T], offset: UInt32) -> Own[T]: ...
 @cpp_template("{0}[{1}]")
 def unsafe_load[T](p: Ptr[readonly[T]], offset: UInt32) -> Own[T]: ...
 
-# unsafe_store: write a value through a pointer at offset
+# unsafe_store: move a value into the pointee at offset. `Own[T]` (not a borrow):
+# the pointee is owned storage, so a borrowed reference-type value would be copied
+# where the source stays aliased -- consuming it keeps the copy from being silent.
 @cpp_template("{0}[{1}] = {2}")
-def unsafe_store[T](p: Ptr[T], offset: UInt32, value: T) -> None: ...
+def unsafe_store[T](p: Ptr[T], offset: UInt32, value: Own[T]) -> None: ...
 
 # unsafe_copy_n: copy N elements between pointers
 @overload

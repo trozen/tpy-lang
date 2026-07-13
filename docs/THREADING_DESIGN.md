@@ -350,10 +350,19 @@ of racing the payload unsynchronized (`tests/cases/threading/guard_misuse_reject
 the CPython stub mirrors the check). What remains is the *lifetime* half: a guard
 outliving a dropped bare (non-`Arc`) `Mutex`/`RwLock` still dangles (the flag
 lives on the guard, so it can't catch the cell being freed) -- region/lifetime-
-model-gated, the known no-region borrow gap. Also `set()` on a reference-type
-payload copies where CPython aliases (parity divergence; value-type `set()` is
-fine -- mutate reference payloads in place). Both residuals await their model /
-design pass.
+model-gated, the known no-region borrow gap -- it awaits the region/lifetime
+model.
+
+`set()` takes `Own[T]`: it moves the value into the lock's storage rather than
+copying, so a reference-type payload is consumed at the call, not silently
+duplicated where CPython aliases. Passing a still-live lvalue therefore warns
+(`copies ... into owned storage; use copy() to make this explicit`) -- the
+standard acknowledged-copy diagnostic, silenced by `set(x.copy())` (which
+restores parity: both sides then hold a copy). An rvalue or last-use lvalue
+moves in with no diagnostic. The canonical way to update a reference payload is
+still to mutate it in place through the guard's deref, not to replace it via
+`set()`. Value-type `set()` (e.g. `Mutex[Int32]`) is unaffected -- value types
+don't alias.
 
 ## Deferred: closures (D1) -- the ergonomic layer, own design pass
 

@@ -13,7 +13,7 @@ void main() {
     // pt: Point = Point(10, 20)
     Point pt = Point(10, 20);
     // unsafe_store(p, 0, pt)
-    p[0] = pt;
+    p[0] = std::move(pt);
     // loaded: Point = unsafe_load(p, 0)
     Point loaded = p[0];
     // print(loaded.x)

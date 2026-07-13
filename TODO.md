@@ -355,6 +355,7 @@ See `docs/FEATURE_ROADMAP.md` for bigger tasks and `BUGS.md` for known compiler 
 - **Unify import-aware record resolution in `tpyc/sema/calls.py`.** The cross-module-identity fix added `_record_for_local_name` (resolves a possibly-aliased local name to its record, overriding the short-name `get_record` only when the import table proves a different defining module), used at the constructor sites. The `isinstance` second-arg path (`_resolve_isinstance_type`) does its own import-table-first resolution inline with different shape (unconditional import lookup, no collision guard). Two parallel patterns for the same sub-problem; fold the isinstance site onto the helper (or a shared resolver) so same-name disambiguation lives in one place. Surfaced by /tpy-review (architecture-fit) of `fix-cross-module-type-identity`.
 - **[cleanup] Remove the now-redundant `__del__` from asyncio `TaskState`/`Future` and channel `_Send`.** Each `__del__` only drops its cached-result slot (`result`/`_result`/`_value`), which is now a `tpy::UninitStorage[T]` whose own dtor already `reset()`s a live payload -- so the explicit `if slot.has(): slot.reset()` is redundant (it existed when the slot was `UninitArrayStorage`, whose debug dtor panics on a live element). Removing `__del__` is the clean end-state but NOT a mechanical edit: it drops the codegen-emitted custom move ctor + `__tpy_owned_` guard (the types fall to C++-defaulted move/dtor) and may shift their TPy value/reference classification, so it needs verification that the defaulted member-wise move stays correct (all members -- `Box`/`Rc`/`UninitStorage` -- are correctly movable) and the pass-by classification is unchanged, plus a full suite run. Surfaced by /tpy-review (convention/safety) of the liveness-flag cleanup.
 - **[test-coverage] `_Send.__del__` live-slot branch is untested.** The channel send awaitable (`tpy/channel.py` `_Send`) drops its still-held value in `__del__` when the send was never pushed -- a task cancelled mid-suspension while blocked inside `await tx.send(...)` on a full channel. The only channel-cancel path in the suite is receiver-side, so this branch has no coverage. Pre-existing (predates the liveness-flag cleanup, which only touched the branch). Add a `panic_`/output case that cancels a task parked in `send` on a full channel with a `@nocopy`/`__del__`-tracked payload so a leak or double-drop would surface. Surfaced by /tpy-review (test-coverage) of the liveness-flag cleanup.
+- **[test-coverage] No `@nocopy`-payload `Mutex`/`RwLock`/`unsafe_store` case makes the `set()` move vs copy observable.** The `set()`/`unsafe_store` `Own[T]` fix (branch `mutex-set-alias`) is exercised by `threading/mutex_set_move` (list payload, mutate-through-guard) and `threading/warn_mutex_set_copy` (read-back shows the lock's independent copy), but no case uses a `@nocopy` payload (e.g. `Mutex[Box[Int32]]`) where a silent copy would be a hard compile error rather than merely a value divergence. `tests/cases/pointers/mem_unsafe_store_object` stays parity-blind for the same reason (`Point` has no owned resource, so copy vs move print identically -- only the byte-diffed snapshot pins the `std::move`). Add a `Mutex[@nocopy]` / `unsafe_store` of a `@nocopy` value case (rvalue/last-use move admitted; a still-live-lvalue `set` a hard non-copyable-into-owned-storage error) so the consumption is proven at the type level, and consider hardening `mem_unsafe_store_object` to mutate-after-the-boundary. Surfaced by /tpy-review (test-coverage) of `mutex-set-alias`.
 
 ## Deferred to THIR/MIR & workload-gated
 
@@ -860,9 +861,14 @@ Benchmarked with CME MBO order book (15MB JSON, 20K messages). Library-level opt
   NOT walk the chain, so a wrapper/smart-pointer type (`Box`/`Rc`/`Arc`/lock
   guards) stops being transparent there. Confirmed gaps: iteration (`for v in
   guard:` -> "Cannot iterate over type ReadGuard"; the for-loop resolves
-  iterability on the source type) and the `with` context-manager protocol
+  iterability on the source type), the `with` context-manager protocol
   (`_analyze_with` looks up `__enter__`/`__exit__` directly, `sema/statements.py`
-  ~2545, so `with arc_holding_a_cm:` wouldn't find the payload's `__enter__`).
+  ~2545, so `with arc_holding_a_cm:` wouldn't find the payload's `__enter__`),
+  and builtin dispatch (`len(guard)` / `len(box)` -> "No matching overload for
+  len(MutexGuard[list[Int32]])"). Note CPython rejects the iteration/`with`/`len`
+  spellings too -- implicit special-method lookup goes through the *type*, so the
+  stubs' `__getattr__` forwarding never fires -- so widening any of these means
+  teaching `lib/cpy/tpy/` to mirror it, or the cpy phase diverges.
   Surfaced writing `tests/cases/threading/rwlock_shared` (`for v in r.get()` /
   `data.get().read()`), where the missing forwarding forces explicit `.get()`.
   - **First step: a SWEEP across all language constructs / protocol-dispatch

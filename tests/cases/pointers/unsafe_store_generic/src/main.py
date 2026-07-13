@@ -1,5 +1,5 @@
-# unsafe_store called from a generic function with val: T
-from tpy import Ptr, Int32, UInt32, Array
+# unsafe_store called from a generic function forwarding Own[T] into the store
+from tpy import Own, Ptr, Int32, UInt32, Array
 from tpy.unsafe import unsafe_ptr, unsafe_load, unsafe_store
 
 class Point:
@@ -9,7 +9,9 @@ class Point:
         self.x = x
         self.y = y
 
-def store_at[T](p: Ptr[T], idx: UInt32, val: T) -> None:
+# val is Own[T] so the store consumes it -- a borrowed T would copy into the
+# pointee's owned storage (and warn); the forwarder must pass ownership through.
+def store_at[T](p: Ptr[T], idx: UInt32, val: Own[T]) -> None:
     unsafe_store(p, idx, val)
 
 def main() -> None:
