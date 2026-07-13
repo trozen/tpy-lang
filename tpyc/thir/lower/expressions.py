@@ -90,6 +90,7 @@ from ...value_category import is_rvalue_source
 from ..fallback import ThirUnsupported, expr_kind_tag, note_detail
 from ..faces import witness as _witness
 from ...codegen_cpp.expressions import ExpressionGenerator
+from ...codegen_cpp.int_literals import render_int_literal_value
 from ..nodes import (
     Form,
     THIRArgTemp,
@@ -135,6 +136,7 @@ from .predicates import (
     _BITWISE_OPS,
     _COMPARE_OPS,
     _FLOAT32_LIT_COERCION,
+    _INT_LIT_COERCION,
     _IS_OPS,
     _LOGICAL_OPS,
     _MEMBERSHIP_OPS,
@@ -641,9 +643,9 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
     else:
         lslot, rslot = _rb_operand_slots(e.resolved_binop)
         left = _slot_literal_retype(
-            _lower_expr(e.left, lc, declared), lslot)
+            _lower_expr(e.left, lc, declared), lslot, lc)
         right = _slot_literal_retype(
-            _lower_expr(e.right, lc, declared), rslot)
+            _lower_expr(e.right, lc, declared), rslot, lc)
     bt = _resolved_bytes_value(rtype, analyzer)
     lcast, rcast = _binop_operand_casts(e, analyzer)
     return THIRBinOp(
@@ -1143,10 +1145,10 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
             loc=loc,
         )
     if isinstance(e, (TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral)):
-        if isinstance(e, TpyIntLiteral) and not -2**31 <= e.value <= 2**31 - 1:
-            raise ThirUnsupported("expr.int_literal.range")
         if isinstance(e, TpyFloatLiteral) and not math.isfinite(e.value):
             raise ThirUnsupported("expr.float_literal.nonfinite")
+        if isinstance(e, TpyIntLiteral):
+            return _lower_int_literal(e.value, rtype, lc, loc)
         return THIRLiteral(result_type=rtype, value=e.value, loc=loc)
     if isinstance(e, TpyStrLiteral):
         # const char[N] via cpp_string_literal_expr; VALUE form -- implicitly
@@ -1198,7 +1200,7 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
         # directly); otherwise only logical `not` is admitted (bool operand).
         neg = _folded_neg_int_literal(e, analyzer)
         if neg is not None:
-            return THIRLiteral(result_type=rtype, value=neg, loc=loc)
+            return _lower_int_literal(neg, rtype, lc, loc)
         # IntEnum negation: `(-static_cast<U>(p))` (_gen_unaryop's enum arm).
         enum_neg = _enum_neg_wrap(e, analyzer)
         if enum_neg is None and e.op != "!":
@@ -1878,10 +1880,14 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
         if (e.coercion.name in (_FLOAT32_LIT_COERCION, _BIGINT_LIT_COERCION)
                 and isinstance(inner, THIRLiteral)):
             # The AST forwards the coerce target into the literal render (the
-            # Float32 `f` suffix / the BigInt ctor wraps); mirror by retyping
-            # the literal so the emitter picks the wrapped arm. Only a literal
-            # source reaches here; other shapes reject during child lowering.
+            # Float32 `f` suffix / the BigInt ctor wraps). Only a literal source
+            # reaches here; other shapes reject during child lowering.
             inner = replace(inner, result_type=rtype)
+        if (e.coercion.name in (_INT_LIT_COERCION, _BIGINT_LIT_COERCION)
+                and isinstance(inner, THIRLiteral)
+                and isinstance(inner.value, int)
+                and not isinstance(inner.value, bool)):
+            inner = _retarget_int_literal(inner, rtype, lc)
         # Identity passthrough: the node's form is the wrapped expression's
         # form -- carried honestly (not the VALUE default) so the owned-sink
         # BORROW checks read the real source shape through the coerce (e.g.
@@ -1964,7 +1970,7 @@ def _lower_container_elem(e: TpyExpr, slot: TpyType | None,
     el = _lower_expr(
         e, lc, declared, container_threaded=retype_scalars)
     if retype_scalars:
-        el = _slot_literal_retype(el, slot)
+        el = _slot_literal_retype(el, slot, lc)
     # A record-name element mirrors gen_expr_deref + _maybe_move: an F2
     # pointer-local name derefs (`(*p)`), and a movable owned local at its
     # last use moves into the element slot -- the same `movable_locals` +
@@ -2190,7 +2196,8 @@ def _lower_generic_plain_call(e, callee_cpp, lc: '_LowerCtx',
             _witness("argtemp.generic_ref_slot")
             args.append(THIRArgTemp(
                 result_type=resolved, cpp_type=resolved.to_cpp(),
-                init=_slot_literal_retype(_lower_expr(a, lc, declared), resolved),
+                init=_slot_literal_retype(
+                    _lower_expr(a, lc, declared), resolved, lc),
                 form=Form.VALUE, loc=getattr(a, "loc", None)))
         else:
             args.append(_lower_call_arg(
@@ -2355,7 +2362,8 @@ def _lower_range_object(call, lc: '_LowerCtx',
     template = expand_fi_template(
         fi, getattr(call, "inferred_type_args", None))
     counter = _range_counter_type(call, lc.analyzer)
-    args = tuple(_slot_literal_retype(_lower_expr(a, lc, declared), counter)
+    args = tuple(_slot_literal_retype(
+                     _lower_expr(a, lc, declared), counter, lc)
                  for a in call.args)
     return THIRCall(result_type=lc.analyzer.get_expr_type(call),
                     callee=call.func_name, args=args, cpp_template=template,
@@ -2631,7 +2639,7 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         # the BigInt ctor wrap AND its float literal must not take the
         # Float32 `f` suffix -- the method path renders literals target-less.
         return lowered
-    return _slot_literal_retype(lowered, ptype)
+    return _slot_literal_retype(lowered, ptype, lc)
 
 def _lower_union_arg_lift(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                           declared: dict[str, TpyType], *,
@@ -2871,10 +2879,10 @@ def _lower_if_expr(e: TpyIfExpr, rtype: 'TpyType | None', lc: '_LowerCtx',
         slot = resolve_int_literals(unwrap_readonly(slot),
                                     analyzer.ctx.default_int_for_literal)
     cond = _lower_truthy(e.condition, lc, declared)
-    then = _slot_literal_retype(_lower_char_targeted(e.then_expr, slot, lc, declared),
-                                slot)
-    orelse = _slot_literal_retype(_lower_char_targeted(e.else_expr, slot, lc, declared),
-                                  slot)
+    then = _slot_literal_retype(
+        _lower_char_targeted(e.then_expr, slot, lc, declared), slot, lc)
+    orelse = _slot_literal_retype(
+        _lower_char_targeted(e.else_expr, slot, lc, declared), slot, lc)
     form = Form.VALUE
     str_rt = _resolved_str_value(rtype, analyzer)
     if str_rt is not None:
@@ -2903,11 +2911,36 @@ def _lower_if_expr(e: TpyIfExpr, rtype: 'TpyType | None', lc: '_LowerCtx',
     return THIRIfExpr(result_type=slot if slot is not None else rtype,
                       cond=cond, then=then, orelse=orelse, form=form, loc=loc)
 
+def _lower_int_literal(value: int, result_type: TpyType, lc: '_LowerCtx',
+                       loc) -> THIRLiteral:
+    return THIRLiteral(
+        result_type=result_type, value=value,
+        int_cpp=render_int_literal_value(
+            value, None,
+            default_int_type=lc.analyzer.ctx.default_int_type,
+            type_to_cpp=lambda t: t.to_cpp()),
+        loc=loc)
+
+
+def _retarget_int_literal(v: THIRLiteral, slot: TpyType,
+                          lc: '_LowerCtx') -> THIRLiteral:
+    st = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(slot)))
+    if isinstance(st, OwnType):
+        st = unwrap_readonly(st.wrapped)
+    return replace(
+        v, result_type=st,
+        int_cpp=render_int_literal_value(
+            v.value, st,
+            default_int_type=lc.analyzer.ctx.default_int_type,
+            type_to_cpp=lambda t: t.to_cpp()))
+
+
 def _slot_literal_retype(v: 'THIRExpr | None',
-                         slot: 'TpyType | None') -> 'THIRExpr | None':
+                         slot: 'TpyType | None',
+                         lc: '_LowerCtx') -> 'THIRExpr | None':
     """Mirror gen_expr's target threading for target-typed literal renders:
-    a float literal against a Float32 slot takes the `f` suffix; an int
-    literal against a BigInt slot takes the `::tpy::BigInt(...)` ctor wraps.
+    a float literal against a Float32 slot takes the `f` suffix; an integer
+    literal takes fixed-width casts/suffixes or BigInt constructor wraps.
     The AST threads the slot type at decl inits/reassigns, returns,
     call/ctor args, field writes, MIL inits, container elements, and
     resolved-binop operands (the gen_expr_deref receiver/param targets) --
@@ -2925,8 +2958,8 @@ def _slot_literal_retype(v: 'THIRExpr | None',
     if isinstance(v.value, float) and is_float32_type(st):
         return replace(v, result_type=st)
     if (isinstance(v.value, int) and not isinstance(v.value, bool)
-            and is_big_int_type(st)):
-        return replace(v, result_type=st)
+            and (is_fixed_int_type(st) or is_big_int_type(st))):
+        return _retarget_int_literal(v, st, lc)
     return v
 
 def _rb_operand_slots(rb) -> 'tuple[TpyType | None, TpyType | None]':

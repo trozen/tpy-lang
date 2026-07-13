@@ -284,7 +284,7 @@ def test_raise_lowering_reject_falls_back_at_sync_boundary():
     assert "clean" in routed
 
 
-def test_numeric_literal_lowering_rejects_have_precise_reasons():
+def test_wide_integer_routes_while_nonfinite_float_rejects():
     compiler, modules = _compile(
         "from tpy import Float64, Int64\n"
         "def take_int(n: Int64) -> Int64:\n"
@@ -297,13 +297,16 @@ def test_numeric_literal_lowering_rejects_have_precise_reasons():
         "    return take_float(1e400)\n"
     )
     entry = _entry(modules)
+    routed = []
     with activate_compiler(compiler):
         for func, self_type in iter_module_callables(entry.ast, entry.analyzer):
             begin_attempt()
             fn = lower_function(func, entry.analyzer, self_type=self_type)
             if fn is None:
                 fold_attempt("body")
-    assert compiler._thir_fallback.get("body:expr.int_literal.range") == 1
+            else:
+                routed.append(fn.name)
+    assert "wide" in routed
     assert compiler._thir_fallback.get(
         "body:expr.float_literal.nonfinite") == 1
 

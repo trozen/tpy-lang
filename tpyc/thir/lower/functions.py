@@ -1241,7 +1241,8 @@ def _lower_ctor_mil_init(
             or _eligible_enum(ftype, analyzer) is not None):
         return THIRMilInit(field_cpp=field_cpp,
                            value=_slot_literal_retype(
-                               _lower_expr(stmt.value, lc, declared), ftype))
+                               _lower_expr(stmt.value, lc, declared), ftype,
+                               lc))
     bytes_t = _resolved_bytes_value(ftype, analyzer)
     if bytes_t is not None:
         _witness("mil.bytes_field")

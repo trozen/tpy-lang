@@ -497,16 +497,28 @@ class TestSlicedOutShapes:
         _, fallback = _assert_identical(src)
         assert fallback.get("resumable:stmt.raise") == 1
 
-    def test_numeric_literal_lowering_reject_falls_back_after_await(self):
+    def test_wide_numeric_literals_route_after_await(self):
         src = (_PRE
+               + "from tpy import UInt64\n\n"
                + "def widen(n: Int64) -> Int64:\n    return n\n\n"
+               + "def widen_u(n: UInt64) -> UInt64:\n    return n\n\n"
                + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
                + "async def f(n: Int32) -> Int64:\n"
                + "    n = await step(n)\n"
                + "    return widen(2147483648)\n\n"
+               + "async def minimum(n: Int32) -> Int64:\n"
+               + "    n = await step(n)\n"
+               + "    return -9223372036854775808\n\n"
+               + "async def maximum(n: Int32) -> UInt64:\n"
+               + "    n = await step(n)\n"
+               + "    return widen_u(18446744073709551615)\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
         _, fallback = _assert_identical(src)
-        assert fallback.get("resumable:expr.int_literal.range") == 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "static_cast<int64_t>(2147483648)" in cpp
+        assert "static_cast<int64_t>((-9223372036854775807LL - 1))" in cpp
+        assert "static_cast<uint64_t>(18446744073709551615ull)" in cpp
 
     def test_unhandled_expression_lowering_reject_falls_back_after_await(self):
         src = (_PRE

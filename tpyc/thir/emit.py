@@ -25,7 +25,7 @@ from ..codegen_cpp.context import (
 )
 from ..codegen_cpp.forms import LocalBinding, is_plain_nonvalue
 from ..type_def_registry import (
-    is_array, is_big_int_type, is_bytes_type, is_bytes_view_type, is_dict,
+    is_array, is_bytes_type, is_bytes_view_type, is_dict,
     is_float32_type, is_list,
     is_set, is_str_type, is_string_type, view_to_owned_conv,
 )
@@ -362,16 +362,8 @@ def _emit_literal(lit: THIRLiteral) -> str:
         if is_float32_type(lit.result_type):
             return rendered + "f"
         return rendered
-    if is_big_int_type(lit.result_type):
-        # _gen_int_literal_value's BigInt arms. Arm 1 deliberately excludes
-        # INT32_MIN (the AST avoids a `long` vs `int64_t` overload ambiguity
-        # on macOS arm64); the gate's +-2^31 literal range keeps the
-        # from_str arm unreachable, kept for the exact-mirror discipline.
-        if -(2**31 - 1) <= v <= 2**31 - 1:
-            return f"::tpy::BigInt({v})"
-        if -2**63 <= v <= 2**63 - 1:
-            return f"::tpy::BigInt(static_cast<int64_t>({v}LL))"
-        return f'::tpy::BigInt::from_str("{v}")'
+    if isinstance(v, int):
+        return lit.int_cpp if lit.int_cpp is not None else str(v)
     return str(v)
 
 

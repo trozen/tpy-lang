@@ -604,17 +604,14 @@ def _folded_neg_int_literal(e: TpyExpr, analyzer) -> int | None:
 
     Mirrors `_gen_unaryop`'s literal-negation fold exactly (op `-`, a
     `TpyIntLiteral` operand of `IntLiteralType`): the AST renders
-    `_gen_int_literal_value(-v, target)`, which is the bare `-v` token for
-    every value in the +-int32 literal range the slice admits (targets are
-    fixed-int slots the literal provably fits, or target-less positions) --
-    the same `str(v)` a `THIRLiteral` emits. Values whose negation falls
-    outside the range return None (the wide-literal suffix/cast renders)."""
+    `_gen_int_literal_value(-v, target)`. Lowering carries that helper's final
+    spelling on the resulting `THIRLiteral`, including wide-value casts and
+    suffixes."""
     if not (isinstance(e, TpyUnaryOp) and e.op == "-"
             and isinstance(e.operand, TpyIntLiteral)
             and isinstance(analyzer.get_expr_type(e.operand), IntLiteralType)):
         return None
-    v = -e.operand.value
-    return v if -2**31 <= v <= 2**31 - 1 else None
+    return -e.operand.value
 
 def _resolved_scalar(t: TpyType | None, analyzer) -> bool:
     """`_eligible_scalar` over a type that may still be an IntLiteralType: a

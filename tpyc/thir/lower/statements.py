@@ -521,17 +521,17 @@ def _container_scalar_tuple_iter(t: TpyType | None, analyzer) -> bool:
 def _range_bound_literal_value(arg: TpyExpr) -> int | None:
     # The AST's inline-vs-hoist decision for a range bound (_is_literal_range_arg):
     # an inlinable bare int literal (possibly behind the int_literal coerce) vs a
-    # name/expr hoisted to a temp. Only the bare-literal subset the slice admits is
-    # mirrored, so it agrees with _extract_int_literal regardless of that helper's
-    # evolution. The int32 bound keeps the value a bare token (no `ull`/cast).
+    # name/expr hoisted to a temp. No magnitude clamp: both paths render the bound
+    # through the shared literal rules, so only this choice must agree with
+    # _extract_int_literal, which folds any width. Its ctor-literal arm
+    # (`Int32(3)`) is not mirrored here.
     arg = _unwrap_lit_coerce(arg)
-    if isinstance(arg, TpyIntLiteral) and -2**31 <= arg.value <= 2**31 - 1:
+    if isinstance(arg, TpyIntLiteral):
         return arg.value
     # A negated literal (`range(-3, 3)`) is inlined by the AST too
     # (_extract_int_literal's negated arm).
     if (isinstance(arg, TpyUnaryOp) and arg.op == "-"
-            and isinstance(arg.operand, TpyIntLiteral)
-            and -2**31 <= -arg.operand.value <= 2**31 - 1):
+            and isinstance(arg.operand, TpyIntLiteral)):
         return -arg.operand.value
     return None
 
@@ -549,6 +549,12 @@ def _range_step_kind(step_arg: TpyExpr, declared: dict[str, TpyType]) -> str | N
     # deferred for the same net-confidence reason as the bound slice.
     lit = _range_bound_literal_value(step_arg)
     if lit is not None:
+        # A wide literal step is deferred: the stepped arms thread the step
+        # token through the overflow-check helpers, a render pinned only for
+        # the int32-range subset (bounds have no such clamp -- inline-vs-hoist
+        # is the only decision there and the token render is shared).
+        if not -2**31 <= lit <= 2**31 - 1:
+            return None
         if lit == 0:
             return None
         if lit == 1:
@@ -1895,7 +1901,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                                     result=_ExprResultUse.STORAGE,
                                     allow_temps=True)))
                         if stmt.init else None)
-            init = _slot_literal_retype(init, declared.get(stmt.name, vtype))
+            init = _slot_literal_retype(
+                init, declared.get(stmt.name, vtype), lc)
         # A str/bytes local's binding type is a Pending view type; carry the
         # RESOLVED view/owned type (string_view/string, span/vector) on the nodes.
         str_t = _resolved_str_value(vtype, analyzer)
@@ -2039,7 +2046,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                                    use=_ExprUse(
                                        result=_ExprResultUse.STORAGE,
                                        allow_temps=True))),
-                elem_t)
+                elem_t, lc)
             elem_str = _resolved_str_value(elem_t, analyzer)
             if (value.form is Form.BORROW and elem_str is not None
                     and is_str_type(elem_str)):
@@ -2073,7 +2080,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                                                       use=_ExprUse(
                                                           result=_ExprResultUse.STORAGE,
                                                           allow_temps=True))),
-                                      ftype), loc=loc)
+                                      ftype, lc), loc=loc)
             # A plain F1-record field write (`_record_field_write_ok`): a
             # record rvalue -- a ctor (STORAGE) or a by-value record-returning
             # call (VALUE) of the field's own type -- copies bare into the
@@ -2214,7 +2221,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                                    use=_ExprUse(
                                        result=_ExprResultUse.STORAGE,
                                        allow_temps=True))),
-                analyzer.get_expr_type(stmt.target)),
+                analyzer.get_expr_type(stmt.target), lc),
             loc=loc,
         )
     if isinstance(stmt, TpyAugAssign):
@@ -2293,7 +2300,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             result_type=tgt_type,
             left=left,
             op=stmt.op,
-            right=_slot_literal_retype(_lower_expr(stmt.value, lc, declared), aug_rslot),
+            right=_slot_literal_retype(
+                _lower_expr(stmt.value, lc, declared), aug_rslot, lc),
             right_cast=right_cast,
             resolved=stmt.resolved_binop,
             paren_wrap=False,
@@ -2662,7 +2670,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         # suffix (the AST threads the return type into the render).
         ret_t = lc.func.return_type if isinstance(lc.func.return_type,
                                                   TpyType) else None
-        value = _slot_literal_retype(value, ret_t)
+        value = _slot_literal_retype(value, ret_t, lc)
         # An expensive-copy value-Optional param (`int | None`) returned at its
         # narrowed last use moves the unwrapped value (`return std::move((*p));`,
         # seed_param_locals' value-optional movable face). `_is_move_source`
@@ -3053,7 +3061,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 stop_arg = it.args[0]
             else:
                 start_arg = it.args[0]
-                start = _slot_literal_retype(_lower_expr(start_arg, lc, declared), et)
+                start = _slot_literal_retype(
+                    _lower_expr(start_arg, lc, declared), et, lc)
                 start_is_literal = _range_bound_literal_value(start_arg) is not None
                 stop_arg = it.args[1]
             step = None
@@ -3064,11 +3073,13 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 # the other three render it (retype is a no-op for the fixed-int
                 # counter this arm requires).
                 if step_kind in ("literal_pos", "literal_neg", "variable"):
-                    step = _slot_literal_retype(_lower_expr(it.args[2], lc, declared), et)
+                    step = _slot_literal_retype(
+                        _lower_expr(it.args[2], lc, declared), et, lc)
             return THIRForRange(
                 var=stmt.var,
                 elem_type=et,
-                stop=_slot_literal_retype(_lower_expr(stop_arg, lc, declared), et),
+                stop=_slot_literal_retype(
+                    _lower_expr(stop_arg, lc, declared), et, lc),
                 start=start,
                 start_is_literal=start_is_literal,
                 stop_is_literal=_range_bound_literal_value(stop_arg) is not None,

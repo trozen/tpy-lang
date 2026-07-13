@@ -429,11 +429,11 @@ def _lower_comprehension(
         a = gen.iterable.args
         if len(a) == 2:
             range_start = _slot_literal_retype(_lower_expr(a[0], lc, declared),
-                                               route.counter_type)
+                                               route.counter_type, lc)
             start_lit = isinstance(a[0], TpyIntLiteral)
         stop_arg = a[1] if len(a) == 2 else a[0]
         range_stop = _slot_literal_retype(_lower_expr(stop_arg, lc, declared),
-                                          route.counter_type)
+                                          route.counter_type, lc)
         stop_lit = isinstance(stop_arg, TpyIntLiteral)
     elif _is_range_call(gen.iterable):
         _witness("comp.range3")

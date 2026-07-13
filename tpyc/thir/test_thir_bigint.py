@@ -163,6 +163,21 @@ class TestTargetTypedLiteralBoundaries:
         assert "::tpy::BigInt(static_cast<int64_t>(-2147483648LL))" in cpp
         assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
+    def test_huge_literals_take_from_str_arm(self):
+        src = (
+            "def f(b: int) -> int:\n    return b\n"
+            "def main():\n"
+            "    print(f(18446744073709551616))\n"
+            "    print(f(-9223372036854775809))\n"
+            "main()\n"
+        )
+        thir = _lower(src)
+        assert _fn(thir, "main") is not None
+        cpp = _cpp(src, thir=True)
+        assert '::tpy::BigInt::from_str("18446744073709551616")' in cpp
+        assert '::tpy::BigInt::from_str("-9223372036854775809")' in cpp
+        assert cpp == _cpp(src, thir=False)
+
 
 class TestDeepConstNarrowSubject:
     """The deep-const narrowing-subject fix: a ptr-variant param under the

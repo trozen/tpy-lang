@@ -81,8 +81,11 @@ class THIRStmt(THIRNode):
 
 @dataclass(frozen=True)
 class THIRLiteral(THIRExpr):
-    """Scalar literal. `result_type` disambiguates int width / float / bool."""
+    """Scalar literal. Source integer spelling is fixed during lowering."""
     value: object  # int | float | bool | None
+    # Synthetic small integers (tuple indices and direct unit-test nodes) may
+    # omit this because their decimal spelling is position-independent.
+    int_cpp: str | None = None
 
 
 @dataclass(frozen=True)

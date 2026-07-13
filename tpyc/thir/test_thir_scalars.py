@@ -112,15 +112,98 @@ class TestNumericLiteralArgs:
             + "def g(x: Int32) -> Int32:\n    return -x\n")
         assert _fn(thir, "g") is None
 
-    def test_out_of_range_negation_ineligible(self):
-        # A negation outside the +-int32 literal range takes the wide-literal
-        # suffix/cast render -> AST path. INT32_MIN itself (-2**31) still folds.
-        thir = _lower(
+    def test_wide_literal_boundaries_route_byte_identical(self):
+        src = (
             _NUMLIT_PRELUDE
-            + "def g() -> Int64:\n    return -2147483649\n"
-            + "def h() -> Int32:\n    return -2147483648\n")
-        assert _fn(thir, "g") is None
-        assert _fn(thir, "h") is not None
+            + "from tpy import UInt64\n"
+            + "def i64(n: Int64) -> Int64:\n    return n\n"
+            + "def u64(n: UInt64) -> UInt64:\n    return n\n"
+            + "def wide() -> Int64:\n    return i64(2147483648)\n"
+            + "def negative() -> Int64:\n    return -2147483649\n"
+            + "def minimum() -> Int64:\n    return -9223372036854775808\n"
+            + "def maximum() -> UInt64:\n    return u64(18446744073709551615)\n"
+        )
+        thir = _lower(src)
+        for name in ("wide", "negative", "minimum", "maximum"):
+            assert _fn(thir, name) is not None
+        cpp = self._cpp(src, thir=True)
+        assert "static_cast<int64_t>(2147483648)" in cpp
+        assert "static_cast<int64_t>((-9223372036854775807LL - 1))" in cpp
+        assert "static_cast<uint64_t>(18446744073709551615ull)" in cpp
+        assert cpp == self._cpp(src, thir=False)
+
+    def test_wide_range_bounds_inline_byte_identical(self):
+        # Wide literal range bounds must keep the AST's inline-vs-hoist choice:
+        # _extract_int_literal folds any width, so THIR inlines them too (the
+        # token render is shared; only the placement decision can diverge).
+        src = (
+            _NUMLIT_PRELUDE
+            + "def f() -> None:\n"
+            + "    for i in range(3000000000, 3000000005):\n        print(i)\n"
+            + "def g(n: Int64) -> None:\n"
+            + "    for i in range(2147483648, n):\n        print(i)\n"
+            + "def h() -> None:\n"
+            + "    for i in range(-2147483649, -2147483645):\n        print(i)\n"
+        )
+        thir = _lower(src)
+        for name in ("f", "g", "h"):
+            assert _fn(thir, name) is not None, name
+        rng = _fn(thir, "g").body[0]
+        assert isinstance(rng, THIRForRange)
+        assert rng.start_is_literal and not rng.stop_is_literal
+        cpp = self._cpp(src, thir=True)
+        assert ("for (int64_t i = static_cast<int64_t>(2147483648); "
+                "i < __stop_0; ++i)") in cpp
+        assert cpp == self._cpp(src, thir=False)
+
+    def test_wide_literal_step_defers(self):
+        # The stepped arms' overflow-check render is pinned only for the
+        # int32-range step subset -- a wide literal step keeps the whole body
+        # on the AST path.
+        src = (
+            _NUMLIT_PRELUDE
+            + "def f(n: Int64) -> None:\n"
+            + "    for i in range(0, n, 3000000000):\n        print(i)\n"
+        )
+        assert _fn(_lower(src), "f") is None
+
+    def test_bare_wide_literal_untargeted_render(self):
+        # A wide literal in a container-literal element has no coercion target
+        # (the init list supplies the type), taking render_int_literal_value's
+        # bare arms: a plain token up to int64 max, `ull`-suffixed above it.
+        src = (
+            _NUMLIT_PRELUDE
+            + "from tpy import UInt64\n"
+            + "def f() -> None:\n"
+            + "    big: list[Int64] = [1000000000, 3000000000]\n"
+            + "    huge: list[UInt64] = [18446744073709551615]\n"
+            + "    print(big[1], huge[0])\n"
+        )
+        thir = _lower(src)
+        assert _fn(thir, "f") is not None
+        cpp = self._cpp(src, thir=True)
+        assert "{1000000000, 3000000000}" in cpp
+        assert "{18446744073709551615ull}" in cpp
+        assert cpp == self._cpp(src, thir=False)
+
+    def test_wide_method_arg_uses_coercion_target(self):
+        src = (
+            _NUMLIT_PRELUDE
+            + "class C:\n"
+            + "    def __init__(self) -> None:\n        pass\n"
+            + "    def take(self, n: Int64) -> Int64:\n        return n\n"
+            + "def f(c: C) -> Int64:\n    return c.take(2147483648)\n"
+        )
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        ast = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(
+                emit_source_comments=False, thir_codegen=False))
+        thir = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(
+                emit_source_comments=False, thir_codegen=True))
+        assert "c.take(static_cast<int64_t>(2147483648))" in thir[1]
+        assert thir == ast
 
     def test_byte_identical(self):
         src = (
@@ -251,12 +334,22 @@ class TestScalarCtorCall:
                       + "def f() -> None:\n    x = Float32(1.5)\n    print(x)\n")
         assert _fn(thir, "f") is not None
 
-    def test_wide_literal_arg_ineligible(self):
-        # A literal outside int32 range renders with a static_cast wrap
-        # (_gen_int_literal_value) the bare THIRLiteral emit does not reproduce.
-        thir = _lower(_CTOR_PRELUDE
-                      + "def f() -> None:\n    g = UInt32(4294967295)\n    print(1)\n")
-        assert _fn(thir, "f") is None
+    def test_wide_literal_arg_routes(self):
+        src = (_CTOR_PRELUDE
+               + "def f() -> None:\n"
+               + "    g = UInt32(4294967295)\n"
+               + "    print(g)\n")
+        assert _fn(_lower(src), "f") is not None
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        ast = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(
+                emit_source_comments=False, thir_codegen=False))
+        thir = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(
+                emit_source_comments=False, thir_codegen=True))
+        assert "static_cast<uint32_t>(4294967295)" in thir[1]
+        assert thir == ast
 
     def test_negative_literal_arg_routes(self):
         # A `-3` ctor arg folds to a plain literal on both paths (the AST's

@@ -98,12 +98,10 @@ class TestEligibility:
         thir = _lower(_PRELUDE + "def f(a: Int32) -> Int32:\n    a += 1\n    return a\n")
         assert _fn(thir, "f") is not None
 
-    def test_wide_literal_is_ineligible(self):
-        # A literal outside [-2**31, 2**31-1] needs a suffix/cast the emitter
-        # does not reproduce, even in a slot (UInt64) that can hold it.
+    def test_wide_literal_reassignment_routes(self):
         thir = _lower(_PRELUDE
                       + "def f(a: UInt64) -> UInt64:\n    b = a\n    b = 5000000000\n    return b\n")
-        assert _fn(thir, "f") is None
+        assert _fn(thir, "f") is not None
 
     def test_if_else_is_eligible(self):
         thir = _lower(_PRELUDE

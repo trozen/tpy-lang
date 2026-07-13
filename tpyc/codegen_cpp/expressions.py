@@ -78,10 +78,10 @@ from ..parse import (
 )
 from ..prescan import match_is_none, _expr_to_narrowing_key
 from ..namespace import BindingKind
-from ..sema.numeric_lattice import fixed_int_range_contains
 from ..sema.literal_utils import literal_value_from_expr
 from .context import INDENT, escape_cpp_string, escape_cpp_char, escape_cpp_name, qualified_cpp_name, qualify_native_name, imported_free_callee_cpp, imported_variable_cpp, module_qualified_callee_cpp, static_method_callee_cpp, enum_cpp_name, enum_member_cpp, loop_var_binding, is_lvalue_iterable, cpp_string_literal_expr, cpp_bytes_literal_span, cpp_bytes_literal_owned, view_key_target, CppForm, FormValue, expand_cpp_template
 from .functions import literal_mangled_name
+from .int_literals import render_int_literal_value
 from .. import qnames
 
 if TYPE_CHECKING:
@@ -2735,44 +2735,10 @@ class ExpressionGenerator:
 
     def _gen_int_literal_value(self, v: int, target_type: TpyType | None) -> str:
         """Emit an integer literal, wrapping in BigInt constructor if needed."""
-        if is_big_int_type(target_type):
-            # INT32_MIN is excluded from the bare-literal range: the C++
-            # parser sees `-2147483648` as `-(2147483648)`, and the positive
-            # `2147483648` exceeds INT_MAX so its type is `long` -- which is
-            # distinct from `int64_t` on macOS arm64 (`int64_t == long long`)
-            # and triggers an ambiguous-overload error against BigInt's
-            # int32_t / int64_t / uint64_t constructors. Anything outside
-            # [-INT_MAX, INT_MAX] falls through to the explicit int64_t cast.
-            if -(2**31 - 1) <= v <= 2**31 - 1:
-                return f"::tpy::BigInt({v})"
-            if -2**63 <= v <= 2**63 - 1:
-                return f"::tpy::BigInt(static_cast<int64_t>({v}LL))"
-            return f'::tpy::BigInt::from_str("{v}")'
-        # Wide values need explicit suffix so the C++ parser accepts them
-        # without auto-promoting to unsigned. INT64_MIN can't be written as
-        # `-N` (parsed as unary-minus over an out-of-range positive); use
-        # the (-INT64_MAX - 1) idiom.
-        if v > 0x7FFFFFFFFFFFFFFF:
-            bare = f"{v}ull"
-        elif v == -0x8000000000000000:
-            bare = "(-9223372036854775807LL - 1)"
-        else:
-            bare = str(v)
-        # GCC exempts compile-time integer constants of natural type `int`
-        # that fit the target from -Wsign-conversion / -Wconversion. Cast
-        # only when neither holds, and only for non-default fixed-int
-        # targets (the default-int case has bare literal `int` == int32_t
-        # so the implicit conversion is identity).
-        if target_type is None:
-            return bare
-        if not is_fixed_int_type(target_type):
-            return bare
-        if target_type is self.ctx.analyzer.ctx.default_int_type:
-            return bare
-        if -2**31 <= v <= 2**31 - 1 and fixed_int_range_contains(target_type, v):
-            return bare
-        cpp_type = self.types.type_to_cpp(target_type)
-        return f"static_cast<{cpp_type}>({bare})"
+        return render_int_literal_value(
+            v, target_type,
+            default_int_type=self.ctx.analyzer.ctx.default_int_type,
+            type_to_cpp=self.types.type_to_cpp)
 
     def _post_process_call(self, expr: TpyCall | TpyMethodCall, call_cpp: str) -> str:
         """Apply the standard post-processing chain to a freshly-generated
