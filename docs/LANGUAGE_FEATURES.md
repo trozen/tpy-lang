@@ -2826,7 +2826,9 @@ class ArrayList[T, N: int]:
         self._size += 1
 ```
 
-A per-method bound on a shadowed class type param is interpreted as **"this method is only callable when the class type satisfies the bound"** -- i.e. `ArrayList[NotDefault]` cannot call `append_default`. Sema enforces the rule at every dispatch site (direct method calls, operators including comparisons/arithmetic/augmented assignment/unary, `in`/`not in`, `hash()`, and any protocol-conformance check), producing a diagnostic like `Method 'append_default' requires type parameter 'T' to satisfy 'Default', but 'NotDefault' does not conform`. The C++ output also carries the same rule as a `requires` clause, but users always see the TPy diagnostic before any C++ error.
+A per-method bound on a shadowed class type param is interpreted as **"this method is only callable when the class type satisfies the bound"** -- i.e. `ArrayList[NotDefault]` cannot call `append_default`. Sema enforces the rule at every dispatch site (direct method calls, operators including comparisons/arithmetic/augmented assignment/unary, `in`/`not in`, `hash()`, and any protocol-conformance check), producing a diagnostic like `Method 'append_default' requires type parameter 'T' to satisfy 'Default', but 'NotDefault' does not conform`. The C++ output also carries the same rule as a `requires` clause; users see the TPy diagnostic before any C++ error on every site except the subclass-receiver operator gap noted below.
+
+Shadowed-bound methods resolve through **subclass receivers** too: for a method inherited from a generic base (`class IntBag(Bag[Int32, 4])` calling `contains[T: Equatable]`), the base instantiation binds the shadowed param, so the call dispatches without inference and the bound is checked against the inherited binding (`tests/cases/generics/method_bound_shadow_subclass*` and `error_method_bound_shadow_subclass*`). Known limitation: on the *operator* dispatch sites (`in`, binops, `hash()` / protocol conformance), the sema-level bound check currently fires only for direct generic receivers -- through a subclass a violation is still caught, but by the C++ `requires` clause instead of the clean TPy diagnostic (see BUGS.md).
 
 **`T()` deprecation warning:** Using `T()` for default construction of type parameters emits a warning recommending `make_default()` instead, since `T()` is not supported in CPython.
 
@@ -4010,7 +4012,7 @@ Without the tag, calling such a generic with only an empty container produces a 
 - **Working**: Generic classes (Python 3.12+ syntax)
 - **Working**: `@staticmethod` → static methods (including on generic classes with type inference)
 - **Working**: Method-level type parameters (`def transform[U](self, val: U) -> U`), including on `@staticmethod`
-- **Working**: Per-method type parameter bounds (`def is_sorted[T: Comparable](self) -> bool`). Bounds on a method type param that shadows a class type param are enforced as a sema diagnostic at every dispatch site (operators, `in`, `hash()`, protocol conformance, ...), matching the C++ `requires` clause codegen emits.
+- **Working**: Per-method type parameter bounds (`def is_sorted[T: Comparable](self) -> bool`). Bounds on a method type param that shadows a class type param are enforced as a sema diagnostic at every dispatch site (operators, `in`, `hash()`, protocol conformance, ...), matching the C++ `requires` clause codegen emits. Resolves through subclass receivers on the method-call path; the operator/conformance sites still check only direct generic receivers there (C++-caught, see BUGS.md).
 - **Working**: Single class inheritance (`class Child(Parent)`)
 - **Working**: Generic inheritance (`class Child[T](Parent[T])`)
 - **Working**: Explicit protocol implementation (`class MyList(Sequence[T])`)

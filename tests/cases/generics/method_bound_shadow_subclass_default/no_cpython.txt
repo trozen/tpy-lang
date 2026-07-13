@@ -1,0 +1,3 @@
+make_default() is TPy-only inside a generic method body: the CPython stub
+raises on the inferred spelling, and the explicit make_default[T]() also
+fails there (T is a runtime TypeVar, not a callable concrete type).

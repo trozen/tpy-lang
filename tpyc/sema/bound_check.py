@@ -12,14 +12,14 @@ participating in the methods/expressions/operators/protocols import cycle.
 """
 
 from __future__ import annotations
-from typing import Callable, Optional
+from typing import Callable, Collection, Optional
 
 from ..typesys import TpyType, FunctionInfo
 
 
 def find_method_class_param_bound_violation(
     method_info: FunctionInfo,
-    class_type_params: Optional[list[str]],
+    class_type_params: Optional[Collection[str]],
     class_subst: dict[str, 'TpyType | int'],
     protocol_checker: Callable[[TpyType, TpyType], bool],
 ) -> Optional[tuple[str, TpyType, TpyType]]:
@@ -48,7 +48,7 @@ def find_method_class_param_bound_violation(
 
 def raise_if_class_param_bound_violated(
     method_info: FunctionInfo,
-    class_type_params: Optional[list[str]],
+    class_type_params: Optional[Collection[str]],
     class_subst: dict[str, 'TpyType | int'],
     protocol_checker: Callable[[TpyType, TpyType], bool],
     error_fn: Callable[[str, object], Exception],

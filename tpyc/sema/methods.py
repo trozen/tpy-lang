@@ -1770,8 +1770,11 @@ class MethodAnalyzer:
             return None
         instance_subst = self.type_ops.build_type_substitution(obj_type)
         if inherited_subst and instance_subst:
+            # An `N: int` param's binding is a plain int -- nothing to
+            # substitute (and substitute_type_params would crash on it).
             type_subst = {
-                k: self.type_ops.substitute_type_params(v, instance_subst)
+                k: (self.type_ops.substitute_type_params(v, instance_subst)
+                    if isinstance(v, TpyType) else v)
                 for k, v in inherited_subst.items()
             }
         elif inherited_subst:
@@ -1924,9 +1927,24 @@ class MethodAnalyzer:
         - New params: type params not in the class (e.g. U on def transform[U])
         - Constrained class params: class type params with an additional method-level bound
         """
-        class_type_params = set(record_info.type_params) if record_info.type_params else set()
+        # Classify against every param the receiver's instantiation binds, not
+        # just the receiver record's own params: an inherited method's class
+        # params live on the DECLARING base and reach here only as keys of the
+        # composed class_subst, so a shadowed `def m[T: Bound]` called through
+        # a subclass must classify as constrained, not as a fresh param.
+        class_type_params = set(record_info.type_params or ()) | set(class_subst)
         new_params = [tp for tp in method_info.type_params if tp not in class_type_params]
         constrained_class_params = [tp for tp in method_info.type_params if tp in class_type_params]
+
+        # Arity-check explicit type args before the no-new-params early return,
+        # so a fully-shadowed method loudly rejects `.m[X](...)` instead of
+        # silently discarding X (the args would otherwise be name-captured by
+        # class_subst, never by the explicit spelling).
+        if expr.type_args and len(expr.type_args) != len(new_params):
+            raise self.ctx.error(
+                f"Method '{method_info.name}' expects {len(new_params)} type argument(s), "
+                f"got {len(expr.type_args)}",
+                expr)
 
         # Validate per-method bounds on class type params: check that the concrete
         # class type satisfies the method's bound. These are class-level type params,
@@ -1938,7 +1956,7 @@ class MethodAnalyzer:
                     f"but the class is not instantiated with a concrete type for '{tp}'",
                     expr)
         raise_if_class_param_bound_violated(
-            method_info, record_info.type_params, class_subst,
+            method_info, class_type_params, class_subst,
             self.protocols.type_conforms_to_protocol,
             self.ctx.error, expr,
         )
@@ -1970,11 +1988,7 @@ class MethodAnalyzer:
         # inside the inference branches that need it.
         has_wildcards = expr.type_args and None in expr.type_args
         if expr.type_args:
-            if len(expr.type_args) != len(new_params):
-                raise self.ctx.error(
-                    f"Method '{method_info.name}' expects {len(new_params)} type argument(s), "
-                    f"got {len(expr.type_args)}",
-                    expr)
+            # Arity already validated before the no-new-params early return.
             if not has_wildcards:
                 # Full explicit -- no seed needed.
                 method_subst = dict(zip(new_params, expr.type_args))
