@@ -25,10 +25,17 @@ fresh container per config, sequentially (a full cold config is ~25 min on
 
 ## Config notes
 
-- The 24.04 clang row is clang-19 (from the updates archive), NOT the distro
-  default clang-18: clang 18 defines `__cpp_concepts` as 201907, which keeps
-  libstdc++'s `<expected>` disabled, so it cannot build the TPy runtime with
-  libstdc++ at all (clang 19 bumped it to 202002).
+- The 24.04 clang rows are clang-19 and clang-20 (both official updates
+  archive), NOT the distro default clang-18: clang 18 defines
+  `__cpp_concepts` as 201907, which keeps libstdc++'s `<expected>` disabled,
+  so it cannot build the TPy runtime with libstdc++ at all (clang 19 bumped
+  it to 202002). clang-19 guards the supported floor; clang-20 is the
+  highest 24.04 clang, i.e. what `--cxx clang` (best-versioned) actually
+  resolves to on an updated box with it installed.
+- The 26.04 rows pin the release's shipped defaults (g++-15, clang-21,
+  observed 2026-07) rather than the `g++`/`clang` metapackages: a mid-LTS
+  default bump would silently re-key every cache and shift results overnight
+  with no code change. Re-pin deliberately when moving to a newer base.
 - The system-deps row exercises `--dep-mode pcre2=system,mbedtls=system`
   against the distro's libpcre2-dev/libmbedtls-dev.
 

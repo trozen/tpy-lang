@@ -19,16 +19,22 @@
       "cxx": "clang-19"
     },
     {
-      "name": "2604-gcc",
-      "base_image": "ubuntu:26.04",
-      "toolchain_pkgs": "g++",
-      "cxx": "gcc"
+      "name": "2404-clang20",
+      "base_image": "ubuntu:24.04",
+      "toolchain_pkgs": "clang-20",
+      "cxx": "clang-20"
     },
     {
-      "name": "2604-clang",
+      "name": "2604-gcc15",
       "base_image": "ubuntu:26.04",
-      "toolchain_pkgs": "clang",
-      "cxx": "clang"
+      "toolchain_pkgs": "g++-15",
+      "cxx": "gcc-15"
+    },
+    {
+      "name": "2604-clang21",
+      "base_image": "ubuntu:26.04",
+      "toolchain_pkgs": "clang-21",
+      "cxx": "clang-21"
     },
     {
       "name": "zig",

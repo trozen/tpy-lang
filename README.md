@@ -170,7 +170,9 @@ them before writing TPy code. Re-run after upgrading `tpy-lang` to refresh.
 ## Dependencies
 
 - Python 3.12+
-- A C++23 compiler: g++ 14+, clang++ 18+, or zig (auto-detected)
+- A C++23 compiler: g++ 13+, clang++ 19+, or zig (auto-detected). clang 18
+  does not work with libstdc++ (its `__cpp_concepts` value keeps
+  `<expected>` disabled)
 
 No external C/C++ libraries are required by the runtime.
 

@@ -87,7 +87,7 @@ def _resolve_compiler(cxx: str) -> list[str] | None:
       gcc, g++                -> best versioned g++
       gcc-14, g++-14          -> specific version
       clang, clang++          -> best versioned clang++
-      clang-18, clang++-18    -> specific version
+      clang-19, clang++-19    -> specific version
       zig                     -> zig c++
       /path/to/compiler       -> literal path
       any-binary-name         -> looked up on PATH
@@ -115,7 +115,7 @@ def _resolve_compiler(cxx: str) -> list[str] | None:
     if cxx == "clang-repl" or cxx.startswith("clang-repl-"):
         return None
 
-    # gcc-14 -> g++-14, clang-18 -> clang++-18
+    # gcc-14 -> g++-14, clang-19 -> clang++-19
     if cxx.startswith("gcc-"):
         binary = "g++-" + cxx[4:]
         if shutil.which(binary):
@@ -127,7 +127,7 @@ def _resolve_compiler(cxx: str) -> list[str] | None:
             return [binary]
         return None
 
-    # Already a binary name (g++-14, clang++-18, etc.)
+    # Already a binary name (g++-14, clang++-19, etc.)
     if shutil.which(cxx):
         return [cxx]
     return None
@@ -175,7 +175,7 @@ def _derive_c_compiler(cxx: list[str]) -> list[str]:
       ['g++']            -> ['gcc']
       ['g++-14']         -> ['gcc-14']
       ['clang++']        -> ['clang']
-      ['clang++-18']     -> ['clang-18']
+      ['clang++-19']     -> ['clang-19']
       ['zig', 'c++']     -> ['zig', 'cc']
       ['/p/g++-14']      -> ['/p/gcc-14']
 
@@ -214,7 +214,7 @@ def _cxx_aliases(binary: str, is_best: bool, family_prefix: str) -> list[str]:
             aliases.append("gcc")
         elif family_prefix == "clang++":
             aliases.append("clang")
-    # Versioned alias: g++-14 -> gcc-14, clang++-18 -> clang-18
+    # Versioned alias: g++-14 -> gcc-14, clang++-19 -> clang-19
     if "-" in binary:
         ver = binary.split("-", 1)[1]
         if family_prefix == "g++":

@@ -1141,7 +1141,7 @@ def pytest_addoption(parser):
         default="auto",
         help=(
             "C++ toolchain for the exec phase (mirrors `tpyc --cxx`): auto, "
-            "list, gcc, gcc-14, clang, clang-18, zig, ... (default: auto). "
+            "list, gcc, gcc-14, clang, clang-19, zig, ... (default: auto). "
             "Switching toolchain re-keys the stdlib/PCH/exec caches, so the "
             "next run re-verifies under the new compiler."
         ),
