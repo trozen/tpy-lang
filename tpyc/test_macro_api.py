@@ -48,3 +48,35 @@ def test_resolve_type_float64_aliases_float():
 @pytest.mark.parametrize("name", ["UnknownThing", "", "list", "MyRecord"])
 def test_resolve_type_unknown_returns_none(name):
     assert _ctx().resolve_type(name) is None
+
+
+def test_from_tpy_type_int_type_arg_passthrough():
+    # An `N: int` generic binding is a plain int in NominalType.type_args (the
+    # compiler-wide `TpyType | int` convention); TypeInfo.from_tpy_type must
+    # pass it through as-is instead of recursing into it (it used to crash
+    # "'int' object has no attribute 'is_value_type'"). Positions must stay
+    # aligned with the declared params.
+    from tpyc.macro_api import TypeInfo
+    from tpyc.typesys import INT32, NominalType
+
+    box = NominalType("Box", (INT32, 8), _module_qname="testmod.Box")
+    ti = TypeInfo.from_tpy_type(box)
+    assert len(ti.type_args) == 2
+    assert ti.type_args[0].name == "Int32"
+    assert ti.type_args[1] == 8
+
+
+def test_from_tpy_type_nested_int_type_arg():
+    # The recursion re-enters the fixed branch: an int arg INSIDE a nested
+    # generic type arg (Box[Inner[Int32, 4], 8]) converts the same way.
+    from tpyc.macro_api import TypeInfo
+    from tpyc.typesys import INT32, NominalType
+
+    inner = NominalType("Inner", (INT32, 4), _module_qname="testmod.Inner")
+    box = NominalType("Box", (inner, 8), _module_qname="testmod.Box")
+    ti = TypeInfo.from_tpy_type(box)
+    assert ti.type_args[1] == 8
+    nested = ti.type_args[0]
+    assert nested.name.startswith("Inner")
+    assert nested.type_args[0].name == "Int32"
+    assert nested.type_args[1] == 4

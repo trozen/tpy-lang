@@ -147,7 +147,8 @@ from tpyc.macro_api import ClassInfo, FieldInfo, TypeInfo, class_macro
 
 class TypeInfo:
     name: str                      # "Int32", "list", "str"
-    type_args: list[TypeInfo]
+    type_args: list[TypeInfo | int]  # an `N: int` generic binding is a plain
+                                     # int -- match with isinstance(ta, int)
     is_optional: bool
     is_value_type: bool
     is_record: bool

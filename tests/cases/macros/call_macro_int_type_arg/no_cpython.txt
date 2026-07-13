@@ -1,0 +1,2 @@
+Macro modules import tpyc.macro_api, which is compile-time only -- not
+available under CPython (same as the sibling call_macro cases).

@@ -1257,9 +1257,14 @@ def _resolve_final_literal(name: str, ctx: 'SemanticContext') -> object:
 
 @dataclass
 class TypeInfo:
-    """Read-only type metadata exposed to macros."""
+    """Read-only type metadata exposed to macros.
+
+    `type_args` mirrors the compiler-wide type-arg convention (`TpyType | int`):
+    a generic's `N: int` parameter is bound to a plain `int`, which passes
+    through as-is -- consumers pattern-match on `isinstance(ta, int)`.
+    """
     name: str
-    type_args: list[TypeInfo] = field(default_factory=list)
+    type_args: list[TypeInfo | int] = field(default_factory=list)
     is_optional: bool = False
     is_value_type: bool = True
     is_record: bool = False
@@ -1374,11 +1379,14 @@ class TypeInfo:
             typ = typ.wrapped
         if isinstance(typ, RefType):
             typ = typ.wrapped
-        type_args: list[TypeInfo] = []
+        type_args: list[TypeInfo | int] = []
         if isinstance(typ, TupleType):
             type_args = [TypeInfo.from_tpy_type(et) for et in typ.element_types]
         elif isinstance(typ, NominalType) and typ.type_args:
-            type_args = [TypeInfo.from_tpy_type(ta) for ta in typ.type_args]
+            # An `N: int` param's binding is a plain int (the compiler-wide
+            # `TpyType | int` type-arg convention) -- pass it through.
+            type_args = [ta if isinstance(ta, int) else TypeInfo.from_tpy_type(ta)
+                         for ta in typ.type_args]
         return TypeInfo(
             name=str(typ),
             type_args=type_args,
