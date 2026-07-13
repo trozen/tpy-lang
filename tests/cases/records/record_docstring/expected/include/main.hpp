@@ -22,8 +22,7 @@ struct Point {
 
     // def __init__(self, x: Int32, y: Int32):
     Point() = default;
-    explicit Point(int32_t x, int32_t y) : x(x), y(y) {
-    }
+    explicit Point(int32_t x, int32_t y);
 
     // def magnitude_sq(self) -> Int32:
     int32_t magnitude_sq() const;
@@ -35,6 +34,10 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     return os;
 }
 
+
+// def __init__(self, x: Int32, y: Int32):
+inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {
+}
 
 // def magnitude_sq(self) -> Int32:
 inline int32_t Point::magnitude_sq() const {

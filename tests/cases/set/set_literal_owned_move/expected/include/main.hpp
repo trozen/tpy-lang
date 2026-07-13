@@ -20,7 +20,7 @@ struct P {
     int32_t x;
 
     P() = default;
-    explicit P(int32_t x) : x(x) {}
+    explicit P(int32_t x);
 
     bool __eq__(const P& other) const;
 
@@ -49,6 +49,8 @@ template<> struct std::hash<::tpyapp::main::P> {
 namespace tpyapp::main {
 
 
+
+inline P::P(int32_t x) : x(x) {}
 
 inline bool P::__eq__(const P& other) const {
     return (this->x == other.x);

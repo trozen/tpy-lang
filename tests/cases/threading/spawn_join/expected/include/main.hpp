@@ -24,7 +24,7 @@ struct Summer {
 
     // def __init__(self, data: Own[list[int]]) -> None:
     Summer() = default;
-    explicit Summer(std::vector<::tpy::BigInt>&& data) : data(std::move(data)) {}
+    explicit Summer(std::vector<::tpy::BigInt>&& data);
     // non-copyable (@nocopy)
     Summer(const Summer&) = delete;
     Summer& operator=(const Summer&) = delete;
@@ -41,6 +41,9 @@ inline std::ostream& operator<<(std::ostream& os, const Summer& obj) {
     return os;
 }
 
+
+// def __init__(self, data: Own[list[int]]) -> None:
+inline Summer::Summer(std::vector<::tpy::BigInt>&& data) : data(std::move(data)) {}
 
 // def run(self) -> int:
 inline ::tpy::BigInt Summer::run() {

@@ -31,7 +31,7 @@ struct Lit {
 
     // def __init__(self, value: int) -> None:
     Lit() = default;
-    explicit Lit(const ::tpy::BigInt& value) : value(value) {}
+    explicit Lit(const ::tpy::BigInt& value);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Lit";
 };
 
@@ -48,7 +48,7 @@ struct BinOp {
     ::tpystd::tplib::box::Box<Expr> right;
 
     // def __init__(self, left: Own[Box[Expr]], right: Own[Box[Expr]]) -> None:
-    explicit BinOp(::tpystd::tplib::box::Box<Expr>&& left, ::tpystd::tplib::box::Box<Expr>&& right) : left(std::move(left)), right(std::move(right)) {}
+    explicit BinOp(::tpystd::tplib::box::Box<Expr>&& left, ::tpystd::tplib::box::Box<Expr>&& right);
     // non-copyable (field 'left')
     BinOp(const BinOp&) = delete;
     BinOp& operator=(const BinOp&) = delete;
@@ -68,7 +68,7 @@ struct Neg {
     ::tpystd::tplib::box::Box<Value> inner;
 
     // def __init__(self, inner: Own[Box[Value]]) -> None:
-    explicit Neg(::tpystd::tplib::box::Box<Value>&& inner) : inner(std::move(inner)) {}
+    explicit Neg(::tpystd::tplib::box::Box<Value>&& inner);
     // non-copyable (field 'inner')
     Neg(const Neg&) = delete;
     Neg& operator=(const Neg&) = delete;
@@ -82,6 +82,15 @@ inline std::ostream& operator<<(std::ostream& os, const Neg& obj) {
     return os;
 }
 
+
+// def __init__(self, value: int) -> None:
+inline Lit::Lit(const ::tpy::BigInt& value) : value(value) {}
+
+// def __init__(self, left: Own[Box[Expr]], right: Own[Box[Expr]]) -> None:
+inline BinOp::BinOp(::tpystd::tplib::box::Box<Expr>&& left, ::tpystd::tplib::box::Box<Expr>&& right) : left(std::move(left)), right(std::move(right)) {}
+
+// def __init__(self, inner: Own[Box[Value]]) -> None:
+inline Neg::Neg(::tpystd::tplib::box::Box<Value>&& inner) : inner(std::move(inner)) {}
 struct Expr {
     using variant_type = std::variant<BinOp, Lit>;
     variant_type value;

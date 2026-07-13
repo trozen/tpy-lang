@@ -27,7 +27,7 @@ struct IntListHolder {
 
     // def __init__(self, data: list[Int32]) -> None:
     IntListHolder() = default;
-    explicit IntListHolder(const std::vector<int32_t>& data) : data(data) {}
+    explicit IntListHolder(const std::vector<int32_t>& data);
 
     // def items(self) -> list[Int32]:
     std::vector<int32_t>& items();
@@ -64,6 +64,9 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper<V>& obj) {
     return os;
 }
 
+
+// def __init__(self, data: list[Int32]) -> None:
+inline IntListHolder::IntListHolder(const std::vector<int32_t>& data) : data(data) {}
 
 // def items(self) -> list[Int32]:
 inline std::vector<int32_t>& IntListHolder::items() {

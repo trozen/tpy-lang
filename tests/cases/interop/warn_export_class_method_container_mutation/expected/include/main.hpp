@@ -19,7 +19,7 @@ struct Sink {
 
     // def __init__(self, n: Int64):
     Sink() = default;
-    explicit Sink(int64_t n) : n(n) {}
+    explicit Sink(int64_t n);
 
     // def push(self, xs: list[Int64]) -> None:  # tpyc: warning(/method 'push': list parameter 'xs' is copied in.*not visible to the caller/)
     void push(std::vector<int64_t>& xs) const;
@@ -43,6 +43,9 @@ inline std::ostream& operator<<(std::ostream& os, const Sink& obj) {
     return os;
 }
 
+
+// def __init__(self, n: Int64):
+inline Sink::Sink(int64_t n) : n(n) {}
 
 // def push(self, xs: list[Int64]) -> None:  # tpyc: warning(/method 'push': list parameter 'xs' is copied in.*not visible to the caller/)
 inline void Sink::push(std::vector<int64_t>& xs) const {

@@ -32,7 +32,7 @@ struct Child : Base {
 
     // def __init__(self, value: int) -> None:
     Child() = default;
-    explicit Child(const ::tpy::BigInt& value) : Base(), value(value) {}
+    explicit Child(const ::tpy::BigInt& value);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Child";
 };
 
@@ -41,5 +41,8 @@ inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
     return os;
 }
 
+
+// def __init__(self, value: int) -> None:
+inline Child::Child(const ::tpy::BigInt& value) : Base(), value(value) {}
 void __tpy_init();
 } // namespace tpyapp::main

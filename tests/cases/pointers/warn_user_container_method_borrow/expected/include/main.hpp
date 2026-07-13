@@ -22,7 +22,7 @@ struct NumberList {
 
     // def __init__(self, label: str) -> None:
     NumberList() = default;
-    explicit NumberList(std::string_view label) : _items(std::vector<int32_t>{}), _label(label) {}
+    explicit NumberList(std::string_view label);
 
     // def add(self, val: Int32) -> None:
     void add(int32_t val);
@@ -40,6 +40,9 @@ inline std::ostream& operator<<(std::ostream& os, const NumberList& obj) {
     return os;
 }
 
+
+// def __init__(self, label: str) -> None:
+inline NumberList::NumberList(std::string_view label) : _items(std::vector<int32_t>{}), _label(label) {}
 
 // def add(self, val: Int32) -> None:
 inline void NumberList::add(int32_t val) {

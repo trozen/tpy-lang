@@ -25,7 +25,7 @@ struct T {
 
     // def __init__(self, x: Int32) -> None:
     T() = default;
-    explicit T(int32_t x) : x(x) {}
+    explicit T(int32_t x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.T";
 };
 
@@ -40,7 +40,7 @@ struct Holder {
     std::tuple<std::optional<T>, std::optional<T>> pair;
 
     // def __init__(self) -> None:
-    Holder() : pair(::tpy::tuple_to_storage<std::tuple<std::optional<T>, std::optional<T>>>(std::tuple<std::optional<T>, std::optional<T>>{std::nullopt, std::nullopt})) {}
+    Holder();
 
     // def update(self, p: tuple[T | None, T | None]) -> None:
     void update(const std::tuple<const T*, const T*>& p);
@@ -64,11 +64,7 @@ struct GlobalCopier {
     std::tuple<std::optional<T>, std::optional<T>> pair;
 
     // def __init__(self) -> None:
-    GlobalCopier() {
-        // # Source is a value global -- already storage-form, direct copy.
-        // self.pair = g_pair  # tpyc: warning(/copies/) warning(/copies/)
-        this->pair = g_pair;
-    }
+    GlobalCopier();
     static constexpr std::string_view __tpy_class_name__ = "__main__.GlobalCopier";
 };
 
@@ -84,7 +80,7 @@ struct SubscriptCtor {
 
     // def __init__(self, items: list[tuple[T | None, T | None]]) -> None:
     SubscriptCtor() = default;
-    explicit SubscriptCtor(const std::vector<std::tuple<std::optional<T>, std::optional<T>>>& items) : pair(::tpy::__getitem__(items, 0)) {}
+    explicit SubscriptCtor(const std::vector<std::tuple<std::optional<T>, std::optional<T>>>& items);
     static constexpr std::string_view __tpy_class_name__ = "__main__.SubscriptCtor";
 };
 
@@ -93,6 +89,12 @@ inline std::ostream& operator<<(std::ostream& os, const SubscriptCtor& obj) {
     return os;
 }
 
+
+// def __init__(self, x: Int32) -> None:
+inline T::T(int32_t x) : x(x) {}
+
+// def __init__(self) -> None:
+inline Holder::Holder() : pair(::tpy::tuple_to_storage<std::tuple<std::optional<T>, std::optional<T>>>(std::tuple<std::optional<T>, std::optional<T>>{std::nullopt, std::nullopt})) {}
 
 // def update(self, p: tuple[T | None, T | None]) -> None:
 inline void Holder::update(const std::tuple<const T*, const T*>& p) {
@@ -114,5 +116,15 @@ inline void Holder::copy_from_field(const Holder& other) {
     // self.pair = other.pair  # tpyc: warning(/copies/) warning(/copies/)
     this->pair = other.pair;
 }
+
+// def __init__(self) -> None:
+inline GlobalCopier::GlobalCopier() {
+    // # Source is a value global -- already storage-form, direct copy.
+    // self.pair = g_pair  # tpyc: warning(/copies/) warning(/copies/)
+    this->pair = g_pair;
+}
+
+// def __init__(self, items: list[tuple[T | None, T | None]]) -> None:
+inline SubscriptCtor::SubscriptCtor(const std::vector<std::tuple<std::optional<T>, std::optional<T>>>& items) : pair(::tpy::__getitem__(items, 0)) {}
 void __tpy_init();
 } // namespace tpyapp::main

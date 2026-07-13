@@ -24,7 +24,7 @@ struct Holder {
 
     // def __init__(self, xs: Own[list[Int32]]):
     Holder() = default;
-    explicit Holder(std::vector<int32_t>&& xs) : xs(std::move(xs)) {}
+    explicit Holder(std::vector<int32_t>&& xs);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
@@ -58,7 +58,7 @@ struct DictHolder {
 
     // def __init__(self, d: Own[dict[str, Int32]]):
     DictHolder() = default;
-    explicit DictHolder(::tpy::ordered_map<std::string, int32_t>&& d) : d(std::move(d)) {}
+    explicit DictHolder(::tpy::ordered_map<std::string, int32_t>&& d);
     static constexpr std::string_view __tpy_class_name__ = "__main__.DictHolder";
 };
 
@@ -74,7 +74,7 @@ struct SetHolder {
 
     // def __init__(self, s: Own[set[Int32]]):
     SetHolder() = default;
-    explicit SetHolder(::tpy::ordered_set<int32_t>&& s) : s(std::move(s)) {}
+    explicit SetHolder(::tpy::ordered_set<int32_t>&& s);
     static constexpr std::string_view __tpy_class_name__ = "__main__.SetHolder";
 };
 
@@ -90,7 +90,7 @@ struct DataError : ::tpy::Exception {
 
     // def __init__(self, xs: list[Int32]):
     DataError() = default;
-    explicit DataError(const std::vector<int32_t>& xs) : n(::tpy::__len__(xs)) {}
+    explicit DataError(const std::vector<int32_t>& xs);
 
     [[nodiscard]] std::unique_ptr<::tpy::Throwable> clone() const override { return std::make_unique<DataError>(*this); }
     [[noreturn]] void __raise__() const override { throw *this; }
@@ -103,5 +103,17 @@ inline std::ostream& operator<<(std::ostream& os, const DataError& obj) {
     return os;
 }
 
+
+// def __init__(self, xs: Own[list[Int32]]):
+inline Holder::Holder(std::vector<int32_t>&& xs) : xs(std::move(xs)) {}
+
+// def __init__(self, d: Own[dict[str, Int32]]):
+inline DictHolder::DictHolder(::tpy::ordered_map<std::string, int32_t>&& d) : d(std::move(d)) {}
+
+// def __init__(self, s: Own[set[Int32]]):
+inline SetHolder::SetHolder(::tpy::ordered_set<int32_t>&& s) : s(std::move(s)) {}
+
+// def __init__(self, xs: list[Int32]):
+inline DataError::DataError(const std::vector<int32_t>& xs) : n(::tpy::__len__(xs)) {}
 void __tpy_init();
 } // namespace tpyapp::main

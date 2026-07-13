@@ -28,7 +28,7 @@ struct BaseCM {
     int32_t n;
 
     // def __init__(self) -> None:
-    BaseCM() : n(0) {}
+    BaseCM();
 
     __coro_BaseCM___aenter__ __aenter__();
 
@@ -143,5 +143,8 @@ struct __coro_main_coro {
     }
 };
 
+
+// def __init__(self) -> None:
+inline BaseCM::BaseCM() : n(0) {}
 void __tpy_init();
 } // namespace tpyapp::main

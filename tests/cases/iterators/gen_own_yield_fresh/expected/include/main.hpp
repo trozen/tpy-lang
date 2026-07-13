@@ -20,7 +20,7 @@ struct Node {
 
     // def __init__(self, v: int):
     Node() = default;
-    explicit Node(const ::tpy::BigInt& v) : val(v) {}
+    explicit Node(const ::tpy::BigInt& v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Node";
 };
 
@@ -29,6 +29,9 @@ inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
     return os;
 }
 
+
+// def __init__(self, v: int):
+inline Node::Node(const ::tpy::BigInt& v) : val(v) {}
 inline auto boxes(const ::tpy::BigInt& n) {
     return ::tpy::make_generator<Node>(
         [n, __i = ::tpy::BigInt(0), __stop = static_cast<::tpy::BigInt>(n)]() mutable -> std::optional<Node> {

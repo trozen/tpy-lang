@@ -38,9 +38,7 @@ void main();
 struct Dog : Pet {
 
     // def __init__(self) -> None:
-    Dog() {
-        // pass
-    }
+    Dog();
 
     // @readonly
     // def speak(self) -> str:
@@ -57,9 +55,7 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 struct Cat : Pet {
 
     // def __init__(self) -> None:
-    Cat() {
-        // pass
-    }
+    Cat();
 
     // @readonly
     // def speak(self) -> str:
@@ -92,11 +88,21 @@ struct tpy::RefAdapter<tpyapp::main::Pet, T> : tpyapp::main::Pet {
 namespace tpyapp::main {
 
 
+// def __init__(self) -> None:
+inline Dog::Dog() {
+    // pass
+}
+
 // @readonly
 // def speak(self) -> str:
 inline std::string Dog::speak() const {
     // return "woof"
     return "woof";
+}
+
+// def __init__(self) -> None:
+inline Cat::Cat() {
+    // pass
 }
 
 // @readonly

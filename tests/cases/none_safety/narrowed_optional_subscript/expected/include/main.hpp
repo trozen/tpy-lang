@@ -23,7 +23,7 @@ struct Wrapper {
 
     // def __init__(self, text: str | None) -> None:
     Wrapper() = default;
-    explicit Wrapper(std::optional<std::string_view> text) : text(text ? std::make_optional(std::string(*text)) : std::nullopt) {}
+    explicit Wrapper(std::optional<std::string_view> text);
 
     // def first_char(self) -> None:
     void first_char() const;
@@ -35,6 +35,9 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {
     return os;
 }
 
+
+// def __init__(self, text: str | None) -> None:
+inline Wrapper::Wrapper(std::optional<std::string_view> text) : text(text ? std::make_optional(std::string(*text)) : std::nullopt) {}
 
 // def first_char(self) -> None:
 inline void Wrapper::first_char() const {

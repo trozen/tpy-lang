@@ -20,7 +20,7 @@ struct Trade {
 
     // def __init__(self, qty: Int32) -> None:
     Trade() = default;
-    explicit Trade(int32_t qty) : qty(qty) {}
+    explicit Trade(int32_t qty);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Trade";
 };
 
@@ -29,5 +29,8 @@ inline std::ostream& operator<<(std::ostream& os, const Trade& obj) {
     return os;
 }
 
+
+// def __init__(self, qty: Int32) -> None:
+inline Trade::Trade(int32_t qty) : qty(qty) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -25,7 +25,7 @@ struct Outer {
     int32_t rank;
 
     Outer() = default;
-    explicit Outer(int32_t rank) : rank(rank) {}
+    explicit Outer(int32_t rank);
 
     // def __lt__(self, other: "Outer") -> bool:
     bool __lt__(const Outer& other) const;
@@ -75,7 +75,7 @@ struct Inner {
     int32_t rank;
 
     Inner() = default;
-    explicit Inner(int32_t rank) : rank(rank) {}
+    explicit Inner(int32_t rank);
 
     // def __lt__(self, other: "Inner") -> bool:
     bool __lt__(const Inner& other) const;
@@ -118,6 +118,8 @@ inline std::ostream& operator<<(std::ostream& os, const Inner& obj) {
 }
 
 
+inline Outer::Outer(int32_t rank) : rank(rank) {}
+
 // def __lt__(self, other: "Outer") -> bool:
 inline bool Outer::__lt__(const Outer& other) const {
     // return self.rank < other.rank
@@ -143,6 +145,8 @@ inline bool Outer::__gt__(const Outer& other) const {
 inline bool Outer::__ge__(const Outer& other) const {
     return (!(((*this) < other)));
 }
+
+inline Inner::Inner(int32_t rank) : rank(rank) {}
 
 // def __lt__(self, other: "Inner") -> bool:
 inline bool Inner::__lt__(const Inner& other) const {

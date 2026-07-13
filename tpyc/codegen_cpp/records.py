@@ -377,30 +377,12 @@ class RecordGenerator:
         # Determine constructor generation strategy
         if record.init_method:
             has_params = bool(record.init_method.params)
-            # THIR ctor frontier (M3): an eligible ctor's member-init-list + body
-            # tail emits from its THIRConstructor; the signature below stays on the
-            # AST path (the M1 precedent). The AST MIL extraction is skipped when a
-            # THIRConstructor is present -- it already carries the hoisted inits.
-            thir_ctor = (self.ctx.thir_constructors.get(id(record.init_method))
-                         if self.ctx.thir_codegen else None)
-            if thir_ctor is None:
-                saved_func_params = self.ctx.current_func_params
-                saved_in_method = self.ctx.in_method
-                saved_ns = self.ctx.current_ns
-                self.ctx.current_func_params = {
-                    pname: ptype for pname, ptype in record.init_method.params}
-                self.ctx.in_method = True
-                # Field-init RHS expressions live lexically in the constructor
-                # body, so binding-based dispatch in expression codegen needs the
-                # constructor's namespace. The non-init body gets the same
-                # namespace handed to gen_body further down.
-                self.ctx.current_ns = self._build_init_local_ns(record)
-                base_inits = self._extract_base_inits(record.init_method, record)
-                inits, hoisted_ids = self._extract_field_inits(record.init_method, record)
-                self.ctx.current_func_params = saved_func_params
-                self.ctx.in_method = saved_in_method
-                self.ctx.current_ns = saved_ns
-                non_init_stmts = self._get_non_init_stmts(record.init_method, record, hoisted_ids)
+            # Plain records get the ctor definition at namespace scope (the
+            # def_hpp/def_cpp passes), like out-of-line methods: an in-struct
+            # MIL/body that references a mutually-recursive sibling record
+            # needs its complete type before any struct order can provide it.
+            # Only the declaration is emitted here in that case.
+            ctor_out_of_line = self._ctor_can_be_out_of_line(record)
 
             self.ctx.emit_preceding_comments(out, record.init_method.loc, indent=INDENT)
             self.ctx.emit_source_comment(out, record.init_method.loc, indent=INDENT)
@@ -410,8 +392,6 @@ class RecordGenerator:
 
                 # Generate parameterized constructor from __init__
                 proto_params = self.functions.protocols.get_all_protocol_params(
-                    record.init_method.params)
-                has_dynamic = self.functions._has_dynamic_protocol_params(
                     record.init_method.params)
 
                 # Default constructor: when all params have defaults and every
@@ -424,83 +404,36 @@ class RecordGenerator:
                     and all(p.has_none for p in proto_params))
                 if has_required_params or proto_params:
                     if all_protocols_optional:
-                        out.write(f"{INDENT}{cpp_rec_name}() : {cpp_rec_name}(static_cast<std::nullptr_t*>(nullptr)) {{}}\n")
+                        if record.type_params:
+                            # Templated: the delegated-to template ctor only
+                            # instantiates on use, so inline is safe here.
+                            out.write(f"{INDENT}{cpp_rec_name}() : {cpp_rec_name}(static_cast<std::nullptr_t*>(nullptr)) {{}}\n")
+                        else:
+                            # Plain record: the delegation instantiates the
+                            # template ctor's MIL eagerly -- define it after
+                            # all structs, next to the out-of-line ctors.
+                            out.write(f"{INDENT}{cpp_rec_name}();\n")
                     elif (record_info is not None
                           and self._all_fields_default_constructible(record)
                           and not del_suppresses_default_ctor(record_info)):
                         out.write(f"{INDENT}{cpp_rec_name}() = default;\n")
-                # Ctor params that the body mutates (typically via value->Ptr
-                # coercion at a callee site or assignment to a Ptr storage)
-                # must drop the perf-default `const T&` -- the address-take
-                # produces `T*`, not `const T*`. Regular methods plumb this
-                # through gen_params; constructors used to skip it because
-                # ctors must accept temporaries, but a mutated param can't
-                # accept a temporary anyway (sema's requires_mutable_lvalue
-                # rejects the rvalue call before reaching codegen).
-                init_mp = self.functions._get_method_mutated_params(
-                    record.init_method, record.name)
-                if proto_params or has_dynamic:
-                    cpp_params = self.functions.gen_params_with_protocols(
-                        record.init_method.params,
-                        record.init_method.type_params,
-                        const_params=True,
-                        mutated_params=init_mp,
-                        defaults=init_defaults,
-                        emit_defaults=True,
-                    )
-                    if proto_params:
-                        template_header = self.functions.protocols.gen_combined_template_header(
-                            record.init_method.type_params or [], proto_params,
-                            record.type_param_bounds or None,
-                        )
-                        out.write(f"{INDENT}{template_header}")
+                template_header, cpp_params = self._ctor_cpp_params(
+                    record, emit_defaults=True)
+                if template_header:
+                    out.write(f"{INDENT}{template_header}")
+                if ctor_out_of_line:
+                    out.write(f"{INDENT}explicit {cpp_rec_name}({cpp_params});\n")
                 else:
-                    init_ae = self.functions._get_method_addr_escapes(
-                        record.init_method, record.name)
-                    cpp_params = self.functions.gen_params(
-                        record.init_method.params,
-                        record.init_method.type_params,
-                        const_params=True,
-                        mutated_params=init_mp,
-                        addr_escapes_params=init_ae,
-                        defaults=init_defaults,
-                        emit_defaults=True,
-                        class_type_params=set(record.type_params) if record.type_params else None,
-                    )
-                out.write(f"{INDENT}explicit {cpp_rec_name}({cpp_params})")
+                    out.write(f"{INDENT}explicit {cpp_rec_name}({cpp_params})")
             else:
                 # No params: generate default constructor with body
-                out.write(f"{INDENT}{cpp_rec_name}()")
-
-            if thir_ctor is not None:
-                from ..thir.emit import (
-                    CtxCommentSink, CtxCounter, CtxTempSink,
-                    emit_thir_constructor_tail,
-                )
-                emit_thir_constructor_tail(
-                    out, thir_ctor,
-                    comments=CtxCommentSink(self.ctx),
-                    temps=CtxTempSink(self.ctx),
-                    with_counter=CtxCounter(self.ctx, "with_counter"),
-                    try_counter=CtxCounter(self.ctx, "try_except_counter"))
-            else:
-                # Build member init list: base inits (if any) + field inits
-                all_inits = list(base_inits)
-                all_inits.extend(f"{escape_cpp_name(name)}({val})" for name, val in inits)
-                if all_inits:
-                    out.write(" : ")
-                    out.write(", ".join(all_inits))
-                if non_init_stmts:
-                    out.write(" {\n")
-                    local_ns = self._build_init_local_ns(record)
-                    self.functions.gen_body(out, non_init_stmts, record.init_method.params,
-                                             record.init_method.return_type, record.init_method,
-                                             local_ns, indent_level=2, is_method=True,
-                                             record_type_param_bounds=record.type_param_bounds or None,
-                                             owning_record_name=record.name)
-                    out.write(f"{INDENT}}}\n")
+                if ctor_out_of_line:
+                    out.write(f"{INDENT}{cpp_rec_name}();\n")
                 else:
-                    out.write(" {}\n")
+                    out.write(f"{INDENT}{cpp_rec_name}()")
+
+            if not ctor_out_of_line:
+                self._emit_ctor_tail(out, record, body_indent_level=2)
         else:
             # No __init__: plain records stay C++ aggregates (no ctor declared).
             # Records with __del__/@nocopy/__copy__ get user-declared copy/move
@@ -520,18 +453,12 @@ class RecordGenerator:
                 if not del_suppresses_default_ctor(record_info):
                     out.write(f"{INDENT}{cpp_rec_name}() = default;\n")
 
-        # Copy/move ops for @nocopy, __del__, or __copy__ classes.
+        # Copy/move ops for @nocopy, __del__, or __copy__ classes. Plain
+        # records declare here and define at namespace scope (see
+        # `_ctor_can_be_out_of_line` for why); templated records stay inline.
+        special_mode: MethodEmitMode = "inline" if record.type_params else "decl"
         if record_info and record_info.has_copy:
-            n = cpp_rec_name
-            out.write(f"{INDENT}// copyable via __copy__\n")
-            out.write(f"{INDENT}{n}(const {n}& other) : {n}(other.__copy__()) {{}}\n")
-            out.write(f"{INDENT}{n}& operator=(const {n}& other) {{\n")
-            out.write(f"{INDENT}{INDENT}if (this != &other) {{ *this = other.__copy__(); }}\n")
-            out.write(f"{INDENT}{INDENT}return *this;\n")
-            out.write(f"{INDENT}}}\n")
-            if not record_info.has_del:
-                out.write(f"{INDENT}{n}({n}&&) = default;\n")
-                out.write(f"{INDENT}{n}& operator=({n}&&) = default;\n")
+            self._gen_copy_ops(out, record, mode=special_mode)
         elif record_info and (record_info.is_nocopy or record_info.has_del):
             if record_info.is_nocopy:
                 out.write(f"{INDENT}// non-copyable")
@@ -548,7 +475,7 @@ class RecordGenerator:
                 out.write(f"{INDENT}{cpp_rec_name}& operator=({cpp_rec_name}&&) = default;\n")
 
         # Generate destructor if __del__ is defined
-        self._gen_move_and_destructor(out, record)
+        self._gen_move_and_destructor(out, record, mode=special_mode)
 
         # Generate converting move constructor for covariant generics
         self._gen_covariant_converting_ctor(out, record)
@@ -800,6 +727,223 @@ class RecordGenerator:
             return False
         return True
 
+    def _ctor_can_be_out_of_line(self, record: TpyRecord) -> bool:
+        """`_method_can_be_out_of_line` for the __init__ constructor. Out-of-line
+        is required, not just preferred: an in-struct ctor definition odr-uses
+        the member dtors, so a MIL referencing a mutually-recursive sibling
+        record (`A.bs: list[B]`, `B.as_: list[A]`) would need a complete type
+        no struct order can provide. Template-header ctors stay inline like
+        template methods -- their bodies instantiate at (complete-type) use
+        sites, which also makes them immune.
+        """
+        init = record.init_method
+        if init is None:
+            return False
+        if record.type_params:
+            return False
+        if init.type_params:
+            return False
+        if self.functions.protocols.get_all_protocol_params(init.params):
+            return False
+        if self.functions._collect_fn_params(init.params):
+            return False
+        return True
+
+    def _ctor_all_protocols_optional(self, record: TpyRecord) -> bool:
+        """True when the __init__ ctor's default constructor delegates to the
+        template ctor with nullptr (all params defaulted, every protocol param
+        optional). Shared by the decl and def passes."""
+        init = record.init_method
+        if init is None or not init.params:
+            return False
+        init_defaults = init.defaults if init.defaults else None
+        has_required_params = not init_defaults or any(d is None for d in init_defaults)
+        proto_params = self.functions.protocols.get_all_protocol_params(init.params)
+        return bool(proto_params and not has_required_params
+                    and all(p.has_none for p in proto_params))
+
+    def _ctor_cpp_params(self, record: TpyRecord,
+                         *, emit_defaults: bool) -> tuple[str, str]:
+        """Render the __init__ ctor's C++ param list; returns
+        ``(template_header, params)`` where the header is "" unless the ctor
+        has structural-protocol params. C++ rejects default arguments repeated
+        on both the declaration and an out-of-line definition, so the def pass
+        passes ``emit_defaults=False``."""
+        init = record.init_method
+        init_defaults = init.defaults if init.defaults else None
+        proto_params = self.functions.protocols.get_all_protocol_params(init.params)
+        has_dynamic = self.functions._has_dynamic_protocol_params(init.params)
+        # Ctor params that the body mutates (typically via value->Ptr
+        # coercion at a callee site or assignment to a Ptr storage)
+        # must drop the perf-default `const T&` -- the address-take
+        # produces `T*`, not `const T*`. Regular methods plumb this
+        # through gen_params; constructors used to skip it because
+        # ctors must accept temporaries, but a mutated param can't
+        # accept a temporary anyway (sema's requires_mutable_lvalue
+        # rejects the rvalue call before reaching codegen).
+        init_mp = self.functions._get_method_mutated_params(init, record.name)
+        if proto_params or has_dynamic:
+            cpp_params = self.functions.gen_params_with_protocols(
+                init.params,
+                init.type_params,
+                const_params=True,
+                mutated_params=init_mp,
+                defaults=init_defaults,
+                emit_defaults=emit_defaults,
+            )
+            template_header = ""
+            if proto_params:
+                template_header = self.functions.protocols.gen_combined_template_header(
+                    init.type_params or [], proto_params,
+                    record.type_param_bounds or None,
+                )
+            return template_header, cpp_params
+        init_ae = self.functions._get_method_addr_escapes(init, record.name)
+        cpp_params = self.functions.gen_params(
+            init.params,
+            init.type_params,
+            const_params=True,
+            mutated_params=init_mp,
+            addr_escapes_params=init_ae,
+            defaults=init_defaults,
+            emit_defaults=emit_defaults,
+            class_type_params=set(record.type_params) if record.type_params else None,
+        )
+        return "", cpp_params
+
+    def _emit_ctor_tail(self, out: TextIO, record: TpyRecord,
+                        *, body_indent_level: int) -> None:
+        """Emit the ctor's ` : mil... { body }` tail after the signature.
+        ``body_indent_level`` is 2 in-struct and 1 at namespace scope.
+
+        THIR ctor frontier (M3): an eligible ctor's member-init-list + body
+        tail emits from its THIRConstructor; the signature stays on the
+        AST path (the M1 precedent). The AST MIL extraction is skipped when a
+        THIRConstructor is present -- it already carries the hoisted inits."""
+        thir_ctor = (self.ctx.thir_constructors.get(id(record.init_method))
+                     if self.ctx.thir_codegen else None)
+        if thir_ctor is not None:
+            from ..thir.emit import (
+                CtxCommentSink, CtxCounter, CtxTempSink,
+                emit_thir_constructor_tail,
+            )
+            emit_thir_constructor_tail(
+                out, thir_ctor,
+                comments=CtxCommentSink(self.ctx),
+                temps=CtxTempSink(self.ctx),
+                with_counter=CtxCounter(self.ctx, "with_counter"),
+                try_counter=CtxCounter(self.ctx, "try_except_counter"),
+                body_indent_level=body_indent_level)
+            return
+        saved_func_params = self.ctx.current_func_params
+        saved_in_method = self.ctx.in_method
+        saved_ns = self.ctx.current_ns
+        self.ctx.current_func_params = {
+            pname: ptype for pname, ptype in record.init_method.params}
+        self.ctx.in_method = True
+        # Field-init RHS expressions live lexically in the constructor
+        # body, so binding-based dispatch in expression codegen needs the
+        # constructor's namespace. The non-init body gets the same
+        # namespace handed to gen_body below.
+        self.ctx.current_ns = self._build_init_local_ns(record)
+        base_inits = self._extract_base_inits(record.init_method, record)
+        inits, hoisted_ids = self._extract_field_inits(record.init_method, record)
+        self.ctx.current_func_params = saved_func_params
+        self.ctx.in_method = saved_in_method
+        self.ctx.current_ns = saved_ns
+        non_init_stmts = self._get_non_init_stmts(record.init_method, record, hoisted_ids)
+
+        # Build member init list: base inits (if any) + field inits
+        all_inits = list(base_inits)
+        all_inits.extend(f"{escape_cpp_name(name)}({val})" for name, val in inits)
+        if all_inits:
+            out.write(" : ")
+            out.write(", ".join(all_inits))
+        if non_init_stmts:
+            out.write(" {\n")
+            local_ns = self._build_init_local_ns(record)
+            self.functions.gen_body(out, non_init_stmts, record.init_method.params,
+                                     record.init_method.return_type, record.init_method,
+                                     local_ns, indent_level=body_indent_level, is_method=True,
+                                     record_type_param_bounds=record.type_param_bounds or None,
+                                     owning_record_name=record.name)
+            out.write(f"{INDENT * (body_indent_level - 1)}}}\n")
+        else:
+            out.write(" {}\n")
+
+    def _gen_ctor_def(self, out: TextIO, record: TpyRecord,
+                      *, mode: MethodEmitMode) -> None:
+        """Emit the out-of-line ctor definition(s) for ``record`` at namespace
+        scope -- the def-side counterpart of the in-struct declarations that
+        `_gen_record_decl` emits for plain records."""
+        init = record.init_method
+        if init is None or record.type_params:
+            return
+        inline_prefix = "inline " if mode == "def_hpp" else ""
+        q = escape_cpp_name(record.name.replace(".", "::"))
+        n = escape_cpp_name(bare_name(record.name))
+        # The delegating default ctor (all-optional protocol params) is a
+        # trivial one-liner: header partition unless cycle members force .cpp.
+        trivial_mode = "def_cpp" if self.ctx.cycle_peers else "def_hpp"
+        if self._ctor_all_protocols_optional(record) and mode == trivial_mode:
+            out.write(f"\n{inline_prefix}{q}::{n}() : {n}(static_cast<std::nullptr_t*>(nullptr)) {{}}\n")
+        if not self._ctor_can_be_out_of_line(record):
+            return
+        if not self.ctx.cycle_peers:
+            if self._method_body_is_small(init) != (mode == "def_hpp"):
+                return
+        elif mode == "def_hpp":
+            return
+        out.write("\n")
+        self.ctx.emit_preceding_comments(out, init.loc)
+        self.ctx.emit_source_comment(out, init.loc)
+        if init.params:
+            _, cpp_params = self._ctor_cpp_params(record, emit_defaults=False)
+            out.write(f"{inline_prefix}{q}::{n}({cpp_params})")
+        else:
+            out.write(f"{inline_prefix}{q}::{n}()")
+        self._emit_ctor_tail(out, record, body_indent_level=1)
+
+    def _gen_copy_ops(self, out: TextIO, record: TpyRecord,
+                      *, mode: MethodEmitMode) -> None:
+        """Copy ctor/assign delegating to __copy__ (plus defaulted moves when
+        there is no __del__). The delegation constructs and destroys a
+        temporary, so plain records declare in-struct and define at namespace
+        scope (see `_ctor_can_be_out_of_line`); templated records stay inline.
+        """
+        record_info = self.ctx.analyzer.registry.get_record(record.name)
+        if not record_info or not record_info.has_copy:
+            return
+        n = escape_cpp_name(bare_name(record.name))
+        is_def_mode = mode in ("def_hpp", "def_cpp")
+        if is_def_mode:
+            # Trivial one-liners: header partition unless cycle members
+            # force .cpp.
+            if mode != ("def_cpp" if self.ctx.cycle_peers else "def_hpp"):
+                return
+        else:
+            out.write(f"{INDENT}// copyable via __copy__\n")
+            if mode == "decl":
+                out.write(f"{INDENT}{n}(const {n}& other);\n")
+                out.write(f"{INDENT}{n}& operator=(const {n}& other);\n")
+        if mode != "decl":
+            q = escape_cpp_name(record.name.replace(".", "::"))
+            sig_pre = ("inline " if mode == "def_hpp" else "") if is_def_mode else INDENT
+            ctor_name = f"{q}::{n}" if is_def_mode else n
+            assign_sig = f"{q}& {q}::operator=" if is_def_mode else f"{n}& operator="
+            ind = "" if is_def_mode else INDENT
+            bind = ind + INDENT
+            if is_def_mode:
+                out.write("\n")
+            out.write(f"{sig_pre}{ctor_name}(const {n}& other) : {n}(other.__copy__()) {{}}\n")
+            out.write(f"{sig_pre}{assign_sig}(const {n}& other) {{\n")
+            out.write(f"{bind}if (this != &other) {{ *this = other.__copy__(); }}\n")
+            out.write(f"{bind}return *this;\n")
+            out.write(f"{ind}}}\n")
+        if not is_def_mode and not record_info.has_del:
+            out.write(f"{INDENT}{n}({n}&&) = default;\n")
+            out.write(f"{INDENT}{n}& operator=({n}&&) = default;\n")
+
     # Picked by hand to match the spirit of GCC's ``max-inline-insns-auto``
     # default (30 insns) -- bodies above this go to .cpp; smaller bodies
     # stay inline in the .hpp so call sites can inline without LTO. The
@@ -854,6 +998,12 @@ class RecordGenerator:
             # Templated class: methods stay inline-in-struct; nothing to emit
             # here. (`_method_can_be_out_of_line` already returned False.)
             return
+        # Out-of-line ctor + special-member definitions (declared in-struct by
+        # gen_record_decl) come before the record's method defs, mirroring the
+        # in-struct declaration order.
+        self._gen_ctor_def(out, record, mode=mode)
+        self._gen_copy_ops(out, record, mode=mode)
+        self._gen_move_and_destructor(out, record, mode=mode)
         dynamic_overrides = self.functions._get_dynamic_override_info(record.name)
         overload_dispatched: set[str] = set()
         want_small = mode == "def_hpp"
@@ -977,7 +1127,8 @@ class RecordGenerator:
         out.write(f"{INDENT}return os;\n")
         out.write("}\n")
 
-    def _gen_move_and_destructor(self, out: TextIO, record: TpyRecord) -> None:
+    def _gen_move_and_destructor(self, out: TextIO, record: TpyRecord,
+                                 *, mode: MethodEmitMode = "inline") -> None:
         """Generate a C++ destructor with drop-flag protection from a __del__ method.
 
         Emits:
@@ -988,22 +1139,43 @@ class RecordGenerator:
 
         super().__del__() calls are dropped -- parent destructors are called
         automatically by C++ after the child destructor body runs.
+
+        ``mode`` follows the method decl/def split: plain records declare these
+        members in-struct (``decl``) and define them at namespace scope
+        (``def_hpp``/``def_cpp``) where mutually-recursive sibling member types
+        are complete (see `_ctor_can_be_out_of_line`); templated records stay
+        ``inline``. The whole family shares one partition so it stays together.
         """
         del_method = record.del_method
         if del_method is None:
             return
 
         name = record.name
-        cpp_name = escape_cpp_name(name)
+        cpp_name = escape_cpp_name(bare_name(name))
         record_info = self.ctx.analyzer.registry.get_record(name)
+        move_method = record.move_method
+        nonmovable = (record_info is not None and not record.type_params
+                      and not record_info.is_movable)
+
+        is_def_mode = mode in ("def_hpp", "def_cpp")
+        if is_def_mode:
+            family_small = (self._method_body_is_small(del_method)
+                            and (move_method is None
+                                 or self._method_body_is_small(move_method)))
+            want = ("def_cpp" if self.ctx.cycle_peers or not family_small
+                    else "def_hpp")
+            if mode != want:
+                return
+        inline_prefix = "inline " if mode == "def_hpp" else ""
+        q = escape_cpp_name(name.replace(".", "::"))
+        ind = "" if is_def_mode else INDENT
+        body_lvl = 1 if is_def_mode else 2
+        bind = INDENT * body_lvl
 
         # Filter out super().__del__() calls -- they're automatic in C++
         body_stmts = [s for s in del_method.body if not is_super_del_call(s)]
 
         # --- Custom move constructor ---
-        move_method = record.move_method
-        nonmovable = (record_info is not None and not record.type_params
-                      and not record_info.is_movable)
         if move_method is not None:
             # Owner-declared relocating move: a member-wise move would hit a
             # member whose own move is unavailable (e.g. UninitArrayStorage for
@@ -1012,23 +1184,29 @@ class RecordGenerator:
             # (empty) so the __move__ body relocates into a clean slate.
             src_name = move_method.params[0][0] if move_method.params else "other"
             cpp_src = escape_cpp_name(src_name)
-            vinit_parts = []
-            if record_info:
-                for p in record_info.parents:
-                    vinit_parts.append(f"{p.to_cpp()}()")
-            for fld in record.fields:
-                vinit_parts.append(f"{escape_cpp_name(fld.name)}()")
-            vinit_list = (" : " + ", ".join(vinit_parts)) if vinit_parts else ""
-            out.write(f"{INDENT}{cpp_name}({cpp_name}&& {cpp_src}) noexcept{vinit_list} {{\n")
-            move_ns = Namespace(parent=self.ctx.analyzer.global_ns)
-            move_ns.bind_variable("self", NominalType(name))
-            self.functions.gen_body(out, move_method.body, move_method.params,
-                                    move_method.return_type, move_method, move_ns,
-                                    indent_level=2, is_method=True,
-                                    record_type_param_bounds=record.type_param_bounds or None,
-                                    owning_record_name=name)
-            out.write(f"{INDENT}{INDENT}{cpp_src}.__tpy_owned_ = false;\n")
-            out.write(f"{INDENT}}}\n")
+            if mode == "decl":
+                out.write(f"{INDENT}{cpp_name}({cpp_name}&& {cpp_src}) noexcept;\n")
+            else:
+                vinit_parts = []
+                if record_info:
+                    for p in record_info.parents:
+                        vinit_parts.append(f"{p.to_cpp()}()")
+                for fld in record.fields:
+                    vinit_parts.append(f"{escape_cpp_name(fld.name)}()")
+                vinit_list = (" : " + ", ".join(vinit_parts)) if vinit_parts else ""
+                if is_def_mode:
+                    out.write(f"\n{inline_prefix}{q}::{cpp_name}({cpp_name}&& {cpp_src}) noexcept{vinit_list} {{\n")
+                else:
+                    out.write(f"{INDENT}{cpp_name}({cpp_name}&& {cpp_src}) noexcept{vinit_list} {{\n")
+                move_ns = Namespace(parent=self.ctx.analyzer.global_ns)
+                move_ns.bind_variable("self", NominalType(name))
+                self.functions.gen_body(out, move_method.body, move_method.params,
+                                        move_method.return_type, move_method, move_ns,
+                                        indent_level=body_lvl, is_method=True,
+                                        record_type_param_bounds=record.type_param_bounds or None,
+                                        owning_record_name=name)
+                out.write(f"{bind}{cpp_src}.__tpy_owned_ = false;\n")
+                out.write(f"{ind}}}\n")
         elif nonmovable:
             # Non-generic class with a non-movable member and no __move__: a
             # member-wise move ctor would be ill-formed (it would move the
@@ -1036,8 +1214,11 @@ class RecordGenerator:
             # eagerly, so emit an explicitly deleted move. Sema rejects actual
             # relocations of this type with a clean diagnostic before codegen;
             # construct-and-use-in-place and elided prvalue returns still work.
-            out.write(f"{INDENT}{cpp_name}({cpp_name}&&) = delete;\n")
-            out.write(f"{INDENT}{cpp_name}& operator=({cpp_name}&&) = delete;\n")
+            if not is_def_mode:
+                out.write(f"{INDENT}{cpp_name}({cpp_name}&&) = delete;\n")
+                out.write(f"{INDENT}{cpp_name}& operator=({cpp_name}&&) = delete;\n")
+        elif mode == "decl":
+            out.write(f"{INDENT}{cpp_name}({cpp_name}&& other) noexcept;\n")
         else:
             init_parts = []
             if record_info:
@@ -1051,34 +1232,50 @@ class RecordGenerator:
             if init_parts:
                 init_list = " : " + ", ".join(init_parts)
 
-            out.write(f"{INDENT}{cpp_name}({cpp_name}&& other) noexcept{init_list} {{\n")
-            out.write(f"{INDENT}{INDENT}other.__tpy_owned_ = false;\n")
-            out.write(f"{INDENT}}}\n")
+            if is_def_mode:
+                out.write(f"\n{inline_prefix}{q}::{cpp_name}({cpp_name}&& other) noexcept{init_list} {{\n")
+            else:
+                out.write(f"{INDENT}{cpp_name}({cpp_name}&& other) noexcept{init_list} {{\n")
+            out.write(f"{bind}other.__tpy_owned_ = false;\n")
+            out.write(f"{ind}}}\n")
 
         # --- Custom move assignment (destroy-and-reconstruct) ---
         # The nonmovable branch already emitted a deleted move-assign above.
         if not nonmovable:
-            out.write(f"{INDENT}{cpp_name}& operator=({cpp_name}&& other) noexcept {{\n")
-            out.write(f"{INDENT}{INDENT}if (this != &other) {{\n")
-            out.write(f"{INDENT}{INDENT}{INDENT}this->~{cpp_name}();\n")
-            out.write(f"{INDENT}{INDENT}{INDENT}new (this) {cpp_name}(std::move(other));\n")
-            out.write(f"{INDENT}{INDENT}}}\n")
-            out.write(f"{INDENT}{INDENT}return *this;\n")
-            out.write(f"{INDENT}}}\n")
+            if mode == "decl":
+                out.write(f"{INDENT}{cpp_name}& operator=({cpp_name}&& other) noexcept;\n")
+            else:
+                if is_def_mode:
+                    out.write(f"{inline_prefix}{q}& {q}::operator=({cpp_name}&& other) noexcept {{\n")
+                else:
+                    out.write(f"{INDENT}{cpp_name}& operator=({cpp_name}&& other) noexcept {{\n")
+                out.write(f"{bind}if (this != &other) {{\n")
+                out.write(f"{bind}{INDENT}this->~{cpp_name}();\n")
+                out.write(f"{bind}{INDENT}new (this) {cpp_name}(std::move(other));\n")
+                out.write(f"{bind}}}\n")
+                out.write(f"{bind}return *this;\n")
+                out.write(f"{ind}}}\n")
 
         # --- Destructor with drop-flag guard ---
-        self.ctx.emit_preceding_comments(out, del_method.loc, indent=INDENT)
-        self.ctx.emit_source_comment(out, del_method.loc, indent=INDENT)
-        out.write(f"\n{INDENT}~{cpp_name}() {{\n")
-        out.write(f"{INDENT}{INDENT}if (!this->__tpy_owned_) return;\n")
+        out.write("\n")
+        self.ctx.emit_preceding_comments(out, del_method.loc, indent=ind)
+        self.ctx.emit_source_comment(out, del_method.loc, indent=ind)
+        if mode == "decl":
+            out.write(f"{INDENT}~{cpp_name}();\n")
+            return
+        if is_def_mode:
+            out.write(f"{inline_prefix}{q}::~{cpp_name}() {{\n")
+        else:
+            out.write(f"{INDENT}~{cpp_name}() {{\n")
+        out.write(f"{bind}if (!this->__tpy_owned_) return;\n")
         if body_stmts:
             local_ns = Namespace(parent=self.ctx.analyzer.global_ns)
             local_ns.bind_variable("self", NominalType(name))
             self.functions.gen_body(out, body_stmts, [], del_method.return_type,
-                                    del_method, local_ns, indent_level=2, is_method=True,
+                                    del_method, local_ns, indent_level=body_lvl, is_method=True,
                                     record_type_param_bounds=record.type_param_bounds or None,
                                     owning_record_name=name)
-        out.write(f"{INDENT}}}\n")
+        out.write(f"{ind}}}\n")
 
     def _gen_covariant_converting_ctor(self, out: TextIO, record: TpyRecord) -> None:
         """Generate converting move constructor for covariant generic types.

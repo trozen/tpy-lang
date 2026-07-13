@@ -26,7 +26,7 @@ struct Color {
     int32_t a = 255;
 
     Color() = default;
-    explicit Color(int32_t r, int32_t g, int32_t b, int32_t a = 255) : r(r), g(g), b(b), a(a) {}
+    explicit Color(int32_t r, int32_t g, int32_t b, int32_t a = 255);
 
     bool __eq__(const Color& other) const;
 
@@ -43,6 +43,8 @@ inline std::ostream& operator<<(std::ostream& os, const Color& obj) {
     return os;
 }
 
+
+inline Color::Color(int32_t r, int32_t g, int32_t b, int32_t a) : r(r), g(g), b(b), a(a) {}
 
 inline bool Color::__eq__(const Color& other) const {
     return ((((this->r == other.r) && (this->g == other.g)) && (this->b == other.b)) && (this->a == other.a));

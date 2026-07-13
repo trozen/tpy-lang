@@ -36,7 +36,7 @@ struct Client {
 
     // def __init__(self, name: str) -> None:
     Client() = default;
-    explicit Client(std::string_view name) : name(name) {}
+    explicit Client(std::string_view name);
 
     // def connect(self, **kwargs: Unpack[Options]) -> None:
     void connect(const Options& kwargs) const;
@@ -48,6 +48,9 @@ inline std::ostream& operator<<(std::ostream& os, const Client& obj) {
     return os;
 }
 
+
+// def __init__(self, name: str) -> None:
+inline Client::Client(std::string_view name) : name(name) {}
 
 // def connect(self, **kwargs: Unpack[Options]) -> None:
 inline void Client::connect(const Options& kwargs) const {

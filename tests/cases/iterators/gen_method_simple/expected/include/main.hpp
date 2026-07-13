@@ -20,7 +20,7 @@ struct Counter {
 
     // def __init__(self, limit: Int32) -> None:
     Counter() = default;
-    explicit Counter(int32_t limit) : limit(limit) {}
+    explicit Counter(int32_t limit);
 
     // def __iter__(self) -> Iterator[Int32]:
     auto __iter__() const {
@@ -46,5 +46,8 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
     return os;
 }
 
+
+// def __init__(self, limit: Int32) -> None:
+inline Counter::Counter(int32_t limit) : limit(limit) {}
 void __tpy_init();
 } // namespace tpyapp::main

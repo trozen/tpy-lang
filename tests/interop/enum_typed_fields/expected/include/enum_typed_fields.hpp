@@ -39,7 +39,7 @@ struct Widget {
     Color color;
 
     Widget() = default;
-    explicit Widget(Color c) : color(c) {}
+    explicit Widget(Color c);
 
     void set_color(Color c);
 
@@ -52,6 +52,8 @@ inline std::ostream& operator<<(std::ostream& os, const Widget& obj) {
     return os;
 }
 
+
+inline Widget::Widget(Color c) : color(c) {}
 
 inline void Widget::set_color(Color c) {
     this->color = c;

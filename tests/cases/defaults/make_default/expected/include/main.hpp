@@ -24,7 +24,7 @@ struct Point {
     int32_t y;
 
     // def __init__(self) -> None:
-    Point() : x(0), y(0) {}
+    Point();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
 };
 
@@ -33,5 +33,8 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     return os;
 }
 
+
+// def __init__(self) -> None:
+inline Point::Point() : x(0), y(0) {}
 void __tpy_init();
 } // namespace tpyapp::main

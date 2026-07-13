@@ -23,7 +23,7 @@ struct Point {
     // y: Int32 = 0
     int32_t y = 0;
 
-    explicit Point(int32_t x = 0, int32_t y = 0) : x(x), y(y) {}
+    explicit Point(int32_t x = 0, int32_t y = 0);
 
     bool __eq__(const Point& other) const;
 
@@ -53,7 +53,7 @@ struct Config {
     ::tpy::ordered_map<std::string, int32_t> lookup = {};
 
     Config() = default;
-    explicit Config(std::string_view name, int32_t value = 42, std::vector<std::string>&& tags = {}, ::tpy::ordered_map<std::string, int32_t>&& lookup = {}) : name(name), value(value), tags(std::move(tags)), lookup(std::move(lookup)) {}
+    explicit Config(std::string_view name, int32_t value = 42, std::vector<std::string>&& tags = {}, ::tpy::ordered_map<std::string, int32_t>&& lookup = {});
 
     bool __eq__(const Config& other) const;
 
@@ -80,7 +80,7 @@ struct Canvas {
     Point origin = Point();
 
     Canvas() = default;
-    explicit Canvas(std::string_view name, Point&& origin = Point()) : name(name), origin(std::move(origin)) {}
+    explicit Canvas(std::string_view name, Point&& origin = Point());
 
     bool __eq__(const Canvas& other) const;
 
@@ -98,6 +98,8 @@ inline std::ostream& operator<<(std::ostream& os, const Canvas& obj) {
 }
 
 
+inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
+
 inline bool Point::__eq__(const Point& other) const {
     return ((this->x == other.x) && (this->y == other.y));
 }
@@ -106,6 +108,8 @@ inline std::string Point::__repr__() const {
     return std::format("Point(x={}, y={})", ::tpy::repr_of(this->x), ::tpy::repr_of(this->y));
 }
 
+inline Config::Config(std::string_view name, int32_t value, std::vector<std::string>&& tags, ::tpy::ordered_map<std::string, int32_t>&& lookup) : name(name), value(value), tags(std::move(tags)), lookup(std::move(lookup)) {}
+
 inline bool Config::__eq__(const Config& other) const {
     return ((((this->name == other.name) && (this->value == other.value)) && (this->tags == other.tags)) && (this->lookup == other.lookup));
 }
@@ -113,6 +117,8 @@ inline bool Config::__eq__(const Config& other) const {
 inline std::string Config::__repr__() const {
     return std::format("Config(name={}, value={}, tags={}, lookup={})", ::tpy::repr_of(this->name), ::tpy::repr_of(this->value), ::tpy::list_to_str(this->tags), ::tpy::dict_to_str(this->lookup));
 }
+
+inline Canvas::Canvas(std::string_view name, Point&& origin) : name(name), origin(std::move(origin)) {}
 
 inline bool Canvas::__eq__(const Canvas& other) const {
     return ((this->name == other.name) && (this->origin == other.origin));

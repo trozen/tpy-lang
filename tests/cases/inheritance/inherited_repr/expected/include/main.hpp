@@ -30,7 +30,7 @@ struct Animal {
 
     // def __init__(self, name: str) -> None:
     Animal() = default;
-    explicit Animal(std::string_view name) : name(name) {}
+    explicit Animal(std::string_view name);
 
     // def __repr__(self) -> str:
     std::string __repr__() const;
@@ -49,7 +49,7 @@ struct Speaker {
 
     // def __init__(self, msg: str) -> None:
     Speaker() = default;
-    explicit Speaker(std::string_view msg) : msg(msg) {}
+    explicit Speaker(std::string_view msg);
 
     // def __str__(self) -> str:
     std::string __str__() const;
@@ -66,7 +66,7 @@ struct Dog : Animal {
 
     // def __init__(self, name: str) -> None:
     Dog() = default;
-    explicit Dog(std::string_view name) : Animal(name) {}
+    explicit Dog(std::string_view name);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Dog";
 };
 
@@ -80,7 +80,7 @@ struct Cat : Animal {
 
     // def __init__(self, name: str) -> None:
     Cat() = default;
-    explicit Cat(std::string_view name) : Animal(name) {}
+    explicit Cat(std::string_view name);
 
     // def __repr__(self) -> str:
     std::string __repr__() const;
@@ -97,7 +97,7 @@ struct Echo : Speaker {
 
     // def __init__(self, msg: str) -> None:
     Echo() = default;
-    explicit Echo(std::string_view msg) : Speaker(msg) {}
+    explicit Echo(std::string_view msg);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Echo";
 };
 
@@ -113,7 +113,7 @@ struct Pet : Dog {
     // # Walks the full user MRO to find Animal.__repr__.
     // def __init__(self, name: str) -> None:
     Pet() = default;
-    explicit Pet(std::string_view name) : Dog(name) {}
+    explicit Pet(std::string_view name);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Pet";
 };
 
@@ -128,7 +128,7 @@ struct LoudCat : Cat {
     // # Parent (Cat) overrides Animal.__repr__; closer-wins per MRO.
     // def __init__(self, name: str) -> None:
     LoudCat() = default;
-    explicit LoudCat(std::string_view name) : Cat(name) {}
+    explicit LoudCat(std::string_view name);
     static constexpr std::string_view __tpy_class_name__ = "__main__.LoudCat";
 };
 
@@ -138,11 +138,17 @@ inline std::ostream& operator<<(std::ostream& os, const LoudCat& obj) {
 }
 
 
+// def __init__(self, name: str) -> None:
+inline Animal::Animal(std::string_view name) : name(name) {}
+
 // def __repr__(self) -> str:
 inline std::string Animal::__repr__() const {
     // return f"Animal({self.name})"
     return std::format("Animal({})", this->name);
 }
+
+// def __init__(self, msg: str) -> None:
+inline Speaker::Speaker(std::string_view msg) : msg(msg) {}
 
 // def __str__(self) -> str:
 inline std::string Speaker::__str__() const {
@@ -150,10 +156,28 @@ inline std::string Speaker::__str__() const {
     return std::format("<{}>", this->msg);
 }
 
+// def __init__(self, name: str) -> None:
+inline Dog::Dog(std::string_view name) : Animal(name) {}
+
+// def __init__(self, name: str) -> None:
+inline Cat::Cat(std::string_view name) : Animal(name) {}
+
 // def __repr__(self) -> str:
 inline std::string Cat::__repr__() const {
     // return f"Cat({self.name})"
     return std::format("Cat({})", this->name);
 }
+
+// def __init__(self, msg: str) -> None:
+inline Echo::Echo(std::string_view msg) : Speaker(msg) {}
+
+// # Grandparent (Animal) defines __repr__; Dog has none; Pet has none.
+// # Walks the full user MRO to find Animal.__repr__.
+// def __init__(self, name: str) -> None:
+inline Pet::Pet(std::string_view name) : Dog(name) {}
+
+// # Parent (Cat) overrides Animal.__repr__; closer-wins per MRO.
+// def __init__(self, name: str) -> None:
+inline LoudCat::LoudCat(std::string_view name) : Cat(name) {}
 void __tpy_init();
 } // namespace tpyapp::main

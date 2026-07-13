@@ -19,7 +19,7 @@ struct Counter {
 
     // def __init__(self, start: Int32):
     Counter() = default;
-    explicit Counter(int32_t start) : value(start) {}
+    explicit Counter(int32_t start);
 
     // @staticmethod
     // def zero() -> Int32:
@@ -39,6 +39,9 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
     return os;
 }
 
+
+// def __init__(self, start: Int32):
+inline Counter::Counter(int32_t start) : value(start) {}
 
 // @staticmethod
 // def zero() -> Int32:

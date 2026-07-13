@@ -24,7 +24,7 @@ struct Dog {
 
     // def __init__(self, name: str) -> None:
     Dog() = default;
-    explicit Dog(std::string_view name) : name(name) {}
+    explicit Dog(std::string_view name);
 
     // def sound(self) -> str:
     std::string sound() const;
@@ -43,7 +43,7 @@ struct Cat {
 
     // def __init__(self, name: str) -> None:
     Cat() = default;
-    explicit Cat(std::string_view name) : name(name) {}
+    explicit Cat(std::string_view name);
 
     // def sound(self) -> str:
     std::string sound() const;
@@ -81,11 +81,17 @@ struct __gen_describe : public ::tpy::next_iter_mixin<__gen_describe, std::strin
 };
 
 
+// def __init__(self, name: str) -> None:
+inline Dog::Dog(std::string_view name) : name(name) {}
+
 // def sound(self) -> str:
 inline std::string Dog::sound() const {
     // return "woof"
     return "woof";
 }
+
+// def __init__(self, name: str) -> None:
+inline Cat::Cat(std::string_view name) : name(name) {}
 
 // def sound(self) -> str:
 inline std::string Cat::sound() const {

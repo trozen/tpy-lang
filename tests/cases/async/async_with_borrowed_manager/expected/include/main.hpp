@@ -31,7 +31,7 @@ struct Counter {
     ::tpy::BigInt n;
 
     // def __init__(self) -> None:
-    Counter() : n(::tpy::BigInt(0)) {}
+    Counter();
 
     __coro_Counter___aenter__ __aenter__();
 
@@ -194,5 +194,8 @@ struct __coro_main_coro {
     }
 };
 
+
+// def __init__(self) -> None:
+inline Counter::Counter() : n(::tpy::BigInt(0)) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -23,7 +23,7 @@ struct Inner {
 
     // def __init__(self, value: Optional[int]) -> None:
     Inner() = default;
-    explicit Inner(std::optional<::tpy::BigInt> value) : value(value) {}
+    explicit Inner(std::optional<::tpy::BigInt> value);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Inner";
 };
 
@@ -39,7 +39,7 @@ struct Outer {
 
     // def __init__(self, inner: Inner) -> None:
     Outer() = default;
-    explicit Outer(const Inner& inner) : inner(inner) {}
+    explicit Outer(const Inner& inner);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Outer";
 };
 
@@ -48,5 +48,11 @@ inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
     return os;
 }
 
+
+// def __init__(self, value: Optional[int]) -> None:
+inline Inner::Inner(std::optional<::tpy::BigInt> value) : value(value) {}
+
+// def __init__(self, inner: Inner) -> None:
+inline Outer::Outer(const Inner& inner) : inner(inner) {}
 void __tpy_init();
 } // namespace tpyapp::main

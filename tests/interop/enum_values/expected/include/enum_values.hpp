@@ -83,7 +83,7 @@ struct Toggle {
     int64_t n;
 
     Toggle() = default;
-    explicit Toggle(int64_t n) : n(n) {}
+    explicit Toggle(int64_t n);
 
     Color pick(Color c) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Toggle";
@@ -94,6 +94,8 @@ inline std::ostream& operator<<(std::ostream& os, const Toggle& obj) {
     return os;
 }
 
+
+inline Toggle::Toggle(int64_t n) : n(n) {}
 
 inline Color Toggle::pick(Color c) const {
     return (((c == Color::RED)) ? (Color::GREEN) : (Color::RED));

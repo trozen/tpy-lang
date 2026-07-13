@@ -35,7 +35,7 @@ struct Bag : Holder {
 
     // def __init__(self, items: list[int]):
     Bag() = default;
-    explicit Bag(const std::vector<::tpy::BigInt>& items) : items(items) {}
+    explicit Bag(const std::vector<::tpy::BigInt>& items);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Bag";
 };
 
@@ -44,5 +44,8 @@ inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
     return os;
 }
 
+
+// def __init__(self, items: list[int]):
+inline Bag::Bag(const std::vector<::tpy::BigInt>& items) : items(items) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -29,7 +29,7 @@ struct Person {
 
     // def __init__(self, name: str, age: Int32) -> None:
     Person() = default;
-    explicit Person(std::string_view name, int32_t age) : name(name), age(age) {}
+    explicit Person(std::string_view name, int32_t age);
 
     // def __str__(self) -> str:
     std::string __str__() const;
@@ -41,6 +41,9 @@ inline std::ostream& operator<<(std::ostream& os, const Person& obj) {
     return os;
 }
 
+
+// def __init__(self, name: str, age: Int32) -> None:
+inline Person::Person(std::string_view name, int32_t age) : name(name), age(age) {}
 
 // def __str__(self) -> str:
 inline std::string Person::__str__() const {

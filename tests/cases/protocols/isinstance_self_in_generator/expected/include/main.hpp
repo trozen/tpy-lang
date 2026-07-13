@@ -42,7 +42,7 @@ struct Pet : Tagged {
 
     // def __init__(self, nm: str) -> None:
     Pet() = default;
-    explicit Pet(std::string_view nm) : _name(nm), _n(::tpy::BigInt(0)) {}
+    explicit Pet(std::string_view nm);
 
     __gen_Pet_ro_names ro_names() const;
 
@@ -60,7 +60,7 @@ struct Dog : Pet {
 
     // def __init__(self, nm: str) -> None:
     Dog() = default;
-    explicit Dog(std::string_view nm) : Pet(nm) {}
+    explicit Dog(std::string_view nm);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Dog";
 };
 
@@ -143,5 +143,11 @@ inline __gen_Pet_counts Pet::counts() {
     return __gen_Pet_counts(*this);
 }
 
+
+// def __init__(self, nm: str) -> None:
+inline Pet::Pet(std::string_view nm) : _name(nm), _n(::tpy::BigInt(0)) {}
+
+// def __init__(self, nm: str) -> None:
+inline Dog::Dog(std::string_view nm) : Pet(nm) {}
 void __tpy_init();
 } // namespace tpyapp::main

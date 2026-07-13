@@ -22,7 +22,7 @@ struct Data {
 
     // def __init__(self, v: Int32) -> None:
     Data() = default;
-    explicit Data(int32_t v) : value(v) {}
+    explicit Data(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Data";
 };
 
@@ -37,7 +37,7 @@ struct Container {
     Data* ptr;
 
     // def __init__(self) -> None:
-    Container() : ptr(static_cast<Data*>(nullptr)) {}
+    Container();
 
     // @readonly
     // def read_value(self) -> Int32:
@@ -50,6 +50,12 @@ inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
     return os;
 }
 
+
+// def __init__(self, v: Int32) -> None:
+inline Data::Data(int32_t v) : value(v) {}
+
+// def __init__(self) -> None:
+inline Container::Container() : ptr(static_cast<Data*>(nullptr)) {}
 
 // @readonly
 // def read_value(self) -> Int32:

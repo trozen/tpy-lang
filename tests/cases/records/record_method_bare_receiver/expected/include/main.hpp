@@ -25,7 +25,7 @@ struct Counter {
 
     // def __init__(self, start: Int32):
     Counter() = default;
-    explicit Counter(int32_t start) : value(start) {}
+    explicit Counter(int32_t start);
 
     // def bump(self) -> None:
     void bump();
@@ -53,7 +53,7 @@ struct Label {
 
     // def __init__(self, name: str):
     Label() = default;
-    explicit Label(std::string_view name) : name(name) {}
+    explicit Label(std::string_view name);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Label";
 };
 
@@ -67,7 +67,7 @@ struct FancyCounter : Counter {
 
     // def __init__(self, start: Int32):
     FancyCounter() = default;
-    explicit FancyCounter(int32_t start) : Counter(start) {}
+    explicit FancyCounter(int32_t start);
     static constexpr std::string_view __tpy_class_name__ = "__main__.FancyCounter";
 };
 
@@ -76,6 +76,9 @@ inline std::ostream& operator<<(std::ostream& os, const FancyCounter& obj) {
     return os;
 }
 
+
+// def __init__(self, start: Int32):
+inline Counter::Counter(int32_t start) : value(start) {}
 
 // def bump(self) -> None:
 inline void Counter::bump() {
@@ -100,5 +103,11 @@ inline int32_t Counter::get() const {
     // return self.value
     return this->value;
 }
+
+// def __init__(self, name: str):
+inline Label::Label(std::string_view name) : name(name) {}
+
+// def __init__(self, start: Int32):
+inline FancyCounter::FancyCounter(int32_t start) : Counter(start) {}
 void __tpy_init();
 } // namespace tpyapp::main

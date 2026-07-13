@@ -20,17 +20,7 @@ struct Holder {
 
     // def __init__(self, items: Optional[list[Int32]]) -> None:
     Holder() = default;
-    explicit Holder(const std::vector<int32_t>* items) {
-        // if items is not None:
-        if ((items != nullptr)) {
-            // self.items = items
-            this->items = (*items);
-        // else:
-        } else {
-            // self.items = []
-            this->items = std::vector<int32_t>{};
-        }
-    }
+    explicit Holder(const std::vector<int32_t>* items);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
@@ -39,5 +29,18 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     return os;
 }
 
+
+// def __init__(self, items: Optional[list[Int32]]) -> None:
+inline Holder::Holder(const std::vector<int32_t>* items) {
+    // if items is not None:
+    if ((items != nullptr)) {
+        // self.items = items
+        this->items = (*items);
+    // else:
+    } else {
+        // self.items = []
+        this->items = std::vector<int32_t>{};
+    }
+}
 void __tpy_init();
 } // namespace tpyapp::main

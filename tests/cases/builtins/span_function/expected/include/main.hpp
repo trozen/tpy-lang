@@ -23,7 +23,7 @@ struct Buffer {
     std::vector<int32_t> _data;
 
     // def __init__(self) -> None:
-    Buffer() : _data({10, 20, 30}) {}
+    Buffer();
 
     auto begin() { return this->__span__().begin(); }
     auto end() { return this->__span__().end(); }
@@ -45,6 +45,9 @@ inline std::ostream& operator<<(std::ostream& os, const Buffer& obj) {
     return os;
 }
 
+
+// def __init__(self) -> None:
+inline Buffer::Buffer() : _data({10, 20, 30}) {}
 
 // @auto_readonly
 // def __span__(self) -> Span[auto_readonly[Int32]]:

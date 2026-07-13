@@ -22,7 +22,7 @@ struct HasInitA {
 
     // def __init__(self, a: Int32) -> None:
     HasInitA() = default;
-    explicit HasInitA(int32_t a) : a(a) {}
+    explicit HasInitA(int32_t a);
     static constexpr std::string_view __tpy_class_name__ = "__main__.HasInitA";
 };
 
@@ -38,7 +38,7 @@ struct HasInitB {
 
     // def __init__(self, b: Int32) -> None:
     HasInitB() = default;
-    explicit HasInitB(int32_t b) : b(b) {}
+    explicit HasInitB(int32_t b);
     static constexpr std::string_view __tpy_class_name__ = "__main__.HasInitB";
 };
 
@@ -52,7 +52,7 @@ struct Combined : HasInitA, HasInitB {
 
     // def __init__(self, a: Int32, b: Int32) -> None:
     Combined() = default;
-    explicit Combined(int32_t a, int32_t b) : HasInitA(a), HasInitB(b) {}
+    explicit Combined(int32_t a, int32_t b);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Combined";
 };
 
@@ -61,5 +61,14 @@ inline std::ostream& operator<<(std::ostream& os, const Combined& obj) {
     return os;
 }
 
+
+// def __init__(self, a: Int32) -> None:
+inline HasInitA::HasInitA(int32_t a) : a(a) {}
+
+// def __init__(self, b: Int32) -> None:
+inline HasInitB::HasInitB(int32_t b) : b(b) {}
+
+// def __init__(self, a: Int32, b: Int32) -> None:
+inline Combined::Combined(int32_t a, int32_t b) : HasInitA(a), HasInitB(b) {}
 void __tpy_init();
 } // namespace tpyapp::main

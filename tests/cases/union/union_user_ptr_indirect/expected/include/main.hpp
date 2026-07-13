@@ -26,7 +26,7 @@ struct Lit {
 
     // def __init__(self, value: int) -> None:
     Lit() = default;
-    explicit Lit(const ::tpy::BigInt& value) : value(value) {}
+    explicit Lit(const ::tpy::BigInt& value);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Lit";
 };
 
@@ -52,6 +52,9 @@ inline std::ostream& operator<<(std::ostream& os, const BinOp& obj) {
     return os;
 }
 
+
+// def __init__(self, value: int) -> None:
+inline Lit::Lit(const ::tpy::BigInt& value) : value(value) {}
 struct Expr {
     using variant_type = std::variant<BinOp, Lit>;
     variant_type value;

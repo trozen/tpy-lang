@@ -24,7 +24,7 @@ struct Vec2 {
 
     // def __init__(self, x: Int32, y: Int32) -> None:
     Vec2() = default;
-    explicit Vec2(int32_t x, int32_t y) : x(x), y(y) {}
+    explicit Vec2(int32_t x, int32_t y);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Vec2";
 };
 
@@ -65,5 +65,8 @@ template<typename T> struct tpy::is_value_type<::tpyapp::main::Pair<T>> : std::t
 namespace tpyapp::main {
 
 
+
+// def __init__(self, x: Int32, y: Int32) -> None:
+inline Vec2::Vec2(int32_t x, int32_t y) : x(x), y(y) {}
 void __tpy_init();
 } // namespace tpyapp::main

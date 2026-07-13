@@ -27,7 +27,7 @@ struct Meta {
 
     // def __init__(self, title: str, v: StrView):
     Meta() = default;
-    explicit Meta(std::string_view title, std::string_view v) : title(std::string(v)), tag("fixed"), view(title), label("lit") {}
+    explicit Meta(std::string_view title, std::string_view v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Meta";
 };
 
@@ -46,7 +46,7 @@ struct Buf {
     std::vector<uint8_t> empty;
 
     // def __init__(self, data: bytes):
-    explicit Buf(std::span<const uint8_t> data) : data(::tpy::bytes_copy(data)), lit(::tpy::bytes_literal_owned("\x01\x02", 2)), empty(std::vector<uint8_t>()) {}
+    explicit Buf(std::span<const uint8_t> data);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Buf";
 };
 
@@ -55,5 +55,11 @@ inline std::ostream& operator<<(std::ostream& os, const Buf& obj) {
     return os;
 }
 
+
+// def __init__(self, title: str, v: StrView):
+inline Meta::Meta(std::string_view title, std::string_view v) : title(std::string(v)), tag("fixed"), view(title), label("lit") {}
+
+// def __init__(self, data: bytes):
+inline Buf::Buf(std::span<const uint8_t> data) : data(::tpy::bytes_copy(data)), lit(::tpy::bytes_literal_owned("\x01\x02", 2)), empty(std::vector<uint8_t>()) {}
 void __tpy_init();
 } // namespace tpyapp::main

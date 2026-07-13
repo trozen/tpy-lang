@@ -23,7 +23,7 @@ struct Point {
 
     // def __init__(self, x: Int32, y: Int32) -> None:
     Point() = default;
-    explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
+    explicit Point(int32_t x, int32_t y);
 
     // def __repr__(self) -> str:
     std::string __repr__() const;
@@ -41,14 +41,7 @@ struct Pair {
     std::tuple<Point, Point> points;
 
     // def __init__(self) -> None:
-    Pair() {
-        // a = Point(Int32(1), Int32(2))
-        Point a = Point(1, 2);
-        // b = Point(Int32(3), Int32(4))
-        Point b = Point(3, 4);
-        // self.points = (a, b)
-        this->points = ::tpy::tuple_to_storage<std::tuple<Point, Point>>(std::tuple<Point, Point>{std::move(a), std::move(b)});
-    }
+    Pair();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Pair";
 };
 
@@ -58,10 +51,23 @@ inline std::ostream& operator<<(std::ostream& os, const Pair& obj) {
 }
 
 
+// def __init__(self, x: Int32, y: Int32) -> None:
+inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
+
 // def __repr__(self) -> str:
 inline std::string Point::__repr__() const {
     // return "P(" + str(self.x) + "," + str(self.y) + ")"
     return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("P(", ::tpy::fixed_to_str<int32_t>(this->x))), ",")), ::tpy::fixed_to_str<int32_t>(this->y))), ")"));
+}
+
+// def __init__(self) -> None:
+inline Pair::Pair() {
+    // a = Point(Int32(1), Int32(2))
+    Point a = Point(1, 2);
+    // b = Point(Int32(3), Int32(4))
+    Point b = Point(3, 4);
+    // self.points = (a, b)
+    this->points = ::tpy::tuple_to_storage<std::tuple<Point, Point>>(std::tuple<Point, Point>{std::move(a), std::move(b)});
 }
 void __tpy_init();
 } // namespace tpyapp::main

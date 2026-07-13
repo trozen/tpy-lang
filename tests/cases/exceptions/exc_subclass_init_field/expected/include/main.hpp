@@ -22,7 +22,7 @@ struct AppError : ::tpy::Exception {
 
     // def __init__(self, code: int):
     AppError() = default;
-    explicit AppError(const ::tpy::BigInt& code) : code(code) {}
+    explicit AppError(const ::tpy::BigInt& code);
 
     [[nodiscard]] std::unique_ptr<::tpy::Throwable> clone() const override { return std::make_unique<AppError>(*this); }
     [[noreturn]] void __raise__() const override { throw *this; }
@@ -35,5 +35,8 @@ inline std::ostream& operator<<(std::ostream& os, const AppError& obj) {
     return os;
 }
 
+
+// def __init__(self, code: int):
+inline AppError::AppError(const ::tpy::BigInt& code) : code(code) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -23,7 +23,7 @@ struct Work {
 
     // def __init__(self, n: int) -> None:
     Work() = default;
-    explicit Work(const ::tpy::BigInt& n) : n(n) {}
+    explicit Work(const ::tpy::BigInt& n);
 
     // def run(self) -> int:
     ::tpy::BigInt run() const;
@@ -35,6 +35,9 @@ inline std::ostream& operator<<(std::ostream& os, const Work& obj) {
     return os;
 }
 
+
+// def __init__(self, n: int) -> None:
+inline Work::Work(const ::tpy::BigInt& n) : n(n) {}
 
 // def run(self) -> int:
 inline ::tpy::BigInt Work::run() const {

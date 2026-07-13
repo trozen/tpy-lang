@@ -710,7 +710,7 @@ class TestArgTempEmit:
         assert _cpp(src, thir=True) == _cpp(src, thir=False)
         out = _cpp(src, thir=True)
         assert ("std::variant<int32_t, double> __tmp_1 = k;\n"
-                "        take_vu(__tmp_1);") in out
+                "    take_vu(__tmp_1);") in out
         from .testutil import _lower_ctor
         assert _lower_ctor(src, "R") is not None
 

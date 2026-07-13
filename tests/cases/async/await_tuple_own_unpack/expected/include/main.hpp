@@ -31,7 +31,7 @@ struct Counter {
 
     // def __init__(self, n: Int32) -> None:
     Counter() = default;
-    explicit Counter(int32_t n) : n(n) {}
+    explicit Counter(int32_t n);
     // non-copyable (@nocopy)
     Counter(const Counter&) = delete;
     Counter& operator=(const Counter&) = delete;
@@ -55,7 +55,7 @@ struct _OwnPair {
     int32_t _polls;
 
     // def __init__(self) -> None:
-    _OwnPair() : _polls(0) {}
+    _OwnPair();
     // non-copyable (@nocopy)
     _OwnPair(const _OwnPair&) = delete;
     _OwnPair& operator=(const _OwnPair&) = delete;
@@ -167,11 +167,17 @@ struct __coro_main_coro {
 };
 
 
+// def __init__(self, n: Int32) -> None:
+inline Counter::Counter(int32_t n) : n(n) {}
+
 // def bump(self) -> None:
 inline void Counter::bump() {
     // self.n += 1
     this->n = ::tpy::add_check<int32_t>(this->n, 1);
 }
+
+// def __init__(self) -> None:
+inline _OwnPair::_OwnPair() : _polls(0) {}
 
 // def cancel(self) -> None:
 inline void _OwnPair::cancel() const {

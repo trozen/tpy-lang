@@ -24,7 +24,7 @@ struct Suppressor {
 
     // def __init__(self, name: str) -> None:
     Suppressor() = default;
-    explicit Suppressor(std::string_view name) : name(name) {}
+    explicit Suppressor(std::string_view name);
 
     // def __enter__(self) -> str:
     std::string __enter__() const;
@@ -39,6 +39,9 @@ inline std::ostream& operator<<(std::ostream& os, const Suppressor& obj) {
     return os;
 }
 
+
+// def __init__(self, name: str) -> None:
+inline Suppressor::Suppressor(std::string_view name) : name(name) {}
 
 // def __enter__(self) -> str:
 inline std::string Suppressor::__enter__() const {

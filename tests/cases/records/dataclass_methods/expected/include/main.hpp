@@ -22,7 +22,7 @@ struct Rect {
     int32_t height;
 
     Rect() = default;
-    explicit Rect(int32_t width, int32_t height) : width(width), height(height) {}
+    explicit Rect(int32_t width, int32_t height);
 
     // def area(self) -> Int32:
     int32_t area() const;
@@ -45,6 +45,8 @@ inline std::ostream& operator<<(std::ostream& os, const Rect& obj) {
     return os;
 }
 
+
+inline Rect::Rect(int32_t width, int32_t height) : width(width), height(height) {}
 
 // def area(self) -> Int32:
 inline int32_t Rect::area() const {

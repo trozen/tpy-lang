@@ -28,7 +28,7 @@ struct Value {
 
     // def __init__(self, x: Int32) -> None:
     Value() = default;
-    explicit Value(int32_t x) : x(x) {}
+    explicit Value(int32_t x);
 
     // def duplicate(self) -> Own[Value]:
     Value duplicate() const;
@@ -40,6 +40,9 @@ inline std::ostream& operator<<(std::ostream& os, const Value& obj) {
     return os;
 }
 
+
+// def __init__(self, x: Int32) -> None:
+inline Value::Value(int32_t x) : x(x) {}
 
 // def duplicate(self) -> Own[Value]:
 inline Value Value::duplicate() const {

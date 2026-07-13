@@ -23,7 +23,7 @@ struct Inner {
 
     // def __init__(self, v: Int32) -> None:
     Inner() = default;
-    explicit Inner(int32_t v) : v(v) {}
+    explicit Inner(int32_t v);
     // non-copyable (@nocopy)
     Inner(const Inner&) = delete;
     Inner& operator=(const Inner&) = delete;
@@ -47,7 +47,7 @@ struct Builder {
 
     // def __init__(self, seed: Int32) -> None:
     Builder() = default;
-    explicit Builder(int32_t seed) : seed(seed) {}
+    explicit Builder(int32_t seed);
 
     // def build(self) -> Own[Inner]:
     Inner build() const;
@@ -60,11 +60,17 @@ inline std::ostream& operator<<(std::ostream& os, const Builder& obj) {
 }
 
 
+// def __init__(self, v: Int32) -> None:
+inline Inner::Inner(int32_t v) : v(v) {}
+
 // def bump(self) -> None:
 inline void Inner::bump() {
     // self.v += 1
     this->v = ::tpy::add_check<int32_t>(this->v, 1);
 }
+
+// def __init__(self, seed: Int32) -> None:
+inline Builder::Builder(int32_t seed) : seed(seed) {}
 
 // def build(self) -> Own[Inner]:
 inline Inner Builder::build() const {

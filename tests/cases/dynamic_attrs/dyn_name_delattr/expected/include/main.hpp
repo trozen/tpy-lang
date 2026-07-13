@@ -22,7 +22,7 @@ struct Tracker {
     std::string _last_deleted;
 
     // def __init__(self) -> None:
-    Tracker() : _last_deleted("") {}
+    Tracker();
 
     // def __delattr__(self, name: str) -> None:
     void __delattr__(std::string_view name);
@@ -34,6 +34,9 @@ inline std::ostream& operator<<(std::ostream& os, const Tracker& obj) {
     return os;
 }
 
+
+// def __init__(self) -> None:
+inline Tracker::Tracker() : _last_deleted("") {}
 
 // def __delattr__(self, name: str) -> None:
 inline void Tracker::__delattr__(std::string_view name) {

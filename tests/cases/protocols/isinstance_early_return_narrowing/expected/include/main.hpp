@@ -57,7 +57,7 @@ struct Pet : Tagged {
 
     // def __init__(self, n: str) -> None:
     Pet() = default;
-    explicit Pet(std::string_view n) : _name(n) {}
+    explicit Pet(std::string_view n);
 
     // @readonly
     // def name(self) -> str:
@@ -94,7 +94,7 @@ struct Dog : Pet {
 
     // def __init__(self, n: str) -> None:
     Dog() = default;
-    explicit Dog(std::string_view n) : Pet(n) {}
+    explicit Dog(std::string_view n);
 
     // @readonly
     // def bark(self) -> str:
@@ -112,7 +112,7 @@ struct Cat : Pet {
 
     // def __init__(self, n: str) -> None:
     Cat() = default;
-    explicit Cat(std::string_view n) : Pet(n) {}
+    explicit Cat(std::string_view n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Cat";
 };
 
@@ -126,7 +126,7 @@ struct WatchDog : Dog {
 
     // def __init__(self, n: str) -> None:
     WatchDog() = default;
-    explicit WatchDog(std::string_view n) : Dog(n) {}
+    explicit WatchDog(std::string_view n);
 
     // @readonly
     // def alert(self) -> str:
@@ -144,7 +144,7 @@ struct GuardDog : WatchDog {
 
     // def __init__(self, n: str) -> None:
     GuardDog() = default;
-    explicit GuardDog(std::string_view n) : WatchDog(n) {}
+    explicit GuardDog(std::string_view n);
 
     // @readonly
     // def patrol(self) -> str:
@@ -175,6 +175,9 @@ struct tpy::RefAdapter<tpyapp::main::Tagged, T> : tpyapp::main::Tagged {
 namespace tpyapp::main {
 
 
+// def __init__(self, n: str) -> None:
+inline Pet::Pet(std::string_view n) : _name(n) {}
+
 // @readonly
 // def name(self) -> str:
 inline std::string Pet::name() const {
@@ -195,6 +198,9 @@ inline void CM::__exit__(std::monostate et, const ::tpy::BaseException* exc_val,
     // pass
 }
 
+// def __init__(self, n: str) -> None:
+inline Dog::Dog(std::string_view n) : Pet(n) {}
+
 // @readonly
 // def bark(self) -> str:
 inline std::string Dog::bark() const {
@@ -202,12 +208,21 @@ inline std::string Dog::bark() const {
     return (::tpy::str_concat("woof from ", this->_name));
 }
 
+// def __init__(self, n: str) -> None:
+inline Cat::Cat(std::string_view n) : Pet(n) {}
+
+// def __init__(self, n: str) -> None:
+inline WatchDog::WatchDog(std::string_view n) : Dog(n) {}
+
 // @readonly
 // def alert(self) -> str:
 inline std::string WatchDog::alert() const {
     // return "ALERT from " + self._name
     return (::tpy::str_concat("ALERT from ", this->_name));
 }
+
+// def __init__(self, n: str) -> None:
+inline GuardDog::GuardDog(std::string_view n) : WatchDog(n) {}
 
 // @readonly
 // def patrol(self) -> str:

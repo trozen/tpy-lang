@@ -20,7 +20,7 @@ struct Temp {
 
     // def __init__(self, v: Int32) -> None:
     Temp() = default;
-    explicit Temp(int32_t v) : v(v) {}
+    explicit Temp(int32_t v);
 
     // def __abs__(self) -> "Temp":
     Temp __abs__() const;
@@ -38,6 +38,9 @@ template<> struct tpy::is_value_type<::tpyapp::main::Temp> : std::true_type {};
 namespace tpyapp::main {
 
 
+
+// def __init__(self, v: Int32) -> None:
+inline Temp::Temp(int32_t v) : v(v) {}
 
 // def __abs__(self) -> "Temp":
 inline Temp Temp::__abs__() const {

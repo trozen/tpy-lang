@@ -20,7 +20,7 @@ struct MyErr : ::tpy::Exception {
 
     // def __init__(self, e: Int32 | None) -> None:
     MyErr() = default;
-    explicit MyErr(std::optional<int32_t> e) : ::tpy::Exception("boom"), e(e) {}
+    explicit MyErr(std::optional<int32_t> e);
 
     [[nodiscard]] std::unique_ptr<::tpy::Throwable> clone() const override { return std::make_unique<MyErr>(*this); }
     [[noreturn]] void __raise__() const override { throw *this; }
@@ -33,5 +33,8 @@ inline std::ostream& operator<<(std::ostream& os, const MyErr& obj) {
     return os;
 }
 
+
+// def __init__(self, e: Int32 | None) -> None:
+inline MyErr::MyErr(std::optional<int32_t> e) : ::tpy::Exception("boom"), e(e) {}
 void __tpy_init();
 } // namespace tpyapp::main

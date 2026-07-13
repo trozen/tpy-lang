@@ -24,7 +24,7 @@ struct Foo {
 
     // def __init__(self, value: Int32) -> None:
     Foo() = default;
-    explicit Foo(int32_t value) : value(value) {}
+    explicit Foo(int32_t value);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Foo";
 };
 
@@ -87,6 +87,9 @@ inline std::ostream& operator<<(std::ostream& os, const Bar<T>& obj) {
     return os;
 }
 
+
+// def __init__(self, value: Int32) -> None:
+inline Foo::Foo(int32_t value) : value(value) {}
 
 // def make(self) -> Own[Foo]:
 inline Foo DefaultFooMaker::make() const {

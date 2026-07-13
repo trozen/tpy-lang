@@ -22,7 +22,7 @@ struct Inner {
 
     // def __init__(self, v: Int32) -> None:
     Inner() = default;
-    explicit Inner(int32_t v) : v(v) {}
+    explicit Inner(int32_t v);
     // non-copyable (@nocopy)
     Inner(const Inner&) = delete;
     Inner& operator=(const Inner&) = delete;
@@ -42,7 +42,7 @@ struct Holder {
     std::optional<Inner> opt;
 
     // def __init__(self) -> None:
-    Holder() : opt(std::nullopt) {}
+    Holder();
     // non-copyable (field 'opt')
     Holder(const Holder&) = delete;
     Holder& operator=(const Holder&) = delete;
@@ -65,6 +65,12 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     return os;
 }
 
+
+// def __init__(self, v: Int32) -> None:
+inline Inner::Inner(int32_t v) : v(v) {}
+
+// def __init__(self) -> None:
+inline Holder::Holder() : opt(std::nullopt) {}
 
 // def set_name(self, p: Own[Inner]) -> None:
 inline void Holder::set_name(Inner&& p) {

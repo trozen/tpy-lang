@@ -33,7 +33,7 @@ struct CM {
 
     // def __init__(self, n: int) -> None:
     CM() = default;
-    explicit CM(const ::tpy::BigInt& n) : n(n) {}
+    explicit CM(const ::tpy::BigInt& n);
 
     // def __enter__(self) -> int:
     ::tpy::BigInt __enter__() const;
@@ -48,6 +48,9 @@ inline std::ostream& operator<<(std::ostream& os, const CM& obj) {
     return os;
 }
 
+
+// def __init__(self, n: int) -> None:
+inline CM::CM(const ::tpy::BigInt& n) : n(n) {}
 
 // def __enter__(self) -> int:
 inline ::tpy::BigInt CM::__enter__() const {

@@ -40,7 +40,7 @@ struct Dog : Pet {
 
     // def __init__(self, name: "str | None") -> None:
     Dog() = default;
-    explicit Dog(std::optional<std::string_view> name) : name(name ? std::make_optional(std::string(*name)) : std::nullopt) {}
+    explicit Dog(std::optional<std::string_view> name);
 
     // def speak(self) -> str:
     std::string speak() override;
@@ -71,6 +71,9 @@ struct tpy::RefAdapter<tpyapp::main::Pet, T> : tpyapp::main::Pet {
 
 namespace tpyapp::main {
 
+
+// def __init__(self, name: "str | None") -> None:
+inline Dog::Dog(std::optional<std::string_view> name) : name(name ? std::make_optional(std::string(*name)) : std::nullopt) {}
 
 // def speak(self) -> str:
 inline std::string Dog::speak() {

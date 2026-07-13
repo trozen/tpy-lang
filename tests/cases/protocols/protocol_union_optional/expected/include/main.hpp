@@ -25,7 +25,7 @@ struct Holder {
     ::tpy::BigInt count;
 
     // def __init__(self, items: Sized | Sequence[int] | None = None) -> None:
-    Holder() : Holder(static_cast<std::nullptr_t*>(nullptr)) {}
+    Holder();
     template<typename T_items = std::nullptr_t>
   requires (std::same_as<T_items, std::nullptr_t> || ::tpystd::typing::Sequence<T_items, ::tpy::BigInt> || ::tpystd::typing::Sized<T_items>)
     explicit Holder(const T_items* items = nullptr) : count(::tpy::BigInt(0)) {
@@ -50,6 +50,8 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     return os;
 }
 
+
+inline Holder::Holder() : Holder(static_cast<std::nullptr_t*>(nullptr)) {}
 // def process(items: Sized | Sequence[int] | None = None) -> int:
 template<typename T_items>
   requires (std::same_as<T_items, std::nullptr_t> || ::tpystd::typing::Sequence<T_items, ::tpy::BigInt> || ::tpystd::typing::Sized<T_items>)

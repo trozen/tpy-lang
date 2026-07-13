@@ -27,7 +27,7 @@ struct A {
 
     // def __init__(self, x: Int32) -> None:
     A() = default;
-    explicit A(int32_t x) : x(x) {}
+    explicit A(int32_t x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.A";
 };
 
@@ -43,7 +43,7 @@ struct B {
 
     // def __init__(self, y: Int32) -> None:
     B() = default;
-    explicit B(int32_t y) : y(y) {}
+    explicit B(int32_t y);
     static constexpr std::string_view __tpy_class_name__ = "__main__.B";
 };
 
@@ -59,7 +59,7 @@ struct Counter {
 
     // def __init__(self, n: Int32) -> None:
     Counter() = default;
-    explicit Counter(int32_t n) : n(n) {}
+    explicit Counter(int32_t n);
 
     // def bump_via_union(self) -> None:
     void bump_via_union();
@@ -80,7 +80,7 @@ struct Pair {
 
     // def __init__(self, m: Int32, n: Int32) -> None:
     Pair() = default;
-    explicit Pair(int32_t m, int32_t n) : a1(A(m)), a2(A(n)) {}
+    explicit Pair(int32_t m, int32_t n);
 
     // def bump_picked(self, flip: bool) -> None:
     void bump_picked(bool flip);
@@ -93,11 +93,23 @@ inline std::ostream& operator<<(std::ostream& os, const Pair& obj) {
 }
 
 
+// def __init__(self, x: Int32) -> None:
+inline A::A(int32_t x) : x(x) {}
+
+// def __init__(self, y: Int32) -> None:
+inline B::B(int32_t y) : y(y) {}
+
+// def __init__(self, n: Int32) -> None:
+inline Counter::Counter(int32_t n) : n(n) {}
+
 // def bump_via_union(self) -> None:
 inline void Counter::bump_via_union() {
     // bump_counter(self)
     bump_counter(std::variant<A*, Counter*>{&((*this))});
 }
+
+// def __init__(self, m: Int32, n: Int32) -> None:
+inline Pair::Pair(int32_t m, int32_t n) : a1(A(m)), a2(A(n)) {}
 
 // def bump_picked(self, flip: bool) -> None:
 inline void Pair::bump_picked(bool flip) {

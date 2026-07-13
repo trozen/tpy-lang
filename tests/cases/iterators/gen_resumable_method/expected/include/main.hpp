@@ -23,7 +23,7 @@ struct Source {
 
     // def __init__(self, base: Int32) -> None:
     Source() = default;
-    explicit Source(int32_t base) : base(base) {}
+    explicit Source(int32_t base);
 
     __gen_Source_windowed windowed(std::vector<int32_t>& xs) const;
 
@@ -111,5 +111,8 @@ inline __gen_Source_doubled Source::doubled() const {
     return __gen_Source_doubled(*this);
 }
 
+
+// def __init__(self, base: Int32) -> None:
+inline Source::Source(int32_t base) : base(base) {}
 void __tpy_init();
 } // namespace tpyapp::main

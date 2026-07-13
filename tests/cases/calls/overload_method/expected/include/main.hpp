@@ -22,7 +22,7 @@ struct Dog {
 
     // def __init__(self, name: str) -> None:
     Dog() = default;
-    explicit Dog(std::string_view name) : name(name) {}
+    explicit Dog(std::string_view name);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Dog";
 };
 
@@ -38,7 +38,7 @@ struct Cat {
 
     // def __init__(self, lives: int) -> None:
     Cat() = default;
-    explicit Cat(const ::tpy::BigInt& lives) : lives(lives) {}
+    explicit Cat(const ::tpy::BigInt& lives);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Cat";
 };
 
@@ -53,7 +53,7 @@ struct Vet {
     ::tpy::BigInt count;
 
     // def __init__(self) -> None:
-    Vet() : count(::tpy::BigInt(0)) {}
+    Vet();
 
     // @overload
     // def treat(self, animal: Dog) -> str: ...
@@ -80,5 +80,14 @@ inline std::ostream& operator<<(std::ostream& os, const Vet& obj) {
     return os;
 }
 
+
+// def __init__(self, name: str) -> None:
+inline Dog::Dog(std::string_view name) : name(name) {}
+
+// def __init__(self, lives: int) -> None:
+inline Cat::Cat(const ::tpy::BigInt& lives) : lives(lives) {}
+
+// def __init__(self) -> None:
+inline Vet::Vet() : count(::tpy::BigInt(0)) {}
 void __tpy_init();
 } // namespace tpyapp::main

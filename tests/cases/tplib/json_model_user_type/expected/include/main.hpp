@@ -36,7 +36,7 @@ struct Seconds {
 
     // def __init__(self, value: Int32) -> None:
     Seconds() = default;
-    explicit Seconds(int32_t value) : _value(value) {}
+    explicit Seconds(int32_t value);
 
     // def __eq__(self, other: Seconds) -> bool:
     bool __eq__(const Seconds& other) const;
@@ -69,7 +69,7 @@ struct Event {
     Seconds when;
 
     Event() = default;
-    explicit Event(std::string_view name, Seconds&& when) : name(name), when(std::move(when)) {}
+    explicit Event(std::string_view name, Seconds&& when);
 
     bool __eq__(const Event& other) const;
 
@@ -113,7 +113,7 @@ struct Schedule {
     std::optional<Seconds> deadline = std::nullopt;
 
     Schedule() = default;
-    explicit Schedule(std::vector<Event>&& events, Seconds&& default_duration, std::optional<Seconds>&& deadline = std::nullopt) : events(std::move(events)), default_duration(std::move(default_duration)), deadline(std::move(deadline)) {}
+    explicit Schedule(std::vector<Event>&& events, Seconds&& default_duration, std::optional<Seconds>&& deadline = std::nullopt);
 
     bool __eq__(const Schedule& other) const;
 
@@ -147,6 +147,9 @@ inline std::ostream& operator<<(std::ostream& os, const Schedule& obj) {
 }
 
 
+// def __init__(self, value: Int32) -> None:
+inline Seconds::Seconds(int32_t value) : _value(value) {}
+
 // def __eq__(self, other: Seconds) -> bool:
 inline bool Seconds::__eq__(const Seconds& other) const {
     // return self._value == other._value
@@ -173,6 +176,8 @@ inline std::expected<Seconds, ::tpystd::tplib::json::parser::JsonError> Seconds:
     // return Seconds(Int32(raw))
     return Seconds(::tpy::int_cast_check<int32_t>(raw));
 }
+
+inline Event::Event(std::string_view name, Seconds&& when) : name(name), when(std::move(when)) {}
 
 inline bool Event::__eq__(const Event& other) const {
     return ((this->name == other.name) && (this->when == other.when));
@@ -285,6 +290,8 @@ inline std::expected<Event, ::tpystd::tplib::json::parser::JsonError> Event::try
     // from typing import Optional
     return Event::try_from_json(__data);
 }
+
+inline Schedule::Schedule(std::vector<Event>&& events, Seconds&& default_duration, std::optional<Seconds>&& deadline) : events(std::move(events)), default_duration(std::move(default_duration)), deadline(std::move(deadline)) {}
 
 inline bool Schedule::__eq__(const Schedule& other) const {
     return (((this->events == other.events) && (this->default_duration == other.default_duration)) && (this->deadline == other.deadline));

@@ -39,7 +39,7 @@ struct Item {
     bool active;
 
     Item() = default;
-    explicit Item(std::string_view name, int32_t count, bool active) : name(name), count(count), active(active) {}
+    explicit Item(std::string_view name, int32_t count, bool active);
 
     bool __eq__(const Item& other) const;
 
@@ -72,6 +72,8 @@ inline std::ostream& operator<<(std::ostream& os, const Item& obj) {
     return os;
 }
 
+
+inline Item::Item(std::string_view name, int32_t count, bool active) : name(name), count(count), active(active) {}
 
 inline bool Item::__eq__(const Item& other) const {
     return (((this->name == other.name) && (this->count == other.count)) && (this->active == other.active));

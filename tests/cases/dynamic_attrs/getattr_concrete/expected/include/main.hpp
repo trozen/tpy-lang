@@ -21,7 +21,7 @@ struct Headers {
 
     // def __init__(self, store: dict[str, str]) -> None:
     Headers() = default;
-    explicit Headers(const ::tpy::ordered_map<std::string, std::string>& store) : _store(store) {}
+    explicit Headers(const ::tpy::ordered_map<std::string, std::string>& store);
 
     // def __getattr__(self, name: str) -> str:
     std::string __getattr__(std::string_view name) const;
@@ -33,6 +33,9 @@ inline std::ostream& operator<<(std::ostream& os, const Headers& obj) {
     return os;
 }
 
+
+// def __init__(self, store: dict[str, str]) -> None:
+inline Headers::Headers(const ::tpy::ordered_map<std::string, std::string>& store) : _store(store) {}
 
 // def __getattr__(self, name: str) -> str:
 inline std::string Headers::__getattr__(std::string_view name) const {

@@ -29,7 +29,7 @@ struct P {
 
     // def __init__(self, v: Int32) -> None:
     P() = default;
-    explicit P(int32_t v) : v(v) {}
+    explicit P(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.P";
 };
 
@@ -38,6 +38,9 @@ inline std::ostream& operator<<(std::ostream& os, const P& obj) {
     return os;
 }
 
+
+// def __init__(self, v: Int32) -> None:
+inline P::P(int32_t v) : v(v) {}
 // def use_fn(f: Fn[[list[P]], None]) -> None:
 template<typename __F0>
   requires requires(__F0& __fn, std::vector<P>& __a0) {

@@ -20,7 +20,7 @@ struct Stack {
 
     // def __init__(self, size: Int32) -> None:
     Stack() = default;
-    explicit Stack(int32_t size) : size(size) {}
+    explicit Stack(int32_t size);
 
     // def __len__(self) -> Int32:
     int32_t __len__() const;
@@ -32,6 +32,9 @@ inline std::ostream& operator<<(std::ostream& os, const Stack& obj) {
     return os;
 }
 
+
+// def __init__(self, size: Int32) -> None:
+inline Stack::Stack(int32_t size) : size(size) {}
 
 // def __len__(self) -> Int32:
 inline int32_t Stack::__len__() const {

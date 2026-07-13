@@ -27,7 +27,7 @@ struct Counter {
 
     // def __init__(self, n: Int32) -> None:
     Counter() = default;
-    explicit Counter(int32_t n) : n(n) {}
+    explicit Counter(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Counter";
 };
 
@@ -88,5 +88,8 @@ struct __coro_amain {
     }
 };
 
+
+// def __init__(self, n: Int32) -> None:
+inline Counter::Counter(int32_t n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

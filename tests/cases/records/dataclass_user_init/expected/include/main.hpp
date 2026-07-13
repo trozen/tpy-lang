@@ -23,7 +23,7 @@ struct Point {
 
     // def __init__(self, x: Int32, y: Int32) -> None:  # tpyc: ok
     Point() = default;
-    explicit Point(int32_t x, int32_t y) : x((::tpy::mul_check<int32_t>(x, 2))), y(y) {}
+    explicit Point(int32_t x, int32_t y);
 
     bool __eq__(const Point& other) const;
 
@@ -40,6 +40,9 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     return os;
 }
 
+
+// def __init__(self, x: Int32, y: Int32) -> None:  # tpyc: ok
+inline Point::Point(int32_t x, int32_t y) : x((::tpy::mul_check<int32_t>(x, 2))), y(y) {}
 
 inline bool Point::__eq__(const Point& other) const {
     return ((this->x == other.x) && (this->y == other.y));

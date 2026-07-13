@@ -6,6 +6,11 @@ namespace tpyapp::b {
 
 
 
+// def __init__(self) -> None: pass
+Helper::Helper() {
+    // def __init__(self) -> None: pass
+}
+
 // def work(self) -> Int32:
 int32_t Helper::work() const {
     // return 5

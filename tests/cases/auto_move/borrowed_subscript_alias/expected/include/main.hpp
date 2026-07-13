@@ -20,7 +20,7 @@ struct P {
     std::vector<int32_t> vals;
 
     // def __init__(self):
-    P() : vals({5}) {}
+    P();
     static constexpr std::string_view __tpy_class_name__ = "__main__.P";
 };
 
@@ -29,5 +29,8 @@ inline std::ostream& operator<<(std::ostream& os, const P& obj) {
     return os;
 }
 
+
+// def __init__(self):
+inline P::P() : vals({5}) {}
 void __tpy_init();
 } // namespace tpyapp::main

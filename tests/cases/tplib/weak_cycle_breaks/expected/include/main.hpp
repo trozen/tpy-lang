@@ -30,30 +30,15 @@ struct Node {
     bool __tpy_owned_ = true;
 
     // def __init__(self, name: str) -> None:
-    explicit Node(std::string_view name) : name(name), parent(std::nullopt), children(std::vector<::tpystd::tplib::rc::Rc<Node>>{}) {
-        // print("init", name)
-        std::cout << "init" << " " << name << "\n";
-    }
+    explicit Node(std::string_view name);
     // non-copyable (field 'parent')
     Node(const Node&) = delete;
     Node& operator=(const Node&) = delete;
-    Node(Node&& other) noexcept : name(std::move(other.name)), parent(std::move(other.parent)), children(std::move(other.children)) {
-        other.__tpy_owned_ = false;
-    }
-    Node& operator=(Node&& other) noexcept {
-        if (this != &other) {
-            this->~Node();
-            new (this) Node(std::move(other));
-        }
-        return *this;
-    }
-    // def __del__(self) -> None:
+    Node(Node&& other) noexcept;
+    Node& operator=(Node&& other) noexcept;
 
-    ~Node() {
-        if (!this->__tpy_owned_) return;
-        // print("del", self.name)
-        std::cout << "del" << " " << this->name << "\n";
-    }
+    // def __del__(self) -> None:
+    ~Node();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Node";
 };
 
@@ -62,5 +47,29 @@ inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
     return os;
 }
 
+
+// def __init__(self, name: str) -> None:
+inline Node::Node(std::string_view name) : name(name), parent(std::nullopt), children(std::vector<::tpystd::tplib::rc::Rc<Node>>{}) {
+    // print("init", name)
+    std::cout << "init" << " " << name << "\n";
+}
+
+inline Node::Node(Node&& other) noexcept : name(std::move(other.name)), parent(std::move(other.parent)), children(std::move(other.children)) {
+    other.__tpy_owned_ = false;
+}
+inline Node& Node::operator=(Node&& other) noexcept {
+    if (this != &other) {
+        this->~Node();
+        new (this) Node(std::move(other));
+    }
+    return *this;
+}
+
+// def __del__(self) -> None:
+inline Node::~Node() {
+    if (!this->__tpy_owned_) return;
+    // print("del", self.name)
+    std::cout << "del" << " " << this->name << "\n";
+}
 void __tpy_init();
 } // namespace tpyapp::main

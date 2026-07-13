@@ -20,7 +20,7 @@ struct Guard {
     std::vector<int32_t> vals;
 
     // def __init__(self):
-    Guard() : vals({1, 2}) {}
+    Guard();
 
     // def __enter__(self) -> None:
     void __enter__() const;
@@ -41,7 +41,7 @@ struct K {
     std::vector<Guard> stored;
 
     // def __init__(self):
-    K() : stored(std::vector<Guard>{}) {}
+    K();
 
     // def take(self, g: Own[Guard]):
     void take(Guard&& g);
@@ -54,6 +54,9 @@ inline std::ostream& operator<<(std::ostream& os, const K& obj) {
 }
 
 
+// def __init__(self):
+inline Guard::Guard() : vals({1, 2}) {}
+
 // def __enter__(self) -> None:
 inline void Guard::__enter__() const {
     // pass
@@ -64,6 +67,9 @@ inline void Guard::__exit__(std::monostate exc_type, const ::tpy::BaseException*
     // print("exit sees", len(self.vals))
     std::cout << "exit sees" << " " << ::tpy::__len__(this->vals) << "\n";
 }
+
+// def __init__(self):
+inline K::K() : stored(std::vector<Guard>{}) {}
 
 // def take(self, g: Own[Guard]):
 inline void K::take(Guard&& g) {

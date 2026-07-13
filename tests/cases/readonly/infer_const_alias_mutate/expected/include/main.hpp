@@ -45,7 +45,7 @@ struct Inner {
     int32_t counter;
 
     // def __init__(self) -> None:
-    Inner() : counter(0) {}
+    Inner();
 
     // def bump(self) -> None:
     void bump();
@@ -63,7 +63,7 @@ struct Impl {
     int32_t counter;
 
     // def __init__(self) -> None:
-    Impl() : counter(0) {}
+    Impl();
 
     // def do_mutate(self) -> None:
     void do_mutate();
@@ -83,7 +83,7 @@ struct S {
     std::optional<::tpystd::tplib::box::Box<Mutating>> frame;
 
     // def __init__(self) -> None:
-    S() : inner(Inner()), frame(make_box()) {}
+    S();
     // non-copyable (field 'frame')
     S(const S&) = delete;
     S& operator=(const S&) = delete;
@@ -126,17 +126,26 @@ struct tpy::RefAdapter<tpyapp::main::Mutating, T> : tpyapp::main::Mutating {
 namespace tpyapp::main {
 
 
+// def __init__(self) -> None:
+inline Inner::Inner() : counter(0) {}
+
 // def bump(self) -> None:
 inline void Inner::bump() {
     // self.counter += 1
     this->counter = ::tpy::add_check<int32_t>(this->counter, 1);
 }
 
+// def __init__(self) -> None:
+inline Impl::Impl() : counter(0) {}
+
 // def do_mutate(self) -> None:
 inline void Impl::do_mutate() {
     // self.counter += 1
     this->counter = ::tpy::add_check<int32_t>(this->counter, 1);
 }
+
+// def __init__(self) -> None:
+inline S::S() : inner(Inner()), frame(make_box()) {}
 
 // # Direct call on a local alias of a self field -- must NOT be const.
 // def mutate_via_alias(self) -> None:

@@ -56,7 +56,7 @@ struct shape {
     // ScTri:    (a, b, c: real);
     double c;
 
-    shape() : kind(shapekind::sccircle) {}
+    shape();
     static constexpr std::string_view __tpy_class_name__ = "__main__.shape";
 };
 
@@ -65,5 +65,7 @@ inline std::ostream& operator<<(std::ostream& os, const shape& obj) {
     return os;
 }
 
+
+inline shape::shape() : kind(shapekind::sccircle) {}
 void __tpy_init();
 } // namespace tpyapp::main

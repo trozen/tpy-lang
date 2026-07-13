@@ -25,7 +25,7 @@ struct CM {
 
     // def __init__(self, name: str) -> None:
     CM() = default;
-    explicit CM(std::string_view name) : name(name) {}
+    explicit CM(std::string_view name);
 
     // def __enter__(self) -> "CM":
     CM& __enter__();
@@ -132,6 +132,9 @@ struct __gen_gen_nested_with_return_in_finally : public ::tpy::next_iter_mixin<_
     }
 };
 
+
+// def __init__(self, name: str) -> None:
+inline CM::CM(std::string_view name) : name(name) {}
 
 // def __enter__(self) -> "CM":
 inline CM& CM::__enter__() {

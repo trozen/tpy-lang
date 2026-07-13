@@ -32,7 +32,7 @@ struct PingState {
     std::vector<int32_t> log;
 
     // def __init__(self) -> None:
-    PingState() : turn(0), log(std::vector<int32_t>{}) {}
+    PingState();
     static constexpr std::string_view __tpy_class_name__ = "__main__.PingState";
 };
 
@@ -50,7 +50,7 @@ struct Shared {
     ::tpystd::tpy::sync::Condvar cv;
 
     // def __init__(self, m: Own[Mutex[PingState]], cv: Own[Condvar]) -> None:
-    explicit Shared(::tpystd::tpy::sync::Mutex<PingState>&& m, ::tpystd::tpy::sync::Condvar&& cv) : m(std::move(m)), cv(std::move(cv)) {}
+    explicit Shared(::tpystd::tpy::sync::Mutex<PingState>&& m, ::tpystd::tpy::sync::Condvar&& cv);
     // non-copyable (@nocopy)
     Shared(const Shared&) = delete;
     Shared& operator=(const Shared&) = delete;
@@ -71,7 +71,7 @@ struct Worker {
     ::tpystd::tplib::arc::Arc<Shared> shared;
 
     // def __init__(self, shared: Own[Arc[Shared]]) -> None:
-    explicit Worker(::tpystd::tplib::arc::Arc<Shared>&& shared) : shared(std::move(shared)) {}
+    explicit Worker(::tpystd::tplib::arc::Arc<Shared>&& shared);
     // non-copyable (@nocopy)
     Worker(const Worker&) = delete;
     Worker& operator=(const Worker&) = delete;
@@ -88,5 +88,14 @@ inline std::ostream& operator<<(std::ostream& os, const Worker& obj) {
     return os;
 }
 
+
+// def __init__(self) -> None:
+inline PingState::PingState() : turn(0), log(std::vector<int32_t>{}) {}
+
+// def __init__(self, m: Own[Mutex[PingState]], cv: Own[Condvar]) -> None:
+inline Shared::Shared(::tpystd::tpy::sync::Mutex<PingState>&& m, ::tpystd::tpy::sync::Condvar&& cv) : m(std::move(m)), cv(std::move(cv)) {}
+
+// def __init__(self, shared: Own[Arc[Shared]]) -> None:
+inline Worker::Worker(::tpystd::tplib::arc::Arc<Shared>&& shared) : shared(std::move(shared)) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -57,12 +57,7 @@ inline std::ostream& operator<<(std::ostream& os, const Middle& obj) {
 struct Leaf : Middle, Other {
 
     // def __init__(self) -> None:
-    Leaf() {
-        // Middle.token = 10  # resolves to Root.token through Middle's MRO
-        this->Middle::token = 10;
-        // Other.token = "hi"
-        this->Other::token = "hi";
-    }
+    Leaf();
 
     // def as_pair(self) -> str:
     std::string as_pair() const;
@@ -74,6 +69,14 @@ inline std::ostream& operator<<(std::ostream& os, const Leaf& obj) {
     return os;
 }
 
+
+// def __init__(self) -> None:
+inline Leaf::Leaf() {
+    // Middle.token = 10  # resolves to Root.token through Middle's MRO
+    this->Middle::token = 10;
+    // Other.token = "hi"
+    this->Other::token = "hi";
+}
 
 // def as_pair(self) -> str:
 inline std::string Leaf::as_pair() const {

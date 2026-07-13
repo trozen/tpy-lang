@@ -22,7 +22,7 @@ struct time {
 
     // def __init__(self, v: int):
     time() = default;
-    explicit time(const ::tpy::BigInt& v) : value(v) {}
+    explicit time(const ::tpy::BigInt& v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.time";
 };
 
@@ -31,5 +31,8 @@ inline std::ostream& operator<<(std::ostream& os, const time& obj) {
     return os;
 }
 
+
+// def __init__(self, v: int):
+inline time::time(const ::tpy::BigInt& v) : value(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

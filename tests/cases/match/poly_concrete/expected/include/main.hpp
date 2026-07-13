@@ -39,7 +39,7 @@ struct Animal : Tag {
 
     // def __init__(self, legs: int) -> None:
     Animal() = default;
-    explicit Animal(const ::tpy::BigInt& legs) : legs(legs) {}
+    explicit Animal(const ::tpy::BigInt& legs);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Animal";
 };
 
@@ -52,7 +52,7 @@ inline std::ostream& operator<<(std::ostream& os, const Animal& obj) {
 struct Dog : Animal {
 
     // def __init__(self) -> None:
-    Dog() : Animal(4) {}
+    Dog();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Dog";
 };
 
@@ -65,7 +65,7 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 struct Snake : Animal {
 
     // def __init__(self) -> None:
-    Snake() : Animal(0) {}
+    Snake();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Snake";
 };
 
@@ -91,5 +91,14 @@ struct tpy::RefAdapter<tpyapp::main::Tag, T> : tpyapp::main::Tag {
 
 namespace tpyapp::main {
 
+
+// def __init__(self, legs: int) -> None:
+inline Animal::Animal(const ::tpy::BigInt& legs) : legs(legs) {}
+
+// def __init__(self) -> None:
+inline Dog::Dog() : Animal(4) {}
+
+// def __init__(self) -> None:
+inline Snake::Snake() : Animal(0) {}
 void __tpy_init();
 } // namespace tpyapp::main

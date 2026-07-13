@@ -22,7 +22,7 @@ struct Headers {
 
     // def __init__(self, origin: str) -> None:
     Headers() = default;
-    explicit Headers(std::string_view origin) : _origin(origin) {}
+    explicit Headers(std::string_view origin);
 
     // def __getattr__(self, name: str) -> str:
     std::string __getattr__(std::string_view name) const;
@@ -34,6 +34,9 @@ inline std::ostream& operator<<(std::ostream& os, const Headers& obj) {
     return os;
 }
 
+
+// def __init__(self, origin: str) -> None:
+inline Headers::Headers(std::string_view origin) : _origin(origin) {}
 
 // def __getattr__(self, name: str) -> str:
 inline std::string Headers::__getattr__(std::string_view name) const {

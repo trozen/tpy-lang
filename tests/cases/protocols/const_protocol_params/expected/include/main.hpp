@@ -62,7 +62,7 @@ struct Rect {
 
     // def __init__(self, w: Int32, h: Int32) -> None:
     Rect() = default;
-    explicit Rect(int32_t w, int32_t h) : _w(w), _h(h) {}
+    explicit Rect(int32_t w, int32_t h);
 
     // @readonly
     // def area(self) -> Int32:
@@ -82,7 +82,7 @@ struct Box {
 
     // def __init__(self, side: Int32) -> None:
     Box() = default;
-    explicit Box(int32_t side) : _side(side) {}
+    explicit Box(int32_t side);
 
     // @readonly
     // def measure(self) -> Int32:
@@ -118,12 +118,18 @@ struct tpy::RefAdapter<tpyapp::main::Shape, T> : tpyapp::main::Shape {
 namespace tpyapp::main {
 
 
+// def __init__(self, w: Int32, h: Int32) -> None:
+inline Rect::Rect(int32_t w, int32_t h) : _w(w), _h(h) {}
+
 // @readonly
 // def area(self) -> Int32:
 inline int32_t Rect::area() const {
     // return self._w * self._h
     return (::tpy::mul_check<int32_t>(this->_w, this->_h));
 }
+
+// def __init__(self, side: Int32) -> None:
+inline Box::Box(int32_t side) : _side(side) {}
 
 // @readonly
 // def measure(self) -> Int32:

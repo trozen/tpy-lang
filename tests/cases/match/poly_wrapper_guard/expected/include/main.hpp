@@ -45,7 +45,7 @@ struct Dog : Pet {
 
     // def __init__(self, n: int) -> None:
     Dog() = default;
-    explicit Dog(const ::tpy::BigInt& n) : n(n) {}
+    explicit Dog(const ::tpy::BigInt& n);
 
     // def legs(self) -> int:
     ::tpy::BigInt legs() override;
@@ -61,9 +61,7 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 struct Bird : Pet {
 
     // def __init__(self) -> None:
-    Bird() {
-        // pass
-    }
+    Bird();
 
     // def legs(self) -> int:
     ::tpy::BigInt legs() override;
@@ -95,10 +93,18 @@ struct tpy::RefAdapter<tpyapp::main::Pet, T> : tpyapp::main::Pet {
 namespace tpyapp::main {
 
 
+// def __init__(self, n: int) -> None:
+inline Dog::Dog(const ::tpy::BigInt& n) : n(n) {}
+
 // def legs(self) -> int:
 inline ::tpy::BigInt Dog::legs() {
     // return 4
     return ::tpy::BigInt(4);
+}
+
+// def __init__(self) -> None:
+inline Bird::Bird() {
+    // pass
 }
 
 // def legs(self) -> int:

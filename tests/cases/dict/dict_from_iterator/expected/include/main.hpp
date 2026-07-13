@@ -22,7 +22,7 @@ struct PairIter {
 
     // def __init__(self, limit: Int32) -> None:
     PairIter() = default;
-    explicit PairIter(int32_t limit) : current(0), limit(limit) {}
+    explicit PairIter(int32_t limit);
 
     // def __iter__(self) -> PairIter:
     PairIter& __iter__();
@@ -37,6 +37,9 @@ inline std::ostream& operator<<(std::ostream& os, const PairIter& obj) {
     return os;
 }
 
+
+// def __init__(self, limit: Int32) -> None:
+inline PairIter::PairIter(int32_t limit) : current(0), limit(limit) {}
 
 // def __iter__(self) -> PairIter:
 inline PairIter& PairIter::__iter__() {

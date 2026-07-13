@@ -23,7 +23,7 @@ struct Box {
     ::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, ::tpy::BigInt>> by_pair;
 
     // def __init__(self) -> None:
-    Box() : by_name(::tpy::ordered_map<std::string, ::tpy::BigInt>()), by_pair(::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, ::tpy::BigInt>>({{"first", ::tpy::ordered_map<std::string, ::tpy::BigInt>()}})) {}
+    Box();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
@@ -32,5 +32,8 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
     return os;
 }
 
+
+// def __init__(self) -> None:
+inline Box::Box() : by_name(::tpy::ordered_map<std::string, ::tpy::BigInt>()), by_pair(::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, ::tpy::BigInt>>({{"first", ::tpy::ordered_map<std::string, ::tpy::BigInt>()}})) {}
 void __tpy_init();
 } // namespace tpyapp::main

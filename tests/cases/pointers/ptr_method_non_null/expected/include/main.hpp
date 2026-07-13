@@ -20,7 +20,7 @@ struct Cell {
     int32_t n;
 
     // def __init__(self):
-    Cell() : n(3) {}
+    Cell();
 
     // def val(self) -> Int32:
     int32_t val() const;
@@ -35,6 +35,9 @@ inline std::ostream& operator<<(std::ostream& os, const Cell& obj) {
     return os;
 }
 
+
+// def __init__(self):
+inline Cell::Cell() : n(3) {}
 
 // def val(self) -> Int32:
 inline int32_t Cell::val() const {

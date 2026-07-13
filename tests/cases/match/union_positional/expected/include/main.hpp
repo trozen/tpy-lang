@@ -22,7 +22,7 @@ struct Circle {
     double radius;
 
     Circle() = default;
-    explicit Circle(double radius) : radius(radius) {}
+    explicit Circle(double radius);
 
     bool __eq__(const Circle& other) const;
 
@@ -48,7 +48,7 @@ struct Rect {
     double height;
 
     Rect() = default;
-    explicit Rect(double width, double height) : width(width), height(height) {}
+    explicit Rect(double width, double height);
 
     bool __eq__(const Rect& other) const;
 
@@ -66,6 +66,8 @@ inline std::ostream& operator<<(std::ostream& os, const Rect& obj) {
 }
 
 
+inline Circle::Circle(double radius) : radius(radius) {}
+
 inline bool Circle::__eq__(const Circle& other) const {
     return (this->radius == other.radius);
 }
@@ -73,6 +75,8 @@ inline bool Circle::__eq__(const Circle& other) const {
 inline std::string Circle::__repr__() const {
     return std::format("Circle(radius={})", ::tpy::repr_of(this->radius));
 }
+
+inline Rect::Rect(double width, double height) : width(width), height(height) {}
 
 inline bool Rect::__eq__(const Rect& other) const {
     return ((this->width == other.width) && (this->height == other.height));

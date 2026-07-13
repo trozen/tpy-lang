@@ -22,7 +22,7 @@ struct Base {
 
     // def __init__(self, v: Int32) -> None:
     Base() = default;
-    explicit Base(int32_t v) : val(v) {}
+    explicit Base(int32_t v);
 
     // def __eq__(self, other: "Base") -> bool:
     bool __eq__(const Base& other) const;
@@ -76,6 +76,9 @@ inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
     return os;
 }
 
+
+// def __init__(self, v: Int32) -> None:
+inline Base::Base(int32_t v) : val(v) {}
 
 // def __eq__(self, other: "Base") -> bool:
 inline bool Base::__eq__(const Base& other) const {

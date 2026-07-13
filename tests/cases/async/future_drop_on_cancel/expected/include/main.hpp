@@ -31,27 +31,14 @@ struct Tracked {
     bool __tpy_owned_ = true;
 
     // def __init__(self, label: str) -> None:
-    explicit Tracked(std::string_view label) : label(label) {}
+    explicit Tracked(std::string_view label);
     Tracked(const Tracked&) = delete;
     Tracked& operator=(const Tracked&) = delete;
-    Tracked(Tracked&& other) noexcept : label(std::move(other.label)) {
-        other.__tpy_owned_ = false;
-    }
-    Tracked& operator=(Tracked&& other) noexcept {
-        if (this != &other) {
-            this->~Tracked();
-            new (this) Tracked(std::move(other));
-        }
-        return *this;
-    }
-    // def __del__(self) -> None:
+    Tracked(Tracked&& other) noexcept;
+    Tracked& operator=(Tracked&& other) noexcept;
 
-    ~Tracked() {
-        if (!this->__tpy_owned_) return;
-        // dropped.append(self.label)
-        std::string __tmp_1{this->label};
-        dropped->push_back(std::move(__tmp_1));
-    }
+    // def __del__(self) -> None:
+    ~Tracked();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Tracked";
 };
 
@@ -111,5 +98,27 @@ struct __coro_main_coro {
     }
 };
 
+
+// def __init__(self, label: str) -> None:
+inline Tracked::Tracked(std::string_view label) : label(label) {}
+
+inline Tracked::Tracked(Tracked&& other) noexcept : label(std::move(other.label)) {
+    other.__tpy_owned_ = false;
+}
+inline Tracked& Tracked::operator=(Tracked&& other) noexcept {
+    if (this != &other) {
+        this->~Tracked();
+        new (this) Tracked(std::move(other));
+    }
+    return *this;
+}
+
+// def __del__(self) -> None:
+inline Tracked::~Tracked() {
+    if (!this->__tpy_owned_) return;
+    // dropped.append(self.label)
+    std::string __tmp_1{this->label};
+    dropped->push_back(std::move(__tmp_1));
+}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -22,7 +22,7 @@ struct Handle {
 
     // def __init__(self, fd: Int32) -> None:
     Handle() = default;
-    explicit Handle(int32_t fd) : fd(fd) {}
+    explicit Handle(int32_t fd);
     // non-copyable (@nocopy)
     Handle(const Handle&) = delete;
     Handle& operator=(const Handle&) = delete;
@@ -42,14 +42,7 @@ struct Container {
     std::tuple<Handle, Handle> pair;
 
     // def __init__(self) -> None:
-    Container() {
-        // a = Handle(Int32(1))
-        Handle a = Handle(1);
-        // b = Handle(Int32(2))
-        Handle b = Handle(2);
-        // self.pair = (a, b)
-        this->pair = ::tpy::tuple_to_storage<std::tuple<Handle, Handle>>(std::tuple<Handle, Handle>{std::move(a), std::move(b)});
-    }
+    Container();
     // non-copyable
     Container(const Container&) = delete;
     Container& operator=(const Container&) = delete;
@@ -63,5 +56,18 @@ inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
     return os;
 }
 
+
+// def __init__(self, fd: Int32) -> None:
+inline Handle::Handle(int32_t fd) : fd(fd) {}
+
+// def __init__(self) -> None:
+inline Container::Container() {
+    // a = Handle(Int32(1))
+    Handle a = Handle(1);
+    // b = Handle(Int32(2))
+    Handle b = Handle(2);
+    // self.pair = (a, b)
+    this->pair = ::tpy::tuple_to_storage<std::tuple<Handle, Handle>>(std::tuple<Handle, Handle>{std::move(a), std::move(b)});
+}
 void __tpy_init();
 } // namespace tpyapp::main

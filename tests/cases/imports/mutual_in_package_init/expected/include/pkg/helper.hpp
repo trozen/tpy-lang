@@ -22,7 +22,7 @@ struct Boosted {
 
     // def __init__(self, v: Int32) -> None:
     Boosted() = default;
-    explicit Boosted(int32_t v) : val(v) {}
+    explicit Boosted(int32_t v);
 
     // def boost(self) -> Int32:
     int32_t boost() const;

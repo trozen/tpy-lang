@@ -24,7 +24,7 @@ __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<s
 struct __tpy_builder_argparse_show_args_1 {
 
     // args = parser.parse_args(["unknown"])
-    __tpy_builder_argparse_show_args_1() {}
+    __tpy_builder_argparse_show_args_1();
     static constexpr std::string_view __tpy_class_name__ = "__main__.__tpy_builder_argparse_show_args_1";
 };
 
@@ -37,7 +37,7 @@ inline std::ostream& operator<<(std::ostream& os, const __tpy_builder_argparse_s
 struct __tpy_builder_argparse_set_args_1 {
 
     // args = parser.parse_args(["unknown"])
-    __tpy_builder_argparse_set_args_1() {}
+    __tpy_builder_argparse_set_args_1();
     static constexpr std::string_view __tpy_class_name__ = "__main__.__tpy_builder_argparse_set_args_1";
 };
 
@@ -52,7 +52,7 @@ struct __tpy_builder_argparse_args_1 {
 
     // args = parser.parse_args(["unknown"])
     __tpy_builder_argparse_args_1() = default;
-    explicit __tpy_builder_argparse_args_1(std::optional<std::string_view> cmd) : cmd(cmd ? std::make_optional(std::string(*cmd)) : std::nullopt) {}
+    explicit __tpy_builder_argparse_args_1(std::optional<std::string_view> cmd);
     static constexpr std::string_view __tpy_class_name__ = "__main__.__tpy_builder_argparse_args_1";
 };
 
@@ -61,5 +61,14 @@ inline std::ostream& operator<<(std::ostream& os, const __tpy_builder_argparse_a
     return os;
 }
 
+
+// args = parser.parse_args(["unknown"])
+inline __tpy_builder_argparse_show_args_1::__tpy_builder_argparse_show_args_1() {}
+
+// args = parser.parse_args(["unknown"])
+inline __tpy_builder_argparse_set_args_1::__tpy_builder_argparse_set_args_1() {}
+
+// args = parser.parse_args(["unknown"])
+inline __tpy_builder_argparse_args_1::__tpy_builder_argparse_args_1(std::optional<std::string_view> cmd) : cmd(cmd ? std::make_optional(std::string(*cmd)) : std::nullopt) {}
 void __tpy_init();
 } // namespace tpyapp::main

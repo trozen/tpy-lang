@@ -18,7 +18,7 @@ struct Err : ::tpy::Exception {
 
     // def __init__(self, code: int):
     Err() = default;
-    explicit Err(const ::tpy::BigInt& code) : code(code) {}
+    explicit Err(const ::tpy::BigInt& code);
 
     [[nodiscard]] std::unique_ptr<::tpy::Throwable> clone() const override { return std::make_unique<Err>(*this); }
     [[noreturn]] void __raise__() const override { throw *this; }
@@ -31,5 +31,8 @@ inline std::ostream& operator<<(std::ostream& os, const Err& obj) {
     return os;
 }
 
+
+// def __init__(self, code: int):
+inline Err::Err(const ::tpy::BigInt& code) : code(code) {}
 void __tpy_init();
 } // namespace tpyapp::ea

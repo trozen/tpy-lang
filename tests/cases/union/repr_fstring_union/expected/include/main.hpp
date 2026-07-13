@@ -23,7 +23,7 @@ struct Point {
 
     // def __init__(self, x: Int32) -> None:
     Point() = default;
-    explicit Point(int32_t x) : x(x) {}
+    explicit Point(int32_t x);
 
     // def __repr__(self) -> str:
     std::string __repr__() const;
@@ -35,6 +35,9 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     return os;
 }
 
+
+// def __init__(self, x: Int32) -> None:
+inline Point::Point(int32_t x) : x(x) {}
 
 // def __repr__(self) -> str:
 inline std::string Point::__repr__() const {

@@ -26,7 +26,7 @@ struct Math {
 
     // def __init__(self, b: Int32) -> None:
     Math() = default;
-    explicit Math(int32_t b) : base(b) {}
+    explicit Math(int32_t b);
 
     __coro_Math_double_base double_base() const;
 
@@ -119,5 +119,8 @@ struct __coro_main_coro {
     }
 };
 
+
+// def __init__(self, b: Int32) -> None:
+inline Math::Math(int32_t b) : base(b) {}
 void __tpy_init();
 } // namespace tpyapp::main

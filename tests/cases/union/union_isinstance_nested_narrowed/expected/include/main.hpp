@@ -28,7 +28,7 @@ struct A {
 
     // def __init__(self, x: int) -> None:
     A() = default;
-    explicit A(const ::tpy::BigInt& x) : x(x) {}
+    explicit A(const ::tpy::BigInt& x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.A";
 };
 
@@ -44,7 +44,7 @@ struct B {
 
     // def __init__(self, y: int) -> None:
     B() = default;
-    explicit B(const ::tpy::BigInt& y) : y(y) {}
+    explicit B(const ::tpy::BigInt& y);
     static constexpr std::string_view __tpy_class_name__ = "__main__.B";
 };
 
@@ -60,7 +60,7 @@ struct C {
 
     // def __init__(self, z: int) -> None:
     C() = default;
-    explicit C(const ::tpy::BigInt& z) : z(z) {}
+    explicit C(const ::tpy::BigInt& z);
     static constexpr std::string_view __tpy_class_name__ = "__main__.C";
 };
 
@@ -69,5 +69,14 @@ inline std::ostream& operator<<(std::ostream& os, const C& obj) {
     return os;
 }
 
+
+// def __init__(self, x: int) -> None:
+inline A::A(const ::tpy::BigInt& x) : x(x) {}
+
+// def __init__(self, y: int) -> None:
+inline B::B(const ::tpy::BigInt& y) : y(y) {}
+
+// def __init__(self, z: int) -> None:
+inline C::C(const ::tpy::BigInt& z) : z(z) {}
 void __tpy_init();
 } // namespace tpyapp::main

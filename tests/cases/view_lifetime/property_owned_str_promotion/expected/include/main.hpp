@@ -22,7 +22,7 @@ struct Box {
     std::string label;
 
     // def __init__(self, payload: bytes, label: str) -> None:
-    explicit Box(std::span<const uint8_t> payload, std::string_view label) : payload(::tpy::bytes_copy(payload)), label(label) {}
+    explicit Box(std::span<const uint8_t> payload, std::string_view label);
 
     // def m_text(self) -> str:          # method, owned return
     std::string m_text() const;
@@ -53,6 +53,9 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
     return os;
 }
 
+
+// def __init__(self, payload: bytes, label: str) -> None:
+inline Box::Box(std::span<const uint8_t> payload, std::string_view label) : payload(::tpy::bytes_copy(payload)), label(label) {}
 
 // def m_text(self) -> str:          # method, owned return
 inline std::string Box::m_text() const {

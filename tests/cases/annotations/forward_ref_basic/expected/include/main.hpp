@@ -22,7 +22,7 @@ struct Container {
 
     // def __init__(self, value: Int32) -> None:
     Container() = default;
-    explicit Container(int32_t value) : value(value) {}
+    explicit Container(int32_t value);
 
     // def clone(self) -> Own["Container"]:
     Container clone() const;
@@ -34,6 +34,9 @@ inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
     return os;
 }
 
+
+// def __init__(self, value: Int32) -> None:
+inline Container::Container(int32_t value) : value(value) {}
 
 // def clone(self) -> Own["Container"]:
 inline Container Container::clone() const {

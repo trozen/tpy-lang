@@ -17,9 +17,7 @@ void main();
 struct Utils {
 
     // def __init__(self):
-    Utils() {
-        // pass
-    }
+    Utils();
 
     // @staticmethod
     // def identity[U](val: U) -> U:
@@ -36,5 +34,10 @@ inline std::ostream& operator<<(std::ostream& os, const Utils& obj) {
     return os;
 }
 
+
+// def __init__(self):
+inline Utils::Utils() {
+    // pass
+}
 void __tpy_init();
 } // namespace tpyapp::main

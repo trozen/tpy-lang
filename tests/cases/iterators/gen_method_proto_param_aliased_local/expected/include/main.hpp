@@ -23,7 +23,7 @@ struct Repeater {
 
     // def __init__(self, times: Int32) -> None:
     Repeater() = default;
-    explicit Repeater(int32_t times) : times(times) {}
+    explicit Repeater(int32_t times);
 
     template <::tpystd::typing::Iterable<int32_t> T_it>
     __gen_Repeater_run<T_it> run(T_it&& it) const;
@@ -113,5 +113,8 @@ inline __gen_Repeater_run<T_it> Repeater::run(T_it&& it) const {
     return __gen_Repeater_run<T_it>(*this, std::forward<T_it>(it));
 }
 
+
+// def __init__(self, times: Int32) -> None:
+inline Repeater::Repeater(int32_t times) : times(times) {}
 void __tpy_init();
 } // namespace tpyapp::main

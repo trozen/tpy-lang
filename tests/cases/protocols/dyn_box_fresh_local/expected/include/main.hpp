@@ -44,7 +44,7 @@ struct HttpConn : Conn {
 
     // def __init__(self, p: Int32) -> None:
     HttpConn() = default;
-    explicit HttpConn(int32_t p) : _port(p) {}
+    explicit HttpConn(int32_t p);
     // non-copyable (@nocopy)
     HttpConn(const HttpConn&) = delete;
     HttpConn& operator=(const HttpConn&) = delete;
@@ -80,6 +80,9 @@ struct tpy::RefAdapter<tpyapp::main::Conn, T> : tpyapp::main::Conn {
 
 namespace tpyapp::main {
 
+
+// def __init__(self, p: Int32) -> None:
+inline HttpConn::HttpConn(int32_t p) : _port(p) {}
 
 // def port(self) -> Int32:
 inline int32_t HttpConn::port() {

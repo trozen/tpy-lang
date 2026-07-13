@@ -44,7 +44,7 @@ struct Holder {
 
     // def __init__(self, h: Awaker) -> None:
     Holder() = default;
-    explicit Holder(Awaker& h) : awaker(&h) {}
+    explicit Holder(Awaker& h);
     // non-copyable (@nocopy)
     Holder(const Holder&) = delete;
     Holder& operator=(const Holder&) = delete;
@@ -64,7 +64,7 @@ struct Executor : Awaker {
     std::vector<int32_t> log;
 
     // def __init__(self) -> None:
-    Executor() : log(std::vector<int32_t>{}) {}
+    Executor();
 
     // def mark(self, task_id: Int32) -> None:
     void mark(int32_t task_id) override;
@@ -95,6 +95,12 @@ struct tpy::RefAdapter<tpyapp::main::Awaker, T> : tpyapp::main::Awaker {
 
 namespace tpyapp::main {
 
+
+// def __init__(self, h: Awaker) -> None:
+inline Holder::Holder(Awaker& h) : awaker(&h) {}
+
+// def __init__(self) -> None:
+inline Executor::Executor() : log(std::vector<int32_t>{}) {}
 
 // def mark(self, task_id: Int32) -> None:
 inline void Executor::mark(int32_t task_id) {

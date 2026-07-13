@@ -15,15 +15,7 @@ struct Stats {
     int64_t total;
 
     Stats() = default;
-    explicit Stats(const std::vector<int64_t>& seed) : total(0) {
-        auto& __obj_0 = seed;
-        auto __beg_0 = __obj_0.begin();
-        auto __end_0 = __obj_0.end();
-        for (; __beg_0 != __end_0; ++__beg_0) {
-            int64_t x = *__beg_0;
-            this->total = ::tpy::add_check<int64_t>(this->total, x);
-        }
-    }
+    explicit Stats(const std::vector<int64_t>& seed);
 
     int64_t add_dict(const ::tpy::ordered_map<std::string, int64_t>& d);
 
@@ -50,6 +42,16 @@ inline std::ostream& operator<<(std::ostream& os, const Stats& obj) {
     return os;
 }
 
+
+inline Stats::Stats(const std::vector<int64_t>& seed) : total(0) {
+    auto& __obj_0 = seed;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        int64_t x = *__beg_0;
+        this->total = ::tpy::add_check<int64_t>(this->total, x);
+    }
+}
 
 inline int64_t Stats::add_dict(const ::tpy::ordered_map<std::string, int64_t>& d) {
     auto __obj_0 = ::tpy::dict_values(d);

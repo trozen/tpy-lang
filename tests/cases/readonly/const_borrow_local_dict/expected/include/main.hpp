@@ -23,7 +23,7 @@ struct Cookie {
 
     // def __init__(self, v: int) -> None:
     Cookie() = default;
-    explicit Cookie(const ::tpy::BigInt& v) : value(v) {}
+    explicit Cookie(const ::tpy::BigInt& v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Cookie";
 };
 
@@ -38,7 +38,7 @@ struct Jar {
     ::tpy::ordered_map<std::string, Cookie> store;
 
     // def __init__(self) -> None:
-    Jar() : store(::tpy::ordered_map<std::string, Cookie>()) {}
+    Jar();
 
     // def add(self, name: str, v: int) -> None:
     void add(std::string_view name, const ::tpy::BigInt& v);
@@ -59,6 +59,12 @@ inline std::ostream& operator<<(std::ostream& os, const Jar& obj) {
     return os;
 }
 
+
+// def __init__(self, v: int) -> None:
+inline Cookie::Cookie(const ::tpy::BigInt& v) : value(v) {}
+
+// def __init__(self) -> None:
+inline Jar::Jar() : store(::tpy::ordered_map<std::string, Cookie>()) {}
 
 // def add(self, name: str, v: int) -> None:
 inline void Jar::add(std::string_view name, const ::tpy::BigInt& v) {

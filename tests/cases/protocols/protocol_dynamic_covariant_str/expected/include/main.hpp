@@ -44,7 +44,7 @@ struct Dog {
 
     // def __init__(self, n: str):
     Dog() = default;
-    explicit Dog(std::string_view n) : _name(n) {}
+    explicit Dog(std::string_view n);
 
     // def name(self) -> StrView:
     std::string_view name() const;
@@ -63,7 +63,7 @@ struct Cat {
 
     // def __init__(self, n: str):
     Cat() = default;
-    explicit Cat(std::string_view n) : _name(n) {}
+    explicit Cat(std::string_view n);
 
     // def name(self) -> String:
     std::string name() const;
@@ -83,7 +83,7 @@ struct Bird : Named {
 
     // def __init__(self, n: str):
     Bird() = default;
-    explicit Bird(std::string_view n) : _name(n) {}
+    explicit Bird(std::string_view n);
 
     // def name(self) -> StrView:
     std::string name() override;
@@ -102,7 +102,7 @@ struct Fish : Named {
 
     // def __init__(self, n: str):
     Fish() = default;
-    explicit Fish(std::string_view n) : _name(n) {}
+    explicit Fish(std::string_view n);
 
     // def name(self) -> String:
     std::string name() override;
@@ -134,11 +134,17 @@ struct tpy::RefAdapter<tpyapp::main::Named, T> : tpyapp::main::Named {
 namespace tpyapp::main {
 
 
+// def __init__(self, n: str):
+inline Dog::Dog(std::string_view n) : _name(n) {}
+
 // def name(self) -> StrView:
 inline std::string_view Dog::name() const {
     // return self._name
     return this->_name;
 }
+
+// def __init__(self, n: str):
+inline Cat::Cat(std::string_view n) : _name(n) {}
 
 // def name(self) -> String:
 inline std::string Cat::name() const {
@@ -146,11 +152,17 @@ inline std::string Cat::name() const {
     return this->_name;
 }
 
+// def __init__(self, n: str):
+inline Bird::Bird(std::string_view n) : _name(n) {}
+
 // def name(self) -> StrView:
 inline std::string Bird::name() {
     // return self._name
     return this->_name;
 }
+
+// def __init__(self, n: str):
+inline Fish::Fish(std::string_view n) : _name(n) {}
 
 // def name(self) -> String:
 inline std::string Fish::name() {

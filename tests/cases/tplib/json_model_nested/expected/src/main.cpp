@@ -172,6 +172,8 @@ std::expected<Address, ::tpystd::tplib::json::parser::JsonError> Address::__json
     return Address(street, city);
 }
 
+Profile::Profile(std::string_view name, int32_t age, double score, float precision, bool active, const ::tpy::BigInt& big_id, Role role, Address&& address, std::vector<std::string>&& tags, std::vector<int32_t>&& scores, std::vector<Address>&& friends, std::vector<Role>&& roles, ::tpy::ordered_map<std::string, int32_t>&& metadata, ::tpy::ordered_map<std::string, std::vector<int32_t>>&& nested_map, const std::tuple<int32_t, int32_t, std::string>& coord, std::optional<Role> backup_role, std::optional<Address>&& alt_address, std::optional<std::string_view> email) : name(name), age(age), score(score), precision(precision), active(active), big_id(big_id), role(role), address(std::move(address)), tags(std::move(tags)), scores(std::move(scores)), friends(std::move(friends)), roles(std::move(roles)), metadata(std::move(metadata)), nested_map(std::move(nested_map)), coord(coord), backup_role(backup_role), alt_address(std::move(alt_address)), email(email ? std::make_optional(std::string(*email)) : std::nullopt) {}
+
 std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> Profile::__json_decode__(::tpystd::tplib::json::parser::JsonReader& __reader) {
     {
         auto __try_tmp_11 = __reader.read_object_start();

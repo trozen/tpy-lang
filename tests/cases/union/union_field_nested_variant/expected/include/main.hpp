@@ -28,7 +28,7 @@ struct Ball {
 
     // def __init__(self, color: str) -> None:
     Ball() = default;
-    explicit Ball(std::string_view color) : color(color) {}
+    explicit Ball(std::string_view color);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Ball";
 };
 
@@ -44,7 +44,7 @@ struct Mouse {
 
     // def __init__(self, size: str) -> None:
     Mouse() = default;
-    explicit Mouse(std::string_view size) : size(size) {}
+    explicit Mouse(std::string_view size);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Mouse";
 };
 
@@ -61,7 +61,7 @@ struct Cat {
     std::variant<Ball, Mouse> toy;
 
     // def __init__(self, name: str, toy: Ball | Mouse) -> None:
-    explicit Cat(std::string_view name, const std::variant<Ball*, Mouse*> toy) : name(name), toy(::tpy::to_value_variant<std::variant<Ball, Mouse>>(toy)) {}
+    explicit Cat(std::string_view name, const std::variant<Ball*, Mouse*> toy);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Cat";
 };
 
@@ -77,7 +77,7 @@ struct Dog {
 
     // def __init__(self, name: str) -> None:
     Dog() = default;
-    explicit Dog(std::string_view name) : name(name) {}
+    explicit Dog(std::string_view name);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Dog";
 };
 
@@ -92,7 +92,7 @@ struct Zoo {
     std::variant<Cat, Dog> animal;
 
     // def __init__(self, animal: Cat | Dog) -> None:
-    explicit Zoo(const std::variant<Cat*, Dog*> animal) : animal(::tpy::to_value_variant<std::variant<Cat, Dog>>(animal)) {}
+    explicit Zoo(const std::variant<Cat*, Dog*> animal);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Zoo";
 };
 
@@ -101,5 +101,20 @@ inline std::ostream& operator<<(std::ostream& os, const Zoo& obj) {
     return os;
 }
 
+
+// def __init__(self, color: str) -> None:
+inline Ball::Ball(std::string_view color) : color(color) {}
+
+// def __init__(self, size: str) -> None:
+inline Mouse::Mouse(std::string_view size) : size(size) {}
+
+// def __init__(self, name: str, toy: Ball | Mouse) -> None:
+inline Cat::Cat(std::string_view name, const std::variant<Ball*, Mouse*> toy) : name(name), toy(::tpy::to_value_variant<std::variant<Ball, Mouse>>(toy)) {}
+
+// def __init__(self, name: str) -> None:
+inline Dog::Dog(std::string_view name) : name(name) {}
+
+// def __init__(self, animal: Cat | Dog) -> None:
+inline Zoo::Zoo(const std::variant<Cat*, Dog*> animal) : animal(::tpy::to_value_variant<std::variant<Cat, Dog>>(animal)) {}
 void __tpy_init();
 } // namespace tpyapp::main

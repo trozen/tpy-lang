@@ -32,7 +32,7 @@ struct M {
     ::tpy::BigInt n;
 
     M() = default;
-    explicit M(const ::tpy::BigInt& n) : n(n) {}
+    explicit M(const ::tpy::BigInt& n);
 
     bool __eq__(const M& other) const;
 
@@ -65,6 +65,8 @@ inline std::ostream& operator<<(std::ostream& os, const M& obj) {
     return os;
 }
 
+
+inline M::M(const ::tpy::BigInt& n) : n(n) {}
 
 inline bool M::__eq__(const M& other) const {
     return (this->n == other.n);

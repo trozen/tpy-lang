@@ -18,7 +18,7 @@ struct Widget {
 
     // def __init__(self, v: Int32) -> None:
     Widget() = default;
-    explicit Widget(int32_t v) : value(v) {}
+    explicit Widget(int32_t v);
 
     // def get(self) -> Int32:
     int32_t get() const;
@@ -30,6 +30,9 @@ inline std::ostream& operator<<(std::ostream& os, const Widget& obj) {
     return os;
 }
 
+
+// def __init__(self, v: Int32) -> None:
+inline Widget::Widget(int32_t v) : value(v) {}
 
 // def get(self) -> Int32:
 inline int32_t Widget::get() const {

@@ -21,7 +21,7 @@ struct Base {
 
     // def __init__(self, x: Int32):
     Base() = default;
-    explicit Base(int32_t x) : x(x) {}
+    explicit Base(int32_t x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Base";
 };
 
@@ -37,7 +37,7 @@ struct Child : Base {
 
     // def __init__(self, x: Int32, y: Int32):
     Child() = default;
-    explicit Child(int32_t x, int32_t y) : Base(x), y(y) {}
+    explicit Child(int32_t x, int32_t y);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Child";
 };
 
@@ -46,5 +46,11 @@ inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
     return os;
 }
 
+
+// def __init__(self, x: Int32):
+inline Base::Base(int32_t x) : x(x) {}
+
+// def __init__(self, x: Int32, y: Int32):
+inline Child::Child(int32_t x, int32_t y) : Base(x), y(y) {}
 void __tpy_init();
 } // namespace tpyapp::main

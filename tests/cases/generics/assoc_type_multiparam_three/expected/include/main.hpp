@@ -38,7 +38,7 @@ struct Rec {
 
     // def __init__(self, x: int, y: str, z: bool):
     Rec() = default;
-    explicit Rec(const ::tpy::BigInt& x, std::string_view y, bool z) : x(x), y(y), z(z) {}
+    explicit Rec(const ::tpy::BigInt& x, std::string_view y, bool z);
 
     // def a(self) -> int:
     ::tpy::BigInt a() const;
@@ -56,6 +56,9 @@ inline std::ostream& operator<<(std::ostream& os, const Rec& obj) {
     return os;
 }
 
+
+// def __init__(self, x: int, y: str, z: bool):
+inline Rec::Rec(const ::tpy::BigInt& x, std::string_view y, bool z) : x(x), y(y), z(z) {}
 
 // def a(self) -> int:
 inline ::tpy::BigInt Rec::a() const {

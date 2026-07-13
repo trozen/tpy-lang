@@ -43,7 +43,7 @@ struct Holder {
 
     // def __init__(self, inner: Own[Inner]):
     Holder() = default;
-    explicit Holder(Inner&& inner) : inner(std::move(inner)) {}
+    explicit Holder(Inner&& inner);
 
     // def set_inner(self, inner: Own[Inner]) -> None:
     void set_inner(Inner&& inner);
@@ -62,10 +62,7 @@ struct NotLastUse {
 
     // def __init__(self, inner: Own[Inner]):
     NotLastUse() = default;
-    explicit NotLastUse(Inner&& inner) : inner(inner) {
-        // print(inner.value)
-        std::cout << inner.value << "\n";
-    }
+    explicit NotLastUse(Inner&& inner);
     static constexpr std::string_view __tpy_class_name__ = "__main__.NotLastUse";
 };
 
@@ -152,10 +149,19 @@ inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
 }
 
 
+// def __init__(self, inner: Own[Inner]):
+inline Holder::Holder(Inner&& inner) : inner(std::move(inner)) {}
+
 // def set_inner(self, inner: Own[Inner]) -> None:
 inline void Holder::set_inner(Inner&& inner) {
     // self.inner = inner  # tpyc: ok (field assign, last use -- auto-moved)
     this->inner = std::move(inner);
+}
+
+// def __init__(self, inner: Own[Inner]):
+inline NotLastUse::NotLastUse(Inner&& inner) : inner(inner) {
+    // print(inner.value)
+    std::cout << inner.value << "\n";
 }
 
 // def set(self, inner: Own[Inner]) -> None:

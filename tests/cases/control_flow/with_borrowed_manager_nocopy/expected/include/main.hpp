@@ -21,7 +21,7 @@ struct Guard {
     ::tpy::BigInt n;
 
     // def __init__(self) -> None:
-    Guard() : n(::tpy::BigInt(0)) {}
+    Guard();
     // non-copyable (@nocopy)
     Guard(const Guard&) = delete;
     Guard& operator=(const Guard&) = delete;
@@ -41,6 +41,9 @@ inline std::ostream& operator<<(std::ostream& os, const Guard& obj) {
     return os;
 }
 
+
+// def __init__(self) -> None:
+inline Guard::Guard() : n(::tpy::BigInt(0)) {}
 
 // def __enter__(self) -> None:
 inline void Guard::__enter__() {

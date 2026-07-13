@@ -22,7 +22,7 @@ struct Config {
 
     // def __init__(self, rate: Int32, depth: Int32) -> None:
     Config() = default;
-    explicit Config(int32_t rate, int32_t depth) : rate(rate), depth(depth) {}
+    explicit Config(int32_t rate, int32_t depth);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Config";
 };
 
@@ -31,5 +31,8 @@ inline std::ostream& operator<<(std::ostream& os, const Config& obj) {
     return os;
 }
 
+
+// def __init__(self, rate: Int32, depth: Int32) -> None:
+inline Config::Config(int32_t rate, int32_t depth) : rate(rate), depth(depth) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -30,7 +30,7 @@ struct Entity {
 
     // def __init__(self, name: str, id: Int32) -> None:
     Entity() = default;
-    explicit Entity(std::string_view name, int32_t id) : name(name), id(id) {}
+    explicit Entity(std::string_view name, int32_t id);
 
     // def get_name(self) -> str:
     std::string get_name() const;
@@ -50,12 +50,7 @@ struct Person : Entity {
 
     // def __init__(self, name: str, id: Int32, age: Int32) -> None:
     Person() = default;
-    explicit Person(std::string_view name, int32_t id, int32_t age) : age(age) {
-        // self.name = name
-        this->name = name;
-        // self.id = id
-        this->id = id;
-    }
+    explicit Person(std::string_view name, int32_t id, int32_t age);
 
     // def __str__(self) -> str:
     std::string __str__() const;
@@ -68,10 +63,21 @@ inline std::ostream& operator<<(std::ostream& os, const Person& obj) {
 }
 
 
+// def __init__(self, name: str, id: Int32) -> None:
+inline Entity::Entity(std::string_view name, int32_t id) : name(name), id(id) {}
+
 // def get_name(self) -> str:
 inline std::string Entity::get_name() const {
     // return self.name
     return this->name;
+}
+
+// def __init__(self, name: str, id: Int32, age: Int32) -> None:
+inline Person::Person(std::string_view name, int32_t id, int32_t age) : age(age) {
+    // self.name = name
+    this->name = name;
+    // self.id = id
+    this->id = id;
 }
 
 // def __str__(self) -> str:

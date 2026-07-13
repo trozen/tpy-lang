@@ -23,7 +23,7 @@ struct Point {
     int32_t y;
 
     Point() = default;
-    explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
+    explicit Point(int32_t x, int32_t y);
 
     bool __eq__(const Point& other) const;
 
@@ -61,7 +61,7 @@ struct Config {
     int32_t value;
 
     Config() = default;
-    explicit Config(std::string_view name, int32_t value) : name(name), value(value) {}
+    explicit Config(std::string_view name, int32_t value);
 
     bool __eq__(const Config& other) const;
 
@@ -91,6 +91,8 @@ namespace tpyapp::main {
 
 
 
+inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
+
 inline bool Point::__eq__(const Point& other) const {
     return ((this->x == other.x) && (this->y == other.y));
 }
@@ -104,6 +106,8 @@ inline uint64_t Point::__hash__() const {
     h = (static_cast<uint64_t>(h ^ ::tpy::__hash__(this->y)));
     return h;
 }
+
+inline Config::Config(std::string_view name, int32_t value) : name(name), value(value) {}
 
 inline bool Config::__eq__(const Config& other) const {
     return ((this->name == other.name) && (this->value == other.value));

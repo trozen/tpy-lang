@@ -32,7 +32,7 @@ struct Point {
 
     // def __init__(self, x: Int32) -> None:
     Point() = default;
-    explicit Point(int32_t x) : x(x) {}
+    explicit Point(int32_t x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
 };
 
@@ -48,7 +48,7 @@ struct Tag {
 
     // def __init__(self, n: Int32) -> None:
     Tag() = default;
-    explicit Tag(int32_t n) : n(n) {}
+    explicit Tag(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Tag";
 };
 
@@ -108,5 +108,11 @@ struct __coro_main_coro {
     }
 };
 
+
+// def __init__(self, x: Int32) -> None:
+inline Point::Point(int32_t x) : x(x) {}
+
+// def __init__(self, n: Int32) -> None:
+inline Tag::Tag(int32_t n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

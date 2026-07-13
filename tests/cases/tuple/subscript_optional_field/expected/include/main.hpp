@@ -21,7 +21,7 @@ struct Leaf {
 
     // def __init__(self, n: Int32) -> None:
     Leaf() = default;
-    explicit Leaf(int32_t n) : n(n) {}
+    explicit Leaf(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Leaf";
 };
 
@@ -30,5 +30,8 @@ inline std::ostream& operator<<(std::ostream& os, const Leaf& obj) {
     return os;
 }
 
+
+// def __init__(self, n: Int32) -> None:
+inline Leaf::Leaf(int32_t n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

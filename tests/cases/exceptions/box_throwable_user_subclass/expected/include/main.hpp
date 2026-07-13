@@ -24,10 +24,7 @@ struct ParseError : ::tpy::Exception {
 
     // def __init__(self, message: str, line: Int32) -> None:
     ParseError() = default;
-    explicit ParseError(std::string_view message, int32_t line) : line(line) {
-        // self.message = message
-        this->message = message;
-    }
+    explicit ParseError(std::string_view message, int32_t line);
 
     [[nodiscard]] std::unique_ptr<::tpy::Throwable> clone() const override { return std::make_unique<ParseError>(*this); }
     [[noreturn]] void __raise__() const override { throw *this; }
@@ -40,5 +37,11 @@ inline std::ostream& operator<<(std::ostream& os, const ParseError& obj) {
     return os;
 }
 
+
+// def __init__(self, message: str, line: Int32) -> None:
+inline ParseError::ParseError(std::string_view message, int32_t line) : line(line) {
+    // self.message = message
+    this->message = message;
+}
 void __tpy_init();
 } // namespace tpyapp::main

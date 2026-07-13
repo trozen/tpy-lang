@@ -22,7 +22,7 @@ struct Entry {
     int64_t v;
 
     Entry() = default;
-    explicit Entry(int64_t v) : v(v) {}
+    explicit Entry(int64_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Entry";
 };
 
@@ -35,7 +35,7 @@ struct Cell {
     int64_t n;
 
     Cell() = default;
-    explicit Cell(int64_t n) : n(n) {}
+    explicit Cell(int64_t n);
     // non-copyable (@nocopy)
     Cell(const Cell&) = delete;
     Cell& operator=(const Cell&) = delete;
@@ -56,7 +56,7 @@ struct Vault {
     Cell _cell;
 
     Vault() = default;
-    explicit Vault(int64_t owner, int64_t secret) : owner(owner), _secret(secret), _log(Entry(secret)), _cell(Cell(secret)) {}
+    explicit Vault(int64_t owner, int64_t secret);
     // non-copyable (field '_cell')
     Vault(const Vault&) = delete;
     Vault& operator=(const Vault&) = delete;
@@ -83,9 +83,7 @@ struct OpError : ::tpy::ValueError {
     std::vector<int32_t> _trace;
 
     OpError() = default;
-    explicit OpError(std::string_view message, int32_t code, int32_t trace) : code(code), _trace({trace}) {
-        this->message = message;
-    }
+    explicit OpError(std::string_view message, int32_t code, int32_t trace);
 
     [[nodiscard]] std::unique_ptr<::tpy::Throwable> clone() const override { return std::make_unique<OpError>(*this); }
     [[noreturn]] void __raise__() const override { throw *this; }
@@ -102,9 +100,7 @@ struct SilentError : ::tpy::ValueError {
     int32_t _note;
 
     SilentError() = default;
-    explicit SilentError(std::string_view message, int32_t note) : _note(note) {
-        this->message = message;
-    }
+    explicit SilentError(std::string_view message, int32_t note);
 
     [[nodiscard]] std::unique_ptr<::tpy::Throwable> clone() const override { return std::make_unique<SilentError>(*this); }
     [[noreturn]] void __raise__() const override { throw *this; }
@@ -117,6 +113,12 @@ inline std::ostream& operator<<(std::ostream& os, const SilentError& obj) {
     return os;
 }
 
+
+inline Entry::Entry(int64_t v) : v(v) {}
+
+inline Cell::Cell(int64_t n) : n(n) {}
+
+inline Vault::Vault(int64_t owner, int64_t secret) : owner(owner), _secret(secret), _log(Entry(secret)), _cell(Cell(secret)) {}
 
 inline int64_t Vault::reveal() const {
     return this->_secret;
@@ -132,6 +134,14 @@ inline void Vault::record(int64_t v) {
 
 inline Entry Vault::snapshot() const {
     return Entry(this->_log.v);
+}
+
+inline OpError::OpError(std::string_view message, int32_t code, int32_t trace) : code(code), _trace({trace}) {
+    this->message = message;
+}
+
+inline SilentError::SilentError(std::string_view message, int32_t note) : _note(note) {
+    this->message = message;
 }
 void __tpy_init();
 } // namespace tpyapp::internal_fields

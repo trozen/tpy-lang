@@ -27,7 +27,7 @@ struct Resource {
 
     // def __init__(self, name: str) -> None:
     Resource() = default;
-    explicit Resource(std::string_view name) : name(name) {}
+    explicit Resource(std::string_view name);
 
     // def __enter__(self) -> str:
     std::string __enter__() const;
@@ -107,6 +107,9 @@ struct __coro_caller {
     }
 };
 
+
+// def __init__(self, name: str) -> None:
+inline Resource::Resource(std::string_view name) : name(name) {}
 
 // def __enter__(self) -> str:
 inline std::string Resource::__enter__() const {

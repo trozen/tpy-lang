@@ -37,7 +37,7 @@ struct Capped {
 
     // def __init__(self, cap: Int32) -> None:
     Capped() = default;
-    explicit Capped(int32_t cap) : cap(cap) {}
+    explicit Capped(int32_t cap);
 
     template <typename F_pred>
     __gen_Capped_keep<F_pred> keep(F_pred&& pred, std::vector<int32_t>& it) const;
@@ -174,6 +174,9 @@ inline __gen_Capped_keep<F_pred> Capped::keep(F_pred&& pred, std::vector<int32_t
     return __gen_Capped_keep<F_pred>(*this, std::forward<F_pred>(pred), it);
 }
 
+
+// def __init__(self, cap: Int32) -> None:
+inline Capped::Capped(int32_t cap) : cap(cap) {}
 template<typename __F0>
   requires requires(__F0& __fn, int32_t __a0) {
       { __fn(__a0) } -> std::convertible_to<int32_t>;

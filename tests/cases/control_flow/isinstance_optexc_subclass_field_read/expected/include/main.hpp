@@ -38,9 +38,7 @@ void main();
 struct Event : Eventful {
 
     // def __init__(self) -> None: pass
-    Event() {
-        // def __init__(self) -> None: pass
-    }
+    Event();
 
     // def kind(self) -> str:
     std::string kind() override;
@@ -61,7 +59,7 @@ struct ClickEvent : Event {
 
     // def __init__(self, x: int, y: int) -> None:
     ClickEvent() = default;
-    explicit ClickEvent(const ::tpy::BigInt& x, const ::tpy::BigInt& y) : x(x), y(y) {}
+    explicit ClickEvent(const ::tpy::BigInt& x, const ::tpy::BigInt& y);
 
     // def kind(self) -> str:
     std::string kind() override;
@@ -93,11 +91,19 @@ struct tpy::RefAdapter<tpyapp::main::Eventful, T> : tpyapp::main::Eventful {
 namespace tpyapp::main {
 
 
+// def __init__(self) -> None: pass
+inline Event::Event() {
+    // def __init__(self) -> None: pass
+}
+
 // def kind(self) -> str:
 inline std::string Event::kind() {
     // return "event"
     return "event";
 }
+
+// def __init__(self, x: int, y: int) -> None:
+inline ClickEvent::ClickEvent(const ::tpy::BigInt& x, const ::tpy::BigInt& y) : x(x), y(y) {}
 
 // def kind(self) -> str:
 inline std::string ClickEvent::kind() {

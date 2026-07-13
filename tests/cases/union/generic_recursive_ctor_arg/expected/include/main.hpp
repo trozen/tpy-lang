@@ -40,7 +40,7 @@ struct Summary {
 
     // def __init__(self, t: Tree[Int32]) -> None:
     Summary() = default;
-    explicit Summary(const Tree<int32_t>& t) : n(count_leaves(t)) {}
+    explicit Summary(const Tree<int32_t>& t);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Summary";
 };
 
@@ -49,5 +49,8 @@ inline std::ostream& operator<<(std::ostream& os, const Summary& obj) {
     return os;
 }
 
+
+// def __init__(self, t: Tree[Int32]) -> None:
+inline Summary::Summary(const Tree<int32_t>& t) : n(count_leaves(t)) {}
 void __tpy_init();
 } // namespace tpyapp::main

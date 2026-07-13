@@ -22,7 +22,7 @@ struct MyCollection {
 
     // def __init__(self, n: int) -> None:
     MyCollection() = default;
-    explicit MyCollection(const ::tpy::BigInt& n) : size(n) {}
+    explicit MyCollection(const ::tpy::BigInt& n);
 
     // def __len__(self) -> int:
     ::tpy::BigInt __len__() const;
@@ -34,6 +34,9 @@ inline std::ostream& operator<<(std::ostream& os, const MyCollection& obj) {
     return os;
 }
 
+
+// def __init__(self, n: int) -> None:
+inline MyCollection::MyCollection(const ::tpy::BigInt& n) : size(n) {}
 
 // def __len__(self) -> int:
 inline ::tpy::BigInt MyCollection::__len__() const {

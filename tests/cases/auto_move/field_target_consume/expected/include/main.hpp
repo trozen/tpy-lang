@@ -22,7 +22,7 @@ struct Blob {
     int32_t n;
 
     // def __init__(self):
-    Blob() : items({10, 20, 30}), n(0) {}
+    Blob();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Blob";
 };
 
@@ -37,7 +37,7 @@ struct K {
     std::vector<Blob> stored;
 
     // def __init__(self):
-    K() : stored(std::vector<Blob>{}) {}
+    K();
 
     // def take(self, b: Own[Blob]) -> Int32:
     int32_t take(Blob&& b);
@@ -49,6 +49,12 @@ inline std::ostream& operator<<(std::ostream& os, const K& obj) {
     return os;
 }
 
+
+// def __init__(self):
+inline Blob::Blob() : items({10, 20, 30}), n(0) {}
+
+// def __init__(self):
+inline K::K() : stored(std::vector<Blob>{}) {}
 
 // def take(self, b: Own[Blob]) -> Int32:
 inline int32_t K::take(Blob&& b) {

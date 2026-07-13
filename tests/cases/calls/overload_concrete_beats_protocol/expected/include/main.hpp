@@ -26,9 +26,7 @@ void main();
 struct Dog {
 
     // def __init__(self) -> None:
-    Dog() {
-        // pass
-    }
+    Dog();
 
     // def name(self) -> str:
     std::string name() const;
@@ -40,6 +38,11 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
     return os;
 }
 
+
+// def __init__(self) -> None:
+inline Dog::Dog() {
+    // pass
+}
 
 // def name(self) -> str:
 inline std::string Dog::name() const {

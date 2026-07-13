@@ -23,7 +23,7 @@ struct Vec2 {
 
     // def __init__(self, x: Int32, y: Int32) -> None:
     Vec2() = default;
-    explicit Vec2(int32_t x, int32_t y) : x(x), y(y) {}
+    explicit Vec2(int32_t x, int32_t y);
 
     // def total(self) -> Int32:
     int32_t total() const;
@@ -51,7 +51,7 @@ struct Rect {
 
     // def __init__(self, pos: Vec2, size: Vec2) -> None:
     Rect() = default;
-    explicit Rect(Vec2 pos, Vec2 size) : pos(pos), size(size) {}
+    explicit Rect(Vec2 pos, Vec2 size);
 
     // def origin_sum(self) -> Int32:
     int32_t origin_sum() const;
@@ -70,11 +70,17 @@ namespace tpyapp::main {
 
 
 
+// def __init__(self, x: Int32, y: Int32) -> None:
+inline Vec2::Vec2(int32_t x, int32_t y) : x(x), y(y) {}
+
 // def total(self) -> Int32:
 inline int32_t Vec2::total() const {
     // return self.x + self.y
     return (::tpy::add_check<int32_t>(this->x, this->y));
 }
+
+// def __init__(self, pos: Vec2, size: Vec2) -> None:
+inline Rect::Rect(Vec2 pos, Vec2 size) : pos(pos), size(size) {}
 
 // def origin_sum(self) -> Int32:
 inline int32_t Rect::origin_sum() const {

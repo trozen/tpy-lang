@@ -23,7 +23,7 @@ struct Point {
     int32_t y;
 
     Point() = default;
-    explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
+    explicit Point(int32_t x, int32_t y);
 
     bool __eq__(const Point& other) const;
 
@@ -47,7 +47,7 @@ struct PairHolder {
     std::tuple<Point, Point> pair;
 
     PairHolder() = default;
-    explicit PairHolder(const std::tuple<const Point*, const Point*>& pair) : pair(::tpy::tuple_to_storage<std::tuple<Point, Point>>(pair)) {}
+    explicit PairHolder(const std::tuple<const Point*, const Point*>& pair);
 
     bool __eq__(const PairHolder& other) const;
 
@@ -65,6 +65,8 @@ inline std::ostream& operator<<(std::ostream& os, const PairHolder& obj) {
 }
 
 
+inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
+
 inline bool Point::__eq__(const Point& other) const {
     return ((this->x == other.x) && (this->y == other.y));
 }
@@ -72,6 +74,8 @@ inline bool Point::__eq__(const Point& other) const {
 inline std::string Point::__repr__() const {
     return std::format("Point(x={}, y={})", ::tpy::repr_of(this->x), ::tpy::repr_of(this->y));
 }
+
+inline PairHolder::PairHolder(const std::tuple<const Point*, const Point*>& pair) : pair(::tpy::tuple_to_storage<std::tuple<Point, Point>>(pair)) {}
 
 inline bool PairHolder::__eq__(const PairHolder& other) const {
     return ::tpy::tuple_eq(this->pair, other.pair);

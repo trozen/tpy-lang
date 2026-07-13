@@ -22,7 +22,7 @@ struct Container {
     std::vector<int32_t> _items;
 
     // def __init__(self) -> None:
-    Container() : _items({1, 2, 3}) {}
+    Container();
 
     // @property
     // def items(self) -> list[Int32]:
@@ -43,6 +43,9 @@ inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
     return os;
 }
 
+
+// def __init__(self) -> None:
+inline Container::Container() : _items({1, 2, 3}) {}
 
 // @property
 // def items(self) -> list[Int32]:

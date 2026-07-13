@@ -31,7 +31,7 @@ struct Token {
 
     // def __init__(self, n: Int32) -> None:
     Token() = default;
-    explicit Token(int32_t n) : n(n) {}
+    explicit Token(int32_t n);
     // non-copyable (@nocopy)
     Token(const Token&) = delete;
     Token& operator=(const Token&) = delete;
@@ -48,6 +48,9 @@ inline std::ostream& operator<<(std::ostream& os, const Token& obj) {
     return os;
 }
 
+
+// def __init__(self, n: Int32) -> None:
+inline Token::Token(int32_t n) : n(n) {}
 
 // def value(self) -> Int32:
 inline int32_t Token::value() const {

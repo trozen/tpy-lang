@@ -61,7 +61,7 @@ struct B {
     int32_t x;
 
     // def __init__(self) -> None:
-    B() : x(7) {}
+    B();
 
     // def greet(self) -> Int32:
     int32_t greet() const;
@@ -95,6 +95,9 @@ struct tpy::RefAdapter<tpyapp::pkg::b::Greeter, T> : tpyapp::pkg::b::Greeter {
 
 namespace tpyapp::pkg::b {
 
+
+// def __init__(self) -> None:
+inline B::B() : x(7) {}
 
 // def greet(self) -> Int32:
 inline int32_t B::greet() const {

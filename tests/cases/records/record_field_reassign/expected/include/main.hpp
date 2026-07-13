@@ -22,7 +22,7 @@ struct Inner {
 
     // def __init__(self, x: int):
     Inner() = default;
-    explicit Inner(const ::tpy::BigInt& x) : x(x) {}
+    explicit Inner(const ::tpy::BigInt& x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Inner";
 };
 
@@ -38,7 +38,7 @@ struct Holder {
 
     // def __init__(self, first: Own[Inner]):
     Holder() = default;
-    explicit Holder(Inner&& first) : v(std::move(first)) {}
+    explicit Holder(Inner&& first);
 
     // def set_ctor(self, n: int):
     void set_ctor(const ::tpy::BigInt& n);
@@ -56,6 +56,12 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     return os;
 }
 
+
+// def __init__(self, x: int):
+inline Inner::Inner(const ::tpy::BigInt& x) : x(x) {}
+
+// def __init__(self, first: Own[Inner]):
+inline Holder::Holder(Inner&& first) : v(std::move(first)) {}
 
 // def set_ctor(self, n: int):
 inline void Holder::set_ctor(const ::tpy::BigInt& n) {

@@ -20,7 +20,7 @@ struct Counter {
     int32_t opens;
 
     // def __init__(self) -> None:
-    Counter() : opens(0) {}
+    Counter();
 
     // def __enter__(self) -> Int32:
     int32_t __enter__();
@@ -35,6 +35,9 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
     return os;
 }
 
+
+// def __init__(self) -> None:
+inline Counter::Counter() : opens(0) {}
 
 // def __enter__(self) -> Int32:
 inline int32_t Counter::__enter__() {

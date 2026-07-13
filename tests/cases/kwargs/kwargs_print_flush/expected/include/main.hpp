@@ -21,7 +21,7 @@ struct CountingSink {
     int32_t flushes;
 
     // def __init__(self) -> None:
-    CountingSink() : parts(std::vector<std::string>{}), flushes(0) {}
+    CountingSink();
 
     // def write(self, text: str) -> Int32:
     int32_t write(std::string_view text);
@@ -36,6 +36,9 @@ inline std::ostream& operator<<(std::ostream& os, const CountingSink& obj) {
     return os;
 }
 
+
+// def __init__(self) -> None:
+inline CountingSink::CountingSink() : parts(std::vector<std::string>{}), flushes(0) {}
 
 // def write(self, text: str) -> Int32:
 inline int32_t CountingSink::write(std::string_view text) {

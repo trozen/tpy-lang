@@ -20,7 +20,7 @@ struct Clamped {
 
     // def __init__(self, value: Int32) -> None:
     Clamped() = default;
-    explicit Clamped(int32_t value) : _value(value) {}
+    explicit Clamped(int32_t value);
 
     // @property
     // def value(self) -> Int32:
@@ -37,6 +37,9 @@ inline std::ostream& operator<<(std::ostream& os, const Clamped& obj) {
     return os;
 }
 
+
+// def __init__(self, value: Int32) -> None:
+inline Clamped::Clamped(int32_t value) : _value(value) {}
 
 // @property
 // def value(self) -> Int32:

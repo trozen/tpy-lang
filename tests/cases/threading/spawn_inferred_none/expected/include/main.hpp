@@ -24,7 +24,7 @@ struct Beacon {
 
     // def __init__(self, n: Int32):
     Beacon() = default;
-    explicit Beacon(int32_t n) : n(n) {}
+    explicit Beacon(int32_t n);
     // non-copyable (@nocopy)
     Beacon(const Beacon&) = delete;
     Beacon& operator=(const Beacon&) = delete;
@@ -41,6 +41,9 @@ inline std::ostream& operator<<(std::ostream& os, const Beacon& obj) {
     return os;
 }
 
+
+// def __init__(self, n: Int32):
+inline Beacon::Beacon(int32_t n) : n(n) {}
 
 // def run(self) -> None:
 inline void Beacon::run() const {

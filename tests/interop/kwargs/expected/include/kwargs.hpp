@@ -19,7 +19,7 @@ struct Vec {
     int64_t y;
 
     Vec() = default;
-    explicit Vec(int64_t x, int64_t y) : x(x), y(y) {}
+    explicit Vec(int64_t x, int64_t y);
 
     void move(int64_t dx, int64_t dy);
 
@@ -32,6 +32,8 @@ inline std::ostream& operator<<(std::ostream& os, const Vec& obj) {
     return os;
 }
 
+
+inline Vec::Vec(int64_t x, int64_t y) : x(x), y(y) {}
 
 inline void Vec::move(int64_t dx, int64_t dy) {
     this->x = ::tpy::add_check<int64_t>(this->x, dx);

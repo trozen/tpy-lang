@@ -21,7 +21,7 @@ struct Obj {
 
     // def __init__(self, val: int) -> None:
     Obj() = default;
-    explicit Obj(const ::tpy::BigInt& val) : val(val) {}
+    explicit Obj(const ::tpy::BigInt& val);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Obj";
 };
 
@@ -30,5 +30,8 @@ inline std::ostream& operator<<(std::ostream& os, const Obj& obj) {
     return os;
 }
 
+
+// def __init__(self, val: int) -> None:
+inline Obj::Obj(const ::tpy::BigInt& val) : val(val) {}
 void __tpy_init();
 } // namespace tpyapp::main

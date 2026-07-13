@@ -18,9 +18,7 @@ inline constexpr std::string_view __name__ = "a";
 struct A {
 
     // def __init__(self) -> None: pass
-    A() {
-        // def __init__(self) -> None: pass
-    }
+    A();
 
     // def go(self) -> Int32:
     int32_t go() const;

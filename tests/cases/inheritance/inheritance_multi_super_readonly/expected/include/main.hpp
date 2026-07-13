@@ -21,7 +21,7 @@ struct Counter {
     int32_t n;
 
     // def __init__(self) -> None:
-    Counter() : n(0) {}
+    Counter();
 
     // @readonly
     // def get_n(self) -> Int32:
@@ -53,7 +53,7 @@ inline std::ostream& operator<<(std::ostream& os, const Greeter& obj) {
 struct Both : Counter, Greeter {
 
     // def __init__(self) -> None:
-    Both() : Counter() {}
+    Both();
 
     // @readonly
     // def describe(self) -> str:
@@ -66,6 +66,9 @@ inline std::ostream& operator<<(std::ostream& os, const Both& obj) {
     return os;
 }
 
+
+// def __init__(self) -> None:
+inline Counter::Counter() : n(0) {}
 
 // @readonly
 // def get_n(self) -> Int32:
@@ -80,6 +83,9 @@ inline std::string Greeter::greet() const {
     // return "hi"
     return "hi";
 }
+
+// def __init__(self) -> None:
+inline Both::Both() : Counter() {}
 
 // @readonly
 // def describe(self) -> str:

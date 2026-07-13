@@ -23,7 +23,7 @@ struct Leaf {
 
     // def __init__(self, value: int) -> None:
     Leaf() = default;
-    explicit Leaf(const ::tpy::BigInt& value) : value(value) {}
+    explicit Leaf(const ::tpy::BigInt& value);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Leaf";
 };
 
@@ -32,6 +32,9 @@ inline std::ostream& operator<<(std::ostream& os, const Leaf& obj) {
     return os;
 }
 
+
+// def __init__(self, value: int) -> None:
+inline Leaf::Leaf(const ::tpy::BigInt& value) : value(value) {}
 struct Tree {
     using variant_type = std::variant<Leaf, std::vector<Tree>>;
     variant_type value;

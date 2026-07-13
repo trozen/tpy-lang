@@ -31,7 +31,7 @@ struct Rec {
 
     // def __init__(self, s: str) -> None:
     Rec() = default;
-    explicit Rec(std::string_view s) : s(s) {}
+    explicit Rec(std::string_view s);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Rec";
 };
 
@@ -40,5 +40,8 @@ inline std::ostream& operator<<(std::ostream& os, const Rec& obj) {
     return os;
 }
 
+
+// def __init__(self, s: str) -> None:
+inline Rec::Rec(std::string_view s) : s(s) {}
 void __tpy_init();
 } // namespace tpyapp::main

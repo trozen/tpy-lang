@@ -22,7 +22,7 @@ struct Counter {
 
     // def __init__(self, limit: Int32) -> None:
     Counter() = default;
-    explicit Counter(int32_t limit) : current(0), limit(limit) {}
+    explicit Counter(int32_t limit);
 
     // def __iter__(self) -> Counter:
     Counter& __iter__();
@@ -43,7 +43,7 @@ struct Box {
     Counter it;
 
     // def __init__(self) -> None:
-    Box() : it(Counter(3)) {}
+    Box();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
@@ -52,6 +52,9 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
     return os;
 }
 
+
+// def __init__(self, limit: Int32) -> None:
+inline Counter::Counter(int32_t limit) : current(0), limit(limit) {}
 
 // def __iter__(self) -> Counter:
 inline Counter& Counter::__iter__() {
@@ -73,5 +76,8 @@ inline std::expected<int32_t, ::tpy::StopIteration> Counter::__next__() {
     // raise StopIteration
     return ::tpy::make_unexpected(::tpy::StopIteration{});
 }
+
+// def __init__(self) -> None:
+inline Box::Box() : it(Counter(3)) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -22,7 +22,7 @@ struct A {
     int32_t x;
 
     A() = default;
-    explicit A(int32_t x) : x(x) {}
+    explicit A(int32_t x);
 
     bool __eq__(const A& other) const;
 
@@ -46,7 +46,7 @@ struct B : A {
     int32_t y;
 
     B() = default;
-    explicit B(int32_t x, int32_t y) : A(x), y(y) {}
+    explicit B(int32_t x, int32_t y);
 
     bool __eq__(const B& other) const;
 
@@ -70,7 +70,7 @@ struct C : B {
     int32_t z;
 
     C() = default;
-    explicit C(int32_t x, int32_t y, int32_t z) : B(x, y), z(z) {}
+    explicit C(int32_t x, int32_t y, int32_t z);
 
     bool __eq__(const C& other) const;
 
@@ -88,6 +88,8 @@ inline std::ostream& operator<<(std::ostream& os, const C& obj) {
 }
 
 
+inline A::A(int32_t x) : x(x) {}
+
 inline bool A::__eq__(const A& other) const {
     return (this->x == other.x);
 }
@@ -96,6 +98,8 @@ inline std::string A::__repr__() const {
     return std::format("A(x={})", ::tpy::repr_of(this->x));
 }
 
+inline B::B(int32_t x, int32_t y) : A(x), y(y) {}
+
 inline bool B::__eq__(const B& other) const {
     return ((this->x == other.x) && (this->y == other.y));
 }
@@ -103,6 +107,8 @@ inline bool B::__eq__(const B& other) const {
 inline std::string B::__repr__() const {
     return std::format("B(x={}, y={})", ::tpy::repr_of(this->x), ::tpy::repr_of(this->y));
 }
+
+inline C::C(int32_t x, int32_t y, int32_t z) : B(x, y), z(z) {}
 
 inline bool C::__eq__(const C& other) const {
     return (((this->x == other.x) && (this->y == other.y)) && (this->z == other.z));

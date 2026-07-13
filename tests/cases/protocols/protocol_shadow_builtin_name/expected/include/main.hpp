@@ -52,7 +52,7 @@ struct Widget {
 
     // def __init__(self, val: Int32):
     Widget() = default;
-    explicit Widget(int32_t val) : val(val) {}
+    explicit Widget(int32_t val);
 
     // def compare_to(self) -> Int32:
     int32_t compare_to() const;
@@ -64,6 +64,9 @@ inline std::ostream& operator<<(std::ostream& os, const Widget& obj) {
     return os;
 }
 
+
+// def __init__(self, val: Int32):
+inline Widget::Widget(int32_t val) : val(val) {}
 
 // def compare_to(self) -> Int32:
 inline int32_t Widget::compare_to() const {

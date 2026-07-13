@@ -32,7 +32,7 @@ struct Counter {
 
     // def __init__(self, limit: int) -> None:
     Counter() = default;
-    explicit Counter(const ::tpy::BigInt& limit) : n(::tpy::BigInt(0)), limit(limit) {}
+    explicit Counter(const ::tpy::BigInt& limit);
 
     __coro_Counter___anext__ __anext__();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Counter";
@@ -50,7 +50,7 @@ struct Counts {
 
     // def __init__(self, limit: int) -> None:
     Counts() = default;
-    explicit Counts(const ::tpy::BigInt& limit) : limit(limit) {}
+    explicit Counts(const ::tpy::BigInt& limit);
 
     // def __aiter__(self) -> Own[Counter]:
     Counter __aiter__() const;
@@ -168,6 +168,12 @@ struct __coro_main {
     }
 };
 
+
+// def __init__(self, limit: int) -> None:
+inline Counter::Counter(const ::tpy::BigInt& limit) : n(::tpy::BigInt(0)), limit(limit) {}
+
+// def __init__(self, limit: int) -> None:
+inline Counts::Counts(const ::tpy::BigInt& limit) : limit(limit) {}
 
 // def __aiter__(self) -> Own[Counter]:
 inline Counter Counts::__aiter__() const {

@@ -21,7 +21,7 @@ struct Base {
 
     // def __init__(self, x: Int32) -> None:
     Base() = default;
-    explicit Base(int32_t x) : _x(x) {}
+    explicit Base(int32_t x);
 
     // @property
     // def x(self) -> Int32:
@@ -41,7 +41,7 @@ struct Child : Base {
 
     // def __init__(self, x: Int32, y: Int32) -> None:
     Child() = default;
-    explicit Child(int32_t x, int32_t y) : Base(x), _y(y) {}
+    explicit Child(int32_t x, int32_t y);
 
     // @property
     // def y(self) -> Int32:
@@ -58,12 +58,18 @@ inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
 }
 
 
+// def __init__(self, x: Int32) -> None:
+inline Base::Base(int32_t x) : _x(x) {}
+
 // @property
 // def x(self) -> Int32:
 inline int32_t Base::x() const {
     // return self._x
     return this->_x;
 }
+
+// def __init__(self, x: Int32, y: Int32) -> None:
+inline Child::Child(int32_t x, int32_t y) : Base(x), _y(y) {}
 
 // @property
 // def y(self) -> Int32:

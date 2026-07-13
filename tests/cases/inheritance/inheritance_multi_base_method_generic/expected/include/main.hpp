@@ -43,7 +43,7 @@ struct IntBox : Box<int32_t> {
 
     // def __init__(self, value: Int32) -> None:
     IntBox() = default;
-    explicit IntBox(int32_t value) : Box<int32_t>(value) {}
+    explicit IntBox(int32_t value);
 
     // def fetch(self) -> Int32:
     int32_t fetch();
@@ -55,6 +55,9 @@ inline std::ostream& operator<<(std::ostream& os, const IntBox& obj) {
     return os;
 }
 
+
+// def __init__(self, value: Int32) -> None:
+inline IntBox::IntBox(int32_t value) : Box<int32_t>(value) {}
 
 // def fetch(self) -> Int32:
 inline int32_t IntBox::fetch() {

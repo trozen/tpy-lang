@@ -22,7 +22,7 @@ struct __tpy_builder_argparse_args_1 {
 
     // parser.parse_args(["--mode", "bogus"])
     __tpy_builder_argparse_args_1() = default;
-    explicit __tpy_builder_argparse_args_1(std::optional<std::string_view> mode) : mode(mode ? std::make_optional(std::string(*mode)) : std::nullopt) {}
+    explicit __tpy_builder_argparse_args_1(std::optional<std::string_view> mode);
     static constexpr std::string_view __tpy_class_name__ = "__main__.__tpy_builder_argparse_args_1";
 };
 
@@ -31,5 +31,8 @@ inline std::ostream& operator<<(std::ostream& os, const __tpy_builder_argparse_a
     return os;
 }
 
+
+// parser.parse_args(["--mode", "bogus"])
+inline __tpy_builder_argparse_args_1::__tpy_builder_argparse_args_1(std::optional<std::string_view> mode) : mode(mode ? std::make_optional(std::string(*mode)) : std::nullopt) {}
 void __tpy_init();
 } // namespace tpyapp::main

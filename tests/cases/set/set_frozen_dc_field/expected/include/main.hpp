@@ -24,7 +24,7 @@ struct Tag {
     int32_t value;
 
     Tag() = default;
-    explicit Tag(std::string_view name, int32_t value) : name(name), value(value) {}
+    explicit Tag(std::string_view name, int32_t value);
 
     bool __eq__(const Tag& other) const;
 
@@ -62,7 +62,7 @@ struct SetItem {
     ::tpy::ordered_set<Tag> tags;
 
     SetItem() = default;
-    explicit SetItem(std::string_view name, ::tpy::ordered_set<Tag>&& tags) : name(name), tags(std::move(tags)) {}
+    explicit SetItem(std::string_view name, ::tpy::ordered_set<Tag>&& tags);
 
     bool __eq__(const SetItem& other) const;
 
@@ -86,7 +86,7 @@ struct DictItem {
     ::tpy::ordered_map<Tag, std::string> lookup;
 
     DictItem() = default;
-    explicit DictItem(::tpy::ordered_map<Tag, std::string>&& lookup) : lookup(std::move(lookup)) {}
+    explicit DictItem(::tpy::ordered_map<Tag, std::string>&& lookup);
 
     bool __eq__(const DictItem& other) const;
 
@@ -104,6 +104,8 @@ inline std::ostream& operator<<(std::ostream& os, const DictItem& obj) {
 }
 
 
+inline Tag::Tag(std::string_view name, int32_t value) : name(name), value(value) {}
+
 inline bool Tag::__eq__(const Tag& other) const {
     return ((this->name == other.name) && (this->value == other.value));
 }
@@ -118,6 +120,8 @@ inline uint64_t Tag::__hash__() const {
     return h;
 }
 
+inline SetItem::SetItem(std::string_view name, ::tpy::ordered_set<Tag>&& tags) : name(name), tags(std::move(tags)) {}
+
 inline bool SetItem::__eq__(const SetItem& other) const {
     return ((this->name == other.name) && (this->tags == other.tags));
 }
@@ -125,6 +129,8 @@ inline bool SetItem::__eq__(const SetItem& other) const {
 inline std::string SetItem::__repr__() const {
     return std::format("SetItem(name={}, tags={})", ::tpy::repr_of(this->name), ::tpy::set_to_str(this->tags));
 }
+
+inline DictItem::DictItem(::tpy::ordered_map<Tag, std::string>&& lookup) : lookup(std::move(lookup)) {}
 
 inline bool DictItem::__eq__(const DictItem& other) const {
     return (this->lookup == other.lookup);

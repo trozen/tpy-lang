@@ -29,7 +29,7 @@ struct Node {
 
     // def __init__(self, value: Int32) -> None:
     Node() = default;
-    explicit Node(int32_t value) : value(value) {}
+    explicit Node(int32_t value);
 
     // def get_value(self) -> Int32:
     int32_t get_value() const;
@@ -48,7 +48,7 @@ struct Container {
 
     // def __init__(self, node: Ptr[Node]) -> None:
     Container() = default;
-    explicit Container(Node* node) : node(node) {}
+    explicit Container(Node* node);
 
     // def read_if_present(self) -> Int32:
     int32_t read_if_present() const;
@@ -87,7 +87,7 @@ struct Wrapper {
 
     // def __init__(self, inner: Container) -> None:
     Wrapper() = default;
-    explicit Wrapper(const Container& inner) : inner(inner) {}
+    explicit Wrapper(const Container& inner);
 
     // # Method call on nested field invalidates its sub-path narrowing
     // def read_after_inner_mutate(self) -> Int32:
@@ -101,11 +101,17 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {
 }
 
 
+// def __init__(self, value: Int32) -> None:
+inline Node::Node(int32_t value) : value(value) {}
+
 // def get_value(self) -> Int32:
 inline int32_t Node::get_value() const {
     // return self.value
     return this->value;
 }
+
+// def __init__(self, node: Ptr[Node]) -> None:
+inline Container::Container(Node* node) : node(node) {}
 
 // def read_if_present(self) -> Int32:
 inline int32_t Container::read_if_present() const {
@@ -177,6 +183,9 @@ inline int32_t Container::read_after_reassign(Node* other) {
     // return Int32(-1)
     return -1;
 }
+
+// def __init__(self, inner: Container) -> None:
+inline Wrapper::Wrapper(const Container& inner) : inner(inner) {}
 
 // # Method call on nested field invalidates its sub-path narrowing
 // def read_after_inner_mutate(self) -> Int32:

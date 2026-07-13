@@ -2522,7 +2522,8 @@ def emit_thir_constructor_tail(out: TextIO, ctor: THIRConstructor,
                                *, comments: CommentSink | None = None,
                                temps: TempSink | None = None,
                                with_counter: ModuleCounter | None = None,
-                               try_counter: ModuleCounter | None = None) -> None:
+                               try_counter: ModuleCounter | None = None,
+                               body_indent_level: int = 2) -> None:
     """Emit a constructor's member-init-list + body tail (the ` : f(v)... {}` that
     follows the signature). The THIR counterpart of gen_record_decl's AST MIL+body
     emit: the signature is written by the AST path before this is called (the M1
@@ -2530,7 +2531,8 @@ def emit_thir_constructor_tail(out: TextIO, ctor: THIRConstructor,
     tail. M3a is pure-MIL, so `body` is empty and this emits ` {}` (or
     ` : inits {}`). MIL / base-init cells have no flush point, so arg temps
     never lower there (gate + validator enforced); the body shares the
-    statement machinery and its sink."""
+    statement machinery and its sink. ``body_indent_level`` is 2 for an
+    in-struct definition, 1 for an out-of-line one at namespace scope."""
     state = _EmitState(comments or _NO_COMMENTS, temps=temps or TempSink(),
                        with_counter=with_counter or ModuleCounter(),
                        try_counter=try_counter or ModuleCounter())
@@ -2545,8 +2547,8 @@ def emit_thir_constructor_tail(out: TextIO, ctor: THIRConstructor,
         out.write(", ".join(inits))
     if ctor.body:
         out.write(" {\n")
-        _emit_stmts(out, ctor.body, 2, state)
-        out.write(f"{INDENT}}}\n")
+        _emit_stmts(out, ctor.body, body_indent_level, state)
+        out.write(f"{INDENT * (body_indent_level - 1)}}}\n")
     else:
         out.write(" {}\n")
 

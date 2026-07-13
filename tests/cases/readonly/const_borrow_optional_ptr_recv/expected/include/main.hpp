@@ -26,7 +26,7 @@ struct A {
 
     // def __init__(self, v: int) -> None:
     A() = default;
-    explicit A(const ::tpy::BigInt& v) : v(v) {}
+    explicit A(const ::tpy::BigInt& v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.A";
 };
 
@@ -43,7 +43,7 @@ struct H {
     std::optional<A> f;
 
     // def __init__(self) -> None:
-    H() : g(A(::tpy::BigInt(1))), f(A(::tpy::BigInt(2))) {}
+    H();
     static constexpr std::string_view __tpy_class_name__ = "__main__.H";
 };
 
@@ -52,5 +52,11 @@ inline std::ostream& operator<<(std::ostream& os, const H& obj) {
     return os;
 }
 
+
+// def __init__(self, v: int) -> None:
+inline A::A(const ::tpy::BigInt& v) : v(v) {}
+
+// def __init__(self) -> None:
+inline H::H() : g(A(::tpy::BigInt(1))), f(A(::tpy::BigInt(2))) {}
 void __tpy_init();
 } // namespace tpyapp::main

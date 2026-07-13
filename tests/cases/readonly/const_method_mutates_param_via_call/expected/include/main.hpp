@@ -25,7 +25,7 @@ struct Sink {
     std::string buf;
 
     // def __init__(self) -> None:
-    Sink() : buf("") {}
+    Sink();
 
     // def push(self, s: str) -> None:
     void push(std::string_view s);
@@ -60,6 +60,9 @@ inline std::ostream& operator<<(std::ostream& os, const Renderer& obj) {
     return os;
 }
 
+
+// def __init__(self) -> None:
+inline Sink::Sink() : buf("") {}
 
 // def push(self, s: str) -> None:
 inline void Sink::push(std::string_view s) {

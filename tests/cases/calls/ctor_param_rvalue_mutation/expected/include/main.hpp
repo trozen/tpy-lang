@@ -22,7 +22,7 @@ struct Node {
 
     // def __init__(self, v: int) -> None:
     Node() = default;
-    explicit Node(const ::tpy::BigInt& v) : value(v) {}
+    explicit Node(const ::tpy::BigInt& v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Node";
 };
 
@@ -38,18 +38,7 @@ struct Sink {
 
     // def __init__(self, n: Node) -> None:
     Sink() = default;
-    explicit Sink(Node& n) {
-        // # Mutating use of the param. Two effects:
-        // # (1) the param const-infers to `Node&` (was `const Node&`), so the
-        // #     call site must synthesize a temp to bind the rvalue Node(1).
-        // # (2) `self.captured = n.value` AFTER the side-effecting call must
-        // #     read the post-mutation value (99) -- the MIL hoist must stop
-        // #     at `take_mut(n)`, not pull the field assign ahead of it.
-        // take_mut(n)
-        take_mut(&n);
-        // self.captured = n.value
-        this->captured = n.value;
-    }
+    explicit Sink(Node& n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Sink";
 };
 
@@ -58,5 +47,22 @@ inline std::ostream& operator<<(std::ostream& os, const Sink& obj) {
     return os;
 }
 
+
+// def __init__(self, v: int) -> None:
+inline Node::Node(const ::tpy::BigInt& v) : value(v) {}
+
+// def __init__(self, n: Node) -> None:
+inline Sink::Sink(Node& n) {
+    // # Mutating use of the param. Two effects:
+    // # (1) the param const-infers to `Node&` (was `const Node&`), so the
+    // #     call site must synthesize a temp to bind the rvalue Node(1).
+    // # (2) `self.captured = n.value` AFTER the side-effecting call must
+    // #     read the post-mutation value (99) -- the MIL hoist must stop
+    // #     at `take_mut(n)`, not pull the field assign ahead of it.
+    // take_mut(n)
+    take_mut(&n);
+    // self.captured = n.value
+    this->captured = n.value;
+}
 void __tpy_init();
 } // namespace tpyapp::main

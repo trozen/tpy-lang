@@ -22,7 +22,7 @@ struct Handle {
 
     // def __init__(self, fd: Int32) -> None:
     Handle() = default;
-    explicit Handle(int32_t fd) : fd(fd) {}
+    explicit Handle(int32_t fd);
     // non-copyable (@nocopy)
     Handle(const Handle&) = delete;
     Handle& operator=(const Handle&) = delete;
@@ -42,7 +42,7 @@ struct Box {
     std::vector<Handle> items;
 
     // def __init__(self) -> None:
-    Box() : items(::tpy::make_vector<Handle>(Handle(1), Handle(2))) {}
+    Box();
     // non-copyable (field 'items')
     Box(const Box&) = delete;
     Box& operator=(const Box&) = delete;
@@ -71,5 +71,11 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
     return os;
 }
 
+
+// def __init__(self, fd: Int32) -> None:
+inline Handle::Handle(int32_t fd) : fd(fd) {}
+
+// def __init__(self) -> None:
+inline Box::Box() : items(::tpy::make_vector<Handle>(Handle(1), Handle(2))) {}
 void __tpy_init();
 } // namespace tpyapp::main

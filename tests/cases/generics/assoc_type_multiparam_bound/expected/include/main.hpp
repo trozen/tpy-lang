@@ -36,7 +36,7 @@ struct IntStr {
 
     // def __init__(self, a: int, b: str):
     IntStr() = default;
-    explicit IntStr(const ::tpy::BigInt& a, std::string_view b) : a(a), b(b) {}
+    explicit IntStr(const ::tpy::BigInt& a, std::string_view b);
 
     // def first(self) -> int:
     ::tpy::BigInt first() const;
@@ -60,7 +60,7 @@ struct ListStr {
 
     // def __init__(self, xs: list[int], s: str):
     ListStr() = default;
-    explicit ListStr(const std::vector<::tpy::BigInt>& xs, std::string_view s) : xs(xs), s(s) {}
+    explicit ListStr(const std::vector<::tpy::BigInt>& xs, std::string_view s);
 
     // def first(self) -> list[int]:
     std::vector<::tpy::BigInt>& first();
@@ -76,6 +76,9 @@ inline std::ostream& operator<<(std::ostream& os, const ListStr& obj) {
 }
 
 
+// def __init__(self, a: int, b: str):
+inline IntStr::IntStr(const ::tpy::BigInt& a, std::string_view b) : a(a), b(b) {}
+
 // def first(self) -> int:
 inline ::tpy::BigInt IntStr::first() const {
     // return self.a
@@ -87,6 +90,9 @@ inline std::string IntStr::second() const {
     // return self.b
     return this->b;
 }
+
+// def __init__(self, xs: list[int], s: str):
+inline ListStr::ListStr(const std::vector<::tpy::BigInt>& xs, std::string_view s) : xs(xs), s(s) {}
 
 // def first(self) -> list[int]:
 inline std::vector<::tpy::BigInt>& ListStr::first() {

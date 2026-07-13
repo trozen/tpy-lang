@@ -29,7 +29,7 @@ struct HasEnter {
     int32_t n;
 
     // def __init__(self) -> None:
-    HasEnter() : n(0) {}
+    HasEnter();
 
     __coro_HasEnter___aenter__ __aenter__();
     static constexpr std::string_view __tpy_class_name__ = "__main__.HasEnter";
@@ -156,5 +156,8 @@ struct __coro_main_coro {
     }
 };
 
+
+// def __init__(self) -> None:
+inline HasEnter::HasEnter() : n(0) {}
 void __tpy_init();
 } // namespace tpyapp::main

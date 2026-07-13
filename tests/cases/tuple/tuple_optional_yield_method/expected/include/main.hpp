@@ -21,7 +21,7 @@ struct P {
 
     // def __init__(self, x: Int32) -> None:
     P() = default;
-    explicit P(int32_t x) : x(x) {}
+    explicit P(int32_t x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.P";
 };
 
@@ -37,7 +37,7 @@ struct Holder {
 
     // def __init__(self, n: Int32) -> None:
     Holder() = default;
-    explicit Holder(int32_t n) : n(n) {}
+    explicit Holder(int32_t n);
 
     // def pairs(self, items: list[P]) -> Iterator[tuple[P | None, P | None]]:
     auto pairs(std::vector<P>& items) const {
@@ -61,5 +61,11 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     return os;
 }
 
+
+// def __init__(self, x: Int32) -> None:
+inline P::P(int32_t x) : x(x) {}
+
+// def __init__(self, n: Int32) -> None:
+inline Holder::Holder(int32_t n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

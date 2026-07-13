@@ -24,7 +24,7 @@ struct Hybrid {
 
     // def __init__(self, declared: str) -> None:
     Hybrid() = default;
-    explicit Hybrid(std::string_view declared) : declared(declared) {}
+    explicit Hybrid(std::string_view declared);
 
     // def __getattr__(self, name: str) -> str:
     std::string __getattr__(std::string_view name) const;
@@ -36,6 +36,9 @@ inline std::ostream& operator<<(std::ostream& os, const Hybrid& obj) {
     return os;
 }
 
+
+// def __init__(self, declared: str) -> None:
+inline Hybrid::Hybrid(std::string_view declared) : declared(declared) {}
 
 // def __getattr__(self, name: str) -> str:
 inline std::string Hybrid::__getattr__(std::string_view name) const {

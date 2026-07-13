@@ -27,7 +27,7 @@ struct Stats {
 
     // def __init__(self, total: int | None, label: int | None) -> None:
     Stats() = default;
-    explicit Stats(std::optional<::tpy::BigInt> total, std::optional<::tpy::BigInt> label) : total(total), label(label) {}
+    explicit Stats(std::optional<::tpy::BigInt> total, std::optional<::tpy::BigInt> label);
 
     // def show(self) -> None:
     void show() const;
@@ -39,6 +39,9 @@ inline std::ostream& operator<<(std::ostream& os, const Stats& obj) {
     return os;
 }
 
+
+// def __init__(self, total: int | None, label: int | None) -> None:
+inline Stats::Stats(std::optional<::tpy::BigInt> total, std::optional<::tpy::BigInt> label) : total(total), label(label) {}
 
 // def show(self) -> None:
 inline void Stats::show() const {

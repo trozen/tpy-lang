@@ -40,7 +40,7 @@ struct Data {
 
     // def __init__(self, v: int):
     Data() = default;
-    explicit Data(const ::tpy::BigInt& v) : value(v) {}
+    explicit Data(const ::tpy::BigInt& v);
     // non-copyable (@nocopy)
     Data(const Data&) = delete;
     Data& operator=(const Data&) = delete;
@@ -54,5 +54,8 @@ inline std::ostream& operator<<(std::ostream& os, const Data& obj) {
     return os;
 }
 
+
+// def __init__(self, v: int):
+inline Data::Data(const ::tpy::BigInt& v) : value(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

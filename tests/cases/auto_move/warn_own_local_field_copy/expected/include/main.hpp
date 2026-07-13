@@ -24,7 +24,7 @@ struct Item {
 
     // def __init__(self, v: Int32) -> None:
     Item() = default;
-    explicit Item(int32_t v) : value(v) {}
+    explicit Item(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Item";
 };
 
@@ -39,7 +39,7 @@ struct Holder {
     Item item;
 
     // def __init__(self) -> None:
-    Holder() : item(Item(0)) {}
+    Holder();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
@@ -48,5 +48,11 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     return os;
 }
 
+
+// def __init__(self, v: Int32) -> None:
+inline Item::Item(int32_t v) : value(v) {}
+
+// def __init__(self) -> None:
+inline Holder::Holder() : item(Item(0)) {}
 void __tpy_init();
 } // namespace tpyapp::main

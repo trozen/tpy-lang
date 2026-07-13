@@ -58,7 +58,7 @@ struct Owner {
 
     // def __init__(self, item: Own[Tagged[Greeter]]):
     Owner() = default;
-    explicit Owner(Tagged<Greeter>&& item) : item(std::move(item)) {}
+    explicit Owner(Tagged<Greeter>&& item);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Owner";
 };
 
@@ -86,5 +86,8 @@ struct tpy::RefAdapter<tpyapp::main::Greeter, T> : tpyapp::main::Greeter {
 
 namespace tpyapp::main {
 
+
+// def __init__(self, item: Own[Tagged[Greeter]]):
+inline Owner::Owner(Tagged<Greeter>&& item) : item(std::move(item)) {}
 void __tpy_init();
 } // namespace tpyapp::main

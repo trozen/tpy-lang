@@ -25,7 +25,7 @@ struct Dog {
 
     // def __init__(self, name: str) -> None:
     Dog() = default;
-    explicit Dog(std::string_view name) : name(name) {}
+    explicit Dog(std::string_view name);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Dog";
 };
 
@@ -41,7 +41,7 @@ struct Cat {
 
     // def __init__(self, name: str) -> None:
     Cat() = default;
-    explicit Cat(std::string_view name) : name(name) {}
+    explicit Cat(std::string_view name);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Cat";
 };
 
@@ -56,7 +56,7 @@ struct Pen {
     std::variant<Cat, Dog> pet;
 
     // def __init__(self, pet: Dog | Cat) -> None:
-    explicit Pen(const std::variant<Cat*, Dog*> pet) : pet(::tpy::to_value_variant<std::variant<Cat, Dog>>(pet)) {}
+    explicit Pen(const std::variant<Cat*, Dog*> pet);
 
     // def set_pet(self, pet: Dog | Cat) -> None:
     void set_pet(const std::variant<Cat*, Dog*> pet);
@@ -68,6 +68,15 @@ inline std::ostream& operator<<(std::ostream& os, const Pen& obj) {
     return os;
 }
 
+
+// def __init__(self, name: str) -> None:
+inline Dog::Dog(std::string_view name) : name(name) {}
+
+// def __init__(self, name: str) -> None:
+inline Cat::Cat(std::string_view name) : name(name) {}
+
+// def __init__(self, pet: Dog | Cat) -> None:
+inline Pen::Pen(const std::variant<Cat*, Dog*> pet) : pet(::tpy::to_value_variant<std::variant<Cat, Dog>>(pet)) {}
 
 // def set_pet(self, pet: Dog | Cat) -> None:
 inline void Pen::set_pet(const std::variant<Cat*, Dog*> pet) {

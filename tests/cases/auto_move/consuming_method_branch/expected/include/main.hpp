@@ -20,7 +20,7 @@ struct Wrapper {
 
     // def __init__(self, value: int):
     Wrapper() = default;
-    explicit Wrapper(const ::tpy::BigInt& value) : _value(value) {}
+    explicit Wrapper(const ::tpy::BigInt& value);
 
     // def take(self: Own[Self]) -> int:
     ::tpy::BigInt take() &&;
@@ -36,6 +36,9 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {
     return os;
 }
 
+
+// def __init__(self, value: int):
+inline Wrapper::Wrapper(const ::tpy::BigInt& value) : _value(value) {}
 
 // def take(self: Own[Self]) -> int:
 inline ::tpy::BigInt Wrapper::take() && {

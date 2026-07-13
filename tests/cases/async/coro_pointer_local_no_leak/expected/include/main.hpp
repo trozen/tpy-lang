@@ -31,7 +31,7 @@ struct P {
 
     // def __init__(self, v: Int32) -> None:
     P() = default;
-    explicit P(int32_t v) : v(v) {}
+    explicit P(int32_t v);
     // non-copyable (@nocopy)
     P(const P&) = delete;
     P& operator=(const P&) = delete;
@@ -124,5 +124,8 @@ struct __coro_driver {
     }
 };
 
+
+// def __init__(self, v: Int32) -> None:
+inline P::P(int32_t v) : v(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

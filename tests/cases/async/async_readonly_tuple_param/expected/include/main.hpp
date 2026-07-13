@@ -32,7 +32,7 @@ struct Tag {
 
     // def __init__(self, n: Int32) -> None:
     Tag() = default;
-    explicit Tag(int32_t n) : n(n) {}
+    explicit Tag(int32_t n);
     // non-copyable (@nocopy)
     Tag(const Tag&) = delete;
     Tag& operator=(const Tag&) = delete;
@@ -126,5 +126,8 @@ struct __gen_gsum : public ::tpy::next_iter_mixin<__gen_gsum, int32_t> {
     }
 };
 
+
+// def __init__(self, n: Int32) -> None:
+inline Tag::Tag(int32_t n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

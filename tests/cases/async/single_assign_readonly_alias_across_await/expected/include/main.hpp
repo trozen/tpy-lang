@@ -28,7 +28,7 @@ struct Inner {
 
     // def __init__(self, n: int) -> None:
     Inner() = default;
-    explicit Inner(const ::tpy::BigInt& n) : n(n) {}
+    explicit Inner(const ::tpy::BigInt& n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Inner";
 };
 
@@ -44,7 +44,7 @@ struct Outer {
 
     // def __init__(self, n: int) -> None:
     Outer() = default;
-    explicit Outer(const ::tpy::BigInt& n) : inner(Inner(n)) {}
+    explicit Outer(const ::tpy::BigInt& n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Outer";
 };
 
@@ -103,5 +103,11 @@ struct __coro_amain {
     }
 };
 
+
+// def __init__(self, n: int) -> None:
+inline Inner::Inner(const ::tpy::BigInt& n) : n(n) {}
+
+// def __init__(self, n: int) -> None:
+inline Outer::Outer(const ::tpy::BigInt& n) : inner(Inner(n)) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -24,7 +24,7 @@ struct Point {
 
     // def __init__(self, x: int, y: int) -> None:
     Point() = default;
-    explicit Point(const ::tpy::BigInt& x, const ::tpy::BigInt& y) : x(x), y(y) {}
+    explicit Point(const ::tpy::BigInt& x, const ::tpy::BigInt& y);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
 };
 
@@ -44,7 +44,7 @@ struct Config {
 
     // def __init__(self, host: str, port: int = 8080, verbose: bool = False) -> None:
     Config() = default;
-    explicit Config(std::string_view host, const ::tpy::BigInt& port = 8080, bool verbose = false) : host(host), port(port), verbose(verbose) {}
+    explicit Config(std::string_view host, const ::tpy::BigInt& port = 8080, bool verbose = false);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Config";
 };
 
@@ -53,5 +53,11 @@ inline std::ostream& operator<<(std::ostream& os, const Config& obj) {
     return os;
 }
 
+
+// def __init__(self, x: int, y: int) -> None:
+inline Point::Point(const ::tpy::BigInt& x, const ::tpy::BigInt& y) : x(x), y(y) {}
+
+// def __init__(self, host: str, port: int = 8080, verbose: bool = False) -> None:
+inline Config::Config(std::string_view host, const ::tpy::BigInt& port, bool verbose) : host(host), port(port), verbose(verbose) {}
 void __tpy_init();
 } // namespace tpyapp::main

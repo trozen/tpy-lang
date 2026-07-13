@@ -17,7 +17,7 @@ struct Foo {
     std::string tag;
 
     // def __init__(self) -> None:
-    Foo() : tag("from_sub") {}
+    Foo();
     static constexpr std::string_view __tpy_class_name__ = "pkg.sub.Foo";
 };
 
@@ -26,5 +26,8 @@ inline std::ostream& operator<<(std::ostream& os, const Foo& obj) {
     return os;
 }
 
+
+// def __init__(self) -> None:
+inline Foo::Foo() : tag("from_sub") {}
 void __tpy_init();
 } // namespace tpyapp::pkg::sub

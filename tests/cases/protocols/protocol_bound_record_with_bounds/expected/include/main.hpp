@@ -22,7 +22,7 @@ struct Message {
 
     // def __init__(self, text: str) -> None:
     Message() = default;
-    explicit Message(std::string_view text) : text(text) {}
+    explicit Message(std::string_view text);
 
     // def to_str(self) -> str:
     std::string to_str() const;
@@ -115,6 +115,9 @@ inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
     return os;
 }
 
+
+// def __init__(self, text: str) -> None:
+inline Message::Message(std::string_view text) : text(text) {}
 
 // def to_str(self) -> str:
 inline std::string Message::to_str() const {

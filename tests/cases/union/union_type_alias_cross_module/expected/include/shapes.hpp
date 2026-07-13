@@ -19,7 +19,7 @@ struct Circle {
 
     // def __init__(self, radius: Int32) -> None:
     Circle() = default;
-    explicit Circle(int32_t radius) : radius(radius) {}
+    explicit Circle(int32_t radius);
     static constexpr std::string_view __tpy_class_name__ = "shapes.Circle";
 };
 
@@ -35,7 +35,7 @@ struct Rect {
 
     // def __init__(self, width: Int32) -> None:
     Rect() = default;
-    explicit Rect(int32_t width) : width(width) {}
+    explicit Rect(int32_t width);
     static constexpr std::string_view __tpy_class_name__ = "shapes.Rect";
 };
 
@@ -44,6 +44,12 @@ inline std::ostream& operator<<(std::ostream& os, const Rect& obj) {
     return os;
 }
 
+
+// def __init__(self, radius: Int32) -> None:
+inline Circle::Circle(int32_t radius) : radius(radius) {}
+
+// def __init__(self, width: Int32) -> None:
+inline Rect::Rect(int32_t width) : width(width) {}
 using Shape = std::variant<Circle, Rect>;
 
 void __tpy_init();

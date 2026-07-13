@@ -41,7 +41,7 @@ struct Holder {
 
     // def __init__(self, box: Own[Box[Int32]]) -> None:
     Holder() = default;
-    explicit Holder(Box<int32_t>&& box) : box(std::move(box)) {}
+    explicit Holder(Box<int32_t>&& box);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
@@ -50,6 +50,9 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     return os;
 }
 
+
+// def __init__(self, box: Own[Box[Int32]]) -> None:
+inline Holder::Holder(Box<int32_t>&& box) : box(std::move(box)) {}
 // def wrap[T](v: T) -> Own[Box[T]]:
 template<typename T>
 Box<T> wrap(::tpy::param_val_or_ref_t<T> v) {

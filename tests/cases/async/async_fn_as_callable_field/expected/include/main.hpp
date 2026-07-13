@@ -31,7 +31,7 @@ struct Conn {
 
     // def __init__(self, id: Int32) -> None:
     Conn() = default;
-    explicit Conn(int32_t id) : id(id) {}
+    explicit Conn(int32_t id);
     // non-copyable (@nocopy)
     Conn(const Conn&) = delete;
     Conn& operator=(const Conn&) = delete;
@@ -53,7 +53,7 @@ struct Dispatcher {
 
     // def __init__(self,
     // cb: Callable[[Own[Conn]], Own[Cancellable[None]]]) -> None:
-    explicit Dispatcher(std::function<std::unique_ptr<::tpystd::coro::Cancellable<std::monostate>>(Conn&&)> cb) : _cb(cb) {}
+    explicit Dispatcher(std::function<std::unique_ptr<::tpystd::coro::Cancellable<std::monostate>>(Conn&&)> cb);
     // non-copyable (@nocopy)
     Dispatcher(const Dispatcher&) = delete;
     Dispatcher& operator=(const Dispatcher&) = delete;
@@ -152,5 +152,12 @@ struct __coro_main_coro {
     }
 };
 
+
+// def __init__(self, id: Int32) -> None:
+inline Conn::Conn(int32_t id) : id(id) {}
+
+// def __init__(self,
+// cb: Callable[[Own[Conn]], Own[Cancellable[None]]]) -> None:
+inline Dispatcher::Dispatcher(std::function<std::unique_ptr<::tpystd::coro::Cancellable<std::monostate>>(Conn&&)> cb) : _cb(cb) {}
 void __tpy_init();
 } // namespace tpyapp::main

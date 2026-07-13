@@ -37,7 +37,7 @@ struct Source {
     std::vector<int32_t> items;
 
     // def __init__(self) -> None:
-    Source() : items({1, 2, 3}) {}
+    Source();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Source";
 };
 
@@ -54,7 +54,7 @@ struct Holder {
     Source dest;
 
     // def __init__(self) -> None:
-    Holder() : src(Source()), dest(Source()) {}
+    Holder();
 
     // @error_return(E)
     // def view(self) -> Source:
@@ -70,6 +70,12 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     return os;
 }
 
+
+// def __init__(self) -> None:
+inline Source::Source() : items({1, 2, 3}) {}
+
+// def __init__(self) -> None:
+inline Holder::Holder() : src(Source()), dest(Source()) {}
 
 // @error_return(E)
 // def view(self) -> Source:

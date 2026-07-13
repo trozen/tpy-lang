@@ -22,7 +22,7 @@ struct Tag {
 
     // def __init__(self, name: str) -> None:
     Tag() = default;
-    explicit Tag(std::string_view name) : name(name) {}
+    explicit Tag(std::string_view name);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Tag";
 };
 
@@ -31,5 +31,8 @@ inline std::ostream& operator<<(std::ostream& os, const Tag& obj) {
     return os;
 }
 
+
+// def __init__(self, name: str) -> None:
+inline Tag::Tag(std::string_view name) : name(name) {}
 void __tpy_init();
 } // namespace tpyapp::main

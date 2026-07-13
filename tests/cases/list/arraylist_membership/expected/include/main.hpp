@@ -25,7 +25,7 @@ struct SimpleBuffer {
     int32_t _n;
 
     // def __init__(self) -> None:
-    SimpleBuffer() : _data({10, 20, 30, 0}), _n(3) {}
+    SimpleBuffer();
 
     auto begin() { return this->__span__().begin(); }
     auto end() { return this->__span__().end(); }
@@ -55,6 +55,9 @@ inline std::ostream& operator<<(std::ostream& os, const SimpleBuffer& obj) {
     return os;
 }
 
+
+// def __init__(self) -> None:
+inline SimpleBuffer::SimpleBuffer() : _data({10, 20, 30, 0}), _n(3) {}
 
 // @auto_readonly
 // def __span__(self) -> Span[auto_readonly[Int32]]:

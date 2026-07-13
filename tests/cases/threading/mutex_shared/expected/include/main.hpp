@@ -33,7 +33,7 @@ struct Appender {
     int32_t iters;
 
     // def __init__(self, shared: Own[Arc[Mutex[list[Int32]]]], id: Int32, iters: Int32) -> None:
-    explicit Appender(::tpystd::tplib::arc::Arc<::tpystd::tpy::sync::Mutex<std::vector<int32_t>>>&& shared, int32_t id, int32_t iters) : shared(std::move(shared)), id(id), iters(iters) {}
+    explicit Appender(::tpystd::tplib::arc::Arc<::tpystd::tpy::sync::Mutex<std::vector<int32_t>>>&& shared, int32_t id, int32_t iters);
     // non-copyable (@nocopy)
     Appender(const Appender&) = delete;
     Appender& operator=(const Appender&) = delete;
@@ -50,6 +50,9 @@ inline std::ostream& operator<<(std::ostream& os, const Appender& obj) {
     return os;
 }
 
+
+// def __init__(self, shared: Own[Arc[Mutex[list[Int32]]]], id: Int32, iters: Int32) -> None:
+inline Appender::Appender(::tpystd::tplib::arc::Arc<::tpystd::tpy::sync::Mutex<std::vector<int32_t>>>&& shared, int32_t id, int32_t iters) : shared(std::move(shared)), id(id), iters(iters) {}
 
 // def run(self) -> None:
 inline void Appender::run() const {

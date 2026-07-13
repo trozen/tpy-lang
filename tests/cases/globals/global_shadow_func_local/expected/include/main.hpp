@@ -24,7 +24,7 @@ struct Point {
 
     // def __init__(self, x: Int32, y: Int32):
     Point() = default;
-    explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
+    explicit Point(int32_t x, int32_t y);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
 };
 
@@ -41,7 +41,7 @@ struct Picker {
 
     // def __init__(self, val: Int32):
     Picker() = default;
-    explicit Picker(int32_t val) : val(val) {}
+    explicit Picker(int32_t val);
 
     // def pick(self, cond: bool) -> None:
     void pick(bool cond) const;
@@ -53,6 +53,12 @@ inline std::ostream& operator<<(std::ostream& os, const Picker& obj) {
     return os;
 }
 
+
+// def __init__(self, x: Int32, y: Int32):
+inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
+
+// def __init__(self, val: Int32):
+inline Picker::Picker(int32_t val) : val(val) {}
 
 // def pick(self, cond: bool) -> None:
 inline void Picker::pick(bool cond) const {

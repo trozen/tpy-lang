@@ -20,7 +20,7 @@ struct Counter {
     int32_t n;
 
     // def __init__(self) -> None:
-    Counter() : n(0) {}
+    Counter();
 
     // def bump(self) -> None:
     void bump();
@@ -47,6 +47,9 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {
     return os;
 }
 
+
+// def __init__(self) -> None:
+inline Counter::Counter() : n(0) {}
 
 // def bump(self) -> None:
 inline void Counter::bump() {

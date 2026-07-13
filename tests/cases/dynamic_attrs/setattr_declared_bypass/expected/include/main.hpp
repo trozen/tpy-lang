@@ -21,12 +21,7 @@ struct Counted {
     ::tpy::ordered_map<std::string, ::tpy::Any> _data;
 
     // def __init__(self) -> None:
-    Counted() : _counter(::tpy::BigInt(0)) {
-        // d: dict[str, Any] = {}
-        ::tpy::ordered_map<std::string, ::tpy::Any> d = ::tpy::ordered_map<std::string, ::tpy::Any>();
-        // self._data = d
-        this->_data = std::move(d);
-    }
+    Counted();
 
     // def __getattr__(self, name: str) -> Any:
     ::tpy::Any __getattr__(std::string_view name) const;
@@ -41,6 +36,14 @@ inline std::ostream& operator<<(std::ostream& os, const Counted& obj) {
     return os;
 }
 
+
+// def __init__(self) -> None:
+inline Counted::Counted() : _counter(::tpy::BigInt(0)) {
+    // d: dict[str, Any] = {}
+    ::tpy::ordered_map<std::string, ::tpy::Any> d = ::tpy::ordered_map<std::string, ::tpy::Any>();
+    // self._data = d
+    this->_data = std::move(d);
+}
 
 // def __getattr__(self, name: str) -> Any:
 inline ::tpy::Any Counted::__getattr__(std::string_view name) const {

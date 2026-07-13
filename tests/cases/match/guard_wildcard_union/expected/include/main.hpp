@@ -23,7 +23,7 @@ struct Dog {
     std::string name;
 
     Dog() = default;
-    explicit Dog(std::string_view name) : name(name) {}
+    explicit Dog(std::string_view name);
 
     bool __eq__(const Dog& other) const;
 
@@ -47,7 +47,7 @@ struct Cat {
     std::string name;
 
     Cat() = default;
-    explicit Cat(std::string_view name) : name(name) {}
+    explicit Cat(std::string_view name);
 
     bool __eq__(const Cat& other) const;
 
@@ -65,6 +65,8 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 }
 
 
+inline Dog::Dog(std::string_view name) : name(name) {}
+
 inline bool Dog::__eq__(const Dog& other) const {
     return (this->name == other.name);
 }
@@ -72,6 +74,8 @@ inline bool Dog::__eq__(const Dog& other) const {
 inline std::string Dog::__repr__() const {
     return std::format("Dog(name={})", ::tpy::repr_of(this->name));
 }
+
+inline Cat::Cat(std::string_view name) : name(name) {}
 
 inline bool Cat::__eq__(const Cat& other) const {
     return (this->name == other.name);

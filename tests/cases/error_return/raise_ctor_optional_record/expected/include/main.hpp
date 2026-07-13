@@ -22,7 +22,7 @@ struct Node {
 
     // def __init__(self, v: int) -> None:
     Node() = default;
-    explicit Node(const ::tpy::BigInt& v) : v(v) {}
+    explicit Node(const ::tpy::BigInt& v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Node";
 };
 
@@ -38,7 +38,7 @@ struct Failed : ::tpy::Exception {
 
     // def __init__(self, n: Node | None) -> None:
     Failed() = default;
-    explicit Failed(const Node* n) : ::tpy::Exception("failed"), node(::tpy::ptr_to_optional(n)) {}
+    explicit Failed(const Node* n);
 
     [[nodiscard]] std::unique_ptr<::tpy::Throwable> clone() const override { return std::make_unique<Failed>(*this); }
     [[noreturn]] void __raise__() const override { throw *this; }
@@ -51,5 +51,11 @@ inline std::ostream& operator<<(std::ostream& os, const Failed& obj) {
     return os;
 }
 
+
+// def __init__(self, v: int) -> None:
+inline Node::Node(const ::tpy::BigInt& v) : v(v) {}
+
+// def __init__(self, n: Node | None) -> None:
+inline Failed::Failed(const Node* n) : ::tpy::Exception("failed"), node(::tpy::ptr_to_optional(n)) {}
 void __tpy_init();
 } // namespace tpyapp::main

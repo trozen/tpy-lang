@@ -46,7 +46,7 @@ struct Frog {
 
     // def __init__(self, name: str) -> None:
     Frog() = default;
-    explicit Frog(std::string_view name) : name(name) {}
+    explicit Frog(std::string_view name);
 
     // def greet(self) -> str:
     std::string greet() const;
@@ -95,6 +95,9 @@ struct tpy::RefAdapter<tpyapp::main::Greeter, T> : tpyapp::main::Greeter {
 
 namespace tpyapp::main {
 
+
+// def __init__(self, name: str) -> None:
+inline Frog::Frog(std::string_view name) : name(name) {}
 
 // def greet(self) -> str:
 inline std::string Frog::greet() const {

@@ -19,7 +19,7 @@ struct Handler {
     std::function<void()> action;
 
     // def __init__(self) -> None:
-    Handler() : action([]() { std::cout << 0 << "\n"; }) {}
+    Handler();
 
     // def __repr__(self) -> str:
     std::string __repr__() const;
@@ -31,6 +31,9 @@ inline std::ostream& operator<<(std::ostream& os, const Handler& obj) {
     return os;
 }
 
+
+// def __init__(self) -> None:
+inline Handler::Handler() : action([]() { std::cout << 0 << "\n"; }) {}
 
 // def __repr__(self) -> str:
 inline std::string Handler::__repr__() const {

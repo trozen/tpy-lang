@@ -24,7 +24,7 @@ struct WithGetattr {
 
     // def __init__(self, store: dict[str, str]) -> None:
     WithGetattr() = default;
-    explicit WithGetattr(const ::tpy::ordered_map<std::string, std::string>& store) : _store(store) {}
+    explicit WithGetattr(const ::tpy::ordered_map<std::string, std::string>& store);
 
     // def __getattr__(self, name: str) -> str:
     std::string __getattr__(std::string_view name) const;
@@ -55,7 +55,7 @@ struct Combined : WithGetattr, Mixin {
 
     // def __init__(self, store: dict[str, str]) -> None:
     Combined() = default;
-    explicit Combined(const ::tpy::ordered_map<std::string, std::string>& store) : WithGetattr(store) {}
+    explicit Combined(const ::tpy::ordered_map<std::string, std::string>& store);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Combined";
 };
 
@@ -64,6 +64,9 @@ inline std::ostream& operator<<(std::ostream& os, const Combined& obj) {
     return os;
 }
 
+
+// def __init__(self, store: dict[str, str]) -> None:
+inline WithGetattr::WithGetattr(const ::tpy::ordered_map<std::string, std::string>& store) : _store(store) {}
 
 // def __getattr__(self, name: str) -> str:
 inline std::string WithGetattr::__getattr__(std::string_view name) const {
@@ -76,5 +79,8 @@ inline std::string Mixin::helper() const {
     // return "mixin"
     return "mixin";
 }
+
+// def __init__(self, store: dict[str, str]) -> None:
+inline Combined::Combined(const ::tpy::ordered_map<std::string, std::string>& store) : WithGetattr(store) {}
 void __tpy_init();
 } // namespace tpyapp::main

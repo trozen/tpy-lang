@@ -19,7 +19,7 @@ struct Box {
     int32_t _i;
 
     Box() = default;
-    explicit Box(int64_t a, int64_t b, int64_t c) : a(a), b(b), c(c), _i(0) {}
+    explicit Box(int64_t a, int64_t b, int64_t c);
 
     int32_t __len__() const;
 
@@ -55,7 +55,7 @@ struct Slot {
     bool filled;
 
     Slot() = default;
-    explicit Slot(int64_t value) : value(value), filled(true) {}
+    explicit Slot(int64_t value);
 
     int32_t __len__() const;
 
@@ -82,6 +82,8 @@ inline std::ostream& operator<<(std::ostream& os, const Slot& obj) {
     return os;
 }
 
+
+inline Box::Box(int64_t a, int64_t b, int64_t c) : a(a), b(b), c(c), _i(0) {}
 
 inline int32_t Box::__len__() const {
     return 3;
@@ -123,6 +125,8 @@ inline std::expected<int32_t, ::tpy::StopIteration> Box::__next__() {
     }
     return ::tpy::make_unexpected(::tpy::StopIteration{});
 }
+
+inline Slot::Slot(int64_t value) : value(value), filled(true) {}
 
 inline int32_t Slot::__len__() const {
     return ((this->filled) ? (1) : (0));

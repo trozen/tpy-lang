@@ -22,7 +22,7 @@ struct Node {
     std::optional<std::string> label = std::nullopt;
 
     Node() = default;
-    explicit Node(int32_t value, std::optional<std::string_view> label = std::nullopt) : value(value), label(label ? std::make_optional(std::string(*label)) : std::nullopt) {}
+    explicit Node(int32_t value, std::optional<std::string_view> label = std::nullopt);
 
     bool __eq__(const Node& other) const;
 
@@ -39,6 +39,8 @@ inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
     return os;
 }
 
+
+inline Node::Node(int32_t value, std::optional<std::string_view> label) : value(value), label(label ? std::make_optional(std::string(*label)) : std::nullopt) {}
 
 inline bool Node::__eq__(const Node& other) const {
     return ((this->value == other.value) && (this->label == other.label));

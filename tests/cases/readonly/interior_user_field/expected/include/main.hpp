@@ -22,7 +22,7 @@ struct Cell {
 
     // def __init__(self, n: Int32) -> None:
     Cell() = default;
-    explicit Cell(int32_t n) : n(n) {}
+    explicit Cell(int32_t n);
     // non-copyable (@nocopy)
     Cell(const Cell&) = delete;
     Cell& operator=(const Cell&) = delete;
@@ -47,27 +47,15 @@ struct Counter {
     bool __tpy_owned_ = true;
 
     // def __init__(self) -> None:
-    Counter() : _cell(::tpy::heap_take(Cell(0))) {}
+    Counter();
     // non-copyable (@nocopy)
     Counter(const Counter&) = delete;
     Counter& operator=(const Counter&) = delete;
-    Counter(Counter&& other) noexcept : _cell(std::move(other._cell)) {
-        other.__tpy_owned_ = false;
-    }
-    Counter& operator=(Counter&& other) noexcept {
-        if (this != &other) {
-            this->~Counter();
-            new (this) Counter(std::move(other));
-        }
-        return *this;
-    }
-    // def __del__(self) -> None:
+    Counter(Counter&& other) noexcept;
+    Counter& operator=(Counter&& other) noexcept;
 
-    ~Counter() {
-        if (!this->__tpy_owned_) return;
-        // unsafe_release(self._cell)
-        ::tpy::heap_release(this->_cell);
-    }
+    // def __del__(self) -> None:
+    ~Counter();
 
     // @readonly
     // def tick(self) -> None:
@@ -85,10 +73,34 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 }
 
 
+// def __init__(self, n: Int32) -> None:
+inline Cell::Cell(int32_t n) : n(n) {}
+
 // def bump(self) -> None:
 inline void Cell::bump() {
     // self.n = self.n + 1
     this->n = (::tpy::add_check<int32_t>(this->n, 1));
+}
+
+// def __init__(self) -> None:
+inline Counter::Counter() : _cell(::tpy::heap_take(Cell(0))) {}
+
+inline Counter::Counter(Counter&& other) noexcept : _cell(std::move(other._cell)) {
+    other.__tpy_owned_ = false;
+}
+inline Counter& Counter::operator=(Counter&& other) noexcept {
+    if (this != &other) {
+        this->~Counter();
+        new (this) Counter(std::move(other));
+    }
+    return *this;
+}
+
+// def __del__(self) -> None:
+inline Counter::~Counter() {
+    if (!this->__tpy_owned_) return;
+    // unsafe_release(self._cell)
+    ::tpy::heap_release(this->_cell);
 }
 
 // @readonly

@@ -22,7 +22,7 @@ struct Point {
     int32_t y;
 
     // def __init__(self, x: Int32 = Int32(0), y: Int32 = Int32(0)) -> None:
-    explicit Point(int32_t x = 0, int32_t y = 0) : x(x), y(y) {}
+    explicit Point(int32_t x = 0, int32_t y = 0);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
 };
 
@@ -40,7 +40,7 @@ struct Named {
 
     // def __init__(self, name: str, value: Int32 = Int32(42)) -> None:
     Named() = default;
-    explicit Named(std::string_view name, int32_t value = 42) : name(name), value(value) {}
+    explicit Named(std::string_view name, int32_t value = 42);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Named";
 };
 
@@ -49,5 +49,11 @@ inline std::ostream& operator<<(std::ostream& os, const Named& obj) {
     return os;
 }
 
+
+// def __init__(self, x: Int32 = Int32(0), y: Int32 = Int32(0)) -> None:
+inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
+
+// def __init__(self, name: str, value: Int32 = Int32(42)) -> None:
+inline Named::Named(std::string_view name, int32_t value) : name(name), value(value) {}
 void __tpy_init();
 } // namespace tpyapp::main

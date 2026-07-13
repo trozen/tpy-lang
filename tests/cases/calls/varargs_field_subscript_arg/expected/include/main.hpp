@@ -25,7 +25,7 @@ struct Box {
 
     // def __init__(self, v: Int32) -> None:
     Box() = default;
-    explicit Box(int32_t v) : val(v) {}
+    explicit Box(int32_t v);
     // non-copyable (@nocopy)
     Box(const Box&) = delete;
     Box& operator=(const Box&) = delete;
@@ -48,7 +48,7 @@ struct Pair {
 
     // def __init__(self, x: Int32, y: Int32) -> None:
     Pair() = default;
-    explicit Pair(int32_t x, int32_t y) : a(Box(x)), b(Box(y)) {}
+    explicit Pair(int32_t x, int32_t y);
     // non-copyable (field 'a')
     Pair(const Pair&) = delete;
     Pair& operator=(const Pair&) = delete;
@@ -62,5 +62,11 @@ inline std::ostream& operator<<(std::ostream& os, const Pair& obj) {
     return os;
 }
 
+
+// def __init__(self, v: Int32) -> None:
+inline Box::Box(int32_t v) : val(v) {}
+
+// def __init__(self, x: Int32, y: Int32) -> None:
+inline Pair::Pair(int32_t x, int32_t y) : a(Box(x)), b(Box(y)) {}
 void __tpy_init();
 } // namespace tpyapp::main

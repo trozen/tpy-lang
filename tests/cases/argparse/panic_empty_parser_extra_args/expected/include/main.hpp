@@ -20,7 +20,7 @@ __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<s
 struct __tpy_builder_argparse_args_1 {
 
     // p.parse_args(["unexpected"])
-    __tpy_builder_argparse_args_1() {}
+    __tpy_builder_argparse_args_1();
     static constexpr std::string_view __tpy_class_name__ = "__main__.__tpy_builder_argparse_args_1";
 };
 
@@ -29,5 +29,8 @@ inline std::ostream& operator<<(std::ostream& os, const __tpy_builder_argparse_a
     return os;
 }
 
+
+// p.parse_args(["unexpected"])
+inline __tpy_builder_argparse_args_1::__tpy_builder_argparse_args_1() {}
 void __tpy_init();
 } // namespace tpyapp::main

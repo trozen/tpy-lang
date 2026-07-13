@@ -56,7 +56,7 @@ struct Meters {
 
     // def __init__(self, v: int) -> None:
     Meters() = default;
-    explicit Meters(const ::tpy::BigInt& v) : v(v) {}
+    explicit Meters(const ::tpy::BigInt& v);
 
     // def __add__(self, other: Meters) -> Meters:
     Meters __add__(Meters other) const;
@@ -88,7 +88,7 @@ struct Num {
 
     // def __init__(self, v: int) -> None:
     Num() = default;
-    explicit Num(const ::tpy::BigInt& v) : v(v) {}
+    explicit Num(const ::tpy::BigInt& v);
 
     // def half(self) -> Num:
     Num half() const;
@@ -113,9 +113,7 @@ namespace tpyapp::main {
 struct Ping {
 
     // def __init__(self) -> None:
-    Ping() {
-        // pass
-    }
+    Ping();
 
     // def to_b(self) -> Pong:
     Pong to_b() const;
@@ -137,9 +135,7 @@ namespace tpyapp::main {
 struct Pong {
 
     // def __init__(self) -> None:
-    Pong() {
-        // pass
-    }
+    Pong();
 
     // def tag(self) -> str:
     std::string tag() const;
@@ -161,6 +157,9 @@ namespace tpyapp::main {
 
 
 
+// def __init__(self, v: int) -> None:
+inline Meters::Meters(const ::tpy::BigInt& v) : v(v) {}
+
 // def __add__(self, other: Meters) -> Meters:
 inline Meters Meters::__add__(Meters other) const {
     // return Meters(self.v + other.v)
@@ -172,6 +171,9 @@ inline ::tpy::BigInt Meters::value() const {
     // return self.v
     return this->v;
 }
+
+// def __init__(self, v: int) -> None:
+inline Num::Num(const ::tpy::BigInt& v) : v(v) {}
 
 // def half(self) -> Num:
 inline Num Num::half() const {
@@ -185,10 +187,20 @@ inline ::tpy::BigInt Num::value() const {
     return this->v;
 }
 
+// def __init__(self) -> None:
+inline Ping::Ping() {
+    // pass
+}
+
 // def to_b(self) -> Pong:
 inline Pong Ping::to_b() const {
     // return Pong()
     return Pong();
+}
+
+// def __init__(self) -> None:
+inline Pong::Pong() {
+    // pass
 }
 
 // def tag(self) -> str:

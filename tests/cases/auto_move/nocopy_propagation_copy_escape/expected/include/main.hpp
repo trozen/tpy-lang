@@ -23,7 +23,7 @@ struct Handle {
 
     // def __init__(self, fd: Int32):
     Handle() = default;
-    explicit Handle(int32_t fd) : fd(fd) {}
+    explicit Handle(int32_t fd);
     // non-copyable (@nocopy)
     Handle(const Handle&) = delete;
     Handle& operator=(const Handle&) = delete;
@@ -44,13 +44,10 @@ struct Container {
 
     // def __init__(self, handle: Own[Handle]):
     Container() = default;
-    explicit Container(Handle&& handle) : handle(std::move(handle)) {}
+    explicit Container(Handle&& handle);
     // copyable via __copy__
-    Container(const Container& other) : Container(other.__copy__()) {}
-    Container& operator=(const Container& other) {
-        if (this != &other) { *this = other.__copy__(); }
-        return *this;
-    }
+    Container(const Container& other);
+    Container& operator=(const Container& other);
     Container(Container&&) = default;
     Container& operator=(Container&&) = default;
 
@@ -64,6 +61,18 @@ inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
     return os;
 }
 
+
+// def __init__(self, fd: Int32):
+inline Handle::Handle(int32_t fd) : fd(fd) {}
+
+// def __init__(self, handle: Own[Handle]):
+inline Container::Container(Handle&& handle) : handle(std::move(handle)) {}
+
+inline Container::Container(const Container& other) : Container(other.__copy__()) {}
+inline Container& Container::operator=(const Container& other) {
+    if (this != &other) { *this = other.__copy__(); }
+    return *this;
+}
 
 // def __copy__(self) -> Own[Container]:
 inline Container Container::__copy__() const {

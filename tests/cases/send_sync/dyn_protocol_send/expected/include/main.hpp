@@ -42,7 +42,7 @@ struct Dog {
 
     // def __init__(self, n: Int32) -> None:
     Dog() = default;
-    explicit Dog(int32_t n) : n(n) {}
+    explicit Dog(int32_t n);
 
     // def speak(self) -> Int32:
     int32_t speak() const;
@@ -73,6 +73,9 @@ struct tpy::RefAdapter<tpyapp::main::Pet, T> : tpyapp::main::Pet {
 
 namespace tpyapp::main {
 
+
+// def __init__(self, n: Int32) -> None:
+inline Dog::Dog(int32_t n) : n(n) {}
 
 // def speak(self) -> Int32:
 inline int32_t Dog::speak() const {

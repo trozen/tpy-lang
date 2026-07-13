@@ -21,7 +21,7 @@ struct Holder {
     std::string label;
 
     // def __init__(self) -> None:
-    Holder() : pair(std::tuple<int32_t, int32_t>{3, 7}), label("h") {}
+    Holder();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
@@ -30,5 +30,8 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     return os;
 }
 
+
+// def __init__(self) -> None:
+inline Holder::Holder() : pair(std::tuple<int32_t, int32_t>{3, 7}), label("h") {}
 void __tpy_init();
 } // namespace tpyapp::main

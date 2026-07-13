@@ -22,7 +22,7 @@ struct Dog {
     std::string name;
 
     Dog() = default;
-    explicit Dog(std::string_view name) : name(name) {}
+    explicit Dog(std::string_view name);
 
     bool __eq__(const Dog& other) const;
 
@@ -46,7 +46,7 @@ struct Cat {
     std::string name;
 
     Cat() = default;
-    explicit Cat(std::string_view name) : name(name) {}
+    explicit Cat(std::string_view name);
 
     bool __eq__(const Cat& other) const;
 
@@ -71,7 +71,7 @@ struct Zoo {
     std::string tag;
 
     // def __init__(self, pet: Dog | Cat, tag: str) -> None:
-    explicit Zoo(const std::variant<Cat*, Dog*> pet, std::string_view tag) : pet(::tpy::to_value_variant<std::variant<Cat, Dog>>(pet)), tag(tag) {}
+    explicit Zoo(const std::variant<Cat*, Dog*> pet, std::string_view tag);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Zoo";
 };
 
@@ -81,6 +81,8 @@ inline std::ostream& operator<<(std::ostream& os, const Zoo& obj) {
 }
 
 
+inline Dog::Dog(std::string_view name) : name(name) {}
+
 inline bool Dog::__eq__(const Dog& other) const {
     return (this->name == other.name);
 }
@@ -89,6 +91,8 @@ inline std::string Dog::__repr__() const {
     return std::format("Dog(name={})", ::tpy::repr_of(this->name));
 }
 
+inline Cat::Cat(std::string_view name) : name(name) {}
+
 inline bool Cat::__eq__(const Cat& other) const {
     return (this->name == other.name);
 }
@@ -96,5 +100,8 @@ inline bool Cat::__eq__(const Cat& other) const {
 inline std::string Cat::__repr__() const {
     return std::format("Cat(name={})", ::tpy::repr_of(this->name));
 }
+
+// def __init__(self, pet: Dog | Cat, tag: str) -> None:
+inline Zoo::Zoo(const std::variant<Cat*, Dog*> pet, std::string_view tag) : pet(::tpy::to_value_variant<std::variant<Cat, Dog>>(pet)), tag(tag) {}
 void __tpy_init();
 } // namespace tpyapp::main

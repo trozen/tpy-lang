@@ -22,7 +22,7 @@ struct SimpleIter {
 
     // def __init__(self, limit: Int32) -> None:
     SimpleIter() = default;
-    explicit SimpleIter(int32_t limit) : current(0), limit(limit) {}
+    explicit SimpleIter(int32_t limit);
 
     auto& __iter__() { return *this; }
 
@@ -36,6 +36,9 @@ inline std::ostream& operator<<(std::ostream& os, const SimpleIter& obj) {
     return os;
 }
 
+
+// def __init__(self, limit: Int32) -> None:
+inline SimpleIter::SimpleIter(int32_t limit) : current(0), limit(limit) {}
 
 // def __next__(self) -> Int32:
 inline std::expected<int32_t, ::tpy::StopIteration> SimpleIter::__next__() {

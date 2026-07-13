@@ -92,8 +92,8 @@ struct WithHeapStorage {
         }
         return *this;
     }
-    // def __del__(self):
 
+    // def __del__(self):
     ~WithHeapStorage() {
         if (!this->__tpy_owned_) return;
         // self._storage.drop0()

@@ -28,7 +28,7 @@ struct GoodReader {
 
     // def __init__(self, value: Int32) -> None:
     GoodReader() = default;
-    explicit GoodReader(int32_t value) : value(value) {}
+    explicit GoodReader(int32_t value);
 
     // @readonly
     // def read(self) -> Int32:
@@ -41,6 +41,9 @@ inline std::ostream& operator<<(std::ostream& os, const GoodReader& obj) {
     return os;
 }
 
+
+// def __init__(self, value: Int32) -> None:
+inline GoodReader::GoodReader(int32_t value) : value(value) {}
 
 // @readonly
 // def read(self) -> Int32:

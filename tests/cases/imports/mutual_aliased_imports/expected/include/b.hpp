@@ -18,9 +18,7 @@ inline constexpr std::string_view __name__ = "b";
 struct Helper {
 
     // def __init__(self) -> None: pass
-    Helper() {
-        // def __init__(self) -> None: pass
-    }
+    Helper();
 
     // def work(self) -> Int32:
     int32_t work() const;

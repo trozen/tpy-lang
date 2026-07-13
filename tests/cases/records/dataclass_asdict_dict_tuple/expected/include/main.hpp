@@ -25,7 +25,7 @@ struct Point {
     int32_t y;
 
     Point() = default;
-    explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
+    explicit Point(int32_t x, int32_t y);
 
     bool __eq__(const Point& other) const;
 
@@ -50,7 +50,7 @@ struct DictOfDC {
     ::tpy::ordered_map<std::string, Point> items;
 
     DictOfDC() = default;
-    explicit DictOfDC(::tpy::ordered_map<std::string, Point>&& items) : items(std::move(items)) {}
+    explicit DictOfDC(::tpy::ordered_map<std::string, Point>&& items);
 
     bool __eq__(const DictOfDC& other) const;
 
@@ -75,7 +75,7 @@ struct TupleOfDC {
     std::tuple<Point, int32_t> pair;
 
     TupleOfDC() = default;
-    explicit TupleOfDC(const std::tuple<const Point*, int32_t>& pair) : pair(::tpy::tuple_to_storage<std::tuple<Point, int32_t>>(pair)) {}
+    explicit TupleOfDC(const std::tuple<const Point*, int32_t>& pair);
 
     bool __eq__(const TupleOfDC& other) const;
 
@@ -100,7 +100,7 @@ struct TupleAllDC {
     std::tuple<Point, Point> pair;
 
     TupleAllDC() = default;
-    explicit TupleAllDC(const std::tuple<const Point*, const Point*>& pair) : pair(::tpy::tuple_to_storage<std::tuple<Point, Point>>(pair)) {}
+    explicit TupleAllDC(const std::tuple<const Point*, const Point*>& pair);
 
     bool __eq__(const TupleAllDC& other) const;
 
@@ -118,6 +118,8 @@ inline std::ostream& operator<<(std::ostream& os, const TupleAllDC& obj) {
 }
 
 
+inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
+
 inline bool Point::__eq__(const Point& other) const {
     return ((this->x == other.x) && (this->y == other.y));
 }
@@ -125,6 +127,8 @@ inline bool Point::__eq__(const Point& other) const {
 inline std::string Point::__repr__() const {
     return std::format("Point(x={}, y={})", ::tpy::repr_of(this->x), ::tpy::repr_of(this->y));
 }
+
+inline DictOfDC::DictOfDC(::tpy::ordered_map<std::string, Point>&& items) : items(std::move(items)) {}
 
 inline bool DictOfDC::__eq__(const DictOfDC& other) const {
     return (this->items == other.items);
@@ -134,6 +138,8 @@ inline std::string DictOfDC::__repr__() const {
     return std::format("DictOfDC(items={})", ::tpy::dict_to_str(this->items));
 }
 
+inline TupleOfDC::TupleOfDC(const std::tuple<const Point*, int32_t>& pair) : pair(::tpy::tuple_to_storage<std::tuple<Point, int32_t>>(pair)) {}
+
 inline bool TupleOfDC::__eq__(const TupleOfDC& other) const {
     return ::tpy::tuple_eq(this->pair, other.pair);
 }
@@ -141,6 +147,8 @@ inline bool TupleOfDC::__eq__(const TupleOfDC& other) const {
 inline std::string TupleOfDC::__repr__() const {
     return std::format("TupleOfDC(pair={})", ::tpy::tuple_to_str(::tpy::tuple_to_pointer<std::tuple<const Point*, int32_t>>(this->pair)));
 }
+
+inline TupleAllDC::TupleAllDC(const std::tuple<const Point*, const Point*>& pair) : pair(::tpy::tuple_to_storage<std::tuple<Point, Point>>(pair)) {}
 
 inline bool TupleAllDC::__eq__(const TupleAllDC& other) const {
     return ::tpy::tuple_eq(this->pair, other.pair);

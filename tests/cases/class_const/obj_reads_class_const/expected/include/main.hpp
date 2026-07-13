@@ -21,9 +21,7 @@ struct C {
     static constexpr std::string_view NAME = "C";
 
     // def __init__(self) -> None:
-    C() {
-        // pass
-    }
+    C();
 
     // def show(self) -> None:
     void show() const;
@@ -35,6 +33,11 @@ inline std::ostream& operator<<(std::ostream& os, const C& obj) {
     return os;
 }
 
+
+// def __init__(self) -> None:
+inline C::C() {
+    // pass
+}
 
 // def show(self) -> None:
 inline void C::show() const {

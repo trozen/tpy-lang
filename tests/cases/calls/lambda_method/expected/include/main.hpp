@@ -20,7 +20,7 @@ struct Processor {
 
     // def __init__(self, value: Int32) -> None:
     Processor() = default;
-    explicit Processor(int32_t value) : value(value) {}
+    explicit Processor(int32_t value);
 
     // def apply(self, f: Fn[[Int32], Int32]) -> Int32:
     template<typename __F0>
@@ -49,5 +49,8 @@ inline std::ostream& operator<<(std::ostream& os, const Processor& obj) {
     return os;
 }
 
+
+// def __init__(self, value: Int32) -> None:
+inline Processor::Processor(int32_t value) : value(value) {}
 void __tpy_init();
 } // namespace tpyapp::main

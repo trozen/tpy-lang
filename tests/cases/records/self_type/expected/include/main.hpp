@@ -24,7 +24,7 @@ struct Builder {
 
     // def __init__(self, name: str, value: Int32) -> None:
     Builder() = default;
-    explicit Builder(std::string_view name, int32_t value) : name(name), value(value) {}
+    explicit Builder(std::string_view name, int32_t value);
 
     // def set_name(self, name: str) -> Self:
     Builder& set_name(std::string_view name);
@@ -85,6 +85,9 @@ inline std::ostream& operator<<(std::ostream& os, const Stack<T>& obj) {
     return os;
 }
 
+
+// def __init__(self, name: str, value: Int32) -> None:
+inline Builder::Builder(std::string_view name, int32_t value) : name(name), value(value) {}
 
 // def set_name(self, name: str) -> Self:
 inline Builder& Builder::set_name(std::string_view name) {

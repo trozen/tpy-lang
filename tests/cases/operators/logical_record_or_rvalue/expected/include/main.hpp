@@ -25,12 +25,7 @@ struct Box {
 
     // def __init__(self, n: int, log: list[int]) -> None:
     Box() = default;
-    explicit Box(const ::tpy::BigInt& n, std::vector<::tpy::BigInt>& log) {
-        // log.append(1)  # observable: increments only when this Box is constructed
-        log.push_back(1);
-        // self.n = n
-        this->n = n;
-    }
+    explicit Box(const ::tpy::BigInt& n, std::vector<::tpy::BigInt>& log);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
@@ -39,5 +34,13 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
     return os;
 }
 
+
+// def __init__(self, n: int, log: list[int]) -> None:
+inline Box::Box(const ::tpy::BigInt& n, std::vector<::tpy::BigInt>& log) {
+    // log.append(1)  # observable: increments only when this Box is constructed
+    log.push_back(1);
+    // self.n = n
+    this->n = n;
+}
 void __tpy_init();
 } // namespace tpyapp::main

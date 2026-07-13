@@ -21,7 +21,7 @@ struct Node {
 
     // def __init__(self, v: int) -> None:
     Node() = default;
-    explicit Node(const ::tpy::BigInt& v) : v(v) {}
+    explicit Node(const ::tpy::BigInt& v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Node";
 };
 
@@ -37,7 +37,7 @@ struct Holder {
 
     // def __init__(self, n: Own[Node | None]) -> None:
     Holder() = default;
-    explicit Holder(std::optional<Node>&& n) : found((((n.has_value())) ? (n->v) : (::tpy::BigInt(-1)))) {}
+    explicit Holder(std::optional<Node>&& n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
@@ -46,5 +46,11 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     return os;
 }
 
+
+// def __init__(self, v: int) -> None:
+inline Node::Node(const ::tpy::BigInt& v) : v(v) {}
+
+// def __init__(self, n: Own[Node | None]) -> None:
+inline Holder::Holder(std::optional<Node>&& n) : found((((n.has_value())) ? (n->v) : (::tpy::BigInt(-1)))) {}
 void __tpy_init();
 } // namespace tpyapp::main

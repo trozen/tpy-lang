@@ -19,15 +19,7 @@ struct Handler {
     std::function<int32_t(int32_t)> callback;
 
     // def __init__(self, n: Int32) -> None:
-    explicit Handler(int32_t n) {
-        // def add_offset(x: Int32) -> Int32:
-        auto add_offset = [n](int32_t x) -> int32_t {
-            // return x + n
-            return (::tpy::add_check<int32_t>(x, n));
-        };
-        // self.callback = add_offset
-        this->callback = add_offset;
-    }
+    explicit Handler(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Handler";
 };
 
@@ -36,5 +28,16 @@ inline std::ostream& operator<<(std::ostream& os, const Handler& obj) {
     return os;
 }
 
+
+// def __init__(self, n: Int32) -> None:
+inline Handler::Handler(int32_t n) {
+    // def add_offset(x: Int32) -> Int32:
+    auto add_offset = [n](int32_t x) -> int32_t {
+        // return x + n
+        return (::tpy::add_check<int32_t>(x, n));
+    };
+    // self.callback = add_offset
+    this->callback = add_offset;
+}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -21,7 +21,7 @@ struct M {
 
     // def __init__(self, s: Ptr[S]) -> None:
     M() = default;
-    explicit M(::mylib::S* s) : s(s) {}
+    explicit M(::mylib::S* s);
 
     // def read(self) -> bool:
     bool read() const;
@@ -36,6 +36,9 @@ inline std::ostream& operator<<(std::ostream& os, const M& obj) {
     return os;
 }
 
+
+// def __init__(self, s: Ptr[S]) -> None:
+inline M::M(::mylib::S* s) : s(s) {}
 
 // def read(self) -> bool:
 inline bool M::read() const {

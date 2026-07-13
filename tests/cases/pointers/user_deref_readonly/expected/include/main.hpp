@@ -25,7 +25,7 @@ struct Point {
 
     // def __init__(self, x: Int32, y: Int32) -> None:
     Point() = default;
-    explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
+    explicit Point(int32_t x, int32_t y);
 
     // @readonly
     // def sum(self) -> Int32:
@@ -48,7 +48,7 @@ struct Ref {
 
     // def __init__(self, target: Point) -> None:
     Ref() = default;
-    explicit Ref(const Point& target) : _target(target) {}
+    explicit Ref(const Point& target);
 
     // @auto_readonly
     // def __deref__(self) -> auto_readonly[Point]:
@@ -74,6 +74,9 @@ inline std::ostream& operator<<(std::ostream& os, const Ref& obj) {
 }
 
 
+// def __init__(self, x: Int32, y: Int32) -> None:
+inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
+
 // @readonly
 // def sum(self) -> Int32:
 inline int32_t Point::sum() const {
@@ -86,6 +89,9 @@ inline void Point::set_x(int32_t v) {
     // self.x = v
     this->x = v;
 }
+
+// def __init__(self, target: Point) -> None:
+inline Ref::Ref(const Point& target) : _target(target) {}
 
 // @auto_readonly
 // def __deref__(self) -> auto_readonly[Point]:

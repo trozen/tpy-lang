@@ -117,10 +117,7 @@ struct IntBox : Box<int32_t> {
 
     // def __init__(self, v: Int32) -> None:
     IntBox() = default;
-    explicit IntBox(int32_t v) {
-        // self.v = v
-        this->v = v;
-    }
+    explicit IntBox(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.IntBox";
 };
 
@@ -134,12 +131,7 @@ struct IntGuard : Guard<int32_t> {
 
     // def __init__(self, val: Int32) -> None:
     IntGuard() = default;
-    explicit IntGuard(int32_t val) {
-        // self.val = val
-        this->val = val;
-        // self.entered = 0
-        this->entered = 0;
-    }
+    explicit IntGuard(int32_t val);
     static constexpr std::string_view __tpy_class_name__ = "__main__.IntGuard";
 };
 
@@ -153,14 +145,7 @@ struct IntCounter : Counter<int32_t> {
 
     // def __init__(self, limit: Int32, seed: Int32) -> None:
     IntCounter() = default;
-    explicit IntCounter(int32_t limit, int32_t seed) {
-        // self.cur = 0
-        this->cur = 0;
-        // self.limit = limit
-        this->limit = limit;
-        // self.seed = seed
-        this->seed = seed;
-    }
+    explicit IntCounter(int32_t limit, int32_t seed);
     static constexpr std::string_view __tpy_class_name__ = "__main__.IntCounter";
 };
 
@@ -450,5 +435,29 @@ struct __coro_main_coro {
     }
 };
 
+
+// def __init__(self, v: Int32) -> None:
+inline IntBox::IntBox(int32_t v) {
+    // self.v = v
+    this->v = v;
+}
+
+// def __init__(self, val: Int32) -> None:
+inline IntGuard::IntGuard(int32_t val) {
+    // self.val = val
+    this->val = val;
+    // self.entered = 0
+    this->entered = 0;
+}
+
+// def __init__(self, limit: Int32, seed: Int32) -> None:
+inline IntCounter::IntCounter(int32_t limit, int32_t seed) {
+    // self.cur = 0
+    this->cur = 0;
+    // self.limit = limit
+    this->limit = limit;
+    // self.seed = seed
+    this->seed = seed;
+}
 void __tpy_init();
 } // namespace tpyapp::main

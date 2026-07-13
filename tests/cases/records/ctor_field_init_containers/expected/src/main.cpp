@@ -29,6 +29,9 @@ void main() {
     std::cout << ::tpy::ListPrinter(::tpy::__getitem__(h.grid, 0)) << " " << ::tpy::ListPrinter(::tpy::__getitem__(h.grid, 1)) << " " << ::tpy::ListPrinter(h.copied) << "\n";
 }
 
+
+// def __init__(self, prefix: str, p: Point, q: Own[Point], copied: list[Int32]):
+Holder::Holder(std::string_view prefix, const Point& p, Point&& q, const std::vector<int32_t>& copied) : items({1, 2}), names({std::string(prefix), "lit"}), counts(::tpy::ordered_map<std::string, int32_t>({{"k", 1}, {"j", 2}})), tags(::tpy::ordered_set<int32_t>({10, 20})), arr({3, 4, 5}), pts({Point(1), p}), grid({{1}, {2, 3}}), empty_l(std::vector<int32_t>{}), empty_d(::tpy::ordered_map<int32_t, int32_t>()), moved(::tpy::make_vector<Point>(std::move(q))), copied(copied) {}
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;

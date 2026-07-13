@@ -22,7 +22,7 @@ struct Point {
 
     // def __init__(self, x: int, y: int) -> None:
     Point() = default;
-    explicit Point(const ::tpy::BigInt& x, const ::tpy::BigInt& y) : x(x), y(y) {}
+    explicit Point(const ::tpy::BigInt& x, const ::tpy::BigInt& y);
 
     // def __str__(self) -> str:
     std::string __str__() const;
@@ -34,6 +34,9 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     return os;
 }
 
+
+// def __init__(self, x: int, y: int) -> None:
+inline Point::Point(const ::tpy::BigInt& x, const ::tpy::BigInt& y) : x(x), y(y) {}
 
 // def __str__(self) -> str:
 inline std::string Point::__str__() const {

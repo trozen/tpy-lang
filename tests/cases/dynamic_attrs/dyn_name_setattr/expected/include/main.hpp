@@ -24,7 +24,7 @@ struct Headers {
     std::string _last_value;
 
     // def __init__(self) -> None:
-    Headers() : _last_name(""), _last_value("") {}
+    Headers();
 
     // def __setattr__(self, name: str, value: str) -> None:
     void __setattr__(std::string_view name, std::string_view value);
@@ -36,6 +36,9 @@ inline std::ostream& operator<<(std::ostream& os, const Headers& obj) {
     return os;
 }
 
+
+// def __init__(self) -> None:
+inline Headers::Headers() : _last_name(""), _last_value("") {}
 
 // def __setattr__(self, name: str, value: str) -> None:
 inline void Headers::__setattr__(std::string_view name, std::string_view value) {

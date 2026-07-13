@@ -25,7 +25,7 @@ struct Fixed {
     int32_t off;
 
     Fixed() = default;
-    explicit Fixed(int32_t off) : off(off) {}
+    explicit Fixed(int32_t off);
 
     bool __eq__(Fixed other) const;
 
@@ -67,7 +67,7 @@ struct Zone {
     int32_t zid;
 
     Zone() = default;
-    explicit Zone(int32_t zid) : zid(zid) {}
+    explicit Zone(int32_t zid);
 
     bool __eq__(Zone other) const;
 
@@ -109,7 +109,7 @@ struct Dog {
 
     // def __init__(self, barks: int) -> None:
     Dog() = default;
-    explicit Dog(const ::tpy::BigInt& barks) : barks(barks) {}
+    explicit Dog(const ::tpy::BigInt& barks);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Dog";
 };
 
@@ -125,7 +125,7 @@ struct Cat {
 
     // def __init__(self, meows: int) -> None:
     Cat() = default;
-    explicit Cat(const ::tpy::BigInt& meows) : meows(meows) {}
+    explicit Cat(const ::tpy::BigInt& meows);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Cat";
 };
 
@@ -140,26 +140,7 @@ struct Holder {
     int32_t kind;
 
     // def __init__(self, tz: Fixed | Zone | None = None) -> None:
-    explicit Holder(const std::variant<std::monostate, Fixed, Zone>& tz = {}) {
-        // k = 0
-        int32_t k = 0;
-        // if tz is not None:
-        if ((!std::holds_alternative<std::monostate>(tz))) {
-            // if isinstance(tz, Fixed):
-            if (std::holds_alternative<Fixed>(tz)) {
-                const auto& __tz = std::get<Fixed>(tz);
-                // k = 1
-                k = 1;
-            // else:
-            } else {
-                const auto& __tz = std::get<Zone>(tz);
-                // k = 2
-                k = 2;
-            }
-        }
-        // self.kind = k
-        this->kind = k;
-    }
+    explicit Holder(const std::variant<std::monostate, Fixed, Zone>& tz = {});
 
     // def describe(self, tz: Fixed | Zone | None = None) -> str:
     std::string describe(const std::variant<std::monostate, Fixed, Zone>& tz = {}) const;
@@ -175,6 +156,8 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 }
 
 
+inline Fixed::Fixed(int32_t off) : off(off) {}
+
 inline bool Fixed::__eq__(Fixed other) const {
     return (this->off == other.off);
 }
@@ -188,6 +171,8 @@ inline uint64_t Fixed::__hash__() const {
     return h;
 }
 
+inline Zone::Zone(int32_t zid) : zid(zid) {}
+
 inline bool Zone::__eq__(Zone other) const {
     return (this->zid == other.zid);
 }
@@ -199,6 +184,34 @@ inline std::string Zone::__repr__() const {
 inline uint64_t Zone::__hash__() const {
     uint64_t h = ::tpy::__hash__(this->zid);
     return h;
+}
+
+// def __init__(self, barks: int) -> None:
+inline Dog::Dog(const ::tpy::BigInt& barks) : barks(barks) {}
+
+// def __init__(self, meows: int) -> None:
+inline Cat::Cat(const ::tpy::BigInt& meows) : meows(meows) {}
+
+// def __init__(self, tz: Fixed | Zone | None = None) -> None:
+inline Holder::Holder(const std::variant<std::monostate, Fixed, Zone>& tz) {
+    // k = 0
+    int32_t k = 0;
+    // if tz is not None:
+    if ((!std::holds_alternative<std::monostate>(tz))) {
+        // if isinstance(tz, Fixed):
+        if (std::holds_alternative<Fixed>(tz)) {
+            const auto& __tz = std::get<Fixed>(tz);
+            // k = 1
+            k = 1;
+        // else:
+        } else {
+            const auto& __tz = std::get<Zone>(tz);
+            // k = 2
+            k = 2;
+        }
+    }
+    // self.kind = k
+    this->kind = k;
 }
 
 // def describe(self, tz: Fixed | Zone | None = None) -> str:

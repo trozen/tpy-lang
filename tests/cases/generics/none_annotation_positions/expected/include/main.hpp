@@ -37,7 +37,7 @@ struct Field {
     std::monostate slot;
 
     // def __init__(self):
-    Field() : slot(std::monostate{}) {}
+    Field();
 
     // def take(self, x: None) -> None:
     void take(std::monostate x);
@@ -66,6 +66,9 @@ inline std::ostream& operator<<(std::ostream& os, const Guard& obj) {
     return os;
 }
 
+
+// def __init__(self):
+inline Field::Field() : slot(std::monostate{}) {}
 
 // def take(self, x: None) -> None:
 inline void Field::take(std::monostate x) {

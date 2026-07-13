@@ -20,7 +20,7 @@ struct Box {
 
     // def __init__(self, base: Int32) -> None:
     Box() = default;
-    explicit Box(int32_t base) : base(base) {}
+    explicit Box(int32_t base);
 
     // @overload
     // def apply(self, x: Int32, *, tag: str = "") -> str:
@@ -37,6 +37,9 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
     return os;
 }
 
+
+// def __init__(self, base: Int32) -> None:
+inline Box::Box(int32_t base) : base(base) {}
 
 // @overload
 // def apply(self, x: Int32, *, tag: str = "") -> str:

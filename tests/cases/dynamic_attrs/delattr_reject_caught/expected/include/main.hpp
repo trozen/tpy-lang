@@ -19,12 +19,7 @@ struct Strict {
     ::tpy::ordered_map<std::string, ::tpy::Any> _data;
 
     // def __init__(self) -> None:
-    Strict() {
-        // d: dict[str, Any] = {"a": 1, "b": 2}
-        ::tpy::ordered_map<std::string, ::tpy::Any> d = ::tpy::ordered_map<std::string, ::tpy::Any>({{"a", ::tpy::make_any(::tpy::BigInt(1))}, {"b", ::tpy::make_any(::tpy::BigInt(2))}});
-        // self._data = d
-        this->_data = std::move(d);
-    }
+    Strict();
 
     // def __delattr__(self, name: str) -> None:
     void __delattr__(std::string_view name);
@@ -36,6 +31,14 @@ inline std::ostream& operator<<(std::ostream& os, const Strict& obj) {
     return os;
 }
 
+
+// def __init__(self) -> None:
+inline Strict::Strict() {
+    // d: dict[str, Any] = {"a": 1, "b": 2}
+    ::tpy::ordered_map<std::string, ::tpy::Any> d = ::tpy::ordered_map<std::string, ::tpy::Any>({{"a", ::tpy::make_any(::tpy::BigInt(1))}, {"b", ::tpy::make_any(::tpy::BigInt(2))}});
+    // self._data = d
+    this->_data = std::move(d);
+}
 
 // def __delattr__(self, name: str) -> None:
 inline void Strict::__delattr__(std::string_view name) {

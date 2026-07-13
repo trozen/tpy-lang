@@ -22,7 +22,7 @@ struct Id {
     int32_t value;
 
     Id() = default;
-    explicit Id(int32_t value) : value(value) {}
+    explicit Id(int32_t value);
 
     bool __eq__(const Id& other) const;
 
@@ -48,7 +48,7 @@ struct Point {
     int32_t y;
 
     Point() = default;
-    explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
+    explicit Point(int32_t x, int32_t y);
 
     bool __eq__(const Point& other) const;
 
@@ -76,7 +76,7 @@ struct Config {
     std::optional<std::string> label = std::nullopt;
 
     Config() = default;
-    explicit Config(std::string_view name, int32_t value, std::optional<std::string_view> label = std::nullopt) : name(name), value(value), label(label ? std::make_optional(std::string(*label)) : std::nullopt) {}
+    explicit Config(std::string_view name, int32_t value, std::optional<std::string_view> label = std::nullopt);
 
     bool __eq__(const Config& other) const;
 
@@ -94,6 +94,8 @@ inline std::ostream& operator<<(std::ostream& os, const Config& obj) {
 }
 
 
+inline Id::Id(int32_t value) : value(value) {}
+
 inline bool Id::__eq__(const Id& other) const {
     return (this->value == other.value);
 }
@@ -102,6 +104,8 @@ inline std::string Id::__repr__() const {
     return std::format("Id(value={})", ::tpy::repr_of(this->value));
 }
 
+inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
+
 inline bool Point::__eq__(const Point& other) const {
     return ((this->x == other.x) && (this->y == other.y));
 }
@@ -109,6 +113,8 @@ inline bool Point::__eq__(const Point& other) const {
 inline std::string Point::__repr__() const {
     return std::format("Point(x={}, y={})", ::tpy::repr_of(this->x), ::tpy::repr_of(this->y));
 }
+
+inline Config::Config(std::string_view name, int32_t value, std::optional<std::string_view> label) : name(name), value(value), label(label ? std::make_optional(std::string(*label)) : std::nullopt) {}
 
 inline bool Config::__eq__(const Config& other) const {
     return (((this->name == other.name) && (this->value == other.value)) && (this->label == other.label));

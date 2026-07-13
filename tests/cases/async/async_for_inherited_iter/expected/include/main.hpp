@@ -27,7 +27,7 @@ struct BaseAIter {
     int32_t i;
 
     // def __init__(self) -> None:
-    BaseAIter() : i(0) {}
+    BaseAIter();
 
     // def __aiter__(self) -> "BaseAIter":
     BaseAIter& __aiter__();
@@ -110,6 +110,9 @@ struct __coro_main_coro {
     }
 };
 
+
+// def __init__(self) -> None:
+inline BaseAIter::BaseAIter() : i(0) {}
 
 // def __aiter__(self) -> "BaseAIter":
 inline BaseAIter& BaseAIter::__aiter__() {

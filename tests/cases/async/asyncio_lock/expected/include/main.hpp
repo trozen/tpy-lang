@@ -31,7 +31,7 @@ struct Box {
     int32_t n;
 
     // def __init__(self) -> None:
-    Box() : n(0) {}
+    Box();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
@@ -139,5 +139,8 @@ struct __coro_main_coro {
     }
 };
 
+
+// def __init__(self) -> None:
+inline Box::Box() : n(0) {}
 void __tpy_init();
 } // namespace tpyapp::main

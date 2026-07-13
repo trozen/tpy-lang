@@ -38,7 +38,7 @@ struct Pet : Tagged {
 
     // def __init__(self, n: str) -> None:
     Pet() = default;
-    explicit Pet(std::string_view n) : _name(n) {}
+    explicit Pet(std::string_view n);
 
     // @readonly
     // def name(self) -> str:
@@ -71,7 +71,7 @@ struct Dog : Pet {
 
     // def __init__(self, n: str) -> None:
     Dog() = default;
-    explicit Dog(std::string_view n) : Pet(n) {}
+    explicit Dog(std::string_view n);
 
     // @readonly
     // def bark(self) -> str:
@@ -89,7 +89,7 @@ struct Cat : Pet {
 
     // def __init__(self, n: str) -> None:
     Cat() = default;
-    explicit Cat(std::string_view n) : Pet(n) {}
+    explicit Cat(std::string_view n);
 
     // @readonly
     // def purr(self) -> str:
@@ -119,6 +119,9 @@ struct tpy::RefAdapter<tpyapp::main::Tagged, T> : tpyapp::main::Tagged {
 
 namespace tpyapp::main {
 
+
+// def __init__(self, n: str) -> None:
+inline Pet::Pet(std::string_view n) : _name(n) {}
 
 // @readonly
 // def name(self) -> str:
@@ -189,12 +192,18 @@ inline std::string Pet::mutate_then_describe(std::string_view suffix) {
     return (::tpy::str_concat("MUT-PET: ", this->_name));
 }
 
+// def __init__(self, n: str) -> None:
+inline Dog::Dog(std::string_view n) : Pet(n) {}
+
 // @readonly
 // def bark(self) -> str:
 inline std::string Dog::bark() const {
     // return "woof from " + self._name
     return (::tpy::str_concat("woof from ", this->_name));
 }
+
+// def __init__(self, n: str) -> None:
+inline Cat::Cat(std::string_view n) : Pet(n) {}
 
 // @readonly
 // def purr(self) -> str:

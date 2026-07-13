@@ -25,30 +25,15 @@ struct Probe {
     bool __tpy_owned_ = true;
 
     // def __init__(self, tag: int) -> None:
-    explicit Probe(const ::tpy::BigInt& tag) : tag(tag) {
-        // print(f"Probe({tag}) init")
-        std::cout << std::format("Probe({}) init", (tag).to_string()) << "\n";
-    }
+    explicit Probe(const ::tpy::BigInt& tag);
     // non-copyable (@nocopy)
     Probe(const Probe&) = delete;
     Probe& operator=(const Probe&) = delete;
-    Probe(Probe&& other) noexcept : tag(std::move(other.tag)) {
-        other.__tpy_owned_ = false;
-    }
-    Probe& operator=(Probe&& other) noexcept {
-        if (this != &other) {
-            this->~Probe();
-            new (this) Probe(std::move(other));
-        }
-        return *this;
-    }
-    // def __del__(self) -> None:
+    Probe(Probe&& other) noexcept;
+    Probe& operator=(Probe&& other) noexcept;
 
-    ~Probe() {
-        if (!this->__tpy_owned_) return;
-        // print(f"Probe({self.tag}) drop")
-        std::cout << std::format("Probe({}) drop", (this->tag).to_string()) << "\n";
-    }
+    // def __del__(self) -> None:
+    ~Probe();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Probe";
 };
 
@@ -57,5 +42,29 @@ inline std::ostream& operator<<(std::ostream& os, const Probe& obj) {
     return os;
 }
 
+
+// def __init__(self, tag: int) -> None:
+inline Probe::Probe(const ::tpy::BigInt& tag) : tag(tag) {
+    // print(f"Probe({tag}) init")
+    std::cout << std::format("Probe({}) init", (tag).to_string()) << "\n";
+}
+
+inline Probe::Probe(Probe&& other) noexcept : tag(std::move(other.tag)) {
+    other.__tpy_owned_ = false;
+}
+inline Probe& Probe::operator=(Probe&& other) noexcept {
+    if (this != &other) {
+        this->~Probe();
+        new (this) Probe(std::move(other));
+    }
+    return *this;
+}
+
+// def __del__(self) -> None:
+inline Probe::~Probe() {
+    if (!this->__tpy_owned_) return;
+    // print(f"Probe({self.tag}) drop")
+    std::cout << std::format("Probe({}) drop", (this->tag).to_string()) << "\n";
+}
 void __tpy_init();
 } // namespace tpyapp::main

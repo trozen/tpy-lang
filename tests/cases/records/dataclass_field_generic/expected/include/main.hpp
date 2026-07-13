@@ -52,7 +52,7 @@ struct Wrapper {
     Pair<int32_t> pair = Pair<int32_t>();
 
     Wrapper() = default;
-    explicit Wrapper(std::string_view name, Pair<int32_t>&& pair = Pair<int32_t>()) : name(name), pair(std::move(pair)) {}
+    explicit Wrapper(std::string_view name, Pair<int32_t>&& pair = Pair<int32_t>());
 
     bool __eq__(const Wrapper& other) const;
 
@@ -69,6 +69,8 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {
     return os;
 }
 
+
+inline Wrapper::Wrapper(std::string_view name, Pair<int32_t>&& pair) : name(name), pair(std::move(pair)) {}
 
 inline bool Wrapper::__eq__(const Wrapper& other) const {
     return ((this->name == other.name) && (this->pair == other.pair));

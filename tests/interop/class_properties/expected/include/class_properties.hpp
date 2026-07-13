@@ -43,7 +43,7 @@ struct Rect {
     std::vector<int32_t> _tags;
 
     Rect() = default;
-    explicit Rect(int32_t w, int32_t h) : name("rect"), _w(w), _h(h), _color(Color::RED), _tags(std::vector<int32_t>{}) {}
+    explicit Rect(int32_t w, int32_t h);
 
     int32_t area() const;
 
@@ -80,6 +80,8 @@ inline std::ostream& operator<<(std::ostream& os, const Rect& obj) {
     return os;
 }
 
+
+inline Rect::Rect(int32_t w, int32_t h) : name("rect"), _w(w), _h(h), _color(Color::RED), _tags(std::vector<int32_t>{}) {}
 
 inline int32_t Rect::area() const {
     return (::tpy::mul_check<int32_t>(this->_w, this->_h));

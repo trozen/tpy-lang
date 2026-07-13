@@ -24,7 +24,7 @@ struct Counter {
 
     // def __init__(self, v: Int32) -> None:
     Counter() = default;
-    explicit Counter(int32_t v) : value(v) {}
+    explicit Counter(int32_t v);
 
     // def do_nothing(self) -> None:
     void do_nothing() const;
@@ -39,6 +39,9 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
     return os;
 }
 
+
+// def __init__(self, v: Int32) -> None:
+inline Counter::Counter(int32_t v) : value(v) {}
 
 // def do_nothing(self) -> None:
 inline void Counter::do_nothing() const {

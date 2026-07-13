@@ -21,7 +21,7 @@ struct Container {
 
     // def __init__(self, value: Int32) -> None:
     Container() = default;
-    explicit Container(int32_t value) : value(value) {}
+    explicit Container(int32_t value);
 
     // def __repr__(self) -> str:
     std::string __repr__() const;
@@ -40,7 +40,7 @@ struct Wrapper {
 
     // def __init__(self, inner: Container) -> None:
     Wrapper() = default;
-    explicit Wrapper(const Container& inner) : inner(inner) {}
+    explicit Wrapper(const Container& inner);
 
     // @readonly
     // def get_pair(self) -> tuple[Container, Int32]:
@@ -54,11 +54,17 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {
 }
 
 
+// def __init__(self, value: Int32) -> None:
+inline Container::Container(int32_t value) : value(value) {}
+
 // def __repr__(self) -> str:
 inline std::string Container::__repr__() const {
     // return "Container(value=" + str(self.value) + ")"
     return (::tpy::str_concat((::tpy::str_concat("Container(value=", ::tpy::fixed_to_str<int32_t>(this->value))), ")"));
 }
+
+// def __init__(self, inner: Container) -> None:
+inline Wrapper::Wrapper(const Container& inner) : inner(inner) {}
 
 // @readonly
 // def get_pair(self) -> tuple[Container, Int32]:

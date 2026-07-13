@@ -25,7 +25,7 @@ struct Node {
 
     // def __init__(self, val: Int32) -> None:
     Node() = default;
-    explicit Node(int32_t val) : val(val) {}
+    explicit Node(int32_t val);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Node";
 };
 
@@ -42,7 +42,7 @@ struct Holder {
     Node b;
 
     // def __init__(self) -> None:
-    Holder() : a(Node(1)), b(Node(2)) {}
+    Holder();
 
     __gen_Holder_nodes_gen nodes_gen();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
@@ -108,5 +108,11 @@ struct __gen_bump_all : public ::tpy::next_iter_mixin<__gen_bump_all, int32_t> {
     }
 };
 
+
+// def __init__(self, val: Int32) -> None:
+inline Node::Node(int32_t val) : val(val) {}
+
+// def __init__(self) -> None:
+inline Holder::Holder() : a(Node(1)), b(Node(2)) {}
 void __tpy_init();
 } // namespace tpyapp::main

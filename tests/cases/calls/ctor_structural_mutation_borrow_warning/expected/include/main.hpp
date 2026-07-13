@@ -22,7 +22,7 @@ struct Box {
 
     // def __init__(self, v: Int32) -> None:
     Box() = default;
-    explicit Box(int32_t v) : v(v) {}
+    explicit Box(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
@@ -36,10 +36,7 @@ struct Sink {
 
     // def __init__(self, xs: list[Box]) -> None:
     Sink() = default;
-    explicit Sink(std::vector<Box>& xs) {
-        // xs.append(Box(Int32(99)))  # structural mutation -- may invalidate `first(...)`'s result
-        xs.push_back(Box(99));
-    }
+    explicit Sink(std::vector<Box>& xs);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Sink";
 };
 
@@ -48,5 +45,14 @@ inline std::ostream& operator<<(std::ostream& os, const Sink& obj) {
     return os;
 }
 
+
+// def __init__(self, v: Int32) -> None:
+inline Box::Box(int32_t v) : v(v) {}
+
+// def __init__(self, xs: list[Box]) -> None:
+inline Sink::Sink(std::vector<Box>& xs) {
+    // xs.append(Box(Int32(99)))  # structural mutation -- may invalidate `first(...)`'s result
+    xs.push_back(Box(99));
+}
 void __tpy_init();
 } // namespace tpyapp::main

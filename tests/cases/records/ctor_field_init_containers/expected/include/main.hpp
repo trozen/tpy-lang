@@ -21,7 +21,7 @@ struct Point {
 
     // def __init__(self, v: Int32):
     Point() = default;
-    explicit Point(int32_t v) : v(v) {}
+    explicit Point(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
 };
 
@@ -57,7 +57,7 @@ struct Holder {
 
     // def __init__(self, prefix: str, p: Point, q: Own[Point], copied: list[Int32]):
     Holder() = default;
-    explicit Holder(std::string_view prefix, const Point& p, Point&& q, const std::vector<int32_t>& copied) : items({1, 2}), names({std::string(prefix), "lit"}), counts(::tpy::ordered_map<std::string, int32_t>({{"k", 1}, {"j", 2}})), tags(::tpy::ordered_set<int32_t>({10, 20})), arr({3, 4, 5}), pts({Point(1), p}), grid({{1}, {2, 3}}), empty_l(std::vector<int32_t>{}), empty_d(::tpy::ordered_map<int32_t, int32_t>()), moved(::tpy::make_vector<Point>(std::move(q))), copied(copied) {}
+    explicit Holder(std::string_view prefix, const Point& p, Point&& q, const std::vector<int32_t>& copied);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
@@ -66,5 +66,8 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     return os;
 }
 
+
+// def __init__(self, v: Int32):
+inline Point::Point(int32_t v) : v(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

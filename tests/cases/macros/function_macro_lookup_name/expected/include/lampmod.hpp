@@ -20,7 +20,7 @@ struct Lamp {
 
     // def __init__(self, lit: bool) -> None:
     Lamp() = default;
-    explicit Lamp(bool lit) : lit(lit) {}
+    explicit Lamp(bool lit);
     static constexpr std::string_view __tpy_class_name__ = "lampmod.Lamp";
 };
 
@@ -38,7 +38,7 @@ struct Switch {
 
     // def __init__(self, on: bool) -> None:
     Switch() = default;
-    explicit Switch(bool on) : on(on) {}
+    explicit Switch(bool on);
     static constexpr std::string_view __tpy_class_name__ = "lampmod.Switch";
 };
 
@@ -47,5 +47,11 @@ inline std::ostream& operator<<(std::ostream& os, const Switch& obj) {
     return os;
 }
 
+
+// def __init__(self, lit: bool) -> None:
+inline Lamp::Lamp(bool lit) : lit(lit) {}
+
+// def __init__(self, on: bool) -> None:
+inline Switch::Switch(bool on) : on(on) {}
 void __tpy_init();
 } // namespace tpyapp::lampmod

@@ -36,7 +36,7 @@ struct H {
     std::vector<int32_t> items;
 
     // def __init__(self) -> None:
-    H() : items({1, 2}) {}
+    H();
 
     // def view(self) -> list[Int32]:
     std::vector<int32_t>& view();
@@ -52,6 +52,9 @@ inline std::ostream& operator<<(std::ostream& os, const H& obj) {
     return os;
 }
 
+
+// def __init__(self) -> None:
+inline H::H() : items({1, 2}) {}
 
 // def view(self) -> list[Int32]:
 inline std::vector<int32_t>& H::view() {

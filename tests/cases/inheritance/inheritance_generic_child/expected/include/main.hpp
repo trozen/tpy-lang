@@ -24,7 +24,7 @@ struct Animal {
 
     // def __init__(self, name: str) -> None:
     Animal() = default;
-    explicit Animal(std::string_view name) : name(name) {}
+    explicit Animal(std::string_view name);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Animal";
 };
 
@@ -106,5 +106,8 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper<U>& obj) {
     return os;
 }
 
+
+// def __init__(self, name: str) -> None:
+inline Animal::Animal(std::string_view name) : name(name) {}
 void __tpy_init();
 } // namespace tpyapp::main

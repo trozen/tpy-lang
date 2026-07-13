@@ -77,8 +77,8 @@ struct SimpleList {
         }
         return *this;
     }
-    // def __del__(self) -> None:
 
+    // def __del__(self) -> None:
     ~SimpleList() {
         if (!this->__tpy_owned_) return;
         // for i in range(self._size):

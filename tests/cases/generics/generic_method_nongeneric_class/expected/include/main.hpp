@@ -18,9 +18,7 @@ void main();
 struct Converter {
 
     // def __init__(self):
-    Converter() {
-        // pass
-    }
+    Converter();
 
     // def identity[U](self, val: U) -> U:
     template<typename U>
@@ -36,5 +34,10 @@ inline std::ostream& operator<<(std::ostream& os, const Converter& obj) {
     return os;
 }
 
+
+// def __init__(self):
+inline Converter::Converter() {
+    // pass
+}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -24,7 +24,7 @@ struct Fixed {
     int32_t off;
 
     Fixed() = default;
-    explicit Fixed(int32_t off) : off(off) {}
+    explicit Fixed(int32_t off);
 
     bool __eq__(Fixed other) const;
 
@@ -66,7 +66,7 @@ struct Zone {
     int32_t zid;
 
     Zone() = default;
-    explicit Zone(int32_t zid) : zid(zid) {}
+    explicit Zone(int32_t zid);
 
     bool __eq__(Zone other) const;
 
@@ -107,23 +107,7 @@ struct Box {
     int32_t v;
 
     // def __init__(self, tz: Fixed | Zone | None = None) -> None:
-    explicit Box(const std::variant<std::monostate, Fixed, Zone>& tz = {}) {
-        // if tz is None:
-        if ((std::holds_alternative<std::monostate>(tz))) {
-            // self.v = 0
-            this->v = 0;
-        // elif isinstance(tz, Fixed):
-        } else if (std::holds_alternative<Fixed>(tz)) {
-            const auto& __tz = std::get<Fixed>(tz);
-            // self.v = int(tz.off)
-            this->v = (::tpy::BigInt(static_cast<int64_t>(__tz.off))).to_fixed_check<int32_t>();
-        // else:
-        } else {
-            const auto& __tz = std::get<Zone>(tz);
-            // self.v = int(tz.zid)
-            this->v = (::tpy::BigInt(static_cast<int64_t>(__tz.zid))).to_fixed_check<int32_t>();
-        }
-    }
+    explicit Box(const std::variant<std::monostate, Fixed, Zone>& tz = {});
 
     // def eat(self, other: "Box") -> int:
     ::tpy::BigInt eat(const Box& other) const;
@@ -135,6 +119,8 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
     return os;
 }
 
+
+inline Fixed::Fixed(int32_t off) : off(off) {}
 
 inline bool Fixed::__eq__(Fixed other) const {
     return (this->off == other.off);
@@ -149,6 +135,8 @@ inline uint64_t Fixed::__hash__() const {
     return h;
 }
 
+inline Zone::Zone(int32_t zid) : zid(zid) {}
+
 inline bool Zone::__eq__(Zone other) const {
     return (this->zid == other.zid);
 }
@@ -160,6 +148,25 @@ inline std::string Zone::__repr__() const {
 inline uint64_t Zone::__hash__() const {
     uint64_t h = ::tpy::__hash__(this->zid);
     return h;
+}
+
+// def __init__(self, tz: Fixed | Zone | None = None) -> None:
+inline Box::Box(const std::variant<std::monostate, Fixed, Zone>& tz) {
+    // if tz is None:
+    if ((std::holds_alternative<std::monostate>(tz))) {
+        // self.v = 0
+        this->v = 0;
+    // elif isinstance(tz, Fixed):
+    } else if (std::holds_alternative<Fixed>(tz)) {
+        const auto& __tz = std::get<Fixed>(tz);
+        // self.v = int(tz.off)
+        this->v = (::tpy::BigInt(static_cast<int64_t>(__tz.off))).to_fixed_check<int32_t>();
+    // else:
+    } else {
+        const auto& __tz = std::get<Zone>(tz);
+        // self.v = int(tz.zid)
+        this->v = (::tpy::BigInt(static_cast<int64_t>(__tz.zid))).to_fixed_check<int32_t>();
+    }
 }
 
 // def eat(self, other: "Box") -> int:

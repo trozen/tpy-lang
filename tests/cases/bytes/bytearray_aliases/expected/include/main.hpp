@@ -23,7 +23,7 @@ struct Holder {
     std::vector<uint8_t> data;
 
     // def __init__(self, data: bytearray):
-    explicit Holder(const std::vector<uint8_t>& data) : data(data) {}
+    explicit Holder(const std::vector<uint8_t>& data);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
@@ -32,5 +32,8 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     return os;
 }
 
+
+// def __init__(self, data: bytearray):
+inline Holder::Holder(const std::vector<uint8_t>& data) : data(data) {}
 void __tpy_init();
 } // namespace tpyapp::main

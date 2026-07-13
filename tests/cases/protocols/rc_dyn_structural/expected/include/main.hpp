@@ -43,26 +43,14 @@ struct Cat {
     bool __tpy_owned_ = true;
 
     // def __init__(self, label: str) -> None:
-    explicit Cat(std::string_view label) : label(label) {}
+    explicit Cat(std::string_view label);
     Cat(const Cat&) = delete;
     Cat& operator=(const Cat&) = delete;
-    Cat(Cat&& other) noexcept : label(std::move(other.label)) {
-        other.__tpy_owned_ = false;
-    }
-    Cat& operator=(Cat&& other) noexcept {
-        if (this != &other) {
-            this->~Cat();
-            new (this) Cat(std::move(other));
-        }
-        return *this;
-    }
-    // def __del__(self) -> None:
+    Cat(Cat&& other) noexcept;
+    Cat& operator=(Cat&& other) noexcept;
 
-    ~Cat() {
-        if (!this->__tpy_owned_) return;
-        // print(f"~Cat({self.label})")
-        std::cout << std::format("~Cat({})", this->label) << "\n";
-    }
+    // def __del__(self) -> None:
+    ~Cat();
 
     // def name(self) -> str:
     std::string name() const;
@@ -93,6 +81,27 @@ struct tpy::RefAdapter<tpyapp::main::Pet, T> : tpyapp::main::Pet {
 
 namespace tpyapp::main {
 
+
+// def __init__(self, label: str) -> None:
+inline Cat::Cat(std::string_view label) : label(label) {}
+
+inline Cat::Cat(Cat&& other) noexcept : label(std::move(other.label)) {
+    other.__tpy_owned_ = false;
+}
+inline Cat& Cat::operator=(Cat&& other) noexcept {
+    if (this != &other) {
+        this->~Cat();
+        new (this) Cat(std::move(other));
+    }
+    return *this;
+}
+
+// def __del__(self) -> None:
+inline Cat::~Cat() {
+    if (!this->__tpy_owned_) return;
+    // print(f"~Cat({self.label})")
+    std::cout << std::format("~Cat({})", this->label) << "\n";
+}
 
 // def name(self) -> str:
 inline std::string Cat::name() const {

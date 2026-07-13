@@ -33,7 +33,7 @@ struct Box {
 
     // def __init__(self, value: Int32) -> None:
     Box() = default;
-    explicit Box(int32_t value) : value(value) {}
+    explicit Box(int32_t value);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
@@ -49,7 +49,7 @@ struct Holder {
 
     // def __init__(self, item: Own[Box]) -> None:
     Holder() = default;
-    explicit Holder(Box&& item) : item(std::move(item)) {}
+    explicit Holder(Box&& item);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
@@ -58,6 +58,12 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     return os;
 }
 
+
+// def __init__(self, value: Int32) -> None:
+inline Box::Box(int32_t value) : value(value) {}
+
+// def __init__(self, item: Own[Box]) -> None:
+inline Holder::Holder(Box&& item) : item(std::move(item)) {}
 // # No warning: ValueType bound -- copy == move, no semantic difference
 // def value_type_borrow[T: ValueType](x: Own[T]) -> T:  # tpyc: ok
 template<::tpy::ValueType T>

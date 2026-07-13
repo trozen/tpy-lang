@@ -23,7 +23,7 @@ struct Handler {
     std::function<void(int32_t)> callback;
 
     // def __init__(self, cb: Callable[[Int32], None]) -> None:
-    explicit Handler(std::function<void(int32_t)> cb) : callback(cb) {}
+    explicit Handler(std::function<void(int32_t)> cb);
 
     // def run(self, x: Int32) -> None:
     void run(int32_t x) const;
@@ -38,6 +38,9 @@ inline std::ostream& operator<<(std::ostream& os, const Handler& obj) {
     return os;
 }
 
+
+// def __init__(self, cb: Callable[[Int32], None]) -> None:
+inline Handler::Handler(std::function<void(int32_t)> cb) : callback(cb) {}
 
 // def run(self, x: Int32) -> None:
 inline void Handler::run(int32_t x) const {

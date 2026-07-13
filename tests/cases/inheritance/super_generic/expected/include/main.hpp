@@ -44,7 +44,7 @@ struct LabeledContainer : Container<int32_t> {
 
     // def __init__(self, label: str, value: Int32) -> None:
     LabeledContainer() = default;
-    explicit LabeledContainer(std::string_view label, int32_t value) : Container<int32_t>(value), label(label) {}
+    explicit LabeledContainer(std::string_view label, int32_t value);
 
     // def describe(self) -> str:
     std::string describe() const;
@@ -56,6 +56,9 @@ inline std::ostream& operator<<(std::ostream& os, const LabeledContainer& obj) {
     return os;
 }
 
+
+// def __init__(self, label: str, value: Int32) -> None:
+inline LabeledContainer::LabeledContainer(std::string_view label, int32_t value) : Container<int32_t>(value), label(label) {}
 
 // def describe(self) -> str:
 inline std::string LabeledContainer::describe() const {

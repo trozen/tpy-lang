@@ -27,7 +27,7 @@ struct Guard {
     std::vector<int32_t> vals;
 
     // def __init__(self):
-    Guard() : vals({1, 2}) {}
+    Guard();
 
     __coro_Guard___aenter__ __aenter__() const;
 
@@ -46,7 +46,7 @@ struct K {
     std::vector<Guard> stored;
 
     // def __init__(self):
-    K() : stored(std::vector<Guard>{}) {}
+    K();
 
     // def take(self, g: Own[Guard]):
     void take(Guard&& g);
@@ -145,6 +145,12 @@ struct __coro_runner {
     }
 };
 
+
+// def __init__(self):
+inline Guard::Guard() : vals({1, 2}) {}
+
+// def __init__(self):
+inline K::K() : stored(std::vector<Guard>{}) {}
 
 // def take(self, g: Own[Guard]):
 inline void K::take(Guard&& g) {

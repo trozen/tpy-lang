@@ -22,7 +22,7 @@ struct MyContainer {
 
     // def __init__(self, items: list[Int32]) -> None:
     MyContainer() = default;
-    explicit MyContainer(const std::vector<int32_t>& items) : data(items) {}
+    explicit MyContainer(const std::vector<int32_t>& items);
 
     // def __len__(self) -> Int32:
     int32_t __len__() const;
@@ -40,6 +40,9 @@ inline std::ostream& operator<<(std::ostream& os, const MyContainer& obj) {
     return os;
 }
 
+
+// def __init__(self, items: list[Int32]) -> None:
+inline MyContainer::MyContainer(const std::vector<int32_t>& items) : data(items) {}
 
 // def __len__(self) -> Int32:
 inline int32_t MyContainer::__len__() const {

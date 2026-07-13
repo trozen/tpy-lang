@@ -24,7 +24,7 @@ struct Result {
 
     // def __init__(self, value: Int32) -> None:
     Result() = default;
-    explicit Result(int32_t value) : value(value) {}
+    explicit Result(int32_t value);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Result";
 };
 
@@ -41,7 +41,7 @@ struct Message {
 
     // def __init__(self, text: str) -> None:
     Message() = default;
-    explicit Message(std::string_view text) : text(text) {}
+    explicit Message(std::string_view text);
 
     // def to_result(self) -> Own[Result]:
     Result to_result() const;
@@ -134,6 +134,12 @@ inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
     return os;
 }
 
+
+// def __init__(self, value: Int32) -> None:
+inline Result::Result(int32_t value) : value(value) {}
+
+// def __init__(self, text: str) -> None:
+inline Message::Message(std::string_view text) : text(text) {}
 
 // def to_result(self) -> Own[Result]:
 inline Result Message::to_result() const {

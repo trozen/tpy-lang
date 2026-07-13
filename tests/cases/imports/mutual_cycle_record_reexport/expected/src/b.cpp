@@ -6,6 +6,9 @@ namespace tpyapp::b {
 
 
 
+// def __init__(self) -> None:
+BType::BType() : tag(7) {}
+
 // def use_a(self, a: AType) -> Int32:
 int32_t BType::use_a(const ::tpyapp::a::AType& a) const {
     // return self.tag

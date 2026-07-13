@@ -24,7 +24,7 @@ struct Node {
 
     // def __init__(self, v: int):
     Node() = default;
-    explicit Node(const ::tpy::BigInt& v) : val(v) {}
+    explicit Node(const ::tpy::BigInt& v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Node";
 };
 
@@ -33,5 +33,8 @@ inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
     return os;
 }
 
+
+// def __init__(self, v: int):
+inline Node::Node(const ::tpy::BigInt& v) : val(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

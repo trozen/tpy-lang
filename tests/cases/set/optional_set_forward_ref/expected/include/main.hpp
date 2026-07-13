@@ -21,7 +21,7 @@ struct Point {
 
     // def __init__(self, x: Int32) -> None:
     Point() = default;
-    explicit Point(int32_t x) : x(x) {}
+    explicit Point(int32_t x);
 
     // def __hash__(self) -> UInt64:
     uint64_t __hash__() const;
@@ -56,7 +56,7 @@ struct Holder {
     std::optional<::tpy::ordered_set<Point>> s;
 
     // def __init__(self) -> None:
-    Holder() : s(std::nullopt) {}
+    Holder();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
@@ -65,6 +65,9 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     return os;
 }
 
+
+// def __init__(self, x: Int32) -> None:
+inline Point::Point(int32_t x) : x(x) {}
 
 // def __hash__(self) -> UInt64:
 inline uint64_t Point::__hash__() const {
@@ -77,5 +80,8 @@ inline bool Point::__eq__(const Point& other) const {
     // return self.x == other.x
     return (this->x == other.x);
 }
+
+// def __init__(self) -> None:
+inline Holder::Holder() : s(std::nullopt) {}
 void __tpy_init();
 } // namespace tpyapp::main

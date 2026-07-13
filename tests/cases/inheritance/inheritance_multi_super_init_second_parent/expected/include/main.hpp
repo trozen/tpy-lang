@@ -33,7 +33,7 @@ struct HasInit {
 
     // def __init__(self, x: Int32) -> None:
     HasInit() = default;
-    explicit HasInit(int32_t x) : x(x) {}
+    explicit HasInit(int32_t x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.HasInit";
 };
 
@@ -47,7 +47,7 @@ struct C : NoInitMixin, HasInit {
 
     // def __init__(self, x: Int32) -> None:
     C() = default;
-    explicit C(int32_t x) : HasInit(x) {}
+    explicit C(int32_t x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.C";
 };
 
@@ -56,5 +56,11 @@ inline std::ostream& operator<<(std::ostream& os, const C& obj) {
     return os;
 }
 
+
+// def __init__(self, x: Int32) -> None:
+inline HasInit::HasInit(int32_t x) : x(x) {}
+
+// def __init__(self, x: Int32) -> None:
+inline C::C(int32_t x) : HasInit(x) {}
 void __tpy_init();
 } // namespace tpyapp::main

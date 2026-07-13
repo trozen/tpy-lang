@@ -38,7 +38,7 @@ struct Root : Tagged {
 
     // def __init__(self, name: str) -> None:
     Root() = default;
-    explicit Root(std::string_view name) : name(name) {}
+    explicit Root(std::string_view name);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Root";
 };
 
@@ -54,7 +54,7 @@ struct Sub : Root {
 
     // def __init__(self, name: str, extra: int) -> None:
     Sub() = default;
-    explicit Sub(std::string_view name, const ::tpy::BigInt& extra) : Root(name), extra(extra) {}
+    explicit Sub(std::string_view name, const ::tpy::BigInt& extra);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Sub";
 };
 
@@ -80,5 +80,11 @@ struct tpy::RefAdapter<tpyapp::main::Tagged, T> : tpyapp::main::Tagged {
 
 namespace tpyapp::main {
 
+
+// def __init__(self, name: str) -> None:
+inline Root::Root(std::string_view name) : name(name) {}
+
+// def __init__(self, name: str, extra: int) -> None:
+inline Sub::Sub(std::string_view name, const ::tpy::BigInt& extra) : Root(name), extra(extra) {}
 void __tpy_init();
 } // namespace tpyapp::main

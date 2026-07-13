@@ -42,7 +42,7 @@ struct Dog : Pet {
 
     // def __init__(self, name: str) -> None:
     Dog() = default;
-    explicit Dog(std::string_view name) : name(name) {}
+    explicit Dog(std::string_view name);
 
     // def speak(self) -> str:
     std::string speak() override;
@@ -58,9 +58,7 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 struct Cat : Pet {
 
     // def __init__(self) -> None:
-    Cat() {
-        // pass
-    }
+    Cat();
 
     // def speak(self) -> str:
     std::string speak() override;
@@ -76,9 +74,7 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 struct Hamster : Pet {
 
     // def __init__(self) -> None:
-    Hamster() {
-        // pass
-    }
+    Hamster();
 
     // def speak(self) -> str:
     std::string speak() override;
@@ -110,16 +106,29 @@ struct tpy::RefAdapter<tpyapp::main::Pet, T> : tpyapp::main::Pet {
 namespace tpyapp::main {
 
 
+// def __init__(self, name: str) -> None:
+inline Dog::Dog(std::string_view name) : name(name) {}
+
 // def speak(self) -> str:
 inline std::string Dog::speak() {
     // return "woof"
     return "woof";
 }
 
+// def __init__(self) -> None:
+inline Cat::Cat() {
+    // pass
+}
+
 // def speak(self) -> str:
 inline std::string Cat::speak() {
     // return "meow"
     return "meow";
+}
+
+// def __init__(self) -> None:
+inline Hamster::Hamster() {
+    // pass
 }
 
 // def speak(self) -> str:

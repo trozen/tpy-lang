@@ -42,7 +42,7 @@ struct ExecutorA : Awaker {
     std::vector<int32_t> log;
 
     // def __init__(self) -> None:
-    ExecutorA() : log(std::vector<int32_t>{}) {}
+    ExecutorA();
     // non-copyable (@nocopy)
     ExecutorA(const ExecutorA&) = delete;
     ExecutorA& operator=(const ExecutorA&) = delete;
@@ -66,7 +66,7 @@ struct ExecutorB : Awaker {
     std::vector<int32_t> log;
 
     // def __init__(self) -> None:
-    ExecutorB() : log(std::vector<int32_t>{}) {}
+    ExecutorB();
     // non-copyable (@nocopy)
     ExecutorB(const ExecutorB&) = delete;
     ExecutorB& operator=(const ExecutorB&) = delete;
@@ -92,7 +92,7 @@ struct Notifier {
     int32_t task_id;
 
     // def __init__(self) -> None:
-    Notifier() : awaker(nullptr), task_id(0) {}
+    Notifier();
     // non-copyable (@nocopy)
     Notifier(const Notifier&) = delete;
     Notifier& operator=(const Notifier&) = delete;
@@ -132,17 +132,26 @@ struct tpy::RefAdapter<tpyapp::main::Awaker, T> : tpyapp::main::Awaker {
 namespace tpyapp::main {
 
 
+// def __init__(self) -> None:
+inline ExecutorA::ExecutorA() : log(std::vector<int32_t>{}) {}
+
 // def mark(self, task_id: Int32) -> None:
 inline void ExecutorA::mark(int32_t task_id) {
     // self.log.append(task_id * 10)
     this->log.push_back((::tpy::mul_check<int32_t>(task_id, 10)));
 }
 
+// def __init__(self) -> None:
+inline ExecutorB::ExecutorB() : log(std::vector<int32_t>{}) {}
+
 // def mark(self, task_id: Int32) -> None:
 inline void ExecutorB::mark(int32_t task_id) {
     // self.log.append(task_id + 1000)
     this->log.push_back((::tpy::add_check<int32_t>(task_id, 1000)));
 }
+
+// def __init__(self) -> None:
+inline Notifier::Notifier() : awaker(nullptr), task_id(0) {}
 
 // def aim(self, p: Ptr[Awaker], tid: Int32) -> None:
 inline void Notifier::aim(Awaker* p, int32_t tid) {

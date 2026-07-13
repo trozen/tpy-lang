@@ -36,7 +36,7 @@ struct Impl {
 
     // def __init__(self, value: Int32) -> None:
     Impl() = default;
-    explicit Impl(int32_t value) : value(value) {}
+    explicit Impl(int32_t value);
 
     // def call(self, extra: Int32 = Int32(0)) -> Int32:
     int32_t call(int32_t extra = 0) const;
@@ -51,6 +51,9 @@ inline std::ostream& operator<<(std::ostream& os, const Impl& obj) {
     return os;
 }
 
+
+// def __init__(self, value: Int32) -> None:
+inline Impl::Impl(int32_t value) : value(value) {}
 
 // def call(self, extra: Int32 = Int32(0)) -> Int32:
 inline int32_t Impl::call(int32_t extra) const {

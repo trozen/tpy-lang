@@ -21,7 +21,7 @@ struct Priority {
 
     // def __init__(self, level: Int32) -> None:
     Priority() = default;
-    explicit Priority(int32_t level) : level(level) {}
+    explicit Priority(int32_t level);
 
     // def __lt__(self, other: Priority) -> bool:
     bool __lt__(const Priority& other) const;
@@ -46,7 +46,7 @@ struct Task {
 
     // def __init__(self, name: str, prio: Own[Priority]) -> None:
     Task() = default;
-    explicit Task(std::string_view name, Priority&& prio) : name(name), prio(std::move(prio)) {}
+    explicit Task(std::string_view name, Priority&& prio);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Task";
 };
 
@@ -56,10 +56,16 @@ inline std::ostream& operator<<(std::ostream& os, const Task& obj) {
 }
 
 
+// def __init__(self, level: Int32) -> None:
+inline Priority::Priority(int32_t level) : level(level) {}
+
 // def __lt__(self, other: Priority) -> bool:
 inline bool Priority::__lt__(const Priority& other) const {
     // return self.level < other.level
     return (this->level < other.level);
 }
+
+// def __init__(self, name: str, prio: Own[Priority]) -> None:
+inline Task::Task(std::string_view name, Priority&& prio) : name(name), prio(std::move(prio)) {}
 void __tpy_init();
 } // namespace tpyapp::main

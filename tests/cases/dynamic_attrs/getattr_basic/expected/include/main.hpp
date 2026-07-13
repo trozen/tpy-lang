@@ -20,7 +20,7 @@ struct Config {
 
     // def __init__(self, data: dict[str, Any]) -> None:
     Config() = default;
-    explicit Config(const ::tpy::ordered_map<std::string, ::tpy::Any>& data) : _data(data) {}
+    explicit Config(const ::tpy::ordered_map<std::string, ::tpy::Any>& data);
 
     // def __getattr__(self, name: str) -> Any:
     ::tpy::Any __getattr__(std::string_view name) const;
@@ -32,6 +32,9 @@ inline std::ostream& operator<<(std::ostream& os, const Config& obj) {
     return os;
 }
 
+
+// def __init__(self, data: dict[str, Any]) -> None:
+inline Config::Config(const ::tpy::ordered_map<std::string, ::tpy::Any>& data) : _data(data) {}
 
 // def __getattr__(self, name: str) -> Any:
 inline ::tpy::Any Config::__getattr__(std::string_view name) const {

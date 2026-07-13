@@ -6,6 +6,11 @@ namespace tpyapp::a {
 
 
 
+// def __init__(self) -> None: pass
+Counter::Counter() {
+    // def __init__(self) -> None: pass
+}
+
 // def hello(self) -> str:
 std::string Counter::hello() const {
     // return "hi from a.Counter"

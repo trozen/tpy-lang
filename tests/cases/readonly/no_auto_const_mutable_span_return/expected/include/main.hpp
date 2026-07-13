@@ -19,7 +19,7 @@ struct Buffer {
     std::vector<int32_t> _items;
 
     // def __init__(self) -> None:
-    Buffer() : _items({1, 2, 3}) {}
+    Buffer();
 
     // def items(self) -> Span[Int32]:
     std::span<int32_t> items();
@@ -31,6 +31,9 @@ inline std::ostream& operator<<(std::ostream& os, const Buffer& obj) {
     return os;
 }
 
+
+// def __init__(self) -> None:
+inline Buffer::Buffer() : _items({1, 2, 3}) {}
 
 // def items(self) -> Span[Int32]:
 inline std::span<int32_t> Buffer::items() {

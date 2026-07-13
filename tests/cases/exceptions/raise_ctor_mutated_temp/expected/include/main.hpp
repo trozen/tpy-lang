@@ -23,7 +23,7 @@ struct Bag {
 
     // def __init__(self, items: list[int]) -> None:
     Bag() = default;
-    explicit Bag(const std::vector<::tpy::BigInt>& items) : items(items) {}
+    explicit Bag(const std::vector<::tpy::BigInt>& items);
 
     // def push(self, v: int) -> None:
     void push(const ::tpy::BigInt& v);
@@ -42,12 +42,7 @@ struct BErr : ::tpy::Exception {
 
     // def __init__(self, b: Bag) -> None:
     BErr() = default;
-    explicit BErr(Bag& b) : ::tpy::Exception("b") {
-        // b.push(99)
-        b.push(99);
-        // self.total = len(b.items)
-        this->total = ::tpy::BigInt(::tpy::__len__(b.items));
-    }
+    explicit BErr(Bag& b);
 
     [[nodiscard]] std::unique_ptr<::tpy::Throwable> clone() const override { return std::make_unique<BErr>(*this); }
     [[noreturn]] void __raise__() const override { throw *this; }
@@ -61,10 +56,21 @@ inline std::ostream& operator<<(std::ostream& os, const BErr& obj) {
 }
 
 
+// def __init__(self, items: list[int]) -> None:
+inline Bag::Bag(const std::vector<::tpy::BigInt>& items) : items(items) {}
+
 // def push(self, v: int) -> None:
 inline void Bag::push(const ::tpy::BigInt& v) {
     // self.items.append(v)
     this->items.push_back(v);
+}
+
+// def __init__(self, b: Bag) -> None:
+inline BErr::BErr(Bag& b) : ::tpy::Exception("b") {
+    // b.push(99)
+    b.push(99);
+    // self.total = len(b.items)
+    this->total = ::tpy::BigInt(::tpy::__len__(b.items));
 }
 void __tpy_init();
 } // namespace tpyapp::main

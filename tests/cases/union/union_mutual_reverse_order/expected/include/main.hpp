@@ -27,7 +27,7 @@ struct Lit {
 
     // def __init__(self, value: int) -> None:
     Lit() = default;
-    explicit Lit(const ::tpy::BigInt& value) : value(value) {}
+    explicit Lit(const ::tpy::BigInt& value);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Lit";
 };
 
@@ -46,7 +46,7 @@ struct BinOp {
     ::tpystd::tplib::box::Box<Expr> right;
 
     // def __init__(self, left: Own[Box[Expr]], op: str, right: Own[Box[Expr]]) -> None:
-    explicit BinOp(::tpystd::tplib::box::Box<Expr>&& left, std::string_view op, ::tpystd::tplib::box::Box<Expr>&& right) : left(std::move(left)), op(op), right(std::move(right)) {}
+    explicit BinOp(::tpystd::tplib::box::Box<Expr>&& left, std::string_view op, ::tpystd::tplib::box::Box<Expr>&& right);
     // non-copyable (field 'left')
     BinOp(const BinOp&) = delete;
     BinOp& operator=(const BinOp&) = delete;
@@ -60,6 +60,12 @@ inline std::ostream& operator<<(std::ostream& os, const BinOp& obj) {
     return os;
 }
 
+
+// def __init__(self, value: int) -> None:
+inline Lit::Lit(const ::tpy::BigInt& value) : value(value) {}
+
+// def __init__(self, left: Own[Box[Expr]], op: str, right: Own[Box[Expr]]) -> None:
+inline BinOp::BinOp(::tpystd::tplib::box::Box<Expr>&& left, std::string_view op, ::tpystd::tplib::box::Box<Expr>&& right) : left(std::move(left)), op(op), right(std::move(right)) {}
 struct Expr {
     using variant_type = std::variant<BinOp, Lit>;
     variant_type value;

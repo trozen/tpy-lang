@@ -45,7 +45,7 @@ struct Dog {
 
     // def __init__(self, shade: Color) -> None:
     Dog() = default;
-    explicit Dog(Color shade) : shade(shade) {}
+    explicit Dog(Color shade);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Dog";
 };
 
@@ -61,7 +61,7 @@ struct Cat {
 
     // def __init__(self, age: Int32) -> None:
     Cat() = default;
-    explicit Cat(int32_t age) : age(age) {}
+    explicit Cat(int32_t age);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Cat";
 };
 
@@ -76,7 +76,7 @@ struct Holder {
     std::variant<Cat, Dog> pet;
 
     // def __init__(self) -> None:
-    Holder() : pet(Dog(Color::RED)) {}
+    Holder();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
@@ -85,5 +85,14 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     return os;
 }
 
+
+// def __init__(self, shade: Color) -> None:
+inline Dog::Dog(Color shade) : shade(shade) {}
+
+// def __init__(self, age: Int32) -> None:
+inline Cat::Cat(int32_t age) : age(age) {}
+
+// def __init__(self) -> None:
+inline Holder::Holder() : pet(Dog(Color::RED)) {}
 void __tpy_init();
 } // namespace tpyapp::main

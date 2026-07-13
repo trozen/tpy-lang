@@ -21,7 +21,7 @@ struct Animal {
 
     // def __init__(self, name: str) -> None:
     Animal() = default;
-    explicit Animal(std::string_view name) : name(name) {}
+    explicit Animal(std::string_view name);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Animal";
 };
 
@@ -37,12 +37,7 @@ struct Tagged : Animal {
 
     // def __init__(self, name: str) -> None:
     Tagged() = default;
-    explicit Tagged(std::string_view name) {
-        // self.name = name              # inherited; goes to body
-        this->name = name;
-        // self.name_len = Int32(len(self.name))  # own; RHS reads self.name -- must demote
-        this->name_len = ::tpy::__len__(this->name);
-    }
+    explicit Tagged(std::string_view name);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Tagged";
 };
 
@@ -51,5 +46,16 @@ inline std::ostream& operator<<(std::ostream& os, const Tagged& obj) {
     return os;
 }
 
+
+// def __init__(self, name: str) -> None:
+inline Animal::Animal(std::string_view name) : name(name) {}
+
+// def __init__(self, name: str) -> None:
+inline Tagged::Tagged(std::string_view name) {
+    // self.name = name              # inherited; goes to body
+    this->name = name;
+    // self.name_len = Int32(len(self.name))  # own; RHS reads self.name -- must demote
+    this->name_len = ::tpy::__len__(this->name);
+}
 void __tpy_init();
 } // namespace tpyapp::main

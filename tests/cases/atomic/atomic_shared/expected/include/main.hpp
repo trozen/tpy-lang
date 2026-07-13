@@ -25,7 +25,7 @@ struct Counter {
 
     // def __init__(self, start: UInt32) -> None:
     Counter() = default;
-    explicit Counter(uint32_t start) : n(::tpystd::tpy::atomic::Atomic<uint32_t>(start)) {}
+    explicit Counter(uint32_t start);
     // non-copyable (field 'n')
     Counter(const Counter&) = delete;
     Counter& operator=(const Counter&) = delete;
@@ -39,5 +39,8 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
     return os;
 }
 
+
+// def __init__(self, start: UInt32) -> None:
+inline Counter::Counter(uint32_t start) : n(::tpystd::tpy::atomic::Atomic<uint32_t>(start)) {}
 void __tpy_init();
 } // namespace tpyapp::main

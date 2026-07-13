@@ -30,7 +30,7 @@ struct PairIter {
 
     // def __init__(self, limit: int) -> None:
     PairIter() = default;
-    explicit PairIter(const ::tpy::BigInt& limit) : n(::tpy::BigInt(0)), limit(limit) {}
+    explicit PairIter(const ::tpy::BigInt& limit);
 
     __coro_PairIter___anext__ __anext__();
     static constexpr std::string_view __tpy_class_name__ = "__main__.PairIter";
@@ -48,7 +48,7 @@ struct Pairs {
 
     // def __init__(self, limit: int) -> None:
     Pairs() = default;
-    explicit Pairs(const ::tpy::BigInt& limit) : limit(limit) {}
+    explicit Pairs(const ::tpy::BigInt& limit);
 
     // def __aiter__(self) -> Own[PairIter]:
     PairIter __aiter__() const;
@@ -143,6 +143,12 @@ struct __coro_main {
     }
 };
 
+
+// def __init__(self, limit: int) -> None:
+inline PairIter::PairIter(const ::tpy::BigInt& limit) : n(::tpy::BigInt(0)), limit(limit) {}
+
+// def __init__(self, limit: int) -> None:
+inline Pairs::Pairs(const ::tpy::BigInt& limit) : limit(limit) {}
 
 // def __aiter__(self) -> Own[PairIter]:
 inline PairIter Pairs::__aiter__() const {

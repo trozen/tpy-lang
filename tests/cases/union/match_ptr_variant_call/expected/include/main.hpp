@@ -24,7 +24,7 @@ struct Dog {
 
     // def __init__(self, n: str) -> None:
     Dog() = default;
-    explicit Dog(std::string_view n) : name(n) {}
+    explicit Dog(std::string_view n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Dog";
 };
 
@@ -40,7 +40,7 @@ struct Cat {
 
     // def __init__(self, n: str) -> None:
     Cat() = default;
-    explicit Cat(std::string_view n) : name(n) {}
+    explicit Cat(std::string_view n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Cat";
 };
 
@@ -63,6 +63,12 @@ inline std::ostream& operator<<(std::ostream& os, const Picker& obj) {
     return os;
 }
 
+
+// def __init__(self, n: str) -> None:
+inline Dog::Dog(std::string_view n) : name(n) {}
+
+// def __init__(self, n: str) -> None:
+inline Cat::Cat(std::string_view n) : name(n) {}
 
 // def choose(self, d: Dog) -> Dog | Cat:
 inline std::variant<const Cat*, const Dog*> Picker::choose(const Dog& d) const {

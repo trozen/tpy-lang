@@ -26,17 +26,7 @@ struct Tag {
 
     // def __init__(self, raw: str) -> None:
     Tag() = default;
-    explicit Tag(std::string_view raw) : namespace_(""), name(raw) {
-        // idx: Int32 = raw.find(":")
-        int32_t idx = ::tpy::str_find(raw, ":");
-        // if idx >= 0:
-        if ((idx >= 0)) {
-            // self.namespace = raw[:idx]
-            this->namespace_ = std::string(::tpy::str_slice(raw, ::tpy::BasicSlice{std::nullopt, idx}));
-            // self.name = raw[idx + 1:]
-            this->name = std::string(::tpy::str_slice(raw, ::tpy::BasicSlice{(::tpy::add_check<int32_t>(idx, 1)), std::nullopt}));
-        }
-    }
+    explicit Tag(std::string_view raw);
 
     // @staticmethod
     // def from_arg(s: str) -> Own[Tag]:
@@ -60,7 +50,7 @@ struct __tpy_builder_argparse_args_1 {
 
     // args = parser.parse_args(["core:strict", "--out", "release"])
     __tpy_builder_argparse_args_1() = default;
-    explicit __tpy_builder_argparse_args_1(Tag&& input, std::optional<Tag>&& out, Tag&& label) : input(std::move(input)), out(std::move(out)), label(std::move(label)) {}
+    explicit __tpy_builder_argparse_args_1(Tag&& input, std::optional<Tag>&& out, Tag&& label);
     static constexpr std::string_view __tpy_class_name__ = "__main__.__tpy_builder_argparse_args_1";
 };
 
@@ -69,6 +59,19 @@ inline std::ostream& operator<<(std::ostream& os, const __tpy_builder_argparse_a
     return os;
 }
 
+
+// def __init__(self, raw: str) -> None:
+inline Tag::Tag(std::string_view raw) : namespace_(""), name(raw) {
+    // idx: Int32 = raw.find(":")
+    int32_t idx = ::tpy::str_find(raw, ":");
+    // if idx >= 0:
+    if ((idx >= 0)) {
+        // self.namespace = raw[:idx]
+        this->namespace_ = std::string(::tpy::str_slice(raw, ::tpy::BasicSlice{std::nullopt, idx}));
+        // self.name = raw[idx + 1:]
+        this->name = std::string(::tpy::str_slice(raw, ::tpy::BasicSlice{(::tpy::add_check<int32_t>(idx, 1)), std::nullopt}));
+    }
+}
 
 // @staticmethod
 // def from_arg(s: str) -> Own[Tag]:
@@ -87,5 +90,8 @@ inline std::string Tag::__str__() const {
     // return self.namespace + ":" + self.name
     return (::tpy::str_concat((::tpy::str_concat(this->namespace_, ":")), this->name));
 }
+
+// args = parser.parse_args(["core:strict", "--out", "release"])
+inline __tpy_builder_argparse_args_1::__tpy_builder_argparse_args_1(Tag&& input, std::optional<Tag>&& out, Tag&& label) : input(std::move(input)), out(std::move(out)), label(std::move(label)) {}
 void __tpy_init();
 } // namespace tpyapp::main

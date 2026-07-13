@@ -50,7 +50,7 @@ struct Direct {
     E e;
 
     // def __init__(self) -> None:
-    Direct() : e(E::A) {}
+    Direct();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Direct";
 };
 
@@ -65,7 +65,7 @@ struct FromModule {
     ::tpy::BigInt n;
 
     // def __init__(self) -> None:
-    FromModule() : n(::tpy::BigInt(::tpy::__len__((*::tpystd::sys::argv)))) {}
+    FromModule();
     static constexpr std::string_view __tpy_class_name__ = "__main__.FromModule";
 };
 
@@ -80,7 +80,7 @@ struct FromImport {
     ::tpyapp::helper::Color c;
 
     // def __init__(self) -> None:
-    FromImport() : c(::tpyapp::helper::Color::RED) {}
+    FromImport();
     static constexpr std::string_view __tpy_class_name__ = "__main__.FromImport";
 };
 
@@ -111,7 +111,7 @@ struct FromNested {
     Outer::Kind k;
 
     // def __init__(self) -> None:
-    FromNested() : k(Outer::Kind::P) {}
+    FromNested();
     static constexpr std::string_view __tpy_class_name__ = "__main__.FromNested";
 };
 
@@ -138,5 +138,17 @@ inline std::ostream& operator<<(std::ostream& __os, Outer::Kind __e) {
     return __os << "Kind." << ::tpy::EnumUtil<Outer::Kind>::name(__e);
 }
 
+
+// def __init__(self) -> None:
+inline Direct::Direct() : e(E::A) {}
+
+// def __init__(self) -> None:
+inline FromModule::FromModule() : n(::tpy::BigInt(::tpy::__len__((*::tpystd::sys::argv)))) {}
+
+// def __init__(self) -> None:
+inline FromImport::FromImport() : c(::tpyapp::helper::Color::RED) {}
+
+// def __init__(self) -> None:
+inline FromNested::FromNested() : k(Outer::Kind::P) {}
 void __tpy_init();
 } // namespace tpyapp::main

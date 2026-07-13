@@ -20,7 +20,7 @@ struct Pair {
 
     // def __init__(self, a: Int32, b: str) -> None:
     Pair() = default;
-    explicit Pair(int32_t a, std::string_view b) : data(std::tuple<int32_t, std::string>{a, std::string(b)}) {}
+    explicit Pair(int32_t a, std::string_view b);
 
     // def __str__(self) -> str:
     std::string __str__() const;
@@ -32,6 +32,9 @@ inline std::ostream& operator<<(std::ostream& os, const Pair& obj) {
     return os;
 }
 
+
+// def __init__(self, a: Int32, b: str) -> None:
+inline Pair::Pair(int32_t a, std::string_view b) : data(std::tuple<int32_t, std::string>{a, std::string(b)}) {}
 
 // def __str__(self) -> str:
 inline std::string Pair::__str__() const {

@@ -18,7 +18,7 @@ struct Public {
     int32_t val;
 
     // def __init__(self) -> None:
-    Public() : val(1) {}
+    Public();
     static constexpr std::string_view __tpy_class_name__ = "lib.Public";
 };
 
@@ -33,7 +33,7 @@ struct Hidden {
     int32_t val;
 
     // def __init__(self) -> None:
-    Hidden() : val(2) {}
+    Hidden();
     static constexpr std::string_view __tpy_class_name__ = "lib.Hidden";
 };
 
@@ -42,5 +42,11 @@ inline std::ostream& operator<<(std::ostream& os, const Hidden& obj) {
     return os;
 }
 
+
+// def __init__(self) -> None:
+inline Public::Public() : val(1) {}
+
+// def __init__(self) -> None:
+inline Hidden::Hidden() : val(2) {}
 void __tpy_init();
 } // namespace tpyapp::lib

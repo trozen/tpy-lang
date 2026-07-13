@@ -30,7 +30,7 @@ struct Buffer {
     // by_key: dict[str, int] | None,
     // ) -> None:
     Buffer() = default;
-    explicit Buffer(const std::vector<::tpy::BigInt>* items, const ::tpy::ordered_map<std::string, ::tpy::BigInt>* by_key) : items(::tpy::ptr_to_optional(items)), by_key(::tpy::ptr_to_optional(by_key)) {}
+    explicit Buffer(const std::vector<::tpy::BigInt>* items, const ::tpy::ordered_map<std::string, ::tpy::BigInt>* by_key);
 
     // def step(self) -> None:
     void step();
@@ -45,5 +45,12 @@ inline std::ostream& operator<<(std::ostream& os, const Buffer& obj) {
     return os;
 }
 
+
+// def __init__(
+// self,
+// items: list[int] | None,
+// by_key: dict[str, int] | None,
+// ) -> None:
+inline Buffer::Buffer(const std::vector<::tpy::BigInt>* items, const ::tpy::ordered_map<std::string, ::tpy::BigInt>* by_key) : items(::tpy::ptr_to_optional(items)), by_key(::tpy::ptr_to_optional(by_key)) {}
 void __tpy_init();
 } // namespace tpyapp::main

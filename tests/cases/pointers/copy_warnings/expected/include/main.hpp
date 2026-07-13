@@ -99,7 +99,7 @@ struct OptHolder {
     std::optional<Point> value;
 
     // def __init__(self) -> None:
-    OptHolder() : value(std::nullopt) {}
+    OptHolder();
 
     // def set_value(self, p: Point | None) -> None:
     void set_value(const Point* p);
@@ -137,6 +137,9 @@ inline void Container::set_items(const std::vector<int32_t>& data) {
     // self.items = [1, 2, 3]    # tpyc: ok
     this->items = {1, 2, 3};
 }
+
+// def __init__(self) -> None:
+inline OptHolder::OptHolder() : value(std::nullopt) {}
 
 // def set_value(self, p: Point | None) -> None:
 inline void OptHolder::set_value(const Point* p) {

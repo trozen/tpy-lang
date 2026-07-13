@@ -22,7 +22,7 @@ struct Rect {
 
     // def __init__(self, w: Int32, h: Int32) -> None:
     Rect() = default;
-    explicit Rect(int32_t w, int32_t h) : _w(w), _h(h) {}
+    explicit Rect(int32_t w, int32_t h);
 
     // @property
     // def width(self) -> Int32:
@@ -53,6 +53,9 @@ inline std::ostream& operator<<(std::ostream& os, const Rect& obj) {
     return os;
 }
 
+
+// def __init__(self, w: Int32, h: Int32) -> None:
+inline Rect::Rect(int32_t w, int32_t h) : _w(w), _h(h) {}
 
 // @property
 // def width(self) -> Int32:

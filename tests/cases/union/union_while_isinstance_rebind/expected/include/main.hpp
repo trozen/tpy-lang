@@ -26,7 +26,7 @@ struct A {
 
     // def __init__(self, items: Own[list[int]]) -> None:
     A() = default;
-    explicit A(std::vector<::tpy::BigInt>&& items) : items(std::move(items)) {}
+    explicit A(std::vector<::tpy::BigInt>&& items);
     static constexpr std::string_view __tpy_class_name__ = "__main__.A";
 };
 
@@ -42,7 +42,7 @@ struct B {
 
     // def __init__(self, label: str) -> None:
     B() = default;
-    explicit B(std::string_view label) : label(label) {}
+    explicit B(std::string_view label);
     static constexpr std::string_view __tpy_class_name__ = "__main__.B";
 };
 
@@ -51,5 +51,11 @@ inline std::ostream& operator<<(std::ostream& os, const B& obj) {
     return os;
 }
 
+
+// def __init__(self, items: Own[list[int]]) -> None:
+inline A::A(std::vector<::tpy::BigInt>&& items) : items(std::move(items)) {}
+
+// def __init__(self, label: str) -> None:
+inline B::B(std::string_view label) : label(label) {}
 void __tpy_init();
 } // namespace tpyapp::main

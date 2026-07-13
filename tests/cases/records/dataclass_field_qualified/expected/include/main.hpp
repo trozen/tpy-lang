@@ -21,7 +21,7 @@ struct Foo {
     // x: Int32 = dataclasses.field(default=42)
     int32_t x = 42;
 
-    explicit Foo(std::vector<int32_t>&& items = {}, int32_t x = 42) : items(std::move(items)), x(x) {}
+    explicit Foo(std::vector<int32_t>&& items = {}, int32_t x = 42);
 
     bool __eq__(const Foo& other) const;
 
@@ -38,6 +38,8 @@ inline std::ostream& operator<<(std::ostream& os, const Foo& obj) {
     return os;
 }
 
+
+inline Foo::Foo(std::vector<int32_t>&& items, int32_t x) : items(std::move(items)), x(x) {}
 
 inline bool Foo::__eq__(const Foo& other) const {
     return ((this->items == other.items) && (this->x == other.x));

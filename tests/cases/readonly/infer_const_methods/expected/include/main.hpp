@@ -55,7 +55,7 @@ struct Counter {
     int32_t count;
 
     // def __init__(self) -> None:
-    Counter() : count(0) {}
+    Counter();
 
     // def increment(self) -> None:        # mutates self -- must NOT be const
     void increment();
@@ -82,7 +82,7 @@ struct Box {
     std::vector<int32_t> items;
 
     // def __init__(self) -> None:
-    Box() : items(std::vector<int32_t>{}) {}
+    Box();
 
     // def push(self, x: Int32) -> None:  # mutates self -- must NOT be const
     void push(int32_t x);
@@ -109,7 +109,7 @@ struct SortableBox {
     std::vector<int32_t> items;
 
     // def __init__(self) -> None:
-    SortableBox() : items(std::vector<int32_t>{}) {}
+    SortableBox();
 
     // def fill(self, a: Int32, b: Int32) -> None:   # mutates self.items -- must NOT be const
     void fill(int32_t a, int32_t b);
@@ -137,7 +137,7 @@ struct Inner {
 
     // def __init__(self, v: Int32) -> None:
     Inner() = default;
-    explicit Inner(int32_t v) : value(v) {}
+    explicit Inner(int32_t v);
 
     // def get(self) -> Int32:
     int32_t get() const;
@@ -157,7 +157,7 @@ struct Outer {
     Inner extra;
 
     // def __init__(self) -> None:
-    Outer() : items({Inner(1), Inner(2)}), extra(Inner(3)) {}
+    Outer();
 
     // def sum_items(self) -> Int32:                  # for-each + readonly method -- inferred const
     int32_t sum_items() const;
@@ -183,7 +183,7 @@ struct WithOpt {
     std::optional<Inner> child;
 
     // def __init__(self) -> None:
-    WithOpt() : child(Inner(5)) {}
+    WithOpt();
 
     // def get_child_value(self) -> Int32:            # Optional field + readonly -- inferred const
     int32_t get_child_value() const;
@@ -202,7 +202,7 @@ struct Valued : DynValued {
 
     // def __init__(self, n: Int32) -> None:
     Valued() = default;
-    explicit Valued(int32_t n) : _n(n) {}
+    explicit Valued(int32_t n);
 
     // def value(self) -> Int32:           # must NOT be const (pure virtual override)
     int32_t value() override;
@@ -234,6 +234,9 @@ struct tpy::RefAdapter<tpyapp::main::DynValued, T> : tpyapp::main::DynValued {
 namespace tpyapp::main {
 
 
+// def __init__(self) -> None:
+inline Counter::Counter() : count(0) {}
+
 // def increment(self) -> None:        # mutates self -- must NOT be const
 inline void Counter::increment() {
     // self.count += 1
@@ -260,6 +263,9 @@ inline bool Counter::is_zero() const {
     return (this->count == 0);
 }
 
+// def __init__(self) -> None:
+inline Box::Box() : items(std::vector<int32_t>{}) {}
+
 // def push(self, x: Int32) -> None:  # mutates self -- must NOT be const
 inline void Box::push(int32_t x) {
     // self.items.append(x)
@@ -277,6 +283,9 @@ inline int32_t Box::size() const {
     // return len(self.items)
     return ::tpy::__len__(this->items);
 }
+
+// def __init__(self) -> None:
+inline SortableBox::SortableBox() : items(std::vector<int32_t>{}) {}
 
 // def fill(self, a: Int32, b: Int32) -> None:   # mutates self.items -- must NOT be const
 inline void SortableBox::fill(int32_t a, int32_t b) {
@@ -298,11 +307,17 @@ inline int32_t SortableBox::get_first() const {
     return ::tpy::__getitem__(this->items, 0);
 }
 
+// def __init__(self, v: Int32) -> None:
+inline Inner::Inner(int32_t v) : value(v) {}
+
 // def get(self) -> Int32:
 inline int32_t Inner::get() const {
     // return self.value
     return this->value;
 }
+
+// def __init__(self) -> None:
+inline Outer::Outer() : items({Inner(1), Inner(2)}), extra(Inner(3)) {}
 
 // def sum_items(self) -> Int32:                  # for-each + readonly method -- inferred const
 inline int32_t Outer::sum_items() const {
@@ -333,6 +348,9 @@ inline void Outer::mutate_extra() {
     this->items.push_back(Inner(4));
 }
 
+// def __init__(self) -> None:
+inline WithOpt::WithOpt() : child(Inner(5)) {}
+
 // def get_child_value(self) -> Int32:            # Optional field + readonly -- inferred const
 inline int32_t WithOpt::get_child_value() const {
     // c = self.child
@@ -345,6 +363,9 @@ inline int32_t WithOpt::get_child_value() const {
     // return 0
     return 0;
 }
+
+// def __init__(self, n: Int32) -> None:
+inline Valued::Valued(int32_t n) : _n(n) {}
 
 // def value(self) -> Int32:           # must NOT be const (pure virtual override)
 inline int32_t Valued::value() {

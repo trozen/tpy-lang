@@ -45,12 +45,7 @@ inline std::ostream& operator<<(std::ostream& os, const CacheStats& obj) {
 struct Service : RateLimiter, CacheStats {
 
     // def __init__(self) -> None:
-    Service() {
-        // RateLimiter._count = 0
-        this->RateLimiter::_count = 0;
-        // CacheStats._count = 0
-        this->CacheStats::_count = 0;
-    }
+    Service();
 
     // def tick_request(self) -> None:
     void tick_request();
@@ -68,6 +63,14 @@ inline std::ostream& operator<<(std::ostream& os, const Service& obj) {
     return os;
 }
 
+
+// def __init__(self) -> None:
+inline Service::Service() {
+    // RateLimiter._count = 0
+    this->RateLimiter::_count = 0;
+    // CacheStats._count = 0
+    this->CacheStats::_count = 0;
+}
 
 // def tick_request(self) -> None:
 inline void Service::tick_request() {

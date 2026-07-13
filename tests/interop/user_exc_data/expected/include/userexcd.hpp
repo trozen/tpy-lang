@@ -42,9 +42,7 @@ struct ParseError : ::tpy::ValueError {
     std::vector<uint8_t> payload;
     Severity severity;
 
-    explicit ParseError(std::string_view message, int32_t line, std::string_view detail, std::span<const uint8_t> payload, Severity severity) : line(line), detail(detail), payload(::tpy::bytes_copy(payload)), severity(severity) {
-        this->message = message;
-    }
+    explicit ParseError(std::string_view message, int32_t line, std::string_view detail, std::span<const uint8_t> payload, Severity severity);
 
     [[nodiscard]] std::unique_ptr<::tpy::Throwable> clone() const override { return std::make_unique<ParseError>(*this); }
     [[noreturn]] void __raise__() const override { throw *this; }
@@ -57,5 +55,9 @@ inline std::ostream& operator<<(std::ostream& os, const ParseError& obj) {
     return os;
 }
 
+
+inline ParseError::ParseError(std::string_view message, int32_t line, std::string_view detail, std::span<const uint8_t> payload, Severity severity) : line(line), detail(detail), payload(::tpy::bytes_copy(payload)), severity(severity) {
+    this->message = message;
+}
 void __tpy_init();
 } // namespace tpyapp::userexcd

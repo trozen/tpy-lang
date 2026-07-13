@@ -23,7 +23,7 @@ struct Coord {
 
     // def __init__(self, x: int, y: int) -> None:
     Coord() = default;
-    explicit Coord(const ::tpy::BigInt& x, const ::tpy::BigInt& y) : x((x).to_fixed_check<int32_t>()), y((y).to_fixed_check<int32_t>()) {}
+    explicit Coord(const ::tpy::BigInt& x, const ::tpy::BigInt& y);
 
     // def __eq__(self, other: "Coord") -> bool:
     bool __eq__(Coord other) const;
@@ -56,7 +56,7 @@ struct Track {
 
     // def __init__(self, cx: int, cy: int) -> None:
     Track() = default;
-    explicit Track(const ::tpy::BigInt& cx, const ::tpy::BigInt& cy) : _cx((cx).to_fixed_check<int32_t>()), _cy((cy).to_fixed_check<int32_t>()), _has_goal(false) {}
+    explicit Track(const ::tpy::BigInt& cx, const ::tpy::BigInt& cy);
 
     // @property
     // def position(self) -> Coord:  # bare value-record return
@@ -74,11 +74,17 @@ inline std::ostream& operator<<(std::ostream& os, const Track& obj) {
 }
 
 
+// def __init__(self, x: int, y: int) -> None:
+inline Coord::Coord(const ::tpy::BigInt& x, const ::tpy::BigInt& y) : x((x).to_fixed_check<int32_t>()), y((y).to_fixed_check<int32_t>()) {}
+
 // def __eq__(self, other: "Coord") -> bool:
 inline bool Coord::__eq__(Coord other) const {
     // return self.x == other.x and self.y == other.y
     return ((this->x == other.x) && (this->y == other.y));
 }
+
+// def __init__(self, cx: int, cy: int) -> None:
+inline Track::Track(const ::tpy::BigInt& cx, const ::tpy::BigInt& cy) : _cx((cx).to_fixed_check<int32_t>()), _cy((cy).to_fixed_check<int32_t>()), _has_goal(false) {}
 
 // @property
 // def position(self) -> Coord:  # bare value-record return

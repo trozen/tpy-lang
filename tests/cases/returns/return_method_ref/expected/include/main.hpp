@@ -21,7 +21,7 @@ struct Inner {
 
     // def __init__(self, val: int) -> None:
     Inner() = default;
-    explicit Inner(const ::tpy::BigInt& val) : val(val) {}
+    explicit Inner(const ::tpy::BigInt& val);
 
     // def mutate(self) -> None:
     void mutate();
@@ -39,7 +39,7 @@ struct Holder {
     Inner inner;
 
     // def __init__(self) -> None:
-    Holder() : inner(Inner(::tpy::BigInt(1))) {}
+    Holder();
 
     // def get(self) -> Inner:
     Inner& get();
@@ -55,11 +55,17 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 }
 
 
+// def __init__(self, val: int) -> None:
+inline Inner::Inner(const ::tpy::BigInt& val) : val(val) {}
+
 // def mutate(self) -> None:
 inline void Inner::mutate() {
     // self.val += 10
     this->val = (this->val) + (::tpy::BigInt(10));
 }
+
+// def __init__(self) -> None:
+inline Holder::Holder() : inner(Inner(::tpy::BigInt(1))) {}
 
 // def get(self) -> Inner:
 inline Inner& Holder::get() {

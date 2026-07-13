@@ -24,7 +24,7 @@ struct Node {
 
     // def __init__(self, v: Int32) -> None:
     Node() = default;
-    explicit Node(int32_t v) : v(v) {}
+    explicit Node(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Node";
 };
 
@@ -40,7 +40,7 @@ struct Handle {
 
     // def __init__(self, p: Ptr[Node]) -> None:
     Handle() = default;
-    explicit Handle(Node* p) : p(p) {}
+    explicit Handle(Node* p);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Handle";
 };
 
@@ -49,5 +49,11 @@ inline std::ostream& operator<<(std::ostream& os, const Handle& obj) {
     return os;
 }
 
+
+// def __init__(self, v: Int32) -> None:
+inline Node::Node(int32_t v) : v(v) {}
+
+// def __init__(self, p: Ptr[Node]) -> None:
+inline Handle::Handle(Node* p) : p(p) {}
 void __tpy_init();
 } // namespace tpyapp::main

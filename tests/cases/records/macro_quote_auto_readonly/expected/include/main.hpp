@@ -22,7 +22,7 @@ struct Holder {
 
     // # Regression: macro-emitted @auto_readonly methods flow through sema expansion.
     Holder() = default;
-    explicit Holder(int32_t value) : value(value) {}
+    explicit Holder(int32_t value);
 
     // # Regression: macro-emitted @auto_readonly methods flow through sema expansion.
     // from tpy import Int32, readonly
@@ -39,6 +39,9 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     return os;
 }
 
+
+// # Regression: macro-emitted @auto_readonly methods flow through sema expansion.
+inline Holder::Holder(int32_t value) : value(value) {}
 
 // # Regression: macro-emitted @auto_readonly methods flow through sema expansion.
 // from tpy import Int32, readonly

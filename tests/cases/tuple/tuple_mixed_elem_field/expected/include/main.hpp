@@ -21,7 +21,7 @@ struct Box {
 
     // def __init__(self, v: Int32) -> None:
     Box() = default;
-    explicit Box(int32_t v) : val(v) {}
+    explicit Box(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
@@ -37,7 +37,7 @@ struct H {
 
     // def __init__(self, a: Box, b: Box) -> None:
     H() = default;
-    explicit H(const Box& a, const Box& b) : t(::tpy::tuple_to_storage<std::tuple<std::optional<Box>, Box>>(std::tuple<std::optional<Box>, Box>{a, b})) {}
+    explicit H(const Box& a, const Box& b);
 
     // def set(self, p: tuple[Optional[Box], Box]) -> None:
     void set(const std::tuple<const Box*, const Box*>& p);
@@ -49,6 +49,12 @@ inline std::ostream& operator<<(std::ostream& os, const H& obj) {
     return os;
 }
 
+
+// def __init__(self, v: Int32) -> None:
+inline Box::Box(int32_t v) : val(v) {}
+
+// def __init__(self, a: Box, b: Box) -> None:
+inline H::H(const Box& a, const Box& b) : t(::tpy::tuple_to_storage<std::tuple<std::optional<Box>, Box>>(std::tuple<std::optional<Box>, Box>{a, b})) {}
 
 // def set(self, p: tuple[Optional[Box], Box]) -> None:
 inline void H::set(const std::tuple<const Box*, const Box*>& p) {

@@ -28,7 +28,7 @@ struct Counter {
 
     // def __init__(self, n: Int32) -> None:
     Counter() = default;
-    explicit Counter(int32_t n) : n(n) {}
+    explicit Counter(int32_t n);
     // non-copyable (@nocopy)
     Counter(const Counter&) = delete;
     Counter& operator=(const Counter&) = delete;
@@ -92,6 +92,9 @@ struct __coro_main_coro {
     }
 };
 
+
+// def __init__(self, n: Int32) -> None:
+inline Counter::Counter(int32_t n) : n(n) {}
 
 // def bump(self) -> None:
 inline void Counter::bump() {

@@ -49,7 +49,7 @@ struct ParseErr : ::tpy::Exception {
 
     // def __init__(self, code: int) -> None:
     ParseErr() = default;
-    explicit ParseErr(const ::tpy::BigInt& code) : code(code) {}
+    explicit ParseErr(const ::tpy::BigInt& code);
 
     [[nodiscard]] std::unique_ptr<::tpy::Throwable> clone() const override { return std::make_unique<ParseErr>(*this); }
     [[noreturn]] void __raise__() const override { throw *this; }
@@ -71,7 +71,7 @@ struct Point {
     ::tpy::BigInt y;
 
     Point() = default;
-    explicit Point(const ::tpy::BigInt& x, const ::tpy::BigInt& y) : x(x), y(y) {}
+    explicit Point(const ::tpy::BigInt& x, const ::tpy::BigInt& y);
 
     // def updated(self) -> Self:
     Point& updated();
@@ -91,6 +91,11 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     return os;
 }
 
+
+// def __init__(self, code: int) -> None:
+inline ParseErr::ParseErr(const ::tpy::BigInt& code) : code(code) {}
+
+inline Point::Point(const ::tpy::BigInt& x, const ::tpy::BigInt& y) : x(x), y(y) {}
 
 // def updated(self) -> Self:
 inline Point& Point::updated() {

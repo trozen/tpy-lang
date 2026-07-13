@@ -42,7 +42,7 @@ struct Dog : Speaker {
 
     // def __init__(self, name: str) -> None:
     Dog() = default;
-    explicit Dog(std::string_view name) : name(name) {}
+    explicit Dog(std::string_view name);
 
     // def speak(self) -> str:
     std::string speak() override;
@@ -61,7 +61,7 @@ struct Cat : Speaker {
 
     // def __init__(self, name: str) -> None:
     Cat() = default;
-    explicit Cat(std::string_view name) : name(name) {}
+    explicit Cat(std::string_view name);
 
     // def speak(self) -> str:
     std::string speak() override;
@@ -80,7 +80,7 @@ struct Recorder {
 
     // def __init__(self, s: Speaker) -> None:
     Recorder() = default;
-    explicit Recorder(Speaker& s) : message(s.speak()) {}
+    explicit Recorder(Speaker& s);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Recorder";
 };
 
@@ -96,7 +96,7 @@ struct Announcer {
 
     // def __init__(self, prefix: str) -> None:
     Announcer() = default;
-    explicit Announcer(std::string_view prefix) : prefix(prefix) {}
+    explicit Announcer(std::string_view prefix);
 
     // def announce(self, s: Speaker) -> None:
     void announce(Speaker& s) const;
@@ -128,17 +128,29 @@ struct tpy::RefAdapter<tpyapp::main::Speaker, T> : tpyapp::main::Speaker {
 namespace tpyapp::main {
 
 
+// def __init__(self, name: str) -> None:
+inline Dog::Dog(std::string_view name) : name(name) {}
+
 // def speak(self) -> str:
 inline std::string Dog::speak() {
     // return "Woof from " + self.name
     return (::tpy::str_concat("Woof from ", this->name));
 }
 
+// def __init__(self, name: str) -> None:
+inline Cat::Cat(std::string_view name) : name(name) {}
+
 // def speak(self) -> str:
 inline std::string Cat::speak() {
     // return "Meow from " + self.name
     return (::tpy::str_concat("Meow from ", this->name));
 }
+
+// def __init__(self, s: Speaker) -> None:
+inline Recorder::Recorder(Speaker& s) : message(s.speak()) {}
+
+// def __init__(self, prefix: str) -> None:
+inline Announcer::Announcer(std::string_view prefix) : prefix(prefix) {}
 
 // def announce(self, s: Speaker) -> None:
 inline void Announcer::announce(Speaker& s) const {

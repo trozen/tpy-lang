@@ -20,7 +20,7 @@ struct Numbers {
 
     // def __init__(self, items: list[Int32]) -> None:
     Numbers() = default;
-    explicit Numbers(const std::vector<int32_t>& items) : data(items) {}
+    explicit Numbers(const std::vector<int32_t>& items);
 
     // def sum(self) -> Int32:
     int32_t sum() const;
@@ -32,6 +32,9 @@ inline std::ostream& operator<<(std::ostream& os, const Numbers& obj) {
     return os;
 }
 
+
+// def __init__(self, items: list[Int32]) -> None:
+inline Numbers::Numbers(const std::vector<int32_t>& items) : data(items) {}
 
 // def sum(self) -> Int32:
 inline int32_t Numbers::sum() const {

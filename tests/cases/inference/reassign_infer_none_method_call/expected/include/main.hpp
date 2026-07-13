@@ -20,7 +20,7 @@ struct Box {
 
     // def __init__(self, value: Int32) -> None:
     Box() = default;
-    explicit Box(int32_t value) : value(value) {}
+    explicit Box(int32_t value);
 
     // def get(self) -> Int32:
     int32_t get() const;
@@ -32,6 +32,9 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
     return os;
 }
 
+
+// def __init__(self, value: Int32) -> None:
+inline Box::Box(int32_t value) : value(value) {}
 
 // def get(self) -> Int32:
 inline int32_t Box::get() const {

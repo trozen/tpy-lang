@@ -21,7 +21,7 @@ struct Inner {
     std::vector<int32_t> vals;
 
     // def __init__(self):
-    Inner() : vals({7, 8}) {}
+    Inner();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Inner";
 };
 
@@ -36,7 +36,7 @@ struct Outer {
     Inner inner;
 
     // def __init__(self):
-    Outer() : inner(Inner()) {}
+    Outer();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Outer";
 };
 
@@ -51,7 +51,7 @@ struct Keeper {
     std::vector<Outer> stored;
 
     // def __init__(self):
-    Keeper() : stored(std::vector<Outer>{}) {}
+    Keeper();
 
     // def take(self, o: Own[Outer]):
     void take(Outer&& o);
@@ -63,6 +63,15 @@ inline std::ostream& operator<<(std::ostream& os, const Keeper& obj) {
     return os;
 }
 
+
+// def __init__(self):
+inline Inner::Inner() : vals({7, 8}) {}
+
+// def __init__(self):
+inline Outer::Outer() : inner(Inner()) {}
+
+// def __init__(self):
+inline Keeper::Keeper() : stored(std::vector<Outer>{}) {}
 
 // def take(self, o: Own[Outer]):
 inline void Keeper::take(Outer&& o) {

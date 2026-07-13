@@ -25,7 +25,7 @@ struct Handler {
     std::function<int32_t(int32_t)> cb;
 
     // def __init__(self, cb: Callable[[Int32], Int32]) -> None:
-    explicit Handler(std::function<int32_t(int32_t)> cb) : cb(cb) {}
+    explicit Handler(std::function<int32_t(int32_t)> cb);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Handler";
 };
 
@@ -34,6 +34,9 @@ inline std::ostream& operator<<(std::ostream& os, const Handler& obj) {
     return os;
 }
 
+
+// def __init__(self, cb: Callable[[Int32], Int32]) -> None:
+inline Handler::Handler(std::function<int32_t(int32_t)> cb) : cb(cb) {}
 // def apply(f: Fn[[Int32], Int32], x: Int32) -> Int32:
 template<typename __F0>
   requires requires(__F0& __fn, int32_t __a0) {

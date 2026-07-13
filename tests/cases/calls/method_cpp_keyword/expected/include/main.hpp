@@ -20,7 +20,7 @@ struct Box {
 
     // def __init__(self, n: Int32):
     Box() = default;
-    explicit Box(int32_t n) : n(n) {}
+    explicit Box(int32_t n);
 
     // def double(self) -> Int32:
     int32_t double_() const;
@@ -35,6 +35,9 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
     return os;
 }
 
+
+// def __init__(self, n: Int32):
+inline Box::Box(int32_t n) : n(n) {}
 
 // def double(self) -> Int32:
 inline int32_t Box::double_() const {

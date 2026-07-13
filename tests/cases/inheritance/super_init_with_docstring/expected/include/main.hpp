@@ -21,7 +21,7 @@ struct Parent {
 
     // def __init__(self, value: int) -> None:
     Parent() = default;
-    explicit Parent(const ::tpy::BigInt& value) : value(value) {}
+    explicit Parent(const ::tpy::BigInt& value);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Parent";
 };
 
@@ -37,8 +37,7 @@ struct Child : Parent {
 
     // def __init__(self, value: int, extra: int) -> None:
     Child() = default;
-    explicit Child(const ::tpy::BigInt& value, const ::tpy::BigInt& extra) : Parent(value), extra(extra) {
-    }
+    explicit Child(const ::tpy::BigInt& value, const ::tpy::BigInt& extra);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Child";
 };
 
@@ -47,5 +46,12 @@ inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
     return os;
 }
 
+
+// def __init__(self, value: int) -> None:
+inline Parent::Parent(const ::tpy::BigInt& value) : value(value) {}
+
+// def __init__(self, value: int, extra: int) -> None:
+inline Child::Child(const ::tpy::BigInt& value, const ::tpy::BigInt& extra) : Parent(value), extra(extra) {
+}
 void __tpy_init();
 } // namespace tpyapp::main

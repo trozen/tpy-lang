@@ -24,7 +24,7 @@ struct State {
 
     // def __init__(self, x: Int32) -> None:
     State() = default;
-    explicit State(int32_t x) : x(x) {}
+    explicit State(int32_t x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.State";
 };
 
@@ -33,5 +33,8 @@ inline std::ostream& operator<<(std::ostream& os, const State& obj) {
     return os;
 }
 
+
+// def __init__(self, x: Int32) -> None:
+inline State::State(int32_t x) : x(x) {}
 void __tpy_init();
 } // namespace tpyapp::main

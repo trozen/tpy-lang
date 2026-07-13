@@ -36,17 +36,7 @@ struct Wrapper {
 
     // def __init__(self, p: Own[Point] | None, tag: Int32):
     Wrapper() = default;
-    explicit Wrapper(std::optional<Point> p, int32_t tag) {
-        // if p is not None:
-        if ((p.has_value())) {
-            // self.tag = tag
-            this->tag = tag;
-        // else:
-        } else {
-            // self.tag = Int32(-1)
-            this->tag = -1;
-        }
-    }
+    explicit Wrapper(std::optional<Point> p, int32_t tag);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Wrapper";
 };
 
@@ -55,5 +45,18 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {
     return os;
 }
 
+
+// def __init__(self, p: Own[Point] | None, tag: Int32):
+inline Wrapper::Wrapper(std::optional<Point> p, int32_t tag) {
+    // if p is not None:
+    if ((p.has_value())) {
+        // self.tag = tag
+        this->tag = tag;
+    // else:
+    } else {
+        // self.tag = Int32(-1)
+        this->tag = -1;
+    }
+}
 void __tpy_init();
 } // namespace tpyapp::main

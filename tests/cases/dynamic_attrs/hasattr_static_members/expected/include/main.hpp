@@ -25,7 +25,7 @@ struct Box {
 
     // def __init__(self, width: int) -> None:
     Box() = default;
-    explicit Box(const ::tpy::BigInt& width) : width(width) {}
+    explicit Box(const ::tpy::BigInt& width);
 
     // @property
     // def doubled(self) -> int:
@@ -44,6 +44,9 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
     return os;
 }
 
+
+// def __init__(self, width: int) -> None:
+inline Box::Box(const ::tpy::BigInt& width) : width(width) {}
 
 // @property
 // def doubled(self) -> int:

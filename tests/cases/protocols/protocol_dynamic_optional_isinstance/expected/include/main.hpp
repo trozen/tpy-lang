@@ -43,7 +43,7 @@ struct BaseExc : Throwable {
 
     // def __init__(self, msg: str) -> None:
     BaseExc() = default;
-    explicit BaseExc(std::string_view msg) : message(msg) {}
+    explicit BaseExc(std::string_view msg);
 
     // def what(self) -> str:
     std::string what() override;
@@ -60,7 +60,7 @@ struct ValErr : BaseExc {
 
     // def __init__(self, msg: str) -> None:
     ValErr() = default;
-    explicit ValErr(std::string_view msg) : BaseExc(msg) {}
+    explicit ValErr(std::string_view msg);
 
     // def what(self) -> str:
     std::string what() override;
@@ -77,7 +77,7 @@ struct OsErr : BaseExc {
 
     // def __init__(self, msg: str) -> None:
     OsErr() = default;
-    explicit OsErr(std::string_view msg) : BaseExc(msg) {}
+    explicit OsErr(std::string_view msg);
 
     // def what(self) -> str:
     std::string what() override;
@@ -109,17 +109,26 @@ struct tpy::RefAdapter<tpyapp::main::Throwable, T> : tpyapp::main::Throwable {
 namespace tpyapp::main {
 
 
+// def __init__(self, msg: str) -> None:
+inline BaseExc::BaseExc(std::string_view msg) : message(msg) {}
+
 // def what(self) -> str:
 inline std::string BaseExc::what() {
     // return "[base] " + self.message
     return (::tpy::str_concat("[base] ", this->message));
 }
 
+// def __init__(self, msg: str) -> None:
+inline ValErr::ValErr(std::string_view msg) : BaseExc(msg) {}
+
 // def what(self) -> str:
 inline std::string ValErr::what() {
     // return "[val] " + self.message
     return (::tpy::str_concat("[val] ", this->message));
 }
+
+// def __init__(self, msg: str) -> None:
+inline OsErr::OsErr(std::string_view msg) : BaseExc(msg) {}
 
 // def what(self) -> str:
 inline std::string OsErr::what() {

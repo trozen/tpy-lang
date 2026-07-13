@@ -22,7 +22,7 @@ struct Counter {
 
     // def __init__(self, v: Int64):
     Counter() = default;
-    explicit Counter(int64_t v) : value(v) {}
+    explicit Counter(int64_t v);
 
     // def bump(self) -> None:
     void bump();
@@ -34,6 +34,9 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
     return os;
 }
 
+
+// def __init__(self, v: Int64):
+inline Counter::Counter(int64_t v) : value(v) {}
 
 // def bump(self) -> None:
 inline void Counter::bump() {

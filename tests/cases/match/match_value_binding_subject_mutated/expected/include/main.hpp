@@ -25,7 +25,7 @@ struct Dog {
 
     // def __init__(self, legs: Int32) -> None:
     Dog() = default;
-    explicit Dog(int32_t legs) : legs(legs) {}
+    explicit Dog(int32_t legs);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Dog";
 };
 
@@ -41,7 +41,7 @@ struct Cat {
 
     // def __init__(self, age: Int32) -> None:
     Cat() = default;
-    explicit Cat(int32_t age) : age(age) {}
+    explicit Cat(int32_t age);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Cat";
 };
 
@@ -56,7 +56,7 @@ struct Holder {
     std::variant<Cat, Dog> pet;
 
     // def __init__(self) -> None:
-    Holder() : pet(Dog(4)) {}
+    Holder();
 
     // def replace(self) -> None:
     void replace();
@@ -68,6 +68,15 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     return os;
 }
 
+
+// def __init__(self, legs: Int32) -> None:
+inline Dog::Dog(int32_t legs) : legs(legs) {}
+
+// def __init__(self, age: Int32) -> None:
+inline Cat::Cat(int32_t age) : age(age) {}
+
+// def __init__(self) -> None:
+inline Holder::Holder() : pet(Dog(4)) {}
 
 // def replace(self) -> None:
 inline void Holder::replace() {

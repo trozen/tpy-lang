@@ -24,7 +24,7 @@ struct Point {
 
     // def __init__(self, x: Int32, y: Int32) -> None:
     Point() = default;
-    explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
+    explicit Point(int32_t x, int32_t y);
 
     // def sum(self) -> Int32:
     int32_t sum() const;
@@ -43,7 +43,7 @@ struct Ref {
 
     // def __init__(self, target: Point) -> None:
     Ref() = default;
-    explicit Ref(const Point& target) : _target(target) {}
+    explicit Ref(const Point& target);
 
     // @auto_readonly
     // def __deref__(self) -> Point:
@@ -75,7 +75,7 @@ struct Box {
 
     // def __init__(self, inner: Ref) -> None:
     Box() = default;
-    explicit Box(const Ref& inner) : _inner(inner) {}
+    explicit Box(const Ref& inner);
 
     // @auto_readonly
     // def __deref__(self) -> Ref:
@@ -101,11 +101,17 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 }
 
 
+// def __init__(self, x: Int32, y: Int32) -> None:
+inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
+
 // def sum(self) -> Int32:
 inline int32_t Point::sum() const {
     // return self.x + self.y
     return (::tpy::add_check<int32_t>(this->x, this->y));
 }
+
+// def __init__(self, target: Point) -> None:
+inline Ref::Ref(const Point& target) : _target(target) {}
 
 // @auto_readonly
 // def __deref__(self) -> Point:
@@ -120,6 +126,9 @@ inline const Point& Ref::__deref__() const {
     // return self._target
     return this->_target;
 }
+
+// def __init__(self, inner: Ref) -> None:
+inline Box::Box(const Ref& inner) : _inner(inner) {}
 
 // @auto_readonly
 // def __deref__(self) -> Ref:

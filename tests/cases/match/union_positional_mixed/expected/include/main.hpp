@@ -26,7 +26,7 @@ struct Point {
     double z;
 
     Point() = default;
-    explicit Point(double x, double y, double z) : x(x), y(y), z(z) {}
+    explicit Point(double x, double y, double z);
 
     bool __eq__(const Point& other) const;
 
@@ -50,7 +50,7 @@ struct Label {
     std::string text;
 
     Label() = default;
-    explicit Label(std::string_view text) : text(text) {}
+    explicit Label(std::string_view text);
 
     bool __eq__(const Label& other) const;
 
@@ -68,6 +68,8 @@ inline std::ostream& operator<<(std::ostream& os, const Label& obj) {
 }
 
 
+inline Point::Point(double x, double y, double z) : x(x), y(y), z(z) {}
+
 inline bool Point::__eq__(const Point& other) const {
     return (((this->x == other.x) && (this->y == other.y)) && (this->z == other.z));
 }
@@ -75,6 +77,8 @@ inline bool Point::__eq__(const Point& other) const {
 inline std::string Point::__repr__() const {
     return std::format("Point(x={}, y={}, z={})", ::tpy::repr_of(this->x), ::tpy::repr_of(this->y), ::tpy::repr_of(this->z));
 }
+
+inline Label::Label(std::string_view text) : text(text) {}
 
 inline bool Label::__eq__(const Label& other) const {
     return (this->text == other.text);

@@ -22,7 +22,7 @@ struct Box {
 
     // def __init__(self, v: Int64):
     Box() = default;
-    explicit Box(int64_t v) : v(v) {}
+    explicit Box(int64_t v);
 
     // def me(self) -> "Box":
     Box& me();
@@ -34,6 +34,9 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
     return os;
 }
 
+
+// def __init__(self, v: Int64):
+inline Box::Box(int64_t v) : v(v) {}
 
 // def me(self) -> "Box":
 inline Box& Box::me() {

@@ -20,7 +20,7 @@ struct Circle {
 
     // def __init__(self, radius: Int32) -> None:
     Circle() = default;
-    explicit Circle(int32_t radius) : radius(radius) {}
+    explicit Circle(int32_t radius);
     static constexpr std::string_view __tpy_class_name__ = "shapes.Circle";
 };
 
@@ -29,5 +29,8 @@ inline std::ostream& operator<<(std::ostream& os, const Circle& obj) {
     return os;
 }
 
+
+// def __init__(self, radius: Int32) -> None:
+inline Circle::Circle(int32_t radius) : radius(radius) {}
 void __tpy_init();
 } // namespace tpyapp::shapes

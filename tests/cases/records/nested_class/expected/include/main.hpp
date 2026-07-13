@@ -22,7 +22,7 @@ struct Outer {
 
         // def __init__(self, y: Int32) -> None:
         Inner() = default;
-        explicit Inner(int32_t y) : y(y) {}
+        explicit Inner(int32_t y);
 
         // def doubled(self) -> Int32:
         int32_t doubled() const;
@@ -34,7 +34,7 @@ struct Outer {
 
     // def __init__(self, x: Int32) -> None:
     Outer() = default;
-    explicit Outer(int32_t x) : x(x) {}
+    explicit Outer(int32_t x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Outer";
 };
 
@@ -49,10 +49,16 @@ inline std::ostream& operator<<(std::ostream& os, const Outer::Inner& obj) {
 }
 
 
+// def __init__(self, y: Int32) -> None:
+inline Outer::Inner::Inner(int32_t y) : y(y) {}
+
 // def doubled(self) -> Int32:
 inline int32_t Outer::Inner::doubled() const {
     // return self.y * 2
     return (::tpy::mul_check<int32_t>(this->y, 2));
 }
+
+// def __init__(self, x: Int32) -> None:
+inline Outer::Outer(int32_t x) : x(x) {}
 void __tpy_init();
 } // namespace tpyapp::main

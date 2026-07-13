@@ -23,7 +23,7 @@ struct Emitter {
     std::optional<std::function<void(std::string_view)>> on_event;
 
     // def __init__(self) -> None:
-    Emitter() : on_event(std::nullopt) {}
+    Emitter();
 
     // def set_handler(self, cb: Callable[[str], None]) -> None:
     void set_handler(const std::function<void(std::string_view)>& cb);
@@ -41,6 +41,9 @@ inline std::ostream& operator<<(std::ostream& os, const Emitter& obj) {
     return os;
 }
 
+
+// def __init__(self) -> None:
+inline Emitter::Emitter() : on_event(std::nullopt) {}
 
 // def set_handler(self, cb: Callable[[str], None]) -> None:
 inline void Emitter::set_handler(const std::function<void(std::string_view)>& cb) {

@@ -19,7 +19,7 @@ struct Stack {
     std::vector<int32_t> items;
 
     // def __init__(self) -> None:
-    Stack() : items({1, 2, 3}) {}
+    Stack();
 
     // def __iter__(self) -> Iterator[Int32]:
     auto __iter__() const;
@@ -31,6 +31,9 @@ inline std::ostream& operator<<(std::ostream& os, const Stack& obj) {
     return os;
 }
 
+
+// def __init__(self) -> None:
+inline Stack::Stack() : items({1, 2, 3}) {}
 
 // def __iter__(self) -> Iterator[Int32]:
 inline auto Stack::__iter__() const {

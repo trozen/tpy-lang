@@ -24,7 +24,7 @@ struct Holder {
 
     // def __init__(self, n: int) -> None:
     Holder() = default;
-    explicit Holder(const ::tpy::BigInt& n) : n(n) {}
+    explicit Holder(const ::tpy::BigInt& n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
@@ -33,5 +33,8 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     return os;
 }
 
+
+// def __init__(self, n: int) -> None:
+inline Holder::Holder(const ::tpy::BigInt& n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

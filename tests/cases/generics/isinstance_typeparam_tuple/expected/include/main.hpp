@@ -25,7 +25,7 @@ struct Animal {
 
     // def __init__(self, n: Int32):
     Animal() = default;
-    explicit Animal(int32_t n) : n(n) {}
+    explicit Animal(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Animal";
 };
 
@@ -39,10 +39,7 @@ struct Dog : Animal {
 
     // def __init__(self, n: Int32):
     Dog() = default;
-    explicit Dog(int32_t n) {
-        // self.n = n
-        this->n = n;
-    }
+    explicit Dog(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Dog";
 };
 
@@ -56,10 +53,7 @@ struct Cat : Animal {
 
     // def __init__(self, n: Int32):
     Cat() = default;
-    explicit Cat(int32_t n) {
-        // self.n = n
-        this->n = n;
-    }
+    explicit Cat(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Cat";
 };
 
@@ -73,10 +67,7 @@ struct Puppy : Dog {
 
     // def __init__(self, n: Int32):
     Puppy() = default;
-    explicit Puppy(int32_t n) {
-        // self.n = n
-        this->n = n;
-    }
+    explicit Puppy(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Puppy";
 };
 
@@ -85,6 +76,27 @@ inline std::ostream& operator<<(std::ostream& os, const Puppy& obj) {
     return os;
 }
 
+
+// def __init__(self, n: Int32):
+inline Animal::Animal(int32_t n) : n(n) {}
+
+// def __init__(self, n: Int32):
+inline Dog::Dog(int32_t n) {
+    // self.n = n
+    this->n = n;
+}
+
+// def __init__(self, n: Int32):
+inline Cat::Cat(int32_t n) {
+    // self.n = n
+    this->n = n;
+}
+
+// def __init__(self, n: Int32):
+inline Puppy::Puppy(int32_t n) {
+    // self.n = n
+    this->n = n;
+}
 // def is_dog_or_cat[T: Animal](x: T) -> bool:
 template<typename T>
 bool is_dog_or_cat(::tpy::param_val_or_ref_t<T> x) {

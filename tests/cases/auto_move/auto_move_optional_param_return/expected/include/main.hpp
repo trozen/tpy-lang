@@ -26,7 +26,7 @@ struct Payload {
 
     // def __init__(self, data: String, count: int):
     Payload() = default;
-    explicit Payload(const std::string& data, const ::tpy::BigInt& count) : data(data), count(count) {}
+    explicit Payload(const std::string& data, const ::tpy::BigInt& count);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Payload";
 };
 
@@ -35,5 +35,8 @@ inline std::ostream& operator<<(std::ostream& os, const Payload& obj) {
     return os;
 }
 
+
+// def __init__(self, data: String, count: int):
+inline Payload::Payload(const std::string& data, const ::tpy::BigInt& count) : data(data), count(count) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -23,27 +23,15 @@ struct Resource {
     bool __tpy_owned_ = true;
 
     // def __init__(self, id: Int32) -> None:
-    explicit Resource(int32_t id) : id(id) {}
+    explicit Resource(int32_t id);
     // non-copyable (@nocopy)
     Resource(const Resource&) = delete;
     Resource& operator=(const Resource&) = delete;
-    Resource(Resource&& other) noexcept : id(std::move(other.id)) {
-        other.__tpy_owned_ = false;
-    }
-    Resource& operator=(Resource&& other) noexcept {
-        if (this != &other) {
-            this->~Resource();
-            new (this) Resource(std::move(other));
-        }
-        return *this;
-    }
-    // def __del__(self) -> None:
+    Resource(Resource&& other) noexcept;
+    Resource& operator=(Resource&& other) noexcept;
 
-    ~Resource() {
-        if (!this->__tpy_owned_) return;
-        // print("drop", self.id)
-        std::cout << "drop" << " " << this->id << "\n";
-    }
+    // def __del__(self) -> None:
+    ~Resource();
 
     // @staticmethod
     // def make(seed: Int32) -> Own[Resource]:
@@ -64,7 +52,7 @@ struct Holder {
     int32_t tag;
 
     // def __init__(self, seed: Int32, tag: Int32) -> None:
-    explicit Holder(int32_t seed, int32_t tag) : _r(Resource::make(seed)), tag(tag) {}
+    explicit Holder(int32_t seed, int32_t tag);
     // non-copyable (field '_r')
     Holder(const Holder&) = delete;
     Holder& operator=(const Holder&) = delete;
@@ -79,6 +67,27 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 }
 
 
+// def __init__(self, id: Int32) -> None:
+inline Resource::Resource(int32_t id) : id(id) {}
+
+inline Resource::Resource(Resource&& other) noexcept : id(std::move(other.id)) {
+    other.__tpy_owned_ = false;
+}
+inline Resource& Resource::operator=(Resource&& other) noexcept {
+    if (this != &other) {
+        this->~Resource();
+        new (this) Resource(std::move(other));
+    }
+    return *this;
+}
+
+// def __del__(self) -> None:
+inline Resource::~Resource() {
+    if (!this->__tpy_owned_) return;
+    // print("drop", self.id)
+    std::cout << "drop" << " " << this->id << "\n";
+}
+
 // @staticmethod
 // def make(seed: Int32) -> Own[Resource]:
 inline Resource Resource::make(int32_t seed) {
@@ -87,5 +96,8 @@ inline Resource Resource::make(int32_t seed) {
     // return Resource(base)
     return Resource(base);
 }
+
+// def __init__(self, seed: Int32, tag: Int32) -> None:
+inline Holder::Holder(int32_t seed, int32_t tag) : _r(Resource::make(seed)), tag(tag) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -29,7 +29,7 @@ struct Counter {
 
     // def __init__(self, n: Int32) -> None:
     Counter() = default;
-    explicit Counter(int32_t n) : n(n) {}
+    explicit Counter(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Counter";
 };
 
@@ -44,7 +44,7 @@ struct Registry {
     ::tpystd::tplib::rc::Rc<Counter> _shared;
 
     // def __init__(self, c: Own[Rc[Counter]]) -> None:
-    explicit Registry(::tpystd::tplib::rc::Rc<Counter>&& c) : _shared(std::move(c)) {}
+    explicit Registry(::tpystd::tplib::rc::Rc<Counter>&& c);
     // non-copyable (field '_shared')
     Registry(const Registry&) = delete;
     Registry& operator=(const Registry&) = delete;
@@ -62,6 +62,12 @@ inline std::ostream& operator<<(std::ostream& os, const Registry& obj) {
     return os;
 }
 
+
+// def __init__(self, n: Int32) -> None:
+inline Counter::Counter(int32_t n) : n(n) {}
+
+// def __init__(self, c: Own[Rc[Counter]]) -> None:
+inline Registry::Registry(::tpystd::tplib::rc::Rc<Counter>&& c) : _shared(std::move(c)) {}
 
 // @readonly
 // def handle(self) -> Own[Rc[readonly[Counter]]]:

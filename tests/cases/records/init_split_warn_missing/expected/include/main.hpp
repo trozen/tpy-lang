@@ -24,10 +24,7 @@ struct Config {
 
     // def __init__(self, x: Int32):
     Config() = default;
-    explicit Config(int32_t x) : x(x) {
-        // print("init")          # tpyc: warning(/y.*is not initialized before the constructor body/)
-        std::cout << "init" << "\n";
-    }
+    explicit Config(int32_t x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Config";
 };
 
@@ -36,5 +33,11 @@ inline std::ostream& operator<<(std::ostream& os, const Config& obj) {
     return os;
 }
 
+
+// def __init__(self, x: Int32):
+inline Config::Config(int32_t x) : x(x) {
+    // print("init")          # tpyc: warning(/y.*is not initialized before the constructor body/)
+    std::cout << "init" << "\n";
+}
 void __tpy_init();
 } // namespace tpyapp::main

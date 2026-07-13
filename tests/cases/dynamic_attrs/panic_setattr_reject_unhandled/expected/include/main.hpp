@@ -19,12 +19,7 @@ struct Strict {
     ::tpy::ordered_map<std::string, ::tpy::Any> _data;
 
     // def __init__(self) -> None:
-    Strict() {
-        // d: dict[str, Any] = {}
-        ::tpy::ordered_map<std::string, ::tpy::Any> d = ::tpy::ordered_map<std::string, ::tpy::Any>();
-        // self._data = d
-        this->_data = std::move(d);
-    }
+    Strict();
 
     // def __setattr__(self, name: str, value: str) -> None:
     void __setattr__(std::string_view name, std::string_view value);
@@ -36,6 +31,14 @@ inline std::ostream& operator<<(std::ostream& os, const Strict& obj) {
     return os;
 }
 
+
+// def __init__(self) -> None:
+inline Strict::Strict() {
+    // d: dict[str, Any] = {}
+    ::tpy::ordered_map<std::string, ::tpy::Any> d = ::tpy::ordered_map<std::string, ::tpy::Any>();
+    // self._data = d
+    this->_data = std::move(d);
+}
 
 // def __setattr__(self, name: str, value: str) -> None:
 inline void Strict::__setattr__(std::string_view name, std::string_view value) {

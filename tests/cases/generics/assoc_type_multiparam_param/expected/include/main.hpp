@@ -33,7 +33,7 @@ struct IntStr {
 
     // def __init__(self, a: int, b: str):
     IntStr() = default;
-    explicit IntStr(const ::tpy::BigInt& a, std::string_view b) : a(a), b(b) {}
+    explicit IntStr(const ::tpy::BigInt& a, std::string_view b);
 
     // def first(self) -> int:
     ::tpy::BigInt first() const;
@@ -48,6 +48,9 @@ inline std::ostream& operator<<(std::ostream& os, const IntStr& obj) {
     return os;
 }
 
+
+// def __init__(self, a: int, b: str):
+inline IntStr::IntStr(const ::tpy::BigInt& a, std::string_view b) : a(a), b(b) {}
 
 // def first(self) -> int:
 inline ::tpy::BigInt IntStr::first() const {

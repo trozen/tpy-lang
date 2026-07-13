@@ -22,7 +22,7 @@ struct Box {
 
     // def __init__(self, value: Int32) -> None:
     Box() = default;
-    explicit Box(int32_t value) : value(value) {}
+    explicit Box(int32_t value);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
@@ -31,6 +31,9 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
     return os;
 }
 
+
+// def __init__(self, value: Int32) -> None:
+inline Box::Box(int32_t value) : value(value) {}
 // def collect[T](a: T, b: T) -> Own[list[T]]:
 template<typename T>
 std::vector<T> collect(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b) {

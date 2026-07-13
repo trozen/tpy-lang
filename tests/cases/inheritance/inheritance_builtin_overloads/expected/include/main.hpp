@@ -23,7 +23,7 @@ struct MyList : std::vector<int32_t> {
 
     // def __init__(self, name: str) -> None:
     MyList() = default;
-    explicit MyList(std::string_view name) : name(name) {}
+    explicit MyList(std::string_view name);
     static constexpr std::string_view __tpy_class_name__ = "__main__.MyList";
 };
 
@@ -32,5 +32,8 @@ inline std::ostream& operator<<(std::ostream& os, const MyList& obj) {
     return os;
 }
 
+
+// def __init__(self, name: str) -> None:
+inline MyList::MyList(std::string_view name) : name(name) {}
 void __tpy_init();
 } // namespace tpyapp::main

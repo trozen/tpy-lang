@@ -20,11 +20,7 @@ void main();
 struct P {
 
     // def __init__(self):
-    P() {
-        // global count
-        // count += 1
-        count = ::tpy::add_check<int32_t>(count, 1);
-    }
+    P();
 
     // @staticmethod
     // def boost():
@@ -37,6 +33,13 @@ inline std::ostream& operator<<(std::ostream& os, const P& obj) {
     return os;
 }
 
+
+// def __init__(self):
+inline P::P() {
+    // global count
+    // count += 1
+    count = ::tpy::add_check<int32_t>(count, 1);
+}
 
 // @staticmethod
 // def boost():

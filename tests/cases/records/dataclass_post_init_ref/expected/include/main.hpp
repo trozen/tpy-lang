@@ -22,9 +22,7 @@ struct Bag {
     std::vector<::tpy::BigInt> items = {};
 
     Bag() = default;
-    explicit Bag(const ::tpy::BigInt& n, std::vector<::tpy::BigInt>&& items = {}) : n(n), items(std::move(items)) {
-        this->__post_init__();
-    }
+    explicit Bag(const ::tpy::BigInt& n, std::vector<::tpy::BigInt>&& items = {});
 
     // def __post_init__(self) -> None:
     void __post_init__();
@@ -44,6 +42,10 @@ inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
     return os;
 }
 
+
+inline Bag::Bag(const ::tpy::BigInt& n, std::vector<::tpy::BigInt>&& items) : n(n), items(std::move(items)) {
+    this->__post_init__();
+}
 
 // def __post_init__(self) -> None:
 inline void Bag::__post_init__() {

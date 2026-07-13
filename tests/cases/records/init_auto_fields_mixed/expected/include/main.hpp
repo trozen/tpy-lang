@@ -22,7 +22,7 @@ struct Rect {
 
     // def __init__(self, width: Int32, height: Int32):
     Rect() = default;
-    explicit Rect(int32_t width, int32_t height) : width(width), height(height) {}
+    explicit Rect(int32_t width, int32_t height);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Rect";
 };
 
@@ -31,5 +31,8 @@ inline std::ostream& operator<<(std::ostream& os, const Rect& obj) {
     return os;
 }
 
+
+// def __init__(self, width: Int32, height: Int32):
+inline Rect::Rect(int32_t width, int32_t height) : width(width), height(height) {}
 void __tpy_init();
 } // namespace tpyapp::main

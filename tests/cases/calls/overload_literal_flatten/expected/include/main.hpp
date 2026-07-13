@@ -26,7 +26,7 @@ struct Record {
 
     // def __init__(self, age: Int32, name: str) -> None:
     Record() = default;
-    explicit Record(int32_t age, std::string_view name) : data_age(age), data_name(name) {}
+    explicit Record(int32_t age, std::string_view name);
 
     // @overload
     // def get(self, key: Literal["age"]) -> Int32: ...
@@ -61,5 +61,8 @@ inline std::ostream& operator<<(std::ostream& os, const Record& obj) {
     return os;
 }
 
+
+// def __init__(self, age: Int32, name: str) -> None:
+inline Record::Record(int32_t age, std::string_view name) : data_age(age), data_name(name) {}
 void __tpy_init();
 } // namespace tpyapp::main

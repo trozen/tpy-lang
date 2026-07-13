@@ -22,7 +22,7 @@ struct Base {
     std::vector<int32_t> _data;
 
     // def __init__(self) -> None:
-    Base() : _data({1, 2}) {}
+    Base();
 
     // @auto_readonly
     // def items(self) -> Span[auto_readonly[Int32]]:
@@ -45,7 +45,7 @@ struct Child : Base {
     std::vector<int32_t> _extra;
 
     // def __init__(self) -> None:
-    Child() : Base(), _extra({3, 4}) {}
+    Child();
 
     // @override
     // @auto_readonly
@@ -65,6 +65,9 @@ inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
 }
 
 
+// def __init__(self) -> None:
+inline Base::Base() : _data({1, 2}) {}
+
 // @auto_readonly
 // def items(self) -> Span[auto_readonly[Int32]]:
 inline std::span<int32_t> Base::items() {
@@ -78,6 +81,9 @@ inline std::span<const int32_t> Base::items() const {
     // return self._data
     return ::tpy::as_span(this->_data);
 }
+
+// def __init__(self) -> None:
+inline Child::Child() : Base(), _extra({3, 4}) {}
 
 // @override
 // @auto_readonly

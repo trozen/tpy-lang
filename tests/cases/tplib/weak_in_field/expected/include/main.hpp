@@ -26,7 +26,7 @@ struct Observer {
     ::tpystd::tplib::rc::Weak<Counter> target;
 
     // def __init__(self, target: Own[Weak[Counter]]) -> None:
-    explicit Observer(::tpystd::tplib::rc::Weak<Counter>&& target) : target(std::move(target)) {}
+    explicit Observer(::tpystd::tplib::rc::Weak<Counter>&& target);
     // non-copyable (field 'target')
     Observer(const Observer&) = delete;
     Observer& operator=(const Observer&) = delete;
@@ -50,7 +50,7 @@ struct Counter {
 
     // def __init__(self, v: Int32) -> None:
     Counter() = default;
-    explicit Counter(int32_t v) : value(v) {}
+    explicit Counter(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Counter";
 };
 
@@ -59,6 +59,9 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
     return os;
 }
 
+
+// def __init__(self, target: Own[Weak[Counter]]) -> None:
+inline Observer::Observer(::tpystd::tplib::rc::Weak<Counter>&& target) : target(std::move(target)) {}
 
 // def read(self) -> Int32:
 inline int32_t Observer::read() {
@@ -72,5 +75,8 @@ inline int32_t Observer::read() {
     // return upgraded.get().value
     return (*upgraded).get().value;
 }
+
+// def __init__(self, v: Int32) -> None:
+inline Counter::Counter(int32_t v) : value(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

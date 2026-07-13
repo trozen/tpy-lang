@@ -23,7 +23,7 @@ struct R {
 
     // def __init__(self, n: int) -> None:
     R() = default;
-    explicit R(const ::tpy::BigInt& n) : n(n) {}
+    explicit R(const ::tpy::BigInt& n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.R";
 };
 
@@ -50,6 +50,9 @@ inline std::ostream& operator<<(std::ostream& os, const Owned<T>& obj) {
     return os;
 }
 
+
+// def __init__(self, n: int) -> None:
+inline R::R(const ::tpy::BigInt& n) : n(n) {}
 // def grab[T](src: list[T]) -> Own[Owned[T]]:
 template<typename T>
 Owned<T> grab(const std::vector<T>& src) {

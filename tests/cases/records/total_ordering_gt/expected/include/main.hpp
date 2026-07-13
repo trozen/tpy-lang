@@ -22,7 +22,7 @@ struct Rank {
 
     // def __init__(self, v: Int32) -> None:
     Rank() = default;
-    explicit Rank(int32_t v) : n(v) {}
+    explicit Rank(int32_t v);
 
     // def __eq__(self, other: "Rank") -> bool:
     bool __eq__(const Rank& other) const;
@@ -63,6 +63,9 @@ inline std::ostream& operator<<(std::ostream& os, const Rank& obj) {
     return os;
 }
 
+
+// def __init__(self, v: Int32) -> None:
+inline Rank::Rank(int32_t v) : n(v) {}
 
 // def __eq__(self, other: "Rank") -> bool:
 inline bool Rank::__eq__(const Rank& other) const {

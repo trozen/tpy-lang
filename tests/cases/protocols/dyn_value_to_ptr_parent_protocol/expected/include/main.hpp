@@ -57,7 +57,7 @@ struct Cat : NamedPet {
 
     // def __init__(self, t: Int32) -> None:
     Cat() = default;
-    explicit Cat(int32_t t) : tag(t) {}
+    explicit Cat(int32_t t);
 
     // def name(self) -> Int32:
     int32_t name() override;
@@ -108,6 +108,9 @@ struct tpy::RefAdapter<tpyapp::main::NamedPet, T> : tpyapp::main::NamedPet {
 
 namespace tpyapp::main {
 
+
+// def __init__(self, t: Int32) -> None:
+inline Cat::Cat(int32_t t) : tag(t) {}
 
 // def name(self) -> Int32:
 inline int32_t Cat::name() {

@@ -24,23 +24,11 @@ struct Hazard {
 
     Hazard(const Hazard&) = delete;
     Hazard& operator=(const Hazard&) = delete;
-    Hazard(Hazard&& other) noexcept : _handle(std::move(other._handle)) {
-        other.__tpy_owned_ = false;
-    }
-    Hazard& operator=(Hazard&& other) noexcept {
-        if (this != &other) {
-            this->~Hazard();
-            new (this) Hazard(std::move(other));
-        }
-        return *this;
-    }
-    // def __del__(self) -> None:
+    Hazard(Hazard&& other) noexcept;
+    Hazard& operator=(Hazard&& other) noexcept;
 
-    ~Hazard() {
-        if (!this->__tpy_owned_) return;
-        // print("dropping hazard")
-        std::cout << "dropping hazard" << "\n";
-    }
+    // def __del__(self) -> None:
+    ~Hazard();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Hazard";
 };
 
@@ -60,23 +48,11 @@ struct Safe {
     Safe() = default;
     Safe(const Safe&) = delete;
     Safe& operator=(const Safe&) = delete;
-    Safe(Safe&& other) noexcept : name(std::move(other.name)) {
-        other.__tpy_owned_ = false;
-    }
-    Safe& operator=(Safe&& other) noexcept {
-        if (this != &other) {
-            this->~Safe();
-            new (this) Safe(std::move(other));
-        }
-        return *this;
-    }
-    // def __del__(self) -> None:
+    Safe(Safe&& other) noexcept;
+    Safe& operator=(Safe&& other) noexcept;
 
-    ~Safe() {
-        if (!this->__tpy_owned_) return;
-        // print("dropping safe:", self.name)
-        std::cout << "dropping safe:" << " " << this->name << "\n";
-    }
+    // def __del__(self) -> None:
+    ~Safe();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Safe";
 };
 
@@ -85,5 +61,41 @@ inline std::ostream& operator<<(std::ostream& os, const Safe& obj) {
     return os;
 }
 
+
+inline Hazard::Hazard(Hazard&& other) noexcept : _handle(std::move(other._handle)) {
+    other.__tpy_owned_ = false;
+}
+inline Hazard& Hazard::operator=(Hazard&& other) noexcept {
+    if (this != &other) {
+        this->~Hazard();
+        new (this) Hazard(std::move(other));
+    }
+    return *this;
+}
+
+// def __del__(self) -> None:
+inline Hazard::~Hazard() {
+    if (!this->__tpy_owned_) return;
+    // print("dropping hazard")
+    std::cout << "dropping hazard" << "\n";
+}
+
+inline Safe::Safe(Safe&& other) noexcept : name(std::move(other.name)) {
+    other.__tpy_owned_ = false;
+}
+inline Safe& Safe::operator=(Safe&& other) noexcept {
+    if (this != &other) {
+        this->~Safe();
+        new (this) Safe(std::move(other));
+    }
+    return *this;
+}
+
+// def __del__(self) -> None:
+inline Safe::~Safe() {
+    if (!this->__tpy_owned_) return;
+    // print("dropping safe:", self.name)
+    std::cout << "dropping safe:" << " " << this->name << "\n";
+}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -19,7 +19,7 @@ struct Sink {
     std::vector<std::string> parts;
 
     // def __init__(self) -> None:
-    Sink() : parts(std::vector<std::string>{}) {}
+    Sink();
 
     // def write(self, text: str) -> Int32:
     int32_t write(std::string_view text);
@@ -34,6 +34,9 @@ inline std::ostream& operator<<(std::ostream& os, const Sink& obj) {
     return os;
 }
 
+
+// def __init__(self) -> None:
+inline Sink::Sink() : parts(std::vector<std::string>{}) {}
 
 // def write(self, text: str) -> Int32:
 inline int32_t Sink::write(std::string_view text) {

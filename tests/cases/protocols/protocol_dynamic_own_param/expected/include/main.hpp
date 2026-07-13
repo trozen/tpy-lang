@@ -63,7 +63,7 @@ struct Parrot {
 
     // def __init__(self, n: str) -> None:
     Parrot() = default;
-    explicit Parrot(std::string_view n) : _name(n) {}
+    explicit Parrot(std::string_view n);
 
     // def name(self) -> StrView:
     std::string_view name() const;
@@ -82,7 +82,7 @@ struct Dog {
 
     // def __init__(self, n: str) -> None:
     Dog() = default;
-    explicit Dog(std::string_view n) : _name(n) {}
+    explicit Dog(std::string_view n);
 
     // def name(self) -> StrView:
     std::string_view name() const;
@@ -101,7 +101,7 @@ struct Tabby {
 
     // def __init__(self, n: str) -> None:
     Tabby() = default;
-    explicit Tabby(std::string_view n) : _name(n) {}
+    explicit Tabby(std::string_view n);
 
     // def name(self) -> StrView:
     std::string_view name() const;
@@ -153,17 +153,26 @@ struct tpy::RefAdapter<tpyapp::main::NamedPet, T> : tpyapp::main::NamedPet {
 namespace tpyapp::main {
 
 
+// def __init__(self, n: str) -> None:
+inline Parrot::Parrot(std::string_view n) : _name(n) {}
+
 // def name(self) -> StrView:
 inline std::string_view Parrot::name() const {
     // return self._name
     return this->_name;
 }
 
+// def __init__(self, n: str) -> None:
+inline Dog::Dog(std::string_view n) : _name(n) {}
+
 // def name(self) -> StrView:
 inline std::string_view Dog::name() const {
     // return self._name
     return this->_name;
 }
+
+// def __init__(self, n: str) -> None:
+inline Tabby::Tabby(std::string_view n) : _name(n) {}
 
 // def name(self) -> StrView:
 inline std::string_view Tabby::name() const {

@@ -22,7 +22,7 @@ struct A {
 
     // def __init__(self, target: Optional[str]) -> None:
     A() = default;
-    explicit A(std::optional<std::string_view> target) : target(target ? std::make_optional(std::string(*target)) : std::nullopt) {}
+    explicit A(std::optional<std::string_view> target);
     static constexpr std::string_view __tpy_class_name__ = "__main__.A";
 };
 
@@ -38,7 +38,7 @@ struct B {
 
     // def __init__(self, filter_: Optional[str]) -> None:
     B() = default;
-    explicit B(std::optional<std::string_view> filter_) : filter_(filter_ ? std::make_optional(std::string(*filter_)) : std::nullopt) {}
+    explicit B(std::optional<std::string_view> filter_);
     static constexpr std::string_view __tpy_class_name__ = "__main__.B";
 };
 
@@ -53,7 +53,7 @@ struct Holder {
     std::variant<A, B> sub;
 
     // def __init__(self, sub: A | B) -> None:
-    explicit Holder(const std::variant<A*, B*> sub) : sub(::tpy::to_value_variant<std::variant<A, B>>(sub)) {}
+    explicit Holder(const std::variant<A*, B*> sub);
 
     // @property
     // def label(self) -> str:
@@ -66,6 +66,15 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     return os;
 }
 
+
+// def __init__(self, target: Optional[str]) -> None:
+inline A::A(std::optional<std::string_view> target) : target(target ? std::make_optional(std::string(*target)) : std::nullopt) {}
+
+// def __init__(self, filter_: Optional[str]) -> None:
+inline B::B(std::optional<std::string_view> filter_) : filter_(filter_ ? std::make_optional(std::string(*filter_)) : std::nullopt) {}
+
+// def __init__(self, sub: A | B) -> None:
+inline Holder::Holder(const std::variant<A*, B*> sub) : sub(::tpy::to_value_variant<std::variant<A, B>>(sub)) {}
 
 // @property
 // def label(self) -> str:

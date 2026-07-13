@@ -22,7 +22,7 @@ struct Pt {
 
     // def __init__(self, x: Int32, y: Int32) -> None:
     Pt() = default;
-    explicit Pt(int32_t x, int32_t y) : x(x), y(y) {}
+    explicit Pt(int32_t x, int32_t y);
 
     // def __repr__(self) -> str:
     std::string __repr__() const;
@@ -34,6 +34,9 @@ inline std::ostream& operator<<(std::ostream& os, const Pt& obj) {
     return os;
 }
 
+
+// def __init__(self, x: Int32, y: Int32) -> None:
+inline Pt::Pt(int32_t x, int32_t y) : x(x), y(y) {}
 
 // def __repr__(self) -> str:
 inline std::string Pt::__repr__() const {

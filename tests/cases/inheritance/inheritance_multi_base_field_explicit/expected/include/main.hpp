@@ -46,12 +46,7 @@ struct Combined : Counter, Tag {
 
     // def __init__(self, n: Int32, label: str) -> None:
     Combined() = default;
-    explicit Combined(int32_t n, std::string_view label) {
-        // Counter.value = n  # tpyc: ok
-        this->Counter::value = n;
-        // Tag.value = label  # tpyc: ok
-        this->Tag::value = label;
-    }
+    explicit Combined(int32_t n, std::string_view label);
 
     // def summary(self) -> str:
     std::string summary() const;
@@ -63,6 +58,14 @@ inline std::ostream& operator<<(std::ostream& os, const Combined& obj) {
     return os;
 }
 
+
+// def __init__(self, n: Int32, label: str) -> None:
+inline Combined::Combined(int32_t n, std::string_view label) {
+    // Counter.value = n  # tpyc: ok
+    this->Counter::value = n;
+    // Tag.value = label  # tpyc: ok
+    this->Tag::value = label;
+}
 
 // def summary(self) -> str:
 inline std::string Combined::summary() const {

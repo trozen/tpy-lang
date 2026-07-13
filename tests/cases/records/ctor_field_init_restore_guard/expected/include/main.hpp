@@ -26,7 +26,7 @@ struct Node {
 
     // def __init__(self, v: int) -> None:
     Node() = default;
-    explicit Node(const ::tpy::BigInt& v) : v(v) {}
+    explicit Node(const ::tpy::BigInt& v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Node";
 };
 
@@ -42,7 +42,7 @@ struct A {
 
     // def __init__(self, n: Node | None) -> None:
     A() = default;
-    explicit A(const Node* n) : got((((n != nullptr)) ? (n->v) : (::tpy::BigInt(-1)))) {}
+    explicit A(const Node* n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.A";
 };
 
@@ -58,7 +58,7 @@ struct B {
 
     // def __init__(self, n: int) -> None:
     B() = default;
-    explicit B(const ::tpy::BigInt& n) : x(n) {}
+    explicit B(const ::tpy::BigInt& n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.B";
 };
 
@@ -67,5 +67,14 @@ inline std::ostream& operator<<(std::ostream& os, const B& obj) {
     return os;
 }
 
+
+// def __init__(self, v: int) -> None:
+inline Node::Node(const ::tpy::BigInt& v) : v(v) {}
+
+// def __init__(self, n: Node | None) -> None:
+inline A::A(const Node* n) : got((((n != nullptr)) ? (n->v) : (::tpy::BigInt(-1)))) {}
+
+// def __init__(self, n: int) -> None:
+inline B::B(const ::tpy::BigInt& n) : x(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

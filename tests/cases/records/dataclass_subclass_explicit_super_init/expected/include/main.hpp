@@ -23,32 +23,15 @@ struct Resource {
     bool __tpy_owned_ = true;
 
     // def __init__(self, value: Int32) -> None:
-    explicit Resource(int32_t value) : _ptr(static_cast<int32_t*>(::operator new(sizeof(int32_t), std::align_val_t(alignof(int32_t))))) {
-        // unsafe_init(self._ptr, value)
-        ::new(static_cast<void*>(this->_ptr)) int32_t(value);
-    }
+    explicit Resource(int32_t value);
     // non-copyable (@nocopy)
     Resource(const Resource&) = delete;
     Resource& operator=(const Resource&) = delete;
-    Resource(Resource&& other) noexcept : _ptr(std::move(other._ptr)) {
-        other.__tpy_owned_ = false;
-    }
-    Resource& operator=(Resource&& other) noexcept {
-        if (this != &other) {
-            this->~Resource();
-            new (this) Resource(std::move(other));
-        }
-        return *this;
-    }
-    // def __del__(self) -> None:
+    Resource(Resource&& other) noexcept;
+    Resource& operator=(Resource&& other) noexcept;
 
-    ~Resource() {
-        if (!this->__tpy_owned_) return;
-        // unsafe_drop(self._ptr)
-        ::tpy::destroy_at(this->_ptr);
-        // unsafe_free(self._ptr)
-        ::operator delete(this->_ptr, std::align_val_t(alignof(int32_t)));
-    }
+    // def __del__(self) -> None:
+    ~Resource();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Resource";
 };
 
@@ -63,7 +46,7 @@ struct Base {
     Resource res;
 
     // def __init__(self, v: Int32) -> None:
-    explicit Base(int32_t v) : res(Resource(v)) {}
+    explicit Base(int32_t v);
     // non-copyable (field 'res')
     Base(const Base&) = delete;
     Base& operator=(const Base&) = delete;
@@ -84,7 +67,7 @@ struct Child : Base {
     int32_t extra;
 
     // def __init__(self, v: Int32, extra: Int32) -> None:
-    explicit Child(int32_t v, int32_t extra) : Base(v), extra(extra) {}
+    explicit Child(int32_t v, int32_t extra);
     // non-copyable
     Child(const Child&) = delete;
     Child& operator=(const Child&) = delete;
@@ -106,6 +89,38 @@ inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
     return os;
 }
 
+
+// def __init__(self, value: Int32) -> None:
+inline Resource::Resource(int32_t value) : _ptr(static_cast<int32_t*>(::operator new(sizeof(int32_t), std::align_val_t(alignof(int32_t))))) {
+    // unsafe_init(self._ptr, value)
+    ::new(static_cast<void*>(this->_ptr)) int32_t(value);
+}
+
+inline Resource::Resource(Resource&& other) noexcept : _ptr(std::move(other._ptr)) {
+    other.__tpy_owned_ = false;
+}
+inline Resource& Resource::operator=(Resource&& other) noexcept {
+    if (this != &other) {
+        this->~Resource();
+        new (this) Resource(std::move(other));
+    }
+    return *this;
+}
+
+// def __del__(self) -> None:
+inline Resource::~Resource() {
+    if (!this->__tpy_owned_) return;
+    // unsafe_drop(self._ptr)
+    ::tpy::destroy_at(this->_ptr);
+    // unsafe_free(self._ptr)
+    ::operator delete(this->_ptr, std::align_val_t(alignof(int32_t)));
+}
+
+// def __init__(self, v: Int32) -> None:
+inline Base::Base(int32_t v) : res(Resource(v)) {}
+
+// def __init__(self, v: Int32, extra: Int32) -> None:
+inline Child::Child(int32_t v, int32_t extra) : Base(v), extra(extra) {}
 
 inline bool Child::__eq__(const Child& other) const {
     return (this->extra == other.extra);

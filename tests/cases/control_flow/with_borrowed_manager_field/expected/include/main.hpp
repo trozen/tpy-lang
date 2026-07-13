@@ -23,7 +23,7 @@ struct Mgr {
     ::tpy::BigInt n;
 
     // def __init__(self) -> None:
-    Mgr() : n(::tpy::BigInt(0)) {}
+    Mgr();
 
     // def __enter__(self) -> "Mgr":
     Mgr& __enter__();
@@ -44,7 +44,7 @@ struct Owner {
     Mgr mgr;
 
     // def __init__(self) -> None:
-    Owner() : mgr(Mgr()) {}
+    Owner();
 
     // def work(self) -> None:
     void work();
@@ -60,6 +60,9 @@ inline std::ostream& operator<<(std::ostream& os, const Owner& obj) {
 }
 
 
+// def __init__(self) -> None:
+inline Mgr::Mgr() : n(::tpy::BigInt(0)) {}
+
 // def __enter__(self) -> "Mgr":
 inline Mgr& Mgr::__enter__() {
     // self.n += 1
@@ -73,6 +76,9 @@ inline void Mgr::__exit__(std::monostate exc_type, std::monostate exc_val, std::
     // self.n += 100
     this->n = (this->n) + (::tpy::BigInt(100));
 }
+
+// def __init__(self) -> None:
+inline Owner::Owner() : mgr(Mgr()) {}
 
 // def work(self) -> None:
 inline void Owner::work() {

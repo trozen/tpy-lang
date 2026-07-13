@@ -26,7 +26,7 @@ struct Handle {
 
     // def __init__(self, n: Int32) -> None:
     Handle() = default;
-    explicit Handle(int32_t n) : n(n) {}
+    explicit Handle(int32_t n);
     // non-copyable (@nocopy)
     Handle(const Handle&) = delete;
     Handle& operator=(const Handle&) = delete;
@@ -40,5 +40,8 @@ inline std::ostream& operator<<(std::ostream& os, const Handle& obj) {
     return os;
 }
 
+
+// def __init__(self, n: Int32) -> None:
+inline Handle::Handle(int32_t n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

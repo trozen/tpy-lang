@@ -20,27 +20,14 @@ struct Res {
     bool __tpy_owned_ = true;
 
     // def __init__(self, fd: Int32) -> None:
-    explicit Res(int32_t fd) : fd(fd) {}
+    explicit Res(int32_t fd);
     Res(const Res&) = delete;
     Res& operator=(const Res&) = delete;
-    Res(Res&& other) noexcept : fd(std::move(other.fd)) {
-        other.__tpy_owned_ = false;
-    }
-    Res& operator=(Res&& other) noexcept {
-        if (this != &other) {
-            this->~Res();
-            new (this) Res(std::move(other));
-        }
-        return *this;
-    }
-    // def __del__(self) -> None:
+    Res(Res&& other) noexcept;
+    Res& operator=(Res&& other) noexcept;
 
-    ~Res() {
-        if (!this->__tpy_owned_) return;
-        // # Side-effect-free: present only to make Res non-copyable. A printing
-        // # __del__ would diverge between C++ scope-based and CPython GC timing.
-        // pass
-    }
+    // def __del__(self) -> None:
+    ~Res();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Res";
 };
 
@@ -49,6 +36,28 @@ inline std::ostream& operator<<(std::ostream& os, const Res& obj) {
     return os;
 }
 
+
+// def __init__(self, fd: Int32) -> None:
+inline Res::Res(int32_t fd) : fd(fd) {}
+
+inline Res::Res(Res&& other) noexcept : fd(std::move(other.fd)) {
+    other.__tpy_owned_ = false;
+}
+inline Res& Res::operator=(Res&& other) noexcept {
+    if (this != &other) {
+        this->~Res();
+        new (this) Res(std::move(other));
+    }
+    return *this;
+}
+
+// def __del__(self) -> None:
+inline Res::~Res() {
+    if (!this->__tpy_owned_) return;
+    // # Side-effect-free: present only to make Res non-copyable. A printing
+    // # __del__ would diverge between C++ scope-based and CPython GC timing.
+    // pass
+}
 inline auto gen(std::vector<Res>& items) {
     return ::tpy::make_generator<::tpy::val_or_ref<Res>>(
         [&items, __beg = decltype((items).begin())(), __end = decltype((items).begin())(), __init = false]() mutable -> std::optional<::tpy::val_or_ref<Res>> {

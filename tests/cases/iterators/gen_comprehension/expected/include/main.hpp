@@ -33,7 +33,7 @@ struct Node {
 
     // def __init__(self, v: Int32) -> None:
     Node() = default;
-    explicit Node(int32_t v) : v(v) {}
+    explicit Node(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Node";
 };
 
@@ -49,7 +49,7 @@ struct Counter {
 
     // def __init__(self, base: Int32) -> None:
     Counter() = default;
-    explicit Counter(int32_t base) : base(base) {}
+    explicit Counter(int32_t base);
 
     __gen_Counter_around around() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Counter";
@@ -241,6 +241,12 @@ inline __gen_Counter_around Counter::around() const {
     return __gen_Counter_around(*this);
 }
 
+
+// def __init__(self, v: Int32) -> None:
+inline Node::Node(int32_t v) : v(v) {}
+
+// def __init__(self, base: Int32) -> None:
+inline Counter::Counter(int32_t base) : base(base) {}
 inline auto simple(int32_t n) {
     // i: Int32 = 0
     int32_t i = 0;

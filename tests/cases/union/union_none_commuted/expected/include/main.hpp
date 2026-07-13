@@ -22,7 +22,7 @@ struct Cat {
 
     // def __init__(self, name: str) -> None:
     Cat() = default;
-    explicit Cat(std::string_view name) : name(name) {}
+    explicit Cat(std::string_view name);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Cat";
 };
 
@@ -31,5 +31,8 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
     return os;
 }
 
+
+// def __init__(self, name: str) -> None:
+inline Cat::Cat(std::string_view name) : name(name) {}
 void __tpy_init();
 } // namespace tpyapp::main

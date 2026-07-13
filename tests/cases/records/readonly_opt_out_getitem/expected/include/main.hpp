@@ -22,7 +22,7 @@ struct CachingContainer {
 
     // def __init__(self, data: Int32) -> None:
     CachingContainer() = default;
-    explicit CachingContainer(int32_t data) : data(data), last_access(-1) {}
+    explicit CachingContainer(int32_t data);
 
     // @readonly(False)
     // def __getitem__(self, index: Int32) -> Int32:
@@ -48,6 +48,9 @@ inline std::ostream& operator<<(std::ostream& os, const CachingContainer& obj) {
     return os;
 }
 
+
+// def __init__(self, data: Int32) -> None:
+inline CachingContainer::CachingContainer(int32_t data) : data(data), last_access(-1) {}
 
 // @readonly(False)
 // def __getitem__(self, index: Int32) -> Int32:

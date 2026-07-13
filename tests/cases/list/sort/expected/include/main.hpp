@@ -33,7 +33,7 @@ struct Pair {
 
     // def __init__(self, key: Int32, tag: Int32) -> None:
     Pair() = default;
-    explicit Pair(int32_t key, int32_t tag) : key(key), tag(tag) {}
+    explicit Pair(int32_t key, int32_t tag);
 
     // def __lt__(self, other: Pair) -> bool:
     bool __lt__(const Pair& other) const;
@@ -52,6 +52,9 @@ inline std::ostream& operator<<(std::ostream& os, const Pair& obj) {
     return os;
 }
 
+
+// def __init__(self, key: Int32, tag: Int32) -> None:
+inline Pair::Pair(int32_t key, int32_t tag) : key(key), tag(tag) {}
 
 // def __lt__(self, other: Pair) -> bool:
 inline bool Pair::__lt__(const Pair& other) const {

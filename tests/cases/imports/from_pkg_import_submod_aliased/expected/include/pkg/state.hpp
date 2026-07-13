@@ -19,7 +19,7 @@ struct Counter {
 
     // def __init__(self, n: Int32) -> None:
     Counter() = default;
-    explicit Counter(int32_t n) : n(n) {}
+    explicit Counter(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "pkg.state.Counter";
 };
 
@@ -28,5 +28,8 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
     return os;
 }
 
+
+// def __init__(self, n: Int32) -> None:
+inline Counter::Counter(int32_t n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::pkg::state

@@ -16,7 +16,7 @@ struct Vec2 {
     int64_t y;
 
     Vec2() = default;
-    explicit Vec2(int64_t x, int64_t y) : x(x), y(y) {}
+    explicit Vec2(int64_t x, int64_t y);
 
     Vec2 __add__(const Vec2& other) const;
 
@@ -65,6 +65,8 @@ inline std::ostream& operator<<(std::ostream& os, const Vec2& obj) {
     return os;
 }
 
+
+inline Vec2::Vec2(int64_t x, int64_t y) : x(x), y(y) {}
 
 inline Vec2 Vec2::__add__(const Vec2& other) const {
     return Vec2((::tpy::add_check<int64_t>(this->x, other.x)), (::tpy::add_check<int64_t>(this->y, other.y)));

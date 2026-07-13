@@ -58,7 +58,7 @@ struct Msg {
     // value: Int32 = 0
     int32_t value = 0;
 
-    explicit Msg(std::string_view color = "", int32_t value = 0) : color(color), value(value) {}
+    explicit Msg(std::string_view color = "", int32_t value = 0);
 
     bool __eq__(const Msg& other) const;
 
@@ -98,7 +98,7 @@ struct Item {
     Color color;
 
     Item() = default;
-    explicit Item(Color color) : color(color) {}
+    explicit Item(Color color);
 
     bool __eq__(const Item& other) const;
 
@@ -121,7 +121,7 @@ struct Registry {
     ::tpy::ordered_map<int32_t, Item> items;
 
     // def __init__(self):
-    Registry() : items(::tpy::ordered_map<int32_t, Item>()) {}
+    Registry();
 
     // def update(self, key: Int32, color: Color) -> None:
     void update(int32_t key, Color color);
@@ -133,6 +133,8 @@ inline std::ostream& operator<<(std::ostream& os, const Registry& obj) {
     return os;
 }
 
+
+inline Msg::Msg(std::string_view color, int32_t value) : color(color), value(value) {}
 
 inline bool Msg::__eq__(const Msg& other) const {
     return ((this->color == other.color) && (this->value == other.value));
@@ -252,6 +254,8 @@ inline std::expected<Msg, ::tpystd::tplib::json::parser::JsonError> Msg::try_loa
     return Msg::try_from_json(__data);
 }
 
+inline Item::Item(Color color) : color(color) {}
+
 inline bool Item::__eq__(const Item& other) const {
     return (this->color == other.color);
 }
@@ -259,6 +263,9 @@ inline bool Item::__eq__(const Item& other) const {
 inline std::string Item::__repr__() const {
     return std::format("Item(color={})", ::tpy::repr_of(this->color));
 }
+
+// def __init__(self):
+inline Registry::Registry() : items(::tpy::ordered_map<int32_t, Item>()) {}
 
 // def update(self, key: Int32, color: Color) -> None:
 inline void Registry::update(int32_t key, Color color) {

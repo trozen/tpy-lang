@@ -19,10 +19,7 @@ void main();
 struct P {
 
     // def __init__(self):
-    P() {
-        // log.append(1)
-        log->push_back(1);
-    }
+    P();
     static constexpr std::string_view __tpy_class_name__ = "__main__.P";
 };
 
@@ -37,7 +34,7 @@ struct Outer {
     P inner;
 
     // def __init__(self):
-    Outer() : inner(P()) {}
+    Outer();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Outer";
 };
 
@@ -46,5 +43,14 @@ inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
     return os;
 }
 
+
+// def __init__(self):
+inline P::P() {
+    // log.append(1)
+    log->push_back(1);
+}
+
+// def __init__(self):
+inline Outer::Outer() : inner(P()) {}
 void __tpy_init();
 } // namespace tpyapp::main

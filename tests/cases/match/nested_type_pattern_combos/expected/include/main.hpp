@@ -45,7 +45,7 @@ struct Container {
     std::variant<int32_t, std::string> value;
 
     // def __init__(self, value: str | Int32) -> None:
-    explicit Container(const std::variant<int32_t, std::string>& value) : value(value) {}
+    explicit Container(const std::variant<int32_t, std::string>& value);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 
@@ -61,7 +61,7 @@ struct Outer {
     std::variant<Box<int32_t>, Box<std::string>> item;
 
     // def __init__(self, item: Box[str] | Box[Int32]) -> None:
-    explicit Outer(const std::variant<Box<int32_t>*, Box<std::string>*> item) : item(::tpy::to_value_variant<std::variant<Box<int32_t>, Box<std::string>>>(item)) {}
+    explicit Outer(const std::variant<Box<int32_t>*, Box<std::string>*> item);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Outer";
 };
 
@@ -79,7 +79,7 @@ struct Tagged {
     std::variant<int32_t, std::string> inner;
 
     // def __init__(self, label: str, inner: str | Int32) -> None:
-    explicit Tagged(std::string_view label, const std::variant<int32_t, std::string>& inner) : label(label), inner(inner) {}
+    explicit Tagged(std::string_view label, const std::variant<int32_t, std::string>& inner);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Tagged";
 };
 
@@ -88,5 +88,14 @@ inline std::ostream& operator<<(std::ostream& os, const Tagged& obj) {
     return os;
 }
 
+
+// def __init__(self, value: str | Int32) -> None:
+inline Container::Container(const std::variant<int32_t, std::string>& value) : value(value) {}
+
+// def __init__(self, item: Box[str] | Box[Int32]) -> None:
+inline Outer::Outer(const std::variant<Box<int32_t>*, Box<std::string>*> item) : item(::tpy::to_value_variant<std::variant<Box<int32_t>, Box<std::string>>>(item)) {}
+
+// def __init__(self, label: str, inner: str | Int32) -> None:
+inline Tagged::Tagged(std::string_view label, const std::variant<int32_t, std::string>& inner) : label(label), inner(inner) {}
 void __tpy_init();
 } // namespace tpyapp::main

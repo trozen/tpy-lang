@@ -22,7 +22,7 @@ struct NotFound : ::tpy::Exception {
 
     // def __init__(self, code: Int32) -> None:
     NotFound() = default;
-    explicit NotFound(int32_t code) : code(code) {}
+    explicit NotFound(int32_t code);
 
     [[nodiscard]] std::unique_ptr<::tpy::Throwable> clone() const override { return std::make_unique<NotFound>(*this); }
     [[noreturn]] void __raise__() const override { throw *this; }
@@ -35,5 +35,8 @@ inline std::ostream& operator<<(std::ostream& os, const NotFound& obj) {
     return os;
 }
 
+
+// def __init__(self, code: Int32) -> None:
+inline NotFound::NotFound(int32_t code) : code(code) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -27,7 +27,7 @@ struct Box {
 
     // def __init__(self, v: int):
     Box() = default;
-    explicit Box(const ::tpy::BigInt& v) : val(v) {}
+    explicit Box(const ::tpy::BigInt& v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
@@ -43,7 +43,7 @@ struct Holder {
 
     // def __init__(self, b: Box):
     Holder() = default;
-    explicit Holder(const Box& b) : pair(::tpy::tuple_to_storage<std::tuple<::tpy::BigInt, Box>>(std::tuple<::tpy::BigInt, Box>{::tpy::BigInt(1), b})) {}
+    explicit Holder(const Box& b);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
@@ -52,5 +52,11 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     return os;
 }
 
+
+// def __init__(self, v: int):
+inline Box::Box(const ::tpy::BigInt& v) : val(v) {}
+
+// def __init__(self, b: Box):
+inline Holder::Holder(const Box& b) : pair(::tpy::tuple_to_storage<std::tuple<::tpy::BigInt, Box>>(std::tuple<::tpy::BigInt, Box>{::tpy::BigInt(1), b})) {}
 void __tpy_init();
 } // namespace tpyapp::main

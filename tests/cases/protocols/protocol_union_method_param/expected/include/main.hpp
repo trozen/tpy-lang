@@ -33,7 +33,7 @@ struct Processor {
     ::tpy::BigInt count;
 
     // def __init__(self) -> None:
-    Processor() : count(::tpy::BigInt(0)) {}
+    Processor();
 
     // def process(self, items: Measurable | Walkable) -> None:
     template<typename T_items>
@@ -85,6 +85,9 @@ inline std::ostream& operator<<(std::ostream& os, const Walker& obj) {
     return os;
 }
 
+
+// def __init__(self) -> None:
+inline Processor::Processor() : count(::tpy::BigInt(0)) {}
 
 // def measure(self) -> int:
 inline ::tpy::BigInt Ruler::measure() const {

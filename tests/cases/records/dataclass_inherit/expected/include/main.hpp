@@ -23,7 +23,7 @@ struct Base {
     int32_t y;
 
     Base() = default;
-    explicit Base(int32_t x, int32_t y) : x(x), y(y) {}
+    explicit Base(int32_t x, int32_t y);
 
     bool __eq__(const Base& other) const;
 
@@ -47,7 +47,7 @@ struct Child : Base {
     int32_t z;
 
     Child() = default;
-    explicit Child(int32_t x, int32_t y, int32_t z) : Base(x, y), z(z) {}
+    explicit Child(int32_t x, int32_t y, int32_t z);
 
     bool __eq__(const Child& other) const;
 
@@ -65,6 +65,8 @@ inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
 }
 
 
+inline Base::Base(int32_t x, int32_t y) : x(x), y(y) {}
+
 inline bool Base::__eq__(const Base& other) const {
     return ((this->x == other.x) && (this->y == other.y));
 }
@@ -72,6 +74,8 @@ inline bool Base::__eq__(const Base& other) const {
 inline std::string Base::__repr__() const {
     return std::format("Base(x={}, y={})", ::tpy::repr_of(this->x), ::tpy::repr_of(this->y));
 }
+
+inline Child::Child(int32_t x, int32_t y, int32_t z) : Base(x, y), z(z) {}
 
 inline bool Child::__eq__(const Child& other) const {
     return (((this->x == other.x) && (this->y == other.y)) && (this->z == other.z));

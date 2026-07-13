@@ -19,7 +19,7 @@ struct Bag {
     std::vector<int32_t> _items;
 
     // def __init__(self) -> None:
-    Bag() : _items({10, 20, 30}) {}
+    Bag();
 
     // def add(self, x: Int32) -> None:
     void add(int32_t x);
@@ -40,6 +40,9 @@ inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
     return os;
 }
 
+
+// def __init__(self) -> None:
+inline Bag::Bag() : _items({10, 20, 30}) {}
 
 // def add(self, x: Int32) -> None:
 inline void Bag::add(int32_t x) {

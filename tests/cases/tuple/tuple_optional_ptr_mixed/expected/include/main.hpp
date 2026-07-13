@@ -22,7 +22,7 @@ struct Point {
 
     // def __init__(self, x: Int32) -> None:
     Point() = default;
-    explicit Point(int32_t x) : x(x) {}
+    explicit Point(int32_t x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
 };
 
@@ -38,7 +38,7 @@ struct Tag {
 
     // def __init__(self, name: Int32) -> None:
     Tag() = default;
-    explicit Tag(int32_t name) : name(name) {}
+    explicit Tag(int32_t name);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Tag";
 };
 
@@ -54,7 +54,7 @@ struct Holder {
 
     // def __init__(self, pair: tuple[Point | None, Ptr[Tag]]) -> None:
     Holder() = default;
-    explicit Holder(const std::tuple<const Point*, Tag*>& pair) : pair(::tpy::tuple_to_storage<std::tuple<std::optional<Point>, Tag*>>(pair)) {}
+    explicit Holder(const std::tuple<const Point*, Tag*>& pair);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
@@ -63,5 +63,14 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     return os;
 }
 
+
+// def __init__(self, x: Int32) -> None:
+inline Point::Point(int32_t x) : x(x) {}
+
+// def __init__(self, name: Int32) -> None:
+inline Tag::Tag(int32_t name) : name(name) {}
+
+// def __init__(self, pair: tuple[Point | None, Ptr[Tag]]) -> None:
+inline Holder::Holder(const std::tuple<const Point*, Tag*>& pair) : pair(::tpy::tuple_to_storage<std::tuple<std::optional<Point>, Tag*>>(pair)) {}
 void __tpy_init();
 } // namespace tpyapp::main

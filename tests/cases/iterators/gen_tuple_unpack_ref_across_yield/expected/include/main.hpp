@@ -24,7 +24,7 @@ struct Box {
 
     // def __init__(self, n: int) -> None:
     Box() = default;
-    explicit Box(const ::tpy::BigInt& n) : n(n) {}
+    explicit Box(const ::tpy::BigInt& n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
@@ -58,5 +58,8 @@ struct __gen_g : public ::tpy::next_iter_mixin<__gen_g, ::tpy::BigInt> {
     }
 };
 
+
+// def __init__(self, n: int) -> None:
+inline Box::Box(const ::tpy::BigInt& n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

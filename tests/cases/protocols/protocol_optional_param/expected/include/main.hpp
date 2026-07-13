@@ -30,7 +30,7 @@ struct Container {
     ::tpy::BigInt count;
 
     // def __init__(self, items: Optional[Sized] = None) -> None:
-    Container() : Container(static_cast<std::nullptr_t*>(nullptr)) {}
+    Container();
     template<typename T_items = std::nullptr_t>
   requires (std::same_as<T_items, std::nullptr_t> || ::tpystd::typing::Sized<T_items>)
     explicit Container(const T_items* items = nullptr) {
@@ -121,6 +121,8 @@ inline std::ostream& operator<<(std::ostream& os, const GenericContainer<T>& obj
     return os;
 }
 
+
+inline Container::Container() : Container(static_cast<std::nullptr_t*>(nullptr)) {}
 // def count_items(items: Sized, extra: Optional[Sized] = None) -> int:
 template<::tpystd::typing::Sized T_items, typename T_extra>
   requires (std::same_as<T_extra, std::nullptr_t> || ::tpystd::typing::Sized<T_extra>)

@@ -24,7 +24,7 @@ struct Counter {
     uint64_t n;
 
     // def __init__(self) -> None:
-    Counter() : n(0) {}
+    Counter();
 
     // def bump(self, by: UInt32) -> UInt64:
     uint64_t bump(uint32_t by);
@@ -36,6 +36,9 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
     return os;
 }
 
+
+// def __init__(self) -> None:
+inline Counter::Counter() : n(0) {}
 
 // def bump(self, by: UInt32) -> UInt64:
 inline uint64_t Counter::bump(uint32_t by) {

@@ -24,7 +24,7 @@ struct Point {
 
     // def __init__(self, x: int, y: int) -> None:
     Point() = default;
-    explicit Point(const ::tpy::BigInt& x, const ::tpy::BigInt& y) : x(x), y(y) {}
+    explicit Point(const ::tpy::BigInt& x, const ::tpy::BigInt& y);
 
     // def __hash__(self) -> UInt64:
     uint64_t __hash__() const;
@@ -46,6 +46,9 @@ template<> struct std::hash<::tpyapp::main::Point> {
 namespace tpyapp::main {
 
 
+
+// def __init__(self, x: int, y: int) -> None:
+inline Point::Point(const ::tpy::BigInt& x, const ::tpy::BigInt& y) : x(x), y(y) {}
 
 // def __hash__(self) -> UInt64:
 inline uint64_t Point::__hash__() const {

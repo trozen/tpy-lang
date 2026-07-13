@@ -26,26 +26,14 @@ struct Cell {
     bool __tpy_owned_ = true;
 
     // def __init__(self, v: Int32) -> None:
-    explicit Cell(int32_t v) : val(v) {}
+    explicit Cell(int32_t v);
     Cell(const Cell&) = delete;
     Cell& operator=(const Cell&) = delete;
-    Cell(Cell&& other) noexcept : val(std::move(other.val)) {
-        other.__tpy_owned_ = false;
-    }
-    Cell& operator=(Cell&& other) noexcept {
-        if (this != &other) {
-            this->~Cell();
-            new (this) Cell(std::move(other));
-        }
-        return *this;
-    }
-    // def __del__(self) -> None:
+    Cell(Cell&& other) noexcept;
+    Cell& operator=(Cell&& other) noexcept;
 
-    ~Cell() {
-        if (!this->__tpy_owned_) return;
-        // print("Cell.__del__", self.val)
-        std::cout << "Cell.__del__" << " " << this->val << "\n";
-    }
+    // def __del__(self) -> None:
+    ~Cell();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Cell";
 };
 
@@ -54,5 +42,26 @@ inline std::ostream& operator<<(std::ostream& os, const Cell& obj) {
     return os;
 }
 
+
+// def __init__(self, v: Int32) -> None:
+inline Cell::Cell(int32_t v) : val(v) {}
+
+inline Cell::Cell(Cell&& other) noexcept : val(std::move(other.val)) {
+    other.__tpy_owned_ = false;
+}
+inline Cell& Cell::operator=(Cell&& other) noexcept {
+    if (this != &other) {
+        this->~Cell();
+        new (this) Cell(std::move(other));
+    }
+    return *this;
+}
+
+// def __del__(self) -> None:
+inline Cell::~Cell() {
+    if (!this->__tpy_owned_) return;
+    // print("Cell.__del__", self.val)
+    std::cout << "Cell.__del__" << " " << this->val << "\n";
+}
 void __tpy_init();
 } // namespace tpyapp::main

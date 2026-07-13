@@ -20,7 +20,7 @@ struct Buffer {
     std::vector<int32_t> _data;
 
     // def __init__(self) -> None:
-    Buffer() : _data({1, 2, 3}) {}
+    Buffer();
 
     // # Per-param: only self is auto_readonly; dest stays mutable in both overloads.
     // def copy_into(self: auto_readonly[Self], dest: list[Int32]) -> Span[auto_readonly[Int32]]:
@@ -37,6 +37,9 @@ inline std::ostream& operator<<(std::ostream& os, const Buffer& obj) {
     return os;
 }
 
+
+// def __init__(self) -> None:
+inline Buffer::Buffer() : _data({1, 2, 3}) {}
 
 // # Per-param: only self is auto_readonly; dest stays mutable in both overloads.
 // def copy_into(self: auto_readonly[Self], dest: list[Int32]) -> Span[auto_readonly[Int32]]:

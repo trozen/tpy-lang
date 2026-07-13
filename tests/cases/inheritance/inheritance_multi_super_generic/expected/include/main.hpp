@@ -52,7 +52,7 @@ struct IntBox : Box<int32_t>, Logger {
 
     // def __init__(self, v: Int32) -> None:
     IntBox() = default;
-    explicit IntBox(int32_t v) : Box<int32_t>(v) {}
+    explicit IntBox(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.IntBox";
 };
 
@@ -67,5 +67,8 @@ inline void Logger::log(std::string_view msg) const {
     // print("[log] " + msg)
     std::cout << (::tpy::str_concat("[log] ", msg)) << "\n";
 }
+
+// def __init__(self, v: Int32) -> None:
+inline IntBox::IntBox(int32_t v) : Box<int32_t>(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -24,9 +24,7 @@ struct Rect {
     int32_t area = 0;
 
     Rect() = default;
-    explicit Rect(int32_t w, int32_t h, int32_t area = 0) : w(w), h(h), area(area) {
-        this->__post_init__();
-    }
+    explicit Rect(int32_t w, int32_t h, int32_t area = 0);
 
     // def __post_init__(self) -> None:
     void __post_init__();
@@ -46,6 +44,10 @@ inline std::ostream& operator<<(std::ostream& os, const Rect& obj) {
     return os;
 }
 
+
+inline Rect::Rect(int32_t w, int32_t h, int32_t area) : w(w), h(h), area(area) {
+    this->__post_init__();
+}
 
 // def __post_init__(self) -> None:
 inline void Rect::__post_init__() {

@@ -29,7 +29,7 @@ struct SrcIter {
 
     // def __init__(self, limit: int) -> None:
     SrcIter() = default;
-    explicit SrcIter(const ::tpy::BigInt& limit) : cursor(::tpy::BigInt(0)), limit(limit) {}
+    explicit SrcIter(const ::tpy::BigInt& limit);
 
     __coro_SrcIter___anext__ __anext__();
     static constexpr std::string_view __tpy_class_name__ = "__main__.SrcIter";
@@ -49,7 +49,7 @@ struct Source {
 
     // def __init__(self, limit: int) -> None:
     Source() = default;
-    explicit Source(const ::tpy::BigInt& limit) : seen(std::vector<::tpy::BigInt>{}), limit(limit) {}
+    explicit Source(const ::tpy::BigInt& limit);
 
     // def __aiter__(self) -> Own[SrcIter]:
     SrcIter __aiter__() const;
@@ -120,6 +120,12 @@ struct __coro_runner {
     }
 };
 
+
+// def __init__(self, limit: int) -> None:
+inline SrcIter::SrcIter(const ::tpy::BigInt& limit) : cursor(::tpy::BigInt(0)), limit(limit) {}
+
+// def __init__(self, limit: int) -> None:
+inline Source::Source(const ::tpy::BigInt& limit) : seen(std::vector<::tpy::BigInt>{}), limit(limit) {}
 
 // def __aiter__(self) -> Own[SrcIter]:
 inline SrcIter Source::__aiter__() const {

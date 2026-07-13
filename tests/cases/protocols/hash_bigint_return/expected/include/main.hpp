@@ -20,7 +20,7 @@ struct Key {
 
     // def __init__(self, v: int) -> None:
     Key() = default;
-    explicit Key(const ::tpy::BigInt& v) : val(v) {}
+    explicit Key(const ::tpy::BigInt& v);
 
     // def __hash__(self) -> int:
     ::tpy::BigInt __hash__() const;
@@ -49,6 +49,9 @@ template<> struct std::hash<::tpyapp::main::Key> {
 namespace tpyapp::main {
 
 
+
+// def __init__(self, v: int) -> None:
+inline Key::Key(const ::tpy::BigInt& v) : val(v) {}
 
 // def __hash__(self) -> int:
 inline ::tpy::BigInt Key::__hash__() const {

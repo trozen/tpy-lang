@@ -23,7 +23,7 @@ struct Shape {
 
     // def __init__(self, name: str) -> None:
     Shape() = default;
-    explicit Shape(std::string_view name) : name(name) {}
+    explicit Shape(std::string_view name);
 
     // def area(self) -> Int32:
     int32_t area() const;
@@ -45,10 +45,7 @@ struct Square : Shape {
 
     // def __init__(self, side: Int32) -> None:
     Square() = default;
-    explicit Square(int32_t side) : side(side) {
-        // self.name = "Square"
-        this->name = "Square";
-    }
+    explicit Square(int32_t side);
 
     // def area(self) -> Int32:
     int32_t area() const;
@@ -69,10 +66,7 @@ struct Rectangle : Shape {
 
     // def __init__(self, width: Int32, height: Int32) -> None:
     Rectangle() = default;
-    explicit Rectangle(int32_t width, int32_t height) : width(width), height(height) {
-        // self.name = "Rectangle"
-        this->name = "Rectangle";
-    }
+    explicit Rectangle(int32_t width, int32_t height);
 
     // def area(self) -> Int32:
     int32_t area() const;
@@ -84,6 +78,9 @@ inline std::ostream& operator<<(std::ostream& os, const Rectangle& obj) {
     return os;
 }
 
+
+// def __init__(self, name: str) -> None:
+inline Shape::Shape(std::string_view name) : name(name) {}
 
 // def area(self) -> Int32:
 inline int32_t Shape::area() const {
@@ -97,10 +94,22 @@ inline std::string Shape::describe() const {
     return this->name;
 }
 
+// def __init__(self, side: Int32) -> None:
+inline Square::Square(int32_t side) : side(side) {
+    // self.name = "Square"
+    this->name = "Square";
+}
+
 // def area(self) -> Int32:
 inline int32_t Square::area() const {
     // return self.side * self.side
     return (::tpy::mul_check<int32_t>(this->side, this->side));
+}
+
+// def __init__(self, width: Int32, height: Int32) -> None:
+inline Rectangle::Rectangle(int32_t width, int32_t height) : width(width), height(height) {
+    // self.name = "Rectangle"
+    this->name = "Rectangle";
 }
 
 // def area(self) -> Int32:

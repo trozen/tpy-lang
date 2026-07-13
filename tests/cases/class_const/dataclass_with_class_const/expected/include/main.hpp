@@ -24,7 +24,7 @@ struct Counter {
     static constexpr int32_t DEFAULT_STEP = 1;
 
     Counter() = default;
-    explicit Counter(int32_t count, std::string_view label) : count(count), label(label) {}
+    explicit Counter(int32_t count, std::string_view label);
 
     bool __eq__(const Counter& other) const;
 
@@ -41,6 +41,8 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
     return os;
 }
 
+
+inline Counter::Counter(int32_t count, std::string_view label) : count(count), label(label) {}
 
 inline bool Counter::__eq__(const Counter& other) const {
     return ((this->count == other.count) && (this->label == other.label));

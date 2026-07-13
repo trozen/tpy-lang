@@ -42,7 +42,7 @@ struct Vehicle {
 
     // def __init__(self, brand: str, year: Int32) -> None:
     Vehicle() = default;
-    explicit Vehicle(std::string_view brand, int32_t year) : brand(brand), year(year) {}
+    explicit Vehicle(std::string_view brand, int32_t year);
 
     // def get_brand(self) -> str:
     std::string get_brand() const;
@@ -64,12 +64,7 @@ struct Car : Vehicle {
 
     // def __init__(self, brand: str, year: Int32, model: str, car_weight: Int32) -> None:
     Car() = default;
-    explicit Car(std::string_view brand, int32_t year, std::string_view model, int32_t car_weight) : model(model), car_weight(car_weight) {
-        // self.brand = brand
-        this->brand = brand;
-        // self.year = year
-        this->year = year;
-    }
+    explicit Car(std::string_view brand, int32_t year, std::string_view model, int32_t car_weight);
 
     // def __str__(self) -> str:
     std::string __str__() const;
@@ -88,10 +83,21 @@ inline std::ostream& operator<<(std::ostream& os, const Car& obj) {
 }
 
 
+// def __init__(self, brand: str, year: Int32) -> None:
+inline Vehicle::Vehicle(std::string_view brand, int32_t year) : brand(brand), year(year) {}
+
 // def get_brand(self) -> str:
 inline std::string Vehicle::get_brand() const {
     // return self.brand
     return this->brand;
+}
+
+// def __init__(self, brand: str, year: Int32, model: str, car_weight: Int32) -> None:
+inline Car::Car(std::string_view brand, int32_t year, std::string_view model, int32_t car_weight) : model(model), car_weight(car_weight) {
+    // self.brand = brand
+    this->brand = brand;
+    // self.year = year
+    this->year = year;
 }
 
 // def __str__(self) -> str:

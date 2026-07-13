@@ -48,7 +48,7 @@ struct Counter {
     int64_t value;
 
     Counter() = default;
-    explicit Counter(int64_t v) : value(v) {}
+    explicit Counter(int64_t v);
 
     void bump();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Counter";
@@ -59,6 +59,8 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
     return os;
 }
 
+
+inline Counter::Counter(int64_t v) : value(v) {}
 
 inline void Counter::bump() {
     this->value = ::tpy::add_check<int64_t>(this->value, 1);

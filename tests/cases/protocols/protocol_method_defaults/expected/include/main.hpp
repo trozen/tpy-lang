@@ -27,7 +27,7 @@ struct Tally {
     int32_t _v;
 
     // def __init__(self) -> None:
-    Tally() : _v(0) {}
+    Tally();
 
     // def step(self, n: Int32 = 1, start: Int32 = 0) -> Int32:
     int32_t step(int32_t n = 1, int32_t start = 0);
@@ -39,6 +39,9 @@ inline std::ostream& operator<<(std::ostream& os, const Tally& obj) {
     return os;
 }
 
+
+// def __init__(self) -> None:
+inline Tally::Tally() : _v(0) {}
 
 // def step(self, n: Int32 = 1, start: Int32 = 0) -> Int32:
 inline int32_t Tally::step(int32_t n, int32_t start) {

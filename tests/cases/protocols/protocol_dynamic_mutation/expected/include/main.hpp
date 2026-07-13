@@ -43,7 +43,7 @@ struct MyCounter : Counter {
     int32_t count;
 
     // def __init__(self) -> None:
-    MyCounter() : count(0) {}
+    MyCounter();
 
     // def increment(self) -> None:
     void increment() override;
@@ -65,7 +65,7 @@ struct Tally {
     int32_t count;
 
     // def __init__(self) -> None:
-    Tally() : count(0) {}
+    Tally();
 
     // def increment(self) -> None:
     void increment();
@@ -102,6 +102,9 @@ struct tpy::RefAdapter<tpyapp::main::Counter, T> : tpyapp::main::Counter {
 namespace tpyapp::main {
 
 
+// def __init__(self) -> None:
+inline MyCounter::MyCounter() : count(0) {}
+
 // def increment(self) -> None:
 inline void MyCounter::increment() {
     // self.count = self.count + Int32(1)
@@ -113,6 +116,9 @@ inline int32_t MyCounter::value() {
     // return self.count
     return this->count;
 }
+
+// def __init__(self) -> None:
+inline Tally::Tally() : count(0) {}
 
 // def increment(self) -> None:
 inline void Tally::increment() {

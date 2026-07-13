@@ -23,7 +23,7 @@ struct Pair {
     int32_t y;
 
     Pair() = default;
-    explicit Pair(int32_t x, int32_t y) : x(x), y(y) {}
+    explicit Pair(int32_t x, int32_t y);
 
     bool __eq__(const Pair& other) const;
 

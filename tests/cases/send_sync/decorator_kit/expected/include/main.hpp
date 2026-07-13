@@ -30,7 +30,7 @@ struct Trade {
 
     // def __init__(self, sym: Int32, qty: Int32) -> None:
     Trade() = default;
-    explicit Trade(int32_t sym, int32_t qty) : sym(sym), qty(qty) {}
+    explicit Trade(int32_t sym, int32_t qty);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Trade";
 };
 
@@ -47,7 +47,7 @@ struct NativeHandle {
 
     // def __init__(self, raw: Ptr[Int32]) -> None:
     NativeHandle() = default;
-    explicit NativeHandle(int32_t* raw) : raw(raw) {}
+    explicit NativeHandle(int32_t* raw);
     static constexpr std::string_view __tpy_class_name__ = "__main__.NativeHandle";
 };
 
@@ -64,7 +64,7 @@ struct ArenaBuffer {
     std::vector<int32_t> data;
 
     // def __init__(self) -> None:
-    ArenaBuffer() : data(std::vector<int32_t>{}) {}
+    ArenaBuffer();
     static constexpr std::string_view __tpy_class_name__ = "__main__.ArenaBuffer";
 };
 
@@ -80,7 +80,7 @@ struct SharedTable {
     std::vector<int32_t> data;
 
     // def __init__(self) -> None:
-    SharedTable() : data(std::vector<int32_t>{}) {}
+    SharedTable();
     static constexpr std::string_view __tpy_class_name__ = "__main__.SharedTable";
 };
 
@@ -111,6 +111,18 @@ struct __coro_forced {
     }
 };
 
+
+// def __init__(self, sym: Int32, qty: Int32) -> None:
+inline Trade::Trade(int32_t sym, int32_t qty) : sym(sym), qty(qty) {}
+
+// def __init__(self, raw: Ptr[Int32]) -> None:
+inline NativeHandle::NativeHandle(int32_t* raw) : raw(raw) {}
+
+// def __init__(self) -> None:
+inline ArenaBuffer::ArenaBuffer() : data(std::vector<int32_t>{}) {}
+
+// def __init__(self) -> None:
+inline SharedTable::SharedTable() : data(std::vector<int32_t>{}) {}
 inline auto gen_forced(int32_t n) {
     // i = 0
     int32_t i = 0;

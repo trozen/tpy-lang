@@ -23,7 +23,7 @@ struct Holder {
     std::vector<int32_t> items;
 
     // def __init__(self) -> None:
-    Holder() : items({5, 6, 7}) {}
+    Holder();
 
     // def __iter__(self) -> Iterator[Int32]:
     auto __iter__() const {
@@ -74,6 +74,9 @@ struct __gen_g_resumable : public ::tpy::next_iter_mixin<__gen_g_resumable, int3
     }
 };
 
+
+// def __init__(self) -> None:
+inline Holder::Holder() : items({5, 6, 7}) {}
 inline auto g_simple() {
     return ::tpy::make_generator<int32_t>(
         [__src = std::optional<std::decay_t<decltype(make())>>(), __iter = std::optional<std::decay_t<decltype(::tpy::__iter__(make()))>>()]() mutable -> std::optional<int32_t> {

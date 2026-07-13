@@ -75,7 +75,7 @@ struct day {
 
     // def __init__(self, n: int) -> None:
     day() = default;
-    explicit day(const ::tpy::BigInt& n) : n(n) {}
+    explicit day(const ::tpy::BigInt& n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.day";
 };
 
@@ -91,7 +91,7 @@ struct square {
 
     // def __init__(self, side: int) -> None:
     square() = default;
-    explicit square(const ::tpy::BigInt& side) : side(side) {}
+    explicit square(const ::tpy::BigInt& side);
 
     // def area(self) -> int:
     ::tpy::BigInt area() const;
@@ -110,7 +110,7 @@ struct clock {
 
     // def __init__(self, tick: int) -> None:
     clock() = default;
-    explicit clock(const ::tpy::BigInt& tick) : tick(tick) {}
+    explicit clock(const ::tpy::BigInt& tick);
 
     // def day(self) -> Own[day]:              # method shadows record type `day`
     ::tpyapp::main::day day() const;
@@ -129,7 +129,7 @@ struct widget {
 
     // def __init__(self, c: int) -> None:
     widget() = default;
-    explicit widget(const ::tpy::BigInt& c) : Color(c) {}
+    explicit widget(const ::tpy::BigInt& c);
 
     // def kind(self) -> Color:
     ::tpyapp::main::Color kind() const;
@@ -231,7 +231,7 @@ struct fbase {
 
     // def __init__(self, d: int) -> None:
     fbase() = default;
-    explicit fbase(const ::tpy::BigInt& d) : day(d) {}
+    explicit fbase(const ::tpy::BigInt& d);
     static constexpr std::string_view __tpy_class_name__ = "__main__.fbase";
 };
 
@@ -264,7 +264,7 @@ struct holder {
 
     // def __init__(self, day: int) -> None:
     holder() = default;
-    explicit holder(const ::tpy::BigInt& day) : day(day) {}
+    explicit holder(const ::tpy::BigInt& day);
 
     // def boxed(self) -> Own[Box[day]]:
     ::tpystd::tplib::box::Box<::tpyapp::main::day> boxed() const;
@@ -295,7 +295,7 @@ struct fsub : ::tpyapp::main::fbase {
 
     // def __init__(self, d: int) -> None:
     fsub() = default;
-    explicit fsub(const ::tpy::BigInt& d) : ::tpyapp::main::fbase(d) {}
+    explicit fsub(const ::tpy::BigInt& d);
 
     // def build(self) -> Own[day]:            # inherited field `day` shadows type
     ::tpyapp::main::day build() const;
@@ -327,17 +327,29 @@ struct tpy::RefAdapter<tpyapp::main::shape, T> : tpyapp::main::shape {
 namespace tpyapp::main {
 
 
+// def __init__(self, n: int) -> None:
+inline day::day(const ::tpy::BigInt& n) : n(n) {}
+
+// def __init__(self, side: int) -> None:
+inline square::square(const ::tpy::BigInt& side) : side(side) {}
+
 // def area(self) -> int:
 inline ::tpy::BigInt square::area() const {
     // return self.side * self.side
     return ((this->side) * (this->side));
 }
 
+// def __init__(self, tick: int) -> None:
+inline clock::clock(const ::tpy::BigInt& tick) : tick(tick) {}
+
 // def day(self) -> Own[day]:              # method shadows record type `day`
 inline ::tpyapp::main::day clock::day() const {
     // return day(self.tick)
     return ::tpyapp::main::day(this->tick);
 }
+
+// def __init__(self, c: int) -> None:
+inline widget::widget(const ::tpy::BigInt& c) : Color(c) {}
 
 // def kind(self) -> Color:
 inline ::tpyapp::main::Color widget::kind() const {
@@ -395,6 +407,9 @@ inline ::tpy::BigInt meter::day() const {
     return ::tpy::BigInt(6);
 }
 
+// def __init__(self, d: int) -> None:
+inline fbase::fbase(const ::tpy::BigInt& d) : day(d) {}
+
 // # Inverse guard: no member named `day`, so its `day` reference must render
 // # BARE (not qualified) -- confirms qualification stays scoped to colliding
 // # records. The snapshot is the check.
@@ -403,6 +418,9 @@ inline day printer::emit() const {
     // return day(2)
     return day(::tpy::BigInt(2));
 }
+
+// def __init__(self, day: int) -> None:
+inline holder::holder(const ::tpy::BigInt& day) : day(day) {}
 
 // def boxed(self) -> Own[Box[day]]:
 inline ::tpystd::tplib::box::Box<::tpyapp::main::day> holder::boxed() const {
@@ -415,6 +433,9 @@ inline ::tpyapp::main::day sub::build() const {
     // return day(self.day())
     return ::tpyapp::main::day(this->day());
 }
+
+// def __init__(self, d: int) -> None:
+inline fsub::fsub(const ::tpy::BigInt& d) : ::tpyapp::main::fbase(d) {}
 
 // def build(self) -> Own[day]:            # inherited field `day` shadows type
 inline ::tpyapp::main::day fsub::build() const {

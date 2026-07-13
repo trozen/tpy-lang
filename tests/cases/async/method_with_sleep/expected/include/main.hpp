@@ -26,7 +26,7 @@ struct Worker {
 
     // def __init__(self, n: str) -> None:
     Worker() = default;
-    explicit Worker(std::string_view n) : name(n) {}
+    explicit Worker(std::string_view n);
 
     __coro_Worker_run run() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Worker";
@@ -90,5 +90,8 @@ struct __coro_main_coro {
     }
 };
 
+
+// def __init__(self, n: str) -> None:
+inline Worker::Worker(std::string_view n) : name(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

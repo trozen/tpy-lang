@@ -21,7 +21,7 @@ struct Tok {
 
     // def __init__(self, v: Int32) -> None:
     Tok() = default;
-    explicit Tok(int32_t v) : v(v) {}
+    explicit Tok(int32_t v);
     // non-copyable (@nocopy)
     Tok(const Tok&) = delete;
     Tok& operator=(const Tok&) = delete;
@@ -35,6 +35,9 @@ inline std::ostream& operator<<(std::ostream& os, const Tok& obj) {
     return os;
 }
 
+
+// def __init__(self, v: Int32) -> None:
+inline Tok::Tok(int32_t v) : v(v) {}
 inline auto ints(int32_t n) {
     // i: Int32 = 0
     int32_t i = 0;

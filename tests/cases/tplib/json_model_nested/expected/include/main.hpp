@@ -61,7 +61,7 @@ struct Address {
     std::string city;
 
     Address() = default;
-    explicit Address(std::string_view street, std::string_view city) : street(street), city(city) {}
+    explicit Address(std::string_view street, std::string_view city);
 
     bool __eq__(const Address& other) const;
 
@@ -135,7 +135,7 @@ struct Profile {
     std::optional<std::string> email = std::nullopt;
 
     Profile() = default;
-    explicit Profile(std::string_view name, int32_t age, double score, float precision, bool active, const ::tpy::BigInt& big_id, Role role, Address&& address, std::vector<std::string>&& tags, std::vector<int32_t>&& scores, std::vector<Address>&& friends, std::vector<Role>&& roles, ::tpy::ordered_map<std::string, int32_t>&& metadata, ::tpy::ordered_map<std::string, std::vector<int32_t>>&& nested_map, const std::tuple<int32_t, int32_t, std::string>& coord, std::optional<Role> backup_role = std::nullopt, std::optional<Address>&& alt_address = std::nullopt, std::optional<std::string_view> email = std::nullopt) : name(name), age(age), score(score), precision(precision), active(active), big_id(big_id), role(role), address(std::move(address)), tags(std::move(tags)), scores(std::move(scores)), friends(std::move(friends)), roles(std::move(roles)), metadata(std::move(metadata)), nested_map(std::move(nested_map)), coord(coord), backup_role(backup_role), alt_address(std::move(alt_address)), email(email ? std::make_optional(std::string(*email)) : std::nullopt) {}
+    explicit Profile(std::string_view name, int32_t age, double score, float precision, bool active, const ::tpy::BigInt& big_id, Role role, Address&& address, std::vector<std::string>&& tags, std::vector<int32_t>&& scores, std::vector<Address>&& friends, std::vector<Role>&& roles, ::tpy::ordered_map<std::string, int32_t>&& metadata, ::tpy::ordered_map<std::string, std::vector<int32_t>>&& nested_map, const std::tuple<int32_t, int32_t, std::string>& coord, std::optional<Role> backup_role = std::nullopt, std::optional<Address>&& alt_address = std::nullopt, std::optional<std::string_view> email = std::nullopt);
 
     bool __eq__(const Profile& other) const;
 
@@ -168,6 +168,8 @@ inline std::ostream& operator<<(std::ostream& os, const Profile& obj) {
     return os;
 }
 
+
+inline Address::Address(std::string_view street, std::string_view city) : street(street), city(city) {}
 
 inline bool Address::__eq__(const Address& other) const {
     return ((this->street == other.street) && (this->city == other.city));

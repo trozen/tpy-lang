@@ -43,7 +43,7 @@ struct Dog {
 
     // def __init__(self, label: str) -> None:
     Dog() = default;
-    explicit Dog(std::string_view label) : label(label) {}
+    explicit Dog(std::string_view label);
 
     // def name(self) -> str:
     std::string name() const;
@@ -74,6 +74,9 @@ struct tpy::RefAdapter<tpyapp::main::Pet, T> : tpyapp::main::Pet {
 
 namespace tpyapp::main {
 
+
+// def __init__(self, label: str) -> None:
+inline Dog::Dog(std::string_view label) : label(label) {}
 
 // def name(self) -> str:
 inline std::string Dog::name() const {

@@ -35,7 +35,7 @@ struct CounterIter {
 
     // def __init__(self, start: Int32, limit: Int32) -> None:
     CounterIter() = default;
-    explicit CounterIter(int32_t start, int32_t limit) : current(start), limit(limit) {}
+    explicit CounterIter(int32_t start, int32_t limit);
 
     auto& __iter__() { return *this; }
 
@@ -59,7 +59,7 @@ struct Counter {
 
     // def __init__(self, start: Int32, limit: Int32) -> None:
     Counter() = default;
-    explicit Counter(int32_t start, int32_t limit) : start(start), limit(limit) {}
+    explicit Counter(int32_t start, int32_t limit);
     // non-copyable (@nocopy)
     Counter(const Counter&) = delete;
     Counter& operator=(const Counter&) = delete;
@@ -202,6 +202,9 @@ __coro_driver<T_it> driver(T_it&& it) {
 }
 
 
+// def __init__(self, start: Int32, limit: Int32) -> None:
+inline CounterIter::CounterIter(int32_t start, int32_t limit) : current(start), limit(limit) {}
+
 // def __next__(self) -> Int32:
 inline std::expected<int32_t, ::tpy::StopIteration> CounterIter::__next__() {
     // if self.current < self.limit:
@@ -216,6 +219,9 @@ inline std::expected<int32_t, ::tpy::StopIteration> CounterIter::__next__() {
     // raise StopIteration
     return ::tpy::make_unexpected(::tpy::StopIteration{});
 }
+
+// def __init__(self, start: Int32, limit: Int32) -> None:
+inline Counter::Counter(int32_t start, int32_t limit) : start(start), limit(limit) {}
 
 // def __iter__(self) -> Own[CounterIter]:
 inline CounterIter Counter::__iter__() const {

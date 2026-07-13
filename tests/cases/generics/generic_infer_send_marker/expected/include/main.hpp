@@ -24,7 +24,7 @@ struct Item {
 
     // def __init__(self, v: int):
     Item() = default;
-    explicit Item(const ::tpy::BigInt& v) : v(v) {}
+    explicit Item(const ::tpy::BigInt& v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Item";
 };
 
@@ -33,6 +33,9 @@ inline std::ostream& operator<<(std::ostream& os, const Item& obj) {
     return os;
 }
 
+
+// def __init__(self, v: int):
+inline Item::Item(const ::tpy::BigInt& v) : v(v) {}
 // def sink[T](item: Own[T]) -> Own[T]:
 template<typename T>
 ::tpy::own_return_t<T> sink(::tpy::own_param_t<T> item) {

@@ -24,7 +24,7 @@ struct Box {
 
     // def __init__(self, val: Int32):
     Box() = default;
-    explicit Box(int32_t val) : val(val) {}
+    explicit Box(int32_t val);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
@@ -56,5 +56,8 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
     }
 };
 
+
+// def __init__(self, val: Int32):
+inline Box::Box(int32_t val) : val(val) {}
 void __tpy_init();
 } // namespace tpyapp::main

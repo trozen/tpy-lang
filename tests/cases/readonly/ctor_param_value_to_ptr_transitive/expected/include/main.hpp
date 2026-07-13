@@ -22,7 +22,7 @@ struct Node {
     ::tpy::BigInt x;
 
     // def __init__(self) -> None:
-    Node() : x(::tpy::BigInt(0)) {}
+    Node();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Node";
 };
 
@@ -38,12 +38,7 @@ struct Holder {
 
     // def __init__(self, node: Node) -> None:
     Holder() = default;
-    explicit Holder(Node& node) {
-        // helper(node)
-        helper(node);
-        // self.started = True
-        this->started = true;
-    }
+    explicit Holder(Node& node);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
@@ -52,5 +47,16 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     return os;
 }
 
+
+// def __init__(self) -> None:
+inline Node::Node() : x(::tpy::BigInt(0)) {}
+
+// def __init__(self, node: Node) -> None:
+inline Holder::Holder(Node& node) {
+    // helper(node)
+    helper(node);
+    // self.started = True
+    this->started = true;
+}
 void __tpy_init();
 } // namespace tpyapp::main

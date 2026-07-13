@@ -23,7 +23,7 @@ struct Res {
 
     // def __init__(self, n: int):
     Res() = default;
-    explicit Res(const ::tpy::BigInt& n) : n(n) {}
+    explicit Res(const ::tpy::BigInt& n);
     // non-copyable (@nocopy)
     Res(const Res&) = delete;
     Res& operator=(const Res&) = delete;
@@ -55,7 +55,7 @@ struct Holder : Base {
 
     // def __init__(self, r: Own[Res]):
     Holder() = default;
-    explicit Holder(Res&& r) : r(std::move(r)) {}
+    explicit Holder(Res&& r);
     // non-copyable (field 'r')
     Holder(const Holder&) = delete;
     Holder& operator=(const Holder&) = delete;
@@ -72,6 +72,12 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     return os;
 }
 
+
+// def __init__(self, n: int):
+inline Res::Res(const ::tpy::BigInt& n) : n(n) {}
+
+// def __init__(self, r: Own[Res]):
+inline Holder::Holder(Res&& r) : r(std::move(r)) {}
 
 // def value(self) -> int:
 inline ::tpy::BigInt Holder::value() const {

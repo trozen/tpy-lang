@@ -23,7 +23,7 @@ struct Wrap {
 
     // def __init__(self, v: Int32) -> None:
     Wrap() = default;
-    explicit Wrap(int32_t v) : v(v) {}
+    explicit Wrap(int32_t v);
     // non-copyable (@nocopy)
     Wrap(const Wrap&) = delete;
     Wrap& operator=(const Wrap&) = delete;
@@ -44,12 +44,7 @@ struct Foo {
 
     // def __init__(self, seed: Int32) -> None:
     Foo() = default;
-    explicit Foo(int32_t seed) {
-        // tmp = pick(seed)
-        int32_t tmp = pick(seed);
-        // self._x = Wrap(tmp)
-        this->_x = Wrap(tmp);
-    }
+    explicit Foo(int32_t seed);
     // non-copyable (field '_x')
     Foo(const Foo&) = delete;
     Foo& operator=(const Foo&) = delete;
@@ -63,5 +58,16 @@ inline std::ostream& operator<<(std::ostream& os, const Foo& obj) {
     return os;
 }
 
+
+// def __init__(self, v: Int32) -> None:
+inline Wrap::Wrap(int32_t v) : v(v) {}
+
+// def __init__(self, seed: Int32) -> None:
+inline Foo::Foo(int32_t seed) {
+    // tmp = pick(seed)
+    int32_t tmp = pick(seed);
+    // self._x = Wrap(tmp)
+    this->_x = Wrap(tmp);
+}
 void __tpy_init();
 } // namespace tpyapp::main

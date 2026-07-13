@@ -84,7 +84,7 @@ struct MyValue {
 
     // def __init__(self, v: Int32) -> None:
     MyValue() = default;
-    explicit MyValue(int32_t v) : val(v) {}
+    explicit MyValue(int32_t v);
 
     // def to_str(self) -> str:
     std::string to_str() const;
@@ -115,7 +115,7 @@ struct Point {
 
     // def __init__(self, x: Int32, y: Int32) -> None:
     Point() = default;
-    explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
+    explicit Point(int32_t x, int32_t y);
 
     // def to_str(self) -> str:
     std::string to_str() const;
@@ -137,7 +137,7 @@ struct Widget {
 
     // def __init__(self, name: str, val: Int32) -> None:
     Widget() = default;
-    explicit Widget(std::string_view name, int32_t val) : name(name), val(val) {}
+    explicit Widget(std::string_view name, int32_t val);
 
     // def get_name(self) -> str:
     std::string get_name() const;
@@ -160,7 +160,7 @@ struct Box {
 
     // def __init__(self, v: Int32) -> None:
     Box() = default;
-    explicit Box(int32_t v) : value(v) {}
+    explicit Box(int32_t v);
 
     // def clone(self) -> Own[Box]:
     Box clone() const;
@@ -172,6 +172,9 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
     return os;
 }
 
+
+// def __init__(self, v: Int32) -> None:
+inline MyValue::MyValue(int32_t v) : val(v) {}
 
 // def to_str(self) -> str:
 inline std::string MyValue::to_str() const {
@@ -185,11 +188,17 @@ inline int32_t MyValue::__len__() const {
     return this->val;
 }
 
+// def __init__(self, x: Int32, y: Int32) -> None:
+inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
+
 // def to_str(self) -> str:
 inline std::string Point::to_str() const {
     // return "Point"
     return "Point";
 }
+
+// def __init__(self, name: str, val: Int32) -> None:
+inline Widget::Widget(std::string_view name, int32_t val) : name(name), val(val) {}
 
 // def get_name(self) -> str:
 inline std::string Widget::get_name() const {
@@ -202,6 +211,9 @@ inline int32_t Widget::get_value() const {
     // return self.val
     return this->val;
 }
+
+// def __init__(self, v: Int32) -> None:
+inline Box::Box(int32_t v) : value(v) {}
 
 // def clone(self) -> Own[Box]:
 inline Box Box::clone() const {

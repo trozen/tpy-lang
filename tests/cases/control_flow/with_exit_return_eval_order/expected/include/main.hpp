@@ -22,7 +22,7 @@ struct Lock {
     bool held;
 
     // def __init__(self) -> None:
-    Lock() : held(false) {}
+    Lock();
 
     // def __enter__(self) -> None:
     void __enter__();
@@ -37,6 +37,9 @@ inline std::ostream& operator<<(std::ostream& os, const Lock& obj) {
     return os;
 }
 
+
+// def __init__(self) -> None:
+inline Lock::Lock() : held(false) {}
 
 // def __enter__(self) -> None:
 inline void Lock::__enter__() {

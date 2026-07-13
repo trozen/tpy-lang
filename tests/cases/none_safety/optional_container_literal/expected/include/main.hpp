@@ -25,7 +25,7 @@ struct Bag {
     std::optional<::tpy::ordered_map<std::string, int32_t>> by_key;
 
     // def __init__(self) -> None:
-    Bag() : items(std::nullopt), by_key(std::nullopt) {}
+    Bag();
 
     // def fill(self) -> None:
     void fill();
@@ -37,6 +37,9 @@ inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
     return os;
 }
 
+
+// def __init__(self) -> None:
+inline Bag::Bag() : items(std::nullopt), by_key(std::nullopt) {}
 
 // def fill(self) -> None:
 inline void Bag::fill() {

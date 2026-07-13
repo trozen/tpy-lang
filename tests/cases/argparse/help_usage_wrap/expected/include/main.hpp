@@ -29,7 +29,7 @@ struct __tpy_builder_argparse_args_1 {
 
     // args = parser.parse_args(["-h"])
     __tpy_builder_argparse_args_1() = default;
-    explicit __tpy_builder_argparse_args_1(std::optional<std::string_view> alpha, std::optional<std::string_view> bravo, std::optional<std::string_view> charlie, std::optional<std::string_view> delta, std::optional<std::string_view> echo, std::optional<std::string_view> foxtrot, std::optional<std::string_view> golf, std::string_view input) : alpha(alpha ? std::make_optional(std::string(*alpha)) : std::nullopt), bravo(bravo ? std::make_optional(std::string(*bravo)) : std::nullopt), charlie(charlie ? std::make_optional(std::string(*charlie)) : std::nullopt), delta(delta ? std::make_optional(std::string(*delta)) : std::nullopt), echo(echo ? std::make_optional(std::string(*echo)) : std::nullopt), foxtrot(foxtrot ? std::make_optional(std::string(*foxtrot)) : std::nullopt), golf(golf ? std::make_optional(std::string(*golf)) : std::nullopt), input(input) {}
+    explicit __tpy_builder_argparse_args_1(std::optional<std::string_view> alpha, std::optional<std::string_view> bravo, std::optional<std::string_view> charlie, std::optional<std::string_view> delta, std::optional<std::string_view> echo, std::optional<std::string_view> foxtrot, std::optional<std::string_view> golf, std::string_view input);
     static constexpr std::string_view __tpy_class_name__ = "__main__.__tpy_builder_argparse_args_1";
 };
 

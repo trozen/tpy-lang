@@ -26,7 +26,7 @@ struct AppError : ::tpy::Exception {
 
     // def __init__(self, code: Int32) -> None:
     AppError() = default;
-    explicit AppError(int32_t code) : code(code) {}
+    explicit AppError(int32_t code);
 
     [[nodiscard]] std::unique_ptr<::tpy::Throwable> clone() const override { return std::make_unique<AppError>(*this); }
     [[noreturn]] void __raise__() const override { throw *this; }
@@ -46,7 +46,7 @@ struct OtherError : ::tpy::Exception {
 
     // def __init__(self, tag: str) -> None:
     OtherError() = default;
-    explicit OtherError(std::string_view tag) : tag(tag) {}
+    explicit OtherError(std::string_view tag);
 
     [[nodiscard]] std::unique_ptr<::tpy::Throwable> clone() const override { return std::make_unique<OtherError>(*this); }
     [[noreturn]] void __raise__() const override { throw *this; }
@@ -59,5 +59,11 @@ inline std::ostream& operator<<(std::ostream& os, const OtherError& obj) {
     return os;
 }
 
+
+// def __init__(self, code: Int32) -> None:
+inline AppError::AppError(int32_t code) : code(code) {}
+
+// def __init__(self, tag: str) -> None:
+inline OtherError::OtherError(std::string_view tag) : tag(tag) {}
 void __tpy_init();
 } // namespace tpyapp::main

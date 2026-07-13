@@ -23,7 +23,7 @@ struct Tracer {
 
     // def __init__(self, label: str) -> None:
     Tracer() = default;
-    explicit Tracer(std::string_view label) : label(label) {}
+    explicit Tracer(std::string_view label);
 
     // def __enter__(self) -> None:
     void __enter__() const;
@@ -82,6 +82,9 @@ struct __gen_gen_with_yield : public ::tpy::next_iter_mixin<__gen_gen_with_yield
     }
 };
 
+
+// def __init__(self, label: str) -> None:
+inline Tracer::Tracer(std::string_view label) : label(label) {}
 
 // def __enter__(self) -> None:
 inline void Tracer::__enter__() const {

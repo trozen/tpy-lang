@@ -1,0 +1,4 @@
+1 20 1
+del A 1
+del B 20
+del A 3

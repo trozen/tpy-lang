@@ -19,7 +19,7 @@ struct MyList {
     std::vector<int32_t> _data;
 
     // def __init__(self) -> None:
-    MyList() : _data({10, 20, 30, 40, 50}) {}
+    MyList();
 
     // @overload
     // def __getitem__(self, index: Int32) -> Int32: ...  # tpyc: ok
@@ -58,5 +58,8 @@ inline std::ostream& operator<<(std::ostream& os, const MyList& obj) {
     return os;
 }
 
+
+// def __init__(self) -> None:
+inline MyList::MyList() : _data({10, 20, 30, 40, 50}) {}
 void __tpy_init();
 } // namespace tpyapp::main

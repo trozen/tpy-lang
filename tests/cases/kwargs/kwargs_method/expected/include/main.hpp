@@ -20,7 +20,7 @@ struct Formatter {
     std::string prefix;
 
     // def __init__(self) -> None:
-    Formatter() : prefix(">") {}
+    Formatter();
 
     // def format(self, text: str, width: int = 0, fill: str = " ") -> str:
     std::string format(std::string_view text, const ::tpy::BigInt& width = 0, std::string_view fill = " ") const;
@@ -32,6 +32,9 @@ inline std::ostream& operator<<(std::ostream& os, const Formatter& obj) {
     return os;
 }
 
+
+// def __init__(self) -> None:
+inline Formatter::Formatter() : prefix(">") {}
 
 // def format(self, text: str, width: int = 0, fill: str = " ") -> str:
 inline std::string Formatter::format(std::string_view text, const ::tpy::BigInt& width, std::string_view fill) const {

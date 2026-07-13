@@ -27,7 +27,7 @@ struct Counter {
 
     // def __init__(self, base: int) -> None:
     Counter() = default;
-    explicit Counter(const ::tpy::BigInt& base) : base(base) {}
+    explicit Counter(const ::tpy::BigInt& base);
 
     __coro_Counter_bump bump(::tpy::BigInt n) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Counter";
@@ -92,5 +92,8 @@ struct __coro_main_coro {
     }
 };
 
+
+// def __init__(self, base: int) -> None:
+inline Counter::Counter(const ::tpy::BigInt& base) : base(base) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -22,27 +22,15 @@ struct Resource {
     bool __tpy_owned_ = true;
 
     // def __init__(self, id: Int32) -> None:
-    explicit Resource(int32_t id) : id(id) {}
+    explicit Resource(int32_t id);
     // non-copyable (@nocopy)
     Resource(const Resource&) = delete;
     Resource& operator=(const Resource&) = delete;
-    Resource(Resource&& other) noexcept : id(std::move(other.id)) {
-        other.__tpy_owned_ = false;
-    }
-    Resource& operator=(Resource&& other) noexcept {
-        if (this != &other) {
-            this->~Resource();
-            new (this) Resource(std::move(other));
-        }
-        return *this;
-    }
-    // def __del__(self) -> None:
+    Resource(Resource&& other) noexcept;
+    Resource& operator=(Resource&& other) noexcept;
 
-    ~Resource() {
-        if (!this->__tpy_owned_) return;
-        // print("drop", self.id)
-        std::cout << "drop" << " " << this->id << "\n";
-    }
+    // def __del__(self) -> None:
+    ~Resource();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Resource";
 };
 
@@ -51,5 +39,26 @@ inline std::ostream& operator<<(std::ostream& os, const Resource& obj) {
     return os;
 }
 
+
+// def __init__(self, id: Int32) -> None:
+inline Resource::Resource(int32_t id) : id(id) {}
+
+inline Resource::Resource(Resource&& other) noexcept : id(std::move(other.id)) {
+    other.__tpy_owned_ = false;
+}
+inline Resource& Resource::operator=(Resource&& other) noexcept {
+    if (this != &other) {
+        this->~Resource();
+        new (this) Resource(std::move(other));
+    }
+    return *this;
+}
+
+// def __del__(self) -> None:
+inline Resource::~Resource() {
+    if (!this->__tpy_owned_) return;
+    // print("drop", self.id)
+    std::cout << "drop" << " " << this->id << "\n";
+}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -23,7 +23,7 @@ struct PairIter {
 
     // def __init__(self, limit: Int32) -> None:
     PairIter() = default;
-    explicit PairIter(int32_t limit) : current(0), limit(limit) {}
+    explicit PairIter(int32_t limit);
 
     // def __iter__(self) -> PairIter:
     PairIter& __iter__();
@@ -43,7 +43,7 @@ struct DoublePairIter : PairIter {
 
     // def __init__(self, limit: Int32) -> None:
     DoublePairIter() = default;
-    explicit DoublePairIter(int32_t limit) : PairIter((::tpy::mul_check<int32_t>(limit, 2))) {}
+    explicit DoublePairIter(int32_t limit);
     static constexpr std::string_view __tpy_class_name__ = "__main__.DoublePairIter";
 };
 
@@ -52,6 +52,9 @@ inline std::ostream& operator<<(std::ostream& os, const DoublePairIter& obj) {
     return os;
 }
 
+
+// def __init__(self, limit: Int32) -> None:
+inline PairIter::PairIter(int32_t limit) : current(0), limit(limit) {}
 
 // def __iter__(self) -> PairIter:
 inline PairIter& PairIter::__iter__() {
@@ -73,5 +76,8 @@ inline std::expected<std::tuple<std::string, int32_t>, ::tpy::StopIteration> Pai
     // raise StopIteration
     return ::tpy::make_unexpected(::tpy::StopIteration{});
 }
+
+// def __init__(self, limit: Int32) -> None:
+inline DoublePairIter::DoublePairIter(int32_t limit) : PairIter((::tpy::mul_check<int32_t>(limit, 2))) {}
 void __tpy_init();
 } // namespace tpyapp::main

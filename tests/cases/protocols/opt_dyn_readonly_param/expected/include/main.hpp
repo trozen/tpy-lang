@@ -40,7 +40,7 @@ struct Dog : Pet {
 
     // def __init__(self, tag: str) -> None:
     Dog() = default;
-    explicit Dog(std::string_view tag) : tag(tag) {}
+    explicit Dog(std::string_view tag);
 
     // @readonly
     // def name(self) -> str:
@@ -72,6 +72,9 @@ struct tpy::RefAdapter<tpyapp::main::Pet, T> : tpyapp::main::Pet {
 
 namespace tpyapp::main {
 
+
+// def __init__(self, tag: str) -> None:
+inline Dog::Dog(std::string_view tag) : tag(tag) {}
 
 // @readonly
 // def name(self) -> str:

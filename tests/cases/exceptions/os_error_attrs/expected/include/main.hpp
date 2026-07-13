@@ -18,7 +18,7 @@ void main();
 struct DeviceError : ::tpy::OSError {
 
     // def __init__(self, message: String = "") -> None:
-    explicit DeviceError(const std::string& message = "") : ::tpy::OSError(message) {}
+    explicit DeviceError(const std::string& message = "");
 
     [[nodiscard]] std::unique_ptr<::tpy::Throwable> clone() const override { return std::make_unique<DeviceError>(*this); }
     [[noreturn]] void __raise__() const override { throw *this; }
@@ -31,5 +31,8 @@ inline std::ostream& operator<<(std::ostream& os, const DeviceError& obj) {
     return os;
 }
 
+
+// def __init__(self, message: String = "") -> None:
+inline DeviceError::DeviceError(const std::string& message) : ::tpy::OSError(message) {}
 void __tpy_init();
 } // namespace tpyapp::main

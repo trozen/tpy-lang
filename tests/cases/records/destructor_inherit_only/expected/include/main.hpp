@@ -22,26 +22,14 @@ struct Base {
     bool __tpy_owned_ = true;
 
     // def __init__(self, name: str):
-    explicit Base(std::string_view name) : name(name) {}
+    explicit Base(std::string_view name);
     Base(const Base&) = delete;
     Base& operator=(const Base&) = delete;
-    Base(Base&& other) noexcept : name(std::move(other.name)) {
-        other.__tpy_owned_ = false;
-    }
-    Base& operator=(Base&& other) noexcept {
-        if (this != &other) {
-            this->~Base();
-            new (this) Base(std::move(other));
-        }
-        return *this;
-    }
-    // def __del__(self):
+    Base(Base&& other) noexcept;
+    Base& operator=(Base&& other) noexcept;
 
-    ~Base() {
-        if (!this->__tpy_owned_) return;
-        // print("drop", self.name)
-        std::cout << "drop" << " " << this->name << "\n";
-    }
+    // def __del__(self):
+    ~Base();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Base";
 };
 
@@ -56,7 +44,7 @@ struct Child : Base {
     std::string tag;
 
     // def __init__(self, name: str, tag: str):
-    explicit Child(std::string_view name, std::string_view tag) : Base(name), tag(tag) {}
+    explicit Child(std::string_view name, std::string_view tag);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Child";
 };
 
@@ -65,5 +53,29 @@ inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
     return os;
 }
 
+
+// def __init__(self, name: str):
+inline Base::Base(std::string_view name) : name(name) {}
+
+inline Base::Base(Base&& other) noexcept : name(std::move(other.name)) {
+    other.__tpy_owned_ = false;
+}
+inline Base& Base::operator=(Base&& other) noexcept {
+    if (this != &other) {
+        this->~Base();
+        new (this) Base(std::move(other));
+    }
+    return *this;
+}
+
+// def __del__(self):
+inline Base::~Base() {
+    if (!this->__tpy_owned_) return;
+    // print("drop", self.name)
+    std::cout << "drop" << " " << this->name << "\n";
+}
+
+// def __init__(self, name: str, tag: str):
+inline Child::Child(std::string_view name, std::string_view tag) : Base(name), tag(tag) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -25,7 +25,7 @@ struct A {
 
     // def __init__(self, x: Int32) -> None:
     A() = default;
-    explicit A(int32_t x) : x(x) {}
+    explicit A(int32_t x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.A";
 };
 
@@ -41,7 +41,7 @@ struct B {
 
     // def __init__(self, y: Int32) -> None:
     B() = default;
-    explicit B(int32_t y) : y(y) {}
+    explicit B(int32_t y);
     static constexpr std::string_view __tpy_class_name__ = "__main__.B";
 };
 
@@ -75,7 +75,7 @@ struct H {
 
     // def __init__(self, pu: A | B, ft: tuple[A, Int32],
     // vt: tuple[Int32, Int32]) -> None:
-    explicit H(const std::variant<A*, B*> pu, const std::tuple<const A*, int32_t>& ft, const std::tuple<int32_t, int32_t>& vt) : items(std::nullopt), ox(std::nullopt), vu(5), un(std::monostate{}), pu(::tpy::to_value_variant<std::variant<A, B>>(pu)), pr(A(3)), pn(std::monostate{}), ft(::tpy::tuple_to_storage<std::tuple<A, int32_t>>(ft)), vt(vt), tl(std::tuple<int32_t, int32_t>{1, 2}) {}
+    explicit H(const std::variant<A*, B*> pu, const std::tuple<const A*, int32_t>& ft, const std::tuple<int32_t, int32_t>& vt);
     static constexpr std::string_view __tpy_class_name__ = "__main__.H";
 };
 
@@ -90,7 +90,7 @@ struct P {
     int32_t* p;
 
     // def __init__(self) -> None:
-    P() : p(nullptr) {}
+    P();
     static constexpr std::string_view __tpy_class_name__ = "__main__.P";
 };
 
@@ -107,12 +107,7 @@ struct D {
     bool strict;
 
     // def __init__(self) -> None:
-    D() {
-        // self.n = G  # bare global name: demoted to the ctor body
-        this->n = G;
-        // self.strict = True
-        this->strict = true;
-    }
+    D();
     static constexpr std::string_view __tpy_class_name__ = "__main__.D";
 };
 
@@ -121,5 +116,22 @@ inline std::ostream& operator<<(std::ostream& os, const D& obj) {
     return os;
 }
 
+
+// def __init__(self, x: Int32) -> None:
+inline A::A(int32_t x) : x(x) {}
+
+// def __init__(self, y: Int32) -> None:
+inline B::B(int32_t y) : y(y) {}
+
+// def __init__(self) -> None:
+inline P::P() : p(nullptr) {}
+
+// def __init__(self) -> None:
+inline D::D() {
+    // self.n = G  # bare global name: demoted to the ctor body
+    this->n = G;
+    // self.strict = True
+    this->strict = true;
+}
 void __tpy_init();
 } // namespace tpyapp::main

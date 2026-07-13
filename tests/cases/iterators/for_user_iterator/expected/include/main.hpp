@@ -23,7 +23,7 @@ struct Counter {
 
     // def __init__(self, limit: Int32) -> None:
     Counter() = default;
-    explicit Counter(int32_t limit) : current(0), limit(limit) {}
+    explicit Counter(int32_t limit);
 
     // def __iter__(self) -> Counter:
     Counter& __iter__();
@@ -38,6 +38,9 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
     return os;
 }
 
+
+// def __init__(self, limit: Int32) -> None:
+inline Counter::Counter(int32_t limit) : current(0), limit(limit) {}
 
 // def __iter__(self) -> Counter:
 inline Counter& Counter::__iter__() {

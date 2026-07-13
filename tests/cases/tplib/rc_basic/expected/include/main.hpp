@@ -24,7 +24,7 @@ struct State {
 
     // def __init__(self, x: Int32) -> None:
     State() = default;
-    explicit State(int32_t x) : x(x) {}
+    explicit State(int32_t x);
 
     // def doubled(self) -> Int32:
     int32_t doubled() const;
@@ -36,6 +36,9 @@ inline std::ostream& operator<<(std::ostream& os, const State& obj) {
     return os;
 }
 
+
+// def __init__(self, x: Int32) -> None:
+inline State::State(int32_t x) : x(x) {}
 
 // def doubled(self) -> Int32:
 inline int32_t State::doubled() const {

@@ -21,7 +21,7 @@ struct MyIter {
 
     // def __init__(self, val: Int32) -> None:
     MyIter() = default;
-    explicit MyIter(int32_t val) : _val(val) {}
+    explicit MyIter(int32_t val);
 
     auto& __iter__() { return *this; }
 
@@ -41,7 +41,7 @@ struct Dual {
     std::vector<int32_t> _data;
 
     // def __init__(self) -> None:
-    Dual() : _data({1, 2, 3}) {}
+    Dual();
 
     // @auto_readonly
     // def __span__(self) -> Span[auto_readonly[Int32]]:
@@ -62,6 +62,9 @@ inline std::ostream& operator<<(std::ostream& os, const Dual& obj) {
 }
 
 
+// def __init__(self, val: Int32) -> None:
+inline MyIter::MyIter(int32_t val) : _val(val) {}
+
 // def __next__(self) -> Int32:
 inline std::expected<int32_t, ::tpy::StopIteration> MyIter::__next__() {
     // if self._val > 0:
@@ -76,6 +79,9 @@ inline std::expected<int32_t, ::tpy::StopIteration> MyIter::__next__() {
     // raise StopIteration
     return ::tpy::make_unexpected(::tpy::StopIteration{});
 }
+
+// def __init__(self) -> None:
+inline Dual::Dual() : _data({1, 2, 3}) {}
 
 // @auto_readonly
 // def __span__(self) -> Span[auto_readonly[Int32]]:

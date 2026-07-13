@@ -22,9 +22,7 @@ void main();
 struct Dog {
 
     // def __init__(self) -> None:
-    Dog() {
-        // pass
-    }
+    Dog();
 
     // def speak(self) -> str:
     std::string speak() const;
@@ -40,9 +38,7 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 struct Cat {
 
     // def __init__(self) -> None:
-    Cat() {
-        // pass
-    }
+    Cat();
 
     // def speak(self) -> str:
     std::string speak() const;
@@ -60,7 +56,7 @@ struct Zoo {
     ::tpy::BigInt seen;
 
     // def __init__(self) -> None:
-    Zoo() : seen(::tpy::BigInt(0)) {}
+    Zoo();
 
     __gen_Zoo_voices voices(std::variant<Cat*, Dog*> a);
 
@@ -134,10 +130,20 @@ inline __gen_Zoo_names Zoo::names(std::variant<const Cat*, const Dog*> a) {
 }
 
 
+// def __init__(self) -> None:
+inline Dog::Dog() {
+    // pass
+}
+
 // def speak(self) -> str:
 inline std::string Dog::speak() const {
     // return "woof"
     return "woof";
+}
+
+// def __init__(self) -> None:
+inline Cat::Cat() {
+    // pass
 }
 
 // def speak(self) -> str:
@@ -145,5 +151,8 @@ inline std::string Cat::speak() const {
     // return "meow"
     return "meow";
 }
+
+// def __init__(self) -> None:
+inline Zoo::Zoo() : seen(::tpy::BigInt(0)) {}
 void __tpy_init();
 } // namespace tpyapp::main

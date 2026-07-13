@@ -37,7 +37,7 @@ struct Inner {
 
     // def __init__(self, v: Int32):
     Inner() = default;
-    explicit Inner(int32_t v) : v(v) {}
+    explicit Inner(int32_t v);
 
     // def bump(self):
     void bump();
@@ -57,7 +57,7 @@ struct Cell {
 
     // def __init__(self, v: Int32):
     Cell() = default;
-    explicit Cell(int32_t v) : inner(Inner(v)) {}
+    explicit Cell(int32_t v);
 
     // @auto_readonly
     // def get(self) -> auto_readonly[Inner]:
@@ -90,7 +90,7 @@ struct Outer {
     std::vector<Inner> items;
 
     // def __init__(self, v: Int32):
-    explicit Outer(int32_t v) : b(::tpystd::tplib::box::Box<Inner>(Inner(v))), items({Inner(v)}) {}
+    explicit Outer(int32_t v);
     // non-copyable (field 'b')
     Outer(const Outer&) = delete;
     Outer& operator=(const Outer&) = delete;
@@ -105,11 +105,17 @@ inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
 }
 
 
+// def __init__(self, v: Int32):
+inline Inner::Inner(int32_t v) : v(v) {}
+
 // def bump(self):
 inline void Inner::bump() {
     // self.v += 1
     this->v = ::tpy::add_check<int32_t>(this->v, 1);
 }
+
+// def __init__(self, v: Int32):
+inline Cell::Cell(int32_t v) : inner(Inner(v)) {}
 
 // @auto_readonly
 // def get(self) -> auto_readonly[Inner]:
@@ -138,5 +144,8 @@ inline int32_t Cell::peek() const {
     // return self.inner.v
     return this->inner.v;
 }
+
+// def __init__(self, v: Int32):
+inline Outer::Outer(int32_t v) : b(::tpystd::tplib::box::Box<Inner>(Inner(v))), items({Inner(v)}) {}
 void __tpy_init();
 } // namespace tpyapp::main

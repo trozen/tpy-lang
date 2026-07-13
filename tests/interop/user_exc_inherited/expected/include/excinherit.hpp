@@ -19,9 +19,7 @@ struct BaseErr : ::tpy::Exception {
     int32_t code;
 
     BaseErr() = default;
-    explicit BaseErr(std::string_view message, int32_t code) : code(code) {
-        this->message = message;
-    }
+    explicit BaseErr(std::string_view message, int32_t code);
 
     [[nodiscard]] std::unique_ptr<::tpy::Throwable> clone() const override { return std::make_unique<BaseErr>(*this); }
     [[noreturn]] void __raise__() const override { throw *this; }
@@ -38,10 +36,7 @@ struct DerivedErr : BaseErr {
     std::string detail;
 
     DerivedErr() = default;
-    explicit DerivedErr(std::string_view message, int32_t code, std::string_view detail) : detail(detail) {
-        this->message = message;
-        this->code = code;
-    }
+    explicit DerivedErr(std::string_view message, int32_t code, std::string_view detail);
 
     [[nodiscard]] std::unique_ptr<::tpy::Throwable> clone() const override { return std::make_unique<DerivedErr>(*this); }
     [[noreturn]] void __raise__() const override { throw *this; }
@@ -54,5 +49,14 @@ inline std::ostream& operator<<(std::ostream& os, const DerivedErr& obj) {
     return os;
 }
 
+
+inline BaseErr::BaseErr(std::string_view message, int32_t code) : code(code) {
+    this->message = message;
+}
+
+inline DerivedErr::DerivedErr(std::string_view message, int32_t code, std::string_view detail) : detail(detail) {
+    this->message = message;
+    this->code = code;
+}
 void __tpy_init();
 } // namespace tpyapp::excinherit

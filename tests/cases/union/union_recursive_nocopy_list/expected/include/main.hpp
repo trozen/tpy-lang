@@ -22,7 +22,7 @@ struct Heavy {
     int32_t value;
 
     Heavy() = default;
-    explicit Heavy(int32_t value) : value(value) {}
+    explicit Heavy(int32_t value);
     // non-copyable (@nocopy)
     Heavy(const Heavy&) = delete;
     Heavy& operator=(const Heavy&) = delete;
@@ -51,7 +51,7 @@ struct Light {
     int32_t value;
 
     Light() = default;
-    explicit Light(int32_t value) : value(value) {}
+    explicit Light(int32_t value);
 
     bool __eq__(const Light& other) const;
 
@@ -69,6 +69,8 @@ inline std::ostream& operator<<(std::ostream& os, const Light& obj) {
 }
 
 
+inline Heavy::Heavy(int32_t value) : value(value) {}
+
 inline bool Heavy::__eq__(const Heavy& other) const {
     return (this->value == other.value);
 }
@@ -76,6 +78,8 @@ inline bool Heavy::__eq__(const Heavy& other) const {
 inline std::string Heavy::__repr__() const {
     return std::format("Heavy(value={})", ::tpy::repr_of(this->value));
 }
+
+inline Light::Light(int32_t value) : value(value) {}
 
 inline bool Light::__eq__(const Light& other) const {
     return (this->value == other.value);

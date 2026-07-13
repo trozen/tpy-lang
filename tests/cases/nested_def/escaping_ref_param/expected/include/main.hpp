@@ -21,7 +21,7 @@ struct Config {
 
     // def __init__(self, v: Int32) -> None:
     Config() = default;
-    explicit Config(int32_t v) : value(v) {}
+    explicit Config(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Config";
 };
 
@@ -30,5 +30,8 @@ inline std::ostream& operator<<(std::ostream& os, const Config& obj) {
     return os;
 }
 
+
+// def __init__(self, v: Int32) -> None:
+inline Config::Config(int32_t v) : value(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

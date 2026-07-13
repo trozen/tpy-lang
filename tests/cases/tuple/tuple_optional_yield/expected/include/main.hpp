@@ -20,7 +20,7 @@ struct P {
 
     // def __init__(self, x: Int32) -> None:
     P() = default;
-    explicit P(int32_t x) : x(x) {}
+    explicit P(int32_t x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.P";
 };
 
@@ -29,6 +29,9 @@ inline std::ostream& operator<<(std::ostream& os, const P& obj) {
     return os;
 }
 
+
+// def __init__(self, x: Int32) -> None:
+inline P::P(int32_t x) : x(x) {}
 inline auto gen_for(std::vector<P>& items) {
     return ::tpy::make_generator<std::tuple<P*, P*>>(
         [&items, __beg = decltype((items).begin())(), __end = decltype((items).begin())(), __init = false]() mutable -> std::optional<std::tuple<P*, P*>> {

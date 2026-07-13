@@ -22,7 +22,7 @@ struct Product {
 
     // def __init__(self, value: Int32) -> None:
     Product() = default;
-    explicit Product(int32_t value) : value(value) {}
+    explicit Product(int32_t value);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Product";
 };
 
@@ -45,6 +45,9 @@ inline std::ostream& operator<<(std::ostream& os, const Factory& obj) {
     return os;
 }
 
+
+// def __init__(self, value: Int32) -> None:
+inline Product::Product(int32_t value) : value(value) {}
 
 // def create(self) -> Own[Product]:
 inline Product Factory::create() const {

@@ -39,7 +39,7 @@ struct Vec2 {
 
     // def __init__(self, x: Int32, y: Int32) -> None:
     Vec2() = default;
-    explicit Vec2(int32_t x, int32_t y) : x(x), y(y) {}
+    explicit Vec2(int32_t x, int32_t y);
 
     // def __add__(self, other: Vec2) -> Own[Vec2]:
     Vec2 __add__(const Vec2& other) const;
@@ -128,7 +128,7 @@ struct Score {
 
     // def __init__(self, value: Int32) -> None:
     Score() = default;
-    explicit Score(int32_t value) : value(value) {}
+    explicit Score(int32_t value);
 
     // def __eq__(self, other: Score) -> bool:
     bool __eq__(const Score& other) const;
@@ -179,7 +179,7 @@ struct Mask {
 
     // def __init__(self, bits: Int32) -> None:
     Mask() = default;
-    explicit Mask(int32_t bits) : bits(bits) {}
+    explicit Mask(int32_t bits);
 
     // def __invert__(self) -> Own[Mask]:
     Mask __invert__() const;
@@ -202,7 +202,7 @@ struct Tag {
 
     // def __init__(self, value: Int32) -> None:
     Tag() = default;
-    explicit Tag(int32_t value) : value(value) {}
+    explicit Tag(int32_t value);
 
     // def __eq__(self, other: Tag) -> bool:
     bool __eq__(const Tag& other) const;
@@ -230,7 +230,7 @@ struct Child : Vec2 {
 
     // def __init__(self, x: Int32, y: Int32) -> None:
     Child() = default;
-    explicit Child(int32_t x, int32_t y) : Vec2(x, y) {}
+    explicit Child(int32_t x, int32_t y);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Child";
 };
 
@@ -239,6 +239,9 @@ inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
     return os;
 }
 
+
+// def __init__(self, x: Int32, y: Int32) -> None:
+inline Vec2::Vec2(int32_t x, int32_t y) : x(x), y(y) {}
 
 // def __add__(self, other: Vec2) -> Own[Vec2]:
 inline Vec2 Vec2::__add__(const Vec2& other) const {
@@ -314,6 +317,9 @@ inline Vec2& Vec2::__isub__(const Vec2& other) {
     return (*this);
 }
 
+// def __init__(self, value: Int32) -> None:
+inline Score::Score(int32_t value) : value(value) {}
+
 // def __eq__(self, other: Score) -> bool:
 inline bool Score::__eq__(const Score& other) const {
     // return self.value == other.value
@@ -344,11 +350,17 @@ inline bool Score::__ge__(const Score& other) const {
     return (this->value >= other.value);
 }
 
+// def __init__(self, bits: Int32) -> None:
+inline Mask::Mask(int32_t bits) : bits(bits) {}
+
 // def __invert__(self) -> Own[Mask]:
 inline Mask Mask::__invert__() const {
     // return Mask(~self.bits)
     return Mask(static_cast<int32_t>(~(this->bits)));
 }
+
+// def __init__(self, value: Int32) -> None:
+inline Tag::Tag(int32_t value) : value(value) {}
 
 // def __eq__(self, other: Tag) -> bool:
 inline bool Tag::__eq__(const Tag& other) const {
@@ -361,5 +373,8 @@ inline bool Tag::__ne__(const Tag& other) const {
     // return self.value != other.value
     return (this->value != other.value);
 }
+
+// def __init__(self, x: Int32, y: Int32) -> None:
+inline Child::Child(int32_t x, int32_t y) : Vec2(x, y) {}
 void __tpy_init();
 } // namespace tpyapp::main

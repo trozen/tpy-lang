@@ -22,7 +22,7 @@ struct Leaf {
 
     // def __init__(self, v: Int32) -> None:
     Leaf() = default;
-    explicit Leaf(int32_t v) : v(v) {}
+    explicit Leaf(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Leaf";
 };
 
@@ -31,6 +31,9 @@ inline std::ostream& operator<<(std::ostream& os, const Leaf& obj) {
     return os;
 }
 
+
+// def __init__(self, v: Int32) -> None:
+inline Leaf::Leaf(int32_t v) : v(v) {}
 struct Tree {
     using variant_type = std::variant<Leaf, std::vector<Tree>>;
     variant_type value;

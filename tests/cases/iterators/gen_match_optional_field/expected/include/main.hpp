@@ -24,7 +24,7 @@ struct Inner {
 
     // def __init__(self, n: int) -> None:
     Inner() = default;
-    explicit Inner(const ::tpy::BigInt& n) : n(n) {}
+    explicit Inner(const ::tpy::BigInt& n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Inner";
 };
 
@@ -40,7 +40,7 @@ struct Box {
 
     // def __init__(self, m: Optional[Inner]) -> None:
     Box() = default;
-    explicit Box(const Inner* m) : maybe(::tpy::ptr_to_optional(m)) {}
+    explicit Box(const Inner* m);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
@@ -74,5 +74,11 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, ::tpy::BigInt> {
     }
 };
 
+
+// def __init__(self, n: int) -> None:
+inline Inner::Inner(const ::tpy::BigInt& n) : n(n) {}
+
+// def __init__(self, m: Optional[Inner]) -> None:
+inline Box::Box(const Inner* m) : maybe(::tpy::ptr_to_optional(m)) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -21,7 +21,7 @@ struct Gate {
     ::tpy::ordered_map<std::string, int64_t> _items;
 
     Gate() = default;
-    explicit Gate(std::string_view code) : code(code), _items(::tpy::ordered_map<std::string, int64_t>()) {}
+    explicit Gate(std::string_view code);
 
     bool __eq__(const Gate& other) const;
 
@@ -68,7 +68,7 @@ struct Node {
     int64_t v;
 
     Node() = default;
-    explicit Node(int64_t v) : v(v) {}
+    explicit Node(int64_t v);
 
     bool __eq__(const Node& other) const;
 
@@ -98,7 +98,7 @@ namespace tpyapp::class_inheritance_slots {
 struct SubGate : Gate {
 
     SubGate() = default;
-    explicit SubGate(std::string_view code) : Gate(code) {}
+    explicit SubGate(std::string_view code);
 
     bool __eq__(const SubGate& other) const;
 
@@ -175,6 +175,8 @@ namespace tpyapp::class_inheritance_slots {
 
 
 
+inline Gate::Gate(std::string_view code) : code(code), _items(::tpy::ordered_map<std::string, int64_t>()) {}
+
 inline bool Gate::__eq__(const Gate& other) const {
     return (this->code == other.code);
 }
@@ -203,6 +205,8 @@ inline int64_t Gate::__radd__(int64_t other) const {
     return (::tpy::add_check<int64_t>((::tpy::mul_check<int64_t>(other, 10)), ::tpy::int_cast_check<int64_t>(::tpy::__len__(this->code))));
 }
 
+inline Node::Node(int64_t v) : v(v) {}
+
 inline bool Node::__eq__(const Node& other) const {
     return (this->v == other.v);
 }
@@ -210,6 +214,8 @@ inline bool Node::__eq__(const Node& other) const {
 inline int64_t Node::__hash__() const {
     return this->v;
 }
+
+inline SubGate::SubGate(std::string_view code) : Gate(code) {}
 
 inline bool SubGate::__eq__(const SubGate& other) const {
     return (this->code == other.code);

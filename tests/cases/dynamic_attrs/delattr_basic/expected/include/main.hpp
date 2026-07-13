@@ -19,12 +19,7 @@ struct Bag {
     ::tpy::ordered_map<std::string, ::tpy::Any> _data;
 
     // def __init__(self) -> None:
-    Bag() {
-        // d: dict[str, Any] = {}
-        ::tpy::ordered_map<std::string, ::tpy::Any> d = ::tpy::ordered_map<std::string, ::tpy::Any>();
-        // self._data = d
-        this->_data = std::move(d);
-    }
+    Bag();
 
     // def __setattr__(self, name: str, value: Any) -> None:
     void __setattr__(std::string_view name, ::tpy::Any value);
@@ -42,6 +37,14 @@ inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
     return os;
 }
 
+
+// def __init__(self) -> None:
+inline Bag::Bag() {
+    // d: dict[str, Any] = {}
+    ::tpy::ordered_map<std::string, ::tpy::Any> d = ::tpy::ordered_map<std::string, ::tpy::Any>();
+    // self._data = d
+    this->_data = std::move(d);
+}
 
 // def __setattr__(self, name: str, value: Any) -> None:
 inline void Bag::__setattr__(std::string_view name, ::tpy::Any value) {

@@ -28,7 +28,7 @@ struct CM {
 
     // def __init__(self, n: str) -> None:
     CM() = default;
-    explicit CM(std::string_view n) : name(n) {}
+    explicit CM(std::string_view n);
 
     __coro_CM___aenter__ __aenter__() const;
 
@@ -160,5 +160,8 @@ struct __coro_main_coro {
     }
 };
 
+
+// def __init__(self, n: str) -> None:
+inline CM::CM(std::string_view n) : name(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

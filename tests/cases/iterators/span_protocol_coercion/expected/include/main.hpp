@@ -21,7 +21,7 @@ struct ROBuffer {
     std::vector<int32_t> _data;
 
     // def __init__(self) -> None:
-    ROBuffer() : _data({1, 2, 3}) {}
+    ROBuffer();
 
     auto begin() { return this->__span__().begin(); }
     auto end() { return this->__span__().end(); }
@@ -44,7 +44,7 @@ struct MutBuffer {
     std::vector<int32_t> _data;
 
     // def __init__(self) -> None:
-    MutBuffer() : _data({10, 20, 30}) {}
+    MutBuffer();
 
     auto begin() { return this->__span__().begin(); }
     auto end() { return this->__span__().end(); }
@@ -67,11 +67,17 @@ inline std::ostream& operator<<(std::ostream& os, const MutBuffer& obj) {
 }
 
 
+// def __init__(self) -> None:
+inline ROBuffer::ROBuffer() : _data({1, 2, 3}) {}
+
 // def __span__(self) -> Span[readonly[Int32]]:
 inline std::span<const int32_t> ROBuffer::__span__() const {
     // return self._data
     return ::tpy::as_span(this->_data);
 }
+
+// def __init__(self) -> None:
+inline MutBuffer::MutBuffer() : _data({10, 20, 30}) {}
 
 // @auto_readonly
 // def __span__(self) -> Span[auto_readonly[Int32]]:

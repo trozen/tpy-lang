@@ -21,7 +21,7 @@ struct Box {
 
     // def __init__(self, v: Int32) -> None:
     Box() = default;
-    explicit Box(int32_t v) : val(v) {}
+    explicit Box(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
@@ -44,6 +44,9 @@ inline std::ostream& operator<<(std::ostream& os, const Pile& obj) {
     return os;
 }
 
+
+// def __init__(self, v: Int32) -> None:
+inline Box::Box(int32_t v) : val(v) {}
 
 // def total(self, *boxes: Box) -> Int32:  # tpyc: ok
 inline int32_t Pile::total(::tpy::varargs<const Box> boxes) const {

@@ -20,7 +20,7 @@ struct CachedList {
     int32_t _hits;
 
     // def __init__(self) -> None:
-    CachedList() : _data({10, 20, 30}), _hits(0) {}
+    CachedList();
 
     // @readonly(False)
     // def __getitem__(self, idx: Int32) -> Int32:
@@ -37,6 +37,9 @@ inline std::ostream& operator<<(std::ostream& os, const CachedList& obj) {
     return os;
 }
 
+
+// def __init__(self) -> None:
+inline CachedList::CachedList() : _data({10, 20, 30}), _hits(0) {}
 
 // @readonly(False)
 // def __getitem__(self, idx: Int32) -> Int32:

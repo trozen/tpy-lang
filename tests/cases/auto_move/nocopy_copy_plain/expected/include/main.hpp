@@ -20,13 +20,10 @@ struct Counter {
 
     // def __init__(self, count: Int32):
     Counter() = default;
-    explicit Counter(int32_t count) : count(count) {}
+    explicit Counter(int32_t count);
     // copyable via __copy__
-    Counter(const Counter& other) : Counter(other.__copy__()) {}
-    Counter& operator=(const Counter& other) {
-        if (this != &other) { *this = other.__copy__(); }
-        return *this;
-    }
+    Counter(const Counter& other);
+    Counter& operator=(const Counter& other);
     Counter(Counter&&) = default;
     Counter& operator=(Counter&&) = default;
 
@@ -40,6 +37,15 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
     return os;
 }
 
+
+// def __init__(self, count: Int32):
+inline Counter::Counter(int32_t count) : count(count) {}
+
+inline Counter::Counter(const Counter& other) : Counter(other.__copy__()) {}
+inline Counter& Counter::operator=(const Counter& other) {
+    if (this != &other) { *this = other.__copy__(); }
+    return *this;
+}
 
 // def __copy__(self) -> Own[Counter]:
 inline Counter Counter::__copy__() const {

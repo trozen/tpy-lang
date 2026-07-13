@@ -22,7 +22,7 @@ struct Bid {
 
     // def __init__(self, a: Int32) -> None:
     Bid() = default;
-    explicit Bid(int32_t a) : amount(a) {}
+    explicit Bid(int32_t a);
 
     // def __eq__(self, other: "Bid") -> bool:
     bool __eq__(const Bid& other) const;
@@ -63,6 +63,9 @@ inline std::ostream& operator<<(std::ostream& os, const Bid& obj) {
     return os;
 }
 
+
+// def __init__(self, a: Int32) -> None:
+inline Bid::Bid(int32_t a) : amount(a) {}
 
 // def __eq__(self, other: "Bid") -> bool:
 inline bool Bid::__eq__(const Bid& other) const {

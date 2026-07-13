@@ -26,7 +26,7 @@ struct Widget {
 
     // def __init__(self, i: int) -> None:
     Widget() = default;
-    explicit Widget(const ::tpy::BigInt& i) : id(i) {}
+    explicit Widget(const ::tpy::BigInt& i);
     // non-copyable (@nocopy)
     Widget(const Widget&) = delete;
     Widget& operator=(const Widget&) = delete;
@@ -47,7 +47,7 @@ struct Node {
 
     // def __init__(self, i: int) -> None:
     Node() = default;
-    explicit Node(const ::tpy::BigInt& i) : v(i) {}
+    explicit Node(const ::tpy::BigInt& i);
 
     // def __hash__(self) -> int:
     ::tpy::BigInt __hash__() const;
@@ -76,6 +76,12 @@ template<> struct std::hash<::tpyapp::main::Node> {
 namespace tpyapp::main {
 
 
+
+// def __init__(self, i: int) -> None:
+inline Widget::Widget(const ::tpy::BigInt& i) : id(i) {}
+
+// def __init__(self, i: int) -> None:
+inline Node::Node(const ::tpy::BigInt& i) : v(i) {}
 
 // def __hash__(self) -> int:
 inline ::tpy::BigInt Node::__hash__() const {

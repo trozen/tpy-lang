@@ -20,7 +20,7 @@ struct Foo {
 
     // def __init__(self, x: Int32) -> None:
     Foo() = default;
-    explicit Foo(int32_t x) : x(x) {}
+    explicit Foo(int32_t x);
 
     // def __repr__(self) -> str:
     std::string __repr__() const;
@@ -32,6 +32,9 @@ inline std::ostream& operator<<(std::ostream& os, const Foo& obj) {
     return os;
 }
 
+
+// def __init__(self, x: Int32) -> None:
+inline Foo::Foo(int32_t x) : x(x) {}
 
 // def __repr__(self) -> str:
 inline std::string Foo::__repr__() const {

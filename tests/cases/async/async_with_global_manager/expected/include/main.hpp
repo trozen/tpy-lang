@@ -27,7 +27,7 @@ struct Counter {
     int32_t opens;
 
     // def __init__(self) -> None:
-    Counter() : opens(0) {}
+    Counter();
 
     __coro_Counter___aenter__ __aenter__();
 
@@ -136,5 +136,8 @@ struct __coro_main_coro {
     }
 };
 
+
+// def __init__(self) -> None:
+inline Counter::Counter() : opens(0) {}
 void __tpy_init();
 } // namespace tpyapp::main

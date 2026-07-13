@@ -21,7 +21,7 @@ struct Dur {
 
     // def __init__(self, ns: Int64) -> None:
     Dur() = default;
-    explicit Dur(int64_t ns) : nanos(ns) {}
+    explicit Dur(int64_t ns);
 
     // def __rmul__(self, f: float) -> float:
     double __rmul__(double f) const;
@@ -57,7 +57,7 @@ struct Flags {
 
     // def __init__(self, bits: Int32) -> None:
     Flags() = default;
-    explicit Flags(int32_t bits) : bits(bits) {}
+    explicit Flags(int32_t bits);
 
     // def __ror__(self, other: Int32) -> Own[Flags]:
     Flags __ror__(int32_t other) const;
@@ -74,6 +74,9 @@ inline std::ostream& operator<<(std::ostream& os, const Flags& obj) {
 }
 
 
+// def __init__(self, ns: Int64) -> None:
+inline Dur::Dur(int64_t ns) : nanos(ns) {}
+
 // def __rmul__(self, f: float) -> float:
 inline double Dur::__rmul__(double f) const {
     // return f * self.nanos
@@ -85,6 +88,9 @@ inline int64_t Dur::__radd__(int64_t n) const {
     // return n + self.nanos
     return (::tpy::add_check<int64_t>(n, this->nanos));
 }
+
+// def __init__(self, bits: Int32) -> None:
+inline Flags::Flags(int32_t bits) : bits(bits) {}
 
 // def __ror__(self, other: Int32) -> Own[Flags]:
 inline Flags Flags::__ror__(int32_t other) const {

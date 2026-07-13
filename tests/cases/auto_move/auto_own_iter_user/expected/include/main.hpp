@@ -20,7 +20,7 @@ struct IntList {
 
     // def __init__(self, vals: list[Int32]) -> None:
     IntList() = default;
-    explicit IntList(const std::vector<int32_t>& vals) : items(vals) {}
+    explicit IntList(const std::vector<int32_t>& vals);
 
     // def __iter__(self: auto_own[Self]) -> auto_own[Iterator[Int32]]:
     auto __iter__() const &;
@@ -35,6 +35,9 @@ inline std::ostream& operator<<(std::ostream& os, const IntList& obj) {
     return os;
 }
 
+
+// def __init__(self, vals: list[Int32]) -> None:
+inline IntList::IntList(const std::vector<int32_t>& vals) : items(vals) {}
 
 // def __iter__(self: auto_own[Self]) -> auto_own[Iterator[Int32]]:
 inline auto IntList::__iter__() const & {

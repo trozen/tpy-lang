@@ -24,7 +24,7 @@ struct A {
 
     // def __init__(self, n: Int32) -> None:
     A() = default;
-    explicit A(int32_t n) : n(n) {}
+    explicit A(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.A";
 };
 
@@ -40,7 +40,7 @@ struct B {
 
     // def __init__(self, n: Int32) -> None:
     B() = default;
-    explicit B(int32_t n) : n(n) {}
+    explicit B(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.B";
 };
 
@@ -56,7 +56,7 @@ struct C {
 
     // def __init__(self, n: Int32) -> None:
     C() = default;
-    explicit C(int32_t n) : n(n) {}
+    explicit C(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.C";
 };
 
@@ -72,7 +72,7 @@ struct D {
 
     // def __init__(self, n: Int32) -> None:
     D() = default;
-    explicit D(int32_t n) : n(n) {}
+    explicit D(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.D";
 };
 
@@ -81,5 +81,17 @@ inline std::ostream& operator<<(std::ostream& os, const D& obj) {
     return os;
 }
 
+
+// def __init__(self, n: Int32) -> None:
+inline A::A(int32_t n) : n(n) {}
+
+// def __init__(self, n: Int32) -> None:
+inline B::B(int32_t n) : n(n) {}
+
+// def __init__(self, n: Int32) -> None:
+inline C::C(int32_t n) : n(n) {}
+
+// def __init__(self, n: Int32) -> None:
+inline D::D(int32_t n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

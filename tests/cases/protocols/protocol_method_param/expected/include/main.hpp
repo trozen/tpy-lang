@@ -28,7 +28,7 @@ struct Words {
 
     // def __init__(self, items: list[str]) -> None:
     Words() = default;
-    explicit Words(const std::vector<std::string>& items) : items(items) {}
+    explicit Words(const std::vector<std::string>& items);
 
     // @readonly
     // def length(self) -> int:
@@ -48,7 +48,7 @@ struct Numbers {
 
     // def __init__(self, items: list[int]) -> None:
     Numbers() = default;
-    explicit Numbers(const std::vector<::tpy::BigInt>& items) : items(items) {}
+    explicit Numbers(const std::vector<::tpy::BigInt>& items);
 
     // @readonly
     // def length(self) -> int:
@@ -94,12 +94,18 @@ inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
 }
 
 
+// def __init__(self, items: list[str]) -> None:
+inline Words::Words(const std::vector<std::string>& items) : items(items) {}
+
 // @readonly
 // def length(self) -> int:
 inline ::tpy::BigInt Words::length() const {
     // return len(self.items)
     return ::tpy::BigInt(::tpy::__len__(this->items));
 }
+
+// def __init__(self, items: list[int]) -> None:
+inline Numbers::Numbers(const std::vector<::tpy::BigInt>& items) : items(items) {}
 
 // @readonly
 // def length(self) -> int:

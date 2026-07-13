@@ -29,7 +29,7 @@ struct SimpleCalc {
 
     // def __init__(self, b: Int32) -> None:
     SimpleCalc() = default;
-    explicit SimpleCalc(int32_t b) : base(b) {}
+    explicit SimpleCalc(int32_t b);
 
     // def add(self, x: Int32) -> Int32:
     int32_t add(int32_t x) const;
@@ -44,6 +44,9 @@ inline std::ostream& operator<<(std::ostream& os, const SimpleCalc& obj) {
     return os;
 }
 
+
+// def __init__(self, b: Int32) -> None:
+inline SimpleCalc::SimpleCalc(int32_t b) : base(b) {}
 
 // def add(self, x: Int32) -> Int32:
 inline int32_t SimpleCalc::add(int32_t x) const {

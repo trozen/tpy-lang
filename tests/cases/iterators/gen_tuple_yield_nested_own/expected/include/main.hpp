@@ -20,7 +20,7 @@ struct Box {
 
     // def __init__(self, v: int):
     Box() = default;
-    explicit Box(const ::tpy::BigInt& v) : val(v) {}
+    explicit Box(const ::tpy::BigInt& v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
@@ -29,6 +29,9 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
     return os;
 }
 
+
+// def __init__(self, v: int):
+inline Box::Box(const ::tpy::BigInt& v) : val(v) {}
 inline auto g(const ::tpy::BigInt& n) {
     return ::tpy::make_generator<std::tuple<::tpy::BigInt, std::tuple<::tpy::BigInt, Box>>>(
         [n, __i = ::tpy::BigInt(0), __stop = static_cast<::tpy::BigInt>(n)]() mutable -> std::optional<std::tuple<::tpy::BigInt, std::tuple<::tpy::BigInt, Box>>> {

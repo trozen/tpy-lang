@@ -40,7 +40,7 @@ struct Cat {
 
     // def __init__(self, label: str) -> None:
     Cat() = default;
-    explicit Cat(std::string_view label) : label(label) {}
+    explicit Cat(std::string_view label);
 
     // def name(self) -> str:
     std::string name() const;
@@ -71,6 +71,9 @@ struct tpy::RefAdapter<tpyapp::main::Pet, T> : tpyapp::main::Pet {
 
 namespace tpyapp::main {
 
+
+// def __init__(self, label: str) -> None:
+inline Cat::Cat(std::string_view label) : label(label) {}
 
 // def name(self) -> str:
 inline std::string Cat::name() const {

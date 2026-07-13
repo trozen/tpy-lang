@@ -24,7 +24,7 @@ struct Point {
 
     // def __init__(self, x: int) -> None:
     Point() = default;
-    explicit Point(const ::tpy::BigInt& x) : x(x) {}
+    explicit Point(const ::tpy::BigInt& x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
 };
 
@@ -39,7 +39,7 @@ struct Holder {
     Point inner;
 
     // def __init__(self) -> None:
-    Holder() : inner(Point(::tpy::BigInt(5))) {}
+    Holder();
 
     // def get(self) -> Point:
     Point& get();
@@ -51,6 +51,12 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     return os;
 }
 
+
+// def __init__(self, x: int) -> None:
+inline Point::Point(const ::tpy::BigInt& x) : x(x) {}
+
+// def __init__(self) -> None:
+inline Holder::Holder() : inner(Point(::tpy::BigInt(5))) {}
 
 // def get(self) -> Point:
 inline Point& Holder::get() {

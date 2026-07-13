@@ -26,7 +26,7 @@ struct A {
 
     // def __init__(self, a: int) -> None:
     A() = default;
-    explicit A(const ::tpy::BigInt& a) : a(a) {}
+    explicit A(const ::tpy::BigInt& a);
     static constexpr std::string_view __tpy_class_name__ = "__main__.A";
 };
 
@@ -42,7 +42,7 @@ struct B {
 
     // def __init__(self, b: int) -> None:
     B() = default;
-    explicit B(const ::tpy::BigInt& b) : b(b) {}
+    explicit B(const ::tpy::BigInt& b);
     static constexpr std::string_view __tpy_class_name__ = "__main__.B";
 };
 
@@ -57,7 +57,7 @@ struct Holder {
     std::variant<std::monostate, A, B> slot;
 
     // def __init__(self) -> None:
-    Holder() : slot(A(::tpy::BigInt(1))) {}
+    Holder();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
@@ -66,5 +66,14 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     return os;
 }
 
+
+// def __init__(self, a: int) -> None:
+inline A::A(const ::tpy::BigInt& a) : a(a) {}
+
+// def __init__(self, b: int) -> None:
+inline B::B(const ::tpy::BigInt& b) : b(b) {}
+
+// def __init__(self) -> None:
+inline Holder::Holder() : slot(A(::tpy::BigInt(1))) {}
 void __tpy_init();
 } // namespace tpyapp::main

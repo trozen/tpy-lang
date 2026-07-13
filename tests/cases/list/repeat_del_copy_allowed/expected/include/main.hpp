@@ -20,29 +20,15 @@ struct Res {
     bool __tpy_owned_ = true;
 
     // def __init__(self, v: Int32) -> None:
-    explicit Res(int32_t v) : v(v) {}
+    explicit Res(int32_t v);
     // copyable via __copy__
-    Res(const Res& other) : Res(other.__copy__()) {}
-    Res& operator=(const Res& other) {
-        if (this != &other) { *this = other.__copy__(); }
-        return *this;
-    }
-    Res(Res&& other) noexcept : v(std::move(other.v)) {
-        other.__tpy_owned_ = false;
-    }
-    Res& operator=(Res&& other) noexcept {
-        if (this != &other) {
-            this->~Res();
-            new (this) Res(std::move(other));
-        }
-        return *this;
-    }
-    // def __del__(self) -> None:
+    Res(const Res& other);
+    Res& operator=(const Res& other);
+    Res(Res&& other) noexcept;
+    Res& operator=(Res&& other) noexcept;
 
-    ~Res() {
-        if (!this->__tpy_owned_) return;
-        // pass
-    }
+    // def __del__(self) -> None:
+    ~Res();
 
     // def __copy__(self) -> Own['Res']:
     Res __copy__() const;
@@ -54,6 +40,32 @@ inline std::ostream& operator<<(std::ostream& os, const Res& obj) {
     return os;
 }
 
+
+// def __init__(self, v: Int32) -> None:
+inline Res::Res(int32_t v) : v(v) {}
+
+inline Res::Res(const Res& other) : Res(other.__copy__()) {}
+inline Res& Res::operator=(const Res& other) {
+    if (this != &other) { *this = other.__copy__(); }
+    return *this;
+}
+
+inline Res::Res(Res&& other) noexcept : v(std::move(other.v)) {
+    other.__tpy_owned_ = false;
+}
+inline Res& Res::operator=(Res&& other) noexcept {
+    if (this != &other) {
+        this->~Res();
+        new (this) Res(std::move(other));
+    }
+    return *this;
+}
+
+// def __del__(self) -> None:
+inline Res::~Res() {
+    if (!this->__tpy_owned_) return;
+    // pass
+}
 
 // def __copy__(self) -> Own['Res']:
 inline Res Res::__copy__() const {

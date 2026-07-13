@@ -22,7 +22,7 @@ struct Error {
 
     // def __init__(self, message: str) -> None:
     Error() = default;
-    explicit Error(std::string_view message) : message(message) {}
+    explicit Error(std::string_view message);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Error";
 };
 
@@ -31,5 +31,8 @@ inline std::ostream& operator<<(std::ostream& os, const Error& obj) {
     return os;
 }
 
+
+// def __init__(self, message: str) -> None:
+inline Error::Error(std::string_view message) : message(message) {}
 void __tpy_init();
 } // namespace tpyapp::main

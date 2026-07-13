@@ -27,7 +27,7 @@ struct Container {
 
         // def __init__(self, val: Int32) -> None:
         Inner() = default;
-        explicit Inner(int32_t val) : val(val) {}
+        explicit Inner(int32_t val);
         static constexpr std::string_view __tpy_class_name__ = "__main__.Container.Inner";
     };
 
@@ -67,5 +67,8 @@ inline std::ostream& operator<<(std::ostream& __os, Container::Kind __e) {
     return __os << "Kind." << ::tpy::EnumUtil<Container::Kind>::name(__e);
 }
 
+
+// def __init__(self, val: Int32) -> None:
+inline Container::Inner::Inner(int32_t val) : val(val) {}
 void __tpy_init();
 } // namespace tpyapp::main

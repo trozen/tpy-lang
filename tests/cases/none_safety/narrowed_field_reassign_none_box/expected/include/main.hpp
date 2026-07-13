@@ -25,7 +25,7 @@ struct Cell {
 
     // def __init__(self, v: int) -> None:
     Cell() = default;
-    explicit Cell(const ::tpy::BigInt& v) : v(v) {}
+    explicit Cell(const ::tpy::BigInt& v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Cell";
 };
 
@@ -40,7 +40,7 @@ struct Holder {
     std::optional<::tpystd::tplib::box::Box<Cell>> slot;
 
     // def __init__(self) -> None:
-    Holder() : slot(::tpystd::tplib::box::Box<Cell>(Cell(::tpy::BigInt(1)))) {}
+    Holder();
     // non-copyable (field 'slot')
     Holder(const Holder&) = delete;
     Holder& operator=(const Holder&) = delete;
@@ -57,6 +57,12 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     return os;
 }
 
+
+// def __init__(self, v: int) -> None:
+inline Cell::Cell(const ::tpy::BigInt& v) : v(v) {}
+
+// def __init__(self) -> None:
+inline Holder::Holder() : slot(::tpystd::tplib::box::Box<Cell>(Cell(::tpy::BigInt(1)))) {}
 
 // def finish(self) -> None:
 inline void Holder::finish() {

@@ -49,7 +49,7 @@ struct Adder {
 
     // def __init__(self, offset: Int32):
     Adder() = default;
-    explicit Adder(int32_t offset) : offset(offset) {}
+    explicit Adder(int32_t offset);
 
     // def __call__(self, x: Int32) -> Int32:
     int32_t __call__(int32_t x) const;
@@ -71,6 +71,9 @@ inline int32_t Doubler::__call__(int32_t x) const {
     // return x * 2
     return (::tpy::mul_check<int32_t>(x, 2));
 }
+
+// def __init__(self, offset: Int32):
+inline Adder::Adder(int32_t offset) : offset(offset) {}
 
 // def __call__(self, x: Int32) -> Int32:
 inline int32_t Adder::__call__(int32_t x) const {

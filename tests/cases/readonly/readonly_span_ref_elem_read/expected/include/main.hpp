@@ -23,7 +23,7 @@ struct Box {
 
     // def __init__(self, v: int) -> None:
     Box() = default;
-    explicit Box(const ::tpy::BigInt& v) : val(v) {}
+    explicit Box(const ::tpy::BigInt& v);
     // non-copyable (@nocopy)
     Box(const Box&) = delete;
     Box& operator=(const Box&) = delete;
@@ -37,5 +37,8 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
     return os;
 }
 
+
+// def __init__(self, v: int) -> None:
+inline Box::Box(const ::tpy::BigInt& v) : val(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

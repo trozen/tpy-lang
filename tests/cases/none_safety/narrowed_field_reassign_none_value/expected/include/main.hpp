@@ -23,7 +23,7 @@ struct Holder {
     std::optional<::tpy::BigInt> slot;
 
     // def __init__(self) -> None:
-    Holder() : slot(1) {}
+    Holder();
 
     // def step(self) -> bool:
     bool step();
@@ -35,6 +35,9 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     return os;
 }
 
+
+// def __init__(self) -> None:
+inline Holder::Holder() : slot(1) {}
 
 // def step(self) -> bool:
 inline bool Holder::step() {

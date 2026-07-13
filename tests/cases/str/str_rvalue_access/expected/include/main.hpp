@@ -24,7 +24,7 @@ struct Pair {
 
     // def __init__(self, first: str, second: str) -> None:
     Pair() = default;
-    explicit Pair(std::string_view first, std::string_view second) : first(first), second(second) {}
+    explicit Pair(std::string_view first, std::string_view second);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Pair";
 };
 
@@ -33,5 +33,8 @@ inline std::ostream& operator<<(std::ostream& os, const Pair& obj) {
     return os;
 }
 
+
+// def __init__(self, first: str, second: str) -> None:
+inline Pair::Pair(std::string_view first, std::string_view second) : first(first), second(second) {}
 void __tpy_init();
 } // namespace tpyapp::main

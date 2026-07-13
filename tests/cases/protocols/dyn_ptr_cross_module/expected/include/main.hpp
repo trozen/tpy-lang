@@ -24,7 +24,7 @@ struct Tally : ::tpyapp::pet::Counter {
     int32_t n;
 
     // def __init__(self) -> None:
-    Tally() : n(0) {}
+    Tally();
     // non-copyable (@nocopy)
     Tally(const Tally&) = delete;
     Tally& operator=(const Tally&) = delete;
@@ -51,7 +51,7 @@ struct Notifier {
     ::tpyapp::pet::Counter* target;
 
     // def __init__(self) -> None:
-    Notifier() : target(nullptr) {}
+    Notifier();
     // non-copyable (@nocopy)
     Notifier(const Notifier&) = delete;
     Notifier& operator=(const Notifier&) = delete;
@@ -72,6 +72,9 @@ inline std::ostream& operator<<(std::ostream& os, const Notifier& obj) {
 }
 
 
+// def __init__(self) -> None:
+inline Tally::Tally() : n(0) {}
+
 // def bump(self, by: Int32) -> None:
 inline void Tally::bump(int32_t by) {
     // self.n += by
@@ -83,6 +86,9 @@ inline int32_t Tally::value() {
     // return self.n
     return this->n;
 }
+
+// def __init__(self) -> None:
+inline Notifier::Notifier() : target(nullptr) {}
 
 // def aim(self, p: Ptr[Counter]) -> None:
 inline void Notifier::aim(::tpyapp::pet::Counter* p) {

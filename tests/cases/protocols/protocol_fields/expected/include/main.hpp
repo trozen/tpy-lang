@@ -63,7 +63,7 @@ struct Point {
 
     // def __init__(self, v: Int32):
     Point() = default;
-    explicit Point(int32_t v) : value(v) {}
+    explicit Point(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
 };
 
@@ -82,7 +82,7 @@ struct Vec2 {
 
     // def __init__(self, x: Int32, y: Int32):
     Vec2() = default;
-    explicit Vec2(int32_t x, int32_t y) : x(x), y(y) {}
+    explicit Vec2(int32_t x, int32_t y);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Vec2";
 };
 
@@ -99,7 +99,7 @@ struct Box {
 
     // def __init__(self, c: Int32):
     Box() = default;
-    explicit Box(int32_t c) : count(c) {}
+    explicit Box(int32_t c);
 
     // def is_empty(self) -> bool:
     bool is_empty() const;
@@ -119,7 +119,7 @@ struct IntHolder {
 
     // def __init__(self, v: Int32):
     IntHolder() = default;
-    explicit IntHolder(int32_t v) : item(v) {}
+    explicit IntHolder(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.IntHolder";
 };
 
@@ -154,11 +154,23 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper<T>& obj) {
 }
 
 
+// def __init__(self, v: Int32):
+inline Point::Point(int32_t v) : value(v) {}
+
+// def __init__(self, x: Int32, y: Int32):
+inline Vec2::Vec2(int32_t x, int32_t y) : x(x), y(y) {}
+
+// def __init__(self, c: Int32):
+inline Box::Box(int32_t c) : count(c) {}
+
 // def is_empty(self) -> bool:
 inline bool Box::is_empty() const {
     // return self.count == 0
     return (this->count == 0);
 }
+
+// def __init__(self, v: Int32):
+inline IntHolder::IntHolder(int32_t v) : item(v) {}
 // # Function using protocol field
 // def get_value[T: HasValue](item: T) -> Int32:
 template<HasValue T>

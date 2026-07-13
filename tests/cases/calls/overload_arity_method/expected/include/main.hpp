@@ -20,7 +20,7 @@ struct Calculator {
 
     // def __init__(self, offset: int) -> None:
     Calculator() = default;
-    explicit Calculator(const ::tpy::BigInt& offset) : offset(offset) {}
+    explicit Calculator(const ::tpy::BigInt& offset);
 
     // @overload
     // def scale(self, x: int) -> int: ...  # tpyc: ok
@@ -44,5 +44,8 @@ inline std::ostream& operator<<(std::ostream& os, const Calculator& obj) {
     return os;
 }
 
+
+// def __init__(self, offset: int) -> None:
+inline Calculator::Calculator(const ::tpy::BigInt& offset) : offset(offset) {}
 void __tpy_init();
 } // namespace tpyapp::main

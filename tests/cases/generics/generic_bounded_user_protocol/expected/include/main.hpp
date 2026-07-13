@@ -27,7 +27,7 @@ struct MyNumber {
 
     // def __init__(self, v: Int32) -> None:
     MyNumber() = default;
-    explicit MyNumber(int32_t v) : value(v) {}
+    explicit MyNumber(int32_t v);
 
     // def add(self, x: Int32) -> Int32:
     int32_t add(int32_t x) const;
@@ -63,6 +63,9 @@ inline std::ostream& operator<<(std::ostream& os, const Holder<T>& obj) {
     return os;
 }
 
+
+// def __init__(self, v: Int32) -> None:
+inline MyNumber::MyNumber(int32_t v) : value(v) {}
 
 // def add(self, x: Int32) -> Int32:
 inline int32_t MyNumber::add(int32_t x) const {

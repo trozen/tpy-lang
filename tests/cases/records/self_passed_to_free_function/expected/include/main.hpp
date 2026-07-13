@@ -26,7 +26,7 @@ struct Module {
 
     // def __init__(self, name: str) -> None:
     Module() = default;
-    explicit Module(std::string_view name) : _name(name), _items(std::vector<int32_t>{}) {}
+    explicit Module(std::string_view name);
 
     // def log(self, s: str):
     void log(std::string_view s) const;
@@ -61,6 +61,9 @@ inline std::ostream& operator<<(std::ostream& os, const Module& obj) {
     return os;
 }
 
+
+// def __init__(self, name: str) -> None:
+inline Module::Module(std::string_view name) : _name(name), _items(std::vector<int32_t>{}) {}
 
 // def log(self, s: str):
 inline void Module::log(std::string_view s) const {

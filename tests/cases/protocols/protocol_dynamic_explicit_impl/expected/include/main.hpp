@@ -43,7 +43,7 @@ struct Item : Describable {
 
     // def __init__(self, name: str, id: Int32) -> None:
     Item() = default;
-    explicit Item(std::string_view name, int32_t id) : _name(name), _id(id) {}
+    explicit Item(std::string_view name, int32_t id);
 
     // def describe(self) -> str:
     std::string describe() override;
@@ -79,6 +79,9 @@ struct tpy::RefAdapter<tpyapp::main::Describable, T> : tpyapp::main::Describable
 
 namespace tpyapp::main {
 
+
+// def __init__(self, name: str, id: Int32) -> None:
+inline Item::Item(std::string_view name, int32_t id) : _name(name), _id(id) {}
 
 // def describe(self) -> str:
 inline std::string Item::describe() {

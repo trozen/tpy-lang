@@ -22,7 +22,7 @@ struct Counter {
 
     // def __init__(self, limit: Int32) -> None:
     Counter() = default;
-    explicit Counter(int32_t limit) : current(0), limit(limit) {}
+    explicit Counter(int32_t limit);
 
     auto& __iter__() { return *this; }
 
@@ -36,6 +36,9 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
     return os;
 }
 
+
+// def __init__(self, limit: Int32) -> None:
+inline Counter::Counter(int32_t limit) : current(0), limit(limit) {}
 
 // def __next__(self) -> Int32:
 inline std::expected<int32_t, ::tpy::StopIteration> Counter::__next__() {

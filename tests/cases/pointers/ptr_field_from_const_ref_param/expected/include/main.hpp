@@ -22,7 +22,7 @@ struct A {
 
     // def __init__(self, v: Int32) -> None:
     A() = default;
-    explicit A(int32_t v) : v(v) {}
+    explicit A(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.A";
 };
 
@@ -39,7 +39,7 @@ struct Mut {
     // # Param escapes via mutable Ptr[A] field -> must emit `A& a`, not `const A& a`.
     // def __init__(self, a: A) -> None:
     Mut() = default;
-    explicit Mut(A& a) : _a(&a) {}
+    explicit Mut(A& a);
 
     // # Same escape through a non-__init__ method.
     // def set_a(self, a: A) -> None:
@@ -60,7 +60,7 @@ struct Const {
     // # Ptr[readonly[A]] field is `const A*`; matching `const A& a` stays const.
     // def __init__(self, a: A) -> None:
     Const() = default;
-    explicit Const(const A& a) : _a(&a) {}
+    explicit Const(const A& a);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Const";
 };
 
@@ -70,11 +70,22 @@ inline std::ostream& operator<<(std::ostream& os, const Const& obj) {
 }
 
 
+// def __init__(self, v: Int32) -> None:
+inline A::A(int32_t v) : v(v) {}
+
+// # Param escapes via mutable Ptr[A] field -> must emit `A& a`, not `const A& a`.
+// def __init__(self, a: A) -> None:
+inline Mut::Mut(A& a) : _a(&a) {}
+
 // # Same escape through a non-__init__ method.
 // def set_a(self, a: A) -> None:
 inline void Mut::set_a(A& a) {
     // self._a = a
     this->_a = &a;
 }
+
+// # Ptr[readonly[A]] field is `const A*`; matching `const A& a` stays const.
+// def __init__(self, a: A) -> None:
+inline Const::Const(const A& a) : _a(&a) {}
 void __tpy_init();
 } // namespace tpyapp::main

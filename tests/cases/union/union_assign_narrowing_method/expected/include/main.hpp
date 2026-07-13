@@ -22,7 +22,7 @@ struct Circle {
 
     // def __init__(self, radius: float) -> None:
     Circle() = default;
-    explicit Circle(double radius) : radius(radius) {}
+    explicit Circle(double radius);
 
     // def area(self) -> float:
     double area() const;
@@ -43,7 +43,7 @@ struct Rect {
 
     // def __init__(self, width: float, height: float) -> None:
     Rect() = default;
-    explicit Rect(double width, double height) : width(width), height(height) {}
+    explicit Rect(double width, double height);
 
     // def area(self) -> float:
     double area() const;
@@ -56,11 +56,17 @@ inline std::ostream& operator<<(std::ostream& os, const Rect& obj) {
 }
 
 
+// def __init__(self, radius: float) -> None:
+inline Circle::Circle(double radius) : radius(radius) {}
+
 // def area(self) -> float:
 inline double Circle::area() const {
     // return 3.14 * self.radius * self.radius
     return ((((3.14) * (this->radius))) * (this->radius));
 }
+
+// def __init__(self, width: float, height: float) -> None:
+inline Rect::Rect(double width, double height) : width(width), height(height) {}
 
 // def area(self) -> float:
 inline double Rect::area() const {

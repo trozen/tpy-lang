@@ -45,12 +45,7 @@ inline std::ostream& operator<<(std::ostream& os, const B& obj) {
 struct Combined : A, B {
 
     // def __init__(self) -> None:
-    Combined() {
-        // A.buf = [Int32(1), Int32(2)]
-        this->A::buf = {1, 2};
-        // B.buf = ["x", "y"]
-        this->B::buf = {"x", "y"};
-    }
+    Combined();
 
     // @readonly
     // def total_int_len(self) -> Int32:
@@ -67,6 +62,14 @@ inline std::ostream& operator<<(std::ostream& os, const Combined& obj) {
     return os;
 }
 
+
+// def __init__(self) -> None:
+inline Combined::Combined() {
+    // A.buf = [Int32(1), Int32(2)]
+    this->A::buf = {1, 2};
+    // B.buf = ["x", "y"]
+    this->B::buf = {"x", "y"};
+}
 
 // @readonly
 // def total_int_len(self) -> Int32:

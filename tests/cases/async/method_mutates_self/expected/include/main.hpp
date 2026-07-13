@@ -24,7 +24,7 @@ struct Counter {
     int32_t count;
 
     // def __init__(self) -> None:
-    Counter() : count(0) {}
+    Counter();
 
     __coro_Counter_bump bump(int32_t by);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Counter";
@@ -90,5 +90,8 @@ struct __coro_main_coro {
     }
 };
 
+
+// def __init__(self) -> None:
+inline Counter::Counter() : count(0) {}
 void __tpy_init();
 } // namespace tpyapp::main

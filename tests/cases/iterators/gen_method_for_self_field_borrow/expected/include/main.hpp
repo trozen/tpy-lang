@@ -23,7 +23,7 @@ struct Node {
 
     // def __init__(self, val: Int32) -> None:
     Node() = default;
-    explicit Node(int32_t val) : val(val) {}
+    explicit Node(int32_t val);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Node";
 };
 
@@ -38,7 +38,7 @@ struct Holder {
     std::vector<Node> nodes;
 
     // def __init__(self) -> None:
-    Holder() : nodes({Node(1), Node(2)}) {}
+    Holder();
 
     __gen_Holder_bump bump();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
@@ -80,5 +80,11 @@ inline __gen_Holder_bump Holder::bump() {
     return __gen_Holder_bump(*this);
 }
 
+
+// def __init__(self, val: Int32) -> None:
+inline Node::Node(int32_t val) : val(val) {}
+
+// def __init__(self) -> None:
+inline Holder::Holder() : nodes({Node(1), Node(2)}) {}
 void __tpy_init();
 } // namespace tpyapp::main

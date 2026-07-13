@@ -17,7 +17,7 @@ struct Buffer {
     std::vector<std::string> _items;
 
     // def __init__(self) -> None:
-    Buffer() : _items(std::vector<std::string>{}) {}
+    Buffer();
 
     // def add(self, s: str) -> None:
     void add(std::string_view s);
@@ -35,6 +35,9 @@ inline std::ostream& operator<<(std::ostream& os, const Buffer& obj) {
     return os;
 }
 
+
+// def __init__(self) -> None:
+inline Buffer::Buffer() : _items(std::vector<std::string>{}) {}
 
 // def add(self, s: str) -> None:
 inline void Buffer::add(std::string_view s) {

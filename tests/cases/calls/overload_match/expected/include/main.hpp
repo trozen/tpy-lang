@@ -23,7 +23,7 @@ struct Circle {
 
     // def __init__(self, radius: float) -> None:
     Circle() = default;
-    explicit Circle(double radius) : radius(radius) {}
+    explicit Circle(double radius);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Circle";
 };
 
@@ -39,7 +39,7 @@ struct Square {
 
     // def __init__(self, side: float) -> None:
     Square() = default;
-    explicit Square(double side) : side(side) {}
+    explicit Square(double side);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Square";
 };
 
@@ -48,5 +48,11 @@ inline std::ostream& operator<<(std::ostream& os, const Square& obj) {
     return os;
 }
 
+
+// def __init__(self, radius: float) -> None:
+inline Circle::Circle(double radius) : radius(radius) {}
+
+// def __init__(self, side: float) -> None:
+inline Square::Square(double side) : side(side) {}
 void __tpy_init();
 } // namespace tpyapp::main

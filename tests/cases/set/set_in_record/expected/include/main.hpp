@@ -22,7 +22,7 @@ struct TaggedItem {
     ::tpy::ordered_set<std::string> tags;
 
     TaggedItem() = default;
-    explicit TaggedItem(std::string_view name, ::tpy::ordered_set<std::string>&& tags) : name(name), tags(std::move(tags)) {}
+    explicit TaggedItem(std::string_view name, ::tpy::ordered_set<std::string>&& tags);
 
     bool __eq__(const TaggedItem& other) const;
 
@@ -39,6 +39,8 @@ inline std::ostream& operator<<(std::ostream& os, const TaggedItem& obj) {
     return os;
 }
 
+
+inline TaggedItem::TaggedItem(std::string_view name, ::tpy::ordered_set<std::string>&& tags) : name(name), tags(std::move(tags)) {}
 
 inline bool TaggedItem::__eq__(const TaggedItem& other) const {
     return ((this->name == other.name) && (this->tags == other.tags));

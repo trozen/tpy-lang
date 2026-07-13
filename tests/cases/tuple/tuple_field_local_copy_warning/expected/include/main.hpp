@@ -23,7 +23,7 @@ struct Point {
 
     // def __init__(self, x: Int32, y: Int32) -> None:
     Point() = default;
-    explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
+    explicit Point(int32_t x, int32_t y);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
 };
 
@@ -38,16 +38,7 @@ struct Mixed {
     std::tuple<Point, Point> pp;
 
     // def __init__(self) -> None:
-    Mixed() {
-        // a = Point(Int32(1), Int32(2))
-        Point a = Point(1, 2);
-        // b = Point(Int32(3), Int32(4))
-        Point b = Point(3, 4);
-        // self.pp = (a, b)  # tpyc: warning(/copies Point into field \(tuple element 0\)/)
-        this->pp = ::tpy::tuple_to_storage<std::tuple<Point, Point>>(std::tuple<Point, Point>{a, std::move(b)});
-        // print(a.x)  # later use of `a` -- forces element 0 to copy
-        std::cout << a.x << "\n";
-    }
+    Mixed();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Mixed";
 };
 
@@ -56,5 +47,20 @@ inline std::ostream& operator<<(std::ostream& os, const Mixed& obj) {
     return os;
 }
 
+
+// def __init__(self, x: Int32, y: Int32) -> None:
+inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
+
+// def __init__(self) -> None:
+inline Mixed::Mixed() {
+    // a = Point(Int32(1), Int32(2))
+    Point a = Point(1, 2);
+    // b = Point(Int32(3), Int32(4))
+    Point b = Point(3, 4);
+    // self.pp = (a, b)  # tpyc: warning(/copies Point into field \(tuple element 0\)/)
+    this->pp = ::tpy::tuple_to_storage<std::tuple<Point, Point>>(std::tuple<Point, Point>{a, std::move(b)});
+    // print(a.x)  # later use of `a` -- forces element 0 to copy
+    std::cout << a.x << "\n";
+}
 void __tpy_init();
 } // namespace tpyapp::main

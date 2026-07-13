@@ -24,7 +24,7 @@ struct Module {
 
     // def __init__(self, name: str) -> None:
     Module() = default;
-    explicit Module(std::string_view name) : _logger(::mylog::LogHandle(name)) {}
+    explicit Module(std::string_view name);
 
     // # Auto-discover via _logger field
     // def log_auto(self, tag: str, n: Int32) -> None:
@@ -45,7 +45,7 @@ struct Service {
 
     // def __init__(self, name: str) -> None:
     Service() = default;
-    explicit Service(std::string_view name) : _handle(::mylog::LogHandle(name)) {}
+    explicit Service(std::string_view name);
 
     // def get_logger(self) -> LogHandle:
     ::mylog::LogHandle& get_logger();
@@ -62,12 +62,18 @@ inline std::ostream& operator<<(std::ostream& os, const Service& obj) {
 }
 
 
+// def __init__(self, name: str) -> None:
+inline Module::Module(std::string_view name) : _logger(::mylog::LogHandle(name)) {}
+
 // # Auto-discover via _logger field
 // def log_auto(self, tag: str, n: Int32) -> None:
 inline void Module::log_auto(std::string_view tag, int32_t n) {
     // log(f"tag={tag} n={n}")
     ::mylog::log_dispatch(this->_logger, "tag={} n={}", ::tpy::tuple_value_to_borrow<std::tuple<::mylog::DeferredStr*, int32_t>>(std::tuple<::mylog::DeferredStr, int32_t>{::mylog::defer_str(tag), n}));
 }
+
+// def __init__(self, name: str) -> None:
+inline Service::Service(std::string_view name) : _handle(::mylog::LogHandle(name)) {}
 
 // def get_logger(self) -> LogHandle:
 inline ::mylog::LogHandle& Service::get_logger() {

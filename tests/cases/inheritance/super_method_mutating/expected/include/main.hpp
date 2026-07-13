@@ -22,7 +22,7 @@ struct Base {
     int32_t x;
 
     // def __init__(self) -> None:
-    Base() : x(0) {}
+    Base();
 
     // def bump(self) -> None:
     void bump();
@@ -43,7 +43,7 @@ struct Other {
     int32_t y;
 
     // def __init__(self) -> None:
-    Other() : y(0) {}
+    Other();
 
     // def bump_other(self) -> None:
     void bump_other();
@@ -59,7 +59,7 @@ inline std::ostream& operator<<(std::ostream& os, const Other& obj) {
 struct Child : Base {
 
     // def __init__(self) -> None:
-    Child() : Base() {}
+    Child();
 
     // def call_super_bump(self) -> None:
     void call_super_bump();
@@ -78,7 +78,7 @@ inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
 struct Multi : Child, Other {
 
     // def __init__(self) -> None:
-    Multi() : Child(), Other() {}
+    Multi();
 
     // def call_super_bump_other(self) -> None:
     void call_super_bump_other();
@@ -90,6 +90,9 @@ inline std::ostream& operator<<(std::ostream& os, const Multi& obj) {
     return os;
 }
 
+
+// def __init__(self) -> None:
+inline Base::Base() : x(0) {}
 
 // def bump(self) -> None:
 inline void Base::bump() {
@@ -103,11 +106,17 @@ inline int32_t Base::get() const {
     return this->x;
 }
 
+// def __init__(self) -> None:
+inline Other::Other() : y(0) {}
+
 // def bump_other(self) -> None:
 inline void Other::bump_other() {
     // self.y = self.y + 10
     this->y = (::tpy::add_check<int32_t>(this->y, 10));
 }
+
+// def __init__(self) -> None:
+inline Child::Child() : Base() {}
 
 // def call_super_bump(self) -> None:
 inline void Child::call_super_bump() {
@@ -120,6 +129,9 @@ inline int32_t Child::call_super_get() const {
     // return super().get()
     return this->Base::get();
 }
+
+// def __init__(self) -> None:
+inline Multi::Multi() : Child(), Other() {}
 
 // def call_super_bump_other(self) -> None:
 inline void Multi::call_super_bump_other() {

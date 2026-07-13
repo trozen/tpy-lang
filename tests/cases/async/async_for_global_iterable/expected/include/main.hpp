@@ -30,7 +30,7 @@ struct AIter {
 
     // def __init__(self, limit: Int32) -> None:
     AIter() = default;
-    explicit AIter(int32_t limit) : n(0), limit(limit) {}
+    explicit AIter(int32_t limit);
 
     __coro_AIter___anext__ __anext__();
     static constexpr std::string_view __tpy_class_name__ = "__main__.AIter";
@@ -48,7 +48,7 @@ struct Source {
 
     // def __init__(self, limit: Int32) -> None:
     Source() = default;
-    explicit Source(int32_t limit) : limit(limit) {}
+    explicit Source(int32_t limit);
 
     // def __aiter__(self) -> Own[AIter]:
     AIter __aiter__() const;
@@ -115,6 +115,12 @@ struct __coro_main_coro {
     }
 };
 
+
+// def __init__(self, limit: Int32) -> None:
+inline AIter::AIter(int32_t limit) : n(0), limit(limit) {}
+
+// def __init__(self, limit: Int32) -> None:
+inline Source::Source(int32_t limit) : limit(limit) {}
 
 // def __aiter__(self) -> Own[AIter]:
 inline AIter Source::__aiter__() const {

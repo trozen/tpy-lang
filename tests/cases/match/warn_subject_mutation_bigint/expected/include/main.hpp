@@ -23,7 +23,7 @@ struct Big {
 
     // def __init__(self, n: int) -> None:
     Big() = default;
-    explicit Big(const ::tpy::BigInt& n) : n(n) {}
+    explicit Big(const ::tpy::BigInt& n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Big";
 };
 
@@ -39,7 +39,7 @@ struct Small {
 
     // def __init__(self, v: Int32) -> None:
     Small() = default;
-    explicit Small(int32_t v) : v(v) {}
+    explicit Small(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Small";
 };
 
@@ -54,7 +54,7 @@ struct Holder {
     std::variant<Big, Small> item;
 
     // def __init__(self) -> None:
-    Holder() : item(Small(3)) {}
+    Holder();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
@@ -63,5 +63,14 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     return os;
 }
 
+
+// def __init__(self, n: int) -> None:
+inline Big::Big(const ::tpy::BigInt& n) : n(n) {}
+
+// def __init__(self, v: Int32) -> None:
+inline Small::Small(int32_t v) : v(v) {}
+
+// def __init__(self) -> None:
+inline Holder::Holder() : item(Small(3)) {}
 void __tpy_init();
 } // namespace tpyapp::main

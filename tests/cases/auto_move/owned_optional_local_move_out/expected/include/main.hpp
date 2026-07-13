@@ -28,7 +28,7 @@ struct Box {
 
     // def __init__(self, v: int) -> None:
     Box() = default;
-    explicit Box(const ::tpy::BigInt& v) : v(v) {}
+    explicit Box(const ::tpy::BigInt& v);
     // non-copyable (@nocopy)
     Box(const Box&) = delete;
     Box& operator=(const Box&) = delete;
@@ -48,7 +48,7 @@ struct Holder {
     std::optional<Box> slot;
 
     // def __init__(self) -> None:
-    Holder() : slot(std::nullopt) {}
+    Holder();
     // non-copyable (field 'slot')
     Holder(const Holder&) = delete;
     Holder& operator=(const Holder&) = delete;
@@ -69,7 +69,7 @@ struct Boxed {
 
     // def __init__(self, b: Own[Box] | None) -> None:
     Boxed() = default;
-    explicit Boxed(std::optional<Box> b) : slot(std::move(b)) {}
+    explicit Boxed(std::optional<Box> b);
     // non-copyable (field 'slot')
     Boxed(const Boxed&) = delete;
     Boxed& operator=(const Boxed&) = delete;
@@ -90,7 +90,7 @@ struct Pt {
 
     // def __init__(self, v: int) -> None:
     Pt() = default;
-    explicit Pt(const ::tpy::BigInt& v) : v(v) {}
+    explicit Pt(const ::tpy::BigInt& v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Pt";
 };
 
@@ -99,5 +99,17 @@ inline std::ostream& operator<<(std::ostream& os, const Pt& obj) {
     return os;
 }
 
+
+// def __init__(self, v: int) -> None:
+inline Box::Box(const ::tpy::BigInt& v) : v(v) {}
+
+// def __init__(self) -> None:
+inline Holder::Holder() : slot(std::nullopt) {}
+
+// def __init__(self, b: Own[Box] | None) -> None:
+inline Boxed::Boxed(std::optional<Box> b) : slot(std::move(b)) {}
+
+// def __init__(self, v: int) -> None:
+inline Pt::Pt(const ::tpy::BigInt& v) : v(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

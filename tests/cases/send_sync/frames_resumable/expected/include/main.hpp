@@ -40,7 +40,7 @@ struct Counter {
 
     // def __init__(self, n: Int32) -> None:
     Counter() = default;
-    explicit Counter(int32_t n) : n(n) {}
+    explicit Counter(int32_t n);
 
     __coro_Counter_bump bump() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Counter";
@@ -260,6 +260,9 @@ struct __gen_gen_own : public ::tpy::next_iter_mixin<__gen_gen_own, int32_t> {
     }
 };
 
+
+// def __init__(self, n: Int32) -> None:
+inline Counter::Counter(int32_t n) : n(n) {}
 inline auto gen_while(int32_t n) {
     // i = 0
     int32_t i = 0;

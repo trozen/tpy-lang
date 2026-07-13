@@ -6,6 +6,9 @@ namespace tpyapp::a {
 
 
 
+// def __init__(self, v: Int32) -> None:
+A::A(int32_t v) : val(v) {}
+
 // def go(self) -> Int32:
 int32_t A::go() const {
     // return self.val

@@ -18,7 +18,7 @@ struct Tag {
 
     // def __init__(self, n: int):
     Tag() = default;
-    explicit Tag(const ::tpy::BigInt& n) : n(n) {}
+    explicit Tag(const ::tpy::BigInt& n);
     static constexpr std::string_view __tpy_class_name__ = "blue.Tag";
 };
 
@@ -27,5 +27,8 @@ inline std::ostream& operator<<(std::ostream& os, const Tag& obj) {
     return os;
 }
 
+
+// def __init__(self, n: int):
+inline Tag::Tag(const ::tpy::BigInt& n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::blue

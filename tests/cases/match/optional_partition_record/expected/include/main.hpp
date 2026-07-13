@@ -26,7 +26,7 @@ struct Leaf {
 
     // def __init__(self, n: Int32):
     Leaf() = default;
-    explicit Leaf(int32_t n) : n(n) {}
+    explicit Leaf(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Leaf";
 };
 
@@ -41,7 +41,7 @@ struct Holder {
     std::optional<Leaf> opt;
 
     // def __init__(self):
-    Holder() : opt(std::nullopt) {}
+    Holder();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
@@ -50,5 +50,11 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     return os;
 }
 
+
+// def __init__(self, n: Int32):
+inline Leaf::Leaf(int32_t n) : n(n) {}
+
+// def __init__(self):
+inline Holder::Holder() : opt(std::nullopt) {}
 void __tpy_init();
 } // namespace tpyapp::main

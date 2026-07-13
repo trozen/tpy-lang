@@ -21,7 +21,7 @@ struct Node {
 
     // def __init__(self, v: Int32) -> None:
     Node() = default;
-    explicit Node(int32_t v) : val(v) {}
+    explicit Node(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Node";
 };
 
@@ -36,7 +36,7 @@ struct Wrapper {
     std::optional<Node> _node;
 
     // def __init__(self) -> None:
-    Wrapper() : _node(std::nullopt) {}
+    Wrapper();
 
     // @property
     // def node(self) -> Optional[Node]:
@@ -57,6 +57,12 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {
     return os;
 }
 
+
+// def __init__(self, v: Int32) -> None:
+inline Node::Node(int32_t v) : val(v) {}
+
+// def __init__(self) -> None:
+inline Wrapper::Wrapper() : _node(std::nullopt) {}
 
 // @property
 // def node(self) -> Optional[Node]:

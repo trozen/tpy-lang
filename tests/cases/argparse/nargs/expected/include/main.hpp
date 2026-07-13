@@ -31,7 +31,7 @@ struct __tpy_builder_argparse_args_1 {
 
     // a1 = p1.parse_args(["a.txt", "b.txt"])
     __tpy_builder_argparse_args_1() = default;
-    explicit __tpy_builder_argparse_args_1(std::vector<std::string>&& files) : files(std::move(files)) {}
+    explicit __tpy_builder_argparse_args_1(std::vector<std::string>&& files);
     static constexpr std::string_view __tpy_class_name__ = "__main__.__tpy_builder_argparse_args_1";
 };
 
@@ -47,7 +47,7 @@ struct __tpy_builder_argparse_args_2 {
 
     // a2 = p2.parse_args(["--coord", "10", "20", "--tag", "x", "y", "--tag", "z"])
     __tpy_builder_argparse_args_2() = default;
-    explicit __tpy_builder_argparse_args_2(std::optional<std::vector<::tpy::BigInt>>&& coord, std::optional<std::vector<std::string>>&& tag) : coord(std::move(coord)), tag(std::move(tag)) {}
+    explicit __tpy_builder_argparse_args_2(std::optional<std::vector<::tpy::BigInt>>&& coord, std::optional<std::vector<std::string>>&& tag);
     static constexpr std::string_view __tpy_class_name__ = "__main__.__tpy_builder_argparse_args_2";
 };
 
@@ -62,7 +62,7 @@ struct __tpy_builder_argparse_args_3 {
 
     // a3 = p3.parse_args(["--mode"])
     __tpy_builder_argparse_args_3() = default;
-    explicit __tpy_builder_argparse_args_3(std::string_view mode) : mode(mode) {}
+    explicit __tpy_builder_argparse_args_3(std::string_view mode);
     static constexpr std::string_view __tpy_class_name__ = "__main__.__tpy_builder_argparse_args_3";
 };
 
@@ -77,7 +77,7 @@ struct __tpy_builder_argparse_args_4 {
 
     // a4 = p4.parse_args([])
     __tpy_builder_argparse_args_4() = default;
-    explicit __tpy_builder_argparse_args_4(std::optional<::tpy::BigInt> limit) : limit(limit) {}
+    explicit __tpy_builder_argparse_args_4(std::optional<::tpy::BigInt> limit);
     static constexpr std::string_view __tpy_class_name__ = "__main__.__tpy_builder_argparse_args_4";
 };
 
@@ -86,5 +86,17 @@ inline std::ostream& operator<<(std::ostream& os, const __tpy_builder_argparse_a
     return os;
 }
 
+
+// a1 = p1.parse_args(["a.txt", "b.txt"])
+inline __tpy_builder_argparse_args_1::__tpy_builder_argparse_args_1(std::vector<std::string>&& files) : files(std::move(files)) {}
+
+// a2 = p2.parse_args(["--coord", "10", "20", "--tag", "x", "y", "--tag", "z"])
+inline __tpy_builder_argparse_args_2::__tpy_builder_argparse_args_2(std::optional<std::vector<::tpy::BigInt>>&& coord, std::optional<std::vector<std::string>>&& tag) : coord(std::move(coord)), tag(std::move(tag)) {}
+
+// a3 = p3.parse_args(["--mode"])
+inline __tpy_builder_argparse_args_3::__tpy_builder_argparse_args_3(std::string_view mode) : mode(mode) {}
+
+// a4 = p4.parse_args([])
+inline __tpy_builder_argparse_args_4::__tpy_builder_argparse_args_4(std::optional<::tpy::BigInt> limit) : limit(limit) {}
 void __tpy_init();
 } // namespace tpyapp::main

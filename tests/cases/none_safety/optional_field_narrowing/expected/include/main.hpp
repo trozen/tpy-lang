@@ -24,7 +24,7 @@ struct Node {
 
     // def __init__(self, v: Int32) -> None:
     Node() = default;
-    explicit Node(int32_t v) : val(v) {}
+    explicit Node(int32_t v);
 
     // def doubled(self) -> Int32:
     int32_t doubled() const;
@@ -42,7 +42,7 @@ struct Wrapper {
     std::optional<Node> _node;
 
     // def __init__(self) -> None:
-    Wrapper() : _node(std::nullopt) {}
+    Wrapper();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Wrapper";
 };
 
@@ -52,10 +52,16 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {
 }
 
 
+// def __init__(self, v: Int32) -> None:
+inline Node::Node(int32_t v) : val(v) {}
+
 // def doubled(self) -> Int32:
 inline int32_t Node::doubled() const {
     // return self.val * 2
     return (::tpy::mul_check<int32_t>(this->val, 2));
 }
+
+// def __init__(self) -> None:
+inline Wrapper::Wrapper() : _node(std::nullopt) {}
 void __tpy_init();
 } // namespace tpyapp::main

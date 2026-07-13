@@ -25,7 +25,7 @@ struct Adder {
 
     // def __init__(self, b: Int32) -> None:
     Adder() = default;
-    explicit Adder(int32_t b) : base(b) {}
+    explicit Adder(int32_t b);
 
     __coro_Adder_add add(int32_t x) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Adder";
@@ -88,5 +88,8 @@ struct __coro_main_coro {
     }
 };
 
+
+// def __init__(self, b: Int32) -> None:
+inline Adder::Adder(int32_t b) : base(b) {}
 void __tpy_init();
 } // namespace tpyapp::main

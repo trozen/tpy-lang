@@ -24,7 +24,7 @@ struct A {
 
     // def __init__(self, x: int) -> None:
     A() = default;
-    explicit A(const ::tpy::BigInt& x) : x(x) {}
+    explicit A(const ::tpy::BigInt& x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.A";
 };
 
@@ -40,7 +40,7 @@ struct B {
 
     // def __init__(self, y: int) -> None:
     B() = default;
-    explicit B(const ::tpy::BigInt& y) : y(y) {}
+    explicit B(const ::tpy::BigInt& y);
     static constexpr std::string_view __tpy_class_name__ = "__main__.B";
 };
 
@@ -55,7 +55,7 @@ struct UErr : ::tpy::Exception {
     std::variant<A, B> payload;
 
     // def __init__(self, p: A | B) -> None:
-    explicit UErr(const std::variant<A*, B*> p) : ::tpy::Exception("u"), payload(::tpy::to_value_variant<std::variant<A, B>>(p)) {}
+    explicit UErr(const std::variant<A*, B*> p);
 
     [[nodiscard]] std::unique_ptr<::tpy::Throwable> clone() const override { return std::make_unique<UErr>(*this); }
     [[noreturn]] void __raise__() const override { throw *this; }
@@ -68,5 +68,14 @@ inline std::ostream& operator<<(std::ostream& os, const UErr& obj) {
     return os;
 }
 
+
+// def __init__(self, x: int) -> None:
+inline A::A(const ::tpy::BigInt& x) : x(x) {}
+
+// def __init__(self, y: int) -> None:
+inline B::B(const ::tpy::BigInt& y) : y(y) {}
+
+// def __init__(self, p: A | B) -> None:
+inline UErr::UErr(const std::variant<A*, B*> p) : ::tpy::Exception("u"), payload(::tpy::to_value_variant<std::variant<A, B>>(p)) {}
 void __tpy_init();
 } // namespace tpyapp::main

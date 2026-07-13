@@ -22,7 +22,7 @@ struct Counter {
     ::tpy::BigInt n;
 
     // def __init__(self) -> None:
-    Counter() : n(::tpy::BigInt(0)) {}
+    Counter();
 
     // def __enter__(self) -> None:
     void __enter__();
@@ -37,6 +37,9 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
     return os;
 }
 
+
+// def __init__(self) -> None:
+inline Counter::Counter() : n(::tpy::BigInt(0)) {}
 
 // def __enter__(self) -> None:
 inline void Counter::__enter__() {

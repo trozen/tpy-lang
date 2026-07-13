@@ -24,7 +24,7 @@ struct Inner {
 
     // def __init__(self, x: int) -> None:
     Inner() = default;
-    explicit Inner(const ::tpy::BigInt& x) : x(x) {}
+    explicit Inner(const ::tpy::BigInt& x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Inner";
 };
 
@@ -42,7 +42,7 @@ struct Outer {
 
     // def __init__(self, x: int) -> None:
     Outer() = default;
-    explicit Outer(const ::tpy::BigInt& x) : inner(Inner(x)), tags(std::vector<::tpy::BigInt>{}) {}
+    explicit Outer(const ::tpy::BigInt& x);
 
     // def peek_x(self) -> int:      # inferred const receiver; plain field borrow-local
     ::tpy::BigInt peek_x() const;
@@ -60,6 +60,12 @@ inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
     return os;
 }
 
+
+// def __init__(self, x: int) -> None:
+inline Inner::Inner(const ::tpy::BigInt& x) : x(x) {}
+
+// def __init__(self, x: int) -> None:
+inline Outer::Outer(const ::tpy::BigInt& x) : inner(Inner(x)), tags(std::vector<::tpy::BigInt>{}) {}
 
 // def peek_x(self) -> int:      # inferred const receiver; plain field borrow-local
 inline ::tpy::BigInt Outer::peek_x() const {

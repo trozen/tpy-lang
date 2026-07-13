@@ -21,7 +21,7 @@ struct Base {
 
     // def __init__(self, x: Int32) -> None:
     Base() = default;
-    explicit Base(int32_t x) : x(x) {}
+    explicit Base(int32_t x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Base";
 };
 
@@ -57,6 +57,9 @@ template<> struct tpy::is_value_type<::tpyapp::main::Derived> : std::true_type {
 namespace tpyapp::main {
 
 
+
+// def __init__(self, x: Int32) -> None:
+inline Base::Base(int32_t x) : x(x) {}
 
 // def double(self) -> Int32:
 inline int32_t Derived::double_() const {

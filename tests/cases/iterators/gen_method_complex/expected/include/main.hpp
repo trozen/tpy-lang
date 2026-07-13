@@ -25,7 +25,7 @@ struct Range {
 
     // def __init__(self, start: Int32, stop: Int32) -> None:
     Range() = default;
-    explicit Range(int32_t start, int32_t stop) : start(start), stop(stop) {}
+    explicit Range(int32_t start, int32_t stop);
 
     // def total(self) -> Int32:
     int32_t total() const;
@@ -99,6 +99,9 @@ inline __gen_Range_pairs Range::pairs() const {
     return __gen_Range_pairs(*this);
 }
 
+
+// def __init__(self, start: Int32, stop: Int32) -> None:
+inline Range::Range(int32_t start, int32_t stop) : start(start), stop(stop) {}
 
 // def total(self) -> Int32:
 inline int32_t Range::total() const {

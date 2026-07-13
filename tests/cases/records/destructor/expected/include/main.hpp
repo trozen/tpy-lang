@@ -23,26 +23,14 @@ struct Resource {
     bool __tpy_owned_ = true;
 
     // def __init__(self, name: str):
-    explicit Resource(std::string_view name) : name(name) {}
+    explicit Resource(std::string_view name);
     Resource(const Resource&) = delete;
     Resource& operator=(const Resource&) = delete;
-    Resource(Resource&& other) noexcept : name(std::move(other.name)) {
-        other.__tpy_owned_ = false;
-    }
-    Resource& operator=(Resource&& other) noexcept {
-        if (this != &other) {
-            this->~Resource();
-            new (this) Resource(std::move(other));
-        }
-        return *this;
-    }
-    // def __del__(self):
+    Resource(Resource&& other) noexcept;
+    Resource& operator=(Resource&& other) noexcept;
 
-    ~Resource() {
-        if (!this->__tpy_owned_) return;
-        // print("destroying", self.name)
-        std::cout << "destroying" << " " << this->name << "\n";
-    }
+    // def __del__(self):
+    ~Resource();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Resource";
 };
 
@@ -51,5 +39,26 @@ inline std::ostream& operator<<(std::ostream& os, const Resource& obj) {
     return os;
 }
 
+
+// def __init__(self, name: str):
+inline Resource::Resource(std::string_view name) : name(name) {}
+
+inline Resource::Resource(Resource&& other) noexcept : name(std::move(other.name)) {
+    other.__tpy_owned_ = false;
+}
+inline Resource& Resource::operator=(Resource&& other) noexcept {
+    if (this != &other) {
+        this->~Resource();
+        new (this) Resource(std::move(other));
+    }
+    return *this;
+}
+
+// def __del__(self):
+inline Resource::~Resource() {
+    if (!this->__tpy_owned_) return;
+    // print("destroying", self.name)
+    std::cout << "destroying" << " " << this->name << "\n";
+}
 void __tpy_init();
 } // namespace tpyapp::main

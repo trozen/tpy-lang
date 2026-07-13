@@ -24,7 +24,7 @@ struct Resource {
 
     // def __init__(self, id: Int32):
     Resource() = default;
-    explicit Resource(int32_t id) : id(id) {}
+    explicit Resource(int32_t id);
     // non-copyable (@nocopy)
     Resource(const Resource&) = delete;
     Resource& operator=(const Resource&) = delete;
@@ -45,7 +45,7 @@ struct Wrapper {
 
     // def __init__(self, res: Own[Resource]):
     Wrapper() = default;
-    explicit Wrapper(Resource&& res) : res(std::move(res)) {}
+    explicit Wrapper(Resource&& res);
     // non-copyable (field 'res')
     Wrapper(const Wrapper&) = delete;
     Wrapper& operator=(const Wrapper&) = delete;
@@ -66,7 +66,7 @@ struct Outer {
 
     // def __init__(self, w: Own[Wrapper]):
     Outer() = default;
-    explicit Outer(Wrapper&& w) : w(std::move(w)) {}
+    explicit Outer(Wrapper&& w);
     // non-copyable (field 'w')
     Outer(const Outer&) = delete;
     Outer& operator=(const Outer&) = delete;
@@ -80,5 +80,14 @@ inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
     return os;
 }
 
+
+// def __init__(self, id: Int32):
+inline Resource::Resource(int32_t id) : id(id) {}
+
+// def __init__(self, res: Own[Resource]):
+inline Wrapper::Wrapper(Resource&& res) : res(std::move(res)) {}
+
+// def __init__(self, w: Own[Wrapper]):
+inline Outer::Outer(Wrapper&& w) : w(std::move(w)) {}
 void __tpy_init();
 } // namespace tpyapp::main

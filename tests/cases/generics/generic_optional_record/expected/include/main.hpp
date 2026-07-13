@@ -24,7 +24,7 @@ struct Point {
 
     // def __init__(self, x: int, y: int) -> None:
     Point() = default;
-    explicit Point(const ::tpy::BigInt& x, const ::tpy::BigInt& y) : x(x), y(y) {}
+    explicit Point(const ::tpy::BigInt& x, const ::tpy::BigInt& y);
 
     // def sum(self) -> int:
     ::tpy::BigInt sum() const;
@@ -67,6 +67,9 @@ inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
     return os;
 }
 
+
+// def __init__(self, x: int, y: int) -> None:
+inline Point::Point(const ::tpy::BigInt& x, const ::tpy::BigInt& y) : x(x), y(y) {}
 
 // def sum(self) -> int:
 inline ::tpy::BigInt Point::sum() const {

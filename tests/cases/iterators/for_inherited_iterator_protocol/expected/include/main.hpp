@@ -26,7 +26,7 @@ struct Counter {
 
     // def __init__(self, limit: Int32) -> None:
     Counter() = default;
-    explicit Counter(int32_t limit) : current(0), limit(limit) {}
+    explicit Counter(int32_t limit);
 
     // def __iter__(self) -> Counter:
     Counter& __iter__();
@@ -46,7 +46,7 @@ struct DoubleCounter : Counter {
 
     // def __init__(self, limit: Int32) -> None:
     DoubleCounter() = default;
-    explicit DoubleCounter(int32_t limit) : Counter((::tpy::mul_check<int32_t>(limit, 2))) {}
+    explicit DoubleCounter(int32_t limit);
     static constexpr std::string_view __tpy_class_name__ = "__main__.DoubleCounter";
 };
 
@@ -60,7 +60,7 @@ struct GrandChild : DoubleCounter {
 
     // def __init__(self, limit: Int32) -> None:
     GrandChild() = default;
-    explicit GrandChild(int32_t limit) : DoubleCounter(limit) {}
+    explicit GrandChild(int32_t limit);
     static constexpr std::string_view __tpy_class_name__ = "__main__.GrandChild";
 };
 
@@ -69,6 +69,9 @@ inline std::ostream& operator<<(std::ostream& os, const GrandChild& obj) {
     return os;
 }
 
+
+// def __init__(self, limit: Int32) -> None:
+inline Counter::Counter(int32_t limit) : current(0), limit(limit) {}
 
 // def __iter__(self) -> Counter:
 inline Counter& Counter::__iter__() {
@@ -90,6 +93,12 @@ inline std::expected<int32_t, ::tpy::StopIteration> Counter::__next__() {
     // raise StopIteration
     return ::tpy::make_unexpected(::tpy::StopIteration{});
 }
+
+// def __init__(self, limit: Int32) -> None:
+inline DoubleCounter::DoubleCounter(int32_t limit) : Counter((::tpy::mul_check<int32_t>(limit, 2))) {}
+
+// def __init__(self, limit: Int32) -> None:
+inline GrandChild::GrandChild(int32_t limit) : DoubleCounter(limit) {}
 // def consume(it: Iterator[Int32]) -> Int32:
 template<::tpystd::typing::Iterator<int32_t> T_it>
 int32_t consume(T_it& it) {

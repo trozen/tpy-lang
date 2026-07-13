@@ -41,7 +41,7 @@ struct Box {
 
     // def __init__(self, width: Int32, height: Int32) -> None:
     Box() = default;
-    explicit Box(int32_t width, int32_t height) : width(width), height(height) {}
+    explicit Box(int32_t width, int32_t height);
 
     // def __str__(self) -> str:
     std::string __str__() const;
@@ -59,6 +59,9 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
     return os;
 }
 
+
+// def __init__(self, width: Int32, height: Int32) -> None:
+inline Box::Box(int32_t width, int32_t height) : width(width), height(height) {}
 
 // def __str__(self) -> str:
 inline std::string Box::__str__() const {

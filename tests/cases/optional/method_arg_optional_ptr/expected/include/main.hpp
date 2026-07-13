@@ -23,7 +23,7 @@ struct Node {
 
     // def __init__(self, v: Int32) -> None:
     Node() = default;
-    explicit Node(int32_t v) : v(v) {}
+    explicit Node(int32_t v);
     // non-copyable (@nocopy)
     Node(const Node&) = delete;
     Node& operator=(const Node&) = delete;
@@ -45,7 +45,7 @@ struct Graph {
     std::optional<Node> slot;
 
     // def __init__(self) -> None:
-    Graph() : total(0), slot(std::nullopt) {}
+    Graph();
     // non-copyable (field 'slot')
     Graph(const Graph&) = delete;
     Graph& operator=(const Graph&) = delete;
@@ -65,6 +65,12 @@ inline std::ostream& operator<<(std::ostream& os, const Graph& obj) {
     return os;
 }
 
+
+// def __init__(self, v: Int32) -> None:
+inline Node::Node(int32_t v) : v(v) {}
+
+// def __init__(self) -> None:
+inline Graph::Graph() : total(0), slot(std::nullopt) {}
 
 // def link(self, n: Node | None) -> None:
 inline void Graph::link(const Node* n) {

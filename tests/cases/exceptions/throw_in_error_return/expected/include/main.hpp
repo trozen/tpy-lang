@@ -38,7 +38,7 @@ struct BadKey : ::tpy::Exception {
 
     // def __init__(self, key: str) -> None:
     BadKey() = default;
-    explicit BadKey(std::string_view key) : key(key) {}
+    explicit BadKey(std::string_view key);
 
     [[nodiscard]] std::unique_ptr<::tpy::Throwable> clone() const override { return std::make_unique<BadKey>(*this); }
     [[noreturn]] void __raise__() const override { throw *this; }
@@ -51,5 +51,8 @@ inline std::ostream& operator<<(std::ostream& os, const BadKey& obj) {
     return os;
 }
 
+
+// def __init__(self, key: str) -> None:
+inline BadKey::BadKey(std::string_view key) : key(key) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -21,7 +21,7 @@ struct Wrapper {
 
     // def __init__(self, s: str) -> None:
     Wrapper() = default;
-    explicit Wrapper(std::string_view s) : s(s) {}
+    explicit Wrapper(std::string_view s);
 
     // def get_view(self) -> StrView:
     std::string_view get_view() const;
@@ -33,6 +33,9 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {
     return os;
 }
 
+
+// def __init__(self, s: str) -> None:
+inline Wrapper::Wrapper(std::string_view s) : s(s) {}
 
 // def get_view(self) -> StrView:
 inline std::string_view Wrapper::get_view() const {

@@ -22,27 +22,15 @@ struct Handle {
     bool __tpy_owned_ = true;
 
     // def __init__(self, id: Int32):
-    explicit Handle(int32_t id) : id(id) {}
+    explicit Handle(int32_t id);
     // non-copyable (@nocopy)
     Handle(const Handle&) = delete;
     Handle& operator=(const Handle&) = delete;
-    Handle(Handle&& other) noexcept : id(std::move(other.id)) {
-        other.__tpy_owned_ = false;
-    }
-    Handle& operator=(Handle&& other) noexcept {
-        if (this != &other) {
-            this->~Handle();
-            new (this) Handle(std::move(other));
-        }
-        return *this;
-    }
-    // def __del__(self):
+    Handle(Handle&& other) noexcept;
+    Handle& operator=(Handle&& other) noexcept;
 
-    ~Handle() {
-        if (!this->__tpy_owned_) return;
-        // print("close", self.id)
-        std::cout << "close" << " " << this->id << "\n";
-    }
+    // def __del__(self):
+    ~Handle();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Handle";
 };
 
@@ -51,5 +39,26 @@ inline std::ostream& operator<<(std::ostream& os, const Handle& obj) {
     return os;
 }
 
+
+// def __init__(self, id: Int32):
+inline Handle::Handle(int32_t id) : id(id) {}
+
+inline Handle::Handle(Handle&& other) noexcept : id(std::move(other.id)) {
+    other.__tpy_owned_ = false;
+}
+inline Handle& Handle::operator=(Handle&& other) noexcept {
+    if (this != &other) {
+        this->~Handle();
+        new (this) Handle(std::move(other));
+    }
+    return *this;
+}
+
+// def __del__(self):
+inline Handle::~Handle() {
+    if (!this->__tpy_owned_) return;
+    // print("close", self.id)
+    std::cout << "close" << " " << this->id << "\n";
+}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -23,7 +23,7 @@ struct CounterIter {
 
     // def __init__(self, limit: Int32) -> None:
     CounterIter() = default;
-    explicit CounterIter(int32_t limit) : current(0), limit(limit) {}
+    explicit CounterIter(int32_t limit);
 
     auto& __iter__() { return *this; }
 
@@ -44,7 +44,7 @@ struct Counter {
 
     // def __init__(self, limit: Int32) -> None:
     Counter() = default;
-    explicit Counter(int32_t limit) : limit(limit) {}
+    explicit Counter(int32_t limit);
 
     // def __iter__(self) -> Own[CounterIter]:
     CounterIter __iter__() const;
@@ -56,6 +56,9 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
     return os;
 }
 
+
+// def __init__(self, limit: Int32) -> None:
+inline CounterIter::CounterIter(int32_t limit) : current(0), limit(limit) {}
 
 // def __next__(self) -> Int32:
 inline std::expected<int32_t, ::tpy::StopIteration> CounterIter::__next__() {
@@ -71,6 +74,9 @@ inline std::expected<int32_t, ::tpy::StopIteration> CounterIter::__next__() {
     // raise StopIteration
     return ::tpy::make_unexpected(::tpy::StopIteration{});
 }
+
+// def __init__(self, limit: Int32) -> None:
+inline Counter::Counter(int32_t limit) : limit(limit) {}
 
 // def __iter__(self) -> Own[CounterIter]:
 inline CounterIter Counter::__iter__() const {

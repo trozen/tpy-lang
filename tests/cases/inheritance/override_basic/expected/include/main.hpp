@@ -38,7 +38,7 @@ struct Square : Shape {
 
     // def __init__(self, side: Int32) -> None:
     Square() = default;
-    explicit Square(int32_t side) : side(side) {}
+    explicit Square(int32_t side);
 
     // @override
     // def area(self) -> Int32:  # tpyc: warning(/non-polymorphic/)
@@ -67,6 +67,9 @@ inline std::string Shape::describe() const {
     // return "shape"
     return "shape";
 }
+
+// def __init__(self, side: Int32) -> None:
+inline Square::Square(int32_t side) : side(side) {}
 
 // @override
 // def area(self) -> Int32:  # tpyc: warning(/non-polymorphic/)

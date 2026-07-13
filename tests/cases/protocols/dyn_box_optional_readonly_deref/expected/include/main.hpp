@@ -74,7 +74,7 @@ struct Holder {
     std::optional<::tpystd::tplib::box::Box<Speakable>> val;
 
     // def __init__(self) -> None:
-    Holder() : val(std::nullopt) {}
+    Holder();
     // non-copyable (field 'val')
     Holder(const Holder&) = delete;
     Holder& operator=(const Holder&) = delete;
@@ -124,6 +124,9 @@ inline std::string Cat::speak() const {
     // return "meow"
     return "meow";
 }
+
+// def __init__(self) -> None:
+inline Holder::Holder() : val(std::nullopt) {}
 
 // def emit(self) -> None:
 inline void Holder::emit() const {

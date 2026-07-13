@@ -22,7 +22,7 @@ struct Point {
 
     // def __init__(self, x: Int32, y: Int32):
     Point() = default;
-    explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
+    explicit Point(int32_t x, int32_t y);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
 };
 
@@ -37,7 +37,7 @@ struct Finder {
     Point result;
 
     // def __init__(self) -> None:
-    Finder() : result(Point(0, 0)) {}
+    Finder();
 
     // def find_last(self, n: Int32) -> None:
     void find_last(int32_t n);
@@ -49,6 +49,12 @@ inline std::ostream& operator<<(std::ostream& os, const Finder& obj) {
     return os;
 }
 
+
+// def __init__(self, x: Int32, y: Int32):
+inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
+
+// def __init__(self) -> None:
+inline Finder::Finder() : result(Point(0, 0)) {}
 
 // def find_last(self, n: Int32) -> None:
 inline void Finder::find_last(int32_t n) {

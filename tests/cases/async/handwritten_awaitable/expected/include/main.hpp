@@ -24,7 +24,7 @@ struct ReadyAwaitable {
 
     // def __init__(self, value: Int32) -> None:
     ReadyAwaitable() = default;
-    explicit ReadyAwaitable(int32_t value) : value(value) {}
+    explicit ReadyAwaitable(int32_t value);
 
     // def __poll__(self, waker: Waker) -> Own[Poll[Int32]]:
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker) const;
@@ -36,6 +36,9 @@ inline std::ostream& operator<<(std::ostream& os, const ReadyAwaitable& obj) {
     return os;
 }
 
+
+// def __init__(self, value: Int32) -> None:
+inline ReadyAwaitable::ReadyAwaitable(int32_t value) : value(value) {}
 
 // def __poll__(self, waker: Waker) -> Own[Poll[Int32]]:
 inline ::tpystd::tpy::Poll<int32_t> ReadyAwaitable::__poll__(::tpystd::coro::Waker waker) const {

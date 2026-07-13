@@ -32,7 +32,7 @@ struct Vec {
 
     // def __init__(self, x: float, y: float) -> None:
     Vec() = default;
-    explicit Vec(double x, double y) : x(x), y(y) {}
+    explicit Vec(double x, double y);
 
     // def __add__(self, other: Vec) -> Own[Vec]:
     Vec __add__(const Vec& other) const;
@@ -88,7 +88,7 @@ struct Segment {
 
     // def __init__(self, start: Vec, end: Vec) -> None:
     Segment() = default;
-    explicit Segment(const Vec& start, const Vec& end) : start(start), end(end) {}
+    explicit Segment(const Vec& start, const Vec& end);
 
     // def diff(self) -> Own[Vec]:
     Vec diff() const;
@@ -103,6 +103,9 @@ inline std::ostream& operator<<(std::ostream& os, const Segment& obj) {
     return os;
 }
 
+
+// def __init__(self, x: float, y: float) -> None:
+inline Vec::Vec(double x, double y) : x(x), y(y) {}
 
 // def __add__(self, other: Vec) -> Own[Vec]:
 inline Vec Vec::__add__(const Vec& other) const {
@@ -143,6 +146,9 @@ inline Vec& Vec::__iadd__(const Vec& other) {
     // return self
     return (*this);
 }
+
+// def __init__(self, start: Vec, end: Vec) -> None:
+inline Segment::Segment(const Vec& start, const Vec& end) : start(start), end(end) {}
 
 // def diff(self) -> Own[Vec]:
 inline Vec Segment::diff() const {

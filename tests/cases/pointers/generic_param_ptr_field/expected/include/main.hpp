@@ -28,7 +28,7 @@ struct Sink {
     int32_t total;
 
     // def __init__(self) -> None:
-    Sink() : total(0) {}
+    Sink();
 
     // def add(self, n: Int32) -> None:
     void add(int32_t n);
@@ -64,6 +64,9 @@ inline std::ostream& operator<<(std::ostream& os, const Adder<W>& obj) {
     return os;
 }
 
+
+// def __init__(self) -> None:
+inline Sink::Sink() : total(0) {}
 
 // def add(self, n: Int32) -> None:
 inline void Sink::add(int32_t n) {

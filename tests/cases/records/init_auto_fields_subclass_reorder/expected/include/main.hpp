@@ -34,7 +34,7 @@ struct Sub : Base {
 
     // def __init__(self, a: Int32, b: Int32):
     Sub() = default;
-    explicit Sub(int32_t a, int32_t b) : b(b), a(a) {}
+    explicit Sub(int32_t a, int32_t b);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Sub";
 };
 
@@ -43,5 +43,8 @@ inline std::ostream& operator<<(std::ostream& os, const Sub& obj) {
     return os;
 }
 
+
+// def __init__(self, a: Int32, b: Int32):
+inline Sub::Sub(int32_t a, int32_t b) : b(b), a(a) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -24,7 +24,7 @@ struct Box {
 
     // def __init__(self, v: Int32) -> None:
     Box() = default;
-    explicit Box(int32_t v) : val(v) {}
+    explicit Box(int32_t v);
     // non-copyable (@nocopy)
     Box(const Box&) = delete;
     Box& operator=(const Box&) = delete;
@@ -38,6 +38,9 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
     return os;
 }
 
+
+// def __init__(self, v: Int32) -> None:
+inline Box::Box(int32_t v) : val(v) {}
 // def count[T](*items: T) -> Int32:
 template<typename T>
 int32_t count(::tpy::varargs<const T> items) {

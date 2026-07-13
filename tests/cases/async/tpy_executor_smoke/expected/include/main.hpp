@@ -44,7 +44,7 @@ struct CancellableForever {
     bool __cancel_pending;
 
     // def __init__(self) -> None:
-    CancellableForever() : __cancel_pending(false) {}
+    CancellableForever();
 
     // def __poll__(self, waker: Waker) -> Own[Poll[None]]:
     ::tpystd::tpy::Poll<std::monostate> __poll__(::tpystd::coro::Waker waker) const;
@@ -102,6 +102,9 @@ struct __coro_void_coro {
     }
 };
 
+
+// def __init__(self) -> None:
+inline CancellableForever::CancellableForever() : __cancel_pending(false) {}
 
 // def __poll__(self, waker: Waker) -> Own[Poll[None]]:
 inline ::tpystd::tpy::Poll<std::monostate> CancellableForever::__poll__(::tpystd::coro::Waker waker) const {

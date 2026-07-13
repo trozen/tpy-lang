@@ -27,7 +27,7 @@ struct Box {
 
     // def __init__(self, a: int, b: int, c: int) -> None:
     Box() = default;
-    explicit Box(const ::tpy::BigInt& a, const ::tpy::BigInt& b, const ::tpy::BigInt& c) : a(a), b(b), c(c) {}
+    explicit Box(const ::tpy::BigInt& a, const ::tpy::BigInt& b, const ::tpy::BigInt& c);
 
     __gen_Box_vals vals() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
@@ -66,5 +66,8 @@ inline __gen_Box_vals Box::vals() const {
     return __gen_Box_vals(*this);
 }
 
+
+// def __init__(self, a: int, b: int, c: int) -> None:
+inline Box::Box(const ::tpy::BigInt& a, const ::tpy::BigInt& b, const ::tpy::BigInt& c) : a(a), b(b), c(c) {}
 void __tpy_init();
 } // namespace tpyapp::main

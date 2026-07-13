@@ -23,7 +23,7 @@ struct __tpy_builder_argparse_args_1 {
 
     // args = parser.parse_args(["alice"])
     __tpy_builder_argparse_args_1() = default;
-    explicit __tpy_builder_argparse_args_1(std::string_view name) : name(name) {}
+    explicit __tpy_builder_argparse_args_1(std::string_view name);
     static constexpr std::string_view __tpy_class_name__ = "__main__.__tpy_builder_argparse_args_1";
 };
 
@@ -32,5 +32,8 @@ inline std::ostream& operator<<(std::ostream& os, const __tpy_builder_argparse_a
     return os;
 }
 
+
+// args = parser.parse_args(["alice"])
+inline __tpy_builder_argparse_args_1::__tpy_builder_argparse_args_1(std::string_view name) : name(name) {}
 void __tpy_init();
 } // namespace tpyapp::main

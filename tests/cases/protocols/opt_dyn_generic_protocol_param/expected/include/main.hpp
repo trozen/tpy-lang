@@ -42,7 +42,7 @@ struct IntBox : Container<int32_t> {
 
     // def __init__(self, v: Int32) -> None:
     IntBox() = default;
-    explicit IntBox(int32_t v) : v(v) {}
+    explicit IntBox(int32_t v);
 
     // def get(self) -> Int32:
     int32_t get() override;
@@ -73,6 +73,9 @@ struct tpy::RefAdapter<tpyapp::main::Container<T>, __tpy_Impl> : tpyapp::main::C
 
 namespace tpyapp::main {
 
+
+// def __init__(self, v: Int32) -> None:
+inline IntBox::IntBox(int32_t v) : v(v) {}
 
 // def get(self) -> Int32:
 inline int32_t IntBox::get() {

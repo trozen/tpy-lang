@@ -34,7 +34,7 @@ struct Gate {
 
     // def __init__(self, n: int) -> None:
     Gate() = default;
-    explicit Gate(const ::tpy::BigInt& n) : n(n) {}
+    explicit Gate(const ::tpy::BigInt& n);
 
     // def __enter__(self) -> int:
     ::tpy::BigInt __enter__() const;
@@ -72,7 +72,7 @@ struct Guard {
     ::tpy::BigInt depth;
 
     // def __init__(self) -> None:
-    Guard() : depth(::tpy::BigInt(0)) {}
+    Guard();
 
     // def __enter__(self) -> "Guard":
     Guard& __enter__();
@@ -93,7 +93,7 @@ struct Holder {
     Guard g;
 
     // def __init__(self) -> None:
-    Holder() : g(Guard()) {}
+    Holder();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
@@ -102,6 +102,9 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     return os;
 }
 
+
+// def __init__(self, n: int) -> None:
+inline Gate::Gate(const ::tpy::BigInt& n) : n(n) {}
 
 // def __enter__(self) -> int:
 inline ::tpy::BigInt Gate::__enter__() const {
@@ -136,6 +139,9 @@ inline bool Sup::__exit__(std::monostate exc_type, const ::tpy::BaseException* e
     return false;
 }
 
+// def __init__(self) -> None:
+inline Guard::Guard() : depth(::tpy::BigInt(0)) {}
+
 // def __enter__(self) -> "Guard":
 inline Guard& Guard::__enter__() {
     // self.depth += 1
@@ -149,5 +155,8 @@ inline void Guard::__exit__(std::monostate exc_type, std::monostate exc_val, std
     // print("guard exit at", self.depth)
     std::cout << "guard exit at" << " " << this->depth << "\n";
 }
+
+// def __init__(self) -> None:
+inline Holder::Holder() : g(Guard()) {}
 void __tpy_init();
 } // namespace tpyapp::main

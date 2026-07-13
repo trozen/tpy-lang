@@ -21,7 +21,7 @@ struct Handle {
 
     // def __init__(self, fd: Int32) -> None:
     Handle() = default;
-    explicit Handle(int32_t fd) : fd(fd) {}
+    explicit Handle(int32_t fd);
     // non-copyable (@nocopy)
     Handle(const Handle&) = delete;
     Handle& operator=(const Handle&) = delete;
@@ -35,6 +35,9 @@ inline std::ostream& operator<<(std::ostream& os, const Handle& obj) {
     return os;
 }
 
+
+// def __init__(self, fd: Int32) -> None:
+inline Handle::Handle(int32_t fd) : fd(fd) {}
 inline auto handles(std::vector<Handle>& items) {
     return ::tpy::make_generator<::tpy::val_or_ref<Handle>>(
         [&items, __beg = decltype((items).begin())(), __end = decltype((items).begin())(), __init = false]() mutable -> std::optional<::tpy::val_or_ref<Handle>> {

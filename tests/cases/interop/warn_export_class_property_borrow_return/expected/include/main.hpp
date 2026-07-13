@@ -19,7 +19,7 @@ struct Inner {
     int64_t x;
 
     // def __init__(self) -> None:
-    Inner() : x(0) {}
+    Inner();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Inner";
 };
 
@@ -37,7 +37,7 @@ struct Box {
     Inner _inner;
 
     // def __init__(self) -> None:
-    Box() : _items({1, 2}), _inner(Inner()) {}
+    Box();
 
     // @property
     // def items(self) -> list[Int64]:
@@ -66,6 +66,12 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
     return os;
 }
 
+
+// def __init__(self) -> None:
+inline Inner::Inner() : x(0) {}
+
+// def __init__(self) -> None:
+inline Box::Box() : _items({1, 2}), _inner(Inner()) {}
 
 // @property
 // def items(self) -> list[Int64]:

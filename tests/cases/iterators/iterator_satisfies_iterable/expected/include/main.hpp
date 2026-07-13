@@ -24,7 +24,7 @@ struct Counter {
 
     // def __init__(self, n: Int32) -> None:
     Counter() = default;
-    explicit Counter(int32_t n) : i(0), n(n) {}
+    explicit Counter(int32_t n);
 
     // def __next__(self) -> Int32:
     std::expected<int32_t, ::tpy::StopIteration> __next__();
@@ -39,6 +39,9 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
     return os;
 }
 
+
+// def __init__(self, n: Int32) -> None:
+inline Counter::Counter(int32_t n) : i(0), n(n) {}
 
 // def __next__(self) -> Int32:
 inline std::expected<int32_t, ::tpy::StopIteration> Counter::__next__() {

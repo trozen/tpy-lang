@@ -24,7 +24,7 @@ struct W {
     std::variant<std::monostate, ::tpy::BigInt, std::string> uni;
 
     // def __init__(self, opt: "str | None", uni: "int | str | None") -> None:
-    explicit W(std::optional<std::string_view> opt, const std::variant<std::monostate, ::tpy::BigInt, std::string>& uni) : opt(opt ? std::make_optional(std::string(*opt)) : std::nullopt), uni(uni) {}
+    explicit W(std::optional<std::string_view> opt, const std::variant<std::monostate, ::tpy::BigInt, std::string>& uni);
     static constexpr std::string_view __tpy_class_name__ = "__main__.W";
 };
 
@@ -33,5 +33,8 @@ inline std::ostream& operator<<(std::ostream& os, const W& obj) {
     return os;
 }
 
+
+// def __init__(self, opt: "str | None", uni: "int | str | None") -> None:
+inline W::W(std::optional<std::string_view> opt, const std::variant<std::monostate, ::tpy::BigInt, std::string>& uni) : opt(opt ? std::make_optional(std::string(*opt)) : std::nullopt), uni(uni) {}
 void __tpy_init();
 } // namespace tpyapp::main

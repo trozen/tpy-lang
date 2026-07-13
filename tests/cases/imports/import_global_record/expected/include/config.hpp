@@ -21,7 +21,7 @@ struct Settings {
 
     // def __init__(self, width: Int32, height: Int32) -> None:
     Settings() = default;
-    explicit Settings(int32_t width, int32_t height) : width(width), height(height) {}
+    explicit Settings(int32_t width, int32_t height);
 
     // def area(self) -> Int32:
     int32_t area() const;
@@ -33,6 +33,9 @@ inline std::ostream& operator<<(std::ostream& os, const Settings& obj) {
     return os;
 }
 
+
+// def __init__(self, width: Int32, height: Int32) -> None:
+inline Settings::Settings(int32_t width, int32_t height) : width(width), height(height) {}
 
 // def area(self) -> Int32:
 inline int32_t Settings::area() const {

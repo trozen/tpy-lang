@@ -65,9 +65,7 @@ struct Tagged {
     Color kind = Color::BLUE;
 
     // def __init__(self) -> None:
-    Tagged() {
-        // pass
-    }
+    Tagged();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Tagged";
 };
 
@@ -90,5 +88,10 @@ inline std::ostream& operator<<(std::ostream& os, const Pinned& obj) {
     return os;
 }
 
+
+// def __init__(self) -> None:
+inline Tagged::Tagged() {
+    // pass
+}
 void __tpy_init();
 } // namespace tpyapp::main

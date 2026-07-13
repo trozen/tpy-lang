@@ -44,7 +44,7 @@ struct Dog {
 
     // def __init__(self, label: str) -> None:
     Dog() = default;
-    explicit Dog(std::string_view label) : label(label) {}
+    explicit Dog(std::string_view label);
     // non-copyable (@nocopy)
     Dog(const Dog&) = delete;
     Dog& operator=(const Dog&) = delete;
@@ -80,6 +80,9 @@ struct tpy::RefAdapter<tpyapp::main::Pet, T> : tpyapp::main::Pet {
 
 namespace tpyapp::main {
 
+
+// def __init__(self, label: str) -> None:
+inline Dog::Dog(std::string_view label) : label(label) {}
 
 // def name(self) -> str:
 inline std::string Dog::name() const {

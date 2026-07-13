@@ -22,7 +22,7 @@ struct Pair {
     int32_t y;
 
     Pair() = default;
-    explicit Pair(int32_t x, int32_t y) : x(x), y(y) {}
+    explicit Pair(int32_t x, int32_t y);
 
     bool __eq__(const Pair& other) const;
 
@@ -39,6 +39,8 @@ inline std::ostream& operator<<(std::ostream& os, const Pair& obj) {
     return os;
 }
 
+
+inline Pair::Pair(int32_t x, int32_t y) : x(x), y(y) {}
 
 inline bool Pair::__eq__(const Pair& other) const {
     return ((this->x == other.x) && (this->y == other.y));

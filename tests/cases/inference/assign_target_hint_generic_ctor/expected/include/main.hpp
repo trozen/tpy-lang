@@ -38,8 +38,8 @@ struct Wrapper {
         }
         return *this;
     }
-    // def __del__(self):
 
+    // def __del__(self):
     ~Wrapper() {
         if (!this->__tpy_owned_) return;
         // self._storage.drop0()

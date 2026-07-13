@@ -20,7 +20,7 @@ struct Writer {
     std::vector<std::string> _parts;
 
     // def __init__(self) -> None:
-    Writer() : _parts(std::vector<std::string>{}) {}
+    Writer();
 
     // def write(self, s: str) -> None:
     void write(std::string_view s);
@@ -44,7 +44,7 @@ struct Point {
 
     // def __init__(self, x: Int32, y: Int32) -> None:
     Point() = default;
-    explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
+    explicit Point(int32_t x, int32_t y);
 
     // def encode(self, writer: Writer) -> None:
     void encode(Writer& writer) const;
@@ -57,6 +57,9 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 }
 
 
+// def __init__(self) -> None:
+inline Writer::Writer() : _parts(std::vector<std::string>{}) {}
+
 // def write(self, s: str) -> None:
 inline void Writer::write(std::string_view s) {
     // self._parts.append(s)
@@ -68,6 +71,9 @@ inline std::string Writer::result() const {
     // return ",".join(self._parts)
     return ::tpy::str_join(",", this->_parts);
 }
+
+// def __init__(self, x: Int32, y: Int32) -> None:
+inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 
 // def encode(self, writer: Writer) -> None:
 inline void Point::encode(Writer& writer) const {

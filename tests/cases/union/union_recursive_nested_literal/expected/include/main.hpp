@@ -29,7 +29,7 @@ struct Leaf {
     int32_t value;
 
     Leaf() = default;
-    explicit Leaf(int32_t value) : value(value) {}
+    explicit Leaf(int32_t value);
 
     bool __eq__(const Leaf& other) const;
 
@@ -46,6 +46,8 @@ inline std::ostream& operator<<(std::ostream& os, const Leaf& obj) {
     return os;
 }
 
+
+inline Leaf::Leaf(int32_t value) : value(value) {}
 
 inline bool Leaf::__eq__(const Leaf& other) const {
     return (this->value == other.value);

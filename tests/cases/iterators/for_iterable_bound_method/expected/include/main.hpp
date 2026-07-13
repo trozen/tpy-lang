@@ -24,7 +24,7 @@ struct RangeIter {
 
     // def __init__(self, start: Int32, limit: Int32) -> None:
     RangeIter() = default;
-    explicit RangeIter(int32_t start, int32_t limit) : current(start), limit(limit) {}
+    explicit RangeIter(int32_t start, int32_t limit);
 
     auto& __iter__() { return *this; }
 
@@ -47,7 +47,7 @@ struct MyRange {
 
     // def __init__(self, start: Int32, limit: Int32) -> None:
     MyRange() = default;
-    explicit MyRange(int32_t start, int32_t limit) : start(start), limit(limit) {}
+    explicit MyRange(int32_t start, int32_t limit);
 
     // def __iter__(self) -> Own[RangeIter]:
     RangeIter __iter__() const;
@@ -96,6 +96,9 @@ inline std::ostream& operator<<(std::ostream& os, const Summer<T>& obj) {
 }
 
 
+// def __init__(self, start: Int32, limit: Int32) -> None:
+inline RangeIter::RangeIter(int32_t start, int32_t limit) : current(start), limit(limit) {}
+
 // def __next__(self) -> Int32:
 inline std::expected<int32_t, ::tpy::StopIteration> RangeIter::__next__() {
     // if self.current < self.limit:
@@ -110,6 +113,9 @@ inline std::expected<int32_t, ::tpy::StopIteration> RangeIter::__next__() {
     // raise StopIteration
     return ::tpy::make_unexpected(::tpy::StopIteration{});
 }
+
+// def __init__(self, start: Int32, limit: Int32) -> None:
+inline MyRange::MyRange(int32_t start, int32_t limit) : start(start), limit(limit) {}
 
 // def __iter__(self) -> Own[RangeIter]:
 inline RangeIter MyRange::__iter__() const {

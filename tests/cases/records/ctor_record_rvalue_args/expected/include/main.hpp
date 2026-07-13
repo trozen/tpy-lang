@@ -24,7 +24,7 @@ struct Inner {
 
     // def __init__(self, v: Int32):
     Inner() = default;
-    explicit Inner(int32_t v) : v(v) {}
+    explicit Inner(int32_t v);
 
     // def bump(self) -> None:
     void bump();
@@ -43,7 +43,7 @@ struct HolderConst {
 
     // def __init__(self, inner: Inner):
     HolderConst() = default;
-    explicit HolderConst(const Inner& inner) : x(inner.v) {}
+    explicit HolderConst(const Inner& inner);
     static constexpr std::string_view __tpy_class_name__ = "__main__.HolderConst";
 };
 
@@ -59,12 +59,7 @@ struct HolderMut {
 
     // def __init__(self, inner: Inner):
     HolderMut() = default;
-    explicit HolderMut(Inner& inner) {
-        // inner.bump()
-        inner.bump();
-        // self.x = inner.v
-        this->x = inner.v;
-    }
+    explicit HolderMut(Inner& inner);
     static constexpr std::string_view __tpy_class_name__ = "__main__.HolderMut";
 };
 
@@ -80,7 +75,7 @@ struct Outer {
 
     // def __init__(self, h: HolderConst):
     Outer() = default;
-    explicit Outer(const HolderConst& h) : y(h.x) {}
+    explicit Outer(const HolderConst& h);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Outer";
 };
 
@@ -90,10 +85,27 @@ inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
 }
 
 
+// def __init__(self, v: Int32):
+inline Inner::Inner(int32_t v) : v(v) {}
+
 // def bump(self) -> None:
 inline void Inner::bump() {
     // self.v += 1
     this->v = ::tpy::add_check<int32_t>(this->v, 1);
 }
+
+// def __init__(self, inner: Inner):
+inline HolderConst::HolderConst(const Inner& inner) : x(inner.v) {}
+
+// def __init__(self, inner: Inner):
+inline HolderMut::HolderMut(Inner& inner) {
+    // inner.bump()
+    inner.bump();
+    // self.x = inner.v
+    this->x = inner.v;
+}
+
+// def __init__(self, h: HolderConst):
+inline Outer::Outer(const HolderConst& h) : y(h.x) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -28,7 +28,7 @@ struct Counter {
 
     // def __init__(self, n: Int32) -> None:
     Counter() = default;
-    explicit Counter(int32_t n) : n(n) {}
+    explicit Counter(int32_t n);
 
     // @readonly
     // def value(self) -> Int32:
@@ -94,6 +94,9 @@ inline std::ostream& operator<<(std::ostream& os, const ROView<W>& obj) {
     return os;
 }
 
+
+// def __init__(self, n: Int32) -> None:
+inline Counter::Counter(int32_t n) : n(n) {}
 
 // @readonly
 // def value(self) -> Int32:

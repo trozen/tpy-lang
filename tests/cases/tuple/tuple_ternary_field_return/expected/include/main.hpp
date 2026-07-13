@@ -22,7 +22,7 @@ struct Box {
 
     // def __init__(self, v: Int32) -> None:
     Box() = default;
-    explicit Box(int32_t v) : val(v) {}
+    explicit Box(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
@@ -39,7 +39,7 @@ struct Holder {
     std::tuple<int32_t, Box> b;
 
     // def __init__(self) -> None:
-    Holder() : a(::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{1, Box(5)})), b(::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{2, Box(7)})) {}
+    Holder();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
@@ -48,5 +48,11 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     return os;
 }
 
+
+// def __init__(self, v: Int32) -> None:
+inline Box::Box(int32_t v) : val(v) {}
+
+// def __init__(self) -> None:
+inline Holder::Holder() : a(::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{1, Box(5)})), b(::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{2, Box(7)})) {}
 void __tpy_init();
 } // namespace tpyapp::main

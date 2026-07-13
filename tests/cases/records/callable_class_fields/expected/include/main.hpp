@@ -20,7 +20,7 @@ struct Counter {
     int32_t count;
 
     // def __init__(self):
-    Counter() : count(0) {}
+    Counter();
 
     // def __call__(self, inc: Int32) -> Int32:
     int32_t __call__(int32_t inc);
@@ -43,7 +43,7 @@ struct Accumulator {
 
     // def __init__(self, initial: float):
     Accumulator() = default;
-    explicit Accumulator(double initial) : total(initial) {}
+    explicit Accumulator(double initial);
 
     // def __call__(self, value: float) -> float:
     double __call__(double value);
@@ -60,6 +60,9 @@ inline std::ostream& operator<<(std::ostream& os, const Accumulator& obj) {
 }
 
 
+// def __init__(self):
+inline Counter::Counter() : count(0) {}
+
 // def __call__(self, inc: Int32) -> Int32:
 inline int32_t Counter::__call__(int32_t inc) {
     // self.count += inc
@@ -67,6 +70,9 @@ inline int32_t Counter::__call__(int32_t inc) {
     // return self.count
     return this->count;
 }
+
+// def __init__(self, initial: float):
+inline Accumulator::Accumulator(double initial) : total(initial) {}
 
 // def __call__(self, value: float) -> float:
 inline double Accumulator::__call__(double value) {

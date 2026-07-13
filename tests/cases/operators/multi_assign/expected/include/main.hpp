@@ -23,7 +23,7 @@ struct Obj {
 
     // def __init__(self, val: int) -> None:
     Obj() = default;
-    explicit Obj(const ::tpy::BigInt& val) : val(val) {}
+    explicit Obj(const ::tpy::BigInt& val);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Obj";
 };
 
@@ -40,12 +40,7 @@ struct Pair {
     ::tpy::BigInt y;
 
     // def __init__(self) -> None:
-    Pair() {
-        // self.x = self.y = 0
-        int32_t __ma_0 = 0;
-        this->x = ::tpy::BigInt(__ma_0);
-        this->y = ::tpy::BigInt(__ma_0);
-    }
+    Pair();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Pair";
 };
 
@@ -60,7 +55,7 @@ struct Clamped {
     ::tpy::BigInt _val;
 
     // def __init__(self) -> None:
-    Clamped() : _val(::tpy::BigInt(0)) {}
+    Clamped();
 
     // @property
     // def val(self) -> int:
@@ -77,6 +72,20 @@ inline std::ostream& operator<<(std::ostream& os, const Clamped& obj) {
     return os;
 }
 
+
+// def __init__(self, val: int) -> None:
+inline Obj::Obj(const ::tpy::BigInt& val) : val(val) {}
+
+// def __init__(self) -> None:
+inline Pair::Pair() {
+    // self.x = self.y = 0
+    int32_t __ma_0 = 0;
+    this->x = ::tpy::BigInt(__ma_0);
+    this->y = ::tpy::BigInt(__ma_0);
+}
+
+// def __init__(self) -> None:
+inline Clamped::Clamped() : _val(::tpy::BigInt(0)) {}
 
 // @property
 // def val(self) -> int:

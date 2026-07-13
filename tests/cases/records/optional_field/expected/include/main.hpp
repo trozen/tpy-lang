@@ -29,7 +29,7 @@ struct Point {
 
     // def __init__(self, x: Int32, y: Int32):
     Point() = default;
-    explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
+    explicit Point(int32_t x, int32_t y);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
 };
 
@@ -47,7 +47,7 @@ struct Line {
 
     // def __init__(self, s: Point):
     Line() = default;
-    explicit Line(const Point& s) : start(s), end(std::nullopt) {}
+    explicit Line(const Point& s);
 
     // def set_end(self, e: Point) -> None:
     void set_end(const Point& e);
@@ -65,6 +65,12 @@ inline std::ostream& operator<<(std::ostream& os, const Line& obj) {
     return os;
 }
 
+
+// def __init__(self, x: Int32, y: Int32):
+inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
+
+// def __init__(self, s: Point):
+inline Line::Line(const Point& s) : start(s), end(std::nullopt) {}
 
 // def set_end(self, e: Point) -> None:
 inline void Line::set_end(const Point& e) {

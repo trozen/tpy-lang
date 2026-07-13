@@ -34,10 +34,7 @@ struct Child : Parent {
 
     // def __init__(self, n: Int32) -> None:
     Child() = default;
-    explicit Child(int32_t n) : token(n) {
-        // Parent.token = n + 1
-        this->Parent::token = (::tpy::add_check<int32_t>(n, 1));
-    }
+    explicit Child(int32_t n);
 
     // def as_pair(self) -> str:
     std::string as_pair() const;
@@ -49,6 +46,12 @@ inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
     return os;
 }
 
+
+// def __init__(self, n: Int32) -> None:
+inline Child::Child(int32_t n) : token(n) {
+    // Parent.token = n + 1
+    this->Parent::token = (::tpy::add_check<int32_t>(n, 1));
+}
 
 // def as_pair(self) -> str:
 inline std::string Child::as_pair() const {

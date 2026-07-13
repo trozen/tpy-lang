@@ -43,7 +43,7 @@ struct Parrot : Pet {
 
     // def __init__(self, label: str) -> None:
     Parrot() = default;
-    explicit Parrot(std::string_view label) : label(label) {}
+    explicit Parrot(std::string_view label);
 
     // def name(self) -> str:
     std::string name() override;
@@ -74,6 +74,9 @@ struct tpy::RefAdapter<tpyapp::main::Pet, T> : tpyapp::main::Pet {
 
 namespace tpyapp::main {
 
+
+// def __init__(self, label: str) -> None:
+inline Parrot::Parrot(std::string_view label) : label(label) {}
 
 // def name(self) -> str:
 inline std::string Parrot::name() {

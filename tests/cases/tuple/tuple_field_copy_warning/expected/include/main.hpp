@@ -24,7 +24,7 @@ struct Point {
 
     // def __init__(self, x: Int32, y: Int32) -> None:
     Point() = default;
-    explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
+    explicit Point(int32_t x, int32_t y);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
 };
 
@@ -40,7 +40,7 @@ struct Container {
 
     // def __init__(self, p: Point, n: Int32) -> None:
     Container() = default;
-    explicit Container(const Point& p, int32_t n) : data(::tpy::tuple_to_storage<std::tuple<Point, int32_t>>(std::tuple<Point, int32_t>{p, n})) {}
+    explicit Container(const Point& p, int32_t n);
 
     // def __repr__(self) -> str:
     std::string __repr__() const;
@@ -59,7 +59,7 @@ struct ContainerOk {
 
     // def __init__(self, p: Point, n: Int32) -> None:
     ContainerOk() = default;
-    explicit ContainerOk(const Point& p, int32_t n) : data(::tpy::tuple_to_storage<std::tuple<Point, int32_t>>(std::tuple<Point, int32_t>{Point(p), n})) {}
+    explicit ContainerOk(const Point& p, int32_t n);
 
     // def __repr__(self) -> str:
     std::string __repr__() const;
@@ -72,11 +72,20 @@ inline std::ostream& operator<<(std::ostream& os, const ContainerOk& obj) {
 }
 
 
+// def __init__(self, x: Int32, y: Int32) -> None:
+inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
+
+// def __init__(self, p: Point, n: Int32) -> None:
+inline Container::Container(const Point& p, int32_t n) : data(::tpy::tuple_to_storage<std::tuple<Point, int32_t>>(std::tuple<Point, int32_t>{p, n})) {}
+
 // def __repr__(self) -> str:
 inline std::string Container::__repr__() const {
     // return "Container"
     return "Container";
 }
+
+// def __init__(self, p: Point, n: Int32) -> None:
+inline ContainerOk::ContainerOk(const Point& p, int32_t n) : data(::tpy::tuple_to_storage<std::tuple<Point, int32_t>>(std::tuple<Point, int32_t>{Point(p), n})) {}
 
 // def __repr__(self) -> str:
 inline std::string ContainerOk::__repr__() const {

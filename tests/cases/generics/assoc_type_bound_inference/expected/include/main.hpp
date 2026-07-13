@@ -29,7 +29,7 @@ struct IntBox {
 
     // def __init__(self, v: int):
     IntBox() = default;
-    explicit IntBox(const ::tpy::BigInt& v) : v(v) {}
+    explicit IntBox(const ::tpy::BigInt& v);
 
     // def get(self) -> int:
     ::tpy::BigInt get() const;
@@ -48,7 +48,7 @@ struct StrBox {
 
     // def __init__(self, s: str):
     StrBox() = default;
-    explicit StrBox(std::string_view s) : s(s) {}
+    explicit StrBox(std::string_view s);
 
     // def get(self) -> str:
     std::string get() const;
@@ -61,11 +61,17 @@ inline std::ostream& operator<<(std::ostream& os, const StrBox& obj) {
 }
 
 
+// def __init__(self, v: int):
+inline IntBox::IntBox(const ::tpy::BigInt& v) : v(v) {}
+
 // def get(self) -> int:
 inline ::tpy::BigInt IntBox::get() const {
     // return self.v
     return this->v;
 }
+
+// def __init__(self, s: str):
+inline StrBox::StrBox(std::string_view s) : s(s) {}
 
 // def get(self) -> str:
 inline std::string StrBox::get() const {

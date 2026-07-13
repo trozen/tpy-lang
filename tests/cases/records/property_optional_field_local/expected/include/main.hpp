@@ -21,7 +21,7 @@ struct Inner {
 
     // def __init__(self, value: str) -> None:
     Inner() = default;
-    explicit Inner(std::string_view value) : value(value) {}
+    explicit Inner(std::string_view value);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Inner";
 };
 
@@ -37,7 +37,7 @@ struct Holder {
 
     // def __init__(self, inner: Optional[Inner]) -> None:
     Holder() = default;
-    explicit Holder(const Inner* inner) : _inner(::tpy::ptr_to_optional(inner)) {}
+    explicit Holder(const Inner* inner);
 
     // @property
     // def value(self) -> Optional[str]:
@@ -50,6 +50,12 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     return os;
 }
 
+
+// def __init__(self, value: str) -> None:
+inline Inner::Inner(std::string_view value) : value(value) {}
+
+// def __init__(self, inner: Optional[Inner]) -> None:
+inline Holder::Holder(const Inner* inner) : _inner(::tpy::ptr_to_optional(inner)) {}
 
 // @property
 // def value(self) -> Optional[str]:

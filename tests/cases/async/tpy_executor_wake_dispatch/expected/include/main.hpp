@@ -37,7 +37,7 @@ struct NeverComplete {
     bool __cancel_pending;
 
     // def __init__(self) -> None:
-    NeverComplete() : __cancel_pending(false) {}
+    NeverComplete();
 
     // def __poll__(self, waker: Waker) -> Own[Poll[None]]:
     ::tpystd::tpy::Poll<std::monostate> __poll__(::tpystd::coro::Waker waker) const;
@@ -61,7 +61,7 @@ struct CountdownThenReady {
 
     // def __init__(self, n: UInt32) -> None:
     CountdownThenReady() = default;
-    explicit CountdownThenReady(uint32_t n) : remaining(n), __cancel_pending(false) {}
+    explicit CountdownThenReady(uint32_t n);
 
     // def __poll__(self, waker: Waker) -> Own[Poll[None]]:
     ::tpystd::tpy::Poll<std::monostate> __poll__(::tpystd::coro::Waker waker);
@@ -77,6 +77,9 @@ inline std::ostream& operator<<(std::ostream& os, const CountdownThenReady& obj)
 }
 
 
+// def __init__(self) -> None:
+inline NeverComplete::NeverComplete() : __cancel_pending(false) {}
+
 // def __poll__(self, waker: Waker) -> Own[Poll[None]]:
 inline ::tpystd::tpy::Poll<std::monostate> NeverComplete::__poll__(::tpystd::coro::Waker waker) const {
     // return poll_pending()
@@ -88,6 +91,9 @@ inline void NeverComplete::cancel() {
     // self.__cancel_pending = True
     this->__cancel_pending = true;
 }
+
+// def __init__(self, n: UInt32) -> None:
+inline CountdownThenReady::CountdownThenReady(uint32_t n) : remaining(n), __cancel_pending(false) {}
 
 // def __poll__(self, waker: Waker) -> Own[Poll[None]]:
 inline ::tpystd::tpy::Poll<std::monostate> CountdownThenReady::__poll__(::tpystd::coro::Waker waker) {

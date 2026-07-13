@@ -28,7 +28,7 @@ struct Point {
 
     // def __init__(self, x: Int32, y: Int32) -> None:
     Point() = default;
-    explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
+    explicit Point(int32_t x, int32_t y);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
 };
 
@@ -43,7 +43,7 @@ struct Container {
     std::vector<Point> items;
 
     // def __init__(self) -> None:
-    Container() : items({Point(1, 2), Point(3, 4)}) {}
+    Container();
 
     // def iter_then_mutate(self) -> None:
     void iter_then_mutate();
@@ -74,7 +74,7 @@ struct Holder {
 
     // def __init__(self, p: Point) -> None:
     Holder() = default;
-    explicit Holder(const Point& p) : point(p) {}
+    explicit Holder(const Point& p);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
@@ -83,6 +83,12 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     return os;
 }
 
+
+// def __init__(self, x: Int32, y: Int32) -> None:
+inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
+
+// def __init__(self) -> None:
+inline Container::Container() : items({Point(1, 2), Point(3, 4)}) {}
 
 // def iter_then_mutate(self) -> None:
 inline void Container::iter_then_mutate() {
@@ -138,5 +144,8 @@ inline void Container::field_reassign_while_borrowed() {
     // print(len(self.items))
     std::cout << ::tpy::__len__(this->items) << "\n";
 }
+
+// def __init__(self, p: Point) -> None:
+inline Holder::Holder(const Point& p) : point(p) {}
 void __tpy_init();
 } // namespace tpyapp::main

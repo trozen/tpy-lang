@@ -25,7 +25,7 @@ struct Point {
 
     // def __init__(self, x: Int32, y: Int32) -> None:
     Point() = default;
-    explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
+    explicit Point(int32_t x, int32_t y);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
 };
 
@@ -40,7 +40,7 @@ struct Bag {
     std::vector<int32_t> items;
 
     // def __init__(self) -> None:
-    Bag() : items(std::vector<int32_t>{}) {}
+    Bag();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Bag";
 };
 
@@ -55,7 +55,7 @@ struct Handler {
     std::function<void(int32_t)> cb;
 
     // def __init__(self, cb: Callable[[Int32], None]) -> None:
-    explicit Handler(std::function<void(int32_t)> cb) : cb(cb) {}
+    explicit Handler(std::function<void(int32_t)> cb);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Handler";
 };
 
@@ -84,5 +84,14 @@ inline std::ostream& operator<<(std::ostream& os, const Pair<T>& obj) {
     return os;
 }
 
+
+// def __init__(self, x: Int32, y: Int32) -> None:
+inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
+
+// def __init__(self) -> None:
+inline Bag::Bag() : items(std::vector<int32_t>{}) {}
+
+// def __init__(self, cb: Callable[[Int32], None]) -> None:
+inline Handler::Handler(std::function<void(int32_t)> cb) : cb(cb) {}
 void __tpy_init();
 } // namespace tpyapp::main

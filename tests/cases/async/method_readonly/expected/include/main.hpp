@@ -25,7 +25,7 @@ struct Reporter {
 
     // def __init__(self, v: int) -> None:
     Reporter() = default;
-    explicit Reporter(const ::tpy::BigInt& v) : value(v) {}
+    explicit Reporter(const ::tpy::BigInt& v);
 
     __coro_Reporter_describe describe() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Reporter";
@@ -87,5 +87,8 @@ struct __coro_main_coro {
     }
 };
 
+
+// def __init__(self, v: int) -> None:
+inline Reporter::Reporter(const ::tpy::BigInt& v) : value(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

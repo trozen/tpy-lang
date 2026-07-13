@@ -44,7 +44,7 @@ struct Parrot : Pet {
 
     // def __init__(self, label: str) -> None:
     Parrot() = default;
-    explicit Parrot(std::string_view label) : label(label) {}
+    explicit Parrot(std::string_view label);
 
     // def name(self) -> str:
     std::string name() override;
@@ -62,7 +62,7 @@ struct Adopter {
     ::tpystd::tplib::box::Box<Pet> pet;
 
     // def __init__(self, initial: Own[Pet]) -> None:
-    explicit Adopter(std::unique_ptr<Pet> initial) : pet(::tpystd::tplib::box::Box<Pet>(std::move(initial))) {}
+    explicit Adopter(std::unique_ptr<Pet> initial);
     // non-copyable (field 'pet')
     Adopter(const Adopter&) = delete;
     Adopter& operator=(const Adopter&) = delete;
@@ -96,10 +96,16 @@ struct tpy::RefAdapter<tpyapp::main::Pet, T> : tpyapp::main::Pet {
 namespace tpyapp::main {
 
 
+// def __init__(self, label: str) -> None:
+inline Parrot::Parrot(std::string_view label) : label(label) {}
+
 // def name(self) -> str:
 inline std::string Parrot::name() {
     // return self.label
     return this->label;
 }
+
+// def __init__(self, initial: Own[Pet]) -> None:
+inline Adopter::Adopter(std::unique_ptr<Pet> initial) : pet(::tpystd::tplib::box::Box<Pet>(std::move(initial))) {}
 void __tpy_init();
 } // namespace tpyapp::main

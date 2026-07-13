@@ -42,7 +42,7 @@ struct Loud : Awaker {
 
     // def __init__(self, base: Int32) -> None:
     Loud() = default;
-    explicit Loud(int32_t base) : base(base) {}
+    explicit Loud(int32_t base);
     // non-copyable (@nocopy)
     Loud(const Loud&) = delete;
     Loud& operator=(const Loud&) = delete;
@@ -70,7 +70,7 @@ struct Quiet : Awaker {
 
     // def __init__(self, base: Int32) -> None:
     Quiet() = default;
-    explicit Quiet(int32_t base) : base(base) {}
+    explicit Quiet(int32_t base);
     // non-copyable (@nocopy)
     Quiet(const Quiet&) = delete;
     Quiet& operator=(const Quiet&) = delete;
@@ -107,6 +107,9 @@ struct tpy::RefAdapter<tpyapp::main::Awaker, T> : tpyapp::main::Awaker {
 namespace tpyapp::main {
 
 
+// def __init__(self, base: Int32) -> None:
+inline Loud::Loud(int32_t base) : base(base) {}
+
 // def mark(self) -> Int32:
 inline int32_t Loud::mark() {
     // return self.base
@@ -118,6 +121,9 @@ inline int32_t Loud::shout() const {
     // return self.base * 100
     return (::tpy::mul_check<int32_t>(this->base, 100));
 }
+
+// def __init__(self, base: Int32) -> None:
+inline Quiet::Quiet(int32_t base) : base(base) {}
 
 // def mark(self) -> Int32:
 inline int32_t Quiet::mark() {

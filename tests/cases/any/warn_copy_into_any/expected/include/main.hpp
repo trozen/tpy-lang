@@ -38,7 +38,7 @@ struct Node {
 
     // def __init__(self, n: Int32) -> None:
     Node() = default;
-    explicit Node(int32_t n) : n(n) {}
+    explicit Node(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Node";
 };
 
@@ -53,7 +53,7 @@ struct Holder {
     ::tpy::Any payload;
 
     // def __init__(self) -> None:
-    Holder() : payload(::tpy::make_any(std::monostate{})) {}
+    Holder();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
@@ -62,5 +62,11 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     return os;
 }
 
+
+// def __init__(self, n: Int32) -> None:
+inline Node::Node(int32_t n) : n(n) {}
+
+// def __init__(self) -> None:
+inline Holder::Holder() : payload(::tpy::make_any(std::monostate{})) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -25,7 +25,7 @@ struct Both {
 
     // def __init__(self, n: Int32) -> None:
     Both() = default;
-    explicit Both(int32_t n) : n(n) {}
+    explicit Both(int32_t n);
 
     // def __str__(self) -> str:
     std::string __str__() const;
@@ -47,7 +47,7 @@ struct StrOnly {
 
     // def __init__(self, n: Int32) -> None:
     StrOnly() = default;
-    explicit StrOnly(int32_t n) : n(n) {}
+    explicit StrOnly(int32_t n);
 
     // def __str__(self) -> str:
     std::string __str__() const;
@@ -66,7 +66,7 @@ struct ReprOnly {
 
     // def __init__(self, n: Int32) -> None:
     ReprOnly() = default;
-    explicit ReprOnly(int32_t n) : n(n) {}
+    explicit ReprOnly(int32_t n);
 
     // def __repr__(self) -> str:
     std::string __repr__() const;
@@ -85,7 +85,7 @@ struct Neither {
 
     // def __init__(self, n: Int32) -> None:
     Neither() = default;
-    explicit Neither(int32_t n) : n(n) {}
+    explicit Neither(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Neither";
 };
 
@@ -107,6 +107,9 @@ inline std::ostream& operator<<(std::ostream& os, const ChildOfRepr& obj) {
 }
 
 
+// def __init__(self, n: Int32) -> None:
+inline Both::Both(int32_t n) : n(n) {}
+
 // def __str__(self) -> str:
 inline std::string Both::__str__() const {
     // return f"Both_str({self.n})"
@@ -119,16 +122,25 @@ inline std::string Both::__repr__() const {
     return std::format("Both_repr({})", this->n);
 }
 
+// def __init__(self, n: Int32) -> None:
+inline StrOnly::StrOnly(int32_t n) : n(n) {}
+
 // def __str__(self) -> str:
 inline std::string StrOnly::__str__() const {
     // return f"StrOnly_str({self.n})"
     return std::format("StrOnly_str({})", this->n);
 }
 
+// def __init__(self, n: Int32) -> None:
+inline ReprOnly::ReprOnly(int32_t n) : n(n) {}
+
 // def __repr__(self) -> str:
 inline std::string ReprOnly::__repr__() const {
     // return f"ReprOnly_repr({self.n})"
     return std::format("ReprOnly_repr({})", this->n);
 }
+
+// def __init__(self, n: Int32) -> None:
+inline Neither::Neither(int32_t n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

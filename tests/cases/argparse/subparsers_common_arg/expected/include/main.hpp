@@ -26,7 +26,7 @@ struct __tpy_builder_argparse_a_args_1 {
 
     // args = parser.parse_args(["-v", "a", "--x", "hello"])
     __tpy_builder_argparse_a_args_1() = default;
-    explicit __tpy_builder_argparse_a_args_1(std::optional<std::string_view> x) : x(x ? std::make_optional(std::string(*x)) : std::nullopt) {}
+    explicit __tpy_builder_argparse_a_args_1(std::optional<std::string_view> x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.__tpy_builder_argparse_a_args_1";
 };
 
@@ -41,7 +41,7 @@ struct __tpy_builder_argparse_b_args_1 {
 
     // args = parser.parse_args(["-v", "a", "--x", "hello"])
     __tpy_builder_argparse_b_args_1() = default;
-    explicit __tpy_builder_argparse_b_args_1(std::optional<std::string_view> y) : y(y ? std::make_optional(std::string(*y)) : std::nullopt) {}
+    explicit __tpy_builder_argparse_b_args_1(std::optional<std::string_view> y);
     static constexpr std::string_view __tpy_class_name__ = "__main__.__tpy_builder_argparse_b_args_1";
 };
 
@@ -59,7 +59,7 @@ struct __tpy_builder_argparse_args_1 {
 
     // args = parser.parse_args(["-v", "a", "--x", "hello"])
     __tpy_builder_argparse_args_1() = default;
-    explicit __tpy_builder_argparse_args_1(bool verbose, std::string_view cmd, std::optional<std::string_view> x, std::optional<std::string_view> y) : verbose(verbose), cmd(cmd), x(x ? std::make_optional(std::string(*x)) : std::nullopt), y(y ? std::make_optional(std::string(*y)) : std::nullopt) {}
+    explicit __tpy_builder_argparse_args_1(bool verbose, std::string_view cmd, std::optional<std::string_view> x, std::optional<std::string_view> y);
     static constexpr std::string_view __tpy_class_name__ = "__main__.__tpy_builder_argparse_args_1";
 };
 
@@ -68,5 +68,14 @@ inline std::ostream& operator<<(std::ostream& os, const __tpy_builder_argparse_a
     return os;
 }
 
+
+// args = parser.parse_args(["-v", "a", "--x", "hello"])
+inline __tpy_builder_argparse_a_args_1::__tpy_builder_argparse_a_args_1(std::optional<std::string_view> x) : x(x ? std::make_optional(std::string(*x)) : std::nullopt) {}
+
+// args = parser.parse_args(["-v", "a", "--x", "hello"])
+inline __tpy_builder_argparse_b_args_1::__tpy_builder_argparse_b_args_1(std::optional<std::string_view> y) : y(y ? std::make_optional(std::string(*y)) : std::nullopt) {}
+
+// args = parser.parse_args(["-v", "a", "--x", "hello"])
+inline __tpy_builder_argparse_args_1::__tpy_builder_argparse_args_1(bool verbose, std::string_view cmd, std::optional<std::string_view> x, std::optional<std::string_view> y) : verbose(verbose), cmd(cmd), x(x ? std::make_optional(std::string(*x)) : std::nullopt), y(y ? std::make_optional(std::string(*y)) : std::nullopt) {}
 void __tpy_init();
 } // namespace tpyapp::main

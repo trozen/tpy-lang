@@ -21,7 +21,7 @@ struct Delta {
 
     // def __init__(self, n: int) -> None:
     Delta() = default;
-    explicit Delta(const ::tpy::BigInt& n) : n(n) {}
+    explicit Delta(const ::tpy::BigInt& n);
 
     // def __add__(self, other: Delta) -> Delta:   # monomorphic operator on the same class
     Delta __add__(Delta other) const;
@@ -50,7 +50,7 @@ struct Day {
 
     // def __init__(self, ordinal: int) -> None:
     Day() = default;
-    explicit Day(const ::tpy::BigInt& ordinal) : ordinal(ordinal) {}
+    explicit Day(const ::tpy::BigInt& ordinal);
 
     // # Operand-polymorphic: Day - Day -> Delta, Day - Delta -> Day.
     // @overload
@@ -96,11 +96,17 @@ namespace tpyapp::main {
 
 
 
+// def __init__(self, n: int) -> None:
+inline Delta::Delta(const ::tpy::BigInt& n) : n(n) {}
+
 // def __add__(self, other: Delta) -> Delta:   # monomorphic operator on the same class
 inline Delta Delta::__add__(Delta other) const {
     // return Delta(self.n + other.n)
     return Delta(((this->n) + (other.n)));
 }
+
+// def __init__(self, ordinal: int) -> None:
+inline Day::Day(const ::tpy::BigInt& ordinal) : ordinal(ordinal) {}
 
 // def __add__(self, other: Delta) -> Day:   # monomorphic operator coexists with the overloaded one
 inline Day Day::__add__(Delta other) const {

@@ -30,7 +30,7 @@ struct Counter {
 
     // def __init__(self, v: int) -> None:
     Counter() = default;
-    explicit Counter(const ::tpy::BigInt& v) : value(v) {}
+    explicit Counter(const ::tpy::BigInt& v);
 
     // def get(self) -> int:
     ::tpy::BigInt get() const;
@@ -54,7 +54,7 @@ struct Point {
 
     // def __init__(self, x: Int32, y: Int32) -> None:
     Point() = default;
-    explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
+    explicit Point(int32_t x, int32_t y);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
 };
 
@@ -70,7 +70,7 @@ struct Container {
 
     // def __init__(self, x: Int32, y: Int32) -> None:
     Container() = default;
-    explicit Container(int32_t x, int32_t y) : pt(Point(x, y)) {}
+    explicit Container(int32_t x, int32_t y);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 
@@ -86,7 +86,7 @@ struct Outer {
 
     // def __init__(self, x: Int32, y: Int32) -> None:
     Outer() = default;
-    explicit Outer(int32_t x, int32_t y) : inner(Container(x, y)) {}
+    explicit Outer(int32_t x, int32_t y);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Outer";
 };
 
@@ -95,6 +95,9 @@ inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
     return os;
 }
 
+
+// def __init__(self, v: int) -> None:
+inline Counter::Counter(const ::tpy::BigInt& v) : value(v) {}
 
 // def get(self) -> int:
 inline ::tpy::BigInt Counter::get() const {
@@ -107,5 +110,14 @@ inline ::tpy::BigInt Counter::add(const ::tpy::BigInt& x) const {
     // return self.value + x
     return ((this->value) + (x));
 }
+
+// def __init__(self, x: Int32, y: Int32) -> None:
+inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
+
+// def __init__(self, x: Int32, y: Int32) -> None:
+inline Container::Container(int32_t x, int32_t y) : pt(Point(x, y)) {}
+
+// def __init__(self, x: Int32, y: Int32) -> None:
+inline Outer::Outer(int32_t x, int32_t y) : inner(Container(x, y)) {}
 void __tpy_init();
 } // namespace tpyapp::main

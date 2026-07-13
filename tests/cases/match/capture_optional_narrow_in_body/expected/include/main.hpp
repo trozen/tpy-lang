@@ -24,7 +24,7 @@ struct Build {
 
     // def __init__(self, target: Optional[str], jobs: Optional[str]) -> None:
     Build() = default;
-    explicit Build(std::optional<std::string_view> target, std::optional<std::string_view> jobs) : target(target ? std::make_optional(std::string(*target)) : std::nullopt), jobs(jobs ? std::make_optional(std::string(*jobs)) : std::nullopt) {}
+    explicit Build(std::optional<std::string_view> target, std::optional<std::string_view> jobs);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Build";
 };
 
@@ -40,7 +40,7 @@ struct Test {
 
     // def __init__(self, filter_: Optional[str]) -> None:
     Test() = default;
-    explicit Test(std::optional<std::string_view> filter_) : filter_(filter_ ? std::make_optional(std::string(*filter_)) : std::nullopt) {}
+    explicit Test(std::optional<std::string_view> filter_);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Test";
 };
 
@@ -49,5 +49,11 @@ inline std::ostream& operator<<(std::ostream& os, const Test& obj) {
     return os;
 }
 
+
+// def __init__(self, target: Optional[str], jobs: Optional[str]) -> None:
+inline Build::Build(std::optional<std::string_view> target, std::optional<std::string_view> jobs) : target(target ? std::make_optional(std::string(*target)) : std::nullopt), jobs(jobs ? std::make_optional(std::string(*jobs)) : std::nullopt) {}
+
+// def __init__(self, filter_: Optional[str]) -> None:
+inline Test::Test(std::optional<std::string_view> filter_) : filter_(filter_ ? std::make_optional(std::string(*filter_)) : std::nullopt) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -23,7 +23,7 @@ struct Base {
 
     // def __init__(self, x: Int32) -> None:
     Base() = default;
-    explicit Base(int32_t x) : x(x) {}
+    explicit Base(int32_t x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Base";
 };
 
@@ -70,6 +70,9 @@ inline std::ostream& operator<<(std::ostream& os, const GrandChild& obj) {
     return os;
 }
 
+
+// def __init__(self, x: Int32) -> None:
+inline Base::Base(int32_t x) : x(x) {}
 
 // def hello(self) -> str:
 inline std::string Mixin::hello() const {

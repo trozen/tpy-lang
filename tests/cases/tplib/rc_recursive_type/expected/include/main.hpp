@@ -26,7 +26,7 @@ struct Node {
 
     // def __init__(self, value: Int32) -> None:
     Node() = default;
-    explicit Node(int32_t value) : value(value), next(std::nullopt) {}
+    explicit Node(int32_t value);
     // non-copyable (field 'next')
     Node(const Node&) = delete;
     Node& operator=(const Node&) = delete;
@@ -40,5 +40,8 @@ inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
     return os;
 }
 
+
+// def __init__(self, value: Int32) -> None:
+inline Node::Node(int32_t value) : value(value), next(std::nullopt) {}
 void __tpy_init();
 } // namespace tpyapp::main

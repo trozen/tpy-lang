@@ -29,7 +29,7 @@ struct Wrapper {
 
     // def __init__(self, v: Int32):
     Wrapper() = default;
-    explicit Wrapper(int32_t v) : val(v) {}
+    explicit Wrapper(int32_t v);
 
     // def get_val(self) -> Int32:
     int32_t get_val() const;
@@ -41,6 +41,9 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {
     return os;
 }
 
+
+// def __init__(self, v: Int32):
+inline Wrapper::Wrapper(int32_t v) : val(v) {}
 
 // def get_val(self) -> Int32:
 inline int32_t Wrapper::get_val() const {

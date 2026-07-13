@@ -24,7 +24,7 @@ struct MyInt {
 
     // def __init__(self, v: Int32):
     MyInt() = default;
-    explicit MyInt(int32_t v) : value(v) {}
+    explicit MyInt(int32_t v);
 
     // def __lt__(self, other: MyInt) -> bool:
     bool __lt__(const MyInt& other) const;
@@ -47,6 +47,9 @@ inline std::ostream& operator<<(std::ostream& os, const MyInt& obj) {
     return os;
 }
 
+
+// def __init__(self, v: Int32):
+inline MyInt::MyInt(int32_t v) : value(v) {}
 
 // def __lt__(self, other: MyInt) -> bool:
 inline bool MyInt::__lt__(const MyInt& other) const {

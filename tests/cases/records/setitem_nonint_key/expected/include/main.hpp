@@ -22,7 +22,7 @@ struct Store {
     int32_t _b;
 
     // def __init__(self) -> None:
-    Store() : _a(0), _b(0) {}
+    Store();
 
     // def __getitem__(self, key: str) -> Int32:
     int32_t __getitem__(std::string_view key) const;
@@ -50,7 +50,7 @@ struct IntBox {
     int32_t v;
 
     // def __init__(self) -> None:
-    IntBox() : v(0) {}
+    IntBox();
 
     // def __getitem__(self, i: Int32) -> Int32:
     int32_t __getitem__(int32_t i) const;
@@ -72,6 +72,9 @@ inline std::ostream& operator<<(std::ostream& os, const IntBox& obj) {
     return os;
 }
 
+
+// def __init__(self) -> None:
+inline Store::Store() : _a(0), _b(0) {}
 
 // def __getitem__(self, key: str) -> Int32:
 inline int32_t Store::__getitem__(std::string_view key) const {
@@ -109,6 +112,9 @@ inline void Store::__delitem__(std::string_view key) {
         this->_b = -1;
     }
 }
+
+// def __init__(self) -> None:
+inline IntBox::IntBox() : v(0) {}
 
 // def __getitem__(self, i: Int32) -> Int32:
 inline int32_t IntBox::__getitem__(int32_t i) const {

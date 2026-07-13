@@ -24,7 +24,7 @@ struct Item {
 
     // def __init__(self, val: Int32) -> None:
     Item() = default;
-    explicit Item(int32_t val) : val(val) {}
+    explicit Item(int32_t val);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Item";
 };
 
@@ -40,7 +40,7 @@ struct Resource {
 
     // def __init__(self, seed: Int32) -> None:
     Resource() = default;
-    explicit Resource(int32_t seed) : item(Item(seed)) {}
+    explicit Resource(int32_t seed);
 
     // def __enter__(self) -> Item:
     Item& __enter__();
@@ -100,6 +100,12 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
     }
 };
 
+
+// def __init__(self, val: Int32) -> None:
+inline Item::Item(int32_t val) : val(val) {}
+
+// def __init__(self, seed: Int32) -> None:
+inline Resource::Resource(int32_t seed) : item(Item(seed)) {}
 
 // def __enter__(self) -> Item:
 inline Item& Resource::__enter__() {

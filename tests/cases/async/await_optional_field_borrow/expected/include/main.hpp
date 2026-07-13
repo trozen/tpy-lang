@@ -31,7 +31,7 @@ struct Box {
 
     // def __init__(self, v: int) -> None:
     Box() = default;
-    explicit Box(const ::tpy::BigInt& v) : val(v) {}
+    explicit Box(const ::tpy::BigInt& v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
@@ -47,7 +47,7 @@ struct H {
 
     // def __init__(self, b: Box | None) -> None:
     H() = default;
-    explicit H(const Box* b) : opt(::tpy::ptr_to_optional(b)) {}
+    explicit H(const Box* b);
     static constexpr std::string_view __tpy_class_name__ = "__main__.H";
 };
 
@@ -136,5 +136,11 @@ struct __coro_main_coro {
     }
 };
 
+
+// def __init__(self, v: int) -> None:
+inline Box::Box(const ::tpy::BigInt& v) : val(v) {}
+
+// def __init__(self, b: Box | None) -> None:
+inline H::H(const Box* b) : opt(::tpy::ptr_to_optional(b)) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -37,7 +37,7 @@ struct Logger {
 
     // def __init__(self, name: str) -> None:
     Logger() = default;
-    explicit Logger(std::string_view name) : name(name) {}
+    explicit Logger(std::string_view name);
 
     // def __enter__(self) -> Self:
     Logger& __enter__();
@@ -61,7 +61,7 @@ struct Connection {
     bool active;
 
     // def __init__(self) -> None:
-    Connection() : active(true) {}
+    Connection();
 
     // def __enter__(self) -> str:
     std::string __enter__() const;
@@ -76,6 +76,9 @@ inline std::ostream& operator<<(std::ostream& os, const Connection& obj) {
     return os;
 }
 
+
+// def __init__(self, name: str) -> None:
+inline Logger::Logger(std::string_view name) : name(name) {}
 
 // def __enter__(self) -> Self:
 inline Logger& Logger::__enter__() {
@@ -96,6 +99,9 @@ inline void Logger::log(std::string_view msg) const {
     // print(f"[{self.name}] {msg}")
     std::cout << std::format("[{}] {}", this->name, msg) << "\n";
 }
+
+// def __init__(self) -> None:
+inline Connection::Connection() : active(true) {}
 
 // def __enter__(self) -> str:
 inline std::string Connection::__enter__() const {

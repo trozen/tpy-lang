@@ -23,7 +23,7 @@ struct __tpy_builder_argparse_args_1 {
 
     // args = parser.parse_args(["--mode", "fast", "--level", "2"])
     __tpy_builder_argparse_args_1() = default;
-    explicit __tpy_builder_argparse_args_1(std::string_view mode, const ::tpy::BigInt& severity) : mode(mode), severity(severity) {}
+    explicit __tpy_builder_argparse_args_1(std::string_view mode, const ::tpy::BigInt& severity);
     static constexpr std::string_view __tpy_class_name__ = "__main__.__tpy_builder_argparse_args_1";
 };
 
@@ -32,5 +32,8 @@ inline std::ostream& operator<<(std::ostream& os, const __tpy_builder_argparse_a
     return os;
 }
 
+
+// args = parser.parse_args(["--mode", "fast", "--level", "2"])
+inline __tpy_builder_argparse_args_1::__tpy_builder_argparse_args_1(std::string_view mode, const ::tpy::BigInt& severity) : mode(mode), severity(severity) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -25,7 +25,7 @@ struct Base {
     double y;
 
     Base() = default;
-    explicit Base(double x, double y) : x(x), y(y) {}
+    explicit Base(double x, double y);
 
     bool __eq__(const Base& other) const;
 
@@ -49,7 +49,7 @@ struct Other {
     double v;
 
     Other() = default;
-    explicit Other(double v) : v(v) {}
+    explicit Other(double v);
 
     bool __eq__(const Other& other) const;
 
@@ -73,7 +73,7 @@ struct Child : Base {
     double z;
 
     Child() = default;
-    explicit Child(double x, double y, double z) : Base(x, y), z(z) {}
+    explicit Child(double x, double y, double z);
 
     bool __eq__(const Child& other) const;
 
@@ -91,6 +91,8 @@ inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
 }
 
 
+inline Base::Base(double x, double y) : x(x), y(y) {}
+
 inline bool Base::__eq__(const Base& other) const {
     return ((this->x == other.x) && (this->y == other.y));
 }
@@ -99,6 +101,8 @@ inline std::string Base::__repr__() const {
     return std::format("Base(x={}, y={})", ::tpy::repr_of(this->x), ::tpy::repr_of(this->y));
 }
 
+inline Other::Other(double v) : v(v) {}
+
 inline bool Other::__eq__(const Other& other) const {
     return (this->v == other.v);
 }
@@ -106,6 +110,8 @@ inline bool Other::__eq__(const Other& other) const {
 inline std::string Other::__repr__() const {
     return std::format("Other(v={})", ::tpy::repr_of(this->v));
 }
+
+inline Child::Child(double x, double y, double z) : Base(x, y), z(z) {}
 
 inline bool Child::__eq__(const Child& other) const {
     return (((this->x == other.x) && (this->y == other.y)) && (this->z == other.z));

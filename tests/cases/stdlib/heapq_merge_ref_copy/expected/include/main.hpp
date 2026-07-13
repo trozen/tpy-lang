@@ -23,7 +23,7 @@ struct Item {
 
     // def __init__(self, key: Int32, tag: Int32) -> None:
     Item() = default;
-    explicit Item(int32_t key, int32_t tag) : key(key), tag(tag) {}
+    explicit Item(int32_t key, int32_t tag);
 
     // def __lt__(self, other: 'Item') -> bool:
     bool __lt__(const Item& other) const;
@@ -39,6 +39,9 @@ inline std::ostream& operator<<(std::ostream& os, const Item& obj) {
     return os;
 }
 
+
+// def __init__(self, key: Int32, tag: Int32) -> None:
+inline Item::Item(int32_t key, int32_t tag) : key(key), tag(tag) {}
 
 // def __lt__(self, other: 'Item') -> bool:
 inline bool Item::__lt__(const Item& other) const {

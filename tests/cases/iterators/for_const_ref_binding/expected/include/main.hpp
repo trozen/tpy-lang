@@ -39,7 +39,7 @@ struct Point {
 
     // def __init__(self, x: Int32, y: Int32) -> None:
     Point() = default;
-    explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
+    explicit Point(int32_t x, int32_t y);
 
     // @readonly
     // def value(self) -> Int32:
@@ -58,7 +58,7 @@ struct Container {
     std::vector<int32_t> items;
 
     // def __init__(self) -> None:
-    Container() : items({1, 2}) {}
+    Container();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 
@@ -68,11 +68,17 @@ inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
 }
 
 
+// def __init__(self, x: Int32, y: Int32) -> None:
+inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
+
 // @readonly
 // def value(self) -> Int32:
 inline int32_t Point::value() const {
     // return self.x + self.y
     return (::tpy::add_check<int32_t>(this->x, this->y));
 }
+
+// def __init__(self) -> None:
+inline Container::Container() : items({1, 2}) {}
 void __tpy_init();
 } // namespace tpyapp::main

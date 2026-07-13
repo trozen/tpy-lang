@@ -20,33 +20,15 @@ struct Resource {
     bool __tpy_owned_ = true;
 
     // def __init__(self, id: Int32):
-    explicit Resource(int32_t id) : id(id) {
-        // print("alloc", id)
-        std::cout << "alloc" << " " << id << "\n";
-    }
+    explicit Resource(int32_t id);
     // copyable via __copy__
-    Resource(const Resource& other) : Resource(other.__copy__()) {}
-    Resource& operator=(const Resource& other) {
-        if (this != &other) { *this = other.__copy__(); }
-        return *this;
-    }
-    Resource(Resource&& other) noexcept : id(std::move(other.id)) {
-        other.__tpy_owned_ = false;
-    }
-    Resource& operator=(Resource&& other) noexcept {
-        if (this != &other) {
-            this->~Resource();
-            new (this) Resource(std::move(other));
-        }
-        return *this;
-    }
-    // def __del__(self):
+    Resource(const Resource& other);
+    Resource& operator=(const Resource& other);
+    Resource(Resource&& other) noexcept;
+    Resource& operator=(Resource&& other) noexcept;
 
-    ~Resource() {
-        if (!this->__tpy_owned_) return;
-        // print("free", self.id)
-        std::cout << "free" << " " << this->id << "\n";
-    }
+    // def __del__(self):
+    ~Resource();
 
     // def __copy__(self) -> Own[Resource]:
     Resource __copy__() const;
@@ -58,6 +40,36 @@ inline std::ostream& operator<<(std::ostream& os, const Resource& obj) {
     return os;
 }
 
+
+// def __init__(self, id: Int32):
+inline Resource::Resource(int32_t id) : id(id) {
+    // print("alloc", id)
+    std::cout << "alloc" << " " << id << "\n";
+}
+
+inline Resource::Resource(const Resource& other) : Resource(other.__copy__()) {}
+inline Resource& Resource::operator=(const Resource& other) {
+    if (this != &other) { *this = other.__copy__(); }
+    return *this;
+}
+
+inline Resource::Resource(Resource&& other) noexcept : id(std::move(other.id)) {
+    other.__tpy_owned_ = false;
+}
+inline Resource& Resource::operator=(Resource&& other) noexcept {
+    if (this != &other) {
+        this->~Resource();
+        new (this) Resource(std::move(other));
+    }
+    return *this;
+}
+
+// def __del__(self):
+inline Resource::~Resource() {
+    if (!this->__tpy_owned_) return;
+    // print("free", self.id)
+    std::cout << "free" << " " << this->id << "\n";
+}
 
 // def __copy__(self) -> Own[Resource]:
 inline Resource Resource::__copy__() const {

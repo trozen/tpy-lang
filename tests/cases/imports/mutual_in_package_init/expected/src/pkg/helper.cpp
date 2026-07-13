@@ -6,6 +6,9 @@ namespace tpyapp::pkg::helper {
 
 
 
+// def __init__(self, v: Int32) -> None:
+Boosted::Boosted(int32_t v) : val(v) {}
+
 // def boost(self) -> Int32:
 int32_t Boosted::boost() const {
     // return self.val + use_pkg()

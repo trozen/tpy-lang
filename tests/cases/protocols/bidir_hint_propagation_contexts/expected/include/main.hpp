@@ -49,7 +49,7 @@ struct Dog {
 
     // def __init__(self, label: str) -> None:
     Dog() = default;
-    explicit Dog(std::string_view label) : label(label) {}
+    explicit Dog(std::string_view label);
 
     // def name(self) -> str:
     std::string name() const;
@@ -69,7 +69,7 @@ struct Holder {
     ::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<::tpystd::tplib::box::Box<Pet>>> r;
 
     // def __init__(self, r: Own[Rc[Box[Box[Pet]]]]) -> None:
-    explicit Holder(::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<::tpystd::tplib::box::Box<Pet>>>&& r) : r(std::move(r)) {}
+    explicit Holder(::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<::tpystd::tplib::box::Box<Pet>>>&& r);
     // non-copyable (field 'r')
     Holder(const Holder&) = delete;
     Holder& operator=(const Holder&) = delete;
@@ -103,10 +103,16 @@ struct tpy::RefAdapter<tpyapp::main::Pet, T> : tpyapp::main::Pet {
 namespace tpyapp::main {
 
 
+// def __init__(self, label: str) -> None:
+inline Dog::Dog(std::string_view label) : label(label) {}
+
 // def name(self) -> str:
 inline std::string Dog::name() const {
     // return self.label
     return this->label;
 }
+
+// def __init__(self, r: Own[Rc[Box[Box[Pet]]]]) -> None:
+inline Holder::Holder(::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<::tpystd::tplib::box::Box<Pet>>>&& r) : r(std::move(r)) {}
 void __tpy_init();
 } // namespace tpyapp::main

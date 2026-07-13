@@ -40,7 +40,7 @@ struct ScaleBy {
 
     // def __init__(self, factor: Int32):
     ScaleBy() = default;
-    explicit ScaleBy(int32_t factor) : factor(factor) {}
+    explicit ScaleBy(int32_t factor);
 
     // @readonly
     // def __call__(self, x: Int32) -> Int32:
@@ -64,6 +64,9 @@ inline int32_t Negate::__call__(int32_t x) const {
     // return -x
     return ::tpy::neg_check<int32_t>(x);
 }
+
+// def __init__(self, factor: Int32):
+inline ScaleBy::ScaleBy(int32_t factor) : factor(factor) {}
 
 // @readonly
 // def __call__(self, x: Int32) -> Int32:

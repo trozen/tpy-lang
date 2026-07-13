@@ -25,7 +25,7 @@ struct Val {
 
     // def __init__(self, x: Int32) -> None:
     Val() = default;
-    explicit Val(int32_t x) : x(x) {}
+    explicit Val(int32_t x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Val";
 };
 
@@ -40,7 +40,7 @@ struct Holder {
     ::tpystd::tplib::rc::Rc<Val> shared;
 
     // def __init__(self) -> None:
-    Holder() : shared(Rc<Val>::new_<Val>(Val(0))) {}
+    Holder();
     // non-copyable (field 'shared')
     Holder(const Holder&) = delete;
     Holder& operator=(const Holder&) = delete;
@@ -54,5 +54,11 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     return os;
 }
 
+
+// def __init__(self, x: Int32) -> None:
+inline Val::Val(int32_t x) : x(x) {}
+
+// def __init__(self) -> None:
+inline Holder::Holder() : shared(Rc<Val>::new_<Val>(Val(0))) {}
 void __tpy_init();
 } // namespace tpyapp::main

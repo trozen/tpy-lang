@@ -24,7 +24,7 @@ struct Item {
 
     // def __init__(self, name: str, desc: str, label: str):
     Item() = default;
-    explicit Item(std::string_view name, std::string_view desc, std::string_view label) : name(name), desc(desc), label(label) {}
+    explicit Item(std::string_view name, std::string_view desc, std::string_view label);
 
     // # Warning: -> str copies the field
     // def get_name(self) -> str:
@@ -49,6 +49,9 @@ inline std::ostream& operator<<(std::ostream& os, const Item& obj) {
     return os;
 }
 
+
+// def __init__(self, name: str, desc: str, label: str):
+inline Item::Item(std::string_view name, std::string_view desc, std::string_view label) : name(name), desc(desc), label(label) {}
 
 // # Warning: -> str copies the field
 // def get_name(self) -> str:

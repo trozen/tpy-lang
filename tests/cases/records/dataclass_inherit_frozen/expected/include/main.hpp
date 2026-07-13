@@ -23,7 +23,7 @@ struct Vec2 {
     int32_t y;
 
     Vec2() = default;
-    explicit Vec2(int32_t x, int32_t y) : x(x), y(y) {}
+    explicit Vec2(int32_t x, int32_t y);
 
     bool __eq__(const Vec2& other) const;
 
@@ -59,7 +59,7 @@ struct Vec3 : Vec2 {
     int32_t z;
 
     Vec3() = default;
-    explicit Vec3(int32_t x, int32_t y, int32_t z) : Vec2(x, y), z(z) {}
+    explicit Vec3(int32_t x, int32_t y, int32_t z);
 
     bool __eq__(const Vec3& other) const;
 
@@ -89,6 +89,8 @@ namespace tpyapp::main {
 
 
 
+inline Vec2::Vec2(int32_t x, int32_t y) : x(x), y(y) {}
+
 inline bool Vec2::__eq__(const Vec2& other) const {
     return ((this->x == other.x) && (this->y == other.y));
 }
@@ -102,6 +104,8 @@ inline uint64_t Vec2::__hash__() const {
     h = (static_cast<uint64_t>(h ^ ::tpy::__hash__(this->y)));
     return h;
 }
+
+inline Vec3::Vec3(int32_t x, int32_t y, int32_t z) : Vec2(x, y), z(z) {}
 
 inline bool Vec3::__eq__(const Vec3& other) const {
     return (((this->x == other.x) && (this->y == other.y)) && (this->z == other.z));

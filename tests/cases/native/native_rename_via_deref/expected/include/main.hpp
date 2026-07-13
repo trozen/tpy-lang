@@ -22,7 +22,7 @@ struct WRef {
 
     // def __init__(self, target: Widget) -> None:
     WRef() = default;
-    explicit WRef(const ::x::Widget& target) : _target(target) {}
+    explicit WRef(const ::x::Widget& target);
 
     // @auto_readonly
     // def __deref__(self) -> Widget:
@@ -47,6 +47,9 @@ inline std::ostream& operator<<(std::ostream& os, const WRef& obj) {
     return os;
 }
 
+
+// def __init__(self, target: Widget) -> None:
+inline WRef::WRef(const ::x::Widget& target) : _target(target) {}
 
 // @auto_readonly
 // def __deref__(self) -> Widget:

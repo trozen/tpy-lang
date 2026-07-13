@@ -22,7 +22,7 @@ struct BaseCM {
     ::tpy::BigInt n;
 
     // def __init__(self) -> None:
-    BaseCM() : n(::tpy::BigInt(0)) {}
+    BaseCM();
 
     // def __enter__(self) -> "BaseCM":
     BaseCM& __enter__();
@@ -49,6 +49,9 @@ inline std::ostream& operator<<(std::ostream& os, const DerivedCM& obj) {
     return os;
 }
 
+
+// def __init__(self) -> None:
+inline BaseCM::BaseCM() : n(::tpy::BigInt(0)) {}
 
 // def __enter__(self) -> "BaseCM":
 inline BaseCM& BaseCM::__enter__() {

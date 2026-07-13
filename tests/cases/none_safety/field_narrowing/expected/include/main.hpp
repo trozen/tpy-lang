@@ -21,7 +21,7 @@ struct Config {
 
     // def __init__(self, port: Optional[int]) -> None:
     Config() = default;
-    explicit Config(std::optional<::tpy::BigInt> port) : port(port) {}
+    explicit Config(std::optional<::tpy::BigInt> port);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Config";
 };
 
@@ -30,5 +30,8 @@ inline std::ostream& operator<<(std::ostream& os, const Config& obj) {
     return os;
 }
 
+
+// def __init__(self, port: Optional[int]) -> None:
+inline Config::Config(std::optional<::tpy::BigInt> port) : port(port) {}
 void __tpy_init();
 } // namespace tpyapp::main

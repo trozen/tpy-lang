@@ -42,7 +42,7 @@ struct Dog : Pet {
 
     // def __init__(self, legs: int, weight: int) -> None:
     Dog() = default;
-    explicit Dog(const ::tpy::BigInt& legs, const ::tpy::BigInt& weight) : legs(legs), weight(weight) {}
+    explicit Dog(const ::tpy::BigInt& legs, const ::tpy::BigInt& weight);
 
     // def speak(self) -> str:
     std::string speak() override;
@@ -73,6 +73,9 @@ struct tpy::RefAdapter<tpyapp::main::Pet, T> : tpyapp::main::Pet {
 
 namespace tpyapp::main {
 
+
+// def __init__(self, legs: int, weight: int) -> None:
+inline Dog::Dog(const ::tpy::BigInt& legs, const ::tpy::BigInt& weight) : legs(legs), weight(weight) {}
 
 // def speak(self) -> str:
 inline std::string Dog::speak() {

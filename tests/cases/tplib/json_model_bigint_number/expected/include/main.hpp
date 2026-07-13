@@ -34,7 +34,7 @@ struct Repo {
     ::tpy::BigInt stars;
 
     Repo() = default;
-    explicit Repo(std::string_view name, const ::tpy::BigInt& stars) : name(name), stars(stars) {}
+    explicit Repo(std::string_view name, const ::tpy::BigInt& stars);
 
     bool __eq__(const Repo& other) const;
 
@@ -67,6 +67,8 @@ inline std::ostream& operator<<(std::ostream& os, const Repo& obj) {
     return os;
 }
 
+
+inline Repo::Repo(std::string_view name, const ::tpy::BigInt& stars) : name(name), stars(stars) {}
 
 inline bool Repo::__eq__(const Repo& other) const {
     return ((this->name == other.name) && (this->stars == other.stars));

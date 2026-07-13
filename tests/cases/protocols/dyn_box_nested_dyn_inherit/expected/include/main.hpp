@@ -59,7 +59,7 @@ struct Cat : NamedPet {
 
     // def __init__(self, n: str) -> None:
     Cat() = default;
-    explicit Cat(std::string_view n) : n(n) {}
+    explicit Cat(std::string_view n);
 
     // def name(self) -> str: return self.n
     std::string name() override;
@@ -110,6 +110,9 @@ struct tpy::RefAdapter<tpyapp::main::NamedPet, T> : tpyapp::main::NamedPet {
 
 namespace tpyapp::main {
 
+
+// def __init__(self, n: str) -> None:
+inline Cat::Cat(std::string_view n) : n(n) {}
 
 // def name(self) -> str: return self.n
 inline std::string Cat::name() {

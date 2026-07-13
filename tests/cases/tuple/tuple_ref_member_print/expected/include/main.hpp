@@ -20,7 +20,7 @@ struct Box {
 
     // def __init__(self, v: Int32) -> None:
     Box() = default;
-    explicit Box(int32_t v) : val(v) {}
+    explicit Box(int32_t v);
 
     // def __repr__(self) -> str:
     std::string __repr__() const;
@@ -45,6 +45,9 @@ template<> struct std::hash<::tpyapp::main::Box> {
 namespace tpyapp::main {
 
 
+
+// def __init__(self, v: Int32) -> None:
+inline Box::Box(int32_t v) : val(v) {}
 
 // def __repr__(self) -> str:
 inline std::string Box::__repr__() const {

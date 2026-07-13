@@ -27,7 +27,7 @@ struct Push {
 
     // def __init__(self, items: Own[list[int]]) -> None:
     Push() = default;
-    explicit Push(std::vector<::tpy::BigInt>&& items) : items(std::move(items)) {}
+    explicit Push(std::vector<::tpy::BigInt>&& items);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Push";
 };
 
@@ -43,7 +43,7 @@ struct Emit {
 
     // def __init__(self, label: str) -> None:
     Emit() = default;
-    explicit Emit(std::string_view label) : label(label) {}
+    explicit Emit(std::string_view label);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Emit";
 };
 
@@ -102,5 +102,11 @@ struct __gen_first_value : public ::tpy::next_iter_mixin<__gen_first_value, ::tp
     }
 };
 
+
+// def __init__(self, items: Own[list[int]]) -> None:
+inline Push::Push(std::vector<::tpy::BigInt>&& items) : items(std::move(items)) {}
+
+// def __init__(self, label: str) -> None:
+inline Emit::Emit(std::string_view label) : label(label) {}
 void __tpy_init();
 } // namespace tpyapp::main

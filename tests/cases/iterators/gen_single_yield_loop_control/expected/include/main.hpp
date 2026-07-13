@@ -36,7 +36,7 @@ struct Limiter {
 
     // def __init__(self, limit: Int32) -> None:
     Limiter() = default;
-    explicit Limiter(int32_t limit) : limit(limit) {}
+    explicit Limiter(int32_t limit);
 
     __gen_Limiter_first_positives first_positives(std::vector<int32_t>& items) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Limiter";
@@ -266,5 +266,8 @@ inline __gen_Limiter_first_positives Limiter::first_positives(std::vector<int32_
     return __gen_Limiter_first_positives(*this, items);
 }
 
+
+// def __init__(self, limit: Int32) -> None:
+inline Limiter::Limiter(int32_t limit) : limit(limit) {}
 void __tpy_init();
 } // namespace tpyapp::main

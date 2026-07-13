@@ -24,7 +24,7 @@ struct Bag {
     std::vector<::tpy::BigInt> xs;
 
     // def __init__(self) -> None:
-    Bag() : xs({1, 2, 3}) {}
+    Bag();
 
     // def itself(self) -> "Bag":
     Bag& itself();
@@ -44,7 +44,7 @@ struct Token {
 
     // def __init__(self, n: int) -> None:
     Token() = default;
-    explicit Token(const ::tpy::BigInt& n) : n(n) {}
+    explicit Token(const ::tpy::BigInt& n);
     // non-copyable (@nocopy)
     Token(const Token&) = delete;
     Token& operator=(const Token&) = delete;
@@ -59,10 +59,16 @@ inline std::ostream& operator<<(std::ostream& os, const Token& obj) {
 }
 
 
+// def __init__(self) -> None:
+inline Bag::Bag() : xs({1, 2, 3}) {}
+
 // def itself(self) -> "Bag":
 inline Bag& Bag::itself() {
     // return self
     return (*this);
 }
+
+// def __init__(self, n: int) -> None:
+inline Token::Token(const ::tpy::BigInt& n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

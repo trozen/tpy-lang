@@ -19,7 +19,7 @@ struct Stack {
     std::vector<int32_t> items;
 
     // def __init__(self) -> None:
-    Stack() : items({1, 2, 3}) {}
+    Stack();
 
     // def consume(self: auto_own[Self]) -> auto_own[Int32]:
     int32_t consume() const &;
@@ -34,6 +34,9 @@ inline std::ostream& operator<<(std::ostream& os, const Stack& obj) {
     return os;
 }
 
+
+// def __init__(self) -> None:
+inline Stack::Stack() : items({1, 2, 3}) {}
 
 // def consume(self: auto_own[Self]) -> auto_own[Int32]:
 inline int32_t Stack::consume() const & {

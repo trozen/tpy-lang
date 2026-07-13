@@ -19,7 +19,7 @@ struct Handler {
     std::function<void(int32_t)> on_event;
 
     // def __init__(self, cb: Callable[[Int32], None]) -> None:
-    explicit Handler(std::function<void(int32_t)> cb) : on_event(cb) {}
+    explicit Handler(std::function<void(int32_t)> cb);
 
     // def trigger(self, value: Int32) -> None:
     void trigger(int32_t value) const;
@@ -34,6 +34,9 @@ inline std::ostream& operator<<(std::ostream& os, const Handler& obj) {
     return os;
 }
 
+
+// def __init__(self, cb: Callable[[Int32], None]) -> None:
+inline Handler::Handler(std::function<void(int32_t)> cb) : on_event(cb) {}
 
 // def trigger(self, value: Int32) -> None:
 inline void Handler::trigger(int32_t value) const {

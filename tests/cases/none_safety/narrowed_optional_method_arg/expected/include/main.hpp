@@ -45,7 +45,7 @@ struct Node {
     std::optional<std::string> label;
 
     // def __init__(self, label: str | None = None) -> None:
-    explicit Node(std::optional<std::string_view> label = std::nullopt) : label(label ? std::make_optional(std::string(*label)) : std::nullopt) {}
+    explicit Node(std::optional<std::string_view> label = std::nullopt);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Node";
 };
 
@@ -75,5 +75,8 @@ inline void Printer::process(std::optional<std::string_view> x) const {
         this->show((*x));
     }
 }
+
+// def __init__(self, label: str | None = None) -> None:
+inline Node::Node(std::optional<std::string_view> label) : label(label ? std::make_optional(std::string(*label)) : std::nullopt) {}
 void __tpy_init();
 } // namespace tpyapp::main

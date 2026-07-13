@@ -20,7 +20,7 @@ struct BType {
     int32_t tag;
 
     // def __init__(self) -> None:
-    BType() : tag(7) {}
+    BType();
 
     // def use_a(self, a: AType) -> Int32:
     int32_t use_a(const ::tpyapp::a::AType& a) const;

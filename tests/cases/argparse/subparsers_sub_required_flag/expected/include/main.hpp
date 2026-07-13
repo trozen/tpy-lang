@@ -24,7 +24,7 @@ struct __tpy_builder_argparse_show_args_1 {
 
     // args = parser.parse_args(["show", "--key", "color"])
     __tpy_builder_argparse_show_args_1() = default;
-    explicit __tpy_builder_argparse_show_args_1(std::string_view key) : key(key) {}
+    explicit __tpy_builder_argparse_show_args_1(std::string_view key);
     static constexpr std::string_view __tpy_class_name__ = "__main__.__tpy_builder_argparse_show_args_1";
 };
 
@@ -40,7 +40,7 @@ struct __tpy_builder_argparse_args_1 {
 
     // args = parser.parse_args(["show", "--key", "color"])
     __tpy_builder_argparse_args_1() = default;
-    explicit __tpy_builder_argparse_args_1(std::string_view cmd, std::optional<std::string_view> key) : cmd(cmd), key(key ? std::make_optional(std::string(*key)) : std::nullopt) {}
+    explicit __tpy_builder_argparse_args_1(std::string_view cmd, std::optional<std::string_view> key);
     static constexpr std::string_view __tpy_class_name__ = "__main__.__tpy_builder_argparse_args_1";
 };
 
@@ -49,5 +49,11 @@ inline std::ostream& operator<<(std::ostream& os, const __tpy_builder_argparse_a
     return os;
 }
 
+
+// args = parser.parse_args(["show", "--key", "color"])
+inline __tpy_builder_argparse_show_args_1::__tpy_builder_argparse_show_args_1(std::string_view key) : key(key) {}
+
+// args = parser.parse_args(["show", "--key", "color"])
+inline __tpy_builder_argparse_args_1::__tpy_builder_argparse_args_1(std::string_view cmd, std::optional<std::string_view> key) : cmd(cmd), key(key ? std::make_optional(std::string(*key)) : std::nullopt) {}
 void __tpy_init();
 } // namespace tpyapp::main

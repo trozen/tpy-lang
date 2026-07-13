@@ -23,23 +23,11 @@ struct Base {
     Base() = default;
     Base(const Base&) = delete;
     Base& operator=(const Base&) = delete;
-    Base(Base&& other) noexcept {
-        other.__tpy_owned_ = false;
-    }
-    Base& operator=(Base&& other) noexcept {
-        if (this != &other) {
-            this->~Base();
-            new (this) Base(std::move(other));
-        }
-        return *this;
-    }
-    // def __del__(self):
+    Base(Base&& other) noexcept;
+    Base& operator=(Base&& other) noexcept;
 
-    ~Base() {
-        if (!this->__tpy_owned_) return;
-        // print("Base destroyed")
-        std::cout << "Base destroyed" << "\n";
-    }
+    // def __del__(self):
+    ~Base();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Base";
 };
 
@@ -54,26 +42,14 @@ struct Child : Base {
     std::string label;
 
     // def __init__(self, label: str):
-    explicit Child(std::string_view label) : label(label) {}
+    explicit Child(std::string_view label);
     Child(const Child&) = delete;
     Child& operator=(const Child&) = delete;
-    Child(Child&& other) noexcept : Base(std::move(other)), label(std::move(other.label)) {
-        other.__tpy_owned_ = false;
-    }
-    Child& operator=(Child&& other) noexcept {
-        if (this != &other) {
-            this->~Child();
-            new (this) Child(std::move(other));
-        }
-        return *this;
-    }
-    // def __del__(self):
+    Child(Child&& other) noexcept;
+    Child& operator=(Child&& other) noexcept;
 
-    ~Child() {
-        if (!this->__tpy_owned_) return;
-        // print("Child destroyed:", self.label)
-        std::cout << "Child destroyed:" << " " << this->label << "\n";
-    }
+    // def __del__(self):
+    ~Child();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Child";
 };
 
@@ -82,5 +58,44 @@ inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
     return os;
 }
 
+
+inline Base::Base(Base&& other) noexcept {
+    other.__tpy_owned_ = false;
+}
+inline Base& Base::operator=(Base&& other) noexcept {
+    if (this != &other) {
+        this->~Base();
+        new (this) Base(std::move(other));
+    }
+    return *this;
+}
+
+// def __del__(self):
+inline Base::~Base() {
+    if (!this->__tpy_owned_) return;
+    // print("Base destroyed")
+    std::cout << "Base destroyed" << "\n";
+}
+
+// def __init__(self, label: str):
+inline Child::Child(std::string_view label) : label(label) {}
+
+inline Child::Child(Child&& other) noexcept : Base(std::move(other)), label(std::move(other.label)) {
+    other.__tpy_owned_ = false;
+}
+inline Child& Child::operator=(Child&& other) noexcept {
+    if (this != &other) {
+        this->~Child();
+        new (this) Child(std::move(other));
+    }
+    return *this;
+}
+
+// def __del__(self):
+inline Child::~Child() {
+    if (!this->__tpy_owned_) return;
+    // print("Child destroyed:", self.label)
+    std::cout << "Child destroyed:" << " " << this->label << "\n";
+}
 void __tpy_init();
 } // namespace tpyapp::main

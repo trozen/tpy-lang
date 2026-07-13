@@ -21,7 +21,7 @@ struct P {
 
     // def __init__(self, v: int):
     P() = default;
-    explicit P(const ::tpy::BigInt& v) : v(v) {}
+    explicit P(const ::tpy::BigInt& v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.P";
 };
 
@@ -37,7 +37,7 @@ struct K {
     ::tpy::BigInt v;
 
     K() = default;
-    explicit K(const ::tpy::BigInt& v) : v(v) {}
+    explicit K(const ::tpy::BigInt& v);
 
     bool __eq__(const K& other) const;
 
@@ -66,6 +66,11 @@ template<> struct std::hash<::tpyapp::main::K> {
 namespace tpyapp::main {
 
 
+
+// def __init__(self, v: int):
+inline P::P(const ::tpy::BigInt& v) : v(v) {}
+
+inline K::K(const ::tpy::BigInt& v) : v(v) {}
 
 inline bool K::__eq__(const K& other) const {
     return (this->v == other.v);

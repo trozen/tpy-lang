@@ -29,7 +29,7 @@ struct Counter {
 
     // def __init__(self, n: int) -> None:
     Counter() = default;
-    explicit Counter(const ::tpy::BigInt& n) : n(n) {}
+    explicit Counter(const ::tpy::BigInt& n);
 
     __coro_Counter___anext__ __anext__();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Counter";
@@ -47,7 +47,7 @@ struct Source {
 
     // def __init__(self, start: int) -> None:
     Source() = default;
-    explicit Source(const ::tpy::BigInt& start) : start(start) {}
+    explicit Source(const ::tpy::BigInt& start);
 
     // def __aiter__(self) -> Own[Counter]:
     Counter __aiter__() const;
@@ -138,6 +138,12 @@ struct __coro_main {
     }
 };
 
+
+// def __init__(self, n: int) -> None:
+inline Counter::Counter(const ::tpy::BigInt& n) : n(n) {}
+
+// def __init__(self, start: int) -> None:
+inline Source::Source(const ::tpy::BigInt& start) : start(start) {}
 
 // def __aiter__(self) -> Own[Counter]:
 inline Counter Source::__aiter__() const {

@@ -25,26 +25,14 @@ struct Resource {
     bool __tpy_owned_ = true;
 
     // def __init__(self, name: str):
-    explicit Resource(std::string_view name) : name(name) {}
+    explicit Resource(std::string_view name);
     Resource(const Resource&) = delete;
     Resource& operator=(const Resource&) = delete;
-    Resource(Resource&& other) noexcept : name(std::move(other.name)) {
-        other.__tpy_owned_ = false;
-    }
-    Resource& operator=(Resource&& other) noexcept {
-        if (this != &other) {
-            this->~Resource();
-            new (this) Resource(std::move(other));
-        }
-        return *this;
-    }
-    // def __del__(self):
+    Resource(Resource&& other) noexcept;
+    Resource& operator=(Resource&& other) noexcept;
 
-    ~Resource() {
-        if (!this->__tpy_owned_) return;
-        // print("drop", self.name)
-        std::cout << "drop" << " " << this->name << "\n";
-    }
+    // def __del__(self):
+    ~Resource();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Resource";
 };
 
@@ -60,26 +48,14 @@ struct Base {
     bool __tpy_owned_ = true;
 
     // def __init__(self, tag: str):
-    explicit Base(std::string_view tag) : tag(tag) {}
+    explicit Base(std::string_view tag);
     Base(const Base&) = delete;
     Base& operator=(const Base&) = delete;
-    Base(Base&& other) noexcept : tag(std::move(other.tag)) {
-        other.__tpy_owned_ = false;
-    }
-    Base& operator=(Base&& other) noexcept {
-        if (this != &other) {
-            this->~Base();
-            new (this) Base(std::move(other));
-        }
-        return *this;
-    }
-    // def __del__(self):
+    Base(Base&& other) noexcept;
+    Base& operator=(Base&& other) noexcept;
 
-    ~Base() {
-        if (!this->__tpy_owned_) return;
-        // print("~Base", self.tag)
-        std::cout << "~Base" << " " << this->tag << "\n";
-    }
+    // def __del__(self):
+    ~Base();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Base";
 };
 
@@ -92,26 +68,14 @@ inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
 struct Child : Base {
 
     // def __init__(self, tag: str):
-    explicit Child(std::string_view tag) : Base(tag) {}
+    explicit Child(std::string_view tag);
     Child(const Child&) = delete;
     Child& operator=(const Child&) = delete;
-    Child(Child&& other) noexcept : Base(std::move(other)) {
-        other.__tpy_owned_ = false;
-    }
-    Child& operator=(Child&& other) noexcept {
-        if (this != &other) {
-            this->~Child();
-            new (this) Child(std::move(other));
-        }
-        return *this;
-    }
-    // def __del__(self):
+    Child(Child&& other) noexcept;
+    Child& operator=(Child&& other) noexcept;
 
-    ~Child() {
-        if (!this->__tpy_owned_) return;
-        // print("~Child", self.tag)
-        std::cout << "~Child" << " " << this->tag << "\n";
-    }
+    // def __del__(self):
+    ~Child();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Child";
 };
 
@@ -120,5 +84,68 @@ inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
     return os;
 }
 
+
+// def __init__(self, name: str):
+inline Resource::Resource(std::string_view name) : name(name) {}
+
+inline Resource::Resource(Resource&& other) noexcept : name(std::move(other.name)) {
+    other.__tpy_owned_ = false;
+}
+inline Resource& Resource::operator=(Resource&& other) noexcept {
+    if (this != &other) {
+        this->~Resource();
+        new (this) Resource(std::move(other));
+    }
+    return *this;
+}
+
+// def __del__(self):
+inline Resource::~Resource() {
+    if (!this->__tpy_owned_) return;
+    // print("drop", self.name)
+    std::cout << "drop" << " " << this->name << "\n";
+}
+
+// def __init__(self, tag: str):
+inline Base::Base(std::string_view tag) : tag(tag) {}
+
+inline Base::Base(Base&& other) noexcept : tag(std::move(other.tag)) {
+    other.__tpy_owned_ = false;
+}
+inline Base& Base::operator=(Base&& other) noexcept {
+    if (this != &other) {
+        this->~Base();
+        new (this) Base(std::move(other));
+    }
+    return *this;
+}
+
+// def __del__(self):
+inline Base::~Base() {
+    if (!this->__tpy_owned_) return;
+    // print("~Base", self.tag)
+    std::cout << "~Base" << " " << this->tag << "\n";
+}
+
+// def __init__(self, tag: str):
+inline Child::Child(std::string_view tag) : Base(tag) {}
+
+inline Child::Child(Child&& other) noexcept : Base(std::move(other)) {
+    other.__tpy_owned_ = false;
+}
+inline Child& Child::operator=(Child&& other) noexcept {
+    if (this != &other) {
+        this->~Child();
+        new (this) Child(std::move(other));
+    }
+    return *this;
+}
+
+// def __del__(self):
+inline Child::~Child() {
+    if (!this->__tpy_owned_) return;
+    // print("~Child", self.tag)
+    std::cout << "~Child" << " " << this->tag << "\n";
+}
 void __tpy_init();
 } // namespace tpyapp::main

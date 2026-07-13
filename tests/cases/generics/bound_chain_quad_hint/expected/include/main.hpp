@@ -23,7 +23,7 @@ struct Leaf {
 
     // def __init__(self, label: str) -> None:
     Leaf() = default;
-    explicit Leaf(std::string_view label) : label(label) {}
+    explicit Leaf(std::string_view label);
 
     // def kind(self) -> str:
     std::string kind() const;
@@ -56,8 +56,8 @@ struct Holder {
         }
         return *this;
     }
-    // def __del__(self) -> None:
 
+    // def __del__(self) -> None:
     ~Holder() {
         if (!this->__tpy_owned_) return;
         // unsafe_release(self._payload)
@@ -78,6 +78,9 @@ inline std::ostream& operator<<(std::ostream& os, const Holder<T>& obj) {
     return os;
 }
 
+
+// def __init__(self, label: str) -> None:
+inline Leaf::Leaf(std::string_view label) : label(label) {}
 
 // def kind(self) -> str:
 inline std::string Leaf::kind() const {

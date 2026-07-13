@@ -23,7 +23,7 @@ struct Payload {
 
     // def __init__(self, n: Int32) -> None:
     Payload() = default;
-    explicit Payload(int32_t n) : n(n) {}
+    explicit Payload(int32_t n);
     // non-copyable (@nocopy)
     Payload(const Payload&) = delete;
     Payload& operator=(const Payload&) = delete;
@@ -43,7 +43,7 @@ struct Sink {
     int32_t total;
 
     // def __init__(self) -> None:
-    Sink() : total(0) {}
+    Sink();
 
     // def absorb(self, p: Own[Payload]) -> None:
     void absorb(Payload&& p);
@@ -55,6 +55,12 @@ inline std::ostream& operator<<(std::ostream& os, const Sink& obj) {
     return os;
 }
 
+
+// def __init__(self, n: Int32) -> None:
+inline Payload::Payload(int32_t n) : n(n) {}
+
+// def __init__(self) -> None:
+inline Sink::Sink() : total(0) {}
 
 // def absorb(self, p: Own[Payload]) -> None:
 inline void Sink::absorb(Payload&& p) {

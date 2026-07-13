@@ -19,7 +19,7 @@ struct Stack {
     std::vector<int32_t> _data;
 
     // def __init__(self) -> None:
-    Stack() : _data(std::vector<int32_t>{}) {}
+    Stack();
 
     auto begin() { return this->__span__().begin(); }
     auto end() { return this->__span__().end(); }
@@ -59,6 +59,9 @@ inline std::ostream& operator<<(std::ostream& os, const Stack& obj) {
     return os;
 }
 
+
+// def __init__(self) -> None:
+inline Stack::Stack() : _data(std::vector<int32_t>{}) {}
 
 // def push(self, val: Int32) -> None:
 inline void Stack::push(int32_t val) {

@@ -24,7 +24,7 @@ struct Series {
 
     // def __init__(self, a: Int32, b: Int32) -> None:
     Series() = default;
-    explicit Series(int32_t a, int32_t b) : a(a), b(b) {}
+    explicit Series(int32_t a, int32_t b);
 
     __gen_Series_items items() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Series";
@@ -67,5 +67,8 @@ inline __gen_Series_items Series::items() const {
     return __gen_Series_items(*this);
 }
 
+
+// def __init__(self, a: Int32, b: Int32) -> None:
+inline Series::Series(int32_t a, int32_t b) : a(a), b(b) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -20,7 +20,7 @@ struct Sized {
 
     // def __init__(self, v: Int32):
     Sized() = default;
-    explicit Sized(int32_t v) : val(v) {}
+    explicit Sized(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Sized";
 };
 
@@ -29,5 +29,8 @@ inline std::ostream& operator<<(std::ostream& os, const Sized& obj) {
     return os;
 }
 
+
+// def __init__(self, v: Int32):
+inline Sized::Sized(int32_t v) : val(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

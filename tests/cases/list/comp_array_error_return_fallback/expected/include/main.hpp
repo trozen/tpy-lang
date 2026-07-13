@@ -40,7 +40,7 @@ struct Gauge {
 
     // def __init__(self, raw: Int32) -> None:
     Gauge() = default;
-    explicit Gauge(int32_t raw) : raw(raw) {}
+    explicit Gauge(int32_t raw);
 
     // @property
     // @error_return(MyErr)
@@ -58,6 +58,9 @@ inline std::ostream& operator<<(std::ostream& os, const Gauge& obj) {
     return os;
 }
 
+
+// def __init__(self, raw: Int32) -> None:
+inline Gauge::Gauge(int32_t raw) : raw(raw) {}
 
 // @property
 // @error_return(MyErr)

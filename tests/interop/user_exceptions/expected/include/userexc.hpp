@@ -23,9 +23,7 @@ int64_t must_be_even(int64_t n);
 struct NotFound : ::tpy::KeyError {
 
     NotFound() = default;
-    explicit NotFound(std::string_view message) {
-        this->message = message;
-    }
+    explicit NotFound(std::string_view message);
 
     [[nodiscard]] std::unique_ptr<::tpy::Throwable> clone() const override { return std::make_unique<NotFound>(*this); }
     [[noreturn]] void __raise__() const override { throw *this; }
@@ -41,9 +39,7 @@ inline std::ostream& operator<<(std::ostream& os, const NotFound& obj) {
 struct AppError : ::tpy::Exception {
 
     AppError() = default;
-    explicit AppError(std::string_view message) {
-        this->message = message;
-    }
+    explicit AppError(std::string_view message);
 
     [[nodiscard]] std::unique_ptr<::tpy::Throwable> clone() const override { return std::make_unique<AppError>(*this); }
     [[noreturn]] void __raise__() const override { throw *this; }
@@ -59,9 +55,7 @@ inline std::ostream& operator<<(std::ostream& os, const AppError& obj) {
 struct FatalError : ::tpy::BaseException {
 
     FatalError() = default;
-    explicit FatalError(std::string_view message) {
-        this->message = message;
-    }
+    explicit FatalError(std::string_view message);
 
     [[nodiscard]] std::unique_ptr<::tpy::Throwable> clone() const override { return std::make_unique<FatalError>(*this); }
     [[noreturn]] void __raise__() const override { throw *this; }
@@ -77,9 +71,7 @@ inline std::ostream& operator<<(std::ostream& os, const FatalError& obj) {
 struct ConfigError : AppError {
 
     ConfigError() = default;
-    explicit ConfigError(std::string_view message) {
-        this->message = message;
-    }
+    explicit ConfigError(std::string_view message);
 
     [[nodiscard]] std::unique_ptr<::tpy::Throwable> clone() const override { return std::make_unique<ConfigError>(*this); }
     [[noreturn]] void __raise__() const override { throw *this; }
@@ -92,5 +84,21 @@ inline std::ostream& operator<<(std::ostream& os, const ConfigError& obj) {
     return os;
 }
 
+
+inline NotFound::NotFound(std::string_view message) {
+    this->message = message;
+}
+
+inline AppError::AppError(std::string_view message) {
+    this->message = message;
+}
+
+inline FatalError::FatalError(std::string_view message) {
+    this->message = message;
+}
+
+inline ConfigError::ConfigError(std::string_view message) {
+    this->message = message;
+}
 void __tpy_init();
 } // namespace tpyapp::userexc

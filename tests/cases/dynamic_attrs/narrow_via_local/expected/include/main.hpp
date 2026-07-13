@@ -20,7 +20,7 @@ struct Bag {
 
     // def __init__(self, items: dict[str, Any]) -> None:
     Bag() = default;
-    explicit Bag(const ::tpy::ordered_map<std::string, ::tpy::Any>& items) : _items(items) {}
+    explicit Bag(const ::tpy::ordered_map<std::string, ::tpy::Any>& items);
 
     // def __getattr__(self, name: str) -> Any:
     ::tpy::Any __getattr__(std::string_view name) const;
@@ -32,6 +32,9 @@ inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
     return os;
 }
 
+
+// def __init__(self, items: dict[str, Any]) -> None:
+inline Bag::Bag(const ::tpy::ordered_map<std::string, ::tpy::Any>& items) : _items(items) {}
 
 // def __getattr__(self, name: str) -> Any:
 inline ::tpy::Any Bag::__getattr__(std::string_view name) const {

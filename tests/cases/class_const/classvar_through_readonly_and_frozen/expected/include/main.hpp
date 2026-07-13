@@ -21,9 +21,7 @@ struct Counter {
     static inline int32_t instances = 0;
 
     // def __init__(self) -> None:
-    Counter() {
-        // pass
-    }
+    Counter();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Counter";
 };
 
@@ -41,7 +39,7 @@ struct FrozenCounter {
     static inline int32_t instances = 0;
 
     FrozenCounter() = default;
-    explicit FrozenCounter(std::string_view name) : name(name) {}
+    explicit FrozenCounter(std::string_view name);
 
     bool __eq__(const FrozenCounter& other) const;
 
@@ -70,6 +68,13 @@ template<> struct std::hash<::tpyapp::main::FrozenCounter> {
 namespace tpyapp::main {
 
 
+
+// def __init__(self) -> None:
+inline Counter::Counter() {
+    // pass
+}
+
+inline FrozenCounter::FrozenCounter(std::string_view name) : name(name) {}
 
 inline bool FrozenCounter::__eq__(const FrozenCounter& other) const {
     return (this->name == other.name);

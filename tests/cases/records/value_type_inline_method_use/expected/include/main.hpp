@@ -24,7 +24,7 @@ struct TimerEntry {
 
     // def __init__(self, deadline: float, tid: Int32) -> None:
     TimerEntry() = default;
-    explicit TimerEntry(double deadline, int32_t tid) : deadline(deadline), tid(tid) {}
+    explicit TimerEntry(double deadline, int32_t tid);
 
     // def __lt__(self, o: 'TimerEntry') -> bool:
     bool __lt__(TimerEntry o) const;
@@ -52,7 +52,7 @@ struct Owner {
     std::vector<TimerEntry> heap;
 
     // def __init__(self) -> None:
-    Owner() : heap(std::vector<TimerEntry>{}) {}
+    Owner();
 
     // def add(self, d: float, t: Int32) -> None:
     void add(double d, int32_t t);
@@ -65,11 +65,17 @@ inline std::ostream& operator<<(std::ostream& os, const Owner& obj) {
 }
 
 
+// def __init__(self, deadline: float, tid: Int32) -> None:
+inline TimerEntry::TimerEntry(double deadline, int32_t tid) : deadline(deadline), tid(tid) {}
+
 // def __lt__(self, o: 'TimerEntry') -> bool:
 inline bool TimerEntry::__lt__(TimerEntry o) const {
     // return self.deadline < o.deadline
     return (this->deadline < o.deadline);
 }
+
+// def __init__(self) -> None:
+inline Owner::Owner() : heap(std::vector<TimerEntry>{}) {}
 
 // def add(self, d: float, t: Int32) -> None:
 inline void Owner::add(double d, int32_t t) {

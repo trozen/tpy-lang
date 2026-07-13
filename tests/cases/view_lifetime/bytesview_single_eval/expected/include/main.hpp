@@ -27,7 +27,7 @@ struct Holder {
     std::string s;
 
     // def __init__(self):
-    Holder() : b(std::vector<uint8_t>{}), s("") {}
+    Holder();
 
     // def set_bytes(self, x: bytes) -> None:
     void set_bytes(std::span<const uint8_t> x);
@@ -42,6 +42,9 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     return os;
 }
 
+
+// def __init__(self):
+inline Holder::Holder() : b(std::vector<uint8_t>{}), s("") {}
 
 // def set_bytes(self, x: bytes) -> None:
 inline void Holder::set_bytes(std::span<const uint8_t> x) {

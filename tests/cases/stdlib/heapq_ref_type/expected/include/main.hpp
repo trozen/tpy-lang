@@ -27,7 +27,7 @@ struct Box {
 
     // def __init__(self, v: int) -> None:
     Box() = default;
-    explicit Box(const ::tpy::BigInt& v) : val(v) {}
+    explicit Box(const ::tpy::BigInt& v);
 
     // def __lt__(self, o: 'Box') -> bool:
     bool __lt__(const Box& o) const;
@@ -43,6 +43,9 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
     return os;
 }
 
+
+// def __init__(self, v: int) -> None:
+inline Box::Box(const ::tpy::BigInt& v) : val(v) {}
 
 // def __lt__(self, o: 'Box') -> bool:
 inline bool Box::__lt__(const Box& o) const {

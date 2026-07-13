@@ -41,7 +41,7 @@ struct Dog : Pet {
 
     // def __init__(self, tag: str) -> None:
     Dog() = default;
-    explicit Dog(std::string_view tag) : tag(tag) {}
+    explicit Dog(std::string_view tag);
 
     // def name(self) -> str:
     std::string name() override;
@@ -63,7 +63,7 @@ struct Fish : Pet {
 
     // def __init__(self, label: str) -> None:
     Fish() = default;
-    explicit Fish(std::string_view label) : label(label) {}
+    explicit Fish(std::string_view label);
 
     // def name(self) -> str:
     std::string name() override;
@@ -95,6 +95,9 @@ struct tpy::RefAdapter<tpyapp::main::Pet, T> : tpyapp::main::Pet {
 namespace tpyapp::main {
 
 
+// def __init__(self, tag: str) -> None:
+inline Dog::Dog(std::string_view tag) : tag(tag) {}
+
 // def name(self) -> str:
 inline std::string Dog::name() {
     // return self.tag
@@ -106,6 +109,9 @@ inline std::string Dog::bark() const {
     // return "woof " + self.tag
     return (::tpy::str_concat("woof ", this->tag));
 }
+
+// def __init__(self, label: str) -> None:
+inline Fish::Fish(std::string_view label) : label(label) {}
 
 // def name(self) -> str:
 inline std::string Fish::name() {

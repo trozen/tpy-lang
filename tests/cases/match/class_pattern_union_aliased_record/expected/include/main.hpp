@@ -26,7 +26,7 @@ struct Point {
 
     // def __init__(self, y: int) -> None:
     Point() = default;
-    explicit Point(const ::tpy::BigInt& y) : y(y) {}
+    explicit Point(const ::tpy::BigInt& y);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
 };
 
@@ -42,7 +42,7 @@ struct Other {
 
     // def __init__(self, z: int) -> None:
     Other() = default;
-    explicit Other(const ::tpy::BigInt& z) : z(z) {}
+    explicit Other(const ::tpy::BigInt& z);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Other";
 };
 
@@ -51,5 +51,11 @@ inline std::ostream& operator<<(std::ostream& os, const Other& obj) {
     return os;
 }
 
+
+// def __init__(self, y: int) -> None:
+inline Point::Point(const ::tpy::BigInt& y) : y(y) {}
+
+// def __init__(self, z: int) -> None:
+inline Other::Other(const ::tpy::BigInt& z) : z(z) {}
 void __tpy_init();
 } // namespace tpyapp::main

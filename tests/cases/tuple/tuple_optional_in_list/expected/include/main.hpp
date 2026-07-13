@@ -21,7 +21,7 @@ struct T {
 
     // def __init__(self, x: Int32) -> None:
     T() = default;
-    explicit T(int32_t x) : x(x) {}
+    explicit T(int32_t x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.T";
 };
 
@@ -30,5 +30,8 @@ inline std::ostream& operator<<(std::ostream& os, const T& obj) {
     return os;
 }
 
+
+// def __init__(self, x: Int32) -> None:
+inline T::T(int32_t x) : x(x) {}
 void __tpy_init();
 } // namespace tpyapp::main

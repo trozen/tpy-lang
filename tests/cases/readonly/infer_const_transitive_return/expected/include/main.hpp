@@ -22,7 +22,7 @@ struct Point {
 
     // def __init__(self, x: int) -> None:
     Point() = default;
-    explicit Point(const ::tpy::BigInt& x) : x(x) {}
+    explicit Point(const ::tpy::BigInt& x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
 };
 
@@ -37,7 +37,7 @@ struct Container {
     std::vector<Point> _items;
 
     // def __init__(self) -> None:
-    Container() : _items({Point(::tpy::BigInt(1)), Point(::tpy::BigInt(2))}) {}
+    Container();
 
     // def first_mutable(self) -> Point:    # non-const: mutable ref into self's data
     Point& first_mutable();
@@ -62,7 +62,7 @@ struct Wrapper {
     Container _c;
 
     // def __init__(self) -> None:
-    Wrapper() : _c(Container()) {}
+    Wrapper();
 
     // def get_mutable(self) -> Point:      # non-const: transitive through non-readonly callee
     Point& get_mutable();
@@ -74,6 +74,12 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {
     return os;
 }
 
+
+// def __init__(self, x: int) -> None:
+inline Point::Point(const ::tpy::BigInt& x) : x(x) {}
+
+// def __init__(self) -> None:
+inline Container::Container() : _items({Point(::tpy::BigInt(1)), Point(::tpy::BigInt(2))}) {}
 
 // def first_mutable(self) -> Point:    # non-const: mutable ref into self's data
 inline Point& Container::first_mutable() {
@@ -93,6 +99,9 @@ inline ::tpy::BigInt Container::first_x() const {
     // return self._items[0].x
     return ::tpy::__getitem__(this->_items, 0).x;
 }
+
+// def __init__(self) -> None:
+inline Wrapper::Wrapper() : _c(Container()) {}
 
 // def get_mutable(self) -> Point:      # non-const: transitive through non-readonly callee
 inline Point& Wrapper::get_mutable() {

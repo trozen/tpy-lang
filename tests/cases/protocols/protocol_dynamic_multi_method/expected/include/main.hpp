@@ -43,7 +43,7 @@ struct Circle : Shape {
 
     // def __init__(self, radius: float) -> None:
     Circle() = default;
-    explicit Circle(double radius) : radius(radius) {}
+    explicit Circle(double radius);
 
     // def area(self) -> float:
     double area() override;
@@ -84,6 +84,9 @@ struct tpy::RefAdapter<tpyapp::main::Shape, T> : tpyapp::main::Shape {
 
 namespace tpyapp::main {
 
+
+// def __init__(self, radius: float) -> None:
+inline Circle::Circle(double radius) : radius(radius) {}
 
 // def area(self) -> float:
 inline double Circle::area() {

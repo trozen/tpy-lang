@@ -21,9 +21,7 @@ struct Base {
     int32_t a;
 
     Base() = default;
-    explicit Base(int32_t a) : a(a) {
-        this->__post_init__();
-    }
+    explicit Base(int32_t a);
 
     // def __post_init__(self) -> None:
     void __post_init__() const;
@@ -50,7 +48,7 @@ struct Child : Base {
     int32_t b;
 
     Child() = default;
-    explicit Child(int32_t a, int32_t b) : Base(a), b(b) {}
+    explicit Child(int32_t a, int32_t b);
 
     bool __eq__(const Child& other) const;
 
@@ -68,6 +66,10 @@ inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
 }
 
 
+inline Base::Base(int32_t a) : a(a) {
+    this->__post_init__();
+}
+
 // def __post_init__(self) -> None:
 inline void Base::__post_init__() const {
     // print("post_init")
@@ -81,6 +83,8 @@ inline bool Base::__eq__(const Base& other) const {
 inline std::string Base::__repr__() const {
     return std::format("Base(a={})", ::tpy::repr_of(this->a));
 }
+
+inline Child::Child(int32_t a, int32_t b) : Base(a), b(b) {}
 
 inline bool Child::__eq__(const Child& other) const {
     return ((this->a == other.a) && (this->b == other.b));

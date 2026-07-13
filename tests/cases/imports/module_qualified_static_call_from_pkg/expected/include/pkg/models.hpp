@@ -20,7 +20,7 @@ struct Widget {
 
     // def __init__(self, v: Int32) -> None:
     Widget() = default;
-    explicit Widget(int32_t v) : value(v) {}
+    explicit Widget(int32_t v);
 
     // @staticmethod
     // def make(v: Int32) -> Own["Widget"]:
@@ -33,6 +33,9 @@ inline std::ostream& operator<<(std::ostream& os, const Widget& obj) {
     return os;
 }
 
+
+// def __init__(self, v: Int32) -> None:
+inline Widget::Widget(int32_t v) : value(v) {}
 
 // @staticmethod
 // def make(v: Int32) -> Own["Widget"]:

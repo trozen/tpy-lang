@@ -30,7 +30,7 @@ struct Gate {
     ::tpystd::asyncio::Event evt;
 
     // def __init__(self) -> None:
-    Gate() : evt(::tpystd::asyncio::Event()) {}
+    Gate();
 
     // def open(self) -> None:
     void open();
@@ -119,6 +119,9 @@ struct __coro_main_coro {
     }
 };
 
+
+// def __init__(self) -> None:
+inline Gate::Gate() : evt(::tpystd::asyncio::Event()) {}
 
 // def open(self) -> None:
 inline void Gate::open() {

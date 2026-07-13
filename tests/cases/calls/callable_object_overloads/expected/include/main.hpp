@@ -25,7 +25,7 @@ struct Adder {
 
     // def __init__(self, base: Int32) -> None:
     Adder() = default;
-    explicit Adder(int32_t base) : base(base) {}
+    explicit Adder(int32_t base);
 
     // @overload
     // def __call__(self, x: Int32) -> Int32: ...
@@ -57,6 +57,9 @@ inline std::ostream& operator<<(std::ostream& os, const Adder& obj) {
     return os;
 }
 
+
+// def __init__(self, base: Int32) -> None:
+inline Adder::Adder(int32_t base) : base(base) {}
 // def use(f: Fn[[Int32], Int32]) -> None:
 template<typename __F0>
   requires requires(__F0& __fn, int32_t __a0) {

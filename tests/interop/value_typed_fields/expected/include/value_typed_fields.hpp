@@ -17,7 +17,7 @@ struct Point {
     int64_t y;
 
     Point() = default;
-    explicit Point(int64_t x, int64_t y) : x(x), y(y) {}
+    explicit Point(int64_t x, int64_t y);
 
     bool __eq__(Point other) const;
 
@@ -54,7 +54,7 @@ struct Box {
     Point origin;
 
     Box() = default;
-    explicit Box(Point p) : origin(p) {}
+    explicit Box(Point p);
 
     Point get_origin() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
@@ -66,6 +66,8 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 }
 
 
+inline Point::Point(int64_t x, int64_t y) : x(x), y(y) {}
+
 inline bool Point::__eq__(Point other) const {
     return ((this->x == other.x) && (this->y == other.y));
 }
@@ -73,6 +75,8 @@ inline bool Point::__eq__(Point other) const {
 inline int64_t Point::__hash__() const {
     return (::tpy::add_check<int64_t>((::tpy::mul_check<int64_t>(this->x, 31)), this->y));
 }
+
+inline Box::Box(Point p) : origin(p) {}
 
 inline Point Box::get_origin() const {
     return this->origin;

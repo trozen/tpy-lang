@@ -20,7 +20,7 @@ struct Calculator {
 
     // def __init__(self, base: Int32) -> None:
     Calculator() = default;
-    explicit Calculator(int32_t base) : base(base) {}
+    explicit Calculator(int32_t base);
 
     // def sum_with_base(self, *xs: Int32) -> Int32:
     int32_t sum_with_base(::tpy::varargs<const int32_t> xs) const;
@@ -32,6 +32,9 @@ inline std::ostream& operator<<(std::ostream& os, const Calculator& obj) {
     return os;
 }
 
+
+// def __init__(self, base: Int32) -> None:
+inline Calculator::Calculator(int32_t base) : base(base) {}
 
 // def sum_with_base(self, *xs: Int32) -> Int32:
 inline int32_t Calculator::sum_with_base(::tpy::varargs<const int32_t> xs) const {

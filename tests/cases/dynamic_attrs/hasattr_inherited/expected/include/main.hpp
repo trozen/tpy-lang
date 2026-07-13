@@ -23,7 +23,7 @@ struct Bag {
 
     // def __init__(self, declared: str) -> None:
     Bag() = default;
-    explicit Bag(std::string_view declared) : declared(declared) {}
+    explicit Bag(std::string_view declared);
 
     // def __getattr__(self, name: str) -> str:
     std::string __getattr__(std::string_view name) const;
@@ -39,7 +39,7 @@ inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
 struct Child : Bag {
 
     // def __init__(self) -> None:
-    Child() : Bag("d") {}
+    Child();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Child";
 };
 
@@ -48,6 +48,9 @@ inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
     return os;
 }
 
+
+// def __init__(self, declared: str) -> None:
+inline Bag::Bag(std::string_view declared) : declared(declared) {}
 
 // def __getattr__(self, name: str) -> str:
 inline std::string Bag::__getattr__(std::string_view name) const {
@@ -59,5 +62,8 @@ inline std::string Bag::__getattr__(std::string_view name) const {
     // raise AttributeError(name)
     throw ::tpy::AttributeError(name);
 }
+
+// def __init__(self) -> None:
+inline Child::Child() : Bag("d") {}
 void __tpy_init();
 } // namespace tpyapp::main

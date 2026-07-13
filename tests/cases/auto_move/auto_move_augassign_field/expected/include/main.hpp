@@ -21,7 +21,7 @@ struct Counter {
 
     // def __init__(self, v: Int32) -> None:
     Counter() = default;
-    explicit Counter(int32_t v) : value(v) {}
+    explicit Counter(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Counter";
 };
 
@@ -30,5 +30,8 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
     return os;
 }
 
+
+// def __init__(self, v: Int32) -> None:
+inline Counter::Counter(int32_t v) : value(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

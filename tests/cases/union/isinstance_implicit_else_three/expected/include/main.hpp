@@ -25,7 +25,7 @@ struct A {
 
     // def __init__(self, x: int):
     A() = default;
-    explicit A(const ::tpy::BigInt& x) : ax(x) {}
+    explicit A(const ::tpy::BigInt& x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.A";
 };
 
@@ -41,7 +41,7 @@ struct B {
 
     // def __init__(self, x: int):
     B() = default;
-    explicit B(const ::tpy::BigInt& x) : bx(x) {}
+    explicit B(const ::tpy::BigInt& x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.B";
 };
 
@@ -57,7 +57,7 @@ struct C {
 
     // def __init__(self, x: int):
     C() = default;
-    explicit C(const ::tpy::BigInt& x) : cx(x) {}
+    explicit C(const ::tpy::BigInt& x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.C";
 };
 
@@ -66,5 +66,14 @@ inline std::ostream& operator<<(std::ostream& os, const C& obj) {
     return os;
 }
 
+
+// def __init__(self, x: int):
+inline A::A(const ::tpy::BigInt& x) : ax(x) {}
+
+// def __init__(self, x: int):
+inline B::B(const ::tpy::BigInt& x) : bx(x) {}
+
+// def __init__(self, x: int):
+inline C::C(const ::tpy::BigInt& x) : cx(x) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -30,7 +30,7 @@ struct Dog {
 
     // def __init__(self, n: str):
     Dog() = default;
-    explicit Dog(std::string_view n) : _name(n) {}
+    explicit Dog(std::string_view n);
 
     // def name(self) -> str:
     std::string name() const;
@@ -49,7 +49,7 @@ struct Cat {
 
     // def __init__(self, n: str):
     Cat() = default;
-    explicit Cat(std::string_view n) : _name(n) {}
+    explicit Cat(std::string_view n);
 
     // def name(self) -> StrView:
     std::string_view name() const;
@@ -68,7 +68,7 @@ struct Bird {
 
     // def __init__(self, n: str):
     Bird() = default;
-    explicit Bird(std::string_view n) : _name(n) {}
+    explicit Bird(std::string_view n);
 
     // def name(self) -> String:
     std::string name() const;
@@ -81,17 +81,26 @@ inline std::ostream& operator<<(std::ostream& os, const Bird& obj) {
 }
 
 
+// def __init__(self, n: str):
+inline Dog::Dog(std::string_view n) : _name(n) {}
+
 // def name(self) -> str:
 inline std::string Dog::name() const {
     // return self._name
     return this->_name;
 }
 
+// def __init__(self, n: str):
+inline Cat::Cat(std::string_view n) : _name(n) {}
+
 // def name(self) -> StrView:
 inline std::string_view Cat::name() const {
     // return self._name
     return this->_name;
 }
+
+// def __init__(self, n: str):
+inline Bird::Bird(std::string_view n) : _name(n) {}
 
 // def name(self) -> String:
 inline std::string Bird::name() const {

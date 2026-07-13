@@ -23,9 +23,7 @@ void main();
 struct Dog {
 
     // def __init__(self) -> None:
-    Dog() {
-        // pass
-    }
+    Dog();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Dog";
 };
 
@@ -38,9 +36,7 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 struct Cat {
 
     // def __init__(self) -> None:
-    Cat() {
-        // pass
-    }
+    Cat();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Cat";
 };
 
@@ -53,9 +49,7 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 struct Classifier {
 
     // def __init__(self) -> None:
-    Classifier() {
-        // pass
-    }
+    Classifier();
 
     // def which(self, a: Dog | Cat) -> int:
     ::tpy::BigInt which(std::variant<const Cat*, const Dog*> a) const;
@@ -67,6 +61,21 @@ inline std::ostream& operator<<(std::ostream& os, const Classifier& obj) {
     return os;
 }
 
+
+// def __init__(self) -> None:
+inline Dog::Dog() {
+    // pass
+}
+
+// def __init__(self) -> None:
+inline Cat::Cat() {
+    // pass
+}
+
+// def __init__(self) -> None:
+inline Classifier::Classifier() {
+    // pass
+}
 
 // def which(self, a: Dog | Cat) -> int:
 inline ::tpy::BigInt Classifier::which(std::variant<const Cat*, const Dog*> a) const {

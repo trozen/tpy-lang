@@ -23,7 +23,7 @@ struct Circle {
 
     // def __init__(self, r: Int32) -> None:
     Circle() = default;
-    explicit Circle(int32_t r) : radius(r) {}
+    explicit Circle(int32_t r);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Circle";
 };
 
@@ -39,7 +39,7 @@ struct Square {
 
     // def __init__(self, s: Int32) -> None:
     Square() = default;
-    explicit Square(int32_t s) : side(s) {}
+    explicit Square(int32_t s);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Square";
 };
 
@@ -54,7 +54,7 @@ struct Canvas {
     std::variant<Circle, Square> _shape;
 
     // def __init__(self, s: Circle | Square) -> None:
-    explicit Canvas(const std::variant<Circle*, Square*> s) : _shape(::tpy::to_value_variant<std::variant<Circle, Square>>(s)) {}
+    explicit Canvas(const std::variant<Circle*, Square*> s);
 
     // @property
     // def shape(self) -> Circle | Square:
@@ -71,6 +71,15 @@ inline std::ostream& operator<<(std::ostream& os, const Canvas& obj) {
     return os;
 }
 
+
+// def __init__(self, r: Int32) -> None:
+inline Circle::Circle(int32_t r) : radius(r) {}
+
+// def __init__(self, s: Int32) -> None:
+inline Square::Square(int32_t s) : side(s) {}
+
+// def __init__(self, s: Circle | Square) -> None:
+inline Canvas::Canvas(const std::variant<Circle*, Square*> s) : _shape(::tpy::to_value_variant<std::variant<Circle, Square>>(s)) {}
 
 // @property
 // def shape(self) -> Circle | Square:

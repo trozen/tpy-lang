@@ -43,7 +43,7 @@ struct Dog : Animal {
 
     // def __init__(self, n: str) -> None:
     Dog() = default;
-    explicit Dog(std::string_view n) : _name(n) {}
+    explicit Dog(std::string_view n);
 
     // def name(self) -> str:
     std::string name() override;
@@ -62,7 +62,7 @@ struct Cat : Animal {
 
     // def __init__(self, n: str) -> None:
     Cat() = default;
-    explicit Cat(std::string_view n) : _name(n) {}
+    explicit Cat(std::string_view n);
 
     // def name(self) -> str:
     std::string name() override;
@@ -108,8 +108,8 @@ struct Tagged {
         }
         return *this;
     }
-    // def __del__(self) -> None:
 
+    // def __del__(self) -> None:
     ~Tagged() {
         if (!this->__tpy_owned_) return;
         // if self._owned:
@@ -168,11 +168,17 @@ struct tpy::RefAdapter<tpyapp::main::Animal, T> : tpyapp::main::Animal {
 namespace tpyapp::main {
 
 
+// def __init__(self, n: str) -> None:
+inline Dog::Dog(std::string_view n) : _name(n) {}
+
 // def name(self) -> str:
 inline std::string Dog::name() {
     // return self._name
     return this->_name;
 }
+
+// def __init__(self, n: str) -> None:
+inline Cat::Cat(std::string_view n) : _name(n) {}
 
 // def name(self) -> str:
 inline std::string Cat::name() {

@@ -22,7 +22,7 @@ struct Node {
 
     // def __init__(self, v: Int32) -> None:
     Node() = default;
-    explicit Node(int32_t v) : value(v) {}
+    explicit Node(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Node";
 };
 
@@ -37,7 +37,7 @@ struct NodeHolder {
     Node* _node;
 
     // def __init__(self) -> None:
-    NodeHolder() : _node(static_cast<Node*>(nullptr)) {}
+    NodeHolder();
 
     // @auto_readonly
     // def get_node(self) -> Ptr[auto_readonly[Node]]:
@@ -54,6 +54,12 @@ inline std::ostream& operator<<(std::ostream& os, const NodeHolder& obj) {
     return os;
 }
 
+
+// def __init__(self, v: Int32) -> None:
+inline Node::Node(int32_t v) : value(v) {}
+
+// def __init__(self) -> None:
+inline NodeHolder::NodeHolder() : _node(static_cast<Node*>(nullptr)) {}
 
 // @auto_readonly
 // def get_node(self) -> Ptr[auto_readonly[Node]]:

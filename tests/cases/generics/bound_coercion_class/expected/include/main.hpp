@@ -25,7 +25,7 @@ struct Animal {
 
     // def __init__(self, code: Int32) -> None:
     Animal() = default;
-    explicit Animal(int32_t code) : code(code) {}
+    explicit Animal(int32_t code);
 
     // def base_code(self) -> Int32:
     int32_t base_code() const;
@@ -49,6 +49,9 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
     return os;
 }
 
+
+// def __init__(self, code: Int32) -> None:
+inline Animal::Animal(int32_t code) : code(code) {}
 
 // def base_code(self) -> Int32:
 inline int32_t Animal::base_code() const {

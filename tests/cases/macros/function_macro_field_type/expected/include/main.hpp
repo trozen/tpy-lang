@@ -21,7 +21,7 @@ struct GateBase {
     int32_t tag;
 
     // def __init__(self) -> None:
-    GateBase() : tag(7) {}
+    GateBase();
     static constexpr std::string_view __tpy_class_name__ = "__main__.GateBase";
 };
 
@@ -37,7 +37,7 @@ struct Gate : GateBase {
 
     // def __init__(self, flag: bool) -> None:
     Gate() = default;
-    explicit Gate(bool flag) : GateBase(), flag(flag) {}
+    explicit Gate(bool flag);
 
     // def describe(self) -> str:
     std::string describe() const;
@@ -49,6 +49,12 @@ inline std::ostream& operator<<(std::ostream& os, const Gate& obj) {
     return os;
 }
 
+
+// def __init__(self) -> None:
+inline GateBase::GateBase() : tag(7) {}
+
+// def __init__(self, flag: bool) -> None:
+inline Gate::Gate(bool flag) : GateBase(), flag(flag) {}
 
 // def describe(self) -> str:
 inline std::string Gate::describe() const {

@@ -21,7 +21,7 @@ struct Inner {
     int32_t x;
 
     Inner() = default;
-    explicit Inner(int32_t x) : x(x) {}
+    explicit Inner(int32_t x);
 
     bool __eq__(const Inner& other) const;
 
@@ -47,7 +47,7 @@ struct Outer {
     std::optional<Inner> inner = std::nullopt;
 
     Outer() = default;
-    explicit Outer(std::string_view name, std::optional<Inner>&& inner = std::nullopt) : name(name), inner(std::move(inner)) {}
+    explicit Outer(std::string_view name, std::optional<Inner>&& inner = std::nullopt);
 
     bool __eq__(const Outer& other) const;
 
@@ -65,6 +65,8 @@ inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
 }
 
 
+inline Inner::Inner(int32_t x) : x(x) {}
+
 inline bool Inner::__eq__(const Inner& other) const {
     return (this->x == other.x);
 }
@@ -72,6 +74,8 @@ inline bool Inner::__eq__(const Inner& other) const {
 inline std::string Inner::__repr__() const {
     return std::format("Inner(x={})", ::tpy::repr_of(this->x));
 }
+
+inline Outer::Outer(std::string_view name, std::optional<Inner>&& inner) : name(name), inner(std::move(inner)) {}
 
 inline bool Outer::__eq__(const Outer& other) const {
     return ((this->name == other.name) && (this->inner == other.inner));

@@ -29,7 +29,7 @@ struct Container {
 
     // def __init__(self, label: str):
     Container() = default;
-    explicit Container(std::string_view label) : label(label) {}
+    explicit Container(std::string_view label);
 
     template <typename T>
     __coro_Container_echo<T> echo(::tpy::param_val_or_ref_t<T> x) const;
@@ -167,5 +167,8 @@ struct __coro_main_coro {
     }
 };
 
+
+// def __init__(self, label: str):
+inline Container::Container(std::string_view label) : label(label) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -22,7 +22,7 @@ struct Holder {
     std::function<void(std::vector<int32_t>&)> cb;
 
     // def __init__(self, cb: Callable[[list[Int32]], None]) -> None:
-    explicit Holder(std::function<void(std::vector<int32_t>&)> cb) : data({0}), cb(cb) {}
+    explicit Holder(std::function<void(std::vector<int32_t>&)> cb);
 
     // def poke(self) -> None:
     void poke();
@@ -34,6 +34,9 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     return os;
 }
 
+
+// def __init__(self, cb: Callable[[list[Int32]], None]) -> None:
+inline Holder::Holder(std::function<void(std::vector<int32_t>&)> cb) : data({0}), cb(cb) {}
 
 // def poke(self) -> None:
 inline void Holder::poke() {

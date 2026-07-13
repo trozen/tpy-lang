@@ -24,7 +24,7 @@ struct Wrapper {
 
     // def __init__(self, child: "str | None") -> None:
     Wrapper() = default;
-    explicit Wrapper(std::optional<std::string_view> child) : child(child ? std::make_optional(std::string(*child)) : std::nullopt) {}
+    explicit Wrapper(std::optional<std::string_view> child);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Wrapper";
 };
 
@@ -40,7 +40,7 @@ struct Other {
 
     // def __init__(self, x: int) -> None:
     Other() = default;
-    explicit Other(const ::tpy::BigInt& x) : x(x) {}
+    explicit Other(const ::tpy::BigInt& x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Other";
 };
 
@@ -49,5 +49,11 @@ inline std::ostream& operator<<(std::ostream& os, const Other& obj) {
     return os;
 }
 
+
+// def __init__(self, child: "str | None") -> None:
+inline Wrapper::Wrapper(std::optional<std::string_view> child) : child(child ? std::make_optional(std::string(*child)) : std::nullopt) {}
+
+// def __init__(self, x: int) -> None:
+inline Other::Other(const ::tpy::BigInt& x) : x(x) {}
 void __tpy_init();
 } // namespace tpyapp::main

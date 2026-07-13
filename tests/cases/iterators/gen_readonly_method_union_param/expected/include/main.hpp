@@ -21,9 +21,7 @@ void main();
 struct Dog {
 
     // def __init__(self) -> None:
-    Dog() {
-        // pass
-    }
+    Dog();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Dog";
 };
 
@@ -36,9 +34,7 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 struct Cat {
 
     // def __init__(self) -> None:
-    Cat() {
-        // pass
-    }
+    Cat();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Cat";
 };
 
@@ -53,7 +49,7 @@ struct Zoo {
     ::tpy::BigInt tag;
 
     // def __init__(self) -> None:
-    Zoo() : tag(::tpy::BigInt(7)) {}
+    Zoo();
 
     __gen_Zoo_codes codes(std::variant<const Cat*, const Dog*> a) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Zoo";
@@ -94,5 +90,18 @@ inline __gen_Zoo_codes Zoo::codes(std::variant<const Cat*, const Dog*> a) const 
     return __gen_Zoo_codes(*this, a);
 }
 
+
+// def __init__(self) -> None:
+inline Dog::Dog() {
+    // pass
+}
+
+// def __init__(self) -> None:
+inline Cat::Cat() {
+    // pass
+}
+
+// def __init__(self) -> None:
+inline Zoo::Zoo() : tag(::tpy::BigInt(7)) {}
 void __tpy_init();
 } // namespace tpyapp::main

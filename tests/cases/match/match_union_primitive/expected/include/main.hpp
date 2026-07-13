@@ -26,7 +26,7 @@ struct Cat {
 
     // def __init__(self, name: str) -> None:
     Cat() = default;
-    explicit Cat(std::string_view name) : name(name) {}
+    explicit Cat(std::string_view name);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Cat";
 };
 
@@ -42,7 +42,7 @@ struct Dog {
 
     // def __init__(self, name: str) -> None:
     Dog() = default;
-    explicit Dog(std::string_view name) : name(name) {}
+    explicit Dog(std::string_view name);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Dog";
 };
 
@@ -69,6 +69,12 @@ inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
     return os;
 }
 
+
+// def __init__(self, name: str) -> None:
+inline Cat::Cat(std::string_view name) : name(name) {}
+
+// def __init__(self, name: str) -> None:
+inline Dog::Dog(std::string_view name) : name(name) {}
 struct Tree {
     using variant_type = std::variant<int32_t, std::vector<Tree>>;
     variant_type value;

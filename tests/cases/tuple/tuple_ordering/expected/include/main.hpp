@@ -22,7 +22,7 @@ struct Rank {
 
     // def __init__(self, v: Int32) -> None:
     Rank() = default;
-    explicit Rank(int32_t v) : val(v) {}
+    explicit Rank(int32_t v);
     // non-copyable (@nocopy)
     Rank(const Rank&) = delete;
     Rank& operator=(const Rank&) = delete;
@@ -71,6 +71,9 @@ inline std::ostream& operator<<(std::ostream& os, const Rank& obj) {
     return os;
 }
 
+
+// def __init__(self, v: Int32) -> None:
+inline Rank::Rank(int32_t v) : val(v) {}
 
 // def __eq__(self, other: Rank) -> bool:
 inline bool Rank::__eq__(const Rank& other) const {

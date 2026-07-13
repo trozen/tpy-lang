@@ -22,7 +22,7 @@ struct Box {
 
     // def __init__(self, v: Int32) -> None:
     Box() = default;
-    explicit Box(int32_t v) : _val(v) {}
+    explicit Box(int32_t v);
 
     // def __deref__(self) -> Int32:
     int32_t __deref__() const;
@@ -38,6 +38,9 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
     return os;
 }
 
+
+// def __init__(self, v: Int32) -> None:
+inline Box::Box(int32_t v) : _val(v) {}
 
 // def __deref__(self) -> Int32:
 inline int32_t Box::__deref__() const {

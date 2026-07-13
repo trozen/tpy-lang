@@ -22,7 +22,7 @@ struct Foo {
 
     // def __init__(self, x: int) -> None:
     Foo() = default;
-    explicit Foo(const ::tpy::BigInt& x) : x(x) {}
+    explicit Foo(const ::tpy::BigInt& x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Foo";
 };
 
@@ -38,7 +38,7 @@ struct Bar {
 
     // def __init__(self, x: int) -> None:
     Bar() = default;
-    explicit Bar(const ::tpy::BigInt& x) : x(x) {}
+    explicit Bar(const ::tpy::BigInt& x);
 
     // def __repr__(self) -> str:
     std::string __repr__() const;
@@ -50,6 +50,12 @@ inline std::ostream& operator<<(std::ostream& os, const Bar& obj) {
     return os;
 }
 
+
+// def __init__(self, x: int) -> None:
+inline Foo::Foo(const ::tpy::BigInt& x) : x(x) {}
+
+// def __init__(self, x: int) -> None:
+inline Bar::Bar(const ::tpy::BigInt& x) : x(x) {}
 
 // def __repr__(self) -> str:
 inline std::string Bar::__repr__() const {

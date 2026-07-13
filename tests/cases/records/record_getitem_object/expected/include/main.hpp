@@ -23,7 +23,7 @@ struct Point {
 
     // def __init__(self, x: Int32, y: Int32) -> None:
     Point() = default;
-    explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
+    explicit Point(int32_t x, int32_t y);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
 };
 
@@ -39,7 +39,7 @@ struct PointList {
 
     // def __init__(self, pts: list[Point]) -> None:
     PointList() = default;
-    explicit PointList(const std::vector<Point>& pts) : data(pts) {}
+    explicit PointList(const std::vector<Point>& pts);
 
     // def __len__(self) -> Int32:
     int32_t __len__() const;
@@ -73,6 +73,12 @@ inline std::ostream& operator<<(std::ostream& os, const PointList& obj) {
     return os;
 }
 
+
+// def __init__(self, x: Int32, y: Int32) -> None:
+inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
+
+// def __init__(self, pts: list[Point]) -> None:
+inline PointList::PointList(const std::vector<Point>& pts) : data(pts) {}
 
 // def __len__(self) -> Int32:
 inline int32_t PointList::__len__() const {

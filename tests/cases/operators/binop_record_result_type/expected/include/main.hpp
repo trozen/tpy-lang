@@ -24,7 +24,7 @@ struct Frac {
 
     // def __init__(self, num: int, den: int) -> None:
     Frac() = default;
-    explicit Frac(const ::tpy::BigInt& num, const ::tpy::BigInt& den) : num(num), den(den) {}
+    explicit Frac(const ::tpy::BigInt& num, const ::tpy::BigInt& den);
 
     // @overload
     // def __truediv__(self, other: Frac) -> float: ...
@@ -73,7 +73,7 @@ struct Vec {
 
     // def __init__(self, x: float, y: float) -> None:
     Vec() = default;
-    explicit Vec(double x, double y) : x(x), y(y) {}
+    explicit Vec(double x, double y);
 
     // def __mul__(self, k: float) -> Vec:
     Vec __mul__(double k) const;
@@ -112,7 +112,7 @@ struct Acc {
 
     // def __init__(self, total: int) -> None:
     Acc() = default;
-    explicit Acc(const ::tpy::BigInt& total) : total(total) {}
+    explicit Acc(const ::tpy::BigInt& total);
 
     // def __add__(self, n: int) -> Acc:
     Acc __add__(const ::tpy::BigInt& n) const;
@@ -138,11 +138,17 @@ namespace tpyapp::main {
 
 
 
+// def __init__(self, num: int, den: int) -> None:
+inline Frac::Frac(const ::tpy::BigInt& num, const ::tpy::BigInt& den) : num(num), den(den) {}
+
 // def __str__(self) -> str:
 inline std::string Frac::__str__() const {
     // return str(self.num) + "/" + str(self.den)
     return (::tpy::str_concat((::tpy::str_concat((this->num).to_string(), "/")), (this->den).to_string()));
 }
+
+// def __init__(self, x: float, y: float) -> None:
+inline Vec::Vec(double x, double y) : x(x), y(y) {}
 
 // def __mul__(self, k: float) -> Vec:
 inline Vec Vec::__mul__(double k) const {
@@ -161,6 +167,9 @@ inline std::string Vec::__str__() const {
     // return "Vec(" + str(self.x) + ", " + str(self.y) + ")"
     return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("Vec(", ::tpy::float_to_str(this->x))), ", ")), ::tpy::float_to_str(this->y))), ")"));
 }
+
+// def __init__(self, total: int) -> None:
+inline Acc::Acc(const ::tpy::BigInt& total) : total(total) {}
 
 // def __add__(self, n: int) -> Acc:
 inline Acc Acc::__add__(const ::tpy::BigInt& n) const {

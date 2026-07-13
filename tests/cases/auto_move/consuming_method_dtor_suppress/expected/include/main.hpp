@@ -20,37 +20,14 @@ struct HeapVal {
     bool __tpy_owned_ = true;
 
     // def __init__(self, value: Int32):
-    explicit HeapVal(int32_t value) {
-        // print("init", value)
-        std::cout << "init" << " " << value << "\n";
-        // self._ptr = unsafe_alloc()
-        this->_ptr = static_cast<int32_t*>(::operator new(sizeof(int32_t), std::align_val_t(alignof(int32_t))));
-        // unsafe_init(self._ptr, value)
-        ::new(static_cast<void*>(this->_ptr)) int32_t(value);
-    }
+    explicit HeapVal(int32_t value);
     HeapVal(const HeapVal&) = delete;
     HeapVal& operator=(const HeapVal&) = delete;
-    HeapVal(HeapVal&& other) noexcept : _ptr(std::move(other._ptr)) {
-        other.__tpy_owned_ = false;
-    }
-    HeapVal& operator=(HeapVal&& other) noexcept {
-        if (this != &other) {
-            this->~HeapVal();
-            new (this) HeapVal(std::move(other));
-        }
-        return *this;
-    }
-    // def __del__(self):
+    HeapVal(HeapVal&& other) noexcept;
+    HeapVal& operator=(HeapVal&& other) noexcept;
 
-    ~HeapVal() {
-        if (!this->__tpy_owned_) return;
-        // print("del")
-        std::cout << "del" << "\n";
-        // unsafe_drop(self._ptr)
-        ::tpy::destroy_at(this->_ptr);
-        // unsafe_free(self._ptr)
-        ::operator delete(this->_ptr, std::align_val_t(alignof(int32_t)));
-    }
+    // def __del__(self):
+    ~HeapVal();
 
     // def take(self: Own[Self]) -> Int32:
     int32_t take() &&;
@@ -62,6 +39,38 @@ inline std::ostream& operator<<(std::ostream& os, const HeapVal& obj) {
     return os;
 }
 
+
+// def __init__(self, value: Int32):
+inline HeapVal::HeapVal(int32_t value) {
+    // print("init", value)
+    std::cout << "init" << " " << value << "\n";
+    // self._ptr = unsafe_alloc()
+    this->_ptr = static_cast<int32_t*>(::operator new(sizeof(int32_t), std::align_val_t(alignof(int32_t))));
+    // unsafe_init(self._ptr, value)
+    ::new(static_cast<void*>(this->_ptr)) int32_t(value);
+}
+
+inline HeapVal::HeapVal(HeapVal&& other) noexcept : _ptr(std::move(other._ptr)) {
+    other.__tpy_owned_ = false;
+}
+inline HeapVal& HeapVal::operator=(HeapVal&& other) noexcept {
+    if (this != &other) {
+        this->~HeapVal();
+        new (this) HeapVal(std::move(other));
+    }
+    return *this;
+}
+
+// def __del__(self):
+inline HeapVal::~HeapVal() {
+    if (!this->__tpy_owned_) return;
+    // print("del")
+    std::cout << "del" << "\n";
+    // unsafe_drop(self._ptr)
+    ::tpy::destroy_at(this->_ptr);
+    // unsafe_free(self._ptr)
+    ::operator delete(this->_ptr, std::align_val_t(alignof(int32_t)));
+}
 
 // def take(self: Own[Self]) -> Int32:
 inline int32_t HeapVal::take() && {

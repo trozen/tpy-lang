@@ -24,7 +24,7 @@ struct Dog {
 
     // def __init__(self, name: str) -> None:
     Dog() = default;
-    explicit Dog(std::string_view name) : name(name) {}
+    explicit Dog(std::string_view name);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Dog";
 };
 
@@ -40,7 +40,7 @@ struct Cat {
 
     // def __init__(self, lives: int) -> None:
     Cat() = default;
-    explicit Cat(const ::tpy::BigInt& lives) : lives(lives) {}
+    explicit Cat(const ::tpy::BigInt& lives);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Cat";
 };
 
@@ -55,7 +55,7 @@ struct Box {
     std::variant<Cat, Dog> payload;
 
     // def __init__(self, p: Dog | Cat) -> None:
-    explicit Box(const std::variant<Cat*, Dog*> p) : payload(::tpy::to_value_variant<std::variant<Cat, Dog>>(p)) {}
+    explicit Box(const std::variant<Cat*, Dog*> p);
 
     __gen_Box_describe describe() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
@@ -98,5 +98,14 @@ inline __gen_Box_describe Box::describe() const {
     return __gen_Box_describe(*this);
 }
 
+
+// def __init__(self, name: str) -> None:
+inline Dog::Dog(std::string_view name) : name(name) {}
+
+// def __init__(self, lives: int) -> None:
+inline Cat::Cat(const ::tpy::BigInt& lives) : lives(lives) {}
+
+// def __init__(self, p: Dog | Cat) -> None:
+inline Box::Box(const std::variant<Cat*, Dog*> p) : payload(::tpy::to_value_variant<std::variant<Cat, Dog>>(p)) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -20,7 +20,7 @@ struct Holder {
     ::tpystd::tpy::Poll<int32_t> last;
 
     // def __init__(self) -> None:
-    Holder() : last(::tpystd::tpy::Poll<int32_t>::pending()) {}
+    Holder();
     // non-copyable (field 'last')
     Holder(const Holder&) = delete;
     Holder& operator=(const Holder&) = delete;
@@ -34,5 +34,8 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     return os;
 }
 
+
+// def __init__(self) -> None:
+inline Holder::Holder() : last(::tpystd::tpy::Poll<int32_t>::pending()) {}
 void __tpy_init();
 } // namespace tpyapp::main

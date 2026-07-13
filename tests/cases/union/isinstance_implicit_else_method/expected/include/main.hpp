@@ -24,7 +24,7 @@ struct Cat {
 
     // def __init__(self, a: int):
     Cat() = default;
-    explicit Cat(const ::tpy::BigInt& a) : a(a) {}
+    explicit Cat(const ::tpy::BigInt& a);
 
     // def speak(self) -> int:
     ::tpy::BigInt speak() const;
@@ -43,7 +43,7 @@ struct Dog {
 
     // def __init__(self, b: int):
     Dog() = default;
-    explicit Dog(const ::tpy::BigInt& b) : b(b) {}
+    explicit Dog(const ::tpy::BigInt& b);
 
     // def speak(self) -> int:
     ::tpy::BigInt speak() const;
@@ -56,11 +56,17 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 }
 
 
+// def __init__(self, a: int):
+inline Cat::Cat(const ::tpy::BigInt& a) : a(a) {}
+
 // def speak(self) -> int:
 inline ::tpy::BigInt Cat::speak() const {
     // return self.a + 10
     return ((this->a) + (::tpy::BigInt(10)));
 }
+
+// def __init__(self, b: int):
+inline Dog::Dog(const ::tpy::BigInt& b) : b(b) {}
 
 // def speak(self) -> int:
 inline ::tpy::BigInt Dog::speak() const {

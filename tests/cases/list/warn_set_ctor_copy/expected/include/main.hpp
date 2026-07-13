@@ -25,7 +25,7 @@ struct Node {
 
     // def __init__(self, val: Int32) -> None:
     Node() = default;
-    explicit Node(int32_t val) : val(val) {}
+    explicit Node(int32_t val);
 
     // def __hash__(self) -> Int32:
     int32_t __hash__() const;
@@ -54,6 +54,9 @@ template<> struct std::hash<::tpyapp::main::Node> {
 namespace tpyapp::main {
 
 
+
+// def __init__(self, val: Int32) -> None:
+inline Node::Node(int32_t val) : val(val) {}
 
 // def __hash__(self) -> Int32:
 inline int32_t Node::__hash__() const {

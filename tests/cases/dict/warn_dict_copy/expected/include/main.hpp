@@ -31,7 +31,7 @@ struct Node {
 
     // def __init__(self, val: Int32) -> None:
     Node() = default;
-    explicit Node(int32_t val) : val(val) {}
+    explicit Node(int32_t val);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Node";
 };
 
@@ -40,6 +40,9 @@ inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
     return os;
 }
 
+
+// def __init__(self, val: Int32) -> None:
+inline Node::Node(int32_t val) : val(val) {}
 // def test_warn_update_generic[V](a: dict[str, V], b: dict[str, V]) -> None:
 template<typename V>
 void test_warn_update_generic(::tpy::ordered_map<std::string, V>& a, ::tpy::ordered_map<std::string, V>& b) {

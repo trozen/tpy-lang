@@ -28,7 +28,7 @@ struct Point {
     int32_t y;
 
     Point() = default;
-    explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
+    explicit Point(int32_t x, int32_t y);
 
     bool __eq__(const Point& other) const;
 
@@ -55,7 +55,7 @@ struct MaybePoint {
     std::optional<Point> pos;
 
     MaybePoint() = default;
-    explicit MaybePoint(std::string_view label, std::optional<Point>&& pos) : label(label), pos(std::move(pos)) {}
+    explicit MaybePoint(std::string_view label, std::optional<Point>&& pos);
 
     bool __eq__(const MaybePoint& other) const;
 
@@ -80,7 +80,7 @@ struct PointList {
     std::vector<std::optional<Point>> items;
 
     PointList() = default;
-    explicit PointList(std::vector<std::optional<Point>>&& items) : items(std::move(items)) {}
+    explicit PointList(std::vector<std::optional<Point>>&& items);
 
     bool __eq__(const PointList& other) const;
 
@@ -107,7 +107,7 @@ struct Line {
     Point end;
 
     Line() = default;
-    explicit Line(Point&& start, Point&& end) : start(std::move(start)), end(std::move(end)) {}
+    explicit Line(Point&& start, Point&& end);
 
     bool __eq__(const Line& other) const;
 
@@ -131,7 +131,7 @@ struct MaybeLine {
     std::optional<Line> line;
 
     MaybeLine() = default;
-    explicit MaybeLine(std::optional<Line>&& line) : line(std::move(line)) {}
+    explicit MaybeLine(std::optional<Line>&& line);
 
     bool __eq__(const MaybeLine& other) const;
 
@@ -160,7 +160,7 @@ struct Mixed {
     std::optional<Point> optional;
 
     Mixed() = default;
-    explicit Mixed(std::string_view name, Point&& required, std::optional<Point>&& optional) : name(name), required(std::move(required)), optional(std::move(optional)) {}
+    explicit Mixed(std::string_view name, Point&& required, std::optional<Point>&& optional);
 
     bool __eq__(const Mixed& other) const;
 
@@ -185,7 +185,7 @@ struct LabeledPoints {
     ::tpy::ordered_map<std::string, std::optional<Point>> items;
 
     LabeledPoints() = default;
-    explicit LabeledPoints(::tpy::ordered_map<std::string, std::optional<Point>>&& items) : items(std::move(items)) {}
+    explicit LabeledPoints(::tpy::ordered_map<std::string, std::optional<Point>>&& items);
 
     bool __eq__(const LabeledPoints& other) const;
 
@@ -203,6 +203,8 @@ inline std::ostream& operator<<(std::ostream& os, const LabeledPoints& obj) {
 }
 
 
+inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
+
 inline bool Point::__eq__(const Point& other) const {
     return ((this->x == other.x) && (this->y == other.y));
 }
@@ -210,6 +212,8 @@ inline bool Point::__eq__(const Point& other) const {
 inline std::string Point::__repr__() const {
     return std::format("Point(x={}, y={})", ::tpy::repr_of(this->x), ::tpy::repr_of(this->y));
 }
+
+inline MaybePoint::MaybePoint(std::string_view label, std::optional<Point>&& pos) : label(label), pos(std::move(pos)) {}
 
 inline bool MaybePoint::__eq__(const MaybePoint& other) const {
     return ((this->label == other.label) && (this->pos == other.pos));
@@ -219,6 +223,8 @@ inline std::string MaybePoint::__repr__() const {
     return std::format("MaybePoint(label={}, pos={})", ::tpy::repr_of(this->label), ::tpy::repr_of(this->pos));
 }
 
+inline PointList::PointList(std::vector<std::optional<Point>>&& items) : items(std::move(items)) {}
+
 inline bool PointList::__eq__(const PointList& other) const {
     return (this->items == other.items);
 }
@@ -226,6 +232,8 @@ inline bool PointList::__eq__(const PointList& other) const {
 inline std::string PointList::__repr__() const {
     return std::format("PointList(items={})", ::tpy::list_to_str(this->items));
 }
+
+inline Line::Line(Point&& start, Point&& end) : start(std::move(start)), end(std::move(end)) {}
 
 inline bool Line::__eq__(const Line& other) const {
     return ((this->start == other.start) && (this->end == other.end));
@@ -235,6 +243,8 @@ inline std::string Line::__repr__() const {
     return std::format("Line(start={}, end={})", ::tpy::repr_of(this->start), ::tpy::repr_of(this->end));
 }
 
+inline MaybeLine::MaybeLine(std::optional<Line>&& line) : line(std::move(line)) {}
+
 inline bool MaybeLine::__eq__(const MaybeLine& other) const {
     return (this->line == other.line);
 }
@@ -243,6 +253,8 @@ inline std::string MaybeLine::__repr__() const {
     return std::format("MaybeLine(line={})", ::tpy::repr_of(this->line));
 }
 
+inline Mixed::Mixed(std::string_view name, Point&& required, std::optional<Point>&& optional) : name(name), required(std::move(required)), optional(std::move(optional)) {}
+
 inline bool Mixed::__eq__(const Mixed& other) const {
     return (((this->name == other.name) && (this->required == other.required)) && (this->optional == other.optional));
 }
@@ -250,6 +262,8 @@ inline bool Mixed::__eq__(const Mixed& other) const {
 inline std::string Mixed::__repr__() const {
     return std::format("Mixed(name={}, required={}, optional={})", ::tpy::repr_of(this->name), ::tpy::repr_of(this->required), ::tpy::repr_of(this->optional));
 }
+
+inline LabeledPoints::LabeledPoints(::tpy::ordered_map<std::string, std::optional<Point>>&& items) : items(std::move(items)) {}
 
 inline bool LabeledPoints::__eq__(const LabeledPoints& other) const {
     return (this->items == other.items);

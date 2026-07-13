@@ -26,7 +26,7 @@ struct A {
 
     // def __init__(self, x: str) -> None:
     A() = default;
-    explicit A(std::string_view x) : x(x) {}
+    explicit A(std::string_view x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.A";
 };
 
@@ -42,7 +42,7 @@ struct B {
 
     // def __init__(self, y: str) -> None:
     B() = default;
-    explicit B(std::string_view y) : y(y) {}
+    explicit B(std::string_view y);
     static constexpr std::string_view __tpy_class_name__ = "__main__.B";
 };
 
@@ -57,7 +57,7 @@ struct W {
     std::variant<A, B> f;
 
     // def __init__(self, f: A | B) -> None:
-    explicit W(const std::variant<A*, B*> f) : f(::tpy::to_value_variant<std::variant<A, B>>(f)) {}
+    explicit W(const std::variant<A*, B*> f);
 
     // def get_label(self) -> str:
     std::string get_label() const;
@@ -69,6 +69,15 @@ inline std::ostream& operator<<(std::ostream& os, const W& obj) {
     return os;
 }
 
+
+// def __init__(self, x: str) -> None:
+inline A::A(std::string_view x) : x(x) {}
+
+// def __init__(self, y: str) -> None:
+inline B::B(std::string_view y) : y(y) {}
+
+// def __init__(self, f: A | B) -> None:
+inline W::W(const std::variant<A*, B*> f) : f(::tpy::to_value_variant<std::variant<A, B>>(f)) {}
 
 // def get_label(self) -> str:
 inline std::string W::get_label() const {

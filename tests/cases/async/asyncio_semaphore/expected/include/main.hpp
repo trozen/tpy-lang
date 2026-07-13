@@ -31,7 +31,7 @@ struct Counters {
     int32_t peak;
 
     // def __init__(self) -> None:
-    Counters() : active(0), peak(0) {}
+    Counters();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Counters";
 };
 
@@ -107,5 +107,8 @@ struct __coro_main_coro {
     }
 };
 
+
+// def __init__(self) -> None:
+inline Counters::Counters() : active(0), peak(0) {}
 void __tpy_init();
 } // namespace tpyapp::main

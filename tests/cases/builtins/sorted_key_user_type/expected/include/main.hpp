@@ -21,7 +21,7 @@ struct Score {
 
     // def __init__(self, val: Int32) -> None:
     Score() = default;
-    explicit Score(int32_t val) : val(val) {}
+    explicit Score(int32_t val);
 
     // def __lt__(self, other: Score) -> bool:
     bool __lt__(const Score& other) const;
@@ -46,7 +46,7 @@ struct Item {
 
     // def __init__(self, name: str, score: Own[Score]) -> None:
     Item() = default;
-    explicit Item(std::string_view name, Score&& score) : name(name), score(std::move(score)) {}
+    explicit Item(std::string_view name, Score&& score);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Item";
 };
 
@@ -56,10 +56,16 @@ inline std::ostream& operator<<(std::ostream& os, const Item& obj) {
 }
 
 
+// def __init__(self, val: Int32) -> None:
+inline Score::Score(int32_t val) : val(val) {}
+
 // def __lt__(self, other: Score) -> bool:
 inline bool Score::__lt__(const Score& other) const {
     // return self.val < other.val
     return (this->val < other.val);
 }
+
+// def __init__(self, name: str, score: Own[Score]) -> None:
+inline Item::Item(std::string_view name, Score&& score) : name(name), score(std::move(score)) {}
 void __tpy_init();
 } // namespace tpyapp::main

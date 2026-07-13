@@ -27,7 +27,7 @@ struct Cell {
 
     // def __init__(self, v: Int32) -> None:
     Cell() = default;
-    explicit Cell(int32_t v) : v(v) {}
+    explicit Cell(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Cell";
 };
 
@@ -36,5 +36,8 @@ inline std::ostream& operator<<(std::ostream& os, const Cell& obj) {
     return os;
 }
 
+
+// def __init__(self, v: Int32) -> None:
+inline Cell::Cell(int32_t v) : v(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

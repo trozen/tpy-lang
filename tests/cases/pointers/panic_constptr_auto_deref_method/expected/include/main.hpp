@@ -20,7 +20,7 @@ struct Counter {
 
     // def __init__(self, value: Int32) -> None:
     Counter() = default;
-    explicit Counter(int32_t value) : value(value) {}
+    explicit Counter(int32_t value);
 
     // def __len__(self) -> Int32:
     int32_t __len__() const;
@@ -38,6 +38,9 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
     return os;
 }
 
+
+// def __init__(self, value: Int32) -> None:
+inline Counter::Counter(int32_t value) : value(value) {}
 
 // def __len__(self) -> Int32:
 inline int32_t Counter::__len__() const {

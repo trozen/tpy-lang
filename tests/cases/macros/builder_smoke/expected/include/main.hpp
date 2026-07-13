@@ -21,7 +21,7 @@ struct __tpy_builder_config_1 {
 
     // cfg = cfg_builder.build()
     __tpy_builder_config_1() = default;
-    explicit __tpy_builder_config_1(std::string_view host, std::string_view port) : host(host), port(port) {}
+    explicit __tpy_builder_config_1(std::string_view host, std::string_view port);
     static constexpr std::string_view __tpy_class_name__ = "__main__.__tpy_builder_config_1";
 };
 
@@ -30,5 +30,8 @@ inline std::ostream& operator<<(std::ostream& os, const __tpy_builder_config_1& 
     return os;
 }
 
+
+// cfg = cfg_builder.build()
+inline __tpy_builder_config_1::__tpy_builder_config_1(std::string_view host, std::string_view port) : host(host), port(port) {}
 void __tpy_init();
 } // namespace tpyapp::main

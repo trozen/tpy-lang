@@ -25,7 +25,7 @@ struct Key {
 
     // def __init__(self, v: Int32) -> None:
     Key() = default;
-    explicit Key(int32_t v) : val(v) {}
+    explicit Key(int32_t v);
     // non-copyable (@nocopy)
     Key(const Key&) = delete;
     Key& operator=(const Key&) = delete;
@@ -68,7 +68,7 @@ struct Point {
 
     // def __init__(self, x: Int32, y: Int32) -> None:
     Point() = default;
-    explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
+    explicit Point(int32_t x, int32_t y);
 
     // def __hash__(self) -> UInt64:
     uint64_t __hash__() const;
@@ -107,7 +107,7 @@ struct Edge {
 
     // def __init__(self, x: Int32, y: Int32) -> None:
     Edge() = default;
-    explicit Edge(int32_t x, int32_t y) : a(Key(x)), b(Key(y)) {}
+    explicit Edge(int32_t x, int32_t y);
     // non-copyable (@nocopy)
     Edge(const Edge&) = delete;
     Edge& operator=(const Edge&) = delete;
@@ -142,6 +142,9 @@ namespace tpyapp::main {
 
 
 
+// def __init__(self, v: Int32) -> None:
+inline Key::Key(int32_t v) : val(v) {}
+
 // def __hash__(self) -> UInt64:
 inline uint64_t Key::__hash__() const {
     // return UInt64(self.val)
@@ -154,6 +157,9 @@ inline bool Key::__eq__(const Key& other) const {
     return (this->val == other.val);
 }
 
+// def __init__(self, x: Int32, y: Int32) -> None:
+inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
+
 // def __hash__(self) -> UInt64:
 inline uint64_t Point::__hash__() const {
     // return hash((self.x, self.y))
@@ -165,6 +171,9 @@ inline bool Point::__eq__(const Point& other) const {
     // return self.x == other.x and self.y == other.y
     return ((this->x == other.x) && (this->y == other.y));
 }
+
+// def __init__(self, x: Int32, y: Int32) -> None:
+inline Edge::Edge(int32_t x, int32_t y) : a(Key(x)), b(Key(y)) {}
 
 // def __hash__(self) -> UInt64:
 inline uint64_t Edge::__hash__() const {

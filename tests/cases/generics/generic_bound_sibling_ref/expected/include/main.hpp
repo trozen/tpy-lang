@@ -29,7 +29,7 @@ struct IntBox {
 
     // def __init__(self, v: Int32) -> None:
     IntBox() = default;
-    explicit IntBox(int32_t v) : v(v) {}
+    explicit IntBox(int32_t v);
 
     // def get(self) -> Int32:
     int32_t get() const;
@@ -48,7 +48,7 @@ struct StrBox {
 
     // def __init__(self, s: StrView) -> None:
     StrBox() = default;
-    explicit StrBox(std::string_view s) : s(s) {}
+    explicit StrBox(std::string_view s);
 
     // def get(self) -> StrView:
     std::string_view get() const;
@@ -61,11 +61,17 @@ inline std::ostream& operator<<(std::ostream& os, const StrBox& obj) {
 }
 
 
+// def __init__(self, v: Int32) -> None:
+inline IntBox::IntBox(int32_t v) : v(v) {}
+
 // def get(self) -> Int32:
 inline int32_t IntBox::get() const {
     // return self.v
     return this->v;
 }
+
+// def __init__(self, s: StrView) -> None:
+inline StrBox::StrBox(std::string_view s) : s(s) {}
 
 // def get(self) -> StrView:
 inline std::string_view StrBox::get() const {

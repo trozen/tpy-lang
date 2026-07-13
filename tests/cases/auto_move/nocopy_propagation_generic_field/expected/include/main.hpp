@@ -23,7 +23,7 @@ struct Handle {
 
     // def __init__(self, fd: Int32):
     Handle() = default;
-    explicit Handle(int32_t fd) : fd(fd) {}
+    explicit Handle(int32_t fd);
     // non-copyable (@nocopy)
     Handle(const Handle&) = delete;
     Handle& operator=(const Handle&) = delete;
@@ -43,7 +43,7 @@ struct Handles {
     std::vector<Handle> items;
 
     // def __init__(self):
-    Handles() : items(std::vector<Handle>{}) {}
+    Handles();
     // non-copyable (field 'items')
     Handles(const Handles&) = delete;
     Handles& operator=(const Handles&) = delete;
@@ -57,5 +57,11 @@ inline std::ostream& operator<<(std::ostream& os, const Handles& obj) {
     return os;
 }
 
+
+// def __init__(self, fd: Int32):
+inline Handle::Handle(int32_t fd) : fd(fd) {}
+
+// def __init__(self):
+inline Handles::Handles() : items(std::vector<Handle>{}) {}
 void __tpy_init();
 } // namespace tpyapp::main

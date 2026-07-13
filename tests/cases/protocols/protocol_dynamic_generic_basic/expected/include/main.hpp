@@ -46,7 +46,7 @@ struct Box {
 
     // def __init__(self, v: Int32):
     Box() = default;
-    explicit Box(int32_t v) : v(v) {}
+    explicit Box(int32_t v);
 
     // def get(self) -> Int32:
     int32_t get() const;
@@ -68,7 +68,7 @@ struct Ratio {
 
     // def __init__(self, n: Int32):
     Ratio() = default;
-    explicit Ratio(int32_t n) : n(n) {}
+    explicit Ratio(int32_t n);
 
     // def get(self) -> Int32:
     int32_t get() const;
@@ -105,6 +105,9 @@ struct tpy::RefAdapter<tpyapp::main::Container<T>, __tpy_Impl> : tpyapp::main::C
 namespace tpyapp::main {
 
 
+// def __init__(self, v: Int32):
+inline Box::Box(int32_t v) : v(v) {}
+
 // def get(self) -> Int32:
 inline int32_t Box::get() const {
     // return self.v
@@ -116,6 +119,9 @@ inline void Box::set(int32_t val) {
     // self.v = val
     this->v = val;
 }
+
+// def __init__(self, n: Int32):
+inline Ratio::Ratio(int32_t n) : n(n) {}
 
 // def get(self) -> Int32:
 inline int32_t Ratio::get() const {

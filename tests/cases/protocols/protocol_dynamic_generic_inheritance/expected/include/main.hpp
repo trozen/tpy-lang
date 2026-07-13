@@ -59,7 +59,7 @@ struct IntCounter {
     int32_t n;
 
     // def __init__(self):
-    IntCounter() : n(0) {}
+    IntCounter();
 
     // def get(self) -> Int32:
     int32_t get() const;
@@ -110,6 +110,9 @@ struct tpy::RefAdapter<tpyapp::main::Counter<T>, __tpy_Impl> : tpyapp::main::Cou
 
 namespace tpyapp::main {
 
+
+// def __init__(self):
+inline IntCounter::IntCounter() : n(0) {}
 
 // def get(self) -> Int32:
 inline int32_t IntCounter::get() const {

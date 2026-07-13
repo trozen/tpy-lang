@@ -22,7 +22,7 @@ struct T {
 
     // def __init__(self, x: Int32) -> None:
     T() = default;
-    explicit T(int32_t x) : x(x) {}
+    explicit T(int32_t x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.T";
 };
 
@@ -37,7 +37,7 @@ struct Holder {
     std::vector<std::tuple<std::optional<T>, std::optional<T>>> pairs;
 
     // def __init__(self) -> None:
-    Holder() : pairs(std::vector<std::tuple<std::optional<T>, std::optional<T>>>{}) {}
+    Holder();
 
     // def show_all_iter(self) -> None:
     void show_all_iter() const;
@@ -52,6 +52,12 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     return os;
 }
 
+
+// def __init__(self, x: Int32) -> None:
+inline T::T(int32_t x) : x(x) {}
+
+// def __init__(self) -> None:
+inline Holder::Holder() : pairs(std::vector<std::tuple<std::optional<T>, std::optional<T>>>{}) {}
 
 // def show_all_iter(self) -> None:
 inline void Holder::show_all_iter() const {

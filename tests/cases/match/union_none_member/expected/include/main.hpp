@@ -21,7 +21,7 @@ struct A {
     int32_t v;
 
     // def __init__(self) -> None:
-    A() : v(1) {}
+    A();
     static constexpr std::string_view __tpy_class_name__ = "__main__.A";
 };
 
@@ -36,7 +36,7 @@ struct B {
     int32_t v;
 
     // def __init__(self) -> None:
-    B() : v(2) {}
+    B();
     static constexpr std::string_view __tpy_class_name__ = "__main__.B";
 };
 
@@ -45,5 +45,11 @@ inline std::ostream& operator<<(std::ostream& os, const B& obj) {
     return os;
 }
 
+
+// def __init__(self) -> None:
+inline A::A() : v(1) {}
+
+// def __init__(self) -> None:
+inline B::B() : v(2) {}
 void __tpy_init();
 } // namespace tpyapp::main

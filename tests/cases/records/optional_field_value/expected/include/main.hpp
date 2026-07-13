@@ -23,7 +23,7 @@ struct Config {
 
     // def __init__(self, name: str):
     Config() = default;
-    explicit Config(std::string_view name) : name(name), max_retries(std::nullopt) {}
+    explicit Config(std::string_view name);
 
     // def get_retries(self) -> Int32 | None:
     std::optional<int32_t> get_retries() const;
@@ -35,6 +35,9 @@ inline std::ostream& operator<<(std::ostream& os, const Config& obj) {
     return os;
 }
 
+
+// def __init__(self, name: str):
+inline Config::Config(std::string_view name) : name(name), max_retries(std::nullopt) {}
 
 // def get_retries(self) -> Int32 | None:
 inline std::optional<int32_t> Config::get_retries() const {

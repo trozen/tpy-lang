@@ -46,12 +46,7 @@ struct Widget : Named, Counted {
 
     // def __init__(self, name: str, count: Int32) -> None:
     Widget() = default;
-    explicit Widget(std::string_view name, int32_t count) {
-        // self.name = name
-        this->name = name;
-        // self.count = count
-        this->count = count;
-    }
+    explicit Widget(std::string_view name, int32_t count);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Widget";
 };
 
@@ -60,5 +55,13 @@ inline std::ostream& operator<<(std::ostream& os, const Widget& obj) {
     return os;
 }
 
+
+// def __init__(self, name: str, count: Int32) -> None:
+inline Widget::Widget(std::string_view name, int32_t count) {
+    // self.name = name
+    this->name = name;
+    // self.count = count
+    this->count = count;
+}
 void __tpy_init();
 } // namespace tpyapp::main

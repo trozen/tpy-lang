@@ -19,7 +19,7 @@ struct Counter {
     std::string label;
 
     Counter() = default;
-    explicit Counter(int64_t value, std::string_view label) : value(value), label(label) {}
+    explicit Counter(int64_t value, std::string_view label);
 
     void incr(int64_t by);
 
@@ -34,6 +34,8 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
     return os;
 }
 
+
+inline Counter::Counter(int64_t value, std::string_view label) : value(value), label(label) {}
 
 inline void Counter::incr(int64_t by) {
     this->value = ::tpy::add_check<int64_t>(this->value, by);

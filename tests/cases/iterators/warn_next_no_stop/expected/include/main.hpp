@@ -19,7 +19,7 @@ struct InfiniteCounter {
     int32_t current;
 
     // def __init__(self) -> None:
-    InfiniteCounter() : current(0) {}
+    InfiniteCounter();
 
     // def __iter__(self) -> InfiniteCounter:
     InfiniteCounter& __iter__();
@@ -35,6 +35,9 @@ inline std::ostream& operator<<(std::ostream& os, const InfiniteCounter& obj) {
     return os;
 }
 
+
+// def __init__(self) -> None:
+inline InfiniteCounter::InfiniteCounter() : current(0) {}
 
 // def __iter__(self) -> InfiniteCounter:
 inline InfiniteCounter& InfiniteCounter::__iter__() {

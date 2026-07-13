@@ -35,7 +35,7 @@ struct Item {
     int32_t value;
 
     Item() = default;
-    explicit Item(std::string_view name, int32_t value) : name(name), value(value) {}
+    explicit Item(std::string_view name, int32_t value);
 
     bool __eq__(const Item& other) const;
 
@@ -77,7 +77,7 @@ struct Container {
     std::vector<Item> items = {};
 
     Container() = default;
-    explicit Container(std::string_view label, std::vector<Item>&& items = {}) : label(label), items(std::move(items)) {}
+    explicit Container(std::string_view label, std::vector<Item>&& items = {});
 
     bool __eq__(const Container& other) const;
 
@@ -94,6 +94,8 @@ inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
     return os;
 }
 
+
+inline Item::Item(std::string_view name, int32_t value) : name(name), value(value) {}
 
 inline bool Item::__eq__(const Item& other) const {
     return ((this->name == other.name) && (this->value == other.value));
@@ -212,6 +214,8 @@ inline std::expected<Item, ::tpystd::tplib::json::parser::JsonError> Item::try_l
     // # registration (Default), which broke default_factory validation.
     return Item::try_from_json(__data);
 }
+
+inline Container::Container(std::string_view label, std::vector<Item>&& items) : label(label), items(std::move(items)) {}
 
 inline bool Container::__eq__(const Container& other) const {
     return ((this->label == other.label) && (this->items == other.items));

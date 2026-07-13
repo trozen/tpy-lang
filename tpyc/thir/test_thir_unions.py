@@ -431,7 +431,7 @@ class TestPtrUnionEmit:
         assert "std::variant<const A*, const B*> w = ::tpy::to_const_ptr_variant(h.u);" in cpp
         assert "std::variant<A*, B*> w = ::tpy::to_ptr_variant(h.u);" in cpp
         assert "h.u = ::tpy::to_value_variant<std::variant<A, B>>(v);" in cpp
-        assert "explicit H(std::variant<A, B>&& v) : u(std::move(v)), n(0) {}" in cpp
+        assert "inline H::H(std::variant<A, B>&& v) : u(std::move(v)), n(0) {}" in cpp
 
     def test_routing_is_non_vacuous(self):
         thir = _lower_ctx(self.SRC)

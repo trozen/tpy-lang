@@ -27,29 +27,14 @@ struct State {
     bool __tpy_owned_ = true;
 
     // def __init__(self, label: str) -> None:
-    explicit State(std::string_view label) : label(label) {
-        // print("init", label)
-        std::cout << "init" << " " << label << "\n";
-    }
+    explicit State(std::string_view label);
     State(const State&) = delete;
     State& operator=(const State&) = delete;
-    State(State&& other) noexcept : label(std::move(other.label)) {
-        other.__tpy_owned_ = false;
-    }
-    State& operator=(State&& other) noexcept {
-        if (this != &other) {
-            this->~State();
-            new (this) State(std::move(other));
-        }
-        return *this;
-    }
-    // def __del__(self) -> None:
+    State(State&& other) noexcept;
+    State& operator=(State&& other) noexcept;
 
-    ~State() {
-        if (!this->__tpy_owned_) return;
-        // print("del", self.label)
-        std::cout << "del" << " " << this->label << "\n";
-    }
+    // def __del__(self) -> None:
+    ~State();
     static constexpr std::string_view __tpy_class_name__ = "__main__.State";
 };
 
@@ -58,5 +43,29 @@ inline std::ostream& operator<<(std::ostream& os, const State& obj) {
     return os;
 }
 
+
+// def __init__(self, label: str) -> None:
+inline State::State(std::string_view label) : label(label) {
+    // print("init", label)
+    std::cout << "init" << " " << label << "\n";
+}
+
+inline State::State(State&& other) noexcept : label(std::move(other.label)) {
+    other.__tpy_owned_ = false;
+}
+inline State& State::operator=(State&& other) noexcept {
+    if (this != &other) {
+        this->~State();
+        new (this) State(std::move(other));
+    }
+    return *this;
+}
+
+// def __del__(self) -> None:
+inline State::~State() {
+    if (!this->__tpy_owned_) return;
+    // print("del", self.label)
+    std::cout << "del" << " " << this->label << "\n";
+}
 void __tpy_init();
 } // namespace tpyapp::main

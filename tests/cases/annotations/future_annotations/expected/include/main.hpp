@@ -20,9 +20,7 @@ void main();
 struct Apple {
 
     // def __init__(self) -> None:
-    Apple() {
-        // pass
-    }
+    Apple();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Apple";
 };
 
@@ -35,9 +33,7 @@ inline std::ostream& operator<<(std::ostream& os, const Apple& obj) {
 struct Banana {
 
     // def __init__(self) -> None:
-    Banana() {
-        // pass
-    }
+    Banana();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Banana";
 };
 
@@ -46,5 +42,15 @@ inline std::ostream& operator<<(std::ostream& os, const Banana& obj) {
     return os;
 }
 
+
+// def __init__(self) -> None:
+inline Apple::Apple() {
+    // pass
+}
+
+// def __init__(self) -> None:
+inline Banana::Banana() {
+    // pass
+}
 void __tpy_init();
 } // namespace tpyapp::main

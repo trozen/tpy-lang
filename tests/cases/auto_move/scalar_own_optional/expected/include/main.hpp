@@ -37,7 +37,7 @@ struct P {
 
     // def __init__(self, x: Int32) -> None:
     P() = default;
-    explicit P(int32_t x) : x(x) {}
+    explicit P(int32_t x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.P";
 };
 
@@ -52,7 +52,7 @@ struct Holder {
     std::optional<P> slot;
 
     // def __init__(self) -> None:
-    Holder() : slot(std::nullopt) {}
+    Holder();
 
     // def store(self, p: Own[P | None]) -> None:
     void store(std::optional<P>&& p);
@@ -64,6 +64,12 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     return os;
 }
 
+
+// def __init__(self, x: Int32) -> None:
+inline P::P(int32_t x) : x(x) {}
+
+// def __init__(self) -> None:
+inline Holder::Holder() : slot(std::nullopt) {}
 
 // def store(self, p: Own[P | None]) -> None:
 inline void Holder::store(std::optional<P>&& p) {

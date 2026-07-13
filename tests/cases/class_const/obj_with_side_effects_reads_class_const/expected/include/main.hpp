@@ -20,9 +20,7 @@ struct C {
     static constexpr int32_t LIMIT = 7;
 
     // def __init__(self) -> None:
-    C() {
-        // pass
-    }
+    C();
     static constexpr std::string_view __tpy_class_name__ = "__main__.C";
 };
 
@@ -31,5 +29,10 @@ inline std::ostream& operator<<(std::ostream& os, const C& obj) {
     return os;
 }
 
+
+// def __init__(self) -> None:
+inline C::C() {
+    // pass
+}
 void __tpy_init();
 } // namespace tpyapp::main

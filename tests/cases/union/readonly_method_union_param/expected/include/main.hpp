@@ -22,9 +22,7 @@ void main();
 struct Dog {
 
     // def __init__(self) -> None:
-    Dog() {
-        // pass
-    }
+    Dog();
 
     // def sound(self) -> str:
     std::string sound() const;
@@ -40,9 +38,7 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 struct Cat {
 
     // def __init__(self) -> None:
-    Cat() {
-        // pass
-    }
+    Cat();
 
     // def sound(self) -> str:
     std::string sound() const;
@@ -58,9 +54,7 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 struct Speaker {
 
     // def __init__(self) -> None:
-    Speaker() {
-        // pass
-    }
+    Speaker();
 
     // def voice(self, a: Dog | Cat) -> str:
     std::string voice(std::variant<Cat*, Dog*> a) const;
@@ -73,16 +67,31 @@ inline std::ostream& operator<<(std::ostream& os, const Speaker& obj) {
 }
 
 
+// def __init__(self) -> None:
+inline Dog::Dog() {
+    // pass
+}
+
 // def sound(self) -> str:
 inline std::string Dog::sound() const {
     // return "woof"
     return "woof";
 }
 
+// def __init__(self) -> None:
+inline Cat::Cat() {
+    // pass
+}
+
 // def sound(self) -> str:
 inline std::string Cat::sound() const {
     // return "meow"
     return "meow";
+}
+
+// def __init__(self) -> None:
+inline Speaker::Speaker() {
+    // pass
 }
 
 // def voice(self, a: Dog | Cat) -> str:

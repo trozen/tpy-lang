@@ -21,7 +21,7 @@ struct Failed : ::tpy::Exception {
 
     // def __init__(self, code: Int32 | None) -> None:
     Failed() = default;
-    explicit Failed(std::optional<int32_t> code) : ::tpy::Exception("failed"), code(code) {}
+    explicit Failed(std::optional<int32_t> code);
 
     [[nodiscard]] std::unique_ptr<::tpy::Throwable> clone() const override { return std::make_unique<Failed>(*this); }
     [[noreturn]] void __raise__() const override { throw *this; }
@@ -34,5 +34,8 @@ inline std::ostream& operator<<(std::ostream& os, const Failed& obj) {
     return os;
 }
 
+
+// def __init__(self, code: Int32 | None) -> None:
+inline Failed::Failed(std::optional<int32_t> code) : ::tpy::Exception("failed"), code(code) {}
 void __tpy_init();
 } // namespace tpyapp::main

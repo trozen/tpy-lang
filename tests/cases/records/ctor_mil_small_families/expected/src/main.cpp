@@ -40,6 +40,10 @@ void main() {
     std::cout << d.n << " " << ::tpy::print_bool(d.strict) << "\n";
 }
 
+
+// def __init__(self, pu: A | B, ft: tuple[A, Int32],
+// vt: tuple[Int32, Int32]) -> None:
+H::H(const std::variant<A*, B*> pu, const std::tuple<const A*, int32_t>& ft, const std::tuple<int32_t, int32_t>& vt) : items(std::nullopt), ox(std::nullopt), vu(5), un(std::monostate{}), pu(::tpy::to_value_variant<std::variant<A, B>>(pu)), pr(A(3)), pn(std::monostate{}), ft(::tpy::tuple_to_storage<std::tuple<A, int32_t>>(ft)), vt(vt), tl(std::tuple<int32_t, int32_t>{1, 2}) {}
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;

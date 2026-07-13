@@ -19,7 +19,7 @@ struct C {
 
     // def __init__(self, a: Int64):
     C() = default;
-    explicit C(int64_t a) : a(a) {}
+    explicit C(int64_t a);
 
     // def __call__(self) -> Int64:  # tpyc: warning(/'__call__' is not exposed to CPython/)
     int64_t __call__() const;
@@ -35,6 +35,9 @@ inline std::ostream& operator<<(std::ostream& os, const C& obj) {
     return os;
 }
 
+
+// def __init__(self, a: Int64):
+inline C::C(int64_t a) : a(a) {}
 
 // def __call__(self) -> Int64:  # tpyc: warning(/'__call__' is not exposed to CPython/)
 inline int64_t C::__call__() const {

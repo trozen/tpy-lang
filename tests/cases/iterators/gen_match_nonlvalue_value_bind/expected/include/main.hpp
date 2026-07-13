@@ -23,7 +23,7 @@ struct Box {
 
     // def __init__(self, s: str) -> None:
     Box() = default;
-    explicit Box(std::string_view s) : label(s) {}
+    explicit Box(std::string_view s);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
@@ -56,5 +56,8 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, ::tpy::BigInt> {
     }
 };
 
+
+// def __init__(self, s: str) -> None:
+inline Box::Box(std::string_view s) : label(s) {}
 void __tpy_init();
 } // namespace tpyapp::main

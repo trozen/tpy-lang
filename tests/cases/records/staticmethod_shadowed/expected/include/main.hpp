@@ -21,7 +21,7 @@ struct Helper {
 
     // def __init__(self, v: Int32):
     Helper() = default;
-    explicit Helper(int32_t v) : value(v) {}
+    explicit Helper(int32_t v);
 
     // @staticmethod
     // def add(a: Int32, b: Int32) -> Int32:
@@ -37,6 +37,9 @@ inline std::ostream& operator<<(std::ostream& os, const Helper& obj) {
     return os;
 }
 
+
+// def __init__(self, v: Int32):
+inline Helper::Helper(int32_t v) : value(v) {}
 
 // @staticmethod
 // def add(a: Int32, b: Int32) -> Int32:

@@ -20,10 +20,7 @@ struct AppError : ::tpy::Exception {
 
     // def __init__(self, message: str):
     AppError() = default;
-    explicit AppError(std::string_view message) {
-        // self.message = message
-        this->message = message;
-    }
+    explicit AppError(std::string_view message);
 
     // def detail(self) -> str:
     std::string detail() const;
@@ -39,6 +36,12 @@ inline std::ostream& operator<<(std::ostream& os, const AppError& obj) {
     return os;
 }
 
+
+// def __init__(self, message: str):
+inline AppError::AppError(std::string_view message) {
+    // self.message = message
+    this->message = message;
+}
 
 // def detail(self) -> str:
 inline std::string AppError::detail() const {

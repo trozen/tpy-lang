@@ -20,7 +20,7 @@ struct Circle {
 
     // def __init__(self, radius: Int32) -> None:
     Circle() = default;
-    explicit Circle(int32_t radius) : _radius(radius) {}
+    explicit Circle(int32_t radius);
 
     // @property
     // def radius(self) -> Int32:
@@ -37,6 +37,9 @@ inline std::ostream& operator<<(std::ostream& os, const Circle& obj) {
     return os;
 }
 
+
+// def __init__(self, radius: Int32) -> None:
+inline Circle::Circle(int32_t radius) : _radius(radius) {}
 
 // @property
 // def radius(self) -> Int32:

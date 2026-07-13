@@ -36,7 +36,7 @@ struct IntListIter {
 
     // def __init__(self, items: list[Int32]) -> None:
     IntListIter() = default;
-    explicit IntListIter(const std::vector<int32_t>& items) : items(items), pos(0) {}
+    explicit IntListIter(const std::vector<int32_t>& items);
 
     auto& __iter__() { return *this; }
 
@@ -56,7 +56,7 @@ struct IntList {
     std::vector<int32_t> items;
 
     // def __init__(self) -> None:
-    IntList() : items(std::vector<int32_t>{}) {}
+    IntList();
 
     // def add(self, x: Int32) -> None:
     void add(int32_t x);
@@ -75,6 +75,9 @@ inline std::ostream& operator<<(std::ostream& os, const IntList& obj) {
 }
 
 
+// def __init__(self, items: list[Int32]) -> None:
+inline IntListIter::IntListIter(const std::vector<int32_t>& items) : items(items), pos(0) {}
+
 // def __next__(self) -> Int32:
 inline std::expected<int32_t, ::tpy::StopIteration> IntListIter::__next__() {
     // if self.pos >= Int32(len(self.items)):
@@ -89,6 +92,9 @@ inline std::expected<int32_t, ::tpy::StopIteration> IntListIter::__next__() {
     // return v
     return v;
 }
+
+// def __init__(self) -> None:
+inline IntList::IntList() : items(std::vector<int32_t>{}) {}
 
 // def add(self, x: Int32) -> None:
 inline void IntList::add(int32_t x) {

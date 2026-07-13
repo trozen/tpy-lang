@@ -20,12 +20,7 @@ struct Base {
     ::tpy::ordered_map<std::string, ::tpy::Any> _data;
 
     // def __init__(self) -> None:
-    Base() {
-        // d: dict[str, Any] = {}
-        ::tpy::ordered_map<std::string, ::tpy::Any> d = ::tpy::ordered_map<std::string, ::tpy::Any>();
-        // self._data = d
-        this->_data = std::move(d);
-    }
+    Base();
 
     // def __setattr__(self, name: str, value: Any) -> None:
     void __setattr__(std::string_view name, ::tpy::Any value);
@@ -44,7 +39,7 @@ inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
 struct Child : Base {
 
     // def __init__(self) -> None:
-    Child() : Base() {}
+    Child();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Child";
 };
 
@@ -53,6 +48,14 @@ inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
     return os;
 }
 
+
+// def __init__(self) -> None:
+inline Base::Base() {
+    // d: dict[str, Any] = {}
+    ::tpy::ordered_map<std::string, ::tpy::Any> d = ::tpy::ordered_map<std::string, ::tpy::Any>();
+    // self._data = d
+    this->_data = std::move(d);
+}
 
 // def __setattr__(self, name: str, value: Any) -> None:
 inline void Base::__setattr__(std::string_view name, ::tpy::Any value) {
@@ -65,5 +68,8 @@ inline ::tpy::Any Base::__getattr__(std::string_view name) const {
     // return self._data[name]
     return ::tpy::__getitem__(this->_data, name);
 }
+
+// def __init__(self) -> None:
+inline Child::Child() : Base() {}
 void __tpy_init();
 } // namespace tpyapp::main

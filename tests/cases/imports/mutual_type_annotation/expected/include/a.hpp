@@ -19,7 +19,7 @@ struct A {
 
     // def __init__(self, v: Int32) -> None:
     A() = default;
-    explicit A(int32_t v) : val(v) {}
+    explicit A(int32_t v);
 
     // def go(self) -> Int32:
     int32_t go() const;

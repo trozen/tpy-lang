@@ -27,7 +27,7 @@ struct Item {
 
     // def __init__(self, n: Int32) -> None:
     Item() = default;
-    explicit Item(int32_t n) : n(n) {}
+    explicit Item(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Item";
 };
 
@@ -42,12 +42,7 @@ struct Container {
     std::vector<Item> items;
 
     // def __init__(self) -> None:
-    Container() : items(std::vector<Item>{}) {
-        // self.items.append(Item(1))
-        this->items.push_back(Item(1));
-        // self.items.append(Item(99))
-        this->items.push_back(Item(99));
-    }
+    Container();
 
     __coro_Container_last_n last_n() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
@@ -111,5 +106,16 @@ struct __coro_driver {
     }
 };
 
+
+// def __init__(self, n: Int32) -> None:
+inline Item::Item(int32_t n) : n(n) {}
+
+// def __init__(self) -> None:
+inline Container::Container() : items(std::vector<Item>{}) {
+    // self.items.append(Item(1))
+    this->items.push_back(Item(1));
+    // self.items.append(Item(99))
+    this->items.push_back(Item(99));
+}
 void __tpy_init();
 } // namespace tpyapp::main

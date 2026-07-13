@@ -22,7 +22,7 @@ struct Score {
 
     // def __init__(self, v: Int32) -> None:
     Score() = default;
-    explicit Score(int32_t v) : val(v) {}
+    explicit Score(int32_t v);
 
     // def __eq__(self, other: "Score") -> bool:
     bool __eq__(const Score& other) const;
@@ -64,6 +64,9 @@ inline std::ostream& operator<<(std::ostream& os, const Score& obj) {
     return os;
 }
 
+
+// def __init__(self, v: Int32) -> None:
+inline Score::Score(int32_t v) : val(v) {}
 
 // def __eq__(self, other: "Score") -> bool:
 inline bool Score::__eq__(const Score& other) const {

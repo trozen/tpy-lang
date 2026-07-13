@@ -47,7 +47,7 @@ struct IntBox : Cloneable<int32_t> {
 
     // def __init__(self, v: Int32):
     IntBox() = default;
-    explicit IntBox(int32_t v) : v(v) {}
+    explicit IntBox(int32_t v);
 
     // @readonly
     // def replicate(self) -> Own[Cloneable[Int32]]:
@@ -85,6 +85,9 @@ struct tpy::RefAdapter<tpyapp::main::Cloneable<T>, __tpy_Impl> : tpyapp::main::C
 
 namespace tpyapp::main {
 
+
+// def __init__(self, v: Int32):
+inline IntBox::IntBox(int32_t v) : v(v) {}
 
 // @readonly
 // def replicate(self) -> Own[Cloneable[Int32]]:

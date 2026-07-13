@@ -13,6 +13,8 @@ int32_t add_pair(Pair& p) {
 }
 
 
+Pair::Pair(int32_t x, int32_t y) : x(x), y(y) {}
+
 bool Pair::__eq__(const Pair& other) const {
     return ((this->x == other.x) && (this->y == other.y));
 }

@@ -21,7 +21,7 @@ struct Config {
     ::tpy::BigInt value;
 
     // def __init__(self, name: str, value: int) -> None:
-    explicit Config(std::string_view name, const ::tpy::BigInt& value) : name(name), value(value) {}
+    explicit Config(std::string_view name, const ::tpy::BigInt& value);
 
     // def inc(self) -> None:
     void inc();
@@ -33,6 +33,9 @@ inline std::ostream& operator<<(std::ostream& os, const Config& obj) {
     return os;
 }
 
+
+// def __init__(self, name: str, value: int) -> None:
+inline Config::Config(std::string_view name, const ::tpy::BigInt& value) : name(name), value(value) {}
 
 // def inc(self) -> None:
 inline void Config::inc() {

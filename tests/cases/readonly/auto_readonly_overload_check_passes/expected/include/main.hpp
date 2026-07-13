@@ -19,7 +19,7 @@ struct Box {
     int32_t value;
 
     // def __init__(self) -> None:
-    Box() : value(0) {}
+    Box();
 
     // # @auto_readonly generates a const-qualified clone alongside the
     // # mutable original. Both clones have identical positional params
@@ -44,6 +44,9 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
     return os;
 }
 
+
+// def __init__(self) -> None:
+inline Box::Box() : value(0) {}
 
 // # @auto_readonly generates a const-qualified clone alongside the
 // # mutable original. Both clones have identical positional params

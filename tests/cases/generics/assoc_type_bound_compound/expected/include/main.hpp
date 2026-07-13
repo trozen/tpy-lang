@@ -28,7 +28,7 @@ struct IntListBox {
 
     // def __init__(self, xs: list[int]):
     IntListBox() = default;
-    explicit IntListBox(const std::vector<::tpy::BigInt>& xs) : xs(xs) {}
+    explicit IntListBox(const std::vector<::tpy::BigInt>& xs);
 
     // def get(self) -> list[int]:
     std::vector<::tpy::BigInt>& get();
@@ -40,6 +40,9 @@ inline std::ostream& operator<<(std::ostream& os, const IntListBox& obj) {
     return os;
 }
 
+
+// def __init__(self, xs: list[int]):
+inline IntListBox::IntListBox(const std::vector<::tpy::BigInt>& xs) : xs(xs) {}
 
 // def get(self) -> list[int]:
 inline std::vector<::tpy::BigInt>& IntListBox::get() {

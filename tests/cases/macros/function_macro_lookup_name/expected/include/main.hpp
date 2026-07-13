@@ -47,7 +47,7 @@ struct Gate {
 
     // def __init__(self, flag: bool) -> None:
     Gate() = default;
-    explicit Gate(bool flag) : flag(flag) {}
+    explicit Gate(bool flag);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Gate";
 };
 
@@ -56,5 +56,8 @@ inline std::ostream& operator<<(std::ostream& os, const Gate& obj) {
     return os;
 }
 
+
+// def __init__(self, flag: bool) -> None:
+inline Gate::Gate(bool flag) : flag(flag) {}
 void __tpy_init();
 } // namespace tpyapp::main

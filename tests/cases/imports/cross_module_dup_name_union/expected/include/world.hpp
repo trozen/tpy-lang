@@ -19,7 +19,7 @@ struct Point {
 
     // def __init__(self, lat: int):
     Point() = default;
-    explicit Point(const ::tpy::BigInt& lat) : lat(lat) {}
+    explicit Point(const ::tpy::BigInt& lat);
     static constexpr std::string_view __tpy_class_name__ = "world.Point";
 };
 
@@ -28,5 +28,8 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     return os;
 }
 
+
+// def __init__(self, lat: int):
+inline Point::Point(const ::tpy::BigInt& lat) : lat(lat) {}
 void __tpy_init();
 } // namespace tpyapp::world

@@ -27,7 +27,7 @@ struct A {
 
     // def __init__(self, x: Int32) -> None:
     A() = default;
-    explicit A(int32_t x) : x(x) {}
+    explicit A(int32_t x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.A";
 };
 
@@ -43,7 +43,7 @@ struct B {
 
     // def __init__(self, y: Int32) -> None:
     B() = default;
-    explicit B(int32_t y) : y(y) {}
+    explicit B(int32_t y);
     static constexpr std::string_view __tpy_class_name__ = "__main__.B";
 };
 
@@ -58,7 +58,7 @@ struct Holder {
     std::variant<std::monostate, A, B> u;
 
     // def __init__(self, u: A | B | None) -> None:
-    explicit Holder(const std::variant<std::monostate, A*, B*> u) : u(::tpy::to_value_variant<std::variant<std::monostate, A, B>>(u)) {}
+    explicit Holder(const std::variant<std::monostate, A*, B*> u);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
@@ -67,5 +67,14 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     return os;
 }
 
+
+// def __init__(self, x: Int32) -> None:
+inline A::A(int32_t x) : x(x) {}
+
+// def __init__(self, y: Int32) -> None:
+inline B::B(int32_t y) : y(y) {}
+
+// def __init__(self, u: A | B | None) -> None:
+inline Holder::Holder(const std::variant<std::monostate, A*, B*> u) : u(::tpy::to_value_variant<std::variant<std::monostate, A, B>>(u)) {}
 void __tpy_init();
 } // namespace tpyapp::main

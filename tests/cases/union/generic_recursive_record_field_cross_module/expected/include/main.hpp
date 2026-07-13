@@ -22,7 +22,7 @@ struct Forest {
     ::tpyapp::treelib::Tree<::tpy::BigInt> canopy;
 
     // def __init__(self) -> None:
-    Forest() : canopy(std::vector<::tpyapp::treelib::Tree<::tpy::BigInt>>{1, std::vector<::tpyapp::treelib::Tree<::tpy::BigInt>>{2, 3}, 4, std::vector<::tpyapp::treelib::Tree<::tpy::BigInt>>{5, std::vector<::tpyapp::treelib::Tree<::tpy::BigInt>>{6, 7}}}) {}
+    Forest();
 
     // def size(self) -> int:
     ::tpy::BigInt size() const;
@@ -34,6 +34,9 @@ inline std::ostream& operator<<(std::ostream& os, const Forest& obj) {
     return os;
 }
 
+
+// def __init__(self) -> None:
+inline Forest::Forest() : canopy(std::vector<::tpyapp::treelib::Tree<::tpy::BigInt>>{1, std::vector<::tpyapp::treelib::Tree<::tpy::BigInt>>{2, 3}, 4, std::vector<::tpyapp::treelib::Tree<::tpy::BigInt>>{5, std::vector<::tpyapp::treelib::Tree<::tpy::BigInt>>{6, 7}}}) {}
 
 // def size(self) -> int:
 inline ::tpy::BigInt Forest::size() const {

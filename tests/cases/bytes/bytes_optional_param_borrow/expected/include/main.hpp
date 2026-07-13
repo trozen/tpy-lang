@@ -27,7 +27,7 @@ struct Holder {
     std::vector<uint8_t> data;
 
     // def __init__(self):
-    Holder() : data(std::vector<uint8_t>{}) {}
+    Holder();
 
     // def store(self, b: bytes | None) -> None:
     void store(std::optional<std::span<const uint8_t>> b);
@@ -63,6 +63,9 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, ::tpy::BigInt> {
     }
 };
 
+
+// def __init__(self):
+inline Holder::Holder() : data(std::vector<uint8_t>{}) {}
 
 // def store(self, b: bytes | None) -> None:
 inline void Holder::store(std::optional<std::span<const uint8_t>> b) {

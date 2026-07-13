@@ -44,31 +44,14 @@ struct Parrot : Pet {
     bool __tpy_owned_ = true;
 
     // def __init__(self, label: str) -> None:
-    explicit Parrot(std::string_view label) {
-        // print(f"Parrot({label}) ctor")
-        std::cout << std::format("Parrot({}) ctor", label) << "\n";
-        // self.label = label
-        this->label = label;
-    }
+    explicit Parrot(std::string_view label);
     Parrot(const Parrot&) = delete;
     Parrot& operator=(const Parrot&) = delete;
-    Parrot(Parrot&& other) noexcept : label(std::move(other.label)) {
-        other.__tpy_owned_ = false;
-    }
-    Parrot& operator=(Parrot&& other) noexcept {
-        if (this != &other) {
-            this->~Parrot();
-            new (this) Parrot(std::move(other));
-        }
-        return *this;
-    }
-    // def __del__(self) -> None:
+    Parrot(Parrot&& other) noexcept;
+    Parrot& operator=(Parrot&& other) noexcept;
 
-    ~Parrot() {
-        if (!this->__tpy_owned_) return;
-        // print(f"~Parrot({self.label})")
-        std::cout << std::format("~Parrot({})", this->label) << "\n";
-    }
+    // def __del__(self) -> None:
+    ~Parrot();
 
     // def name(self) -> str:
     std::string name() override;
@@ -99,6 +82,32 @@ struct tpy::RefAdapter<tpyapp::main::Pet, T> : tpyapp::main::Pet {
 
 namespace tpyapp::main {
 
+
+// def __init__(self, label: str) -> None:
+inline Parrot::Parrot(std::string_view label) {
+    // print(f"Parrot({label}) ctor")
+    std::cout << std::format("Parrot({}) ctor", label) << "\n";
+    // self.label = label
+    this->label = label;
+}
+
+inline Parrot::Parrot(Parrot&& other) noexcept : label(std::move(other.label)) {
+    other.__tpy_owned_ = false;
+}
+inline Parrot& Parrot::operator=(Parrot&& other) noexcept {
+    if (this != &other) {
+        this->~Parrot();
+        new (this) Parrot(std::move(other));
+    }
+    return *this;
+}
+
+// def __del__(self) -> None:
+inline Parrot::~Parrot() {
+    if (!this->__tpy_owned_) return;
+    // print(f"~Parrot({self.label})")
+    std::cout << std::format("~Parrot({})", this->label) << "\n";
+}
 
 // def name(self) -> str:
 inline std::string Parrot::name() {

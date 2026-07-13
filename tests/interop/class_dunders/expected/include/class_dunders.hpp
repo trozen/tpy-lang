@@ -18,7 +18,7 @@ struct Vec2 {
     int64_t y;
 
     Vec2() = default;
-    explicit Vec2(int64_t x, int64_t y) : x(x), y(y) {}
+    explicit Vec2(int64_t x, int64_t y);
 
     std::string __repr__() const;
 
@@ -58,7 +58,7 @@ struct Frac {
     int64_t den;
 
     Frac() = default;
-    explicit Frac(int64_t num, int64_t den) : num(num), den(den) {}
+    explicit Frac(int64_t num, int64_t den);
 
     bool __eq__(const Frac& other) const;
 
@@ -77,7 +77,7 @@ struct Ordered {
     int64_t rank;
 
     Ordered() = default;
-    explicit Ordered(int64_t rank) : rank(rank) {}
+    explicit Ordered(int64_t rank);
 
     bool __lt__(const Ordered& other) const;
 
@@ -92,6 +92,8 @@ inline std::ostream& operator<<(std::ostream& os, const Ordered& obj) {
     return os;
 }
 
+
+inline Vec2::Vec2(int64_t x, int64_t y) : x(x), y(y) {}
 
 inline std::string Vec2::__repr__() const {
     return std::format("Vec2({}, {})", this->x, this->y);
@@ -109,9 +111,13 @@ inline uint64_t Vec2::__hash__() const {
     return ::tpy::int_cast_check<uint64_t>((::tpy::add_check<int64_t>((::tpy::mul_check<int64_t>(this->x, 31)), this->y)));
 }
 
+inline Frac::Frac(int64_t num, int64_t den) : num(num), den(den) {}
+
 inline bool Frac::__eq__(const Frac& other) const {
     return ((this->num == other.num) && (this->den == other.den));
 }
+
+inline Ordered::Ordered(int64_t rank) : rank(rank) {}
 
 inline bool Ordered::__lt__(const Ordered& other) const {
     return (this->rank < other.rank);

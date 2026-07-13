@@ -27,7 +27,7 @@ struct Cat {
 
     // def __init__(self, name: str) -> None:
     Cat() = default;
-    explicit Cat(std::string_view name) : name(name) {}
+    explicit Cat(std::string_view name);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Cat";
 };
 
@@ -43,7 +43,7 @@ struct Dog {
 
     // def __init__(self, name: str) -> None:
     Dog() = default;
-    explicit Dog(std::string_view name) : name(name) {}
+    explicit Dog(std::string_view name);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Dog";
 };
 
@@ -58,7 +58,7 @@ struct Wrapper {
     std::variant<Cat, Dog> pet;
 
     // def __init__(self, pet: Cat | Dog) -> None:
-    explicit Wrapper(const std::variant<Cat*, Dog*> pet) : pet(::tpy::to_value_variant<std::variant<Cat, Dog>>(pet)) {}
+    explicit Wrapper(const std::variant<Cat*, Dog*> pet);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Wrapper";
 };
 
@@ -76,7 +76,7 @@ struct Tagged {
     std::variant<int32_t, std::string> value;
 
     // def __init__(self, tag: str, value: str | Int32) -> None:
-    explicit Tagged(std::string_view tag, const std::variant<int32_t, std::string>& value) : tag(tag), value(value) {}
+    explicit Tagged(std::string_view tag, const std::variant<int32_t, std::string>& value);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Tagged";
 };
 
@@ -85,5 +85,17 @@ inline std::ostream& operator<<(std::ostream& os, const Tagged& obj) {
     return os;
 }
 
+
+// def __init__(self, name: str) -> None:
+inline Cat::Cat(std::string_view name) : name(name) {}
+
+// def __init__(self, name: str) -> None:
+inline Dog::Dog(std::string_view name) : name(name) {}
+
+// def __init__(self, pet: Cat | Dog) -> None:
+inline Wrapper::Wrapper(const std::variant<Cat*, Dog*> pet) : pet(::tpy::to_value_variant<std::variant<Cat, Dog>>(pet)) {}
+
+// def __init__(self, tag: str, value: str | Int32) -> None:
+inline Tagged::Tagged(std::string_view tag, const std::variant<int32_t, std::string>& value) : tag(tag), value(value) {}
 void __tpy_init();
 } // namespace tpyapp::main

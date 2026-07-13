@@ -24,7 +24,7 @@ struct A {
     ::tpyapp::pkg::b::B b;
 
     // def __init__(self) -> None:
-    A() : b(::tpyapp::pkg::b::B()) {}
+    A();
 
     // def value(self) -> Int32:
     int32_t value() const;
@@ -63,6 +63,9 @@ inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
     return os;
 }
 
+
+// def __init__(self) -> None:
+inline A::A() : b(::tpyapp::pkg::b::B()) {}
 
 // def value(self) -> Int32:
 inline int32_t A::value() const {

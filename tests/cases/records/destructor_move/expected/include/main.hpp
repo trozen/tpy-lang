@@ -21,26 +21,14 @@ struct Tracker {
     bool __tpy_owned_ = true;
 
     // def __init__(self, name: str):
-    explicit Tracker(std::string_view name) : name(name) {}
+    explicit Tracker(std::string_view name);
     Tracker(const Tracker&) = delete;
     Tracker& operator=(const Tracker&) = delete;
-    Tracker(Tracker&& other) noexcept : name(std::move(other.name)) {
-        other.__tpy_owned_ = false;
-    }
-    Tracker& operator=(Tracker&& other) noexcept {
-        if (this != &other) {
-            this->~Tracker();
-            new (this) Tracker(std::move(other));
-        }
-        return *this;
-    }
-    // def __del__(self):
+    Tracker(Tracker&& other) noexcept;
+    Tracker& operator=(Tracker&& other) noexcept;
 
-    ~Tracker() {
-        if (!this->__tpy_owned_) return;
-        // print("drop", self.name)
-        std::cout << "drop" << " " << this->name << "\n";
-    }
+    // def __del__(self):
+    ~Tracker();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Tracker";
 };
 
@@ -49,5 +37,26 @@ inline std::ostream& operator<<(std::ostream& os, const Tracker& obj) {
     return os;
 }
 
+
+// def __init__(self, name: str):
+inline Tracker::Tracker(std::string_view name) : name(name) {}
+
+inline Tracker::Tracker(Tracker&& other) noexcept : name(std::move(other.name)) {
+    other.__tpy_owned_ = false;
+}
+inline Tracker& Tracker::operator=(Tracker&& other) noexcept {
+    if (this != &other) {
+        this->~Tracker();
+        new (this) Tracker(std::move(other));
+    }
+    return *this;
+}
+
+// def __del__(self):
+inline Tracker::~Tracker() {
+    if (!this->__tpy_owned_) return;
+    // print("drop", self.name)
+    std::cout << "drop" << " " << this->name << "\n";
+}
 void __tpy_init();
 } // namespace tpyapp::main

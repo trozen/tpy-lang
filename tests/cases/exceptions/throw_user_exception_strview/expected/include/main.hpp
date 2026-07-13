@@ -23,7 +23,7 @@ struct MyError : ::tpy::Exception {
     std::string msg;
 
     // def __init__(self, message: str = "") -> None:
-    explicit MyError(std::string_view message = "") : ::tpy::Exception(message), msg(message) {}
+    explicit MyError(std::string_view message = "");
 
     [[nodiscard]] std::unique_ptr<::tpy::Throwable> clone() const override { return std::make_unique<MyError>(*this); }
     [[noreturn]] void __raise__() const override { throw *this; }
@@ -36,5 +36,8 @@ inline std::ostream& operator<<(std::ostream& os, const MyError& obj) {
     return os;
 }
 
+
+// def __init__(self, message: str = "") -> None:
+inline MyError::MyError(std::string_view message) : ::tpy::Exception(message), msg(message) {}
 void __tpy_init();
 } // namespace tpyapp::main

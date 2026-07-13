@@ -32,7 +32,7 @@ struct Holder {
 
     // def __init__(self, rows: Own[list[Int32]]) -> None:
     Holder() = default;
-    explicit Holder(std::vector<int32_t>&& rows) : rows(std::move(rows)) {}
+    explicit Holder(std::vector<int32_t>&& rows);
 
     template <::tpystd::typing::Iterable<int32_t> T_extra>
     __coro_Holder_run<T_extra> run(T_extra&& extra);
@@ -207,5 +207,8 @@ struct __coro_main_coro {
     }
 };
 
+
+// def __init__(self, rows: Own[list[Int32]]) -> None:
+inline Holder::Holder(std::vector<int32_t>&& rows) : rows(std::move(rows)) {}
 void __tpy_init();
 } // namespace tpyapp::main

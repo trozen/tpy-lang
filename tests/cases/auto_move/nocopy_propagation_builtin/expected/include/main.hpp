@@ -21,30 +21,15 @@ struct Storage {
     bool __tpy_owned_ = true;
 
     // def __init__(self):
-    Storage() : buf(::tpy::UninitHeapStorage<int32_t>(1)) {
-        // self.buf.init0(42)
-        this->buf.init0(42);
-    }
+    Storage();
     // non-copyable (field 'buf')
     Storage(const Storage&) = delete;
     Storage& operator=(const Storage&) = delete;
-    Storage(Storage&& other) noexcept : buf(std::move(other.buf)) {
-        other.__tpy_owned_ = false;
-    }
-    Storage& operator=(Storage&& other) noexcept {
-        if (this != &other) {
-            this->~Storage();
-            new (this) Storage(std::move(other));
-        }
-        return *this;
-    }
-    // def __del__(self):
+    Storage(Storage&& other) noexcept;
+    Storage& operator=(Storage&& other) noexcept;
 
-    ~Storage() {
-        if (!this->__tpy_owned_) return;
-        // self.buf.drop0()
-        this->buf.drop0();
-    }
+    // def __del__(self):
+    ~Storage();
 
     // def get(self) -> Int32:
     int32_t get() const;
@@ -56,6 +41,30 @@ inline std::ostream& operator<<(std::ostream& os, const Storage& obj) {
     return os;
 }
 
+
+// def __init__(self):
+inline Storage::Storage() : buf(::tpy::UninitHeapStorage<int32_t>(1)) {
+    // self.buf.init0(42)
+    this->buf.init0(42);
+}
+
+inline Storage::Storage(Storage&& other) noexcept : buf(std::move(other.buf)) {
+    other.__tpy_owned_ = false;
+}
+inline Storage& Storage::operator=(Storage&& other) noexcept {
+    if (this != &other) {
+        this->~Storage();
+        new (this) Storage(std::move(other));
+    }
+    return *this;
+}
+
+// def __del__(self):
+inline Storage::~Storage() {
+    if (!this->__tpy_owned_) return;
+    // self.buf.drop0()
+    this->buf.drop0();
+}
 
 // def get(self) -> Int32:
 inline int32_t Storage::get() const {

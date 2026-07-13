@@ -22,7 +22,7 @@ struct Item {
 
     // def __init__(self, name: str) -> None:
     Item() = default;
-    explicit Item(std::string_view name) : name(name) {}
+    explicit Item(std::string_view name);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Item";
 };
 
@@ -63,8 +63,8 @@ struct Pool {
         }
         return *this;
     }
-    // def __del__(self) -> None:
 
+    // def __del__(self) -> None:
     ~Pool() {
         if (!this->__tpy_owned_) return;
         // self._storage.drop_n(UInt32(0), self._size)
@@ -94,5 +94,8 @@ inline std::ostream& operator<<(std::ostream& os, const Pool<T, N>& obj) {
     return os;
 }
 
+
+// def __init__(self, name: str) -> None:
+inline Item::Item(std::string_view name) : name(name) {}
 void __tpy_init();
 } // namespace tpyapp::main

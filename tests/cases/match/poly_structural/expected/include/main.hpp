@@ -41,7 +41,7 @@ struct Square {
 
     // def __init__(self, side: int) -> None:
     Square() = default;
-    explicit Square(const ::tpy::BigInt& side) : side(side) {}
+    explicit Square(const ::tpy::BigInt& side);
 
     // def area(self) -> int:
     ::tpy::BigInt area() const;
@@ -62,7 +62,7 @@ struct Rect {
 
     // def __init__(self, w: int, h: int) -> None:
     Rect() = default;
-    explicit Rect(const ::tpy::BigInt& w, const ::tpy::BigInt& h) : w(w), h(h) {}
+    explicit Rect(const ::tpy::BigInt& w, const ::tpy::BigInt& h);
 
     // def area(self) -> int:
     ::tpy::BigInt area() const;
@@ -94,11 +94,17 @@ struct tpy::RefAdapter<tpyapp::main::Shape, T> : tpyapp::main::Shape {
 namespace tpyapp::main {
 
 
+// def __init__(self, side: int) -> None:
+inline Square::Square(const ::tpy::BigInt& side) : side(side) {}
+
 // def area(self) -> int:
 inline ::tpy::BigInt Square::area() const {
     // return self.side * self.side
     return ((this->side) * (this->side));
 }
+
+// def __init__(self, w: int, h: int) -> None:
+inline Rect::Rect(const ::tpy::BigInt& w, const ::tpy::BigInt& h) : w(w), h(h) {}
 
 // def area(self) -> int:
 inline ::tpy::BigInt Rect::area() const {

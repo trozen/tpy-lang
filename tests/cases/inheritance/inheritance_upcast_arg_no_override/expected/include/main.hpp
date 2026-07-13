@@ -22,7 +22,7 @@ struct Animal {
 
     // def __init__(self, name: str) -> None:
     Animal() = default;
-    explicit Animal(std::string_view name) : name(name) {}
+    explicit Animal(std::string_view name);
 
     // def describe(self) -> str:
     std::string describe() const;
@@ -42,7 +42,7 @@ struct Dog : Animal {
     // # Adds a field and a new method but does NOT override describe()
     // def __init__(self, name: str, breed: str) -> None:
     Dog() = default;
-    explicit Dog(std::string_view name, std::string_view breed) : Animal(name), breed(breed) {}
+    explicit Dog(std::string_view name, std::string_view breed);
 
     // def bark(self) -> str:  # new method, not an override
     std::string bark() const;
@@ -55,11 +55,18 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 }
 
 
+// def __init__(self, name: str) -> None:
+inline Animal::Animal(std::string_view name) : name(name) {}
+
 // def describe(self) -> str:
 inline std::string Animal::describe() const {
     // return self.name
     return this->name;
 }
+
+// # Adds a field and a new method but does NOT override describe()
+// def __init__(self, name: str, breed: str) -> None:
+inline Dog::Dog(std::string_view name, std::string_view breed) : Animal(name), breed(breed) {}
 
 // def bark(self) -> str:  # new method, not an override
 inline std::string Dog::bark() const {

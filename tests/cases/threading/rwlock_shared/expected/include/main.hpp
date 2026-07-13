@@ -33,7 +33,7 @@ struct Writer {
     int32_t iters;
 
     // def __init__(self, shared: Own[Arc[RwLock[list[Int32]]]], id: Int32, iters: Int32) -> None:
-    explicit Writer(::tpystd::tplib::arc::Arc<::tpystd::tpy::sync::RwLock<std::vector<int32_t>>>&& shared, int32_t id, int32_t iters) : shared(std::move(shared)), id(id), iters(iters) {}
+    explicit Writer(::tpystd::tplib::arc::Arc<::tpystd::tpy::sync::RwLock<std::vector<int32_t>>>&& shared, int32_t id, int32_t iters);
     // non-copyable (@nocopy)
     Writer(const Writer&) = delete;
     Writer& operator=(const Writer&) = delete;
@@ -50,6 +50,9 @@ inline std::ostream& operator<<(std::ostream& os, const Writer& obj) {
     return os;
 }
 
+
+// def __init__(self, shared: Own[Arc[RwLock[list[Int32]]]], id: Int32, iters: Int32) -> None:
+inline Writer::Writer(::tpystd::tplib::arc::Arc<::tpystd::tpy::sync::RwLock<std::vector<int32_t>>>&& shared, int32_t id, int32_t iters) : shared(std::move(shared)), id(id), iters(iters) {}
 
 // def run(self) -> None:
 inline void Writer::run() const {

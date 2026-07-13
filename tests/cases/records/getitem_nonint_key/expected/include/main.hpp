@@ -22,7 +22,7 @@ struct Scores {
     int32_t _b;
 
     // def __init__(self) -> None:
-    Scores() : _a(10), _b(20) {}
+    Scores();
 
     // def __getitem__(self, key: str) -> Int32:
     int32_t __getitem__(std::string_view key) const;
@@ -38,6 +38,9 @@ inline std::ostream& operator<<(std::ostream& os, const Scores& obj) {
     return os;
 }
 
+
+// def __init__(self) -> None:
+inline Scores::Scores() : _a(10), _b(20) {}
 
 // def __getitem__(self, key: str) -> Int32:
 inline int32_t Scores::__getitem__(std::string_view key) const {

@@ -40,7 +40,7 @@ struct Parrot : Pet {
 
     // def __init__(self, label: str) -> None:
     Parrot() = default;
-    explicit Parrot(std::string_view label) : label(label) {}
+    explicit Parrot(std::string_view label);
 
     // def name(self) -> str:
     std::string name() override;
@@ -58,7 +58,7 @@ struct Shelter {
     ::tpy::BigInt count;
 
     // def __init__(self) -> None:
-    Shelter() : count(::tpy::BigInt(0)) {}
+    Shelter();
 
     // def admit(self, pet: Own[Pet]) -> None:
     void admit(std::unique_ptr<Pet> pet);
@@ -90,11 +90,17 @@ struct tpy::RefAdapter<tpyapp::main::Pet, T> : tpyapp::main::Pet {
 namespace tpyapp::main {
 
 
+// def __init__(self, label: str) -> None:
+inline Parrot::Parrot(std::string_view label) : label(label) {}
+
 // def name(self) -> str:
 inline std::string Parrot::name() {
     // return self.label
     return this->label;
 }
+
+// def __init__(self) -> None:
+inline Shelter::Shelter() : count(::tpy::BigInt(0)) {}
 
 // def admit(self, pet: Own[Pet]) -> None:
 inline void Shelter::admit(std::unique_ptr<Pet> pet) {

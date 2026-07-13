@@ -25,9 +25,7 @@ __coro_main main();
 struct Dog {
 
     // def __init__(self) -> None:
-    Dog() {
-        // pass
-    }
+    Dog();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Dog";
 };
 
@@ -40,9 +38,7 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 struct Cat {
 
     // def __init__(self) -> None:
-    Cat() {
-        // pass
-    }
+    Cat();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Cat";
 };
 
@@ -57,7 +53,7 @@ struct Shelter {
     ::tpy::BigInt seen;
 
     // def __init__(self) -> None:
-    Shelter() : seen(::tpy::BigInt(0)) {}
+    Shelter();
 
     __coro_Shelter_describe describe(std::variant<Cat*, Dog*> a);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Shelter";
@@ -127,5 +123,18 @@ struct __coro_main {
     }
 };
 
+
+// def __init__(self) -> None:
+inline Dog::Dog() {
+    // pass
+}
+
+// def __init__(self) -> None:
+inline Cat::Cat() {
+    // pass
+}
+
+// def __init__(self) -> None:
+inline Shelter::Shelter() : seen(::tpy::BigInt(0)) {}
 void __tpy_init();
 } // namespace tpyapp::main

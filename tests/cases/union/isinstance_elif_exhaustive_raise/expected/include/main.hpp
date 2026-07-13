@@ -27,7 +27,7 @@ struct Dog {
 
     // def __init__(self, n: int):
     Dog() = default;
-    explicit Dog(const ::tpy::BigInt& n) : n(n) {}
+    explicit Dog(const ::tpy::BigInt& n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Dog";
 };
 
@@ -43,7 +43,7 @@ struct Cat {
 
     // def __init__(self, n: int):
     Cat() = default;
-    explicit Cat(const ::tpy::BigInt& n) : n(n) {}
+    explicit Cat(const ::tpy::BigInt& n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Cat";
 };
 
@@ -59,7 +59,7 @@ struct PetError : ::tpy::Exception {
 
     // def __init__(self, code: int):
     PetError() = default;
-    explicit PetError(const ::tpy::BigInt& code) : code(code) {}
+    explicit PetError(const ::tpy::BigInt& code);
 
     [[nodiscard]] std::unique_ptr<::tpy::Throwable> clone() const override { return std::make_unique<PetError>(*this); }
     [[noreturn]] void __raise__() const override { throw *this; }
@@ -72,5 +72,14 @@ inline std::ostream& operator<<(std::ostream& os, const PetError& obj) {
     return os;
 }
 
+
+// def __init__(self, n: int):
+inline Dog::Dog(const ::tpy::BigInt& n) : n(n) {}
+
+// def __init__(self, n: int):
+inline Cat::Cat(const ::tpy::BigInt& n) : n(n) {}
+
+// def __init__(self, code: int):
+inline PetError::PetError(const ::tpy::BigInt& code) : code(code) {}
 void __tpy_init();
 } // namespace tpyapp::main

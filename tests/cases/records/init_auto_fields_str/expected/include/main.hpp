@@ -23,7 +23,7 @@ struct Person {
 
     // def __init__(self, name: str, city: str):
     Person() = default;
-    explicit Person(std::string_view name, std::string_view city) : name(name), city(city) {}
+    explicit Person(std::string_view name, std::string_view city);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Person";
 };
 
@@ -32,5 +32,8 @@ inline std::ostream& operator<<(std::ostream& os, const Person& obj) {
     return os;
 }
 
+
+// def __init__(self, name: str, city: str):
+inline Person::Person(std::string_view name, std::string_view city) : name(name), city(city) {}
 void __tpy_init();
 } // namespace tpyapp::main

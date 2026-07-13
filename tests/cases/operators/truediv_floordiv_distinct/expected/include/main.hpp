@@ -20,7 +20,7 @@ struct Meters {
 
     // def __init__(self, v: Int32) -> None:
     Meters() = default;
-    explicit Meters(int32_t v) : v(v) {}
+    explicit Meters(int32_t v);
 
     // def __truediv__(self, other: "Meters") -> float:
     double __truediv__(Meters other) const;
@@ -48,6 +48,9 @@ template<> struct tpy::is_value_type<::tpyapp::main::Meters> : std::true_type {}
 namespace tpyapp::main {
 
 
+
+// def __init__(self, v: Int32) -> None:
+inline Meters::Meters(int32_t v) : v(v) {}
 
 // def __truediv__(self, other: "Meters") -> float:
 inline double Meters::__truediv__(Meters other) const {

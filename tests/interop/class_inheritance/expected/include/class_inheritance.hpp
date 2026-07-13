@@ -24,7 +24,7 @@ struct Shape {
     std::string name;
 
     Shape() = default;
-    explicit Shape(std::string_view name) : name(name) {}
+    explicit Shape(std::string_view name);
 
     std::string describe() const;
 
@@ -59,7 +59,7 @@ struct BaseBox {
     int64_t width;
 
     BaseBox() = default;
-    explicit BaseBox(int64_t width) : width(width) {}
+    explicit BaseBox(int64_t width);
 
     int64_t w() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.BaseBox";
@@ -74,7 +74,7 @@ struct Circle : Shape {
     double radius;
 
     Circle() = default;
-    explicit Circle(std::string_view name, double radius) : Shape(name), radius(radius) {}
+    explicit Circle(std::string_view name, double radius);
 
     double area() const;
 
@@ -133,6 +133,8 @@ inline std::ostream& operator<<(std::ostream& os, const LeafBox& obj) {
 }
 
 
+inline Shape::Shape(std::string_view name) : name(name) {}
+
 inline std::string Shape::describe() const {
     return (::tpy::str_concat("shape ", this->name));
 }
@@ -149,9 +151,13 @@ inline int64_t Shape::__hash__() const {
     return static_cast<int64_t>(::tpy::__len__(this->name));
 }
 
+inline BaseBox::BaseBox(int64_t width) : width(width) {}
+
 inline int64_t BaseBox::w() const {
     return this->width;
 }
+
+inline Circle::Circle(std::string_view name, double radius) : Shape(name), radius(radius) {}
 
 inline double Circle::area() const {
     return ((((this->radius) * (this->radius))) * (3.0));

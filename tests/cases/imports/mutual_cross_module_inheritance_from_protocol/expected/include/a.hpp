@@ -21,9 +21,7 @@ inline constexpr std::string_view __name__ = "a";
 struct Counter {
 
     // def __init__(self) -> None: pass
-    Counter() {
-        // def __init__(self) -> None: pass
-    }
+    Counter();
 
     // def hello(self) -> str:
     std::string hello() const;

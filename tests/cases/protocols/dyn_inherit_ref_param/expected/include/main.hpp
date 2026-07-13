@@ -48,7 +48,7 @@ struct Counter : Sink {
 
     // def __init__(self, base: Int32) -> None:
     Counter() = default;
-    explicit Counter(int32_t base) : base(base) {}
+    explicit Counter(int32_t base);
 
     // def total(self, items: dict[str, Int32] | None = None) -> Int32:
     int32_t total(::tpy::ordered_map<std::string, int32_t>* items = nullptr) override;
@@ -89,6 +89,9 @@ struct tpy::RefAdapter<tpyapp::main::Sink, T> : tpyapp::main::Sink {
 
 namespace tpyapp::main {
 
+
+// def __init__(self, base: Int32) -> None:
+inline Counter::Counter(int32_t base) : base(base) {}
 
 // def total(self, items: dict[str, Int32] | None = None) -> Int32:
 inline int32_t Counter::total(::tpy::ordered_map<std::string, int32_t>* items) {

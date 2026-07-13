@@ -22,7 +22,7 @@ struct Weight {
 
     // def __init__(self, g: Int32) -> None:
     Weight() = default;
-    explicit Weight(int32_t g) : grams(g) {}
+    explicit Weight(int32_t g);
 
     // def __eq__(self, other: "Weight") -> bool:
     bool __eq__(const Weight& other) const;
@@ -63,6 +63,9 @@ inline std::ostream& operator<<(std::ostream& os, const Weight& obj) {
     return os;
 }
 
+
+// def __init__(self, g: Int32) -> None:
+inline Weight::Weight(int32_t g) : grams(g) {}
 
 // def __eq__(self, other: "Weight") -> bool:
 inline bool Weight::__eq__(const Weight& other) const {

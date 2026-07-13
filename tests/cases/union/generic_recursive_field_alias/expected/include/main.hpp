@@ -39,7 +39,7 @@ struct Holder {
     Tree<int32_t> t;
 
     // def __init__(self, t: Own[Tree[Int32]]) -> None:
-    explicit Holder(Tree<int32_t>&& t) : t(std::move(t)) {}
+    explicit Holder(Tree<int32_t>&& t);
 
     // def get(self) -> Tree[Int32]:
     Tree<int32_t>& get();
@@ -51,6 +51,9 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     return os;
 }
 
+
+// def __init__(self, t: Own[Tree[Int32]]) -> None:
+inline Holder::Holder(Tree<int32_t>&& t) : t(std::move(t)) {}
 
 // def get(self) -> Tree[Int32]:
 inline Tree<int32_t>& Holder::get() {

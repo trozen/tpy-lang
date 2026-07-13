@@ -26,7 +26,7 @@ struct RangeIter {
 
     // def __init__(self, start: Int32, limit: Int32) -> None:
     RangeIter() = default;
-    explicit RangeIter(int32_t start, int32_t limit) : current(start), limit(limit) {}
+    explicit RangeIter(int32_t start, int32_t limit);
 
     auto& __iter__() { return *this; }
 
@@ -49,7 +49,7 @@ struct NumberRange {
 
     // def __init__(self, start: Int32, limit: Int32) -> None:
     NumberRange() = default;
-    explicit NumberRange(int32_t start, int32_t limit) : start(start), limit(limit) {}
+    explicit NumberRange(int32_t start, int32_t limit);
 
     // def __iter__(self) -> Own[RangeIter]:
     RangeIter __iter__() const;
@@ -89,6 +89,9 @@ struct __gen_doubled_range : public ::tpy::next_iter_mixin<__gen_doubled_range, 
 };
 
 
+// def __init__(self, start: Int32, limit: Int32) -> None:
+inline RangeIter::RangeIter(int32_t start, int32_t limit) : current(start), limit(limit) {}
+
 // def __next__(self) -> Int32:
 inline std::expected<int32_t, ::tpy::StopIteration> RangeIter::__next__() {
     // if self.current < self.limit:
@@ -103,6 +106,9 @@ inline std::expected<int32_t, ::tpy::StopIteration> RangeIter::__next__() {
     // raise StopIteration
     return ::tpy::make_unexpected(::tpy::StopIteration{});
 }
+
+// def __init__(self, start: Int32, limit: Int32) -> None:
+inline NumberRange::NumberRange(int32_t start, int32_t limit) : start(start), limit(limit) {}
 
 // def __iter__(self) -> Own[RangeIter]:
 inline RangeIter NumberRange::__iter__() const {
