@@ -472,7 +472,9 @@ class TestSlicedOutShapes:
                + "    return n\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
         _, fallback = _assert_identical(src)
-        assert fallback.get("resumable:stmt.del_var:nontrivial") == 1
+        # `xs` is a resumable frame slot -- the del move-sink has no mirrored
+        # frame-slot render, so the body stays AST.
+        assert fallback.get("resumable:stmt.del_var:binding") == 1
 
     def test_global_lowering_reject_falls_back_after_await(self):
         src = (_PRE

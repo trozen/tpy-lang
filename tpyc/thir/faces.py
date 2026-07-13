@@ -94,6 +94,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "call.macro_expansion",         # `@call_macro`/getattr/hasattr call ->
                                     # its sema-synthesized replacement expr
     "call.cast_passthrough",        # `typing.cast(T, x)` non-Any -> bare `x`
+    "call.cast_any",                # `typing.cast(T, x)` from Any ->
+                                    # `::tpy::any_cast_or_panic<T>(x)`
     # Ptr[T]-receiver Deref method calls (lowering; the THIRMethodCall
     # is_arrow / deref_check renders over a pointer-VALUE receiver).
     "method.ptr_arrow",             # proven non-null: `p->m(args)`
@@ -168,6 +170,8 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # NAME: bare copy or std::move at last use
     "method.dyn_setattr",           # `obj.x = v` -> the synthesized
                                     # `obj.__setattr__("x", make_any(...))`
+    "method.dyn_getattr",           # `obj.x` read -> the synthesized
+                                    # `obj.__getattr__("x")` method call
     "stmt.del_attr",                # `del obj.attr` -> the synthesized
                                     # `obj.__delattr__("attr");` statement
     "ret.any_subscript",            # `return d[k]` at an Any return slot ->
@@ -235,6 +239,28 @@ THIR_FACES: frozenset[str] = frozenset({
     # element or a `d.items()` key/value pair -- binds the whole tuple as
     # `auto&& t = *__beg_N;`, subscript reads render `std::get<i>(t)` bare).
     "foreach.value_tuple_elem",
+    # Value-repr Optional[scalar] for-each loop var (lowering; binds the
+    # typed `std::optional<T>` copy and registers the name so its body reads
+    # ride the value-opt binding arms -- deref-on-narrow, the whole-optional
+    # None-test / truthiness / arg renders).
+    "foreach.value_opt_elem",
+    # List-literal for-each iterable (lowering; `for c in [a, b, c]:` -- the
+    # owning `auto __obj_N = {a, b, c};` initializer-list capture, elements
+    # rendered target-less like the AST's untargeted gen_expr_deref).
+    "foreach.iter_literal",
+    # Loop else blocks (lowering; the bare `{...}` past the loop's close
+    # brace + its `__after_else_N:;` label -- run on normal completion,
+    # jumped past by a break).
+    "loop.for_else",                # for/else (range and container routes)
+    "loop.while_else",              # while/else
+    # `del x` early-destruction move-sink (lowering; one
+    # `{ auto __del_sink = std::move([*]name); }` block per sunk name --
+    # skip-only dels stay on the no-code THIRNoOpStmt face).
+    "stmt.del_var_sink",
+    # Rebound container-literal local (lowering; the F2d two-slot machinery
+    # with a container-literal init/reseat -- `std::vector<T>* xs = &__slot_1;
+    # ... xs = &*(__slot_2 = {...});`).
+    "decl.container_rebind_slot",
     # Runtime-BigInt `.to_fixed_check<T>()` narrows (lowering; the AST's
     # gen_index_expr / _gen_slice_bound / aug-assign / enum-from_value wraps).
     "narrow.subscript_index",       # `i.to_fixed_check<int32_t>()` (reads + del)
@@ -350,6 +376,9 @@ THIR_FACES: frozenset[str] = frozenset({
     # `if g.is_open():` -- the same bare-render property as cond.bool_field, over the method
     # call's value-position admission).
     "cond.bool_method",
+    # Bool free-call truthiness condition (lowering admission; `if f(x):` --
+    # the free-call twin of cond.bool_method).
+    "cond.bool_call",
     # Non-identity `_truthy_for_rendered` arms carried by THIRTruthy.
     "truthy.nonempty",
     "truthy.is_truthy",
@@ -460,6 +489,12 @@ THIR_FACES: frozenset[str] = frozenset({
     "comp.range3",                  # 3-arg range: begin/end over the Range object
     "comp.field_iter",              # field-access iterable (recv.items)
     "comp.print_arg",               # comprehension print arg (container printer wrap)
+    "comp.container_value",         # dict-comp list/Array VALUE slot: self-typed
+                                    # brace-init literal / nested comp value
+    "comp.nested",                  # comprehension VALUE inside a dict comp ->
+                                    # the recursive stmt-expr render
+    "fn.param_copy",                # reassigned const-ref param -> the mutable
+                                    # owned-copy prologue (THIRParamCopy)
     "genexpr.native_iterable",      # genexpr into a native Iterable consumer ->
                                     # the make_generator IIFE (all/any/sum arg)
     "print.optval",                 # un-narrowed value-repr Optional[scalar/str]
@@ -498,6 +533,14 @@ THIR_FACES: frozenset[str] = frozenset({
     "match.optional_none_arm",      # `case None:` prefix -> the nullptr block
     "match.optional_value_only",    # no None arm -> bare `if (s != nullptr)`
     "match.optional_inner_bind",    # capture/as vs the __match_inner_N alias
+    "match.optional_inner_record",  # record inner: if/elif chain on the alias
+    "match.if_elif_optional",       # non-partitioned Optional: unguarded chain
+    "match.if_elif_optional_guarded",  # its standalone-if + goto sibling
+    "match.optional_chain_or",      # or-pattern cond groups (None | lit | ...)
+    "match.optional_full_bind",     # capture/as binding the full Optional
+    "match.switch_str",             # str discriminator switch (size/char_at)
+    "match.str_guard_prefix",       # guarded literal arm before the switch
+    "match.str_trailing_arm",       # wildcard/capture arm after the switch
     "match.wildcard_default",       # `case _:` -> the `default:` block
     "match.synthetic_default",      # non-exhaustive: `default: break;`
     "match.unreachable_tail",       # exhaustive + terminating arms tail
@@ -512,6 +555,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "try.finally_loop_exit",        # break/continue in body: partial chain
     "try.chain_terminated",         # terminating finally suppressed the exit
     "match.loop_break_goto",        # break escaping a switch: goto __loop_break_N
+    "loop.break_else_goto",         # break out of an else-loop: goto __after_else_N
     # The five flushable statement positions, counted only when the
     # position's value actually hoists an arg temp.
     "flush.vardecl",
@@ -529,6 +573,33 @@ THIR_FACES: frozenset[str] = frozenset({
     "res.yield_value",              # generator yield-value render
     "res.frame_slot_write",         # frame_slot local `.emplace()` write (R1c)
     "res.suspend_expr",             # ERASED/BORROWED operand + bound receiver (R5)
+    # Class-constant read -> the bare qualified static (lowering;
+    # `C::LIMIT`, `::tpyapp::m::Limits::MAX`, `C<int32_t>::X` -- the
+    # receiver_eval-None shapes of _class_constant_access_parts).
+    "field.class_const",
+    # Module-variable read -> the fixed registered spelling (lowering;
+    # `mod.X` off a MODULE binding or the dotted `pkg.sub.X` marker --
+    # native_cpp_name / (*slot) / qualified cpp_expr).
+    "field.module_var",
+    # Class-constant / classvar write -> the bare qualified lvalue
+    # (lowering; `C::X = v;` -- gen_class_constant_lvalue's assign arm).
+    "field_write.class_const",
+    # Class-constant aug-assign -> the binop substitution over the
+    # qualified lvalue (lowering; `C::X = add_check<int32_t>(C::X, v);`).
+    "aug.class_const",
+    # Class-constant write receiver evals, split off as a leading statement
+    # (lowering): the unproven-Optional pointer-name check
+    # (`::tpy::deref_check(c);`) and the effectful receiver discard
+    # (`static_cast<void>(make_c());`). Shared by the assign and aug arms.
+    "field_write.cc_recv_check",
+    "field_write.cc_recv_effect",
+    # Same-module global-record receiver field read (lowering; the `T*`
+    # pointer-slot name with an arrow -- `time->x`).
+    "field.global_record_recv",
+    # F1-record-returning call/method-call receiver field read (admission;
+    # the bare postfix member over the call render -- `f().x`,
+    # `h.boxed.get().x` -- the inner call lowers through its own arms).
+    "field.call_recv",
 })
 
 

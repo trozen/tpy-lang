@@ -570,6 +570,18 @@ def _field_over_field_ok(e: TpyExpr, locals_: dict[str, TpyType],
     return bool(isinstance(ft, NominalType) and _f1_record(ft, analyzer)
                 and _witness("field.chain_recv"))
 
+def _field_over_call_ok(e: TpyExpr, analyzer) -> bool:
+    """A value field read off an F1-record-returning call / method-call
+    receiver (`f().x`, `p.Box(10).n`, `h.boxed.get().x`): the AST renders
+    the bare postfix member over the call render, rvalue and borrow returns
+    alike. The receiver lowers through its own call arms (RECEIVER use), so
+    every inner gate still applies."""
+    if not (isinstance(e, TpyFieldAccess) and _field_markers_clean(e)
+            and isinstance(e.obj, (TpyCall, TpyMethodCall))):
+        return False
+    return bool(_f1_record(analyzer.get_expr_type(e.obj), analyzer)
+                and _witness("field.call_recv"))
+
 def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
                           declared: dict[str, TpyType], prescan: _Prescan,
                           analyzer) -> 'LocalBinding | None':
@@ -589,8 +601,20 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
     if binding is LocalBinding.REBIND_SLOT:
         # F2d: the source is an rvalue F1-record ctor / by-value call (not a field
         # read), so it bypasses the field-receiver check the lvalue bindings need.
-        return binding if (_f1_record(target_type, analyzer)
-                           and _record_rvalue_source_shape(stmt.init, analyzer)) else None
+        if (_f1_record(target_type, analyzer)
+                and _record_rvalue_source_shape(stmt.init, analyzer)):
+            return binding
+        # A rebound container-literal local rides the same two-slot machinery
+        # (`std::vector<T>* xs = &__slot_1; ... xs = &*(__slot_2 = {...});`);
+        # the literal itself lowers through the shared container-literal arm
+        # (its per-element gates reject there).
+        if (isinstance(stmt.init, (TpyArrayLiteral, TpyDictLiteral,
+                                   TpySetLiteral))
+                and target_type is not None
+                and _container_literal_shape_ok(stmt.init, target_type,
+                                                analyzer, note=True)):
+            return binding
+        return None
     if isinstance(stmt.init, TpyCall):
         # A borrow-record-returning free call (`p = shared(x)` -> `Pair& p =
         # shared(x);` -- the classifier's lvalue-source verdict). REF_ALIAS
@@ -866,6 +890,53 @@ def _str_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
         return True
     return (isinstance(v, TpyName) and v.name in declared
             and _resolved_str_value(declared[v.name], analyzer) is not None)
+
+def _class_const_write_target_ok(target, declared: dict[str, TpyType],
+                                 pointers: set[str], analyzer) -> bool:
+    """A class-constant / classvar write lvalue (`C.X = v`, `obj.X = v`):
+    the AST's gen_class_constant_lvalue arm -- the bare qualified
+    `<owner>::<member>` with the receiver eval split into a leading
+    statement. Scalar constants only (the sole slot family whose value
+    render is the plain target-typed assign; str/tuple constants keep
+    their own AST value shapes). Receiver shapes: pure (no eval),
+    effectful (the receiver lowers through its own arms -- rejects there
+    if unrouted), or an unproven-Optional DECLARED pointer name (the
+    `deref_check(c)` render; pointer_value_expr's global `(*name)` wrap
+    and the field-receiver deref_optional_check shape stay out)."""
+    if not (isinstance(target, TpyFieldAccess)
+            and target.class_constant_owner is not None):
+        return False
+    if not _eligible_scalar(analyzer.get_expr_type(target)):
+        return False
+    if target.needs_optional_runtime_check:
+        # `pointers` is lc.pointers (NOT admission_pointers, which excludes
+        # the Optional-ptr borrows this arm exists for): the receiver must
+        # render as the bare `T*` name deref_check takes.
+        return (isinstance(target.obj, TpyName)
+                and target.obj.name in declared
+                and target.obj.name in pointers)
+    if isinstance(target.obj, TpySubscript):
+        # An effectful subscript receiver is lowered prechecked (like the
+        # field-read twin), so admission owns the receiver shape here.
+        return _container_record_elem_subscript(target.obj, declared,
+                                                analyzer)
+    return True
+
+def _class_const_aug_assign_ok(stmt: TpyAugAssign, declared: dict[str, TpyType],
+                               pointers: set[str], analyzer) -> bool:
+    """Aug-assign on a class-constant lvalue: the AST substitutes the bare
+    qualified name into `target = (target OP value)` (receiver eval split
+    off, emitted at most once) -- the same binop-template admission as
+    `_scalar_aug_assign_ok`, target shapes from
+    `_class_const_write_target_ok` (scalar-only, so the str `+=` in-place
+    branch is excluded for free)."""
+    if stmt.resolved_inplace is not None:
+        return False
+    rb = stmt.resolved_binop
+    if rb is None or not getattr(rb.method, "cpp_template", None):
+        return False
+    return _class_const_write_target_ok(stmt.target, declared, pointers,
+                                        analyzer)
 
 def _scalar_aug_assign_ok(stmt: TpyAugAssign, declared: dict[str, TpyType],
                           analyzer) -> bool:
@@ -2618,6 +2689,7 @@ def _marker_call_supported(e: TpyMethodCall, kind: 'tuple[str, str]',
                           locals_: dict[str, TpyType], analyzer,
                           *, stmt_position: bool = False,
                           temps_ok: bool = False,
+                          record_ret_ok: bool = False,
                           narrowed: 'set[str] | frozenset[str]' = frozenset()) -> bool:
     """Result/arg checks for a `_marker_call_kind`-classified receiver-less
     call. Mirrors free-call lowering's value-position result set and its arg
@@ -2638,6 +2710,9 @@ def _marker_call_supported(e: TpyMethodCall, kind: 'tuple[str, str]',
             or _resolved_str_value(ret, analyzer) is not None
             or _resolved_bytes_value(ret, analyzer) is not None
             or _eligible_ptr_value(ret, analyzer)
+            # The field-receiver position (`p.Box(10).n`): an F1-record
+            # result renders bare under the postfix member.
+            or (record_ret_ok and _f1_record(ret, analyzer))
             or (stmt_position and (ret is None or is_void_like_type(ret)))):
         return note_detail(_qualcall_ret_reject(ret, analyzer))
     return True
@@ -3009,11 +3084,11 @@ def _record_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyTy
             or _resolved_bytes_value(ret, analyzer) is not None
             or _tparam_value(ret)
             or _callable_value(ret)
-            # An F1-record rvalue return is admitted only at the owned-record
-            # decl sink (`Rec r = b.build();`, record_ret_ok): the bare
-            # `recv.method(args)` prvalue stored directly, the method sibling of
-            # the by-value free-call face. `is_rvalue_source`
-            # (checked at the decl gate) keeps a `T&` borrow return out.
+            # An F1-record return is admitted at the owned-record decl sink
+            # (`Rec r = b.build();`, record_ret_ok -- `is_rvalue_source`,
+            # checked at the decl gate, keeps a `T&` borrow return out there)
+            # and at the field-receiver position (`h.boxed.get().x`, where
+            # rvalue and borrow returns render the same bare postfix member).
             or (record_ret_ok and _f1_record(ret, analyzer))
             # Storage sinks only (the tuple-unpack source; the record-method
             # sibling of free-call lowering's storage_ret_ok escape).

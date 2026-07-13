@@ -1112,9 +1112,10 @@ class TestStrFieldReturn:
         assert faces.get("ret.str_field", 0) == 1
         assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
-    def test_strview_field_stays_ast(self):
-        # A `StrView` field is BORROW -- an owned return slot needs the
-        # explicit view->owned copy this arm does not wire. Reject.
+    def test_strview_field_owned_return_converts(self):
+        # A `StrView` field is BORROW -- sema's materializing coerce at the
+        # owned return slot admits the field inner and fires the explicit
+        # view->owned copy (`return std::string(this->v);`).
         src = (
             "from tpy import StrView\n"
             "class V:\n"
@@ -1125,8 +1126,17 @@ class TestStrFieldReturn:
             "        return self.v\n"
             'print(V("x").get())\n'
         )
-        thir = _lower_ctx(src)
-        assert _fn(thir, "get") is None
+        thir, faces = _lower_ctx_witnessed(src)
+        fn = _fn(thir, "get")
+        assert fn is not None
+        ret = fn.body[0]
+        assert isinstance(ret, THIRReturn)
+        assert isinstance(ret.value, THIRFormConvert)
+        assert ret.value.form is Form.STORAGE
+        assert isinstance(ret.value.value, THIRFieldAccess)
+        assert ret.value.value.form is Form.BORROW
+        assert faces.get("fstr.str_field", 0) == 1
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
     def test_string_field_stays_ast(self):
         # A `String` field resolves outside the str slice
@@ -1171,9 +1181,10 @@ class TestStrFieldReturn:
         assert faces.get("fstr.str_field", 0) == 1
         assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
-    def test_fstring_strview_field_stays_ast(self):
-        # A StrView field arg stays off the fstring rung (the shared helper
-        # is owned-str only; the view-field row is a follow-up rung).
+    def test_fstring_strview_field_arg_routes(self):
+        # A StrView field arg formats bare like the owned-str row (the
+        # string_view formats directly; BORROW never converts in a format
+        # slot).
         src = (
             "from tpy import StrView\n"
             "class V:\n"
@@ -1184,8 +1195,10 @@ class TestStrFieldReturn:
             '        return f"v={self.v}"\n'
             'print(V("x").label())\n'
         )
-        thir = _lower_ctx(src)
-        assert _fn(thir, "label") is None
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "label") is not None
+        assert faces.get("fstr.str_field", 0) == 1
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
 
 class TestRecordBorrowReturnEmit:

@@ -8,8 +8,8 @@ from __future__ import annotations
 from .testutil import _emit_expr
 from .nodes import (
     Form, THIRAssign, THIRCall, THIRCoerce, THIRExprStmt, THIRFormConvert,
-    THIRMethodCall, THIRName, THIRReturn, THIRSetItem, THIRStrLiteral,
-    THIRSubscript,
+    THIRMethodCall, THIRName, THIRPrint, THIRReturn, THIRSetItem,
+    THIRStrLiteral, THIRSubscript,
 )
 from .testutil import (
     _fn, _lower_ctx, _lower_ctx_witnessed, _lower_ctor,
@@ -127,6 +127,42 @@ class TestDynSetattrWrite:
             + "def f() -> None:\n"
             + "    b = Bag()\n"
             + "    b.x = True\n")
+        assert _fn(thir, "f") is None
+
+
+class TestDynGetattrRead:
+    def test_cast_any_read_routes(self):
+        # `cast(str, b.x)` -> `::tpy::any_cast_or_panic<std::string>(
+        # b.__getattr__("x"))`: the synthesized getattr read behind the
+        # Any-source cast wrap.
+        thir, faces = _lower_ctx_witnessed(
+            _DYN_BAG
+            + "from typing import cast\n"
+            + "def f() -> None:\n"
+            + "    b = Bag()\n"
+            + "    print(cast(str, b.x))\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+        assert faces.get("method.dyn_getattr", 0) == 1
+        assert faces.get("call.cast_any", 0) == 1
+        stmt = fn.body[1]
+        assert isinstance(stmt, THIRPrint)
+        arg = stmt.args[0].expr
+        assert isinstance(arg, THIRCoerce) and arg.coercion_name == "any_cast"
+        inner = arg.expr
+        assert isinstance(inner, THIRMethodCall)
+        assert inner.method_cpp == "__getattr__"
+        assert (_emit_expr(arg)
+                == '::tpy::any_cast_or_panic<std::string>(b.__getattr__("x"))')
+
+    def test_non_name_receiver_falls_back(self):
+        # A non-NAME receiver (an rvalue ctor call) is outside the read
+        # slice; the body stays on the AST path.
+        thir = _lower_ctx(
+            _DYN_BAG
+            + "from typing import cast\n"
+            + "def f() -> None:\n"
+            + "    print(cast(str, Bag().x))\n")
         assert _fn(thir, "f") is None
 
 

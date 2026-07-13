@@ -77,6 +77,7 @@ class _Prescan:
     codegen seeds into ctx (see setup_body_scope), recomputed here from the
     analyzer so lowering classifies identically without a CodeGenContext."""
     __slots__ = ("reassigned", "rvalue_reassigned", "hoisted", "move_through",
+                 "alias_sources", "alias_born",
                  "ret_storage_opt", "ret_ptr_opt", "ret_borrow_tuple",
                  "ret_record_borrow", "ret_record_storage",
                  "ret_container_storage", "ret_value_tuple",
@@ -135,6 +136,12 @@ class _Prescan:
             (scan.rvalue_reassigned - global_decls) if scan else set())
         self.hoisted = analyzer.function_hoisted_vars.get(id(func), set())
         self.move_through = analyzer.function_move_through_vars.get(id(func), set())
+        # Alias facts for the `del x` move-sink skips: names some alias binds
+        # to (codegen's `ctx.aliased_vars` -- moving from them would gut the
+        # alias) and names whose FIRST binding was an alias (`ctx.alias_names`
+        # -- such a pointer-local may point at another local's storage).
+        self.alias_sources = set(scan.alias_sources.values()) if scan else set()
+        self.alias_born = scan.initial_alias_names if scan else set()
         # F2c: the function's storage-form Optional[F1-record] return slot, if any
         # (`Own[T] | None` -> `std::optional<T>`), so a `return None` /
         # `return <borrow T*>` lowers to `std::nullopt` / `ptr_to_optional`. None
@@ -288,7 +295,8 @@ class _LowerCtx:
     not `render_type` -- for those slots."""
     __slots__ = ("analyzer", "func", "prescan", "render_type",
                  "render_type_stored", "render_resolve", "const_locals",
-                 "pointers", "rebind_slot_locals", "movable_locals",
+                 "pointers", "rebind_slot_locals", "ref_alias_locals",
+                 "value_opt_locals", "movable_locals",
                  "self_receiver", "self_cpp", "self_is_pointer",
                  "record_name", "storage_tuple_locals", "frame_slots",
                  "resumable_leaf_mode", "unhandled_hoists", "narrow",
@@ -346,6 +354,23 @@ class _LowerCtx:
         # F2d rebind-slot subset of `pointers`: their reseats lower as rvalue
         # rebinds (`p = &*(__slot_N = ...)`), not lvalue `&(...)` reseats.
         self.rebind_slot_locals: set[str] = set()
+        # REF_ALIAS-bound locals (`T& name = ...`) -- codegen's
+        # `ctx.ref_bound_locals`. Consumed by the `del x` skip ladder: the
+        # alias does not own the value, so no move-sink is emitted for it.
+        self.ref_alias_locals: set[str] = set()
+        # Value-repr Optional[scalar] LOCALS beyond the params: for-each LOOP
+        # VARS over `list[T | None]` (`std::optional<T> item = *__beg_N;`,
+        # registered by the for-each lowering for the loop's scope) and
+        # chain-optional match captures binding the full subject (sema's
+        # binds_full_optional; mirrors the AST's `ctx.var_types` registration
+        # in `_emit_optional_arm_bindings` -- never removed, the binding leaks
+        # function-wide like Python match scoping). The value-opt param render
+        # sites (deref-on-narrow, the whole-optional arg/None-test/truthiness
+        # renders) key on the declared binding shape, identical for a param
+        # and these locals, so all ride the same arms via
+        # `_value_opt_scalar_binding`; the movable-seeded last-use moves stay
+        # param-only through the `_is_move_source` movable guard.
+        self.value_opt_locals: set[str] = set()
         # Resumable frame_slot locals (R1c): a non-value coro/generator local
         # stored as `tpy::frame_slot<T>`. Reads render `(*name)` (deref=True on
         # the THIRName; member access is `.` since the slot is not a pointer),

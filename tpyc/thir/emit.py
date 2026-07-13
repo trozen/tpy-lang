@@ -46,10 +46,12 @@ from .nodes import (
     THIRCharLiteral,
     THIRComprehension,
     THIRGenExpr,
+    THIRClassConstant,
     THIRCoerce,
     THIRConstructor,
     THIRContainerLiteral,
     THIRContinue,
+    THIRDelVar,
     THIRCtorCall,
     THIREnumMember,
     THIREnumWrap,
@@ -70,6 +72,7 @@ from .nodes import (
     THIRMatch,
     THIRMatchBinding,
     THIRMethodCall,
+    THIRModuleVar,
     THIRMove,
     THIRName,
     THIRNarrowAlias,
@@ -77,6 +80,7 @@ from .nodes import (
     THIRNarrowedRead,
     THIRNoOpStmt,
     THIROptionalPtrArg,
+    THIRParamCopy,
     THIRPrint,
     THIRPrintArg,
     THIRRaise,
@@ -288,9 +292,15 @@ class _EmitState:
     # `ctx.loop_break_labels` -- one ""-slot per enclosing loop, lazily
     # filled with `__loop_break_{iter_counter}` by a break that must escape
     # an intervening switch, the label emitted after the loop's close brace.
+    # `loop_else_labels` mirrors `ctx.loop_else_labels` -- one slot per
+    # enclosing loop, `__after_else_{iter_counter}` when the loop has an
+    # else clause (allocated at loop entry, BEFORE the loop draws its own
+    # index) else "": a break targets the innermost slot's label so the
+    # else block is skipped.
     match_counter: int = 0
     switch_depth: int = 0
     loop_break_labels: list[str] = field(default_factory=list)
+    loop_else_labels: list[str] = field(default_factory=list)
     # The current statement's indent level, stamped by _emit_stmt before its
     # arms render expressions: the comprehension stmt-expr is the one
     # multi-line EXPRESSION render, and its inner lines indent relative to
@@ -732,7 +742,11 @@ def _emit_container_literal(e: THIRContainerLiteral, state: _EmitState) -> str:
         args = getattr(t, "type_args", None)
         et = args[0] if args else None
         if isinstance(et, TpyType) and (is_list(et) or is_array(et)):
-            return f"{{{literal}}}"
+            literal = f"{{{literal}}}"
+    if e.typed_brace_cpp is not None and literal.startswith("{"):
+        # typed_brace_init: self-describe a bare brace-init so it can bind to
+        # a template parameter (dict-comp insert_or_assign value).
+        return f"{e.typed_brace_cpp}{literal}"
     return literal
 
 
@@ -1054,7 +1068,7 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         return f"&({inner})" if e.addr_of else inner
     if isinstance(e, THIRMethodCall):
         return _emit_method_call(e, state)
-    if isinstance(e, THIREnumMember):
+    if isinstance(e, (THIREnumMember, THIRClassConstant, THIRModuleVar)):
         return e.cpp
     if isinstance(e, THIREnumWrap):
         if e.operand is None:
@@ -1134,11 +1148,18 @@ def _emit_if(out: TextIO, stmt: THIRIf, indent_level: int, state: _EmitState) ->
     out.write(f"{indent}}}\n")
 
 
-def _push_loop_frame(state: _EmitState) -> int:
+def _push_loop_frame(state: _EmitState, has_else: bool = False) -> int:
     # Mirrors the loop-entry bracketing shared by _gen_while/_gen_for_each:
+    # the else label drawn from iter_counter FIRST (before the loop draws its
+    # own index -- the AST allocates it at the top of _gen_while/_gen_for_each),
     # one empty loop-break slot per loop, and a zeroed switch depth (a switch
     # OUTSIDE the loop must not reroute a break INSIDE it). Returns the saved
     # depth for _pop_loop_frame.
+    label = ""
+    if has_else:
+        label = f"__after_else_{state.iter_counter}"
+        state.iter_counter += 1
+    state.loop_else_labels.append(label)
     state.loop_break_labels.append("")
     saved = state.switch_depth
     state.switch_depth = 0
@@ -1146,13 +1167,24 @@ def _push_loop_frame(state: _EmitState) -> int:
 
 
 def _pop_loop_frame(out: TextIO, indent: str, state: _EmitState,
-                    saved_depth: int) -> None:
-    # The loop-exit half: restore the switch depth, and place the lazily
-    # allocated `__loop_break_N:;` label after the loop's close brace (the
-    # AST's `if break_label:` tail; loop-else labels are gate-rejected
-    # shapes, so the else block that would sit between never exists here).
+                    saved_depth: int, orelse: 'tuple[THIRStmt, ...]' = (),
+                    indent_level: int = 0) -> None:
+    # The loop-exit half: restore the switch depth, emit the else block (a
+    # bare `{...}` + its `__after_else_N:;` label -- run on normal completion,
+    # jumped past by a break), then place the lazily allocated
+    # `__loop_break_N:;` label (the AST's `if break_label:` tail). The else
+    # body emits AFTER the loop frames pop, so a break inside it targets the
+    # enclosing loop, exactly like the AST's pop-then-emit order.
     state.switch_depth = saved_depth
+    else_label = state.loop_else_labels.pop()
     break_label = state.loop_break_labels.pop()
+    if else_label:
+        state.comments.else_(out, orelse, indent)
+        out.write(f"{indent}{{\n")
+        _emit_stmts(out, orelse, indent_level + 1, state)
+        state.comments.trailing(out, orelse, INDENT * (indent_level + 1))
+        out.write(f"{indent}}}\n")
+        out.write(f"{indent}{else_label}:;\n")
     if break_label:
         out.write(f"{indent}{break_label}:;\n")
 
@@ -1173,12 +1205,13 @@ def _emit_nested_def(out: TextIO, stmt: THIRNestedDef, indent_level: int,
               f"({', '.join(stmt.params_cpp)}){ret} {{\n")
     saved = (state.finally_frames, state.return_cpp, state.loop_depth,
              state.switch_depth, state.loop_break_labels,
-             dict(state.rebind_slots))
+             state.loop_else_labels, dict(state.rebind_slots))
     state.finally_frames = []
     state.return_cpp = stmt.ret_cpp
     state.loop_depth = 0
     state.switch_depth = 0
     state.loop_break_labels = []
+    state.loop_else_labels = []
     try:
         # No trailing-comment emission: _gen_nested_def raw-loops gen_stmt
         # with no emit_block_trailing_comments call, so a comment after the
@@ -1187,21 +1220,21 @@ def _emit_nested_def(out: TextIO, stmt: THIRNestedDef, indent_level: int,
     finally:
         (state.finally_frames, state.return_cpp, state.loop_depth,
          state.switch_depth, state.loop_break_labels,
-         state.rebind_slots) = saved
+         state.loop_else_labels, state.rebind_slots) = saved
     out.write(f"{indent}}};\n")
 
 
 def _emit_while(out: TextIO, stmt: THIRWhile, indent_level: int, state: _EmitState) -> None:
     # The `// while ...:` comment is emitted by the caller (_emit_stmts).
     indent = INDENT * indent_level
-    saved_depth = _push_loop_frame(state)
+    saved_depth = _push_loop_frame(state, has_else=bool(stmt.orelse))
     out.write(f"{indent}while ({_emit_expr(stmt.condition, state)}) {{\n")
     state.loop_depth += 1
     _emit_stmts(out, stmt.body, indent_level + 1, state)
     state.loop_depth -= 1
     state.comments.trailing(out, stmt.body, INDENT * (indent_level + 1))
     out.write(f"{indent}}}\n")
-    _pop_loop_frame(out, indent, state, saved_depth)
+    _pop_loop_frame(out, indent, state, saved_depth, stmt.orelse, indent_level)
 
 
 def _emit_for_range(out: TextIO, stmt: THIRForRange, indent_level: int,
@@ -1212,7 +1245,7 @@ def _emit_for_range(out: TextIO, stmt: THIRForRange, indent_level: int,
     # captured once into `__start_N`/`__stop_N` temps -- Python's range() reads
     # its args at call time, but the C++ condition re-reads each iteration.
     indent = INDENT * indent_level
-    saved_depth = _push_loop_frame(state)
+    saved_depth = _push_loop_frame(state, has_else=bool(stmt.orelse))
     n = state.next_loop_index()
     cpp_elem = stmt.elem_type.to_cpp()
     var = escape_cpp_name(stmt.var)
@@ -1256,7 +1289,7 @@ def _emit_for_range(out: TextIO, stmt: THIRForRange, indent_level: int,
     state.loop_depth -= 1
     state.comments.trailing(out, stmt.body, INDENT * (indent_level + 1))
     out.write(f"{indent}}}\n")
-    _pop_loop_frame(out, indent, state, saved_depth)
+    _pop_loop_frame(out, indent, state, saved_depth, stmt.orelse, indent_level)
 
 
 def _emit_for_each(out: TextIO, stmt: THIRForEach, indent_level: int,
@@ -1270,7 +1303,7 @@ def _emit_for_each(out: TextIO, stmt: THIRForEach, indent_level: int,
     # alias -- auto&& / const auto&, so the const flag is threaded through,
     # not hardcoded).
     indent = INDENT * indent_level
-    saved_depth = _push_loop_frame(state)
+    saved_depth = _push_loop_frame(state, has_else=bool(stmt.orelse))
     n = state.next_loop_index()
     obj, beg, end = f"__obj_{n}", f"__beg_{n}", f"__end_{n}"
     binding_kw = "auto&" if stmt.iterable_lvalue else "auto"
@@ -1287,7 +1320,7 @@ def _emit_for_each(out: TextIO, stmt: THIRForEach, indent_level: int,
     state.loop_depth -= 1
     state.comments.trailing(out, stmt.body, inner)
     out.write(f"{indent}}}\n")
-    _pop_loop_frame(out, indent, state, saved_depth)
+    _pop_loop_frame(out, indent, state, saved_depth, stmt.orelse, indent_level)
 
 
 def _emit_finally_chain(out: TextIO, indent: str, state: _EmitState,
@@ -1365,11 +1398,13 @@ def _emit_loop_exit(out: TextIO, indent: str, state: _EmitState,
     # active loop body run (the first index whose loop_depth >= the live loop
     # count -- the stack is monotone non-decreasing in loop_depth). A
     # terminating finally suppresses the tail -- control already left through
-    # it. The break tail routes around an intervening match switch via the
-    # loop's lazily-allocated `__loop_break_N` label (a bare `break;` would
-    # exit the switch); loop-else labels stay gate-rejected shapes. C++
-    # `continue` passes through a switch to the enclosing loop, so the
-    # continue tail never reroutes.
+    # it. A break out of an else-loop jumps its `__after_else_N` label (this
+    # also escapes any intervening match switch, so it precedes the switch
+    # reroute exactly like the AST's arm order). The break tail otherwise
+    # routes around an intervening match switch via the loop's
+    # lazily-allocated `__loop_break_N` label (a bare `break;` would exit the
+    # switch). C++ `continue` passes through a switch to the enclosing loop,
+    # so the continue tail never reroutes.
     boundary = len(state.finally_frames)
     for i, fr in enumerate(state.finally_frames):
         if fr.loop_depth >= state.loop_depth:
@@ -1379,6 +1414,10 @@ def _emit_loop_exit(out: TextIO, indent: str, state: _EmitState,
         _witness_chain("loop_exit", state, boundary)
     if _emit_finally_chain(out, indent, state, stop_at=boundary):
         _witness("try.chain_terminated")
+        return
+    if is_break and state.loop_else_labels and state.loop_else_labels[-1]:
+        _witness("loop.break_else_goto")
+        out.write(f"{indent}goto {state.loop_else_labels[-1]};\n")
         return
     if is_break and state.switch_depth > 0 and state.loop_break_labels:
         if not state.loop_break_labels[-1]:
@@ -1573,6 +1612,13 @@ def _emit_match(out: TextIO, stmt: THIRMatch, indent_level: int,
         _emit_match_guarded_record(out, stmt, indent_level, state, subject)
     elif stmt.strategy == "optional_partition":
         _emit_match_optional(out, stmt, indent_level, state, subject)
+    elif stmt.strategy == "if_elif_optional":
+        _emit_match_if_elif_optional(out, stmt, indent_level, state, subject)
+    elif stmt.strategy == "if_elif_optional_guarded":
+        _emit_match_if_elif_optional_guarded(out, stmt, indent_level, state,
+                                             subject)
+    elif stmt.strategy == "switch_str":
+        _emit_match_switch_str(out, stmt, indent_level, state, subject)
     else:
         _emit_match_switch(out, stmt, indent_level, state, subject)
     if stmt.emit_unreachable:
@@ -1827,9 +1873,167 @@ def _emit_match_optional(out: TextIO, stmt: THIRMatch, indent_level: int,
     elif stmt.inner_strategy == "if_elif":
         _emit_match_if_elif(out, stmt, indent_level + 1, state, inner_name,
                             paren_or=False)
+    elif stmt.inner_strategy == "if_elif_record":
+        # _emit_optional_inner_record is the record tier's unguarded chain
+        # over the deref alias, one level in (guarded/true-alt shapes are
+        # gate-rejected), so the record chain emitter is reused verbatim.
+        _emit_match_if_elif_record(out, stmt, indent_level + 1, state,
+                                   inner_name)
     else:  # switch_enum / switch_primitive over the inner alias
         _emit_match_switch(out, stmt, indent_level + 1, state, inner_name)
     out.write(f"{indent}}}\n")
+
+
+def _opt_chain_cond(opt_conds, subject: str) -> str:
+    # _gen_match_optional_cond's join: per group the (prefix, suffix) pieces
+    # composed around the subject and &&-joined; groups ||-joined, or-pattern
+    # alternatives parenthesized (the bare null alternative is not).
+    parts = []
+    for paren, pieces in opt_conds:
+        rendered = " && ".join(f"{pre}{subject}{suf}" for pre, suf in pieces)
+        parts.append(f"({rendered})" if paren else rendered)
+    return " || ".join(parts)
+
+
+def _emit_match_opt_arm_bindings(out: TextIO, entry, subject: str,
+                                 inner: str) -> None:
+    # _emit_optional_arm_bindings' routed slice: class-arm field captures
+    # against the `(*subj)` deref, then the whole-subject capture/`as`
+    # binding -- the deref for a value-side binding (from_case_var), the
+    # full Optional for sema's binds_full_optional.
+    deref = f"(*{subject})"
+    for fb in entry.field_bindings:
+        _emit_match_binding(out, fb, deref, inner)
+    if entry.binding is not None:
+        rhs = deref if entry.binding.from_case_var else subject
+        _emit_match_binding(out, entry.binding, rhs, inner)
+
+
+def _emit_match_if_elif_optional(out: TextIO, stmt: THIRMatch,
+                                 indent_level: int, state: _EmitState,
+                                 subject: str) -> None:
+    # _gen_match_if_elif_optional's unguarded chain, arms in source order:
+    # per arm the comment, `if (cond) {` / `} else if (cond) {` off the
+    # pre-rendered opt_conds (the always-match arm is `{` / `} else {`),
+    # the bindings, the body one level in; one closing brace ends the chain.
+    indent = INDENT * indent_level
+    inner = INDENT * (indent_level + 1)
+    for i, arm in enumerate(stmt.arms):
+        entry = arm.entries[0]
+        state.comments.stmt(out, entry.loc, indent)
+        if entry.opt_conds is None:
+            out.write(f"{indent}{{\n" if i == 0 else f"{indent}}} else {{\n")
+        else:
+            cond = _opt_chain_cond(entry.opt_conds, subject)
+            keyword = "if" if i == 0 else "} else if"
+            out.write(f"{indent}{keyword} ({cond}) {{\n")
+        _emit_match_opt_arm_bindings(out, entry, subject, inner)
+        _emit_stmts(out, entry.body, indent_level + 1, state)
+    out.write(f"{indent}}}\n")
+
+
+def _emit_match_goto_tail(out: TextIO, entry, indent_level: int,
+                          state: _EmitState, end_label: str) -> None:
+    # _emit_guarded_arm_tail: inside an opened arm block (bindings already
+    # emitted), the guard as `if (guard) { <body> goto end; }` two levels
+    # in, or the unguarded body + goto one level; closes the block.
+    indent = INDENT * indent_level
+    inner = INDENT * (indent_level + 1)
+    if entry.guard is not None:
+        out.write(f"{inner}if ({_emit_expr(entry.guard, state)}) {{\n")
+        _emit_stmts(out, entry.body, indent_level + 2, state)
+        out.write(f"{INDENT * (indent_level + 2)}goto {end_label};\n")
+        out.write(f"{inner}}}\n")
+    else:
+        _emit_stmts(out, entry.body, indent_level + 1, state)
+        out.write(f"{inner}goto {end_label};\n")
+    out.write(f"{indent}}}\n")
+
+
+def _emit_match_if_elif_optional_guarded(out: TextIO, stmt: THIRMatch,
+                                         indent_level: int,
+                                         state: _EmitState,
+                                         subject: str) -> None:
+    # _gen_match_if_elif_optional_guarded's standalone-if + goto shape (the
+    # end label draws the second per-function counter bump): each arm opens
+    # its own `if (cond) {` (bare `{` for an always-match arm), binds, then
+    # the goto tail. The label line closes the match at the arm indent.
+    indent = INDENT * indent_level
+    inner = INDENT * (indent_level + 1)
+    state.match_counter += 1
+    end_label = f"__match_end_{state.match_counter}"
+    for arm in stmt.arms:
+        entry = arm.entries[0]
+        state.comments.stmt(out, entry.loc, indent)
+        if entry.opt_conds is None:
+            out.write(f"{indent}{{\n")
+        else:
+            cond = _opt_chain_cond(entry.opt_conds, subject)
+            out.write(f"{indent}if ({cond}) {{\n")
+        _emit_match_opt_arm_bindings(out, entry, subject, inner)
+        _emit_match_goto_tail(out, entry, indent_level, state, end_label)
+    out.write(f"{indent}{end_label}:;\n")
+
+
+def _emit_match_switch_str(out: TextIO, stmt: THIRMatch, indent_level: int,
+                           state: _EmitState, subject: str) -> None:
+    # _gen_match_switch_str: the end label draws the second per-function
+    # counter bump; the guarded-literal prefix arms (standalone `if (cond)
+    # {` + binding + goto tail, source order); the discriminator switch --
+    # `switch (subj.size())` for 'length', or `switch (static_cast<unsigned
+    # char>(subj[i]))` inside a `size() >= i+1` guard for 'char_at' (one
+    # extra indent level); per bucket the pre-rendered case label, per
+    # entry the comment + `if (subj == "lit") {` + binding + body + goto +
+    # close, then the unconditional `break;`; no `default:`. The trailing
+    # wildcard/capture arms are bare blocks with the goto tail. The
+    # switch_depth bracket wraps only the switch, so a loop `break` in a
+    # bucket body renders the goto escape while prefix/trailing bodies
+    # break the loop directly.
+    indent = INDENT * indent_level
+    inner = INDENT * (indent_level + 1)
+    state.match_counter += 1
+    end_label = f"__match_end_{state.match_counter}"
+    for entry in stmt.str_guarded:
+        state.comments.stmt(out, entry.loc, indent)
+        cond = _opt_chain_cond(entry.opt_conds, subject)
+        out.write(f"{indent}if ({cond}) {{\n")
+        _emit_match_binding(out, entry.binding, subject, inner)
+        _emit_match_goto_tail(out, entry, indent_level, state, end_label)
+    if stmt.str_disc_kind == "char_at":
+        out.write(f"{indent}if ({subject}.size() >= "
+                  f"{stmt.str_disc_param + 1}) {{\n")
+        sw_level = indent_level + 1
+        out.write(f"{inner}switch (static_cast<unsigned char>"
+                  f"({subject}[{stmt.str_disc_param}])) {{\n")
+    else:
+        sw_level = indent_level
+        out.write(f"{indent}switch ({subject}.size()) {{\n")
+    sw_indent = INDENT * sw_level
+    sw_inner = INDENT * (sw_level + 1)
+    sw_deep = INDENT * (sw_level + 2)
+    state.switch_depth += 1
+    for arm in stmt.arms:
+        out.write(f"{sw_indent}case {arm.labels[0]}: {{\n")
+        for entry in arm.entries:
+            state.comments.stmt(out, entry.loc, sw_inner)
+            cond = _opt_chain_cond(entry.opt_conds, subject)
+            out.write(f"{sw_inner}if ({cond}) {{\n")
+            _emit_match_binding(out, entry.binding, subject, sw_deep)
+            _emit_stmts(out, entry.body, sw_level + 2, state)
+            out.write(f"{sw_deep}goto {end_label};\n")
+            out.write(f"{sw_inner}}}\n")
+        out.write(f"{sw_inner}break;\n")
+        out.write(f"{sw_indent}}}\n")
+    state.switch_depth -= 1
+    out.write(f"{sw_indent}}}\n")
+    if stmt.str_disc_kind == "char_at":
+        out.write(f"{indent}}}\n")
+    for entry in stmt.str_trailing:
+        state.comments.stmt(out, entry.loc, indent)
+        out.write(f"{indent}{{\n")
+        _emit_match_binding(out, entry.binding, subject, inner)
+        _emit_match_goto_tail(out, entry, indent_level, state, end_label)
+    out.write(f"{indent}{end_label}:;\n")
 
 
 def _emit_match_if_elif(out: TextIO, stmt: THIRMatch, indent_level: int,
@@ -2063,11 +2267,16 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             out.write(f"{indent}{escape_cpp_name(stmt.target.name)} = "
                       f"&*(__slot_{slot} = {_emit_expr(stmt.value, state)});\n")
         else:
-            # Value renders first (its arg temps flush before the line);
-            # targets are names/field lvalues that never register temps.
+            # Receiver eval (class-constant writes) renders first, then the
+            # value (its arg temps flush before the line); targets are
+            # names/field lvalues that never register temps.
+            recv_cpp = (_emit_expr(stmt.recv_eval, state)
+                        if stmt.recv_eval is not None else None)
             target_cpp = _emit_expr(stmt.target, state)
             value_cpp = _emit_expr(stmt.value, state)
             state.temps.flush(out, indent)
+            if recv_cpp is not None:
+                out.write(f"{indent}{stmt.recv_wrap.format(recv_cpp)};\n")
             out.write(f"{indent}{target_cpp} = {value_cpp};\n")
     elif isinstance(stmt, THIRSetItem):
         # Mirrors _gen_assign_code's subscript arm (and the aug-assign
@@ -2208,6 +2417,18 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             out.write(f"{indent}{stmt.cpp_type}{{}}.__raise__();\n")
         else:
             out.write(f"{indent}throw {stmt.cpp_type}{{}};\n")
+    elif isinstance(stmt, THIRParamCopy):
+        # Mutable owned copy of a reassigned const-ref param; the signature
+        # (AST-emitted) renamed the param to `__param_{name}`.
+        out.write(f"{indent}{stmt.cpp_type} {stmt.name} = "
+                  f"__param_{stmt.name};\n")
+    elif isinstance(stmt, THIRDelVar):
+        # `{ auto __del_sink = std::move(name); }` per sunk name -- the value
+        # moves into a block-scoped temp destroyed immediately (early release).
+        for name, deref in stmt.sinks:
+            sigil = "*" if deref else ""
+            out.write(f"{indent}{{ auto __del_sink = "
+                      f"std::move({sigil}{name}); }}\n")
     elif isinstance(stmt, THIRNoOpStmt):
         # No code -- the `// pass` source comment (if any) is emitted by the
         # caller (_emit_stmts) from the node's loc.

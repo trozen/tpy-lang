@@ -225,6 +225,10 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
             _walk(owner, node.init, return_type, argtemp_ok=True)
         return
     if isinstance(node, THIRAssign):
+        # The receiver eval is lowered with the default (temp-free) use, so
+        # no argtemp exemption -- a temp reaching it is a lowering bug.
+        if node.recv_eval is not None:
+            _walk(owner, node.recv_eval, return_type)
         _walk(owner, node.target, return_type)
         _walk(owner, node.value, return_type, argtemp_ok=True)
         return

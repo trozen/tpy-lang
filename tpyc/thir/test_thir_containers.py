@@ -2180,6 +2180,24 @@ class TestLenFieldReceiver:
         # The range-len bound hoists to a stop temp like any non-literal bound.
         assert "int32_t __stop_0 = ::tpy::__len__(this->xs);" in cpp
 
+    def test_inherited_container_field_routes(self):
+        # `len(b.xs)` where `xs` is declared on the base class:
+        # `_field_decl_type` walks the MRO, and the C++ member access
+        # renders identically to an own field.
+        src = (
+            _PRELUDE
+            + "class A:\n"
+            + "    xs: list[Int32]\n"
+            + "    def __init__(self):\n        self.xs = [1]\n"
+            + "class B(A):\n"
+            + "    def __init__(self):\n        super().__init__()\n"
+            + "def f(b: B) -> Int32:\n    return len(b.xs)\n"
+            + "def main():\n    b = B()\n    print(f(b))\nmain()\n"
+        )
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is not None
+
     def test_two_level_chain_rejects(self):
         # `len(h.inner.xs)` -- a chained receiver stays on the AST path.
         src = (

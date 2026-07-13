@@ -591,11 +591,19 @@ class THIRContainerLiteral(THIRExpr):
     `::tpy::make_ordered_map`/`make_ordered_set` for dict/set, spelled from
     result_type like the brace arms). std::array aggregate-init moves fine,
     so the Array family never sets it. The union / protocol element branches
-    stay gate-excluded."""
+    stay gate-excluded.
+
+    `typed_brace_cpp` mirrors `typed_brace_init` for the positions whose
+    consumer is a template that cannot deduce a bare brace-init (the
+    dict-comp `insert_or_assign` value slot): the resolver-rendered
+    destination type, prefixed onto the render ONLY when it starts with `{`
+    (the make_container / empty-list spellings are already self-describing,
+    matching the AST's startswith check)."""
     elements: tuple[THIRExpr, ...]
     values: tuple[THIRExpr, ...] = ()
     make_container: bool = False
     elem_cpp: str | None = None
+    typed_brace_cpp: str | None = None
 
 
 @dataclass(frozen=True)
@@ -734,6 +742,29 @@ class THIREnumMember(THIRExpr):
     """Type-level enum member access `E.A` -> `E::A`. `cpp` is the full
     rendered spelling (enum_cpp_name over the current module + the @native
     member rename map), computed at lowering where the module context lives."""
+    cpp: str
+
+
+@dataclass(frozen=True)
+class THIRClassConstant(THIRExpr):
+    """Class-constant read `C.X` / `c.X` / `mod.C.X` -> the bare qualified
+    static (`C::LIMIT`, `::tpyapp::m::Limits::MAX`, `C<int32_t>::X`). `cpp`
+    is the full spelling composed at lowering (native rename, generic
+    instantiation, cross-module qualification) -- the AST's
+    `_class_constant_access_parts` with receiver_eval None; effectful /
+    runtime-checked receivers (the statement-expression wrapper) reject at
+    lowering. `form` follows the constant's type like a name read: a
+    `StrView` constant is a view (BORROW -- owned-str sinks copy it)."""
+    cpp: str
+
+
+@dataclass(frozen=True)
+class THIRModuleVar(THIRExpr):
+    """Module-variable read `mod.X` / `pkg.sub.X` -> the fixed spelling from
+    the source module's registration (`::tpyapp::pkg::state::LIMIT`, a
+    native_global's `::engine::score`), composed at lowering from the
+    registry's VariableInfo. A dedicated leaf (not a THIRName) so no
+    local-name-keyed sink can mistake it for a binding."""
     cpp: str
 
 
@@ -943,9 +974,18 @@ class THIRAssign(THIRStmt):
     """Assignment to an already-declared local (`name = value`) or, for the F2b
     borrow->storage write, to a record field (`recv.field = value`). `target` is
     a THIRName for the former and a THIRFieldAccess for the latter; emission
-    renders the target expression directly, so both shapes share one node."""
+    renders the target expression directly, so both shapes share one node.
+
+    A class-constant write (`C.X = v` / `obj.X += v`) uses a THIRClassConstant
+    target (the bare qualified lvalue) and, when the receiver has observable
+    cost, carries `recv_eval` + `recv_wrap` (`static_cast<void>({0})` /
+    `::tpy::deref_check({0})`): the AST's gen_class_constant_lvalue emits the
+    receiver eval as a leading statement so the qualified name stays a real
+    lvalue (a statement-expression wrap would be an rvalue)."""
     target: THIRExpr
     value: THIRExpr
+    recv_eval: 'THIRExpr | None' = None
+    recv_wrap: 'str | None' = None
 
 
 @dataclass(frozen=True)
@@ -1037,11 +1077,42 @@ class THIRNoOpStmt(THIRStmt):
 
 
 @dataclass(frozen=True)
+class THIRParamCopy(THIRStmt):
+    """The mutable owned copy of a reassigned const-ref param --
+    `{cpp_type} {name} = __param_{name};` at the top of the body, before any
+    statement (loc stays None: the AST writes the copies comment-free ahead
+    of the first statement's source comment). The `__param_{name}` signature
+    rename is emitted by the AST path (gen_params), keyed on the same
+    scan.reassigned + param_needs_copy_for_reassign facts, so body reads keep
+    the plain name. `name` is the escaped C++ name; `cpp_type` the owned
+    storage spelling (`ptype.to_cpp()`, exactly the AST prologue's). The
+    view-family init variants (`std::string(__param_x)` and the Optional
+    make_optional split) are gate-excluded, so the init is always the plain
+    param read."""
+    name: str
+    cpp_type: str
+
+
+@dataclass(frozen=True)
+class THIRDelVar(THIRStmt):
+    """`del x[, y]` where at least one name needs the early-destruction
+    move-sink -- `_gen_del_var_code`'s `{ auto __del_sink = std::move(name); }`
+    (one block per sunk name, in source order). `sinks` holds
+    `(cpp_name, deref)` pairs: `deref` derefs a pointer-local first
+    (`std::move(*name)` -- the sink moves the pointee, not the pointer).
+    Skipped names (trivially destructible / alias sources / params / globals /
+    alias-born pointer-locals) emit nothing; a del whose EVERY name skips
+    lowers to THIRNoOpStmt instead."""
+    sinks: tuple[tuple[str, bool], ...] = ()
+
+
+@dataclass(frozen=True)
 class THIRBreak(THIRStmt):
-    """`break` -- a bare `break;`. In the slice the enclosing routed loop has
-    no else clause (else-loops break via `goto __after_else_N`), no finally
-    frame (try is gate-rejected) and no match switch between the break and the
-    loop, so the AST's `_make_break_continue` always reduces to the bare form."""
+    """`break` -- a bare `break;`, or the emit-side reroutes of
+    `_make_break_continue`: an enclosing else-loop makes it
+    `goto __after_else_N` (skipping the else block), an intervening match
+    switch `goto __loop_break_N`, and enclosing finally frames inline their
+    cleanup first (a terminating finally suppresses the tail)."""
 
 
 @dataclass(frozen=True)
@@ -1083,9 +1154,12 @@ class THIRWhile(THIRStmt):
     """while loop. Slice: comparison condition or the F4 U4
     `while isinstance(...)` form (the loop-entry extraction arrives as a
     `THIRNarrowAlias` leading the body, exactly like a narrowed if branch),
-    no while/else, reassign-only body -- a plain C++ `while (cond) { ... }`."""
+    reassign-only body -- a plain C++ `while (cond) { ... }`. `orelse` is the
+    while/else block: a bare `{...}` after the loop + its `__after_else_N:;`
+    label (a break jumps the label, skipping the block)."""
     condition: THIRExpr
     body: tuple[THIRStmt, ...]
+    orelse: tuple[THIRStmt, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -1145,9 +1219,10 @@ class THIRForRange(THIRStmt):
     `__step_N`, nonzero + overflow checks, ternary direction condition). `step`
     carries the lowered step expr for the three non-unit arms, None otherwise.
 
-    Slice: fixed-int counter, loop var not used after the loop, no for/else,
-    bounds restricted to bare literal / name / arith / call, step restricted to
-    a bare (negated) int literal or a bare fixed-int name."""
+    Slice: fixed-int counter, loop var not used after the loop, bounds
+    restricted to bare literal / name / arith / call, step restricted to
+    a bare (negated) int literal or a bare fixed-int name. `orelse` is the
+    for/else block (see THIRWhile)."""
     var: str
     elem_type: TpyType
     stop: THIRExpr
@@ -1157,6 +1232,7 @@ class THIRForRange(THIRStmt):
     body: tuple[THIRStmt, ...] = ()
     step: THIRExpr | None = None
     step_kind: str = "plus_one"
+    orelse: tuple[THIRStmt, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -1237,6 +1313,7 @@ class THIRForEach(THIRStmt):
     body: tuple[THIRStmt, ...] = ()
     const_loop_var: bool = False
     iterable_lvalue: bool = True
+    orelse: tuple[THIRStmt, ...] = ()
 
 
 class WithTargetArm(Enum):
@@ -1449,6 +1526,16 @@ class THIRMatchArmEntry:
     field_conds: tuple[tuple[str, str], ...] = ()
     field_bindings: tuple[THIRMatchBinding, ...] = ()
     or_conds: 'tuple[tuple[tuple[str, str], ...], ...] | None' = None
+    # Optional-chain tiers (if_elif_optional[_guarded]): the arm condition as
+    # `_gen_match_optional_cond`'s ||-join -- a tuple of (paren, pieces)
+    # groups, each piece a (prefix, suffix) pair around the subject spelling
+    # (the null/has-value tests and the `(*subj) == lit` / `(*subj).f == lit`
+    # compares reference the subject once each), pieces `&&`-joined per group,
+    # a group parenthesized iff `paren` (or-pattern alternatives, except the
+    # bare null alternative). None is the always-matching wildcard/capture
+    # arm (`{` / `} else {`, and the guarded tier's bare block).
+    opt_conds: 'tuple[tuple[bool, tuple[tuple[str, str], ...]], ...] | None' \
+        = None
 
 
 @dataclass(frozen=True)
@@ -1508,7 +1595,8 @@ class THIRMatch(THIRStmt):
     never happens in this tier."""
     # 'switch_enum' | 'switch_primitive' | 'if_elif' | 'if_elif_guarded'
     # | 'switch_union' | 'guarded_union' | 'if_elif_record' | 'guarded_record'
-    # | 'optional_partition'
+    # | 'optional_partition' | 'if_elif_optional' | 'if_elif_optional_guarded'
+    # | 'switch_str'
     strategy: str = "switch_enum"
     subject: 'THIRExpr | None' = None
     subject_ref: bool = True          # auto& (lvalue subject) vs auto
@@ -1551,6 +1639,33 @@ class THIRMatch(THIRStmt):
     # single-arm pointer-repr shape.
     optional_value_repr: bool = False
     inner_strategy: 'str | None' = None
+    # The chain-optional tiers (if_elif_optional / if_elif_optional_guarded)
+    # mirror `_gen_match_if_elif_optional[_guarded]` -- the non-partitioned
+    # Optional subject shapes: per-arm pre-rendered conditions ride each
+    # entry's `opt_conds`; a class arm's field captures bind against the
+    # `(*subj)` deref (the emit's base for `field_bindings`); a whole-subject
+    # binding with `from_case_var` binds the deref, without it the full
+    # Optional (sema's binds_full_optional). The unguarded tier is the plain
+    # chain (`if`/`} else if`/`} else`); the guarded tier the standalone-if +
+    # `goto __match_end_N` shape (second counter draw), guards nested inside
+    # the arm block after the bindings.
+    #
+    # switch_str -- `_gen_match_switch_str`'s discriminator dispatch (a str
+    # subject at or above STRING_SWITCH_THRESHOLD unguarded literal
+    # alternatives): the guarded-literal prefix arms (`str_guarded`,
+    # standalone `if (subj == "lit") {` blocks + the goto tail), the
+    # discriminator switch over `subj.size()` (`str_disc_kind` 'length') or
+    # `static_cast<unsigned char>(subj[i])` behind a `size() >= i+1` guard
+    # ('char_at', `str_disc_param` = i), `arms` as buckets in ascending
+    # disc-value order (labels[0] pre-rendered via `case_label`; each entry
+    # one (case, string) pair -- an or-arm's body re-lowered per alternative
+    # like the union or-bind), and the trailing wildcard/capture arms
+    # (`str_trailing`, block + goto tail). The end label draws the second
+    # per-function counter bump, like the guarded tiers.
+    str_disc_kind: 'str | None' = None
+    str_disc_param: 'int | None' = None
+    str_guarded: tuple[THIRMatchArmEntry, ...] = ()
+    str_trailing: tuple[THIRMatchArmEntry, ...] = ()
 
 
 class PrintForm(Enum):

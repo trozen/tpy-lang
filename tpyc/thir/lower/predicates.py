@@ -65,6 +65,7 @@ from ...typesys import (
     is_void_like_type,
     resolve_int_literals,
     unwrap_optional_own,
+    unwrap_qualifiers,
     unwrap_readonly,
     unwrap_ref_type,
     unwrap_send_sync,
@@ -102,7 +103,12 @@ from ...codegen_cpp.forms import (
     reads_storage_form_optional,
 )
 from ...codegen_cpp.types import resolve_pending_container
-from ...codegen_cpp.context import enum_cpp_name
+from ...codegen_cpp.context import (
+    enum_cpp_name,
+    escape_cpp_name,
+    qualified_cpp_name,
+)
+from ...namespace import BindingKind
 from ...codegen_cpp.protocols import (
     dynamic_adapter_type,
     dynamic_ref_adapter_type,
@@ -306,21 +312,39 @@ def _for_each_elem_binding_ok(et: TpyType | None) -> bool:
     bytes-loop-var cell yet) and a pending container is a not-yet-concretized
     nested container -- both stay on the AST path.
 
-    An `Optional` loop var is excluded: its WHOLE read binds and prints
-    identically, but a body that NARROWS it (`if x is None: continue`) then reads
-    it needs the value-repr deref (`(*x)`) that a param/local var-decl seeds but
-    the loop-var binding does not -- so the narrowed read renders bare in THIR
-    and derefs on the AST path. The element gate cannot see the body's narrowing,
-    so it rejects the whole Optional element family; a narrowable UNION loop var
-    is NOT excluded -- its isinstance extraction reads the shared `declared` map,
-    which the loop var populates, so it mirrors byte-identically."""
+    An `Optional` loop var is excluded EXCEPT the value-repr Optional[cheap
+    scalar / Char] family (`std::optional<T> item = *__beg_N;`): a body that
+    NARROWS one (`if x is None: continue`) then reads it needs the value-repr
+    deref (`(*x)`) that the value-opt param arms render -- the for-each
+    lowering registers the loop var in `lc.value_opt_locals` so those arms
+    fire for it (the same declared-binding-keyed renders the AST applies).
+    Other Optional inners keep the blanket reject; a narrowable UNION loop var
+    is NOT excluded -- its isinstance extraction reads the shared `declared`
+    map, which the loop var populates, so it mirrors byte-identically."""
     if et is None:
         return False
     bare = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(et)))
     if isinstance(bare, OptionalType):
-        return False
+        return _foreach_value_opt_elem(et) is not None
     return not isinstance(bare, (PendingViewType, PendingListType,
                                  PendingDictType, PendingSetType))
+
+
+def _foreach_value_opt_elem(et: TpyType | None) -> 'OptionalType | None':
+    """The value-repr `Optional[cheap scalar / Char]` loop-var element family
+    (the same inner slice `_value_opt_scalar` admits for params, spelled
+    locally so this gate does not move if that helper's slice widens). The
+    loop var binds as a typed `std::optional<T>` copy and its body reads ride
+    the value-opt binding arms via `lc.value_opt_locals`."""
+    if not isinstance(et, TpyType):
+        return None
+    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(et)))
+    if not (isinstance(t, OptionalType) and not t.uses_pointer_repr()):
+        return None
+    inner = unwrap_readonly(t.inner)
+    if isinstance(inner, OwnType):
+        return None
+    return t if (_eligible_scalar(inner) or _eligible_char(inner)) else None
 
 def _eligible_scalar(t: TpyType | None) -> bool:
     """A type the emitter can render and reason about without form facts.
@@ -932,6 +956,177 @@ def _enum_member_cpp(e: TpyFieldAccess, analyzer) -> str:
     spelled = enum_cpp_name(enum_type, analyzer.ctx.module_name, einfo=einfo)
     return f"{spelled}::{member_cpp}"
 
+def _chain_module_name(node: TpyExpr, declared: dict[str, TpyType],
+                       analyzer) -> 'str | None':
+    """Mirror of the AST's `_chain_to_module_name`: the registered module a
+    name/field chain resolves to (`m` after `import m`, `pkg.sub` after
+    `import pkg.sub`), else None. The AST asks the function namespace for the
+    head binding; here a name in `declared` (a local/param) answers VARIABLE
+    there, so it short-circuits to None before the module-level lookup."""
+    if isinstance(node, TpyName):
+        if node.name in declared:
+            return None
+        binding = analyzer.global_ns.lookup(node.name)
+        if binding is None:
+            return (node.name
+                    if analyzer.registry.get_module(node.name) is not None
+                    else None)
+        if binding.kind == BindingKind.MODULE:
+            return (binding.import_source[0]
+                    if binding.import_source else node.name)
+        return None
+    if isinstance(node, TpyFieldAccess):
+        head = _chain_module_name(node.obj, declared, analyzer)
+        if head is None:
+            return None
+        dotted = f"{head}.{node.field}"
+        return dotted if analyzer.registry.get_module(dotted) is not None else None
+    return None
+
+def _static_type_chain(node: TpyExpr, declared: dict[str, TpyType],
+                       analyzer) -> bool:
+    """Mirror of the AST's `_is_static_type_chain`: the chain names a static
+    C++ type (record/enum, nested, imported, or module-qualified), so a
+    class-constant read off it needs no receiver eval. `declared` stands in
+    for the function-namespace VARIABLE bindings (a shadowing local makes the
+    chain a runtime expression on both paths)."""
+    if isinstance(node, TpyName):
+        if node.name in declared:
+            return False
+        binding = analyzer.global_ns.lookup(node.name)
+        if binding is None:
+            return False
+        if binding.kind in (BindingKind.RECORD, BindingKind.ENUM):
+            return True
+        if binding.kind == BindingKind.IMPORTED_NAME and binding.import_source:
+            src_mod, src_name = binding.import_source
+            registry = analyzer.registry
+            dotted = f"{src_mod}.{src_name}"
+            return (registry.find_module_record(src_mod, src_name) is not None
+                    or registry.get_builtin_record(dotted) is not None
+                    or registry.get_enum(dotted) is not None)
+        return False
+    if isinstance(node, TpyFieldAccess):
+        module_name = _chain_module_name(node.obj, declared, analyzer)
+        if (module_name is not None
+                and analyzer.registry.find_module_record(
+                    module_name, node.field) is not None):
+            return True
+        return _static_type_chain(node.obj, declared, analyzer)
+    return False
+
+def _bare_module_recv(obj: TpyExpr, declared: dict[str, TpyType],
+                      analyzer) -> 'str | None':
+    """The registered module a BARE `mod.X` receiver names (gen_expr's
+    module-variable arm: a MODULE binding, aliased imports resolved through
+    import_source), or None. A shadowing local/global VARIABLE binding makes
+    the read a normal field access on both paths -- `declared` covers the
+    local half, the global_ns kind check the module-level half."""
+    if not isinstance(obj, TpyName) or obj.name in declared:
+        return None
+    binding = analyzer.global_ns.lookup(obj.name)
+    if binding is None or binding.kind != BindingKind.MODULE:
+        return None
+    return binding.import_source[0] if binding.import_source else obj.name
+
+def _module_var_read_cpp(module_name: str, var_name: str,
+                         analyzer) -> 'str | None':
+    """The AST render of a module-variable read (`mod.X` / `pkg.sub.X`):
+    the declared native symbol, the `(*slot)` deref for a non-value pointer
+    slot, or the qualified `cpp_expr`. None when the (module, var) pair is
+    not registered -- the AST falls through to other arms there, so the
+    caller rejects instead of guessing."""
+    mi = analyzer.registry.get_module(module_name)
+    if mi is None or var_name not in mi.variables:
+        return None
+    vi = mi.variables[var_name]
+    if vi.native_cpp_name is not None:
+        return vi.native_cpp_name
+    if vi.is_pointer:
+        return f"(*{vi.cpp_expr})"
+    return vi.cpp_expr
+
+def _global_record_recv(obj: TpyExpr, declared: dict[str, TpyType],
+                        analyzer) -> 'TpyType | None':
+    """A SAME-module non-value F1-record global used as a field-access
+    receiver (`time.x` off a top-level `time: Timer = Timer()`): the AST
+    renders the bare pointer-slot name with an arrow (`time->x`,
+    is_indirect_name). Returns the record type, or None. Locals/params
+    shadow (`declared`), imported and narrowed names keep their own arms,
+    and value types never take the pointer slot."""
+    if not isinstance(obj, TpyName) or obj.name in declared:
+        return None
+    if (obj.name not in analyzer.ctx.top_level_decls
+            or obj.name in analyzer.imported_names):
+        return None
+    gt = analyzer.ctx.global_scope.lookup(obj.name)
+    if gt is None:
+        nb = analyzer.global_ns.lookup_local(obj.name)
+        gt = (nb.type if nb is not None
+              and nb.kind is BindingKind.VARIABLE else None)
+    if gt is None:
+        return None
+    gt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(gt)))
+    if gt.is_value_type() or not _f1_record(gt, analyzer):
+        return None
+    return gt
+
+def _field_over_global_record_ok(e: TpyExpr, declared: dict[str, TpyType],
+                                 analyzer) -> bool:
+    """A marker-clean value field READ off a same-module global-record
+    receiver (`_global_record_recv`) -- the `time->x` pointer-slot render.
+    Read position only: the write/aug statement gates keep their declared-
+    receiver requirement, so a global field write stays on the AST path."""
+    return (isinstance(e, TpyFieldAccess) and _field_markers_clean(e)
+            and _global_record_recv(e.obj, declared, analyzer) is not None)
+
+def _class_const_pure_receiver(e: TpyFieldAccess, declared: dict[str, TpyType],
+                               analyzer) -> bool:
+    """The class-constant receiver shapes whose AST render is the BARE
+    qualified name (`_class_constant_access_parts` returns receiver_eval
+    None): a name receiver (`C.X`, `c.X`, `self.X`) or a static-type chain
+    (`Outer.Inner.X`, `mod.C.X`). An unproven-Optional receiver
+    (`deref_check`) or an effectful receiver (a call, evaluated via
+    `static_cast<void>`) renders a statement expression -- out of the arm."""
+    if e.needs_optional_runtime_check:
+        return False
+    if isinstance(e.obj, TpyName):
+        return True
+    return _static_type_chain(e.obj, declared, analyzer)
+
+def _class_constant_cpp(e: TpyFieldAccess, analyzer,
+                        render_type) -> 'str | None':
+    """The full `<owner>::<member>` spelling of a class-constant access --
+    the qualified-name half of the AST's `_class_constant_access_parts`:
+    @native rename, generic per-instantiation spelling (off the receiver's
+    typed instantiation via `render_type`, codegen's type_to_cpp), the
+    cross-module qualification, or the same-module (possibly nested/dotted)
+    name; plus the Final[T] = native_field(...) member rename. None when the
+    generic path lacks its receiver type or renderer (reject, not a guess)."""
+    owner = e.class_constant_owner
+    if owner.is_native and owner.native_name:
+        cpp_qname = owner.native_name
+    elif owner.type_params:
+        obj_type = analyzer.get_expr_type(e.obj)
+        if obj_type is None or render_type is None:
+            return None
+        unwrapped = unwrap_qualifiers(obj_type)
+        if isinstance(unwrapped, OptionalType):
+            unwrapped = unwrapped.inner
+        cpp_qname = render_type(unwrapped)
+    else:
+        qual = analyzer.registry.record_qualification(
+            owner, analyzer.ctx.module_name)
+        if qual:
+            cpp_qname = qualified_cpp_name(*qual)
+        else:
+            cpp_qname = "::".join(
+                escape_cpp_name(part) for part in owner.name.split("."))
+    cc_field = owner.class_constants.get(e.field)
+    cpp_member = (cc_field.native_name if cc_field and cc_field.native_name
+                  else escape_cpp_name(e.field))
+    return f"{cpp_qname}::{cpp_member}"
+
 def _enum_compare_pair(e: TpyBinOp, lt: TpyType | None, rt: TpyType | None,
                        analyzer) -> bool:
     """Enum comparison operands: the same eligible enum on both sides (the
@@ -1449,7 +1644,9 @@ def _value_opt_scalar(t: 'TpyType | None', analyzer) -> 'OptionalType | None':
     """The value-repr `Optional[value scalar]` binding type -- an `Int32 | None`
     / `bool | None` / `Char | None` / `float | None` / `int | None` param bound
     `std::optional<T>` by value, or None. The inner is a value scalar: a
-    fixed-int, bool, Char, either float width, or BigInt. A BigInt (expensive-
+    fixed-int, bool, Char, either float width, BigInt, or a registered enum
+    (`std::optional<Color>` -- the same bare/un-narrowed and `(*p)`-narrowed
+    renders as the fixed-int inners). A BigInt (expensive-
     copy) inner takes a `std::move((*p))` at its last narrowed read (the
     `seed_param_locals` movable face, mirrored via the context.py movable
     seeding + the return/container move sinks). Str/bytes views are excluded
@@ -1464,7 +1661,8 @@ def _value_opt_scalar(t: 'TpyType | None', analyzer) -> 'OptionalType | None':
     inner = unwrap_readonly(t.inner)
     if isinstance(inner, OwnType):
         return None
-    return t if (_eligible_scalar(inner) or _eligible_char(inner)) else None
+    return t if (_eligible_scalar(inner) or _eligible_char(inner)
+                 or _eligible_enum(inner, analyzer) is not None) else None
 
 def _value_opt_scalar_name(e: TpyExpr, declared: dict[str, TpyType],
                            analyzer) -> 'OptionalType | None':
@@ -2061,18 +2259,19 @@ def _field_receiver_ok(e: TpyExpr, declared: dict[str, TpyType], analyzer) -> bo
 
 def _str_field_value_read(e: TpyExpr, declared: dict[str, TpyType],
                           analyzer) -> bool:
-    """A value-position read of an owned-`str` field off an admitted receiver
-    (`recv.field`, `_field_receiver_ok`): a STORAGE `std::string` member whose
-    bare access binds a view sink implicitly and copies into an owned sink by
-    value -- byte-identical bare on both paths at the positions that admit it
-    (the str-family return slot, an f-string arg). A `StrView` field is BORROW
-    (owned sinks need the explicit view->owned copy) and a `String` field
-    resolves outside the str slice -- both excluded."""
+    """A value-position read of a str-family field off an admitted receiver
+    (`recv.field`, `_field_receiver_ok`): an owned `std::string` member reads
+    bare as STORAGE (a view sink binds it implicitly, an owned sink copies by
+    value); a `StrView` member reads bare as BORROW, so the owned-str sinks
+    that admit it fire the explicit view->owned copy (`std::string(...)` at
+    the return convert) -- both byte-identical at the positions that admit
+    the read (the str-family return slot, a print / f-string arg). A `String`
+    field resolves outside the str slice -- excluded."""
     if not (isinstance(e, TpyFieldAccess)
             and _field_receiver_ok(e, declared, analyzer)):
         return False
     st = _resolved_str_value(analyzer.get_expr_type(e), analyzer)
-    return st is not None and is_str_type(st)
+    return st is not None and (is_str_type(st) or is_str_view_type(st))
 
 def _const_exact_field_receiver_ok(e: TpyExpr, declared: dict[str, TpyType],
                                    analyzer) -> bool:
@@ -2131,9 +2330,11 @@ def _field_decl_type(e: TpyFieldAccess, declared: dict[str, TpyType],
                      analyzer) -> 'TpyType | None':
     """The field's DECLARED type off the gate's declared map -- the
     `_resolve_field_declared_type` mirror for the admitted receiver shapes
-    (a record / proven Optional-ptr NAME; the receiver gate pinned that).
-    Consumers type on it rather than the flow-narrowed expr type, so a
-    narrowed Optional/union field -- whose AST render takes the
+    (a record / proven Optional-ptr NAME; the receiver gate pinned that),
+    widened to inherited fields (the AST helper checks own fields only and
+    falls back to the expr type, which for an unnarrowed read is the same
+    declared type). Consumers type on it rather than the flow-narrowed expr
+    type, so a narrowed Optional/union field -- whose AST render takes the
     `(*recv.field)` unwrap -- types at the un-narrowed declared type and
     rejects at the caller's family check."""
     base = declared.get(e.obj.name)
@@ -2149,7 +2350,9 @@ def _field_decl_type(e: TpyFieldAccess, declared: dict[str, TpyType],
     record = analyzer.registry.get_record_for_type(rt)
     if record is None:
         return None
-    for f in record.fields:
+    # Own fields take precedence over inherited ones (get_all_fields is
+    # base-first); the C++ member access renders identically either way.
+    for f in reversed(analyzer.registry.get_all_fields(record)):
         if f.name == e.field:
             return f.type
     return None

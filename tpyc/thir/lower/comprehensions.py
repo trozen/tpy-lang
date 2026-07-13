@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 from collections.abc import Set as AbstractSet
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from ...parse.nodes import (
     TpyArrayLiteral,
     TpyCall,
@@ -40,7 +40,7 @@ from ...modules.type_resolution import get_iterable_element_type, is_native_iter
 from ...codegen_cpp.context import escape_cpp_name, loop_var_binding
 from ..fallback import ThirUnsupported
 from ..faces import witness as _witness
-from ..nodes import THIRComprehension, THIRGenExpr
+from ..nodes import THIRComprehension, THIRContainerLiteral, THIRExpr, THIRGenExpr
 from .predicates import (
     _dict_view_iterable_ok,
     _eligible_char,
@@ -63,6 +63,7 @@ from .context import (
     _LowerCtx,
 )
 from .expressions import (
+    _lower_checked_container_elem,
     _lower_container_elem,
     _lower_expr,
     _lower_field_source,
@@ -226,7 +227,8 @@ def _comp_slot_ok(slot: 'TpyType | None', analyzer) -> bool:
     return (_eligible_scalar(slot) or _eligible_char(slot)
             or _owned_str_slot(slot, analyzer))
 
-def _comp_elem_slot_ok(slot: 'TpyType | None', analyzer) -> bool:
+def _comp_elem_slot_ok(slot: 'TpyType | None', analyzer, *,
+                       allow_container: bool = False) -> bool:
     """The list/set element + dict VALUE result slot whose
     `_lower_container_elem` render is element-SHAPE-independent, so ANY routed
     element expr into it is byte-identical -- the compositional twin of the
@@ -244,14 +246,27 @@ def _comp_elem_slot_ok(slot: 'TpyType | None', analyzer) -> bool:
     branches on the element NODE for them, so a general routed element could
     diverge): Optional (`None` -> `std::nullopt` vs a scalar value), value-tuple
     (a tuple LITERAL only), nested container (an Array LITERAL only), union, and
-    a str/bytes VIEW slot (owned-only here)."""
+    a str/bytes VIEW slot (owned-only here).
+
+    `allow_container` (the dict VALUE slot only) admits a list/Array container
+    slot -- SHAPE-sensitive, so `_lower_comp_dict_value` gates the element
+    NODE (a container literal / nested comprehension), mirroring
+    `_container_lit_elem_ok`'s `fam == "container"` arm."""
     if _comp_slot_ok(slot, analyzer):
         return True
     bt = _resolved_bytes_value(slot, analyzer)
     if bt is not None and is_bytes_type(bt):
         return True
+    if allow_container and _container_family_slot(slot):
+        return True
     return (_eligible_enum(slot, analyzer) is not None
             or _f1_record(slot, analyzer))
+
+def _container_family_slot(slot: 'TpyType | None') -> bool:
+    if slot is None:
+        return False
+    su = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(slot)))
+    return is_list(su) or is_array(su)
 
 def _comp_lowering_route(
         init, t: 'TpyType | None', declared: dict[str, TpyType],
@@ -280,7 +295,8 @@ def _comp_lowering_route(
     if route.kind == "dict" and not (
             is_dict(t) and len(args) == 2
             and _comp_slot_ok(args[0], analyzer)          # key: narrow
-            and _comp_elem_slot_ok(args[1], analyzer)):   # value: widened
+            and _comp_elem_slot_ok(args[1], analyzer,     # value: widened
+                                   allow_container=True)):
         return None
     gen = init.generator
     # The comp vars shadow same-named outer locals for the element/filter
@@ -372,6 +388,32 @@ def _comp_result_type(t: 'TpyType | None', analyzer) -> TpyType:
         return analyzer.ctx.default_int_type
     return t
 
+def _lower_comp_dict_value(e, vt: TpyType, lc: '_LowerCtx',
+                           body_declared: dict[str, TpyType]) -> 'THIRExpr':
+    """Lower the dict-comp VALUE against its slot. A list/Array container slot
+    is element-SHAPE-sensitive, so only the two vetted sources route: a
+    container LITERAL -- rendered self-describing (`std::array<int32_t, 2>{...}`,
+    mirroring `_gen_dict_comprehension`'s `typed_brace_init`: `insert_or_assign`
+    is a template, a bare brace-init cannot deduce) -- and a nested
+    COMPREHENSION (`_lower_container_elem`'s comp arm; its `({...})` stmt-expr
+    is already self-describing, the AST's typed_brace_init no-ops on it).
+    Every other slot family keeps the shape-independent element render."""
+    if not _container_family_slot(vt):
+        return _lower_container_elem(e, vt, lc, body_declared)
+    if type(e) in _COMP_KINDS:
+        value = _lower_container_elem(e, vt, lc, body_declared)
+    elif isinstance(e, TpyArrayLiteral):
+        value = _lower_checked_container_elem(
+            e, vt, lc, body_declared, threaded=True, forced=True,
+            allow_nested=True)
+        if isinstance(value, THIRContainerLiteral):
+            value = replace(value, typed_brace_cpp=lc.render_type(
+                unwrap_readonly(unwrap_ref_type(vt))))
+    else:
+        raise ThirUnsupported("comp.container_value", detail=True)
+    _witness("comp.container_value")
+    return value
+
 def _lower_comprehension(
         init, result_type: 'TpyType | None', lc: '_LowerCtx',
         declared: dict[str, TpyType],
@@ -412,8 +454,7 @@ def _lower_comprehension(
                      f"{lc.render_type(vt)}>")
         element = None
         key = _lower_container_elem(init.key_expr, kt, lc, body_declared)
-        value = _lower_container_elem(
-            init.value_expr, vt, lc, body_declared)
+        value = _lower_comp_dict_value(init.value_expr, vt, lc, body_declared)
     else:
         elem_t = _comp_result_type(init.result_elem_type, analyzer)
         cpp_elem = lc.render_type(elem_t)

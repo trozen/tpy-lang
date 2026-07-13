@@ -18,6 +18,7 @@ from .nodes import (
     THIRBytesLiteral,
     THIRCall,
     THIRCharLiteral,
+    THIRClassConstant,
     THIRCoerce,
     THIRCtorCall,
     THIREnumMember,
@@ -35,10 +36,12 @@ from .nodes import (
     THIRExprStmt,
     THIRContainerLiteral,
     THIRContinue,
+    THIRDelVar,
     THIRLiteral,
     THIRMatch,
     THIRMethodCall,
     THIRModule,
+    THIRModuleVar,
     THIRMove,
     THIRName,
     THIRNarrowAlias,
@@ -213,6 +216,10 @@ def _expr(e: THIRExpr) -> str:
         return f"({deref}get<{e.member_cpp}>(%{e.variant_cpp}))"
     if isinstance(e, THIREnumMember):
         return f"enum_member({e.cpp})"
+    if isinstance(e, THIRClassConstant):
+        return f"class_const({e.cpp})"
+    if isinstance(e, THIRModuleVar):
+        return f"module_var({e.cpp})"
     if isinstance(e, THIREnumWrap):
         # The wrap template is the emit; a dropped operand (plain-enum
         # truthiness) surfaces as an empty operand slot.
@@ -261,6 +268,7 @@ def _stmt_lines(stmt: THIRStmt, depth: int) -> list[str]:
         lines = [f"{pad}while {_expr(stmt.condition)}:"]
         for s in stmt.body:
             lines.extend(_stmt_lines(s, depth + 1))
+        _extend_orelse(lines, stmt.orelse, depth)
         return lines
     if isinstance(stmt, THIRForRange):
         start = "0" if stmt.start is None else _expr(stmt.start)
@@ -268,6 +276,7 @@ def _stmt_lines(stmt: THIRStmt, depth: int) -> list[str]:
         lines = [f"{pad}for %{stmt.var} in range({start}, {_expr(stmt.stop)}{step}):"]
         for s in stmt.body:
             lines.extend(_stmt_lines(s, depth + 1))
+        _extend_orelse(lines, stmt.orelse, depth)
         return lines
     if isinstance(stmt, THIRForEach):
         # `[const]` marks a `const auto&` record loop var (vs `auto&&`); load-bearing
@@ -278,6 +287,7 @@ def _stmt_lines(stmt: THIRStmt, depth: int) -> list[str]:
         lines = [f"{pad}for %{stmt.var}{const}{rval} in {_expr(stmt.iterable)}:"]
         for s in stmt.body:
             lines.extend(_stmt_lines(s, depth + 1))
+        _extend_orelse(lines, stmt.orelse, depth)
         return lines
     if isinstance(stmt, THIRWith):
         # Emit-relevant item facts surface as tags: the manager binding
@@ -334,12 +344,24 @@ def _stmt_lines(stmt: THIRStmt, depth: int) -> list[str]:
         return [f"{pad}break"]
     if isinstance(stmt, THIRContinue):
         return [f"{pad}continue"]
+    if isinstance(stmt, THIRDelVar):
+        sinks = ", ".join(f"{'*' if deref else ''}{name}"
+                          for name, deref in stmt.sinks)
+        return [f"{pad}del [{sinks}]"]
     if isinstance(stmt, THIRPrint):
         args = ", ".join(f"{_expr(a.expr)} [{a.print_form.name.lower()}]" for a in stmt.args)
         return [f"{pad}print({args})"]
     if isinstance(stmt, THIRExprStmt):
         return [f"{pad}{_expr(stmt.expr)}"]
     return [f"{pad}<{type(stmt).__name__}>"]
+
+
+def _extend_orelse(lines: list[str], orelse, depth: int) -> None:
+    if not orelse:
+        return
+    lines.append("  " * depth + "else:")
+    for s in orelse:
+        lines.extend(_stmt_lines(s, depth + 1))
 
 
 def dump_thir(module: THIRModule) -> str:

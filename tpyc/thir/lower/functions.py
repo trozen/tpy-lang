@@ -57,6 +57,7 @@ from ...typesys import (
     unwrap_readonly,
     unwrap_ref_type,
     unwrap_send_sync,
+    view_family_for_type,
 )
 from ...codegen_cpp.context import (
     escape_cpp_name,
@@ -88,6 +89,7 @@ from ..nodes import (
     THIRMilInit,
     THIRModule,
     THIRParam,
+    THIRParamCopy,
 )
 from .predicates import (
     _coerce_disposition,
@@ -300,19 +302,50 @@ def _check_callable_structure(func: TpyFunction, analyzer,
     # A reassigned param of a type flagged param_needs_copy_for_reassign (owned
     # str/bytes/String, BigInt -- const-ref params that cannot reassign in
     # place) gets a mutable owned copy hoisted by the AST prologue
-    # (`std::string p_ = std::string(p);` + body-wide rename) -- a shape the
-    # slice does not reproduce. Reject the function; the flag is the exact AST
-    # trigger (gen_function's scan.reassigned check), so by-value params
-    # (scalars, Char, StrView) reassign in place on both paths and stay
-    # routed. Non-value params cannot be reassigned at all (sema rejects the
-    # rebind), so no pointer-local prologue arises here either.
+    # (`::tpy::BigInt x = __param_x;` + signature rename). Sync bodies mirror
+    # the prologue (`_param_reassign_copies` in lower_function); resumables
+    # keep rejecting -- their params move into frame members, never renamed,
+    # so the prologue shape does not arise on that AST path.
+    if allow_resumable:
+        scan = analyzer.function_scan_results.get(id(func))
+        if scan is not None and scan.reassigned:
+            for name, ptype in func.params:
+                pt = ptype if isinstance(ptype, TpyType) else None
+                if (name in scan.reassigned and pt is not None
+                        and pt.param_needs_copy_for_reassign()):
+                    raise ThirUnsupported("sig.param_reassign_copy")
+
+def _param_reassign_copies(func: TpyFunction,
+                           analyzer) -> 'tuple[THIRParamCopy, ...]':
+    """The mutable-owned-copy prologue for reassigned const-ref params -- the
+    mirror of `_gen_buffered_body`'s `_reassigned_param_copies` emit (param
+    order): `{to_cpp} {name} = __param_{name};`, no source comment. The AST's
+    signature-side rename (`gen_params`' `__param_` branch) keys on the same
+    scan.reassigned + param_needs_copy_for_reassign facts, so the renamed
+    param and the prologue stay paired. Routed: copies whose init is the
+    plain `__param_x` read (BigInt, String). Rejected: view-family params
+    (str/bytes, Optional thereof) -- their copy respells the local's FORM
+    (view param -> owned local via `_view_owned_copy_expr`), a shift the
+    name-read arms do not model. Non-value params cannot be reassigned at
+    all (sema rejects the rebind), so no other copy shape arises."""
     scan = analyzer.function_scan_results.get(id(func))
-    if scan is not None and scan.reassigned:
-        for name, ptype in func.params:
-            pt = ptype if isinstance(ptype, TpyType) else None
-            if (name in scan.reassigned and pt is not None
-                    and pt.param_needs_copy_for_reassign()):
-                raise ThirUnsupported("sig.param_reassign_copy")
+    if scan is None or not scan.reassigned:
+        return ()
+    copies: list[THIRParamCopy] = []
+    for name, ptype in func.params:
+        pt = ptype if isinstance(ptype, TpyType) else None
+        if not (name in scan.reassigned and pt is not None
+                and pt.param_needs_copy_for_reassign()):
+            continue
+        opt_inner = pt.inner if isinstance(pt, OptionalType) else None
+        fam = view_family_for_type(opt_inner if opt_inner is not None else pt)
+        if fam is not None:
+            raise ThirUnsupported("sig.param_reassign_copy")
+        copies.append(THIRParamCopy(name=escape_cpp_name(name),
+                                    cpp_type=pt.to_cpp()))
+    if copies:
+        _witness("fn.param_copy")
+    return tuple(copies)
 
 def _shadow_bound_names(stmts: list[TpyStmt]) -> set[str]:
     """Names bound by the binder forms `scan_reassigned_vars` does not record:
@@ -489,6 +522,7 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
     # Seeded with params (and `self`): a write to such a name is a reassignment.
     declared: dict[str, TpyType] = dict(params_set)
     try:
+        param_copies = _param_reassign_copies(func, analyzer)
         body = _lower_stmts(func.body, lc, declared)
         if lc.unhandled_hoists:
             raise ThirUnsupported("body.hoisted_vars")
@@ -496,7 +530,7 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
             name=func.name,
             params=params,
             return_type=rt,
-            body=body,
+            body=param_copies + body,
             layout=THIRFunctionLayout(),
         )
         validate_function(fn)

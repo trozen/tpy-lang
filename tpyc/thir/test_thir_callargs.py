@@ -498,13 +498,17 @@ class TestRecordMethodCalls:
                     "        return self.x + v\n"))
         assert _fn(thir, "use") is None
 
-    def test_record_returning_method_stays_ast(self):
-        # A record result is outside the admitted value set (scalar / Char /
-        # str / void-stmt).
-        thir = _lower_ctx(_src(
+    def test_record_returning_method_routes_as_field_receiver(self):
+        # A record result routes at the FIELD-RECEIVER position
+        # (field.call_recv): `a.pick(b).x` renders the bare postfix member.
+        # In a plain value position (no member access) it stays outside the
+        # admitted set.
+        src = _src(
             "def use(a: A, b: A) -> Int32:\n    return a.pick(b).x\n",
-            extra_a="    def pick(self, other: A) -> A:\n        return other\n"))
-        assert _fn(thir, "use") is None
+            extra_a="    def pick(self, other: A) -> A:\n        return other\n")
+        assert _fn(_lower_ctx(src), "use") is not None
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+        assert "return a.pick(b).x;" in _cpp(src, thir=True)
 
 
 class TestCallArgEmit:

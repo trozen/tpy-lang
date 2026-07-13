@@ -1037,7 +1037,9 @@ its value read is a record borrow), `set`/`Span`/`Array` containers (params not 
 str/bytes-key dicts, `dict.items()`/tuple-unpack, non-name iterables (str-family FIELDS off
 F1-record receivers route since incr 45 -- lvalues, the same `auto&` capture; subscript/call/
 literal receivers stay deferred, a call result being an rvalue `auto` capture), generators / user iterators (the
-`__iter__`/`__next__` fallback), hoisted loop vars, `for/else`, consuming/enum iteration. (Audit-note: the gate keys
+`__iter__`/`__next__` fallback), hoisted loop vars, consuming/enum iteration
+(`for/else` and while/else LANDED on thir-match-dynattrs-args --
+`__after_else_N` labels with break reroute). (Audit-note: the gate keys
 `is_native_iterable` off the use-site type -- re-check it when narrowed-`Optional` containers
 land, since a narrowed value-repr Optional could then reach it.) Beyond subscript/iteration (separate frontiers): value-tuple locals, standalone
 record/Optional-element binds / borrow returns, tuple-unpack. **Test-coverage follow-on:** the storage-tuple-alias receiver form (`a = h.pair;
@@ -1045,11 +1047,13 @@ a[N].field` read/write) is covered only by unit byte-diff, not a build+run corpu
 one (the aliasing fn must stay THIR-routable, i.e. no `print()` inside it) for exec/cpy
 coverage of the `.`-access + `optional_to_ptr` alias paths.
 **Routine statement shapes landed (the statement-shape session, incr 66-69):**
-`break`/`continue` in else-free loops (bare `break;`/`continue;` -- else-loops
-break via `goto __after_else_N`, gate-rejected; the gate threads an `in_loop`
+`break`/`continue` in else-free loops (bare `break;`/`continue;` -- else-loop
+breaks now route too via `goto __after_else_N`, landed on
+thir-match-dynattrs-args; the gate threads an `in_loop`
 flag through the body walk); `del` -- the trivially-destructible del-var face
-(the AST's FIRST skip: comment only, no code -- the move-sink face for owning
-locals reads alias bookkeeping the slice does not track, deferred) and
+(the AST's FIRST skip: comment only, no code) plus the owning-local
+move-sink (`THIRDelVar`, landed on thir-match-dynattrs-args with the
+alias bookkeeping in `_Prescan`) and
 single-target `del c[k]` on bare-name list/dict bindings (the no-method-fi
 `::tpy::__delitem__(c, k);` fallback; multi-target del shares one comment
 across N lines, deferred); the `global` statement + scalar-global
@@ -1228,12 +1232,13 @@ the corpus `mode: Literal[...]` dispatchers); value patterns
 optional partitions LANDED as incr 92/93; value-repr optional subjects
 LANDED as the O2 multi-arm dispatch on thir-nested-defs -- the
 has_value split + inner switch/chain over `__match_inner_N`, scalar
-and str inners; record inners, guarded inner chains, and
-`Optional[enum]` names still reject): the optional tiers' remainder
-(field-access subjects; the non-prefix if/elif-optional strategy),
-polymorphic/@dynamic (15), str-switch (8; discriminator machinery),
-overload-specialized (1), resumable (generator/async) matches (own
-frontier), M4c wrapper subjects (cross-axis, see above). Corpus
+and str inners; the non-prefix if/elif-optional chain tiers, the
+str-switch discriminator tier, `Optional[enum]` names, and the O1
+record-inner dispatch LANDED on thir-match-dynattrs-args): the
+optional tiers' remainder (field-access subjects; guarded record-inner
+chains), polymorphic/@dynamic (15), overload-specialized (1),
+resumable (generator/async) matches (own frontier), M4c wrapper
+subjects (cross-axis, see above). Corpus
 witnesses: the match/ group (`literal_int`, `enum_value`,
 `break_in_match_arm`, `two_matches_same_scope`, `guard_basic`, and the
 new `arm_declared_local` / `union_none_member` / `union_recursive_bare`);

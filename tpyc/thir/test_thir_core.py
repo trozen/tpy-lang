@@ -16,9 +16,11 @@ from .lower.functions import _shadow_bound_names
 from ..typesys import TupleType
 from .nodes import (
     Form, PrintForm, THIRAssign, THIRBinOp, THIRCall,
-    THIRChainedCompareStmtExpr, THIRExprStmt,
+    THIRChainedCompareStmtExpr, THIRClassConstant, THIRDelVar, THIRExprStmt,
     THIRFieldAccess, THIRForEach, THIRForRange, THIRFormConvert, THIRIf,
-    THIRLiteral, THIRMethodCall, THIRName, THIRPrint, THIRReturn,
+    THIRLiteral, THIRMethodCall, THIRModuleVar, THIRName, THIRNoOpStmt,
+    THIRParamCopy,
+    THIRPrint, THIRReturn,
     THIRStrLiteral, THIRUnaryNot, THIRVarDecl, THIRWhile,
 )
 from .testutil import (
@@ -190,12 +192,14 @@ class TestEligibility:
         assert isinstance(fn.body[1], THIRWhile)
         assert fn.body[1].condition.op == "<"
 
-    def test_while_else_is_ineligible(self):
+    def test_while_else_routes(self):
         thir = _lower(_PRELUDE
                       + "def f(n: Int32) -> Int32:\n    i = 0\n"
                       + "    while i < n:\n        i = i + 1\n    else:\n        i = 0\n"
                       + "    return i\n")
-        assert _fn(thir, "f") is None
+        fn = _fn(thir, "f")
+        assert fn is not None
+        assert isinstance(fn.body[1], THIRWhile) and len(fn.body[1].orelse) == 1
 
     def test_while_with_break_routes(self):
         thir = _lower(_PRELUDE
@@ -211,15 +215,17 @@ class TestEligibility:
                       + "        s = s + i\n    return s\n")
         assert _fn(thir, "f") is not None
 
-    def test_break_in_else_loop_is_ineligible(self):
-        # A for/else loop's break is a `goto __after_else_N` -- the whole
-        # body stays AST via the loop's orelse reject.
+    def test_break_in_else_loop_routes(self):
+        # A for/else loop's break renders `goto __after_else_N` (the emit-side
+        # else-label reroute); the loop routes with its orelse attached.
         thir = _lower(_PRELUDE
                       + "def f(n: Int32) -> Int32:\n"
                       + "    for i in range(n):\n        if i > 3:\n            break\n"
                       + "    else:\n        return -1\n"
                       + "    return 1\n")
-        assert _fn(thir, "f") is None
+        fn = _fn(thir, "f")
+        assert fn is not None
+        assert isinstance(fn.body[0], THIRForRange) and len(fn.body[0].orelse) == 1
 
     def test_bigint_param_routes(self):
         # `int` is BigInt -- an eligible value scalar (::tpy::BigInt renders
@@ -261,6 +267,152 @@ class TestEligibility:
         good = _fn(thir, "good")
         assert good is not None                    # sibling uncorrupted
         assert isinstance(good.body[0], THIRIf)
+
+
+class TestParamReassignCopy:
+    """Reassigned const-ref params (param_needs_copy_for_reassign): the AST
+    renames the signature param to `__param_x` and hoists a mutable owned
+    copy; THIR mirrors the prologue (THIRParamCopy) and keeps body reads on
+    the plain name. View-family params (str/bytes, Optional thereof) stay
+    AST: their copy respells the local's form."""
+
+    def _cpp(self, src: str, thir: bool, comments: bool = False):
+        # hpp + cpp: an inline (record-method) body emits in the hpp, which a
+        # cpp-only byte-check would be blind to.
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        hpp, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=comments,
+                                          thir_codegen=thir))
+        return hpp + cpp
+
+    def _reason(self, src: str, name: str):
+        from .fallback import begin_attempt
+        from .lower import iter_module_callables, lower_function
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        with activate_compiler(compiler):
+            for fn, self_type in iter_module_callables(
+                    entry.ast, entry.analyzer):
+                if fn.name == name:
+                    begin_attempt()
+                    compiler._thir_reject_reason = None
+                    out = lower_function(fn, entry.analyzer,
+                                         self_type=self_type)
+                    return out, compiler._thir_reject_reason
+        return None, "function_not_found"
+
+    GCD = (
+        "def gcd(a: int, b: int) -> int:\n"
+        "    while b != 0:\n"
+        "        t: int = b\n"
+        "        b = a % b\n"
+        "        a = t\n"
+        "    return a\n"
+        "def main():\n    print(gcd(48, 18))\nmain()\n"
+    )
+
+    def test_bigint_param_copies_route_in_param_order(self):
+        thir = _lower(self.GCD)
+        fn = _fn(thir, "gcd")
+        assert fn is not None
+        assert isinstance(fn.body[0], THIRParamCopy)
+        assert (fn.body[0].name, fn.body[0].cpp_type) == ("a", "::tpy::BigInt")
+        assert isinstance(fn.body[1], THIRParamCopy)
+        assert fn.body[1].name == "b"
+
+    def test_byte_identical(self):
+        assert self._cpp(self.GCD, thir=True) == self._cpp(self.GCD, thir=False)
+        assert (self._cpp(self.GCD, thir=True, comments=True)
+                == self._cpp(self.GCD, thir=False, comments=True))
+
+    def test_signature_rename_and_prologue_render(self):
+        cpp = self._cpp(self.GCD, thir=True)
+        assert ("::tpy::BigInt gcd(const ::tpy::BigInt& __param_a, "
+                "const ::tpy::BigInt& __param_b)") in cpp
+        assert "::tpy::BigInt a = __param_a;" in cpp
+        assert "::tpy::BigInt b = __param_b;" in cpp
+
+    def test_face_witnessed(self):
+        _, w = _lower_ctx_witnessed(self.GCD)
+        assert w.get("fn.param_copy", 0) >= 1
+
+    def test_del_of_copied_param_skips(self):
+        # The del_var_param shape: `del x` on a param emits nothing (the AST
+        # skip ladder keys on param names, copy local or not).
+        src = ("def f(x: int) -> None:\n"
+               "    print(x)\n    del x\n    x = 99\n    print(x)\n"
+               "f(42)\n")
+        thir = _lower(src)
+        fn = _fn(thir, "f")
+        assert fn is not None
+        assert isinstance(fn.body[0], THIRParamCopy)
+        assert isinstance(fn.body[2], THIRNoOpStmt)   # del x -> comment only
+        assert isinstance(fn.body[3], THIRAssign)     # x = 99 (reassign)
+        assert (self._cpp(src, thir=True, comments=True)
+                == self._cpp(src, thir=False, comments=True))
+
+    def test_string_param_copy_routes(self):
+        # String passes `const std::string&` -- owned form on both sides of
+        # the copy, so reads stay form-neutral.
+        src = ("from tpy import String\n"
+               "def f(p: String) -> None:\n"
+               "    p = \"x\"\n    print(p)\n"
+               "f(\"a\")\n")
+        out, _ = self._reason(src, "f")
+        assert out is not None
+        cpp = self._cpp(src, thir=True)
+        assert "std::string p = __param_p;" in cpp
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+
+    def test_str_view_param_stays_ast(self):
+        # A str param is a string_view borrow; its copy changes the local's
+        # form (view -> owned) -- gate-excluded.
+        src = ("def f(p: str) -> None:\n"
+               "    p = \"x\"\n    print(p)\n"
+               "f(\"a\")\n")
+        out, reason = self._reason(src, "f")
+        assert out is None
+        assert reason == "sig.param_reassign_copy"
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+
+    def test_optional_str_param_stays_ast(self):
+        # Optional[str]'s copy is the make_optional view->owned split.
+        src = ("def f(p: str | None) -> None:\n"
+               "    p = \"x\"\n    print(p)\n"
+               "f(\"a\")\n")
+        out, reason = self._reason(src, "f")
+        assert out is None
+        assert reason == "sig.param_reassign_copy"
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+
+    def test_method_param_copy_routes(self):
+        # Methods ride the same gen_params rename + prologue machinery.
+        src = ("from tpy import Int32\n"
+               "class C:\n"
+               "    x: Int32\n"
+               "    def __init__(self):\n        self.x = 1\n"
+               "    def bump(self, n: int) -> int:\n"
+               "        n = n + 1\n        return n\n"
+               "def main():\n    c = C()\n    print(c.bump(4))\nmain()\n")
+        thir = _lower_ctx(src)
+        fn = _fn(thir, "bump")
+        assert fn is not None
+        assert isinstance(fn.body[0], THIRParamCopy)
+        assert (self._cpp(src, thir=True, comments=True)
+                == self._cpp(src, thir=False, comments=True))
+
+    def test_generator_reassigned_param_stays_byte_identical(self):
+        # Resumables keep the sig.param_reassign_copy reject (frame members,
+        # no rename); the whole-module byte-diff pins the status quo.
+        src = ("from typing import Iterator\n"
+               "def g(n: int) -> Iterator[int]:\n"
+               "    n = n + 1\n    yield n\n"
+               "def main():\n"
+               "    for v in g(1):\n        print(v)\n"
+               "main()\n")
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+
 
 class TestForRange:
     def test_range_stop_eligible(self):
@@ -320,12 +472,15 @@ class TestForRange:
         assert isinstance(loop, THIRForRange)
         assert isinstance(loop.body[0], THIRAssign) and loop.body[0].target.name == "i"
 
-    def test_for_else_is_ineligible(self):
+    def test_for_else_routes(self):
         thir = _lower(_PRELUDE
                       + "def f(n: Int32) -> Int32:\n    acc = 0\n"
                       + "    for i in range(n):\n        acc = acc + i\n    else:\n        acc = 0\n"
                       + "    return acc\n")
-        assert _fn(thir, "f") is None
+        fn = _fn(thir, "f")
+        assert fn is not None
+        loop = fn.body[1]
+        assert isinstance(loop, THIRForRange) and len(loop.orelse) == 1
 
     def test_loop_var_used_after_is_ineligible(self):
         # `i` read after the loop -> sema hoists the loop var (pre-declaration),
@@ -386,13 +541,17 @@ class TestForRange:
                       + "    for i in range(0, n, 0):\n        acc = acc + i\n    return acc\n")
         assert _fn(thir, "f") is None
 
-    def test_ctor_literal_step_is_ineligible(self):
-        # `Int32(2)` bounds fold, but the step classifier deliberately accepts
-        # only bare literals until the stepped overflow arm is pinned.
+    def test_ctor_literal_step_routes_as_literal(self):
+        # `Int32(2)` step: folded like the AST's _extract_int_literal ctor arm
+        # (the shared fixed_int_literal_value_from_expr helper), so it
+        # classifies literal_pos (not variable) and inlines the bare `2`.
         thir = _lower(_PRELUDE
                       + "def f(n: Int32) -> Int32:\n    acc = 0\n"
                       + "    for i in range(0, n, Int32(2)):\n        acc = acc + i\n    return acc\n")
-        assert _fn(thir, "f") is None
+        loop = _fn(thir, "f").body[1]
+        assert isinstance(loop, THIRForRange)
+        assert loop.step_kind == "literal_pos"
+        assert isinstance(loop.step, THIRLiteral) and loop.step.value == 2
 
     def test_binop_step_is_ineligible(self):
         # An arithmetic step is deferred (net-confidence, like the bound slice).
@@ -825,19 +984,28 @@ class TestForEachContainer:
             + "    for r in rows:\n        n = n + 1\n    return n\n")
         assert _fn(thir, "f") is None
 
-    def test_optional_element_ineligible(self):
-        # An `Optional` loop var is excluded from the compositional element gate:
-        # a body that narrows it (`if item is None: continue`) then reads it needs
-        # the value-repr deref (`(*item)`) the loop-var binding does not seed, so
-        # THIR renders the narrowed read bare and diverges. The whole-Optional
-        # read binds/prints fine, but the gate cannot see the body's narrowing, so
-        # it rejects the family. The `list[Int32 | None]` PARAM is still admitted
-        # (a `len(items)` body routes); only the iterating body rejects here.
+    def test_value_opt_element_routes(self):
+        # A value-repr Optional[scalar] loop var binds the typed
+        # `std::optional<T>` copy; the registered name makes the narrowed
+        # body read take the value-repr deref (`(*item)`) like a value-opt
+        # param's.
         thir = _lower(
             _PRELUDE
             + "def f(items: list[Int32 | None]) -> Int32:\n    total = 0\n"
             + "    for item in items:\n        if item is None:\n            continue\n"
             + "        total = total + item\n    return total\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+        assert isinstance(fn.body[1], THIRForEach)
+
+    def test_optional_record_element_ineligible(self):
+        # Only the value-repr Optional[cheap scalar/Char] element family is
+        # admitted; a pointer-repr Optional[record] loop var stays AST.
+        thir = _lower_ctx(
+            _F1_RECORDS
+            + "def f(items: list[Box | None]) -> Int32:\n    total = 0\n"
+            + "    for item in items:\n        total = total + 1\n"
+            + "    return total\n")
         assert _fn(thir, "f") is None
 
     def test_union_element_narrow_routes(self):
@@ -1071,6 +1239,52 @@ class TestPrintStmt:
         thir = _lower(_PRELUDE + "def f() -> None:\n    print()\n")
         stmt = _fn(thir, "f").body[0]
         assert isinstance(stmt, THIRPrint) and stmt.args == ()
+
+    def test_owned_str_field_arg_routes(self):
+        # `print(p.name)` over an owned-str field streams the bare member --
+        # the raw `<<` sink shares the f-string arg site's field_owned_str_ok
+        # admission (_str_field_value_read).
+        src = (
+            _PRELUDE
+            + "class P:\n"
+            + "    name: str\n"
+            + "    def __init__(self):\n"
+            + "        self.name = \"pat\"\n"
+            + "def f(p: P) -> None:\n"
+            + "    print(p.name)\n"
+            + "def main():\n"
+            + "    f(P())\n"
+            + "main()\n"
+        )
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+        thir = _lower_ctx(src)
+        stmt = _fn(thir, "f").body[0]
+        assert isinstance(stmt, THIRPrint)
+        assert stmt.args[0].print_form is PrintForm.RAW
+
+    def test_strview_field_arg_routes(self):
+        # A StrView field reads as a BORROW view; a print sink streams the
+        # bare member raw (`std::cout << p.name`), identical on both paths.
+        src = (
+            _PRELUDE
+            + "from tpy import StrView\n"
+            + "class P:\n"
+            + "    name: StrView\n"
+            + "    def __init__(self):\n"
+            + "        self.name = \"pat\"\n"
+            + "def f(p: P) -> None:\n"
+            + "    print(p.name)\n"
+            + "def main():\n"
+            + "    f(P())\n"
+            + "main()\n"
+        )
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+        thir = _lower_ctx(src)
+        stmt = _fn(thir, "f").body[0]
+        assert isinstance(stmt, THIRPrint)
+        assert stmt.args[0].print_form is PrintForm.RAW
+        arg = stmt.args[0].expr
+        assert isinstance(arg, THIRFieldAccess) and arg.form is Form.BORROW
 
     def test_bare_call_stmt_routes(self):
         # A same-module free-function call discarded for side effects (void return).
@@ -2080,12 +2294,70 @@ class TestDelStmt:
                       + "    del a, b\n    return n\n")
         assert _fn(thir, "f") is not None
 
-    def test_del_owned_str_is_ineligible(self):
+    def test_del_owned_str_sinks(self):
         # An owned-str local takes the move-sink face
-        # (`{ auto __del_sink = std::move(t); }`) -- gated out.
+        # (`{ auto __del_sink = std::move(t); }`).
         thir = _lower(_PRELUDE
                       + "def f(s: str) -> Int32:\n    t = s + \"x\"\n"
                       + "    del t\n    return 1\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+        assert isinstance(fn.body[1], THIRDelVar)
+        assert fn.body[1].sinks == (("t", False),)
+
+    def test_del_param_skips_as_noop(self):
+        # A non-value param is `const T&` -- the AST skips the sink (cannot
+        # move from const); THIR mirrors with the no-code face.
+        from .nodes import THIRNoOpStmt
+        thir = _lower(_PRELUDE
+                      + "def f(xs: list[Int32]) -> Int32:\n    n = len(xs)\n"
+                      + "    del xs\n    return n\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+        assert isinstance(fn.body[1], THIRNoOpStmt)
+
+    REC_SRC = (
+        "from tpy import Int32\n"
+        "class P:\n"
+        "    x: Int32\n"
+        "    def __init__(self, x: Int32):\n        self.x = x\n"
+        "def f() -> Int32:\n"
+        "    p = P(1)\n"
+        "    del p\n"
+        "    p = P(2)\n"
+        "    return p.x\n"
+        "def main():\n    print(f())\nmain()\n"
+    )
+
+    def test_del_rebind_pointer_local_sinks_deref(self):
+        # An owning rebind-slot pointer-local derefs first: the sink moves
+        # the pointee (`std::move(*p)`), not the pointer.
+        thir, w = _lower_ctx_witnessed(self.REC_SRC)
+        fn = _fn(thir, "f")
+        assert fn is not None
+        assert isinstance(fn.body[1], THIRDelVar)
+        assert fn.body[1].sinks == (("p", True),)
+        assert w.get("stmt.del_var_sink", 0) == 1
+
+    def test_del_sink_byte_identical(self):
+        compiler, modules = _compile(self.REC_SRC)
+        entry = _entry(modules)
+        ast = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=True))
+        thir = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=True, thir_codegen=True))
+        assert thir == ast
+        assert "{ auto __del_sink = std::move(*p); }" in thir[1]
+
+    def test_del_narrowed_name_falls_back(self):
+        # A narrowed binding has no mirrored sink render -- the body stays
+        # AST rather than sinking through the extraction alias.
+        thir = _lower_ctx(
+            _F1_RECORDS
+            + "def f(u: Leaf | Inner) -> Int32:\n"
+            + "    assert isinstance(u, Leaf)\n"
+            + "    del u\n"
+            + "    return 1\n")
         assert _fn(thir, "f") is None
 
     def test_del_item_routes(self):
@@ -2341,6 +2613,285 @@ class TestBreakContinueEmit:
         assert "break" in d and "continue" in d
 
 
+class TestLoopElseEmit:
+    """for/while else: the else block emits as a bare `{...}` past the loop's
+    close brace + its `__after_else_N:;` label; a break jumps the label. The
+    label draws iter_counter BEFORE the loop's own index (pinned by the
+    nested case's numbering)."""
+
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+        return cpp
+
+    SRC = (
+        _PRELUDE
+        + "def range_else(n: Int32) -> Int32:\n    r = -1\n"
+        + "    for i in range(n):\n        if i > 3:\n            r = i\n            break\n"
+        + "    else:\n        r = 0\n"
+        + "    return r\n"
+        + "def each_else(xs: list[Int32], lim: Int32) -> Int32:\n    r = -1\n"
+        + "    for x in xs:\n        if x > lim:\n            r = x\n            break\n"
+        + "    else:\n        r = 0\n"
+        + "    return r\n"
+        + "def while_else(n: Int32) -> Int32:\n    i = 0\n"
+        + "    while i < n:\n        if i == 5:\n            break\n        i = i + 1\n"
+        + "    else:\n        i = -1\n"
+        + "    return i\n"
+        + "def nested_else(n: Int32) -> Int32:\n    r = 0\n"
+        + "    for i in range(n):\n"
+        + "        for j in range(n):\n            if j > 1:\n                break\n"
+        + "        else:\n            r = r + 1\n"
+        + "    else:\n        r = r + 10\n"
+        + "    return r\n"
+        + "def main():\n    print(range_else(9))\n    print(each_else([1, 5, 9], 4))\n"
+        + "    print(while_else(3))\n    print(nested_else(3))\nmain()\n"
+    )
+
+    def test_routes_with_orelse(self):
+        thir = _lower(self.SRC)
+        for name in ("range_else", "each_else", "while_else", "nested_else"):
+            assert _fn(thir, name) is not None, name
+        assert len(_fn(thir, "while_else").body[1].orelse) == 1
+
+    def test_byte_identical_with_comments(self):
+        # The `// else:` comment must land exactly where the AST puts it --
+        # between the loop's close brace and the else block's open brace.
+        compiler, modules = _compile(self.SRC)
+        entry = _entry(modules)
+        ast = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=True))
+        thir = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=True, thir_codegen=True))
+        assert thir == ast
+
+    def test_else_labels_and_break_gotos(self):
+        cpp = self._cpp(self.SRC, thir=True)
+        assert "__after_else_0:;" in cpp
+        assert "goto __after_else_0;" in cpp
+        # Nested: the outer else label draws before the outer loop's index,
+        # the inner before the inner loop's -- 0 and 2.
+        body = cpp[cpp.index("nested_else("):]
+        assert "__after_else_2:;" in body and "goto __after_else_2;" in body
+
+    def test_witnesses(self):
+        _, w = _lower_ctx_witnessed(self.SRC)
+        assert w.get("loop.for_else", 0) >= 3
+        assert w.get("loop.while_else", 0) == 1
+
+    def test_break_goto_witness_records_at_emit(self):
+        compiler, modules = _compile(self.SRC)
+        entry = _entry(modules)
+        compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=True))
+        assert compiler._thir_face_witnesses.get("loop.break_else_goto", 0) >= 3
+
+    def test_unlowerable_else_body_falls_back(self):
+        # The else block lowers on the body's fallback boundary: an
+        # unroutable statement inside it (multi-target del-item) rejects the
+        # whole function, never a hybrid loop-without-else.
+        thir = _lower(
+            _PRELUDE
+            + "def f(d: dict[Int32, Int32], n: Int32) -> Int32:\n"
+            + "    for i in range(n):\n        pass\n"
+            + "    else:\n        del d[1], d[2]\n"
+            + "    return len(d)\n")
+        assert _fn(thir, "f") is None
+
+
+class TestForRangeCtorLiteralBoundEmit:
+    """`range(Int32(3))` bounds: folded like the AST's _extract_int_literal
+    ctor arm and inlined as the bare token -- no `__start_N`/`__stop_N`
+    hoist."""
+
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+        return cpp
+
+    SRC = (
+        _PRELUDE
+        + "def f() -> Int32:\n    acc = 0\n"
+        + "    for i in range(Int32(3)):\n        acc = acc + i\n    return acc\n"
+        + "def g() -> Int32:\n    acc = 0\n"
+        + "    for i in range(Int32(-2), Int32(4)):\n        acc = acc + i\n    return acc\n"
+        + "def main():\n    print(f())\n    print(g())\nmain()\n"
+    )
+
+    def test_byte_identical(self):
+        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
+
+    def test_routes_and_inlines_bounds(self):
+        thir = _lower(self.SRC)
+        loop = _fn(thir, "f").body[1]
+        assert isinstance(loop, THIRForRange) and loop.stop_is_literal
+        loop = _fn(thir, "g").body[1]
+        assert loop.start_is_literal and loop.stop_is_literal
+        cpp = self._cpp(self.SRC, thir=True)
+        assert "__stop_" not in cpp and "__start_" not in cpp
+        assert "i < 3" in cpp and "i = -2" in cpp
+
+
+class TestForEachValueOptElemEmit:
+    """A value-repr Optional[scalar] loop var: the typed
+    `std::optional<int32_t>` copy binding, with the narrowed body read
+    taking the value-repr deref (`(*item)`) via the registered binding."""
+
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+        return cpp
+
+    SRC = (
+        _PRELUDE
+        + "def total(items: list[Int32 | None]) -> Int32:\n    t = 0\n"
+        + "    for item in items:\n        if item is None:\n            continue\n"
+        + "        t = t + item\n    return t\n"
+        + "def main():\n    xs: list[Int32 | None] = list()\n"
+        + "    xs.append(2)\n    xs.append(None)\n    xs.append(3)\n"
+        + "    print(total(xs))\nmain()\n"
+    )
+
+    def test_byte_identical(self):
+        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
+
+    def test_renders_optional_binding_and_deref(self):
+        cpp = self._cpp(self.SRC, thir=True)
+        assert "std::optional<int32_t> item = *__beg_0;" in cpp
+        assert "(*item)" in cpp
+
+    def test_witness(self):
+        _, w = _lower_ctx_witnessed(self.SRC)
+        assert w.get("foreach.value_opt_elem", 0) == 1
+
+    def test_registration_is_loop_scoped(self):
+        # A same-named LOCAL after the loop must not inherit the loop var's
+        # value-opt registration -- its reads are plain scalar reads.
+        thir = _lower(
+            _PRELUDE
+            + "def f(items: list[Int32 | None]) -> Int32:\n    t = 0\n"
+            + "    for item in items:\n        if item is None:\n            continue\n"
+            + "        t = t + item\n"
+            + "    item = 7\n    return t + item\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+        ret = fn.body[-1]
+        # The post-loop `item` read stays a bare scalar name (no deref).
+        assert not any(getattr(n, "deref", False)
+                       for n in [ret.value.left, ret.value.right])
+
+    def test_optional_view_element_falls_back(self):
+        # Only the cheap-scalar/Char inner family is admitted; an
+        # Optional[str] element (view inner) stays on the AST path.
+        thir = _lower(
+            _PRELUDE
+            + "def f(items: list[str | None]) -> Int32:\n    n = 0\n"
+            + "    for s in items:\n        if s is None:\n            continue\n"
+            + "        n = n + 1\n    return n\n")
+        assert _fn(thir, "f") is None
+
+
+class TestForEachLiteralIterableEmit:
+    """A list-literal iterable: the owning `auto __obj_N = {a, b, c};`
+    initializer-list capture, elements rendered target-less."""
+
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+        return cpp
+
+    SRC = (
+        _PRELUDE
+        + "def total() -> Int32:\n    t = 0\n"
+        + "    for x in [2, 4, 6]:\n        t = t + x\n    return t\n"
+        + "def names() -> Int32:\n    n = 0\n"
+        + "    for s in [\"a\", \"bb\"]:\n        n = n + len(s)\n    return n\n"
+        + "def main():\n    print(total())\n    print(names())\nmain()\n"
+    )
+
+    def test_byte_identical(self):
+        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
+
+    def test_renders_initializer_list_capture(self):
+        cpp = self._cpp(self.SRC, thir=True)
+        assert "auto __obj_0 = {2, 4, 6};" in cpp
+        # str elements stay bare literals (no owned-copy wrap), the loop var
+        # is the usual view copy.
+        assert 'auto __obj_0 = {"a", "bb"};' in cpp
+        assert "std::string_view s = *__beg_0;" in cpp
+
+    def test_witness_and_rvalue_capture(self):
+        thir, w = _lower_ctx_witnessed(self.SRC)
+        assert w.get("foreach.iter_literal", 0) == 2
+        loop = _fn(thir, "total").body[1]
+        assert isinstance(loop, THIRForEach) and not loop.iterable_lvalue
+
+    def test_set_literal_iterable_falls_back(self):
+        # Only the list-literal shape is admitted; a set-literal iterable
+        # stays on the AST path (foreach.iter_shape).
+        thir = _lower(
+            _PRELUDE
+            + "def f() -> Int32:\n    t = 0\n"
+            + "    for x in {2, 4}:\n        t = t + x\n    return t\n")
+        assert _fn(thir, "f") is None
+
+
+class TestContainerRebindSlotEmit:
+    """A rebound container-literal local rides the F2d two-slot machinery:
+    `std::vector<T>* xs = &__slot_1;` + `xs = &*(__slot_2 = {...});`."""
+
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+        return cpp
+
+    SRC = (
+        _PRELUDE
+        + "def f() -> Int32:\n"
+        + "    items = [1, 2, 3]\n"
+        + "    n = len(items)\n"
+        + "    items = [4, 5]\n"
+        + "    return n + len(items)\n"
+        + "def main():\n    print(f())\nmain()\n"
+    )
+
+    def test_byte_identical(self):
+        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
+
+    def test_renders_two_slot_machinery(self):
+        cpp = self._cpp(self.SRC, thir=True)
+        assert "__slot_1 = {1, 2, 3};" in cpp
+        assert "std::optional<std::vector<int32_t>> __slot_2;" in cpp
+        assert "items = &*(__slot_2 = {4, 5});" in cpp
+
+    def test_witness(self):
+        _, w = _lower_ctx_witnessed(self.SRC)
+        assert w.get("decl.container_rebind_slot", 0) == 1
+
+    def test_name_rebound_container_falls_back(self):
+        # A container local rebound from a NAME is the lvalue-reseat pointer
+        # shape (`items = &(b);`), not the rebind slot -- stays AST.
+        thir = _lower(
+            _PRELUDE
+            + "def f() -> Int32:\n"
+            + "    b = [7, 8]\n"
+            + "    items = [1, 2]\n"
+            + "    items = b\n"
+            + "    return len(items)\n")
+        assert _fn(thir, "f") is None
+
+
 class TestTriviaBodies:
     """Docstring / `pass` trivia in function bodies (the M3c-trivia arm made
     body-wide): pass-only and docstring-only bodies route; `pass` keeps its
@@ -2557,6 +3108,116 @@ class TestBoolMethodCondition:
         fn = _fn(thir, "probe")
         assert fn is not None
         assert witnessed.get("truthy.nonempty", 0) >= 1
+
+
+class TestBoolFreeCallCondition:
+    """`if f(x):` / `while f(x):` / `assert f(x)` over a bool free call --
+    the free-call twin of the bool method-call condition arm."""
+
+    SRC = (
+        "from tpy import Int32\n"
+        "def is_even(n: Int32) -> bool:\n"
+        "    return n % 2 == 0\n"
+        "def tick(n: Int32) -> Int32:\n"
+        "    total = 0\n"
+        "    if is_even(n):\n"
+        "        total += 1\n"
+        "    while is_even(total):\n"
+        "        total += 1\n"
+        "    assert is_even(4)\n"
+        "    return total\n"
+        "def main():\n"
+        "    print(tick(4))\n"
+        "main()\n"
+    )
+
+    def test_routes_and_face_witnessed(self):
+        thir, witnessed = _lower_ctx_witnessed(self.SRC)
+        assert _fn(thir, "tick") is not None
+        assert witnessed.get("cond.bool_call", 0) >= 3
+
+    def test_byte_identical(self):
+        compiler, modules = _compile(self.SRC)
+        entry = _entry(modules)
+        ast_out = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False))
+        thir_out = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=True))
+        assert thir_out == ast_out
+
+    def test_nonbool_call_condition_stays_ast(self):
+        # An Int32 result also renders bare on the AST path, but the slice
+        # pins bool like the method arm.
+        src = (
+            "from tpy import Int32\n"
+            "def size() -> Int32:\n"
+            "    return 2\n"
+            "def spin() -> Int32:\n"
+            "    if size():\n"
+            "        return 1\n"
+            "    return 0\n"
+            "def main():\n"
+            "    print(spin())\n"
+            "main()\n"
+        )
+        thir, witnessed = _lower_ctx_witnessed(src)
+        assert _fn(thir, "spin") is None
+        assert witnessed.get("cond.bool_call", 0) == 0
+
+    def test_rebound_container_truthiness_derefs_once(self):
+        # A rebound container local is a `T*` whose name read already derefs
+        # `(*xs)`; the THIRTruthy pointer-deref must not stack a second one
+        # (`__len__((*(*xs)))` is invalid C++). No corpus case reaches this
+        # composition, so the byte-diff cannot guard it.
+        src = (
+            "from tpy import Int32\n"
+            "def f() -> Int32:\n"
+            "    xs = [1, 2, 3]\n"
+            "    xs = [4, 5]\n"
+            "    if xs:\n"
+            "        return 1\n"
+            "    return 0\n"
+            "def main():\n"
+            "    print(f())\n"
+            "main()\n"
+        )
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        ast_out = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False))
+        thir_out = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=True))
+        assert thir_out == ast_out
+        assert "(*(*" not in thir_out[1]
+
+    def test_isinstance_condition_never_takes_call_arm(self):
+        # isinstance conditions belong to the narrowing machinery (in-branch
+        # extraction aliases, statically-proven `if (true)` folds) -- the
+        # bare-call render would drop those, so the arm must never admit
+        # them. Guards the divergence the first corpus flip check caught in
+        # the union family (a narrowed subject's redundant isinstance).
+        src = (
+            "from tpy import Int32\n"
+            "class Cat:\n"
+            "    name: str\n"
+            "    def __init__(self):\n"
+            "        self.name = \"tom\"\n"
+            "class Dog:\n"
+            "    name: str\n"
+            "    def __init__(self):\n"
+            "        self.name = \"rex\"\n"
+            "def get_name(pet: Cat | Dog) -> Int32:\n"
+            "    if isinstance(pet, Cat):\n"
+            "        return 1\n"
+            "    return 0\n"
+            "def main():\n"
+            "    print(get_name(Cat()))\n"
+            "main()\n"
+        )
+        thir, witnessed = _lower_ctx_witnessed(src)
+        assert witnessed.get("cond.bool_call", 0) == 0
 
 
 class TestImportedCallee:
@@ -3233,3 +3894,362 @@ class TestRecordFieldWrite:
         st = fn.body[0]
         assert isinstance(st, THIRAssign)
         assert not isinstance(st.value, THIRFormConvert)  # bare copy, no move
+
+
+class TestClassConstantRead:
+    """Class-constant reads (`C.X` / `c.X` / `self.X` / `Outer.Inner.X`):
+    the bare qualified static spelled at lowering (field.class_const).
+    Only the receiver_eval-None shapes route; an effectful or
+    unproven-Optional receiver (the AST's statement-expression /
+    deref_check wrappers) keeps the body on the AST path."""
+
+    SRC = (
+        "from typing import Final\n"
+        "from tpy import Int32\n"
+        "class C:\n"
+        "    LIMIT: Final[Int32] = 10\n"
+        "    NAME: Final[str] = \"c\"\n"
+        "    def __init__(self) -> None:\n        pass\n"
+        "    def show(self) -> Int32:\n        return self.LIMIT\n"
+        "class Outer:\n"
+        "    class Inner:\n"
+        "        TAG: Final[Int32] = 42\n"
+        "def f() -> None:\n"
+        "    print(C.LIMIT)\n"
+        "    c = C()\n"
+        "    print(c.LIMIT)\n"
+        "    print(Outer.Inner.TAG)\n"
+        "def main():\n"
+        "    f()\n"
+        "    print(C().show())\n"
+        "main()\n"
+    )
+
+    def _cpp(self, src, thir):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        return compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=thir))
+
+    def test_routes_and_spelling(self):
+        thir, witnessed = _lower_ctx_witnessed(self.SRC)
+        fn = _fn(thir, "f")
+        assert fn is not None
+        reads = [a.expr for st in fn.body if isinstance(st, THIRPrint)
+                 for a in st.args]
+        assert [r.cpp for r in reads if isinstance(r, THIRClassConstant)] \
+            == ["C::LIMIT", "C::LIMIT", "Outer::Inner::TAG"]
+        # `self.LIMIT` routes through the same arm inside the method.
+        assert _fn(thir, "show") is not None
+        assert witnessed.get("field.class_const", 0) >= 4
+
+    def test_byte_identical(self):
+        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
+
+    def test_strview_constant_is_borrow(self):
+        # A `Final[str]` constant reads as a StrView (BORROW) -- the print
+        # sink streams it raw; an owned sink downstream would copy.
+        src = (
+            "from typing import Final\n"
+            "class H:\n"
+            "    AGENT: Final[str] = \"tpy/0.1\"\n"
+            "def f() -> None:\n"
+            "    print(H.AGENT)\n"
+            "f()\n"
+        )
+        thir, witnessed = _lower_ctx_witnessed(src)
+        fn = _fn(thir, "f")
+        assert fn is not None
+        arg = fn.body[0].args[0].expr
+        assert isinstance(arg, THIRClassConstant) and arg.form is Form.BORROW
+        assert arg.cpp == "H::AGENT"
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+
+    def test_effectful_receiver_stays_ast(self):
+        # `make().LIMIT`: the AST evaluates the receiver for effects inside
+        # a statement expression -- a render this arm does not reproduce.
+        src = (
+            "from typing import Final\n"
+            "from tpy import Int32, Own\n"
+            "class C:\n"
+            "    LIMIT: Final[Int32] = 10\n"
+            "    def __init__(self) -> None:\n        pass\n"
+            "def make() -> Own[C]:\n"
+            "    return C()\n"
+            "def f() -> None:\n"
+            "    print(make().LIMIT)\n"
+            "f()\n"
+        )
+        thir, witnessed = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is None
+        assert witnessed.get("field.class_const", 0) == 0
+
+    def test_unproven_optional_receiver_stays_ast(self):
+        # An unproven `Optional[C]` receiver carries the runtime null check
+        # (`deref_check`) around the constant -- out of the arm.
+        src = (
+            "from typing import Final, Optional\n"
+            "from tpy import Int32\n"
+            "class C:\n"
+            "    LIMIT: Final[Int32] = 10\n"
+            "    def __init__(self) -> None:\n        pass\n"
+            "def use(c: Optional[C]) -> None:\n"
+            "    print(c.LIMIT)\n"
+            "use(C())\n"
+        )
+        thir, witnessed = _lower_ctx_witnessed(src)
+        assert _fn(thir, "use") is None
+        assert witnessed.get("field.class_const", 0) == 0
+
+
+class TestClassConstantWrite:
+    """Class-constant / classvar writes (`C.X = v` / `obj.X += v`): the bare
+    qualified lvalue (field_write.class_const / aug.class_const), with a
+    costly receiver split into a leading eval statement (deref_check /
+    static_cast<void> -- field_write.cc_recv_*). Scalar constants only; a
+    checked FIELD receiver (deref_optional_check) keeps the body on AST."""
+
+    SRC = (
+        "from typing import ClassVar\n"
+        "from tpy import Int32\n"
+        "class Counter:\n"
+        "    instances: ClassVar[Int32] = 0\n"
+        "    def __init__(self) -> None:\n"
+        "        Counter.instances += 1\n"
+        "def f() -> None:\n"
+        "    Counter.instances = 0\n"
+        "    c = Counter()\n"
+        "    c.instances = 5\n"
+        "    Counter.instances += 7\n"
+        "    print(Counter.instances)\n"
+        "def main():\n"
+        "    f()\n"
+        "main()\n"
+    )
+
+    RECV_SRC = (
+        "from typing import ClassVar, Optional\n"
+        "from tpy import Int32, Own\n"
+        "class C:\n"
+        "    n: ClassVar[Int32] = 0\n"
+        "    def __init__(self) -> None:\n        pass\n"
+        "def make() -> Own[C]:\n"
+        "    return C()\n"
+        "def store(c: Optional[C]) -> None:\n"
+        "    c.n = 5\n"
+        "def effect() -> None:\n"
+        "    make().n = 6\n"
+        "    cs: list[C] = [C(), C()]\n"
+        "    cs[0].n += 3\n"
+        "def main():\n"
+        "    store(C())\n"
+        "    effect()\n"
+        "main()\n"
+    )
+
+    def _cpp(self, src, thir):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        return compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=thir))
+
+    def test_routes_and_shapes(self):
+        thir, witnessed = _lower_ctx_witnessed(self.SRC)
+        fn = _fn(thir, "f")
+        assert fn is not None
+        plain = fn.body[0]
+        assert isinstance(plain, THIRAssign)
+        assert isinstance(plain.target, THIRClassConstant)
+        assert plain.target.cpp == "Counter::instances"
+        assert plain.recv_eval is None and plain.recv_wrap is None
+        # `c.instances = 5` writes through to the same class-scoped lvalue.
+        via_inst = fn.body[2]
+        assert isinstance(via_inst, THIRAssign)
+        assert isinstance(via_inst.target, THIRClassConstant)
+        assert via_inst.recv_eval is None
+        # `Counter.instances += 7` -> the binop substitution over the same
+        # qualified name on both sides.
+        aug = fn.body[3]
+        assert isinstance(aug, THIRAssign)
+        assert isinstance(aug.value, THIRBinOp)
+        assert isinstance(aug.value.left, THIRClassConstant)
+        assert witnessed.get("field_write.class_const", 0) >= 2
+        assert witnessed.get("aug.class_const", 0) >= 1
+
+    def test_ctor_aug_routes(self):
+        # The ctor body's `Counter.instances += 1` routes through the same arm.
+        ctor = _lower_ctor(self.SRC, "Counter")
+        assert ctor is not None
+        aug = ctor.body[0]
+        assert isinstance(aug, THIRAssign)
+        assert isinstance(aug.target, THIRClassConstant)
+        assert isinstance(aug.value, THIRBinOp)
+
+    def test_byte_identical(self):
+        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
+
+    def test_receiver_evals_split_off(self):
+        thir, witnessed = _lower_ctx_witnessed(self.RECV_SRC)
+        # Unproven-Optional pointer-name receiver: `::tpy::deref_check(c);`
+        # precedes the qualified assign.
+        store = _fn(thir, "store")
+        assert store is not None
+        st = store.body[0]
+        assert isinstance(st, THIRAssign)
+        assert st.recv_wrap == "::tpy::deref_check({0})"
+        assert isinstance(st.recv_eval, THIRName) and st.recv_eval.name == "c"
+        # Effectful receivers evaluate once via `static_cast<void>(...)`:
+        # a record-returning call (assign) and a container subscript (aug).
+        eff = _fn(thir, "effect")
+        assert eff is not None
+        call_write = eff.body[0]
+        assert isinstance(call_write, THIRAssign)
+        assert call_write.recv_wrap == "static_cast<void>({0})"
+        aug_write = eff.body[2]
+        assert isinstance(aug_write, THIRAssign)
+        assert aug_write.recv_wrap == "static_cast<void>({0})"
+        assert isinstance(aug_write.value, THIRBinOp)
+        assert witnessed.get("field_write.cc_recv_check", 0) >= 1
+        assert witnessed.get("field_write.cc_recv_effect", 0) >= 2
+
+    def test_receiver_evals_byte_identical(self):
+        assert (self._cpp(self.RECV_SRC, thir=True)
+                == self._cpp(self.RECV_SRC, thir=False))
+
+    def test_checked_field_receiver_stays_ast(self):
+        # An unproven-Optional FIELD receiver takes the AST's
+        # deref_optional_check render -- out of the write arm.
+        src = (
+            "from typing import ClassVar, Optional\n"
+            "from tpy import Int32\n"
+            "class C:\n"
+            "    n: ClassVar[Int32] = 0\n"
+            "    def __init__(self) -> None:\n        pass\n"
+            "class H:\n"
+            "    c: C | None\n"
+            "    def __init__(self) -> None:\n"
+            "        self.c = C()\n"
+            "def store(h: H) -> None:\n"
+            "    h.c.n = 5\n"
+            "def main():\n"
+            "    store(H())\n"
+            "main()\n"
+        )
+        thir, witnessed = _lower_ctx_witnessed(src)
+        assert _fn(thir, "store") is None
+        assert witnessed.get("field_write.class_const", 0) == 0
+
+
+class TestModuleVarRead:
+    """`mod.X` module-variable reads (field.module_var): the fixed registered
+    spelling composed at lowering -- the qualified `cpp_expr` for a plain
+    value global, the declared native symbol for a native_global. A
+    non-value (pointer-slot) module var stays on the AST path."""
+
+    HELPER = (
+        "from typing import Final\n"
+        "from tpy import Int32, StrView\n"
+        "G: Int32 = 5\n"
+        "NAME: Final[str] = \"hello\"\n"
+        "items: list[Int32] = [1, 2]\n"
+    )
+    SRC = (
+        "import helper\n"
+        "from tpy import Int32\n"
+        "def read_g() -> Int32:\n"
+        "    return helper.G + 1\n"
+        "def read_name() -> None:\n"
+        "    print(helper.NAME)\n"
+        "def read_items() -> Int32:\n"
+        "    return helper.items[0]\n"
+        "def main() -> None:\n"
+        "    print(read_g(), read_items())\n"
+        "    read_name()\n"
+        "main()\n"
+    )
+
+    def _lowered(self, tmp_path):
+        (tmp_path / "helper.py").write_text(self.HELPER)
+        return _lower_ctx_witnessed(self.SRC, extra_lib_dirs=[tmp_path])
+
+    def test_module_var_reads_route_with_spelling(self, tmp_path):
+        thir, witnessed = self._lowered(tmp_path)
+        fn = _fn(thir, "read_g")
+        assert fn is not None
+        read = fn.body[0].value.left
+        assert isinstance(read, THIRModuleVar)
+        assert read.cpp == "::tpyapp::helper::G"
+        name_fn = _fn(thir, "read_name")
+        assert name_fn is not None
+        arg = name_fn.body[0].args[0].expr
+        assert isinstance(arg, THIRModuleVar) and arg.form is Form.BORROW
+        assert arg.cpp == "::tpyapp::helper::NAME"
+        assert witnessed.get("field.module_var", 0) >= 2
+
+    def test_nonvalue_module_var_stays_ast(self, tmp_path):
+        # `helper.items` is a pointer slot -- the `(*slot)` receiver read is
+        # outside the value-leaf family this arm pins.
+        thir, _ = self._lowered(tmp_path)
+        assert _fn(thir, "read_items") is None
+
+    def test_byte_identical(self, tmp_path):
+        (tmp_path / "helper.py").write_text(self.HELPER)
+        compiler, modules = _compile(self.SRC, extra_lib_dirs=[tmp_path])
+        entry = _entry(modules)
+        ast_out = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False))
+        thir_out = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=True))
+        assert thir_out == ast_out
+        assert "::tpyapp::helper::G" in thir_out[1]
+
+
+class TestGlobalRecordReceiverRead:
+    """Field reads off a SAME-module global-record receiver
+    (field.global_record_recv): the bare pointer-slot name with an arrow
+    (`gate->x`). Reads only -- global field writes keep the AST path."""
+
+    SRC = (
+        "from tpy import Int32\n"
+        "class Gate:\n"
+        "    x: Int32\n"
+        "    def __init__(self) -> None:\n"
+        "        self.x = 7\n"
+        "gate: Gate = Gate()\n"
+        "def read() -> Int32:\n"
+        "    return gate.x\n"
+        "def write() -> None:\n"
+        "    gate.x = 9\n"
+        "def main() -> None:\n"
+        "    print(read())\n"
+        "    write()\n"
+        "main()\n"
+    )
+
+    def test_read_routes_with_arrow(self):
+        thir, witnessed = _lower_ctx_witnessed(self.SRC)
+        fn = _fn(thir, "read")
+        assert fn is not None
+        ret = fn.body[0]
+        assert isinstance(ret.value, THIRFieldAccess) and ret.value.is_arrow
+        recv = ret.value.receiver
+        assert isinstance(recv, THIRName) and recv.name == "gate"
+        assert witnessed.get("field.global_record_recv", 0) == 1
+
+    def test_write_stays_ast(self):
+        thir, witnessed = _lower_ctx_witnessed(self.SRC)
+        assert _fn(thir, "write") is None
+
+    def test_byte_identical(self):
+        compiler, modules = _compile(self.SRC)
+        entry = _entry(modules)
+        ast_out = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False))
+        thir_out = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=True))
+        assert thir_out == ast_out
+        assert "gate->x" in thir_out[1]

@@ -443,3 +443,76 @@ class TestCompStrUnpackTarget:
         assert out == _cpp(self.SRC, thir=False)
         assert "std::string k = std::get<0>(" in out
         assert "__result.insert(k)" in out
+
+
+class TestDictCompContainerValue:
+    """The dict-comp list/Array VALUE slot widening: a container-literal
+    value renders self-describing (`std::array<int32_t, 2>{...}` -- the
+    typed_brace_init mirror; insert_or_assign is a template that cannot
+    deduce a bare brace-init) and a nested comprehension value recurses into
+    the stmt-expr render (the inner `__result` shadow / `__stop_N` numbering
+    continue the enclosing body's streams)."""
+
+    SRC = (
+        _PRELUDE
+        + "def fixed() -> None:\n"
+        + "    d = {i: [i, i + 1] for i in range(3)}\n"
+        + "    print(d)\n"
+        + "def jagged() -> None:\n"
+        + "    d = {i: [k for k in range(i)] for i in range(4)}\n"
+        + "    print(d)\n"
+        + "def main():\n    fixed()\n    jagged()\nmain()\n"
+    )
+
+    def test_routes(self):
+        thir = _lower(self.SRC)
+        assert _fn(thir, "fixed") is not None
+        assert _fn(thir, "jagged") is not None
+
+    def test_faces_witnessed(self):
+        _, w = _lower_ctx_witnessed(self.SRC)
+        assert w.get("comp.container_value", 0) >= 2
+        assert w.get("comp.nested", 0) >= 1
+
+    def test_byte_identical(self):
+        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
+        assert (_cpp(self.SRC, thir=True, comments=True)
+                == _cpp(self.SRC, thir=False, comments=True))
+
+    def test_array_value_renders_self_typed(self):
+        cpp = _cpp(self.SRC, thir=True)
+        assert ("__result.insert_or_assign(i, std::array<int32_t, 2>"
+                "{i, (::tpy::add_check<int32_t>(i, 1))});") in cpp
+
+    def test_nested_comp_value_renders_stmt_expr(self):
+        cpp = _cpp(self.SRC, thir=True)
+        # The inner comp opens inside the insert, shadows __result, and draws
+        # the next __stop index after the outer comp's.
+        assert "__result.insert_or_assign(i, ({" in cpp
+        assert "const int32_t __stop_1 = i;" in cpp
+        assert "__result.push_back(k);" in cpp
+
+    def test_name_value_rejects(self):
+        # A container NAME value (per-entry copy semantics) is unvetted --
+        # only the literal / nested-comp sources route.
+        src = (_PRELUDE
+               + "def f(n: Int32) -> Int32:\n"
+               + "    xs = [1, 2]\n"
+               + "    d = {i: xs for i in range(n)}\n"
+               + "    return len(d)\n"
+               + "print(f(3))\n")
+        thir = _lower(src)
+        assert _fn(thir, "f") is None
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+    def test_list_comp_container_elem_still_rejects(self):
+        # The widening is dict-VALUE-only: a list-of-list comp element slot
+        # keeps rejecting (push_back arm unvetted).
+        src = (_PRELUDE
+               + "def f(n: Int32) -> Int32:\n"
+               + "    xs = [[k for k in range(i)] for i in range(n)]\n"
+               + "    return len(xs)\n"
+               + "print(f(3))\n")
+        thir = _lower(src)
+        assert _fn(thir, "f") is None
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)

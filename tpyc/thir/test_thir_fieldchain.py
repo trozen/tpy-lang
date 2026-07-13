@@ -92,3 +92,77 @@ class TestFieldChainRejects:
         assert self._rejects(
             "inner: Inner | None",
             "def f(o: Outer) -> Int32:\n    return o.mid.inner.v\n")
+
+
+class TestFieldOverCallRead:
+    """Value field reads off an F1-record-returning call receiver
+    (field.call_recv): the bare postfix member over the call render --
+    `make(10, 20).x` (free call rvalue), `h.boxed.get().x` (method borrow
+    return), ctor receivers. The inner call lowers through its own arms, so
+    an unsupported call shape still falls the body back."""
+
+    SRC = (
+        "from tpy import Int32, Own\n"
+        "class Point:\n"
+        "    x: Int32\n"
+        "    y: Int32\n"
+        "    def __init__(self, x: Int32, y: Int32):\n"
+        "        self.x = x\n        self.y = y\n"
+        "class Holder:\n"
+        "    p: Point\n"
+        "    def __init__(self, p: Own[Point]):\n        self.p = p\n"
+        "    def get(self) -> Point:\n        return self.p\n"
+        "def make(x: Int32, y: Int32) -> Own[Point]:\n"
+        "    return Point(x, y)\n"
+        "def free_call_recv() -> Int32:\n"
+        "    return make(10, 20).x\n"
+        "def ctor_recv() -> Int32:\n"
+        "    return Point(1, 2).y\n"
+        "def method_recv(h: Holder) -> Int32:\n"
+        "    return h.get().x\n"
+        "def main() -> None:\n"
+        "    print(free_call_recv(), ctor_recv())\n"
+        "    print(method_recv(Holder(Point(3, 4))))\n"
+        "main()\n"
+    )
+
+    def _emit(self, src: str, thir: bool) -> str:
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        hpp, cpp = compiler.generate_code_to_strings(
+            entry,
+            options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+        return hpp + cpp
+
+    def test_routed_and_witnessed(self):
+        thir, witnessed = _lower_ctx_witnessed(self.SRC)
+        for name in ("free_call_recv", "ctor_recv", "method_recv"):
+            assert _fn(thir, name) is not None, name
+        assert witnessed.get("field.call_recv", 0) >= 3
+
+    def test_byte_identical(self):
+        assert self._emit(self.SRC, thir=True) == self._emit(self.SRC, thir=False)
+
+    def test_emit_postfix_member(self):
+        cpp = self._emit(self.SRC, thir=True)
+        assert "return make(10, 20).x;" in cpp
+        assert "return h.get().x;" in cpp
+
+    def test_unsupported_field_family_falls_back(self):
+        # A `String` field resolves outside the routed result families, so
+        # the read off a call receiver rejects at the family gate before the
+        # receiver widening is even consulted -- the body stays AST.
+        src = (
+            "from tpy import Own, String\n"
+            "class P:\n"
+            "    s: String\n"
+            "    def __init__(self):\n        self.s = String(\"a\")\n"
+            "def make() -> Own[P]:\n"
+            "    return P()\n"
+            "def f() -> None:\n"
+            "    print(make().s)\n"
+            "f()\n"
+        )
+        thir, witnessed = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is None
+        assert witnessed.get("field.call_recv", 0) == 0

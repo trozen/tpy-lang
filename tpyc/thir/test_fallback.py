@@ -134,11 +134,12 @@ def test_end_to_end_first_reject_reasons():
 
 
 def test_function_lowering_reject_falls_back_without_scope_residue():
+    # Multi-target `del d[..], d[..]` is a durable mid-body reject (one THIR
+    # statement cannot carry the shared source comment).
     compiler, modules = _compile(
         "from tpy import Int32\n"
-        "def rejected(s: str) -> Int32:\n"
-        "    t = s + 'x'\n"
-        "    del t\n"
+        "def rejected(d: dict[Int32, Int32]) -> Int32:\n"
+        "    del d[1], d[2]\n"
         "    return 1\n"
         "def clean(n: Int32) -> Int32:\n"
         "    return n + 1\n"
@@ -154,7 +155,7 @@ def test_function_lowering_reject_falls_back_without_scope_residue():
             else:
                 routed.append(fn.name)
     assert compiler._thir_fallback.get(
-        "body:stmt.del_var:nontrivial") == 1
+        "body:stmt.del_item:multi_target") == 1
     assert "clean" in routed
 
 
@@ -165,8 +166,8 @@ def test_constructor_lowering_reject_falls_back():
         "    n: Int32\n"
         "    def __init__(self, n: Int32):\n"
         "        self.n = n\n"
-        "        s = 'x' + 'y'\n"
-        "        del s\n"
+        "        d = {1: 2, 3: 4}\n"
+        "        del d[1], d[3]\n"
     )
     entry = _entry(modules)
     with activate_compiler(compiler):
@@ -179,7 +180,7 @@ def test_constructor_lowering_reject_falls_back():
             fold_attempt("ctor")
     assert ctor is None
     assert compiler._thir_fallback.get(
-        "ctor:stmt.del_var:nontrivial") == 1
+        "ctor:stmt.del_item:multi_target") == 1
 
 
 def test_base_init_arg_lowering_reject_falls_back():
@@ -383,14 +384,15 @@ def test_while_bool_literal_routes_at_constructor_boundary():
 
 
 def test_for_lowering_reject_falls_back_at_sync_boundary():
+    # The loop var read after the loop -> sema hoists it, a shape the
+    # for-loop gate durably rejects.
     compiler, modules = _compile(
         "from tpy import Int32\n"
         "def rejected(n: Int32) -> Int32:\n"
+        "    i = 0\n"
         "    for i in range(n):\n"
         "        n = n + i\n"
-        "    else:\n"
-        "        n = n + 1\n"
-        "    return n\n"
+        "    return n + i\n"
         "def clean(n: Int32) -> Int32:\n"
         "    return n + 1\n"
     )
