@@ -49,7 +49,9 @@ from tpyc.compiler import (
     Compiler, CompileError, BuildLayout, CppCompilerConfig, strict_warn_flags,
     get_or_build_pch, list_compilers, CompilerNotFoundError,
 )
-from tpyc.build.third_party import resolve_build_plan
+from tpyc.build.third_party import (
+    resolve_build_plan, ThirdPartyMode, THIRD_PARTY_MODES, known_lib_names,
+)
 from tpyc.thir.faces import THIR_FACES
 
 # Default options for tests: emit source comments for easier debugging
@@ -69,6 +71,43 @@ CPP_CONFIG.warn_flags = strict_warn_flags(CPP_CONFIG.compiler)
 # compiles, would keep using ccache despite the flag.
 if os.environ.get("TPY_TEST_NO_CCACHE") == "1":
     CPP_CONFIG.ccache = False
+
+# Third-party dependency mode overrides for the exec build (--dep-mode
+# lib=mode), mirroring `tpyc --<lib>=<mode>`. Empty means each lib's
+# default_mode (bundled). Filled in pytest_configure before the xdist-worker
+# early return -- workers do the per-case compiles, so they parse it too.
+# Scope: the tests/cases exec phase; the interop harness builds through the
+# real `tpyc -b` CLI and keeps the CLI defaults.
+DEP_MODES: dict[str, ThirdPartyMode] = {}
+
+
+def _parse_dep_modes(specs: list[str]) -> dict[str, ThirdPartyMode]:
+    """Parse --dep-mode values ("lib=mode", comma-separable, repeatable) into
+    a modes dict for resolve_build_plan. Raises ValueError on an unknown lib
+    or mode. Extracted from pytest_configure so it is unit-testable.
+
+    Two tpyc modes are excluded: "none" -- the stdlib prewarm always
+    resolves every declared dep (re/ssl are compiled into the shared .o set
+    regardless of what a case imports), so a disabled lib can only crash the
+    session via DisabledLibError; and "auto" -- once it learns real system
+    probing, the probe OUTCOME would not be captured by the stdlib cache key
+    (which folds only the mode string), inviting stale caches."""
+    allowed = [m for m in THIRD_PARTY_MODES if m not in ("none", "auto")]
+    modes: dict[str, ThirdPartyMode] = {}
+    for spec in specs:
+        for item in spec.split(","):
+            item = item.strip()
+            if not item:
+                continue
+            lib, sep, mode = item.partition("=")
+            lib, mode = lib.strip(), mode.strip()
+            if not sep or lib not in known_lib_names() or mode not in allowed:
+                raise ValueError(
+                    f"--dep-mode: invalid spec {item!r} (expected <lib>=<mode> "
+                    f"with lib in {known_lib_names()} and mode in {allowed})"
+                )
+            modes[lib] = mode  # type: ignore[assignment]
+    return modes
 
 # Paths
 TESTS_DIR = Path(__file__).parent
@@ -100,6 +139,11 @@ class _StdlibCache:
     # codegen still determines the binary -- a case's exec fingerprint must
     # fold this in or a change there would be a stale-green skip.
     output_hash: str = ""
+    # Link flags for third-party deps resolved in system mode (--dep-mode):
+    # their .o are then NOT compiled into the cache, but stdlib .o still
+    # reference their symbols, so every case linking the cache needs these
+    # flags -- imported-or-not. Empty in bundled mode.
+    link_flags: list[str] = field(default_factory=list)
 
 
 _stdlib_cache: _StdlibCache | None = None
@@ -211,12 +255,13 @@ def _setup_stdlib_cache(cache_dir: Path) -> _StdlibCache:
 
     # Add include dirs for any third-party deps declared by stdlib modules
     # (e.g. `# tpy: link_third_party("pcre2")` in _bindings/pcre2.py needs the
-    # PCRE2 header on -I). We always resolve in bundled mode here -- the
-    # cache key includes runtime + lib hashes so the cache is per-mode-implicit.
+    # PCRE2 header on -I). Modes come from --dep-mode (default: each lib's
+    # default_mode, bundled); _stdlib_cache_key folds any overrides so
+    # per-mode caches never collide.
     third_party_plan = resolve_build_plan(
         dep_names=compiler.collect_third_party_deps(),
         runtime_cpp_dir=RUNTIME_DIR.parent,
-        modes={},  # use each lib's default_mode (bundled for pcre2)
+        modes=DEP_MODES,
     )
     third_party_includes: list[str] = []
     for d in third_party_plan.extra_include_dirs:
@@ -330,7 +375,8 @@ def _setup_stdlib_cache(cache_dir: Path) -> _StdlibCache:
             return _StdlibCache(objects=[], cpp_relpaths=set())
         objects.extend(rt_objs)
 
-    return _StdlibCache(objects=objects, cpp_relpaths=relpaths, output_hash=output_hash)
+    return _StdlibCache(objects=objects, cpp_relpaths=relpaths, output_hash=output_hash,
+                        link_flags=list(third_party_plan.extra_link_flags))
 
 
 _SHARED_CACHE_ROOT_ENV = "TPYC_SHARED_CACHE_DIR"
@@ -401,6 +447,12 @@ def _stdlib_cache_key() -> str:
         CPP_CONFIG.extra_flags,
         CPP_CONFIG.warn_flags,
     )).encode())
+    # Dep-mode overrides change the .o set (bundled third-party .c compiled
+    # in vs. left to the system lib). Folded only when non-empty so default
+    # (bundled) runs keep their existing cache keys.
+    if DEP_MODES:
+        h.update(b"\0dep-modes:")
+        h.update(repr(sorted(DEP_MODES.items())).encode())
     return h.hexdigest()
 
 
@@ -420,10 +472,13 @@ def _load_persistent_stdlib_cache(cache_dir: Path) -> _StdlibCache | None:
         return _StdlibCache(
             objects=objects,
             cpp_relpaths=set(data["cpp_relpaths"]),
-            # Empty fallback for pre-output_hash metadata is safe: this dir is
-            # content-addressed by _stdlib_cache_key, so legacy .o are reused
-            # only while byte-identical -- any change re-keys and rebuilds.
+            # Empty fallbacks for pre-output_hash / pre-link_flags metadata are
+            # safe: this dir is content-addressed by _stdlib_cache_key, so
+            # legacy .o are reused only while byte-identical -- any change
+            # re-keys and rebuilds (and legacy dirs are all bundled-mode, whose
+            # link_flags are genuinely empty).
             output_hash=data.get("output_hash", ""),
+            link_flags=list(data.get("link_flags", [])),
         )
     except (OSError, KeyError, json.JSONDecodeError, TypeError):
         return None
@@ -458,11 +513,12 @@ def _build_persistent_stdlib_cache(cache_dir: Path) -> _StdlibCache | None:
             "objects": rebased_objects,
             "cpp_relpaths": sorted(cache.cpp_relpaths),
             "output_hash": cache.output_hash,
+            "link_flags": cache.link_flags,
         }
         (cache_dir / "metadata.json").write_text(json.dumps(metadata, indent=2) + "\n")
         (cache_dir / ".ready").touch()
         return _StdlibCache(objects=rebased_objects, cpp_relpaths=cache.cpp_relpaths,
-                            output_hash=cache.output_hash)
+                            output_hash=cache.output_hash, link_flags=cache.link_flags)
     finally:
         if build_tmp.exists():
             shutil.rmtree(build_tmp, ignore_errors=True)
@@ -992,12 +1048,12 @@ def compile_with_diagnostics(src_file: Path, output_dir: Path, default_int: str 
         div_zero_facts = ctx.div_zero_facts if ctx else None
         cast_safe_facts = ctx.cast_safe_facts if ctx else None
         link_flags = compiler.collect_link_flags()
-        # Resolve third-party deps in bundled mode (default for tests). When
-        # a system-mode test variant is needed, switch the modes dict here.
+        # Resolve third-party deps for this case's own imports; modes come
+        # from --dep-mode (default: bundled).
         tp_plan = resolve_build_plan(
             dep_names=compiler.collect_third_party_deps(),
             runtime_cpp_dir=RUNTIME_DIR.parent,
-            modes={},
+            modes=DEP_MODES,
         )
         return CompileResult(success=True, diagnostics=diagnostics, hpp_path=hpp_path, cpp_path=cpp_path,
                              thir_routed_names=thir_routed_names,
@@ -1088,6 +1144,19 @@ def pytest_addoption(parser):
             "list, gcc, gcc-14, clang, clang-18, zig, ... (default: auto). "
             "Switching toolchain re-keys the stdlib/PCH/exec caches, so the "
             "next run re-verifies under the new compiler."
+        ),
+    )
+    parser.addoption(
+        "--dep-mode",
+        action="append",
+        default=[],
+        metavar="LIB=MODE",
+        help=(
+            "Third-party dependency mode override for the exec build, "
+            "mirroring `tpyc --<lib>=<mode>`: e.g. --dep-mode pcre2=system. "
+            "Repeat or comma-separate for multiple libs. Modes: bundled, "
+            "system (default: each lib's default, bundled). "
+            "Applies to tests/cases; the interop harness keeps CLI defaults."
         ),
     )
     parser.addoption(
@@ -1210,6 +1279,15 @@ def pytest_configure(config):
         THIR_CLASSIFY_WRITE = True
     if config.getoption("--thir-check-flip"):
         THIR_CHECK_FLIP = True
+
+    # --dep-mode: parsed before the xdist-worker early return -- workers do
+    # the per-case compiles, so they need the same modes as the master.
+    try:
+        dep_modes = _parse_dep_modes(config.getoption("--dep-mode"))
+    except ValueError as exc:
+        pytest.exit(str(exc), returncode=1)
+    DEP_MODES.clear()
+    DEP_MODES.update(dep_modes)
 
     is_master = os.environ.get("PYTEST_XDIST_WORKER") is None
     if not is_master:
@@ -1356,9 +1434,14 @@ def pytest_report_header(config):
         thir_state = "default: all cases byte-diff vs AST; ratchet on unmarked"
 
     # Short lines (hints on their own indented lines) so nothing wraps at ~80 cols.
+    dep_mode_lines = []
+    if DEP_MODES:
+        modes = ", ".join(f"{lib}={mode}" for lib, mode in sorted(DEP_MODES.items()))
+        dep_mode_lines = [f"{_LOG_PREFIX} dep modes: {modes} (via --dep-mode)"]
     return [
         f"{_LOG_PREFIX} toolchain: {CPP_CONFIG.compiler_name}",
         f"{_LOG_PREFIX}   --cxx=<gcc|clang|gcc-14|zig|...> or --cxx=list to enumerate",
+        *dep_mode_lines,
         f"{_LOG_PREFIX} C++ compilation: {ccache_state}",
         f"{_LOG_PREFIX} exec: {exec_state}",
         f"{_LOG_PREFIX}   --force-exec re-run all / --no-exec skip / --clean wipe caches",
@@ -1589,6 +1672,13 @@ def _exec_results_dir() -> Path:
     return _shared_cache_root() / "exec-results"
 
 
+def merge_link_flags(case_flags: list[str], cache_flags: list[str]) -> list[str]:
+    """Case-own third-party link flags + the stdlib cache's (system-mode)
+    flags, order-preserving and deduped. Every case links the full cache .o
+    set, so the cache's flags apply imported-or-not."""
+    return list(case_flags) + [f for f in cache_flags if f not in case_flags]
+
+
 def compute_exec_fingerprint(
     case_dir: Path,
     all_modules: list[tuple[str, Path | None, Path | None, bool]],
@@ -1611,6 +1701,11 @@ def compute_exec_fingerprint(
     change still alters the binary -- without this it would be a stale-green
     skip. Empty when no cache is used (the case then compiles+links only its
     imports, which `all_modules` already covers).
+
+    System-mode third-party libs (--dep-mode) are captured only via their
+    link FLAGS -- a system-lib upgrade does not re-key, so a system-mode run
+    can stale-green skip across it (the nightly neutralizes this with
+    --force-exec).
     """
     h = hashlib.sha256()
     h.update(_runtime_hash().encode())

@@ -1,0 +1,49 @@
+{
+  "configs": [
+    {
+      "name": "2404-gcc13",
+      "base_image": "ubuntu:24.04",
+      "toolchain_pkgs": "g++-13",
+      "cxx": "gcc-13"
+    },
+    {
+      "name": "2404-gcc14",
+      "base_image": "ubuntu:24.04",
+      "toolchain_pkgs": "g++-14",
+      "cxx": "gcc-14"
+    },
+    {
+      "name": "2404-clang19",
+      "base_image": "ubuntu:24.04",
+      "toolchain_pkgs": "clang-19",
+      "cxx": "clang-19"
+    },
+    {
+      "name": "2604-gcc",
+      "base_image": "ubuntu:26.04",
+      "toolchain_pkgs": "g++",
+      "cxx": "gcc"
+    },
+    {
+      "name": "2604-clang",
+      "base_image": "ubuntu:26.04",
+      "toolchain_pkgs": "clang",
+      "cxx": "clang"
+    },
+    {
+      "name": "zig",
+      "base_image": "ubuntu:24.04",
+      "toolchain_pkgs": "",
+      "uv_extras": ["bundled"],
+      "cxx": "zig-bundled"
+    },
+    {
+      "name": "2404-gcc14-sysdeps",
+      "base_image": "ubuntu:24.04",
+      "toolchain_pkgs": "g++-14",
+      "extra_pkgs": "libpcre2-dev libmbedtls-dev",
+      "cxx": "gcc-14",
+      "pytest_args": ["--dep-mode", "pcre2=system,mbedtls=system"]
+    }
+  ]
+}

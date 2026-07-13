@@ -54,6 +54,7 @@ from conftest import (
     find_force_includes,
     build_and_run,
     get_stdlib_cache,
+    merge_link_flags,
     run_cpython,
     compute_session_fingerprints,
     read_session_fingerprints,
@@ -282,9 +283,14 @@ def test_case(case_dir, main_src, request):
     # get_stdlib_cache() is memoized + prewarmed in pytest_configure, so
     # fetching it here (rather than only in the build branch below) is cheap.
     stdlib_cache = get_stdlib_cache()
+    # System-mode deps (--dep-mode) are not compiled into the stdlib cache;
+    # the cache's link flags must join the case's own (empty in bundled mode).
+    tp_link_flags = merge_link_flags(
+        result.third_party_link_flags,
+        stdlib_cache.link_flags if stdlib_cache else [])
     exec_fp = compute_exec_fingerprint(
         case_dir, result.all_modules,
-        result.link_flags, result.third_party_link_flags,
+        result.link_flags, tp_link_flags,
         stdlib_output_hash=stdlib_cache.output_hash if stdlib_cache else "",
     )
     can_skip_exec = (
@@ -316,7 +322,7 @@ def test_case(case_dir, main_src, request):
             link_flags=result.link_flags or None,
             precompiled_objects=cache.objects if cache else None,
             exclude_cpp_relpaths=cache.cpp_relpaths if cache else None,
-            extra_link_flags=result.third_party_link_flags or None,
+            extra_link_flags=tp_link_flags or None,
             c_sources=per_test_c_sources,
         )
         if run_result.cpp_build_failed:

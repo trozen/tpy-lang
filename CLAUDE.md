@@ -246,7 +246,7 @@ The compiler lives in `tpyc/`. Modules are grouped by phase -- browse `tpyc/` to
 
 The C++ runtime is a modular header library; `tpy.hpp` is the umbrella include. Headers are grouped by concern (types, containers, printing, iterators, protocols, builtins, generators, bytes, files, etc.). Each header has a top-comment documenting its role -- browse the directory to see the full set.
 
-Generated code requires **C++23** (for `std::ranges` concepts) and uses the **GCC statement expression extension** (`({ ...; value; })`) wherever codegen needs expression-level locals: `@error_return` unwrapping, list/dict/set/array comprehensions, chained comparisons with complex intermediates, and the `x in (a, b, c)` membership form with a complex LHS. This extension is supported by GCC, Clang, and all LLVM-based compilers (Intel ICX, ARM armclang, IBM Open XL). It is **not** supported by MSVC.
+Generated code requires **C++23** (for `std::ranges` concepts and `std::expected`). With libstdc++ that means **clang >= 19**: clang 18 defines `__cpp_concepts` as 201907, which keeps libstdc++'s `<expected>` disabled (clang 19 bumped it to 202002; GCC and zig's bundled libc++ are unaffected). Generated code also uses the **GCC statement expression extension** (`({ ...; value; })`) wherever codegen needs expression-level locals: `@error_return` unwrapping, list/dict/set/array comprehensions, chained comparisons with complex intermediates, and the `x in (a, b, c)` membership form with a complex LHS. This extension is supported by GCC, Clang, and all LLVM-based compilers (Intel ICX, ARM armclang, IBM Open XL). It is **not** supported by MSVC.
 
 ### Libraries (`lib/`)
 
