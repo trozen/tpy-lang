@@ -37,7 +37,11 @@ fresh container per config, sequentially (a full cold config is ~25 min on
   default bump would silently re-key every cache and shift results overnight
   with no code change. Re-pin deliberately when moving to a newer base.
 - The system-deps row exercises `--dep-mode pcre2=system,mbedtls=system`
-  against the distro's libpcre2-dev/libmbedtls-dev.
+  against the distro's libpcre2-dev/libmbedtls-dev. Ubuntu 24.04 ships
+  mbedTLS 2.28 (the mainstream-LTS branch); the ssl shim supports it
+  alongside 3.x via a single version `#ifdef`, so the system floor is
+  2.28.0. Anything older is rejected cleanly by the version guard
+  (`SystemLibVersionError`) rather than failing deep in the C compiler.
 
 ## Caching (deliberate -- do not "optimize")
 

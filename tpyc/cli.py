@@ -918,7 +918,9 @@ def _run_cli(is_runner: bool) -> int:
         # DisabledLibError is raised when the user passed `--<lib>=none` but
         # a module in the compile graph needs that lib -- surface it as a
         # clean compile error.
-        from .build.third_party import resolve_build_plan, DisabledLibError
+        from .build.third_party import (
+            resolve_build_plan, DisabledLibError, SystemLibVersionError,
+        )
         third_party_modes = {"pcre2": args.pcre2, "mbedtls": args.mbedtls,
                              "date": args.date}
         try:
@@ -927,7 +929,7 @@ def _run_cli(is_runner: bool) -> int:
                 runtime_cpp_dir=runtime_dir / "cpp",
                 modes=third_party_modes,
             )
-        except DisabledLibError as exc:
+        except (DisabledLibError, SystemLibVersionError) as exc:
             print(f"error: {exc}", file=sys.stderr)
             return 1
 

@@ -10,6 +10,15 @@ import ssl
 from ssl import SSLSocket  # qualified ssl.SSLSocket annotations are unsupported
 import socket
 
+
+def tls_ver(v: str) -> str:
+    # Version-robust: bundled mbedTLS 3.6 negotiates TLSv1.3, system 2.28 (the
+    # mainstream-LTS branch) negotiates TLSv1.2. Both are a good modern
+    # handshake, and the minor version is an mbedTLS property, not TPy's --
+    # collapse it so output.txt matches under either --mbedtls mode.
+    return "TLSv1.2+" if v in ("TLSv1.2", "TLSv1.3") else v
+
+
 CERT_PEM: Final[str] = """-----BEGIN CERTIFICATE-----
 MIIBlTCCATugAwIBAgIUe2CartEUhHtqoCYrRV89NXxqz8EwCgYIKoZIzj0EAwIw
 FDESMBAGA1UEAwwJbG9jYWxob3N0MCAXDTI2MDYyOTE1MDY1NloYDzIxMjYwNjA1
@@ -72,7 +81,7 @@ def server_roundtrip() -> None:
     if not drive(cli, srv):
         print("FAIL: handshake did not converge")
         return
-    print("server handshake:", srv.version())
+    print("server handshake:", tls_ver(srv.version()))
 
     cli.setblocking(True)
     srv.setblocking(True)

@@ -27,6 +27,7 @@ only the machinery that's shared across any managed lib.
 from __future__ import annotations
 
 import shutil
+import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Literal
@@ -49,6 +50,24 @@ class DisabledLibError(Exception):
         )
         self.lib_name = lib_name
         self.cli_flag = cli_flag
+
+
+class SystemLibVersionError(Exception):
+    """Raised when a system library (--<lib>=system) is affirmatively older than
+    the version TPy's glue targets. Without this the build fails deep in the C
+    compiler with a cryptic API-mismatch error (e.g. Ubuntu 24.04 ships mbedTLS
+    2.28, but the ssl shim targets 3.6); this turns it into a clear diagnostic
+    pointing at bundled mode."""
+    def __init__(self, lib_name: str, cli_flag: str, found: str, need: str) -> None:
+        super().__init__(
+            f"system '{lib_name}' is version {found}, but TPy requires >= {need} "
+            f"({cli_flag}=system). Re-run with {cli_flag}=bundled (the default, "
+            f"hermetic), or install {lib_name} >= {need}."
+        )
+        self.lib_name = lib_name
+        self.cli_flag = cli_flag
+        self.found = found
+        self.need = need
 
 
 @dataclass(frozen=True)
@@ -104,10 +123,29 @@ class ThirdPartyLib:
     bundled_compile_flags: Callable[["ThirdPartyLib"], list[str]] | None = None
     bundled_user_include_dir: Callable[["ThirdPartyLib"], Path] | None = None
 
+    # TPy-owned glue (the ssl/datetime FFI shim + any data blob it needs).
+    # Mode-INDEPENDENT: it is our code, not the upstream library, so it must
+    # compile and link in system mode too -- only the vendored upstream
+    # sources are mode-gated. glue_compile_flags takes the resolved mode
+    # because the glue's headers resolve against the vendored include in
+    # bundled mode and system paths in system mode.
+    glue_source_files: Callable[["ThirdPartyLib"], list[Path]] | None = None
+    glue_compile_flags: (
+        Callable[["ThirdPartyLib", "ThirdPartyMode"], list[str]] | None
+    ) = None
+
 
 # ---------------------------------------------------------------------------
-# Source-manifest helper
+# Per-lib factory helpers
 # ---------------------------------------------------------------------------
+
+def require_bundled_dir(lib: ThirdPartyLib) -> Path:
+    """The lib's vendored source dir, or a clear error. Every per-lib source /
+    flag callable reaches through it, so centralize the None guard here."""
+    if lib.bundled_source_dir is None:
+        raise RuntimeError(f"{lib.name}: no bundled source dir configured")
+    return lib.bundled_source_dir
+
 
 def read_source_manifest(path: Path) -> list[str]:
     """Read a source-list manifest (one filename per line, ``#`` comments,
@@ -316,6 +354,53 @@ class ResolvedLib:
     link_flags: tuple[str, ...]
 
 
+def _parse_version(v: str) -> tuple[int, ...]:
+    """Lenient dotted-version parse: '2.28.8' -> (2, 28, 8). Stops at the first
+    non-digit within a component ('3.6.0-rc1' -> (3, 6, 0)); good enough for the
+    >= comparison against a declared min_version."""
+    out: list[int] = []
+    for tok in v.split("."):
+        digits = ""
+        for ch in tok:
+            if not ch.isdigit():
+                break
+            digits += ch
+        out.append(int(digits) if digits else 0)
+    return tuple(out)
+
+
+def system_version_too_old(lib: ThirdPartyLib) -> str | None:
+    """Return the detected system version string if it is affirmatively older
+    than lib.min_version, else None.
+
+    Probes pkg-config --modversion. When pkg-config, the .pc file, or
+    min_version is unavailable the version can't be determined, so we stay
+    permissive (a from-source or non-pkg-config install may still be fine) and
+    return None -- we only block the case we KNOW is too old.
+    """
+    if not lib.min_version or not lib.pkgconfig_name:
+        return None
+    try:
+        r = subprocess.run(
+            ["pkg-config", "--modversion", lib.pkgconfig_name],
+            capture_output=True, text=True,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if r.returncode != 0:
+        return None
+    found = r.stdout.strip()
+    if not found:
+        return None
+    fv, mv = _parse_version(found), _parse_version(lib.min_version)
+    # Zero-pad to equal length so a short-form report ("2.28") is not read as
+    # older than the same version with a patch component ("2.28.0").
+    width = max(len(fv), len(mv))
+    fv += (0,) * (width - len(fv))
+    mv += (0,) * (width - len(mv))
+    return found if fv < mv else None
+
+
 def resolve_system(lib: ThirdPartyLib) -> ResolvedLib:
     """System-mode direct-compile flags.
 
@@ -396,7 +481,26 @@ def resolve_build_plan(
         mode = modes.get(name, lib.default_mode)
         if mode == "none":
             raise DisabledLibError(name, lib.cli_flag)
+        if mode == "system":
+            # Fail early with a clear message rather than deep in the C compiler
+            # when the system lib is older than the glue targets.
+            too_old = system_version_too_old(lib)
+            if too_old is not None:
+                raise SystemLibVersionError(
+                    name, lib.cli_flag, too_old, lib.min_version or "?",
+                )
+
         plan.libs.append(lib)
+
+        # TPy-owned glue compiles in every mode -- it is our FFI surface, not
+        # the upstream library. Skipping it in system mode leaves the whole
+        # stdlib .o set with undefined references to it (e.g. tpy_tls_*).
+        if lib.glue_source_files is not None:
+            glue_flags = (lib.glue_compile_flags(lib, mode)
+                          if lib.glue_compile_flags is not None else [])
+            for src in lib.glue_source_files(lib):
+                plan.c_sources.append((src, glue_flags))
+
         if mode == "system":
             plan.extra_link_flags.extend(lib.system_link_flags)
             continue

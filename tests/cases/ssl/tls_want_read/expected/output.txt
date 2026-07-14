@@ -1,4 +1,4 @@
-handshake: TLSv1.3
+handshake: TLSv1.2+
 want-read raised
 want-read caught as SSLError
 srv want-read

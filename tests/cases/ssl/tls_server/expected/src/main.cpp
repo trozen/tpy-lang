@@ -4,6 +4,16 @@
 namespace tpyapp::main {
 
 
+// def tls_ver(v: str) -> str:
+std::string tls_ver(std::string_view v) {
+    // # Version-robust: bundled mbedTLS 3.6 negotiates TLSv1.3, system 2.28 (the
+    // # mainstream-LTS branch) negotiates TLSv1.2. Both are a good modern
+    // # handshake, and the minor version is an mbedTLS property, not TPy's --
+    // # collapse it so output.txt matches under either --mbedtls mode.
+    // return "TLSv1.2+" if v in ("TLSv1.2", "TLSv1.3") else v
+    return std::string(((((v == "TLSv1.2") || (v == "TLSv1.3"))) ? ("TLSv1.2+") : (v)));
+}
+
 // def write_fixtures() -> None:
 void write_fixtures() {
     // with open(CERT_PATH, "w") as f:
@@ -92,8 +102,8 @@ void server_roundtrip() {
         // return
         return;
     }
-    // print("server handshake:", srv.version())
-    std::cout << "server handshake:" << " " << srv.version() << "\n";
+    // print("server handshake:", tls_ver(srv.version()))
+    std::cout << "server handshake:" << " " << tls_ver(srv.version()) << "\n";
     // cli.setblocking(True)
     cli.setblocking(true);
     // srv.setblocking(True)

@@ -20,7 +20,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from .third_party import ThirdPartyLib, read_source_manifest
+from .third_party import (
+    ThirdPartyLib, ThirdPartyMode, read_source_manifest, require_bundled_dir,
+)
 
 
 _SOURCE_MANIFEST = "date.sources.txt"
@@ -33,14 +35,13 @@ def _source_files(lib: ThirdPartyLib) -> list[Path]:
     module declares the dep and gets the same include/define flags -- not
     via discover_runtime_cpp_sources (always-on, which would drag the
     vendored tree into every binary)."""
-    if lib.bundled_source_dir is None:
-        raise RuntimeError(f"{lib.name}: no bundled source dir configured")
-    src_dir = lib.bundled_source_dir / "src"
+    bd = require_bundled_dir(lib)
+    src_dir = bd / "src"
     if not src_dir.is_dir():
         raise FileNotFoundError(
             f"{lib.name}: bundled src/ not found at {src_dir}"
         )
-    manifest = lib.bundled_source_dir.parent / _SOURCE_MANIFEST
+    manifest = bd.parent / _SOURCE_MANIFEST
     if not manifest.is_file():
         raise FileNotFoundError(
             f"{lib.name}: source manifest not found at {manifest}"
@@ -54,28 +55,51 @@ def _source_files(lib: ThirdPartyLib) -> list[Path]:
                 f"(listed in {manifest})"
             )
         paths.append(p)
-    runtime_cpp = lib.bundled_source_dir.parent.parent
-    shim = runtime_cpp / "src" / "stdlib" / "date_shim.cpp"
-    if not shim.is_file():
-        raise FileNotFoundError(f"{lib.name}: shim not found at {shim}")
-    paths.append(shim)
     return paths
 
 
+def _glue_source_files(lib: ThirdPartyLib) -> list[Path]:
+    """TPy-owned glue (mode-independent): the datetime module's facade shim. Our
+    code, so it must link in system mode too -- not routed via
+    discover_runtime_cpp_sources (always-on), which would drag it into every
+    binary rather than only those that declare the dep."""
+    runtime_cpp = require_bundled_dir(lib).parent.parent
+    shim = runtime_cpp / "src" / "stdlib" / "date_shim.cpp"
+    if not shim.is_file():
+        raise FileNotFoundError(f"{lib.name}: shim not found at {shim}")
+    return [shim]
+
+
+def _tz_defines() -> list[str]:
+    """USE_OS_TZDB parses the OS zoneinfo tree (Linux/macOS; no bundled tzdata,
+    no remote API). These govern date/tz.h behavior, so every TU that includes
+    it -- vendored sources and the shim, in either mode -- must define them."""
+    return ["-DUSE_OS_TZDB=1", "-DHAS_REMOTE_API=0"]
+
+
 def _compile_flags(lib: ThirdPartyLib) -> list[str]:
-    """C++-compiler flags for the tz backend sources. USE_OS_TZDB parses
-    the OS zoneinfo tree (Linux/macOS; no bundled tzdata, no remote API).
-    The runtime include dir lets the shim include its own facade header so
-    signature drift is a compile error."""
-    if lib.bundled_source_dir is None:
-        raise RuntimeError(f"{lib.name}: no bundled source dir configured")
-    runtime_include = lib.bundled_source_dir.parent.parent / "include"
+    """C++-compiler flags for the bundled tz backend sources. The runtime
+    include dir lets the shim include its own facade header so signature drift
+    is a compile error."""
+    bd = require_bundled_dir(lib)
+    runtime_include = bd.parent.parent / "include"
     return [
-        "-DUSE_OS_TZDB=1",
-        "-DHAS_REMOTE_API=0",
-        f"-I{lib.bundled_source_dir / 'include'}",
+        *_tz_defines(),
+        f"-I{bd / 'include'}",
         f"-I{runtime_include}",
     ]
+
+
+def _glue_compile_flags(lib: ThirdPartyLib, mode: ThirdPartyMode) -> list[str]:
+    """Flags to build the shim. It includes both its TPy facade header (runtime
+    include, always) and <date/tz.h> (vendored include in bundled mode; default
+    system paths in system mode)."""
+    bd = require_bundled_dir(lib)
+    runtime_include = bd.parent.parent / "include"
+    flags = [*_tz_defines(), f"-I{runtime_include}"]
+    if mode != "system":
+        flags.append(f"-I{bd / 'include'}")
+    return flags
 
 
 def factory(runtime_cpp_dir: Path) -> ThirdPartyLib:
@@ -111,4 +135,6 @@ def factory(runtime_cpp_dir: Path) -> ThirdPartyLib:
         bundled_source_files=_source_files,
         bundled_compile_flags=_compile_flags,
         bundled_user_include_dir=None,
+        glue_source_files=_glue_source_files,
+        glue_compile_flags=_glue_compile_flags,
     )

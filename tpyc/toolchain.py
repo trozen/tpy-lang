@@ -323,11 +323,21 @@ def get_or_build_pch(
             return pch_header
 
     pch_header.write_text('#include <tpy/tpy.hpp>\n')
+    # Clang embeds the input header's mtime in the .gch and rejects the PCH
+    # if it differs at consume time, even when content is byte-identical. The
+    # cache that stores this .gch is content-addressed, so a fresh checkout
+    # that only bumps tpy.hpp's mtime would invalidate every cached clang PCH.
+    # -fno-pch-timestamp drops the timestamp so validation falls to content
+    # (what ccache does); GCC already validates by content and needs nothing.
+    family_flags: list[str] = []
+    if _detect_compiler_family(tuple(config.compiler)) == "clang":
+        family_flags = ["-Xclang", "-fno-pch-timestamp"]
     cmd = [
         *config.compiler, f"-std={config.std}",
         *config.extra_flags,
         *config.warn_flags,
         *opt_flags,
+        *family_flags,
         "-I", str(runtime_include_dir),
         "-x", "c++-header",
         str(pch_header), "-o", str(pch_gch),

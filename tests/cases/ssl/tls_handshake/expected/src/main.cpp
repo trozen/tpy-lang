@@ -4,6 +4,16 @@
 namespace tpyapp::main {
 
 
+// def tls_ver(v: str) -> str:
+std::string tls_ver(std::string_view v) {
+    // # Version-robust: bundled mbedTLS 3.6 negotiates TLSv1.3, system 2.28 (the
+    // # mainstream-LTS branch) negotiates TLSv1.2. Both are a good modern
+    // # handshake, and the minor version is an mbedTLS property, not TPy's --
+    // # collapse it so output.txt matches under either --mbedtls mode.
+    // return "TLSv1.2+" if v in ("TLSv1.2", "TLSv1.3") else v
+    return std::string(((((v == "TLSv1.2") || (v == "TLSv1.3"))) ? ("TLSv1.2+") : (v)));
+}
+
 // def write_fixtures() -> None:
 void write_fixtures() {
     // with open(CERT_PATH, "w") as f:
@@ -92,8 +102,8 @@ void handshake_ok() {
         // return
         return;
     }
-    // print("handshake:", cli.version())
-    std::cout << "handshake:" << " " << cli.version() << "\n";
+    // print("handshake:", tls_ver(cli.version()))
+    std::cout << "handshake:" << " " << tls_ver(cli.version()) << "\n";
     // cli.setblocking(True)
     cli.setblocking(true);
     // srv.setblocking(True)
@@ -211,8 +221,8 @@ void cert_none() {
     ::tpystd::ssl::SSLSocket srv = sctx.wrap_socket(std::move(b), "", false, true);
     // if drive(cli, srv):
     if (drive(cli, srv)) {
-        // print("no-verify handshake:", cli.version())
-        std::cout << "no-verify handshake:" << " " << cli.version() << "\n";
+        // print("no-verify handshake:", tls_ver(cli.version()))
+        std::cout << "no-verify handshake:" << " " << tls_ver(cli.version()) << "\n";
     // else:
     } else {
         // print("FAIL: no-verify handshake did not converge")

@@ -1,7 +1,7 @@
-handshake: TLSv1.3
+handshake: TLSv1.2+
 server got: hello tls
 sent: 2
 server got2: AB
 server eof: True
 verify rejected mismatched hostname
-no-verify handshake: TLSv1.3
+no-verify handshake: TLSv1.2+

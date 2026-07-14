@@ -18,6 +18,7 @@
 #include <string.h>
 #include <stdint.h>
 
+#include <mbedtls/version.h>  // MBEDTLS_VERSION_NUMBER (present in 2.28 and 3.x)
 #include <mbedtls/ssl.h>
 #include <mbedtls/entropy.h>
 #include <mbedtls/ctr_drbg.h>
@@ -234,8 +235,14 @@ int tpy_tls_config_server(tpy_tls_session *s,
     }
     rc = mbedtls_x509_crt_parse_file(&s->owncert, cpath);
     if (rc == 0) {
+        // 3.x added an RNG (for key blinding); 2.28 (mainstream-LTS distros)
+        // takes neither. This is the only 2.28<->3.6 API divergence in the shim.
+#if MBEDTLS_VERSION_NUMBER >= 0x03000000
         rc = mbedtls_pk_parse_keyfile(&s->ownkey, kpath, NULL,
                                       mbedtls_ctr_drbg_random, &s->drbg);
+#else
+        rc = mbedtls_pk_parse_keyfile(&s->ownkey, kpath, NULL);
+#endif
     }
     free(cpath);
     free(kpath);

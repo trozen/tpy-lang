@@ -19,7 +19,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from .third_party import ThirdPartyLib, read_source_manifest
+from .third_party import (
+    ThirdPartyLib, ThirdPartyMode, read_source_manifest, require_bundled_dir,
+)
 
 
 _SOURCE_MANIFEST = "mbedtls.sources.txt"
@@ -33,14 +35,13 @@ def _source_files(lib: ThirdPartyLib) -> list[Path]:
     another) rather than globbing, so the build's source set is pinned and
     reviewable alongside a version bump.
     """
-    if lib.bundled_source_dir is None:
-        raise RuntimeError(f"{lib.name}: no bundled source dir configured")
-    lib_dir = lib.bundled_source_dir / "library"
+    bd = require_bundled_dir(lib)
+    lib_dir = bd / "library"
     if not lib_dir.is_dir():
         raise FileNotFoundError(
             f"{lib.name}: bundled library/ not found at {lib_dir}"
         )
-    manifest = lib.bundled_source_dir.parent / _SOURCE_MANIFEST
+    manifest = bd.parent / _SOURCE_MANIFEST
     if not manifest.is_file():
         raise FileNotFoundError(
             f"{lib.name}: source manifest not found at {manifest}"
@@ -54,44 +55,52 @@ def _source_files(lib: ThirdPartyLib) -> list[Path]:
                 f"(listed in {manifest})"
             )
         paths.append(p)
-    # TPy-owned C glue (the ssl module's FFI surface). Compiled here, with the
-    # vendored mbedTLS sources, so it links only when mbedTLS is active and gets
-    # the same include flags -- not via discover_runtime_cpp_sources (which is
-    # always-on and globs .cpp, so this .c is skipped there).
-    runtime_cpp = lib.bundled_source_dir.parent.parent
+    return paths
+
+
+def _glue_source_files(lib: ThirdPartyLib) -> list[Path]:
+    """TPy-owned glue (mode-independent): the ssl module's FFI surface plus the
+    vendored Mozilla CA bundle blob (a C string literal the shim references, not
+    a separate library). These are our code, so they must link in system mode
+    too -- they are not routed via discover_runtime_cpp_sources (always-on, globs
+    .cpp) both because they are .c and because they must link only when mbedTLS
+    is active."""
+    bd = require_bundled_dir(lib)
+    runtime_cpp = bd.parent.parent
     shim = runtime_cpp / "src" / "stdlib" / "mbedtls_shim.c"
     if not shim.is_file():
         raise FileNotFoundError(f"{lib.name}: shim not found at {shim}")
-    paths.append(shim)
-    # The vendored Mozilla CA bundle, embedded as a C string literal (see
-    # scripts/vendor_cacert.py). Compiled here so the ssl module's default
-    # trust store is linked in exactly when mbedTLS is -- it is data the shim
-    # references, not a separate library.
-    cacert = lib.bundled_source_dir.parent / "cacert" / "cacert_data.c"
+    cacert = bd.parent / "cacert" / "cacert_data.c"
     if not cacert.is_file():
         raise FileNotFoundError(f"{lib.name}: CA bundle blob not found at {cacert}")
-    paths.append(cacert)
-    return paths
+    return [shim, cacert]
 
 
 def _compile_flags(lib: ThirdPartyLib) -> list[str]:
     """C-compiler flags to build an mbedTLS .c file. -Iinclude resolves the
     public headers + the default mbedtls_config.h (via build_info.h);
     -Ilibrary resolves the private headers (ssl_misc.h, common.h, ...)."""
-    if lib.bundled_source_dir is None:
-        raise RuntimeError(f"{lib.name}: no bundled source dir configured")
+    bd = require_bundled_dir(lib)
     return [
-        f"-I{lib.bundled_source_dir / 'include'}",
-        f"-I{lib.bundled_source_dir / 'library'}",
+        f"-I{bd / 'include'}",
+        f"-I{bd / 'library'}",
     ]
+
+
+def _glue_compile_flags(lib: ThirdPartyLib, mode: ThirdPartyMode) -> list[str]:
+    """Flags to build the glue. The shim includes <mbedtls/*.h> only: in bundled
+    mode those resolve against the vendored include; in system mode against the
+    default system search paths (matching resolve_system, which adds no -I). The
+    CA blob needs no headers -- the shared flag list is harmless for it."""
+    if mode == "system":
+        return []
+    return [f"-I{require_bundled_dir(lib) / 'include'}"]
 
 
 def _user_include_dir(lib: ThirdPartyLib) -> Path:
     """Directory holding the public headers (``mbedtls/``, ``psa/``) that the
     facade header and any dependent TU resolve their includes against."""
-    if lib.bundled_source_dir is None:
-        raise RuntimeError(f"{lib.name}: no bundled source dir configured")
-    return lib.bundled_source_dir / "include"
+    return require_bundled_dir(lib) / "include"
 
 
 def factory(runtime_cpp_dir: Path) -> ThirdPartyLib:
@@ -106,7 +115,10 @@ def factory(runtime_cpp_dir: Path) -> ThirdPartyLib:
         cli_flag="--mbedtls",
         cmake_var="TPY_MBEDTLS",
         default_mode="bundled",
-        min_version="3.6.0",
+        # The shim supports mbedTLS 2.28 (the mainstream-LTS branch) as well as
+        # 3.x via a single version #ifdef, so 2.28.0 is the real system-mode
+        # floor. Bundled always builds the vendored 3.6.x regardless.
+        min_version="2.28.0",
         find_package_name="MbedTLS",
         find_package_target="MbedTLS::mbedtls",
         pkgconfig_name="mbedtls",
@@ -117,4 +129,6 @@ def factory(runtime_cpp_dir: Path) -> ThirdPartyLib:
         bundled_source_files=_source_files,
         bundled_compile_flags=_compile_flags,
         bundled_user_include_dir=_user_include_dir,
+        glue_source_files=_glue_source_files,
+        glue_compile_flags=_glue_compile_flags,
     )

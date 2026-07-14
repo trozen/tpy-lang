@@ -17,6 +17,7 @@ inline constexpr std::string_view KEY_PEM = "-----BEGIN PRIVATE KEY-----\nMIGHAg
 inline constexpr std::string_view CERT_PATH = "/tmp/tpy_test_ssl_want_cert.pem";
 inline constexpr std::string_view KEY_PATH = "/tmp/tpy_test_ssl_want_key.pem";
 
+std::string tls_ver(std::string_view v);
 void write_fixtures();
 bool drive(::tpystd::ssl::SSLSocket& cli, ::tpystd::ssl::SSLSocket& srv);
 void main();

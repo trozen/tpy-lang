@@ -18,6 +18,7 @@ inline constexpr std::string_view CERT_PATH = "/tmp/tpy_test_ssl_server_cert.pem
 inline constexpr std::string_view KEY_PATH = "/tmp/tpy_test_ssl_server_key.pem";
 inline constexpr std::string_view BAD_CERT_PATH = "/tmp/tpy_test_ssl_server_bad.pem";
 
+std::string tls_ver(std::string_view v);
 void write_fixtures();
 bool drive(::tpystd::ssl::SSLSocket& cli, ::tpystd::ssl::SSLSocket& srv);
 void server_roundtrip();
