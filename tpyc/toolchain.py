@@ -14,6 +14,7 @@ import glob
 import os
 import shutil
 import subprocess
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -78,6 +79,43 @@ def _find_all_zig() -> tuple[str | None, str | None]:
     except ImportError:
         pass
     return system, bundled
+
+
+def _triple_to_os(triple: str) -> str:
+    """Map a -dumpmachine target triple to an OS token ('darwin', 'linux',
+    'windows', or 'unknown')."""
+    t = triple.lower()
+    if "darwin" in t or "apple" in t or "macos" in t:
+        return "darwin"
+    if "linux" in t:
+        return "linux"
+    if "windows" in t or "mingw" in t or "msvc" in t:
+        return "windows"
+    return "unknown"
+
+
+def host_os() -> str:
+    """This machine's OS token, comparable to compiler_target_os()."""
+    return {"linux": "linux", "darwin": "darwin",
+            "win32": "windows"}.get(sys.platform, "unknown")
+
+
+@functools.lru_cache(maxsize=None)
+def compiler_target_os(compiler: tuple[str, ...]) -> str:
+    """The OS a compiler command TARGETS, probed via `-dumpmachine` (cached
+    per command). An osxcross clang++ answers darwin on a Linux host -- how
+    cross builds are detected without any flag. Falls back to the host OS
+    when the probe fails or the triple is unrecognized (a compiler without
+    -dumpmachine is assumed native)."""
+    try:
+        result = subprocess.run([*compiler, "-dumpmachine"],
+                                capture_output=True, text=True, timeout=10)
+    except (OSError, subprocess.TimeoutExpired):
+        return host_os()
+    if result.returncode != 0:
+        return host_os()
+    target = _triple_to_os(result.stdout.strip())
+    return target if target != "unknown" else host_os()
 
 
 def _resolve_compiler(cxx: str) -> list[str] | None:

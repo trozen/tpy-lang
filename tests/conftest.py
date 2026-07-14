@@ -49,6 +49,7 @@ from tpyc.compiler import (
     Compiler, CompileError, BuildLayout, CppCompilerConfig, strict_warn_flags,
     get_or_build_pch, list_compilers, CompilerNotFoundError,
 )
+from tpyc.toolchain import compiler_target_os, host_os
 from tpyc.build.third_party import (
     resolve_build_plan, ThirdPartyMode, THIRD_PARTY_MODES, known_lib_names,
 )
@@ -1113,6 +1114,33 @@ def pytest_addoption(parser):
         ),
     )
     parser.addoption(
+        "--build-only",
+        action="store_true",
+        default=False,
+        help=(
+            "Build (compile+link) every case's binary but skip the run, the "
+            "output/panic compare, and the cpy phase. Never reads or writes "
+            "the exec-results cache. Engages AUTOMATICALLY when the --cxx "
+            "toolchain targets a different OS (cross builds cannot run "
+            "here); the flag is the manual just-check-it-links mode. "
+            "Mutually exclusive with --no-exec and --update-snapshots."
+        ),
+    )
+    parser.addoption(
+        "--macos-classify",
+        action="store_true",
+        default=False,
+        help=(
+            "(Re)write no_macos.txt markers from this run's exec-build "
+            "results: add where the build fails (the case xfails, so the run "
+            "stays green), remove where it builds again; an existing "
+            "marker's reason text is preserved while the case still fails. "
+            "Requires a darwin exec target (run on macOS, or with an "
+            "osxcross --cxx); pair with --build-only for speed. Like "
+            "--thir-classify."
+        ),
+    )
+    parser.addoption(
         "--clean",
         action="store_true",
         default=False,
@@ -1233,6 +1261,29 @@ def _cgroup_cpu_quota() -> int | None:
     return max(1, (quota + period - 1) // period)
 
 
+def _exec_flag_conflict(*, no_exec: bool, build_only: bool, force_exec: bool,
+                        clean: bool, updating: bool,
+                        macos_classify: bool = False) -> str | None:
+    """Return the error message for a conflicting exec-flag combination, or
+    None. Extracted from pytest_configure so the flag-conflict logic is
+    unit-testable (mirrors _thir_flag_conflict). `updating` is the resolved
+    --update-snapshots / UPDATE_EXPECTED state."""
+    if no_exec and (force_exec or clean or updating):
+        return "--no-exec conflicts with --force-exec/--clean/--update-snapshots"
+    if build_only and no_exec:
+        return "--build-only conflicts with --no-exec (one builds, one skips building)"
+    if build_only and updating:
+        return ("--build-only conflicts with --update-snapshots: regenerating "
+                "output.txt/panic.txt requires running the binaries")
+    if macos_classify and no_exec:
+        return ("--macos-classify conflicts with --no-exec: classification "
+                "needs the exec-phase builds it would be skipping")
+    if macos_classify and updating:
+        return ("--macos-classify conflicts with --update-snapshots: a "
+                "marked case's cleared snapshots could never be regenerated")
+    return None
+
+
 def _thir_flag_conflict(config, updating: bool) -> str | None:
     """Return the error message for a conflicting THIR-flag combination, or None.
     Extracted from pytest_configure so the flag-conflict logic is unit-testable
@@ -1293,16 +1344,16 @@ def pytest_configure(config):
     if not is_master:
         return
 
-    if config.getoption("--no-exec") and (
-        config.getoption("--force-exec")
-        or config.getoption("--clean")
-        or config.getoption("--update-snapshots")
-        or UPDATE_EXPECTED  # the env-var spelling of --update-snapshots
-    ):
-        pytest.exit(
-            "--no-exec conflicts with --force-exec/--clean/--update-snapshots",
-            returncode=1,
-        )
+    exec_conflict = _exec_flag_conflict(
+        no_exec=config.getoption("--no-exec"),
+        build_only=config.getoption("--build-only"),
+        force_exec=config.getoption("--force-exec"),
+        clean=config.getoption("--clean"),
+        updating=updating,
+        macos_classify=config.getoption("--macos-classify"),
+    )
+    if exec_conflict:
+        pytest.exit(exec_conflict, returncode=1)
 
     conflict = _thir_flag_conflict(
         config, bool(config.getoption("--update-snapshots")) or UPDATE_EXPECTED)
@@ -1333,6 +1384,15 @@ def pytest_configure(config):
         # against the pre-mutation toolchain so the new --cxx re-keys cleanly.
         _stdlib_cache_key.cache_clear()
         _pch_cache_key.cache_clear()
+
+    # After --cxx resolution so the probe sees the final compiler.
+    if config.getoption("--macos-classify") and exec_target_os() != "darwin":
+        pytest.exit("--macos-classify requires a darwin exec target: run on "
+                    "macOS, or pass an osxcross --cxx", returncode=1)
+    if exec_is_cross() and updating:
+        pytest.exit("cannot --update-snapshots with a cross toolchain: the "
+                    "binaries cannot run here to produce output.txt",
+                    returncode=1)
 
     if config.getoption("--no-ccache"):
         # Every compile path is gated on CPP_CONFIG.ccache, so flipping it
@@ -1395,7 +1455,12 @@ def pytest_configure(config):
     # so only announce a shared-input change in normal mode -- but always
     # refresh the recorded signature so the next run has a baseline.
     forced = config.getoption("--force-exec") or config.getoption("--clean")
-    report_exec_env_change(announce=not forced)
+    if not config.getoption("--build-only") and not exec_is_cross():
+        # Build-only (explicit or auto-cross) neither reads nor writes exec
+        # state: refreshing the recorded env signature here would make the
+        # NEXT normal run announce a spurious whole-suite re-verify (and the
+        # announce itself would be wrong -- nothing runs).
+        report_exec_env_change(announce=not forced)
 
 
 def pytest_report_header(config):
@@ -1415,6 +1480,11 @@ def pytest_report_header(config):
 
     if config.getoption("--no-exec"):
         exec_state = "skipped via --no-exec (comp + cpy only)"
+    elif exec_is_cross():
+        exec_state = (f"build-only, no run/compare/cpy (toolchain targets "
+                      f"{exec_target_os()}; binaries cannot run here)")
+    elif config.getoption("--build-only"):
+        exec_state = "build-only: compile+link every case, no run/compare/cpy"
     elif config.getoption("--update-snapshots"):
         exec_state = "regenerating snapshots"
     elif config.getoption("--clean"):
@@ -1679,6 +1749,67 @@ def merge_link_flags(case_flags: list[str], cache_flags: list[str]) -> list[str]
     return list(case_flags) + [f for f in cache_flags if f not in case_flags]
 
 
+# no_macos.txt: "this case does not build for macOS" -- the third
+# instance of the no_cpython.txt / no_thir.txt exemption pattern. Honored
+# AUTOMATICALLY whenever the exec toolchain TARGETS darwin, so a native mac
+# run and an osxcross cross-build behave identically, with no flag. The
+# file's optional content is the human reason, shown in the skip message.
+MACOS_MARKER = "no_macos.txt"
+
+
+def exec_target_os() -> str:
+    """OS the exec-phase toolchain targets (probed once per compiler)."""
+    return compiler_target_os(tuple(CPP_CONFIG.compiler))
+
+
+def exec_is_cross() -> bool:
+    """True when exec builds target a different OS than the host: the
+    binaries cannot run here, so the exec phase auto-degrades to
+    build-only."""
+    return exec_target_os() != host_os()
+
+
+def read_macos_marker(case_dir: Path) -> str | None:
+    """The case's does-not-build-for-macOS reason: '' for an empty marker,
+    None when the marker is absent."""
+    try:
+        return (case_dir / MACOS_MARKER).read_text().strip()
+    except OSError:
+        return None
+
+
+def apply_macos_marker(case_dir: Path, expect_fail: bool) -> None:
+    """--macos-classify's add/remove (mirrors _apply_no_thir_marker): add an
+    empty marker where the build fails for darwin, remove it where it builds
+    again. An existing marker -- and its hand-written reason -- is left
+    untouched while the case still fails."""
+    marker = case_dir / MACOS_MARKER
+    if expect_fail and not marker.exists():
+        marker.write_text("")
+    elif not expect_fail and marker.exists():
+        marker.unlink()
+
+
+def plan_exec_phase(*, no_exec: bool, build_only: bool, force_exec: bool,
+                    expected_exists: bool, marker_hit: bool) -> str:
+    """Pure per-case exec-phase decision: 'disabled' | 'skipped' | 'build' |
+    'build+run'.
+
+    'build' (--build-only) compiles+links but never runs; it ignores the
+    marker cache in BOTH directions -- no skip on a hit (the mode's answer
+    must be current) and no pass recorded (built != ran green) -- and it
+    outranks --force-exec (redundant but allowed). 'disabled' (--no-exec)
+    outranks everything; the no_exec+build_only combination is rejected by
+    _exec_flag_conflict before this is reached."""
+    if no_exec:
+        return "disabled"
+    if build_only:
+        return "build"
+    if not force_exec and expected_exists and marker_hit:
+        return "skipped"
+    return "build+run"
+
+
 def compute_exec_fingerprint(
     case_dir: Path,
     all_modules: list[tuple[str, Path | None, Path | None, bool]],
@@ -1900,12 +2031,13 @@ def report_exec_env_change(announce: bool) -> None:
 # own `_exec_tally` stays at zero (it runs no tests), and without xdist the
 # aggregate stays zero -- so the sum is correct either way.
 
-_exec_tally = {"ran": 0, "skipped": 0, "disabled": 0}
-_exec_tally_agg = {"ran": 0, "skipped": 0, "disabled": 0}
+_exec_tally = {"ran": 0, "skipped": 0, "disabled": 0, "built": 0}
+_exec_tally_agg = {"ran": 0, "skipped": 0, "disabled": 0, "built": 0}
 
 
 def record_exec_outcome(outcome: str) -> None:
-    """Tally one case's exec-phase outcome: 'ran', 'skipped', or 'disabled'."""
+    """Tally one case's exec-phase outcome: 'ran', 'skipped', 'disabled',
+    or 'built' (--build-only: linked, not run)."""
     if outcome in _exec_tally:
         _exec_tally[outcome] += 1
 
@@ -2215,6 +2347,11 @@ def pytest_terminal_summary(terminalreporter, exitstatus, config):
             f"{_LOG_PREFIX} exec: disabled via --no-exec "
             f"({total['disabled']} cases not built/run)"
         )
+    elif total["built"]:
+        terminalreporter.write_line(
+            f"{_LOG_PREFIX} exec: {total['built']} built without running "
+            f"({'cross target' if exec_is_cross() else '--build-only'})"
+        )
     elif considered:
         terminalreporter.write_line(
             f"{_LOG_PREFIX} exec: {total['ran']} built+run, "
@@ -2405,7 +2542,8 @@ def build_and_run(build_dir: Path, module_name: str,
                   precompiled_objects: list[str] | None = None,
                   exclude_cpp_relpaths: set[str] | None = None,
                   extra_link_flags: list[str] | None = None,
-                  c_sources: list[tuple[Path, list[str]]] | None = None) -> RunResult:
+                  c_sources: list[tuple[Path, list[str]]] | None = None,
+                  run: bool = True) -> RunResult:
     """Compile generated C++ and run, capturing all output (including panics).
 
     Args:
@@ -2424,6 +2562,8 @@ def build_and_run(build_dir: Path, module_name: str,
         precompiled_objects: Pre-compiled .o files to link (e.g. stdlib objects).
         exclude_cpp_relpaths: Relative paths (under src/) to skip compiling
                               when using precompiled_objects.
+        run: False (--build-only) returns success right after the link --
+             for toolchains whose binaries cannot execute on this host.
     """
     layout = BuildLayout(build_dir, module_name, build_variant=build_variant)
 
@@ -2476,6 +2616,10 @@ def build_and_run(build_dir: Path, module_name: str,
                 returncode=result.returncode,
                 cpp_build_failed=True,
             )
+
+    if not run:
+        # --build-only: linked successfully; nothing to execute.
+        return RunResult(success=True, stdout="", stderr="", returncode=0)
 
     # Run and capture output. If a `src/input.txt` fixture exists in
     # the case directory (one level above `build_dir`), pipe it to the

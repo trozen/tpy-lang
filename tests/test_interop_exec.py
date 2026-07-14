@@ -14,7 +14,9 @@ For every case this proves, in the shape of the main snapshot harness:
     content-addressed marker so it re-verifies once per change, then skips.
     The `-shared` link recipe is Linux-only for now (macOS needs `-bundle
     -undefined dynamic_lookup`), so this phase skips on other platforms while
-    the snapshot, cpy-parity, and facade self-check still run.
+    the snapshot, cpy-parity, and facade self-check still run. Under
+    --build-only or a cross toolchain only the snapshot half runs (the .so
+    can be neither imported here nor, for cross, built at all).
   - CPY-PARITY (always, cheap): the SAME driver.py over the TPy source (lib/cpy
     stubs) must match the ext-exec output snapshot.
   - ext_checks.py (ext-only marshalling-error cases) runs against the .so.
@@ -41,6 +43,7 @@ from conftest import (
     check_or_update,
     compute_ext_exec_fingerprint,
     discover_interop_cases,
+    exec_is_cross,
     exec_pass_is_cached,
     record_exec_pass,
     run_cpython,
@@ -99,6 +102,10 @@ def test_facade_selfcheck():
     py_include = sysconfig.get_path("include")
     if not py_include or not (Path(py_include) / "Python.h").exists():
         pytest.skip("Python dev headers (Python.h) unavailable")
+    if exec_is_cross():
+        # The self-check pairs the exec toolchain with the HOST's Python.h;
+        # a cross compiler against host headers checks nothing meaningful.
+        pytest.skip("cross target: facade self-check needs a host toolchain")
     cmd = [
         *CPP_CONFIG.compiler, f"-std={CPP_CONFIG.std}", _LIMITED_API,
         "-I", str(RUNTIME_DIR), "-I", py_include,
@@ -153,6 +160,7 @@ def test_interop_exec(case_dir, mod_py, request):
         or request.config.getoption("--clean")
     )
     no_exec = request.config.getoption("--no-exec")
+    build_only = request.config.getoption("--build-only") or exec_is_cross()
 
     shutil.rmtree(build_dir, ignore_errors=True)
 
@@ -177,11 +185,12 @@ def test_interop_exec(case_dir, mod_py, request):
     output_txt = expected_dir / "output.txt"
 
     # ----- EXT-EXEC build + run (cached marker, like the exec phase) ---------
-    # Skipped under --no-exec (no C++ build) and on non-Linux (the `-shared`
-    # link recipe is Linux-only -- see _EXT_BUILD_SUPPORTED); cpy-parity below
-    # still runs, the same way the main harness keeps its CPython phase alive
-    # under --no-exec.
-    if not no_exec and _EXT_BUILD_SUPPORTED:
+    # Skipped under --no-exec (no C++ build), under build-only/cross (the .so
+    # is imported+RUN under host CPython and records exec markers -- neither
+    # is possible or wanted; a cross .so also needs the target's Python.h),
+    # and on non-Linux (the `-shared` link recipe is Linux-only -- see
+    # _EXT_BUILD_SUPPORTED). The snapshot half above always runs.
+    if not no_exec and not build_only and _EXT_BUILD_SUPPORTED:
         companions = [driver] + ([ext_checks] if ext_checks.exists() else [])
         fingerprint = compute_ext_exec_fingerprint([gen_hpp, gen_cpp, gen_ext], companions)
         must_build = force or not output_txt.exists() or not exec_pass_is_cached(fingerprint)
@@ -209,12 +218,14 @@ def test_interop_exec(case_dir, mod_py, request):
 
             record_exec_pass(fingerprint, request.node.name)
 
-    # ----- CPY-PARITY (always) -----------------------------------------------
+    # ----- CPY-PARITY ---------------------------------------------------------
     # The SAME driver over the TPy source via lib/cpy stubs must reproduce the
     # ext-exec snapshot. run_cpython puts lib/cpy + the driver's src/ dir
     # (holding the source) on PYTHONPATH, so `import {mod}` binds the .py
     # here. Compares to the committed output.txt (under --no-exec the build
-    # didn't refresh it).
-    if output_txt.exists():
+    # didn't refresh it). Skipped under build-only/cross for symmetry with
+    # the main harness's cpy phase (toolchain-independent, covered by
+    # ordinary runs).
+    if output_txt.exists() and not build_only:
         cpy_out = run_cpython(driver)
         check_or_update(cpy_out, output_txt, "cpy-parity output", compare_only=True)
