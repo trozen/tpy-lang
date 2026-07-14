@@ -34,6 +34,15 @@ if hasattr(_real_typing, '__all__'):
     __all__ = list(_real_typing.__all__)
 
 
+def __getattr__(name):
+    # stdlib typing serves deprecated aliases (Match, Pattern, ByteString, ...)
+    # lazily via its own module __getattr__, so they aren't in dir() and the
+    # eager copy above misses them. Delegate any unresolved name to real typing
+    # so `from typing import <lazy-name>` keeps working -- e.g. 3.14's
+    # importlib.metadata does `from typing import ... Match ...`.
+    return getattr(_real_typing, name)
+
+
 # ---------------------------------------------------------------------------
 # Runtime @overload dispatcher
 # ---------------------------------------------------------------------------

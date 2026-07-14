@@ -1,9 +1,9 @@
-caught: float division by zero
-caught: float floor division by zero
-caught: float modulo
-caught: integer division or modulo by zero
-caught: integer modulo by zero
-caught: integer division or modulo by zero
-caught: integer modulo by zero
-caught: integer division or modulo by zero
-caught: float divmod()
+caught: float /
+caught: float //
+caught: float %
+caught: int //
+caught: int %
+caught: bigint //
+caught: bigint %
+caught: int divmod
+caught: float divmod

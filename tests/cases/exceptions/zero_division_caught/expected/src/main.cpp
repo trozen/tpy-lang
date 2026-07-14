@@ -16,9 +16,9 @@ void main() {
             double b = 0.0;
             // print(a / b)
             std::cout << ::tpy::print_float((::tpy::truediv(a, b))) << "\n";
-        } catch (const ::tpy::ZeroDivisionError& e) {
-            // print("caught:", str(e))
-            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
+        } catch (const ::tpy::ZeroDivisionError&) {
+            // print("caught: float /")
+            std::cout << "caught: float /" << "\n";
         }
     }
     // # Float floor division.
@@ -31,9 +31,9 @@ void main() {
             double d = 0.0;
             // print(c // d)
             std::cout << ::tpy::print_float((::tpy::floordiv(c, d))) << "\n";
-        } catch (const ::tpy::ZeroDivisionError& e) {
-            // print("caught:", str(e))
-            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
+        } catch (const ::tpy::ZeroDivisionError&) {
+            // print("caught: float //")
+            std::cout << "caught: float //" << "\n";
         }
     }
     // # Float modulo.
@@ -46,9 +46,9 @@ void main() {
             double f = 0.0;
             // print(e % f)
             std::cout << ::tpy::print_float((::tpy::fmod(e, f))) << "\n";
-        } catch (const ::tpy::ZeroDivisionError& ex) {
-            // print("caught:", str(ex))
-            std::cout << "caught:" << " " << std::string(::tpy::__str__(ex)) << "\n";
+        } catch (const ::tpy::ZeroDivisionError&) {
+            // print("caught: float %")
+            std::cout << "caught: float %" << "\n";
         }
     }
     // # Fixed-int floor division.
@@ -61,9 +61,9 @@ void main() {
             int32_t h = 0;
             // print(g // h)
             std::cout << (::tpy::div_check<int32_t>(g, h)) << "\n";
-        } catch (const ::tpy::ZeroDivisionError& ex) {
-            // print("caught:", str(ex))
-            std::cout << "caught:" << " " << std::string(::tpy::__str__(ex)) << "\n";
+        } catch (const ::tpy::ZeroDivisionError&) {
+            // print("caught: int //")
+            std::cout << "caught: int //" << "\n";
         }
     }
     // # Fixed-int modulo.
@@ -76,9 +76,9 @@ void main() {
             int32_t j = 0;
             // print(i % j)
             std::cout << (::tpy::mod_check<int32_t>(i, j)) << "\n";
-        } catch (const ::tpy::ZeroDivisionError& ex) {
-            // print("caught:", str(ex))
-            std::cout << "caught:" << " " << std::string(::tpy::__str__(ex)) << "\n";
+        } catch (const ::tpy::ZeroDivisionError&) {
+            // print("caught: int %")
+            std::cout << "caught: int %" << "\n";
         }
     }
     // # BigInt floor division.
@@ -91,9 +91,9 @@ void main() {
             ::tpy::BigInt m = ::tpy::BigInt(0);
             // print(k // m)
             std::cout << ((k) / (m)) << "\n";
-        } catch (const ::tpy::ZeroDivisionError& ex) {
-            // print("caught:", str(ex))
-            std::cout << "caught:" << " " << std::string(::tpy::__str__(ex)) << "\n";
+        } catch (const ::tpy::ZeroDivisionError&) {
+            // print("caught: bigint //")
+            std::cout << "caught: bigint //" << "\n";
         }
     }
     // # BigInt modulo.
@@ -106,9 +106,9 @@ void main() {
             ::tpy::BigInt o = ::tpy::BigInt(0);
             // print(n % o)
             std::cout << ((n) % (o)) << "\n";
-        } catch (const ::tpy::ZeroDivisionError& ex) {
-            // print("caught:", str(ex))
-            std::cout << "caught:" << " " << std::string(::tpy::__str__(ex)) << "\n";
+        } catch (const ::tpy::ZeroDivisionError&) {
+            // print("caught: bigint %")
+            std::cout << "caught: bigint %" << "\n";
         }
     }
     // # divmod on fixed-int.
@@ -121,9 +121,9 @@ void main() {
             int32_t q = 0;
             // print(divmod(p, q))
             std::cout << ::tpy::TuplePrinter(::tpy::divmod_fixed<int32_t>(p, q)) << "\n";
-        } catch (const ::tpy::ZeroDivisionError& ex) {
-            // print("caught:", str(ex))
-            std::cout << "caught:" << " " << std::string(::tpy::__str__(ex)) << "\n";
+        } catch (const ::tpy::ZeroDivisionError&) {
+            // print("caught: int divmod")
+            std::cout << "caught: int divmod" << "\n";
         }
     }
     // # divmod on float.
@@ -136,9 +136,9 @@ void main() {
             double s = 0.0;
             // print(divmod(r, s))
             std::cout << ::tpy::TuplePrinter(::tpy::divmod_float(r, s)) << "\n";
-        } catch (const ::tpy::ZeroDivisionError& ex) {
-            // print("caught:", str(ex))
-            std::cout << "caught:" << " " << std::string(::tpy::__str__(ex)) << "\n";
+        } catch (const ::tpy::ZeroDivisionError&) {
+            // print("caught: float divmod")
+            std::cout << "caught: float divmod" << "\n";
         }
     }
 }

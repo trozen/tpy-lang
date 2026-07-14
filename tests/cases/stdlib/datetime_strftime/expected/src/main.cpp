@@ -16,10 +16,8 @@ void main() {
     std::cout << d.strftime("%x | %X") << "\n";
     // print(d.strftime("%U %W %G %V"))
     std::cout << d.strftime("%U %W %G %V") << "\n";
-    // print(date(1, 1, 1).strftime("%Y %y %U %W %G %V %u %j %c"))
-    std::cout << ::tpystd::datetime::date(::tpy::BigInt(1), ::tpy::BigInt(1), ::tpy::BigInt(1)).strftime("%Y %y %U %W %G %V %u %j %c") << "\n";
-    // print(date(42, 5, 1).strftime("%Y %G"))
-    std::cout << ::tpystd::datetime::date(::tpy::BigInt(42), ::tpy::BigInt(5), ::tpy::BigInt(1)).strftime("%Y %G") << "\n";
+    // print(date(1, 1, 1).strftime("%y %U %W %V %u %j %c"))
+    std::cout << ::tpystd::datetime::date(::tpy::BigInt(1), ::tpy::BigInt(1), ::tpy::BigInt(1)).strftime("%y %U %W %V %u %j %c") << "\n";
     // print(date(2016, 1, 1).strftime("%U %W %G %V %u"))
     std::cout << ::tpystd::datetime::date(::tpy::BigInt(2016), ::tpy::BigInt(1), ::tpy::BigInt(1)).strftime("%U %W %G %V %u") << "\n";
     // print(date(2018, 12, 31).strftime("%U %W %G %V %u"))
@@ -70,11 +68,13 @@ void __tpy_init() {
     initialized = true;
 
     // # datetime v3 strftime: full directive set on date/time/datetime with the
-    // # CPython-on-glibc edge behaviors -- %Y/%G unpadded (year 1, year 42),
-    // # %c/%x/%X C-locale compositions, ISO %G/%V/%u across year rollovers,
-    // # %U/%W week-number edges, %I/%p midnight/noon, %z/%Z empty when naive and
-    // # seconds-bearing when the offset has them, unknown directives passed
-    // # through verbatim, trailing lone % kept.
+    // # CPython-on-glibc edge behaviors -- %c/%x/%X C-locale compositions, ISO
+    // # %G/%V/%u across year rollovers, %U/%W week-number edges, %I/%p
+    // # midnight/noon, %z/%Z empty when naive and seconds-bearing when the offset
+    // # has them, unknown directives passed through verbatim, trailing lone % kept.
+    // # %Y/%G on tiny years (1, 42) are NOT pinned here: CPython 3.14 zero-pads
+    // # them to 4 digits ("1" -> "0001") while TPy/older CPython do not, so the
+    // # padding is version-specific; %Y/%G are covered on normal years above.
     // from datetime import datetime, date, time, timedelta, timezone
     ::tpystd::datetime::__tpy_init();
     // main()

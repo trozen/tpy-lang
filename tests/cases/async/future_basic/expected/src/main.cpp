@@ -34,14 +34,45 @@ __coro_main_coro main_coro(::tpystd::asyncio::Future<int32_t>& f) {
     return __coro_main_coro(f);
 }
 
+// async def amain() -> None:
+::tpystd::tpy::Poll<::std::monostate> __coro_amain::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {
+        // # Construct the Future inside the running loop: CPython >= 3.14 rejects
+        // # loop-less Future() construction (get_event_loop() errors with no running
+        // # loop), so create + set_result within asyncio.run's loop.
+        // f: Future[Int32] = Future[Int32]()
+        f.emplace(::tpystd::asyncio::Future<int32_t>());
+        // f.set_result(Int32(99))
+        (*f).set_result(99);
+        // await main_coro(f)
+        __sub_0.emplace((*f));
+        __state = S_RESUME_0;
+        continue;
+    }
+    case S_RESUME_0: {
+        auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        (void)std::move(__r0).value();
+        __sub_0.reset();
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def amain() -> None:
+__coro_amain amain() {
+    return __coro_amain();
+}
+
 // def main() -> None:
 void main() {
-    // f: Future[Int32] = Future[Int32]()
-    ::tpystd::asyncio::Future<int32_t> f = ::tpystd::asyncio::Future<int32_t>();
-    // f.set_result(Int32(99))
-    f.set_result(99);
-    // asyncio.run(main_coro(f))
-    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro(f)));
+    // asyncio.run(amain())
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(amain()));
 }
 
 void __tpy_init() {

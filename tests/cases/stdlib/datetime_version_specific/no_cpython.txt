@@ -1,0 +1,3 @@
+Pins TPy's pre-3.14 datetime behavior at edges CPython 3.14 changed
+(strftime %Y/%G tiny-year padding; time.fromisoformat "24:00"), which
+would diverge under a 3.14 cpy phase. Exec-only regression guard.

@@ -305,9 +305,13 @@ v3 `strftime`/`strptime` implement the full documented directive set in TPy
 with hardcoded C-locale (English) month/day tables (`LC_TIME` is never
 consulted -- see divergences): `%a %A %b %B %c %d %f %G %H %I %j %m %M %p
 %S %u %U %w %W %x %X %y %Y %z %Z %%`. `%c`/`%x`/`%X` are the C/POSIX-locale
-compositions. Verified strftime edge behaviors (byte-compared vs CPython on
-glibc): `%Y`/`%G` are NOT zero-padded (`'42'`) although isoformat is;
-unknown directives pass through verbatim incl. the `%`; a trailing lone `%`
+compositions. Verified strftime edge behaviors (byte-compared vs CPython <= 3.13 on
+glibc): `%Y`/`%G` are NOT zero-padded (`'42'`) although isoformat is --
+version-specific: CPython >= 3.14 zero-pads `%Y`/`%G` to 4 digits
+(`'0042'`), so the tiny-year probes are not cross-version-pinned in the
+tests (TPy keeps the pre-3.14 unpadded form; see `no_cpython`
+`stdlib/datetime_version_specific`). Unknown directives pass through
+verbatim incl. the `%`; a trailing lone `%`
 is kept; `%z`/`%Z` render empty for naive values and `%z` carries seconds
 (`+053015`) and microseconds when the offset has them. strptime mirrors
 `_strptime.py`: longest-first bounded numeric fields (space-padded `%d`),
@@ -319,7 +323,10 @@ whitespace, `%f` right-pads 1-6 digits (7+ digits leave unconverted data),
 `fromisoformat` ports the 3.11+ grammar (basic `YYYYMMDD`, week dates, any
 single separator char, comma fractions, 7+ fraction digits TRUNCATE --
 deliberately a separate fraction rule from strptime's `%f`), digit-strict
-like the C implementation.
+like the C implementation. Version-specific: `time.fromisoformat("24:00")`
+raises `ValueError` on TPy (hour > 23), matching CPython <= 3.13; CPython
+>= 3.14 accepts it as midnight. Not cross-version-pinned in the tests (see
+`no_cpython` `stdlib/datetime_version_specific`).
 
 ## CPython parity: acknowledged divergences
 

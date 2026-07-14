@@ -14,8 +14,10 @@ using ::tpystd::asyncio::Future;
 inline constexpr std::string_view __name__ = "__main__";
 
 struct __coro_main_coro;
+struct __coro_amain;
 
 __coro_main_coro main_coro(::tpystd::asyncio::Future<int32_t>& f);
+__coro_amain amain();
 void main();
 
 // Async coroutine: main_coro
@@ -40,6 +42,30 @@ struct __coro_main_coro {
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_main_coro&) {
         return os << "<coroutine main_coro>";
+    }
+};
+
+// Async coroutine: amain
+struct __coro_amain {
+    int32_t __state;
+    bool __cancel_pending;
+    ::tpy::frame_slot<::tpystd::asyncio::Future<int32_t>> f;
+    std::optional<__coro_main_coro> __sub_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __coro_amain()
+        : __state(S_INITIAL), __cancel_pending(false) {}
+
+    ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_amain&) {
+        return os << "<coroutine amain>";
     }
 };
 

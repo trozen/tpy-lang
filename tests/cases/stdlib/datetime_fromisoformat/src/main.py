@@ -50,7 +50,9 @@ def main() -> None:
     st("143015")
     st("14")
     st("14:30:15,5")
-    st("24:00")
+    # 25:00 (out-of-range hour) rejects on all versions; "24:00" is avoided
+    # because CPython 3.14 accepts it as midnight while TPy/older reject it.
+    st("25:00")
     st("14:60")
 
     sdt("2021-03-05T14:30")

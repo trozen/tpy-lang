@@ -16,9 +16,9 @@ void main() {
             double y = 0.0;
             // print(x / y)
             std::cout << ::tpy::print_float((::tpy::truediv(x, y))) << "\n";
-        } catch (const ::tpy::ArithmeticError& e) {
-            // print("caught arithmetic:", str(e))
-            std::cout << "caught arithmetic:" << " " << std::string(::tpy::__str__(e)) << "\n";
+        } catch (const ::tpy::ArithmeticError&) {
+            // print("caught arithmetic: zero division")
+            std::cout << "caught arithmetic: zero division" << "\n";
         }
     }
     // # Catch OverflowError via base.
@@ -27,9 +27,9 @@ void main() {
         try {
             // print(int(math.inf))
             std::cout << ::tpy::BigInt::from_float(::tpystd::math::inf) << "\n";
-        } catch (const ::tpy::ArithmeticError& e) {
-            // print("caught arithmetic:", str(e))
-            std::cout << "caught arithmetic:" << " " << std::string(::tpy::__str__(e)) << "\n";
+        } catch (const ::tpy::ArithmeticError&) {
+            // print("caught arithmetic: overflow")
+            std::cout << "caught arithmetic: overflow" << "\n";
         }
     }
 }
@@ -39,9 +39,10 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # ArithmeticError is the base class of both ZeroDivisionError and
-    // # OverflowError, matching CPython's hierarchy. A single
-    // # `except ArithmeticError` block catches either subtype.
+    // # A single `except ArithmeticError` catches both ZeroDivisionError and
+    // # OverflowError (CPython's hierarchy). Print a fixed token, not str(e):
+    // # CPython 3.14 rewrote the message text, so pinning it would be
+    // # version-specific; the token still proves the base-class clause caught it.
     // import math
     ::tpystd::math::__tpy_init();
     // main()

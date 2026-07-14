@@ -5,4 +5,4 @@ ok 100
 FileNotFoundError | missing file
 Exception | generic failure
 ok 3
-ZeroDivisionError | integer division or modulo by zero
+ZeroDivisionError
