@@ -1072,3 +1072,224 @@ class TestOptionalParamEmit:
         assert "if ((!(p)))" in out
         assert "return &(a);" in out
         assert "::tpy::deref_check(p).x = 7;" in out
+
+
+class TestNarrowedOptionalFieldFaces:
+    """The Optional FIELD None-test (`c.f is None` -> `.has_value()`) and the
+    stateless narrowed-field read deref (`(*c.f)`), with the strips at the
+    positions the AST reads bare storage (plain store targets, the
+    print_optional_val wrap)."""
+
+    _REC = (
+        "from tpy import Int32\n"
+        "class C:\n"
+        "    v: Int32 | None\n"
+        "    big: int | None\n"
+        "    def __init__(self) -> None:\n"
+        "        self.v = None\n        self.big = None\n"
+    )
+
+    def _cpp(self, src: str, thir: bool) -> str:
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        hpp, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=thir))
+        return hpp + cpp
+
+    def test_field_none_test_routes_has_value(self):
+        thir, w = _lower_ctx_witnessed(
+            self._REC
+            + "def use(c: C) -> bool:\n    return c.v is None\n")
+        ret = _fn(thir, "use").body[0]
+        assert isinstance(ret.value, THIRIsNone) and ret.value.value_repr
+        fa = ret.value.operand
+        assert isinstance(fa, THIRFieldAccess) and not fa.narrowed_deref
+        assert w.get("narrow.opt_field_test")
+
+    def test_narrowed_read_derefs(self):
+        thir, w = _lower_ctx_witnessed(
+            self._REC
+            + "def use(c: C) -> Int32:\n"
+            + "    if c.v is None:\n        return 0\n"
+            + "    return c.v\n")
+        ret = _fn(thir, "use").body[-1]
+        fa = ret.value
+        assert isinstance(fa, THIRFieldAccess) and fa.narrowed_deref
+        assert w.get("field.narrowed_deref")
+
+    def test_store_target_strips_deref_aug_keeps(self):
+        src = (self._REC
+               + "def use(c: C) -> None:\n"
+               + "    if c.v is None:\n        return\n"
+               + "    c.v = 5\n"
+               + "    c.v += 2\n")
+        thir = _lower_ctx(src)
+        store = _fn(thir, "use").body[1]
+        assert isinstance(store, THIRAssign)
+        assert isinstance(store.target, THIRFieldAccess)
+        assert not store.target.narrowed_deref
+        aug = _fn(thir, "use").body[2]
+        assert isinstance(aug.target, THIRFieldAccess)
+        assert aug.target.narrowed_deref
+        cpp = self._cpp(src + "def main() -> None:\n    use(C())\nmain()\n",
+                        thir=True)
+        assert "c.v = 5;" in cpp
+        assert "(*c.v) = ::tpy::add_check<int32_t>((*c.v), 2);" in cpp
+
+    def test_narrowed_print_keeps_optval_wrap(self):
+        # gen_print keys the wrap on the DECLARED field type, so a narrowed
+        # scalar field still prints via print_optional_val over bare storage.
+        thir = _lower_ctx(
+            self._REC
+            + "def use(c: C) -> None:\n"
+            + "    if c.v is None:\n        return\n"
+            + "    print(c.v)\n")
+        arg = _fn(thir, "use").body[1].args[0]
+        assert arg.print_form is PrintForm.OPT_VAL
+        assert isinstance(arg.expr, THIRFieldAccess)
+        assert not arg.expr.narrowed_deref
+
+    def test_narrowed_bigint_print_derefs_raw(self):
+        # The runtime-bigint print branch fires off the narrowed read BEFORE
+        # the Optional wrap (narrowed_field_print_bigint regression): RAW
+        # `(*c.big)`, not print_optional_val.
+        thir = _lower_ctx(
+            self._REC
+            + "def use(c: C) -> None:\n"
+            + "    if c.big is None:\n        return\n"
+            + "    print(c.big)\n")
+        arg = _fn(thir, "use").body[1].args[0]
+        assert arg.print_form is PrintForm.RAW
+        assert isinstance(arg.expr, THIRFieldAccess)
+        assert arg.expr.narrowed_deref
+
+    def test_narrowed_record_field_chain_byte_identical(self):
+        src = (_PRELUDE
+               + "def chain(h: H) -> Int32:\n"
+               + "    if h.f is None:\n        return 0\n"
+               + "    return h.f.x\n"
+               + "def main() -> None:\n"
+               + "    print(chain(H()))\n"
+               + "main()\n")
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+        cpp = self._cpp(src, thir=True)
+        assert "if ((!h.f.has_value())) {" in cpp
+        assert "return (*h.f).x;" in cpp
+
+    def test_deep_chain_subject_rejects(self):
+        # A two-level None subject (`h.f.x is None` shape analog) stays AST:
+        # only a NAME-receiver field subject is admitted.
+        thir = _lower_ctx(
+            _PRELUDE
+            + "class G:\n"
+            + "    h: H\n"
+            + "    def __init__(self):\n        self.h = H()\n"
+            + "def use(g: G) -> bool:\n"
+            + "    return g.h.f is None\n")
+        assert _fn(thir, "use") is None
+
+
+class TestOptionalScalarEq:
+    """sema's optional_safe_eq (`x == y` with a value-repr Optional[scalar]
+    operand): both sides render bare over std::optional's mixed operator;
+    the plain side opposite an UN-narrowed optional is target-typed to that
+    optional's inner (char/numeric literal renders). Ordering ops stay AST."""
+
+    def test_opt_vs_plain_routes(self):
+        thir = _lower_ctx(
+            "from tpy import Int32\n"
+            "def eq(x: Int32 | None, y: Int32) -> bool:\n    return x == y\n")
+        assert _fn(thir, "eq") is not None
+
+    def test_both_optional_routes(self):
+        thir = _lower_ctx(
+            "from tpy import Char\n"
+            "def eq(a: Char | None, b: Char | None) -> bool:\n"
+            "    return a == b\n")
+        assert _fn(thir, "eq") is not None
+
+    def test_char_literal_targets_inner(self):
+        # `o == "a"`: the str literal renders as a target-typed C++ char
+        # literal against the optional's Char inner.
+        from .nodes import THIRCharLiteral
+        thir = _lower_ctx(
+            "from tpy import Char\n"
+            "def eq(o: Char | None) -> bool:\n    return o == \"a\"\n")
+        ret = _fn(thir, "eq").body[0]
+        assert isinstance(ret.value.right, THIRCharLiteral)
+
+    def test_face_witnessed(self):
+        _thir, faces = _lower_ctx_witnessed(
+            "from tpy import Int32\n"
+            "def ne(x: Int32 | None, y: Int32) -> bool:\n    return x != y\n")
+        assert faces.get("binop.opt_scalar_eq", 0) >= 1
+
+    def test_ordering_stays_ast(self):
+        # `<` on an optional operand is not optional_safe_eq -- the AST
+        # unwarps with a warning; stays out of the slice.
+        thir = _lower_ctx(
+            "from tpy import Int32\n"
+            "def lt(x: Int32 | None, y: Int32) -> bool:\n    return x < y\n")
+        assert _fn(thir, "lt") is None
+
+    def test_narrowed_char_vs_str_literal_ineligible(self):
+        # A NARROWED Char|None operand vs a str literal: the AST's
+        # _comparison_targets keys the char coercion on the RESOLVED type,
+        # so it emits the non-compiling `(*o) == "a"` (BUGS.md); THIR
+        # rejects rather than silently emitting the fixed `'a'` render.
+        # The UN-narrowed shape keeps routing (the opt_scalar_eq arm;
+        # test_char_literal_targets_inner is the routes-still guard).
+        thir = _lower_ctx(
+            "from tpy import Char\n"
+            "def eq(o: Char | None) -> bool:\n"
+            "    if o is None:\n        return False\n"
+            "    return o == \"a\"\n")
+        assert _fn(thir, "eq") is None
+
+    def test_narrowed_char_field_vs_str_literal_ineligible(self):
+        # The FIELD-subject sibling of the same shape (field narrowing
+        # admits the read; the compare must still reject).
+        thir = _lower_ctx(
+            "from tpy import Char\n"
+            "class C:\n"
+            "    v: Char | None\n"
+            "    def __init__(self) -> None:\n        self.v = None\n"
+            "def eq(c: C) -> bool:\n"
+            "    if c.v is None:\n        return False\n"
+            "    return c.v == \"a\"\n")
+        assert _fn(thir, "eq") is None
+
+
+class TestOptionalScalarEqEmit:
+    def _emit(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        hpp, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=thir))
+        return hpp + cpp
+
+    SRC = (
+        "from tpy import Int32, Char\n"
+        "def eq(x: Int32 | None, y: Int32) -> bool:\n    return x == y\n"
+        "def eq_lit(x: Int32 | None) -> bool:\n    return x == 3\n"
+        "def eq_char(o: Char | None) -> bool:\n    return o == \"a\"\n"
+        "def eq_both(a: Char | None, b: Char | None) -> bool:\n"
+        "    return a != b\n"
+        "def main():\n"
+        "    c: Char = \"a\"\n"
+        "    print(eq(5, 5), eq(None, 5), eq_lit(3), eq_char(c),\n"
+        "          eq_both(None, c))\n"
+        "main()\n"
+    )
+
+    def test_byte_identical(self):
+        assert self._emit(self.SRC, thir=True) == self._emit(self.SRC, thir=False)
+
+    def test_renders_bare_mixed_compare(self):
+        out = self._emit(self.SRC, thir=True)
+        assert "return (x == y);" in out
+        assert "return (x == 3);" in out
+        assert "return (o == 'a');" in out
+        assert "return (a != b);" in out

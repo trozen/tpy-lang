@@ -1286,6 +1286,67 @@ class TestPrintStmt:
         arg = stmt.args[0].expr
         assert isinstance(arg, THIRFieldAccess) and arg.form is Form.BORROW
 
+    def test_sep_end_literal_kwargs_route(self):
+        # sep=","/end="!" literals ride the value slots; the empty literal
+        # suppresses its token (gen_print's chain_token short-circuit).
+        thir = _lower(
+            _PRELUDE
+            + "def f(n: Int32) -> None:\n"
+            + "    print(\"a\", n, sep=\",\")\n"
+            + "    print(\"b\", n, sep=\"\", end=\"!\")\n")
+        s0, s1 = _fn(thir, "f").body
+        assert isinstance(s0, THIRPrint) and s0.sep_value == ","
+        assert s0.end_value == "\n" and s0.sep_expr is None
+        assert s1.sep_value is None and s1.end_value == "!"
+
+    def test_sep_end_runtime_str_name_routes(self):
+        # A resolved str-value NAME kwarg lowers as its bare expression
+        # (gen_expr_deref renders a plain str local/param bare on the AST path).
+        src = (_PRELUDE
+               + "def f(s: str) -> None:\n"
+               + "    d = \"-\"\n"
+               + "    print(\"a\", \"b\", sep=d, end=s)\n")
+        thir, w = _lower_ctx_witnessed(src)
+        stmt = _fn(thir, "f").body[-1]
+        assert isinstance(stmt, THIRPrint)
+        assert isinstance(stmt.sep_expr, THIRName)
+        assert isinstance(stmt.end_expr, THIRName)
+        assert w.get("print.kw_sep_end")
+
+    def test_sep_end_byte_identical(self):
+        src = (_PRELUDE
+               + "def main() -> None:\n"
+               + "    d = \": \"\n"
+               + "    print(\"a\", \"b\", sep=d)\n"
+               + "    print(\"x\", \"y\", sep=\"\", end=\"\")\n"
+               + "    print(1, 2, end=\"|\\n\")\n"
+               + "main()\n")
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+
+    def test_print_file_kwarg_rejects(self):
+        # file= (and flush=) keep the AST path -- the as_ostream sink arm.
+        thir = _lower(
+            _PRELUDE
+            + "import sys\n"
+            + "def f() -> None:\n"
+            + "    print(\"a\", file=sys.stderr)\n")
+        assert _fn(thir, "f") is None
+
+    def test_print_kwargs_empty_args_reject(self):
+        # `print(end=...)` with no args needs gen_print's emit-nothing arm.
+        thir = _lower(
+            _PRELUDE + "def f() -> None:\n    print(end=\"\")\n")
+        assert _fn(thir, "f") is None
+
+    def test_print_sep_nonstr_expr_rejects(self):
+        # A non-name sep expression (a call) stays AST -- only literals and
+        # resolved str-value names are admitted.
+        thir = _lower(
+            _PRELUDE
+            + "def g() -> str:\n    return \",\"\n"
+            + "def f() -> None:\n    print(\"a\", \"b\", sep=g())\n")
+        assert _fn(thir, "f") is None
+
     def test_bare_call_stmt_routes(self):
         # A same-module free-function call discarded for side effects (void return).
         thir = _lower(
@@ -1404,12 +1465,13 @@ class TestPrintStmt:
         assert out == self._cpp(src, thir=False)
         assert "print_optional_val(p)" in out
 
-    def test_kwargs_ineligible(self):
-        # sep=/end=/file=/flush= take gen_print's richer path -> AST.
+    def test_end_empty_literal_routes(self):
+        # end="" suppresses the newline token (the sep=/end= kwarg cell).
         thir = _lower(
             _PRELUDE
             + "def f(n: Int32) -> None:\n    print(n, end=\"\")\n")
-        assert _fn(thir, "f") is None
+        stmt = _fn(thir, "f").body[0]
+        assert isinstance(stmt, THIRPrint) and stmt.end_value is None
 
     def test_container_arg_routes_via_wrap(self):
         # A container NAME arg routes inside its printer wrap since the

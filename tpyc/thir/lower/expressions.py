@@ -168,6 +168,7 @@ from .predicates import (
     _ctor_arg_slot_ok,
     _dict_view_iterable_ok,
     _eligible_char,
+    _field_decl_type,
     _eligible_enum,
     _eligible_ptr_value,
     _eligible_scalar,
@@ -189,6 +190,10 @@ from .predicates import (
     _is_type_param_slot,
     _is_range_call,
     _is_none_compare_operand,
+    _narrowed_opt_field_read,
+    _ADDR_PTR_COERCIONS,
+    _PTR_IDENTITY_COERCIONS,
+    _SPANLIKE_COERCIONS,
     _is_string_owned,
     _mixed_sign_compare,
     _module_var_read_cpp,
@@ -219,11 +224,13 @@ from .predicates import (
     _resolved_viewfam_value,
     _runtime_bigint,
     _slice_object_type,
+    _span_value,
     _str_compare_operand,
     _str_concat_operand,
     _str_field_value_read,
     _str_name_form,
     _storage_call_container,
+    _owned_tuple_call_ret,
     _storage_call_ret,
     _subscript_index_and_tuple,
     _subscript_container_recv_type,
@@ -238,6 +245,7 @@ from .predicates import (
     _value_opt_str,
     _value_opt_view,
     _value_tuple,
+    _value_tuple_global,
     _value_tuple_return,
     _value_union_temp_slot,
     _union_binding_divergent,
@@ -273,6 +281,7 @@ from .checks import (
     _generic_plain_arg_ok,
     _is_len_call,
     _is_len_native,
+    _iter_proto_call_ret,
     _marker_call_kind,
     _marker_call_supported,
     _marker_reject,
@@ -339,13 +348,21 @@ def _call_use_supported(e: TpyCall, lc: '_LowerCtx',
                   and is_void_like_type(ret))
               or (result is _ExprResultUse.ITERABLE
                   and _nonvalue_container_ret(ret))
-              # A generator factory call in iterable position: the result
-              # feeds the universal __iter__/__next__ loop's `auto` source
-              # capture, never a typed value slot.
+              # A generator or iterator factory call in iterable position:
+              # the result feeds the universal __iter__/__next__ loop's
+              # source capture, never a typed value slot.
               or (result is _ExprResultUse.ITERABLE
                   and fi is not None and fi.is_generator)
+              or (result is _ExprResultUse.ITERABLE
+                  and _iter_proto_call_ret(e, analyzer))
               or (result is _ExprResultUse.STORAGE
                   and _storage_call_ret(ret, analyzer) is not None)
+              # A span result is a by-value view landing bare in its decl
+              # slot (`std::span<T> s = get_span(a);`); storage sinks only,
+              # like the container/tuple/union storage_call rows.
+              or (result is _ExprResultUse.STORAGE and _span_value(ret))
+              or (result is _ExprResultUse.STORAGE and use.tuple_source
+                  and _owned_tuple_call_ret(ret, analyzer) is not None)
               or (result is _ExprResultUse.BORROW_BIND
                   and _f1_record(record, analyzer))
               or _record_rvalue_call_shape(e, analyzer))
@@ -549,6 +566,48 @@ def _narrowed_opt_operand(e: TpyExpr, t: 'TpyType | None', lc: '_LowerCtx',
     return t if isinstance(unwrap_readonly(et), OptionalType) else et
 
 
+def _opt_scalar_eq_pair(
+        e: TpyBinOp, lt: 'TpyType | None', rt: 'TpyType | None', analyzer
+        ) -> 'tuple[TpyType | None, TpyType | None] | None':
+    """sema's optional_safe_eq over value-repr `Optional[scalar]` operands
+    (`x == y` with `x: Int32 | None`): C++ `std::optional`'s native mixed
+    comparison, both sides rendered bare -- the AST's `_comparison_targets`
+    optional_safe_eq arms. Returns the (left, right) operand TARGET types
+    (the plain side opposite an UN-narrowed optional is target-typed to that
+    optional's inner -- drives char/numeric literal renders; every other
+    slot is None), or None when the pair is outside the slice. `lt`/`rt`
+    arrive post-`_narrowed_opt_operand`, so a NARROWED optional side is
+    already its plain inner -- exactly the AST's resolved-vs-analyzed split
+    (a narrowed side derefs at the name arm, no target needed). Only
+    scalar/Char/enum inners are admitted (`_value_opt_scalar`); the
+    Optional[view] families keep their own arg-split machinery."""
+    if e.op not in ("==", "!=") or not e.optional_safe_eq:
+        return None
+    lo = _value_opt_scalar(lt, analyzer)
+    ro = _value_opt_scalar(rt, analyzer)
+    if lo is None and ro is None:
+        return None
+
+    def plain_ok(side: TpyExpr, t: 'TpyType | None',
+                 other: 'OptionalType | None') -> bool:
+        # A single-char str literal opposite an Optional[Char] renders the
+        # target-typed `'x'` (the _comparison_targets char arm over the
+        # optional's inner); multi-char literals never char-render.
+        if isinstance(side, TpyStrLiteral):
+            return (other is not None and _eligible_char(other.inner)
+                    and len(side.value) == 1)
+        return bool(_resolved_scalar(t, analyzer) or _eligible_char(t)
+                    or _eligible_enum(t, analyzer) is not None)
+
+    if lo is None and not plain_ok(e.left, lt, ro):
+        return None
+    if ro is None and not plain_ok(e.right, rt, lo):
+        return None
+    l_tgt = ro.inner if ro is not None and lo is None else None
+    r_tgt = lo.inner if lo is not None and ro is None else None
+    return (l_tgt, r_tgt)
+
+
 def _binop_operand_suffix(e: TpyBinOp, declared: dict[str, TpyType],
                           analyzer) -> str:
     fam = ""
@@ -575,6 +634,10 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
             detail=True)
 
     rb = e.resolved_binop
+    # sema's optional_safe_eq pair (value-repr Optional[scalar] ==/!=): the
+    # per-side literal targets, or None outside the slice (set in the
+    # compare arm, consumed by the operand render below).
+    opt_eq_targets: 'tuple[TpyType | None, TpyType | None] | None' = None
     if e.op in _ARITH_OPS or e.op in _BITWISE_OPS:
         if rb is None or not getattr(rb.method, "cpp_template", None):
             if (rb is None or e.op != "+"
@@ -614,6 +677,7 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
             e.left, _operand_type(e.left, declared, analyzer), lc, analyzer)
         rt = _narrowed_opt_operand(
             e.right, _operand_type(e.right, declared, analyzer), lc, analyzer)
+        opt_eq_targets = _opt_scalar_eq_pair(e, lt, rt, analyzer)
         if not ((_resolved_scalar(lt, analyzer)
                  and _resolved_scalar(rt, analyzer))
                 or (_str_compare_operand(e.left, lt, analyzer)
@@ -624,7 +688,8 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                     and _char_compare_operand(e.right, rt, analyzer))
                 or (_tparam_value(lt) and _tparam_value(rt))
                 or _union_compare_pair(lt, rt)
-                or _enum_compare_pair(e, lt, rt, analyzer)):
+                or _enum_compare_pair(e, lt, rt, analyzer)
+                or opt_eq_targets is not None):
             reject()
         if _mixed_sign_compare(lt, rt):
             reject()
@@ -675,8 +740,14 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
         operand = e.right if isinstance(e.left, TpyNoneLiteral) else e.left
         # A value-repr Optional binding (param OR declared local -- e.g. a
         # try-hoisted `std::optional<T> r;` slot) None-tests via has_value;
-        # pointer-repr bindings via `!= nullptr`.
-        value_repr = (
+        # pointer-repr bindings via `!= nullptr`. An Optional FIELD subject
+        # (storage std::optional<T> whatever the repr) also takes has_value
+        # over the bare member read -- the gate above already pinned the
+        # receiver/marker shape, so the field lowers prechecked.
+        is_field = isinstance(operand, TpyFieldAccess)
+        if is_field:
+            _witness("narrow.opt_field_test")
+        value_repr = is_field or (
             isinstance(operand, TpyName)
             and (_value_opt_scalar_binding(operand.name, lc)
                  or _value_opt_view_param(operand.name, lc)
@@ -686,22 +757,54 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
         return THIRIsNone(
             result_type=rtype,
             operand=_lower_expr(
-                operand, lc, declared, allow_whole_optional=True),
+                operand, lc, declared, allow_whole_optional=True,
+                field_prechecked=is_field),
             negate=e.op == "is not",
             value_repr=value_repr,
             form=Form.VALUE,
             loc=loc)
-    if e.op in _COMPARE_OPS:
+    if e.op in _COMPARE_OPS and opt_eq_targets is not None:
+        # The optional_safe_eq render: each optional side reads bare (a
+        # narrowed side derefs at the name arm), the plain side opposite an
+        # UN-narrowed optional renders against that optional's inner (the
+        # AST's _comparison_targets target threading -- char/numeric literal
+        # renders). std::optional's mixed operator handles the compare.
+        l_tgt, r_tgt = opt_eq_targets
+        _witness("binop.opt_scalar_eq")
+        left = _slot_literal_retype(
+            _lower_char_targeted(e.left, l_tgt, lc, declared,
+                                 allow_whole_optional=True),
+            l_tgt, lc)
+        right = _slot_literal_retype(
+            _lower_char_targeted(e.right, r_tgt, lc, declared,
+                                 allow_whole_optional=True),
+            r_tgt, lc)
+    elif e.op in _COMPARE_OPS:
+        if (_narrowed_opt_char_vs_str_literal(e.left, e.right, lc, declared)
+                or _narrowed_opt_char_vs_str_literal(
+                    e.right, e.left, lc, declared)):
+            raise ThirUnsupported("binop.narrowed_char_eq_literal")
+        # A str-family FIELD operand renders the bare member read into the
+        # compare/concat/needle templates on both paths, so binop operands
+        # are an owned-str-field-ok position (the flag is inert for every
+        # non-str-field operand).
         left = _lower_char_targeted(
-            e.left, analyzer.get_expr_type(e.right), lc, declared)
+            e.left, analyzer.get_expr_type(e.right), lc, declared,
+            field_owned_str_ok=isinstance(e.left, TpyFieldAccess))
         right = _lower_char_targeted(
-            e.right, analyzer.get_expr_type(e.left), lc, declared)
+            e.right, analyzer.get_expr_type(e.left), lc, declared,
+            field_owned_str_ok=isinstance(e.right, TpyFieldAccess))
     else:
         lslot, rslot = _rb_operand_slots(e.resolved_binop)
         left = _slot_literal_retype(
-            _lower_expr(e.left, lc, declared), lslot, lc)
+            _lower_expr(e.left, lc, declared,
+                        field_owned_str_ok=isinstance(e.left, TpyFieldAccess)),
+            lslot, lc)
         right = _slot_literal_retype(
-            _lower_expr(e.right, lc, declared), rslot, lc)
+            _lower_expr(e.right, lc, declared,
+                        field_owned_str_ok=isinstance(e.right,
+                                                      TpyFieldAccess)),
+            rslot, lc)
     bt = _resolved_bytes_value(rtype, analyzer)
     lcast, rcast = _binop_operand_casts(e, analyzer)
     return THIRBinOp(
@@ -937,7 +1040,8 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
             return _lower_module_var(e, rtype, lc, *e.module_var_access,
                                      loc=loc)
         if e.class_constant_owner is not None:
-            return _lower_class_constant(e, rtype, lc, declared, loc)
+            return _lower_class_constant(e, rtype, lc, declared, loc,
+                                         tuple_ok=use.tuple_source)
         bare_mod = _bare_module_recv(e.obj, declared, analyzer)
         if (bare_mod is not None
                 and _module_var_read_cpp(bare_mod, e.field, analyzer)
@@ -1030,6 +1134,12 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
         # honest for form-keyed sinks. A `StrView` field is BORROW: the
         # owned-str return sink fires its view->owned copy on the tag.
         fa_str = _resolved_str_value(rtype, analyzer)
+        # A sema-narrowed Optional field read (declared std::optional<T>,
+        # analyzed non-Optional) unwraps `(*recv.field)` in value positions;
+        # plain-assign targets and the print_optional_val wrap strip the flag.
+        narrowed_opt = _narrowed_opt_field_read(e, rtype, declared, analyzer)
+        if narrowed_opt:
+            _witness("field.narrowed_deref")
         if (isinstance(e.obj, TpyName)
                 and e.obj.name not in lc.narrow.narrowed
                 and e.obj.name not in lc.inline_narrowed):
@@ -1045,6 +1155,7 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                                       form=Form.BORROW, loc=loc),
                     field_cpp=_field_cpp(e),
                     is_arrow=True,
+                    narrowed_deref=narrowed_opt,
                     form=_viewfam_result_form(fa_str),
                     loc=loc,
                 )
@@ -1056,6 +1167,7 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                 subscript_prechecked=isinstance(e.obj, TpySubscript)),
             field_cpp=_field_cpp(e),
             is_arrow=_field_is_arrow(e, lc),
+            narrowed_deref=narrowed_opt,
             form=_viewfam_result_form(fa_str),
             loc=loc,
         )
@@ -1891,6 +2003,9 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                     record_ret_ok=record_ret,
                     moved_ret_ok=result_use is _ExprResultUse.SUSPEND,
                     iterable_gen_ok=iterable_gen,
+                    owned_tuple_ret_ok=(
+                        result_use is _ExprResultUse.STORAGE
+                        and use.tuple_source),
                     narrowed=frozenset(lc.narrow.narrowed))):
                 if mk is None:
                     note_detail(_marker_reject(e, analyzer))
@@ -1980,7 +2095,8 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
             elif _resolved_str_value(recv_type, analyzer) is not None:
                 shape_ok = _view_method_call_supported(
                     e, fi, declared, analyzer,
-                    stmt_position=stmt_position)
+                    stmt_position=stmt_position,
+                    storage_ret_ok=storage_ret_ok)
                 stub_recv = True
             else:
                 shape_ok = _record_method_call_supported(
@@ -2108,11 +2224,20 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
         # (str_to_strview / string_to_strview): its value is a view into the
         # source's buffer whatever the source's form, so it sets BORROW
         # itself (an owned sink downstream must re-copy, like any view).
-        vform = (Form.BORROW
-                 if rtype is not None
-                 and is_str_view_type(unwrap_readonly(unwrap_ref_type(
-                     unwrap_send_sync(rtype))))
-                 else inner.form)
+        # The ptr/span coercion families produce VALUE types (`T*`,
+        # std::span, Slice) whatever the inner's form -- carrying the
+        # record/container inner's BORROW would trip the value-typed
+        # return validation.
+        if (e.coercion.name in _ADDR_PTR_COERCIONS
+                or e.coercion.name in _SPANLIKE_COERCIONS
+                or e.coercion.name in _PTR_IDENTITY_COERCIONS):
+            vform = Form.VALUE
+        else:
+            vform = (Form.BORROW
+                     if rtype is not None
+                     and is_str_view_type(unwrap_readonly(unwrap_ref_type(
+                         unwrap_send_sync(rtype))))
+                     else inner.form)
         return THIRCoerce(
             result_type=rtype,
             expr=inner,
@@ -2175,7 +2300,7 @@ def _lower_dyn_getattr_call(e: TpyFieldAccess, rtype: 'TpyType | None',
 
 def _lower_class_constant(e: TpyFieldAccess, rtype: 'TpyType | None',
                           lc: '_LowerCtx', declared: dict[str, TpyType],
-                          loc) -> THIRExpr:
+                          loc, *, tuple_ok: bool = False) -> THIRExpr:
     """A class-constant read (`class_constant_owner` set) -> the bare
     qualified static, spelled at lowering like THIREnumMember. Only the
     receiver_eval-None shapes route (name / static-type-chain receiver, no
@@ -2191,7 +2316,10 @@ def _lower_class_constant(e: TpyFieldAccess, rtype: 'TpyType | None',
     ok = (_eligible_scalar(rtype) or _eligible_char(rtype)
           or _eligible_enum(rtype, analyzer) is not None
           or _eligible_ptr_value(rtype, analyzer)
-          or viewfam is not None)
+          or viewfam is not None
+          # The standalone tuple-unpack source consumes a value-tuple
+          # constant whole (`auto __tup_N = Version::SEMVER;`).
+          or (tuple_ok and _value_tuple_global(rtype, analyzer) is not None))
     if not ok:
         raise ThirUnsupported("field.class_const_type", detail=True)
     cpp = _class_constant_cpp(e, analyzer, lc.render_type)
@@ -2410,6 +2538,8 @@ def _lower_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
         bare = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(elem_slot)))
         if isinstance(bare, TupleType):
             _witness("ret.tuple_nested_elem")
+        elif isinstance(bare, OwnType):
+            _witness("ret.tuple_own_elem")
         elif isinstance(bare, OptionalType) and not bare.uses_pointer_repr():
             if _resolved_str_value(bare.inner, lc.analyzer) is not None:
                 _witness("ret.tuple_opt_str_elem")
@@ -3121,9 +3251,37 @@ def _retag_bytes_literal_view(value: THIRExpr, target: 'TpyType | None') -> THIR
         return replace(value, form=Form.BORROW)
     return value
 
+def _narrowed_opt_char_vs_str_literal(
+        subj: TpyExpr, other: TpyExpr, lc: '_LowerCtx',
+        declared: dict[str, TpyType]) -> bool:
+    """A NARROWED value-repr Optional[Char] operand compared against a str
+    literal. The AST's _comparison_targets keys the char-literal coercion on
+    the RESOLVED (un-narrowed) operand type, so it never chars the literal
+    here and emits the non-compiling `(*o) == "a"` render (BUGS.md); THIR's
+    narrowed read types the slot Char and would silently emit the fixed
+    `(*o) == 'a'`. Reject so the body falls back and stays byte-mirrored;
+    lift when the AST render is fixed."""
+    if not isinstance(other, TpyStrLiteral):
+        return False
+    if not _eligible_char(lc.analyzer.get_expr_type(subj)):
+        return False
+    if isinstance(subj, TpyName):
+        decl = declared.get(subj.name)
+    elif (isinstance(subj, TpyFieldAccess)
+          and isinstance(subj.obj, TpyName)):
+        decl = _field_decl_type(subj, declared, lc.analyzer)
+    else:
+        return False
+    du = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(decl)))
+          if decl is not None else None)
+    return (isinstance(du, OptionalType) and not du.uses_pointer_repr()
+            and _eligible_char(du.inner))
+
 def _lower_char_targeted(e: TpyExpr, target: TpyType | None,
                          lc: '_LowerCtx', declared: dict[str, TpyType], *,
-                         use: _ExprUse = _ExprUse()) -> THIRExpr:
+                         use: _ExprUse = _ExprUse(),
+                         allow_whole_optional: bool = False,
+                         field_owned_str_ok: bool = False) -> THIRExpr:
     """Lower an expression whose slot may be Char-typed, mirroring gen_expr's
     char-literal arm: a str literal in a Char slot renders as a target-typed
     C++ char literal (`'x'`). Shared by the three positions the AST threads a
@@ -3135,7 +3293,9 @@ def _lower_char_targeted(e: TpyExpr, target: TpyType | None,
     if isinstance(e, TpyStrLiteral) and _eligible_char(target):
         return THIRCharLiteral(result_type=CHAR, value=e.value,
                                loc=getattr(e, "loc", None))
-    return _lower_expr(e, lc, declared, use=use, target_type=target)
+    return _lower_expr(e, lc, declared, use=use, target_type=target,
+                       allow_whole_optional=allow_whole_optional,
+                       field_owned_str_ok=field_owned_str_ok)
 
 def _lower_truthy(e: TpyExpr, lc: '_LowerCtx',
                   declared: dict[str, TpyType], *,

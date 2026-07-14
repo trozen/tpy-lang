@@ -62,6 +62,7 @@ from ...typesys import (
     unwrap_ref_type,
     unwrap_send_sync,
 )
+from ...modules.type_resolution import is_native_iterable
 from ...type_def_registry import (
     enum_info_of,
     int_traits_of,
@@ -113,6 +114,7 @@ from .predicates import (
     _bigint_index_disposition,
     _bytes_concat_operand,
     _coerce_disposition,
+    _SPANLIKE_COERCIONS,
     _const_exact_field_receiver_ok,
     _const_index,
     _container_pass_through_arg,
@@ -120,6 +122,7 @@ from .predicates import (
     _native_iterable_genexpr_arg,
     _container_record_elem,
     _set_method_recv,
+    _container_elem_family,
     _container_scalar_read,
     _eligible_char,
     _eligible_enum,
@@ -172,6 +175,8 @@ from .predicates import (
     _runtime_bigint,
     _scalar_pass_through_slot,
     _slice_object_type,
+    _owned_tuple_call_ret,
+    _span_value,
     _storage_call_ret,
     _str_concat_operand,
     _subscript_container_recv_type,
@@ -181,6 +186,7 @@ from .predicates import (
     _union_binding_divergent,
     _unwrap_lit_coerce,
     _none_value_opt_arg,
+    _value_opt_scalar_value_arg,
     _value_opt_scalar,
     _value_opt_scalar_name,
     _value_opt_str,
@@ -675,9 +681,9 @@ def _record_rvalue_source_shape(init: TpyExpr, analyzer) -> bool:
     # The ctor face shares `_ctor_shape_ok`'s same-name free-fn collision,
     # generic / native / multi-overload / special-form `__init__` checks. Its
     # AST emit must be `Name(args)` or qualified `::ns::Name(args)`. It
-    # owns the arity verdict too (`_ctor_shape_ok`'s `_ctor_arity_ok`): the
-    # raw-name form admits omitted trailing defaults, the instantiation form
-    # stays exact. The by-value record-returning free-call face shares
+    # owns the arity verdict too (`_ctor_arity_ok`, shared by the raw-name
+    # and instantiation forms: omitted trailing defaults ride the C++ ctor
+    # signature). The by-value record-returning free-call face shares
     # free-call lowering's callee-shape head (linkage, literal-overload mangling,
     # generics, error_return -- shapes whose AST emit is not the bare
     # `name(args)`); it keeps exact arity here (an omitted free-call default is
@@ -1148,11 +1154,33 @@ def _setitem_target_ok(
     if recv_t is None:
         return note_detail(
             "setitem." + _subscript_recv_reject(recv, declared, analyzer))
-    if not _container_scalar_read(recv_t, analyzer):
+    if not (_container_scalar_read(recv_t, analyzer)
+            or _setitem_widened_family_ok(recv_t, analyzer)):
         return note_detail("setitem.family")
     if (_bigint_index_disposition(sub.index, analyzer) == "reject"):
         return note_detail("setitem.index")
     return True
+
+def _setitem_widened_elem_ok(elem_t: 'TpyType', analyzer) -> bool:
+    """Element-level arm of _setitem_widened_family_ok. The lowering's
+    widened_elem dispatch consumes this same predicate so gate and dispatch
+    cannot drift apart."""
+    return (_container_scalar_read(elem_t, analyzer)
+            or _optional_record_field_inner(elem_t, analyzer) is not None
+            or _eligible_ptr_union(elem_t, analyzer) is not None)
+
+def _setitem_widened_family_ok(recv_t: 'TpyType | None', analyzer) -> bool:
+    """The non-scalar element/value slots the setitem WRITE additionally
+    admits (list/Array/dict receivers, same key slice): a nested scalar-read
+    container (container-literal values, the type-prefix face), a
+    pointer-repr Optional[F1] element (the ptr_to_optional lift), or a
+    value-variant union of F1 members (the to_value_variant lift). The VALUE
+    shape is narrowed at the lowering per slot kind -- an unsupported source
+    rejects there. The aug gates stay scalar/str via their own element
+    checks; reads keep the scalar family."""
+    return _container_elem_family(
+        recv_t, analyzer,
+        lambda a: _setitem_widened_elem_ok(a, analyzer))
 
 def _container_setitem_ok(
         stmt: TpyAssign, declared: dict[str, TpyType], pointers: set[str],
@@ -1678,6 +1706,7 @@ def _shared_pass_through_arg(a: TpyExpr, ptype: 'TpyType | None',
                 and _bytes_pass_through_arg(a, ptype, locals_, analyzer))
             or _char_pass_through_arg(a, ptype, locals_, analyzer)
             or _container_pass_through_arg(a, ptype, locals_, analyzer)
+            or _span_coerce_arg(a, ptype, locals_, analyzer)
             or _slice_ctor_pass_through_arg(a, ptype, locals_, analyzer)
             or _enum_pass_through_arg(a, ptype, locals_, analyzer)
             or _ptr_pass_through_arg(a, ptype, locals_, analyzer)
@@ -1717,6 +1746,26 @@ def _ptr_pass_through_arg(a: TpyExpr, ptype: 'TpyType | None',
                                analyzer):
         return False
     return (_eligible_ptr_value(analyzer.get_expr_type(a), analyzer))
+
+def _span_coerce_arg(a: TpyExpr, ptype: TpyType | None,
+                     locals_: dict[str, TpyType], analyzer) -> bool:
+    """A span-family coerce (spanlike -> Span, span const-widening) into a
+    by-value span slot: the coerce arm renders `::tpy::as_span(...)` /
+    `as_mut_span(...)` (or the bare identity passthrough) exactly like
+    gen_expr's is_span(coerce_target) arm; the ownership cascade never fires
+    for the by-value slot. Bare span VALUES ride `_container_pass_through_arg`;
+    array-literal inners (the make_array-prefixed target-threaded render)
+    reject via the None disposition -> AST path."""
+    pt = ptype if isinstance(ptype, TpyType) else None
+    if pt is None:
+        return False
+    pt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(pt)))
+    if not is_span(pt):
+        return False
+    return (isinstance(a, TpyCoerce)
+            and a.coercion.name in (_SPANLIKE_COERCIONS
+                                    | {"span_to_readonly_span"})
+            and _coerce_disposition(a) is not None)
 
 def _slice_ctor_pass_through_arg(a: TpyExpr, ptype: TpyType | None,
                                  locals_: dict[str, TpyType], analyzer) -> bool:
@@ -2152,7 +2201,10 @@ def _ctor_instantiation_ok(e: TpyCall, analyzer) -> bool:
     if (fi.cpp_template or fi.native_function or fi.native_name
             or fi.error_return_type is not None):
         return False
-    if len(e.args) != len(fi.params):
+    # Omitted trailing defaults render on the C++ ctor signature exactly as
+    # for the raw-name face (`ArrayList[Int32, 8]()` with a defaulted `items`
+    # param calls the spelled zero-arg `ArrayList<int32_t, 8>()`).
+    if not _ctor_arity_ok(e, fi):
         return False
     if not _f1_record(ct, analyzer):
         return False
@@ -2161,10 +2213,21 @@ def _ctor_instantiation_ok(e: TpyCall, analyzer) -> bool:
         return False
     # A NATIVE record's zero-arg instantiation (`UninitStorage[T]()`) renders
     # the same `type_to_cpp(call_type)()` (native_cpp_names spelling) with no
-    # arg arms to diverge; an arg-ful native ctor may resolve @native/@
-    # cpp_template __init__ overloads with their own emit arms -> AST.
+    # arg arms to diverge. An arg-ful native ctor is admitted only when its
+    # REAL `__init__` is a plain stub -- an @native/@cpp_template overload (or
+    # a multi-overload set) has its own emit arms -> AST.
     if ri.is_native and e.args:
-        return False
+        overloads = ri.get_method_overloads("__init__")
+        if len(overloads) != 1:
+            return False
+        init_fi = overloads[0]
+        if (init_fi.cpp_template or init_fi.native_function
+                or init_fi.native_name or init_fi.is_consuming
+                or init_fi.error_return_type is not None
+                or init_fi.native_cpp_return_type is not None
+                or any(isinstance(p.type, LiteralType)
+                       for p in init_fi.params)):
+            return False
     return True
 
 def _str_pass_through_arg(a: TpyExpr, ptype: TpyType | None,
@@ -2437,6 +2500,13 @@ def _method_nonname_receiver_ok(recv: TpyExpr, locals_: dict[str, TpyType],
     if isinstance(recv, TpySubscript):
         return (_container_record_elem_subscript(recv, locals_, analyzer)
                 and _witness("method.recv.subscript"))
+    if isinstance(recv, TpyStrLiteral):
+        # A str-LITERAL receiver (`"a,b,c".split(",")`): the AST's builtin-
+        # method receiver render is the bare literal (const char[N]) prepended
+        # / substituted into the resolved template, which the general lowering
+        # reproduces; `_method_receiver_type` reads the literal's str type so
+        # the view arm gates the method itself.
+        return _witness("method.recv.str_literal")
     if isinstance(recv, TpyMethodCall):
         return _method_call_receiver_ok(recv, locals_, analyzer)
     if isinstance(recv, TpyCall):
@@ -2782,6 +2852,7 @@ def _marker_call_supported(e: TpyMethodCall, kind: 'tuple[str, str]',
                           record_ret_ok: bool = False,
                           moved_ret_ok: bool = False,
                           iterable_gen_ok: bool = False,
+                          owned_tuple_ret_ok: bool = False,
                           narrowed: 'set[str] | frozenset[str]' = frozenset()) -> bool:
     """Result/arg checks for a `_marker_call_kind`-classified receiver-less
     call. Mirrors free-call lowering's value-position result set and its arg
@@ -2817,6 +2888,10 @@ def _marker_call_supported(e: TpyMethodCall, kind: 'tuple[str, str]',
             # Iterator-protocol result feeds the iter_proto route's `auto
             # __src_N` capture, never a typed value slot.
             or iterable_gen_ok
+            # The standalone tuple-unpack SOURCE (`a, b = m.pair()`): the
+            # `auto __tup_N =` capture takes the result whole, no value slot.
+            or (owned_tuple_ret_ok
+                and _owned_tuple_call_ret(ret, analyzer) is not None)
             or (stmt_position and (ret is None or is_void_like_type(ret)))):
         return note_detail(_qualcall_ret_reject(ret, analyzer))
     return True
@@ -2995,7 +3070,8 @@ def _container_method_call_supported(
             or _resolved_bytes_value(ret, analyzer) is not None
             or _callable_value(ret)
             or (storage_ret_ok
-                and _storage_call_ret(ret, analyzer) is not None)
+                and (_storage_call_ret(ret, analyzer) is not None
+                     or _span_value(ret)))
             or (stmt_position and (ret is None or is_void_like_type(ret)))
             or note_detail("method.ret_type"))
 
@@ -3213,9 +3289,12 @@ def _record_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyTy
             # rvalue and borrow returns render the same bare postfix member).
             or (record_ret_ok and _f1_record(ret, analyzer))
             # Storage sinks only (the tuple-unpack source; the record-method
-            # sibling of free-call lowering's storage_ret_ok escape).
+            # sibling of free-call lowering's storage_ret_ok escape). A span
+            # result is a by-value view landing bare in its decl slot
+            # (`std::span<T> s = b.as_span();`).
             or (storage_ret_ok
-                and _storage_call_ret(ret, analyzer) is not None)
+                and (_storage_call_ret(ret, analyzer) is not None
+                     or _span_value(ret)))
             or (stmt_position and (ret is None or is_void_like_type(ret)))):
         return note_detail("method.ret_type")
     return True
@@ -3247,10 +3326,15 @@ def _record_method_arg_ok(
             or _method_value_union_arg(a, ptype, locals_, analyzer)
             or (temps_ok and _value_union_temp_arg(
                 a, ptype, locals_, narrowed, analyzer))
+            # A scalar value / `None` into a value-repr Optional[scalar]
+            # slot renders bare / `std::nullopt` -- `sock.settimeout(0.5)`.
+            or _value_opt_scalar_value_arg(a, ptype, analyzer)
+            or _none_value_opt_arg(a, ptype, analyzer) is not None
             or note_detail("method.arg_shape"))
 
 def _view_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyType],
-                               analyzer, *, stmt_position: bool) -> bool:
+                               analyzer, *, stmt_position: bool,
+                               storage_ret_ok: bool = False) -> bool:
     """A str/StrView value-view receiver's builtin method call -- the
     `_gen_method_call` builtin-method arm (`native_function or cpp_template`,
     line-3700 block) reduced to its pass-through subset. The shared marker /
@@ -3294,6 +3378,11 @@ def _view_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyType
             or _eligible_ptr_value(ret, analyzer)
             or _resolved_str_value(ret, analyzer) is not None
             or _resolved_bytes_value(ret, analyzer) is not None
+            # Storage sinks only (`parts = s.split(",")` -- the container
+            # result lands in the plain value decl, like the container /
+            # record-method siblings' storage_ret_ok escape).
+            or (storage_ret_ok
+                and _storage_call_ret(ret, analyzer) is not None)
             or (stmt_position and (ret is None or is_void_like_type(ret)))):
         return note_detail("method.view.ret_type")
     return True
@@ -3310,21 +3399,55 @@ def _view_method_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
             or _ptr_pass_through_arg(a, ptype, locals_, analyzer)
             or note_detail("method.view.arg_shape"))
 
+def _user_iterator_iterable(u: 'TpyType | None', analyzer) -> bool:
+    """The `__iter__`/`__next__` protocol-loop family: a protocol
+    Iterator/Iterable value, or a user record declaring (or inheriting)
+    either dunder -- the AST's universal `::tpy::__iter__` default."""
+    if not isinstance(u, NominalType):
+        return False
+    if u.is_protocol:
+        return u.name in ("Iterator", "Iterable")
+    rec = analyzer.registry.get_record_for_type(u)
+    if rec is None:
+        return False
+    return bool(
+        analyzer.registry.get_method_overloads_with_parents(rec, "__iter__")
+        or analyzer.registry.get_method_overloads_with_parents(rec, "__next__"))
+
+
+def _iter_proto_call_ret(it: 'TpyCall | TpyMethodCall', analyzer) -> bool:
+    """A non-generator call admitted as the universal-loop iterable: its
+    result is the `__iter__`/`__next__` family -- an Iterator/Iterable
+    protocol value (`reversed(xs)`, `zip(xs, ys)`) or a concrete
+    user-iterator record (`SimpleIter(4)`) -- and NOT NativeIterable (which
+    takes the AST's begin/end peephole, the container route)."""
+    ret = analyzer.get_expr_type(it)
+    u = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ret)))
+         if ret is not None else None)
+    if isinstance(u, OwnType):
+        u = unwrap_readonly(u.wrapped)
+    if u is None or is_native_iterable(u, analyzer.registry):
+        return False
+    return _user_iterator_iterable(u, analyzer)
+
+
 def _member_gen_call_iterable_ok(e: TpyMethodCall, locals_: dict[str, TpyType],
                                  analyzer) -> bool:
-    """A member GENERATOR call as a for-each iterable (`for x in obj.gen(n):`
-    -- the iter_proto route). The factory call spells like any plain member
-    call (its Iterator-protocol return never lands in a value slot -- it
-    feeds the route's owning `auto __src_N` capture), so only the fi
-    generator-kind reject and the per-receiver result-family gates are
-    bypassed (via `iterable_override`); the receiver and args still lower
-    through the standard member tail. Bare in-scope name receivers only
-    (`self` included); generic / native / template callees and
-    marker-bearing calls stay rejected."""
+    """A member GENERATOR (or iterator-factory) call as a for-each iterable
+    (`for x in obj.gen(n):` -- the iter_proto route). The factory call
+    spells like any plain member call (its Iterator-family return never
+    lands in a value slot -- it feeds the route's `auto __src_N` capture),
+    so only the fi generator-kind reject and the per-receiver result-family
+    gates are bypassed (via `iterable_override`); the receiver and args
+    still lower through the standard member tail. Bare in-scope name
+    receivers only (`self` included); generic / native / template callees
+    and marker-bearing calls stay rejected."""
     if not _plain_member_call_markers_ok(e) or e.needs_optional_runtime_check:
         return False
     fi = e.resolved_function_info
-    if fi is None or not fi.is_generator:
+    if fi is None:
+        return False
+    if not fi.is_generator and not _iter_proto_call_ret(e, analyzer):
         return False
     if not _plain_method_fi_ok(fi, generator_ok=True):
         return False
@@ -3527,6 +3650,19 @@ def _print_optval_opt(a: TpyExpr, analyzer,
         return opt
     if isinstance(a, TpyName) and a.name in locals_:
         return _value_opt_scalar(locals_[a.name], analyzer)
+    if isinstance(a, TpyFieldAccess) and isinstance(a.obj, TpyName):
+        # A NARROWED Optional FIELD keeps the whole-optional wrap keyed on the
+        # DECLARED field type (gen_print swaps in the declared Optional for
+        # fields) -- EXCEPT a narrowed BigInt inner, whose runtime-bigint
+        # branch fires first off the narrowed read (the `(*this->f)` RAW
+        # render; regression case narrowed_field_print_bigint).
+        fdt = _field_decl_type(a, locals_, analyzer)
+        if fdt is not None:
+            fdt = unwrap_readonly(fdt)
+            opt = _value_opt_scalar(fdt, analyzer) or _value_opt_str(fdt, analyzer)
+            if opt is not None and is_big_int_type(opt.inner):
+                return None
+            return opt
     return None
 
 def _print_optval_form(opt: 'OptionalType') -> 'tuple[PrintForm, str | None]':
@@ -3576,6 +3712,25 @@ def _wrap_print_form(a: TpyExpr, declared: dict[str, TpyType],
     u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
     if isinstance(u, NominalType) and _f1_record(u, analyzer):
         return PrintForm.RAW
+    return None
+
+def _print_kwarg_token(
+        kv: TpyExpr, declared: dict[str, TpyType], pointers: set[str],
+        narrowed: 'AbstractSet[str]', analyzer) -> 'tuple[str, str | None] | None':
+    """Classify a print sep=/end= kwarg source. ("literal", value-or-None)
+    for a str literal (empty -> None: the token is skipped entirely,
+    gen_print's chain_token short-circuit); ("name", None) for a resolved
+    str/StrView NAME, which renders bare on both paths (gen_expr_deref hits
+    none of its special arms for a plain str local/param). Anything else is
+    unrouted; the caller lowers a "name" source immediately."""
+    if isinstance(kv, TpyStrLiteral):
+        return ("literal", kv.value or None)
+    if (isinstance(kv, TpyName)
+            and kv.name not in pointers
+            and kv.name not in narrowed
+            and _resolved_str_value(declared.get(kv.name), analyzer)
+            is not None):
+        return ("name", None)
     return None
 
 def _print_arg_ok(a: TpyExpr, locals_: dict[str, TpyType], analyzer) -> bool:

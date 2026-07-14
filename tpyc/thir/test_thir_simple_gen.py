@@ -176,8 +176,10 @@ class TestSlicedOutShapes:
     # on the caller side. sgen.method / sgen.bare_yield / sgen.hoist_promoted
     # and the body.hoisted_vars tail-check likewise mirror sync-arm defensive
     # checks with no reachable public-entry shape found by probing.
-    def test_nonvalue_yield_defers(self):
-        # A record yield uses the val_or_ref borrow slot -- out of slice.
+    def test_record_yield_and_loop_var_route(self):
+        # A record yield uses the val_or_ref borrow slot (bare-name render)
+        # and the record loop element binds `auto&&` -- both skeleton-side,
+        # so the F1-record family routes.
         src = (_ITER
                + "class P:\n"
                + "    x: Int32\n"
@@ -188,22 +190,71 @@ class TestSlicedOutShapes:
                + "def main() -> None:\n"
                + "    ps = [P(1), P(2)]\n"
                + "    for p in gen(ps):\n        print(p.x)\nmain()\n")
-        assert _sgen_fallback(src).get("sgen.yield_type") == 1
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("sgen.body") == 1
+        assert not any("sgen." in k for k in fallback)
 
-    def test_nonvalue_loop_var_defers(self):
-        # A record loop element binds `auto&&` into the live source -- the
-        # borrow-classified loop-var reads are out of slice (the yield is a
-        # value scalar, so the yield gate passes).
+    def test_own_record_yield_routes(self):
+        # An Own[record] yield keeps the bare value slot; the skeleton's
+        # `std::move(__val)` moves it out -- the ctor-call value render is
+        # position-blind.
+        src = (_ITER
+               + "from tpy import Own\n"
+               + "class P:\n"
+               + "    x: Int32\n"
+               + "    def __init__(self, x: Int32) -> None:\n        self.x = x\n\n"
+               + "def gen(n: Int32) -> Iterator[Own[P]]:\n"
+               + "    for i in range(n):\n"
+               + "        yield P(i)\n\n"
+               + "def main() -> None:\n"
+               + "    for p in gen(2):\n        print(p.x)\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("sgen.body") == 1
+        assert not any("sgen." in k for k in fallback)
+
+    def test_str_yield_routes(self):
+        # A str yield: the skeleton's optional<std::string> slot converts
+        # the bare view-source render.
+        src = ("from typing import Iterator\n"
+               + "from tpy import Int32\n\n"
+               + "def echo(s: str, n: Int32) -> Iterator[str]:\n"
+               + "    i = 0\n"
+               + "    while i < n:\n"
+               + "        yield s\n"
+               + "        i = i + 1\n\n"
+               + "def main() -> None:\n"
+               + "    for v in echo(\"hi\", 2):\n        print(v)\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("sgen.body") == 1
+        assert not any("sgen." in k for k in fallback)
+
+    def test_tuple_yield_defers(self):
+        # A tuple yield interacts with gen_yield_value's tuple_to_pointer
+        # bridge and the borrow-form literal builder -- out of slice.
         src = (_ITER
                + "class P:\n"
                + "    x: Int32\n"
                + "    def __init__(self, x: Int32) -> None:\n        self.x = x\n\n"
-               + "def xs(ps: list[P]) -> Iterator[Int32]:\n"
-               + "    for p in ps:\n"
-               + "        yield p.x\n\n"
+               + "def gen(ps: list[P]) -> Iterator[tuple[Int32, P]]:\n"
+               + "    for i in range(len(ps)):\n"
+               + "        yield (Int32(i), ps[i])\n\n"
                + "def main() -> None:\n"
                + "    ps = [P(1), P(2)]\n"
-               + "    for x in xs(ps):\n        print(x)\nmain()\n")
+               + "    for i, p in gen(ps):\n        print(i, p.x)\nmain()\n")
+        assert _sgen_fallback(src).get("sgen.yield_type") == 1
+
+    def test_str_loop_var_defers(self):
+        # A str loop element stays out of the loop-var slice (the view/owned
+        # usage-resolution duality is not mirrored for the sgen binding);
+        # the yield gate passes (scalar).
+        src = ("from typing import Iterator\n"
+               + "from tpy import Int32\n\n"
+               + "def lens(ws: list[str]) -> Iterator[Int32]:\n"
+               + "    for w in ws:\n"
+               + "        yield Int32(len(w))\n\n"
+               + "def main() -> None:\n"
+               + "    ws = [\"a\", \"bc\"]\n"
+               + "    for n in lens(ws):\n        print(n)\nmain()\n")
         assert _sgen_fallback(src).get("sgen.loop_var_type") == 1
 
     def test_generic_defers(self):
@@ -409,8 +460,13 @@ class TestForeachCallers:
                + "    s.push(3)\n"
                + "    for v in s.each_doubled():\n"
                + "        print(v)\nmain()\n")
-        witnesses, _ = _assert_identical(src)
+        witnesses, fallback = _assert_identical(src)
         assert witnesses.get("foreach.iter_proto") == 1
+        # The generator BODY routed too (the sgen field-iterable arm), not
+        # just the caller: a silent leaf fallback would keep the caller
+        # witness and the byte-diff green while un-routing each_doubled.
+        assert witnesses.get("sgen.iterable") == 1
+        assert not fallback
         _, _hpp, cpp = _gen(src, thir=True)
         assert "auto __src_0 = s.each_doubled();" in cpp
 

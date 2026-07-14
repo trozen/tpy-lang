@@ -1,8 +1,9 @@
 """Ctor calls that OMIT trailing default args (`Dog("Rex")` where __init__ has
 defaults). The default rides the C++ ctor signature (records.py emits it via
 emit_defaults), so the call passes only the provided args -- byte-identical to
-the exact-arity `Name(args)` emit. Variadic ctors and the instantiation form
-stay on the AST path."""
+the exact-arity `Name(args)` emit. Variadic ctors stay on the AST path; the
+INSTANTIATION form shares the same arity rule (see
+test_thir_generics.TestCtorInstantiation)."""
 
 from __future__ import annotations
 

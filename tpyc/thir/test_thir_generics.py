@@ -447,9 +447,9 @@ class TestCtorInstantiation:
                                              self_type=st)
                     assert ctor is not None
 
-    def test_argful_native_instantiation_stays_ast(self):
-        # An arg-ful native-record instantiation may resolve @native /
-        # @cpp_template __init__ overloads with their own emit arms -> AST.
+    def test_template_native_instantiation_stays_ast(self):
+        # An arg-ful native-record instantiation whose real __init__ set is
+        # @cpp_template / multi-overload has its own emit arms -> AST.
         src = ("from tpy import Int32, Span\n"
                "def main():\n"
                "    a = [1, 2, 3]\n"
@@ -457,6 +457,44 @@ class TestCtorInstantiation:
                "    print(len(s), len(a))\n"
                "main()\n")
         assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+
+    def test_plain_stub_native_argful_instantiation_routes(self):
+        # An arg-ful native-record instantiation whose real __init__ is a
+        # PLAIN stub renders the same `type_to_cpp(call_type)(args)`
+        # (`::tpy::UninitHeapStorage<int32_t>(1)`).
+        src = ("from tpy.mem import UninitHeapStorage\n"
+               "from tpy import Int32\n"
+               "def main():\n"
+               "    s: UninitHeapStorage[Int32] = UninitHeapStorage(1)\n"
+               "    s.init0(41)\n"
+               "    print(s.load0())\n"
+               "    s.drop0()\n"
+               "main()\n")
+        thir_cpp = self._cpp(src, thir=True)
+        assert thir_cpp == self._cpp(src, thir=False)
+        thir = _lower_ctx(src)
+        assert _fn(thir, "main") is not None
+        assert "::tpy::UninitHeapStorage<int32_t> s = " \
+               "::tpy::UninitHeapStorage<int32_t>(1);" in thir_cpp
+
+    def test_instantiation_omitted_defaults_routes(self):
+        # The instantiation form admits omitted trailing defaults like the
+        # raw-name face: `Cell[Int32]()` over a defaulted ctor param calls
+        # the spelled zero-arg ctor (the default rides the C++ signature).
+        src = ("from tpy import Int32\n"
+               "class Cell[T]:\n"
+               "    x: Int32\n"
+               "    def __init__(self, x: Int32 = 7) -> None:\n"
+               "        self.x = x\n"
+               "def main():\n"
+               "    c = Cell[Int32]()\n"
+               "    print(c.x)\n"
+               "main()\n")
+        thir_cpp = self._cpp(src, thir=True)
+        assert thir_cpp == self._cpp(src, thir=False)
+        thir = _lower_ctx(src)
+        assert _fn(thir, "main") is not None
+        assert "Cell<int32_t> c = Cell<int32_t>();" in thir_cpp
 
 
 class TestGenericNativeCallee:
@@ -748,6 +786,41 @@ class TestOwnMoveArg:
                             rec, init, m.analyzer, self_type=st) is not None
         assert routed is True
         assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+
+    def test_str_type_arg_local_routes(self):
+        # `Box[str]("hello")` -- a concrete str-family type arg spells the
+        # storage form (`Box<std::string>`) on both paths.
+        src = ("class Box[T]:\n"
+               "    value: T\n"
+               "    def __init__(self, value: T) -> None:\n"
+               "        self.value = value\n"
+               "def main():\n"
+               "    b = Box[str](\"hello\")\n"
+               "    print(b.value)\n"
+               "main()\n")
+        thir_cpp = self._cpp(src, thir=True)
+        assert thir_cpp == self._cpp(src, thir=False)
+        thir = _lower_ctx(src)
+        assert _fn(thir, "main") is not None
+        assert "Box<std::string> b = Box<std::string>(\"hello\");" in thir_cpp
+
+    def test_enum_type_arg_stays_ast(self):
+        # An enum arg diverges (enum renames ride render_type, not to_cpp)
+        # and keeps the outer generic on the AST path.
+        src = ("from enum import Enum\n"
+               "class Color(Enum):\n"
+               "    RED = 1\n"
+               "class Box[T]:\n"
+               "    value: T\n"
+               "    def __init__(self, value: T) -> None:\n"
+               "        self.value = value\n"
+               "def main():\n"
+               "    b = Box[Color](Color.RED)\n"
+               "    print(1)\n"
+               "main()\n")
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+        thir = _lower_ctx(src)
+        assert _fn(thir, "main") is None
 
 
 class TestDependentStaticTargs:

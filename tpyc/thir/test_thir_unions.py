@@ -1743,3 +1743,68 @@ class TestUnionCallDecl:
             "    u = pick(a, b, True)\n"
             "    return 1\n")
         assert _fn(thir, "use") is None
+
+
+class TestOwnUnionReturn:
+    """An `Own[A | B]` record-member union return (`std::variant<A, B>` by
+    value): a member ctor rvalue returns bare (the converting ctor absorbs
+    it); every other source shape stays AST."""
+
+    _RECORDS = (
+        "from tpy import Int32, Own\n"
+        "class Dog:\n"
+        "    age: Int32\n"
+        "    def __init__(self, age: Int32):\n        self.age = age\n"
+        "class Cat:\n"
+        "    lives: Int32\n"
+        "    def __init__(self, lives: Int32):\n        self.lives = lives\n"
+    )
+
+    def test_member_ctor_rvalue_routes(self):
+        thir = _lower_ctx(
+            self._RECORDS
+            + "def make(age: Int32) -> Own[Dog | Cat]:\n"
+            + "    return Dog(age)\n")
+        assert _fn(thir, "make") is not None
+
+    def test_face_witnessed(self):
+        _thir, faces = _lower_ctx_witnessed(
+            self._RECORDS
+            + "def make(age: Int32) -> Own[Dog | Cat]:\n"
+            + "    return Dog(age)\n")
+        assert faces.get("ret.own_union_ctor", 0) >= 1
+
+    def test_member_name_source_stays_ast(self):
+        # A member-typed NAME return needs the move/borrow verdicts the arm
+        # does not mirror -- reject.
+        thir = _lower_ctx(
+            self._RECORDS
+            + "def make(d: Own[Dog]) -> Own[Dog | Cat]:\n"
+            + "    return d\n")
+        assert _fn(thir, "make") is None
+
+    def test_emit_byte_identical(self):
+        src = (
+            self._RECORDS
+            + "def make_dog(age: Int32) -> Own[Dog | Cat]:\n"
+            + "    return Dog(age)\n"
+            + "def make_cat(lives: Int32) -> Own[Dog | Cat]:\n"
+            + "    return Cat(lives)\n"
+            + "def main():\n"
+            + "    pet = make_dog(5)\n"
+            + "    if isinstance(pet, Dog):\n        print(pet.age)\n"
+            + "main()\n"
+        )
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+
+        def cpp(thir: bool):
+            _, out = compiler.generate_code_to_strings(
+                entry, options=CodeGenOptions(emit_source_comments=False,
+                                              thir_codegen=thir))
+            return out
+
+        thir_cpp = cpp(True)
+        assert thir_cpp == cpp(False)
+        assert "return Dog(age);" in thir_cpp
+        assert "return Cat(lives);" in thir_cpp

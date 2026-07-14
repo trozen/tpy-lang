@@ -787,7 +787,10 @@ def _emit_field_access(e: THIRFieldAccess, state: _EmitState) -> str:
         # Unproven Optional member access: null-check the (already `T*`) receiver
         # before the `.` member read. Mirrors _gen_field_access's runtime-check path.
         return f"::tpy::deref_check({_emit_expr(e.receiver, state)}).{e.field_cpp}"
-    return f"{_emit_expr(e.receiver, state)}{'->' if e.is_arrow else '.'}{e.field_cpp}"
+    base = f"{_emit_expr(e.receiver, state)}{'->' if e.is_arrow else '.'}{e.field_cpp}"
+    # Sema-narrowed Optional field: the storage stays std::optional<T>, so the
+    # value read unwraps unconditionally (gen_expr_deref's narrowed-field arm).
+    return f"(*{base})" if e.narrowed_deref else base
 
 
 def _emit_subscript(e: THIRSubscript, state: _EmitState) -> str:
@@ -2688,13 +2691,23 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             state.temps.flush(out, indent)
             out.write(f"{indent}auto {tmp} = {src_cpp};\n")
         else:
-            out.write(f"{indent}const auto& {tmp} = "
-                      f"{escape_cpp_name(stmt.source)};\n")
+            src = (stmt.source_cpp if stmt.source_cpp is not None
+                   else escape_cpp_name(stmt.source))
+            out.write(f"{indent}const auto& {tmp} = {src};\n")
         for i, (name, cpp) in enumerate(zip(stmt.targets, stmt.target_cpps)):
             if name is None:
                 continue
-            out.write(f"{indent}{cpp} {escape_cpp_name(name)} = "
-                      f"std::get<{i}>({tmp});\n")
+            get = f"std::get<{i}>({tmp})"
+            bind = stmt.binds[i] if stmt.binds else "value"
+            if bind == "move":
+                out.write(f"{indent}{cpp} {escape_cpp_name(name)} = "
+                          f"std::move({get});\n")
+            elif bind == "cref":
+                out.write(f"{indent}const {cpp}& {escape_cpp_name(name)} = "
+                          f"{get};\n")
+            else:
+                out.write(f"{indent}{cpp} {escape_cpp_name(name)} = "
+                          f"{get};\n")
     elif isinstance(stmt, THIRBreak):
         _emit_loop_exit(out, indent, state, is_break=True)
     elif isinstance(stmt, THIRContinue):
@@ -2825,21 +2838,43 @@ def _emit_print_arg(a: THIRPrintArg, state: _EmitState) -> str:
     return inner
 
 
+def _print_chain_token(expr, value, state: _EmitState) -> 'str | None':
+    """gen_print's chain_token: a runtime kwarg renders as its expression, a
+    literal via cpp_string_literal_expr, an empty/suppressed one skips (None).
+    The " "/"\\n" defaults ride the value slot too -- cpp_string_literal_expr
+    spells them byte-identically to gen_print's f'"{default}"' tokens."""
+    if expr is not None:
+        return _emit_expr(expr, state)
+    if value is None:
+        return None
+    return cpp_string_literal_expr(value)
+
+
 def _emit_print(out: TextIO, stmt: THIRPrint, indent_level: int,
                 state: _EmitState) -> None:
-    # Mirrors gen_print's no-kwargs common-arg path: `std::cout << a0 << " " << a1
-    # << ... << "\n";`. Default sep=" " between args, end="\n"; empty print() is
-    # just the newline.
+    # Mirrors gen_print's cout-sink path: `std::cout << a0 << SEP << a1
+    # << ... << END;`. Default sep=" " between args, end="\n"; empty print()
+    # is just the newline.
     indent = INDENT * indent_level
+    # The AST path renders end before sep. Order is unobservable while the
+    # kwarg gate admits only literal/plain-name sources (no hoisted temps);
+    # match the AST order before widening that gate.
+    sep_token = _print_chain_token(stmt.sep_expr, stmt.sep_value, state)
+    end_token = _print_chain_token(stmt.end_expr, stmt.end_value, state)
     parts = []
     for i, a in enumerate(stmt.args):
-        if i > 0:
-            parts.append('" "')
+        if i > 0 and sep_token is not None:
+            parts.append(sep_token)
         parts.append(_emit_print_arg(a, state))
-    parts.append('"\\n"')
+    if end_token is not None:
+        parts.append(end_token)
     # Args render first: their hoisted temps flush before the cout line
     # (the AST's pre-statement `ctx.temps.flush`).
     state.temps.flush(out, indent)
+    if not parts:
+        # gen_print returns "" for a fully-suppressed chain; lowering rejects
+        # the kwargs-on-empty-print shape, so this is a defensive no-op.
+        return
     out.write(f"{indent}std::cout << " + " << ".join(parts) + ";\n")
 
 

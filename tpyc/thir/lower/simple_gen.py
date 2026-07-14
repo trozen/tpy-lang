@@ -36,7 +36,16 @@ from ...parse.nodes import (
     TpyFunction,
     TpyWhile,
 )
-from ...typesys import IntLiteralType, NominalType, TpyType
+from ...typesys import (
+    IntLiteralType,
+    NominalType,
+    OwnType,
+    ReadonlyType,
+    TpyType,
+    unwrap_readonly,
+    unwrap_ref_type,
+    unwrap_send_sync,
+)
 from ...codegen_cpp.gen_generators import (
     for_range_uses_counter_loop,
     split_at_yield,
@@ -45,8 +54,53 @@ from .context import _ExprResultUse, _ExprUse, _LowerCtx
 from .checks import _narrow_cond_info
 from .expressions import _lower_expr, _lower_truthy
 from .functions import _check_callable_structure, _seed_global_scope
+from .predicates import (
+    _f1_record,
+    _field_receiver_ok,
+    _resolved_bytes_value,
+    _resolved_str_value,
+)
 from .resumable import _res_value_ok
 from .statements import _lower_stmts
+
+
+def _sgen_yield_ok(yt: 'TpyType | None', analyzer) -> bool:
+    """Simple-generator yield-slot families whose leaf VALUE render is
+    position-blind (the skeleton owns the slot type, `__val` binding and
+    move-out): value scalars/Char/enums (`_res_value_ok`), str/bytes (the
+    bare source render into the owned `std::optional<std::string>` slot),
+    F1 records (the `val_or_ref<T>` borrow slot -- a bare name/field
+    render), and `Own[F1 record]` (the bare value slot; the skeleton's
+    `std::move(__val)`). Excluded, each its own rung: tuples
+    (`gen_yield_value`'s tuple_to_pointer bridge + the borrow-form literal
+    builder), readonly (const-borrow slot), Optional/Union
+    (pointer/storage machinery), TypeParamRef (substituted slots)."""
+    if _res_value_ok(yt, analyzer):
+        return True
+    if yt is None or isinstance(unwrap_ref_type(yt), ReadonlyType):
+        return False
+    if (_resolved_str_value(yt, analyzer) is not None
+            or _resolved_bytes_value(yt, analyzer) is not None):
+        return True
+    u = unwrap_ref_type(unwrap_send_sync(yt))
+    if isinstance(u, OwnType):
+        u = unwrap_readonly(u.wrapped)
+    return _f1_record(u, analyzer)
+
+
+def _sgen_loop_var_ok(iter_elem: 'TpyType | None', analyzer) -> bool:
+    """For-branch loop-var families: value scalars (the skeleton's typed
+    copy) and F1 records (the skeleton's `auto&&` borrow; the leaf reads
+    the var through the same borrow-classified forms as a sync for-each
+    body). Pointer-repr tuple elements (which flip
+    `storage_form_tuple_locals`), str/bytes and the remaining families
+    stay their own rungs."""
+    if _res_value_ok(iter_elem, analyzer):
+        return True
+    if iter_elem is None:
+        return False
+    u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(iter_elem)))
+    return _f1_record(u, analyzer)
 
 
 def lower_simple_generator(func: TpyFunction, analyzer, render_type,
@@ -97,12 +151,16 @@ def _lower_simple_generator(func: TpyFunction, analyzer, render_type,
     if func.forwarded_locals:
         return _reject("sgen.forwarded_local")
     yt = func.generator_yield_type
-    if not _res_value_ok(yt if isinstance(yt, TpyType) else None, analyzer):
-        # Value-scalar yields only: the slot is the bare value type and the
-        # value render is position-blind (the sema-baked coerce carries the
-        # yield-type target -- the resumable yield precedent). Borrow-slot /
-        # tuple / str yields interact with `_iter_slot_for_yield`'s slot
-        # forms and `gen_yield_value`'s bridge wraps -- their own rungs.
+    if not _sgen_yield_ok(yt if isinstance(yt, TpyType) else None, analyzer):
+        # Families whose leaf value render is position-blind: value scalars
+        # (the sema-baked coerce carries the yield-type target -- the
+        # resumable yield precedent), str/bytes (the bare source render; the
+        # skeleton's optional<owned> ctor converts), F1 records (val_or_ref
+        # borrow slot, bare render), and Own[F1 record] (owned value slot;
+        # the skeleton's `yld` moves __val out). Tuple yields interact with
+        # `gen_yield_value`'s tuple_to_pointer bridge and the borrow-form
+        # literal builder; readonly (const-borrow slot), Optional/Union
+        # (pointer/storage machinery) and generics stay their own rungs.
         return _reject("sgen.yield_type")
 
     has_self = self_type is not None and func.is_method
@@ -148,10 +206,13 @@ def _lower_simple_generator(func: TpyFunction, analyzer, render_type,
     iter_elem = last.elem_type
     if iter_elem is not None and isinstance(iter_elem, IntLiteralType):
         iter_elem = analyzer.ctx.default_int_type
-    if not _res_value_ok(iter_elem, analyzer):
-        # A non-value element binds the loop var `auto&&` into the live
-        # source (and pointer-repr tuples flip `storage_form_tuple_locals`)
-        # -- the borrow-classified loop-var reads are a cell.
+    if not _sgen_loop_var_ok(iter_elem, analyzer):
+        # Value elements bind a typed copy, an F1-record element `auto&&`
+        # into the live source -- both skeleton-side, and the leaf reads the
+        # record var through the same borrow-classified forms as a sync
+        # for-each body. Pointer-repr tuple elements (which flip
+        # `storage_form_tuple_locals`), str/bytes and the remaining
+        # families stay their own rungs.
         return _reject("sgen.loop_var_type")
     is_range = for_range_uses_counter_loop(last)
     range_args: tuple = ()
@@ -165,9 +226,17 @@ def _lower_simple_generator(func: TpyFunction, analyzer, render_type,
         if range_args:
             _witness("sgen.range_arg")
     else:
+        # A field iterable (`for h in self.items:`) mirrors the sync
+        # container route's validation: receiver admission via
+        # _field_receiver_ok, then the bare field-read render (the result
+        # gate has no ITERABLE arm for container fields; the skeleton owns
+        # the iteration strategy).
         iterable = _lower_expr(
             last.iterable, lc, declared,
             use=_ExprUse(result=_ExprResultUse.ITERABLE),
+            field_prechecked=(isinstance(last.iterable, TpyFieldAccess)
+                              and _field_receiver_ok(last.iterable, declared,
+                                                     analyzer)),
             container_threaded=not isinstance(last.iterable, TpyArrayLiteral))
         _witness("sgen.iterable")
     # The while / for-range branches wrap the body in a real C++ loop

@@ -815,15 +815,25 @@ class THIRFieldAccess(THIRExpr):
     `needs_optional_runtime_check` path). The receiver is already a `T*` (a borrow
     subscript element, or a storage element lifted via `optional_to_ptr`), so the
     access after the checked deref is always `.` -- `deref_check` and `is_arrow` are
-    mutually exclusive."""
+    mutually exclusive.
+
+    `narrowed_deref` wraps the WHOLE access in `(*...)`: a sema-NARROWED
+    `Optional` field read (declared `std::optional<T>` storage, analyzed
+    non-Optional) unwraps unconditionally in value positions -- gen_expr_deref's
+    narrowed-optional-field arm. Plain-assign targets and the
+    `print_optional_val` wrap read the bare storage instead; those consumers
+    strip the flag (mirroring the AST's gen_expr-vs-gen_expr_deref split)."""
     receiver: THIRExpr
     field_cpp: str
     is_arrow: bool = False
     deref_check: bool = False
+    narrowed_deref: bool = False
 
     def __post_init__(self) -> None:
         # Enforce the deref_check/is_arrow mutual exclusivity the docstring documents.
         assert not (self.deref_check and self.is_arrow)
+        # A narrowed field is proven non-None; the runtime check never coexists.
+        assert not (self.deref_check and self.narrowed_deref)
 
 
 @dataclass(frozen=True)
@@ -1331,11 +1341,26 @@ class THIRTupleUnpack(THIRStmt):
     `__tup_`/`__dk_` temps) are all gate-rejected, so a per-body emit counter
     numbers identically. A None target is the `_` discard -- its slot emits
     nothing. `target_cpps` carries the rendered decl types (render_type at
-    lowering), None at discard slots."""
+    lowering), None at discard slots.
+
+    `binds` (parallel to `targets`; empty = all "value") picks each target's
+    decl arm, mirroring `_gen_tuple_unpack`'s per-element flags:
+
+        "value" -> T name = std::get<i>(tup);
+        "cref"  -> const T& name = std::get<i>(tup);   // is_const_ref
+        "move"  -> T name = std::move(std::get<i>(tup)); // Own element
+
+    None at discard slots.
+
+    `source_cpp` overrides the ref-bound source name's spelling (a spelled
+    imported/native global -- `const auto& __tup_N = ::tpystd::m::name;`);
+    None renders the escaped bare `source`."""
     source: str
     targets: tuple[str | None, ...]
     target_cpps: tuple[str | None, ...]
     source_expr: 'THIRExpr | None' = None
+    binds: tuple[str | None, ...] = ()
+    source_cpp: str | None = None
 
 
 @dataclass(frozen=True)
@@ -1904,12 +1929,21 @@ class THIRPrintArg:
 
 @dataclass(frozen=True)
 class THIRPrint(THIRStmt):
-    """A `print(<args>)` statement with default `sep=" "`, `end="\\n"`, sink
-    `std::cout` -- the slice excludes `sep=`/`end=`/`file=`/`flush=` kwargs.
-    Emits `std::cout << a0 << " " << a1 << ... << "\\n";`. Each arg carries
-    its PrintForm wrap (scalar/str/bytes/enum forms, the container/tuple
-    printer wraps, records raw); args outside the wrap set stay AST."""
+    """A `print(<args>)` statement, sink `std::cout` -- the slice admits the
+    `sep=`/`end=` kwargs (str literal or a resolved str-value NAME) and
+    excludes `file=`/`flush=`. Emits `std::cout << a0 << SEP << a1 << ...
+    << END;`. A literal separator/end rides `sep_value`/`end_value` (the
+    Python VALUE, rendered via cpp_string_literal_expr like gen_print's
+    literal arm; None suppresses the token entirely -- the AST's empty-literal
+    skip); a runtime one rides `sep_expr`/`end_expr` and wins over the value
+    slot. Each arg carries its PrintForm wrap (scalar/str/bytes/enum forms,
+    the container/tuple printer wraps, records raw); args outside the wrap
+    set stay AST."""
     args: tuple[THIRPrintArg, ...] = ()
+    sep_expr: 'THIRExpr | None' = None
+    end_expr: 'THIRExpr | None' = None
+    sep_value: 'str | None' = " "
+    end_value: 'str | None' = "\n"
 
 
 @dataclass(frozen=True)

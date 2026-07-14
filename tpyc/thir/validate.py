@@ -43,10 +43,11 @@ import dataclasses
 
 from ..codegen_cpp.forms import is_ptr_variant_union
 from ..type_def_registry import (
-    is_bytes_view_type, is_str_view_type,
+    is_basic_slice_type, is_bytes_view_type, is_slice_type, is_span,
+    is_str_view_type,
 )
 from ..typesys import (
-    NominalType, OptionalType, OwnType, TupleType, unwrap_readonly,
+    NominalType, OptionalType, OwnType, PtrType, TupleType, unwrap_readonly,
     unwrap_ref_type, unwrap_send_sync,
 )
 from .nodes import (
@@ -111,8 +112,14 @@ def _check_node(owner: str, node: THIRNode) -> None:
         rt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rt)))
               if rt is not None else None)
         view_target = rt is not None and is_str_view_type(rt)
+        # The ptr/span/slice coercion families produce VALUE results (`T*`,
+        # std::span, Slice) whatever the inner's form; lowering tags VALUE.
+        value_target = rt is not None and (
+            isinstance(rt, PtrType) or is_span(rt)
+            or is_slice_type(rt) or is_basic_slice_type(rt))
         if node.form is not node.expr.form and not (
-                view_target and node.form is Form.BORROW):
+                (view_target and node.form is Form.BORROW)
+                or (value_target and node.form is Form.VALUE)):
             _fail(owner, node,
                   f"coerce form {node.form.name} != inner "
                   f"{node.expr.form.name} (non-view-target passthrough)")

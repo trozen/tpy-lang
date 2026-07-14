@@ -543,11 +543,10 @@ def test_for_each_protocol_iterator_param_sub_tag():
         "body:stmt.for_each:iter.user_iterator.name") == 1
 
 
-def test_for_each_plain_call_iterable_sub_tag():
-    # A NON-generator callee returning a user-iterator record splits from
-    # its generator sibling: the call-node check precedes the user_iterator
-    # family and fi.is_generator is False, so the tag names the plain-call
-    # family.
+def test_for_each_plain_call_iterable_routes():
+    # A NON-generator callee returning a user-iterator record takes the
+    # same universal-loop route as its generator sibling (the Own[...]
+    # return is an rvalue -- the owning `auto __src_N` capture).
     compiler, entry, f = _fn_body(
         "from __future__ import annotations\n"
         "from tpy import Int32, Own\n"
@@ -564,10 +563,109 @@ def test_for_each_plain_call_iterable_sub_tag():
         "        return self.n\n"
         "def make_ticker(n: Int32) -> Own[Ticker]:\n"
         "    return Ticker(n)\n"
-        "def rejected(n: Int32) -> Int32:\n"
+        "def routed(n: Int32) -> Int32:\n"
         "    t = 0\n"
         "    for x in make_ticker(n):\n"
         "        t = t + x\n"
+        "    return t\n",
+        "routed")
+    with activate_compiler(compiler):
+        begin_attempt()
+        fn = lower_function(f, entry.analyzer, self_type=None)
+    assert fn is not None
+    assert compiler._thir_face_witnesses.get("foreach.iter_proto") == 1
+
+
+def test_for_each_iterator_ctor_call_iterable_routes():
+    # A user-iterator CTOR call as the iterable (`for x in SimpleIter(4):`)
+    # -- a record-ctor rvalue into the same universal loop.
+    compiler, entry, f = _fn_body(
+        "from __future__ import annotations\n"
+        "from tpy import Int32\n"
+        "class Ticker:\n"
+        "    n: Int32\n"
+        "    def __init__(self, n: Int32) -> None:\n"
+        "        self.n = n\n"
+        "    def __iter__(self) -> Ticker:\n"
+        "        return self\n"
+        "    def __next__(self) -> Int32:\n"
+        "        if self.n <= 0:\n"
+        "            raise StopIteration\n"
+        "        self.n -= 1\n"
+        "        return self.n\n"
+        "def routed(n: Int32) -> Int32:\n"
+        "    t = 0\n"
+        "    for x in Ticker(n):\n"
+        "        t = t + x\n"
+        "    return t\n",
+        "routed")
+    with activate_compiler(compiler):
+        begin_attempt()
+        fn = lower_function(f, entry.analyzer, self_type=None)
+    assert fn is not None
+    assert compiler._thir_face_witnesses.get("foreach.iter_proto") == 1
+
+
+def test_for_each_container_returning_call_stays_container_route():
+    # A list-returning call is NativeIterable: _iter_proto_call_ret must NOT
+    # claim it -- it keeps the container route's begin/end emit.
+    compiler, entry, f = _fn_body(
+        "from tpy import Int32, Own\n"
+        "def make() -> Own[list[Int32]]:\n"
+        "    return [1, 2]\n"
+        "def routed() -> Int32:\n"
+        "    t = 0\n"
+        "    for x in make():\n"
+        "        t = t + x\n"
+        "    return t\n",
+        "routed")
+    with activate_compiler(compiler):
+        begin_attempt()
+        fn = lower_function(f, entry.analyzer, self_type=None)
+    assert fn is not None
+    assert not compiler._thir_face_witnesses.get("foreach.iter_proto")
+
+
+def test_for_each_tuple_unpack_over_gen_call_routes():
+    # `for a, b in gen():` -- the tuple-unpack head rides the universal
+    # __iter__/__next__ loop (THIRForIterProto) for scalar targets.
+    compiler, entry, f = _fn_body(
+        "from tpy import Int32\n"
+        "from typing import Iterator\n"
+        "def pairs(n: Int32) -> Iterator[tuple[Int32, Int32]]:\n"
+        "    for i in range(n):\n"
+        "        yield (i, i * 2)\n"
+        "def routed(n: Int32) -> Int32:\n"
+        "    t = 0\n"
+        "    for a, b in pairs(n):\n"
+        "        t = t + a + b\n"
+        "    return t\n",
+        "routed")
+    with activate_compiler(compiler):
+        begin_attempt()
+        fn = lower_function(f, entry.analyzer, self_type=None)
+    assert fn is not None
+    assert compiler._thir_face_witnesses.get("foreach.tuple_unpack_iter") == 1
+
+
+def test_for_each_tuple_unpack_over_gen_record_target_defers():
+    # A record unpack target over a generator call stays deferred (the
+    # borrow target branch of _gen_tuple_unpack) -- the reject classifier
+    # names the iterable family (the call check precedes the target rungs).
+    compiler, entry, f = _fn_body(
+        "from tpy import Int32\n"
+        "from typing import Iterator\n"
+        "class P:\n"
+        "    x: Int32\n"
+        "    def __init__(self, x: Int32) -> None:\n"
+        "        self.x = x\n"
+        "def gen(ps: list[P]) -> Iterator[tuple[Int32, P]]:\n"
+        "    for i in range(len(ps)):\n"
+        "        yield (Int32(i), ps[i])\n"
+        "def rejected(ps: list[P]) -> Int32:\n"
+        "    t = 0\n"
+        "    for i, p in gen(ps):\n"
+        "        t = t + i + p.x\n"
         "    return t\n",
         "rejected")
     with activate_compiler(compiler):
@@ -577,7 +675,7 @@ def test_for_each_plain_call_iterable_sub_tag():
             fold_attempt("body")
     assert fn is None
     assert compiler._thir_fallback.get(
-        "body:stmt.for_each:iter.call.plain") == 1
+        "body:stmt.for_each:iter.call.generator") == 1
 
 
 def test_for_each_tuple_unpack_ref_target_sub_tag():

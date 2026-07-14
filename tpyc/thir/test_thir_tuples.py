@@ -290,6 +290,62 @@ class TestTupleSubscriptRead:
         assert fn is not None
         assert isinstance(fn.body[0].init, THIRTupleLiteral)
 
+    def test_value_tuple_name_copy_local_routes(self):
+        # A value-tuple NAME-copy local (`u = t`) is a plain spelled copy
+        # (`std::tuple<...> u = t;`) -- borrow and storage coincide, so no
+        # lift arises on either path.
+        thir = _lower(
+            _PRELUDE
+            + "def f(t: tuple[Int32, Int32]) -> Int32:\n"
+            + "    u = t\n"
+            + "    return u[0]\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+        decl = fn.body[0]
+        assert isinstance(decl, THIRVarDecl) and isinstance(decl.init, THIRName)
+
+    def test_value_tuple_method_call_local_routes(self):
+        # A value-tuple METHOD-call local (`t = h.pair()`) rides the
+        # storage-call decl arm like the free-call form.
+        thir = _lower_ctx(
+            _PRELUDE
+            + "class H:\n"
+            + "    def pair(self) -> tuple[Int32, Int32]:\n"
+            + "        return (1, 2)\n"
+            + "def f(h: H) -> Int32:\n"
+            + "    t = h.pair()\n"
+            + "    return t[0]\n")
+        assert _fn(thir, "f") is not None
+
+    def test_tuple_locals_byte_identical(self):
+        src = (
+            _PRELUDE
+            + "class H:\n"
+            + "    def pair(self) -> tuple[Int32, Int32]:\n"
+            + "        return (1, 2)\n"
+            + "def f(t: tuple[Int32, Int32]) -> Int32:\n"
+            + "    u = t\n"
+            + "    return u[0]\n"
+            + "def g(h: H) -> Int32:\n"
+            + "    t = h.pair()\n"
+            + "    return t[1]\n"
+            + "def main() -> None:\n"
+            + "    print(f((3, 4)), g(H()))\n"
+            + "main()\n")
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+
+        def cpp(thir: bool):
+            _, out = compiler.generate_code_to_strings(
+                entry, options=CodeGenOptions(emit_source_comments=False,
+                                              thir_codegen=thir))
+            return out
+
+        thir_cpp = cpp(True)
+        assert thir_cpp == cpp(False)
+        assert "std::tuple<int32_t, int32_t> u = t;" in thir_cpp
+        assert "std::tuple<int32_t, int32_t> t = h.pair();" in thir_cpp
+
 
 
 class TestTupleSubscriptReadEmit:
@@ -1171,3 +1227,289 @@ class TestStandaloneTupleUnpackEmit:
         assert "auto __tup_1 = mk(n);" in cpp
         assert "auto __tup_1 = h.pair;" in cpp
         assert "const auto& __tup_1 = mk(n);" not in cpp
+
+
+# --- Standalone unpack target rungs: is_const_ref + Own move-out ---
+
+# Sema flags an expensive-copy value target (BigInt) is_const_ref (zero-copy
+# `const T& a = std::get<i>(...)`) and an Own[record] element is_owned (moved
+# out: `Rec a = std::move(std::get<i>(...))`, the target an owned movable
+# local). Both are standalone-only rungs; the for-each head keeps the narrow
+# all-value gate.
+_OWN_PAIR = (
+    "from tpy import Int32, Own\n"
+    "class Leaf:\n"
+    "    n: Int32\n"
+    "    def __init__(self, n: Int32):\n        self.n = n\n"
+    "def mk() -> tuple[Own[Leaf], Own[Leaf]]:\n"
+    "    return (Leaf(1), Leaf(2))\n"
+)
+
+
+class TestStandaloneUnpackTargetRungs:
+    def test_const_ref_target_routes(self):
+        # BigInt elements: fresh expensive-copy value targets bind const-ref.
+        thir = _lower(
+            _PRELUDE
+            + "def f(t: tuple[int, int]) -> int:\n    a, b = t\n    return a + b\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+        up = fn.body[0]
+        assert isinstance(up, THIRTupleUnpack)
+        assert up.binds == ("cref", "cref")
+
+    def test_const_ref_face_witnessed(self):
+        _thir, faces = _lower_ctx_witnessed(
+            _PRELUDE
+            + "def f(t: tuple[int, int]) -> int:\n    a, b = t\n    return a + b\n")
+        assert faces.get("stmt.tuple_unpack.cref_target", 0) >= 1
+
+    def test_own_call_source_routes(self):
+        # `a, b = mk()` over a tuple[Own[Leaf], Own[Leaf]] call result: the
+        # rvalue capture + per-element move-out decls.
+        thir = _lower_ctx(
+            _OWN_PAIR
+            + "def f() -> Int32:\n    a, b = mk()\n    return a.n + b.n\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+        up = fn.body[0]
+        assert isinstance(up, THIRTupleUnpack)
+        assert up.source == "" and up.source_expr is not None
+        assert up.binds == ("move", "move")
+
+    def test_own_face_witnessed(self):
+        _thir, faces = _lower_ctx_witnessed(
+            _OWN_PAIR
+            + "def f() -> Int32:\n    a, b = mk()\n    return a.n + b.n\n")
+        assert faces.get("stmt.tuple_unpack.own_target", 0) >= 1
+
+    def test_own_static_method_source_routes(self):
+        # The module-qualified/static marker-call sibling: an Own-tuple
+        # returning static factory is admitted at the unpack source
+        # (owned_tuple_ret threads through _marker_call_supported).
+        thir = _lower_ctx(
+            "from tpy import Int32, Own\n"
+            "class Leaf:\n"
+            "    n: Int32\n"
+            "    def __init__(self, n: Int32):\n        self.n = n\n"
+            "    @staticmethod\n"
+            "    def make() -> tuple[Own[Leaf], Own[Leaf]]:\n"
+            "        return (Leaf(1), Leaf(2))\n"
+            "def f() -> Int32:\n    a, b = Leaf.make()\n    return a.n + b.n\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+        assert fn.body[0].binds == ("move", "move")
+
+    def test_own_name_source_ineligible(self):
+        # A NAME source with Own elements takes the AST's one-shot /
+        # last-use-move / copy bind arms -- deferred.
+        thir = _lower_ctx(
+            _OWN_PAIR
+            + "def f(t: tuple[Own[Leaf], Own[Leaf]]) -> Int32:\n"
+            + "    a, b = t\n    return a.n + b.n\n")
+        assert _fn(thir, "f") is None
+
+    def test_own_str_element_ineligible(self):
+        # Own[str] elements stay out (only Own[F1-record] moves are mirrored).
+        thir = _lower_ctx(
+            "from tpy import Int32, Own\n"
+            "def mk() -> tuple[Own[str], Int32]:\n    return (\"x\", 1)\n"
+            "def f() -> Int32:\n    s, n = mk()\n    print(s)\n    return n\n")
+        assert _fn(thir, "f") is None
+
+    def test_own_str_element_return_ineligible(self):
+        # The producer side of the same boundary: mk's OWN return statement
+        # (a tuple literal with an Own[str] element) rejects at the
+        # return-element gate, not just at the caller's unpack.
+        thir = _lower_ctx(
+            "from tpy import Int32, Own\n"
+            "def mk() -> tuple[Own[str], Int32]:\n    return (\"x\", 1)\n")
+        assert _fn(thir, "mk") is None
+
+    def test_subscript_source_ineligible(self):
+        # A subscript unpack source (`a, b = xs[i]`) stays AST -- the source
+        # widening admits calls/globals/class-consts only (the container
+        # tuple-element read is its own rung).
+        thir = _lower_ctx(
+            "from tpy import Int32\n"
+            "def f(xs: list[tuple[Int32, Int32]]) -> Int32:\n"
+            "    a, b = xs[0]\n"
+            "    return a + b\n")
+        assert _fn(thir, "f") is None
+
+    def test_reused_own_target_ineligible(self):
+        # A reused (predeclared) target keeps the whole unpack on the AST path
+        # even with an Own source element.
+        thir = _lower_ctx(
+            _OWN_PAIR
+            + "def f() -> Int32:\n"
+            + "    n = 0\n    a, n = mk2()\n    return a.n + n\n"
+            + "def mk2() -> tuple[Own[Leaf], Int32]:\n    return (Leaf(1), 2)\n")
+        assert _fn(thir, "f") is None
+
+
+class TestStandaloneUnpackTargetRungsEmit:
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+        return cpp
+
+    CREF_SRC = (
+        _PRELUDE
+        + "def f(t: tuple[int, int]) -> int:\n    a, b = t\n    return a + b\n"
+        + "def main():\n    print(f((10, 3)))\n"
+        + "main()\n"
+    )
+
+    def test_cref_byte_identical(self):
+        assert self._cpp(self.CREF_SRC, thir=True) == self._cpp(
+            self.CREF_SRC, thir=False)
+
+    def test_cref_emit(self):
+        cpp = self._cpp(self.CREF_SRC, thir=True)
+        assert "const ::tpy::BigInt& a = std::get<0>(__tup_1);" in cpp
+        assert "const ::tpy::BigInt& b = std::get<1>(__tup_1);" in cpp
+
+    OWN_SRC = (
+        _OWN_PAIR
+        + "def f() -> Int32:\n    a, b = mk()\n    return a.n + b.n\n"
+        + "def main():\n    print(f())\n"
+        + "main()\n"
+    )
+
+    def test_own_byte_identical(self):
+        assert self._cpp(self.OWN_SRC, thir=True) == self._cpp(
+            self.OWN_SRC, thir=False)
+
+    def test_own_emit_moves_elements(self):
+        cpp = self._cpp(self.OWN_SRC, thir=True)
+        assert "auto __tup_1 = mk();" in cpp
+        assert "Leaf a = std::move(std::get<0>(__tup_1));" in cpp
+        assert "Leaf b = std::move(std::get<1>(__tup_1));" in cpp
+
+
+# --- Own-tuple RETURN slot: `-> tuple[Own[Rec], ...]` literal sources ---
+
+class TestOwnTupleReturn:
+    def test_ctor_rvalue_elements_route(self):
+        # `return (Leaf(1), Leaf(2))` -> `return std::tuple<Leaf, Leaf>{Leaf(1),
+        # Leaf(2)};` (the value-tuple literal return arm over Own slots).
+        thir = _lower_ctx(_OWN_PAIR)
+        fn = _fn(thir, "mk")
+        assert fn is not None
+        ret = fn.body[-1]
+        assert isinstance(ret, THIRReturn)
+        assert isinstance(ret.value, THIRTupleLiteral)
+
+    def test_own_param_elements_move(self):
+        # Own params at last use move into the element slots.
+        thir = _lower_ctx(
+            _OWN_PAIR
+            + "def mk2(a: Own[Leaf], b: Own[Leaf]) -> tuple[Own[Leaf], Own[Leaf]]:\n"
+            + "    return (a, b)\n")
+        fn = _fn(thir, "mk2")
+        assert fn is not None
+
+    def test_own_elem_face_witnessed(self):
+        _thir, faces = _lower_ctx_witnessed(_OWN_PAIR)
+        assert faces.get("ret.tuple_own_elem", 0) >= 1
+
+    def test_emit_byte_identical_and_moves(self):
+        src = (
+            _OWN_PAIR
+            + "def mk2(a: Own[Leaf], b: Own[Leaf]) -> tuple[Own[Leaf], Own[Leaf]]:\n"
+            + "    return (a, b)\n"
+            + "def main():\n    a, b = mk()\n    c, d = mk2(a, b)\n"
+            + "    print(c.n + d.n)\n"
+            + "main()\n"
+        )
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+
+        def cpp(thir: bool):
+            _, out = compiler.generate_code_to_strings(
+                entry, options=CodeGenOptions(emit_source_comments=False,
+                                              thir_codegen=thir))
+            return out
+
+        thir_cpp = cpp(True)
+        assert thir_cpp == cpp(False)
+        assert ("return std::tuple<Leaf, Leaf>{Leaf(1), Leaf(2)};"
+                in thir_cpp)
+        assert ("return std::tuple<Leaf, Leaf>{std::move(a), std::move(b)};"
+                in thir_cpp)
+
+
+# --- Final[tuple[...]] unpack sources: module globals + class constants ---
+
+class TestFinalTupleUnpackSources:
+    def test_global_tuple_source_routes(self):
+        # A readonly module-global value tuple seeds like the scalar globals;
+        # the unpack binds `const auto& __tup_N = VERSION;`.
+        thir = _lower(
+            "from typing import Final\n"
+            + _PRELUDE
+            + "VERSION: Final[tuple[Int32, Int32]] = (1, 2)\n"
+            + "def f() -> Int32:\n    a, b = VERSION\n    return a + b\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+        up = fn.body[0]
+        assert isinstance(up, THIRTupleUnpack)
+        assert up.source == "VERSION" and up.source_cpp is None
+
+    def test_nested_tuple_target_routes(self):
+        # A nested value-tuple element is a plain value-copy target
+        # (`std::tuple<...> inner = std::get<0>(__tup_N);`).
+        thir = _lower(
+            "from typing import Final\n"
+            + _PRELUDE
+            + "NESTED: Final[tuple[tuple[str, Int32], str]] = ((\"i\", 42), \"o\")\n"
+            + "def f() -> Int32:\n"
+            + "    inner, outer = NESTED\n"
+            + "    name, val = inner\n"
+            + "    print(name, outer)\n    return val\n")
+        assert _fn(thir, "f") is not None
+
+    def test_class_const_tuple_source_routes(self):
+        # `major, minor = Version.SEMVER` -- the rvalue capture over the bare
+        # qualified static (`auto __tup_N = Version::SEMVER;`).
+        thir = _lower_ctx(
+            "from typing import Final\n"
+            + _PRELUDE
+            + "class Version:\n"
+            + "    SEMVER: Final[tuple[Int32, Int32]] = (1, 2)\n"
+            + "def f() -> Int32:\n"
+            + "    major, minor = Version.SEMVER\n    return major + minor\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+        up = fn.body[0]
+        assert isinstance(up, THIRTupleUnpack)
+        assert up.source == "" and up.source_expr is not None
+
+    def test_emit_byte_identical(self):
+        src = (
+            "from typing import Final\n"
+            + _PRELUDE
+            + "VERSION: Final[tuple[Int32, Int32]] = (1, 2)\n"
+            + "class Version:\n"
+            + "    SEMVER: Final[tuple[Int32, Int32]] = (3, 4)\n"
+            + "def f() -> Int32:\n    a, b = VERSION\n    return a + b\n"
+            + "def g() -> Int32:\n    c, d = Version.SEMVER\n    return c - d\n"
+            + "def main():\n    print(f(), g())\n"
+            + "main()\n"
+        )
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+
+        def cpp(thir: bool):
+            _, out = compiler.generate_code_to_strings(
+                entry, options=CodeGenOptions(emit_source_comments=False,
+                                              thir_codegen=thir))
+            return out
+
+        thir_cpp = cpp(True)
+        assert thir_cpp == cpp(False)
+        assert "const auto& __tup_1 = VERSION;" in thir_cpp
+        assert "auto __tup_1 = Version::SEMVER;" in thir_cpp

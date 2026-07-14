@@ -211,11 +211,34 @@ class TestStrReceiverMethods:
         thir = _lower_ctx(src)
         assert _fn(thir, "check") is None
 
-    def test_split_list_result_ineligible(self):
-        # A container result (`s.split()` -> Own[list[str]]) is outside the
-        # value slice -- rejected at the result-type gate, stays AST.
+    def test_split_list_result_routes_at_decl(self):
+        # A container result (`s.split()` -> Own[list[str]]) is admitted at
+        # the storage DECL sink (the view arm's storage_ret_ok escape).
         thir = _lower("def f(s: str) -> None:\n    xs = s.split()\n    print(xs)\n")
+        assert _fn(thir, "f") is not None
+
+    def test_split_nonstorage_sink_still_ineligible(self):
+        # Outside a storage sink the container result stays rejected: a
+        # direct print arg is not a storage position.
+        thir = _lower("def f(s: str) -> None:\n    print(s.split())\n")
         assert _fn(thir, "f") is None
+
+    def test_str_literal_receiver_routes(self):
+        # A str-LITERAL receiver renders bare into the resolved template
+        # (`::tpy::str_split("a,b", ",")`).
+        thir = _lower(
+            "from tpy import Int32\n"
+            "def f() -> Int32:\n"
+            "    parts = \"a,b\".split(\",\")\n"
+            "    return len(parts)\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+        assert isinstance(fn.body[0].init, THIRMethodCall)
+
+    def test_str_literal_receiver_witnesses_face(self):
+        _thir, w = _lower_ctx_witnessed(
+            "def f() -> bool:\n    return \"hi there\".startswith(\"hi\")\n")
+        assert w.get("method.recv.str_literal", 0) > 0
 
 
 class TestStrValuesEmit:
@@ -1716,3 +1739,52 @@ class TestDictStrContainersEmit:
         assert "out += s;" in cpp                             # view loop var append
         assert ("std::string_view w = "
                 "::tpy::__getitem__(d, (::tpy::str_concat(p, q)));") in cpp
+
+
+class TestStrFieldBinopOperands:
+    """A str-family FIELD read as a binop operand renders the bare member
+    read into the concat / compare / membership templates on both paths
+    (the field_owned_str_ok plumb) -- `return "[base] " + self.message`."""
+
+    _RECORDS = (
+        "from tpy import Int32\n"
+        "class E:\n"
+        "    message: str\n"
+        "    def __init__(self, message: str):\n"
+        "        self.message = message\n"
+        "    def describe(self) -> str:\n"
+        "        return \"[base] \" + self.message\n"
+        "    def matches(self, s: str) -> bool:\n"
+        "        return s == self.message\n"
+    )
+
+    def test_concat_operand_routes(self):
+        thir = _lower_ctx(self._RECORDS)
+        assert _fn(thir, "describe") is not None
+
+    def test_compare_operand_routes(self):
+        thir = _lower_ctx(self._RECORDS)
+        assert _fn(thir, "matches") is not None
+
+    def test_emit_byte_identical(self):
+        src = (
+            self._RECORDS
+            + "def main():\n"
+            + "    e = E(\"boom\")\n"
+            + "    print(e.describe(), e.matches(\"boom\"))\n"
+            + "main()\n"
+        )
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+
+        def cpp(thir: bool):
+            hpp, out = compiler.generate_code_to_strings(
+                entry, options=CodeGenOptions(emit_source_comments=False,
+                                              thir_codegen=thir))
+            return hpp + out
+
+        thir_cpp = cpp(True)
+        assert thir_cpp == cpp(False)
+        assert ('return (::tpy::str_concat("[base] ", this->message));'
+                in thir_cpp)
+        assert "return (s == this->message);" in thir_cpp

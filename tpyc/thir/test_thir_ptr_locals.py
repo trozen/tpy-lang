@@ -261,3 +261,70 @@ class TestUnionPtrSlot:
             + "def f(dog: readonly[Dog]) -> None:\n"
             + "    d: Dog | Cat = dog\n")
         assert _fn(thir, "f") is None
+
+
+class TestPtrSpanCoerceDispositions:
+    """The ptr/readonly/span `_coerce_disposition` rows: address-taking Ptr
+    coercions (`&{e}`), the ptr/slice/span identity family, and the
+    spanlike -> Span `as_span`/`as_mut_span` wraps."""
+
+    PTR_SRC = (
+        "from tpy import Int32, Ptr, readonly, take_ptr\n"
+        "class Inner:\n"
+        "    value: Int32\n"
+        "    def __init__(self, value: Int32):\n        self.value = value\n"
+        "def use(p: Ptr[Inner]) -> None:\n    pass\n"
+        "def f() -> None:\n"
+        "    n = Inner(7)\n"
+        "    use(take_ptr(n))\n"
+        "def g(p: Ptr[Inner]) -> Ptr[readonly[Inner]]:\n"
+        "    return p\n"
+    )
+
+    def test_value_to_ptr_and_const_widen_route(self):
+        thir = _lower_ctx(self.PTR_SRC)
+        assert _fn(thir, "f") is not None
+        assert _fn(thir, "g") is not None
+
+    def test_value_to_ptr_byte_identical(self):
+        assert _cpp(self.PTR_SRC, thir=True) == _cpp(self.PTR_SRC, thir=False)
+        cpp = _cpp(self.PTR_SRC, thir=True)
+        # take_ptr's cpp_template is identity, so the arg's value_to_ptr
+        # coercion IS the whole render.
+        assert "use(&n);" in cpp
+
+    SPAN_SRC = (
+        "from tpy import Int32, Span, readonly\n"
+        "def sum_span(values: Span[Int32]) -> Int32:\n"
+        "    total: Int32 = 0\n"
+        "    for v in values:\n        total += v\n"
+        "    return total\n"
+        "def take_ro(values: Span[readonly[Int32]]) -> Int32:\n"
+        "    return len(values)\n"
+        "def f(sp: Span[Int32]) -> None:\n"
+        "    lst: list[Int32] = [1, 2, 3]\n"
+        "    print(sum_span(lst))\n"
+        "    print(take_ro(lst))\n"
+        "    print(take_ro(sp))\n"
+    )
+
+    def test_spanlike_args_route_byte_identical(self):
+        thir = _lower_ctx(self.SPAN_SRC)
+        assert _fn(thir, "f") is not None
+        assert _cpp(self.SPAN_SRC, thir=True) == _cpp(self.SPAN_SRC, thir=False)
+        cpp = _cpp(self.SPAN_SRC, thir=True)
+        # Mutable slot takes as_mut_span, readonly slot as_span, and the
+        # span -> const-span widening passes bare (C++-implicit).
+        assert "sum_span(::tpy::as_mut_span(lst))" in cpp
+        assert "take_ro(::tpy::as_span(lst))" in cpp
+        assert "take_ro(sp)" in cpp
+
+    def test_array_literal_span_arg_rejects(self):
+        # The make_array-prefixed literal render stays AST (wrap is None).
+        thir = _lower_ctx(
+            "from tpy import Int32, Span, readonly\n"
+            "def take_ro(values: Span[readonly[Int32]]) -> Int32:\n"
+            "    return len(values)\n"
+            "def f() -> None:\n"
+            "    print(take_ro([5, 5]))\n")
+        assert _fn(thir, "f") is None

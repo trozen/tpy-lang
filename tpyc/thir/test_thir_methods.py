@@ -3,7 +3,10 @@ free functions, scalar field writes + aug-assign."""
 
 from __future__ import annotations
 
+import pytest
+
 from ..codegen_cpp.context import CodeGenOptions
+from ..diagnostics import SemanticError
 from ..codegen_cpp.forms import LocalBinding
 from ..typesys import NominalType, PtrType
 from .lower.predicates import _eligible_ptr_value
@@ -2344,3 +2347,67 @@ class TestFreeCallResultReceiver:
             "    if m is not None:\n        return m.get()\n"
             "    return 0\n")
         assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+
+
+class TestValueOptScalarArg:
+    """A scalar value / `None` into a value-repr Optional[scalar] method
+    slot renders bare / `std::nullopt` (the implicit std::optional<T> ctor
+    absorbs the value) -- `sock.settimeout(0.5)`."""
+
+    _SRC = (
+        "from tpy import Int32, Float64\n"
+        "class S:\n"
+        "    t: Float64\n"
+        "    def __init__(self):\n        self.t = 0.0\n"
+        "    def settimeout(self, value: Float64 | None) -> None:\n"
+        "        if value is None:\n            self.t = -1.0\n"
+        "        else:\n            self.t = value\n"
+    )
+
+    def test_literal_and_none_route(self):
+        thir = _lower_ctx(
+            self._SRC
+            + "def use(s: S, v: Float64) -> None:\n"
+            + "    s.settimeout(0.5)\n    s.settimeout(None)\n"
+            + "    s.settimeout(v)\n")
+        assert _fn(thir, "use") is not None
+
+    def test_str_literal_into_opt_char_slot_rejected_by_sema(self):
+        # The predicate's str-literal exclusion is defensive only: sema
+        # rejects a str literal into a `Char | None` slot before lowering
+        # runs. If sema ever admits the shape, this pin flips and the
+        # THIR arg row needs a real char-retype decision.
+        with pytest.raises(SemanticError):
+            _lower_ctx(
+                "from tpy import Char\n"
+                "class S:\n"
+                "    c: Char\n"
+                "    def __init__(self):\n        self.c = \"x\"\n"
+                "    def put(self, value: Char | None) -> None:\n"
+                "        if value is not None:\n            self.c = value\n"
+                "def use(s: S) -> None:\n"
+                "    s.put(\"a\")\n")
+
+    def test_emit_byte_identical(self):
+        src = (
+            self._SRC
+            + "def use(s: S, v: Float64) -> None:\n"
+            + "    s.settimeout(0.5)\n    s.settimeout(None)\n"
+            + "    s.settimeout(v)\n"
+            + "def main():\n    s = S()\n    use(s, 2.5)\n    print(s.t)\n"
+            + "main()\n"
+        )
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+
+        def cpp(thir: bool):
+            _, out = compiler.generate_code_to_strings(
+                entry, options=CodeGenOptions(emit_source_comments=False,
+                                              thir_codegen=thir))
+            return out
+
+        thir_cpp = cpp(True)
+        assert thir_cpp == cpp(False)
+        assert "s.settimeout(0.5);" in thir_cpp
+        assert "s.settimeout(std::nullopt);" in thir_cpp
+        assert "s.settimeout(v);" in thir_cpp

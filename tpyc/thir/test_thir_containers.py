@@ -1066,13 +1066,14 @@ class TestContainerCallArgs:
             + "def f() -> Int32:\n    zs = [1]\n    return consume(zs)\n")
         assert _fn(thir, "f") is None
 
-    def test_span_param_ineligible(self):
-        # A Span slot converts (`::tpy::as_mut_span(xs)`) -> AST.
+    def test_span_param_arg_routes(self):
+        # A Span slot converts (`::tpy::as_mut_span(xs)`) -- routed since the
+        # ptr/span coerce-disposition cell (the spanlike wrap).
         thir = _lower(
             "from tpy import Int32, Span\n"
             + "def use_span(sp: Span[Int32]) -> Int32:\n    return len(sp)\n"
             + "def f(xs: list[Int32]) -> Int32:\n    return use_span(xs)\n")
-        assert _fn(thir, "f") is None
+        assert _fn(thir, "f") is not None
 
     def test_protocol_param_method_arg_ineligible(self):
         # list.extend(other: Iterable[Own[T]]) -- the Iterable[Own[T]] slot's
@@ -1168,14 +1169,15 @@ class TestSpanReturn:
             + "    if f:\n        return a\n    return b\n")
         assert _fn(thir, "pick") is not None
 
-    def test_widen_coerce_return_ineligible(self):
-        # Span[T] -> Span[readonly[T]] widen carries span_to_readonly_span
-        # (outside _coerce_disposition) -> AST.
+    def test_widen_coerce_return_routes(self):
+        # Span[T] -> Span[readonly[T]] widen carries span_to_readonly_span --
+        # an identity disposition since the ptr/span coerce cell (the C++
+        # span const-widening is implicit).
         thir = _lower(
             self._SPAN
             + "def widen(buf: Span[Int32]) -> Span[readonly[Int32]]:\n"
             + "    return buf\n")
-        assert _fn(thir, "widen") is None
+        assert _fn(thir, "widen") is not None
 
     def test_array_field_convert_return_ineligible(self):
         # An Array field -> span conversion return (::tpy::as_mut_span) carries
@@ -1206,9 +1208,13 @@ class TestSpanReturn:
             + "    return buf\n"
             + "def pick(a: Span[Int32], b: Span[Int32], f: bool) -> Span[Int32]:\n"
             + "    if f:\n        return a\n    return b\n"
+            + "def widen(buf: Span[Int32]) -> Span[readonly[Int32]]:\n"
+            + "    return buf\n"
             + "def main() -> None:\n    pass\nmain()\n"
         )
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+        thir_cpp = self._cpp(src, thir=True)
+        assert thir_cpp == self._cpp(src, thir=False)
+        assert "std::span<const int32_t> widen(std::span<int32_t> buf)" in thir_cpp
 
 
 # --- S4 leftover: container-returning call iterables (`for x in make_list():`) ---
@@ -2865,3 +2871,276 @@ class TestMethodArgLiteralTargets:
         assert "xs.push_back(2)" in cpp
         # user-record method args stay target-less
         assert "c.bump(5)" in cpp
+
+
+# --- Decl-init storage calls: container/tuple/union-returning METHOD calls
+# (`parts = s.split(",")`) ride the same plain value decl as the free-call
+# form; a BORROW container return (`return self._items`, a C++ `T&`) binds a
+# `T&` alias on the AST path and must keep the body AST. ---
+class TestContainerFromCallDecl:
+    _H = (
+        "from tpy import Int32, Own\n"
+        "class H:\n"
+        "    _items: list[Int32]\n"
+        "    def __init__(self) -> None:\n"
+        "        self._items = [1, 2]\n"
+        "    def borrowed(self) -> list[Int32]:\n"
+        "        return self._items\n"
+        "    def fresh(self) -> Own[list[Int32]]:\n"
+        "        return [3, 4]\n"
+    )
+
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=thir))
+        return cpp
+
+    def test_view_method_container_decl_routes(self):
+        thir = _lower(
+            "from tpy import Int32\n"
+            "def f(s: str) -> Int32:\n"
+            "    parts = s.split(\",\")\n"
+            "    return len(parts)\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+        decl = fn.body[0]
+        assert isinstance(decl, THIRVarDecl) and isinstance(
+            decl.init, THIRMethodCall)
+
+    def test_own_method_container_decl_routes(self):
+        thir = _lower_ctx(
+            self._H
+            + "def f(h: H) -> Int32:\n"
+            + "    xs = h.fresh()\n"
+            + "    return len(xs)\n")
+        assert _fn(thir, "f") is not None
+
+    def test_borrow_method_container_decl_ineligible(self):
+        # AST binds `std::vector<int32_t>& xs = h.borrowed();` -- the plain
+        # copy this arm emits would silently un-alias it.
+        thir = _lower_ctx(
+            self._H
+            + "def f(h: H) -> Int32:\n"
+            + "    xs = h.borrowed()\n"
+            + "    return len(xs)\n")
+        assert _fn(thir, "f") is None
+
+    def test_borrow_free_call_container_decl_ineligible(self):
+        # The free-call sibling: a borrow container return at a decl is the
+        # AST's `T&` alias, not a copy (regression pin for the storage_call
+        # arm's rvalue guard).
+        thir = _lower(
+            "from tpy import Int32\n"
+            "def pick(a: list[Int32]) -> list[Int32]:\n"
+            "    return a\n"
+            "def f(a: list[Int32]) -> Int32:\n"
+            "    xs = pick(a)\n"
+            "    return len(xs)\n")
+        assert _fn(thir, "f") is None
+
+    def test_reassigned_method_container_decl_ineligible(self):
+        # A reassigned container local takes the AST's pointer-local
+        # machinery regardless of the init's call kind.
+        thir = _lower_ctx(
+            self._H
+            + "def f(h: H, k: list[Int32]) -> Int32:\n"
+            + "    xs = h.fresh()\n"
+            + "    xs = k\n"
+            + "    return len(xs)\n")
+        assert _fn(thir, "f") is None
+
+    def test_byte_identical(self):
+        src = (
+            self._H
+            + "def f(s: str) -> Int32:\n"
+            + "    parts = s.split(\",\")\n"
+            + "    return len(parts)\n"
+            + "def g(h: H) -> Int32:\n"
+            + "    xs = h.fresh()\n"
+            + "    ys = h.borrowed()\n"
+            + "    return len(xs) + len(ys)\n"
+            + "def main() -> None:\n"
+            + "    h = H()\n"
+            + "    print(f(\"a,b\"), g(h))\n"
+            + "main()\n")
+        thir_cpp = self._cpp(src, thir=True)
+        assert thir_cpp == self._cpp(src, thir=False)
+        assert "std::vector<std::string> parts = ::tpy::str_split(s, \",\");" in thir_cpp
+        assert "std::vector<int32_t>& ys = h.borrowed();" in thir_cpp
+
+
+# --- Span locals: a value-view decl (`s2 = sp` / `s = get_span(a)` /
+# `s = r.view(sp)`) renders the plain spelled copy on both paths. ---
+class TestSpanLocalDecl:
+    _SPAN = "from tpy import Int32, Span, Array, readonly\n"
+
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=thir))
+        return cpp
+
+    def test_span_name_copy_decl_routes(self):
+        thir = _lower(
+            self._SPAN
+            + "def f(sp: Span[Int32]) -> Int32:\n"
+            + "    s2 = sp\n"
+            + "    return s2[0]\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+        decl = fn.body[0]
+        assert isinstance(decl, THIRVarDecl) and isinstance(decl.init, THIRName)
+
+    def test_span_call_decl_routes(self):
+        # The callee takes a routed (list) arg -- a span ARG is its own
+        # (unrouted) pass-through row, deliberately not opened here.
+        thir = _lower(
+            self._SPAN
+            + "def view(xs: list[Int32]) -> Span[Int32]:\n"
+            + "    return xs\n"
+            + "def f(xs: list[Int32]) -> Int32:\n"
+            + "    s = view(xs)\n"
+            + "    return s[0]\n")
+        assert _fn(thir, "f") is not None
+
+    def test_span_method_decl_routes(self):
+        thir = _lower_ctx(
+            self._SPAN
+            + "class R:\n"
+            + "    _data: list[Int32]\n"
+            + "    def __init__(self) -> None:\n"
+            + "        self._data = [1, 2]\n"
+            + "    def view(self) -> Span[Int32]:\n"
+            + "        return self._data\n"
+            + "def f(r: R) -> Int32:\n"
+            + "    s = r.view()\n"
+            + "    return s[0]\n")
+        assert _fn(thir, "f") is not None
+
+    def test_span_of_span_decl_ineligible(self):
+        # The element is not an eligible scalar -> the decl gate keeps it AST.
+        thir = _lower(
+            self._SPAN
+            + "def f(sp: Span[Span[Int32]]) -> Int32:\n"
+            + "    s2 = sp\n"
+            + "    return 0\n")
+        assert _fn(thir, "f") is None
+
+    def test_byte_identical(self):
+        src = (
+            self._SPAN
+            + "def view(xs: list[Int32]) -> Span[Int32]:\n"
+            + "    return xs\n"
+            + "def f(xs: list[Int32]) -> Int32:\n"
+            + "    s2 = view(xs)\n"
+            + "    s3 = s2\n"
+            + "    return s3[0] + s2[1]\n"
+            + "def ro(sp: Span[readonly[Int32]]) -> Int32:\n"
+            + "    s2 = sp\n"
+            + "    return s2[0]\n"
+            + "def main() -> None:\n"
+            + "    a = [1, 2, 3]\n"
+            + "    print(f(a), ro(a))\n"
+            + "main()\n")
+        thir_cpp = self._cpp(src, thir=True)
+        assert thir_cpp == self._cpp(src, thir=False)
+        assert "std::span<int32_t> s2 = view(xs);" in thir_cpp
+        assert "std::span<const int32_t> s2 = sp;" in thir_cpp
+
+
+class TestSetitemWidenedValueSlots:
+    """Cell: setitem non-scalar value slots -- nested-container literals
+    (type-prefixed on the checked path, bare on the bounds-safe lvalue path)
+    and the Optional/union borrow->storage element lifts."""
+
+    _RECS = (
+        "from tpy import Int32\n"
+        "class A:\n"
+        "    x: Int32\n"
+        "    def __init__(self, x: Int32) -> None:\n        self.x = x\n"
+        "class B:\n"
+        "    y: Int32\n"
+        "    def __init__(self, y: Int32) -> None:\n        self.y = y\n"
+    )
+
+    def _cpp(self, src: str, thir: bool) -> str:
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=thir))
+        return cpp
+
+    def test_container_literal_value_type_prefix(self):
+        src = (
+            "from tpy import Int32\n"
+            "def f() -> None:\n"
+            "    groups: dict[str, list[Int32]] = {}\n"
+            "    groups[\"odds\"] = [1, 3, 5]\n"
+            "def main() -> None:\n    f()\nmain()\n")
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+        cpp = self._cpp(src, thir=True)
+        assert ('::tpy::__setitem__(groups, "odds", '
+                "std::vector<int32_t>{1, 3, 5});") in cpp
+
+    def test_bounds_safe_literal_value_stays_bare(self):
+        # The `x[i] = value` lvalue path binds a brace-init directly.
+        src = (
+            "from tpy import Int32\n"
+            "def f() -> None:\n"
+            "    rows: list[list[Int32]] = [[0], [0]]\n"
+            "    for i in range(len(rows)):\n"
+            "        rows[i] = [i, i + 1]\n"
+            "def main() -> None:\n    f()\nmain()\n")
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+        cpp = self._cpp(src, thir=True)
+        assert ("rows[static_cast<std::size_t>(i)] = "
+                "{i, (::tpy::add_check<int32_t>(i, 1))};") in cpp
+
+    def test_optional_elem_borrow_name_lifts(self):
+        src = (self._RECS
+               + "def store(xs: list[A | None], p: A | None) -> None:\n"
+               + "    xs[0] = p\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "store") is not None
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+        assert ("::tpy::__setitem__(xs, 0, ::tpy::ptr_to_optional(p));"
+                in self._cpp(src, thir=True))
+
+    def test_union_elem_name_lifts_narrowed_stores_bare(self):
+        src = (self._RECS
+               + "def store(xs: list[A | B], p: A | B) -> None:\n"
+               + "    xs[0] = p\n"
+               + "def store_narrowed(xs: list[A | B], p: A | B) -> None:\n"
+               + "    if isinstance(p, A):\n"
+               + "        xs[0] = p\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "store") is not None
+        assert _fn(thir, "store_narrowed") is not None
+        cpp = self._cpp(src, thir=True)
+        assert cpp == self._cpp(src, thir=False)
+        assert ("::tpy::__setitem__(xs, 0, "
+                "::tpy::to_value_variant<std::variant<A, B>>(p));") in cpp
+        assert "::tpy::__setitem__(xs, 0, __p);" in cpp
+
+    def test_record_rvalue_value_rejects(self):
+        # A ctor-rvalue source into an Optional element stays AST (only the
+        # borrow-name lift is mirrored).
+        thir = _lower_ctx(
+            self._RECS
+            + "def store(xs: list[A | None]) -> None:\n"
+            + "    xs[0] = A(1)\n")
+        assert _fn(thir, "store") is None
+
+    def test_nonliteral_container_value_rejects(self):
+        # A container NAME source (the copy/move question) stays AST.
+        thir = _lower_ctx(
+            "from tpy import Int32\n"
+            "def store(m: list[list[Int32]], v: list[Int32]) -> None:\n"
+            "    m[0] = v\n")
+        assert _fn(thir, "store") is None

@@ -27,6 +27,7 @@ from .predicates import (
     _eligible_value_union,
     _is_type_param_slot,
     _optional_ptr_borrow,
+    _own_storage_union_return,
     _own_storage_viewfam_return,
     _own_type_param_slot,
     _record_borrow_return,
@@ -73,6 +74,12 @@ class _ExprUse:
     result: _ExprResultUse = _ExprResultUse.VALUE
     allow_temps: bool = False
     record_ctor: _RecordCtorUse = _RecordCtorUse.DIRECT
+    # Standalone tuple-unpack SOURCE position only: admit tuple-valued
+    # results the `auto __tup_N = <expr>;` capture consumes whole -- an
+    # `Own[F1-record]`-element tuple call result (`_owned_tuple_call_ret`)
+    # and a value-tuple class constant. Never set at decl/return sinks
+    # (their slots gate separately).
+    tuple_source: bool = False
 
 # --- F1 form slice: single-assignment non-value record locals + field reads ---
 
@@ -86,7 +93,7 @@ class _Prescan:
                  "ret_record_borrow", "ret_record_storage",
                  "ret_container_storage", "ret_value_tuple",
                  "ret_str", "ret_bytes",
-                 "ret_char", "ret_union", "ret_ptr_union",
+                 "ret_char", "ret_union", "ret_ptr_union", "ret_own_union",
                  "ret_supported", "ret_callable",
                  "ret_value_opt", "ret_value_opt_view",
                  "value_opt_params", "param_names",
@@ -225,6 +232,10 @@ class _Prescan:
         # names return bare; a MEMBER record name takes the AST's `&(...)`
         # address-of lift, which the slice does not reproduce.
         self.ret_ptr_union = _eligible_ptr_union(rt, analyzer)
+        # An `Own[A | B]` record-member union return slot (a by-value
+        # storage `std::variant<A, B>`): a member-record ctor rvalue
+        # returns bare (the converting ctor absorbs it).
+        self.ret_own_union = _own_storage_union_return(rt, analyzer)
         # A value-bearing return must select one of the representations the
         # return arm consumes. Signatures remain AST-emitted; this fact is
         # checked only when lowering reaches an actual return value.
@@ -251,7 +262,8 @@ class _Prescan:
             or self.ret_container_storage is not None
             or self.ret_value_tuple is not None
             or self.ret_str is not None or self.ret_bytes is not None
-            or self.ret_union is not None or self.ret_ptr_union is not None)
+            or self.ret_union is not None or self.ret_ptr_union is not None
+            or self.ret_own_union is not None)
 
 @dataclass
 class _NarrowScope:

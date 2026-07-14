@@ -142,6 +142,9 @@ THIR_FACES: frozenset[str] = frozenset({
     "method.recv.record_field",
     "method.recv.free_call",        # `make(3).get()` -- a plain F1-record
                                     # free-call result receiver, `.` access
+    "method.recv.str_literal",      # `"a,b,c".split(",")` -- a str-literal
+                                    # receiver rendered bare into the resolved
+                                    # builtin-method template
     "ctor.call",                    # THIRCtorCall bare ctor expansion
     "ctor.cross_module",            # imported-record ctor: the qualified
                                     # `::ns::Name(args)` spelling
@@ -169,6 +172,11 @@ THIR_FACES: frozenset[str] = frozenset({
     "setitem.aug",                  # `c[k] OP= v` -> the getitem/setitem pair
     "setitem.str_owned_copy",       # view source into a str element: std::string(v)
     "setitem.field_recv",           # write/aug receiver is a field access
+    "setitem.container_value",      # nested-container element: literal value,
+                                    # type-prefixed on the checked path
+    "setitem.borrow_lift",          # Optional/union element: borrow NAME lifts
+                                    # via ptr_to_optional / to_value_variant
+                                    # (narrowed member names store bare)
                                     # (`::tpy::__setitem__(this->xs, i, v);`)
     # Plain F1-record FIELD write from a record rvalue (a ctor STORAGE / a
     # by-value record-returning call VALUE): a bare copy `recv.field =
@@ -301,6 +309,10 @@ THIR_FACES: frozenset[str] = frozenset({
     "narrow.slice_bound",           # same wrap on a str/bytes slice bound
     "narrow.aug_value",             # `({0}).to_fixed_check<T>()` aug-assign value
     "narrow.enum_arg",              # `({0}).to_fixed_check<U>()` E(x) arg
+    "narrow.opt_field_test",        # `self.f is [not] None` -> the storage-form
+                                    # `.has_value()` compare over the bare member
+    "field.narrowed_deref",         # sema-narrowed Optional field value read ->
+                                    # the unconditional `(*recv.field)` unwrap
     # Record return slots (lowering admission; the renders -- bare name / bare
     # ctor expansion -- are shared with the pass-through emits, so admission
     # is the only distinguishing site).
@@ -359,6 +371,12 @@ THIR_FACES: frozenset[str] = frozenset({
     # `std::string(view)` through the Optional slot; `None`->`std::nullopt`, a
     # str literal bare.
     "ret.tuple_opt_str_elem",
+    # An `Own[F1-record]` RETURN element (a by-value `T` slot in the spelled
+    # tuple): a ctor rvalue lands bare, an owned name moves at last use.
+    "ret.tuple_own_elem",
+    # An `Own[A | B]` record-member union return slot: a member ctor rvalue
+    # returns bare into the by-value storage variant.
+    "ret.own_union_ctor",
     # Owned record local decl (lowering; the `{cpp_type} {name} = <rvalue>;`
     # plain-value render).
     "decl.owned_record",
@@ -506,6 +524,10 @@ THIR_FACES: frozenset[str] = frozenset({
     # A fixed-int bitwise op (`a & b`, `a << b`, ...) admitted at the scalar
     # arm -- same resolved-binop template emit as arithmetic (lowering admission).
     "binop.bitwise",
+    # sema's optional_safe_eq (value-repr Optional[scalar] ==/!=): optional
+    # sides read bare, the plain side opposite an un-narrowed optional is
+    # target-typed to its inner (lowering).
+    "binop.opt_scalar_eq",
     # A chained comparison with a non-simple intermediate (`a < f() < b`) ->
     # the GCC stmt-expr single-eval form (_gen_chained_compare_lambda).
     "chained_compare.stmt_expr",
@@ -531,6 +553,12 @@ THIR_FACES: frozenset[str] = frozenset({
     # A non-name unpack source (lowering): a value-tuple-returning call or a
     # value-tuple field read -> `auto __tup_N = <expr>;` (value capture).
     "stmt.tuple_unpack.rvalue_source",
+    # An Own[F1-record] unpack element moved out of a call-rvalue source
+    # (lowering): `Rec a = std::move(std::get<i>(__tup_N));`.
+    "stmt.tuple_unpack.own_target",
+    # An expensive-copy value target bound zero-copy (lowering, sema's
+    # is_const_ref): `const T& a = std::get<i>(__tup_N);`.
+    "stmt.tuple_unpack.cref_target",
     # THIRComprehension (lowering, the C1+C2 slice).
     "comp.list",                    # list comp -> vector stmt-expr
     "comp.set",                     # set comp -> ordered_set stmt-expr
@@ -555,6 +583,8 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # print arg -> bare `::tpy::print_optional_val`
     "print.wrap_arg",               # container / value-tuple / F1-record NAME
                                     # print arg -> its kind-keyed printer wrap
+    "print.kw_sep_end",             # sep=/end= kwarg (str literal or resolved
+                                    # str-value name) -> the chain-token render
     "comp.array_range",             # Array demotion: array_from_index range lambda
     # THIRMatch M1 -- the unguarded scalar switch tiers (lowering).
     "match.switch_enum",            # switch over enum-member case labels
@@ -637,8 +667,13 @@ THIR_FACES: frozenset[str] = frozenset({
     "sgen.iterable",                # for-branch iterable render
     "sgen.range_arg",               # for-range bound renders
     # The universal __iter__/__next__ protocol foreach (generator-call /
-    # user-iterator-name iterables -- _gen_direct_next_loop_with_iter).
+    # iterator-returning-call / user-iterator-name iterables --
+    # _gen_direct_next_loop_with_iter).
     "foreach.iter_proto",
+    # Tuple-unpack head over the universal loop (`for a, b in zip(..)` /
+    # a tuple-yield generator call -- the same head decls as the container
+    # tuple-unpack, THIRForIterProto instead of begin/end).
+    "foreach.tuple_unpack_iter",
     # Class-constant read -> the bare qualified static (lowering;
     # `C::LIMIT`, `::tpyapp::m::Limits::MAX`, `C<int32_t>::X` -- the
     # receiver_eval-None shapes of _class_constant_access_parts).
