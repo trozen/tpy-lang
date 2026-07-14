@@ -116,6 +116,7 @@ from ..nodes import (
     THIRExpr,
     THIRExprStmt,
     THIRForEach,
+    THIRForIterProto,
     THIRForRange,
     THIRFormConvert,
     THIRIf,
@@ -865,6 +866,65 @@ def _user_iterator_iterable(u: 'TpyType | None', analyzer) -> bool:
         or analyzer.registry.get_method_overloads_with_parents(rec, "__next__"))
 
 
+def _for_iter_proto_route(
+        stmt: TpyForEach, analyzer,
+        declared: dict[str, TpyType]) -> '_ForEachRoute | None':
+    """The universal `::tpy::__iter__` + `__next__` protocol loop
+    (`_gen_direct_next_loop_with_iter`), for the iterables the container
+    route's NativeIterable gate excludes. Slice: a free GENERATOR call
+    (`for x in gen(n):` -- an rvalue source, the owning `auto __src_N`
+    capture inside the CPython-refcount brace scope; the callee admission
+    itself is the call classifier's `generator_ok`) or a USER-ITERATOR local
+    name (a concrete non-generic record with `__iter__`/`__next__` -- a C++
+    lvalue, `auto& __src_N`). Protocol-typed params (the template-param
+    spelling), fields, method calls and gen-valued locals stay later cells."""
+    if not _for_loop_shape_ok(stmt, analyzer, declared):
+        return None
+    if stmt.is_tuple_unpack:
+        return None
+    it = stmt.iterable
+    if isinstance(it, TpyCall):
+        if _is_range_call(it):
+            return None
+        fi = it.resolved_function_info
+        if fi is None or not fi.is_generator:
+            return None
+        iterable_lvalue = False
+    elif isinstance(it, TpyMethodCall):
+        # A member (`obj.gen(n)`) or module-qualified (`m.gen(n)`) generator
+        # factory call: always an rvalue (the Iterator-protocol return --
+        # is_lvalue_iterable's protocol arm). The expr lowering gates which
+        # spellings route (_member_gen_call_iterable_ok / the marker arm's
+        # generator_ok).
+        fi = it.resolved_function_info
+        if fi is None or not fi.is_generator:
+            return None
+        iterable_lvalue = False
+    elif isinstance(it, TpyName):
+        # `for x in self:` renders the receiver DEREFERENCED (`auto& __src_N
+        # = (*this);`, gen_expr_deref) -- the self-iterable rung is deferred.
+        if it.name not in declared or it.name == "self":
+            return None
+        u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+            declared[it.name])))
+        # Concrete user-iterator records only: a protocol-typed binding
+        # (Iterator[T] param) spells through the deduced template param on
+        # the AST path, and a generic record folds its type args -- both
+        # deferred.
+        if (not isinstance(u, NominalType) or u.is_protocol or u.type_args
+                or not _user_iterator_iterable(u, analyzer)):
+            return None
+        iterable_lvalue = True
+    else:
+        return None
+    et = _resolved_loop_elem_type(stmt, analyzer)
+    if not _for_each_elem_binding_ok(et):
+        note_detail("foreach.elem_family." + _type_family_tag(et, analyzer))
+        return None
+    return _ForEachRoute(route="iter_proto", elem_type=et,
+                         iterable_lvalue=iterable_lvalue)
+
+
 def _tuple_unpack_reject_tag(stmt: TpyForEach, analyzer,
                              declared: dict[str, TpyType],
                              narrowed: AbstractSet[str]) -> str:
@@ -959,6 +1019,8 @@ def _select_for_each_route(
         route = _for_tuple_unpack_route(stmt, analyzer, declared, narrowed)
     else:
         route = _for_each_container_route(stmt, analyzer, declared)
+        if route is None:
+            route = _for_iter_proto_route(stmt, analyzer, declared)
     if route is None:
         note_detail(_for_each_reject_detail(stmt, analyzer, declared, narrowed))
         raise ThirUnsupported(stmt_reject_reason(stmt))
@@ -3327,6 +3389,21 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 body=body,
                 step=step,
                 step_kind=step_kind,
+                orelse=_lower_loop_orelse(stmt.orelse, lc, declared, scope,
+                                          "loop.for_else"),
+                loc=loc,
+            )
+        if route.route == "iter_proto":
+            _witness("foreach.iter_proto")
+            return THIRForIterProto(
+                var=stmt.var,
+                elem_type=et,
+                iterable=_lower_expr(
+                    it, lc, declared,
+                    use=_ExprUse(result=_ExprResultUse.ITERABLE)),
+                body=body,
+                const_loop_var=stmt.const_loop_var,
+                iterable_lvalue=route.iterable_lvalue,
                 orelse=_lower_loop_orelse(stmt.orelse, lc, declared, scope,
                                           "loop.for_else"),
                 loc=loc,

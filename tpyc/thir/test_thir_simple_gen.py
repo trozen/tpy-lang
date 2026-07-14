@@ -1,0 +1,462 @@
+"""Simple-generator (lambda peephole) leaf routing -- the gen_generators seam.
+
+Pins the foundation slice: routed bodies are byte-identical to the AST
+path with every leaf render witnessed, and each sliced-out shape rejects
+with its named `sgen.*` reason (falling back to the AST leaves) instead of
+routing wrong."""
+
+from __future__ import annotations
+
+from ..codegen_cpp.context import CodeGenOptions
+from .testutil import _compile, _entry
+
+_ITER = "from tpy import Int32, Int64\nfrom typing import Iterator\n\n"
+
+
+def _gen(src: str, thir: bool):
+    compiler, modules = _compile(src)
+    entry = _entry(modules)
+    hpp, cpp = compiler.generate_code_to_strings(
+        entry, options=CodeGenOptions(emit_source_comments=True,
+                                      thir_codegen=thir))
+    return compiler, hpp, cpp
+
+
+def _assert_identical(src: str) -> 'tuple[dict, dict]':
+    """Byte-compare THIR vs AST output; return (witnesses, fallback)."""
+    _, hpp_ast, cpp_ast = _gen(src, thir=False)
+    c, hpp_thir, cpp_thir = _gen(src, thir=True)
+    assert hpp_ast == hpp_thir
+    assert cpp_ast == cpp_thir
+    return c._thir_face_witnesses, c._thir_fallback
+
+
+def _sgen_fallback(src: str) -> dict:
+    """The body-component fallback reasons, sans the `body:` prefix."""
+    c, _hpp, _cpp = _gen(src, thir=True)
+    return {k.split(":", 1)[1]: n for k, n in c._thir_fallback.items()
+            if k.startswith("body:")}
+
+
+class TestRoutedFoundation:
+    def test_while_counter_routes(self):
+        src = (_ITER
+               + "def gen(n: Int32) -> Iterator[Int32]:\n"
+               + "    i = 0\n"
+               + "    while i < n:\n"
+               + "        yield i\n"
+               + "        i = i + 1\n\n"
+               + "def main() -> None:\n"
+               + "    for x in gen(3):\n        print(x)\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("sgen.body") == 1
+        assert witnesses.get("sgen.while_cond") == 1
+        assert witnesses.get("sgen.yield_value") == 1
+        assert not any("sgen." in k for k in fallback)
+
+    def test_init_block_and_pre_yield_route(self):
+        # Init stmts before the loop (lambda captures) + a pre-yield
+        # statement inside it.
+        src = (_ITER
+               + "def gen(n: Int32) -> Iterator[Int32]:\n"
+               + "    total = 0\n"
+               + "    i = 0\n"
+               + "    while i < n:\n"
+               + "        total = total + i\n"
+               + "        yield total\n"
+               + "        i = i + 1\n\n"
+               + "def main() -> None:\n"
+               + "    for x in gen(4):\n        print(x)\nmain()\n")
+        witnesses, _ = _assert_identical(src)
+        assert witnesses.get("sgen.body") == 1
+
+    def test_for_range_routes(self):
+        # Both range forms: the 1-arg stop and the 2-arg start/stop bounds
+        # render position-blind inside the skeleton's static_cast scaffolding.
+        src = (_ITER
+               + "def squares(n: Int32) -> Iterator[Int32]:\n"
+               + "    for i in range(n):\n"
+               + "        yield i * i\n\n"
+               + "def offsets(a: Int32, b: Int32) -> Iterator[Int32]:\n"
+               + "    for i in range(a, b):\n"
+               + "        yield i + 10\n\n"
+               + "def main() -> None:\n"
+               + "    for x in squares(4):\n        print(x)\n"
+               + "    for y in offsets(1, 4):\n        print(y)\nmain()\n")
+        witnesses, _ = _assert_identical(src)
+        assert witnesses.get("sgen.body") == 2
+        assert witnesses.get("sgen.range_arg") == 2
+
+    def test_for_container_param_routes(self):
+        # The universal __iter__/__next__ pull branch over a list param: the
+        # iterable renders once, reused across the skeleton's decltype /
+        # emplace scaffolding.
+        src = (_ITER
+               + "def doubles(xs: list[Int32]) -> Iterator[Int32]:\n"
+               + "    for x in xs:\n"
+               + "        yield x * 2\n\n"
+               + "def main() -> None:\n"
+               + "    items = [1, 2, 3]\n"
+               + "    for v in doubles(items):\n        print(v)\nmain()\n")
+        witnesses, _ = _assert_identical(src)
+        assert witnesses.get("sgen.body") == 1
+        assert witnesses.get("sgen.iterable") == 1
+
+    def test_method_generator_routes(self):
+        # A method peephole reads `self` as `(*this)` (generator_self_ref).
+        src = (_ITER
+               + "class C:\n"
+               + "    base: Int32\n"
+               + "    def __init__(self, b: Int32) -> None:\n        self.base = b\n"
+               + "    def counts(self, n: Int32) -> Iterator[Int32]:\n"
+               + "        i = 0\n"
+               + "        while i < n:\n"
+               + "            yield i + self.base\n"
+               + "            i = i + 1\n\n"
+               + "def main() -> None:\n"
+               + "    c = C(7)\n"
+               + "    for x in c.counts(3):\n        print(x)\nmain()\n")
+        witnesses, _ = _assert_identical(src)
+        assert witnesses.get("sgen.body") == 1
+        _, hpp, _cpp = _gen(src, thir=True)
+        assert "(*this).base" in hpp
+
+
+class TestValueFamilies:
+    def test_enum_yield_routes(self):
+        src = ("from tpy import Int32\nfrom typing import Iterator\n"
+               + "from enum import Enum\n\n"
+               + "class Color(Enum):\n"
+               + "    RED = 0\n"
+               + "    GREEN = 1\n\n"
+               + "def colors(n: Int32) -> Iterator[Color]:\n"
+               + "    i = 0\n"
+               + "    while i < n:\n"
+               + "        yield Color.RED\n"
+               + "        i = i + 1\n\n"
+               + "def main() -> None:\n"
+               + "    for c in colors(2):\n        print(c)\nmain()\n")
+        witnesses, _ = _assert_identical(src)
+        assert witnesses.get("sgen.body") == 1
+
+    def test_char_yield_routes(self):
+        # Char yield + Char loop var, via the native-iterable str branch.
+        src = ("from tpy import Int32, Char\nfrom typing import Iterator\n\n"
+               + "def chars(s: str) -> Iterator[Char]:\n"
+               + "    for c in s:\n"
+               + "        yield c\n\n"
+               + "def main() -> None:\n"
+               + "    for c in chars(\"ab\"):\n        print(c)\nmain()\n")
+        witnesses, _ = _assert_identical(src)
+        assert witnesses.get("sgen.body") == 1
+        assert witnesses.get("sgen.iterable") == 1
+
+    def test_optional_none_test_cond_routes(self):
+        # `while x is not None:` on a pointer-repr Optional param lowers as a
+        # truthy None-test (not the U4 narrow-cond shape), so it routes.
+        src = (_ITER
+               + "class Node:\n"
+               + "    v: Int32\n"
+               + "    def __init__(self, v: Int32) -> None:\n"
+               + "        self.v = v\n\n"
+               + "def ticks(x: Node | None) -> Iterator[Int32]:\n"
+               + "    while x is not None:\n"
+               + "        yield x.v\n\n"
+               + "def main() -> None:\n"
+               + "    for v in ticks(None):\n        print(v)\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("sgen.body") == 1
+        assert not any("sgen." in k for k in fallback)
+
+
+class TestSlicedOutShapes:
+    # sgen.static_method is defensive-only: sema rejects a @staticmethod
+    # generator at parse time, so the reject can never fire end-to-end. The
+    # same holds for _marker_call_kind's is_static_call generator exclusion
+    # on the caller side. sgen.method / sgen.bare_yield / sgen.hoist_promoted
+    # and the body.hoisted_vars tail-check likewise mirror sync-arm defensive
+    # checks with no reachable public-entry shape found by probing.
+    def test_nonvalue_yield_defers(self):
+        # A record yield uses the val_or_ref borrow slot -- out of slice.
+        src = (_ITER
+               + "class P:\n"
+               + "    x: Int32\n"
+               + "    def __init__(self, x: Int32) -> None:\n        self.x = x\n\n"
+               + "def gen(ps: list[P]) -> Iterator[P]:\n"
+               + "    for p in ps:\n"
+               + "        yield p\n\n"
+               + "def main() -> None:\n"
+               + "    ps = [P(1), P(2)]\n"
+               + "    for p in gen(ps):\n        print(p.x)\nmain()\n")
+        assert _sgen_fallback(src).get("sgen.yield_type") == 1
+
+    def test_nonvalue_loop_var_defers(self):
+        # A record loop element binds `auto&&` into the live source -- the
+        # borrow-classified loop-var reads are out of slice (the yield is a
+        # value scalar, so the yield gate passes).
+        src = (_ITER
+               + "class P:\n"
+               + "    x: Int32\n"
+               + "    def __init__(self, x: Int32) -> None:\n        self.x = x\n\n"
+               + "def xs(ps: list[P]) -> Iterator[Int32]:\n"
+               + "    for p in ps:\n"
+               + "        yield p.x\n\n"
+               + "def main() -> None:\n"
+               + "    ps = [P(1), P(2)]\n"
+               + "    for x in xs(ps):\n        print(x)\nmain()\n")
+        assert _sgen_fallback(src).get("sgen.loop_var_type") == 1
+
+    def test_generic_defers(self):
+        # The generic DEF rejects at the sgen gate, and the CALLER's foreach
+        # over the generic factory rejects at the call classifier
+        # (call.generic_generator -> expr.call) -- both stay byte-identical
+        # via fallback.
+        src = (_ITER
+               + "def rep[T](v: T, n: Int32) -> Iterator[T]:\n"
+               + "    for _i in range(n):\n"
+               + "        yield v\n\n"
+               + "def main() -> None:\n"
+               + "    for x in rep(5, 2):\n        print(x)\nmain()\n")
+        _assert_identical(src)
+        fb = _sgen_fallback(src)
+        assert fb.get("sgen.generic") == 1
+        assert fb.get("expr.call") == 1
+
+    def test_generic_record_method_defers(self):
+        # The generator METHOD on a generic record rejects (template frame);
+        # the CALLER's member-call foreach still routes (monomorphized
+        # spelling).
+        src = (_ITER
+               + "class Box[T]:\n"
+               + "    v: T\n"
+               + "    def __init__(self, v: T) -> None:\n"
+               + "        self.v = v\n"
+               + "    def rep(self, n: Int32) -> Iterator[Int32]:\n"
+               + "        i = 0\n"
+               + "        while i < n:\n"
+               + "            yield i\n"
+               + "            i = i + 1\n\n"
+               + "def main() -> None:\n"
+               + "    b = Box(7)\n"
+               + "    for x in b.rep(2):\n        print(x)\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert fallback.get("body:sgen.generic_record") == 1
+        assert witnesses.get("foreach.iter_proto") == 1
+
+    def test_property_generator_defers(self):
+        src = (_ITER
+               + "class Bag:\n"
+               + "    n: Int32\n"
+               + "    def __init__(self, n: Int32) -> None:\n"
+               + "        self.n = n\n"
+               + "    @property\n"
+               + "    def items(self) -> Iterator[Int32]:\n"
+               + "        i = 0\n"
+               + "        while i < self.n:\n"
+               + "            yield i\n"
+               + "            i = i + 1\n\n"
+               + "def main() -> None:\n"
+               + "    b = Bag(2)\n"
+               + "    for v in b.items:\n        print(v)\nmain()\n")
+        _, fallback = _assert_identical(src)
+        assert fallback.get("body:sgen.property", 0) >= 1
+
+    def test_nonbool_call_cond_defers(self):
+        # An Int32-returning call in the while-truthy position rejects at
+        # _lower_truthy -> sgen.cond.
+        src = (_ITER
+               + "def countdown(n: Int32) -> Int32:\n"
+               + "    return n\n\n"
+               + "def gen(n: Int32) -> Iterator[Int32]:\n"
+               + "    while countdown(n):\n"
+               + "        yield n\n"
+               + "        n = n - 1\n\n"
+               + "def main() -> None:\n"
+               + "    for v in gen(2):\n        print(v)\nmain()\n")
+        _, fallback = _assert_identical(src)
+        assert fallback.get("body:sgen.cond") == 1
+
+    def test_while_isinstance_cond_defers(self):
+        # A U4 while-isinstance head would need the loop-entry extraction
+        # woven into the skeleton -> sgen.narrow_cond.
+        src = (_ITER
+               + "class A:\n"
+               + "    v: Int32\n"
+               + "    def __init__(self, v: Int32) -> None:\n"
+               + "        self.v = v\n\n"
+               + "class B:\n"
+               + "    w: Int32\n"
+               + "    def __init__(self, w: Int32) -> None:\n"
+               + "        self.w = w\n\n"
+               + "def ticks(x: A | B) -> Iterator[Int32]:\n"
+               + "    while isinstance(x, A):\n"
+               + "        yield x.v\n\n"
+               + "def main() -> None:\n"
+               + "    b = B(1)\n"
+               + "    for v in ticks(b):\n        print(v)\nmain()\n")
+        _, fallback = _assert_identical(src)
+        assert fallback.get("body:sgen.narrow_cond") == 1
+
+    def test_forwarded_proto_local_defers(self):
+        src = (_ITER
+               + "def relay(it: Iterator[Int32]) -> Iterator[Int32]:\n"
+               + "    xs = it\n"
+               + "    for x in xs:\n"
+               + "        yield x\n\n"
+               + "def src(n: Int32) -> Iterator[Int32]:\n"
+               + "    i = 0\n"
+               + "    while i < n:\n"
+               + "        yield i\n"
+               + "        i = i + 1\n\n"
+               + "def main() -> None:\n"
+               + "    for v in relay(src(3)):\n        print(v)\nmain()\n")
+        _, fallback = _assert_identical(src)
+        assert fallback.get("body:sgen.forwarded_local") == 1
+
+    def test_range3_iterable_defers(self):
+        # A 3-arg range is not the counter-loop shape
+        # (for_range_uses_counter_loop False); the pull-branch iterable is
+        # the range() call itself, which the call arm rejects -- the body
+        # falls back whole, byte-identical.
+        src = (_ITER
+               + "def evens(n: Int32) -> Iterator[Int32]:\n"
+               + "    for i in range(0, n, 2):\n"
+               + "        yield i\n\n"
+               + "def main() -> None:\n"
+               + "    for v in evens(7):\n        print(v)\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert not witnesses.get("sgen.body")
+        assert fallback.get("body:expr.call") == 1
+
+
+class TestForeachCallers:
+    """The caller half of the generator track: foreach over a generator call
+    / user-iterator name routes via THIRForIterProto (the universal
+    `::tpy::__iter__` loop, `_gen_direct_next_loop_with_iter`)."""
+
+    GEN = (_ITER
+           + "def gen(n: Int32) -> Iterator[Int32]:\n"
+           + "    i = 0\n"
+           + "    while i < n:\n"
+           + "        yield i\n"
+           + "        i = i + 1\n\n")
+
+    def test_foreach_gen_call_routes(self):
+        # An rvalue source: the owning `auto __src_N` capture inside the
+        # CPython-refcount brace scope; body statements keep the AST's
+        # original-level indent inside that scope.
+        src = (self.GEN
+               + "def main() -> None:\n"
+               + "    for x in gen(3):\n"
+               + "        print(x)\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("foreach.iter_proto") == 1
+        assert not fallback
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "auto __src_0 = gen(3);" in cpp
+        assert "auto&& __itr_0 = ::tpy::__iter__(__src_0);" in cpp
+
+    def test_foreach_gen_call_with_else_routes(self):
+        src = (self.GEN
+               + "def main() -> None:\n"
+               + "    for x in gen(3):\n"
+               + "        if x > 100:\n"
+               + "            break\n"
+               + "        print(x)\n"
+               + "    else:\n"
+               + "        print(99)\nmain()\n")
+        witnesses, _ = _assert_identical(src)
+        assert witnesses.get("foreach.iter_proto") == 1
+
+    def test_foreach_user_iterator_name_routes(self):
+        # An lvalue source: `auto& __src_N = c;`.
+        src = (_ITER
+               + "class Counter:\n"
+               + "    n: Int32\n"
+               + "    limit: Int32\n"
+               + "    def __init__(self, limit: Int32) -> None:\n"
+               + "        self.n = 0\n"
+               + "        self.limit = limit\n"
+               + "    def __iter__(self) -> Iterator[Int32]:\n"
+               + "        while self.n < self.limit:\n"
+               + "            yield self.n\n"
+               + "            self.n = self.n + 1\n\n"
+               + "def main() -> None:\n"
+               + "    c = Counter(3)\n"
+               + "    for x in c:\n"
+               + "        print(x)\nmain()\n")
+        witnesses, _ = _assert_identical(src)
+        assert witnesses.get("foreach.iter_proto") == 1
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "auto& __src_0 = c;" in cpp
+
+    def test_foreach_member_gen_call_routes(self):
+        # A bare-name-receiver member generator call routes (the
+        # _member_gen_call_iterable_ok override bypasses the fi generator
+        # reject and the result-family gates; receiver/args gate as usual).
+        src = (_ITER
+               + "class Stack:\n"
+               + "    items: list[Int32]\n"
+               + "    def __init__(self) -> None:\n"
+               + "        self.items = []\n"
+               + "    def push(self, v: Int32) -> None:\n"
+               + "        self.items.append(v)\n"
+               + "    def each_doubled(self) -> Iterator[Int32]:\n"
+               + "        for x in self.items:\n"
+               + "            yield x * 2\n\n"
+               + "def main() -> None:\n"
+               + "    s = Stack()\n"
+               + "    s.push(3)\n"
+               + "    for v in s.each_doubled():\n"
+               + "        print(v)\nmain()\n")
+        witnesses, _ = _assert_identical(src)
+        assert witnesses.get("foreach.iter_proto") == 1
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "auto __src_0 = s.each_doubled();" in cpp
+
+    def test_foreach_self_member_gen_call_routes(self):
+        # `for x in self.counts():` -- the receiver is the bare `self` name;
+        # the factory call renders `this->counts()` like any member call.
+        src = (_ITER
+               + "class Runner:\n"
+               + "    n: Int32\n"
+               + "    def __init__(self, n: Int32) -> None:\n"
+               + "        self.n = n\n"
+               + "    def counts(self) -> Iterator[Int32]:\n"
+               + "        i = 0\n"
+               + "        while i < self.n:\n"
+               + "            yield i\n"
+               + "            i = i + 1\n"
+               + "    def total(self) -> Int32:\n"
+               + "        t = 0\n"
+               + "        for x in self.counts():\n"
+               + "            t = t + x\n"
+               + "        return t\n\n"
+               + "def main() -> None:\n"
+               + "    r = Runner(4)\n"
+               + "    print(r.total())\nmain()\n")
+        witnesses, _ = _assert_identical(src)
+        assert witnesses.get("foreach.iter_proto") == 1
+
+    def test_foreach_self_iterable_defers(self):
+        # `for x in self:` renders the receiver dereferenced (`(*this)`) --
+        # the self-iterable rung stays on the AST path (byte-identical via
+        # fallback).
+        src = (_ITER
+               + "class Bag:\n"
+               + "    total: Int32\n"
+               + "    def __init__(self) -> None:\n"
+               + "        self.total = 0\n"
+               + "    def __iter__(self) -> Iterator[Int32]:\n"
+               + "        yield self.total\n"
+               + "    def first(self) -> Int32:\n"
+               + "        for x in self:\n"
+               + "            return x\n"
+               + "        return 0\n\n"
+               + "def main() -> None:\n"
+               + "    b = Bag()\n"
+               + "    print(b.first())\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert not witnesses.get("foreach.iter_proto")
+        assert any("iter.name" in k or "user_iterator" in k
+                   for k in fallback), fallback

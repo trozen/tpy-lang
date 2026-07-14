@@ -188,10 +188,10 @@ def _overload_reject_detail(func: TpyFunction, stubs) -> str:
 def _check_callable_structure(func: TpyFunction, analyzer,
                               self_type: 'TpyType | None' = None,
                               *, allow_resumable: bool = False) -> None:
-    # `allow_resumable` is passed by `lower_resumable`: the async/generator
-    # arms below are that entry's whole point, but every other signature
-    # checks (overloads, linkage, shadowing) apply to a resumable body exactly
-    # like a sync one.
+    # `allow_resumable` is passed by `lower_resumable` and
+    # `lower_simple_generator`: the async/generator arms below are those
+    # entries' whole point, but every other signature check (overloads,
+    # linkage, shadowing) applies to their bodies exactly like a sync one.
     # A record-owned callable is admitted when its owning record is an
     # F1-record (`self_type` passed by the caller). All method kinds funnel
     # their bodies through gen_body, so only the receiver model differs:
@@ -444,6 +444,42 @@ def _seed_readonly_globals(
     scope.update(cands)
     return frozenset(n for n in cands if n not in spelled), spelled
 
+def _seed_global_scope(func: TpyFunction, analyzer, lc: '_LowerCtx',
+                       params_set: dict[str, TpyType],
+                       native_globals: 'Mapping[str, str]') -> None:
+    """Seed module-global names into the walk scope + prescan (shared by the
+    sync and simple-generator entries; resumables use frame fields instead).
+
+    `global`-declared names seed the scope like params: their writes then
+    lower as reassignments (the AST's global-write arm emits `g = v;`) and
+    reads render bare -- the same-module plain-scalar-global spelling. The
+    seeding is WHOLE-function, mirroring the AST exactly: both paths key on
+    `function_global_decls`, so even a write textually BEFORE its `global`
+    statement (which sema accepts -- a CPython-parity gap, see BUGS.md)
+    renders the same global assign. Only eligible scalars and `Ptr[T]`
+    values seed (a Ptr global is a `T*` VALUE slot: writes render `g = v;`
+    / `g = nullptr;` exactly like a Ptr local reassign); an unseeded
+    name keeps its `global` statement ineligible, which rejects the WHOLE
+    body regardless of statement order (the TpyGlobal arm reads
+    `prescan.global_seeded`, not walk state), so no unseeded-global write
+    can survive to misroute as a fresh local decl. Native-linkage globals
+    render through `native_global_names` -- never seeded."""
+    global_seeded: set[str] = set()
+    for n in analyzer.function_global_decls.get(id(func), set()):
+        if n in params_set or n in native_globals:
+            continue
+        gt = analyzer.ctx.global_scope.lookup(n)
+        if gt is None:
+            continue
+        gt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(gt)))
+        if _eligible_scalar(gt) or _eligible_ptr_value(gt, analyzer):
+            params_set[n] = gt
+            global_seeded.add(n)
+    lc.prescan.global_seeded = frozenset(global_seeded)
+    lc.prescan.native_globals = native_globals
+    lc.prescan.global_readonly, lc.prescan.global_cpp = _seed_readonly_globals(
+        func, analyzer, params_set, native_globals)
+
 def lower_function(func: TpyFunction, analyzer, render_type=None,
                    self_type: 'TpyType | None' = None,
                    native_globals: 'Mapping[str, str]' = {},
@@ -488,35 +524,7 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
             # lifts to `const T*` (the OPTIONAL_TO_PTR const bump keys on the
             # receiver being in const_locals -- see _f1_is_const).
             lc.const_locals.add("self")
-    # `global`-declared names seed the scope like params: their writes then
-    # lower as reassignments (the AST's global-write arm emits `g = v;`) and
-    # reads render bare -- the same-module plain-scalar-global spelling. The
-    # seeding is WHOLE-function, mirroring the AST exactly: both paths key on
-    # `function_global_decls`, so even a write textually BEFORE its `global`
-    # statement (which sema accepts -- a CPython-parity gap, see BUGS.md)
-    # renders the same global assign. Only eligible scalars and `Ptr[T]`
-    # values seed (a Ptr global is a `T*` VALUE slot: writes render `g = v;`
-    # / `g = nullptr;` exactly like a Ptr local reassign); an unseeded
-    # name keeps its `global` statement ineligible, which rejects the WHOLE
-    # body regardless of statement order (the TpyGlobal arm reads
-    # `prescan.global_seeded`, not walk state), so no unseeded-global write
-    # can survive to misroute as a fresh local decl. Native-linkage globals
-    # render through `native_global_names` -- never seeded.
-    global_seeded: set[str] = set()
-    for n in analyzer.function_global_decls.get(id(func), set()):
-        if n in params_set or n in native_globals:
-            continue
-        gt = analyzer.ctx.global_scope.lookup(n)
-        if gt is None:
-            continue
-        gt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(gt)))
-        if _eligible_scalar(gt) or _eligible_ptr_value(gt, analyzer):
-            params_set[n] = gt
-            global_seeded.add(n)
-    lc.prescan.global_seeded = frozenset(global_seeded)
-    lc.prescan.native_globals = native_globals
-    lc.prescan.global_readonly, lc.prescan.global_cpp = _seed_readonly_globals(
-        func, analyzer, params_set, native_globals)
+    _seed_global_scope(func, analyzer, lc, params_set, native_globals)
     params = tuple(THIRParam(name=n, type=t) for n, t in func.params)
     rt = func.return_type if isinstance(func.return_type, TpyType) else VoidType()
     # Seeded with params (and `self`): a write to such a name is a reassignment.

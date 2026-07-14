@@ -3156,15 +3156,17 @@ def _plain_member_call_markers_ok(e: TpyMethodCall) -> bool:
                 or e.inferred_type_args or e.deref_depth
                 or e.deref_narrowed_to is not None)
 
-def _plain_method_fi_ok(fi) -> bool:
+def _plain_method_fi_ok(fi, *, generator_ok: bool = False) -> bool:
     """Shared fi rejects. A consuming method moves the receiver
     (`std::move(xs)`); `cpp_return_type` wraps the call in a static_cast;
     @error_return unwraps via a statement expression; a LiteralType param
-    mangles the member name. None are reproduced."""
+    mangles the member name. None are reproduced. `generator_ok` admits a
+    generator fi (set only by the iterable-position member-gen-call
+    classifier -- the factory call spells like any plain member call)."""
     return not (fi.is_consuming or fi.error_return_type is not None
                 or fi.native_cpp_return_type is not None
                 or any(isinstance(p.type, LiteralType) for p in fi.params)
-                or fi.is_async or fi.is_generator
+                or fi.is_async or (fi.is_generator and not generator_ok)
                 or fi.is_property_getter or fi.is_property_setter)
 
 def _dict_view_iterable_ok(e: TpyMethodCall, locals_: dict[str, TpyType],

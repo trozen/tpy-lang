@@ -51,10 +51,25 @@ See `docs/FEATURE_ROADMAP.md` for bigger tasks and `BUGS.md` for known compiler 
   suspend-expr infra lights up free once those open); non-value INLINE await
   args `res.await_param_type` (the emplace coercion ladder + two-phase decltype);
   R7 the optional-borrow-tuple form arm (`std::optional<std::tuple<..,T*>>`,
-  also blocks sync); R8 generic async (`res.generic`, template frames); R9
-  simple-peephole generators (separate emitter, `body:sig.generator_simple`).
-  The ctor-side `Waker` params/fields (~790) remain signature-rung work, not
-  this frontier.
+  also blocks sync); R8 generic async (`res.generic`, template frames). R9
+  simple-peephole generators LANDED (branch `thir-generators`, 2026-07-14: the
+  sgen leaf seam + the THIRForIterProto foreach-caller route -- see the entry
+  below). The ctor-side `Waker` params/fields (~790) remain signature-rung
+  work, not this frontier.
+- **[thir] Generator-track frontier -- sgen leaf seam + iter_proto callers
+  LANDED (branch `thir-generators`, 2026-07-14); remaining rungs below.**
+  Simple-generator lambda peephole leaves route via `lower_simple_generator`
+  (reasons `sgen.*`); foreach callers over generator factories (free / member
+  / module-qualified) and concrete user-iterator names route via
+  `THIRForIterProto`. Dial 899 -> 924. **REMAINING rungs (each a named reject
+  today):** non-value / str / tuple-literal yields (`sgen.yield_type`, shared
+  with `res.yield_type`); non-value loop-var elems (`sgen.loop_var_type`);
+  generic defs (`sgen.generic` / `sgen.generic_record`) and generic/static
+  callees (`call.generic_generator`); self-iterables (the `(*this)` deref
+  render) and field-receiver factory calls (member classifier is
+  bare-name-only); protocol-typed / generic iterable sources; gen-valued
+  locals (the `decl.slot_type` giant); tuple-unpack-over-gen (the
+  `is_tuple_unpack` pre-route gate); comprehension-over-gen.
 - **[thir] Wave-7 generics residue -- LANDED as the residue round (branch thir-wave7-residue) except:** the `@dynamic`-protocol TYPE-ARG spelling family (`Box[Cancellable[T]](coro)` in `_WaitForFuture.__init__` -- a protocol type arg spells via `get_dynamic_base_name` on the resolver vs `to_cpp()`, a new coincidence proof + an own-move ctor-arg row into `_is_record_rvalue_source`'s loop; 1 stdlib body, `ctor.mil_field.genrec_open.call` ~274 tally); the NON-generic MIL source fams the wave-7 drilldown separated (`ctor.mil_field.optional.name` 652, `.nominal.call` 792, `.record.call` 277 -- sibling source rungs, not generics); generic calls in NESTED (non-flush) positions (`print(pick(1, 2))` -- the ref-slot literal temps have no flush point; bounded by the arg-temp flush design). The G1b/G3/G5b rungs themselves (explicit `f<T>(args)` spelling incl. the foundation's `template_args_cpp` + `render_type_stored` now CONSUMED, module/static generic targs incl. the dependent `template ` keyword, the `heap_take` own-param move + Char type args) are on the residue branch.
 - **[thir][test-gap] Backfill exec-witness corpus cases for remaining zero-witness param-grid faces.** The byte-diff proves routed emit is identical but says nothing about a face no corpus case reaches. Add exec+cpy cases for: value-repr `Optional[scalar]`/`Optional[str]` TUPLE-RETURN elements (`ret.tuple_opt_elem` / `ret.tuple_opt_str_elem` -- a function returning `tuple[int | None, str | None]`, observed by unpacking + printing both arms incl. the None case); the `THIROptViewArg` bare-name `Optional[str]` -> `Optional[str]`-param shim (a bare un-narrowed `Optional[str]` name forwarded into an `Optional[str]` param slot); and the in-branch value-union-None-init / value-tuple-literal first-decl arms (a value `A | B`/tuple local FIRST-declared inside an if/elif/else body -- add a branch-first guard test so a non-hoisted branch-scoped decl of one can't silently leak past the branch). Surfaced by /tpy-review (test-coverage) of the thir-param-grid branch.
 - **[thir] Compositional-gate fan-out to container MUTATION/setitem/WRITE sites.** The param / value-leaf-read / for-each sides of container admission are now compositional (`_container_param_renders`, `_for_each_elem_binding_ok`: "type renders identically AND sub-exprs route"). The WRITE side is still enumerated on `_container_scalar_read` (setitem / `__setitem__` on name+field receivers, aug-assign) -- extend the compositional predicate to the mutation sites once the element STORAGE form fact is available, so `c[k] = v` over any fully-concrete element family collapses to one predicate like the read side. Surfaced by the thir-param-grid compositional-gate work.

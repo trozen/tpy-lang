@@ -272,6 +272,7 @@ from .checks import (
     _marker_call_kind,
     _marker_call_supported,
     _marker_reject,
+    _member_gen_call_iterable_ok,
     _method_call_arg_ok,
     _method_nonname_receiver_ok,
     _method_receiver_type,
@@ -332,6 +333,11 @@ def _call_use_supported(e: TpyCall, lc: '_LowerCtx',
                   and is_void_like_type(ret))
               or (result is _ExprResultUse.ITERABLE
                   and _nonvalue_container_ret(ret))
+              # A generator factory call in iterable position: the result
+              # feeds the universal __iter__/__next__ loop's `auto` source
+              # capture, never a typed value slot.
+              or (result is _ExprResultUse.ITERABLE
+                  and fi is not None and fi.is_generator)
               or (result is _ExprResultUse.STORAGE
                   and _storage_call_ret(ret, analyzer) is not None)
               or (result is _ExprResultUse.BORROW_BIND
@@ -1554,7 +1560,9 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
             )
         # A @native free-function builtin (currently `len` -> `tpy::__len__`) carries
         # its resolved symbol so the emit dispatches on it, not the source name.
-        k = _free_callee_kind(e, analyzer)
+        k = _free_callee_kind(
+            e, analyzer,
+            generator_ok=use.result is _ExprResultUse.ITERABLE)
         len_call = _is_len_call(e, declared, analyzer)
         if not len_call:
             if k is None or fi is None:
@@ -1730,7 +1738,8 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
             and (_dict_view_iterable_ok(
                     e, declared, analyzer,
                     methods=("values", "keys", "items"))
-                 or _str_list_method_iterable_ok(e, declared, analyzer)))
+                 or _str_list_method_iterable_ok(e, declared, analyzer)
+                 or _member_gen_call_iterable_ok(e, declared, analyzer)))
         if e.is_nested_enum_constructor:
             if (not e.nested_type_name or e.kwargs
                     or e.double_star_unpack is not None or len(e.args) != 1):
@@ -1800,12 +1809,16 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
             # their param slots like a free call's, but dcbp-BLIND
             # (readonly_target stays False): the method-call arg loop calls
             # _gen_union_arg without the deep-const verdict.
-            mk = _marker_call_kind(e, analyzer)
+            iterable_gen = (result_use is _ExprResultUse.ITERABLE
+                            and e.resolved_function_info is not None
+                            and e.resolved_function_info.is_generator)
+            mk = _marker_call_kind(e, analyzer, generator_ok=iterable_gen)
             if (mk is None or not _marker_call_supported(
                     e, mk, declared, analyzer,
                     stmt_position=result_use is _ExprResultUse.DISCARD,
                     temps_ok=use.allow_temps,
                     record_ret_ok=result_use is _ExprResultUse.RECEIVER,
+                    iterable_gen_ok=iterable_gen,
                     narrowed=frozenset(lc.narrow.narrowed))):
                 if mk is None:
                     note_detail(_marker_reject(e, analyzer))

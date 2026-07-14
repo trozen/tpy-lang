@@ -972,6 +972,13 @@ class CodeGenContext:
     # machine; every seam site (leaf stmts, Branch conds, emplace args, the
     # async-return value) consults it. None on the AST path.
     thir_resumable_leaf: "ResumableLeafEmitter | None" = None
+    # THIR simple-generator frontier: an eligible peephole generator's leaves
+    # (init block, while cond, pre-/post-yield blocks, yield value, iterable /
+    # range args) emit from its THIRSimpleGenBody inside the AST-emitted
+    # lambda skeleton. Keyed by id() of the source TpyFunction; populated in
+    # the same seeding loop as `thir_functions` (no live-ctx dependency,
+    # unlike resumables); consumed in gen_simple_generator_inline.
+    thir_simple_gens: dict[int, "THIRSimpleGenBody"] = field(default_factory=dict)
     # Peer modules in the same import-graph SCC. When a `<peer>.hpp`
     # would be included from this module's header (vs cpp file), the
     # codegen swaps it for `<peer>_fwd.hpp` to break the cyclic

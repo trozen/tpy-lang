@@ -1205,7 +1205,14 @@ by theme; each is a rule the next cell should apply.
   signatures and structural emission -- justified by MIR OQ6 and the dual-maintenance cost of
   a 4.1k-line evolving emitter. Only the user-source **leaves** route through THIR, via a seam
   at the skeleton's ~25 delegation sites; per-body all-or-nothing, and a routed body's missing
-  leaf is a hard error. The simple-generator lambda peephole stays a separate path.
+  leaf is a hard error. The simple-generator lambda peephole takes the same leaf-seam shape
+  (`lower_simple_generator` -> `THIRSimpleGenBody` -> `SimpleGenLeafEmitter`): the lambda
+  skeleton (signature, captures, `make_generator` scaffolding, iterator-slot types, per-pull
+  optional return) stays AST while the init/cond/pre-post-yield/yield-value/iterable leaves
+  route; its seam sites are static (one loop, one yield), so the node carries direct fields,
+  not id()-keyed tables. Foreach CALLERS over generator factories / user-iterator names route
+  via `THIRForIterProto` (the universal `::tpy::__iter__` loop), with generator callees
+  admitted by the call classifiers only in iterable position.
 
 **Ctor frontier.**
 

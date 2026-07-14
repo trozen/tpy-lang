@@ -59,6 +59,7 @@ from .nodes import (
     THIRExprStmt,
     THIRFieldAccess,
     THIRForEach,
+    THIRForIterProto,
     THIRForRange,
     THIRFormConvert,
     THIRFString,
@@ -1323,6 +1324,53 @@ def _emit_for_each(out: TextIO, stmt: THIRForEach, indent_level: int,
     _pop_loop_frame(out, indent, state, saved_depth, stmt.orelse, indent_level)
 
 
+def _emit_for_iter_proto(out: TextIO, stmt: THIRForIterProto,
+                         indent_level: int, state: _EmitState) -> None:
+    # Mirrors _gen_direct_next_loop_with_iter (the universal ::tpy::__iter__
+    # default): the iterable renders BEFORE the brace scope opens (the AST
+    # renders it in _gen_for_each_loop, so its arg temps flush inside the
+    # scope at the AST's flush point), the source captures `auto&` (lvalue) /
+    # owning `auto` (rvalue, brace-scoped so the temp dies at loop exit like
+    # CPython's refcount drop), and the src/itr and __r indices are two
+    # consecutive per-function loop-index draws.
+    indent = INDENT * indent_level
+    saved_depth = _push_loop_frame(state, has_else=bool(stmt.orelse))
+    it_cpp = _emit_expr(stmt.iterable, state)
+    n = state.next_loop_index()
+    src, itr = f"__src_{n}", f"__itr_{n}"
+    outer = indent
+    lvl = indent_level
+    if not stmt.iterable_lvalue:
+        out.write(f"{indent}{{\n")
+        lvl += 1
+        indent = INDENT * lvl
+    state.temps.flush(out, indent)
+    binding_kw = "auto&" if stmt.iterable_lvalue else "auto"
+    out.write(f"{indent}{binding_kw} {src} = {it_cpp};\n")
+    out.write(f"{indent}auto&& {itr} = ::tpy::__iter__({src});\n")
+    r = f"__r_{state.next_loop_index()}"
+    out.write(f"{indent}for (;;) {{\n")
+    inner = INDENT * (lvl + 1)
+    out.write(f"{inner}auto {r} = {itr}.__next__();\n")
+    out.write(f"{inner}if (!{r}.has_value()) break;\n")
+    binding = loop_var_binding(stmt.elem_type, escape_cpp_name(stmt.var),
+                               f"::tpy::unwrap_ref(*{r})", stmt.const_loop_var)
+    out.write(f"{inner}{binding}\n")
+    state.loop_depth += 1
+    # The body emits at the ORIGINAL level + 1 even inside the rvalue brace
+    # scope: the AST's scope bump changes only _gen_direct_next_loop's local
+    # `indent` string, never ctx.indent_level, which _gen_loop_body's
+    # gen_stmt/trailing-comment walk draws from. The prelude/close lines
+    # above follow the bumped string; the body follows the level.
+    _emit_stmts(out, stmt.body, indent_level + 1, state)
+    state.loop_depth -= 1
+    state.comments.trailing(out, stmt.body, INDENT * (indent_level + 1))
+    out.write(f"{indent}}}\n")
+    if not stmt.iterable_lvalue:
+        out.write(f"{outer}}}\n")
+    _pop_loop_frame(out, outer, state, saved_depth, stmt.orelse, indent_level)
+
+
 def _emit_finally_chain(out: TextIO, indent: str, state: _EmitState,
                         stop_at: int = 0) -> bool:
     # Mirrors _emit_finally_chain: render each frame's cleanup innermost-first
@@ -2365,6 +2413,8 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
         _emit_for_range(out, stmt, indent_level, state)
     elif isinstance(stmt, THIRForEach):
         _emit_for_each(out, stmt, indent_level, state)
+    elif isinstance(stmt, THIRForIterProto):
+        _emit_for_iter_proto(out, stmt, indent_level, state)
     elif isinstance(stmt, THIRWith):
         _emit_with(out, stmt, indent_level, state)
     elif isinstance(stmt, THIRTry):
@@ -2622,3 +2672,53 @@ class ResumableLeafEmitter:
         skeleton keeps its move / & / .get() / __self-prepend wrap)."""
         return _emit_expr(self._lookup(self._body.suspend_exprs, expr,
                                        "suspend expr"), self._state)
+
+
+class SimpleGenLeafEmitter:
+    """Per-routed-body leaf renderer driven by the simple-generator lambda
+    peephole skeleton (`gen_generators.gen_simple_generator_inline`). One
+    instance per routed body holds one `_EmitState` -- the same contract as
+    `ResumableLeafEmitter`, but the seam sites are static (one loop, one
+    yield), so the body's blocks and expressions are direct fields, not
+    id()-keyed tables."""
+
+    def __init__(self, body, *, comments: 'CommentSink | None' = None,
+                 temps: 'TempSink | None' = None,
+                 with_counter: 'ModuleCounter | None' = None,
+                 try_counter: 'ModuleCounter | None' = None) -> None:
+        self._body = body
+        self._state = _EmitState(comments or _NO_COMMENTS,
+                                 temps=temps or TempSink(),
+                                 with_counter=with_counter or ModuleCounter(),
+                                 try_counter=try_counter or ModuleCounter())
+
+    def emit_init(self, out: TextIO, indent_level: int) -> None:
+        """Emit the pre-loop init block -- the seam replacement for the
+        skeleton's `gen_body(init_stmts, ...)` call."""
+        _emit_stmts(out, self._body.init, indent_level, self._state)
+
+    def emit_pre_yield(self, out: TextIO, indent_level: int) -> None:
+        _emit_stmts(out, self._body.pre_yield, indent_level, self._state)
+
+    def emit_post_yield(self, out: TextIO, indent_level: int) -> None:
+        _emit_stmts(out, self._body.post_yield, indent_level, self._state)
+
+    def render_cond(self) -> str:
+        """Render the while-branch condition."""
+        return _emit_expr(self._body.cond, self._state)
+
+    def render_yield_value(self) -> str:
+        """Render the yield value -- the seam replacement for the skeleton's
+        `statements.gen_yield_value(ys)`."""
+        return _emit_expr(self._body.yield_value, self._state)
+
+    def render_iterable(self) -> str:
+        """Render the for-branch source expression (the skeleton reuses the
+        returned string across its capture / decltype / emplace scaffolding,
+        exactly like the AST's single `gen_expr(iterable)` render)."""
+        return _emit_expr(self._body.iterable, self._state)
+
+    def render_range_arg(self, i: int) -> str:
+        """Render the i-th for-range bound (the skeleton wraps it in its
+        `static_cast` scaffolding)."""
+        return _emit_expr(self._body.range_args[i], self._state)

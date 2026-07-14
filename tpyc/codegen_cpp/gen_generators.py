@@ -72,7 +72,7 @@ def _contains_return(stmts: list[TpyStmt]) -> bool:
     return False
 
 
-def _for_range_uses_counter_loop(for_stmt: TpyForEach) -> bool:
+def for_range_uses_counter_loop(for_stmt: TpyForEach) -> bool:
     """A `for x in range(...)` the simple-generator peephole emits as a real
     counter `while` loop -- which only happens for range with <= 2 args. A
     3-arg `range(a, b, step)` falls to the iterator-pull branch (no real C++
@@ -82,6 +82,17 @@ def _for_range_uses_counter_loop(for_stmt: TpyForEach) -> bool:
     it = for_stmt.iterable
     return (isinstance(it, TpyCall) and it.func_name == "range"
             and len(it.args) <= 2)
+
+
+def split_at_yield(body: list[TpyStmt]) -> tuple[TpyYield, list[TpyStmt], list[TpyStmt]]:
+    """Split a loop body at the yield statement. Returns (yield, pre, post).
+
+    Shared by the peephole emitters and the THIR simple-generator lowering,
+    so both sides split the routed body identically."""
+    for i, stmt in enumerate(body):
+        if isinstance(stmt, TpyYield):
+            return stmt, body[:i], body[i + 1:]
+    raise AssertionError("no yield found in body")
 
 
 def _contains_loop_control(stmts: list[TpyStmt]) -> bool:
@@ -110,6 +121,7 @@ if TYPE_CHECKING:
     from .expressions import ExpressionGenerator
     from .statements import StatementGenerator
     from .functions import FunctionGenerator
+    from ..thir.emit import SimpleGenLeafEmitter
 
 
 class GeneratorCodegen:
@@ -210,7 +222,7 @@ class GeneratorCodegen:
         # resumable lowering, which models loops via a real CFG.
         has_real_loop = (isinstance(last, TpyWhile)
                          or (isinstance(last, TpyForEach)
-                             and _for_range_uses_counter_loop(last)))
+                             and for_range_uses_counter_loop(last)))
         if not has_real_loop:
             if _contains_loop_control(loop_body):
                 return False
@@ -221,14 +233,47 @@ class GeneratorCodegen:
     def gen_simple_generator_inline(self, out: TextIO, func: TpyFunction,
                                     record_name: str | None = None) -> None:
         """Generate a simple generator as an inline function using make_generator + lambda."""
+        leaf = self._thir_simple_gen_leaf(func)
         last = func.body[-1]
         if isinstance(last, TpyForEach):
-            self._gen_simple_for_generator(out, func, record_name=record_name)
+            self._gen_simple_for_generator(out, func, record_name=record_name,
+                                           leaf=leaf)
         else:
-            self._gen_simple_while_generator(out, func, record_name=record_name)
+            self._gen_simple_while_generator(out, func,
+                                             record_name=record_name,
+                                             leaf=leaf)
+
+    # -- THIR simple-generator seam -----------------------------------------
+    # The lambda peephole skeleton (signature, captures, make_generator
+    # scaffolding, iterator-slot types, loop-var decl, the per-pull optional
+    # return) is SHARED machinery, like the resumable frame; only the
+    # user-source LEAVES route through THIR. A routed body swaps every
+    # leaf-delegation site (the init block, while cond, pre/post-yield stmts,
+    # yield value, iterable / range args) to the leaf emitter below; per-body
+    # routing stays all-or-nothing.
+
+    def _thir_simple_gen_leaf(self, func: TpyFunction) -> "SimpleGenLeafEmitter | None":
+        """The routed body's leaf renderer bound to the live ctx sinks, or
+        None when the body stays on the AST leaf path. Lowering already ran
+        in the module seeding loop (unlike resumables, it needs no live
+        codegen ctx)."""
+        if not self.ctx.thir_codegen:
+            return None
+        sg = self.ctx.thir_simple_gens.get(id(func))
+        if sg is None:
+            return None
+        from ..thir.emit import (CtxCommentSink, CtxCounter, CtxTempSink,
+                                 SimpleGenLeafEmitter)
+        return SimpleGenLeafEmitter(
+            sg,
+            comments=CtxCommentSink(self.ctx),
+            temps=CtxTempSink(self.ctx),
+            with_counter=CtxCounter(self.ctx, "with_counter"),
+            try_counter=CtxCounter(self.ctx, "try_except_counter"))
 
     def _gen_simple_while_generator(self, out: TextIO, func: TpyFunction,
-                                    record_name: str | None = None) -> None:
+                                    record_name: str | None = None,
+                                    leaf: "SimpleGenLeafEmitter | None" = None) -> None:
         """Lambda codegen for: [init] while(cond): ... yield expr ..."""
         elem_type = func.generator_yield_type
         assert elem_type is not None
@@ -238,7 +283,7 @@ class GeneratorCodegen:
         while_stmt = func.body[-1]
         assert isinstance(while_stmt, TpyWhile)
         init_stmts = func.body[:-1]
-        yield_stmt, pre_yield, post_yield = self._split_at_yield(while_stmt.body)
+        yield_stmt, pre_yield, post_yield = split_at_yield(while_stmt.body)
         ref_yield = self._yield_binds_by_ref(elem_type, post_yield)
         val_binding = "auto&&" if ref_yield else "auto"
         # The owned yield local dies as the lambda returns; move it into the
@@ -276,7 +321,7 @@ class GeneratorCodegen:
         if record_name:
             self.ctx.generator_self_ref = "(*this)"
         self._setup_body_scope(out, func, init_stmts,
-                               indent_level=1 + extra)
+                               indent_level=1 + extra, leaf=leaf)
 
         captures = self._build_capture_list(func.params, init_stmts)
         if record_name:
@@ -287,16 +332,24 @@ class GeneratorCodegen:
 
         old_indent = self.ctx.indent_level
         self.ctx.indent_level = 3 + extra
-        cond_code = self.expressions.gen_expr(while_stmt.condition)
+        cond_code = (leaf.render_cond() if leaf is not None
+                     else self.expressions.gen_expr(while_stmt.condition))
         out.write(f"{INDENT * (3 + extra)}while ({cond_code}) {{\n")
         self.ctx.indent_level = 4 + extra
 
-        for stmt in pre_yield:
-            self.statements.gen_stmt(out, stmt)
-        yield_expr = self.statements.gen_yield_value(yield_stmt)
+        if leaf is not None:
+            leaf.emit_pre_yield(out, 4 + extra)
+            yield_expr = leaf.render_yield_value()
+        else:
+            for stmt in pre_yield:
+                self.statements.gen_stmt(out, stmt)
+            yield_expr = self.statements.gen_yield_value(yield_stmt)
         out.write(f"{INDENT * (4 + extra)}{val_binding} __val = {yield_expr};\n")
-        for stmt in post_yield:
-            self.statements.gen_stmt(out, stmt)
+        if leaf is not None:
+            leaf.emit_post_yield(out, 4 + extra)
+        else:
+            for stmt in post_yield:
+                self.statements.gen_stmt(out, stmt)
 
         self._emit_iter_slot_return(out, INDENT * (4 + extra), cpp_iter_slot, yld)
         out.write(f"{INDENT * (3 + extra)}}}\n")
@@ -309,7 +362,8 @@ class GeneratorCodegen:
         self.ctx.current_ns = saved_ns
 
     def _gen_simple_for_generator(self, out: TextIO, func: TpyFunction,
-                                   record_name: str | None = None) -> None:
+                                   record_name: str | None = None,
+                                   leaf: "SimpleGenLeafEmitter | None" = None) -> None:
         """Lambda codegen for: [init] for x in iterable: ... yield expr ..."""
         from .context import is_lvalue_iterable
 
@@ -321,7 +375,7 @@ class GeneratorCodegen:
         for_stmt = func.body[-1]
         assert isinstance(for_stmt, TpyForEach)
         init_stmts = func.body[:-1]
-        yield_stmt, pre_yield, post_yield = self._split_at_yield(for_stmt.body)
+        yield_stmt, pre_yield, post_yield = split_at_yield(for_stmt.body)
 
         ref_yield = self._yield_binds_by_ref(elem_type, post_yield)
         val_binding = "auto&&" if ref_yield else "auto"
@@ -354,13 +408,13 @@ class GeneratorCodegen:
         if record_name:
             self.ctx.generator_self_ref = "(*this)"
         self._setup_body_scope(out, func, init_stmts,
-                               indent_level=1 + extra)
+                               indent_level=1 + extra, leaf=leaf)
 
         old_indent = self.ctx.indent_level
         self.ctx.indent_level = 2 + extra
 
         # Determine iteration strategy
-        is_range = _for_range_uses_counter_loop(for_stmt)
+        is_range = for_range_uses_counter_loop(for_stmt)
         iter_elem = for_stmt.elem_type
         if iter_elem and isinstance(iter_elem, IntLiteralType):
             iter_elem = self.ctx.analyzer.ctx.default_int_type
@@ -395,16 +449,26 @@ class GeneratorCodegen:
         # Indentation helpers adjusted for method nesting
         I = lambda n: INDENT * (n + extra)
 
+        def _range_arg(i: int) -> str:
+            if leaf is not None:
+                return leaf.render_range_arg(i)
+            return self.expressions.gen_expr(for_stmt.iterable.args[i])
+
+        def _iterable_code() -> str:
+            if leaf is not None:
+                return leaf.render_iterable()
+            return self.expressions.gen_expr(for_stmt.iterable)
+
         if is_range:
             # range(n) or range(start, stop): counter in lambda captures
             range_call = for_stmt.iterable
             nargs = len(range_call.args)
             if nargs == 1:
-                stop_code = self.expressions.gen_expr(range_call.args[0])
+                stop_code = _range_arg(0)
                 extra_captures = f"__i = {cpp_iter_elem}(0), __stop = static_cast<{cpp_iter_elem}>({stop_code})"
             else:
-                start_code = self.expressions.gen_expr(range_call.args[0])
-                stop_code = self.expressions.gen_expr(range_call.args[1])
+                start_code = _range_arg(0)
+                stop_code = _range_arg(1)
                 extra_captures = f"__i = static_cast<{cpp_iter_elem}>({start_code}), __stop = static_cast<{cpp_iter_elem}>({stop_code})"
 
             base_captures = self._build_capture_list(func.params, init_stmts)
@@ -417,12 +481,19 @@ class GeneratorCodegen:
 
             self.ctx.indent_level = 4 + extra
             out.write(f"{I(4)}{cpp_iter_elem} {cpp_var} = __i++;\n")
-            for stmt in pre_yield:
-                self.statements.gen_stmt(out, stmt)
-            yield_expr = self.statements.gen_yield_value(yield_stmt)
+            if leaf is not None:
+                leaf.emit_pre_yield(out, 4 + extra)
+                yield_expr = leaf.render_yield_value()
+            else:
+                for stmt in pre_yield:
+                    self.statements.gen_stmt(out, stmt)
+                yield_expr = self.statements.gen_yield_value(yield_stmt)
             out.write(f"{I(4)}{val_binding} __val = {yield_expr};\n")
-            for stmt in post_yield:
-                self.statements.gen_stmt(out, stmt)
+            if leaf is not None:
+                leaf.emit_post_yield(out, 4 + extra)
+            else:
+                for stmt in post_yield:
+                    self.statements.gen_stmt(out, stmt)
             self._emit_iter_slot_return(out, I(4), cpp_iter_slot, yld)
             out.write(f"{I(3)}}}\n")
             out.write(f"{I(3)}return std::nullopt;\n")
@@ -432,7 +503,7 @@ class GeneratorCodegen:
         elif self._is_direct_iterator(for_stmt):
             # Iterator[T] protocol: the source IS the iterator, call __next__() directly.
             # No __iter__() call needed -- avoids copying move-only iterators.
-            iterable_code = self.expressions.gen_expr(for_stmt.iterable)
+            iterable_code = _iterable_code()
             base_captures = self._build_capture_list(func.params, init_stmts)
             src_code, base_captures = _src_and_captures(
                 iterable_code, base_captures)
@@ -447,11 +518,12 @@ class GeneratorCodegen:
 
             self._gen_simple_for_yield_body(
                 out, for_stmt, pre_yield, post_yield, yield_stmt,
-                iter_elem, cpp_iter_elem, cpp_var, cpp_iter_slot, val_binding, yld, I, extra)
+                iter_elem, cpp_iter_elem, cpp_var, cpp_iter_slot, val_binding, yld, I, extra,
+                leaf=leaf)
         elif self._is_builtin_native_iterable(for_stmt):
             # Built-in NativeIterable (list, dict, set, Span, etc.):
             # begin/end peephole for efficiency.
-            iterable_code = self.expressions.gen_expr(for_stmt.iterable)
+            iterable_code = _iterable_code()
 
             base_captures = self._build_capture_list(func.params, init_stmts)
             src_code, base_captures = _src_and_captures(
@@ -487,12 +559,19 @@ class GeneratorCodegen:
                     and iter_elem.has_pointer_repr_element()):
                 self.ctx.storage_form_tuple_locals.add(for_stmt.var)
 
-            for stmt in pre_yield:
-                self.statements.gen_stmt(out, stmt)
-            yield_expr = self.statements.gen_yield_value(yield_stmt)
+            if leaf is not None:
+                leaf.emit_pre_yield(out, 4 + extra)
+                yield_expr = leaf.render_yield_value()
+            else:
+                for stmt in pre_yield:
+                    self.statements.gen_stmt(out, stmt)
+                yield_expr = self.statements.gen_yield_value(yield_stmt)
             out.write(f"{I(4)}{val_binding} __val = {yield_expr};\n")
-            for stmt in post_yield:
-                self.statements.gen_stmt(out, stmt)
+            if leaf is not None:
+                leaf.emit_post_yield(out, 4 + extra)
+            else:
+                for stmt in post_yield:
+                    self.statements.gen_stmt(out, stmt)
             self._emit_iter_slot_return(out, I(4), cpp_iter_slot, yld)
             out.write(f"{I(3)}}}\n")
             out.write(f"{I(3)}return std::nullopt;\n")
@@ -503,7 +582,7 @@ class GeneratorCodegen:
             # Universal default: ::tpy::__iter__() + __next__() loop.
             # Handles Iterable[T] protocol, NativeIterable[T] protocol,
             # user types with __iter__(), error_return __next__ iterators.
-            iterable_code = self.expressions.gen_expr(for_stmt.iterable)
+            iterable_code = _iterable_code()
             base_captures = self._build_capture_list(func.params, init_stmts)
             src_code, base_captures = _src_and_captures(
                 iterable_code, base_captures)
@@ -531,7 +610,8 @@ class GeneratorCodegen:
 
             self._gen_simple_for_yield_body(
                 out, for_stmt, pre_yield, post_yield, yield_stmt,
-                iter_elem, cpp_iter_elem, cpp_var, cpp_iter_slot, val_binding, yld, I, extra)
+                iter_elem, cpp_iter_elem, cpp_var, cpp_iter_slot, val_binding, yld, I, extra,
+                leaf=leaf)
 
         self.ctx.indent_level = old_indent
         self.ctx.generator_self_ref = old_self_ref
@@ -568,6 +648,7 @@ class GeneratorCodegen:
         pre_yield: list[TpyStmt], post_yield: list[TpyStmt], yield_stmt: TpyYield,
         iter_elem: 'TpyType | None', cpp_iter_elem: str, cpp_var: str,
         cpp_iter_slot: str, val_binding: str, yld: str, I: 'Callable[[int], str]', extra: int,
+        leaf: "SimpleGenLeafEmitter | None" = None,
     ) -> None:
         """Emit the shared yield body for __iter__+__next__ simple generator branches."""
         self.ctx.indent_level = 3 + extra
@@ -585,12 +666,19 @@ class GeneratorCodegen:
         else:
             out.write(f"{I(4)}auto&& {cpp_var} = ::tpy::unwrap_ref(*__r);\n")
 
-        for stmt in pre_yield:
-            self.statements.gen_stmt(out, stmt)
-        yield_expr = self.statements.gen_yield_value(yield_stmt)
+        if leaf is not None:
+            leaf.emit_pre_yield(out, 4 + extra)
+            yield_expr = leaf.render_yield_value()
+        else:
+            for stmt in pre_yield:
+                self.statements.gen_stmt(out, stmt)
+            yield_expr = self.statements.gen_yield_value(yield_stmt)
         out.write(f"{I(4)}{val_binding} __val = {yield_expr};\n")
-        for stmt in post_yield:
-            self.statements.gen_stmt(out, stmt)
+        if leaf is not None:
+            leaf.emit_post_yield(out, 4 + extra)
+        else:
+            for stmt in post_yield:
+                self.statements.gen_stmt(out, stmt)
         self._emit_iter_slot_return(out, I(4), cpp_iter_slot, yld)
         out.write(f"{I(3)}}}\n")
         out.write(f"{I(2)}}}\n")
@@ -647,14 +735,6 @@ class GeneratorCodegen:
         if isinstance(unwrapped, TypeParamRef):
             return not post_yield
         return yield_uses_borrow_slot(elem_type)
-
-    @staticmethod
-    def _split_at_yield(body: list[TpyStmt]) -> tuple[TpyYield, list[TpyStmt], list[TpyStmt]]:
-        """Split a loop body at the yield statement. Returns (yield, pre, post)."""
-        for i, stmt in enumerate(body):
-            if isinstance(stmt, TpyYield):
-                return stmt, body[:i], body[i + 1:]
-        raise AssertionError("no yield found in body")
 
     def _analyze_for_strategy(self, stmt: TpyForEach, uid: int,
                               proto_param_names: frozenset[str] = frozenset(),
@@ -958,7 +1038,8 @@ class GeneratorCodegen:
         return targets
 
     def _setup_body_scope(self, out: TextIO, func: TpyFunction, init_stmts: list[TpyStmt],
-                          indent_level: int = 1) -> "Namespace":
+                          indent_level: int = 1,
+                          leaf: "SimpleGenLeafEmitter | None" = None) -> "Namespace":
         """Generate init stmts and set up codegen scope.
 
         Returns the function's local namespace with `current_ns` left pointing
@@ -967,15 +1048,24 @@ class GeneratorCodegen:
         binding-based dispatch in `_gen_field_access` (module-constant /
         enum-member / nested-type access) is gated on `current_ns`. The caller
         restores the prior namespace.
+
+        A THIR-routed body (`leaf`) swaps gen_body's init-stmt emission for
+        the leaf renders (+ the same trailing-comment walk); the namespace
+        setup stays, since skeleton classification still runs either way.
         """
         from ..namespace import Namespace
         local_ns = Namespace(parent=self.ctx.analyzer.global_ns)
         for pname, ptype in func.params:
             local_ns.bind_variable(pname, ptype)
-        self.statements.gen_body(
-            out, init_stmts, func.params, func.generator_yield_type,
-            func, local_ns, indent_level=indent_level, is_method=False,
-        )
+        if leaf is not None:
+            leaf.emit_init(out, indent_level)
+            self.ctx.emit_block_trailing_comments(
+                out, init_stmts, INDENT * indent_level)
+        else:
+            self.statements.gen_body(
+                out, init_stmts, func.params, func.generator_yield_type,
+                func, local_ns, indent_level=indent_level, is_method=False,
+            )
         self.ctx.current_ns = local_ns
         return local_ns
 

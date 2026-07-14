@@ -242,7 +242,9 @@ class TestGeneratorShape:
 
     def test_simple_generator_stays_peephole(self):
         # A single-yield-in-a-loop generator uses the lambda peephole, not
-        # the resumable seam -- it must NOT tally the resumable component.
+        # the resumable seam -- it routes through the sgen leaf seam and must
+        # NOT tally the resumable component (see test_thir_simple_gen.py for
+        # the peephole seam's own pins).
         src = (_ITER
                + "def gen(n: Int32) -> Iterator[Int32]:\n"
                + "    i = 0\n"
@@ -252,7 +254,7 @@ class TestGeneratorShape:
                + "def main() -> None:\n"
                + "    for x in gen(3):\n        print(x)\nmain()\n")
         c, _hpp, _cpp = _gen(src, thir=True)
-        assert c._thir_fallback.get("body:sig.generator_simple") == 1
+        assert c._thir_face_witnesses.get("sgen.body") == 1
         assert not any(k.startswith("resumable:") for k in c._thir_fallback)
 
     def test_generator_method_routes(self):
@@ -590,5 +592,6 @@ class TestSlicedOutShapes:
         assert witnesses.get("res.body") == 2
         assert not any(k.startswith("resumable:") for k in fallback)
 
-    # (Non-simple generators now route -- see TestGeneratorShape. Simple
-    # peephole generators stay body:sig.generator_simple, pinned there.)
+    # (Non-simple generators route via this seam -- see TestGeneratorShape.
+    # Simple peephole generators route via their own leaf seam, pinned in
+    # test_thir_simple_gen.py.)

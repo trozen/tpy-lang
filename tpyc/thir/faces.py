@@ -573,6 +573,17 @@ THIR_FACES: frozenset[str] = frozenset({
     "res.yield_value",              # generator yield-value render
     "res.frame_slot_write",         # frame_slot local `.emplace()` write (R1c)
     "res.suspend_expr",             # ERASED/BORROWED operand + bound receiver (R5)
+    # Simple-generator (lambda peephole) leaf routing -- the gen_generators
+    # seam. One face per leaf-render kind the skeleton delegates, plus the
+    # routed-body tally.
+    "sgen.body",                    # one routed simple-generator body
+    "sgen.while_cond",              # while-branch condition render
+    "sgen.yield_value",             # yield-value render
+    "sgen.iterable",                # for-branch iterable render
+    "sgen.range_arg",               # for-range bound renders
+    # The universal __iter__/__next__ protocol foreach (generator-call /
+    # user-iterator-name iterables -- _gen_direct_next_loop_with_iter).
+    "foreach.iter_proto",
     # Class-constant read -> the bare qualified static (lowering;
     # `C::LIMIT`, `::tpyapp::m::Limits::MAX`, `C<int32_t>::X` -- the
     # receiver_eval-None shapes of _class_constant_access_parts).

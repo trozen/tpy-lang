@@ -1316,6 +1316,39 @@ class THIRForEach(THIRStmt):
     orelse: tuple[THIRStmt, ...] = ()
 
 
+@dataclass(frozen=True)
+class THIRForIterProto(THIRStmt):
+    """`for <var> in <iterator-source>` over the universal `::tpy::__iter__`
+    protocol loop -- mirrors `_gen_direct_next_loop_with_iter`:
+
+        [{]                                    # rvalue source: brace scope
+        auto& __src_N = <iterable>;            # `auto` for an rvalue source
+        auto&& __itr_N = ::tpy::__iter__(__src_N);
+        for (;;) {
+            auto __r_M = __itr_N.__next__();
+            if (!__r_M.has_value()) break;
+            <loop_var_binding(elem, var, ::tpy::unwrap_ref(*__r_M))>
+            // body
+        }
+        [}]
+
+    The rvalue brace scope mirrors the AST's CPython-refcount-drop scoping (a
+    temporary source dies at loop exit -- observable when the iterator owns
+    cleanup). `N`/`M` are consecutive draws off the per-function loop index,
+    exactly like the AST's two `iter_counter` draws. Slice: a plain/imported
+    free generator call (rvalue: `iterable_lvalue=False`, the owning `auto`
+    capture) or a user-iterator local name (lvalue: `auto&`); the loop var
+    binds through the shared `loop_var_binding`, same contract as
+    `THIRForEach`."""
+    var: str
+    elem_type: TpyType
+    iterable: THIRExpr
+    body: tuple[THIRStmt, ...] = ()
+    const_loop_var: bool = False
+    iterable_lvalue: bool = True
+    orelse: tuple[THIRStmt, ...] = ()
+
+
 class WithTargetArm(Enum):
     """Which `_gen_with` as-target binding arm a `with` item takes -- decided
     at lowering. The value-typed and optional-slot REUSE arms stay
@@ -1850,6 +1883,34 @@ class THIRResumableBody:
     # the skeleton keeps its move / & / .get() / __self-prepend wrap, the leaf
     # renders the bare expression.
     suspend_exprs: 'Mapping[int, THIRExpr]' = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class THIRSimpleGenBody:
+    """A routed simple-generator (lambda peephole) body's lowered LEAF content.
+
+    The peephole skeleton (`gen_generators.gen_simple_generator_inline`) owns
+    the signature, capture list, `make_generator` scaffolding, iterator-slot
+    types, loop-var decl and the per-pull optional return -- structural
+    emission, like the resumable frame skeleton. The user-source leaves it
+    would delegate to the AST emitters render from these fields instead when
+    the body routed. Unlike `THIRResumableBody`, the seam sites are static
+    (one loop, one yield), so the blocks are direct fields, not id()-keyed
+    tables.
+
+    `init` is the pre-loop statement block (`func.body[:-1]`); `pre_yield` /
+    `post_yield` the loop-body statements around the single yield; `cond` the
+    while-branch condition (None for a for-loop peephole); `iterable` the
+    for-branch source expression (None for while / for-range); `range_args`
+    the for-range bound expressions (position-blind renders -- the skeleton
+    wraps them in its `static_cast` scaffolding)."""
+    init: tuple[THIRStmt, ...]
+    pre_yield: tuple[THIRStmt, ...]
+    post_yield: tuple[THIRStmt, ...]
+    yield_value: THIRExpr
+    cond: 'THIRExpr | None' = None
+    iterable: 'THIRExpr | None' = None
+    range_args: tuple[THIRExpr, ...] = ()
 
 
 @dataclass

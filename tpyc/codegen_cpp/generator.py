@@ -478,6 +478,7 @@ class CodeGenerator:
                 iter_module_constructors as _thir_ctors,
                 lower_constructor as _thir_lower_ctor,
                 lower_function as _thir_lower,
+                lower_simple_generator as _thir_lower_sgen,
                 module_native_globals as _thir_native_globals,
             )
             from ..thir.fallback import (begin_attempt, fold_attempt,
@@ -502,6 +503,7 @@ class CodeGenerator:
             _ng = _thir_native_globals(module)
             self.ctx.thir_functions = {}
             self.ctx.thir_resumables = {}
+            self.ctx.thir_simple_gens = {}
             for f, self_type in _thir_callables(module, self.analyzer):
                 if _is_bodyless_binding(f) or f.is_overload_stub:
                     continue
@@ -510,10 +512,24 @@ class CodeGenerator:
                     # Resumable-frame bodies attempt at first frame emission
                     # (lowering walks the CFG, which needs live codegen ctx);
                     # they tally under the "resumable" component there.
-                    # Simple-peephole generators stay here and reject as
-                    # body:sig.generator_simple (their own deferred cell).
                     continue
                 begin_attempt()
+                if f.is_generator:
+                    # Simple-peephole generator: leaf-seam lowering (the
+                    # lambda skeleton stays AST, like the resumable frame).
+                    sg = _thir_lower_sgen(
+                        f, self.analyzer, self.types.type_to_cpp,
+                        self_type=self_type, native_globals=_ng,
+                        render_type_stored=self.types.type_to_cpp_stored,
+                        render_resolve=self.types.resolve_type)
+                    if sg is not None:
+                        self.ctx.thir_simple_gens[id(f)] = sg
+                        record_shape(f, "body", routed=True)
+                    else:
+                        fold_attempt("body")
+                        record_arm_residual(f.body)
+                        record_shape(f, "body", routed=False)
+                    continue
                 tf = _thir_lower(f, self.analyzer, self.types.type_to_cpp,
                                  self_type=self_type, native_globals=_ng,
                                  render_type_stored=self.types.type_to_cpp_stored,

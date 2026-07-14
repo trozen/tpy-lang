@@ -1272,7 +1272,8 @@ _SPECIAL_BUILTIN_QNAMES = frozenset({qnames.COPY, qnames.COPY_ITER,
                                      qnames.OWN_ITER, qnames.TRY_PARSE})
 
 
-def _free_callee_kind(e: TpyCall, analyzer) -> 'tuple[str, str] | None':
+def _free_callee_kind(e: TpyCall, analyzer, *,
+                      generator_ok: bool = False) -> 'tuple[str, str] | None':
     """Classify a bare-name free callee into its emit kind + pre-rendered
     payload -- the routing fact consumed by lowering:
     `("plain", "")` the raw same-module `name(args)`; `("imported", cpp)`
@@ -1285,7 +1286,14 @@ def _free_callee_kind(e: TpyCall, analyzer) -> 'tuple[str, str] | None':
     arm with no substitution context). None = an emit shape the slice does
     not reproduce. Shared by free-call lowering and (through the plain/
     imported wrapper `_plain_free_callee_ok`) the record-rvalue classifier's
-    by-value record-returning call face."""
+    by-value record-returning call face.
+
+    `generator_ok` admits a free GENERATOR callee (set only by the iterable
+    position): its factory call spells exactly like a plain/imported call
+    (both the lambda peephole's `inline auto f(...)` and the resumable
+    frame's factory), so only the callee-kind reject differs. Generic
+    generator callees stay rejected -- the generic-plain-call spelling is
+    unprobed against the factory forms."""
     if not isinstance(e.func, TpyName):
         note_detail("call.expr_callee")
         return None
@@ -1352,8 +1360,12 @@ def _free_callee_kind(e: TpyCall, analyzer) -> 'tuple[str, str] | None':
             return None
         return ("plain", "")
     if (fi.is_method or fi.is_staticmethod or fi.is_async
-            or fi.is_generator or fi.is_property_getter or fi.is_property_setter):
+            or (fi.is_generator and not generator_ok)
+            or fi.is_property_getter or fi.is_property_setter):
         note_detail("call.callee_kind")
+        return None
+    if fi.is_generator and (fi.type_params or has_targs):
+        note_detail("call.generic_generator")
         return None
     if fi.cpp_template:
         # A generic template substitutes its named {T} placeholders exactly
@@ -2523,7 +2535,8 @@ def _deref_marker_reject(e: TpyMethodCall, analyzer) -> str:
         return "method.marker.deref.recv_shape"
     return "method.marker.deref.plain"
 
-def _marker_call_kind(e: TpyMethodCall, analyzer) -> 'tuple[str, str] | None':
+def _marker_call_kind(e: TpyMethodCall, analyzer, *,
+                      generator_ok: bool = False) -> 'tuple[str, str] | None':
     """Classify a marker-carrying method call whose emit is RECEIVER-LESS --
     module-qualified (`m.f(x)`) or same-module static (`Rec.m(x)`) -- into
     its THIRCall emit kind + pre-rendered payload, the ONE routing fact
@@ -2577,9 +2590,14 @@ def _marker_call_kind(e: TpyMethodCall, analyzer) -> 'tuple[str, str] | None':
         return None
     if (fi.is_consuming or fi.error_return_type is not None
             or fi.native_cpp_return_type is not None
-            or fi.is_async or fi.is_generator
+            or fi.is_async or (fi.is_generator and not generator_ok)
             or fi.is_property_getter or fi.is_property_setter
             or any(isinstance(p.type, LiteralType) for p in fi.params)):
+        return None
+    if fi.is_generator and (fi.type_params or e.inferred_type_args
+                            or e.is_static_call):
+        # `generator_ok` covers the plain module-qualified factory only; the
+        # generic and static spellings are unprobed against generator fis.
         return None
     if e.is_static_call:
         if e.builtin_module_call is not None:
@@ -2690,6 +2708,7 @@ def _marker_call_supported(e: TpyMethodCall, kind: 'tuple[str, str]',
                           *, stmt_position: bool = False,
                           temps_ok: bool = False,
                           record_ret_ok: bool = False,
+                          iterable_gen_ok: bool = False,
                           narrowed: 'set[str] | frozenset[str]' = frozenset()) -> bool:
     """Result/arg checks for a `_marker_call_kind`-classified receiver-less
     call. Mirrors free-call lowering's value-position result set and its arg
@@ -2713,6 +2732,10 @@ def _marker_call_supported(e: TpyMethodCall, kind: 'tuple[str, str]',
             # The field-receiver position (`p.Box(10).n`): an F1-record
             # result renders bare under the postfix member.
             or (record_ret_ok and _f1_record(ret, analyzer))
+            # A module-qualified generator factory in iterable position: the
+            # Iterator-protocol result feeds the iter_proto route's `auto
+            # __src_N` capture, never a typed value slot.
+            or iterable_gen_ok
             or (stmt_position and (ret is None or is_void_like_type(ret)))):
         return note_detail(_qualcall_ret_reject(ret, analyzer))
     return True
@@ -2889,8 +2912,12 @@ def _method_call_arg_ok(
         narrowed: 'set[str] | frozenset[str]',
         param_names: 'set[str] | frozenset[str]') -> bool:
     if not _plain_member_call_markers_ok(e):
+        # generator_ok unconditionally: the call-level gate already decided
+        # whether the generator fi is admitted (iterable position only) --
+        # this arg-side re-derivation only picks the arg rows, which are the
+        # same for a generator factory as for any qualified call.
         kind = (("qualified", "") if _ptr_deref_method_call(e, analyzer)
-                else _marker_call_kind(e, analyzer))
+                else _marker_call_kind(e, analyzer, generator_ok=True))
         return (kind is not None
                 and _marker_call_arg_ok(
                     a, ptype, kind, locals_, analyzer,
@@ -3187,6 +3214,32 @@ def _view_method_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
             or _enum_pass_through_arg(a, ptype, locals_, analyzer)
             or _ptr_pass_through_arg(a, ptype, locals_, analyzer)
             or note_detail("method.view.arg_shape"))
+
+def _member_gen_call_iterable_ok(e: TpyMethodCall, locals_: dict[str, TpyType],
+                                 analyzer) -> bool:
+    """A member GENERATOR call as a for-each iterable (`for x in obj.gen(n):`
+    -- the iter_proto route). The factory call spells like any plain member
+    call (its Iterator-protocol return never lands in a value slot -- it
+    feeds the route's owning `auto __src_N` capture), so only the fi
+    generator-kind reject and the per-receiver result-family gates are
+    bypassed (via `iterable_override`); the receiver and args still lower
+    through the standard member tail. Bare in-scope name receivers only
+    (`self` included); generic / native / template callees and
+    marker-bearing calls stay rejected."""
+    if not _plain_member_call_markers_ok(e) or e.needs_optional_runtime_check:
+        return False
+    fi = e.resolved_function_info
+    if fi is None or not fi.is_generator:
+        return False
+    if not _plain_method_fi_ok(fi, generator_ok=True):
+        return False
+    if (fi.type_params or fi.cpp_template is not None or fi.native_function
+            or fi.native_name or fi.linkage != FunctionLinkage.DEFAULT):
+        return False
+    if not (isinstance(e.obj, TpyName) and e.obj.name in locals_):
+        return False
+    return len(e.args) == len(fi.params)
+
 
 def _str_list_method_iterable_ok(e: TpyMethodCall, locals_: dict[str, TpyType],
                                  analyzer) -> bool:

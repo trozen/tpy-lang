@@ -411,17 +411,73 @@ def test_for_lowering_reject_falls_back_at_sync_boundary():
     assert "clean" in routed
 
 
-def test_for_each_generator_call_iterable_sub_tag():
-    # The pre-route flags pass and the call's Iterator[T] return is not a
-    # native iterable, so the sub-classifier names the generator-call family.
+def test_for_each_generator_call_iterable_routes():
+    # A free generator-call iterable takes the iter_proto route (the
+    # universal __iter__/__next__ loop) -- routed, no sub-tag.
     compiler, entry, f = _fn_body(
         "from tpy import Int32\n"
         "from typing import Iterator\n"
         "def gen(n: Int32) -> Iterator[Int32]:\n"
         "    yield n\n"
-        "def rejected(n: Int32) -> Int32:\n"
+        "def routed(n: Int32) -> Int32:\n"
         "    t = 0\n"
         "    for x in gen(n):\n"
+        "        t = t + x\n"
+        "    return t\n",
+        "routed")
+    with activate_compiler(compiler):
+        begin_attempt()
+        fn = lower_function(f, entry.analyzer, self_type=None)
+    assert fn is not None
+    assert compiler._thir_face_witnesses.get("foreach.iter_proto") == 1
+
+
+def test_for_each_method_generator_call_routes():
+    # A bare-name-receiver member generator call takes the iter_proto route
+    # (the _member_gen_call_iterable_ok override).
+    compiler, entry, f = _fn_body(
+        "from tpy import Int32\n"
+        "from typing import Iterator\n"
+        "class Maker:\n"
+        "    base: Int32\n"
+        "    def __init__(self, b: Int32) -> None:\n"
+        "        self.base = b\n"
+        "    def gen(self, n: Int32) -> Iterator[Int32]:\n"
+        "        yield self.base + n\n"
+        "def routed(m: Maker, n: Int32) -> Int32:\n"
+        "    t = 0\n"
+        "    for x in m.gen(n):\n"
+        "        t = t + x\n"
+        "    return t\n",
+        "routed")
+    with activate_compiler(compiler):
+        begin_attempt()
+        fn = lower_function(f, entry.analyzer, self_type=None)
+    assert fn is not None
+    assert compiler._thir_face_witnesses.get("foreach.iter_proto") == 1
+
+
+def test_for_each_field_recv_generator_call_defers():
+    # A FIELD-receiver generator call stays outside the iter_proto slice
+    # (bare-name receivers only): the route accepts the shape, so the reject
+    # now fires at the member arm's fi gate (expr.method_call), not the
+    # route classifier's iter.call.generator tag.
+    compiler, entry, f = _fn_body(
+        "from tpy import Int32, Own\n"
+        "from typing import Iterator\n"
+        "class Maker:\n"
+        "    base: Int32\n"
+        "    def __init__(self, b: Int32) -> None:\n"
+        "        self.base = b\n"
+        "    def gen(self, n: Int32) -> Iterator[Int32]:\n"
+        "        yield self.base + n\n"
+        "class Holder:\n"
+        "    maker: Maker\n"
+        "    def __init__(self, maker: Own[Maker]) -> None:\n"
+        "        self.maker = maker\n"
+        "def rejected(h: Holder, n: Int32) -> Int32:\n"
+        "    t = 0\n"
+        "    for x in h.maker.gen(n):\n"
         "        t = t + x\n"
         "    return t\n",
         "rejected")
@@ -431,13 +487,12 @@ def test_for_each_generator_call_iterable_sub_tag():
         if fn is None:
             fold_attempt("body")
     assert fn is None
-    assert compiler._thir_fallback.get(
-        "body:stmt.for_each:iter.call.generator") == 1
+    assert compiler._thir_fallback.get("body:expr.method_call") == 1
 
 
-def test_for_each_user_iterator_name_sub_tag():
-    # A name iterable whose record takes the __iter__/__next__ protocol-loop
-    # default folds under the user_iterator family, not a bare family tag.
+def test_for_each_user_iterator_name_routes():
+    # A concrete user-iterator param name takes the iter_proto route (the
+    # lvalue `auto& __src_N` capture).
     compiler, entry, f = _fn_body(
         "from __future__ import annotations\n"
         "from tpy import Int32\n"
@@ -452,20 +507,17 @@ def test_for_each_user_iterator_name_sub_tag():
         "            raise StopIteration\n"
         "        self.n -= 1\n"
         "        return self.n\n"
-        "def rejected(t: Ticker) -> Int32:\n"
+        "def routed(t: Ticker) -> Int32:\n"
         "    total = 0\n"
         "    for v in t:\n"
         "        total = total + v\n"
         "    return total\n",
-        "rejected")
+        "routed")
     with activate_compiler(compiler):
         begin_attempt()
         fn = lower_function(f, entry.analyzer, self_type=None)
-        if fn is None:
-            fold_attempt("body")
-    assert fn is None
-    assert compiler._thir_fallback.get(
-        "body:stmt.for_each:iter.user_iterator.name") == 1
+    assert fn is not None
+    assert compiler._thir_face_witnesses.get("foreach.iter_proto") == 1
 
 
 def test_for_each_protocol_iterator_param_sub_tag():
