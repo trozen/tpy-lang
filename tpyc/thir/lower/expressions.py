@@ -109,6 +109,7 @@ from ..nodes import (
     THIRCtorCall,
     THIREnumMember,
     THIREnumWrap,
+    THIRErrorReturnUnwrap,
     THIRExpr,
     THIRFieldAccess,
     THIRFormConvert,
@@ -160,6 +161,7 @@ from .predicates import (
     _coerce_wrap,
     _container_nocopy_elem,
     _container_record_elem,
+    _set_method_recv,
     _container_scalar_read,
     _container_value_leaf_read,
     _const_index,
@@ -201,6 +203,7 @@ from .predicates import (
     _own_lvalue_temp_slot,
     _operand_type,
     _peel_coerce,
+    _type_family_tag,
     _plain_member_call_markers_ok,
     _plain_method_fi_ok,
     _plain_own_slot,
@@ -256,6 +259,7 @@ from .checks import (
     _call_arity_ok,
     _call_ret_reject,
     _container_lit_elem_ok,
+    _container_literal_arg,
     _container_lit_slot_family,
     _container_literal_shape_ok,
     _container_method_call_supported,
@@ -278,6 +282,8 @@ from .checks import (
     _method_receiver_type,
     _native_call_arg_ok,
     _optional_ptr_arg,
+    _own_lvalue_arg,
+    _own_move_arg,
     _plain_call_arg_ok,
     _ptr_deref_method_call,
     _ptr_deref_recv_ok,
@@ -375,6 +381,21 @@ def _record_ctor_arg_supported(
         return (_shared_pass_through_arg(
                     arg, param_type, declared, analyzer, mutated=is_mutated)
                 or _none_value_opt_arg(arg, param_type, analyzer) is not None
+                # The Own-slot cascade rows, mirrored from the free/method
+                # plain-arg loop: the temp-free last-use move lands in any
+                # position; the copy half hoists `__tmp_N` and so needs the
+                # enclosing flush point (temps_ok), exactly like the
+                # record-rvalue temp row below.
+                or (_own_move_arg(arg, param_type, declared, analyzer)
+                    and _witness("ctor.own_arg"))
+                or (temps_ok
+                    and _own_lvalue_arg(
+                        arg, param_type, declared,
+                        frozenset(lc.narrow.narrowed), analyzer)
+                    and _witness("ctor.own_arg"))
+                or (not is_mutated
+                    and _container_literal_arg(arg, param_type, analyzer)
+                    and _witness("ctor.container_literal_arg"))
                 or (_record_rvalue_temp_arg(
                         arg, param_type, declared, analyzer)
                     and (temps_ok if is_mutated else True)))
@@ -740,6 +761,7 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                 field_owned_str_ok: bool = False,
                 subscript_prechecked: bool = False,
                 container_threaded: bool = True,
+                error_return_raw: bool = False,
                 target_type: TpyType | None = None) -> THIRExpr:
     # `allow_temps` admits the arg-temp rows for THIS expression's args only
     # when it is a free call: set by the five flushable statement positions
@@ -783,9 +805,10 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
             raise ThirUnsupported("name.union_binding_divergent", detail=True)
         if e.name == lc.self_receiver:
             # The method receiver -> `this` (plain method) or `__self` (a
-            # resumable method coro's `Record&` frame field). Only ever
-            # reached as a field-access / method-call receiver (other `self`
-            # positions are gated out), so its form tag is informational.
+            # resumable method coro's `Record&` frame field). Reached as a
+            # field-access / method-call receiver and as a record call-arg
+            # (whose tail retags deref for the `(*this)` render), so its
+            # form tag is informational.
             _witness("self.this")
             return THIRSelf(result_type=rtype, form=Form.BORROW,
                             cpp=lc.self_cpp, loc=loc)
@@ -1449,6 +1472,8 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
             for i, (a, p) in enumerate(zip(e.args, fi.params)):
                 if not _record_ctor_arg_supported(
                         a, p.type, i, fi, lc, declared, use):
+                    note_detail(
+                        "call.ctor_arg." + _type_family_tag(p.type, analyzer))
                     raise ThirUnsupported("expr.call")
                 rec = (_record_rvalue_temp_slot(a, p.type, lc.analyzer)
                        if i in ctor_mut else None)
@@ -1465,7 +1490,17 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                         init=_lower_expr(a, lc, declared), form=Form.BORROW,
                         loc=getattr(a, "loc", None)))
                 else:
-                    args.append(_lower_call_arg(a, p.type, lc, declared))
+                    # temp_args is scoped to the Own-slot cascade rows the
+                    # gate just admitted: the other temp rows in
+                    # _lower_call_arg key on shapes (record rvalue into a
+                    # ref slot, member-valued union) whose ctor renders are
+                    # BARE on the AST path, so a blanket temp_args would
+                    # re-shape already-routed args.
+                    own_slot = (_own_lvalue_temp_slot(a, p.type, lc.analyzer)
+                                is not None)
+                    args.append(_lower_call_arg(
+                        a, p.type, lc, declared,
+                        temp_args=temp_args and own_slot))
             return THIRCtorCall(
                 result_type=rtype, type_cpp=type_cpp,
                 args=tuple(args), form=Form.STORAGE, loc=loc)
@@ -1476,10 +1511,22 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
             # range(...) arg renders as its substituted Range template (the
             # comprehension begin/end iterable's render); every other admitted
             # arg lowers through the shared call-arg machinery.
-            inst_fi = _instantiation_call_fi(e)
             fam = _storage_call_ret(rtype, analyzer)
+            if (not e.args and not e.kwargs and e.double_star_unpack is None
+                    and e.subscript_callee is None and not e.type_args
+                    and fam is not None and _storage_call_container(fam)):
+                # An EMPTY instantiation (`s = set()` / `list()` / `dict()`,
+                # element type sema-inferred): the spelled default ctor
+                # `::tpy::ordered_set<int32_t>()` -- THIRCtorCall's zero-arg
+                # render over the resolved call_type spelling.
+                _witness("call.instantiation_empty")
+                return THIRCtorCall(
+                    result_type=rtype, type_cpp=lc.render_type(e.call_type),
+                    args=(), form=Form.STORAGE, loc=loc)
+            inst_fi = _instantiation_call_fi(e)
             if (inst_fi is None or fam is None
                     or not _storage_call_container(fam)):
+                note_detail("call.inst_shape")
                 raise ThirUnsupported("expr.call")
             lowered_args: list[THIRExpr] = []
             for arg, param in zip(e.args, inst_fi.params):
@@ -1560,9 +1607,23 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
             )
         # A @native free-function builtin (currently `len` -> `tpy::__len__`) carries
         # its resolved symbol so the emit dispatches on it, not the source name.
+        # An @error_return callee is admitted HERE only: the tail wraps it in
+        # the statement-expression unwrap (or, under `error_return_raw`, hands
+        # the bare expected call to the statement-level handlers).
+        def _er_wrap(node: THIRExpr) -> THIRExpr:
+            if (fi is None or fi.error_return_type is None
+                    or error_return_raw):
+                return node
+            ret = fi.return_type
+            value_form = not (ret is not None and not ret.is_value_type()
+                              and not isinstance(ret, VoidType))
+            return THIRErrorReturnUnwrap(
+                result_type=rtype, call=node, value_form=value_form, loc=loc)
+
         k = _free_callee_kind(
             e, analyzer,
-            generator_ok=use.result is _ExprResultUse.ITERABLE)
+            generator_ok=use.result is _ExprResultUse.ITERABLE,
+            error_return_ok=True)
         len_call = _is_len_call(e, declared, analyzer)
         if not len_call:
             if k is None or fi is None:
@@ -1620,10 +1681,10 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                 # into a TypeParamRef ref-slot hoisting the resolved-typed
                 # `__tmp_N` (TempState.create's to_cpp render).
                 _witness("call.generic_free")
-                return _lower_generic_plain_call(e, k[1] or None, lc, declared,
-                                                 temp_args=temp_args,
-                                                 form=form, loc=loc)
-        return THIRCall(
+                return _er_wrap(_lower_generic_plain_call(
+                    e, k[1] or None, lc, declared, temp_args=temp_args,
+                    form=form, loc=loc))
+        return _er_wrap(THIRCall(
             result_type=rtype,
             callee=e.func_name,
             args=tuple(
@@ -1639,7 +1700,7 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
             callee_cpp=callee_cpp,
             form=form,
             loc=loc,
-        )
+        ))
     if isinstance(e, (TpyArrayLiteral, TpySetLiteral)):
         container_type = target_type or rtype
         if not _container_literal_shape_ok(
@@ -1813,11 +1874,22 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                             and e.resolved_function_info is not None
                             and e.resolved_function_info.is_generator)
             mk = _marker_call_kind(e, analyzer, generator_ok=iterable_gen)
+            # An F1-record result renders bare under a postfix member
+            # (RECEIVER) and, when it is an RVALUE source, directly into the
+            # owned-record decl / storage slot (`Rc<A> r = Rc.new_(...);`) --
+            # the free-call value-position mirror. A borrow-returning callee
+            # is not an rvalue source and stays AST (the decl sink copies it
+            # through machinery this arm does not mirror).
+            record_ret = (result_use is _ExprResultUse.RECEIVER
+                          or (result_use in (_ExprResultUse.BORROW_BIND,
+                                             _ExprResultUse.STORAGE)
+                              and is_rvalue_source(analyzer, e)))
             if (mk is None or not _marker_call_supported(
                     e, mk, declared, analyzer,
                     stmt_position=result_use is _ExprResultUse.DISCARD,
                     temps_ok=use.allow_temps,
-                    record_ret_ok=result_use is _ExprResultUse.RECEIVER,
+                    record_ret_ok=record_ret,
+                    moved_ret_ok=result_use is _ExprResultUse.SUSPEND,
                     iterable_gen_ok=iterable_gen,
                     narrowed=frozenset(lc.narrow.narrowed))):
                 if mk is None:
@@ -1863,6 +1935,10 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                 loc=loc,
             )
         fi = e.resolved_function_info
+        # Builtin-stub receivers thread the raw param type into numeric
+        # literal renders (set below by the family dispatch); the
+        # iterable-override path keeps the user-method default.
+        stub_recv = False
         if not iterable_override:
             if isinstance(e.obj, TpyName):
                 if e.obj.name not in declared:
@@ -1885,11 +1961,18 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
             recv_type = _method_receiver_type(e.obj, declared, analyzer)
             stmt_position = result_use is _ExprResultUse.DISCARD
             storage_ret_ok = result_use is _ExprResultUse.STORAGE
+            # Builtin-stub receivers (container/set/str-view) render args
+            # through gen_call_arg's `_args()` loop, which THREADS the raw
+            # param type into literal renders; user-record methods pass
+            # target_type=None (target-less literals). The flag picks the
+            # literal render in _lower_call_arg.
             if (_container_scalar_read(recv_type, analyzer)
-                    or _container_record_elem(recv_type, analyzer)):
+                    or _container_record_elem(recv_type, analyzer)
+                    or _set_method_recv(recv_type, analyzer)):
                 shape_ok = _container_method_call_supported(
                     e, fi, analyzer, stmt_position=stmt_position,
                     storage_ret_ok=storage_ret_ok)
+                stub_recv = True
             elif _protocol_binding(recv_type) is not None:
                 shape_ok = _protocol_method_call_supported(
                     e, fi, declared, analyzer,
@@ -1898,6 +1981,7 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                 shape_ok = _view_method_call_supported(
                     e, fi, declared, analyzer,
                     stmt_position=stmt_position)
+                stub_recv = True
             else:
                 shape_ok = _record_method_call_supported(
                     e, fi, declared, analyzer,
@@ -1957,7 +2041,8 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                                        init=_lower_expr(a, lc, declared), form=Form.VALUE,
                                        loc=getattr(a, "loc", None))
             return _lower_call_arg(a, ptype, lc, declared,
-                                   method_arg=not proto_recv)
+                                   method_arg=not proto_recv,
+                                   method_arg_stub=stub_recv and not proto_recv)
 
         if isinstance(e.obj, TpyName) and e.obj.name == lc.self_receiver:
             _witness("call.self_method")
@@ -2650,6 +2735,7 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                     declared: dict[str, TpyType], *, temp_args: bool = False,
                     readonly_target: bool = False,
                     method_arg: bool = False,
+                    method_arg_stub: bool = False,
                     protocol_slots: bool = False) -> THIRExpr:
     """Lower one call argument against its param slot. A str literal into a
     Char slot renders as a target-typed char literal (gen_expr's char arm,
@@ -2711,6 +2797,19 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         vt = _value_tuple(ptype, lc.analyzer)
         if vt is not None:
             return _lower_tuple_literal(a, vt, lc, declared)
+    if (isinstance(a, TpyArrayLiteral)
+            and _container_literal_arg(a, ptype, lc.analyzer)):
+        # A list literal into a ctor's list slot: the bare brace-init in
+        # place, target-threaded like the decl position. The make_vector
+        # element path (move-source / nocopy elements) is NOT mirrored at
+        # the arg position -- reject rather than risk a divergent render.
+        slot = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
+        lowered = _lower_expr(a, lc, declared, use=_NESTED_ARG_USE,
+                              target_type=slot)
+        if getattr(lowered, "make_container", False):
+            raise ThirUnsupported(
+                "container-literal arg on the make_vector path")
+        return lowered
     if isinstance(ptype, TpyType) and (is_bytes_type(ptype)
                                        or is_bytes_view_type(ptype)):
         # Peel coerce wrappers exactly like gen_call_arg's span pin (the pin
@@ -2901,6 +3000,13 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         lowered = _lower_expr(a, lc, declared, use=_NESTED_ARG_USE)
         assert isinstance(lowered, THIRName)
         return replace(lowered, deref=True)
+    if isinstance(a, TpyName) and a.name == lc.self_receiver:
+        # `self` passed by reference derefs the receiver pointer
+        # (`on_init((*this))`); a resumable method's `__self` frame field is
+        # already a `Record&` and reads bare.
+        lowered = _lower_expr(a, lc, declared, use=_NESTED_ARG_USE)
+        assert isinstance(lowered, THIRSelf)
+        return replace(lowered, deref=lc.self_is_pointer)
     # A float literal into a Float32 (or Own[Float32]) slot renders with the
     # `f` suffix, and an int literal into a FREE-call BigInt slot takes the
     # ctor wrap -- gen_call_arg threads the param type into the render. A
@@ -2911,9 +3017,17 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
     if (method_arg and isinstance(lowered, THIRLiteral)
             and isinstance(lowered.value, (int, float))
             and not isinstance(lowered.value, bool)):
-        # Both numeric families: a method arg's int literal must not take
-        # the BigInt ctor wrap AND its float literal must not take the
-        # Float32 `f` suffix -- the method path renders literals target-less.
+        # A USER-RECORD method arg renders numeric literals target-less (the
+        # AST's record loop passes target_type=None -- `c.bump(5)` into a
+        # BigInt param stays bare). A builtin-stub member threads the RAW
+        # param like gen_call_arg's `_args()` loop: an Own-wrapped slot hint
+        # renders bare (the hint is never Own-unwrapped -- `s.insert(7)`,
+        # `xs.push_back(2)`), a plain BigInt/Float32 slot takes the
+        # target-typed render (`s.erase(::tpy::BigInt(3))`).
+        if method_arg_stub and isinstance(ptype, TpyType):
+            st = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
+            if not isinstance(st, OwnType):
+                return _slot_literal_retype(lowered, ptype, lc)
         return lowered
     return _slot_literal_retype(lowered, ptype, lc)
 

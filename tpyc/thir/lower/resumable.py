@@ -16,12 +16,14 @@ holds -- or None (with a `res.*` / composed `stmt.*` fallback reason) when
 any leaf or frame feature falls outside the slice.
 
 Foundation slice (deliberately tight; the fan-out cells widen it):
-free `async def` only, value-scalar params/locals/returns, INLINE await
-payloads on plain or module-qualified async-def calls with value-scalar
-params, no regions (try/with/finally), no narrowed resume points, no
-returns inside leaf compounds (a ReturnT terminator's scaffolding is
-skeleton; a return nested in a leaf would need the async-return render
-inside THIR emit -- a cell).
+free `async def` only, value-scalar/str/bytes/F1-record params,
+value-scalar/str/bytes locals plus owning frame_slot locals,
+value-scalar returns, INLINE await payloads on plain or module-qualified
+async-def calls (arg slots share the param families) and ERASED/BORROWED
+awaitables as whole-operand renders, no regions (try/with/finally), no
+narrowed resume points, no returns inside leaf compounds (a ReturnT
+terminator's scaffolding is skeleton; a return nested in a leaf would
+need the async-return render inside THIR emit -- a cell).
 """
 
 from __future__ import annotations
@@ -39,6 +41,7 @@ from ..nodes import (
 from ...parse.nodes import (
     TpyAwait,
     TpyCall,
+    TpyForEach,
     TpyFunction,
     TpyMethodCall,
     TpyReturn,
@@ -49,6 +52,7 @@ from ...parse.nodes import (
 from ...typesys import (
     NominalType,
     TpyType,
+    UnionType,
     VoidType,
     unwrap_readonly,
     unwrap_ref_type,
@@ -56,7 +60,7 @@ from ...typesys import (
 )
 from ...codegen_cpp import resumable_cfg as rcfg
 from ...codegen_cpp.forms import is_plain_nonvalue
-from .context import _LowerCtx
+from .context import _ExprResultUse, _ExprUse, _LowerCtx
 from .expressions import _lower_call_arg, _lower_expr, _lower_truthy
 from .functions import _check_callable_structure, method_self_type_by_name
 from .predicates import (
@@ -64,6 +68,7 @@ from .predicates import (
     _eligible_enum,
     _eligible_scalar,
     _f1_record,
+    _peel_stale_view_owned_coerce,
     _resolved_bytes_value,
     _resolved_str_value,
 )
@@ -91,14 +96,26 @@ def _res_param_ok(t: 'TpyType | None', analyzer) -> bool:
     """Frame-PARAM families (R5c-param). Value scalars plus F1-record params:
     a record param captures as a `Record&` reference frame field and reads
     bare with `.` member access -- exactly like a sync record param, so the
-    leaf needs no coro-specific form. str/bytes params (captured OWNED, so
-    their read form differs from the sync view param's BORROW) and Own /
-    tuple / union / protocol params stay their own rungs."""
+    leaf needs no coro-specific form. str/bytes params capture OWNED
+    (`std::string` / `std::vector<uint8_t>` frame fields, ctor-copied from
+    the sync view param), but every leaf READ renders through the same
+    form-agnostic helpers as the owned str/bytes locals R1a already routes
+    (`__len__` / `bytes_getitem` / bare name), so they share that slice.
+    Own / tuple / union / protocol params stay their own rungs."""
     if _res_value_ok(t, analyzer):
+        return True
+    if (_resolved_str_value(t, analyzer) is not None
+            or _resolved_bytes_value(t, analyzer) is not None):
         return True
     unwrapped = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
                  if isinstance(t, TpyType) else None)
-    return bool(unwrapped is not None and _f1_record(unwrapped, analyzer))
+    if unwrapped is not None and _f1_record(unwrapped, analyzer):
+        return True
+    # A pointer-repr union param's frame field is the SAME pointer-variant
+    # shape as the sync param (`std::variant<A*, B*>`), so reads, isinstance
+    # narrowing, and pass-through args take the sync union rows unchanged.
+    return bool(isinstance(unwrapped, UnionType)
+                and unwrapped.uses_pointer_repr())
 
 
 def _res_local_ok(t: 'TpyType | None', analyzer) -> bool:
@@ -117,13 +134,13 @@ def _res_local_ok(t: 'TpyType | None', analyzer) -> bool:
 def _payload_reject(payload: 'rcfg.SuspensionPayload', analyzer) -> str | None:
     """Await-payload gate (async bodies). INLINE (statically-known async def,
     incl. bound methods -- R5b) is admitted; the receiver/args are lowered in
-    the Yield loop. Deferred: generic
-    awaited callees, kwargs, non-value INLINE arg slots (R5c), and
-    ERASED/BORROWED awaitables (res.await_mode -- an ERASED/BORROWED operand is
-    a Task/Future that is either a non-value param or built via a gated
-    create_task/Future() call, so no such body reaches routing today; the
-    operand-render path stays deferred rather than a zero-witness success
-    branch)."""
+    the Yield loop. ERASED/BORROWED awaitables (a Task/Future value: an
+    `asyncio.sleep(...)` rvalue, a Task-typed local, an already-pointer
+    source) are admitted as a whole-operand render: the skeleton keeps its
+    emplace(std::move(..)) / &(..) / .get() wrap and the leaf loop lowers
+    `operand_expr` through the shared expression lowering (a reject there
+    composes the fallback reason). Deferred: generic awaited callees,
+    kwargs, and non-value INLINE arg slots (R5c)."""
     if isinstance(payload, rcfg.YieldPayload):
         return "res.generator_shape"
     if payload.prebuilt_slot is not None:
@@ -136,7 +153,7 @@ def _payload_reject(payload: 'rcfg.SuspensionPayload', analyzer) -> str | None:
         # instantiation (M7) -- template-arg capture is a cell.
         return "res.await_generic"
     if payload.mode is not rcfg.AwaitMode.INLINE:
-        return "res.await_mode"
+        return None  # whole-operand render; gated at leaf lowering
     call = payload.operand_expr
     if not isinstance(call, (TpyCall, TpyMethodCall)):
         return "res.await_operand"
@@ -147,11 +164,15 @@ def _payload_reject(payload: 'rcfg.SuspensionPayload', analyzer) -> str | None:
     if fi is None or len(call.args) > len(fi.params):
         return "res.await_callee"
     for i in range(len(call.args)):
-        if not _res_value_ok(fi.params[i].type, analyzer):
-            # Non-value param slots trigger the emplace coercion ladder
-            # (Own move / optional-ptr / protocol adapter / union lift) and,
+        if not _res_param_ok(fi.params[i].type, analyzer):
+            # Slots beyond the param families (Own / optional-ptr / protocol
+            # adapter / union lift) trigger the emplace coercion ladder and,
             # for static-protocol params, the two-phase decltype capture
-            # render -- R5c.
+            # render -- R5c. str/bytes/F1-record slots take the same
+            # `_lower_call_arg` rows as a sync call (the emplace ctor param
+            # is the sync borrow shape: span / string_view / Record&), so
+            # they share the DIRECT-param families; a bad arg SHAPE still
+            # rejects inside the arg lowering.
             return "res.await_param_type"
     return None
 
@@ -241,6 +262,12 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
         rt = func.return_type if isinstance(func.return_type, TpyType) else None
         rt_inner = (unwrap_readonly(unwrap_send_sync(rt))
                     if rt is not None else None)
+        # str/bytes returns stay deferred: `_async_return_value_cpp` wraps a
+        # view-form value into the owned slot at CODEGEN time
+        # (`_view_source_to_owned` -- `std::string(tag)`), keyed on the deep
+        # `_is_str_view_source` classifier, so the leaf value render is NOT
+        # position-blind for them. Their rung needs that view-source fact
+        # threaded into lowering (not re-derived).
         if not (rt is None or isinstance(rt_inner, VoidType)
                 or _res_value_ok(rt, analyzer)):
             return _reject("res.return_type")
@@ -250,12 +277,23 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     # fields (R1a); an owning plain-nonvalue local (record / list / dict /
     # set, NOT a borrow alias) is a frame_slot (R1c); everything else
     # (pointer-alias, Optional, tuple, union) is a later cell.
+    #
+    # A non-value FOR-LOOP VAR also lands in generator_locals, but the AST
+    # emits it as a shadowing C++ local inside the loop (`const auto& it =
+    # *__beg_N;`, frame_field_shadows) and only post-loop reads peel the
+    # optional-storage frame field -- neither the bare-field nor the
+    # `(*name)` frame_slot read form. Reject it (its rung needs the
+    # shadow/post-loop duality mirrored).
     frame_slots: set[str] = set()
     for lname, ltype in (func.generator_locals or []):
-        lt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ltype)))
-              if isinstance(ltype, TpyType) else None)
         if _res_local_ok(ltype, analyzer):
             continue  # value / str / bytes -- bare field
+        lt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ltype)))
+              if isinstance(ltype, TpyType) else None)
+        # For-loop targets bind C++ locals that shadow their same-named
+        # frame field; the for-each lowering masks them out of frame_slots
+        # (the register_frame_field_shadow mirror), so they classify like
+        # any other local here rather than rejecting.
         if (lt is not None and is_plain_nonvalue(lt)
                 and lname not in pointer_aliases):
             frame_slots.add(lname)
@@ -332,9 +370,14 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
             begin_stmt()
             if stmt.init is None:
                 raise ThirUnsupported("stmt.decl.no_init")
-            value = _lower_expr(stmt.init, lc, declared)
             if stmt.name not in declared:
                 declared[stmt.name] = _var_decl_type(stmt, analyzer)
+            # A view-resolved frame field fed a stale view->owned coerce
+            # renders the source bare (the AST threads the binding type into
+            # gen_expr's stale-coerce arm) -- same peel as the sync decl.
+            init = _peel_stale_view_owned_coerce(
+                stmt.init, declared[stmt.name], analyzer)
+            value = _lower_expr(init, lc, declared)
             if stmt.name in frame_slots:
                 # R1c: a frame_slot local write is `name.emplace(value)`
                 # (first init and reassign alike -- emplace destroys any prior
@@ -417,23 +460,36 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
             _witness("res.yield_value")
         elif isinstance(t, rcfg.Yield):
             payload = t.payload
-            # INLINE only (the payload gate rejects ERASED/BORROWED).
             operand = payload.operand_expr
-            fi = operand.resolved_function_info
-            # A bound-method await (`await obj.method()`): the receiver
-            # `(*obj)` is prepended as the __self ctor arg (R5b). Module /
-            # free calls have no value receiver.
-            if (isinstance(operand, TpyMethodCall)
-                    and operand.user_module_call is None
-                    and operand.builtin_module_call is None):
-                suspend_exprs[id(operand.obj)] = _lower_expr(operand.obj, lc, declared)
-                _witness("res.suspend_expr")
-            lowered_args = []
-            for i, a in enumerate(operand.args):
-                lowered_args.append(_lower_call_arg(a, fi.params[i].type, lc, declared))
-            await_args[id(operand)] = tuple(lowered_args)
-            if lowered_args:
-                _witness("res.await_args")
+            if payload.mode is not rcfg.AwaitMode.INLINE:
+                # ERASED/BORROWED: the whole operand renders as one
+                # expression; the skeleton wraps it (emplace(std::move(..)),
+                # &(..), .get(), already-pointer). The prebuilt-slot flavor
+                # never reaches here (gated as res.await_prebuilt).
+                begin_stmt()
+                try:
+                    suspend_exprs[id(operand)] = _lower_expr(
+                        operand, lc, declared,
+                        use=_ExprUse(result=_ExprResultUse.SUSPEND))
+                except ThirUnsupported:
+                    raise ThirUnsupported("res.await_operand_shape") from None
+                _witness("res.suspend_operand")
+            else:
+                fi = operand.resolved_function_info
+                # A bound-method await (`await obj.method()`): the receiver
+                # `(*obj)` is prepended as the __self ctor arg (R5b). Module /
+                # free calls have no value receiver.
+                if (isinstance(operand, TpyMethodCall)
+                        and operand.user_module_call is None
+                        and operand.builtin_module_call is None):
+                    suspend_exprs[id(operand.obj)] = _lower_expr(operand.obj, lc, declared)
+                    _witness("res.suspend_expr")
+                lowered_args = []
+                for i, a in enumerate(operand.args):
+                    lowered_args.append(_lower_call_arg(a, fi.params[i].type, lc, declared))
+                await_args[id(operand)] = tuple(lowered_args)
+                if lowered_args:
+                    _witness("res.await_args")
             # A VARDECL-kind bind (`x = await f()` on a fresh name) writes
             # the frame field in the skeleton's resume step; register it so
             # later leaves' reads gate and lower with its type -- mirroring

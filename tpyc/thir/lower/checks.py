@@ -119,6 +119,7 @@ from .predicates import (
     _native_iterable_container_arg,
     _native_iterable_genexpr_arg,
     _container_record_elem,
+    _set_method_recv,
     _container_scalar_read,
     _eligible_char,
     _eligible_enum,
@@ -598,6 +599,11 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
         hoisted=prescan.hoisted, move_through=prescan.move_through)
     if binding is LocalBinding.OTHER:
         return None
+    if binding is LocalBinding.OPT_PTR_SLOT:
+        # The slot-hoist Optional pointer-local: init/reseat sub-shapes are
+        # gated by `_lower_opt_ptr_slot_decl` (the lowering consumes the
+        # verdict directly, per the classifier-consumed-by-lowering rule).
+        return binding
     if binding is LocalBinding.REBIND_SLOT:
         # F2d: the source is an rvalue F1-record ctor / by-value call (not a field
         # read), so it bypasses the field-receiver check the lvalue bindings need.
@@ -1273,7 +1279,9 @@ _SPECIAL_BUILTIN_QNAMES = frozenset({qnames.COPY, qnames.COPY_ITER,
 
 
 def _free_callee_kind(e: TpyCall, analyzer, *,
-                      generator_ok: bool = False) -> 'tuple[str, str] | None':
+                      generator_ok: bool = False,
+                      error_return_ok: bool = False
+                      ) -> 'tuple[str, str] | None':
     """Classify a bare-name free callee into its emit kind + pre-rendered
     payload -- the routing fact consumed by lowering:
     `("plain", "")` the raw same-module `name(args)`; `("imported", cpp)`
@@ -1336,10 +1344,12 @@ def _free_callee_kind(e: TpyCall, analyzer, *,
             note_detail("call.builtin_special")
             return None
     # A literal-specialized overload emits a mangled name (`f__lit_N`) the
-    # pre-rendered spellings do not reproduce. The error_return guard is
-    # defense in depth: sema already forces an @error_return call into a
-    # try/except or a propagating caller, both ineligible anyway.
-    if fi.error_return_type is not None:
+    # pre-rendered spellings do not reproduce. The error_return guard keeps
+    # fallible callees out of every face that does not render the unwrap;
+    # `error_return_ok` is set only by the free-call lowering arm, whose
+    # tail wraps the call in THIRErrorReturnUnwrap (or hands it raw to the
+    # statement-level bind/discard/pass-through handlers).
+    if fi.error_return_type is not None and not error_return_ok:
         note_detail("call.error_return")
         return None
     if any(isinstance(p.type, LiteralType) for p in fi.params):
@@ -1457,10 +1467,18 @@ def _record_rvalue_call_shape(e: TpyExpr, analyzer) -> bool:
     """
     if not isinstance(e, TpyCall):
         return False
-    if e.kwargs or e.double_star_unpack is not None:
-        return False
     if not (_f1_record(analyzer.get_expr_type(e), analyzer)
             and is_rvalue_source(analyzer, e)):
+        return False
+    return _rvalue_free_call_shape(e, analyzer)
+
+
+def _rvalue_free_call_shape(e: 'TpyCall', analyzer) -> bool:
+    """The return-type-blind callee/arg-shape half of
+    `_record_rvalue_call_shape`: plain free callee, exact arity, no kwargs,
+    no str-literal multi-overload pin. The union slot-hoist decl reuses it
+    for `Own[A | B]`-returning calls (its type verdict lives at the caller)."""
+    if e.kwargs or e.double_star_unpack is not None:
         return False
     fi = e.resolved_function_info
     if (fi is None or fi.is_constructor or len(e.args) != len(fi.params)
@@ -1602,6 +1620,27 @@ def _generic_plain_arg_ok(a: TpyExpr, ptype: 'TpyType | None', subst,
     return (_shared_pass_through_arg(a, resolved, locals_, analyzer)
             or _own_move_arg(a, resolved, locals_, analyzer)
             or note_detail("call.generic_arg_shape"))
+
+def _container_literal_arg(a: TpyExpr, ptype: 'TpyType | None',
+                           analyzer) -> bool:
+    """A LIST literal into a same-family NON-mutated list slot at a CTOR call
+    (`Numbers([1, 2, 3])` -> `Numbers({1, 2, 3});`): the AST renders the bare
+    brace-init in place (probe-verified for scalar, str, and record-rvalue
+    elements), which `_lower_expr`'s container-literal arm reproduces. CTOR
+    args only -- a FREE-call literal arg hoists the ref-param `__tmp_N` temp
+    on the AST path (probe-verified for const AND mutated slots), and dict /
+    set / Array literals take spelled renders (`::tpy::ordered_map<...>({{..}})`)
+    this arm does not mirror. A MUTATED ctor slot rejects (a prvalue into a
+    non-const `T&`). Element shapes are pre-checked so admission tracks
+    lowerability; the make_vector element path is rejected at lowering (its
+    ctor-arg render is unverified)."""
+    pt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
+          if ptype is not None else None)
+    if pt is None or isinstance(pt, (OwnType, OptionalType)):
+        return False
+    if isinstance(a, TpyArrayLiteral):
+        return is_list(pt) and _container_literal_shape_ok(a, pt, analyzer)
+    return False
 
 def _shared_pass_through_arg(a: TpyExpr, ptype: 'TpyType | None',
                              locals_: dict[str, TpyType], analyzer,
@@ -2210,7 +2249,14 @@ def _str_owned_slot_arg(a: TpyExpr, ptype: TpyType | None,
     # An owned-`str`-typed source is STORAGE unless it is a str PARAM (BORROW --
     # `std::string_view` in the signature). A reassigned str param is already
     # whole-body-rejected, so the view form is stable at every use here.
-    return isinstance(a, TpyName) and a.name in param_names
+    if isinstance(a, TpyName):
+        return a.name in param_names
+    # An owned-str RVALUE source (a concat binop, an owned-returning call)
+    # binds the `T&&` element slot bare -- gen_call_arg's is_temporary_expr
+    # arm, no temp and no view convert. Owned LVALUES (locals, field reads)
+    # keep riding the AST's copy+move-temp cascade.
+    return (not isinstance(a, TpyFieldAccess)
+            and is_rvalue_source(analyzer, a))
 
 def _bytes_pass_through_arg(a: TpyExpr, ptype: TpyType | None,
                             locals_: dict[str, TpyType], analyzer) -> bool:
@@ -2294,16 +2340,29 @@ def _record_pass_through_arg(a: TpyExpr, ptype: TpyType | None,
     gen_expr_deref indirect render `_lower_call_arg` retags. A narrowed
     subject's read arrives with `locals_` retyped to the member record and
     renames to its `T&` extraction alias at lowering (bare on both paths).
-    `self` is rejected -- it renders `(*this)`. An `Own[record]` slot
+    `self` renders the receiver deref `(*this)` (the tail retag, like an F2
+    pointer-local). An `Own[record]` slot
     auto-moves at last use and a readonly-wrapped slot is the deep-const
     frontier -> AST. A record RVALUE (`take_rec(A(7))`) is not a
     name: the AST hoists it into a `__tmp_N` (free calls, typed at the CHILD
     for an upcast) or inlines it (method calls -- the const-slot ctor row
     rides `_method_ctor_rvalue_arg`; the mutated-ref-param shape is the
     miscompile in BUGS.md) -- rvalues stay off this arm."""
-    if not isinstance(a, TpyName) or a.name == "self" or a.name not in locals_:
+    if not isinstance(a, TpyName):
         return False
-    at = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(locals_[a.name])))
+    if a.name == "self":
+        # `self` into a same/parent record slot: the receiver deref
+        # `(*this)` (probe-verified `on_init((*this))`), or the bare
+        # `__self` frame-field read in a resumable method -- THIRSelf's
+        # deref flag, set at `_lower_call_arg`'s tail.
+        at = analyzer.get_expr_type(a)
+        at = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
+              if at is not None else None)
+    elif a.name in locals_:
+        at = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+            locals_[a.name])))
+    else:
+        return False
     if isinstance(at, OwnType):
         # An Own[record] PARAM binding is by-value storage the arg reads
         # bare, like any record name (the slot below is still non-Own).
@@ -2380,6 +2439,19 @@ def _method_nonname_receiver_ok(recv: TpyExpr, locals_: dict[str, TpyType],
                 and _witness("method.recv.subscript"))
     if isinstance(recv, TpyMethodCall):
         return _method_call_receiver_ok(recv, locals_, analyzer)
+    if isinstance(recv, TpyCall):
+        # A free-call-result receiver `make(3).get()`: same verdict as the
+        # method-call receiver arm -- a plain non-pointer F1-record result
+        # keeps `.` access on both paths (probe-verified bare render); the
+        # inner call lowers via the shared free-call machinery at
+        # BORROW_BIND use. Pointer / Optional / non-record results defer.
+        rt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+            analyzer.get_expr_type(recv))))
+        if isinstance(rt, OwnType):
+            rt = unwrap_readonly(rt.wrapped)
+        if not (isinstance(rt, NominalType) and _f1_record(rt, analyzer)):
+            return False
+        return _witness("method.recv.free_call")
     return _method_field_receiver_ok(recv, locals_, analyzer)
 
 def _method_call_receiver_ok(recv: TpyMethodCall, locals_: dict[str, TpyType],
@@ -2708,6 +2780,7 @@ def _marker_call_supported(e: TpyMethodCall, kind: 'tuple[str, str]',
                           *, stmt_position: bool = False,
                           temps_ok: bool = False,
                           record_ret_ok: bool = False,
+                          moved_ret_ok: bool = False,
                           iterable_gen_ok: bool = False,
                           narrowed: 'set[str] | frozenset[str]' = frozenset()) -> bool:
     """Result/arg checks for a `_marker_call_kind`-classified receiver-less
@@ -2721,7 +2794,10 @@ def _marker_call_supported(e: TpyMethodCall, kind: 'tuple[str, str]',
     without the deep-const verdict, and lowering passes readonly_target=False
     to match."""
     fi = e.resolved_function_info
-    if len(e.args) != len(fi.params):
+    if not _call_arity_ok(e, fi):
+        # Zero-args-with-all-defaults rides the C++ signature's defaults
+        # (`datetime::now()` -- the free-call rule); PARTIAL default
+        # omission still rejects, matching `_call_arity_ok`.
         return note_detail("method.qualcall.arity_defaults")
     ret = analyzer.get_expr_type(e)
     if not (_eligible_scalar(ret) or _eligible_char(ret)
@@ -2732,6 +2808,11 @@ def _marker_call_supported(e: TpyMethodCall, kind: 'tuple[str, str]',
             # The field-receiver position (`p.Box(10).n`): an F1-record
             # result renders bare under the postfix member.
             or (record_ret_ok and _f1_record(ret, analyzer))
+            # The SUSPEND position (an ERASED await operand): the skeleton
+            # immediately moves the result into the sub-future slot, so any
+            # record-family result (incl. generic-concrete, e.g.
+            # Own[Task[None]]) renders bare -- no value slot is involved.
+            or (moved_ret_ok and _moved_record_ret(ret, analyzer))
             # A module-qualified generator factory in iterable position: the
             # Iterator-protocol result feeds the iter_proto route's `auto
             # __src_N` capture, never a typed value slot.
@@ -2766,6 +2847,19 @@ def _marker_call_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
             or (own_ok and _own_union_ctor_arg(
                 a, ptype, locals_, analyzer))
             or note_detail(_qualcall_arg_reject(a, ptype, analyzer)))
+
+def _moved_record_ret(ret: 'TpyType | None', analyzer) -> bool:
+    """A nominal record result (generic-concrete included) at a MOVED
+    position: the consumer takes the value whole (std::move into a slot),
+    so the render is the bare call -- no value-slot spelling. Containers
+    stay out (their storage/borrow duality is the container frontier's)."""
+    t = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ret)))
+         if ret is not None else None)
+    if isinstance(t, OwnType):
+        t = unwrap_readonly(t.wrapped)
+    return (isinstance(t, NominalType) and not t.is_protocol
+            and not (is_list(t) or is_dict(t) or is_set(t) or is_array(t)))
+
 
 def _qualcall_ret_reject(ret: 'TpyType | None', analyzer) -> str:
     """Drilldown label for a marker-call result outside the value set --
@@ -2925,7 +3019,8 @@ def _method_call_arg_ok(
 
     recv_type = _method_receiver_type(e.obj, locals_, analyzer)
     if (_container_scalar_read(recv_type, analyzer)
-            or _container_record_elem(recv_type, analyzer)):
+            or _container_record_elem(recv_type, analyzer)
+            or _set_method_recv(recv_type, analyzer)):
         return _container_method_arg_ok(
             a, ptype, locals_, analyzer, param_names=param_names,
             narrowed=narrowed)

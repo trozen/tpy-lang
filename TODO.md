@@ -11,6 +11,28 @@ See `docs/FEATURE_ROADMAP.md` for bigger tasks and `BUGS.md` for known compiler 
 - **[thir][test-gap] Newly-reachable param-read fallbacks and guard-call temp boundary lack unit witnesses.** After the callable/param preflight removal (`_f1_param_eligible` / `_ctor_param_eligible` deleted), `_unrouted_binding_read`'s `name.own_optional_read` / `name.optional_ptr_read` reject branches became reachable from ordinary function params for the first time, but no unit routes a body READ of such a param (own-optional / non-F1 pointer-repr-optional) to prove the fallback fires rather than mis-lowering -- mirror the existing `test_own_str_body_read_stays_ast`. Same gap for a plain-function (not constructor) used-but-unsupported param (e.g. a `Callable`/`Waker`-typed param actually called). And with match guards now admitting calls, add a unit pinning the guard-call-needing-arg-temp boundary: the temp forms raise `ThirUnsupported` (not `assert`) since a guard is never a flush point, so the body must fall back cleanly. Surfaced by /tpy-review (test-coverage, architecture-fit).
 - **[thir][test-gap] Str tuple-unpack targets inside comprehension generators lack unit coverage.** The `_scalar_or_str_unpack_elem` widening also newly admits str-typed unpack targets in comprehension generators (`{k: v for k, v in pairs}` where `k: str`), exercised only incidentally by marked (non-ratcheted) `tests/cases` (`dict_comp_unpack` / `set_comp_unpack`) with zero coverage in `tpyc/thir/test_thir_comprehensions.py`. Add a unit that routes a str-target comprehension generator and pins its emit. Surfaced by /tpy-review (test-coverage) of the tuple-container branch.
 - **[thir] Tuple-unpack non-str target rungs (scalar + str landed).** Standalone and for-each tuple-unpack route value-scalar and str (view-form) targets (`_scalar_or_str_unpack_elem` / `_unpack_target_decl`). Deferred, each its own rung in `_gen_tuple_unpack`: (a) **record / borrow (`is_ref` / `is_const_ref`) targets** -- the biggest residue (27 for-each bodies at `tuple.ref_target`); needs the `&std::get<i>(tmp)` / `auto&& = ::tpy::unwrap_ref(tuple_elem_ref(...))` alias arm + the pointer-repr source detection (`src_elem_types[i]` -> `T*`); (b) **`Own` targets** -- the `std::move(std::get<i>)` move-out arm + movable-local promotion; (c) **reused / predeclared targets** (`not all(is_new)`) -- the was-declared assign path; (d) **pointer-repr Optional / pointer-variant union elements** -- the `optional_to_ptr` / `to_ptr_variant` element arms.
+- **[thir] Slot-hoist pointer-repr locals -- v1 landed (OPT_PTR_SLOT + union
+  rvalue/addr kinds); deferred rungs.** The v1 slice routes Optional-ptr locals
+  (None / exact-type F1 rvalue inits, None + rvalue reseats through the
+  pre-declared rebind slot) and ptr-variant union locals (concrete-member or
+  whole-union rvalue -> value-variant `__slot_N` + `to_ptr_variant`;
+  concrete-member lvalue address `v{&(name)}`; rvalue reseat via `.emplace`).
+  Deferred, each a named reject: (a) **hoisted / branch-first decls**
+  (`pending_hoist_decls` preamble + the branch snapshot slot state); (b)
+  **const indirection** (`decl.opt_slot_const` / `decl.union_addr_const` --
+  readonly-rooted sources bind `const T*` / const-pointee variants); (c)
+  **`Own[Opt[T]]` call/name lifts** (`decl.opt_slot_source` -- the
+  `optional_to_ptr({slot} = ...)` is_opt_field forms); (d) **polymorphic
+  subclass slots** (slot retyped to the rvalue's class; rebind case is a
+  sema-error tier); (e) **lvalue-init reassigned optionals + lvalue reseats**
+  (`decl.opt_reseat_source` -- pointer copy / storage-lift / address-of
+  reseat arms); (f) **union reseats without a pre-declared slot** (the AST's
+  inline-slot fallback) and **address reseats** (`decl.union_reseat_source`);
+  (g) **non-record-member ptr-variant unions** (scalar/container members --
+  `_eligible_ptr_union` keeps them out). The union decl/reseat emit arms are
+  corpus-zero-witness until the call track lands union-returning calls and
+  print-of-call args (their host bodies co-block there); unit-pinned in
+  `test_thir_ptr_locals.py` meanwhile.
 
 - **[ergonomics] Allow a `Final[enum]` module constant as a default parameter (and field) value.** The enum-MEMBER default half is DONE (`def f(order: MemoryOrder = MemoryOrder.SEQ_CST)` works; the `tpy.atomic` sentinel was retired). The remaining half is a `Final[EnumType]` module constant used as a default: still rejected because `tpyc/typesys.py:2631` restricts `Final` to "only primitive types and tuple". Relax that restriction to admit `Final[enum]` (an enum member is a compile-time constant with a scoped-enumerator C++ form), then the existing `Final`-name default path (`codegen_cpp/functions.py` `default_to_cpp` `TpyName` arm) already emits it. Separable and lower-value than the member half was. Surfaced writing `tpy.atomic`.
 - **[feature] Mutable (non-readonly) property getter -- unblocks a faithful lazy-cached `.content`.** Every `@property` getter is unconditionally marked `auto_readonly` (`tpyc/parse/parser.py:1792`), so `sema/method_expansion.py` clones it into a const + mutable overload pair and the body must type-check as BOTH -- a getter that mutates/caches into `self` (the requests `Response.content` lazy-drain idiom) fails the const clone ("Cannot call non-readonly method on readonly reference"). No current spelling produces a mutable-only property. Add one: a property getter that mutates self skips the const clone (or an explicit opt-out marker). Semantic cost to weigh in design: a mutable-only property makes `readonly[T].prop` uncallable (the getter demands a mutable receiver) -- the readonly system forbids read-mutation on purpose, so this is a deliberate narrowing, not a free win. Touches parser + `sema/method_expansion` + registration (type-system-adjacent) -> architectural, own `/tpy-add-feature` design. Payoff: `tplib.requests` `Response.content`/`.text`/`.json()` could auto-drain a `stream=True` body (matching real requests) instead of the current declared divergence (a streamed `.content` stays permanently `b""` -- never auto-filled; full-body via `r.raw.read()` / `iter_content`). Generally useful for any lazy-cached property. Surfaced designing requests streaming.
@@ -36,27 +58,32 @@ See `docs/FEATURE_ROADMAP.md` for bigger tasks and `BUGS.md` for known compiler 
   R1a str/bytes bare fields, R1c frame_slot records/containers `.emplace()`/
   `(*name)`); R5b (bound-method await receivers); R5c-param (F1-record coro
   params). Shapes 20.5% -> 21.0%; byte-diff green throughout.
-  **REMAINING cells (each a `res.*` reject today):** str/bytes owned-form params
-  + Own/tuple/union params (`res.param_type` 368 / `sig.param_type`) -- a str
-  param captures OWNED so its read form is STORAGE not the sync view BORROW;
-  non-value yields `res.yield_type` 991 (generators yielding records/str, the
-  borrow-form slot bridge); non-value returns `res.return_type` 809;
-  generic-record method coros `res.generic_record` 804 (template frame folds
-  the record's [T,...]); R6 regions `res.region` 291 (try/except/finally + with
-  in coros -- a MULTI-SEAM cell: the region try/catch replay is skeleton, but
-  the finally-helper bodies + except-handler-body leaves + resume-narrowing
-  re-establishment are new seam sites); R3 loops (`res.for_await`,
-  CFG-decomposed for/range, borrow-form loop vars, `res.pseudo_stmt`); leaf
+  **Wave 3 LANDED (2026-07-14):** ERASED/BORROWED awaits (`res.await_mode` --
+  `await asyncio.sleep(..)` / `await task` whole-operand renders through the
+  suspend-expr seam; the tag is extinct in the async groups), str/bytes
+  owned-form params + pointer-repr union params (`_res_param_ok`), F1-record
+  inline await args (`res.await_param_type` widened to the param families),
+  and the loop-var frame-field shadow mask (for-each targets read bare, the
+  register_frame_field_shadow mirror). R9 simple-peephole generators LANDED
+  earlier (branch `thir-generators`: the sgen leaf seam + the THIRForIterProto
+  foreach-caller route -- see the entry below).
+  **REMAINING cells (each a `res.*` reject today, post-wave-3 counts):**
+  `res.param_type` residue ~110 (Own-non-record / Optional / tuple / protocol
+  params); str/bytes RETURNS (`_async_return_value_cpp` wraps view sources at
+  codegen time via the deep `_is_str_view_source` classifier -- threading that
+  fact into lowering was attempted and reverted after diverging on
+  `async_return_view_param`); borrow-form tuple locals (`res.local_storage`
+  residue; needs the borrow tuple-literal element builder); R6 regions
+  `res.region` + `res.finally` + R3 loops `res.pseudo_stmt` ~76 (async-for /
+  async-with / sync-with in coros -- the MULTI-SEAM wave: the region try/catch
+  replay is skeleton, but the finally-helper bodies + except-handler-body
+  leaves + resume-narrowing re-establishment are new seam sites); leaf
   try/with/match + tuple-unpack + branch-first-decl + nested frame-write
-  (`res.leaf_*` / `res.unpack`); ERASED/BORROWED awaits `res.await_mode`
-  (blocked upstream -- operand is a non-value param or gated create_task; the
-  suspend-expr infra lights up free once those open); non-value INLINE await
-  args `res.await_param_type` (the emplace coercion ladder + two-phase decltype);
-  R7 the optional-borrow-tuple form arm (`std::optional<std::tuple<..,T*>>`,
-  also blocks sync); R8 generic async (`res.generic`, template frames). R9
-  simple-peephole generators LANDED (branch `thir-generators`, 2026-07-14: the
-  sgen leaf seam + the THIRForIterProto foreach-caller route -- see the entry
-  below). The ctor-side `Waker` params/fields (~790) remain signature-rung
+  (`res.leaf_*` / `res.unpack`); non-value yields for resumable generators
+  (`res.yield_type` ~28, the borrow-form slot bridge); generic async / generic
+  record coros (`res.generic` / `res.generic_record`, template frames); R7 the
+  optional-borrow-tuple form arm (`std::optional<std::tuple<..,T*>>`, also
+  blocks sync). The ctor-side `Waker` params/fields remain signature-rung
   work, not this frontier.
 - **[thir] Generator-track frontier -- sgen leaf seam + iter_proto callers
   LANDED (branch `thir-generators`, 2026-07-14); remaining rungs below.**
@@ -72,6 +99,9 @@ See `docs/FEATURE_ROADMAP.md` for bigger tasks and `BUGS.md` for known compiler 
   bare-name-only); protocol-typed / generic iterable sources; gen-valued
   locals (the `decl.slot_type` giant); tuple-unpack-over-gen (the
   `is_tuple_unpack` pre-route gate); comprehension-over-gen.
+- **[thir] Call-cascade deferrals (the 2026-07-14 wave's gate-rejected residue, each a named detail):** free-call container-literal args (the AST hoists a `__tmp_N` even for const ref slots -- needs the ref-param temp-row mirror; the landed cell covers the CTOR list-literal position only); dict/set-literal ctor args (spelled `::tpy::ordered_map<...>({{...}})` renders, not brace-init); consuming-iterable last-use instantiation args (`list(d)` -> `::tpy::construct<...>(::tpy::own_iter_dict(std::move(d)))` -- a per-container own-iter arg-row family, not a gate flip); `method.recv.field_nonf1` receivers (~35 bodies, needs its own drill before costing); partial-defaults arity for marker calls (the landed cell covers zero-args-all-defaults only); Own-lvalue copy into METHOD args (temp_args still not threaded into the method-arg loop).
+- **[thir] Ctor-MIL deferrals (same wave):** `ctor.mil_field.genrec_concrete.name` (~11, blocked ONLY by `_f1_record`'s generic gate -- needs the generic-record-field spelling policy decision); `ctor.base_init` (~8); `callable.lambda` (lambda sources need lambda lowering in the MIL); the body-assign sibling `assign.field_write_shape` (~15) -- same borrow-form tuple-literal element builder as the landed `tuple.tupleliteral` cell; `THIRRecordCopy` + the element classifier are ready for reuse there. Newly visible fallthrough fam: `ctor.mil_field.recursivealiasinstance.name` (~4).
+- **[thir][test-gap] Resumable x set-method composition unwitnessed:** no unit or corpus case exercises a resumable body calling a set method (`.add`/`.remove`/...) -- both constituents have witnesses and the corpus byte-diff guards the composition systemically, but a targeted pin would make the pair explicit.
 - **[thir] Wave-7 generics residue -- LANDED as the residue round (branch thir-wave7-residue) except:** the `@dynamic`-protocol TYPE-ARG spelling family (`Box[Cancellable[T]](coro)` in `_WaitForFuture.__init__` -- a protocol type arg spells via `get_dynamic_base_name` on the resolver vs `to_cpp()`, a new coincidence proof + an own-move ctor-arg row into `_is_record_rvalue_source`'s loop; 1 stdlib body, `ctor.mil_field.genrec_open.call` ~274 tally); the NON-generic MIL source fams the wave-7 drilldown separated (`ctor.mil_field.optional.name` 652, `.nominal.call` 792, `.record.call` 277 -- sibling source rungs, not generics); generic calls in NESTED (non-flush) positions (`print(pick(1, 2))` -- the ref-slot literal temps have no flush point; bounded by the arg-temp flush design). The G1b/G3/G5b rungs themselves (explicit `f<T>(args)` spelling incl. the foundation's `template_args_cpp` + `render_type_stored` now CONSUMED, module/static generic targs incl. the dependent `template ` keyword, the `heap_take` own-param move + Char type args) are on the residue branch.
 - **[thir][test-gap] Backfill exec-witness corpus cases for remaining zero-witness param-grid faces.** The byte-diff proves routed emit is identical but says nothing about a face no corpus case reaches. Add exec+cpy cases for: value-repr `Optional[scalar]`/`Optional[str]` TUPLE-RETURN elements (`ret.tuple_opt_elem` / `ret.tuple_opt_str_elem` -- a function returning `tuple[int | None, str | None]`, observed by unpacking + printing both arms incl. the None case); the `THIROptViewArg` bare-name `Optional[str]` -> `Optional[str]`-param shim (a bare un-narrowed `Optional[str]` name forwarded into an `Optional[str]` param slot); and the in-branch value-union-None-init / value-tuple-literal first-decl arms (a value `A | B`/tuple local FIRST-declared inside an if/elif/else body -- add a branch-first guard test so a non-hoisted branch-scoped decl of one can't silently leak past the branch). Surfaced by /tpy-review (test-coverage) of the thir-param-grid branch.
 - **[thir] Compositional-gate fan-out to container MUTATION/setitem/WRITE sites.** The param / value-leaf-read / for-each sides of container admission are now compositional (`_container_param_renders`, `_for_each_elem_binding_ok`: "type renders identically AND sub-exprs route"). The WRITE side is still enumerated on `_container_scalar_read` (setitem / `__setitem__` on name+field receivers, aug-assign) -- extend the compositional predicate to the mutation sites once the element STORAGE form fact is available, so `c[k] = v` over any fully-concrete element family collapses to one predicate like the read side. Surfaced by the thir-param-grid compositional-gate work.

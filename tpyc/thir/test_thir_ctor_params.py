@@ -53,16 +53,16 @@ class TestOptvalParams:
         assert ctor is not None
         assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
-    def test_optval_mil_use_stays_ast(self):
+    def test_optval_mil_use_routes(self):
         # `self.x = p` into a value-repr Optional field: the AST hoists
-        # `x(p)`, a MIL arm this cell does not open -> whole ctor AST.
+        # `x(p)`, mirrored by the mil.optional_value_copy arm (same-typed
+        # optional param, bare whole-optional copy).
         src = (_I32
                + "class C:\n    x: Int32 | None\n    y: Int32\n"
                + "    def __init__(self, p: Int32 | None) -> None:\n"
                + "        self.x = p\n        self.y = 1\n")
-        ctor, reason = _lower_ctor_reason(src, "C")
-        assert ctor is None
-        assert reason.startswith("ctor.mil_field")
+        ctor, _ = _lower_ctor_reason(src, "C")
+        assert ctor is not None
         assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_optval_narrowed_read_routes(self):

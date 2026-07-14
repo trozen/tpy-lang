@@ -4,8 +4,9 @@ re-emitted finally body at return/break/continue sites, terminating
 finally bodies -- [[maybe_unused]] capture, suppressed exits), the throw
 tier (C++ catch arms, bare except, as-bindings, else labels off the
 module-cumulative counter, except+finally wrapping), raise statements
-(ctor/no-arg/bare forms), and the gate rejections (the return tier,
-expression raise, non-value hoists, branch/loop-scoped fresh hoists)."""
+(ctor/no-arg/bare forms), and the gate rejections (expression raise,
+non-value hoists, branch/loop-scoped fresh hoists). The return tier's
+shape pins live in test_thir_error_return.py."""
 
 from __future__ import annotations
 
@@ -553,9 +554,11 @@ class TestTryGateRejections:
         thir = _lower_ctx(src)
         return _fn(thir, name) is None
 
-    def test_return_tier_rejected(self):
+    def test_return_tier_routes(self):
         # A ReturnException handler classifies the try as the return tier
-        # (goto dispatch around the @error_return call) -- parked.
+        # (goto dispatch around the @error_return call) -- routed since the
+        # error_return opening; the full shape pins live in
+        # test_thir_error_return.py.
         src = (
             "from tpy import error_return, ReturnException\n"
             "class NotFound(Exception, ReturnException):\n"
@@ -572,7 +575,12 @@ class TestTryGateRejections:
             "        return -1\n"
             "print(f(1))\n"
         )
-        assert self._rejected(src, "f")
+        thir = _lower_ctx(src)
+        f = _fn(thir, "f")
+        assert f is not None
+        t = f.body[0]
+        assert isinstance(t, THIRTry) and t.tier == "return"
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_expr_raise_rejected(self):
         # `raise e` -> `e.__raise__()` + deref chain: a deferred row.

@@ -19,7 +19,7 @@ from __future__ import annotations
 
 from enum import Enum, auto
 
-from ..parse.nodes import TpyExpr, TpyFieldAccess, TpySubscript
+from ..parse.nodes import TpyExpr, TpyFieldAccess, TpyNoneLiteral, TpySubscript
 from ..typesys import (
     OptionalType, OwnType, TpyType, TupleType, UnionType,
     unwrap_qualifiers, unwrap_readonly,
@@ -51,6 +51,14 @@ class LocalBinding(Enum):
                              two-slot `__slot_N` machinery (a direct init slot +
                              an `std::optional<T>` rebind slot). The rvalue
                              counterpart of POINTER.
+      * `OPT_PTR_SLOT`    -- `T*` pointer-local of a pointer-repr `Optional[T]`
+                             whose init is a None literal (`T* x = nullptr;`) or
+                             an rvalue (`T __slot_N = ...; T* x = &__slot_N;`),
+                             with the `std::optional<T>` rebind-slot pre-decl
+                             when the name is rvalue-reassigned. The Optional
+                             sibling of REBIND_SLOT; used by THIR lowering only
+                             (the AST path treats any non-REF_ALIAS verdict as a
+                             pointer-local and picks its arms inline).
       * `STORAGE_TUPLE_ALIAS` -- `auto&& name = <lvalue storage tuple>` aliasing a
                              pointer-repr tuple's storage (F3); single-assignment.
                              Used by THIR lowering only (`is_storage_tuple_alias_decl`);
@@ -69,6 +77,7 @@ class LocalBinding(Enum):
     OPTIONAL_TO_PTR = auto()
     POINTER = auto()
     REBIND_SLOT = auto()
+    OPT_PTR_SLOT = auto()
     STORAGE_TUPLE_ALIAS = auto()
     PTR_VARIANT = auto()
     OTHER = auto()
@@ -191,12 +200,18 @@ def classify_local_binding(
         return LocalBinding.OTHER
     is_reassigned = name in reassigned
     if isinstance(target_type, OptionalType) and target_type.uses_pointer_repr():
-        # A reassigned optional pointer-local needs the rebind-slot (`__slot_N`)
-        # machinery -- deferred past F2's lvalue-reseat slice.
+        # None-literal and rvalue inits take the slot-hoist pointer-local
+        # machinery (reassigned or not: the rebind-slot pre-decl is keyed on
+        # rvalue_reassigned at the consumer). THIR lowering sub-gates the
+        # admitted init/reseat shapes; the AST path treats the verdict like
+        # any non-REF_ALIAS binding (its own arms decide the render).
+        if isinstance(init, TpyNoneLiteral) or is_rvalue_source(analyzer, init):
+            return LocalBinding.OPT_PTR_SLOT
+        # A reassigned optional off an LVALUE init still needs the
+        # lvalue-lift + mixed-reseat machinery -- deferred.
         if is_reassigned:
             return LocalBinding.OTHER
-        if (reads_storage_form_optional(analyzer, init)
-                and not is_rvalue_source(analyzer, init)):
+        if reads_storage_form_optional(analyzer, init):
             return LocalBinding.OPTIONAL_TO_PTR
         return LocalBinding.OTHER
     if is_plain_nonvalue(target_type):

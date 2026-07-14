@@ -426,11 +426,56 @@ class TestAwaitModes:
         assert not any(k.startswith("resumable:") for k in fallback)
 
 
+    def test_erased_sleep_operand_routes(self):
+        # ERASED await (`await asyncio.sleep(..)`): the whole operand renders
+        # through the leaf; the skeleton keeps its emplace(std::move(..))
+        # wrap. The Own[Task[None]] result is admitted only at SUSPEND use
+        # (moved_ret_ok) -- the same call in a value slot still rejects.
+        src = ("import asyncio\n\n"
+               "async def snooze() -> None:\n"
+               "    await asyncio.sleep(0.01)\n\n"
+               "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.suspend_operand", 0) >= 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert (".emplace(std::move(::tpystd::asyncio::sleep(0.01)));"
+                in cpp)
+
+    def test_await_arg_families_route(self):
+        # Await-arg slots share the DIRECT-param families (str/bytes/
+        # F1-record) -- the emplace ctor param is the sync borrow shape, so
+        # the args take the same `_lower_call_arg` rows as a sync call.
+        src = (_PRE
+               + "class R:\n"
+               + "    v: Int32\n"
+               + "    def __init__(self, v: Int32) -> None:\n        self.v = v\n\n"
+               + "async def use(r: R, s: str) -> Int32:\n"
+               + "    return r.v + Int32(len(s))\n\n"
+               + "async def go(r: R) -> Int32:\n"
+               + "    return await use(r, \"ab\")\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.await_args", 0) >= 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+
+    def test_erased_operand_reject_composes(self):
+        # An ERASED operand whose expression lowering rejects (walrus arg --
+        # a landmark construct) falls back with the positional tag
+        # (res.await_operand_shape), never routes a partial body.
+        src = ("import asyncio\n"
+               + _PRE
+               + "async def snooze() -> None:\n"
+               + "    await asyncio.sleep((d := 0.01))\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        assert _res_fallback(src).get("res.await_operand_shape") == 1
+
+
 class TestSlicedOutShapes:
-    def test_str_param_still_defers(self):
-        # A str param captures OWNED (std::string field), so its read form
-        # differs from the sync view param's BORROW -- still deferred until
-        # the coro-owned-str-param form rung.
+    def test_str_param_routes_owned_reads(self):
+        # A str param captures OWNED (std::string frame field, ctor-copied
+        # from the sync view param); the leaf reads render through the same
+        # form-agnostic helpers as owned str locals -- byte-identical.
         src = (_PRE
                + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
                + "async def f(s: str, n: Int32) -> Int32:\n"
@@ -439,11 +484,37 @@ class TestSlicedOutShapes:
                + "        total = await step(total)\n"
                + "    return total + Int32(len(s))\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        assert _res_fallback(src).get("res.param_type") == 1
+        witnesses, fallback = _assert_identical(src)
+        assert not any(k.startswith("resumable:") for k in fallback)
 
-    def test_nonvalue_param_rejects(self):
+    def test_own_record_param_routes(self):
+        # An Own[R] param admits through the F1-record arm (the frame owns
+        # the payload; leaf reads spell `r.v` either way) -- byte-identical,
+        # so it shares the record-param slice rather than needing a rung.
         src = (_PRE
-               + "async def f(s: str) -> Int32:\n    return len(s)\n\n"
+               + "from tpy import Own\n\n"
+               + "class R:\n"
+               + "    v: Int32\n"
+               + "    def __init__(self, v: Int32) -> None:\n        self.v = v\n\n"
+               + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
+               + "async def f(r: Own[R]) -> Int32:\n"
+               + "    n = await step(r.v)\n"
+               + "    return n\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        _witnesses, fallback = _assert_identical(src)
+        assert not any(k.startswith("resumable:") for k in fallback)
+
+    def test_protocol_param_rejects(self):
+        # Static-protocol params make the frame a template (two-phase
+        # decltype capture) -- still their own rung.
+        src = (_PRE
+               + "from typing import Iterable\n\n"
+               + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
+               + "async def f(it: Iterable[Int32]) -> Int32:\n"
+               + "    total: Int32 = 0\n"
+               + "    for x in it:\n"
+               + "        total = total + x\n"
+               + "    return await step(total)\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
         assert _res_fallback(src).get("res.param_type") == 1
 
@@ -595,3 +666,77 @@ class TestSlicedOutShapes:
     # (Non-simple generators route via this seam -- see TestGeneratorShape.
     # Simple peephole generators route via their own leaf seam, pinned in
     # test_thir_simple_gen.py.)
+
+
+class TestFrameFieldShadowing:
+    """A for-each loop var inside a resumable body binds a C++ local that
+    shadows its same-named frame field: reads inside the body render BARE
+    (the AST registers register_frame_field_shadow and suppresses the
+    `(*name)` peel; THIR masks the name out of lc.frame_slots for the
+    body). Regression pin for the merged resumable x for-each composition
+    (async/coro_for_loop_ref_iter divergence)."""
+
+    SRC = ("import asyncio\nfrom tpy import Int32\n\n"
+           "class Item:\n    n: Int32\n"
+           "    def __init__(self, n: Int32) -> None:\n        self.n = n\n\n"
+           "class Container:\n    items: list[Item]\n"
+           "    def __init__(self) -> None:\n        self.items = []\n"
+           "    async def total(self) -> Int32:\n"
+           "        s: Int32 = 0\n"
+           "        await asyncio.sleep(0)\n"
+           "        for it in self.items:\n"
+           "            s += it.n\n"
+           "        return s\n")
+
+    def test_loop_var_shadow_reads_bare(self):
+        witnesses, fallback = _assert_identical(self.SRC)
+        assert "res.body" in witnesses  # the coro routed
+        _, _hpp, cpp = _gen(self.SRC, thir=True)
+        assert "it.n" in cpp
+        assert "(*it).n" not in cpp
+
+
+class TestFrameStaleViewDecl:
+    """A generator frame local annotated owned but RESOLVED view (`label:
+    str = sv` where the frame field is string_view) peels the stale
+    view->owned coerce at the leaf decl like the sync arm -- materializing
+    would bind the view field to a temporary dying at end of statement.
+    Regression pin for the merged str-param widening x stale-view
+    composition (view_lifetime/annotated_local_view_source divergence)."""
+
+    SRC = ("from typing import Iterator\nfrom tpy import StrView\n\n"
+           "def gen_frame(sv: StrView) -> Iterator[int]:\n"
+           "    label: str = sv\n"
+           "    print(label)\n"
+           "    yield len(label)\n")
+
+    def test_stale_view_frame_decl_renders_bare(self):
+        witnesses, fallback = _assert_identical(self.SRC)
+        assert "res.body" in witnesses  # the generator routed resumable
+        _, _hpp, cpp = _gen(self.SRC, thir=True)
+        assert "label = sv;" in cpp
+        assert "std::string(sv)" not in cpp
+
+
+class TestFrameFieldShadowingTupleUnpack:
+    """The shadow mask also covers tuple-unpack for-each targets
+    (shadow_names includes the unpack targets), but no currently-admitted
+    resumable shape reaches that branch: a tuple-elem iterable rejects at
+    the leaf for-each gate first. Pin the clean fallback (named tag,
+    byte-identical); when a widening admits the shape, flip this to a
+    bare-reads assertion like TestFrameFieldShadowing's."""
+
+    SRC = ("import asyncio\nfrom tpy import Int32\n\n"
+           "class Container:\n    pairs: list[tuple[Int32, Int32]]\n"
+           "    def __init__(self) -> None:\n        self.pairs = []\n"
+           "    async def total(self) -> Int32:\n"
+           "        s: Int32 = 0\n"
+           "        await asyncio.sleep(0)\n"
+           "        for k, v in self.pairs:\n"
+           "            s += k + v\n"
+           "        return s\n")
+
+    def test_tuple_unpack_leaf_falls_back_cleanly(self):
+        witnesses, fallback = _assert_identical(self.SRC)
+        assert "res.body" not in witnesses
+        assert fallback.get("resumable:stmt.for_each:tuple.iter_shape") == 1

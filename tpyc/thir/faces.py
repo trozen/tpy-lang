@@ -55,6 +55,26 @@ THIR_FACES: frozenset[str] = frozenset({
     # generic tail render, the optional's converting ctor absorbing the bare
     # member -- `f(5)`, `f("hi")`, `f(Color.Red)`.
     "call.optval_member",
+    # @error_return faces (emit unless noted): the function-body renders
+    # (bare-return `{}`, the void success tail, the return-tier raise), the
+    # caller renders (the statement bind/discard blocks, the expression
+    # unwrap in value and pointer form), and the return-tier try dispatch.
+    "er.bare_return",               # bare `return` -> `return {};`
+    "er.void_tail",                 # trailing `return {};` success
+    "er.raise",                     # `return make_unexpected(E{})`
+    "er.raise_args",                # `return make_unexpected(E(args))`
+    "er.reraise",                   # bare `raise` in a return-tier handler
+    "er.bind",                      # var-decl/assign `__try_tmp_N` block
+    "er.discard",                   # expr-stmt `__try_tmp_N` block
+    "er.unwrap",                    # `({ ... unwrap_ref_move(*__er_N); })`
+    # No corpus witness (every reaching shape needs a borrow-returning
+    # fallible callee no committed case has); pinned byte-identically by
+    # test_thir_error_return.py's pointer-form unit.
+    "er.unwrap_ptr",                # `(*({ ... &unwrap_ref(*__er_N); }))`
+    "er.try_return",                # the goto-dispatch try emit
+    "er.try_binding",               # `std::optional<E> __err_opt_N;` capture
+    "er.return_passthrough",        # `return <raw expected call>;` (lowering)
+    "try.return_tier",              # a return-tier try lowered (admission)
     # Pointer-variant union-slot lifts (lowering).
     "unionlift.none",               # `pv{std::monostate{}}`
     "unionlift.const_wrap",         # `ptr_variant_to_const(...)`
@@ -74,6 +94,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "call.template_free",           # positional-only @cpp_template free callee
     "call.instantiation_template",  # generic-type instantiation `list(it)` ->
                                     # sema-substituted ctor template expansion
+    "call.instantiation_empty",     # empty `set()`/`list()`/`dict()` -> the
+                                    # spelled default ctor `T()`
     "call.generic_free",            # plain TPy generic callee -> explicit
                                     # `f<T1, T2>(args)` template-arg spelling
     "call.generic_qualified",       # module-qualified generic call ->
@@ -118,10 +140,16 @@ THIR_FACES: frozenset[str] = frozenset({
     # cross-module, @native, and concrete-arg generic records all qualify), so
     # native / generic field receivers ride the same face as a plain one.
     "method.recv.record_field",
+    "method.recv.free_call",        # `make(3).get()` -- a plain F1-record
+                                    # free-call result receiver, `.` access
     "ctor.call",                    # THIRCtorCall bare ctor expansion
     "ctor.cross_module",            # imported-record ctor: the qualified
                                     # `::ns::Name(args)` spelling
     "ctor.str_arg",                 # str-slice arg into a str-family ctor slot
+    "ctor.own_arg",                 # Own-slot ctor arg via the shared cascade
+                                    # rows (last-use move / copy+move temp)
+    "ctor.container_literal_arg",   # list literal into a ctor's list slot:
+                                    # the bare brace-init render in place
     "ctor.omit_defaults",           # ctor call omitting trailing default args
                                     # (defaults ride the C++ ctor signature)
     # Ctor MIL view-family field inits (lowering; the per-family renders --
@@ -197,8 +225,14 @@ THIR_FACES: frozenset[str] = frozenset({
     "mil.value_union",              # `u(u)` / `u(5)` -- value-union bare render
     "mil.tuple_storage",            # `t(::tpy::tuple_to_storage<...>(t))` --
                                     # a borrow pointer-repr tuple param
+    "mil.ptr_tuple_literal",        # `t(::tpy::tuple_to_storage<S>(S{...}))`
+                                    # -- a spelled pointer-repr tuple literal
     "mil.value_tuple_name",         # `t(t)` -- value-tuple param bare copy
     "mil.value_tuple_literal",      # `t(std::tuple<...>{...})` spelled literal
+    "mil.optional_value_copy",      # `f(value)` -- value-repr Optional field
+                                    # bare-copied from a same-typed opt param
+    "mil.callable_copy",            # `on_event(cb)` -- std::function field
+                                    # bare-copied from a same-typed param
     # An own-field init the AST demotes to the ctor body (bare non-param name /
     # nested-def name / body-local ref) -- THIR demotes identically instead of
     # rejecting the whole ctor (lowering verdict; the body machinery renders it).
@@ -347,6 +381,26 @@ THIR_FACES: frozenset[str] = frozenset({
     "ptr.dyn_proto_pointee",
     # `x = None` at a Ptr[T] value binding (lowering; the `nullptr` render).
     "decl.ptr_none",
+    # Slot-hoist pointer-repr Optional local, None init: `T* x = nullptr;`
+    # plus the `std::optional<T>` rebind-slot pre-decl when rvalue-reassigned.
+    "decl.opt_slot_none",
+    # Slot-hoist Optional local, F1-record rvalue init: `T __slot_N = ...;
+    # T* x = &__slot_N;` (+ the rebind-slot pre-decl).
+    "decl.opt_slot_rvalue",
+    # Reseat of a slot-hoist Optional local to None: `x = nullptr;`.
+    "reseat.opt_none",
+    # Rvalue reseat through the pre-declared rebind slot:
+    # `x = &*(__slot_N = <rvalue>);` (THIRAssign's rebind-slot arm).
+    "reseat.opt_rvalue",
+    # Ptr-variant union local from a concrete-member rvalue: value-variant
+    # `__slot_N` + `to_ptr_variant(__slot_N)` (+ the rebind-slot pre-decl).
+    "decl.union_slot_rvalue",
+    # Ptr-variant union local from a concrete-member lvalue name:
+    # `variant<A*, B*> v{&(name)};`.
+    "decl.union_addr",
+    # Union rvalue reseat through the pre-declared rebind slot:
+    # `__slot_N.emplace(...); v = ::tpy::to_ptr_variant(*__slot_N);`.
+    "reseat.union_rvalue",
     # A read of a read-only-seeded same-module value global (lowering; the
     # bare-name render shared with locals, so the seed is what distinguishes).
     "name.global_seeded",
@@ -573,6 +627,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "res.yield_value",              # generator yield-value render
     "res.frame_slot_write",         # frame_slot local `.emplace()` write (R1c)
     "res.suspend_expr",             # ERASED/BORROWED operand + bound receiver (R5)
+    "res.suspend_operand",          # ERASED/BORROWED whole-operand render
     # Simple-generator (lambda peephole) leaf routing -- the gen_generators
     # seam. One face per leaf-render kind the skeleton delegates, plus the
     # routed-body tally.

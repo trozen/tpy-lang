@@ -327,12 +327,13 @@ class TestRecordCallArgs:
             + "def use(a: A) -> Int32:\n    return take_u(a)\n")
         assert _fn(thir, "use") is not None
 
-    def test_self_as_arg_stays_ast(self):
-        # `take_rec(self)` renders `take_rec((*this))` -- rejected.
-        thir = _lower_ctx(_src(
-            "", extra_a="    def through(self) -> Int32:\n"
-                        "        return take_rec(self)\n"))
-        assert _fn(thir, "through") is None
+    def test_self_as_arg_routes(self):
+        # `take_rec(self)` renders `take_rec((*this))` via the record-name
+        # arg row, byte-identically.
+        src = _src("", extra_a="    def through(self) -> Int32:\n"
+                               "        return take_rec(self)\n")
+        assert _fn(_lower_ctx(src), "through") is not None
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
 
 class TestRecordMethodCalls:
@@ -1841,4 +1842,190 @@ class TestCtorValueOptNoneArg:
         src = self.SRC.replace("P(None)", "P(1)")
         thir = _lower_ctx(src)
         assert _fn(thir, "make") is None
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+
+class TestOwnSlotCtorArgs:
+    # The Own-slot cascade rows mirrored onto the record-ctor arg loop
+    # (`_record_ctor_arg_supported`): a movable name at last use moves
+    # temp-free into the `Own[T]` __init__ slot; a still-live lvalue hoists
+    # the copy+move `__tmp_N` at the flushable decl; rvalues ride the
+    # pre-existing shared row.
+    SRC = (
+        "from tpy import Int32, Own\n"
+        "class A:\n"
+        "    x: Int32\n"
+        "    def __init__(self, x: Int32):\n        self.x = x\n"
+        "class W:\n"
+        "    a: A\n"
+        "    def __init__(self, a: Own[A]):\n        self.a = a\n"
+        "    def get(self) -> Int32:\n        return self.a.x\n"
+        "def move_local() -> Int32:\n"
+        "    t = A(9)\n    w = W(t)\n    return w.get()\n"
+        "def copy_arm(a: A) -> Int32:\n"
+        "    w = W(a)\n    return w.get() + a.x\n"
+        "def own_param_move(o: Own[A]) -> Int32:\n"
+        "    w = W(o)\n    return w.get()\n"
+    )
+
+    def test_byte_identical(self):
+        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
+
+    def test_routes_with_witness(self):
+        thir, witnesses = _lower_ctx_witnessed(self.SRC)
+        for name in ("move_local", "copy_arm", "own_param_move"):
+            assert _fn(thir, name) is not None, name
+        assert witnesses.get("ctor.own_arg", 0) >= 3
+
+    def test_emitted_shapes(self):
+        out = _cpp(self.SRC, thir=True)
+        # Body-movable local at last use: the temp-free move.
+        assert "W w = W(std::move(t));" in out
+        # Still-live param: the copy+move temp at the decl flush point.
+        assert "auto __tmp_1 = a;\n    W w = W(std::move(__tmp_1));" in out
+        # Own param at last use: temp-free move.
+        assert "W w = W(std::move(o));" in out
+
+    def test_nested_ctor_own_arg_stays_ast(self):
+        # W(a) as a NESTED ctor arg (`take_w(W(a))`): the NESTED_ARG branch
+        # keeps its narrower row set -- the own-lvalue copy needs a flush
+        # point the nested position does not have.
+        src = (self.SRC
+               + "def take_w(w: Own[W]) -> Int32:\n    return w.get()\n"
+               + "def nested(a: A) -> Int32:\n    return take_w(W(a))\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "nested") is None
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+
+class TestQualcallRecordStorageRet:
+    # An F1-record RVALUE returned by a marker (static / module-qualified)
+    # call, consumed at the owned-record decl (`A a = F.make(2);`): the
+    # record_ret widening admits BORROW_BIND/STORAGE uses for rvalue
+    # sources, mirroring the free-call value-position set.
+    SRC = (
+        "from tpy import Int32, Own\n"
+        "class A:\n"
+        "    x: Int32\n"
+        "    def __init__(self, x: Int32):\n        self.x = x\n"
+        "class F:\n"
+        "    @staticmethod\n"
+        "    def make(x: Int32) -> Own[A]:\n        return A(x)\n"
+        "def use() -> Int32:\n"
+        "    a = F.make(2)\n    return a.x\n"
+    )
+
+    def test_byte_identical(self):
+        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
+
+    def test_routes(self):
+        thir = _lower_ctx(self.SRC)
+        assert _fn(thir, "use") is not None
+        out = _cpp(self.SRC, thir=True)
+        assert "A a = F::make(2);" in out
+
+
+class TestCtorListLiteralArg:
+    # A list literal into a ctor's list slot renders the bare brace-init in
+    # place (`Numbers({1, 2, 3});`) -- probe-verified against the AST for
+    # scalar/str/record elements. Dict literals take a spelled
+    # `::tpy::ordered_map<...>({{...}})` arg render and stay AST; free-call
+    # literal args hoist a `__tmp_N` on the AST path and stay AST.
+    SRC = (
+        "from tpy import Int32\n"
+        "class Numbers:\n"
+        "    xs: list[Int32]\n"
+        "    def __init__(self, xs: list[Int32]):\n        self.xs = xs\n"
+        "def use() -> Int32:\n"
+        "    n = Numbers([1, 2, 3])\n    return len(n.xs)\n"
+    )
+
+    def test_byte_identical_and_routes(self):
+        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
+        thir, witnesses = _lower_ctx_witnessed(self.SRC)
+        assert _fn(thir, "use") is not None
+        assert witnesses.get("ctor.container_literal_arg", 0) >= 1
+        assert "Numbers n = Numbers({1, 2, 3});" in _cpp(self.SRC, thir=True)
+
+    def test_dict_literal_ctor_arg_stays_ast(self):
+        src = (
+            "from tpy import Int32\n"
+            "class Table:\n"
+            "    m: dict[str, Int32]\n"
+            "    def __init__(self, m: dict[str, Int32]):\n        self.m = m\n"
+            "def use() -> Int32:\n"
+            "    t = Table({\"a\": 1})\n    return len(t.m)\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "use") is None
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+    def test_free_call_list_literal_arg_stays_ast(self):
+        src = (
+            "from tpy import Int32\n"
+            "def total(xs: list[Int32]) -> Int32:\n"
+            "    t = 0\n"
+            "    for x in xs:\n        t += x\n"
+            "    return t\n"
+            "def use() -> Int32:\n    return total([1, 2])\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "use") is None
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+
+class TestSelfRecordArg:
+    # `self` as a free-call record arg renders the receiver deref
+    # `on_init((*this))` -- the `_record_pass_through_arg` self arm + the
+    # `_lower_call_arg` tail retag (mirrors the F2 pointer-local deref).
+    SRC = (
+        "from tpy import Int32\n"
+        "class M:\n"
+        "    n: Int32\n"
+        "    def __init__(self, n: Int32):\n        self.n = n\n"
+        "    def fire(self):\n        on_init(self)\n"
+        "    def calc(self) -> Int32:\n        return read_of(self)\n"
+        "def on_init(m: M):\n    m.n += 1\n"
+        "def read_of(m: M) -> Int32:\n    return m.n\n"
+    )
+
+    def test_byte_identical_and_routes(self):
+        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
+        thir = _lower_ctx(self.SRC)
+        assert _fn(thir, "fire") is not None
+        assert _fn(thir, "calc") is not None
+        out = _cpp(self.SRC, thir=True)
+        assert "on_init((*this));" in out
+        assert "return read_of((*this));" in out
+
+
+class TestQualcallOmittedDefaults:
+    # A zero-arg marker call whose params all carry defaults omits them --
+    # the defaults ride the C++ signature (`F::make()`), the free-call
+    # `_call_arity_ok` rule mirrored onto the marker gate.
+    SRC = (
+        "from tpy import Int32, Own\n"
+        "class A:\n"
+        "    x: Int32\n"
+        "    def __init__(self, x: Int32):\n        self.x = x\n"
+        "class F:\n"
+        "    @staticmethod\n"
+        "    def make(x: Int32 = 5) -> Own[A]:\n        return A(x)\n"
+        "def use() -> Int32:\n"
+        "    a = F.make()\n    return a.x\n"
+    )
+
+    def test_byte_identical_and_routes(self):
+        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
+        thir = _lower_ctx(self.SRC)
+        assert _fn(thir, "use") is not None
+        assert "A a = F::make();" in _cpp(self.SRC, thir=True)
+
+    def test_partial_defaults_stays_ast(self):
+        # Partial omission (one of two defaulted params) still rejects.
+        src = self.SRC.replace(
+            "def make(x: Int32 = 5) -> Own[A]:",
+            "def make(x: Int32 = 5, y: Int32 = 2) -> Own[A]:"
+        ).replace("return A(x)", "return A(x + y)").replace(
+            "F.make()", "F.make(1)")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "use") is None
         assert _cpp(src, thir=True) == _cpp(src, thir=False)

@@ -550,13 +550,14 @@ class TestConstructor:
         assert self._hpp(src, thir=True) == self._hpp(src, thir=False)
 
     def test_non_scalar_field_is_ineligible(self):
-        # A value-repr Optional scalar field is outside the MIL slice
-        # (containers/str/bytes route via their family arms -- see
-        # TestConstructorContainerFields / TestCtorViewFamilyFields).
+        # A Span field is outside the MIL slice (a Span aliasing a MIL source
+        # is a lifetime shape the slice does not open -- `_mil_container_field`
+        # keeps it out; value-repr Optional scalars route via their own arm,
+        # see TestCtorMilSmallFamilies).
         ctor = _lower_ctor(
-            _PRELUDE
-            + "class S:\n    x: Int32 | None\n"
-            + "    def __init__(self, x: Int32 | None):\n        self.x = x\n",
+            "from tpy import Int32, Span\n"
+            + "class S:\n    xs: Span[Int32]\n"
+            + "    def __init__(self, xs: Span[Int32]):\n        self.xs = xs\n",
             "S")
         assert ctor is None
 
@@ -1261,6 +1262,117 @@ class TestCtorMilSmallFamilies:
             "H")
         assert ctor is not None
         assert _ctor_tail(ctor) == " : x(std::nullopt) {}\n"
+
+    def test_value_optional_field_param_copy_routes(self):
+        # A value-repr Optional field <- same-typed optional param: the bare
+        # whole-optional copy (`value(value)`), no conversion helper.
+        ctor = _lower_ctor(
+            _PRELUDE
+            + "class H:\n    value: Int32 | None\n"
+            + "    def __init__(self, value: Int32 | None):\n"
+            + "        self.value = value\n",
+            "H")
+        assert ctor is not None
+        assert _ctor_tail(ctor) == " : value(value) {}\n"
+
+    def test_value_optional_bigint_field_param_copy_stays_bare(self):
+        # An expensive-copy (BigInt) inner still copies BARE in the MIL: the
+        # AST's move-at-last-use machinery keys on the Own-param set there
+        # (movable_locals is unpopulated in the MIL scope), so `std::move`
+        # must NOT appear.
+        ctor = _lower_ctor(
+            "class H:\n    v: int | None\n"
+            + "    def __init__(self, v: int | None):\n        self.v = v\n",
+            "H")
+        assert ctor is not None
+        assert _ctor_tail(ctor) == " : v(v) {}\n"
+
+    def test_value_optional_str_field_stays_ast(self):
+        # Optional[str]: the param slot is optional<string_view> against the
+        # field's optional<string> (the arg-split shim) -- not mirrored, the
+        # ctor stays on the AST path.
+        ctor = _lower_ctor(
+            "class H:\n    s: str | None\n"
+            + "    def __init__(self, s: str | None):\n        self.s = s\n",
+            "H")
+        assert ctor is None
+
+    def test_value_optional_field_inner_param_stays_ast(self):
+        # A bare `Int32` param into an `Int32 | None` field takes optional's
+        # converting ctor -- outside the exact same-type pin, stays AST.
+        ctor = _lower_ctor(
+            _PRELUDE
+            + "class H:\n    value: Int32 | None\n"
+            + "    def __init__(self, value: Int32):\n        self.value = value\n",
+            "H")
+        assert ctor is None
+
+    def test_callable_field_param_copy_routes(self):
+        # A std::function field <- same-typed callable param: bare copy.
+        ctor = _lower_ctor(
+            "from typing import Callable\nfrom tpy import Int32\n"
+            + "class H:\n    on_event: Callable[[Int32], None]\n"
+            + "    def __init__(self, cb: Callable[[Int32], None]) -> None:\n"
+            + "        self.on_event = cb\n",
+            "H")
+        assert ctor is not None
+        assert _ctor_tail(ctor) == " : on_event(cb) {}\n"
+
+    def test_callable_field_lambda_source_stays_ast(self):
+        # A lambda RHS needs lambda lowering in MIL position -- stays AST.
+        ctor = _lower_ctor(
+            "from typing import Callable\nfrom tpy import Int32\n"
+            + "class H:\n    on_event: Callable[[Int32], None]\n"
+            + "    def __init__(self) -> None:\n"
+            + "        self.on_event = lambda x: None\n",
+            "H")
+        assert ctor is None
+
+    _BOX = (
+        _PRELUDE
+        + "class Box:\n    val: Int32\n"
+        + "    def __init__(self, v: Int32) -> None:\n        self.val = v\n")
+
+    def test_ptr_tuple_literal_mixed_elems_route(self):
+        # A pointer-repr tuple field from a spelled literal: bare record
+        # param into the Optional slot (converting ctor), bare record param
+        # into the record slot -- the storage brace-init + tuple_to_storage.
+        ctor = _lower_ctor(
+            self._BOX
+            + "class H:\n    t: tuple[Box | None, Box]\n"
+            + "    def __init__(self, a: Box, b: Box) -> None:\n"
+            + "        self.t = (a, b)\n",
+            "H")
+        assert ctor is not None
+        assert _ctor_tail(ctor) == (
+            " : t(::tpy::tuple_to_storage<std::tuple<std::optional<Box>, "
+            "Box>>(std::tuple<std::optional<Box>, Box>{a, b})) {}\n")
+
+    def test_ptr_tuple_literal_copy_elem_routes(self):
+        # An explicit copy(p) element renders the copy-ctor call `Box(p)`.
+        ctor = _lower_ctor(
+            "from tpy import Int32, copy\n"
+            + "class Box:\n    val: Int32\n"
+            + "    def __init__(self, v: Int32) -> None:\n        self.val = v\n"
+            + "class H:\n    t: tuple[Box, Int32]\n"
+            + "    def __init__(self, p: Box, n: Int32) -> None:\n"
+            + "        self.t = (copy(p), n)\n",
+            "H")
+        assert ctor is not None
+        assert _ctor_tail(ctor) == (
+            " : t(::tpy::tuple_to_storage<std::tuple<Box, int32_t>>("
+            "std::tuple<Box, int32_t>{Box(p), n})) {}\n")
+
+    def test_ptr_tuple_literal_optional_param_elem_stays_ast(self):
+        # A pointer-repr optional PARAM (`Box*` binding) into the Optional
+        # slot has no implicit conversion -- outside the cell, stays AST.
+        ctor = _lower_ctor(
+            self._BOX
+            + "class H:\n    t: tuple[Box | None, Box]\n"
+            + "    def __init__(self, a: Box | None, b: Box) -> None:\n"
+            + "        self.t = (a, b)\n",
+            "H")
+        assert ctor is None
 
     def test_none_into_ptr_field_routes(self):
         # None into a `Ptr[T]` cell renders `p(nullptr)` (the VALUE-form None).

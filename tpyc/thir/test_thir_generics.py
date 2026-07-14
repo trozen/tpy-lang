@@ -919,12 +919,12 @@ class TestArgfulGenericInstantiation:
         assert routed is True
         assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
-    def test_name_arg_stays_ast(self):
+    def test_name_arg_routes(self):
         # A bare lvalue name copies into a temp then moves
-        # (`auto __tmp = n; Box<int32_t>(std::move(__tmp))`) -- not the bare
-        # render, so it stays on the AST path.
+        # (`auto __tmp = n; Box<int32_t>(std::move(__tmp))`) -- the Own-lvalue
+        # ctor-arg row renders the same temp+move, byte-identically.
         src = self._decl("n", sig="n: Int32")
-        assert _fn(_lower_ctx(src), "mk") is None
+        assert _fn(_lower_ctx(src), "mk") is not None
         assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
     def test_strview_arg_stays_ast(self):

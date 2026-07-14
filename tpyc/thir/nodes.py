@@ -624,6 +624,18 @@ class THIRTupleLiteral(THIRExpr):
 
 
 @dataclass(frozen=True)
+class THIRRecordCopy(THIRExpr):
+    """An explicit `copy(x)` of an F1 record rendered as the copy-ctor call
+    `T(x)` -- the record arm of the AST's `_gen_copy_expr`. Reachable today
+    only as a pointer-repr tuple-literal ELEMENT (the MIL tuple cell); every
+    other admitted `copy()` position unwraps to the bare source instead
+    (direct-init / MIL copies implicitly). `cpp_type` is the copied record's
+    spelled type (`arg_type.to_cpp()` on the AST side)."""
+    value: THIRExpr
+    cpp_type: str
+
+
+@dataclass(frozen=True)
 class THIRComprehension(THIRExpr):
     """A list/set/dict comprehension at a fresh local's decl-init -- the GCC
     stmt-expr mirror of `_gen_comprehension_iife` (the C1+C2 slice):
@@ -967,6 +979,67 @@ class THIRVarDecl(THIRStmt):
     form: Form = Form.VALUE
     is_const: bool = False
     cpp_local_representation: 'LocalBinding | None' = None
+
+
+class PtrSlotKind(Enum):
+    """Source shape of a pointer-repr local's slot-hoist declaration/reseat.
+
+      * `OPT_NONE`     -- `x: T | None = None` -> `T* x = nullptr;` (plus the
+                          `std::optional<T>` rebind-slot pre-decl when a later
+                          rvalue reseat needs it). As a reseat: `x = nullptr;`.
+      * `OPT_RVALUE`   -- `x: T | None = T(...)` -> a direct `T __slot_N` init
+                          slot + `T* x = &__slot_N;` (plus the rebind-slot
+                          pre-decl). Reseats ride THIRAssign's rebind-slot arm.
+      * `UNION_NONE`   -- ptr-variant union reseat to None: `v = std::monostate{};`
+                          (the DECL None case stays on the existing literal arm).
+      * `UNION_RVALUE` -- `v: A | B = A(...)` -> value-variant `__slot_N` +
+                          `to_ptr_variant(__slot_N)`. As a reseat: `.emplace`
+                          into the pre-declared rebind slot + re-lift.
+      * `UNION_ADDR`   -- `v: A | B = name` (concrete-member lvalue) ->
+                          `variant<A*, B*> v{&(name)};`.
+    """
+    OPT_NONE = auto()
+    OPT_RVALUE = auto()
+    UNION_NONE = auto()
+    UNION_RVALUE = auto()
+    UNION_ADDR = auto()
+
+
+@dataclass(frozen=True)
+class THIRPtrLocalDecl(THIRStmt):
+    """First declaration of a pointer-repr local backed by the `__slot_N`
+    hoist machinery (the slot-hoist family): a pointer-repr `Optional[T]`
+    local (`T* x` over a hoisted storage slot) or a pointer-variant union
+    local (`std::variant<A*, B*>` over a value-variant slot).
+
+    `cpp_type` is the POINTEE spelling for the OPT_* kinds (`T` of `T* x`)
+    and the full pointer-variant spelling for the UNION_* kinds. `val_cpp`
+    is the value-variant spelling backing a UNION slot (None for OPT_*,
+    whose slots reuse `cpp_type`). `needs_rebind_slot` mirrors the AST's
+    `name in rvalue_reassigned_vars` pre-declaration of the shared
+    `std::optional<...>` rebind slot; emit allocates slot numbers in the
+    exact AST order (init slot before rebind slot; union rebind slot before
+    the value slot's TEXT but after it in NUMBERING -- see the emit arm)."""
+    name: str
+    resolved_type: TpyType
+    kind: 'PtrSlotKind' = PtrSlotKind.OPT_NONE
+    init: THIRExpr | None = None
+    cpp_type: str | None = None
+    val_cpp: str | None = None
+    needs_rebind_slot: bool = False
+
+
+@dataclass(frozen=True)
+class THIRPtrLocalRebind(THIRStmt):
+    """Reseat of a slot-hoist pointer-repr local for the shapes THIRAssign's
+    rebind-slot arm does not cover: `x = None` (`x = nullptr;` /
+    `v = std::monostate{};`) and the union rvalue reseat (`.emplace` into the
+    pre-declared rebind slot + `to_ptr_variant(*slot)` re-lift). `val_cpp` is
+    the union value-variant spelling (unused by the OPT_NONE kind)."""
+    name: str
+    kind: 'PtrSlotKind' = PtrSlotKind.OPT_NONE
+    value: THIRExpr | None = None
+    val_cpp: str | None = None
 
 
 @dataclass(frozen=True)
@@ -1429,14 +1502,19 @@ class THIRWith(THIRStmt):
 
 @dataclass(frozen=True)
 class THIRExceptHandler:
-    """One throw-tier `except` clause -> a C++ catch arm. `cpp_type` is the
+    """One `except` clause. Throw tier: a C++ catch arm -- `cpp_type` is the
     handler's exception type pre-rendered at lowering (`error_return_to_cpp`
     over the sema-qualified name); None is the bare `except:` -> `catch (...)`.
     `binding` is the `as` name (raw; emit escapes) -- the catch parameter IS
-    the binding, `catch (const T& name)`, no extra decl."""
+    the binding, `catch (const T& name)`, no extra decl. Return tier: the
+    single goto-dispatch handler -- `source_display` carries the SOURCE
+    exception spelling for the `// except E:` comment (the AST prints the
+    un-rendered name there), and a `binding` reads through the emitted
+    `auto& name = *__err_opt_N;` alias instead of a catch parameter."""
     cpp_type: 'str | None'
     binding: 'str | None'
     body: tuple[THIRStmt, ...] = ()
+    source_display: 'str | None' = None
 
 
 @dataclass(frozen=True)
@@ -1461,8 +1539,18 @@ class THIRTry(THIRStmt):
     handler, `else` jumping past via `goto __after_else_N` (N from the
     module-cumulative `ctx.try_except_counter` through the emit-side sink),
     the whole try/except wrapped in the finally frame above when a finally
-    is present. The return tier (goto dispatch around @error_return calls)
-    stays gate-rejected, parked on the @error_return call rung.
+    is present.
+
+    return mirrors `_gen_try_return`: the goto dispatch around @error_return
+    calls -- one outer brace, an optional `std::optional<E> __err_opt_N;`
+    when the (single) handler binds, the try body emitted with the emit
+    state's `try_except_label`/`try_except_err_opt` live (each fallible call
+    inside renders its `goto __except_N` capture against them), else body,
+    `goto __after_try_N;`, the labeled handler body (in_except_tier
+    "return", so a bare `raise` re-raises as `return make_unexpected(...)`),
+    `__after_try_N:;` -- all wrapped in the finally frame when a finally is
+    present. `err_opt_cpp` pre-renders the binding's error type for the
+    `__err_opt_N` decl (None when the handler has no binding).
 
     `hoist_decls` is the sema hoist (`if_branch_decls[id(stmt)]`) rendered at
     lowering as `(name, cpp_type)` pairs in sema's sorted order -- names spell
@@ -1483,6 +1571,7 @@ class THIRTry(THIRStmt):
     hoist_decls: tuple[tuple[str, str], ...] = ()
     body_terminates: bool = False
     finally_terminates: bool = False
+    err_opt_cpp: 'str | None' = None
 
 
 @dataclass(frozen=True)
@@ -1490,16 +1579,74 @@ class THIRRaise(THIRStmt):
     """`raise X(args)` -> `throw <cpp>(<args>);` / `raise X` -> `throw <cpp>{};`
     (the AST's fresh-construction peephole: static and dynamic types coincide,
     so no `__raise__()` virtual hop); bare `raise` -> `throw;` (a C++ rethrow;
-    sema restricts placement, and the return-tier `make_unexpected` arms are
-    unreachable -- return-tier trys and @error_return bodies are
-    gate-rejected). `cpp_type` pre-renders at lowering (`error_return_to_cpp`);
-    None is the bare form. The expression form (`raise e` ->
-    `e.__raise__()` + deref chain) is a deferred row. `via_virtual`
-    mirrors sema's `raise_via_virtual` fact (@virtual_raise classes: the
-    peephole doesn't apply; emit `<cpp>(<args>).__raise__();`)."""
+    sema restricts placement) -- EXCEPT inside a return-tier handler body,
+    where the emit state's in_except_tier makes it re-raise as
+    `return ::tpy::make_unexpected(std::move(*__err_opt_N));` (_gen_raise's
+    bare return-tier arm). `return_tier` marks a `raise E(args)` of a
+    ReturnException inside an @error_return body -- it renders as the
+    finally-aware `return ::tpy::make_unexpected(<cpp>(<args>));` (or `{}`
+    construction when arg-less), never a C++ throw. `cpp_type` pre-renders at
+    lowering (`error_return_to_cpp`); None is the bare form. The expression
+    form (`raise e` -> `e.__raise__()` + deref chain) is a deferred row.
+    `via_virtual` mirrors sema's `raise_via_virtual` fact (@virtual_raise
+    classes: the peephole doesn't apply; emit `<cpp>(<args>).__raise__();`)."""
     cpp_type: 'str | None' = None
     args: tuple[THIRExpr, ...] = ()
     via_virtual: bool = False
+    return_tier: bool = False
+
+
+@dataclass(frozen=True)
+class THIRErrorReturnUnwrap(THIRExpr):
+    """An @error_return call in EXPRESSION position -- the statement-expression
+    unwrap (`_maybe_error_return_unwrap`): `({ auto __er_N = <call>; <check>
+    ::tpy::unwrap_ref_move(*__er_N); })` for a value-type result, the
+    pointer form `(*({ ...; &::tpy::unwrap_ref(*__er_N); }))` otherwise
+    (`value_form` folds the AST's `ret_type.is_value_type()` verdict at
+    lowering). The check renders from the emit state exactly like the AST's
+    ctx reads: goto-except inside a return-tier try body (with the `as`
+    capture when the handler binds), propagate inside an @error_return body,
+    panic otherwise. `__er_N` draws from the module-cumulative
+    try_except_counter sink. `result_type` is the callee's SUCCESS type."""
+    call: THIRExpr
+    value_form: bool = True
+
+
+@dataclass(frozen=True)
+class THIRErrorReturnBind(THIRStmt):
+    """A var-decl / name-assign whose init is a DIRECT @error_return call --
+    the statement-level unwrap block (`_gen_error_return_[propagate_/unwrap_]
+    var_decl` / `_assign`):
+
+        [<cpp_type> <name>;]            // predecl when first binding
+        {
+            auto __try_tmp_N = <call>;
+            <check>                     // goto-except / propagate / panic
+            <name> = ::tpy::unwrap_ref_move(*__try_tmp_N);
+        }
+
+    `decl_cpp` is the predecl's pre-rendered C++ type (`unwrap_ref_type(
+    fi.return_type).to_cpp()`, the AST's spelling), None when the name is
+    already declared (a reassign, or a try-hoisted local). The borrow-
+    aliasing result shape (`_error_return_result_aliases`) and pointer/
+    rebind-slot targets are gate-rejected -- only the plain owned local
+    routes. `name` is raw; emit escapes."""
+    name: str
+    call: THIRExpr
+    decl_cpp: 'str | None' = None
+
+
+@dataclass(frozen=True)
+class THIRErrorReturnDiscard(THIRStmt):
+    """An @error_return call in statement position, result discarded --
+    `_gen_error_return_stmt_block`:
+
+        {
+            auto __try_tmp_N = <call>;
+            <check>                     // goto-except / propagate / panic
+        }
+    """
+    call: THIRExpr
 
 
 @dataclass(frozen=True)
@@ -1797,11 +1944,17 @@ class THIRFunctionLayout:
 
 @dataclass(frozen=True)
 class THIRFunction:
+    """`error_return_cpp` is the @error_return error type's C++ render
+    (`error_return_to_cpp`, the AST's `ctx.current_error_return`), None for
+    ordinary functions. It seeds the emit state: bare `return` renders
+    `return {};`, a void body appends the trailing `return {};` success, and
+    propagate checks read it as the innermost disposition."""
     name: str
     params: tuple[THIRParam, ...]
     return_type: TpyType
     body: tuple[THIRStmt, ...]
     layout: THIRFunctionLayout
+    error_return_cpp: 'str | None' = None
 
 
 @dataclass(frozen=True)

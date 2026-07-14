@@ -18,6 +18,15 @@ from .testutil import (
     _PRELUDE, _F1_RECORDS,
 )
 
+
+def _module_cpp(src: str, thir: bool) -> str:
+    compiler, modules = _compile(src)
+    entry = _entry(modules)
+    _, cpp = compiler.generate_code_to_strings(
+        entry, options=CodeGenOptions(emit_source_comments=False,
+                                      thir_codegen=thir))
+    return cpp
+
 # --- Statement-shape axis: container subscript reads (list[scalar] /
 # dict[fixed-int, scalar] -> ::tpy::__getitem__ / bounds-safe operator[]) ---
 
@@ -433,13 +442,14 @@ class TestMethodCall:
             + "    def add(self, n: Int32) -> None:\n        self.items.append(n)\n")
         assert _fn(thir, "add") is None
 
-    def test_set_receiver_ineligible(self):
-        # A set param is admitted (membership/len/iteration), but `.add()` has no
-        # set-mutation arm -- the whole body stays AST, byte-identically.
-        thir = _lower(
-            _PRELUDE
-            + "def f(s: set[Int32], n: Int32) -> None:\n    s.add(n)\n")
-        assert _fn(thir, "f") is None
+    def test_set_receiver_routes(self):
+        # `.add()` routes through the set-receiver method arm; the body no
+        # longer falls back, and the render matches the AST path.
+        src = (_PRELUDE
+               + "def f(s: set[Int32], n: Int32) -> None:\n    s.add(n)\n"
+               + "f({1, 2}, 3)\n")
+        assert _fn(_lower(src), "f") is not None
+        assert _module_cpp(src, thir=True) == _module_cpp(src, thir=False)
 
     def test_user_record_method_ineligible(self):
         # A user-record method call takes the record emit path (temps, TypeParamRef
@@ -2667,13 +2677,15 @@ class TestMembership:
             "def f(xs: set[StrView]) -> bool:\n    return \"a\" in xs\n")
         assert _fn(thir, "f") is None
 
-    def test_set_mutation_rejects(self):
-        # `.add()` is not in the set slice (no mutation arm) -- the whole body
-        # stays AST, byte-identically.
-        thir = _lower(
-            _PRELUDE
-            + "def f(xs: set[Int32], n: Int32) -> None:\n    xs.add(n)\n")
-        assert _fn(thir, "f") is None
+    def test_set_mutation_routes(self):
+        # `.add()` routes through the set-receiver method arm; membership
+        # tests keep their own reject pins below. Byte-compared: the arg
+        # render must match the AST path (the elem-typed stub wrap).
+        src = (_PRELUDE
+               + "def f(xs: set[Int32], n: Int32) -> None:\n    xs.add(n)\n"
+               + "f({1, 2}, 3)\n")
+        assert _fn(_lower(src), "f") is not None
+        assert _module_cpp(src, thir=True) == _module_cpp(src, thir=False)
 
     def test_list_membership_stays_ast(self):
         # list has no `__contains__` member (std::ranges::contains); no
@@ -2805,3 +2817,51 @@ class TestCompositionalContainerParam:
         src = ("from tpy import Int32, Own\n"
                "def f(xs: Own[list[Int32]]) -> Int32:\n    return len(xs)\n")
         assert _fn(_lower_ctx(src), "f") is None
+
+
+class TestMethodArgLiteralTargets:
+    """Numeric-literal method args mirror gen_call_arg's target threading:
+    a builtin-stub member threads the RAW param type (a plain BigInt slot
+    wraps, an Own-wrapped slot renders bare -- the hint is never
+    Own-unwrapped), while a user-record method renders target-less (the AST
+    record loop passes target_type=None). Regression pin for the merged
+    set-receiver widening x try-routing composition (exceptions/
+    key_error_caught divergence)."""
+
+    SRC = (
+        "from tpy import Int32\n\n"
+        "class C:\n    v: int\n"
+        "    def __init__(self) -> None:\n        self.v = 0\n"
+        "    def bump(self, by: int) -> None:\n        self.v += by\n\n"
+        "def f() -> None:\n"
+        "    xs: list[int] = [1]\n"
+        "    xs.append(2)\n"
+        "    s: set[int] = {1, 2}\n"
+        "    s.remove(99)\n"
+        "    s.discard(3)\n"
+        "    s.add(7)\n"
+        "    c = C()\n"
+        "    c.bump(5)\n"
+    )
+
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=thir))
+        return cpp
+
+    def test_byte_identical(self):
+        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
+
+    def test_emits_target_typed_stub_literals(self):
+        cpp = self._cpp(self.SRC, thir=True)
+        # plain BigInt slots (T substituted) take the ctor wrap
+        assert "::tpy::set_remove(s, ::tpy::BigInt(99))" in cpp
+        assert "s.erase(::tpy::BigInt(3))" in cpp
+        # Own-wrapped slots render bare (the raw hint is not unwrapped)
+        assert "s.insert(7)" in cpp
+        assert "xs.push_back(2)" in cpp
+        # user-record method args stay target-less
+        assert "c.bump(5)" in cpp

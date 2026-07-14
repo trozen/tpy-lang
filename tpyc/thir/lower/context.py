@@ -50,6 +50,10 @@ class _ExprResultUse(Enum):
     BORROW_BIND = auto()
     ITERABLE = auto()
     RECEIVER = auto()
+    # ERASED/BORROWED await operand: the resumable skeleton immediately
+    # moves/points the result into the sub-future slot (emplace(std::move..)
+    # / &(..)), so a record-family result renders bare -- no value slot.
+    SUSPEND = auto()
 
 
 class _RecordCtorUse(Enum):
@@ -301,7 +305,7 @@ class _LowerCtx:
                  "record_name", "storage_tuple_locals", "frame_slots",
                  "resumable_leaf_mode", "unhandled_hoists", "narrow",
                  "inline_narrowed", "forbidden_reads", "forbidden_writes",
-                 "nested_def_locals")
+                 "nested_def_locals", "error_return_cpp")
 
     def __init__(self, func: TpyFunction, analyzer, render_type,
                  self_receiver: str | None = None,
@@ -438,6 +442,11 @@ class _LowerCtx:
         # `_free_callee_kind` instead. The name survives the nested scope,
         # exactly like the AST's re-add.
         self.nested_def_locals: set[str] = set()
+        # The enclosing function's @error_return error type render
+        # (ctx.current_error_return) -- set by lower_function; drives the
+        # return pass-through / return-tier raise admissions and rides
+        # THIRFunction into the emit state.
+        self.error_return_cpp: 'str | None' = None
 
 
 @dataclass

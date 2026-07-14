@@ -51,7 +51,8 @@ from ..typesys import (
 )
 from .nodes import (
     Form, THIRArgTemp, THIRAssign, THIRCall, THIRCoerce, THIRConstructor,
-    THIRCtorCall, THIRExprStmt, THIRFieldAccess, THIRFormConvert,
+    THIRCtorCall, THIRErrorReturnBind, THIRErrorReturnDiscard,
+    THIRErrorReturnUnwrap, THIRExprStmt, THIRFieldAccess, THIRFormConvert,
     THIRFunction, THIRMethodCall, THIRNode,
     THIRPrint, THIRReturn, THIRSetItem, THIRUnionArgLift, THIRVarDecl,
 )
@@ -210,6 +211,18 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
                     _walk(owner, a.value, return_type)
             else:
                 _walk(owner, a, return_type)  # temps never nest deeper
+        return
+    if isinstance(node, THIRErrorReturnUnwrap):
+        # The expression unwrap is TRANSPARENT for flushability: its call's
+        # arg temps flush at the enclosing statement exactly as they would
+        # unwrapped (the wrapper only composes the `({ ... })` render).
+        _walk(owner, node.call, return_type, argtemp_ok=argtemp_ok)
+        return
+    if isinstance(node, (THIRErrorReturnBind, THIRErrorReturnDiscard)):
+        # Statement-level unwrap blocks: the call renders and its temps
+        # flush before the block line (gen_stmt's single flush point), so
+        # the call is a flushable value position.
+        _walk(owner, node.call, return_type, argtemp_ok=True)
         return
     if isinstance(node, THIRExprStmt):
         _walk(owner, node.expr, return_type, argtemp_ok=True)

@@ -1842,7 +1842,12 @@ class AsyncCoroCodegen:
             comments=CtxCommentSink(self.ctx),
             temps=CtxTempSink(self.ctx),
             with_counter=CtxCounter(self.ctx, "with_counter"),
-            try_counter=CtxCounter(self.ctx, "try_except_counter"))
+            try_counter=CtxCounter(self.ctx, "try_except_counter"),
+            # The skeleton registers loop-var shadows of frame fields in the
+            # LIVE ctx set; leaf renders must suppress the frame `(*name)`
+            # deref exactly while a shadow is in scope, like the AST body.
+            frame_shadow_probe=(
+                lambda n: n in self.ctx.frame_field_shadows))
 
     @contextlib.contextmanager
     def _thir_leaf_scope(self, leaf):

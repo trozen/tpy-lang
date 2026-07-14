@@ -87,7 +87,11 @@ post wave-6 (the ctor frontier): `ctor` component 17,604 -> 12,025 (the
 wave-6 pre-foundation baseline had `ctor.param_type` at 4,116 -- the 4,395
 above was the older 2026-07-06 container-rung measure); `ctor.mil_field`
 residual 8,616 is mostly generics-gated (`UninitStorage[T]` fields,
-`Box._ptr = heap_take(...)`) + `Waker`; see IR_DESIGN.md Wave-6.)
+`Box._ptr = heap_take(...)`) + `Waker`; see IR_DESIGN.md Wave-6. The
+2026-07-14 ctor-MIL cells landed value-repr `optional.name` bare-copies,
+`callable.name` bare-copies, and `tuple.tupleliteral` via `THIRRecordCopy`
++ `tuple_to_storage`; deferred: genrec fields (the `_f1_record` generics
+policy), `base_init`, `callable.lambda` -- see the TODO.md ctor-MIL entry.)
 
 ### B. Expression arms feeding var-decl / return / if / expr-stmt [mostly P]
 
@@ -97,7 +101,7 @@ ported). The arms, by `gen_expr`/`gen_method_call` dispatch:
 
 | Arm | THIR admission / AST locator | status | biggest gaps | leverage | P/S |
 |-----|----------|--------|--------------|---------:|-----|
-| `TpyMethodCall` | expressions.py `_lower_expr` method-call arm | partial | `method.marker` module-qualified + static receivers (wave 2) + static `@cpp_template` calls + Ptr-receiver deref calls (wave 3) LANDED; measured residue: `deref.ptr_pointee` 939 (Ptr[@dynamic-protocol] pointee family), `deref.recv_shape` 637, module/static generics ~226 (generics frontier), qualcall coerce-args 304 + optional/record returns; **str/bytes methods** (receiver not a nominal record -- new receiver-family dispatch) ~1.7k; non-F1/method receivers; multi-overload; non-value returns | ~8k | P (grid) + S (str-family machinery, non-F1 receivers) |
+| `TpyMethodCall` | expressions.py `_lower_expr` method-call arm | partial | `method.marker` module-qualified + static receivers (wave 2) + static `@cpp_template` calls + Ptr-receiver deref calls (wave 3) + set receivers (`_set_method_recv`, raw-param-typed stub args) + qualcall F1-record RVALUE storage returns + free-call-result receivers + zero-args-all-defaults marker calls (call-cascade wave) LANDED; measured residue: `deref.ptr_pointee` 939 (Ptr[@dynamic-protocol] pointee family), `deref.recv_shape` 637, module/static generics ~226 (generics frontier), qualcall coerce-args 304 + optional returns; **str/bytes methods** (receiver not a nominal record -- new receiver-family dispatch) ~1.7k; non-F1 field receivers (~35, needs a drill); partial-defaults arity; multi-overload; non-value returns | ~8k | P (grid) + S (str-family machinery, non-F1 receivers) |
 | `TpyCall` | expressions.py `TpyCall` arm (`_call_use_supported`) | partial | non-scalar returns `call.ret_type` 2433 (grid-fill, return-slot); imported/cross-module/error_return/generic callees `call.callee_kind` 2087 (new machinery); `call.special_form` 1084 (bespoke cast/isinstance/enum/macro arms) | ~7k | mixed |
 | `TpyBinOp`/`ChainedCompare` | expressions.py `_lower_expr` binop arm | partial | mixed/widening arith (coercion node), Char concat, record operator-dunder indirection, non-bool logical (temp+ternary machinery) | ~3.9k | P (grid) + S (non-bool logical) |
 | `TpyFString` | expressions.py `TpyFString` arm | done (wave 2) | `!r`/`!s` + constant format specs landed; unmirrored arg types under conv tagged `fstring.arg_wrap` | landed | P |
@@ -105,7 +109,7 @@ ported). The arms, by `gen_expr`/`gen_method_call` dispatch:
 | `TpySubscript` | expressions.py `TpySubscript` arm | partial | field-access receivers landed (wave 3, all four ops); remaining: non-value element reads (`subscript.elem_family` 321 -- the W2-subscript-elem cell), deeper receiver chains, `len(field)` / field iteration / bytes-field reads | ~400 | P |
 | `TpyFieldAccess` | expressions.py `_lower_field_source` | partial | non-value field reads (record/container/opt/union field), non-F1 receiver | ~1k | P |
 | `TpyIfExpr` (ternary) | expressions.py `TpyIfExpr` arm | done (wave 2) | `THIRIfExpr` for scalar/Char/enum/str results; non-value/bytes results tagged `ifexpr.result_type` (first-rejects 1073 -> 18) | landed | P |
-| list/dict/set literal (value position) | expressions.py literal arms + checks.py `_container_literal_decl_ok` / `_container_literal_shape_ok` | partial | only decl-init + print-arg today; value/return/call-arg positions + non-scalar elements missing | ~700 | P |
+| list/dict/set literal (value position) | expressions.py literal arms + checks.py `_container_literal_decl_ok` / `_container_literal_shape_ok` | partial | decl-init + print-arg + CTOR list-literal args (brace-init in place) today; free-call arg positions (the AST hoists a `__tmp_N` even for const slots -- needs the ref-param temp-row mirror), dict/set-literal ctor args, value/return positions + non-scalar elements missing | ~700 | P |
 | `TpyTupleLiteral` | expressions.py `TpyTupleLiteral` arm | partial (value-tuple rung) | `THIRTupleLiteral` for all-VALUE scalar/owned-str elements at returns/decls/args; ref-capture elements + non-value element families stay AST | tuple residue | P |
 | `TpyListRepeat` `[0]*n` / walrus / lambda / genexpr | 4857/6514/6816/5170 | **none** | unlowered; walrus/lambda/list-repeat low-frequency, genexpr = serial | low | walrus/lambda S |
 
@@ -124,7 +128,7 @@ These can't be parallelized and set the timeline. Front-load their design.
 | comprehensions (list/dict/set partial, genexpr none) | partial | value-position beyond decl-init/print-arg sinks; genexpr | moderate |
 | `TpyNestedDef` (closures) | partial | resumable-body, generic/error_return, default-param, Optional/Own/value-opt params, self/narrowed captures, name collisions still reject | 12 (rare) |
 | `TpyWith` | partial | async-with (resumable); non-F1/temp-registering managers | ~50 |
-| `TpyTry` | partial | return-tier (`@error_return`/`ReturnException` through the finally chain); in-branch/in-loop fresh predecls | ~41 |
+| `TpyTry` | partial | return tier ROUTED (goto dispatch + `__err_opt_N` capture + finally wrap; see test_thir_error_return.py); residue: non-value hoists, in-branch/in-loop fresh predecls | ~10 |
 | `TpyMatch` | partial | richer pattern set beyond the admitted slice | ~50 |
 | `TpyWhile` | partial | while-else `goto`; folded `while True` | ~950 |
 

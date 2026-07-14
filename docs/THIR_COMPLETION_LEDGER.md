@@ -103,8 +103,11 @@ cell it touches is admitted:
   / nonlocal (no-code face) + plain-assert messages (computed/lazy
   messages incl. gated clean-receiver field reads, constant-condition
   folds) **(covered)**
-  vs try-except return tier (parked on the @error_return rung) /
-  expression raise / for-over-container (generators) /
+  / try-except return tier + the @error_return surface (function bodies,
+  binds/discards, expression unwraps, pass-through returns) **(covered;
+  aliasing borrow binds, method-call callees, owned-str first-decl binds
+  still reject)**
+  vs expression raise / for-over-container (generators) /
   genexpr + the comprehension C3/C4 rows **(not)**.
 
 A **deferred cell** is one `(kind x form x shape)` the eligibility gate rejects.
@@ -439,6 +442,50 @@ deferred (self-contained) / blocked-on-`<rung>`.
   CALL sources blocked on the general call-arg rows (coerced-literal args,
   nested-call rvalue args, ctor shapes) -- the call-arg axis, not
   return-specific.
+- **Slot-hoist pointer-repr locals: v1 LANDED (branch thir-ptr-local-slots).**
+  The `OPT_PTR_SLOT` classifier verdict (shared `classify_local_binding`, the
+  Optional sibling of REBIND_SLOT) + `THIRPtrLocalDecl`/`THIRPtrLocalRebind`
+  route pointer-repr `Optional[T]` locals with None / exact-type F1-rvalue
+  inits (`T* x = nullptr;` with the `std::optional<T>` rebind-slot pre-decl;
+  `T __slot_N = ...; T* x = &__slot_N;`), None reseats (`x = nullptr;`) and
+  rvalue reseats through the pre-declared slot (THIRAssign's rebind-slot arm,
+  `&*(__slot_N = ...)`), plus ptr-variant union locals from concrete-member /
+  whole-union rvalues (value-variant slot + `to_ptr_variant`; reseat via
+  `.emplace` + re-lift) and concrete-member lvalue addresses (`v{&(name)}`).
+  Slot NUMBERING mirrors `SlotState` allocation order per body; union
+  slot-holders are excluded from THIRAssign's optional-slot reseat arm via
+  `_EmitState.union_slot_locals`. Deferred rungs (hoisted/branch-first, const
+  indirection, Own[Opt] lifts, polymorphic slots, lvalue reseats, slotless
+  union reseats) are named rejects -- see the TODO.md entry. Witnesses:
+  `pointers/optional_basic`, `none_safety/concrete_assignment_proves`,
+  `inference/reassign_none_branch_narrowing`; the union emit arms are
+  corpus-zero-witness (host bodies co-block on call-track shapes) and
+  unit-pinned in `test_thir_ptr_locals.py`.
+- **Call-cascade cells: LANDED (branch thir-call-cascade).** Own-move /
+  Own-lvalue rows joined `_record_ctor_arg_supported` (temp_args threaded
+  into the ctor arg tail scoped to Own-slot args; the two bare reject sinks
+  now record note_detail); marker/qualcall F1-record RVALUE returns admitted
+  at BORROW_BIND/STORAGE uses (`Rc<State> r = Rc.new_(...)`); ctor
+  list-literal args brace-init in place (`Numbers({1, 2, 3})`, list-slot /
+  ctor-position only); `self` as a record call arg (`on_init((*this))` via
+  the `_record_pass_through_arg` self arm); set method receivers via the
+  dedicated `_set_method_recv` family (deliberately NOT a
+  `_container_scalar_read` widening -- sets have no subscript/for-each
+  consumers) with stub args threading the RAW param type
+  (`method_arg_stub`); owned-str RVALUE element args bind the `T&&` slot
+  bare; free-call-result method receivers (`make(3).get()`); empty
+  instantiations (`set()`/`list()`/`dict()` spelled default ctor) +
+  zero-args-all-defaults marker calls omit trailing defaults
+  (`datetime::now()`). Deferred residue: the TODO.md call-cascade entry.
+- **Ctor-MIL cells: LANDED (branch thir-ctor-mil-cells).** Value-repr
+  Optional field bare-copy from a same-typed optional param
+  (`ctor.mil_field.optional.name`, scalar/enum inners, `value(value)`);
+  Callable field bare-copy (`on_event(cb)`); pointer-repr tuple fields from
+  spelled literals (`tuple_to_storage` over a per-slot-admitted brace init,
+  with `THIRRecordCopy` rendering `copy(p)` as the copy-ctor call `T(p)`).
+  Deferred residue: the TODO.md ctor-MIL entry (genrec fields pending the
+  `_f1_record` generics policy; the `assign.field_write_shape` body-assign
+  sibling reuses the same element builder).
 - **Ptr[T] value family: LANDED.** `_eligible_ptr_value` (pointee must spell
   byte-identically: F1-record / eligible scalar / Char / void; readonly
   pointee -> `const T*`) joins every value-slot set at once: return + param
@@ -1157,7 +1204,37 @@ the try's) or loops (the scope_tracker storage hoist layers on top);
 throw-tier try-body first-declares sema does NOT hoist (the da_new rule:
 no finally/else and a falling-through handler -> the decl lives inside
 the C++ try scope; the in-branch first-declare reject keeps it AST);
-async/generator trys (own frontiers). Corpus witnesses:
+async/generator trys (own frontiers).
+**@error_return + the return tier landed (branch thir-error-return):**
+the three coordinated gates opened together -- G1 (`sig.error_return`,
+sync bodies only; resumables keep rejecting), G2 (the return-tier try:
+`_gen_try_return`'s goto dispatch mirrored as the THIRTry return-tier
+emit arm, `__except_N`/`__after_try_N`/`__err_opt_N` off the shared
+try_except_counter sink, `as` bindings reading through
+`auto& name = *__err_opt_N;`, finally wrapping via the T1 frame), G3
+(the return-tier raise: `THIRRaise.return_tier` -> the finally-aware
+`return ::tpy::make_unexpected(<cpp>(args));`). The caller surface:
+`THIRErrorReturnBind`/`THIRErrorReturnDiscard` mirror the statement-level
+`__try_tmp_N` blocks (predecl spelled from the callee's SUCCESS type),
+`THIRErrorReturnUnwrap` the expression-level `__er_N` statement
+expression (value and pointer forms -- the pointer form has no corpus
+witness; it is pinned byte-identically by a unit against the AST oracle,
+the borrow-container fallible-callee iterable shape); all four
+dispositions
+(goto-except with/without capture, finally-aware propagate, panic) read
+the emit state exactly like the AST ctx (`error_return_cpp`,
+`try_except_label`/`try_except_err_opt`, `in_except_tier`). Bare
+`return` renders `return {};`, void bodies append the trailing success
+return, `return <er call>` inside an @error_return body passes the
+expected through raw. Deferred rows (each a named
+`error_return.*` detail): aliasing borrow-result binds
+(`_error_return_result_aliases` -> pointer-local target), method-call /
+coerce-wrapped callees at statement positions, owned-str/bytes
+first-decl binds (non-hoisted), field/subscript assign targets,
+Optional/ptr-variant/property pass-through return slots. Corpus:
+the whole `error_return/` group byte-identical, 14/29 compiling cases
+fully routed (incl. both finally-composition cases); units
+`tpyc/thir/test_thir_error_return.py`. Corpus witnesses:
 `control_flow/try_finally_shapes` + `control_flow/try_except_shapes`
 (all 15 try/raise faces); units `tpyc/thir/test_thir_try.py`. The
 raising-finally-after-return shape is a pre-existing AST parity bug
@@ -1538,6 +1615,11 @@ byte-diff itself.
 ## Maintaining this ledger
 
 - Flip cells / update statuses when a rung lands or a deferral is discovered.
+- **Counter-order dual-path risk:** THIR emit reproduces `SlotState` /
+  loop-index / temp-counter allocation order in a second code path with only
+  the corpus byte-diff guarding drift -- a structural-unification candidate
+  (single allocator consulted by both paths) once THIR becomes the sole
+  codegen path.
 - **Landed: per-face witness tally** (`tpyc/thir/faces.py`): the `--thir-codegen`
   summary now prints `tpy| thir faces: N/M witnessed; zero-witness: <names>` --
   which registered gate/lowering faces (currently the call-arg machinery's) had

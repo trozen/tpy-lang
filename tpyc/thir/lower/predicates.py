@@ -2185,6 +2185,23 @@ def _container_record_elem(t: TpyType | None, analyzer) -> bool:
     return _container_elem_family(
         t, analyzer, lambda a: _f1_record(a, analyzer))
 
+def _set_method_recv(t: TpyType | None, analyzer) -> bool:
+    """A `set[scalar|owned-str]` METHOD-CALL receiver. Deliberately its own
+    predicate, NOT a widening of `_container_scalar_read`: that family feeds
+    subscript / decl-storage / for-each consumers where a set is invalid
+    (`set` has no `__getitem__`). Method dispatch is fi-driven -- the set
+    stubs' native helpers (`::tpy::set_remove(s, ...)`) and bare members
+    (`s.clear()`) both ride THIRMethodCall's existing native_function_name /
+    plain-member arms."""
+    if t is None:
+        return False
+    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    if isinstance(t, OwnType) or not is_set(t):
+        return False
+    args = getattr(t, "type_args", None)
+    return bool(args) and (_eligible_scalar(args[0])
+                           or _owned_str_slot(args[0], analyzer))
+
 def _cpp_noncopyable_type(t: 'TpyType | None', analyzer) -> bool:
     """Mirror of the AST's `_is_cpp_noncopyable` (sema facts only): @nocopy,
     `__del__` (deletes copy ops in C++ though sema's nocopy system doesn't
@@ -2933,7 +2950,9 @@ def _container_pass_through_arg(a: TpyExpr, ptype: TpyType | None,
     slot auto-moves at last use (`f(std::move(xs))`), a `Span` / protocol
     (`Iterable`) slot converts (`::tpy::as_mut_span(xs)` / adapter wrap), and an
     `Optional[container]` slot lifts (`&(xs)`), so those stay on the AST path.
-    The binding type is read from `locals_`, per the receiver-gate convention on
+    The container-LITERAL arg rides its own row (`_container_literal_arg`,
+    checks.py -- it needs the element-shape gate defined there). The binding
+    type is read from `locals_`, per the receiver-gate convention on
     `_resolved_scalar`. NB unlike the sibling `_scalar_pass_through_slot` (slot
     check only; the arg shape is checked separately at its call sites), this
     predicate owns BOTH sides -- the container arg shape is inseparable from the

@@ -32,6 +32,7 @@ from ...parse.nodes import (
     TpyStrLiteral,
     TpyTry,
     TpyTupleLiteral,
+    TupleElemCapture,
     collect_name_refs,
     collect_top_level_local_names,
     expr_reads_self_field,
@@ -53,6 +54,7 @@ from ...typesys import (
     TypeParamRef,
     VoidType,
     contains_type_param,
+    error_return_to_cpp,
     unwrap_optional_own,
     unwrap_readonly,
     unwrap_ref_type,
@@ -90,8 +92,11 @@ from ..nodes import (
     THIRModule,
     THIRParam,
     THIRParamCopy,
+    THIRRecordCopy,
+    THIRTupleLiteral,
 )
 from .predicates import (
+    _callable_value,
     _coerce_disposition,
     _eligible_char,
     _eligible_enum,
@@ -111,6 +116,7 @@ from .predicates import (
     _resolved_bytes_value,
     _resolved_str_value,
     _template_init_call_fi,
+    _value_opt_scalar,
     _value_tuple,
 )
 from .context import (
@@ -282,7 +288,10 @@ def _check_callable_structure(func: TpyFunction, analyzer,
                 "sig.generator_simple"
                 if GeneratorCodegen.is_simple_generator(func)
                 else "sig.generator_resumable")
-    if func.error_return is not None:
+    if func.error_return is not None and (func.is_async or func.is_generator):
+        # The sync @error_return body routes (the return-tier renders live on
+        # THIRReturn/THIRRaise + the bind/discard/unwrap nodes); the resumable
+        # emitters have no expected-return seam, so those stay AST.
         raise ThirUnsupported("sig.error_return")
     if func.type_params:
         # A generic callable routes its body via the same TypeParamRef T-value
@@ -516,6 +525,9 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
                    record_name=record_name,
                    render_type_stored=render_type_stored,
                    render_resolve=render_resolve)
+    if func.error_return is not None:
+        lc.error_return_cpp = error_return_to_cpp(
+            func.error_return, analyzer.ctx.module_name, analyzer.registry)
     params_set: dict[str, TpyType] = {n: t for n, t in func.params}
     if has_self:
         params_set["self"] = self_type  # the record receiver, a field source
@@ -540,6 +552,7 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
             return_type=rt,
             body=param_copies + body,
             layout=THIRFunctionLayout(),
+            error_return_cpp=lc.error_return_cpp,
         )
         validate_function(fn)
         return fn
@@ -694,6 +707,50 @@ def _mil_container_field(t) -> bool:
     if not isinstance(t, TpyType) or not getattr(t, "type_args", None):
         return False
     return is_list(t) or is_dict(t) or is_set(t) or is_array(t)
+
+def _mil_ptr_tuple_elem_ok(elem: TpyExpr, slot: TpyType,
+                           declared: dict[str, TpyType], lc: _LowerCtx) -> bool:
+    """One pointer-repr-tuple-literal element the MIL cell admits, per SLOT
+    family (`_f1_tuple_element_ok` families):
+
+      * value-scalar slot <- a same-family scalar param name or an int/float/
+        bool literal (the shared `_slot_literal_retype` render);
+      * F1-record slot <- a same-typed record param name (capture VALUE, the
+        brace-init copies) or an explicit `copy(param)` (renders the copy-ctor
+        call `T(p)`, the AST's `_gen_copy_expr` record arm);
+      * pointer-repr `Optional[F1-record]` slot <- a bare record param name of
+        the INNER type (the optional's converting ctor absorbs the lvalue).
+
+    A pointer-repr-optional param source (a `T*` binding) stays out of every
+    slot -- optional<T> takes no T* implicitly, and the AST routes it through
+    per-element lift logic this cell does not mirror."""
+    analyzer = lc.analyzer
+    bare = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(slot)))
+
+    def _param_type(name: str) -> 'TpyType | None':
+        dt = declared.get(name)
+        if dt is None:
+            return None
+        return unwrap_readonly(unwrap_ref_type(unwrap_send_sync(dt)))
+
+    if _eligible_scalar(bare) or _eligible_char(bare):
+        if isinstance(elem, (TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral)):
+            return True
+        if isinstance(elem, TpyName):
+            pt = _param_type(elem.name)
+            return pt is not None and (_eligible_scalar(pt)
+                                       or _eligible_char(pt)) and pt == bare
+        return False
+    if _f1_record(bare, analyzer):
+        src = _unwrap_copy(elem, analyzer)
+        return (isinstance(src, TpyName)
+                and _param_type(src.name) == bare)
+    if (isinstance(bare, OptionalType) and bare.uses_pointer_repr()
+            and _f1_record(bare.inner, analyzer)):
+        return (isinstance(elem, TpyName)
+                and _param_type(elem.name) == bare.inner)
+    return False
+
 
 def _ctor_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
                         own_param_names: set[str], declared: dict[str, TpyType],
@@ -853,6 +910,24 @@ def _ctor_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
                                    TpyBoolLiteral, TpyName))
     ft_tuple = _f1_tuple(ftype, analyzer)
     if ft_tuple is not None:
+        # A spelled tuple LITERAL builds the borrow-form brace-init and wraps
+        # it in `tuple_to_storage` (per-element admission in
+        # `_mil_ptr_tuple_elem_ok`; all-VALUE captures only -- a ref capture
+        # takes the AST's slot_info path this cell does not mirror). Checked
+        # on the coerce-peeled RHS, NOT the copy-unwrapped one: a `copy()` of
+        # a WHOLE tuple takes the storage-form `_gen_copy_expr` render.
+        lit = stmt.value
+        while isinstance(lit, TpyCoerce):
+            lit = lit.expr
+        if isinstance(lit, TpyTupleLiteral):
+            if (len(lit.elements) != len(ft_tuple.element_types)
+                    or (lit.elem_capture
+                        and any(c is not TupleElemCapture.VALUE
+                                for c in lit.elem_capture))):
+                return False
+            return all(
+                _mil_ptr_tuple_elem_ok(e, s, declared, lc)
+                for e, s in zip(lit.elements, ft_tuple.element_types))
         # F3: a borrow pointer-repr tuple param stores via `tuple_to_storage`
         # (the body field-write arm's MIL sibling). No copy()-unwrap: a
         # `copy()` of a pointer-repr tuple takes the AST's storage-form
@@ -881,6 +956,35 @@ def _ctor_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
         # (pointer-repr or value-repr) -- inner-independent, so the F1-record
         # inner classifier below does not apply.
         return True
+    if isinstance(ftype, OptionalType) and not ftype.uses_pointer_repr():
+        # A value-repr Optional field (`std::optional<T>`) copies bare from a
+        # same-typed optional param name (`f(value)`) -- param slot and field
+        # storage spell the same std::optional<T>, so the MIL is the AST's
+        # gen_expr name render verbatim. View inners (str/bytes) stay out:
+        # their param slot is optional<view> against the field's
+        # optional<owned> (the arg-split shim), which the MIL does not mirror.
+        if _value_opt_scalar(ftype, analyzer) is None:
+            return False
+        source = _unwrap_copy(stmt.value, analyzer)
+        if not isinstance(source, TpyName):
+            return False
+        dt = declared.get(source.name)
+        if dt is None:
+            return False
+        dt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(dt)))
+        return dt == ftype
+    if _callable_value(ftype):
+        # A `std::function<...>` field copies bare from a same-typed callable
+        # param name (`on_event(cb)`). Lambda / mismatched-signature sources
+        # stay out (the lambda render is a body-lowering concern).
+        source = _unwrap_copy(stmt.value, analyzer)
+        if not isinstance(source, TpyName):
+            return False
+        dt = declared.get(source.name)
+        if dt is None:
+            return False
+        dt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(dt)))
+        return _callable_value(dt) and dt == ftype
     is_opt = (isinstance(ftype, OptionalType) and ftype.uses_pointer_repr()
               and _f1_record(ftype.inner, analyzer))
     if not (is_opt or _f1_record(ftype, analyzer)):
@@ -1351,6 +1455,46 @@ def _lower_ctor_mil_init(
             v = replace(v, result_type=vu)
         return THIRMilInit(field_cpp=field_cpp, value=v)
     if _f1_tuple(ftype, analyzer) is not None:
+        lit = stmt.value
+        while isinstance(lit, TpyCoerce):
+            lit = lit.expr
+        if isinstance(lit, TpyTupleLiteral):
+            # The spelled borrow-form brace-init wrapped in `tuple_to_storage`
+            # (`t(::tpy::tuple_to_storage<S>(S{e1, e2}))`): the inner literal
+            # spells the SAME storage tuple type S (to_cpp of the field slot),
+            # elements per `_mil_ptr_tuple_elem_ok` -- a bare param name
+            # (brace-init copies / optional's converting ctor absorbs), an
+            # explicit `copy(p)` as the copy-ctor call `T(p)`, or a scalar.
+            _witness("mil.ptr_tuple_literal")
+            ft_tuple = _f1_tuple(ftype, analyzer)
+
+            def elem(i: int) -> THIRExpr:
+                e = lit.elements[i]
+                slot = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                    ft_tuple.element_types[i])))
+                src = _unwrap_copy(e, analyzer)
+                if src is not e and isinstance(src, TpyName):
+                    st = declared.get(src.name)
+                    st = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(st)))
+                          if st is not None else slot)
+                    return THIRRecordCopy(
+                        result_type=slot, cpp_type=st.to_cpp(),
+                        value=_lower_expr(src, lc, declared),
+                        form=Form.STORAGE, loc=getattr(e, "loc", None))
+                el = _lower_expr(e, lc, declared)
+                if _eligible_scalar(slot) or _eligible_char(slot):
+                    el = _slot_literal_retype(el, slot, lc)
+                return el
+
+            inner = THIRTupleLiteral(
+                result_type=ftype,
+                elements=tuple(elem(i)
+                               for i in range(len(lit.elements))),
+                loc=loc)
+            return THIRMilInit(
+                field_cpp=field_cpp,
+                value=THIRFormConvert(result_type=ftype, value=inner,
+                                      form=Form.STORAGE, move=False, loc=loc))
         # F3: the borrow pointer-repr tuple param stores via
         # `tuple_to_storage` (a STORAGE convert; lowering admitted only the
         # bare borrow-name source).
@@ -1376,6 +1520,13 @@ def _lower_ctor_mil_init(
             _witness("mil.optional_none")
             v: THIRExpr = THIRLiteral(result_type=ftype, value=None,
                                       form=Form.STORAGE, loc=loc)
+        elif not ftype.uses_pointer_repr():
+            # The gate admitted only a same-typed value-repr optional param
+            # name: the whole-optional bare copy (`f(value)`). The read is a
+            # deliberate whole-binding copy, not an unwrap -- hence the
+            # allow_whole_optional pass.
+            _witness("mil.optional_value_copy")
+            v = _lower_expr(source, lc, declared, allow_whole_optional=True)
         elif _is_borrow_ptr_local(source, declared, set()):
             v = THIRFormConvert(result_type=ftype, value=_lower_expr(source, lc, declared),
                                 form=Form.STORAGE, move=False, loc=loc)
@@ -1384,6 +1535,12 @@ def _lower_ctor_mil_init(
             # ptr_to_optional (that lifts a borrow `T*`, not a record prvalue/copy).
             v = _lower_expr(source, lc, declared)
         return THIRMilInit(field_cpp=field_cpp, value=v)
+    if _callable_value(ftype):
+        # Same-typed callable param name: the bare `std::function` copy
+        # (`on_event(cb)`), per the gate's exact-type pin.
+        _witness("mil.callable_copy")
+        return THIRMilInit(field_cpp=field_cpp,
+                           value=_lower_expr(source, lc, declared))
     return THIRMilInit(
         field_cpp=field_cpp,
         value=_lower_expr(

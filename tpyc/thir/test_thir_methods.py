@@ -2219,3 +2219,128 @@ class TestMethodCallReceiver:
 
     def test_byte_identical(self):
         assert self._emit(True) == self._emit(False)
+
+
+class TestSetMethodReceivers:
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        hpp, cpp = compiler.generate_code_to_strings(
+            entry,
+            options=CodeGenOptions(emit_source_comments=False,
+                                   thir_codegen=thir))
+        return hpp + cpp
+
+    # set[scalar|owned-str] method receivers route through the container
+    # branch (`_set_method_recv` -- deliberately not a widening of
+    # `_container_scalar_read`, which feeds subscript/decl consumers where a
+    # set is invalid). Renders ride THIRMethodCall's existing arms: native
+    # helpers (`::tpy::set_remove(s, 10)`) and bare members (`s.clear()`).
+    SRC = (
+        "from tpy import Int32\n"
+        "def ops(s: set[Int32]) -> Int32:\n"
+        "    s.discard(20)\n"
+        "    s.remove(10)\n"
+        "    s.add(4)\n"
+        "    v = s.pop()\n"
+        "    s.clear()\n"
+        "    return v\n"
+    )
+
+    def test_byte_identical_and_routes(self):
+        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
+        thir = _lower_ctx(self.SRC)
+        assert _fn(thir, "ops") is not None
+        out = self._cpp(self.SRC, thir=True)
+        assert "::tpy::set_remove(s, 10);" in out
+        assert "s.clear();" in out
+
+
+class TestOwnedStrRvalueElementArg:
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        hpp, cpp = compiler.generate_code_to_strings(
+            entry,
+            options=CodeGenOptions(emit_source_comments=False,
+                                   thir_codegen=thir))
+        return hpp + cpp
+
+    # An owned-str RVALUE (concat binop / owned-returning method call) into
+    # the Own[str] container-element slot binds the `T&&` bare -- no temp,
+    # no view convert. Owned LVALUES keep the AST's copy+move-temp cascade.
+    SRC = (
+        "def app3(xs: list[str], s: str):\n"
+        "    xs.append(s + \" world\")\n"
+        "def app4(xs: list[str], s: str):\n"
+        "    xs.append(s.upper())\n"
+    )
+
+    def test_byte_identical_and_routes(self):
+        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
+        thir = _lower_ctx(self.SRC)
+        assert _fn(thir, "app3") is not None
+        assert _fn(thir, "app4") is not None
+        out = self._cpp(self.SRC, thir=True)
+        assert "xs.push_back((::tpy::str_concat(s, \" world\")));" in out
+
+    def test_owned_str_local_arg_stays_ast(self):
+        # An owned str LOCAL (STORAGE lvalue) still rides the AST's
+        # copy+move-temp cascade.
+        src = (
+            "def app(xs: list[str], s: str):\n"
+            "    owned = s.upper()\n"
+            "    owned = owned.lower()\n"
+            "    xs.append(owned)\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "app") is None
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+
+
+class TestFreeCallResultReceiver:
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        hpp, cpp = compiler.generate_code_to_strings(
+            entry,
+            options=CodeGenOptions(emit_source_comments=False,
+                                   thir_codegen=thir))
+        return hpp + cpp
+
+    # `make(3).get()`: a plain F1-record free-call result as the method
+    # receiver keeps `.` access on both paths; the inner call lowers via the
+    # shared free-call machinery at BORROW_BIND use.
+    SRC = (
+        "from tpy import Int32, Own\n"
+        "class A:\n"
+        "    x: Int32\n"
+        "    def __init__(self, x: Int32):\n        self.x = x\n"
+        "    def get(self) -> Int32:\n        return self.x\n"
+        "def make(x: Int32) -> Own[A]:\n    return A(x)\n"
+        "def use() -> Int32:\n    return make(3).get()\n"
+    )
+
+    def test_byte_identical_and_routes(self):
+        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
+        thir, witnesses = _lower_ctx_witnessed(self.SRC)
+        assert _fn(thir, "use") is not None
+        assert witnesses.get("method.recv.free_call", 0) >= 1
+        assert "return make(3).get();" in self._cpp(self.SRC, thir=True)
+
+    def test_optional_returning_call_receiver_stays_ast(self):
+        # An Optional-record-returning callee reads through a deref/unwrap on
+        # the AST path -- the bare `.` arm must not admit it.
+        src = (
+            "from tpy import Int32, Own\n"
+            "class A:\n"
+            "    x: Int32\n"
+            "    def __init__(self, x: Int32):\n        self.x = x\n"
+            "    def get(self) -> Int32:\n        return self.x\n"
+            "def maybe(x: Int32) -> Own[A] | None:\n"
+            "    if x > 0:\n        return A(x)\n"
+            "    return None\n"
+            "def use() -> Int32:\n"
+            "    m = maybe(3)\n"
+            "    if m is not None:\n        return m.get()\n"
+            "    return 0\n")
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)

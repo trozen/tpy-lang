@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import io
 from dataclasses import dataclass, field
-from typing import TextIO
+from typing import Callable, TextIO
 
 from ..codegen_cpp.context import (
     INDENT, cpp_bytes_literal_owned, cpp_bytes_literal_span,
@@ -30,10 +30,12 @@ from ..type_def_registry import (
     is_set, is_str_type, is_string_type, view_to_owned_conv,
 )
 from ..typesys import (OptionalType, TpyType, TupleType, TypeParamRef,
-                       UnionType, unwrap_qualifiers, view_family_for_type)
+                       UnionType, VoidType, unwrap_qualifiers,
+                       view_family_for_type)
 from .nodes import (
     Form,
     PrintForm,
+    PtrSlotKind,
     TruthinessMode,
     THIRArgTemp,
     THIRAssert,
@@ -55,6 +57,9 @@ from .nodes import (
     THIRCtorCall,
     THIREnumMember,
     THIREnumWrap,
+    THIRErrorReturnBind,
+    THIRErrorReturnDiscard,
+    THIRErrorReturnUnwrap,
     THIRExpr,
     THIRExprStmt,
     THIRFieldAccess,
@@ -84,6 +89,8 @@ from .nodes import (
     THIRParamCopy,
     THIRPrint,
     THIRPrintArg,
+    THIRPtrLocalDecl,
+    THIRPtrLocalRebind,
     THIRRaise,
     THIRReturn,
     THIRSetItem,
@@ -95,6 +102,7 @@ from .nodes import (
     THIRStrSlice,
     THIRSubscript,
     THIRTry,
+    THIRRecordCopy,
     THIRTupleLiteral,
     THIRTupleUnpack,
     THIRTruthy,
@@ -266,17 +274,40 @@ class _EmitState:
     comments: CommentSink
     temps: TempSink = field(default_factory=TempSink)
     # `with_counter` numbers `__ctx_N` (ctx attr `with_counter`); `try_counter`
-    # numbers `__after_else_N` throw-tier else labels (ctx attr
-    # `try_except_counter` -- its other consumers, `__try_tmp_N`/`__er_N`
-    # error_return unwraps and the return tier's `__except_N`, are all
-    # gate-rejected, so within a routed body only the else label draws).
+    # numbers the throw tier's `__after_else_N` else labels, the return
+    # tier's `__except_N`/`__after_try_N`/`__err_opt_N`, and the error_return
+    # unwrap temps `__try_tmp_N`/`__er_N` (ctx attr `try_except_counter` --
+    # one module-cumulative stream shared with the AST path).
     with_counter: ModuleCounter = field(default_factory=ModuleCounter)
     try_counter: ModuleCounter = field(default_factory=ModuleCounter)
     return_cpp: 'str | None' = None
+    # @error_return context, mirroring the AST ctx fields the error_return
+    # renders read: `error_return_cpp` is the enclosing function's error type
+    # (ctx.current_error_return; seeds bare-return `{}`, the void success
+    # tail, and the propagate disposition); `try_except_label`/
+    # `try_except_err_opt` are live while a return-tier try body emits (the
+    # goto-except disposition + `as` capture); `in_except_tier` is the
+    # enclosing handler's tier, read by the bare-raise re-raise arm.
+    error_return_cpp: 'str | None' = None
+    try_except_label: 'str | None' = None
+    try_except_err_opt: 'str | None' = None
+    in_except_tier: 'str | None' = None
+    # Resumable-leaf shadow probe: the skeleton registers C++-local shadows of
+    # frame fields (for-loop iter vars) in ctx.frame_field_shadows, and the
+    # AST body-emit suppresses the `(*name)` peel for a shadowed name. The
+    # leaf emitter wires this to the LIVE ctx set so a THIRName lowered with
+    # deref=True (a frame-stored non-value local) renders bare exactly while
+    # its shadow is in scope. None outside resumable leaves.
+    frame_shadow_probe: 'Callable[[str], bool] | None' = None
     iter_counter: int = 0
     slot_counter: int = 0
     unpack_counter: int = 0
     rebind_slots: dict[str, int] = field(default_factory=dict)
+    # Names whose rebind slot backs a ptr-variant UNION local: their rvalue
+    # reseats spell `.emplace` + `to_ptr_variant(*slot)` via THIRPtrLocalRebind,
+    # so a plain THIRAssign on them (a same-union name copy) must NOT take the
+    # `&*(__slot_N = ...)` optional-slot reseat arm.
+    union_slot_locals: set[str] = field(default_factory=set)
     # Enclosing `with` layers, innermost last -- return/break/continue walk it
     # to render the inline `__exit__` chain (the AST's `ctx.finally_stack`);
     # `loop_depth` mirrors `len(ctx.loop_else_labels)` (bumped around every
@@ -939,6 +970,9 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         # native/imported global (`cpp`) renders verbatim -- the AST emits
         # qualify_native_name / imported_variable_cpp output unescaped.
         name = e.cpp if e.cpp is not None else escape_cpp_name(e.name)
+        if (e.deref and state.frame_shadow_probe is not None
+                and state.frame_shadow_probe(e.name)):
+            return name
         return f"(*{name})" if e.deref else name
     if isinstance(e, THIRSelf):
         return f"(*{e.cpp})" if e.deref else e.cpp
@@ -1088,6 +1122,10 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         if len(e.elements) == 1:
             return f"{cpp_type}({elems})"
         return f"{cpp_type}{{{elems}}}"
+    if isinstance(e, THIRRecordCopy):
+        # `copy(x)` of an F1 record: the explicit copy-ctor call `T(x)`
+        # (the AST's `_gen_copy_expr` record arm).
+        return f"{e.cpp_type}({_emit_expr(e.value, state)})"
     if isinstance(e, THIRComprehension):
         return _emit_comprehension(e, state)
     if isinstance(e, THIRGenExpr):
@@ -1101,6 +1139,23 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         if e.wrap is not None:
             return e.wrap.format(inner)
         return inner
+    if isinstance(e, THIRErrorReturnUnwrap):
+        # _maybe_error_return_unwrap: the call renders first, THEN the
+        # counter draws (the AST wraps an already-rendered call), so nested
+        # unwraps in arguments number lower than their host.
+        call_cpp = _emit_expr(e.call, state)
+        tmp = f"__er_{state.try_counter.next()}"
+        check = _er_check_inline(tmp, state)
+        if e.value_form:
+            _witness("er.unwrap")
+            return (f"({{ auto {tmp} = {call_cpp}; {check} "
+                    f"::tpy::unwrap_ref_move(*{tmp}); }})")
+        # Non-value result: return a pointer from the statement expression
+        # (points at the original object via val_or_ref), deref outside for
+        # an lvalue.
+        _witness("er.unwrap_ptr")
+        return (f"(*({{ auto {tmp} = {call_cpp}; {check} "
+                f"&::tpy::unwrap_ref(*{tmp}); }}))")
     raise THIRCodeGenError(f"unhandled THIR expr: {type(e).__name__}")
 
 
@@ -1206,13 +1261,24 @@ def _emit_nested_def(out: TextIO, stmt: THIRNestedDef, indent_level: int,
               f"({', '.join(stmt.params_cpp)}){ret} {{\n")
     saved = (state.finally_frames, state.return_cpp, state.loop_depth,
              state.switch_depth, state.loop_break_labels,
-             state.loop_else_labels, dict(state.rebind_slots))
+             state.loop_else_labels, dict(state.rebind_slots),
+             set(state.union_slot_locals), state.error_return_cpp,
+             state.try_except_label, state.try_except_err_opt,
+             state.in_except_tier)
     state.finally_frames = []
     state.return_cpp = stmt.ret_cpp
     state.loop_depth = 0
     state.switch_depth = 0
     state.loop_break_labels = []
     state.loop_else_labels = []
+    # A nested def is never @error_return (gated at lowering), so its body
+    # must not inherit the enclosing function's error_return renders (a bare
+    # `return` inside it is a plain `return;`, not `return {};`) nor a live
+    # return-tier goto target.
+    state.error_return_cpp = None
+    state.try_except_label = None
+    state.try_except_err_opt = None
+    state.in_except_tier = None
     try:
         # No trailing-comment emission: _gen_nested_def raw-loops gen_stmt
         # with no emit_block_trailing_comments call, so a comment after the
@@ -1221,7 +1287,10 @@ def _emit_nested_def(out: TextIO, stmt: THIRNestedDef, indent_level: int,
     finally:
         (state.finally_frames, state.return_cpp, state.loop_depth,
          state.switch_depth, state.loop_break_labels,
-         state.loop_else_labels, state.rebind_slots) = saved
+         state.loop_else_labels, state.rebind_slots,
+         state.union_slot_locals, state.error_return_cpp,
+         state.try_except_label, state.try_except_err_opt,
+         state.in_except_tier) = saved
     out.write(f"{indent}}};\n")
 
 
@@ -1408,7 +1477,7 @@ def _witness_chain(kind: str, state: _EmitState, stop_at: int) -> None:
         _witness(f"try.finally_{kind}")
 
 
-def _emit_finally_return(out: TextIO, stmt: THIRReturn, indent: str,
+def _emit_finally_return(out: TextIO, value_cpp: 'str | None', indent: str,
                          state: _EmitState) -> None:
     # Mirrors _make_return's finally-chain arm: the value lands in a
     # signature-typed temp BEFORE the chain runs (Python evaluates the return
@@ -1416,16 +1485,17 @@ def _emit_finally_return(out: TextIO, stmt: THIRReturn, indent: str,
     # overrides the return: the [[maybe_unused]] decl + suppressed trailing
     # return). The temp draws from the same per-function iter_counter the AST
     # uses; the chain buffers first like the AST so its own counter bumps land
-    # between the temp's allocation and the decl's write.
+    # between the temp's allocation and the decl's write. `value_cpp` is the
+    # already-rendered (and temp-flushed) return value, None for a bare
+    # `return;` -- callers render it first so the counter draws stay in the
+    # AST's order.
     _witness_chain("return", state, 0)
-    if stmt.value is None:
+    if value_cpp is None:
         if _emit_finally_chain(out, indent, state):
             _witness("try.chain_terminated")
         else:
             out.write(f"{indent}return;\n")
         return
-    value_cpp = _emit_expr(stmt.value, state)
-    state.temps.flush(out, indent)
     tmp = f"__tpy_ret_{state.iter_counter}"
     state.iter_counter += 1
     ret_cpp = state.return_cpp or "auto"
@@ -1438,6 +1508,51 @@ def _emit_finally_return(out: TextIO, stmt: THIRReturn, indent: str,
         _witness("try.chain_terminated")
     else:
         out.write(f"{indent}return {tmp};\n")
+
+
+def _er_check_inline(tmp: str, state: _EmitState) -> str:
+    # The one-line has_value check of the expression-level unwrap
+    # (_maybe_error_return_unwrap's three dispositions). The propagate arm
+    # deliberately does NOT walk finally frames -- the AST expression unwrap
+    # returns directly (unlike the statement-level _gen_propagate_check);
+    # mirrored, not endorsed.
+    if state.try_except_label:
+        if state.try_except_err_opt:
+            return (f"if (!{tmp}.has_value()) {{ "
+                    f"{state.try_except_err_opt} = std::move({tmp}.error()); "
+                    f"goto {state.try_except_label}; }}")
+        return f"if (!{tmp}.has_value()) goto {state.try_except_label};"
+    if state.error_return_cpp:
+        return (f"if (!{tmp}.has_value()) "
+                f"return ::tpy::make_unexpected({tmp}.error());")
+    return (f"if (!{tmp}.has_value()) "
+            f'::tpy::tpy_panic("unhandled error return");')
+
+
+def _er_check_stmt(tmp: str, indent: str, state: _EmitState) -> str:
+    # The statement-block check line(s): _gen_error_goto (in a return-tier
+    # try), _gen_propagate_check (in an @error_return body; finally-aware --
+    # active finally bodies run before the unexpected value returns), or the
+    # top-level panic.
+    if state.try_except_label:
+        if state.try_except_err_opt:
+            return (f"{indent}if (!{tmp}.has_value()) "
+                    f"{{ {state.try_except_err_opt} = "
+                    f"std::move({tmp}.error()); "
+                    f"goto {state.try_except_label}; }}\n")
+        return (f"{indent}if (!{tmp}.has_value()) "
+                f"goto {state.try_except_label};\n")
+    if state.error_return_cpp:
+        if not state.finally_frames:
+            return (f"{indent}if (!{tmp}.has_value()) "
+                    f"return ::tpy::make_unexpected({tmp}.error());\n")
+        body = io.StringIO()
+        _emit_finally_return(body, f"::tpy::make_unexpected({tmp}.error())",
+                             indent + INDENT, state)
+        return (f"{indent}if (!{tmp}.has_value()) {{\n"
+                f"{body.getvalue()}{indent}}}\n")
+    return (f"{indent}if (!{tmp}.has_value()) "
+            f'::tpy::tpy_panic("unhandled error return");\n')
 
 
 def _emit_loop_exit(out: TextIO, indent: str, state: _EmitState,
@@ -1597,7 +1712,13 @@ def _emit_try_except(out: TextIO, stmt: THIRTry, level: int,
                       f"{escape_cpp_name(h.binding)}) {{\n")
         else:
             out.write(f" catch (const {h.cpp_type}&) {{\n")
+        # A bare `raise` in a throw-tier handler re-throws even when the
+        # handler sits inside a return-tier handler body (ctx.in_except_tier
+        # is reassigned per handler emit).
+        prev_tier = state.in_except_tier
+        state.in_except_tier = "throw"
         _emit_stmts(out, h.body, level + 1, state)
+        state.in_except_tier = prev_tier
         if stmt.else_body:
             out.write(f"{INDENT * (level + 1)}goto {label};\n")
         out.write(f"{ind}}}")
@@ -1606,6 +1727,64 @@ def _emit_try_except(out: TextIO, stmt: THIRTry, level: int,
         out.write(f"{ind}// else:\n")
         _emit_stmts(out, stmt.else_body, level, state)
         out.write(f"{ind}{label}:;\n")
+
+
+def _emit_try_return(out: TextIO, stmt: THIRTry, inner_level: int,
+                     state: _EmitState) -> None:
+    # Mirrors _gen_try_return (see THIRTry): the counter draws first, the
+    # optional `__err_opt_N` capture decl, then the goto-dispatch body --
+    # wrapped in the finally frame when a finally is present. The emit
+    # state's label/err_opt are live only while the TRY body emits (the AST
+    # restores the label before the else body), while err_opt stays set
+    # until the whole statement closes (the bare-raise re-raise in the
+    # handler reads it).
+    inner = INDENT * inner_level
+    h = stmt.handlers[0]
+    n = state.try_counter.next()
+    except_label = f"__except_{n}"
+    after_label = f"__after_try_{n}"
+    err_opt_var: 'str | None' = None
+    prev_err_opt = state.try_except_err_opt
+    if h.binding:
+        err_opt_var = f"__err_opt_{n}"
+        out.write(f"{inner}std::optional<{stmt.err_opt_cpp}> "
+                  f"{err_opt_var};\n")
+        state.try_except_err_opt = err_opt_var
+        _witness("er.try_binding")
+
+    def emit_try_except(level: int) -> None:
+        body_indent = INDENT * level
+        prev_label = state.try_except_label
+        state.try_except_label = except_label
+        _emit_stmts(out, stmt.try_body, level, state)
+        state.try_except_label = prev_label
+        if stmt.else_body:
+            out.write(f"{body_indent}// else:\n")
+            _emit_stmts(out, stmt.else_body, level, state)
+        out.write(f"{body_indent}goto {after_label};\n")
+        exc_display = h.source_display or "..."
+        out.write(f"{body_indent}// except {exc_display}:\n")
+        out.write(f"{body_indent}{except_label}:;\n")
+        prev_tier = state.in_except_tier
+        state.in_except_tier = "return"
+        if h.binding and err_opt_var:
+            binding = escape_cpp_name(h.binding)
+            out.write(f"{body_indent}{{\n")
+            out.write(f"{INDENT * (level + 1)}auto& {binding} = "
+                      f"*{err_opt_var};\n")
+            _emit_stmts(out, h.body, level + 1, state)
+            out.write(f"{body_indent}}}\n")
+        else:
+            _emit_stmts(out, h.body, level, state)
+        state.in_except_tier = prev_tier
+        out.write(f"{body_indent}{after_label}:;\n")
+
+    _witness("er.try_return")
+    if stmt.finally_body:
+        _emit_frame_wrapped(out, inner_level, state, stmt, emit_try_except)
+    else:
+        emit_try_except(inner_level)
+    state.try_except_err_opt = prev_err_opt
 
 
 def _emit_try(out: TextIO, stmt: THIRTry, indent_level: int,
@@ -1622,6 +1801,8 @@ def _emit_try(out: TextIO, stmt: THIRTry, indent_level: int,
         _emit_frame_wrapped(
             out, inner_level, state, stmt,
             lambda lvl: _emit_stmts(out, stmt.try_body, lvl, state))
+    elif stmt.tier == "return":
+        _emit_try_return(out, stmt, inner_level, state)
     elif stmt.finally_body:
         _emit_frame_wrapped(
             out, inner_level, state, stmt,
@@ -2305,12 +2486,72 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             init_cpp = _emit_expr(stmt.init, state)
             state.temps.flush(out, indent)
             out.write(f"{indent}{cpp_type} {name} = {init_cpp};\n")
+    elif isinstance(stmt, THIRPtrLocalDecl):
+        # Slot-hoist pointer-repr locals. Slot NUMBERING mirrors the AST's
+        # allocation order exactly (SlotState.next_slot call sites in
+        # _gen_pointer_local_init / _gen_ptr_variant_local_init): the OPT
+        # kinds allocate the init slot before the rebind slot; the UNION
+        # rvalue kind allocates the value slot before the rebind slot but
+        # EMITS the rebind pre-decl line first.
+        name = escape_cpp_name(stmt.name)
+        if stmt.kind is PtrSlotKind.OPT_NONE:
+            if stmt.needs_rebind_slot:
+                slot = state.next_slot()
+                state.rebind_slots[stmt.name] = slot
+                out.write(f"{indent}std::optional<{stmt.cpp_type}> "
+                          f"__slot_{slot};\n")
+            out.write(f"{indent}{stmt.cpp_type}* {name} = nullptr;\n")
+        elif stmt.kind is PtrSlotKind.OPT_RVALUE:
+            init_cpp = _emit_expr(stmt.init, state)
+            init_slot = state.next_slot()
+            out.write(f"{indent}{stmt.cpp_type} __slot_{init_slot} = "
+                      f"{init_cpp};\n")
+            if stmt.needs_rebind_slot:
+                rebind = state.next_slot()
+                state.rebind_slots[stmt.name] = rebind
+                out.write(f"{indent}std::optional<{stmt.cpp_type}> "
+                          f"__slot_{rebind};\n")
+            out.write(f"{indent}{stmt.cpp_type}* {name} = "
+                      f"&__slot_{init_slot};\n")
+        elif stmt.kind is PtrSlotKind.UNION_RVALUE:
+            init_cpp = _emit_expr(stmt.init, state)
+            slot = state.next_slot()
+            if stmt.needs_rebind_slot:
+                rebind = state.next_slot()
+                state.rebind_slots[stmt.name] = rebind
+                state.union_slot_locals.add(stmt.name)
+                out.write(f"{indent}std::optional<{stmt.val_cpp}> "
+                          f"__slot_{rebind};\n")
+            out.write(f"{indent}{stmt.val_cpp} __slot_{slot} = {init_cpp};\n")
+            out.write(f"{indent}{stmt.cpp_type} {name} = "
+                      f"::tpy::to_ptr_variant(__slot_{slot});\n")
+        else:  # PtrSlotKind.UNION_ADDR
+            init_cpp = _emit_expr(stmt.init, state)
+            if stmt.needs_rebind_slot:
+                rebind = state.next_slot()
+                state.rebind_slots[stmt.name] = rebind
+                state.union_slot_locals.add(stmt.name)
+                out.write(f"{indent}std::optional<{stmt.val_cpp}> "
+                          f"__slot_{rebind};\n")
+            out.write(f"{indent}{stmt.cpp_type} {name}{{&({init_cpp})}};\n")
+    elif isinstance(stmt, THIRPtrLocalRebind):
+        name = escape_cpp_name(stmt.name)
+        if stmt.kind is PtrSlotKind.OPT_NONE:
+            out.write(f"{indent}{name} = nullptr;\n")
+        else:  # PtrSlotKind.UNION_RVALUE -- emplace + re-lift the rebind slot
+            slot = state.rebind_slots[stmt.name]
+            out.write(f"{indent}__slot_{slot}.emplace("
+                      f"{_emit_expr(stmt.value, state)});\n")
+            out.write(f"{indent}{name} = "
+                      f"::tpy::to_ptr_variant(*__slot_{slot});\n")
     elif isinstance(stmt, THIRAssign):
         # target is a THIRName (`x = ...`) or, for F2b, a THIRFieldAccess
         # (`recv.field = ...` / `recv->field = ...`); _emit_expr renders both. An
         # F2d rebind-slot pointer-local reseat reuses its optional slot:
         # `p = &*(__slot_N = <rvalue>);`.
-        if isinstance(stmt.target, THIRName) and stmt.target.name in state.rebind_slots:
+        if (isinstance(stmt.target, THIRName)
+                and stmt.target.name in state.rebind_slots
+                and stmt.target.name not in state.union_slot_locals):
             slot = state.rebind_slots[stmt.target.name]
             out.write(f"{indent}{escape_cpp_name(stmt.target.name)} = "
                       f"&*(__slot_{slot} = {_emit_expr(stmt.value, state)});\n")
@@ -2395,13 +2636,20 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             out.write(f"{inner}::tpy::raise_assertion_error({message});\n")
             out.write(f"{indent}}}\n")
     elif isinstance(stmt, THIRReturn):
-        if state.finally_frames:
-            _emit_finally_return(out, stmt, indent, state)
-        elif stmt.value is None:
-            out.write(f"{indent}return;\n")
+        # A bare `return` in an @error_return body constructs the success
+        # value: `return {};` (_gen_simple_stmt's current_error_return arm).
+        if stmt.value is None:
+            value_cpp = "{}" if state.error_return_cpp else None
+            if value_cpp is not None:
+                _witness("er.bare_return")
         else:
             value_cpp = _emit_expr(stmt.value, state)
             state.temps.flush(out, indent)
+        if state.finally_frames:
+            _emit_finally_return(out, value_cpp, indent, state)
+        elif value_cpp is None:
+            out.write(f"{indent}return;\n")
+        else:
             out.write(f"{indent}return {value_cpp};\n")
     elif isinstance(stmt, THIRIf):
         _emit_if(out, stmt, indent_level, state)
@@ -2452,10 +2700,37 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
     elif isinstance(stmt, THIRContinue):
         _emit_loop_exit(out, indent, state, is_break=False)
     elif isinstance(stmt, THIRRaise):
-        # Mirrors _gen_raise's throw-tier arms: a raise never walks the
-        # finally-frame stack -- the throw propagates through the emitted
-        # catch(...) arms, which run the finally bodies.
-        if stmt.cpp_type is None:
+        # Mirrors _gen_raise. Throw-tier arms never walk the finally-frame
+        # stack -- the throw propagates through the emitted catch(...) arms,
+        # which run the finally bodies. The return-tier arms are RETURNS
+        # (make_unexpected), so they take the finally-aware _make_return
+        # shape like THIRReturn.
+        if stmt.return_tier:
+            if stmt.args:
+                args = ", ".join(_emit_expr(a, state) for a in stmt.args)
+                value_cpp = f"::tpy::make_unexpected({stmt.cpp_type}({args}))"
+                _witness("er.raise_args")
+            else:
+                value_cpp = f"::tpy::make_unexpected({stmt.cpp_type}{{}})"
+                _witness("er.raise")
+            state.temps.flush(out, indent)
+            if state.finally_frames:
+                _emit_finally_return(out, value_cpp, indent, state)
+            else:
+                out.write(f"{indent}return {value_cpp};\n")
+        elif stmt.cpp_type is None and state.in_except_tier == "return":
+            # Bare re-raise inside a return-tier handler: re-return the
+            # captured error (_gen_raise's bare return-tier arm).
+            assert state.try_except_err_opt is not None, \
+                "return-tier re-raise without a live error capture"
+            _witness("er.reraise")
+            value_cpp = ("::tpy::make_unexpected("
+                         f"std::move(*{state.try_except_err_opt}))")
+            if state.finally_frames:
+                _emit_finally_return(out, value_cpp, indent, state)
+            else:
+                out.write(f"{indent}return {value_cpp};\n")
+        elif stmt.cpp_type is None:
             out.write(f"{indent}throw;\n")
         elif stmt.args:
             args = ", ".join(_emit_expr(a, state) for a in stmt.args)
@@ -2467,6 +2742,38 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             out.write(f"{indent}{stmt.cpp_type}{{}}.__raise__();\n")
         else:
             out.write(f"{indent}throw {stmt.cpp_type}{{}};\n")
+    elif isinstance(stmt, THIRErrorReturnBind):
+        # _gen_error_return_[propagate_/unwrap_]var_decl / _assign: the
+        # counter draws BEFORE the call renders (the AST bumps first, so a
+        # nested unwrap in an argument gets the higher number).
+        n = state.try_counter.next()
+        tmp = f"__try_tmp_{n}"
+        call_cpp = _emit_expr(stmt.call, state)
+        state.temps.flush(out, indent)
+        name = escape_cpp_name(stmt.name)
+        if stmt.decl_cpp is not None:
+            out.write(f"{indent}{stmt.decl_cpp} {name};\n")
+        inner = indent + INDENT
+        out.write(f"{indent}{{\n")
+        out.write(f"{inner}auto {tmp} = {call_cpp};\n")
+        out.write(_er_check_stmt(tmp, inner, state))
+        out.write(f"{inner}{name} = ::tpy::unwrap_ref_move(*{tmp});\n")
+        out.write(f"{indent}}}\n")
+        _witness("er.bind")
+    elif isinstance(stmt, THIRErrorReturnDiscard):
+        # _gen_error_return_stmt_block via the expr-stmt handler: there the
+        # call renders BEFORE the counter draws (the block helper takes the
+        # rendered call and bumps inside).
+        call_cpp = _emit_expr(stmt.call, state)
+        state.temps.flush(out, indent)
+        n = state.try_counter.next()
+        tmp = f"__try_tmp_{n}"
+        inner = indent + INDENT
+        out.write(f"{indent}{{\n")
+        out.write(f"{inner}auto {tmp} = {call_cpp};\n")
+        out.write(_er_check_stmt(tmp, inner, state))
+        out.write(f"{indent}}}\n")
+        _witness("er.discard")
     elif isinstance(stmt, THIRParamCopy):
         # Mutable owned copy of a reassigned const-ref param; the signature
         # (AST-emitted) renamed the param to `__param_{name}`.
@@ -2555,17 +2862,24 @@ def emit_thir_body(out: TextIO, fn: THIRFunction, indent_level: int = 1,
     """Emit `fn`'s body statements (no signature, no braces) at `indent_level`.
 
     `temps` is the `__tmp_N` sink, `with_counter` the `__ctx_N` sink, and
-    `try_counter` the `__after_else_N` else-label sink -- all
+    `try_counter` the try/error_return label+temp sink -- all
     module-cumulative, so the codegen seam passes the ctx-backed
     implementations (CtxTempSink / CtxCounter); the defaults are fresh local
     sinks (standalone/unit callers). `return_cpp` is the signature's return
     spelling (`ctx.current_return_cpp` at the seam), read only by the
     finally-chain return temp decl."""
-    _emit_stmts(out, fn.body, indent_level,
-                _EmitState(comments or _NO_COMMENTS, temps=temps or TempSink(),
-                           with_counter=with_counter or ModuleCounter(),
-                           try_counter=try_counter or ModuleCounter(),
-                           return_cpp=return_cpp))
+    state = _EmitState(comments or _NO_COMMENTS, temps=temps or TempSink(),
+                       with_counter=with_counter or ModuleCounter(),
+                       try_counter=try_counter or ModuleCounter(),
+                       return_cpp=return_cpp,
+                       error_return_cpp=fn.error_return_cpp)
+    _emit_stmts(out, fn.body, indent_level, state)
+    # Void @error_return functions return `{}` at the end -- the implicit
+    # success value (gen_body's current_error_return tail; unconditional,
+    # like the AST's).
+    if fn.error_return_cpp and isinstance(fn.return_type, VoidType):
+        out.write(f"{INDENT * indent_level}return {{}};\n")
+        _witness("er.void_tail")
 
 
 def emit_thir_constructor_tail(out: TextIO, ctor: THIRConstructor,
@@ -2619,13 +2933,16 @@ class ResumableLeafEmitter:
                  temps: 'TempSink | None' = None,
                  with_counter: 'ModuleCounter | None' = None,
                  try_counter: 'ModuleCounter | None' = None,
-                 return_cpp: 'str | None' = None) -> None:
+                 return_cpp: 'str | None' = None,
+                 frame_shadow_probe: 'Callable[[str], bool] | None' = None,
+                 ) -> None:
         self._body = body
         self._state = _EmitState(comments or _NO_COMMENTS,
                                  temps=temps or TempSink(),
                                  with_counter=with_counter or ModuleCounter(),
                                  try_counter=try_counter or ModuleCounter(),
-                                 return_cpp=return_cpp)
+                                 return_cpp=return_cpp,
+                                 frame_shadow_probe=frame_shadow_probe)
 
     def _lookup(self, table, node, what: str):
         if id(node) not in table:

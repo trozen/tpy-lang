@@ -11,7 +11,7 @@ from .nodes import (
     THIRReturn, THIRSubscript, THIRTupleLiteral, THIRTupleUnpack, THIRVarDecl,
 )
 from .testutil import (
-    _compile, _entry, _lower, _lower_ctx, _fn, _lower_ctor,
+    _compile, _entry, _lower, _lower_ctx, _fn, _lower_ctor, _ctor_tail,
     _lower_ctx_witnessed, _PRELUDE,
 )
 
@@ -57,13 +57,15 @@ class TestF3TupleReturn:
         assert isinstance(ret.value, THIRTupleLiteral)
         assert not isinstance(ret.value, THIRFormConvert)
 
-    def test_tuple_field_init_ctor_stays_on_ast_path(self):
-        # Regression guard for the M3 ctor-frontier fix: `Holder.__init__` does
-        # `self.pair = (1, b)` -- a leading own-field init of an F3+ tuple type the
-        # AST hoists into the member-init-list but THIR cannot reproduce there. It
-        # must REJECT the whole ctor (return None, AST path) rather than demote the
-        # init into the body, which would diverge from the AST's MIL hoist.
-        assert _lower_ctor(_F3_RECORDS, "Holder") is None
+    def test_tuple_field_init_ctor_routes_mil_literal(self):
+        # `Holder.__init__` does `self.pair = (1, b)` -- a leading own-field
+        # init of an F3+ tuple the AST hoists into the member-init-list; the
+        # mil.ptr_tuple_literal arm mirrors it (`pair(::tpy::tuple_to_storage<
+        # S>(S{1, b}))`), matching the hoist rather than demoting to the body.
+        ctor = _lower_ctor(_F3_RECORDS, "Holder")
+        assert ctor is not None
+        assert "::tpy::tuple_to_storage<std::tuple<int32_t, Leaf>>(" \
+            "std::tuple<int32_t, Leaf>{1, b})" in _ctor_tail(ctor)
 
     def test_storage_tuple_alias_local_routes(self):
         # A storage-tuple alias local (`t = h.pair`) binds `auto&&` (a STORAGE-form
