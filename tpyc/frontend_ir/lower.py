@@ -840,9 +840,14 @@ def _lower_record(
         # method-arg accounting (sema's `init_params`, arity checks,
         # etc.) excludes self. The IR carries it because plugins
         # build method bodies that reference `self` by name; for the
-        # TpyFunction the receiver is implicit.
+        # TpyFunction the receiver is implicit. `defaults` is parallel to
+        # `params`, so drop its leading self slot in lockstep -- otherwise
+        # every subsequent param inherits the previous one's default and a
+        # defaulted param reads as required.
         if lowered.params and lowered.params[0][0] == "self":
             lowered.params = lowered.params[1:]
+            if lowered.defaults:
+                lowered.defaults = lowered.defaults[1:]
         if m.is_property_getter:
             lowered.is_property_getter = True
         if m.is_property_setter:
@@ -912,6 +917,8 @@ def _lower_function(
     PointerType); the body uses the M4 expression / statement set.
     """
     params: list = []
+    defaults: list = []
+    seen_default = False
     for p in fn.params:
         # An un-annotated param (`type is None`) is permitted for
         # `self` on record methods, mirroring the no-annotation form
@@ -923,13 +930,24 @@ def _lower_function(
             t = _lower_type(p.type, plugin_name, fm, diags)
             if t is None:
                 return None
+        d = None
         if p.default is not None:
+            d = _lower_expr(p.default, name_to_origin, plugin_name, fm, diags)
+            if d is None:
+                return None
+            seen_default = True
+        elif seen_default:
+            # Python's parser rejects a non-default param after a defaulted
+            # one; the frontend-IR path bypasses it, so enforce the same
+            # rule here rather than let it surface as an opaque C++ error
+            # (defaults must be trailing to map to C++ default arguments).
             diags.append(_ir_invalid(
                 plugin_name, fm,
-                "parameter defaults are not lowered in M4",
-            ))
+                f"parameter {p.name!r} without a default follows a "
+                f"parameter with a default"))
             return None
         params.append((p.name, t))
+        defaults.append(d)
     return_type = None
     if fn.return_type is not None:
         return_type = _lower_type(fn.return_type, plugin_name, fm, diags)
@@ -968,6 +986,9 @@ def _lower_function(
     return TpyFunction(
         name=fn.name,
         params=params,
+        # Empty when no param has a default; else parallel to `params` with
+        # None in the no-default slots -- downstream keys on empty-vs-populated.
+        defaults=defaults if seen_default else [],
         return_type=return_type,
         body=body,
         pending_macros=pending_macros,

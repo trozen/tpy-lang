@@ -633,9 +633,10 @@ class Record:
 
 @dataclass
 class Param:
-    """A function parameter. M4 only emits unsubscripted, default-less
-    params; defaults / *args / **kwargs are reserved for future
-    milestones."""
+    """A function parameter. `default` (an already-typed IR `Expr`) is
+    lowered to a C++ default argument via the same machinery as source
+    defaults; a defaulted param must not precede a non-defaulted one.
+    `*args` / `**kwargs` are reserved for future milestones."""
     name: str = ""
     type: TypeExpr = None  # type: ignore[assignment]
     default: Expr | None = None
