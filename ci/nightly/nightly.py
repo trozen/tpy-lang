@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """Nightly CI orchestrator.
 
-Runs the config matrix from configs.json: one fresh container per config,
-sequentially. Shares the compile-reuse caches (stdlib .o / PCH / ccache /
-uv) across configs and nights via a named docker volume, but always passes
---force-exec so every case actually builds+links+runs every night (the
-result-skip cache must never make the nightly incremental).
+Runs the config matrix from configs.json sequentially: most rows build in a
+fresh container per config (sharing the compile-reuse caches -- stdlib .o /
+PCH / ccache / uv -- across configs and nights via a named docker volume);
+an `ssh` row (the native-macOS backend) instead runs over SSH. Container
+rows pass --force-exec so every case actually builds+links+runs every night
+(the result-skip cache must never make the nightly incremental).
 
 Stdlib-only; runs on the host under the system python3 (no uv needed).
 Invoked by cron via cron-nightly.sh, which handles flock + git pull.
@@ -151,54 +152,152 @@ def export_source(dest: Path) -> None:
         check=True)
 
 
-def run_config(cfg: dict, src_dir: Path, out_dir: Path, timeout: float,
-               smoke: bool, refresh: bool) -> ConfigResult:
-    res = ConfigResult(name=cfg["name"])
-    # A config whose host-side prerequisites aren't installed yet (e.g. the
-    # osxcross toolchain) self-disables instead of failing: it stays visible
-    # in every report and activates automatically once the paths exist.
+def _ssh_reachable(host: str) -> bool:
+    """True if `ssh <host> true` succeeds quickly. BatchMode so a missing key
+    fails fast instead of prompting; ConnectTimeout so a sleeping/off Mac
+    can't hang the whole nightly."""
+    r = subprocess.run(
+        ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10", host, "true"],
+        capture_output=True)
+    return r.returncode == 0
+
+
+def _config_unavailable(cfg: dict) -> str | None:
+    """Reason a config self-disables to 'unavailable' tonight, or None. A
+    missing local `requires` path (e.g. osxcross not installed) or an
+    unreachable `ssh` host (a Mac that's asleep/off): both stay visible in the
+    report and activate automatically once available -- never red."""
     missing = [p for p in cfg.get("requires", [])
                if not Path(p).expanduser().exists()]
     if missing:
+        return f"missing {', '.join(missing)}"
+    ssh = cfg.get("ssh")
+    if ssh and not _ssh_reachable(ssh["host"]):
+        return f"ssh host '{ssh['host']}' unreachable"
+    return None
+
+
+def _run_docker(cfg: dict, src_dir: Path, out_dir: Path, smoke: bool,
+                refresh: bool, log_file: Path, timeout: float) -> int:
+    """Build the config's image and run the suite in a fresh container; junit
+    lands in out_dir (bind-mounted at /out). Returns pytest's exit code."""
+    tag = build_image(cfg, refresh, log_file)
+    container = f"{IMAGE_PREFIX}-{cfg['name']}"
+    # Self-heal an orphan from a crashed/rebooted previous run: it would
+    # otherwise hold this fixed name and fail tonight's docker run.
+    subprocess.run(["docker", "rm", "-f", container], capture_output=True)
+    cmd = ["docker", "run", "--rm", "--name", container,
+           "-v", f"{src_dir}:/repo:ro",
+           "-v", f"{out_dir}:/out",
+           "-v", f"{CACHE_VOLUME}:/cache",
+           "-e", "TPYC_SHARED_CACHE_DIR=/cache/tpyc",
+           "-e", "CCACHE_DIR=/cache/ccache",
+           "-e", "UV_CACHE_DIR=/cache/uv"]
+    for mount in cfg.get("mounts", []):
+        # "~/host/path:/container/path[:opts]" with ~ expanded host-side.
+        host, _, rest = mount.partition(":")
+        cmd += ["-v", f"{Path(host).expanduser()}:{rest}"]
+    for env in cfg.get("env", []):
+        # "KEY=VALUE" passed straight through (e.g. LD_LIBRARY_PATH for a
+        # mounted toolchain whose libs sit outside the container's default
+        # search path).
+        cmd += ["-e", env]
+    if cfg.get("cpython"):
+        # Pin the interpreter for this row (both the compiler run and the cpy
+        # phase follow UV_PYTHON), overriding the image's distro Python; allow
+        # the managed download the base image lacks.
+        cmd += ["-e", f"UV_PYTHON={cfg['cpython']}",
+                "-e", "UV_PYTHON_DOWNLOADS=automatic"]
+    cmd += [tag, "bash", "-c", container_script(cfg, smoke)]
+    return run_logged(cmd, log_file, timeout=timeout)
+
+
+def remote_script(cfg: dict, smoke: bool) -> str:
+    """The script run over ssh on a native host (e.g. macOS, default shell
+    zsh). Full comp+exec+cpy: no --cxx (auto-detect the host clang) and no
+    --no-cpy (the host's CPython parity is the point of a native row). uv is a
+    rootless install, so a non-login ssh shell needs ~/.local/bin on PATH;
+    caffeinate keeps a Mac awake for the run. No cross-run lock here (the cron
+    wrapper already flocks the whole nightly, and `flock` is Linux-only). junit
+    is written one level above the synced repo so rsync --delete never touches
+    it. Portable sh/zsh only -- no Linux-only utilities."""
+    workdir = shlex.quote(cfg["ssh"]["workdir"])
+    pytest_args = ["--force-exec", f"--junitxml=../junit-{cfg['name']}.xml"]
+    if smoke:
+        pytest_args += ["-k", SMOKE_FILTER]
+    return "\n".join([
+        "set -eu",
+        'export PATH="$HOME/.local/bin:$PATH"',
+        f"cd {workdir}/repo",
+        "uv sync --quiet",
+        f"exec caffeinate -i uv run pytest {shlex.join(pytest_args)}",
+    ])
+
+
+def _run_ssh(cfg: dict, src_dir: Path, out_dir: Path, smoke: bool,
+             log_file: Path, timeout: float) -> int:
+    """Run the suite natively on a remote host over ssh. rsync the source into
+    a PERSISTENT remote workdir (so the venv and ~/.cache compile caches
+    survive across nights -> warm builds), run the suite there, and pull the
+    junit back into out_dir. `workdir` is a simple path relative to the remote
+    home. A timeout kills the local ssh; a lingering remote pytest is left
+    as-is (no cross-run lock, matching remote_script) -- rare on a best-effort
+    row, and the next night's rsync + uv sync overwrite the tree so it
+    self-heals."""
+    ssh = cfg["ssh"]
+    host, workdir, name = ssh["host"], ssh["workdir"], cfg["name"]
+    mk = subprocess.run(
+        ["ssh", "-o", "BatchMode=yes", host,
+         f"mkdir -p {shlex.quote(workdir)}/repo"],
+        capture_output=True, text=True)
+    if mk.returncode != 0:
+        raise RuntimeError(f"ssh {host}: mkdir failed: {mk.stderr.strip()}")
+    # --delete keeps the remote tree matching HEAD; --exclude .venv preserves
+    # the built venv so `uv sync` stays incremental.
+    rc = run_logged(
+        ["rsync", "-a", "--delete", "--exclude", ".venv",
+         "-e", "ssh -o BatchMode=yes",
+         f"{src_dir}/", f"{host}:{workdir}/repo/"],
+        log_file, timeout=timeout)
+    if rc != 0:
+        raise RuntimeError(f"rsync to {host} failed (exit {rc})")
+    rc = run_logged(
+        ["ssh", "-o", "BatchMode=yes", host, remote_script(cfg, smoke)],
+        log_file, timeout=timeout)
+    # Pull the junit back even on failure -- it names the failing tests.
+    # Best-effort: run_config treats a missing file as an infra failure.
+    subprocess.run(
+        ["scp", "-o", "BatchMode=yes", f"{host}:{workdir}/junit-{name}.xml",
+         str(out_dir / f"junit-{name}.xml")],
+        capture_output=True)
+    return rc
+
+
+def run_config(cfg: dict, src_dir: Path, out_dir: Path, timeout: float,
+               smoke: bool, refresh: bool) -> ConfigResult:
+    res = ConfigResult(name=cfg["name"])
+    unavailable = _config_unavailable(cfg)
+    if unavailable:
         res.status = "unavailable"
-        res.detail = f"missing {', '.join(missing)}"
+        res.detail = unavailable
         return res
     log_file = out_dir / f"{cfg['name']}.log"
     res.log_path = str(log_file)
-    container = f"{IMAGE_PREFIX}-{cfg['name']}"
+    # Per-row override for a slow backend (the native mac run is longer than a
+    # docker row and shares the box with other testing).
+    timeout = float(cfg.get("timeout", timeout))
     start = time.monotonic()
     try:
-        tag = build_image(cfg, refresh, log_file)
-        # Self-heal an orphan from a crashed/rebooted previous run: it would
-        # otherwise hold this fixed name and fail tonight's docker run.
-        subprocess.run(["docker", "rm", "-f", container], capture_output=True)
-        cmd = ["docker", "run", "--rm", "--name", container,
-               "-v", f"{src_dir}:/repo:ro",
-               "-v", f"{out_dir}:/out",
-               "-v", f"{CACHE_VOLUME}:/cache",
-               "-e", "TPYC_SHARED_CACHE_DIR=/cache/tpyc",
-               "-e", "CCACHE_DIR=/cache/ccache",
-               "-e", "UV_CACHE_DIR=/cache/uv"]
-        for mount in cfg.get("mounts", []):
-            # "~/host/path:/container/path[:opts]" with ~ expanded host-side.
-            host, _, rest = mount.partition(":")
-            cmd += ["-v", f"{Path(host).expanduser()}:{rest}"]
-        for env in cfg.get("env", []):
-            # "KEY=VALUE" passed straight through (e.g. LD_LIBRARY_PATH for a
-            # mounted toolchain whose libs sit outside the container's default
-            # search path).
-            cmd += ["-e", env]
-        if cfg.get("cpython"):
-            # Pin the interpreter for this row (both the compiler run and the
-            # cpy phase follow UV_PYTHON), overriding the image's distro
-            # Python; allow the managed download the base image lacks.
-            cmd += ["-e", f"UV_PYTHON={cfg['cpython']}",
-                    "-e", "UV_PYTHON_DOWNLOADS=automatic"]
-        cmd += [tag, "bash", "-c", container_script(cfg, smoke)]
-        rc = run_logged(cmd, log_file, timeout=timeout)
+        if cfg.get("ssh"):
+            rc = _run_ssh(cfg, src_dir, out_dir, smoke, log_file, timeout)
+        else:
+            rc = _run_docker(cfg, src_dir, out_dir, smoke, refresh,
+                             log_file, timeout)
     except subprocess.TimeoutExpired as exc:
-        subprocess.run(["docker", "rm", "-f", container],
-                       capture_output=True)
+        if not cfg.get("ssh"):
+            subprocess.run(
+                ["docker", "rm", "-f", f"{IMAGE_PREFIX}-{cfg['name']}"],
+                capture_output=True)
         res.status = "timeout"
         # exc.timeout distinguishes a build timeout from the config timeout.
         res.detail = f"killed after {int(exc.timeout)}s"

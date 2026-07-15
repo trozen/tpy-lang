@@ -5,9 +5,10 @@ configurations (compiler versions, dependency modes, distro/Python/libstdc++
 combinations) break in ways a single local dev toolchain never surfaces;
 this nightly is the safety net that catches toolchain/config breakage.
 Correctness of the code itself is covered by the developer running the suite
-before pushing. Runs as a plain cron job on the dedicated test box -- one
-fresh container per config, sequentially (a full cold config is ~25 min on
-16 cores, so the whole matrix fits a night without parallelism).
+before pushing. Runs as a plain cron job on the dedicated test box,
+sequentially -- most rows build in a fresh container per config (a full
+cold config is ~25 min on 16 cores, so the whole matrix fits a night
+without parallelism); the native-macOS row instead runs over SSH.
 
 ## Files
 
@@ -99,6 +100,20 @@ fresh container per config, sequentially (a full cold config is ~25 min on
   `ld`. Any case that does not build on mac is a genuine bug to fix (or,
   if truly unportable, gets a targeted skip added at that point); the row
   reports the fail-set as red -- that red is the worklist, not noise.
+- The `macos-native` row runs the FULL suite (comp+exec+cpy) *natively* on
+  a Mac over SSH -- so it catches runtime-parity divergences the build-only
+  osxcross cross row structurally cannot (e.g. a wrong `errno`-derived
+  exception). It's a second backend in `nightly.py`: instead of a docker
+  container, it rsyncs the source into a persistent remote workdir (relative
+  to the ssh user's home), runs `uv run pytest --force-exec` there, and pulls
+  the junit back into the same
+  report. The two mac rows are complementary -- keep both: the cross row is
+  the always-on compile-regression guard on the Linux box, the native row
+  the runtime check. It's BEST-EFFORT: the Mac is shared and may be off, so
+  the row probes `ssh <host> true` first and self-disables to "unavailable"
+  (never red) when unreachable -- you never rely on it for a green nightly.
+  Config carries only an opaque `ssh` alias (`host`, `workdir`); the real
+  hostname/user/key live in `~/.ssh/config` on the box, out of git.
 
 ## Caching (deliberate -- do not "optimize")
 
@@ -191,10 +206,46 @@ never applies to them.
    The wrapper self-logs: without a terminal it appends its own output to
    `~/tpy-nightly/cron.log` (interactive runs print normally).
 
+7. **macOS native row (optional).** The `macos-native` row needs SSH to a
+   Mac; skip it and the row self-disables to "unavailable" harmlessly.
+
+   On the Mac (one-time):
+
+   ```
+   xcode-select --install                      # clang + macOS SDK
+   curl -LsSf https://astral.sh/uv/install.sh | sh   # rootless uv -> ~/.local/bin
+   # System Settings -> General -> Sharing -> Remote Login: ON
+   # (or: sudo systemsetup -setremotelogin on)
+   # append the box's nightly public key to ~/.ssh/authorized_keys
+   ```
+
+   uv provides its own managed Python, so the Mac's system 3.9 is never
+   touched. Keep-awake is NOT required: an asleep Mac just reports
+   "unavailable" until a night it's up (`caffeinate` in the run prevents
+   mid-run sleep). If you want it to run more nights, stop the Mac sleeping
+   (System Settings -> Displays/Battery, or `sudo pmset -a sleep 0`).
+
+   On the box: give the `ssh` alias a `~/.ssh/config` entry so the repo
+   carries no host details, then verify:
+
+   ```
+   # ~/.ssh/config
+   Host tpy-nightly-mac
+       Hostname <mac-ip-or-name>
+       User <mac-user>
+       IdentityFile ~/.ssh/id_nightly
+
+   ssh tpy-nightly-mac true      # must succeed non-interactively
+   ```
+
+   Then `~/tpy-nightly/repo/ci/nightly/nightly.py --configs macos-native
+   --smoke --no-email` to verify the rsync/run/junit round-trip.
+
 ## Operation notes
 
 - Logs: `~/tpy-nightly/logs/<YYYY-MM-DD_HHMM>/` -- per-config `<name>.log`
-  (docker build + full pytest output), `junit-<name>.xml`, and `report.txt`
+  (build + full pytest output: docker build for container rows, rsync +
+  remote-ssh pytest for the mac row), `junit-<name>.xml`, and `report.txt`
   (the emailed body). Newest 14 runs are kept.
 - Failure emails list failing test names per config plus the log path, and
   are sent on every failing night (no dedup -- a regression nags until fixed).

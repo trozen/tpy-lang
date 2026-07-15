@@ -83,6 +83,11 @@
       "toolchain_pkgs": "g++-13",
       "cxx": "gcc-13",
       "cpython": "3.14"
+    },
+    {
+      "name": "macos-native",
+      "ssh": { "host": "tpy-nightly-mac", "workdir": "tpy-nightly-work" },
+      "timeout": 21600
     }
   ]
 }

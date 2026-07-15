@@ -1,7 +1,8 @@
-"""Unit tests for the nightly-CI orchestrator's report logic
-(ci/nightly/nightly.py: parse_junit + format_report). The docker/email
+"""Unit tests for the nightly-CI orchestrator (ci/nightly/nightly.py):
+report logic (parse_junit + format_report), the per-config script builders,
+and the backend dispatch / self-disable gate. The real docker/ssh/email
 plumbing is validated end-to-end by `nightly.py --smoke`; these cover the
-pure functions that decide what an unattended night reports."""
+decisions an unattended night makes about what to run and report."""
 
 import importlib.util
 from pathlib import Path
@@ -77,6 +78,71 @@ def test_container_script_toolchain_vs_cpython_axis() -> None:
         {"name": "cpy-3.13", "cxx": "gcc-13", "cpython": "3.13"}, smoke=False)
     assert "--no-exec" in ver
     assert "--force-exec" not in ver and "--no-cpy" not in ver
+
+
+def test_remote_script_native_full_run() -> None:
+    """The ssh/native remote script runs the FULL suite -- --force-exec, no
+    --cxx (auto-detect the host clang), no --no-cpy (the host's CPython parity
+    is the point) -- with rootless uv on PATH and junit written above the
+    synced repo (so rsync --delete never touches it)."""
+    s = nightly.remote_script(
+        {"name": "macos-native",
+         "ssh": {"host": "tpy-nightly-mac", "workdir": "tpy-nightly-work"}},
+        smoke=False)
+    assert "--force-exec" in s
+    assert "--junitxml=../junit-macos-native.xml" in s
+    assert "--cxx" not in s and "--no-cpy" not in s
+    assert ".local/bin" in s and "uv run pytest" in s
+    # The smoke arm adds the -k slice.
+    smoked = nightly.remote_script(
+        {"name": "macos-native",
+         "ssh": {"host": "tpy-nightly-mac", "workdir": "tpy-nightly-work"}},
+        smoke=True)
+    assert "-k" in smoked and nightly.SMOKE_FILTER in smoked
+
+
+def test_ssh_unreachable_self_disables(monkeypatch, tmp_path: Path) -> None:
+    """Best-effort contract: an unreachable ssh host self-disables to
+    'unavailable' (ok, never red) -- like the requires-missing gate, so a
+    Mac that's off never turns the nightly red."""
+    cfg = {"name": "macos-native", "ssh": {"host": "x", "workdir": "w"}}
+    monkeypatch.setattr(nightly, "_ssh_reachable", lambda host: False)
+    res = nightly.run_config(cfg, tmp_path, tmp_path, timeout=1,
+                             smoke=False, refresh=False)
+    assert res.status == "unavailable" and res.ok
+    assert "unreachable" in res.detail
+    monkeypatch.setattr(nightly, "_ssh_reachable", lambda host: True)
+    assert nightly._config_unavailable(cfg) is None
+
+
+def test_run_config_dispatch_and_row_timeout(monkeypatch,
+                                             tmp_path: Path) -> None:
+    """run_config routes ssh rows to _run_ssh and others to _run_docker, and
+    a per-row `timeout` overrides the session default."""
+    calls: dict = {}
+
+    def fake_docker(cfg, src, out, smoke, refresh, log, timeout):
+        calls.update(backend="docker", timeout=timeout)
+        return 0
+
+    def fake_ssh(cfg, src, out, smoke, log, timeout):
+        calls.update(backend="ssh", timeout=timeout)
+        return 0
+
+    monkeypatch.setattr(nightly, "_run_docker", fake_docker)
+    monkeypatch.setattr(nightly, "_run_ssh", fake_ssh)
+    monkeypatch.setattr(nightly, "_ssh_reachable", lambda host: True)
+
+    nightly.run_config({"name": "d", "cxx": "gcc"}, tmp_path, tmp_path,
+                       timeout=999, smoke=False, refresh=False)
+    assert calls == {"backend": "docker", "timeout": 999}
+
+    calls.clear()
+    nightly.run_config({"name": "m", "ssh": {"host": "x", "workdir": "w"},
+                        "timeout": 42},
+                       tmp_path, tmp_path, timeout=999, smoke=False,
+                       refresh=False)
+    assert calls == {"backend": "ssh", "timeout": 42}
 
 
 def test_unavailable_config_short_circuits(tmp_path: Path) -> None:
