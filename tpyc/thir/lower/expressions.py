@@ -93,7 +93,7 @@ from ...value_category import is_rvalue_source
 from ..fallback import ThirUnsupported, expr_kind_tag, note_detail
 from ..faces import witness as _witness
 from ...codegen_cpp.expressions import ExpressionGenerator
-from ...codegen_cpp.int_literals import render_int_literal_value
+from ...codegen_cpp.int_literals import render_int_literal_value, bare_over_int32_int_literal
 from ..nodes import (
     Form,
     TruthinessMode,
@@ -768,7 +768,9 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
         # narrowed side derefs at the name arm), the plain side opposite an
         # UN-narrowed optional renders against that optional's inner (the
         # AST's _comparison_targets target threading -- char/numeric literal
-        # renders). std::optional's mixed operator handles the compare.
+        # renders). std::optional's mixed operator handles the compare. The
+        # >int32-literal-vs-BigInt case is retargeted here by _slot_literal_retype
+        # (l_tgt/r_tgt is the optional's inner type).
         l_tgt, r_tgt = opt_eq_targets
         _witness("binop.opt_scalar_eq")
         left = _slot_literal_retype(
@@ -784,16 +786,30 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                 or _narrowed_opt_char_vs_str_literal(
                     e.right, e.left, lc, declared)):
             raise ThirUnsupported("binop.narrowed_char_eq_literal")
+        lt_a = analyzer.get_expr_type(e.left)
+        rt_a = analyzer.get_expr_type(e.right)
         # A str-family FIELD operand renders the bare member read into the
         # compare/concat/needle templates on both paths, so binop operands
         # are an owned-str-field-ok position (the flag is inert for every
         # non-str-field operand).
         left = _lower_char_targeted(
-            e.left, analyzer.get_expr_type(e.right), lc, declared,
+            e.left, rt_a, lc, declared,
             field_owned_str_ok=isinstance(e.left, TpyFieldAccess))
         right = _lower_char_targeted(
-            e.right, analyzer.get_expr_type(e.left), lc, declared,
+            e.right, lt_a, lc, declared,
             field_owned_str_ok=isinstance(e.right, TpyFieldAccess))
+        # BigInt vs an int literal exceeding int32: retarget the bare literal to
+        # BigInt so it renders BigInt(static_cast<int64_t>(...)) rather than a
+        # bare `long` (ambiguous -> BigInt on macOS, where int64_t != long).
+        # Mirrors the AST _comparison_targets BigInt arm; small literals stay
+        # bare (unambiguous). The opt_eq branch above already retargets via
+        # _slot_literal_retype, so this plain branch is the only gap.
+        if (isinstance(right, THIRLiteral) and is_big_int_type(lt_a)
+                and bare_over_int32_int_literal(e.right, rt_a)):
+            right = _retarget_int_literal(right, lt_a, lc)
+        if (isinstance(left, THIRLiteral) and is_big_int_type(rt_a)
+                and bare_over_int32_int_literal(e.left, lt_a)):
+            left = _retarget_int_literal(left, rt_a, lc)
     else:
         lslot, rslot = _rb_operand_slots(e.resolved_binop)
         left = _slot_literal_retype(

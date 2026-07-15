@@ -242,6 +242,22 @@ class TestNumericLiteralArgs:
         assert "c.take(static_cast<int64_t>(2147483648))" in thir[1]
         assert thir == ast
 
+    def test_bigint_compare_over_int32_literal_retargets(self):
+        # A BigInt operand compared to an int literal exceeding int32: the
+        # literal renders via the BigInt(static_cast<int64_t>(...)) arm (not a
+        # bare `long`, which converts to BigInt ambiguously on macOS where
+        # int64_t != long), on both paths. A small literal (<= int32) stays bare.
+        src = (
+            _NUMLIT_PRELUDE
+            + "def f(n: int) -> bool:\n"
+            + "    return n >= 86400000000 and n == 5\n"
+        )
+        assert _fn(_lower(src), "f") is not None
+        cpp = self._cpp(src, thir=True)
+        assert "::tpy::BigInt(static_cast<int64_t>(86400000000LL))" in cpp
+        assert "n == 5" in cpp  # small literal stays bare (unambiguous)
+        assert cpp == self._cpp(src, thir=False)
+
     def test_byte_identical(self):
         src = (
             _NUMLIT_PRELUDE
