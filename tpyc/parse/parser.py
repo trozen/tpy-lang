@@ -4359,6 +4359,11 @@ class Parser:
             elif isinstance(val, str):
                 escaped = val.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n').replace('\r', '\\r').replace('\t', '\\t')
                 return f'"{escaped}"'
+            # Int literal: this bare string is presence-only. Codegen re-renders
+            # an int-literal default type-aware from default_expr (records.py
+            # field member-init; default_to_cpp for params), so a >int32 value
+            # gets its ambiguity-safe width there -- editing this render alone
+            # has no effect for int defaults.
             return str(val)
         elif isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.USub):
             inner = self._get_default_value(node.operand)

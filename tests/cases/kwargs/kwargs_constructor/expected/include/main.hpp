@@ -44,7 +44,7 @@ struct Config {
 
     // def __init__(self, host: str, port: int = 8080, verbose: bool = False) -> None:
     Config() = default;
-    explicit Config(std::string_view host, const ::tpy::BigInt& port = 8080, bool verbose = false);
+    explicit Config(std::string_view host, const ::tpy::BigInt& port = ::tpy::BigInt(8080), bool verbose = false);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Config";
 };
 

@@ -25,7 +25,7 @@ struct Calculator {
     // @overload
     // def scale(self, x: int) -> int: ...  # tpyc: ok
     ::tpy::BigInt scale(const ::tpy::BigInt& x) {
-        ::tpy::BigInt factor = 1;
+        ::tpy::BigInt factor = ::tpy::BigInt(1);
         // return (x * factor) + self.offset
         return ((((x) * (factor))) + (this->offset));
     }

@@ -33,7 +33,9 @@ from .context import (
     INDENT, DUNDER_TO_BINARY_OP, DUNDER_TO_REVERSE_BINARY_OP, CodeGenError,
     escape_cpp_name, enum_member_cpp)
 from .functions import factory_default_to_cpp
+from .int_literals import render_int_literal_value
 from .resumable_cfg import ResumableShape
+from ..sema.literal_utils import fixed_int_literal_value_from_expr
 from ..type_def_registry import (
     is_span_iter, is_array,
     is_big_int_type, is_bytes_type, int_traits_of,
@@ -349,7 +351,24 @@ class RecordGenerator:
             cpp_type = self.types.type_to_cpp(fld.type)
             default = ""
             if fld.default_value is not None:
-                val = fld.default_value
+                # An int-literal default is pre-rendered bare by the parser
+                # (no type context); re-render it here through the shared
+                # chokepoint with the resolved field type so a >int32 value
+                # pins its C++ width (a bare `long` converts to BigInt
+                # ambiguously on macOS). Mirrors the enum-member default arm
+                # below, which likewise renders from default_expr at codegen.
+                # fixed_int_literal_value_from_expr peels a fixed-int ctor
+                # wrapper (`Int64(x)`) too, matching default_to_cpp so the
+                # field member-init and the generated ctor param agree.
+                iv = (fixed_int_literal_value_from_expr(fld.default_expr)
+                      if fld.default_expr is not None else None)
+                if iv is not None:
+                    val = render_int_literal_value(
+                        iv, fld.type,
+                        default_int_type=self.ctx.analyzer.ctx.default_int_type,
+                        type_to_cpp=lambda t: t.to_cpp())
+                else:
+                    val = fld.default_value
                 # Parser renders None -> "std::nullopt" without type context;
                 # raw-pointer fields need "nullptr" instead. Can't reuse
                 # `default_to_cpp` here -- it returns borrow-form defaults

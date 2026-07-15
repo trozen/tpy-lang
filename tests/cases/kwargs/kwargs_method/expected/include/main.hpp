@@ -23,7 +23,7 @@ struct Formatter {
     Formatter();
 
     // def format(self, text: str, width: int = 0, fill: str = " ") -> str:
-    std::string format(std::string_view text, const ::tpy::BigInt& width = 0, std::string_view fill = " ") const;
+    std::string format(std::string_view text, const ::tpy::BigInt& width = ::tpy::BigInt(0), std::string_view fill = " ") const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Formatter";
 };
 

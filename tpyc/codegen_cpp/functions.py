@@ -42,6 +42,8 @@ from ..namespace import Namespace
 from .context import INDENT, module_to_cpp_namespace, escape_cpp_name, qualified_cpp_name, cpp_string_literal_expr, cpp_bytes_literal_span, cpp_bytes_literal_owned, expand_cpp_template, enum_member_cpp, CodeGenError
 from .param_const import decide_param_const, ParamConstDecision
 from .type_resolution import resolve_stmt_type_cascade
+from .int_literals import render_int_literal_value
+from ..sema.literal_utils import literal_value_from_expr
 
 if TYPE_CHECKING:
     from .context import CodeGenContext
@@ -123,8 +125,17 @@ def default_to_cpp(ctx: 'CodeGenContext', expr: TpyExpr, ptype: TpyType) -> str:
     """Convert a constant default expression to its C++ representation."""
     if isinstance(expr, TpyTypeParamConstruct):
         return f"{expr.param_name}{{}}"
-    if isinstance(expr, TpyIntLiteral):
-        return str(expr.value)
+    lit = literal_value_from_expr(expr)
+    if lit is not None and lit.tag is LiteralTag.INT:
+        # Route int-literal defaults (bare or unary-minus) through the shared
+        # renderer so a >int32 value pins its C++ width -- a bare `long` token
+        # converts to BigInt ambiguously on macOS. Before the generic
+        # unary-minus arm below, so a negated literal renders from its signed
+        # value (not a `-` prefixed onto the positive token's width).
+        return render_int_literal_value(
+            lit.value, ptype,
+            default_int_type=ctx.analyzer.ctx.default_int_type,
+            type_to_cpp=lambda t: t.to_cpp())
     if isinstance(expr, TpyFloatLiteral):
         v = repr(expr.value)
         if '.' not in v and 'e' not in v and 'E' not in v:

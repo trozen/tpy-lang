@@ -9,7 +9,7 @@ namespace tpyapp::main {
 // @overload
 // def repeat(s: str) -> str: ...  # tpyc: ok
 std::string repeat(std::string_view s) {
-    ::tpy::BigInt count = 0;
+    ::tpy::BigInt count = ::tpy::BigInt(0);
     // return s
     return std::string(s);
 }

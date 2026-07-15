@@ -9,7 +9,7 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void f(const ::tpy::BigInt& a, const ::tpy::BigInt& b = 10, const ::tpy::BigInt& c = 20);
+void f(const ::tpy::BigInt& a, const ::tpy::BigInt& b = ::tpy::BigInt(10), const ::tpy::BigInt& c = ::tpy::BigInt(20));
 void g(std::string_view x, std::string_view y = "default_y", std::string_view z = "default_z");
 void h(int32_t a, int32_t b = 100);
 void main();
