@@ -124,7 +124,7 @@ void main() {
     {
         try {
             // bad5 = datetime.utcfromtimestamp(300000000000)  # beyond year 9999
-            ::tpystd::datetime::datetime bad5 = datetime::utcfromtimestamp(static_cast<double>(300000000000));
+            ::tpystd::datetime::datetime bad5 = datetime::utcfromtimestamp(static_cast<double>(static_cast<int64_t>(300000000000)));
             // print("no error")
             std::cout << "no error" << "\n";
         } catch (const ::tpy::ValueError&) {
@@ -137,7 +137,7 @@ void main() {
     {
         try {
             // bad6 = datetime.utcfromtimestamp(-62135596801)  # before year 1
-            ::tpystd::datetime::datetime bad6 = datetime::utcfromtimestamp(static_cast<double>(-62135596801));
+            ::tpystd::datetime::datetime bad6 = datetime::utcfromtimestamp(static_cast<double>(static_cast<int64_t>(-62135596801)));
             // print("no error")
             std::cout << "no error" << "\n";
         } catch (const ::tpy::ValueError&) {

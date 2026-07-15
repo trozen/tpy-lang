@@ -81,7 +81,7 @@ from ..namespace import BindingKind
 from ..sema.literal_utils import literal_value_from_expr
 from .context import INDENT, escape_cpp_string, escape_cpp_char, escape_cpp_name, qualified_cpp_name, qualify_native_name, imported_free_callee_cpp, imported_variable_cpp, module_qualified_callee_cpp, static_method_callee_cpp, enum_cpp_name, enum_member_cpp, loop_var_binding, is_lvalue_iterable, cpp_string_literal_expr, cpp_bytes_literal_span, cpp_bytes_literal_owned, view_key_target, CppForm, FormValue, expand_cpp_template
 from .functions import literal_mangled_name
-from .int_literals import render_int_literal_value, bare_over_int32_int_literal
+from .int_literals import render_int_literal_value
 from .. import qnames
 
 if TYPE_CHECKING:
@@ -2496,18 +2496,6 @@ class ExpressionGenerator:
         if right_target is None and is_char_type(left_type):
             if not (pair.optional_safe_eq and isinstance(right_type, OptionalType)):
                 right_target = CHAR
-
-        # BigInt vs an int literal exceeding int32: target the literal to BigInt
-        # so it renders via the ambiguity-safe BigInt(static_cast<int64_t>(...))
-        # arm instead of a bare `long` literal, which converts to BigInt
-        # ambiguously on macOS (int64_t != long). Small literals stay bare
-        # (unambiguous). Only the comparison operand is targeted -- container
-        # elements / other bare-literal contexts are not a BigInt overload
-        # resolution and correctly stay bare.
-        if right_target is None and is_big_int_type(left_type) and bare_over_int32_int_literal(pair.right, self.ctx.get_expr_type(pair.right)):
-            right_target = left_type
-        if left_target is None and is_big_int_type(right_type) and bare_over_int32_int_literal(pair.left, self.ctx.get_expr_type(pair.left)):
-            left_target = right_type
 
         return left_target, right_target
 

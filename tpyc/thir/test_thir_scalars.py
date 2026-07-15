@@ -207,7 +207,9 @@ class TestNumericLiteralArgs:
     def test_bare_wide_literal_untargeted_render(self):
         # A wide literal in a container-literal element has no coercion target
         # (the init list supplies the type), taking render_int_literal_value's
-        # bare arms: a plain token up to int64 max, `ull`-suffixed above it.
+        # target-less arms: <= int32 bare, int32 < v <= int64 pinned to
+        # static_cast<int64_t> (so an implicit BigInt conversion is unambiguous
+        # on macOS), and `ull`-suffixed above int64 (uint64 is exact into BigInt).
         src = (
             _NUMLIT_PRELUDE
             + "from tpy import UInt64\n"
@@ -219,8 +221,8 @@ class TestNumericLiteralArgs:
         thir = _lower(src)
         assert _fn(thir, "f") is not None
         cpp = self._cpp(src, thir=True)
-        assert "{1000000000, 3000000000}" in cpp
-        assert "{18446744073709551615ull}" in cpp
+        assert "{1000000000, static_cast<int64_t>(3000000000)}" in cpp
+        assert "{static_cast<uint64_t>(18446744073709551615ull)}" in cpp
         assert cpp == self._cpp(src, thir=False)
 
     def test_wide_method_arg_uses_coercion_target(self):
@@ -242,11 +244,12 @@ class TestNumericLiteralArgs:
         assert "c.take(static_cast<int64_t>(2147483648))" in thir[1]
         assert thir == ast
 
-    def test_bigint_compare_over_int32_literal_retargets(self):
+    def test_bigint_compare_over_int32_literal_pins_int64(self):
         # A BigInt operand compared to an int literal exceeding int32: the
-        # literal renders via the BigInt(static_cast<int64_t>(...)) arm (not a
-        # bare `long`, which converts to BigInt ambiguously on macOS where
-        # int64_t != long), on both paths. A small literal (<= int32) stays bare.
+        # target-less literal renders int64-pinned static_cast<int64_t>(...) (not
+        # a bare `long`, which converts to BigInt ambiguously on macOS where
+        # int64_t != long) -- an exact BigInt(int64_t) conversion at the compare.
+        # A small literal (<= int32) stays bare. Same on both paths.
         src = (
             _NUMLIT_PRELUDE
             + "def f(n: int) -> bool:\n"
@@ -254,8 +257,30 @@ class TestNumericLiteralArgs:
         )
         assert _fn(_lower(src), "f") is not None
         cpp = self._cpp(src, thir=True)
-        assert "::tpy::BigInt(static_cast<int64_t>(86400000000LL))" in cpp
+        assert "static_cast<int64_t>(86400000000)" in cpp
         assert "n == 5" in cpp  # small literal stays bare (unambiguous)
+        assert cpp == self._cpp(src, thir=False)
+
+    def test_bigint_list_element_over_int32_pins_int64(self):
+        # A >int32 int literal in a BigInt list literal renders int64-pinned
+        # static_cast<int64_t>(...) (not a bare `long`) on both paths -- the
+        # target-less render policy in render_int_literal_value, no per-site
+        # retargeting. A small element stays bare; a fixed Int64 list is a plain
+        # brace-init (the same pin, identity into an int64 slot).
+        src = (
+            _NUMLIT_PRELUDE
+            + "def f() -> int:\n"
+            + "    xs: list[int] = [10, 1234567890123456789]\n"
+            + "    return xs[0]\n"
+            + "def g() -> Int64:\n"
+            + "    ys: list[Int64] = [1234567890123456789, 5]\n"
+            + "    return ys[0]\n"
+        )
+        assert _fn(_lower(src), "f") is not None
+        assert _fn(_lower(src), "g") is not None
+        cpp = self._cpp(src, thir=True)
+        assert "{10, static_cast<int64_t>(1234567890123456789)}" in cpp
+        assert "std::vector<int64_t> ys = {static_cast<int64_t>(1234567890123456789), 5}" in cpp
         assert cpp == self._cpp(src, thir=False)
 
     def test_byte_identical(self):

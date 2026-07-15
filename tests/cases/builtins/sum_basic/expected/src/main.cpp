@@ -15,7 +15,7 @@ void main() {
     std::cout << ::tpy::builtin_sum_start<int32_t>(vals, 100) << "\n";
     // # Int64
     // big: list[Int64] = [1000000000, 2000000000, 3000000000]
-    std::vector<int64_t> big = {1000000000, 2000000000, 3000000000};
+    std::vector<int64_t> big = {1000000000, 2000000000, static_cast<int64_t>(3000000000)};
     // print(sum(big))
     std::cout << ::tpy::builtin_sum<int64_t>(big) << "\n";
     // # float

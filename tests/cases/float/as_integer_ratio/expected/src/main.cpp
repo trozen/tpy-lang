@@ -22,7 +22,7 @@ void main() {
         std::cout << num << " " << den << "\n";
     }
     // ns: list[int] = [0, 10, -7, 1234567890123456789]
-    std::vector<::tpy::BigInt> ns = {0, 10, -7, 1234567890123456789};
+    std::vector<::tpy::BigInt> ns = {0, 10, -7, static_cast<int64_t>(1234567890123456789)};
     // for n in ns:
     auto& __obj_1 = ns;
     auto __beg_1 = __obj_1.begin();

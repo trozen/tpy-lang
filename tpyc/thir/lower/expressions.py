@@ -95,7 +95,7 @@ from ...value_category import is_rvalue_source
 from ..fallback import ThirUnsupported, expr_kind_tag, note_detail
 from ..faces import witness as _witness
 from ...codegen_cpp.expressions import ExpressionGenerator
-from ...codegen_cpp.int_literals import render_int_literal_value, bare_over_int32_int_literal
+from ...codegen_cpp.int_literals import render_int_literal_value
 from ..nodes import (
     Form,
     TruthinessMode,
@@ -810,18 +810,6 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
         right = _lower_char_targeted(
             e.right, lt_a, lc, declared,
             field_owned_str_ok=isinstance(e.right, TpyFieldAccess))
-        # BigInt vs an int literal exceeding int32: retarget the bare literal to
-        # BigInt so it renders BigInt(static_cast<int64_t>(...)) rather than a
-        # bare `long` (ambiguous -> BigInt on macOS, where int64_t != long).
-        # Mirrors the AST _comparison_targets BigInt arm; small literals stay
-        # bare (unambiguous). The opt_eq branch above already retargets via
-        # _slot_literal_retype, so this plain branch is the only gap.
-        if (isinstance(right, THIRLiteral) and is_big_int_type(lt_a)
-                and bare_over_int32_int_literal(e.right, rt_a)):
-            right = _retarget_int_literal(right, lt_a, lc)
-        if (isinstance(left, THIRLiteral) and is_big_int_type(rt_a)
-                and bare_over_int32_int_literal(e.left, lt_a)):
-            left = _retarget_int_literal(left, rt_a, lc)
     else:
         lslot, rslot = _rb_operand_slots(e.resolved_binop)
         left = _slot_literal_retype(
