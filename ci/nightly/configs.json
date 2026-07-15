@@ -44,6 +44,18 @@
       "cxx": "zig-bundled"
     },
     {
+      "name": "macos-arm64",
+      "base_image": "ubuntu:24.04",
+      "toolchain_pkgs": "clang-19",
+      "cxx": "/opt/osxcross/bin/arm64-apple-darwin25.5-clang++-19",
+      "mounts": ["~/tpy-nightly/osxcross/target:/opt/osxcross:ro"],
+      "env": ["LD_LIBRARY_PATH=/opt/osxcross/lib"],
+      "requires": [
+        "~/tpy-nightly/osxcross/target/bin/arm64-apple-darwin25.5-clang++-19",
+        "~/tpy-nightly/osxcross/target/bin/arm64-apple-darwin25.5-clang-19"
+      ]
+    },
+    {
       "name": "2404-gcc14-sysdeps",
       "base_image": "ubuntu:24.04",
       "toolchain_pkgs": "g++-14",

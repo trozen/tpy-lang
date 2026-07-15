@@ -42,6 +42,51 @@ fresh container per config, sequentially (a full cold config is ~25 min on
   alongside 3.x via a single version `#ifdef`, so the system floor is
   2.28.0. Anything older is rejected cleanly by the version guard
   (`SystemLibVersionError`) rather than failing deep in the C compiler.
+- The macos-arm64 row cross-compiles the whole case set with osxcross and
+  passes nothing but `--cxx`: the harness detects the darwin target itself
+  (`-dumpmachine`) and auto-degrades exec to build-only. The row
+  self-disables ("unavailable" in the report, never red) until the
+  `requires` paths exist -- one-time setup:
+
+  ```
+  # on a Mac (Xcode or CLT installed):
+  git clone https://github.com/tpoechtrager/osxcross && cd osxcross
+  ./tools/gen_sdk_package.sh        # CLT-only: gen_sdk_package_tools.sh
+  # copy the MacOSX*.sdk.tar.xz to the box, then on the box:
+  git clone https://github.com/tpoechtrager/osxcross ~/tpy-nightly/osxcross
+  cp MacOSX*.sdk.tar.xz ~/tpy-nightly/osxcross/tarballs/
+  cd ~/tpy-nightly/osxcross && UNATTENDED=1 ./build.sh
+  ```
+
+  Two extra wrapper links pin the driver version (the wrapper parses the
+  compiler name -- including a version suffix -- from its own filename, by
+  design; the plain `clang` on PATH is 18, which cannot compile this SDK's
+  libc++). The second is the C driver: tpyc derives it from the C++
+  compiler name to build bundled C dependencies (PCRE2):
+
+  ```
+  cd ~/tpy-nightly/osxcross/target/bin
+  ln -s arm64-apple-darwin25.5-wrapper arm64-apple-darwin25.5-clang++-19
+  ln -s arm64-apple-darwin25.5-wrapper arm64-apple-darwin25.5-clang-19
+  ```
+
+  The row then activates by itself (it checks `requires` for BOTH
+  versioned wrappers -- so a box with only `clang++-19` stays
+  "unavailable" rather than going red on the C-dependency cases -- and
+  mounts `target/` read-only at `/opt/osxcross`); the wrapper resolves
+  `clang++-19`/`clang-19` from PATH at runtime, which the image's
+  `clang-19` package provides. No deployment-target or linker setup is
+  needed beyond these links: tpyc's toolchain layer detects the darwin
+  target (`-dumpmachine`) and adjusts the command itself, so a manual
+  `--cxx=<wrapper>` run and the CI behave identically. It pins
+  `-mmacosx-version-min` (see `MACOS_VERSION_MIN` in `tpyc/toolchain.py`),
+  overriding the wrapper's ancient default (11.0, which fails libc++
+  availability checks for float `std::to_chars`), and points the link at
+  the toolchain's own Mach-O linker (`<triple>-ld`, shipped alongside the
+  wrapper) via `--ld-path` so it doesn't fall through to the host's ELF
+  `ld`. Any case that does not build on mac is a genuine bug to fix (or,
+  if truly unportable, gets a targeted skip added at that point); the row
+  reports the fail-set as red -- that red is the worklist, not noise.
 
 ## Caching (deliberate -- do not "optimize")
 
@@ -143,6 +188,3 @@ system-lib bump on the system-deps config).
   `nightly.py --refresh-images`.
 - Run a subset: `nightly.py --configs 2404-gcc13,zig --no-email`.
 - Exit code: 0 all green, 1 otherwise (visible in `cron.log`).
-- A macOS cross-compile config (osxcross, build-only) is a planned second
-  phase, NOT built yet: it needs a `--build-only` harness mode and
-  committed-baseline/delta tooling for the mac fail-set first.

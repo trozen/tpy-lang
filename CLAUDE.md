@@ -132,7 +132,6 @@ tests/cases/<group>/<case>/
 │   ├── native_types.hpp   # (optional) C++ type defs for native interop tests
 │   └── native_types.cpp   # (optional) C++ stubs for native interop tests
 ├── no_cpython.txt         # (optional) Skip CPython compatibility test
-├── no_macos.txt     # (optional) Case does not build for macOS: exec+cpy skip whenever the toolchain targets darwin (native mac run or an osxcross cross-build); content = reason; maintained via --macos-classify
 ├── no_thir.txt            # (optional) Exempt this case from the THIR ratchet (not yet migrated; still byte-diffed -- see "THIR migration")
 ├── options.json           # (optional) Per-case compiler options
 └── expected/

@@ -1127,20 +1127,6 @@ def pytest_addoption(parser):
         ),
     )
     parser.addoption(
-        "--macos-classify",
-        action="store_true",
-        default=False,
-        help=(
-            "(Re)write no_macos.txt markers from this run's exec-build "
-            "results: add where the build fails (the case xfails, so the run "
-            "stays green), remove where it builds again; an existing "
-            "marker's reason text is preserved while the case still fails. "
-            "Requires a darwin exec target (run on macOS, or with an "
-            "osxcross --cxx); pair with --build-only for speed. Like "
-            "--thir-classify."
-        ),
-    )
-    parser.addoption(
         "--clean",
         action="store_true",
         default=False,
@@ -1262,8 +1248,7 @@ def _cgroup_cpu_quota() -> int | None:
 
 
 def _exec_flag_conflict(*, no_exec: bool, build_only: bool, force_exec: bool,
-                        clean: bool, updating: bool,
-                        macos_classify: bool = False) -> str | None:
+                        clean: bool, updating: bool) -> str | None:
     """Return the error message for a conflicting exec-flag combination, or
     None. Extracted from pytest_configure so the flag-conflict logic is
     unit-testable (mirrors _thir_flag_conflict). `updating` is the resolved
@@ -1275,12 +1260,6 @@ def _exec_flag_conflict(*, no_exec: bool, build_only: bool, force_exec: bool,
     if build_only and updating:
         return ("--build-only conflicts with --update-snapshots: regenerating "
                 "output.txt/panic.txt requires running the binaries")
-    if macos_classify and no_exec:
-        return ("--macos-classify conflicts with --no-exec: classification "
-                "needs the exec-phase builds it would be skipping")
-    if macos_classify and updating:
-        return ("--macos-classify conflicts with --update-snapshots: a "
-                "marked case's cleared snapshots could never be regenerated")
     return None
 
 
@@ -1350,7 +1329,6 @@ def pytest_configure(config):
         force_exec=config.getoption("--force-exec"),
         clean=config.getoption("--clean"),
         updating=updating,
-        macos_classify=config.getoption("--macos-classify"),
     )
     if exec_conflict:
         pytest.exit(exec_conflict, returncode=1)
@@ -1386,9 +1364,6 @@ def pytest_configure(config):
         _pch_cache_key.cache_clear()
 
     # After --cxx resolution so the probe sees the final compiler.
-    if config.getoption("--macos-classify") and exec_target_os() != "darwin":
-        pytest.exit("--macos-classify requires a darwin exec target: run on "
-                    "macOS, or pass an osxcross --cxx", returncode=1)
     if exec_is_cross() and updating:
         pytest.exit("cannot --update-snapshots with a cross toolchain: the "
                     "binaries cannot run here to produce output.txt",
@@ -1749,14 +1724,6 @@ def merge_link_flags(case_flags: list[str], cache_flags: list[str]) -> list[str]
     return list(case_flags) + [f for f in cache_flags if f not in case_flags]
 
 
-# no_macos.txt: "this case does not build for macOS" -- the third
-# instance of the no_cpython.txt / no_thir.txt exemption pattern. Honored
-# AUTOMATICALLY whenever the exec toolchain TARGETS darwin, so a native mac
-# run and an osxcross cross-build behave identically, with no flag. The
-# file's optional content is the human reason, shown in the skip message.
-MACOS_MARKER = "no_macos.txt"
-
-
 def exec_target_os() -> str:
     """OS the exec-phase toolchain targets (probed once per compiler)."""
     return compiler_target_os(tuple(CPP_CONFIG.compiler))
@@ -1767,27 +1734,6 @@ def exec_is_cross() -> bool:
     binaries cannot run here, so the exec phase auto-degrades to
     build-only."""
     return exec_target_os() != host_os()
-
-
-def read_macos_marker(case_dir: Path) -> str | None:
-    """The case's does-not-build-for-macOS reason: '' for an empty marker,
-    None when the marker is absent."""
-    try:
-        return (case_dir / MACOS_MARKER).read_text().strip()
-    except OSError:
-        return None
-
-
-def apply_macos_marker(case_dir: Path, expect_fail: bool) -> None:
-    """--macos-classify's add/remove (mirrors _apply_no_thir_marker): add an
-    empty marker where the build fails for darwin, remove it where it builds
-    again. An existing marker -- and its hand-written reason -- is left
-    untouched while the case still fails."""
-    marker = case_dir / MACOS_MARKER
-    if expect_fail and not marker.exists():
-        marker.write_text("")
-    elif not expect_fail and marker.exists():
-        marker.unlink()
 
 
 def plan_exec_phase(*, no_exec: bool, build_only: bool, force_exec: bool,

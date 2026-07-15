@@ -101,21 +101,80 @@ def host_os() -> str:
 
 
 @functools.lru_cache(maxsize=None)
-def compiler_target_os(compiler: tuple[str, ...]) -> str:
-    """The OS a compiler command TARGETS, probed via `-dumpmachine` (cached
-    per command). An osxcross clang++ answers darwin on a Linux host -- how
-    cross builds are detected without any flag. Falls back to the host OS
-    when the probe fails or the triple is unrecognized (a compiler without
-    -dumpmachine is assumed native)."""
+def compiler_dumpmachine(compiler: tuple[str, ...]) -> str:
+    """The raw `-dumpmachine` target triple for a compiler command, or '' if
+    the probe fails (cached per command)."""
     try:
         result = subprocess.run([*compiler, "-dumpmachine"],
                                 capture_output=True, text=True, timeout=10)
     except (OSError, subprocess.TimeoutExpired):
-        return host_os()
+        return ""
     if result.returncode != 0:
+        return ""
+    return result.stdout.strip()
+
+
+def compiler_target_os(compiler: tuple[str, ...]) -> str:
+    """The OS a compiler command TARGETS, probed via `-dumpmachine`. An
+    osxcross clang++ answers darwin on a Linux host -- how cross builds are
+    detected without any flag. Falls back to the host OS when the probe fails
+    or the triple is unrecognized (a compiler without -dumpmachine is assumed
+    native)."""
+    triple = compiler_dumpmachine(tuple(compiler))
+    if not triple:
         return host_os()
-    target = _triple_to_os(result.stdout.strip())
+    target = _triple_to_os(triple)
     return target if target != "unknown" else host_os()
+
+
+# Oldest macOS TPy binaries support. libc++'s float std::to_chars (used by
+# tpy/format.hpp and std::format) lives in the OS runtime and shipped in
+# macOS 13.3; below that the SDK marks it unavailable. Without a pin, native
+# clang defaults the deployment target to the host's OS version and osxcross
+# to 11.0 -- one explicit floor makes availability checking identical
+# everywhere. Bump deliberately when the runtime needs a newer OS API.
+MACOS_VERSION_MIN = "13.3"
+
+
+def darwin_version_min_flags(compiler: list[str]) -> list[str]:
+    """The deployment-target pin for darwin-targeting compilers, [] for
+    everything else (or when the command already carries its own pin).
+    Carried on the compiler command itself so every driver invocation --
+    C++ and C compiles, PCH, link -- inherits it."""
+    if any(a.startswith(("-mmacosx-version-min", "-mmacos-version-min"))
+           for a in compiler):
+        return []
+    if compiler_target_os(tuple(compiler)) != "darwin":
+        return []
+    return [f"-mmacosx-version-min={MACOS_VERSION_MIN}"]
+
+
+def darwin_cross_ld_flags(compiler: list[str]) -> list[str]:
+    """Point a darwin-cross compiler at the toolchain's Mach-O linker.
+
+    A cross build's clang driver searches for `ld` at link time and would
+    fall through to the host's ELF binutils `ld`, which rejects ld64's
+    -arch/-platform_version flags ("unrecognised emulation mode"). Cross
+    toolchains ship the matching linker as a triple-prefixed sibling of the
+    driver (`<dir>/<triple>-ld`); pass it via --ld-path so the link uses
+    ld64. [] when no such sibling exists (a native mac's clang finds ld64 on
+    its own; the sibling only sits next to a cross driver), the driver isn't
+    an absolute path, or an explicit linker is already selected."""
+    if any(a.startswith("--ld-path") or a.startswith("-fuse-ld")
+           for a in compiler):
+        return []
+    if compiler_target_os(tuple(compiler)) != "darwin":
+        return []
+    dirname = os.path.dirname(compiler[0])
+    if not dirname:
+        return []
+    triple = compiler_dumpmachine(tuple(compiler))
+    if not triple:
+        return []
+    ld = os.path.join(dirname, f"{triple}-ld")
+    if not (os.path.isfile(ld) and os.access(ld, os.X_OK)):
+        return []
+    return [f"--ld-path={ld}"]
 
 
 def _resolve_compiler(cxx: str) -> list[str] | None:
@@ -216,10 +275,13 @@ def _derive_c_compiler(cxx: list[str]) -> list[str]:
       ['clang++-19']     -> ['clang-19']
       ['zig', 'c++']     -> ['zig', 'cc']
       ['/p/g++-14']      -> ['/p/gcc-14']
+      ['/p/arm64-apple-darwin25.5-clang++-19']
+                         -> ['/p/arm64-apple-darwin25.5-clang-19']
 
-    Falls back to the original command if the pattern isn't recognized
-    (e.g. an unusual binary name); the C++ driver may still compile most C
-    correctly even if it grumbles.
+    Falls back to the original command if the pattern isn't recognized or
+    the derived C driver doesn't exist (e.g. an unusual binary name, or a
+    cross toolchain shipping only the C++ wrapper); the C++ driver may
+    still compile most C correctly even if it grumbles.
     """
     if not cxx:
         return cxx
@@ -230,13 +292,20 @@ def _derive_c_compiler(cxx: list[str]) -> list[str]:
         return [head, "cc", *rest[1:]]
     base = os.path.basename(head)
     dirname = os.path.dirname(head)
-    if base.startswith("g++"):
-        c_base = "gcc" + base[3:]
-    elif base.startswith("clang++"):
-        c_base = "clang" + base[7:]
+    # Substring, not prefix: cross toolchains prefix the target triple
+    # (osxcross: arm64-apple-darwin25.5-clang++-19). clang++ first --
+    # it contains "g++" as a substring.
+    if "clang++" in base:
+        c_base = base.replace("clang++", "clang", 1)
+    elif "g++" in base:
+        c_base = base.replace("g++", "gcc", 1)
     else:
         return cxx
     new_head = os.path.join(dirname, c_base) if dirname else c_base
+    exists = (os.access(new_head, os.X_OK) if dirname
+              else shutil.which(new_head) is not None)
+    if not exists:
+        return cxx
     return [new_head, *rest]
 
 
@@ -523,15 +592,10 @@ class CppCompilerConfig:
             resolved = _resolve_compiler(cxx)
             if resolved is None:
                 raise CompilerNotFoundError(cxx)
-            ccache = not _is_zig(resolved) and shutil.which("ccache") is not None
-            return cls(compiler=resolved, ccache=ccache)
-
-        env_cxx = os.environ.get("CXX", "")
-        if env_cxx:
-            compiler = env_cxx.split()
-            ccache = not _is_zig(compiler) and shutil.which("ccache") is not None
-            return cls(compiler=compiler, ccache=ccache)
-
-        compiler = _auto_detect_compiler()
+            compiler = resolved
+        else:
+            env_cxx = os.environ.get("CXX", "")
+            compiler = env_cxx.split() if env_cxx else _auto_detect_compiler()
+        compiler = [*compiler, *darwin_version_min_flags(compiler)]
         ccache = not _is_zig(compiler) and shutil.which("ccache") is not None
         return cls(compiler=compiler, ccache=ccache)

@@ -53,7 +53,7 @@ from . import DEFAULT_INT_CHOICES  # noqa: F401 -- canonical home is tpyc/__init
 from .toolchain import (  # noqa: F401 -- re-exported: external callers import these via tpyc.compiler
     CompilerNotFoundError, CppCompilerConfig, list_compilers,
     strict_warn_flags, get_or_build_pch, discover_runtime_cpp_sources,
-    third_party_source_driver, _derive_c_compiler, _is_zig,
+    third_party_source_driver, darwin_cross_ld_flags, _derive_c_compiler, _is_zig,
     _find_all_versioned, _find_best_versioned, _find_all_zig, _find_zig,
     _resolve_compiler, _auto_detect_compiler, _cxx_aliases,
 )
@@ -354,6 +354,10 @@ class BuildLayout:
 
         cmds.append([
             *config.compiler,
+            # Link-only: a darwin-cross driver would otherwise pick the host's
+            # ELF `ld`. Not on config.compiler (it errors as unused on -c
+            # compiles); the link is the single place it belongs.
+            *darwin_cross_ld_flags(config.compiler),
             *(["-shared"] if shared else []),
             "-o", str(output),
             *obj_files,

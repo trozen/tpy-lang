@@ -59,7 +59,7 @@ def log(msg: str) -> None:
 @dataclass
 class ConfigResult:
     name: str
-    # pass | test-failures | error | timeout
+    # pass | test-failures | error | timeout | unavailable
     status: str = "error"
     detail: str = ""
     passed: int = 0
@@ -72,7 +72,10 @@ class ConfigResult:
 
     @property
     def ok(self) -> bool:
-        return self.status == "pass"
+        # "unavailable" (a config whose `requires` toolchain isn't installed
+        # yet, e.g. osxcross) is expected-until-installed: visible in every
+        # report, but neither red nor a failed exit.
+        return self.status in ("pass", "unavailable")
 
 
 def run_logged(cmd: list[str], log_file: Path, timeout: float | None = None) -> int:
@@ -143,6 +146,15 @@ def export_source(dest: Path) -> None:
 def run_config(cfg: dict, src_dir: Path, out_dir: Path, timeout: float,
                smoke: bool, refresh: bool) -> ConfigResult:
     res = ConfigResult(name=cfg["name"])
+    # A config whose host-side prerequisites aren't installed yet (e.g. the
+    # osxcross toolchain) self-disables instead of failing: it stays visible
+    # in every report and activates automatically once the paths exist.
+    missing = [p for p in cfg.get("requires", [])
+               if not Path(p).expanduser().exists()]
+    if missing:
+        res.status = "unavailable"
+        res.detail = f"missing {', '.join(missing)}"
+        return res
     log_file = out_dir / f"{cfg['name']}.log"
     res.log_path = str(log_file)
     container = f"{IMAGE_PREFIX}-{cfg['name']}"
@@ -158,8 +170,17 @@ def run_config(cfg: dict, src_dir: Path, out_dir: Path, timeout: float,
                "-v", f"{CACHE_VOLUME}:/cache",
                "-e", "TPYC_SHARED_CACHE_DIR=/cache/tpyc",
                "-e", "CCACHE_DIR=/cache/ccache",
-               "-e", "UV_CACHE_DIR=/cache/uv",
-               tag, "bash", "-c", container_script(cfg, smoke)]
+               "-e", "UV_CACHE_DIR=/cache/uv"]
+        for mount in cfg.get("mounts", []):
+            # "~/host/path:/container/path[:opts]" with ~ expanded host-side.
+            host, _, rest = mount.partition(":")
+            cmd += ["-v", f"{Path(host).expanduser()}:{rest}"]
+        for env in cfg.get("env", []):
+            # "KEY=VALUE" passed straight through (e.g. LD_LIBRARY_PATH for a
+            # mounted toolchain whose libs sit outside the container's default
+            # search path).
+            cmd += ["-e", env]
+        cmd += [tag, "bash", "-c", container_script(cfg, smoke)]
         rc = run_logged(cmd, log_file, timeout=timeout)
     except subprocess.TimeoutExpired as exc:
         subprocess.run(["docker", "rm", "-f", container],
@@ -234,6 +255,9 @@ def format_report(results: list[ConfigResult], rev: str, smoke: bool,
     for r in results:
         lines.append(f"{r.name:<22} {r.status:<14} {r.passed:>6} {r.failed:>6} "
                      f"{r.errors:>6} {r.skipped:>6} {r.duration_s / 60:>6.1f}")
+    for r in results:
+        if r.status == "unavailable":
+            lines.append(f"  {r.name}: {r.detail} -- activates once installed")
     for r in bad:
         lines += ["", f"--- {r.name}: {r.status}"
                       + (f" ({r.detail})" if r.detail else "")]

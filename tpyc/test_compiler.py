@@ -619,6 +619,33 @@ class TestBuildLayout:
         layout = BuildLayout(Path("/out"), "main", build_variant="debug")
         assert layout.build_dir == Path("/out/main.d/debug")
 
+    def test_darwin_cross_ld_path_on_link_only(self, tmp_path: Path):
+        """A darwin-cross toolchain's --ld-path lands on the link step only:
+        it errors as unused on a -c compile, so it must not appear there."""
+        from .compiler import CppCompilerConfig
+
+        triple = "arm64-apple-darwin25.5"
+        cxx = tmp_path / f"{triple}-clang++-19"
+        cxx.write_text(f"#!/bin/sh\necho {triple}\n")
+        cxx.chmod(0o755)
+        ld = tmp_path / f"{triple}-ld"
+        ld.write_text("#!/bin/sh\n")
+        ld.chmod(0o755)
+
+        layout = BuildLayout(tmp_path / "b", "app")
+        layout.src_dir.mkdir(parents=True)
+        cpp = layout.src_dir / "app.cpp"
+        cpp.write_text("// generated")
+        cmds = layout.build_cpp_commands(
+            runtime_include_dir=tmp_path / "rt",
+            cpp_files=[cpp],
+            config=CppCompilerConfig(compiler=[str(cxx)]),
+        )
+        flag = f"--ld-path={ld}"
+        *compiles, link = cmds
+        assert flag in link
+        assert all(flag not in c for c in compiles)
+
 
 class TestGenerateCmake:
     """Tests for sources.cmake generation and runtime bundling."""

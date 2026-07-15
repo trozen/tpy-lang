@@ -63,3 +63,22 @@ def test_format_report_truncates_long_failure_lists() -> None:
                                     smoke=False, pull_failed=False)
     assert "... and 5 more" in body
     assert f"t{cap + 4}" not in body
+
+
+def test_unavailable_config_short_circuits(tmp_path: Path) -> None:
+    """A config whose `requires` path is missing self-disables before any
+    docker interaction: status 'unavailable', counted ok (not red), named
+    in the report body with its missing path."""
+    cfg = {"name": "macos-arm64",
+           "requires": [str(tmp_path / "osxcross" / "bin" / "oa64-clang++")]}
+    res = nightly.run_config(cfg, tmp_path, tmp_path, timeout=1,
+                             smoke=False, refresh=False)
+    assert res.status == "unavailable" and res.ok
+    assert "oa64-clang++" in res.detail
+
+    ok = nightly.ConfigResult(name="2404-gcc13", status="pass", passed=5)
+    subject, body = nightly.format_report([ok, res], "abc1234",
+                                          smoke=False, pull_failed=False)
+    assert "OK" in subject                      # unavailable is not a FAIL
+    assert "unavailable" in body
+    assert "activates once installed" in body

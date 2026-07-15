@@ -10,6 +10,10 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
+from conftest import exec_is_cross
+
 # The ALL_CAPS tuple-unpack with a negative literal defeats the automatic
 # Final inference and warns; the warning exercises warm-path diagnostic
 # replay.
@@ -37,7 +41,13 @@ def built_cold(r: subprocess.CompletedProcess) -> bool:
     return "analyzed" in r.stderr
 
 
-def test_build_cache_lifecycle(tmp_path: Path) -> None:
+def test_build_cache_lifecycle(tmp_path: Path, request: pytest.FixtureRequest) -> None:
+    # Every step runs the built binary (`-x` build+run, warm-path os.execv,
+    # program output, arg forwarding), so there is no build-only variant: a
+    # cross toolchain emits a non-native binary that cannot execute here.
+    if exec_is_cross() or request.config.getoption("--build-only"):
+        pytest.skip("build-cache lifecycle needs a host-runnable binary")
+
     prog = tmp_path / "prog.py"
     prog.write_text(PROG_V1)
 

@@ -52,15 +52,11 @@ from conftest import (
     find_extra_src_files,
     find_extra_include_dirs,
     find_force_includes,
-    MACOS_MARKER,
-    apply_macos_marker,
     build_and_run,
     exec_is_cross,
-    exec_target_os,
     get_stdlib_cache,
     merge_link_flags,
     plan_exec_phase,
-    read_macos_marker,
     run_cpython,
     compute_session_fingerprints,
     read_session_fingerprints,
@@ -126,18 +122,6 @@ def test_case(case_dir, main_src, request):
     # Cross toolchains auto-degrade to build-only: the binaries cannot run
     # here, so manual and CI invocations behave identically with no flag.
     build_only = request.config.getoption("--build-only") or exec_is_cross()
-    macos_classify = request.config.getoption("--macos-classify")
-
-    # In update mode a darwin-target marked case must skip BEFORE the
-    # artifact clearing below: it can never rebuild output.txt/panic.txt, so
-    # proceeding would silently delete committed snapshots on a green run.
-    # Normal runs keep the post-comp skip further down (comp coverage of
-    # marked cases is wanted); classify+update and no-exec+update are
-    # rejected at configure time, so no_exec/macos_classify can't get here.
-    if (UPDATE_EXPECTED and exec_target_os() == "darwin"
-            and read_macos_marker(case_dir) is not None):
-        pytest.skip(f"{MACOS_MARKER}: cannot regenerate snapshots for a "
-                    f"case that does not build for macOS")
 
     # In update mode, clear stale artifacts so nothing lingers from a previous run
     if UPDATE_EXPECTED:
@@ -309,19 +293,6 @@ def test_case(case_dir, main_src, request):
 
     expected_runtime_file = expected_dir / ("panic.txt" if is_panic else "output.txt")
 
-    # "Does not build for macOS": honored automatically whenever the exec
-    # toolchain TARGETS darwin -- a native mac run and an osxcross
-    # cross-build behave identically (the no_cpython.txt shape; comp above
-    # already ran, exec + cpy skip). --macos-classify must not skip: it
-    # re-verifies marked cases to drop recovered markers.
-    if (not no_exec and not macos_classify
-            and exec_target_os() == "darwin"):
-        macos_reason = read_macos_marker(case_dir)
-        if macos_reason is not None:
-            _sweep_case_binary(build_dir, module_name)
-            pytest.skip(f"{MACOS_MARKER}: "
-                        f"{macos_reason or 'does not build for macOS'}")
-
     # Exec is gated on a local, content-addressed pass marker (see conftest):
     # skip only when this exact build already ran green on this machine's
     # toolchain -- a committed fingerprint can't attest the build worked here.
@@ -343,9 +314,7 @@ def test_case(case_dir, main_src, request):
             result.link_flags, tp_link_flags,
             stdlib_output_hash=stdlib_cache.output_hash if stdlib_cache else "",
         )
-        # --macos-classify must re-verify marked cases: a cached green pass
-        # would skip the build and leave a recovered case's marker in place.
-        marker_hit = not macos_classify and exec_pass_is_cached(exec_fp)
+        marker_hit = exec_pass_is_cached(exec_fp)
     plan = plan_exec_phase(no_exec=no_exec, build_only=build_only,
                            force_exec=force_exec,
                            expected_exists=expected_runtime_file.exists(),
@@ -379,21 +348,11 @@ def test_case(case_dir, main_src, request):
             run=(plan == "build+run"),
         )
         if run_result.cpp_build_failed:
-            if macos_classify:
-                # Bootstrap/maintenance: mark the failure and keep the
-                # classify run green (like --thir-classify, it reclassifies
-                # rather than fails).
-                apply_macos_marker(case_dir, expect_fail=True)
-                pytest.xfail(f"build fails for macOS; {MACOS_MARKER} "
-                             f"present (add a reason to the file)")
             pytest.fail(
                 f"C++ compilation failed for {main_src}.\n"
                 f"--- stderr ---\n{run_result.stderr}",
                 pytrace=False,
             )
-        if macos_classify:
-            # Built for darwin: drop a recovered case's marker.
-            apply_macos_marker(case_dir, expect_fail=False)
         if plan == "build":
             # Linked cleanly -- build-only's whole signal. Nothing ran, so
             # there is no output to compare and no pass marker to record.
@@ -436,10 +395,10 @@ def test_case(case_dir, main_src, request):
 
     # Exec checks passed (failures raise above): drop the linked binary
     # unless explicitly kept. Rebuilds don't read it, so retaining it only
-    # accumulates dead executables across the corpus. Swept on the skip
-    # paths too (marker-cache skip here, no_macos skip above), so binaries
-    # left by older harness versions (or by runs with
-    # TPY_KEEP_TEST_BINARIES=1) disappear on the next suite run.
+    # accumulates dead executables across the corpus. Swept on the
+    # marker-cache skip path too, so binaries left by older harness versions
+    # (or by runs with TPY_KEEP_TEST_BINARIES=1) disappear on the next suite
+    # run.
     _sweep_case_binary(build_dir, module_name)
 
     # ----- CPY PHASE ----------------------------------------------------------
