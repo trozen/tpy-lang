@@ -499,6 +499,28 @@ class TestAwaitModes:
         assert witnesses.get("res.await_args", 0) >= 1
         assert not any(k.startswith("resumable:") for k in fallback)
 
+    def test_subscript_optional_ptr_await_arg_routes(self):
+        # A record-element lvalue subscript (`items[i]`) into a pointer-repr
+        # Optional[record] await-arg slot lifts `&(::tpy::__getitem__(...))`
+        # -- the subscript optional-ptr face, shared with the sync call path.
+        src = (_PRE
+               + "class P:\n"
+               + "    n: Int32\n"
+               + "    def __init__(self, n: Int32) -> None:\n        self.n = n\n\n"
+               + "async def echo(n: Int32) -> Int32:\n    return n\n\n"
+               + "async def takes(p: P | None) -> Int32:\n"
+               + "    if p is not None:\n        return await echo(p.n)\n"
+               + "    return await echo(-1)\n\n"
+               + "async def driver() -> Int32:\n"
+               + "    items: list[P] = []\n"
+               + "    items.append(P(5))\n"
+               + "    return await takes(items[0])\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        _witnesses, fallback = _assert_identical(src)
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "&(::tpy::__getitem__((*items), 0))" in cpp
+
     def test_erased_operand_reject_composes(self):
         # An ERASED operand whose expression lowering rejects (walrus arg --
         # a landmark construct) falls back with the positional tag
@@ -544,6 +566,59 @@ class TestSlicedOutShapes:
         _witnesses, fallback = _assert_identical(src)
         assert not any(k.startswith("resumable:") for k in fallback)
 
+    def test_pointer_optional_param_generator_routes(self):
+        # A pointer-repr Optional[record] param (`p: R | None` -> a `R*` frame
+        # field): `p != nullptr` predicates and `p->v` arrow reads route via
+        # lc.pointers (seeded from the params) -- byte-identical.
+        src = (_PRE
+               + "from typing import Iterator\n"
+               + "class R:\n"
+               + "    v: Int32\n"
+               + "    def __init__(self, v: Int32) -> None:\n        self.v = v\n\n"
+               + "def gen(p: R | None, n: Int32) -> Iterator[Int32]:\n"
+               + "    for _ in range(n):\n"
+               + "        if p is not None:\n            yield p.v\n"
+               + "        else:\n            yield -1\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        _witnesses, fallback = _assert_identical(src)
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "(p != nullptr)" in cpp and "return p->v;" in cpp
+
+    def test_borrow_tuple_param_routes(self):
+        # A borrow-form pointer-repr tuple param (`std::tuple<const Tag*, ...>`)
+        # reads `std::get<N>(pair)->n` (subscript-yields-borrow-ptr arrow) --
+        # byte-identical. @nocopy element proves borrow-not-copy.
+        src = (_PRE
+               + "from tpy import readonly, nocopy\n"
+               + "@nocopy\nclass Tag:\n"
+               + "    n: Int32\n"
+               + "    def __init__(self, n: Int32) -> None:\n        self.n = n\n\n"
+               + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
+               + "async def asum(pair: readonly[tuple[Tag, Tag]]) -> Int32:\n"
+               + "    x = await step(pair[0].n)\n"
+               + "    return x + pair[1].n\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        _witnesses, fallback = _assert_identical(src)
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "std::get<0>(pair)->n" in cpp
+
+    def test_value_tuple_param_routes(self):
+        # A value-tuple param (`std::tuple<int32_t, int32_t>`) reads
+        # `std::get<N>(t)` bare -- byte-identical. Pins the admission (no
+        # corpus case exercises it).
+        src = (_PRE
+               + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
+               + "async def f(t: tuple[Int32, Int32]) -> Int32:\n"
+               + "    x = await step(t[0])\n"
+               + "    return x + t[1]\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        _witnesses, fallback = _assert_identical(src)
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "std::get<0>(t)" in cpp
+
     def test_protocol_param_rejects(self):
         # Static-protocol params make the frame a template (two-phase
         # decltype capture) -- still their own rung.
@@ -557,6 +632,15 @@ class TestSlicedOutShapes:
                + "    return await step(total)\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
         assert _res_fallback(src).get("res.param_type") == 1
+
+    def test_generic_param_rejects(self):
+        # A generic async def makes the frame a template instantiation (M7):
+        # the type-param capture is a cell -- res.generic (not res.param_type).
+        src = (_PRE
+               + "async def ident[T](x: T) -> T:\n"
+               + "    return x\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        assert _res_fallback(src).get("res.generic") == 1
 
     def test_optional_local_still_defers(self):
         # A pointer-repr Optional[record] local is not a frame_slot (it has

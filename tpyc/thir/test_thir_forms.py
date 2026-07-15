@@ -211,6 +211,111 @@ class TestF1Emit:
         assert "const Leaf* p = ::tpy::optional_to_ptr(x.opt);" in cpp
 
 
+# --- Bare non-value NAME alias: `y = x` / `alias = items` / chains ---
+
+
+class TestNameAlias:
+    """A single-assignment REF_ALIAS whose source is a plain non-value LVALUE
+    NAME rendering bare (`T& name = src;`) -- records and list/dict/set."""
+
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=thir))
+        return cpp
+
+    def test_record_name_alias_eligible(self):
+        # q = p binds a T& alias of the record param; the write through the
+        # alias mutates p's object (so p stays a mutable `Inner&`, not const).
+        thir = _lower_ctx(
+            _F1_RECORDS
+            + "def f(p: Inner) -> Int32:\n    q = p\n    q.value = 5\n"
+            + "    return q.value\n")
+        decl = _fn(thir, "f").body[0]
+        assert isinstance(decl, THIRVarDecl)
+        assert decl.cpp_local_representation is LocalBinding.REF_ALIAS
+        assert decl.form is Form.BORROW and decl.cpp_type == "Inner"
+        assert not decl.is_const
+        assert isinstance(decl.init, THIRName) and decl.init.name == "p"
+
+    def test_record_name_alias_emits_reference(self):
+        # The write through the alias is visible on p -- a copy would drop it,
+        # so the mutable `Inner&` (not a copy) is load-bearing here.
+        src = (_F1_RECORDS
+               + "def f(p: Inner) -> Int32:\n    q = p\n    q.value = 5\n"
+               + "    return q.value\n"
+               + "def main():\n    print(f(Inner(3)))\nmain()\n")
+        cpp = self._cpp(src, thir=True)
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+        assert "Inner& q = p;" in cpp and "const Inner& q" not in cpp
+
+    def test_record_name_alias_const_from_readonly(self):
+        # A readonly param source makes the alias `const Inner&` (mirrors the
+        # AST's raw-sema ReadonlyType const path in _f1_is_const).
+        src = (_F1_RECORDS
+               + "def f(p: readonly[Inner]) -> Int32:\n"
+               + "    q = p\n    return q.value\n"
+               + "def main():\n    print(f(Inner(3)))\nmain()\n")
+        cpp = self._cpp(src, thir=True)
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+        assert "const Inner& q = p;" in cpp
+
+    def test_alias_chain_eligible(self):
+        # a = p; b = a -- a chain of bare name aliases, each a T& alias.
+        src = (_F1_RECORDS
+               + "def f(p: Inner) -> Int32:\n"
+               + "    a = p\n    b = a\n    return b.value\n"
+               + "def main():\n    print(f(Inner(3)))\nmain()\n")
+        cpp = self._cpp(src, thir=True)
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+        assert "Inner& a = p;" in cpp and "Inner& b = a;" in cpp
+
+    def test_container_name_alias_eligible(self):
+        # alias = items -- a container name alias binds `std::vector<T>&`.
+        src = ("from tpy import Int32\n"
+               "def f(items: list[Int32]) -> Int32:\n"
+               "    alias = items\n    return alias[0]\n"
+               "def main():\n    xs: list[Int32] = [1, 2]\n    print(f(xs))\nmain()\n")
+        cpp = self._cpp(src, thir=True)
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+        assert "std::vector<int32_t>& alias = items;" in cpp
+
+    def test_nested_container_elem_alias(self):
+        # row = matrix[0] -- a nested-container element subscript binds the
+        # `T&` alias of the inner list; the write through it mutates the row.
+        src = ("from tpy import Int32\n"
+               "def f(matrix: list[list[Int32]], v: Int32) -> Int32:\n"
+               "    row = matrix[0]\n    row[0] = v\n    return row[0]\n"
+               "def main():\n"
+               "    m: list[list[Int32]] = [[1, 2], [3, 4]]\n"
+               "    print(f(m, 9))\nmain()\n")
+        cpp = self._cpp(src, thir=True)
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+        assert "std::vector<int32_t>& row = ::tpy::__getitem__(matrix, 0);" in cpp
+        assert "const std::vector<int32_t>& row" not in cpp
+
+    def test_global_source_ineligible(self):
+        # A module-global record renders `T*`; aliasing it needs `(*g)` -- a
+        # later rung, so the whole body stays on the AST path.
+        thir = _lower_ctx(
+            _F1_RECORDS
+            + "g: Inner = Inner(0)\n"
+            + "def f() -> Int32:\n    local = g\n    return local.value\n")
+        assert _fn(thir, "f") is None
+
+    def test_ptr_local_source_ineligible(self):
+        # Aliasing an F2 pointer-local (`x` is reseated, so it renders `Inner*`)
+        # needs `(*x)` -- the deferred `decl.name_alias_ptr_src` rung, so the
+        # whole body stays on the AST path.
+        thir = _lower_ctx(
+            _F1_RECORDS
+            + "def f(b: Box, c: Box, which: Int32) -> Int32:\n"
+            + "    x = b.inner\n    if which < 0:\n        x = c.inner\n"
+            + "    y = x\n    return y.value\n")
+        assert _fn(thir, "f") is None
+
 
 # --- F2 form rung: reassigned/rebound pointer-locals (lvalue reseat) ---
 

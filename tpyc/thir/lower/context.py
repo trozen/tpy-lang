@@ -84,6 +84,10 @@ class _ExprUse:
     # (`asyncio.run(main_coro())`'s inner call) -- the concrete coro frame
     # is consumed whole by the heap adapter, never a typed value slot.
     coro_factory: bool = False
+    # The sync `with` manager position only: admit a @native record-returning
+    # free call (`with open(path, mode) as f`) -- the result is stored in the
+    # `__ctx_N` manager slot, whatever native symbol the overload resolves to.
+    ctx_manager: bool = False
 
 # --- F1 form slice: single-assignment non-value record locals + field reads ---
 

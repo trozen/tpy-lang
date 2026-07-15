@@ -520,8 +520,11 @@ not recommended; parallelize against other tracks instead).
   cases); landing both is what converts the async corpus. Recommend
   scheduling the `marker.module.generic` call cell (call-cascade track)
   in the same wave window.
-- `res.param_type` residue (~110: Own / Optional / tuple / protocol coro
-  params) and str/bytes RETURNS (the reverted view-source threading,
+- `res.param_type` residue (post-wave-4: pointer-repr `Optional[F1-record]`
+  and F1/value-tuple coro params now ROUTE; remaining -- Own-non-record,
+  non-F1-record Optional, non-F1/non-value tuple, protocol
+  (static-protocol -> blocked on generics), generic) and str/bytes RETURNS
+  (the reverted view-source threading,
   TODO.md:72-75) independently cap flips for the fancier asyncio cases.
 - Downstream beneficiaries once regions admit: resumable GENERATORS with
   try/finally (shares the same gates), and the `stmt.with` / foreach

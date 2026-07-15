@@ -303,8 +303,10 @@ from .checks import (
     _protocol_method_call_supported,
     _record_rvalue_call_shape,
     _record_rvalue_temp_arg,
+    _native_ctx_manager_ok,
     _shared_pass_through_arg,
     _str_pass_through_arg,
+    _strlit_overload_pin_fires,
     _subscript_elem_reject,
     _subscript_recv_reject,
     _str_aug_append_ok,
@@ -372,6 +374,10 @@ def _call_use_supported(e: TpyCall, lc: '_LowerCtx',
               # An async-def FACTORY call under the make_adapter wrap: the
               # concrete coro frame is consumed whole by the adapter.
               or (use.coro_factory and fi is not None and fi.is_async)
+              # A sync `with` manager that resolves to a @native record-
+              # returning call (`with open(path, mode)`): stored in the
+              # `__ctx_N` slot via the native free-call arm.
+              or (use.ctx_manager and _native_ctx_manager_ok(e, analyzer))
               or _record_rvalue_call_shape(e, analyzer))
         if not ok:
             note_detail(_call_ret_reject(e, ret, analyzer))
@@ -1760,12 +1766,14 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
             if not _call_arity_ok(e, fi):
                 note_detail("call.arity_defaults")
                 raise ThirUnsupported("expr.call")
-            if any(isinstance(_peel_coerce(a), TpyStrLiteral)
-                   for a in e.args):
-                overloads = analyzer.registry.get_function(e.func_name)
-                if overloads is not None and len(overloads) > 1:
-                    note_detail("call.strlit_overload_pin")
-                    raise ThirUnsupported("expr.call")
+            if _strlit_overload_pin_fires(e, fi, analyzer):
+                # A str literal into a str/StrView slot of a multi-overload
+                # callee takes gen_call_arg's `param_view_t("...")` pin, a
+                # spelling the arg lowering does not reproduce. A str literal
+                # into ANY other slot (a `Literal[...]` mode selector, `Char`,
+                # `String`) renders through its own arm and routes.
+                note_detail("call.strlit_overload_pin")
+                raise ThirUnsupported("expr.call")
         native_name = fi.native_name if _is_len_native(e) else None
         if native_name is not None and isinstance(e.args[0], TpyFieldAccess):
             _witness("len.field_recv")
@@ -3150,13 +3158,25 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
     # A narrowed subject is NOT skipped: its read renames to the extraction
     # alias inside _lower_expr and the 'name' face's `&(...)` wrap mirrors
     # the AST's `&(__u)` render (see _optional_ptr_arg).
-    opt_face = _optional_ptr_arg_face(a, ptype, lc.analyzer)
+    opt_face = _optional_ptr_arg_face(a, ptype, declared, lc.analyzer)
     if opt_face is not None:
         ot = _optional_ptr_arg_slot(ptype, lc.analyzer)
         loc = getattr(a, "loc", None)
         if opt_face == 'none':
             _witness("optptr.none")
             return THIROptionalPtrArg(result_type=ot, form=Form.BORROW, loc=loc)
+        if opt_face == 'subscript':
+            # A record-element lvalue subscript takes the address-of face:
+            # `&(::tpy::__getitem__(c, i))`. subscript_prechecked lets the
+            # record-element borrow read through the value-position gate (a
+            # bare record read is not a value leaf); the addr_of wrap matches
+            # the AST's `&(gen)` tail.
+            _witness("optptr.subscript")
+            return THIROptionalPtrArg(
+                result_type=ot, form=Form.BORROW,
+                value=_lower_expr(a, lc, declared, use=_NESTED_ARG_USE,
+                                  subscript_prechecked=True),
+                addr_of=True, loc=loc)
         if opt_face == 'ctor':
             # Admitted only under temps_ok; a silent fall-through would render
             # the bare (un-addressed) ctor. A match guard admits calls but is

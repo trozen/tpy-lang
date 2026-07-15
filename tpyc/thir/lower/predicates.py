@@ -28,6 +28,7 @@ from ...parse.nodes import (
     TpyName,
     TpyNoneLiteral,
     TpyReturn,
+    TpySlice,
     TpyStrLiteral,
     TpySubscript,
     TpyUnaryOp,
@@ -2332,6 +2333,20 @@ def _container_record_elem(t: TpyType | None, analyzer) -> bool:
     return _container_elem_family(
         t, analyzer, lambda a: _f1_record(a, analyzer))
 
+def _container_ref_alias_elem(t: TpyType | None, analyzer) -> bool:
+    """A container whose element/value is itself a plain list/dict/set: the
+    element subscript yields a `T&` borrow bindable as a REF_ALIAS local
+    (`row = matrix[0]` -> `std::vector<...>& row = ...`). The nested-container
+    analog of `_container_record_elem`."""
+    def container_elem(a: 'TpyType | int') -> bool:
+        if not isinstance(a, TpyType):
+            return False
+        a = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(a)))
+        if isinstance(a, OwnType):
+            a = unwrap_readonly(a.wrapped)
+        return is_list(a) or is_dict(a) or is_set(a)
+    return _container_elem_family(t, analyzer, container_elem)
+
 def _set_method_recv(t: TpyType | None, analyzer) -> bool:
     """A `set[scalar|owned-str]` METHOD-CALL receiver. Deliberately its own
     predicate, NOT a widening of `_container_scalar_read`: that family feeds
@@ -2694,6 +2709,13 @@ def _f1_const_rooted_source(expr: TpyExpr, func: TpyFunction, analyzer,
     local), recursing through chained field/subscript access to the base name."""
     if isinstance(expr, TpyCoerce):
         return _f1_const_rooted_source(expr.expr, func, analyzer, const_locals, record_name)
+    if isinstance(expr, TpyName):
+        # A bare-name alias source (`w = v`): const iff the aliased name is a
+        # const F1 local or a const/deep-const borrow param -- the name branch
+        # of the AST's `_is_const_indirect`.
+        return (expr.name in const_locals
+                or _param_is_const(expr.name, func, analyzer, record_name)
+                or _param_is_deep_const(expr.name, func, analyzer, record_name))
     if isinstance(expr, (TpyFieldAccess, TpySubscript)):
         obj = expr.obj
         if isinstance(obj, TpyName):
@@ -3068,7 +3090,7 @@ def _optional_ptr_arg_slot(ptype: TpyType | None, analyzer) -> 'OptionalType | N
     return pt
 
 def _optional_ptr_arg_face(a: TpyExpr, ptype: TpyType | None,
-                           analyzer) -> str | None:
+                           declared: dict[str, TpyType], analyzer) -> str | None:
     """Classify a call arg against a pointer-repr `Optional[record]` slot into
     its `_gen_optional_ptr_arg` face: 'none' (the `nullptr` literal), 'pass'
     (a pointer-repr Optional binding -- already `T*`, renders bare), 'name'
@@ -3079,7 +3101,18 @@ def _optional_ptr_arg_face(a: TpyExpr, ptype: TpyType | None,
     only). A NARROWED union subject classifies 'name' (its expr type arrives
     member-stamped): the read renames to the extraction alias / inline get
     inside `_lower_expr` and both paths wrap `&(...)` -- the render mirrors.
-    None rejects: subscript sources, coerced args, `self`, non-ctor
+    A record-element lvalue SUBSCRIPT off an lvalue container (`items[i]`, a
+    `T&` off an in-scope name / admitted-field container) classifies
+    'subscript': `&(<subscript>)`, mirroring the AST's `_gen_optional_ptr_arg`
+    `&(gen)` tail. The subscript guards mirror `_borrow_elem_subscript_shape`
+    (checks.py): an unproven-Optional container is rejected (the AST wraps the
+    receiver in `deref_check`, which the THIR `subscript_prechecked` render
+    drops -> null-container UB), and the container receiver must resolve
+    through `_subscript_container_recv_type` (an lvalue name / admitted field)
+    -- an rvalue container (`make_list()[i]`) is NOT caught by
+    `is_rvalue_source` (it does not recurse into the subscript receiver), so
+    `&(<dying temp>[i])` would dangle. None rejects: rvalue-container /
+    unproven-Optional / slice subscripts, coerced args, `self`, non-ctor
     rvalues (`Ptr[T]`-typed calls etc. stay AST). Shared by the eligibility
     gate (which adds receiver checks) and `_lower_call_arg` so both key one
     verdict; constructor args are validated during recursive lowering."""
@@ -3089,6 +3122,23 @@ def _optional_ptr_arg_face(a: TpyExpr, ptype: TpyType | None,
     inner = unwrap_readonly(ot.inner)
     if isinstance(a, TpyNoneLiteral):
         return 'none'
+    if isinstance(a, TpySubscript):
+        # Mirror _borrow_elem_subscript_shape (checks.py:561): reject the
+        # unproven-Optional receiver (deref_check would be dropped) and any
+        # slice/slice-function form, and require an lvalue-container receiver
+        # (rvalue containers dangle -- is_rvalue_source does not recurse into
+        # e.obj).
+        if a.needs_optional_runtime_check:
+            return None
+        if a.slice_function_info is not None or isinstance(a.index, TpySlice):
+            return None
+        if _subscript_container_recv_type(a.obj, declared, analyzer) is None:
+            return None
+        at = analyzer.get_expr_type(a)
+        at = unwrap_readonly(at) if at is not None else None
+        if at == inner:
+            return 'subscript'
+        return None
     if isinstance(a, TpyCall):
         fi = a.resolved_function_info
         if fi is None or not fi.is_constructor:

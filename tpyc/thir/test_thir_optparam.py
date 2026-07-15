@@ -230,6 +230,17 @@ class TestCallArgFaces:
         arg = _fn(thir, "use").body[-1].value.args[0]
         assert isinstance(arg, THIRName) and arg.name == "p" and not arg.deref
 
+    def test_subscript_source_to_optional_slot_addr_of(self):
+        # A record-element lvalue subscript (`xs[0]`, a `T&`) into a
+        # pointer-repr Optional[record] slot lifts `&(::tpy::__getitem__(...))`
+        # -- the subscript optional-ptr face.
+        thir = _lower_ctx(
+            _PRELUDE
+            + "def use(xs: list[A]) -> Int32:\n    return take_opt(xs[0])\n")
+        arg = _fn(thir, "use").body[0].value.args[0]
+        assert isinstance(arg, THIROptionalPtrArg) and arg.addr_of
+        assert arg.value is not None
+
     def test_narrowed_pass_to_own_slot_temps_with_deref(self):
         thir = _lower_ctx(
             _PRELUDE

@@ -48,6 +48,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "optptr.lift",                  # `::tpy::optional_to_ptr(...)`
     "optptr.pass",                  # already-`T*` binding passes bare
     "optptr.name",                  # `&(name)`
+    "optptr.subscript",             # `&(<lvalue record subscript>)`
     # Value-repr Optional slot None arg (lowering): the value-optional twin
     # of `optptr.none` -- `f(std::nullopt)`.
     "call.none_value_opt",

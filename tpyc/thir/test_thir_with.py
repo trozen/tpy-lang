@@ -7,7 +7,7 @@ targets, first-declaring bodies, walrus managers)."""
 from __future__ import annotations
 
 from ..codegen_cpp.context import CodeGenOptions
-from .nodes import THIRWith, WithTargetArm
+from .nodes import THIRCall, THIRWith, WithTargetArm
 from .testutil import (
     _compile, _entry, _fn, _lower_ctor, _lower_ctx, _lower_ctx_witnessed,
 )
@@ -697,3 +697,95 @@ class TestWithRefTarget:
         cpp = _cpp(self.SRC, thir=True)
         assert "auto& g = __ctx_1.__enter__();" in cpp
         assert cpp == _cpp(self.SRC, thir=False)
+
+
+class TestNativeCtxManager:
+    """A sync `with` whose manager is a @native record-returning free call --
+    `with open(path, mode)`. The literal `mode` selects a native overload
+    (`builtin_open_mode` for text, `builtin_open_binary` for binary), a
+    literal-specialized dispatch done by sema; the manager lowers through the
+    native free-call arm (THIRCall.native_name), byte-identical to the AST
+    `__ctx_N` store. The str `mode` literal lands bare in its `Literal[...]`
+    selector slot (the overloaded str-pin is inert on a LiteralType slot). The
+    with-BODY's native file methods (`f.write` / `f.read`) now route too (the
+    native-record instance-method arm renders `recv.native_name(args)`), so a
+    body using them fully routes."""
+
+    MODE = (
+        "def main() -> None:\n"
+        "    with open('/tmp/x.txt', 'w') as f:\n"
+        "        pass\n"
+        "main()\n"
+    )
+    NOARG = (
+        "def main() -> None:\n"
+        "    with open('/tmp/x.txt') as f:\n"
+        "        pass\n"
+        "main()\n"
+    )
+    BINARY = (
+        "def main() -> None:\n"
+        "    with open('/tmp/x.txt', 'wb'):\n"
+        "        pass\n"
+        "main()\n"
+    )
+
+    def test_mode_manager_routes_native(self):
+        thir = _lower_ctx(self.MODE)
+        fn = _fn(thir, "main")
+        assert fn is not None
+        w = fn.body[0]
+        assert isinstance(w, THIRWith)
+        call = w.items[0].ctx_expr
+        assert isinstance(call, THIRCall)
+        assert call.native_name == "tpy::builtin_open_mode"
+
+    def test_binary_mode_selects_native_symbol(self):
+        thir = _lower_ctx(self.BINARY)
+        call = _fn(thir, "main").body[0].items[0].ctx_expr
+        assert isinstance(call, THIRCall)
+        assert call.native_name == "tpy::builtin_open_binary"
+
+    def test_byte_identical(self):
+        for src in (self.MODE, self.NOARG, self.BINARY):
+            assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+    def test_native_file_method_body_routes(self):
+        # The with-BODY's native file method (`f.write`) routes on the
+        # native-record instance-method arm (member = fi.native_name, a plain
+        # `f.write("hi")`), so the WHOLE body now routes and byte-matches.
+        src = (
+            "def main() -> None:\n"
+            "    with open('/tmp/x.txt', 'w') as f:\n"
+            "        f.write('hi')\n"
+            "main()\n"
+        )
+        thir = _lower_ctx(src)
+        assert _fn(thir, "main") is not None
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+    def test_native_file_read_body_routes(self):
+        # A str-returning native file method (`r.read(4)`) used in an expr
+        # position routes: the str result rides the view/owned form tag, the
+        # int arg lands bare in its Int32 slot.
+        src = (
+            "def main() -> None:\n"
+            "    with open('/tmp/x.txt') as r:\n"
+            "        print(r.read(4))\n"
+            "main()\n"
+        )
+        thir = _lower_ctx(src)
+        assert _fn(thir, "main") is not None
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+    def test_native_method_body_emits_dot_member(self):
+        # The native rename renders bare `f.write(...)` -- the `.` member form,
+        # not the free-function `::sym(recv, args)` shape.
+        src = (
+            "def main() -> None:\n"
+            "    with open('/tmp/x.txt', 'w') as f:\n"
+            "        f.write('hi')\n"
+            "main()\n"
+        )
+        out = _cpp(src, thir=True)
+        assert "f.write(\"hi\");" in out

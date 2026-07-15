@@ -82,9 +82,12 @@ from .predicates import (
     _eligible_enum,
     _eligible_scalar,
     _f1_record,
+    _f1_tuple,
+    _optional_ptr_borrow,
     _peel_stale_view_owned_coerce,
     _resolved_bytes_value,
     _resolved_str_value,
+    _value_tuple,
 )
 from .statements import (
     _handler_binding_type,
@@ -116,11 +119,26 @@ def _res_param_ok(t: 'TpyType | None', analyzer) -> bool:
     the sync view param), but every leaf READ renders through the same
     form-agnostic helpers as the owned str/bytes locals R1a already routes
     (`__len__` / `bytes_getitem` / bare name), so they share that slice.
-    Own / tuple / union / protocol params stay their own rungs."""
+
+    Own[T] params (`_f1_record` unwraps the Own inner, so an `Own[F1-record]`
+    payload already reads through the record branch below; the capture
+    `b(std::move(b_))` is skeleton) and pointer-repr `Optional[F1-record]`
+    params (`p: P | None` -> a `P*` frame field: `p != nullptr` predicates
+    and `p->n` arrow reads route through `lc.pointers`, seeded from the
+    params) are also admitted. Borrow-form and value tuple params ride too:
+    a `std::tuple<..., T*>` / `std::tuple<...>` frame field reads bare with
+    `std::get<N>(t)` (pointer-repr elements arrow, value elements bare),
+    matching the sync tuple-subscript rows. Union (non-pointer-repr),
+    static-protocol and generic params stay their own rungs."""
     if _res_value_ok(t, analyzer):
         return True
     if (_resolved_str_value(t, analyzer) is not None
             or _resolved_bytes_value(t, analyzer) is not None):
+        return True
+    if _optional_ptr_borrow(t, analyzer) is not None:
+        return True
+    if (_f1_tuple(t, analyzer) is not None
+            or _value_tuple(t, analyzer) is not None):
         return True
     unwrapped = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
                  if isinstance(t, TpyType) else None)

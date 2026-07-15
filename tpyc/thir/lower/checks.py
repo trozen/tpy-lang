@@ -123,6 +123,7 @@ from .predicates import (
     _native_iterable_container_arg,
     _native_iterable_genexpr_arg,
     _container_record_elem,
+    _container_ref_alias_elem,
     _set_method_recv,
     _container_elem_family,
     _container_scalar_read,
@@ -543,12 +544,32 @@ def _container_record_elem_subscript(e: TpyExpr, locals_: dict[str, TpyType],
     an in-scope name or a one-level field off an admitted receiver);
     `Optional`-element containers reject at `_f1_record` (the AST wraps those
     reads differently)."""
+    return _borrow_elem_subscript_shape(e, locals_, analyzer,
+                                        _container_record_elem)
+
+
+def _container_ref_alias_elem_subscript(e: TpyExpr,
+                                        locals_: dict[str, TpyType],
+                                        analyzer) -> bool:
+    """A container subscript whose element/value is itself a plain list/dict/set
+    (`row = matrix[0]`): the element lvalue (`T&`) binds a REF_ALIAS local. The
+    nested-container analog of `_container_record_elem_subscript`."""
+    return _borrow_elem_subscript_shape(e, locals_, analyzer,
+                                        _container_ref_alias_elem)
+
+
+def _borrow_elem_subscript_shape(e: TpyExpr, locals_: dict[str, TpyType],
+                                 analyzer, elem_family) -> bool:
+    """Shared shell for the record-element / nested-container-element subscript
+    borrow sources: a plain `c[i]` / `d[k]` (no optional-check, slice, or
+    slice-function) off a subscript-container receiver whose element satisfies
+    `elem_family`, with a routable index."""
     if not isinstance(e, TpySubscript) or e.needs_optional_runtime_check:
         return False
     if e.slice_function_info is not None or isinstance(e.index, TpySlice):
         return False
     recv_t = _subscript_container_recv_type(e.obj, locals_, analyzer)
-    if recv_t is None or not _container_record_elem(recv_t, analyzer):
+    if recv_t is None or not elem_family(recv_t, analyzer):
         return False
     return (_bigint_index_disposition(e.index, analyzer) != "reject")
 
@@ -591,9 +612,47 @@ def _field_over_call_ok(e: TpyExpr, analyzer) -> bool:
     return bool(_f1_record(analyzer.get_expr_type(e.obj), analyzer)
                 and _witness("field.call_recv"))
 
+def _alias_ref_container(t: TpyType | None) -> bool:
+    """A container whose borrow local binds a plain `T&` alias -- `list` / `dict`
+    / `set`. The `bytes`/`bytearray` (span-borrow) and recursive-union-wrapper
+    non-value families take a different borrow shape, so a name alias of those
+    stays on the AST path (a later rung)."""
+    if t is None:
+        return False
+    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    if isinstance(t, OwnType):
+        t = unwrap_readonly(t.wrapped)
+    return is_list(t) or is_dict(t) or is_set(t)
+
+
+def _bare_nonvalue_name_alias_ok(init: TpyExpr, target_type: TpyType | None,
+                                 declared: dict[str, TpyType], prescan: _Prescan,
+                                 pointers: 'AbstractSet[str]', analyzer) -> bool:
+    """A single-assignment REF_ALIAS whose source is a plain non-value LVALUE
+    NAME rendering bare (`T& name = src;` / `const T& ...`): `y = x` (record),
+    `alias = items` (container), and alias chains (`c = b`). The source must be
+    an in-scope local/param of a plain record / list / dict / set that renders
+    bare -- NOT a pointer-local / Optional-ptr name (those alias as `(*p)`) and
+    NOT a module global (rendered `T*`, aliased via `(*g)`); both stay on the
+    AST path (later rungs). The const verdict mirrors `_is_const_indirect`'s
+    name branch (see `_f1_is_const` / `_f1_const_rooted_source`)."""
+    if not isinstance(init, TpyName):
+        return False
+    if init.name in pointers:
+        note_detail("decl.name_alias_ptr_src")
+        return False
+    if init.name not in declared and init.name not in prescan.param_names:
+        note_detail("decl.name_alias_global_src")
+        return False
+    return (_f1_record(target_type, analyzer)
+            or _alias_ref_container(target_type))
+
+
 def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
                           declared: dict[str, TpyType], prescan: _Prescan,
-                          analyzer) -> 'LocalBinding | None':
+                          analyzer,
+                          pointers: 'AbstractSet[str]' = frozenset()
+                          ) -> 'LocalBinding | None':
     """The binding for a non-value local var-decl's *first* declaration, or None
     if it is outside the emit slice. The form decision comes from the shared
     classifier; the slice additionally requires a field-access source off an
@@ -656,6 +715,20 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
                 and _f1_record(target_type, analyzer)
                 and _container_record_elem_subscript(stmt.init, declared,
                                                      analyzer)):
+            return binding
+        # A nested-container element subscript (`row = matrix[0]`) binds the
+        # `T&` alias of the element list/dict/set.
+        if (binding is LocalBinding.REF_ALIAS
+                and _alias_ref_container(target_type)
+                and _container_ref_alias_elem_subscript(stmt.init, declared,
+                                                        analyzer)):
+            return binding
+        # A bare non-value NAME alias (`y = x`, `alias = items`, `c = b`) binds
+        # the single-assignment `T&` alias directly -- no field-receiver pin.
+        if (binding is LocalBinding.REF_ALIAS
+                and _bare_nonvalue_name_alias_ok(stmt.init, target_type,
+                                                 declared, prescan, pointers,
+                                                 analyzer)):
             return binding
         return None
     if binding is LocalBinding.REF_ALIAS or binding is LocalBinding.POINTER:
@@ -1379,18 +1452,28 @@ def _free_callee_kind(e: TpyCall, analyzer, *,
         if isinstance(a0, TpyStrLiteral) and len(a0.value) == 1:
             note_detail("call.builtin_special")
             return None
-    # A literal-specialized overload emits a mangled name (`f__lit_N`) the
-    # pre-rendered spellings do not reproduce. The error_return guard keeps
-    # fallible callees out of every face that does not render the unwrap;
-    # `error_return_ok` is set only by the free-call lowering arm, whose
-    # tail wraps the call in THIRErrorReturnUnwrap (or hands it raw to the
-    # statement-level bind/discard/pass-through handlers).
+    # The error_return guard keeps fallible callees out of every face that
+    # does not render the unwrap; `error_return_ok` is set only by the
+    # free-call lowering arm, whose tail wraps the call in
+    # THIRErrorReturnUnwrap (or hands it raw to the statement-level
+    # bind/discard/pass-through handlers).
     if fi.error_return_type is not None and not error_return_ok:
         note_detail("call.error_return")
         return None
+    # A literal-specialized overload mangles its DEFAULT-linkage callee to
+    # `f__lit_N` (literal_mangled_name) -- a spelling the plain/imported/
+    # generic return kinds don't yet thread, so reject it. The AST mangles
+    # only when there are MULTIPLE overloads (a single Literal-param stub is
+    # a plain call) AND the callee is not a @native import (a native literal
+    # overload's name is its resolved native symbol, picked by sema's
+    # overload resolution -- no `__lit_` mangling), so those two shapes fall
+    # through to the native/plain arm below and route.
     if any(isinstance(p.type, LiteralType) for p in fi.params):
-        note_detail("call.literal_overload")
-        return None
+        overloads = analyzer.registry.get_function(e.func_name)
+        if (overloads is not None and len(overloads) > 1
+                and not (fi.native_function or fi.native_name)):
+            note_detail("call.literal_overload")
+            return None
     if fi.frame_captures is not None:
         # A closure local (nested def): the bare lambda-variable call --
         # spelled exactly like the plain arm, decided BEFORE the registry /
@@ -1550,6 +1633,57 @@ def _call_arity_ok(e: 'TpyCall | TpyMethodCall', fi) -> bool:
         return _witness("call.omit_defaults")
     return True
 
+
+def _strlit_overload_pin_fires(e: 'TpyCall', fi, analyzer) -> bool:
+    """Whether a str-literal arg to this call takes gen_call_arg's overloaded
+    pin (`param_view_t("...")`) -- the AST's `_wants_str_literal_pin` (a
+    MULTI-overload, non-generic callee) plus the per-arg firing test (the
+    pin fires only when the str literal's param slot renders `str`/`StrView`).
+    A str literal into any OTHER slot -- a `Char`, a `Literal[...]` mode
+    selector, an owned `String` -- renders through its own arm, which THIR
+    reproduces, so only a str/StrView slot needs the AST path. Used to keep
+    the plain / native / record-rvalue free-call faces from over-rejecting a
+    str-literal overloaded call whose pin never actually fires."""
+    if fi is None or fi.is_generic():
+        return False
+    overloads = analyzer.registry.get_function(e.func_name)
+    if overloads is None or len(overloads) <= 1:
+        return False
+    params = fi.params
+    for i, a in enumerate(e.args):
+        if not isinstance(_peel_coerce(a), TpyStrLiteral):
+            continue
+        if i >= len(params):
+            continue
+        slot = unwrap_readonly(unwrap_ref_type(params[i].type))
+        if is_str_type(slot) or is_str_view_type(slot):
+            return True
+    return False
+
+
+def _native_ctx_manager_ok(e: TpyExpr, analyzer) -> bool:
+    """A @native record-returning free call admitted as a sync `with` manager
+    (`with open(path, mode) as f: ...`). The callee resolves to the native arm
+    (`_free_callee_kind` -> ('native', symbol)); the manager expr lowers
+    through the ordinary native free-call arm (THIRCall.native_name), rendered
+    `::tpy::symbol(args)` -- byte-identical to `_gen_with`'s stored `__ctx_N`
+    manager. The plain/imported/ctor manager sources ride
+    `_record_rvalue_source_shape`; this covers the native residue those two
+    reject. Guards the callee kind, arity, and the str-literal overloaded pin
+    (open's `Literal` mode arg does not pin -- a LiteralType slot). Args are
+    validated by the manager expr's own lowering arm (shallow, like
+    `_record_rvalue_source_shape`)."""
+    if not isinstance(e, TpyCall):
+        return False
+    if e.kwargs or e.double_star_unpack is not None:
+        return False
+    fi = e.resolved_function_info
+    if fi is None or fi.is_constructor or not _call_arity_ok(e, fi):
+        return False
+    k = _free_callee_kind(e, analyzer)
+    if k is None or k[0] != "native":
+        return False
+    return not _strlit_overload_pin_fires(e, fi, analyzer)
 
 
 def _native_call_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
@@ -1735,7 +1869,21 @@ def _shared_pass_through_arg(a: TpyExpr, ptype: 'TpyType | None',
             or _ptr_pass_through_arg(a, ptype, locals_, analyzer)
             or _value_tuple_pass_through_arg(a, ptype, locals_, analyzer,
                                              mutated=mutated)
+            or _str_literal_literal_slot_arg(a, ptype, analyzer)
             or _record_pass_through_arg(a, ptype, locals_, analyzer))
+
+def _str_literal_literal_slot_arg(a: TpyExpr, ptype: 'TpyType | None',
+                                  analyzer) -> bool:
+    """A str literal into a `Literal[str, ...]` selector slot (open's `mode`
+    param, the literal-specialized overload's argument). The slot spells
+    `std::string_view`, so the literal binds as the bare const char[N] --
+    gen_call_arg's gen_expr_deref of a str literal at a LiteralType target
+    (the overloaded pin is inert here: is_str_type(LiteralType) is False).
+    Value-blind and identical on both call paths."""
+    pt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
+          if isinstance(ptype, TpyType) else None)
+    return (isinstance(pt, LiteralType) and is_str_type(pt.base_type)
+            and isinstance(_peel_coerce(a), TpyStrLiteral))
 
 def _value_tuple_pass_through_arg(a: TpyExpr, ptype: 'TpyType | None',
                                   locals_: dict[str, TpyType],
@@ -2015,10 +2163,14 @@ def _optional_ptr_arg(a: TpyExpr, ptype: TpyType | None,
     and the AST's `_gen_optional_ptr_arg` tail wraps the same alias
     (`&(__u)`) -- the render mirrors, so no narrowed reject (the face is
     temp-free; rejecting it here would drift from lowering's shared verdict)."""
-    face = _optional_ptr_arg_face(a, ptype, analyzer)
+    face = _optional_ptr_arg_face(a, ptype, locals_, analyzer)
     if face is None:
         return False
     if face == 'none':
+        return True
+    if face == 'subscript':
+        # `&(<lvalue record subscript>)` -- temp-free, so no flush position
+        # needed; the face verdict already pinned the lvalue-borrow shape.
         return True
     if face == 'ctor':
         return temps_ok and _ctor_shape_ok(a, analyzer)
@@ -3279,9 +3431,10 @@ def _record_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyTy
     and the AST arm builds its temp decisions from `overloads[0]` while
     rendering against the RESOLVED overload -- a pairing the slice does not
     reproduce. This also keeps `_wants_str_literal_pin` unreachable (the pin
-    fires only at overload_count > 1). @native / @cpp_template facts cannot
-    arise on a non-native record's methods but are rejected defensively --
-    each takes a different `_gen_method_call` arm.
+    fires only at overload_count > 1). A native_name RENAME on an actually-native
+    record IS admitted (the file-handle `fh.write` shape -- member = native_name,
+    a plain member call); a native_function (free-function form) / cpp_template
+    each takes a different `_gen_method_call` arm and stays rejected.
 
     Args: the free-call pass-through set minus bytes (a bytes-view result /
     arg form is not threaded through the method node) -- eligible scalars
@@ -3313,12 +3466,22 @@ def _record_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyTy
         # The drill's "which methods block" discriminant: name the receiver
         # family AND the method, so e.g. str methods rank individually.
         return note_detail(f"method.{_recv_family(recv_t, analyzer)}.{e.method}")
-    if (fi.cpp_template is not None or fi.native_function or fi.native_name
-            or fi.type_params or fi.is_staticmethod or not fi.is_method):
-        return note_detail("method.fi_kind")
     ri = analyzer.registry.get_record_for_type(recv_t)
     if ri is None:
         return False
+    # A @native record's instance method (the file-handle `fh.write(...)` /
+    # `r.read(n)` shape) renders `recv.native_name(args)` -- the member name
+    # resolves to `fi.native_name` in the method-call emit, byte-identical to a
+    # plain member call. Only native_name on an actually-native record is
+    # admitted; a native_function (free-function form, `::sym(recv, args)`) or
+    # cpp_template stays on the AST path. The `inline_template=is_native_stub`
+    # the AST threads for these args only affects Own[T] slots (a
+    # redundant-copy skip); the admitted arg rows carry none.
+    native_method = bool(fi.native_name) and ri.is_native and not fi.native_function
+    if (fi.cpp_template is not None or fi.native_function
+            or (fi.native_name and not native_method)
+            or fi.type_params or fi.is_staticmethod or not fi.is_method):
+        return note_detail("method.fi_kind")
     overloads = analyzer.registry.get_method_overloads_with_parents(ri, e.method)
     if len(overloads) != 1:
         # An @auto_readonly / auto_own[Self] clone pair renders the same

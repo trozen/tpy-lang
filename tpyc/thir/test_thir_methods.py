@@ -1191,9 +1191,9 @@ class TestNativeRecordFrontier:
     def test_native_record_plain_method_call_routes(self):
         # A @native record's PLAIN method (no native_name / cpp_template, just a
         # `...` declaration) passes `_plain_method_fi_ok`, so a bare `v.mag()`
-        # call routes byte-identically. (Only native methods WITH a native
-        # rename / cpp_template hit `method.fi_kind` and stay AST -- see
-        # test_thir_callargs.)
+        # call routes byte-identically. A native_name RENAME on a native record
+        # also routes (see the RENAMED tests below); only cpp_template /
+        # native_function stay AST.
         src = ("from tpy.extern import native\nfrom tpy import Int32\n"
                "@native\nclass NV:\n    x: Int32\n"
                "    def mag(self) -> Int32: ...\n"
@@ -1207,6 +1207,58 @@ class TestNativeRecordFrontier:
                                               thir_codegen=thir))
             return hpp + cpp
         assert emit(True) == emit(False)
+
+    # A @native record whose method carries a native_name RENAME (the file
+    # handle `fh.write` shape). The member resolves to `fi.native_name` in the
+    # method-call emit -- a bare `recv.name(args)`, byte-identical -- so the
+    # call routes. Only native records admit the rename; a native_function
+    # (free-function form) or cpp_template stays AST.
+    _RENAMED = ("from tpy.extern import native\nfrom tpy import Int32\n"
+                "@native(\"nsFile\")\nclass NF:\n"
+                "    @native(\"do_write\")\n"
+                "    def write(self, n: Int32) -> Int32: ...\n"
+                "    @native(\"do_close\")\n"
+                "    def close(self) -> None: ...\n")
+
+    def test_native_renamed_method_call_routes(self):
+        src = (self._RENAMED
+               + "def use(f: NF) -> Int32:\n    return f.write(5)\n")
+        assert _fn(_lower_ctx(src), "use") is not None
+
+    def test_native_renamed_void_method_stmt_routes(self):
+        # A void native method in statement position (`f.close()`) routes and
+        # emits the bare call as a statement.
+        src = (self._RENAMED
+               + "def shut(f: NF) -> None:\n    f.close()\n")
+        assert _fn(_lower_ctx(src), "shut") is not None
+
+    def test_native_renamed_method_emit_byte_identical(self):
+        src = (self._RENAMED
+               + "def use(f: NF) -> Int32:\n    return f.write(5)\n"
+               + "def shut(f: NF) -> None:\n    f.close()\n")
+        def emit(thir):
+            compiler, modules = _compile(src)
+            entry = _entry(modules)
+            hpp, cpp = compiler.generate_code_to_strings(
+                entry, options=CodeGenOptions(emit_source_comments=False,
+                                              thir_codegen=thir))
+            return hpp + cpp
+        out = emit(True)
+        assert out == emit(False)
+        # the rename spells the member; a plain `.` call, not `::sym(recv,...)`
+        assert "f.do_write(5)" in out
+        assert "f.do_close();" in out
+
+    def test_native_function_method_stays_ast(self):
+        # A @native(function=True) method takes the free-function form
+        # `::sym(recv, args)`, a different emit than the plain member call, so
+        # it stays AST (the native_method arm admits native_name only).
+        src = ("from tpy.extern import native\nfrom tpy import Int32\n"
+               "@native(\"nsF\")\nclass NF:\n"
+               "    @native(\"sz\", function=True)\n"
+               "    def size(self) -> Int32: ...\n"
+               "def use(f: NF) -> Int32:\n    return f.size()\n")
+        assert _fn(_lower_ctx(src), "use") is None
 
 
 class TestNativeRecordFrontierEmit:

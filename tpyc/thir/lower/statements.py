@@ -264,6 +264,7 @@ from .checks import (
     _ptr_union_field_write_ok,
     _ptr_union_source_ok,
     _ctor_shape_ok,
+    _native_ctx_manager_ok,
     _record_field_write_ok,
     _scalar_aug_assign_ok,
     _scalar_field_write_ok,
@@ -1504,10 +1505,16 @@ def _lower_borrow_local(stmt: TpyVarDecl, vtype: TpyType, binding: 'LocalBinding
     if binding is LocalBinding.REF_ALIAS:
         # A record-element container subscript source (`p = ps[i]`) lowers as
         # the plain subscript read (the `T&` alias binds the element lvalue);
-        # a field source keeps the dedicated borrow-source build.
-        src = (_lower_expr(stmt.init, lc, declared, subscript_prechecked=True)
-               if isinstance(stmt.init, TpySubscript)
-               else _lower_field_source(stmt.init, lc, declared))
+        # a bare NAME source (`y = x`, `alias = items`) lowers to the bare
+        # borrow-form name (never moved -- an alias source is in
+        # `prescan.alias_sources`); a field source keeps the dedicated
+        # borrow-source build.
+        if isinstance(stmt.init, TpySubscript):
+            src = _lower_expr(stmt.init, lc, declared, subscript_prechecked=True)
+        elif isinstance(stmt.init, TpyName):
+            src = _lower_expr(stmt.init, lc, declared)
+        else:
+            src = _lower_field_source(stmt.init, lc, declared)
         return THIRVarDecl(
             name=stmt.name, resolved_type=vtype, init=src,
             cpp_type=lc.render_type(vtype), form=Form.BORROW, is_const=is_const,
@@ -2210,7 +2217,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         # First decl of a non-value borrow local (REF_ALIAS / OPTIONAL_TO_PTR /
         # POINTER).
         if not is_reassign and not scope.in_branch:
-            binding = _borrow_local_binding(stmt, vtype, declared, lc.prescan, analyzer)
+            binding = _borrow_local_binding(stmt, vtype, declared, lc.prescan,
+                                            analyzer, lc.pointers)
             if binding is not None:
                 if binding is LocalBinding.OPT_PTR_SLOT:
                     # Slot-hoist Optional pointer-local (None / rvalue init).
@@ -4394,7 +4402,8 @@ def _lower_with(stmt: TpyWith, lc: _LowerCtx, declared: dict[str, TpyType],
                 isinstance(ctx, TpyCall)
                 and _f1_record(lc.analyzer.get_expr_type(ctx), lc.analyzer)
                 and (_ctor_shape_ok(ctx, lc.analyzer)
-                     or _record_rvalue_source_shape(ctx, lc.analyzer)))
+                     or _record_rvalue_source_shape(ctx, lc.analyzer)
+                     or _native_ctx_manager_ok(ctx, lc.analyzer)))
         if not manager_ok:
             raise ThirUnsupported(stmt_reject_reason(stmt))
         deref = (item.manager_borrowed and isinstance(ctx, TpyName)
@@ -4421,7 +4430,8 @@ def _lower_with(stmt: TpyWith, lc: _LowerCtx, declared: dict[str, TpyType],
         if not (item.exit_can_suppress or item.exit_takes_exc_val):
             _witness("with.cleanup_only")
         items.append(THIRWithItem(
-            ctx_expr=_lower_expr(ctx, lc, declared),
+            ctx_expr=_lower_expr(ctx, lc, declared,
+                                 use=_ExprUse(ctx_manager=True)),
             manager_borrowed=item.manager_borrowed,
             deref_manager=deref,
             target=item.target,

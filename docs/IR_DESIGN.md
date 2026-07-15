@@ -1254,6 +1254,18 @@ by theme; each is a rule the next cell should apply.
   bug -- e.g. the `_lower_hoist_predecls` render loop shared by if/try/with). But do NOT collapse
   two functions that are identical *today* yet belong to DIVERGING DOMAINS (call- vs ctor-arity,
   which plausibly split on kwonly/defaults) -- that is over-coupling, not DRY.
+- **Wave 4 (dial 1163->1177): no big SELF-CONTAINED ARCH lever survives honest drilling.**
+  Three self-contained ARCH picks (resumable template-frame, Optional-ptr slot-hoist,
+  representation/Any) each COLLAPSED on `.py`+oracle drilling: resumable template-frame is
+  blocked on the generics foundation; the Optional-ptr slot is ~19 residual bodies (mostly
+  already built, NOT the stale ~163 the tags implied); representation/Any is a mirage (fstring
+  dissolves into `expr.call` call-lowering residue, `container_literal` is element-storage-form
+  work, Any is a small mostly-built box). LESSON: at this frontier stage the residue is
+  interlocked and whole-case dial movement comes from COMBINING construct-clearing tracks at the
+  collector merge (wave 4: 8 solo flips + 3 combined = 11), not a single ARCH item. Tag-based
+  leverage estimates are mirages -- always drill the blocking body + `expected/*.cpp` oracle
+  before costing (three collapses this wave). The next genuinely-big lever is the generics
+  foundation itself (partially built).
 
 ---
 
