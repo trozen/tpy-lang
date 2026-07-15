@@ -1,15 +1,20 @@
 # asyncio reactor: sock_connect to a refused port raises
 # ConnectionRefusedError (an OSError), matching CPython asyncio.
-# The bound-but-not-listen()ed socket stays open to reserve the port.
+# Grab a port by binding+listening, then close it: connecting to the freed
+# port draws an RST -> ECONNREFUSED on both Linux and macOS. (A bound-but-not-
+# listen()ed socket only refuses on Linux; BSD/macOS silently drops the SYN
+# and the connect times out instead -- host-divergent, so not usable here.)
 import asyncio
 from socket import socket, AF_INET, SOCK_STREAM
 
 
 async def main_coro() -> None:
     loop = asyncio.get_running_loop()
-    blocker = socket(AF_INET, SOCK_STREAM)
-    blocker.bind(("127.0.0.1", 0))
-    host, port = blocker.getsockname()
+    probe = socket(AF_INET, SOCK_STREAM)
+    probe.bind(("127.0.0.1", 0))
+    probe.listen(1)
+    host, port = probe.getsockname()
+    probe.close()
 
     s = socket(AF_INET, SOCK_STREAM)
     s.setblocking(False)
@@ -23,7 +28,6 @@ async def main_coro() -> None:
     except OSError:
         print("caught generic OSError")
     s.close()
-    blocker.close()
 
 
 def main() -> None:

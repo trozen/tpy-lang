@@ -10,14 +10,18 @@ namespace tpyapp::main {
     case S_INITIAL: {
         // loop = asyncio.get_running_loop()
         loop.emplace(::tpystd::asyncio::get_running_loop());
-        // blocker = socket(AF_INET, SOCK_STREAM)
-        blocker.emplace(::tpystd::socket::socket(::tpystd::socket::AF_INET, ::tpystd::socket::SOCK_STREAM));
-        // blocker.bind(("127.0.0.1", 0))
-        (*blocker).bind(std::tuple<std::string, int32_t>{"127.0.0.1", 0});
-        // host, port = blocker.getsockname()
-        auto __tup_1 = (*blocker).getsockname();
+        // probe = socket(AF_INET, SOCK_STREAM)
+        probe.emplace(::tpystd::socket::socket(::tpystd::socket::AF_INET, ::tpystd::socket::SOCK_STREAM));
+        // probe.bind(("127.0.0.1", 0))
+        (*probe).bind(std::tuple<std::string, int32_t>{"127.0.0.1", 0});
+        // probe.listen(1)
+        (*probe).listen(1);
+        // host, port = probe.getsockname()
+        auto __tup_1 = (*probe).getsockname();
         host = std::get<0>(__tup_1);
         port = std::get<1>(__tup_1);
+        // probe.close()
+        (*probe).close();
         // s = socket(AF_INET, SOCK_STREAM)
         s.emplace(::tpystd::socket::socket(::tpystd::socket::AF_INET, ::tpystd::socket::SOCK_STREAM));
         // s.setblocking(False)
@@ -57,8 +61,6 @@ namespace tpyapp::main {
     case S_JOIN_0: {
         // s.close()
         (*s).close();
-        // blocker.close()
-        (*blocker).close();
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
@@ -108,7 +110,10 @@ void __tpy_init() {
 
     // # asyncio reactor: sock_connect to a refused port raises
     // # ConnectionRefusedError (an OSError), matching CPython asyncio.
-    // # The bound-but-not-listen()ed socket stays open to reserve the port.
+    // # Grab a port by binding+listening, then close it: connecting to the freed
+    // # port draws an RST -> ECONNREFUSED on both Linux and macOS. (A bound-but-not-
+    // # listen()ed socket only refuses on Linux; BSD/macOS silently drops the SYN
+    // # and the connect times out instead -- host-divergent, so not usable here.)
     // import asyncio
     ::tpystd::asyncio::__tpy_init();
     // from socket import socket, AF_INET, SOCK_STREAM

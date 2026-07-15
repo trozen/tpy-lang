@@ -27,7 +27,7 @@ struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;
     ::tpy::frame_slot<::tpystd::asyncio::EventLoop> loop;
-    ::tpy::frame_slot<::tpystd::socket::socket> blocker;
+    ::tpy::frame_slot<::tpystd::socket::socket> probe;
     std::string_view host;
     int32_t port;
     ::tpy::frame_slot<::tpystd::socket::socket> s;
