@@ -3885,13 +3885,13 @@ class StatementGenerator:
         around it is shared skeleton either way."""
         leaf = self.ctx.thir_resumable_leaf
         if leaf is not None:
-            # A routed body renders position-blind and never reaches the
-            # to_borrow=False (pending-slot) or _async_ret_to_borrow paths:
-            # lower_resumable rejects any region_stack (res.region) / finally
-            # (res.finally), and its value-scalar return gate excludes the
-            # Own[T] / pointer-repr-Optional slots to_borrow would convert. A
-            # future cell lifting either gate must revisit this seam (it drops
-            # to_borrow) -- see the THIRResumableBody return_values contract.
+            # A routed body renders position-blind, replacing only the value
+            # string; the _wrap_view_to_storage / _async_ret_to_borrow wraps
+            # it skips are no-ops for the admitted value-scalar returns, so
+            # every scaffolding site (pending-slot store, pre-finally capture,
+            # direct ready) stays identical. Widening returns past value
+            # scalars must revisit this seam -- see the THIRResumableBody
+            # return_values contract.
             return leaf.render_return_value(stmt)
         if isinstance(stmt.value, TpyNoneLiteral):
             # The coroutine return slot is storage form: None needs the

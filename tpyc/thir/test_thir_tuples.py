@@ -1151,14 +1151,52 @@ class TestStandaloneTupleUnpack:
             + "def f(n: Int32) -> Int32:\n    a, b = mk(n)\n    return a + b\n")
         assert faces.get("stmt.tuple_unpack.rvalue_source", 0) >= 1
 
-    def test_reused_target_ineligible(self):
-        # A target shadowing an outer local (`a` predeclared) takes the AST's
-        # was-declared assign path -- out of the slice.
+    def test_reused_target_assign_routes(self):
+        # A reused plain scalar target takes the AST's declared-name assign
+        # tail: `a = std::get<0>(__tup_N);` (no decl; `b` stays a fresh decl).
         thir = _lower(
             _PRELUDE
             + "def f(t: tuple[Int32, Int32]) -> Int32:\n"
             + "    a = 0\n    a, b = t\n    return a + b\n")
-        assert _fn(thir, "f") is None
+        fn = _fn(thir, "f")
+        assert fn is not None
+        up = fn.body[1]
+        assert isinstance(up, THIRTupleUnpack)
+        assert up.binds == ("assign", "value")
+        assert up.target_cpps == (None, "int32_t")
+
+    def test_reused_target_assign_face_witnessed(self):
+        _thir, faces = _lower_ctx_witnessed(
+            _PRELUDE
+            + "def f(t: tuple[Int32, Int32]) -> Int32:\n"
+            + "    a = 0\n    b = 0\n    a, b = t\n    return a + b\n")
+        assert faces.get("stmt.tuple_unpack.assign_target", 0) >= 2
+
+    def test_reused_str_target_byte_identical(self):
+        # The reassigned-owns shape: a str target reused across a loop
+        # (`head, tail = split2(head)`) assigns into the owned local; the
+        # declared entry keeps its original type for later reads.
+        def cpp(src: str, thir: bool):
+            compiler, modules = _compile(src)
+            _, out = compiler.generate_code_to_strings(
+                _entry(modules),
+                options=CodeGenOptions(emit_source_comments=False,
+                                       thir_codegen=thir))
+            return out
+        src = (
+            "def split2(s: str) -> tuple[str, str]:\n"
+            "    n = len(s) // 2\n"
+            "    return (s[:n], s[n:])\n"
+            "def f() -> None:\n"
+            "    head = \"abcdefgh\"\n"
+            "    while len(head) > 1:\n"
+            "        head, tail = split2(head)\n"
+            "    print(head)\n"
+            "f()\n")
+        thir_cpp = cpp(src, thir=True)
+        assert thir_cpp == cpp(src, thir=False)
+        assert "head = std::get<0>(__tup_1);" in thir_cpp
+
 
     def test_record_element_source_ineligible(self):
         # A pointer-repr (record-element) tuple source is not a value-scalar
@@ -1337,15 +1375,32 @@ class TestStandaloneUnpackTargetRungs:
             "    return a + b\n")
         assert _fn(thir, "f") is None
 
-    def test_reused_own_target_ineligible(self):
-        # A reused (predeclared) target keeps the whole unpack on the AST path
-        # even with an Own source element.
-        thir = _lower_ctx(
+    def test_reused_scalar_beside_own_target_routes(self):
+        # A reused scalar target beside a fresh Own element: the Own moves
+        # into its fresh local, the reused scalar takes the assign tail.
+        src = (
             _OWN_PAIR
             + "def f() -> Int32:\n"
             + "    n = 0\n    a, n = mk2()\n    return a.n + n\n"
             + "def mk2() -> tuple[Own[Leaf], Int32]:\n    return (Leaf(1), 2)\n")
-        assert _fn(thir, "f") is None
+        thir = _lower_ctx(src)
+        fn = _fn(thir, "f")
+        assert fn is not None
+        up = fn.body[1]
+        assert isinstance(up, THIRTupleUnpack)
+        assert up.binds == ("move", "assign")
+        compiler, modules = _compile(src)
+        opts_thir = CodeGenOptions(emit_source_comments=False,
+                                   thir_codegen=True)
+        _, cpp_t = compiler.generate_code_to_strings(_entry(modules),
+                                                     options=opts_thir)
+        compiler, modules = _compile(src)
+        opts_ast = CodeGenOptions(emit_source_comments=False,
+                                  thir_codegen=False)
+        _, cpp_a = compiler.generate_code_to_strings(_entry(modules),
+                                                     options=opts_ast)
+        assert cpp_t == cpp_a
+        assert "n = std::get<1>(__tup_1);" in cpp_t
 
 
 class TestStandaloneUnpackTargetRungsEmit:

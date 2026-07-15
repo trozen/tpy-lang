@@ -347,16 +347,54 @@ class TestWithGateRejections:
         assert _fn(_lower_ctx(src), "f") is None
         assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
-    def test_body_first_declare_stays_ast(self):
-        # A body-declared var visible after the block needs the
-        # _emit_branch_decls hoist -> whole function stays AST.
+    def test_value_hoist_routes_byte_identical(self):
+        # Body-declared value vars visible after the block ride the
+        # _emit_branch_decls plain-value predecl (`int32_t y;` /
+        # `std::string_view s;` before the manager binding).
         src = (
             _CM
             + "def f(cm: CM) -> None:\n"
             + "    with cm:\n"
             + "        y = 1\n"
+            + "        s = \"hi\"\n"
             + "    print(y)\n"
+            + "    print(s)\n"
             + "f(CM(1))\n"
+        )
+        thir = _lower_ctx(src)
+        w = _fn(thir, "f").body[0]
+        assert isinstance(w, THIRWith)
+        # Order is sema's if_branch_decls order (shared with the AST arm).
+        assert set(w.hoist_decls) == {("y", "int32_t"),
+                                      ("s", "std::string_view")}
+        cpp = _cpp(src, thir=True)
+        assert cpp == _cpp(src, thir=False)
+        assert cpp.index("int32_t y;") < cpp.index("__ctx_")
+
+    def test_record_hoist_stays_ast(self):
+        # A body-declared RECORD var used after takes the AST's
+        # std::optional<T> predecl arm -- outside the value slice.
+        src = (
+            _CM
+            + "def f(cm: CM) -> None:\n"
+            + "    with cm:\n"
+            + "        r = CM(2)\n"
+            + "    print(r.n)\n"
+            + "f(CM(1))\n"
+        )
+        assert _fn(_lower_ctx(src), "f") is None
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+    def test_hoist_inside_branch_stays_ast(self):
+        # The statement-level-only rule (_lower_try's in_branch guard).
+        src = (
+            _CM
+            + "def f(cm: CM, b: bool) -> None:\n"
+            + "    if b:\n"
+            + "        with cm:\n"
+            + "            y = 1\n"
+            + "        print(y)\n"
+            + "f(CM(1), True)\n"
         )
         assert _fn(_lower_ctx(src), "f") is None
         assert _cpp(src, thir=True) == _cpp(src, thir=False)

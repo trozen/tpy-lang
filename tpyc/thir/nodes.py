@@ -1346,9 +1346,10 @@ class THIRTupleUnpack(THIRStmt):
     `binds` (parallel to `targets`; empty = all "value") picks each target's
     decl arm, mirroring `_gen_tuple_unpack`'s per-element flags:
 
-        "value" -> T name = std::get<i>(tup);
-        "cref"  -> const T& name = std::get<i>(tup);   // is_const_ref
-        "move"  -> T name = std::move(std::get<i>(tup)); // Own element
+        "value"  -> T name = std::get<i>(tup);
+        "cref"   -> const T& name = std::get<i>(tup);   // is_const_ref
+        "move"   -> T name = std::move(std::get<i>(tup)); // Own element
+        "assign" -> name = std::get<i>(tup);   // reused target, no decl
 
     None at discard slots.
 
@@ -1519,10 +1520,16 @@ class THIRWith(THIRStmt):
     stack so `return`/`break`/`continue` inside the body render the inline
     `__exit__` chain (`_make_return` / `_make_break_continue`). The
     async / resumable-generator lowerings of `TpyWith` are different emit
-    shapes entirely and stay gate-rejected (the function gate)."""
+    shapes entirely and stay gate-rejected (the function gate).
+
+    `hoist_decls` mirrors `THIRTry.hoist_decls`: a value var first-declared
+    in the body and read after the statement pre-declares `{cpp} {name};`
+    before the first manager binding (the AST's `_emit_branch_decls` run
+    before `_gen_with`)."""
     items: tuple[THIRWithItem, ...] = ()
     body: tuple[THIRStmt, ...] = ()
     body_terminates: bool = False
+    hoist_decls: tuple[tuple[str, str], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -2070,6 +2077,12 @@ class THIRResumableBody:
     # the skeleton keeps its move / & / .get() / __self-prepend wrap, the leaf
     # renders the bare expression.
     suspend_exprs: 'Mapping[int, THIRExpr]' = field(default_factory=dict)
+    # Region/loop pseudo-statement renders (keyed by id() of the AST
+    # EXPRESSION node the skeleton holds): the with-region manager
+    # (`item.context_expr`), the for-loop iterable, and each range() bound.
+    # One map for all three kinds -- the skeleton keeps its emplace / &(..) /
+    # static_cast wrap, the leaf renders the bare expression.
+    region_exprs: 'Mapping[int, THIRExpr]' = field(default_factory=dict)
 
 
 @dataclass(frozen=True)

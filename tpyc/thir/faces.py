@@ -109,6 +109,9 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # rendered `type_to_cpp(call_type)(args)`
     "call.marker_qualified",        # module-qualified `m.f(x)` / static
                                     # `Rec.m(x)` -> pre-rendered callee_cpp
+    "call.coro_factory_adapter",    # async-def factory call into an
+                                    # Own[@dynamic P] slot ->
+                                    # `::tpy::make_adapter<Base>(f(args))`
     "call.module_native",           # bare-@native module callee `m.f(x)`
                                     # -> `::native(args)`
     "call.static_template",         # positional-only @cpp_template static
@@ -155,6 +158,9 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # the bare brace-init render in place
     "ctor.omit_defaults",           # ctor call omitting trailing default args
                                     # (defaults ride the C++ ctor signature)
+    "call.omit_defaults",           # free/method/qualified call omitting
+                                    # trailing default args (defaults ride the
+                                    # emitted C++ signature)
     # Ctor MIL view-family field inits (lowering; the per-family renders --
     # bare str/StrView source vs the bytes view->owned bytes_copy convert).
     "mil.str_field",                # str/StrView field: bare source render
@@ -356,6 +362,9 @@ THIR_FACES: frozenset[str] = frozenset({
     "containerlit.bytes_elem",      # `[b"a", v]` -- owned render / bytes_copy
     "containerlit.make",            # make_vector / make_ordered_map / _set
     "containerlit.move",            # `std::move(name)` element at last use
+    # A spanlike coerce over an array-literal inner: the helper wraps the
+    # make_array-typed brace init (`as_mut_span(std::array<T, N>{...})`).
+    "coerce.span_array_literal",
     # Value-tuple slots (`tuple[scalar|str, ...]`): the spelled
     # `std::tuple<...>{...}` literal render at returns / decls, and the bare
     # value-tuple name return.
@@ -501,6 +510,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "with.exc_val",                 # `&__exc_N` passed to __exit__
     "with.cleanup_only",            # elided BaseException catch (common shape)
     "with.multi",                   # multiple managers in one statement
+    "with.hoist_decl",              # sema-hoisted plain-value predecls
     # Sync `try` faces (lowering, per statement).
     "try.finally_only",             # the unified try/catch(...)/finally shape
     "try.throw_tier",               # C++ try/catch over the handler arms
@@ -559,6 +569,9 @@ THIR_FACES: frozenset[str] = frozenset({
     # An expensive-copy value target bound zero-copy (lowering, sema's
     # is_const_ref): `const T& a = std::get<i>(__tup_N);`.
     "stmt.tuple_unpack.cref_target",
+    # A reused plain scalar/str target (lowering): `a = std::get<i>(__tup_N);`
+    # -- the AST's declared-name assign tail, no decl.
+    "stmt.tuple_unpack.assign_target",
     # THIRComprehension (lowering, the C1+C2 slice).
     "comp.list",                    # list comp -> vector stmt-expr
     "comp.set",                     # set comp -> ordered_set stmt-expr
@@ -658,6 +671,14 @@ THIR_FACES: frozenset[str] = frozenset({
     "res.frame_slot_write",         # frame_slot local `.emplace()` write (R1c)
     "res.suspend_expr",             # ERASED/BORROWED operand + bound receiver (R5)
     "res.suspend_operand",          # ERASED/BORROWED whole-operand render
+    "res.try_region",               # body routed with a try/except region (R6)
+    "res.with_region",              # body routed with a with region (R6)
+    "res.with_ctx",                 # with-region manager expression render
+    "res.finally_helper",           # helper-based finally body routed (R6)
+    "res.for_iter_setup",           # sync for-loop iterable/range render (R3)
+    "res.sync_loop",                # body routed with a sync for-loop (R3)
+    "res.async_loop",               # body routed with an async for-loop (R3)
+    "res.async_with",               # body routed with an async with (R5)
     # Simple-generator (lambda peephole) leaf routing -- the gen_generators
     # seam. One face per leaf-render kind the skeleton delegates, plus the
     # routed-body tally.

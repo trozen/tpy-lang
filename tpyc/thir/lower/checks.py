@@ -53,6 +53,7 @@ from ...typesys import (
     contains_type_param,
     substitute_type_params_simple,
     del_suppresses_default_ctor,
+    is_dyn_protocol,
     is_float_type,
     is_protocol_type,
     is_void_like_type,
@@ -115,6 +116,7 @@ from .predicates import (
     _bytes_concat_operand,
     _coerce_disposition,
     _SPANLIKE_COERCIONS,
+    _SPAN_METHOD_COERCIONS,
     _const_exact_field_receiver_ok,
     _const_index,
     _container_pass_through_arg,
@@ -686,8 +688,8 @@ def _record_rvalue_source_shape(init: TpyExpr, analyzer) -> bool:
     # signature). The by-value record-returning free-call face shares
     # free-call lowering's callee-shape head (linkage, literal-overload mangling,
     # generics, error_return -- shapes whose AST emit is not the bare
-    # `name(args)`); it keeps exact arity here (an omitted free-call default is
-    # synthesized by the AST arg emit, a separate frontier).
+    # `name(args)`) and its arity rule (`_call_arity_ok`: omitted trailing
+    # defaults ride the emitted C++ signature on both paths).
     if fi.is_constructor:
         return (_ctor_shape_ok(init, analyzer)
                 or _ctor_instantiation_ok(init, analyzer))
@@ -1308,7 +1310,8 @@ _SPECIAL_BUILTIN_QNAMES = frozenset({qnames.COPY, qnames.COPY_ITER,
 
 def _free_callee_kind(e: TpyCall, analyzer, *,
                       generator_ok: bool = False,
-                      error_return_ok: bool = False
+                      error_return_ok: bool = False,
+                      coro_factory_ok: bool = False
                       ) -> 'tuple[str, str] | None':
     """Classify a bare-name free callee into its emit kind + pre-rendered
     payload -- the routing fact consumed by lowering:
@@ -1329,7 +1332,12 @@ def _free_callee_kind(e: TpyCall, analyzer, *,
     (both the lambda peephole's `inline auto f(...)` and the resumable
     frame's factory), so only the callee-kind reject differs. Generic
     generator callees stay rejected -- the generic-plain-call spelling is
-    unprobed against the factory forms."""
+    unprobed against the factory forms.
+
+    `coro_factory_ok` is the async sibling (set only by the make_adapter
+    arg position): an async-def CALL is a coroutine-FACTORY call spelling
+    exactly like a plain/imported call; generic factories stay rejected
+    for the same reason as generic generators."""
     if not isinstance(e.func, TpyName):
         note_detail("call.expr_callee")
         return None
@@ -1397,13 +1405,17 @@ def _free_callee_kind(e: TpyCall, analyzer, *,
             note_detail("call.closure_import_shadow")
             return None
         return ("plain", "")
-    if (fi.is_method or fi.is_staticmethod or fi.is_async
+    if (fi.is_method or fi.is_staticmethod
+            or (fi.is_async and not coro_factory_ok)
             or (fi.is_generator and not generator_ok)
             or fi.is_property_getter or fi.is_property_setter):
         note_detail("call.callee_kind")
         return None
     if fi.is_generator and (fi.type_params or has_targs):
         note_detail("call.generic_generator")
+        return None
+    if fi.is_async and (fi.type_params or has_targs):
+        note_detail("call.generic_coro_factory")
         return None
     if fi.cpp_template:
         # A generic template substitutes its named {T} placeholders exactly
@@ -1503,13 +1515,14 @@ def _record_rvalue_call_shape(e: TpyExpr, analyzer) -> bool:
 
 def _rvalue_free_call_shape(e: 'TpyCall', analyzer) -> bool:
     """The return-type-blind callee/arg-shape half of
-    `_record_rvalue_call_shape`: plain free callee, exact arity, no kwargs,
-    no str-literal multi-overload pin. The union slot-hoist decl reuses it
-    for `Own[A | B]`-returning calls (its type verdict lives at the caller)."""
+    `_record_rvalue_call_shape`: plain free callee, `_call_arity_ok` arity,
+    no kwargs, no str-literal multi-overload pin. The union slot-hoist decl
+    reuses it for `Own[A | B]`-returning calls (its type verdict lives at the
+    caller)."""
     if e.kwargs or e.double_star_unpack is not None:
         return False
     fi = e.resolved_function_info
-    if (fi is None or fi.is_constructor or len(e.args) != len(fi.params)
+    if (fi is None or fi.is_constructor or not _call_arity_ok(e, fi)
             or not _plain_free_callee_ok(e, analyzer)):
         return False
     if any(isinstance(_peel_coerce(a), TpyStrLiteral) for a in e.args):
@@ -1520,12 +1533,22 @@ def _rvalue_free_call_shape(e: 'TpyCall', analyzer) -> bool:
 
 
 def _call_arity_ok(e: 'TpyCall | TpyMethodCall', fi) -> bool:
+    """Positional arity for a plain call / method call -- `_ctor_arity_ok`'s
+    rule: exact arity, or fewer args when the OMITTED trailing params all
+    carry a default. Each default rides the emitted C++ signature
+    (`emit_defaults`), and BOTH paths pass only the provided args (the AST
+    arg loops zip-truncate), so the truncated call is byte-identical. A
+    variadic slot has no positional default to fall back on. Sema gap-fills
+    kwargs / keyword-only slots into `e.args` before lowering, so the
+    omitted tail here is always positional."""
     n = len(e.args)
-    if n == len(fi.params):
-        return True
-    if n != 0:
+    if n > len(fi.params):
         return False
-    return all(p.has_default and not p.is_variadic for p in fi.params)
+    if not all(p.has_default and not p.is_variadic for p in fi.params[n:]):
+        return False
+    if n < len(fi.params):
+        return _witness("call.omit_defaults")
+    return True
 
 
 
@@ -1764,6 +1787,7 @@ def _span_coerce_arg(a: TpyExpr, ptype: TpyType | None,
         return False
     return (isinstance(a, TpyCoerce)
             and a.coercion.name in (_SPANLIKE_COERCIONS
+                                    | _SPAN_METHOD_COERCIONS
                                     | {"span_to_readonly_span"})
             and _coerce_disposition(a) is not None)
 
@@ -2724,11 +2748,12 @@ def _marker_call_kind(e: TpyMethodCall, analyzer, *,
     if fi.is_method and fi.name == "__init__":
         return None
     # Bespoke sema/emit arms keyed on the resolved function: the four
-    # @builtin_function specials, special-handling builtins, and the
-    # asyncio spawn pair (sema rewrote the args).
-    if (fi.qualified_name in _SPECIAL_BUILTIN_QNAMES or fi.special_handling
-            or fi.qualified_name in (qnames.ASYNCIO_RUN,
-                                     qnames.ASYNCIO_CREATE_TASK)):
+    # @builtin_function specials and special-handling builtins. The asyncio
+    # spawn pair (run/create_task) is NOT bespoke at emit time: sema analyzed
+    # it like any module function (plus the coroutine-arg contract), so it
+    # rides the generic_qualified kind below; its Own[Cancellable[T]] arg is
+    # judged by the coro-factory arg row (_dyn_own_coro_factory_arg).
+    if fi.qualified_name in _SPECIAL_BUILTIN_QNAMES or fi.special_handling:
         return None
     if (fi.is_consuming or fi.error_return_type is not None
             or fi.native_cpp_return_type is not None
@@ -2866,9 +2891,9 @@ def _marker_call_supported(e: TpyMethodCall, kind: 'tuple[str, str]',
     to match."""
     fi = e.resolved_function_info
     if not _call_arity_ok(e, fi):
-        # Zero-args-with-all-defaults rides the C++ signature's defaults
-        # (`datetime::now()` -- the free-call rule); PARTIAL default
-        # omission still rejects, matching `_call_arity_ok`.
+        # Omitted trailing defaults ride the C++ signature's defaults
+        # (`datetime.now()` / `HTTPConnection("h", 80)` -- the shared
+        # `_call_arity_ok` rule); a defaultless or variadic tail rejects.
         return note_detail("method.qualcall.arity_defaults")
     ret = analyzer.get_expr_type(e)
     if not (_eligible_scalar(ret) or _eligible_char(ret)
@@ -2921,7 +2946,48 @@ def _marker_call_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
             or _union_coerced_literal_arg(a, ptype, locals_, analyzer)
             or (own_ok and _own_union_ctor_arg(
                 a, ptype, locals_, analyzer))
+            or (own_ok and _dyn_own_coro_factory_arg(a, ptype, analyzer)
+                is not None)
             or note_detail(_qualcall_arg_reject(a, ptype, analyzer)))
+
+
+def _dyn_own_coro_factory_arg(a: TpyExpr, ptype: 'TpyType | None',
+                              analyzer) -> 'NominalType | None':
+    """A DIRECT async-def factory call into an `Own[@dynamic P]` slot
+    (`asyncio.run(main_coro())`): _gen_dynamic_protocol_own_arg's erasure
+    boundary -- `::tpy::make_adapter<Base>(factory(args))`, Base spelled
+    from the SLOT protocol (dynamic_base_name, the helper the AST render
+    shares). Returns that protocol, or None. Free-call factories only: a
+    BOUND handle name takes the `std::move(*(x))` optional-slot unwrap and
+    a method coro threads its receiver -- both different renders, AST. The
+    factory itself must classify plain/imported (`coro_factory_ok`); its
+    own args are judged by the free-call loop at lowering."""
+    if not isinstance(ptype, TpyType) or not isinstance(a, TpyCall):
+        return None
+    u = unwrap_send_sync(ptype)
+    if not isinstance(u, OwnType):
+        return None
+    proto = unwrap_readonly(u.wrapped)
+    if not (isinstance(proto, NominalType) and is_dyn_protocol(proto)):
+        return None
+    fi = a.resolved_function_info
+    if fi is None or not fi.is_async:
+        return None
+    # An Own-shaped factory return would take _resolve_own_source_type's
+    # forward/move-unwrap branches instead; async-def returns register as
+    # the bare structural wrap, so this is defense in depth.
+    frt = (unwrap_send_sync(fi.return_type)
+           if fi.return_type is not None else None)
+    if isinstance(frt, OwnType):
+        return None
+    at = analyzer.get_expr_type(a)
+    if not (isinstance(at, NominalType) and at.qualified_name()
+            in (qnames.CANCELLABLE, qnames.AWAITABLE)):
+        return None
+    k = _free_callee_kind(a, analyzer, coro_factory_ok=True)
+    if k is None or k[0] not in ("plain", "imported"):
+        return None
+    return proto
 
 def _moved_record_ret(ret: 'TpyType | None', analyzer) -> bool:
     """A nominal record result (generic-concrete included) at a MOVED

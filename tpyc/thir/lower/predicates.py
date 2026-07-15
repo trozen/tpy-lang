@@ -233,10 +233,20 @@ _PTR_IDENTITY_COERCIONS = frozenset({
     "ptr_to_const_ptr", "basic_slice_to_slice", "span_to_readonly_span"})
 
 # list/Array -> Span[T] (`::tpy::as_span` / `as_mut_span` around the inner
-# render -- _gen_span_coercion's helper tail). The literal arm (make_array-
-# prefixed render) and a span-typed actual (identity) are split off in
-# `_coerce_wrap` / `_coerce_disposition`.
+# render -- _gen_span_coercion's helper tail). An array-literal inner keeps
+# the same helper wrap; its make_array-prefixed inner render is target-
+# threaded at the coerce arm. A span-typed actual (identity) is split off
+# in `_coerce_disposition`.
 _SPANLIKE_COERCIONS = frozenset({"spanlike_to_span", "spanlike_to_span_arg"})
+
+# `__span__()`-method / Spannable-protocol coercions (sema's pre-built pair,
+# not in COERCIONS): a user-record actual renders `{0}.__span__()`
+# (_gen_span_coercion's user-record arm; the indirect-receiver deref is
+# guarded at the coerce arm). The protocol-typed actual (bare as_span
+# render) stays out -- protocol params/locals reject upstream, so the row
+# would be dead.
+_SPAN_METHOD_COERCIONS = frozenset({"span_method_to_span",
+                                    "span_method_to_span_arg"})
 
 def _coerce_wrap(e: TpyCoerce) -> 'str | None':
     """The `{0}` render template mirroring the coercion's codegen lambda for
@@ -254,14 +264,16 @@ def _coerce_wrap(e: TpyCoerce) -> 'str | None':
     if name in _ADDR_PTR_COERCIONS:
         return "&{0}"
     if name in _SPANLIKE_COERCIONS and not is_span(e.actual_type):
-        # An array-literal inner takes the AST's make_array-prefixed render
-        # (target-threaded) -> AST; a span-typed actual is identity (handled
-        # in _coerce_disposition, never a wrap).
-        if isinstance(e.expr, TpyArrayLiteral):
-            return None
+        # A span-typed actual is identity (handled in _coerce_disposition,
+        # never a wrap). An array-literal inner takes the same helper wrap;
+        # the coerce arm threads its make_array target into the inner render.
         helper = ("::tpy::as_span" if is_readonly_span(e.expected_type)
                   else "::tpy::as_mut_span")
         return helper + "({0})"
+    if name in _SPAN_METHOD_COERCIONS:
+        if is_protocol_type(e.actual_type) or is_span(e.actual_type):
+            return None
+        return "{0}.__span__()"
     return None
 
 def _coerce_disposition(e: TpyCoerce) -> 'str | None':

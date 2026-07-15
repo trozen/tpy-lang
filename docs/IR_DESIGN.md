@@ -1213,6 +1213,11 @@ by theme; each is a rule the next cell should apply.
   not id()-keyed tables. Foreach CALLERS over generator factories / user-iterator names route
   via `THIRForIterProto` (the universal `::tpy::__iter__` loop), with generator callees
   admitted by the call classifiers only in iterable position.
+- **End state (post-AST-deletion):** the leaf seam is the byte-diff-safe transition, not the
+  destination. Once the AST body emitters are deleted, the resumable skeleton + seams fold
+  into the IR: the resumable CFG becomes IR proper, async lowering an IR-to-IR transform, and
+  the emitter a printer (the Rust-style shape). The region-transparent leaf seam (Design A of
+  the region/loop multi-seam) is the step toward that trajectory, not a permanent boundary.
 
 **Ctor frontier.**
 
@@ -1228,6 +1233,27 @@ by theme; each is a rule the next cell should apply.
   gate and lowering arms for one construct **co-evolve**, so they belong in the same file.
   Match/comprehension modules mutually recurse with `statements.py` via module-object imports
   (attribute access defers to call time, robust to import order).
+
+**Wave orchestration (parallel executors + collector).**
+
+- **Per-branch green does NOT compose.** Independent tracks each verified green can still
+  diverge when unioned -- interlocked residue means two tracks together flip cases neither
+  flips alone (an `asyncio.run` driver arm + the resumable region/loop seam flipped 53 cases,
+  0 of them solo). The composition-divergence risk lives at the MERGE, not the cell: run the
+  union byte-diff + `--thir-check-flip` on the COLLECTOR after all merges, and verify every
+  merge's tree against `^2` (a transient `index.lock` once produced an empty merge with
+  poisoned ancestry that only review caught).
+- **Cadence:** commit per cell, but a full-corpus from-scratch run per cell is over-verification
+  -- gate cells on TARGETED green (`-k` touched cases + `--thir-check-flip`) and reserve the one
+  whole-corpus exec for the collector merges, where the real risk sits.
+- **A gate-flip must update the gate's prose.** The ratchet and byte-diff verify emitted code,
+  NOT comment truthfulness -- a cell that flips a gate (e.g. admitting CFG-based finally) but
+  leaves the old "rejected" comments produces a lie only *review* can catch, never the suite.
+- **Dedup discipline at the seam:** extract a VERBATIM triplicate immediately (rule-of-three;
+  the byte-diff is blind to drift between the copies, so a future edit to 2-of-3 leaves a latent
+  bug -- e.g. the `_lower_hoist_predecls` render loop shared by if/try/with). But do NOT collapse
+  two functions that are identical *today* yet belong to DIVERGING DOMAINS (call- vs ctor-arity,
+  which plausibly split on kwonly/defaults) -- that is over-coupling, not DRY.
 
 ---
 

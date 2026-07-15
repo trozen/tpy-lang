@@ -2019,13 +2019,79 @@ class TestQualcallOmittedDefaults:
         assert _fn(thir, "use") is not None
         assert "A a = F::make();" in _cpp(self.SRC, thir=True)
 
-    def test_partial_defaults_stays_ast(self):
-        # Partial omission (one of two defaulted params) still rejects.
+    def test_partial_defaults_route(self):
+        # Partial omission (one of two defaulted params): the omitted TRAILING
+        # default rides the C++ signature, so the call passes only the
+        # provided arg -- `F::make(1)`.
         src = self.SRC.replace(
             "def make(x: Int32 = 5) -> Own[A]:",
             "def make(x: Int32 = 5, y: Int32 = 2) -> Own[A]:"
         ).replace("return A(x)", "return A(x + y)").replace(
             "F.make()", "F.make(1)")
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+        thir = _lower_ctx(src)
+        assert _fn(thir, "use") is not None
+        assert "A a = F::make(1);" in _cpp(src, thir=True)
+
+
+class TestPartialOmittedDefaults:
+    # Omitted TRAILING defaults on plain free calls and user-record method
+    # calls: the defaults ride the emitted C++ signature (`emit_defaults`),
+    # both paths pass only the provided args, and the provided args pair the
+    # LEADING params (the AST arg loops zip-truncate).
+
+    def test_free_call_partial_defaults_route(self):
+        src = (
+            "from tpy import Int32\n"
+            "def f(a: Int32, b: Int32 = 2) -> Int32:\n    return a + b\n"
+            "def use() -> Int32:\n    return f(1)\n"
+        )
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+        thir = _lower_ctx(src)
+        assert _fn(thir, "use") is not None
+        assert "return f(1);" in _cpp(src, thir=True)
+
+    def test_free_call_pairing_threads_leading_slot(self):
+        # The provided arg must lower against ITS param slot, not slot-less:
+        # a float literal into a Float32 slot takes the `f` suffix only when
+        # the pairing threads params[0] through the truncated call.
+        src = (
+            "from tpy import Int32, Float32\n"
+            "def f(a: Float32, b: Int32 = 2) -> Float32:\n"
+            "    return a * Float32(b)\n"
+            "def use() -> Float32:\n    return f(1.5)\n"
+        )
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+        thir = _lower_ctx(src)
+        assert _fn(thir, "use") is not None
+        assert "return f(1.5f);" in _cpp(src, thir=True)
+
+    def test_method_call_partial_defaults_route(self):
+        src = (
+            "from tpy import Int32\n"
+            "class R:\n"
+            "    x: Int32\n"
+            "    def __init__(self, x: Int32):\n        self.x = x\n"
+            "    def scale(self, k: Int32, extra: Int32 = 0) -> Int32:\n"
+            "        return self.x * k + extra\n"
+            "def use(r: R) -> Int32:\n    return r.scale(3)\n"
+        )
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+        thir = _lower_ctx(src)
+        assert _fn(thir, "use") is not None
+        assert "return r.scale(3);" in _cpp(src, thir=True)
+
+    def test_variadic_callee_stays_ast(self):
+        # A variadic slot has no positional default to fall back on; the
+        # varargs pack takes its own AST emit -> reject.
+        src = (
+            "from tpy import Int32\n"
+            "def f(*args: Int32) -> Int32:\n"
+            "    t = 0\n"
+            "    for a in args:\n        t += a\n"
+            "    return t\n"
+            "def use() -> Int32:\n    return f()\n"
+        )
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
         thir = _lower_ctx(src)
         assert _fn(thir, "use") is None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)

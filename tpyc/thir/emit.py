@@ -1601,8 +1601,12 @@ def _emit_with(out: TextIO, stmt: THIRWith, indent_level: int,
     # per-item header lines, then one try/catch layer per manager, closed
     # innermost-first so the innermost __exit__ runs first. The header flush
     # mirrors _gen_with's `ctx.temps.flush` (a no-op in the slice --
-    # temp-registering manager expressions are gate-rejected).
+    # temp-registering manager expressions are gate-rejected). Hoisted
+    # predecls render first, like the AST's gen_stmt dispatch
+    # (_emit_branch_decls before _gen_with).
     indent = INDENT * indent_level
+    for name, cpp_type in stmt.hoist_decls:
+        out.write(f"{indent}{cpp_type} {name};\n")
     state.temps.flush(out, indent)
     ctx_ids: list[int] = []
     for item in stmt.items:
@@ -2699,7 +2703,10 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
                 continue
             get = f"std::get<{i}>({tmp})"
             bind = stmt.binds[i] if stmt.binds else "value"
-            if bind == "move":
+            if bind == "assign":
+                # Reused target: the AST's declared-name tail (no decl).
+                out.write(f"{indent}{escape_cpp_name(name)} = {get};\n")
+            elif bind == "move":
                 out.write(f"{indent}{cpp} {escape_cpp_name(name)} = "
                           f"std::move({get});\n")
             elif bind == "cref":
@@ -3024,6 +3031,14 @@ class ResumableLeafEmitter:
         skeleton keeps its move / & / .get() / __self-prepend wrap)."""
         return _emit_expr(self._lookup(self._body.suspend_exprs, expr,
                                        "suspend expr"), self._state)
+
+    def render_region_expr(self, expr) -> str:
+        """Render a region/loop pseudo-statement's user expression (with
+        manager, for-loop iterable, range bound) -- the seam replacement for
+        the skeleton's `gen_expr(...)` inside its emplace / &(..) /
+        static_cast scaffolding (same flush contract as `render_cond`)."""
+        return _emit_expr(self._lookup(self._body.region_exprs, expr,
+                                       "region expr"), self._state)
 
 
 class SimpleGenLeafEmitter:

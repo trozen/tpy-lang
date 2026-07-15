@@ -69,17 +69,23 @@ See `docs/FEATURE_ROADMAP.md` for bigger tasks and `BUGS.md` for known compiler 
   register_frame_field_shadow mirror). R9 simple-peephole generators LANDED
   earlier (branch `thir-generators`: the sgen leaf seam + the THIRForIterProto
   foreach-caller route -- see the entry below).
-  **REMAINING cells (each a `res.*` reject today, post-wave-3 counts):**
+  **Region/loop multi-seam LANDED (2026-07-15, Design A per
+  `docs/RESUMABLE_MULTISEAM_DESIGN.md`):** try/except/finally regions
+  (helper- AND CFG-based finally), with-regions, sync + async for-loops,
+  async-with -- all region kinds are now transparent to the leaf seam
+  (`_region_reject` returns None); the seven cells route via one
+  `region_exprs` map + two-pass decl registration. Still-deferred named
+  gates: `res.narrowed_resume`, `res.match`, `res.await_prebuilt`, the
+  narrowed-optional-iterable rung (`res.for_narrowed_optional`), non-value
+  loop-var element forms (`res.loop_var`), multi-item `async with`
+  (a `_CFGNotYetSupported` upstream), generator-shape return-in-finally-helper.
+  **REMAINING cells (each a `res.*` reject today, post-multi-seam counts):**
   `res.param_type` residue ~110 (Own-non-record / Optional / tuple / protocol
   params); str/bytes RETURNS (`_async_return_value_cpp` wraps view sources at
   codegen time via the deep `_is_str_view_source` classifier -- threading that
   fact into lowering was attempted and reverted after diverging on
   `async_return_view_param`); borrow-form tuple locals (`res.local_storage`
-  residue; needs the borrow tuple-literal element builder); R6 regions
-  `res.region` + `res.finally` + R3 loops `res.pseudo_stmt` ~76 (async-for /
-  async-with / sync-with in coros -- the MULTI-SEAM wave: the region try/catch
-  replay is skeleton, but the finally-helper bodies + except-handler-body
-  leaves + resume-narrowing re-establishment are new seam sites); leaf
+  residue; needs the borrow tuple-literal element builder); leaf
   try/with/match + tuple-unpack + branch-first-decl + nested frame-write
   (`res.leaf_*` / `res.unpack`); non-value yields for resumable generators
   (`res.yield_type` ~28, the borrow-form slot bridge); generic async / generic
@@ -958,6 +964,10 @@ Benchmarked with CME MBO order book (15MB JSON, 20K messages). Library-level opt
     lowering point, so materialize this as a first-class "deref transparent at
     consumption sites" fact rather than N ad-hoc consumer checks. Route via
     `/tpy-add-feature` (scope assessment: architectural).
+
+- **[thir watch] `_call_arity_ok` and `_ctor_arity_ok` are byte-identical today but kept separate DELIBERATELY.** After the wave-3 arity-defaults widening the two (`tpyc/thir/lower/checks.py`) implement the same "exact arity or omitted-trailing-defaults, no variadic" rule, differing only in the witness tag. Do NOT collapse pre-emptively: call-arity and ctor-arity are distinct domains that plausibly diverge (kwonly/defaults handling -- cf. the kwonly-default gap-fill parity bug in BUGS.md, in exactly this area; self-slot). Revisit only if they stay identical across several waves AND the domains stay coupled. Noted by /tpy-review (architecture-fit) + the /tpy-ready retrospective second opinion of THIR wave 3.
+- **[thir test-gap] Pin the THIR reject units the wave-3 arms assert only in comments.** (a) span-coerce "dead row" (protocol-typed / already-span-typed actual hitting the `is_protocol_type`/`is_span` early-return in `_coerce_wrap`, `tpyc/thir/lower/predicates.py`/`expressions.py`) is argued dead in a comment but not pinned by a reject unit; (b) the str-field membership widening (`field_owned_str_ok` for a `TpyFieldAccess` needle in `_lower_binop`) has admit-only coverage -- add a reject unit at the membership call site specifically. Both are narrow coverage gaps from THIR wave 3 (test-coverage reviewer).
+- **[test-hardening] Two async ratcheted tests are parity-blind.** `tests/cases/async/future_basic` (`Future[Int32]`) and `tests/cases/async/async_for_own_iterable` (`Own[Counter]`/`Own[Source]`) pass a reference type across a coroutine boundary and only READ it afterward, never mutate-and-observe post-boundary (the CLAUDE.md reference-type adequacy rule's target pattern). Pre-existing, and THIR emits byte-identical C++, but the wave-3 ratchet now relies on these bodies -- harden them (print `f.done()`/`f._done` before and after `set_result`, or mutate `Counter.n` via a shared alias and re-read) so a copy-vs-alias divergence can't hide. Surfaced by /tpy-review (test-coverage) of THIR wave 3.
 
 ## Known Limitations
 - Subscript narrowing: `if items[i] is not None:` does not narrow `items[i]`. Hard to make sound due to index aliasing and container mutation; would need invalidation on any container write.

@@ -1530,17 +1530,28 @@ class AsyncCoroCodegen:
         if not cfg.finally_helpers:
             return
         struct_name = self._struct_name_templated(func, record_name)
+        # A routed body lowers its helper-finally statements into the same
+        # leaf table; the second attempt lookup is cached (free). The scope
+        # install swaps the per-helper gen_stmt to the leaf emitter, so the
+        # helper body renders through the seam like a BB leaf.
+        leaf = self._thir_resumable_leaf_emitter(func, record_name, cfg)
 
         with self._resumable_frame_ctx(func, record_name):
-            for helper_name, body_stmts in cfg.finally_helpers:
-                self._emit_template_header(out, func, record_name=record_name)
-                out.write(f"void {struct_name}::{helper_name}() {{\n")
-                self.ctx.indent_level = 1
-                with self._generator_finally_helper_scope():
-                    for stmt in body_stmts:
-                        self.statements.gen_stmt(out, stmt)
-                self.ctx.indent_level = 0
-                out.write(f"}}\n")
+            with self._thir_leaf_scope(leaf):
+                for helper_name, body_stmts in cfg.finally_helpers:
+                    self._emit_template_header(
+                        out, func, record_name=record_name)
+                    out.write(f"void {struct_name}::{helper_name}() {{\n")
+                    self.ctx.indent_level = 1
+                    with self._generator_finally_helper_scope():
+                        for stmt in body_stmts:
+                            if leaf is not None:
+                                leaf.emit_leaf_stmt(
+                                    out, stmt, self.ctx.indent_level)
+                            else:
+                                self.statements.gen_stmt(out, stmt)
+                    self.ctx.indent_level = 0
+                    out.write(f"}}\n")
 
     # =====================================================================
     # Resumable-shape policy seam. These methods isolate the decisions
@@ -3653,7 +3664,11 @@ class AsyncCoroCodegen:
         `operator=` is deleted), or bind a borrowed `CM*`. A global manager
         already renders as `CM*`, so the borrowed bind must not re-take its
         address (would double-pointer)."""
-        ctx_expr = self.expressions.gen_expr(item.context_expr)
+        leaf = self.ctx.thir_resumable_leaf
+        if leaf is not None:
+            ctx_expr = leaf.render_region_expr(item.context_expr)
+        else:
+            ctx_expr = self.expressions.gen_expr(item.context_expr)
         self.ctx.temps.flush(out, indent)
         if item.manager_borrowed:
             if self.ctx.is_already_pointer_source(item.context_expr):
@@ -3698,9 +3713,13 @@ class AsyncCoroCodegen:
         otherwise return the (re-evaluable) named expression."""
         # A narrowed value-Optional iterable (`str|None`/`bytes|None` proven
         # non-None) is still `std::optional<V>` in the frame -- iterate `(*v)`.
-        # Mirrors the sync for-loop's `_for_iterable_deref`.
+        # Mirrors the sync for-loop's `_for_iterable_deref`. (A routed body
+        # rejects narrowed-optional iterables, so its leaf render is bare.)
+        leaf = self.ctx.thir_resumable_leaf
+        base_cpp = (leaf.render_region_expr(iterable_expr) if leaf is not None
+                    else self.expressions.gen_expr(iterable_expr))
         src_cpp = self.expressions._maybe_unwrap_narrowed_optional(
-            iterable_expr, self.expressions.gen_expr(iterable_expr),
+            iterable_expr, base_cpp,
             self.ctx.is_indirect_name(iterable_expr))
         self.ctx.temps.flush(out, indent)
         if any(fn == f"__for_src_{uid}" for fn, _ in info.fields):
@@ -3723,7 +3742,10 @@ class AsyncCoroCodegen:
         """
         uid = stmt.uid
         if stmt.is_async:
-            iter_cpp = self.expressions.gen_expr(stmt.iterable_expr)
+            leaf = self.ctx.thir_resumable_leaf
+            iter_cpp = (leaf.render_region_expr(stmt.iterable_expr)
+                        if leaf is not None
+                        else self.expressions.gen_expr(stmt.iterable_expr))
             self.ctx.temps.flush(out, indent)
             # A global iterable already renders as `Src*`; deref so the
             # `.__aiter__()` call resolves rather than hitting `.`-on-pointer.
@@ -3760,7 +3782,11 @@ class AsyncCoroCodegen:
         if elem_type and isinstance(elem_type, IntLiteralType):
             elem_type = self.ctx.analyzer.ctx.default_int_type
         cpp_elem = self.types.type_to_cpp(elem_type) if elem_type else "int32_t"
-        gen_args = self.statements.builtins.gen_range_args(range_call)
+        leaf = self.ctx.thir_resumable_leaf
+        if leaf is not None:
+            gen_args = [leaf.render_region_expr(a) for a in range_call.args]
+        else:
+            gen_args = self.statements.builtins.gen_range_args(range_call)
         self.ctx.temps.flush(out, indent)
         nargs = len(gen_args)
         ci, st = f"__for_i_{uid}", f"__for_stop_{uid}"
@@ -3852,6 +3878,9 @@ class AsyncCoroCodegen:
         `__for_src` (temporary) or the re-referencable named expression."""
         if any(fn == f"__for_src_{uid}" for fn, _ in info.fields):
             return f"(*__for_src_{uid})"
+        leaf = self.ctx.thir_resumable_leaf
+        if leaf is not None:
+            return leaf.render_region_expr(stmt.iterable)
         return self.expressions.gen_expr(stmt.iterable)
 
     def _emit_async_for_advance(self, out: "TextIO", indent: str,

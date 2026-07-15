@@ -80,6 +80,10 @@ class _ExprUse:
     # and a value-tuple class constant. Never set at decl/return sinks
     # (their slots gate separately).
     tuple_source: bool = False
+    # The make_adapter arg position only: admit an async-def FACTORY call
+    # (`asyncio.run(main_coro())`'s inner call) -- the concrete coro frame
+    # is consumed whole by the heap adapter, never a typed value slot.
+    coro_factory: bool = False
 
 # --- F1 form slice: single-assignment non-value record locals + field reads ---
 

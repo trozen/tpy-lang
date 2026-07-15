@@ -1075,6 +1075,45 @@ class TestContainerCallArgs:
             + "def f(xs: list[Int32]) -> Int32:\n    return use_span(xs)\n")
         assert _fn(thir, "f") is not None
 
+    def test_span_method_arg_routes_byte_identical(self):
+        # A user record with __span__() passed at a Span slot renders the
+        # AST's `{0}.__span__()` arm (span_method_to_span_arg).
+        src = (
+            "from tpy import Int32, Span, readonly\n"
+            + "class Buf:\n"
+            + "    xs: list[Int32]\n"
+            + "    def __init__(self):\n        self.xs = [1, 2]\n"
+            + "    def __span__(self) -> Span[readonly[Int32]]:\n"
+            + "        return self.xs\n"
+            + "def use_span(sp: Span[readonly[Int32]]) -> Int32:\n"
+            + "    return len(sp)\n"
+            + "def f(b: Buf) -> Int32:\n    return use_span(b)\n"
+            + "def main():\n    print(f(Buf()))\nmain()\n"
+        )
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is not None
+        cpp = self._cpp(src, thir=True)
+        assert cpp == self._cpp(src, thir=False)
+        assert "use_span(b.__span__())" in cpp
+
+    def test_span_array_literal_arg_routes_byte_identical(self):
+        # An array-literal arg at a Span slot: the helper wraps the
+        # make_array-typed brace init (as_mut_span(std::array<T, N>{...})),
+        # elements target-typed through the Array family.
+        src = (
+            "from tpy import Span\n"
+            + "def use_span(sp: Span[int]) -> int:\n    return len(sp)\n"
+            + "def f() -> int:\n    return use_span([10, 20, 30])\n"
+            + "def main():\n    print(f())\nmain()\n"
+        )
+        thir = _lower(src)
+        assert _fn(thir, "f") is not None
+        cpp = self._cpp(src, thir=True)
+        assert cpp == self._cpp(src, thir=False)
+        assert ("::tpy::as_mut_span(std::array<::tpy::BigInt, 3>"
+                "{::tpy::BigInt(10), ::tpy::BigInt(20), ::tpy::BigInt(30)})"
+                in cpp)
+
     def test_protocol_param_method_arg_ineligible(self):
         # list.extend(other: Iterable[Own[T]]) -- the Iterable[Own[T]] slot's
         # auto-consuming-iteration path diverges: a movable-last-use local arg
@@ -2649,6 +2688,36 @@ class TestMembership:
         assert _fn(thir, "name") is not None
         mem = _fn(thir, "lit").body[0].value
         assert isinstance(mem, THIRMembership)
+
+    def test_str_field_needle_routes_byte_identical(self):
+        # A str FIELD needle (`p.name in d`) renders the bare member read
+        # into contains(...) on both paths -- the owned-str-field-ok
+        # position shared with the compare operands.
+        src = (
+            "class P:\n"
+            + "    name: str\n"
+            + "    def __init__(self, n: str):\n        self.name = n\n"
+            + "def f(p: P, d: set[str]) -> bool:\n    return p.name in d\n"
+            + "def g(p: P, d: dict[str, int]) -> bool:\n"
+            + "    return p.name not in d\n"
+            + "def main():\n"
+            + "    print(f(P(\"a\"), {\"a\", \"b\"}), g(P(\"c\"), {\"a\": 1}))\n"
+            + "main()\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is not None
+        assert _fn(thir, "g") is not None
+        compiler, modules = _compile(src)
+        _, cpp_t = compiler.generate_code_to_strings(
+            _entry(modules),
+            options=CodeGenOptions(emit_source_comments=False,
+                                   thir_codegen=True))
+        compiler, modules = _compile(src)
+        _, cpp_a = compiler.generate_code_to_strings(
+            _entry(modules),
+            options=CodeGenOptions(emit_source_comments=False,
+                                   thir_codegen=False))
+        assert cpp_t == cpp_a
+        assert "(d.contains(p.name))" in cpp_t
 
     def test_set_len_routes(self):
         # len over a set reuses ::tpy::__len__ (element-agnostic); admitted now

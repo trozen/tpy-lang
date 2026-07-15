@@ -106,6 +106,29 @@ class TestRoutedFoundation:
         assert witnesses.get("res.body") == 1
 
 
+class TestDeclRegistrationOrder:
+    """The CFG builder allocates join BBs BEFORE the body BBs they join, so
+    a frame-field decl in a BB created past a suspension (higher id than the
+    join) must already be registered when the join's leaves lower -- the
+    pass-1 scope registration pins this (a walk-order-only registration
+    rejected the join's read as an unknown name)."""
+
+    def test_decl_after_suspension_read_after_join(self):
+        src = (_PRE
+               + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
+               + "async def f(n: Int32) -> Int32:\n"
+               + "    if n > 0:\n"
+               + "        n = await step(n)\n"
+               + "        x = n + 1\n"
+               + "    else:\n"
+               + "        return 0\n"
+               + "    return x\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.body") == 2
+        assert not any(k.startswith("resumable:") for k in fallback)
+
+
 class TestMethodCoros:
     METHOD = (_PRE
               + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
@@ -200,6 +223,23 @@ class TestGeneratorShape:
         assert witnesses.get("res.body") == 1
         assert witnesses.get("res.yield_value") == 3
         assert not any(k.startswith("resumable:") for k in fallback)
+
+    def test_bigint_literal_yield_is_target_typed(self):
+        # `gen_yield_value` threads the yield type into the render, so a bare
+        # literal at a BigInt slot spells the ctor wrap (`::tpy::BigInt(1)`),
+        # not the position-blind `1` -- the divergence the corpus byte-diff
+        # caught once with-regions admitted generator bodies carrying it.
+        src = ("from typing import Iterator\n\n"
+               "def gen(n: int) -> Iterator[int]:\n"
+               "    yield 1\n"
+               "    yield n\n\n"
+               "def main() -> None:\n"
+               "    for x in gen(3):\n        print(x)\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.yield_value") == 2
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "return ::tpy::BigInt(1);" in cpp
 
     def test_generator_stop_iteration_is_skeleton(self):
         # The fall-off-end StopIteration return carries no leaf value.
@@ -606,17 +646,21 @@ class TestSlicedOutShapes:
         _, fallback = _assert_identical(src)
         assert fallback.get("resumable:expr.named_expr") == 1
 
-    def test_try_region_rejects(self):
-        src = (_PRE
-               + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
-               + "async def f(n: Int32) -> Int32:\n"
-               + "    try:\n        n = await step(n)\n"
-               + "    except ValueError:\n        n = 0\n"
-               + "    return n\n\n"
+    def test_async_with_global_manager_rejects(self):
+        # A global-manager async-with renders the manager as `CM*` already
+        # (not the F1-record lvalue-name family) -- res.with_manager.
+        src = ("import asyncio\n\n"
+               + "class ACM:\n"
+               + "    async def __aenter__(self) -> None:\n"
+               + "        await asyncio.sleep(0)\n"
+               + "    async def __aexit__(self, exc_type: None, exc_val: None,"
+               + " exc_tb: None) -> None:\n"
+               + "        await asyncio.sleep(0)\n\n"
+               + "cm = ACM()\n\n"
+               + "async def f() -> None:\n"
+               + "    async with cm:\n        await asyncio.sleep(0)\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        fb = _res_fallback(src)
-        assert fb.get("res.region") == 1
-        assert fb.get("res.method") is None
+        assert _res_fallback(src).get("res.with_manager") == 1
 
     def test_nested_frame_write_rejects(self):
         # A name-write nested inside a leaf compound would take the shared
@@ -666,6 +710,423 @@ class TestSlicedOutShapes:
     # (Non-simple generators route via this seam -- see TestGeneratorShape.
     # Simple peephole generators route via their own leaf seam, pinned in
     # test_thir_simple_gen.py.)
+
+
+class TestTryRegions:
+    """R6: try/except (no finally) around a suspension. The region replay --
+    catch headers, sub-future resets, handler try-wraps -- is skeleton; the
+    try-body and handler-body leaves route through the seam."""
+
+    def test_try_except_around_await_routes(self):
+        src = (_PRE
+               + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
+               + "async def f(n: Int32) -> Int32:\n"
+               + "    try:\n"
+               + "        n = await step(n)\n"
+               + "        print(n)\n"
+               + "    except ValueError:\n"
+               + "        n = 0\n"
+               + "    return n\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.body") == 2
+        assert witnesses.get("res.try_region") == 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+
+    def test_handler_binding_reads_route(self):
+        # The `as`-binding is the catch parameter (a C++ local, never a frame
+        # field); handler leaves read it bare with the exception type.
+        src = (_PRE
+               + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
+               + "async def f(n: Int32) -> Int32:\n"
+               + "    try:\n        n = await step(n)\n"
+               + "    except ValueError as e:\n        print(e)\n"
+               + "    return n\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.try_region") == 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+
+    def test_returns_in_try_and_handler_route(self):
+        # ReturnT terminators inside the region: the pre-finally capture and
+        # pending-slot paths stay unreachable (no finally/with regions), so
+        # both returns take the plain ready render.
+        src = (_PRE
+               + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
+               + "async def f(n: Int32) -> Int32:\n"
+               + "    try:\n"
+               + "        n = await step(n)\n"
+               + "        return n\n"
+               + "    except ValueError:\n"
+               + "        return 0\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.return_value", 0) >= 2
+        assert not any(k.startswith("resumable:") for k in fallback)
+
+    def test_raise_in_handler_routes(self):
+        src = (_PRE
+               + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
+               + "async def f(n: Int32) -> Int32:\n"
+               + "    try:\n        n = await step(n)\n"
+               + "    except ValueError:\n"
+               + "        raise RuntimeError(\"boom\")\n"
+               + "    return n\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.try_region") == 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+
+    def test_binding_frame_field_collision_rejects(self):
+        # A handler binding sharing a frame-field name would mistype the flat
+        # scope -- reject rather than risk a divergent render.
+        src = (_PRE
+               + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
+               + "async def f(n: Int32) -> Int32:\n"
+               + "    e = n\n"
+               + "    try:\n        n = await step(n)\n"
+               + "    except ValueError as e:\n        print(e)\n"
+               + "    return n\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        assert _res_fallback(src).get("res.handler_binding") == 1
+
+
+class TestSyncLoops:
+    """R3: a sync for-loop whose body suspends decomposes into
+    AsyncForIterSetup + AsyncForAdvance. The iteration strategy (range /
+    begin_end / next / iter_next), counters, exhaustion test and loop-var
+    bind are skeleton; the only user renders are the iterable (once, reused by
+    the advance) and, for range, each bound."""
+
+    def test_range_loop_with_await_routes(self):
+        src = (_PRE
+               + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
+               + "async def f(n: Int32) -> Int32:\n"
+               + "    total = 0\n"
+               + "    for i in range(n):\n"
+               + "        total = await step(total)\n"
+               + "    return total\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.sync_loop") == 1
+        assert witnesses.get("res.for_iter_setup") == 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+
+    def test_range3_loop_routes(self):
+        src = (_PRE
+               + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
+               + "async def f(n: Int32) -> Int32:\n"
+               + "    total = 0\n"
+               + "    for i in range(1, n, 2):\n"
+               + "        total = await step(total)\n"
+               + "    return total\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        _witnesses, fallback = _assert_identical(src)
+        assert not any(k.startswith("resumable:") for k in fallback)
+
+    def test_list_local_iterable_routes(self):
+        src = (_PRE
+               + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
+               + "async def f(n: Int32) -> Int32:\n"
+               + "    xs = [n, n, n]\n"
+               + "    total = 0\n"
+               + "    for x in xs:\n"
+               + "        total = await step(x)\n"
+               + "    return total\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.sync_loop") == 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+
+    def test_loop_body_try_composes(self):
+        # A break/await-forced region inside a decomposed loop routes as
+        # ordinary try-region leaves.
+        src = (_PRE
+               + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
+               + "async def f(n: Int32) -> Int32:\n"
+               + "    total = 0\n"
+               + "    for i in range(n):\n"
+               + "        try:\n            total = await step(total)\n"
+               + "        except ValueError:\n            total = 0\n"
+               + "    return total\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.sync_loop") == 1
+        assert witnesses.get("res.try_region") == 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+
+    def test_record_loop_var_rejects(self):
+        # A non-value (record) loop var binds a skeleton pointer/shadow form
+        # the leaf reads can't mirror yet -- res.loop_var.
+        src = (_PRE
+               + "class R:\n    v: Int32\n"
+               + "    def __init__(self, v: Int32) -> None:\n        self.v = v\n\n"
+               + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
+               + "async def f(n: Int32) -> Int32:\n"
+               + "    xs = [R(n)]\n    total = 0\n"
+               + "    for r in xs:\n        total = await step(r.v)\n"
+               + "    return total\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        assert _res_fallback(src).get("res.loop_var") == 1
+
+
+class TestFinallyHelper:
+    """R6-finally-helper: a suspension-free `finally` body (emitted as a
+    `__finally_<n>()` member fn) around a suspension. The helper body lowers
+    into the leaves table; gen_coro_finally_top_def emits it through the seam.
+    CFG-based finallies (the body suspends) keep rejecting."""
+
+    def test_helper_finally_around_await_routes(self):
+        src = (_PRE
+               + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
+               + "async def f(n: Int32) -> Int32:\n"
+               + "    try:\n"
+               + "        n = await step(n)\n"
+               + "        print(n)\n"
+               + "    finally:\n"
+               + "        print(n)\n"
+               + "    return n\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.finally_helper") == 1
+        assert witnesses.get("res.try_region") == 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+
+    def test_helper_finally_with_except_routes(self):
+        src = (_PRE
+               + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
+               + "async def f(n: Int32) -> Int32:\n"
+               + "    try:\n        n = await step(n)\n"
+               + "    except ValueError:\n        n = 0\n"
+               + "    finally:\n        print(n)\n"
+               + "    return n\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.finally_helper") == 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+
+    def test_return_in_helper_finally_rejects(self):
+        # A `return` inside the finally helper needs the async Poll replay /
+        # generator __finally_stop render -- rejects via leaf-mode
+        # res.leaf_return, keeping the whole body on AST.
+        src = (_PRE
+               + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
+               + "async def f(n: Int32) -> Int32:\n"
+               + "    try:\n        n = await step(n)\n"
+               + "    finally:\n        return 0\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        assert _res_fallback(src).get("res.leaf_return") == 1
+
+    def test_generator_helper_finally_routes(self):
+        # A generator with a try/finally around a yield: the finally helper
+        # (suspension-free) routes; a bare return stays skeleton.
+        src = ("from tpy import Int32\nfrom typing import Iterator\n\n"
+               + "def gen(n: Int32) -> Iterator[Int32]:\n"
+               + "    i = 0\n"
+               + "    try:\n"
+               + "        while i < n:\n"
+               + "            yield i\n"
+               + "            i = i + 1\n"
+               + "    finally:\n"
+               + "        print(i)\n\n"
+               + "def main() -> None:\n"
+               + "    for x in gen(3):\n        print(x)\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.finally_helper") == 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+
+
+class TestAsyncLoopAndWith:
+    """R3-async-for + R5-async-with: the synthetic __anext__ / __aenter__ /
+    __aexit__ yields and the StopAsyncIteration / CFG-finally regions they
+    synthesize are all skeleton; the only user render is the iterable /
+    manager expression. Verified byte-identical on the corpus cases
+    async_for_own_iterable / async_with_borrowed_manager."""
+
+    def test_async_with_borrowed_manager_routes(self):
+        src = ("import asyncio\nfrom tpy import Int32\n\n"
+               + "class Counter:\n    n: Int32\n"
+               + "    def __init__(self) -> None:\n        self.n = 0\n"
+               + "    async def __aenter__(self) -> None:\n"
+               + "        await asyncio.sleep(0)\n        self.n += 1\n"
+               + "    async def __aexit__(self, exc_type: None, exc_val: None,"
+               + " exc_tb: None) -> None:\n"
+               + "        await asyncio.sleep(0)\n\n"
+               + "async def f() -> Int32:\n"
+               + "    c = Counter()\n"
+               + "    async with c:\n        await asyncio.sleep(0)\n"
+               + "    return c.n\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        # _assert_identical enforces byte-identity. `f` routes the async-with;
+        # __aexit__'s None-typed params keep it on AST (res.param_type, a
+        # separate method / gate) -- so the case carries that one fallback.
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.async_with", 0) >= 1
+        assert set(fallback) <= {"resumable:res.param_type"}
+
+    def test_async_for_local_iterator_routes(self):
+        src = ("import asyncio\nfrom tpy import Int32\n\n"
+               + "class AIter:\n    i: Int32\n    n: Int32\n"
+               + "    def __init__(self, n: Int32) -> None:\n"
+               + "        self.i = 0\n        self.n = n\n"
+               + "    def __aiter__(self) -> \"AIter\":\n        return self\n"
+               + "    async def __anext__(self) -> Int32:\n"
+               + "        await asyncio.sleep(0)\n"
+               + "        if self.i >= self.n:\n"
+               + "            raise StopAsyncIteration()\n"
+               + "        self.i += 1\n        return self.i\n\n"
+               + "async def f(n: Int32) -> Int32:\n"
+               + "    total = 0\n"
+               + "    it = AIter(n)\n"
+               + "    async for x in it:\n        total = total + x\n"
+               + "    return total\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.async_loop", 0) >= 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+
+
+class TestCfgFinally:
+    """R6-finally-cfg: a finally body that itself suspends lives in the state
+    machine (TryRegion.captured_exc_field, FinallyRegion, AsyncFinallyExit).
+    The pending-return replay + exc rethrow are pure skeleton (zero new
+    renders); the finally body statements are ordinary BB leaves."""
+
+    def test_await_in_finally_routes(self):
+        src = (_PRE
+               + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
+               + "async def f(n: Int32) -> Int32:\n"
+               + "    total = n\n"
+               + "    try:\n        total = await step(total)\n"
+               + "    finally:\n        total = await step(total)\n"
+               + "    return total\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.try_region") == 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+
+    def test_return_in_try_with_await_finally_routes(self):
+        # A `return` in the try body routes through the pending-return slot
+        # (to_borrow=False store); its value render is the seam's and stays
+        # identical for the value-scalar slice.
+        src = (_PRE
+               + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
+               + "async def f(n: Int32) -> Int32:\n"
+               + "    total = n\n"
+               + "    try:\n"
+               + "        total = await step(total)\n"
+               + "        return total\n"
+               + "    finally:\n        total = await step(total)\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.return_value", 0) >= 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+
+    def test_return_await_in_finally_routes(self):
+        src = (_PRE
+               + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
+               + "async def f(n: Int32) -> Int32:\n"
+               + "    total = n\n"
+               + "    try:\n        total = await step(total)\n"
+               + "    finally:\n        return await step(total)\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        _witnesses, fallback = _assert_identical(src)
+        assert not any(k.startswith("resumable:") for k in fallback)
+
+
+_CM = ("class CM:\n"
+       "    n: Int32\n"
+       "    def __init__(self, n: Int32) -> None:\n        self.n = n\n"
+       "    def __enter__(self) -> Int32:\n        return self.n\n"
+       "    def __exit__(self, exc_type, exc_val, exc_tb) -> None:\n"
+       "        print(self.n)\n\n")
+
+
+class TestWithRegions:
+    """R6-with: sync `with` around a suspension. The `__with_ctx_<n>` bind
+    wrap, `__enter__` call, `__exit__` catch replay and normal-exit calls
+    are skeleton; the manager expression is the one leaf render
+    (render_region_expr)."""
+
+    def test_with_around_await_routes(self):
+        src = (_PRE + _CM
+               + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
+               + "async def f(n: Int32) -> Int32:\n"
+               + "    with CM(n):\n        n = await step(n)\n"
+               + "    return n\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.with_region") == 1
+        assert witnesses.get("res.with_ctx") == 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "__with_ctx_0.emplace(CM(n));" in cpp
+
+    def test_with_as_target_routes(self):
+        # The `as`-target bind is a skeleton frame write; later leaves read
+        # the target with the sema enter type.
+        src = (_PRE + _CM
+               + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
+               + "async def f(n: Int32) -> Int32:\n"
+               + "    with CM(n) as base:\n"
+               + "        n = await step(n)\n"
+               + "        n = n + base\n"
+               + "    return n\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.with_ctx") == 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+
+    def test_borrowed_manager_routes(self):
+        # An lvalue manager binds borrowed: the &(..) wrap is skeleton, the
+        # frame-slot deref `(*cm)` comes from the leaf's name render.
+        src = (_PRE + _CM
+               + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
+               + "async def f(n: Int32) -> Int32:\n"
+               + "    cm = CM(n)\n"
+               + "    with cm:\n        n = await step(n)\n"
+               + "    return n\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.with_ctx") == 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "__with_ctx_0 = &((*cm));" in cpp
+
+    def test_return_inside_with_captures_before_exit(self):
+        # A ReturnT inside the with-region reaches _make_async_return's
+        # pre-finally capture (finally_stack holds the with-exit closure):
+        # the typed `__tpy_async_ret_N` local is skeleton, the value render
+        # is the seam's -- identical for value scalars.
+        src = (_PRE + _CM
+               + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
+               + "async def f(n: Int32) -> Int32:\n"
+               + "    with CM(n):\n"
+               + "        n = await step(n)\n"
+               + "        return n + 1\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.return_value", 0) >= 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert ("int32_t __tpy_async_ret_0 = "
+                "(::tpy::add_check<int32_t>(n, 1));") in cpp
+
+    def test_non_lvalue_field_manager_rejects(self):
+        # A borrowed manager that is not a plain declared name (here a field
+        # access) stays outside the admitted manager families.
+        src = (_PRE + _CM
+               + "class Holder:\n"
+               + "    cm: CM\n"
+               + "    def __init__(self, n: Int32) -> None:\n"
+               + "        self.cm = CM(n)\n\n"
+               + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
+               + "async def f(n: Int32) -> Int32:\n"
+               + "    h = Holder(n)\n"
+               + "    with h.cm:\n        n = await step(n)\n"
+               + "    return n\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        assert _res_fallback(src).get("res.with_manager") == 1
 
 
 class TestFrameFieldShadowing:

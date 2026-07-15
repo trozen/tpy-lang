@@ -1117,11 +1117,11 @@ def _tuple_unpack_targets(stmt: TpyTupleUnpack, analyzer,
 
 def _standalone_unpack_target_binds(
         stmt: TpyTupleUnpack, analyzer, declared: dict[str, TpyType],
-        narrowed: AbstractSet[str]
+        narrowed: AbstractSet[str], blocked: AbstractSet[str]
         ) -> 'list[tuple[TpyType | None, str | None]] | None':
     """The STANDALONE unpack's per-target (unwrapped type, bind arm) list, or
     None when a target takes an unmirrored `_gen_tuple_unpack` branch. Extends
-    `_tuple_unpack_targets` (kept as-is for the for-each head) with two rungs:
+    `_tuple_unpack_targets` (kept as-is for the for-each head) with three rungs:
 
     - "move": an `Own[F1-record]` element moved out of the source tuple
       (`Rec a = std::move(std::get<i>(tmp));`); the target is a fresh owned
@@ -1129,20 +1129,33 @@ def _standalone_unpack_target_binds(
       carries -- the AST's sema_movable_locals promotion at this site);
     - "cref": sema's is_const_ref (a fresh expensive-copy value target, e.g.
       BigInt) -- `const T& a = std::get<i>(tmp);`, zero-copy off the tuple.
+    - "assign": a REUSED plain scalar/str local (`a, b = pair()` after both
+      names exist) -- the AST's declared-name tail, `name = std::get<i>(tmp);`
+      (no decl; the declared entry keeps its original type, so later reads
+      classify unchanged). `blocked` carries the caller's special name
+      classes (pointer / rebind-slot / alias / storage-tuple / value-opt /
+      frame names) whose reassign takes slot machinery, not the plain assign.
 
-    Borrow (`is_ref`) and reused (`not is_new`) targets stay deferred."""
+    Borrow (`is_ref`) targets stay deferred."""
     if any(stmt.is_ref):
-        return None
-    if not all(stmt.is_new):
         return None
     out: list[tuple[TpyType | None, str | None]] = []
     for i, name in enumerate(stmt.targets):
         if name is None:
             out.append((None, None))
             continue
-        if name in declared or name in narrowed:
+        if name in narrowed:
             return None
         tt = unwrap_ref_type(stmt.target_types[i])
+        if not stmt.is_new[i]:
+            if (name not in declared or name in blocked
+                    or stmt.is_owned[i]
+                    or not _scalar_or_str_unpack_elem(tt, analyzer)):
+                return None
+            out.append((tt, "assign"))
+            continue
+        if name in declared:
+            return None
         if stmt.is_owned[i]:
             # target_types is already Own-stripped (sema unwraps at append).
             if not _f1_record(tt, analyzer):
@@ -1308,6 +1321,30 @@ def _try_hoist_type_ok(vtype: TpyType, analyzer) -> bool:
             or _is_string_owned(vtype)
             or _eligible_value_union(vtype) is not None
             or _slice_object_type(vtype))
+
+def _lower_hoist_predecls(hoists: dict, declared: dict[str, TpyType],
+                          lc: '_LowerCtx', witness_tag: str
+                          ) -> list[tuple[str, str]]:
+    """Chain-head predecls for the branch-first-decls shared by if / try /
+    with. A name spells its sema-resolved view type (render_type's default
+    resolves neither PendingStr nor PendingBytes), enters the CALLER's
+    `declared` at function scope, and keeps the raw binding type there --
+    the same shape a normal str/bytes first-decl stores. A name already in
+    `declared` (bound outside an enclosing loop) skips its predecl, matching
+    the AST's declared_vars check. The witness distinguishes the call site."""
+    hoist_decls: list[tuple[str, str]] = []
+    for name, raw in hoists.items():
+        if name in declared:
+            continue
+        vtype = unwrap_ref_type(raw)
+        render_src = (_resolved_str_value(vtype, lc.analyzer)
+                      or _resolved_bytes_value(vtype, lc.analyzer)
+                      or vtype)
+        hoist_decls.append((name, lc.render_type(render_src)))
+        declared[name] = vtype
+    if hoist_decls:
+        _witness(witness_tag)
+    return hoist_decls
 
 def _handler_binding_type(h: TpyExceptHandler, analyzer) -> 'NominalType | None':
     """The `as`-binding's type, exactly as sema binds it (`NominalType` over
@@ -3560,21 +3597,11 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             else:
                 _kind_detail("cond.", c)
             raise ThirUnsupported(stmt_reject_reason(stmt))
-        # Hoisted predecls render at the chain head (see THIRIf); mirrors
-        # _lower_try's loop -- names spell RAW, enter the CALLER's `declared`
-        # (function-scope, visible in every branch and after the if).
-        hoist_decls: list[tuple[str, str]] = []
-        for name, raw in hoists.items():
-            if name in declared:
-                continue
-            vtype = unwrap_ref_type(raw)
-            render_src = (_resolved_str_value(vtype, lc.analyzer)
-                          or _resolved_bytes_value(vtype, lc.analyzer)
-                          or vtype)
-            hoist_decls.append((name, lc.render_type(render_src)))
-            declared[name] = vtype
-        if hoist_decls:
-            _witness("if.hoist_decl")
+        # Hoisted predecls render at the chain head (see THIRIf): names enter
+        # the CALLER's `declared` (function-scope, visible in every branch and
+        # after the if).
+        hoist_decls = _lower_hoist_predecls(hoists, declared, lc,
+                                            "if.hoist_decl")
         # Branch-local `declared` copies: eligibility guarantees branches only
         # reassign already-declared locals, but a nested post-if narrowing may
         # retype its subject for the rest of ITS branch -- that must not leak
@@ -3811,7 +3838,10 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 or len(source_type.element_types) != len(stmt.targets)):
             raise ThirUnsupported("stmt.tuple_unpack")
         target_binds = _standalone_unpack_target_binds(
-            stmt, analyzer, declared, lc.narrow.narrowed.keys())
+            stmt, analyzer, declared, lc.narrow.narrowed.keys(),
+            blocked=(lc.pointers | lc.rebind_slot_locals
+                     | lc.ref_alias_locals | lc.storage_tuple_locals
+                     | lc.value_opt_locals | lc.frame_slots))
         if target_binds is None:
             note_detail("tuple_unpack.target_form")
             raise ThirUnsupported("stmt.tuple_unpack")
@@ -3831,6 +3861,13 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 continue
             tt, bind = target_binds[i]
             assert tt is not None
+            if bind == "assign":
+                # Reused target: bare assign, no decl -- the declared entry
+                # keeps its original type (the AST leaves var_types alone).
+                target_cpps.append(None)
+                bind_tags.append(bind)
+                _witness("stmt.tuple_unpack.assign_target")
+                continue
             # A str target's type is still a PendingStrType (params never
             # resolve it in place); resolve it to the concrete view before
             # render, else `render_type` raises. Scalars/records pass through.
@@ -4185,24 +4222,7 @@ def _lower_try(stmt: TpyTry, lc: _LowerCtx, declared: dict[str, TpyType],
         if (handler.binding
                 and _handler_binding_type(handler, lc.analyzer) is None):
             raise ThirUnsupported(stmt_reject_reason(stmt))
-    hoist_decls: list[tuple[str, str]] = []
-    for name, raw in hoists.items():
-        if name in declared:
-            # Already a declared local (e.g. bound outside an enclosing
-            # loop): the AST's declared_vars check skips the predecl.
-            continue
-        vtype = unwrap_ref_type(raw)
-        # Render from the sema-resolved view type: codegen's type_to_cpp
-        # resolves a PendingStr/PendingBytes internally, but the analyzer-only
-        # render_type default (to_cpp) does not. `declared` keeps the raw
-        # binding type -- the same shape a normal str/bytes first-decl stores.
-        render_src = (_resolved_str_value(vtype, lc.analyzer)
-                      or _resolved_bytes_value(vtype, lc.analyzer)
-                      or vtype)
-        hoist_decls.append((name, lc.render_type(render_src)))
-        declared[name] = vtype
-    if hoist_decls:
-        _witness("try.hoist_decl")
+    hoist_decls = _lower_hoist_predecls(hoists, declared, lc, "try.hoist_decl")
     if stmt.tier == "finally_only":
         _witness("try.finally_only")
         body_terminates = stmts_terminate(stmt.try_body)
@@ -4336,9 +4356,24 @@ def _lower_with(stmt: TpyWith, lc: _LowerCtx, declared: dict[str, TpyType],
     copy. The body lowers under a narrowing-scope snapshot, mirroring the AST's
     `narrowed_vars` / `declared_persistent_aliases` restore around the try
     body. `body_terminates` calls the same `stmts_terminate` the AST reads, so
-    the per-layer normal-exit elision folds identically at emit."""
-    if stmt.is_async or lc.analyzer.if_branch_decls.get(id(stmt)):
+    the per-layer normal-exit elision folds identically at emit. Sema's hoist
+    (`if_branch_decls`) admits and renders like `_lower_try`'s: the
+    plain-value predecl family, at statement level only, entering the
+    CALLER's `declared` (function-scope names; body writes lower as
+    reassigns against the predecl slot)."""
+    if stmt.is_async:
         raise ThirUnsupported(stmt_reject_reason(stmt))
+    hoists = lc.analyzer.if_branch_decls.get(id(stmt), {})
+    for name, raw in hoists.items():
+        if name in declared:
+            continue
+        if (name in lc.prescan.native_globals
+                or in_branch or loop_depth > 0
+                or not _try_hoist_type_ok(
+                    unwrap_ref_type(raw), lc.analyzer)):
+            note_detail("with.hoist")
+            raise ThirUnsupported(stmt_reject_reason(stmt))
+    lc.unhandled_hoists.difference_update(hoists)
     items: list[THIRWithItem] = []
     for item in stmt.items:
         ctx = item.context_expr
@@ -4403,11 +4438,14 @@ def _lower_with(stmt: TpyWith, lc: _LowerCtx, declared: dict[str, TpyType],
                 pointers.add(item.target)
     if len(stmt.items) > 1:
         _witness("with.multi")
+    hoist_decls = _lower_hoist_predecls(hoists, declared, lc,
+                                        "with.hoist_decl")
     return THIRWith(
         items=tuple(items),
         body=_lower_scoped_stmts(
             stmt.body, lc, dict(declared), loop_depth=loop_depth),
         body_terminates=stmts_terminate(stmt.body),
+        hoist_decls=tuple(hoist_decls),
         loc=loc,
     )
 

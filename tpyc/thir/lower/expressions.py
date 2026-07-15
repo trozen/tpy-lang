@@ -57,6 +57,7 @@ from ...typesys import (
     VoidType,
     contains_type_param,
     is_void_like_type,
+    make_array,
     resolve_int_literals,
     substitute_type_params_simple,
     unwrap_optional_own,
@@ -88,6 +89,7 @@ from ...codegen_cpp.context import (
     qualified_cpp_name,
     view_key_target,
 )
+from ...codegen_cpp.protocols import dynamic_base_name
 from ...compilation_context import get_current_compiler
 from ...value_category import is_rvalue_source
 from ..fallback import ThirUnsupported, expr_kind_tag, note_detail
@@ -194,6 +196,7 @@ from .predicates import (
     _ADDR_PTR_COERCIONS,
     _PTR_IDENTITY_COERCIONS,
     _SPANLIKE_COERCIONS,
+    _SPAN_METHOD_COERCIONS,
     _is_string_owned,
     _mixed_sign_compare,
     _module_var_read_cpp,
@@ -273,6 +276,7 @@ from .checks import (
     _container_method_call_supported,
     _ctor_instantiation_ok,
     _ctor_shape_ok,
+    _dyn_own_coro_factory_arg,
     _field_over_call_ok,
     _field_over_container_subscript_ok,
     _field_over_field_ok,
@@ -365,6 +369,9 @@ def _call_use_supported(e: TpyCall, lc: '_LowerCtx',
                   and _owned_tuple_call_ret(ret, analyzer) is not None)
               or (result is _ExprResultUse.BORROW_BIND
                   and _f1_record(record, analyzer))
+              # An async-def FACTORY call under the make_adapter wrap: the
+              # concrete coro frame is consumed whole by the adapter.
+              or (use.coro_factory and fi is not None and fi.is_async)
               or _record_rvalue_call_shape(e, analyzer))
         if not ok:
             note_detail(_call_ret_reject(e, ret, analyzer))
@@ -732,7 +739,12 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
         return THIRMembership(
             result_type=rtype,
             receiver=_lower_expr(e.right, lc, declared),
-            needle=_lower_expr(e.left, lc, declared),
+            # A str-family FIELD needle renders the bare member read into the
+            # contains(...) template on both paths (same owned-str-field-ok
+            # position as the compare operands above).
+            needle=_lower_expr(
+                e.left, lc, declared,
+                field_owned_str_ok=isinstance(e.left, TpyFieldAccess)),
             method_cpp=e.resolved_contains.native_name,
             negate=e.op == "not in",
             loc=loc)
@@ -1751,7 +1763,8 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
         k = _free_callee_kind(
             e, analyzer,
             generator_ok=use.result is _ExprResultUse.ITERABLE,
-            error_return_ok=True)
+            error_return_ok=True,
+            coro_factory_ok=use.coro_factory)
         len_call = _is_len_call(e, declared, analyzer)
         if not len_call:
             if k is None or fi is None:
@@ -1781,9 +1794,10 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
         # the callee's deep-const verdict (`deep_const_borrow_params`, the
         # AST's `is_readonly_target`) for the const-pointee spelling. A `len`
         # call bypasses the arity gate, so fall back to slot-less lowering
-        # there.
+        # there. Provided args pair the LEADING params (the AST loop
+        # zip-truncates): the arity gate admits omitted trailing defaults.
         params = (fi.params if fi is not None
-                  and len(fi.params) == len(e.args) else None)
+                  and len(fi.params) >= len(e.args) else None)
         dcbp = fi.deep_const_borrow_params if fi is not None else None
         # The callee's emit kind: the same classification validation admitted
         # on (`_free_callee_kind`) -- cross-module spelling on callee_cpp,
@@ -2142,13 +2156,14 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
         if m_str is None:
             m_str = _resolved_bytes_value(rtype, analyzer)
         # Args lower against their param slots like a free call's (the record
-        # pointer-local `(*p)` retag); arity was gated exact, so params always
-        # pair. A user-record F2 pointer-local receiver renders `->`, as does
+        # pointer-local `(*p)` retag); provided args pair the LEADING params
+        # (the AST loop zip-truncates; the arity gate admits omitted trailing
+        # defaults). A user-record F2 pointer-local receiver renders `->`, as does
         # the method receiver itself (`self.helper()` -> `this->helper()`).
         # `temp_args` admits only the VALUE-union temp row here (the other
         # temp rows are free-call shapes -- a method ctor rvalue INLINES).
         params = (fi.params if fi is not None
-                  and len(fi.params) == len(e.args) else None)
+                  and len(fi.params) >= len(e.args) else None)
         # A protocol receiver misses `_gen_method_call`'s user-record arg loop
         # (guarded by `is_user_record`) and falls to the lazy `_args()`
         # fallback, which renders args like a FREE call's -- literals take
@@ -2208,13 +2223,35 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
         disp = _coerce_disposition(e)
         if disp is None:
             raise ThirUnsupported("expr.coerce")
+        if (e.coercion.name in _SPAN_METHOD_COERCIONS
+                and isinstance(e.expr, TpyName)
+                and (e.expr.name in lc.pointers
+                     or e.expr.name == lc.self_receiver)):
+            # The AST pre-derefs an indirect receiver ((*name).__span__(),
+            # is_indirect_name); THIR record names lower bare here -> defer.
+            raise ThirUnsupported("expr.coerce")
         # A materializing coerce IS the owned sink for its view source, so a
         # StrView field inner is admitted here (the AST's std::string(x) over
         # the bare member read renders through the S1 chokepoint below).
-        inner = _lower_expr(
-            e.expr, lc, declared,
-            field_owned_str_ok=(disp == "materialize"
-                                and isinstance(e.expr, TpyFieldAccess)))
+        if (e.coercion.name in _SPANLIKE_COERCIONS
+                and isinstance(e.expr, TpyArrayLiteral)
+                and is_span(e.expected_type)
+                and getattr(e.expected_type, "type_args", None)):
+            # _gen_span_coercion's literal arm: the helper wraps a
+            # make_array-typed brace literal
+            # (`as_mut_span(std::array<T, N>{...})`) -- thread the
+            # synthesized Array target (element retype rides the Array
+            # family) and stamp its spelled prefix on the brace init.
+            arr_t = make_array(e.expected_type.type_args[0],
+                               len(e.expr.elements))
+            inner = _lower_expr(e.expr, lc, declared, target_type=arr_t)
+            inner = replace(inner, typed_brace_cpp=arr_t.to_cpp())
+            _witness("coerce.span_array_literal")
+        else:
+            inner = _lower_expr(
+                e.expr, lc, declared,
+                field_owned_str_ok=(disp == "materialize"
+                                    and isinstance(e.expr, TpyFieldAccess)))
         if disp == "materialize":
             # The cross-type view->owned copy (`std::string(x)`) IS the S1
             # view->owned form transfer -- one emit chokepoint. The coerce
@@ -2246,6 +2283,7 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
         # return validation.
         if (e.coercion.name in _ADDR_PTR_COERCIONS
                 or e.coercion.name in _SPANLIKE_COERCIONS
+                or e.coercion.name in _SPAN_METHOD_COERCIONS
                 or e.coercion.name in _PTR_IDENTITY_COERCIONS):
             vform = Form.VALUE
         else:
@@ -2964,6 +3002,27 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         if isinstance(lit, TpyBytesLiteral):
             lowered = _lower_expr(lit, lc, declared)
             return replace(lowered, form=Form.BORROW)
+    # An async-def factory call into an `Own[@dynamic P]` slot: the erasure
+    # boundary -- `::tpy::make_adapter<Base>(factory(args))`, moving the
+    # concrete coro frame into the heap adapter (the one allocation, paid
+    # exactly here). Base spells from the SLOT protocol via the SAME helper
+    # the AST render uses (dynamic_base_name), so the two cannot drift. The
+    # factory lowers as an ordinary plain/imported free call
+    # (use.coro_factory lifts only the async-callee reject).
+    coro_proto = _dyn_own_coro_factory_arg(a, ptype, lc.analyzer)
+    if coro_proto is not None:
+        _witness("call.coro_factory_adapter")
+        inner = _lower_expr(a, lc, declared,
+                            use=_ExprUse(coro_factory=True))
+        base = dynamic_base_name(coro_proto, lc.analyzer)
+        # THIRCoerce is form-preserving by contract (validate.py); the
+        # adapter rvalue is consumed in place by the call slot, so the
+        # inner's form rides through untouched.
+        return THIRCoerce(
+            result_type=unwrap_send_sync(ptype), expr=inner,
+            coercion_name="dyn_own_adapter",
+            wrap=f"::tpy::make_adapter<{base}>({{0}})",
+            form=inner.form, loc=getattr(a, "loc", None))
     # The two arg-temp rows, admitted only when the enclosing
     # statement position flushes (`temp_args`; see _lower_expr). The record
     # row mirrors the ref-param cascade arm: the temp declares the SLOT's

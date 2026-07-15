@@ -11,7 +11,8 @@ from ..codegen_cpp.forms import LocalBinding
 from ..typesys import NominalType, PtrType
 from .lower.predicates import _eligible_ptr_value
 from .nodes import (
-    Form, THIRAssign, THIRBinOp, THIRCall, THIRFieldAccess, THIRFormConvert,
+    Form, THIRAssign, THIRBinOp, THIRCall, THIRCoerce, THIRExprStmt,
+    THIRFieldAccess, THIRFormConvert,
     THIRMethodCall, THIRName, THIRReturn, THIRSelf, THIRSetItem, THIRStrAppend,
     THIRVarDecl,
 )
@@ -2411,3 +2412,102 @@ class TestValueOptScalarArg:
         assert "s.settimeout(0.5);" in thir_cpp
         assert "s.settimeout(std::nullopt);" in thir_cpp
         assert "s.settimeout(v);" in thir_cpp
+
+
+_ASYNCIO_DRIVER_SRC = (
+    "import asyncio\n"
+    "async def work() -> None:\n"
+    "    print(\"w\")\n"
+    "def main() -> None:\n"
+    "    asyncio.run(work())\n"
+    "main()\n"
+)
+
+
+class TestAsyncioRunDriverCall:
+    """The `asyncio.run(coro())` driver: a module-qualified GENERIC call
+    (generic_qualified kind, `::tpystd::asyncio::run<T>(...)`) whose
+    Own[Cancellable[T]] arg is a DIRECT async-def factory call -- the
+    make_adapter erasure boundary (`_dyn_own_coro_factory_arg`). Bound
+    handles, method coros, and generic factories keep their AST renders."""
+
+    def test_driver_routes_with_adapter_wrap(self):
+        thir, witnessed = _lower_ctx_witnessed(_ASYNCIO_DRIVER_SRC)
+        fn = _fn(thir, "main")
+        assert fn is not None
+        stmt = fn.body[0]
+        assert isinstance(stmt, THIRExprStmt)
+        call = stmt.expr
+        assert isinstance(call, THIRCall)
+        assert call.callee_cpp == "::tpystd::asyncio::run"
+        assert call.template_args_cpp == ("std::monostate",)
+        arg = call.args[0]
+        assert isinstance(arg, THIRCoerce)
+        assert arg.coercion_name == "dyn_own_adapter"
+        assert arg.wrap == ("::tpy::make_adapter<::tpystd::coro::"
+                            "Cancellable<std::monostate>>({0})")
+        inner = arg.expr
+        assert isinstance(inner, THIRCall) and inner.callee == "work"
+        assert witnessed.get("call.coro_factory_adapter", 0) >= 1
+        assert witnessed.get("call.generic_qualified", 0) >= 1
+
+    def test_value_returning_driver_routes(self):
+        thir, _ = _lower_ctx_witnessed(
+            "from tpy import Int32\n"
+            "import asyncio\n"
+            "async def compute() -> Int32:\n"
+            "    return 7\n"
+            "def main() -> None:\n"
+            "    n = asyncio.run(compute())\n"
+            "    print(n)\n"
+            "main()\n")
+        fn = _fn(thir, "main")
+        assert fn is not None
+        decl = fn.body[0]
+        assert isinstance(decl, THIRVarDecl)
+        assert isinstance(decl.init, THIRCall)
+        assert decl.init.template_args_cpp == ("int32_t",)
+
+    def test_bound_handle_arg_stays_ast(self):
+        # `c = work(); asyncio.run(c)` takes the `std::move(*(c))`
+        # optional-slot unwrap -- a different render, not mirrored.
+        thir = _lower_ctx(
+            "import asyncio\n"
+            "async def work() -> None:\n"
+            "    print(\"w\")\n"
+            "def main() -> None:\n"
+            "    c = work()\n"
+            "    asyncio.run(c)\n"
+            "main()\n")
+        assert _fn(thir, "main") is None
+
+    def test_method_coro_arg_stays_ast(self):
+        # A bound async-METHOD coroutine captures its receiver; the factory
+        # is a TpyMethodCall -- outside the free-call factory row.
+        thir = _lower_ctx(
+            "from tpy import Int32\n"
+            "import asyncio\n"
+            "class W:\n"
+            "    n: Int32\n"
+            "    def __init__(self):\n"
+            "        self.n = 1\n"
+            "    async def go(self) -> None:\n"
+            "        print(self.n)\n"
+            "def main() -> None:\n"
+            "    w = W()\n"
+            "    asyncio.run(w.go())\n"
+            "main()\n")
+        assert _fn(thir, "main") is None
+
+    def test_byte_identical(self):
+        compiler, modules = _compile(_ASYNCIO_DRIVER_SRC)
+        entry = _entry(modules)
+        ast_out = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False))
+        thir_out = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=True))
+        assert thir_out == ast_out
+        assert ("::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<"
+                "::tpystd::coro::Cancellable<std::monostate>>(work()))"
+                in thir_out[1])
