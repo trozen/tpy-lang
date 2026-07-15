@@ -53,6 +53,7 @@ from conftest import (
     find_extra_include_dirs,
     find_force_includes,
     build_and_run,
+    cpy_phase_applicable,
     exec_is_cross,
     get_stdlib_cache,
     merge_link_flags,
@@ -405,13 +406,12 @@ def test_case(case_dir, main_src, request):
 
     ran_cpy = False
     current_main_fp: str | None = None
-    cpy_applicable = (
-        # Build-only checks the toolchain; the cpy phase is
-        # toolchain-independent and covered by ordinary runs.
-        not build_only
-        and not is_panic
-        and not (case_dir / "no_cpython.txt").exists()
-        and (expected_dir / "output.txt").exists()
+    cpy_applicable = cpy_phase_applicable(
+        build_only=build_only,
+        no_cpy=request.config.getoption("--no-cpy"),
+        is_panic=is_panic,
+        no_cpython_marker=(case_dir / "no_cpython.txt").exists(),
+        output_exists=(expected_dir / "output.txt").exists(),
     )
     if cpy_applicable:
         current_main_fp = compute_main_fingerprint(main_src)

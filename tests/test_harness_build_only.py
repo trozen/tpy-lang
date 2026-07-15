@@ -1,6 +1,7 @@
-"""Unit tests for the --build-only harness mode: the pure exec-phase
-decision (conftest.plan_exec_phase) and the exec-flag conflict gate
-(conftest._exec_flag_conflict)."""
+"""Unit tests for the pure per-case phase-decision gates: the exec-phase
+decision (conftest.plan_exec_phase), the exec-flag conflict gate
+(conftest._exec_flag_conflict), and the CPython-parity gate
+(conftest.cpy_phase_applicable)."""
 
 import itertools
 
@@ -54,3 +55,17 @@ def test_exec_flag_conflicts() -> None:
                     clean=True, updating=False) is None
     assert conflict(no_exec=False, build_only=False, force_exec=False,
                     clean=False, updating=False) is None
+
+
+def test_cpy_phase_applicable() -> None:
+    applicable = conftest.cpy_phase_applicable
+    # cpy runs only when NONE of the blockers apply.
+    base = dict(build_only=False, no_cpy=False, is_panic=False,
+                no_cpython_marker=False, output_exists=True)
+    assert applicable(**base) is True
+    # Each blocker independently flips it off.
+    assert applicable(**{**base, "build_only": True}) is False
+    assert applicable(**{**base, "no_cpy": True}) is False
+    assert applicable(**{**base, "is_panic": True}) is False
+    assert applicable(**{**base, "no_cpython_marker": True}) is False
+    assert applicable(**{**base, "output_exists": False}) is False

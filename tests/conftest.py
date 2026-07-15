@@ -1114,6 +1114,17 @@ def pytest_addoption(parser):
         ),
     )
     parser.addoption(
+        "--no-cpy",
+        action="store_true",
+        default=False,
+        help=(
+            "Skip the CPython-parity phase (comp + exec still run). CPython "
+            "output is toolchain-independent, so the nightly's C++-toolchain "
+            "rows pass this and let a dedicated CPython-version axis own "
+            "parity instead of re-checking it on every toolchain."
+        ),
+    )
+    parser.addoption(
         "--build-only",
         action="store_true",
         default=False,
@@ -1754,6 +1765,18 @@ def plan_exec_phase(*, no_exec: bool, build_only: bool, force_exec: bool,
     if not force_exec and expected_exists and marker_hit:
         return "skipped"
     return "build+run"
+
+
+def cpy_phase_applicable(*, build_only: bool, no_cpy: bool, is_panic: bool,
+                         no_cpython_marker: bool, output_exists: bool) -> bool:
+    """Pure per-case CPython-parity-phase decision (mirrors plan_exec_phase
+    so the multi-flag gate is unit-testable). Skipped for: build-only / cross
+    (toolchain check only, parity covered by ordinary runs), --no-cpy (the
+    nightly's C++-toolchain rows, where a dedicated CPython-version axis owns
+    parity), a panic case (compared against panic.txt, not output.txt), a
+    no_cpython.txt marker, or a case with no committed output.txt."""
+    return (not build_only and not no_cpy and not is_panic
+            and not no_cpython_marker and output_exists)
 
 
 def compute_exec_fingerprint(

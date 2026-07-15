@@ -115,8 +115,16 @@ def container_script(cfg: dict, smoke: bool) -> str:
     config's toolchain.
     """
     extras = "".join(f" --extra {e}" for e in cfg.get("uv_extras", []))
-    pytest_args = [f"--cxx={cfg['cxx']}", "--force-exec",
+    pytest_args = [f"--cxx={cfg['cxx']}",
                    f"--junitxml=/out/junit-{cfg['name']}.xml"]
+    if cfg.get("cpython"):
+        # CPython-version axis: comp + cpy only, no C++ build (parity is
+        # toolchain-independent). --no-exec rules out --force-exec.
+        pytest_args.append("--no-exec")
+    else:
+        # C++-toolchain rows: force every build+run and skip cpy -- the
+        # version axis owns parity, so re-checking it here is redundant.
+        pytest_args += ["--force-exec", "--no-cpy"]
     pytest_args += cfg.get("pytest_args", [])
     if smoke:
         pytest_args += ["-k", SMOKE_FILTER]
@@ -180,6 +188,12 @@ def run_config(cfg: dict, src_dir: Path, out_dir: Path, timeout: float,
             # mounted toolchain whose libs sit outside the container's default
             # search path).
             cmd += ["-e", env]
+        if cfg.get("cpython"):
+            # Pin the interpreter for this row (both the compiler run and the
+            # cpy phase follow UV_PYTHON), overriding the image's distro
+            # Python; allow the managed download the base image lacks.
+            cmd += ["-e", f"UV_PYTHON={cfg['cpython']}",
+                    "-e", "UV_PYTHON_DOWNLOADS=automatic"]
         cmd += [tag, "bash", "-c", container_script(cfg, smoke)]
         rc = run_logged(cmd, log_file, timeout=timeout)
     except subprocess.TimeoutExpired as exc:

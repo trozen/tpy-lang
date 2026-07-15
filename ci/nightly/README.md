@@ -36,6 +36,18 @@ fresh container per config, sequentially (a full cold config is ~25 min on
   observed 2026-07) rather than the `g++`/`clang` metapackages: a mid-LTS
   default bump would silently re-key every cache and shift results overnight
   with no code change. Re-pin deliberately when moving to a newer base.
+- The `cpy-3.12` / `cpy-3.13` / `cpy-3.14` rows are the CPython-version
+  axis, kept SEPARATE from the C++-toolchain axis. CPython output is
+  toolchain-independent and the C++ build is Python-version-independent, so
+  each runs `--no-exec` (comp + cpy, no C++ build -- the cheapest rows in
+  the matrix) with `UV_PYTHON` pinned to that version (a managed download,
+  not the base image's distro `python3`), making parity coverage
+  deterministic instead of implicitly inherited from whatever Python a base
+  image happens to ship. Correspondingly the C++-toolchain rows now run
+  `--no-cpy`: they own compile+build+run correctness, this axis owns CPython
+  parity, and neither re-does the other's work. Add a version by copying a
+  row and bumping `cpython`; its `g++-13` only satisfies `--cxx` / the cache
+  prewarm and is never invoked under `--no-exec`.
 - The system-deps row exercises `--dep-mode pcre2=system,mbedtls=system`
   against the distro's libpcre2-dev/libmbedtls-dev. Ubuntu 24.04 ships
   mbedTLS 2.28 (the mainstream-LTS branch); the ssl shim supports it
@@ -93,13 +105,15 @@ fresh container per config, sequentially (a full cold config is ~25 min on
 A named docker volume `tpy-nightly-cache` (auto-created on first run) is
 mounted at `/cache` in every container and shared across configs and nights:
 `/cache/tpyc` (stdlib .o + PCH, content-addressed per toolchain),
-`/cache/ccache`, `/cache/uv`. These are compile-reuse caches -- every case
-still compiles+links+runs, so sharing them cannot mask a failure. The
-result-skip cache (`exec-results/`) also lands in the volume but is
-neutralized by `--force-exec` on every run: skipping unchanged cases is
-exactly what a breakage-catching nightly must not do, and a marker's key may
-not capture every environmental input (a libstdc++ point update, a
-system-lib bump on the system-deps config).
+`/cache/ccache`, `/cache/uv`. These are compile-reuse caches -- on the
+C++-toolchain rows every case still compiles+links+runs, so sharing them
+cannot mask a failure. Those rows pass `--force-exec`, which neutralizes the
+result-skip cache (`exec-results/`) that also lands in the volume: skipping
+unchanged cases is exactly what a breakage-catching nightly must not do, and
+a marker's key may not capture every environmental input (a libstdc++ point
+update, a system-lib bump on the system-deps config). The CPython-version
+rows instead pass `--no-exec` (comp + cpy, no C++ build), so the exec cache
+never applies to them.
 
 ## One-time box setup
 
