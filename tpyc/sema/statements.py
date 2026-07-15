@@ -20,7 +20,7 @@ from ..typesys import (
     INT32, VOID, BIGINT, FLOAT, STRVIEW, BYTES, BYTESVIEW, BOOL, is_protocol_type, is_protocol_union, final_type_str_to_strview,
     is_final_allowed_inner, FINAL_INNER_TYPE_ERROR,
     qualify_exception_name, is_return_exception, is_exception_type, error_return_matches,
-    FunctionInfo, ParamInfo, RecordInfo,
+    FunctionInfo, ParamInfo, RecordInfo, MutationCallEdge,
     make_ref, unwrap_ref_type, RefType, param_has_mutable_borrow_surface,
     is_integer_type, is_any_int_type, is_numeric_type, is_readonly_span,
     is_float_type, is_any_float_type, is_polymorphic_subclass_fact,
@@ -347,6 +347,52 @@ def _is_self_call_deferred(
         if _local_traces_to_self(borrow_tracker, obj_root):
             return True
     return False
+
+
+def _record_iter_receiver_mutation(
+    ctx: 'SemanticContext', iterable_expr: TpyExpr, iterable_type: 'TpyType',
+) -> None:
+    """Record that iterating `iterable_expr` mutates it, when `__iter__` does.
+
+    `for v in obj:` implicitly calls `obj.__iter__()`; a user `__iter__` that
+    mutates the receiver needs a non-const one, but -- unlike an explicit
+    `obj.method()` -- the implicit call otherwise records no mutation, so an
+    enclosing method that only reads `obj` is wrongly inferred readonly. This
+    mirrors the receiver-mutation recording the explicit-call path does
+    (`MethodAnalyzer` + `CallAnalyzer._record_mutation_call_edges`); keep the
+    two in sync (consolidation tracked in TODO.md).
+    """
+    record_info = ctx.registry.get_record_for_type(iterable_type)
+    if record_info is None:
+        return
+    # Walk the MRO: an inherited `__iter__` mutates the receiver too.
+    iter_fi = next((fi for fi in ctx.registry.get_method_overloads_with_parents(
+                        record_info, "__iter__") if not fi.is_consuming), None)
+    if iter_fi is None or iter_fi.is_readonly or iter_fi.is_pure:
+        return
+    if (iter_fi.is_auto_readonly_mutable_clone
+            or iter_fi.borrows_receiver_via_auto_readonly):
+        return
+    # Iterating an interior-mutable field mutates bookkeeping the owner declared
+    # outside its readonly boundary -- it must not demote the enclosing method.
+    if (isinstance(iterable_expr, TpyFieldAccess)
+            and iterable_expr.accessed_field_is_interior):
+        return
+    root = _root_name_of_expr(iterable_expr)
+    if root is None:
+        return
+    # When the receiver is an (outer) loop variable, demote its binding so it is
+    # not bound `const` -- the mutating `__iter__` needs a mutable element.
+    ctx.mark_loop_var_mutated(root)
+    if _is_self_call_deferred(iterable_expr, root,
+                              ctx.func.loop_var_iterable, ctx.func.borrow_tracker):
+        # Self-rooted: defer to Phase 2 so the demotion is precise -- a
+        # non-mutating `__iter__` (self_mutated=False) does not demote.
+        ctx.func.current_call_edges.append(
+            MutationCallEdge(callee_fi=iter_fi.root, param_map={},
+                             receiver_is_self=True))
+    else:
+        ctx.mark_param_mutated(root)
 
 
 # view_family_for_type is in typesys (alongside ViewTypeFamily / VIEW_TYPE_FAMILIES).
@@ -1488,6 +1534,12 @@ class StatementAnalyzer:
                                             f"the temporary is destroyed before iteration begins",
                                             stmt.iterable,
                                         )
+                    # A user `__iter__` that mutates its receiver needs a
+                    # non-const receiver; record that so an enclosing read-only
+                    # method isn't wrongly inferred const (the loop_var_iterable
+                    # self-tracing set above must already be populated).
+                    _record_iter_receiver_mutation(
+                        self.ctx, stmt.iterable, inner_iterable_type)
                     if is_direct_next_iter or is_protocol_iter:
                         iter_depth = inner_scope.depth
                     elif is_iter_based:
