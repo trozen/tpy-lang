@@ -93,7 +93,7 @@ def _assert_facade_only(so_path: Path) -> None:
             )
 
 
-def test_facade_selfcheck():
+def test_facade_selfcheck(request):
     """Compile the facade layout/constant guard against the real Python ABI.
 
     A hand-mirroring slip in tpy/interop/cpython_abi.hpp becomes a compile
@@ -102,10 +102,11 @@ def test_facade_selfcheck():
     py_include = sysconfig.get_path("include")
     if not py_include or not (Path(py_include) / "Python.h").exists():
         pytest.skip("Python dev headers (Python.h) unavailable")
-    if exec_is_cross():
-        # The self-check pairs the exec toolchain with the HOST's Python.h;
-        # a cross compiler against host headers checks nothing meaningful.
-        pytest.skip("cross target: facade self-check needs a host toolchain")
+    if request.config.getoption("--no-exec") or exec_is_cross():
+        # This is a COMPILE check, so it needs a real host toolchain: --no-exec
+        # builds nothing (and a toolchain-free run has no compiler), and a
+        # cross compiler paired with the host's Python.h checks nothing.
+        pytest.skip("facade self-check needs a host toolchain")
     cmd = [
         *CPP_CONFIG.compiler, f"-std={CPP_CONFIG.std}", _LIMITED_API,
         "-I", str(RUNTIME_DIR), "-I", py_include,

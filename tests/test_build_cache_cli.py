@@ -45,7 +45,10 @@ def test_build_cache_lifecycle(tmp_path: Path, request: pytest.FixtureRequest) -
     # Every step runs the built binary (`-x` build+run, warm-path os.execv,
     # program output, arg forwarding), so there is no build-only variant: a
     # cross toolchain emits a non-native binary that cannot execute here.
-    if exec_is_cross() or request.config.getoption("--build-only"):
+    if (exec_is_cross() or request.config.getoption("--build-only")
+            or request.config.getoption("--no-exec")):
+        # Every step compiles + runs a binary (`tpyc -x`); --no-exec builds
+        # nothing (and a toolchain-free run has no compiler), so skip.
         pytest.skip("build-cache lifecycle needs a host-runnable binary")
 
     prog = tmp_path / "prog.py"
