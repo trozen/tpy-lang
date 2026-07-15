@@ -322,15 +322,17 @@ no M:N scheduler, so each producer is an OS thread; select and unbuffered
   the `channel[T](cap)` factory needs an explicit type argument (capacity gives
   no inference for `T`) which is not valid Python -- same as the async channel.
 
-**Blocked on two compiler gaps (`BUGS.md`), paused pending fixes:**
-1. A `with` inside `__del__` lowers to a rethrow -> non-`noexcept` destructor
-   (`-Werror=terminate`); `Sender`/`Receiver.__del__` need the lock to close +
-   notify safely. Codegen should swallow (not rethrow) in a destructor context.
-2. `for v in rx:` over the generator `__iter__` fails because the receiver is
+**Blocked on one compiler gap (`BUGS.md`), paused pending the fix:**
+1. `for v in rx:` over the generator `__iter__` fails because the receiver is
    inferred `const` (the const-receiver-blocks-lowering family).
 
-`Condvar` (the prerequisite) shipped independently; resume the channel once the
-two gaps are fixed.
+The `with`-in-`__del__` rethrow gap (previously blocker 1) is fixed: `with`/
+`try` cleanup in a destructor compiles and runs, so `Sender`/`Receiver.__del__`
+can take the lock to close + notify (the normal path does not throw). An
+exception that *does* escape a destructor now fail-fasts (report to stderr +
+abort), not report-and-continue -- see the "Exceptions escaping `__del__`"
+note in `docs/LANGUAGE_FEATURES.md`. `Condvar` (the other prerequisite) shipped
+independently; resume the channel once the remaining gap is fixed.
 
 ## CPython parity
 

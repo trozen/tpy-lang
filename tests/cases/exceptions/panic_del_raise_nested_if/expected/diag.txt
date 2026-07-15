@@ -1,0 +1,1 @@
+main.py:16: warning: 'raise' in '__del__' cannot propagate: a destructor has no caller to receive the exception, so reaching it terminates the process -- move the raising code out of '__del__'

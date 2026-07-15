@@ -471,6 +471,33 @@ inline std::string demangle_type_name(const char* mangled) {
     std::_Exit(1);
 }
 
+// Reports an exception that escaped a `__del__` body, then terminates the
+// process (fail-fast). A C++ destructor is noexcept, so the exception cannot
+// propagate; rather than swallow it (which hides an incomplete-cleanup bug)
+// TPy treats a throwing destructor as fatal -- matching C++'s own
+// noexcept-destructor rule and Rust's abort-on-panic-in-Drop, not CPython's
+// print-and-continue. stdout is flushed first so buffered program output
+// orders before the report (mirrors tpy_terminate_handler).
+[[noreturn]] inline void report_del_exception(const std::exception& e) noexcept {
+    std::string type_name = demangle_type_name(typeid(e).name());
+    std::fflush(stdout);
+    std::fputs("TurboPython panic: uncaught exception in __del__: ", stderr);
+    std::fwrite(type_name.data(), 1, type_name.size(), stderr);
+    const char* what_msg = e.what();
+    if (what_msg && *what_msg) {
+        std::fputs(": ", stderr);
+        std::fputs(what_msg, stderr);
+    }
+    std::fputc('\n', stderr);
+    std::_Exit(1);
+}
+
+[[noreturn]] inline void report_del_exception() noexcept {
+    std::fflush(stdout);
+    std::fputs("TurboPython panic: uncaught exception in __del__\n", stderr);
+    std::_Exit(1);
+}
+
 // Process-global dispositions a standalone TPy program installs when it owns
 // the OS process; grouped here so future once-per-process setup lands in the
 // runtime, not in generated main(). Not emitted for --no-main / ext_module

@@ -1088,6 +1088,20 @@ class TypeRegistrar:
                     f"'__del__' cannot have type parameters",
                     del_method.loc or record.loc,
                 )
+            # A raise that escapes __del__ terminates the process: the body runs
+            # in a `noexcept` destructor, so it cannot propagate. Warn rather
+            # than reject -- it is valid Python (CPython prints + ignores it),
+            # and the with/try fail-fast wrap aborts it anyway if reached. Only
+            # an un-try-guarded raise is flagged (one under a `try` may be
+            # caught locally); indirect throws need nothrow tracking we lack.
+            escaping = _first_escaping_raise(del_method.body)
+            if escaping is not None:
+                self.ctx.warning(
+                    "'raise' in '__del__' cannot propagate: a destructor has no "
+                    "caller to receive the exception, so reaching it terminates "
+                    "the process -- move the raising code out of '__del__'",
+                    escaping,
+                )
 
         move_method = record.move_method
         if move_method:

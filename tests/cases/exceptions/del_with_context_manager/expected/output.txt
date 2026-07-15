@@ -1,0 +1,5 @@
+before drop
+enter 3
+cleanup 3
+exit 3
+done

@@ -1,0 +1,3 @@
+in main
+child del 2
+base del 1

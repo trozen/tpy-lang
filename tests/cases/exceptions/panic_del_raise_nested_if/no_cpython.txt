@@ -1,0 +1,2 @@
+CPython catches an exception escaping __del__ (prints + continues);
+TPy fail-fasts (aborts). Divergent by design.

@@ -22,6 +22,7 @@ from ..parse import (
     TpyRecord, TpyEnum, TpyFunction, TpyStmt, TpyExprStmt, TpyAssign,
     TpyMethodCall, TpyFieldAccess, TpyName, TpyCoerce, TpyNestedDef,
     TpyPassStmt, SourceLocation,
+    TpyWith, TpyTry, TpyRaise,
     is_docstring, is_super_del_call, is_base_init_call,
     collect_name_refs, collect_top_level_local_names, expr_reads_self_field,
 )
@@ -48,6 +49,26 @@ if TYPE_CHECKING:
     from .gen_async import AsyncCoroCodegen
     from .gen_generators import GeneratorCodegen
     from .protocols import ProtocolGenerator
+
+
+def _body_has_literal_throw(stmts: list[TpyStmt]) -> bool:
+    """True if emitting `stmts` produces a literal C++ `throw` (vs a call).
+
+    Only `raise` (throw expr) and the compiler-generated rethrow paths of
+    `with` / `try` (finally + re-raise) emit a bare `throw`; implicit failures
+    -- assert, bounds/deref checks, arithmetic -- lower to function calls that
+    throw internally, so they do NOT trip `-Werror=terminate` in a noexcept
+    destructor. A miss here fails loudly (the strict-flag test build rejects
+    the unwrapped rethrow), never silently. `sub_bodies()` recurses through
+    every compound statement (and returns [] for a nested def, whose body
+    does not run at destruction time).
+    """
+    for s in stmts:
+        if isinstance(s, (TpyRaise, TpyWith, TpyTry)):
+            return True
+        if any(_body_has_literal_throw(b) for b in s.sub_bodies()):
+            return True
+    return False
 
 
 def _split_readonly_clone_pair(methods: list) -> tuple | None:
@@ -1271,10 +1292,30 @@ class RecordGenerator:
         if body_stmts:
             local_ns = Namespace(parent=self.ctx.analyzer.global_ns)
             local_ns.bind_variable("self", NominalType(name))
+            # A C++ destructor is noexcept: a `with`/`try`/`raise` in the body
+            # emits a literal `throw` that would std::terminate (a
+            # -Werror=terminate compile error). Wrap only those bodies so the
+            # escaping exception is reported and the process aborts (fail-fast;
+            # `report_del_exception` is [[noreturn]]) -- matching C++'s own
+            # noexcept-destructor rule, not CPython's print-and-continue. A body
+            # with no such construct emits no literal throw, so a plain
+            # destructor stays wrap-free (and a throwing call there aborts at
+            # the noexcept boundary just the same).
+            wrap = _body_has_literal_throw(body_stmts)
+            if wrap:
+                out.write(f"{bind}try {{\n")
             self.functions.gen_body(out, body_stmts, [], del_method.return_type,
-                                    del_method, local_ns, indent_level=body_lvl, is_method=True,
+                                    del_method, local_ns,
+                                    indent_level=body_lvl + 1 if wrap else body_lvl,
+                                    is_method=True,
                                     record_type_param_bounds=record.type_param_bounds or None,
                                     owning_record_name=name)
+            if wrap:
+                out.write(f"{bind}}} catch (const std::exception& __del_exc) {{\n")
+                out.write(f"{bind}{INDENT}::tpy::report_del_exception(__del_exc);\n")
+                out.write(f"{bind}}} catch (...) {{\n")
+                out.write(f"{bind}{INDENT}::tpy::report_del_exception();\n")
+                out.write(f"{bind}}}\n")
         out.write(f"{ind}}}\n")
 
     def _gen_covariant_converting_ctor(self, out: TextIO, record: TpyRecord) -> None:
