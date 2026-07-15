@@ -1433,19 +1433,21 @@ def pytest_configure(config):
     # worker hits the on-disk fast path immediately rather than serializing
     # on LOCK_EX. Without this, the first exec-phase test in each worker
     # would appear to take ~cache-build-time (~20s cold) even though the
-    # actual test is quick.
-    get_pch_header()
-    get_stdlib_cache()
+    # actual test is quick. --no-exec runs no exec phase, so skip the build
+    # (and every other exec-cache path below) -- it then needs no C++
+    # toolchain at all, so a --no-exec-only run can omit the compiler.
+    no_exec = config.getoption("--no-exec")
+    if not no_exec:
+        get_pch_header()
+        get_stdlib_cache()
 
     # Forced modes re-verify every case by flag (the report header says so),
     # so only announce a shared-input change in normal mode -- but always
     # refresh the recorded signature so the next run has a baseline.
     forced = config.getoption("--force-exec") or config.getoption("--clean")
-    if not config.getoption("--build-only") and not exec_is_cross():
-        # Build-only (explicit or auto-cross) neither reads nor writes exec
-        # state: refreshing the recorded env signature here would make the
-        # NEXT normal run announce a spurious whole-suite re-verify (and the
-        # announce itself would be wrong -- nothing runs).
+    if should_record_exec_env(no_exec=no_exec,
+                              build_only=config.getoption("--build-only"),
+                              is_cross=exec_is_cross()):
         report_exec_env_change(announce=not forced)
 
 
@@ -1777,6 +1779,17 @@ def cpy_phase_applicable(*, build_only: bool, no_cpy: bool, is_panic: bool,
     no_cpython.txt marker, or a case with no committed output.txt."""
     return (not build_only and not no_cpy and not is_panic
             and not no_cpython_marker and output_exists)
+
+
+def should_record_exec_env(*, no_exec: bool, build_only: bool,
+                           is_cross: bool) -> bool:
+    """Pure decision: does this run record/announce the shared exec-env
+    signature (which itself builds the stdlib cache via _exec_shared_env)?
+    Only when the run actually exercises exec -- --no-exec / --build-only / a
+    cross toolchain neither read nor write exec state. Recording there would,
+    for --no-exec, defeat the toolchain-free skip, and for build-only make the
+    NEXT normal run announce a spurious whole-suite re-verify."""
+    return not no_exec and not build_only and not is_cross
 
 
 def compute_exec_fingerprint(

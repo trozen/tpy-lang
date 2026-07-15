@@ -299,7 +299,9 @@ def test_case(case_dir, main_src, request):
     # toolchain -- a committed fingerprint can't attest the build worked here.
     # get_stdlib_cache() is memoized + prewarmed in pytest_configure, so
     # fetching it here (rather than only in the build branch below) is cheap.
-    stdlib_cache = get_stdlib_cache()
+    # Under --no-exec nothing builds, so skip it -- building the .o set here
+    # would need a C++ toolchain the exec-free run doesn't require.
+    stdlib_cache = None if no_exec else get_stdlib_cache()
     # System-mode deps (--dep-mode) are not compiled into the stdlib cache;
     # the cache's link flags must join the case's own (empty in bundled mode).
     tp_link_flags = merge_link_flags(

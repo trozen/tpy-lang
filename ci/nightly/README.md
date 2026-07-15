@@ -47,8 +47,9 @@ without parallelism); the native-macOS row instead runs over SSH.
   image happens to ship. Correspondingly the C++-toolchain rows now run
   `--no-cpy`: they own compile+build+run correctness, this axis owns CPython
   parity, and neither re-does the other's work. Add a version by copying a
-  row and bumping `cpython`; its `g++-13` only satisfies `--cxx` / the cache
-  prewarm and is never invoked under `--no-exec`.
+  row and bumping `cpython`; these rows install no C++ toolchain at all --
+  `--no-exec` builds nothing and skips the exec-cache prewarm, so it needs
+  no compiler.
 - The system-deps row exercises `--dep-mode pcre2=system,mbedtls=system`
   against the distro's libpcre2-dev/libmbedtls-dev. Ubuntu 24.04 ships
   mbedTLS 2.28 (the mainstream-LTS branch); the ssl shim supports it

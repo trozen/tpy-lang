@@ -66,22 +66,16 @@
     {
       "name": "cpy-3.12",
       "base_image": "ubuntu:24.04",
-      "toolchain_pkgs": "g++-13",
-      "cxx": "gcc-13",
       "cpython": "3.12"
     },
     {
       "name": "cpy-3.13",
       "base_image": "ubuntu:24.04",
-      "toolchain_pkgs": "g++-13",
-      "cxx": "gcc-13",
       "cpython": "3.13"
     },
     {
       "name": "cpy-3.14",
       "base_image": "ubuntu:24.04",
-      "toolchain_pkgs": "g++-13",
-      "cxx": "gcc-13",
       "cpython": "3.14"
     },
     {

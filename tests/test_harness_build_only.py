@@ -69,3 +69,12 @@ def test_cpy_phase_applicable() -> None:
     assert applicable(**{**base, "is_panic": True}) is False
     assert applicable(**{**base, "no_cpython_marker": True}) is False
     assert applicable(**{**base, "output_exists": False}) is False
+
+
+def test_should_record_exec_env() -> None:
+    rec = conftest.should_record_exec_env
+    # Recorded only on a real exec run; each exec-skipping mode suppresses it.
+    assert rec(no_exec=False, build_only=False, is_cross=False) is True
+    assert rec(no_exec=True, build_only=False, is_cross=False) is False
+    assert rec(no_exec=False, build_only=True, is_cross=False) is False
+    assert rec(no_exec=False, build_only=False, is_cross=True) is False

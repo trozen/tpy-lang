@@ -116,8 +116,10 @@ def container_script(cfg: dict, smoke: bool) -> str:
     config's toolchain.
     """
     extras = "".join(f" --extra {e}" for e in cfg.get("uv_extras", []))
-    pytest_args = [f"--cxx={cfg['cxx']}",
-                   f"--junitxml=/out/junit-{cfg['name']}.xml"]
+    pytest_args = [f"--junitxml=/out/junit-{cfg['name']}.xml"]
+    # --no-exec rows need no C++ toolchain, so `cxx` is optional for them.
+    if cfg.get("cxx"):
+        pytest_args.insert(0, f"--cxx={cfg['cxx']}")
     if cfg.get("cpython"):
         # CPython-version axis: comp + cpy only, no C++ build (parity is
         # toolchain-independent). --no-exec rules out --force-exec.

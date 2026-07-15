@@ -68,16 +68,19 @@ def test_format_report_truncates_long_failure_lists() -> None:
 
 def test_container_script_toolchain_vs_cpython_axis() -> None:
     """A C++-toolchain row forces exec and skips cpy; a CPython-version row
-    runs --no-exec (comp + cpy) and never --force-exec (they conflict)."""
+    runs --no-exec (comp + cpy), never --force-exec (they conflict), and
+    carries no --cxx (it needs no C++ toolchain)."""
     tool = nightly.container_script(
         {"name": "2404-gcc13", "cxx": "gcc-13"}, smoke=False)
+    assert "--cxx=gcc-13" in tool
     assert "--force-exec" in tool and "--no-cpy" in tool
     assert "--no-exec" not in tool
 
     ver = nightly.container_script(
-        {"name": "cpy-3.13", "cxx": "gcc-13", "cpython": "3.13"}, smoke=False)
+        {"name": "cpy-3.13", "cpython": "3.13"}, smoke=False)
     assert "--no-exec" in ver
     assert "--force-exec" not in ver and "--no-cpy" not in ver
+    assert "--cxx" not in ver
 
 
 def test_remote_script_native_full_run() -> None:
