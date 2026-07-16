@@ -243,6 +243,7 @@ from .predicates import (
     _str_compare_operand,
     _str_concat_operand,
     _str_field_value_read,
+    _bytes_field_value_read,
     _str_name_form,
     _storage_call_container,
     _container_storage_return_call_ret,
@@ -582,6 +583,11 @@ def _str_slice_receiver_supported(
         recv: TpyExpr, lc: '_LowerCtx',
         declared: dict[str, TpyType]) -> bool:
     analyzer = lc.analyzer
+    if isinstance(recv, TpyBytesLiteral):
+        # A bytes-literal receiver renders OWNED (`::tpy::bytes_literal_owned`),
+        # the `{self}` substitution the slice @cpp_template threads -- matching
+        # the AST's target-less default for the literal.
+        return True
     if isinstance(recv, TpyName):
         return (recv.name in declared
                 and _resolved_viewfam_value(
@@ -594,6 +600,42 @@ def _str_slice_receiver_supported(
         return (_resolved_viewfam_value(
             analyzer.get_expr_type(recv), analyzer) is not None)
     return False
+
+
+def _bytes_membership_ok(e, declared: dict[str, TpyType], analyzer) -> bool:
+    """`needle in b` over a bytes / BytesView container -- the native
+    free-function `bytes_contains` (single-byte needle) / `bytes_contains_sub`
+    (bytes-substring needle) arm. The receiver is a lowerable bytes-family
+    value (a local name, a bytes literal, or an F1-field read); a global
+    (indirect) receiver is not in `declared`, so it is excluded. The needle is
+    a bytes-family value (substring form) or an eligible integer (single-byte
+    form). The tuple-literal membership shape is handled separately."""
+    if e.op not in _MEMBERSHIP_OPS or isinstance(e.right, TpyTupleLiteral):
+        return False
+    fi = e.resolved_contains
+    if (fi is None or e.typed_dict_in_field is not None
+            or not fi.native_function or not fi.native_name):
+        return False
+    rt = _operand_type(e.right, declared, analyzer)
+    if rt is None or _resolved_bytes_value(rt, analyzer) is None:
+        return False
+    recv = e.right
+    if isinstance(recv, TpyName):
+        if (recv.name not in declared
+                or _resolved_bytes_value(declared[recv.name], analyzer) is None):
+            return False
+    elif isinstance(recv, TpyFieldAccess):
+        if not (_field_receiver_ok(recv, declared, analyzer)
+                and _resolved_bytes_value(analyzer.get_expr_type(recv), analyzer)
+                is not None):
+            return False
+    elif not isinstance(recv, TpyBytesLiteral):
+        return False
+    lt = _operand_type(e.left, declared, analyzer)
+    if lt is None:
+        return False
+    return (_resolved_bytes_value(lt, analyzer) is not None
+            or _resolved_scalar(lt, analyzer))
 
 
 def _container_slice_recv_ok(recv: TpyExpr, lc: '_LowerCtx',
@@ -788,17 +830,31 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
     opt_eq_targets: 'tuple[TpyType | None, TpyType | None] | None' = None
     if e.op in _ARITH_OPS or e.op in _BITWISE_OPS:
         if rb is None or not getattr(rb.method, "cpp_template", None):
-            if (rb is None or e.op != "+"
+            if (rb is None or e.op not in ("+", "*")
                     or not rb.method.native_function
                     or not rb.method.native_name):
                 reject()
             bt = _resolved_bytes_value(rtype, analyzer)
             lt = _operand_type(e.left, declared, analyzer)
             rt = _operand_type(e.right, declared, analyzer)
-            if (bt is None or not is_bytes_type(bt)
-                    or not _bytes_concat_operand(e.left, lt, analyzer)
-                    or not _bytes_concat_operand(e.right, rt, analyzer)):
+            if bt is None or not is_bytes_type(bt):
                 reject()
+            if e.op == "+":
+                # bytes concat -> ::tpy::bytes_concat(l, r): both operands
+                # bytes-family.
+                if not (_bytes_concat_operand(e.left, lt, analyzer)
+                        and _bytes_concat_operand(e.right, rt, analyzer)):
+                    reject()
+            else:
+                # bytes repeat (`b * n` / `n * b`) -> ::tpy::bytes_repeat: one
+                # operand a bytes value, the other an int count. The resolved
+                # __mul__/__rmul__ pins the bytes into the receiver slot.
+                if _bytes_concat_operand(e.left, lt, analyzer):
+                    if not _resolved_scalar(rt, analyzer):
+                        reject()
+                elif not (_bytes_concat_operand(e.right, rt, analyzer)
+                          and _resolved_scalar(lt, analyzer)):
+                    reject()
         elif e.op == "+" and _is_string_owned(rtype):
             lt = _operand_type(e.left, declared, analyzer)
             rt = _operand_type(e.right, declared, analyzer)
@@ -888,6 +944,12 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                     left_scalar and not _resolved_scalar(et, analyzer)) or (
                     left_str and _resolved_str_value(et, analyzer) is None):
                 reject()
+    elif e.op in _MEMBERSHIP_OPS and _bytes_membership_ok(e, declared, analyzer):
+        # `needle in b` over a bytes / BytesView container: the native
+        # free-function `bytes_contains` (single-byte needle) /
+        # `bytes_contains_sub` (bytes-substring needle). Validated by the
+        # helper; emitted below through the free-function THIRMembership arm.
+        pass
     elif e.op in _MEMBERSHIP_OPS:
         fi = e.resolved_contains
         if (fi is None or e.typed_dict_in_field is not None
@@ -948,6 +1010,21 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
             elements=tuple(_lower_expr(el, lc, declared) for el in elems),
             negate=e.op == "not in",
             need_temp=need_temp,
+            loc=loc)
+    if e.op in _MEMBERSHIP_OPS and _bytes_membership_ok(e, declared, analyzer):
+        # Bytes/BytesView membership -> the native free function
+        # `::tpy::bytes_contains[_sub](recv, needle)`. The receiver reads bare;
+        # a bytes-literal needle renders OWNED (the AST's target-less default),
+        # matching `bytes_contains_sub`'s owned `bytes` parameter.
+        _witness("binop.bytes_membership")
+        return THIRMembership(
+            result_type=rtype,
+            receiver=_lower_expr(e.right, lc, declared),
+            needle=_lower_expr(e.left, lc, declared,
+                               use=_ExprUse(result=_ExprResultUse.STORAGE)),
+            method_cpp=e.resolved_contains.native_name,
+            negate=e.op == "not in",
+            free_function=True,
             loc=loc)
     if e.op in _MEMBERSHIP_OPS:
         _witness("binop.membership")
@@ -1340,7 +1417,10 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                              or (_resolved_str_value(rtype, analyzer)
                                  is not None
                                  and _field_over_call_ok(e, analyzer)))
-                        and _witness("fstr.str_field")))
+                        and _witness("fstr.str_field"))
+                    or (field_owned_str_ok
+                        and _bytes_field_value_read(e, declared, analyzer)
+                        and _witness("print.bytes_field")))
                 if not result_ok:
                     raise ThirUnsupported("field.result_type", detail=True)
                 if not (
@@ -1405,6 +1485,11 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
         # honest for form-keyed sinks. A `StrView` field is BORROW: the
         # owned-str return sink fires its view->owned copy on the tag.
         fa_str = _resolved_str_value(rtype, analyzer)
+        if fa_str is None:
+            # A bytes-family field read (admitted only in the print sink) tags
+            # its form off the bytes resolution: owned vector STORAGE, view span
+            # BORROW -- the same view/owned mapping as str.
+            fa_str = _resolved_bytes_value(rtype, analyzer)
         # A sema-narrowed Optional field read (declared std::optional<T>,
         # analyzed non-Optional) unwraps `(*recv.field)` in value positions;
         # plain-assign targets and the print_optional_val wrap strip the flag.
@@ -1479,6 +1564,17 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
             loc=loc,
         )
     if isinstance(e, TpySubscript):
+        if e.enum_from_name is not None:
+            # `Color[name]` -> `::tpy::EnumUtil<E>::from_name(name)` (a static
+            # lookup that panics KeyError on miss). The receiver is the enum
+            # TYPE name (no value-position lowering); only the str index lowers.
+            _witness("subscript.enum_from_name")
+            cpp_type = e.enum_from_name.to_cpp()
+            return THIREnumWrap(
+                result_type=rtype,
+                wrap=f"::tpy::EnumUtil<{cpp_type}>::from_name({{0}})",
+                operand=_lower_expr(e.index, lc, declared),
+                loc=loc)
         if not subscript_prechecked and e.needs_optional_runtime_check:
             raise ThirUnsupported("subscript.optional_check", detail=True)
         if e.slice_function_info is not None:
@@ -2561,7 +2657,13 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                 shape_ok = _protocol_method_call_supported(
                     e, fi, declared, analyzer,
                     stmt_position=stmt_position)
-            elif _resolved_str_value(recv_type, analyzer) is not None:
+            elif (_resolved_str_value(recv_type, analyzer) is not None
+                  or _resolved_bytes_value(recv_type, analyzer) is not None):
+                # A bytes / BytesView receiver's builtin methods
+                # (`bs.strip()`/`.find()`/`.upper()`/...) are the twin of the
+                # str-view family: @native(function=True) / @cpp_template
+                # builtins rendering `::tpy::bytes_*(recv, args)`, the same
+                # general THIRMethodCall arm the str view uses.
                 shape_ok = _view_method_call_supported(
                     e, fi, declared, analyzer,
                     stmt_position=stmt_position,
@@ -2682,6 +2784,10 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
         # A generic method's explicit template args (`b.transform<T>(42)`):
         # the AST's method_targs suffix, spelled type_to_cpp over each
         # inferred arg. The static/module marker faces spell their own.
+        # The node asserts not (deref_check and method_targs_cpp); the
+        # inferred-type-args + needs_optional_runtime_check combination is
+        # already rejected upstream (the deref-over-type-args guard), so both
+        # are never set together here.
         method_targs = None
         if (e.inferred_type_args and not e.user_module_call
                 and not e.is_static_call):

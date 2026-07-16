@@ -317,11 +317,20 @@ class THIRMembership(THIRExpr):
     `@native("contains")` name). The needle renders bare: the admitted
     containers carry fixed-int / owned-str keys and scalar set members, never a
     StrView key, so the AST's `view_key_target` is None and the needle takes the
-    plain value render. `result_type` is always bool; VALUE form."""
+    plain value render. `result_type` is always bool; VALUE form.
+
+    When `free_function` is set (a bytes/BytesView container, whose
+    `__contains__` is a native FREE function), the emit is
+    `(::tpy::<method_cpp>(receiver, needle))` instead -- receiver and needle as
+    call arguments, `method_cpp` the un-qualified native name (qualified at
+    emit). Picks `bytes_contains` (single-byte needle) or `bytes_contains_sub`
+    (bytes-substring needle) per the resolved overload; the needle renders in
+    its owned form."""
     receiver: THIRExpr
     needle: THIRExpr
     method_cpp: str
     negate: bool = False
+    free_function: bool = False
 
 
 @dataclass(frozen=True)
@@ -761,6 +770,10 @@ class THIRComprehension(THIRExpr):
     element: 'THIRExpr | None' = None     # list/set insert value
     key: 'THIRExpr | None' = None         # dict
     value: 'THIRExpr | None' = None       # dict
+    # Owned-move dict: the value (last sink) moved, so the key is sequenced into
+    # `__dk_N` first (insert_or_assign leaves its two args unsequenced, so a key
+    # reading the moved-from loop var would be a use-after-move).
+    value_moved: bool = False
 
 
 @dataclass(frozen=True)
@@ -861,7 +874,9 @@ class THIREnumWrap(THIRExpr):
                             `string_view`; BORROW form, so owned-str sinks
                             fire the S1 view->owned copy);
       * IntEnum `-x`     -- `(-static_cast<U>({0}))`;
-      * IntEnum truthy   -- `(static_cast<U>({0}) != 0)` (condition / `not`).
+      * IntEnum truthy   -- `(static_cast<U>({0}) != 0)` (condition / `not`);
+      * `E[name]`        -- `::tpy::EnumUtil<E>::from_name({0})` (name-lookup
+                            subscript; `{0}` is the str index).
 
     A PLAIN-enum truthiness test renders the literal `true` with the operand
     DROPPED (`operand is None`) -- mirroring gen_truthy_expr, which discards

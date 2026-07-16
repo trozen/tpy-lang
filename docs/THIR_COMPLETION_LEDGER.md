@@ -92,8 +92,9 @@ cell it touches is admitted:
   M4c wrapper subjects, resumable) / docstring-`pass` trivia in any
   body position (incr 90) / comprehensions (the C1+C2 decl-init
   slice, incr 91; C3 routine rows -- 3-arg range, field iterables,
-  Char slots, print-arg position, Array range arm -- incr 94; open:
-  Array-source arm, call-arg/return positions, owned-move,
+  Char slots, print-arg position, Array range arm -- incr 94;
+  owned-move elements (list/set element + dict value) routed incr 95;
+  open: Array-source arm, call-arg/return positions,
   narrowed-Optional iterables, C4) **(covered)**
   / async-await + yield (foundation + wave 2 route free/method async defs
   and value-scalar generators incl. methods through the shared-skeleton
@@ -566,9 +567,10 @@ deferred (self-contained) / blocked-on-`<rung>`.
   ill-formed C++) is RE-ADMITTED via `fix-enum-name-strview`: sema now
   types `.name` StrView, both paths take the standard view->owned copy at
   owned sinks, and the wrap lowers BORROW-tagged (`enum.name` face,
-  corpus-witnessed). Still deferred: enum ITERATION (`for c in Color:`,
-  the `enum_iterable` for-loop arm) and match-over-enum (the
-  match-statement axis).
+  corpus-witnessed). enum ITERATION (`for c in Color:`, the
+  `enum_iterable` for-loop arm) now ROUTES (`foreach.enum` face), as does
+  name-lookup subscript `Color[name]` (`subscript.enum_from_name`).
+  Still deferred: match-over-enum (the match-statement axis).
 - F3 tuples: **PARTIAL** (increments 22-24) -- storage->borrow read
   (`tuple_to_pointer`: borrow-form tuple return + storage-tuple `auto&&` alias locals)
   + borrow->storage write (`tuple_to_storage`, tuple-field write off a borrow tuple
@@ -1457,9 +1459,9 @@ follow-up): **C3** -- Array demotion (`array_from_index` lambda;
 NB literal-bound small range comps resolve to Arrays, so they reject
 today), non-decl positions (print/call arg, return -- 32 corpus
 list-comps sit in `print(...)`), field/subscript/call iterables,
-3-arg range, owned-move elements (`__dk_N` key sequencing +
-`_comp_owned_move_scope`), narrowed-Optional iterables, Char element
-slots; **C4** -- genexpr (the make_generator lambda family:
+3-arg range, narrowed-Optional iterables, Char element
+slots (owned-move elements -- `__dk_N` key sequencing +
+`_comp_owned_move_scope` -- ROUTED, incr 95); **C4** -- genexpr (the make_generator lambda family:
 range-counter captures, lvalue IIFE, moved-source; builtin-arg
 positions dominate the corpus). Faces
 `comp.{list,set,dict,range,begin_end,reserve,filter,unpack}`
@@ -1509,8 +1511,8 @@ indexing arm (now test_fallback's canonical out-of-slice shape),
 call-arg position (container param-slot pins), RETURN position
 (blocked on the signature axis: container returns reject at
 `_eligible_return`; widening it is owned-name return moves, a
-signature row, not a comprehension row), owned-move elements,
-narrowed-Optional iterables, genexpr (C4). Faces
+signature row, not a comprehension row),
+narrowed-Optional iterables, genexpr (C4) (owned-move elements ROUTED, incr 95). Faces
 `comp.{range3,field_iter,print_arg,array_range}` (`array_range`
 corpus-witnessed; the others unit-pinned). Routing 35874 -> 35884
 bodies / 3344 cases (+10 solo, pre-integration base; the integrated

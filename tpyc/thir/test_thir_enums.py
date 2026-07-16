@@ -113,6 +113,32 @@ class TestEnumValues:
         assert "(static_cast<int32_t>(p) >= n)" in cpp
         assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
+    def test_enum_for_each_iteration_routes(self):
+        # `for c in Color:` ranges over the fixed EnumUtil<E>::members lvalue;
+        # routes byte-identically to the AST enum for-loop arm.
+        src = (
+            _ENUM_PRELUDE
+            + "def show() -> None:\n    for c in Color:\n        print(c)\n"
+            + "def main():\n    show()\nmain()\n"
+        )
+        assert _fn(_lower_ctx(src), "show") is not None
+        cpp = _cpp(src, thir=True)
+        assert "::tpy::EnumUtil<Color>::members" in cpp
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+    def test_enum_name_lookup_subscript_routes(self):
+        # `Color[name]` -> ::tpy::EnumUtil<Color>::from_name(name); routes
+        # byte-identically to the AST subscript arm.
+        src = (
+            _ENUM_PRELUDE
+            + "def parse(n: str) -> Color:\n    return Color[n]\n"
+            + "def main():\n    print(parse(\"RED\"))\nmain()\n"
+        )
+        assert _fn(_lower_ctx(src), "parse") is not None
+        cpp = _cpp(src, thir=True)
+        assert "::tpy::EnumUtil<Color>::from_name(" in cpp
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
     def test_cross_module_enum_routes_qualified(self, tmp_path):
         # A cross-module enum spells qualified (::tpyapp::m::E) in every
         # position: the member access, the param decl, and the local decl

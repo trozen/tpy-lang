@@ -347,6 +347,17 @@ class TestBytesTailGate:
             "def f(a: bytes, m: bytearray) -> bytes:\n    return a + m\n")
         assert _fn(thir, "f") is None
 
+    def test_repeat_both_directions_route(self):
+        # bytes repeat is commutative in the surface (`b * n` and `n * b`), and
+        # __mul__/__rmul__ both resolve to ::tpy::bytes_repeat with the bytes
+        # pinned to the receiver slot -- the reverse (count-first) operand order
+        # takes the else-branch of the repeat gate. Both route byte-identically.
+        fwd = 'def f(a: bytes) -> None:\n    print(a * 3)\n'
+        rev = 'def f(a: bytes) -> None:\n    print(3 * a)\n'
+        for src in (fwd, rev):
+            assert _fn(_lower(src), "f") is not None
+            _assert_byte_identical(src)
+
     def test_aug_assign_routes(self):
         # t += v on an owned-bytes LOCAL desugars to the concat-and-assign
         # (t = ::tpy::bytes_concat(t, v); no parens -- the statement-RHS

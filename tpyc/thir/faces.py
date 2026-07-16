@@ -289,6 +289,9 @@ THIR_FACES: frozenset[str] = frozenset({
     # A list/Array/Span slice read (`items[a:b:c]`) -> owned list via the
     # `list_slice`/`list_stepped_slice` @cpp_template (STORAGE result).
     "subscript.container_slice",
+    # `Color[name]` enum name lookup -> `::tpy::EnumUtil<E>::from_name(name)`
+    # (lowering; a static lookup panicking KeyError on miss).
+    "subscript.enum_from_name",
     # `len(recv.field)` -- a container/str/bytes field arg to the builtin len
     # (lowering; `::tpy::__len__(this->xs)`, the field renders as its own
     # THIRFieldAccess inside the shared native-call emit).
@@ -297,6 +300,9 @@ THIR_FACES: frozenset[str] = frozenset({
     # field renders inside the same lvalue `auto& __obj_N =` capture a name
     # takes; str/bytes fields ride the older viewfam admission).
     "foreach.container_field",
+    # Enum-type for-each iterable (lowering; `for c in Color:` -- ranges over
+    # the fixed `::tpy::EnumUtil<E>::members` static array as an `auto&` lvalue).
+    "foreach.enum",
     # A str method returning `Own[list[str]]` as a for-each iterable (lowering;
     # `for w in s.split():` -- the owning `auto __obj_N = ::tpy::str_split...(s)`
     # rvalue capture, iterated like any list[str]).
@@ -565,6 +571,9 @@ THIR_FACES: frozenset[str] = frozenset({
     # resolved_contains arm; witnessed at lowering admission and again at
     # lowering -- non-vacuity only needs a nonzero count).
     "binop.membership",
+    # bytes/BytesView membership (`needle in b` -> the native free-function
+    # `::tpy::bytes_contains[_sub](b, needle)`, single-byte vs substring form).
+    "binop.bytes_membership",
     # tuple-literal membership (`x in (a, b, ...)` -> the `==` OR-chain, the
     # statement-expression temp form when the needle is non-trivial).
     "binop.tuple_membership",
@@ -635,6 +644,8 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # print arg -> bare `::tpy::print_optional_val`
     "print.wrap_arg",               # container / value-tuple / F1-record NAME
                                     # print arg -> its kind-keyed printer wrap
+    "print.bytes_field",            # bytes-family field read print arg -> bare
+                                    # `.field` inside a BytesPrinter wrap
     "print.tuple_subscript_arg",    # value-tuple subscript read print arg ->
                                     # TuplePrinter(std::get<N>(t))
     "print.container_slice_arg",    # list/Array/Span slice read print arg ->

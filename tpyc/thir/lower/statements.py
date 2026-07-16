@@ -134,6 +134,7 @@ from ..nodes import (
     THIRIsinstance,
     THIRLiteral,
     THIRMethodCall,
+    THIRModuleVar,
     THIRMove,
     THIRName,
     THIRNarrowAlias,
@@ -831,6 +832,26 @@ def _for_each_container_route(
         str_literal_iterable=str_literal_iterable,
         value_tuple_elem=_value_tuple(et, analyzer) is not None)
 
+def _for_enum_route(stmt: TpyForEach, analyzer,
+                    declared: dict[str, TpyType]) -> '_ForEachRoute | None':
+    """`for c in Color:` -- range over `::tpy::EnumUtil<E>::members` (an lvalue
+    static array), mirroring `_gen_for_each_loop`'s enum arm. The loop var binds
+    the enum value (`Color c = *__beg_N;`). The other shape guards
+    (`_for_loop_shape_ok` minus its blanket enum exclusion) still apply."""
+    if stmt.enum_iterable is None:
+        return None
+    if (stmt.is_async or stmt.is_tuple_unpack
+            or stmt.consuming_iter_fi is not None or stmt.hoist_loop_var):
+        return None
+    if analyzer.if_branch_decls.get(id(stmt)):
+        return None
+    if stmt.var in declared:
+        return None
+    et = stmt.enum_iterable
+    if not _for_each_elem_binding_ok(et):
+        return None
+    return _ForEachRoute(route="enum", elem_type=et, iterable_lvalue=True)
+
 def _for_tuple_unpack_route(
         stmt: TpyForEach, analyzer, declared: dict[str, TpyType],
         narrowed: AbstractSet[str]) -> '_ForEachRoute | None':
@@ -1097,6 +1118,8 @@ def _select_for_each_route(
         route = _for_range_route(stmt, analyzer, declared)
     elif stmt.is_tuple_unpack:
         route = _for_tuple_unpack_route(stmt, analyzer, declared, narrowed)
+    elif stmt.enum_iterable is not None:
+        route = _for_enum_route(stmt, analyzer, declared)
     else:
         route = _for_each_container_route(stmt, analyzer, declared)
         if route is None:
@@ -4118,6 +4141,24 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 body=body,
                 const_loop_var=stmt.const_loop_var,
                 iterable_lvalue=route.iterable_lvalue,
+                orelse=_lower_loop_orelse(stmt.orelse, lc, declared, scope,
+                                          "loop.for_else"),
+                loc=loc,
+            )
+        if route.route == "enum":
+            _witness("foreach.enum")
+            # The iterable is the fixed `EnumUtil<E>::members` lvalue (a static
+            # array), spelled verbatim -- not lowered from `stmt.iterable` (a
+            # bare enum TYPE name, which has no value-position lowering).
+            members_cpp = (
+                f"::tpy::EnumUtil<{stmt.enum_iterable.to_cpp()}>::members")
+            return THIRForEach(
+                var=stmt.var,
+                elem_type=et,
+                iterable=THIRModuleVar(cpp=members_cpp, result_type=et),
+                body=body,
+                const_loop_var=stmt.const_loop_var,
+                iterable_lvalue=True,
                 orelse=_lower_loop_orelse(stmt.orelse, lc, declared, scope,
                                           "loop.for_else"),
                 loc=loc,

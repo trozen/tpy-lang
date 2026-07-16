@@ -693,8 +693,19 @@ def _emit_comprehension(e: 'THIRComprehension', state: _EmitState) -> str:
                                        e.const_loop_var)
             buf.write(f"{ind2}{binding}\n")
     if e.kind == "dict":
-        insert = (f"__result.insert_or_assign({_emit_expr(e.key, state)}, "
-                  f"{_emit_expr(e.value, state)})")
+        if e.value_moved:
+            # Owned-move dict: the moved value leaves insert_or_assign's two args
+            # unsequenced, so the key evaluates into a `__dk_N` local FIRST (a key
+            # reading the moved-from loop var would otherwise be a use-after-move).
+            # Render key then value (their own counters) before drawing __dk_N.
+            key_s = _emit_expr(e.key, state)
+            value_s = _emit_expr(e.value, state)
+            dk = f"__dk_{state.next_unpack()}"
+            insert = (f"{{ auto {dk} = {key_s}; __result.insert_or_assign("
+                      f"std::move({dk}), {value_s}); }}")
+        else:
+            insert = (f"__result.insert_or_assign({_emit_expr(e.key, state)}, "
+                      f"{_emit_expr(e.value, state)})")
     elif e.kind == "set":
         insert = f"__result.insert({_emit_expr(e.element, state)})"
     else:
@@ -1115,9 +1126,16 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         return expand_cpp_template(e.cpp_template, _emit_expr(e.operand, state))
     if isinstance(e, THIRMembership):
         # _gen_binop's resolved_contains arm: `(recv.contains(needle))`, the
-        # negation wrapping the already-parenthesized find expr.
-        inner = (f"({_emit_expr(e.receiver, state)}.{e.method_cpp}"
-                 f"({_emit_expr(e.needle, state)}))")
+        # negation wrapping the already-parenthesized find expr. A bytes
+        # container's `__contains__` is a native FREE function, so it renders
+        # `(::tpy::name(recv, needle))` instead.
+        if e.free_function:
+            inner = (f"({qualify_native_name(e.method_cpp)}"
+                     f"({_emit_expr(e.receiver, state)}, "
+                     f"{_emit_expr(e.needle, state)}))")
+        else:
+            inner = (f"({_emit_expr(e.receiver, state)}.{e.method_cpp}"
+                     f"({_emit_expr(e.needle, state)}))")
         return f"(!{inner})" if e.negate else inner
     if isinstance(e, THIRTupleMembership):
         # _gen_binop's tuple-literal `in` arm: an OR-chain of `==` compares.

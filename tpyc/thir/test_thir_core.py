@@ -1592,6 +1592,14 @@ class TestFloat:
         assert _fn(_lower(src), "f") is not None
         _assert_byte_identical(src)
 
+    def test_float_power_routes(self):
+        # `**` routes via its `std::pow` cpp_template arm (the parser emits the
+        # `**` token); the mixed float/int form casts the int operand to double
+        # through the same slot-retype the other arith ops use.
+        src = "def f(a: float, b: float) -> float:\n    return a ** b\n"
+        assert _fn(_lower(src), "f") is not None
+        _assert_byte_identical(src)
+
     def test_float32_values_route(self):
         # Float32 params/locals/returns are eligible scalars (`float`); the
         # `f`-suffix literal render rides the float_literal_to_float32 coerce.
@@ -1947,8 +1955,8 @@ class TestDump:
         )
 
     def test_dump_empty(self):
-        # Power (op `**`) is outside the slice, so nothing routes.
-        thir = _lower("def f(a: float) -> float:\n    return a ** a\n")
+        # Int truthiness (`if a:`) is not a comparison condition, so nothing routes.
+        thir = _lower(_PRELUDE + "def f(a: Int32) -> Int32:\n    r = a\n    if a:\n        r = 0\n    return r\n")
         assert "(no THIR-eligible functions)" in dump_thir(thir)
 
     def test_dump_for_range(self):

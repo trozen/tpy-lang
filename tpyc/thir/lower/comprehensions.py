@@ -6,6 +6,7 @@ from dataclasses import dataclass, replace
 from ...parse.nodes import (
     TpyArrayLiteral,
     TpyCall,
+    TpyCoerce,
     TpyDictComprehension,
     TpyFieldAccess,
     TpyGeneratorExpression,
@@ -37,10 +38,12 @@ from ...type_def_registry import (
     is_span,
 )
 from ...modules.type_resolution import get_iterable_element_type, is_native_iterable
-from ...codegen_cpp.context import escape_cpp_name, loop_var_binding
+from ...codegen_cpp.context import (
+    escape_cpp_name, is_lvalue_iterable, loop_var_binding)
 from ..fallback import ThirUnsupported
 from ..faces import witness as _witness
-from ..nodes import THIRComprehension, THIRContainerLiteral, THIRExpr, THIRGenExpr
+from ..nodes import (
+    THIRComprehension, THIRContainerLiteral, THIRExpr, THIRGenExpr, THIRMove)
 from .predicates import (
     _dict_view_iterable_ok,
     _eligible_char,
@@ -91,6 +94,7 @@ class _CompRoute:
     iterable_lvalue: bool
     sized_reserve: bool
     unpack_types: 'tuple | None'
+    owns_elements: bool = False      # source yields Own[T]: sinks move
 
 
 def _comp_sized_iterable(t: TpyType) -> bool:
@@ -114,10 +118,11 @@ def _comp_route(init, declared: dict[str, TpyType], narrowed: 'set[str]',
     if kind is None:
         return None
     gen = init.generator
-    if gen.owns_elements:
-        return None
+    owns = gen.owns_elements
     it = gen.iterable
     if _is_range_call(it):
+        if owns:
+            return None  # defensive: range yields scalars, never Own[T]
         if gen.unpack_vars is not None or len(it.args) not in (1, 2, 3):
             return None
         counter = _range_counter_type(it, analyzer)
@@ -169,9 +174,29 @@ def _comp_route(init, declared: dict[str, TpyType], narrowed: 'set[str]',
         # A name is an lvalue; a field chain off one inherits it
         # (is_lvalue_iterable recurses to the Name arm).
         lvalue = True
+    elif isinstance(it, TpyCall) and owns:
+        # An Own[T]-yielding generator source (`widgets(3)`), the owned-move
+        # comprehension. The generator is iterated via begin/end (the AST's
+        # comprehension loop emits them unconditionally -- so `is_native_iterable`
+        # is bypassed for this arm; `get_iterable_element_type` below is the
+        # iterability gate). The lvalue verdict rides the shared
+        # `is_lvalue_iterable` (a protocol/generator return is a by-value rvalue
+        # -> owning `auto __obj_N =` capture).
+        ret = analyzer.get_expr_type(it)
+        if ret is None or gen.unpack_vars is not None:
+            return None
+        it_type = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ret)))
+        if _resolved_str_value(it_type, analyzer) is not None:
+            return None
+        lvalue = is_lvalue_iterable(it, analyzer.registry.get_record,
+                                    analyzer.get_expr_type)
     else:
         return None
-    if it_type is None or not is_native_iterable(it_type, analyzer.registry):
+    if it_type is None:
+        return None
+    # The owned-generator call arm iterates via begin/end; every other arm
+    # requires a NativeIterable source.
+    if not owns and not is_native_iterable(it_type, analyzer.registry):
         return None
     et = get_iterable_element_type(it_type, registry=analyzer.registry)
     if et is None:
@@ -201,7 +226,8 @@ def _comp_route(init, declared: dict[str, TpyType], narrowed: 'set[str]',
             types.append(tt)
         return _CompRoute(kind=kind, loop="begin_end", counter_type=None,
                           it_type=it_type, et=et, iterable_lvalue=lvalue,
-                          sized_reserve=sized, unpack_types=tuple(types))
+                          sized_reserve=sized, unpack_types=tuple(types),
+                          owns_elements=owns)
     str_et = _resolved_str_value(et, analyzer)
     if str_et is not None:
         et = str_et
@@ -215,7 +241,8 @@ def _comp_route(init, declared: dict[str, TpyType], narrowed: 'set[str]',
         return None
     return _CompRoute(kind=kind, loop="begin_end", counter_type=None,
                       it_type=it_type, et=et, iterable_lvalue=lvalue,
-                      sized_reserve=sized, unpack_types=None)
+                      sized_reserve=sized, unpack_types=None,
+                      owns_elements=owns)
 
 def _comp_slot_ok(slot: 'TpyType | None', analyzer) -> bool:
     # The NARROW slot predicate, kept for dict KEYS (the hashable-key axis:
@@ -292,12 +319,16 @@ def _comp_lowering_route(
     if route.kind == "set" and not (is_set(t)
                                     and _comp_elem_slot_ok(args[0], analyzer)):
         return None
-    if route.kind == "dict" and not (
-            is_dict(t) and len(args) == 2
-            and _comp_slot_ok(args[0], analyzer)          # key: narrow
-            and _comp_elem_slot_ok(args[1], analyzer,     # value: widened
-                                   allow_container=True)):
-        return None
+    if route.kind == "dict":
+        # An owned-move source admits a hashable F1-record KEY (sema validated
+        # hashability by giving the dict a record key type); every other dict
+        # comp keeps the narrow key slice.
+        key_ok = (_comp_slot_ok(args[0], analyzer)
+                  or (route.owns_elements and _f1_record(args[0], analyzer)))
+        if not (is_dict(t) and len(args) == 2 and key_ok
+                and _comp_elem_slot_ok(args[1], analyzer,     # value: widened
+                                       allow_container=True)):
+            return None
     gen = init.generator
     # The comp vars shadow same-named outer locals for the element/filter
     # walk; a var shadowing a specially-classified local (pointer / rebind /
@@ -465,6 +496,32 @@ def _lower_comp_dict_value(e, vt: TpyType, lc: '_LowerCtx',
     _witness("comp.container_value")
     return value
 
+def _lower_owned_comp_sink(e, slot: 'TpyType | None', lc: '_LowerCtx',
+                           body_declared: dict[str, TpyType], gen,
+                           *, is_last_sink: bool) -> 'THIRExpr':
+    """Lower one sink (list/set element, dict value) of an owned-move
+    comprehension -- `_gen_comp_owned_elem` + `_move_comp_sink` under
+    `_comp_owned_move_scope`. The move set is restricted to THIS comp's loop var
+    (the loop var is rebound each iteration, so moving it is sound; an outer
+    movable would multi-move). A bare-loop-var LAST sink moves UNCONDITIONALLY
+    (structurally the last use, sequenced after any earlier read); an
+    earlier/derived sink defers to the ordinary `_maybe_move` last-use gate."""
+    saved = lc.movable_locals
+    lc.movable_locals = {gen.var}
+    try:
+        lowered = _lower_container_elem(e, slot, lc, body_declared)
+    finally:
+        lc.movable_locals = saved
+    inner = e
+    while isinstance(inner, TpyCoerce):
+        inner = inner.expr
+    if (is_last_sink and isinstance(inner, TpyName) and inner.name == gen.var
+            and not isinstance(lowered, THIRMove)):
+        lowered = THIRMove(result_type=lowered.result_type, value=lowered,
+                           form=lowered.form, loc=getattr(e, "loc", None))
+    return lowered
+
+
 def _lower_comprehension(
         init, result_type: 'TpyType | None', lc: '_LowerCtx',
         declared: dict[str, TpyType],
@@ -501,21 +558,38 @@ def _lower_comprehension(
         _witness("comp.filter")
     if route.sized_reserve:
         _witness("comp.reserve")
+    value_moved = False
     if route.kind == "dict":
         kt = _comp_result_type(init.result_key_type, analyzer)
         vt = _comp_result_type(init.result_value_type, analyzer)
         container = (f"::tpy::ordered_map<{lc.render_type(kt)}, "
                      f"{lc.render_type(vt)}>")
         element = None
-        key = _lower_container_elem(init.key_expr, kt, lc, body_declared)
-        value = _lower_comp_dict_value(init.value_expr, vt, lc, body_declared)
+        if route.owns_elements:
+            # The value is the last sink (a bare owned loop var moves
+            # unconditionally); the key is earlier, so it moves only when it is
+            # itself the last use (the ordinary last-use gate). When the value
+            # moves, the key is sequenced into `__dk_N` first at emit.
+            key = _lower_owned_comp_sink(init.key_expr, kt, lc, body_declared,
+                                         gen, is_last_sink=False)
+            value = _lower_owned_comp_sink(init.value_expr, vt, lc,
+                                           body_declared, gen, is_last_sink=True)
+            value_moved = isinstance(value, THIRMove)
+        else:
+            key = _lower_container_elem(init.key_expr, kt, lc, body_declared)
+            value = _lower_comp_dict_value(init.value_expr, vt, lc, body_declared)
     else:
         elem_t = _comp_result_type(init.result_elem_type, analyzer)
         cpp_elem = lc.render_type(elem_t)
         container = (f"std::vector<{cpp_elem}>" if route.kind == "list"
                      else f"::tpy::ordered_set<{cpp_elem}>")
-        element = _lower_container_elem(
-            init.element_expr, elem_t, lc, body_declared)
+        if route.owns_elements:
+            element = _lower_owned_comp_sink(
+                init.element_expr, elem_t, lc, body_declared, gen,
+                is_last_sink=True)
+        else:
+            element = _lower_container_elem(
+                init.element_expr, elem_t, lc, body_declared)
         key = value = None
     range_start = range_stop = None
     start_lit = stop_lit = False
@@ -575,6 +649,7 @@ def _lower_comprehension(
         element=element,
         key=key,
         value=value,
+        value_moved=value_moved,
         loc=loc,
     )
 

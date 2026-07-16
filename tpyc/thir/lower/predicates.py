@@ -138,7 +138,7 @@ from ..nodes import (
 # NB the parser emits true-division as op `div` (not `/`); truediv rides the same
 # resolved-binop template arm -- its dunder's `::tpy::truediv({self}, {0})`
 # expands exactly like `add_check`. `in`/`is` take other emit paths, out of slice.
-_ARITH_OPS = frozenset({"+", "-", "*", "div", "//", "%"})
+_ARITH_OPS = frozenset({"+", "-", "*", "div", "//", "%", "**"})
 
 # Bitwise operators. Their fixed-int dunders carry a `@cpp_template` too
 # (`::tpy::lshift_check<T>`, `static_cast<T>({self} & {0})`, ...), and the emit
@@ -2698,6 +2698,20 @@ def _str_field_value_read(e: TpyExpr, declared: dict[str, TpyType],
         return False
     st = _resolved_str_value(analyzer.get_expr_type(e), analyzer)
     return st is not None and (is_str_type(st) or is_str_view_type(st))
+
+def _bytes_field_value_read(e: TpyExpr, declared: dict[str, TpyType],
+                            analyzer) -> bool:
+    """A value-position read of a bytes-family field off an admitted receiver
+    (`recv.field`, `_field_receiver_ok`) -- the bytes sibling of
+    `_str_field_value_read`. An owned `std::vector<uint8_t>` member reads bare
+    as STORAGE, a `BytesView` (span) member as BORROW; the render is bare
+    `.field` at every position that admits the read (print sink, compare/concat
+    operands, membership needle), byte-identical to the AST path."""
+    if not (isinstance(e, TpyFieldAccess)
+            and _field_receiver_ok(e, declared, analyzer)):
+        return False
+    bt = _resolved_bytes_value(analyzer.get_expr_type(e), analyzer)
+    return bt is not None and (is_bytes_type(bt) or is_bytes_view_type(bt))
 
 def _const_exact_field_receiver_ok(e: TpyExpr, declared: dict[str, TpyType],
                                    analyzer) -> bool:
