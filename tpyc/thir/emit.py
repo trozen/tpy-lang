@@ -108,6 +108,7 @@ from .nodes import (
     THIRTruthy,
     THIROptViewArg,
     THIRUnaryNot,
+    THIRUnaryArith,
     THIRUnionArgLift,
     THIRVarDecl,
     THIRWhile,
@@ -1030,6 +1031,11 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         # name's truthiness render is the bare `T*` (gen_truthy_expr), so the
         # same wrap serves `not p` too.
         return f"(!({_emit_expr(e.operand, state)}))"
+    if isinstance(e, THIRUnaryArith):
+        # _gen_unaryop's resolved-dunder tail: expand the operator template
+        # (`{self}` = operand) -- neg/pos/invert, checked or bare per the
+        # method's own template.
+        return expand_cpp_template(e.cpp_template, _emit_expr(e.operand, state))
     if isinstance(e, THIRMembership):
         # _gen_binop's resolved_contains arm: `(recv.contains(needle))`, the
         # negation wrapping the already-parenthesized find expr.

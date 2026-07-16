@@ -210,9 +210,11 @@ deferred (self-contained) / blocked-on-`<rung>`.
   the sole remaining blocker), `@readonly` statics (emitted with the readonly
   verdicts dropped),
   pointer-repr Optional/union getter returns (the `in_property_getter`
-  return-the-field-storage arm; rejected by the general return gate),
-  `@total_ordering`-synthesized comparison bodies (record compare operands,
-  the pinned gen_expr_deref divergence).
+  return-the-field-storage arm; rejected by the general return gate).
+  `@total_ordering`-synthesized comparison bodies (same-record compare operands,
+  a bare `self` deref to `(*this)` in value position) now ROUTE via the widened
+  compare arm (commit 2bcd8d8dc: `dataclass_order`, `total_ordering_*`, the
+  dataclass eq/order records flipped).
 - Generic-record methods (templated `self`): **F5 stages A-C DONE** -- the whole
   generic USER-record axis routes. `_method_self_type` now yields the templated
   self `Record[T, ...]` (a TypeParamRef per type param) instead of None, opening

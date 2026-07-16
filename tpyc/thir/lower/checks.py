@@ -121,12 +121,14 @@ from .predicates import (
     _const_index,
     _container_pass_through_arg,
     _native_iterable_container_arg,
+    _native_iterable_call_arg,
     _native_iterable_genexpr_arg,
     _container_record_elem,
     _container_ref_alias_elem,
     _set_method_recv,
     _container_elem_family,
     _container_scalar_read,
+    _dict_view_iterable_ok,
     _eligible_char,
     _eligible_enum,
     _eligible_ptr_union,
@@ -195,6 +197,7 @@ from .predicates import (
     _value_opt_str,
     _value_opt_view_name,
     _value_tuple,
+    _value_tuple_nested,
     _value_union_temp_slot,
     _var_decl_type,
 )
@@ -1348,6 +1351,13 @@ def _is_len_call(e: TpyExpr, locals_: dict[str, TpyType], analyzer) -> bool:
         bt = _field_decl_type(arg, locals_, analyzer)
         if bt is None:
             return False
+    elif (isinstance(arg, TpyMethodCall)
+          and _dict_view_iterable_ok(
+              arg, locals_, analyzer, methods=("values", "keys", "items"))):
+        # `len(d.values())` / `.keys()` / `.items()`: the view rvalue lowers
+        # to `::tpy::dict_values(d)`, which the runtime `__len__` overloads
+        # accept -- the arg render is view-neutral like a name/field.
+        return True
     else:
         return False
     t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(bt)))
@@ -1434,7 +1444,13 @@ def _free_callee_kind(e: TpyCall, analyzer, *,
             or e.isinstance_var is not None or e.dunder_call is not None
             or e.macro_expansion is not None or e.compile_time_assert
             or e.subscript_callee is not None):
-        note_detail("call.special_form")
+        sub = ("isinstance" if e.isinstance_var is not None
+               else "dunder_call" if e.dunder_call is not None
+               else "subscript_callee" if e.subscript_callee is not None
+               else "compile_time_assert" if e.compile_time_assert
+               else "macro" if e.macro_expansion is not None
+               else "enum_or_cast")
+        note_detail(f"call.special_form.{sub}")
         return None
     fi = e.resolved_function_info
     if fi is None:
@@ -1691,7 +1707,13 @@ def _native_call_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
     return (_shared_pass_through_arg(a, ptype, locals_, analyzer)
             or _own_move_arg(a, ptype, locals_, analyzer)
             or _native_iterable_container_arg(a, ptype, locals_)
+            or _native_iterable_call_arg(a, ptype, analyzer)
             or _native_iterable_genexpr_arg(a, ptype)
+            # A bare-name conformer into a monomorphized protocol slot of a
+            # native/template callee (`repr(p)` -> `::tpy::repr_of(p)`): the
+            # native arg loop renders it bare (`protocol_slots=False`), no
+            # adapter wrap, so only the no-temp bare row admits here.
+            or _protocol_slot_arg(a, ptype, locals_, analyzer, temps_ok=False)
             or note_detail(_native_arg_reject(a, ptype, analyzer)))
 
 def _plain_call_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
@@ -1994,7 +2016,7 @@ def _value_union_temp_arg(a: TpyExpr, ptype: TpyType | None,
                           narrowed: 'set[str] | frozenset[str]',
                           analyzer) -> bool:
     """Gate arm for the value-union temp row and narrowed-name reject."""
-    if _value_union_temp_slot(a, ptype, analyzer) is None:
+    if _value_union_temp_slot(a, ptype, locals_, analyzer) is None:
         return False
     if isinstance(a, TpyName) and a.name in narrowed:
         return False
@@ -2094,6 +2116,40 @@ def _own_record_rvalue_arg(a: TpyExpr, ptype: TpyType | None,
                 and _witness("own.record_rvalue"))
     return (_record_rvalue_call_shape(a, analyzer)
             and _witness("own.record_rvalue"))
+
+def _own_optional_record_rvalue_arg(a: TpyExpr, ptype: TpyType | None,
+                                    analyzer) -> bool:
+    """A same-nominal record RVALUE (a ctor `Inner(42)` or a by-value
+    record-returning call) into an `Own[record | None]` ctor slot
+    (`std::optional<Inner>&&` -- a @dataclass Optional-record field): the
+    prvalue binds the rvalue-ref optional directly through C++'s implicit
+    `Inner -> optional<Inner>` conversion, so both paths render the bare
+    expansion (`Outer("a", Inner(42))`), mirroring `_own_record_rvalue_arg`'s
+    plain `Own[record]` row. A record NAME would need the move/copy cascade
+    (its own arm) and a borrow-returning callee is not an rvalue source -> AST."""
+    pt = ptype if isinstance(ptype, TpyType) else None
+    if pt is None:
+        return False
+    u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(pt)))
+    if not isinstance(u, OwnType):
+        return False
+    inner = unwrap_readonly(unwrap_send_sync(u.wrapped))
+    if not isinstance(inner, OptionalType):
+        return False
+    rec = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(inner.inner)))
+    if not (isinstance(rec, NominalType) and _f1_record(rec, analyzer)):
+        return False
+    if not isinstance(a, TpyCall):
+        return False
+    if analyzer.get_expr_type(a) != rec:
+        return False
+    fi = a.resolved_function_info
+    if fi is None:
+        return False
+    if fi.is_constructor:
+        return (_ctor_shape_ok(a, analyzer)
+                or _ctor_instantiation_ok(a, analyzer))
+    return _record_rvalue_call_shape(a, analyzer)
 
 def _own_move_arg(a: TpyExpr, ptype: TpyType | None,
                   locals_: dict[str, TpyType], analyzer) -> bool:
@@ -2882,9 +2938,7 @@ def _marker_call_kind(e: TpyMethodCall, analyzer, *,
     # Every OTHER special marker takes its own _gen_method_call arm.
     # EXPLICIT type args are rejected here; INFERRED ones flow to the
     # per-branch generic decisions below.
-    if (e.super_parent_type is not None
-            or e.unbound_self_parent_type is not None
-            or e.typed_dict_get_field is not None
+    if (e.typed_dict_get_field is not None
             or e.is_nested_constructor or e.is_nested_enum_constructor
             or e.is_callable_field or e.macro_expansion is not None
             or e.fstr_expansion is not None or e.type_args
@@ -2918,6 +2972,20 @@ def _marker_call_kind(e: TpyMethodCall, analyzer, *,
         # `generator_ok` covers the plain module-qualified factory only; the
         # generic and static spellings are unprobed against generator fis.
         return None
+    parent = e.super_parent_type or e.unbound_self_parent_type
+    if parent is not None:
+        # `super().m(args)` / `Base.m(self, args)` -> `this->Base::m(args)`
+        # (_gen_method_call's super/unbound-self arms; sema strips `self` from
+        # the unbound form's args). An F1 base spells byte-identically via
+        # `to_cpp()`; the generic (`template` kw + targs) and native spellings
+        # stay AST.
+        if (not _f1_record(parent, analyzer) or e.inferred_type_args
+                or fi.type_params or fi.cpp_template is not None
+                or fi.native_function or fi.native_name
+                or fi.linkage != FunctionLinkage.DEFAULT):
+            return None
+        return ("qualified",
+                f"this->{parent.to_cpp()}::{escape_cpp_name(e.method)}")
     if e.is_static_call:
         if e.builtin_module_call is not None:
             return None
@@ -3335,7 +3403,14 @@ def _method_call_arg_ok(
     overloads = analyzer.registry.get_method_overloads_with_parents(
         ri, e.method)
     if not overloads:
-        return False
+        # A property SETTER call has a synthetic method name (`set_value`) --
+        # the accessor is registered under the property name, so the registry
+        # lookup misses; the resolved setter fi supplies the arg-temp slot.
+        setter_fi = e.resolved_function_info
+        if setter_fi is not None and setter_fi.is_property_setter:
+            overloads = [setter_fi]
+        else:
+            return False
     return _record_method_arg_ok(
         a, ptype, index, overloads[0], locals_, analyzer,
         temps_ok=temps_ok, narrowed=narrowed)
@@ -3497,7 +3572,19 @@ def _record_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyTy
             len(overloads) == 2
             and (any(fi2.is_auto_readonly_mutable_clone for fi2 in overloads)
                  or sum(1 for fi2 in overloads if fi2.is_consuming) == 1))
-        if not is_clone_pair:
+        # A property getter/setter pair shares the property name: the read
+        # resolves to the getter specifically (`c.prop` -> `c.prop()`), so the
+        # emit is unambiguous whatever the paired setter -- not a genuine
+        # overload set. A setter call carries a synthetic name (`set_prop`)
+        # not in the registry, so its lookup is empty -- the resolved fi's
+        # accessor kind is the tell.
+        is_property_pair = (
+            (bool(overloads)
+             and all(fi2.is_property_getter or fi2.is_property_setter
+                     for fi2 in overloads))
+            or (not overloads
+                and (fi.is_property_getter or fi.is_property_setter)))
+        if not (is_clone_pair or is_property_pair):
             return note_detail("method.overload_set")
     ret = analyzer.get_expr_type(e)
     # A TypeParamRef result (`self.get() -> T` in a generic body) emits the
@@ -3936,7 +4023,7 @@ def _wrap_print_form(a: TpyExpr, declared: dict[str, TpyType],
     t = declared.get(a.name)
     if t is None:
         return None
-    if _value_tuple(t, analyzer) is not None:
+    if _value_tuple_nested(t, analyzer) is not None:
         return PrintForm.TUPLE
     u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
     if isinstance(u, NominalType) and _f1_record(u, analyzer):

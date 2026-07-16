@@ -59,6 +59,7 @@ from .nodes import (
     THIRTruthy,
     THIROptViewArg,
     THIRUnaryNot,
+    THIRUnaryArith,
     THIRUnionArgLift,
     THIRVarDecl,
     THIRWhile,
@@ -103,6 +104,8 @@ def _expr(e: THIRExpr) -> str:
         return f"binop({_expr(e.left)}, {e.op}, {_expr(e.right)})"
     if isinstance(e, THIRUnaryNot):
         return f"not({_expr(e.operand)})"
+    if isinstance(e, THIRUnaryArith):
+        return f"unary_arith({e.cpp_template!r}, {_expr(e.operand)})"
     if isinstance(e, THIRIsNone):
         return (f"is_none({_expr(e.operand)}{', negate' if e.negate else ''}"
                 f"{', value_repr' if e.value_repr else ''})")

@@ -343,9 +343,10 @@ class TestScalarFieldWrite:
         # A scalar field write off a record param in a free function (non-self).
         assert _fn(_lower_ctx(_SCALAR_WRITE), "bump") is not None
 
-    def test_property_setter_target_excluded(self):
-        # A field write that is really a @property setter takes a method-call
-        # emit path, not a plain field assign -> stays on the AST path.
+    def test_property_setter_target_routes(self):
+        # A field write that is really a @property setter lowers as the void
+        # setter method call (`self.set_n(5)`) -- the assign arm delegates to
+        # the method-call arm.
         thir = _lower_ctx(
             "from tpy import Int32\n"
             "class C:\n    _n: Int32\n"
@@ -353,7 +354,7 @@ class TestScalarFieldWrite:
             "    @property\n    def n(self) -> Int32:\n        return self._n\n"
             "    @n.setter\n    def n(self, v: Int32):\n        self._n = v\n"
             "    def use(self):\n        self.n = 5\n")
-        assert _fn(thir, "use") is None
+        assert _fn(thir, "use") is not None
 
     def test_write_off_pointer_local_routes_with_arrow(self):
         # Receiver is an F2 reseatable `T*` pointer-local -- the third
@@ -852,13 +853,13 @@ class TestDunderMethods:
         assert _fn(thir, "__eq__") is not None
         assert _fn(thir, "__lt__") is not None
 
-    def test_total_ordering_synthesized_dunders_stay_ast(self):
+    def test_total_ordering_synthesized_dunders_route(self):
         # @total_ordering synthesizes `__le__`/`__gt__`/`__ge__` bodies from
-        # record compares (`self < other`), whose operands need gen_expr_deref's
-        # indirection -- pinned outside the compare slice.
+        # record compares (`self < other`), whose bare-self operand derefs to
+        # `(*this)` in value position -- the record-compare arm.
         thir = _lower_ctx(self._SCORE)
         for name in ("__le__", "__gt__", "__ge__"):
-            assert _fn(thir, name) is None, name
+            assert _fn(thir, name) is not None, name
 
     def test_inplace_dunder_excluded(self):
         # __iadd__ takes forced-const params (CONST_PARAMS_METHODS) and returns
@@ -1719,9 +1720,9 @@ class TestMarkerStaticCall:
         assert thir_out == ast_out
         assert "Box::make(" in thir_out[1]
 
-    def test_super_call_stays_ast(self):
-        # The super marker takes the `this->Parent::method(...)` arm -- not
-        # a receiver-less spelling; _marker_call_kind rejects it.
+    def test_super_call_routes(self):
+        # The super marker lowers as a "qualified" THIRCall whose callee is
+        # the pre-rendered `this->A::val` spelling.
         thir = _lower_ctx(
             "from tpy import Int32\n"
             "class A:\n"
@@ -1732,7 +1733,7 @@ class TestMarkerStaticCall:
             "    def __init__(self):\n        super().__init__()\n"
             "    def doubled(self) -> Int32:\n        return super().val() * 2\n")
         assert _fn(thir, "val") is not None
-        assert _fn(thir, "doubled") is None
+        assert _fn(thir, "doubled") is not None
 
 
 # --- @builtin_type record receivers (the Poll/Waker family) ---

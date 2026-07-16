@@ -25,7 +25,7 @@ from .nodes import (
 )
 from .testutil import (
     _compile, _entry, _lower, _lower_ctx, _fn, _lower_ctor,
-    _lower_ctx_witnessed, _PRELUDE, _F1_RECORDS,
+    _lower_ctx_witnessed, _assert_byte_identical, _PRELUDE, _F1_RECORDS,
 )
 
 class TestEligibility:
@@ -1047,10 +1047,10 @@ class TestForEachContainer:
         call = f.body[0].value
         assert isinstance(call, TpyCall) and not _is_len_native(call)
 
-    def test_len_on_pointer_local_record_ineligible(self):
-        # Regression: len() is gated on container type. A record with __len__ bound to a
-        # reseated pointer-local emits bare `::tpy::__len__(p)`, but the AST derefs it
-        # (`(*p)`); admitting it would break the byte-identical contract (a g++ error).
+    def test_len_on_pointer_local_record_routes(self):
+        # A record with __len__ bound to a reseated pointer-local: the len
+        # dispatch derefs the pointer (`(*p)`) on both paths now, so the whole
+        # body routes byte-identically.
         src = (
             "from tpy import Int32\n"
             "class Bag:\n    data: list[Int32]\n"
@@ -1061,7 +1061,8 @@ class TestForEachContainer:
             "        self.a = a\n        self.b = b\n"
             "def pick(o: Two, flag: bool) -> Int32:\n"
             "    p = o.a\n    if flag:\n        p = o.b\n    return len(p)\n")
-        assert _fn(_lower_ctx(src), "pick") is None
+        assert _fn(_lower_ctx(src), "pick") is not None
+        _assert_byte_identical(src)
 
 
 
@@ -1725,10 +1726,24 @@ class TestBoolOps:
         thir = _lower(_PRELUDE + "def f(n: Int32) -> bool:\n    return not n\n")
         assert _fn(thir, "f") is None
 
-    def test_unary_minus_is_ineligible(self):
-        # The arithmetic unaries take the resolved_unaryop emit path.
-        thir = _lower(_PRELUDE + "def f(n: Int32) -> Int32:\n    m = n\n    return -m\n")
-        assert _fn(thir, "f") is None
+    def test_unary_minus_routes(self):
+        # The arithmetic unaries route via THIRUnaryArith, byte-identical to the
+        # AST resolved_unaryop emit path.
+        src = _PRELUDE + "def f(n: Int32) -> Int32:\n    m = n\n    return -m\n"
+        assert _fn(_lower(src), "f") is not None
+        _assert_byte_identical(src)
+
+    def test_unary_invert_routes(self):
+        # `~` shares the resolved-dunder THIRUnaryArith arm with `-`/`+`.
+        src = _PRELUDE + "def f(n: Int32) -> Int32:\n    m = n\n    return ~m\n"
+        assert _fn(_lower(src), "f") is not None
+        _assert_byte_identical(src)
+
+    def test_unary_plus_routes(self):
+        # Unary `+` (the __pos__ dunder) rides the same arm.
+        src = _PRELUDE + "def f(n: Int32) -> Int32:\n    m = n\n    return +m\n"
+        assert _fn(_lower(src), "f") is not None
+        _assert_byte_identical(src)
 
     def test_mixed_sign_compare_operand_is_ineligible(self):
         # The mixed-sign gate applies inside a logical operand too (the pair
@@ -1738,12 +1753,12 @@ class TestBoolOps:
                       "    return flag and a < b\n")
         assert _fn(thir, "f") is None
 
-    def test_record_operand_compare_is_ineligible(self):
-        # A record compare also reaches the rb=None bare-operator arm (a user
-        # dunder has no template), but its operands need gen_expr_deref's
-        # indirection -- `self` renders `(*this)`. The @total_ordering-
-        # synthesized `not (self <= other)` bodies pinned this divergence.
-        thir = _lower_ctx(
+    def test_record_operand_compare_routes(self):
+        # A record compare reaches the rb=None bare-operator arm (a user dunder
+        # has no template); its operands go through gen_expr_deref's indirection
+        # (`self` renders `(*this)`). The @total_ordering-synthesized
+        # `not (self <= other)` bodies route byte-identically here.
+        src = (
             _PRELUDE
             + "class C:\n"
             + "    n: Int32\n"
@@ -1752,7 +1767,8 @@ class TestBoolOps:
             + "        return self.n <= other.n\n"
             + "    def gt(self, other: C) -> bool:\n"
             + "        return not (self <= other)\n")
-        assert _fn(thir, "gt") is None
+        assert _fn(_lower_ctx(src), "gt") is not None
+        _assert_byte_identical(src)
 
 
 

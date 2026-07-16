@@ -62,6 +62,20 @@ def _fn(thir, name):
     return next((f for f in thir.functions if f.name == name), None)
 
 
+def _assert_byte_identical(source: str, default_int: str = "Int32"):
+    """Compile `source` through both codegen paths and assert the emitted
+    (.hpp, .cpp) are byte-identical -- the routing contract for a shape a
+    reject-unit used to gate."""
+    from ..codegen_cpp.context import CodeGenOptions
+    compiler, modules = _compile(source, default_int=default_int)
+    entry = _entry(modules)
+    ast = compiler.generate_code_to_strings(
+        entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=False))
+    thir = compiler.generate_code_to_strings(
+        entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=True))
+    assert thir == ast
+
+
 def _lower_ctor(source: str, record_name: str, extra_lib_dirs=None):
     """Lower one record's constructor to its THIRConstructor (or None if outside
     the M3 slice). Within the compiler context -- records resolve through the live

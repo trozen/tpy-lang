@@ -173,6 +173,7 @@ from .predicates import (
     _dyn_proto_ptr,
     _eligible_enum,
     _eligible_ptr_union,
+    _union_storage_val_cpp,
     _eligible_ptr_value,
     _eligible_scalar,
     _eligible_value_union,
@@ -226,6 +227,7 @@ from .predicates import (
     _unwrap_lit_coerce,
     _value_tuple,
     _value_tuple_global,
+    _value_tuple_nested,
     _var_decl_type,
 )
 from .context import (
@@ -2431,7 +2433,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                         value=_lower_expr(stmt.init, lc, declared,
                                           use=_ExprUse(
                                               result=_ExprResultUse.BORROW_BIND)),
-                        val_cpp=ptr_u.to_cpp(), loc=loc)
+                        val_cpp=_union_storage_val_cpp(ptr_u), loc=loc)
                 needs_rebind = stmt.name in lc.prescan.rvalue_reassigned
                 if slot_kind is PtrSlotKind.UNION_RVALUE:
                     u_slot_init = _lower_expr(
@@ -2447,8 +2449,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 return THIRPtrLocalDecl(
                     name=stmt.name, resolved_type=ptr_u, kind=slot_kind,
                     init=u_slot_init, cpp_type=ptr_u.to_cpp_ptr_variant(),
-                    val_cpp=ptr_u.to_cpp(), needs_rebind_slot=needs_rebind,
-                    loc=loc)
+                    val_cpp=_union_storage_val_cpp(ptr_u),
+                    needs_rebind_slot=needs_rebind, loc=loc)
             if isinstance(stmt.init, TpyNoneLiteral):
                 # `x = None` at a pointer-variant binding stores the monostate
                 # member bare (`x = std::monostate{};`) -- target-typed at
@@ -2547,7 +2549,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 init = THIRLiteral(result_type=none_tgt, value=None,
                                    form=Form.VALUE, loc=loc)
         elif isinstance(stmt.init, TpyTupleLiteral):
-            tuple_t = _value_tuple(declared.get(stmt.name, vtype), analyzer)
+            tuple_t = _value_tuple_nested(declared.get(stmt.name, vtype), analyzer)
             if tuple_t is None:
                 note_detail("decl.tuple_literal_shape")
                 raise ThirUnsupported(stmt_reject_reason(stmt))
@@ -2728,6 +2730,18 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             if not (any_dict_write or _container_setitem_ok(
                     stmt, declared, pointers, narrowed, analyzer)):
                 raise ThirUnsupported(stmt_reject_reason(stmt))
+        elif (isinstance(stmt.target, TpyFieldAccess)
+              and stmt.target.property_setter_call is not None):
+            # A `@prop.setter` write is a void setter method call in disguise
+            # (`c.value = v` -> `c.set_value(v)`): _gen_assign_code delegates
+            # to _gen_method_call, so lower the synthesized call through the
+            # method-call arm in discard (statement) position.
+            return THIRExprStmt(
+                expr=_lower_expr(
+                    stmt.target.property_setter_call, lc, declared,
+                    use=_ExprUse(result=_ExprResultUse.DISCARD,
+                                 allow_temps=True)),
+                loc=loc)
         elif (isinstance(stmt.target, TpyFieldAccess)
               and stmt.target.dyn_setattr_call is not None):
             # D16 dyn-attr write: the statement IS the sema-synthesized

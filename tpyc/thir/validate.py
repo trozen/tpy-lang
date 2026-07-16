@@ -208,7 +208,11 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
                 if not argtemp_ok:
                     _fail(owner, a, "THIRArgTemp under a non-flushable "
                                     "statement position")
-                _walk(owner, a.init, return_type)  # nested temps are illegal
+                # A temp's SOURCE ctor flushes its own arg temps at the SAME
+                # statement point (`describe(Canvas(Circle(5)))` -- __tmp_1
+                # innermost-first, then __tmp_2), so nested temps under the
+                # init are legal when the outer temp is flushable.
+                _walk(owner, a.init, return_type, argtemp_ok=argtemp_ok)
             elif (isinstance(a, THIRUnionArgLift)
                     and a.temp_cpp is not None):
                 if not argtemp_ok:

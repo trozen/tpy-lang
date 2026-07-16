@@ -116,6 +116,7 @@ from ...codegen_cpp.protocols import (
     dynamic_ref_adapter_type,
     record_inherits_dynamic,
 )
+from ...compilation_context import get_current_compiler
 from ..fallback import ThirUnsupported
 from ..faces import witness as _witness
 from ..nodes import (
@@ -510,6 +511,30 @@ def _eligible_ptr_union(t: TpyType | None, analyzer) -> 'UnionType | None':
                for m in t.members):
         return None
     return t
+
+def _union_storage_val_cpp(ptr_u: 'UnionType') -> str:
+    """The value-variant STORAGE spelling for a ptr-variant union slot
+    (`__slot_N`), mirroring the AST's `type_to_cpp` for a union: a NAMED plain
+    union alias (`type Shape = A | B`) spells its C++ name, everything else the
+    expanded `std::variant<...>`. The codegen `union_alias_names` registry (what
+    the AST's `to_cpp` reads) is not populated until header emission (after THIR
+    lowering), so the sema-time `union_display_names` is the lowering-visible
+    source. The two agree for every slot THIR reaches: a module-LOCAL alias keys
+    the same short name in both, and a NON-renamed cross-module alias registers
+    that same short name under both the defining module's `setdefault` (display)
+    and the importing module's `register_union_alias` (alias). A RENAMED
+    cross-module alias (`from mod import Shape as MyShape`) is the only shape
+    where they DIVERGE -- display keeps "Shape", alias becomes "MyShape" -- but
+    that form is currently rejected at sema (the local-decl annotation cannot
+    resolve the renamed name; see BUGS.md + error_union_type_alias_cross_module
+    _renamed), so no such slot reaches this function. If that rejection is
+    lifted, this must read `union_alias_names` (or fall back to AST) instead."""
+    compiler = get_current_compiler()
+    if compiler is not None:
+        alias = compiler.union_display_names.get(ptr_u.members)
+        if alias is not None:
+            return alias
+    return ptr_u.to_cpp()
 
 def _union_binding_divergent(e: 'TpyName', locals_: dict[str, TpyType],
                              analyzer) -> bool:
@@ -1275,7 +1300,15 @@ def _binop_operand_casts(e: TpyBinOp, analyzer) -> 'tuple[str | None, str | None
 
         return (enum_side(e.left), enum_side(e.right))
     if e.op in _COMPARE_OPS:
-        lt, rt = operand_t(e.left), operand_t(e.right)
+        # Mirror the AST's `left_cmp`/`right_cmp` (get_resolved_type): a bare
+        # float literal opposite a BigInt resolves to `double`, so the
+        # is_float_type check below fires (is_float_type excludes the
+        # unresolved FloatLiteralType).
+        def resolved_operand_t(operand):
+            t = operand_t(operand)
+            return (resolve_int_literals(t, analyzer.ctx.default_int_for_literal)
+                    if t is not None else None)
+        lt, rt = resolved_operand_t(e.left), resolved_operand_t(e.right)
         if lt is not None and rt is not None:
             if is_big_int_type(lt) and is_float_type(rt):
                 return (f"static_cast<{rt.to_cpp()}>({{0}})", None)
@@ -1805,6 +1838,14 @@ def _none_value_opt_arg(a: TpyExpr, ptype: 'TpyType | None',
     if not isinstance(a, TpyNoneLiteral) or not isinstance(ptype, TpyType):
         return None
     t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
+    if isinstance(t, OwnType):
+        # An `Own[T | None]` STORAGE slot (`std::optional<T>&&` -- a moved
+        # @dataclass Optional field): the Own wrapper forces value/storage
+        # repr, so None renders `std::nullopt` whatever the inner. A
+        # pointer-repr record inner still stores `std::optional<record>`
+        # here, unlike a bare `record | None` param (`record*` -> nullptr).
+        inner = unwrap_readonly(unwrap_send_sync(t.wrapped))
+        return inner if isinstance(inner, OptionalType) else None
     return t if isinstance(t, OptionalType) and not t.uses_pointer_repr() else None
 
 def _value_opt_scalar_value_arg(a: TpyExpr, ptype: 'TpyType | None',
@@ -2095,6 +2136,39 @@ def _value_tuple_return(t: TpyType | None, analyzer) -> 'TupleType | None':
     return t if all(_value_tuple_return_element_ok(e, analyzer)
                     for e in t.element_types) else None
 
+def _value_tuple_nested(t: TpyType | None, analyzer) -> 'TupleType | None':
+    """A value tuple whose every element is a narrow value-tuple element (scalar /
+    owned-str) OR itself a (recursively) value tuple -- the nesting-agnostic
+    render/print family. Wider than `_value_tuple` (which stays narrow at the
+    subscript-READ gate, where a nested-tuple element read is not a bare value),
+    and used only at sinks whose emit is nesting-independent: the local decl-init
+    (`_lower_tuple_literal` spells the nested brace-init recursively) and the
+    whole-tuple print (`TuplePrinter` recurses). Narrower than `_value_tuple_return`
+    on the element axis (no Own / Optional elements) -- those ride the return slot."""
+    if t is None:
+        return None
+    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    if not isinstance(t, TupleType):
+        return None
+    for e in t.element_types:
+        if not (_value_tuple_element_ok(e, analyzer)
+                or _value_tuple_nested(e, analyzer) is not None):
+            return None
+    return t
+
+def _tuple_compare_pair(lt: 'TpyType | None', rt: 'TpyType | None',
+                        analyzer) -> bool:
+    """Both compare operands are value tuples (scalar / owned-str / nested,
+    no pointer-repr element) -- std::tuple's native `operator==` / `operator<`
+    (and the derived ordering ops) compares them element-wise, which the AST
+    emits as the bare `(left op right)` fall-through. A pointer-repr tuple
+    (record / Optional[record] element) whose slots are bare pointers would
+    compare ADDRESSES, so the AST routes it through the `::tpy::tuple_eq` /
+    `tuple_lt` deref-aware helpers -- a separate face kept on the AST path
+    (`_value_tuple_nested` excludes pointer-repr tuples)."""
+    return (_value_tuple_nested(lt, analyzer) is not None
+            and _value_tuple_nested(rt, analyzer) is not None)
+
 def _const_index(index: TpyExpr) -> 'int | None':
     """The compile-time integer index of a tuple subscript, mirroring the AST's
     `_extract_compile_time_index`: a bare int literal or a negated int literal. A
@@ -2152,12 +2226,32 @@ def _subscript_recv_tuple(e: TpyExpr, locals_: dict[str, TpyType],
 def _tuple_subscript_value_read(e: TpyExpr, locals_: dict[str, TpyType],
                                 analyzer) -> 'int | None':
     """A value-result tuple subscript read `t[N]` -> `std::get<N>(t)` (value form, no
-    lift): element N is a value scalar. Returns the normalized index, or None -- record
-    / `Optional` (borrow) elements ride the field-receiver path (`t[N].field`)."""
-    res = _subscript_recv_tuple(e, locals_, analyzer)
+    lift): element N is a value scalar or owned-str. Returns the normalized index, or
+    None -- record / `Optional` (borrow) elements ride the field-receiver path
+    (`t[N].field`). The receiver is an in-scope eligible-tuple NAME, or a clean
+    value-tuple FIELD read (`self.data[N]` -> `std::get<N>(this->data)`; the field
+    receiver renders exactly like the name arm, so the value element read is
+    position-neutral)."""
+    if not isinstance(e, TpySubscript):
+        return None
+    recv = e.obj
+    if isinstance(recv, TpyName):
+        if recv.name not in locals_:
+            return None
+    elif isinstance(recv, TpyFieldAccess):
+        if not (_field_receiver_ok(recv, locals_, analyzer)
+                and _value_tuple(analyzer.get_expr_type(recv), analyzer)
+                is not None):
+            return None
+    else:
+        return None
+    res = _subscript_index_and_tuple(e, analyzer)
     if res is None:
         return None
     recv_t, idx = res
+    if (_value_tuple(recv_t, analyzer) is None
+            and _f1_tuple(recv_t, analyzer) is None):
+        return None
     el = recv_t.element_types[idx]
     # An owned-str element reads as an owned lvalue (`std::get<N>(t)` yields
     # `const std::string&`) -- bare in every sink on both paths, so it rides
@@ -2756,6 +2850,28 @@ def _union_compare_pair(lt: TpyType | None, rt: TpyType | None) -> bool:
     u = _eligible_value_union(lt)
     return u is not None and u == _eligible_value_union(rt)
 
+def _record_compare_operand(t: TpyType | None) -> 'NominalType | None':
+    """A non-generic user-record compare operand's nominal type, or None. Sema
+    only resolves a record compare when the record carries the generated
+    comparison operators (`@dataclass(eq=...)` / `order=True`, `@total_ordering`,
+    a user dunder), so the emit is the bare C++ operator or the dunder's
+    `{self} OP {0}` template -- _gen_binop's `is_record` arm / the resolved-binop
+    arm. Generic records (`type_args`) keep their own genrec compare path."""
+    if t is None:
+        return None
+    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    if isinstance(t, NominalType) and t.is_user_record and not t.type_args:
+        return t
+    return None
+
+def _record_compare_pair(lt: TpyType | None, rt: TpyType | None) -> bool:
+    """Two SAME user-record compare operands: the record's generated C++
+    comparison (bare operator for a derived `!=`/`<=`, or the dunder template),
+    mirroring _gen_binop's record arm. A mixed record/other pair is a sema
+    error, so the equal-record requirement is the only admitted shape."""
+    lu = _record_compare_operand(lt)
+    return lu is not None and lu == _record_compare_operand(rt)
+
 def _optional_narrow_facts_ok(facts: dict[str, TpyType],
                               declared: dict[str, TpyType], analyzer) -> bool:
     """Assert-condition narrowing facts the slice needs no emit for: every
@@ -2873,6 +2989,23 @@ def _storage_call_ret(ret: TpyType | None, analyzer) -> TpyType | None:
         return t
     return None
 
+def _container_storage_return_call_ret(ret: TpyType | None, analyzer) -> bool:
+    """A container-returning call admitted at the STORAGE return sink,
+    element-blind (`return make_recs()` -> `return make_recs(args);`). The whole
+    container is returned bare into the storage-form `std::vector`/`map`/`set`
+    slot -- no per-element conversion happens at a whole-container return, so a
+    record / nested-container element list renders the same bare call the
+    scalar-element one does. `_storage_call_ret`'s scalar-read guard is a DECL
+    consumer concern (subsequent element reads must render bare); at a return
+    there is no downstream element read, so the guard does not apply. Reachable
+    only from the return generic tail: a container-of-records DECL is blocked at
+    its own `decl.slot_type` local slot before the call gate, so widening here
+    does not touch the decl path."""
+    if ret is None:
+        return False
+    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ret)))
+    return is_list(t) or is_dict(t) or is_set(t)
+
 def _owned_tuple_call_ret(ret: TpyType | None, analyzer) -> 'TupleType | None':
     """A call-result tuple with at least one `Own[F1-record]` element, every
     other element a value scalar or str -- the tuple-unpack move-out family
@@ -2939,6 +3072,7 @@ def _member_valued_union_slot(a: TpyExpr, ptype: TpyType | None,
     return not isinstance(at, UnionType)
 
 def _value_union_temp_slot(a: TpyExpr, ptype: TpyType | None,
+                           locals_: dict[str, TpyType],
                            analyzer) -> 'UnionType | None':
     """The value-union arg-temp row (`_gen_union_arg`'s value branch): a
     MEMBER-valued eligible-scalar arg into a non-pointer union slot hoists
@@ -2963,6 +3097,16 @@ def _value_union_temp_slot(a: TpyExpr, ptype: TpyType | None,
     ut = _eligible_value_union(pt)
     if ut is None:
         return None
+    # `_gen_union_arg`'s `already_union` verdict keys on the C++ DECLARED type:
+    # a union-declared name whose read type sema retyped to a member
+    # (`x: A | B = A(); f(x)`) is still the variant in C++ and passes bare (no
+    # temp) -- it rides `_union_pass_through_arg`, not this member-valued row.
+    if isinstance(a, TpyName):
+        dt = locals_.get(a.name)
+        dt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(dt)))
+              if dt is not None else None)
+        if isinstance(dt, UnionType):
+            return None
     at = analyzer.get_expr_type(a)
     at = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
           if at is not None else None)
@@ -3256,6 +3400,31 @@ def _native_iterable_container_arg(a: TpyExpr, ptype: 'TpyType | None',
     pb = _protocol_binding(ptype)
     return pb is not None and pb.name in ("Iterable", "Sequence")
 
+def _native_iterable_call_arg(a: TpyExpr, ptype: 'TpyType | None',
+                              analyzer) -> bool:
+    """A container-returning CALL rvalue into a NATIVE builtin's structural
+    `Iterable[T]` / `Sequence[T]` slot (`zip(get_names(), get_scores())` ->
+    `::tpy::builtin_zip<...>(get_names(), get_scores())`): the call-branch twin
+    of `_native_iterable_container_arg`'s bare-name row. The runtime overload
+    is a C++ template that binds the container BARE, so an `Own[list]`-returning
+    free/method call renders in place with no move temp -- the Iterable slot is
+    not `Own[T]`, so no ownership cascade fires. Native/@cpp_template loop ONLY
+    (the caller gates the branch); the inner call is re-validated by its own
+    value-position lowering, so an unroutable source falls the body back."""
+    if not isinstance(a, (TpyCall, TpyMethodCall)):
+        return False
+    pb = _protocol_binding(ptype)
+    if pb is None or pb.name not in ("Iterable", "Sequence"):
+        return False
+    at = analyzer.get_expr_type(a)
+    if at is None:
+        return False
+    at = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
+    if isinstance(at, OwnType):
+        at = unwrap_readonly(at.wrapped)
+    return (is_list(at) or is_dict(at) or is_set(at) or is_array(at)
+            or is_span(at))
+
 def _native_iterable_genexpr_arg(a: TpyExpr, ptype: 'TpyType | None') -> bool:
     """A generator expression into a NATIVE builtin's `Iterable[T]` slot
     (`all(x > 0 for x in xs)`): the make_generator IIFE binds directly. Admitted
@@ -3441,18 +3610,24 @@ def _plain_member_call_markers_ok(e: TpyMethodCall) -> bool:
                 or e.inferred_type_args or e.deref_depth
                 or e.deref_narrowed_to is not None)
 
-def _plain_method_fi_ok(fi, *, generator_ok: bool = False) -> bool:
+def _plain_method_fi_ok(fi, *, generator_ok: bool = False,
+                        property_getter_ok: bool = False,
+                        property_setter_ok: bool = False) -> bool:
     """Shared fi rejects. A consuming method moves the receiver
     (`std::move(xs)`); `cpp_return_type` wraps the call in a static_cast;
     @error_return unwraps via a statement expression; a LiteralType param
     mangles the member name. None are reproduced. `generator_ok` admits a
     generator fi (set only by the iterable-position member-gen-call
-    classifier -- the factory call spells like any plain member call)."""
+    classifier -- the factory call spells like any plain member call).
+    `property_getter_ok`/`property_setter_ok` admit the accessor fis -- set
+    only by the property read/write delegation, whose `c.prop` -> `c.prop()`
+    and `c.prop = v` -> `c.set_prop(v)` render like any plain method."""
     return not (fi.is_consuming or fi.error_return_type is not None
                 or fi.native_cpp_return_type is not None
                 or any(isinstance(p.type, LiteralType) for p in fi.params)
                 or fi.is_async or (fi.is_generator and not generator_ok)
-                or fi.is_property_getter or fi.is_property_setter)
+                or (fi.is_property_getter and not property_getter_ok)
+                or (fi.is_property_setter and not property_setter_ok))
 
 def _dict_view_iterable_ok(e: TpyMethodCall, locals_: dict[str, TpyType],
                            analyzer,

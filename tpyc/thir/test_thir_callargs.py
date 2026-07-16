@@ -12,6 +12,7 @@ from .nodes import (
 from .nodes import Form
 from .testutil import (
     _compile, _entry, _lower, _lower_ctx, _lower_ctx_witnessed, _fn,
+    _assert_byte_identical,
 )
 
 # Class A's body, open for extra methods (`_src(extra_a=...)` appends at the
@@ -1374,19 +1375,33 @@ class TestCtorShapeGateRejects:
             "def use() -> Int32:\n    return take_nr(NR(5))\n")
         assert _fn(thir, "use") is None
 
-    def test_own_scalar_ctor_param_stays_ast(self):
+    def test_own_scalar_ctor_param_nested_temp_routes(self):
         # An Own[scalar] __init__ slot copy+moves a NAME arg through a temp.
+        # When that ctor is itself a record-rvalue temp at a flushing statement
+        # (`take_o(O(k))`), the nested copy temp flushes at the SAME statement
+        # point (innermost-first), byte-identical to the AST's statement-level
+        # flush: `auto __tmp_1 = k; O __tmp_2 = O(std::move(__tmp_1)); ...`.
         thir = _lower_ctx(
             "from tpy import Int32, Own\n"
             "class O:\n    x: Int32\n"
             "    def __init__(self, x: Own[Int32]):\n        self.x = x\n"
             "def take_o(o: O) -> Int32:\n    return o.x\n"
             "def use(k: Int32) -> Int32:\n    return take_o(O(k))\n")
-        assert _fn(thir, "use") is None
+        fn = _fn(thir, "use")
+        assert fn is not None
+        ret = fn.body[0]
+        assert isinstance(ret, THIRReturn) and isinstance(ret.value, THIRCall)
+        outer = ret.value.args[0]
+        assert isinstance(outer, THIRArgTemp)          # O __tmp_2 = O(...)
+        assert isinstance(outer.init, THIRCtorCall)
+        inner = outer.init.args[0]
+        assert isinstance(inner, THIRArgTemp) and inner.move  # __tmp_1 = k
 
     def test_union_ctor_param_stays_ast(self):
         # A member-valued scalar into a union-typed __init__ slot hoists a
-        # variant temp on the AST path (`_member_valued_union_slot`).
+        # variant temp on the AST path (`_member_valued_union_slot`). A VALUE
+        # union (scalar members) is not a pointer-variant, so the member-lift
+        # arms don't fire -- it stays AST.
         thir = _lower_ctx(
             "from tpy import Int32, Float64\n"
             "class W:\n    u: Int32 | Float64\n"
@@ -1394,6 +1409,138 @@ class TestCtorShapeGateRejects:
             "def take_w(w: W) -> Int32:\n    return 0\n"
             "def use(k: Int32) -> Int32:\n    return take_w(W(k))\n")
         assert _fn(thir, "use") is None
+
+
+class TestCtorArgUnionOptionalProtocol:
+    """Ctor-arg extensions mirrored from the free-call plain-arg loop
+    into `_record_ctor_arg_supported` and lowered through the shared
+    `_lower_call_arg`: the pointer-variant union lift (member NAME + member
+    ctor RVALUE temp), the `Own[record | None]` rvalue / None rows, and the
+    @dynamic-protocol conformer arg. Each must byte-mirror the AST oracle."""
+
+    _UNION = (
+        "from tpy import Int32\n"
+        "class Circle:\n    r: Int32\n"
+        "    def __init__(self, r: Int32) -> None:\n        self.r = r\n"
+        "class Square:\n    s: Int32\n"
+        "    def __init__(self, s: Int32) -> None:\n        self.s = s\n"
+        "class Canvas:\n    shape: Circle | Square\n"
+        "    def __init__(self, s: Circle | Square) -> None:\n        self.shape = s\n"
+        "def take(c: Canvas) -> Int32:\n    return 0\n"
+        "def use_union() -> Int32:\n    return take(Canvas(Circle(5)))\n"
+    )
+
+    def test_union_ctor_arg_routes(self):
+        assert _fn(_lower_ctx(self._UNION), "use_union") is not None
+
+    def test_union_ctor_arg_byte_identical(self):
+        _assert_byte_identical(self._UNION)
+
+    def test_union_ctor_arg_nested_temp_shape(self):
+        # The nested member ctor rvalue hoists its own temp at the SAME
+        # statement flush, innermost-first, then lifts its address into the
+        # pointer variant.
+        out = _cpp(self._UNION, thir=True)
+        assert "Circle __tmp_1 = Circle(5);" in out
+        assert ("Canvas __tmp_2 = Canvas(std::variant<Circle*, Square*>"
+                "{&__tmp_1});") in out
+
+    _OWNOPT = (
+        "from tpy import Int32\n"
+        "from dataclasses import dataclass\n"
+        "@dataclass\n"
+        "class Inner:\n    x: Int32\n"
+        "@dataclass\n"
+        "class Outer:\n    name: str\n    inner: Inner | None = None\n"
+        "def take(o: Outer) -> Int32:\n    return 0\n"
+        "def use_optrec() -> None:\n"
+        "    take(Outer(\"a\", Inner(42)))\n"
+        "    take(Outer(\"c\", None))\n"
+    )
+
+    def test_own_optional_record_arg_routes(self):
+        assert _fn(_lower_ctx(self._OWNOPT), "use_optrec") is not None
+
+    def test_own_optional_record_arg_shape(self):
+        # An `Own[record | None]` slot binds a record RVALUE bare (prvalue ->
+        # optional<Inner>) and a None literal as std::nullopt (storage-form).
+        out = _cpp(self._OWNOPT, thir=True)
+        assert 'Outer __tmp_1 = Outer("a", Inner(42));' in out
+        assert 'Outer __tmp_2 = Outer("c", std::nullopt);' in out
+
+    _PROTO = (
+        "from typing import Protocol\n"
+        "from tpy import Int32, Ptr, dynamic, nocopy\n"
+        "@dynamic\n"
+        "class Awaker(Protocol):\n    def mark(self, t: Int32) -> None: ...\n"
+        "@nocopy\n"
+        "class Holder:\n    awaker: Ptr[Awaker]\n"
+        "    def __init__(self, h: Awaker) -> None:\n        self.awaker = h\n"
+        "class Exec(Awaker):\n    v: Int32\n"
+        "    def __init__(self) -> None:\n        self.v = 0\n"
+        "    def mark(self, t: Int32) -> None:\n        self.v = t\n"
+        "def use_proto() -> None:\n"
+        "    e = Exec()\n    h = Holder(e)\n    h.awaker.mark(1)\n"
+    )
+
+    def test_protocol_conformer_ctor_arg_routes(self):
+        assert _fn(_lower_ctx(self._PROTO), "use_proto") is not None
+
+    def test_protocol_conformer_ctor_arg_bare(self):
+        # A base-class-conforming lvalue passes bare into the @dynamic
+        # protocol ctor slot (no adapter temp).
+        out = _cpp(self._PROTO, thir=True)
+        assert "Holder h = Holder(e);" in out
+        assert _cpp(self._PROTO, thir=True) == _cpp(self._PROTO, thir=False)
+
+
+def _find_call(node, name):
+    """First TpyCall whose callee bare-name is `name`, found by a shallow walk
+    over the parse-tree dataclass fields."""
+    from dataclasses import fields, is_dataclass
+    from ..parse.nodes import TpyCall
+    stack = [node]
+    while stack:
+        n = stack.pop()
+        if (isinstance(n, TpyCall)
+                and getattr(getattr(n, "func", None), "name", None) == name):
+            return n
+        if is_dataclass(n) and not isinstance(n, type):
+            for f in fields(n):
+                v = getattr(n, f.name, None)
+                if isinstance(v, (list, tuple)):
+                    stack.extend(v)
+                elif is_dataclass(v) and not isinstance(v, type):
+                    stack.append(v)
+    return None
+
+
+def test_native_iterable_call_arg_admits_container_call():
+    """`call.native_arg.call_rvalue`: a container-returning CALL rvalue
+    into a native builtin's Iterable slot (`zip(get_names(), get_scores())`) is
+    admitted by the classifier. The whole body is interlocked on the
+    container-return value-position gate (return-side track), so it does not
+    fully route yet -- but the arg itself is no longer the reject."""
+    from .lower.predicates import _native_iterable_call_arg
+    from ..compilation_context import activate_compiler
+    src = (
+        "from tpy import Own, Int32\n"
+        "def get_names() -> Own[list[str]]:\n    return [\"a\"]\n"
+        "def get_scores() -> Own[list[Int32]]:\n    return [1]\n"
+        "def main() -> None:\n"
+        "    for n, s in zip(get_names(), get_scores()):\n        print(n, s)\n")
+    compiler, modules = _compile(src)
+    entry = _entry(modules)
+    with activate_compiler(compiler):
+        analyzer = entry.analyzer
+        main_fn = next(f for f in entry.ast.functions if f.name == "main")
+        zip_call = _find_call(main_fn, "zip")
+        assert zip_call is not None
+        ptype = zip_call.resolved_function_info.params[0].type
+        # a container-returning call rvalue into the Iterable slot: admitted
+        assert _native_iterable_call_arg(zip_call.args[0], ptype, analyzer)
+        # the zip call itself returns an Iterator (not a container): rejected
+        assert not _native_iterable_call_arg(zip_call, ptype, analyzer)
 
 
 class TestCtorStrArgSlots:

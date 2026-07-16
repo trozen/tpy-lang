@@ -1,0 +1,94 @@
+"""Reject units for callee-side call shapes that stay on the AST path by
+design -- the spelling paths THIR does not thread. Each pins the first-reject
+DETAIL (`_thir_reject_detail`, the note_detail drilldown) so a future change
+that silently starts routing one of these -- without the matching byte-mirror --
+trips here instead of surfacing as a corpus byte-diff regression.
+
+The routine callee kinds (plain / imported / native / positional-template,
+scalar/slice/owned-str type-constructors, cast, enum-from-value, arity-with-
+defaults) already route; these are the residue left rejected on purpose."""
+
+from __future__ import annotations
+
+from ..compilation_context import activate_compiler
+from .fallback import begin_attempt
+from .lower import iter_module_callables, lower_function
+from .testutil import _compile, _entry
+
+
+def _reject_detail(src: str, fn_name: str):
+    """Lower `fn_name` from `src` and return (routed, reject_reason,
+    reject_detail). Mirrors the fallback-tally test driver: a per-body
+    begin_attempt clears the slots, and a None result means the body fell
+    back to AST with its first reject recorded on the compiler."""
+    compiler, modules = _compile(src)
+    entry = _entry(modules)
+    with activate_compiler(compiler):
+        for func, self_type in iter_module_callables(entry.ast, entry.analyzer):
+            if func.name != fn_name:
+                continue
+            begin_attempt()
+            result = lower_function(func, entry.analyzer, self_type=self_type)
+            return (result is not None, compiler._thir_reject_reason,
+                    compiler._thir_reject_detail)
+    raise AssertionError(f"{fn_name} not found among callables")
+
+
+class TestIsinstanceValueRejects:
+    # isinstance-as-value carries the full narrowing/holds_alternative/dynamic-
+    # cast/typeid spelling surface (an `if:cond.call` construct), so the
+    # bare-name callee classifier rejects it as a special form.
+    SRC = (
+        "from tpy import Int32\n"
+        "def f(x: Int32 | str) -> bool:\n"
+        "    b = isinstance(x, Int32)\n"
+        "    return b\n"
+    )
+
+    def test_rejects_with_isinstance_detail(self):
+        routed, reason, detail = _reject_detail(self.SRC, "f")
+        assert routed is False
+        assert reason == "expr.call"
+        assert detail == "call.special_form.isinstance"
+
+
+class TestStrLitOverloadPinRejects:
+    # A str literal into a str/StrView slot of a MULTI-overload callee takes
+    # gen_call_arg's `param_view_t("...")` pin -- a spelling the arg lowering
+    # does not reproduce, so the whole call stays AST.
+    SRC = (
+        "from typing import overload\n"
+        "from tpy import Int32\n"
+        "@overload\n"
+        "def h(a: Int32, s: str) -> str:\n    return s\n"
+        "@overload\n"
+        "def h(a: Int32, s: Int32) -> Int32:\n    return a + s\n"
+        "def f() -> str:\n    return h(1, \"hi\")\n"
+    )
+
+    def test_rejects_with_strlit_pin_detail(self):
+        routed, reason, detail = _reject_detail(self.SRC, "f")
+        assert routed is False
+        assert reason == "expr.call"
+        assert detail == "call.strlit_overload_pin"
+
+
+class TestLiteralOverloadMangleRejects:
+    # A literal-specialized overload mangles its callee to `f__lit_N`
+    # (literal_mangled_name) when there are multiple overloads -- a spelling the
+    # plain/imported/generic return kinds don't thread.
+    SRC = (
+        "from typing import Literal, overload\n"
+        "from tpy import Int32\n"
+        "@overload\n"
+        "def k(a: Int32, m: Literal[\"fast\"]) -> Int32:\n    return a\n"
+        "@overload\n"
+        "def k(a: Int32, m: Literal[\"slow\"]) -> Int32:\n    return a + 1\n"
+        "def f() -> Int32:\n    return k(1, \"fast\")\n"
+    )
+
+    def test_rejects_with_literal_overload_detail(self):
+        routed, reason, detail = _reject_detail(self.SRC, "f")
+        assert routed is False
+        assert reason == "expr.call"
+        assert detail == "call.literal_overload"

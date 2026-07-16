@@ -11,7 +11,7 @@ from .nodes import (
     THIRVarDecl,
 )
 from .testutil import (
-    _compile, _entry, _lower, _lower_ctx, _fn,
+    _compile, _entry, _lower, _lower_ctx, _fn, _assert_byte_identical,
 )
 
 # --- bytes / BytesView values (F6 S6) ---
@@ -128,10 +128,12 @@ class TestBytesValues:
             'def f(a: bytes) -> None:\n    a = b"other"\n    print(a)\n')
         assert _fn(thir, "f") is None
 
-    def test_bytearray_param_ineligible(self):
-        # bytearray is a reference type on a different axis.
-        thir = _lower("def f(a: bytearray) -> None:\n    print(len(a))\n")
-        assert _fn(thir, "f") is None
+    def test_bytearray_param_len_routes(self):
+        # len() over a bytearray param routes byte-identically now (the len
+        # widening covers the bytearray container).
+        src = "def f(a: bytearray) -> None:\n    print(len(a))\n"
+        assert _fn(_lower(src), "f") is not None
+        _assert_byte_identical(src)
 
     def test_own_bytes_slot_ineligible(self):
         # An Own[bytes] slot materializes an owned copy at the call boundary.

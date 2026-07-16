@@ -135,6 +135,7 @@ from ..nodes import (
     THIRSubscript,
     THIRTupleLiteral,
     THIRUnaryNot,
+    THIRUnaryArith,
     THIRUnionArgLift,
 )
 from .predicates import (
@@ -233,6 +234,7 @@ from .predicates import (
     _str_field_value_read,
     _str_name_form,
     _storage_call_container,
+    _container_storage_return_call_ret,
     _owned_tuple_call_ret,
     _storage_call_ret,
     _subscript_index_and_tuple,
@@ -248,11 +250,13 @@ from .predicates import (
     _value_opt_str,
     _value_opt_view,
     _value_tuple,
+    _tuple_compare_pair,
     _value_tuple_global,
     _value_tuple_return,
     _value_union_temp_slot,
     _union_binding_divergent,
     _union_compare_pair,
+    _record_compare_pair,
     _unrouted_binding_read,
     _unwrap_lit_coerce,
     _value_opt_view_name,
@@ -263,6 +267,13 @@ from .generics import expand_fi_template
 
 _NESTED_ARG_USE = _ExprUse(record_ctor=_RecordCtorUse.NESTED_ARG)
 _RECORD_TEMP_USE = _ExprUse(record_ctor=_RecordCtorUse.RECORD_TEMP)
+# A record-rvalue temp whose SOURCE ctor is itself at the enclosing statement's
+# flush point (`describe(Canvas(Circle(5)))` -- the outer free call flushes, so
+# the inner Canvas ctor's own arg temps land at the SAME point, innermost-first).
+# allow_temps threads through so the nested ctor loop can hoist its member-ctor
+# temps (`Circle __tmp_1`); only reached from a position already flushing.
+_RECORD_TEMP_FLUSH_USE = _ExprUse(record_ctor=_RecordCtorUse.RECORD_TEMP,
+                                  allow_temps=True)
 
 
 from .checks import (
@@ -295,8 +306,11 @@ from .checks import (
     _method_receiver_type,
     _native_call_arg_ok,
     _optional_ptr_arg,
+    _union_member_lift_arg,
     _own_lvalue_arg,
     _own_move_arg,
+    _own_optional_record_rvalue_arg,
+    _protocol_slot_arg,
     _plain_call_arg_ok,
     _ptr_deref_method_call,
     _ptr_deref_recv_ok,
@@ -363,6 +377,14 @@ def _call_use_supported(e: TpyCall, lc: '_LowerCtx',
                   and _iter_proto_call_ret(e, analyzer))
               or (result is _ExprResultUse.STORAGE
                   and _storage_call_ret(ret, analyzer) is not None)
+              # A container-returning call at the STORAGE return sink lands
+              # bare regardless of element family -- the whole container is
+              # returned by value, no per-element conversion happens (unlike
+              # `_storage_call_ret`, whose scalar-read guard is a DECL-consumer
+              # concern). Return-position only; a record-element container decl
+              # is blocked at its own slot before this gate.
+              or (result is _ExprResultUse.STORAGE
+                  and _container_storage_return_call_ret(ret, analyzer))
               # A span result is a by-value view landing bare in its decl
               # slot (`std::span<T> s = get_span(a);`); storage sinks only,
               # like the container/tuple/union storage_call rows.
@@ -402,8 +424,12 @@ def _record_ctor_arg_supported(
     mutated = fi.mutated_params or frozenset()
     is_mutated = index in mutated
     if use.record_ctor is not _RecordCtorUse.NESTED_ARG:
-        temps_ok = (use.allow_temps
-                    if use.record_ctor is _RecordCtorUse.DIRECT else False)
+        # temps_ok tracks whether THIS ctor position flushes. DIRECT threads
+        # its own allow_temps; a RECORD_TEMP source ctor flushes at the
+        # enclosing statement too when it was reached via the flush-enabled
+        # recursion (`_RECORD_TEMP_FLUSH_USE`), so `use.allow_temps` is the
+        # single source of truth for both.
+        temps_ok = use.allow_temps
         if _str_pass_through_arg(
                 arg, param_type, declared, analyzer, mutated=is_mutated):
             _witness("ctor.str_arg")
@@ -426,6 +452,26 @@ def _record_ctor_arg_supported(
                 or (not is_mutated
                     and _container_literal_arg(arg, param_type, analyzer)
                     and _witness("ctor.container_literal_arg"))
+                # The pointer-variant union rows, mirrored from the plain
+                # arg loop: a member-typed record NAME / None lifts bare
+                # (`pv{&(name)}` -- temp-free); a member ctor RVALUE hoists a
+                # named temp and lifts its address (`pv{&__tmp_N}`), so it
+                # needs the enclosing flush point (temps_ok). Both lower
+                # through `_lower_union_arg_lift` in `_lower_call_arg`.
+                or _union_member_lift_arg(arg, param_type, declared, analyzer)
+                or (temps_ok
+                    and _union_ctor_temp_arg(arg, param_type, analyzer))
+                # A record RVALUE into an `Own[record | None]` slot binds bare
+                # (`Outer("a", Inner(42))` -- prvalue -> optional<Inner>), the
+                # @dataclass Optional-record-field row.
+                or _own_optional_record_rvalue_arg(arg, param_type, analyzer)
+                # A protocol-conformer arg into a @dynamic/structural protocol
+                # ctor slot: a bare NAME / already-protocol lvalue passes
+                # through, a conformer RVALUE hoists the adapter temp
+                # (`_protocol_arg_temp` -- flush-gated). Lowered by
+                # `_lower_call_arg`'s protocol pre-arm (protocol_slots=True).
+                or _protocol_slot_arg(arg, param_type, declared, analyzer,
+                                      temps_ok=temps_ok)
                 or (_record_rvalue_temp_arg(
                         arg, param_type, declared, analyzer)
                     and (temps_ok if is_mutated else True)))
@@ -670,6 +716,19 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
             if (not _str_concat_operand(e.left, lt, analyzer)
                     or not _str_concat_operand(e.right, rt, analyzer)):
                 reject()
+        elif e.op == "*" and _resolved_str_value(rtype, analyzer) is not None:
+            # `s * n` / `n * s` -> str_repeat: one operand is a str value, the
+            # other an int count. The resolved __mul__/__rmul__ cpp_template
+            # (`::tpy::str_repeat({self}, {0})`) renders through the operator
+            # arm; is_reverse pins the str into {self} for the reversed form.
+            lt = _operand_type(e.left, declared, analyzer)
+            rt = _operand_type(e.right, declared, analyzer)
+            if _str_concat_operand(e.left, lt, analyzer):
+                if not _resolved_scalar(rt, analyzer):
+                    reject()
+            elif not (_str_concat_operand(e.right, rt, analyzer)
+                      and _resolved_scalar(lt, analyzer)):
+                reject()
         elif not _resolved_scalar(rtype, analyzer):
             reject()
         elif (isinstance(analyzer.get_expr_type(e.left), IntLiteralType)
@@ -701,7 +760,9 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                     and _char_compare_operand(e.right, rt, analyzer))
                 or (_tparam_value(lt) and _tparam_value(rt))
                 or _union_compare_pair(lt, rt)
+                or _record_compare_pair(lt, rt)
                 or _enum_compare_pair(e, lt, rt, analyzer)
+                or _tuple_compare_pair(lt, rt, analyzer)
                 or opt_eq_targets is not None):
             reject()
         if _mixed_sign_compare(lt, rt):
@@ -720,31 +781,50 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
         fi = e.resolved_contains
         if (fi is None or e.typed_dict_in_field is not None
                 or fi.cpp_template or fi.native_function
-                or not fi.native_name
-                or not isinstance(e.right, TpyName)
-                or e.right.name not in declared):
+                or not fi.native_name):
             reject()
-        ct = unwrap_readonly(unwrap_ref_type(
-            unwrap_send_sync(declared[e.right.name])))
         lt = _operand_type(e.left, declared, analyzer)
-        # A str needle renders bare into `contains(...)` on both paths
-        # (literal / view name / owned local -- the container's transparent
-        # lookup absorbs the form), exactly like a scalar needle. A VIEW-keyed
-        # container (`set[StrView]`) threads view_key_target into the needle's
-        # literal render (the static-storage pin) -- not mirrored, reject.
-        if not ((is_dict(ct) or is_set(ct))
-                and (_resolved_scalar(lt, analyzer)
-                     or (_resolved_str_value(lt, analyzer) is not None
-                         and view_key_target(ct) is None))):
+        if isinstance(e.right, TpyName):
+            if e.right.name not in declared:
+                reject()
+            ct = unwrap_readonly(unwrap_ref_type(
+                unwrap_send_sync(declared[e.right.name])))
+            # A str needle renders bare into `contains(...)` on both paths
+            # (literal / view name / owned local -- the container's transparent
+            # lookup absorbs the form), exactly like a scalar needle. A
+            # VIEW-keyed container (`set[StrView]`) threads view_key_target into
+            # the needle's literal render (the static-storage pin) -- not
+            # mirrored, reject.
+            if not ((is_dict(ct) or is_set(ct))
+                    and (_resolved_scalar(lt, analyzer)
+                         or (_resolved_str_value(lt, analyzer) is not None
+                             and view_key_target(ct) is None))):
+                reject()
+        elif (isinstance(e.right, TpyMethodCall)
+              and _dict_view_iterable_ok(
+                  e.right, declared, analyzer, methods=("values", "keys"))):
+            # `x in d.values()` / `x in d.keys()`: the view rvalue renders
+            # `::tpy::dict_values(d).contains(x)`; the needle is the dict's
+            # value/key (scalar or bare-str). `.items()` needs a tuple needle,
+            # a later cell.
+            if not (_resolved_scalar(lt, analyzer)
+                    or _resolved_str_value(lt, analyzer) is not None):
+                reject()
+        else:
             reject()
     else:
         reject()
 
     if e.op in _MEMBERSHIP_OPS:
         _witness("binop.membership")
+        # A dict-view receiver (`d.values()`) renders the bare native view call
+        # via the for-loop's ITERABLE override; a name/container receiver reads
+        # bare.
+        recv_use = (_ExprUse(result=_ExprResultUse.ITERABLE)
+                    if isinstance(e.right, TpyMethodCall) else _ExprUse())
         return THIRMembership(
             result_type=rtype,
-            receiver=_lower_expr(e.right, lc, declared),
+            receiver=_lower_expr(e.right, lc, declared, use=recv_use),
             # A str-family FIELD needle renders the bare member read into the
             # contains(...) template on both paths (same owned-str-field-ok
             # position as the compare operands above).
@@ -816,6 +896,14 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
         right = _lower_char_targeted(
             e.right, lt_a, lc, declared,
             field_owned_str_ok=isinstance(e.right, TpyFieldAccess))
+        # A bare `self` record operand reads by value here (`(*this) < other`,
+        # the synthesized @total_ordering / dataclass compares) -- gen_expr_deref
+        # derefs the pointer receiver in value position, unlike a field/method
+        # receiver where THIRSelf stays bare.
+        if isinstance(left, THIRSelf):
+            left = replace(left, deref=lc.self_is_pointer)
+        if isinstance(right, THIRSelf):
+            right = replace(right, deref=lc.self_is_pointer)
     else:
         lslot, rslot = _rb_operand_slots(e.resolved_binop)
         left = _slot_literal_retype(
@@ -882,6 +970,7 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                 use: _ExprUse = _ExprUse(),
                 allow_whole_optional: bool = False,
                 allow_unrouted_name: bool = False,
+                allow_union_divergent: bool = False,
                 field_prechecked: bool = False,
                 field_owned_str_ok: bool = False,
                 subscript_prechecked: bool = False,
@@ -925,7 +1014,8 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
             if _value_opt_view_name(e, declared, analyzer) is not None:
                 raise ThirUnsupported(
                     "name.optstr_unproven_read", detail=True)
-        if (e.name not in lc.inline_narrowed
+        if (not allow_union_divergent
+                and e.name not in lc.inline_narrowed
                 and _union_binding_divergent(e, declared, analyzer)):
             raise ThirUnsupported("name.union_binding_divergent", detail=True)
         if e.name == lc.self_receiver:
@@ -1056,6 +1146,18 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                         deref=e.name in lc.frame_slots or container_ptr,
                         loc=loc)
     if isinstance(e, TpyFieldAccess):
+        if e.property_getter_call is not None:
+            # A `@property` read is a getter method call in disguise
+            # (`c.radius` -> `c.radius()`): _gen_field_access delegates to
+            # _gen_method_call, so lower the synthesized call through the
+            # method-call arm, preserving this read's use position. sema types
+            # the field access, not the synthesized call, so seed the call's
+            # result type from the field's (the getter's return type) before
+            # the method-call arm reads it.
+            pg = e.property_getter_call
+            if rtype is not None and analyzer.get_expr_type(pg) is None:
+                analyzer.ctx.set_expr_type(pg, rtype)
+            return _lower_expr(pg, lc, declared, use=use)
         if e.dyn_getattr_call is not None:
             return _lower_dyn_getattr_call(e, rtype, lc, declared)
         if e.module_var_access is not None:
@@ -1463,6 +1565,20 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
         # IntEnum negation: `(-static_cast<U>(p))` (_gen_unaryop's enum arm).
         enum_neg = _enum_neg_wrap(e, analyzer)
         if enum_neg is None and e.op != "!":
+            # A resolved arithmetic dunder (`- + ~` on int/float/fixed-int):
+            # expand its cpp_template over the operand -- _gen_unaryop's
+            # gen_call_from_fi tail. A value-Optional operand takes the AST's
+            # narrow-or-runtime-check path (unary_target=inner + warning), so
+            # keep it on AST.
+            resolved = e.resolved_unaryop
+            operand_type = analyzer.get_expr_type(e.operand)
+            if (resolved is not None and resolved.method.cpp_template
+                    and not isinstance(operand_type, OptionalType)):
+                return THIRUnaryArith(
+                    result_type=rtype,
+                    cpp_template=resolved.method.cpp_template,
+                    operand=_lower_expr(e.operand, lc, declared),
+                    loc=loc)
             raise ThirUnsupported("expr.unary")
         if enum_neg is not None:
             _witness("enum.neg")
@@ -1513,6 +1629,7 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
         if e.cast_target_type is not None:
             if (len(e.args) != 2 or e.kwargs
                     or e.double_star_unpack is not None):
+                note_detail("call.cast.shape")
                 raise ThirUnsupported("expr.call")
             if e.cast_source_is_any:
                 # `typing.cast(T, x)` from Any: the runtime checked-extract
@@ -1532,12 +1649,14 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
         if e.enum_from_value is not None:
             if (_eligible_enum(e.enum_from_value, analyzer) is None
                     or len(e.args) != 1 or e.kwargs):
+                note_detail("call.enum_from_value.shape")
                 raise ThirUnsupported("expr.call")
             enum_arg_type = analyzer.get_expr_type(e.args[0])
             if (not _resolved_scalar(enum_arg_type, analyzer)
                     or (_runtime_bigint(enum_arg_type, analyzer)
                         and _const_index(
                             _unwrap_lit_coerce(e.args[0])) is not None)):
+                note_detail("call.enum_from_value.arg")
                 raise ThirUnsupported("expr.call")
             # `E(x)` -> `::tpy::EnumUtil<E>::from_value(x)` (gen_expr's
             # enum_from_value arm). A runtime-BigInt arg takes the checked
@@ -1624,17 +1743,21 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                         init=_lower_expr(a, lc, declared), form=Form.BORROW,
                         loc=getattr(a, "loc", None)))
                 else:
-                    # temp_args is scoped to the Own-slot cascade rows the
-                    # gate just admitted: the other temp rows in
-                    # _lower_call_arg key on shapes (record rvalue into a
-                    # ref slot, member-valued union) whose ctor renders are
-                    # BARE on the AST path, so a blanket temp_args would
-                    # re-shape already-routed args.
-                    own_slot = (_own_lvalue_temp_slot(a, p.type, lc.analyzer)
-                                is not None)
+                    # temp_args is scoped to the specific temp-hoisting rows
+                    # the gate admitted: the Own-slot copy cascade and the
+                    # member-ctor-rvalue union lift (`pv{&__tmp_N}`). A blanket
+                    # temp_args would re-shape the other temp rows in
+                    # _lower_call_arg (record rvalue into a const ref slot,
+                    # member-NAME union) whose ctor renders are BARE on the AST
+                    # path.
+                    flush_slot = (
+                        _own_lvalue_temp_slot(a, p.type, lc.analyzer) is not None
+                        or _union_ctor_temp_arg(a, p.type, lc.analyzer)
+                        or _protocol_arg_slot(p.type) is not None)
                     args.append(_lower_call_arg(
                         a, p.type, lc, declared,
-                        temp_args=temp_args and own_slot))
+                        temp_args=temp_args and flush_slot,
+                        protocol_slots=True))
             return THIRCtorCall(
                 result_type=rtype, type_cpp=type_cpp,
                 args=tuple(args), form=Form.STORAGE, loc=loc)
@@ -1707,12 +1830,14 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
             # STORAGE-form None).
             template_fi = _template_init_call_fi(e)
             if template_fi is None:
+                note_detail("call.type_ctor.no_template_fi")
                 raise ThirUnsupported("expr.call")
             scalar_ctor = _eligible_scalar(rtype)
             slice_ctor = _slice_object_type(rtype)
             owned_str_ctor = _is_string_owned(rtype)
             if not (scalar_ctor or slice_ctor or owned_str_ctor
                     or _resolved_viewfam_value(rtype, analyzer) is not None):
+                note_detail("call.type_ctor.result_kind")
                 raise ThirUnsupported("expr.call")
             lowered_args = []
             for a, p in zip(e.args, template_fi.params):
@@ -1720,16 +1845,19 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                         _ctor_arg_slot_ok(p.type, analyzer)
                         and _resolved_scalar(
                             analyzer.get_expr_type(a), analyzer)):
+                    note_detail("call.type_ctor.scalar_arg")
                     raise ThirUnsupported("expr.call")
                 if slice_ctor and not (
                         isinstance(a, TpyNoneLiteral)
                         or _resolved_scalar(
                             analyzer.get_expr_type(a), analyzer)):
+                    note_detail("call.type_ctor.slice_arg")
                     raise ThirUnsupported("expr.call")
                 if owned_str_ctor and not _str_pass_through_arg(
                         a, p.type, declared, analyzer):
                     # `String(view)` -- the positional `std::string({0})`
                     # expansion over a bare str-family arg.
+                    note_detail("call.type_ctor.owned_str_arg")
                     raise ThirUnsupported("expr.call")
                 lowered_args.append(_lower_call_arg(a, p.type, lc, declared))
             return THIRCall(
@@ -2092,7 +2220,8 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                     and _optional_ptr_borrow_name(
                         e.obj, declared, analyzer) is None):
                 raise ThirUnsupported("expr.method_call")
-            if fi is None or not _plain_method_fi_ok(fi):
+            if fi is None or not _plain_method_fi_ok(
+                    fi, property_getter_ok=True, property_setter_ok=True):
                 note_detail("method.fi_kind")
                 raise ThirUnsupported("expr.method_call")
             if not _call_arity_ok(e, fi):
@@ -2175,7 +2304,7 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
             _require_method_call_arg(
                 e, a, ptype, index, lc, declared, temp_args=temp_args)
             if temp_args:
-                ut = _value_union_temp_slot(a, ptype, lc.analyzer)
+                ut = _value_union_temp_slot(a, ptype, declared, lc.analyzer)
                 if ut is not None and not (isinstance(a, TpyName)
                                            and (a.name in lc.narrow.narrowed
                                                 or a.name in lc.inline_narrowed)):
@@ -2886,6 +3015,15 @@ def _lower_free_call_arg(e: TpyCall, a: TpyExpr,
             raise ThirUnsupported("expr.call")
     if (_is_len_native(e) and isinstance(a, TpyFieldAccess)):
         return _lower_expr(a, lc, declared, field_prechecked=True)
+    if (_is_len_native(e) and isinstance(a, TpyMethodCall)
+            and _dict_view_iterable_ok(
+                a, declared, analyzer, methods=("values", "keys", "items"))):
+        # `len(d.values())`: the dict-view rvalue takes the same bare native
+        # call (`::tpy::dict_values(d)`) the for-loop's ITERABLE override
+        # renders -- the runtime __len__ overloads accept it directly.
+        return _lower_expr(
+            a, lc, declared,
+            use=_ExprUse(result=_ExprResultUse.ITERABLE))
     return _lower_call_arg(
         a, ptype, lc, declared, temp_args=temp_args,
         protocol_slots=kind is not None and kind[0] not in ("native", "template"),
@@ -3061,10 +3199,10 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
             _witness("argtemp.record_rvalue")
             return THIRArgTemp(
                 result_type=rec_pt, cpp_type=rec_pt.to_cpp(),
-                init=_lower_expr(a, lc, declared, use=_RECORD_TEMP_USE),
+                init=_lower_expr(a, lc, declared, use=_RECORD_TEMP_FLUSH_USE),
                 form=Form.BORROW,
                 loc=getattr(a, "loc", None))
-        ut = _value_union_temp_slot(a, ptype, lc.analyzer)
+        ut = _value_union_temp_slot(a, ptype, declared, lc.analyzer)
         if ut is not None and not (isinstance(a, TpyName)
                                    and (a.name in lc.narrow.narrowed
                                         or a.name in lc.inline_narrowed)):
@@ -3226,7 +3364,13 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
     # METHOD arg's int literal stays BARE: gen_call_from_fi's
     # `_convert_to_fixed_int_arg` emits IntLiterals as plain C++ integers
     # (`items.push_back(2)` -- BigInt's implicit int ctor absorbs it).
-    lowered = _lower_expr(a, lc, declared, use=_NESTED_ARG_USE)
+    # A union slot admits an assignment-narrowed union-declared name's bare
+    # variant read (the `already_union` pass-through) -- the member-typed-sink
+    # reject stays in force for a NON-union slot.
+    slot_u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype))) \
+        if isinstance(ptype, TpyType) else None
+    lowered = _lower_expr(a, lc, declared, use=_NESTED_ARG_USE,
+                          allow_union_divergent=isinstance(slot_u, UnionType))
     if (method_arg and isinstance(lowered, THIRLiteral)
             and isinstance(lowered.value, (int, float))
             and not isinstance(lowered.value, bool)):
@@ -3294,15 +3438,26 @@ def _lower_union_arg_lift(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
     if (not isinstance(a, TpyName) or a.name in lc.narrow.narrowed
             or a.name in lc.inline_narrowed):
         return None
+    # `_gen_union_arg`'s `already_union` verdict keys on the C++ DECLARED type,
+    # not the (assignment-narrowed) read type: a union-declared name whose read
+    # type sema retyped to a member (`x: A | B = A(); f(x)`) is still the variant
+    # in C++, so it renders bare into a mutable slot (or `ptr_variant_to_const`
+    # for a deep-const slot). Only a genuinely member-TYPED name lifts.
+    decl = declared.get(a.name)
+    decl = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(decl)))
+            if decl is not None else None)
+    if isinstance(decl, UnionType):
+        if deep_const:
+            _witness("unionlift.const_wrap")
+            return THIRUnionArgLift(
+                result_type=ut, variant_cpp=variant_cpp,
+                value=_lower_expr(a, lc, declared, allow_union_divergent=True),
+                const_wrap=True, form=Form.BORROW, loc=loc)
+        return None  # bare render at the call-arg tail
     at = lc.analyzer.get_expr_type(a)
     at = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
           if at is not None else None)
     if not any(at == m for m in ut.members if not is_void_like_type(m)):
-        if deep_const and at == ut:
-            _witness("unionlift.const_wrap")
-            return THIRUnionArgLift(result_type=ut, variant_cpp=variant_cpp,
-                                    value=_lower_expr(a, lc, declared), const_wrap=True,
-                                    form=Form.BORROW, loc=loc)
         return None
     _witness("unionlift.member")
     return THIRUnionArgLift(
@@ -3636,11 +3791,17 @@ def _slot_literal_retype(v: 'THIRExpr | None',
     passes through."""
     if slot is None or not isinstance(slot, TpyType):
         return v
-    if not isinstance(v, THIRLiteral):
-        return v
     st = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(slot)))
     if isinstance(st, OwnType):
         st = unwrap_readonly(st.wrapped)
+    if (isinstance(v, THIRUnaryArith) and isinstance(v.operand, THIRLiteral)
+            and isinstance(v.operand.value, float) and is_float32_type(st)):
+        # A negated float literal (`-3.0` into a Float32 slot): the `f` suffix
+        # keys on the operand literal's type, so thread the slot into it, the
+        # same target render the AST gives the unary operand (`-(3.0f)`).
+        return replace(v, operand=replace(v.operand, result_type=st))
+    if not isinstance(v, THIRLiteral):
+        return v
     if isinstance(v.value, float) and is_float32_type(st):
         return replace(v, result_type=st)
     if (isinstance(v.value, int) and not isinstance(v.value, bool)

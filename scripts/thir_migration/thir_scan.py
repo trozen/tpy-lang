@@ -1,7 +1,11 @@
 import sys, dataclasses
 from pathlib import Path
 
-REPO = Path("/home/tommy/dev/turbo-python/tpy-t1")
+# Derive the repo/worktree root from this script's location
+# (<root>/scripts/thir_migration/thir_scan.py) so it scans the worktree it
+# lives in, not a hardcoded main checkout. Overridable via $TPY_REPO.
+import os
+REPO = Path(os.environ.get("TPY_REPO") or Path(__file__).resolve().parents[2])
 sys.path.insert(0, str(REPO))
 
 import dataclasses as _dc

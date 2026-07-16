@@ -326,8 +326,21 @@ class THIRUnaryNot(THIRExpr):
     pins the operand to bool, where the AST's truthiness render
     (`gen_truthy_expr`) reduces to the plain value render this wraps -- so one
     emit serves value and condition position alike. `result_type` is always
-    bool. The arithmetic unaries (`- + ~`) and non-bool truthiness (int /
-    Optional / `__bool__` wrappers) stay on the AST path."""
+    bool. Non-bool truthiness (int / Optional / `__bool__` wrappers) stays on
+    the AST path; the arithmetic unaries are `THIRUnaryArith`."""
+    operand: THIRExpr
+
+
+@dataclass(frozen=True)
+class THIRUnaryArith(THIRExpr):
+    """An arithmetic unary (`- + ~`) resolved to an operator dunder, mirroring
+    _gen_unaryop's `gen_call_from_fi(resolved_unaryop.method, operand, [])`
+    tail: `cpp_template` is the resolved method's template (`-({self})` for
+    float/int negation, `::tpy::neg_check<int32_t>({self})` for a checked
+    fixed-int neg) and the emitter expands it over the lowered operand. The
+    folded negated-int literal and the IntEnum-negation static_cast are
+    separate arms (a plain literal / `THIREnumWrap`)."""
+    cpp_template: str
     operand: THIRExpr
 
 

@@ -713,13 +713,20 @@ class TestStrConcat:
             "def f(a: str, c: Char) -> str:\n    return a + c\n")
         assert _fn(thir, "f") is None
 
-    def test_str_repeat_ineligible(self):
-        # `s * n` resolves __mul__ (str_repeat) with a str result -- not the
-        # String-result concat arm; stays on the AST path.
+    def test_str_repeat_routes(self):
+        # `s * n` / `n * s` resolve __mul__/__rmul__ (str_repeat) with a str
+        # result; the operator arm renders the cpp_template, is_reverse pinning
+        # the str into {self} for the reversed form.
         thir = _lower(
             "from tpy import Int32\n"
             "def f(a: str, n: Int32) -> str:\n    return a * n\n")
-        assert _fn(thir, "f") is None
+        ret = _fn(thir, "f").body[0].value
+        assert isinstance(ret, THIRBinOp)
+        assert _emit_expr(ret) == "(::tpy::str_repeat(a, n))"
+        rev = _lower(
+            "from tpy import Int32\n"
+            "def f(a: str, n: Int32) -> str:\n    return n * a\n")
+        assert _emit_expr(_fn(rev, "f").body[0].value) == "(::tpy::str_repeat(a, n))"
 
     def test_unused_string_param_routes(self):
         thir = _lower(

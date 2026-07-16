@@ -9,6 +9,7 @@ from .nodes import (
 )
 from .testutil import (
     _compile, _entry, _lower, _lower_ctx, _lower_ctx_witnessed, _fn, _emit_expr,
+    _assert_byte_identical,
 )
 
 # --- Bare numeric-literal call args + negated int literals (increment 45) ---
@@ -94,23 +95,33 @@ class TestNumericLiteralArgs:
         start = rng.start.expr if isinstance(rng.start, THIRCoerce) else rng.start
         assert isinstance(start, THIRLiteral) and start.value == -3
 
-    def test_negated_float_literal_ineligible(self):
-        # A negated FLOAT literal is not folded by the AST -- it takes the
-        # resolved __neg__ template (`-(1.5)`) -> AST path.
+    def test_negated_float_literal_routes(self):
+        # A standalone negated FLOAT literal (`v = -2.5`) takes the resolved
+        # __neg__ template (`-(2.5)`), now routed via THIRUnaryArith
+        # byte-identically to the AST path.
+        src = (
+            _NUMLIT_PRELUDE
+            + "def h() -> None:\n    v = -2.5\n    print(v)\n")
+        assert _fn(_lower(src), "h") is not None
+        _assert_byte_identical(src)
+
+    def test_negated_float_literal_call_arg_ineligible(self):
+        # As a call arg (`f(-1.5)`), the negated float literal still fails the
+        # numeric-literal-arg gate (it folds only bare literals), so the caller
+        # body falls back -- the arithmetic-unary widening covers the standalone
+        # form, not the call-arg fold.
         thir = _lower(
             _NUMLIT_PRELUDE
             + "def f(x: Float64) -> Float64:\n    return x\n"
-            + "def g() -> None:\n    v = f(-1.5)\n    print(1)\n"
-            + "def h() -> None:\n    v = -2.5\n    print(v)\n")
+            + "def g() -> None:\n    v = f(-1.5)\n    print(1)\n")
         assert _fn(thir, "g") is None
-        assert _fn(thir, "h") is None
 
-    def test_negated_name_ineligible(self):
-        # Only a LITERAL operand folds; `-x` needs the __neg__ template.
-        thir = _lower(
-            _NUMLIT_PRELUDE
-            + "def g(x: Int32) -> Int32:\n    return -x\n")
-        assert _fn(thir, "g") is None
+    def test_negated_name_routes(self):
+        # `-x` takes the __neg__ template (no literal fold); routes via
+        # THIRUnaryArith byte-identically to the AST path.
+        src = _NUMLIT_PRELUDE + "def g(x: Int32) -> Int32:\n    return -x\n"
+        assert _fn(_lower(src), "g") is not None
+        _assert_byte_identical(src)
 
     def test_wide_literal_boundaries_route_byte_identical(self):
         src = (
@@ -439,12 +450,13 @@ class TestScalarCtorCall:
         call = fn.body[0].init
         assert isinstance(call.args[0], THIRLiteral) and call.args[0].value == -3
 
-    def test_negated_float_literal_arg_ineligible(self):
-        # A negated FLOAT literal takes the resolved __neg__ template
-        # (`-(1.5)`), a render the slice does not reproduce -> AST path.
-        thir = _lower(_CTOR_PRELUDE
-                      + "def f() -> None:\n    d = Float64(-1.5)\n    print(d)\n")
-        assert _fn(thir, "f") is None
+    def test_negated_float_literal_arg_routes(self):
+        # A negated FLOAT literal ctor arg takes the resolved __neg__ template
+        # (`-(1.5)`), now routed via THIRUnaryArith byte-identically.
+        src = (_CTOR_PRELUDE
+               + "def f() -> None:\n    d = Float64(-1.5)\n    print(d)\n")
+        assert _fn(_lower(src), "f") is not None
+        _assert_byte_identical(src)
 
 
 

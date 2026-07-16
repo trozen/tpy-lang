@@ -15,7 +15,7 @@ from .nodes import (
 )
 from .testutil import (
     _compile, _entry, _lower, _lower_ctx, _lower_ctx_witnessed, _fn,
-    _PRELUDE, _F1_RECORDS,
+    _PRELUDE, _F1_RECORDS, _assert_byte_identical,
 )
 
 
@@ -1592,6 +1592,46 @@ class TestContainerStorageReturn:
             "def f() -> Own[list[P]]:\n    return [P(1)]\n")
         assert _fn(thir, "f") is None
 
+    def test_record_element_call_return_routes(self):
+        # A container-of-records returned FROM A CALL lands bare
+        # (`return make();`) -- the whole container returns by value with no
+        # per-element conversion, unlike the record-element LITERAL above whose
+        # element render stays AST. This is the return-slot call widening.
+        thir = _lower_ctx(
+            "from tpy import Int32, Own\n"
+            "class P:\n    x: Int32\n"
+            "    def __init__(self, x: Int32):\n        self.x = x\n"
+            "def make() -> Own[list[P]]:\n    return [P(1)]\n"
+            "def forward() -> Own[list[P]]:\n    return make()\n")
+        fn = _fn(thir, "forward")
+        assert fn is not None
+        ret = fn.body[0]
+        assert isinstance(ret, THIRReturn) and isinstance(ret.value, THIRCall)
+
+    def test_nested_container_call_return_routes(self):
+        # A nested-container return (`list[list[Int32]]`) is also element-blind
+        # at the call return sink -- the row above `_container_scalar_read`
+        # would reject.
+        thir = _lower(
+            "from tpy import Int32, Own\n"
+            "def rows() -> Own[list[list[Int32]]]:\n    return [[1], [2]]\n"
+            "def forward() -> Own[list[list[Int32]]]:\n    return rows()\n")
+        fn = _fn(thir, "forward")
+        assert fn is not None
+        assert isinstance(fn.body[0].value, THIRCall)
+
+    def test_record_element_call_return_byte_identical(self):
+        src = (
+            "from tpy import Int32, Own\n"
+            "class P:\n    x: Int32\n"
+            "    def __init__(self, x: Int32):\n        self.x = x\n"
+            "def make() -> Own[list[P]]:\n    return [P(1)]\n"
+            "def forward() -> Own[list[P]]:\n    return make()\n"
+            "def main():\n    print(len(forward()))\n"
+            "main()\n")
+        _assert_byte_identical(src)
+        assert "return make();" in self._cpp(src, thir=True)
+
     def test_byte_identical(self):
         src = (
             "from tpy import Int32, Own\n"
@@ -1612,6 +1652,22 @@ class TestContainerStorageReturn:
         assert ('return ::tpy::ordered_map<std::string, int32_t>({{"a", 1}});'
                 in thir_cpp)
         assert "return ::tpy::ordered_set<int32_t>({4, 5});" in thir_cpp
+
+
+class TestRecordBorrowCallReturnDesignStop:
+    # A call returning `T&` (a borrow record) read through a field
+    # (`shared(a).x`) is the REF_ALIAS place/loan frontier: it needs
+    # borrow/place reasoning, not a value-position emit arm. It stays on the
+    # AST path with a precise `call.ret_type.record_borrow` reject. The
+    # container-return widening must NOT open it.
+    def test_borrow_record_call_field_read_stays_ast(self):
+        thir = _lower_ctx(
+            "from tpy import Int32\n"
+            "class Rec:\n    x: Int32\n"
+            "    def __init__(self, x: Int32):\n        self.x = x\n"
+            "def shared(a: Rec) -> Rec:\n    return a\n"
+            "def use(a: Rec) -> Int32:\n    return shared(a).x\n")
+        assert _fn(thir, "use") is None
 
 
 class TestOwnViewFamReturn:
@@ -2165,9 +2221,12 @@ class TestContainerCallSlots:
         assert cpp_t == cpp_a
         assert "std::vector<int32_t>* xs" in cpp_t  # the AST pointer-local shape
 
-    def test_record_element_container_ineligible(self):
-        # `list[record]` is outside the literal-decl families (spelled decl
-        # type / receiver gates do not line up) -- decl and return reject.
+    def test_record_element_container_decl_ineligible_return_routes(self):
+        # `list[record]` DECL stays AST (the local slot is outside the
+        # literal-decl families -- `use` rejects at `decl.slot_type`). The
+        # container-of-records RETURN from a call lands bare, though: the whole
+        # container returns by value with no per-element conversion, so `fwd`
+        # routes byte-identically to the AST's `return make(n);`.
         src = (
             _F1_RECORDS
             + "def make(n: Int32) -> Own[list[Leaf]]:\n    return [Leaf(n)]\n"
@@ -2178,7 +2237,7 @@ class TestContainerCallSlots:
         )
         thir = _lower_ctx(src)
         assert _fn(thir, "use") is None
-        assert _fn(thir, "fwd") is None
+        assert _fn(thir, "fwd") is not None
 
 
 class TestLenFieldReceiver:
