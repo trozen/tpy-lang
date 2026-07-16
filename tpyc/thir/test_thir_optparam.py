@@ -270,12 +270,12 @@ class TestOptionalPtrReturn:
         rec_ret = _fn(thir, "ret_rec").body[0]
         assert isinstance(rec_ret.value, THIROptionalPtrArg) and rec_ret.value.addr_of
 
-    def test_return_field_source_rejects(self):
-        # `return h.f` (a storage-form Optional field) takes the
-        # optional_to_ptr return arm -- not mirrored, stays AST.
-        thir = _lower_ctx(
-            _PRELUDE + "def use(h: H) -> A | None:\n    return h.f\n")
-        assert _fn(thir, "use") is None
+    def test_return_field_source_routes(self):
+        # `return h.f` (a storage-form Optional field) routes byte-identically
+        # via the optional_to_ptr return arm.
+        src = _PRELUDE + "def use(h: H) -> A | None:\n    return h.f\n"
+        assert _fn(_lower_ctx(src), "use") is not None
+        _assert_byte_identical(src)
 
     # NB `return own_a` at a pointer-repr Optional return is a sema ERROR
     # (the returned pointer would dangle), so the Own-source shape never

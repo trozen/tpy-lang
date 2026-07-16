@@ -18,7 +18,7 @@ from .nodes import (
 )
 from .testutil import (
     _compile, _entry, _lower, _lower_ctx, _lower_ctx_witnessed, _lower_ctor,
-    _fn, _F1_RECORDS,
+    _fn, _F1_RECORDS, _assert_byte_identical,
 )
 
 # --- M1 method frontier: instance methods with a `self` (`this`) receiver ---
@@ -823,16 +823,17 @@ class TestStaticPropertyMethods:
         assert isinstance(st, THIRAssign)
         assert isinstance(st.target, THIRFieldAccess) and st.target.is_arrow
 
-    def test_pointer_repr_optional_getter_excluded(self):
-        # A getter returning `Leaf | None` (pointer-repr) takes the
-        # in_property_getter return arm (returns the field's storage by
-        # reference) -- the return gate rejects the type before that arm can
-        # diverge.
-        thir = _lower_ctx(
+    def test_pointer_repr_optional_getter_routes(self):
+        # A @property getter returning `Leaf | None` (pointer-repr) routes
+        # byte-identically via the property-getter arm, which returns the
+        # field's storage optional by reference (split from the plain-method
+        # optional_to_ptr lift on `is_property_getter`).
+        src = (
             _SPD_METHODS
             + "    @property\n"
             + "    def sibling(self) -> Leaf | None:\n        return self.opt\n")
-        assert _fn(thir, "sibling") is None
+        assert _fn(_lower_ctx(src), "sibling") is not None
+        _assert_byte_identical(src)
 
 
 class TestDunderMethods:
@@ -1911,11 +1912,12 @@ class TestPtrDerefMethodCall:
         assert "::tpy::deref_check(p).val()" in thir_out[1]
         assert "p->bump(2)" in thir_out[1]
 
-    def test_box_deref_stays_ast(self):
-        # A Box receiver resolves through the user `__deref__` chain and
-        # spells `b.__deref__().val()` -- the deref.plain residue, not the
-        # pointer arms.
-        thir = _lower_ctx(
+    def test_box_deref_routes(self):
+        # A Box receiver resolves through the user `__deref__` chain and spells
+        # `b.__deref__().val()` -- routes byte-identically via the user-deref
+        # proxy-method-call arm (the deref chain spells identically regardless
+        # of Box's type param).
+        src = (
             "from tpy import Int32\n"
             "from tplib.box import Box\n"
             "class A:\n"
@@ -1924,7 +1926,8 @@ class TestPtrDerefMethodCall:
             "    def val(self) -> Int32:\n        return self.n\n"
             "def use_box(b: Box[A]) -> Int32:\n"
             "    return b.val()\n")
-        assert _fn(thir, "use_box") is None
+        assert _fn(_lower_ctx(src), "use_box") is not None
+        _assert_byte_identical(src)
 
 
 # --- @auto_readonly / auto_own clone pairs (not overload-set hazards) ---

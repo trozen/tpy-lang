@@ -103,6 +103,12 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # sema-substituted ctor template expansion
     "call.instantiation_empty",     # empty `set()`/`list()`/`dict()` -> the
                                     # spelled default ctor `T()`
+    "call.viewfam_instantiation",   # str-family VALUE instantiation
+                                    # `StrView("x")`/`String("x")` -> the ctor
+                                    # @cpp_template over inline args
+
+    "call.inst_ctor_arg",           # `dict(PairIter(3))` -> a user-iterator
+                                    # ctor rvalue into the construct template
     "call.generic_free",            # plain TPy generic callee -> explicit
                                     # `f<T1, T2>(args)` template-arg spelling
     "call.generic_qualified",       # module-qualified generic call ->
@@ -135,6 +141,7 @@ THIR_FACES: frozenset[str] = frozenset({
     # is_arrow / deref_check renders over a pointer-VALUE receiver).
     "method.ptr_arrow",             # proven non-null: `p->m(args)`
     "method.ptr_checked",           # `::tpy::deref_check(p).m(args)`
+    "method.user_deref_chain",      # `r.__deref__()...m(args)` user Deref proxy
     "method.ptr_template",          # explicit `@cpp_template` Ptr method
                                     # (`p.__deref__()` -> `::tpy::deref_check(p)`)
     # Container-field method receiver (`self.buf.append(x)` -> the container arm
@@ -160,7 +167,11 @@ THIR_FACES: frozenset[str] = frozenset({
     "method.recv.str_literal",      # `"a,b,c".split(",")` -- a str-literal
                                     # receiver rendered bare into the resolved
                                     # builtin-method template
+    "method.recv.str_method",       # `s.strip().lower()` -- a str-VALUE
+                                    # method-call/free-call receiver, the inner
+                                    # str method's bare nested-call render
     "ctor.call",                    # THIRCtorCall bare ctor expansion
+    "ctor.ptr_null",                # `Ptr[T]()` -> `static_cast<T*>(nullptr)`
     "ctor.cross_module",            # imported-record ctor: the qualified
                                     # `::ns::Name(args)` spelling
     "ctor.str_arg",                 # str-slice arg into a str-family ctor slot
@@ -185,6 +196,10 @@ THIR_FACES: frozenset[str] = frozenset({
     "with.str_target",              # str/StrView __enter__ as-target
     # Container subscript writes (lowering; THIRSetItem's emit arms plus
     # the owned-str element sink copy and the aug-assign desugar).
+    "setitem.slice",                # `c[a:b] = v` / `c[a:b:s] = v` ->
+                                    # list_set_slice / list_set_stepped_slice
+    "aug.container_inplace",        # `c OP= v` -> mutating dunder native
+                                    # free-function (list_extend, ...)
     "setitem.checked",              # `::tpy::__setitem__(c, k, v);`
     "setitem.bounds_safe",          # `c[static_cast<std::size_t>(k)] = v;`
     "setitem.aug",                  # `c[k] OP= v` -> the getitem/setitem pair
@@ -209,6 +224,9 @@ THIR_FACES: frozenset[str] = frozenset({
     # Str-family FIELD write from a name/literal: the bare
     # `recv.field = s;` (operator=(string_view), no view->owned wrap).
     "field_write.str",
+    # Owned bytes FIELD write from a name/literal: a view source copies via
+    # `::tpy::bytes_copy(...)`; an owned source lands bare.
+    "field_write.bytes",
     # Value-storage Optional[record] FIELD write (`std::optional<inner>`) from
     # a record NAME: the bare copy `recv.opt = p;` (optional::operator=) or
     # `std::move(p)` at a movable name's last use.
@@ -216,6 +234,9 @@ THIR_FACES: frozenset[str] = frozenset({
     # The Optional[record] FIELD write from a record RVALUE (ctor / by-value
     # call of the inner type): the bare copy `recv.opt = Inner(args);`.
     "field_write.optrec_rvalue",
+    # `recv.opt = None` at any Optional FIELD: the storage-form `std::nullopt`,
+    # keyed on the declared field type (a narrowed write site still stores it).
+    "field_write.opt_none",
     # Dynamic-attrs (D16) family faces.
     "setitem.any_value",            # `d[k] = v` into a dict[K, Any] slot from
                                     # an Any-typed name (bare, no make_any)
@@ -344,6 +365,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "narrow.enum_arg",              # `({0}).to_fixed_check<U>()` E(x) arg
     "narrow.opt_field_test",        # `self.f is [not] None` -> the storage-form
                                     # `.has_value()` compare over the bare member
+    "narrow.ptr_field_test",        # `s.p is [not] None` on a `Ptr[T]` field ->
+                                    # the `(s.p == nullptr)` raw-pointer compare
     "field.narrowed_deref",         # sema-narrowed Optional field value read ->
                                     # the unconditional `(*recv.field)` unwrap
     # Record return slots (lowering admission; the renders -- bare name / bare
@@ -353,6 +376,13 @@ THIR_FACES: frozenset[str] = frozenset({
     "ret.record_storage",
     "ret.record_self",              # `return self` -> `return (*this);`
     "ret.record_field",             # `return recv.field` at the borrow slot
+    "ret.record_subscript",         # `return c[i]` -- container record element
+    "ret.ptr_opt_field",            # `return self.f` (Optional[record] field)
+                                    # -> `optional_to_ptr(this->f)`
+    "ret.opt_field_ref",            # @property getter `return self.f` -> bare
+                                    # `this->f` (std::optional<T>& ref return)
+    "ret.storage_opt_rvalue",       # `return Coord(0, 0)` -> bare ctor into a
+                                    # value-storage / Own Optional slot
     "ret.str_field",                # `return recv.field` (owned-str member,
                                     # STORAGE) at a str-family return slot
     # Storage container return slot (`-> Own[list/dict/set]`; the renders --
@@ -365,12 +395,17 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # stmt-expr render at the return slot
     "ret.closure_name",             # `return add;` -- a closure local's bare
                                     # name at a Callable return slot
+    "ret.closure_lambda",           # `return lambda x: ...;` -- a direct
+                                    # escaping closure at a Callable return slot
+    "ret.closure_ref",              # `return double;` -- a bare func-ref name
+                                    # at a Callable return slot
     "ret.tuple_call",               # `return make_pair(n);` -- bare call source
     # Value-repr Optional[cheap scalar] return slot (`-> Int32 | None`): the
     # None-literal `std::nullopt` arm and the whole-optional bare param pass
     # (deref-on-narrow stripped); other scalar sources ride the generic tail.
     "ret.value_opt_none",
     "ret.value_opt_name",
+    "ret.value_opt_field",
     # Value-repr Optional[view] return (str or bytes): `None` -> `std::nullopt`,
     # a same-family Optional[view] param -> the view->owned arg-split shim
     # (THIROptViewArg), and a str/bytes literal -> bare owned literal.
@@ -398,6 +433,9 @@ THIR_FACES: frozenset[str] = frozenset({
     "ret.tuple_literal",
     "ret.tuple_name",
     "decl.tuple_literal",
+    # A VALUE-capture record/Own tuple LITERAL decl bound by value (storage
+    # form): the local owns its elements, a ref-element type spells `auto`.
+    "decl.storage_record_tuple",
     # Widened value-tuple RETURN elements: a NESTED value-tuple element (spelled
     # recursively) and a value-`Optional[scalar]` element (`None`->`std::nullopt`
     # / a scalar value bare). Return-slot only.
@@ -436,6 +474,9 @@ THIR_FACES: frozenset[str] = frozenset({
     # `copy(x)` of an open-T source (lowering; the special-builtin arm's
     # general tail, `T(this->value)`).
     "call.copy_tparam",
+    # `copy(x)` of a concrete container source (`copy(d.get(k, dflt))` ->
+    # `std::vector<T>(<src>)`).
+    "call.copy_container",
     # Ptr[T] value-slot admission (bare passes / field reads share the
     # scalar renders, so the predicate is the only distinguishing site).
     "ptr.value_slot",
@@ -445,6 +486,9 @@ THIR_FACES: frozenset[str] = frozenset({
     "ptr.dyn_proto_pointee",
     # `x = None` at a Ptr[T] value binding (lowering; the `nullptr` render).
     "decl.ptr_none",
+    # `x = None` reassign at a value-repr Optional binding (`int | None` param):
+    # the storage-form `std::nullopt` render.
+    "decl.opt_none",
     # Slot-hoist pointer-repr Optional local, None init: `T* x = nullptr;`
     # plus the `std::optional<T>` rebind-slot pre-decl when rvalue-reassigned.
     "decl.opt_slot_none",
@@ -468,6 +512,9 @@ THIR_FACES: frozenset[str] = frozenset({
     # A read of a read-only-seeded same-module value global (lowering; the
     # bare-name render shared with locals, so the seed is what distinguishes).
     "name.global_seeded",
+    # A same-module function used as a value (`apply(double, ...)`): the bare
+    # escaped-name render on THIRName.cpp (_function_ref_name's plain arm).
+    "name.func_ref",
     # A read of a read-only-seeded NATIVE-linkage value global (lowering;
     # the pre-rendered `::symbol` spelling on THIRName.cpp).
     "name.global_native",
@@ -515,6 +562,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "ifexpr.value",                 # scalar / Char / enum result
     "ifexpr.str",                   # str-family result (form-tagged)
     "ifexpr.str_mixed",             # mixed view/owned arms: view-arm wrap
+    "ifexpr.bytes",                 # view-result bytes ternary (BORROW span)
     "ifexpr.cond_pos",              # bool ternary as an if/while condition
     # Enum value-binding renders (lowering).
     "enum.truthy_plain",            # plain-enum truthiness -> literal `true`
@@ -574,6 +622,9 @@ THIR_FACES: frozenset[str] = frozenset({
     # bytes/BytesView membership (`needle in b` -> the native free-function
     # `::tpy::bytes_contains[_sub](b, needle)`, single-byte vs substring form).
     "binop.bytes_membership",
+    # str-family membership (`needle in s` -> the `.find()` arm,
+    # `(s.find(needle) != std::string::npos)`; `== npos` for `not in`).
+    "binop.str_membership",
     # tuple-literal membership (`x in (a, b, ...)` -> the `==` OR-chain, the
     # statement-expression temp form when the needle is non-trivial).
     "binop.tuple_membership",
@@ -605,6 +656,9 @@ THIR_FACES: frozenset[str] = frozenset({
     # THIRNestedDef (lowering): a nested `def` -> the AST's lambda emit,
     # capture list spelled from sema's node facts.
     "stmt.nested_def",
+    # THIRLambda (lowering): a `lambda` expr -> _gen_lambda's C++ closure;
+    # by-ref capture, non-void or void body.
+    "expr.lambda",
     # Standalone `a, b = <name>` unpack of a value-scalar tuple (lowering):
     # `const auto& __tup_N = name;` + per-target scalar decls.
     "stmt.tuple_unpack",

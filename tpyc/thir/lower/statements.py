@@ -30,6 +30,7 @@ from ...parse.nodes import (
     TpyGlobal,
     TpyIf,
     TpyIntLiteral,
+    TpyLambda,
     TpyMatch,
     TpyMethodCall,
     TpyFunction,
@@ -48,6 +49,8 @@ from ...parse.nodes import (
     TpyTry,
     TpyTupleLiteral,
     TpyTupleUnpack,
+    TpyUnaryOp,
+    TupleElemCapture,
     TpyVarDecl,
     TpyWhile,
     TpyWith,
@@ -148,14 +151,17 @@ from ..nodes import (
     THIRPtrLocalDecl,
     THIRPtrLocalRebind,
     THIRRaise,
+    THIRInplaceContainerOp,
     THIRReturn,
     THIRSelf,
     THIRSetItem,
+    THIRSliceAssign,
     THIRStmt,
     THIRStrAppend,
     THIRStrLiteral,
     THIRTry,
     THIRTupleUnpack,
+    THIRUnaryNot,
     THIRVarDecl,
     THIRWhile,
     THIRWith,
@@ -200,7 +206,9 @@ from .predicates import (
     _nonvalue_container_ret,
     _callable_value,
     _optional_narrow_facts_ok,
+    _optional_ptr_borrow,
     _optional_ptr_borrow_name,
+    _unwrap_own,
     _owned_str_append_target,
     _owned_str_slot,
     _plain_member_call_markers_ok,
@@ -228,6 +236,7 @@ from .predicates import (
     _peel_coerce,
     _subscript_container_recv_type,
     _unwrap_lit_coerce,
+    _storage_record_tuple,
     _value_tuple,
     _value_tuple_global,
     _value_tuple_nested,
@@ -248,9 +257,11 @@ from .checks import (
     _class_const_write_target_ok,
     _container_aug_setitem_ok,
     _container_field_write_ok,
+    _container_record_elem_subscript,
     _container_literal_decl_ok,
     _container_literal_shape_ok,
     _container_setitem_ok,
+    _func_ref_routable,
     _print_kwarg_token,
     _setitem_widened_elem_ok,
     _is_builtin_print,
@@ -261,6 +272,7 @@ from .checks import (
     _narrow_cond_info,
     _optional_record_field_inner,
     _optional_record_field_write_ok,
+    _optional_field_none_write_ok,
     _print_arg_form,
     _print_arg_ok,
     _wrap_print_form,
@@ -276,11 +288,13 @@ from .checks import (
     _scalar_field_write_ok,
     _user_deref_field_write_ok,
     _str_aug_append_ok,
+    _bytes_field_write_ok,
     _str_field_write_ok,
     _str_list_method_iterable_ok,
     _user_iterator_iterable,
 )
 from .expressions import (
+    _container_slice_recv_ok,
     _flush_witness,
     _is_move_source,
     _lower_call_arg,
@@ -288,10 +302,12 @@ from .expressions import (
     _lower_class_const_write_target,
     _lower_expr,
     _lower_field_source,
+    _lower_lambda,
     _lower_truthy,
     _lower_tuple_literal,
     _rb_operand_slots,
     _retag_bytes_literal_view,
+    _slice_bound_supported,
     _slot_literal_retype,
     _value_opt_scalar_binding,
     _value_opt_view_param,
@@ -2120,7 +2136,14 @@ def _lower_narrow_cond(cinfo, condition: TpyExpr, lc: _LowerCtx,
     for the body)."""
     var, u, members, folded, isin = cinfo
     if isin is None:
-        return _lower_isinstance_cond((var, u, members, folded), condition, lc)
+        negated = isinstance(condition, TpyUnaryOp) and condition.op == "!"
+        inner = condition.operand if negated else condition
+        base = _lower_isinstance_cond((var, u, members, folded), inner, lc)
+        if not negated:
+            return base
+        return THIRUnaryNot(
+            result_type=lc.analyzer.get_expr_type(condition),
+            operand=base, loc=getattr(condition, "loc", None))
     saved = dict(lc.inline_narrowed)
     try:
         return _lower_compound_cond(
@@ -2195,6 +2218,101 @@ def _written_names(stmt: TpyStmt) -> set[str]:
         return {name for target in stmt.targets
                 if (name := root(target)) is not None}
     return set()
+
+
+def _lower_slice_assign(stmt: TpyAssign, lc: _LowerCtx,
+                        declared: dict[str, TpyType], loc) -> THIRStmt:
+    """`c[a:b] = v` / `c[a:b:s] = v` -> the slice `__setitem__`'s @cpp_template
+    (list_set_slice / list_set_stepped_slice) over the receiver, the slice
+    initializer, and the RHS (mirrors _gen_slice_assign). The receiver is a
+    bare list/Array/Span name or F1-field (the read-path slice receiver gate);
+    bounds are eligible fixed-int exprs. A non-empty array-literal RHS wears the
+    std::vector<E>{...} type prefix the checked helper needs to deduce Range."""
+    analyzer = lc.analyzer
+    sub = stmt.target
+    sl = sub.index
+    if not (_container_slice_recv_ok(sub.obj, lc, declared)
+            and _slice_bound_supported(sl.lower, analyzer)
+            and _slice_bound_supported(sl.upper, analyzer)
+            and (sl.step is None or _slice_bound_supported(sl.step, analyzer))):
+        note_detail("setitem.slice")
+        raise ThirUnsupported(stmt_reject_reason(stmt))
+    target_type = analyzer.get_expr_type(sub)
+    recv = _lower_expr(
+        sub.obj, lc, declared,
+        field_prechecked=isinstance(sub.obj, TpyFieldAccess))
+    value = _lower_expr(
+        stmt.value, lc, declared, target_type=target_type,
+        use=_ExprUse(result=_ExprResultUse.STORAGE, allow_temps=True))
+    if _is_move_source(stmt.value, lc):
+        value = THIRMove(result_type=value.result_type, value=value,
+                         form=value.form, loc=loc)
+    # A non-empty array-literal RHS renders `{...}`; the checked helper cannot
+    # deduce its Range from a bare brace, so it takes the std::vector<E> prefix
+    # (the AST's `_gen_slice_assign` guard). Empty literals already spell their
+    # own type; other sources (names, calls) land bare.
+    value_vector_cpp = None
+    if (isinstance(stmt.value, TpyArrayLiteral) and stmt.value.elements
+            and is_list(target_type) and target_type.type_args):
+        value_vector_cpp = lc.render_type(target_type.type_args[0])
+    _witness("setitem.slice")
+    return THIRSliceAssign(
+        receiver=recv,
+        native_name=sub.slice_function_info.native_name,
+        value=value,
+        lower=_lower_expr(sl.lower, lc, declared) if sl.lower is not None else None,
+        upper=_lower_expr(sl.upper, lc, declared) if sl.upper is not None else None,
+        step=_lower_expr(sl.step, lc, declared) if sl.step is not None else None,
+        stepped=sub.is_stepped_slice,
+        value_vector_cpp=value_vector_cpp,
+        loc=loc,
+    )
+
+
+def _list_inplace_extend(stmt: TpyAugAssign, lc: _LowerCtx,
+                         declared: dict[str, TpyType]) -> 'THIRStmt | None':
+    """`c += v` on a list resolved to the mutating `__iadd__` dunder ->
+    `::tpy::list_extend(c, v)` (mirrors _gen_aug_assign_code's resolved_inplace
+    arm). Restricted to a bare list NAME target with a @native free-function
+    dunder, so the receiver renders bare. A non-empty array-literal RHS gets
+    the std::vector<E>{...} type prefix the two-parameter template needs.
+    Returns None (not a reject) when the shape is outside this arm, so the
+    generic aug-assign gate below runs."""
+    analyzer = lc.analyzer
+    inplace = stmt.resolved_inplace
+    if inplace is None:
+        return None
+    method = inplace.method
+    if not (method.native_function and method.native_name):
+        return None
+    if not (isinstance(stmt.target, TpyName)
+            and stmt.target.name in declared
+            and stmt.target.name not in lc.pointers):
+        return None
+    recv_t = declared[stmt.target.name]
+    recv_bare = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(recv_t)))
+    if not is_list(recv_bare):
+        return None
+    loc = getattr(stmt, "loc", None)
+    value = _lower_expr(
+        stmt.value, lc, declared,
+        use=_ExprUse(result=_ExprResultUse.STORAGE, allow_temps=True))
+    # The AST's array-literal vector prefix keys on the RAW target type
+    # (`is_list(get_expr_type(target))`), so an inferred (still-pending) list
+    # binding gets no prefix while an annotated `list[T]` local does -- mirror
+    # that exactly (whole-list type_to_cpp, no non-empty guard).
+    target_type = analyzer.get_expr_type(stmt.target)
+    value_vector_cpp = None
+    if isinstance(stmt.value, TpyArrayLiteral) and is_list(target_type):
+        value_vector_cpp = lc.render_type(target_type)
+    _witness("aug.container_inplace")
+    return THIRInplaceContainerOp(
+        receiver=THIRName(result_type=recv_t, name=stmt.target.name, loc=loc),
+        native_name=method.native_name,
+        value=value,
+        value_vector_cpp=value_vector_cpp,
+        loc=loc,
+    )
 
 
 def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
@@ -2631,9 +2749,20 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         if isinstance(stmt.init, TpyNoneLiteral):
             none_tgt = declared[stmt.name] if stmt.name in declared else vtype
             ut = _eligible_value_union(none_tgt)
+            opt_slot = unwrap_readonly(unwrap_ref_type(
+                unwrap_send_sync(none_tgt)))
             if ut is not None:
                 init: 'THIRExpr | None' = THIRLiteral(
                     result_type=ut, value=None, form=Form.STORAGE, loc=loc)
+            elif (isinstance(opt_slot, OptionalType)
+                  and not opt_slot.uses_pointer_repr()):
+                # `x = None` at a value-repr Optional binding (a reassigned
+                # `int | None` param) stores the storage-form `std::nullopt`;
+                # the pointer-repr `A*` optional slot takes nullptr on its own
+                # field-write / OTHER-local arm.
+                _witness("decl.opt_none")
+                init = THIRLiteral(result_type=none_tgt, value=None,
+                                   form=Form.STORAGE, loc=loc)
             else:
                 if not _eligible_ptr_value(none_tgt, analyzer):
                     note_detail("decl.none_init_slot")
@@ -2645,7 +2774,19 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 init = THIRLiteral(result_type=none_tgt, value=None,
                                    form=Form.VALUE, loc=loc)
         elif isinstance(stmt.init, TpyTupleLiteral):
-            tuple_t = _value_tuple_nested(declared.get(stmt.name, vtype), analyzer)
+            slot_ty = declared.get(stmt.name, vtype)
+            tuple_t = _value_tuple_nested(slot_ty, analyzer)
+            storage_record = False
+            # A first-decl VALUE-capture literal of record/Own elements binds the
+            # tuple BY VALUE (storage form): a pointer-repr-TYPED tuple still
+            # spells `std::tuple<..., T>` and lowers through the container-element
+            # move/copy path. A REF/CONST_REF capture is the borrow form (kept on
+            # the AST path).
+            if (tuple_t is None and not is_reassign and stmt.init.elem_capture
+                    and all(c is TupleElemCapture.VALUE
+                            for c in stmt.init.elem_capture)):
+                tuple_t = _storage_record_tuple(slot_ty, analyzer)
+                storage_record = tuple_t is not None
             if tuple_t is None:
                 note_detail("decl.tuple_literal_shape")
                 raise ThirUnsupported(stmt_reject_reason(stmt))
@@ -2655,6 +2796,20 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             except ThirUnsupported:
                 note_detail("decl.tuple_literal_shape")
                 raise ThirUnsupported(stmt_reject_reason(stmt)) from None
+            if storage_record:
+                # The local OWNS its elements, so downstream subscript / name
+                # reads stay storage (`.field`, no `->`/pointer lift) -- register
+                # it the way the AST registers `storage_form_tuple_locals`. A
+                # ref-element tuple decl spells `auto` (its `has_ref_elements`
+                # type would otherwise render the borrow spelling), mirroring the
+                # AST's `_cpp_decl_type` auto arm.
+                lc.storage_tuple_locals.add(stmt.name)
+                declared[stmt.name] = tuple_t
+                cpp = "auto" if tuple_t.has_ref_elements() else None
+                _witness("decl.storage_record_tuple")
+                return THIRVarDecl(
+                    name=stmt.name, resolved_type=tuple_t, init=init,
+                    cpp_type=cpp, form=Form.STORAGE, loc=loc)
         else:
             if not is_reassign and not container_literal and not storage_call:
                 # A branch-FIRST inline decl (`in_branch_first`) is genuinely
@@ -2674,6 +2829,10 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     or _resolved_bytes_value(vtype, analyzer) is not None
                     or _is_string_owned(vtype)
                     or _eligible_value_union(vtype) is not None
+                    # A value-repr Optional[scalar] slot (`y: Int32 | None =
+                    # items[i]`): the whole `std::optional<T>` lands bare, the
+                    # value-repr twin of the plain-scalar decl.
+                    or _value_opt_scalar(vtype, analyzer) is not None
                     or _slice_object_type(vtype)
                     or _eligible_ptr_value(vtype, analyzer)
                     or _callable_value(vtype)
@@ -2705,13 +2864,29 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                         src, lc, declared, use=_ExprUse(allow_temps=True),
                         allow_whole_optional=True))
             else:
+                # A value-repr Optional[scalar] slot consumes a WHOLE-optional
+                # init source bare (`y: Int32 | None = items[i]` -- the
+                # `std::optional<T>` element / call result lands directly), so
+                # thread allow_whole_optional to admit those reads at their gate.
+                opt_slot = _value_opt_scalar(vtype, analyzer) is not None
+                # A str-family FIELD read into a str-value decl slot
+                # (`s = p.name` -> `std::string_view s = p.name;` for a view
+                # slot, `std::string s = p.name;` for an owned one): the bare
+                # member read lands at the STORAGE decl sink like the print /
+                # f-string sinks admit it. Str only -- a bytes-field decl read
+                # stays deferred.
+                str_field_init = (
+                    isinstance(src, TpyFieldAccess)
+                    and _resolved_str_value(vtype, analyzer) is not None)
                 init = (_flush_witness(
                             "flush.vardecl",
                             _lower_char_targeted(
                                 src, vtype, lc, declared,
                                 use=_ExprUse(
                                     result=_ExprResultUse.STORAGE,
-                                    allow_temps=True)))
+                                    allow_temps=True),
+                                allow_whole_optional=opt_slot,
+                                field_owned_str_ok=str_field_init))
                         if stmt.init else None)
             init = _slot_literal_retype(
                 init, declared.get(stmt.name, vtype), lc)
@@ -2771,6 +2946,11 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             init = THIRFormConvert(result_type=str_t if str_t is not None else bytes_t,
                                    value=init, form=Form.STORAGE, loc=loc)
         declared[stmt.name] = vtype
+        # A value-repr Optional[scalar] LOCAL binds `std::optional<T>` just like a
+        # value-opt param, so register it so its reads ride the binding-keyed
+        # arms (deref-on-narrow `(*y)`, the whole-optional None-test/print).
+        if not is_reassign and _value_opt_scalar(vtype, analyzer) is not None:
+            lc.value_opt_locals.add(stmt.name)
         # An enum decl type spells via render_type (codegen's type_to_cpp):
         # its enum arm routes through enum_cpp_name -- the authoritative
         # spelling for cross-module (`::tpyapp::m::E`), @native (user qname),
@@ -2821,6 +3001,13 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     or isinstance(stmt.value, TpyBytesLiteral)
                     or stmt.target.name not in declared):
                 raise ThirUnsupported(stmt_reject_reason(stmt))
+        elif (isinstance(stmt.target, TpySubscript)
+              and stmt.target.slice_function_info is not None
+              and isinstance(stmt.target.index, TpySlice)):
+            # `c[a:b] = v` / `c[a:b:s] = v` -> list_set_slice /
+            # list_set_stepped_slice. Its own gate + node, distinct from the
+            # single-index subscript-write arm below.
+            return _lower_slice_assign(stmt, lc, declared, loc)
         elif isinstance(stmt.target, TpySubscript):
             any_dict_write = _any_dict_setitem_ok(
                 stmt, declared, pointers, narrowed, analyzer)
@@ -2863,8 +3050,10 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     stmt, declared, analyzer, pointers, narrowed, lc.prescan)
                 or _optional_record_field_write_ok(
                     stmt, declared, pointers, analyzer, narrowed, lc.prescan)
+                or _optional_field_none_write_ok(stmt, declared, analyzer)
                 or _container_field_write_ok(stmt, declared, analyzer)
                 or _str_field_write_ok(stmt, declared, analyzer)
+                or _bytes_field_write_ok(stmt, declared, analyzer)
                 or _container_name_field_write_ok(
                     stmt, declared, pointers, narrowed, analyzer)):
             note_detail("assign.field_write_shape")
@@ -2971,6 +3160,22 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             # `None` literal stores as a STORAGE-form None (`std::nullopt`, F2c).
             # The target field-access renders `recv.field` / `recv->field`.
             ftype = analyzer.get_expr_type(stmt.target)
+            # `recv.opt = None` at an Optional field: the storage is
+            # `std::optional<T>` regardless of the (possibly flow-narrowed to the
+            # inner) read type, so the store is `std::nullopt`. Keyed on the
+            # DECLARED field type so a narrowed write site (`self.slot` proven
+            # non-None) still stores nullopt, not a misrouted inner-typed None.
+            if isinstance(stmt.value, TpyNoneLiteral):
+                fdt = _field_decl_type(stmt.target, declared, analyzer)
+                fdt_u = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(fdt)))
+                         if fdt is not None else None)
+                if isinstance(fdt_u, OptionalType):
+                    _witness("field_write.opt_none")
+                    return THIRAssign(
+                        target=_lower_field_write_target(stmt, lc, declared),
+                        value=THIRLiteral(result_type=fdt_u, value=None,
+                                          form=Form.STORAGE, loc=loc),
+                        loc=loc)
             # A class-constant / classvar write: the bare qualified lvalue
             # (receiver eval split off), then the same target-typed value
             # render as the scalar field write -- the AST's class-constant
@@ -3053,6 +3258,19 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 return THIRAssign(target=_lower_field_write_target(
                                       stmt, lc, declared),
                                   value=_lower_expr(stmt.value, lc, declared), loc=loc)
+            # An owned `bytes` field write: a view (span) source copies via the
+            # S6 `::tpy::bytes_copy(...)` STORAGE convert (vector has no span
+            # ctor) -- an owned source (bytes literal / owned local) lands bare.
+            bytes_ft = _resolved_bytes_value(ftype, analyzer)
+            if bytes_ft is not None and is_bytes_type(bytes_ft):
+                _witness("field_write.bytes")
+                bval = _lower_expr(stmt.value, lc, declared)
+                if bval.form is Form.BORROW:
+                    bval = THIRFormConvert(result_type=bytes_ft, value=bval,
+                                           form=Form.STORAGE, move=False, loc=loc)
+                return THIRAssign(target=_lower_field_write_target(
+                                      stmt, lc, declared),
+                                  value=bval, loc=loc)
             # A value-storage Optional[record] field (`std::optional<inner>`):
             # a record RVALUE / record NAME source copies bare
             # (optional::operator= absorbs the inner lvalue/rvalue) or moves the
@@ -3146,6 +3364,9 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         if (isinstance(stmt.target, TpyName)
                 and stmt.target.name in narrowed):
             raise ThirUnsupported("stmt.aug_assign")
+        inplace = _list_inplace_extend(stmt, lc, declared)
+        if inplace is not None:
+            return inplace
         if isinstance(stmt.target, TpySubscript):
             aug_ok = _container_aug_setitem_ok(
                 stmt, declared, scope.admission_pointers(), narrowed,
@@ -3162,12 +3383,21 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             raise ThirUnsupported("stmt.aug_assign")
         # str `t += v`: the in-place append (the AST's string branch inside the
         # resolved-binop arm), not the synthetic binop below. The target-type
-        # dispatch mirrors _str_aug_append_ok's admission.
-        if (isinstance(stmt.target, TpyName)
-                and _owned_str_append_target(
-                    analyzer.get_expr_type(stmt.target), analyzer)):
-            return THIRStrAppend(target=stmt.target.name,
-                                 value=_lower_expr(stmt.value, lc, declared), loc=loc)
+        # dispatch mirrors _str_aug_append_ok's admission. A str-FIELD target
+        # (`recv.field += v`) carries its lowered lvalue on target_expr.
+        if _owned_str_append_target(
+                analyzer.get_expr_type(stmt.target), analyzer):
+            if isinstance(stmt.target, TpyName):
+                return THIRStrAppend(
+                    target=stmt.target.name,
+                    value=_lower_expr(stmt.value, lc, declared), loc=loc)
+            if isinstance(stmt.target, TpyFieldAccess):
+                return THIRStrAppend(
+                    target="",
+                    target_expr=_lower_expr(
+                        stmt.target, lc, declared,
+                        field_prechecked=True),
+                    value=_lower_expr(stmt.value, lc, declared), loc=loc)
         # `target OP= value` lowers to `target = (target OP value)`, matching the
         # AST's `_gen_aug_assign_code` scalar branch -- and the bytes
         # concat-and-assign (`t = ::tpy::bytes_concat(t, v);`, the same
@@ -3342,9 +3572,25 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             # to the borrow->storage THIRFormConvert the F2b write uses --
             # `ptr_to_optional` (copy, F2c) or `ptr_to_optional_move` when the
             # source is an owned local at last use (move, F2e, via _is_move_source).
+            opt_inner = unwrap_readonly(_unwrap_own(unwrap_readonly(ret_opt.inner)))
             if isinstance(stmt.value, TpyNoneLiteral):
                 value: THIRExpr = THIRLiteral(result_type=ret_opt, value=None,
                                               form=Form.STORAGE, loc=loc)
+            elif (_record_rvalue_source_shape(stmt.value, analyzer)
+                    and analyzer.get_expr_type(stmt.value) == opt_inner):
+                # A record RVALUE (ctor / by-value call) of the optional's
+                # inner returns bare into the `std::optional<T>` slot -- its
+                # converting ctor absorbs the record rvalue (F2c value-storage
+                # / Own-optional return, `return Coord(0, 0)`).
+                _witness("ret.storage_opt_rvalue")
+                return THIRReturn(
+                    value=_flush_witness(
+                        "flush.return",
+                        _lower_expr(
+                            stmt.value, lc, declared,
+                            use=_ExprUse(result=_ExprResultUse.STORAGE,
+                                         allow_temps=True))),
+                    loc=loc)
             else:
                 if not _is_borrow_ptr_local(
                         stmt.value, declared, pointers):
@@ -3366,6 +3612,36 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             if isinstance(stmt.value, TpyNoneLiteral):
                 pvalue: THIRExpr = THIRLiteral(result_type=ret_popt, value=None,
                                                form=Form.BORROW, loc=loc)
+            elif (isinstance(stmt.value, TpyFieldAccess)
+                    and not lc.func.is_property_getter
+                    and _field_receiver_ok(stmt.value, declared, analyzer)
+                    and _optional_ptr_borrow(
+                        analyzer.get_expr_type(stmt.value), analyzer)
+                    is not None):
+                # `return self.f` where f is a storage Optional[F1-record]
+                # field lifts the whole `std::optional<T>` member to the `T*`
+                # return via `optional_to_ptr` (the STORAGE->BORROW convert).
+                # A @property getter is EXCLUDED: it returns the whole
+                # `std::optional<T>` BY REFERENCE (`std::optional<T>&`), a
+                # bare field read -- handled by the property-ref arm below.
+                _witness("ret.ptr_opt_field")
+                pvalue = THIRFormConvert(
+                    result_type=ret_popt,
+                    value=_lower_field_source(stmt.value, lc, declared),
+                    form=Form.BORROW, loc=loc)
+            elif (isinstance(stmt.value, TpyFieldAccess)
+                    and lc.func.is_property_getter
+                    and _field_receiver_ok(stmt.value, declared, analyzer)
+                    and _optional_ptr_borrow(
+                        analyzer.get_expr_type(stmt.value), analyzer)
+                    is not None):
+                # A @property getter returning `self.f` (Optional[F1-record]
+                # field) returns the whole `std::optional<T>` member BY
+                # REFERENCE (`std::optional<T>&`, is_property_getter's storage
+                # override), so the field reads bare (STORAGE) -- no
+                # optional_to_ptr lift.
+                _witness("ret.opt_field_ref")
+                pvalue = _lower_field_source(stmt.value, lc, declared)
             else:
                 if (not isinstance(stmt.value, TpyName)
                         or stmt.value.name == "self"
@@ -3408,6 +3684,22 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                             stmt.value, lc, declared,
                             allow_whole_optional=True),
                         deref=False),
+                    loc=loc)
+            if (isinstance(stmt.value, TpyFieldAccess)
+                    and _field_receiver_ok(stmt.value, declared, analyzer)
+                    and _value_opt_scalar(
+                        analyzer.get_expr_type(stmt.value), analyzer)
+                    is not None):
+                # An un-narrowed whole value-Optional field read
+                # (`return self.f`) passes the bare `std::optional<T>` member
+                # into the matching value-Optional return slot -- the same
+                # whole-optional read the print sink admits (field_prechecked
+                # bypasses the value-position field-result gate).
+                _witness("ret.value_opt_field")
+                return THIRReturn(
+                    value=_lower_expr(
+                        stmt.value, lc, declared,
+                        field_prechecked=True, allow_whole_optional=True),
                     loc=loc)
             peeled = _peel_coerce(stmt.value)
             if (isinstance(peeled, TpyName)
@@ -3457,6 +3749,11 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                       analyzer.get_expr_type(stmt.value), analyzer)
                   is not None):
                 record_ok = bool(_witness("ret.record_field"))
+            elif (lc.prescan.ret_record_borrow is not None
+                  and isinstance(stmt.value, TpySubscript)
+                  and _container_record_elem_subscript(
+                      stmt.value, declared, analyzer)):
+                record_ok = bool(_witness("ret.record_subscript"))
             elif (isinstance(stmt.value, TpyName)
                   and stmt.value.name != "self"
                   and stmt.value.name not in narrowed
@@ -3498,6 +3795,14 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             if isinstance(stmt.value, TpyFieldAccess):
                 return THIRReturn(value=_lower_field_source(stmt.value, lc, declared),
                                   loc=loc)
+            if isinstance(stmt.value, TpySubscript):
+                # `return c[i]` -- a container record-element subscript yields
+                # the `T&` element lvalue (`::tpy::__getitem__(c, i)`), returned
+                # bare into the `T&` borrow slot.
+                return THIRReturn(
+                    value=_lower_expr(stmt.value, lc, declared,
+                                      subscript_prechecked=True),
+                    loc=loc)
         if stmt.value is not None and lc.prescan.ret_container_storage is not None:
             source = stmt.value
             container_ok = False
@@ -3533,9 +3838,26 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 note_detail("return.container_source")
                 raise ThirUnsupported(stmt_reject_reason(stmt))
         if stmt.value is not None and lc.prescan.ret_callable:
-            # A Callable return slot: the only admitted source is a closure
-            # local's bare name (`return add;` -- the lambda converts to
-            # std::function implicitly, the plain return tail).
+            # A Callable return slot: a bare closure-local name (`return add;`
+            # -- the lambda converts to std::function implicitly, the plain
+            # return tail) or a direct lambda literal (`return lambda x: ...;`
+            # -- the escaping by-value closure, _lower_lambda's captures_by_value
+            # arm). Other sources reject.
+            if isinstance(stmt.value, TpyLambda):
+                value = _lower_lambda(stmt.value, lc, declared)
+                _witness("ret.closure_lambda")
+                return THIRReturn(value=value, loc=loc)
+            if (_func_ref_routable(stmt.value, analyzer)
+                    and not (isinstance(stmt.value, TpyName)
+                             and stmt.value.name in lc.nested_def_locals)):
+                # `return double;` at a Callable slot -- the bare func-ref name
+                # converts to std::function implicitly (like the closure name).
+                # A nested-def local is also is_function_ref but must take the
+                # closure-name arm below (the func-ref intercept in _lower_expr
+                # excludes nested_def_locals, so routing it here would fall back).
+                _witness("ret.closure_ref")
+                return THIRReturn(
+                    value=_lower_expr(stmt.value, lc, declared), loc=loc)
             if not (isinstance(stmt.value, TpyName)
                     and stmt.value.name in lc.nested_def_locals):
                 note_detail("return.callable_source")

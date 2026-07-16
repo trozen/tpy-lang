@@ -334,6 +334,21 @@ class THIRMembership(THIRExpr):
 
 
 @dataclass(frozen=True)
+class THIRStrMembership(THIRExpr):
+    """A `needle in s` / `not in` test over a str-family value (str/String/
+    StrView), which has no `__contains__` member -- the AST's `.find()` arm:
+    `(s.find(needle) != std::string::npos)` for `in`, `== std::string::npos`
+    for `not in`. A str-LITERAL receiver is wrapped in `std::string_view(...)`
+    (C string literals lack `.find`, `wrap_receiver_sv`); a name/field receiver
+    reads bare. The needle (char or str value) renders bare. `result_type` is
+    bool; VALUE form."""
+    receiver: THIRExpr
+    needle: THIRExpr
+    negate: bool = False
+    wrap_receiver_sv: bool = False
+
+
+@dataclass(frozen=True)
 class THIRTupleMembership(THIRExpr):
     """A `needle in (a, b, ...)` / `not in` test against a TUPLE LITERAL, which
     the AST expands to an OR-chain of equality compares (no `__contains__`):
@@ -592,6 +607,25 @@ class THIRMove(THIRExpr):
 
 
 @dataclass(frozen=True)
+class THIRLambda(THIRExpr):
+    """A lambda expression -- `_gen_lambda`'s C++ closure:
+
+        <capture>(<params>) -> <ret_cpp> { return <body>; }   (value return)
+        <capture>(<params>) { <body>; }                       (void return)
+
+    `capture_cpp` is the full `[...]` list, `params_cpp` the spelled param
+    slots, both from sema's lambda facts; `ret_cpp` is None for a void body
+    (emit drops the trailing type and renders the body as a bare statement).
+    The body is a single lowered expression -- the AST's `gen_expr(body,
+    ret_type)`. The by-value-capture (Callable/std::function) and
+    readonly-param (key-function) param spellings stay on the AST path."""
+    capture_cpp: str
+    params_cpp: tuple[str, ...]
+    body: THIRExpr
+    ret_cpp: 'str | None' = None
+
+
+@dataclass(frozen=True)
 class THIRMethodCall(THIRExpr):
     """Method call on a builtin-container or user-record receiver, carrying the
     facts `gen_call_from_fi` dispatches on, materialized at lowering from the
@@ -634,10 +668,16 @@ class THIRMethodCall(THIRExpr):
     # at lowering via render_type over the inferred args. Plain member arm
     # only (the deref_check arm gate-excludes type args).
     method_targs_cpp: tuple[str, ...] | None = None
+    # A USER Deref-wrapper method call: N `.__deref__()` calls between the bare
+    # receiver and the member call (`r.sum()` -> `r.__deref__().sum()`),
+    # _gen_method_call's `deref_chain and not is_pointer()` arm. Bare `.`
+    # member access, so mutually exclusive with is_arrow / deref_check.
+    deref_chain: int = 0
 
     def __post_init__(self) -> None:
         assert not (self.deref_check and self.is_arrow)
         assert not (self.deref_check and self.method_targs_cpp)
+        assert not (self.deref_chain and (self.is_arrow or self.deref_check))
 
 
 @dataclass(frozen=True)
@@ -1192,6 +1232,47 @@ class THIRSetItem(THIRStmt):
 
 
 @dataclass(frozen=True)
+class THIRSliceAssign(THIRStmt):
+    """A list/Array/Span slice assignment `c[a:b] = v` / `c[a:b:s] = v` ->
+    the sema-resolved slice `__setitem__`'s @native free-function
+    (`::tpy::list_set_slice` / `::tpy::list_set_stepped_slice`) over the
+    receiver, the slice initializer, and the RHS (mirrors `_gen_slice_assign`
+    -> `gen_call_from_fi`'s native arm). `receiver` is a bare list/Array/Span
+    name or F1-field. The slice initializer is built like `THIRStrSlice`'s
+    bound arm (`::tpy::BasicSlice{lo, hi}` / `::tpy::Slice{lo, hi, step}`,
+    `stepped` per the source syntax; an absent bound -> `std::nullopt`).
+    `value` is the lowered RHS (a move at last use rides on it); a non-empty
+    array-literal RHS takes the `std::vector<E>{...}` type prefix
+    (`value_vector_cpp`) that the checked helper needs to deduce its Range (the
+    AST's bare-brace guard). `native_name` is the unqualified stub name, qualified
+    at emit."""
+    receiver: THIRExpr
+    native_name: str
+    value: THIRExpr
+    lower: THIRExpr | None = None
+    upper: THIRExpr | None = None
+    step: THIRExpr | None = None
+    stepped: bool = False
+    value_vector_cpp: str | None = None
+
+
+@dataclass(frozen=True)
+class THIRInplaceContainerOp(THIRStmt):
+    """An in-place container aug-assign `c OP= v` resolved to a mutating dunder
+    (`__iadd__` -> `::tpy::list_extend`, ...) -- the @native free-function over
+    the receiver and the RHS (mirrors `_gen_aug_assign_code`'s
+    `resolved_inplace` arm -> `gen_call_from_fi`'s native arm). `receiver` is a
+    bare list name; `value` is the lowered RHS. A non-empty array-literal RHS
+    takes the `std::vector<E>{...}` type prefix (`value_vector_cpp`) that the
+    two-parameter template needs to deduce its Range (the AST's bare-brace
+    guard). `native_name` is the unqualified stub name, qualified at emit."""
+    receiver: THIRExpr
+    native_name: str
+    value: THIRExpr
+    value_vector_cpp: str | None = None
+
+
+@dataclass(frozen=True)
 class THIRFrameSlotWrite(THIRStmt):
     """A write to a resumable frame_slot local -- `name.emplace(value);` (R1c).
 
@@ -1217,9 +1298,12 @@ class THIRStrAppend(THIRStmt):
     at a decl-reassign/assign whose RHS concat's left operand is the target).
     `target` is the local's source name; `value` renders bare --
     `std::string::operator+=` accepts string_view / const char* / string /
-    an owned concat result alike, so no form wrap arises."""
+    an owned concat result alike, so no form wrap arises. A str-FIELD append
+    (`recv.field += v`) carries the lowered field lvalue on `target_expr`
+    instead; the emit prefers it over `target`."""
     target: str
     value: THIRExpr
+    target_expr: 'THIRExpr | None' = None
 
 
 @dataclass(frozen=True)

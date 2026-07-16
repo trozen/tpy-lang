@@ -248,3 +248,19 @@ class TestNestedDefEmitState:
                + "        # trailing note\n"
                + "    print(f(1))\n")
         assert cpp_with_comments(src, True) == cpp_with_comments(src, False)
+
+    def test_closure_name_returned_at_callable_slot_routes(self):
+        # A nested-def local is also flagged is_function_ref, so it must take
+        # the closure-name return arm (NOT the func-ref return arm, whose
+        # _lower_expr intercept excludes nested_def_locals and would fall the
+        # whole body back). Regression guard: the escaping-factory pattern must
+        # route byte-identically, not fall back.
+        src = ("from typing import Callable\n" + _PRELUDE
+               + "def make_adder(n: Int32) -> Callable[[Int32], Int32]:\n"
+               + "    def add(x: Int32) -> Int32:\n"
+               + "        return x + n\n"
+               + "    return add\n"
+               + "def main() -> None:\n"
+               + "    a = make_adder(5)\n    print(a(10))\nmain()\n")
+        assert _fn(_lower_ctx(src), "make_adder") is not None
+        assert _cpp(src, True) == _cpp(src, False)

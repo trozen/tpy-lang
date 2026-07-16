@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from ..codegen_cpp.context import CodeGenOptions
 from .nodes import THIRName, THIRReturn
-from .testutil import _compile, _entry, _fn, _lower_ctx
+from .testutil import _compile, _entry, _fn, _lower_ctx, _assert_byte_identical
 
 
 class TestGenericFreeFunction:
@@ -366,15 +366,15 @@ class TestInstantiationTemplateCall:
         thir = _lower_ctx(src)
         assert _fn(thir, "main") is None
 
-    def test_ptr_null_ctor_stays_ast(self):
-        # `Ptr[Int32]()` carries a PtrType call_type (the typed-nullptr
-        # render) -- excluded from the face.
+    def test_ptr_null_ctor_routes(self):
+        # `Ptr[Int32]()` (typed-nullptr render) routes byte-identically via the
+        # PtrType null-ctor arm.
         src = ("from tpy import Int32, Ptr\n"
                "def main():\n"
                "    p = Ptr[Int32]()\n"
                "    print(p is None)\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "main") is None
+        assert _fn(_lower_ctx(src), "main") is not None
+        _assert_byte_identical(src)
 
 
 class TestCtorInstantiation:

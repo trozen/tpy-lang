@@ -641,13 +641,13 @@ class TestF2cReturn:
         assert isinstance(ret, THIRReturn)
         assert isinstance(ret.value, THIRName) and not ret.value.deref
 
-    def test_rvalue_return_is_ineligible(self):
+    def test_rvalue_return_routes(self):
         # A non-borrow, non-None source (here an rvalue ctor) into the storage
-        # return slot is the direct-construction branch -- deferred to the AST path.
-        thir = _lower_ctx(
-            _F1_RECORDS
-            + "def f(b: Box) -> Own[Inner] | None:\n    return Inner(5)\n")
-        assert _fn(thir, "f") is None
+        # return slot routes byte-identically via the direct-construction arm.
+        src = (_F1_RECORDS
+               + "def f(b: Box) -> Own[Inner] | None:\n    return Inner(5)\n")
+        assert _fn(_lower_ctx(src), "f") is not None
+        _assert_byte_identical(src)
 
     def test_pointer_local_borrow_return_routes(self):
         # The borrow-return source via the POINTER (not OPTIONAL_TO_PTR) branch of

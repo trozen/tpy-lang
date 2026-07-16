@@ -9,10 +9,12 @@ from .nodes import (
     Form, PrintForm, THIRAssign, THIRBinOp, THIRCall, THIRCharLiteral,
     THIRCoerce, THIRContainerLiteral, THIRForEach, THIRFormConvert,
     THIRFString, THIRFStringArg, THIRMethodCall, THIRName, THIRSetItem,
-    THIRStrAppend, THIRStrLiteral, THIRStrSlice, THIRSubscript, THIRVarDecl,
+    THIRStrAppend, THIRStrLiteral, THIRStrMembership, THIRStrSlice,
+    THIRSubscript, THIRVarDecl,
 )
 from .testutil import (
     _compile, _entry, _lower, _lower_ctx, _lower_ctx_witnessed, _fn, _PRELUDE,
+    _assert_byte_identical,
 )
 
 # --- S1 str slice: str/StrView values (params, locals, print, compare, len,
@@ -158,6 +160,22 @@ class TestStrReceiverMethods:
     """A str/StrView value-view receiver's builtin @cpp_template /
     @native(function=True) methods route through the general THIRMethodCall
     arm (validation widened at `_view_method_call_supported`)."""
+
+    def test_str_literal_receiver_membership_wrap(self):
+        # `"ell" in "hello"` -- a str-LITERAL receiver takes the
+        # wrap_receiver_sv=True branch (the literal is wrapped in a
+        # string_view for the .find() arm); a NAME receiver does not. Both
+        # route byte-identically.
+        lit = 'def f() -> bool:\n    return "ell" in "hello world"\n'
+        ret = _fn(_lower(lit), "f").body[0]
+        assert isinstance(ret.value, THIRStrMembership)
+        assert ret.value.wrap_receiver_sv is True
+        _assert_byte_identical(lit)
+        name = 'def f(s: str) -> bool:\n    return "x" in s\n'
+        ret2 = _fn(_lower(name), "f").body[0]
+        assert isinstance(ret2.value, THIRStrMembership)
+        assert ret2.value.wrap_receiver_sv is False
+        _assert_byte_identical(name)
 
     def test_startswith_cpp_template(self):
         thir = _lower('def f(s: str) -> bool:\n    return s.startswith("hi")\n')

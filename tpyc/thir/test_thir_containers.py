@@ -179,23 +179,18 @@ class TestContainerSubscriptRead:
             + "    return d[k]\n")
         assert _fn(thir_d, "g") is not None
 
-    def test_optional_element_read_ineligible(self):
-        # An Optional-element container read is composite (`std::optional<T>`),
-        # not a bare value-leaf -- the naive read emit would mis-tag it VALUE, so
-        # it stays AST. The subscript-free control routes.
-        thir = _lower(
+    def test_value_opt_scalar_element_read_routes(self):
+        # A value-repr Optional-scalar element read into a value-opt decl slot
+        # (`y: Int32 | None = xs[0]`) routes byte-identically via the
+        # whole-optional element arm (gated on the value-opt decl position).
+        src = (
             _PRELUDE
             + "def f() -> Int32:\n"
             + "    xs: list[Int32 | None] = [1, None]\n"
             + "    y = xs[0]\n"
             + "    return 1\n")
-        assert _fn(thir, "f") is None
-        ctrl = _lower(
-            _PRELUDE
-            + "def f() -> Int32:\n"
-            + "    xs: list[Int32 | None] = [1, None]\n"
-            + "    return 1\n")
-        assert _fn(ctrl, "f") is not None
+        assert _fn(_lower(src), "f") is not None
+        _assert_byte_identical(src)
 
 
 
@@ -809,12 +804,13 @@ class TestContainerLiteralElementFamilies:
             + "def f(h: H) -> Int32:\n    ps = [h.p]\n    return len(ps)\n")
         assert _fn(thir, "f") is None
 
-    def test_record_dict_value_ineligible(self):
-        # Record dict values stay tagged (container_lit.elem.record).
-        thir = _lower_ctx(
-            _ELEM_RECORDS
-            + "def f() -> Int32:\n    d = {1: P(1)}\n    return len(d)\n")
-        assert _fn(thir, "f") is None
+    def test_record_dict_value_routes(self):
+        # Record dict-literal values route byte-identically (the container-literal
+        # record-element value arm).
+        src = (_ELEM_RECORDS
+               + "def f() -> Int32:\n    d = {1: P(1)}\n    return len(d)\n")
+        assert _fn(_lower_ctx(src), "f") is not None
+        _assert_byte_identical(src)
 
     def test_nested_list_array_outer_routes(self):
         # Read-only outer demotes to Array; the emit adds the extra aggregate
@@ -1782,12 +1778,14 @@ class TestContainerSetItem:
         assert isinstance(stmt.value, THIRCall)
         assert any(isinstance(a, THIRArgTemp) for a in stmt.value.args)
 
-    def test_slice_assign_ineligible(self):
-        thir = _lower(
-            _PRELUDE
-            + "def f(xs: list[Int32], ys: list[Int32]) -> None:\n"
-            + "    xs[0:2] = ys\n")
-        assert _fn(thir, "f") is None
+    def test_slice_assign_routes(self):
+        # `xs[0:2] = ys` routes byte-identically via THIRSliceAssign
+        # (list_set_slice).
+        src = (_PRELUDE
+               + "def f(xs: list[Int32], ys: list[Int32]) -> None:\n"
+               + "    xs[0:2] = ys\n")
+        assert _fn(_lower(src), "f") is not None
+        _assert_byte_identical(src)
 
     def test_record_element_ineligible(self):
         thir = _lower_ctx(

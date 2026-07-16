@@ -73,11 +73,13 @@ from .nodes import (
     THIRIfExpr,
     THIRIsNone,
     THIRMembership,
+    THIRStrMembership,
     THIRTupleMembership,
     THIRIsinstance,
     THIRLiteral,
     THIRMatch,
     THIRMatchBinding,
+    THIRLambda,
     THIRMethodCall,
     THIRModuleVar,
     THIRMove,
@@ -96,6 +98,8 @@ from .nodes import (
     THIRReturn,
     THIRSetItem,
     THIRSelf,
+    THIRSliceAssign,
+    THIRInplaceContainerOp,
     THIRStmt,
     THIRFrameSlotWrite,
     THIRStrAppend,
@@ -561,6 +565,11 @@ def _emit_method_call(e: THIRMethodCall, state: _EmitState) -> str:
         # `T*`) receiver before the `.` member call -- _gen_method_call's
         # runtime-check arm (type args are gate-excluded, so no {method_targs}).
         return f"::tpy::deref_check({recv}).{e.method_cpp}({', '.join(args)})"
+    if e.deref_chain:
+        # User Deref-wrapper method call: N `.__deref__()` calls between the
+        # bare receiver and the member call (`r.__deref__().sum()`).
+        chain = ".__deref__()" * e.deref_chain
+        return f"{recv}{chain}.{e.method_cpp}({', '.join(args)})"
     mtargs = (f"<{', '.join(e.method_targs_cpp)}>"
               if e.method_targs_cpp else "")
     return (f"{recv}{'->' if e.is_arrow else '.'}"
@@ -1137,6 +1146,16 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
             inner = (f"({_emit_expr(e.receiver, state)}.{e.method_cpp}"
                      f"({_emit_expr(e.needle, state)}))")
         return f"(!{inner})" if e.negate else inner
+    if isinstance(e, THIRStrMembership):
+        # _gen_binop's str `.find()` arm: `(s.find(needle) != npos)`, or
+        # `== npos` for `not in`. A str-literal receiver wraps in string_view
+        # (C string literals lack `.find`).
+        recv = _emit_expr(e.receiver, state)
+        if e.wrap_receiver_sv:
+            recv = f"std::string_view({recv})"
+        op = "==" if e.negate else "!="
+        needle = _emit_expr(e.needle, state)
+        return f"({recv}.find({needle}) {op} std::string::npos)"
     if isinstance(e, THIRTupleMembership):
         # _gen_binop's tuple-literal `in` arm: an OR-chain of `==` compares.
         left = _emit_expr(e.left, state)
@@ -1213,6 +1232,13 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         return f"&({name})" if e.addr_of else name
     if isinstance(e, THIRMove):
         return f"std::move({_emit_expr(e.value, state)})"
+    if isinstance(e, THIRLambda):
+        params = ", ".join(e.params_cpp)
+        body = _emit_expr(e.body, state)
+        if e.ret_cpp is None:
+            return f"{e.capture_cpp}({params}) {{ {body}; }}"
+        return (f"{e.capture_cpp}({params}) -> {e.ret_cpp} "
+                f"{{ return {body}; }}")
     if isinstance(e, THIROptionalPtrArg):
         if e.value is None:
             return "nullptr"
@@ -2709,11 +2735,47 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             state.temps.flush(out, indent)
             out.write(f"{indent}::tpy::__setitem__({recv_cpp}, {idx_cpp}, "
                       f"{value_cpp});\n")
+    elif isinstance(stmt, THIRSliceAssign):
+        # Mirrors _gen_slice_assign: the resolved slice __setitem__ @native
+        # free-function (list_set_slice / list_set_stepped_slice) over the
+        # receiver, the slice initializer (like _emit_str_slice's bound arm),
+        # and the RHS. A non-empty array-literal RHS wears the std::vector<E>{...}
+        # type prefix the checked helper needs to deduce its Range.
+        recv_cpp = _emit_expr(stmt.receiver, state)
+        lo = _emit_expr(stmt.lower, state) if stmt.lower is not None else "std::nullopt"
+        hi = _emit_expr(stmt.upper, state) if stmt.upper is not None else "std::nullopt"
+        if stmt.stepped:
+            step = (_emit_expr(stmt.step, state)
+                    if stmt.step is not None else "std::nullopt")
+            slice_arg = f"::tpy::Slice{{{lo}, {hi}, {step}}}"
+        else:
+            slice_arg = f"::tpy::BasicSlice{{{lo}, {hi}}}"
+        value_cpp = _emit_expr(stmt.value, state)
+        if stmt.value_vector_cpp is not None:
+            value_cpp = f"std::vector<{stmt.value_vector_cpp}>{value_cpp}"
+        state.temps.flush(out, indent)
+        out.write(f"{indent}{qualify_native_name(stmt.native_name)}"
+                  f"({recv_cpp}, {slice_arg}, {value_cpp});\n")
+    elif isinstance(stmt, THIRInplaceContainerOp):
+        # Mirrors _gen_aug_assign_code's resolved_inplace arm: the mutating
+        # dunder's @native free-function (list_extend, ...) over the receiver
+        # and the RHS. A non-empty array-literal RHS wears the std::vector<E>{...}
+        # type prefix the two-parameter template needs to deduce its Range.
+        recv_cpp = _emit_expr(stmt.receiver, state)
+        value_cpp = _emit_expr(stmt.value, state)
+        if stmt.value_vector_cpp is not None:
+            value_cpp = f"{stmt.value_vector_cpp}{value_cpp}"
+        state.temps.flush(out, indent)
+        out.write(f"{indent}{qualify_native_name(stmt.native_name)}"
+                  f"({recv_cpp}, {value_cpp});\n")
     elif isinstance(stmt, THIRStrAppend):
         # `t += v;` -- the str in-place append (the `+=` statement and the
-        # `x = x + y` peephole share the emit).
-        out.write(f"{indent}{escape_cpp_name(stmt.target)} += "
-                  f"{_emit_expr(stmt.value, state)};\n")
+        # `x = x + y` peephole share the emit). A str-FIELD append renders its
+        # lowered lvalue (`recv.field += v;`).
+        tgt = (_emit_expr(stmt.target_expr, state)
+               if stmt.target_expr is not None
+               else escape_cpp_name(stmt.target))
+        out.write(f"{indent}{tgt} += {_emit_expr(stmt.value, state)};\n")
     elif isinstance(stmt, THIRFrameSlotWrite):
         # `name.emplace(value);` -- a resumable frame_slot local write (R1c).
         # Render the value first so its arg temps flush before the line

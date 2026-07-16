@@ -9,6 +9,7 @@ body and do not construct THIR; lowering arms consume their results locally.
 
 from __future__ import annotations
 from ...parse.nodes import (
+    FunctionLinkage,
     TpyArrayLiteral,
     TpyAssert,
     TpyAssign,
@@ -209,6 +210,12 @@ _TEMPLATE_COERCIONS: dict[str, str] = {
     "fixed_int_to_bigint": "::tpy::BigInt({0})",
     "bigint_to_float": "static_cast<double>({0})",
     "bigint_to_float32": "static_cast<float>({0})",
+    # Char -> str/String/StrView: position-independent single-arg wraps
+    # (coercions.py's char_to_* lambdas). The StrView target views the shared
+    # buffer, so the coerce arm's str-view-target rule tags it BORROW.
+    "char_to_str": "std::string(::tpy::char_to_str({0}))",
+    "char_to_string": "std::string(1, {0})",
+    "char_to_strview": "::tpy::char_to_str({0})",
 }
 
 # The Float32-targeted float literal: an identity lambda whose `f`-suffix
@@ -691,7 +698,13 @@ def _chain_post_if_fact(
     while ((nxt := _elif_link(last)) is not None
            and not _facts_have_concrete(last.else_type_facts)):
         last = nxt
-    info = _isinstance_narrow_info(last.condition, declared, analyzer)
+    # Peel a leading `not` (the negated-polarity simple form): the fact is read
+    # from `last.else_type_facts`, which sema already computed for the actual
+    # else branch regardless of the condition's polarity.
+    cond = last.condition
+    if isinstance(cond, TpyUnaryOp) and cond.op == "!":
+        cond = cond.operand
+    info = _isinstance_narrow_info(cond, declared, analyzer)
     if info is None:
         return None
     post = _post_if_narrow_fact(last, info, narrowed)
@@ -1834,6 +1847,53 @@ def _user_deref_field_recv_ok(e: TpyExpr, declared: dict[str, TpyType],
     ri = analyzer.registry.get_record_for_type(u)
     return ri is not None and bool(ri.get_method_overloads("__deref__"))
 
+def _user_deref_method_call_ok(e: TpyExpr, declared: dict[str, TpyType],
+                               narrowed: 'AbstractSet[str]', analyzer,
+                               pointers: 'AbstractSet[str]') -> bool:
+    """A method call auto-dereffed through a USER Deref-style wrapper
+    (`r.sum()` on `r: Ref` with `__deref__`) -> `r.__deref__().sum()`
+    (_gen_method_call's `deref_chain and not is_pointer()` arm; N =
+    deref_depth). The method arm (plain member, no marker) mirrors the field
+    read's `_user_deref_field_recv_ok`: a plain value NAME bound to an F1 user
+    record with a `__deref__` overload, not a pointer / narrowed local. The
+    called method's fi is a plain user method on the DEREFFED type; every
+    special-emit marker (static/module/template/native/type-args/nested/
+    optional-check) stays AST."""
+    if not isinstance(e, TpyMethodCall):
+        return False
+    if not e.deref_depth or e.deref_narrowed_to is not None:
+        return False
+    if e.kwargs or e.double_star_unpack is not None:
+        return False
+    if (e.is_static_call or e.super_parent_type is not None
+            or e.unbound_self_parent_type is not None
+            or e.user_module_call is not None
+            or e.builtin_module_call is not None
+            or e.typed_dict_get_field is not None
+            or e.is_nested_constructor or e.is_nested_enum_constructor
+            or e.is_callable_field or e.macro_expansion is not None
+            or e.fstr_expansion is not None or e.type_args
+            or e.inferred_type_args or e.needs_optional_runtime_check):
+        return False
+    fi = e.resolved_function_info
+    if fi is None or not _plain_method_fi_ok(fi):
+        return False
+    if (fi.cpp_template is not None or fi.native_function or fi.native_name
+            or fi.type_params or fi.linkage != FunctionLinkage.DEFAULT):
+        return False
+    recv = e.obj
+    if not isinstance(recv, TpyName) or recv.name not in declared:
+        return False
+    if recv.name in narrowed or recv.name in pointers:
+        return False
+    u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(declared[recv.name])))
+    if isinstance(u, OwnType):
+        u = unwrap_readonly(u.wrapped)
+    if not (isinstance(u, NominalType) and _f1_record(u, analyzer)):
+        return False
+    ri = analyzer.registry.get_record_for_type(u)
+    return ri is not None and bool(ri.get_method_overloads("__deref__"))
+
 def _record_storage_return(t: TpyType | None, analyzer) -> 'NominalType | None':
     """The storage-form F1-record return slot (`-> Own[Box]` -> C++ `Box` by
     value), or None. Bare name sources return bare (`return b;` -- NRVO for an
@@ -1925,6 +1985,17 @@ def _optional_ptr_borrow_name(e: TpyExpr, declared: dict[str, TpyType],
     if not (isinstance(e, TpyName) and e.name in declared):
         return None
     return _optional_ptr_borrow(declared[e.name], analyzer)
+
+def _ptr_value_none_name(e: TpyExpr, declared: dict[str, TpyType],
+                         analyzer) -> bool:
+    """`e` is a bare name whose DECLARED type is an eligible `Ptr[T]` VALUE
+    (a nullable raw pointer). Its `is [not] None` test renders the AST's
+    type-agnostic pointer compare `(p != nullptr)` / `(p == nullptr)` (the
+    _gen_binop identity fallback -- a PtrType is neither Optional nor union),
+    the non-null narrowing riding the deref sites, not this test."""
+    if not (isinstance(e, TpyName) and e.name in declared):
+        return False
+    return _eligible_ptr_value(declared[e.name], analyzer)
 
 def _value_opt_scalar(t: 'TpyType | None', analyzer) -> 'OptionalType | None':
     """The value-repr `Optional[value scalar]` binding type -- an `Int32 | None`
@@ -2295,6 +2366,41 @@ def _value_tuple_nested(t: TpyType | None, analyzer) -> 'TupleType | None':
             return None
     return t
 
+def _storage_record_tuple_element_ok(e: TpyType, analyzer) -> bool:
+    """A STORAGE-form value-tuple element: a by-value slot in `std::tuple<...>`
+    whose literal element lowers through the same move/copy path as a container
+    element -- a scalar / owned-str (bare), an F1-record (a ctor rvalue lands
+    bare, a last-use name moves in), an `Own[F1-record]` (the same by-value
+    slot), or a nested storage tuple."""
+    if _value_tuple_element_ok(e, analyzer):
+        return True
+    inner = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(e)))
+    if isinstance(inner, OwnType):
+        return _f1_record(inner.wrapped, analyzer)
+    if isinstance(inner, TupleType):
+        return _storage_record_tuple(inner, analyzer) is not None
+    return _f1_record(inner, analyzer)
+
+def _storage_record_tuple(t: TpyType | None, analyzer) -> 'TupleType | None':
+    """A tuple whose every element is storage-eligible -- consumed only for a
+    VALUE-capture literal decl (`_lower_tuple_literal` over
+    `_lower_container_elem`), where the local binds the tuple BY VALUE
+    (`std::tuple<..., T>`, the element's `to_cpp()` value spelling) rather than
+    the borrow form `std::tuple<..., T*>`. A @nocopy / owned-last-use record
+    element moves in and a copy() rvalue constructs in place, exactly like a
+    container element. The pointer-repr-vs-storage decision is the literal's
+    per-element capture, NOT the tuple type (a plain-record tuple TYPE is
+    pointer-repr, yet a VALUE-capture literal of it binds storage) -- so the
+    caller gates on `elem_capture` all-VALUE, and this predicate only vets the
+    element set."""
+    if t is None:
+        return None
+    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    if not isinstance(t, TupleType):
+        return None
+    return t if all(_storage_record_tuple_element_ok(e, analyzer)
+                    for e in t.element_types) else None
+
 def _tuple_compare_pair(lt: 'TpyType | None', rt: 'TpyType | None',
                         analyzer) -> bool:
     """Both compare operands are value tuples (scalar / owned-str / nested,
@@ -2543,6 +2649,16 @@ def _bytes_elem_container(t: TpyType | None, analyzer) -> bool:
 
     return _container_elem_family(t, analyzer, owned_bytes)
 
+def _container_value_opt_scalar_elem(t: TpyType | None, analyzer) -> bool:
+    """A container whose element/value is a value-repr `Optional[scalar]`
+    (`list[Int32 | None]`, `dict[str, int | None]`): the subscript read yields
+    the whole `std::optional<T>` element bare. Kept OFF `_container_value_leaf_read`
+    (its docstring excludes composite Optional elements) because the bare
+    optional lands only in a WHOLE-optional sink -- the read arm admits it solely
+    under `allow_whole_optional`."""
+    return _container_elem_family(
+        t, analyzer, lambda a: _value_opt_scalar(a, analyzer) is not None)
+
 def _container_value_leaf_read(t: TpyType | None, analyzer) -> bool:
     """A container whose element/value subscript READ renders bare in a value
     position -- the compositional replacement for the enumerated
@@ -2591,7 +2707,10 @@ def _container_ref_alias_elem(t: TpyType | None, analyzer) -> bool:
         a = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(a)))
         if isinstance(a, OwnType):
             a = unwrap_readonly(a.wrapped)
-        return is_list(a) or is_dict(a) or is_set(a)
+        # Array included alongside list/dict/set: the element lvalue render
+        # (`T& x = __getitem__(c, k)`) is the same for a demoted `std::array`
+        # value (`{1:[1,2],2:[3,4]}` -> dict[int, Array[int,2]]).
+        return is_list(a) or is_dict(a) or is_set(a) or is_array(a)
     return _container_elem_family(t, analyzer, container_elem)
 
 def _set_method_recv(t: TpyType | None, analyzer) -> bool:
@@ -3080,17 +3199,36 @@ def _optional_narrow_facts_ok(facts: dict[str, TpyType],
             return False
     return True
 
+def _value_opt_rvalue(e: TpyExpr, analyzer) -> 'OptionalType | None':
+    """A value-repr Optional RVALUE `is [not] None` operand that is a call
+    (`pick(...) is None` on a `-> str | None` / `bytes | None` / `int | None`
+    callee): the materialized result is `std::optional<T>` by value, so the
+    None-test reads `.has_value()` over it -- the same _gen_binop storage-form
+    arm the value-opt NAME/FIELD rows key. No narrowing applies to an rvalue,
+    so the RESOLVED type is authoritative (unlike the name rows, which key the
+    declared binding). Names / fields / None-literals are handled by the other
+    operand rows; a pointer-repr optional rvalue is excluded here."""
+    if not isinstance(e, (TpyCall, TpyMethodCall)):
+        return None
+    t = analyzer.get_expr_type(e)
+    if not isinstance(t, TpyType):
+        return None
+    u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    if isinstance(u, OptionalType) and not u.uses_pointer_repr():
+        return u
+    return None
+
 def _is_none_compare_operand(e: TpyBinOp, locals_: dict[str, TpyType],
                              analyzer) -> 'TpyExpr | None':
     """The Optional operand of an admitted `is [not] None` test, or None. The
     shape is exactly one `None` literal against a pointer-repr
     `Optional[F1-record]` borrow NAME (the declared type, matching the AST's
     `get_resolved_type` -- a flow-narrowed `p` still renders the pointer
-    compare), a value-repr Optional name, or an Optional FIELD subject
-    (`self.f is None` -- storage is std::optional<T> whatever the repr, so
-    the AST compares `.has_value()`, _gen_binop's storage-form arm). Shared
-    by `_lower_binop` and the lowering (`_lower_expr`'s is-arm) so both key
-    one verdict."""
+    compare), a value-repr Optional name, a value-repr Optional call RVALUE, or
+    an Optional FIELD subject (`self.f is None` -- storage is std::optional<T>
+    whatever the repr, so the AST compares `.has_value()`, _gen_binop's
+    storage-form arm). Shared by `_lower_binop` and the lowering (`_lower_expr`'s
+    is-arm) so both key one verdict."""
     left_none = isinstance(e.left, TpyNoneLiteral)
     right_none = isinstance(e.right, TpyNoneLiteral)
     if left_none == right_none:  # both or neither
@@ -3099,6 +3237,9 @@ def _is_none_compare_operand(e: TpyBinOp, locals_: dict[str, TpyType],
     if (_optional_ptr_borrow_name(operand, locals_, analyzer) is None
             and _value_opt_scalar_name(operand, locals_, analyzer) is None
             and _value_opt_view_name(operand, locals_, analyzer) is None
+            and _value_opt_rvalue(operand, analyzer) is None
+            and not _ptr_value_none_name(operand, locals_, analyzer)
+            and not _ptr_value_none_field(operand, locals_, analyzer)
             and not _optional_field_none_subject(operand, locals_, analyzer)):
         return None
     return operand
@@ -3124,6 +3265,19 @@ def _optional_field_none_subject(e: TpyExpr, locals_: dict[str, TpyType],
     return fdt is not None and isinstance(
         unwrap_readonly(unwrap_ref_type(unwrap_send_sync(fdt))),
         OptionalType)
+
+def _ptr_value_none_field(e: TpyExpr, locals_: dict[str, TpyType],
+                          analyzer) -> bool:
+    """A one-level `Ptr[T]`-value FIELD subject of an `is [not] None` test
+    (`s.p is None` on a `p: Ptr[T]` field): declared storage is a raw `T*`,
+    so the AST renders the `(s.p == nullptr)` pointer compare over the bare
+    member read -- NOT the `.has_value()` of the Optional-field arm. Same
+    receiver/marker admission as the plain field read."""
+    if not (isinstance(e, TpyFieldAccess) and isinstance(e.obj, TpyName)
+            and _field_markers_clean(e)
+            and _field_receiver_ok(e, locals_, analyzer)):
+        return False
+    return _eligible_ptr_value(_field_decl_type(e, locals_, analyzer), analyzer)
 
 def _narrowed_opt_field_read(e: TpyFieldAccess, rtype: 'TpyType | None',
                              locals_: dict[str, TpyType], analyzer) -> bool:
@@ -3696,6 +3850,42 @@ def _template_init_call_fi(e: TpyCall) -> 'FunctionInfo | None':
         return None
     # Post-call wrappers / special member forms the bare template emit does not
     # reproduce (mirrors method-call lowering's fi rejects).
+    if (fi.is_consuming or fi.error_return_type is not None
+            or fi.native_cpp_return_type is not None
+            or fi.is_async or fi.is_generator
+            or any(isinstance(p.type, LiteralType) for p in fi.params)):
+        return None
+    if not fi.cpp_template or not _positional_only_template(fi.cpp_template,
+                                                            len(e.args)):
+        return None
+    if len(e.args) != len(fi.params):
+        return None
+    return fi
+
+def _viewfam_ctor_call_fi(e: TpyCall, rtype: 'TpyType | None',
+                          analyzer) -> 'FunctionInfo | None':
+    """The resolved `__init__` fi of a str-family VALUE type-constructor call
+    that carries `call_type` (`StrView("x")` / `String("x")`) -- the AST's
+    `_gen_call` call_type-branch resolved-template arm (`gen_call_from_fi(ctor,
+    None, gen_args)`), which for a viewfam/owned-str result renders the ctor's
+    positional `@cpp_template` over inline args (`StrView("x")` -> bare `"x"`,
+    `String("x")` -> `std::string("x")`), or None. The `call_type`-blind twin
+    of `_template_init_call_fi`, gated to viewfam/owned-str VALUE results so it
+    never overlaps the storage-container instantiation arm."""
+    if (not isinstance(e.func, TpyName) or not e.args
+            or e.kwargs or e.double_star_unpack is not None):
+        return None
+    if (e.type_args or e.enum_from_value is not None
+            or e.cast_target_type is not None or e.isinstance_var is not None
+            or e.dunder_call is not None or e.macro_expansion is not None
+            or e.compile_time_assert or e.subscript_callee is not None):
+        return None
+    if (_resolved_viewfam_value(rtype, analyzer) is None
+            and not _is_string_owned(rtype)):
+        return None
+    fi = e.resolved_function_info
+    if fi is None or not (fi.is_method and fi.name == "__init__"):
+        return None
     if (fi.is_consuming or fi.error_return_type is not None
             or fi.native_cpp_return_type is not None
             or fi.is_async or fi.is_generator

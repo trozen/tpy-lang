@@ -55,7 +55,9 @@ from .nodes import (
     THIRCtorCall, THIRErrorReturnBind, THIRErrorReturnDiscard,
     THIRErrorReturnUnwrap, THIRExprStmt, THIRFieldAccess, THIRFormConvert,
     THIRFunction, THIRMethodCall, THIRNode,
-    THIRPrint, THIRReturn, THIRSetItem, THIRUnionArgLift, THIRVarDecl,
+    THIRInplaceContainerOp,
+    THIRPrint, THIRReturn, THIRSetItem, THIRSliceAssign, THIRUnionArgLift,
+    THIRVarDecl,
 )
 
 
@@ -260,6 +262,19 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
         # The value is a flushable position (like an assign value); the
         # target subscript's receiver/index never carry temps.
         _walk(owner, node.target, return_type)
+        _walk(owner, node.value, return_type, argtemp_ok=True)
+        return
+    if isinstance(node, THIRSliceAssign):
+        # Same flush semantics as a subscript write: the RHS is a flushable
+        # position; the receiver and slice bounds never carry temps.
+        _walk(owner, node.receiver, return_type)
+        for b in (node.lower, node.upper, node.step):
+            if b is not None:
+                _walk(owner, b, return_type)
+        _walk(owner, node.value, return_type, argtemp_ok=True)
+        return
+    if isinstance(node, THIRInplaceContainerOp):
+        _walk(owner, node.receiver, return_type)
         _walk(owner, node.value, return_type, argtemp_ok=True)
         return
     if isinstance(node, THIRReturn):

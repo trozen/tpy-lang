@@ -84,10 +84,11 @@ class TestValueOptMemberArgs:
             "    take((::tpy::bytes_concat(::tpy::bytes_literal_owned"
             '("ab", 2), ::tpy::bytes_literal_owned("c", 1))));\n')
 
-    def test_narrowed_optional_local_arg_rejects(self):
-        # A narrowed value-opt LOCAL's C++ binding is still the optional; the
-        # AST passes the WHOLE optional bare while the plain lowered read
-        # would deref -- must stay on the AST path.
+    def test_narrowed_optional_local_arg_passes_whole_optional(self):
+        # A narrowed value-opt LOCAL's C++ binding is still the optional, so
+        # passing it into an Optional param passes the WHOLE optional bare
+        # (`take(x)`), NOT the narrowed `(*x)` deref -- _lower_call_arg strips
+        # the deref-on-narrow at the optional-slot arg boundary.
         thir = _lower_ctx(_PRELUDE + (
             "def take(x: Optional[Int32]) -> None:\n    pass\n"
             "def give() -> Optional[Int32]:\n    return 5\n"
@@ -95,7 +96,11 @@ class TestValueOptMemberArgs:
             "    x = give()\n"
             "    if x is not None:\n"
             "        take(x)\n"))
-        assert _fn(thir, "f") is None
+        assert _body(thir, "f") == (
+            "    std::optional<int32_t> x = give();\n"
+            "    if ((x.has_value())) {\n"
+            "        take(x);\n"
+            "    }\n")
 
 
 class TestOptionalPtrContainerArgs:
