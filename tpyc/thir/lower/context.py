@@ -318,7 +318,8 @@ class _LowerCtx:
     resolution), so any THIR arm mirroring that spelling must use this --
     not `render_type` -- for those slots."""
     __slots__ = ("analyzer", "func", "prescan", "render_type",
-                 "render_type_stored", "render_resolve", "const_locals",
+                 "render_type_stored", "render_resolve", "tparam_bounds",
+                 "const_locals",
                  "pointers", "rebind_slot_locals", "ref_alias_locals",
                  "value_opt_locals", "movable_locals",
                  "self_receiver", "self_cpp", "self_is_pointer",
@@ -360,6 +361,18 @@ class _LowerCtx:
         # resolves a record param's const verdict from the method's FunctionInfo
         # on this record, not the free-function registry.
         self.record_name = record_name
+        # Type-param bounds in scope for this body -- the mirror of the AST's
+        # `ctx.current_type_param_bounds` (record bounds, then the function's
+        # own overriding them). Sema does not stamp bounds on the
+        # TypeParamRef instances in expression types, so bounded-receiver
+        # dispatch resolves them by name through this dict.
+        self.tparam_bounds: dict = {}
+        if record_name:
+            ri = analyzer.registry.get_record(record_name)
+            if ri is not None and ri.type_param_bounds:
+                self.tparam_bounds.update(ri.type_param_bounds)
+        if getattr(func, "type_param_bounds", None):
+            self.tparam_bounds.update(func.type_param_bounds)
         self.const_locals: set[str] = set()
         # Names whose C++ binding is a bare `T*` -- F2 pointer-locals
         # (reseatable, recorded at first decl so a later reseat lowers

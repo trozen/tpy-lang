@@ -29,8 +29,8 @@ from ..type_def_registry import (
     is_float32_type, is_list,
     is_set, is_str_type, is_string_type, view_to_owned_conv,
 )
-from ..typesys import (OptionalType, TpyType, TupleType, TypeParamRef,
-                       UnionType, VoidType, unwrap_qualifiers,
+from ..typesys import (NoneType, OptionalType, TpyType, TupleType,
+                       TypeParamRef, UnionType, VoidType, unwrap_qualifiers,
                        view_family_for_type)
 from .nodes import (
     Form,
@@ -397,6 +397,13 @@ def _emit_literal(lit: THIRLiteral) -> str:
         # value-form None (pointer-repr slot) `nullptr`. Set by lowering.
         if isinstance(lit.result_type, UnionType):
             return "std::monostate{}"
+        if isinstance(lit.result_type, NoneType):
+            # A unit-typed None: the STORAGE form is the monostate VALUE
+            # (`identity[None](None)`'s temp init); the VALUE form keeps the
+            # target-less `nullptr` (a base-init arg).
+            if lit.form is Form.STORAGE:
+                return "std::monostate{}"
+            return "nullptr"
         return "std::nullopt" if lit.form is Form.STORAGE else "nullptr"
     if isinstance(v, float):
         # Matches the gen_expr float-literal arm: repr() is the shortest
@@ -554,7 +561,10 @@ def _emit_method_call(e: THIRMethodCall, state: _EmitState) -> str:
         # `T*`) receiver before the `.` member call -- _gen_method_call's
         # runtime-check arm (type args are gate-excluded, so no {method_targs}).
         return f"::tpy::deref_check({recv}).{e.method_cpp}({', '.join(args)})"
-    return f"{recv}{'->' if e.is_arrow else '.'}{e.method_cpp}({', '.join(args)})"
+    mtargs = (f"<{', '.join(e.method_targs_cpp)}>"
+              if e.method_targs_cpp else "")
+    return (f"{recv}{'->' if e.is_arrow else '.'}"
+            f"{e.method_cpp}{mtargs}({', '.join(args)})")
 
 
 def _emit_comprehension(e: 'THIRComprehension', state: _EmitState) -> str:

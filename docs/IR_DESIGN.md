@@ -1266,6 +1266,23 @@ by theme; each is a rule the next cell should apply.
   leverage estimates are mirages -- always drill the blocking body + `expected/*.cpp` oracle
   before costing (three collapses this wave). The next genuinely-big lever is the generics
   foundation itself (partially built).
+- **Generics foundation (2026-07-16, dial 1241->1273, 32 generics/ flips):** the residue was,
+  as the brief conjectured, THREADING -- a `TypeParamRef` (bare, bounded, or a composite's
+  leaf) became an admissible leaf in the existing decl / call-arg / method / return / coerce /
+  subscript / setitem predicates, spelled through the one shared path (`expand_fi_template` /
+  `to_cpp_stored` / `lc.render_type`); template headers and concepts stay AST-emitted. The
+  genuinely-new cells were small: bounded-T receivers dispatch through the PROTOCOL checker by
+  resolving the bound from `_LowerCtx.tparam_bounds` (sema does NOT stamp bounds on
+  expression-type TypeParamRefs -- the mirror of the AST's `current_type_param_bounds`);
+  generic METHODS ride the plain member path with a `method_targs_cpp` suffix; a temporary
+  into a RAW-T method slot hoists the receiver-substituted named temp; INT-kind `[N: int]`
+  params seed as INT TypeParamRef bindings so `N` reads render bare; explicit `f[int](x)`
+  type-args were blocked only by the parser's leftover `subscript_callee` fallback (sema
+  clears it when actually used). Static-protocol SYNC bodies already routed via the protocol
+  machinery -- the deferred static-protocol work is exactly the resumable template frames
+  (`res.generic` / `res.generic_record`), a separate emitter tier. Left to the case-driven
+  waves (concrete, not generics): value-record copy decls (`q = p`), readonly-Ptr value decl
+  slots, None-element containers, chained method receivers (`box.get().append(4)`).
 
 ---
 

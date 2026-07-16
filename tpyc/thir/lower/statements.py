@@ -62,6 +62,7 @@ from ...typesys import (
     OwnType,
     ReadonlyType,
     TpyType,
+    TypeParamRef,
     TupleType,
     UnionType,
     VoidType,
@@ -1507,10 +1508,11 @@ def _lower_borrow_local(stmt: TpyVarDecl, vtype: TpyType, binding: 'LocalBinding
                 target_type=vtype),
             cpp_type=lc.render_type(vtype), form=Form.BORROW, is_const=is_const,
             cpp_local_representation=binding, loc=loc)
-    if isinstance(stmt.init, TpyCall):
+    if isinstance(stmt.init, (TpyCall, TpyMethodCall)):
         # REF_ALIAS from a borrow-record-returning call: the `T&` binds the
-        # callee's returned reference directly (`Pair& p = shared(x);`), so
-        # the init is the plain value-form call -- no conversion node.
+        # callee's returned reference directly (`Pair& p = shared(x);`,
+        # `MyNumber& num = h.get_item();`), so the init is the plain
+        # value-form call -- no conversion node.
         _witness("decl.record_borrow_call")
         return THIRVarDecl(
             name=stmt.name, resolved_type=vtype,
@@ -2323,6 +2325,32 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 declared[stmt.name] = vtype
                 return THIRVarDecl(name=stmt.name, resolved_type=vtype,
                                    init=comp, loc=loc)
+            # Open-T local from a T-returning call in a generic body:
+            # `item = box.get()` -> `::tpy::val_or_ref_t<T> item = box.get();`
+            # (val_or_cref_t for a readonly method). Form-neutral like a T
+            # param slot: the trait resolves value-vs-ref per instantiation,
+            # so the local reads bare. Reassigned/hoisted names fall through
+            # (references can't rebind), mirroring the AST arm.
+            if (isinstance(vtype, TypeParamRef) and not vtype.is_value_type()
+                    and isinstance(stmt.init, (TpyCall, TpyMethodCall))
+                    and stmt.name not in lc.prescan.reassigned
+                    and stmt.name not in lc.prescan.hoisted
+                    and stmt.name not in lc.prescan.move_through):
+                t_fi = stmt.init.resolved_function_info
+                if (t_fi is not None and t_fi.cpp_template is None
+                        and isinstance(unwrap_ref_type(t_fi.return_type),
+                                       TypeParamRef)):
+                    trait = ("::tpy::val_or_cref_t" if t_fi.is_readonly
+                             else "::tpy::val_or_ref_t")
+                    init = _lower_expr(
+                        stmt.init, lc, declared,
+                        use=_ExprUse(result=_ExprResultUse.BORROW_BIND))
+                    declared[stmt.name] = vtype
+                    _witness("decl.tparam_call")
+                    return THIRVarDecl(
+                        name=stmt.name, resolved_type=vtype, init=init,
+                        cpp_type=f"{trait}<{lc.render_type(vtype)}>",
+                        loc=loc)
             # Owned record local: `Box b = Box(n);` -- the plain value decl,
             # cpp_type spelled the way codegen does (render_type qualifies
             # cross-module / native records). The name enters `declared` only

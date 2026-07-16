@@ -245,8 +245,9 @@ deferred (self-contained) / blocked-on-`<rung>`.
   `_f1_param_eligible` / `_eligible_return` admitting TypeParamRef, the field/name
   read arms) route the body verbatim, and the template signature stays AST. The
   whole generic-free-function slice routes: `sig.generic_fn` 33k -> 9.8k.
-  INT-kind params (`[N: int]` -- N read as a value has no T-slot arm) stay
-  rejected. The `T` LOCAL decl residual
+  INT-kind params (`[N: int]`) route since the generics-foundation branch:
+  `_seed_int_kind_tparams` seeds `N` as an INT TypeParamRef binding (bare-name
+  reads + the two `int_type_param_*` coerce rows). The `T` LOCAL decl residual
   is shared with the generic-record-methods cell (falls back byte-identically as
   `T& y = x;`).
 - Method-level `[U]` generics (`def m[U](self, x: U) -> U`): **DONE** -- the

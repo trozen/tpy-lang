@@ -1,5 +1,11 @@
 # THIR Generics Foundation — Scoping Brief
 
+*STATUS: LANDED (branch `thir-generics-foundation`, 2026-07-16, dial
+1241->1273, 32 generics/ flips). Findings in `docs/IR_DESIGN.md` (the
+"Generics foundation" wave note); deferred slices filed in `TODO.md`
+("[thir] Generics foundation -- landed cells + sliced-scope exclusions").
+Kept for the residue table and method notes.*
+
 *Starting context for a separate session. Read-only design work is safe to start
 now; IMPLEMENTATION must wait for THIR wave 4 to merge to master (see
 Coordination). Prepared from master `eacfd955c` (wave 3).*

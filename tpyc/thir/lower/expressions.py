@@ -7,6 +7,7 @@ only from the node arm being lowered.
 from __future__ import annotations
 import math
 from dataclasses import field, replace
+from ... import qnames
 from ...parse.nodes import (
     FSTRING_CONV_NONE,
     FSTRING_CONV_REPR,
@@ -227,6 +228,7 @@ from .predicates import (
     _plain_own_slot,
     _protocol_arg_slot,
     _protocol_arg_temp,
+    _bounded_tparam_protocol,
     _protocol_binding,
     _range_counter_type,
     _record_rvalue_temp_slot,
@@ -314,6 +316,10 @@ from .checks import (
     _marker_reject,
     _member_gen_call_iterable_ok,
     _method_call_arg_ok,
+    _none_unit_arg,
+    _raw_record_method_fi,
+    _tparam_name_pass_arg,
+    _tparam_slot_temp_arg,
     _method_nonname_receiver_ok,
     _method_receiver_type,
     _native_call_arg_ok,
@@ -374,6 +380,10 @@ def _call_use_supported(e: TpyCall, lc: '_LowerCtx',
               or _resolved_bytes_value(ret, analyzer) is not None
               or _eligible_ptr_value(ret, analyzer)
               or _callable_value(ret)
+              # An open-T result inside a generic body (`make_default()`,
+              # `copy(self.value)` -- Own[T] unwraps to T): renders by name,
+              # the composing position gates its own family.
+              or _tparam_value(ret)
               # A value-repr Optional[scalar] result lands bare in its
               # value-optional slot (`r = h(true);`); mismatched consumers
               # reject at their own slot arms.
@@ -460,6 +470,14 @@ def _record_ctor_arg_supported(
                 # the row below -- mirrors the method-arg loop.
                 or _value_opt_scalar_value_arg(arg, param_type, analyzer)
                 or _none_value_opt_arg(arg, param_type, analyzer) is not None
+                # `Box(None)`: the unit ctor arg renders the bare
+                # `std::monostate{}` like the marker-call row.
+                or _none_unit_arg(arg, param_type) is not None
+                # A nested open-T instantiation inside a generic body
+                # (`self.inner = Box[T](value)`): a NAME bound to the same
+                # bare T passes the form-neutral slot bare, the ctor-face
+                # sibling of the nested generic call rule.
+                or _tparam_name_pass_arg(arg, param_type, declared)
                 # The Own-slot cascade rows, mirrored from the free/method
                 # plain-arg loop: the temp-free last-use move lands in any
                 # position; the copy half hoists `__tmp_N` and so needs the
@@ -531,7 +549,8 @@ def _require_method_call_arg(
     if not _method_call_arg_ok(
             e, a, ptype, index, declared, lc.analyzer,
             temps_ok=temp_args, narrowed=frozenset(lc.narrow.narrowed),
-            param_names=lc.prescan.param_names):
+            param_names=lc.prescan.param_names,
+            tparam_bounds=lc.tparam_bounds):
         raise ThirUnsupported("expr.method_call")
 
 
@@ -1639,7 +1658,11 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                 or _eligible_enum(rtype, analyzer) is not None
                 or _eligible_ptr_value(rtype, analyzer)
                 or _resolved_str_value(rtype, analyzer) is not None
-                or _resolved_bytes_value(rtype, analyzer) is not None)
+                or _resolved_bytes_value(rtype, analyzer) is not None
+                # An open-T element read (`self.data[idx]` off Array[T, N])
+                # renders the bare checked dunder, landing form-neutrally in
+                # its T sink.
+                or _is_type_param_slot(rtype))
             container_ok = (
                 recv_t is not None
                 and _container_value_leaf_read(recv_t, analyzer)
@@ -2127,6 +2150,27 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
             return THIRErrorReturnUnwrap(
                 result_type=rtype, call=node, value_form=value_form, loc=loc)
 
+        # `copy(x)` of an open-T source: the bespoke special-builtin arm's
+        # general tail (`{arg_type.to_cpp()}({deref})` -> `T(this->value)`).
+        # NAME/FIELD sources only, un-narrowed, non-pointer -- concrete
+        # copies (records / containers / tuples) keep their AST sub-arms.
+        if (fi is not None and fi.qualified_name == qnames.COPY
+                and len(e.args) == 1 and not e.kwargs):
+            src = e.args[0]
+            st = analyzer.get_expr_type(src)
+            if (_tparam_value(st)
+                    and isinstance(src, (TpyName, TpyFieldAccess))
+                    and not (isinstance(src, TpyName)
+                             and (src.name in lc.pointers
+                                  or src.name in lc.narrow.narrowed))):
+                stu = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(st)))
+                _witness("call.copy_tparam")
+                return THIRCall(
+                    result_type=rtype, callee=e.func_name,
+                    args=(_lower_expr(src, lc, declared),),
+                    cpp_template=f"{stu.to_cpp()}({{0}})",
+                    loc=loc)
+            raise ThirUnsupported("expr.call")
         k = _free_callee_kind(
             e, analyzer,
             generator_ok=use.result is _ExprResultUse.ITERABLE,
@@ -2349,7 +2393,15 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                 result_type=rtype, type_cpp=type_cpp,
                 args=tuple(_lower_expr(a, lc, declared) for a in e.args),
                 form=Form.STORAGE, loc=loc)
-        if not _plain_member_call_markers_ok(e):
+        # A plain generic METHOD call's type args ride the member spelling
+        # (`recv.method<targs>(args)`), so they are not a marker here. The
+        # runtime-check receiver + targs combination is conservatively
+        # rejected pending a corpus witness (the AST render does compose
+        # them; this arm's deref_check face does not carry targs yet).
+        if (e.type_args or e.inferred_type_args) and \
+                e.needs_optional_runtime_check:
+            raise ThirUnsupported("expr.method_call")
+        if not _plain_member_call_markers_ok(e, targs_ok=True):
             if _ptr_deref_method_call(e, analyzer):
                 # The Ptr-receiver Deref call: `p->m(args)` when proven
                 # non-null, `::tpy::deref_check(p).m(args)` otherwise --
@@ -2503,7 +2555,9 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                     e, fi, analyzer, stmt_position=stmt_position,
                     storage_ret_ok=storage_ret_ok)
                 stub_recv = True
-            elif _protocol_binding(recv_type) is not None:
+            elif (_protocol_binding(recv_type) is not None
+                  or _bounded_tparam_protocol(recv_type,
+                                              lc.tparam_bounds) is not None):
                 shape_ok = _protocol_method_call_supported(
                     e, fi, declared, analyzer,
                     stmt_position=stmt_position)
@@ -2563,9 +2617,14 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
         # their slot's coercion instead of the method path's target-less
         # spelling. Same source of truth as the gate's `_protocol_binding`
         # check: a narrowed subject reads as its member on both sides.
-        proto_recv = _protocol_binding(analyzer.get_expr_type(e.obj)) is not None
+        recv_sema_t = analyzer.get_expr_type(e.obj)
+        proto_recv = (_protocol_binding(recv_sema_t) is not None
+                      or _bounded_tparam_protocol(
+                          recv_sema_t, lc.tparam_bounds) is not None)
         if proto_recv:
             _witness("method.protocol")
+
+        raw_method_fi = _raw_record_method_fi(e, declared, analyzer)
 
         def _method_arg(a: TpyExpr, ptype: 'TpyType | None',
                         index: int) -> THIRExpr:
@@ -2574,7 +2633,16 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                 # `_gen_vararg_pack` render as a free call (the method arg loop
                 # forwards the pack unchanged). Protocol receivers take the
                 # free-call `_args()` fallback and are left on the AST path.
-                return _lower_vararg_pack(a, ptype, lc, declared,
+                # The slot's const-ness reads off the RAW method fi like the
+                # AST's iter_params loop -- on a GENERIC method the resolved
+                # fi's substituted slot lacks the phase-2 vararg-readonly
+                # wrapper the raw slot carries (base type still comes from
+                # the pack, so the unsubstituted slot is const-only input).
+                vslot = ptype
+                if (raw_method_fi is not None
+                        and index < len(raw_method_fi.params)):
+                    vslot = raw_method_fi.params[index].type
+                return _lower_vararg_pack(a, vslot, lc, declared,
                                           temp_args=temp_args)
             _require_method_call_arg(
                 e, a, ptype, index, lc, declared, temp_args=temp_args)
@@ -2587,6 +2655,19 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                     return THIRArgTemp(result_type=ut, cpp_type=ut.to_cpp(),
                                        init=_lower_expr(a, lc, declared), form=Form.VALUE,
                                        loc=getattr(a, "loc", None))
+                # A temporary into a generic-record method's RAW T slot
+                # hoists the named temp with the substituted type
+                # (`Point __tmp_N = Point(10, 20);`) BEFORE the inline
+                # renders -- the AST's TypeParamRef temp branch precedes its
+                # arg tail the same way.
+                tt = _tparam_slot_temp_arg(a, ptype, index, raw_method_fi,
+                                           lc.analyzer)
+                if tt is not None:
+                    _witness("argtemp.generic_ref_slot")
+                    return THIRArgTemp(
+                        result_type=tt, cpp_type=tt.to_cpp(),
+                        init=_lower_expr(a, lc, declared, target_type=tt),
+                        form=Form.VALUE, loc=getattr(a, "loc", None))
             return _lower_call_arg(a, ptype, lc, declared,
                                    method_arg=not proto_recv,
                                    method_arg_stub=stub_recv and not proto_recv)
@@ -2598,6 +2679,15 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
         # local admission permits it only on such a receiver. Mutually exclusive
         # with the indirect (`->`) arm -- the checked deref yields a reference.
         deref_check = e.needs_optional_runtime_check
+        # A generic method's explicit template args (`b.transform<T>(42)`):
+        # the AST's method_targs suffix, spelled type_to_cpp over each
+        # inferred arg. The static/module marker faces spell their own.
+        method_targs = None
+        if (e.inferred_type_args and not e.user_module_call
+                and not e.is_static_call):
+            method_targs = tuple(
+                lc.render_type(unwrap_ref_type(t))
+                for t in e.inferred_type_args)
         return THIRMethodCall(
             result_type=rtype if rtype is not None else VoidType(),
             receiver=_lower_expr(
@@ -2611,6 +2701,7 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                 for i, a in enumerate(e.args)),
             native_function_name=fi.native_name if fi.native_function else None,
             cpp_template=fi.cpp_template,
+            method_targs_cpp=method_targs,
             is_arrow=not deref_check and isinstance(e.obj, TpyName)
                      and (e.obj.name in lc.pointers
                           or (e.obj.name == lc.self_receiver
@@ -3118,9 +3209,10 @@ def _lower_generic_plain_call(e, callee_cpp, lc: '_LowerCtx',
     against the ROOT stub's substituted param slots. A temporary arg into a
     TypeParamRef slot (`param_val_or_ref_t<T>` in C++ -- an lvalue-ref
     binding) hoists the AST's named temp: `<resolved.to_cpp()> __tmp_N =
-    <target-typed init>;` (TempState.create). Lowering admits only
-    literal temporaries and bare scalar names, so the init render is the
-    slot-retyped literal."""
+    <target-typed init>;` (TempState.create) -- scalar/str/None literals
+    and by-value call rvalues, each with its own init render; lvalue
+    NAMEs and the remaining shapes ride `_lower_call_arg` against the
+    substituted slot."""
     analyzer = lc.analyzer
     root, subst = _generic_root_subst(e, analyzer)
     dcbp = root.deep_const_borrow_params
@@ -3131,19 +3223,38 @@ def _lower_generic_plain_call(e, callee_cpp, lc: '_LowerCtx',
         if not _generic_plain_arg_ok(
                 a, ptype, subst, declared, analyzer, temps_ok=temp_args):
             raise ThirUnsupported("expr.call")
-        if (isinstance(ptype, TypeParamRef)
-                and isinstance(_peel_coerce(a), (TpyIntLiteral,
-                                                 TpyFloatLiteral,
-                                                 TpyBoolLiteral))):
+        peeled = _peel_coerce(a)
+
+        def _ref_slot_temp(init: THIRExpr) -> None:
+            # The shared ref-slot named temp (`R __tmp_N = <init>;`) a
+            # temporary hoists into a `param_val_or_ref_t<T>` binding.
             if not temp_args:
                 raise ThirUnsupported(
                     "generic ref-slot literal temp outside a flush position")
             _witness("argtemp.generic_ref_slot")
             args.append(THIRArgTemp(
                 result_type=resolved, cpp_type=resolved.to_cpp(),
-                init=_slot_literal_retype(
-                    _lower_expr(a, lc, declared), resolved, lc),
-                form=Form.VALUE, loc=getattr(a, "loc", None)))
+                init=init, form=Form.VALUE, loc=getattr(a, "loc", None)))
+
+        if (isinstance(ptype, TypeParamRef)
+                and isinstance(peeled, (TpyIntLiteral,
+                                        TpyFloatLiteral,
+                                        TpyBoolLiteral))):
+            _ref_slot_temp(_slot_literal_retype(
+                _lower_expr(a, lc, declared), resolved, lc))
+        elif (isinstance(ptype, TypeParamRef)
+              and isinstance(peeled, TpyNoneLiteral)):
+            # `identity[None](None)` -> `std::monostate __tmp_N =
+            # std::monostate{};` -- the unit-typed STORAGE literal.
+            _ref_slot_temp(THIRLiteral(result_type=resolved, value=None,
+                                       form=Form.STORAGE,
+                                       loc=getattr(a, "loc", None)))
+        elif (isinstance(ptype, TypeParamRef)
+              and (isinstance(peeled, TpyStrLiteral)
+                   or isinstance(peeled, (TpyCall, TpyMethodCall)))):
+            # A str literal / by-value call into a T slot: the init renders
+            # bare (`std::string __tmp_N = "hello";` / `= make_str();`).
+            _ref_slot_temp(_lower_expr(a, lc, declared))
         else:
             args.append(_lower_call_arg(
                 a, resolved, lc, declared, temp_args=temp_args,
@@ -3465,6 +3576,13 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         _witness("call.none_value_opt")
         return THIRLiteral(result_type=none_opt, value=None, form=Form.STORAGE,
                            loc=getattr(a, "loc", None))
+    unit_none = _none_unit_arg(a, ptype)
+    if unit_none is not None:
+        # A `None` literal into a unit slot (`Rc.new(None)` -> the
+        # substituted `Own[None]` param): the bare `std::monostate{}` value,
+        # like the base-init arg's target-less render but monostate-typed.
+        return THIRLiteral(result_type=unit_none, value=None,
+                           form=Form.STORAGE, loc=getattr(a, "loc", None))
     if isinstance(a, TpyStrLiteral) and _eligible_char(ptype):
         return _lower_char_targeted(a, ptype, lc, declared)
     if isinstance(a, TpyTupleLiteral):

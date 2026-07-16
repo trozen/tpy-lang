@@ -6,6 +6,7 @@ from __future__ import annotations
 import dataclasses
 
 from ..codegen_cpp.context import CodeGenOptions
+from ..codegen_cpp.forms import LocalBinding
 from .testutil import _emit_expr
 from .nodes import (
     Form, THIRArgTemp, THIRBinOp, THIRCall, THIRCoerce, THIRContainerLiteral,
@@ -3047,8 +3048,8 @@ class TestMethodArgLiteralTargets:
 
 # --- Decl-init storage calls: container/tuple/union-returning METHOD calls
 # (`parts = s.split(",")`) ride the same plain value decl as the free-call
-# form; a BORROW container return (`return self._items`, a C++ `T&`) binds a
-# `T&` alias on the AST path and must keep the body AST. ---
+# form; a BORROW container return (`return self._items`, a C++ `T&`) binds
+# the `T&` alias via the method-call REF_ALIAS arm (free calls stay AST). ---
 class TestContainerFromCallDecl:
     _H = (
         "from tpy import Int32, Own\n"
@@ -3090,15 +3091,21 @@ class TestContainerFromCallDecl:
             + "    return len(xs)\n")
         assert _fn(thir, "f") is not None
 
-    def test_borrow_method_container_decl_ineligible(self):
-        # AST binds `std::vector<int32_t>& xs = h.borrowed();` -- the plain
-        # copy this arm emits would silently un-alias it.
+    def test_borrow_method_container_decl_binds_alias(self):
+        # AST binds `std::vector<int32_t>& xs = h.borrowed();` -- the borrow
+        # method-call REF_ALIAS arm binds the same alias (never the plain
+        # copy that would silently un-alias it).
         thir = _lower_ctx(
             self._H
             + "def f(h: H) -> Int32:\n"
             + "    xs = h.borrowed()\n"
             + "    return len(xs)\n")
-        assert _fn(thir, "f") is None
+        fn = _fn(thir, "f")
+        assert fn is not None
+        decl = fn.body[0]
+        assert isinstance(decl, THIRVarDecl) and isinstance(
+            decl.init, THIRMethodCall)
+        assert decl.cpp_local_representation is LocalBinding.REF_ALIAS
 
     def test_borrow_free_call_container_decl_ineligible(self):
         # The free-call sibling: a borrow container return at a decl is the

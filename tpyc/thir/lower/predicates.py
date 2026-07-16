@@ -44,6 +44,7 @@ from ...typesys import (
     INT32,
     IntLiteralType,
     LiteralType,
+    NoneType,
     NominalType,
     OptionalType,
     OwnType,
@@ -56,6 +57,7 @@ from ...typesys import (
     STR_FAMILY,
     TpyType,
     TupleType,
+    TypeParamKind,
     TypeParamRef,
     UnionType,
     is_any_bytes_type,
@@ -97,7 +99,7 @@ from ...type_def_registry import (
     type_def_of,
 )
 from ...coercions import CoercionContext
-from ...value_category import is_rvalue_source
+from ...value_category import call_returns_cpp_ref, is_rvalue_source
 from ...codegen_cpp.type_resolution import resolve_stmt_binding_type
 from ...codegen_cpp.forms import (
     LocalBinding,
@@ -263,6 +265,13 @@ def _coerce_wrap(e: TpyCoerce) -> 'str | None':
         return f"static_cast<{e.expected_type.to_cpp()}>({{0}})"
     if name == "bigint_to_fixed_int":
         return f"({{0}}).to_fixed_check<{e.expected_type.to_cpp()}>()"
+    # INT-kind type-param reads (`N` -- a std::size_t template value param)
+    # cast per the coercion lambdas: target-typed for fixed ints, the
+    # int64_t hop for BigInt.
+    if name == "int_type_param_to_fixed_int":
+        return f"static_cast<{e.expected_type.to_cpp()}>({{0}})"
+    if name == "int_type_param_to_bigint":
+        return "::tpy::BigInt(static_cast<int64_t>({0}))"
     if name in _ADDR_PTR_COERCIONS:
         return "&{0}"
     if name in _SPANLIKE_COERCIONS and not is_span(e.actual_type):
@@ -1466,6 +1475,19 @@ def _f1_record_type_arg_ok(a: 'TpyType | int', analyzer) -> bool:
         if isinstance(u, NominalType) and (is_str_type(u)
                                            or is_str_view_type(u)):
             return True
+        # A builtin-container arg (`Box[list[Int32]]`): both paths spell the
+        # formatter form (`std::vector<...>`) recursing element args through
+        # the same slice; union/enum/tuple elements keep their divergent
+        # spellings out via the recursion.
+        if isinstance(u, NominalType) and (is_list(u) or is_dict(u)
+                                           or is_set(u)):
+            return bool(u.type_args) and all(
+                _f1_record_type_arg_ok(ea, analyzer) for ea in u.type_args)
+        # `Rc[None]` / `Box[None]`: the unit arg spells `std::monostate` on
+        # both paths; an unresolved float literal arg (`Rc.new(3.14)`)
+        # resolves to the default double on both.
+        if isinstance(u, (NoneType, FloatLiteralType)):
+            return True
     return (_eligible_scalar(a) or _eligible_char(a)
             or _f1_record(a, analyzer))
 
@@ -1531,6 +1553,29 @@ def _protocol_binding(t: 'TpyType | None') -> 'NominalType | None':
         return None
     u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
     return u if is_protocol_type(u) else None
+
+def _bounded_tparam_protocol(t: 'TpyType | None',
+                             bounds: 'dict | None') -> 'NominalType | None':
+    """The protocol BOUND of a TYPE-kind type-param binding (`item: T` under
+    `[T: Stringable]`), or None. Inside the template such a receiver behaves
+    exactly like a structural-protocol binding: the AST's user-record guard
+    skips a TypeParamRef, so the call renders the bare member over the free
+    `_args()` loop -- the same emit `_protocol_method_call_supported`
+    mirrors. Sema does not stamp bounds on expression-type TypeParamRefs,
+    so `bounds` is the in-scope name->bound dict (`lc.tparam_bounds`, the
+    AST's `current_type_param_bounds` mirror); a stamped `t.bound` wins.
+    A marker-only bound (Send/Sync) IS a protocol and resolves here, but
+    carries no methods -- sema rejects any method call against it, so no
+    valid body reaches the method checker through one."""
+    if not isinstance(t, TpyType):
+        return None
+    u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    if not isinstance(u, TypeParamRef) or u.kind is not TypeParamKind.TYPE:
+        return None
+    b = u.bound
+    if b is None and bounds:
+        b = bounds.get(u.name)
+    return b if b is not None and is_protocol_type(b) else None
 
 def _protocol_arg_slot(ptype: 'TpyType | None') -> 'NominalType | None':
     """The protocol a call-arg SLOT names, when its arg render is one this
@@ -2519,6 +2564,9 @@ def _container_value_leaf_read(t: TpyType | None, analyzer) -> bool:
                 or _eligible_enum(a, analyzer) is not None
                 or _eligible_ptr_value(a, analyzer)
                 or _owned_str_slot(a, analyzer)
+                # An open-T element inside the generic body: the bare
+                # checked-dunder read, form-neutral per instantiation.
+                or _is_type_param_slot(a)
                 or (bt is not None and is_bytes_type(bt)))
 
     return _container_elem_family(t, analyzer, leaf, span_ok=True)
@@ -2895,8 +2943,9 @@ def _f1_is_const(binding: 'LocalBinding', target_type: TpyType | None,
     optional inner / the init's raw sema type / the var_types entry) plus, for
     OPTIONAL_TO_PTR, the storage-optional const bump (`_is_const_union_source`:
     the receiver in const_ref_params (param) or const_indirect_locals (a const F1
-    local, tracked in `const_locals`)). The name/method-call const branches of
-    `_is_const_indirect` do not apply to a field source."""
+    local, tracked in `const_locals`)), and the readonly-method ref-return
+    branch for a method-call source. The name const branch of
+    `_is_const_indirect` does not apply to a field/call source."""
     if isinstance(target_type, OptionalType) and isinstance(target_type.inner, ReadonlyType):
         return True
     if isinstance(analyzer.get_expr_type(stmt.init), ReadonlyType):  # raw sema type
@@ -2908,6 +2957,13 @@ def _f1_is_const(binding: 'LocalBinding', target_type: TpyType | None,
         recv = stmt.init.obj  # TpyName (validated by _field_receiver_ok)
         if (recv.name in const_locals
                 or _param_is_const(recv.name, func, analyzer, record_name)):
+            return True
+    # A readonly method's ref return binds `const T&` -- the method-call
+    # branch of `_is_const_indirect`.
+    if isinstance(stmt.init, TpyMethodCall):
+        fi = stmt.init.resolved_function_info
+        if (fi is not None and fi.is_readonly
+                and call_returns_cpp_ref(analyzer, fi)):
             return True
     # Borrow-alias of an lvalue rooted in a const source (`p = ps[i]`,
     # `r = obj.field`, `c = self.store[k]`): mirror of the AST REF_ALIAS
@@ -3713,13 +3769,18 @@ def _instantiation_call_fi(e: TpyCall) -> 'FunctionInfo | None':
         return None
     return fi
 
-def _plain_member_call_markers_ok(e: TpyMethodCall) -> bool:
+def _plain_member_call_markers_ok(e: TpyMethodCall, *,
+                                  targs_ok: bool = False) -> bool:
     """No special-emit marker: every marker takes a different _gen_method_call
     path (static / super / module-qualified / typed-dict / nested-ctor /
     callable-field / macro / fstr / deref chain). The Optional runtime-check
     marker is NOT in this set -- callers dispose of it themselves (the
     optional-ptr borrow receiver mirrors it as the deref_check face; every
-    other caller must reject it explicitly)."""
+    other caller must reject it explicitly). `targs_ok` admits a plain
+    generic METHOD call's explicit/inferred type args -- the AST spells them
+    as `recv.method<targs>(args)` on the same plain-member path (the
+    method_targs suffix), so only callers that thread `method_targs_cpp`
+    set it."""
     if e.kwargs or e.double_star_unpack is not None:
         return False
     return not (e.is_static_call or e.super_parent_type is not None
@@ -3729,8 +3790,9 @@ def _plain_member_call_markers_ok(e: TpyMethodCall) -> bool:
                 or e.typed_dict_get_field is not None
                 or e.is_nested_constructor or e.is_nested_enum_constructor
                 or e.is_callable_field or e.macro_expansion is not None
-                or e.fstr_expansion is not None or e.type_args
-                or e.inferred_type_args or e.deref_depth
+                or e.fstr_expansion is not None
+                or ((e.type_args or e.inferred_type_args) and not targs_ok)
+                or e.deref_depth
                 or e.deref_narrowed_to is not None)
 
 def _plain_method_fi_ok(fi, *, generator_ok: bool = False,

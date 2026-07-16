@@ -620,9 +620,15 @@ class THIRMethodCall(THIRExpr):
     cpp_template: str | None = None
     is_arrow: bool = False
     deref_check: bool = False
+    # A generic method call's explicit template args
+    # (`b.transform<::tpy::BigInt>(42)` -- the AST's method_targs), spelled
+    # at lowering via render_type over the inferred args. Plain member arm
+    # only (the deref_check arm gate-excludes type args).
+    method_targs_cpp: tuple[str, ...] | None = None
 
     def __post_init__(self) -> None:
         assert not (self.deref_check and self.is_arrow)
+        assert not (self.deref_check and self.method_targs_cpp)
 
 
 @dataclass(frozen=True)

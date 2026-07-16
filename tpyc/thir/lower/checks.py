@@ -42,6 +42,7 @@ from ...typesys import (
     FLOAT,
     FloatLiteralType,
     LiteralType,
+    NoneType,
     NominalType,
     OptionalType,
     OwnType,
@@ -173,6 +174,7 @@ from .predicates import (
     _positional_only_template,
     _protocol_arg_slot,
     _protocol_arg_temp,
+    _bounded_tparam_protocol,
     _protocol_binding,
     _record_rvalue_temp_slot,
     _resolved_bytes_value,
@@ -713,18 +715,23 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
                                                 analyzer, note=True)):
             return binding
         return None
-    if isinstance(stmt.init, TpyCall):
+    if isinstance(stmt.init, (TpyCall, TpyMethodCall)):
         # A borrow-record-returning free call (`p = shared(x)` -> `Pair& p =
         # shared(x);` -- the classifier's lvalue-source verdict). REF_ALIAS
         # only: the reassigned POINTER shape reseats via `&(call)`, a lift
         # the slice does not carry (tagged). Const rides `_f1_is_const`'s
         # raw-sema check (a `readonly[T]` return arrives ReadonlyType-
-        # wrapped), the same branch the AST's `_is_const_indirect` applies
-        # to a free call. Other call bindings (an OPTIONAL_TO_PTR optional
-        # return) fall through untagged so the generic probe's family
-        # drilldown names them.
-        if binding is LocalBinding.REF_ALIAS and _f1_record(target_type,
-                                                            analyzer):
+        # wrapped) plus the readonly-method ref-return branch, mirroring
+        # `_is_const_indirect`. A borrow-returning METHOD call binds the same
+        # alias (`num = h.get_item()` -> `MyNumber& num = h.get_item();`,
+        # a substituted T-return); a container-returning one binds the
+        # container alias (`std::vector<T>& items = c.get_item();`). Other
+        # call bindings (an OPTIONAL_TO_PTR optional return) fall through
+        # untagged so the generic probe's family drilldown names them.
+        if binding is LocalBinding.REF_ALIAS and (
+                _f1_record(target_type, analyzer)
+                or (isinstance(stmt.init, TpyMethodCall)
+                    and _alias_ref_container(target_type))):
             return binding
         if binding is LocalBinding.POINTER and _f1_record(target_type,
                                                           analyzer):
@@ -1287,7 +1294,11 @@ def _setitem_widened_elem_ok(elem_t: 'TpyType', analyzer) -> bool:
     cannot drift apart."""
     return (_container_scalar_read(elem_t, analyzer)
             or _optional_record_field_inner(elem_t, analyzer) is not None
-            or _eligible_ptr_union(elem_t, analyzer) is not None)
+            or _eligible_ptr_union(elem_t, analyzer) is not None
+            # An open-T element write (`self.data[idx] = val` off
+            # Array[T, N]): the bare checked `__setitem__` with the
+            # form-neutral T value.
+            or _is_type_param_slot(elem_t))
 
 def _setitem_widened_family_ok(recv_t: 'TpyType | None', analyzer) -> bool:
     """The non-scalar element/value slots the setitem WRITE additionally
@@ -1482,15 +1493,19 @@ def _free_callee_kind(e: TpyCall, analyzer, *,
     if has_targs and getattr(e, "representational_subst_params", None):
         note_detail("call.special.type_args")
         return None
+    # A lingering `subscript_callee` is the parser's fallback for an
+    # `f[T](x)` shape sema resolved as a genuine explicit-targ call (sema
+    # clears the field when it DOES rewrite to the expression callee), so
+    # only a parse error on the type-arg list keeps the call out.
     if (e.enum_from_value is not None or e.cast_target_type is not None
             or e.isinstance_var is not None or e.dunder_call is not None
             or e.macro_expansion is not None or e.compile_time_assert
-            or e.subscript_callee is not None):
+            or e.type_args_parse_error):
         sub = ("isinstance" if e.isinstance_var is not None
                else "dunder_call" if e.dunder_call is not None
-               else "subscript_callee" if e.subscript_callee is not None
                else "compile_time_assert" if e.compile_time_assert
                else "macro" if e.macro_expansion is not None
+               else "targ_parse_error" if e.type_args_parse_error
                else "enum_or_cast")
         note_detail(f"call.special_form.{sub}")
         return None
@@ -1634,11 +1649,13 @@ def _call_type_fam(t: TpyType) -> str:
 
 
 def _plain_free_callee_ok(e: TpyCall, analyzer) -> bool:
-    """The plain/imported subset of `_free_callee_kind` -- the callee-shape
-    head of the by-value record-returning call
-    face (native/template record returns stay AST there)."""
+    """The plain/imported/generic subset of `_free_callee_kind` -- the
+    callee-shape head of the by-value record-returning call face
+    (native/template record returns stay AST there). A generic callee's
+    record rvalue rides the same bare spelling with the explicit targs
+    (`BoxC cloned = clone_it<BoxC>(box);`)."""
     kind = _free_callee_kind(e, analyzer)
-    return kind is not None and kind[0] in ("plain", "imported")
+    return kind is not None and kind[0] in ("plain", "imported", "generic")
 
 
 def _record_rvalue_call_shape(e: TpyExpr, analyzer) -> bool:
@@ -1874,18 +1891,67 @@ def _generic_plain_arg_ok(a: TpyExpr, ptype: 'TpyType | None', subst,
         return note_detail("call.generic_arg_slot")
     resolved = substitute_type_params_simple(ptype, subst)
     if contains_type_param(resolved):
+        # A nested generic call inside a generic body substitutes the
+        # caller's own T (`return inner_len<T>(x);`): a NAME whose binding
+        # is that same bare T passes the form-neutral slot bare.
+        if (isinstance(ptype, TypeParamRef) and isinstance(a, TpyName)
+                and a.name != "self"):
+            at = locals_.get(a.name)
+            if at is not None:
+                au = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
+                if (isinstance(au, TypeParamRef)
+                        and isinstance(resolved, TypeParamRef)
+                        and au.name == resolved.name):
+                    return True
         return note_detail("call.generic_arg_slot")
     if isinstance(ptype, TypeParamRef):
-        if not _eligible_scalar(resolved):
-            return note_detail("call.generic_arg_slot")
+        if _eligible_scalar(resolved):
+            lit = _peel_coerce(a)
+            if isinstance(lit, (TpyIntLiteral, TpyFloatLiteral,
+                                TpyBoolLiteral)):
+                return temps_ok or note_detail("call.generic_arg_shape")
+            if isinstance(a, TpyName):
+                return ((a.name != "self" and a.name in locals_
+                         and _resolved_scalar(locals_.get(a.name), analyzer))
+                        or note_detail("call.generic_arg_shape"))
+            # A scalar-typed call rvalue (`pair(Float64(2.5), x)`) hoists
+            # the same ref-slot temp; the scalar-ctor arm folds the render.
+            if (isinstance(lit, (TpyCall, TpyMethodCall))
+                    and is_rvalue_source(analyzer, lit)
+                    and _resolved_scalar(analyzer.get_expr_type(lit),
+                                         analyzer)):
+                return temps_ok or note_detail("call.generic_arg_shape")
+            return note_detail("call.generic_arg_shape")
+        # A non-scalar-resolved T slot is an lvalue-ref binding
+        # (`param_val_or_ref_t<T>`): a record / container NAME lvalue binds
+        # bare, exactly like the same name into the concrete `const R&`
+        # slot.
+        if isinstance(a, TpyName) and (
+                _record_pass_through_arg(a, resolved, locals_, analyzer)
+                or _container_pass_through_arg(a, resolved, locals_,
+                                               analyzer)
+                # A str-slice NAME into a str-resolved T slot passes bare
+                # (`get_length<std::string_view>(msg)`); the pending-aware
+                # classifier resolves an inference-pending slot form.
+                or (_resolved_str_value(resolved, analyzer) is not None
+                    and _resolved_str_value(analyzer.get_expr_type(a),
+                                            analyzer) is not None)):
+            return True
+        # Rvalue sources hoist the AST's ref-slot temp
+        # (`R __tmp_N = <init>;`, TempState.create over resolved.to_cpp()):
+        # a str literal / by-value str call into a str-resolved slot, and
+        # `None` into a `std::monostate` slot -- flush-gated like the
+        # scalar-literal row. Record rvalues stay out (the AST's covariant
+        # upcast declares the temp with the CHILD type -- unmirrored).
         lit = _peel_coerce(a)
-        if isinstance(lit, (TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral)):
+        if _resolved_str_value(resolved, analyzer) is not None and (
+                isinstance(lit, TpyStrLiteral)
+                or (isinstance(lit, (TpyCall, TpyMethodCall))
+                    and is_rvalue_source(analyzer, lit))):
             return temps_ok or note_detail("call.generic_arg_shape")
-        if isinstance(a, TpyName):
-            return ((a.name != "self" and a.name in locals_
-                     and _resolved_scalar(locals_.get(a.name), analyzer))
-                    or note_detail("call.generic_arg_shape"))
-        return note_detail("call.generic_arg_shape")
+        if isinstance(resolved, NoneType) and isinstance(lit, TpyNoneLiteral):
+            return temps_ok or note_detail("call.generic_arg_shape")
+        return note_detail("call.generic_arg_slot")
     return (_shared_pass_through_arg(a, resolved, locals_, analyzer)
             or _own_move_arg(a, resolved, locals_, analyzer)
             or note_detail("call.generic_arg_shape"))
@@ -2144,10 +2210,20 @@ def _own_scalar_rvalue_arg(a: TpyExpr, ptype: TpyType | None,
     copy+move temp (`_own_lvalue_arg`); a coerce-WRAPPED lvalue splits on the
     AST's rendered-identity check (`needs_copy`) -- not mirrored, stays AST."""
     w = _plain_own_slot(ptype)
-    if w is None or not _eligible_scalar(w):
+    # An inference-pending float slot (`Rc.new(3.14)` substitutes the
+    # unresolved FloatLiteralType) resolves to the default double like the
+    # concrete float slot.
+    if w is None or not (_eligible_scalar(w)
+                         or isinstance(w, FloatLiteralType)):
         return False
-    if isinstance(_peel_coerce(a), (TpyName, TpyFieldAccess)):
+    peeled = _peel_coerce(a)
+    if isinstance(peeled, (TpyName, TpyFieldAccess)):
         return False
+    # A bare float literal keeps its FloatLiteralType in a matching float
+    # slot (`Box(2.71)` -> `Box<double>(2.71)` bare) -- same render row.
+    if isinstance(peeled, TpyFloatLiteral) and (
+            is_float_type(w) or isinstance(w, FloatLiteralType)):
+        return _witness("own.scalar_rvalue")
     at = analyzer.get_expr_type(a)
     return (_eligible_scalar(at)
             and _witness("own.scalar_rvalue"))
@@ -3232,6 +3308,7 @@ def _marker_call_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
     own_ok = kind[0] in ("qualified", "generic_qualified", "generic_static",
                          "generic_module_static")
     return (_shared_pass_through_arg(a, ptype, locals_, analyzer)
+            or _none_unit_arg(a, ptype) is not None
             or (temps_ok and _value_union_temp_arg(
                 a, ptype, locals_, narrowed, analyzer))
             or (own_ok and _own_move_arg(a, ptype, locals_, analyzer))
@@ -3474,8 +3551,9 @@ def _method_call_arg_ok(
         e: TpyMethodCall, a: TpyExpr, ptype: 'TpyType | None', index: int,
         locals_: dict[str, TpyType], analyzer, *, temps_ok: bool,
         narrowed: 'set[str] | frozenset[str]',
-        param_names: 'set[str] | frozenset[str]') -> bool:
-    if not _plain_member_call_markers_ok(e):
+        param_names: 'set[str] | frozenset[str]',
+        tparam_bounds: 'dict | None' = None) -> bool:
+    if not _plain_member_call_markers_ok(e, targs_ok=True):
         # generator_ok unconditionally: the call-level gate already decided
         # whether the generator fi is admitted (iterable position only) --
         # this arg-side re-derivation only picks the arg rows, which are the
@@ -3494,7 +3572,8 @@ def _method_call_arg_ok(
         return _container_method_arg_ok(
             a, ptype, locals_, analyzer, param_names=param_names,
             narrowed=narrowed)
-    if _protocol_binding(recv_type) is not None:
+    if (_protocol_binding(recv_type) is not None
+            or _bounded_tparam_protocol(recv_type, tparam_bounds) is not None):
         return _protocol_method_arg_ok(a, ptype, locals_, analyzer)
     if _resolved_str_value(recv_type, analyzer) is not None:
         return _view_method_arg_ok(a, ptype, locals_, analyzer)
@@ -3573,6 +3652,9 @@ def _protocol_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, Tpy
             or _eligible_enum(ret, analyzer) is not None
             or _resolved_str_value(ret, analyzer) is not None
             or _resolved_bytes_value(ret, analyzer) is not None
+            # A T result off a bounded-T receiver (`item.clone() -> T`):
+            # renders by name; the composing position gates its own family.
+            or _tparam_value(ret)
             or (stmt_position and (ret is None or is_void_like_type(ret)))):
         return note_detail("method.protocol.ret_type")
     return _witness("method.protocol")
@@ -3661,9 +3743,19 @@ def _record_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyTy
     # the AST threads for these args only affects Own[T] slots (a
     # redundant-copy skip); the admitted arg rows carry none.
     native_method = bool(fi.native_name) and ri.is_native and not fi.native_function
+    # A generic method is a plain member call with the method_targs suffix
+    # when sema inferred args (`b.transform<::tpy::BigInt>(42)`) and a bare
+    # member call when it did not (`c.duplicate()` -- a class-T shadow bind,
+    # T fixed by the receiver), exactly the AST's method_targs rule.
+    # INT-kind args arrive as plain ints (not TpyTypes) and stay out.
+    generic_method_ok = bool(fi.type_params) and (
+        not e.inferred_type_args
+        or (len(e.inferred_type_args) == len(fi.type_params)
+            and all(isinstance(t, TpyType) for t in e.inferred_type_args)))
     if (fi.cpp_template is not None or fi.native_function
             or (fi.native_name and not native_method)
-            or fi.type_params or fi.is_staticmethod or not fi.is_method):
+            or (fi.type_params and not generic_method_ok)
+            or fi.is_staticmethod or not fi.is_method):
         return note_detail("method.fi_kind")
     overloads = analyzer.registry.get_method_overloads_with_parents(ri, e.method)
     if len(overloads) != 1:
@@ -3712,6 +3804,10 @@ def _record_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyTy
             # and at the field-receiver position (`h.boxed.get().x`, where
             # rvalue and borrow returns render the same bare postfix member).
             or (record_ret_ok and _f1_record(ret, analyzer))
+            # A borrow container return at the alias-decl sink
+            # (`std::vector<T>& items = c.get_item();` -- a substituted
+            # T-return; the REF_ALIAS decl gate pinned the lvalue-ness).
+            or (record_ret_ok and _alias_ref_container(ret))
             # Storage sinks only (the tuple-unpack source; the record-method
             # sibling of free-call lowering's storage_ret_ok escape). A span
             # result is a by-value view landing bare in its decl slot
@@ -3747,6 +3843,9 @@ def _record_method_arg_ok(
             or _record_pass_through_arg(a, ptype, locals_, analyzer)
             or _method_ctor_rvalue_arg(
                 a, ptype, index, overload, locals_, analyzer)
+            or (temps_ok
+                and _tparam_slot_temp_arg(a, ptype, index, overload,
+                                          analyzer) is not None)
             or _method_value_union_arg(a, ptype, locals_, analyzer)
             or (temps_ok and _value_union_temp_arg(
                 a, ptype, locals_, narrowed, analyzer))
@@ -3968,6 +4067,95 @@ def _method_value_union_arg(a: TpyExpr, ptype: TpyType | None,
         return False
     return (_union_pass_through_arg(a, ptype, locals_, analyzer)
             or _union_coerced_literal_arg(a, ptype, locals_, analyzer))
+
+def _tparam_name_pass_arg(a: TpyExpr, ptype: 'TpyType | None',
+                          locals_: dict[str, TpyType]) -> bool:
+    """A NAME bound to the same bare T as an (unsubstituted) TypeParamRef
+    slot -- the form-neutral pass inside a generic body
+    (`Box[T](value)` with `value: T`). Both paths render the bare name."""
+    if not isinstance(a, TpyName) or a.name == "self":
+        return False
+    pt = ptype if isinstance(ptype, TpyType) else None
+    if pt is None:
+        return False
+    pt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(pt)))
+    if isinstance(pt, OwnType):
+        pt = unwrap_readonly(pt.wrapped)
+    if not isinstance(pt, TypeParamRef):
+        return False
+    at = locals_.get(a.name)
+    if at is None:
+        return False
+    au = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
+    if isinstance(au, OwnType):
+        au = unwrap_readonly(au.wrapped)
+    return isinstance(au, TypeParamRef) and au.name == pt.name
+
+def _none_unit_arg(a: TpyExpr, ptype: 'TpyType | None') -> 'NoneType | None':
+    """A `None` literal into a unit slot (`Own[None]` / bare `None` -- a
+    generic call's substituted T=None param): renders the bare
+    `std::monostate{}` value on both paths. Returns the slot's NoneType."""
+    if not isinstance(_peel_coerce(a), TpyNoneLiteral):
+        return None
+    pt = ptype if isinstance(ptype, TpyType) else None
+    if pt is None:
+        return None
+    pt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(pt)))
+    if isinstance(pt, OwnType):
+        pt = unwrap_readonly(pt.wrapped)
+    return pt if isinstance(pt, NoneType) else None
+
+def _raw_record_method_fi(e: TpyMethodCall, locals_: dict[str, TpyType],
+                          analyzer):
+    """The receiver record's RAW method fi (TypeParamRef params intact --
+    not the substituted resolved stub), or None for a non-record receiver.
+    `_tparam_slot_temp_arg` keys its temp decision on the RAW param being a
+    bare T, exactly like the AST's user-record loop. Resolved through the
+    MRO (`get_method_overloads_with_parents`) so an INHERITED generic
+    method sees the same fi the shape gate admitted -- an own-methods-only
+    lookup would skip the temp arm the gate promised."""
+    recv_t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+        _method_receiver_type(e.obj, locals_, analyzer))))
+    if isinstance(recv_t, OwnType):
+        recv_t = unwrap_readonly(recv_t.wrapped)
+    if not isinstance(recv_t, NominalType):
+        return None
+    ri = analyzer.registry.get_record_for_type(recv_t)
+    if ri is None:
+        return None
+    overloads = analyzer.registry.get_method_overloads_with_parents(
+        ri, e.method)
+    return overloads[0] if overloads else None
+
+def _tparam_slot_temp_arg(a: TpyExpr, ptype: 'TpyType | None', idx: int,
+                          method_fi, analyzer) -> 'TpyType | None':
+    """A temporary arg into a generic-record method's T slot, resolved
+    non-value at the call site (`printer.get_str(Point(10, 20))`,
+    `box_list.set([4, 5, 6])`): the RAW method param is a bare TypeParamRef
+    (`param_val_or_ref_t<T>` -- an lvalue-ref binding), so the AST hoists
+    the named temp `R __tmp_N = <target-typed init>;` (temps.create over
+    the receiver-substituted type). Returns that resolved type, or None.
+    `ptype` arrives already substituted (the resolved fi's param); a
+    value-type resolution passes bare through the scalar rows instead, and
+    a still-open T (a generic body's own T) stays out."""
+    if method_fi is None or idx >= len(method_fi.params):
+        return None
+    raw = method_fi.params[idx].type
+    if not _is_type_param_slot(unwrap_ref_type(raw)):
+        return None
+    pt = ptype if isinstance(ptype, TpyType) else None
+    if pt is None:
+        return None
+    pt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(pt)))
+    if contains_type_param(pt) or pt.is_value_type():
+        return None
+    if isinstance(a, (TpyArrayLiteral, TpyDictLiteral, TpySetLiteral,
+                      TpyStrLiteral)):
+        return pt
+    if isinstance(a, (TpyCall, TpyMethodCall)) and is_rvalue_source(
+            analyzer, a):
+        return pt
+    return None
 
 def _method_ctor_rvalue_arg(a: TpyExpr, ptype: TpyType | None, idx: int,
                             method_fi, locals_: dict[str, TpyType],

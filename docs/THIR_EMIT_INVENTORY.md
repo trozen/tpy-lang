@@ -229,10 +229,12 @@ trivially at integration order.
   thir-wave7-generics; see IR_DESIGN.md's Wave-7 landing-log entry):
   instantiation-template calls, the ctor instantiation form (incl. the
   `UninitStorage[T]()` MIL hoist), generic native/template callees, and
-  type-param compares. Deferred residue, listed there: the plain-TPy
-  explicit `f<T>(args)` spelling, module/static method targs, the
-  `heap_take` own-param-move MIL source, `Waker` (async), and the
-  NON-generic MIL source fams the drilldown separated out.
+  type-param compares. The generics-foundation branch (2026-07-16, see
+  IR_DESIGN.md's wave note) then landed the plain-TPy explicit
+  `f<T>(args)` spelling and instance-method targs (`method_targs_cpp`);
+  still deferred: static/module-marker method targs, the `heap_take`
+  own-param-move MIL source, `Waker` (async), and the NON-generic MIL
+  source fams the drilldown separated out.
 - **M-callee-kind** (part of B): imported / cross-module / `@error_return` /
   generic free callees (`call.callee_kind` 2,087) -- new callee-resolution
   machinery, too entangled with call lowering to parallelize safely.

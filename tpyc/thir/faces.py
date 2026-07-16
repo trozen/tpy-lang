@@ -424,6 +424,12 @@ THIR_FACES: frozenset[str] = frozenset({
     # REF_ALIAS from a borrow-record-returning call (lowering; the
     # `T& p = shared(x);` bind of the callee's returned reference).
     "decl.record_borrow_call",
+    # Open-T local from a T-returning call in a generic body (lowering;
+    # the `::tpy::val_or_ref_t<T> item = box.get();` form-neutral bind).
+    "decl.tparam_call",
+    # `copy(x)` of an open-T source (lowering; the special-builtin arm's
+    # general tail, `T(this->value)`).
+    "call.copy_tparam",
     # Ptr[T] value-slot admission (bare passes / field reads share the
     # scalar renders, so the predicate is the only distinguishing site).
     "ptr.value_slot",

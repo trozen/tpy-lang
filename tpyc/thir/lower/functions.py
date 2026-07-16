@@ -293,19 +293,17 @@ def _check_callable_structure(func: TpyFunction, analyzer,
         # THIRReturn/THIRRaise + the bind/discard/unwrap nodes); the resumable
         # emitters have no expected-return seam, so those stay AST.
         raise ThirUnsupported("sig.error_return")
-    if func.type_params:
-        # A generic callable routes its body via the same TypeParamRef T-value
-        # arms F5 built for generic-record methods: the resolver spells each
-        # `[T]` param/return as a TypeParamRef, `_is_type_param_slot` checks it
-        # as a form-neutral value pass-through (`val_or_ref_t<T>` resolves
-        # value-vs-ref per instantiation), and the template signature stays
-        # AST. A method's OWN type params (`def m[U](self, x: U)`) spell the
-        # same way -- on a generic record the record's T rides the F5
-        # self-feed while the method's U rides these slots, so both compose.
-        # Still rejected: INT-kind params (`[N: int]` -- N read as a value has
-        # no T-slot arm yet).
-        if any(k != TypeParamKind.TYPE for k in func.type_param_kinds):
-            raise ThirUnsupported("sig.generic_fn")
+    # A generic callable routes its body via the same TypeParamRef T-value
+    # arms F5 built for generic-record methods: the resolver spells each
+    # `[T]` param/return as a TypeParamRef, `_is_type_param_slot` checks it
+    # as a form-neutral value pass-through (`val_or_ref_t<T>` resolves
+    # value-vs-ref per instantiation), and the template signature stays
+    # AST. A method's OWN type params (`def m[U](self, x: U)`) spell the
+    # same way -- on a generic record the record's T rides the F5
+    # self-feed while the method's U rides these slots, so both compose.
+    # An INT-kind param (`[N: int]`) is a template VALUE param
+    # (`std::size_t N`); its name is seeded as an INT TypeParamRef
+    # binding so body reads render bare `N`.
     if func.linkage != FunctionLinkage.DEFAULT:
         raise ThirUnsupported("sig.linkage")
     # A reassigned param of a type flagged param_needs_copy_for_reassign (owned
@@ -453,6 +451,22 @@ def _seed_readonly_globals(
     scope.update(cands)
     return frozenset(n for n in cands if n not in spelled), spelled
 
+def _seed_int_kind_tparams(func: TpyFunction, record_name: 'str | None',
+                           analyzer, params_set: dict[str, TpyType]) -> None:
+    """Template VALUE params (`[N: int]`, a C++ `std::size_t N`) read as
+    bare names in the body (`return Int32(N * 2)` -> `mul_check(N, 2)`);
+    seed each -- the function's own and the owning record's -- as an
+    INT-kind TypeParamRef binding so the name reads route."""
+    if record_name:
+        ri = analyzer.registry.get_record(record_name)
+        if ri is not None:
+            for p, k in zip(ri.type_params, ri.type_param_kinds):
+                if k is not TypeParamKind.TYPE and p not in params_set:
+                    params_set[p] = TypeParamRef(p, kind=k)
+    for p, k in zip(func.type_params, func.type_param_kinds):
+        if k is not TypeParamKind.TYPE and p not in params_set:
+            params_set[p] = TypeParamRef(p, kind=k)
+
 def _seed_global_scope(func: TpyFunction, analyzer, lc: '_LowerCtx',
                        params_set: dict[str, TpyType],
                        native_globals: 'Mapping[str, str]') -> None:
@@ -529,6 +543,7 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
         lc.error_return_cpp = error_return_to_cpp(
             func.error_return, analyzer.ctx.module_name, analyzer.registry)
     params_set: dict[str, TpyType] = {n: t for n, t in func.params}
+    _seed_int_kind_tparams(func, record_name, analyzer, params_set)
     if has_self:
         params_set["self"] = self_type  # the record receiver, a field source
         if func.is_readonly:

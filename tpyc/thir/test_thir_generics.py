@@ -3,7 +3,8 @@ generics route their bodies via the TypeParamRef T-value arms F5 built for
 generic-record methods -- the template signature stays AST, the body's `T`/`U`
 param/return slots are form-neutral value pass-throughs (on a generic record
 the record's T rides the F5 self-feed while the method's U rides these slots).
-INT-kind type params stay on the AST path (separate cell)."""
+INT-kind type params (`[N: int]`) seed as INT TypeParamRef bindings so their
+bare-name reads route."""
 
 from __future__ import annotations
 
@@ -64,14 +65,14 @@ class TestGenericFreeFunction:
             "    def take[U](self, v: Own[U]) -> Own[U]:\n        return v\n")
         assert _fn(thir, "take") is not None
 
-    def test_int_kind_type_param_stays_ast(self):
-        # `[N: int]` (INT-kind) is out of the slice: N read as a value has no
-        # T-slot arm yet.
+    def test_int_kind_type_param_routes(self):
+        # `[N: int]` (INT-kind) is a template VALUE param: N is seeded as an
+        # INT TypeParamRef binding, so bodies over it route.
         thir = _lower_ctx(
             "from tpy import Int32, Array\n"
             "def head[N: int](a: Array[Int32, N]) -> Int32:\n"
             "    return a[0]\n")
-        assert _fn(thir, "head") is None
+        assert _fn(thir, "head") is not None
 
 
 
@@ -1009,4 +1010,480 @@ class TestArgfulGenericInstantiation:
                "    print(b.get())\n"
                "mk('hi')\n")
         assert _fn(_lower_ctx(src), "mk") is None
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+
+
+class TestGenericDeclArms:
+    """Generic decl arms: the open-T val_or_ref_t local, the borrow
+    method-call REF_ALIAS, and the container type-arg slice."""
+
+    def _cpp(self, src: str, thir: bool) -> str:
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        hpp, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=thir))
+        return hpp + cpp
+
+    BOX = (
+        "from tpy import Int32\n"
+        "class Box[T]:\n"
+        "    value: T\n"
+        "    def __init__(self, value: T) -> None:\n"
+        "        self.value = value\n"
+        "    def get(self) -> T:\n"
+        "        return self.value\n"
+    )
+
+    def test_open_t_local_from_method_call_routes(self):
+        # `item = box.get()` in a generic body -> the form-neutral
+        # `::tpy::val_or_ref_t<T> item = box.get();` bind.
+        src = (self.BOX
+               + "def read[T](box: Box[T]) -> None:\n"
+               + "    item = box.get()\n"
+               + "    print(1)\n")
+        fn = _fn(_lower_ctx(src), "read")
+        assert fn is not None
+        out = self._cpp(src + "read(Box[Int32](1))\n", thir=True)
+        assert "::tpy::val_or_ref_t<T> item = box.get();" in out
+
+    def test_open_t_local_byte_identical(self):
+        src = (self.BOX
+               + "def read[T](box: Box[T]) -> None:\n"
+               + "    item = box.get()\n"
+               + "    print(1)\n"
+               + "read(Box[Int32](1))\n")
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+
+    def test_open_t_local_reassigned_falls_back(self):
+        # References cannot rebind: a reassigned open-T local stays AST.
+        src = (self.BOX
+               + "def read[T](box: Box[T]) -> None:\n"
+               + "    item = box.get()\n"
+               + "    item = box.get()\n"
+               + "    print(1)\n")
+        assert _fn(_lower_ctx(src), "read") is None
+
+    def test_record_ref_alias_from_method_call(self):
+        # Concrete instantiation site: the substituted T-return binds the
+        # plain record alias (`Rec& num = h.get();`).
+        src = (
+            "from tpy import Int32\n"
+            "class Rec:\n"
+            "    v: Int32\n"
+            "    def __init__(self, v: Int32) -> None:\n"
+            "        self.v = v\n"
+            "class Holder[T]:\n"
+            "    item: T\n"
+            "    def __init__(self, item: T) -> None:\n"
+            "        self.item = item\n"
+            "    def get(self) -> T:\n"
+            "        return self.item\n"
+            "def main() -> None:\n"
+            "    h = Holder[Rec](Rec(10))\n"
+            "    num = h.get()\n"
+            "    print(num.v)\n"
+            "main()\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "main") is not None
+        out = self._cpp(src, thir=True)
+        assert "Rec& num = h.get();" in out
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+
+    def test_container_type_arg_record_decl_routes(self):
+        # `Box[list[Int32]]` joins the F1 type-arg slice: the local decl,
+        # ctor and get() all spell through the formatter form.
+        src = (self.BOX
+               + "def main() -> None:\n"
+               + "    b = Box[list[Int32]]([1, 2, 3])\n"
+               + "    xs = b.get()\n"
+               + "    print(len(xs))\n"
+               + "main()\n")
+        assert _fn(_lower_ctx(src), "main") is not None
+        out = self._cpp(src, thir=True)
+        assert ("Box<std::vector<int32_t>> b = "
+                "Box<std::vector<int32_t>>({1, 2, 3});" in out)
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+
+
+class TestGenericCallArgArms:
+    """Generic call-arg arms: non-scalar T-slot names, ref-slot temps for
+    str/None/scalar-call rvalues, and the explicit-targ callee face."""
+
+    def _cpp(self, src: str, thir: bool) -> str:
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        hpp, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=thir))
+        return hpp + cpp
+
+    def test_record_name_into_t_slot(self):
+        # A record NAME lvalue binds the `param_val_or_ref_t<T>` ref slot
+        # bare, like the concrete `const R&` slot.
+        src = (
+            "from tpy import Int32\n"
+            "class MyInt:\n"
+            "    v: Int32\n"
+            "    def __init__(self, v: Int32) -> None:\n"
+            "        self.v = v\n"
+            "def is_less[T](a: T, b: T) -> bool:\n"
+            "    return True\n"
+            "def main() -> None:\n"
+            "    x = MyInt(1)\n"
+            "    y = MyInt(2)\n"
+            "    print(is_less(x, y))\n"
+            "main()\n")
+        assert _fn(_lower_ctx(src), "main") is not None
+        out = self._cpp(src, thir=True)
+        assert "is_less<MyInt>(x, y)" in out
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+
+    def test_explicit_type_args_route(self):
+        # `f[str](x)` / `f[None](None)`: the lingering subscript_callee no
+        # longer rejects the resolved explicit-targ call; literal args hoist
+        # the ref-slot temp with the resolved spelling.
+        src = (
+            "def identity[T](x: T) -> T:\n"
+            "    return x\n"
+            "def main() -> None:\n"
+            "    s = identity[str](\"hello\")\n"
+            "    identity[None](None)\n"
+            "    print(s)\n"
+            "main()\n")
+        assert _fn(_lower_ctx(src), "main") is not None
+        out = self._cpp(src, thir=True)
+        assert "std::string __tmp_1 = \"hello\";" in out
+        assert "identity<std::string>(__tmp_1)" in out
+        assert "std::monostate __tmp_2 = std::monostate{};" in out
+        assert "identity<std::monostate>(__tmp_2)" in out
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+
+    def test_str_call_rvalue_temp(self):
+        # A by-value str call into a T slot hoists the same named temp.
+        src = (
+            "def identity[T](x: T) -> T:\n"
+            "    return x\n"
+            "def make() -> str:\n"
+            "    return \"a\" + \"b\"\n"
+            "def main() -> None:\n"
+            "    print(identity(make()))\n"
+            "main()\n")
+        assert _fn(_lower_ctx(src), "main") is not None
+        out = self._cpp(src, thir=True)
+        assert "std::string __tmp_1 = make();" in out
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+
+    def test_float_literal_own_slot_renders_bare(self):
+        # `Box(2.71)`: a FloatLiteralType literal into an Own[float] ctor
+        # slot renders bare (no temp) on both paths.
+        src = (
+            "from tplib.box import Box\n"
+            "def main() -> None:\n"
+            "    bf = Box(2.71)\n"
+            "    print(bf.get())\n"
+            "main()\n")
+        assert _fn(_lower_ctx(src), "main") is not None
+        out = self._cpp(src, thir=True)
+        assert "(2.71)" in out
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+
+
+
+class TestBoundedReceiversAndGenericMethods:
+    """Bounded-T receiver dispatch through the protocol checker, the raw-T
+    method-slot temp, and generic-method targs."""
+
+    def _cpp(self, src: str, thir: bool) -> str:
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        hpp, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=thir))
+        return hpp + cpp
+
+    def test_bounded_t_receiver_method_call(self):
+        # `item.to_str()` on a `[T: Stringable]` param routes like a
+        # structural-protocol receiver: bare member call in the template.
+        src = (
+            "from typing import Protocol\n"
+            "class Stringable(Protocol):\n"
+            "    def to_str(self) -> str: ...\n"
+            "def stringify[T: Stringable](item: T) -> str:\n"
+            "    return item.to_str()\n"
+            "class V:\n"
+            "    def __init__(self) -> None:\n"
+            "        pass\n"
+            "    def to_str(self) -> str:\n"
+            "        return 'v'\n"
+            "def main() -> None:\n"
+            "    v = V()\n"
+            "    print(stringify(v))\n"
+            "main()\n")
+        assert _fn(_lower_ctx(src), "stringify") is not None
+        out = self._cpp(src, thir=True)
+        assert "return item.to_str();" in out
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+
+    def test_generic_method_targs(self):
+        # Inferred targs spell the method_targs suffix.
+        src = (
+            "from tpy import Int32\n"
+            "class Conv:\n"
+            "    def __init__(self) -> None:\n"
+            "        pass\n"
+            "    def identity[U](self, val: U) -> U:\n"
+            "        return val\n"
+            "def main() -> None:\n"
+            "    c = Conv()\n"
+            "    print(c.identity(42))\n"
+            "main()\n")
+        assert _fn(_lower_ctx(src), "main") is not None
+        out = self._cpp(src, thir=True)
+        assert "c.identity<int32_t>(42)" in out
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+
+    def test_generic_method_class_shadow_bare_call(self):
+        # A method-level T shadow-binding the class's own T resolves with
+        # NO inferred args -- the call spells the bare member, no <...>
+        # suffix (T is fixed by the receiver).
+        src = (
+            "from tpy import Int32, Copyable\n"
+            "class Cell[T]:\n"
+            "    value: T\n"
+            "    def __init__(self, value: T) -> None:\n"
+            "        self.value = value\n"
+            "    def duplicate[T: Copyable](self) -> T:\n"
+            "        return self.value\n"
+            "def main() -> None:\n"
+            "    c = Cell[Int32](7)\n"
+            "    print(c.duplicate())\n"
+            "main()\n")
+        assert _fn(_lower_ctx(src), "main") is not None
+        out = self._cpp(src, thir=True)
+        assert "c.duplicate()" in out
+        assert "c.duplicate<" not in out
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+
+    def test_tparam_slot_ctor_rvalue_temp(self):
+        # A ctor rvalue into a generic-record method's raw T slot hoists
+        # the named temp with the substituted type.
+        src = (
+            "from tpy import Int32\n"
+            "class P:\n"
+            "    x: Int32\n"
+            "    def __init__(self, x: Int32) -> None:\n"
+            "        self.x = x\n"
+            "class Printer[T]:\n"
+            "    def __init__(self) -> None:\n"
+            "        pass\n"
+            "    def show(self, item: T) -> Int32:\n"
+            "        return 1\n"
+            "def main() -> None:\n"
+            "    pr = Printer[P]()\n"
+            "    print(pr.show(P(7)))\n"
+            "main()\n")
+        assert _fn(_lower_ctx(src), "main") is not None
+        out = self._cpp(src, thir=True)
+        assert "P __tmp_1 = P(7);" in out
+        assert "pr.show(__tmp_1)" in out
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+
+    def test_nested_generic_call_t_passthrough(self):
+        # `outer(x)` inside a generic body: the callee's T substitutes to the
+        # caller's own T and the name passes the form-neutral slot bare.
+        src = (
+            "from typing import Sized\n"
+            "from tpy import Int32\n"
+            "def inner_len[T: Sized](x: T) -> Int32:\n"
+            "    return len(x)\n"
+            "def outer_len[T: Sized](x: T) -> Int32:\n"
+            "    return inner_len(x)\n"
+            "def main() -> None:\n"
+            "    xs = [1, 2, 3]\n"
+            "    print(outer_len(xs))\n"
+            "main()\n")
+        assert _fn(_lower_ctx(src), "outer_len") is not None
+        out = self._cpp(src, thir=True)
+        assert "return inner_len<T>(x);" in out
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+
+
+class TestGenericCallDeclAndUnitArgs:
+    """Generic-callee record-rvalue decls, unit-None args, and
+    pending-float Own slots."""
+
+    def _cpp(self, src: str, thir: bool) -> str:
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        hpp, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=thir))
+        return hpp + cpp
+
+    def test_generic_callee_record_rvalue_decl(self):
+        # `cloned = clone_it(box)` -- an Own[T]-returning generic call binds
+        # the owned record local with the explicit-targ spelling.
+        src = (
+            "from typing import Protocol, Self\n"
+            "from tpy import Int32, Own\n"
+            "class Clonable(Protocol):\n"
+            "    def clone(self) -> Own[Self]: ...\n"
+            "class BoxC:\n"
+            "    value: Int32\n"
+            "    def __init__(self, v: Int32) -> None:\n"
+            "        self.value = v\n"
+            "    def clone(self) -> Own[BoxC]:\n"
+            "        return BoxC(self.value)\n"
+            "def clone_it[T: Clonable](item: T) -> Own[T]:\n"
+            "    return item.clone()\n"
+            "def main() -> None:\n"
+            "    box = BoxC(123)\n"
+            "    cloned = clone_it(box)\n"
+            "    print(cloned.value)\n"
+            "main()\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "main") is not None
+        # clone_it's own body (a bounded-T `item.clone()` returning bare T)
+        # must ROUTE, not just byte-match via fallback -- pins the
+        # _tparam_value(ret) protocol-method return branch.
+        assert _fn(thir, "clone_it") is not None
+        out = self._cpp(src, thir=True)
+        assert "BoxC cloned = clone_it<BoxC>(box);" in out
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+
+    def test_unit_none_and_pending_float_args(self):
+        # `Rc.new(None)` / `Box(None)` render the bare monostate arg;
+        # `Rc.new(3.14)` passes the pending-float Own slot bare.
+        src = (
+            "from tplib.rc import Rc\n"
+            "from tplib.box import Box\n"
+            "def main() -> None:\n"
+            "    r = Rc.new(None)\n"
+            "    b = Box(None)\n"
+            "    rf = Rc.new(3.14)\n"
+            "    print(rf.get())\n"
+            "main()\n")
+        assert _fn(_lower_ctx(src), "main") is not None
+        out = self._cpp(src, thir=True)
+        assert "Rc<std::monostate>::new_<std::monostate>(std::monostate{})" in out
+        assert "Box<std::monostate>(std::monostate{})" in out
+        assert "Rc<double>::new_<double>(3.14)" in out
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+
+
+class TestReadonlyGenericConstPaths:
+    """The two readonly-keyed branches nothing in the corpus reaches: the
+    val_or_cref_t open-T decl and the const REF_ALIAS off a readonly
+    method's ref return -- neither the ratchet nor the byte-diff can see
+    them regress without these pins."""
+
+    def _cpp(self, src: str, thir: bool) -> str:
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        hpp, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=thir))
+        return hpp + cpp
+
+    RO_BOX = (
+        "from tpy import Int32, readonly\n"
+        "class Box[T]:\n"
+        "    value: T\n"
+        "    def __init__(self, value: T) -> None:\n"
+        "        self.value = value\n"
+        "    @readonly\n"
+        "    def get(self) -> T:\n"
+        "        return self.value\n"
+    )
+
+    def test_open_t_local_from_readonly_method_uses_cref(self):
+        # A readonly method's T return binds the const trait
+        # (`::tpy::val_or_cref_t<T> item = box.get();`).
+        src = (self.RO_BOX
+               + "def read[T](box: Box[T]) -> None:\n"
+               + "    item = box.get()\n"
+               + "    print(1)\n"
+               + "read(Box[Int32](1))\n")
+        assert _fn(_lower_ctx(src), "read") is not None
+        out = self._cpp(src, thir=True)
+        assert "::tpy::val_or_cref_t<T> item = box.get();" in out
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+
+    def test_const_ref_alias_from_readonly_method(self):
+        # Concrete site: the readonly method's substituted ref return binds
+        # `const R&` -- the _f1_is_const readonly-method branch.
+        src = (
+            "from tpy import Int32, readonly\n"
+            "class Rec:\n"
+            "    v: Int32\n"
+            "    def __init__(self, v: Int32) -> None:\n"
+            "        self.v = v\n"
+            "class Holder[T]:\n"
+            "    item: T\n"
+            "    def __init__(self, item: T) -> None:\n"
+            "        self.item = item\n"
+            "    @readonly\n"
+            "    def get(self) -> T:\n"
+            "        return self.item\n"
+            "def main() -> None:\n"
+            "    h = Holder[Rec](Rec(10))\n"
+            "    num = h.get()\n"
+            "    print(num.v)\n"
+            "main()\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "main") is not None
+        out = self._cpp(src, thir=True)
+        assert "const Rec& num = h.get();" in out
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+
+
+class TestGenericCompositionWitnesses:
+    """The two compositions the waves-7-9 merge check hand-traced: a generic
+    method's targs alongside a vararg pack, and a marker-only bound."""
+
+    def _cpp(self, src: str, thir: bool) -> str:
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        hpp, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=thir))
+        return hpp + cpp
+
+    def test_generic_method_targs_with_vararg_pack(self):
+        # `b.combine(1, 2)` -- method-level targs and the vararg pack render
+        # orthogonally (`b.combine<int32_t>(<pack>)`), the seam where the
+        # generics-foundation targs met the waves' THIRVarargPack.
+        src = (
+            "from tpy import Int32\n"
+            "class B:\n"
+            "    def __init__(self) -> None:\n"
+            "        pass\n"
+            "    def combine[T](self, *xs: T) -> Int32:\n"
+            "        return len(xs)\n"
+            "def main() -> None:\n"
+            "    b = B()\n"
+            "    print(b.combine(1, 2))\n"
+            "main()\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "main") is not None
+        assert _fn(thir, "combine") is not None
+        out = self._cpp(src, thir=True)
+        assert "b.combine<int32_t>(" in out
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+
+    def test_marker_only_bound_routes_as_plain_t(self):
+        # A `[T: Send]` marker bound resolves through _bounded_tparam_protocol
+        # (Send IS a protocol type) but carries no methods, so a body over it
+        # is the ordinary form-neutral T pass-through.
+        src = (
+            "from tpy import Int32, Send\n"
+            "def idpass[T: Send](x: T) -> T:\n"
+            "    return x\n"
+            "def main() -> None:\n"
+            "    print(idpass(5))\n"
+            "main()\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "idpass") is not None
+        assert _fn(thir, "main") is not None
         assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
