@@ -16,8 +16,8 @@ void main() {
     std::cout << d.strftime("%x | %X") << "\n";
     // print(d.strftime("%U %W %G %V"))
     std::cout << d.strftime("%U %W %G %V") << "\n";
-    // print(date(1, 1, 1).strftime("%y %U %W %V %u %j %c"))
-    std::cout << ::tpystd::datetime::date(::tpy::BigInt(1), ::tpy::BigInt(1), ::tpy::BigInt(1)).strftime("%y %U %W %V %u %j %c") << "\n";
+    // print(date(1, 1, 1).strftime("%y %U %W %V %u %j"))
+    std::cout << ::tpystd::datetime::date(::tpy::BigInt(1), ::tpy::BigInt(1), ::tpy::BigInt(1)).strftime("%y %U %W %V %u %j") << "\n";
     // print(date(2016, 1, 1).strftime("%U %W %G %V %u"))
     std::cout << ::tpystd::datetime::date(::tpy::BigInt(2016), ::tpy::BigInt(1), ::tpy::BigInt(1)).strftime("%U %W %G %V %u") << "\n";
     // print(date(2018, 12, 31).strftime("%U %W %G %V %u"))
@@ -28,8 +28,8 @@ void main() {
     std::cout << ::tpystd::datetime::date(::tpy::BigInt(2020), ::tpy::BigInt(12), ::tpy::BigInt(31)).strftime("%G-%V-%u") << "\n";
     // print(d.strftime("%z|%Z|"))
     std::cout << d.strftime("%z|%Z|") << "\n";
-    // print(d.strftime("100%% %q %"))
-    std::cout << d.strftime("100%% %q %") << "\n";
+    // print(d.strftime("100%% %"))
+    std::cout << d.strftime("100%% %") << "\n";
     // t = time(0, 5, 3, 40)
     ::tpystd::datetime::time t = ::tpystd::datetime::time(::tpy::BigInt(0), ::tpy::BigInt(5), ::tpy::BigInt(3), ::tpy::BigInt(40));
     // print(t.strftime("%H %I %p %M %S %f %j %Y %a"))  # 1900-01-01 timetuple
@@ -71,10 +71,14 @@ void __tpy_init() {
     // # CPython-on-glibc edge behaviors -- %c/%x/%X C-locale compositions, ISO
     // # %G/%V/%u across year rollovers, %U/%W week-number edges, %I/%p
     // # midnight/noon, %z/%Z empty when naive and seconds-bearing when the offset
-    // # has them, unknown directives passed through verbatim, trailing lone % kept.
-    // # %Y/%G on tiny years (1, 42) are NOT pinned here: CPython 3.14 zero-pads
-    // # them to 4 digits ("1" -> "0001") while TPy/older CPython do not, so the
-    // # padding is version-specific; %Y/%G are covered on normal years above.
+    // # has them, trailing lone % kept.
+    // # Platform/version-divergent bits are NOT pinned in the cpy comparison (they
+    // # diverge glibc vs macOS libc, and by CPython version): the tiny-year year
+    // # padding of %Y/%G -- and of %c, which embeds the year ("...1" on glibc vs
+    // # "...0001" on macOS libc / CPython 3.14) -- and an invalid directive like
+    // # %q (passed through verbatim by glibc, stripped to "q" by macOS libc). TPy
+    // # is glibc-consistent on every platform, so the exec phase still pins its
+    // # output; %Y/%G/%c on normal years are covered above.
     // from datetime import datetime, date, time, timedelta, timezone
     ::tpystd::datetime::__tpy_init();
     // main()

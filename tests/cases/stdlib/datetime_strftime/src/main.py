@@ -2,10 +2,14 @@
 # CPython-on-glibc edge behaviors -- %c/%x/%X C-locale compositions, ISO
 # %G/%V/%u across year rollovers, %U/%W week-number edges, %I/%p
 # midnight/noon, %z/%Z empty when naive and seconds-bearing when the offset
-# has them, unknown directives passed through verbatim, trailing lone % kept.
-# %Y/%G on tiny years (1, 42) are NOT pinned here: CPython 3.14 zero-pads
-# them to 4 digits ("1" -> "0001") while TPy/older CPython do not, so the
-# padding is version-specific; %Y/%G are covered on normal years above.
+# has them, trailing lone % kept.
+# Platform/version-divergent bits are NOT pinned in the cpy comparison (they
+# diverge glibc vs macOS libc, and by CPython version): the tiny-year year
+# padding of %Y/%G -- and of %c, which embeds the year ("...1" on glibc vs
+# "...0001" on macOS libc / CPython 3.14) -- and an invalid directive like
+# %q (passed through verbatim by glibc, stripped to "q" by macOS libc). TPy
+# is glibc-consistent on every platform, so the exec phase still pins its
+# output; %Y/%G/%c on normal years are covered above.
 from datetime import datetime, date, time, timedelta, timezone
 
 
@@ -15,13 +19,13 @@ def main() -> None:
     print(d.strftime("%c"))
     print(d.strftime("%x | %X"))
     print(d.strftime("%U %W %G %V"))
-    print(date(1, 1, 1).strftime("%y %U %W %V %u %j %c"))
+    print(date(1, 1, 1).strftime("%y %U %W %V %u %j"))
     print(date(2016, 1, 1).strftime("%U %W %G %V %u"))
     print(date(2018, 12, 31).strftime("%U %W %G %V %u"))
     print(date(2019, 1, 1).strftime("%U %W %G %V %u"))
     print(date(2020, 12, 31).strftime("%G-%V-%u"))
     print(d.strftime("%z|%Z|"))
-    print(d.strftime("100%% %q %"))
+    print(d.strftime("100%% %"))
 
     t = time(0, 5, 3, 40)
     print(t.strftime("%H %I %p %M %S %f %j %Y %a"))  # 1900-01-01 timetuple
