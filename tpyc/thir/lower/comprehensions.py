@@ -321,21 +321,16 @@ def _comp_array_route(
         storage_tuple_locals: AbstractSet[str],
         narrowed: AbstractSet[str], analyzer) -> '_CompRoute | None':
     """An Array-demoted comprehension -- the `array_from_index` RANGE arm
-    only (a filter-less, unpack-less list comp over a literal-proven range;
+    (a filter-less, unpack-less list comp over a literal-proven range;
     sema's _try_comp_array_size did the proving, so the bounds are
-    compile-time). The Array-SOURCE indexing arm (`__obj_N[__i_N]`) is a
-    deferred row. No conditions can appear (a filtered comp has no static
-    size, so sema never demotes one) -- rejected defensively anyway."""
+    compile-time) or the Array-SOURCE indexing arm (`__obj_N[__i_N]`, a
+    random-access loop over a sized Array source). No conditions can appear
+    (a filtered comp has no static size, so sema never demotes one) --
+    rejected defensively anyway."""
     if not isinstance(init, TpyListComprehension):
         return None
     gen = init.generator
     if gen.owns_elements or gen.conditions or gen.unpack_vars is not None:
-        return None
-    it = gen.iterable
-    if not _is_range_call(it) or len(it.args) not in (1, 2, 3):
-        return None
-    counter = _range_counter_type(it, analyzer)
-    if not _eligible_scalar(counter):
         return None
     args_t = getattr(t, "type_args", None)
     if not args_t or not _comp_elem_slot_ok(args_t[0], analyzer):
@@ -343,9 +338,29 @@ def _comp_array_route(
     special = (pointers | rebind_slots | storage_tuple_locals | narrowed)
     if gen.var in special:
         return None
+    it = gen.iterable
+    if _is_range_call(it) and len(it.args) in (1, 2, 3):
+        counter = _range_counter_type(it, analyzer)
+        if not _eligible_scalar(counter):
+            return None
+        return _CompRoute(
+            kind="list", loop="array_range", counter_type=counter,
+            it_type=None, et=counter, iterable_lvalue=True,
+            sized_reserve=False, unpack_types=None)
+    # Array-SOURCE indexing arm: `_gen_array_comprehension`'s non-range branch
+    # borrows the source once (`__obj_N`) and indexes it per slot. Reuse the
+    # begin/end name/field classifier for the loop-var binding fact, then
+    # require a statically-sized Array source (the only shape sema demotes to
+    # Array). A view result off the source rebinds it_type in _comp_route.
+    base = _comp_route(init, declared, narrowed, analyzer)
+    if base is None or base.loop != "begin_end" or base.unpack_types is not None:
+        return None
+    src = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(base.it_type)))
+    if not is_array(src):
+        return None
     return _CompRoute(
-        kind="list", loop="array_range", counter_type=counter,
-        it_type=None, et=counter, iterable_lvalue=True,
+        kind="list", loop="array_source", counter_type=None,
+        it_type=base.it_type, et=base.et, iterable_lvalue=base.iterable_lvalue,
         sized_reserve=False, unpack_types=None)
 
 def _lower_array_comprehension(
@@ -375,6 +390,42 @@ def _lower_array_comprehension(
         array_size_cpp=str(t.type_args[1]),
         range_start=_lower_expr(args[0], lc, declared) if len(args) >= 2 else None,
         range_step=_lower_expr(args[2], lc, declared) if len(args) == 3 else None,
+        element=_lower_container_elem(
+            init.element_expr, elem_t, lc, body_declared),
+        loc=getattr(init, "loc", None),
+    )
+
+def _lower_array_source_comprehension(
+        init, result_type: TpyType, route: _CompRoute, lc: '_LowerCtx',
+        declared: dict[str, TpyType]) -> THIRComprehension:
+    """The array_from_index SOURCE arm: borrow a sized Array source once
+    (`__obj_N`, lvalue-verdict binding) inside a `({...})` prelude, then index
+    it per slot (`E var = __obj_N[__i_N];` value binding / `auto&& var = ...`
+    borrow) -- `_gen_array_comprehension`'s non-range branch. The element
+    renders through the shared per-slot wrap after the loop-var binding."""
+    analyzer = lc.analyzer
+    gen = init.generator
+    it = gen.iterable
+    _witness("comp.array_source")
+    elem_t = _comp_result_type(init.result_elem_type, analyzer)
+    body_declared = dict(declared)
+    body_declared[gen.var] = route.et
+    if isinstance(it, TpyFieldAccess):
+        iterable = _lower_field_source(it, lc, declared)
+    else:
+        iterable = _lower_expr(
+            it, lc, declared, use=_ExprUse(result=_ExprResultUse.ITERABLE))
+    return THIRComprehension(
+        result_type=result_type,
+        kind="list",
+        var=gen.var,
+        loop="array_source",
+        elem_type=route.et,
+        const_loop_var=gen.const_loop_var,
+        array_elem_cpp=lc.render_type(elem_t),
+        array_size_cpp=str(result_type.type_args[1]),
+        iterable=iterable,
+        iterable_lvalue=route.iterable_lvalue,
         element=_lower_container_elem(
             init.element_expr, elem_t, lc, body_declared),
         loc=getattr(init, "loc", None),
@@ -432,6 +483,9 @@ def _lower_comprehension(
         raise ThirUnsupported("comp.route", detail=True)
     if route.loop == "array_range":
         return _lower_array_comprehension(
+            init, result_type, route, lc, declared)
+    if route.loop == "array_source":
+        return _lower_array_source_comprehension(
             init, result_type, route, lc, declared)
     gen = init.generator
     body_declared = dict(declared)

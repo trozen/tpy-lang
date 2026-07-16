@@ -13,7 +13,8 @@ from .nodes import (
     THIRTruthy, THIROptViewArg, THIROptionalPtrArg, THIRReturn,
     THIRUnaryNot, THIRWhile,
 )
-from .testutil import _compile, _entry, _fn, _lower_ctx, _lower_ctx_witnessed
+from .testutil import (_compile, _entry, _fn, _lower_ctx, _lower_ctx_witnessed,
+                       _assert_byte_identical)
 
 _PRELUDE = (
     "from tpy import Int32, Own\n"
@@ -1236,13 +1237,14 @@ class TestOptionalScalarEq:
             "def ne(x: Int32 | None, y: Int32) -> bool:\n    return x != y\n")
         assert faces.get("binop.opt_scalar_eq", 0) >= 1
 
-    def test_ordering_stays_ast(self):
-        # `<` on an optional operand is not optional_safe_eq -- the AST
-        # unwarps with a warning; stays out of the slice.
-        thir = _lower_ctx(
-            "from tpy import Int32\n"
-            "def lt(x: Int32 | None, y: Int32) -> bool:\n    return x < y\n")
-        assert _fn(thir, "lt") is None
+    def test_ordering_routes(self):
+        # `<` on an optional operand (the AST unwraps with an unproven-value
+        # warning) now routes byte-identically (wave-8 none_safety).
+        src = ("from tpy import Int32\n"
+               "def lt(x: Int32 | None, y: Int32) -> bool:\n    return x < y\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "lt") is not None
+        _assert_byte_identical(src)
 
     def test_narrowed_char_vs_str_literal_ineligible(self):
         # A NARROWED Char|None operand vs a str literal: the AST's

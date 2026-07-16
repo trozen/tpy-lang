@@ -5853,6 +5853,11 @@ class CallAnalyzer:
             loc=expr.loc,
         )
         ret_type = self.methods.analyze_method_call(synthetic)
+        # Cache the synthetic node's own type so downstream consumers keyed on
+        # the node (not just the original call) resolve it -- the AST reads it
+        # via get_resolved_type's fi fallback, but a raw expr-type lookup needs
+        # the cache entry.
+        self.ctx.set_expr_type(synthetic, ret_type)
         expr.dunder_call = synthetic
         expr.resolved_function_info = synthetic.resolved_function_info
         return ret_type

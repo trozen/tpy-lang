@@ -40,6 +40,12 @@ THIR_FACES: frozenset[str] = frozenset({
     "argtemp.ctor_mut_rvalue",      # record rvalue into a MUTATED ctor slot
     "ctor.const_rvalue_arg",        # record rvalue inline into a const ctor slot
     "argtemp.own_copy",             # Own-slot copy+move `__tmp_N` temp
+    # `*args` call-site pack faces (THIRVarargPack lowering / _gen_vararg_pack).
+    "vararg.empty",                 # `::tpy::varargs<E>()`
+    "vararg.pack_value",            # value-element std::array<E, N> temp
+    "vararg.pack_ref",              # ref-element std::array<E*, N> temp
+    "vararg.star_direct",           # `*span` forwarded direct
+    "vararg.star_span",             # `*container` borrowed span
     # The temp-free last-use move (lowering).
     "move.own_last_use",            # `f(std::move(name))`
     # Pointer-repr Optional[record] slot faces (lowering).
@@ -119,6 +125,9 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # (`UInt32.trunc(i)`) -> template expansion
     "call.macro_expansion",         # `@call_macro`/getattr/hasattr call ->
                                     # its sema-synthesized replacement expr
+    "call.dunder_call",             # `obj(args)` with a __call__ method ->
+                                    # the synthetic `obj.__call__(args)`
+    "ctor.nested_record",           # `Outer.Inner(args)` -> `Outer::Inner(args)`
     "call.cast_passthrough",        # `typing.cast(T, x)` non-Any -> bare `x`
     "call.cast_any",                # `typing.cast(T, x)` from Any ->
                                     # `::tpy::any_cast_or_panic<T>(x)`
@@ -126,6 +135,8 @@ THIR_FACES: frozenset[str] = frozenset({
     # is_arrow / deref_check renders over a pointer-VALUE receiver).
     "method.ptr_arrow",             # proven non-null: `p->m(args)`
     "method.ptr_checked",           # `::tpy::deref_check(p).m(args)`
+    "method.ptr_template",          # explicit `@cpp_template` Ptr method
+                                    # (`p.__deref__()` -> `::tpy::deref_check(p)`)
     # Container-field method receiver (`self.buf.append(x)` -> the container arm
     # over a bare `this->buf` THIRFieldAccess receiver, same emit as a bare-name
     # container receiver).
@@ -272,6 +283,12 @@ THIR_FACES: frozenset[str] = frozenset({
     # as a field-access receiver (`ps[i].x`, read/write/aug) or a REF_ALIAS
     # borrow-local source (`p = ps[i]` -> `P& p = ...`).
     "subscript.record_elem",
+    # A user-record subscript `recv[index]` -> the record's bare operator[]
+    # (generated from __getitem__); value-scalar/char/str/etc results.
+    "subscript.record_getitem",
+    # A list/Array/Span slice read (`items[a:b:c]`) -> owned list via the
+    # `list_slice`/`list_stepped_slice` @cpp_template (STORAGE result).
+    "subscript.container_slice",
     # `len(recv.field)` -- a container/str/bytes field arg to the builtin len
     # (lowering; `::tpy::__len__(this->xs)`, the field renders as its own
     # THIRFieldAccess inside the shared native-call emit).
@@ -297,6 +314,9 @@ THIR_FACES: frozenset[str] = frozenset({
     # owning `auto __obj_N = {a, b, c};` initializer-list capture, elements
     # rendered target-less like the AST's untargeted gen_expr_deref).
     "foreach.iter_literal",
+    # Str-literal for-each iterable (lowering; `for ch in "abc":` -- the
+    # owning `auto __obj_N = std::string_view("abc");` capture, Char elems).
+    "foreach.str_literal",
     # Loop else blocks (lowering; the bare `{...}` past the loop's close
     # brace + its `__after_else_N:;` label -- run on normal completion,
     # jumped past by a break).
@@ -397,6 +417,10 @@ THIR_FACES: frozenset[str] = frozenset({
     # returning call init -- the bare `T x = f(...);` / plain reassign,
     # rendered by the shared generic decl tail).
     "decl.storage_call",
+    # Native record-returning free-call local decl (`f = open(path)` ->
+    # `::tpy::TextFile f = ::tpy::builtin_open(path);`) -- a plain-value decl,
+    # single-assignment rvalue only.
+    "decl.native_record_call",
     # REF_ALIAS from a borrow-record-returning call (lowering; the
     # `T& p = shared(x);` bind of the callee's returned reference).
     "decl.record_borrow_call",
@@ -498,6 +522,9 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # std::formattable; no int8 cast)
     "fstr.spec",                    # constant format spec -> `{:spec}`
                                     # placeholder (lowering, routed args only)
+    "fstr.container_arg",           # tuple/list/dict/set arg -> to_str helper
+    "fstr.user_arg",                # user record / bound type param -> __str__
+    "fstr.union_arg",               # union arg -> runtime __str__ visitor
     # Sync `with` faces (lowering, per item / per statement).
     "with.manager_borrowed",        # lvalue manager: `auto& __ctx_N = ...`
     "with.manager_owned",           # rvalue manager: `auto __ctx_N = ...`
@@ -532,6 +559,9 @@ THIR_FACES: frozenset[str] = frozenset({
     # resolved_contains arm; witnessed at lowering admission and again at
     # lowering -- non-vacuity only needs a nonzero count).
     "binop.membership",
+    # tuple-literal membership (`x in (a, b, ...)` -> the `==` OR-chain, the
+    # statement-expression temp form when the needle is non-trivial).
+    "binop.tuple_membership",
     # A fixed-int bitwise op (`a & b`, `a << b`, ...) admitted at the scalar
     # arm -- same resolved-binop template emit as arithmetic (lowering admission).
     "binop.bitwise",
@@ -555,6 +585,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "len.protocol",
     # Trivia (lowering): docstring / `pass` -> THIRNoOpStmt, body-wide.
     "stmt.trivia",
+    "stmt.super_del",               # `super().__del__()` in a destructor ->
+                                    # elided (base dtor runs automatically)
     # THIRNestedDef (lowering): a nested `def` -> the AST's lambda emit,
     # capture list spelled from sema's node facts.
     "stmt.nested_def",
@@ -597,9 +629,14 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # print arg -> bare `::tpy::print_optional_val`
     "print.wrap_arg",               # container / value-tuple / F1-record NAME
                                     # print arg -> its kind-keyed printer wrap
+    "print.tuple_subscript_arg",    # value-tuple subscript read print arg ->
+                                    # TuplePrinter(std::get<N>(t))
+    "print.container_slice_arg",    # list/Array/Span slice read print arg ->
+                                    # ListPrinter(list_slice/list_stepped_slice)
     "print.kw_sep_end",             # sep=/end= kwarg (str literal or resolved
                                     # str-value name) -> the chain-token render
     "comp.array_range",             # Array demotion: array_from_index range lambda
+    "comp.array_source",            # Array demotion: array_from_index over an Array source
     # THIRMatch M1 -- the unguarded scalar switch tiers (lowering).
     "match.switch_enum",            # switch over enum-member case labels
     "match.switch_primitive",       # switch over int-literal case labels
@@ -723,6 +760,13 @@ THIR_FACES: frozenset[str] = frozenset({
     # the bare postfix member over the call render -- `f().x`,
     # `h.boxed.get().x` -- the inner call lowers through its own arms).
     "field.call_recv",
+    # `.field` through an explicit `Ptr[record]` VALUE receiver -> `p->field`
+    # (proven non-null) or `::tpy::deref_check(p).field` (unproven), picked from
+    # sema's `ptr_non_null`. Read and write target alike.
+    "field.ptr_value",
+    # `.field` auto-dereffed through a USER Deref wrapper -> `r.__deref__().x`
+    # (N = deref_depth). Bare `.` receiver; read and scalar-write target alike.
+    "field.user_deref_chain",
 })
 
 

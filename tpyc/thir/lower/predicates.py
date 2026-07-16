@@ -133,10 +133,10 @@ from ..nodes import (
 )
 
 # Arithmetic operators whose dunders carry a `@cpp_template` (`add_check`, ...).
-# NB the parser emits true-division as op `div`, not `/`, so the `/` token here
-# is inert -- truediv stays on the AST path (see TODO: decide enable-or-drop).
-# `in`/`is` take other emit paths, out of the slice.
-_ARITH_OPS = frozenset({"+", "-", "*", "/", "//", "%"})
+# NB the parser emits true-division as op `div` (not `/`); truediv rides the same
+# resolved-binop template arm -- its dunder's `::tpy::truediv({self}, {0})`
+# expands exactly like `add_check`. `in`/`is` take other emit paths, out of slice.
+_ARITH_OPS = frozenset({"+", "-", "*", "div", "//", "%"})
 
 # Bitwise operators. Their fixed-int dunders carry a `@cpp_template` too
 # (`::tpy::lshift_check<T>`, `static_cast<T>({self} & {0})`, ...), and the emit
@@ -1699,6 +1699,96 @@ def _dyn_proto_ptr(t: 'TpyType | None') -> bool:
     t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
     return isinstance(t, PtrType) and is_dyn_protocol(t.inner_pointee)
 
+def _ptr_value_field_recv_ok(e: TpyExpr, declared: dict[str, TpyType],
+                             analyzer) -> bool:
+    """A `.field` access whose receiver evaluates to an explicit `Ptr[record]`
+    VALUE -- a local/param NAME (`p.x` on `p: Ptr[Point]`) or an F1-record's
+    `Ptr` FIELD read (`m._a.x` on `_a: Ptr[A]`): _gen_field_access's pointer
+    arm renders `<recv>->x` when sema proved the pointer non-null
+    (`ptr_non_null`) else `::tpy::deref_check(<recv>).x`. A NAME receiver must
+    be bound to an eligible `Ptr[F1-record]` (globals take the `(*g)->`
+    wrapper arm, out of slice); a FIELD receiver must itself be an admitted
+    F1-record field read whose value is such a Ptr (it renders bare, then this
+    arm wraps it). The pointee's F1-ness makes the outer `.field` spell. Read
+    AND write target alike -- the render is position-independent, picked at
+    lowering from `ptr_non_null`.
+
+    `deref_depth` (sema's auto-deref marker) IS set on a Ptr member access and
+    is EXPECTED here -- the AST's `obj_type.is_pointer()` arm renders one `->`
+    / `deref_check` depth-independently, ignoring the `.__deref__()` chain
+    (that chain belongs to the user-Deref proxy, `not is_pointer()`). So the
+    marker guard excludes only the other special-emit markers, NOT
+    `deref_depth`."""
+    if not isinstance(e, TpyFieldAccess):
+        return False
+    if (e.module_var_access is not None or e.class_constant_owner is not None
+            or e.property_getter_call is not None
+            or e.dyn_getattr_call is not None
+            or e.property_setter_call is not None
+            or e.dyn_setattr_call is not None
+            or e.unbound_self_parent_type is not None
+            or e.deref_narrowed_to is not None
+            or e.needs_optional_runtime_check):
+        return False
+    recv = e.obj
+    if isinstance(recv, TpyName):
+        if recv.name not in declared:
+            return False
+        rt = declared[recv.name]
+    elif isinstance(recv, TpyFieldAccess):
+        if not _field_receiver_ok(recv, declared, analyzer):
+            return False
+        rt = analyzer.get_expr_type(recv)
+    else:
+        return False
+    if not _eligible_ptr_value(rt, analyzer):
+        return False
+    inner = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rt)))
+    if not isinstance(inner, PtrType):
+        return False
+    return _f1_record(inner.inner_pointee, analyzer)
+
+def _user_deref_field_recv_ok(e: TpyExpr, declared: dict[str, TpyType],
+                              narrowed: 'AbstractSet[str]', analyzer,
+                              pointers: 'AbstractSet[str]') -> bool:
+    """A `.field` access auto-dereffed through a USER Deref-style wrapper
+    (`r.x` on `r: Ref` with a `__deref__` method) -> `r.__deref__().x`
+    (_gen_field_access's `deref_chain and not is_pointer()` arm). The receiver
+    must be a plain value NAME bound to an F1 user record (spells bare `.`)
+    that is NOT a pointer / Optional (the narrowed-Optional `->__deref__()`
+    indirect variant stays AST) and NOT isinstance-narrowed; the record must
+    carry a `__deref__` overload. `deref_depth` is the auto-deref count (the
+    chain length); `deref_narrowed_to` (a deref-view cast) stays AST. Read AND
+    scalar-write target alike -- the chain render is position-independent."""
+    if not isinstance(e, TpyFieldAccess):
+        return False
+    if not e.deref_depth or e.deref_narrowed_to is not None:
+        return False
+    if (e.module_var_access is not None or e.class_constant_owner is not None
+            or e.property_getter_call is not None
+            or e.dyn_getattr_call is not None
+            or e.property_setter_call is not None
+            or e.dyn_setattr_call is not None
+            or e.unbound_self_parent_type is not None
+            or e.needs_optional_runtime_check):
+        return False
+    recv = e.obj
+    if not isinstance(recv, TpyName) or recv.name not in declared:
+        return False
+    if recv.name in narrowed or recv.name in pointers:
+        # An F2-reseated record local is a real `T*` (in `pointers` though its
+        # declared type is bare) -- the AST renders `recv->__deref__().field`,
+        # not the bare `.` chain this arm emits, so it stays AST.
+        return False
+    rt = declared[recv.name]
+    u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rt)))
+    if isinstance(u, OwnType):
+        u = unwrap_readonly(u.wrapped)
+    if not (isinstance(u, NominalType) and _f1_record(u, analyzer)):
+        return False
+    ri = analyzer.registry.get_record_for_type(u)
+    return ri is not None and bool(ri.get_method_overloads("__deref__"))
+
 def _record_storage_return(t: TpyType | None, analyzer) -> 'NominalType | None':
     """The storage-form F1-record return slot (`-> Own[Box]` -> C++ `Box` by
     value), or None. Bare name sources return bare (`return b;` -- NRVO for an
@@ -1861,9 +1951,13 @@ def _value_opt_scalar_value_arg(a: TpyExpr, ptype: 'TpyType | None',
     so the two paths would diverge)."""
     if _value_opt_scalar(ptype, analyzer) is None:
         return False
-    if isinstance(a, (TpyNoneLiteral, TpyStrLiteral)):
+    # A scalar literal into a fixed-int/enum value-opt slot arrives wrapped in
+    # a TpyCoerce to the Optional target (the implicit widening); the AST
+    # renders the bare source (`Counter(10, 4)`), so key on the source type.
+    src = _peel_coerce(a)
+    if isinstance(src, (TpyNoneLiteral, TpyStrLiteral)):
         return False
-    at = analyzer.get_expr_type(a)
+    at = analyzer.get_expr_type(src)
     if at is None or isinstance(unwrap_readonly(unwrap_send_sync(at)),
                                 OptionalType):
         return False
@@ -2243,20 +2337,31 @@ def _tuple_subscript_value_read(e: TpyExpr, locals_: dict[str, TpyType],
                 and _value_tuple(analyzer.get_expr_type(recv), analyzer)
                 is not None):
             return None
+    elif isinstance(recv, TpySubscript):
+        # A nested read `t[i][j]`: the inner `t[i]` must itself be a value-tuple
+        # subscript read yielding a (possibly nested) value tuple, so the outer
+        # `std::get<j>(std::get<i>(t))` stays a bare value read.
+        if (_tuple_subscript_value_read(recv, locals_, analyzer) is None
+                or _value_tuple_nested(
+                    analyzer.get_expr_type(recv), analyzer) is None):
+            return None
     else:
         return None
     res = _subscript_index_and_tuple(e, analyzer)
     if res is None:
         return None
     recv_t, idx = res
-    if (_value_tuple(recv_t, analyzer) is None
+    if (_value_tuple_nested(recv_t, analyzer) is None
             and _f1_tuple(recv_t, analyzer) is None):
         return None
     el = recv_t.element_types[idx]
     # An owned-str element reads as an owned lvalue (`std::get<N>(t)` yields
     # `const std::string&`) -- bare in every sink on both paths, so it rides
-    # the same value-read arm as a scalar element.
-    return (idx if (_eligible_scalar(el) or _owned_str_slot(el, analyzer))
+    # the same value-read arm as a scalar element. A nested value-tuple element
+    # reads bare as a whole `std::tuple<...>` value (recursively value-tuple),
+    # consumed by print / decl-init / a further subscript.
+    return (idx if (_eligible_scalar(el) or _owned_str_slot(el, analyzer)
+                    or _value_tuple_nested(el, analyzer) is not None)
             else None)
 
 def _subscript_record_field_recv(e: TpyExpr, locals_: dict[str, TpyType],
@@ -2646,6 +2751,24 @@ def _subscript_container_recv_type(recv: TpyExpr, locals_: dict[str, TpyType],
     if (isinstance(recv, TpyFieldAccess)
             and _field_receiver_ok(recv, locals_, analyzer)):
         return _field_decl_type(recv, locals_, analyzer)
+    return None
+
+def _record_getitem_key(obj_type: 'TpyType | None', analyzer) -> 'TpyType | None':
+    """The key param type of a CONCRETE user-record subscript receiver's
+    `__getitem__` (so `recv[index]` spells the record's generated bare
+    `operator[]`), or None. Non-generic, non-@native user records only: a
+    @native record wrapping an STL type has a C++ operator[] taking size_t
+    (the AST casts there), and a generic record keeps the genrec path."""
+    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(obj_type)))
+    if not (isinstance(t, NominalType) and t.is_user_record and not t.type_args):
+        return None
+    ri = analyzer.registry.get_record_for_type(t)
+    if ri is None or ri.is_native:
+        return None
+    m = ri.get_method("__getitem__")
+    if m is not None and len(m.params) >= 1:
+        # Method params exclude the implicit self, so params[0] is the key.
+        return m.params[0].type
     return None
 
 def _f2_reseat_ok(init: TpyExpr, declared: dict[str, TpyType], analyzer) -> bool:

@@ -34,6 +34,7 @@ from ...parse.nodes import (
     TpyStrLiteral,
     TpySubscript,
     TpyTupleLiteral,
+    TpyUnaryOp,
     TpyVarDecl,
 )
 from ...typesys import (
@@ -50,6 +51,7 @@ from ...typesys import (
     TupleType,
     TypeParamRef,
     UnionType,
+    container_to_str_template,
     contains_type_param,
     substitute_type_params_simple,
     del_suppresses_default_ctor,
@@ -142,6 +144,8 @@ from .predicates import (
     _field_markers_clean,
     _field_over_subscript_ok,
     _field_receiver_ok,
+    _ptr_value_field_recv_ok,
+    _user_deref_field_recv_ok,
     _folded_neg_int_literal,
     _is_bytes_family,
     _is_type_param_slot,
@@ -588,6 +592,24 @@ def _field_over_container_subscript_ok(e: TpyExpr, locals_: dict[str, TpyType],
     return (isinstance(e, TpyFieldAccess) and _field_markers_clean(e)
             and _container_record_elem_subscript(e.obj, locals_, analyzer))
 
+def _subscript_over_container_subscript_ok(e: TpyExpr,
+                                           locals_: dict[str, TpyType],
+                                           analyzer) -> bool:
+    """A subscript whose receiver is itself a container-element subscript
+    yielding a container (`m[i][j]`): `m[i]` is a nested-container borrow
+    lvalue (`::tpy::__getitem__(m, i)`), indexed again -> the nested
+    `::tpy::__getitem__(::tpy::__getitem__(m, i), j)` on both paths. The
+    subscript-receiver twin of `_field_over_container_subscript_ok` (whose
+    consumer is a field access): the receiver-shape resolver
+    (`_subscript_container_recv_type`) deliberately stops at one level, so this
+    admits the single nested step the AST renders identically. Plain reads only
+    -- optional-check / slice / slice-function receivers stay AST."""
+    return (isinstance(e, TpySubscript)
+            and not e.needs_optional_runtime_check
+            and e.slice_function_info is None
+            and not isinstance(e.index, TpySlice)
+            and _container_ref_alias_elem_subscript(e.obj, locals_, analyzer))
+
 def _field_over_field_ok(e: TpyExpr, locals_: dict[str, TpyType],
                          analyzer) -> bool:
     """Shallow field-chain receiver shape for one lowering arm."""
@@ -800,6 +822,7 @@ def _scalar_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
     `::tpy::deref_check(p).field = <value>;` (_optional_checked_field)."""
     target = stmt.target
     if not (_field_receiver_ok(target, declared, analyzer)
+            or _ptr_value_field_recv_ok(target, declared, analyzer)
             or _optional_checked_field(target, declared, analyzer)
             or _field_over_subscript_ok(target, declared, analyzer)
             or _field_over_container_subscript_ok(target, declared, analyzer)):
@@ -818,6 +841,24 @@ def _scalar_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
         # AST's `val_or_ref_t<T>` / `own_param_t<T>` copy/move per instantiation.
         return False
     return True
+
+def _user_deref_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
+                               narrowed: 'AbstractSet[str]', analyzer,
+                               pointers: 'AbstractSet[str]') -> bool:
+    """A scalar-field write auto-dereffed through a USER Deref wrapper
+    (`r.x = <scalar>` -> `r.__deref__().x = <scalar>`): the user-Deref sibling
+    of `_scalar_field_write_ok`. Value set matches (scalar / Char / enum / Ptr
+    value); the target render is `_user_deref_field_recv_ok`'s chain."""
+    target = stmt.target
+    if not _user_deref_field_recv_ok(target, declared, narrowed, analyzer,
+                                     pointers):
+        return False
+    ftype = analyzer.get_expr_type(target)
+    if _eligible_char(ftype):
+        return not isinstance(stmt.value, TpyStrLiteral)
+    return (_eligible_scalar(ftype)
+            or _eligible_enum(ftype, analyzer) is not None
+            or _eligible_ptr_value(ftype, analyzer))
 
 def _ptr_union_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
                               analyzer) -> bool:
@@ -1062,7 +1103,8 @@ def _scalar_aug_assign_ok(stmt: TpyAugAssign, declared: dict[str, TpyType],
     elif not (_field_receiver_ok(target, declared, analyzer)
               or _optional_checked_field(target, declared, analyzer)
               or _field_over_subscript_ok(target, declared, analyzer)
-              or _field_over_container_subscript_ok(target, declared, analyzer)):
+              or _field_over_container_subscript_ok(target, declared, analyzer)
+              or _field_over_field_ok(target, declared, analyzer)):
         return False
     # A narrowed-Optional or non-scalar target is rejected here (the AST unwraps
     # the former and never reaches the binop branch for the latter). An
@@ -1700,6 +1742,26 @@ def _native_ctx_manager_ok(e: TpyExpr, analyzer) -> bool:
     if k is None or k[0] != "native":
         return False
     return not _strlit_overload_pin_fires(e, fi, analyzer)
+
+
+def _native_record_rvalue_call_shape(e: TpyExpr, analyzer) -> bool:
+    """A @native free call returning a by-value F1 record (`open(path)` ->
+    `::tpy::TextFile f = ::tpy::builtin_open(path);`). The native residue of
+    `_record_rvalue_call_shape`, whose `_plain_free_callee_ok` gate rejects
+    native callees. Reuses `_native_ctx_manager_ok`'s callee-kind/arity/pin
+    shape check and adds the record-rvalue return verdict, so the plain
+    value-decl and the STORAGE value position admit the bare call. The record
+    lands by value (an rvalue return, no `Own`/borrow lift), byte-identical to
+    the AST's plain-value decl (`is_rvalue_source` -> `_needs_indirection`
+    False)."""
+    if not isinstance(e, TpyCall):
+        return False
+    ret = analyzer.get_expr_type(e)
+    t = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ret)))
+         if ret is not None else None)
+    return (_f1_record(t, analyzer) and is_rvalue_source(analyzer, e)
+            and _native_ctx_manager_ok(e, analyzer))
+
 
 
 def _native_call_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
@@ -2617,13 +2679,30 @@ def _float_literal_pass_through_arg(a: TpyExpr, ptype: TpyType | None,
     _emit_literal's float arm); a Float32 slot takes the `f` suffix via the
     `_slot_literal_retype` at `_lower_call_arg`'s tail. inf/nan literals
     (`1e400`) reject during literal lowering."""
-    if not isinstance(a, TpyFloatLiteral):
+    if not _float_literal_operand(a, analyzer):
         return False
     pt = ptype if isinstance(ptype, TpyType) else None
     if pt is None:
         return False
     pt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(pt)))
+    if isinstance(a, TpyUnaryOp):
+        # A negated float literal (`-1.0` -> `-(1.0)`) lowers through the
+        # unary arm's resolved-dunder path to `THIRUnaryArith('-({0})', 1.0)`,
+        # byte-identical to `_gen_unaryop`'s float negation. The inner literal
+        # lowers UNtargeted (a bare double), so a Float32 slot -- which the AST
+        # suffixes `1.0f` via its threaded target -- stays off this arm.
+        return is_float_type(pt) and not is_float32_type(pt)
     return is_float_type(pt)
+
+
+def _float_literal_operand(a: TpyExpr, analyzer) -> bool:
+    """A bare float literal or a unary-minus over one, both of
+    `FloatLiteralType` (sema leaves the literal unwrapped)."""
+    if isinstance(a, TpyFloatLiteral):
+        return isinstance(analyzer.get_expr_type(a), FloatLiteralType)
+    return (isinstance(a, TpyUnaryOp) and a.op == "-"
+            and isinstance(a.operand, TpyFloatLiteral)
+            and isinstance(analyzer.get_expr_type(a.operand), FloatLiteralType))
 
 def _record_pass_through_arg(a: TpyExpr, ptype: TpyType | None,
                              locals_: dict[str, TpyType], analyzer) -> bool:
@@ -3322,6 +3401,35 @@ def _ptr_deref_recv_ok(e: TpyMethodCall, locals_: dict[str, TpyType],
     return False
 
 
+def _ptr_template_method_supported(
+        e: TpyMethodCall, fi, recv_type: 'TpyType | None', analyzer, *,
+        stmt_position: bool, record_ret_ok: bool) -> bool:
+    """The EXPLICIT `@cpp_template` method call on a `Ptr[T]` value receiver
+    (`p.__deref__()` -> `::tpy::deref_check(p)`): _gen_method_call's general
+    builtin-method arm (`gen_method_from_function_info`) expands the template
+    over the bare receiver render, no `{self}`-deref (a Ptr local / field is
+    never indirect at deref_depth 0). Restricted to the zero-arg,
+    positional-only template shape sema resolves for `Ptr.__deref__`; a
+    `{cpp}`/type-param template (none on Ptr) or an arg-taking builtin method
+    (`.span(n)`) stays AST. The result rides the plain-method THIRMethodCall's
+    `cpp_template` arm; its value set mirrors the container arm's."""
+    if recv_type is None or not recv_type.is_pointer():
+        return False
+    if fi.cpp_template is None or "{cpp}" in fi.cpp_template or fi.type_params:
+        return False
+    if fi.native_function or fi.native_name or e.args or e.inferred_type_args:
+        return False
+    ret = analyzer.get_expr_type(e)
+    return (_resolved_scalar(ret, analyzer)
+            or _eligible_char(ret)
+            or _eligible_enum(ret, analyzer) is not None
+            or _eligible_ptr_value(ret, analyzer)
+            or _resolved_str_value(ret, analyzer) is not None
+            or (record_ret_ok and _f1_record(ret, analyzer))
+            or (stmt_position and (ret is None or is_void_like_type(ret)))
+            or note_detail("method.ptr_template.ret_type"))
+
+
 def _container_method_arg_ok(
         a: TpyExpr, ptype: 'TpyType | None', locals_: dict[str, TpyType],
         analyzer, *, param_names: 'set[str] | frozenset[str]',
@@ -4007,7 +4115,25 @@ def _wrap_print_form(a: TpyExpr, declared: dict[str, TpyType],
     selection cannot drift. NAMES only; the gate excludes pointer-locals.
     Bytearray /
     Span / dict-view / varargs printers stay AST; `self` renders `(*this)`,
-    not the bare name -- excluded."""
+    not the bare name -- excluded.
+
+    A value-tuple SUBSCRIPT read yielding a whole (possibly nested) value tuple
+    (`print(t[N])` -> `TuplePrinter(std::get<N>(t))`) routes too; a scalar-element
+    read yields a bare value that the scalar print arm handles."""
+    if isinstance(a, TpySubscript):
+        if (_tuple_subscript_value_read(a, declared, analyzer) is not None
+                and _value_tuple_nested(
+                    analyzer.get_expr_type(a), analyzer) is not None):
+            return PrintForm.TUPLE
+        # A list/Array/Span slice read (`print(items[a:b:c])`) yields an owned
+        # container streamed via ListPrinter -- the container-slice lowering
+        # arm renders `list_slice`/`list_stepped_slice`.
+        if a.slice_function_info is not None and isinstance(a.index, TpySlice):
+            rt = unwrap_readonly(unwrap_ref_type(
+                unwrap_send_sync(analyzer.get_expr_type(a))))
+            if is_list(rt) or is_array(rt) or is_span(rt):
+                return PrintForm.LIST
+        return None
     if not isinstance(a, TpyName) or a.name == "self":
         return None
     ct = _subscript_container_recv_type(a, declared, analyzer)
@@ -4114,6 +4240,14 @@ def _fstring_arg_wrap(a: TpyExpr, analyzer, conv: int,
         t = analyzer.get_expr_type(a)
         if t is None:
             return _FSTRING_INELIGIBLE
+        ctmpl = container_to_str_template(t)
+        if ctmpl is not None:
+            # Containers (tuple/list/span/dict/set) render via the runtime
+            # to_str helpers irrespective of conversion: the AST's
+            # _container_to_str arm precedes the conv rows, so !r/!s never
+            # override it (Python str/repr of a container coincide).
+            _witness("fstr.container_arg")
+            return ctmpl
         if (_resolved_str_value(t, analyzer) is not None
                 or _is_string_owned(t)):
             row = None  # string/string_view/concat-result format directly
@@ -4137,6 +4271,19 @@ def _fstring_arg_wrap(a: TpyExpr, analyzer, conv: int,
                 row = "::tpy::float_to_str({0})"
         elif _eligible_enum(t, analyzer) is not None:
             row = "static_cast<int>({0})"
+        elif (isinstance(t, NominalType) and t.is_user_record) \
+                or isinstance(t, TypeParamRef):
+            # A user record / bound type param renders via __str__ (its ADL
+            # override binds the per-record definition); a !r conversion
+            # overrides it with repr_of below, mirroring the AST's conv row.
+            _witness("fstr.user_arg")
+            row = "::tpy::__str__({0})"
+        elif isinstance(t, UnionType):
+            # std::variant is not std::formattable: route through the runtime
+            # __str__ visitor that dispatches per alternative; !r overrides
+            # to repr_of below.
+            _witness("fstr.union_arg")
+            row = "::tpy::__str__({0})"
         else:
             rt = resolve_int_literals(t, analyzer.ctx.default_int_for_literal)
             if is_fixed_int_type(rt):

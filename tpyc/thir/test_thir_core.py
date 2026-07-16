@@ -1583,13 +1583,14 @@ class TestFloat:
         thir = _lower("def f(a: float, b: float) -> bool:\n    r = a < b\n    return r\n")
         assert _fn(thir, "f") is not None
 
-    def test_float_truediv_is_ineligible(self):
-        # `/` (true division) has AST op `div`, absent from _ARITH_OPS (which
-        # lists `/`, a token the parser never emits), so _lower_binop rejects
-        # it -- AST path. (truediv DOES carry a `::tpy::truediv` cpp_template;
-        # contrast `//`, op `//`, which is eligible. See TODO re: enabling it.)
-        thir = _lower("def f(a: float, b: float) -> float:\n    return a / b\n")
-        assert _fn(thir, "f") is None
+    def test_float_truediv_routes(self):
+        # `/` (true division, AST op `div`) now routes via its `::tpy::truediv`
+        # cpp_template arm -- wave-9 fixed the dead `/` token in `_ARITH_OPS`
+        # (the parser emits `div`), so truediv rides the resolved-binop arm
+        # byte-identically to the AST path.
+        src = "def f(a: float, b: float) -> float:\n    return a / b\n"
+        assert _fn(_lower(src), "f") is not None
+        _assert_byte_identical(src)
 
     def test_float32_values_route(self):
         # Float32 params/locals/returns are eligible scalars (`float`); the
@@ -1946,8 +1947,8 @@ class TestDump:
         )
 
     def test_dump_empty(self):
-        # True division (AST op `div`) is outside the slice, so nothing routes.
-        thir = _lower("def f(a: float) -> float:\n    return a / a\n")
+        # Power (op `**`) is outside the slice, so nothing routes.
+        thir = _lower("def f(a: float) -> float:\n    return a ** a\n")
         assert "(no THIR-eligible functions)" in dump_thir(thir)
 
     def test_dump_for_range(self):
@@ -2347,15 +2348,37 @@ class TestBranchBlockLocals:
                + "    return t\n")
         assert self._routes(src)
 
-    def test_nonhoisted_try_body_block_local_stays_ast(self):
-        # A try-body first-decl used ONLY inside the try (handler falls through,
-        # no else/finally) is NOT hoisted and declares inside the C++ try scope
-        # -- deferred (try bodies never enable value block-locals).
+    def test_nonhoisted_try_body_block_local_routes(self):
+        # A try-body first-decl used ONLY inside the try (not hoisted) declares
+        # inline in the C++ try scope, block-local like an if-branch -- now
+        # routed (try/except/else/finally bodies pass `branch_decls_ok`),
+        # byte-identical.
         src = (_PRELUDE
                + "def f(n: Int32) -> None:\n"
                + "    try:\n        w = n + 1\n        print(w)\n"
                + "    except Exception:\n        print(0)\n")
-        assert not self._routes(src)
+        assert self._routes(src)
+        _assert_byte_identical(src)
+
+    def test_branch_first_bytes_block_local_routes(self):
+        # The unified branch slot-type gate admits a non-scalar VALUE type
+        # (bytes) as a branch-first block-local -- the plain spelled copy,
+        # byte-identical (bytes is immutable, copy/alias unobservable like str).
+        src = (_PRELUDE
+               + "def f(c: bool, b: bytes) -> None:\n"
+               + "    if c:\n        d = b\n        print(len(d))\n    print(1)\n")
+        assert self._routes(src)
+        _assert_byte_identical(src)
+
+    def test_branch_first_value_tuple_block_local_routes(self):
+        # A value-tuple branch-first block-local in a try body -- the plain
+        # `std::tuple<...> u = t;` copy, byte-identical.
+        src = (_PRELUDE
+               + "def f(t: tuple[Int32, Int32]) -> None:\n"
+               + "    try:\n        u = t\n        print(u[0])\n"
+               + "    except Exception:\n        print(0)\n")
+        assert self._routes(src)
+        _assert_byte_identical(src)
 
 
 class TestDelStmt:

@@ -1982,13 +1982,13 @@ class TestCtorValueOptNoneArg:
         assert out == _cpp(self.SRC, thir=False)
         assert "P p = P(std::nullopt);" in out
 
-    def test_coerced_scalar_into_optional_slot_stays_ast(self):
-        # `P(1)` -- sema types the arg as the WHOLE optional, and no arg row
-        # admits the coerced-scalar shape yet -> the body falls back (and the
-        # fallback emit stays byte-identical by construction).
+    def test_coerced_scalar_into_optional_slot_routes(self):
+        # `P(1)` -- sema types the arg as the WHOLE optional; the coerced-scalar
+        # into value-repr optional slot now routes (wave-8 none_safety), byte-
+        # identical to the AST's implicit `T -> std::optional<T>` conversion.
         src = self.SRC.replace("P(None)", "P(1)")
         thir = _lower_ctx(src)
-        assert _fn(thir, "make") is None
+        assert _fn(thir, "make") is not None
         assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
 
@@ -2228,9 +2228,9 @@ class TestPartialOmittedDefaults:
         assert _fn(thir, "use") is not None
         assert "return r.scale(3);" in _cpp(src, thir=True)
 
-    def test_variadic_callee_stays_ast(self):
-        # A variadic slot has no positional default to fall back on; the
-        # varargs pack takes its own AST emit -> reject.
+    def test_variadic_empty_pack_routes(self):
+        # An empty `*args` pack takes the nullary `::tpy::varargs<E>()` ctor
+        # (no array temp) -- routes, no flushable position needed.
         src = (
             "from tpy import Int32\n"
             "def f(*args: Int32) -> Int32:\n"
@@ -2241,4 +2241,57 @@ class TestPartialOmittedDefaults:
         )
         assert _cpp(src, thir=True) == _cpp(src, thir=False)
         thir = _lower_ctx(src)
-        assert _fn(thir, "use") is None
+        assert _fn(thir, "use") is not None
+        assert "return f(::tpy::varargs<const int32_t>());" in _cpp(src, thir=True)
+
+
+class TestVarargPack:
+    # `*args` call-site packs (THIRVarargPack / _gen_vararg_pack): value and
+    # reference element arrays, the empty pack, and *expr unpacking.
+
+    def test_value_element_pack(self):
+        src = (
+            "from tpy import Int32\n"
+            "def f(*args: Int32) -> Int32:\n"
+            "    t = 0\n"
+            "    for a in args:\n        t += a\n"
+            "    return t\n"
+            "def use() -> None:\n    print(f(1, 2, 3))\n"
+        )
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+        cpp = _cpp(src, thir=True)
+        assert "std::array<const int32_t, 3> __tmp_1{1, 2, 3};" in cpp
+        assert "f(::tpy::varargs<const int32_t>(__tmp_1))" in cpp
+
+    def test_ref_element_lvalue_pack(self):
+        # Reference elements become `T*` in the array; lvalue names are
+        # address-taken in place (`&a`), a mutable slot spells `varargs<T>`.
+        src = (
+            "from tpy import Int32\n"
+            "class C:\n"
+            "    v: Int32\n"
+            "    def __init__(self, v: Int32):\n        self.v = v\n"
+            "def sink(*args: C) -> None:\n"
+            "    for c in args:\n        c.v += 1\n"
+            "def use() -> None:\n"
+            "    a = C(0)\n    b = C(0)\n    sink(a, b)\n"
+        )
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+        cpp = _cpp(src, thir=True)
+        assert "std::array<C*, 2> __tmp_1{&a, &b};" in cpp
+        assert "sink(::tpy::varargs<C>(__tmp_1))" in cpp
+
+    def test_star_unpack_list_indirect(self):
+        # `*list` into a readonly slot borrows a const span (indirect mode).
+        src = (
+            "from tpy import Int32\n"
+            "def f(*args: Int32) -> Int32:\n"
+            "    t = 0\n"
+            "    for a in args:\n        t += a\n"
+            "    return t\n"
+            "def use() -> None:\n"
+            "    xs: list[Int32] = [1, 2, 3]\n    print(f(*xs))\n"
+        )
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+        assert ("f(::tpy::varargs<const int32_t>(::tpy::as_span(xs)))"
+                in _cpp(src, thir=True))

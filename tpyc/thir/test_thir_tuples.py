@@ -8,7 +8,8 @@ from ..codegen_cpp.forms import LocalBinding
 from .dump import dump_thir
 from .nodes import (
     Form, THIRAssign, THIRBinOp, THIRFieldAccess, THIRFormConvert, THIRName,
-    THIRReturn, THIRSubscript, THIRTupleLiteral, THIRTupleUnpack, THIRVarDecl,
+    THIRReturn, THIRSubscript, THIRTupleLiteral, THIRTupleMembership,
+    THIRTupleUnpack, THIRVarDecl,
 )
 from .testutil import (
     _compile, _entry, _lower, _lower_ctx, _fn, _lower_ctor, _ctor_tail,
@@ -371,6 +372,109 @@ class TestTupleSubscriptReadEmit:
         assert "std::get<0>(p)" in cpp and "std::get<1>(p)" in cpp
 
 
+# --- Nested value-tuple subscript reads: `t[i]` yielding a whole (recursively
+# value) tuple, and the chained `t[i][j]` off that inner tuple read. Both stay
+# bare value reads (`std::get<j>(std::get<i>(t))`), printed via TuplePrinter. ---
+class TestNestedTupleSubscript:
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=thir))
+        return cpp
+
+    SRC = (
+        _PRELUDE
+        + "def main() -> None:\n"
+        + "    t = ((1, 2), (3, 4))\n"
+        + "    print(t[0])\n"
+        + "    inner = t[1]\n"
+        + "    print(inner[0])\n"
+        + "    print(t[1][1])\n"
+        + "main()\n"
+    )
+
+    def test_nested_element_read_routes_value_form(self):
+        # `t[1]` reads a whole nested value tuple (VALUE form, no lift); the
+        # decl-init local `inner` enters `declared` so `inner[0]` lights up.
+        thir = _lower(self.SRC)
+        fn = _fn(thir, "main")
+        assert fn is not None
+        decl = next(s for s in fn.body
+                    if isinstance(s, THIRVarDecl) and s.name == "inner")
+        assert isinstance(decl.init, THIRSubscript)
+        assert decl.init.index.value == 1 and decl.init.form is Form.VALUE
+
+    def test_byte_identical(self):
+        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
+
+    def test_emits_chained_and_tupleprinter(self):
+        cpp = self._cpp(self.SRC, thir=True)
+        assert "std::get<1>(std::get<1>(t))" in cpp
+        assert "::tpy::TuplePrinter(std::get<0>(t))" in cpp
+
+
+# --- Tuple-literal membership: `x in (a, b, ...)` / `not in` -> the `==`
+# OR-chain, with the `__in_lhs` statement-expression temp for a non-trivial
+# needle. A dict/set `in` keeps the `.contains` arm. ---
+class TestTupleLiteralMembership:
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=thir))
+        return cpp
+
+    def test_scalar_membership_routes_node(self):
+        thir = _lower(
+            _PRELUDE
+            + "def f(x: Int32) -> bool:\n    return x in (1, 17, 42)\n")
+        ret = _fn(thir, "f").body[0]
+        assert isinstance(ret, THIRReturn)
+        m = ret.value
+        assert isinstance(m, THIRTupleMembership)
+        assert len(m.elements) == 3 and not m.negate and not m.need_temp
+
+    def test_not_in_single_element_negates(self):
+        thir = _lower(
+            _PRELUDE
+            + "def f(x: Int32) -> bool:\n    return x not in (3,)\n")
+        m = _fn(thir, "f").body[0].value
+        assert isinstance(m, THIRTupleMembership)
+        assert m.negate and len(m.elements) == 1
+
+    def test_call_needle_needs_temp(self):
+        thir = _lower(
+            _PRELUDE
+            + "def g() -> Int32:\n    return 17\n"
+            + "def f() -> bool:\n    return g() in (1, 17, 42)\n")
+        m = _fn(thir, "f").body[0].value
+        assert isinstance(m, THIRTupleMembership) and m.need_temp
+
+    SRC = (
+        _PRELUDE
+        + "def get_val() -> Int32:\n    return 17\n"
+        + "def main() -> None:\n"
+        + "    x: Int32 = 17\n"
+        + "    s = \"hi\"\n"
+        + "    if x in (1, 17, 42):\n        print(\"a\")\n"
+        + "    if x not in (1, 2, 3):\n        print(\"b\")\n"
+        + "    if s in (\"hi\", \"yo\"):\n        print(\"c\")\n"
+        + "    if get_val() in (1, 17):\n        print(\"d\")\n"
+        + "main()\n"
+    )
+
+    def test_byte_identical(self):
+        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
+
+    def test_emits_or_chain_and_stmtexpr(self):
+        cpp = self._cpp(self.SRC, thir=True)
+        assert "(x == 1) || (x == 17) || (x == 42)" in cpp
+        assert "(!((x == 1) || (x == 2) || (x == 3)))" in cpp
+        assert 'auto&& __in_lhs = get_val();' in cpp
+
 
 # The routing-heavy subscript cell: a record-element read `t[N].field`. The subscript
 # yields a borrow -- `std::get<N>(t)->field` off a borrow-form tuple param, or
@@ -700,12 +804,21 @@ class TestValueTupleSlots:
             + "def f(t: tuple[StrView, Int32]) -> Int32:\n    return t[1]\n")
         assert _fn(thir, "f") is None
 
-    def test_nested_tuple_element_ineligible(self):
-        thir = _lower(
+    def test_nested_value_tuple_scalar_element_read_routes(self):
+        # Reading a SCALAR element (`t[0]`) off a nested value-tuple receiver is
+        # a plain value read (`std::get<0>(t)`); the receiver being nested no
+        # longer keeps the read on AST.
+        src = (
             _PRELUDE
             + "def f(t: tuple[Int32, tuple[Int32, Int32]]) -> Int32:\n"
-            + "    return t[0]\n")
-        assert _fn(thir, "f") is None
+            + "    return t[0]\n"
+            + "def main():\n    print(f((1, (2, 3))))\n"
+            + "main()\n")
+        thir = _lower(src)
+        sub = _fn(thir, "f").body[0].value
+        assert isinstance(sub, THIRSubscript)
+        assert sub.index.value == 0 and sub.form is Form.VALUE
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
     def test_byte_identical(self):
         src = (
@@ -874,14 +987,27 @@ class TestWidenedValueTupleReturn:
         assert faces.get("ret.tuple_nested_elem", 0) >= 1
         assert faces.get("ret.tuple_opt_elem", 0) >= 1
 
-    def test_widened_param_ineligible(self):
-        # A widened-element tuple as a PARAM has no bare-copy read arm -- the
-        # narrow `_value_tuple` param gate rejects, so the body stays on AST.
-        thir = _lower(
+    def test_nested_element_read_off_param_routes(self):
+        # Reading the NESTED-tuple element (`t[1]`) off a nested value-tuple
+        # param is a bare whole-tuple value read (`std::get<1>(t)`), copied into
+        # the local -- byte-identical to AST.
+        def _cpp(src, thir):
+            compiler, modules = _compile(src)
+            _, cpp = compiler.generate_code_to_strings(
+                _entry(modules),
+                options=CodeGenOptions(emit_source_comments=False,
+                                       thir_codegen=thir))
+            return cpp
+        src = (
             _PRELUDE
             + "def f(t: tuple[Int32, tuple[Int32, Int32]]) -> Int32:\n"
-            + "    return t[0]\n")
-        assert _fn(thir, "f") is None
+            + "    inner = t[1]\n    return inner[0]\n"
+            + "def main():\n    print(f((1, (2, 3))))\n"
+            + "main()\n")
+        assert _fn(_lower(src), "f") is not None
+        cpp = _cpp(src, thir=True)
+        assert cpp == _cpp(src, thir=False)
+        assert "std::get<1>(t)" in cpp
 
     def test_widened_bare_name_return_ineligible(self):
         # A bare-name return of a widened tuple keys on the narrow value-tuple

@@ -187,6 +187,10 @@ class THIRName(THIRExpr):
     is_last_use: bool = False
     is_movable: bool = False
     deref: bool = False
+    # An UNPROVEN value-repr Optional[scalar] read consumed as its inner scalar:
+    # renders `::tpy::deref_optional_check(name)` (the AST's runtime-checked
+    # unwrap). Mutually exclusive with `deref` (the proven `(*name)` unwrap).
+    opt_deref_check: bool = False
     cpp: str | None = None
 
 
@@ -318,6 +322,24 @@ class THIRMembership(THIRExpr):
     needle: THIRExpr
     method_cpp: str
     negate: bool = False
+
+
+@dataclass(frozen=True)
+class THIRTupleMembership(THIRExpr):
+    """A `needle in (a, b, ...)` / `not in` test against a TUPLE LITERAL, which
+    the AST expands to an OR-chain of equality compares (no `__contains__`):
+    `((needle == a) || (needle == b) || ...)`, negated as `(!(...))`. A
+    single-element tuple drops the join parens (`(needle == a)`, negated
+    `(!(needle == a))`). When the needle is a non-trivial expression AND the
+    tuple has more than one element, the AST binds it to a `__in_lhs` temp
+    inside a GCC statement expression to keep the multiple evaluations
+    side-effect-safe (`need_temp`). Elements are value-comparable (scalar /
+    str / bool) so `==` renders as a plain C++ comparison. `result_type` is
+    bool; VALUE form."""
+    left: THIRExpr
+    elements: tuple[THIRExpr, ...]
+    negate: bool = False
+    need_temp: bool = False
 
 
 @dataclass(frozen=True)
@@ -477,6 +499,37 @@ class THIRCtorCall(THIRExpr):
     value the slot's variant converting ctor consumes."""
     type_cpp: str
     args: tuple[THIRExpr, ...] = ()
+
+
+@dataclass(frozen=True)
+class THIRVarargPack(THIRExpr):
+    """A `*args` call-site pack (sema's `TpyVarargPack`) rendered per
+    `_gen_vararg_pack`: the trailing positional args collected into a stack
+    `std::array` temp wrapped in `::tpy::varargs<E>(...)`.
+
+    - Empty pack -> `::tpy::varargs<E>()` (no temp).
+    - A sole `*expr` unpack -> the container forwarded directly:
+      `::tpy::varargs<E>(inner)` for a spanlike source (`span_fn` None), or
+      `::tpy::varargs<E>(::tpy::as_span(inner))` / `as_mut_span` for a
+      non-span container (`span_fn` set) -- `star_source` is the lowered inner.
+    - Otherwise the per-arg array: value elements land bare in
+      `std::array<E, N>`; reference elements as `E*` in `std::array<E*, N>`
+      (`is_ref`), an lvalue element address-taken in place (`&x`,
+      `ref_lvalue[i]` True) and an rvalue element hoisted into its own
+      `E __tmp = <rvalue>;` decl first (`ref_lvalue[i]` False). The array
+      temp flushes before the enclosing statement (admitted only under
+      `temp_args`).
+
+    `elem_cpp` is the `varargs<...>` element spelling (`const T` for a
+    readonly slot). Element exprs render position-blind (gen_expr, no target),
+    matching the AST pack loop. VALUE form -- the pack is a fresh rvalue the
+    slot consumes."""
+    elem_cpp: str
+    is_ref: bool = False
+    args: tuple[THIRExpr, ...] = ()
+    ref_lvalue: tuple[bool, ...] = ()
+    star_source: 'THIRExpr | None' = None
+    span_fn: str | None = None
 
 
 @dataclass(frozen=True)
@@ -835,18 +888,28 @@ class THIRFieldAccess(THIRExpr):
     non-Optional) unwraps unconditionally in value positions -- gen_expr_deref's
     narrowed-optional-field arm. Plain-assign targets and the
     `print_optional_val` wrap read the bare storage instead; those consumers
-    strip the flag (mirroring the AST's gen_expr-vs-gen_expr_deref split)."""
+    strip the flag (mirroring the AST's gen_expr-vs-gen_expr_deref split).
+
+    `deref_chain` (>0) inserts N `.__deref__()` calls between the receiver and
+    the field -- a field access through a USER Deref-style wrapper
+    (`r.x` -> `r.__deref__().x`), _gen_field_access's `deref_chain and not
+    is_pointer()` arm. Non-indirect only (`.` receiver access); the indirect
+    (narrowed-Optional) `->__deref__()` variant stays on the AST path."""
     receiver: THIRExpr
     field_cpp: str
     is_arrow: bool = False
     deref_check: bool = False
     narrowed_deref: bool = False
+    deref_chain: int = 0
 
     def __post_init__(self) -> None:
         # Enforce the deref_check/is_arrow mutual exclusivity the docstring documents.
         assert not (self.deref_check and self.is_arrow)
         # A narrowed field is proven non-None; the runtime check never coexists.
         assert not (self.deref_check and self.narrowed_deref)
+        # The user-Deref chain is a plain `.` wrapper access -- never the
+        # pointer/runtime-check arms.
+        assert not (self.deref_chain and (self.deref_check or self.is_arrow))
 
 
 @dataclass(frozen=True)
@@ -889,6 +952,11 @@ class THIRSubscript(THIRExpr):
     receiver: THIRExpr
     index: THIRExpr
     bounds_safe: bool = False
+    # A user-record `__getitem__` subscript -> the record's generated C++
+    # `operator[]`, spelled bare `receiver[index]` over the plainly-rendered
+    # index (no size_t cast -- the operator takes the user's declared key type,
+    # like _gen_subscript's concrete-user-record / fi-fallback arms).
+    record_getitem: bool = False
 
 
 @dataclass(frozen=True)
@@ -1426,6 +1494,10 @@ class THIRForEach(THIRStmt):
     const_loop_var: bool = False
     iterable_lvalue: bool = True
     orelse: tuple[THIRStmt, ...] = ()
+    # A str-literal iterable (`for ch in "abc"`) wraps the rendered literal in
+    # `std::string_view(...)` -- C string literals include the NUL terminator,
+    # which the view trims (mirrors _gen_for_each_loop's TpyStrLiteral wrap).
+    str_literal_iterable: bool = False
 
 
 @dataclass(frozen=True)

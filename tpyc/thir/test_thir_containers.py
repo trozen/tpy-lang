@@ -2690,6 +2690,50 @@ class TestRecordElementSubscript:
         assert _fn(thir, "f") is None
 
 
+class TestNestedContainerSubscript:
+    """Nested container indexing (`m[i][j]`): the receiver `m[i]` is a
+    container-element subscript yielding a container borrow lvalue, indexed
+    again -> nested `::tpy::__getitem__`. The subscript-receiver twin of the
+    field-over-record-element-subscript arm (`ps[i].x`)."""
+
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+        return cpp
+
+    SRC = (
+        _PRELUDE
+        + "def read2(m: list[list[Int32]]) -> Int32:\n"
+        + "    return m[0][1]\n"
+        + "def main():\n"
+        + "    m: list[list[Int32]] = [[1, 2], [3, 4]]\n"
+        + "    print(read2(m))\n"
+        + "main()\n"
+    )
+
+    def test_byte_identical(self):
+        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
+
+    def test_routes(self):
+        thir = _lower_ctx(self.SRC)
+        assert _fn(thir, "read2") is not None
+
+    def test_emits_nested_getitem(self):
+        cpp = self._cpp(self.SRC, thir=True)
+        assert ("return ::tpy::__getitem__(::tpy::__getitem__(m, 0), 1);"
+                in cpp)
+
+    def test_slice_receiver_ineligible(self):
+        # A slice receiver (`m[:][0]`) is not a plain container-element
+        # subscript -- it stays on the AST path.
+        thir = _lower(
+            _PRELUDE
+            + "def f(m: list[list[Int32]]) -> list[Int32]:\n    return m[:][0]\n")
+        assert _fn(thir, "f") is None
+
+
 # --- set params + dict/set membership (`needle in c` -> `(c.contains(needle))`,
 # the resolved_contains arm). A `set[scalar]` param is newly admitted; its len /
 # iteration reuse the container machinery, membership routes via `.contains`. ---

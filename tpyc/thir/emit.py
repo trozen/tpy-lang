@@ -73,6 +73,7 @@ from .nodes import (
     THIRIfExpr,
     THIRIsNone,
     THIRMembership,
+    THIRTupleMembership,
     THIRIsinstance,
     THIRLiteral,
     THIRMatch,
@@ -111,6 +112,7 @@ from .nodes import (
     THIRUnaryArith,
     THIRUnionArgLift,
     THIRVarDecl,
+    THIRVarargPack,
     THIRWhile,
     THIRWith,
     WithTargetArm,
@@ -591,6 +593,28 @@ def _emit_comprehension(e: 'THIRComprehension', state: _EmitState) -> str:
         buf.write(f"{ind1}return {_emit_expr(e.element, state)};\n")
         buf.write(f"{stmt_ind}}})")
         return buf.getvalue()
+    if e.loop == "array_source":
+        # The array_from_index SOURCE arm (_gen_array_comprehension's non-range
+        # branch): a `({...})` prelude borrows the sized source once (lvalue
+        # verdict) and the per-index lambda indexes it (`__obj_N[__i_N]`). The
+        # loop-var binding is the shared non-const `loop_var_binding` (value
+        # copy / `auto&&` borrow), matching the AST's value/non-value split.
+        n = state.next_loop_index()
+        obj = f"__obj_{n}"
+        binding_kw = "auto&" if e.iterable_lvalue else "auto"
+        buf = io.StringIO()
+        buf.write("({\n")
+        buf.write(f"{ind1}{binding_kw} {obj} = {_emit_expr(e.iterable, state)};\n")
+        buf.write(f"{ind1}::tpy::array_from_index<{e.array_elem_cpp}, "
+                  f"{e.array_size_cpp}>("
+                  f"[&](std::size_t __i_{n}) -> {e.array_elem_cpp} {{\n")
+        binding = loop_var_binding(
+            e.elem_type, cpp_var, f"{obj}[__i_{n}]", False)
+        buf.write(f"{ind2}{binding}\n")
+        buf.write(f"{ind2}return {_emit_expr(e.element, state)};\n")
+        buf.write(f"{ind1}}});\n")
+        buf.write(f"{stmt_ind}}})")
+        return buf.getvalue()
     skip_reserve = e.kind != "list"
     buf = io.StringIO()
     buf.write("({\n")
@@ -731,6 +755,37 @@ def _emit_genexpr(e: 'THIRGenExpr', state: _EmitState) -> str:
     return buf.getvalue()
 
 
+def _emit_vararg_pack(e: 'THIRVarargPack', state: _EmitState) -> str:
+    # Mirror _gen_vararg_pack: a sole `*expr` unpack forwards the container
+    # directly (span source) or through a borrowed span, the empty pack takes
+    # the nullary ctor, and the per-arg form hoists a std::array temp (element
+    # temps first, then the array) exactly like the AST cascade.
+    if e.star_source is not None:
+        inner = _emit_expr(e.star_source, state)
+        if e.span_fn is None:
+            return f"::tpy::varargs<{e.elem_cpp}>({inner})"
+        return f"::tpy::varargs<{e.elem_cpp}>(::tpy::{e.span_fn}({inner}))"
+    if not e.args:
+        return f"::tpy::varargs<{e.elem_cpp}>()"
+    subs = []
+    for i, a in enumerate(e.args):
+        rendered = _emit_expr(a, state)
+        if e.is_ref:
+            if e.ref_lvalue[i]:
+                subs.append(f"&{rendered}")
+            else:
+                tmp = state.temps.create(e.elem_cpp, rendered)
+                subs.append(f"&{tmp}")
+        else:
+            subs.append(rendered)
+    n = len(subs)
+    init = ", ".join(subs)
+    array_cpp = (f"std::array<{e.elem_cpp}*, {n}>" if e.is_ref
+                 else f"std::array<{e.elem_cpp}, {n}>")
+    temp = state.temps.create(array_cpp, init, brace_init=True)
+    return f"::tpy::varargs<{e.elem_cpp}>({temp})"
+
+
 def _emit_container_literal(e: THIRContainerLiteral, state: _EmitState) -> str:
     # Dispatch on the resolved container family, mirroring _gen_array_literal /
     # _gen_dict_literal / _gen_set_literal. list/Array brace-inits are consumed
@@ -788,6 +843,12 @@ def _emit_field_access(e: THIRFieldAccess, state: _EmitState) -> str:
         # Unproven Optional member access: null-check the (already `T*`) receiver
         # before the `.` member read. Mirrors _gen_field_access's runtime-check path.
         return f"::tpy::deref_check({_emit_expr(e.receiver, state)}).{e.field_cpp}"
+    if e.deref_chain:
+        # User Deref-wrapper field access: N `.__deref__()` calls between the
+        # bare receiver and the field (`r.__deref__().x`).
+        chain = ".__deref__()" * e.deref_chain
+        base = f"{_emit_expr(e.receiver, state)}{chain}.{e.field_cpp}"
+        return f"(*{base})" if e.narrowed_deref else base
     base = f"{_emit_expr(e.receiver, state)}{'->' if e.is_arrow else '.'}{e.field_cpp}"
     # Sema-narrowed Optional field: the storage stays std::optional<T>, so the
     # value read unwraps unconditionally (gen_expr_deref's narrowed-field arm).
@@ -808,6 +869,10 @@ def _emit_subscript(e: THIRSubscript, state: _EmitState) -> str:
     # `.to_fixed_check<int32_t>()` THIRCoerce (lowering's _narrow_bigint_index
     # mirrors gen_index_expr), so the emit stays index-type-neutral.
     idx = _emit_expr(e.index, state)
+    if e.record_getitem:
+        # User-record operator[]: bare, no size_t cast (the operator takes the
+        # user's declared key type -- mirrors _gen_subscript's fi fallback).
+        return f"{recv}[{idx}]"
     if e.bounds_safe:
         # Index proven in [0, len): skip normalize_index. A literal index needs no
         # cast (a compile-time constant is -Wsign-conversion-exempt); a variable
@@ -974,6 +1039,8 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         # native/imported global (`cpp`) renders verbatim -- the AST emits
         # qualify_native_name / imported_variable_cpp output unescaped.
         name = e.cpp if e.cpp is not None else escape_cpp_name(e.name)
+        if e.opt_deref_check:
+            return f"::tpy::deref_optional_check({name})"
         if (e.deref and state.frame_shadow_probe is not None
                 and state.frame_shadow_probe(e.name)):
             return name
@@ -1042,6 +1109,19 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         inner = (f"({_emit_expr(e.receiver, state)}.{e.method_cpp}"
                  f"({_emit_expr(e.needle, state)}))")
         return f"(!{inner})" if e.negate else inner
+    if isinstance(e, THIRTupleMembership):
+        # _gen_binop's tuple-literal `in` arm: an OR-chain of `==` compares.
+        left = _emit_expr(e.left, state)
+        elems = [_emit_expr(el, state) for el in e.elements]
+        if e.need_temp:
+            joined = " || ".join(f"(__in_lhs == {el})" for el in elems)
+            body = f"!({joined})" if e.negate else joined
+            return f"({{ auto&& __in_lhs = {left}; {body}; }})"
+        conditions = [f"({left} == {el})" for el in elems]
+        joined = " || ".join(conditions) if conditions else "false"
+        if e.negate:
+            return f"(!({joined}))" if len(conditions) > 1 else f"(!{conditions[0]})"
+        return f"({joined})"
     if isinstance(e, THIRIsNone):
         inner = _emit_expr(e.operand, state)
         if e.value_repr:
@@ -1091,6 +1171,8 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         return _emit_union_arg_lift(e, state)
     if isinstance(e, THIRCtorCall):
         return _emit_ctor_call(e, state)
+    if isinstance(e, THIRVarargPack):
+        return _emit_vararg_pack(e, state)
     if isinstance(e, THIRArgTemp):
         # Register the hoisted decl with the sink and read the real __tmp_N
         # here; args render left-to-right, so creation order matches the AST's
@@ -1386,7 +1468,10 @@ def _emit_for_each(out: TextIO, stmt: THIRForEach, indent_level: int,
     n = state.next_loop_index()
     obj, beg, end = f"__obj_{n}", f"__beg_{n}", f"__end_{n}"
     binding_kw = "auto&" if stmt.iterable_lvalue else "auto"
-    out.write(f"{indent}{binding_kw} {obj} = {_emit_expr(stmt.iterable, state)};\n")
+    iterable_cpp = _emit_expr(stmt.iterable, state)
+    if stmt.str_literal_iterable:
+        iterable_cpp = f"std::string_view({iterable_cpp})"
+    out.write(f"{indent}{binding_kw} {obj} = {iterable_cpp};\n")
     out.write(f"{indent}auto {beg} = {obj}.begin();\n")
     out.write(f"{indent}auto {end} = {obj}.end();\n")
     out.write(f"{indent}for (; {beg} != {end}; ++{beg}) {{\n")

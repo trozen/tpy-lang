@@ -106,7 +106,7 @@ _SRC = (
     "async def af() -> None:\n"
     "    pass\n"
     "def comp(src: Array[Int32, 3]) -> Int32:\n"
-    "    xs = [v + 1 for v in src]\n"  # Array-SOURCE arm: outside the slice
+    "    xs = [v for v in sorted(src)]\n"  # comp over a call iterable: still AST
     "    return len(xs)\n"
     "def ok(n: Int32) -> Int32:\n"
     "    return n + 1\n"

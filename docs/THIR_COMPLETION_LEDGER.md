@@ -1205,7 +1205,11 @@ branches (the enclosing if's own hoist pre-declares and the AST skips
 the try's) or loops (the scope_tracker storage hoist layers on top);
 throw-tier try-body first-declares sema does NOT hoist (the da_new rule:
 no finally/else and a falling-through handler -> the decl lives inside
-the C++ try scope; the in-branch first-declare reject keeps it AST);
+the C++ try scope) NOW ROUTE: try/except/else/finally bodies pass
+`branch_decls_ok=True` like if/loop branches, and the branch-first decl
+slot-type gate is unified with the function-scope gate (a branch-first
+decl is genuinely block-local -- escaping vars are hoisted into
+`declared`, never a first decl -- so it decls the same plain copy);
 async/generator trys (own frontiers).
 **@error_return + the return tier landed (branch thir-error-return):**
 the three coordinated gates opened together -- G1 (`sig.error_return`,

@@ -154,6 +154,25 @@ class TestComprehensionRoutes:
         assert " * (2);" in cpp                           # 3-arg step arm
         assert "::tpy::ListPrinter(::tpy::array_from_index" in cpp
 
+    def test_array_source_comp_routes(self):
+        # C3 Array demotion, source arm: `[expr for x in <sized Array>]`
+        # borrows the source once (`__obj_N`) and indexes it per slot via the
+        # array_from_index lambda.
+        src = (_PRELUDE
+               + "from tpy import Array\n"
+               + "def f(src: Array[Int32, 3]) -> Int32:\n"
+               + "    xs = [v + 1 for v in src]\n    return len(xs)\n"
+               + "def main():\n    print(f([1, 2, 3]))\nmain()\n")
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+        thir = _lower(src)
+        assert _fn(thir, "f") is not None
+        _, w = _lower_ctx_witnessed(src)
+        assert w.get("comp.array_source", 0) >= 1
+        cpp = _cpp(src, thir=True)
+        assert "auto& __obj_0 = src;" in cpp
+        assert "int32_t v = __obj_0[__i_0];" in cpp
+        assert "::tpy::array_from_index<int32_t, 3>(" in cpp
+
     def test_print_arg_comp_routes(self):
         # C3 print-arg position: the stmt-expr render inside the container
         # printer wrap (gen_print's ListPrinter/SetPrinter/DictPrinter arms).
@@ -366,13 +385,6 @@ class TestComprehensionRejects:
         assert _fn(thir, name) is None
         # A rejected shape must still be byte-identical (it stays AST).
         assert _cpp(src, thir=True) == _cpp(src, thir=False)
-
-    def test_array_source_indexing_rejects(self):
-        # The array_from_index ARRAY-SOURCE arm (`__obj_N[__i_N]` random
-        # access) is a deferred row; only the range arm routes.
-        self._rejects("from tpy import Array\n"
-                      "def f(src: Array[Int32, 3]) -> Int32:\n"
-                      "    xs = [v + 1 for v in src]\n    return len(xs)\n")
 
     def test_reassigned_local_rejects(self):
         # A reassigned container local is a pointer-local on the AST path.

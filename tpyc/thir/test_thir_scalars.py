@@ -105,16 +105,15 @@ class TestNumericLiteralArgs:
         assert _fn(_lower(src), "h") is not None
         _assert_byte_identical(src)
 
-    def test_negated_float_literal_call_arg_ineligible(self):
-        # As a call arg (`f(-1.5)`), the negated float literal still fails the
-        # numeric-literal-arg gate (it folds only bare literals), so the caller
-        # body falls back -- the arithmetic-unary widening covers the standalone
-        # form, not the call-arg fold.
-        thir = _lower(
-            _NUMLIT_PRELUDE
-            + "def f(x: Float64) -> Float64:\n    return x\n"
-            + "def g() -> None:\n    v = f(-1.5)\n    print(1)\n")
-        assert _fn(thir, "g") is None
+    def test_negated_float_literal_call_arg_routes(self):
+        # As a call arg (`f(-1.5)`), the negated float literal now passes the
+        # shared arg-admission set into the double slot (wave-9 builtins), via
+        # the unary arm's resolved-dunder lowering -- byte-identical.
+        src = (_NUMLIT_PRELUDE
+               + "def f(x: Float64) -> Float64:\n    return x\n"
+               + "def g() -> None:\n    v = f(-1.5)\n    print(1)\n")
+        assert _fn(_lower(src), "g") is not None
+        _assert_byte_identical(src)
 
     def test_negated_name_routes(self):
         # `-x` takes the __neg__ template (no literal fold); routes via

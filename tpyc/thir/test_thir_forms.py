@@ -12,7 +12,7 @@ from .nodes import (
 from ..typesys import NominalType
 from .testutil import (
     _compile, _entry, _lower_ctx, _lower_ctx_witnessed, _fn, _F1_RECORDS,
-    _emit_expr,
+    _emit_expr, _assert_byte_identical,
 )
 
 # --- F1 form rung: single-assignment non-value record locals + field reads ---
@@ -1630,13 +1630,14 @@ class TestPtrValueFamily:
         assert isinstance(decl, THIRVarDecl)
         assert decl.cpp_local_representation is None
 
-    def test_member_access_through_ptr_falls_back(self):
-        # `p.val` takes the AST's `::tpy::deref_check(p).val` non-null render
-        # -- not mirrored, the body stays on the AST path.
-        thir = _lower_ctx(
-            _PTR_RECORDS
-            + "def read_ptr(p: Ptr[readonly[Node]]) -> Int32:\n    return p.val\n")
-        assert _fn(thir, "read_ptr") is None
+    def test_member_access_through_ptr_routes(self):
+        # `p.val` -> the AST's `::tpy::deref_check(p).val` non-null render is now
+        # mirrored (wave-8 pointers), byte-identical.
+        src = (_PTR_RECORDS
+               + "def read_ptr(p: Ptr[readonly[Node]]) -> Int32:\n    return p.val\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "read_ptr") is not None
+        _assert_byte_identical(src)
 
 
 class TestPtrValueFamilyEmit:

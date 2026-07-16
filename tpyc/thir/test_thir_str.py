@@ -523,28 +523,31 @@ class TestFString:
         assert _emit_expr(fstr) == (
             'std::format("{}{:>3}{}", c, c, ::tpy::repr_of(c))')
 
-    def test_unmirrored_type_rejected_under_conversion(self):
-        # A conversion does not admit an unmirrored arg type: the inner
-        # render of a container is not pinned by the slice.
+    def test_container_arg_conversion_uses_to_str(self):
+        # A conversion does NOT override a container: the AST's
+        # _container_to_str arm precedes the conv rows, so !r/!s still render
+        # via list_to_str (Python str/repr of a container coincide).
         thir = _lower(
             "from tpy import Int32\n"
             "def f() -> str:\n"
             "    xs: list[Int32] = [1, 2]\n"
             '    return f"{xs!r}"\n')
-        assert _fn(thir, "f") is None
+        fstr = _fn(thir, "f").body[1].value
+        args = [p for p in fstr.parts if isinstance(p, THIRFStringArg)]
+        assert [a.wrap for a in args] == ["::tpy::list_to_str({0})"]
 
-    def test_container_arg_ineligible(self):
-        # Containers format via _container_to_str (`::tpy::list_to_str(xs)`)
-        # -- not mirrored. (An ANNOTATED local: container params and
-        # unannotated container locals in f-strings are pre-existing sema
-        # rejections -- Ref[list] / PendingList are not unwrapped by
-        # _analyze_fstring; see BUGS.md.)
+    def test_container_arg_routes(self):
+        # Containers format via _container_to_str (`::tpy::list_to_str(xs)`).
+        # (An ANNOTATED local: container params and unannotated container
+        # locals in f-strings are pre-existing sema rejections -- Ref[list] /
+        # PendingList are not unwrapped by _analyze_fstring; see BUGS.md.)
         thir = _lower(
             "from tpy import Int32\n"
             "def f() -> str:\n"
             "    xs: list[Int32] = [1, 2]\n"
             '    return f"{xs}"\n')
-        assert _fn(thir, "f") is None
+        fstr = _fn(thir, "f").body[1].value
+        assert _emit_expr(fstr) == 'std::format("{}", ::tpy::list_to_str(xs))'
 
     def test_ineligible_inner_expr_rejects(self):
         # The interpolated expr itself must be in the slice (a container
@@ -1094,6 +1097,18 @@ class TestStrSubscriptSliceIter:
             assert isinstance(loop, THIRForEach)
             assert loop.elem_type.to_cpp() == "char"
 
+    def test_str_literal_iteration_routes(self):
+        # `for ch in "abc"`: the literal iterable is captured as an rvalue
+        # `std::string_view("abc")` (the wrap trims the C literal's NUL),
+        # Char elements.
+        thir = _lower(
+            'def f() -> None:\n    for ch in "abc":\n        print(ch)\n')
+        loop = _fn(thir, "f").body[0]
+        assert isinstance(loop, THIRForEach)
+        assert loop.str_literal_iterable
+        assert not loop.iterable_lvalue
+        assert loop.elem_type.to_cpp() == "char"
+
     def test_reassigned_strview_param_routes(self):
         # Only param_needs_copy_for_reassign types (owned str/bytes, BigInt)
         # hoist the AST's mutable-copy prologue; a StrView param is a by-value
@@ -1171,6 +1186,20 @@ class TestStrSubscriptSliceIterEmit:
         assert "if ((s[static_cast<std::size_t>(i)] == 'x')) {" in cpp
         assert "s = ::tpy::str_slice(s, ::tpy::BasicSlice{1, std::nullopt});" in cpp
         assert "std::string_view a = ::tpy::str_slice(s, ::tpy::BasicSlice{1, 3});" in cpp
+
+    STR_LIT_ITER = (
+        'def f() -> None:\n    for ch in "abc":\n        print(ch)\n'
+        'def g() -> None:\n    for ch in "":\n        print(ch)\n'
+        "f()\ng()\n")
+
+    def test_str_literal_iter_byte_identical(self):
+        assert (self._cpp(self.STR_LIT_ITER, thir=True)
+                == self._cpp(self.STR_LIT_ITER, thir=False))
+
+    def test_str_literal_iter_emit_wrap(self):
+        cpp = self._cpp(self.STR_LIT_ITER, thir=True)
+        assert 'auto __obj_0 = std::string_view("abc");' in cpp
+        assert 'auto __obj_0 = std::string_view("");' in cpp
 
     # S4 leftovers (increment 45): stepped slices, slice-typed variable
     # indices, Char-targeted literal decls / call args, non-name receivers.

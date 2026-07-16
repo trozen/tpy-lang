@@ -53,6 +53,7 @@ from ...parse.nodes import (
     TpyWith,
     VarLinkage,
     is_docstring,
+    is_super_del_call,
 )
 from ...typesys import (
     AnyType,
@@ -267,9 +268,11 @@ from .checks import (
     _ptr_union_source_ok,
     _ctor_shape_ok,
     _native_ctx_manager_ok,
+    _native_record_rvalue_call_shape,
     _record_field_write_ok,
     _scalar_aug_assign_ok,
     _scalar_field_write_ok,
+    _user_deref_field_write_ok,
     _str_aug_append_ok,
     _str_field_write_ok,
     _str_list_method_iterable_ok,
@@ -631,6 +634,7 @@ class _ForEachRoute:
     container_field: bool = False
     value_tuple_elem: bool = False
     bigint_counter: bool = False
+    str_literal_iterable: bool = False
     # tuple_unpack over a generator/iterator call: the head unpack rides the
     # universal __iter__/__next__ loop (THIRForIterProto), not begin/end.
     iter_proto: bool = False
@@ -719,7 +723,17 @@ def _for_each_container_route(
     iterable_lvalue = True
     str_list_method = False
     container_field = False
-    if isinstance(it, TpyCall):
+    str_literal_iterable = False
+    if isinstance(it, TpyStrLiteral):
+        # `for ch in "abc"`: the str literal is an rvalue captured as
+        # `std::string_view("abc")` (C string literals carry the NUL
+        # terminator, so the wrap trims it); Char elements.
+        it_type = _resolved_str_value(analyzer.get_expr_type(it), analyzer)
+        if it_type is None:
+            return None
+        iterable_lvalue = False
+        str_literal_iterable = True
+    elif isinstance(it, TpyCall):
         ret = analyzer.get_expr_type(it)
         it_type = _resolved_str_value(ret, analyzer)
         if it_type is None:
@@ -813,6 +827,7 @@ def _for_each_container_route(
         iterable_lvalue=iterable_lvalue,
         str_list_method=str_list_method,
         container_field=container_field,
+        str_literal_iterable=str_literal_iterable,
         value_tuple_elem=_value_tuple(et, analyzer) is not None)
 
 def _for_tuple_unpack_route(
@@ -2172,6 +2187,13 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
     if isinstance(stmt, TpyPassStmt):
         _witness("stmt.trivia")
         return THIRNoOpStmt(loc=loc)
+    if is_super_del_call(stmt):
+        # `super().__del__()` inside a destructor: C++ invokes each base
+        # destructor automatically, so the AST filters these out of the
+        # __del__ body (records.py's body_stmts). Emit nothing, no source
+        # comment -- matching that drop.
+        _witness("stmt.super_del")
+        return THIRNoOpStmt()
     if lc.resumable_leaf_mode:
         if isinstance(stmt, TpyReturn):
             raise ThirUnsupported("res.leaf_return")
@@ -2495,7 +2517,15 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             and _container_literal_decl_ok(
                 stmt, declared, lc.prescan, analyzer))
         storage_call = False
-        if isinstance(stmt.init, (TpyCall, TpyMethodCall)):
+        # A container-slice read (`sub = items[a:b:c]` -> an owned `list[T]`
+        # from list_stepped_slice/list_slice) is an rvalue producing a fresh
+        # container, so it takes the same storage decl-init sink as a
+        # container-returning call.
+        storage_src = isinstance(stmt.init, (TpyCall, TpyMethodCall)) or (
+            isinstance(stmt.init, TpySubscript)
+            and stmt.init.slice_function_info is not None
+            and isinstance(stmt.init.index, TpySlice))
+        if storage_src:
             fam = _storage_call_ret(analyzer.get_expr_type(stmt.init), analyzer)
             if fam is not None:
                 if in_branch_first:
@@ -2518,6 +2548,21 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                         raise ThirUnsupported(stmt_reject_reason(stmt))
                 storage_call = True
                 _witness("decl.storage_call")
+        # A @native free call returning a by-value record (`f = open(path)` ->
+        # `::tpy::TextFile f = ::tpy::builtin_open(path);`): a plain-value decl,
+        # like the container/tuple storage rows. The record is a non-value
+        # reference type, so a reassigned / hoisted / escaping target would take
+        # the AST's pointer-local form -- the reassigned/hoisted/move_through
+        # guards exclude those; a branch-FIRST inline decl (the block-local
+        # `open()` in a try body) still emits the plain value decl (oracle).
+        if (not storage_call and isinstance(stmt.init, TpyCall)
+                and not is_reassign
+                and stmt.name not in lc.prescan.reassigned
+                and stmt.name not in lc.prescan.hoisted
+                and stmt.name not in lc.prescan.move_through
+                and _native_record_rvalue_call_shape(stmt.init, analyzer)):
+            storage_call = True
+            _witness("decl.native_record_call")
         # `x = x + y` self-append peephole (the AST's _try_str_inplace_append,
         # checked on every reassignment of an owned-str-family local before the
         # generic emit): the RHS concat's left operand is the target itself, so
@@ -2561,33 +2606,34 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 raise ThirUnsupported(stmt_reject_reason(stmt)) from None
         else:
             if not is_reassign and not container_literal and not storage_call:
-                if in_branch_first:
-                    slot_ok = (
-                        _eligible_scalar(vtype) or _eligible_char(vtype)
-                        or _eligible_enum(vtype, analyzer) is not None
-                        or _resolved_str_value(vtype, analyzer) is not None
-                        or _is_string_owned(vtype))
-                    detail = "decl.branch_slot_type"
-                else:
-                    slot_ok = (
-                        _eligible_scalar(vtype) or _eligible_char(vtype)
-                        or _eligible_enum(vtype, analyzer) is not None
-                        or _resolved_str_value(vtype, analyzer) is not None
-                        or _resolved_bytes_value(vtype, analyzer) is not None
-                        or _is_string_owned(vtype)
-                        or _eligible_value_union(vtype) is not None
-                        or _slice_object_type(vtype)
-                        or _eligible_ptr_value(vtype, analyzer)
-                        or _callable_value(vtype)
-                        # Value-form slots where borrow/storage coincide: a
-                        # span and a value tuple both decl as the plain
-                        # spelled copy (`std::span<T> s = sp;` /
-                        # `std::tuple<...> u = t;`), the same on both paths.
-                        or _span_value(vtype)
-                        or _value_tuple(vtype, analyzer) is not None)
-                    detail = "decl.slot_type"
+                # A branch-FIRST inline decl (`in_branch_first`) is genuinely
+                # block-local -- an escaping var is hoisted into `declared` and
+                # never reaches here as a first decl -- so it decls the same
+                # plain spelled copy as a function-scope decl, byte-identical.
+                # (The `detail` tag distinguishes the fallback tally only.)
+                # LINCHPIN: if/try/with pre-declare escaping names via
+                # `_lower_hoist_predecls`; for/while/match don't, and lean on
+                # the whole-function `lc.unhandled_hoists` reject as the
+                # backstop -- so an un-hoisted escaping decl can never slip
+                # through this gate as a block-local.
+                slot_ok = (
+                    _eligible_scalar(vtype) or _eligible_char(vtype)
+                    or _eligible_enum(vtype, analyzer) is not None
+                    or _resolved_str_value(vtype, analyzer) is not None
+                    or _resolved_bytes_value(vtype, analyzer) is not None
+                    or _is_string_owned(vtype)
+                    or _eligible_value_union(vtype) is not None
+                    or _slice_object_type(vtype)
+                    or _eligible_ptr_value(vtype, analyzer)
+                    or _callable_value(vtype)
+                    # Value-form slots where borrow/storage coincide: a
+                    # span and a value tuple both decl as the plain spelled
+                    # copy (`std::span<T> s = sp;` / `std::tuple<...> u = t;`).
+                    or _span_value(vtype)
+                    or _value_tuple(vtype, analyzer) is not None)
                 if not slot_ok:
-                    note_detail(detail)
+                    note_detail("decl.branch_slot_type" if in_branch_first
+                                else "decl.slot_type")
                     raise ThirUnsupported(stmt_reject_reason(stmt))
             # A Char-annotated decl init lowers target-aware: `c: Char = 'x'` ->
             # `char c = 'x';` (the AST threads the decl type into the render);
@@ -2757,6 +2803,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 or _class_const_write_target_ok(
                     stmt.target, declared, lc.pointers, analyzer)
                 or _scalar_field_write_ok(stmt, declared, analyzer)
+                or _user_deref_field_write_ok(
+                    stmt, declared, narrowed, analyzer, pointers)
                 or _f1_tuple_field_write_ok(
                     stmt, declared, lc.storage_tuple_locals, analyzer)
                 or _ptr_union_field_write_ok(stmt, declared, analyzer)
@@ -4054,6 +4102,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             _witness("foreach.value_tuple_elem")
         if isinstance(it, TpyArrayLiteral):
             _witness("foreach.iter_literal")
+        if route.str_literal_iterable:
+            _witness("foreach.str_literal")
         return THIRForEach(
             var=stmt.var,
             elem_type=et,
@@ -4063,10 +4113,12 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 field_prechecked=isinstance(it, TpyFieldAccess),
                 # A literal iterable renders target-less (the AST threads no
                 # container target into gen_expr_deref here).
-                container_threaded=not isinstance(it, TpyArrayLiteral)),
+                container_threaded=not isinstance(
+                    it, (TpyArrayLiteral, TpyStrLiteral))),
             body=body,
             const_loop_var=stmt.const_loop_var,
             iterable_lvalue=route.iterable_lvalue,
+            str_literal_iterable=route.str_literal_iterable,
             orelse=_lower_loop_orelse(stmt.orelse, lc, declared, scope,
                                       "loop.for_else"),
             loc=loc,
@@ -4134,7 +4186,14 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                               and arg.name not in pointers
                               and _wrap_print_form(
                                   arg, declared, analyzer) is not None
-                              and _witness("print.wrap_arg")))
+                              and _witness("print.wrap_arg"))
+                          or (isinstance(arg, TpySubscript)
+                              and _wrap_print_form(
+                                  arg, declared, analyzer) is not None
+                              and _witness(
+                                  "print.container_slice_arg"
+                                  if arg.slice_function_info is not None
+                                  else "print.tuple_subscript_arg")))
                 if not ok:
                     fam = _type_family_tag(
                         analyzer.get_expr_type(arg), analyzer)
@@ -4289,7 +4348,8 @@ def _lower_try(stmt: TpyTry, lc: _LowerCtx, declared: dict[str, TpyType],
         handlers.append(THIRExceptHandler(
             cpp_type=cpp, binding=h.binding,
             body=_lower_scoped_stmts(
-                h.body, lc, h_declared, loop_depth=loop_depth),
+                h.body, lc, h_declared, branch_decls_ok=True,
+                loop_depth=loop_depth),
             source_display=(h.exception_type
                             if stmt.tier == "return" else None)))
     last = stmt.finally_body[-1] if stmt.finally_body else None
@@ -4301,12 +4361,15 @@ def _lower_try(stmt: TpyTry, lc: _LowerCtx, declared: dict[str, TpyType],
     return THIRTry(
         tier=stmt.tier,
         try_body=_lower_scoped_stmts(
-            stmt.try_body, lc, dict(declared), loop_depth=loop_depth),
+            stmt.try_body, lc, dict(declared), branch_decls_ok=True,
+            loop_depth=loop_depth),
         handlers=tuple(handlers),
         else_body=_lower_scoped_stmts(
-            stmt.else_body, lc, dict(declared), loop_depth=loop_depth),
+            stmt.else_body, lc, dict(declared), branch_decls_ok=True,
+            loop_depth=loop_depth),
         finally_body=_lower_scoped_stmts(
-            stmt.finally_body, lc, dict(declared), loop_depth=loop_depth),
+            stmt.finally_body, lc, dict(declared), branch_decls_ok=True,
+            loop_depth=loop_depth),
         hoist_decls=tuple(hoist_decls),
         body_terminates=body_terminates,
         finally_terminates=finally_terminates,
