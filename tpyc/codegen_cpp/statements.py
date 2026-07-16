@@ -1409,7 +1409,7 @@ class StatementGenerator:
                 # so `optional_to_ptr` returns `const P*`.
                 if not const_pfx and (
                         (isinstance(init, TpyFieldAccess)
-                            and self._is_const_union_source(init))
+                            and self.ctx.is_const_union_source(init))
                         or (isinstance(init, TpyName)
                             and init.name in self.ctx.const_storage_form_optional_locals)):
                     const_pfx = "const "
@@ -1428,7 +1428,7 @@ class StatementGenerator:
                 if (not const_pfx and isinstance(init, TpyMethodCall)
                         and init.method == "get"
                         and is_dict(unwrap_readonly(self.ctx.get_expr_type(init.obj)))
-                        and self._is_const_union_source(init.obj)):
+                        and self.ctx.is_const_union_source(init.obj)):
                     const_pfx = "const "
                     self.ctx.const_indirect_locals.add(name)
                 init_expr = self.expressions.gen_expr(init, target_type)
@@ -1637,24 +1637,6 @@ class StatementGenerator:
         else:
             return f"{indent}{cpp_name} = &({init_expr});\n"
 
-    def _is_const_union_source(self, expr: TpyExpr) -> bool:
-        """True when `expr` is an lvalue rooted in a const source -- a field /
-        container element off a const-ref param or const-indirect local,
-        recursing through chained field/subscript access to the base name.
-        The general "rooted in a const source" predicate: consulted by the
-        value-variant lift (needs `to_const_ptr_variant`), the storage-optional
-        lift, the REF_ALIAS borrow-local arm, and the `.get()` accessor local."""
-        if isinstance(expr, TpyCoerce):
-            return self._is_const_union_source(expr.expr)
-        if isinstance(expr, (TpyFieldAccess, TpySubscript)):
-            obj = expr.obj
-            if isinstance(obj, TpyName):
-                return (obj.name in self.ctx.const_ref_params
-                        or obj.name in self.ctx.const_indirect_locals)
-            # Chained access (outer.inner.pet): recurse on the object
-            return self._is_const_union_source(obj)
-        return False
-
     def _gen_ptr_variant_local_init(
         self, stmt: 'TpyVarDecl', target_type: UnionType, cpp_name: str, indent: str,
     ) -> str:
@@ -1708,7 +1690,7 @@ class StatementGenerator:
             self.ctx.rebind_slots[stmt.name] = rebind_slot
             rebind_decl = f"{indent}{static_kw}std::optional<{val_type}> {rebind_slot};\n"
         # Detect const source (field on const-ref param or const-indirect local)
-        is_const_source = self._is_const_union_source(stmt.init)
+        is_const_source = self.ctx.is_const_union_source(stmt.init)
         # If source is a value variant (field, container element), convert to pointer variant
         if isinstance(init_type, UnionType):
             if is_const_source:
@@ -2375,11 +2357,11 @@ class StatementGenerator:
                 # A borrow-local aliasing an lvalue rooted in a const source
                 # (param / field / container element off a const-inferred
                 # receiver) must bind `const T&` -- else a mutable reference is
-                # taken from a `const T`. `_is_const_union_source` computes the
+                # taken from a `const T`. `is_const_union_source` computes the
                 # general "rooted in a const source" predicate, recursing through
                 # chained field/subscript access to the base name -- the same one
                 # the value-variant and Optional lifts consult.
-                if not is_const and self._is_const_union_source(init_inner):
+                if not is_const and self.ctx.is_const_union_source(init_inner):
                     self.ctx.const_indirect_locals.add(stmt.name)
                     return f"{indent}const {cpp_type}& {cpp_name} = {init_expr};\n"
                 return f"{indent}{const_pfx}{cpp_type}& {cpp_name} = {init_expr};\n"

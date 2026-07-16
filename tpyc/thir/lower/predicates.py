@@ -2941,7 +2941,7 @@ def _f1_is_const(binding: 'LocalBinding', target_type: TpyType | None,
 
     Mirrors `_is_const_indirect` for the field source (ReadonlyType reads on the
     optional inner / the init's raw sema type / the var_types entry) plus, for
-    OPTIONAL_TO_PTR, the storage-optional const bump (`_is_const_union_source`:
+    OPTIONAL_TO_PTR, the storage-optional const bump (`is_const_union_source`:
     the receiver in const_ref_params (param) or const_indirect_locals (a const F1
     local, tracked in `const_locals`)), and the readonly-method ref-return
     branch for a method-call source. The name const branch of
@@ -2967,7 +2967,7 @@ def _f1_is_const(binding: 'LocalBinding', target_type: TpyType | None,
             return True
     # Borrow-alias of an lvalue rooted in a const source (`p = ps[i]`,
     # `r = obj.field`, `c = self.store[k]`): mirror of the AST REF_ALIAS
-    # const propagation via `_is_const_union_source` -- recurse through
+    # const propagation via `is_const_union_source` -- recurse through
     # chained field/subscript access to the base name.
     if binding is LocalBinding.REF_ALIAS and _f1_const_rooted_source(
             stmt.init, func, analyzer, const_locals, record_name):
@@ -2977,7 +2977,7 @@ def _f1_is_const(binding: 'LocalBinding', target_type: TpyType | None,
 def _f1_const_rooted_source(expr: TpyExpr, func: TpyFunction, analyzer,
                             const_locals: set[str],
                             record_name: str | None) -> bool:
-    """Mirror of codegen's `_is_const_union_source`: True when `expr` is an
+    """Mirror of codegen's `is_const_union_source`: True when `expr` is an
     lvalue rooted in a const source (param in `const_borrow_params` / const F1
     local), recursing through chained field/subscript access to the base name."""
     if isinstance(expr, TpyCoerce):

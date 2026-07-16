@@ -2073,16 +2073,35 @@ class CodeGenContext:
                     return True
         return False
 
+    def is_const_union_source(self, expr: TpyExpr) -> bool:
+        """True when `expr` is an lvalue rooted in a const source -- a field /
+        container element off a const-ref param or const-indirect local,
+        recursing through chained field/subscript access to the base name.
+        The general "rooted in a const source" predicate: consulted by the
+        value-variant lift (needs `to_const_ptr_variant`), the storage-optional
+        lift, the REF_ALIAS borrow-local arm, the `.get()` accessor local, and
+        `is_const_storage_source` (the tuple sinks)."""
+        if isinstance(expr, TpyCoerce):
+            return self.is_const_union_source(expr.expr)
+        if isinstance(expr, (TpyFieldAccess, TpySubscript)):
+            obj = expr.obj
+            if isinstance(obj, TpyName):
+                return (obj.name in self.const_ref_params
+                        or obj.name in self.const_indirect_locals)
+            # Chained access (outer.inner.pet, self.store[k]): recurse on
+            # the object
+            return self.is_const_union_source(obj)
+        return False
+
     def is_const_storage_source(self, expr: TpyExpr) -> bool:
         """True when `expr` reads from a const-bound storage location, so
-        element addresses derived from it come out `const T*`: a field of a
-        const receiver (self in a readonly method, const param/local), or a
-        name bound const (const-storage loop var, const-inferred param/local).
+        element addresses derived from it come out `const T*`: an lvalue chain
+        (field / subscript, arbitrarily deep) rooted at a const receiver
+        (self in a readonly method, const param/local), or a name bound const
+        (const-storage loop var, const-inferred param/local).
         """
-        if isinstance(expr, TpyFieldAccess) and isinstance(expr.obj, TpyName):
-            obj = expr.obj.name
-            return (obj in self.const_ref_params
-                    or obj in self.const_indirect_locals)
+        if self.is_const_union_source(expr):
+            return True
         if isinstance(expr, TpyName):
             return (expr.name in self.const_storage_form_tuple_locals
                     or expr.name in self.const_borrow_form_tuple_locals
