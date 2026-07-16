@@ -2657,8 +2657,9 @@ omitted trailing params have defaults. Dead-branch elim handles isinstance if/el
 match/case on union subjects, `is None` on Optional params, and equality checks on
 literal-defaulted params. Exhaustiveness checking ensures stubs cover all union variants
 (relaxed for params not present in every stub). Literal[...] dispatch, cross-module
-imports, and methods all work. CPython compatible via `lib/cpy/typing.py` runtime
-dispatch shim (arity + isinstance).
+imports, and methods all work. CPython compatible via `lib/cpy/sitecustomize.py`,
+which patches only `typing.overload` with a runtime dispatch shim (arity +
+isinstance).
 
 **Dependencies**: Union types (done), isinstance narrowing (done). `slice` type needed
 for the `__getitem__` use case (orthogonal).

@@ -1,51 +1,24 @@
-"""CPython typing shim: re-exports stdlib typing with a working @overload.
+"""Install TPy's runtime-dispatching @overload for the CPython (cpy) phase.
 
-stdlib typing.overload discards function bodies and raises NotImplementedError
-when called. This shim provides a runtime dispatcher that supports TPy's
-mode (b) bodied @overload -- variants carry their own bodies and dispatch
-is by arity first, then isinstance on type annotations.
+Auto-imported at interpreter startup: `lib/cpy` is first on the cpy-phase
+PYTHONPATH and run_cpython launches Python without -S, so `site` picks this
+up before any driver runs. It patches ONLY `typing.overload`, leaving the
+real stdlib `typing` otherwise untouched.
+
+Why: stdlib `typing.overload` discards function bodies and raises
+NotImplementedError when called, but TPy's mode (b) bodied @overload needs
+variants to carry their own bodies and dispatch by arity first, then
+isinstance on the annotations. Patching just this one attribute -- rather
+than shadowing the whole `typing` module on PYTHONPATH -- keeps the real
+stdlib module intact for the stdlib internals that import from `typing`
+during interpreter startup (impersonating the whole module races their
+imports against a half-initialized shadow).
 """
 
-import sys as _sys
 import inspect as _inspect
 import collections.abc as _collections_abc
+import typing as _typing
 
-# Import the REAL stdlib typing, bypassing our shadow.
-# Temporarily remove our parent directory from sys.path so the import
-# machinery finds the stdlib module, not this file.
-import os.path as _osp
-_our_dir = _osp.dirname(_osp.abspath(__file__))
-_saved_path = list(_sys.path)
-_sys.path = [p for p in _sys.path if p != _our_dir]
-_self_entry = _sys.modules.pop("typing", None)
-try:
-    import typing as _real_typing
-finally:
-    _sys.path = _saved_path
-    _sys.modules["typing"] = _self_entry  # restore our module
-
-
-# Copy all public names so `from typing import X` works for everything
-for _name in dir(_real_typing):
-    if not _name.startswith('__'):
-        globals()[_name] = getattr(_real_typing, _name)
-
-if hasattr(_real_typing, '__all__'):
-    __all__ = list(_real_typing.__all__)
-
-
-def __getattr__(name):
-    # stdlib typing serves deprecated aliases (Match, Pattern, ByteString, ...)
-    # lazily via its own module __getattr__, so they aren't in dir() and the
-    # eager copy above misses them. Delegate any unresolved name to real typing
-    # so `from typing import <lazy-name>` keeps working -- e.g. 3.14's
-    # importlib.metadata does `from typing import ... Match ...`.
-    return getattr(_real_typing, name)
-
-
-# ---------------------------------------------------------------------------
-# Runtime @overload dispatcher
-# ---------------------------------------------------------------------------
 
 _overload_registry: dict[str, list] = {}
 
@@ -107,7 +80,7 @@ def _callable_arity_of_value(value) -> int | None:
 def _type_matches(func, args: tuple) -> bool:
     """Check if positional args match the function's type annotations."""
     try:
-        hints = _real_typing.get_type_hints(func)
+        hints = _typing.get_type_hints(func)
     except Exception:
         return True  # can't resolve hints -- accept on arity alone
     params = list(_inspect.signature(func).parameters.keys())
@@ -137,7 +110,7 @@ def _type_matches(func, args: tuple) -> bool:
     return True
 
 
-def overload(func):
+def _overload(func):
     """Runtime-dispatchable @overload for CPython.
 
     Accumulates variants by qualified name. Each @overload call adds the
@@ -172,3 +145,6 @@ def overload(func):
     dispatcher.__module__ = func.__module__
     dispatcher.__overloaded__ = True
     return dispatcher
+
+
+_typing.overload = _overload

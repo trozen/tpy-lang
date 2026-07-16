@@ -1,3 +1,3 @@
-CPython's typing.@overload shim in lib/cpy/typing.py dispatches by positional-arg
+CPython's typing.@overload shim in lib/cpy/sitecustomize.py dispatches by positional-arg
 isinstance() only; kwargs do not participate in overload selection. This test's
 whole point is kwarg-driven dispatch, so CPython and TPy diverge by design.
