@@ -186,18 +186,19 @@ class TestMethodCoros:
         assert "b.get()" in cpp        # record param: bare `.`
         assert "__self.base" in cpp    # self: __self reference
 
-    def test_generic_record_method_rejects(self):
+    def test_generic_record_method_routes(self):
         # (async @staticmethod / @property are parse-rejected upstream, so
         # res.static_method / res.property stay defensive.) A method coro on
-        # a GENERIC record folds the record's [T, ...] into a template frame
-        # -- deferred (res.generic_record).
+        # a GENERIC record routes: the record's [T, ...] template header is
+        # skeleton, so the leaves render as on a concrete record.
         gen_src = (_PRE
                    + "class G[T]:\n"
                    + "    v: T\n"
                    + "    def __init__(self, v: T) -> None:\n        self.v = v\n"
                    + "    async def get(self, n: Int32) -> Int32:\n        return n\n\n"
                    + "def main() -> None:\n    pass\nmain()\n")
-        assert _res_fallback(gen_src).get("res.generic_record") == 1
+        _, fallback = _assert_identical(gen_src)
+        assert not [k for k in fallback if k.startswith("resumable:")]
 
 
 _ITER = "from tpy import Int32, Int64\nfrom typing import Iterator\n\n"
@@ -633,14 +634,44 @@ class TestSlicedOutShapes:
                + "def main() -> None:\n    pass\nmain()\n")
         assert _res_fallback(src).get("res.param_type") == 1
 
-    def test_generic_param_rejects(self):
-        # A generic async def makes the frame a template instantiation (M7):
-        # the type-param capture is a cell -- res.generic (not res.param_type).
+    def test_generic_param_routes(self):
+        # A generic async def's frame is a template, but its capture form
+        # (`val_or_ref_t<T>`) is resolved at instantiation and every leaf
+        # reads the field bare -- so the T param/return route.
         src = (_PRE
                + "async def ident[T](x: T) -> T:\n"
                + "    return x\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        assert _res_fallback(src).get("res.generic") == 1
+        _, fallback = _assert_identical(src)
+        assert not [k for k in fallback if k.startswith("resumable:")]
+
+    def test_generic_bare_t_local_still_defers(self):
+        # The bare-`T` admission is CAPTURE-only (`_res_capture_ok`): a `T`
+        # LOCAL is emitted as a pointer ALIAS (`y = &(x)` / `(*y)`), not the
+        # bare field a captured T reads as, so it must stay deferred
+        # (res.local_storage). Guards the sibling-predicate drift: admitting a
+        # bare T to `_res_value_ok` would leak it into `_res_local_ok` and
+        # silently emit `y = x` against a `T*` field.
+        src = ("from tpy import Int32\nimport asyncio\n\n"
+               + "async def ident[T](x: T) -> T:\n"
+               + "    y = x\n"
+               + "    await asyncio.sleep(0)\n"
+               + "    return y\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        assert _res_fallback(src).get("res.local_storage") == 1
+        _assert_identical(src)
+
+    def test_generic_optional_param_still_defers(self):
+        # An `Optional[T]` param composes the bare-T admission with the
+        # Optional rung: `_optional_ptr_borrow` resolves no pointer-repr
+        # borrow for an unbounded T, so it stays deferred (res.param_type)
+        # rather than riding the bare-T capture branch. (The AST frame for
+        # this shape is itself a known-buggy `T*` -- see BUGS.md.)
+        src = (_PRE
+               + "async def f[T](p: T | None) -> Int32:\n"
+               + "    return 1\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        assert _res_fallback(src).get("res.param_type") == 1
 
     def test_optional_local_still_defers(self):
         # A pointer-repr Optional[record] local is not a frame_slot (it has

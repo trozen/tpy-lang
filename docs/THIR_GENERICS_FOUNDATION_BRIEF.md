@@ -71,9 +71,9 @@ plus a few genuinely-new pieces (below).
 - **Static-protocol params** (`x: Awaitable[T]` → deduced `T_x` template arg +
   concept constraint). The frame/signature is skeleton (`gen_async.py`
   `_ParamStorage.STATIC_PROTOCOL`, `protocols.py protocol_param_template_name`),
-  but THIR must lower the leaf reads on a concept-typed value. **This is the
-  blocker behind the deferred resumable template-frames** (`res.generic`,
-  `res.param_type` static-protocol) — routing it here unblocks that too.
+  but THIR must lower the leaf reads on a concept-typed value. This is the
+  remaining blocker behind the static-protocol coro params (`res.param_type`);
+  the generic-frame half turned out to be independent of it and has landed.
 - **Bounded type params** (`[T: Comparable]`, assoc-type bounds) — the
   `assoc_type_*` / `bound_*` cases: bounded-protocol method dispatch + the
   associated-type projection.
@@ -99,9 +99,11 @@ plus a few genuinely-new pieces (below).
 - **generics ↔ protocols.** Static-protocol params and bounded type params are
   the same concept-constraint machinery (`protocols.py`). Design them together;
   a design that does `[T]` but not `[T: Proto]` is the recurring decay pattern.
-- **generics ↔ resumable.** `res.generic` / `res.generic_record` (resumable.py
-  :364-370) and static-protocol coro params are downstream of this foundation —
-  the deferred resumable template-frame work (THIR wave 4) unblocks here.
+- **generics ↔ resumable.** RESOLVED (2026-07-16). `res.generic` /
+  `res.generic_record` are deleted: a generic frame needs no gate, because the
+  template header and the `val_or_ref_t<T>` field choice are skeleton and every
+  leaf reads the field bare. Admitting a bare `T` into `_res_value_ok` was the
+  whole cell. Static-protocol coro params (`res.param_type`) remain open.
 - **generics ↔ records.** Generic record methods already route
   (functions.py:1556); extend consistently to free generic funcs' residue.
 - **generics ↔ the general arms.** Because the residue threads through
@@ -162,5 +164,5 @@ plus a few genuinely-new pieces (below).
   inside).
 - `docs/IR_DESIGN.md` — THIR design + the per-case operating model + wave
   orchestration lessons. `docs/THIR_COMPLETION_LEDGER.md` — per-construct
-  porting reference (M7 = template frames).
+  porting reference (M7 = template frames -- routed 2026-07-16; no tier needed).
 - Reject probe: `scripts/thir_migration/thir_scan.py`.

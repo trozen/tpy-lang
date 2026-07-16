@@ -1279,10 +1279,39 @@ by theme; each is a rule the next cell should apply.
   params seed as INT TypeParamRef bindings so `N` reads render bare; explicit `f[int](x)`
   type-args were blocked only by the parser's leftover `subscript_callee` fallback (sema
   clears it when actually used). Static-protocol SYNC bodies already routed via the protocol
-  machinery -- the deferred static-protocol work is exactly the resumable template frames
-  (`res.generic` / `res.generic_record`), a separate emitter tier. Left to the case-driven
+  machinery. Left to the case-driven
   waves (concrete, not generics): value-record copy decls (`q = p`), readonly-Ptr value decl
   slots, None-element containers, chained method receivers (`box.get().append(4)`).
+- **Resumable template frames (2026-07-16, +5 flips): a deferred ARCH item that was never an
+  ARCH item.** `res.generic` / `res.generic_record` were filed for two waves as "a separate
+  emitter tier" -- a template-frame emitter THIR would have to grow. It needed none: the
+  frame struct, its template header, and the value-vs-reference CAPTURE choice
+  (`param_val_or_ref_t<T>` ctor param -> `val_or_ref_t<T>` field) are all SKELETON
+  (AST-emitted); THIR supplies only LEAVES, and a leaf reads a CAPTURED `T` frame field bare
+  whether it instantiated to `T` or `T&`. Both gates were deleted outright and the bare `T`
+  joined the capture families. LESSON (the mirror of wave 4's "no big ARCH lever survives
+  drilling"): a deferred item's COST estimate rots exactly like a tag-based leverage
+  estimate. This one was written when the frames really would have needed the generics
+  foundation, and nobody re-drilled it after that foundation landed and made the leaves
+  ordinary. Before scheduling a long-deferred rung, spend the 10 minutes to re-probe its
+  ACTUAL first rejects (`_thir_fallback` per case) -- the filed cost is a claim about a
+  codebase that has since changed underneath it. Corollary: the whole-body fallback boundary
+  is what made this cheap -- because skeleton/leaf is a clean seam, a construct that only
+  touches skeleton costs THIR nothing.
+- **...and the SECOND lesson, from the review that caught the first one's overreach: "the
+  form is deferred to instantiation" is a CAPTURE fact, not a type fact.** The first cut put
+  the bare `T` into `_res_value_ok`, the shared base of the three near-parallel resumable
+  predicates -- so it leaked into `_res_local_ok`, and a bare-`T` LOCAL (`y = x`) routed and
+  emitted `y = x` / `y` against what the skeleton actually emits as a `T*` pointer ALIAS
+  (`y = &(x)` / `(*y)`). A SILENT divergence that the whole-corpus byte-diff missed
+  entirely, because no case declares a bare-`T` local -- green byte-diff is a claim about the
+  shapes the corpus REACHES, never about a family. The admission now lives in its own
+  `_res_capture_ok` (param / return / yield), leaving `_res_local_ok` on `_res_value_ok`, and
+  a unit pins the bare-`T` local's fallback. This is the exact drift TODO.md already predicted
+  for this predicate trio ("the classic Optional-but-not-Union shape"): a fact was added to the
+  SHARED base without auditing the sibling that legitimately diverges. When a new admission is
+  justified by a POSITION's calling convention, it belongs in that position's predicate --
+  putting it in the base silently re-justifies it for every other position.
 
 ---
 

@@ -57,9 +57,9 @@ from ...parse.nodes import (
 )
 from ...typesys import (
     IntLiteralType,
-    NominalType,
     OptionalType,
     TpyType,
+    TypeParamRef,
     UnionType,
     VoidType,
     unwrap_readonly,
@@ -110,6 +110,37 @@ def _res_value_ok(t: 'TpyType | None', analyzer) -> bool:
                 or _eligible_enum(t, analyzer) is not None)
 
 
+def _res_capture_ok(t: 'TpyType | None', analyzer) -> bool:
+    """CAPTURE slots (param / return / yield): the value families plus a bare
+    type param. `_res_value_ok`'s three siblings all read a bare `T` slot bare,
+    but each for its OWN reason -- stated per position, because assuming one
+    rationale spans them is how the bare `T` first (wrongly) reached locals:
+
+    - PARAM: the form is deferred to the instantiation site
+      (`param_val_or_ref_t<T>` ctor param -> `val_or_ref_t<T>` field), so
+      value-typed T copies in, object-typed T borrows, and the field reads
+      bare either way.
+    - RETURN: NOT the trait chain -- `_make_async_return` binds a plain
+      `{ret_cpp} __tpy_async_ret = <value>;`, so the slot is a plain `T` and
+      the leaf renders its source bare. (That plain-T binding is also why an
+      object-typed T return COPIES where CPython aliases -- see BUGS.md. When
+      that fix routes the return through `val_or_ref_t<T>`, re-check this arm
+      and the return leaf TOGETHER.)
+    - YIELD: `gen_yield_value` bridges storage->pointer only for tuple slots
+      and borrow-form loop vars; a bare `T` yield source is neither, so it
+      passes through unchanged.
+
+    A bare-`T` LOCAL rides NONE of these: it is emitted as a `T*` pointer
+    ALIAS (`y = &(x)` / `(*y)`), so it must not ride -- hence `_res_local_ok`
+    builds on `_res_value_ok`, not on this."""
+    if t is None:
+        return False
+    if _res_value_ok(t, analyzer):
+        return True
+    return isinstance(unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t))),
+                      TypeParamRef)
+
+
 def _res_param_ok(t: 'TpyType | None', analyzer) -> bool:
     """Frame-PARAM families (R5c-param). Value scalars plus F1-record params:
     a record param captures as a `Record&` reference frame field and reads
@@ -128,9 +159,10 @@ def _res_param_ok(t: 'TpyType | None', analyzer) -> bool:
     params) are also admitted. Borrow-form and value tuple params ride too:
     a `std::tuple<..., T*>` / `std::tuple<...>` frame field reads bare with
     `std::get<N>(t)` (pointer-repr elements arrow, value elements bare),
-    matching the sync tuple-subscript rows. Union (non-pointer-repr),
-    static-protocol and generic params stay their own rungs."""
-    if _res_value_ok(t, analyzer):
+    matching the sync tuple-subscript rows. A bare `T` param rides via
+    `_res_capture_ok`. Union (non-pointer-repr) and static-protocol params
+    stay their own rungs."""
+    if _res_capture_ok(t, analyzer):
         return True
     if (_resolved_str_value(t, analyzer) is not None
             or _resolved_bytes_value(t, analyzer) is not None):
@@ -152,7 +184,9 @@ def _res_param_ok(t: 'TpyType | None', analyzer) -> bool:
 
 
 def _res_local_ok(t: 'TpyType | None', analyzer) -> bool:
-    """Frame-LOCAL families -- broader than `_res_value_ok` (params).
+    """Frame-LOCAL families -- broader than the `_res_value_ok` base in one
+    direction (str/bytes) and narrower than `_res_capture_ok` in another (NO
+    bare `T`: a `T` local is a `T*` pointer alias, not a bare field).
 
     R1a adds str/bytes locals: a str local's frame field is a bare
     `std::string` / `std::string_view` (owned / view, sema-resolved) with
@@ -379,13 +413,11 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
             func, analyzer, self_type, allow_resumable=True)
     except ThirUnsupported as ex:
         return _reject(ex.reason)
-    if func.type_params:
-        # Generic async def: the frame is a template (M7); a cell.
-        return _reject("res.generic")
-    if isinstance(self_type, NominalType) and self_type.type_args:
-        # Generic-record method coro: the frame folds the record's [T, ...]
-        # (template frame) -- a cell.
-        return _reject("res.generic_record")
+    # A generic frame (`async def f[T]` / a coro method on a generic record)
+    # needs no gate of its own: the template header, and the value-vs-reference
+    # frame-field choice (`val_or_ref_t<T>`), are skeleton -- every leaf reads
+    # the field bare, identically for both. What a T can appear IN is gated by
+    # the per-slot param / return / yield families below.
     for _pname, ptype in func.params:
         pt = ptype if isinstance(ptype, TpyType) else None
         if not _res_param_ok(pt, analyzer):
@@ -393,10 +425,11 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     if is_generator:
         # The yielded element type gates a generator (its `return_type` is
         # `Iterator[T]`, not a value slot); the value-scalar slice yields
-        # only value scalars (a non-value yield needs the borrow-form slot
-        # bridge in gen_yield_value -- a cell).
+        # only value scalars and a bare `T` (a non-value yield needs the
+        # borrow-form slot bridge in gen_yield_value -- a cell).
         yt = func.generator_yield_type
-        if not _res_value_ok(yt if isinstance(yt, TpyType) else None, analyzer):
+        if not _res_capture_ok(yt if isinstance(yt, TpyType) else None,
+                               analyzer):
             return _reject("res.yield_type")
     else:
         rt = func.return_type if isinstance(func.return_type, TpyType) else None
@@ -409,7 +442,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
         # position-blind for them. Their rung needs that view-source fact
         # threaded into lowering (not re-derived).
         if not (rt is None or isinstance(rt_inner, VoidType)
-                or _res_value_ok(rt, analyzer)):
+                or _res_capture_ok(rt, analyzer)):
             return _reject("res.return_type")
     if func.forwarded_locals:
         return _reject("res.forwarded_local")
