@@ -1056,6 +1056,86 @@ class TestStaticProtocolParams:
         assert not any(k.startswith("resumable:") for k in fallback)
 
 
+class TestBoundCoroAwaits:
+    """Bound-coroutine handles: the binding is a factory-call emplace into
+    the handle's own frame slot (`c.emplace(add_one(1))`), and `await c`
+    polls that slot in place -- both suspension sides are skeleton."""
+
+    _PRELUDE = ("import asyncio\n"
+                + "from tpy import Int32\n\n"
+                + "class Counter:\n"
+                + "    base: Int32\n"
+                + "    def __init__(self, base: Int32) -> None:\n"
+                + "        self.base = base\n"
+                + "    async def bump(self, n: Int32) -> Int32:\n"
+                + "        return self.base + n\n\n"
+                + "async def add_one(n: Int32) -> Int32:\n"
+                + "    return n + 1\n\n")
+
+    def test_free_and_method_factory_bind_await(self):
+        src = (self._PRELUDE
+               + "async def main_coro() -> None:\n"
+               + "    c = add_one(1)\n"
+               + "    print(await c)\n"
+               + "    w = Counter(10)\n"
+               + "    m = w.bump(5)\n"
+               + "    print(await m)\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.coro_handle_write", 0) >= 2
+        assert witnesses.get("res.await_prebuilt", 0) >= 2
+        assert not any(k.startswith("resumable:") for k in fallback)
+
+    def test_name_source_rebind_defers(self):
+        # `c2 = c` (handle move-bind) is the two-statement
+        # `emplace(std::move(*c)); c.reset();` render -- sliced out.
+        src = (self._PRELUDE
+               + "async def main_coro() -> None:\n"
+               + "    c = add_one(1)\n"
+               + "    c2 = c\n"
+               + "    print(await c2)\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        fallback = _res_fallback(src)
+        assert fallback.get("res.coro_handle_source") == 1
+
+    def test_erased_handle_local_defers(self):
+        # An ERASED handle local (a helper returning Own[Cancellable[T]]
+        # erases the concrete frame via make_adapter): its AST write is
+        # `=` through the adapter wrap, not the frame_slot emplace --
+        # classification must reject the body whole, never route it
+        # through the emplace-shaped arm.
+        src = (self._PRELUDE
+               + "from tpy import Own\n"
+               + "from tpy.coro import Cancellable\n\n"
+               + "def spawn() -> Own[Cancellable[Int32]]:\n"
+               + "    return add_one(1)\n\n"
+               + "async def main_coro() -> None:\n"
+               + "    c = spawn()\n"
+               + "    print(await c)\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        fallback = _res_fallback(src)
+        assert fallback.get("res.local_storage") == 1
+
+    def test_generic_method_factory_defers(self):
+        # A generic async METHOD factory (`c.echo(5)` with echo[T]) stays
+        # out, mirroring the free-call generic-coro-factory gate.
+        src = ("import asyncio\n"
+               + "from tpy import Int32\n\n"
+               + "class Box:\n"
+               + "    def __init__(self) -> None:\n"
+               + "        pass\n"
+               + "    async def echo[T](self, x: T) -> T:\n"
+               + "        return x\n\n"
+               + "async def main_coro() -> None:\n"
+               + "    b = Box()\n"
+               + "    m = b.echo(5)\n"
+               + "    print(await m)\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        fallback = _res_fallback(src)
+        assert "res.coro_handle_write" not in fallback
+        assert sum(fallback.values()) >= 1
+
+
 class TestTryRegions:
     """R6: try/except (no finally) around a suspension. The region replay --
     catch headers, sub-future resets, handler try-wraps -- is skeleton; the

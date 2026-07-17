@@ -4114,20 +4114,27 @@ def _plain_member_call_markers_ok(e: TpyMethodCall, *,
 
 def _plain_method_fi_ok(fi, *, generator_ok: bool = False,
                         property_getter_ok: bool = False,
-                        property_setter_ok: bool = False) -> bool:
+                        property_setter_ok: bool = False,
+                        coro_factory_ok: bool = False) -> bool:
     """Shared fi rejects. A consuming method moves the receiver
     (`std::move(xs)`); `cpp_return_type` wraps the call in a static_cast;
     @error_return unwraps via a statement expression; a LiteralType param
     mangles the member name. None are reproduced. `generator_ok` admits a
     generator fi (set only by the iterable-position member-gen-call
     classifier -- the factory call spells like any plain member call).
+    `coro_factory_ok` is the async sibling (set only by the concrete-coro
+    handle-binding position): an async METHOD call is a coroutine-factory
+    call spelling like any plain member call; generic factories stay out
+    with the free-call arm's reasoning.
     `property_getter_ok`/`property_setter_ok` admit the accessor fis -- set
     only by the property read/write delegation, whose `c.prop` -> `c.prop()`
     and `c.prop = v` -> `c.set_prop(v)` render like any plain method."""
     return not (fi.is_consuming or fi.error_return_type is not None
                 or fi.native_cpp_return_type is not None
                 or any(isinstance(p.type, LiteralType) for p in fi.params)
-                or fi.is_async or (fi.is_generator and not generator_ok)
+                or (fi.is_async and not coro_factory_ok)
+                or (fi.is_async and fi.type_params)
+                or (fi.is_generator and not generator_ok)
                 or (fi.is_property_getter and not property_getter_ok)
                 or (fi.is_property_setter and not property_setter_ok))
 

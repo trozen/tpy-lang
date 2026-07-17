@@ -4041,6 +4041,7 @@ def _record_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyTy
                                  temps_ok: bool = False,
                                  record_ret_ok: bool = False,
                                  storage_ret_ok: bool = False,
+                                 coro_factory_ok: bool = False,
                                  narrowed: 'set[str] | frozenset[str]' = frozenset()) -> bool:
     """A plain user-record method call `recv.method(args)` -- the
     `_gen_method_call` user-record arm reduced to its pass-through subset. The
@@ -4186,6 +4187,16 @@ def _record_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyTy
             or (storage_ret_ok
                 and (_storage_call_ret(ret, analyzer) is not None
                      or _span_value(ret)))
+            # A coro-factory result at the handle-binding sink (`m =
+            # w.bump(5)` -> `m.emplace((*w).bump(5))`): the frame value is
+            # consumed whole by the emplace; no value slot is involved. The
+            # call expr's sema type is the ERASED protocol view
+            # (`Cancellable[T]`) -- concreteness lives on the LOCAL, which is
+            # what gates coro_factory_ok in the first place, and the fi gate
+            # already required an async fi.
+            or (coro_factory_ok and ret is not None
+                and is_dyn_protocol(unwrap_readonly(unwrap_ref_type(
+                    unwrap_send_sync(ret)))))
             or (stmt_position and (ret is None or is_void_like_type(ret)))):
         return note_detail("method.ret_type")
     return True

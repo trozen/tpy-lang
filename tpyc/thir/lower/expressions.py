@@ -2967,7 +2967,8 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                         e.obj, declared, analyzer) is None):
                 raise ThirUnsupported("expr.method_call")
             if fi is None or not _plain_method_fi_ok(
-                    fi, property_getter_ok=True, property_setter_ok=True):
+                    fi, property_getter_ok=True, property_setter_ok=True,
+                    coro_factory_ok=use.coro_factory):
                 note_detail("method.fi_kind")
                 raise ThirUnsupported("expr.method_call")
             if not _call_arity_ok(e, fi):
@@ -3025,6 +3026,7 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                         result_use in (_ExprResultUse.BORROW_BIND,
                                        _ExprResultUse.RECEIVER)),
                     storage_ret_ok=storage_ret_ok,
+                    coro_factory_ok=use.coro_factory,
                     narrowed=frozenset(lc.narrow.narrowed))
             if not shape_ok:
                 raise ThirUnsupported("expr.method_call")

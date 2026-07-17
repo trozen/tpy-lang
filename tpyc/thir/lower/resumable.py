@@ -56,9 +56,11 @@ from ...parse.nodes import (
     TpyVarDecl,
 )
 from ...typesys import (
+    ConcreteCoroType,
     IntLiteralType,
     NoneType,
     OptionalType,
+    OwnType,
     TpyType,
     TypeParamRef,
     UnionType,
@@ -337,7 +339,11 @@ def _payload_reject(payload: 'rcfg.SuspensionPayload', analyzer) -> str | None:
     if isinstance(payload, rcfg.YieldPayload):
         return "res.generator_shape"
     if payload.prebuilt_slot is not None:
-        return "res.await_prebuilt"
+        # Bound-handle await (`await c`): the skeleton polls/resets the
+        # handle's own frame slot in place -- no __sub field, no emplace, no
+        # operand render (the operand is the handle NAME, consumed only as
+        # the slot name). Nothing for the seam to lower.
+        return None
     if payload.async_with_kind is not None or payload.async_for_uid is not None:
         # Synthetic suspensions (async-with __aenter__/__aexit__, async-for
         # __anext__): the skeleton synthesizes the receiver/args from the CM /
@@ -489,11 +495,26 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     # `(*name)` frame_slot read form. Reject it (its rung needs the
     # shadow/post-loop duality mirrored).
     frame_slots: set[str] = set()
+    coro_handle_slots: set[str] = set()
     for lname, ltype in (func.generator_locals or []):
         if _res_local_ok(ltype, analyzer):
             continue  # value / str / bytes -- bare field
         lt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ltype)))
               if isinstance(ltype, TpyType) else None)
+        # An Own[dyn-protocol] local is a coroutine/adapter handle with its
+        # own AST write arms: a CONCRETE handle (`c = add_one(1)`) writes
+        # `c.emplace(<factory call>)` -- the frame_slot shape, admitted with
+        # a factory-call-only init gate in the decl arm; an ERASED handle
+        # (`unique_ptr<P>` field) writes `=` through the make_adapter wrap,
+        # a render family the seam does not mirror -- reject.
+        if (isinstance(lt, OwnType)
+                and is_dyn_protocol(unwrap_readonly(lt.wrapped))):
+            if (isinstance(unwrap_readonly(lt.wrapped), ConcreteCoroType)
+                    and lname not in pointer_aliases):
+                frame_slots.add(lname)
+                coro_handle_slots.add(lname)
+                continue
+            return _reject("res.local_storage")
         # For-loop targets bind C++ locals that shadow their same-named
         # frame field; the for-each lowering masks them out of frame_slots
         # (the register_frame_field_shadow mirror), so they classify like
@@ -678,6 +699,29 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
             # gen_expr's stale-coerce arm) -- same peel as the sync decl.
             init = _peel_stale_view_owned_coerce(
                 stmt.init, declared[stmt.name], analyzer)
+            # A concrete-coro handle slot (`c = add_one(1)`) admits ONLY a
+            # factory-call source: `_gen_concrete_coro_write`'s call arm is
+            # `c.emplace(<gen_expr(call)>)` -- byte-equal to the frame_slot
+            # write for a call render -- while its NAME-source arm is the
+            # two-statement `emplace(std::move(*src)); src.reset();` pair
+            # (and self-write a no-op), render shapes the seam does not
+            # mirror yet. coro_factory lifts only the async-callee reject;
+            # arg slots and callee kind gate like any call.
+            if stmt.name in coro_handle_slots:
+                if not isinstance(init, (TpyCall, TpyMethodCall)):
+                    raise ThirUnsupported("res.coro_handle_source")
+                value = _lower_expr(
+                    init, lc, declared,
+                    use=_ExprUse(result=_ExprResultUse.STORAGE,
+                                 coro_factory=True))
+                _witness("res.coro_handle_write")
+                # ConcreteCoroType has no self-contained C++ spelling; the
+                # brace-init prefix can never fire for a call render, so no
+                # cpp_type is needed (and rendering one would be wrong).
+                return THIRFrameSlotWrite(
+                    name=stmt.name, value=value, cpp_type=None, loc=stmt.loc,
+                    no_source_comment=getattr(stmt, "no_source_comment",
+                                              False))
             # A frame_slot's emplace arg is a storage sink (the owned payload
             # constructs in place), so admission matches the sync storage
             # decl's -- record-rvalue qualified calls included -- minus the
@@ -822,6 +866,11 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 # operand args to lower (the iterable/manager render was
                 # lowered at the setup pseudo-stmt).
                 pass
+            elif payload.prebuilt_slot is not None:
+                # Bound-handle await: poll-in-place, zero renders (the
+                # INLINE arms below would misread the NAME operand as a
+                # call).
+                _witness("res.await_prebuilt")
             elif payload.mode is not rcfg.AwaitMode.INLINE:
                 # ERASED/BORROWED: the whole operand renders as one
                 # expression; the skeleton wraps it (emplace(std::move(..)),

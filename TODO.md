@@ -94,10 +94,17 @@ See `docs/FEATURE_ROADMAP.md` for bigger tasks and `BUGS.md` for known compiler 
   async-with -- all region kinds are now transparent to the leaf seam
   (`_region_reject` returns None); the seven cells route via one
   `region_exprs` map + two-pass decl registration. Still-deferred named
-  gates: `res.narrowed_resume`, `res.match`, `res.await_prebuilt`, the
+  gates: `res.narrowed_resume`, `res.match`, the
   narrowed-optional-iterable rung (`res.for_narrowed_optional`), non-value
   loop-var element forms (`res.loop_var`), multi-item `async with`
   (a `_CFGNotYetSupported` upstream), generator-shape return-in-finally-helper.
+  Bound-coroutine awaits ROUTE (2026-07-17: `res.await_prebuilt` deleted --
+  the suspension polls the handle's slot in place, zero renders; the
+  binding is a factory-call-only emplace via the coro_factory use flag);
+  remaining handle residue is `res.coro_handle_source` (NAME-source
+  rebinds -- the two-statement `emplace(std::move(*src)); src.reset();`
+  render -- and erased `Own[dyn-protocol]` handle locals, the `=` /
+  make_adapter write family).
   **REMAINING cells (each a `res.*` reject today, re-probed 2026-07-17 --
   per-slot family drill over every marked async/iterator case):**
   `res.param_type` residue (container list/dict/set params, None-typed

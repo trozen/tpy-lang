@@ -468,7 +468,10 @@ churn in every cell.
 Explicitly DEFERRED (kept as named gates, out of this wave):
 `res.narrowed_resume` (needs narrowing-aware lowering scope);
 `res.match` (MatchDispatch reuses `gen_match` for the dispatch --
-its own seam design); `res.await_prebuilt`; non-value loop-var element
+its own seam design); `res.await_prebuilt` [ROUTED 2026-07-17: the
+suspension is poll-in-place skeleton and the binding a factory-call-only
+emplace; the residue is `res.coro_handle_source` -- see TODO.md];
+non-value loop-var element
 forms; the narrowed-optional-iterable rung; generator-shape
 return-in-finally-helper; multi-item `async with` (already a
 `_CFGNotYetSupported`, resumable_cfg.py:1490-1495).
