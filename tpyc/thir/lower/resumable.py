@@ -88,6 +88,7 @@ from .expressions import (
     _slot_literal_retype,
 )
 from .functions import _check_callable_structure, method_self_type_by_name
+from . import match as _match
 from .predicates import (
     _eligible_char,
     _eligible_enum,
@@ -621,8 +622,8 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
             if reason is not None:
                 return _reject(reason)
             saw_sync_loop = True
-        if isinstance(t, rcfg.MatchDispatch):
-            return _reject("res.match")
+        # MatchDispatch lowers in the leaf pass (the dispatch routes through
+        # the sync match tiers with arm-body hooks; rejects raise there).
         if isinstance(t, rcfg.Yield):
             payload = t.payload
             if is_generator:
@@ -729,6 +730,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     yield_values: dict[int, THIRExpr] = {}
     suspend_exprs: dict[int, THIRExpr] = {}
     region_exprs: dict[int, THIRExpr] = {}
+    match_dispatches: dict[int, THIRStmt] = {}
 
     def _lower_leaf(stmt: TpyStmt) -> THIRStmt:
         if isinstance(stmt, TpyVarDecl) and stmt.name in frame_fields:
@@ -887,6 +889,21 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
             _witness("res.return_value")
         elif isinstance(t, rcfg.RaiseT):
             leaves[id(t.raise_stmt)] = _lower_leaf(t.raise_stmt)
+        elif isinstance(t, rcfg.MatchDispatch):
+            # The whole type-aware dispatch (subject + labels + guards)
+            # lowers through the sync match tiers with arm BODIES replaced
+            # by body_key hooks -- the skeleton walks the arm BBs through
+            # its arm emitter at those points, and they lower as ordinary
+            # BB leaves in this same loop.
+            begin_stmt()
+            m_route = _match._select_match_route(
+                t.match_stmt, analyzer, declared, frozenset(lc.pointers),
+                lc.narrow.narrowed.keys(), lc.storage_tuple_locals,
+                lc.prescan, in_branch=False, in_loop=False)
+            match_dispatches[id(t.match_stmt)] = _match._lower_match(
+                t.match_stmt, m_route, lc, declared, frozenset(lc.pointers),
+                getattr(t.match_stmt, "loc", None), arm_body_hooks=True)
+            _witness("res.match_dispatch")
         elif isinstance(t, rcfg.Branch):
             try:
                 conds[id(t.cond)] = _lower_truthy(t.cond, lc, declared)
@@ -1022,7 +1039,8 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     return THIRResumableBody(
         leaves=leaves, conds=conds, await_args=await_args,
         return_values=return_values, yield_values=yield_values,
-        suspend_exprs=suspend_exprs, region_exprs=region_exprs)
+        suspend_exprs=suspend_exprs, region_exprs=region_exprs,
+        match_dispatches=match_dispatches)
 
 
 def _reject(reason: str):

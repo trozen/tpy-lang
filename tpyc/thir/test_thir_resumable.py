@@ -1461,6 +1461,143 @@ class TestOwnCancellableArgs:
         _assert_identical(src)
 
 
+class TestMatchDispatch:
+    """A suspending `match`'s dispatch routes through the THIR match tiers
+    with arm BODIES hooked back to the skeleton's BB walker -- the seam
+    replacement for gen_match + resumable_arm_emitter."""
+
+    _ENUM = ("from typing import Iterator\n"
+             + "from enum import Enum\n"
+             + "from tpy import Int32\n\n"
+             + "class Color(Enum):\n"
+             + "    RED = 1\n"
+             + "    GREEN = 2\n\n")
+
+    def test_enum_switch_dispatch_routes(self):
+        src = (self._ENUM
+               + "def emit(c: Color) -> Iterator[Int32]:\n"
+               + "    match c:\n"
+               + "        case Color.RED:\n"
+               + "            yield 1\n"
+               + "            yield 2\n"
+               + "        case Color.GREEN:\n"
+               + "            yield 3\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.match_dispatch", 0) >= 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+
+    def test_guarded_switch_dispatch_routes(self):
+        # A guarded arm on an Int32 subject: the switch_primitive tier's
+        # grouped-entries shape (guards inside the case block), awaits in
+        # arms.
+        src = ("import asyncio\n"
+               + "from tpy import Int32\n\n"
+               + "async def step(n: Int32) -> Int32:\n"
+               + "    return n + 1\n\n"
+               + "async def pick(n: Int32) -> Int32:\n"
+               + "    match n:\n"
+               + "        case 1 if n > 0:\n"
+               + "            return await step(10)\n"
+               + "        case 2:\n"
+               + "            return await step(20)\n"
+               + "        case _:\n"
+               + "            return await step(0)\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.match_dispatch", 0) >= 1
+        assert witnesses.get("match.switch_primitive", 0) >= 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+
+    def test_guarded_chain_dispatch_routes(self):
+        # A str subject below the switch threshold with a guard: the
+        # genuine if_elif_guarded tier (standalone-if + goto shape).
+        src = ("import asyncio\n"
+               + "from tpy import Int32\n\n"
+               + "async def step(n: Int32) -> Int32:\n"
+               + "    return n + 1\n\n"
+               + "async def pick(s: str, flag: bool) -> Int32:\n"
+               + "    match s:\n"
+               + "        case \"a\" if flag:\n"
+               + "            return await step(10)\n"
+               + "        case _:\n"
+               + "            return await step(0)\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("match.if_elif_guarded", 0) >= 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+
+    def test_or_pattern_labels_route(self):
+        src = (self._ENUM.replace("    GREEN = 2\n",
+                                  "    GREEN = 2\n    BLUE = 3\n")
+               + "def emit(c: Color) -> Iterator[Int32]:\n"
+               + "    match c:\n"
+               + "        case Color.RED | Color.BLUE:\n"
+               + "            yield 1\n"
+               + "            yield 2\n"
+               + "        case Color.GREEN:\n"
+               + "            yield 3\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.match_dispatch", 0) >= 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+
+    def test_str_switch_tier_defers(self):
+        # A str subject at/over the switch-dispatch threshold takes the
+        # switch_str tier -- not in the dispatch-hook slice.
+        src = ("from typing import Iterator\n"
+               + "from tpy import Int32\n\n"
+               + "def emit(s: str) -> Iterator[Int32]:\n"
+               + "    match s:\n"
+               + "        case \"a\":\n            yield 1\n"
+               + "        case \"b\":\n            yield 2\n"
+               + "        case \"c\":\n            yield 3\n"
+               + "        case \"d\":\n            yield 4\n"
+               + "        case \"e\":\n            yield 5\n"
+               + "        case _:\n            yield 0\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        fallback = _res_fallback(src)
+        assert sum(fallback.values()) >= 1
+        _assert_identical(src)
+
+    def test_union_dispatch_defers(self):
+        # A union-subject match stamps arm narrowings (entry_narrowings) --
+        # the res.narrowed_resume interlock; the body falls back whole.
+        src = ("from typing import Iterator\n"
+               + "from tpy import Int32\n\n"
+               + "class A:\n"
+               + "    def __init__(self) -> None:\n        pass\n\n"
+               + "class B:\n"
+               + "    def __init__(self) -> None:\n        pass\n\n"
+               + "def describe(x: A | B, n: Int32) -> Iterator[Int32]:\n"
+               + "    match x:\n"
+               + "        case A():\n"
+               + "            yield 1\n"
+               + "            yield 2\n"
+               + "        case B():\n"
+               + "            yield n\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        fallback = _res_fallback(src)
+        assert sum(fallback.values()) >= 1
+        _assert_identical(src)
+
+    def test_binding_arm_defers(self):
+        # `case _ as y:` binds the subject -- a frame-field write in a
+        # resumable, not gen_match's local decl; sliced out.
+        src = (self._ENUM
+               + "def emit(c: Color) -> Iterator[Int32]:\n"
+               + "    match c:\n"
+               + "        case Color.RED:\n"
+               + "            yield 1\n"
+               + "            yield 2\n"
+               + "        case _ as y:\n"
+               + "            yield 9\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        fallback = _res_fallback(src)
+        assert sum(fallback.values()) >= 1
+        _assert_identical(src)
+
+
 class TestTryRegions:
     """R6: try/except (no finally) around a suspension. The region replay --
     catch headers, sub-future resets, handler try-wraps -- is skeleton; the

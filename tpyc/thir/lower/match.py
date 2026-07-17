@@ -647,7 +647,8 @@ def _lower_match_guard(guard: TpyExpr, lc: _LowerCtx,
 
 def _lower_match(stmt: TpyMatch, route: _MatchRoute, lc: _LowerCtx,
                  declared: dict[str, TpyType], pointers: AbstractSet[str], loc, *,
-                 loop_depth: int = 0) -> THIRMatch:
+                 loop_depth: int = 0,
+                 arm_body_hooks: bool = False) -> THIRMatch:
     """Lower a scalar-tier `match` (see `THIRMatch` for the emit shapes).
     Labels/condition-RHS pre-render here. Switch tiers regroup the wildcard
     arm LAST regardless of source position (`_group_switch_arms` appends
@@ -660,6 +661,14 @@ def _lower_match(stmt: TpyMatch, route: _MatchRoute, lc: _LowerCtx,
     condition at lowering; `synthetic_default` its `default: break;` rule
     (switch tiers only -- the if/elif chain has no default)."""
     kind = route.kind
+    if arm_body_hooks and (kind not in (
+            "switch_enum", "switch_primitive", "if_elif", "if_elif_guarded")
+            or route.hoist_types):
+        # Dispatch-hook mode (a resumable MatchDispatch): only the scalar
+        # tiers' arm-body points carry the skeleton hook; union / record /
+        # optional tiers and hoisted arm decls (frame-field territory in a
+        # resumable) stay their own rungs.
+        raise ThirUnsupported("res.match_strategy")
     if kind != "switch_union":  # the union lowerers witness their route
         _witness(f"match.{kind}")
     predeclared = set(declared)
@@ -698,7 +707,7 @@ def _lower_match(stmt: TpyMatch, route: _MatchRoute, lc: _LowerCtx,
     arms, default_goto, has_defaults = _lower_scalar_arms(
         stmt.cases, kind, lc, declared, pointers, subj_type,
         allow_facts=False, chain_guards_ok=True, bind_from_case_var=False,
-        loop_depth=loop_depth)
+        loop_depth=loop_depth, arm_body_hooks=arm_body_hooks)
     is_chain = kind in ("if_elif", "if_elif_guarded")
     synthetic_default = (not is_chain and not has_defaults
                          and not stmt.is_exhaustive)
@@ -726,6 +735,7 @@ def _lower_scalar_arms(
         pointers: AbstractSet[str], bind_type: 'TpyType | None', *,
         allow_facts: bool, chain_guards_ok: bool, bind_from_case_var: bool,
         loop_depth: int = 0,
+        arm_body_hooks: bool = False,
         ) -> 'tuple[list[THIRMatchArm], bool, bool]':
     """The scalar-tier arm walk shared by the top-level switch/chain tiers
     and the O2 optional inner dispatch: label rendering (or-patterns as
@@ -800,10 +810,21 @@ def _lower_scalar_arms(
         if case.guard is not None:
             _witness("match.guard_arm")
             guard = _lower_match_guard(case.guard, lc, arm_declared)
-        entry = THIRMatchArmEntry(
-            body=_statements._lower_scoped_stmts(
-                case.body, lc, arm_declared, loop_depth=loop_depth),
-            loc=case.loc, binding=binding, guard=guard)
+        if arm_body_hooks:
+            # Dispatch-hook mode: the arm body is a BB chain the skeleton
+            # walks (already seam-routed leaves); a whole-subject binding
+            # would be a frame-field write, not gen_match's local decl --
+            # its rung needs that duality mirrored.
+            if binding is not None:
+                raise ThirUnsupported("res.match_binding")
+            entry = THIRMatchArmEntry(
+                body=(), loc=case.loc, binding=None, guard=guard,
+                body_key=id(case.body))
+        else:
+            entry = THIRMatchArmEntry(
+                body=_statements._lower_scoped_stmts(
+                    case.body, lc, arm_declared, loop_depth=loop_depth),
+                loc=case.loc, binding=binding, guard=guard)
         if is_chain:
             # Source order, one entry per group (the always-match arm is
             # the plain chain's final `} else {` / a guarded standalone

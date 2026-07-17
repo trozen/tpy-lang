@@ -843,6 +843,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "res.frame_slot_write",         # frame_slot local `.emplace()` write (R1c)
     "res.coro_handle_write",        # concrete-coro handle factory-call bind
     "res.await_prebuilt",           # bound-handle await routed (poll-in-place)
+    "res.match_dispatch",           # MatchDispatch routed through the tiers
     "res.suspend_expr",             # ERASED/BORROWED operand + bound receiver (R5)
     "res.suspend_operand",          # ERASED/BORROWED whole-operand render
     "res.try_region",               # body routed with a try/except region (R6)

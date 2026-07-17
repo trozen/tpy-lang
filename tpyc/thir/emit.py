@@ -311,6 +311,10 @@ class _EmitState:
     # deref=True (a frame-stored non-value local) renders bare exactly while
     # its shadow is in scope. None outside resumable leaves.
     frame_shadow_probe: 'Callable[[str], bool] | None' = None
+    # Resumable MatchDispatch mode: the skeleton's arm emitter, keyed by a
+    # case's body id -- called at each scalar-tier arm-body point instead
+    # of emitting the (empty) lowered body. None for sync matches.
+    match_arm_hook: 'Callable[[int, int], None] | None' = None
     iter_counter: int = 0
     slot_counter: int = 0
     unpack_counter: int = 0
@@ -2049,6 +2053,18 @@ def _emit_try(out: TextIO, stmt: THIRTry, indent_level: int,
     out.write(f"{indent}}}\n")
 
 
+
+def _emit_match_arm_body(out: 'TextIO', entry, lvl: int,
+                         state: '_EmitState') -> None:
+    """One scalar-tier arm-body point. In resumable dispatch-hook mode the
+    body is a BB chain the skeleton walks -- call its arm hook with the
+    case's body key; sync matches emit the lowered body."""
+    if state.match_arm_hook is not None and entry.body_key is not None:
+        state.match_arm_hook(entry.body_key, lvl)
+        return
+    _emit_stmts(out, entry.body, lvl, state)
+
+
 def _emit_match(out: TextIO, stmt: THIRMatch, indent_level: int,
                 state: _EmitState) -> None:
     # Mirrors _gen_match_dispatch's scalar tiers (see THIRMatch): the hoisted
@@ -2144,7 +2160,7 @@ def _emit_match_switch(out: TextIO, stmt: THIRMatch, indent_level: int,
         if len(arm.entries) == 1 and arm.entries[0].guard is None:
             entry = arm.entries[0]
             _emit_match_binding(out, entry.binding, subject, inner)
-            _emit_stmts(out, entry.body, indent_level + 1, state)
+            _emit_match_arm_body(out, entry, indent_level + 1, state)
         else:
             emitted: set[str] = set()
             for entry in arm.entries:
@@ -2161,7 +2177,7 @@ def _emit_match_switch(out: TextIO, stmt: THIRMatch, indent_level: int,
                               f"({_emit_expr(entry.guard, state)}) {{\n")
                 else:
                     out.write(f"{inner}}} else {{\n")
-                _emit_stmts(out, entry.body, indent_level + 2, state)
+                _emit_match_arm_body(out, entry, indent_level + 2, state)
             out.write(f"{inner}}}\n")
             if (not has_unguarded and default_label is not None
                     and arm.labels):
@@ -2531,7 +2547,7 @@ def _emit_match_if_elif(out: TextIO, stmt: THIRMatch, indent_level: int,
             keyword = "if" if i == 0 else "} else if"
             out.write(f"{indent}{keyword} ({cond}) {{\n")
         _emit_match_binding(out, entry.binding, subject, inner)
-        _emit_stmts(out, entry.body, indent_level + 1, state)
+        _emit_match_arm_body(out, entry, indent_level + 1, state)
     out.write(f"{indent}}}\n")
 
 
@@ -2561,11 +2577,11 @@ def _emit_match_if_elif_guarded(out: TextIO, stmt: THIRMatch,
         _emit_match_binding(out, entry.binding, subject, inner)
         if entry.guard is not None:
             out.write(f"{inner}if ({_emit_expr(entry.guard, state)}) {{\n")
-            _emit_stmts(out, entry.body, indent_level + 2, state)
+            _emit_match_arm_body(out, entry, indent_level + 2, state)
             out.write(f"{INDENT * (indent_level + 2)}goto {end_label};\n")
             out.write(f"{inner}}}\n")
         else:
-            _emit_stmts(out, entry.body, indent_level + 1, state)
+            _emit_match_arm_body(out, entry, indent_level + 1, state)
             out.write(f"{inner}goto {end_label};\n")
         out.write(f"{indent}}}\n")
     out.write(f"{indent}{end_label}:;\n")
@@ -3314,6 +3330,26 @@ class ResumableLeafEmitter:
         static_cast scaffolding (same flush contract as `render_cond`)."""
         return _emit_expr(self._lookup(self._body.region_exprs, expr,
                                        "region expr"), self._state)
+
+    def emit_match_dispatch(self, out: TextIO, match_stmt,
+                            indent_level: int,
+                            arm_hook: 'Callable[[int, int], None]') -> None:
+        """Emit a MatchDispatch's whole type-aware dispatch (subject +
+        labels + guards) through THIR's match tiers -- the seam replacement
+        for the skeleton's `gen_match` call. `arm_hook` is the skeleton's
+        arm emitter keyed by id(case.body); it fires at each arm-body point
+        (the same contract gen_match honors via resumable_arm_emitter), so
+        arm bodies stay BB chains in the state machine."""
+        node = self._lookup(self._body.match_dispatches, match_stmt,
+                            "match dispatch")
+        prev = self._state.match_arm_hook
+        self._state.match_arm_hook = arm_hook
+        try:
+            # Direct tier emit: the skeleton calls gen_match without a
+            # gen_stmt wrapper, so no leading statement comment here either.
+            _emit_match(out, node, indent_level, self._state)
+        finally:
+            self._state.match_arm_hook = prev
 
 
 class SimpleGenLeafEmitter:

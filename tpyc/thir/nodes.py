@@ -2024,6 +2024,11 @@ class THIRMatchArmEntry:
     loc: 'SourceLocation | None' = None
     binding: 'THIRMatchBinding | None' = None
     guard: 'THIRExpr | None' = None
+    # Resumable MatchDispatch mode: the arm BODY lives in the state machine
+    # (an ordinary BB chain the skeleton walks), so `body` stays empty and
+    # the emit calls the skeleton's arm hook with this id(case.body) key at
+    # the body point instead. None for sync matches.
+    body_key: 'int | None' = None
     # Union tier: the arm's numeric variant index (`_variant_index` over
     # the wrapper's full member ordering, computed at lowering) and the
     # `__case_{i}` extraction alias -- emitted as
@@ -2395,6 +2400,11 @@ class THIRResumableBody:
     # One map for all three kinds -- the skeleton keeps its emplace / &(..) /
     # static_cast wrap, the leaf renders the bare expression.
     region_exprs: 'Mapping[int, THIRExpr]' = field(default_factory=dict)
+    # MatchDispatch dispatches (keyed by id() of the TpyMatch): the whole
+    # type-aware dispatch (subject + labels + guards) lowered through the
+    # sync match tiers with arm BODIES replaced by body_key hooks -- the
+    # skeleton walks the arm BBs through its arm emitter at those points.
+    match_dispatches: 'Mapping[int, THIRStmt]' = field(default_factory=dict)
 
 
 @dataclass(frozen=True)

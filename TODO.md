@@ -100,10 +100,20 @@ See `docs/FEATURE_ROADMAP.md` for bigger tasks and `BUGS.md` for known compiler 
   async-with -- all region kinds are now transparent to the leaf seam
   (`_region_reject` returns None); the seven cells route via one
   `region_exprs` map + two-pass decl registration. Still-deferred named
-  gates: `res.narrowed_resume`, `res.match`, the
+  gates: `res.narrowed_resume`, the
   narrowed-optional-iterable rung (`res.for_narrowed_optional`), non-value
   loop-var element forms (`res.loop_var`), multi-item `async with`
   (a `_CFGNotYetSupported` upstream), generator-shape return-in-finally-helper.
+  MatchDispatch ROUTES (2026-07-17): the whole dispatch lowers through the
+  sync match tiers with arm BODIES hooked back to the skeleton's BB walker
+  (`emit_match_dispatch` + the `match_arm_hook`/`body_key` contract, the
+  seam replacement for gen_match + resumable_arm_emitter). Scalar tiers
+  only (switch_enum/switch_primitive/if_elif/if_elif_guarded); residue as
+  named rejects: union/record/optional/str tiers + hoisted arm decls
+  (`res.match_strategy` -- union matches also sit behind
+  `res.narrowed_resume`, the arm-narrowing interlock), whole-subject
+  bindings (`res.match_binding` -- a frame-field write, not gen_match's
+  local decl).
   Bound-coroutine awaits ROUTE (2026-07-17: `res.await_prebuilt` deleted --
   the suspension polls the handle's slot in place, zero renders; the
   binding is a factory-call-only emplace via the coro_factory use flag);

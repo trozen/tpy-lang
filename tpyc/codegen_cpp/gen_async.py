@@ -3489,18 +3489,41 @@ class AsyncCoroCodegen:
             # re-establish the narrowing via the generic _emit_case_body path.
             self._walk_inline(out, cfg, arm_bb, case_entries, func,
                               chain_entry=cfg.blocks[arm_bb].entry_narrowings)
-        old_emitter = self.ctx.resumable_arm_emitter
-        old_map = self.ctx.resumable_arm_bb_by_body
-        self.ctx.resumable_arm_emitter = emit_arm
-        self.ctx.resumable_arm_bb_by_body = {
-            id(case.body): arm_bb
-            for case, arm_bb in zip(t.match_stmt.cases, t.arm_bbs)
-        }
-        try:
-            self.statements.match.gen_match(out, t.match_stmt, body_indent)
-        finally:
-            self.ctx.resumable_arm_emitter = old_emitter
-            self.ctx.resumable_arm_bb_by_body = old_map
+        leaf = self.ctx.thir_resumable_leaf
+        if leaf is not None:
+            # Routed body: the whole dispatch emits through the THIR match
+            # tiers; the hook walks each arm's BB chain in place (the same
+            # contract gen_match honors via resumable_arm_emitter).
+            arm_bb_by_body = {
+                id(case.body): arm_bb
+                for case, arm_bb in zip(t.match_stmt.cases, t.arm_bbs)
+            }
+
+            def arm_hook(body_key: int, lvl: int) -> None:
+                # The tier hands the arm-body depth; the walker's renders
+                # key off ctx.indent_level, so scope it to the arm.
+                old_level = self.ctx.indent_level
+                self.ctx.indent_level = lvl
+                try:
+                    emit_arm(arm_bb_by_body[body_key])
+                finally:
+                    self.ctx.indent_level = old_level
+            leaf.emit_match_dispatch(out, t.match_stmt,
+                                     self.ctx.indent_level, arm_hook)
+        else:
+            old_emitter = self.ctx.resumable_arm_emitter
+            old_map = self.ctx.resumable_arm_bb_by_body
+            self.ctx.resumable_arm_emitter = emit_arm
+            self.ctx.resumable_arm_bb_by_body = {
+                id(case.body): arm_bb
+                for case, arm_bb in zip(t.match_stmt.cases, t.arm_bbs)
+            }
+            try:
+                self.statements.match.gen_match(out, t.match_stmt,
+                                                body_indent)
+            finally:
+                self.ctx.resumable_arm_emitter = old_emitter
+                self.ctx.resumable_arm_bb_by_body = old_map
         # The dispatch case MUST end in a terminating statement: a switch
         # whose cases all return/continue still "may fall through" to the
         # GCC eye (no default), so without this the next state's `case`
