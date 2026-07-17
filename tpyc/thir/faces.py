@@ -841,6 +841,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "res.branch_cond",              # Branch terminator condition render
     "res.await_args",               # sub-coro emplace argument renders
     "res.return_value",             # ReturnT value render for _make_async_return
+    "res.nested_return",            # return in a leaf compound (skeleton hook)
+    "res.postif_narrow",            # early-return narrowing leaf if (post-if alias)
     "res.yield_value",              # generator yield-value render
     "res.frame_slot_write",         # frame_slot local `.emplace()` write (R1c)
     "res.coro_handle_write",        # concrete-coro handle factory-call bind

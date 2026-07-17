@@ -210,6 +210,16 @@ wraps, state transitions). The ONLY places it renders user source are:
     `_wrap_view_to_storage` / `_async_ret_to_borrow` wraps are no-ops for
     scalars), but the load-bearing comment at statements.py:3886-3894 pins
     this and must be updated by the cell that lifts the gates.
+    [ROUTED 2026-07-17 for LEAF-NESTED returns (`res.leaf_return`): a
+    return inside a non-suspending leaf compound lowers to
+    THIRResumableReturn, whose emit calls back into `_make_async_return`
+    / `_make_generator_resumable_return` via
+    `_EmitState.resumable_return_hook` -- scaffolding stays skeleton in
+    every position, the value rides the same `return_values` table as
+    ReturnT terminators. Returns inside FINALLY HELPERS stay a named
+    reject (`res.finally_return`, the Poll-replay / __finally_stop
+    renders); an early-return narrowing leaf `if` composes via the
+    BB-local post-if arm (`_apply_leaf_post_if`, THIRStmtSeq).]
 
 (g) Resume-narrowing re-establishment (`_emit_resume_narrowings`,
     gen_async.py:3321-3347 -> `statements._emit_isinstance_extractions`):
@@ -256,10 +266,12 @@ Oracle evidence that (a)-(c) are the whole render surface:
 - `AsyncForAdvance.stmt.var` (the sync loop var) must register in
   `declared` with `stmt.elem_type` before body leaves lower.
 - Leaf statements inside regions are ordinary leaves; the leaf-mode
-  rejects in `_lower_stmt_dispatch` (tpyc/thir/lower/statements.py:
-  2012-2026: `res.leaf_return`, `res.leaf_try`, `res.leaf_with`,
-  `res.leaf_match`, `res.unpack`, `res.nested_def`,
-  in-branch `res.leaf_field_write`) continue to bound the slice.
+  rejects in `_lower_stmt_dispatch` (tpyc/thir/lower/statements.py,
+  the `lc.resumable_leaf_mode` block: `res.leaf_try`, `res.leaf_with`,
+  `res.leaf_match`, `res.unpack`, `res.nested_def`, in-branch
+  `res.leaf_field_write`, `res.finally_return`) continue to bound the
+  slice. (`res.leaf_return` ROUTED 2026-07-17 -- see 2.4 (f); the reason
+  survives only as the unreachable await-valued-leaf-return guard.)
 
 ### 2.6 A real design problem: declaration registration vs BB-id order
 
@@ -441,8 +453,8 @@ churn in every cell.
   reject helper bodies containing `return` in GENERATOR shape initially
   (the `__finally_stop` lowering, gen_async.py:1656-1667, is its own
   render nuance); async-shape returns inside finally helpers keep
-  rejecting via the existing leaf-mode `res.leaf_return`
-  (statements.py:2013-2014) -- unchanged.
+  rejecting -- since the leaf-return cell routed `res.leaf_return`,
+  helper returns carry their own named reject (`res.finally_return`).
 
 - Cell 4 (R3-sync-loops): admit sync `AsyncForIterSetup` +
   `AsyncForAdvance`: hooks in `_emit_async_for_iter_setup`,

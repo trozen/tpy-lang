@@ -324,7 +324,8 @@ class _LowerCtx:
                  "value_opt_locals", "value_opt_view_locals", "movable_locals",
                  "self_receiver", "self_cpp", "self_is_pointer",
                  "record_name", "storage_tuple_locals", "frame_slots",
-                 "resumable_leaf_mode", "unhandled_hoists", "narrow",
+                 "resumable_leaf_mode", "nested_returns", "in_finally_helper",
+                 "unhandled_hoists", "narrow",
                  "inline_narrowed", "forbidden_reads", "forbidden_writes",
                  "nested_def_locals", "error_return_cpp")
 
@@ -426,6 +427,14 @@ class _LowerCtx:
         # Their nested frame writes and async-return shapes reject at the
         # statement arm rather than through a predictive leaf-tree scan.
         self.resumable_leaf_mode = False
+        # Returns nested in leaf compounds (THIRResumableReturn), collected
+        # here so `lower_resumable` can register their values into the body's
+        # `return_values` table (the seam's id(ast)-keyed lookup).
+        self.nested_returns: list = []
+        # True while lowering a helper-based finally body: a `return` there
+        # needs the helper's Poll-replay / __finally_stop renders, a named
+        # rung -- reject instead of routing through the leaf-return hook.
+        self.in_finally_helper = False
         self.unhandled_hoists = set(
             analyzer.function_hoisted_vars.get(id(func), ()))
         # F3 storage-tuple alias locals (`auto&& t = <storage tuple field>`): a read

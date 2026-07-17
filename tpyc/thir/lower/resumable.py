@@ -44,8 +44,10 @@ from ..nodes import (
     THIRName,
     THIRResumableBody,
     THIRStmt,
+    THIRStmtSeq,
 )
 from ...parse.nodes import (
+    TpyAssert,
     TpyAssign,
     TpyAugAssign,
     TpyAwait,
@@ -54,6 +56,7 @@ from ...parse.nodes import (
     TpyExpr,
     TpyForEach,
     TpyFunction,
+    TpyIf,
     TpyMethodCall,
     TpyName,
     TpyReturn,
@@ -85,7 +88,12 @@ from ...typesys import (
 from ...type_def_registry import is_dict, is_list, is_set
 from ...codegen_cpp import resumable_cfg as rcfg
 from ...codegen_cpp.forms import is_plain_nonvalue
-from .checks import _ctor_shape_ok, _narrow_cond_info, _record_rvalue_source_shape
+from .checks import (
+    _assert_narrow_info,
+    _ctor_shape_ok,
+    _narrow_cond_info,
+    _record_rvalue_source_shape,
+)
 from .context import _ExprResultUse, _ExprUse, _LowerCtx
 from .expressions import (
     _lower_borrow_tuple_literal,
@@ -98,6 +106,7 @@ from .expressions import (
 from .functions import _check_callable_structure, method_self_type_by_name
 from . import match as _match
 from .predicates import (
+    _chain_post_if_fact,
     _eligible_char,
     _eligible_enum,
     _eligible_scalar,
@@ -105,6 +114,7 @@ from .predicates import (
     _f1_tuple,
     _optional_ptr_borrow,
     _peel_stale_view_owned_coerce,
+    _reassert_bump_info,
     _resolved_bytes_value,
     _resolved_str_value,
     _value_tuple,
@@ -113,9 +123,11 @@ from .predicates import (
 from .statements import (
     _handler_binding_type,
     _lower_narrow_cond,
+    _lower_resumable_return_value,
     _lower_stmt,
+    _make_narrow_alias,
+    _persistent_alias_name,
     _var_decl_type,
-    _wrap_view_owned_return,
 )
 
 
@@ -1008,6 +1020,57 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
 
     narrow_envs = (_resume_narrow_envs(cfg, case_entry_ids)
                    if case_entry_ids is not None else {})
+    # The driver's per-BB restore record, live while its _lower_bb runs;
+    # _apply_leaf_post_if records the declared-types it overrides into it.
+    postif_saved: 'list[dict[str, TpyType | None] | None]' = [None]
+
+    def _flat_narrowing_assert(stmt: TpyStmt) -> bool:
+        """A top-level narrowing (or re-assert bump) `assert isinstance`:
+        the AST's `_gen_assert` emits a persistent extraction inline, which
+        only `_lower_stmts`' post-assert arm mirrors -- compound BODIES get
+        it, but the flat BB and finally-helper walks lower per-statement and
+        would silently miss the alias. Reject in both walks."""
+        if not isinstance(stmt, TpyAssert):
+            return False
+        return (_assert_narrow_info(stmt, declared, analyzer) is not None
+                or _reassert_bump_info(
+                    stmt, declared, lc.narrow.persistent_narrowed,
+                    analyzer) is not None)
+
+    def _apply_leaf_post_if(stmt: TpyIf, leaf: THIRStmt,
+                            bb: 'rcfg.BB') -> THIRStmt:
+        """Mirror `_lower_stmts`' early-return narrowing arm for a leaf `if`
+        (the AST's `_gen_if` emits the persistent extraction inline after
+        the close brace and extends the live narrow scope). The scope must
+        stay BB-LOCAL: the env walk (`_resume_narrow_envs`) doesn't model
+        mid-BB facts, so only a BB whose control leaves the frame (ReturnT /
+        RaiseT terminator) admits one -- anything else falls back whole."""
+        pf = _chain_post_if_fact(stmt, declared, lc.narrow.narrowed, analyzer)
+        if pf is None:
+            return leaf
+        if not isinstance(bb.terminator, (rcfg.ReturnT, rcfg.RaiseT)):
+            raise ThirUnsupported("res.narrowed_resume")
+        var, u, post = pf
+        if f"__{var}" in frame_fields or var == "self":
+            # Mirror _entry_narrowings_reject: the AST bumps a frame-field-
+            # colliding alias (_fresh_alias_local's rename arm) -- reject
+            # rather than mirror the rename.
+            raise ThirUnsupported("res.narrowed_resume")
+        saved = postif_saved[0]
+        assert saved is not None
+        lc.narrow = lc.narrow.snapshot()
+        alias = _persistent_alias_name(var, lc)
+        node = _make_narrow_alias(alias, var, post, u, lc,
+                                  getattr(stmt, "loc", None))
+        lc.narrow.persistent_aliases.add(alias)
+        lc.narrow.narrowed[var] = alias
+        lc.narrow.subject_union[var] = u
+        lc.narrow.persistent_narrowed.add(var)
+        if var not in saved:
+            saved[var] = declared.get(var)
+        declared[var] = post
+        _witness("res.postif_narrow")
+        return THIRStmtSeq(stmts=(leaf, node))
 
     def _lower_bb(bb: 'rcfg.BB') -> None:
         for stmt in bb.stmts:
@@ -1040,7 +1103,12 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
             if isinstance(stmt, rcfg.AsyncFinallyExit):
                 # Pure skeleton (pending-return replay + exc rethrow); no leaf.
                 continue
-            leaves[id(stmt)] = _lower_leaf(stmt)
+            if _flat_narrowing_assert(stmt):
+                raise ThirUnsupported("res.narrowed_resume")
+            leaf = _lower_leaf(stmt)
+            if isinstance(stmt, TpyIf):
+                leaf = _apply_leaf_post_if(stmt, leaf, bb)
+            leaves[id(stmt)] = leaf
         t = bb.terminator
         if isinstance(t, rcfg.ReturnT):
             ret = t.return_stmt
@@ -1052,21 +1120,11 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 # on the resume BB is never consumed by the emitter.
                 return
             begin_stmt()
-            if (lc.prescan.ret_char
-                    and isinstance(ret.value, TpyStrLiteral)):
-                raise ThirUnsupported(stmt_reject_reason(ret))
-            # POSITION-BLIND value render: `_make_async_return` binds the
-            # value to a `<ret_cpp> __tpy_async_ret = <value>;` local (whose
-            # decl type supplies the conversion) and only then wraps it in
-            # Poll::ready -- so a literal at a wider slot stays bare `42`,
-            # NOT the sync-return arm's target-typed `::tpy::BigInt(42)`.
-            # Lower the value directly (== the AST's `gen_expr_deref`),
-            # bypassing _lower_stmt's return-coercion arm. The one exception
-            # is the owned str/bytes slot's view->owned copy, shared with the
-            # sync return tail (`_wrap_view_owned_return`).
-            return_values[id(ret)] = _wrap_view_owned_return(
-                _lower_expr(ret.value, lc, declared), lc,
-                getattr(ret, "loc", None))
+            # Value render shared with nested leaf returns (see
+            # `_lower_resumable_return_value` for the position-blind
+            # contract).
+            return_values[id(ret)] = _lower_resumable_return_value(
+                ret, lc, declared)
             _witness("res.return_value")
         elif isinstance(t, rcfg.RaiseT):
             leaves[id(t.raise_stmt)] = _lower_leaf(t.raise_stmt)
@@ -1209,27 +1267,31 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
         for v, f in bb.entry_narrowings.items():
             if v not in env or env[v][0] is not f:
                 raise ThirUnsupported("res.narrowed_resume")
-        if not env:
-            _lower_bb(bb)
-            continue
-        if _rebinds_narrowed(bb.stmts, frozenset(env)):
-            raise ThirUnsupported("res.narrowed_resume")
-        # Narrowed-BB scope: this BB's leaves lower with narrowed reads
-        # renamed to the extraction alias live at its emit position and
-        # retyped to the fact (the env fact, not the stamped one -- an
-        # inline chain keeps the alias live past a fact pop, e.g. the
-        # early-return join). The extraction local itself is skeleton
-        # emission, never a leaf.
         saved_narrow = lc.narrow
-        lc.narrow = lc.narrow.snapshot()
-        saved_decl = {v: declared.get(v) for v in env}
-        for var, (fact, alias) in env.items():
-            lc.narrow.narrowed[var] = alias
-            declared[var] = fact
-        _witness("res.narrow_scope")
+        saved_decl: 'dict[str, TpyType | None]' = {}
+        if env:
+            if _rebinds_narrowed(bb.stmts, frozenset(env)):
+                raise ThirUnsupported("res.narrowed_resume")
+            # Narrowed-BB scope: this BB's leaves lower with narrowed reads
+            # renamed to the extraction alias live at its emit position and
+            # retyped to the fact (the env fact, not the stamped one -- an
+            # inline chain keeps the alias live past a fact pop, e.g. the
+            # early-return join). The extraction local itself is skeleton
+            # emission, never a leaf.
+            lc.narrow = lc.narrow.snapshot()
+            for var, (fact, alias) in env.items():
+                saved_decl[var] = declared.get(var)
+                lc.narrow.narrowed[var] = alias
+                declared[var] = fact
+            _witness("res.narrow_scope")
+        # A mid-BB post-if narrowing (`_apply_leaf_post_if`) records its
+        # scope mutations into the same saved_decl; both restore here at
+        # the BB boundary (its scope is BB-local by construction).
+        postif_saved[0] = saved_decl
         try:
             _lower_bb(bb)
         finally:
+            postif_saved[0] = None
             lc.narrow = saved_narrow
             for v, t0 in saved_decl.items():
                 if t0 is None:
@@ -1241,12 +1303,31 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     # try); lower their statements into the SAME leaves table, keyed by
     # id(stmt). `gen_coro_finally_top_def` emits them through the leaf seam.
     # A `return` inside a helper (async: Poll replay; generator: the
-    # __finally_stop path) rejects via leaf-mode res.leaf_return, keeping the
-    # value-render nuance out of the slice.
-    for _helper_name, body_stmts in cfg.finally_helpers:
-        for stmt in body_stmts:
-            leaves[id(stmt)] = _lower_leaf(stmt)
-        _witness("res.finally_helper")
+    # __finally_stop path) rejects via res.finally_return, keeping the
+    # helper's render nuance out of the leaf-return hook.
+    lc.in_finally_helper = True
+    try:
+        for _helper_name, body_stmts in cfg.finally_helpers:
+            for stmt in body_stmts:
+                if (isinstance(stmt, TpyIf) and _chain_post_if_fact(
+                        stmt, declared, lc.narrow.narrowed,
+                        analyzer) is not None):
+                    # The AST emits the post-if extraction inside the helper
+                    # too; the helper walk has no post-if arm -- fall back.
+                    raise ThirUnsupported("res.narrowed_resume")
+                if _flat_narrowing_assert(stmt):
+                    raise ThirUnsupported("res.narrowed_resume")
+                leaves[id(stmt)] = _lower_leaf(stmt)
+            _witness("res.finally_helper")
+    finally:
+        lc.in_finally_helper = False
+
+    # Nested leaf returns (THIRResumableReturn): register their values so
+    # the skeleton's `_make_async_return` value render (`render_return_value`,
+    # keyed by id(ast)) finds them exactly like ReturnT terminator values.
+    for nr in lc.nested_returns:
+        if nr.value is not None:
+            return_values[id(nr.ast_stmt)] = nr.value
 
     if saw_try_region:
         _witness("res.try_region")

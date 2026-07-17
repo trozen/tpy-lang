@@ -265,9 +265,10 @@ class TestGeneratorShape:
         assert witnesses.get("res.yield_value") == 2
         assert not any(k.startswith("resumable:") for k in fallback)
 
-    def test_generator_leaf_return_defers(self):
-        # A bare `return` nested in a leaf compound rejects (res.leaf_return),
-        # same as an async body -- leaf-nested returns are deferred.
+    def test_generator_leaf_return_routes(self):
+        # A bare `return` nested in a leaf compound routes: scaffolding
+        # (done state + StopIteration) stays skeleton via the return hook
+        # (_make_generator_resumable_return), THIR marks the position.
         src = (_ITER
                + "def gen(n: Int32) -> Iterator[Int32]:\n"
                + "    i = 0\n"
@@ -278,8 +279,9 @@ class TestGeneratorShape:
                + "        i = i + 1\n\n"
                + "def main() -> None:\n"
                + "    for x in gen(5):\n        print(x)\nmain()\n")
-        _, fallback = _assert_identical(src)
-        assert fallback.get("resumable:res.leaf_return") == 1
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.nested_return") == 1
+        assert not any(k.startswith("resumable:") for k in fallback)
 
     def test_simple_generator_stays_peephole(self):
         # A single-yield-in-a-loop generator uses the lambda peephole, not
@@ -798,9 +800,11 @@ class TestSlicedOutShapes:
         _, fallback = _assert_identical(src)
         assert fallback.get("resumable:res.leaf_field_write") == 1
 
-    def test_leaf_return_rejects(self):
-        # A return nested in a suspension-free leaf compound would need the
-        # async-return scaffolding inside THIR emit -- sliced out.
+    def test_leaf_return_routes(self):
+        # A return nested in a suspension-free leaf compound routes: the
+        # async-return scaffolding (done state, __tpy_async_ret bind, Poll
+        # wrap) stays skeleton via the return hook (_make_async_return),
+        # whose value render re-enters the seam's return_values table.
         src = (_PRE
                + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
                + "async def f(n: Int32) -> Int32:\n"
@@ -808,7 +812,9 @@ class TestSlicedOutShapes:
                + "    if n > 2:\n        return 99\n"
                + "    return n\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        assert _res_fallback(src).get("res.leaf_return") == 1
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.nested_return") == 1
+        assert not any(k.startswith("resumable:") for k in fallback)
 
     def test_return_await_bound_method_routes(self):
         # `return await g.hi()` -- a RETURN-kind bound-method await of a
@@ -1615,6 +1621,91 @@ class TestNarrowedResume:
               + "async def step(n: Int32) -> Int32:\n"
               + "    return n + 1\n\n")
 
+    def test_postif_leaf_return_routes(self):
+        # An early-return narrowing LEAF if (no suspension inside): the
+        # post-if extraction (`auto& __a = ...`) emits as part of the leaf
+        # (THIRStmtSeq) and the ReturnT value renders under the alias --
+        # mirroring _lower_stmts' post-if arm, BB-locally.
+        src = (self._UNION
+               + "async def describe(a: Dog | Cat) -> str:\n"
+               + "    await step(0)\n"
+               + "    if isinstance(a, Dog):\n"
+               + "        return \"dog\"\n"
+               + "    return a.sound()\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.postif_narrow") == 1
+        assert witnesses.get("res.nested_return") == 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "__a.sound()" in cpp
+
+    def test_postif_raise_terminated_routes(self):
+        # A RaiseT-terminated BB also admits the post-if arm: the
+        # fall-through print renders under the alias, the raise stays the
+        # terminator leaf.
+        src = (self._UNION
+               + "async def bark(a: Dog | Cat) -> str:\n"
+               + "    await step(0)\n"
+               + "    if isinstance(a, Dog):\n"
+               + "        return a.sound()\n"
+               + "    print(a.sound())\n"
+               + "    raise ValueError(\"cat\")\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.postif_narrow") == 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "__a.sound()" in cpp
+
+    def test_postif_generator_return_routes(self):
+        # The generator flavor of the post-if + nested-return composition:
+        # the bare return inside the leaf if takes the StopIteration hook,
+        # the fall-through read renders under the alias.
+        src = (self._UNION
+               + "def voices(a: Dog | Cat) -> Iterator[str]:\n"
+               + "    yield \"start\"\n"
+               + "    yield \"mid\"\n"
+               + "    if isinstance(a, Dog):\n"
+               + "        return\n"
+               + "    print(a.sound())\n"
+               + "    return\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.postif_narrow") == 1
+        assert witnesses.get("res.nested_return") == 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "__a.sound()" in cpp
+
+    def test_narrowing_assert_leaf_defers(self):
+        # A top-level narrowing assert in the flat BB walk: the AST's
+        # _gen_assert emits the persistent extraction inline; only
+        # _lower_stmts' post-assert arm mirrors that (compound bodies), so
+        # the flat walk rejects rather than silently dropping the alias.
+        src = (self._UNION
+               + "async def f(a: Dog | Cat) -> str:\n"
+               + "    await step(0)\n"
+               + "    assert isinstance(a, Dog)\n"
+               + "    return a.sound()\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        assert _res_fallback(src).get("res.narrowed_resume") == 1
+        _assert_identical(src)
+
+    def test_postif_crossing_suspension_defers(self):
+        # The post-if scope is BB-LOCAL: a suspension after the narrowing
+        # if would carry the fact across BBs (the env walk doesn't model
+        # mid-BB facts) -- the body falls back whole.
+        src = (self._UNION
+               + "async def describe(a: Dog | Cat) -> str:\n"
+               + "    if isinstance(a, Dog):\n"
+               + "        return \"dog\"\n"
+               + "    await step(0)\n"
+               + "    return a.sound()\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        assert _res_fallback(src).get("res.narrowed_resume") == 1
+        _assert_identical(src)
+
     def test_if_narrow_across_suspend_routes(self):
         # Suspension inside the narrowed then-arm: the resume case
         # re-establishes `__a`; the else-arm reads its own `__a` (Cat).
@@ -2035,15 +2126,41 @@ class TestFinallyHelper:
 
     def test_return_in_helper_finally_rejects(self):
         # A `return` inside the finally helper needs the async Poll replay /
-        # generator __finally_stop render -- rejects via leaf-mode
-        # res.leaf_return, keeping the whole body on AST.
+        # generator __finally_stop render -- rejects via res.finally_return
+        # (a named rung outside the leaf-return hook), keeping the whole
+        # body on AST.
         src = (_PRE
                + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
                + "async def f(n: Int32) -> Int32:\n"
                + "    try:\n        n = await step(n)\n"
                + "    finally:\n        return 0\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        assert _res_fallback(src).get("res.leaf_return") == 1
+        assert _res_fallback(src).get("res.finally_return") == 1
+
+    def test_narrowing_if_in_helper_defers(self):
+        # A narrowing early-return `if` inside a finally helper: the guard
+        # rejects with res.narrowed_resume BEFORE the nested return's own
+        # res.finally_return -- pinning that the helper walk names its
+        # missing post-if arm, not just the return render. (Raise-arm ifs
+        # produce no post-if fact on either path -- `_post_if_narrow_fact`
+        # is return-terminated only -- so the return flavor is the guard's
+        # whole domain.)
+        src = ("from tpy import Int32\n\n"
+               + "class Dog:\n"
+               + "    def sound(self) -> str:\n        return \"woof\"\n\n"
+               + "class Cat:\n"
+               + "    def sound(self) -> str:\n        return \"meow\"\n\n"
+               + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
+               + "async def f(a: Dog | Cat, n: Int32) -> Int32:\n"
+               + "    try:\n        n = await step(n)\n"
+               + "    finally:\n"
+               + "        if isinstance(a, Dog):\n"
+               + "            return 0\n"
+               + "        print(a.sound())\n"
+               + "    return n\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        assert _res_fallback(src).get("res.narrowed_resume") == 1
+        _assert_identical(src)
 
     def test_generator_helper_finally_routes(self):
         # A generator with a try/finally around a yield: the finally helper
@@ -2256,6 +2373,57 @@ class TestWithRegions:
                + "def main() -> None:\n    pass\nmain()\n")
         assert _res_fallback(src).get("res.with_manager") == 1
 
+
+class TestLeafReturns:
+    """Returns nested in non-suspending leaf compounds: the scaffolding
+    (done state, `__tpy_async_ret` bind, Poll wrap / StopIteration,
+    finally-chain walk) stays skeleton via the emit hook
+    (`_make_async_return` / `_make_generator_resumable_return`); THIR
+    supplies the position (THIRResumableReturn) and the value render
+    through the seam's return_values table."""
+
+    def test_async_void_leaf_return_routes(self):
+        src = (_PRE
+               + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
+               + "async def f(n: Int32) -> None:\n"
+               + "    n = await step(n)\n"
+               + "    if n > 2:\n        return\n"
+               + "    print(n)\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.nested_return") == 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+
+    def test_owned_str_leaf_return_wraps(self):
+        # The view->owned copy (`_wrap_view_owned_return`) fires identically
+        # for a nested return's value -- shared with the ReturnT arm.
+        src = ("import asyncio\nfrom tpy import Int32\n\n"
+               + "async def pick(tag: str, n: Int32) -> str:\n"
+               + "    await asyncio.sleep(0)\n"
+               + "    if n > 2:\n        return tag\n"
+               + "    return \"lo\"\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.nested_return") == 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "std::string __tpy_async_ret = std::string(tag);" in cpp
+
+    def test_leaf_return_under_with_walks_finally(self):
+        # The nested return inside a with region walks the live finally
+        # frame (__exit__ before Poll::ready) -- the hook re-enters the
+        # skeleton's chain machinery unchanged.
+        src = (_PRE + _CM
+               + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
+               + "async def f(n: Int32) -> Int32:\n"
+               + "    with CM(n):\n"
+               + "        n = await step(n)\n"
+               + "        if n > 2:\n            return 99\n"
+               + "    return n\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.nested_return") == 1
+        assert not any(k.startswith("resumable:") for k in fallback)
 
 class TestFrameFieldShadowing:
     """A for-each loop var inside a resumable body binds a C++ local that

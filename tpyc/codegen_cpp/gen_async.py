@@ -1852,6 +1852,22 @@ class AsyncCoroCodegen:
             return None
         from ..thir.emit import (CtxCommentSink, CtxCounter, CtxTempSink,
                                  ResumableLeafEmitter)
+
+        def _return_hook(stmt: TpyReturn, indent_level: int) -> str:
+            # Nested leaf return: the same dispatch as the AST gen_stmt
+            # return arm (both flags are set by _resumable_return_lowering
+            # for the whole body emission). The value render inside re-enters
+            # the leaf seam's return_values table via
+            # _async_return_value_cpp.
+            indent = INDENT * indent_level
+            if self.ctx.in_async_coro_body:
+                return self.statements._make_async_return(stmt, indent)
+            if self.ctx.in_generator_resumable_body:
+                return self.statements._make_generator_resumable_return(
+                    stmt, indent)
+            raise CodeGenError(
+                "resumable leaf return outside a resumable body emission")
+
         return ResumableLeafEmitter(
             rb,
             comments=CtxCommentSink(self.ctx),
@@ -1862,7 +1878,8 @@ class AsyncCoroCodegen:
             # LIVE ctx set; leaf renders must suppress the frame `(*name)`
             # deref exactly while a shadow is in scope, like the AST body.
             frame_shadow_probe=(
-                lambda n: n in self.ctx.frame_field_shadows))
+                lambda n: n in self.ctx.frame_field_shadows),
+            resumable_return_hook=_return_hook)
 
     @contextlib.contextmanager
     def _thir_leaf_scope(self, leaf):

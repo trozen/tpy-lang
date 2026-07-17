@@ -98,7 +98,9 @@ from .nodes import (
     THIRPtrLocalDecl,
     THIRPtrLocalRebind,
     THIRRaise,
+    THIRResumableReturn,
     THIRReturn,
+    THIRStmtSeq,
     THIRSetItem,
     THIRSelf,
     THIRSliceAssign,
@@ -315,6 +317,12 @@ class _EmitState:
     # case's body id -- called at each scalar-tier arm-body point instead
     # of emitting the (empty) lowered body. None for sync matches.
     match_arm_hook: 'Callable[[int, int], None] | None' = None
+    # Resumable leaf-return mode: renders the FULL return scaffolding
+    # (done-state, Poll wrap / StopIteration, finally-chain walk) for a
+    # return nested in a leaf compound -- the skeleton's `_make_async_return`
+    # / `_make_generator_resumable_return` bound to the live ctx, called
+    # with (ast_stmt, indent_level). None outside resumable leaves.
+    resumable_return_hook: 'Callable[[object, int], str] | None' = None
     iter_counter: int = 0
     slot_counter: int = 0
     unpack_counter: int = 0
@@ -3103,6 +3111,21 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             sigil = "*" if deref else ""
             out.write(f"{indent}{{ auto __del_sink = "
                       f"std::move({sigil}{name}); }}\n")
+    elif isinstance(stmt, THIRStmtSeq):
+        _emit_stmts(out, stmt.stmts, indent_level, state)
+    elif isinstance(stmt, THIRResumableReturn):
+        # Scaffolding is skeleton in every position: the hook re-enters
+        # `_make_async_return` / `_make_generator_resumable_return`, whose
+        # value render loops back through `render_return_value` (the
+        # id(ast)-keyed table this node's value was registered into).
+        # No temps.flush here: `_lower_resumable_return_value` lowers with
+        # the default `_ExprUse()` (allow_temps=False), so the value can
+        # never carry a THIRArgTemp -- widening that seam to temp-bearing
+        # values must add the flush.
+        if state.resumable_return_hook is None:
+            raise THIRCodeGenError(
+                "THIRResumableReturn outside resumable leaf emission")
+        out.write(state.resumable_return_hook(stmt.ast_stmt, indent_level))
     elif isinstance(stmt, THIRNoOpStmt):
         # No code -- the `// pass` source comment (if any) is emitted by the
         # caller (_emit_stmts) from the node's loc.
@@ -3276,6 +3299,8 @@ class ResumableLeafEmitter:
                  try_counter: 'ModuleCounter | None' = None,
                  return_cpp: 'str | None' = None,
                  frame_shadow_probe: 'Callable[[str], bool] | None' = None,
+                 resumable_return_hook: 'Callable[[object, int], str] | None'
+                 = None,
                  ) -> None:
         self._body = body
         self._state = _EmitState(comments or _NO_COMMENTS,
@@ -3283,7 +3308,8 @@ class ResumableLeafEmitter:
                                  with_counter=with_counter or ModuleCounter(),
                                  try_counter=try_counter or ModuleCounter(),
                                  return_cpp=return_cpp,
-                                 frame_shadow_probe=frame_shadow_probe)
+                                 frame_shadow_probe=frame_shadow_probe,
+                                 resumable_return_hook=resumable_return_hook)
 
     def _lookup(self, table, node, what: str):
         if id(node) not in table:

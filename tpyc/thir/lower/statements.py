@@ -11,6 +11,7 @@ from ...parse.nodes import (
     TpyAssert,
     TpyAssign,
     TpyAugAssign,
+    TpyAwait,
     TpyBinOp,
     TpyBoolLiteral,
     TpyBreak,
@@ -154,6 +155,7 @@ from ..nodes import (
     THIRPtrLocalRebind,
     THIRRaise,
     THIRInplaceContainerOp,
+    THIRResumableReturn,
     THIRReturn,
     THIRSelf,
     THIRSetItem,
@@ -1998,8 +2000,8 @@ def _lower_stmt(stmt: TpyStmt, lc: _LowerCtx, declared: dict[str, TpyType],
 def _persistent_alias_name(var: str, lc: _LowerCtx) -> str:
     """Mirror of `_fresh_alias_local(persistent=True)`: `__{var}`, suffix-bumped
     past persistent aliases already declared at the enclosing C++ scope. (The
-    resumable frame-field rename arm is unreachable -- no resumable bodies
-    route.)"""
+    AST's frame-field rename arm is unreachable: the resumable post-if caller
+    rejects a frame-field-colliding alias before calling.)"""
     base = f"__{var}"
     if base not in lc.narrow.persistent_aliases:
         return base
@@ -2432,6 +2434,24 @@ def _wrap_view_owned_return(value: 'THIRExpr | None', lc: '_LowerCtx',
     return value
 
 
+def _lower_resumable_return_value(ret: TpyReturn, lc: '_LowerCtx',
+                                  declared: dict[str, TpyType]) -> 'THIRExpr':
+    """POSITION-BLIND value render for `_make_async_return`'s scaffolding
+    sites (pending-slot store / pre-finally capture / direct ready), shared
+    by the ReturnT terminator arm and nested leaf returns: the scaffolding
+    binds the value to a `<ret_cpp> __tpy_async_ret = <value>;` local (whose
+    decl type supplies the conversion) and only then wraps it in Poll::ready
+    -- so a literal at a wider slot stays bare `42`, NOT the sync-return
+    arm's target-typed `::tpy::BigInt(42)`. Lower the value directly (== the
+    AST's `gen_expr_deref`), bypassing `_lower_stmt`'s return-coercion arm.
+    The one exception is the owned str/bytes slot's view->owned copy, shared
+    with the sync return tail (`_wrap_view_owned_return`)."""
+    if lc.prescan.ret_char and isinstance(ret.value, TpyStrLiteral):
+        raise ThirUnsupported(stmt_reject_reason(ret))
+    return _wrap_view_owned_return(
+        _lower_expr(ret.value, lc, declared), lc, getattr(ret, "loc", None))
+
+
 def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
     lc = scope.lc
     declared = scope.declared
@@ -2456,7 +2476,24 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         return THIRNoOpStmt()
     if lc.resumable_leaf_mode:
         if isinstance(stmt, TpyReturn):
-            raise ThirUnsupported("res.leaf_return")
+            # A return nested in a non-suspending leaf compound: scaffolding
+            # stays skeleton -- the node calls back into _make_async_return /
+            # _make_generator_resumable_return via the emit hook, whose value
+            # render re-enters the seam's return_values table (registered by
+            # lower_resumable from lc.nested_returns).
+            begin_stmt()
+            if lc.in_finally_helper:
+                raise ThirUnsupported("res.finally_return")
+            if isinstance(stmt.value, TpyAwait):
+                # Unreachable in a LEAF (a suspension splits the compound);
+                # reject rather than assert if a CFG change ever leaks one.
+                raise ThirUnsupported("res.leaf_return")
+            value = (None if stmt.value is None
+                     else _lower_resumable_return_value(stmt, lc, declared))
+            node = THIRResumableReturn(ast_stmt=stmt, value=value, loc=loc)
+            lc.nested_returns.append(node)
+            _witness("res.nested_return")
+            return node
         if scope.in_branch and isinstance(stmt, TpyVarDecl):
             raise ThirUnsupported("res.leaf_field_write")
         if isinstance(stmt, TpyTupleUnpack):

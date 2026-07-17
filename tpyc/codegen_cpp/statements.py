@@ -3871,9 +3871,11 @@ class StatementGenerator:
             # string; the _wrap_view_to_storage / _async_ret_to_borrow wraps
             # it skips are no-ops for the admitted value-scalar returns, so
             # every scaffolding site (pending-slot store, pre-finally capture,
-            # direct ready) stays identical. Widening returns past value
-            # scalars must revisit this seam -- see the THIRResumableBody
-            # return_values contract.
+            # direct ready) stays identical. Serves ReturnT terminators AND
+            # nested leaf returns (THIRResumableReturn's emit hook re-enters
+            # _make_async_return, which lands back here). Widening returns
+            # past value scalars must revisit this seam -- see the
+            # THIRResumableBody return_values contract.
             return leaf.render_return_value(stmt)
         if isinstance(stmt.value, TpyNoneLiteral):
             # The coroutine return slot is storage form: None needs the

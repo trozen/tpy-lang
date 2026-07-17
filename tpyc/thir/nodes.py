@@ -1393,6 +1393,37 @@ class THIRFrameSlotWrite(THIRStmt):
 
 
 @dataclass(frozen=True)
+class THIRResumableReturn(THIRStmt):
+    """A `return` nested in a NON-SUSPENDING leaf compound of a routed
+    resumable body (the CFG only splits compounds at suspensions, so
+    `if n <= 1: return 1` stays a whole leaf TpyIf).
+
+    Return SCAFFOLDING (done-state, Poll wrap, finally-chain walk,
+    pending-return slots) is skeleton emission in every position; this node
+    only marks the position inside THIR-emitted leaf code. The emitter calls
+    back into the skeleton via `_EmitState.resumable_return_hook`, passing
+    `ast_stmt` -- the skeleton's `_make_async_return` /
+    `_make_generator_resumable_return` then re-enters the leaf seam
+    (`render_return_value`, keyed by id(ast_stmt)) for the value render, the
+    same table entry ReturnT terminators use. `value` is that lowered value
+    (None for a bare return); the lowering registers it into the body's
+    `return_values` table -- it is not read at emit."""
+    ast_stmt: object
+    value: 'THIRExpr | None' = None
+
+
+@dataclass(frozen=True)
+class THIRStmtSeq(THIRStmt):
+    """A fixed sequence emitted as consecutive statements -- the resumable
+    leaf seam's carrier when ONE AST leaf lowers to more than one THIR
+    statement (the early-return narrowing `if` + its post-if extraction
+    alias, which the AST's `_gen_if` emits inline after the close brace).
+    Carries no loc of its own (its caller-side source comment is a no-op);
+    each child emits its own comment, mirroring the AST's inline emission."""
+    stmts: tuple[THIRStmt, ...] = ()
+
+
+@dataclass(frozen=True)
 class THIRStrAppend(THIRStmt):
     """In-place append to an owned-str local -- `t += v;` (S3). Two AST sources
     share it: the str `+=` statement (`_gen_aug_assign_code`'s string branch)
