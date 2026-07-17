@@ -3687,6 +3687,33 @@ class Parser:
         # raise <expr> -- general expression (e.g. raise obj.make_err(), raise errors[i])
         return TpyRaise(raise_expr=self._parse_expr(exc), loc=loc)
 
+    def _except_clause_types(self, h: ast.ExceptHandler) -> list[str]:
+        """Resolve a non-bare except clause to its list of caught type names.
+
+        A plain `except E:` yields one name; the tuple form `except (A, B):`
+        yields one per element, in source order (which is match order).
+        """
+        elts = h.type.elts if isinstance(h.type, ast.Tuple) else [h.type]
+        if isinstance(h.type, ast.Tuple) and not elts:
+            raise ParseError(
+                "'except ():' catches nothing. CPython accepts it as a no-op "
+                "clause; TPy rejects it as almost certainly a mistake -- drop "
+                "the clause, or name the exceptions to catch", h)
+        names: list[str] = []
+        for elt in elts:
+            name = _attr_chain_to_dotted(elt)
+            if name is None:
+                raise ParseError(
+                    "'except' requires a simple or dotted name "
+                    "(e.g. 'except MyError' or 'except pkg.MyError')", h)
+            # A type repeated in one tuple would emit duplicate C++ catch arms.
+            # Matching by spelling only: two spellings of one type (`A` and
+            # `mod.A`) still duplicate, but sema's unreachable-clause checks
+            # see them as it sees any hand-written sibling pair.
+            if name not in names:
+                names.append(name)
+        return names
+
     def _parse_try(self, node: ast.Try, loc: SourceLocation | None) -> TpyStmt:
         """Parse a try/except/else/finally statement."""
         if not node.handlers and not node.finalbody:
@@ -3694,18 +3721,22 @@ class Parser:
         handlers: list[TpyExceptHandler] = []
         for h in node.handlers:
             h_loc = self._loc(h) if hasattr(h, 'lineno') else loc
+            body = self._parse_body(h.body)
             if h.type is None:
                 # Bare except: -- must be last handler (Python enforces this)
-                exception_type = None
-            else:
-                exception_type = _attr_chain_to_dotted(h.type)
-                if exception_type is None:
-                    raise ParseError(
-                        "'except' requires a simple or dotted name "
-                        "(e.g. 'except MyError' or 'except pkg.MyError')", h)
-            handlers.append(TpyExceptHandler(
-                exception_type=exception_type, binding=h.name,
-                body=self._parse_body(h.body), loc=h_loc))
+                handlers.append(TpyExceptHandler(
+                    exception_type=None, binding=h.name, body=body, loc=h_loc))
+                continue
+            types = self._except_clause_types(h)
+            for i, exception_type in enumerate(types):
+                # C++ has no multi-type catch, so `except (A, B):` becomes one
+                # ordinary single-type handler per element. The body is deep-copied
+                # per clone because sema records per-node facts (the binding's type
+                # differs per arm), so the arms must not share nodes.
+                handlers.append(TpyExceptHandler(
+                    exception_type=exception_type, binding=h.name,
+                    body=body if i == 0 else copy.deepcopy(body), loc=h_loc,
+                    from_tuple_clause=isinstance(h.type, ast.Tuple)))
         try_body = self._parse_body(node.body)
         else_body = self._parse_body(node.orelse)
         finally_body = self._parse_body(node.finalbody)

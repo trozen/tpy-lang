@@ -37,9 +37,7 @@ def main():
     try:
         os.remove(base + "/sub")       # unlink on a dir: EISDIR (Linux) / EPERM (macOS)
     # Per-host errno -> different class; normalize to one token.
-    except IsADirectoryError:
-        print("remove-dir: rejected")
-    except PermissionError:
+    except (IsADirectoryError, PermissionError):
         print("remove-dir: rejected")
     try:
         os.rmdir(base)                 # ENOTEMPTY -> plain OSError (no subclass)

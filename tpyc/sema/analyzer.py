@@ -1218,6 +1218,9 @@ class SemanticAnalyzer:
         """
         self.calls.resolve_pending_borrow_checks()
         self.calls.resolve_pending_match_subject_checks()
+        # Last diagnostic-emitting step for this analyzer, so it is where a
+        # body analyzed once per clone collapses back to one report.
+        self.ctx.collapse_duplicate_diagnostics()
 
     def _normalize_function_info_refs(self) -> None:
         """Apply make_ref to all registered FunctionInfo param/return types.

@@ -1,0 +1,1 @@
+main.py:6: error: 'except ():' catches nothing. CPython accepts it as a no-op clause; TPy rejects it as almost certainly a mistake -- drop the clause, or name the exceptions to catch

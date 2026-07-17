@@ -6331,7 +6331,11 @@ API, floor 3.12, hand-rolled C-API glue, copy-in marshalling).
   - `raise <expr>`: raise pre-constructed exception variables (`e = MyError(42); raise e`) or function/method results
   - `try`/`except E`/`else`/`finally` with C++ `try`/`catch` for throw-tier exceptions
   - Multiple `except` handlers with type matching (first match wins)
-  - **Not yet supported**: the tuple form `except (A, B):` (rejected with "'except' requires a simple or dotted name"); workaround is one `except` clause per type. Tracked in TODO.md.
+  - The tuple form `except (A, B):` catches any of several types with one handler body. C++ has no multi-type catch, so the parser expands the clause into one ordinary single-type handler per element, in source order; each element must be a simple or dotted name. `except (A, A)` (or a type repeated by spelling) collapses to one catch arm.
+    - Because each element becomes its own clause, an `as e` binding is typed to that arm's exact type -- so a body may use any member the caught type has, even one the elements declare independently rather than inheriting from a common base. The body must type-check under every element's type.
+    - `except ():` is rejected (it catches nothing; CPython accepts it as a no-op clause).
+    - Not supported on a return-tier (`@error_return` / `ReturnException`) try/except, which carries a single error type; catch one type per clause there.
+    - Two limitations follow from the per-element expansion, both shared with hand-written sibling `except` clauses and tracked in BUGS.md. Naming a class **and a subclass of it** in one clause (`except (OSError, PermissionError):`) makes the later element's arm unreachable: it runs correctly and matches CPython under the default CLI, but a strict-warning build rejects the dead arm. And because the arms share one written body, a **borrow/reference local** assigned in it (`v = e.payload.get(...)`) hits the sibling-scope declaration bug -- with no workaround, since the arms cannot be given distinct names.
   - Bare `except:` catches any exception (maps to `catch(...)`)
   - `except E as e` binds the caught exception for field access
   - `except mod.E` / `except pkg.sub.E`: module-qualified exception class names (after `import mod` / `import pkg.sub`); a local non-exception class with the same bare name does not shadow the qualified target

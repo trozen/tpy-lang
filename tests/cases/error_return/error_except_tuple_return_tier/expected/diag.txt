@@ -1,0 +1,1 @@
+main.py:25: error: the 'except (A, B):' tuple form is not supported on a return-tier (ReturnException) try/except, which carries a single error type; catch one type per clause

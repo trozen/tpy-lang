@@ -971,11 +971,18 @@ class TpyRaise(TpyStmt):
 
 @dataclass
 class TpyExceptHandler:
-    """A single except clause in a try statement."""
+    """A single except clause in a try statement.
+
+    The parser expands the tuple form `except (A, B):` into one of these per
+    element, so every later pass sees only ordinary single-type clauses.
+    """
     exception_type: str | None  # None for bare except:
     binding: str | None         # from "as e"
     body: list[TpyStmt]
     loc: SourceLocation | None = None
+    # True when this clause was one element of a tuple form. Diagnostics only:
+    # lets a message about handler count name what the user actually wrote.
+    from_tuple_clause: bool = False
 
 
 @dataclass

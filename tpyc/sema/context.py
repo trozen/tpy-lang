@@ -1116,6 +1116,33 @@ class SemanticContext:
         """Record a warning diagnostic from a SourceLocation."""
         self.diagnostics.append(Diagnostic(DiagnosticLevel.WARNING, message, loc))
 
+    def collapse_duplicate_diagnostics(self) -> None:
+        """Drop exact repeats, keeping each diagnostic's first occurrence.
+
+        A body analyzed more than once reports its diagnostics once. Bodies are
+        cloned wherever one source construct expands into several ordinary ones
+        -- `except (A, B):` into one handler per type, `@auto_readonly` into a
+        mutable/const method pair -- so each clone re-analyzes the same lines.
+
+        Collapsing happens here, once analysis is over, rather than in the
+        recording methods above: during analysis, callers index into
+        `diagnostics` (`compatibility.py` records the position of a loop-copy
+        warning for `statements.py` to delete once the loop proves to move
+        rather than copy). A recorder that skipped a duplicate would shift
+        those positions onto unrelated diagnostics.
+        """
+        seen: set[tuple[object, ...]] = set()
+        kept: list[Diagnostic] = []
+        for d in self.diagnostics:
+            loc = d.loc
+            key = ((d.level, d.message, loc.file, loc.line, loc.column) if loc
+                   else (d.level, d.message))
+            if key in seen:
+                continue
+            seen.add(key)
+            kept.append(d)
+        self.diagnostics[:] = kept
+
     def nocopy_reason(self, typ: TpyType) -> str:
         """Return a human-readable reason why a type is nocopy.
 

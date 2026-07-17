@@ -2150,6 +2150,11 @@ class StatementAnalyzer:
         """Analyze return-tier try/except (ReturnException, goto-based)."""
         # Return tier supports single handler or ReturnException catch-all
         if len(stmt.handlers) != 1:
+            if any(h.from_tuple_clause for h in stmt.handlers):
+                raise self.ctx.error(
+                    "the 'except (A, B):' tuple form is not supported on a "
+                    "return-tier (ReturnException) try/except, which carries a "
+                    "single error type; catch one type per clause", stmt)
             raise self.ctx.error(
                 "return-tier (ReturnException) try/except supports only a single handler", stmt)
         handler = stmt.handlers[0]

@@ -1,0 +1,4 @@
+inner saw it, re-raising
+outer: AErr
+inner saw it, re-raising
+outer: BErr

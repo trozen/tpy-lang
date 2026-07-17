@@ -1,0 +1,9 @@
+tuple arm, code = 10
+tuple arm, code = 20
+sibling C arm
+no binding, caught 0
+no binding, caught 1
+no binding, C
+single-element tuple
+fell through
+repeated element
