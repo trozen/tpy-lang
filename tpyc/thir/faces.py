@@ -130,6 +130,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "call.coro_factory_adapter",    # async-def factory call into an
                                     # Own[@dynamic P] slot ->
                                     # `::tpy::make_adapter<Base>(f(args))`
+    "call.coro_handle_adapter",     # bound-handle NAME into that slot ->
+                                    # `make_adapter<Base>(std::move(*(c)))`
     "call.module_native",           # bare-@native module callee `m.f(x)`
                                     # -> `::native(args)`
     "call.static_template",         # positional-only @cpp_template static
@@ -478,6 +480,12 @@ THIR_FACES: frozenset[str] = frozenset({
     # recursively) and a value-`Optional[scalar]` element (`None`->`std::nullopt`
     # / a scalar value bare). Return-slot only.
     "ret.tuple_nested_elem",
+    "btuple.literal",               # borrow-slot tuple literal (spelled + lifts)
+    "btuple.value_to_borrow",       # rvalue elements via the source-tuple helper
+    "btuple.value_arg",             # value-tuple literal call arg
+    "btuple.decl",                  # sync borrow-tuple local decl (`auto t = ...`)
+    "res.btuple_write",             # resumable borrow-tuple frame-field write
+    "res.btuple_yield",             # borrow-tuple yield (literal or lifted source)
     "ret.tuple_opt_elem",
     # A value-`Optional[str]` RETURN element: a str-view source wraps
     # `std::string(view)` through the Optional slot; `None`->`std::nullopt`, a

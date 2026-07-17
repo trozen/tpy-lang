@@ -122,8 +122,23 @@ See `docs/FEATURE_ROADMAP.md` for bigger tasks and `BUGS.md` for known compiler 
   views 5, `Own[protocol]` 3, `Optional[scalar]` 1); str/bytes RETURNS now ROUTE
   (2026-07-17: the shared form-keyed wrap `_wrap_view_owned_return`, one
   decision for the sync return tail and the resumable return leaf -- the
-  earlier deep-classifier threading attempt is obsolete); borrow-form tuple locals (`res.local_storage`
-  residue; needs the borrow tuple-literal element builder); leaf
+  earlier deep-classifier threading attempt is obsolete); borrow-form tuple
+  LOCALS and tuple YIELDS now ROUTE (2026-07-17: the shared
+  `_lower_borrow_tuple_literal` builder -- one node for the sync
+  borrow-tuple decl, the resumable frame write, and the yield slot; VALUE +
+  lvalue name/subscript elements). Tuple-literal CALL ARGS also ROUTE
+  (same date: the fourth sink -- lvalue elements via the borrow builder,
+  rvalue elements via the tuple_value_to_borrow source-tuple path, value
+  tuples via the spelled value render; sema pre-rejects rvalue elements at
+  the yield/decl sinks, so the arg sink is the rvalue path's only live
+  home). REQUIRED builder residue, each a named
+  reject: pointer-repr Optional / union /
+  TypeParamRef element slots (`btuple.elem_slot` -- the val_or_ptr generic
+  builder), CONST_REF sync decls + reassigns (`decl.tuple_literal_shape`),
+  storage-form tuple SOURCES at yield/write slots (the tuple_to_pointer
+  lift, `res.btuple_source`/`res.btuple_yield_source`), and owning-call
+  inits at borrow-classified slots (the skeleton's third owning signal);
+  leaf
   try/with/match + tuple-unpack + branch-first-decl + nested frame-write
   (`res.leaf_*` / `res.unpack`); discarded record-returning qualified calls
   (`asyncio.create_task(coro())` as a bare statement -- rejects in SYNC bodies

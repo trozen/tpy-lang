@@ -313,6 +313,7 @@ from .expressions import (
     _lower_field_source,
     _lower_lambda,
     _lower_truthy,
+    _lower_borrow_tuple_literal,
     _lower_tuple_literal,
     _rb_operand_slots,
     _retag_bytes_literal_view,
@@ -2960,6 +2961,33 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                             for c in stmt.init.elem_capture)):
                 tuple_t = _storage_record_tuple(slot_ty, analyzer)
                 storage_record = tuple_t is not None
+            # A REF-capture literal binds the BORROW form (`auto t =
+            # std::tuple<int32_t, Box*>{1, &(b)};`): the local aliases its
+            # element sources, and reads key on the declared pointer-repr
+            # TupleType like a borrow-tuple param's. First decls with
+            # REF/VALUE captures only; CONST_REF decls (const read rows) and
+            # reassigns stay named rejects.
+            slot_bt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                slot_ty))) if isinstance(slot_ty, TpyType) else None)
+            if (tuple_t is None and not is_reassign
+                    and isinstance(slot_bt, TupleType)
+                    and slot_bt.has_pointer_repr_element()
+                    and stmt.init.elem_capture
+                    and all(c in (TupleElemCapture.VALUE, TupleElemCapture.REF)
+                            for c in stmt.init.elem_capture)
+                    and any(c is TupleElemCapture.REF
+                            for c in stmt.init.elem_capture)):
+                try:
+                    binit = _lower_borrow_tuple_literal(
+                        stmt.init, slot_bt, lc, declared)
+                except ThirUnsupported:
+                    note_detail("decl.tuple_literal_shape")
+                    raise ThirUnsupported(stmt_reject_reason(stmt)) from None
+                declared[stmt.name] = slot_bt
+                _witness("btuple.decl")
+                return THIRVarDecl(
+                    name=stmt.name, resolved_type=slot_bt, init=binit,
+                    cpp_type="auto", form=Form.BORROW, loc=loc)
             if tuple_t is None:
                 note_detail("decl.tuple_literal_shape")
                 raise ThirUnsupported(stmt_reject_reason(stmt))

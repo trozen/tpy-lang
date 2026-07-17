@@ -42,6 +42,7 @@ from ...typesys import (
     AnyType,
     BOOL,
     CallableType,
+    ConcreteCoroType,
     FLOAT,
     FloatLiteralType,
     IntLiteralType,
@@ -2119,11 +2120,26 @@ def _plain_call_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
             or _union_member_lift_arg(a, ptype, locals_, analyzer)
             or _union_coerced_literal_arg(a, ptype, locals_, analyzer)
             or _own_union_ctor_arg(a, ptype, locals_, analyzer)
+            or _dyn_own_coro_factory_arg(a, ptype, analyzer) is not None
+            or _dyn_own_handle_arg(a, ptype, locals_, analyzer) is not None
             or _none_value_opt_arg(a, ptype, analyzer) is not None
             or _protocol_slot_arg(a, ptype, locals_, analyzer,
                                   temps_ok=temps_ok)
+            # A tuple LITERAL at a tuple param slot: the borrow/value tuple
+            # builders own the per-element admission (a bad element shape
+            # raises inside lowering and falls the body back whole) -- the
+            # gate checks only the slot/arity pairing.
+            or _tuple_literal_arg(a, ptype)
             or note_detail(
                 "call.arg_shape." + _type_family_tag(ptype, analyzer)))
+
+def _tuple_literal_arg(a: TpyExpr, ptype: 'TpyType | None') -> bool:
+    if not isinstance(a, TpyTupleLiteral):
+        return False
+    slot = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
+            if isinstance(ptype, TpyType) else None)
+    return (isinstance(slot, TupleType)
+            and len(a.elements) == len(slot.element_types))
 
 def _call_ret_reject(e: TpyCall, ret: 'TpyType | None', analyzer) -> str:
     """Drilldown label for a call result the value-position set does not
@@ -3707,6 +3723,8 @@ def _marker_call_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
                 a, ptype, locals_, analyzer))
             or (own_ok and _dyn_own_coro_factory_arg(a, ptype, analyzer)
                 is not None)
+            or (own_ok and _dyn_own_handle_arg(a, ptype, locals_, analyzer)
+                is not None)
             # A container LITERAL into a matching builtin-container slot: a
             # qualified module function (os.path.commonprefix([...])) renders
             # the spelled container inline, like the stub-method arg loop -- no
@@ -3716,6 +3734,40 @@ def _marker_call_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
             or note_detail(_qualcall_arg_reject(a, ptype, analyzer)))
 
 
+def _dyn_own_handle_arg(a: TpyExpr, ptype: 'TpyType | None',
+                        locals_: dict[str, 'TpyType'],
+                        analyzer) -> 'NominalType | None':
+    """A BOUND coroutine-handle NAME into an `Own[@dynamic P]` slot
+    (`asyncio.create_task(c)`): _gen_dynamic_protocol_own_arg's handle face
+    -- `::tpy::make_adapter<Base>(std::move(*(c)))`, the optional-slot
+    unwrap moved into the adapter. Returns the slot protocol, or None.
+    An already-ERASED source (an `Own[Cancellable]` param forwarded)
+    renders without the re-wrap -- a different face, sliced out."""
+    if not isinstance(ptype, TpyType) or not isinstance(a, TpyName):
+        return None
+    u = unwrap_send_sync(ptype)
+    if not isinstance(u, OwnType):
+        return None
+    # RAW wrapped, like the AST's `_gen_dynamic_protocol_arg` key: a
+    # ReadonlyType wrapper defeats is_dyn_protocol there, so the AST never
+    # takes the adapter render for an `Own[readonly[P]]` slot -- unwrapping
+    # here would route-and-diverge (probe-verified).
+    proto = u.wrapped
+    if not (isinstance(proto, NominalType) and is_dyn_protocol(proto)):
+        return None
+    at = locals_.get(a.name)
+    at_u = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
+            if isinstance(at, TpyType) else None)
+    # The handle's declared spelling varies by scope source: generator_locals
+    # carry Own[ConcreteCoroType], a decl-site registration the bare
+    # ConcreteCoroType -- both are the same optional-slot handle.
+    if isinstance(at_u, OwnType):
+        at_u = unwrap_readonly(at_u.wrapped)
+    if not isinstance(at_u, ConcreteCoroType):
+        return None
+    return proto
+
+
 def _dyn_own_coro_factory_arg(a: TpyExpr, ptype: 'TpyType | None',
                               analyzer) -> 'NominalType | None':
     """A DIRECT async-def factory call into an `Own[@dynamic P]` slot
@@ -3723,16 +3775,19 @@ def _dyn_own_coro_factory_arg(a: TpyExpr, ptype: 'TpyType | None',
     boundary -- `::tpy::make_adapter<Base>(factory(args))`, Base spelled
     from the SLOT protocol (dynamic_base_name, the helper the AST render
     shares). Returns that protocol, or None. Free-call factories only: a
-    BOUND handle name takes the `std::move(*(x))` optional-slot unwrap and
-    a method coro threads its receiver -- both different renders, AST. The
-    factory itself must classify plain/imported (`coro_factory_ok`); its
-    own args are judged by the free-call loop at lowering."""
+    BOUND handle name takes the `std::move(*(x))` optional-slot unwrap
+    (`_dyn_own_handle_arg`) and a method coro threads its receiver -- a
+    different render, AST. The factory itself must classify plain/imported
+    (`coro_factory_ok`); its own args are judged by the free-call loop at
+    lowering."""
     if not isinstance(ptype, TpyType) or not isinstance(a, TpyCall):
         return None
     u = unwrap_send_sync(ptype)
     if not isinstance(u, OwnType):
         return None
-    proto = unwrap_readonly(u.wrapped)
+    # RAW wrapped, matching the AST key (see _dyn_own_handle_arg): an
+    # `Own[readonly[P]]` slot never takes the adapter render there.
+    proto = u.wrapped
     if not (isinstance(proto, NominalType) and is_dyn_protocol(proto)):
         return None
     fi = a.resolved_function_info

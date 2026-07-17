@@ -111,6 +111,8 @@ from .nodes import (
     THIRSubscript,
     THIRTry,
     THIRRecordCopy,
+    THIRBorrowTupleLiteral,
+    THIRTupleValueToBorrow,
     THIRTupleLiteral,
     THIRTupleUnpack,
     THIRTruthy,
@@ -1324,6 +1326,22 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         if len(e.elements) == 1:
             return f"{cpp_type}({elems})"
         return f"{cpp_type}{{{elems}}}"
+    if isinstance(e, THIRBorrowTupleLiteral):
+        # The borrow-slot render: the spelled slot type + per-element bare
+        # or `&(...)` lifts. Single-element parenthesizes like the value arm.
+        elems = ", ".join(
+            f"&({_emit_expr(x, state)})" if lift else _emit_expr(x, state)
+            for x, lift in zip(e.elements, e.addr_of))
+        if len(e.elements) == 1:
+            return f"{e.spelled_cpp}({elems})"
+        return f"{e.spelled_cpp}{{{elems}}}"
+    if isinstance(e, THIRTupleValueToBorrow):
+        elems = ", ".join(
+            f"&({_emit_expr(x, state)})" if lift else _emit_expr(x, state)
+            for x, lift in zip(e.elements, e.addr_of))
+        src = (f"{e.src_cpp}({elems})" if len(e.elements) == 1
+               else f"{e.src_cpp}{{{elems}}}")
+        return f"::tpy::tuple_value_to_borrow<{e.dst_cpp}>({src})"
     if isinstance(e, THIRRecordCopy):
         # `copy(x)` of an F1 record: the explicit copy-ctor call `T(x)`
         # (the AST's `_gen_copy_expr` record arm).

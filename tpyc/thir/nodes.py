@@ -810,6 +810,39 @@ class THIRTupleLiteral(THIRExpr):
 
 
 @dataclass(frozen=True)
+class THIRBorrowTupleLiteral(THIRExpr):
+    """A tuple literal at a BORROW-form slot (`std::tuple<..., T*>`) -- the
+    ref-element path of `_gen_tuple_literal` reduced to its lvalue subset:
+    value elements render bare into their value slots, pointer-repr
+    lvalue-NAME elements lift `&(name)` (an already-pointer name passes
+    bare). `spelled_cpp` is the slot spelling from the slot-info ladder
+    (`std::tuple<int32_t, Box*>`), carried whole because the borrow spelling
+    is per-element-mode, not derivable from `result_type.to_cpp()`.
+    `addr_of[i]` marks the elements the emit wraps `&(...)`. Rvalue borrow
+    elements (the tuple_value_to_borrow helper machinery), pointer-repr
+    Optional / union / TypeParamRef slots stay gate-rejected."""
+    spelled_cpp: str
+    elements: tuple[THIRExpr, ...]
+    addr_of: tuple[bool, ...]
+
+
+@dataclass(frozen=True)
+class THIRTupleValueToBorrow(THIRExpr):
+    """A tuple literal with RVALUE elements at a borrow-form slot -- the
+    `tuple_value_to_borrow` path of `_gen_tuple_literal`: a value-form source
+    tuple is built inline (`src_cpp{...}`; its full-expression lifetime keeps
+    the addresses valid through the consuming call) and the helper takes
+    addresses / binds references into the borrow-form `dst_cpp`. Rvalue
+    elements render VALUE-form (bare, no lift); lvalue elements keep their
+    borrow render + `&(...)` lift inside the source tuple (their src slot is
+    already the pointer part)."""
+    dst_cpp: str
+    src_cpp: str
+    elements: tuple[THIRExpr, ...]
+    addr_of: tuple[bool, ...]
+
+
+@dataclass(frozen=True)
 class THIRRecordCopy(THIRExpr):
     """An explicit `copy(x)` of an F1 record rendered as the copy-ctor call
     `T(x)` -- the record arm of the AST's `_gen_copy_expr`. Reachable today

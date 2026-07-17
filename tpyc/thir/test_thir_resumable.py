@@ -1136,6 +1136,331 @@ class TestBoundCoroAwaits:
         assert sum(fallback.values()) >= 1
 
 
+class TestBorrowTupleLocals:
+    """Borrow-form tuple frame fields (`std::tuple<..., T*>`): the literal
+    builder renders `&(name)` lifts under the spelled slot type; writes are
+    bare frame-field assigns; reads take the existing arrow rows."""
+
+    _PRE_BOX = ("import asyncio\n"
+                + "from tpy import Int32\n\n"
+                + "class Box:\n"
+                + "    val: Int32\n"
+                + "    def __init__(self, v: Int32) -> None:\n"
+                + "        self.val = v\n\n")
+
+    def test_coro_borrow_tuple_local_routes(self):
+        src = (self._PRE_BOX
+               + "async def bump(b: Box) -> None:\n"
+               + "    t = (1, b)\n"
+               + "    await asyncio.sleep(0)\n"
+               + "    t[1].val = 99\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.btuple_write", 0) >= 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "t = std::tuple<int32_t, Box*>{1, &(b)};" in cpp
+
+    def test_borrow_tuple_literal_yield_routes(self):
+        # Two yields keep the generator off the simple-gen peephole (the
+        # resumable frame is the seam under test).
+        src = (self._PRE_BOX.replace("import asyncio\n", "")
+               + "from typing import Iterator\n\n"
+               + "def pairs(xs: list[Box]) -> Iterator[tuple[Int32, Box]]:\n"
+               + "    i = 0\n"
+               + "    while i < len(xs):\n"
+               + "        yield (i, xs[i])\n"
+               + "        yield (i + 1, xs[i])\n"
+               + "        i += 1\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.btuple_yield", 0) >= 2
+        assert not any(k.startswith("resumable:") for k in fallback)
+
+    def test_generic_tuple_yield_defers(self):
+        # A TypeParamRef element spells `val_or_ptr_t<T>` with to_val_or_ptr
+        # wraps (the generic builder rung) -- must fall back, not take the
+        # concrete value/borrow builders. Regression for the divergence the
+        # corpus byte-diff caught on gen_generic_tuple_yield (two yields:
+        # the resumable frame, not the peephole).
+        src = ("from typing import Iterator\n\n"
+               + "def zip_pairs[K, V](ks: list[K], vs: list[V])"
+               + " -> Iterator[tuple[K, V]]:\n"
+               + "    i = 0\n"
+               + "    while i < len(ks):\n"
+               + "        yield (ks[i], vs[i])\n"
+               + "        yield (ks[i], vs[i])\n"
+               + "        i += 1\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        fallback = _res_fallback(src)
+        assert sum(fallback.values()) >= 1
+        _assert_identical(src)
+
+    def test_self_element_sync_method_passes_bare(self):
+        # `self` in a sync method is the prvalue pointer `this` -- it passes
+        # BARE into the `T*` slot (`{1, this}`, never the ill-formed
+        # `&(this)`). Regression for the reviewer-caught divergence.
+        src = ("from tpy import Int32\n\n"
+               + "class Box:\n"
+               + "    val: Int32\n"
+               + "    def __init__(self, v: Int32) -> None:\n"
+               + "        self.val = v\n"
+               + "    def make_tuple(self) -> Int32:\n"
+               + "        t = (1, self)\n"
+               + "        return t[1].val\n\n"
+               + "def main() -> None:\n"
+               + "    b = Box(5)\n"
+               + "    print(b.make_tuple())\nmain()\n")
+        _witnesses, fallback = _assert_identical(src)
+        assert not fallback
+
+    def test_value_tuple_literal_yield_routes(self):
+        src = ("from tpy import Int32\n"
+               + "from typing import Iterator\n\n"
+               + "def pairs(n: Int32) -> Iterator[tuple[Int32, Int32]]:\n"
+               + "    i: Int32 = 0\n"
+               + "    while i < n:\n"
+               + "        yield (i, i + 1)\n"
+               + "        yield (i + 1, i)\n"
+               + "        i += 1\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.btuple_yield", 0) >= 2
+        assert not any(k.startswith("resumable:") for k in fallback)
+
+    def test_optional_element_yield_defers(self):
+        # A pointer-repr Optional element slot spells its own form
+        # (`T*` via the Optional arm of the slot-info ladder, None ->
+        # nullptr) -- sliced out (btuple.elem_slot). NB the rvalue-into-
+        # borrow machinery is unreachable from these sinks: sema rejects
+        # rvalue elements at borrow yield slots outright, and decl rvalues
+        # go VALUE-capture (storage) -- the btuple.elem_rvalue guard is
+        # defensive here; the live rvalue shapes are call args (their own
+        # cell).
+        src = (self._PRE_BOX.replace("import asyncio\n", "")
+               + "from typing import Iterator, Optional\n\n"
+               + "def pairs(b: Box, o: Optional[Box], n: Int32)"
+               + " -> Iterator[tuple[Int32, Optional[Box]]]:\n"
+               + "    i: Int32 = 0\n"
+               + "    while i < n:\n"
+               + "        yield (i, o)\n"
+               + "        yield (i + 1, o)\n"
+               + "        i += 1\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        fallback = _res_fallback(src)
+        assert sum(fallback.values()) >= 1
+        _assert_identical(src)
+
+    def test_call_init_at_borrow_slot_defers(self):
+        # A CALL init at a borrow-classified tuple local could be the
+        # skeleton's third OWNING signal (storage-form source ->
+        # frame_slot emplace) -- the decl arm admits literals only.
+        src = (self._PRE_BOX
+               + "def pick(b: Box) -> tuple[Int32, Box]:\n"
+               + "    return (1, b)\n\n"
+               + "async def go(b: Box) -> None:\n"
+               + "    t = pick(b)\n"
+               + "    await asyncio.sleep(0)\n"
+               + "    print(t[1].val)\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        fallback = _res_fallback(src)
+        assert sum(fallback.values()) >= 1
+        _assert_identical(src)
+
+    def test_const_ref_capture_decl_defers(self):
+        # A CONST_REF-captured element (`const T*` slot) at a sync decl is
+        # sliced out (the const-element read rows are unverified for
+        # locals); the readonly param source forces the const capture.
+        src = ("from tpy import Int32, readonly\n\n"
+               + "class Box:\n"
+               + "    val: Int32\n"
+               + "    def __init__(self, v: Int32) -> None:\n"
+               + "        self.val = v\n\n"
+               + "def peek(b: readonly[Box]) -> Int32:\n"
+               + "    t = (1, b)\n"
+               + "    return t[1].val\n\n"
+               + "def main() -> None:\n"
+               + "    b = Box(5)\n"
+               + "    print(peek(b))\nmain()\n")
+        c, _hpp, _cpp = _gen(src, thir=True)
+        assert any("tuple_literal" in k for k in c._thir_fallback)
+        _assert_identical(src)
+
+    def test_owned_rvalue_element_tuple_routes(self):
+        # A VALUE-captured owned-rvalue element (`(1, make())`) renders bare
+        # into its value slot inside the spelled tuple -- both paths agree
+        # byte-for-byte (sema's capture annotation, not the owning
+        # classification, drives the form here).
+        src = (self._PRE_BOX
+               + "from tpy import Own\n\n"
+               + "def make() -> Own[Box]:\n"
+               + "    return Box(1)\n\n"
+               + "async def go() -> None:\n"
+               + "    t = (1, make())\n"
+               + "    await asyncio.sleep(0)\n"
+               + "    print(t[1].val)\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        _witnesses, fallback = _assert_identical(src)
+        assert not any(k.startswith("resumable:") for k in fallback)
+
+
+class TestBorrowTupleArgs:
+    """Tuple literals at call-arg tuple slots: lvalue elements ride the
+    borrow builder; rvalue elements the tuple_value_to_borrow source-tuple
+    helper (full-expression lifetime covers the call); value tuples the
+    spelled value render."""
+
+    _PRE_BOX = ("from tpy import Int32\n\n"
+                + "class Box:\n"
+                + "    val: Int32\n"
+                + "    def __init__(self, v: Int32) -> None:\n"
+                + "        self.val = v\n\n"
+                + "def take(t: tuple[Int32, Box]) -> Int32:\n"
+                + "    return t[1].val\n\n")
+
+    def test_lvalue_element_arg_routes(self):
+        src = (self._PRE_BOX
+               + "def main() -> None:\n"
+               + "    b = Box(5)\n"
+               + "    print(take((1, b)))\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("btuple.literal", 0) >= 1
+        assert not fallback
+
+    def test_rvalue_element_arg_routes(self):
+        src = (self._PRE_BOX
+               + "def main() -> None:\n"
+               + "    print(take((2, Box(7))))\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("btuple.value_to_borrow", 0) >= 1
+        assert not fallback
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert ("::tpy::tuple_value_to_borrow<std::tuple<int32_t, Box*>>"
+                "(std::tuple<int32_t, Box>{2, Box(7)})") in cpp
+
+    def test_mixed_elements_arg_routes(self):
+        # An lvalue element inside the rvalue path keeps its `&(...)` lift
+        # within the source tuple (its src slot is already the pointer part).
+        src = ("from tpy import Int32\n\n"
+               + "class Box:\n"
+               + "    val: Int32\n"
+               + "    def __init__(self, v: Int32) -> None:\n"
+               + "        self.val = v\n\n"
+               + "def take2(t: tuple[Box, Box]) -> Int32:\n"
+               + "    return t[0].val + t[1].val\n\n"
+               + "def main() -> None:\n"
+               + "    b = Box(5)\n"
+               + "    print(take2((b, Box(7))))\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("btuple.value_to_borrow", 0) >= 1
+        assert not fallback
+
+    def test_single_element_rvalue_arg_parenthesizes(self):
+        # The 1-element source tuple takes the paren form (GCC brace-init
+        # ambiguity with std::tuple ctors), like the value arm.
+        src = ("from tpy import Int32\n\n"
+               + "class Box:\n"
+               + "    val: Int32\n"
+               + "    def __init__(self, v: Int32) -> None:\n"
+               + "        self.val = v\n\n"
+               + "def take1(t: tuple[Box]) -> Int32:\n"
+               + "    return t[0].val\n\n"
+               + "def main() -> None:\n"
+               + "    print(take1((Box(9),)))\nmain()\n")
+        _witnesses, fallback = _assert_identical(src)
+        assert not fallback
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "(std::tuple<Box>(Box(9)))" in cpp
+
+    def test_value_tuple_arg_routes(self):
+        src = ("from tpy import Int32\n\n"
+               + "def total(t: tuple[Int32, Int32]) -> Int32:\n"
+               + "    return t[0] + t[1]\n\n"
+               + "def main() -> None:\n"
+               + "    print(total((3, 4)))\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("btuple.value_arg", 0) >= 1
+        assert not fallback
+
+
+class TestOwnCancellableArgs:
+    """The Own[@dynamic P] arg family: a factory CALL erases via
+    make_adapter (already routed); a BOUND-HANDLE name unwraps + moves into
+    the adapter (`make_adapter<...>(std::move(*(c)))`); the await-position
+    slot admits beside _res_param_ok (the emplace arg is the sync call-arg
+    render)."""
+
+    def test_bound_handle_create_task_routes(self):
+        src = ("import asyncio\n"
+               + "from tpy import Int32\n\n"
+               + "async def add_one(n: Int32) -> Int32:\n"
+               + "    return n + 1\n\n"
+               + "async def main_coro() -> None:\n"
+               + "    c = add_one(41)\n"
+               + "    t = asyncio.create_task(c)\n"
+               + "    print(await t)\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("call.coro_handle_adapter", 0) >= 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "(std::move(*(c)))" in cpp
+
+    def test_factory_arg_at_await_routes(self):
+        # wait_for's Own[Cancellable[T]] slot admits at the AWAIT position;
+        # the emplace arg is the make_adapter render.
+        src = ("import asyncio\n"
+               + "from tpy import Int32\n\n"
+               + "async def compute() -> Int32:\n"
+               + "    await asyncio.sleep(0.001)\n"
+               + "    return 7\n\n"
+               + "async def main_coro() -> None:\n"
+               + "    v = await asyncio.wait_for(compute(), 5.0)\n"
+               + "    print(v)\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        _witnesses, fallback = _assert_identical(src)
+        assert not any(k.startswith("resumable:") for k in fallback)
+
+    def test_readonly_own_slot_defers(self):
+        # An `Own[readonly[P]]` slot never takes the adapter render on the
+        # AST side (the ReadonlyType wrapper defeats its is_dyn_protocol
+        # key), so the gates must reject it RAW-wrapped -- routing it wrapped
+        # was a probe-caught divergence. (The AST's own emission for this
+        # spelling is itself broken -- see the BUGS.md entry -- so fallback
+        # preserves the oracle either way.)
+        src = ("import asyncio\n"
+               + "from tpy import Int32, Own, readonly\n"
+               + "from tpy.coro import Cancellable\n\n"
+               + "async def add_one(n: Int32) -> Int32:\n"
+               + "    return n + 1\n\n"
+               + "def park(coro: Own[readonly[Cancellable[Int32]]]) -> None:\n"
+               + "    pass\n\n"
+               + "async def main_coro() -> None:\n"
+               + "    c = add_one(1)\n"
+               + "    park(c)\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        fallback = _res_fallback(src)
+        assert sum(fallback.values()) >= 1
+        _assert_identical(src)
+
+    def test_erased_param_forward_defers(self):
+        # An already-ERASED Own[Cancellable] PARAM forwarded into the slot
+        # renders WITHOUT the re-wrap (a different face) -- must fall back,
+        # never take the handle wrap.
+        src = ("import asyncio\n"
+               + "from tpy import Int32, Own\n"
+               + "from tpy.coro import Cancellable\n\n"
+               + "async def add_one(n: Int32) -> Int32:\n"
+               + "    return n + 1\n\n"
+               + "async def spawn(coro: Own[Cancellable[Int32]]) -> Int32:\n"
+               + "    t = asyncio.create_task(coro)\n"
+               + "    return await t\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        fallback = _res_fallback(src)
+        assert sum(fallback.values()) >= 1
+        _assert_identical(src)
+
+
 class TestTryRegions:
     """R6: try/except (no finally) around a suspension. The region replay --
     catch headers, sub-future resets, handler try-wraps -- is skeleton; the

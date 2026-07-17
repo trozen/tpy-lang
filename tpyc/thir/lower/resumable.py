@@ -53,6 +53,7 @@ from ...parse.nodes import (
     TpyReturn,
     TpyStrLiteral,
     TpyStmt,
+    TpyTupleLiteral,
     TpyVarDecl,
 )
 from ...typesys import (
@@ -61,7 +62,9 @@ from ...typesys import (
     NoneType,
     OptionalType,
     OwnType,
+    ReadonlyType,
     TpyType,
+    TupleType,
     TypeParamRef,
     UnionType,
     VoidType,
@@ -77,9 +80,11 @@ from ...codegen_cpp.forms import is_plain_nonvalue
 from .checks import _ctor_shape_ok, _record_rvalue_source_shape
 from .context import _ExprResultUse, _ExprUse, _LowerCtx
 from .expressions import (
+    _lower_borrow_tuple_literal,
     _lower_call_arg,
     _lower_expr,
     _lower_truthy,
+    _lower_tuple_literal,
     _slot_literal_retype,
 )
 from .functions import _check_callable_structure, method_self_type_by_name
@@ -94,6 +99,7 @@ from .predicates import (
     _resolved_bytes_value,
     _resolved_str_value,
     _value_tuple,
+    _value_tuple_nested,
 )
 from .statements import (
     _handler_binding_type,
@@ -367,8 +373,21 @@ def _payload_reject(payload: 'rcfg.SuspensionPayload', analyzer) -> str | None:
     if fi is None or len(call.args) > len(fi.params):
         return "res.await_callee"
     for i in range(len(call.args)):
-        if not _res_param_ok(fi.params[i].type, analyzer):
-            # Slots beyond the param families (Own / optional-ptr / protocol
+        pt = fi.params[i].type
+        # An `Own[@dynamic P]` slot (wait_for's Own[Cancellable[T]]): the
+        # emplace arg is byte-equal to the sync call-arg render (the
+        # make_adapter erasure rides `_lower_call_arg`'s factory/handle
+        # faces), so the slot admits at the AWAIT position without joining
+        # `_res_param_ok` (the frame-PARAM capture for such a slot is a
+        # `unique_ptr<P>` field with forwarded reads -- an unverified
+        # position that stays gated).
+        pt_u = (unwrap_send_sync(pt) if isinstance(pt, TpyType) else None)
+        # RAW wrapped, matching the arg gates: an `Own[readonly[P]]` slot
+        # never takes the adapter render on the AST side.
+        own_dyn_slot = (isinstance(pt_u, OwnType)
+                        and is_dyn_protocol(pt_u.wrapped))
+        if not (own_dyn_slot or _res_param_ok(pt, analyzer)):
+            # Slots beyond the param families (optional-ptr / protocol
             # adapter / union lift) trigger the emplace coercion ladder and,
             # for static-protocol params, the two-phase decltype capture
             # render -- R5c. str/bytes/F1-record slots take the same
@@ -462,9 +481,15 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
         # bridge + borrow literal builder -- each its own rung.
         yt = func.generator_yield_type
         yt_t = yt if isinstance(yt, TpyType) else None
+        yt_tuple = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(yt_t)))
+                    if yt_t is not None else None)
         if not (_res_capture_ok(yt_t, analyzer)
                 or _resolved_str_value(yt_t, analyzer) is not None
-                or _resolved_bytes_value(yt_t, analyzer) is not None):
+                or _resolved_bytes_value(yt_t, analyzer) is not None
+                # Tuple slots gate per-yield in the Yield arm (literal
+                # builder / borrow-name pass-through); the slot family alone
+                # admits.
+                or isinstance(yt_tuple, TupleType)):
             return _reject("res.yield_type")
     else:
         rt = func.return_type if isinstance(func.return_type, TpyType) else None
@@ -496,11 +521,27 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     # shadow/post-loop duality mirrored).
     frame_slots: set[str] = set()
     coro_handle_slots: set[str] = set()
+    borrow_tuple_locals: set[str] = set()
     for lname, ltype in (func.generator_locals or []):
         if _res_local_ok(ltype, analyzer):
             continue  # value / str / bytes -- bare field
         lt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ltype)))
               if isinstance(ltype, TpyType) else None)
+        # A pointer-repr tuple local is a BORROW-form frame field
+        # (`std::tuple<..., T*>`, bare writes) -- unless the skeleton
+        # classifies it OWNING (a frame_slot<std::tuple<...>> with emplace
+        # writes): an Own-element tuple or an `__await_lift_*` one-shot
+        # temp. The third owning signal (never-reassigned, bound from a
+        # storage-form CALL) is source-driven; the decl leaf covers it by
+        # admitting only tuple-LITERAL inits at borrow-classified slots.
+        if (isinstance(lt, TupleType) and lt.has_pointer_repr_element()
+                and not lname.startswith("__for_tup_")
+                and lname not in pointer_aliases):
+            if (lt.has_own_element()
+                    or lname in rcfg.resumable_state(func).one_shot_lift_names):
+                return _reject("res.local_storage")
+            borrow_tuple_locals.add(lname)
+            continue
         # An Own[dyn-protocol] local is a coroutine/adapter handle with its
         # own AST write arms: a CONCRETE handle (`c = add_one(1)`) writes
         # `c.emplace(<factory call>)` -- the frame_slot shape, admitted with
@@ -699,6 +740,26 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
             # gen_expr's stale-coerce arm) -- same peel as the sync decl.
             init = _peel_stale_view_owned_coerce(
                 stmt.init, declared[stmt.name], analyzer)
+            # A borrow-form tuple frame field writes bare (`t =
+            # std::tuple<int32_t, Box*>{1, &(b)};` -- the AST's position-blind
+            # gen_expr; `_maybe_wrap_tuple_to_pointer` is a no-op for a
+            # literal). Only LITERAL inits are admitted: a CALL init could be
+            # the skeleton's third OWNING signal (storage-form source ->
+            # frame_slot emplace), and name/storage sources need the F3
+            # pointer lift -- both named rungs.
+            if stmt.name in borrow_tuple_locals:
+                if not isinstance(stmt.init, TpyTupleLiteral):
+                    raise ThirUnsupported("res.btuple_source")
+                value = _lower_borrow_tuple_literal(
+                    stmt.init, declared[stmt.name], lc, declared)
+                _witness("res.btuple_write")
+                return THIRAssign(
+                    target=THIRName(name=stmt.name,
+                                    result_type=declared[stmt.name],
+                                    loc=stmt.loc),
+                    value=value, loc=stmt.loc,
+                    no_source_comment=getattr(stmt, "no_source_comment",
+                                              False))
             # A concrete-coro handle slot (`c = add_one(1)`) admits ONLY a
             # factory-call source: `_gen_concrete_coro_write`'s call arm is
             # `c.emplace(<gen_expr(call)>)` -- byte-equal to the frame_slot
@@ -853,6 +914,41 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
             if _eligible_char(yt_bare) and isinstance(ys.value, TpyStrLiteral):
                 note(stmt_reject_reason(ys))
                 return None
+            if isinstance(yt_bare, TupleType):
+                # Tuple yield slot: `gen_yield_value` target-threads the
+                # render. A literal takes the value or borrow builder per the
+                # slot's element forms (a readonly slot bumps REF elements to
+                # const); a borrow-tuple LOCAL name passes bare (not a
+                # storage-form source, so `_maybe_wrap_tuple_to_pointer`
+                # no-ops). Storage-form sources (the tuple_to_pointer lift)
+                # stay a named rung.
+                target_ro = isinstance(
+                    unwrap_ref_type(unwrap_send_sync(yt)), ReadonlyType)
+                yv_src = ys.value
+                if isinstance(yv_src, TpyTupleLiteral):
+                    if yt_bare.has_pointer_repr_element():
+                        yield_values[id(ys)] = _lower_borrow_tuple_literal(
+                            yv_src, yt_bare, lc, declared,
+                            target_readonly=target_ro)
+                    else:
+                        # The VALUE-tuple path must pass the same nested
+                        # value-tuple predicate its decl/return callers gate
+                        # on: a TypeParamRef element reports neither
+                        # pointer-repr nor value, but its slot spells
+                        # `val_or_ptr_t<T>` with `to_val_or_ptr` element
+                        # wraps -- the generic builder rung, not this one.
+                        vt = _value_tuple_nested(yt_bare, analyzer)
+                        if vt is None:
+                            raise ThirUnsupported("res.btuple_yield_source")
+                        yield_values[id(ys)] = _lower_tuple_literal(
+                            yv_src, vt, lc, declared)
+                elif (isinstance(yv_src, TpyName)
+                        and yv_src.name in borrow_tuple_locals):
+                    yield_values[id(ys)] = _lower_expr(yv_src, lc, declared)
+                else:
+                    raise ThirUnsupported("res.btuple_yield_source")
+                _witness("res.btuple_yield")
+                continue
             yield_values[id(ys)] = _slot_literal_retype(
                 _lower_expr(ys.value, lc, declared), yt, lc)
             _witness("res.yield_value")
