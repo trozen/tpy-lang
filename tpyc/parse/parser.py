@@ -2301,6 +2301,7 @@ class Parser:
         readonly_opt_out = False
         is_pure = False
         is_inline = False
+        is_hotpath = False
         is_override = False
         is_overload_stub = False
         auto_readonly = False
@@ -2341,6 +2342,8 @@ class Parser:
                 is_pure = True
             elif qname == qnames.INLINE:
                 is_inline = True
+            elif qname == qnames.HOTPATH:
+                is_hotpath = True
             elif qname == qnames.OVERRIDE:
                 is_override = True
             elif qname == qnames.OVERLOAD:
@@ -2615,6 +2618,7 @@ class Parser:
             is_property_setter=is_property_setter,
             property_name=property_setter_name,
             is_inline=is_inline,
+            is_hotpath=is_hotpath,
             is_readonly=is_readonly,
             readonly_opt_out=readonly_opt_out,
             is_pure=is_pure,
@@ -2667,6 +2671,7 @@ class Parser:
         async + @noalloc, async + yield (async generators), and user
         __await__ methods -- each as 'not yet supported'."""
         is_noalloc = False
+        is_hotpath = False
         is_inline = False
         is_readonly = False
         readonly_opt_out = False
@@ -2693,6 +2698,8 @@ class Parser:
             pos, kw = self._validate_decorator_args(qname, arg, dec)
             if qname == qnames.NOALLOC:
                 is_noalloc = True
+            elif qname == qnames.HOTPATH:
+                is_hotpath = True
             elif qname == qnames.INLINE:
                 is_inline = True
             elif qname == qnames.PURE:
@@ -2968,6 +2975,7 @@ class Parser:
             return_type=return_type,
             body=body,
             is_noalloc=is_noalloc,
+            is_hotpath=is_hotpath,
             is_inline=is_inline,
             is_readonly=is_readonly,
             readonly_opt_out=readonly_opt_out,

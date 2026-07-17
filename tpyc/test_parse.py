@@ -51,7 +51,7 @@ class TestTpyExports:
 
     def test_contains_decorators(self):
         exports = get_tpy_exports()
-        for name in ["readonly", "noalloc", "nocopy", "pure"]:
+        for name in ["readonly", "noalloc", "hotpath", "nocopy", "pure"]:
             assert name in exports, f"{name} missing from tpy exports"
 
     def test_contains_parser_keywords(self):
@@ -318,6 +318,28 @@ class TestClassBodyTupleTargetRejected:
         p = Parser()
         with pytest.raises(ParseError, match="Invalid field declaration"):
             p.parse("class K:\n    a, b = (1, 2)\n")
+
+
+class TestHotpathDecorator:
+    """@hotpath parses on functions and methods and lands on the AST node.
+    It carries no compiler behavior yet."""
+
+    _SRC = "from tpy import hotpath\n"
+
+    def test_function(self):
+        mod = Parser().parse(self._SRC + "@hotpath\ndef f() -> int:\n    return 1\n")
+        assert mod.functions[0].is_hotpath
+
+    def test_method(self):
+        mod = Parser().parse(
+            self._SRC + "class K:\n    @hotpath\n    def m(self) -> int:\n        return 1\n",
+            module_name="m",
+        )
+        assert mod.records[0].methods[0].is_hotpath
+
+    def test_absent_by_default(self):
+        mod = Parser().parse("def f() -> int:\n    return 1\n")
+        assert not mod.functions[0].is_hotpath
 
 
 class TestValidateCppTemplate:

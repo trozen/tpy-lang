@@ -480,6 +480,11 @@ def noalloc(func):
     return func
 
 
+def hotpath(func):
+    """No-op in CPython. Marks a hot path for the compiler."""
+    return func
+
+
 def nocopy(cls):
     """No-op in CPython. The compiler enforces no-copy semantics at compile time."""
     return cls

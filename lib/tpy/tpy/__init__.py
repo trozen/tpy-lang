@@ -5,7 +5,7 @@
 # decorator kwargs (e.g. @native(function=True)) in _core/_types.py.
 from ._bootstrap import (
     # Decorators / type modifiers
-    readonly, noalloc, nocopy, pure, inline, dynamic, error_return,
+    readonly, noalloc, hotpath, nocopy, pure, inline, dynamic, error_return,
     unsafe_send, unsafe_sync, nosend, nosync, nomove,
     Own, Fn,
 )
@@ -63,7 +63,7 @@ __all__ = [
     # Pointer / ownership
     "Own", "Fn",
     # Decorators / type modifiers
-    "readonly", "noalloc", "nocopy", "pure", "inline", "dynamic", "error_return",
+    "readonly", "noalloc", "hotpath", "nocopy", "pure", "inline", "dynamic", "error_return",
     "unsafe_send", "unsafe_sync", "nosend", "nosync", "nomove",
     "auto_readonly", "auto_own", "unsafe_interior_mutable",  # parser keywords (no .py stub)
     # Structural protocols

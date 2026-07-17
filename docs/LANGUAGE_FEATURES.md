@@ -3661,6 +3661,7 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
 
 ### Decorators
 - **Working**: `@noalloc` (parsed and recognized, enforcement planned)
+- **Working**: `@hotpath` (parsed and recognized on functions and methods; no effect yet -- marks perf-critical code for planned warnings/constraints). Takes no arguments.
 - **Working**: `@readonly` ("doesn't mutate its arguments" contract on functions/methods)
   - C++ codegen: `@readonly` non-value params emit `const T&` (or `const T*` for Optional aliases, `std::variant<const A*, const B*>` for non-value union params), matching sema-level enforcement. A union param whose address escapes (narrowed + member-accessed) stays mutable, consistently across signature, call site, and body -- the const decision is the single materialized `decide_param_const` verdict on `FunctionInfo`.
   - Type-based enforcement: `ReadonlyType` wraps non-value params; field access, subscript, and method calls propagate readonly through expressions

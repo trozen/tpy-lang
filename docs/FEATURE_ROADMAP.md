@@ -1405,6 +1405,13 @@ arithmetic, `Box::new`, `std::string` construction, container growth.
 
 **Current state**: `is_noalloc` flag propagated in sema, zero enforcement code.
 
+**Sibling marker -- `@hotpath`**: parsed onto `TpyFunction.is_hotpath` (functions and
+methods), not propagated into sema, zero enforcement. Unlike `@noalloc` it has no defined
+semantics yet: the intended role is marking perf-critical code so the compiler can warn on
+silently-expensive constructs (see TODO.md's `in`-without-`__contains__` item, which names
+`@hotpath` and `@noalloc` contexts together). Designing what it constrains is part of this
+item.
+
 **Dependencies**: Needs string ownership model (done -- context-dependent `str`), exception
 model (exceptions allocate), `Box[T]` (heap allocation).
 

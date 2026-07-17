@@ -58,6 +58,7 @@ FIXED_INT_NAMES = {
 # -- tpy decorators / type modifiers --
 READONLY = "tpy.readonly"
 NOALLOC = "tpy.noalloc"
+HOTPATH = "tpy.hotpath"
 NOCOPY = "tpy.nocopy"
 PURE = "tpy.pure"
 INLINE = "tpy.inline"

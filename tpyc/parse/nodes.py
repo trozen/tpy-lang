@@ -1275,6 +1275,7 @@ class TpyFunction:
     return_type: 'TpyType | TypeRefNode | None'
     body: list[TpyStmt]
     is_noalloc: bool = False
+    is_hotpath: bool = False
     is_inline: bool = False
     is_readonly: bool = False
     readonly_opt_out: bool = False
