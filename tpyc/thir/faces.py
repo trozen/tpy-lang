@@ -40,6 +40,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "argtemp.ctor_mut_rvalue",      # record rvalue into a MUTATED ctor slot
     "ctor.const_rvalue_arg",        # record rvalue inline into a const ctor slot
     "argtemp.own_copy",             # Own-slot copy+move `__tmp_N` temp
+    "argtemp.container_literal",    # list literal into a free-call container
+                                    # ref slot -> hoisted `__tmp_N` temp
     # `*args` call-site pack faces (THIRVarargPack lowering / _gen_vararg_pack).
     "vararg.empty",                 # `::tpy::varargs<E>()`
     "vararg.pack_value",            # value-element std::array<E, N> temp
@@ -62,6 +64,9 @@ THIR_FACES: frozenset[str] = frozenset({
     # generic tail render, the optional's converting ctor absorbing the bare
     # member -- `f(5)`, `f("hi")`, `f(Color.Red)`.
     "call.optval_member",
+    # An owned value-repr Optional[str/bytes] LOCAL into a matching owned
+    # Optional slot -> bare whole-optional pass (no view->owned shim).
+    "call.optview_local_whole",
     # @error_return faces (emit unless noted): the function-body renders
     # (bare-return `{}`, the void success tail, the return-tier raise), the
     # caller renders (the statement bind/discard blocks, the expression
@@ -288,6 +293,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "mil.value_tuple_literal",      # `t(std::tuple<...>{...})` spelled literal
     "mil.optional_value_copy",      # `f(value)` -- value-repr Optional field
                                     # bare-copied from a same-typed opt param
+    "mil.optview_shim",             # value-repr Optional[str/bytes] field <-
+                                    # borrow optional<view> param (arg-split shim)
     "mil.callable_copy",            # `on_event(cb)` -- std::function field
                                     # bare-copied from a same-typed param
     # An own-field init the AST demotes to the ctor body (bare non-param name /
@@ -752,6 +759,8 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # ListPrinter(list_slice/list_stepped_slice)
     "print.kw_sep_end",             # sep=/end= kwarg (str literal or resolved
                                     # str-value name) -> the chain-token render
+    "print.file_sink",              # file= kwarg -> ::tpy::as_ostream(<sink>)
+                                    # sink lowered in value position (deref)
     "comp.array_range",             # Array demotion: array_from_index range lambda
     "comp.array_source",            # Array demotion: array_from_index over an Array source
     # THIRMatch M1 -- the unguarded scalar switch tiers (lowering).

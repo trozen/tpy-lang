@@ -2961,13 +2961,15 @@ def _subscript_container_recv_type(recv: TpyExpr, locals_: dict[str, TpyType],
     return None
 
 def _record_getitem_key(obj_type: 'TpyType | None', analyzer) -> 'TpyType | None':
-    """The key param type of a CONCRETE user-record subscript receiver's
-    `__getitem__` (so `recv[index]` spells the record's generated bare
-    `operator[]`), or None. Non-generic, non-@native user records only: a
-    @native record wrapping an STL type has a C++ operator[] taking size_t
-    (the AST casts there), and a generic record keeps the genrec path."""
+    """The key param type of a user-record subscript receiver's `__getitem__`
+    (so `recv[index]` spells the record's generated bare `operator[]`), or
+    None. Non-@native user records (including monomorphized generic records
+    like `FixStr[16]`, whose C++ operator[] renders bare identically -- mirrors
+    the AST's `_is_concrete_user_record`, which likewise has no type-args
+    guard): a @native record wrapping an STL type has a C++ operator[] taking
+    size_t (the AST casts there)."""
     t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(obj_type)))
-    if not (isinstance(t, NominalType) and t.is_user_record and not t.type_args):
+    if not (isinstance(t, NominalType) and t.is_user_record):
         return None
     ri = analyzer.registry.get_record_for_type(t)
     if ri is None or ri.is_native:
@@ -2980,13 +2982,13 @@ def _record_getitem_key(obj_type: 'TpyType | None', analyzer) -> 'TpyType | None
 
 
 def _record_setitem_value(obj_type: 'TpyType | None', analyzer) -> 'TpyType | None':
-    """The VALUE param type of a CONCRETE user-record subscript receiver's
-    `__setitem__` (so `recv[key] = v` spells the AST's no-container fallback
-    `::tpy::__setitem__(recv, key, v)`), or None. Same concrete / non-@native
-    restriction as `_record_getitem_key` -- a native STL wrapper or a generic
-    record keeps its own emit path."""
+    """The VALUE param type of a user-record subscript receiver's `__setitem__`
+    (so `recv[key] = v` spells the AST's no-container fallback
+    `::tpy::__setitem__(recv, key, v)`), or None. Same non-@native restriction
+    as `_record_getitem_key` (monomorphized generic records included) -- a
+    native STL wrapper keeps its own emit path."""
     t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(obj_type)))
-    if not (isinstance(t, NominalType) and t.is_user_record and not t.type_args):
+    if not (isinstance(t, NominalType) and t.is_user_record):
         return None
     ri = analyzer.registry.get_record_for_type(t)
     if ri is None or ri.is_native:

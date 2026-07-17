@@ -1287,15 +1287,18 @@ class TestCtorMilSmallFamilies:
         assert ctor is not None
         assert _ctor_tail(ctor) == " : v(v) {}\n"
 
-    def test_value_optional_str_field_stays_ast(self):
+    def test_value_optional_str_field_shim_routes(self):
         # Optional[str]: the param slot is optional<string_view> against the
-        # field's optional<string> (the arg-split shim) -- not mirrored, the
-        # ctor stays on the AST path.
-        ctor = _lower_ctor(
-            "class H:\n    s: str | None\n"
-            + "    def __init__(self, s: str | None):\n        self.s = s\n",
-            "H")
-        assert ctor is None
+        # field's optional<string>, so the MIL renders the arg-split shim
+        # (`view_to_owned_conv`), byte-identical to the AST.
+        src = ("class H:\n    s: str | None\n"
+               + "    def __init__(self, s: str | None):\n        self.s = s\n")
+        ctor, w = _lower_ctor_witnessed(src, "H")
+        assert ctor is not None
+        assert w.get("mil.optview_shim")
+        assert _ctor_tail(ctor) == (
+            " : s(s ? std::make_optional(std::string(*s)) : std::nullopt) {}\n")
+        assert self._hpp(src, thir=True) == self._hpp(src, thir=False)
 
     def test_value_optional_field_inner_param_stays_ast(self):
         # A bare `Int32` param into an `Int32 | None` field takes optional's

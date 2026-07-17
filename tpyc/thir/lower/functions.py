@@ -90,6 +90,7 @@ from ..nodes import (
     THIRLiteral,
     THIRMilInit,
     THIRModule,
+    THIROptViewArg,
     THIRParam,
     THIRParamCopy,
     THIRRecordCopy,
@@ -117,6 +118,8 @@ from .predicates import (
     _resolved_str_value,
     _template_init_call_fi,
     _value_opt_scalar,
+    _value_opt_view,
+    _opt_view_arg_shim,
     _value_tuple,
 )
 from .context import (
@@ -973,14 +976,12 @@ def _ctor_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
         # inner classifier below does not apply.
         return True
     if isinstance(ftype, OptionalType) and not ftype.uses_pointer_repr():
-        # A value-repr Optional field (`std::optional<T>`) copies bare from a
-        # same-typed optional param name (`f(value)`) -- param slot and field
-        # storage spell the same std::optional<T>, so the MIL is the AST's
-        # gen_expr name render verbatim. View inners (str/bytes) stay out:
-        # their param slot is optional<view> against the field's
-        # optional<owned> (the arg-split shim), which the MIL does not mirror.
-        if _value_opt_scalar(ftype, analyzer) is None:
-            return False
+        # A value-repr Optional field (`std::optional<T>`) from an optional param
+        # name. Scalar inner: the bare same-typed copy (`f(value)`) -- param slot
+        # and field storage spell the same std::optional<T>. View inner
+        # (str/bytes): the arg-split shim (`_opt_view_arg_shim`) -- the param's
+        # borrow `optional<view>` -> the field's owned `optional<owned>`
+        # (`f(v ? std::make_optional(<conv>(*v)) : std::nullopt)`).
         source = _unwrap_copy(stmt.value, analyzer)
         if not isinstance(source, TpyName):
             return False
@@ -988,7 +989,11 @@ def _ctor_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
         if dt is None:
             return False
         dt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(dt)))
-        return dt == ftype
+        if _value_opt_scalar(ftype, analyzer) is not None:
+            return dt == ftype
+        if _value_opt_view(ftype, analyzer) is not None:
+            return _opt_view_arg_shim(dt, ftype, analyzer)
+        return False
     if _callable_value(ftype):
         # A `std::function<...>` field copies bare from a same-typed callable
         # param name (`on_event(cb)`). Lambda / mismatched-signature sources
@@ -1536,6 +1541,14 @@ def _lower_ctor_mil_init(
             _witness("mil.optional_none")
             v: THIRExpr = THIRLiteral(result_type=ftype, value=None,
                                       form=Form.STORAGE, loc=loc)
+        elif not ftype.uses_pointer_repr() and _value_opt_view(
+                ftype, analyzer) is not None:
+            # A value-repr Optional[str/bytes] field <- a borrow
+            # `optional<view>` param: the arg-split shim, the same
+            # `view_to_owned_conv` render the call-arg THIROptViewArg emits.
+            _witness("mil.optview_shim")
+            v = THIROptViewArg(result_type=ftype, name=source.name,
+                               form=Form.VALUE, loc=loc)
         elif not ftype.uses_pointer_repr():
             # The gate admitted only a same-typed value-repr optional param
             # name: the whole-optional bare copy (`f(value)`). The read is a

@@ -401,15 +401,17 @@ class TestScalarCtorCall:
         assert thir == ast
 
     def test_float_str_arg_ineligible(self):
-        # float("nan") folds to a numeric_limits constant on the AST path -- the
-        # str-literal arg fails the scalar arg gate, keeping the fold there.
+        # float("nan") folds to a numeric_limits constant on the AST path (not
+        # float_from_str), so a str-LITERAL native-ctor arg stays AST -- the
+        # native-free-ctor route excludes str literals to avoid that divergence.
         thir = _lower(_CTOR_PRELUDE
                       + "def f() -> float:\n    return float(\"nan\")\n")
         assert _fn(thir, "f") is None
 
     def test_char_ctor_ineligible(self):
-        # Char("a") resolves to a @native(function=True) ctor (no cpp_template),
-        # and neither the str arg nor the Char result is an eligible scalar.
+        # Char("a") resolves to a @native(function=True) ctor (no cpp_template);
+        # the str-LITERAL arg keeps it off the native-free-ctor route, and the
+        # Char result is not an eligible scalar either.
         thir = _lower("from tpy import Char\n"
                       + "def f() -> None:\n    c = Char(\"a\")\n    print(1)\n")
         assert _fn(thir, "f") is None

@@ -52,6 +52,7 @@ from .nodes import (
     THIRCoerce,
     THIRConstructor,
     THIRContainerLiteral,
+    THIRListRepeat,
     THIRContinue,
     THIRDelVar,
     THIRCtorCall,
@@ -870,6 +871,42 @@ def _emit_container_literal(e: THIRContainerLiteral, state: _EmitState) -> str:
     return literal
 
 
+def _emit_list_repeat(e: THIRListRepeat, state: _EmitState) -> str:
+    """`[elems] * count` -- the _gen_list_repeat mirror. Elements render before
+    the array counter draws / before the count (the AST computes `repeat_elems`
+    first), so a counter drawn by an element keeps its AST position."""
+    if is_array(unwrap_qualifiers(e.result_type)):
+        # Aggregate build: evaluate the element(s) once, then array_from_index
+        # copies each slot (from_range's array branch would default-construct N
+        # spurious times). One `iter_counter` draw for `__rep_N`.
+        rendered = [_emit_expr(x, state) for x in e.elements]
+        n = state.next_loop_index()
+        k = len(rendered)
+        stmt_ind = INDENT * state.stmt_indent_level
+        ind1 = stmt_ind + INDENT
+        buf = io.StringIO()
+        buf.write("({\n")
+        if k == 1:
+            buf.write(f"{ind1}{e.elem_cpp} __rep_{n} = {rendered[0]};\n")
+            lam = f"[&](std::size_t) -> {e.elem_cpp} {{ return __rep_{n}; }}"
+        else:
+            buf.write(f"{ind1}std::array<{e.elem_cpp}, {k}> "
+                      f"__rep_{n}{{{', '.join(rendered)}}};\n")
+            lam = (f"[&](std::size_t __i_{n}) -> {e.elem_cpp} "
+                   f"{{ return __rep_{n}[__i_{n} % {k}]; }}")
+        buf.write(f"{ind1}::tpy::array_from_index<{e.elem_cpp}, "
+                  f"{e.array_size_cpp}>({lam});\n")
+        buf.write(f"{stmt_ind}}})")
+        return buf.getvalue()
+    elems = ", ".join(_emit_expr(x, state) for x in e.elements)
+    count = _emit_expr(e.count, state)
+    if e.count_bigint:
+        # repeat_range's count is int32_t; a BigInt count checks-converts.
+        count = f"{count}.to_fixed_check<int32_t>()"
+    range_expr = f"::tpy::repeat_range<{e.elem_cpp}>({count}, {{{elems}}})"
+    return f"::tpy::from_range<{e.result_cpp}>({range_expr})"
+
+
 def _emit_field_access(e: THIRFieldAccess, state: _EmitState) -> str:
     if e.deref_check:
         # Unproven Optional member access: null-check the (already `T*`) receiver
@@ -1274,6 +1311,8 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         return e.wrap.format(_emit_expr(e.operand, state))
     if isinstance(e, THIRContainerLiteral):
         return _emit_container_literal(e, state)
+    if isinstance(e, THIRListRepeat):
+        return _emit_list_repeat(e, state)
     if isinstance(e, THIRTupleLiteral):
         # The spelled value-tuple render (`std::tuple<...>{e1, e2}`);
         # result_type is the slot TupleType, whose scalar/owned-str elements
@@ -3098,7 +3137,9 @@ def _emit_print(out: TextIO, stmt: THIRPrint, indent_level: int,
         # gen_print returns "" for a fully-suppressed chain; lowering rejects
         # the kwargs-on-empty-print shape, so this is a defensive no-op.
         return
-    out.write(f"{indent}std::cout << " + " << ".join(parts) + ";\n")
+    sink = ("std::cout" if stmt.sink_expr is None
+            else f"::tpy::as_ostream({_emit_expr(stmt.sink_expr, state)})")
+    out.write(f"{indent}{sink} << " + " << ".join(parts) + ";\n")
 
 
 def _emit_stmts(out: TextIO, stmts, indent_level: int, state: _EmitState) -> None:

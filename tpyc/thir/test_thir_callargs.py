@@ -2100,8 +2100,9 @@ class TestCtorListLiteralArg:
     # A list literal into a ctor's list slot renders the bare brace-init in
     # place (`Numbers({1, 2, 3});`) -- probe-verified against the AST for
     # scalar/str/record elements. Dict literals take a spelled
-    # `::tpy::ordered_map<...>({{...}})` arg render and stay AST; free-call
-    # literal args hoist a `__tmp_N` on the AST path and stay AST.
+    # `::tpy::ordered_map<...>({{...}})` arg render and stay AST; a free-call
+    # literal arg hoists a `__tmp_N` ref-param temp (routed via
+    # `argtemp.container_literal` at the flushable positions).
     SRC = (
         "from tpy import Int32\n"
         "class Numbers:\n"
@@ -2130,7 +2131,10 @@ class TestCtorListLiteralArg:
         assert _fn(thir, "use") is None
         assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
-    def test_free_call_list_literal_arg_stays_ast(self):
+    def test_free_call_list_literal_arg_hoists_temp(self):
+        # A free-call list-literal arg in a flush position (here a return)
+        # hoists a `__tmp_N` ref-param temp -- NOT the ctor's bare in-place
+        # brace -- byte-identical to the AST's per-arg cascade.
         src = (
             "from tpy import Int32\n"
             "def total(xs: list[Int32]) -> Int32:\n"
@@ -2138,9 +2142,13 @@ class TestCtorListLiteralArg:
             "    for x in xs:\n        t += x\n"
             "    return t\n"
             "def use() -> Int32:\n    return total([1, 2])\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "use") is None
         assert _cpp(src, thir=True) == _cpp(src, thir=False)
+        thir, witnesses = _lower_ctx_witnessed(src)
+        assert _fn(thir, "use") is not None
+        assert witnesses.get("argtemp.container_literal", 0) >= 1
+        out = _cpp(src, thir=True)
+        assert "std::vector<int32_t> __tmp_1 = {1, 2};" in out
+        assert "return total(__tmp_1);" in out
 
 
 class TestSelfRecordArg:

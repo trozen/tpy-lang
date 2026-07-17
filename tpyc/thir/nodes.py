@@ -764,6 +764,35 @@ class THIRContainerLiteral(THIRExpr):
 
 
 @dataclass(frozen=True)
+class THIRListRepeat(THIRExpr):
+    """`[elems] * count` -- the `_gen_list_repeat` mirror. Element children lower
+    through the container-element wraps with the move SUPPRESSED (one source is
+    copied into every slot; a move would use-after-move slots 1..N-1). The emit
+    dispatches on `result_type`'s family (like `THIRContainerLiteral`):
+
+    - list (materialized) ->
+      `::tpy::from_range<result_cpp>(::tpy::repeat_range<elem_cpp>(count, {elems}))`
+    - `Array[T, N]` -> the `({ ... array_from_index ...; })` statement-expression
+      (mirrors the comprehension array-demotion arm). One element:
+      `elem_cpp __rep_N = e0;` + `[&](std::size_t) -> elem_cpp { return __rep_N; }`;
+      k>1: `std::array<elem_cpp, k> __rep_N{elems};` +
+      `[&](std::size_t __i_N) -> elem_cpp { return __rep_N[__i_N % k]; }`. The
+      `__rep_N` index draws the per-function `iter_counter` at EMIT (matching
+      the AST's single `iter_counter` draw), so it is NOT baked into the node.
+
+    The lazy `ListRepeatType` shape stays on the AST path (rejected at lowering).
+    `count_bigint` appends `.to_fixed_check<int32_t>()` (repeat_range's count is
+    int32_t). `count`/`result_cpp` are unused by the Array shape (the size rides
+    `array_size_cpp` in the template)."""
+    elements: tuple[THIRExpr, ...] = ()
+    count: 'THIRExpr | None' = None
+    count_bigint: bool = False
+    elem_cpp: str = ""
+    result_cpp: str = ""
+    array_size_cpp: str = ""
+
+
+@dataclass(frozen=True)
 class THIRTupleLiteral(THIRExpr):
     """A value-tuple literal `(a, b)` at a fully-targeted slot -- the
     all-VALUE-elements path of `_gen_tuple_literal` (`has_ref_elements`
@@ -2182,9 +2211,12 @@ class THIRPrintArg:
 
 @dataclass(frozen=True)
 class THIRPrint(THIRStmt):
-    """A `print(<args>)` statement, sink `std::cout` -- the slice admits the
-    `sep=`/`end=` kwargs (str literal or a resolved str-value NAME) and
-    excludes `file=`/`flush=`. Emits `std::cout << a0 << SEP << a1 << ...
+    """A `print(<args>)` statement. Default sink `std::cout`; a `file=` kwarg
+    rides `sink_expr` and emits `::tpy::as_ostream(<sink>) << ...` (gen_print's
+    file-sink arm -- the sink expr lowers in value position, so a pointer-typed
+    global like `sys.stderr` renders `(*...)`). The slice admits the
+    `sep=`/`end=`/`file=` kwargs (sep/end a str literal or a resolved str-value
+    NAME) and excludes `flush=`. Emits `<sink> << a0 << SEP << a1 << ...
     << END;`. A literal separator/end rides `sep_value`/`end_value` (the
     Python VALUE, rendered via cpp_string_literal_expr like gen_print's
     literal arm; None suppresses the token entirely -- the AST's empty-literal
@@ -2197,6 +2229,7 @@ class THIRPrint(THIRStmt):
     end_expr: 'THIRExpr | None' = None
     sep_value: 'str | None' = " "
     end_value: 'str | None' = "\n"
+    sink_expr: 'THIRExpr | None' = None
 
 
 @dataclass(frozen=True)

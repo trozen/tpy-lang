@@ -350,7 +350,8 @@ def _container_literal_decl_ok(stmt: TpyVarDecl, declared: dict[str, TpyType],
     Optional[scalar], value tuples, nested list literals, F1 records); the
     `make_vector`/`make_ordered_*` move/nocopy switch is mirrored at lowering
     off the same `movable_locals` + last-use facts the AST reads. A `[0] * n`
-    repeat (TpyListRepeat) stays on the AST path. The empty-literal-to-Array
+    repeat (TpyListRepeat) is admitted too -- its own family gate + the
+    _gen_list_repeat mirror in the lowering arm. The empty-literal-to-Array
     reject is defensive-only: sema errors on both routes to that shape (a bare
     `[]` is un-inferable; an `Array[T, 0]` annotation mismatches the literal),
     so only the empty LIST form (the spelled `std::vector<T>{}` emit) is
@@ -361,7 +362,7 @@ def _container_literal_decl_ok(stmt: TpyVarDecl, declared: dict[str, TpyType],
     # The plain value decl this cell emits would silently copy instead; reject
     # (hoisted / move-through conservatively ride along).
     is_lit = isinstance(stmt.init, (TpyArrayLiteral, TpyDictLiteral,
-                                    TpySetLiteral))
+                                    TpySetLiteral, TpyListRepeat))
     if (stmt.name in prescan.reassigned or stmt.name in prescan.hoisted
             or stmt.name in prescan.move_through):
         return note_detail("container_lit.rebound") if is_lit else False
@@ -407,6 +408,14 @@ def _container_literal_shape_ok(init: TpyExpr, t: TpyType, analyzer, *,
         if is_span(t):
             return bool(args) and _eligible_scalar(unwrap_readonly(args[0]))
         if not (is_list(t) or is_array(t)) or not args:
+            return _note_container_lit_reject(init, t, analyzer) if note else False
+        return True
+    if isinstance(init, TpyListRepeat):
+        # `[e] * n` -> materialized list or Array aggregate (the _gen_list_repeat
+        # mirror in the lowering arm). A lazy `ListRepeatType` / Span / protocol
+        # target stays on the AST path (see the lowering arm's reject), so gate
+        # to the two routed families here.
+        if not (is_list(t) or is_array(t)):
             return _note_container_lit_reject(init, t, analyzer) if note else False
         return True
     return False
@@ -1761,7 +1770,18 @@ def _free_callee_kind(e: TpyCall, analyzer, *,
             note_detail("call.closure_import_shadow")
             return None
         return ("plain", "")
-    if (fi.is_method or fi.is_staticmethod
+    # A native-FUNCTION `__init__` ctor (`int(str)` -> `tpy::BigInt::from_str`,
+    # float/bytes from_str) is receiver-less -- it spells like a native free
+    # call, so let it reach the native arm below rather than the method reject.
+    # A str-LITERAL arg is excluded: `float("nan"/"inf")` folds to a constexpr
+    # numeric_limits constant on the AST path (not float_from_str), so the raw
+    # native call would diverge; ordinary literals render identically but stay
+    # AST here for the one uniform rule (argparse passes runtime str args).
+    native_free_ctor = (
+        fi.native_function and fi.is_method and fi.name == "__init__"
+        and not any(isinstance(_peel_coerce(a), TpyStrLiteral)
+                    for a in e.args))
+    if (((fi.is_method or fi.is_staticmethod) and not native_free_ctor)
             or (fi.is_async and not coro_factory_ok)
             or (fi.is_generator and not generator_ok)
             or fi.is_property_getter or fi.is_property_setter):
@@ -2091,6 +2111,7 @@ def _plain_call_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
             or _own_move_arg(a, ptype, locals_, analyzer)
             or (temps_ok and _own_lvalue_arg(
                 a, ptype, locals_, narrowed, analyzer))
+            or (temps_ok and _container_literal_arg(a, ptype, analyzer))
             or _optional_ptr_arg(a, ptype, locals_, analyzer,
                                  temps_ok=temps_ok)
             or _readonly_record_ctor_arg(a, ptype, locals_, analyzer)

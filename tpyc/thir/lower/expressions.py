@@ -30,6 +30,7 @@ from ...parse.nodes import (
     TpyIntLiteral,
     TpyLambda,
     TpyListComprehension,
+    TpyListRepeat,
     TpyMethodCall,
     TpyName,
     TpyNoneLiteral,
@@ -52,6 +53,7 @@ from ...typesys import (
     FloatLiteralType,
     INT32,
     IntLiteralType,
+    ListRepeatType,
     LiteralType,
     NominalType,
     NONE,
@@ -67,8 +69,10 @@ from ...typesys import (
     VoidType,
     contains_type_param,
     is_any_str_type,
+    is_protocol_type,
     is_void_like_type,
     make_array,
+    make_list,
     resolve_int_literals,
     substitute_type_params_simple,
     unwrap_optional_own,
@@ -96,6 +100,7 @@ from ...type_def_registry import (
     is_varargs,
 )
 from ...codegen_cpp.types import resolve_pending_container
+from ...modules.type_resolution import is_native_iterable
 from ...codegen_cpp.context import (
     enum_cpp_name,
     escape_cpp_name,
@@ -140,6 +145,7 @@ from ..nodes import (
     THIRTupleMembership,
     THIRTruthy,
     THIROptViewArg,
+    THIRListRepeat,
     THIRLiteral,
     THIRMethodCall,
     THIRModuleVar,
@@ -971,12 +977,16 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
         elif (isinstance(analyzer.get_expr_type(e.left), IntLiteralType)
               and not isinstance(e.left, TpyName)
               and isinstance(analyzer.get_expr_type(e.right), IntLiteralType)
-              and not isinstance(e.right, TpyName)):
-            # The AST constant-folds a both-literal int binop whenever its
-            # value fits a C++ integer literal (int64) -- `2 + 3` -> `5`,
+              and not isinstance(e.right, TpyName)
+              and not is_fixed_int_type(resolve_int_literals(
+                  rtype, analyzer.ctx.default_int_for_literal))):
+            # The AST constant-folds a both-literal int binop ONLY in a
+            # target-less (BigInt/literal) context -- `2 + 3` -> `5`,
             # `2**63 - 1` -> `9223372036854775807LL` -- which THIR does not
-            # reproduce, so reject. Only a BigInt result whose value OVERFLOWS
-            # int64 (`2**64 + 1`) is rendered as a full operator expr and routes.
+            # reproduce, so reject. A FIXED-int target never folds (the slot
+            # pins `::tpy::add_check<intN>(...)`), so those route. Only a BigInt
+            # result whose value OVERFLOWS int64 (`2**64 + 1`) is rendered as a
+            # full operator expr and routes.
             lit_val = getattr(analyzer.get_expr_type(e), "value", None)
             fits_i64 = lit_val is not None and -(2**63) <= lit_val <= 2**63 - 1
             is_bigint = is_big_int_type(resolve_int_literals(
@@ -1062,15 +1072,24 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
         fi = e.resolved_contains
         lt = _operand_type(e.left, declared, analyzer)
         if fi is None:
-            # No resolved `__contains__` member (a `readonly[set]` strips it):
-            # the AST's `is_native_in` fallback renders
-            # `std::ranges::contains(s, x)`. Scoped to a native SET name receiver
-            # with a scalar / owned-str needle -- list/dict fallbacks and the
-            # universal iterator-loop form are later rungs.
-            if not (isinstance(e.right, TpyName)
-                    and e.right.name in declared
-                    and is_set(unwrap_readonly(unwrap_ref_type(
-                        unwrap_send_sync(declared[e.right.name]))))
+            # No resolved `__contains__` member (`readonly[set]` strips it;
+            # list/array/span have none): the AST's `is_native_in` fallback
+            # renders `std::ranges::contains(recv, x)`. Any native NativeIterable
+            # receiver (set/list/array/span) with a scalar / owned-str needle;
+            # the universal iterator-loop form is a later rung.
+            rt = _operand_type(e.right, declared, analyzer)
+            rt_bare = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rt)))
+                       if rt is not None else None)
+            rec = (analyzer.registry.get_record_for_type(rt_bare)
+                   if rt_bare is not None else None)
+            # str/bytes iterate as char/byte sequences so they qualify as
+            # native-iterable, but membership on them is SUBSTRING (`.find() !=
+            # npos`), not element-containment (`std::ranges::contains`) -- that
+            # is the str/bytes-membership arms' job, so exclude them here.
+            if not (rec is not None and rec.is_native
+                    and is_native_iterable(rt_bare, analyzer.registry)
+                    and _resolved_str_value(rt, analyzer) is None
+                    and _resolved_bytes_value(rt, analyzer) is None
                     and (_resolved_scalar(lt, analyzer)
                          or _resolved_str_value(lt, analyzer) is not None)):
                 reject()
@@ -1300,6 +1319,21 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                 rslot, lc)
     bt = _resolved_bytes_value(rtype, analyzer)
     lcast, rcast = _binop_operand_casts(e, analyzer)
+    # A both-int-literal binop with a FIXED-int target renders through the AST's
+    # dedicated `gen_call_from_fi` arm (`::tpy::add_check<intN>(l, r)`) with NO
+    # wrapping parens -- unlike the generic resolved-binop path. Nested such
+    # binops recurse the same way, so the whole tree is paren-free.
+    paren_wrap = True
+    if (e.resolved_binop is not None
+            and getattr(e.resolved_binop.method, "cpp_template", None)
+            and isinstance(analyzer.get_expr_type(e.left), IntLiteralType)
+            and not isinstance(e.left, TpyName)
+            and isinstance(analyzer.get_expr_type(e.right), IntLiteralType)
+            and not isinstance(e.right, TpyName)
+            and rtype is not None
+            and is_fixed_int_type(resolve_int_literals(
+                rtype, analyzer.ctx.default_int_for_literal))):
+        paren_wrap = False
     return THIRBinOp(
         result_type=rtype,
         left=left,
@@ -1309,6 +1343,7 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
         divisor_non_zero=e.divisor_non_zero,
         left_cast=lcast,
         right_cast=rcast,
+        paren_wrap=paren_wrap,
         form=(Form.STORAGE if _is_string_owned(rtype)
               or (bt is not None and is_bytes_type(bt)) else Form.VALUE),
         loc=loc)
@@ -2469,14 +2504,19 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                 cpp_template=inst_fi.cpp_template,
                 loc=loc,
             )
-        if fi is not None and fi.is_method and fi.name == "__init__":
+        if (fi is not None and fi.is_method and fi.name == "__init__"
+                and not fi.native_function):
             # A scalar or slice-object type-constructor call (`Int32(x)` /
             # `basic_slice(1, 3)`): the emit is the resolved __init__ overload's
             # @cpp_template expanded over the args with no receiver. Sema
             # already substituted {cpp} / class type params; positional-only
             # templates are carried verbatim. A `None` bound in a slice-ctor's
             # value-repr `Int32 | None` slot renders `std::nullopt` (the
-            # STORAGE-form None).
+            # STORAGE-form None). A native-FUNCTION ctor (`int(str)` ->
+            # `tpy::BigInt::from_str`, float/bytes from_str, `Char(s)` ->
+            # `char_from_str`) carries no cpp_template and is excluded by the
+            # `not fi.native_function` guard above, routing through the native
+            # free-call path (`native_free_ctor` in checks.py) instead.
             template_fi = _template_init_call_fi(e)
             if template_fi is None:
                 note_detail("call.type_ctor.no_template_fi")
@@ -2658,6 +2698,51 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
             form=form,
             loc=loc,
         ))
+    if isinstance(e, TpyListRepeat):
+        # `[elems] * count` -- the _gen_list_repeat mirror. A None/protocol/Span
+        # target uses the sema-RESOLVED type (protocols have no concrete
+        # container; a Span can't be range-constructed); otherwise the annotated
+        # target drives the element/result types.
+        use_resolved = (target_type is None
+                        or is_protocol_type(target_type)
+                        or is_span(target_type))
+        # `rtype` is already resolve_pending_container'd above; a Span/protocol
+        # target uses it (they have no range-constructible container form).
+        result_type = rtype if use_resolved else target_type
+        elem_type = (result_type.get_element_type()
+                     if result_type is not None else None)
+        if isinstance(elem_type, IntLiteralType):
+            elem_type = analyzer.ctx.default_int_type
+            if is_list(result_type):
+                result_type = make_list(elem_type)
+        if (elem_type is None or result_type is None
+                or not (is_list(result_type) or is_array(result_type))):
+            # Materialized list + Array only. A lazy `ListRepeatType` result
+            # (`x = [v]*n` kept unmaterialized) stays on the AST path: a lazy
+            # local passed to a protocol param crashes render_type on its still-
+            # pending arg type (a pre-existing latent crash, TODO). A pending /
+            # off-family result also falls back here rather than reaching an
+            # unresolved .to_cpp().
+            raise ThirUnsupported("expr.list_repeat")
+        elements = tuple(
+            _lower_checked_container_elem(
+                x, elem_type, lc, declared, threaded=True, forced=True,
+                allow_record=True, allow_nested=True, allow_optional=True,
+                retype_scalars=True, suppress_move=True)
+            for x in e.elements)
+        elem_cpp = elem_type.to_cpp()
+        if is_array(result_type):
+            # Aggregate build via array_from_index (the __rep_N counter draws at
+            # emit); the stop bound rides the N template arg, count is unused.
+            return THIRListRepeat(
+                result_type=result_type, elements=elements, elem_cpp=elem_cpp,
+                array_size_cpp=str(result_type.type_args[1]), loc=loc)
+        count = _lower_expr(e.count, lc, declared)
+        count_bigint = is_big_int_type(analyzer.get_expr_type(e.count))
+        return THIRListRepeat(
+            result_type=result_type, elements=elements, count=count,
+            count_bigint=count_bigint, elem_cpp=elem_cpp,
+            result_cpp=result_type.to_cpp(), loc=loc)
     if isinstance(e, (TpyArrayLiteral, TpySetLiteral)):
         container_type = target_type or rtype
         if not _container_literal_shape_ok(
@@ -3519,20 +3604,22 @@ def _lower_class_const_write_target(
 
 def _lower_module_var(e: TpyFieldAccess, rtype: 'TpyType | None',
                       lc: '_LowerCtx', module_name: str, var_name: str,
-                      *, loc) -> THIRExpr:
+                      *, loc, allow_ref_pointer: bool = False) -> THIRExpr:
     """A module-variable read: the dotted `pkg.sub.X` (the sema-attached
     `module_var_access` pair) or the bare `mod.X` (a MODULE-binding
     receiver). Renders the fixed registered spelling; the value-leaf /
     str-bytes-view families land it bare in every admitted sink like a
     seeded global name read. A non-value pointer-slot var's `(*slot)` read
-    stays out (its receiver/consumer wrapping is not pinned by this arm)."""
+    stays out (its receiver/consumer wrapping is not pinned by this arm)
+    UNLESS `allow_ref_pointer` -- the print-sink caller, whose consumer IS
+    pinned (`::tpy::as_ostream(<read>)`), opts in to the bare `(*slot)`."""
     analyzer = lc.analyzer
     viewfam = _resolved_viewfam_value(rtype, analyzer)
     ok = (_eligible_scalar(rtype) or _eligible_char(rtype)
           or _eligible_enum(rtype, analyzer) is not None
           or _eligible_ptr_value(rtype, analyzer)
           or viewfam is not None)
-    if not ok:
+    if not ok and not allow_ref_pointer:
         raise ThirUnsupported("field.module_var_type", detail=True)
     cpp = _module_var_read_cpp(module_name, var_name, analyzer)
     if cpp is None:
@@ -3540,6 +3627,30 @@ def _lower_module_var(e: TpyFieldAccess, rtype: 'TpyType | None',
     _witness("field.module_var")
     return THIRModuleVar(result_type=rtype, cpp=cpp,
                          form=_viewfam_result_form(viewfam), loc=loc)
+
+def lower_print_sink(file_val: TpyExpr, lc: '_LowerCtx',
+                     declared: dict[str, TpyType]) -> THIRExpr:
+    """Lower a `print(file=...)` sink expression. A module-variable read
+    (`sys.stderr` / `sys.stdout`) is a reference-type pointer slot the
+    general module-var arm excludes, but the sink's consumer is pinned
+    (`::tpy::as_ostream(<sink>)`), so route the bare `(*slot)` read here.
+    Any other sink shape stays on the AST path."""
+    analyzer = lc.analyzer
+    if isinstance(file_val, TpyFieldAccess):
+        rtype = analyzer.get_expr_type(file_val)
+        loc = getattr(file_val, "loc", None)
+        if file_val.module_var_access is not None:
+            return _lower_module_var(file_val, rtype, lc,
+                                     *file_val.module_var_access, loc=loc,
+                                     allow_ref_pointer=True)
+        bare_mod = _bare_module_recv(file_val.obj, declared, analyzer)
+        if (bare_mod is not None
+                and _module_var_read_cpp(bare_mod, file_val.field, analyzer)
+                is not None):
+            return _lower_module_var(file_val, rtype, lc, bare_mod,
+                                     file_val.field, loc=loc,
+                                     allow_ref_pointer=True)
+    raise ThirUnsupported("print.file_sink_shape", detail=True)
 
 def _viewfam_result_form(t: 'TpyType | None') -> Form:
     """The form of a RESOLVED str/bytes-family result value: a view
@@ -3560,19 +3671,22 @@ def _lower_checked_container_elem(
         declared: dict[str, TpyType], *, threaded: bool, forced: bool,
         allow_record: bool = False, allow_nested: bool = False,
         allow_optional: bool = False,
-        retype_scalars: bool = True) -> THIRExpr:
+        retype_scalars: bool = True,
+        suppress_move: bool = False) -> THIRExpr:
     if not _container_lit_elem_ok(
             e, slot, declared, lc.analyzer, threaded=threaded, forced=forced,
             allow_record=allow_record, allow_nested=allow_nested,
             allow_optional=allow_optional):
         raise ThirUnsupported("expr.container_literal")
     return _lower_container_elem(
-        e, slot, lc, declared, retype_scalars=retype_scalars)
+        e, slot, lc, declared, retype_scalars=retype_scalars,
+        suppress_move=suppress_move)
 
 
 def _lower_container_elem(e: TpyExpr, slot: TpyType | None,
                           lc: '_LowerCtx', declared: dict[str, TpyType], *,
-                          retype_scalars: bool = True) -> THIRExpr:
+                          retype_scalars: bool = True,
+                          suppress_move: bool = False) -> THIRExpr:
     """Lower one container-literal element / dict key / dict value into its
     slot. A view-form str source (BORROW -- a string_view param/local, a slice,
     a StrView-returning call) into an owned `std::string` slot copies
@@ -3628,7 +3742,10 @@ def _lower_container_elem(e: TpyExpr, slot: TpyType | None,
     if (isinstance(e, TpyName) and isinstance(el, THIRName)
             and e.name in lc.pointers):
         el = replace(el, deref=True)
-    if _container_elem_move_source(e, lc):
+    # A list-repeat element is copied into EVERY slot (one source, N slots), so
+    # it must never move (the AST's `_gen_list_repeat` omits `_maybe_move`);
+    # moving would use-after-move the source for slots 1..N-1.
+    if not suppress_move and _container_elem_move_source(e, lc):
         _witness("containerlit.move")
         el = THIRMove(result_type=el.result_type, value=el, form=el.form,
                       loc=getattr(e, "loc", None))
@@ -4029,6 +4146,24 @@ def _lower_free_call_arg(e: TpyCall, a: TpyExpr,
         return _lower_expr(
             a, lc, declared,
             use=_ExprUse(result=_ExprResultUse.ITERABLE))
+    if (isinstance(a, TpyArrayLiteral) and temp_args
+            and (kind is None or kind[0] not in ("native", "template"))
+            and _container_literal_arg(a, ptype, analyzer)):
+        # A list literal into a plain free call's concrete container ref
+        # param: the AST hoists a `__tmp_N` ref-param temp
+        # (`std::vector<T> __tmp_N = {..}; f(__tmp_N)`) rather than the
+        # ctor's bare in-place brace, so route the hoisted temp here before
+        # `_lower_call_arg`'s in-place container-literal arm can fire.
+        slot = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
+        lowered = _lower_expr(a, lc, declared, use=_NESTED_ARG_USE,
+                              target_type=slot)
+        if getattr(lowered, "make_container", False):
+            raise ThirUnsupported(
+                "container-literal free arg on the make_vector path")
+        _witness("argtemp.container_literal")
+        return THIRArgTemp(result_type=slot, cpp_type=slot.to_cpp(),
+                           init=lowered, form=Form.BORROW,
+                           loc=getattr(a, "loc", None))
     return _lower_call_arg(
         a, ptype, lc, declared, temp_args=temp_args,
         protocol_slots=kind is not None and kind[0] not in ("native", "template"),
@@ -4179,6 +4314,18 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         # passes the WHOLE optional bare (`take_opt(p)`), even when sema
         # narrowed the read -- the AST's gen_call_arg derefs only for a
         # NON-optional slot. Strip the name arm's deref-on-narrow.
+        return replace(
+            _lower_expr(a, lc, declared, allow_whole_optional=True),
+            deref=False)
+    if (isinstance(a, TpyName) and a.name in declared
+            and _param_declared_type(a.name, lc) is None
+            and _opt_view_arg_shim(declared[a.name], ptype, lc.analyzer)):
+        # An OWNED value-repr Optional[str/bytes] LOCAL into a matching owned
+        # Optional slot: the local already holds `optional<string>`, so the AST
+        # passes the WHOLE optional bare -- no view->owned shim (that fires only
+        # for a PARAM whose binding is the borrow `optional<string_view>`, the
+        # arm below). Strip any deref-on-narrow like the scalar sibling.
+        _witness("call.optview_local_whole")
         return replace(
             _lower_expr(a, lc, declared, allow_whole_optional=True),
             deref=False)

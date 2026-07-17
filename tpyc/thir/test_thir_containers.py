@@ -12,6 +12,7 @@ from .nodes import (
     Form, THIRArgTemp, THIRBinOp, THIRCall, THIRCoerce, THIRContainerLiteral,
     THIRExprStmt, THIRFieldAccess, THIRForEach, THIRFormConvert, THIRGenExpr,
     THIRLiteral, THIRMembership, THIRMethodCall, THIRMove, THIRName, THIRReturn,
+    THIRStrMembership,
     THIRSelf, THIRSetItem, THIRStrLiteral, THIRSubscript, THIRVarDecl,
 )
 from .testutil import (
@@ -616,12 +617,66 @@ class TestContainerLiteralLocal:
             + "    a = [1, 2]\n    b = [3, 4]\n    a = b\n    a.append(5)\n")
         assert _fn(thir, "f") is None
 
-    def test_list_repeat_ineligible(self):
-        # `[0] * n` is a TpyListRepeat, a different node/emit -> AST path.
+    def test_lazy_list_repeat_stays_ast(self):
+        # A LAZY `ListRepeatType`-resolved repeat (variable count, unmutated,
+        # len-only) stays on the AST path -- the lowering arm routes only the
+        # materialized-list and Array shapes (a lazy local passed to a protocol
+        # would crash render_type on its pending arg type; see the arm's TODO).
         thir = _lower(
             _PRELUDE
             + "def f(n: Int32) -> Int32:\n    xs = [0] * n\n    return len(xs)\n")
         assert _fn(thir, "f") is None
+
+    def test_list_repeat_materialized_routes(self):
+        # A materialized `list[T] = [v] * n` -> from_range(repeat_range(...)).
+        src = (_PRELUDE
+               + "def f(n: Int32) -> Int32:\n"
+               + "    xs: list[Int32] = [7] * n\n    xs.append(1)\n"
+               + "    return len(xs)\n")
+        assert _fn(_lower(src), "f") is not None
+        _assert_byte_identical(src)
+
+    def test_array_repeat_routes(self):
+        # An `Array[T, N] = [v] * N` -> the array_from_index statement-expr.
+        src = (_PRELUDE + "from tpy import Array\n"
+               + "def f() -> Int32:\n"
+               + "    a: Array[Int32, 4] = [9] * 4\n    return a[0]\n")
+        assert _fn(_lower(src), "f") is not None
+        _assert_byte_identical(src)
+
+    def test_repeat_multi_element_routes(self):
+        # k>1 repeat: list brace-list of >1 elem, and the Array `__rep_N[__i % k]`
+        # modulo-lambda arm (the single-element units miss both).
+        src = (_PRELUDE + "from tpy import Array\n"
+               + "def f() -> Int32:\n"
+               + "    xs: list[Int32] = [1, 2] * 3\n"
+               + "    a: Array[Int32, 6] = [1, 2, 3] * 2\n"
+               + "    return xs[0] + a[5]\n")
+        assert _fn(_lower(src), "f") is not None
+        _assert_byte_identical(src)
+
+    def test_repeat_bigint_count_routes(self):
+        # A BigInt count checks-converts: `repeat_range<T>(count.to_fixed_check
+        # <int32_t>(), ...)` -- the only path exercising `count_bigint`.
+        src = (_PRELUDE
+               + "def f(n: int) -> Int32:\n"
+               + "    xs: list[Int32] = [7] * n\n    xs.append(1)\n"
+               + "    return len(xs)\n")
+        assert _fn(_lower(src), "f") is not None
+        _assert_byte_identical(src)
+
+    def test_repeat_record_element_does_not_move(self):
+        # A record element at its LAST USE must NOT move: repeat copies the one
+        # source into every slot, so a move would use-after-move slots 1..N-1.
+        # The AST's _gen_list_repeat omits _maybe_move; THIR suppresses it.
+        # (_lower_ctx: a non-value record needs the live compiler context.)
+        src = (_PRELUDE
+               + "class Pt:\n    x: Int32\n"
+               + "    def __init__(self, x: Int32) -> None:\n        self.x = x\n"
+               + "def f(n: Int32) -> Int32:\n"
+               + "    p = Pt(3)\n    xs: list[Pt] = [p] * n\n    return len(xs)\n")
+        assert _fn(_lower_ctx(src), "f") is not None
+        _assert_byte_identical(src)
 
     def test_container_alias_decl_ineligible(self):
         # `ys = xs` (container alias) is not a literal init -> AST path.
@@ -630,14 +685,14 @@ class TestContainerLiteralLocal:
             + "def f() -> None:\n    xs = [1]\n    ys = xs\n    ys.append(2)\n")
         assert _fn(thir, "f") is None
 
-    def test_literal_operand_binop_ineligible(self):
-        # `ys[0] + ys[2]` -- both operands IntLiteral-typed non-names: the AST's
-        # fixed-target literal-operand branch emits WITHOUT the paren wrap
-        # (position-dependent), so the shape stays on the AST path.
-        thir = _lower(
-            _PRELUDE
-            + "def f() -> Int32:\n    ys = [1, 2, 3]\n    return ys[0] + ys[2]\n")
-        assert _fn(thir, "f") is None
+    def test_literal_operand_binop_routes(self):
+        # `ys[0] + ys[2]` -- both operands IntLiteral-typed non-names with a
+        # FIXED-int target: the AST emits `add_check<int32_t>(...)` (no fold),
+        # and THIR matches it with paren_wrap=False (the call-form render).
+        src = (_PRELUDE
+               + "def f() -> Int32:\n    ys = [1, 2, 3]\n    return ys[0] + ys[2]\n")
+        assert _fn(_lower(src), "f") is not None
+        _assert_byte_identical(src)
 
 
 
@@ -2864,13 +2919,28 @@ class TestMembership:
         assert _fn(_lower(src), "f") is not None
         assert _module_cpp(src, thir=True) == _module_cpp(src, thir=False)
 
-    def test_list_membership_stays_ast(self):
-        # list has no `__contains__` member (std::ranges::contains); no
-        # resolved_contains -> the membership arm rejects, body stays AST.
+    def test_list_membership_routes(self):
+        # list has no `__contains__` member -- the native NativeIterable
+        # fallback renders `std::ranges::contains(recv, needle)`, like a set.
         thir = _lower(
             _PRELUDE
             + "def f(xs: list[Int32]) -> bool:\n    return 3 in xs\n")
-        assert _fn(thir, "f") is None
+        mem = _fn(thir, "f").body[0].value
+        assert isinstance(mem, THIRMembership) and mem.ranges_contains
+        assert isinstance(mem.needle, THIRLiteral) and mem.needle.value == 3
+
+    def test_str_membership_is_substring_not_ranges_contains(self):
+        # A str receiver is native-iterable (char sequence) but membership on
+        # it is SUBSTRING (`.find()`), NOT element-containment -- it must route
+        # via THIRStrMembership, never the ranges_contains native-iterable arm
+        # (regression guard: `"x" in str(e)` wrongly used std::ranges::contains
+        # and diverged, tplib/requests_timeout).
+        src = _PRELUDE + "def f(s: str) -> bool:\n    return \"ab\" in s\n"
+        mem = _fn(_lower(src), "f").body[0].value
+        assert isinstance(mem, THIRStrMembership)
+        assert not (isinstance(mem, THIRMembership)
+                    and getattr(mem, "ranges_contains", False))
+        _assert_byte_identical(src)
 
 
 class TestMembershipEmit:

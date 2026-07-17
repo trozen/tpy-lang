@@ -309,6 +309,7 @@ from .expressions import (
     _lower_class_const_write_target,
     _lower_ctor_call_args,
     _lower_expr,
+    lower_print_sink,
     _lower_field_source,
     _lower_lambda,
     _lower_truthy,
@@ -1084,11 +1085,11 @@ def _for_iter_proto_route(
             return None
         u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
             declared[it.name])))
-        # Concrete user-iterator records only: a protocol-typed binding
-        # (Iterator[T] param) spells through the deduced template param on
-        # the AST path, and a generic record folds its type args -- both
-        # deferred.
-        if (not isinstance(u, NominalType) or u.is_protocol or u.type_args
+        # User-iterator records (monomorphized generic ones included -- their
+        # `::tpy::__iter__` universal loop renders identically): a
+        # protocol-typed binding (Iterator[T] param) spells through the deduced
+        # template param on the AST path -- deferred.
+        if (not isinstance(u, NominalType) or u.is_protocol
                 or not _user_iterator_iterable(u, analyzer)):
             return None
         iterable_lvalue = True
@@ -4793,19 +4794,21 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             if e.double_star_unpack is not None:
                 note_detail("print.kwargs")
                 raise ThirUnsupported(stmt_reject_reason(stmt))
-            sep_expr = end_expr = None
+            sep_expr = end_expr = sink_expr = None
             sep_value: 'str | None' = " "
             end_value: 'str | None' = "\n"
             if e.kwargs:
-                # sep=/end= only, and only on a non-empty arg list (an
-                # all-suppressed empty print would need gen_print's
-                # emit-nothing arm). file=/flush= and non-str-slice kwarg
-                # shapes stay AST.
-                if not e.args or any(k not in ("sep", "end")
-                                     for k in e.kwargs):
+                # sep=/end= (str literal or resolved str-value name) and file=
+                # (an ostream / stream-pointer sink read in value position, so
+                # `sys.stderr` derefs), only on a non-empty arg list (an
+                # all-suppressed empty print would need gen_print's emit-nothing
+                # arm). flush= and non-str-slice sep/end shapes stay AST.
+                file_val = e.kwargs.get("file")
+                rest = {k: v for k, v in e.kwargs.items() if k != "file"}
+                if not e.args or any(k not in ("sep", "end") for k in rest):
                     note_detail("print.kwargs")
                     raise ThirUnsupported(stmt_reject_reason(stmt))
-                for kw, kv in e.kwargs.items():
+                for kw, kv in rest.items():
                     token = _print_kwarg_token(
                         kv, declared, pointers, narrowed, analyzer)
                     if token is None:
@@ -4818,7 +4821,11 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                         sep_expr, sep_value = lowered_kw, value
                     else:
                         end_expr, end_value = lowered_kw, value
-                _witness("print.kw_sep_end")
+                if rest:
+                    _witness("print.kw_sep_end")
+                if file_val is not None:
+                    sink_expr = lower_print_sink(file_val, lc, declared)
+                    _witness("print.file_sink")
             lowered_args = []
             for arg in e.args:
                 if isinstance(arg, TpyName) and arg.name in narrowed:
@@ -4859,7 +4866,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     raise ThirUnsupported(stmt_reject_reason(stmt)) from None
             return THIRPrint(args=tuple(lowered_args), sep_expr=sep_expr,
                              end_expr=end_expr, sep_value=sep_value,
-                             end_value=end_value, loc=loc)
+                             end_value=end_value, sink_expr=sink_expr, loc=loc)
         narrowed = lc.narrow.narrowed.keys()
         if (isinstance(stmt.expr, TpyCall)
                 and isinstance(stmt.expr.macro_expansion, TpyMethodCall)):

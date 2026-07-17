@@ -1335,13 +1335,27 @@ class TestPrintStmt:
                + "main()\n")
         assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
-    def test_print_file_kwarg_rejects(self):
-        # file= (and flush=) keep the AST path -- the as_ostream sink arm.
+    def test_print_file_kwarg_routes(self):
+        # file=<module stream> routes via the ::tpy::as_ostream sink arm; the
+        # sink lowers in value position, so the pointer-slot global derefs.
+        src = (_PRELUDE
+               + "import sys\n"
+               + "def f() -> None:\n"
+               + "    print(\"a\", \"b\", sep=\"\\n\", file=sys.stderr)\n")
+        thir, w = _lower_ctx_witnessed(src)
+        stmt = _fn(thir, "f").body[-1]
+        assert isinstance(stmt, THIRPrint) and stmt.sink_expr is not None
+        assert w.get("print.file_sink")
+        assert self._cpp(src + "def main() -> None:\n    f()\nmain()\n",
+                         thir=True) == self._cpp(
+            src + "def main() -> None:\n    f()\nmain()\n", thir=False)
+
+    def test_print_flush_kwarg_rejects(self):
+        # flush= still needs gen_print's `<< std::flush` tail -- stays AST.
         thir = _lower(
             _PRELUDE
-            + "import sys\n"
             + "def f() -> None:\n"
-            + "    print(\"a\", file=sys.stderr)\n")
+            + "    print(\"a\", flush=True)\n")
         assert _fn(thir, "f") is None
 
     def test_print_kwargs_empty_args_reject(self):

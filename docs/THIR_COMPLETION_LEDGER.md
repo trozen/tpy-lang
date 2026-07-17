@@ -940,9 +940,10 @@ Array demotion) / dict / set literal decls route with scalar elements, and the l
 `declared` so the param-receiver shapes (method calls / subscripts / len / iteration) light
 up on locals; `_container_scalar_read` + the len gate widened to `Array[scalar, N]`.
 Rejected-by-design (aliasing/emit fidelity): REASSIGNED container-literal locals (the AST
-makes them pointer-locals -- `a = b` rebinds the alias; a value decl would silently copy)
-and fixed-target binops with two IntLiteral-typed non-name operands (the AST's no-paren
-literal-operand branch, position-dependent). The measured next co-blockers: **container
+makes them pointer-locals -- `a = b` rebinds the alias; a value decl would silently copy).
+(Both-literal FIXED-int-target binops -- AST emits `add_check<intN>`, no fold -- ROUTE since
+wave 15 with paren_wrap=False; only the target-less/BigInt-fold literal case stays AST.)
+The measured next co-blockers: **container
 locals as call args** (`f(xs)` -- the borrow-ref pass looks like another gen_call_arg
 pass-through for non-Own container params; keeps `main()`-shaped callers on AST), the
 `Int32(0)` constructor-init, and the str/BigInt/f-string print args. Literal-locals cells
@@ -1001,9 +1002,11 @@ bare/templated compare on both paths). **Scalar type-constructor calls landed
 `UInt32(x)` / `Int64(a + b)` / `Float64(1.5)` / `bool(n)` / zero-arg ctors route in every
 covered expression position; sema's fully-substituted `__init__` template expands
 receiver-less at emit, gated to positional-only templates + eligible-scalar result/args.
-Rejected-by-design (AST): str/bytes/BigInt/Float32/Char conversions (incl. `float("nan")`'s
-constexpr fold), enum / borrowing-view ctors, out-of-int32-range literals (the AST's
-`static_cast` wrap), unary-minus FLOAT args (int negations fold since incr 45).
+Rejected-by-design (AST): only the str-LITERAL native-ctor arg (`float("nan")`'s constexpr
+fold), enum / borrowing-view ctors, out-of-int32-range literals (the AST's `static_cast`
+wrap), unary-minus FLOAT args (int negations fold since incr 45). (Runtime native-function
+ctors -- `int(str)`/float/bytes/`Char(s)` -> `from_str`/`char_from_str` -- ROUTE since
+wave 15 via `native_free_ctor`.)
 Method-call cells still deferred: `set`/`Span`/`Array` receivers (params not
 admitted), str/bytes args (owned-copy conversion), `Own[record]` args (ownership
 boundary -- the `gen_call_arg` temp facility), non-name receivers
