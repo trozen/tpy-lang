@@ -91,6 +91,7 @@ from ...type_def_registry import (
     is_fixed_int_type,
     is_int_enum_type,
     is_list,
+    is_range,
     is_set,
     is_slice_type,
     is_span,
@@ -1428,6 +1429,15 @@ def _slice_object_type(t: TpyType | None) -> bool:
     t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
     return is_basic_slice_type(t) or is_slice_type(t)
 
+def _range_object_value(t: TpyType | None) -> bool:
+    """A `range(...)` object value (`::tpy::Range<T>`): a by-value builtin
+    with its own operator<< and iterator, decl'd as the plain spelled copy
+    (`::tpy::Range<int32_t> r = ::tpy::Range<int32_t>(3);`). The init is a
+    `range()` call validated by TpyCall lowering; the name streams raw."""
+    if t is None:
+        return False
+    return is_range(unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t))))
+
 def _char_compare_operand(e: TpyExpr, t: TpyType | None, analyzer) -> bool:
     """A Char comparison operand: a Char-typed value, or a single-char str
     literal (the AST threads target=CHAR into its render -> `'x'`,
@@ -2202,10 +2212,13 @@ def _is_borrow_form_name(t: TpyType | None) -> bool:
     return isinstance(inner, TupleType) and inner.has_pointer_repr_element()
 
 def _value_tuple_element_ok(e: TpyType, analyzer) -> bool:
-    """The narrow value-tuple element: an eligible value scalar or an owned-str
-    slot. Both read bare in every sink (a str element is an owned `std::string`
-    lvalue), so a subscript read of such an element needs no lift."""
-    return _eligible_scalar(e) or _owned_str_slot(e, analyzer)
+    """The narrow value-tuple element: an eligible value scalar, an owned-str
+    slot, or an `Any` cell. All read bare in every sink (a str element is an
+    owned `std::string` lvalue, an Any element a `const ::tpy::Any&`), so a
+    subscript read of such an element needs no lift."""
+    return (_eligible_scalar(e) or _owned_str_slot(e, analyzer)
+            or isinstance(unwrap_readonly(unwrap_ref_type(
+                unwrap_send_sync(e))), AnyType))
 
 def _value_tuple(t: TpyType | None, analyzer) -> 'TupleType | None':
     """The value tuple of scalar / owned-str elements (`tuple[int, bool]` /
@@ -2627,9 +2640,14 @@ def _container_elem_family(t: 'TpyType | None', analyzer, elem_ok,
         if not args or len(args) < 2:
             return False
         key, val = args[0], args[1]
-        return ((is_fixed_int_type(key) or _runtime_bigint(key, analyzer)
-                 or _owned_str_slot(key, analyzer))
-                and elem_ok(val))
+        # An `Any` key (`dict[Any, V]`) reads/writes bare through the Any cell's
+        # hash slot -- the key renders like any other bare value in the
+        # `__getitem__`/`__setitem__`/index positions.
+        key_ok = (is_fixed_int_type(key) or _runtime_bigint(key, analyzer)
+                  or _owned_str_slot(key, analyzer)
+                  or isinstance(unwrap_readonly(unwrap_ref_type(
+                      unwrap_send_sync(key))), AnyType))
+        return key_ok and elem_ok(val)
     return False
 
 def _bytes_elem_container(t: TpyType | None, analyzer) -> bool:
@@ -2680,6 +2698,12 @@ def _container_value_leaf_read(t: TpyType | None, analyzer) -> bool:
                 or _eligible_enum(a, analyzer) is not None
                 or _eligible_ptr_value(a, analyzer)
                 or _owned_str_slot(a, analyzer)
+                # An `Any` value element (`dict[str, Any]`): the subscript
+                # read is a bare `const Any&` lvalue consumed by from_any /
+                # print, landing bare in every value sink.
+                or isinstance(
+                    unwrap_readonly(unwrap_ref_type(unwrap_send_sync(a))),
+                    AnyType)
                 # An open-T element inside the generic body: the bare
                 # checked-dunder read, form-neutral per instantiation.
                 or _is_type_param_slot(a)
@@ -2728,7 +2752,9 @@ def _set_method_recv(t: TpyType | None, analyzer) -> bool:
         return False
     args = getattr(t, "type_args", None)
     return bool(args) and (_eligible_scalar(args[0])
-                           or _owned_str_slot(args[0], analyzer))
+                           or _owned_str_slot(args[0], analyzer)
+                           or isinstance(unwrap_readonly(unwrap_ref_type(
+                               unwrap_send_sync(args[0]))), AnyType))
 
 def _cpp_noncopyable_type(t: 'TpyType | None', analyzer) -> bool:
     """Mirror of the AST's `_is_cpp_noncopyable` (sema facts only): @nocopy,
@@ -2952,6 +2978,38 @@ def _record_getitem_key(obj_type: 'TpyType | None', analyzer) -> 'TpyType | None
         return m.params[0].type
     return None
 
+
+def _record_setitem_value(obj_type: 'TpyType | None', analyzer) -> 'TpyType | None':
+    """The VALUE param type of a CONCRETE user-record subscript receiver's
+    `__setitem__` (so `recv[key] = v` spells the AST's no-container fallback
+    `::tpy::__setitem__(recv, key, v)`), or None. Same concrete / non-@native
+    restriction as `_record_getitem_key` -- a native STL wrapper or a generic
+    record keeps its own emit path."""
+    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(obj_type)))
+    if not (isinstance(t, NominalType) and t.is_user_record and not t.type_args):
+        return None
+    ri = analyzer.registry.get_record_for_type(t)
+    if ri is None or ri.is_native:
+        return None
+    m = ri.get_method("__setitem__")
+    if m is not None and len(m.params) >= 2:
+        # (key, value) after the implicit self -- the value is the last param.
+        return m.params[-1].type
+    return None
+
+
+def _record_has_delitem(obj_type: 'TpyType | None', analyzer) -> bool:
+    """A CONCRETE user record defining `__delitem__` (so `del recv[key]` spells
+    `::tpy::__delitem__(recv, key)`). Same concrete / non-@native restriction as
+    `_record_getitem_key`."""
+    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(obj_type)))
+    if not (isinstance(t, NominalType) and t.is_user_record and not t.type_args):
+        return False
+    ri = analyzer.registry.get_record_for_type(t)
+    if ri is None or ri.is_native:
+        return False
+    return ri.get_method("__delitem__") is not None
+
 def _f2_reseat_ok(init: TpyExpr, declared: dict[str, TpyType], analyzer) -> bool:
     """A pointer-local reseat value: an lvalue field read off an F1-record receiver
     whose field is itself an F1-record (the new pointee), so it reseats as
@@ -2959,6 +3017,24 @@ def _f2_reseat_ok(init: TpyExpr, declared: dict[str, TpyType], analyzer) -> bool
     (`__slot_N`) machinery and stay on the AST path."""
     return (_field_receiver_ok(init, declared, analyzer)
             and _f1_record(analyzer.get_expr_type(init), analyzer))
+
+def _f1_param_lvalue_reseat_ok(init: TpyExpr, pointee: TpyType,
+                               declared: dict[str, TpyType], lc, analyzer) -> bool:
+    """A pointer-repr `Optional` local reseat source that lifts via `&(name)`: a
+    bare record PARAM name whose stripped type is the exact F1-record pointee. A
+    param renders as a plain lvalue (`T&` / `const T&`), so `&(p)` is well-formed
+    -- the AST `_gen_pointer_local_rebind` else/global address-of arm. A
+    pointer-local source (bare copy) or an owned-local / rvalue source (a
+    different emit) stays on the AST path."""
+    if not isinstance(init, TpyName):
+        return False
+    if init.name not in lc.prescan.param_names or init.name in lc.pointers:
+        return False
+    t = declared.get(init.name)
+    if t is None:
+        return False
+    tu = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    return _f1_record(tu, analyzer) and tu == pointee
 
 def _is_borrow_ptr_local(e: TpyExpr, declared: dict[str, TpyType],
                          pointers: set[str]) -> bool:
@@ -3101,9 +3177,12 @@ def _f1_is_const(binding: 'LocalBinding', target_type: TpyType | None,
     # Borrow-alias of an lvalue rooted in a const source (`p = ps[i]`,
     # `r = obj.field`, `c = self.store[k]`): mirror of the AST REF_ALIAS
     # const propagation via `is_const_union_source` -- recurse through
-    # chained field/subscript access to the base name.
-    if binding is LocalBinding.REF_ALIAS and _f1_const_rooted_source(
-            stmt.init, func, analyzer, const_locals, record_name):
+    # chained field/subscript access to the base name. The reassigned POINTER
+    # sibling (`x = a` off a const-ref param -> `const T* x = &(a);`) roots the
+    # same way -- the name branch of the AST's `_is_const_indirect`.
+    if binding in (LocalBinding.REF_ALIAS, LocalBinding.POINTER) \
+            and _f1_const_rooted_source(
+                stmt.init, func, analyzer, const_locals, record_name):
         return True
     return False
 
@@ -3162,17 +3241,30 @@ def _union_compare_pair(lt: TpyType | None, rt: TpyType | None) -> bool:
     u = _eligible_value_union(lt)
     return u is not None and u == _eligible_value_union(rt)
 
+def _any_compare_pair(lt: TpyType | None, rt: TpyType | None) -> bool:
+    """Two `Any` compare operands (`a == b` / `a != b`): `tpy::Any`'s own
+    equality operator, the rb=None bare-operator arm -- `(a == b)` on both
+    paths (typeid + underlying compare done inside the runtime operator). An
+    `is None` typeid probe is a separate face (the `_IS_OPS` arm)."""
+    def _is_any(t: TpyType | None) -> bool:
+        return t is not None and isinstance(
+            unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t))), AnyType)
+    return _is_any(lt) and _is_any(rt)
+
 def _record_compare_operand(t: TpyType | None) -> 'NominalType | None':
-    """A non-generic user-record compare operand's nominal type, or None. Sema
-    only resolves a record compare when the record carries the generated
-    comparison operators (`@dataclass(eq=...)` / `order=True`, `@total_ordering`,
-    a user dunder), so the emit is the bare C++ operator or the dunder's
+    """A user-record compare operand's nominal type, or None. Sema only
+    resolves a record compare when the record carries the generated comparison
+    operators (`@dataclass(eq=...)` / `order=True`, `@total_ordering`, a user
+    dunder), so the emit is the bare C++ operator or the dunder's
     `{self} OP {0}` template -- _gen_binop's `is_record` arm / the resolved-binop
-    arm. Generic records (`type_args`) keep their own genrec compare path."""
+    arm, uniform across non-generic and generic records (a generic record's
+    dunder like `Box.__eq__[T: Equatable]` resolves to the same operator
+    template, `((a) == (b))` on both paths). The same-type equality at the pair
+    keeps a mixed-instantiation compare (a sema error) out."""
     if t is None:
         return None
     t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
-    if isinstance(t, NominalType) and t.is_user_record and not t.type_args:
+    if isinstance(t, NominalType) and t.is_user_record:
         return t
     return None
 
@@ -3243,6 +3335,25 @@ def _is_none_compare_operand(e: TpyBinOp, locals_: dict[str, TpyType],
             and not _optional_field_none_subject(operand, locals_, analyzer)):
         return None
     return operand
+
+def _any_none_subject(e: TpyBinOp, locals_: dict[str, TpyType],
+                      analyzer) -> 'TpyExpr | None':
+    """The `Any` operand of an `Any is [not] None` test, or None. The subject
+    renders bare and is substituted twice into the D15 typeid probe, so it is
+    restricted to a bare in-scope Any NAME (no double-eval side effect), matching
+    the AST's `gen_expr(any_expr)` over the plain name."""
+    left_none = isinstance(e.left, TpyNoneLiteral)
+    right_none = isinstance(e.right, TpyNoneLiteral)
+    if left_none == right_none:  # both or neither
+        return None
+    operand = e.right if left_none else e.left
+    if not (isinstance(operand, TpyName) and operand.name in locals_):
+        return None
+    at = analyzer.get_expr_type(operand)
+    if at is not None and isinstance(
+            unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at))), AnyType):
+        return operand
+    return None
 
 def _optional_field_none_subject(e: TpyExpr, locals_: dict[str, TpyType],
                                  analyzer) -> bool:
@@ -3327,7 +3438,9 @@ def _storage_call_ret(ret: TpyType | None, analyzer) -> TpyType | None:
     if is_set(t):
         args = getattr(t, "type_args", None)
         if bool(args) and (_eligible_scalar(args[0])
-                           or _owned_str_slot(args[0], analyzer)):
+                           or _owned_str_slot(args[0], analyzer)
+                           or isinstance(unwrap_readonly(unwrap_ref_type(
+                               unwrap_send_sync(args[0]))), AnyType)):
             return t
         return None
     if _value_tuple(t, analyzer) is not None:

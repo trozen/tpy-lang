@@ -909,8 +909,8 @@ increment 29) -- this is where `THIRSubscript` reaches its canonical shape (`ind
 + `bounds_safe`, emit dispatched tuple-vs-container on receiver type). Subscript follow-ons
 still on AST: Optional-field / tuple-field writes THROUGH a tuple subscript (`t[N].opt =
 None` -- the `_f2b`/`_f1_tuple` write gates still name-only); and, for containers -- BigInt /
-view-typed keys+indices (the `.to_fixed_check` narrow / static-storage literals), `dict[K,
-Any]` (`any_cast_or_panic`), record/Optional/container *element* results (borrow form),
+view-typed keys+indices (the `.to_fixed_check` narrow / static-storage literals),
+record/Optional/container *element* results (borrow form),
 narrowed-`Optional` receivers, non-name receivers (container-literal-init locals landed
 incr 34), and the container-write residue (field-receiver targets + slices; name-receiver
 `c[i] = v` / `+=` / `del` landed in the wave-2 setitem cell). And **container iteration**
@@ -1089,7 +1089,8 @@ its value read is a record borrow), `set`/`Span`/`Array` containers (params not 
 str/bytes-key dicts, `dict.items()`/tuple-unpack, non-name iterables (str-family FIELDS off
 F1-record receivers route since incr 45 -- lvalues, the same `auto&` capture; subscript/call/
 literal receivers stay deferred, a call result being an rvalue `auto` capture), generators / user iterators (the
-`__iter__`/`__next__` fallback), hoisted loop vars, consuming/enum iteration
+`__iter__`/`__next__` fallback), consuming iteration (VALUE-family hoisted loop
+vars + for-loop branch-decl predecls routed wave 14; non-value hoists still defer)
 (`for/else` and while/else LANDED on thir-match-dynattrs-args --
 `__after_else_N` labels with break reroute). (Audit-note: the gate keys
 `is_native_iterable` off the use-site type -- re-check it when narrowed-`Optional` containers
@@ -1191,9 +1192,10 @@ third CtxTempSink instance; the counter's other consumers --
 all gate-rejected), and except+finally wrapping the whole try/except in
 the T1 finally frame (`body_terminates` = the WHOLE statement's fact
 there). `THIRRaise` mirrors `_gen_raise`'s throw-tier arms: ctor form
-`throw <cpp>(args);` (args through the shared call-arg machinery against
-the resolved `__init__` slots -- scalar/str value slots only, keeping
-every special `_gen_record_ctor_args` arm unreachable), no-arg
+`throw <cpp>(args);` (args through the shared `_lower_ctor_call_args` /
+`_record_ctor_arg_supported` machinery -- since wave 14 also the optional-ptr
+record, mutated-ref-slot rvalue-temp, and inherited-`__init__` position-blind
+forms, not just scalar/str), no-arg
 `throw <cpp>{};`, bare `throw;` -- which also re-admits raise-terminated
 finally bodies (the suppressed-rethrow/[[maybe_unused]] arms now fire on
 raise too; a raise never walks the frame stack, the throw propagates
@@ -1491,7 +1493,7 @@ scalar-ctor `cpp_template` arm. This closes the ledger's
 "DEFAULT-linkage call-symbol" completeness-blocker row for the C++
 native + template + imported-TPy subset; still parked: extern-C /
 @native_c raw symbols, `native_cpp_return_type` static_cast wraps,
-bespoke-arm builtins (copy/copy_iter/own_iter/try_parse/print/ord-fold),
+bespoke-arm builtins (copy/copy_iter/own_iter/try_parse/print; ord-fold routed),
 non-positional templates, and the pre-arm/kwarg-dependent arg rows for
 native callees (`call.native_arg_shape`, ~3k weighted). Faces
 `call.imported` / `call.native_free` / `call.template_free`.

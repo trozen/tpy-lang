@@ -1543,6 +1543,30 @@ def test_native_iterable_call_arg_admits_container_call():
         assert not _native_iterable_call_arg(zip_call, ptype, analyzer)
 
 
+
+class TestCtorArgOptionalPtrRecord:
+    """The pointer-repr `Optional[record]` ctor-arg NAME face: passing a
+    record local/param into an `Own[record | None]` / `record | None` ctor
+    slot lifts its address (`&(node)`). Byte-mirrors the AST oracle. (The
+    'ctor' sub-face -- a record-ctor RVALUE into the same slot -- is admitted
+    by the gate but not yet threaded through flush_slot, so it stays AST; see
+    the wave-14 followup in TODO.)"""
+
+    _SRC = (
+        "from tpy import Int32\n"
+        "class Node:\n    v: Int32\n"
+        "    def __init__(self, v: Int32) -> None:\n        self.v = v\n"
+        "class Holder:\n    n: Node | None\n"
+        "    def __init__(self, n: Node | None) -> None:\n        self.n = n\n"
+        "def use(node: Node) -> Int32:\n    h = Holder(node)\n    return 0\n"
+    )
+
+    def test_optional_ptr_name_ctor_arg_routes(self):
+        assert _fn(_lower_ctx(self._SRC), "use") is not None
+
+    def test_optional_ptr_name_ctor_arg_byte_identical(self):
+        _assert_byte_identical(self._SRC)
+
 class TestCtorStrArgSlots:
     """The str-family arm of `_record_ctor_arg_supported`'s arg loop -- the
     free-call pass-through rule applied to ctor slots (`ctor.str_arg`)."""

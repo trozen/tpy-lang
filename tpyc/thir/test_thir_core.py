@@ -16,7 +16,8 @@ from .lower.functions import _shadow_bound_names
 from ..typesys import TupleType
 from .nodes import (
     Form, PrintForm, THIRAssign, THIRBinOp, THIRCall,
-    THIRChainedCompareStmtExpr, THIRClassConstant, THIRDelVar, THIRExprStmt,
+    THIRChainedCompareStmtExpr, THIRClassConstant, THIRConsumingIter, THIRCopy,
+    THIRDelVar, THIRExprStmt,
     THIRFieldAccess, THIRForEach, THIRForRange, THIRFormConvert, THIRIf,
     THIRLiteral, THIRMethodCall, THIRModuleVar, THIRName, THIRNoOpStmt,
     THIRParamCopy,
@@ -170,12 +171,14 @@ class TestEligibility:
                       + "    if c:\n        xs = [1, 2]\n        print(len(xs))\n")
         assert _fn(thir, "f") is None
 
-    def test_truthiness_condition_is_ineligible(self):
-        # `if a:` (int truthiness) is not a comparison condition.
-        thir = _lower(_PRELUDE
-                      + "def f(a: Int32) -> Int32:\n    r = a\n"
-                      + "    if a:\n        r = 0\n    return r\n")
-        assert _fn(thir, "f") is None
+    def test_truthiness_condition_routes(self):
+        # `if a:` (native int-name truthiness) routes byte-identically via the
+        # truthy int-name arm (`(a != 0)` render).
+        src = (_PRELUDE
+               + "def f(a: Int32) -> Int32:\n    r = a\n"
+               + "    if a:\n        r = 0\n    return r\n")
+        assert _fn(_lower(src), "f") is not None
+        _assert_byte_identical(src)
 
     def test_literal_first_decl_is_eligible(self):
         # `total = 0` resolves to the default int (not IntLiteralType).
@@ -482,13 +485,18 @@ class TestForRange:
         loop = fn.body[1]
         assert isinstance(loop, THIRForRange) and len(loop.orelse) == 1
 
-    def test_loop_var_used_after_is_ineligible(self):
-        # `i` read after the loop -> sema hoists the loop var (pre-declaration),
-        # which the emitter's plain C++ for-scope binding does not reproduce.
+    def test_loop_var_used_after_routes(self):
+        # `i` read after the loop -> sema hoists the loop var: an `int32_t i;`
+        # predecl before the loop (hoist_decls) + a hidden `__range_N` counter
+        # that assigns `i` in the body (hoist_loop_var), so the post-loop read
+        # sees the last value.
         thir = _lower(_PRELUDE
                       + "def f(n: Int32) -> Int32:\n    last = 0\n"
                       + "    for i in range(n):\n        last = i\n    return last + i\n")
-        assert _fn(thir, "f") is None
+        loop = _fn(thir, "f").body[1]
+        assert isinstance(loop, THIRForRange)
+        assert loop.hoist_loop_var
+        assert ("i", "int32_t") in loop.hoist_decls
 
     def test_literal_pos_step_routes(self):
         # 3-arg range with a non-unit positive literal step.
@@ -582,13 +590,16 @@ class TestForRange:
                       + "    return acc\n")
         assert _fn(thir, "f") is not None
 
-    def test_loop_var_shadowing_outer_is_ineligible(self):
-        # A loop var name already bound in the outer scope hits the AST path's
-        # was_declared handling (no fresh for-init decl), which the slice skips.
+    def test_loop_var_rebinding_outer_routes(self):
+        # A loop var already bound in the outer scope is a rebind (sema's
+        # hoist_loop_var): the hidden `__range_N` counter assigns the existing
+        # `i` in the body, no fresh predecl (the local is already declared).
         thir = _lower(_PRELUDE
                       + "def f(n: Int32) -> Int32:\n    acc = 0\n    i = 0\n"
                       + "    for i in range(n):\n        acc = acc + i\n    return acc\n")
-        assert _fn(thir, "f") is None
+        loop = _fn(thir, "f").body[2]
+        assert isinstance(loop, THIRForRange)
+        assert loop.hoist_loop_var and loop.hoist_decls == ()
 
     def test_binop_stop_bound_routes(self):
         # An arithmetic stop bound (`range(n + 1)`) hoists into a `__stop_N`
@@ -1955,8 +1966,8 @@ class TestDump:
         )
 
     def test_dump_empty(self):
-        # Int truthiness (`if a:`) is not a comparison condition, so nothing routes.
-        thir = _lower(_PRELUDE + "def f(a: Int32) -> Int32:\n    r = a\n    if a:\n        r = 0\n    return r\n")
+        # Walrus (`:=`) has no THIR lowering arm, so nothing routes.
+        thir = _lower(_PRELUDE + "def f() -> Int32:\n    if (y := 5) > 0:\n        return y\n    return 0\n")
         assert "(no THIR-eligible functions)" in dump_thir(thir)
 
     def test_dump_for_range(self):
@@ -4362,3 +4373,58 @@ class TestGlobalRecordReceiverRead:
                                           thir_codegen=True))
         assert thir_out == ast_out
         assert "gate->x" in thir_out[1]
+
+
+class TestWave12MoveCopyNodes:
+    """Node-shape + byte-identity pins for the auto_move/tplib wave arms
+    (THIRCopy, THIRConsumingIter, method-call-receiver field write). The
+    flipped corpus cases byte-diff-protect these, but a localized node-shape
+    unit guards the type family a corpus case may not reach (a widened arm
+    that mis-routes an uncovered sibling would diverge here)."""
+
+    _PT = ("from tpy import Int32, copy\n"
+           "class Pt:\n    x: Int32\n"
+           "    def __init__(self, x: Int32):\n        self.x = x\n")
+
+    def _decl(self, thir, fn, name):
+        f = _fn(thir, fn)
+        assert f is not None
+        return next(s for s in f.body
+                    if isinstance(s, THIRVarDecl) and s.name == name)
+
+    def test_copy_plain_record_routes(self):
+        # `b = copy(a)` on a plain F1 record -> THIRCopy (`Pt b = Pt(a);`),
+        # the default field-copy arm; source stays live.
+        src = self._PT + ("def f() -> Int32:\n    a = Pt(5)\n"
+                          "    b = copy(a)\n    return b.x\n")
+        thir, w = _lower_ctx_witnessed(src)
+        assert w.get("decl.copy_record")
+        assert isinstance(self._decl(thir, "f", "b").init, THIRCopy)
+        _assert_byte_identical(src)
+
+    def test_consuming_for_loop_routes(self):
+        # A native auto-consuming for-loop (loop var appended, source at last
+        # use) -> THIRConsumingIter (`own_iter(std::move(items))`).
+        src = ("from tpy import Int32\n"
+               "class Item:\n    v: Int32\n"
+               "    def __init__(self, v: Int32):\n        self.v = v\n"
+               "def f() -> Int32:\n"
+               "    items: list[Item] = [Item(1), Item(2)]\n"
+               "    out: list[Item] = []\n"
+               "    for x in items:\n        out.append(x)\n"
+               "    return len(out)\n")
+        thir, w = _lower_ctx_witnessed(src)
+        assert w.get("foreach.consuming_iter")
+        f = _fn(thir, "f")
+        assert any(isinstance(s, THIRForEach)
+                   and isinstance(s.iterable, THIRConsumingIter)
+                   for s in f.body)
+        _assert_byte_identical(src)
+
+    def test_method_recv_field_write_routes(self):
+        # `b.get().x = v` -- a scalar field write whose receiver is a method
+        # call returning a mutable record ref. Routes byte-identically.
+        src = (self._PT + "from tplib.box import Box\n"
+               "def f(b: Box[Pt]) -> None:\n    b.get().x = 9\n")
+        assert _fn(_lower_ctx(src), "f") is not None
+        _assert_byte_identical(src)

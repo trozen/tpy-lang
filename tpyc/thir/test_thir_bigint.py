@@ -7,6 +7,7 @@ from __future__ import annotations
 from ..codegen_cpp.context import CodeGenOptions
 from .testutil import (
     _compile, _entry, _lower, _lower_ctx, _lower_ctx_witnessed, _fn,
+    _assert_byte_identical,
 )
 
 _BI_PRELUDE = "from tpy import Int32, Float64\n"
@@ -501,3 +502,21 @@ class TestBigIntDefaultArrayElements:
         cpp = _cpp(src, thir=True)
         assert "{1.5f, 2.5f}" in cpp
         assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+
+class TestBothLiteralBinopFold:
+    """The AST constant-folds a both-literal int binop whenever its value fits
+    a C++ integer literal (int64) -- which THIR can't reproduce, so it rejects.
+    A BigInt result whose value OVERFLOWS int64 is rendered as a full operator
+    expr and routes. Regression guard for the int64-overflow boundary."""
+
+    def test_fits_int64_rejects(self):
+        # 2**62 + 1 fits int64 -> AST folds it to a single literal -> reject.
+        src = "def f() -> None:\n    print(bin(2 ** 62 + 1))\n"
+        assert _fn(_lower(src), "f") is None
+
+    def test_overflow_int64_routes(self):
+        # 2**64 + 1 overflows int64 -> AST renders the operator -> route.
+        src = "def f() -> None:\n    print(bin(2 ** 64 + 1))\n"
+        assert _fn(_lower(src), "f") is not None
+        _assert_byte_identical(src)

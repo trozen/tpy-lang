@@ -133,6 +133,10 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # its sema-synthesized replacement expr
     "call.dunder_call",             # `obj(args)` with a __call__ method ->
                                     # the synthetic `obj.__call__(args)`
+    "call.ord_fold",                # `ord("X")` single-char literal ->
+                                    # the constant ordinal int
+    "call.range_object",            # `range(...)` in object position ->
+                                    # `::tpy::Range<T>(...)`
     "ctor.nested_record",           # `Outer.Inner(args)` -> `Outer::Inner(args)`
     "call.cast_passthrough",        # `typing.cast(T, x)` non-Any -> bare `x`
     "call.cast_any",                # `typing.cast(T, x)` from Any ->
@@ -205,6 +209,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "setitem.aug",                  # `c[k] OP= v` -> the getitem/setitem pair
     "setitem.str_owned_copy",       # view source into a str element: std::string(v)
     "setitem.field_recv",           # write/aug receiver is a field access
+    "setitem.user_record",          # `recv[k] = v` on a user record with
+                                    # __setitem__ -> ::tpy::__setitem__(recv,k,v)
     "setitem.container_value",      # nested-container element: literal value,
                                     # type-prefixed on the checked path
     "setitem.borrow_lift",          # Optional/union element: borrow NAME lifts
@@ -241,6 +247,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "setitem.any_value",            # `d[k] = v` into a dict[K, Any] slot from
                                     # an Any-typed name (bare, no make_any)
     "delitem.any_value",            # `del d[k]` on a dict[K, Any] receiver
+    "delitem.user_record",          # `del recv[k]` on a user record with
+                                    # __delitem__ -> ::tpy::__delitem__(recv, k)
     "field_write.container_name",   # container FIELD write from a same-family
                                     # NAME: bare copy or std::move at last use
     "method.dyn_setattr",           # `obj.x = v` -> the synthesized
@@ -251,6 +259,8 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # `obj.__delattr__("attr");` statement
     "ret.any_subscript",            # `return d[k]` at an Any return slot ->
                                     # bare `::tpy::__getitem__(d, k)`
+    "ret.any_name",                 # `return a` -- a bare Any value name
+                                    # (value type, returns bare, no move)
     "expr_stmt.macro_discard",      # void stmt-position macro expansion
                                     # (setattr/delattr builtins) dispatched
                                     # with the DISCARD use
@@ -337,6 +347,10 @@ THIR_FACES: frozenset[str] = frozenset({
     # ride the value-opt binding arms -- deref-on-narrow, the whole-optional
     # None-test / truthiness / arg renders).
     "foreach.value_opt_elem",
+    # Native auto-consuming for-each iterable (lowering; `for x in items:`
+    # where items is consumed at last use -- `::tpy::own_iter(std::move(
+    # items))`, rvalue capture, loop var `auto&&` joins movable_locals).
+    "foreach.consuming_iter",
     # List-literal for-each iterable (lowering; `for c in [a, b, c]:` -- the
     # owning `auto __obj_N = {a, b, c};` initializer-list capture, elements
     # rendered target-less like the AST's untargeted gen_expr_deref).
@@ -344,6 +358,10 @@ THIR_FACES: frozenset[str] = frozenset({
     # Str-literal for-each iterable (lowering; `for ch in "abc":` -- the
     # owning `auto __obj_N = std::string_view("abc");` capture, Char elems).
     "foreach.str_literal",
+    # Branch-first-declared value locals used after the loop -> `{cpp} {name};`
+    # predecls before the loop (lowering; mirrors _emit_branch_decls, shared with
+    # the if/try/with hoist family). Includes the loop var when hoisted.
+    "foreach.hoist_decl",
     # Loop else blocks (lowering; the bare `{...}` past the loop's close
     # brace + its `__after_else_N:;` label -- run on normal completion,
     # jumped past by a break).
@@ -427,6 +445,19 @@ THIR_FACES: frozenset[str] = frozenset({
     # A spanlike coerce over an array-literal inner: the helper wraps the
     # make_array-typed brace init (`as_mut_span(std::array<T, N>{...})`).
     "coerce.span_array_literal",
+    # `into_any` coercion: a scalar / str / bytes / None value wrapped into a
+    # `tpy::Any` cell via `make_any` (`x: Any = 42` / `Any(v)`).
+    "coerce.into_any",
+    # `from_any` auto-coerce: runtime-checked `any_cast_or_panic<T>` extraction
+    # at a concrete slot (`n: int = a` / `return a`).
+    "coerce.from_any",
+    # A raw `Any` value in print position: `std::cout << a` via Any's
+    # operator<< (PrintForm.RAW).
+    "print.any",
+    # A raw `Any` f-string arg: bare into std::format (Any formatter).
+    "fstr.any_arg",
+    # `Any is [not] None`: the D15 typeid probe against std::monostate.
+    "isnone.any_typeid",
     # Value-tuple slots (`tuple[scalar|str, ...]`): the spelled
     # `std::tuple<...>{...}` literal render at returns / decls, and the bare
     # value-tuple name return.
@@ -457,6 +488,12 @@ THIR_FACES: frozenset[str] = frozenset({
     # Owned record local decl from a method-call rvalue source (`Rec r =
     # b.build();`) -- the method sibling of the free-call `decl.owned_record`.
     "decl.owned_record_method",
+    # Move-through owned record local (`Handle a = std::move(h);`): a NAME
+    # source consumed at its last use, target flagged in `move_through`.
+    "decl.move_through_record",
+    # `copy(a)` of a plain F1-record source into an owned record local
+    # (`T b = T(a);`, the copy-construct rvalue).
+    "decl.copy_record",
     # Storage-call local decl (lowering admission; a container/tuple/union-
     # returning call init -- the bare `T x = f(...);` / plain reassign,
     # rendered by the shared generic decl tail).
@@ -500,6 +537,9 @@ THIR_FACES: frozenset[str] = frozenset({
     # Rvalue reseat through the pre-declared rebind slot:
     # `x = &*(__slot_N = <rvalue>);` (THIRAssign's rebind-slot arm).
     "reseat.opt_rvalue",
+    # Lvalue reseat of a slotless Optional local: lift a bare record param or an
+    # F1-record field source via `x = &(...);`.
+    "reseat.opt_lvalue",
     # Ptr-variant union local from a concrete-member rvalue: value-variant
     # `__slot_N` + `to_ptr_variant(__slot_N)` (+ the rebind-slot pre-decl).
     "decl.union_slot_rvalue",
@@ -619,6 +659,10 @@ THIR_FACES: frozenset[str] = frozenset({
     # resolved_contains arm; witnessed at lowering admission and again at
     # lowering -- non-vacuity only needs a nonzero count).
     "binop.membership",
+    # native-set membership with no resolved __contains__ member (a
+    # `readonly[set]`) -> the AST's `is_native_in` fallback
+    # `[!]std::ranges::contains(s, x)`.
+    "binop.set_ranges_membership",
     # bytes/BytesView membership (`needle in b` -> the native free-function
     # `::tpy::bytes_contains[_sub](b, needle)`, single-byte vs substring form).
     "binop.bytes_membership",
@@ -698,6 +742,8 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # print arg -> bare `::tpy::print_optional_val`
     "print.wrap_arg",               # container / value-tuple / F1-record NAME
                                     # print arg -> its kind-keyed printer wrap
+    "print.wrap_field_arg",         # container FIELD read print arg -> its
+                                    # kind-keyed printer wrap (ListPrinter(m.f))
     "print.bytes_field",            # bytes-family field read print arg -> bare
                                     # `.field` inside a BytesPrinter wrap
     "print.tuple_subscript_arg",    # value-tuple subscript read print arg ->

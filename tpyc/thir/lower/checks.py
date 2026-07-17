@@ -39,10 +39,12 @@ from ...parse.nodes import (
     TpyVarDecl,
 )
 from ...typesys import (
+    AnyType,
     BOOL,
     CallableType,
     FLOAT,
     FloatLiteralType,
+    IntLiteralType,
     LiteralType,
     NoneType,
     NominalType,
@@ -179,6 +181,7 @@ from .predicates import (
     _bounded_tparam_protocol,
     _protocol_binding,
     _record_rvalue_temp_slot,
+    _record_setitem_value,
     _resolved_bytes_value,
     _resolved_scalar,
     _resolved_str_value,
@@ -187,6 +190,7 @@ from .predicates import (
     _range_counter_type,
     _runtime_bigint,
     _scalar_pass_through_slot,
+    _range_object_value,
     _slice_object_type,
     _owned_tuple_call_ret,
     _span_value,
@@ -380,7 +384,9 @@ def _container_literal_shape_ok(init: TpyExpr, t: TpyType, analyzer, *,
             return _note_container_lit_reject(init, t, analyzer) if note else False
         key = args[0]
         if not (is_fixed_int_type(key) or _runtime_bigint(key, analyzer)
-                or _owned_str_slot(key, analyzer)):
+                or _owned_str_slot(key, analyzer)
+                or isinstance(unwrap_readonly(unwrap_ref_type(
+                    unwrap_send_sync(key))), AnyType)):
             if note:
                 fam = _container_lit_slot_family(key, analyzer) or "scalar"
                 return note_detail(f"container_lit.key.{fam}")
@@ -530,6 +536,17 @@ def _container_lit_elem_ok(e: TpyExpr, slot: 'TpyType | None',
                  or _record_rvalue_call_shape(e, analyzer)))
         return (record_source
                 or (note_detail("container_lit.elem.record") if note else False))
+    if fam == "any":
+        # Any element slot: each element wraps into a `tpy::Any` cell via
+        # make_any (`_lower_container_elem`'s Any arm). A nested container
+        # element needs the brace-vs-paren prefix render (render-text
+        # dependent), so it stays on the AST path; every scalar / str / bytes /
+        # None / already-Any element is placeholder-safe.
+        au = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+            analyzer.get_expr_type(e))))
+        if is_list(au) or is_dict(au) or is_set(au):
+            return note_detail("container_lit.elem.any_container") if note else False
+        return True
     return note_detail(f"container_lit.elem.{fam}") if note else False
 
 def _container_lit_slot_family(t: 'TpyType | None', analyzer) -> 'str | None':
@@ -557,6 +574,8 @@ def _container_lit_slot_family(t: 'TpyType | None', analyzer) -> 'str | None':
         return "view"
     if is_bytes_type(u):
         return "bytes"
+    if isinstance(u, AnyType):
+        return "any"
     if isinstance(u, NominalType) and u.is_user_record:
         return "record"
     return "other"
@@ -793,6 +812,18 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
                                                  declared, prescan, pointers,
                                                  analyzer)):
             return binding
+        # The reassigned POINTER sibling of the bare-name alias: a plain record
+        # NAME source lifts to a reseatable `[const] T* x = &(a);` (later
+        # `x = &(b);`). Record only -- a reassigned container alias is a
+        # later rung. The `&()` lift needs a bare-rendering lvalue, so the
+        # source must not itself be a pointer-local / global (aliased `(*p)`).
+        if (binding is LocalBinding.POINTER
+                and isinstance(stmt.init, TpyName)
+                and stmt.init.name not in pointers
+                and (stmt.init.name in declared
+                     or stmt.init.name in prescan.param_names)
+                and _f1_record(target_type, analyzer)):
+            return binding
         return None
     if binding is LocalBinding.REF_ALIAS or binding is LocalBinding.POINTER:
         return binding if _f1_record(target_type, analyzer) else None
@@ -841,6 +872,22 @@ def _record_rvalue_source_shape(init: TpyExpr, analyzer) -> bool:
         return False
     return True
 
+def _method_recv_field_write_ok(target: TpyExpr, declared: dict[str, TpyType],
+                                analyzer) -> bool:
+    """A field-write target whose RECEIVER is a method call returning a
+    mutable reference to an F1 record (`r.get().x = v` over an
+    Rc/Arc/Box `.get()` -> `T&`). The receiver lowers through the ordinary
+    method-call expr arm -- the READ `r.get().x` already routes; only the
+    write target needed the non-Name receiver arm. Markers stay clean and the
+    emitted access is `.field` (a `T&` receiver, not `->`)."""
+    if not isinstance(target, TpyFieldAccess) or not _field_markers_clean(target):
+        return False
+    recv = target.obj
+    if not isinstance(recv, TpyMethodCall):
+        return False
+    return _f1_record(analyzer.get_expr_type(recv), analyzer)
+
+
 def _scalar_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
                            analyzer) -> bool:
     """A scalar-field write `recv.field = <scalar>`: a value-scalar field off an
@@ -863,7 +910,8 @@ def _scalar_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
             or _ptr_value_field_recv_ok(target, declared, analyzer)
             or _optional_checked_field(target, declared, analyzer)
             or _field_over_subscript_ok(target, declared, analyzer)
-            or _field_over_container_subscript_ok(target, declared, analyzer)):
+            or _field_over_container_subscript_ok(target, declared, analyzer)
+            or _method_recv_field_write_ok(target, declared, analyzer)):
         return False
     ftype = analyzer.get_expr_type(target)
     if _eligible_char(ftype):
@@ -1419,6 +1467,43 @@ def _container_setitem_ok(
         return False
     return True
 
+def _user_record_setitem_ok(
+        stmt: TpyAssign, declared: dict[str, TpyType], pointers: set[str],
+        narrowed: AbstractSet[str], analyzer) -> bool:
+    """A user-record subscript write `recv[key] = v` on a CONCRETE record
+    defining `__setitem__` -> the AST's no-container fallback
+    `::tpy::__setitem__(recv, key, v);` (checked, never operator[]). Mirrors the
+    user-record `__getitem__` READ arm's receiver / key checks: a bare in-scope
+    name or one-level field receiver, a value-scalar (non-runtime-BigInt) or str
+    key. The value slot is a value scalar / Char / enum / Ptr -- the bare-render
+    families the checked setitem template forwards unchanged (str/bytes/record
+    value slots, whose AST render adds an owned-copy / storage lift, stay AST)."""
+    sub = stmt.target
+    if isinstance(sub.index, TpySlice) or sub.slice_function_info is not None:
+        return False
+    if sub.needs_optional_runtime_check or sub.typed_dict_field is not None:
+        return False
+    vslot = _record_setitem_value(analyzer.get_expr_type(sub.obj), analyzer)
+    if vslot is None:
+        return False
+    recv = sub.obj
+    recv_ok = ((isinstance(recv, TpyName) and recv.name in declared
+                and recv.name not in pointers and recv.name not in narrowed)
+               or (isinstance(recv, TpyFieldAccess)
+                   and _field_receiver_ok(recv, declared, analyzer)))
+    if not recv_ok:
+        return False
+    idx_type = analyzer.get_expr_type(sub.index)
+    idx_ok = ((_resolved_scalar(idx_type, analyzer)
+               and not _runtime_bigint(idx_type, analyzer))
+              or _resolved_str_value(idx_type, analyzer) is not None)
+    if not idx_ok:
+        return False
+    vbare = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(vslot)))
+    return (_eligible_scalar(vbare) or _eligible_char(vbare)
+            or _eligible_enum(vbare, analyzer) is not None
+            or _eligible_ptr_value(vbare, analyzer))
+
 def _container_aug_setitem_ok(
         stmt: TpyAugAssign, declared: dict[str, TpyType], pointers: set[str],
         narrowed: AbstractSet[str], analyzer) -> bool:
@@ -1538,6 +1623,25 @@ def _len_arg_reject(arg: TpyExpr, locals_: dict[str, TpyType],
 
 _SPECIAL_BUILTIN_QNAMES = frozenset({qnames.COPY, qnames.COPY_ITER,
                                      qnames.OWN_ITER, qnames.TRY_PARSE})
+
+
+def copy_plain_record_source(init: TpyExpr, analyzer,
+                             pointers: 'AbstractSet[str]') -> 'TpyType | None':
+    """The `copy(x)` builtin over a bare plain F1-record NAME source -- the
+    copy-construct rvalue arm of `_gen_copy_expr` (`T(x)`). Returns the source
+    record's TpyType, or None. Excludes a pointer-local source (`gen_expr_deref`
+    would `(*p)`), an Optional-ptr / pointer-variant / tuple source (the other
+    `_gen_copy_expr` branches), and a record-ctor arg (its prvalue arm)."""
+    if not isinstance(init, TpyCall):
+        return None
+    fi = init.resolved_function_info
+    if fi is None or fi.qualified_name != qnames.COPY or len(init.args) != 1:
+        return None
+    arg = init.args[0]
+    if not isinstance(arg, TpyName) or arg.name in pointers:
+        return None
+    at = analyzer.get_expr_type(arg)
+    return at if _f1_record(at, analyzer) else None
 
 
 def _free_callee_kind(e: TpyCall, analyzer, *,
@@ -2222,7 +2326,26 @@ def _shared_pass_through_arg(a: TpyExpr, ptype: 'TpyType | None',
             or _value_tuple_pass_through_arg(a, ptype, locals_, analyzer,
                                              mutated=mutated)
             or _str_literal_literal_slot_arg(a, ptype, analyzer)
+            or _any_pass_through_arg(a, ptype, locals_, analyzer)
             or _record_pass_through_arg(a, ptype, locals_, analyzer))
+
+def _any_pass_through_arg(a: TpyExpr, ptype: 'TpyType | None',
+                          locals_: dict[str, TpyType], analyzer) -> bool:
+    """An `Any` value into an `Any` param slot (`extract(a)`, `s.add(a)`):
+    `tpy::Any` is a value type, so a bare in-scope Any name / routable Any read
+    binds the slot directly -- bare on both paths, no last-use move (value types
+    are never move sources at call args). An `Own[Any]` slot (a container
+    insert's move-in param) still renders bare: `_own_lvalue_temp_slot` returns
+    None for a value payload, so the copy+move temp never fires."""
+    pt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
+          if isinstance(ptype, TpyType) else None)
+    if isinstance(pt, OwnType):
+        pt = unwrap_readonly(pt.wrapped)
+    if not isinstance(pt, AnyType):
+        return False
+    at = analyzer.get_expr_type(a)
+    return isinstance(unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at))),
+                      AnyType)
 
 def _str_literal_literal_slot_arg(a: TpyExpr, ptype: 'TpyType | None',
                                   analyzer) -> bool:
@@ -2256,6 +2379,15 @@ def _value_tuple_pass_through_arg(a: TpyExpr, ptype: 'TpyType | None',
     if isinstance(a, TpyName):
         return (a.name in locals_
                 and _value_tuple(locals_[a.name], analyzer) is not None)
+    if isinstance(a, (TpyCall, TpyMethodCall)):
+        # A value-tuple-returning call result (`split(p)`): the prvalue tuple
+        # binds the `const std::tuple<...>&` slot directly (bare on both
+        # paths; value tuples are always by-value, so no borrow-alias form
+        # arises). A MUTATED slot is a non-const ref -- a prvalue can't bind
+        # it -- so it stays rejected.
+        return (not mutated
+                and _value_tuple(analyzer.get_expr_type(a), analyzer)
+                is not None)
     return not mutated and isinstance(a, TpyTupleLiteral)
 
 def _ptr_pass_through_arg(a: TpyExpr, ptype: 'TpyType | None',
@@ -2939,14 +3071,23 @@ def _int_literal_bigint_arg(a: TpyExpr, ptype: TpyType | None,
     `int_literal_to_fixed_int` coerce), and gen_call_arg threads the slot
     into the literal render (`::tpy::BigInt(10)`) -- mirrored by the
     `_slot_literal_retype` at `_lower_call_arg`'s tail."""
-    if not (isinstance(a, TpyIntLiteral)
-            or _folded_neg_int_literal(a, analyzer) is not None):
-        return False
     pt = ptype if isinstance(ptype, TpyType) else None
     if pt is None:
         return False
     pt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(pt)))
-    return is_big_int_type(pt)
+    if not is_big_int_type(pt):
+        return False
+    if isinstance(a, TpyIntLiteral) or _folded_neg_int_literal(a, analyzer):
+        return True
+    # A constant-valued int arithmetic expression (`2 ** 64 + 1`, `-2 ** 64`)
+    # keeps its IntLiteralType through sema but codegen renders it as an
+    # ordinary BigInt binop (each operand individually `::tpy::BigInt(..)`),
+    # not a single retyped literal. Lower it as a normal expression -- the
+    # BigInt slot is what makes the operands materialize wide.
+    if isinstance(a, (TpyBinOp, TpyUnaryOp)):
+        at = analyzer.get_expr_type(a)
+        return isinstance(at, IntLiteralType)
+    return False
 
 def _float_literal_pass_through_arg(a: TpyExpr, ptype: TpyType | None,
                                     locals_: dict[str, TpyType],
@@ -3545,6 +3686,12 @@ def _marker_call_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
                 a, ptype, locals_, analyzer))
             or (own_ok and _dyn_own_coro_factory_arg(a, ptype, analyzer)
                 is not None)
+            # A container LITERAL into a matching builtin-container slot: a
+            # qualified module function (os.path.commonprefix([...])) renders
+            # the spelled container inline, like the stub-method arg loop -- no
+            # ref-param temp hoist (a FREE call would hoist, but the qualcall
+            # arg loop emits it in place).
+            or _container_literal_method_arg(a, ptype, analyzer)
             or note_detail(_qualcall_arg_reject(a, ptype, analyzer)))
 
 
@@ -3745,6 +3892,7 @@ def _container_method_arg_ok(
             or _own_record_rvalue_arg(a, ptype, locals_, analyzer)
             or _own_move_arg(a, ptype, locals_, analyzer)
             or _own_lvalue_arg(a, ptype, locals_, narrowed, analyzer)
+            or _any_pass_through_arg(a, ptype, locals_, analyzer)
             or _container_literal_method_arg(a, ptype, analyzer)
             or note_detail("method.arg_shape"))
 
@@ -4559,6 +4707,23 @@ def _wrap_print_form(a: TpyExpr, declared: dict[str, TpyType],
             if is_list(rt) or is_array(rt) or is_span(rt):
                 return PrintForm.LIST
         return None
+    if isinstance(a, TpyFieldAccess):
+        # A container FIELD read (`m._items`) streams via the same kind-keyed
+        # printer as a name (`ListPrinter(m._items)`) -- the field render is the
+        # bare `recv.field` lvalue the wrap consumes. Markers-clean + a routed
+        # F1-record receiver; value-tuple / record fields ride other arms.
+        if not (_field_markers_clean(a)
+                and _field_receiver_ok(a, declared, analyzer)):
+            return None
+        ft = unwrap_readonly(unwrap_ref_type(
+            unwrap_send_sync(analyzer.get_expr_type(a))))
+        if is_dict(ft):
+            return PrintForm.DICT
+        if is_set(ft):
+            return PrintForm.SET
+        if is_list(ft) or is_array(ft):
+            return PrintForm.LIST
+        return None
     if not isinstance(a, TpyName) or a.name == "self":
         return None
     ct = _subscript_container_recv_type(a, declared, analyzer)
@@ -4578,6 +4743,9 @@ def _wrap_print_form(a: TpyExpr, declared: dict[str, TpyType],
         return PrintForm.TUPLE
     u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
     if isinstance(u, NominalType) and _f1_record(u, analyzer):
+        return PrintForm.RAW
+    if _range_object_value(u):
+        # A range() object streams raw via its own operator<< (no ListPrinter).
         return PrintForm.RAW
     return None
 
@@ -4626,6 +4794,12 @@ def _print_arg_ok(a: TpyExpr, locals_: dict[str, TpyType], analyzer) -> bool:
         # un-narrowed Optional[str] reads already routed via _print_optval_opt.)
         return note_detail("print.optstr")
     at = analyzer.get_expr_type(a)
+    # A raw `Any` value streams via `tpy::Any`'s operator<< (PrintForm.RAW) --
+    # gen_print's per-type-str dispatch; the inner render must lower bare (a
+    # name / routable read), which the RAW tail self-gates.
+    if isinstance(unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at))),
+                  AnyType):
+        return _witness("print.any")
     return ((_resolved_scalar(at, analyzer) or _eligible_char(at)
              # A tpy-defined enum streams via its emitted operator<< (RAW);
              # an @native enum takes `::tpy::__repr__` (PrintForm.REPR).
@@ -4695,6 +4869,12 @@ def _fstring_arg_wrap(a: TpyExpr, analyzer, conv: int,
                 row = "::tpy::float_to_str({0})"
         elif _eligible_enum(t, analyzer) is not None:
             row = "static_cast<int>({0})"
+        elif isinstance(unwrap_readonly(unwrap_ref_type(
+                unwrap_send_sync(t))), AnyType):
+            # A raw Any arg formats bare -- std::format has a `tpy::Any`
+            # formatter (per-type str dispatch); !r overrides to repr_of below.
+            _witness("fstr.any_arg")
+            row = None
         elif (isinstance(t, NominalType) and t.is_user_record) \
                 or isinstance(t, TypeParamRef):
             # A user record / bound type param renders via __str__ (its ADL

@@ -219,11 +219,12 @@ def _check_callable_structure(func: TpyFunction, analyzer,
         # anyway.
         if func.name in CONST_PARAMS_METHODS:
             raise ThirUnsupported("sig.inplace_dunder")
-        # @readonly on a @staticmethod is not sema-rejected but emits with the
-        # readonly verdicts dropped (no const overload, no forced-const
-        # params) -- an asymmetry the mirror does not reproduce.
-        if func.is_staticmethod and func.is_readonly:
-            raise ThirUnsupported("sig.readonly_static")
+        # @readonly on a @staticmethod emits with the readonly verdicts dropped
+        # (`gen_method_def` branches on `is_const and not is_static`): the const
+        # overload and forced-const params are signature-only, emitted by the AST
+        # structural path THIR shares. The static body has no `self`, so the only
+        # readonly-keyed body effect (`const_locals.add("self")`) is unreachable
+        # -- the body lowers identically to a plain static.
     elif func.is_staticmethod:
         # Defensive: the parser sets is_method=True on staticmethods, so a free
         # function should never carry the flag.

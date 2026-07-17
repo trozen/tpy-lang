@@ -384,15 +384,17 @@ def test_while_bool_literal_routes_at_constructor_boundary():
 
 
 def test_for_lowering_reject_falls_back_at_sync_boundary():
-    # The loop var read after the loop -> sema hoists it, a shape the
-    # for-loop gate durably rejects.
+    # A NON-VALUE (record) loop var read after the loop -> sema hoists it, a
+    # shape the for-loop gate durably rejects (the value-hoist rungs route now).
     compiler, modules = _compile(
         "from tpy import Int32\n"
-        "def rejected(n: Int32) -> Int32:\n"
-        "    i = 0\n"
-        "    for i in range(n):\n"
-        "        n = n + i\n"
-        "    return n + i\n"
+        "class R:\n    v: Int32\n"
+        "    def __init__(self, v: Int32):\n        self.v = v\n"
+        "def rejected(rs: list[R]) -> Int32:\n"
+        "    keep = rs[0]\n"
+        "    for r in rs:\n"
+        "        keep = r\n"
+        "    return keep.v\n"
         "def clean(n: Int32) -> Int32:\n"
         "    return n + 1\n"
     )
@@ -406,8 +408,9 @@ def test_for_lowering_reject_falls_back_at_sync_boundary():
                 fold_attempt("body")
             else:
                 routed.append(fn.name)
-    assert compiler._thir_fallback.get(
-        "body:stmt.for_each:foreach.hoist_loop_var") == 1
+    # Reason-agnostic (for-loop reject reasons shift as rungs are ported):
+    # the rejected body falls back whole, the clean sibling still routes.
+    assert "rejected" not in routed
     assert "clean" in routed
 
 

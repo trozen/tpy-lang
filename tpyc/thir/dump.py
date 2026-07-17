@@ -42,6 +42,8 @@ from .nodes import (
     THIRMethodCall,
     THIRModule,
     THIRModuleVar,
+    THIRConsumingIter,
+    THIRCopy,
     THIRMove,
     THIRName,
     THIRNarrowAlias,
@@ -175,6 +177,10 @@ def _expr(e: THIRExpr) -> str:
         # the module-cumulative sink.
         mods = (" move" if e.move else "") + (" addr" if e.addr_of else "")
         return f"%argtmp({e.cpp_type or 'auto'}{mods}){{{_expr(e.init)}}}"
+    if isinstance(e, THIRCopy):
+        return f"copy[{e.cpp_type}]({_expr(e.value)})"
+    if isinstance(e, THIRConsumingIter):
+        return f"consuming_iter[{e.native_name}]({_expr(e.value)})"
     if isinstance(e, THIRMove):
         return f"move({_expr(e.value)})"
     if isinstance(e, THIROptionalPtrArg):

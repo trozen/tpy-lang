@@ -6,7 +6,8 @@ with the rebind-slot pre-decl), the rvalue init slot (`T __slot_N = ...;`),
 the None / rvalue reseats, and the ptr-variant union rvalue / address kinds.
 """
 
-from .testutil import _compile, _entry, _lower_ctx, _fn, _F1_RECORDS
+from .testutil import (_compile, _entry, _lower_ctx, _fn, _F1_RECORDS,
+                       _assert_byte_identical)
 from ..codegen_cpp import CodeGenOptions
 from ..codegen_cpp.forms import LocalBinding
 from .nodes import (
@@ -116,15 +117,16 @@ class TestOptPtrSlotDecl:
             + "    return p is None\n")
         assert _fn(thir, "f") is None
 
-    def test_lvalue_reseat_is_ineligible(self):
-        # Reseating from a field lvalue is a later rung; the body falls back.
-        thir = _lower_ctx(
-            _F1_RECORDS
-            + "def f(b: Box) -> bool:\n"
-            + "    p: Inner | None = None\n"
-            + "    p = b.inner\n"
-            + "    return p is None\n")
-        assert _fn(thir, "f") is None
+    def test_lvalue_reseat_routes(self):
+        # Reseating a pointer-repr Optional local from a field lvalue
+        # (`p = b.inner`) routes byte-identically via the lvalue-reseat arm.
+        src = (_F1_RECORDS
+               + "def f(b: Box) -> bool:\n"
+               + "    p: Inner | None = None\n"
+               + "    p = b.inner\n"
+               + "    return p is None\n")
+        assert _fn(_lower_ctx(src), "f") is not None
+        _assert_byte_identical(src)
 
     def test_readonly_pointee_is_ineligible(self):
         # A readonly-rooted Optional local binds `const T*` (const

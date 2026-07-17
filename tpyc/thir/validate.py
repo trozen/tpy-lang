@@ -47,8 +47,8 @@ from ..type_def_registry import (
     is_str_view_type,
 )
 from ..typesys import (
-    NominalType, OptionalType, OwnType, PtrType, TupleType, unwrap_readonly,
-    unwrap_ref_type, unwrap_send_sync,
+    AnyType, NominalType, OptionalType, OwnType, PtrType, TupleType,
+    unwrap_readonly, unwrap_ref_type, unwrap_send_sync,
 )
 from .nodes import (
     Form, THIRArgTemp, THIRAssign, THIRCall, THIRCoerce, THIRConstructor,
@@ -56,8 +56,8 @@ from .nodes import (
     THIRErrorReturnUnwrap, THIRExprStmt, THIRFieldAccess, THIRFormConvert,
     THIRFunction, THIRMethodCall, THIRNode,
     THIRInplaceContainerOp,
-    THIRPrint, THIRReturn, THIRSetItem, THIRSliceAssign, THIRUnionArgLift,
-    THIRVarDecl,
+    THIRPrint, THIRRaise, THIRReturn, THIRSetItem, THIRSliceAssign,
+    THIRUnionArgLift, THIRVarDecl,
 )
 
 
@@ -116,8 +116,12 @@ def _check_node(owner: str, node: THIRNode) -> None:
         view_target = rt is not None and is_str_view_type(rt)
         # The ptr/span/slice coercion families produce VALUE results (`T*`,
         # std::span, Slice) whatever the inner's form; lowering tags VALUE.
+        # An `into_any` coerce materializes a fresh `tpy::Any` VALUE cell via
+        # make_any whatever the wrapped source's form (a STORAGE `std::monostate`
+        # None, a VALUE literal), so it is form-producing like the ptr/span
+        # families, not a form passthrough.
         value_target = rt is not None and (
-            isinstance(rt, PtrType) or is_span(rt)
+            isinstance(rt, (PtrType, AnyType)) or is_span(rt)
             or is_slice_type(rt) or is_basic_slice_type(rt))
         if node.form is not node.expr.form and not (
                 (view_target and node.form is Form.BORROW)
@@ -280,6 +284,20 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
     if isinstance(node, THIRReturn):
         if node.value is not None:
             _walk(owner, node.value, return_type, argtemp_ok=True)
+        return
+    if isinstance(node, THIRRaise):
+        # `raise X(args)` flushes its ctor arg temps before the throw line
+        # (the mutated-ref-slot record rvalue), so its args are a flush
+        # position -- mirror the call-node arg loop (the args are the ctor's
+        # directly, with no intermediate THIRCtorCall node to carry them).
+        for a in node.args:
+            if isinstance(a, THIRArgTemp):
+                _walk(owner, a.init, return_type, argtemp_ok=True)
+            elif (isinstance(a, THIRUnionArgLift) and a.temp_cpp is not None):
+                if a.value is not None:
+                    _walk(owner, a.value, return_type)
+            else:
+                _walk(owner, a, return_type)
         return
     for child in _iter_children(node):
         _walk(owner, child, return_type)

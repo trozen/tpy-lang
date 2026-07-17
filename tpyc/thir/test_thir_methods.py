@@ -795,15 +795,16 @@ class TestStaticPropertyMethods:
         # both paths (scalar field write + storage-form None write route).
         assert _fn(_lower_ctx(_SPD_METHODS), "bump_static") is not None
 
-    def test_readonly_staticmethod_excluded(self):
+    def test_readonly_staticmethod_routes(self):
         # @readonly on a @staticmethod emits with the readonly verdicts dropped
-        # (gen_method_def branches on `is_const and not is_static`) -- an
-        # asymmetry the mirror does not reproduce, so it stays AST.
+        # (gen_method_def branches on `is_const and not is_static`): those are
+        # signature-only, and the static body (no `self`) lowers identically to a
+        # plain static, so it routes.
         thir = _lower_ctx(
             _F1_RECORDS
             + "    @staticmethod\n    @readonly\n"
             + "    def sm(a: Int32) -> Int32:\n        return a\n")
-        assert _fn(thir, "sm") is None
+        assert _fn(thir, "sm") is not None
 
     def test_property_pair_both_route(self):
         # Getter and setter share one method name in the registry (stored as a

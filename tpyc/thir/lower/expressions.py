@@ -45,13 +45,16 @@ from ...parse.nodes import (
     TpyVarargPack,
 )
 from ...typesys import (
+    AnyType,
     BOOL,
     CallableType,
     CHAR,
+    FloatLiteralType,
     INT32,
     IntLiteralType,
     LiteralType,
     NominalType,
+    NONE,
     OptionalType,
     OwnType,
     PtrType,
@@ -101,6 +104,7 @@ from ...codegen_cpp.context import (
 )
 from ...codegen_cpp.protocols import dynamic_base_name
 from ...symbol_binding import SymbolKind, lookup_imported
+from ...coercions import wrap_into_any, CoercionContext
 from ...compilation_context import get_current_compiler
 from ...value_category import is_rvalue_source
 from ..fallback import ThirUnsupported, expr_kind_tag, note_detail
@@ -283,6 +287,8 @@ from .predicates import (
     _value_tuple_return,
     _value_union_temp_slot,
     _union_binding_divergent,
+    _any_compare_pair,
+    _any_none_subject,
     _union_compare_pair,
     _record_compare_pair,
     _unrouted_binding_read,
@@ -399,6 +405,9 @@ def _call_use_supported(e: TpyCall, lc: '_LowerCtx',
               or _resolved_bytes_value(ret, analyzer) is not None
               or _eligible_ptr_value(ret, analyzer)
               or _callable_value(ret)
+              # An `Any`-returning call: `tpy::Any` is a value type returned by
+              # value, landing bare in a value / storage slot.
+              or isinstance(record, AnyType)
               # An open-T result inside a generic body (`make_default()`,
               # `copy(self.value)` -- Own[T] unwraps to T): renders by name,
               # the composing position gates its own family.
@@ -440,6 +449,14 @@ def _call_use_supported(e: TpyCall, lc: '_LowerCtx',
               or (result is _ExprResultUse.STORAGE and _span_value(ret))
               or (result is _ExprResultUse.STORAGE and use.tuple_source
                   and _owned_tuple_call_ret(ret, analyzer) is not None)
+              # A value-tuple call result (`split(p)`) in a plain VALUE
+              # position (a call arg / nested expr): the tuple is a value
+              # type returned by value and renders bare, binding a
+              # `const std::tuple<...>&` slot directly. The STORAGE decl sink
+              # rides the tuple_source arm above; other consumers gate their
+              # own shape.
+              or (result is _ExprResultUse.VALUE
+                  and _value_tuple(ret, analyzer) is not None)
               or (result is _ExprResultUse.BORROW_BIND
                   and _f1_record(record, analyzer))
               # An async-def FACTORY call under the make_adapter wrap: the
@@ -531,6 +548,13 @@ def _record_ctor_arg_supported(
                 # (`Outer("a", Inner(42))` -- prvalue -> optional<Inner>), the
                 # @dataclass Optional-record-field row.
                 or _own_optional_record_rvalue_arg(arg, param_type, analyzer)
+                # The pointer-repr Optional slot faces (`n` into a `record |
+                # None` ctor param -> `&(n)`), mirroring the free-call gate's
+                # `_optional_ptr_arg` row: `_gen_record_ctor_args` runs the same
+                # `_gen_optional_ptr_arg` dispatch as the plain call loop. The
+                # temp-bearing 'ctor' face is temps_ok-gated like the rows above.
+                or _optional_ptr_arg(arg, param_type, declared, analyzer,
+                                     temps_ok=temps_ok)
                 # A protocol-conformer arg into a @dynamic/structural protocol
                 # ctor slot: a bare NAME / already-protocol lvalue passes
                 # through, a conformer RVALUE hoists the adapter temp
@@ -583,6 +607,12 @@ def _lower_marker_method_arg(
         e: TpyMethodCall, a: TpyExpr, ptype: 'TpyType | None', index: int,
         lc: '_LowerCtx', declared: dict[str, TpyType], *,
         temp_args: bool) -> THIRExpr:
+    if isinstance(a, TpyVarargPack):
+        # A `*args` pack into a variadic module function (math.hypot(3, 4)):
+        # the qualcall arg loop forwards the pack unchanged, rendered via the
+        # same _gen_vararg_pack helper as a free call. The pack's own lowering
+        # validates the element shapes and raises otherwise.
+        return _lower_vararg_pack(a, ptype, lc, declared, temp_args=temp_args)
     _require_method_call_arg(
         e, a, ptype, index, lc, declared, temp_args=temp_args)
     return _lower_call_arg(
@@ -882,6 +912,9 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
             f"{_binop_operand_suffix(e, declared, analyzer)}",
             detail=True)
 
+    # A `__contains__`-unresolved native-set membership routes via the AST's
+    # `std::ranges::contains` fallback (set by the membership gate below).
+    ranges_contains = False
     rb = e.resolved_binop
     # sema's optional_safe_eq pair (value-repr Optional[scalar] ==/!=): the
     # per-side literal targets, or None outside the slice (set in the
@@ -939,7 +972,17 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
               and not isinstance(e.left, TpyName)
               and isinstance(analyzer.get_expr_type(e.right), IntLiteralType)
               and not isinstance(e.right, TpyName)):
-            reject()
+            # The AST constant-folds a both-literal int binop whenever its
+            # value fits a C++ integer literal (int64) -- `2 + 3` -> `5`,
+            # `2**63 - 1` -> `9223372036854775807LL` -- which THIR does not
+            # reproduce, so reject. Only a BigInt result whose value OVERFLOWS
+            # int64 (`2**64 + 1`) is rendered as a full operator expr and routes.
+            lit_val = getattr(analyzer.get_expr_type(e), "value", None)
+            fits_i64 = lit_val is not None and -(2**63) <= lit_val <= 2**63 - 1
+            is_bigint = is_big_int_type(resolve_int_literals(
+                rtype, analyzer.ctx.default_int_for_literal))
+            if not is_bigint or lit_val is None or fits_i64:
+                reject()
         if e.op in _BITWISE_OPS:
             _witness("binop.bitwise")
     elif e.op in _COMPARE_OPS:
@@ -970,6 +1013,7 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                     and _char_compare_operand(e.right, rt, analyzer))
                 or (_tparam_value(lt) and _tparam_value(rt))
                 or _union_compare_pair(lt, rt)
+                or (e.op in ("==", "!=") and _any_compare_pair(lt, rt))
                 or _record_compare_pair(lt, rt)
                 or _enum_compare_pair(e, lt, rt, analyzer)
                 or _tuple_compare_pair(lt, rt, analyzer)
@@ -985,7 +1029,8 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                 or rt is None or not is_bool_type(rt)):
             reject()
     elif e.op in _IS_OPS:
-        if _is_none_compare_operand(e, declared, analyzer) is None:
+        if (_is_none_compare_operand(e, declared, analyzer) is None
+                and _any_none_subject(e, declared, analyzer) is None):
             reject()
     elif e.op in _MEMBERSHIP_OPS and isinstance(e.right, TpyTupleLiteral):
         # `x in (a, b, ...)` / `not in`: a tuple-literal membership expands to an
@@ -1015,12 +1060,26 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
         pass
     elif e.op in _MEMBERSHIP_OPS:
         fi = e.resolved_contains
-        if (fi is None or e.typed_dict_in_field is not None
+        lt = _operand_type(e.left, declared, analyzer)
+        if fi is None:
+            # No resolved `__contains__` member (a `readonly[set]` strips it):
+            # the AST's `is_native_in` fallback renders
+            # `std::ranges::contains(s, x)`. Scoped to a native SET name receiver
+            # with a scalar / owned-str needle -- list/dict fallbacks and the
+            # universal iterator-loop form are later rungs.
+            if not (isinstance(e.right, TpyName)
+                    and e.right.name in declared
+                    and is_set(unwrap_readonly(unwrap_ref_type(
+                        unwrap_send_sync(declared[e.right.name]))))
+                    and (_resolved_scalar(lt, analyzer)
+                         or _resolved_str_value(lt, analyzer) is not None)):
+                reject()
+            ranges_contains = True
+        elif (e.typed_dict_in_field is not None
                 or fi.cpp_template or fi.native_function
                 or not fi.native_name):
             reject()
-        lt = _operand_type(e.left, declared, analyzer)
-        if isinstance(e.right, TpyName):
+        elif isinstance(e.right, TpyName):
             if e.right.name not in declared:
                 reject()
             ct = unwrap_readonly(unwrap_ref_type(
@@ -1103,6 +1162,16 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
             negate=e.op == "not in",
             wrap_receiver_sv=isinstance(e.right, TpyStrLiteral),
             loc=loc)
+    if e.op in _MEMBERSHIP_OPS and ranges_contains:
+        _witness("binop.set_ranges_membership")
+        return THIRMembership(
+            result_type=rtype,
+            receiver=_lower_expr(e.right, lc, declared),
+            needle=_lower_expr(e.left, lc, declared),
+            method_cpp="",
+            negate=e.op == "not in",
+            ranges_contains=True,
+            loc=loc)
     if e.op in _MEMBERSHIP_OPS:
         _witness("binop.membership")
         # A dict-view receiver (`d.values()`) renders the bare native view call
@@ -1123,6 +1192,16 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
             negate=e.op == "not in",
             loc=loc)
     if e.op in _IS_OPS:
+        any_subj = _any_none_subject(e, declared, analyzer)
+        if any_subj is not None:
+            _witness("isnone.any_typeid")
+            return THIRIsNone(
+                result_type=rtype,
+                operand=_lower_expr(any_subj, lc, declared),
+                negate=e.op == "is not",
+                any_typeid=True,
+                form=Form.VALUE,
+                loc=loc)
         operand = e.right if isinstance(e.left, TpyNoneLiteral) else e.left
         # A value-repr Optional binding (param OR declared local -- e.g. a
         # try-hoisted `std::optional<T> r;` slot) None-tests via has_value;
@@ -1857,6 +1936,10 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                 or _eligible_ptr_value(rtype, analyzer)
                 or _resolved_str_value(rtype, analyzer) is not None
                 or _resolved_bytes_value(rtype, analyzer) is not None
+                # An `Any` value element read lands bare (`::tpy::__getitem__(
+                # d, k)` -> `const Any&`), consumed by from_any / print.
+                or isinstance(unwrap_readonly(unwrap_ref_type(
+                    unwrap_send_sync(rtype))), AnyType)
                 # An open-T element read (`self.data[idx]` off Array[T, N])
                 # renders the bare checked dunder, landing form-neutrally in
                 # its T sink.
@@ -2102,6 +2185,34 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
             raise ThirUnsupported("expr.ifexpr")
         return _lower_if_expr(e, rtype, lc, declared, loc)
     if isinstance(e, TpyCall):
+        if not isinstance(e.func, TpyName):
+            # An expression callee (`make_adder(10)(5)`, `fns[i](x)`) has a
+            # non-Name func; every call arm below reads `e.func_name` (which
+            # asserts a Name callee), and no arm supports expression callees,
+            # so reject early -- it falls back to AST as before.
+            raise ThirUnsupported("expr.call")
+        if (e.func.name == "ord"
+                and len(e.args) == 1
+                and isinstance(e.args[0], TpyStrLiteral)
+                and len(e.args[0].value) == 1):
+            # ord("X") over a single-char literal folds to its constant
+            # ordinal, matching the AST's `str(ord(arg.value))` -- a bare int
+            # in every position (the runtime `ord(s)` rides the native arm).
+            _witness("call.ord_fold")
+            return _lower_int_literal(ord(e.args[0].value), rtype, lc, loc)
+        if _is_range_call(e):
+            # A `range(...)` call in OBJECT position (decl init, print arg):
+            # the same `::tpy::Range<T>(...)` ctor render the instantiation-arg
+            # and comprehension routes use. For-loop iterables are intercepted
+            # upstream, so a range reaching here is always object-position.
+            range_fi = e.resolved_function_info
+            if (len(e.args) in (1, 2, 3) and range_fi is not None
+                    and range_fi.cpp_template
+                    and _eligible_scalar(_range_counter_type(e, analyzer))):
+                _witness("call.range_object")
+                return _lower_range_object(e, lc, declared)
+            note_detail("call.range_shape")
+            raise ThirUnsupported("expr.call")
         if e.dunder_call is not None:
             # `obj(args)` where obj has a __call__ method: sema synthesized the
             # equivalent `obj.__call__(args)` method call. The AST's _gen_call
@@ -3045,6 +3156,10 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
             loc=loc,
         )
     if isinstance(e, TpyCoerce):
+        if e.coercion.name == "into_any":
+            return _lower_into_any(e, lc, declared, rtype, loc)
+        if e.coercion.name == "from_any":
+            return _lower_from_any(e, lc, declared, rtype, loc)
         disp = _coerce_disposition(e)
         if disp is None:
             raise ThirUnsupported("expr.coerce")
@@ -3143,6 +3258,107 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
     if isinstance(e, TpyLambda):
         return _lower_lambda(e, lc, declared)
     raise ThirUnsupported(expr_kind_tag(e))
+
+
+def _lower_into_any(e: TpyCoerce, lc: '_LowerCtx',
+                    declared: dict[str, TpyType],
+                    rtype: 'TpyType | None', loc) -> THIRExpr:
+    """`into_any` coercion: store the value in a `tpy::Any` cell via `make_any`.
+    The wrap is the coercion's own render taken with a `{0}` placeholder, which
+    is placeholder-transparent for scalar / str / bytes / None sources (their
+    `_any_storage_form` wraps embed the render unchanged). A LIST-literal source
+    renders as a bare brace-init (`{1,2,3}`) the `std::vector<T>{0}` prefix wraps
+    correctly; a name / set / dict / make_vector source needs a paren copy the
+    placeholder wrap cannot express, so it stays on the AST path."""
+    actual = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(e.actual_type)))
+    if is_list(actual) or is_dict(actual) or is_set(actual):
+        if not (isinstance(e.expr, TpyArrayLiteral) and is_list(actual)):
+            note_detail("coerce.into_any_container")
+            raise ThirUnsupported("expr.coerce")
+        lit = _lower_expr(e.expr, lc, declared, target_type=actual)
+        # Only the bare brace-init render (`{...}`) is placeholder-safe -- a
+        # make_vector / typed-brace / empty spelling would double the type.
+        if not (isinstance(lit, THIRContainerLiteral) and lit.elements
+                and not lit.make_container and lit.typed_brace_cpp is None):
+            note_detail("coerce.into_any_container")
+            raise ThirUnsupported("expr.coerce")
+        wrap = e.coercion.codegen(
+            "{0}", e.actual_type, e.expected_type, e.context_kind)
+        _witness("coerce.into_any")
+        return THIRCoerce(result_type=rtype, expr=lit,
+                          coercion_name="into_any", wrap=wrap,
+                          form=Form.VALUE, loc=loc)
+    if isinstance(e.expr, TpyNoneLiteral):
+        # `None` into Any stores `std::monostate{}` -- the unit-typed STORAGE
+        # None render; `_any_storage_form` leaves it bare inside make_any.
+        inner: THIRExpr = THIRLiteral(result_type=NONE, value=None,
+                                      form=Form.STORAGE, loc=loc)
+    else:
+        inner = _lower_expr(e.expr, lc, declared)
+    wrap = e.coercion.codegen(
+        "{0}", e.actual_type, e.expected_type, e.context_kind)
+    _witness("coerce.into_any")
+    return THIRCoerce(result_type=rtype, expr=inner,
+                      coercion_name="into_any", wrap=wrap,
+                      form=Form.VALUE, loc=loc)
+
+
+def _lower_from_any(e: TpyCoerce, lc: '_LowerCtx',
+                    declared: dict[str, TpyType],
+                    rtype: 'TpyType | None', loc) -> THIRExpr:
+    """`from_any` auto-coerce (`n: int = a` / `return a` at a concrete slot):
+    runtime-checked extraction `any_cast_or_panic<T>(a)`. The render is a
+    single-`{0}` template around the Any source, so it lowers like the scalar
+    casts -- carry the source's own form (the extraction yields T by value; a
+    plain Any name reads VALUE)."""
+    target = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(e.expected_type)))
+    if is_list(target) or is_dict(target) or is_set(target):
+        note_detail("coerce.from_any_container")
+        raise ThirUnsupported("expr.coerce")
+    inner = _lower_expr(e.expr, lc, declared)
+    wrap = e.coercion.codegen(
+        "{0}", e.actual_type, e.expected_type, e.context_kind)
+    _witness("coerce.from_any")
+    return THIRCoerce(result_type=rtype, expr=inner,
+                      coercion_name="from_any", wrap=wrap,
+                      form=inner.form, loc=loc)
+
+
+def _lower_elem_into_any(e: TpyExpr, any_slot: TpyType, lc: '_LowerCtx',
+                         declared: dict[str, TpyType]) -> THIRExpr:
+    """One container-literal element / dict key-value into an `Any` slot: the
+    per-element into-Any wrap (`_wrap_for_owned_slot`'s AnyType arm). An
+    already-Any source renders bare (it is a cell); every other element wraps
+    `make_any(...)` with the int/float-literal type override the AST applies so
+    the cell's typeid is the canonical BigInt/double. A None element renders the
+    default `nullptr` (NOT the decl-init `std::monostate`), matching the
+    container-element position's target-free None render."""
+    analyzer = lc.analyzer
+    loc = getattr(e, "loc", None)
+    actual = analyzer.get_expr_type(e)
+    bare = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(actual)))
+            if actual is not None else None)
+    if isinstance(bare, AnyType):
+        return _lower_expr(e, lc, declared)
+    if isinstance(e, TpyNoneLiteral):
+        inner: THIRExpr = THIRLiteral(result_type=NONE, value=None,
+                                      form=Form.VALUE, loc=loc)
+        wrap_actual: TpyType = bare
+    else:
+        inner = _lower_expr(e, lc, declared)
+        # The AST's `resolved` override at an Any element: int/float literals
+        # store under the canonical BigInt / double typeid.
+        if isinstance(e, TpyIntLiteral):
+            wrap_actual = IntLiteralType()
+        elif isinstance(e, TpyFloatLiteral):
+            wrap_actual = FloatLiteralType()
+        else:
+            wrap_actual = bare
+    wrap = wrap_into_any("{0}", wrap_actual, CoercionContext.INIT)
+    _witness("coerce.into_any")
+    return THIRCoerce(result_type=any_slot, expr=inner,
+                      coercion_name="into_any", wrap=wrap,
+                      form=Form.VALUE, loc=loc)
 
 
 def _lower_lambda(e: TpyLambda, lc: '_LowerCtx',
@@ -3363,6 +3579,10 @@ def _lower_container_elem(e: TpyExpr, slot: TpyType | None,
     positions. A literal (VALUE, const char[N]) and an owned source (STORAGE --
     an owned local, a String local, a concat/f-string rvalue) land bare, like
     the AST's brace-init pass-through; scalar slots never wrap."""
+    su0 = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(slot))) \
+        if slot is not None else None
+    if isinstance(su0, AnyType):
+        return _lower_elem_into_any(e, su0, lc, declared)
     # `retype_scalars` mirrors whether the AST threads a scalar element
     # target: dict keys/values and set elements do (target-typed Float32/
     # BigInt literal wraps); list/Array elements do NOT (bare renders).
@@ -3885,8 +4105,19 @@ def _lower_vararg_pack(pack: TpyVarargPack, ptype: 'TpyType | None',
                     is_str_type(atb) or is_str_view_type(atb)
                     or is_string_type(atb) or is_bytes_type(atb)
                     or is_bytes_view_type(atb)):
-                # A str/bytes value element takes the AST's owned-copy wrap.
-                raise ThirUnsupported("call.vararg_view_elem")
+                # A str/bytes value element lands in the owned std::array. A
+                # VIEW source (name/derived view) needs the AST's owned-copy
+                # wrap (`std::string()` / `bytes_copy`) and stays AST; a str/
+                # bytes LITERAL is const char[N] / already-owned and lands
+                # bare (`_view_owned_copy_family` returns None for it), so
+                # route it. This literal-vs-view split must stay in lockstep
+                # with codegen's `_is_str_view_source` / `_view_owned_copy_family`
+                # -- if their literal exclusion changes, this gate must follow.
+                src = a
+                while isinstance(src, TpyCoerce):
+                    src = src.expr
+                if not isinstance(src, (TpyStrLiteral, TpyBytesLiteral)):
+                    raise ThirUnsupported("call.vararg_view_elem")
             ref_lvalue.append(True)
         lowered.append(_lower_expr(a, lc, declared))
     _witness("vararg.pack_ref" if is_ref else "vararg.pack_value")
@@ -4286,6 +4517,45 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         return lowered
     return _slot_literal_retype(lowered, ptype, lc)
 
+def _lower_ctor_call_args(args: list[TpyExpr], fi, lc: '_LowerCtx',
+                          declared: dict[str, TpyType], *,
+                          temp_args: bool) -> list[THIRExpr]:
+    """Lower a resolved user-record ctor's args through the shared per-arg
+    dispatch -- the THIR mirror of `_gen_record_ctor_args`, used by both the
+    `X(args)` construction path and the `raise X(args)` statement. `temp_args`
+    is set at flush positions (statement level), admitting the mutated-slot /
+    Own-copy / union-lift / protocol temp rows. Raises `ThirUnsupported` for an
+    arg shape not yet routed (the caller tags the body-level fallback)."""
+    analyzer = lc.analyzer
+    use = _ExprUse(allow_temps=temp_args)
+    ctor_mut = fi.mutated_params or frozenset()
+    lowered: list[THIRExpr] = []
+    for i, (a, p) in enumerate(zip(args, fi.params)):
+        if not _record_ctor_arg_supported(a, p.type, i, fi, lc, declared, use):
+            note_detail("ctor.arg." + _type_family_tag(p.type, analyzer))
+            raise ThirUnsupported("ctor arg shape")
+        rec = (_record_rvalue_temp_slot(a, p.type, analyzer)
+               if i in ctor_mut else None)
+        if rec is not None:
+            if not temp_args:
+                raise ThirUnsupported(
+                    "ctor mutated-slot rvalue temp outside a flush position")
+            _witness("argtemp.ctor_mut_rvalue")
+            lowered.append(THIRArgTemp(
+                result_type=rec, cpp_type=rec.to_cpp(),
+                init=_lower_expr(a, lc, declared), form=Form.BORROW,
+                loc=getattr(a, "loc", None)))
+        else:
+            flush_slot = (
+                _own_lvalue_temp_slot(a, p.type, analyzer) is not None
+                or _union_ctor_temp_arg(a, p.type, analyzer)
+                or _protocol_arg_slot(p.type) is not None)
+            lowered.append(_lower_call_arg(
+                a, p.type, lc, declared,
+                temp_args=temp_args and flush_slot,
+                protocol_slots=True))
+    return lowered
+
 def _lower_union_arg_lift(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                           declared: dict[str, TpyType], *,
                           readonly_target: bool = False,
@@ -4493,8 +4763,18 @@ def _lower_truthy(e: TpyExpr, lc: '_LowerCtx',
                 and et is not None
                 and isinstance(unwrap_readonly(unwrap_ref_type(
                     unwrap_send_sync(et))), OptionalType))
+            # A native-truthy integer name (`assert x` / `if n:` where n is
+            # int/fixed-int) renders bare -- its truthiness IS its value render
+            # (`if (x)`), the same bare-name property bool already takes. `mode`
+            # is None for these (ordinary value render), so admit them alongside
+            # bool rather than falling the body back.
+            eu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(et)))
+                  if et is not None else None)
+            native_int = eu is not None and (
+                is_big_int_type(eu) or is_fixed_int_type(eu))
             if (e.name not in declared or et is None
-                    or (mode is None and not is_bool_type(et))
+                    or (mode is None and not is_bool_type(et)
+                        and not native_int)
                     or (unrouted is not None and not storage_optional)):
                 raise ThirUnsupported("truthy.name")
         elif isinstance(e, TpyFieldAccess):

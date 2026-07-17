@@ -92,3 +92,32 @@ class TestLiteralOverloadMangleRejects:
         assert routed is False
         assert reason == "expr.call"
         assert detail == "call.literal_overload"
+
+
+class TestExprCalleeRejects:
+    # An expression callee -- calling the result of a call (`f()()`) or a
+    # subscript (`fns[i](x)`) -- has a non-Name func. Every call arm reads
+    # `e.func_name` (which asserts a Name callee), so the whole-body lowering
+    # rejects early rather than crashing (regression guard: this used to hit
+    # `func_name on non-Name callee` inside the ord()-fold arm).
+    _MK = ("from typing import Callable\n"
+           "from tpy import Int32\n"
+           "def mk(n: Int32) -> Callable[[Int32], Int32]:\n"
+           "    def add(x: Int32) -> Int32:\n        return x + n\n"
+           "    return add\n")
+
+    def test_call_result_callee_rejects(self):
+        src = self._MK + "def f() -> Int32:\n    return mk(10)(5)\n"
+        routed, reason, _ = _reject_detail(src, "f")
+        assert routed is False
+        assert reason == "expr.call"
+
+    def test_subscript_callee_rejects(self):
+        # `fns` is a param (not a local list-literal decl) so the reject
+        # isolates on the subscript callee, not the container init.
+        src = (self._MK
+               + "def f(fns: list[Callable[[Int32], Int32]]) -> Int32:\n"
+               + "    return fns[0](100)\n")
+        routed, reason, _ = _reject_detail(src, "f")
+        assert routed is False
+        assert reason == "expr.call"

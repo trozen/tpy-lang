@@ -63,6 +63,8 @@ from .nodes import (
     THIRExpr,
     THIRExprStmt,
     THIRFieldAccess,
+    THIRConsumingIter,
+    THIRCopy,
     THIRForEach,
     THIRForIterProto,
     THIRForRange,
@@ -1138,6 +1140,12 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         # negation wrapping the already-parenthesized find expr. A bytes
         # container's `__contains__` is a native FREE function, so it renders
         # `(::tpy::name(recv, needle))` instead.
+        if e.ranges_contains:
+            # `is_native_in` fallback: a bare `std::ranges::contains(recv,
+            # needle)`, negation a `!` prefix (no outer parens).
+            call = (f"std::ranges::contains({_emit_expr(e.receiver, state)}, "
+                    f"{_emit_expr(e.needle, state)})")
+            return f"!{call}" if e.negate else call
         if e.free_function:
             inner = (f"({qualify_native_name(e.method_cpp)}"
                      f"({_emit_expr(e.receiver, state)}, "
@@ -1171,6 +1179,11 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         return f"({joined})"
     if isinstance(e, THIRIsNone):
         inner = _emit_expr(e.operand, state)
+        if e.any_typeid:
+            # D15 typeid probe: the Any cell stores None as std::monostate.
+            check = (f"({inner}.value.has_value() && "
+                     f"{inner}.value.type() == typeid(std::monostate))")
+            return f"(!{check})" if e.negate else check
         if e.value_repr:
             # `std::optional<T>` param: `is None` -> `(!p.has_value())`,
             # `is not None` -> `(p.has_value())` (_gen_binop's has_value arm).
@@ -1230,6 +1243,11 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         if e.move:
             return f"std::move({name})"
         return f"&({name})" if e.addr_of else name
+    if isinstance(e, THIRCopy):
+        return f"{e.cpp_type}({_emit_expr(e.value, state)})"
+    if isinstance(e, THIRConsumingIter):
+        return (f"{qualify_native_name(e.native_name)}"
+                f"(std::move({_emit_expr(e.value, state)}))")
     if isinstance(e, THIRMove):
         return f"std::move({_emit_expr(e.value, state)})"
     if isinstance(e, THIRLambda):
@@ -1460,10 +1478,15 @@ def _emit_for_range(out: TextIO, stmt: THIRForRange, indent_level: int,
     # captured once into `__start_N`/`__stop_N` temps -- Python's range() reads
     # its args at call time, but the C++ condition re-reads each iteration.
     indent = INDENT * indent_level
+    for name, cpp_type in stmt.hoist_decls:
+        out.write(f"{indent}{cpp_type} {name};\n")
     saved_depth = _push_loop_frame(state, has_else=bool(stmt.orelse))
     n = state.next_loop_index()
     cpp_elem = stmt.elem_type.to_cpp()
     var = escape_cpp_name(stmt.var)
+    # A hoisted rebind runs the counter through a hidden `__range_N` and assigns
+    # the user var inside the body (mirrors _gen_range_counter_loop).
+    counter = f"__range_{n}" if stmt.hoist_loop_var else var
     start_cpp = "0" if stmt.start is None else _emit_expr(stmt.start, state)
     stop_cpp = _emit_expr(stmt.stop, state)
     if stmt.start is not None and not stmt.start_is_literal:
@@ -1478,27 +1501,29 @@ def _emit_for_range(out: TextIO, stmt: THIRForRange, indent_level: int,
     # other counter here) and, for a variable step, a `__step_N` capture with a
     # nonzero check and a ternary direction condition.
     if stmt.step_kind == "plus_one":
-        out.write(f"{indent}for ({cpp_elem} {var} = {start_cpp}; "
-                  f"{var} < {stop_cpp}; ++{var}) {{\n")
+        out.write(f"{indent}for ({cpp_elem} {counter} = {start_cpp}; "
+                  f"{counter} < {stop_cpp}; ++{counter}) {{\n")
     elif stmt.step_kind == "unit_neg":
-        out.write(f"{indent}for ({cpp_elem} {var} = {start_cpp}; "
-                  f"{var} > {stop_cpp}; --{var}) {{\n")
+        out.write(f"{indent}for ({cpp_elem} {counter} = {start_cpp}; "
+                  f"{counter} > {stop_cpp}; --{counter}) {{\n")
     elif stmt.step_kind in ("literal_pos", "literal_neg"):
         step_cpp = _emit_expr(stmt.step, state)
         out.write(f"{indent}::tpy::range_check_overflow<{cpp_elem}>("
                   f"{start_cpp}, {stop_cpp}, {step_cpp});\n")
         cmp = "<" if stmt.step_kind == "literal_pos" else ">"
-        out.write(f"{indent}for ({cpp_elem} {var} = {start_cpp}; "
-                  f"{var} {cmp} {stop_cpp}; {var} += {step_cpp}) {{\n")
+        out.write(f"{indent}for ({cpp_elem} {counter} = {start_cpp}; "
+                  f"{counter} {cmp} {stop_cpp}; {counter} += {step_cpp}) {{\n")
     else:  # variable
         step_cpp = _emit_expr(stmt.step, state)
         out.write(f"{indent}{cpp_elem} __step_{n} = {step_cpp};\n")
         out.write(f"{indent}::tpy::range_check_step_nonzero(__step_{n});\n")
         out.write(f"{indent}::tpy::range_check_overflow<{cpp_elem}>("
                   f"{start_cpp}, {stop_cpp}, __step_{n});\n")
-        out.write(f"{indent}for ({cpp_elem} {var} = {start_cpp}; "
-                  f"__step_{n} > 0 ? {var} < {stop_cpp} : {var} > {stop_cpp}; "
-                  f"{var} += __step_{n}) {{\n")
+        out.write(f"{indent}for ({cpp_elem} {counter} = {start_cpp}; "
+                  f"__step_{n} > 0 ? {counter} < {stop_cpp} : {counter} > {stop_cpp}; "
+                  f"{counter} += __step_{n}) {{\n")
+    if stmt.hoist_loop_var:
+        out.write(f"{INDENT * (indent_level + 1)}{var} = {counter};\n")
     state.loop_depth += 1
     _emit_stmts(out, stmt.body, indent_level + 1, state)
     state.loop_depth -= 1
@@ -1518,6 +1543,8 @@ def _emit_for_each(out: TextIO, stmt: THIRForEach, indent_level: int,
     # alias -- auto&& / const auto&, so the const flag is threaded through,
     # not hardcoded).
     indent = INDENT * indent_level
+    for name, cpp_type in stmt.hoist_decls:
+        out.write(f"{indent}{cpp_type} {name};\n")
     saved_depth = _push_loop_frame(state, has_else=bool(stmt.orelse))
     n = state.next_loop_index()
     obj, beg, end = f"__obj_{n}", f"__beg_{n}", f"__end_{n}"
@@ -1531,7 +1558,8 @@ def _emit_for_each(out: TextIO, stmt: THIRForEach, indent_level: int,
     out.write(f"{indent}for (; {beg} != {end}; ++{beg}) {{\n")
     inner = INDENT * (indent_level + 1)
     binding = loop_var_binding(stmt.elem_type, escape_cpp_name(stmt.var),
-                              f"*{beg}", stmt.const_loop_var)
+                              f"*{beg}", stmt.const_loop_var,
+                              hoisted=stmt.hoist_loop_var)
     out.write(f"{inner}{binding}\n")
     state.loop_depth += 1
     _emit_stmts(out, stmt.body, indent_level + 1, state)
@@ -2646,13 +2674,16 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
         # rvalue kind allocates the value slot before the rebind slot but
         # EMITS the rebind pre-decl line first.
         name = escape_cpp_name(stmt.name)
+        # `const T*` only on the pointer line (mirrors the AST `const_pfx`); the
+        # rebind `std::optional<T>` slot backing a reseat stays non-const.
+        cpfx = "const " if stmt.is_const else ""
         if stmt.kind is PtrSlotKind.OPT_NONE:
             if stmt.needs_rebind_slot:
                 slot = state.next_slot()
                 state.rebind_slots[stmt.name] = slot
                 out.write(f"{indent}std::optional<{stmt.cpp_type}> "
                           f"__slot_{slot};\n")
-            out.write(f"{indent}{stmt.cpp_type}* {name} = nullptr;\n")
+            out.write(f"{indent}{cpfx}{stmt.cpp_type}* {name} = nullptr;\n")
         elif stmt.kind is PtrSlotKind.OPT_RVALUE:
             init_cpp = _emit_expr(stmt.init, state)
             init_slot = state.next_slot()
@@ -2663,7 +2694,7 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
                 state.rebind_slots[stmt.name] = rebind
                 out.write(f"{indent}std::optional<{stmt.cpp_type}> "
                           f"__slot_{rebind};\n")
-            out.write(f"{indent}{stmt.cpp_type}* {name} = "
+            out.write(f"{indent}{cpfx}{stmt.cpp_type}* {name} = "
                       f"&__slot_{init_slot};\n")
         elif stmt.kind is PtrSlotKind.UNION_RVALUE:
             init_cpp = _emit_expr(stmt.init, state)
@@ -2934,7 +2965,11 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
         elif stmt.cpp_type is None:
             out.write(f"{indent}throw;\n")
         elif stmt.args:
+            # Render args first so a mutated-ref-slot / Own-copy / union-ctor
+            # arg temp registers, then flush the `__tmp_N` decls ahead of the
+            # throw line -- the AST's per-statement temp flush.
             args = ", ".join(_emit_expr(a, state) for a in stmt.args)
+            state.temps.flush(out, indent)
             if stmt.via_virtual:
                 out.write(f"{indent}{stmt.cpp_type}({args}).__raise__();\n")
             else:

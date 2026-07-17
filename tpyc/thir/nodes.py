@@ -270,10 +270,16 @@ class THIRIsNone(THIRExpr):
     Optional side renders first whichever side of `is` it appears on), so the
     node carries only the Optional operand; the storage-form record sources and
     protocol slots (typed null) are gate-rejected. `result_type` is always
-    bool; VALUE form."""
+    bool; VALUE form.
+
+    On an `Any` subject (`any_typeid=True`) it renders the typeid probe
+    `(a.value.has_value() && a.value.type() == typeid(std::monostate))` (D15):
+    the Any cell holds None as a `std::monostate` value, and an empty/moved-from
+    Any is not None."""
     operand: THIRExpr
     negate: bool = False
     value_repr: bool = False
+    any_typeid: bool = False
 
 
 @dataclass(frozen=True)
@@ -325,12 +331,19 @@ class THIRMembership(THIRExpr):
     call arguments, `method_cpp` the un-qualified native name (qualified at
     emit). Picks `bytes_contains` (single-byte needle) or `bytes_contains_sub`
     (bytes-substring needle) per the resolved overload; the needle renders in
-    its owned form."""
+    its owned form.
+
+    When `ranges_contains` is set (the AST's `is_native_in` fallback for a
+    native container whose `__contains__` is NOT a resolved member -- e.g. a
+    `readonly[set[T]]`, whose readonly wrapper strips the resolved member), the
+    emit is `[!]std::ranges::contains(receiver, needle)` -- no outer parens, the
+    negation a bare `!` prefix. `method_cpp` is unused in this form."""
     receiver: THIRExpr
     needle: THIRExpr
     method_cpp: str
     negate: bool = False
     free_function: bool = False
+    ranges_contains: bool = False
 
 
 @dataclass(frozen=True)
@@ -591,6 +604,29 @@ class THIRArgTemp(THIRExpr):
     brace_init: bool = False
     move: bool = False
     addr_of: bool = False
+
+
+@dataclass(frozen=True)
+class THIRCopy(THIRExpr):
+    """An explicit `copy(x)` of a plain F1-record source -- the copy-construct
+    rvalue `_gen_copy_expr` renders for a bare-record arg (`T(x)`), an owned
+    duplicate for an `Own[T]` sink. `cpp_type` is the record's C++ spelling.
+    Only the plain-record arm: the Optional-ptr / pointer-variant / tuple
+    branches of `_gen_copy_expr` stay on the AST path."""
+    value: THIRExpr = None  # type: ignore[assignment]
+    cpp_type: str = ""
+
+
+@dataclass(frozen=True)
+class THIRConsumingIter(THIRExpr):
+    """A container consumed by a for-loop whose element type is owned at last
+    use (`::tpy::own_iter(std::move(<value>))`): the native auto-consuming
+    iterable of `_gen_consuming_iter`. `native_name` is the consuming
+    `__iter__`'s C++ symbol (qualified at emit). The wrapped `value` is the
+    movable container name; the result is an rvalue range, so the for-each
+    captures it owning (`auto __obj_N =`, iterable_lvalue False)."""
+    value: THIRExpr
+    native_name: str = ""
 
 
 @dataclass(frozen=True)
@@ -1179,6 +1215,10 @@ class THIRPtrLocalDecl(THIRStmt):
     cpp_type: str | None = None
     val_cpp: str | None = None
     needs_rebind_slot: bool = False
+    # `const T*` (not `T*`): the pointee is a readonly source. Mirrors the AST's
+    # `const_pfx` (name in `const_indirect_locals`); only the pointer line takes
+    # the prefix -- the rebind `std::optional<T>` slot stays non-const.
+    is_const: bool = False
 
 
 @dataclass(frozen=True)
@@ -1502,6 +1542,14 @@ class THIRForRange(THIRStmt):
     step: THIRExpr | None = None
     step_kind: str = "plus_one"
     orelse: tuple[THIRStmt, ...] = ()
+    # A rebind of an existing value-type local (sema's `hoist_loop_var`): the
+    # counter binds a hidden `__range_N` and the body opens with `var = __range_N;`
+    # so post-loop reads see the last value, not the post-increment overshoot.
+    hoist_loop_var: bool = False
+    # Branch-first-declared value locals used after the loop (sema's
+    # `if_branch_decls`): `{cpp_type} {name};` predecls before the loop, mirroring
+    # _emit_branch_decls. Includes the loop var itself when `hoist_loop_var`.
+    hoist_decls: tuple[tuple[str, str], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -1603,6 +1651,12 @@ class THIRForEach(THIRStmt):
     # `std::string_view(...)` -- C string literals include the NUL terminator,
     # which the view trims (mirrors _gen_for_each_loop's TpyStrLiteral wrap).
     str_literal_iterable: bool = False
+    # A loop var used after the loop (sema's `hoist_loop_var`): the per-iteration
+    # binding assigns the predeclared slot (`s = *__beg_N;`) instead of declaring
+    # a fresh local, so the post-loop read sees the last element.
+    hoist_loop_var: bool = False
+    # Branch-first-declared value locals used after the loop (see THIRForRange).
+    hoist_decls: tuple[tuple[str, str], ...] = ()
 
 
 @dataclass(frozen=True)

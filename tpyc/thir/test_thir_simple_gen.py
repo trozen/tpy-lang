@@ -364,11 +364,10 @@ class TestSlicedOutShapes:
         _, fallback = _assert_identical(src)
         assert fallback.get("body:sgen.forwarded_local") == 1
 
-    def test_range3_iterable_defers(self):
-        # A 3-arg range is not the counter-loop shape
-        # (for_range_uses_counter_loop False); the pull-branch iterable is
-        # the range() call itself, which the call arm rejects -- the body
-        # falls back whole, byte-identical.
+    def test_range3_iterable_routes(self):
+        # A 3-arg range in a generator's for-loop (not the counter-loop shape)
+        # routes through the sgen peephole byte-identically: the pull-branch
+        # iterable is the range() call, which the range-object arm now lowers.
         src = (_ITER
                + "def evens(n: Int32) -> Iterator[Int32]:\n"
                + "    for i in range(0, n, 2):\n"
@@ -376,8 +375,8 @@ class TestSlicedOutShapes:
                + "def main() -> None:\n"
                + "    for v in evens(7):\n        print(v)\nmain()\n")
         witnesses, fallback = _assert_identical(src)
-        assert not witnesses.get("sgen.body")
-        assert fallback.get("body:expr.call") == 1
+        assert witnesses.get("sgen.body")
+        assert not fallback
 
 
 class TestForeachCallers:
