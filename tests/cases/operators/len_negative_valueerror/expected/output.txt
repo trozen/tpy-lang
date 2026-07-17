@@ -1,0 +1,8 @@
+len big: __len__() should return >= 0
+len i32: __len__() should return >= 0
+truthy big: __len__() should return >= 0
+truthy i32: __len__() should return >= 0
+0
+empty falsy
+3
+full truthy
