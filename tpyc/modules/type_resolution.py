@@ -334,7 +334,12 @@ def get_iter_element_type(tpy_type: "TpyType", registry: "TypeRegistry") -> "Tpy
     # Try user records (walks parent chain).
     # allow_protocol_return=True: user __iter__ returning Iterator[T] is recognized.
     if isinstance(tpy_type, NominalType) and tpy_type.is_user_record:
-        record = registry.get_record(tpy_type.name)
+        # Qname-first (get_record_for_type), not the local-only get_record(name):
+        # a type reached through a cross-module return that the current module
+        # never imported by name is absent from the local `records` dict, but
+        # its RecordInfo -- carrying the type_params needed to bind a generic
+        # __iter__() -> Iterator[T] element -- is reachable via its qname.
+        record = registry.get_record_for_type(tpy_type)
         if record is not None:
             type_subst: dict[str, "TpyType"] = {"Self": tpy_type}
             if record.type_params and tpy_type.type_args:
@@ -501,7 +506,9 @@ def _find_record_iter_element(
     for parent in record.parents:
         if not (isinstance(parent, NominalType) and parent.is_user_record):
             continue
-        parent_info = registry.get_record(parent.name)
+        # Qname-first: an inherited member from a base declared in a module the
+        # current one never imported by name is still reachable by qname.
+        parent_info = registry.get_record_for_type(parent)
         if parent_info is None:
             continue
         parent_subst = _compose_parent_subst(parent, parent_info, type_subst)
@@ -602,11 +609,11 @@ def get_span_return_type(tpy_type: "TpyType", registry: "TypeRegistry") -> "Nomi
     """If type has __span__() -> Span[T] or Span[readonly[T]], return the full Span NominalType."""
     from tpyc.typesys import NominalType, TypeParamRef
 
-    if isinstance(tpy_type, NominalType) and tpy_type.is_user_record:
-        record = registry.get_record(tpy_type.name)
-    else:
-        # Builtin types (list, Array, Span, etc.)
-        record = registry.get_record_for_type(tpy_type)
+    # Qname-first (like get_iter_element_type): one lookup resolves both a user
+    # record reached cross-module without a name-import and builtins (list,
+    # Array, Span, ...). The old local-only get_record(name) missed a
+    # __span__-bearing record that the current module never imported by name.
+    record = registry.get_record_for_type(tpy_type)
     if record is None:
         return None
     type_subst: dict[str, "TpyType"] = {}
@@ -640,7 +647,9 @@ def _find_span_method_return_type(
     for parent in record.parents:
         if not (isinstance(parent, NominalType) and parent.is_user_record):
             continue
-        parent_info = registry.get_record(parent.name)
+        # Qname-first: an inherited member from a base declared in a module the
+        # current one never imported by name is still reachable by qname.
+        parent_info = registry.get_record_for_type(parent)
         if parent_info is None:
             continue
         parent_subst = _compose_parent_subst(parent, parent_info, type_subst)

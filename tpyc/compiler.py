@@ -904,6 +904,7 @@ class Compiler:
             for name in self.compile_order:
                 self._check_module_all_completeness(self.modules[name])
             self._check_workspace_completeness_cycles()
+            self._reindex_builtins_post_finalize()
             for name in self.compile_order:
                 self._analyze_bodies(self.modules[name])
             for name in self.compile_order:
@@ -972,6 +973,7 @@ class Compiler:
         # modules. Without this, the cycle would compile through sema and
         # fail at the C++ build with a complete-type compiler error.
         self._check_workspace_completeness_cycles()
+        self._reindex_builtins_post_finalize()
         for module_name in self.compile_order:
             self._analyze_bodies(self.modules[module_name])
         # Workspace-wide borrow-check resolution. Each module's pending
@@ -3299,6 +3301,50 @@ class Compiler:
             reached=set(exports.reached),
             module_attributes=(compiled.module_attributes if compiled else None),
         )
+
+    def _reindex_builtins_post_finalize(self) -> None:
+        """Re-index every implicit-stdlib builtin type record into each
+        module's analyzer registry, after all declarations are finalized.
+
+        A module indexes builtins during its own `_finalize_declarations`,
+        reading them from its deps' *exports* -- but those are only populated
+        once the defining module is itself finalized. The compile order can
+        finalize a consumer stdlib module (e.g. `tpy.sync`) before the module
+        defining a builtin it uses (`Ptr` in `tpy._core._containers`), because
+        `from tpy import Ptr` routes as an implicit-stdlib builtin and records
+        no module edge to force the order -- so that builtin never lands in the
+        consumer's registry. Bodies are analyzed only after every module is
+        finalized, so re-running the indexing here is order-independent: every
+        builtin's exports are complete, and `_index_builtin_type_records`
+        (register_builtin_record + type_factory) is idempotent.
+
+        "stdlib consumer" is the exact reachable surface, not an arbitrary
+        scope: `_compute_compile_order` partitions all implicit-stdlib modules
+        strictly ahead of user/`tplib` code, so by the time any non-implicit
+        module finalizes every builtin is already indexed -- only an
+        implicit-stdlib module can be finalized before a builtin it uses. And
+        only `from tpy import X` is edge-less; every named user import records a
+        module edge the topo sort already honors. So this loops over ALL
+        analyzers (the consumer side is generic and the extra passes are
+        idempotent no-ops), but the only registrations that can actually be
+        missing are the implicit-stdlib builtins re-applied here. NOTE: this
+        re-runs only `_index_builtin_type_records`, not the sibling
+        `register_protocol` / non-builtin `register_record` steps of the same
+        finalize loop; whether an intra-stdlib protocol / plain record can be
+        stranded the same way is an open, repro-first question (see TODO.md).
+        """
+        implicit_set = self._implicit_stdlib_set()
+        module_infos = [
+            self._exports_to_module_info(name, self.modules[name].exports,
+                                         self.modules[name])
+            for name in implicit_set if name in self.modules
+        ]
+        for compiled in self.modules.values():
+            analyzer = compiled.analyzer
+            if analyzer is None:
+                continue
+            for module_info in module_infos:
+                self._index_builtin_type_records(module_info, analyzer)
 
     def _index_builtin_type_records(self, module_info: 'ModuleInfo',
                                      analyzer: 'SemanticAnalyzer') -> None:

@@ -322,7 +322,8 @@ no M:N scheduler, so each producer is an OS thread; select and unbuffered
   the `channel[T](cap)` factory needs an explicit type argument (capacity gives
   no inference for `T`) which is not valid Python -- same as the async channel.
 
-**Both compiler prerequisites are now fixed -- the channel is unblocked.**
+**The compiler prerequisites are now fixed -- the channel is unblocked.** Two
+were identified up front:
 - `with`/`try` cleanup in a destructor compiles and runs, so
   `Sender`/`Receiver.__del__` can take the lock to close + notify (the normal
   path does not throw; an exception that *does* escape a destructor fail-fasts
@@ -331,6 +332,20 @@ no M:N scheduler, so each producer is an OS thread; select and unbuffered
 - `for v in rx:` over a generator `__iter__` that mutates the receiver no
   longer wrongly infers the enclosing method `const` (readonly inference now
   accounts for a mutating `__iter__`; `tests/cases/iterators/for_gen_iter_*`).
+
+Building the channel draft then surfaced three more compiler fixes (all landed
+together on the `fix-channel-prereqs` branch):
+- a spawned task's fields now drop at `run()` completion, not `join()` -- so
+  drop-based auto-close (the last `Sender.__del__` closing + notifying) unblocks
+  a consumer parked in `for v in rx:` instead of deadlocking (runtime;
+  `tests/cases/threading/spawn_task_field_drop`);
+- `for v in rx:` resolves `Receiver.__iter__` cross-module without importing
+  `Receiver` by name (qname-first iterable-element resolution;
+  `tests/cases/iterators/cross_module_iter`);
+- an `Arc[Mutex[...]]` reached from a separate module no longer fails to
+  compile inside `tpy.sync` when the builtin registry is finalized in an
+  order that leaves `Ptr`/`UInt32` unindexed (post-finalize builtin re-index;
+  `tests/cases/threading/mutex_wrap_cross_module`).
 
 `Condvar` (the other prerequisite) shipped independently. Nothing compiler-side
 now blocks re-adding `tplib.channel`.

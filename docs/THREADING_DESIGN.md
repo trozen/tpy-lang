@@ -142,6 +142,16 @@ def spawn[R: Send, T: ThreadTask[R]](task: Send[Own[T]]) -> Own[JoinHandle[R]]: 
 - `task: Own[T]` -- the task is **moved** into the thread via the existing
   `Own`-move; the caller loses it. Data is carried as the struct's moved
   fields (the struct is the reified closure); no capture analysis needed.
+- **The task is dropped when `run()` completes, not at `join()`** (Rust's
+  drop-at-thread-completion). `spawn_thread` moves the task into a body-scoped
+  local of the worker lambda, so its fields' `__del__` run as soon as the
+  thread finishes -- a peer blocked on the task's RAII cleanup (e.g. a channel
+  `Sender.__del__` that closes + notifies) unblocks without waiting for the
+  joiner to call `join()`. This also fixes *which thread* runs those
+  destructors: they run on the **worker** (at completion), not on the joiner
+  (at `join()`). Sound because the task is `Send` -- its fields already crossed
+  onto the worker -- and it matches Rust; the only observable effect is that a
+  field destructor's side effects now happen on the spawned thread.
 - **Fully inferred at the call site** (`spawn(task)`): `T` is inferred
   through the transparent `Send[]` wrapper and `R` via associated-type
   inference from the conformer's `run()` return type (both gaps closed
@@ -231,6 +241,10 @@ inferred-form cases run under CPython via `lib/cpy/tpy/thread.py`):
   CPython), `spawn_inferred_none` (fire-and-forget `run() -> None`, explicit
   + inferred forms, `@nocopy` task), `error_spawn_inferred_not_send` (Send
   rejection still fires without explicit type args).
+- `spawn_task_field_drop` (`no_cpython`) -- the task drops at `run()`
+  completion, not `join()`: a field's `__del__` signals a `Condvar` the main
+  thread blocks on *before* it joins, so it can only wake if the drop happened
+  at thread completion (a regression deadlocks).
 
 ## V2 -- `Arc[T]` / `Weak[T]` (BUILT)
 

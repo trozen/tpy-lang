@@ -7,6 +7,12 @@
  * cross-thread result-or-rethrow that join() needs, and stores the result for
  * free, so we don't hand-roll an exception_ptr stash.
  *
+ * Task lifetime contract: the task is destroyed when its `run()` completes
+ * (moved into a body-scoped local of the worker lambda), not when the handle
+ * is joined/dropped -- matching Rust's drop-at-thread-completion, so a task's
+ * RAII cleanup runs as soon as the thread finishes. `Send` task authors may
+ * rely on this (e.g. a channel `Sender.__del__` that closes + notifies).
+ *
  * This is the RAW handle. The consume bookkeeping (double-join / loud
  * abort-on-unconsumed-drop) lives in the TPy `JoinHandle` wrapper (thread.py):
  * its __del__ panics on the unconsumed path. This raw handle's destructor only
@@ -95,11 +101,18 @@ auto spawn_thread(T task) {
     using R = std::conditional_t<std::is_void_v<Raw>, std::monostate, Raw>;
     std::packaged_task<R()> job(
         [t = std::move(task)]() mutable -> R {
+            // Move the task into a body-scoped local so it is destroyed when
+            // run() completes -- not when the packaged_task is torn down at
+            // join. Matches Rust's drop-at-thread-completion, so a task's RAII
+            // cleanup (e.g. a channel Sender.__del__ that closes + notifies)
+            // fires as soon as the thread finishes rather than deadlocking a
+            // peer that is blocked waiting for it before it joins.
+            T active = std::move(t);
             if constexpr (std::is_void_v<Raw>) {
-                t.run();
+                active.run();
                 return std::monostate{};
             } else {
-                return t.run();
+                return active.run();
             }
         });
     std::future<R> future = job.get_future();

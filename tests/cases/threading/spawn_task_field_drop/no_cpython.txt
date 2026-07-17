@@ -1,0 +1,1 @@
+threading uses OS-thread spawn; the __del__-timing guarantee is a TPy ownership semantic CPython GC does not share.

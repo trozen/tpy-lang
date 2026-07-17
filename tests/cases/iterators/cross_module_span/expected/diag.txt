@@ -1,0 +1,1 @@
+pool.py:11: warning: Own[list[T]] param 'items' is never consumed (not stored in a field, forwarded to another Own[T], or returned)

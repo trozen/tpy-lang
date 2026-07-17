@@ -1,0 +1,1 @@
+threading primitives (Mutex/Condvar/Arc over native heap storage); this exercises a compile-order guarantee, not CPython-representable runtime behavior.
