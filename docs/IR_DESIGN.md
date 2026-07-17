@@ -1312,6 +1312,24 @@ by theme; each is a rule the next cell should apply.
   SHARED base without auditing the sibling that legitimately diverges. When a new admission is
   justified by a POSITION's calling convention, it belongs in that position's predicate --
   putting it in the base silently re-justifies it for every other position.
+- **The cheap-probe kit (use it before scheduling ANY cell; each probe is seconds-to-minutes,
+  a wrong schedule is days).** Three escalating probes, all standalone scripts against the
+  live compiler, no corpus run: (1) per-case fallback dump -- `Compiler.from_source(src,
+  lib_dirs=[case_src, get_lib_dir()/"tpy"])`, `compile()`, `generate_code_to_strings(entry,
+  CodeGenOptions(thir_codegen=True))`, read `compiler._thir_fallback` -- answers "what
+  ACTUALLY blocks this case today". (2) per-BODY attribution -- wrap
+  `thir.lower.resumable.lower_resumable` (module attribute; gen_async imports it
+  function-locally, so the patch takes) to log `(func.name, _thir_reject_reason,
+  _thir_reject_detail)` on None returns -- answers "WHICH body, WHICH arm" when the
+  aggregate tally is too coarse (the resumable component records raw inner reasons, e.g. a
+  bare `expr.method_call`, so the detail slot is what names the arm). (3) the rot test --
+  monkeypatch the candidate gate wider in-memory, then generate BOTH paths
+  (`thir_codegen=False/True`) and byte-compare -- answers "is this filed cost already
+  obsolete" BEFORE any design work. The 2026-07-17 resumable session confirmed the rot rate
+  these guard against: the filed driver-cell thesis (marker.module.generic gating ~144
+  async cases) had silently dissolved, the res.param_type family list was wrong (containers
+  dominated at 70 slots), and static-protocol params -- filed as needing a new capture tier
+  -- were probe-verified byte-identical with the gate simply removed.
 
 ---
 

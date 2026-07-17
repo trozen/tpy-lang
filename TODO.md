@@ -98,18 +98,26 @@ See `docs/FEATURE_ROADMAP.md` for bigger tasks and `BUGS.md` for known compiler 
   narrowed-optional-iterable rung (`res.for_narrowed_optional`), non-value
   loop-var element forms (`res.loop_var`), multi-item `async with`
   (a `_CFGNotYetSupported` upstream), generator-shape return-in-finally-helper.
-  **REMAINING cells (each a `res.*` reject today, post-multi-seam counts):**
-  `res.param_type` residue (pointer-repr `Optional[F1-record]` and
-  F1/value-tuple params now ROUTE post-wave-4; remaining: Own-non-record,
-  non-F1-record Optional, non-F1/non-value tuple, static-protocol (needs leaf
-  reads on a concept-typed value; a bare `T` param ROUTES as of 2026-07-16 via
-  `_res_capture_ok`)); str/bytes RETURNS (`_async_return_value_cpp` wraps view sources at
-  codegen time via the deep `_is_str_view_source` classifier -- threading that
-  fact into lowering was attempted and reverted after diverging on
-  `async_return_view_param`); borrow-form tuple locals (`res.local_storage`
+  **REMAINING cells (each a `res.*` reject today, re-probed 2026-07-17 --
+  per-slot family drill over every marked async/iterator case):**
+  `res.param_type` residue (container list/dict/set params, None-typed
+  `__aexit__` triples, F1/value tuples, pointer-repr `Optional[F1-record]`,
+  bare `T`, pointer-repr unions, and static-protocol params (2026-07-17:
+  M7's template frame made them free -- probe-verified byte-identical)
+  now ROUTE; remaining slots by measured mass: callable-typed params 9
+  (coro factories), value unions 5, `Optional[str]`/`Optional[bytes]`
+  views 5, `Own[protocol]` 3, `Optional[scalar]` 1); str/bytes RETURNS now ROUTE
+  (2026-07-17: the shared form-keyed wrap `_wrap_view_owned_return`, one
+  decision for the sync return tail and the resumable return leaf -- the
+  earlier deep-classifier threading attempt is obsolete); borrow-form tuple locals (`res.local_storage`
   residue; needs the borrow tuple-literal element builder); leaf
   try/with/match + tuple-unpack + branch-first-decl + nested frame-write
-  (`res.leaf_*` / `res.unpack`); non-value yields for resumable generators
+  (`res.leaf_*` / `res.unpack`); discarded record-returning qualified calls
+  (`asyncio.create_task(coro())` as a bare statement -- rejects in SYNC bodies
+  too, so it is calls-track territory: `_marker_call_supported`'s
+  stmt_position admits only void-like returns; drilled 2026-07-17); record
+  GLOBAL receivers in resumable leaves (`done.set_result(42)` on a
+  module-global Future, `method.recv.name_absent`); non-value yields for resumable generators
   (`res.yield_type` ~28, the borrow-form slot bridge); R7 the
   optional-borrow-tuple form arm (`std::optional<std::tuple<..,T*>>`, also
   blocks sync). The ctor-side `Waker` params/fields remain signature-rung

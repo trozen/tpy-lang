@@ -620,9 +620,12 @@ class TestSlicedOutShapes:
         _, _hpp, cpp = _gen(src, thir=True)
         assert "std::get<0>(t)" in cpp
 
-    def test_protocol_param_rejects(self):
-        # Static-protocol params make the frame a template (two-phase
-        # decltype capture) -- still their own rung.
+    def test_protocol_param_admits_iteration_still_defers(self):
+        # A static-protocol param passes the param gate (the monomorphized
+        # template frame is skeleton); this body still falls back --
+        # honestly, at the protocol-iterable for-each arm (un-ported sync
+        # territory), no longer at res.param_type. Byte-identity holds via
+        # the fallback.
         src = (_PRE
                + "from typing import Iterable\n\n"
                + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
@@ -632,7 +635,9 @@ class TestSlicedOutShapes:
                + "        total = total + x\n"
                + "    return await step(total)\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        assert _res_fallback(src).get("res.param_type") == 1
+        fallback = _res_fallback(src)
+        assert "res.param_type" not in fallback
+        assert fallback.get("stmt.for_each:iter.user_iterator.name") == 1
 
     def test_generic_param_routes(self):
         # A generic async def's frame is a template, but its capture form
@@ -825,6 +830,230 @@ class TestSlicedOutShapes:
     # (Non-simple generators route via this seam -- see TestGeneratorShape.
     # Simple peephole generators route via their own leaf seam, pinned in
     # test_thir_simple_gen.py.)
+
+
+class TestContainerAndNoneParams:
+    """Container params capture as reference frame fields (`std::vector<T>&`,
+    like the F1-record `Record&`) and None-typed params as `std::monostate`
+    value fields -- both pure skeleton, so the leaves read them through the
+    already-ported sync rows."""
+
+    def test_container_params_route(self):
+        src = (_PRE
+               + "async def tick() -> Int32:\n    return 1\n\n"
+               + "async def f(xs: list[Int32], d: dict[Int32, Int32],"
+               + " s: set[Int32]) -> Int32:\n"
+               + "    t = len(xs) + len(d) + len(s)\n"
+               + "    t = t + await tick()\n"
+               + "    xs.append(t)\n"
+               + "    return t\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.body") == 2
+        assert not any(k.startswith("resumable:") for k in fallback)
+
+    def test_container_param_generator_routes(self):
+        src = (_PRE
+               + "from typing import Iterator\n\n"
+               + "def gen(xs: list[Int32]) -> Iterator[Int32]:\n"
+               + "    for x in xs:\n"
+               + "        yield x + 1\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        _witnesses, fallback = _assert_identical(src)
+        assert not any(k.startswith("resumable:") for k in fallback)
+
+    def test_await_arg_container_slot_routes(self):
+        # The INLINE emplace arg at a container param slot takes the same
+        # `_lower_call_arg` row as a sync call (the emplace ctor param is the
+        # sync borrow shape, `std::vector<T>&`).
+        src = (_PRE
+               + "async def takes(xs: list[Int32]) -> Int32:\n"
+               + "    return Int32(len(xs))\n\n"
+               + "async def go(xs: list[Int32]) -> Int32:\n"
+               + "    return await takes(xs)\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.await_args", 0) >= 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+
+    def test_frame_slot_init_record_call_routes(self):
+        # A module-qualified F1-record-returning call as a frame_slot decl
+        # init (`t = asyncio.create_task(sub())`): the emplace arg is a
+        # storage sink, so admission matches the sync storage decl
+        # (record_ret_ok for rvalue sources); the render stays the
+        # position-blind gen_expr inside `t.emplace(...)`.
+        src = ("import asyncio\n"
+               + "from tpy import Int32\n"
+               + "from asyncio import Task\n\n"
+               + "async def sub() -> Int32:\n"
+               + "    return Int32(42)\n\n"
+               + "async def go() -> Int32:\n"
+               + "    t: Task[Int32] = asyncio.create_task(sub())\n"
+               + "    val = await t\n"
+               + "    return val\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.frame_slot_write", 0) >= 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+
+    def test_none_typed_aexit_params_route(self):
+        # The async-CM `__aexit__(et, ev, tb)` None-typed triple: monostate
+        # value fields, position-blind capture and (unused) reads.
+        src = (_PRE
+               + "import asyncio\n\n"
+               + "class Guard:\n"
+               + "    n: Int32\n"
+               + "    def __init__(self, n: Int32) -> None:\n"
+               + "        self.n = n\n"
+               + "    async def __aenter__(self) -> Int32:\n"
+               + "        await asyncio.sleep(0.001)\n"
+               + "        return self.n\n"
+               + "    async def __aexit__(self, et: None, ev: None,"
+               + " tb: None) -> None:\n"
+               + "        await asyncio.sleep(0.001)\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        _witnesses, fallback = _assert_identical(src)
+        assert not any(k.startswith("resumable:") for k in fallback)
+
+
+class TestStrBytesReturns:
+    """Owned str/bytes async returns: the view->owned copy is the shared
+    form-keyed wrap (`_wrap_view_owned_return`) -- a borrow-form (view)
+    source copies explicitly, a literal or owned rvalue returns bare."""
+
+    def test_view_param_return_wraps(self):
+        src = ("import asyncio\n\n"
+               + "async def echo(tag: str) -> str:\n"
+               + "    await asyncio.sleep(0)\n"
+               + "    return tag\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        _witnesses, fallback = _assert_identical(src)
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "std::string __tpy_async_ret = std::string(tag);" in cpp
+
+    def test_literal_return_stays_bare(self):
+        src = ("import asyncio\n\n"
+               + "async def greet() -> str:\n"
+               + "    await asyncio.sleep(0)\n"
+               + "    return \"hi\"\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        _witnesses, fallback = _assert_identical(src)
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "std::string __tpy_async_ret = \"hi\";" in cpp
+
+    def test_owned_rvalue_return_stays_bare(self):
+        src = ("import asyncio\n\n"
+               + "async def shout(tag: str) -> str:\n"
+               + "    await asyncio.sleep(0)\n"
+               + "    return tag + \"!\"\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        _witnesses, fallback = _assert_identical(src)
+        assert not any(k.startswith("resumable:") for k in fallback)
+
+    def test_bytes_view_param_return_wraps(self):
+        src = ("import asyncio\n\n"
+               + "async def echo(b: bytes) -> bytes:\n"
+               + "    await asyncio.sleep(0)\n"
+               + "    return b\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        _witnesses, fallback = _assert_identical(src)
+        assert not any(k.startswith("resumable:") for k in fallback)
+
+    def test_bytes_literal_return_stays_bare(self):
+        src = ("import asyncio\n\n"
+               + "async def blob() -> bytes:\n"
+               + "    await asyncio.sleep(0)\n"
+               + "    return b\"hi\"\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        _witnesses, fallback = _assert_identical(src)
+        assert not any(k.startswith("resumable:") for k in fallback)
+
+    def test_bytes_owned_rvalue_return_stays_bare(self):
+        src = ("import asyncio\n\n"
+               + "async def join(b: bytes) -> bytes:\n"
+               + "    await asyncio.sleep(0)\n"
+               + "    return b + b\"!\"\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        _witnesses, fallback = _assert_identical(src)
+        assert not any(k.startswith("resumable:") for k in fallback)
+
+
+class TestStrBytesYields:
+    """str/bytes yields on the resumable frame: the owned return slot's ctor
+    absorbs the bare source render (the sgen families' reasoning); the
+    slot-literal retype mirrors gen_yield_value's target threading."""
+
+    def test_str_yields_route(self):
+        src = ("from typing import Iterator\n\n"
+               + "def greetings(name: str) -> Iterator[str]:\n"
+               + "    yield \"hello \" + name\n"
+               + "    yield \"goodbye \" + name\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.yield_value", 0) >= 2
+        assert not any(k.startswith("resumable:") for k in fallback)
+
+    def test_bytes_yield_routes(self):
+        src = ("from typing import Iterator\n\n"
+               + "def chunks(b: bytes) -> Iterator[bytes]:\n"
+               + "    n = 0\n"
+               + "    while n < 2:\n"
+               + "        yield b\n"
+               + "        n += 1\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        _witnesses, fallback = _assert_identical(src)
+        assert not any(k.startswith("resumable:") for k in fallback)
+
+
+class TestStaticProtocolParams:
+    def test_protocol_param_routes(self):
+        # A static-protocol param monomorphizes the frame over the conforming
+        # type (template machinery, skeleton); leaf reads are bare.
+        src = ("import asyncio\n"
+               + "from typing import Protocol\n"
+               + "from tpy import Int32\n\n"
+               + "class Sized(Protocol):\n"
+               + "    def size(self) -> Int32: ...\n\n"
+               + "class Box:\n"
+               + "    n: Int32\n"
+               + "    def __init__(self, n: Int32) -> None:\n"
+               + "        self.n = n\n"
+               + "    def size(self) -> Int32:\n"
+               + "        return self.n\n\n"
+               + "async def measure(s: Sized) -> Int32:\n"
+               + "    await asyncio.sleep(0)\n"
+               + "    return s.size()\n\n"
+               + "async def go() -> Int32:\n"
+               + "    b = Box(3)\n"
+               + "    return await measure(b)\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        _witnesses, fallback = _assert_identical(src)
+        assert not any(k.startswith("resumable:") for k in fallback)
+
+    def test_protocol_param_generator_routes(self):
+        # The same capture-position admission on a resumable GENERATOR: the
+        # param gate is shared, and the monomorphized frame is skeleton for
+        # both callable kinds.
+        src = ("from typing import Iterator, Protocol\n"
+               + "from tpy import Int32\n\n"
+               + "class Sized(Protocol):\n"
+               + "    def size(self) -> Int32: ...\n\n"
+               + "class Box:\n"
+               + "    n: Int32\n"
+               + "    def __init__(self, n: Int32) -> None:\n"
+               + "        self.n = n\n"
+               + "    def size(self) -> Int32:\n"
+               + "        return self.n\n\n"
+               + "def counted(s: Sized) -> Iterator[Int32]:\n"
+               + "    i: Int32 = 0\n"
+               + "    while i < s.size():\n"
+               + "        yield i\n"
+               + "        i += 1\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        _witnesses, fallback = _assert_identical(src)
+        assert not any(k.startswith("resumable:") for k in fallback)
 
 
 class TestTryRegions:

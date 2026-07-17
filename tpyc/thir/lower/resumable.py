@@ -57,15 +57,19 @@ from ...parse.nodes import (
 )
 from ...typesys import (
     IntLiteralType,
+    NoneType,
     OptionalType,
     TpyType,
     TypeParamRef,
     UnionType,
     VoidType,
+    is_dyn_protocol,
+    is_protocol_type,
     unwrap_readonly,
     unwrap_ref_type,
     unwrap_send_sync,
 )
+from ...type_def_registry import is_dict, is_list, is_set
 from ...codegen_cpp import resumable_cfg as rcfg
 from ...codegen_cpp.forms import is_plain_nonvalue
 from .checks import _ctor_shape_ok, _record_rvalue_source_shape
@@ -93,6 +97,7 @@ from .statements import (
     _handler_binding_type,
     _lower_stmt,
     _var_decl_type,
+    _wrap_view_owned_return,
 )
 
 
@@ -175,6 +180,24 @@ def _res_param_ok(t: 'TpyType | None', analyzer) -> bool:
     unwrapped = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
                  if isinstance(t, TpyType) else None)
     if unwrapped is not None and _f1_record(unwrapped, analyzer):
+        return True
+    # A container param captures as a reference frame field (`std::vector<T>&`,
+    # like the record `Record&`) and every leaf read/write/pass takes the sync
+    # container rows unchanged; element-shape gating stays at the use sites.
+    if unwrapped is not None and (is_list(unwrapped) or is_dict(unwrapped)
+                                  or is_set(unwrapped)):
+        return True
+    # A None-typed param (the `__aexit__(et, ev, tb)` triple) is a
+    # `std::monostate` value field; capture and any read are position-blind.
+    if isinstance(unwrapped, NoneType):
+        return True
+    # A static-protocol param monomorphizes the frame over the conforming
+    # type (`param_val_or_ref_t<T_p>` ctor param -> `val_or_ref_t<T_p>`
+    # field, all skeleton), and every leaf read is bare -- the bare-`T`
+    # capture rationale. CAPTURE position only: protocol locals stay gated;
+    # @dynamic protocols (Adapter machinery) stay their own rung.
+    if (unwrapped is not None and is_protocol_type(unwrapped)
+            and not is_dyn_protocol(unwrapped)):
         return True
     # A pointer-repr union param's frame field is the SAME pointer-variant
     # shape as the sync param (`std::variant<A*, B*>`), so reads, isinstance
@@ -424,25 +447,33 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
             return _reject("res.param_type")
     if is_generator:
         # The yielded element type gates a generator (its `return_type` is
-        # `Iterator[T]`, not a value slot); the value-scalar slice yields
-        # only value scalars and a bare `T` (a non-value yield needs the
-        # borrow-form slot bridge in gen_yield_value -- a cell).
+        # `Iterator[T]`, not a value slot). Value scalars, a bare `T`, and
+        # str/bytes route (the owned return slot's ctor absorbs the bare
+        # source render -- the `_sgen_yield_ok` families' reasoning; the
+        # slot-literal retype in the Yield arm mirrors gen_yield_value's
+        # target threading). Records are interlocked with the non-value
+        # loop-var rung (`(*b)` deref) and tuples need the tuple_to_pointer
+        # bridge + borrow literal builder -- each its own rung.
         yt = func.generator_yield_type
-        if not _res_capture_ok(yt if isinstance(yt, TpyType) else None,
-                               analyzer):
+        yt_t = yt if isinstance(yt, TpyType) else None
+        if not (_res_capture_ok(yt_t, analyzer)
+                or _resolved_str_value(yt_t, analyzer) is not None
+                or _resolved_bytes_value(yt_t, analyzer) is not None):
             return _reject("res.yield_type")
     else:
         rt = func.return_type if isinstance(func.return_type, TpyType) else None
         rt_inner = (unwrap_readonly(unwrap_send_sync(rt))
                     if rt is not None else None)
-        # str/bytes returns stay deferred: `_async_return_value_cpp` wraps a
-        # view-form value into the owned slot at CODEGEN time
-        # (`_view_source_to_owned` -- `std::string(tag)`), keyed on the deep
-        # `_is_str_view_source` classifier, so the leaf value render is NOT
-        # position-blind for them. Their rung needs that view-source fact
-        # threaded into lowering (not re-derived).
+        # Owned str/bytes returns ride the shared form-keyed wrap
+        # (`_wrap_view_owned_return`): the AST's `_wrap_view_to_storage` fires
+        # iff the source is view-form, and THIR's lowered value carries that
+        # as its form fact -- the equivalence every routed sync str return
+        # already validates. One render serves all three async scaffolding
+        # sites (`_async_ret_to_borrow` is a no-op for str/bytes).
         if not (rt is None or isinstance(rt_inner, VoidType)
-                or _res_capture_ok(rt, analyzer)):
+                or _res_capture_ok(rt, analyzer)
+                or _resolved_str_value(rt, analyzer) is not None
+                or _resolved_bytes_value(rt, analyzer) is not None):
             return _reject("res.return_type")
     if func.forwarded_locals:
         return _reject("res.forwarded_local")
@@ -647,7 +678,16 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
             # gen_expr's stale-coerce arm) -- same peel as the sync decl.
             init = _peel_stale_view_owned_coerce(
                 stmt.init, declared[stmt.name], analyzer)
-            value = _lower_expr(init, lc, declared)
+            # A frame_slot's emplace arg is a storage sink (the owned payload
+            # constructs in place), so admission matches the sync storage
+            # decl's -- record-rvalue qualified calls included -- minus the
+            # temp hoist (allow_temps stays off; leaf temp discipline is its
+            # own rung). STORAGE-vs-VALUE is admission-only in the expression
+            # arms, so the render stays the AST's position-blind gen_expr.
+            value = _lower_expr(
+                init, lc, declared,
+                use=(_ExprUse(result=_ExprResultUse.STORAGE)
+                     if stmt.name in frame_slots else _ExprUse()))
             if stmt.name in frame_slots:
                 # R1c: a frame_slot local write is `name.emplace(value)`
                 # (first init and reassign alike -- emplace destroys any prior
@@ -733,8 +773,12 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
             # Poll::ready -- so a literal at a wider slot stays bare `42`,
             # NOT the sync-return arm's target-typed `::tpy::BigInt(42)`.
             # Lower the value directly (== the AST's `gen_expr_deref`),
-            # bypassing _lower_stmt's return-coercion arm.
-            return_values[id(ret)] = _lower_expr(ret.value, lc, declared)
+            # bypassing _lower_stmt's return-coercion arm. The one exception
+            # is the owned str/bytes slot's view->owned copy, shared with the
+            # sync return tail (`_wrap_view_owned_return`).
+            return_values[id(ret)] = _wrap_view_owned_return(
+                _lower_expr(ret.value, lc, declared), lc,
+                getattr(ret, "loc", None))
             _witness("res.return_value")
         elif isinstance(t, rcfg.RaiseT):
             leaves[id(t.raise_stmt)] = _lower_leaf(t.raise_stmt)
