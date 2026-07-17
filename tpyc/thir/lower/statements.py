@@ -218,6 +218,7 @@ from .predicates import (
     _plain_method_fi_ok,
     _param_is_const,
     _value_opt_scalar,
+    _value_opt_owned_view,
     _param_is_deep_const,
     _peel_stale_view_owned_coerce,
     _reassert_bump_info,
@@ -320,6 +321,7 @@ from .expressions import (
     _slice_bound_supported,
     _slot_literal_retype,
     _value_opt_scalar_binding,
+    _value_opt_view_binding,
     _value_opt_view_param,
 )
 from . import comprehensions as _comprehensions
@@ -1814,7 +1816,8 @@ def _nested_def_lowering_scope(lc: _LowerCtx, func: TpyFunction):
     saved = (lc.func, lc.prescan, lc.self_receiver,
              set(lc.const_locals), set(lc.pointers),
              set(lc.rebind_slot_locals), set(lc.ref_alias_locals),
-             set(lc.value_opt_locals), set(lc.storage_tuple_locals),
+             set(lc.value_opt_locals), set(lc.value_opt_view_locals),
+             set(lc.storage_tuple_locals),
              set(lc.movable_locals), lc.narrow, dict(lc.inline_narrowed))
     # The hoist-residue bookkeeping is per-function: seed the NESTED
     # function's own hoist facts (its try lowering drains them;
@@ -1860,6 +1863,7 @@ def _nested_def_lowering_scope(lc: _LowerCtx, func: TpyFunction):
     finally:
         (lc.func, lc.prescan, lc.self_receiver, lc.const_locals, lc.pointers,
          lc.rebind_slot_locals, lc.ref_alias_locals, lc.value_opt_locals,
+         lc.value_opt_view_locals,
          lc.storage_tuple_locals, lc.movable_locals,
          lc.narrow, lc.inline_narrowed) = saved
         lc.unhandled_hoists = saved_hoists
@@ -3118,15 +3122,16 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         # reassignment emits `x = ...`.
         if stmt.name in declared:
             assert init is not None  # eligibility requires a var-decl init
-            # A value-repr Optional[scalar] name reassigned to an existing
-            # scalar local passes the bare optional (`q = p;`): the AST's
+            # A value-repr Optional[scalar/view] name reassigned to an existing
+            # optional local passes the bare optional (`q = p;`): the AST's
             # reassignment RHS threads no target type, so a narrowed read is NOT
-            # unwrapped here (unlike a decl init / value-target position). This
-            # is a pre-existing AST bug (`std::optional<T>` into a `T` slot is
-            # invalid C++) mirrored byte-identically rather than fixed on one
-            # path -- so strip the name arm's deref-on-narrow.
+            # unwrapped here (unlike a decl init / value-target position) -- so
+            # strip the name arm's deref-on-narrow. For scalars into a plain-`T`
+            # slot this mirrors a pre-existing AST bug byte-identically; for an
+            # optional-into-optional slot it is the correct whole-optional copy.
             if (isinstance(stmt.init, TpyName) and isinstance(init, THIRName)
-                    and _value_opt_scalar_binding(stmt.init.name, lc)):
+                    and (_value_opt_scalar_binding(stmt.init.name, lc)
+                         or _value_opt_view_binding(stmt.init.name, lc))):
                 init = replace(init, deref=False)
             # No view->owned wrap on a plain reassignment: std::string has an
             # implicit operator=(string_view), and the AST emits the bare
@@ -3157,6 +3162,14 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         # arms (deref-on-narrow `(*y)`, the whole-optional None-test/print).
         if not is_reassign and _value_opt_scalar(vtype, analyzer) is not None:
             lc.value_opt_locals.add(stmt.name)
+        # The view twin: an OWNED-inner `Optional[str]`/`Optional[bytes]` LOCAL
+        # binds `std::optional<std::string>`/`<vector>`, so its None-test/deref
+        # reads ride the value-repr view arms via `_value_opt_view_binding`
+        # (STORAGE deref). A view-INNER optional (`StrView`/`BytesView | None`,
+        # `optional<string_view>`) is excluded -- its narrowed read stays on the
+        # str/bytes-name arm (no deref), matching the AST.
+        elif not is_reassign and _value_opt_owned_view(vtype, analyzer) is not None:
+            lc.value_opt_view_locals.add(stmt.name)
         # An enum decl type spells via render_type (codegen's type_to_cpp):
         # its enum arm routes through enum_cpp_name -- the authoritative
         # spelling for cross-module (`::tpyapp::m::E`), @native (user qname),
@@ -5085,7 +5098,25 @@ def _lower_raise(stmt: TpyRaise, lc: _LowerCtx, declared: dict[str, TpyType],
     rows are admitted). An inherited ctor (`resolved_ctor_init is None`) spells
     the args position-blind."""
     if stmt.raise_expr is not None:
-        raise ThirUnsupported("stmt.raise")
+        # `raise <expr>` (a bound var / call result): the AST emits
+        # `<expr>{.__deref__()*N}.__raise__();` (gen_expr_deref of the source +
+        # the virtual hop). Conservatively kept OFF the THIR path in a resumable
+        # frame / @error_return body: the AST emit is actually identical there
+        # (verified), but routing them is a separate widening left to a later
+        # increment -- see TODO.md.
+        if lc.resumable_leaf_mode or lc.error_return_cpp is not None:
+            raise ThirUnsupported("stmt.raise")
+        raised = _lower_expr(stmt.raise_expr, lc, declared)
+        # A pointer-repr record local (rebind-slot reseat -> `Rec* e`) derefs
+        # to a reference before the `.__raise__()` member call (`(*e).__raise__()`,
+        # the AST's gen_expr_deref) -- the `_lower_expr` name arm leaves it bare
+        # (its normal consumers use `->`), so apply the pointer deref here.
+        if isinstance(stmt.raise_expr, TpyName) and stmt.raise_expr.name in lc.pointers:
+            assert isinstance(raised, THIRName)
+            raised = replace(raised, deref=True)
+        _witness("raise.expr")
+        return THIRRaise(raise_expr=raised,
+                         deref_depth=getattr(stmt, "deref_depth", 0), loc=loc)
     if stmt.exception_type is None:
         _witness("raise.bare")
         return THIRRaise(loc=loc)

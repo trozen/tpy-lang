@@ -321,7 +321,7 @@ class _LowerCtx:
                  "render_type_stored", "render_resolve", "tparam_bounds",
                  "const_locals",
                  "pointers", "rebind_slot_locals", "ref_alias_locals",
-                 "value_opt_locals", "movable_locals",
+                 "value_opt_locals", "value_opt_view_locals", "movable_locals",
                  "self_receiver", "self_cpp", "self_is_pointer",
                  "record_name", "storage_tuple_locals", "frame_slots",
                  "resumable_leaf_mode", "unhandled_hoists", "narrow",
@@ -408,6 +408,14 @@ class _LowerCtx:
         # `_value_opt_scalar_binding`; the movable-seeded last-use moves stay
         # param-only through the `_is_move_source` movable guard.
         self.value_opt_locals: set[str] = set()
+        # Value-repr `Optional[view]` LOCALS (str/bytes) -- the view twin of
+        # value_opt_locals, kept SEPARATE because a view binding's narrowed
+        # deref is an OWNED `std::string`/`vector` (STORAGE) where the scalar
+        # deref is a VALUE and a param's is a BORROW view; overloading the
+        # scalar set would misfire the scalar-keyed read/move/reassign arms.
+        # Consulted only by `_value_opt_view_binding` (None-test + narrowed
+        # read); every other view-local position defers.
+        self.value_opt_view_locals: set[str] = set()
         # Resumable frame_slot locals (R1c): a non-value coro/generator local
         # stored as `tpy::frame_slot<T>`. Reads render `(*name)` (deref=True on
         # the THIRName; member access is `.` since the slot is not a pointer),

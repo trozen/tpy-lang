@@ -3010,7 +3010,15 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
         # which run the finally bodies. The return-tier arms are RETURNS
         # (make_unexpected), so they take the finally-aware _make_return
         # shape like THIRReturn.
-        if stmt.return_tier:
+        if stmt.raise_expr is not None:
+            # `raise <expr>` -> `<expr>{.__deref__()*N}.__raise__();` -- render
+            # the source first (a call-result may register arg temps), flush the
+            # `__tmp_N` decls ahead of the line, then the virtual hop.
+            expr = _emit_expr(stmt.raise_expr, state)
+            chain = ".__deref__()" * stmt.deref_depth
+            state.temps.flush(out, indent)
+            out.write(f"{indent}{expr}{chain}.__raise__();\n")
+        elif stmt.return_tier:
             if stmt.args:
                 args = ", ".join(_emit_expr(a, state) for a in stmt.args)
                 value_cpp = f"::tpy::make_unexpected({stmt.cpp_type}({args}))"

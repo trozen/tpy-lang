@@ -2290,6 +2290,21 @@ def _value_opt_view(t: 'TpyType | None', analyzer) -> 'OptionalType | None':
     return (_value_opt_str(t, analyzer)
             or _value_opt_bytes(t, analyzer))
 
+def _value_opt_owned_view(t: 'TpyType | None', analyzer) -> 'OptionalType | None':
+    """A value-repr `Optional[view]` whose inner is an OWNED family (`str`/`bytes`,
+    NOT `StrView`/`BytesView`) -- the shape a LOCAL binds `std::optional<std::string>`
+    / `<std::vector<uint8_t>>` (owned inner), so its narrowed deref `(*acc)` is
+    already OWNED (STORAGE). A view-INNER optional (`optional<string_view>`) is
+    excluded: its LOCAL narrowed read stays on the str/bytes-name arm (no deref,
+    matching the AST), so it must not enter `value_opt_view_locals`."""
+    ov = _value_opt_view(t, analyzer)
+    if ov is None:
+        return None
+    inner = unwrap_readonly(ov.inner)
+    if is_str_view_type(inner) or is_bytes_view_type(inner):
+        return None
+    return ov
+
 def _value_opt_view_name(e: TpyExpr, declared: dict[str, TpyType],
                          analyzer) -> 'OptionalType | None':
     """`e` is a bare name whose DECLARED type is a value-repr `Optional[view]`

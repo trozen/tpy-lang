@@ -289,6 +289,7 @@ from .predicates import (
     _value_opt_str,
     _value_opt_bytes,
     _value_opt_view,
+    _value_opt_owned_view,
     _value_tuple,
     _value_tuple_nested,
     _tuple_compare_pair,
@@ -1243,7 +1244,7 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
         value_repr = (is_field and not ptr_field) or (
             isinstance(operand, TpyName)
             and (_value_opt_scalar_binding(operand.name, lc)
-                 or _value_opt_view_param(operand.name, lc)
+                 or _value_opt_view_binding(operand.name, lc)
                  or (operand.name in declared
                      and _value_opt_scalar(declared[operand.name],
                                            lc.analyzer) is not None))) or (
@@ -1378,6 +1379,14 @@ def _value_opt_view_param(name: str, lc: '_LowerCtx') -> bool:
     another same-family `Optional[view]` slot takes the arg-split shim."""
     return _value_opt_view(_param_declared_type(name, lc), lc.analyzer) is not None
 
+def _value_opt_view_binding(name: str, lc: '_LowerCtx') -> bool:
+    """A value-repr `Optional[view]` BINDING -- a param OR a registered LOCAL
+    (`lc.value_opt_view_locals`), the view twin of `_value_opt_scalar_binding`.
+    The two differ only in the narrowed-deref form: a param's `(*s)` is a BORROW
+    view (an owned sink adds the family copy), a local's `(*s)` is already OWNED
+    (STORAGE, no copy) -- the read arm branches on `param_names` for that."""
+    return name in lc.value_opt_view_locals or _value_opt_view_param(name, lc)
+
 def _param_declared_type(name: str, lc: '_LowerCtx') -> 'TpyType | None':
     """The declared type of param `name` on the function being lowered, or None
     when `name` is not a param -- the source-type lookup the arg-split shim keys
@@ -1439,6 +1448,16 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
         unrouted = _unrouted_binding_read(binding_type, analyzer)
         if unrouted is not None and not allow_unrouted_name:
             raise ThirUnsupported(unrouted, detail=True)
+        # A view-INNER value-opt LOCAL (`StrView`/`BytesView | None` ->
+        # `optional<string_view>`) is not routed: unlike its owned-inner twin
+        # (`str`/`bytes | None`, routed via `value_opt_view_locals`), the AST's
+        # narrowed read is a whole-optional-wrap quirk we don't mirror and its
+        # None-test would key value-repr off the param-only predicate, so defer
+        # the whole body. A value-opt-view PARAM keeps its existing routing.
+        if (e.name not in lc.prescan.param_names and e.name in declared
+                and _value_opt_view(declared[e.name], analyzer) is not None
+                and _value_opt_owned_view(declared[e.name], analyzer) is None):
+            raise ThirUnsupported("name.value_opt_view_inner_local", detail=True)
         if (not allow_whole_optional
                 and isinstance(unwrap_readonly(analyzer.get_expr_type(e)),
                                OptionalType)):
@@ -1510,21 +1529,28 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                         and not allow_whole_optional)
             return THIRName(result_type=rtype, name=e.name, cpp=gcpp,
                             form=Form.VALUE, deref=narrowed, loc=loc)
-        if _value_opt_view_param(e.name, lc):
-            # A value-repr Optional[view] param -- str
-            # (`std::optional<std::string_view>`) or bytes
-            # (`std::optional<std::span<const uint8_t>>`).
+        if _value_opt_view_binding(e.name, lc):
+            # A value-repr Optional[view] binding -- str
+            # (`std::optional<std::string_view>` param / `<std::string>` local)
+            # or bytes (`<std::span<const uint8_t>>` param / `<vector>` local).
             # A NARROWED read (sema retyped it to the inner view, `rtype` no
-            # longer Optional) unwraps `(*s)` -- a BORROW-form view, so an
-            # owned sink still gets the family copy (`std::string`/`bytes_copy`).
-            # An UN-narrowed read stays the bare whole optional (VALUE), reached
-            # only inside the None-test / truthiness / arg-shim wrappers (the bare
-            # value position is unsupported). This must precede the str-name arm
-            # below, which keys on the narrowed view rtype and would drop the deref.
+            # longer Optional) unwraps `(*s)`. For a PARAM that deref is a
+            # BORROW view, so an owned sink still gets the family copy
+            # (`std::string`/`bytes_copy`); for a LOCAL it is already OWNED
+            # (STORAGE), so a sink takes it bare. An UN-narrowed read stays the
+            # bare whole optional (VALUE), reached only inside the None-test /
+            # truthiness / arg-shim wrappers (the bare value position is
+            # unsupported). This must precede the str-name arm below, which keys
+            # on the narrowed view rtype and would drop the deref.
             narrowed = not isinstance(unwrap_readonly(rtype), OptionalType)
+            if not narrowed:
+                form = Form.VALUE
+            elif e.name in lc.prescan.param_names:
+                form = Form.BORROW
+            else:
+                form = Form.STORAGE
             return THIRName(result_type=rtype, name=e.name, cpp=gcpp,
-                            form=Form.BORROW if narrowed else Form.VALUE,
-                            deref=narrowed, loc=loc)
+                            form=form, deref=narrowed, loc=loc)
         # A non-value name (a record param / REF_ALIAS / POINTER local used as a
         # field receiver) is a borrow; scalars are value form. A pointer-repr tuple
         # name is a borrow tuple param (`std::tuple<..., T*>`) UNLESS it is an F3
@@ -2355,14 +2381,23 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                 # spelling must not lean on that from afar).
                 ri = lc.analyzer.registry.get_record_for_type(rtype)
                 assert ri is not None, "lowered ctor has no record"
-                qual = lc.analyzer.registry.record_qualification(
-                    ri, lc.analyzer.ctx.module_name)
-                if qual is not None:
-                    _witness("ctor.cross_module")
-                    type_cpp = qualified_cpp_name(*qual)
+                if ri.is_native:
+                    # A native record (a builtin exception) spells its `@native`
+                    # name (`::tpy::OSError`) via to_cpp() / native_cpp_names --
+                    # the module qualification would give the wrong
+                    # `::tpystd::builtins::` path. _f1_record guarantees
+                    # to_cpp() == the resolver's spelling.
+                    _witness("ctor.native")
+                    type_cpp = unwrap_readonly(rtype).to_cpp()
                 else:
-                    _witness("ctor.call")
-                    type_cpp = e.func_name
+                    qual = lc.analyzer.registry.record_qualification(
+                        ri, lc.analyzer.ctx.module_name)
+                    if qual is not None:
+                        _witness("ctor.cross_module")
+                        type_cpp = qualified_cpp_name(*qual)
+                    else:
+                        _witness("ctor.call")
+                        type_cpp = e.func_name
             ctor_mut = fi.mutated_params or frozenset()
             args = []
             for i, (a, p) in enumerate(zip(e.args, fi.params)):

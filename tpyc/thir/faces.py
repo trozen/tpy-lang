@@ -182,6 +182,7 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # method-call/free-call receiver, the inner
                                     # str method's bare nested-call render
     "ctor.call",                    # THIRCtorCall bare ctor expansion
+    "ctor.native",                  # native-record (builtin exception) ctor: `::tpy::OSError(...)`
     "ctor.ptr_null",                # `Ptr[T]()` -> `static_cast<T*>(nullptr)`
     "ctor.cross_module",            # imported-record ctor: the qualified
                                     # `::ns::Name(args)` spelling
@@ -670,6 +671,7 @@ THIR_FACES: frozenset[str] = frozenset({
     # Raise statements (lowering).
     "raise.ctor",                   # `raise X(args)` -> `throw <cpp>(...)`
     "raise.bare",                   # bare re-raise -> `throw;`
+    "raise.expr",                   # `raise <expr>` -> `<expr>.__raise__();`
     # dict/set membership (`needle in c` -> `(c.contains(needle))`, the
     # resolved_contains arm; witnessed at lowering admission and again at
     # lowering -- non-vacuity only needs a nonzero count).

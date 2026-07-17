@@ -11,7 +11,7 @@ shape pins live in test_thir_error_return.py."""
 from __future__ import annotations
 
 from ..codegen_cpp.context import CodeGenOptions
-from .nodes import THIRRaise, THIRTry
+from .nodes import THIRName, THIRRaise, THIRTry
 from .testutil import _compile, _entry, _fn, _lower_ctx, _lower_ctx_witnessed
 
 
@@ -582,8 +582,10 @@ class TestTryGateRejections:
         assert isinstance(t, THIRTry) and t.tier == "return"
         assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
-    def test_expr_raise_rejected(self):
-        # `raise e` -> `e.__raise__()` + deref chain: a deferred row.
+    def test_expr_raise_in_except_routes(self):
+        # `raise e` (re-raise the caught binding) -> `e.__raise__();`: the expr
+        # form now routes in a plain body (a resumable / @error_return body
+        # still defers -- see test_thir_resumable / test_fallback).
         src = (
             _BOOM
             + "def f(n: int) -> int:\n"
@@ -596,7 +598,7 @@ class TestTryGateRejections:
             + "except ValueError:\n"
             + "    print(\"caught\")\n"
         )
-        assert self._rejected(src, "f")
+        assert not self._rejected(src, "f")
 
     def test_nonvalue_hoist_rejected(self):
         src = (
@@ -654,3 +656,76 @@ class TestTryGateRejections:
             "f()\n"
         )
         assert self._rejected(src, "f")
+
+
+_EXC = (
+    "from tpy import Int32, Own\n"
+    "class AppError(Exception):\n"
+    "    code: Int32\n"
+    "    def __init__(self, code: Int32) -> None:\n"
+    "        self.code = code\n"
+    "def make_error(code: Int32) -> Own[AppError]:\n"
+    "    return AppError(code)\n"
+)
+
+
+class TestExcConstruction:
+    """Native-exception construction + `raise <expr>`: the trio that joins
+    builtin exceptions to the already-routing user-exception slice."""
+
+    def test_raise_bound_var_routes(self):
+        # `raise e` -> `e.__raise__();`
+        thir = _lower_ctx(
+            _EXC
+            + "def f(code: Int32) -> None:\n"
+            + "    e = AppError(code)\n"
+            + "    raise e\n")
+        raises = [s for s in _fn(thir, "f").body if isinstance(s, THIRRaise)]
+        assert raises and raises[0].raise_expr is not None
+
+    def test_raise_call_result_routes(self):
+        # `raise make_error(7)` -> `make_error(7).__raise__();`
+        thir = _lower_ctx(
+            _EXC + "def f() -> None:\n    raise make_error(7)\n")
+        r = _fn(thir, "f").body[0]
+        assert isinstance(r, THIRRaise) and r.raise_expr is not None
+
+    def test_raise_pointer_repr_local_derefs(self):
+        # A rebind-slot-reseated record local is `Rec* b`, so `raise b` must
+        # deref `(*b).__raise__();` (member access on a pointer needs the deref),
+        # not the bare `b.__raise__();` -- the `_lower_expr` name arm leaves a
+        # record pointer-local bare (its usual consumers use `->`).
+        thir = _lower_ctx(
+            _EXC
+            + "def f(cond: bool) -> None:\n"
+            + "    b = AppError(0)\n"
+            + "    if cond:\n        b = AppError(1)\n"
+            + "    raise b\n")
+        r = [s for s in _fn(thir, "f").body if isinstance(s, THIRRaise)][0]
+        assert isinstance(r.raise_expr, THIRName) and r.raise_expr.deref
+
+    def test_raise_expr_in_error_return_body_defers(self):
+        # `raise <expr>` is conservatively kept off the THIR path in an
+        # @error_return body (the emit is actually identical -- a later widening
+        # can route it; see TODO). Guard companion to the resumable-frame defer
+        # pinned in test_thir_resumable.
+        thir = _lower_ctx(
+            _EXC
+            + "from tpy import error_return, ReturnException\n"
+            + "class MyErr(Exception, ReturnException):\n    pass\n"
+            + "@error_return(MyErr)\n"
+            + "def f(code: Int32) -> Int32:\n"
+            + "    e = AppError(code)\n"
+            + "    raise e\n"
+            + "    return 0\n")
+        assert _fn(thir, "f") is None
+
+    # Native-exception ctor-into-var routing (`e = ValueError("x")` ->
+    # `::tpy::ValueError e = ::tpy::ValueError(...)`): only the 2-arg
+    # `OSError(errno, strerror)` form is demonstrably routed end-to-end (via the
+    # `exceptions/panic_raise_native_exc` snapshot case). The 0/1/3-arg + the
+    # PEP-3151 subclass ctor forms are NOT yet verified to route anywhere (their
+    # `exceptions/os_error_*` corpus cases stay `no_thir`, blocked on unrelated
+    # constructs -- see TODO). `_lower_ctx` here cannot exercise native-exception
+    # ctors (an isolated lower leaves a builtin exception's NominalType
+    # unqualified, so `_f1_record` sees is_user_record False).

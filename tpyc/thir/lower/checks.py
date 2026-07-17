@@ -2875,7 +2875,15 @@ def _ctor_shape_ok(e: TpyCall, analyzer) -> bool:
     if not _ctor_arity_ok(e, fi):
         return False
     ri = analyzer.registry.get_record(e.func_name)
-    if ri is None or ri.is_native or ri.builtin_type_key is not None:
+    if ri is None or ri.builtin_type_key is not None:
+        return False
+    # A NATIVE exception record (Throwable subclass) constructs via the plain
+    # `::tpy::Name(args)` emit: the resolved synthetic ctor fi is plain, and the
+    # `@cpp_template` __init__ overloads only inform C++ overload resolution --
+    # the call site emits args verbatim (byte-identical to a user-record ctor).
+    # Any OTHER native record takes a divergent ctor emit shape -> AST.
+    is_native_exc = ri.is_native and ri.implements_throwable
+    if ri.is_native and not is_native_exc:
         return False
     if ri.type_params:  # generic ctor: substituted/spelled type args -> AST
         return False
@@ -2887,6 +2895,12 @@ def _ctor_shape_ok(e: TpyCall, analyzer) -> bool:
         return False
     if analyzer.registry.get_record_for_type(rt) is not ri:
         return False
+    if is_native_exc:
+        # Skip the single-overload / non-cpp_template init_fi checks below: a
+        # native exception's `@cpp_template` overloads all expand to the plain
+        # `::tpy::Name(args)` ctor, so the verbatim-arg emit is byte-identical
+        # whichever overload C++ selects.
+        return True
     # A multi-overload __init__ set: _gen_record_ctor_args reads the record's
     # init_info params, which may disagree with the resolved stub -> AST. The
     # special member forms are read off the REAL __init__ (the synthetic fi

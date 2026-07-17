@@ -1927,13 +1927,19 @@ class THIRRaise(THIRStmt):
     finally-aware `return ::tpy::make_unexpected(<cpp>(<args>));` (or `{}`
     construction when arg-less), never a C++ throw. `cpp_type` pre-renders at
     lowering (`error_return_to_cpp`); None is the bare form. The expression
-    form (`raise e` -> `e.__raise__()` + deref chain) is a deferred row.
-    `via_virtual` mirrors sema's `raise_via_virtual` fact (@virtual_raise
+    form (`raise e` / `raise make_error()`) sets `raise_expr` (the lowered
+    source) and emits `<expr>{.__deref__()*deref_depth}.__raise__();` -- the
+    virtual hop is inherent to the expr form (it preserves the dynamic Throwable
+    type through the vtable; a direct `throw expr` would slice a borrow source).
+    `deref_depth` mirrors sema's `.__deref__()` count for a `Box[Throwable]`
+    source. `via_virtual` mirrors sema's `raise_via_virtual` fact (@virtual_raise
     classes: the peephole doesn't apply; emit `<cpp>(<args>).__raise__();`)."""
     cpp_type: 'str | None' = None
     args: tuple[THIRExpr, ...] = ()
     via_virtual: bool = False
     return_tier: bool = False
+    raise_expr: 'THIRExpr | None' = None
+    deref_depth: int = 0
 
 
 @dataclass(frozen=True)

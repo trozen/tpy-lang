@@ -281,7 +281,10 @@ def test_raise_lowering_reject_falls_back_at_sync_boundary():
                 fold_attempt("body")
             else:
                 routed.append(fn.name)
-    assert compiler._thir_fallback.get("body:stmt.raise") == 1
+    # `raise <global record>` enters the expr-raise arm, then the global-record
+    # source read rejects -- the nested reason (the expr form routes for a
+    # routable source; an unroutable global source falls the body back).
+    assert compiler._thir_fallback.get("body:stmt.raise:name.global_read") == 1
     assert "clean" in routed
 
 

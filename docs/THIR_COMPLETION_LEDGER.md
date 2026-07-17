@@ -108,8 +108,11 @@ cell it touches is admitted:
   binds/discards, expression unwraps, pass-through returns) **(covered;
   aliasing borrow binds, method-call callees, owned-str first-decl binds
   still reject)**
-  vs expression raise / for-over-container (generators) /
-  genexpr + the comprehension C3/C4 rows **(not)**.
+  vs for-over-container (generators) /
+  genexpr + the comprehension C3/C4 rows **(not)**. (`raise <expr>`
+  now routes in a PLAIN body -> `<expr>.__raise__();`; a resumable /
+  @error_return body still defers -- a conservative gap, the AST emit
+  there is verified identical.)
 
 A **deferred cell** is one `(kind x form x shape)` the eligibility gate rejects.
 Two kinds, treated oppositely:
@@ -1206,8 +1209,7 @@ through the emitted catches). Deferred try-rows: the **return tier**
 (PARKED on the @error_return call rung -- every such call is
 gate-rejected and sema forces them into exactly these trys, so the
 tier's goto dispatch `__except_N`/`__err_opt_N`/`try_except_label` lands
-with that rung); the **expression raise** (`raise e` -> `e.__raise__()`
-+ deref chain); non-value hoist arms (optional-storage / pointer /
+with that rung); non-value hoist arms (optional-storage / pointer /
 rebind-slot / dynamic-base / borrow-tuple predecls); fresh hoists inside
 branches (the enclosing if's own hoist pre-declares and the AST skips
 the try's) or loops (the scope_tracker storage hoist layers on top);

@@ -722,6 +722,123 @@ class TestValueReprOptionalStrParam:
         assert _fn(thir, "use") is not None
 
 
+class TestValueReprOptionalViewLocal:
+    """A value-repr `Optional[str]`/`Optional[bytes]` LOCAL binds an OWNED
+    `std::optional<std::string>` / `std::optional<std::vector<uint8_t>>`. Its
+    None-test/deref reads ride the same value-repr arms as the view param twin
+    via `_value_opt_view_binding` -- the ONE difference is the narrowed deref
+    form: a local's `(*acc)` is already OWNED (STORAGE, no copy at an owned
+    sink), where a param's is a BORROW view. A None-init decl registers; a
+    whole-optional copy-init still defers (`test_optional_str_local_decl_defers`
+    -- orthogonal shape not routed here)."""
+
+    def test_none_init_local_is_none_uses_has_value(self):
+        thir = _lower_ctx(
+            "def use(argv: list[str]) -> bool:\n"
+            "    acc: str | None = None\n"
+            "    if len(argv) > 0:\n        acc = argv[0]\n"
+            "    return acc is None\n")
+        ret = _fn(thir, "use").body[-1]
+        assert isinstance(ret.value, THIRIsNone)
+        assert ret.value.value_repr and not ret.value.negate
+
+    def test_narrowed_read_derefs_into_owned_str_slot(self):
+        # `cmd: str = acc` after `assert acc is not None`: the deref `(*acc)` is
+        # an OWNED std::string (STORAGE), so the owned `cmd` slot takes it bare
+        # -- unlike a param's BORROW deref, which an owned sink would copy.
+        thir = _lower_ctx(
+            "def use(argv: list[str]) -> str:\n"
+            "    acc: str | None = None\n"
+            "    if len(argv) > 0:\n        acc = argv[0]\n"
+            "    assert acc is not None\n"
+            "    cmd: str = acc\n"
+            "    return cmd\n")
+        decl = _fn(thir, "use").body[-2]
+        assert isinstance(decl.init, THIRName) and decl.init.deref
+        assert decl.init.form is Form.STORAGE
+
+    def test_truthiness_local_wraps_is_truthy(self):
+        thir = _lower_ctx(
+            "from tpy import Int32\n"
+            "def use(argv: list[str]) -> Int32:\n"
+            "    acc: str | None = None\n"
+            "    if len(argv) > 0:\n        acc = argv[0]\n"
+            "    if acc:\n        return 1\n"
+            "    return 0\n")
+        cond = _fn(thir, "use").body[-2].condition
+        assert isinstance(cond, THIRTruthy)
+        assert cond.mode is TruthinessMode.IS_TRUTHY
+        assert isinstance(cond.operand, THIRName) and not cond.operand.deref
+
+    def test_reassign_existing_optional_strips_deref(self):
+        # `acc2 = acc` (both value-opt-view locals) after narrowing `acc`: the
+        # reassignment RHS threads no target, so the narrowed name reads the
+        # WHOLE optional bare (`acc2 = acc;`), NOT the deref -- mirrors the
+        # scalar reassign-strip. A deref here would emit `acc2 = (*acc);`.
+        thir = _lower_ctx(
+            "def use(argv: list[str]) -> str:\n"
+            "    acc: str | None = None\n"
+            "    acc2: str | None = None\n"
+            "    if len(argv) > 0:\n        acc = argv[0]\n"
+            "    if acc is not None:\n        acc2 = acc\n"
+            "    if acc2 is None:\n        return \"none\"\n"
+            "    return acc2\n")
+        # the `acc2 = acc` assign sits inside the `if acc is not None:` branch
+        reassign = _fn(thir, "use").body[-3].then_body[0]
+        assert isinstance(reassign, THIRAssign)
+        assert isinstance(reassign.value, THIRName) and not reassign.value.deref
+
+    def test_view_inner_local_defers(self):
+        # A view-INNER value-opt LOCAL (`StrView | None` -> optional<string_view>)
+        # is NOT routed (only owned-inner str/bytes locals are): the AST's
+        # narrowed read is a whole-optional-wrap quirk THIR does not mirror, so
+        # the whole body defers.
+        thir = _lower_ctx(
+            "from tpy import StrView\n"
+            "def use(argv: list[str]) -> str:\n"
+            "    acc: StrView | None = None\n"
+            "    if len(argv) > 0:\n        acc = argv[0]\n"
+            "    assert acc is not None\n"
+            "    owned: str = acc\n"
+            "    return owned\n")
+        assert _fn(thir, "use") is None
+
+    def test_bytes_local_none_test_and_deref(self):
+        thir = _lower_ctx(
+            "def use(chunks: list[bytes]) -> bytes:\n"
+            "    acc: bytes | None = None\n"
+            "    if len(chunks) > 0:\n        acc = chunks[0]\n"
+            "    assert acc is not None\n"
+            "    out: bytes = acc\n"
+            "    return out\n")
+        decl = _fn(thir, "use").body[-2]
+        assert isinstance(decl.init, THIRName) and decl.init.deref
+        assert decl.init.form is Form.STORAGE
+
+    def test_full_body_byte_identical(self):
+        _assert_byte_identical(
+            "def f(argv: list[str]) -> str:\n"
+            "    acc: str | None = None\n"
+            "    for tok in argv:\n"
+            "        if tok == \"a\":\n"
+            "            acc = \"a\"\n"
+            "            break\n"
+            "    assert acc is not None\n"
+            "    cmd: str = acc\n"
+            "    return cmd\n")
+
+    def test_return_whole_optional_local_defers(self):
+        # `return acc` at a `str | None` slot reads the WHOLE optional local
+        # un-narrowed; the return-whole-optional-view arm is param-only (the
+        # owned-local return shim is not built yet), so the body defers.
+        thir = _lower_ctx(
+            "def use(argv: list[str]) -> str | None:\n"
+            "    acc: str | None = None\n"
+            "    if len(argv) > 0:\n        acc = argv[0]\n"
+            "    return acc\n")
+        assert _fn(thir, "use") is None
+
+
 class TestValueReprOptionalBytes:
     """The bytes twin of the value-repr Optional[str] param+return slice --
     `bytes | None` binds `std::optional<std::span<const uint8_t>>` (borrow) /
