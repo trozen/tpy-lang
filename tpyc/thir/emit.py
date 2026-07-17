@@ -2229,7 +2229,7 @@ def _emit_match_switch_union(out: TextIO, stmt: THIRMatch, indent_level: int,
             rhs = ((entry.case_alias or get)
                    if entry.binding.from_case_var else subject)
             _emit_match_binding(out, entry.binding, rhs, inner)
-        _emit_stmts(out, entry.body, indent_level + 1, state)
+        _emit_match_arm_body(out, entry, indent_level + 1, state)
         out.write(f"{inner}break;\n")
         out.write(f"{indent}}}\n")
     state.switch_depth -= 1

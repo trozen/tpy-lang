@@ -25,9 +25,12 @@ awaitables as whole-operand renders, try/except/finally regions
 bodies -- helper- or CFG-based -- are ordinary BB leaves), with regions
 over F1-record managers (the manager bind is the one leaf render;
 __exit__ replay is skeleton),
-no narrowed resume points, no returns inside leaf compounds (a ReturnT
-terminator's scaffolding is skeleton; a return nested in a leaf would
-need the async-return render inside THIR emit -- a cell).
+narrowed resume points for the variant-get slice (a union frame field
+proven a concrete member; leaves lower under the skeleton's extraction
+alias -- `__{var}`, or the match tier's `__case_{i}` inside an arm chain),
+no returns inside leaf compounds (a ReturnT terminator's scaffolding is
+skeleton; a return nested in a leaf would need the async-return render
+inside THIR emit -- a cell).
 """
 
 from __future__ import annotations
@@ -43,8 +46,11 @@ from ..nodes import (
     THIRStmt,
 )
 from ...parse.nodes import (
+    TpyAssign,
+    TpyAugAssign,
     TpyAwait,
     TpyCall,
+    TpyDelVar,
     TpyExpr,
     TpyForEach,
     TpyFunction,
@@ -54,11 +60,13 @@ from ...parse.nodes import (
     TpyStrLiteral,
     TpyStmt,
     TpyTupleLiteral,
+    TpyTupleUnpack,
     TpyVarDecl,
 )
 from ...typesys import (
     ConcreteCoroType,
     IntLiteralType,
+    NominalType,
     NoneType,
     OptionalType,
     OwnType,
@@ -77,7 +85,7 @@ from ...typesys import (
 from ...type_def_registry import is_dict, is_list, is_set
 from ...codegen_cpp import resumable_cfg as rcfg
 from ...codegen_cpp.forms import is_plain_nonvalue
-from .checks import _ctor_shape_ok, _record_rvalue_source_shape
+from .checks import _ctor_shape_ok, _narrow_cond_info, _record_rvalue_source_shape
 from .context import _ExprResultUse, _ExprUse, _LowerCtx
 from .expressions import (
     _lower_borrow_tuple_literal,
@@ -104,6 +112,7 @@ from .predicates import (
 )
 from .statements import (
     _handler_binding_type,
+    _lower_narrow_cond,
     _lower_stmt,
     _var_decl_type,
     _wrap_view_owned_return,
@@ -247,6 +256,163 @@ def _loop_elem_type(stmt: 'TpyForEach', analyzer) -> 'TpyType | None':
     if isinstance(et, IntLiteralType):
         return analyzer.ctx.default_int_type
     return et if isinstance(et, TpyType) else None
+
+
+def _entry_narrowings_reject(facts: 'dict[str, TpyType]',
+                             param_types: 'dict[str, TpyType]',
+                             gen_local_types: 'dict[str, TpyType]',
+                             frame_fields: 'set[str]',
+                             case_entry_ids: 'frozenset[int] | None',
+                             ) -> 'str | None':
+    """Narrowed-BB admission: the variant-get slice only. Each fact must be
+    a concrete non-protocol member narrowing a union-declared frame field --
+    the shape `_emit_isinstance_extractions` re-establishes with a plain
+    `std::get` alias whose name the lowering can mirror (`__{var}`, the
+    non-persistent `_fresh_alias_local`). Everything else -- the polymorphic
+    self/subclass dynamic_cast family, Optional `is not None`, literal /
+    protocol / Any facts, narrowed-to-smaller-union -- keeps the named
+    reject. Without the skeleton's case-entry set the match-arm alias
+    environments can't be mirrored, so every narrowed body stays fallback."""
+    if case_entry_ids is None:
+        return "res.narrowed_resume"
+    for var, fact in facts.items():
+        decl = param_types.get(var, gen_local_types.get(var))
+        if not isinstance(decl, TpyType):
+            return "res.narrowed_resume"
+        du = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(decl)))
+        if not isinstance(du, UnionType):
+            return "res.narrowed_resume"
+        if not isinstance(fact, NominalType) or is_protocol_type(fact):
+            return "res.narrowed_resume"
+        # `_fresh_alias_local` renames on a frame-field collision
+        # (`__{var}_narrowed`); mirror by rejecting the rare shape instead.
+        if f"__{var}" in frame_fields or var == "self":
+            return "res.narrowed_resume"
+    return None
+
+
+def _rebinds_narrowed(stmts, names: 'frozenset[str]') -> bool:
+    """A direct rebind of a narrowed name anywhere in a BB's leaf subtree
+    (including non-suspending compounds) un-narrows MID-BB, while the scope
+    this pass installs is entry-level for the whole BB -- so such a BB must
+    fall back. Field/subscript writes mutate THROUGH the alias and keep the
+    narrowing. The generic body walk over-matches unknown compound kinds
+    on purpose: a false positive only costs AST fallback."""
+    for s in stmts:
+        if isinstance(s, TpyVarDecl):
+            if s.name in names:
+                return True
+        elif isinstance(s, (TpyAssign, TpyAugAssign)):
+            if isinstance(s.target, TpyName) and s.target.name in names:
+                return True
+        elif isinstance(s, TpyTupleUnpack):
+            if any(t in names for t in s.targets if t is not None):
+                return True
+        elif isinstance(s, TpyDelVar):
+            if any(n in names for n in s.names):
+                return True
+        elif isinstance(s, (rcfg.WithEnter, rcfg.AsyncWithSetup)):
+            if s.item.target in names:
+                return True
+        for attr in ("then_body", "else_body", "body", "orelse",
+                     "finally_body"):
+            b = getattr(s, attr, None)
+            if b and _rebinds_narrowed(b, names):
+                return True
+        for h in getattr(s, "handlers", None) or ():
+            if h.body and _rebinds_narrowed(h.body, names):
+                return True
+        for c in getattr(s, "cases", None) or ():
+            if c.body and _rebinds_narrowed(c.body, names):
+                return True
+    return False
+
+
+def _resume_narrow_envs(cfg: 'rcfg.CFG',
+                        case_entry_ids: 'frozenset[int]',
+                        ) -> 'dict[int, dict[str, tuple[TpyType, str]] | None]':
+    """Per-BB narrowing environments `{var: (fact, alias)}`, mirroring the
+    walker's inline emission: an extraction local stays lexically live for
+    the rest of its inline chain even where the CFG's stamped facts drop
+    (the early-return join reads the else-arm's alias), so the env
+    propagates along the same edges the walker follows instead of reading
+    each BB's own `entry_narrowings`.
+
+    Alias sources, matching the emit sites exactly: a case entry
+    re-establishes ALL its stamped facts as `__{var}` (`_emit_case_body` ->
+    `_emit_resume_narrowings(outer=None)`); a Branch arm adds the delta of
+    its stamped facts vs the walk-start BB's (`_walk_inline_or_jump(outer=
+    chain_entry)`) as `__{var}`; a match arm binds the subject to the
+    tier's `__case_{i}` (i = source case index -- the rule
+    `_lower_match_union` draws it by); the match join and the async-for
+    body re-establish ALL their stamped facts as `__{var}` (walked with
+    outer=None). A BB visited twice with different envs maps to None
+    (unmodeled -- the caller rejects if it carries facts)."""
+    envs: dict[int, 'dict[str, tuple[TpyType, str]] | None'] = {}
+
+    def _record(bb_id: int,
+                env: 'dict[str, tuple[TpyType, str]]') -> bool:
+        if bb_id in envs:
+            if envs[bb_id] != env:
+                envs[bb_id] = None
+            return False
+        envs[bb_id] = env
+        return True
+
+    # Worklist of (bb_id, env, chain_entry) walk states.
+    work: list[tuple[int, dict, dict]] = []
+    for ce in case_entry_ids:
+        bb = cfg.blocks.get(ce)
+        if bb is None:
+            continue
+        env = {v: (f, f"__{v}") for v, f in bb.entry_narrowings.items()}
+        work.append((ce, env, bb.entry_narrowings))
+    while work:
+        bb_id, env, chain_entry = work.pop()
+        if not _record(bb_id, env):
+            continue
+        bb = cfg.blocks[bb_id]
+        t = bb.terminator
+
+        def _arm(target: int, outer: dict) -> None:
+            if target in case_entry_ids:
+                return
+            tb = cfg.blocks[target]
+            new_env = dict(env)
+            new_env.update(
+                {v: (f, f"__{v}") for v, f in tb.entry_narrowings.items()
+                 if outer.get(v) is not f})
+            work.append((target, new_env, tb.entry_narrowings))
+
+        if isinstance(t, rcfg.Fall):
+            if t.next_bb not in case_entry_ids:
+                work.append((t.next_bb, env, chain_entry))
+        elif isinstance(t, rcfg.Branch):
+            _arm(t.then_bb, chain_entry)
+            _arm(t.else_bb, chain_entry)
+        elif isinstance(t, rcfg.MatchDispatch):
+            subj_expr = t.match_stmt.subject
+            subj = subj_expr.name if isinstance(subj_expr, TpyName) else None
+            for i, (case, arm_bb) in enumerate(
+                    zip(t.match_stmt.cases, t.arm_bbs)):
+                if arm_bb in case_entry_ids:
+                    continue
+                ab = cfg.blocks[arm_bb]
+                new_env = dict(env)
+                fact = (case.type_facts or {}).get(subj)
+                if subj is not None and fact is not None:
+                    new_env[subj] = (fact, f"__case_{i}")
+                work.append((arm_bb, new_env, ab.entry_narrowings))
+            if (t.join_bb is not None
+                    and t.join_bb not in case_entry_ids):
+                _arm(t.join_bb, {})
+        elif isinstance(t, rcfg.AsyncForAdvance):
+            _arm(t.has_value_bb, {})
+            if t.exhausted_bb not in case_entry_ids:
+                # Defensive walker path: plain inline walk, no
+                # re-establishment.
+                work.append((t.exhausted_bb, env, {}))
+    return envs
 
 
 def _for_advance_reject(t: 'rcfg.AsyncForAdvance', analyzer) -> 'str | None':
@@ -405,6 +571,7 @@ def lower_resumable(func: TpyFunction, analyzer, render_type,
                     record_name: 'str | None' = None,
                     render_type_stored=None,
                     pointer_aliases: 'set[str] | None' = None,
+                    case_entry_ids: 'frozenset[int] | None' = None,
                     ) -> 'THIRResumableBody | None':
     """Lower a resumable body, falling back cleanly on a lowering reject."""
     try:
@@ -413,6 +580,7 @@ def lower_resumable(func: TpyFunction, analyzer, render_type,
             record_name=record_name,
             render_type_stored=render_type_stored,
             pointer_aliases=pointer_aliases,
+            case_entry_ids=case_entry_ids,
         )
     except ThirUnsupported as ex:
         return _reject(ex.reason)
@@ -423,6 +591,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                      record_name: 'str | None' = None,
                      render_type_stored=None,
                      pointer_aliases: 'set[str] | None' = None,
+                     case_entry_ids: 'frozenset[int] | None' = None,
                      ) -> 'THIRResumableBody | None':
     """Lower one resumable body's leaves, or None if outside the slice.
 
@@ -436,7 +605,13 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
 
     `pointer_aliases` is the skeleton's borrow-alias classification (R1c): a
     plain-nonvalue local NOT in it is an owning frame_slot (`.emplace()` /
-    `(*name)`); one in it is a `T*` alias (a later cell)."""
+    `(*name)`); one in it is a `T*` alias (a later cell).
+
+    `case_entry_ids` is the skeleton's case-label set (`_compute_case_entries`
+    keys, cached on the CFG): the emit positions that re-establish narrowing
+    aliases as `__{var}`. Reused (vs re-derived) so the narrowed-BB alias
+    environments match the walker exactly; None (unit callers) keeps every
+    narrowed body on the fallback path."""
     is_generator = bool(func.is_generator)
     pointer_aliases = pointer_aliases or set()
     # R2: instance-method coros route with a `__self` receiver. Static /
@@ -576,6 +751,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     frame_fields = set(n for n, _t in func.params) | {
         lname for lname, _lt in (func.generator_locals or [])}
     gen_local_types = {n: t for n, t in (func.generator_locals or [])}
+    param_types = {n: t for n, t in func.params}
 
     # -- CFG shape classification ----------------------------------------
     # Handler `as`-bindings are catch-bound C++ locals (sema unbinds them
@@ -608,7 +784,11 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                     return _reject("res.handler_binding")
                 handler_bindings[bname] = btype
         if bb.entry_narrowings:
-            return _reject("res.narrowed_resume")
+            reason = _entry_narrowings_reject(
+                bb.entry_narrowings, param_types, gen_local_types,
+                frame_fields, case_entry_ids)
+            if reason is not None:
+                return _reject(reason)
         # AsyncForIterSetup (sync + async), AsyncWithSetup and
         # AsyncFinallyExit all route: their only user render (the iterable /
         # manager expression) is lowered in pass 2; everything else (counters,
@@ -826,8 +1006,10 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 no_source_comment=getattr(stmt, "no_source_comment", False))
         return _lower_stmt(stmt, lc, declared)
 
-    for bb_id in sorted(cfg.blocks):
-        bb = cfg.blocks[bb_id]
+    narrow_envs = (_resume_narrow_envs(cfg, case_entry_ids)
+                   if case_entry_ids is not None else {})
+
+    def _lower_bb(bb: 'rcfg.BB') -> None:
         for stmt in bb.stmts:
             if isinstance(stmt, (rcfg.WithEnter, rcfg.AsyncWithSetup)):
                 # Sync + async with: only the manager expression renders; the
@@ -863,17 +1045,16 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
         if isinstance(t, rcfg.ReturnT):
             ret = t.return_stmt
             if ret.value is None:
-                continue  # void scaffolding is skeleton-only
+                return  # void scaffolding is skeleton-only
             if isinstance(ret.value, TpyAwait):
                 # RETURN-kind await: `_emit_resume_core` fully emits the
                 # return from the polled result (`__ret<i>`); the ReturnT
                 # on the resume BB is never consumed by the emitter.
-                continue
+                return
             begin_stmt()
             if (lc.prescan.ret_char
                     and isinstance(ret.value, TpyStrLiteral)):
-                note(stmt_reject_reason(ret))
-                return None
+                raise ThirUnsupported(stmt_reject_reason(ret))
             # POSITION-BLIND value render: `_make_async_return` binds the
             # value to a `<ret_cpp> __tpy_async_ret = <value>;` local (whose
             # decl type supplies the conversion) and only then wraps it in
@@ -905,10 +1086,17 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 getattr(t.match_stmt, "loc", None), arm_body_hooks=True)
             _witness("res.match_dispatch")
         elif isinstance(t, rcfg.Branch):
+            # A narrowing isinstance condition takes the sync narrow-cond
+            # render (holds_alternative / compound &&); the arm-side scope
+            # comes from the arms' stamped entry_narrowings, not from here.
             try:
-                conds[id(t.cond)] = _lower_truthy(t.cond, lc, declared)
+                info = _narrow_cond_info(t.cond, declared, analyzer)
+                conds[id(t.cond)] = (
+                    _lower_narrow_cond(info, t.cond, lc, declared)
+                    if info is not None
+                    else _lower_truthy(t.cond, lc, declared))
             except ThirUnsupported:
-                return _reject("res.cond")
+                raise ThirUnsupported("res.cond") from None
             _witness("res.branch_cond")
         elif isinstance(t, rcfg.Yield) and is_generator:
             # Generator suspension: the skeleton emits `__state = S_RESUME_i;
@@ -923,14 +1111,13 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
             # arises for a value-scalar yield type.
             ys = t.payload.yield_stmt
             if ys is None or ys.value is None:
-                return _reject("res.bare_yield")
+                raise ThirUnsupported("res.bare_yield")
             begin_stmt()
             yt = func.generator_yield_type
             yt_bare = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(yt)))
                        if isinstance(yt, TpyType) else None)
             if _eligible_char(yt_bare) and isinstance(ys.value, TpyStrLiteral):
-                note(stmt_reject_reason(ys))
-                return None
+                raise ThirUnsupported(stmt_reject_reason(ys))
             if isinstance(yt_bare, TupleType):
                 # Tuple yield slot: `gen_yield_value` target-threads the
                 # render. A literal takes the value or borrow builder per the
@@ -965,7 +1152,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 else:
                     raise ThirUnsupported("res.btuple_yield_source")
                 _witness("res.btuple_yield")
-                continue
+                return
             yield_values[id(ys)] = _slot_literal_retype(
                 _lower_expr(ys.value, lc, declared), yt, lc)
             _witness("res.yield_value")
@@ -1013,6 +1200,42 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 await_args[id(operand)] = tuple(lowered_args)
                 if lowered_args:
                     _witness("res.await_args")
+
+    for bb_id in sorted(cfg.blocks):
+        bb = cfg.blocks[bb_id]
+        env = narrow_envs.get(bb_id) or {}
+        # A stamped fact the env walk didn't model (or modeled with a
+        # different fact) has no mirrored alias -- fall back whole.
+        for v, f in bb.entry_narrowings.items():
+            if v not in env or env[v][0] is not f:
+                raise ThirUnsupported("res.narrowed_resume")
+        if not env:
+            _lower_bb(bb)
+            continue
+        if _rebinds_narrowed(bb.stmts, frozenset(env)):
+            raise ThirUnsupported("res.narrowed_resume")
+        # Narrowed-BB scope: this BB's leaves lower with narrowed reads
+        # renamed to the extraction alias live at its emit position and
+        # retyped to the fact (the env fact, not the stamped one -- an
+        # inline chain keeps the alias live past a fact pop, e.g. the
+        # early-return join). The extraction local itself is skeleton
+        # emission, never a leaf.
+        saved_narrow = lc.narrow
+        lc.narrow = lc.narrow.snapshot()
+        saved_decl = {v: declared.get(v) for v in env}
+        for var, (fact, alias) in env.items():
+            lc.narrow.narrowed[var] = alias
+            declared[var] = fact
+        _witness("res.narrow_scope")
+        try:
+            _lower_bb(bb)
+        finally:
+            lc.narrow = saved_narrow
+            for v, t0 in saved_decl.items():
+                if t0 is None:
+                    declared.pop(v, None)
+                else:
+                    declared[v] = t0
 
     # Helper-based finally bodies live outside cfg.blocks (a member fn per
     # try); lower their statements into the SAME leaves table, keyed by

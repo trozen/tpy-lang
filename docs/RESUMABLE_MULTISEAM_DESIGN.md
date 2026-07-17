@@ -216,8 +216,12 @@ wraps, state transitions). The ONLY places it renders user source are:
     driven by sema facts stamped on BBs, no user-expression renders, BUT
     the LOWERING side has no way yet to lower leaves under narrowed types
     (it walks with a flat `declared` map). This is the separate
-    `res.narrowed_resume` gate (resumable.py:309-310) and stays OUT of
-    this wave (see 4.4).
+    `res.narrowed_resume` gate (now `_entry_narrowings_reject`) and stays OUT of
+    this wave (see 4.4). [ROUTED 2026-07-17 for the variant-get slice:
+    `_resume_narrow_envs` mirrors the walker's inline chains -- per-BB
+    alias+fact envs keyed off the skeleton's case-entry set, extraction
+    stays skeleton; the poly-self / readonly-subject / non-union-fact
+    families remain named rejects -- see TODO.md.]
 
 Oracle evidence that (a)-(c) are the whole render surface:
 

@@ -100,20 +100,45 @@ See `docs/FEATURE_ROADMAP.md` for bigger tasks and `BUGS.md` for known compiler 
   async-with -- all region kinds are now transparent to the leaf seam
   (`_region_reject` returns None); the seven cells route via one
   `region_exprs` map + two-pass decl registration. Still-deferred named
-  gates: `res.narrowed_resume`, the
+  gates: the
   narrowed-optional-iterable rung (`res.for_narrowed_optional`), non-value
   loop-var element forms (`res.loop_var`), multi-item `async with`
   (a `_CFGNotYetSupported` upstream), generator-shape return-in-finally-helper.
   MatchDispatch ROUTES (2026-07-17): the whole dispatch lowers through the
   sync match tiers with arm BODIES hooked back to the skeleton's BB walker
   (`emit_match_dispatch` + the `match_arm_hook`/`body_key` contract, the
-  seam replacement for gen_match + resumable_arm_emitter). Scalar tiers
-  only (switch_enum/switch_primitive/if_elif/if_elif_guarded); residue as
-  named rejects: union/record/optional/str tiers + hoisted arm decls
-  (`res.match_strategy` -- union matches also sit behind
-  `res.narrowed_resume`, the arm-narrowing interlock), whole-subject
+  seam replacement for gen_match + resumable_arm_emitter). Scalar tiers +
+  the unguarded union switch (2026-07-17, with the narrowed-resume cell);
+  residue as named rejects: guarded-union / record / optional / str tiers,
+  hoisted arm decls, field sub-patterns and or-bind arms in hook mode
+  (`res.match_strategy`), whole-subject
   bindings (`res.match_binding` -- a frame-field write, not gen_match's
   local decl).
+  **Narrowed resume points ROUTE (2026-07-17, the variant-get slice):**
+  a union frame field proven a concrete member across a suspension --
+  leaves lower under per-BB narrowing envs (`_resume_narrow_envs`
+  propagates alias+fact along the walker's inline chains, keyed off the
+  skeleton's `case_entry_ids`; extraction locals stay skeleton emission).
+  REQUIRED residue, each still `res.narrowed_resume` (or noted): the
+  polymorphic self/subclass dynamic_cast family (`isinstance(self, Sub)`
+  in generator methods -- alias `__self_narrowed`, if-init cast locals);
+  readonly-qualified union subjects (rejects at `res.cond`:
+  `_isinstance_narrow_info` requires a bare declared type -- the sync U2
+  ptr_variant_to_const chain, a SYNC cell that unblocks both);
+  non-union facts at resume points (Optional `is not None`, literal,
+  protocol, Any); narrowed-to-smaller-union facts (`isinstance(a, (A,
+  B))` on a 3-member union); or-pattern alt aliases (`__case_{i}_{j}`);
+  primitive-member value-union facts (int/str members are not
+  NominalType facts, so `_entry_narrowings_reject` excludes them).
+  Follow-ups from the cell's review: (a) the extraction-alias naming
+  rule now lives in three mirrored places (`_fresh_alias_local`, the
+  match tiers' `__case_{i}`, `_resume_narrow_envs`) with only byte-diffs
+  enforcing correspondence -- factor one shared rule when the next
+  narrowing cell would add a fourth mirror; (b) a fix to the
+  BUGS.md-tracked `_kill_narrowings` reassignment gap must update
+  `_resume_narrow_envs` in the same change (the `_rebinds_narrowed`
+  guard keeps THIR conservative there meanwhile, and becomes
+  load-bearing when union locals route).
   Bound-coroutine awaits ROUTE (2026-07-17: `res.await_prebuilt` deleted --
   the suspension polls the handle's slot in place, zero renders; the
   binding is a factory-call-only emplace via the coro_factory use flag);

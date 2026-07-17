@@ -1560,9 +1560,10 @@ class TestMatchDispatch:
         assert sum(fallback.values()) >= 1
         _assert_identical(src)
 
-    def test_union_dispatch_defers(self):
-        # A union-subject match stamps arm narrowings (entry_narrowings) --
-        # the res.narrowed_resume interlock; the body falls back whole.
+    def test_union_dispatch_routes(self):
+        # A union-subject match stamps arm narrowings (entry_narrowings);
+        # the narrowed-BB scope + the switch_union hook tier route it whole
+        # (was the res.narrowed_resume interlock).
         src = ("from typing import Iterator\n"
                + "from tpy import Int32\n\n"
                + "class A:\n"
@@ -1578,7 +1579,7 @@ class TestMatchDispatch:
                + "            yield n\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
         fallback = _res_fallback(src)
-        assert sum(fallback.values()) >= 1
+        assert sum(fallback.values()) == 0
         _assert_identical(src)
 
     def test_binding_arm_defers(self):
@@ -1595,6 +1596,247 @@ class TestMatchDispatch:
                + "def main() -> None:\n    pass\nmain()\n")
         fallback = _res_fallback(src)
         assert sum(fallback.values()) >= 1
+        _assert_identical(src)
+
+
+class TestNarrowedResume:
+    """The narrowed-BB scope (variant-get slice): a union frame field proven
+    a concrete member, with a suspension splitting the narrowed region. The
+    skeleton emits every extraction local (`__{var}` at branch arms / resume
+    cases / the match join; the tier's `__case_{i}` inside a match arm);
+    leaves lower renamed to that alias with the subject retyped."""
+
+    _UNION = ("from typing import Iterator\n"
+              + "from tpy import Int32\n\n"
+              + "class Dog:\n"
+              + "    def sound(self) -> str:\n        return \"woof\"\n\n"
+              + "class Cat:\n"
+              + "    def sound(self) -> str:\n        return \"meow\"\n\n"
+              + "async def step(n: Int32) -> Int32:\n"
+              + "    return n + 1\n\n")
+
+    def test_if_narrow_across_suspend_routes(self):
+        # Suspension inside the narrowed then-arm: the resume case
+        # re-establishes `__a`; the else-arm reads its own `__a` (Cat).
+        src = (self._UNION
+               + "async def voice(a: Dog | Cat) -> str:\n"
+               + "    await step(0)\n"
+               + "    if isinstance(a, Dog):\n"
+               + "        await step(1)\n"
+               + "        return a.sound()\n"
+               + "    return a.sound()\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, _ = _assert_identical(src)
+        assert witnesses.get("res.narrow_scope")
+        assert sum(_res_fallback(src).values()) == 0
+
+    def test_match_arm_alias_split_routes(self):
+        # One body, both spellings: the Cat arm's read emits inline in the
+        # dispatch (`__case_1`), the Dog arm's post-yield read lands in the
+        # resume case (`__a`) -- the byte-diff pins both against the AST.
+        src = (self._UNION
+               + "def voices(a: Dog | Cat) -> Iterator[str]:\n"
+               + "    match a:\n"
+               + "        case Dog():\n"
+               + "            yield \"is-dog\"\n"
+               + "            yield a.sound()\n"
+               + "        case Cat():\n"
+               + "            yield a.sound()\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, _ = _assert_identical(src)
+        assert witnesses.get("res.narrow_scope")
+        assert witnesses.get("res.match_dispatch")
+        assert sum(_res_fallback(src).values()) == 0
+
+    def test_nested_if_in_match_arm_routes(self):
+        # Mixed env inside the arm chain: the subject keeps the tier's
+        # `__case_0` while the nested isinstance binds `__b`; the resume
+        # case after the yield re-establishes both as `__{var}`.
+        src = (self._UNION
+               + "def mix(a: Dog | Cat, b: Dog | Cat) -> Iterator[str]:\n"
+               + "    match a:\n"
+               + "        case Dog():\n"
+               + "            if isinstance(b, Cat):\n"
+               + "                yield b.sound()\n"
+               + "                yield a.sound()\n"
+               + "            yield \"end-dog\"\n"
+               + "        case Cat():\n"
+               + "            yield \"cat\"\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, _ = _assert_identical(src)
+        assert witnesses.get("res.narrow_scope")
+        assert sum(_res_fallback(src).values()) == 0
+
+    def test_readonly_union_cond_defers(self):
+        # A readonly-qualified union subject is a SYNC slice-out too
+        # (`_isinstance_narrow_info` requires a bare declared type -- the
+        # ptr_variant_to_const chain stays AST); the Branch cond rejects
+        # res.cond and the body falls back byte-identically.
+        src = ("from typing import Iterator\n"
+               + "from tpy import readonly\n\n"
+               + "class Dog:\n"
+               + "    def __init__(self) -> None:\n        pass\n\n"
+               + "class Cat:\n"
+               + "    def __init__(self) -> None:\n        pass\n\n"
+               + "@readonly\n"
+               + "def codes(a: Dog | Cat) -> Iterator[int]:\n"
+               + "    yield 0\n"
+               + "    if isinstance(a, Dog):\n"
+               + "        yield 1\n"
+               + "    else:\n"
+               + "        yield 2\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        fallback = _res_fallback(src)
+        assert fallback.get("res.cond", 0) >= 1
+        _assert_identical(src)
+
+    def test_while_narrow_across_suspend_routes(self):
+        # The while-body BB carries the condition's facts (the same Branch
+        # machinery as if-arms); the resume inside re-establishes `__a`.
+        src = (self._UNION
+               + "def voices(a: Dog | Cat) -> Iterator[str]:\n"
+               + "    while isinstance(a, Dog):\n"
+               + "        yield a.sound()\n"
+               + "        break\n"
+               + "    yield \"done\"\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, _ = _assert_identical(src)
+        assert witnesses.get("res.narrow_scope")
+        assert sum(_res_fallback(src).values()) == 0
+
+    def test_default_arm_in_suspending_match_routes(self):
+        # A wildcard arm carries no facts: a bare body_key hook with no
+        # scope, beside a narrowed suspending arm.
+        src = (self._UNION
+               + "def voices(a: Dog | Cat) -> Iterator[str]:\n"
+               + "    match a:\n"
+               + "        case Dog():\n"
+               + "            yield \"d\"\n"
+               + "            yield a.sound()\n"
+               + "        case _:\n"
+               + "            yield \"other\"\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, _ = _assert_identical(src)
+        assert witnesses.get("res.narrow_scope")
+        assert sum(_res_fallback(src).values()) == 0
+
+    def test_double_suspend_in_narrowed_arm_routes(self):
+        # Two suspensions inside one narrowed arm: each resume case
+        # re-establishes the alias independently.
+        src = (self._UNION
+               + "def voices(a: Dog | Cat) -> Iterator[str]:\n"
+               + "    match a:\n"
+               + "        case Dog():\n"
+               + "            yield \"one\"\n"
+               + "            yield a.sound()\n"
+               + "            yield a.sound()\n"
+               + "        case Cat():\n"
+               + "            yield \"cat\"\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, _ = _assert_identical(src)
+        assert witnesses.get("res.narrow_scope")
+        assert sum(_res_fallback(src).values()) == 0
+
+    def test_union_local_narrow_blocked_on_local_storage(self):
+        # The narrowing admission covers union LOCALS (gen_local_types),
+        # but the union frame-field decl family itself is un-routed
+        # (res.local_storage) -- the body falls back there first. Flips to
+        # a route pin when union locals land.
+        src = (self._UNION
+               + "def vals() -> Iterator[str]:\n"
+               + "    a: Dog | Cat = Dog()\n"
+               + "    if isinstance(a, Dog):\n"
+               + "        yield \"d\"\n"
+               + "        yield a.sound()\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        fallback = _res_fallback(src)
+        assert sum(fallback.values()) >= 1
+        _assert_identical(src)
+
+    def test_narrowed_rebind_defers(self):
+        # Rebinding a narrowed name un-narrows MID-BB, which the
+        # entry-level scope cannot mirror -- the _rebinds_narrowed guard
+        # falls such a body back. Today the guard is DEFENSIVE: sema
+        # forbids reassigning params, and union LOCALS reject earlier at
+        # res.local_storage (this pin's shape) -- it becomes load-bearing
+        # the day union locals route.
+        src = (self._UNION
+               + "def vals() -> Iterator[str]:\n"
+               + "    a: Dog | Cat = Dog()\n"
+               + "    if isinstance(a, Dog):\n"
+               + "        yield a.sound()\n"
+               + "        a = Cat()\n"
+               + "        yield \"end\"\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        fallback = _res_fallback(src)
+        assert sum(fallback.values()) >= 1
+        _assert_identical(src)
+
+    def test_poly_self_narrow_defers(self):
+        # `isinstance(self, Sub)`: the dynamic_cast family (alias
+        # `__self_narrowed`, if-init locals) -- its own cell; whole-body
+        # fallback stays byte-identical.
+        src = ("from typing import Protocol, Iterator\n"
+               + "from tpy import dynamic\n\n"
+               + "@dynamic\n"
+               + "class Tagged(Protocol):\n    pass\n\n"
+               + "class Pet(Tagged):\n"
+               + "    def names(self) -> Iterator[str]:\n"
+               + "        yield \"pet\"\n"
+               + "        if isinstance(self, Dog):\n"
+               + "            yield \"dog\"\n\n"
+               + "class Dog(Pet):\n    pass\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        fallback = _res_fallback(src)
+        assert fallback.get("res.narrowed_resume", 0) >= 1
+        _assert_identical(src)
+
+    def test_union_fact_defers(self):
+        # `isinstance(a, (Dog, Cat))` on a 3-member union narrows to a
+        # SMALLER UNION -- no single extraction local; sliced out.
+        src = (self._UNION
+               + "class Bird:\n"
+               + "    def sound(self) -> str:\n        return \"tweet\"\n\n"
+               + "async def pick(a: Dog | Cat | Bird) -> Int32:\n"
+               + "    if isinstance(a, (Dog, Cat)):\n"
+               + "        await step(0)\n"
+               + "        return 1\n"
+               + "    return 2\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        fallback = _res_fallback(src)
+        assert fallback.get("res.narrowed_resume", 0) >= 1
+        _assert_identical(src)
+
+    def test_guarded_union_dispatch_defers(self):
+        # A guard sends the dispatch to the guarded_union tier -- no hook
+        # support yet (filed); the body falls back whole.
+        src = (self._UNION
+               + "def pick(a: Dog | Cat, flag: bool) -> Iterator[str]:\n"
+               + "    match a:\n"
+               + "        case Dog() if flag:\n"
+               + "            yield \"d\"\n"
+               + "            yield a.sound()\n"
+               + "        case _:\n"
+               + "            yield \"o\"\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        fallback = _res_fallback(src)
+        assert fallback.get("res.match_strategy", 0) >= 1
+        _assert_identical(src)
+
+    def test_union_binding_arm_defers(self):
+        # `case Dog() as d:` binds against the alias -- a case-block local
+        # the BB walk can't see; kept on res.match_binding.
+        src = (self._UNION
+               + "def voices(a: Dog | Cat) -> Iterator[str]:\n"
+               + "    match a:\n"
+               + "        case Dog() as d:\n"
+               + "            yield \"got-dog\"\n"
+               + "            yield d.sound()\n"
+               + "        case Cat():\n"
+               + "            yield a.sound()\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        fallback = _res_fallback(src)
+        assert fallback.get("res.match_binding", 0) >= 1
         _assert_identical(src)
 
 

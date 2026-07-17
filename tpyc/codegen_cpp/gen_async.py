@@ -1825,10 +1825,14 @@ class AsyncCoroCodegen:
         # (a later cell). Reusing the skeleton's set (vs re-deriving) keeps the
         # frame-field form decision identical on both paths.
         pointer_aliases = self._classify_pointer_alias_locals(func)
+        # The case-label set (cached on the CFG) doubles as the lowering's
+        # narrowing-alias boundary: case entries re-establish `__{var}`.
+        case_entry_ids = frozenset(self._compute_case_entries(cfg))
         rb = lower_resumable(func, self.ctx.analyzer, self.types.type_to_cpp,
                              cfg, record_name=record_name,
                              render_type_stored=self.types.type_to_cpp_stored,
-                             pointer_aliases=pointer_aliases)
+                             pointer_aliases=pointer_aliases,
+                             case_entry_ids=case_entry_ids)
         cache[key] = rb
         if rb is not None:
             record_shape(func, "resumable", routed=True)

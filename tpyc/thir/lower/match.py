@@ -662,12 +662,16 @@ def _lower_match(stmt: TpyMatch, route: _MatchRoute, lc: _LowerCtx,
     (switch tiers only -- the if/elif chain has no default)."""
     kind = route.kind
     if arm_body_hooks and (kind not in (
-            "switch_enum", "switch_primitive", "if_elif", "if_elif_guarded")
+            "switch_enum", "switch_primitive", "if_elif", "if_elif_guarded",
+            "switch_union")
+            or (kind == "switch_union"
+                and route.union_route == "guarded_union")
             or route.hoist_types):
-        # Dispatch-hook mode (a resumable MatchDispatch): only the scalar
-        # tiers' arm-body points carry the skeleton hook; union / record /
-        # optional tiers and hoisted arm decls (frame-field territory in a
-        # resumable) stay their own rungs.
+        # Dispatch-hook mode (a resumable MatchDispatch): the scalar tiers
+        # and the unguarded union switch carry the skeleton hook at their
+        # arm-body points; the guarded-union / record / optional tiers and
+        # hoisted arm decls (frame-field territory in a resumable) stay
+        # their own rungs.
         raise ThirUnsupported("res.match_strategy")
     if kind != "switch_union":  # the union lowerers witness their route
         _witness(f"match.{kind}")
@@ -688,7 +692,8 @@ def _lower_match(stmt: TpyMatch, route: _MatchRoute, lc: _LowerCtx,
                                               loop_depth=loop_depth)
         return _lower_match_union(stmt, lc, declared, loc, pointers,
                                   hoist_decls,
-                                  loop_depth=loop_depth)
+                                  loop_depth=loop_depth,
+                                  arm_body_hooks=arm_body_hooks)
     if kind in ("if_elif_record", "guarded_record"):
         return _lower_match_record(stmt, lc, declared, loc, pointers,
                                    hoist_decls, kind, loop_depth=loop_depth)
@@ -1678,7 +1683,8 @@ def _lower_match_union(stmt: TpyMatch, lc: _LowerCtx,
                        declared: dict[str, TpyType], loc,
                        pointers: AbstractSet[str],
                        hoist_decls: 'list[tuple[str, str]]', *,
-                       loop_depth: int = 0) -> THIRMatch:
+                       loop_depth: int = 0,
+                       arm_body_hooks: bool = False) -> THIRMatch:
     """Lower a switch_union `match` (M4a): arms in SOURCE order (no default
     regrouping -- `_gen_match_switch_union` emits `default:` in place),
     labels are numeric variant indices (`_variant_index` over the full
@@ -1706,6 +1712,21 @@ def _lower_match_union(stmt: TpyMatch, lc: _LowerCtx,
             raise ThirUnsupported("stmt.match")
         test, bnode = _match_arm_parts(case)
         facts = case.type_facts or {}
+        if arm_body_hooks:
+            # Hook mode: the arm body lowers as skeleton-walked BB leaves
+            # under the arm's stamped entry_narrowings (the `__case_{i}`
+            # alias env in `_resume_narrow_envs` mirrors the extraction
+            # this tier draws below). Field sub-patterns and or-bind blocks
+            # declare case-block locals the BB walk can't see; whole-subject
+            # bindings are their own rung, like the scalar tiers.
+            if isinstance(test, TpyClassPattern) and test.keywords:
+                raise ThirUnsupported("res.match_strategy")
+            if (isinstance(test, TpyOrPattern)
+                    and any(isinstance(alt, TpyClassPattern) and alt.keywords
+                            for alt in test.patterns)):
+                raise ThirUnsupported("res.match_strategy")
+            if bnode is not None:
+                raise ThirUnsupported("res.match_binding")
         if (isinstance(test, TpyOrPattern)
                 and any(isinstance(alt, TpyClassPattern) and alt.keywords
                         for alt in test.patterns)):
@@ -1787,15 +1808,16 @@ def _lower_match_union(stmt: TpyMatch, lc: _LowerCtx,
                                            from_case_var=member is not None)
                 arm_declared[bnode.name] = (member if member is not None
                                             else arm_declared[subj_name])
-            body = _statements._lower_stmts(
+            body = (() if arm_body_hooks else _statements._lower_stmts(
                 case.body, lc, arm_declared, in_branch=True,
-                loop_depth=loop_depth)
+                loop_depth=loop_depth))
         finally:
             lc.narrow = saved
         arms.append(THIRMatchArm(labels=labels, entries=(THIRMatchArmEntry(
             body=body, loc=case.loc, binding=binding,
             variant_index=variant_index, case_alias=case_alias,
-            field_bindings=field_bindings),)))
+            field_bindings=field_bindings,
+            body_key=id(case.body) if arm_body_hooks else None),)))
     emit_unreachable = (stmt.is_exhaustive and bool(stmt.cases)
                         and all(stmts_terminate(c.body) for c in stmt.cases))
     if emit_unreachable:
