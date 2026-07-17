@@ -1,0 +1,19 @@
+try body ran
+finally ran
+caught from raise_from_finally
+try body ran
+finally ran
+7
+handler ran
+finally ran
+caught from handler_falls_through
+2
+handler ran
+finally ran
+caught from tuple_clause_falls_through
+try body ran
+caught from deep if-branch
+try body ran
+caught from deep else-branch
+finally ran
+10

@@ -98,7 +98,7 @@ from ...codegen_cpp.forms import (
 )
 from ...codegen_cpp.context import escape_cpp_name
 from ...codegen_cpp.types import resolve_pending_container
-from ...liveness import stmts_terminate
+from ...liveness import stmts_terminate, try_terminates_ignoring_finally
 from ...value_category import call_returns_cpp_ref, is_rvalue_source
 from ..faces import witness as _witness
 from ..fallback import (
@@ -4932,8 +4932,9 @@ def _lower_try(stmt: TpyTry, lc: _LowerCtx, declared: dict[str, TpyType],
     state between sibling blocks); a handler's `as` binding enters its body's
     scope typed like sema binds it, the catch parameter being the binding.
     `finally_terminates` is the AST's last-stmt raise/return fact;
-    `body_terminates` is the frame-wrap fact (try body for finally_only, the
-    whole statement for the throw tier)."""
+    `body_terminates` is the frame-wrap fact -- the try body plus every
+    handler, never the whole statement, so an always-terminating finally
+    can't elide its own fall-through copy."""
     if stmt.tier == "return" and len(stmt.handlers) != 1:
         # _gen_try_return dispatches on handlers[0] alone; sema confines the
         # return tier to a single ReturnException handler -- defensive.
@@ -4954,12 +4955,11 @@ def _lower_try(stmt: TpyTry, lc: _LowerCtx, declared: dict[str, TpyType],
                 and _handler_binding_type(handler, lc.analyzer) is None):
             raise ThirUnsupported(stmt_reject_reason(stmt))
     hoist_decls = _lower_hoist_predecls(hoists, declared, lc, "try.hoist_decl")
+    body_terminates = try_terminates_ignoring_finally(stmt)
     if stmt.tier == "finally_only":
         _witness("try.finally_only")
-        body_terminates = stmts_terminate(stmt.try_body)
     elif stmt.tier == "return":
         _witness("try.return_tier")
-        body_terminates = stmts_terminate([stmt])
     else:
         _witness("try.throw_tier")
         if len(stmt.handlers) > 1:
@@ -4972,7 +4972,6 @@ def _lower_try(stmt: TpyTry, lc: _LowerCtx, declared: dict[str, TpyType],
             _witness("try.else")
         if stmt.finally_body:
             _witness("try.except_finally")
-        body_terminates = stmts_terminate([stmt])
     handlers: list[THIRExceptHandler] = []
     err_opt_cpp: 'str | None' = None
     for h in stmt.handlers:

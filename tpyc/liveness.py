@@ -236,15 +236,7 @@ def stmts_terminate(stmts: list[TpyStmt]) -> bool:
         # the try body.
         if last.finally_body and stmts_terminate(last.finally_body):
             return True
-        # try-finally only (no handlers): try-body terminating is enough.
-        # The finally re-throws on exception.
-        if not last.handlers:
-            return stmts_terminate(last.try_body)
-        # try with handlers: terminates iff try-body terminates AND every
-        # handler body terminates. else-body (Python try-else) runs when
-        # the try body completed normally; if try terminates, else is dead.
-        return (stmts_terminate(last.try_body)
-                and all(stmts_terminate(h.body) for h in last.handlers))
+        return try_terminates_ignoring_finally(last)
     if isinstance(last, TpyWith):
         # A suppressing __exit__ can swallow body-raised exceptions and
         # fall through past the `with`, so body-terminates only implies
@@ -264,6 +256,28 @@ def stmts_terminate(stmts: list[TpyStmt]) -> bool:
         return (isinstance(last.condition, TpyBoolLiteral)
                 and last.condition.value is False)
     return False
+
+
+def try_terminates_ignoring_finally(stmt: TpyTry) -> bool:
+    """Do all paths through the try/handlers terminate, the finally aside?
+
+    Distinct from asking `stmts_terminate` about the whole statement: that
+    folds in the finally's OWN termination, since the finally runs last on
+    every exit path. Codegen's normal-path finally emission needs the
+    opposite question -- can control reach the end of the try/handlers, so
+    that a fall-through copy of the finally is still needed? Answering it
+    with the whole-statement fact elides the fall-through copy whenever the
+    finally always raises/returns, and the finally never runs.
+    """
+    # try-finally only (no handlers): try-body terminating is enough.
+    # The finally re-throws on exception.
+    if not stmt.handlers:
+        return stmts_terminate(stmt.try_body)
+    # try with handlers: terminates iff try-body terminates AND every
+    # handler body terminates. else-body (Python try-else) runs when
+    # the try body completed normally; if try terminates, else is dead.
+    return (stmts_terminate(stmt.try_body)
+            and all(stmts_terminate(h.body) for h in stmt.handlers))
 
 
 def _has_loop_break(stmts: list[TpyStmt]) -> bool:

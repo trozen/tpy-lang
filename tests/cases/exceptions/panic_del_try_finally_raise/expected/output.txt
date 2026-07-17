@@ -1,0 +1,3 @@
+in main
+del try 9
+del finally 9

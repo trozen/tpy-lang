@@ -49,7 +49,7 @@ from ..sema.registration import build_record_self_type
 from ..typesys import view_family_for_type
 from .variant_access import VariantAccess
 from ..diagnostics import SemanticError
-from ..liveness import stmts_terminate
+from ..liveness import stmts_terminate, try_terminates_ignoring_finally
 
 from .context import INDENT, CodeGenError, FinallyContext, LocalCppForm, CppForm, FormValue, escape_cpp_name, qualified_cpp_name, loop_var_binding, is_lvalue_iterable, view_key_target
 from .forms import classify_local_binding, LocalBinding
@@ -4129,10 +4129,10 @@ class StatementGenerator:
             self,
             out: TextIO,
             inner: str,
+            stmt: TpyTry,
             emit_body: Callable[[TextIO, str], None],
             emit_finally: Callable[[TextIO, str], None],
             finally_terminates: bool,
-            body_terminates: bool,
     ) -> None:
         """Emit the unified `try { body } catch (...) { F; throw; } F;` shape.
 
@@ -4144,7 +4144,14 @@ class StatementGenerator:
         is suppressed; when the try body unconditionally terminates on every
         path, the normal-path emission is also skipped (no fall-through to
         worry about).
+
+        That elision is derived here from ``stmt`` rather than passed in: it
+        must describe only what ``emit_body`` emits (the try body + handlers).
+        Asking whether the whole statement terminates folds in the finally's
+        own termination and elides the fall-through copy of an always-raising
+        finally, so it never runs.
         """
+        body_terminates = try_terminates_ignoring_finally(stmt)
         fctx = self._push_finally(emit_finally, finally_terminates)
 
         out.write(f"{inner}try {{\n")
@@ -4206,9 +4213,8 @@ class StatementGenerator:
             self.ctx.declared_persistent_aliases = alias_saved
 
         self._emit_try_with_finally(
-            out, inner, emit_body, emit_finally,
-            finally_terminates=terminates,
-            body_terminates=stmts_terminate(stmt.try_body))
+            out, inner, stmt, emit_body, emit_finally,
+            finally_terminates=terminates)
 
         self.ctx.indent_level -= 1
         out.write(f"{indent}}}\n")
@@ -4290,9 +4296,8 @@ class StatementGenerator:
         if has_finally:
             emit_finally, terminates = self._make_try_finally_emit(stmt)
             self._emit_try_with_finally(
-                out, inner, emit_try_except, emit_finally,
-                finally_terminates=terminates,
-                body_terminates=stmts_terminate([stmt]))
+                out, inner, stmt, emit_try_except, emit_finally,
+                finally_terminates=terminates)
         else:
             emit_try_except(out, inner)
 
@@ -4364,9 +4369,8 @@ class StatementGenerator:
         if has_finally:
             emit_finally, terminates = self._make_try_finally_emit(stmt)
             self._emit_try_with_finally(
-                out, inner, emit_try_except, emit_finally,
-                finally_terminates=terminates,
-                body_terminates=stmts_terminate([stmt]))
+                out, inner, stmt, emit_try_except, emit_finally,
+                finally_terminates=terminates)
         else:
             emit_try_except(out, inner)
 

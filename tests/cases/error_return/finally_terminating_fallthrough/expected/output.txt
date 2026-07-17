@@ -1,0 +1,6 @@
+try body ran, v = 5
+finally ran
+7
+try body ran, v = 5
+finally ran
+caught from finally

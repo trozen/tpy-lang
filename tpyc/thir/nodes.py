@@ -1835,10 +1835,12 @@ class THIRTry(THIRStmt):
     generalization): counters keep advancing per copy exactly like the AST's
     repeated `gen_stmt` runs. `finally_terminates` is the AST's last-stmt
     raise/return fact; `body_terminates` is the terminates fact of whatever
-    the finally frame wraps -- `stmts_terminate(try_body)` for finally_only,
-    `stmts_terminate([the whole statement])` for the throw tier -- driving the
-    normal-path finally elision. The async/resumable lowerings stay
-    gate-rejected."""
+    the finally frame wraps -- `try_terminates_ignoring_finally` in every
+    tier -- driving the normal-path finally elision. It deliberately excludes
+    the finally's own termination: the finally runs last on every exit path,
+    so folding it in (as whole-statement `stmts_terminate` does) would elide
+    the fall-through copy of an always-raising/returning finally and stop it
+    running at all. The async/resumable lowerings stay gate-rejected."""
     tier: str = "finally_only"
     try_body: tuple[THIRStmt, ...] = ()
     handlers: tuple[THIRExceptHandler, ...] = ()
