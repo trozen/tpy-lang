@@ -450,7 +450,7 @@ def _run_cli(is_runner: bool) -> int:
     )
     parser.add_argument(
         "--cxx", default="auto",
-        help="C++ compiler: auto, list, gcc, gcc-14, clang, clang-18, zig, ... (default: auto)",
+        help="C++ compiler: auto, list, gcc, gcc-14, clang, clang-19, zig, ... (default: auto)",
     )
     ccache_group = parser.add_mutually_exclusive_group()
     ccache_group.add_argument("--ccache", action="store_true", default=None,
