@@ -1,0 +1,1 @@
+blocking cross-thread MPSC channel: channel[T](cap) needs an explicit type arg (not valid runtime Python -- a generic function is not subscriptable at runtime).

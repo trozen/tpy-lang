@@ -6497,12 +6497,35 @@ The full marker-layer design lives in `docs/SEND_SYNC_DESIGN.md`; Phase 2
   a blocking condition variable pairing with `Mutex` for producer/consumer
   handoff. `@nocopy`, unconditionally `Send + Sync`. `wait(g)`
   releases the held lock, blocks, and reacquires; `notify_one`/`notify_all`
-  wake waiters. It is the prerequisite for the (in-progress) blocking
-  cross-thread MPSC channel; see `docs/CHANNEL_DESIGN.md`.
+  wake waiters. It is the prerequisite for the blocking cross-thread MPSC
+  channel (below); see `docs/CHANNEL_DESIGN.md`.
+- **Working**: blocking cross-thread MPSC channel (`tplib.channel`) -- the
+  Go-style channel over real OS threads (`tpy.thread.spawn` is the goroutine),
+  distinct from the async SPSC `tpy.channel`. `channel[T: Send](cap)` returns a
+  `(Sender[T], Receiver[T])` pair; `send`/`recv` block the calling thread. State
+  is `Arc[_Chan[T]]` where `_Chan` bundles a `Mutex[_Buf[T]]` fixed-capacity ring
+  with `_not_full`/`_not_empty` `Condvar`s -- so handles are `Send` iff `T` is and
+  cross threads (unlike the `Rc`-backed async channel). `Sender.clone()` mints
+  another producer (multi-producer); `Receiver` is single-consumer, draining via
+  `recv() -> Own[T]` (raises `ChannelClosed` once closed + empty) or a generator
+  `__iter__` (`for v in rx:`). Close is drop-based: dropping a `Sender` = "this
+  producer is done", the last sender's `__del__` auto-closes (takes the lock,
+  flips closed, notifies -- relies on the `__del__` fail-fast + drop-at-`run()`-
+  completion semantics), and any `close()` force-closes. Caveat: the
+  last-`Sender`-drop close fires when the `Sender` goes out of scope (or its
+  owning spawned task completes), NOT when a named `Sender` local is moved into
+  a helper to drop it early -- that defers to the caller's scope end (a filed
+  drop-timing limitation, see `BUGS.md`), so call `close()` explicitly for an
+  early close. `no_cpython` (the
+  `channel[T](cap)` factory needs an explicit type arg that isn't valid runtime
+  Python, and there's no `lib/cpy` threading runtime). `tests/cases/threading/
+  channel_mpsc` (fan-in, `@nocopy` payload forces move-through),
+  `error_channel_mpsc_not_send`, `panic_channel_mpsc_capacity`. See
+  `docs/CHANNEL_DESIGN.md`.
 - **Planned**: closure `spawn`,
-  scoped threads / `TaskGroup`, multi-threaded executor, MPSC channels
-  (deferred -- see `docs/THREADING_DESIGN.md`). `Arc[T]` (V2) is now Working
-  (see the `Arc[T]` / `Weak[T]` entry above).
+  scoped threads / `TaskGroup`, multi-threaded executor; channel MPMC
+  (multi-consumer), `select`, unbuffered/rendezvous (deferred -- see
+  `docs/CHANNEL_DESIGN.md` / `docs/THREADING_DESIGN.md`).
 
 Send/Sync rules for built-in types:
 

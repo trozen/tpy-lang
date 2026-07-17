@@ -138,7 +138,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 |---|---------|--------|--------|---------|
 | G1 | async/await + minimal asyncio | XL | 🚧 v1 + v1.5 (M1-M11) + v2 M1/M2 shipped (epoll reactor + streams); multi-threaded executor + async generators remain -- see [`docs/ASYNC_PROGRESS.md`](ASYNC_PROGRESS.md); design in [`docs/ASYNC_DESIGN.md`](ASYNC_DESIGN.md) | [IX](#asyncawait-or-alternative-model) |
 | G1.5 | asyncio runtime port C++ -> TPy | M | Done -- runtime port complete (Phases 0-4 + v1.2 steps 1-7); the executor, run loop, scheduling, sleep, and type-erasure are pure TPy, leaving only a small `async.hpp` (CancelledError + resume-case helper). See [`docs/ASYNC_PROGRESS.md`](ASYNC_PROGRESS.md#v1x-milestone-asyncio-runtime-tpy-port-must-precede-v15). | [IX](#asyncawait-or-alternative-model) |
-| G2 | Channels | L | 🟡 SPSC done (Send/Sync Phase 4) | [IX](#channels) |
+| G2 | Channels | L | 🟡 async SPSC + blocking cross-thread MPSC done; MPMC/select/try_send deferred | [IX](#channels) |
 | G3 | OS threads (`tpy.thread.spawn` / `JoinHandle`) | L | 🟡 V1 + V2 done -- Runnable-struct `spawn` over `std::thread` (Send-checked task + result, abort-on-unconsumed-drop) and `Arc[T]`/`Weak[T]` atomic shared ownership on a generic `Atomic[T]` primitive; closures/`Mutex`/`RwLock`/scoped/mt-executor deferred. See [`docs/THREADING_DESIGN.md`](THREADING_DESIGN.md) | [IX](#channels) |
 
 Phases are not strictly sequential -- items from different phases can be interleaved
@@ -3431,11 +3431,16 @@ Full design in [`docs/ASYNC_DESIGN.md`](ASYNC_DESIGN.md). Summary:
 Go-style channels for inter-thread communication. Fixed-size channels are a natural
 fit for `@noalloc` contexts.
 
-**Current state**: SPSC `channel[T: Send](cap) -> (Sender[T], Receiver[T])`
-shipped as the first Send/Sync enforcement site (Phase 4) -- intra-process on
-the single-threaded executor, `Rc`-backed FIFO ring, blocking async
-`send`/`recv`, explicit `close()`. See `docs/CHANNEL_DESIGN.md`. MPSC, `try_send`,
-and the Arc-backed cross-thread channel are deferred.
+**Current state**: two channels shipped. (1) Async SPSC
+`tpy.channel.channel[T: Send](cap)` -- the first Send/Sync enforcement site
+(Phase 4), intra-process on the single-threaded executor, `Rc`-backed FIFO
+ring, blocking async `send`/`recv`, explicit `close()`. (2) Blocking
+cross-thread MPSC `tplib.channel.channel[T: Send](cap)` -- the Go-style channel
+over real OS threads (`tpy.thread.spawn`), `Arc[Mutex[ring]]` + two `Condvar`s,
+blocking `send`/`recv`, cloneable multi-producer `Sender`s, single-consumer
+`Receiver` (`recv()` + `for v in rx:`), drop-based + explicit `close()`. See
+`docs/CHANNEL_DESIGN.md`. Deferred: `try_send`, MPMC (multi-consumer), `select`,
+unbuffered/rendezvous, closure-based producers.
 
 ### Thread Safety
 

@@ -1,0 +1,3 @@
+main.py:16: error: Type argument 'SharedCache' does not satisfy bound 'Send' for type parameter 'T' of 'channel'
+SharedCache is not Send
++-- field 'data: Ptr[Buffer]' is not Send (raw pointer, no ownership guarantee)

@@ -1,0 +1,1 @@
+blocking cross-thread MPSC channel: the channel[T](cap) factory needs an explicit type arg (capacity gives no inference for T), and a generic function is not subscriptable at runtime under CPython -- so this is not valid runtime Python. (tpy.thread itself does have a lib/cpy stub; the subscript is the sole blocker.)

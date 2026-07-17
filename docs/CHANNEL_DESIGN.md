@@ -293,7 +293,16 @@ The split API makes MPSC purely additive, with no surface change:
 Existing SPSC programs keep compiling unchanged; only `Sender.clone()`
 becomes newly available.
 
-## Blocking cross-thread MPSC channel (`tplib.channel`) -- DRAFTED, BLOCKED
+## Blocking cross-thread MPSC channel (`tplib.channel`) -- SHIPPED
+
+Shipped in `lib/tpy/tplib/channel.py` (v1). Tests:
+`tests/cases/threading/{channel_mpsc, error_channel_mpsc_not_send,
+panic_channel_mpsc_capacity}`. Structure as designed below:
+`Arc[_Chan[T]]` = `Mutex[_Buf[T]]` fixed-capacity ring + `_not_full` /
+`_not_empty` `Condvar`s; cloneable `Sender.send`/`close()`; single-consumer
+`Receiver.recv()` + generator `__iter__`; drop-based auto-close (last
+`Sender.__del__` closes + notifies). Deferred (v1 scope): MPMC (multi-consumer),
+`select`, unbuffered/rendezvous, closure-based producers.
 
 A separate, *blocking* channel over real OS threads (`tpy.thread.spawn`),
 distinct from the async SPSC channel above. This is the "Go-style channel"
@@ -317,7 +326,11 @@ no M:N scheduler, so each producer is an OS thread; select and unbuffered
   (not `tpy.thread`) because it composes `tplib.arc.Arc`: the low-level `tpy.*`
   layer must not depend on the higher `tplib.*` layer.
 - Close semantics (agreed): drop a `Sender` = "this producer is done"; the last
-  sender's drop auto-closes; any `close()` force-closes channel-wide.
+  sender's drop auto-closes; any `close()` force-closes channel-wide. Caveat:
+  the drop-close fires when a `Sender` goes out of scope (or its owning spawned
+  task completes), NOT when a named `Sender` local is moved into a helper to
+  drop it early -- that defers to the caller's scope end (the drop-timing
+  limitation filed in `BUGS.md`); use `close()` explicitly for an early close.
 - `no_cpython`: `tplib` is a symlinked shared source (no separate cpy stub), and
   the `channel[T](cap)` factory needs an explicit type argument (capacity gives
   no inference for `T`) which is not valid Python -- same as the async channel.
@@ -352,34 +365,37 @@ now blocks re-adding `tplib.channel`.
 
 ## CPython parity
 
-No CPython stub. The channel runs on TPy's single-threaded asyncio
-executor, and there is no `lib/cpy/asyncio` -- so, like every other
-asyncio-*runtime* case (`asyncio_event`, `asyncio_gather_*`), the
-channel's runtime tests carry `no_cpython.txt`. The enforcement test is a
-compile-error case that never reaches the cpy phase, so it needs nothing.
-(An earlier draft proposed an `asyncio.Queue`-backed stub; that was
-dropped to match the established asyncio-runtime no_cpython convention --
-a stub would also need `lib/cpy/asyncio`, which doesn't exist.)
+Neither channel has a CPython stub; the runtime cases are `no_cpython`, the
+compile-error (`T: Send` bound) cases are comp-only and run everywhere:
 
-## Test plan (new `tests/cases/channel/`)
+- **Async `tpy.channel`** runs on TPy's single-threaded asyncio executor, and
+  there is no `lib/cpy/asyncio` -- so its runtime cases carry `no_cpython.txt`,
+  matching every other asyncio-*runtime* case (`asyncio_event`,
+  `asyncio_gather_*`).
+- **Blocking `tplib.channel`** runs on real OS threads. Its runtime cases are
+  `no_cpython` because `channel[T](cap)` needs an explicit type argument
+  (capacity gives no inference for `T`) and a generic function is not
+  subscriptable at runtime under CPython -- so the factory call is not valid
+  runtime Python. (`tpy.thread` itself *does* have a `lib/cpy` stub, so the
+  subscript is the sole blocker, not the threading runtime.) The move-through
+  semantics of `send(Own[T])`/`recv() -> Own[T]` are also a TPy-only surface.
 
-| Case | Kind | Covers |
-|------|------|--------|
-| `error_channel_not_send` | error | `channel[SharedCache](4)` -> bound failure + why-not chain |
-| `channel_async` | happy | producer/consumer via `create_task` + split handles; blocking on full (small `cap`) and on empty; explicit `close()` -> `recv` raises `ChannelClosed`. Reference-type payload **mutated and observed** after the `send`/`recv` boundary (or a `@nocopy` payload) to force the value-vs-reference distinction per CLAUDE.md |
-| `panic_channel_capacity` | panic | `channel[Int32](0)` -> runtime error |
+## Tests
 
-`channel_async` and `panic_channel_capacity` carry `no_cpython.txt` (see
-CPython parity). The `@nocopy Counter` payload on `channel_async` satisfies
-the reference-type happy-test rule -- a silent copy at the `send` / `recv`
-boundary would be a compile error, so the move-through-channel is forced.
-
-## Docs to update on landing
-
-- `docs/SEND_SYNC_DESIGN.md` -- Phase 4 status `Planned` -> `Done` (note v1 scope).
-- `docs/FEATURE_ROADMAP.md` -- G2 (Channels) `Not started` -> in-progress.
-- `docs/LANGUAGE_FEATURES.md` -- new `Channel` entry.
-- `BUGS.md` -- the bare-annotation bound-check gap.
+- Async `tpy.channel`: `tests/cases/channel/{channel_async,
+  channel_hold_both_ends, error_channel_not_send, panic_channel_capacity}`.
+- Blocking `tplib.channel`: `tests/cases/threading/{channel_mpsc,
+  channel_close_recv, channel_close_empty, error_channel_mpsc_not_send,
+  panic_channel_mpsc_capacity}`. `channel_mpsc` is the fan-in happy path (two
+  producer threads, cap-2 ring forcing send-blocking, `@nocopy Item` payload
+  forcing move-through per the CLAUDE.md reference-type rule, drop-based
+  auto-close ending `for item in rx:`); `channel_close_recv` /
+  `channel_close_empty` cover explicit `close()` + the `recv()`/`ChannelClosed`
+  path deterministically. Drop-based auto-close via a bare named `Sender` local
+  passed to a helper is NOT single-threaded-testable today (a filed drop-timing
+  bug defers the move's destructor to the caller's scope end -- see `BUGS.md`);
+  it is covered by `channel_mpsc`, where the `Sender` lives in a spawned task's
+  field and drops at task completion.
 
 ## Cross-references
 
