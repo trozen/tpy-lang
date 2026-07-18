@@ -4132,6 +4132,7 @@ def _record_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyTy
                                  record_ret_ok: bool = False,
                                  storage_ret_ok: bool = False,
                                  coro_factory_ok: bool = False,
+                                 suspend_ok: bool = False,
                                  narrowed: 'set[str] | frozenset[str]' = frozenset()) -> bool:
     """A plain user-record method call `recv.method(args)` -- the
     `_gen_method_call` user-record arm reduced to its pass-through subset. The
@@ -4287,6 +4288,12 @@ def _record_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyTy
             or (coro_factory_ok and ret is not None
                 and is_dyn_protocol(unwrap_readonly(unwrap_ref_type(
                     unwrap_send_sync(ret)))))
+            # `suspend_ok` is the ERASED/BORROWED-await sibling (`await
+            # tx.send(x)`): the whole operand is consumed by the skeleton's
+            # emplace/move wrap -- no value slot exists, so the result TYPE
+            # is vacuous (a concrete coro record like `_Send[T]`, an erased
+            # view -- whatever sema stamped).
+            or (suspend_ok and ret is not None)
             or (stmt_position and (ret is None or is_void_like_type(ret)))):
         return note_detail("method.ret_type")
     return True

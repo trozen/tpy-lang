@@ -107,8 +107,9 @@ See `docs/FEATURE_ROADMAP.md` for bigger tasks and `BUGS.md` for known compiler 
   gates: the
   narrowed-optional-iterable rung (`res.for_narrowed_optional`), non-value
   loop-var element forms (`res.loop_var`), multi-item `async with`
-  (a `_CFGNotYetSupported` upstream), return-in-finally-helper (both
-  shapes, `res.finally_return`).
+  (a `_CFGNotYetSupported` upstream), ASYNC return-in-finally-helper
+  (`res.finally_return` -- the Poll-replay render; the generator flavor's
+  `__finally_stop` pair ROUTED 2026-07-17).
   MatchDispatch ROUTES (2026-07-17): the whole dispatch lowers through the
   sync match tiers with arm BODIES hooked back to the skeleton's BB walker
   (`emit_match_dispatch` + the `match_arm_hook`/`body_key` contract, the
@@ -162,16 +163,73 @@ See `docs/FEATURE_ROADMAP.md` for bigger tasks and `BUGS.md` for known compiler 
   early-return narrowing leaf `if` composes via the BB-local post-if arm
   (`_apply_leaf_post_if` mirrors `_lower_stmts`' arm; the extraction
   emits as part of the leaf via `THIRStmtSeq`). REQUIRED residue, each a
-  named reject: returns inside FINALLY HELPERS (`res.finally_return`,
-  ~6 bodies -- the async Poll-replay / generator `__finally_stop`
-  renders, its own slice); post-if narrowing whose scope would CROSS a
+  named reject: ASYNC returns inside FINALLY HELPERS
+  (`res.finally_return`, the Poll-replay render; the generator flavor
+  routed in the follow-on cell below); post-if narrowing whose scope would CROSS a
   suspension (`res.narrowed_resume` -- the env walk models case-entry
   facts only, so the arm requires a ReturnT/RaiseT-terminated BB);
   post-if narrowing inside finally-helper bodies (same reject -- the
   helper walk has no post-if arm); top-level narrowing ASSERTS in both
   flat walks (`_flat_narrowing_assert` -- the AST emits the persistent
   extraction inline, only `_lower_stmts`' post-assert arm mirrors it;
-  routable later via a post-if-style arm). Flips: async_union_param,
+  routable later via a post-if-style arm).
+  **Generator helper returns + branch frame decls ROUTE (2026-07-17,
+  the two follow-on small cells):** a generator finally-helper bare
+  return renders the fixed `__finally_stop = true; return;` pair via the
+  return hook's third arm (in_generator_finally_helper) -- the ASYNC
+  helper return (Poll-replay) keeps `res.finally_return`; and a
+  branch-nested decl/reassign of a PLAIN frame field lowers via the
+  shared `_lower_frame_field_assign` (position-blind member assign,
+  keyed on `lc.plain_frame_fields`, types registered by the nested
+  pass-1 walk) -- the frame_slot / borrow-tuple / coro-handle families
+  in branch position keep `res.leaf_field_write`. Discovered filing the
+  frame_slot defer pin: a PRE-EXISTING AST codegen crash on
+  branch-declared list-literal locals in resumables (PendingListType in
+  typed_brace_init) -- filed in BUGS.md.
+  **Grind-batch 1 ROUTES (2026-07-18, five admission/arm cells):**
+  method-call await operands under SUSPEND use (`suspend_ok` -- the
+  result type is vacuous, the skeleton's wrap consumes the operand
+  whole; unblocks the reactor/channel family's awaited-method bodies);
+  EXCEPT-ONLY leaf trys (no finally frame -> the sync throw tier renders
+  byte-identically mid-state; finally tiers stay `res.leaf_try`);
+  borrow-FORM btuple write NAME sources (write bare, keyed on the
+  lowered form fact; ternary/call sources reject upstream today at
+  their own gates, and STORAGE sources keep `res.btuple_source`); container yields of frame_slot NAMES (`(*buf)`
+  deref; param/other sources keep `res.yield_type`); value-opt scalar
+  async returns (None -> std::nullopt STORAGE literal, whole value-opt
+  name pass; the borrow-form Optional returns keep `res.return_type`).
+  REQUIRED design cells FILED from the same vetting (each read against
+  its oracle): loop-var binds -- the T*-pointer family
+  (`name = &(*it++)` + arrow reads, 9 bodies) and the frame_slot-emplace
+  family (`x.emplace(unwrap_ref(...))`, 5 bodies, generic-T Iterable;
+  both are advance-seam render wiring, the gate comment's shadow/peel
+  duality applies); finally-tier + return-through-finally leaf trys (the
+  latter interlocks _push_finally with the async return scaffolding);
+  leaf raise-expr (blocks gather_settled -- same machinery as the
+  exceptions raise_expr frontier above); value-tuple async returns (the
+  slot-typed tuple render at the return leaf + the generic val_or_ptr
+  element bridge); pending-view
+  tuple-unpack loop vars (resumable_view_loopvar); the frame_slot
+  tuple-subscript yield read (gen_tuple_own_local,
+  `return std::get<0>((*t));`).
+  **Frame-target tuple UNPACKS then ROUTED (same day, the rvalue-source
+  slice, +7 flips):** `auto __tup_N = <call>;` + per-target
+  `frame_assign` / `frame_emplace` binds with ref/move wraps on the
+  shared THIRTupleUnpack node; pass 1 registers TOP-LEVEL unpack
+  targets from the sema local types. Residue keeps `res.unpack`
+  (sub-tagged per site): name sources (const-ref / one-shot /
+  loop-shadow ladder), pointer-repr source elements (tuple_elem_ref),
+  pointer-local targets, branch FIRST-DECL unpacks (a branch re-unpack
+  of registered targets routes), ref elements, helper position.
+  Follow-ups from the readiness retrospective: (a) `plain_frame_fields`
+  is a subtraction denylist (frame_fields minus the three
+  render-divergent families) -- a FOURTH divergent family added later
+  must subtract itself or the branch-decl arm silently mis-renders it;
+  nothing enforces that today. (b) `_iter_nested_stmts` is a second
+  hand-maintained compound-attribute walker mirroring
+  `_rebinds_narrowed`'s -- share one walker when either next changes
+  (pairs with the alias-rule triple-mirror dedup entry above).
+  Flips (leaf-return cell): async_union_param,
   async_union_method_param, async_bind_recursive_task,
   coro_pointer_optional_param, gen_early_return;
   async_borrowed_rvalue_arg byte-diffs clean but stays marked on an

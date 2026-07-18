@@ -1865,6 +1865,13 @@ class AsyncCoroCodegen:
             if self.ctx.in_generator_resumable_body:
                 return self.statements._make_generator_resumable_return(
                     stmt, indent)
+            if self.ctx.in_generator_finally_helper:
+                # Mirror of the AST return arm's helper branch: set the stop
+                # flag and void-return; __next__() checks __finally_stop
+                # after the helper call (return in finally suppresses any
+                # pending exception).
+                return (f"{indent}this->__finally_stop = true;\n"
+                        f"{indent}return;\n")
             raise CodeGenError(
                 "resumable leaf return outside a resumable body emission")
 

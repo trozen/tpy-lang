@@ -843,6 +843,11 @@ THIR_FACES: frozenset[str] = frozenset({
     "res.return_value",             # ReturnT value render for _make_async_return
     "res.nested_return",            # return in a leaf compound (skeleton hook)
     "res.postif_narrow",            # early-return narrowing leaf if (post-if alias)
+    "res.finally_stop",             # generator helper return (__finally_stop pair)
+    "res.branch_frame_write",       # branch-nested plain frame-field decl
+    "res.leaf_try_except",          # except-only leaf try (sync tiers mid-state)
+    "res.yield_container_borrow",   # container yield of a frame_slot name (*buf)
+    "res.frame_unpack",             # frame-target tuple unpack (rvalue source)
     "res.yield_value",              # generator yield-value render
     "res.frame_slot_write",         # frame_slot local `.emplace()` write (R1c)
     "res.coro_handle_write",        # concrete-coro handle factory-call bind

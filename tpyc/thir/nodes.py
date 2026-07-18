@@ -1678,6 +1678,15 @@ class THIRTupleUnpack(THIRStmt):
         "move"   -> T name = std::move(std::get<i>(tup)); // Own element
         "assign" -> name = std::get<i>(tup);   // reused target, no decl
 
+    Two RESUMABLE-frame modes (targets are frame fields -- assigned, never
+    re-declared; the `wraps` slot carries the per-element unwrap_ref /
+    std::move the AST applies before the write; sema guarantees ref and
+    owned are mutually exclusive per element):
+
+        "frame_assign"  -> name = <wrapped get>;
+        "frame_emplace" -> name.emplace(<wrapped get>);   // frame_slot<T>
+                           // (typed_brace_init is identity for a get-expr)
+
     None at discard slots.
 
     `source_cpp` overrides the ref-bound source name's spelling (a spelled
@@ -1689,6 +1698,9 @@ class THIRTupleUnpack(THIRStmt):
     source_expr: 'THIRExpr | None' = None
     binds: tuple[str | None, ...] = ()
     source_cpp: str | None = None
+    # Per-element pre-write wrap for the frame modes: "" / "move" (the only
+    # produced tokens -- ref elements reject at lowering today).
+    wraps: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)

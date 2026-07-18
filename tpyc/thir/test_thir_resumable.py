@@ -784,12 +784,11 @@ class TestSlicedOutShapes:
                + "def main() -> None:\n    pass\nmain()\n")
         assert _res_fallback(src).get("res.with_manager") == 1
 
-    def test_nested_frame_write_rejects(self):
-        # A name-write nested inside a leaf compound would take the shared
-        # assign arm's target-typed render (`::tpy::BigInt(7)`) where the
-        # AST frame arm renders position-blind (`7`) -- rejected until the
-        # R1 cell threads the frame fact through the shared lowering.
-        # Byte-identity still holds (the body falls back whole).
+    def test_nested_frame_write_routes(self):
+        # A name-write nested inside a leaf compound routes through the
+        # POSITION-BLIND frame arm (`_lower_frame_field_assign` -- never the
+        # sync assign arm's target-typed render), keyed on
+        # lc.plain_frame_fields.
         src = (_PRE
                + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
                + "async def f(n: Int32) -> Int32:\n"
@@ -797,8 +796,9 @@ class TestSlicedOutShapes:
                + "    if n > 1:\n        n = n + 1\n"
                + "    print(n)\n    return n\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        _, fallback = _assert_identical(src)
-        assert fallback.get("resumable:res.leaf_field_write") == 1
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.branch_frame_write", 0) >= 1
+        assert not any(k.startswith("resumable:") for k in fallback)
 
     def test_leaf_return_routes(self):
         # A return nested in a suspension-free leaf compound routes: the
@@ -1153,6 +1153,23 @@ class TestBorrowTupleLocals:
                 + "    val: Int32\n"
                 + "    def __init__(self, v: Int32) -> None:\n"
                 + "        self.val = v\n\n")
+
+    def test_borrow_form_source_writes_bare(self):
+        # A borrow-tuple reseat from another borrow-tuple NAME writes bare
+        # (`u = t;` -- _maybe_wrap_tuple_to_pointer no-ops for a
+        # non-storage source); keyed on the lowered form fact.
+        src = (self._PRE_BOX
+               + "async def f(b: Box) -> Int32:\n"
+               + "    t = (1, b)\n"
+               + "    u = t\n"
+               + "    await asyncio.sleep(0)\n"
+               + "    return u[0]\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.btuple_write", 0) >= 2
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "u = t;" in cpp
 
     def test_coro_borrow_tuple_local_routes(self):
         src = (self._PRE_BOX
@@ -2089,6 +2106,394 @@ class TestSyncLoops:
         assert _res_fallback(src).get("res.loop_var") == 1
 
 
+class TestFrameTupleUnpack:
+    """Frame-target tuple unpacks (`a, b = pair()` across a suspension):
+    a call rvalue source materializes by value (`auto __tup_N = ...`),
+    scalar targets take the plain member assign, frame_slot targets the
+    `.emplace()` (with the per-element move for Own elements)."""
+
+    def test_call_source_scalar_targets_route(self):
+        src = (_PRE
+               + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
+               + "def pair(n: Int32) -> tuple[Int32, Int32]:\n"
+               + "    return (n, n + 1)\n\n"
+               + "async def f(n: Int32) -> Int32:\n"
+               + "    a, b = pair(n)\n"
+               + "    n = await step(n)\n"
+               + "    return a + b + n\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.frame_unpack") == 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "a = std::get<0>(__tup_1);" in cpp
+
+    def test_own_record_element_emplaces(self):
+        src = ("import asyncio\nfrom tpy import Int32, Own\n\n"
+               + "class Box:\n"
+               + "    v: Int32\n"
+               + "    def __init__(self, v: Int32) -> None:\n"
+               + "        self.v = v\n\n"
+               + "def make(n: Int32) -> tuple[Own[Box], Int32]:\n"
+               + "    return (Box(n), n + 1)\n\n"
+               + "async def f(n: Int32) -> Int32:\n"
+               + "    b, m = make(n)\n"
+               + "    await asyncio.sleep(0)\n"
+               + "    return b.v + m\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.frame_unpack") == 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "b.emplace(std::move(std::get<0>(__tup_1)));" in cpp
+
+    def test_discard_target_routes(self):
+        # `a, _ = pair()`: the discard slot emits nothing (binds None).
+        src = (_PRE
+               + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
+               + "def pair(n: Int32) -> tuple[Int32, Int32]:\n"
+               + "    return (n, n + 1)\n\n"
+               + "async def f(n: Int32) -> Int32:\n"
+               + "    a, _ = pair(n)\n"
+               + "    n = await step(n)\n"
+               + "    return a + n\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.frame_unpack") == 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "std::get<1>" not in cpp
+
+    def test_branch_reassign_unpack_routes(self):
+        # A branch RE-unpack of already-registered frame targets routes:
+        # member assigns are position-independent, so the branch position
+        # changes nothing (only branch FIRST-DECL unpacks reject, via the
+        # declared guard).
+        src = (_PRE
+               + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
+               + "def pair(n: Int32) -> tuple[Int32, Int32]:\n"
+               + "    return (n, n + 1)\n\n"
+               + "async def f(n: Int32) -> Int32:\n"
+               + "    a = 0\n"
+               + "    b = 0\n"
+               + "    if n > 2:\n"
+               + "        a, b = pair(n)\n"
+               + "    n = await step(n)\n"
+               + "    return a + b + n\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.frame_unpack") == 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+
+    def test_branch_first_decl_unpack_defers(self):
+        # A nested-in-branch FIRST-DECL unpack stays unregistered by pass 1
+        # -- the arm's declared guard rejects (never a KeyError).
+        src = (_PRE
+               + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
+               + "def pair(n: Int32) -> tuple[Int32, Int32]:\n"
+               + "    return (n, n + 1)\n\n"
+               + "async def f(n: Int32) -> Int32:\n"
+               + "    if n > 2:\n"
+               + "        a, b = pair(n)\n"
+               + "        print(a + b)\n"
+               + "    n = await step(n)\n"
+               + "    return n\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        assert _res_fallback(src).get("res.unpack") == 1
+        _assert_identical(src)
+
+    def test_name_source_defers(self):
+        # A NAME source takes the const-ref / one-shot / loop-shadow bind
+        # ladder -- off-slice. (This fixture's value-tuple LOCAL rejects
+        # first at the local-classification gate; a classifiable tuple
+        # local would reach the arm's own name-source reject.)
+        src = (_PRE
+               + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
+               + "async def f(n: Int32) -> Int32:\n"
+               + "    t = (n, n + 1)\n"
+               + "    a, b = t\n"
+               + "    n = await step(n)\n"
+               + "    return a + b + n\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        assert _res_fallback(src).get("res.local_storage") == 1
+        _assert_identical(src)
+
+
+class TestLeafTryExcept:
+    """Except-only leaf trys (no finally): the sync throw tier renders
+    byte-identically mid-state (no finally frame, no __state /
+    pending-return interaction); finally tiers stay a named rung."""
+
+    def test_except_only_leaf_try_routes(self):
+        src = (_PRE
+               + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
+               + "async def f(n: Int32) -> Int32:\n"
+               + "    n = await step(n)\n"
+               + "    try:\n"
+               + "        n = n // (n - n)\n"
+               + "    except ZeroDivisionError:\n"
+               + "        n = 7\n"
+               + "    return n\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.leaf_try_except") == 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+
+    def test_multi_handler_leaf_try_routes(self):
+        src = (_PRE
+               + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
+               + "async def f(n: Int32) -> Int32:\n"
+               + "    n = await step(n)\n"
+               + "    try:\n"
+               + "        n = n // (n - n)\n"
+               + "    except ZeroDivisionError:\n"
+               + "        n = 7\n"
+               + "    except ValueError:\n"
+               + "        n = 8\n"
+               + "    return n\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.leaf_try_except") == 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+
+    def test_finally_leaf_try_defers(self):
+        src = (_PRE
+               + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
+               + "async def f(n: Int32) -> Int32:\n"
+               + "    n = await step(n)\n"
+               + "    try:\n        print(n)\n"
+               + "    finally:\n        print(0)\n"
+               + "    return n\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        assert _res_fallback(src).get("res.leaf_try") == 1
+        _assert_identical(src)
+
+
+class TestValueOptReturns:
+    """Value-repr Optional[scalar] async returns (`std::optional<T>
+    __tpy_async_ret = ...`): None spells std::nullopt, a value-opt param
+    name passes whole, scalars ride the position-blind tail."""
+
+    def test_scalar_and_none_returns_route(self):
+        src = (_PRE
+               + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
+               + "async def afind(n: Int32) -> Int32 | None:\n"
+               + "    n = await step(n)\n"
+               + "    if n > 2:\n"
+               + "        return n * 3\n"
+               + "    return None\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.return_value", 0) >= 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "std::optional<int32_t> __tpy_async_ret = std::nullopt;" in cpp
+
+    def test_whole_param_pass_blocked_on_param_gate(self):
+        # `return p` mirrors the sync whole-optional pass arm, but the
+        # value-opt PARAM itself still rejects at res.param_type -- the
+        # return-side arm goes live when that param family routes.
+        src = (_PRE
+               + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
+               + "async def relay(p: Int32 | None, n: Int32) -> Int32 | None:\n"
+               + "    n = await step(n)\n"
+               + "    return p\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        assert _res_fallback(src).get("res.param_type") == 1
+        _assert_identical(src)
+
+
+class TestContainerYieldBorrow:
+    """Container yield slots (val_or_ref<C> skeleton signature): a yielded
+    frame_slot LOCAL hands out the deref borrow `(*buf)`; other value
+    shapes at the slot stay a named rung."""
+
+    def test_frame_local_list_yield_routes(self):
+        src = ("from tpy import Int32\nfrom typing import Iterator\n\n"
+               + "def gen(n: Int32) -> Iterator[list[Int32]]:\n"
+               + "    buf = [n]\n"
+               + "    yield buf\n"
+               + "    buf.append(n + 1)\n"
+               + "    yield buf\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.yield_container_borrow", 0) >= 2
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "return (*buf);" in cpp
+
+    def test_frame_local_dict_yield_routes(self):
+        # The dict flavor of the container-slot gate (same deref arm).
+        src = ("from tpy import Int32\nfrom typing import Iterator\n\n"
+               + "def gen(n: Int32) -> Iterator[dict[Int32, Int32]]:\n"
+               + "    d = {n: n}\n"
+               + "    yield d\n"
+               + "    d[n + 1] = n\n"
+               + "    yield d\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.yield_container_borrow", 0) >= 2
+        assert not any(k.startswith("resumable:") for k in fallback)
+
+    def test_param_source_yield_defers(self):
+        # A container yield whose source is a PARAM (not a frame_slot
+        # local) stays rejected -- the param field's bare read is a
+        # different render than the frame-slot deref. (A literal/call
+        # source is sema-rejected outright: "cannot yield local or
+        # temporary as reference", so the name arm's reject is the only
+        # live non-frame-slot shape.)
+        src = ("from tpy import Int32\nfrom typing import Iterator\n\n"
+               + "def gen(xs: list[Int32]) -> Iterator[list[Int32]]:\n"
+               + "    yield xs\n"
+               + "    yield xs\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        assert _res_fallback(src).get("res.yield_type") == 1
+        _assert_identical(src)
+
+
+class TestSuspendMethodOperands:
+    """ERASED/BORROWED await operands that are METHOD calls (`await
+    tx.send(x)`): the whole operand is consumed by the skeleton's
+    emplace/move wrap, so the method gate's result-type check is vacuous
+    under SUSPEND use (`suspend_ok`); receiver/arg/fi gates still apply."""
+
+    def test_channel_method_await_routes(self):
+        src = ("import asyncio\n"
+               + "from tpy import Int32, Own\n"
+               + "from tpy.channel import channel, Sender, Receiver, "
+               + "ChannelClosed\n\n"
+               + "async def producer(tx: Own[Sender[Int32]]) -> None:\n"
+               + "    await tx.send(1)\n"
+               + "    tx.close()\n\n"
+               + "async def consumer(rx: Own[Receiver[Int32]]) -> None:\n"
+               + "    try:\n"
+               + "        v = await rx.recv()\n"
+               + "        print(v)\n"
+               + "    except ChannelClosed:\n"
+               + "        pass\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.suspend_operand", 0) >= 2
+        resumable = {k: v for k, v in fallback.items()
+                     if k.startswith("resumable:")}
+        assert not resumable
+
+    def test_rejecting_arg_still_falls_back(self):
+        # suspend_ok blanks only the RESULT-type check; an off-slice ARG
+        # (an f-string) still rejects the operand, falling back whole.
+        src = ("import asyncio\n"
+               + "from tpy import Int32, Own\n"
+               + "from tpy.channel import channel, Sender, Receiver, "
+               + "ChannelClosed\n\n"
+               + "async def producer(tx: Own[Sender[str]], n: Int32)"
+               + " -> None:\n"
+               + "    await tx.send(f\"v{n}\")\n"
+               + "    tx.close()\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        fallback = _res_fallback(src)
+        assert sum(fallback.values()) >= 1
+        _assert_identical(src)
+
+
+class TestBranchFrameDecls:
+    """Branch-nested decls of plain frame fields: the same position-blind
+    member assign as the top-level leaf decl arm (`_lower_frame_field_assign`
+    shared by both); types register via the nested pass-1 walk."""
+
+    def test_branch_frame_decl_routes(self):
+        # A local first-assigned inside if/else branches and read across a
+        # suspension: both branch decls are plain frame-field assigns
+        # (position-blind member writes), registered by the nested pass-1
+        # walk.
+        src = (_PRE
+               + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
+               + "async def f(n: Int32) -> Int32:\n"
+               + "    if n == 0:\n"
+               + "        r = 100\n"
+               + "    else:\n"
+               + "        r = n + 1\n"
+               + "    n = await step(n)\n"
+               + "    return r + n\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.branch_frame_write", 0) >= 2
+        assert not any(k.startswith("resumable:") for k in fallback)
+
+    def test_branch_frame_reassign_routes(self):
+        # The reassign flavor: a top-level-declared frame field reassigned
+        # inside a leaf branch takes the same member-assign arm.
+        src = (_PRE
+               + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
+               + "async def f(n: Int32) -> Int32:\n"
+               + "    r = 0\n"
+               + "    if n > 2:\n"
+               + "        r = 5\n"
+               + "    n = await step(n)\n"
+               + "    return r + n\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.branch_frame_write", 0) >= 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+
+    def test_match_dispatch_arm_frame_decl_routes(self):
+        # A frame-field decl inside a SUSPENDING match's arm: the arm body
+        # is a BB chain (MatchDispatch hook mode), so the decl is a
+        # top-level BB leaf taking the pre-existing frame arm -- pinning
+        # the match-territory composition (a non-suspending leaf match
+        # still rejects whole via res.leaf_match).
+        src = (_PRE
+               + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
+               + "async def f(n: Int32) -> Int32:\n"
+               + "    match n:\n"
+               + "        case 0:\n"
+               + "            r = 100\n"
+               + "            n = await step(n)\n"
+               + "        case _:\n"
+               + "            r = n + 1\n"
+               + "    return r + n\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.match_dispatch") == 1
+        assert witnesses.get("res.decl_assign", 0) >= 2
+        assert not any(k.startswith("resumable:") for k in fallback)
+
+    def test_async_helper_bare_return_defers(self):
+        # A BARE return in an ASYNC finally helper: rejected by the
+        # is_generator disjunct alone (the value disjunct is False here) --
+        # guards the generator-only admission against a future gate slip.
+        src = (_PRE
+               + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
+               + "async def f(n: Int32) -> None:\n"
+               + "    try:\n        n = await step(n)\n"
+               + "    finally:\n        return\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        assert _res_fallback(src).get("res.finally_return") == 1
+
+    def test_branch_frame_slot_decl_defers(self):
+        # A frame_slot local (owning non-value, `.emplace()` render) first-
+        # declared in a branch stays a named reject -- only the PLAIN
+        # member-assign family routes in branch position. (A list-literal
+        # local in this shape hits a pre-existing AST codegen crash --
+        # PendingListType in typed_brace_init, see BUGS.md -- so the pin
+        # uses a record local.)
+        src = (_PRE
+               + "class Holder:\n"
+               + "    v: Int32\n"
+               + "    def __init__(self, v: Int32) -> None:\n"
+               + "        self.v = v\n\n"
+               + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
+               + "async def f(n: Int32) -> Int32:\n"
+               + "    if n > 2:\n"
+               + "        b = Holder(1)\n"
+               + "    else:\n"
+               + "        b = Holder(2)\n"
+               + "    n = await step(n)\n"
+               + "    return n + b.v\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        assert _res_fallback(src).get("res.leaf_field_write") == 1
+        _assert_identical(src)
+
+
 class TestFinallyHelper:
     """R6-finally-helper: a suspension-free `finally` body (emitted as a
     `__finally_<n>()` member fn) around a suspension. The helper body lowers
@@ -2136,6 +2541,45 @@ class TestFinallyHelper:
                + "    finally:\n        return 0\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
         assert _res_fallback(src).get("res.finally_return") == 1
+
+    def test_generator_helper_return_routes(self):
+        # Generator helper bare return: the fixed `__finally_stop = true;
+        # return;` pair renders via the hook's in_generator_finally_helper
+        # arm (return in finally suppresses any pending exception).
+        src = ("from tpy import Int32\nfrom typing import Iterator\n\n"
+               + "def gen(n: Int32) -> Iterator[Int32]:\n"
+               + "    try:\n"
+               + "        i = 0\n"
+               + "        while i < n:\n"
+               + "            yield i\n"
+               + "            i = i + 1\n"
+               + "    finally:\n"
+               + "        return\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.finally_stop") == 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "this->__finally_stop = true;" in cpp
+
+    def test_generator_helper_nested_return_routes(self):
+        # A return nested in a leaf `if` INSIDE the helper body: the same
+        # dispatch arm fires, emitted inside the THIR-lowered compound.
+        src = ("from tpy import Int32\nfrom typing import Iterator\n\n"
+               + "def gen(n: Int32) -> Iterator[Int32]:\n"
+               + "    try:\n"
+               + "        i = 0\n"
+               + "        while i < n:\n"
+               + "            yield i\n"
+               + "            i = i + 1\n"
+               + "    finally:\n"
+               + "        if n > 3:\n"
+               + "            return\n"
+               + "        print(n)\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.finally_stop") == 1
+        assert not any(k.startswith("resumable:") for k in fallback)
 
     def test_narrowing_if_in_helper_defers(self):
         # A narrowing early-return `if` inside a finally helper: the guard

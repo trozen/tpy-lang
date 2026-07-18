@@ -2448,8 +2448,117 @@ def _lower_resumable_return_value(ret: TpyReturn, lc: '_LowerCtx',
     with the sync return tail (`_wrap_view_owned_return`)."""
     if lc.prescan.ret_char and isinstance(ret.value, TpyStrLiteral):
         raise ThirUnsupported(stmt_reject_reason(ret))
+    ret_vopt = lc.prescan.ret_value_opt
+    if ret_vopt is not None:
+        # Value-repr Optional[scalar] slot (`std::optional<T>
+        # __tpy_async_ret = ...`): None spells the STORAGE literal
+        # (std::nullopt), a value-opt param/local name passes the WHOLE
+        # optional bare (deref-on-narrow stripped, the sync return arm's
+        # rule); other scalar sources ride the position-blind tail (the
+        # optional's converting ctor absorbs the bare scalar). A
+        # coerce-wrapped value-opt name mirrors the sync arm's reject.
+        if isinstance(ret.value, TpyNoneLiteral):
+            return THIRLiteral(result_type=ret_vopt, value=None,
+                               form=Form.STORAGE,
+                               loc=getattr(ret.value, "loc", None))
+        if (isinstance(ret.value, TpyName)
+                and _value_opt_scalar_binding(ret.value.name, lc)):
+            return replace(
+                _lower_expr(ret.value, lc, declared,
+                            allow_whole_optional=True),
+                deref=False)
+        peeled = _peel_coerce(ret.value)
+        if (isinstance(peeled, TpyName)
+                and (peeled.name in lc.prescan.value_opt_params
+                     or peeled.name in lc.value_opt_locals)):
+            note_detail("return.optval_coerced_param")
+            raise ThirUnsupported(stmt_reject_reason(ret))
     return _wrap_view_owned_return(
         _lower_expr(ret.value, lc, declared), lc, getattr(ret, "loc", None))
+
+
+def _lower_frame_tuple_unpack(stmt: TpyTupleUnpack,
+                              scope: '_LowerScope') -> THIRStmt:
+    """Resumable frame-target tuple unpack (the reactor `a, b =
+    socketpair()` slice): a call/field RVALUE source materializes by value
+    (`auto __tup_N = <expr>;`) and each target is a frame field --
+    ASSIGNED, never re-declared (`frame_assign`), or `.emplace()`d for a
+    frame_slot (`frame_emplace`), with the AST's per-element unwrap_ref /
+    std::move wraps. Off-slice shapes keep res.unpack: name sources (the
+    const-ref / one-shot / loop-shadow bind ladder), pointer-repr source
+    elements (the tuple_elem_ref arms), pointer-local / borrow-tuple /
+    coro-handle targets, finally-helper position."""
+    lc = scope.lc
+    declared = scope.declared
+    analyzer = lc.analyzer
+    begin_stmt()
+    if lc.in_finally_helper:
+        note_detail("unpack.helper_position")
+        raise ThirUnsupported("res.unpack")
+    if isinstance(stmt.value, TpyName):
+        note_detail("unpack.name_source")
+        raise ThirUnsupported("res.unpack")
+    source_type = _tuple_unpack_source(
+        stmt, analyzer, declared, scope.admission_pointers(),
+        lc.narrow.narrowed.keys())
+    if (source_type is None
+            or len(source_type.element_types) != len(stmt.targets)
+            or source_type.has_pointer_repr_element()):
+        note_detail("unpack.source_elems")
+        raise ThirUnsupported("res.unpack")
+    binds: list[str | None] = []
+    wraps: list[str] = []
+    for i, name in enumerate(stmt.targets):
+        if name is None:
+            binds.append(None)
+            wraps.append("")
+            continue
+        if (name not in declared
+                or name in lc.pointers
+                or not (name in lc.frame_slots
+                        or name in lc.plain_frame_fields)):
+            note_detail("unpack.target_family")
+            raise ThirUnsupported("res.unpack")
+        if stmt.is_ref[i]:
+            # A ref element implies a borrow-element source, which the
+            # pointer-repr source gate above already excludes -- reject
+            # rather than carry an unwitnessed unwrap_ref wrap.
+            note_detail("unpack.ref_element")
+            raise ThirUnsupported("res.unpack")
+        binds.append("frame_emplace" if name in lc.frame_slots
+                     else "frame_assign")
+        wraps.append("move" if stmt.is_owned[i] else "")
+    value = _lower_expr(
+        stmt.value, lc, declared,
+        use=_ExprUse(result=_ExprResultUse.STORAGE, allow_temps=True,
+                     tuple_source=True),
+        field_prechecked=isinstance(stmt.value, TpyFieldAccess))
+    _witness("res.frame_unpack")
+    return THIRTupleUnpack(
+        source="", targets=tuple(stmt.targets),
+        target_cpps=(None,) * len(stmt.targets),
+        binds=tuple(binds), wraps=tuple(wraps),
+        source_expr=value, loc=getattr(stmt, "loc", None),
+        no_source_comment=getattr(stmt, "no_source_comment", False))
+
+
+def _lower_frame_field_assign(stmt: TpyVarDecl, lc: '_LowerCtx',
+                              declared: dict[str, TpyType]) -> THIRStmt:
+    """Position-blind plain frame-field write (`name = expr;` -- first decl
+    and reassign alike): the AST frame arm renders the init with plain
+    gen_expr (a BigInt literal stays `0`, never the sync arms' target-typed
+    `::tpy::BigInt(0)`); a stale view->owned coerce peels like the sync
+    decl. Shared by the top-level leaf decl arm (`_lower_leaf`) and the
+    branch-nested decl arm below."""
+    init = _peel_stale_view_owned_coerce(stmt.init, declared[stmt.name],
+                                         lc.analyzer)
+    value = _lower_expr(init, lc, declared)
+    _witness("res.decl_assign")
+    return THIRAssign(
+        target=THIRName(name=stmt.name, result_type=declared[stmt.name],
+                        loc=stmt.loc),
+        value=value, loc=stmt.loc,
+        no_source_comment=getattr(stmt, "no_source_comment", False))
 
 
 def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
@@ -2483,7 +2592,17 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             # lower_resumable from lc.nested_returns).
             begin_stmt()
             if lc.in_finally_helper:
-                raise ThirUnsupported("res.finally_return")
+                # Generator helper returns render the fixed __finally_stop
+                # pair (the hook's in_generator_finally_helper arm); an async
+                # helper return (the Poll-replay render) stays a named rung.
+                # Bare-only is exact: sema rejects return-with-value in
+                # generators.
+                if not lc.func.is_generator or stmt.value is not None:
+                    raise ThirUnsupported("res.finally_return")
+                node = THIRResumableReturn(ast_stmt=stmt, value=None, loc=loc)
+                lc.nested_returns.append(node)
+                _witness("res.finally_stop")
+                return node
             if isinstance(stmt.value, TpyAwait):
                 # Unreachable in a LEAF (a suspension splits the compound);
                 # reject rather than assert if a CFG change ever leaks one.
@@ -2495,11 +2614,33 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             _witness("res.nested_return")
             return node
         if scope.in_branch and isinstance(stmt, TpyVarDecl):
+            begin_stmt()
+            # A branch-nested decl of a PLAIN frame field (a local
+            # first-assigned inside an if/match arm that survives a
+            # suspension) is the same position-blind member assign as the
+            # top-level leaf decl arm; the type was registered by
+            # lower_resumable's nested pass-1 walk. The frame_slot /
+            # borrow-tuple / coro-handle families and true C++-block branch
+            # locals keep the named reject.
+            if (stmt.name in lc.plain_frame_fields and stmt.init is not None
+                    and stmt.name in declared
+                    and stmt.name not in lc.narrow.narrowed):
+                _witness("res.branch_frame_write")
+                return _lower_frame_field_assign(stmt, lc, declared)
             raise ThirUnsupported("res.leaf_field_write")
         if isinstance(stmt, TpyTupleUnpack):
-            raise ThirUnsupported("res.unpack")
+            return _lower_frame_tuple_unpack(stmt, scope)
         if isinstance(stmt, TpyTry):
-            raise ThirUnsupported("res.leaf_try")
+            # An except-only leaf try pushes NO finally frame, so its emit
+            # never touches __state / finally_stack / pending-return slots
+            # -- the sync tiers render it byte-identically mid-state; let it
+            # fall through to the sync try arm. A finally tier interlocks
+            # the finally-frame stack with the async return scaffolding
+            # (_push_finally <-> _make_async_return's chain walk) -- a
+            # named rung.
+            if stmt.finally_body:
+                raise ThirUnsupported("res.leaf_try")
+            _witness("res.leaf_try_except")
         if isinstance(stmt, TpyWith):
             raise ThirUnsupported("res.leaf_with")
         if isinstance(stmt, TpyMatch):

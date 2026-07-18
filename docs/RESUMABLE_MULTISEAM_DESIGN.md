@@ -216,10 +216,12 @@ wraps, state transitions). The ONLY places it renders user source are:
     / `_make_generator_resumable_return` via
     `_EmitState.resumable_return_hook` -- scaffolding stays skeleton in
     every position, the value rides the same `return_values` table as
-    ReturnT terminators. Returns inside FINALLY HELPERS stay a named
-    reject (`res.finally_return`, the Poll-replay / __finally_stop
-    renders); an early-return narrowing leaf `if` composes via the
-    BB-local post-if arm (`_apply_leaf_post_if`, THIRStmtSeq).]
+    ReturnT terminators. GENERATOR helper returns route too (the hook's
+    in_generator_finally_helper arm renders the fixed __finally_stop
+    pair); ASYNC helper returns stay a named reject
+    (`res.finally_return`, the Poll-replay render); an early-return
+    narrowing leaf `if` composes via the BB-local post-if arm
+    (`_apply_leaf_post_if`, THIRStmtSeq).]
 
 (g) Resume-narrowing re-establishment (`_emit_resume_narrowings`,
     gen_async.py:3321-3347 -> `statements._emit_isinstance_extractions`):
@@ -267,11 +269,16 @@ Oracle evidence that (a)-(c) are the whole render surface:
   `declared` with `stmt.elem_type` before body leaves lower.
 - Leaf statements inside regions are ordinary leaves; the leaf-mode
   rejects in `_lower_stmt_dispatch` (tpyc/thir/lower/statements.py,
-  the `lc.resumable_leaf_mode` block: `res.leaf_try`, `res.leaf_with`,
-  `res.leaf_match`, `res.unpack`, `res.nested_def`, in-branch
-  `res.leaf_field_write`, `res.finally_return`) continue to bound the
-  slice. (`res.leaf_return` ROUTED 2026-07-17 -- see 2.4 (f); the reason
-  survives only as the unreachable await-valued-leaf-return guard.)
+  the `lc.resumable_leaf_mode` block) continue to bound the slice --
+  now partial per construct (2026-07-18 grind cells): `res.leaf_try`
+  fires only for finally-carrying trys (except-only trys fall through
+  to the sync arm); `res.unpack` only off the rvalue-source frame-target
+  slice; in-branch `res.leaf_field_write` only outside
+  plain_frame_fields; `res.finally_return` only for async helpers
+  (generator bare returns route). `res.leaf_with`, `res.leaf_match`,
+  `res.nested_def` remain whole rejects. (`res.leaf_return` ROUTED
+  2026-07-17 -- see 2.4 (f); the reason survives only as the
+  unreachable await-valued-leaf-return guard.)
 
 ### 2.6 A real design problem: declaration registration vs BB-id order
 

@@ -2996,7 +2996,21 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
                 continue
             get = f"std::get<{i}>({tmp})"
             bind = stmt.binds[i] if stmt.binds else "value"
-            if bind == "assign":
+            if bind in ("frame_assign", "frame_emplace"):
+                # Resumable frame targets: assigned, never re-declared. The
+                # wrap mirrors the AST's per-element is_owned move (ref
+                # elements reject at lowering -- re-add an unwrap_ref wrap
+                # when the name-source ladder cell makes them reachable);
+                # an emplace's typed_brace_init is identity for a get-expr.
+                wrap = stmt.wraps[i] if stmt.wraps else ""
+                if wrap == "move":
+                    get = f"std::move({get})"
+                if bind == "frame_emplace":
+                    out.write(f"{indent}{escape_cpp_name(name)}"
+                              f".emplace({get});\n")
+                else:
+                    out.write(f"{indent}{escape_cpp_name(name)} = {get};\n")
+            elif bind == "assign":
                 # Reused target: the AST's declared-name tail (no decl).
                 out.write(f"{indent}{escape_cpp_name(name)} = {get};\n")
             elif bind == "move":

@@ -325,6 +325,7 @@ class _LowerCtx:
                  "self_receiver", "self_cpp", "self_is_pointer",
                  "record_name", "storage_tuple_locals", "frame_slots",
                  "resumable_leaf_mode", "nested_returns", "in_finally_helper",
+                 "plain_frame_fields",
                  "unhandled_hoists", "narrow",
                  "inline_narrowed", "forbidden_reads", "forbidden_writes",
                  "nested_def_locals", "error_return_cpp")
@@ -433,8 +434,15 @@ class _LowerCtx:
         self.nested_returns: list = []
         # True while lowering a helper-based finally body: a `return` there
         # needs the helper's Poll-replay / __finally_stop renders, a named
-        # rung -- reject instead of routing through the leaf-return hook.
+        # rung -- reject instead of routing through the leaf-return hook
+        # (generator bare returns route; see the dispatch return arm).
         self.in_finally_helper = False
+        # Frame fields whose decl/reassign renders as the plain position-
+        # blind `name = expr;` member assign (frame_fields minus the
+        # frame_slot / borrow-tuple / coro-handle families, whose renders
+        # differ). The branch-nested decl arm keys on it; populated only by
+        # `lower_resumable`, empty for every sync body.
+        self.plain_frame_fields: frozenset = frozenset()
         self.unhandled_hoists = set(
             analyzer.function_hoisted_vars.get(id(func), ()))
         # F3 storage-tuple alias locals (`auto&& t = <storage tuple field>`): a read

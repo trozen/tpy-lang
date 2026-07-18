@@ -3151,6 +3151,7 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                                        _ExprResultUse.RECEIVER)),
                     storage_ret_ok=storage_ret_ok,
                     coro_factory_ok=use.coro_factory,
+                    suspend_ok=(result_use is _ExprResultUse.SUSPEND),
                     narrowed=frozenset(lc.narrow.narrowed))
             if not shape_ok:
                 raise ThirUnsupported("expr.method_call")
