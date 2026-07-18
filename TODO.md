@@ -201,11 +201,54 @@ See `docs/FEATURE_ROADMAP.md` for bigger tasks and `BUGS.md` for known compiler 
   async returns (None -> std::nullopt STORAGE literal, whole value-opt
   name pass; the borrow-form Optional returns keep `res.return_type`).
   REQUIRED design cells FILED from the same vetting (each read against
-  its oracle): loop-var binds -- the T*-pointer family
-  (`name = &(*it++)` + arrow reads, 9 bodies) and the frame_slot-emplace
-  family (`x.emplace(unwrap_ref(...))`, 5 bodies, generic-T Iterable;
-  both are advance-seam render wiring, the gate comment's shadow/peel
-  duality applies); finally-tier + return-through-finally leaf trys (the
+  its oracle): loop-var binds -- ROUTED (2026-07-18, dial +1
+  gen_resumable_for_nonvalue, resumable fallback 224 -> 216): both
+  families admitted keyed on the skeleton's for-prescan classification
+  (pointer_form_loop_var -> lc.pointers with a value-yield deref arm;
+  other non-value -> frame_slots); the binds were already skeleton
+  (`_for_advance_parts`), so no new seam was needed, and the old gate
+  comment's shadow/post-loop-peel duality was rot (post-loop reads are
+  the same frame field, probe-verified byte-identical). Residue keeps
+  `res.loop_var`: tuple-unpack loops and dict_items proxy loop vars
+  (the latter first-reject on the items-VIEW frame temp,
+  res.local_storage).
+  **Family-admission batch then ROUTED (same day, two parallel oracle
+  drills over local_storage 47 + param families 35; fallback 215 ->
+  197, no flips -- every target case carries a next-blocker):** value
+  tuple locals + VALUE-tuple loop holders (name-source ref-bind unpack
+  arm), Optional-ptr locals, optional-view / value-opt-scalar / Fn /
+  value-union / Own[container] params. REQUIRED design cells FILED
+  from those drills (each verified against its oracle):
+  (a) single-assign pointer-alias binds (`a = &(items[0]);` /
+  `&(o.inner)`, const flavor from const_pointer_alias_locals; 3 bodies,
+  3 flips) -- needs the addr-of-lvalue bind arm + routing
+  pointer_aliases members into lc.pointers;
+  (b) tuple-unpack pointer-alias targets
+  (`a = &(unwrap_ref(tuple_elem_ref(std::get<i>(__tup_N))));` from
+  call/name/literal sources, incl. the dict_items proxy flavor and the
+  `optional_to_ptr(std::get<i>)` element bridge; ~8 bodies);
+  (c) await-lift tuple-unpack move-outs (13 bodies, the streams/
+  start_server family: `auto&& __tup = (*__await_lift_N);` +
+  `c.emplace(std::move(std::get<0>(__tup)));` + Own[record] frame_slot
+  admission);
+  (d) erased Own[dyn-protocol] handle locals (2 bodies -- the same
+  `res.coro_handle_source` make_adapter-write residue filed above under
+  the await_prebuilt entry, now with oracle renders: `unique_ptr` field,
+  `.get()` await source) and the Own[Cancellable] PARAM twin (2 bodies,
+  gated-unverified in _payload_reject);
+  (e) owning Optional[Own[record]] locals (bare `std::optional<Box>`
+  with .has_value()/(*name) peel; 1 body);
+  (f) small next-blocker rungs surfaced by the batch: None-literal
+  init at pointer slots (expr.none_literal), tuple-literal init at
+  value-tuple fields (expr.tuple_literal), Own-container subscript
+  receivers (subscript.recv_type) + name.own_read, the narrowed-
+  optional iterable loop (res.for_narrowed_optional, 2 bodies), the
+  whole-var value-tuple items bind (res.loop_var), match-on-optional
+  subjects (res.match_strategy), while-assert narrowed resume
+  (res.narrowed_resume residue), and the await_operand_shape leaf
+  renders (gather varargs, q.join, self.evt, global-future, stdlib
+  method operands; 6 bodies -- each its own render arm).
+  Also finally-tier + return-through-finally leaf trys (the
   latter interlocks _push_finally with the async return scaffolding);
   leaf raise-expr (blocks gather_settled -- same machinery as the
   exceptions raise_expr frontier above); value-tuple async returns (the
@@ -224,10 +267,12 @@ See `docs/FEATURE_ROADMAP.md` for bigger tasks and `BUGS.md` for known compiler 
   pointer-local targets, branch FIRST-DECL unpacks (a branch re-unpack
   of registered targets routes), ref elements, helper position.
   Follow-ups from the readiness retrospective: (a) `plain_frame_fields`
-  is a subtraction denylist (frame_fields minus the three
-  render-divergent families) -- a FOURTH divergent family added later
-  must subtract itself or the branch-decl arm silently mis-renders it;
-  nothing enforces that today. (b) `_iter_nested_stmts` is a second
+  is a subtraction denylist (frame_fields minus the render-divergent
+  families) -- a NEW divergent family added later must subtract itself
+  or the branch-decl arm silently mis-renders it; nothing enforces that
+  today. The predicted fourth family already landed (pointer-form loop
+  vars, the loop-var cell, correctly subtracted); the hazard stands for
+  the fifth. (b) `_iter_nested_stmts` is a second
   hand-maintained compound-attribute walker mirroring
   `_rebinds_narrowed`'s -- share one walker when either next changes
   (pairs with the alias-rule triple-mirror dedup entry above).

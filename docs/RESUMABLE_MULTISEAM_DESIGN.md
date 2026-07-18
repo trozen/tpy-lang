@@ -470,7 +470,10 @@ churn in every cell.
   pass 1. Slice: value-scalar/str/bytes loop vars
   (`pointer_form_loop_var` / `borrow_tuple_loop_var` / frame_slot binds
   are skeleton strings but imply non-value element reads in the body --
-  admit only what `_res_local_ok` already covers); REJECT
+  admit only what `_res_local_ok` already covers) [slice later WIDENED,
+  2026-07-18: pointer-form and frame_slot loop vars now admit -- see the
+  deferred-list ROUTED note below; `borrow_tuple_loop_var` keeps the
+  reject]; REJECT
   narrowed-optional iterables (the :3702 unwrap) as a named rung.
   Depends on cells 0-1 (loop bodies commonly contain try or break-forced
   regions).
@@ -494,8 +497,12 @@ Explicitly DEFERRED (kept as named gates, out of this wave):
 its own seam design); `res.await_prebuilt` [ROUTED 2026-07-17: the
 suspension is poll-in-place skeleton and the binding a factory-call-only
 emplace; the residue is `res.coro_handle_source` -- see TODO.md];
-non-value loop-var element
-forms; the narrowed-optional-iterable rung; generator-shape
+non-value loop-var element forms [ROUTED 2026-07-18: pointer-form loop
+vars ride `lc.pointers` and other non-value loop vars the frame_slot
+classification, keyed on the for-prescan; the binds were skeleton all
+along, and record yields of the routed names took the deref arm with
+them -- the residue is tuple-unpack loops and dict_items proxy loop
+vars, see TODO.md]; the narrowed-optional-iterable rung; generator-shape
 return-in-finally-helper; multi-item `async with` (already a
 `_CFGNotYetSupported`, resumable_cfg.py:1490-1495).
 

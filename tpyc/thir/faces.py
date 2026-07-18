@@ -860,6 +860,10 @@ THIR_FACES: frozenset[str] = frozenset({
     "res.leaf_try_except",          # except-only leaf try (sync tiers mid-state)
     "res.yield_container_borrow",   # container yield of a frame_slot name (*buf)
     "res.frame_unpack",             # frame-target tuple unpack (rvalue source)
+    "res.loop_ptr_bind",            # pointer-form loop var admitted (T* reads)
+    "res.loop_slot_bind",           # frame_slot loop var admitted ((*x) reads)
+    "res.loop_tuple_bind",          # value-tuple holder loop admitted
+    "res.yield_record_borrow",      # record yield of a routed loop-var name
     "res.yield_value",              # generator yield-value render
     "res.frame_slot_write",         # frame_slot local `.emplace()` write (R1c)
     "res.coro_handle_write",        # concrete-coro handle factory-call bind

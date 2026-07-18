@@ -2587,12 +2587,25 @@ def _lower_frame_tuple_unpack(stmt: TpyTupleUnpack,
     if lc.in_finally_helper:
         note_detail("unpack.helper_position")
         raise ThirUnsupported("res.unpack")
+    src_name: 'str | None' = None
     if isinstance(stmt.value, TpyName):
-        note_detail("unpack.name_source")
-        raise ThirUnsupported("res.unpack")
-    source_type = _tuple_unpack_source(
-        stmt, analyzer, declared, scope.admission_pointers(),
-        lc.narrow.narrowed.keys())
+        # A VALUE-tuple frame holder (the `a, b = __for_tup_N` loop head)
+        # ref-binds as the name source (`const auto& __tup_N = <name>;`,
+        # the node's source_expr=None form). The general name-source
+        # ladder (const-ref / one-shot / loop-shadow) keeps the reject.
+        if stmt.value.name not in lc.value_tuple_frame_locals:
+            note_detail("unpack.name_source")
+            raise ThirUnsupported("res.unpack")
+        src_name = stmt.value.name
+        # Re-verify the registered type against the same family predicate
+        # that admitted the local: `declared` is sourced independently
+        # (the advance's elem type), so a drift rejects here instead of
+        # rendering off a mismatched element list.
+        source_type = _value_tuple(declared.get(src_name), analyzer)
+    else:
+        source_type = _tuple_unpack_source(
+            stmt, analyzer, declared, scope.admission_pointers(),
+            lc.narrow.narrowed.keys())
     if (source_type is None
             or len(source_type.element_types) != len(stmt.targets)
             or source_type.has_pointer_repr_element()):
@@ -2620,6 +2633,14 @@ def _lower_frame_tuple_unpack(stmt: TpyTupleUnpack,
         binds.append("frame_emplace" if name in lc.frame_slots
                      else "frame_assign")
         wraps.append("move" if stmt.is_owned[i] else "")
+    if src_name is not None:
+        _witness("res.frame_unpack")
+        return THIRTupleUnpack(
+            source=src_name, targets=tuple(stmt.targets),
+            target_cpps=(None,) * len(stmt.targets),
+            binds=tuple(binds), wraps=tuple(wraps),
+            source_expr=None, loc=getattr(stmt, "loc", None),
+            no_source_comment=getattr(stmt, "no_source_comment", False))
     value = _lower_expr(
         stmt.value, lc, declared,
         use=_ExprUse(result=_ExprResultUse.STORAGE, allow_temps=True,

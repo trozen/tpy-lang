@@ -681,8 +681,10 @@ class TestSlicedOutShapes:
         assert _res_fallback(src).get("res.param_type") == 1
 
     def test_optional_local_still_defers(self):
-        # A pointer-repr Optional[record] local is not a frame_slot (it has
-        # its own T*/nullptr form) -- still deferred (res.local_storage).
+        # A pointer-repr Optional[record] local now CLASSIFIES (`P* o`
+        # field via lc.pointers), but its None-literal decl init still
+        # defers (expr.none_literal -- the nullptr render at a pointer
+        # slot is its own rung).
         src = (_PRE
                + "class R:\n"
                + "    v: Int32\n"
@@ -695,7 +697,7 @@ class TestSlicedOutShapes:
                + "        total = await step(total)\n"
                + "    return total\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        assert _res_fallback(src).get("res.local_storage") == 1
+        assert _res_fallback(src).get("expr.none_literal") == 1
 
     def test_lowering_reject_falls_back_after_await(self):
         src = (_PRE
@@ -2091,9 +2093,9 @@ class TestSyncLoops:
         assert witnesses.get("res.try_region") == 1
         assert not any(k.startswith("resumable:") for k in fallback)
 
-    def test_record_loop_var_rejects(self):
-        # A non-value (record) loop var binds a skeleton pointer/shadow form
-        # the leaf reads can't mirror yet -- res.loop_var.
+    def test_record_loop_var_routes(self):
+        # A1: pointer-form loop var (begin_end over list[R]) -- the skeleton
+        # binds `r = &(*it++);`, reads ride lc.pointers (`r->v`).
         src = (_PRE
                + "class R:\n    v: Int32\n"
                + "    def __init__(self, v: Int32) -> None:\n        self.v = v\n\n"
@@ -2103,7 +2105,150 @@ class TestSyncLoops:
                + "    for r in xs:\n        total = await step(r.v)\n"
                + "    return total\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.loop_ptr_bind") == 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "r = &(*((*__for_it_0))++);" in cpp
+        assert "__sub_0.emplace(r->v);" in cpp
+
+    def test_postloop_pointer_read_routes(self):
+        # Reads after the loop hit the same `T*` frame field -- no shadow /
+        # post-loop peel duality on the resumable path.
+        src = (_PRE
+               + "class R:\n    v: Int32\n"
+               + "    def __init__(self, v: Int32) -> None:\n        self.v = v\n\n"
+               + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
+               + "async def f(n: Int32) -> Int32:\n"
+               + "    xs = [R(n)]\n    total = 0\n"
+               + "    for r in xs:\n        total = await step(r.v)\n"
+               + "    return total + r.v\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        _witnesses, fallback = _assert_identical(src)
+        assert not any(k.startswith("resumable:") for k in fallback)
+
+    def test_generic_slot_loop_var_routes(self):
+        # A2: a generic-T loop var over an Iterable[T] param is a
+        # frame_slot (iter_next strategy): the skeleton binds
+        # `x.emplace(unwrap_ref(*r))`, reads render `(*x)`.
+        src = ("from typing import Iterator, Iterable\n"
+               + "from tpy import Int32\n\n"
+               + "def take[T](it: Iterable[T], n: Int32) -> Iterator[T]:\n"
+               + "    c: Int32 = 0\n"
+               + "    for x in it:\n"
+               + "        if c >= n:\n            break\n"
+               + "        yield x\n"
+               + "        c += 1\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.loop_slot_bind") == 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, hpp, _cpp = _gen(src, thir=True)
+        assert "x.emplace(::tpy::unwrap_ref(*(*__for_r_0)));" in hpp
+        assert "return (*x);" in hpp
+
+    def test_pointer_loop_var_value_yield_derefs(self):
+        # An Iterator[T] param loop var is pointer-form (`T* x`); yielding it
+        # is a VALUE use, so the render derefs (`return (*x);`) where arrow /
+        # pass positions stay bare.
+        src = ("from typing import Iterator\n"
+               + "from tpy import Int32\n\n"
+               + "def take_iter[T](it: Iterator[T], n: Int32) -> Iterator[T]:\n"
+               + "    c: Int32 = 0\n"
+               + "    for x in it:\n"
+               + "        if c >= n:\n            break\n"
+               + "        yield x\n"
+               + "        c += 1\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.loop_ptr_bind") == 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, hpp, _cpp = _gen(src, thir=True)
+        assert "return (*x);" in hpp
+
+    def test_tuple_unpack_loop_defers(self):
+        # A non-value tuple-unpack loop keeps the reject: the element
+        # unpack renders are their own rung.
+        src = (_PRE
+               + "class R:\n    v: Int32\n"
+               + "    def __init__(self, v: Int32) -> None:\n        self.v = v\n\n"
+               + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
+               + "async def f(n: Int32) -> Int32:\n"
+               + "    xs = [(n, R(n))]\n    total = 0\n"
+               + "    for i, r in xs:\n        total = await step(r.v)\n"
+               + "    return total\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
         assert _res_fallback(src).get("res.loop_var") == 1
+
+    def test_dict_items_loop_var_defers(self):
+        # A value-element dict_items loop var (`kv` over dict[int, int])
+        # now classifies as a value-tuple local, reaches the advance, and
+        # defers there (res.loop_var): the whole-var items bind is not an
+        # admitted family (only unpack HOLDERS take the value-tuple bind).
+        src = (_PRE
+               + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
+               + "async def f(n: Int32) -> Int32:\n"
+               + "    d = {1: 2}\n    total = 0\n"
+               + "    for kv in d.items():\n        total = await step(kv[1])\n"
+               + "    return total\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        assert _res_fallback(src).get("res.loop_var") == 1
+
+    def test_dict_items_nonvalue_loop_var_defers(self):
+        # A proxy-ref tuple loop var over dict[int, Record].items() reaches
+        # the advance and takes its borrow-tuple reject (res.loop_var): the
+        # element reads/unpacks are their own rung.
+        src = (_PRE
+               + "class Box:\n    v: Int32\n"
+               + "    def __init__(self, v: Int32) -> None:\n"
+               + "        self.v = v\n\n"
+               + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
+               + "async def f(n: Int32) -> Int32:\n"
+               + "    d = {n: Box(n)}\n    total = 0\n"
+               + "    for kv in d.items():\n        total = await step(kv[0])\n"
+               + "    return total\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        assert _res_fallback(src).get("res.loop_var") == 1
+
+    def test_value_tuple_loop_head_unpack_routes(self):
+        # A VALUE-tuple holder loop (`for a, b in xs`): the holder binds
+        # bare at the advance and the head unpack ref-binds it
+        # (`const auto& __tup_N = __for_tup_0;` + frame_assign targets).
+        src = (_PRE
+               + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
+               + "async def f(n: Int32) -> Int32:\n"
+               + "    xs = [(n, n + 1)]\n"
+               + "    total = 0\n"
+               + "    for a, b in xs:\n"
+               + "        total = await step(a + b)\n"
+               + "    return total\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.loop_tuple_bind") == 1
+        assert witnesses.get("res.frame_unpack") == 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "const auto& __tup_1 = __for_tup_0;" in cpp
+        assert "a = std::get<0>(__tup_1);" in cpp
+
+    def test_await_pointer_loop_var_routes(self):
+        # `await t` where t is a pointer-form loop var: the SUSPEND
+        # position consumes the pointer BARE (`__sub_0 = t;`) -- the
+        # skeleton's already-pointer wrap; no re-taken address.
+        src = ("import asyncio\nfrom tpy import Int32\n"
+               + "from asyncio import Task\n\n"
+               + "async def work(n: Int32) -> Int32:\n    return n\n\n"
+               + "async def f(tasks: list[Task[Int32]]) -> Int32:\n"
+               + "    total = 0\n"
+               + "    for t in tasks:\n        total += await t\n"
+               + "    return total\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.loop_ptr_bind") == 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "__sub_0 = t;" in cpp
+        assert "t = &(*((*__for_it_0))++);" in cpp
 
 
 class TestFrameTupleUnpack:
@@ -2202,11 +2347,12 @@ class TestFrameTupleUnpack:
         assert _res_fallback(src).get("res.unpack") == 1
         _assert_identical(src)
 
-    def test_name_source_defers(self):
-        # A NAME source takes the const-ref / one-shot / loop-shadow bind
-        # ladder -- off-slice. (This fixture's value-tuple LOCAL rejects
-        # first at the local-classification gate; a classifiable tuple
-        # local would reach the arm's own name-source reject.)
+    def test_value_tuple_name_source_defers_on_literal_init(self):
+        # A VALUE-tuple frame local now classifies (bare field) and its
+        # name-source unpack is in-slice -- but this fixture's
+        # tuple-LITERAL init to the plain field rejects first
+        # (expr.tuple_literal). The routed name-source shape is the
+        # for-head holder (TestSyncLoops covers it).
         src = (_PRE
                + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
                + "async def f(n: Int32) -> Int32:\n"
@@ -2215,7 +2361,7 @@ class TestFrameTupleUnpack:
                + "    n = await step(n)\n"
                + "    return a + b + n\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        assert _res_fallback(src).get("res.local_storage") == 1
+        assert _res_fallback(src).get("expr.tuple_literal") == 1
         _assert_identical(src)
 
 
@@ -2289,18 +2435,34 @@ class TestValueOptReturns:
         _, _hpp, cpp = _gen(src, thir=True)
         assert "std::optional<int32_t> __tpy_async_ret = std::nullopt;" in cpp
 
-    def test_whole_param_pass_blocked_on_param_gate(self):
-        # `return p` mirrors the sync whole-optional pass arm, but the
-        # value-opt PARAM itself still rejects at res.param_type -- the
-        # return-side arm goes live when that param family routes.
+    def test_whole_param_pass_routes(self):
+        # The value-opt param family now admits, so `return p` takes the
+        # whole-optional name pass end-to-end.
         src = (_PRE
                + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
                + "async def relay(p: Int32 | None, n: Int32) -> Int32 | None:\n"
                + "    n = await step(n)\n"
                + "    return p\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        assert _res_fallback(src).get("res.param_type") == 1
-        _assert_identical(src)
+        _witnesses, fallback = _assert_identical(src)
+        assert not any(k.startswith("resumable:") for k in fallback)
+
+    def test_narrowed_param_read_routes(self):
+        # A narrowed READ of the value-opt-scalar param through the frame
+        # (`p.has_value()` test + `(*p)` deref) -- the deref arm of the
+        # newly-admitted param family, not just the whole-name pass.
+        src = (_PRE
+               + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
+               + "async def f(p: Int32 | None, n: Int32) -> Int32:\n"
+               + "    n = await step(n)\n"
+               + "    if p is not None:\n        return p + n\n"
+               + "    return n\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        _witnesses, fallback = _assert_identical(src)
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "(p.has_value())" in cpp
+        assert "(*p)" in cpp
 
 
 class TestContainerYieldBorrow:
@@ -2348,6 +2510,143 @@ class TestContainerYieldBorrow:
                + "    yield xs\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
         assert _res_fallback(src).get("res.yield_type") == 1
+        _assert_identical(src)
+
+    def test_record_loop_var_yield_routes(self):
+        # Record yield slot: a pointer-form loop var name hands out the
+        # deref borrow (`return (*b);`) -- the record sibling of the
+        # container arm, unlocked by the loop-var bind admission.
+        src = ("from tpy import Int32\nfrom typing import Iterator\n\n"
+               + "class Box:\n    v: Int32\n"
+               + "    def __init__(self, v: Int32) -> None:\n"
+               + "        self.v = v\n\n"
+               + "def twice(xs: list[Box]) -> Iterator[Box]:\n"
+               + "    for b in xs:\n"
+               + "        yield b\n"
+               + "        yield b\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.yield_record_borrow", 0) >= 2
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "return (*b);" in cpp
+
+    def test_record_param_source_yield_defers(self):
+        # A record yield of a PARAM name (bare `Record&` field read, and
+        # possibly narrowed if Optional) stays rejected -- only the routed
+        # loop-var / frame_slot names take the deref arm.
+        src = ("from tpy import Int32\nfrom typing import Iterator\n\n"
+               + "class Box:\n    v: Int32\n"
+               + "    def __init__(self, v: Int32) -> None:\n"
+               + "        self.v = v\n\n"
+               + "def rep(b: Box) -> Iterator[Box]:\n"
+               + "    yield b\n"
+               + "    yield b\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        assert _res_fallback(src).get("res.yield_type") == 1
+        _assert_identical(src)
+
+
+class TestFrameFamilyAdmissions:
+    """The local/param family admissions (value tuples, Optional-ptr
+    locals, optional-view / Fn / value-union / Own-container params):
+    each routes where its read machinery exists and defers with the
+    honest next-blocker where it does not."""
+
+    def test_value_tuple_local_await_bind_routes(self):
+        # E: a value-tuple local bound from an await result (skeleton
+        # bind) reads via bare std::get.
+        src = (_PRE
+               + "async def pair(n: Int32) -> tuple[Int32, Int32]:\n"
+               + "    return (n, n + 1)\n\n"
+               + "async def f(n: Int32) -> Int32:\n"
+               + "    p = await pair(n)\n"
+               + "    return p[0] + p[1]\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        fb = _res_fallback(src)
+        # The PRODUCER (pair) keeps the value-tuple return rung; the
+        # consumer routes.
+        assert fb == {"res.return_type": 1}
+        _assert_identical(src)
+        _, hpp, cpp = _gen(src, thir=True)
+        assert "std::get<0>(p)" in hpp + cpp
+
+    def test_optional_ptr_local_await_bind_routes(self):
+        # C: a pointer-repr Optional local bound from an await result
+        # (skeleton bind) reads via lc.pointers (null test + arrow); the
+        # PRODUCER body keeps res.return_type (Optional-record returns are
+        # their own rung).
+        src = (_PRE
+               + "class Box:\n    val: Int32\n"
+               + "    def __init__(self, v: Int32) -> None:\n"
+               + "        self.val = v\n\n"
+               + "async def get(b: Box, n: Int32) -> Box | None:\n"
+               + "    if n > 0:\n        return b\n"
+               + "    return None\n\n"
+               + "async def f(b: Box, n: Int32) -> Int32:\n"
+               + "    t = await get(b, n)\n"
+               + "    if t is not None:\n        return t.val\n"
+               + "    return -1\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        fb = _res_fallback(src)
+        assert fb.get("res.return_type") == 1  # get only; f routes
+        assert len(fb) == 1
+        _assert_identical(src)
+
+    def test_optional_view_param_routes(self):
+        # F1: an Optional[str] param captures owned (skeleton OWNED_COPY);
+        # None-test + narrowed reads ride the value-opt-view arms.
+        src = ("from typing import Optional\nfrom tpy import Int32\n\n"
+               + "async def str_len(s: Optional[str]) -> Int32:\n"
+               + "    if s is None:\n        return -1\n"
+               + "    return len(s)\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        _witnesses, fallback = _assert_identical(src)
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "(!s.has_value())" in cpp
+        assert "::tpy::__len__((*s))" in cpp
+
+    def test_fn_param_routes(self):
+        # F2: an Fn param is a templated frame field; the leaf read is the
+        # bare call `pred(x)`.
+        src = ("from typing import Iterator\nfrom tpy import Fn, Int32\n\n"
+               + "def keep(pred: Fn[[Int32], bool], xs: list[Int32])"
+               + " -> Iterator[Int32]:\n"
+               + "    for x in xs:\n"
+               + "        if pred(x):\n            yield x\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        _witnesses, fallback = _assert_identical(src)
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, hpp, cpp = _gen(src, thir=True)
+        assert "if (pred(x))" in hpp + cpp
+
+    def test_value_union_param_routes(self):
+        # F3: a value-union param (`int | str` -> moved std::variant
+        # capture); the narrowed read rides the entry-narrowings
+        # std::get/__a alias machinery.
+        src = ("from typing import Iterator\nfrom tpy import Int32\n\n"
+               + "def gen(a: int | str) -> Iterator[int]:\n"
+               + "    if isinstance(a, int):\n        yield a\n"
+               + "    yield 0\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        _witnesses, fallback = _assert_identical(src)
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, hpp, cpp = _gen(src, thir=True)
+        assert "std::holds_alternative<::tpy::BigInt>(a)" in hpp + cpp
+
+    def test_own_container_param_admits_reads_defer(self):
+        # F6: an Own[list] param admits (moved value-container field);
+        # its subscript READ still defers (subscript.recv_type) -- the
+        # honest next-blocker, not res.param_type.
+        src = ("from typing import Iterator\nfrom tpy import Int32, Own\n\n"
+               + "def gen_own(xs: Own[list[Int32]]) -> Iterator[Int32]:\n"
+               + "    yield xs[0]\n"
+               + "    yield len(xs)\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        fb = _res_fallback(src)
+        assert "res.param_type" not in fb
+        assert fb.get("subscript.recv_type") == 1
         _assert_identical(src)
 
 
