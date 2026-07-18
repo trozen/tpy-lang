@@ -320,7 +320,8 @@ class _LowerCtx:
     __slots__ = ("analyzer", "func", "prescan", "render_type",
                  "render_type_stored", "render_resolve", "tparam_bounds",
                  "const_locals",
-                 "pointers", "rebind_slot_locals", "ref_alias_locals",
+                 "pointers", "rebind_slot_locals", "dyn_protocol_locals",
+                 "ref_alias_locals",
                  "value_opt_locals", "value_opt_view_locals", "movable_locals",
                  "self_receiver", "self_cpp", "self_is_pointer",
                  "record_name", "storage_tuple_locals", "frame_slots",
@@ -393,6 +394,9 @@ class _LowerCtx:
         # F2d rebind-slot subset of `pointers`: their reseats lower as rvalue
         # rebinds (`p = &*(__slot_N = ...)`), not lvalue `&(...)` reseats.
         self.rebind_slot_locals: set[str] = set()
+        # First-declared @dynamic protocol locals that are reassigned: their
+        # reseat statements take the rebind emit (hoisted optional slot).
+        self.dyn_protocol_locals: set[str] = set()
         # REF_ALIAS-bound locals (`T& name = ...`) -- codegen's
         # `ctx.ref_bound_locals`. Consumed by the `del x` skip ladder: the
         # alias does not own the value, so no move-sink is emitted for it.

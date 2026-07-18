@@ -326,6 +326,16 @@ class _EmitState:
     iter_counter: int = 0
     slot_counter: int = 0
     unpack_counter: int = 0
+    # Function-top hoist lines (content only, no indent/newline): a @dynamic
+    # rebind slot's `std::optional<slot> __slot_N;` is allocated at the reassign
+    # point but its DECL text precedes the whole body (the AST's
+    # `pending_hoist_decls`). `emit_thir_body` drains this before the body.
+    hoist_lines: list[str] = field(default_factory=list)
+    # False in the generator LEAF emitters (Resumable/SimpleGen), which have no
+    # drain point: a producer of `hoist_lines` asserts on it so a future
+    # hoisting construct that slips past lowering's defer fails LOUD at the
+    # produce site rather than emitting an undeclared `__slot_N`.
+    hoist_drainable: bool = True
     rebind_slots: dict[str, int] = field(default_factory=dict)
     # Names whose rebind slot backs a ptr-variant UNION local: their rvalue
     # reseats spell `.emplace` + `to_ptr_variant(*slot)` via THIRPtrLocalRebind,
@@ -2789,6 +2799,24 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             out.write(f"{indent}{stmt.val_cpp} __slot_{slot} = {init_cpp};\n")
             out.write(f"{indent}{stmt.cpp_type} {name} = "
                       f"::tpy::to_ptr_variant(__slot_{slot});\n")
+        elif stmt.kind is PtrSlotKind.DYN_PROTOCOL:
+            # @dynamic protocol local: a concrete/adapter slot brace-inited from
+            # the init, aliased by a protocol Base* pointer (the AST's
+            # _gen_dynamic_protocol_init non-erased arm). Draw the slot BEFORE
+            # emitting the init, matching the oracle's `next_slot()`-then-
+            # `gen_expr` order, so the numbering stays aligned even if an init
+            # ever consumes a slot of its own.
+            init_slot = state.next_slot()
+            init_cpp = _emit_expr(stmt.init, state)
+            out.write(f"{indent}{stmt.cpp_type} __slot_{init_slot}"
+                      f"{{{init_cpp}}};\n")
+            out.write(f"{indent}{stmt.base_cpp}* {name} = "
+                      f"&__slot_{init_slot};\n")
+        elif stmt.kind is PtrSlotKind.DYN_PROTOCOL_ERASED:
+            # `p2: P = p1` -- alias the same erased object (no slot). The deref'd
+            # source already renders its own `(*p1)` parens (AST: `&{expr}`).
+            out.write(f"{indent}{stmt.base_cpp}* {name} = "
+                      f"&{_emit_expr(stmt.init, state)};\n")
         else:  # PtrSlotKind.UNION_ADDR
             init_cpp = _emit_expr(stmt.init, state)
             if stmt.needs_rebind_slot:
@@ -2802,6 +2830,26 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
         name = escape_cpp_name(stmt.name)
         if stmt.kind is PtrSlotKind.OPT_NONE:
             out.write(f"{indent}{name} = nullptr;\n")
+        elif stmt.kind is PtrSlotKind.DYN_PROTOCOL:
+            # @dynamic rebind: a FRESH hoisted optional slot per reseat (the
+            # AST's _gen_dynamic_protocol_rebind -- a distinct concrete/adapter
+            # type per target). Slot drawn before the value (oracle order); its
+            # decl hoists to the function top, the emplace + `p = &*slot` reseat
+            # stay inline. `val_cpp` carries the slot (concrete/adapter) spelling.
+            slot = state.next_slot()
+            val_cpp = _emit_expr(stmt.value, state)
+            # Backstop: this hoist has no drain point in a leaf emitter; lowering
+            # defers generator/async bodies, so reaching here undrainable is a bug.
+            assert state.hoist_drainable, (
+                "DYN_PROTOCOL rebind hoist reached a non-draining leaf emitter")
+            state.hoist_lines.append(
+                f"std::optional<{stmt.val_cpp}> __slot_{slot};")
+            out.write(f"{indent}__slot_{slot}.emplace({val_cpp});\n")
+            out.write(f"{indent}{name} = &*__slot_{slot};\n")
+        elif stmt.kind is PtrSlotKind.DYN_PROTOCOL_ERASED:
+            # `p2 = p1` where p1 is already erased: re-alias, no slot (the deref'd
+            # source renders its own parens).
+            out.write(f"{indent}{name} = &{_emit_expr(stmt.value, state)};\n")
         else:  # PtrSlotKind.UNION_RVALUE -- emplace + re-lift the rebind slot
             slot = state.rebind_slots[stmt.name]
             out.write(f"{indent}__slot_{slot}.emplace("
@@ -3251,7 +3299,13 @@ def emit_thir_body(out: TextIO, fn: THIRFunction, indent_level: int = 1,
                        try_counter=try_counter or ModuleCounter(),
                        return_cpp=return_cpp,
                        error_return_cpp=fn.error_return_cpp)
-    _emit_stmts(out, fn.body, indent_level, state)
+    # Buffer the body so function-top hoists (@dynamic rebind slots, allocated
+    # mid-body) can be prepended in the AST's `pending_hoist_decls` position.
+    body_buf = io.StringIO()
+    _emit_stmts(body_buf, fn.body, indent_level, state)
+    for content in state.hoist_lines:
+        out.write(f"{INDENT * indent_level}{content}\n")
+    out.write(body_buf.getvalue())
     # Void @error_return functions return `{}` at the end -- the implicit
     # success value (gen_body's current_error_return tail; unconditional,
     # like the AST's).
@@ -3289,7 +3343,15 @@ def emit_thir_constructor_tail(out: TextIO, ctor: THIRConstructor,
         out.write(", ".join(inits))
     if ctor.body:
         out.write(" {\n")
-        _emit_stmts(out, ctor.body, body_indent_level, state)
+        # Buffer + prepend function-top hoists (a @dynamic rebind slot), same as
+        # emit_thir_body -- the ctor body shares the DYN_PROTOCOL rebind arm, so
+        # its hoisted `std::optional<slot>` must land at the body top too (else
+        # the `__slot_N.emplace` references an undeclared slot).
+        body_buf = io.StringIO()
+        _emit_stmts(body_buf, ctor.body, body_indent_level, state)
+        for content in state.hoist_lines:
+            out.write(f"{INDENT * body_indent_level}{content}\n")
+        out.write(body_buf.getvalue())
         out.write(f"{INDENT * (body_indent_level - 1)}}}\n")
     else:
         out.write(" {}\n")
@@ -3323,7 +3385,8 @@ class ResumableLeafEmitter:
                                  try_counter=try_counter or ModuleCounter(),
                                  return_cpp=return_cpp,
                                  frame_shadow_probe=frame_shadow_probe,
-                                 resumable_return_hook=resumable_return_hook)
+                                 resumable_return_hook=resumable_return_hook,
+                                 hoist_drainable=False)
 
     def _lookup(self, table, node, what: str):
         if id(node) not in table:
@@ -3416,7 +3479,8 @@ class SimpleGenLeafEmitter:
         self._state = _EmitState(comments or _NO_COMMENTS,
                                  temps=temps or TempSink(),
                                  with_counter=with_counter or ModuleCounter(),
-                                 try_counter=try_counter or ModuleCounter())
+                                 try_counter=try_counter or ModuleCounter(),
+                                 hoist_drainable=False)
 
     def emit_init(self, out: TextIO, indent_level: int) -> None:
         """Emit the pre-loop init block -- the seam replacement for the

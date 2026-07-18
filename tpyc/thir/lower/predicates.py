@@ -117,6 +117,7 @@ from ...codegen_cpp.context import (
 from ...namespace import BindingKind
 from ...codegen_cpp.protocols import (
     dynamic_adapter_type,
+    dynamic_base_name,
     dynamic_ref_adapter_type,
     record_inherits_dynamic,
 )
@@ -1512,7 +1513,22 @@ def _f1_record_type_arg_ok(a: 'TpyType | int', analyzer) -> bool:
         if isinstance(u, (NoneType, FloatLiteralType)):
             return True
     return (_eligible_scalar(a) or _eligible_char(a)
-            or _f1_record(a, analyzer))
+            or _f1_record(a, analyzer)
+            or _f1_dyn_protocol_type_arg(a, analyzer))
+
+def _f1_dyn_protocol_type_arg(a: 'TpyType | int', analyzer) -> bool:
+    """A `@dynamic` protocol type-arg (`Box[Conn]` / `Rc[Conn]`) that THIR
+    spells byte-identically to the resolver. The resolver spells the arg via
+    `dynamic_base_name`; THIR via its bare `to_cpp()`. They coincide only for a
+    same-module, non-`@native` (no `cpp_concept`), non-shadowed protocol -- a
+    cross-module / shadowed / native protocol qualifies on the resolver side
+    only, so it keeps the outer generic on the AST path."""
+    if not isinstance(a, TpyType):
+        return False
+    u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(a)))
+    if not (isinstance(u, NominalType) and is_dyn_protocol(u)):
+        return False
+    return dynamic_base_name(u, analyzer) == u.to_cpp()
 
 def _f1_record(t: TpyType | None, analyzer) -> bool:
     """The byte-identical THIR record slice: any concrete user record whose

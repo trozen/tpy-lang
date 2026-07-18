@@ -167,6 +167,8 @@ THIR_FACES: frozenset[str] = frozenset({
     # inner-call receiver whose result is a plain non-pointer record, `.`
     # access; the inner call renders via the shared method lowering).
     "method.recv.method",
+    "method.recv.protocol",         # inner call yields a protocol borrow
+                                    # (`box.get()` -> `Pet&`) -> `.` outer call
     # Value-record field method receiver (`self.field.m()` -> the user-record
     # arm over a bare `this->field` / `p->field` THIRFieldAccess receiver). The
     # field's record spells byte-identically (`_f1_record`: same-module,
@@ -477,6 +479,16 @@ THIR_FACES: frozenset[str] = frozenset({
     # A VALUE-capture record/Own tuple LITERAL decl bound by value (storage
     # form): the local owns its elements, a ref-element type spells `auto`.
     "decl.storage_record_tuple",
+    # A @dynamic protocol local (`p: P = Concrete()`): concrete/adapter slot +
+    # protocol Base* pointer (the AST's _gen_dynamic_protocol_init).
+    "decl.dyn_protocol",
+    # A @dynamic protocol local RESEAT (`p = Other()`): a fresh hoisted
+    # `std::optional<slot>` + emplace + `p = &*slot` (_gen_dynamic_protocol_rebind).
+    "reseat.dyn_protocol",
+    # An already-erased @dynamic assign (`p2: P = p1` / `p2 = p1`): alias the
+    # same object, `Base* p2 = &(*p1);` / `p2 = &(*p1);` (no slot).
+    "decl.dyn_protocol_erased",
+    "reseat.dyn_protocol_erased",
     # Widened value-tuple RETURN elements: a NESTED value-tuple element (spelled
     # recursively) and a value-`Optional[scalar]` element (`None`->`std::nullopt`
     # / a scalar value bare). Return-slot only.

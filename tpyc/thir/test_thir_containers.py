@@ -972,13 +972,41 @@ class TestContainerLiteralElementFamilies:
                 "::tpy::ordered_map<int32_t, std::optional<std::string>>("
                 "{{1, \"x\"}, {2, std::nullopt}});") in cpp
 
-    def test_optional_record_elements_ineligible(self):
-        # Pointer-repr Optional (record inner -> std::variant<T*,...>) is the
-        # named exclusion: its storage-form lift is not the value-repr wrap.
+    def test_optional_record_ctor_none_elements_route(self):
+        # A record-inner Optional element in a container STORAGE slot is
+        # `std::optional<P>` (value), not the borrow-form `P*` its
+        # uses_pointer_repr() describes: a record ctor lands via the implicit
+        # `P -> std::optional<P>` and a bare None renders std::nullopt.
+        src = (_ELEM_RECORDS
+               + "def f() -> Int32:\n"
+               + "    xs: list[P | None] = [P(1), None]\n"
+               + "    return len(xs)\n"
+               + "def main():\n    print(f())\nmain()\n")
+        assert _fn(_lower_ctx(src), "f") is not None
+        cpp = self._both(src)  # asserts THIR == AST emit
+        assert ("std::vector<std::optional<P>> xs = "
+                "{P(1), std::nullopt};") in cpp
+
+    def test_optional_record_dict_value_ctor_none_route(self):
+        # The dict-VALUE sibling of the list case: `dict[str, P | None]` holds
+        # `std::optional<P>` values, a record ctor / None landing the same way.
+        src = (_ELEM_RECORDS
+               + "def f() -> Int32:\n"
+               + "    d: dict[str, P | None] = {\"a\": P(1), \"b\": None}\n"
+               + "    return len(d)\n"
+               + "def main():\n    print(f())\nmain()\n")
+        assert _fn(_lower_ctx(src), "f") is not None
+        cpp = self._both(src)  # asserts THIR == AST emit
+        assert "std::optional<P>" in cpp and "std::nullopt" in cpp
+
+    def test_optional_record_name_element_ineligible(self):
+        # The deferred boundary: a record NAME into a record-inner Optional
+        # slot would need the pointer-local deref + last-use move mirror
+        # threaded through the Optional inner -- stays on the AST path.
         thir = _lower_ctx(
             _ELEM_RECORDS
-            + "def f() -> Int32:\n"
-            + "    xs: list[P | None] = [None]\n    return len(xs)\n")
+            + "def f(p: P) -> Int32:\n"
+            + "    xs: list[P | None] = [p]\n    return len(xs)\n")
         assert _fn(thir, "f") is None
 
     def test_tuple_literal_elements_route(self):

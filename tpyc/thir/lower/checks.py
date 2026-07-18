@@ -421,6 +421,17 @@ def _container_literal_shape_ok(init: TpyExpr, t: TpyType, analyzer, *,
         return True
     return False
 
+def _record_source_call(e: TpyExpr, analyzer) -> bool:
+    """A record RVALUE source for a container-literal element: a constructor
+    whose ctor/instantiation shape routes, or a record-returning call. Shared
+    by the record element arm and the record-inner-Optional element arm."""
+    if not isinstance(e, TpyCall):
+        return False
+    rfi = e.resolved_function_info
+    if rfi is not None and rfi.is_constructor:
+        return _ctor_shape_ok(e, analyzer) or _ctor_instantiation_ok(e, analyzer)
+    return _record_rvalue_call_shape(e, analyzer)
+
 def _container_lit_elem_ok(e: TpyExpr, slot: 'TpyType | None',
                            declared: dict[str, TpyType], analyzer, *,
                            threaded: bool, forced: bool,
@@ -469,17 +480,29 @@ def _container_lit_elem_ok(e: TpyExpr, slot: 'TpyType | None',
             return True
         return note_detail("container_lit.elem.enum") if note else False
     if fam == "optional":
-        # Value-repr Optional element slot. Compositional (mirrors
-        # A bare `None` renders `std::nullopt`,
-        # and any other source routes iff the element EXPRESSION routes -- the
-        # inner value's storage form (scalar bare, owned-str view->owned wrap)
-        # is a pure function of the slot type that `_lower_container_elem`
-        # threads through the Optional inner identically to the AST's implicit
-        # `T -> std::optional<T>` conversion. The pointer-repr guard keeps a
-        # record/container inner out (`std::variant<T*,...>` -- a different
-        # storage-form lift); `threaded` gates the wrap-bearing str inner.
-        if not (allow_optional and threaded and isinstance(su, OptionalType)
-                and not su.uses_pointer_repr()):
+        # Optional element slot. Compositional: a bare `None` renders
+        # `std::nullopt`, and any other source routes iff the element
+        # EXPRESSION routes -- the inner value's storage form (scalar bare,
+        # owned-str view->owned wrap) is a pure function of the slot type that
+        # `_lower_container_elem` threads through the Optional inner identically
+        # to the AST's implicit `T -> std::optional<T>` conversion. `threaded`
+        # gates the wrap-bearing str inner.
+        if not (allow_optional and threaded and isinstance(su, OptionalType)):
+            return note_detail("container_lit.elem.optional") if note else False
+        if su.uses_pointer_repr():
+            # A record-inner Optional element: the container STORAGE slot is
+            # `std::optional<P>` (value), NOT the borrow-form `P*` that
+            # uses_pointer_repr() describes -- so a record ctor lands via the
+            # implicit `P -> std::optional<P>` and a bare None renders
+            # std::nullopt, same as a value-inner Optional. Record NAMES /
+            # container inners / force_pointer_repr value inners defer (a name
+            # would need the pointer-local deref + move mirror threaded through
+            # the Optional inner).
+            inner = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(su.inner)))
+            if not (isinstance(inner, NominalType) and inner.is_user_record):
+                return note_detail("container_lit.elem.optional") if note else False
+            if isinstance(e, TpyNoneLiteral) or _record_source_call(e, analyzer):
+                return True
             return note_detail("container_lit.elem.optional") if note else False
         if isinstance(e, TpyNoneLiteral):
             return True  # -> std::nullopt (the STORAGE-form None)
@@ -537,14 +560,7 @@ def _container_lit_elem_ok(e: TpyExpr, slot: 'TpyType | None',
             if (bt is not None and _f1_record(bt, analyzer)):
                 return True
             return note_detail("container_lit.elem.record") if note else False
-        record_source = (
-            isinstance(e, TpyCall)
-            and (((e.resolved_function_info is not None
-                   and e.resolved_function_info.is_constructor)
-                  and (_ctor_shape_ok(e, analyzer)
-                       or _ctor_instantiation_ok(e, analyzer)))
-                 or _record_rvalue_call_shape(e, analyzer)))
-        return (record_source
+        return (_record_source_call(e, analyzer)
                 or (note_detail("container_lit.elem.record") if note else False))
     if fam == "any":
         # Any element slot: each element wraps into a `tpy::Any` cell via
@@ -3339,9 +3355,15 @@ def _method_call_receiver_ok(recv: TpyMethodCall, locals_: dict[str, TpyType],
         analyzer.get_expr_type(recv))))
     if isinstance(rt, OwnType):
         rt = unwrap_readonly(rt.wrapped)
-    if not (isinstance(rt, NominalType) and _f1_record(rt, analyzer)):
-        return False
-    return _witness("method.recv.method")
+    if isinstance(rt, NominalType) and _f1_record(rt, analyzer):
+        return _witness("method.recv.method")
+    # A protocol-typed inner result (`box.get()` -> `Pet&`): a protocol borrow
+    # renders `.` access exactly like an F1-record borrow (@dynamic virtual
+    # dispatch, or a structural template ref), so the outer method call composes
+    # byte-identically.
+    if _protocol_binding(rt) is not None:
+        return _witness("method.recv.protocol")
+    return False
 
 def _recv_shape_reject(recv: TpyExpr, locals_: dict[str, TpyType],
                        analyzer) -> str:
@@ -4102,9 +4124,14 @@ def _protocol_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, Tpy
     value-position set, or void in statement position.
     """
     if not isinstance(e.obj, TpyName):
-        # A protocol-typed field / subscript / call receiver: the AST reads it
-        # through its own deref rules, which this arm does not carry.
-        return note_detail("method.protocol.recv_shape")
+        # A protocol method call on a METHOD-CALL receiver (`box.get().name()`):
+        # the inner call yields a `.`-access borrow (`_method_call_receiver_ok`),
+        # so the outer call composes exactly like a name receiver. Protocol-typed
+        # field / subscript / free-call receivers keep their own deref rules and
+        # stay on the AST path.
+        if not (isinstance(e.obj, TpyMethodCall)
+                and _method_call_receiver_ok(e.obj, locals_, analyzer)):
+            return note_detail("method.protocol.recv_shape")
     if (fi.cpp_template is not None or fi.native_function or fi.native_name
             or fi.type_params or fi.is_staticmethod or not fi.is_method):
         return note_detail("method.fi_kind")
@@ -4267,6 +4294,10 @@ def _record_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyTy
             # and at the field-receiver position (`h.boxed.get().x`, where
             # rvalue and borrow returns render the same bare postfix member).
             or (record_ret_ok and _f1_record(ret, analyzer))
+            # A protocol borrow return used as a `.`-access receiver
+            # (`box.get() -> Pet&`, then `.name()`): renders the bare postfix
+            # member like an F1-record borrow return.
+            or (record_ret_ok and _protocol_binding(ret) is not None)
             # A borrow container return at the alias-decl sink
             # (`std::vector<T>& items = c.get_item();` -- a substituted
             # T-return; the REF_ALIAS decl gate pinned the lvalue-ness).

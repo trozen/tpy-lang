@@ -3,8 +3,22 @@ method calls dispatched on a protocol receiver."""
 
 from __future__ import annotations
 
-from .nodes import THIRExprStmt, THIRMethodCall, THIRName, THIRReturn
-from .testutil import _emit_expr as _emit, _fn, _lower_ctx, _lower_ctx_witnessed
+from .nodes import (
+    PtrSlotKind,
+    THIRExprStmt,
+    THIRMethodCall,
+    THIRName,
+    THIRPtrLocalDecl,
+    THIRPtrLocalRebind,
+    THIRReturn,
+)
+from .testutil import (
+    _assert_byte_identical,
+    _emit_expr as _emit,
+    _fn,
+    _lower_ctx,
+    _lower_ctx_witnessed,
+)
 
 # A structural protocol (monomorphized -- `template<Measurable T_x> ... const T_x&`)
 # and a @dynamic one (a vtable `Pet&`). Both bind as a C++ reference, so their
@@ -250,3 +264,142 @@ class TestProtocolParamRejects:
         thir = _lower_ctx(_src(
             "def pick(pet: Pet) -> Pet:\n    return pet\n"))
         assert _fn(thir, "pick") is None
+
+
+class TestDynProtocolDecl:
+    def test_dynamic_local_decl_routes_slot_plus_base_pointer(self):
+        # `pet: Pet = Dog()` -> `Dog __slot_N{Dog()}; Pet* pet = &__slot_N;`
+        # (a DYN_PROTOCOL ptr-slot decl; Dog inherits Pet -> plain concrete slot).
+        src = _src(
+            "def go() -> None:\n"
+            "    pet: Pet = Dog()\n    print(pet.make_noise())\n"
+            "def main() -> None:\n    go()\nmain()\n")
+        thir = _lower_ctx(src)
+        fn = _fn(thir, "go")
+        assert fn is not None
+        decl = fn.body[0]
+        assert isinstance(decl, THIRPtrLocalDecl)
+        assert decl.kind is PtrSlotKind.DYN_PROTOCOL
+        assert decl.base_cpp == "Pet"      # the protocol base pointer type
+        assert decl.cpp_type == "Dog"      # direct-inheritance slot (no adapter)
+        _assert_byte_identical(src)
+
+    def test_dynamic_reassigned_local_rebinds_via_hoisted_slot(self):
+        # `pet: Pet = Dog(); pet = Cat()` -- the first decl keeps the direct
+        # init slot; the reseat draws a FRESH function-top-hoisted
+        # `std::optional<Cat> __slot_N;` reseated by `__slot_N.emplace(Cat());
+        # pet = &*__slot_N;` (the AST's _gen_dynamic_protocol_rebind).
+        src = _src(
+            "class Cat(Pet):\n"
+            "    def make_noise(self) -> str:\n        return \"Meow\"\n"
+            "def go() -> None:\n"
+            "    pet: Pet = Dog()\n    pet = Cat()\n"
+            "    print(pet.make_noise())\n"
+            "def main() -> None:\n    go()\nmain()\n")
+        fn = _fn(_lower_ctx(src), "go")
+        assert fn is not None
+        reseat = fn.body[1]
+        assert isinstance(reseat, THIRPtrLocalRebind)
+        assert reseat.kind is PtrSlotKind.DYN_PROTOCOL
+        assert reseat.val_cpp == "Cat"      # direct conformer -> concrete slot
+        _assert_byte_identical(src)
+
+    def test_dynamic_structural_conformer_uses_adapter_slot(self):
+        # A STRUCTURAL conformer (satisfies Pet without inheriting it) slots
+        # into an owning `::tpy::Adapter<Base, Concrete>`, not a bare concrete.
+        src = _src(
+            "class Cat:\n"
+            "    def make_noise(self) -> str:\n        return \"Meow\"\n"
+            "def go() -> None:\n"
+            "    pet: Pet = Cat()\n    print(pet.make_noise())\n"
+            "def main() -> None:\n    go()\nmain()\n")
+        decl = _fn(_lower_ctx(src), "go").body[0]
+        assert isinstance(decl, THIRPtrLocalDecl)
+        assert decl.kind is PtrSlotKind.DYN_PROTOCOL
+        assert decl.base_cpp == "Pet"
+        assert decl.cpp_type == "::tpy::Adapter<Pet, Cat>"
+        _assert_byte_identical(src)
+
+    def test_dynamic_erased_name_source_aliases(self):
+        # `p2: Pet = p1` (p1 an erased protocol pointer local) -> `Pet* p2 =
+        # &(*p1);` -- alias the same object, no slot.
+        src = _src(
+            "def go() -> None:\n"
+            "    p1: Pet = Dog()\n    p2: Pet = p1\n"
+            "    print(p1.make_noise())\n    print(p2.make_noise())\n"
+            "def main() -> None:\n    go()\nmain()\n")
+        decl = _fn(_lower_ctx(src), "go").body[1]
+        assert isinstance(decl, THIRPtrLocalDecl)
+        assert decl.kind is PtrSlotKind.DYN_PROTOCOL_ERASED
+        _assert_byte_identical(src)
+
+    def test_dynamic_erased_param_source_aliases_bare(self):
+        # `q: Pet = pet` where pet is a `Pet&` PARAM (not a pointer local) ->
+        # `Pet* q = &pet;` -- no deref (the reference, not a pointer, is aliased).
+        src = _src(
+            "def keep(pet: Pet) -> None:\n"
+            "    q: Pet = pet\n    print(q.make_noise())\n"
+            "def go() -> None:\n    keep(Dog())\n"
+            "def main() -> None:\n    go()\nmain()\n")
+        decl = _fn(_lower_ctx(src), "keep").body[0]
+        assert isinstance(decl, THIRPtrLocalDecl)
+        assert decl.kind is PtrSlotKind.DYN_PROTOCOL_ERASED
+        assert not decl.init.deref      # a `Pet&` param aliases bare (&pet)
+        _assert_byte_identical(src)
+
+    def test_dynamic_structural_conformer_reseat_uses_adapter_slot(self):
+        # A STRUCTURAL-conformer reseat (`pet = Cat()`, Cat does not inherit Pet)
+        # draws an `Adapter<Base, Concrete>` hoisted slot, like the structural decl.
+        src = _src(
+            "class Cat:\n"
+            "    def make_noise(self) -> str:\n        return \"Meow\"\n"
+            "def go() -> None:\n"
+            "    pet: Pet = Dog()\n    pet = Cat()\n"
+            "    print(pet.make_noise())\n"
+            "def main() -> None:\n    go()\nmain()\n")
+        reseat = _fn(_lower_ctx(src), "go").body[1]
+        assert isinstance(reseat, THIRPtrLocalRebind)
+        assert reseat.kind is PtrSlotKind.DYN_PROTOCOL
+        assert reseat.val_cpp == "::tpy::Adapter<Pet, Cat>"
+        _assert_byte_identical(src)
+
+
+    def test_own_dynamic_protocol_local_defers(self):
+        # An inferred `Own[P]` local for a @dynamic P (`x = owning_call()`) is
+        # the heap-owned `unique_ptr<Base>` form, not the non-owning stack-slot
+        # `Base*` alias -- kept distinct from the plain `p: P = ...` decl and
+        # deferred. (An explicit `Own[P]` local annotation is a sema error; the
+        # inferred form is the only way an Own[dyn-protocol] local arises.)
+        thir = _lower_ctx(_src(
+            "from tpy import Own\n"
+            "def make() -> Own[Pet]:\n    return Dog()\n"
+            "def go() -> None:\n"
+            "    pet = make()\n    print(pet.make_noise())\n"))
+        assert _fn(thir, "go") is None
+
+
+class TestDynProtocolContainerDecl:
+    # A @dynamic protocol used as a container type-arg: `Box[Pet]` is F1 (same-
+    # module protocol spells its bare name on both paths), and `box.get()`
+    # returns a `Pet&` borrow whose `.name()` composes like an F1-record borrow.
+    _BOXPROTO = (
+        "from typing import Protocol\n"
+        "from tpy import dynamic\n"
+        "from tplib import Box\n"
+        "@dynamic\n"
+        "class Pet(Protocol):\n"
+        "    def name(self) -> str: ...\n"
+        "class Dog(Pet):\n"
+        "    def name(self) -> str:\n        return \"Rex\"\n"
+    )
+
+    def test_box_of_dynamic_protocol_decl_and_chained_call_route(self):
+        # `Box[Pet] b = Box<Dog>(...)` (covariant, F1 protocol type-arg) plus the
+        # chained `b.get().name()` -- a protocol method call on a method-call
+        # receiver returning a protocol borrow.
+        src = (self._BOXPROTO
+               + "def go() -> None:\n"
+               + "    b: Box[Pet] = Box(Dog())\n    print(b.get().name())\n"
+               + "def main() -> None:\n    go()\nmain()\n")
+        assert _fn(_lower_ctx(src), "go") is not None
+        _assert_byte_identical(src)

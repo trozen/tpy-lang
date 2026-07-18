@@ -71,6 +71,7 @@ from ...typesys import (
     UnionType,
     VoidType,
     error_return_to_cpp,
+    is_dyn_protocol,
     is_protocol_type,
     is_return_exception,
     is_union_or_optional_type,
@@ -96,6 +97,11 @@ from ...codegen_cpp.forms import (
     LocalBinding,
     is_ptr_variant_union,
     is_storage_tuple_alias_decl,
+)
+from ...codegen_cpp.protocols import (
+    dynamic_adapter_type,
+    dynamic_base_name,
+    record_inherits_dynamic,
 )
 from ...codegen_cpp.context import escape_cpp_name
 from ...codegen_cpp.types import resolve_pending_container
@@ -1804,6 +1810,90 @@ def _lower_opt_ptr_slot_decl(stmt: TpyVarDecl, vtype: 'OptionalType',
         is_const=is_const, loc=loc)
 
 
+def _lower_dyn_protocol_decl(stmt: TpyVarDecl, vtype: 'TpyType | None',
+                            lc: _LowerCtx, declared: dict[str, TpyType],
+                            loc) -> 'THIRPtrLocalDecl | None':
+    """First decl of a @dynamic protocol local (`p: P = Concrete(...)`): a
+    concrete/adapter `__slot_N{init}` storage + a protocol `Base* p = &__slot_N;`
+    alias, mirroring `_gen_dynamic_protocol_init`'s non-erased arm. Returns None
+    when `vtype` is not a @dynamic protocol (normal decl flow continues); raises
+    ThirUnsupported for the deferred @dynamic variants (rebind, already-erased)
+    so the whole body falls back with a named detail."""
+    if not (isinstance(vtype, NominalType) and is_dyn_protocol(vtype)):
+        return None
+    analyzer = lc.analyzer
+    # An `Own[dyn-protocol]` local is the HEAP-OWNED `unique_ptr<Base>` form
+    # (the AST's `_gen_dynamic_protocol_own_arg`), NOT this non-owning
+    # stack-slot `Base*` alias -- the AST's `_resolve_target_type` keeps the
+    # `Own` for exactly this reason. `_var_decl_type` strips it before we see
+    # `vtype`, so re-check the sema binding type and defer, keeping the two
+    # ownership shapes distinct rather than relying on the erased-source guard
+    # below to catch it incidentally.
+    sema_var_t = analyzer.var_types.get(id(stmt))
+    if sema_var_t is not None and isinstance(
+            unwrap_readonly(unwrap_send_sync(sema_var_t)), OwnType):
+        note_detail("decl.dyn_protocol_own")
+        raise ThirUnsupported(stmt_reject_reason(stmt))
+    if stmt.init is None:
+        note_detail("decl.dyn_protocol_noinit")
+        raise ThirUnsupported(stmt_reject_reason(stmt))
+    # A HOISTED (escaping) @dynamic local's first decl may take a different
+    # shape than this direct init slot -- a later rung.
+    if stmt.name in lc.prescan.hoisted:
+        note_detail("decl.dyn_protocol_hoisted")
+        raise ThirUnsupported(stmt_reject_reason(stmt))
+    # A REASSIGNED local's FIRST decl emits identically to a non-reassigned one
+    # (the direct init slot); its reseats take the rebind arm (registered below).
+    reassigned = (stmt.name in lc.prescan.reassigned
+                  or stmt.name in lc.prescan.rvalue_reassigned)
+    concrete_type = analyzer.get_expr_type(stmt.init)
+    if concrete_type is None:
+        note_detail("decl.dyn_protocol_erased")
+        raise ThirUnsupported(stmt_reject_reason(stmt))
+    if is_protocol_type(concrete_type):
+        # Already-erased source: alias the same object (`Base* p2 = &(*p1);`
+        # for a pointer-local source, `&(pet)` for a `Pet&` param), no slot.
+        erased = _lower_dyn_erased_source(stmt.init, lc, declared)
+        if erased is None:
+            note_detail("decl.dyn_protocol_erased")
+            raise ThirUnsupported(stmt_reject_reason(stmt))
+        if reassigned:
+            lc.dyn_protocol_locals.add(stmt.name)
+        _witness("decl.dyn_protocol_erased")
+        return THIRPtrLocalDecl(
+            name=stmt.name, resolved_type=vtype,
+            kind=PtrSlotKind.DYN_PROTOCOL_ERASED, init=erased,
+            base_cpp=dynamic_base_name(vtype, analyzer), loc=loc)
+    concrete_cpp = lc.render_type(concrete_type)
+    if record_inherits_dynamic(concrete_type, vtype, analyzer):
+        slot_cpp = concrete_cpp  # direct inheritance -- plain concrete slot
+    else:
+        slot_cpp = dynamic_adapter_type(vtype, concrete_cpp, analyzer)
+    init = _lower_expr(stmt.init, lc, declared, target_type=concrete_type)
+    if reassigned:
+        lc.dyn_protocol_locals.add(stmt.name)
+    _witness("decl.dyn_protocol")
+    return THIRPtrLocalDecl(
+        name=stmt.name, resolved_type=vtype, kind=PtrSlotKind.DYN_PROTOCOL,
+        init=init, cpp_type=slot_cpp,
+        base_cpp=dynamic_base_name(vtype, analyzer), loc=loc)
+
+
+def _lower_dyn_erased_source(init: TpyExpr, lc: _LowerCtx,
+                             declared: dict[str, TpyType]) -> 'THIRExpr | None':
+    """The deref'd source of an already-erased @dynamic assign (`p2 = p1`):
+    `(*p1)` for a protocol pointer-local name, a bare `pet` for a `Pet&`
+    param/reference. Returns None for a non-name source (a protocol call /
+    field / subscript keeps its own deref rules, and a protocol-returning call
+    does not itself route yet -- a later rung)."""
+    if not isinstance(init, TpyName):
+        return None
+    src = _lower_expr(init, lc, declared)
+    if not isinstance(src, THIRName):
+        return None
+    return replace(src, deref=True) if init.name in lc.pointers else src
+
+
 @contextmanager
 def _nested_def_lowering_scope(lc: _LowerCtx, func: TpyFunction):
     """The mirror of codegen's `nested_def_emission_scope` + the local-scope
@@ -1817,7 +1907,8 @@ def _nested_def_lowering_scope(lc: _LowerCtx, func: TpyFunction):
     loudly instead of spelling `this->`)."""
     saved = (lc.func, lc.prescan, lc.self_receiver,
              set(lc.const_locals), set(lc.pointers),
-             set(lc.rebind_slot_locals), set(lc.ref_alias_locals),
+             set(lc.rebind_slot_locals), set(lc.dyn_protocol_locals),
+             set(lc.ref_alias_locals),
              set(lc.value_opt_locals), set(lc.value_opt_view_locals),
              set(lc.storage_tuple_locals),
              set(lc.movable_locals), lc.narrow, dict(lc.inline_narrowed))
@@ -1864,7 +1955,8 @@ def _nested_def_lowering_scope(lc: _LowerCtx, func: TpyFunction):
         yield
     finally:
         (lc.func, lc.prescan, lc.self_receiver, lc.const_locals, lc.pointers,
-         lc.rebind_slot_locals, lc.ref_alias_locals, lc.value_opt_locals,
+         lc.rebind_slot_locals, lc.dyn_protocol_locals,
+         lc.ref_alias_locals, lc.value_opt_locals,
          lc.value_opt_view_locals,
          lc.storage_tuple_locals, lc.movable_locals,
          lc.narrow, lc.inline_narrowed) = saved
@@ -2679,6 +2771,14 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         # First decl of a non-value borrow local (REF_ALIAS / OPTIONAL_TO_PTR /
         # POINTER).
         if not is_reassign and not scope.in_branch:
+            # @dynamic protocol local (`p: P = Concrete()`): slot + Base*
+            # pointer, its own emit form (before the borrow classifier, which
+            # has no protocol arm).
+            dyn_node = _lower_dyn_protocol_decl(stmt, vtype, lc, declared, loc)
+            if dyn_node is not None:
+                lc.pointers.add(stmt.name)
+                declared[stmt.name] = vtype
+                return dyn_node
             binding = _borrow_local_binding(stmt, vtype, declared, lc.prescan,
                                             analyzer, lc.pointers)
             if binding is not None:
@@ -2892,6 +2992,50 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         # would leave a ReadonlyType wrapper the THIR fully-resolved-type invariant
         # forbids (emit strips it either way, so this stays byte-identical).
         if stmt.name in lc.pointers:
+            if stmt.name in lc.dyn_protocol_locals:
+                # @dynamic protocol local reseat (`pet = Cat()`): a FRESH hoisted
+                # `std::optional<slot>` + `.emplace` + `pet = &*slot` (the AST's
+                # `_gen_dynamic_protocol_rebind`). Slot type is the concrete (a
+                # direct conformer) or the `Adapter<Base, Concrete>` (structural),
+                # matching the first-decl choice. An already-erased protocol-typed
+                # source (a pointer copy `pet = &q`) is a later rung.
+                # The hoisted slot needs a drain point. `emit_thir_body` /
+                # `emit_thir_constructor_tail` drain `hoist_lines`; the generator
+                # LEAF emitters (ResumableLeafEmitter, SimpleGenLeafEmitter) do
+                # NOT, so a reseat there would drop the `std::optional<slot>` decl
+                # (undeclared `__slot_N`). Defer any generator/async body to AST
+                # (which drains via `pending_hoist_decls`).
+                if lc.func.is_generator or lc.func.is_async:
+                    note_detail("reseat.dyn_protocol")
+                    raise ThirUnsupported(stmt_reject_reason(stmt))
+                proto_vt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                    declared[stmt.name])))
+                concrete_type = analyzer.get_expr_type(stmt.init)
+                if concrete_type is None:
+                    note_detail("reseat.dyn_protocol_erased")
+                    raise ThirUnsupported(stmt_reject_reason(stmt))
+                if is_protocol_type(concrete_type):
+                    # Already-erased reseat (`p2 = p1`): re-alias, no slot.
+                    erased = _lower_dyn_erased_source(stmt.init, lc, declared)
+                    if erased is None:
+                        note_detail("reseat.dyn_protocol_erased")
+                        raise ThirUnsupported(stmt_reject_reason(stmt))
+                    _witness("reseat.dyn_protocol_erased")
+                    return THIRPtrLocalRebind(
+                        name=stmt.name, kind=PtrSlotKind.DYN_PROTOCOL_ERASED,
+                        value=erased, loc=loc)
+                concrete_cpp = lc.render_type(concrete_type)
+                if record_inherits_dynamic(concrete_type, proto_vt, analyzer):
+                    slot_cpp = concrete_cpp
+                else:
+                    slot_cpp = dynamic_adapter_type(proto_vt, concrete_cpp,
+                                                    analyzer)
+                _witness("reseat.dyn_protocol")
+                return THIRPtrLocalRebind(
+                    name=stmt.name, kind=PtrSlotKind.DYN_PROTOCOL,
+                    value=_lower_expr(stmt.init, lc, declared,
+                                      target_type=concrete_type),
+                    val_cpp=slot_cpp, loc=loc)
             reseat_u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
                 declared[stmt.name])))
             if (isinstance(reseat_u, OptionalType)

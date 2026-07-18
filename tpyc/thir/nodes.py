@@ -1247,12 +1247,25 @@ class PtrSlotKind(Enum):
                           into the pre-declared rebind slot + re-lift.
       * `UNION_ADDR`   -- `v: A | B = name` (concrete-member lvalue) ->
                           `variant<A*, B*> v{&(name)};`.
+      * `DYN_PROTOCOL` -- `p: P = Concrete(...)` for a @dynamic protocol P ->
+                          a concrete/adapter `__slot_N{init}` + a protocol
+                          `Base* p = &__slot_N;` (the AST's
+                          `_gen_dynamic_protocol_init` direct/adapter arm).
+                          `cpp_type` is the SLOT spelling (concrete, or the
+                          `Adapter<Base, Concrete>` for a structural conformer);
+                          `base_cpp` is the protocol base pointer spelling.
     """
     OPT_NONE = auto()
     OPT_RVALUE = auto()
     UNION_NONE = auto()
     UNION_RVALUE = auto()
     UNION_ADDR = auto()
+    DYN_PROTOCOL = auto()
+    # `p2: P = p1` / `p2 = p1` where p1 is already an erased protocol pointer:
+    # copy the alias, no slot -- `Base* p2 = &(*p1);` (decl) / `p2 = &(*p1);`
+    # (reseat). `base_cpp` carries the protocol base; `init`/`value` is the
+    # deref'd source.
+    DYN_PROTOCOL_ERASED = auto()
 
 
 @dataclass(frozen=True)
@@ -1277,6 +1290,9 @@ class THIRPtrLocalDecl(THIRStmt):
     cpp_type: str | None = None
     val_cpp: str | None = None
     needs_rebind_slot: bool = False
+    # DYN_PROTOCOL only: the protocol base pointer spelling (`Base` of
+    # `Base* p`), distinct from `cpp_type` (the concrete/adapter SLOT spelling).
+    base_cpp: str | None = None
     # `const T*` (not `T*`): the pointee is a readonly source. Mirrors the AST's
     # `const_pfx` (name in `const_indirect_locals`); only the pointer line takes
     # the prefix -- the rebind `std::optional<T>` slot stays non-const.
