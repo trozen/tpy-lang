@@ -4288,6 +4288,12 @@ def _record_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyTy
             or _resolved_bytes_value(ret, analyzer) is not None
             or _tparam_value(ret)
             or _callable_value(ret)
+            # A VALUE-tuple result (`getsockname() -> tuple[str, Int32]`)
+            # emits the same bare `recv.method(args)` prvalue; like the
+            # TypeParamRef admission above, every consuming position
+            # (subscript read, decl slot, arg, unpack source) gates its own
+            # family, so admitting it here only opens those gated sinks.
+            or _value_tuple_nested(ret, analyzer) is not None
             # An F1-record return is admitted at the owned-record decl sink
             # (`Rec r = b.build();`, record_ret_ok -- `is_rvalue_source`,
             # checked at the decl gate, keeps a `T&` borrow return out there)

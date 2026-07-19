@@ -3035,6 +3035,12 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             src_cpp = _emit_expr(stmt.source_expr, state)
             state.temps.flush(out, indent)
             out.write(f"{indent}auto {tmp} = {src_cpp};\n")
+        elif stmt.source_oneshot:
+            # Consumable one-shot `__await_lift_*` frame_slot source:
+            # rvalue-ref-bind the deref'd slot so the owned elements move
+            # out of the source instead of copying the whole tuple.
+            out.write(f"{indent}auto&& {tmp} = "
+                      f"(*{escape_cpp_name(stmt.source)});\n")
         else:
             src = (stmt.source_cpp if stmt.source_cpp is not None
                    else escape_cpp_name(stmt.source))

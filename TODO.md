@@ -227,10 +227,42 @@ See `docs/FEATURE_ROADMAP.md` for bigger tasks and `BUGS.md` for known compiler 
   (`a = &(unwrap_ref(tuple_elem_ref(std::get<i>(__tup_N))));` from
   call/name/literal sources, incl. the dict_items proxy flavor and the
   `optional_to_ptr(std::get<i>)` element bridge; ~8 bodies);
-  (c) await-lift tuple-unpack move-outs (13 bodies, the streams/
-  start_server family: `auto&& __tup = (*__await_lift_N);` +
-  `c.emplace(std::move(std::get<0>(__tup)));` + Own[record] frame_slot
-  admission);
+  (c) await-lift tuple-unpack move-outs -- ROUTED (2026-07-18): the
+  one-shot `__await_lift_*` tuple holder classifies frame_slot
+  (mirroring the skeleton's owning_generator_tuple_locals: own-element
+  or one-shot+pointer-repr), the unpack's one-shot name-source arm
+  rvalue-ref-binds the deref'd slot (`auto&& __tup_N =
+  (*__await_lift_M);`) with owned-element move-outs, and
+  Own[plain-nonvalue] locals classify frame_slot like their bare-typed
+  siblings. Residue: reference-element lift tuples alias their targets
+  (tuple_to_pointer bridge -> cell (b)); the family's remaining
+  fallbacks sit on next-blockers (method.recv.field_nonf1 -- the sync
+  calls track, res.await_param_type, subscript.tuple_shape -- all
+  filed). The name.global_read half then ROUTED (same day, +5 flips:
+  asyncio_signal x3, reactor_connect_refused,
+  reactor_echo_accept_connect): resumable bodies reuse the sync
+  read-only value-global seeding (`_seed_readonly_globals` into the
+  resumable `declared`; a global is never a frame field, so reads
+  render the sync spellings; `global`-write names stay unseeded and
+  TpyGlobal still rejects). The subscript.tuple_shape half then
+  ROUTED too (same day, +3 flips: stream_echo, stream_read_partial,
+  str_rvalue_access): the tuple-subscript gate admits
+  value-tuple-returning CALL receivers (`getsockname()[1]` ->
+  `std::get<1>(<call>)`, the call gating in _lower_expr) and the
+  record-method return gate admits value-tuple results (bare member
+  call; every consuming sink re-gates -- decl/arg/discard/print
+  probe-verified identical, whole-tuple returns fall back safely at
+  return.tuple_source). Predicate-breadth asymmetry to reconcile when
+  either gate next widens: the method return gate admits
+  `_value_tuple_nested` while the free-call VALUE arm admits only
+  `_value_tuple` -- safe today (sinks gate), but the twins should
+  converge on one predicate. Then the two frame init-shape rungs (no
+  flips, bodies only): value-tuple LITERAL inits at bare tuple frame
+  fields (the sync spelled-literal arm in the position-blind member
+  assign) and Optional-ptr frame writes through the SYNC reseat arms
+  (`x = nullptr;` / the `&(...)` lvalue lift; the old position-blind
+  path silently dropped the lift -- probe-caught; rebind-slot
+  holders stay a named rung);
   (d) erased Own[dyn-protocol] handle locals (2 bodies -- the same
   `res.coro_handle_source` make_adapter-write residue filed above under
   the await_prebuilt entry, now with oracle renders: `unique_ptr` field,

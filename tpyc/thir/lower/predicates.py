@@ -2540,6 +2540,15 @@ def _tuple_subscript_value_read(e: TpyExpr, locals_: dict[str, TpyType],
                 or _value_tuple_nested(
                     analyzer.get_expr_type(recv), analyzer) is None):
             return None
+    elif isinstance(recv, (TpyCall, TpyMethodCall)):
+        # A value-tuple-returning CALL receiver (`getsockname()[1]`): the
+        # AST renders `std::get<N>(<call>)` with the call emitted in place,
+        # so the read is position-neutral iff the call itself lowers -- the
+        # call gates in _lower_expr, and a non-routable one rejects the
+        # body there (safe fallback, never a mis-render).
+        if _value_tuple_nested(analyzer.get_expr_type(recv),
+                               analyzer) is None:
+            return None
     else:
         return None
     res = _subscript_index_and_tuple(e, analyzer)

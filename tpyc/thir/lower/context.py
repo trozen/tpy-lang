@@ -327,6 +327,7 @@ class _LowerCtx:
                  "record_name", "storage_tuple_locals", "frame_slots",
                  "resumable_leaf_mode", "nested_returns", "in_finally_helper",
                  "plain_frame_fields", "value_tuple_frame_locals",
+                 "oneshot_lift_locals",
                  "unhandled_hoists", "narrow",
                  "inline_narrowed", "forbidden_reads", "forbidden_writes",
                  "nested_def_locals", "error_return_cpp")
@@ -452,6 +453,12 @@ class _LowerCtx:
         # (`const auto& __tup_N = <name>;`). Populated only by
         # `lower_resumable`, empty for every sync body.
         self.value_tuple_frame_locals: frozenset = frozenset()
+        # One-shot `__await_lift_*` frame temps (the skeleton's
+        # `one_shot_lift_names`): the unpack arm rvalue-ref-binds one as a
+        # consumable source (`auto&& __tup_N = (*<name>);`) and moves its
+        # owned elements out. Populated only by `lower_resumable`, empty
+        # for every sync body.
+        self.oneshot_lift_locals: frozenset = frozenset()
         self.unhandled_hoists = set(
             analyzer.function_hoisted_vars.get(id(func), ()))
         # F3 storage-tuple alias locals (`auto&& t = <storage tuple field>`): a read

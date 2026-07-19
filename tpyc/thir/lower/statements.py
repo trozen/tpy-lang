@@ -2576,10 +2576,13 @@ def _lower_frame_tuple_unpack(stmt: TpyTupleUnpack,
     (`auto __tup_N = <expr>;`) and each target is a frame field --
     ASSIGNED, never re-declared (`frame_assign`), or `.emplace()`d for a
     frame_slot (`frame_emplace`), with the AST's per-element unwrap_ref /
-    std::move wraps. Off-slice shapes keep res.unpack: name sources (the
-    const-ref / one-shot / loop-shadow bind ladder), pointer-repr source
-    elements (the tuple_elem_ref arms), pointer-local / borrow-tuple /
-    coro-handle targets, finally-helper position."""
+    std::move wraps. Name sources route two rungs: a VALUE-tuple frame
+    holder (const-ref bind) and an owned one-shot `__await_lift_*` holder
+    (`auto&& __tup_N = (*<name>);`, owned elements move out). Off-slice
+    shapes keep res.unpack: other name sources (the const-ref /
+    loop-shadow bind ladder), pointer-repr source elements (the
+    tuple_elem_ref arms), pointer-local / borrow-tuple / coro-handle
+    targets, finally-helper position."""
     lc = scope.lc
     declared = scope.declared
     analyzer = lc.analyzer
@@ -2588,20 +2591,42 @@ def _lower_frame_tuple_unpack(stmt: TpyTupleUnpack,
         note_detail("unpack.helper_position")
         raise ThirUnsupported("res.unpack")
     src_name: 'str | None' = None
+    src_oneshot = False
     if isinstance(stmt.value, TpyName):
-        # A VALUE-tuple frame holder (the `a, b = __for_tup_N` loop head)
-        # ref-binds as the name source (`const auto& __tup_N = <name>;`,
-        # the node's source_expr=None form). The general name-source
-        # ladder (const-ref / one-shot / loop-shadow) keeps the reject.
-        if stmt.value.name not in lc.value_tuple_frame_locals:
+        if (stmt.value.name in lc.oneshot_lift_locals
+                and stmt.value.name in lc.frame_slots):
+            # A one-shot `__await_lift_*` holder: the consumable owned-tuple
+            # source (`auto&& __tup_N = (*<name>);`, the AST's
+            # source_is_oneshot arm) whose owned elements move out at their
+            # frame targets. The AST takes that arm only when an element is
+            # owned -- a no-owned one-shot name falls to the const-ref
+            # ladder, which keeps the reject. Re-verify the registered type
+            # is the tuple the admission classified (frame_slots membership
+            # proved own/pointer-repr elements).
+            if not any(stmt.is_owned):
+                note_detail("unpack.name_source")
+                raise ThirUnsupported("res.unpack")
+            src_name = stmt.value.name
+            src_oneshot = True
+            st = declared.get(src_name)
+            st = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(st)))
+                  if isinstance(st, TpyType) else None)
+            source_type = st if isinstance(st, TupleType) else None
+        elif stmt.value.name not in lc.value_tuple_frame_locals:
+            # A VALUE-tuple frame holder (the `a, b = __for_tup_N` loop
+            # head) ref-binds as the name source (`const auto& __tup_N =
+            # <name>;`, the node's source_expr=None form). The general
+            # name-source ladder (const-ref / loop-shadow) keeps the
+            # reject.
             note_detail("unpack.name_source")
             raise ThirUnsupported("res.unpack")
-        src_name = stmt.value.name
-        # Re-verify the registered type against the same family predicate
-        # that admitted the local: `declared` is sourced independently
-        # (the advance's elem type), so a drift rejects here instead of
-        # rendering off a mismatched element list.
-        source_type = _value_tuple(declared.get(src_name), analyzer)
+        else:
+            src_name = stmt.value.name
+            # Re-verify the registered type against the same family
+            # predicate that admitted the local: `declared` is sourced
+            # independently (the advance's elem type), so a drift rejects
+            # here instead of rendering off a mismatched element list.
+            source_type = _value_tuple(declared.get(src_name), analyzer)
     else:
         source_type = _tuple_unpack_source(
             stmt, analyzer, declared, scope.admission_pointers(),
@@ -2634,12 +2659,13 @@ def _lower_frame_tuple_unpack(stmt: TpyTupleUnpack,
                      else "frame_assign")
         wraps.append("move" if stmt.is_owned[i] else "")
     if src_name is not None:
-        _witness("res.frame_unpack")
+        _witness("res.unpack_oneshot" if src_oneshot else "res.frame_unpack")
         return THIRTupleUnpack(
             source=src_name, targets=tuple(stmt.targets),
             target_cpps=(None,) * len(stmt.targets),
             binds=tuple(binds), wraps=tuple(wraps),
-            source_expr=None, loc=getattr(stmt, "loc", None),
+            source_expr=None, source_oneshot=src_oneshot,
+            loc=getattr(stmt, "loc", None),
             no_source_comment=getattr(stmt, "no_source_comment", False))
     value = _lower_expr(
         stmt.value, lc, declared,
@@ -2665,6 +2691,22 @@ def _lower_frame_field_assign(stmt: TpyVarDecl, lc: '_LowerCtx',
     branch-nested decl arm below."""
     init = _peel_stale_view_owned_coerce(stmt.init, declared[stmt.name],
                                          lc.analyzer)
+    if isinstance(init, TpyTupleLiteral):
+        # A value-tuple literal at a bare tuple frame field renders the
+        # same spelled `std::tuple<...>{...}` as the sync decl arm, in the
+        # position-blind member assign. Off-family slots fall through to
+        # _lower_expr's bare-literal reject (expr.tuple_literal), and
+        # _lower_tuple_literal itself rejects non-VALUE captures.
+        tuple_t = _value_tuple_nested(declared[stmt.name], lc.analyzer)
+        if tuple_t is not None:
+            value = _lower_tuple_literal(init, tuple_t, lc, declared)
+            _witness("res.frame_tuple_literal")
+            return THIRAssign(
+                target=THIRName(name=stmt.name,
+                                result_type=declared[stmt.name],
+                                loc=stmt.loc),
+                value=value, loc=stmt.loc,
+                no_source_comment=getattr(stmt, "no_source_comment", False))
     value = _lower_expr(init, lc, declared)
     _witness("res.decl_assign")
     return THIRAssign(

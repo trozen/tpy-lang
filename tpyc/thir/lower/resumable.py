@@ -35,6 +35,7 @@ inside THIR emit -- a cell).
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import replace
 
 from ..fallback import ThirUnsupported, begin_stmt, note, stmt_reject_reason
@@ -107,7 +108,11 @@ from .expressions import (
     _lower_tuple_literal,
     _slot_literal_retype,
 )
-from .functions import _check_callable_structure, method_self_type_by_name
+from .functions import (
+    _check_callable_structure,
+    _seed_readonly_globals,
+    method_self_type_by_name,
+)
 from . import match as _match
 from .predicates import (
     _chain_post_if_fact,
@@ -640,6 +645,7 @@ def lower_resumable(func: TpyFunction, analyzer, render_type,
                     render_type_stored=None,
                     pointer_aliases: 'set[str] | None' = None,
                     case_entry_ids: 'frozenset[int] | None' = None,
+                    native_globals: 'Mapping[str, str] | None' = None,
                     ) -> 'THIRResumableBody | None':
     """Lower a resumable body, falling back cleanly on a lowering reject."""
     try:
@@ -649,6 +655,7 @@ def lower_resumable(func: TpyFunction, analyzer, render_type,
             render_type_stored=render_type_stored,
             pointer_aliases=pointer_aliases,
             case_entry_ids=case_entry_ids,
+            native_globals=native_globals,
         )
     except ThirUnsupported as ex:
         return _reject(ex.reason)
@@ -660,6 +667,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                      render_type_stored=None,
                      pointer_aliases: 'set[str] | None' = None,
                      case_entry_ids: 'frozenset[int] | None' = None,
+                     native_globals: 'Mapping[str, str] | None' = None,
                      ) -> 'THIRResumableBody | None':
     """Lower one resumable body's leaves, or None if outside the slice.
 
@@ -818,18 +826,36 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
             continue
         lt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ltype)))
               if isinstance(ltype, TpyType) else None)
+        # A one-shot `__await_lift_*` tuple holder is an OWNING frame_slot
+        # on the skeleton side (`owning_generator_tuple_locals`: an await
+        # result is always owned, so even a reference-element tuple gets
+        # `frame_slot<std::tuple<...>>` storage). Its bind/reset
+        # scaffolding is skeleton; the only THIR-visible access is the
+        # single consuming statement, which gates per-shape (the unpack's
+        # one-shot source arm / the sync expr reads). Pure-value one-shot
+        # holders were caught by the value-tuple branch above (bare field,
+        # matching the skeleton's is_value_type raw-field path). The
+        # pointer-repr disjunct is the exact skeleton mirror but inert
+        # today: a non-owned lift element makes its unpack target a
+        # pointer alias, which rejects the body above before this arm is
+        # consumed (load-bearing once the pointer-alias unpack cell lands).
+        if (isinstance(lt, TupleType)
+                and lname in rstate.one_shot_lift_names
+                and lname not in pointer_aliases
+                and (lt.has_own_element() or lt.has_pointer_repr_element())):
+            frame_slots.add(lname)
+            continue
         # A pointer-repr tuple local is a BORROW-form frame field
         # (`std::tuple<..., T*>`, bare writes) -- unless the skeleton
         # classifies it OWNING (a frame_slot<std::tuple<...>> with emplace
-        # writes): an Own-element tuple or an `__await_lift_*` one-shot
-        # temp. The third owning signal (never-reassigned, bound from a
+        # writes): an Own-element tuple (the one-shot flavor routed above).
+        # The third owning signal (never-reassigned, bound from a
         # storage-form CALL) is source-driven; the decl leaf covers it by
         # admitting only tuple-LITERAL inits at borrow-classified slots.
         if (isinstance(lt, TupleType) and lt.has_pointer_repr_element()
                 and not lname.startswith("__for_tup_")
                 and lname not in pointer_aliases):
-            if (lt.has_own_element()
-                    or lname in rcfg.resumable_state(func).one_shot_lift_names):
+            if lt.has_own_element():
                 return _reject("res.local_storage")
             borrow_tuple_locals.add(lname)
             continue
@@ -967,6 +993,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     lc.pointers.update(ptr_frame_locals)
     lc.pointers.update(opt_ptr_locals)
     lc.value_tuple_frame_locals = frozenset(value_tuple_locals)
+    lc.oneshot_lift_locals = frozenset(rstate.one_shot_lift_names)
     # value_tuple_locals stay IN plain_frame_fields deliberately: they are
     # bare member fields whose reassign is the same plain `name = expr;`
     # render (like value/str/bytes). Every family whose WRITE render
@@ -981,6 +1008,17 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     if has_self:
         declared["self"] = self_type  # the record receiver, a field source
     declared.update(handler_bindings)
+    # Read-only value-global seeding, like lower_function's and the ctor
+    # entry's (resumable bodies read module globals too). A global is never
+    # a frame field, so its reads render exactly the sync spellings -- bare
+    # same-module, qualified native/imported -- with no frame peel. Only
+    # the read-only half: `global`-write names stay unseeded, so a
+    # TpyGlobal statement still rejects the body (prescan.global_seeded
+    # stays empty), and assigned/shadow-bound names are excluded by the
+    # seeding helper itself (they are locals, i.e. frame fields).
+    lc.prescan.native_globals = dict(native_globals or {})
+    lc.prescan.global_readonly, lc.prescan.global_cpp = _seed_readonly_globals(
+        func, analyzer, declared, native_globals or {})
 
     # Pass 1 -- scope registration. Each frame-field decl (and each await
     # bind on a fresh name) registers its FIRST decl's type, in BB-id order.
@@ -1156,6 +1194,21 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                     name=stmt.name, value=value,
                     cpp_type=lc.render_type(slot_t), loc=stmt.loc,
                     no_source_comment=getattr(stmt, "no_source_comment", False))
+            # An Optional-ptr frame local writes through the SYNC ladder's
+            # reseat arms: pass-1 registered the name, so the sync dispatch
+            # sees a reassign and takes the assign-only renders --
+            # `x = nullptr;` (reseat.opt_none) and the `x = &(b);` lvalue
+            # lift (reseat.opt_lvalue) -- exactly the frame's member-assign
+            # shape; off-slice sources keep their named reseat rejects
+            # there (the bare member assign would silently DROP the
+            # address-of lift, the divergence the probe caught). Rebind-slot
+            # holders stay a named rung: the sync arm's `&*(__slot_N = ..)`
+            # references a slot only the sync THIRPtrLocalDecl pre-declares
+            # -- no such decl exists on a frame.
+            if stmt.name in lc.pointers:
+                if stmt.name in lc.rebind_slot_locals:
+                    raise ThirUnsupported("res.leaf_field_write")
+                return _lower_stmt(stmt, lc, declared)
             # Plain frame-field write -- the shared position-blind member
             # assign (also the branch-nested decl arm's render). No char/None
             # reject guards it: a reassign or multi-char char literal, and

@@ -1707,7 +1707,12 @@ class THIRTupleUnpack(THIRStmt):
 
     `source_cpp` overrides the ref-bound source name's spelling (a spelled
     imported/native global -- `const auto& __tup_N = ::tpystd::m::name;`);
-    None renders the escaped bare `source`."""
+    None renders the escaped bare `source`.
+
+    `source_oneshot` marks a consumable one-shot `__await_lift_*` frame_slot
+    source: the holder rvalue-ref-binds the deref'd slot
+    (`auto&& __tup_N = (*<source>);`) so owned elements move out instead of
+    copying -- the AST's `source_is_oneshot` arm."""
     source: str
     targets: tuple[str | None, ...]
     target_cpps: tuple[str | None, ...]
@@ -1717,6 +1722,7 @@ class THIRTupleUnpack(THIRStmt):
     # Per-element pre-write wrap for the frame modes: "" / "move" (the only
     # produced tokens -- ref elements reject at lowering today).
     wraps: tuple[str, ...] = ()
+    source_oneshot: bool = False
 
 
 @dataclass(frozen=True)

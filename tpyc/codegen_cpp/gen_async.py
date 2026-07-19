@@ -1832,7 +1832,8 @@ class AsyncCoroCodegen:
                              cfg, record_name=record_name,
                              render_type_stored=self.types.type_to_cpp_stored,
                              pointer_aliases=pointer_aliases,
-                             case_entry_ids=case_entry_ids)
+                             case_entry_ids=case_entry_ids,
+                             native_globals=self.ctx.native_global_names)
         cache[key] = rb
         if rb is not None:
             record_shape(func, "resumable", routed=True)

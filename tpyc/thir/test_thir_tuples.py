@@ -372,6 +372,98 @@ class TestTupleSubscriptReadEmit:
         assert "std::get<0>(p)" in cpp and "std::get<1>(p)" in cpp
 
 
+class TestTupleSubscriptCallReceiver:
+    """A value-tuple-returning CALL receiver (`pair(n)[1]` / `s.name()[1]`,
+    the `getsockname()[1]` shape): the read renders `std::get<N>(<call>)`
+    with the call emitted in place; the call itself still gates in
+    _lower_expr, so a non-routable call rejects the body there (safe
+    fallback, never a mis-render)."""
+
+    def _gen(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=thir))
+        return compiler, cpp
+
+    def _identical(self, src: str):
+        _, cpp_ast = self._gen(src, thir=False)
+        c, cpp_thir = self._gen(src, thir=True)
+        assert cpp_ast == cpp_thir
+        return c, cpp_thir
+
+    def test_free_call_receiver_routes(self):
+        src = (_PRELUDE
+               + "def pair(n: Int32) -> tuple[Int32, Int32]:\n"
+               + "    return (n, n + 1)\n"
+               + "def f(n: Int32) -> Int32:\n    return pair(n)[1]\n"
+               + "def main():\n    print(f(1))\nmain()\n")
+        c, cpp = self._identical(src)
+        assert "std::get<1>(pair(n))" in cpp
+        assert not any(k.startswith("body:") for k in c._thir_fallback)
+
+    def test_method_call_receiver_routes(self):
+        # The record-method flavor also exercises the widened method
+        # return gate (a value-tuple result emits the bare member call).
+        src = (_PRELUDE
+               + "class Sock:\n"
+               + "    n: Int32\n"
+               + "    def __init__(self, n: Int32):\n        self.n = n\n"
+               + "    def name(self) -> tuple[str, Int32]:\n"
+               + "        return (\"x\", self.n)\n"
+               + "def f(s: Sock) -> Int32:\n    return s.name()[1]\n"
+               + "def main():\n    print(f(Sock(7)))\nmain()\n")
+        c, cpp = self._identical(src)
+        assert "std::get<1>(s.name())" in cpp
+
+    def test_decl_sink_routes(self):
+        # The widened method return at a DECL sink: the value-tuple local
+        # decl arm consumes the bare call init, then the subscript reads
+        # off the registered local.
+        src = (_PRELUDE
+               + "class Sock:\n"
+               + "    n: Int32\n"
+               + "    def __init__(self, n: Int32):\n        self.n = n\n"
+               + "    def name(self) -> tuple[str, Int32]:\n"
+               + "        return (\"x\", self.n)\n"
+               + "def f(s: Sock) -> Int32:\n"
+               + "    t = s.name()\n"
+               + "    return t[1]\n"
+               + "def main():\n    print(f(Sock(7)))\nmain()\n")
+        c, _cpp = self._identical(src)
+        assert not any(k.startswith("body:") for k in c._thir_fallback)
+
+    def test_arg_sink_routes(self):
+        # The widened method return at an ARG sink: the value-tuple
+        # pass-through arg row consumes the call result.
+        src = (_PRELUDE
+               + "class Sock:\n"
+               + "    n: Int32\n"
+               + "    def __init__(self, n: Int32):\n        self.n = n\n"
+               + "    def name(self) -> tuple[str, Int32]:\n"
+               + "        return (\"x\", self.n)\n"
+               + "def g(t: tuple[str, Int32]) -> Int32:\n    return t[1]\n"
+               + "def f(s: Sock) -> Int32:\n    return g(s.name())\n"
+               + "def main():\n    print(f(Sock(7)))\nmain()\n")
+        c, _cpp = self._identical(src)
+        assert not any(k.startswith("body:") for k in c._thir_fallback)
+
+    def test_nonvalue_element_call_receiver_defers(self):
+        # A pointer-repr-element result keeps the tuple outside
+        # _value_tuple_nested -- the receiver stays unadmitted and f's
+        # body falls back at the subscript (the composed reject key
+        # isolates the intended construct; make's own borrow-tuple
+        # return falls back separately as bare stmt.return).
+        src = (_F3_RECORDS
+               + "def make(b: Leaf) -> tuple[Int32, Leaf]:\n"
+               + "    return (1, b)\n"
+               + "def f(b: Leaf) -> Int32:\n    return make(b)[0]\n"
+               + "def main():\n    f(Leaf(1))\nmain()\n")
+        c, _cpp = self._identical(src)
+        assert "body:stmt.return:subscript.tuple_shape" in c._thir_fallback
+
+
 # --- Nested value-tuple subscript reads: `t[i]` yielding a whole (recursively
 # value) tuple, and the chained `t[i][j]` off that inner tuple read. Both stay
 # bare value reads (`std::get<j>(std::get<i>(t))`), printed via TuplePrinter. ---

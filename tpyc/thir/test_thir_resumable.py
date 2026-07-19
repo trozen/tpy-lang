@@ -680,11 +680,11 @@ class TestSlicedOutShapes:
                + "def main() -> None:\n    pass\nmain()\n")
         assert _res_fallback(src).get("res.param_type") == 1
 
-    def test_optional_local_still_defers(self):
-        # A pointer-repr Optional[record] local now CLASSIFIES (`P* o`
-        # field via lc.pointers), but its None-literal decl init still
-        # defers (expr.none_literal -- the nullptr render at a pointer
-        # slot is its own rung).
+    def test_optional_local_none_init_routes(self):
+        # A pointer-repr Optional[record] frame local's writes ride the
+        # SYNC reseat arms (pass-1 registration makes every frame decl a
+        # reassign): the None init renders the assign-only `o = nullptr;`.
+        # The lvalue-lift sibling is pinned separately below.
         src = (_PRE
                + "class R:\n"
                + "    v: Int32\n"
@@ -697,7 +697,56 @@ class TestSlicedOutShapes:
                + "        total = await step(total)\n"
                + "    return total\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        assert _res_fallback(src).get("expr.none_literal") == 1
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("reseat.opt_none") == 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "o = nullptr;" in cpp
+
+    def test_optional_local_lvalue_reseat_routes(self):
+        # The probe-caught divergence pinned permanently: the old
+        # position-blind member assign rendered `x = b;` where the AST
+        # lifts `x = &(b);` -- the sync reseat arm now owns the write.
+        src = ("import asyncio\n" + _PRE
+               + "class R:\n"
+               + "    v: Int32\n"
+               + "    def __init__(self, v: Int32) -> None:\n        self.v = v\n\n"
+               + "async def f(b: R) -> Int32:\n"
+               + "    x: R | None = None\n"
+               + "    await asyncio.sleep(0)\n"
+               + "    x = b\n"
+               + "    if x is not None:\n"
+               + "        return x.v\n"
+               + "    return 0\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("reseat.opt_lvalue") == 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "x = &(b);" in cpp
+
+    def test_rebind_slot_holder_defers(self):
+        # An rvalue-reassigned Optional-ptr frame local must never reach
+        # the sync rebind-slot arm (its `&*(__slot_N = ...)` references
+        # storage only the sync THIRPtrLocalDecl pre-declares). Observed:
+        # the sync reseat arm's own source gate rejects first
+        # (decl.opt_reseat_source) -- the resumable-side rebind-slot
+        # guard (res.leaf_field_write) stays defensive behind it.
+        src = ("import asyncio\n" + _PRE
+               + "class R:\n"
+               + "    v: Int32\n"
+               + "    def __init__(self, v: Int32) -> None:\n        self.v = v\n\n"
+               + "async def f() -> Int32:\n"
+               + "    x: R | None = None\n"
+               + "    await asyncio.sleep(0)\n"
+               + "    x = R(5)\n"
+               + "    if x is not None:\n"
+               + "        return x.v\n"
+               + "    return 0\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        assert _res_fallback(src).get(
+            "stmt.var_decl:decl.opt_reseat_source") == 1
+        _assert_identical(src)
 
     def test_lowering_reject_falls_back_after_await(self):
         src = (_PRE
@@ -2347,12 +2396,11 @@ class TestFrameTupleUnpack:
         assert _res_fallback(src).get("res.unpack") == 1
         _assert_identical(src)
 
-    def test_value_tuple_name_source_defers_on_literal_init(self):
-        # A VALUE-tuple frame local now classifies (bare field) and its
-        # name-source unpack is in-slice -- but this fixture's
-        # tuple-LITERAL init to the plain field rejects first
-        # (expr.tuple_literal). The routed name-source shape is the
-        # for-head holder (TestSyncLoops covers it).
+    def test_value_tuple_literal_init_routes(self):
+        # A value-tuple literal at the bare tuple frame field renders the
+        # same spelled `std::tuple<...>{...}` as the sync decl arm in the
+        # position-blind member assign; the name-source unpack then reads
+        # it via the cref arm.
         src = (_PRE
                + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
                + "async def f(n: Int32) -> Int32:\n"
@@ -2361,7 +2409,232 @@ class TestFrameTupleUnpack:
                + "    n = await step(n)\n"
                + "    return a + b + n\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        assert _res_fallback(src).get("expr.tuple_literal") == 1
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.frame_tuple_literal") == 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "t = std::tuple<int32_t, int32_t>{n, " in cpp
+
+
+_POLLPAIR = (
+    "from tpy import Int32, Own, nocopy\n"
+    "from tpy.coro import Poll, Waker, poll_ready\n\n"
+    "@nocopy\n"
+    "class Counter:\n"
+    "    n: Int32\n"
+    "    def __init__(self, n: Int32) -> None:\n"
+    "        self.n = n\n"
+    "    def bump(self) -> None:\n"
+    "        self.n += 1\n\n"
+    "@nocopy\n"
+    "class OwnPair:\n"
+    "    def cancel(self) -> None:\n"
+    "        pass\n"
+    "    def __poll__(self, w: Waker) -> Own[Poll[tuple[Own[Counter], Int32]]]:\n"
+    "        return poll_ready((Counter(10), Int32(99)))\n\n")
+
+
+class TestAwaitLiftUnpack:
+    """One-shot `__await_lift_*` tuple move-outs (the streams family): the
+    holder classifies frame_slot (skeleton-owning), the unpack rvalue-ref-
+    binds the deref'd slot (`auto&& __tup_N = (*__await_lift_M);`) and moves
+    the owned elements out at their frame targets; an Own[record] target is
+    an owning frame_slot with the same `(*name)` reads as its bare-typed
+    sibling."""
+
+    def test_own_tuple_moveout_routes(self):
+        src = (_POLLPAIR
+               + "async def f() -> None:\n"
+               + "    c, tag = await OwnPair()\n"
+               + "    c.bump()\n"
+               + "    print(c.n, tag)\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.unpack_oneshot") == 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "auto&& __tup_1 = (*__await_lift_0);" in cpp
+        assert "c.emplace(std::move(std::get<0>(__tup_1)));" in cpp
+        assert "tag = std::get<1>(__tup_1);" in cpp
+        assert "(*c).bump();" in cpp
+
+    def test_value_tuple_lift_keeps_cref_arm(self):
+        # A pure-value one-shot lift is a BARE field (no owned element), so
+        # the AST takes the const-ref name ladder, not the auto&& arm --
+        # and so does THIR (the value-tuple name-source arm).
+        src = ("from tpy import Int32, Own, nocopy\n"
+               "from tpy.coro import Poll, Waker, poll_ready\n\n"
+               "@nocopy\n"
+               "class ValPair:\n"
+               "    def cancel(self) -> None:\n"
+               "        pass\n"
+               "    def __poll__(self, w: Waker) -> Own[Poll[tuple[Int32, Int32]]]:\n"
+               "        return poll_ready((Int32(1), Int32(2)))\n\n"
+               "async def f() -> None:\n"
+               "    a, b = await ValPair()\n"
+               "    print(a, b)\n\n"
+               "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.frame_unpack") == 1
+        assert not witnesses.get("res.unpack_oneshot")
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "const auto& __tup_1 = __await_lift_0;" in cpp
+        assert "a = std::get<0>(__tup_1);" in cpp
+
+    def test_loop_reunpack_reemplaces(self):
+        # The accept-loop shape: a while-repeated one-shot unpack must
+        # re-emplace the Own[record] frame_slot target each iteration.
+        src = (_POLLPAIR
+               + "async def f() -> None:\n"
+               + "    i: Int32 = 0\n"
+               + "    while i < 3:\n"
+               + "        c, tag = await OwnPair()\n"
+               + "        c.bump()\n"
+               + "        print(c.n, tag)\n"
+               + "        i += 1\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.unpack_oneshot") == 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "c.emplace(std::move(std::get<0>(__tup_1)));" in cpp
+
+    def test_discarded_owned_element_routes(self):
+        # `_, m = await OwnPair()`: sema keeps is_owned on the discarded
+        # slot, so both paths take the one-shot arm -- the discard slot
+        # emits nothing and the holder still rvalue-ref-binds (the
+        # any(is_owned) gate tracks the AST's source_is_oneshot condition
+        # through the discard).
+        src = (_POLLPAIR
+               + "async def f() -> None:\n"
+               + "    _, m = await OwnPair()\n"
+               + "    print(m)\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.unpack_oneshot") == 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "auto&& __tup_1 = (*__await_lift_0);" in cpp
+        assert "m = std::get<1>(__tup_1);" in cpp
+        assert "std::get<0>" not in cpp
+
+    def test_ref_element_alias_target_defers(self):
+        # A reference-element (non-Own) lift tuple aliases its target INTO
+        # the lift slot (`lst = &(unwrap_ref(tuple_elem_ref(...)))` off a
+        # tuple_to_pointer bridge) -- the pointer-alias unpack family, a
+        # separate cell. The alias target rejects at classification.
+        src = ("from tpy import Int32, Own, nocopy\n"
+               "from tpy.coro import Poll, Waker, poll_ready\n\n"
+               "@nocopy\n"
+               "class RefPair:\n"
+               "    def cancel(self) -> None:\n"
+               "        pass\n"
+               "    def __poll__(self, w: Waker) -> Own[Poll[tuple[list[Int32], Int32]]]:\n"
+               "        xs: list[Int32] = [10, 20]\n"
+               "        return poll_ready((xs, Int32(2)))\n\n"
+               "async def f() -> None:\n"
+               "    lst, m = await RefPair()\n"
+               "    lst.append(30)\n"
+               "    print(len(lst), m)\n\n"
+               "def main() -> None:\n    pass\nmain()\n")
+        assert _res_fallback(src).get("res.local_storage") == 1
+        _assert_identical(src)
+
+    def test_durable_own_tuple_local_defers(self):
+        # A DURABLE (non-lift) Own-element tuple local is skeleton-owning
+        # too, but its decl/read arms are unrouted (the gen_tuple_own_local
+        # family) -- it keeps res.local_storage.
+        src = ("import asyncio\nfrom tpy import Int32, Own\n\n"
+               "class Box:\n"
+               "    v: Int32\n"
+               "    def __init__(self, v: Int32) -> None:\n"
+               "        self.v = v\n\n"
+               "def make(n: Int32) -> tuple[Own[Box], Int32]:\n"
+               "    return (Box(n), n + 1)\n\n"
+               "async def f(n: Int32) -> Int32:\n"
+               "    t = make(n)\n"
+               "    await asyncio.sleep(0)\n"
+               "    return t[1]\n\n"
+               "def main() -> None:\n    pass\nmain()\n")
+        assert _res_fallback(src).get("res.local_storage") == 1
+        _assert_identical(src)
+
+
+class TestResumableGlobals:
+    """Read-only value-global seeding in resumable bodies (the sync
+    `_seed_readonly_globals` reused): a global is never a frame field, so
+    reads render the sync spellings (bare same-module, qualified imported)
+    with no frame peel. `global`-write names stay unseeded -- a TpyGlobal
+    statement still rejects the body."""
+
+    def test_module_global_read_routes(self):
+        src = ("import asyncio\nfrom tpy import Int32\n\n"
+               + "LIMIT: Int32 = 5\n\n"
+               + "async def f(n: Int32) -> Int32:\n"
+               + "    await asyncio.sleep(0)\n"
+               + "    return n + LIMIT\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("name.global_seeded")
+        assert not any(k.startswith("resumable:") for k in fallback)
+
+    def test_imported_constant_read_routes(self):
+        src = ("import asyncio\nfrom tpy import Int32\n"
+               + "from socket import AF_INET\n\n"
+               + "async def f() -> Int32:\n"
+               + "    await asyncio.sleep(0)\n"
+               + "    return Int32(AF_INET)\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("name.global_imported")
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "::tpystd::socket::AF_INET" in cpp
+
+    def test_native_global_read_routes(self):
+        # A same-module native-linkage global reads through the
+        # `native_globals` map (qualify_native_name spelling) -- the
+        # branch the imported-constant pin does not reach.
+        src = ("import asyncio\nfrom tpy import Int32\n"
+               + "from tpy.extern import native_global\n\n"
+               + "COUNT: Int32 = native_global(\"g_count\", binding=\"C\")\n\n"
+               + "async def f() -> Int32:\n"
+               + "    await asyncio.sleep(0)\n"
+               + "    return COUNT\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("name.global_native")
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "g_count" in cpp
+
+    def test_str_global_read_routes(self):
+        # An owned-str global carries the same view/owned form duality as
+        # locals; the seeded read is STORAGE (bare owned lvalue) in the
+        # resumable exactly as in a sync body.
+        src = ("import asyncio\nfrom tpy import Int32\n\n"
+               + "GREETING: str = \"hi\"\n\n"
+               + "async def f() -> Int32:\n"
+               + "    await asyncio.sleep(0)\n"
+               + "    return len(GREETING)\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("name.global_seeded")
+        assert not any(k.startswith("resumable:") for k in fallback)
+
+    def test_global_write_still_defers(self):
+        # Only the read-only half seeds: a `global`-declared write name
+        # stays unseeded, so the TpyGlobal statement rejects the body.
+        src = ("import asyncio\nfrom tpy import Int32\n\n"
+               + "counter: Int32 = 0\n\n"
+               + "async def f() -> None:\n"
+               + "    global counter\n"
+               + "    counter = 1\n"
+               + "    await asyncio.sleep(0)\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        fallback = _res_fallback(src)
+        assert sum(fallback.values()) >= 1
         _assert_identical(src)
 
 

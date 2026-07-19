@@ -272,8 +272,11 @@ Oracle evidence that (a)-(c) are the whole render surface:
   the `lc.resumable_leaf_mode` block) continue to bound the slice --
   now partial per construct (2026-07-18 grind cells): `res.leaf_try`
   fires only for finally-carrying trys (except-only trys fall through
-  to the sync arm); `res.unpack` only off the rvalue-source frame-target
-  slice; in-branch `res.leaf_field_write` only outside
+  to the sync arm); `res.unpack` only off the rvalue-source /
+  value-tuple-name / one-shot await-lift frame-target slices (the last
+  added 2026-07-18: `auto&& __tup_N = (*__await_lift_M);` + owned-element
+  move-outs into Own[record] frame_slots); in-branch
+  `res.leaf_field_write` only outside
   plain_frame_fields; `res.finally_return` only for async helpers
   (generator bare returns route). `res.leaf_with`, `res.leaf_match`,
   `res.nested_def` remain whole rejects. (`res.leaf_return` ROUTED
