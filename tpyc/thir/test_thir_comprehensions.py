@@ -517,14 +517,21 @@ class TestDictCompContainerValue:
         assert _fn(thir, "f") is None
         assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
-    def test_list_comp_container_elem_still_rejects(self):
-        # The widening is dict-VALUE-only: a list-of-list comp element slot
-        # keeps rejecting (push_back arm unvetted).
+    def test_list_comp_container_elem_routes(self):
+        # A list/set element and an Array-lambda return also take the container
+        # slot now (allow_container), but keep the BARE brace (push_back /
+        # declared lambda return deduce the type) -- only the dict VALUE spells
+        # it typed. A nested-comp element recurses; a container LITERAL renders
+        # bare-brace self.
         src = (_PRELUDE
                + "def f(n: Int32) -> Int32:\n"
                + "    xs = [[k for k in range(i)] for i in range(n)]\n"
                + "    return len(xs)\n"
-               + "print(f(3))\n")
+               + "def lits(n: Int32) -> Int32:\n"
+               + "    ys = [[i, i + 1] for i in range(n)]\n"
+               + "    return len(ys)\n"
+               + "print(f(3))\nprint(lits(3))\n")
         thir = _lower(src)
-        assert _fn(thir, "f") is None
+        assert _fn(thir, "f") is not None
+        assert _fn(thir, "lits") is not None
         assert _cpp(src, thir=True) == _cpp(src, thir=False)

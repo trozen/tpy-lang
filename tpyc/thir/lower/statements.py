@@ -567,7 +567,8 @@ def _unpack_target_decl(tt: TpyType, analyzer, render_type
         tt = resolved
     return tt, render_type(tt)
 
-def _container_scalar_tuple_iter(t: TpyType | None, analyzer) -> bool:
+def _container_scalar_tuple_iter(t: TpyType | None, analyzer, *,
+                                 allow_record: bool = False) -> bool:
     """A `list[tuple[scalar-or-str, ...]]` / `Array[tuple[scalar-or-str, ...], N]`
     binding -- admitted as the tuple-unpack loop's iterable (element family gated
     by `_scalar_or_str_unpack_elem`). Element-TOUCHING read gates
@@ -586,6 +587,12 @@ def _container_scalar_tuple_iter(t: TpyType | None, analyzer) -> bool:
     elem = unwrap_readonly(args[0])
     return (isinstance(elem, TupleType) and bool(elem.element_types)
             and all(_scalar_or_str_unpack_elem(et, analyzer)
+                    # `allow_record` (the borrow-tuple for-head unpack): an
+                    # F1-record element aliases into an is_ref target via the
+                    # loop element's tuple_to_pointer lift.
+                    or (allow_record and _f1_record(
+                        unwrap_readonly(unwrap_ref_type(unwrap_send_sync(et))),
+                        analyzer))
                     for et in elem.element_types))
 
 def _range_bound_literal_value(arg: TpyExpr) -> int | None:
@@ -984,6 +991,14 @@ def _for_tuple_unpack_route(
                 or len(elem.element_types) != len(up.targets)
                 or not _for_each_elem_binding_ok(et)):
             return None
+        # A generator / zip source yields BORROW-form tuples (`std::tuple<T*>`);
+        # a ref / fresh-const-ref target reads them with the unwrapped emit, NOT
+        # the storage container's tuple_to_pointer lift, so it defers (only the
+        # value-tuple / scalar unpack routes over an iter-proto source).
+        if any(up.is_ref) or any(
+                up.is_const_ref[i] and n not in hoisted_names
+                for i, n in enumerate(up.targets) if n is not None):
+            return None
         return _ForEachRoute(
             route="tuple_unpack", elem_type=et,
             iterable_lvalue=_iter_call_lvalue(it, analyzer),
@@ -1002,7 +1017,8 @@ def _for_tuple_unpack_route(
             return None
         it_type = unwrap_readonly(unwrap_ref_type(
             unwrap_send_sync(declared[it.name])))
-        if not _container_scalar_tuple_iter(it_type, analyzer):
+        if not _container_scalar_tuple_iter(it_type, analyzer,
+                                            allow_record=True):
             return None
         elem = unwrap_readonly(it_type.type_args[0])
         if len(elem.element_types) != len(up.targets):
@@ -1234,9 +1250,11 @@ def _tuple_unpack_targets(stmt: TpyTupleUnpack, analyzer,
 
     `hoisted_names` are targets used after the loop: they predecl a plain value
     slot and ASSIGN, so their `is_const_ref` flag (the fresh expensive-copy
-    bind) is inert -- admitted here where a fresh const-ref target still rejects
-    (a `const T&` bind is a deferred row)."""
-    if any(stmt.is_ref) or any(stmt.is_owned):
+    bind) is inert. A fresh const-ref target binds `const T& = std::get<i>`
+    (the "cref" arm) and a borrow F1-record target aliases the element (the
+    "ref" arm via the head's tuple_to_pointer lift); the lowering derives the
+    per-target bind from is_const_ref / is_ref."""
+    if any(stmt.is_owned):
         return None
     if not all(stmt.is_new):
         return None
@@ -1247,9 +1265,15 @@ def _tuple_unpack_targets(stmt: TpyTupleUnpack, analyzer,
             continue
         if name in declared or name in narrowed:
             return None
-        if stmt.is_const_ref[i] and name not in hoisted_names:
-            return None
         tt = unwrap_ref_type(stmt.target_types[i])
+        if i < len(stmt.is_ref) and stmt.is_ref[i]:
+            # Borrow F1-record target -> the "ref" alias bind.
+            if not _f1_record(tt, analyzer):
+                return None
+            types.append(tt)
+            continue
+        # A scalar/str element: a fresh expensive-copy target binds cref, every
+        # other value target binds by value; the lowering picks the arm.
         if not _scalar_or_str_unpack_elem(tt, analyzer):
             return None
         types.append(tt)
@@ -1276,9 +1300,9 @@ def _standalone_unpack_target_binds(
       classes (pointer / rebind-slot / alias / storage-tuple / value-opt /
       frame names) whose reassign takes slot machinery, not the plain assign.
 
-    Borrow (`is_ref`) targets stay deferred."""
-    if any(stmt.is_ref):
-        return None
+    A borrow (`is_ref`) F1-record target aliases the source tuple element,
+    lifted through the caller's `tuple_to_pointer` source wrap; other borrow
+    targets stay deferred."""
     out: list[tuple[TpyType | None, str | None]] = []
     for i, name in enumerate(stmt.targets):
         if name is None:
@@ -1287,6 +1311,15 @@ def _standalone_unpack_target_binds(
         if name in narrowed:
             return None
         tt = unwrap_ref_type(stmt.target_types[i])
+        if i < len(stmt.is_ref) and stmt.is_ref[i]:
+            # `auto&& a = unwrap_ref(tuple_elem_ref(std::get<i>(__tup)))` over
+            # the borrow pointer tuple: a fresh F1-record alias only. The caller
+            # gates the source form (must be a storage-form pointer-repr tuple).
+            if not (stmt.is_new[i] and name not in declared
+                    and _f1_record(tt, analyzer)):
+                return None
+            out.append((tt, "ref"))
+            continue
         if not stmt.is_new[i]:
             if (name not in declared or name in blocked
                     or stmt.is_owned[i]
@@ -1381,10 +1414,56 @@ def _tuple_unpack_source(
         return src_t
     if not all(_scalar_or_str_unpack_elem(e, analyzer)
                or _value_tuple_global(e, analyzer) is not None
+               # A pointer-repr F1-record element: the borrow-tuple unpack
+               # (`a, b = it`) lifts a storage-form source via tuple_to_pointer
+               # and aliases the record element into an `is_ref` target. The
+               # bind admission gates non-ref record targets out; the lowering
+               # gates the source form (must read from storage).
+               or _f1_record(
+                   unwrap_readonly(unwrap_ref_type(unwrap_send_sync(e))),
+                   analyzer)
                for e in src_t.element_types):
         note_detail("tuple_unpack.source_family")
         return None
     return src_t
+
+def _iteration_yields_const(it: TpyExpr, lc: '_LowerCtx', analyzer) -> bool:
+    """Whether iterating `it` binds the loop var const (element pointers spell
+    `const T*`) -- the SUBSET of `context.iteration_yields_const` this wave
+    gates: a const-ref param / alias, or a readonly method's `self.field`. The
+    AST's other const-source rungs are intentionally out of scope here -- a
+    const container/indirect LOCAL (`const_indirect_locals`) and a
+    borrowing-view accessor call (`d.items()` / `d.values()`, const tracking
+    the receiver). A case hitting one of those computes a non-const wrap that
+    diverges from the AST snapshot, so the byte-diff keeps it un-migrated
+    rather than shipping a mismatch (never a miscompile)."""
+    if (isinstance(it, TpyFieldAccess) and isinstance(it.obj, TpyName)
+            and it.obj.name == "self"
+            and _param_is_const("self", lc.func, analyzer, lc.record_name)):
+        return True
+    if isinstance(it, TpyName):
+        return _param_is_const(it.name, lc.func, analyzer, lc.record_name)
+    return False
+
+def _borrow_tuple_wrap_cpp(target_types: 'tuple', analyzer, *,
+                           const_source: bool = False) -> 'str | None':
+    """The borrow pointer-tuple spelling (`std::tuple<std::string_view, T*>`)
+    for a `tuple_to_pointer` unpack wrap, or None if it has no pointer-repr
+    element. Mirrors the AST's `resolve_tuple_pending` before `to_cpp_return`:
+    `to_cpp*` do not resolve pending slots (a str element carries PendingStr
+    until usage-resolved), so resolve view / int-literal elements first. A
+    const source (a const loop var) spells `const T*` element pointers."""
+    resolve_lit = analyzer.ctx.default_int_for_literal
+    resolved = []
+    for et in target_types:
+        rv = _resolve_pending_view(et, analyzer)
+        resolved.append(rv if rv is not None
+                        else resolve_int_literals(et, resolve_lit))
+    ptr_form = TupleType(tuple(resolved))
+    if not ptr_form.has_pointer_repr_element():
+        return None
+    return (ptr_form.to_cpp_return_const() if const_source
+            else ptr_form.to_cpp_return())
 
 def _with_target_arm(item, declared: dict[str, TpyType], prescan: _Prescan,
                      analyzer, pointers: AbstractSet[str],
@@ -4958,6 +5037,24 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             elif bind == "cref":
                 _witness("stmt.tuple_unpack.cref_target")
         _witness("stmt.tuple_unpack")
+        source_wrap_cpp = None
+        if any(b == "ref" for b in bind_tags):
+            # Ref targets alias the source tuple elements: the source must be a
+            # storage-form pointer-repr tuple NAME, lifted via tuple_to_pointer
+            # so `std::get<i>` yields the `T*` each ref target aliases. Only a
+            # name source routes here -- its const-ness (const element pointers)
+            # is known via `const_storage_tuple_locals`; a field / subscript
+            # source's const-ness is not tracked, so it defers.
+            const_src = (isinstance(stmt.value, TpyName)
+                         and stmt.value.name in lc.const_storage_tuple_locals)
+            source_wrap_cpp = _borrow_tuple_wrap_cpp(
+                stmt.target_types, analyzer, const_source=const_src)
+            if not (isinstance(stmt.value, TpyName)
+                    and stmt.value.name in lc.storage_tuple_locals
+                    and source_wrap_cpp is not None):
+                note_detail("tuple_unpack.ref_source_form")
+                raise ThirUnsupported("stmt.tuple_unpack")
+            _witness("stmt.tuple_unpack.ref_target")
         if isinstance(stmt.value, TpyName):
             # A spelled imported/native tuple global source renders its fixed
             # qualification (the same THIRName.cpp spelling a scalar global
@@ -4966,6 +5063,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 source=stmt.value.name, targets=tuple(stmt.targets),
                 target_cpps=tuple(target_cpps), binds=tuple(bind_tags),
                 source_cpp=lc.prescan.global_cpp.get(stmt.value.name),
+                source_wrap_cpp=source_wrap_cpp,
                 loc=loc)
         # A free call hoists its arg temps (temp_args, inert for a field read).
         _witness("stmt.tuple_unpack.rvalue_source")
@@ -5035,19 +5133,46 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     # A target hoisted for post-loop use is predeclared by the
                     # ForEach lowering (already in `declared`); the head assigns
                     # the slot rather than re-declaring (_gen_tuple_unpack's
-                    # declared-name tail).
-                    if name in declared:
+                    # declared-name tail). A fresh borrow F1-record target
+                    # aliases the element ("ref"); a fresh expensive-copy target
+                    # binds `const T&` ("cref").
+                    if i < len(up.is_ref) and up.is_ref[i]:
+                        # A hoisted/reused ref target takes the AST's
+                        # pointer-slot assign (`name = &(unwrap_ref(...))`), not
+                        # the fresh `auto&&` alias -- not modeled, so defer
+                        # (mirrors the standalone bind's is_new exclusion).
+                        if name in declared:
+                            raise ThirUnsupported("stmt.tuple_unpack")
+                        target_cpps.append(cpp)
+                        target_binds.append("ref")
+                    elif name in declared:
                         target_cpps.append(None)
                         target_binds.append("assign")
+                    elif i < len(up.is_const_ref) and up.is_const_ref[i]:
+                        target_cpps.append(cpp)
+                        target_binds.append("cref")
                     else:
                         target_cpps.append(cpp)
                         target_binds.append("value")
                     body_declared[name] = tt
+                head_wrap_cpp = None
+                if any(b == "ref" for b in target_binds):
+                    # The loop element (`stmt.var`) is a storage-form tuple;
+                    # lift it to the borrow pointer tuple so `std::get<i>`
+                    # yields the `T*` each ref target aliases.
+                    head_wrap_cpp = _borrow_tuple_wrap_cpp(
+                        up.target_types, analyzer,
+                        const_source=_iteration_yields_const(
+                            stmt.iterable, lc, analyzer))
+                    if head_wrap_cpp is None:
+                        raise ThirUnsupported("stmt.tuple_unpack")
+                    _witness("stmt.tuple_unpack.ref_target")
                 head = THIRTupleUnpack(
                     source=stmt.var,
                     targets=tuple(up.targets),
                     target_cpps=tuple(target_cpps),
                     binds=tuple(target_binds),
+                    source_wrap_cpp=head_wrap_cpp,
                     loc=getattr(up, "loc", None))
                 body = (head,) + _lower_scoped_stmts(
                     stmt.body[1:], lc, body_declared,
@@ -5062,6 +5187,27 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 if vopt_loop_var:
                     _witness("foreach.value_opt_elem")
                     lc.value_opt_locals.add(stmt.var)
+                # A loop var over a storage-form pointer-repr tuple CONTAINER is
+                # itself a storage-form source (a body `a, b = var` unpack lifts
+                # it via tuple_to_pointer) -- registered for the body scope,
+                # mirror of the AST's storage_form_tuple_locals.add. The
+                # `is_native_iterable` gate is load-bearing: a generator /
+                # protocol iterator yields BORROW-form tuples (`std::tuple<T*>`),
+                # so its loop var stays borrow (`->` element reads) and must NOT
+                # be flagged storage.
+                _et_bare = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(et)))
+                            if et is not None else None)
+                _it_type = analyzer.get_expr_type(stmt.iterable)
+                storage_tuple_loop_var = (
+                    _it_type is not None
+                    and is_native_iterable(_it_type, analyzer.registry)
+                    and isinstance(_et_bare, TupleType)
+                    and _et_bare.has_pointer_repr_element()
+                    and stmt.var not in lc.storage_tuple_locals)
+                if storage_tuple_loop_var:
+                    lc.storage_tuple_locals.add(stmt.var)
+                    if _iteration_yields_const(stmt.iterable, lc, analyzer):
+                        lc.const_storage_tuple_locals.add(stmt.var)
                 # A native auto-consuming loop var is bound `auto&&` into the
                 # OwnIter storage and moves at its last use in the body (the
                 # AST seeds movable_locals for the loop scope only).
@@ -5078,6 +5224,9 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                         lc.value_opt_locals.discard(stmt.var)
                     if consuming_loop_var:
                         lc.movable_locals.discard(stmt.var)
+                    if storage_tuple_loop_var:
+                        lc.storage_tuple_locals.discard(stmt.var)
+                        lc.const_storage_tuple_locals.discard(stmt.var)
         finally:
             lc.frame_slots |= frame_shadowed
         if route.route == "range":

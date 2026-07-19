@@ -950,7 +950,9 @@ The measured next co-blockers: **container
 locals as call args** (`f(xs)` -- the borrow-ref pass looks like another gen_call_arg
 pass-through for non-Own container params; keeps `main()`-shaped callers on AST), the
 `Int32(0)` constructor-init, and the str/BigInt/f-string print args. Literal-locals cells
-still deferred: `[0] * n` (`TpyListRepeat`), nested container literals, str/record/Optional
+still deferred: `[0] * n` (`TpyListRepeat`), nested container literals (nested-container
+COMPREHENSION elements landed via `_lower_comp_container_elem`; nested container LITERAL
+decl-inits still deferred), str/record/Optional
 elements, empty-`Array` literals, container reassignment + aliasing (`ys = xs`); subscript
 writes on name receivers landed in the wave-2 setitem cell. **Container call args landed (incr 35,
 `_container_pass_through_arg`): +11 bodies (5678 -> 5689)** -- a bare-name arg with a

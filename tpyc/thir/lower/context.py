@@ -324,7 +324,8 @@ class _LowerCtx:
                  "ref_alias_locals",
                  "value_opt_locals", "value_opt_view_locals", "movable_locals",
                  "self_receiver", "self_cpp", "self_is_pointer",
-                 "record_name", "storage_tuple_locals", "frame_slots",
+                 "record_name", "storage_tuple_locals",
+                 "const_storage_tuple_locals", "frame_slots",
                  "resumable_leaf_mode", "nested_returns", "in_finally_helper",
                  "plain_frame_fields", "value_tuple_frame_locals",
                  "oneshot_lift_locals",
@@ -464,6 +465,9 @@ class _LowerCtx:
         # F3 storage-tuple alias locals (`auto&& t = <storage tuple field>`): a read
         # off one is STORAGE form, lifted via `tuple_to_pointer` at borrow boundaries.
         self.storage_tuple_locals: set[str] = set()
+        # Subset of storage_tuple_locals iterated from a const source (a const
+        # loop var): the borrow tuple wrap spells `const T*` element pointers.
+        self.const_storage_tuple_locals: set[str] = set()
         # F2e: sema's movable (owned) locals -- a borrow write/return source that
         # is one of these at last use moves (`ptr_to_optional_move`). The set only
         # grows during the body walk, so the final sema set matches the working

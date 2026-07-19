@@ -1723,6 +1723,13 @@ class THIRTupleUnpack(THIRStmt):
     # produced tokens -- ref elements reject at lowering today).
     wraps: tuple[str, ...] = ()
     source_oneshot: bool = False
+    # A borrow-form pointer tuple type (`std::tuple<T*, ...>`) when a
+    # storage-form source with pointer-repr (record) elements is unpacked into
+    # `is_ref` targets: the source binds `auto __tup_N =
+    # ::tpy::tuple_to_pointer<source_wrap_cpp>(<src>);` and each "ref" target
+    # aliases the live element -- `auto&& name =
+    # ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<i>(__tup_N)));`.
+    source_wrap_cpp: str | None = None
 
 
 @dataclass(frozen=True)

@@ -3753,9 +3753,27 @@ def _lower_container_elem(e: TpyExpr, slot: TpyType | None,
         # A nested value-tuple element lowers against its slot TupleType;
         # tuple literals have no generic _lower_expr arm.
         vt = _value_tuple_return(slot, lc.analyzer)
-        if vt is None:
-            raise ThirUnsupported("expr.tuple_literal.slot")
-        return _lower_tuple_literal(e, vt, lc, declared)
+        if vt is not None:
+            return _lower_tuple_literal(e, vt, lc, declared)
+        # A non-value tuple element stores via `tuple_to_storage<S>(S{...})`:
+        # the inner spells the storage tuple S with its members lowered as
+        # storage container elements, and the STORAGE FormConvert emits the
+        # helper (mirrors the MIL pointer-repr-tuple field write).
+        su = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(slot))) \
+            if slot is not None else None
+        if isinstance(su, TupleType) and len(e.elements) == len(su.element_types):
+            inner = THIRTupleLiteral(
+                result_type=su,
+                elements=tuple(
+                    _lower_container_elem(e.elements[i], su.element_types[i],
+                                          lc, declared)
+                    for i in range(len(e.elements))),
+                loc=getattr(e, "loc", None))
+            _witness("containerlit.tuple_storage")
+            return THIRFormConvert(result_type=su, value=inner,
+                                   form=Form.STORAGE, move=False,
+                                   loc=getattr(e, "loc", None))
+        raise ThirUnsupported("expr.tuple_literal.slot")
     if isinstance(e, (TpyListComprehension, TpySetComprehension,
                       TpyDictComprehension)):
         # A comprehension element renders the same position-independent

@@ -276,7 +276,7 @@ def _comp_elem_slot_ok(slot: 'TpyType | None', analyzer, *,
     a str/bytes VIEW slot (owned-only here).
 
     `allow_container` (the dict VALUE slot only) admits a list/Array container
-    slot -- SHAPE-sensitive, so `_lower_comp_dict_value` gates the element
+    slot -- SHAPE-sensitive, so `_lower_comp_container_elem` gates the element
     NODE (a container literal / nested comprehension), mirroring
     `_container_lit_elem_ok`'s `fam == "container"` arm."""
     if _comp_slot_ok(slot, analyzer):
@@ -314,10 +314,12 @@ def _comp_lowering_route(
     if not args:
         return None
     if route.kind == "list" and not (is_list(t)
-                                     and _comp_elem_slot_ok(args[0], analyzer)):
+                                     and _comp_elem_slot_ok(args[0], analyzer,
+                                                            allow_container=True)):
         return None
     if route.kind == "set" and not (is_set(t)
-                                    and _comp_elem_slot_ok(args[0], analyzer)):
+                                    and _comp_elem_slot_ok(args[0], analyzer,
+                                                           allow_container=True)):
         return None
     if route.kind == "dict":
         # An owned-move source admits a hashable F1-record KEY (sema validated
@@ -364,7 +366,8 @@ def _comp_array_route(
     if gen.owns_elements or gen.conditions or gen.unpack_vars is not None:
         return None
     args_t = getattr(t, "type_args", None)
-    if not args_t or not _comp_elem_slot_ok(args_t[0], analyzer):
+    if not args_t or not _comp_elem_slot_ok(args_t[0], analyzer,
+                                            allow_container=True):
         return None
     special = (pointers | rebind_slots | storage_tuple_locals | narrowed)
     if gen.var in special:
@@ -421,7 +424,7 @@ def _lower_array_comprehension(
         array_size_cpp=str(t.type_args[1]),
         range_start=_lower_expr(args[0], lc, declared) if len(args) >= 2 else None,
         range_step=_lower_expr(args[2], lc, declared) if len(args) == 3 else None,
-        element=_lower_container_elem(
+        element=_lower_comp_container_elem(
             init.element_expr, elem_t, lc, body_declared),
         loc=getattr(init, "loc", None),
     )
@@ -457,7 +460,7 @@ def _lower_array_source_comprehension(
         array_size_cpp=str(result_type.type_args[1]),
         iterable=iterable,
         iterable_lvalue=route.iterable_lvalue,
-        element=_lower_container_elem(
+        element=_lower_comp_container_elem(
             init.element_expr, elem_t, lc, body_declared),
         loc=getattr(init, "loc", None),
     )
@@ -470,16 +473,24 @@ def _comp_result_type(t: 'TpyType | None', analyzer) -> TpyType:
         return analyzer.ctx.default_int_type
     return t
 
-def _lower_comp_dict_value(e, vt: TpyType, lc: '_LowerCtx',
-                           body_declared: dict[str, TpyType]) -> 'THIRExpr':
-    """Lower the dict-comp VALUE against its slot. A list/Array container slot
+def _lower_comp_container_elem(e, vt: TpyType, lc: '_LowerCtx',
+                               body_declared: dict[str, TpyType],
+                               *, typed_brace: bool = False) -> 'THIRExpr':
+    """Lower a comprehension element/value against a possibly-container slot
+    (dict VALUE, list/set element, Array slot). A list/Array container slot
     is element-SHAPE-sensitive, so only the two vetted sources route: a
     container LITERAL -- rendered self-describing (`std::array<int32_t, 2>{...}`,
-    mirroring `_gen_dict_comprehension`'s `typed_brace_init`: `insert_or_assign`
-    is a template, a bare brace-init cannot deduce) -- and a nested
-    COMPREHENSION (`_lower_container_elem`'s comp arm; its `({...})` stmt-expr
-    is already self-describing, the AST's typed_brace_init no-ops on it).
-    Every other slot family keeps the shape-independent element render."""
+    mirroring the AST's `typed_brace_init`: the insert/brace target is a
+    template, a bare brace-init cannot deduce) -- and a nested COMPREHENSION
+    (`_lower_container_elem`'s comp arm; its `({...})` stmt-expr is already
+    self-describing, the AST's typed_brace_init no-ops on it). Every other slot
+    family keeps the shape-independent element render (`_lower_container_elem`).
+
+    `typed_brace` (the dict VALUE only) spells the container literal
+    self-describing (`std::array<int32_t, 2>{...}`) because `insert_or_assign`
+    is a template that cannot deduce a bare brace. A list/set element
+    (`push_back`) and an array-lambda return already have a declared target
+    type, so their brace stays bare -- matching the AST."""
     if not _container_family_slot(vt):
         return _lower_container_elem(e, vt, lc, body_declared)
     if type(e) in _COMP_KINDS:
@@ -488,7 +499,7 @@ def _lower_comp_dict_value(e, vt: TpyType, lc: '_LowerCtx',
         value = _lower_checked_container_elem(
             e, vt, lc, body_declared, threaded=True, forced=True,
             allow_nested=True)
-        if isinstance(value, THIRContainerLiteral):
+        if typed_brace and isinstance(value, THIRContainerLiteral):
             value = replace(value, typed_brace_cpp=lc.render_type(
                 unwrap_readonly(unwrap_ref_type(vt))))
     else:
@@ -577,7 +588,8 @@ def _lower_comprehension(
             value_moved = isinstance(value, THIRMove)
         else:
             key = _lower_container_elem(init.key_expr, kt, lc, body_declared)
-            value = _lower_comp_dict_value(init.value_expr, vt, lc, body_declared)
+            value = _lower_comp_container_elem(init.value_expr, vt, lc,
+                                               body_declared, typed_brace=True)
     else:
         elem_t = _comp_result_type(init.result_elem_type, analyzer)
         cpp_elem = lc.render_type(elem_t)
@@ -588,7 +600,7 @@ def _lower_comprehension(
                 init.element_expr, elem_t, lc, body_declared, gen,
                 is_last_sink=True)
         else:
-            element = _lower_container_elem(
+            element = _lower_comp_container_elem(
                 init.element_expr, elem_t, lc, body_declared)
         key = value = None
     range_start = range_stop = None

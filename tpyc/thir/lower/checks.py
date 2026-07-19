@@ -508,22 +508,53 @@ def _container_lit_elem_ok(e: TpyExpr, slot: 'TpyType | None',
             return True  # -> std::nullopt (the STORAGE-form None)
         return True
     if fam == "tuple":
-        vt = _value_tuple(su, analyzer)
-        if vt is None or not threaded:
+        if not threaded:
             return note_detail("container_lit.elem.tuple") if note else False
-        # A value-tuple NAME copies into the element slot (value type -- no
-        # aliasing); `_container_elem_move_source` value-type-filters, so it
-        # never moves, matching the AST's copy for a value-tuple. (An owned
-        # `std::tuple<...>&&` param the AST's seed_param_locals would MOVE is
-        # not a value-tuple binding, so it never resolves here.)
-        if isinstance(e, TpyName):
-            bt = declared.get(e.name)
-            if bt is not None and _value_tuple(
-                    unwrap_readonly(unwrap_ref_type(unwrap_send_sync(bt))),
-                    analyzer) is not None:
-                return True
-        return (isinstance(e, TpyTupleLiteral)
-                or (note_detail("container_lit.elem.tuple") if note else False))
+        vt = _value_tuple(su, analyzer)
+        if vt is not None:
+            # A value-tuple NAME copies into the element slot (value type -- no
+            # aliasing); `_container_elem_move_source` value-type-filters, so it
+            # never moves, matching the AST's copy for a value-tuple. (An owned
+            # `std::tuple<...>&&` param the AST's seed_param_locals would MOVE is
+            # not a value-tuple binding, so it never resolves here.)
+            if isinstance(e, TpyName):
+                bt = declared.get(e.name)
+                if bt is not None and _value_tuple(
+                        unwrap_readonly(unwrap_ref_type(unwrap_send_sync(bt))),
+                        analyzer) is not None:
+                    return True
+            return (isinstance(e, TpyTupleLiteral)
+                    or (note_detail("container_lit.elem.tuple") if note else False))
+        # A non-value (pointer-repr-element) tuple LITERAL stores via
+        # `tuple_to_storage<S>(S{...})`: borrow and storage forms differ. This
+        # arm emits the STORAGE-form inner `S{...}` (bare member values), which
+        # is byte-exact only when every non-value member is an RVALUE (ctor /
+        # literal). A non-value member NAME/lvalue would build the BORROW-form
+        # inner (`&name`, `T*` element) and defers. Members are otherwise
+        # admitted compositionally (the recursion records the blocking member).
+        def _tuple_member_ok(i: int) -> bool:
+            sub = e.elements[i]
+            mslot = su.element_types[i]
+            mbare = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(mslot)))
+            # Storage-direct is byte-exact only for scalar / owned-str members
+            # (the None family) and F1-record members. Pointer-repr Optional /
+            # union / nested-tuple members route through a borrow intermediate
+            # (`tuple_value_to_borrow`, `&name`) the AST spells differently --
+            # they defer, along with any non-value lvalue NAME member.
+            if _container_lit_slot_family(mbare, analyzer) not in (None, "record"):
+                return note_detail("container_lit.elem.tuple") if note else False
+            if (not mbare.is_value_type()
+                    and not is_rvalue_source(analyzer, sub)):
+                return note_detail("container_lit.elem.tuple") if note else False
+            return _container_lit_elem_ok(
+                sub, mslot, declared, analyzer, threaded=True, forced=True,
+                allow_record=True, allow_nested=True, allow_optional=True,
+                note=note)
+        if (isinstance(e, TpyTupleLiteral) and isinstance(su, TupleType)
+                and len(e.elements) == len(su.element_types)
+                and all(_tuple_member_ok(i) for i in range(len(e.elements)))):
+            return True
+        return note_detail("container_lit.elem.tuple") if note else False
     if fam == "container":
         # A nested container VALUE literal (list/array via array literal, dict
         # via dict literal, set via set literal) recurses through the same
@@ -4884,9 +4915,13 @@ def _wrap_print_form(a: TpyExpr, declared: dict[str, TpyType],
     t = declared.get(a.name)
     if t is None:
         return None
-    if _value_tuple_nested(t, analyzer) is not None:
-        return PrintForm.TUPLE
     u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    if isinstance(u, TupleType):
+        # Any tuple NAME (value or non-value) streams via TuplePrinter over the
+        # deref'd lvalue -- mirrors gen_print's `isinstance(arg_type, TupleType)`
+        # arm; `_lower_expr` derefs a pointer-repr tuple local like
+        # `_gen_expr_deref`, so the render matches for both forms.
+        return PrintForm.TUPLE
     if isinstance(u, NominalType) and _f1_record(u, analyzer):
         return PrintForm.RAW
     if _range_object_value(u):

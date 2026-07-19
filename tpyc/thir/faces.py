@@ -452,6 +452,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "containerlit.container_elem",  # nested list element `[[1, 2], [3]]`
     "containerlit.record_elem",     # `[P(1), p]` -- ctor rvalues / record names
     "containerlit.bytes_elem",      # `[b"a", v]` -- owned render / bytes_copy
+    "containerlit.tuple_storage",   # `[(a, P(1)), ...]` -> tuple_to_storage<S>(S{...})
     "containerlit.make",            # make_vector / make_ordered_map / _set
     "containerlit.move",            # `std::move(name)` element at last use
     # A spanlike coerce over an array-literal inner: the helper wraps the
@@ -744,6 +745,9 @@ THIR_FACES: frozenset[str] = frozenset({
     # An expensive-copy value target bound zero-copy (lowering, sema's
     # is_const_ref): `const T& a = std::get<i>(__tup_N);`.
     "stmt.tuple_unpack.cref_target",
+    # A borrow (is_ref) F1-record target aliasing a storage-form tuple element
+    # via the tuple_to_pointer source wrap + unwrap_ref/tuple_elem_ref bind.
+    "stmt.tuple_unpack.ref_target",
     # A reused plain scalar/str target (lowering): `a = std::get<i>(__tup_N);`
     # -- the AST's declared-name assign tail, no decl.
     "stmt.tuple_unpack.assign_target",

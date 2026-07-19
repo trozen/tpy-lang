@@ -684,29 +684,27 @@ def test_for_each_tuple_unpack_over_gen_record_target_defers():
         "body:stmt.for_each:iter.call.generator") == 1
 
 
-def test_for_each_tuple_unpack_ref_target_sub_tag():
-    # The tuple-unpack rung classifier: a record element target is a borrow
-    # (`is_ref`) the unpack cell defers, so the tag names the ref-target rung.
+def test_for_each_tuple_unpack_ref_target_routes():
+    # A for-head unpack over a storage-form list CONTAINER binds a value scalar
+    # target and aliases a record element target (`is_ref`) via the loop
+    # element's tuple_to_pointer lift -- routes (was a deferred ref-target rung).
+    # A generator source keeps deferring (see the _over_gen_ test above).
     compiler, entry, f = _fn_body(
         "from tpy import Int32\n"
         "class Point:\n"
         "    x: Int32\n"
         "    def __init__(self, x: Int32) -> None:\n"
         "        self.x = x\n"
-        "def rejected(pairs: list[tuple[Int32, Point]]) -> Int32:\n"
+        "def routed(pairs: list[tuple[Int32, Point]]) -> Int32:\n"
         "    total = 0\n"
         "    for i, p in pairs:\n"
         "        total = total + i + p.x\n"
         "    return total\n",
-        "rejected")
+        "routed")
     with activate_compiler(compiler):
         begin_attempt()
         fn = lower_function(f, entry.analyzer, self_type=None)
-        if fn is None:
-            fold_attempt("body")
-    assert fn is None
-    assert compiler._thir_fallback.get(
-        "body:stmt.for_each:tuple.ref_target") == 1
+    assert fn is not None
 
 
 def test_tuple_unpack_lowering_reject_falls_back_at_sync_boundary():

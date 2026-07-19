@@ -3031,7 +3031,14 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
         # (`auto`, the AST's non-name `else` arm; its arg temps flush before the
         # bind line, exactly like a bare expr statement).
         tmp = f"__tup_{state.next_unpack()}"
-        if stmt.source_expr is not None:
+        if stmt.source_wrap_cpp is not None:
+            # Storage-form source into `is_ref` targets: lift to the borrow
+            # pointer tuple so `std::get<i>` yields a `T*` the ref targets alias.
+            src = (stmt.source_cpp if stmt.source_cpp is not None
+                   else escape_cpp_name(stmt.source))
+            out.write(f"{indent}auto {tmp} = ::tpy::tuple_to_pointer<"
+                      f"{stmt.source_wrap_cpp}>({src});\n")
+        elif stmt.source_expr is not None:
             src_cpp = _emit_expr(stmt.source_expr, state)
             state.temps.flush(out, indent)
             out.write(f"{indent}auto {tmp} = {src_cpp};\n")
@@ -3073,6 +3080,13 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             elif bind == "cref":
                 out.write(f"{indent}const {cpp}& {escape_cpp_name(name)} = "
                           f"{get};\n")
+            elif bind == "ref":
+                # Borrow-tuple element: `std::get<i>(__tup)` is a `T*` (or
+                # val_or_ref); one `auto&&` reference aliases the live element
+                # in every form -- tuple_elem_ref derefs the pointer, unwrap_ref
+                # the val_or_ref -- so `.` access is plain, non-nullable.
+                out.write(f"{indent}auto&& {escape_cpp_name(name)} = "
+                          f"::tpy::unwrap_ref(::tpy::tuple_elem_ref({get}));\n")
             else:
                 out.write(f"{indent}{cpp} {escape_cpp_name(name)} = "
                           f"{get};\n")
