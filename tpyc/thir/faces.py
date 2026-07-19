@@ -531,6 +531,10 @@ THIR_FACES: frozenset[str] = frozenset({
     # `::tpy::TextFile f = ::tpy::builtin_open(path);`) -- a plain-value decl,
     # single-assignment rvalue only.
     "decl.native_record_call",
+    # Iterator-object local decl (`it = g()` / `it = obj.gen()` -> `auto it
+    # = g();`): a generator/iterator factory result feeding the universal
+    # __iter__/__next__ loop; single-assignment only.
+    "decl.iterator_object",
     # REF_ALIAS from a borrow-record-returning call (lowering; the
     # `T& p = shared(x);` bind of the callee's returned reference).
     "decl.record_borrow_call",
@@ -561,6 +565,16 @@ THIR_FACES: frozenset[str] = frozenset({
     # Slot-hoist Optional local, F1-record rvalue init: `T __slot_N = ...;
     # T* x = &__slot_N;` (+ the rebind-slot pre-decl).
     "decl.opt_slot_rvalue",
+    # Escape-hoist PLAIN-record pointer-local, name-reassigned with a record
+    # rvalue init: `T __slot_N = init;` + `T* x = &__slot_N;` (the
+    # REBIND_SLOT render minus the rebind slot).
+    "decl.record_slot_rvalue",
+    # HOISTED record pointer-local decl inside a loop/branch: function-top
+    # `std::optional<T> __slot_N;` + `T* x = &*(__slot_N = init);`.
+    "decl.record_slot_hoisted",
+    # Pointer-name copy reseat between two `T*` locals: `saved = p;` (bare,
+    # no address-of).
+    "reseat.ptr_copy",
     # Reseat of a slot-hoist Optional local to None: `x = nullptr;`.
     "reseat.opt_none",
     # Rvalue reseat through the pre-declared rebind slot:

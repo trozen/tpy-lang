@@ -83,6 +83,7 @@ from ...type_def_registry import (
     is_basic_slice_type,
     is_big_int_type,
     is_bool_type,
+    is_bytearray_type,
     is_bytes_type,
     is_bytes_view_type,
     is_char_type,
@@ -3477,6 +3478,10 @@ def _storage_call_ret(ret: TpyType | None, analyzer) -> TpyType | None:
     t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ret)))
     if is_list(t) or is_dict(t):
         return t if _container_scalar_read(t, analyzer) else None
+    if is_bytearray_type(t):
+        # `ba = bytearray(...)` -- a scalar container (std::vector<uint8_t>),
+        # the same plain-copy decl render as a scalar list.
+        return t
     if is_set(t):
         args = getattr(t, "type_args", None)
         if bool(args) and (_eligible_scalar(args[0])

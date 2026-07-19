@@ -3419,3 +3419,57 @@ class TestSetitemWidenedValueSlots:
             "def store(m: list[list[Int32]], v: list[Int32]) -> None:\n"
             "    m[0] = v\n")
         assert _fn(thir, "store") is None
+
+
+class TestBytearraySurface:
+    """The bytearray receiver family: ctor decl (storage_call), name print
+    (ByteArrayPrinter), member natives (`append` -> push_back, bare `clear`),
+    function=True natives (`pop`/`insert` -> ::tpy::bytearray_*), and the
+    subscript write's own native dunder (::tpy::bytearray_setitem, never the
+    containers' checked template)."""
+
+    SRC = (
+        "def main() -> None:\n"
+        "    ba = bytearray(b'\\x01\\x02\\x03')\n"
+        "    print(ba)\n"
+        "    print(len(ba))\n"
+        "    ba.append(4)\n"
+        "    ba[0] = 10\n"
+        "    popped = ba.pop()\n"
+        "    print(popped)\n"
+        "    ba.insert(1, 20)\n"
+        "    ba.clear()\n"
+        "main()\n"
+    )
+
+    def test_byte_identical(self):
+        _assert_byte_identical(self.SRC)
+
+    def test_emits_bytearray_renders(self):
+        compiler, modules = _compile(self.SRC)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=True))
+        assert "std::vector<uint8_t> ba = ::tpy::bytes_copy(" in cpp
+        assert "::tpy::ByteArrayPrinter(ba)" in cpp
+        assert "ba.push_back(4);" in cpp
+        assert "::tpy::bytearray_setitem(ba, 0, 10);" in cpp
+        assert "uint8_t popped = ::tpy::bytearray_pop(ba);" in cpp
+        assert "::tpy::bytearray_insert(ba, 1, 20);" in cpp
+        assert "ba.clear();" in cpp
+
+    def test_list_setitem_keeps_checked_template(self):
+        # The bytearray dispatch must not leak into the container families.
+        _assert_byte_identical(
+            "from tpy import Int32\n"
+            "def f(xs: list[Int32], i: Int32) -> None:\n"
+            "    xs[i] = 5\n")
+
+    def test_extend_iterable_arg_stays_ast(self):
+        # `extend` takes an Iterable arg outside the view arg set -- the
+        # gate's reject boundary (falls back whole-body today).
+        thir = _lower_ctx(
+            "def f(a: bytearray, b: bytearray) -> None:\n"
+            "    a.extend(b)\n")
+        assert _fn(thir, "f") is None

@@ -59,6 +59,7 @@ from ...typesys import (
     NONE,
     OptionalType,
     OwnType,
+    PendingListType,
     PtrType,
     ReadonlyType,
     TpyType,
@@ -383,6 +384,8 @@ from .checks import (
     _str_list_method_iterable_ok,
     _record_method_call_supported,
     _recv_shape_reject,
+    _bytearray_method_call_supported,
+    _bytearray_recv,
     _view_method_call_supported,
     _value_tuple_pass_through_arg,
     _value_union_temp_arg,
@@ -3130,6 +3133,11 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                 shape_ok = _protocol_method_call_supported(
                     e, fi, declared, analyzer,
                     stmt_position=stmt_position)
+            elif _bytearray_recv(recv_type):
+                shape_ok = _bytearray_method_call_supported(
+                    e, fi, analyzer, stmt_position=stmt_position,
+                    storage_ret_ok=storage_ret_ok)
+                stub_recv = True
             elif (_resolved_str_value(recv_type, analyzer) is not None
                   or _resolved_bytes_value(recv_type, analyzer) is not None):
                 # A bytes / BytesView receiver's builtin methods
@@ -4687,6 +4695,12 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
     proto = _protocol_arg_slot(ptype) if protocol_slots else None
     if proto is not None:
         at = lc.analyzer.get_expr_type(a)
+        if isinstance(unwrap_readonly(unwrap_ref_type(at)), PendingListType):
+            # A literal-seeded local's binding can still be PENDING here
+            # (the AST resolves it at its own later render point);
+            # render_type would crash -- reject to the AST path instead.
+            note_detail("call.protocol_arg_pending")
+            raise ThirUnsupported("expr.call")
         rvalue = not isinstance(a, TpyName)
         spec = _protocol_arg_temp(proto, at, lc.render_type(at), lc.analyzer,
                                   rvalue=rvalue)
@@ -5139,7 +5153,12 @@ def _lower_truthy(e: TpyExpr, lc: '_LowerCtx',
         if ptr_optional:
             pass
         elif unary_operand:
-            if mode is None and (et is None or not is_bool_type(et)):
+            # An eligible-scalar operand truthy-tests via C++'s contextual
+            # conversion, so `not x` renders the bare `(!(x))` -- the AST's
+            # scalar arm. Other modeless non-bool operands keep rejecting.
+            if mode is None and (et is None
+                                 or not (is_bool_type(et)
+                                         or _eligible_scalar(et))):
                 raise ThirUnsupported("truthy.unary_operand")
         elif isinstance(e, TpyBoolLiteral):
             pass

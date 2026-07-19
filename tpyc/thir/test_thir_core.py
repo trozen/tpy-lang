@@ -1755,10 +1755,12 @@ class TestBoolOps:
                       + "def f(flag: bool, n: Int32) -> bool:\n    return flag and n\n")
         assert _fn(thir, "f") is None
 
-    def test_int_truthiness_not_is_ineligible(self):
-        # `not n` (int operand) is bool-result but truthy-wraps the operand.
-        thir = _lower(_PRELUDE + "def f(n: Int32) -> bool:\n    return not n\n")
-        assert _fn(thir, "f") is None
+    def test_int_truthiness_not_routes(self):
+        # `not n` over an eligible scalar renders the bare `(!(n))` -- C++'s
+        # contextual conversion is the truthy test (formerly a reject).
+        src = _PRELUDE + "def f(n: Int32) -> bool:\n    return not n\n"
+        assert _fn(_lower(src), "f") is not None
+        _assert_byte_identical(src)
 
     def test_unary_minus_routes(self):
         # The arithmetic unaries route via THIRUnaryArith, byte-identical to the
@@ -4442,3 +4444,11 @@ class TestWave12MoveCopyNodes:
                "def f(b: Box[Pt]) -> None:\n    b.get().x = 9\n")
         assert _fn(_lower_ctx(src), "f") is not None
         _assert_byte_identical(src)
+
+
+def test_float_truthiness_not_routes():
+    # The truthy-unary scalar widen covers every _eligible_scalar member;
+    # pin a non-int flavor.
+    src = "from tpy import Float64\ndef f(x: Float64) -> bool:\n    return not x\n"
+    assert _fn(_lower(src), "f") is not None
+    _assert_byte_identical(src)

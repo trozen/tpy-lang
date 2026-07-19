@@ -84,6 +84,7 @@ from ...typesys import (
 from ...type_def_registry import (
     is_array,
     is_big_int_type,
+    is_bytearray_type,
     is_bytes_type,
     is_dict,
     is_fixed_int_type,
@@ -276,6 +277,7 @@ from .checks import (
     _container_record_elem_subscript,
     _container_literal_decl_ok,
     _container_literal_shape_ok,
+    _bytearray_recv,
     _container_setitem_ok,
     _user_record_setitem_ok,
     copy_plain_record_source,
@@ -1070,7 +1072,9 @@ def _iter_call_lvalue(it: 'TpyCall | TpyMethodCall', analyzer) -> bool:
 
 def _for_iter_proto_route(
         stmt: TpyForEach, analyzer,
-        declared: dict[str, TpyType]) -> '_ForEachRoute | None':
+        declared: dict[str, TpyType],
+        iterator_object_locals: 'AbstractSet[str]' = frozenset()
+        ) -> '_ForEachRoute | None':
     """The universal `::tpy::__iter__` + `__next__` protocol loop
     (`_gen_direct_next_loop_with_iter`), for the iterables the container
     route's NativeIterable gate excludes. Slice: a free GENERATOR or
@@ -1117,8 +1121,13 @@ def _for_iter_proto_route(
         # User-iterator records (monomorphized generic ones included -- their
         # `::tpy::__iter__` universal loop renders identically): a
         # protocol-typed binding (Iterator[T] param) spells through the deduced
-        # template param on the AST path -- deferred.
-        if (not isinstance(u, NominalType) or u.is_protocol
+        # template param on the AST path -- deferred. An iterator-object
+        # LOCAL (`it = g()`, the `auto` decl) is exempt: its protocol type
+        # never reaches a C++ spelling, the loop captures the plain lvalue
+        # (`auto& __src_N = it;`).
+        if it.name in iterator_object_locals:
+            pass
+        elif (not isinstance(u, NominalType) or u.is_protocol
                 or not _user_iterator_iterable(u, analyzer)):
             return None
         iterable_lvalue = True
@@ -1218,7 +1227,9 @@ def _for_each_reject_detail(stmt: TpyForEach, analyzer,
 
 def _select_for_each_route(
         stmt: TpyForEach, analyzer, declared: dict[str, TpyType],
-        narrowed: AbstractSet[str]) -> _ForEachRoute:
+        narrowed: AbstractSet[str],
+        iterator_object_locals: 'AbstractSet[str]' = frozenset()
+        ) -> _ForEachRoute:
     """Select the lowering strategy or reject from the lowering boundary."""
     if _is_range_call(stmt.iterable):
         route = _for_range_route(stmt, analyzer, declared)
@@ -1231,7 +1242,8 @@ def _select_for_each_route(
         if route is None:
             route = _for_each_container_route(stmt, analyzer, declared)
         if route is None:
-            route = _for_iter_proto_route(stmt, analyzer, declared)
+            route = _for_iter_proto_route(stmt, analyzer, declared,
+                                          iterator_object_locals)
     if route is None:
         note_detail(_for_each_reject_detail(stmt, analyzer, declared, narrowed))
         raise ThirUnsupported(stmt_reject_reason(stmt))
@@ -1891,6 +1903,71 @@ def _lower_opt_ptr_slot_decl(stmt: TpyVarDecl, vtype: 'OptionalType',
         is_const=is_const, loc=loc)
 
 
+def _lower_record_ptr_slot_decl(stmt: TpyVarDecl, vtype: 'TpyType | None',
+                                lc: _LowerCtx, declared: dict[str, TpyType],
+                                loc) -> 'THIRPtrLocalDecl | None':
+    """First decl of an escape-hoist PLAIN-record pointer-local from a
+    record-rvalue init -- the two flavors of `_gen_pointer_local_init`'s
+    rvalue branch the shared classifier leaves at OTHER: a HOISTED name
+    (`T* x = &*(__slot_N = init);` over a function-top `std::optional<T>`
+    pre-decl) and a name-reassigned (not rvalue-reassigned) local
+    (`T __slot_N = init;\\nT* x = &__slot_N;` -- the REBIND_SLOT render
+    minus the rebind slot). Returns None when the decl is not this shape
+    (normal decl flow continues). The rvalue type must EQUAL the declared
+    record -- a subclass rvalue retypes the slot (the polymorphic arm,
+    rejected), mirroring `_opt_slot_rvalue_shape`'s discipline."""
+    analyzer = lc.analyzer
+    if not isinstance(vtype, NominalType) or not _f1_record(vtype, analyzer):
+        return None
+    hoisted = stmt.name in lc.prescan.hoisted
+    reassigned = stmt.name in lc.prescan.reassigned
+    rvalue_reassigned = stmt.name in lc.prescan.rvalue_reassigned
+    if not hoisted and (not reassigned or rvalue_reassigned):
+        # Single-assignment rvalues are plain value decls; rvalue-reassigned
+        # ones are the REBIND_SLOT binding -- both other paths.
+        return None
+    if stmt.init is None or not _record_rvalue_source_shape(stmt.init,
+                                                            analyzer):
+        return None
+    it = analyzer.get_expr_type(stmt.init)
+    it_u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(it))) \
+        if it is not None else None
+    if isinstance(it_u, OwnType):
+        it_u = unwrap_readonly(it_u.wrapped)
+    if it_u != vtype:
+        note_detail("decl.record_slot_polymorphic")
+        raise ThirUnsupported(stmt_reject_reason(stmt))
+    if it is not None and isinstance(
+            unwrap_ref_type(unwrap_send_sync(it)), ReadonlyType):
+        # Structurally unreachable today (an rvalue ctor/by-value call is
+        # never readonly-typed), but the OPT sibling rejects const sources
+        # explicitly -- keep the invariant self-evident rather than implied.
+        note_detail("decl.record_slot_const")
+        raise ThirUnsupported(stmt_reject_reason(stmt))
+    init = _lower_expr(stmt.init, lc, declared,
+                       use=_ExprUse(result=_ExprResultUse.BORROW_BIND),
+                       target_type=vtype)
+    if hoisted:
+        # A resumable body's leaves emit through non-draining leaf emitters
+        # (hoist_lines has no function-top drain there) -- reject like the
+        # DYN_PROTOCOL rebind hoist.
+        if lc.func.is_generator or lc.func.is_async:
+            note_detail("decl.record_slot_resumable")
+            raise ThirUnsupported(stmt_reject_reason(stmt))
+        kind = PtrSlotKind.RECORD_HOISTED
+        needs_rebind = rvalue_reassigned
+        lc.unhandled_hoists.discard(stmt.name)
+        _witness("decl.record_slot_hoisted")
+    else:
+        kind = PtrSlotKind.RECORD_RVALUE
+        needs_rebind = False
+        _witness("decl.record_slot_rvalue")
+    return THIRPtrLocalDecl(
+        name=stmt.name, resolved_type=vtype, kind=kind, init=init,
+        cpp_type=lc.render_type(vtype), needs_rebind_slot=needs_rebind,
+        loc=loc)
+
+
 def _lower_dyn_protocol_decl(stmt: TpyVarDecl, vtype: 'TpyType | None',
                             lc: _LowerCtx, declared: dict[str, TpyType],
                             loc) -> 'THIRPtrLocalDecl | None':
@@ -1989,6 +2066,7 @@ def _nested_def_lowering_scope(lc: _LowerCtx, func: TpyFunction):
     saved = (lc.func, lc.prescan, lc.self_receiver,
              set(lc.const_locals), set(lc.pointers),
              set(lc.rebind_slot_locals), set(lc.dyn_protocol_locals),
+             set(lc.iterator_object_locals),
              set(lc.ref_alias_locals),
              set(lc.value_opt_locals), set(lc.value_opt_view_locals),
              set(lc.storage_tuple_locals),
@@ -2037,6 +2115,7 @@ def _nested_def_lowering_scope(lc: _LowerCtx, func: TpyFunction):
     finally:
         (lc.func, lc.prescan, lc.self_receiver, lc.const_locals, lc.pointers,
          lc.rebind_slot_locals, lc.dyn_protocol_locals,
+         lc.iterator_object_locals,
          lc.ref_alias_locals, lc.value_opt_locals,
          lc.value_opt_view_locals,
          lc.storage_tuple_locals, lc.movable_locals,
@@ -2268,14 +2347,22 @@ def _lower_scoped_stmts(body, lc: _LowerCtx,
                         loop_depth: int = 0) -> tuple[THIRStmt, ...]:
     """`_lower_stmts` under a narrowing-scope snapshot: a branch or loop body.
     A post-if / assert narrowing made inside pops at the closing brace (the
-    AST's `narrowed_vars` / `declared_persistent_aliases` body restores)."""
+    AST's `narrowed_vars` / `declared_persistent_aliases` body restores).
+    Branch-local POINTER registrations pop too: the caller copies `declared`
+    per branch, so a branch-first rebind-slot/pointer decl's lc-set entries
+    must not outlive the branch either (a same-named sibling-branch decl
+    would otherwise classify as a reseat of a name its scope never saw)."""
     saved = lc.narrow.snapshot()
+    saved_pointers = set(lc.pointers)
+    saved_rebind = set(lc.rebind_slot_locals)
     try:
         return _lower_stmts(body, lc, declared, in_branch=True,
                             branch_decls_ok=branch_decls_ok,
                             loop_depth=loop_depth)
     finally:
         lc.narrow = saved
+        lc.pointers = saved_pointers
+        lc.rebind_slot_locals = saved_rebind
 
 def _lower_loop_orelse(orelse, lc: _LowerCtx, declared: dict[str, TpyType],
                        scope: '_LowerScope', face: str
@@ -2305,6 +2392,12 @@ def _lower_narrowed_branch(body, fact: 'TpyType | None', var: str,
     backward scan for the `else:` line starts from the else body's leading
     statement."""
     saved = lc.narrow.snapshot()
+    # Branch-local POINTER registrations pop with the branch, like
+    # _lower_scoped_stmts (the declared copy is per-branch, so the lc-set
+    # entries must be too -- a same-named sibling-branch decl would
+    # otherwise classify as a reseat of a name its scope never saw).
+    saved_pointers = set(lc.pointers)
+    saved_rebind = set(lc.rebind_slot_locals)
     branch_declared = dict(declared)
     out: list[THIRStmt] = []
     try:
@@ -2318,6 +2411,8 @@ def _lower_narrowed_branch(body, fact: 'TpyType | None', var: str,
                                 loop_depth=loop_depth))
     finally:
         lc.narrow = saved
+        lc.pointers = saved_pointers
+        lc.rebind_slot_locals = saved_rebind
     return tuple(out)
 
 def _narrow_subject_const(var: str, lc: _LowerCtx) -> bool:
@@ -3053,6 +3148,19 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         if er_fi is not None:
             return _lower_error_return_bind(
                 stmt, stmt.name, stmt.init, er_fi, vtype, lc, declared, loc)
+        # Escape-hoist record pointer-local first decls (hoisted, or
+        # name-reassigned with an rvalue init -- the classifier's OTHER, the
+        # AST's pointer path). Placed before the branch-scope gate: a
+        # loop-hoisted decl arrives in_branch by definition.
+        if not is_reassign:
+            rec_node = _lower_record_ptr_slot_decl(stmt, vtype, lc, declared,
+                                                   loc)
+            if rec_node is not None:
+                lc.pointers.add(stmt.name)
+                if rec_node.needs_rebind_slot:
+                    lc.rebind_slot_locals.add(stmt.name)
+                declared[stmt.name] = vtype
+                return rec_node
         # First decl of a non-value borrow local (REF_ALIAS / OPTIONAL_TO_PTR /
         # POINTER).
         if not is_reassign and not scope.in_branch:
@@ -3233,6 +3341,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         # using the rebind slot allocated at the decl. Checked before the lvalue
         # POINTER reseat -- a rebind-slot local is in both `pointers` sets.
         if (stmt.name in lc.rebind_slot_locals
+                and stmt.name in declared
                 and _eligible_ptr_union(declared[stmt.name],
                                         lc.analyzer) is None):
             decl_u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
@@ -3276,7 +3385,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         # `vtype` (the pointee), matching the first-decl path -- `get_expr_type`
         # would leave a ReadonlyType wrapper the THIR fully-resolved-type invariant
         # forbids (emit strips it either way, so this stays byte-identical).
-        if stmt.name in lc.pointers:
+        if stmt.name in lc.pointers and stmt.name in declared:
             if stmt.name in lc.dyn_protocol_locals:
                 # @dynamic protocol local reseat (`pet = Cat()`): a FRESH hoisted
                 # `std::optional<slot>` + `.emplace` + `pet = &*slot` (the AST's
@@ -3340,6 +3449,18 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 if _f1_param_lvalue_reseat_ok(stmt.init, pointee, declared, lc,
                                               analyzer):
                     src: THIRExpr = _lower_expr(stmt.init, lc, declared)
+                    if (src.form is Form.BORROW
+                            and src.result_type == pointee
+                            and not lc.resumable_leaf_mode):
+                        # Same trap as the plain-record param reseat below:
+                        # the BORROW convert over a same-type BORROW param
+                        # name is the no-op node validate_function
+                        # hard-rejects. Resumable leaves are exempt: they
+                        # never run whole-function validation, and the
+                        # routed async shape is pinned byte-identical
+                        # (frame-field receivers render `x = &(b);`).
+                        note_detail("decl.reseat_param_source")
+                        raise ThirUnsupported(stmt_reject_reason(stmt))
                 elif _f2_reseat_ok(stmt.init, declared, analyzer):
                     src = _lower_field_source(stmt.init, lc, declared)
                 else:
@@ -3352,11 +3473,34 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                         result_type=pointee, value=src, form=Form.BORROW,
                         is_const=stmt.name in lc.const_locals, loc=loc),
                     loc=loc)
+            # A pointer-NAME copy reseat (`saved = p;` -- both `T*` locals):
+            # the bare pointer copies, no address-of (the AST's pointer-local
+            # source branch renders the name verbatim).
+            if (isinstance(stmt.init, TpyName)
+                    and stmt.init.name in lc.pointers
+                    and stmt.init.name not in lc.narrow.narrowed):
+                _witness("reseat.ptr_copy")
+                return THIRAssign(
+                    target=THIRName(result_type=vtype, name=stmt.name,
+                                    loc=loc),
+                    value=THIRName(result_type=vtype, name=stmt.init.name,
+                                   loc=loc),
+                    loc=loc)
             # A bare record PARAM reseat (`x = b;` -> `x = &(b);`), the sibling
             # of the F1-record field reseat below.
             if _f1_param_lvalue_reseat_ok(stmt.init, vtype, declared, lc,
                                           analyzer):
                 src_name = _lower_expr(stmt.init, lc, declared)
+                if (src_name.form is Form.BORROW
+                        and src_name.result_type == vtype):
+                    # A same-type BORROW-form source (a record param's `T&`)
+                    # would make the BORROW convert the same-form same-type
+                    # node the validator rejects -- the form model cannot
+                    # spell the `T&` -> `T*` representation change yet; keep
+                    # the shape on AST. (A type-differing source -- e.g. a
+                    # readonly-wrapped binding -- stays a real convert.)
+                    note_detail("decl.reseat_param_source")
+                    raise ThirUnsupported(stmt_reject_reason(stmt))
             elif _f2_reseat_ok(stmt.init, declared, analyzer):
                 src_name = _lower_field_source(stmt.init, lc, declared)
             else:
@@ -3517,6 +3661,37 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 and _native_record_rvalue_call_shape(stmt.init, analyzer)):
             storage_call = True
             _witness("decl.native_record_call")
+        # An iterator-object decl (`it = g()` / `it = obj.gen()`): the
+        # generator/iterator factory result lands in an `auto` local that
+        # feeds the universal __iter__/__next__ loop -- the AST's plain
+        # `auto it = g();`. The init lowers under the ITERABLE use (the one
+        # position the call gates admit a generator fi); a decl init is a
+        # flushable position, so temp-hoisting args are legal. Single
+        # assignment only -- a reassigned/hoisted iterator local stays AST.
+        # Function scope only: `iterator_object_locals` is outside the
+        # branch snapshot, so a branch-first registration would leak past
+        # its scope (the sibling-branch bug class).
+        if (not is_reassign and not scope.in_branch
+                and isinstance(stmt.init, (TpyCall, TpyMethodCall))
+                and _user_iterator_iterable(
+                    unwrap_readonly(unwrap_ref_type(unwrap_send_sync(vtype))),
+                    analyzer)
+                and getattr(stmt.init, "resolved_function_info", None)
+                    is not None
+                and stmt.init.resolved_function_info.is_generator
+                and stmt.name not in lc.prescan.reassigned
+                and stmt.name not in lc.prescan.hoisted
+                and stmt.name not in lc.prescan.move_through):
+            init = _lower_expr(
+                stmt.init, lc, declared,
+                use=_ExprUse(result=_ExprResultUse.ITERABLE,
+                             allow_temps=True))
+            _witness("decl.iterator_object")
+            declared[stmt.name] = vtype
+            lc.iterator_object_locals.add(stmt.name)
+            return THIRVarDecl(
+                name=stmt.name, resolved_type=vtype, init=init,
+                cpp_type="auto", loc=loc)
         # `x = x + y` self-append peephole (the AST's _try_str_inplace_append,
         # checked on every reassignment of an owned-str-family local before the
         # generic emit): the RHS concat's left operand is the target itself, so
@@ -3659,6 +3834,44 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     or _is_any_type(vtype)
                     or _value_tuple(vtype, analyzer) is not None)
                 if not slot_ok:
+                    if in_branch_first:
+                        # A branch-FIRST rebind-slot record decl (reassigned
+                        # with rvalues inside the branch): the two-slot
+                        # machinery emits INLINE at branch indent -- the
+                        # oracle's block-scoped `__slot_N` lines -- exactly
+                        # the function-scope REBIND_SLOT render.
+                        b_binding = _borrow_local_binding(
+                            stmt, vtype, declared, lc.prescan, analyzer,
+                            lc.pointers)
+                        if b_binding is LocalBinding.REBIND_SLOT:
+                            lc.pointers.add(stmt.name)
+                            lc.rebind_slot_locals.add(stmt.name)
+                            declared[stmt.name] = vtype
+                            return _lower_borrow_local(
+                                stmt, vtype, b_binding, False, lc, declared,
+                                loc)
+                    if (in_branch_first
+                            and _owned_record_decl_ok(
+                                stmt, vtype, lc.prescan, declared, analyzer,
+                                narrowed=lc.narrow.narrowed)):
+                        # A branch-FIRST owned record decl is genuinely
+                        # block-local (the LINCHPIN note above: an escaping
+                        # var is hoisted and never reaches here as a first
+                        # decl) -- the same plain value decl as the
+                        # function-scope arm, at branch indent.
+                        _witness("decl.owned_record_method"
+                                 if isinstance(stmt.init, TpyMethodCall)
+                                 else "decl.owned_record")
+                        declared[stmt.name] = vtype
+                        return THIRVarDecl(
+                            name=stmt.name, resolved_type=vtype,
+                            init=_lower_expr(
+                                stmt.init, lc, declared,
+                                use=_ExprUse(
+                                    result=_ExprResultUse.BORROW_BIND,
+                                    allow_temps=True)),
+                            cpp_type=lc.render_type(vtype),
+                            form=Form.STORAGE, loc=loc)
                     note_detail("decl.branch_slot_type" if in_branch_first
                                 else "decl.slot_type")
                     raise ThirUnsupported(stmt_reject_reason(stmt))
@@ -3921,10 +4134,15 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             # arm's element-family gate does not apply to a WRITE target.
             widened_elem = eu is not None and _setitem_widened_elem_ok(
                 eu, analyzer)
+            # A bytearray write target passed the setitem gate; the subscript
+            # READ arm's container-family gate does not know the receiver.
+            ba_write = _bytearray_recv(_subscript_container_recv_type(
+                stmt.target.obj, declared, analyzer))
             target = _lower_expr(
                 stmt.target, lc, declared,
                 field_prechecked=target_prechecked,
-                subscript_prechecked=any_dict_write or widened_elem)
+                subscript_prechecked=(any_dict_write or widened_elem
+                                      or ba_write))
             if eu is not None and (is_list(eu) or is_dict(eu) or is_array(eu)):
                 # Nested-container element slot: only a container-LITERAL
                 # value routes (the target-threaded render). The checked
@@ -5227,7 +5445,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             loc=loc)
     if isinstance(stmt, TpyForEach):
         route = _select_for_each_route(
-            stmt, analyzer, declared, lc.narrow.narrowed.keys())
+            stmt, analyzer, declared, lc.narrow.narrowed.keys(),
+            lc.iterator_object_locals)
         it = stmt.iterable
         # Loop var is C++-for-scoped: visible in the body but not the outer scope
         # (a fresh declared copy, so a body decl can't leak past the loop).
@@ -5260,6 +5479,14 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 n for n in stmt.body[0].targets if n is not None)
         frame_shadowed = shadow_names & lc.frame_slots
         lc.frame_slots -= frame_shadowed
+        # The loop var also shadows a same-named POINTER local for the body's
+        # duration (the `auto&&` binding is a reference, not a `T*`): the
+        # pointer-keyed renders (bare ptr-copy reseat, deref reads) must not
+        # fire on the shadowing var.
+        ptr_shadowed = shadow_names & lc.pointers
+        lc.pointers -= ptr_shadowed
+        rebind_shadowed = shadow_names & lc.rebind_slot_locals
+        lc.rebind_slot_locals -= rebind_shadowed
         try:
             if route.route == "tuple_unpack":
                 # The head TpyTupleUnpack lowers to the dedicated node (a
@@ -5379,6 +5606,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                         lc.const_storage_tuple_locals.discard(stmt.var)
         finally:
             lc.frame_slots |= frame_shadowed
+            lc.pointers |= ptr_shadowed
+            lc.rebind_slot_locals |= rebind_shadowed
         if route.route == "range":
             if route.bigint_counter:
                 _witness("range.bigint_counter")
@@ -5431,7 +5660,11 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 elem_type=et,
                 iterable=_lower_expr(
                     it, lc, declared,
-                    use=_ExprUse(result=_ExprResultUse.ITERABLE)),
+                    # The emit flushes arg temps inside the rvalue brace
+                    # scope, right before the `__src` bind -- the AST's
+                    # flush point -- so temp-hoisting arg rows are safe here.
+                    use=_ExprUse(result=_ExprResultUse.ITERABLE,
+                                 allow_temps=True)),
                 body=body,
                 const_loop_var=stmt.const_loop_var,
                 iterable_lvalue=route.iterable_lvalue,

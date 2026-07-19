@@ -54,7 +54,7 @@ from .nodes import (
     Form, THIRArgTemp, THIRAssign, THIRCall, THIRCoerce, THIRConstructor,
     THIRCtorCall, THIRErrorReturnBind, THIRErrorReturnDiscard,
     THIRErrorReturnUnwrap, THIRExprStmt, THIRFieldAccess, THIRFormConvert,
-    THIRFunction, THIRMethodCall, THIRNode,
+    THIRForIterProto, THIRFunction, THIRMethodCall, THIRNode,
     THIRInplaceContainerOp,
     THIRPrint, THIRRaise, THIRReturn, THIRSetItem, THIRSliceAssign,
     THIRUnionArgLift, THIRVarDecl,
@@ -243,6 +243,17 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
         return
     if isinstance(node, THIRExprStmt):
         _walk(owner, node.expr, return_type, argtemp_ok=True)
+        return
+    if isinstance(node, THIRForIterProto):
+        # The iterable renders as its own `__src` bind with a temps flush
+        # right before it (inside the rvalue brace scope -- the AST's
+        # for-each flush point), so it is a flushable value position. The
+        # begin/end for-each route stays temp-free: its iterable renders
+        # into the loop header, which has no flush point.
+        _walk(owner, node.iterable, return_type, argtemp_ok=True)
+        for child in _iter_children(node):
+            if child is not node.iterable:
+                _walk(owner, child, return_type)
         return
     if isinstance(node, THIRPrint):
         # A print statement is a flush position on the AST path (arg temps

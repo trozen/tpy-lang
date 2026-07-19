@@ -6,8 +6,11 @@ from __future__ import annotations
 from ..codegen_cpp.context import CodeGenOptions
 from ..codegen_cpp.forms import LocalBinding
 from .nodes import (
-    Form, THIRAssign, THIRCall, THIRCtorCall, THIRFieldAccess, THIRFormConvert, THIRLiteral,
-    THIRMethodCall, THIRName, THIRReturn, THIRSelf, THIRVarDecl,
+    Form, PrintForm, PtrSlotKind, THIRAssign, THIRCall, THIRCtorCall,
+    THIRFieldAccess,
+    THIRFormConvert, THIRLiteral,
+    THIRMethodCall, THIRName, THIRPtrLocalDecl, THIRReturn, THIRSelf,
+    THIRVarDecl,
 )
 from ..typesys import NominalType
 from .testutil import (
@@ -843,15 +846,70 @@ class TestF2dRebindSlot:
         reseat = fn.body[1].then_body[0]  # the in-branch reseat
         assert isinstance(reseat, THIRAssign) and isinstance(reseat.value, THIRCtorCall)
 
-    def test_lvalue_reseat_of_rebind_slot_is_ineligible(self):
-        # A REBIND_SLOT local (rvalue first decl) reseated with an lvalue field
-        # source is the deferred mixed case -- `_is_record_rvalue_source` needs a
-        # ctor/call, so it stays on the AST path (mirror of the POINTER+rvalue case).
+    def test_lvalue_reseat_of_record_slot_routes(self):
+        # A name-reassigned rvalue first decl is the RECORD_RVALUE slot kind
+        # (`Inner __slot_1 = Inner(1); Inner* p = &__slot_1;`); the field
+        # lvalue reseat rides the F2 arm (`p = &(b.inner);`). Formerly the
+        # deferred mixed case -- the escape-hoist record cell routed it
+        # (byte-identical, pinned in the corpus run).
         thir = _lower_ctx(
             _F1_RECORDS
             + "def f(b: Box, x: Int32) -> Int32:\n"
             + "    p = Inner(1)\n    if x < 0:\n        p = b.inner\n    return p.value\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+        decl = fn.body[0]
+        assert isinstance(decl, THIRPtrLocalDecl)
+        assert decl.kind is PtrSlotKind.RECORD_RVALUE
+        assert not decl.needs_rebind_slot
+
+    def test_param_lvalue_reseat_of_record_slot_falls_back(self):
+        # A same-type non-readonly record PARAM reseat source would build the
+        # same-form same-type convert the validator hard-rejects -- the guard
+        # must fall back cleanly, never crash comp.
+        thir = _lower_ctx(
+            _F1_RECORDS
+            + "def f(a: Inner, x: Int32) -> Int32:\n"
+            + "    p = Inner(1)\n    if x < 0:\n        p = a\n"
+            + "    return p.value\n")
         assert _fn(thir, "f") is None
+
+    def test_param_lvalue_reseat_of_opt_slot_falls_back(self):
+        # The OPT-pointee twin of the guard above (same validator trap).
+        thir = _lower_ctx(
+            _F1_RECORDS
+            + "def f(a: Inner, x: Int32) -> Int32:\n"
+            + "    p: Inner | None = Inner(1)\n    if x < 0:\n        p = a\n"
+            + "    return 0\n")
+        assert _fn(thir, "f") is None
+
+    def test_hoisted_record_nonrvalue_reseat_byte_identical(self):
+        # A hoisted record decl registers NO rebind slot, so a later
+        # pointer-copy reseat of the hoisted name must render the bare copy
+        # -- never the rebind-slot `&*(__slot = <T*>)` hijack (uncompilable).
+        _assert_byte_identical(
+            _F1_RECORDS
+            + "def f(n: Int32) -> Int32:\n"
+            + "    saved = Inner(0)\n"
+            + "    for i in range(n):\n"
+            + "        p = Inner(i)\n"
+            + "        saved = p\n"
+            + "        p = saved\n"
+            + "    return saved.value\n")
+
+    def test_hoisted_record_in_generator_stays_ast(self):
+        # RECORD_HOISTED hoist lines have no drain point in the resumable /
+        # simple-gen leaf emitters -- the decl rejects (falls back whole),
+        # never reaches the hoist-drainable assert.
+        _assert_byte_identical(
+            _F1_RECORDS
+            + "from typing import Iterator\n"
+            + "def gen(n: Int32) -> Iterator[Int32]:\n"
+            + "    saved = Inner(0)\n"
+            + "    for i in range(n):\n"
+            + "        p = Inner(i)\n"
+            + "        saved = p\n"
+            + "        yield saved.value\n")
 
 
 
@@ -1856,16 +1914,19 @@ class TestPrintWrapArgs:
         thir = _lower_ctx(src)
         assert _fn(thir, "show") is None
 
-    def test_bytearray_name_stays_ast(self):
-        # bytearray prints via ByteArrayPrinter -- an excluded kind; the
-        # container arms must not catch it.
+    def test_bytearray_name_routes_bytearray_printer(self):
+        # A bytearray NAME print routes via its own wrap kind
+        # (ByteArrayPrinter), not the container arms.
         src = (
             "def use(b: bytearray) -> None:\n"
             "    print(b)\n"
             "use(bytearray(b'x'))\n"
         )
         thir = _lower_ctx(src)
-        assert _fn(thir, "use") is None
+        fn = _fn(thir, "use")
+        assert fn is not None
+        arg = fn.body[0].args[0]
+        assert arg.print_form is PrintForm.BYTEARRAY
 
     def test_span_name_stays_ast(self):
         # Span prints via ListPrinter on the AST path but is outside the
@@ -1954,3 +2015,89 @@ class TestTupleUnpackMethodSource:
         )
         thir = _lower_ctx(src)
         assert _fn(thir, "use") is None
+
+
+class TestBranchOwnedRecordDecl:
+    def test_branch_first_record_decl_routes_byte_identical(self):
+        # A branch-FIRST owned record decl is block-local -- the plain value
+        # decl at branch indent, same as function scope.
+        _assert_byte_identical(
+            _F1_RECORDS
+            + "def f(c: bool) -> Int32:\n"
+            + "    if c:\n"
+            + "        q = Inner(2)\n"
+            + "        return q.value\n"
+            + "    return 0\n")
+
+    def test_same_name_sibling_branch_decls_byte_identical(self):
+        # The same name declared in two sibling branches -- whatever the
+        # classification (hoisted vs block-local), both paths must agree.
+        _assert_byte_identical(
+            _F1_RECORDS
+            + "def f(c: bool) -> Int32:\n"
+            + "    if c:\n"
+            + "        q = Inner(2)\n"
+            + "        return q.value\n"
+            + "    else:\n"
+            + "        q = Inner(3)\n"
+            + "        return q.value\n")
+
+    def test_branch_record_decl_in_generator_byte_identical(self):
+        # The branch-first owned-record arm is shared by resumable leaf
+        # lowering (a non-suspension-crossing block-local); frame-field
+        # decls are intercepted upstream -- both paths must agree.
+        _assert_byte_identical(
+            _F1_RECORDS
+            + "from typing import Iterator\n"
+            + "def gen(c: bool) -> Iterator[Int32]:\n"
+            + "    if c:\n"
+            + "        q = Inner(2)\n"
+            + "        yield q.value\n"
+            + "    yield 0\n")
+
+    def test_narrowed_branch_sibling_record_decls_no_crash(self):
+        # The isinstance-narrowing branch lowerer must pop branch-local
+        # pointer registrations like _lower_scoped_stmts -- sibling
+        # same-name first decls crashed with a KeyError when the then-arm's
+        # registration leaked into the else-arm's scope.
+        _assert_byte_identical(
+            _F1_RECORDS
+            + "from tpy import Int32\n"
+            + "def f(x: Int32 | str) -> Int32:\n"
+            + "    if isinstance(x, Int32):\n"
+            + "        e = Inner(1)\n"
+            + "        e = Inner(2)\n"
+            + "        return e.value\n"
+            + "    else:\n"
+            + "        e = Inner(3)\n"
+            + "        return e.value\n")
+
+    def test_sibling_branch_rebind_slot_decls_byte_identical(self):
+        # The REBIND_SLOT flavor of the sibling-branch shape: reassigned
+        # WITHIN each branch, name reused across branches (the exact
+        # KeyError crash shape of the plain-if path).
+        _assert_byte_identical(
+            _F1_RECORDS
+            + "def f(c: bool) -> Int32:\n"
+            + "    if c:\n"
+            + "        e = Inner(1)\n"
+            + "        e = Inner(2)\n"
+            + "        return e.value\n"
+            + "    else:\n"
+            + "        e = Inner(3)\n"
+            + "        return e.value\n")
+
+    def test_foreach_loop_var_shadows_pointer_local(self):
+        # A for-each loop var shadowing a same-named pointer local: the
+        # reseat must take the address of the auto&& reference, never the
+        # bare pointer copy (the escape_local_safe divergence).
+        _assert_byte_identical(
+            _F1_RECORDS
+            + "def f(items: list[Inner]) -> Int32:\n"
+            + "    saved = Inner(0)\n"
+            + "    for i in range(1):\n"
+            + "        p = Inner(i)\n"
+            + "        pass\n"
+            + "    for p in items:\n"
+            + "        saved = p\n"
+            + "    return saved.value\n")

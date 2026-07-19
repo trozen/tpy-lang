@@ -1261,6 +1261,19 @@ class PtrSlotKind(Enum):
     UNION_RVALUE = auto()
     UNION_ADDR = auto()
     DYN_PROTOCOL = auto()
+    # Escape-hoist PLAIN-record pointer-locals (the classifier's OTHER, the
+    # AST pointer path's rvalue branches):
+    #   * `RECORD_RVALUE` -- a name-reassigned (not rvalue-reassigned) local
+    #     with a record-rvalue init: `T __slot_N = init;\nT* x = &__slot_N;`
+    #     (the REBIND_SLOT render minus the rebind slot -- reseats copy
+    #     pointers, never rvalues).
+    #   * `RECORD_HOISTED` -- a HOISTED local's decl inside a loop/branch:
+    #     the `std::optional<T> __slot_N;` pre-decl rides the function-top
+    #     hoist lines and the decl re-emplaces per execution
+    #     (`T* x = &*(__slot_N = init);`). `needs_rebind_slot` pre-declares
+    #     the second hoisted slot for rvalue reseats.
+    RECORD_RVALUE = auto()
+    RECORD_HOISTED = auto()
     # `p2: P = p1` / `p2 = p1` where p1 is already an erased protocol pointer:
     # copy the alias, no slot -- `Base* p2 = &(*p1);` (decl) / `p2 = &(*p1);`
     # (reseat). `base_cpp` carries the protocol base; `init`/`value` is the
@@ -1335,9 +1348,10 @@ class THIRAssign(THIRStmt):
 class THIRSetItem(THIRStmt):
     """A container subscript write `c[k] = v`. `target` is the lowered
     subscript node (receiver + index + `bounds_safe`), reused for both emit
-    arms: the checked `::tpy::__setitem__(c, k, v);` (every admitted
-    family's `__setitem__` is the same @native free-function dunder --
-    list/Array/Span/dict alike), or -- when sema proved the index in
+    arms: the checked free-function dunder (`::tpy::__setitem__(c, k, v);`
+    for list/Array/Span/dict; a bytearray receiver dispatches to its own
+    `::tpy::bytearray_setitem` at emit, like the bytes_getitem read arm),
+    or -- when sema proved the index in
     [0, len) -- the direct `c[static_cast<std::size_t>(k)] = v;` (a literal
     index needs no cast), sharing `_emit_subscript`'s bounds-safe render.
     An augmented `c[k] OP= v` lowers to the same node with `value` the
@@ -2347,6 +2361,7 @@ class PrintForm(Enum):
     SET = auto()
     DICT = auto()
     TUPLE = auto()  # `::tpy::TuplePrinter(...)` -- a value-tuple name arg
+    BYTEARRAY = auto()  # `::tpy::ByteArrayPrinter(...)` -- a bytearray name
     OPT_VAL = auto()
     OPT_VAL_BOOL = auto()
     OPT_VAL_FLOAT = auto()

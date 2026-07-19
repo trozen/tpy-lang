@@ -438,6 +438,171 @@ def test_for_each_generator_call_iterable_routes():
     assert compiler._thir_face_witnesses.get("foreach.iter_proto") == 1
 
 
+def test_for_each_gen_call_container_literal_arg_routes():
+    # A container-literal arg on the iter_proto iterable call is a
+    # temp-hoisting row: the emit flushes the temp inside the rvalue brace
+    # scope right before the `__src` bind (the AST's for-each flush point).
+    import io
+
+    from .emit import emit_thir_body
+
+    compiler, entry, f = _fn_body(
+        "from tpy import Int32\n"
+        "from typing import Iterator\n"
+        "def gen(xs: list[Int32]) -> Iterator[Int32]:\n"
+        "    for x in xs:\n"
+        "        yield x\n"
+        "def routed() -> Int32:\n"
+        "    t = 0\n"
+        "    for x in gen([1, 2, 3]):\n"
+        "        t = t + x\n"
+        "    return t\n",
+        "routed")
+    with activate_compiler(compiler):
+        begin_attempt()
+        fn = lower_function(f, entry.analyzer, self_type=None)
+        assert fn is not None
+        buf = io.StringIO()
+        emit_thir_body(buf, fn)
+    body = buf.getvalue()
+    flush = body.index("std::vector<int32_t> __tmp_1 = {1, 2, 3};")
+    src = body.index("auto __src_0 = gen(__tmp_1);")
+    scope = body.index("{\n")
+    assert scope < flush < src
+
+
+def test_iterator_object_decl_routes():
+    # `it = g()` -> `auto it = g();` (decl.iterator_object) and the for-head
+    # admits the LOCAL despite its protocol declared type (a protocol PARAM
+    # stays deferred -- pinned below).
+    import io
+
+    from .emit import emit_thir_body
+
+    compiler, entry, f = _fn_body(
+        "from tpy import Int32\n"
+        "from typing import Iterator\n"
+        "def gen(n: Int32) -> Iterator[Int32]:\n"
+        "    yield n\n"
+        "def routed(n: Int32) -> Int32:\n"
+        "    it = gen(n)\n"
+        "    t = 0\n"
+        "    for v in it:\n"
+        "        t = t + v\n"
+        "    return t\n",
+        "routed")
+    with activate_compiler(compiler):
+        begin_attempt()
+        fn = lower_function(f, entry.analyzer, self_type=None)
+        assert fn is not None
+        buf = io.StringIO()
+        emit_thir_body(buf, fn)
+    body = buf.getvalue()
+    assert "auto it = gen(n);\n" in body
+    assert "auto& __src_0 = it;\n" in body
+    assert compiler._thir_face_witnesses.get("decl.iterator_object") == 1
+
+
+def test_iterator_protocol_param_iterable_still_defers():
+    # An Iterator[T]-typed PARAM iterable spells through the deduced template
+    # param on the AST path -- must keep falling back (only iterator-object
+    # LOCALS are exempt).
+    compiler, entry, f = _fn_body(
+        "from tpy import Int32\n"
+        "from typing import Iterator\n"
+        "def rejected(it: Iterator[Int32]) -> Int32:\n"
+        "    t = 0\n"
+        "    for v in it:\n"
+        "        t = t + v\n"
+        "    return t\n",
+        "rejected")
+    with activate_compiler(compiler):
+        begin_attempt()
+        fn = lower_function(f, entry.analyzer, self_type=None)
+        if fn is None:
+            fold_attempt("body")
+    assert fn is None
+
+
+def test_protocol_arg_pending_type_falls_back():
+    # A literal-seeded local passed into a protocol param slot can still be
+    # PENDING at lowering; the protocol arg-temp must reject (fall back),
+    # never crash in render_type.
+    compiler, entry, f = _fn_body(
+        "from typing import Iterator, Iterable\n"
+        "def echo(it: Iterable[int]) -> Iterator[int]:\n"
+        "    for x in it:\n"
+        "        yield x\n"
+        "def rejected() -> None:\n"
+        "    xs = [1, 2]\n"
+        "    g = echo(xs)\n"
+        "    for v in g:\n"
+        "        print(v)\n",
+        "rejected")
+    with activate_compiler(compiler):
+        begin_attempt()
+        fn = lower_function(f, entry.analyzer, self_type=None)
+        if fn is None:
+            fold_attempt("body")
+    assert fn is None
+
+
+def test_for_each_gen_call_record_rvalue_arg_routes():
+    # A record-ctor rvalue arg is a DISTINCT temp row (_record_rvalue_temp_arg)
+    # from the container-literal one -- pin it at the iter_proto iterable too.
+    import io
+
+    from .emit import emit_thir_body
+
+    compiler, entry, f = _fn_body(
+        "from tpy import Int32\n"
+        "from typing import Iterator\n"
+        "class Rec:\n"
+        "    v: Int32\n"
+        "    def __init__(self, v: Int32) -> None:\n"
+        "        self.v = v\n"
+        "def gen(r: Rec) -> Iterator[Int32]:\n"
+        "    yield r.v\n"
+        "def routed() -> Int32:\n"
+        "    t = 0\n"
+        "    for x in gen(Rec(7)):\n"
+        "        t = t + x\n"
+        "    return t\n",
+        "routed")
+    with activate_compiler(compiler):
+        begin_attempt()
+        fn = lower_function(f, entry.analyzer, self_type=None)
+        assert fn is not None
+        buf = io.StringIO()
+        emit_thir_body(buf, fn)
+    body = buf.getvalue()
+    assert body.index("__tmp_1") < body.index("auto __src_0 = gen(__tmp_1);")
+
+
+def test_for_each_container_route_literal_arg_still_rejects():
+    # The begin/end container route's iterable renders into the loop header
+    # -- NO flush point -- so a temp-hoisting arg there must keep rejecting
+    # (widening it would be the stale-snapshot miscompile the validator
+    # guards). Only the iter_proto route admits temps.
+    compiler, entry, f = _fn_body(
+        "from tpy import Int32, Own\n"
+        "def make(xs: list[Int32]) -> Own[list[Int32]]:\n"
+        "    return [x * 2 for x in xs]\n"
+        "def rejected() -> Int32:\n"
+        "    t = 0\n"
+        "    for x in make([1, 2]):\n"
+        "        t = t + x\n"
+        "    return t\n",
+        "rejected")
+    with activate_compiler(compiler):
+        begin_attempt()
+        fn = lower_function(f, entry.analyzer, self_type=None)
+        if fn is None:
+            fold_attempt("body")
+    assert fn is None
+    assert compiler._thir_fallback.get("body:expr.call") == 1
+
+
 def test_for_each_method_generator_call_routes():
     # A bare-name-receiver member generator call takes the iter_proto route
     # (the _member_gen_call_iterable_ok override).
@@ -1104,3 +1269,72 @@ def test_type_family_tag_on_signature_types():
         "e": "ptr", "g": "str", "i": "own_container",
     }
     assert _type_family_tag(None, an) == "untyped"
+
+
+def test_iterator_object_local_as_protocol_arg_byte_identical():
+    # An iterator-object local forwarded into a protocol-typed param -- the
+    # decl.iterator_object + protocol-arg interaction (routes today; pinned
+    # as a byte-identity regression guard).
+    from .testutil import _assert_byte_identical
+    _assert_byte_identical(
+        "from tpy import Int32\n"
+        "from typing import Iterator, Iterable\n"
+        "def gen(n: Int32) -> Iterator[Int32]:\n"
+        "    yield n\n"
+        "def total(it: Iterable[Int32]) -> Int32:\n"
+        "    t = 0\n"
+        "    for v in it:\n"
+        "        t = t + v\n"
+        "    return t\n"
+        "def use(n: Int32) -> Int32:\n"
+        "    it = gen(n)\n"
+        "    return total(it)\n")
+
+
+def test_reassigned_iterator_object_local_falls_back():
+    # The iterator-object decl gate excludes reassigned names -- a rebind
+    # would need pointer machinery the arm does not carry.
+    compiler, entry, f = _fn_body(
+        "from tpy import Int32\n"
+        "from typing import Iterator\n"
+        "def gen(n: Int32) -> Iterator[Int32]:\n"
+        "    yield n\n"
+        "def rejected(n: Int32) -> Int32:\n"
+        "    it = gen(n)\n"
+        "    it = gen(n + 1)\n"
+        "    t = 0\n"
+        "    for v in it:\n"
+        "        t = t + v\n"
+        "    return t\n",
+        "rejected")
+    with activate_compiler(compiler):
+        begin_attempt()
+        fn = lower_function(f, entry.analyzer, self_type=None)
+        if fn is None:
+            fold_attempt("body")
+    assert fn is None
+
+
+def test_branch_first_iterator_object_decl_falls_back():
+    # `iterator_object_locals` is outside the branch snapshot -- a
+    # branch-first iterator decl must reject (function scope only), so the
+    # registration can never leak past its branch.
+    compiler, entry, f = _fn_body(
+        "from tpy import Int32\n"
+        "from typing import Iterator\n"
+        "def gen(n: Int32) -> Iterator[Int32]:\n"
+        "    yield n\n"
+        "def rejected(c: bool, n: Int32) -> Int32:\n"
+        "    t = 0\n"
+        "    if c:\n"
+        "        it = gen(n)\n"
+        "        for v in it:\n"
+        "            t = t + v\n"
+        "    return t\n",
+        "rejected")
+    with activate_compiler(compiler):
+        begin_attempt()
+        fn = lower_function(f, entry.analyzer, self_type=None)
+        if fn is None:
+            fold_attempt("body")
+    assert fn is None

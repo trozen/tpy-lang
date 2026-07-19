@@ -78,6 +78,7 @@ from ...type_def_registry import (
     is_array,
     is_big_int_type,
     is_bool_type,
+    is_bytearray_type,
     is_bytes_type,
     is_bytes_view_type,
     is_dict,
@@ -1474,6 +1475,7 @@ def _setitem_target_ok(
             return note_detail(
                 "setitem." + _subscript_recv_reject(recv, declared, analyzer))
     if not (_container_scalar_read(recv_t, analyzer)
+            or _bytearray_recv(recv_t)
             or _setitem_widened_family_ok(recv_t, analyzer)):
         return note_detail("setitem.family")
     if (_bigint_index_disposition(sub.index, analyzer) == "reject"):
@@ -4089,7 +4091,10 @@ def _method_call_arg_ok(
     if (_protocol_binding(recv_type) is not None
             or _bounded_tparam_protocol(recv_type, tparam_bounds) is not None):
         return _protocol_method_arg_ok(a, ptype, locals_, analyzer)
-    if _resolved_str_value(recv_type, analyzer) is not None:
+    if (_resolved_str_value(recv_type, analyzer) is not None
+            or _bytearray_recv(recv_type)):
+        # Bytearray method args are the view set (scalar value / index,
+        # bytes operands) -- same bare renders on both paths.
         return _view_method_arg_ok(a, ptype, locals_, analyzer)
 
     recv = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(recv_type)))
@@ -4456,6 +4461,40 @@ def _view_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyType
                 and _storage_call_ret(ret, analyzer) is not None)
             or (stmt_position and (ret is None or is_void_like_type(ret)))):
         return note_detail("method.view.ret_type")
+    return True
+
+
+def _bytearray_recv(recv_type: 'TpyType | None') -> bool:
+    """A bytearray receiver -- the owned mutable twin of the bytes view
+    family: every stub method is @native (member renames like `push_back` /
+    bare `clear`, or function=True `::tpy::bytearray_*(recv, args)`), all
+    rendered by the general THIRMethodCall arm."""
+    if recv_type is None:
+        return False
+    return is_bytearray_type(
+        unwrap_readonly(unwrap_ref_type(unwrap_send_sync(recv_type))))
+
+
+def _bytearray_method_call_supported(
+        e: TpyMethodCall, fi, analyzer, *, stmt_position: bool,
+        storage_ret_ok: bool = False) -> bool:
+    """A bytearray receiver's builtin method call: the view family's
+    admission shape, plus MEMBER natives (`append` -> `recv.push_back(arg)`,
+    bare `clear`) the view gate's function-only check would reject. The
+    receiver-shape / marker / arity rejects already ran in method-call
+    lowering; renders are the same two spellings the general THIRMethodCall
+    arm mirrors (member rename / function=True receiver-prepend)."""
+    if fi.cpp_template is not None and "{cpp}" in fi.cpp_template:
+        return note_detail("method.bytearray.cpp_ret_substitution")
+    ret = analyzer.get_expr_type(e)
+    if not (_resolved_scalar(ret, analyzer)
+            or _eligible_char(ret)
+            or _resolved_str_value(ret, analyzer) is not None
+            or _resolved_bytes_value(ret, analyzer) is not None
+            or (storage_ret_ok
+                and _storage_call_ret(ret, analyzer) is not None)
+            or (stmt_position and (ret is None or is_void_like_type(ret)))):
+        return note_detail("method.bytearray.ret_type")
     return True
 
 
@@ -4862,7 +4901,6 @@ def _wrap_print_form(a: TpyExpr, declared: dict[str, TpyType],
     record streaming raw via its emitted operator<<. The ONE routing fact
     shared by local admission and `_lower_print_arg`, so admission and form
     selection cannot drift. NAMES only; the gate excludes pointer-locals.
-    Bytearray /
     Span / dict-view / varargs printers stay AST; `self` renders `(*this)`,
     not the bare name -- excluded.
 
@@ -4916,6 +4954,10 @@ def _wrap_print_form(a: TpyExpr, declared: dict[str, TpyType],
     if t is None:
         return None
     u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    if is_bytearray_type(u):
+        # A bytearray NAME streams via ByteArrayPrinter (gen_print's
+        # bytearray arm over the bare lvalue).
+        return PrintForm.BYTEARRAY
     if isinstance(u, TupleType):
         # Any tuple NAME (value or non-value) streams via TuplePrinter over the
         # deref'd lvalue -- mirrors gen_print's `isinstance(arg_type, TupleType)`

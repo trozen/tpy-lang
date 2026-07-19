@@ -321,6 +321,7 @@ class _LowerCtx:
                  "render_type_stored", "render_resolve", "tparam_bounds",
                  "const_locals",
                  "pointers", "rebind_slot_locals", "dyn_protocol_locals",
+                 "iterator_object_locals",
                  "ref_alias_locals",
                  "value_opt_locals", "value_opt_view_locals", "movable_locals",
                  "self_receiver", "self_cpp", "self_is_pointer",
@@ -400,6 +401,11 @@ class _LowerCtx:
         # First-declared @dynamic protocol locals that are reassigned: their
         # reseat statements take the rebind emit (hoisted optional slot).
         self.dyn_protocol_locals: set[str] = set()
+        # Iterator-object locals (`it = g()`, the `auto` decl off a
+        # generator/iterator factory): the for-head's name arm admits one as
+        # a plain lvalue iterable despite its protocol declared type (a
+        # protocol PARAM stays deferred -- its C++ spelling is deduced).
+        self.iterator_object_locals: set[str] = set()
         # REF_ALIAS-bound locals (`T& name = ...`) -- codegen's
         # `ctx.ref_bound_locals`. Consumed by the `del x` skip ladder: the
         # alias does not own the value, so no move-sink is emitted for it.

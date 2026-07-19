@@ -25,7 +25,7 @@ from ..codegen_cpp.context import (
 )
 from ..codegen_cpp.forms import LocalBinding, is_plain_nonvalue
 from ..type_def_registry import (
-    is_array, is_bytes_type, is_bytes_view_type, is_dict,
+    is_array, is_bytearray_type, is_bytes_type, is_bytes_view_type, is_dict,
     is_float32_type, is_list,
     is_set, is_str_type, is_string_type, view_to_owned_conv,
 )
@@ -2776,7 +2776,11 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
                 out.write(f"{indent}std::optional<{stmt.cpp_type}> "
                           f"__slot_{slot};\n")
             out.write(f"{indent}{cpfx}{stmt.cpp_type}* {name} = nullptr;\n")
-        elif stmt.kind is PtrSlotKind.OPT_RVALUE:
+        elif stmt.kind in (PtrSlotKind.OPT_RVALUE, PtrSlotKind.RECORD_RVALUE):
+            # RECORD_RVALUE (the escape-hoist plain-record flavor) shares the
+            # render exactly: `T __slot_N = init;` + `T* name = &__slot_N;`
+            # (its needs_rebind_slot is always False -- an rvalue-reassigned
+            # record is the REBIND_SLOT binding, not this kind).
             init_cpp = _emit_expr(stmt.init, state)
             init_slot = state.next_slot()
             out.write(f"{indent}{stmt.cpp_type} __slot_{init_slot} = "
@@ -2788,6 +2792,31 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
                           f"__slot_{rebind};\n")
             out.write(f"{indent}{cpfx}{stmt.cpp_type}* {name} = "
                       f"&__slot_{init_slot};\n")
+        elif stmt.kind is PtrSlotKind.RECORD_HOISTED:
+            # Hoisted record pointer-local: the `std::optional<T>` slot
+            # pre-decl rides the function-top hoist lines; the decl statement
+            # re-emplaces per execution and re-points the alias
+            # (`T* x = &*(__slot_N = init);` -- _gen_pointer_local_init's
+            # hoisted rvalue branch via _ptr_from_rvalue_slot).
+            init_cpp = _emit_expr(stmt.init, state)
+            init_slot = state.next_slot()
+            assert state.hoist_drainable, (
+                "RECORD_HOISTED decl hoist reached a non-draining leaf emitter")
+            state.hoist_lines.append(
+                f"std::optional<{stmt.cpp_type}> __slot_{init_slot};")
+            if stmt.needs_rebind_slot:
+                rebind = state.next_slot()
+                state.rebind_slots[stmt.name] = rebind
+                state.hoist_lines.append(
+                    f"std::optional<{stmt.cpp_type}> __slot_{rebind};")
+            # Deliberately NO rebind_slots registration without a rebind
+            # slot: the THIRAssign rebind-slot emit special-case is keyed on
+            # membership alone, so registering the init slot would hijack a
+            # later field / pointer-copy reseat into `&*(__slot = <T*>)` --
+            # uncompilable. An rvalue reseat implies rvalue_reassigned,
+            # which implies needs_rebind_slot -- no valid consumer exists.
+            out.write(f"{indent}{cpfx}{stmt.cpp_type}* {name} = "
+                      f"&*(__slot_{init_slot} = {init_cpp});\n")
         elif stmt.kind is PtrSlotKind.UNION_RVALUE:
             init_cpp = _emit_expr(stmt.init, state)
             slot = state.next_slot()
@@ -2894,7 +2923,15 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             recv_cpp = _emit_expr(stmt.target.receiver, state)
             idx_cpp = _emit_expr(stmt.target.index, state)
             state.temps.flush(out, indent)
-            out.write(f"{indent}::tpy::__setitem__({recv_cpp}, {idx_cpp}, "
+            # bytearray's `__setitem__` is its own @native free-function
+            # dunder (range-checked value), not the containers' checked
+            # template -- mirrors _gen_assign_code's fi dispatch
+            # (get_type_method_fi -> gen_call_from_fi), like the
+            # bytes_getitem read arm.
+            rt = unwrap_qualifiers(stmt.target.receiver.result_type)
+            sym = ("::tpy::bytearray_setitem" if is_bytearray_type(rt)
+                   else "::tpy::__setitem__")
+            out.write(f"{indent}{sym}({recv_cpp}, {idx_cpp}, "
                       f"{value_cpp});\n")
     elif isinstance(stmt, THIRSliceAssign):
         # Mirrors _gen_slice_assign: the resolved slice __setitem__ @native
@@ -3250,6 +3287,8 @@ def _emit_print_arg(a: THIRPrintArg, state: _EmitState) -> str:
         return f"::tpy::DictPrinter({inner})"
     if a.print_form is PrintForm.TUPLE:
         return f"::tpy::TuplePrinter({inner})"
+    if a.print_form is PrintForm.BYTEARRAY:
+        return f"::tpy::ByteArrayPrinter({inner})"
     if a.print_form is PrintForm.OPT_VAL:
         return f"::tpy::print_optional_val({inner})"
     if a.print_form is PrintForm.OPT_VAL_BOOL:
