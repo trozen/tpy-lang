@@ -33,6 +33,7 @@ See `docs/FEATURE_ROADMAP.md` for bigger tasks and `BUGS.md` for known compiler 
 - **[thir][test-gap] Wave-15 arms with corpus-only coverage.** The str-membership divergence-fix guard got a unit this wave (`test_thir_containers.py::TestMembership::test_str_membership_is_substring_not_ranges_contains`); still corpus-only: native-function ctors (`int/float/bytes` `from_str`, non-literal str arg -- add to `test_thir_scalars.py::TestScalarCtorCall`), generic-record `__getitem__`/`__setitem__`/foreach (monomorphized FixStr/ArrayList -- add to `test_thir_containers.py`), `call.optview_local_whole` (owned `Optional[str]` local call arg), and the `file=` print sink node-shape. All ratchet+byte-diff protected and codegen-correctness hand-verified their siblings. Surfaced by /tpy-review (test-coverage) of wave 15.
 - **[thir, unblocks argparse subparsers] Re-add the 3 reverted subparsers-body arms now that value-opt-view local repr is fixed.** The value-opt-view LOCAL repr divergence (a `str`/`bytes` local read pointer-repr `!= nullptr` / no-deref instead of value-repr `has_value()` / `(*acc)`) is FIXED -- view-opt locals now route their None-test + narrowed deref via `_value_opt_view_binding` (`fix-optional-str-repr`). What REMAINS to flip the 9 `argparse/subparsers_*` cases is the 3 arms the wave-15 executor built then reverted because that divergence blocked them: branch-scoped owned-record decl, container-returning-rvalue free-call arg temp, and `list(slice)` instantiation. Re-add those, confirm the subparsers parse bodies route byte-identical, and un-mark the cases. Surfaced by the wave-15 argparse executor; repr prerequisite closed by `fix-optional-str-repr`.
 - **[thir] Extend value-opt-view LOCAL routing beyond the None-test + narrowed deref.** `fix-optional-str-repr` routes an OWNED-inner `Optional[str]`/`Optional[bytes]` local's None-test + narrowed deref (via `value_opt_view_locals` / `_value_opt_view_binding`), but leaves three view-opt-local positions on the AST fallback path: (a) returning the whole optional local (`return acc` at a `str | None` slot -- the param path has the `_maybe_convert_opt_view_param` shim; the owned-local return would pass the whole optional bare, no shim); (b) VIEW-inner (`StrView`/`BytesView | None`) locals are deliberately gate-rejected (`name.value_opt_view_inner_local`) because the AST's narrowed read of a view-inner optional local is a whole-optional-wrap quirk (`std::string(acc)`, itself likely an AST bug) THIR won't mirror -- routing them needs that AST shape settled first; (c) the arg-shim into another `Optional[view]` slot already has a correct owned-local bare-whole arm, so only (a)/(b) remain. The return arm (a) is the natural next increment. Surfaced by /tpy-review (architecture-fit, test-coverage) of `fix-optional-str-repr`.
+- **[thir][tooling] `--dump-thir` silently swallows ~half the node vocabulary.** 49 of 102 `THIR*` node classes have no dump arm (a few are abstract bases, but the bulk are real constructs: `THIRTry`, `THIRRaise`, `THIRComprehension`, `THIRMatchArm`, `THIRForIterProto`, `THIRFrameSlotWrite`, `THIRResumableBody`, ...); anything unhandled prints the opaque `<ClassName>` fallback (`dump.py:237`) and its BODY statements are hidden entirely. Bounded standalone chore: add arms for the missing concrete nodes + a completeness unit asserting every concrete node class renders without hitting the fallback (the faces-registry pattern applied to the dumper -- after that a new node without a dump arm fails CI instead of silently degrading the tool). Dump-only, zero codegen risk. Surfaced by the user hitting `<THIRForIterProto>` in a dump.
 - **[thir] Walrus / named-expression (`:=`) has NO THIR lowering arm (design fork).** `(y := 5)` / `if (n := f()):` -- an expression-position assignment with no THIR arm at all; a whole unbuilt feature needing an expression-position-assign design (the assigned name binds AND the expr yields the value). Blocks `control_flow/walrus{,_reassign,_aliases_reference,_optional_field_alias}`. Also now the canonical "nothing routes" canary in `test_thir_core.py::test_dump_empty`. Surfaced by the wave-14 control_flow executor.
 - **[thir] The `raise <expr>` (raise_expr) frontier -- highest-leverage exceptions lever (~7 cases, multi-arm).** `raise` of a pre-built expression (not a bare ctor call) + user-record local decls via ctor + reassignment pointer-locals + `@virtual_raise` dispatch. A multi-arm frontier (not a narrow arm), unlocks box_throwable_* (x3), os_error_ctor/attrs/field_shadow, throw_raise_expr, index_error_caught, value_error_caught. Surfaced by the wave-14 exceptions executor (noted, not improvised).
 - **[thir] Multi-statement `del d[a], d[b]` needs a one-source-to-N-lines THIR construct (design fork).** `del d["x"], d["z"]` lowers one source statement to N `__delitem__` emit lines; THIR has no node for a single source stmt fanning out to multiple emit statements. Blocks `dict/dict_del`. Bounded but a new construct (not an arm widening) -- design before building. Surfaced by the wave-11 dict executor.
@@ -220,14 +221,44 @@ See `docs/FEATURE_ROADMAP.md` for bigger tasks and `BUGS.md` for known compiler 
   arm), Optional-ptr locals, optional-view / value-opt-scalar / Fn /
   value-union / Own[container] params. REQUIRED design cells FILED
   from those drills (each verified against its oracle):
-  (a) single-assign pointer-alias binds (`a = &(items[0]);` /
-  `&(o.inner)`, const flavor from const_pointer_alias_locals; 3 bodies,
-  3 flips) -- needs the addr-of-lvalue bind arm + routing
-  pointer_aliases members into lc.pointers;
-  (b) tuple-unpack pointer-alias targets
-  (`a = &(unwrap_ref(tuple_elem_ref(std::get<i>(__tup_N))));` from
-  call/name/literal sources, incl. the dict_items proxy flavor and the
-  `optional_to_ptr(std::get<i>)` element bridge; ~8 bodies);
+  (a)+(b) pointer-alias binds -- ROUTED (2026-07-19, the alias-binds
+  cell): pointer_aliases members (minus the `__unpack_*` decomposition
+  synthetics) + pointer_form_unpack_targets seed lc.pointers; the bind
+  arms are `= &(<subscript/field lvalue>);` single-assign (const flavor
+  identical), `= &(unwrap_ref(tuple_elem_ref(get)));` off borrow-tuple
+  CALL/NAME sources (the call admitted at the tuple_source use via
+  _f1_tuple; the name via the mutable `auto&` holder; the btuple write
+  arm admits borrow-form tuple CALLS bare), the
+  `tuple_to_pointer<borrow>((*lift))` bridge off one-shot lift holders,
+  and `= &(std::get<i>(__tup_N));` off the deref'd pointer loop holder
+  (advance admitted; async-for value-tuple holders too). Residue: the
+  tuple-LITERAL decomposition shape (`__unpack_0_0 = &(elem);`
+  synthetics -- its own render family), dict_items proxy loop vars,
+  the `optional_to_ptr(std::get<i>)` element bridge
+  (gen_resumable_tuple_unpack_optional). Node-shape followup: the
+  THIRTupleUnpack source discriminators are now two by-convention-
+  exclusive bools (source_oneshot/source_ref) + source_cpp/source_expr
+  overrides and an untyped bind-token vocabulary -- fold into a typed
+  source_kind/bind_kind BEFORE the next source variant lands (nothing
+  prevents constructing an invalid combination today -- and the master
+  merge already added a fourth discriminator, source_wrap_cpp). Also
+  merge-caught: the RESUMABLE frame-emplace position spells container
+  tuple-storage elements BARE (typed_brace_init) where the sync cell's
+  tuple_to_storage wrap applies -- the frame flavor rejects by name
+  (expr.tuple_literal.frame_elem -- a body-wide conservative gate
+  under resumable_leaf_mode, forfeiting flips at resumable positions
+  where the sync wrap would have matched) until a position-aware
+  element render lands. Retrospective followups (readiness gate):
+  (i) audit admissions built on get_expr_type where the DECLARED
+  signature is authoritative -- sema strips Own (and plausibly
+  readonly/Ref) off stamped expr types; two type-level guards failed
+  before _own_declared_call_ret read the fi, and sibling admission
+  sites may carry the same latent mis-admission; (ii) the _LowerCtx
+  pointer-family name sets (pointers / opt_ptr / ptr_frame / oneshot /
+  alias_ptr / unpack_ptr_targets) have by-convention precedence and no
+  disjointness assert -- fold into a per-local bind-kind map when the
+  NEXT pointer-family set lands (the same trigger discipline the
+  TupleSourceBind refactor just applied one level down);
   (c) await-lift tuple-unpack move-outs -- ROUTED (2026-07-18): the
   one-shot `__await_lift_*` tuple holder classifies frame_slot
   (mirroring the skeleton's owning_generator_tuple_locals: own-element
@@ -284,9 +315,19 @@ See `docs/FEATURE_ROADMAP.md` for bigger tasks and `BUGS.md` for known compiler 
   Also finally-tier + return-through-finally leaf trys (the
   latter interlocks _push_finally with the async return scaffolding);
   leaf raise-expr (blocks gather_settled -- same machinery as the
-  exceptions raise_expr frontier above); value-tuple async returns (the
-  slot-typed tuple render at the return leaf + the generic val_or_ptr
-  element bridge); pending-view
+  exceptions raise_expr frontier above); value-tuple async returns --
+  ROUTED (2026-07-19, LITERAL sources: `_value_tuple_return` admitted
+  at the signature gate + the spelled-brace-init arm in
+  `_lower_resumable_return_value`; flip await_async_tuple_unpack,
+  `__anext__` of async_for_tuple_unpack routed). The res.return_type
+  residue is now per-family rungs, each its own render: generic
+  Ref-element tuples (`tuple[K, V]` resolving Ref[K]/Ref[V] -- the
+  val_or_ptr element bridge; generic_async_free_func_multi_T +
+  generic_async_method), Ref[record]/Ref[list] borrow
+  returns (gather_helper x3 + future_drop waiter), Own[container]
+  storage returns (make_list), pointer-repr Optional returns incl.
+  the Own[Box]|None peel (await_optional_field_borrow, 2 bodies);
+  pending-view
   tuple-unpack loop vars (resumable_view_loopvar); the frame_slot
   tuple-subscript yield read (gen_tuple_own_local,
   `return std::get<0>((*t));`).

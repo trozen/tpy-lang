@@ -328,7 +328,8 @@ class _LowerCtx:
                  "const_storage_tuple_locals", "frame_slots",
                  "resumable_leaf_mode", "nested_returns", "in_finally_helper",
                  "plain_frame_fields", "value_tuple_frame_locals",
-                 "oneshot_lift_locals",
+                 "oneshot_lift_locals", "alias_ptr_locals",
+                 "unpack_ptr_targets",
                  "unhandled_hoists", "narrow",
                  "inline_narrowed", "forbidden_reads", "forbidden_writes",
                  "nested_def_locals", "error_return_cpp")
@@ -460,6 +461,17 @@ class _LowerCtx:
         # owned elements out. Populated only by `lower_resumable`, empty
         # for every sync body.
         self.oneshot_lift_locals: frozenset = frozenset()
+        # Pointer-alias frame locals (the skeleton's pointer_alias_locals,
+        # minus the synthetic decomposition temps): `T*` fields aliasing
+        # live storage. Reads ride lc.pointers; the unpack arm binds one
+        # via `= &(unwrap_ref(tuple_elem_ref(...)));` (frame_ptr_elem).
+        # Populated only by `lower_resumable`, empty for every sync body.
+        self.alias_ptr_locals: frozenset = frozenset()
+        # Pointer-form tuple-unpack LOOP targets (the skeleton's
+        # pointer_form_unpack_targets): `T*` fields the head unpack
+        # re-points via `= &(std::get<i>(__tup_N));` off the deref'd
+        # pointer holder. Populated only by `lower_resumable`.
+        self.unpack_ptr_targets: frozenset = frozenset()
         self.unhandled_hoists = set(
             analyzer.function_hoisted_vars.get(id(func), ()))
         # F3 storage-tuple alias locals (`auto&& t = <storage tuple field>`): a read

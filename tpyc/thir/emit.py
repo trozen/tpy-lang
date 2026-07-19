@@ -117,6 +117,7 @@ from .nodes import (
     THIRTupleValueToBorrow,
     THIRTupleLiteral,
     THIRTupleUnpack,
+    TupleSourceBind,
     THIRTruthy,
     THIROptViewArg,
     THIRUnaryNot,
@@ -3031,33 +3032,44 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
         # (`auto`, the AST's non-name `else` arm; its arg temps flush before the
         # bind line, exactly like a bare expr statement).
         tmp = f"__tup_{state.next_unpack()}"
-        if stmt.source_wrap_cpp is not None:
-            # Storage-form source into `is_ref` targets: lift to the borrow
-            # pointer tuple so `std::get<i>` yields a `T*` the ref targets alias.
-            src = (stmt.source_cpp if stmt.source_cpp is not None
-                   else escape_cpp_name(stmt.source))
+        # One holder line per TupleSourceBind form (renders documented on
+        # the enum); the name forms share the source_cpp spelling override.
+        sb = stmt.source_bind
+        src = (stmt.source_cpp if stmt.source_cpp is not None
+               else escape_cpp_name(stmt.source))
+        if sb is TupleSourceBind.STORAGE_WRAP:
             out.write(f"{indent}auto {tmp} = ::tpy::tuple_to_pointer<"
                       f"{stmt.source_wrap_cpp}>({src});\n")
-        elif stmt.source_expr is not None:
+        elif sb is TupleSourceBind.RVALUE:
             src_cpp = _emit_expr(stmt.source_expr, state)
             state.temps.flush(out, indent)
             out.write(f"{indent}auto {tmp} = {src_cpp};\n")
-        elif stmt.source_oneshot:
-            # Consumable one-shot `__await_lift_*` frame_slot source:
-            # rvalue-ref-bind the deref'd slot so the owned elements move
-            # out of the source instead of copying the whole tuple.
+        elif sb is TupleSourceBind.ONESHOT_DEREF:
             out.write(f"{indent}auto&& {tmp} = "
                       f"(*{escape_cpp_name(stmt.source)});\n")
+        elif sb is TupleSourceBind.NAME_REF:
+            out.write(f"{indent}auto& {tmp} = {src};\n")
         else:
-            src = (stmt.source_cpp if stmt.source_cpp is not None
-                   else escape_cpp_name(stmt.source))
             out.write(f"{indent}const auto& {tmp} = {src};\n")
         for i, (name, cpp) in enumerate(zip(stmt.targets, stmt.target_cpps)):
             if name is None:
                 continue
             get = f"std::get<{i}>({tmp})"
             bind = stmt.binds[i] if stmt.binds else "value"
-            if bind in ("frame_assign", "frame_emplace"):
+            if bind == "frame_ptr_addr":
+                # Loop-head alias target: the element is a live value
+                # lvalue inside the container's storage tuple.
+                out.write(f"{indent}{escape_cpp_name(name)} = "
+                          f"&({get});\n")
+            elif bind == "frame_ptr_elem":
+                # Pointer-alias target: alias the LIVE element --
+                # tuple_elem_ref normalizes a `T*` borrow element (deref)
+                # or a value element (forward) to the live `T&`, and the
+                # address-of re-points the `T*` alias field.
+                out.write(f"{indent}{escape_cpp_name(name)} = "
+                          f"&(::tpy::unwrap_ref(::tpy::tuple_elem_ref"
+                          f"({get})));\n")
+            elif bind in ("frame_assign", "frame_emplace"):
                 # Resumable frame targets: assigned, never re-declared. The
                 # wrap mirrors the AST's per-element is_owned move (ref
                 # elements reject at lowering -- re-add an unwrap_ref wrap

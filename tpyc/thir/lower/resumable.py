@@ -122,6 +122,7 @@ from .predicates import (
     _f1_record,
     _f1_tuple,
     _optional_ptr_borrow,
+    _own_declared_call_ret,
     _peel_stale_view_owned_coerce,
     _reassert_bump_info,
     _resolved_bytes_value,
@@ -131,9 +132,11 @@ from .predicates import (
     _value_opt_view,
     _value_tuple,
     _value_tuple_nested,
+    _value_tuple_return,
 )
 from .statements import (
     _handler_binding_type,
+    _lower_alias_bind,
     _lower_frame_field_assign,
     _lower_narrow_cond,
     _lower_resumable_return_value,
@@ -482,10 +485,17 @@ def _for_advance_reject(t: 'rcfg.AsyncForAdvance', analyzer,
         return None
     if stmt.is_tuple_unpack:
         # A VALUE-tuple holder (`__for_tup_N` bare field) binds bare at the
-        # advance and its head unpack ref-binds it as a name source; other
-        # holder families (borrow-tuple, pointer-element) keep the reject.
+        # advance and its head unpack ref-binds it as a name source. A
+        # POINTER-form holder (`__for_tup_N = &(*it++);`, non-value
+        # elements) binds at the advance like any pointer-form loop var;
+        # its head unpack derefs the holder and re-points the alias
+        # targets. Other holder families (borrow-tuple proxies) keep the
+        # reject.
         if stmt.var in value_tuple_holders:
             _witness("res.loop_tuple_bind")
+            return None
+        if stmt.var in ptr_loop_vars:
+            _witness("res.loop_ptr_bind")
             return None
         return "res.loop_var"
     if stmt.var in borrow_tuple_loop_vars:
@@ -764,6 +774,12 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 or _res_capture_ok(rt, analyzer)
                 or _resolved_str_value(rt, analyzer) is not None
                 or _resolved_bytes_value(rt, analyzer) is not None
+                # Value-tuple return slot (`std::tuple<...>` by value,
+                # Own[F1-record] elements included): the return value
+                # gates per-shape in _lower_resumable_return_value's
+                # tuple arm (a literal renders the spelled brace-init,
+                # position-independent like the frame-field flavor).
+                or _value_tuple_return(rt, analyzer) is not None
                 # Value-repr Optional[scalar] (`std::optional<T>` slot):
                 # the return value gates per-shape in
                 # _lower_resumable_return_value's value-opt arm.
@@ -790,13 +806,19 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     rstate = rcfg.resumable_state(func)
     ptr_frame_locals: set[str] = set()
     opt_ptr_locals: set[str] = set()
+    alias_ptr_locals: set[str] = set()
     value_tuple_locals: set[str] = set()
     borrow_tuple_loop_vars: set[str] = set()
+    unpack_ptr_targets: set[str] = set()
     for f_info in rstate.for_info_by_uid.values():
         if f_info.pointer_form_loop_var is not None:
             ptr_frame_locals.add(f_info.pointer_form_loop_var)
         if f_info.borrow_tuple_loop_var is not None:
             borrow_tuple_loop_vars.add(f_info.borrow_tuple_loop_var)
+        # Tuple-unpack targets aliasing a non-value container member: `T*`
+        # fields the head unpack re-points via `= &(std::get<i>(__tup_N));`
+        # -- the skeleton's pointer_form_unpack_targets seeding.
+        unpack_ptr_targets.update(f_info.pointer_form_unpack_targets)
     frame_slots: set[str] = set()
     coro_handle_slots: set[str] = set()
     borrow_tuple_locals: set[str] = set()
@@ -805,6 +827,8 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
             continue  # value / str / bytes -- bare field
         if lname in ptr_frame_locals:
             continue  # pointer-form loop var -- lc.pointers, seeded below
+        if lname in unpack_ptr_targets:
+            continue  # pointer-form unpack target -- lc.pointers, seeded below
         if (lname not in pointer_aliases
                 and _value_tuple(ltype, analyzer) is not None):
             # Value/storage tuple local (`std::tuple<...>` bare field): the
@@ -880,6 +904,18 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
         if (lt is not None and is_plain_nonvalue(lt)
                 and lname not in pointer_aliases):
             frame_slots.add(lname)
+            continue
+        # A plain-nonvalue POINTER-ALIAS local is a bare `T*` frame field
+        # aliasing live storage (the skeleton's pointer_alias_locals
+        # contract): reads ride lc.pointers, and the binds render
+        # `name = &(<lvalue>);` at their own leaf arms (single-assign /
+        # unpack-target). The synthetic `__unpack_*` decomposition temps
+        # and non-plain alias types keep the reject (their render family
+        # is unmirrored).
+        if (lt is not None and is_plain_nonvalue(lt)
+                and lname in pointer_aliases
+                and not lname.startswith("__unpack_")):
+            alias_ptr_locals.add(lname)
             continue
         return _reject("res.local_storage")
     # Helper-based finally bodies (cfg.finally_helpers) route: their
@@ -968,10 +1004,13 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                         # async-for loop var: same value/str/bytes slice as the
                         # sync loop var (the skeleton's ASSIGN bind is a plain
                         # frame write only for those; non-value uses .emplace
-                        # on an optional field).
-                        if not _res_local_ok(
-                                gen_local_types.get(payload.bind_target),
-                                analyzer):
+                        # on an optional field). A VALUE-tuple unpack HOLDER
+                        # (`async for k, sq in p:`) is the same bare-field
+                        # ASSIGN bind; its head unpack ref-binds it via the
+                        # value-tuple name-source arm.
+                        bt = gen_local_types.get(payload.bind_target)
+                        if not (_res_local_ok(bt, analyzer)
+                                or _value_tuple(bt, analyzer) is not None):
                             return _reject("res.loop_var")
                 if payload.async_with_kind is not None:
                     saw_async_with = True
@@ -992,6 +1031,14 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     # both stay out of plain_frame_fields.
     lc.pointers.update(ptr_frame_locals)
     lc.pointers.update(opt_ptr_locals)
+    # Pointer-alias locals ride the same pointer read arms; their binds
+    # render at the dedicated alias leaf arms (never plain field assigns),
+    # so they subtract from plain_frame_fields below like every
+    # divergent-write family.
+    lc.pointers.update(alias_ptr_locals)
+    lc.alias_ptr_locals = frozenset(alias_ptr_locals)
+    lc.pointers.update(unpack_ptr_targets)
+    lc.unpack_ptr_targets = frozenset(unpack_ptr_targets)
     lc.value_tuple_frame_locals = frozenset(value_tuple_locals)
     lc.oneshot_lift_locals = frozenset(rstate.one_shot_lift_names)
     # value_tuple_locals stay IN plain_frame_fields deliberately: they are
@@ -1000,7 +1047,8 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     # differs must subtract itself here.
     lc.plain_frame_fields = frozenset(
         frame_fields - frame_slots - borrow_tuple_locals - coro_handle_slots
-        - ptr_frame_locals - opt_ptr_locals)
+        - ptr_frame_locals - opt_ptr_locals - alias_ptr_locals
+        - unpack_ptr_targets)
     lc.resumable_leaf_mode = True
     declared: dict[str, TpyType] = {
         n: unwrap_ref_type(t) for n, t in func.params
@@ -1140,6 +1188,24 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                     value = _lower_expr(stmt.init, lc, declared)
                     if value.form is Form.STORAGE:
                         raise ThirUnsupported("res.btuple_source")
+                elif (isinstance(stmt.init, (TpyCall, TpyMethodCall))
+                        and _f1_tuple(analyzer.get_expr_type(stmt.init),
+                                      analyzer) is not None
+                        and not _own_declared_call_ret(stmt.init)):
+                    # A borrow-FORM tuple-returning CALL writes bare too
+                    # (`t = first_two(items);` -- the C++ return type IS
+                    # the borrow tuple, so _maybe_wrap_tuple_to_pointer
+                    # no-ops). The skeleton's third OWNING signal -- an
+                    # `Own[tuple[...]]`-declared callee, whose slot is a
+                    # frame_slot with emplace/(*t) renders -- must be read
+                    # off the callee's DECLARED return: sema stamps the
+                    # call EXPR with the peeled tuple, so the expr-type
+                    # predicates cannot see the Own. The callee otherwise
+                    # gates in _lower_expr.
+                    value = _lower_expr(
+                        stmt.init, lc, declared,
+                        use=_ExprUse(result=_ExprResultUse.STORAGE,
+                                     allow_temps=True, tuple_source=True))
                 else:
                     raise ThirUnsupported("res.btuple_source")
                 _witness("res.btuple_write")
@@ -1205,6 +1271,12 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
             # holders stay a named rung: the sync arm's `&*(__slot_N = ..)`
             # references a slot only the sync THIRPtrLocalDecl pre-declares
             # -- no such decl exists on a frame.
+            # A pointer-ALIAS bind renders the address of the live source
+            # lvalue at its own arm (the sync ladder has no alias flavor
+            # -- sync bodies bind these as reference DECLS, not member
+            # assigns).
+            if stmt.name in alias_ptr_locals:
+                return _lower_alias_bind(stmt, lc, declared)
             if stmt.name in lc.pointers:
                 if stmt.name in lc.rebind_slot_locals:
                     raise ThirUnsupported("res.leaf_field_write")

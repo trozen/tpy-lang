@@ -866,6 +866,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "res.frame_unpack",             # frame-target tuple unpack (rvalue source)
     "res.unpack_oneshot",           # await-lift one-shot unpack (auto&& move-out)
     "res.frame_tuple_literal",      # value-tuple literal at a bare frame field
+    "res.alias_bind",               # pointer-alias frame bind (= &(<lvalue>))
+    "res.return_tuple_literal",     # value-tuple literal at the async return slot
     "res.loop_ptr_bind",            # pointer-form loop var admitted (T* reads)
     "res.loop_slot_bind",           # frame_slot loop var admitted ((*x) reads)
     "res.loop_tuple_bind",          # value-tuple holder loop admitted

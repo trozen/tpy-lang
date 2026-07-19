@@ -211,6 +211,7 @@ from .predicates import (
     _enum_truthy_wrap,
     _truthiness_mode,
     _f1_record,
+    _f1_tuple,
     _field_over_global_record_ok,
     _field_over_subscript_ok,
     _field_receiver_ok,
@@ -460,6 +461,14 @@ def _call_use_supported(e: TpyCall, lc: '_LowerCtx',
               or (result is _ExprResultUse.STORAGE and _span_value(ret))
               or (result is _ExprResultUse.STORAGE and use.tuple_source
                   and _owned_tuple_call_ret(ret, analyzer) is not None)
+              # An F1 BORROW-tuple call result (`first_two(xs) ->
+              # tuple[Box, Box]` returning `std::tuple<Box*, Box*>`) at
+              # the tuple-source sink: the call renders bare into the
+              # `auto __tup_N = <call>;` capture and the unpack's alias
+              # targets re-point off the elements; tuple_source-only, so
+              # no other consumer can bind the borrow tuple.
+              or (result is _ExprResultUse.STORAGE and use.tuple_source
+                  and _f1_tuple(ret, analyzer) is not None)
               # A value-tuple call result (`split(p)`) in a plain VALUE
               # position (a call arg / nested expr): the tuple is a value
               # type returned by value and renders bare, binding a
@@ -3758,9 +3767,15 @@ def _lower_container_elem(e: TpyExpr, slot: TpyType | None,
         # A non-value tuple element stores via `tuple_to_storage<S>(S{...})`:
         # the inner spells the storage tuple S with its members lowered as
         # storage container elements, and the STORAGE FormConvert emits the
-        # helper (mirrors the MIL pointer-repr-tuple field write).
+        # helper (mirrors the MIL pointer-repr-tuple field write). SYNC
+        # positions only: the resumable frame-emplace position spells the
+        # element BARE on the AST path (typed_brace_init, no per-element
+        # wrap) -- a merge-caught divergence between the sync cell and the
+        # resumable loop routing; the frame flavor is its own rung.
         su = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(slot))) \
             if slot is not None else None
+        if lc.resumable_leaf_mode and isinstance(su, TupleType):
+            raise ThirUnsupported("expr.tuple_literal.frame_elem")
         if isinstance(su, TupleType) and len(e.elements) == len(su.element_types):
             inner = THIRTupleLiteral(
                 result_type=su,

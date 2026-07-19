@@ -17,7 +17,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from enum import Enum, auto
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from ..parse import SourceLocation
 from ..typesys import ResolvedBinop, TpyType
@@ -1661,6 +1661,34 @@ class THIRForRange(THIRStmt):
     hoist_decls: tuple[tuple[str, str], ...] = ()
 
 
+class TupleSourceBind(Enum):
+    """How a THIRTupleUnpack's source binds to the `__tup_N` holder -- one
+    typed discriminator replacing the accreted per-form booleans (each value
+    documents its render; the payload fields each form consumes are
+    validated in __post_init__):
+
+        NAME_CREF     -> const auto& __tup_N = <src>;      (src: source /
+                         source_cpp spelling override)
+        RVALUE        -> auto __tup_N = <source_expr>;
+        ONESHOT_DEREF -> auto&& __tup_N = (*<source>);     (consumable
+                         one-shot `__await_lift_*` frame_slot; owned
+                         elements move out)
+        NAME_REF      -> auto& __tup_N = <src>;            (borrow-tuple
+                         name with ref/alias elements -- the is_ref rule
+                         drops the const; source_cpp carries the deref'd
+                         spelling for a pointer loop holder)
+        STORAGE_WRAP  -> auto __tup_N = ::tpy::tuple_to_pointer<
+                         source_wrap_cpp>(<src>);          (storage-form
+                         source lifted so `std::get<i>` yields the `T*`
+                         each ref/alias target uses)
+    """
+    NAME_CREF = auto()
+    RVALUE = auto()
+    ONESHOT_DEREF = auto()
+    NAME_REF = auto()
+    STORAGE_WRAP = auto()
+
+
 @dataclass(frozen=True)
 class THIRTupleUnpack(THIRStmt):
     """A standalone `a, b = <source>` (or the `a, b = __for_tup_M` head of a
@@ -1705,14 +1733,12 @@ class THIRTupleUnpack(THIRStmt):
 
     None at discard slots.
 
-    `source_cpp` overrides the ref-bound source name's spelling (a spelled
-    imported/native global -- `const auto& __tup_N = ::tpystd::m::name;`);
-    None renders the escaped bare `source`.
-
-    `source_oneshot` marks a consumable one-shot `__await_lift_*` frame_slot
-    source: the holder rvalue-ref-binds the deref'd slot
-    (`auto&& __tup_N = (*<source>);`) so owned elements move out instead of
-    copying -- the AST's `source_is_oneshot` arm."""
+    `source_cpp` overrides the name-bound source's spelling (a spelled
+    imported/native global -- `const auto& __tup_N = ::tpystd::m::name;` --
+    or the NAME_REF pointer-holder deref); None renders the escaped bare
+    `source`. The source HOLDER form is `source_bind` (TupleSourceBind --
+    each value's render documented there); `source_wrap_cpp` is
+    STORAGE_WRAP's spelled borrow-tuple type."""
     source: str
     targets: tuple[str | None, ...]
     target_cpps: tuple[str | None, ...]
@@ -1722,14 +1748,27 @@ class THIRTupleUnpack(THIRStmt):
     # Per-element pre-write wrap for the frame modes: "" / "move" (the only
     # produced tokens -- ref elements reject at lowering today).
     wraps: tuple[str, ...] = ()
-    source_oneshot: bool = False
-    # A borrow-form pointer tuple type (`std::tuple<T*, ...>`) when a
-    # storage-form source with pointer-repr (record) elements is unpacked into
-    # `is_ref` targets: the source binds `auto __tup_N =
-    # ::tpy::tuple_to_pointer<source_wrap_cpp>(<src>);` and each "ref" target
-    # aliases the live element -- `auto&& name =
-    # ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<i>(__tup_N)));`.
+    source_bind: TupleSourceBind = TupleSourceBind.NAME_CREF
     source_wrap_cpp: str | None = None
+
+    _BIND_TOKENS: ClassVar[frozenset[str]] = frozenset({
+        "value", "cref", "move", "assign", "ref",
+        "frame_assign", "frame_emplace", "frame_ptr_addr", "frame_ptr_elem",
+    })
+
+    def __post_init__(self) -> None:
+        # The payload/discriminator pairings the old boolean pile left
+        # unchecked: each source form consumes exactly its own payload.
+        if (self.source_expr is not None) != (
+                self.source_bind is TupleSourceBind.RVALUE):
+            raise ValueError("source_expr belongs to RVALUE sources only")
+        if (self.source_wrap_cpp is not None) != (
+                self.source_bind is TupleSourceBind.STORAGE_WRAP):
+            raise ValueError("source_wrap_cpp belongs to STORAGE_WRAP only")
+        bad = {b for b in self.binds
+               if b is not None and b not in self._BIND_TOKENS}
+        if bad:
+            raise ValueError(f"unknown bind token(s): {sorted(bad)}")
 
 
 @dataclass(frozen=True)

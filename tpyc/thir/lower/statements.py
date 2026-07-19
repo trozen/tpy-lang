@@ -171,6 +171,7 @@ from ..nodes import (
     THIRStrLiteral,
     THIRTry,
     THIRTupleUnpack,
+    TupleSourceBind,
     THIRUnaryNot,
     THIRVarDecl,
     THIRWhile,
@@ -226,6 +227,7 @@ from .predicates import (
     _plain_method_fi_ok,
     _param_is_const,
     _value_opt_scalar,
+    _value_opt_str,
     _value_opt_owned_view,
     _param_is_deep_const,
     _peel_stale_view_owned_coerce,
@@ -2644,6 +2646,40 @@ def _lower_resumable_return_value(ret: TpyReturn, lc: '_LowerCtx',
                      or peeled.name in lc.value_opt_locals)):
             note_detail("return.optval_coerced_param")
             raise ThirUnsupported(stmt_reject_reason(ret))
+    ret_vt = lc.prescan.ret_value_tuple
+    if ret_vt is not None and isinstance(ret.value, TpyTupleLiteral):
+        # A value-tuple literal renders the spelled brace-init against the
+        # return slot (the sync return arm's render); the scaffolding's
+        # `<ret_cpp> __tpy_async_ret = <value>;` decl consumes it
+        # position-independently, like the frame-field flavor. Off-slice
+        # element shapes reject inside _lower_tuple_literal (whole-body
+        # fallback); name/call sources ride the position-blind tail below
+        # (bare renders -- the decl absorbs the copy/move).
+        # Value-opt ELEMENT slots stay out: the AST's untargeted literal
+        # render spells the elements' OWN types (a None element becomes
+        # `std::tuple<..., std::monostate>{.., nullptr}` -- an
+        # uncompilable pre-existing AST render at this unreached shape,
+        # see BUGS.md), while _lower_tuple_literal targets the slot
+        # (std::nullopt) -- a probe-caught divergence.
+        if any(_value_opt_scalar(e, lc.analyzer) is not None
+               or _value_opt_str(e, lc.analyzer) is not None
+               for e in ret_vt.element_types):
+            note_detail("return.optval_tuple_elem")
+            raise ThirUnsupported(stmt_reject_reason(ret))
+        # An Own-element NAME source diverges the same way: the AST's
+        # untargeted render copies bare (`(*b)`) where the slot-targeted
+        # lowering moves -- and the bare copy is itself the latent AST
+        # gap (a @nocopy element would not compile; same BUGS.md entry).
+        # Ctor-rvalue sources render identically on both paths.
+        for el, src_el in zip(ret_vt.element_types, ret.value.elements):
+            if (isinstance(unwrap_readonly(unwrap_ref_type(
+                    unwrap_send_sync(el))), OwnType)
+                    and isinstance(src_el, TpyName)):
+                note_detail("return.own_tuple_name_elem")
+                raise ThirUnsupported(stmt_reject_reason(ret))
+        value = _lower_tuple_literal(ret.value, ret_vt, lc, declared)
+        _witness("res.return_tuple_literal")
+        return value
     return _wrap_view_owned_return(
         _lower_expr(ret.value, lc, declared), lc, getattr(ret, "loc", None))
 
@@ -2671,36 +2707,65 @@ def _lower_frame_tuple_unpack(stmt: TpyTupleUnpack,
         raise ThirUnsupported("res.unpack")
     src_name: 'str | None' = None
     src_oneshot = False
+    src_ref = False
+    value: 'THIRExpr | None' = None
+    loc = getattr(stmt, "loc", None)
     if isinstance(stmt.value, TpyName):
-        if (stmt.value.name in lc.oneshot_lift_locals
-                and stmt.value.name in lc.frame_slots):
-            # A one-shot `__await_lift_*` holder: the consumable owned-tuple
-            # source (`auto&& __tup_N = (*<name>);`, the AST's
-            # source_is_oneshot arm) whose owned elements move out at their
-            # frame targets. The AST takes that arm only when an element is
-            # owned -- a no-owned one-shot name falls to the const-ref
-            # ladder, which keeps the reject. Re-verify the registered type
-            # is the tuple the admission classified (frame_slots membership
-            # proved own/pointer-repr elements).
-            if not any(stmt.is_owned):
+        nm = stmt.value.name
+        st = declared.get(nm)
+        st = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(st)))
+              if isinstance(st, TpyType) else None)
+        if nm in lc.oneshot_lift_locals and nm in lc.frame_slots:
+            source_type = st if isinstance(st, TupleType) else None
+            if any(stmt.is_owned):
+                # A one-shot `__await_lift_*` holder with OWNED elements:
+                # the consumable source (`auto&& __tup_N = (*<name>);`,
+                # the AST's source_is_oneshot arm) whose owned elements
+                # move out at their frame targets.
+                src_name = nm
+                src_oneshot = True
+            elif (source_type is not None
+                    and source_type.has_pointer_repr_element()
+                    and any(stmt.is_ref)):
+                # An owning lift holder with BORROW (alias) elements: the
+                # storage tuple lifts element-wise to borrow form (`auto
+                # __tup_N = ::tpy::tuple_to_pointer<borrow>((*<name>));`,
+                # the AST's _maybe_wrap_storage_tuple_source), and alias
+                # targets re-point off the lifted elements.
+                value = THIRFormConvert(
+                    result_type=source_type,
+                    value=THIRName(name=nm, result_type=source_type,
+                                   deref=True, loc=loc),
+                    form=Form.BORROW, loc=loc)
+            else:
                 note_detail("unpack.name_source")
                 raise ThirUnsupported("res.unpack")
-            src_name = stmt.value.name
-            src_oneshot = True
-            st = declared.get(src_name)
-            st = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(st)))
-                  if isinstance(st, TpyType) else None)
-            source_type = st if isinstance(st, TupleType) else None
-        elif stmt.value.name not in lc.value_tuple_frame_locals:
-            # A VALUE-tuple frame holder (the `a, b = __for_tup_N` loop
-            # head) ref-binds as the name source (`const auto& __tup_N =
-            # <name>;`, the node's source_expr=None form). The general
-            # name-source ladder (const-ref / loop-shadow) keeps the
-            # reject.
+        elif (nm in lc.pointers and nm.startswith("__for_tup_")
+                and isinstance(st, TupleType)):
+            # The pointer-form tuple-unpack HOLDER (`idx, it = __for_tup_N`
+            # after the skeleton's `__for_tup_N = &(*it++);` advance bind):
+            # the head unpack MUTABLE-ref-binds the deref'd holder
+            # (`auto& __tup_N = (*__for_tup_N);`) and the alias targets
+            # re-point into the container's live storage tuple.
+            src_name = nm
+            src_ref = True
+            source_type = st
+        elif (isinstance(st, TupleType) and st.has_pointer_repr_element()
+                and nm not in lc.pointers and any(stmt.is_ref)):
+            # A stable borrow-tuple frame field source (`a, b = t`): the
+            # MUTABLE ref-bind (`auto& __tup_N = t;` -- the AST's is_ref
+            # rule drops the const), alias targets re-pointing off the
+            # live elements.
+            src_name = nm
+            src_ref = True
+            source_type = st
+        elif nm not in lc.value_tuple_frame_locals:
+            # The remaining name-source ladder (const-ref / loop-shadow)
+            # keeps the reject.
             note_detail("unpack.name_source")
             raise ThirUnsupported("res.unpack")
         else:
-            src_name = stmt.value.name
+            src_name = nm
             # Re-verify the registered type against the same family
             # predicate that admitted the local: `declared` is sourced
             # independently (the advance's elem type), so a drift rejects
@@ -2710,9 +2775,20 @@ def _lower_frame_tuple_unpack(stmt: TpyTupleUnpack,
         source_type = _tuple_unpack_source(
             stmt, analyzer, declared, scope.admission_pointers(),
             lc.narrow.narrowed.keys())
+        if source_type is None and any(stmt.is_ref):
+            # The borrow-tuple CALL source (`a, b = first_two(items)` /
+            # the mixed `tag, it = pick(...)`): the same `auto __tup_N =
+            # <call>;` rvalue capture; the call itself gates in
+            # _lower_expr (a non-routable callee rejects the body there).
+            raw = analyzer.get_expr_type(stmt.value)
+            raw = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(raw)))
+                   if isinstance(raw, TpyType) else None)
+            if (isinstance(stmt.value, (TpyCall, TpyMethodCall))
+                    and isinstance(raw, TupleType)
+                    and raw.has_pointer_repr_element()):
+                source_type = raw
     if (source_type is None
-            or len(source_type.element_types) != len(stmt.targets)
-            or source_type.has_pointer_repr_element()):
+            or len(source_type.element_types) != len(stmt.targets)):
         note_detail("unpack.source_elems")
         raise ThirUnsupported("res.unpack")
     binds: list[str | None] = []
@@ -2722,41 +2798,108 @@ def _lower_frame_tuple_unpack(stmt: TpyTupleUnpack,
             binds.append(None)
             wraps.append("")
             continue
+        elem_ptr = TupleType._element_is_pointer_repr(
+            source_type.element_types[i])
+        if name in lc.unpack_ptr_targets:
+            # A loop-head alias target off the deref'd pointer holder:
+            # `name = &(std::get<i>(__tup_N));` -- the element is a live
+            # value lvalue inside the container's storage tuple.
+            if not (elem_ptr and stmt.is_ref[i]):
+                note_detail("unpack.alias_elem")
+                raise ThirUnsupported("res.unpack")
+            binds.append("frame_ptr_addr")
+            wraps.append("")
+            continue
+        if name in lc.alias_ptr_locals:
+            # A pointer-alias target aliases the LIVE element (`name =
+            # &(unwrap_ref(tuple_elem_ref(get)));`) -- only off a
+            # pointer-repr source element (a value element's get is a
+            # copy inside the holder, the loop-var `&(get)` family).
+            if not (elem_ptr and stmt.is_ref[i]):
+                note_detail("unpack.alias_elem")
+                raise ThirUnsupported("res.unpack")
+            binds.append("frame_ptr_elem")
+            wraps.append("")
+            continue
+        if elem_ptr or stmt.is_ref[i]:
+            # A pointer-repr element needs an alias target; any other
+            # target family would value-copy the borrow.
+            note_detail("unpack.ref_element")
+            raise ThirUnsupported("res.unpack")
         if (name not in declared
                 or name in lc.pointers
                 or not (name in lc.frame_slots
                         or name in lc.plain_frame_fields)):
             note_detail("unpack.target_family")
             raise ThirUnsupported("res.unpack")
-        if stmt.is_ref[i]:
-            # A ref element implies a borrow-element source, which the
-            # pointer-repr source gate above already excludes -- reject
-            # rather than carry an unwitnessed unwrap_ref wrap.
-            note_detail("unpack.ref_element")
-            raise ThirUnsupported("res.unpack")
         binds.append("frame_emplace" if name in lc.frame_slots
                      else "frame_assign")
         wraps.append("move" if stmt.is_owned[i] else "")
     if src_name is not None:
         _witness("res.unpack_oneshot" if src_oneshot else "res.frame_unpack")
+        sb = (TupleSourceBind.ONESHOT_DEREF if src_oneshot
+              else TupleSourceBind.NAME_REF if src_ref
+              else TupleSourceBind.NAME_CREF)
         return THIRTupleUnpack(
             source=src_name, targets=tuple(stmt.targets),
             target_cpps=(None,) * len(stmt.targets),
             binds=tuple(binds), wraps=tuple(wraps),
-            source_expr=None, source_oneshot=src_oneshot,
-            loc=getattr(stmt, "loc", None),
+            source_bind=sb,
+            source_cpp=(f"(*{escape_cpp_name(src_name)})"
+                        if src_ref and src_name in lc.pointers else None),
+            loc=loc,
             no_source_comment=getattr(stmt, "no_source_comment", False))
-    value = _lower_expr(
-        stmt.value, lc, declared,
-        use=_ExprUse(result=_ExprResultUse.STORAGE, allow_temps=True,
-                     tuple_source=True),
-        field_prechecked=isinstance(stmt.value, TpyFieldAccess))
+    if value is None:
+        value = _lower_expr(
+            stmt.value, lc, declared,
+            use=_ExprUse(result=_ExprResultUse.STORAGE, allow_temps=True,
+                         tuple_source=True),
+            field_prechecked=isinstance(stmt.value, TpyFieldAccess))
     _witness("res.frame_unpack")
     return THIRTupleUnpack(
         source="", targets=tuple(stmt.targets),
         target_cpps=(None,) * len(stmt.targets),
         binds=tuple(binds), wraps=tuple(wraps),
-        source_expr=value, loc=getattr(stmt, "loc", None),
+        source_expr=value, source_bind=TupleSourceBind.RVALUE, loc=loc,
+        no_source_comment=getattr(stmt, "no_source_comment", False))
+
+
+def _lower_alias_bind(stmt: TpyVarDecl, lc: '_LowerCtx',
+                      declared: dict[str, TpyType]) -> THIRStmt:
+    """Pointer-alias frame bind (`a = items[0]` -> `a = &(<lvalue>);`):
+    the address of the LIVE source lvalue, the skeleton's `T*` alias-field
+    contract. Admitted sources are the proven-lvalue shapes: a
+    record-element container subscript (the optptr.subscript guards --
+    unproven-Optional / slice / rvalue-container receivers reject, an
+    address into a dying temp would dangle) and an F1-record field source.
+    Everything else keeps the named reject."""
+    init = stmt.init
+    analyzer = lc.analyzer
+    pointee = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+        declared[stmt.name])))
+    if (isinstance(init, TpySubscript)
+            and not init.needs_optional_runtime_check
+            and init.slice_function_info is None
+            and not isinstance(init.index, TpySlice)
+            and _subscript_container_recv_type(
+                init.obj, declared, analyzer) is not None):
+        src = _lower_expr(init, lc, declared, subscript_prechecked=True)
+    elif (isinstance(init, TpyFieldAccess)
+            and _f2_reseat_ok(init, declared, analyzer)):
+        src = _lower_field_source(init, lc, declared)
+    else:
+        note_detail("alias.bind_source")
+        raise ThirUnsupported("res.alias_bind")
+    _witness("res.alias_bind")
+    # is_const stays False: the `&(...)` render is const-blind (the alias
+    # field's const-ness comes from its declared `const T*` type, which the
+    # skeleton spells) -- the readonly flavor renders identically.
+    return THIRAssign(
+        target=THIRName(name=stmt.name, result_type=declared[stmt.name],
+                        loc=stmt.loc),
+        value=THIRFormConvert(result_type=pointee, value=src,
+                              form=Form.BORROW, loc=stmt.loc),
+        loc=stmt.loc,
         no_source_comment=getattr(stmt, "no_source_comment", False))
 
 
@@ -5063,6 +5206,9 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 source=stmt.value.name, targets=tuple(stmt.targets),
                 target_cpps=tuple(target_cpps), binds=tuple(bind_tags),
                 source_cpp=lc.prescan.global_cpp.get(stmt.value.name),
+                source_bind=(TupleSourceBind.STORAGE_WRAP
+                             if source_wrap_cpp is not None
+                             else TupleSourceBind.NAME_CREF),
                 source_wrap_cpp=source_wrap_cpp,
                 loc=loc)
         # A free call hoists its arg temps (temp_args, inert for a field read).
@@ -5070,6 +5216,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         return THIRTupleUnpack(
             source="", targets=tuple(stmt.targets),
             target_cpps=tuple(target_cpps), binds=tuple(bind_tags),
+            source_bind=TupleSourceBind.RVALUE,
             source_expr=_lower_expr(
                 stmt.value, lc, declared,
                 use=_ExprUse(
@@ -5172,6 +5319,9 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     targets=tuple(up.targets),
                     target_cpps=tuple(target_cpps),
                     binds=tuple(target_binds),
+                    source_bind=(TupleSourceBind.STORAGE_WRAP
+                                 if head_wrap_cpp is not None
+                                 else TupleSourceBind.NAME_CREF),
                     source_wrap_cpp=head_wrap_cpp,
                     loc=getattr(up, "loc", None))
                 body = (head,) + _lower_scoped_stmts(

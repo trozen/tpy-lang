@@ -3540,6 +3540,17 @@ def _storage_call_container(t: TpyType) -> bool:
     (tuples/unions are value types; their reassign is a plain value assign)."""
     return is_list(t) or is_dict(t) or is_set(t)
 
+def _own_declared_call_ret(call: 'TpyCall | TpyMethodCall') -> bool:
+    """Whether the callee's DECLARED return is `Own[...]` -- the owning
+    signal sema strips from the call expr's stamped type (the same fi
+    consult as `_call_iterable_lvalue`; the skeleton's
+    `is_storage_form_source` keys owning tuple slots on it)."""
+    fi = getattr(call, "resolved_function_info", None)
+    rt = getattr(fi, "return_type", None) if fi is not None else None
+    if not isinstance(rt, TpyType):
+        return False
+    return isinstance(unwrap_readonly(unwrap_send_sync(rt)), OwnType)
+
 def _call_iterable_lvalue(e: TpyCall, analyzer) -> bool:
     """`is_lvalue_iterable`'s call arm over the admitted iterable calls: an
     `Own[...]` return is a by-value rvalue even though `get_expr_type` strips

@@ -665,7 +665,7 @@ class TestSlicedOutShapes:
                + "    await asyncio.sleep(0)\n"
                + "    return y\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        assert _res_fallback(src).get("res.local_storage") == 1
+        assert _res_fallback(src).get("res.alias_bind") == 1
         _assert_identical(src)
 
     def test_generic_optional_param_still_defers(self):
@@ -1325,10 +1325,11 @@ class TestBorrowTupleLocals:
         assert sum(fallback.values()) >= 1
         _assert_identical(src)
 
-    def test_call_init_at_borrow_slot_defers(self):
-        # A CALL init at a borrow-classified tuple local could be the
-        # skeleton's third OWNING signal (storage-form source ->
-        # frame_slot emplace) -- the decl arm admits literals only.
+    def test_call_init_at_borrow_slot_routes(self):
+        # A borrow-FORM tuple-returning CALL init writes bare (`t =
+        # pick(b);` -- the C++ return type IS the borrow tuple); the
+        # storage-call families (the skeleton's third OWNING signal)
+        # stay excluded by type.
         src = (self._PRE_BOX
                + "def pick(b: Box) -> tuple[Int32, Box]:\n"
                + "    return (1, b)\n\n"
@@ -1337,9 +1338,11 @@ class TestBorrowTupleLocals:
                + "    await asyncio.sleep(0)\n"
                + "    print(t[1].val)\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        fallback = _res_fallback(src)
-        assert sum(fallback.values()) >= 1
-        _assert_identical(src)
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.btuple_write") == 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "t = pick(b);" in cpp
 
     def test_const_ref_capture_decl_defers(self):
         # A CONST_REF-captured element (`const T*` slot) at a sync decl is
@@ -2215,9 +2218,10 @@ class TestSyncLoops:
         _, hpp, _cpp = _gen(src, thir=True)
         assert "return (*x);" in hpp
 
-    def test_tuple_unpack_loop_defers(self):
-        # A non-value tuple-unpack loop keeps the reject: the element
-        # unpack renders are their own rung.
+    def test_tuple_unpack_loop_routes(self):
+        # A non-value tuple-unpack loop: the pointer-form holder binds at
+        # the skeleton advance; the head unpack derefs it and re-points
+        # the alias target (the alias-binds cell).
         src = (_PRE
                + "class R:\n    v: Int32\n"
                + "    def __init__(self, v: Int32) -> None:\n        self.v = v\n\n"
@@ -2227,7 +2231,14 @@ class TestSyncLoops:
                + "    for i, r in xs:\n        total = await step(r.v)\n"
                + "    return total\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        assert _res_fallback(src).get("res.loop_var") == 1
+        # The LOOP routes (alias cell); the `[(n, R(n))]` list-literal
+        # init keeps the frame-position rung: master's sync
+        # tuple_to_storage element wrap diverges from the AST's BARE
+        # frame-emplace element spelling (merge-caught), so the frame
+        # flavor rejects by name.
+        fb = _res_fallback(src)
+        assert fb == {"expr.tuple_literal.frame_elem": 1}
+        _assert_identical(src)
 
     def test_dict_items_loop_var_defers(self):
         # A value-element dict_items loop var (`kv` over dict[int, int])
@@ -2519,11 +2530,11 @@ class TestAwaitLiftUnpack:
         assert "m = std::get<1>(__tup_1);" in cpp
         assert "std::get<0>" not in cpp
 
-    def test_ref_element_alias_target_defers(self):
+    def test_ref_element_alias_target_routes(self):
         # A reference-element (non-Own) lift tuple aliases its target INTO
-        # the lift slot (`lst = &(unwrap_ref(tuple_elem_ref(...)))` off a
-        # tuple_to_pointer bridge) -- the pointer-alias unpack family, a
-        # separate cell. The alias target rejects at classification.
+        # the lift slot: the storage tuple lifts to borrow form
+        # (`tuple_to_pointer<...>((*lift))`) and the alias target re-points
+        # off the lifted element (the alias-binds cell).
         src = ("from tpy import Int32, Own, nocopy\n"
                "from tpy.coro import Poll, Waker, poll_ready\n\n"
                "@nocopy\n"
@@ -2538,8 +2549,12 @@ class TestAwaitLiftUnpack:
                "    lst.append(30)\n"
                "    print(len(lst), m)\n\n"
                "def main() -> None:\n    pass\nmain()\n")
-        assert _res_fallback(src).get("res.local_storage") == 1
-        _assert_identical(src)
+        _, fallback = _assert_identical(src)
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "::tpy::tuple_to_pointer<" in cpp
+        assert ("lst = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref("
+                "std::get<0>(__tup_1))));") in cpp
 
     def test_durable_own_tuple_local_defers(self):
         # A DURABLE (non-lift) Own-element tuple local is skeleton-owning
@@ -2685,6 +2700,343 @@ class TestLeafTryExcept:
                + "    return n\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
         assert _res_fallback(src).get("res.leaf_try") == 1
+        _assert_identical(src)
+
+
+_ALIAS_PRE = ("import asyncio\nfrom tpy import Int32\n\n"
+              "class Box:\n"
+              "    n: Int32\n"
+              "    def __init__(self, n: Int32):\n        self.n = n\n\n")
+
+
+class TestAliasBinds:
+    """Pointer-alias frame binds (the skeleton's pointer_alias_locals /
+    pointer_form_unpack_targets contracts): `T*` fields aliasing live
+    storage. Reads ride lc.pointers; each bind family renders at its own
+    arm -- `= &(<lvalue>)` single-assign, `= &(unwrap_ref(tuple_elem_ref(
+    get)))` off borrow-tuple sources, `= &(get)` off the deref'd loop
+    holder."""
+
+    def test_single_assign_subscript_routes(self):
+        src = (_ALIAS_PRE
+               + "async def bump(items: list[Box]) -> Int32:\n"
+               + "    a = items[0]\n"
+               + "    await asyncio.sleep(0)\n"
+               + "    a.n = a.n + 1\n"
+               + "    return items[0].n\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.alias_bind") == 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "a = &(::tpy::__getitem__(items, 0));" in cpp
+        assert "a->n" in cpp
+
+    def test_single_assign_field_source_routes(self):
+        src = (_ALIAS_PRE
+               + "class Holder:\n"
+               + "    inner: Box\n"
+               + "    def __init__(self, b: Box):\n        self.inner = b\n\n"
+               + "async def peek(o: Holder) -> Int32:\n"
+               + "    a = o.inner\n"
+               + "    await asyncio.sleep(0)\n"
+               + "    return a.n\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.alias_bind") == 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "a = &(o.inner);" in cpp
+
+    def test_borrow_call_unpack_routes(self):
+        src = (_ALIAS_PRE
+               + "def first_two(items: list[Box]) -> tuple[Box, Box]:\n"
+               + "    return (items[0], items[1])\n\n"
+               + "async def bump(items: list[Box]) -> Int32:\n"
+               + "    a, b = first_two(items)\n"
+               + "    await asyncio.sleep(0)\n"
+               + "    a.n = a.n + 1\n"
+               + "    return a.n + b.n\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.frame_unpack") == 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "auto __tup_1 = first_two(items);" in cpp
+        assert ("a = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref("
+                "std::get<0>(__tup_1))));") in cpp
+
+    def test_name_source_unpack_ref_binds(self):
+        # A stable borrow-tuple frame local source: the MUTABLE ref-bind
+        # (`auto& __tup_N = t;` -- the is_ref rule drops the const), and
+        # the producer's borrow-call write lands bare (`t = first_two(..)`).
+        src = (_ALIAS_PRE
+               + "def first_two(items: list[Box]) -> tuple[Box, Box]:\n"
+               + "    return (items[0], items[1])\n\n"
+               + "async def f(items: list[Box]) -> Int32:\n"
+               + "    t = first_two(items)\n"
+               + "    a, b = t\n"
+               + "    await asyncio.sleep(0)\n"
+               + "    return a.n + b.n\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.btuple_write") == 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "t = first_two(items);" in cpp
+        assert "auto& __tup_1 = t;" in cpp
+
+    def test_loop_head_unpack_routes(self):
+        # The pointer-form holder loop: skeleton binds the holder at the
+        # advance, the head unpack derefs it and re-points the alias
+        # target into the container's live storage tuple.
+        src = (_ALIAS_PRE
+               + "from typing import Iterator\n\n"
+               + "def gen(rows: list[tuple[Int32, Box]]) -> Iterator[Int32]:\n"
+               + "    for idx, it in rows:\n"
+               + "        yield idx\n"
+               + "        it.n = it.n + 1\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "auto& __tup_1 = (*__for_tup_0);" in cpp
+        assert "it = &(std::get<1>(__tup_1));" in cpp
+
+    def test_async_for_value_holder_routes(self):
+        # The async-for VALUE-tuple holder: skeleton ASSIGN bind, head
+        # unpack via the const-ref value-tuple name-source arm.
+        src = ("import asyncio\nfrom tpy import Int32\n"
+               + "from tpy.coro import Poll, Waker, poll_ready\n\n"
+               + "class Pairs:\n"
+               + "    n: Int32\n"
+               + "    def __init__(self, n: Int32):\n        self.n = n\n"
+               + "    def __aiter__(self) -> 'Pairs':\n        return self\n"
+               + "    async def __anext__(self) -> tuple[Int32, Int32]:\n"
+               + "        if self.n <= 0:\n"
+               + "            raise StopAsyncIteration()\n"
+               + "        self.n -= 1\n"
+               + "        return (self.n, self.n * self.n)\n\n"
+               + "async def f(p: Pairs) -> Int32:\n"
+               + "    total: Int32 = 0\n"
+               + "    async for k, sq in p:\n"
+               + "        total += sq\n"
+               + "    return total\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        _, fallback = _assert_identical(src)
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "const auto& __tup_1 = __for_tup_0;" in cpp
+
+    def test_literal_decomposition_defers(self):
+        # `a, b = (items[0], items[1])` decomposes into synthetic
+        # `__unpack_*` alias temps -- an unmirrored render family; the
+        # synthetics keep the classification reject.
+        src = (_ALIAS_PRE
+               + "async def work(items: list[Box]) -> Int32:\n"
+               + "    a, b = (items[0], items[1])\n"
+               + "    await asyncio.sleep(0)\n"
+               + "    return a.n + b.n\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        assert _res_fallback(src).get("res.local_storage") == 1
+        _assert_identical(src)
+
+    def test_own_tuple_call_at_borrow_slot_defers(self):
+        # The corpus-caught divergence's unit pin: an `Own[tuple[...]]`-
+        # declared callee is the skeleton's OWNING signal (frame_slot +
+        # emplace/(*t) renders), invisible on the call EXPR's peeled type
+        # -- _own_declared_call_ret keeps the write on the named reject.
+        src = (_ALIAS_PRE
+               + "from tpy import Own\n\n"
+               + "def make_pair(n: Int32) -> Own[tuple[Int32, Box]]:\n"
+               + "    return (n, Box(n))\n\n"
+               + "async def f() -> Int32:\n"
+               + "    t = make_pair(9)\n"
+               + "    await asyncio.sleep(0)\n"
+               + "    return t[0]\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        fb = _res_fallback(src)
+        assert fb.get("res.btuple_source") == 1
+        _assert_identical(src)
+
+    def test_method_call_source_defers(self):
+        # The TpyMethodCall admission at the unpack/btuple arms is inert
+        # today: the method-call RETURN gate has no borrow-tuple row, so
+        # the source rejects there (safe fallback). Becomes a route pin
+        # when that gate widens.
+        src = (_ALIAS_PRE
+               + "class Store:\n"
+               + "    items: list[Box]\n"
+               + "    def __init__(self):\n"
+               + "        self.items = [Box(1), Box(2)]\n"
+               + "    def first_two(self) -> tuple[Box, Box]:\n"
+               + "        return (self.items[0], self.items[1])\n\n"
+               + "async def f(s: Store) -> Int32:\n"
+               + "    a, b = s.first_two()\n"
+               + "    await asyncio.sleep(0)\n"
+               + "    return a.n + b.n\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        fb = _res_fallback(src)
+        assert fb.get("expr.method_call") == 1
+        _assert_identical(src)
+
+    def test_discarded_borrow_element_routes(self):
+        # A discarded pointer-repr element emits nothing on both paths
+        # (the target loops skip None slots); only the kept alias binds.
+        src = (_ALIAS_PRE
+               + "def first_two(items: list[Box]) -> tuple[Box, Box]:\n"
+               + "    return (items[0], items[1])\n\n"
+               + "async def f(items: list[Box]) -> Int32:\n"
+               + "    a, _ = first_two(items)\n"
+               + "    await asyncio.sleep(0)\n"
+               + "    return a.n\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        _, fallback = _assert_identical(src)
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "std::get<0>(__tup_1)" in cpp
+        assert "std::get<1>" not in cpp
+
+    def test_ctor_rvalue_alias_source_defers(self):
+        # A single-assign bind whose source is not a proven lvalue
+        # (a ctor rvalue would dangle) keeps the named reject; sema
+        # classifies `a = Box(1)` OWNING (frame_slot), so the defensive
+        # arm is exercised via a call source aliasing nothing -- pin the
+        # subscript-of-rvalue shape instead.
+        src = (_ALIAS_PRE
+               + "from tpy import Own\n\n"
+               + "def make(n: Int32) -> Own[list[Box]]:\n"
+               + "    return [Box(n)]\n\n"
+               + "async def f(n: Int32) -> Int32:\n"
+               + "    a = make(n)[0]\n"
+               + "    await asyncio.sleep(0)\n"
+               + "    return a.n\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        fb = _res_fallback(src)
+        assert sum(fb.values()) >= 1
+        _assert_identical(src)
+
+
+class TestValueTupleReturns:
+    """Value-tuple async return slots: a literal source renders the spelled
+    brace-init against the slot (the sync return arm's render); the
+    `__tpy_async_ret` decl + Poll wrap stay skeleton. Generic Ref-element
+    and view-element tuples stay out (the val_or_ptr bridge / view rungs)."""
+
+    def test_own_element_literal_return_routes(self):
+        src = ("import asyncio\nfrom tpy import Int32, Own\n\n"
+               + "class Box:\n"
+               + "    v: Int32\n"
+               + "    def __init__(self, v: Int32):\n        self.v = v\n\n"
+               + "async def make_pair() -> tuple[Own[Box], Int32]:\n"
+               + "    await asyncio.sleep(0)\n"
+               + "    return (Box(10), 99)\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.return_tuple_literal") == 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert ("std::tuple<Box, int32_t> __tpy_async_ret = "
+                "std::tuple<Box, int32_t>{Box(10), 99};") in cpp
+
+    def test_method_coro_field_elements_route(self):
+        # The __anext__ flavor: a method coro's literal reads receiver
+        # fields through the frame's __self spelling.
+        src = ("import asyncio\nfrom tpy import Int32\n\n"
+               + "class Pair:\n"
+               + "    a: Int32\n"
+               + "    b: Int32\n"
+               + "    def __init__(self, a: Int32, b: Int32):\n"
+               + "        self.a = a\n"
+               + "        self.b = b\n\n"
+               + "    async def pair(self) -> tuple[Int32, Int32]:\n"
+               + "        await asyncio.sleep(0)\n"
+               + "        return (self.a, self.b)\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.return_tuple_literal") == 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "std::tuple<int32_t, int32_t>{__self.a, __self.b}" in cpp
+
+    def test_generic_ref_tuple_return_defers(self):
+        # Ref[T] elements need the val_or_ptr element spelling -- the
+        # generic-tuple bridge rung; the slot stays out of
+        # _value_tuple_return, so the signature gate rejects.
+        # Spelled `tuple[K, V]`; sema resolves the elements to Ref[K]/Ref[V]
+        # (the corpus generic_async_free_func_multi_T shape).
+        src = ("import asyncio\nfrom tpy import Int32\n\n"
+               + "async def pick[K, V](k: K, v: V) -> tuple[K, V]:\n"
+               + "    await asyncio.sleep(0)\n"
+               + "    return (k, v)\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        assert _res_fallback(src).get("res.return_type") == 1
+        _assert_identical(src)
+
+    def test_value_opt_element_literal_defers(self):
+        # A value-opt ELEMENT slot rejects: the AST's untargeted literal
+        # render spells the None element `monostate`/`nullptr` --
+        # uncompilable pre-existing output at this unreached shape (see
+        # BUGS.md) -- while the slot-targeted render would diverge from
+        # it. Byte-identity holds because the body falls back whole.
+        src = ("import asyncio\nfrom tpy import Int32\n\n"
+               + "async def f(n: Int32) -> tuple[Int32, Int32 | None]:\n"
+               + "    await asyncio.sleep(0)\n"
+               + "    return (n, None)\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        fb = _res_fallback(src)
+        assert fb.get("stmt.return:return.optval_tuple_elem") == 1
+        _assert_identical(src)
+
+    def test_own_element_name_source_defers(self):
+        # An Own-element NAME source rejects: the AST's untargeted render
+        # copies bare where the slot-targeted lowering moves (the bare
+        # copy is the latent AST gap -- see BUGS.md). Ctor-rvalue sources
+        # (the routed pin above) render identically on both paths.
+        src = ("import asyncio\nfrom tpy import Int32, Own\n\n"
+               + "class Box:\n"
+               + "    v: Int32\n"
+               + "    def __init__(self, v: Int32):\n        self.v = v\n\n"
+               + "async def f() -> tuple[Own[Box], Int32]:\n"
+               + "    b = Box(10)\n"
+               + "    await asyncio.sleep(0)\n"
+               + "    return (b, 99)\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        fb = _res_fallback(src)
+        assert fb.get("stmt.return:return.own_tuple_name_elem") == 1
+        _assert_identical(src)
+
+    def test_name_and_call_sources_route_position_blind(self):
+        # NAME and CALL sources of NARROW value tuples ride the
+        # position-blind tail (bare renders; the __tpy_async_ret decl
+        # absorbs the copy). Widened-source shapes reject upstream at
+        # their declaration/call gates (probe-verified).
+        src = ("import asyncio\nfrom tpy import Int32\n\n"
+               + "def pair(n: Int32) -> tuple[Int32, Int32]:\n"
+               + "    return (n, n + 1)\n\n"
+               + "async def f(n: Int32) -> tuple[Int32, Int32]:\n"
+               + "    await asyncio.sleep(0)\n"
+               + "    return pair(n)\n\n"
+               + "async def g(n: Int32) -> tuple[Int32, Int32]:\n"
+               + "    t = (n, n + 1)\n"
+               + "    await asyncio.sleep(0)\n"
+               + "    return t\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        _, fallback = _assert_identical(src)
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "__tpy_async_ret = pair(n);" in cpp
+        assert "__tpy_async_ret = t;" in cpp
+
+    def test_view_element_tuple_return_defers(self):
+        # A StrView element keeps the tuple outside the return family
+        # (the view-pinning rung) -- the signature gate rejects.
+        src = ("import asyncio\nfrom tpy import Int32, StrView\n\n"
+               + "async def f(s: StrView) -> tuple[StrView, Int32]:\n"
+               + "    await asyncio.sleep(0)\n"
+               + "    return (s, 1)\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        assert _res_fallback(src).get("res.return_type") == 1
         _assert_identical(src)
 
 
@@ -2837,9 +3189,9 @@ class TestFrameFamilyAdmissions:
                + "    return p[0] + p[1]\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
         fb = _res_fallback(src)
-        # The PRODUCER (pair) keeps the value-tuple return rung; the
-        # consumer routes.
-        assert fb == {"res.return_type": 1}
+        # Both bodies route since the value-tuple return cell landed
+        # (the producer's literal return takes the spelled-brace-init arm).
+        assert fb == {}
         _assert_identical(src)
         _, hpp, cpp = _gen(src, thir=True)
         assert "std::get<0>(p)" in hpp + cpp
