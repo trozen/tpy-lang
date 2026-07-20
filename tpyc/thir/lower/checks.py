@@ -7,6 +7,7 @@ predictively traverse a body or expression before lowering.
 from __future__ import annotations
 from collections.abc import Set as AbstractSet
 from dataclasses import field
+from typing import Callable, NamedTuple
 from ...parse.nodes import (
     FSTRING_CONV_REPR,
     FSTRING_CONV_STR,
@@ -4142,23 +4143,43 @@ def _container_method_arg_ok(
             or note_detail("method.arg_shape"))
 
 
-def _container_method_call_supported(
-        e: TpyMethodCall, fi, analyzer, *, stmt_position: bool,
-        storage_ret_ok: bool) -> bool:
-    if fi.cpp_template is not None and "{cpp}" in fi.cpp_template:
-        return note_detail("method.cpp_ret_substitution")
-    ret = analyzer.get_expr_type(e)
+def _stub_method_ret_ok(
+        ret: 'TpyType | None', analyzer, *, stmt_position: bool,
+        storage_ret_ok: bool, enum_ok: bool, ptr_ok: bool, callable_ok: bool,
+        span_storage_ok: bool, stmt_storage_ok: bool) -> bool:
+    """The builtin-stub method families' shared result-shape core -- a value
+    scalar / Char / str-value / bytes-value result, plus the extras each
+    family flags on. `storage_ret_ok` admits container-family results at
+    storage sinks (`parts = s.split(",")`); `stmt_storage_ok` additionally
+    admits them DISCARDED (a statement-position call renders the same bare
+    stub call whatever the ignored result family). Factored so a new stub
+    family cannot hand-copy a drifting variant of this predicate."""
     return (_resolved_scalar(ret, analyzer)
             or _eligible_char(ret)
-            or _eligible_enum(ret, analyzer) is not None
-            or _eligible_ptr_value(ret, analyzer)
+            or (enum_ok and _eligible_enum(ret, analyzer) is not None)
+            or (ptr_ok and _eligible_ptr_value(ret, analyzer))
             or _resolved_str_value(ret, analyzer) is not None
             or _resolved_bytes_value(ret, analyzer) is not None
-            or _callable_value(ret)
+            or (callable_ok and _callable_value(ret))
             or (storage_ret_ok
                 and (_storage_call_ret(ret, analyzer) is not None
-                     or _span_value(ret)))
-            or (stmt_position and (ret is None or is_void_like_type(ret)))
+                     or (span_storage_ok and _span_value(ret))))
+            or (stmt_position
+                and (ret is None or is_void_like_type(ret)
+                     or (stmt_storage_ok
+                         and _storage_call_ret(ret, analyzer) is not None))))
+
+
+def _container_method_call_supported(
+        e: TpyMethodCall, fi, locals_: dict[str, TpyType], analyzer, *,
+        stmt_position: bool, storage_ret_ok: bool) -> bool:
+    if fi.cpp_template is not None and "{cpp}" in fi.cpp_template:
+        return note_detail("method.cpp_ret_substitution")
+    return (_stub_method_ret_ok(
+                analyzer.get_expr_type(e), analyzer,
+                stmt_position=stmt_position, storage_ret_ok=storage_ret_ok,
+                enum_ok=True, ptr_ok=True, callable_ok=True,
+                span_storage_ok=True, stmt_storage_ok=False)
             or note_detail("method.ret_type"))
 
 
@@ -4181,22 +4202,10 @@ def _method_call_arg_ok(
                     temps_ok=temps_ok, narrowed=narrowed))
 
     recv_type = _method_receiver_type(e.obj, locals_, analyzer)
-    if (_container_scalar_read(recv_type, analyzer)
-            or _container_record_elem(recv_type, analyzer)
-            or _container_ref_alias_elem(recv_type, analyzer)
-            or _container_value_opt_scalar_elem(recv_type, analyzer)
-            or _set_method_recv(recv_type, analyzer)):
-        return _container_method_arg_ok(
-            a, ptype, locals_, analyzer, param_names=param_names,
-            narrowed=narrowed)
-    if (_protocol_binding(recv_type) is not None
-            or _bounded_tparam_protocol(recv_type, tparam_bounds) is not None):
-        return _protocol_method_arg_ok(a, ptype, locals_, analyzer)
-    if (_resolved_str_value(recv_type, analyzer) is not None
-            or _bytearray_recv(recv_type)):
-        # Bytearray method args are the view set (scalar value / index,
-        # bytes operands) -- same bare renders on both paths.
-        return _view_method_arg_ok(a, ptype, locals_, analyzer)
+    fam = _method_recv_family(recv_type, analyzer, tparam_bounds)
+    if fam is not None:
+        return fam.arg_ok(a, ptype, locals_, analyzer,
+                          param_names=param_names, narrowed=narrowed)
 
     recv = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(recv_type)))
     if isinstance(recv, OwnType):
@@ -4223,7 +4232,8 @@ def _method_call_arg_ok(
         temps_ok=temps_ok, narrowed=narrowed)
 
 def _protocol_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyType],
-                                   analyzer, *, stmt_position: bool) -> bool:
+                                   analyzer, *, stmt_position: bool,
+                                   storage_ret_ok: bool) -> bool:
     """A method call on a bare protocol receiver -- `pet.make_noise()` on a
     `@dynamic` `Base&` (a vtable call) or `count.length()` on a structural
     `const T_c&` (monomorphized). Both spell `recv.method(args)`: the flavor
@@ -4286,7 +4296,9 @@ def _protocol_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, Tpy
 
 
 def _protocol_method_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
-                            locals_: dict[str, TpyType], analyzer) -> bool:
+                            locals_: dict[str, TpyType], analyzer, *,
+                            param_names: 'set[str] | frozenset[str]',
+                            narrowed: 'set[str] | frozenset[str]') -> bool:
     return (_shared_pass_through_arg(a, ptype, locals_, analyzer)
             or note_detail("method.protocol.arg_shape"))
 
@@ -4511,7 +4523,7 @@ def _record_method_arg_ok(
 
 def _view_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyType],
                                analyzer, *, stmt_position: bool,
-                               storage_ret_ok: bool = False) -> bool:
+                               storage_ret_ok: bool) -> bool:
     """A str/StrView value-view receiver's builtin method call -- the
     `_gen_method_call` builtin-method arm (`native_function or cpp_template`,
     line-3700 block) reduced to its pass-through subset. The shared marker /
@@ -4548,26 +4560,12 @@ def _view_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyType
     # generics-frontier machinery, not reproduced here.
     if fi.cpp_template is not None and "{cpp}" in fi.cpp_template:
         return note_detail("method.view.cpp_ret_substitution")
-    ret = analyzer.get_expr_type(e)
-    if not (_resolved_scalar(ret, analyzer)
-            or _eligible_char(ret)
-            or _eligible_enum(ret, analyzer) is not None
-            or _eligible_ptr_value(ret, analyzer)
-            or _resolved_str_value(ret, analyzer) is not None
-            or _resolved_bytes_value(ret, analyzer) is not None
-            # Storage sinks only (`parts = s.split(",")` -- the container
-            # result lands in the plain value decl, like the container /
-            # record-method siblings' storage_ret_ok escape).
-            or (storage_ret_ok
-                and _storage_call_ret(ret, analyzer) is not None)
-            # DISCARDED results included: a statement-position call renders
-            # the same bare `::tpy::str_split(recv, args);` whatever the
-            # (ignored) return family.
-            or (stmt_position and (ret is None or is_void_like_type(ret)
-                                   or _storage_call_ret(ret, analyzer)
-                                   is not None))):
-        return note_detail("method.view.ret_type")
-    return True
+    return (_stub_method_ret_ok(
+                analyzer.get_expr_type(e), analyzer,
+                stmt_position=stmt_position, storage_ret_ok=storage_ret_ok,
+                enum_ok=True, ptr_ok=True, callable_ok=False,
+                span_storage_ok=False, stmt_storage_ok=True)
+            or note_detail("method.view.ret_type"))
 
 
 def _bytearray_recv(recv_type: 'TpyType | None') -> bool:
@@ -4582,8 +4580,8 @@ def _bytearray_recv(recv_type: 'TpyType | None') -> bool:
 
 
 def _bytearray_method_call_supported(
-        e: TpyMethodCall, fi, analyzer, *, stmt_position: bool,
-        storage_ret_ok: bool = False) -> bool:
+        e: TpyMethodCall, fi, locals_: dict[str, TpyType], analyzer, *,
+        stmt_position: bool, storage_ret_ok: bool) -> bool:
     """A bytearray receiver's builtin method call: the view family's
     admission shape, plus MEMBER natives (`append` -> `recv.push_back(arg)`,
     bare `clear`) the view gate's function-only check would reject. The
@@ -4592,23 +4590,18 @@ def _bytearray_method_call_supported(
     arm mirrors (member rename / function=True receiver-prepend)."""
     if fi.cpp_template is not None and "{cpp}" in fi.cpp_template:
         return note_detail("method.bytearray.cpp_ret_substitution")
-    ret = analyzer.get_expr_type(e)
-    if not (_resolved_scalar(ret, analyzer)
-            or _eligible_char(ret)
-            or _resolved_str_value(ret, analyzer) is not None
-            or _resolved_bytes_value(ret, analyzer) is not None
-            or (storage_ret_ok
-                and _storage_call_ret(ret, analyzer) is not None)
-            # DISCARDED results included, like the view twin above.
-            or (stmt_position and (ret is None or is_void_like_type(ret)
-                                   or _storage_call_ret(ret, analyzer)
-                                   is not None))):
-        return note_detail("method.bytearray.ret_type")
-    return True
+    return (_stub_method_ret_ok(
+                analyzer.get_expr_type(e), analyzer,
+                stmt_position=stmt_position, storage_ret_ok=storage_ret_ok,
+                enum_ok=False, ptr_ok=False, callable_ok=False,
+                span_storage_ok=False, stmt_storage_ok=True)
+            or note_detail("method.bytearray.ret_type"))
 
 
 def _view_method_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
-                        locals_: dict[str, TpyType], analyzer) -> bool:
+                        locals_: dict[str, TpyType], analyzer, *,
+                        param_names: 'set[str] | frozenset[str]',
+                        narrowed: 'set[str] | frozenset[str]') -> bool:
     return ((_scalar_pass_through_slot(ptype, analyzer)
              and _resolved_scalar(analyzer.get_expr_type(a), analyzer))
             or _str_pass_through_arg(a, ptype, locals_, analyzer)
@@ -4617,6 +4610,82 @@ def _view_method_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
             or _enum_pass_through_arg(a, ptype, locals_, analyzer)
             or _ptr_pass_through_arg(a, ptype, locals_, analyzer)
             or note_detail("method.view.arg_shape"))
+
+
+class _MethodRecvFamily(NamedTuple):
+    """One builtin-stub / protocol receiver family's paired method-call gate
+    dispatch. The SHAPE gate (the plain-method arm in expressions.py) and the
+    ARG gate (`_method_call_arg_ok`) both dispatch through
+    `_method_recv_family`, so a family's shape admission and arg admission
+    cannot drift apart -- widening or adding a family is one table row. Shape
+    fns share the signature (e, fi, locals_, analyzer, *, stmt_position,
+    storage_ret_ok) and arg fns (a, ptype, locals_, analyzer, *, param_names,
+    narrowed); a family ignores the knobs it has no rows for. `stub_recv`
+    marks the builtin-stub receivers whose args render through gen_call_arg's
+    `_args()` loop (raw param type threaded into literal renders)."""
+    shape_ok: Callable[..., bool]
+    arg_ok: Callable[..., bool]
+    stub_recv: bool
+
+
+def _container_method_recv(recv_type: 'TpyType | None', analyzer,
+                           tparam_bounds: 'dict | None') -> bool:
+    return (_container_scalar_read(recv_type, analyzer)
+            or _container_record_elem(recv_type, analyzer)
+            or _container_ref_alias_elem(recv_type, analyzer)
+            or _container_value_opt_scalar_elem(recv_type, analyzer)
+            or _set_method_recv(recv_type, analyzer))
+
+
+def _protocol_method_recv(recv_type: 'TpyType | None', analyzer,
+                          tparam_bounds: 'dict | None') -> bool:
+    return (_protocol_binding(recv_type) is not None
+            or _bounded_tparam_protocol(recv_type, tparam_bounds) is not None)
+
+
+def _bytearray_method_recv(recv_type: 'TpyType | None', analyzer,
+                           tparam_bounds: 'dict | None') -> bool:
+    return _bytearray_recv(recv_type)
+
+
+def _view_method_recv(recv_type: 'TpyType | None', analyzer,
+                      tparam_bounds: 'dict | None') -> bool:
+    """A str/StrView or bytes/BytesView value receiver: both render args
+    through the same builtin-stub loop, so they share the view rows."""
+    return (_resolved_str_value(recv_type, analyzer) is not None
+            or _resolved_bytes_value(recv_type, analyzer) is not None)
+
+
+_METHOD_RECV_FAMILY_TABLE: tuple = (
+    (_container_method_recv,
+     _MethodRecvFamily(shape_ok=_container_method_call_supported,
+                       arg_ok=_container_method_arg_ok, stub_recv=True)),
+    (_protocol_method_recv,
+     _MethodRecvFamily(shape_ok=_protocol_method_call_supported,
+                       arg_ok=_protocol_method_arg_ok, stub_recv=False)),
+    # Bytearray shapes admit MEMBER natives the view gate rejects; its args
+    # are the view set (same bare renders on both paths).
+    (_bytearray_method_recv,
+     _MethodRecvFamily(shape_ok=_bytearray_method_call_supported,
+                       arg_ok=_view_method_arg_ok, stub_recv=True)),
+    (_view_method_recv,
+     _MethodRecvFamily(shape_ok=_view_method_call_supported,
+                       arg_ok=_view_method_arg_ok, stub_recv=True)),
+)
+
+
+def _method_recv_family(recv_type: 'TpyType | None', analyzer,
+                        tparam_bounds: 'dict | None') -> '_MethodRecvFamily | None':
+    """Classify a plain method call's receiver into its stub/protocol family
+    -- the ONE family list both method gates consult. None -> the residual
+    dispatch (the ptr-template arm at the shape gate, the user-record path at
+    the arg gate; a routed ptr-template call admits no args, so the record
+    fallback never fires for one)."""
+    for pred, family in _METHOD_RECV_FAMILY_TABLE:
+        if pred(recv_type, analyzer, tparam_bounds):
+            return family
+    return None
+
 
 def _user_iterator_iterable(u: 'TpyType | None', analyzer) -> bool:
     """The `__iter__`/`__next__` protocol-loop family: a protocol

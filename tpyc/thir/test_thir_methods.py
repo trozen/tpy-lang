@@ -9,6 +9,13 @@ from ..codegen_cpp.context import CodeGenOptions
 from ..diagnostics import SemanticError
 from ..codegen_cpp.forms import LocalBinding
 from ..typesys import NominalType, PtrType
+from ..compilation_context import activate_compiler
+from .lower.checks import (
+    _bytearray_method_call_supported, _container_method_arg_ok,
+    _container_method_call_supported, _method_recv_family,
+    _protocol_method_arg_ok, _protocol_method_call_supported,
+    _view_method_arg_ok, _view_method_call_supported,
+)
 from .lower.predicates import _eligible_ptr_value
 from .nodes import (
     Form, THIRAssign, THIRBinOp, THIRCall, THIRCoerce, THIRExprStmt,
@@ -2568,3 +2575,63 @@ class TestAsyncioRunDriverCall:
         assert ("::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<"
                 "::tpystd::coro::Cancellable<std::monostate>>(work()))"
                 in thir_out[1])
+
+
+class TestMethodRecvFamilyTable:
+    # Both method gates (the shape ladder in expressions.py and the arg gate
+    # in _method_call_arg_ok) dispatch through _method_recv_family; these
+    # pins guard each table row's (shape-fn, arg-fn, stub_recv) pairing.
+
+    def test_family_classification_pins_table_rows(self):
+        compiler, modules = _compile(
+            "from tpy import Int32\n"
+            "from typing import Protocol\n"
+            "class Sized(Protocol):\n"
+            "    def size(self) -> Int32: ...\n"
+            "class Rec:\n"
+            "    n: Int32\n"
+            "    def __init__(self) -> None:\n"
+            "        self.n = 0\n"
+            "def f(xs: list[Int32], ba: bytearray, s: str, bs: bytes,\n"
+            "      p: Sized, r: Rec) -> None:\n"
+            "    pass\n")
+        entry = _entry(modules)
+        analyzer = entry.analyzer
+        types = dict(next(fd for fd in entry.ast.functions
+                          if fd.name == "f").params)
+        with activate_compiler(compiler):
+            fam = {name: _method_recv_family(t, analyzer, None)
+                   for name, t in types.items()}
+        assert fam["xs"].shape_ok is _container_method_call_supported
+        assert fam["xs"].arg_ok is _container_method_arg_ok
+        assert fam["xs"].stub_recv
+        assert fam["p"].shape_ok is _protocol_method_call_supported
+        assert fam["p"].arg_ok is _protocol_method_arg_ok
+        assert not fam["p"].stub_recv
+        assert fam["ba"].shape_ok is _bytearray_method_call_supported
+        assert fam["ba"].arg_ok is _view_method_arg_ok
+        assert fam["ba"].stub_recv
+        # str and bytes receivers share the one view row: bytes args take the
+        # str twin's view rows, not the record fallback.
+        assert fam["s"] is fam["bs"]
+        assert fam["s"].shape_ok is _view_method_call_supported
+        assert fam["s"].arg_ok is _view_method_arg_ok
+        assert fam["s"].stub_recv
+        # A user record is the residual (non-table) dispatch.
+        assert fam["r"] is None
+
+    def test_bytes_receiver_method_with_arg_routes(self):
+        # A bytes receiver's method call WITH an arg takes the view arg rows
+        # like its str twin (the record fallback used to reject it, falling
+        # the whole body back to AST).
+        source = (
+            "def f(bs: bytes) -> None:\n"
+            '    n = bs.find(b"ab")\n'
+            "    print(n)\n")
+        thir = _lower(source)
+        f = _fn(thir, "f")
+        assert f is not None
+        call = f.body[0].init
+        assert isinstance(call, THIRMethodCall)
+        assert call.native_function_name == "tpy::bytes_find"
+        _assert_byte_identical(source)

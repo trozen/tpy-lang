@@ -336,7 +336,6 @@ from .checks import (
     _record_field_ref_arg,
     _container_lit_slot_family,
     _container_literal_shape_ok,
-    _container_method_call_supported,
     _ctor_instantiation_ok,
     _ctor_shape_ok,
     _dyn_own_coro_factory_arg,
@@ -358,6 +357,7 @@ from .checks import (
     _marker_reject,
     _member_gen_call_iterable_ok,
     _method_call_arg_ok,
+    _method_recv_family,
     _none_unit_arg,
     _raw_record_method_fi,
     _tparam_name_pass_arg,
@@ -375,7 +375,6 @@ from .checks import (
     _ptr_deref_method_call,
     _ptr_deref_recv_ok,
     _ptr_template_method_supported,
-    _protocol_method_call_supported,
     _record_rvalue_call_shape,
     _native_record_rvalue_call_shape,
     _record_rvalue_temp_arg,
@@ -389,9 +388,6 @@ from .checks import (
     _str_list_method_iterable_ok,
     _record_method_call_supported,
     _recv_shape_reject,
-    _bytearray_method_call_supported,
-    _bytearray_recv,
-    _view_method_call_supported,
     _value_tuple_pass_through_arg,
     _value_union_temp_arg,
 )
@@ -3277,38 +3273,13 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
             # param type into literal renders; user-record methods pass
             # target_type=None (target-less literals). The flag picks the
             # literal render in _lower_call_arg.
-            if (_container_scalar_read(recv_type, analyzer)
-                    or _container_record_elem(recv_type, analyzer)
-                    or _container_ref_alias_elem(recv_type, analyzer)
-                    or _container_value_opt_scalar_elem(recv_type, analyzer)
-                    or _set_method_recv(recv_type, analyzer)):
-                shape_ok = _container_method_call_supported(
-                    e, fi, analyzer, stmt_position=stmt_position,
-                    storage_ret_ok=storage_ret_ok)
-                stub_recv = True
-            elif (_protocol_binding(recv_type) is not None
-                  or _bounded_tparam_protocol(recv_type,
-                                              lc.tparam_bounds) is not None):
-                shape_ok = _protocol_method_call_supported(
-                    e, fi, declared, analyzer,
-                    stmt_position=stmt_position)
-            elif _bytearray_recv(recv_type):
-                shape_ok = _bytearray_method_call_supported(
-                    e, fi, analyzer, stmt_position=stmt_position,
-                    storage_ret_ok=storage_ret_ok)
-                stub_recv = True
-            elif (_resolved_str_value(recv_type, analyzer) is not None
-                  or _resolved_bytes_value(recv_type, analyzer) is not None):
-                # A bytes / BytesView receiver's builtin methods
-                # (`bs.strip()`/`.find()`/`.upper()`/...) are the twin of the
-                # str-view family: @native(function=True) / @cpp_template
-                # builtins rendering `::tpy::bytes_*(recv, args)`, the same
-                # general THIRMethodCall arm the str view uses.
-                shape_ok = _view_method_call_supported(
+            fam = _method_recv_family(recv_type, analyzer, lc.tparam_bounds)
+            if fam is not None:
+                shape_ok = fam.shape_ok(
                     e, fi, declared, analyzer,
                     stmt_position=stmt_position,
                     storage_ret_ok=storage_ret_ok)
-                stub_recv = True
+                stub_recv = fam.stub_recv
             elif recv_type is not None and recv_type.is_pointer():
                 shape_ok = _ptr_template_method_supported(
                     e, fi, recv_type, analyzer,
