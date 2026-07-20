@@ -283,6 +283,24 @@ bool __bool__(const T& x) {
     return x.__bool__();
 }
 
+// Pointer-repr Optional truthiness (Python `if p:` on a `Record | None`):
+// null is falsy, otherwise the pointee's Python truthiness. Kept as a single
+// evaluation of `p` so it is correct in loop conditions and side-effecting
+// operands, where a hoisted null-check-plus-deref temp would go stale. The
+// dispatch order mirrors codegen's record truthiness: __bool__, else
+// __len__ != 0, else the object-default (a non-None instance is truthy).
+template<typename T>
+inline bool ptr_truthy(const T* p) {
+    if (p == nullptr) return false;
+    if constexpr (requires { { p->__bool__() } -> std::convertible_to<bool>; }) {
+        return p->__bool__();
+    } else if constexpr (requires { p->__len__(); }) {
+        return ::tpy::__len__(*p) != 0;
+    } else {
+        return true;
+    }
+}
+
 // =============================================
 // tpy::__str__
 // =============================================

@@ -1,0 +1,2 @@
+main.py:27: warning: copies Flag | None into field; use copy() to make this explicit
+main.py:93: warning: Truthiness check on optional value may also exclude falsy non-None values; use 'is not None' for None-only checks. (variable 's')

@@ -5362,16 +5362,35 @@ def _lower_truthy(e: TpyExpr, lc: '_LowerCtx',
         raise ThirUnsupported("truthy.optional_field_narrow")
     if mode is TruthinessMode.ALWAYS_TRUE and not isinstance(e, TpyName):
         raise ThirUnsupported("truthy.constant_shape")
+    if isinstance(e, TpyName) and et is not None:
+        eu_name = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(et)))
+        if isinstance(eu_name, OptionalType) and eu_name.uses_pointer_repr():
+            inner = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                eu_name.inner)))
+            # is_user_record excludes builtin containers (the AST's un-narrowed
+            # ptr_truthy gate); _truthiness_mode says whether that record has a
+            # truthiness dunder (RECORD_BOOL/RECORD_LEN).
+            if (isinstance(inner, NominalType) and inner.is_user_record
+                    and _truthiness_mode(inner, lc.analyzer) in (
+                        TruthinessMode.RECORD_BOOL, TruthinessMode.RECORD_LEN)):
+                # Un-narrowed pointer-repr Optional[record] truthiness now
+                # dispatches ::tpy::ptr_truthy in the AST (null-check plus the
+                # inner __bool__/__len__); THIR has no matching node yet, so
+                # fall back for this shape.
+                raise ThirUnsupported("truthy.optional_ptr_record")
     if isinstance(e, TpyName) and e.name in declared:
         du = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
             declared[e.name])))
         eu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(et)))
               if et is not None else None)
-        if isinstance(du, OptionalType) and not isinstance(eu, OptionalType):
-            # The AST renders name truthiness through the declared binding
-            # (var_types), which narrowing never changes -- a mode computed
-            # from the narrowed occurrence type would diverge (`if (p)` vs
-            # `if (true)` / a dereffed `__bool__` call).
+        if (isinstance(du, OptionalType) and not isinstance(eu, OptionalType)
+                and not du.uses_pointer_repr()):
+            # A value-repr narrowed Optional name renders through
+            # ::tpy::is_truthy on the whole optional in the AST; THIR has no
+            # matching arm. Pointer-repr narrowed record optionals now dispatch
+            # the narrowed inner's __bool__/__len__ in the AST, which
+            # _truthiness_mode(et) mirrors from the same narrowed occurrence
+            # type, so they route through the record-mode arms below.
             raise ThirUnsupported("truthy.optional_name_narrow")
     if wrap is None:
         ptr_optional = (

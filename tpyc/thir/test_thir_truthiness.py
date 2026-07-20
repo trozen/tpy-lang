@@ -111,7 +111,10 @@ class TestStructuredTruthiness:
         module = _entry(_compile(src)[1])
         assert _fn(lower_module(module.ast, module.analyzer), "probe") is None
 
-    def test_narrowed_optional_name_stays_ast(self):
+    def test_narrowed_optional_name_dispatches_dunder(self):
+        # A pointer-repr Optional[record] narrowed past None dispatches the
+        # record's __bool__/__len__ (a plain record is always-truthy); THIR
+        # routes it from the same narrowed occurrence type the AST uses.
         src = (
             "from tpy import Int32\n"
             "class Plain:\n"
@@ -131,8 +134,17 @@ class TestStructuredTruthiness:
             "    return 2\n"
         )
         thir = _lower_ctx(src)
-        assert _fn(thir, "probe_plain") is None
-        assert _fn(thir, "probe_dunder") is None
+        assert _fn(thir, "probe_plain") is not None
+        assert _fn(thir, "probe_dunder") is not None
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        ast_out = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False))
+        thir_out = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(
+                emit_source_comments=False, thir_codegen=True))
+        assert thir_out == ast_out
+        assert any("__bool__" in part for part in ast_out)
 
     def test_indirect_record_len_dereferences_operand(self):
         src = (
@@ -176,5 +188,20 @@ class TestStructuredTruthiness:
             "def probe(box: Box) -> Int32:\n"
             "    if box.value:\n        return box.value\n"
             "    return 0\n"
+        )
+        assert _fn(_lower_ctx(src), "probe") is None
+
+    def test_unnarrowed_optional_record_truthiness_stays_ast(self):
+        # An un-narrowed pointer-repr Optional[record] with a truthiness dunder
+        # dispatches ::tpy::ptr_truthy in the AST (null-check + __bool__);
+        # THIR has no matching node yet, so the whole body falls back.
+        src = (
+            "class Flag:\n"
+            "    value: bool\n"
+            "    def __init__(self, value: bool):\n        self.value = value\n"
+            "    def __bool__(self) -> bool:\n        return self.value\n"
+            "def probe(f: Flag | None) -> bool:\n"
+            "    if f:\n        return True\n"
+            "    return False\n"
         )
         assert _fn(_lower_ctx(src), "probe") is None

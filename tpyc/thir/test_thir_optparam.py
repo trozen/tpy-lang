@@ -364,17 +364,25 @@ class TestGateRejects:
             + "    if h is not None:\n        h.f = None\n")
         assert _fn(thir, "scalar_write") is not None
 
-    def test_narrowed_truthiness_stays_ast(self):
-        # The AST renders name truthiness through the declared Optional
-        # binding (`if (p)`), so a mode from the narrowed record type would
-        # diverge -- the whole body falls back.
-        thir = _lower_ctx(
+    def test_narrowed_truthiness_dispatches(self):
+        # A pointer-repr Optional[record] narrowed past None dispatches
+        # truthiness on the narrowed inner (A is a plain record -> always
+        # truthy); THIR routes it byte-identically to the AST.
+        src = (
             _PRELUDE
             + "def use(p: A | None) -> Int32:\n"
             + "    if p is None:\n        return 0\n"
             + "    if p:\n        return p.x\n"
             + "    return 1\n")
-        assert _fn(thir, "use") is None
+        assert _fn(_lower_ctx(src), "use") is not None
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        ast_out = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False))
+        thir_out = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(
+                emit_source_comments=False, thir_codegen=True))
+        assert thir_out == ast_out
 
 
 class TestValueReprOptionalParam:

@@ -1589,6 +1589,36 @@ class ExpressionGenerator:
             return f"({left} {expr.op} {right})"
 
         expr_type = self.types.get_resolved_type(expr)
+        # Truthiness of a pointer-repr Optional that renders as a raw T* (a
+        # pointer name -- param / local / self / global -- or a call returning
+        # a borrow). get_resolved_type reports the declared Optional --
+        # narrowing never rewrites var_types -- so consult the analyzer's
+        # narrowed occurrence type to dispatch the inner's __bool__/__len__
+        # instead of the always-true non-null pointer test. A storage-form
+        # source (record field, container element, storage-optional local) is
+        # std::optional, not a pointer, so it is excluded -- its dunder
+        # dispatch is a separate deferred shape. Value-repr Optionals (Own of a
+        # value type) are not pointer-repr and go through ::tpy::is_truthy.
+        if (isinstance(expr_type, OptionalType)
+                and expr_type.uses_pointer_repr()
+                and not self.ctx.is_storage_form_optional_source(expr)):
+            narrowed = self.ctx.get_expr_type(expr)
+            if narrowed is not None and not isinstance(
+                    unwrap_readonly(narrowed), OptionalType):
+                # Proven non-None: dispatch the narrowed inner directly (the
+                # deref + __bool__/__len__ path below), matching bool(x).
+                expr_type = unwrap_readonly(narrowed)
+            else:
+                # Un-narrowed: CPython's `x is not None and bool(x)` -- a
+                # null-check plus the record's __bool__/__len__ in one
+                # evaluation (loop / side-effect safe). Plain records fall
+                # through to the always-true non-null test.
+                inner = unwrap_readonly(expr_type.inner)
+                if isinstance(inner, NominalType) and inner.is_user_record:
+                    rec = self.ctx.analyzer.registry.get_record_for_type(inner)
+                    if rec and (rec.get_method_overloads("__bool__")
+                                or rec.get_method_overloads("__len__")):
+                        return f"::tpy::ptr_truthy({self.gen_expr(expr)})"
         rendered = self.gen_expr(expr)
         if self.ctx.is_indirect_name(expr):
             record = self.ctx.analyzer.registry.get_record_for_type(expr_type)
