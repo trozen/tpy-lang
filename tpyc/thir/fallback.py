@@ -86,6 +86,26 @@ class ThirUnsupported(Exception):
         self.detail = detail
 
 
+def is_bodyless_binding(fn) -> bool:
+    """A callable with NO gen_body / MIL emit -- out of the body-migration
+    scope entirely, NOT a fallback.
+
+    A call-site dispatch to a runtime symbol / template -- method-style
+    `@native("push_back")` (native_name), `@cpp_template(...)`, free
+    `@native(function=True)` (native_function) -- or any `...` stub (is_stub
+    covers declaration-only stubs like `cast`, native-class method stubs, and
+    bare-`@native` methods whose native_name stays None). Covers the whole
+    builtin-type method/ctor surface (str / int / list / dict / ...); a BODIED
+    method on a builtin receiver still counts (a real deferred surface).
+
+    Shared with `--dump-thir`, which must tell "never attempted" apart from
+    "attempted and rejected" -- reporting the former as a fallback misreports
+    the migration frontier.
+    """
+    return (fn.native_function or fn.native_name is not None
+            or fn.cpp_template is not None or fn.is_stub)
+
+
 def note(reason: str) -> bool:
     """Record `reason` as the current attempt's first reject, if none is
     recorded yet. Returns False so admission sites can `return note("sig.x")`
@@ -123,16 +143,23 @@ def begin_attempt() -> None:
         compiler._thir_reject_detail = None
 
 
-def fold_attempt(component: str) -> None:
+def fold_attempt(component: str, node: object = None) -> None:
     """Fold a failed attempt's reason into the per-compilation tally.
     `component` is the deletion-target population: "body" (functions and
-    methods -- the gen_body/gen_expr target) or "ctor" (the MIL target)."""
+    methods -- the gen_body/gen_expr target) or "ctor" (the MIL target).
+
+    `node` is the AST callable that failed; passing it also records the
+    reason per body (`--dump-thir` names it), so the aggregate tally and the
+    per-body attribution cannot drift apart."""
     compiler = get_current_compiler()
     if compiler is None:
         return
-    key = f"{component}:{compiler._thir_reject_reason or 'unclassified'}"
+    reason = compiler._thir_reject_reason or 'unclassified'
+    key = f"{component}:{reason}"
     fb = compiler._thir_fallback
     fb[key] = fb.get(key, 0) + 1
+    if node is not None:
+        compiler._thir_reject_by_node[id(node)] = reason
 
 
 def record_arm_residual(body: 'list') -> None:

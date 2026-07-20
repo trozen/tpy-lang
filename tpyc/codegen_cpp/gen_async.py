@@ -1839,7 +1839,7 @@ class AsyncCoroCodegen:
         if rb is not None:
             record_shape(func, "resumable", routed=True)
         else:
-            fold_attempt("resumable")
+            fold_attempt("resumable", func)
             record_arm_residual(func.body)
             record_shape(func, "resumable", routed=False)
         return rb

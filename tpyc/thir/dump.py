@@ -6,7 +6,11 @@ glance. Not consumed by codegen; purely for inspecting the sema/codegen seam.
 
 from __future__ import annotations
 
+from typing import Iterable
+
 from ..typesys import TpyType
+from .fallback import is_bodyless_binding
+from .lower import iter_module_callables, iter_module_constructors
 from .nodes import (
     Form,
     TruthinessMode,
@@ -66,7 +70,48 @@ from .nodes import (
     THIRVarDecl,
     THIRWhile,
     THIRWith,
+    THIRBorrowTupleLiteral,
+    THIRConstructor,
+    THIRChainedCompareStmtExpr,
+    THIRComprehension,
+    THIRErrorReturnBind,
+    THIRErrorReturnDiscard,
+    THIRErrorReturnUnwrap,
+    THIRForIterProto,
+    THIRFrameSlotWrite,
+    THIRFunction,
+    THIRGenExpr,
+    THIRInplaceContainerOp,
+    THIRLambda,
+    THIRListRepeat,
+    THIRMembership,
+    THIRNestedDef,
+    THIRNoOpStmt,
+    THIRParamCopy,
+    THIRPtrLocalDecl,
+    THIRPtrLocalRebind,
+    THIRRaise,
+    THIRRecordCopy,
+    THIRResumableBody,
+    THIRResumableReturn,
+    THIRSetItem,
+    THIRSimpleGenBody,
+    THIRSliceAssign,
+    THIRStmtSeq,
+    THIRStrMembership,
+    THIRTry,
+    THIRTupleLiteral,
+    THIRTupleMembership,
+    THIRTupleValueToBorrow,
+    THIRVarargPack,
 )
+
+
+# Node classes deliberately rendered as a bare `<Name>` placeholder rather
+# than a real arm. Empty by design: an entry here is a hole in the dump, so
+# it needs a stated reason, and `test_dump.py` fails an entry that HAS an arm
+# (the list cannot silently outlive its exception).
+_UNDUMPED: frozenset[type] = frozenset()
 
 
 def _ty(t: TpyType) -> str:
@@ -234,7 +279,82 @@ def _expr(e: THIRExpr) -> str:
         # truthiness) surfaces as an empty operand slot.
         inner = "" if e.operand is None else f", {_expr(e.operand)}"
         return f"enum_wrap({e.wrap!r}{inner})"
-    return f"<{type(e).__name__}>"
+    if isinstance(e, THIRTupleLiteral):
+        return f"tuple({_exprs(e.elements)})"
+    if isinstance(e, THIRBorrowTupleLiteral):
+        # Per-element address-of is the borrow-form decision, so it shows
+        # per element rather than as one flag.
+        elems = ", ".join(("&" if a else "") + _expr(x)
+                          for x, a in zip(e.elements, e.addr_of))
+        return f"borrow_tuple<{e.spelled_cpp}>({elems})"
+    if isinstance(e, THIRTupleValueToBorrow):
+        elems = ", ".join(("&" if a else "") + _expr(x)
+                          for x, a in zip(e.elements, e.addr_of))
+        return f"tuple_value_to_borrow<{e.dst_cpp}>({e.src_cpp}{{{elems}}})"
+    if isinstance(e, THIRComprehension):
+        # The loop strategy and result container are the emit-shaping facts.
+        return (f"comp[{e.kind}/{e.loop}]({e.container_cpp}, "
+                f"var %{e.var}{' const' if e.const_loop_var else ''})")
+    if isinstance(e, THIRGenExpr):
+        src = "" if e.iterable is None else _expr(e.iterable)
+        elem = "" if e.element is None else _expr(e.element)
+        moved = " [moved_source]" if e.moved_source else ""
+        return f"genexpr({elem} for %_ in {src}){moved}"
+    if isinstance(e, THIRLambda):
+        params = ", ".join(e.params_cpp)
+        ret = f" -> {e.ret_cpp}" if e.ret_cpp is not None else ""
+        return f"lambda[{e.capture_cpp}]({params}){ret}: {_expr(e.body)}"
+    if isinstance(e, THIRListRepeat):
+        count = "" if e.count is None else _expr(e.count)
+        big = " [bigint]" if e.count_bigint else ""
+        return f"list_repeat([{_exprs(e.elements)}] * {count}){big}"
+    if isinstance(e, (THIRMembership, THIRStrMembership, THIRTupleMembership)):
+        return _membership(e)
+    if isinstance(e, THIRChainedCompareStmtExpr):
+        # Rendered as the comparison chain it collapses to; the bound flags
+        # mark which operands were hoisted to temps.
+        parts = []
+        for i, op in enumerate(e.ops):
+            lhs = _expr(e.inits[i])
+            if i < len(e.bound) and e.bound[i]:
+                lhs += " [temp]"
+            parts.append(f"{lhs} {op}")
+        tail = _expr(e.inits[-1]) if e.inits else ""
+        return f"chained_compare({' '.join(parts)} {tail})"
+    if isinstance(e, THIRErrorReturnUnwrap):
+        form = "value" if e.value_form else "ptr"
+        return f"er_unwrap[{form}]({_expr(e.call)})"
+    if isinstance(e, THIRRecordCopy):
+        return f"record_copy<{e.cpp_type}>({_expr(e.value)})"
+    if isinstance(e, THIRVarargPack):
+        star = "" if e.star_source is None else f", *{_expr(e.star_source)}"
+        ref = " [ref]" if e.is_ref else ""
+        return f"vararg_pack<{e.elem_cpp}>({_exprs(e.args)}{star}){ref}"
+    if type(e) in _UNDUMPED:
+        return f"<{type(e).__name__}>"
+    raise AssertionError(
+        f"--dump-thir has no arm for {type(e).__name__}; add one in dump.py "
+        f"(or list it in _UNDUMPED with a reason)")
+
+
+def _exprs(items: 'Iterable[THIRExpr]') -> str:
+    return ", ".join(_expr(x) for x in items)
+
+
+def _membership(e: THIRExpr) -> str:
+    """`in` / `not in` across the three membership nodes -- they differ only
+    in how the containment is spelled, which is the fact worth showing."""
+    neg = "not_in" if e.negate else "in"
+    if isinstance(e, THIRStrMembership):
+        sv = " [sv]" if e.wrap_receiver_sv else ""
+        return f"str_{neg}({_expr(e.needle)}, {_expr(e.receiver)}){sv}"
+    if isinstance(e, THIRTupleMembership):
+        tmp = " [temp]" if e.need_temp else ""
+        return f"tuple_{neg}({_expr(e.left)}, [{_exprs(e.elements)}]){tmp}"
+    how = ("free" if e.free_function
+           else "ranges" if e.ranges_contains else "method")
+    return (f"{neg}[{how}]({_expr(e.needle)}, {_expr(e.receiver)}"
+            f", {e.method_cpp!r})")
 
 
 def _stmt_lines(stmt: THIRStmt, depth: int) -> list[str]:
@@ -362,7 +482,91 @@ def _stmt_lines(stmt: THIRStmt, depth: int) -> list[str]:
         return [f"{pad}print({args})"]
     if isinstance(stmt, THIRExprStmt):
         return [f"{pad}{_expr(stmt.expr)}"]
-    return [f"{pad}<{type(stmt).__name__}>"]
+    if isinstance(stmt, THIRNoOpStmt):
+        return [f"{pad}noop"]
+    if isinstance(stmt, THIRStmtSeq):
+        # A transparent carrier: emit its members at the same depth so the
+        # dump mirrors the emitted statement sequence.
+        lines: list[str] = []
+        for s in stmt.stmts:
+            lines.extend(_stmt_lines(s, depth))
+        return lines
+    if isinstance(stmt, THIRRaise):
+        if stmt.cpp_type is None:
+            return [f"{pad}raise [bare]"]
+        via = " [virtual]" if stmt.via_virtual else ""
+        tier = " [return_tier]" if stmt.return_tier else ""
+        return [f"{pad}raise {stmt.cpp_type}({_exprs(stmt.args)}){via}{tier}"]
+    if isinstance(stmt, THIRTry):
+        lines = [f"{pad}try [{stmt.tier}]:"]
+        for s in stmt.try_body:
+            lines.extend(_stmt_lines(s, depth + 1))
+        for h in stmt.handlers:
+            bind = f" as %{h.binding}" if h.binding else ""
+            lines.append(f"{pad}except {h.cpp_type or ''}{bind}:")
+            for s in h.body:
+                lines.extend(_stmt_lines(s, depth + 1))
+        if stmt.else_body:
+            lines.append(f"{pad}else:")
+            for s in stmt.else_body:
+                lines.extend(_stmt_lines(s, depth + 1))
+        if stmt.finally_body:
+            lines.append(f"{pad}finally:")
+            for s in stmt.finally_body:
+                lines.extend(_stmt_lines(s, depth + 1))
+        return lines
+    if isinstance(stmt, THIRSetItem):
+        return [f"{pad}{_expr(stmt.target)} = {_expr(stmt.value)}"]
+    if isinstance(stmt, THIRSliceAssign):
+        lo = "" if stmt.lower is None else _expr(stmt.lower)
+        hi = "" if stmt.upper is None else _expr(stmt.upper)
+        return [f"{pad}{_expr(stmt.receiver)}[{lo}:{hi}] = "
+                f"{_expr(stmt.value)} [{stmt.native_name}]"]
+    if isinstance(stmt, THIRInplaceContainerOp):
+        # The native symbol is a call, not an operator -- `x tpy::list_extend= y`
+        # read as though it were one.
+        return [f"{pad}inplace[{stmt.native_name}]({_expr(stmt.receiver)}, "
+                f"{_expr(stmt.value)})"]
+    if isinstance(stmt, THIRParamCopy):
+        return [f"{pad}param_copy %{stmt.name}: {stmt.cpp_type}"]
+    if isinstance(stmt, THIRPtrLocalDecl):
+        init = "" if stmt.init is None else f" = {_expr(stmt.init)}"
+        return [f"{pad}ptr_decl[{stmt.kind.name.lower()}] %{stmt.name}: "
+                f"{_ty(stmt.resolved_type)}{init}"]
+    if isinstance(stmt, THIRPtrLocalRebind):
+        val = "" if stmt.value is None else f" = {_expr(stmt.value)}"
+        return [f"{pad}ptr_rebind[{stmt.kind.name.lower()}] %{stmt.name}{val}"]
+    if isinstance(stmt, THIRFrameSlotWrite):
+        return [f"{pad}frame_slot %{stmt.name} <- {_expr(stmt.value)}"]
+    if isinstance(stmt, THIRResumableReturn):
+        val = "" if stmt.value is None else f" {_expr(stmt.value)}"
+        return [f"{pad}resumable_return{val}"]
+    if isinstance(stmt, THIRNestedDef):
+        params = ", ".join(stmt.params_cpp)
+        ret = f" -> {stmt.ret_cpp}" if stmt.ret_cpp is not None else ""
+        lines = [f"{pad}nested_def[{stmt.capture_cpp}] "
+                 f"{stmt.name}({params}){ret}:"]
+        for s in stmt.body:
+            lines.extend(_stmt_lines(s, depth + 1))
+        return lines
+    if isinstance(stmt, THIRForIterProto):
+        const = " const" if stmt.const_loop_var else ""
+        lines = [f"{pad}for %{stmt.var}{const}: {_ty(stmt.elem_type)} "
+                 f"in iter_proto({_expr(stmt.iterable)}):"]
+        for s in stmt.body:
+            lines.extend(_stmt_lines(s, depth + 1))
+        _extend_orelse(lines, stmt.orelse, depth)
+        return lines
+    if isinstance(stmt, THIRErrorReturnBind):
+        decl = f": {stmt.decl_cpp}" if stmt.decl_cpp is not None else ""
+        return [f"{pad}er_bind %{stmt.name}{decl} = {_expr(stmt.call)}"]
+    if isinstance(stmt, THIRErrorReturnDiscard):
+        return [f"{pad}er_discard({_expr(stmt.call)})"]
+    if type(stmt) in _UNDUMPED:
+        return [f"{pad}<{type(stmt).__name__}>"]
+    raise AssertionError(
+        f"--dump-thir has no arm for {type(stmt).__name__}; add one in "
+        f"dump.py (or list it in _UNDUMPED with a reason)")
 
 
 def _extend_orelse(lines: list[str], orelse, depth: int) -> None:
@@ -373,14 +577,138 @@ def _extend_orelse(lines: list[str], orelse, depth: int) -> None:
         lines.extend(_stmt_lines(s, depth + 1))
 
 
+def _function_lines(fn: 'THIRFunction') -> list[str]:
+    params = ", ".join(f"{p.name}: {_ty(p.type)}" for p in fn.params)
+    lines = [f"fn {fn.name}({params}) -> {_ty(fn.return_type)}:"]
+    for s in fn.body:
+        lines.extend(_stmt_lines(s, 1))
+    return lines
+
+
+def _resumable_lines(name: str, body: 'THIRResumableBody') -> list[str]:
+    """A resumable body holds LEAVES keyed by the skeleton's node ids, not a
+    statement list -- the state machine around them stays AST-emitted. Render
+    each keyed group so what THIR contributed is visible per seam."""
+    lines = [f"resumable {name}:"]
+    groups = (
+        ("leaves", body.leaves, _stmt_lines),
+        ("match_dispatches", body.match_dispatches, _stmt_lines),
+        ("conds", body.conds, None),
+        ("return_values", body.return_values, None),
+        ("yield_values", body.yield_values, None),
+        ("suspend_exprs", body.suspend_exprs, None),
+        ("region_exprs", body.region_exprs, None),
+    )
+    for label, mapping, stmt_render in groups:
+        if not mapping:
+            continue
+        lines.append(f"  {label}:")
+        # Keyed by skeleton node id -- renumbered sequentially in lowering
+        # order so the dump is stable across runs (a raw id() is not).
+        for i, key in enumerate(mapping):
+            if stmt_render is not None:
+                rendered = stmt_render(mapping[key], 0)
+                lines.append(f"    [{i}] {rendered[0].lstrip()}"
+                             if rendered else f"    [{i}]")
+                lines.extend(f"    {ln}" for ln in rendered[1:])
+            else:
+                lines.append(f"    [{i}] {_expr(mapping[key])}")
+    if body.await_args:
+        lines.append("  await_args:")
+        for i, key in enumerate(body.await_args):
+            lines.append(f"    [{i}] ({_exprs(body.await_args[key])})")
+    return lines
+
+
+def _simple_gen_lines(name: str, body: 'THIRSimpleGenBody') -> list[str]:
+    """The lambda-peephole generator: a fixed set of seams (init / cond /
+    pre- and post-yield / the yield value), not a statement list."""
+    lines = [f"simple_gen {name}:"]
+    for label, stmts in (("init", body.init), ("pre_yield", body.pre_yield),
+                         ("post_yield", body.post_yield)):
+        if not stmts:
+            continue
+        lines.append(f"  {label}:")
+        for s in stmts:
+            lines.extend(_stmt_lines(s, 2))
+    if body.cond is not None:
+        lines.append(f"  cond: {_expr(body.cond)}")
+    if body.iterable is not None:
+        lines.append(f"  iterable: {_expr(body.iterable)}")
+    if body.range_args:
+        lines.append(f"  range_args: {_exprs(body.range_args)}")
+    lines.append(f"  yield: {_expr(body.yield_value)}")
+    return lines
+
+
+def _constructor_lines(name: str, ctor: 'THIRConstructor') -> list[str]:
+    lines = [f"ctor {name}:"]
+    for base in ctor.base_inits:
+        lines.append(f"  base {base.base_cpp}({_exprs(base.args)})")
+    for init in ctor.mil_inits:
+        move = " [move]" if init.move else ""
+        lines.append(f"  mil {init.field_cpp} = {_expr(init.value)}{move}")
+    for s in ctor.body:
+        lines.extend(_stmt_lines(s, 1))
+    return lines
+
+
 def dump_thir(module: THIRModule) -> str:
     lines: list[str] = []
     for fn in module.functions:
-        params = ", ".join(f"{p.name}: {_ty(p.type)}" for p in fn.params)
-        lines.append(f"fn {fn.name}({params}) -> {_ty(fn.return_type)}:")
-        for s in fn.body:
-            lines.extend(_stmt_lines(s, 1))
+        lines.extend(_function_lines(fn))
         lines.append("")
     if not module.functions:
         lines.append("(no THIR-eligible functions)")
+    return "\n".join(lines).rstrip("\n") + "\n"
+
+
+def dump_codegen_thir(module_ast, analyzer, ctx,
+                      reasons: 'dict[int, str] | None' = None) -> str:
+    """Dump the bodies CODEGEN lowered, read off its per-module THIR caches.
+
+    Unlike `dump_thir` (which renders a standalone `lower_module` result),
+    this shows every body kind -- sync, resumable, simple-generator,
+    constructor -- and names the ones that fell back, since "what did NOT
+    route" is usually the question being asked. `reasons` (the compiler's
+    per-body first-reject map) names WHY each fell back.
+    """
+    reasons = reasons or {}
+
+    def _not_routed(kind: str, name: str, key: int, fn) -> str:
+        # A bodyless binding is never ATTEMPTED (codegen skips it before
+        # lowering), so calling it a fallback would misreport the frontier.
+        if is_bodyless_binding(fn) or getattr(fn, "is_overload_stub", False):
+            return f"{kind} {name}: <not a body-migration candidate>"
+        why = reasons.get(key)
+        return (f"{kind} {name}: <fell back to AST"
+                + (f": {why}>" if why else ">"))
+
+    lines: list[str] = []
+    seen_any = False
+    for func, _self_type in iter_module_callables(module_ast, analyzer):
+        key = id(func)
+        if key in ctx.thir_functions:
+            lines.extend(_function_lines(ctx.thir_functions[key]))
+        elif ctx.thir_resumables.get(key) is not None:
+            lines.extend(_resumable_lines(func.name, ctx.thir_resumables[key]))
+        elif key in ctx.thir_simple_gens:
+            lines.extend(_simple_gen_lines(func.name,
+                                           ctx.thir_simple_gens[key]))
+        else:
+            lines.append(_not_routed("fn", func.name, key, func))
+        lines.append("")
+        seen_any = True
+    for record, init, _self in iter_module_constructors(
+            module_ast, analyzer):
+        key = id(init)
+        name = f"{record.name}.__init__"
+        if key in ctx.thir_constructors:
+            lines.extend(_constructor_lines(name, ctx.thir_constructors[key]))
+        else:
+            lines.append(_not_routed("ctor", name, key, init))
+        lines.append("")
+        seen_any = True
+    if not seen_any:
+        lines.append("(no callables in this module)")
     return "\n".join(lines).rstrip("\n") + "\n"

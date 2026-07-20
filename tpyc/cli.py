@@ -426,7 +426,7 @@ def _run_cli(is_runner: bool) -> int:
                              "an AGENTS.md snippet to stdout")
     parser.add_argument("--dump-code", action="store_true", help="Print generated C++ to stdout")
     parser.add_argument("--dump-thir", action="store_true",
-                        help="Print the lowered THIR for eligible functions and exit (debug)")
+                        help="Print the lowered THIR for every body, naming the ones that fell back and why, and exit (debug)")
     parser.add_argument("--thir-codegen", action="store_true",
                         help="Route THIR-eligible functions through the THIR codegen backend "
                              "(migration dual-mode; byte-identical for the supported slice)")
@@ -841,17 +841,25 @@ def _run_cli(is_runner: bool) -> int:
                 # user's functions in noise.
                 if not compiler.is_user_module(compiled):
                     continue
-                from .thir import lower_module as _thir_lower_module, dump_thir
-                from .compilation_context import activate_compiler
+                from .thir.dump import dump_codegen_thir
+                from .codegen_cpp.context import CodeGenOptions
                 assert compiled.analyzer is not None
                 print(f"// === thir/{compiled.name} ===")
-                # Lower inside the compiler context so record types resolve
-                # (NominalType.is_user_record / .to_cpp() read the active
-                # Compiler) -- otherwise non-value (F1) functions are silently
-                # under-reported vs the real --thir-codegen routing.
-                with activate_compiler(compiler):
-                    thir_mod = _thir_lower_module(compiled.ast, compiled.analyzer)
-                print(dump_thir(thir_mod), end="")
+                # Run codegen and read the bodies it actually lowered, rather
+                # than re-lowering standalone: resumable bodies only lower at
+                # frame emission (their CFG needs live codegen state) and
+                # constructors are not reachable from `lower_module` at all,
+                # so a standalone pass silently omits both and can diverge on
+                # the rest. The generated C++ is discarded.
+                try:
+                    ctx = compiler.collect_thir(
+                        compiled, CodeGenOptions(thir_codegen=True))
+                except CodeGenError as e:
+                    if e.filename is None and not compiled.is_entry_point:
+                        e.filename = source_name
+                    raise
+                print(dump_codegen_thir(compiled.ast, compiled.analyzer, ctx,
+                                        compiler.thir_reject_by_node), end="")
                 continue
 
             if args.dump_code:

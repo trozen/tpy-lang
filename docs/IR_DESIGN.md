@@ -571,6 +571,22 @@ fn main() -> Void:
 
 This makes the resolved types, overloads, and optimization facts visible at a glance.
 
+The dump renders what CODEGEN lowered, not a standalone re-lowering: it runs codegen
+and reads its per-module THIR caches, then discards the generated C++. That is what
+lets it show resumable (async / generator) bodies -- which only lower at frame
+emission, since their CFG needs live codegen state -- and constructors, neither of
+which `lower_module` reaches. Bodies that fell back to the AST path are named rather
+than omitted, since "what did NOT route" is usually the question. Every concrete
+`THIRExpr` / `THIRStmt` subclass must have a render arm: the dispatch raises on an
+unregistered node instead of degrading to a `<ClassName>` placeholder, and
+`test_dump.py` fails the moment a new node class lands without one.
+Because it runs codegen, the dump costs a full codegen pass and a
+`CodeGenError` can now surface from it -- the old standalone lowering never
+invoked codegen at all. Callables codegen never attempts (native bindings,
+`@cpp_template`, `...` stubs, overload stubs) are labelled
+`<not a body-migration candidate>` rather than as fallbacks, so the frontier
+is not over-reported.
+
 ### Form as a First-Class THIR Fact (resolved 2026-06)
 
 Resolves Open Questions 9 (tuple/form fact), 11 (uniform local model -- the THIR

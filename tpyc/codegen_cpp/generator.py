@@ -482,30 +482,16 @@ class CodeGenerator:
                 module_native_globals as _thir_native_globals,
             )
             from ..thir.fallback import (begin_attempt, fold_attempt,
+                                         is_bodyless_binding,
                                          record_arm_residual)
             from ..thir.shape import record_shape
-
-            def _is_bodyless_binding(fn) -> bool:
-                # A callable with NO gen_body / MIL emit is out of the
-                # body-migration scope, not fallback: a call-site dispatch to a
-                # runtime symbol / template -- method-style `@native(
-                # "push_back")` (native_name), `@cpp_template(...)`, free
-                # `@native(function=True)` (native_function) -- or any `...`
-                # stub (is_stub covers declaration-only stubs like `cast`,
-                # native-class method stubs, and bare-`@native` methods whose
-                # native_name stays None). Covers the whole builtin-type
-                # method/ctor surface (str / int / list / dict / ...); a
-                # BODIED method on a builtin receiver still counts (a real
-                # deferred surface).
-                return (fn.native_function or fn.native_name is not None
-                        or fn.cpp_template is not None or fn.is_stub)
 
             _ng = _thir_native_globals(module)
             self.ctx.thir_functions = {}
             self.ctx.thir_resumables = {}
             self.ctx.thir_simple_gens = {}
             for f, self_type in _thir_callables(module, self.analyzer):
-                if _is_bodyless_binding(f) or f.is_overload_stub:
+                if is_bodyless_binding(f) or f.is_overload_stub:
                     continue
                 if f.is_async or (f.is_generator and
                                   not self.gen_generators.is_simple_generator(f)):
@@ -526,7 +512,7 @@ class CodeGenerator:
                         self.ctx.thir_simple_gens[id(f)] = sg
                         record_shape(f, "body", routed=True)
                     else:
-                        fold_attempt("body")
+                        fold_attempt("body", f)
                         record_arm_residual(f.body)
                         record_shape(f, "body", routed=False)
                     continue
@@ -538,12 +524,12 @@ class CodeGenerator:
                     self.ctx.thir_functions[id(f)] = tf
                     record_shape(f, "body", routed=True)
                 else:
-                    fold_attempt("body")
+                    fold_attempt("body", f)
                     record_arm_residual(f.body)
                     record_shape(f, "body", routed=False)
             self.ctx.thir_constructors = {}
             for rec, init, self_type in _thir_ctors(module, self.analyzer):
-                if _is_bodyless_binding(init):
+                if is_bodyless_binding(init):
                     continue
                 begin_attempt()
                 tc = _thir_lower_ctor(rec, init, self.analyzer,
@@ -556,7 +542,7 @@ class CodeGenerator:
                     self.ctx.thir_constructors[id(init)] = tc
                     record_shape(init, "ctor", routed=True)
                 else:
-                    fold_attempt("ctor")
+                    fold_attempt("ctor", init)
                     record_arm_residual(init.body)
                     record_shape(init, "ctor", routed=False)
 

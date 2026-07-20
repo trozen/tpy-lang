@@ -62,6 +62,7 @@ from .symbol_binding import (
 )
 
 if TYPE_CHECKING:
+    from .codegen_cpp.context import CodeGenContext
     from .typesys import ModuleInfo, ModuleVarInfo
 
 
@@ -668,6 +669,10 @@ class Compiler:
         self._thir_reject_reason: str | None = None
         self._thir_reject_detail: str | None = None
         self._thir_fallback: dict[str, int] = {}
+        # First-reject reason per fallback body, keyed by id() of its AST
+        # callable -- the same reason the tally aggregates, kept per body so
+        # `--dump-thir` can name WHY a body did not route.
+        self._thir_reject_by_node: dict[int, str] = {}
         # Per-construct arm-residual (fallback bodies CONTAINING each construct
         # -- the deletion metric; see fallback.record_arm_residual). Populated
         # only when $THIR_ARM_RESIDUAL_JSON is set.
@@ -3510,21 +3515,53 @@ class Compiler:
 
         return hpp_path, cpp_path
 
-    def generate_code_to_strings(self, compiled: CompiledModule,
-                                  options: CodeGenOptions | None = None) -> tuple[str, str]:
-        """Generate C++ code and return as strings (no file I/O)."""
+    def _generate_to_strings(self, compiled: CompiledModule,
+                             options: CodeGenOptions | None
+                             ) -> 'tuple[tuple[str, str], CodeGenerator]':
+        """Generate to strings, returning the codegen alongside the sources.
+
+        `--dump-thir` needs the codegen's ctx (its THIR body caches hold the
+        bodies lowering actually produced -- resumables and constructors among
+        them, which only exist once codegen has run), so both callers share
+        one routing decision rather than re-deriving it."""
         with activate_compiler(self):
             self._check_no_errors(compiled)
             assert compiled.analyzer is not None
             codegen = self._make_codegen(compiled, options)
             actual_user_modules = set(self.modules.keys())
             implicit_stdlib = self._implicit_stdlib_set()
-            return codegen.generate(
+            sources = codegen.generate(
                 compiled.ast, compiled.name,
                 is_entry_point=compiled.is_entry_point,
                 actual_user_modules=actual_user_modules,
                 implicit_stdlib_modules=implicit_stdlib,
             )
+            return sources, codegen
+
+    def generate_code_to_strings(self, compiled: CompiledModule,
+                                  options: CodeGenOptions | None = None) -> tuple[str, str]:
+        """Generate C++ code and return as strings (no file I/O)."""
+        sources, _codegen = self._generate_to_strings(compiled, options)
+        return sources
+
+    @property
+    def thir_reject_by_node(self) -> dict[int, str]:
+        """First-reject reason per fallback body, keyed by id() of its AST
+        callable -- the public read of the diagnostic map `--dump-thir` names
+        reasons from."""
+        return self._thir_reject_by_node
+
+    def collect_thir(self, compiled: CompiledModule,
+                     options: CodeGenOptions | None = None
+                     ) -> 'CodeGenContext':
+        """Run codegen for its THIR side effects and return the codegen ctx.
+
+        The generated C++ is discarded: `--dump-thir` wants the bodies THIR
+        lowering produced, and a resumable body only lowers at frame emission
+        (its CFG needs live codegen state), so re-lowering standalone would
+        show something codegen never used."""
+        _sources, codegen = self._generate_to_strings(compiled, options)
+        return codegen.ctx
 
     def _propagate_package_directives(self) -> None:
         """Reserved for future package-level directive propagation.
