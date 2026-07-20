@@ -33,7 +33,7 @@ void main() {
             g.get().turn = 1;
             // s.cv.notify_all()
             s.cv.notify_all();
-            __ctx_1.__exit__({}, nullptr, {});
+            goto __with_exit_1;
         } catch (::tpy::BaseException& __exc_1) {
             __ctx_1.__exit__({}, &__exc_1, {});
             throw;
@@ -41,6 +41,8 @@ void main() {
             __ctx_1.__exit__({}, nullptr, {});
             throw;
         }
+        __with_exit_1:
+        __ctx_1.__exit__({}, nullptr, {});
         // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }
@@ -54,7 +56,7 @@ void main() {
     try {
         // print(gp.get().log)
         std::cout << ::tpy::ListPrinter(gp.get().log) << "\n";
-        __ctx_2.__exit__({}, nullptr, {});
+        goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
         __ctx_2.__exit__({}, &__exc_2, {});
         throw;
@@ -62,6 +64,8 @@ void main() {
         __ctx_2.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_2:
+    __ctx_2.__exit__({}, nullptr, {});
 }
 
 
@@ -88,7 +92,7 @@ void Worker::run() {
             g.get().turn = 0;
             // s.cv.notify_one()      # single waiter here; covers notify_one
             s.cv.notify_one();
-            __ctx_3.__exit__({}, nullptr, {});
+            goto __with_exit_3;
         } catch (::tpy::BaseException& __exc_3) {
             __ctx_3.__exit__({}, &__exc_3, {});
             throw;
@@ -96,6 +100,8 @@ void Worker::run() {
             __ctx_3.__exit__({}, nullptr, {});
             throw;
         }
+        __with_exit_3:
+        __ctx_3.__exit__({}, nullptr, {});
         // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }

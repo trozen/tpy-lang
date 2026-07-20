@@ -97,23 +97,28 @@ namespace tpyapp::main {
 ::tpy::BigInt with_finally(const ::tpy::BigInt& n) {
     // try:
     {
+        bool __fin_ran_1 = false;
         try {
             try {
                 // return boom(n)
                 ::tpy::BigInt __tpy_ret_0 = boom(n);
+                __fin_ran_1 = true;
                 // print("fin", n)
                 std::cout << "fin" << " " << n << "\n";
                 return __tpy_ret_0;
             } catch (const ::tpy::ValueError&) {
                 // return -1
                 ::tpy::BigInt __tpy_ret_1 = ::tpy::BigInt(-1);
+                __fin_ran_1 = true;
                 // print("fin", n)
                 std::cout << "fin" << " " << n << "\n";
                 return __tpy_ret_1;
             }
         } catch (...) {
-            // print("fin", n)
-            std::cout << "fin" << " " << n << "\n";
+            if (!__fin_ran_1) {
+                // print("fin", n)
+                std::cout << "fin" << " " << n << "\n";
+            }
             throw;
         }
     }
@@ -142,19 +147,24 @@ namespace tpyapp::main {
 ::tpy::BigInt raising_finally(const ::tpy::BigInt& n) {
     // try:
     {
+        bool __fin_ran_2 = false;
         try {
             // if n > 0:
             if ((n > 0)) {
                 // return n
                 [[maybe_unused]] ::tpy::BigInt __tpy_ret_0 = n;
+                __fin_ran_2 = true;
                 // raise AppError(n + 100)
                 throw AppError(((n) + (::tpy::BigInt(100))));
             }
             // print("neg", n)
             std::cout << "neg" << " " << n << "\n";
         } catch (...) {
-            // raise AppError(n + 100)
-            throw AppError(((n) + (::tpy::BigInt(100))));
+            if (!__fin_ran_2) {
+                // raise AppError(n + 100)
+                throw AppError(((n) + (::tpy::BigInt(100))));
+            }
+            throw;
         }
         // raise AppError(n + 100)
         throw AppError(((n) + (::tpy::BigInt(100))));

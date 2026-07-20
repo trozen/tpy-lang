@@ -9,16 +9,20 @@ void append_then_return(const ::tpystd::tpy::sync::Mutex<std::vector<int32_t>>& 
     // with m.lock() as g:
     auto __ctx_1 = m.lock();
     auto& g = __ctx_1.__enter__();
+    bool __fin_ran_1 = false;
     try {
         // g.append(1)
         g.__deref__().push_back(1);
         // return  # early return -- __exit__ must still release
+        __fin_ran_1 = true;
         __ctx_1.__exit__({}, nullptr, {});
         return;
     } catch (::tpy::BaseException& __exc_1) {
+        if (__fin_ran_1) throw;
         __ctx_1.__exit__({}, &__exc_1, {});
         throw;
     } catch (...) {
+        if (__fin_ran_1) throw;
         __ctx_1.__exit__({}, nullptr, {});
         throw;
     }
@@ -81,7 +85,7 @@ void main() {
         }
         // print(n, total)     # 3 elements; 0 + 1 + 2 = 3
         std::cout << n << " " << total << "\n";
-        __ctx_3.__exit__({}, nullptr, {});
+        goto __with_exit_3;
     } catch (::tpy::BaseException& __exc_3) {
         __ctx_3.__exit__({}, &__exc_3, {});
         throw;
@@ -89,6 +93,8 @@ void main() {
         __ctx_3.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_3:
+    __ctx_3.__exit__({}, nullptr, {});
 }
 
 void __tpy_init() {

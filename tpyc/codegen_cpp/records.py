@@ -873,6 +873,8 @@ class RecordGenerator:
                 temps=CtxTempSink(self.ctx),
                 with_counter=CtxCounter(self.ctx, "with_counter"),
                 try_counter=CtxCounter(self.ctx, "try_except_counter"),
+                finally_guard_counter=CtxCounter(
+                    self.ctx, "finally_guard_counter"),
                 body_indent_level=body_indent_level)
             return
         saved_func_params = self.ctx.current_func_params

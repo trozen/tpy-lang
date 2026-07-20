@@ -16,7 +16,7 @@ void main() {
     try {
         // fh.write("abcde")
         fh.write("abcde");
-        __ctx_1.__exit__({}, nullptr, {});
+        goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});
         throw;
@@ -24,6 +24,8 @@ void main() {
         __ctx_1.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_1:
+    __ctx_1.__exit__({}, nullptr, {});
     // print(exists(f), exists(tmp + "/tpy_ospath_fs_missing"))
     std::cout << ::tpy::print_bool(::tpy::stdlib::os::path_exists(f)) << " " << ::tpy::print_bool(::tpy::stdlib::os::path_exists((::tpy::str_concat(tmp, "/tpy_ospath_fs_missing")))) << "\n";
     // print(isfile(f), isfile(tmp))

@@ -22,7 +22,7 @@ void main() {
     try {
         // f.write(CERT_PEM)
         f.write(CERT_PEM);
-        __ctx_1.__exit__({}, nullptr, {});
+        goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});
         throw;
@@ -30,6 +30,8 @@ void main() {
         __ctx_1.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_1:
+    __ctx_1.__exit__({}, nullptr, {});
     // # String(): a bare str view arg doesn't auto-coerce into the bool|str
     // # variant param yet (it does once it's a union-typed local, as in curl.py).
     // custom = _ssl_context_for(String(CA_PATH))

@@ -15,12 +15,16 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_counted::__next__() {
         continue;
     }
     case S_RESUME_0: {
+        bool __fin_ran_1 = false;
         try {
+            __fin_ran_1 = true;
             this->__finally_0();
             __state = S_JOIN_1;
             continue;
         } catch (...) {
-            this->__finally_0();
+            if (!__fin_ran_1) {
+                this->__finally_0();
+            }
             throw;
         }
     }
@@ -38,10 +42,12 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_counted::__next__() {
         continue;
     }
     case S_JOIN_2: {
+        bool __fin_ran_2 = false;
         try {
             // if x == 99:
             if ((x == 99)) {
                 // return
+                __fin_ran_2 = true;
                 this->__finally_0();
                 __state = S_DONE;
                 return ::tpy::make_unexpected(::tpy::StopIteration{});
@@ -50,7 +56,9 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_counted::__next__() {
             __state = S_RESUME_0;
             return x;
         } catch (...) {
-            this->__finally_0();
+            if (!__fin_ran_2) {
+                this->__finally_0();
+            }
             throw;
         }
     }

@@ -45,12 +45,16 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
     case S_JOIN_0: {
+        bool __fin_ran_4 = false;
         try {
+            __fin_ran_4 = true;
             this->__finally_0();
             __state = S_JOIN_1;
             continue;
         } catch (...) {
-            this->__finally_0();
+            if (!__fin_ran_4) {
+                this->__finally_0();
+            }
             throw;
         }
     }

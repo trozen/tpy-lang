@@ -29,12 +29,16 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
     }
     case S_RESUME_1: {
         try {
+            bool __fin_ran_4 = false;
             try {
+                __fin_ran_4 = true;
                 this->__finally_1();
                 __state = S_JOIN_2;
                 continue;
             } catch (...) {
-                this->__finally_1();
+                if (!__fin_ran_4) {
+                    this->__finally_1();
+                }
                 throw;
             }
         } catch (...) {
@@ -56,12 +60,16 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
         }
     }
     case S_JOIN_2: {
+        bool __fin_ran_6 = false;
         try {
+            __fin_ran_6 = true;
             this->__finally_0();
             __state = S_JOIN_0;
             continue;
         } catch (...) {
-            this->__finally_0();
+            if (!__fin_ran_6) {
+                this->__finally_0();
+            }
             throw;
         }
     }

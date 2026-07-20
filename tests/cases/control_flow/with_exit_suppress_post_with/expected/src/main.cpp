@@ -9,6 +9,7 @@ namespace tpyapp::main {
     // with Suppressor():
     auto __ctx_1 = Suppressor();
     __ctx_1.__enter__();
+    bool __fin_ran_1 = false;
     try {
         // if do_raise:
         if (do_raise) {
@@ -17,11 +18,14 @@ namespace tpyapp::main {
         }
         // return 100
         ::tpy::BigInt __tpy_ret_0 = ::tpy::BigInt(100);
+        __fin_ran_1 = true;
         __ctx_1.__exit__({}, nullptr, {});
         return __tpy_ret_0;
     } catch (::tpy::BaseException& __exc_1) {
+        if (__fin_ran_1) throw;
         if (!__ctx_1.__exit__({}, &__exc_1, {})) throw;
     } catch (...) {
+        if (__fin_ran_1) throw;
         __ctx_1.__exit__({}, nullptr, {});
         throw;
     }

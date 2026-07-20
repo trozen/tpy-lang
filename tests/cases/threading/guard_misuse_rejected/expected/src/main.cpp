@@ -36,7 +36,7 @@ void main() {
     try {
         // h.append(9)
         h.__deref__().push_back(9);
-        __ctx_1.__exit__({}, nullptr, {});
+        goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});
         throw;
@@ -44,6 +44,8 @@ void main() {
         __ctx_1.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_1:
+    __ctx_1.__exit__({}, nullptr, {});
     // try:
     {
         try {
@@ -86,7 +88,7 @@ void main() {
     try {
         // print(sorted(ok.get()))  # [1, 2, 9]
         std::cout << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>(ok.get())) << "\n";
-        __ctx_2.__exit__({}, nullptr, {});
+        goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
         __ctx_2.__exit__({}, &__exc_2, {});
         throw;
@@ -94,6 +96,8 @@ void main() {
         __ctx_2.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_2:
+    __ctx_2.__exit__({}, nullptr, {});
 }
 
 void __tpy_init() {

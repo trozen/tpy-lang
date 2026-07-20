@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import contextlib
 import copy
+import io
 from dataclasses import dataclass, fields, is_dataclass
 from enum import IntEnum
 from typing import TYPE_CHECKING
@@ -1882,6 +1883,8 @@ class AsyncCoroCodegen:
             temps=CtxTempSink(self.ctx),
             with_counter=CtxCounter(self.ctx, "with_counter"),
             try_counter=CtxCounter(self.ctx, "try_except_counter"),
+            finally_guard_counter=CtxCounter(
+                self.ctx, "finally_guard_counter"),
             # The skeleton registers loop-var shadows of frame fields in the
             # LIVE ctx set; leaf renders must suppress the frame `(*name)`
             # deref exactly while a shadow is in scope, like the AST body.
@@ -2790,12 +2793,38 @@ class AsyncCoroCodegen:
         terminator that exits poll()."""
         bb = cfg.blocks[entry_bb]
         body_indent = self.ctx.indent()
+        # Skip the try/catch wrap entirely for case bodies provably no-throw
+        # (typical setup case). Computed here (not in the try loop below)
+        # because the guard pre-allocation and the finally-frame push both
+        # need it.
+        no_throw = self._case_is_no_throw(cfg, entry_bb)
+        try_emitting = ([] if no_throw else
+                         [i for i, r in enumerate(bb.region_stack)
+                          if isinstance(r, (rcfg.TryRegion,
+                                            rcfg.WithRegion))])
+        # Pre-allocate a `bool __fin_ran_N` guard name for each region whose
+        # cleanup can run on an exit edge inside its C++ try and be re-run by
+        # its own catch: a TryRegion with a finally, or any WithRegion. The
+        # name is populated now so the finally frames pushed just below share
+        # it (a return/break/continue via _emit_finally_chain sets the same
+        # guard the region's catch tests); the `bool` is declared later, at
+        # the right indent before each region's `try {`.
+        for i in try_emitting:
+            region = bb.region_stack[i]
+            if ((isinstance(region, rcfg.TryRegion)
+                 and region.finally_helper_name is not None)
+                    or isinstance(region, rcfg.WithRegion)):
+                self.ctx.finally_guard_counter += 1
+                self.ctx.resumable_region_guards[id(region)] = (
+                    f"__fin_ran_{self.ctx.finally_guard_counter}")
         # Push FinallyContext entries so a `return` inside this case
         # body walks the right finally chain via _emit_finally_chain.
         # ExceptRegion contributes its parent try's finally because
         # Python runs finally after the handler completes.
+        helpers = self._finally_helpers_for_region_stack(bb.region_stack)
         pushed_finally = self._push_finally_helpers(
-            self._finally_helpers_for_region_stack(bb.region_stack))
+            helpers,
+            self._guard_names_for_region_stack(bb.region_stack))
         # Pending-return ctx: when this case is inside the try
         # body or handler body of a CFG-based finally, install ctx
         # state so `return` inside the body routes through the
@@ -2819,17 +2848,10 @@ class AsyncCoroCodegen:
             # the C++ try stack but is still logically active.
             # WithRegions inside the gap get their own C++ try and
             # don't contribute extras.
+            # Collect the (region, extras) stack as data first -- without
+            # emitting -- so the body can be buffered before the guard
+            # declarations are written.
             tryctx_stack: list[tuple[rcfg.Region, tuple[str, ...]]] = []
-            # Skip the try/catch wrap entirely for case bodies provably
-            # no-throw (typical setup case: empty stmts + Yield with
-            # literal/name emplace args). The matching live catch sits
-            # on the resume case where the sub-future's poll runs and
-            # CAN throw.
-            no_throw = self._case_is_no_throw(cfg, entry_bb)
-            try_emitting = ([] if no_throw else
-                             [i for i, r in enumerate(bb.region_stack)
-                              if isinstance(r, (rcfg.TryRegion,
-                                                rcfg.WithRegion))])
             for j, i in enumerate(try_emitting):
                 region = bb.region_stack[i]
                 if isinstance(region, rcfg.TryRegion):
@@ -2845,14 +2867,28 @@ class AsyncCoroCodegen:
                     extras.reverse()
                 else:
                     extras = []
-                out.write(f"{body_indent}try {{\n")
                 tryctx_stack.append((region, tuple(extras)))
+
+            # Buffer the body at the indent it will occupy inside all the
+            # tries, so we learn which guards actually get set before
+            # declaring them: a region whose cleanup never runs on a normal
+            # exit edge (e.g. a with-body that always raises) sets no guard,
+            # so its `bool` + catch tests are skipped -- mirroring the sync
+            # path's guard_used gate.
+            self.ctx.indent_level += len(tryctx_stack)
+            body_buf = io.StringIO()
+            self._emit_case_body(body_buf, cfg, entry_bb, case_entries, func)
+            self.ctx.indent_level -= len(tryctx_stack)
+
+            for region, extras in tryctx_stack:
+                guard = self._active_region_guard(region)
+                if guard is not None:
+                    out.write(f"{body_indent}bool {guard} = false;\n")
+                out.write(f"{body_indent}try {{\n")
                 self.ctx.indent_level += 1
                 body_indent = self.ctx.indent()
 
-            # Emit the case body: resume step if this is a yield-resume,
-            # then BB statements, then terminator.
-            self._emit_case_body(out, cfg, entry_bb, case_entries, func)
+            out.write(body_buf.getvalue())
 
             # Close regions innermost first.
             for region, extras in reversed(tryctx_stack):
@@ -2871,6 +2907,11 @@ class AsyncCoroCodegen:
             for _ in range(pushed_finally):
                 self.ctx.finally_stack.pop()
             self._restore_pending_return_ctx(prev_pending)
+            # Guards are scoped to this case's `{ }` block; drop the map and
+            # the used-set so a later case reusing the same region object
+            # can't read a stale name (each case re-declares its own).
+            self.ctx.resumable_region_guards.clear()
+            self.ctx.resumable_guards_used.clear()
 
     def _snapshot_pending_return_ctx(self) -> tuple:
         return (self.ctx.async_pending_return_flag,
@@ -2903,6 +2944,35 @@ class AsyncCoroCodegen:
             elif isinstance(region, rcfg.WithRegion):
                 helpers.append(("with", region))
         return helpers
+
+    def _guard_names_for_region_stack(self, region_stack: tuple) -> list:
+        """Guard name (or None) for each helper `_finally_helpers_for_region_stack`
+        produces, in the same order -- so a finally frame pushed for a
+        return/break/continue shares its region's exit guard (declared for
+        the region's C++ try in _emit_case). MUST walk the stack identically
+        to that method; keep the two in lockstep."""
+        guards = self.ctx.resumable_region_guards
+        names: list = []
+        for region in region_stack:
+            if isinstance(region, rcfg.TryRegion):
+                if region.finally_helper_name is not None:
+                    names.append(guards.get(id(region)))
+            elif isinstance(region, rcfg.ExceptRegion):
+                if region.parent_finally is not None:
+                    names.append(guards.get(id(region)))
+            elif isinstance(region, rcfg.WithRegion):
+                names.append(guards.get(id(region)))
+        return names
+
+    def _active_region_guard(self, region: 'rcfg.Region') -> 'str | None':
+        """The region's guard name, but only if some exit edge in this case
+        actually set it -- so a catch tests (and _emit_case declares) a guard
+        only when it can fire. Returns None for a region whose cleanup never
+        runs on a normal exit (the guard would be dead)."""
+        guard = self.ctx.resumable_region_guards.get(id(region))
+        if guard is not None and guard in self.ctx.resumable_guards_used:
+            return guard
+        return None
 
     def _dtor_cleanup_cases(self, cfg: 'rcfg.CFG') -> list[tuple[str, list]]:
         """Per suspended resume state, the cleanup actions (innermost-
@@ -3058,11 +3128,22 @@ class AsyncCoroCodegen:
                   f"::tpy::StopIteration{{}});\n")
         out.write(f"{indent}}}\n")
 
-    def _push_finally_helpers(self, helpers: list) -> int:
+    def _push_finally_helpers(self, helpers: list,
+                              guard_names: 'list | None' = None) -> int:
         """Push FinallyContext entries for each helper. Returns the
-        count pushed for matching pop in a `finally:` clause."""
+        count pushed for matching pop in a `finally:` clause.
+
+        `guard_names` (parallel to `helpers`, from
+        _guard_names_for_region_stack) links each frame to its region's exit
+        guard so a return/break/continue via _emit_finally_chain sets the
+        same `bool` the region's catch tests -- no double-run of a raising
+        cleanup on the return path."""
+        # guard_names is produced by a parallel walk of the same region
+        # stack; a length mismatch means the two walks drifted (see
+        # _guard_names_for_region_stack).
+        assert guard_names is None or len(guard_names) == len(helpers)
         count = 0
-        for kind, payload in helpers:
+        for idx, (kind, payload) in enumerate(helpers):
             if kind == "helper":
                 helper_name = payload
                 def _emit_finally(o: "TextIO", ind: str,
@@ -3073,8 +3154,10 @@ class AsyncCoroCodegen:
                 def _emit_finally(o: "TextIO", ind: str,
                                   r=region) -> None:
                     self._emit_with_exit(o, ind, r, on_exception=False)
+            guard = guard_names[idx] if guard_names is not None else None
             fctx = FinallyContext(
-                emit_finally=_emit_finally, terminates=False, loop_depth=0)
+                emit_finally=_emit_finally, terminates=False, loop_depth=0,
+                guard_name=guard)
             self.ctx.finally_stack.append(fctx)
             count += 1
         return count
@@ -3100,10 +3183,17 @@ class AsyncCoroCodegen:
         # rethrows and never needs the label.
         post_label = (case_entries[region.post_with_bb].cpp_name()
                       if can_suppress else None)
+        # A normal-exit __exit__ copy that raised IS this manager's cleanup
+        # exception: never call __exit__ with it, never offer it for
+        # suppression -- just propagate. Only when such a copy exists (guard
+        # set on some exit edge); a with-body with no normal exit needs none.
+        guard = self._active_region_guard(region)
         if emit_tpy_catch:
             out.write(f" catch (::tpy::BaseException& __exc_{n}) {{\n")
             self.ctx.indent_level += 1
             catch_ind = self.ctx.indent()
+            if guard is not None:
+                out.write(f"{catch_ind}if ({guard}) throw;\n")
             if can_suppress:
                 out.write(
                     f"{catch_ind}if (!(*__with_ctx_{n}).__exit__("
@@ -3120,6 +3210,8 @@ class AsyncCoroCodegen:
             out.write(f" catch (...) {{\n")
         self.ctx.indent_level += 1
         catch_ind = self.ctx.indent()
+        if guard is not None:
+            out.write(f"{catch_ind}if ({guard}) throw;\n")
         # Foreign exception (or non-suppressing path): cleanup-only call,
         # then rethrow. Don't pass &exc since the C++ side hasn't bound
         # one in this catch arm.
@@ -3181,9 +3273,15 @@ class AsyncCoroCodegen:
             # of plain rethrow -- mirrors the outer catch-all path.
             cfg_finally = region.captured_exc_field is not None
             has_throw_unwind = bool(handler_throw_finallies) or cfg_finally
-            if has_throw_unwind:
-                out.write(f"{catch_indent}try {{\n")
-                self.ctx.indent_level += 1
+            # A helper-based finally runs on the handler's NORMAL exit (via
+            # _emit_exit_region_finallies during the walk) and would be
+            # re-run by this nested catch if it raised. Guard it like the
+            # main-try catch-all: one guard for the nested try, set before
+            # any normal-exit copy, tested before the catch re-runs them.
+            handler_guard: str | None = None
+            if has_throw_unwind and not cfg_finally:
+                self.ctx.finally_guard_counter += 1
+                handler_guard = f"__fin_ran_{self.ctx.finally_guard_counter}"
             # Swap ctx.finally_stack to match the handler entry BB's
             # region_stack. The case-entry's stack contains finallies
             # for regions that are no longer active inside the handler
@@ -3196,12 +3294,28 @@ class AsyncCoroCodegen:
             if builder is not None:
                 handler_entry = builder.get_handler_entry(region, handler)
             handler_stack_helpers: list = []
+            saved_guards: dict[int, str] = {}
             if handler_entry is not None:
                 handler_bb = cfg.blocks[handler_entry]
                 handler_stack_helpers = self._finally_helpers_for_region_stack(
                     handler_bb.region_stack)
+                # Route the handler's normal-exit finallies (emitted per
+                # region by _emit_exit_region_finallies) at this nested try's
+                # guard, so a raising copy is not re-run by the inner catch.
+                if handler_guard is not None:
+                    for r in handler_bb.region_stack:
+                        saved_guards[id(r)] = (
+                            self.ctx.resumable_region_guards.get(id(r)))
+                        self.ctx.resumable_region_guards[id(r)] = handler_guard
             self.ctx.finally_stack = []
-            self._push_finally_helpers(handler_stack_helpers)
+            # Link the handler frames to handler_guard (set just above), so a
+            # return/break/continue inside the handler shares the guard the
+            # nested catch tests.
+            handler_guard_names = (
+                self._guard_names_for_region_stack(handler_bb.region_stack)
+                if handler_entry is not None else None)
+            self._push_finally_helpers(handler_stack_helpers,
+                                        handler_guard_names)
             old_except_tier = self.ctx.in_except_tier
             self.ctx.in_except_tier = "throw"
             # Pending-return ctx for the handler body: a return inside
@@ -3218,30 +3332,68 @@ class AsyncCoroCodegen:
                     self.ctx.async_pending_return_slot = slot
                     self.ctx.async_pending_return_target_state = target_label
                     self.ctx.async_pending_return_boundary = boundary
+            # Buffer the walk at the depth it will occupy inside the (not yet
+            # emitted) nested try, so a handler_guard that no normal-exit copy
+            # sets is dropped along with its catch test -- the with/try-region
+            # gate, applied to the handler's own nested try.
+            walk_buf = io.StringIO()
+            if has_throw_unwind:
+                self.ctx.indent_level += 1
             try:
                 if handler_entry is not None:
-                    self._walk_inline(out, cfg, handler_entry,
+                    self._walk_inline(walk_buf, cfg, handler_entry,
                                        case_entries, func)
             finally:
+                if has_throw_unwind:
+                    self.ctx.indent_level -= 1
                 self.ctx.in_except_tier = old_except_tier
                 self.ctx.finally_stack = old_finally_stack
                 self._restore_pending_return_ctx(prev_pending)
+                for rid, prev in saved_guards.items():
+                    if prev is None:
+                        self.ctx.resumable_region_guards.pop(rid, None)
+                    else:
+                        self.ctx.resumable_region_guards[rid] = prev
+            hg = (handler_guard
+                  if handler_guard is not None
+                  and handler_guard in self.ctx.resumable_guards_used
+                  else None)
+            if hg is not None:
+                out.write(f"{catch_indent}bool {hg} = false;\n")
+            if has_throw_unwind:
+                out.write(f"{catch_indent}try {{\n")
+                self.ctx.indent_level += 1
+            out.write(walk_buf.getvalue())
             if has_throw_unwind:
                 self.ctx.indent_level -= 1
                 inner_close = self.ctx.indent()
                 out.write(f"{inner_close}}} catch (...) {{\n")
                 self.ctx.indent_level += 1
                 inner_catch = self.ctx.indent()
-                for helper in handler_throw_finallies:
-                    self._emit_finally_helper_call(out, inner_catch, helper)
-                if cfg_finally:
+                if hg is not None:
+                    # A normal-exit finally copy already ran (and raised, so
+                    # we're here): skip re-running, just rethrow.
+                    out.write(f"{inner_catch}if (!{hg}) {{\n")
+                    self.ctx.indent_level += 1
+                    body_ic = self.ctx.indent()
+                    for helper in handler_throw_finallies:
+                        self._emit_finally_helper_call(out, body_ic, helper)
+                    self._emit_generator_stop_check(out, body_ic)
+                    self.ctx.indent_level -= 1
+                    out.write(f"{inner_catch}}}\n")
+                    out.write(f"{inner_catch}throw;\n")
+                elif cfg_finally:
                     assert region.finally_entry_bb is not None
                     fe_label = case_entries[region.finally_entry_bb].cpp_name()
+                    for helper in handler_throw_finallies:
+                        self._emit_finally_helper_call(out, inner_catch, helper)
                     out.write(f"{inner_catch}this->{region.captured_exc_field}"
                               f" = std::current_exception();\n")
                     out.write(f"{inner_catch}__state = {fe_label};\n")
                     out.write(f"{inner_catch}continue;\n")
                 else:
+                    for helper in handler_throw_finallies:
+                        self._emit_finally_helper_call(out, inner_catch, helper)
                     self._emit_generator_stop_check(out, inner_catch)
                     out.write(f"{inner_catch}throw;\n")
                 self.ctx.indent_level -= 1
@@ -3273,13 +3425,27 @@ class AsyncCoroCodegen:
             out.write(f"{catch_indent}__state = {label};\n")
             out.write(f"{catch_indent}continue;\n")
         else:
-            if region.finally_helper_name is not None:
+            # If an exit-edge copy of this finally already ran (and raised,
+            # which is why we're in the catch), skip re-running it and just
+            # rethrow the copy's own exception. Only when such a copy exists.
+            guard = self._active_region_guard(region)
+            if region.finally_helper_name is not None and guard is not None:
+                out.write(f"{catch_indent}if (!{guard}) {{\n")
+                self.ctx.indent_level += 1
                 self._emit_finally_helper_call(
-                    out, catch_indent, region.finally_helper_name)
-            # All cleanup done; Python `return` in finally suppresses the
-            # exception (return StopIteration rather than rethrowing).
-            self._emit_generator_stop_check(out, catch_indent)
-            out.write(f"{catch_indent}throw;\n")
+                    out, self.ctx.indent(), region.finally_helper_name)
+                self._emit_generator_stop_check(out, self.ctx.indent())
+                self.ctx.indent_level -= 1
+                out.write(f"{catch_indent}}}\n")
+                out.write(f"{catch_indent}throw;\n")
+            else:
+                if region.finally_helper_name is not None:
+                    self._emit_finally_helper_call(
+                        out, catch_indent, region.finally_helper_name)
+                # All cleanup done; Python `return` in finally suppresses the
+                # exception (return StopIteration rather than rethrowing).
+                self._emit_generator_stop_check(out, catch_indent)
+                out.write(f"{catch_indent}throw;\n")
         self.ctx.indent_level -= 1
         out.write(f"{indent}}}")
 
@@ -3335,20 +3501,34 @@ class AsyncCoroCodegen:
                and from_regions[common] is to_regions[common]):
             common += 1
         exited = list(from_regions[common:])
+        guards = self.ctx.resumable_region_guards
         # Innermost first.
         for region in reversed(exited):
+            # Set the region's guard (if its C++ try is still open in this
+            # case) before its cleanup copy runs, so the region's own catch
+            # skips re-running a copy that raised.
+            guard = guards.get(id(region))
             if isinstance(region, rcfg.TryRegion):
                 if region.finally_helper_name is not None:
+                    if guard is not None:
+                        self.ctx.resumable_guards_used.add(guard)
+                        out.write(f"{indent}{guard} = true;\n")
                     self._emit_finally_helper_call(
                         out, indent, region.finally_helper_name)
             elif isinstance(region, rcfg.ExceptRegion):
                 # Leaving an except handler normally: run the parent
                 # try's finally body (Python semantics).
                 if region.parent_finally is not None:
+                    if guard is not None:
+                        self.ctx.resumable_guards_used.add(guard)
+                        out.write(f"{indent}{guard} = true;\n")
                     self._emit_finally_helper_call(
                         out, indent, region.parent_finally)
             elif isinstance(region, rcfg.WithRegion):
                 # Leaving a with-region normally: __exit__(None, None, None).
+                if guard is not None:
+                    self.ctx.resumable_guards_used.add(guard)
+                    out.write(f"{indent}{guard} = true;\n")
                 self._emit_with_exit(out, indent, region,
                                             on_exception=False)
         # Emit stop-check only when to_regions has no pending cleanup of its

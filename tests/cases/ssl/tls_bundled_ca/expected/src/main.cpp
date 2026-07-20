@@ -12,7 +12,7 @@ void write_fixtures() {
     try {
         // f.write(CERT_PEM)
         f->write(CERT_PEM);
-        __ctx_1.__exit__({}, nullptr, {});
+        goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});
         throw;
@@ -20,13 +20,15 @@ void write_fixtures() {
         __ctx_1.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_1:
+    __ctx_1.__exit__({}, nullptr, {});
     // with open(KEY_PATH, "w") as f:
     auto __ctx_2 = ::tpy::builtin_open_mode(KEY_PATH, "w");
     f = &(__ctx_2.__enter__());
     try {
         // f.write(KEY_PEM)
         f->write(KEY_PEM);
-        __ctx_2.__exit__({}, nullptr, {});
+        goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
         __ctx_2.__exit__({}, &__exc_2, {});
         throw;
@@ -34,6 +36,8 @@ void write_fixtures() {
         __ctx_2.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_2:
+    __ctx_2.__exit__({}, nullptr, {});
 }
 
 // def bundle_embedded() -> None:

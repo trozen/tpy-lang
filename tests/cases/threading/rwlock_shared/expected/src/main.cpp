@@ -39,7 +39,7 @@ void main() {
         }
         // print(n, total)              # 101 elements; 0 + 50*(1+2) = 150
         std::cout << n << " " << total << "\n";
-        __ctx_2.__exit__({}, nullptr, {});
+        goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
         __ctx_2.__exit__({}, &__exc_2, {});
         throw;
@@ -47,6 +47,8 @@ void main() {
         __ctx_2.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_2:
+    __ctx_2.__exit__({}, nullptr, {});
 }
 
 void __tpy_init() {

@@ -81,18 +81,22 @@ std::expected<std::tuple<::tpy::val_or_ptr_t<K>, ::tpy::val_or_ptr_t<V>>, ::tpy:
         }
     }
     case S_JOIN_0: {
+        bool __fin_ran_2 = false;
         try {
             if (((i < ::tpy::__len__(ks)) && (i < ::tpy::__len__(vs)))) {
                 // yield (ks[i], vs[i])
                 __state = S_RESUME_0;
                 return std::tuple<::tpy::val_or_ptr_t<K>, ::tpy::val_or_ptr_t<V>>{::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<K>>(::tpy::__getitem__(ks, i)), ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<V>>(::tpy::__getitem__(vs, i))};
             } else {
+                __fin_ran_2 = true;
                 this->__finally_0();
                 __state = S_JOIN_1;
                 continue;
             }
         } catch (...) {
-            this->__finally_0();
+            if (!__fin_ran_2) {
+                this->__finally_0();
+            }
             throw;
         }
     }

@@ -24,7 +24,7 @@ void main() {
         try {
             // f.write(i)
             f.write(i);
-            __ctx_1.__exit__({}, nullptr, {});
+            goto __with_exit_1;
         } catch (::tpy::BaseException& __exc_1) {
             __ctx_1.__exit__({}, &__exc_1, {});
             throw;
@@ -32,6 +32,8 @@ void main() {
             __ctx_1.__exit__({}, nullptr, {});
             throw;
         }
+        __with_exit_1:
+        __ctx_1.__exit__({}, nullptr, {});
     }
     // names = sorted([n for n in os.listdir(tmp) if n.startswith("tpy_os_fs_")])
     std::vector<std::string> names = ::tpy::builtin_sorted<std::string>(({

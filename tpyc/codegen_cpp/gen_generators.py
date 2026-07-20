@@ -269,7 +269,9 @@ class GeneratorCodegen:
             comments=CtxCommentSink(self.ctx),
             temps=CtxTempSink(self.ctx),
             with_counter=CtxCounter(self.ctx, "with_counter"),
-            try_counter=CtxCounter(self.ctx, "try_except_counter"))
+            try_counter=CtxCounter(self.ctx, "try_except_counter"),
+            finally_guard_counter=CtxCounter(
+                self.ctx, "finally_guard_counter"))
 
     def _gen_simple_while_generator(self, out: TextIO, func: TpyFunction,
                                     record_name: str | None = None,

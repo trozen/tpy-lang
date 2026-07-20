@@ -327,25 +327,31 @@ std::string narrow_in_with_body(const Pet& p) {
     std::string result;
     auto __ctx_1 = CM();
     __ctx_1.__enter__();
+    bool __fin_ran_1 = false;
     try {
         // if not isinstance(p, Dog):
         if ((!((dynamic_cast<const Dog*>(&p) != nullptr)))) {
             // return "with non-dog"
             std::string __tpy_ret_0 = "with non-dog";
+            __fin_ran_1 = true;
             __ctx_1.__exit__({}, nullptr, {});
             return __tpy_ret_0;
         }
         const Dog& __p = *dynamic_cast<const Dog*>(&p);
         // result = "WITH-DOG: " + p.bark()
         result = (::tpy::str_concat("WITH-DOG: ", __p.bark()));
-        __ctx_1.__exit__({}, nullptr, {});
+        goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
+        if (__fin_ran_1) throw;
         __ctx_1.__exit__({}, &__exc_1, {});
         throw;
     } catch (...) {
+        if (__fin_ran_1) throw;
         __ctx_1.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_1:
+    __ctx_1.__exit__({}, nullptr, {});
     // # narrowed_vars restored after with-body; p reads through Pet here
     // return result + " / pet: " + p.name()
     return (::tpy::str_concat((::tpy::str_concat(result, " / pet: ")), p.name()));

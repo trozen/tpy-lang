@@ -14,7 +14,7 @@ void main() {
     try {
         // print(n1)
         std::cout << n1 << "\n";
-        __ctx_1.__exit__({}, nullptr, {});
+        goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});
         throw;
@@ -22,13 +22,15 @@ void main() {
         __ctx_1.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_1:
+    __ctx_1.__exit__({}, nullptr, {});
     // with g as n2:
     auto& __ctx_2 = *(g);
     auto n2 = __ctx_2.__enter__();
     try {
         // print(n2)
         std::cout << n2 << "\n";
-        __ctx_2.__exit__({}, nullptr, {});
+        goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
         __ctx_2.__exit__({}, &__exc_2, {});
         throw;
@@ -36,6 +38,8 @@ void main() {
         __ctx_2.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_2:
+    __ctx_2.__exit__({}, nullptr, {});
     // print(g.opens)
     std::cout << g->opens << "\n";
 }

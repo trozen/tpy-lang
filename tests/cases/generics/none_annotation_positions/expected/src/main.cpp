@@ -26,11 +26,13 @@ void main() {
     try {
         // print("body")
         std::cout << "body" << "\n";
-        __ctx_1.__exit__({}, {}, {});
+        goto __with_exit_1;
     } catch (...) {
         __ctx_1.__exit__({}, {}, {});
         throw;
     }
+    __with_exit_1:
+    __ctx_1.__exit__({}, {}, {});
 }
 
 void __tpy_init() {

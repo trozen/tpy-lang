@@ -26,7 +26,7 @@ void main() {
     try {
         // fh.write("hello world")
         fh.write("hello world");
-        __ctx_1.__exit__({}, nullptr, {});
+        goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});
         throw;
@@ -34,6 +34,8 @@ void main() {
         __ctx_1.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_1:
+    __ctx_1.__exit__({}, nullptr, {});
     // os.truncate(p, 5)
     ::tpystd::os::truncate(p, 5);
     // print("truncate", os.stat(p).st_size)            # 5

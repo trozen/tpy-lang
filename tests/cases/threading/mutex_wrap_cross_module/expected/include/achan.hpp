@@ -96,15 +96,19 @@ struct Producer {
         // with chan.m.lock() as g:
         auto __ctx_1 = chan.m.lock();
         auto& g = __ctx_1.__enter__();
+        bool __fin_ran_1 = false;
         try {
             // return g.get()._cap
             uint32_t __tpy_ret_0 = g.get()._cap;
+            __fin_ran_1 = true;
             __ctx_1.__exit__({}, nullptr, {});
             return __tpy_ret_0;
         } catch (::tpy::BaseException& __exc_1) {
+            if (__fin_ran_1) throw;
             __ctx_1.__exit__({}, &__exc_1, {});
             throw;
         } catch (...) {
+            if (__fin_ran_1) throw;
             __ctx_1.__exit__({}, nullptr, {});
             throw;
         }

@@ -26,7 +26,7 @@ namespace tpyapp::main {
         try {
             // s += it.n
             s = ::tpy::add_check<int32_t>(s, it.n);
-            __ctx_1.__exit__({}, nullptr, {});
+            goto __with_exit_1;
         } catch (::tpy::BaseException& __exc_1) {
             __ctx_1.__exit__({}, &__exc_1, {});
             throw;
@@ -34,6 +34,8 @@ namespace tpyapp::main {
             __ctx_1.__exit__({}, nullptr, {});
             throw;
         }
+        __with_exit_1:
+        __ctx_1.__exit__({}, nullptr, {});
         // return s
         __state = S_DONE;
         int32_t __tpy_async_ret = s;

@@ -34,7 +34,7 @@ void main() {
     try {
         // f1.write(b"\xaa\xbb")
         f1.write(::tpy::bytes_literal("\xaa\xbb", 2));
-        __ctx_1.__exit__({}, nullptr, {});
+        goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});
         throw;
@@ -42,6 +42,8 @@ void main() {
         __ctx_1.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_1:
+    __ctx_1.__exit__({}, nullptr, {});
     // # Context manager read
     // with open(path, "rb") as f2:
     std::vector<uint8_t> data2;
@@ -50,7 +52,7 @@ void main() {
     try {
         // data2 = f2.read()
         data2 = f2.read();
-        __ctx_2.__exit__({}, nullptr, {});
+        goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
         __ctx_2.__exit__({}, &__exc_2, {});
         throw;
@@ -58,6 +60,8 @@ void main() {
         __ctx_2.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_2:
+    __ctx_2.__exit__({}, nullptr, {});
     // print(len(data2))
     std::cout << ::tpy::__len__(data2) << "\n";
     // # Append mode
@@ -67,7 +71,7 @@ void main() {
     try {
         // f3.write(b"\xcc")
         f3.write(::tpy::bytes_literal("\xcc", 1));
-        __ctx_3.__exit__({}, nullptr, {});
+        goto __with_exit_3;
     } catch (::tpy::BaseException& __exc_3) {
         __ctx_3.__exit__({}, &__exc_3, {});
         throw;
@@ -75,6 +79,8 @@ void main() {
         __ctx_3.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_3:
+    __ctx_3.__exit__({}, nullptr, {});
     // with open(path, "rb") as f4:
     std::vector<uint8_t> data3;
     auto __ctx_4 = ::tpy::builtin_open_binary(path, "rb");
@@ -82,7 +88,7 @@ void main() {
     try {
         // data3 = f4.read()
         data3 = f4.read();
-        __ctx_4.__exit__({}, nullptr, {});
+        goto __with_exit_4;
     } catch (::tpy::BaseException& __exc_4) {
         __ctx_4.__exit__({}, &__exc_4, {});
         throw;
@@ -90,6 +96,8 @@ void main() {
         __ctx_4.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_4:
+    __ctx_4.__exit__({}, nullptr, {});
     // print(len(data3))
     std::cout << ::tpy::__len__(data3) << "\n";
     // # readline / readlines with newline-delimited binary data
@@ -99,7 +107,7 @@ void main() {
     try {
         // f5.write(b"alpha\nbeta\ngamma")
         f5.write(::tpy::bytes_literal("alpha\nbeta\ngamma", 16));
-        __ctx_5.__exit__({}, nullptr, {});
+        goto __with_exit_5;
     } catch (::tpy::BaseException& __exc_5) {
         __ctx_5.__exit__({}, &__exc_5, {});
         throw;
@@ -107,6 +115,8 @@ void main() {
         __ctx_5.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_5:
+    __ctx_5.__exit__({}, nullptr, {});
     // r2 = open(path, "rb")
     ::tpy::BinaryFile r2 = ::tpy::builtin_open_binary(path, "rb");
     // first = r2.readline()

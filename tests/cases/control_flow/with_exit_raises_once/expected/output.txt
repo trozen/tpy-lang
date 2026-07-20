@@ -1,0 +1,9 @@
+body
+exit ran
+caught: from exit
+nested body
+exit ran
+exit outer
+caught nested: from exit
+exit ran
+caught replaced: from exit

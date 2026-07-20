@@ -13,7 +13,9 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_return_normal::__ne
         continue;
     }
     case S_RESUME_0: {
+        bool __fin_ran_1 = false;
         try {
+            __fin_ran_1 = true;
             this->__finally_0();
             if (this->__finally_stop) {
                 __state = S_DONE;
@@ -22,10 +24,12 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_return_normal::__ne
             __state = S_JOIN_0;
             continue;
         } catch (...) {
-            this->__finally_0();
-            if (this->__finally_stop) {
-                __state = S_DONE;
-                return ::tpy::make_unexpected(::tpy::StopIteration{});
+            if (!__fin_ran_1) {
+                this->__finally_0();
+                if (this->__finally_stop) {
+                    __state = S_DONE;
+                    return ::tpy::make_unexpected(::tpy::StopIteration{});
+                }
             }
             throw;
         }
@@ -116,7 +120,9 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_return_in_loop::__n
         continue;
     }
     case S_RESUME_0: {
+        bool __fin_ran_3 = false;
         try {
+            __fin_ran_3 = true;
             this->__finally_0();
             if (this->__finally_stop) {
                 __state = S_DONE;
@@ -125,10 +131,12 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_return_in_loop::__n
             __state = S_JOIN_1;
             continue;
         } catch (...) {
-            this->__finally_0();
-            if (this->__finally_stop) {
-                __state = S_DONE;
-                return ::tpy::make_unexpected(::tpy::StopIteration{});
+            if (!__fin_ran_3) {
+                this->__finally_0();
+                if (this->__finally_stop) {
+                    __state = S_DONE;
+                    return ::tpy::make_unexpected(::tpy::StopIteration{});
+                }
             }
             throw;
         }

@@ -197,9 +197,15 @@ class TestTryFinallyTerminates:
         assert ("[[maybe_unused]] ::tpy::BigInt __tpy_ret_0 = "
                 "((n) * (::tpy::BigInt(10)));") in cpp
         assert "return __tpy_ret_0;" not in cpp
-        # No rethrow after a terminating finally in the catch arm.
+        # The `return` exit site guards its copy, so the catch arm runs the
+        # finally only when the guard is false and otherwise rethrows what
+        # the copy raised -- the terminating-finally rethrow elision does
+        # not apply to a guarded frame.
         body = cpp[cpp.index("::tpy::BigInt override"):]
-        assert "throw;" not in body
+        assert "bool __fin_ran_1 = false;" in body
+        assert "__fin_ran_1 = true;" in body
+        assert "if (!__fin_ran_1) {" in body
+        assert "throw;" in body
 
     def test_witnesses(self):
         _, w = _lower_ctx_witnessed(self.SRC)
@@ -463,8 +469,11 @@ class TestThrowTierElseFinally:
 
 
 class TestRaiseTerminatedFinally:
-    # A raise-ending finally: terminates, so the catch arm's rethrow and the
-    # exit-site trailing statements are suppressed.
+    # A raise-ending finally: terminates, so the exit-site trailing statements
+    # are suppressed. The `return n` exit site guards its copy, so the copy's
+    # own ValueError reaches the catch with the guard set -- the catch must
+    # rethrow it rather than re-run the finally (which is what made this
+    # finally run twice).
     SRC = (
         "def f(n: int) -> int:\n"
         "    try:\n"
@@ -487,12 +496,17 @@ class TestRaiseTerminatedFinally:
         assert isinstance(t, THIRTry) and t.finally_terminates
         assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
 
-    def test_suppressed_rethrow_and_return(self):
+    def test_guarded_rethrow_and_suppressed_return(self):
         cpp = _cpp(self.SRC, thir=True)
         body = cpp[cpp.index("::tpy::BigInt f"):cpp.index("void __tpy_init")]
-        assert "throw;" not in body
         assert "[[maybe_unused]]" in body
         assert "return __tpy_ret_0;" not in body
+        # Guarded catch arm: run the finally only if no exit site already did,
+        # then rethrow -- without the rethrow the copy's ValueError would be
+        # swallowed and the non-void function would fall off its end.
+        assert "bool __fin_ran_1 = false;" in body
+        assert "if (!__fin_ran_1) {" in body
+        assert body.count("throw;") == 1
 
 
 class TestTerminatingFinallyLoopExit:

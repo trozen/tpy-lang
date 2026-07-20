@@ -21,16 +21,20 @@ void multi() {
         try {
             // print("body")
             std::cout << "body" << "\n";
-            __ctx_2.__exit__({}, {}, {});
+            goto __with_exit_2;
         } catch (...) {
             __ctx_2.__exit__({}, {}, {});
             throw;
         }
-        __ctx_1.__exit__({}, {}, {});
+        __with_exit_2:
+        __ctx_2.__exit__({}, {}, {});
+        goto __with_exit_1;
     } catch (...) {
         __ctx_1.__exit__({}, {}, {});
         throw;
     }
+    __with_exit_1:
+    __ctx_1.__exit__({}, {}, {});
 }
 
 // def suppress() -> None:
@@ -43,13 +47,17 @@ void suppress() {
         std::cout << "before" << "\n";
         // boom()
         boom();
-        __ctx_3.__exit__({}, nullptr, {});
+        goto __with_exit_3;
     } catch (::tpy::BaseException& __exc_3) {
         if (!__ctx_3.__exit__({}, &__exc_3, {})) throw;
+        goto __with_after_3;
     } catch (...) {
         __ctx_3.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_3:
+    __ctx_3.__exit__({}, nullptr, {});
+    __with_after_3:;
     // print("after suppressed")
     std::cout << "after suppressed" << "\n";
 }
@@ -66,11 +74,13 @@ void ref_target() {
         g.depth = (g.depth) + (::tpy::BigInt(10));
         // print("inside:", g.depth)
         std::cout << "inside:" << " " << g.depth << "\n";
-        __ctx_4.__exit__({}, {}, {});
+        goto __with_exit_4;
     } catch (...) {
         __ctx_4.__exit__({}, {}, {});
         throw;
     }
+    __with_exit_4:
+    __ctx_4.__exit__({}, {}, {});
     // print("after:", g.depth)
     std::cout << "after:" << " " << g.depth << "\n";
 }
@@ -87,11 +97,13 @@ void deref_manager(Holder& h, Holder& h2) {
     try {
         // print("in:", m.depth)
         std::cout << "in:" << " " << m->depth << "\n";
-        __ctx_5.__exit__({}, {}, {});
+        goto __with_exit_5;
     } catch (...) {
         __ctx_5.__exit__({}, {}, {});
         throw;
     }
+    __with_exit_5:
+    __ctx_5.__exit__({}, {}, {});
     // print("mid:", m.depth)
     std::cout << "mid:" << " " << m->depth << "\n";
     // m = h2.g
@@ -102,11 +114,13 @@ void deref_manager(Holder& h, Holder& h2) {
     try {
         // print("in2:", m.depth)
         std::cout << "in2:" << " " << m->depth << "\n";
-        __ctx_6.__exit__({}, {}, {});
+        goto __with_exit_6;
     } catch (...) {
         __ctx_6.__exit__({}, {}, {});
         throw;
     }
+    __with_exit_6:
+    __ctx_6.__exit__({}, {}, {});
     // print("post:", m.depth)
     std::cout << "post:" << " " << m->depth << "\n";
 }
@@ -118,26 +132,32 @@ void loop_exits(Gate& cm) {
         // with cm:
         auto& __ctx_7 = cm;
         __ctx_7.__enter__();
+        bool __fin_ran_7 = false;
         try {
             // if i == 1:
             if ((i == 1)) {
                 // continue
+                __fin_ran_7 = true;
                 __ctx_7.__exit__({}, {}, {});
                 continue;
             }
             // if i == 3:
             if ((i == 3)) {
                 // break
+                __fin_ran_7 = true;
                 __ctx_7.__exit__({}, {}, {});
                 break;
             }
             // print("i =", i)
             std::cout << "i =" << " " << i << "\n";
-            __ctx_7.__exit__({}, {}, {});
+            goto __with_exit_7;
         } catch (...) {
+            if (__fin_ran_7) throw;
             __ctx_7.__exit__({}, {}, {});
             throw;
         }
+        __with_exit_7:
+        __ctx_7.__exit__({}, {}, {});
     }
     // print("loop done")
     std::cout << "loop done" << "\n";
@@ -148,12 +168,15 @@ void loop_exits(Gate& cm) {
     // with cm:
     auto& __ctx_8 = cm;
     __ctx_8.__enter__();
+    bool __fin_ran_8 = false;
     try {
         // return 42
         ::tpy::BigInt __tpy_ret_0 = ::tpy::BigInt(42);
+        __fin_ran_8 = true;
         __ctx_8.__exit__({}, {}, {});
         return __tpy_ret_0;
     } catch (...) {
+        if (__fin_ran_8) throw;
         __ctx_8.__exit__({}, {}, {});
         throw;
     }

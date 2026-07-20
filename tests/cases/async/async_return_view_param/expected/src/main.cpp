@@ -32,16 +32,20 @@ __coro_direct direct(std::string_view tag) {
     case S_INITIAL: {
         // try:
         {
+            bool __fin_ran_1 = false;
             try {
                 // return tag  # finally-chain site
                 std::string __tpy_async_ret_0 = std::string(tag);
+                __fin_ran_1 = true;
                 // print("cleanup")
                 std::cout << "cleanup" << "\n";
                 __state = S_DONE;
                 return ::tpystd::tpy::Poll<std::string>::ready(std::move(__tpy_async_ret_0));
             } catch (...) {
-                // print("cleanup")
-                std::cout << "cleanup" << "\n";
+                if (!__fin_ran_1) {
+                    // print("cleanup")
+                    std::cout << "cleanup" << "\n";
+                }
                 throw;
             }
         }

@@ -22,7 +22,7 @@ void main() {
     try {
         // f.write("seed content\n")
         f->write("seed content\n");
-        __ctx_1.__exit__({}, nullptr, {});
+        goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});
         throw;
@@ -30,6 +30,8 @@ void main() {
         __ctx_1.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_1:
+    __ctx_1.__exit__({}, nullptr, {});
     // # File opened write-only; read() should raise OSError.
     // with open(path, "w") as f:
     auto __ctx_2 = ::tpy::builtin_open_mode(path, "w");
@@ -45,7 +47,7 @@ void main() {
                 std::cout << "read on write-only:" << " " << std::string(::tpy::__str__(e)) << "\n";
             }
         }
-        __ctx_2.__exit__({}, nullptr, {});
+        goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
         __ctx_2.__exit__({}, &__exc_2, {});
         throw;
@@ -53,6 +55,8 @@ void main() {
         __ctx_2.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_2:
+    __ctx_2.__exit__({}, nullptr, {});
     // # File opened read-only; write() should raise OSError.
     // with open(path, "r") as f:
     auto __ctx_3 = ::tpy::builtin_open_mode(path, "r");
@@ -68,7 +72,7 @@ void main() {
                 std::cout << "write on read-only:" << " " << std::string(::tpy::__str__(e)) << "\n";
             }
         }
-        __ctx_3.__exit__({}, nullptr, {});
+        goto __with_exit_3;
     } catch (::tpy::BaseException& __exc_3) {
         __ctx_3.__exit__({}, &__exc_3, {});
         throw;
@@ -76,6 +80,8 @@ void main() {
         __ctx_3.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_3:
+    __ctx_3.__exit__({}, nullptr, {});
     // # readline() on write-only file.
     // with open(path, "w") as f:
     auto __ctx_4 = ::tpy::builtin_open_mode(path, "w");
@@ -91,7 +97,7 @@ void main() {
                 std::cout << "readline on write-only:" << " " << std::string(::tpy::__str__(e)) << "\n";
             }
         }
-        __ctx_4.__exit__({}, nullptr, {});
+        goto __with_exit_4;
     } catch (::tpy::BaseException& __exc_4) {
         __ctx_4.__exit__({}, &__exc_4, {});
         throw;
@@ -99,6 +105,8 @@ void main() {
         __ctx_4.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_4:
+    __ctx_4.__exit__({}, nullptr, {});
 }
 
 void __tpy_init() {

@@ -126,7 +126,7 @@ inline void Item::save_json(std::string_view __path, int32_t indent) const {
         // # Test @model file I/O: save_json, load_json, try_load_json.
         // from tpy import Int32
         __f.write(this->to_json(indent));
-        __ctx_1.__exit__({}, nullptr, {});
+        goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});
         throw;
@@ -134,6 +134,8 @@ inline void Item::save_json(std::string_view __path, int32_t indent) const {
         __ctx_1.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_1:
+    __ctx_1.__exit__({}, nullptr, {});
 }
 
 inline Item Item::load_json(std::string_view __path) {
@@ -145,7 +147,7 @@ inline Item Item::load_json(std::string_view __path) {
         // # Test @model file I/O: save_json, load_json, try_load_json.
         // from tpy import Int32
         __data = __f.read();
-        __ctx_2.__exit__({}, nullptr, {});
+        goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
         __ctx_2.__exit__({}, &__exc_2, {});
         throw;
@@ -153,6 +155,8 @@ inline Item Item::load_json(std::string_view __path) {
         __ctx_2.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_2:
+    __ctx_2.__exit__({}, nullptr, {});
     // from tplib.json.model import model
     return Item::from_json(__data);
 }
@@ -166,7 +170,7 @@ inline std::expected<Item, ::tpystd::tplib::json::parser::JsonError> Item::try_l
         // # Test @model file I/O: save_json, load_json, try_load_json.
         // from tpy import Int32
         __data = __f.read();
-        __ctx_3.__exit__({}, nullptr, {});
+        goto __with_exit_3;
     } catch (::tpy::BaseException& __exc_3) {
         __ctx_3.__exit__({}, &__exc_3, {});
         throw;
@@ -174,6 +178,8 @@ inline std::expected<Item, ::tpystd::tplib::json::parser::JsonError> Item::try_l
         __ctx_3.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_3:
+    __ctx_3.__exit__({}, nullptr, {});
     // from tplib.json.model import model
     return Item::try_from_json(__data);
 }

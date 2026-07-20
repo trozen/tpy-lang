@@ -137,7 +137,7 @@ void exit_closes_pool() {
         // s._pool[requests._pool_key("http://api.test/", True)] = Box(conn)
         std::variant<bool, std::string> __tmp_6 = true;
         ::tpy::__setitem__(s._pool, ::tpystd::tplib::requests::_pool_key("http://api.test/", __tmp_6), ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move((*conn))));
-        __ctx_1.__exit__({}, nullptr, {});
+        goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});
         throw;
@@ -145,6 +145,8 @@ void exit_closes_pool() {
         __ctx_1.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_1:
+    __ctx_1.__exit__({}, nullptr, {});
     // # __exit__ closed the pooled connection; the peer now sees EOF.
     // print("closed on exit:", b.recv(10) == b"")
     std::cout << "closed on exit:" << " " << ::tpy::print_bool((::tpy::bytes_eq(b.recv(10), std::vector<uint8_t>{}))) << "\n";

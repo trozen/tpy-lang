@@ -17,18 +17,22 @@ namespace tpyapp::main {
         continue;
     }
     case S_RESUME_0: {
+        bool __fin_ran_1 = false;
         try {
             auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
             (void)std::move(__r0).value();
             __sub_0.reset();
+            __fin_ran_1 = true;
             (*__with_ctx_0).__exit__({}, nullptr, {});
             __state = S_JOIN_0;
             continue;
         } catch (::tpy::BaseException& __exc_0) {
+            if (__fin_ran_1) throw;
             (*__with_ctx_0).__exit__({}, &__exc_0, {});
             throw;
         } catch (...) {
+            if (__fin_ran_1) throw;
             (*__with_ctx_0).__exit__({}, nullptr, {});
             throw;
         }

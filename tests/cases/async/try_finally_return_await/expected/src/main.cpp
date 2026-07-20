@@ -34,17 +34,21 @@ __coro_sub sub() {
         continue;
     }
     case S_RESUME_0: {
+        bool __fin_ran_1 = false;
         try {
             auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
             auto __ret0 = std::move(__r0).value();
             __sub_0.reset();
+            __fin_ran_1 = true;
             this->__finally_0();
             __state = S_DONE;
             return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__ret0));
         } catch (...) {
             __sub_0.reset();
-            this->__finally_0();
+            if (!__fin_ran_1) {
+                this->__finally_0();
+            }
             throw;
         }
     }

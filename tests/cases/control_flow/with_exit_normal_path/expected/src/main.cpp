@@ -12,7 +12,7 @@ void fall_through() {
     try {
         // print(f"body sees x={x}")
         std::cout << std::format("body sees x={}", (x).to_string()) << "\n";
-        __ctx_1.__exit__({}, nullptr, {});
+        goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});
         throw;
@@ -20,6 +20,8 @@ void fall_through() {
         __ctx_1.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_1:
+    __ctx_1.__exit__({}, nullptr, {});
     // print("after fall_through")
     std::cout << "after fall_through" << "\n";
 }
@@ -29,15 +31,19 @@ void fall_through() {
     // with Tracker() as x:
     auto __ctx_2 = Tracker();
     auto x = __ctx_2.__enter__();
+    bool __fin_ran_2 = false;
     try {
         // return x
         ::tpy::BigInt __tpy_ret_0 = x;
+        __fin_ran_2 = true;
         __ctx_2.__exit__({}, nullptr, {});
         return __tpy_ret_0;
     } catch (::tpy::BaseException& __exc_2) {
+        if (__fin_ran_2) throw;
         __ctx_2.__exit__({}, &__exc_2, {});
         throw;
     } catch (...) {
+        if (__fin_ran_2) throw;
         __ctx_2.__exit__({}, nullptr, {});
         throw;
     }

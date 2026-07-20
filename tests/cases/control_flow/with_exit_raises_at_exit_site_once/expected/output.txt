@@ -1,0 +1,14 @@
+-- ret_out --
+exit ran
+caught: from exit
+-- brk_out --
+iter 0
+exit ran
+caught: from exit
+-- cont_out --
+iter 0
+exit ran
+caught: from exit
+-- ret_out_suppressing --
+exit suppress
+9

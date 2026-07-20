@@ -126,7 +126,7 @@ inline void M::save_json(std::string_view __path, int32_t indent) const {
         // # A non-integer JSON number (1.5) in an `int`/BigInt @model field fails at parse
         // # time: read_number_raw reads the float lexeme, then int() rejects it -- parity
         __f.write(this->to_json(indent));
-        __ctx_1.__exit__({}, nullptr, {});
+        goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});
         throw;
@@ -134,6 +134,8 @@ inline void M::save_json(std::string_view __path, int32_t indent) const {
         __ctx_1.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_1:
+    __ctx_1.__exit__({}, nullptr, {});
     // # time: read_number_raw reads the float lexeme, then int() rejects it -- parity
     // # with CPython int("1.5") raising ValueError. Pins the failure mode after the
     // # switch to bare-number BigInt (the old string encoding rejected this earlier,
@@ -149,7 +151,7 @@ inline M M::load_json(std::string_view __path) {
         // # A non-integer JSON number (1.5) in an `int`/BigInt @model field fails at parse
         // # time: read_number_raw reads the float lexeme, then int() rejects it -- parity
         __data = __f.read();
-        __ctx_2.__exit__({}, nullptr, {});
+        goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
         __ctx_2.__exit__({}, &__exc_2, {});
         throw;
@@ -157,6 +159,8 @@ inline M M::load_json(std::string_view __path) {
         __ctx_2.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_2:
+    __ctx_2.__exit__({}, nullptr, {});
     // # A non-integer JSON number (1.5) in an `int`/BigInt @model field fails at parse
     // # time: read_number_raw reads the float lexeme, then int() rejects it -- parity
     // # with CPython int("1.5") raising ValueError. Pins the failure mode after the
@@ -174,7 +178,7 @@ inline std::expected<M, ::tpystd::tplib::json::parser::JsonError> M::try_load_js
         // # A non-integer JSON number (1.5) in an `int`/BigInt @model field fails at parse
         // # time: read_number_raw reads the float lexeme, then int() rejects it -- parity
         __data = __f.read();
-        __ctx_3.__exit__({}, nullptr, {});
+        goto __with_exit_3;
     } catch (::tpy::BaseException& __exc_3) {
         __ctx_3.__exit__({}, &__exc_3, {});
         throw;
@@ -182,6 +186,8 @@ inline std::expected<M, ::tpystd::tplib::json::parser::JsonError> M::try_load_js
         __ctx_3.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_3:
+    __ctx_3.__exit__({}, nullptr, {});
     // # A non-integer JSON number (1.5) in an `int`/BigInt @model field fails at parse
     // # time: read_number_raw reads the float lexeme, then int() rejects it -- parity
     // # with CPython int("1.5") raising ValueError. Pins the failure mode after the

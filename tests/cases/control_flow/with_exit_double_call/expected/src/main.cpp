@@ -19,13 +19,17 @@ void fall_through(bool do_raise) {
         }
         // print("body fall-through")
         std::cout << "body fall-through" << "\n";
-        __ctx_1.__exit__({}, nullptr, {});
+        goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         if (!__ctx_1.__exit__({}, &__exc_1, {})) throw;
+        goto __with_after_1;
     } catch (...) {
         __ctx_1.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_1:
+    __ctx_1.__exit__({}, nullptr, {});
+    __with_after_1:;
     // print("after with")
     std::cout << "after with" << "\n";
 }

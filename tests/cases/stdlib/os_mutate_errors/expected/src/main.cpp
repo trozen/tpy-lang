@@ -39,7 +39,7 @@ void main() {
     try {
         // fh.write("x")
         fh->write("x");
-        __ctx_1.__exit__({}, nullptr, {});
+        goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});
         throw;
@@ -47,6 +47,8 @@ void main() {
         __ctx_1.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_1:
+    __ctx_1.__exit__({}, nullptr, {});
     // try:
     {
         try {
@@ -139,7 +141,7 @@ void main() {
     try {
         // fh.write("k")
         fh->write("k");
-        __ctx_2.__exit__({}, nullptr, {});
+        goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
         __ctx_2.__exit__({}, &__exc_2, {});
         throw;
@@ -147,6 +149,8 @@ void main() {
         __ctx_2.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_2:
+    __ctx_2.__exit__({}, nullptr, {});
     // os.removedirs(base + "/d1/d2")   # removes d2, then rmdir(d1) fails -> break
     ::tpystd::os::removedirs((::tpy::str_concat(base, "/d1/d2")));
     // print("removedirs-stopped:", exists(base + "/d1"))   # True: d1 kept

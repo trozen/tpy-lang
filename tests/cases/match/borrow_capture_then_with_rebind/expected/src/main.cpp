@@ -27,7 +27,7 @@ void main() {
         q->v = ::tpy::BigInt(7);
         // print(q.v)            # 7
         std::cout << q->v << "\n";
-        __ctx_1.__exit__({}, nullptr, {});
+        goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});
         throw;
@@ -35,6 +35,8 @@ void main() {
         __ctx_1.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_1:
+    __ctx_1.__exit__({}, nullptr, {});
     // print(b.v)                # 99 -- b untouched by the with block
     std::cout << b.v << "\n";
 }

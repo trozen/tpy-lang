@@ -47,7 +47,7 @@ void main() {
     try {
         // print(cf.read(-1))   # b'ctx'
         std::cout << ::tpy::BytesPrinter(cf.read(-1)) << "\n";
-        __ctx_1.__exit__({}, nullptr, {});
+        goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});
         throw;
@@ -55,6 +55,8 @@ void main() {
         __ctx_1.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_1:
+    __ctx_1.__exit__({}, nullptr, {});
     // print(cf.closed)
     std::cout << ::tpy::print_bool(cf.closed()) << "\n";
     // # A negative fd is rejected at construction (CPython parity).

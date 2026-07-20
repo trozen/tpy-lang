@@ -1,0 +1,15 @@
+-- ret_out --
+side-effect 1
+caught code=1
+-- brk_out --
+iter 0
+side-effect 1
+caught code=1
+-- cont_out --
+side-effect 1
+caught code=1
+-- nested_ret --
+inner fin
+side-effect 1
+outer fin
+caught code=1

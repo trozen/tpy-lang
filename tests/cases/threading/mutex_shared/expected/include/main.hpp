@@ -66,7 +66,7 @@ inline void Appender::run() const {
         try {
             // g.append(self.id)
             g.__deref__().push_back(this->id);
-            __ctx_1.__exit__({}, nullptr, {});
+            goto __with_exit_1;
         } catch (::tpy::BaseException& __exc_1) {
             __ctx_1.__exit__({}, &__exc_1, {});
             throw;
@@ -74,6 +74,8 @@ inline void Appender::run() const {
             __ctx_1.__exit__({}, nullptr, {});
             throw;
         }
+        __with_exit_1:
+        __ctx_1.__exit__({}, nullptr, {});
         // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }

@@ -17,13 +17,17 @@ void main() {
         a = ::tpystd::tplib::box::Box<int32_t>(7);
         // boxes.append(a)
         boxes.push_back(std::move((*a)));
-        __ctx_1.__exit__({}, nullptr, {});
+        goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         if (!__ctx_1.__exit__({}, &__exc_1, {})) throw;
+        goto __with_after_1;
     } catch (...) {
         __ctx_1.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_1:
+    __ctx_1.__exit__({}, nullptr, {});
+    __with_after_1:;
     // print(len(boxes))
     std::cout << ::tpy::__len__(boxes) << "\n";
 }

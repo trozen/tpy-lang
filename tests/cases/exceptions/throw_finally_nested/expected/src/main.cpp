@@ -8,26 +8,34 @@ namespace tpyapp::main {
 int32_t nested_return() {
     // try:
     {
+        bool __fin_ran_1 = false;
         try {
             // try:
             {
+                bool __fin_ran_2 = false;
                 try {
                     // return 10
                     int32_t __tpy_ret_0 = 10;
+                    __fin_ran_2 = true;
                     // print("inner")
                     std::cout << "inner" << "\n";
+                    __fin_ran_1 = true;
                     // print("outer")
                     std::cout << "outer" << "\n";
                     return __tpy_ret_0;
                 } catch (...) {
-                    // print("inner")
-                    std::cout << "inner" << "\n";
+                    if (!__fin_ran_2) {
+                        // print("inner")
+                        std::cout << "inner" << "\n";
+                    }
                     throw;
                 }
             }
         } catch (...) {
-            // print("outer")
-            std::cout << "outer" << "\n";
+            if (!__fin_ran_1) {
+                // print("outer")
+                std::cout << "outer" << "\n";
+            }
             throw;
         }
     }

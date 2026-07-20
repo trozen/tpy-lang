@@ -47,7 +47,7 @@ void file_roundtrip() {
     try {
         // json.dump(v, f, sort_keys=True)
         ::tpystd::json::dump(v, (*f), 0, true);
-        __ctx_1.__exit__({}, nullptr, {});
+        goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});
         throw;
@@ -55,6 +55,8 @@ void file_roundtrip() {
         __ctx_1.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_1:
+    __ctx_1.__exit__({}, nullptr, {});
     // with open(path) as f:
     std::optional<::tpystd::json::JsonValue> v2;
     auto __ctx_2 = ::tpy::builtin_open(path);
@@ -62,7 +64,7 @@ void file_roundtrip() {
     try {
         // v2 = json.load(f)
         v2 = ::tpystd::json::load((*f));
-        __ctx_2.__exit__({}, nullptr, {});
+        goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
         __ctx_2.__exit__({}, &__exc_2, {});
         throw;
@@ -70,6 +72,8 @@ void file_roundtrip() {
         __ctx_2.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_2:
+    __ctx_2.__exit__({}, nullptr, {});
     // print("file:", json.dumps(v2, sort_keys=True))
     std::cout << "file:" << " " << ::tpystd::json::dumps((*v2), 0, true) << "\n";
 }

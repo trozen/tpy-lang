@@ -32,7 +32,9 @@ __coro_fail_value fail_value() {
         continue;
     }
     case S_RESUME_0: {
+        bool __fin_ran_1 = false;
         try {
+            bool __fin_ran_2 = false;
             try {
                 auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
                 if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
@@ -40,7 +42,9 @@ __coro_fail_value fail_value() {
                 __sub_0.reset();
                 // return x
                 int32_t __tpy_async_ret_0 = x;
+                __fin_ran_2 = true;
                 this->__finally_1();
+                __fin_ran_1 = true;
                 this->__finally_0();
                 __state = S_DONE;
                 return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret_0));
@@ -57,26 +61,34 @@ __coro_fail_value fail_value() {
                 }
             } catch (...) {
                 __sub_0.reset();
-                this->__finally_1();
+                if (!__fin_ran_2) {
+                    this->__finally_1();
+                }
                 throw;
             }
         } catch (const ::tpy::RuntimeError&) {
             __sub_0.reset();
+            bool __fin_ran_4 = false;
             try {
                 // print("outer-handler")
                 std::cout << "outer-handler" << "\n";
                 // return Int32(42)
                 int32_t __tpy_async_ret_1 = 42;
+                __fin_ran_4 = true;
                 this->__finally_0();
                 __state = S_DONE;
                 return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret_1));
             } catch (...) {
-                this->__finally_0();
+                if (!__fin_ran_4) {
+                    this->__finally_0();
+                }
                 throw;
             }
         } catch (...) {
             __sub_0.reset();
-            this->__finally_0();
+            if (!__fin_ran_1) {
+                this->__finally_0();
+            }
             throw;
         }
     }
@@ -88,16 +100,20 @@ __coro_fail_value fail_value() {
             __state = S_JOIN_2;
             continue;
         } catch (const ::tpy::RuntimeError&) {
+            bool __fin_ran_6 = false;
             try {
                 // print("outer-handler")
                 std::cout << "outer-handler" << "\n";
                 // return Int32(42)
                 int32_t __tpy_async_ret_2 = 42;
+                __fin_ran_6 = true;
                 this->__finally_0();
                 __state = S_DONE;
                 return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret_2));
             } catch (...) {
-                this->__finally_0();
+                if (!__fin_ran_6) {
+                    this->__finally_0();
+                }
                 throw;
             }
         } catch (...) {

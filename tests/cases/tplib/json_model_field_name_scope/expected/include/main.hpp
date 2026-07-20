@@ -196,7 +196,7 @@ inline void Msg::save_json(std::string_view __path, int32_t indent) const {
         // # Regression: @model field names must not leak into other methods' scopes.
         // # A @model with field `color: str` must not shadow a `color: Color` parameter
         __f.write(this->to_json(indent));
-        __ctx_1.__exit__({}, nullptr, {});
+        goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});
         throw;
@@ -204,6 +204,8 @@ inline void Msg::save_json(std::string_view __path, int32_t indent) const {
         __ctx_1.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_1:
+    __ctx_1.__exit__({}, nullptr, {});
     // # A @model with field `color: str` must not shadow a `color: Color` parameter
     // # in an unrelated method after an if-statement triggers _sync_promoted_var_types.
 }
@@ -217,7 +219,7 @@ inline Msg Msg::load_json(std::string_view __path) {
         // # Regression: @model field names must not leak into other methods' scopes.
         // # A @model with field `color: str` must not shadow a `color: Color` parameter
         __data = __f.read();
-        __ctx_2.__exit__({}, nullptr, {});
+        goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
         __ctx_2.__exit__({}, &__exc_2, {});
         throw;
@@ -225,6 +227,8 @@ inline Msg Msg::load_json(std::string_view __path) {
         __ctx_2.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_2:
+    __ctx_2.__exit__({}, nullptr, {});
     // # Regression: @model field names must not leak into other methods' scopes.
     // # A @model with field `color: str` must not shadow a `color: Color` parameter
     // # in an unrelated method after an if-statement triggers _sync_promoted_var_types.
@@ -240,7 +244,7 @@ inline std::expected<Msg, ::tpystd::tplib::json::parser::JsonError> Msg::try_loa
         // # Regression: @model field names must not leak into other methods' scopes.
         // # A @model with field `color: str` must not shadow a `color: Color` parameter
         __data = __f.read();
-        __ctx_3.__exit__({}, nullptr, {});
+        goto __with_exit_3;
     } catch (::tpy::BaseException& __exc_3) {
         __ctx_3.__exit__({}, &__exc_3, {});
         throw;
@@ -248,6 +252,8 @@ inline std::expected<Msg, ::tpystd::tplib::json::parser::JsonError> Msg::try_loa
         __ctx_3.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_3:
+    __ctx_3.__exit__({}, nullptr, {});
     // # Regression: @model field names must not leak into other methods' scopes.
     // # A @model with field `color: str` must not shadow a `color: Color` parameter
     // # in an unrelated method after an if-statement triggers _sync_promoted_var_types.

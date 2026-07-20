@@ -19,7 +19,7 @@ void main() {
     try {
         // fh.write("data")
         fh.write("data");
-        __ctx_1.__exit__({}, nullptr, {});
+        goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});
         throw;
@@ -27,6 +27,8 @@ void main() {
         __ctx_1.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_1:
+    __ctx_1.__exit__({}, nullptr, {});
     // os.chmod(p, 0o640)
     ::tpystd::os::chmod(p, 416);
     // print("mode", oct(os.stat(p).st_mode & 0o777))   # 0o640

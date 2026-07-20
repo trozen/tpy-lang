@@ -1264,9 +1264,10 @@ fully routed (incl. both finally-composition cases); units
 `tpyc/thir/test_thir_error_return.py`. Corpus witnesses:
 `control_flow/try_finally_shapes` + `control_flow/try_except_shapes`
 (all 15 try/raise faces); units `tpyc/thir/test_thir_try.py`. The
-raising-finally-after-return shape is a pre-existing AST parity bug
-(finally runs twice, second exception wins) -- mirrored, not endorsed;
-BUGS.md entry filed with the THIR lockstep note.
+raising-finally-after-return shape (finally ran twice, second exception
+won) is now FIXED on both paths via the per-`try` `bool __fin_ran_N`
+exit-site guard (see EXCEPTION_DESIGN.md "finally Codegen"); THIR mirrors
+the guarded shape byte-for-byte.
 **match frontier opened -- M1 scalar switch tiers landed (incr 81): +18
 bodies (33854 -> 33872 / 3333 cases)** -- `THIRMatch`/`THIRMatchArm`
 over enum + fixed-int subjects: pre-rendered case labels

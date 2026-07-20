@@ -92,7 +92,7 @@ void context_manager() {
     try {
         // print("inside-ctxmgr:", s.read())
         std::cout << "inside-ctxmgr:" << " " << s.read() << "\n";
-        __ctx_1.__exit__({}, nullptr, {});
+        goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});
         throw;
@@ -100,6 +100,8 @@ void context_manager() {
         __ctx_1.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_1:
+    __ctx_1.__exit__({}, nullptr, {});
 }
 
 // def closed_raises() -> None:

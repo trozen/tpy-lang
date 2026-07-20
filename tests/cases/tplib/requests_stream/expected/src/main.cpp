@@ -189,7 +189,7 @@ void stream_context_manager() {
         }
         // print("ctx body:", bytes(got).decode())
         std::cout << "ctx body:" << " " << ::tpy::bytes_decode(::tpy::bytes_copy(got)) << "\n";
-        __ctx_1.__exit__({}, nullptr, {});
+        goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});
         throw;
@@ -197,6 +197,8 @@ void stream_context_manager() {
         __ctx_1.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_1:
+    __ctx_1.__exit__({}, nullptr, {});
     // # After the with-block, close() released the reader.
     // print("raw after close:", r.raw is None)
     std::cout << "raw after close:" << " " << ::tpy::print_bool((!r.raw().has_value())) << "\n";

@@ -16,7 +16,7 @@ void main() {
         g.set({7, 8, 9});
         // g.append(10)                # mutate the moved-in payload through the guard
         g.__deref__().push_back(10);
-        __ctx_1.__exit__({}, nullptr, {});
+        goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});
         throw;
@@ -24,13 +24,15 @@ void main() {
         __ctx_1.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_1:
+    __ctx_1.__exit__({}, nullptr, {});
     // with m.lock() as g2:
     auto __ctx_2 = m.lock();
     auto& g2 = __ctx_2.__enter__();
     try {
         // print(g2.get())             # [7, 8, 9, 10] -- the append hit the stored list
         std::cout << ::tpy::ListPrinter(g2.get()) << "\n";
-        __ctx_2.__exit__({}, nullptr, {});
+        goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
         __ctx_2.__exit__({}, &__exc_2, {});
         throw;
@@ -38,6 +40,8 @@ void main() {
         __ctx_2.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_2:
+    __ctx_2.__exit__({}, nullptr, {});
     // rw = RwLock.new([1, 2])
     ::tpystd::tpy::sync::RwLock<std::vector<int32_t>> rw = ::tpystd::tpy::sync::RwLock<std::vector<int32_t>>::new_({1, 2});
     // with rw.write() as w:
@@ -48,7 +52,7 @@ void main() {
         w.set({20, 30});
         // w.append(40)
         w.__deref__().push_back(40);
-        __ctx_3.__exit__({}, nullptr, {});
+        goto __with_exit_3;
     } catch (::tpy::BaseException& __exc_3) {
         __ctx_3.__exit__({}, &__exc_3, {});
         throw;
@@ -56,13 +60,15 @@ void main() {
         __ctx_3.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_3:
+    __ctx_3.__exit__({}, nullptr, {});
     // with rw.read() as r:
     auto __ctx_4 = rw.read();
     auto& r = __ctx_4.__enter__();
     try {
         // print(r.get())              # [20, 30, 40]
         std::cout << ::tpy::ListPrinter(r.get()) << "\n";
-        __ctx_4.__exit__({}, nullptr, {});
+        goto __with_exit_4;
     } catch (::tpy::BaseException& __exc_4) {
         __ctx_4.__exit__({}, &__exc_4, {});
         throw;
@@ -70,6 +76,8 @@ void main() {
         __ctx_4.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_4:
+    __ctx_4.__exit__({}, nullptr, {});
 }
 
 void __tpy_init() {

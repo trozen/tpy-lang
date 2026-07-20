@@ -130,7 +130,7 @@ inline void Repo::save_json(std::string_view __path, int32_t indent) const {
         // # Regression: @model round-trips `int` (BigInt) fields as bare JSON numbers,
         // # not quoted strings -- matching stdlib json.dumps/loads and CPython. A
         __f.write(this->to_json(indent));
-        __ctx_1.__exit__({}, nullptr, {});
+        goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});
         throw;
@@ -138,6 +138,8 @@ inline void Repo::save_json(std::string_view __path, int32_t indent) const {
         __ctx_1.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_1:
+    __ctx_1.__exit__({}, nullptr, {});
     // # not quoted strings -- matching stdlib json.dumps/loads and CPython. A
     // # bare-number payload must parse, to_json must emit an unquoted number, and
     // # arbitrary precision (values beyond Int64) must survive a round-trip.
@@ -152,7 +154,7 @@ inline Repo Repo::load_json(std::string_view __path) {
         // # Regression: @model round-trips `int` (BigInt) fields as bare JSON numbers,
         // # not quoted strings -- matching stdlib json.dumps/loads and CPython. A
         __data = __f.read();
-        __ctx_2.__exit__({}, nullptr, {});
+        goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
         __ctx_2.__exit__({}, &__exc_2, {});
         throw;
@@ -160,6 +162,8 @@ inline Repo Repo::load_json(std::string_view __path) {
         __ctx_2.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_2:
+    __ctx_2.__exit__({}, nullptr, {});
     // # Regression: @model round-trips `int` (BigInt) fields as bare JSON numbers,
     // # not quoted strings -- matching stdlib json.dumps/loads and CPython. A
     // # bare-number payload must parse, to_json must emit an unquoted number, and
@@ -176,7 +180,7 @@ inline std::expected<Repo, ::tpystd::tplib::json::parser::JsonError> Repo::try_l
         // # Regression: @model round-trips `int` (BigInt) fields as bare JSON numbers,
         // # not quoted strings -- matching stdlib json.dumps/loads and CPython. A
         __data = __f.read();
-        __ctx_3.__exit__({}, nullptr, {});
+        goto __with_exit_3;
     } catch (::tpy::BaseException& __exc_3) {
         __ctx_3.__exit__({}, &__exc_3, {});
         throw;
@@ -184,6 +188,8 @@ inline std::expected<Repo, ::tpystd::tplib::json::parser::JsonError> Repo::try_l
         __ctx_3.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_3:
+    __ctx_3.__exit__({}, nullptr, {});
     // # Regression: @model round-trips `int` (BigInt) fields as bare JSON numbers,
     // # not quoted strings -- matching stdlib json.dumps/loads and CPython. A
     // # bare-number payload must parse, to_json must emit an unquoted number, and

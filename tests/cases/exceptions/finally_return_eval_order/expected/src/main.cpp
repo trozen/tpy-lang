@@ -13,15 +13,19 @@ namespace tpyapp::main {
     int32_t x = 1;
     // try:
     {
+        bool __fin_ran_1 = false;
         try {
             // return x
             ::tpy::BigInt __tpy_ret_0 = ::tpy::BigInt(x);
+            __fin_ran_1 = true;
             // x = 2
             x = 2;
             return __tpy_ret_0;
         } catch (...) {
-            // x = 2
-            x = 2;
+            if (!__fin_ran_1) {
+                // x = 2
+                x = 2;
+            }
             throw;
         }
     }
@@ -39,14 +43,19 @@ namespace tpyapp::main {
 ::tpy::BigInt g() {
     // try:
     {
+        bool __fin_ran_2 = false;
         try {
             // return bump()
             [[maybe_unused]] ::tpy::BigInt __tpy_ret_0 = bump();
+            __fin_ran_2 = true;
             // return 99
             return ::tpy::BigInt(99);
         } catch (...) {
-            // return 99
-            return ::tpy::BigInt(99);
+            if (!__fin_ran_2) {
+                // return 99
+                return ::tpy::BigInt(99);
+            }
+            throw;
         }
     }
 }

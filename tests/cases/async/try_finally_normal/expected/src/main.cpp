@@ -34,6 +34,7 @@ __coro_sub sub() {
         continue;
     }
     case S_RESUME_0: {
+        bool __fin_ran_1 = false;
         try {
             auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
@@ -41,12 +42,15 @@ __coro_sub sub() {
             __sub_0.reset();
             // print("after-await")
             std::cout << "after-await" << "\n";
+            __fin_ran_1 = true;
             this->__finally_0();
             __state = S_JOIN_0;
             continue;
         } catch (...) {
             __sub_0.reset();
-            this->__finally_0();
+            if (!__fin_ran_1) {
+                this->__finally_0();
+            }
             throw;
         }
     }

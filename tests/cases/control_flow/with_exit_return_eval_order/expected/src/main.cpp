@@ -9,15 +9,19 @@ bool f(Lock& lk) {
     // with lk:
     auto& __ctx_1 = lk;
     __ctx_1.__enter__();
+    bool __fin_ran_1 = false;
     try {
         // return lk.held
         bool __tpy_ret_0 = lk.held;
+        __fin_ran_1 = true;
         __ctx_1.__exit__({}, nullptr, {});
         return __tpy_ret_0;
     } catch (::tpy::BaseException& __exc_1) {
+        if (__fin_ran_1) throw;
         __ctx_1.__exit__({}, &__exc_1, {});
         throw;
     } catch (...) {
+        if (__fin_ran_1) throw;
         __ctx_1.__exit__({}, nullptr, {});
         throw;
     }

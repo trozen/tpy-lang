@@ -588,19 +588,24 @@ void process(std::string_view path) {
 
 ### `finally` Codegen
 
-`finally` uses a duplication pattern: the finally body is emitted once inside `catch(...)` (exception path, followed by `throw;` for zero-cost re-throw), once on the normal fall-through path, and inline at every `return`/`break`/`continue` site inside the try body. No goto labels, no `std::exception_ptr` allocation, no shared `__pending` variable:
+`finally` uses a duplication pattern: the finally body is emitted once inside `catch(...)` (exception path, followed by `throw;` for zero-cost re-throw), once on the normal fall-through path, and inline at every `return`/`break`/`continue` site inside the try body. No `std::exception_ptr` allocation, no shared `__pending` variable.
+
+A finally body may itself raise, and a copy that runs on an exit path (fall-through or `return`/`break`/`continue`) sits lexically inside the `try` whose own `catch(...)` also re-runs the finally -- so a raising copy would run twice unless the catch is told to skip it. A per-`try` `bool __fin_ran_N` guard, set right before an exit-site copy runs, is the signal: the frame's own catch runs its copy only when the guard is false, and otherwise rethrows what the copy raised. An enclosing frame's guard is still false at that point, so its finally still runs -- Python's unwind semantics. The guard is declared only when an exit site actually walked the frame; a `try`/`finally` with no `return`/`break`/`continue` inside emits none. (The `with` statement, which has a single fall-through cleanup site rather than N inline ones, moves that copy *outside* the try via a `goto` instead -- same invariant, cheaper for the one-site shape; see `_emit_with_try_catch`.)
 
 ```cpp
+bool __fin_ran_N = false;      // only when an exit site walks this frame
 try {
     // try body
     // "return X" becomes:
     //     RetCpp __tpy_ret_N = X;   // value captured BEFORE cleanup
+    //     __fin_ran_N = true;       // guard set before the copy runs
     //     cleanup();                // inline finally copy
     //     return __tpy_ret_N;
-    // "break"/"continue" emit the inline finally copy, then break/continue.
+    // "break"/"continue" emit the guard set + inline finally copy, then
+    // break/continue.
 } catch (...) {
-    cleanup();  // finally body (exception-path copy)
-    throw;      // re-throw original exception (zero-cost)
+    if (!__fin_ran_N) { cleanup(); }  // skip if an exit-site copy already ran
+    throw;      // re-throw (the copy's own exception, or the in-flight one)
 }
 cleanup();      // finally body (normal fall-through copy)
 ```
@@ -612,6 +617,8 @@ The return expression is evaluated into `__tpy_ret_N` (typed with the function's
 For throw-tier try/except/finally, an outer try/catch wraps the inner try/catch + handlers to capture exceptions escaping handlers (including re-raises).
 
 Nested try/finally blocks compose naturally: an exit-site emission walks the active `FinallyContext` stack from innermost outward, and an inner `throw;` feeds the outer catch.
+
+The resumable-frame codegen (`gen_async.py`, shared by generators and `async def`) has the same shape and the same guard. There the `try` is opened per switch-case per region rather than lexically, so the guard is a `bool __fin_ran_N` declared before the region's `try` and keyed on the region; the region's own catch (`_emit_try_region_catches` / `_emit_with_region_catches`, and the handler's nested unwind try) tests it, and both exit mechanisms -- region fall-through (`_emit_exit_region_finallies`) and `return`/`break`/`continue` (`_emit_finally_chain` over frames from `_push_finally_helpers`) -- set it. Like the sync path, the guard is emitted only when an exit edge actually sets it: `_emit_case` buffers the case body, records which guards get a `= true` (`ctx.resumable_guards_used`), and declares (and lets the catch test) only those -- so a region whose cleanup never runs on a normal exit (e.g. a with-body that always raises) emits no dead guard. A `finally` that itself suspends takes the separate CFG-decomposed route (its own state, not a helper), which never runs the body inside its region's catch and so needs no guard.
 
 ### Base Class Catching
 

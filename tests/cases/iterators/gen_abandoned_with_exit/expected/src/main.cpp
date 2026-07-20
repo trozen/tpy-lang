@@ -30,14 +30,18 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
         }
     }
     case S_RESUME_1: {
+        bool __fin_ran_2 = false;
         try {
+            __fin_ran_2 = true;
             (*__with_ctx_0).__exit__({}, nullptr, {});
             __state = S_JOIN_0;
             continue;
         } catch (::tpy::BaseException& __exc_0) {
+            if (__fin_ran_2) throw;
             (*__with_ctx_0).__exit__({}, &__exc_0, {});
             throw;
         } catch (...) {
+            if (__fin_ran_2) throw;
             (*__with_ctx_0).__exit__({}, nullptr, {});
             throw;
         }

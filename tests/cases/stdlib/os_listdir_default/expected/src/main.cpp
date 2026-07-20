@@ -45,7 +45,7 @@ void main() {
         try {
             // fh.write(n)
             fh.write(n);
-            __ctx_1.__exit__({}, nullptr, {});
+            goto __with_exit_1;
         } catch (::tpy::BaseException& __exc_1) {
             __ctx_1.__exit__({}, &__exc_1, {});
             throw;
@@ -53,6 +53,8 @@ void main() {
             __ctx_1.__exit__({}, nullptr, {});
             throw;
         }
+        __with_exit_1:
+        __ctx_1.__exit__({}, nullptr, {});
     }
     // cwd = os.getcwd()
     std::string cwd = ::tpy::stdlib::os::getcwd();

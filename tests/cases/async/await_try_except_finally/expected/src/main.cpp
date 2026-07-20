@@ -75,14 +75,18 @@ __coro_fail fail() {
             }
         } catch (const ::tpy::ValueError&) {
             __sub_0.reset();
+            bool __fin_ran_2 = false;
             try {
                 // result = Int32(99)
                 result = 99;
+                __fin_ran_2 = true;
                 this->__finally_0();
                 __state = S_JOIN_0;
                 continue;
             } catch (...) {
-                this->__finally_0();
+                if (!__fin_ran_2) {
+                    this->__finally_0();
+                }
                 throw;
             }
         } catch (...) {
@@ -103,14 +107,18 @@ __coro_fail fail() {
             continue;
         } catch (const ::tpy::ValueError&) {
             __sub_1.reset();
+            bool __fin_ran_4 = false;
             try {
                 // result = Int32(99)
                 result = 99;
+                __fin_ran_4 = true;
                 this->__finally_0();
                 __state = S_JOIN_0;
                 continue;
             } catch (...) {
-                this->__finally_0();
+                if (!__fin_ran_4) {
+                    this->__finally_0();
+                }
                 throw;
             }
         } catch (...) {
@@ -131,14 +139,18 @@ __coro_fail fail() {
             continue;
         } catch (const ::tpy::ValueError&) {
             __sub_2.reset();
+            bool __fin_ran_6 = false;
             try {
                 // result = Int32(99)
                 result = 99;
+                __fin_ran_6 = true;
                 this->__finally_0();
                 __state = S_JOIN_0;
                 continue;
             } catch (...) {
-                this->__finally_0();
+                if (!__fin_ran_6) {
+                    this->__finally_0();
+                }
                 throw;
             }
         } catch (...) {
@@ -154,23 +166,31 @@ __coro_fail fail() {
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
     }
     case S_JOIN_1: {
+        bool __fin_ran_7 = false;
         try {
+            __fin_ran_7 = true;
             this->__finally_0();
             __state = S_JOIN_0;
             continue;
         } catch (const ::tpy::ValueError&) {
+            bool __fin_ran_8 = false;
             try {
                 // result = Int32(99)
                 result = 99;
+                __fin_ran_8 = true;
                 this->__finally_0();
                 __state = S_JOIN_0;
                 continue;
             } catch (...) {
-                this->__finally_0();
+                if (!__fin_ran_8) {
+                    this->__finally_0();
+                }
                 throw;
             }
         } catch (...) {
-            this->__finally_0();
+            if (!__fin_ran_7) {
+                this->__finally_0();
+            }
             throw;
         }
     }
@@ -181,14 +201,18 @@ __coro_fail fail() {
             __state = S_RESUME_0;
             continue;
         } catch (const ::tpy::ValueError&) {
+            bool __fin_ran_10 = false;
             try {
                 // result = Int32(99)
                 result = 99;
+                __fin_ran_10 = true;
                 this->__finally_0();
                 __state = S_JOIN_0;
                 continue;
             } catch (...) {
-                this->__finally_0();
+                if (!__fin_ran_10) {
+                    this->__finally_0();
+                }
                 throw;
             }
         } catch (...) {

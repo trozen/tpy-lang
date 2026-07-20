@@ -944,6 +944,20 @@ class FinallyContext:
     finally frames whose loop_depth >= current loop count, since those
     are the frames pushed inside the innermost active loop."""
 
+    guard_name: str | None = None
+    """Name of this frame's `bool __fin_ran_<n>` guard, set true right
+    before an exit-site copy of the finally runs. The frame's own
+    catch(...) tests it and skips its copy, so a finally that RAISES at
+    an exit site is not re-run by the catch it throws into. An OUTER
+    frame's guard is still false there, so its finally still runs --
+    which is what Python requires. Only declared when an exit site
+    actually walked this frame (`guard_used`); a try/finally with no
+    return/break/continue inside emits no guard at all."""
+
+    guard_used: bool = False
+    """Set by _emit_finally_chain when an exit site emitted this frame's
+    copy, so the emitter knows to declare the guard and test it."""
+
 
 @dataclass
 class CodeGenContext:
@@ -1239,8 +1253,26 @@ class CodeGenContext:
     # Stack of active try/finally (and with) blocks. Codegen invokes
     # frame.emit_finally inline before each non-throw exit (return/break/
     # continue/fall-through) and inside each try block's catch(...) wrapper.
-    # No goto labels, no shared __retval variable.
+    # No shared __retval variable: the exit-site copy keeps the return temp
+    # copy-initialized at the site, and a per-frame `bool` guard (see
+    # FinallyContext.guard_name) stops the frame's own catch re-running a
+    # copy that raised -- parking the value to run the copy outside the try
+    # instead would defeat copy elision on every such return.
     finally_stack: list[FinallyContext] = field(default_factory=list)
+    finally_guard_counter: int = 0
+    # Resumable path only: id(region) -> `bool __fin_ran_N` guard name for the
+    # C++ try the current switch case opened for that region. An exit-edge
+    # cleanup copy sets it; the region's own catch tests it, so a raising
+    # cleanup is not re-run by the catch it throws into (the sync path's
+    # FinallyContext.guard_name, expressed across the three resumable emit
+    # methods). Populated per case in _emit_case, cleared at case end.
+    resumable_region_guards: dict[int, str] = field(default_factory=dict)
+    # Guard names that actually got a `= true` emitted on some exit edge in
+    # the current case. A guard whose region has no normal-exit cleanup copy
+    # (e.g. a with-body that always raises) never lands here, so its
+    # declaration and catch test are skipped -- mirroring the sync path's
+    # guard_used gate. Populated while the case body is buffered.
+    resumable_guards_used: set[str] = field(default_factory=set)
 
     # --- with statement ---
     with_counter: int = 0

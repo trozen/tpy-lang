@@ -13,6 +13,7 @@ namespace tpyapp::main {
         continue;
     }
     case S_RESUME_0: {
+        bool __fin_ran_1 = false;
         try {
             auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
@@ -20,12 +21,15 @@ namespace tpyapp::main {
             __sub_0.reset();
             // return Int32(99)
             int32_t __tpy_async_ret_0 = 99;
+            __fin_ran_1 = true;
             this->__finally_0();
             __state = S_DONE;
             return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret_0));
         } catch (...) {
             __sub_0.reset();
-            this->__finally_0();
+            if (!__fin_ran_1) {
+                this->__finally_0();
+            }
             throw;
         }
     }

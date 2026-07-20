@@ -56,6 +56,7 @@ __coro_cleanup cleanup() {
     }
     case S_RESUME_0: {
         try {
+            bool __fin_ran_1 = false;
             try {
                 auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
                 if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
@@ -64,13 +65,16 @@ __coro_cleanup cleanup() {
                 // return x
                 this->__finally_ret_0 = x;
                 this->__finally_pending_0 = true;
+                __fin_ran_1 = true;
                 (*__with_ctx_0).__exit__({}, nullptr, {});
                 __state = S_JOIN_1;
                 continue;
             } catch (::tpy::BaseException& __exc_0) {
+                if (__fin_ran_1) throw;
                 (*__with_ctx_0).__exit__({}, &__exc_0, {});
                 throw;
             } catch (...) {
+                if (__fin_ran_1) throw;
                 (*__with_ctx_0).__exit__({}, nullptr, {});
                 throw;
             }

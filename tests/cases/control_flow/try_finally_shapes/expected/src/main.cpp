@@ -38,11 +38,13 @@ void hoisted() {
 ::tpy::BigInt ret_through(const ::tpy::BigInt& n) {
     // try:
     {
+        bool __fin_ran_2 = false;
         try {
             // if n > 2:
             if ((n > 2)) {
                 // return n * 2
                 ::tpy::BigInt __tpy_ret_0 = ((n) * (::tpy::BigInt(2)));
+                __fin_ran_2 = true;
                 // print("cleanup", n)
                 std::cout << "cleanup" << " " << n << "\n";
                 return __tpy_ret_0;
@@ -50,8 +52,10 @@ void hoisted() {
             // print("no-return", n)
             std::cout << "no-return" << " " << n << "\n";
         } catch (...) {
-            // print("cleanup", n)
-            std::cout << "cleanup" << " " << n << "\n";
+            if (!__fin_ran_2) {
+                // print("cleanup", n)
+                std::cout << "cleanup" << " " << n << "\n";
+            }
             throw;
         }
         // print("cleanup", n)
@@ -65,10 +69,12 @@ void hoisted() {
 void bare_ret(const ::tpy::BigInt& n) {
     // try:
     {
+        bool __fin_ran_3 = false;
         try {
             // if n > 0:
             if ((n > 0)) {
                 // return
+                __fin_ran_3 = true;
                 // print("bare-cleanup", n)
                 std::cout << "bare-cleanup" << " " << n << "\n";
                 return;
@@ -76,8 +82,10 @@ void bare_ret(const ::tpy::BigInt& n) {
             // print("fell", n)
             std::cout << "fell" << " " << n << "\n";
         } catch (...) {
-            // print("bare-cleanup", n)
-            std::cout << "bare-cleanup" << " " << n << "\n";
+            if (!__fin_ran_3) {
+                // print("bare-cleanup", n)
+                std::cout << "bare-cleanup" << " " << n << "\n";
+            }
             throw;
         }
         // print("bare-cleanup", n)
@@ -89,19 +97,24 @@ void bare_ret(const ::tpy::BigInt& n) {
 ::tpy::BigInt override(const ::tpy::BigInt& n) {
     // try:
     {
+        bool __fin_ran_4 = false;
         try {
             // if n > 0:
             if ((n > 0)) {
                 // return n * 10
                 [[maybe_unused]] ::tpy::BigInt __tpy_ret_0 = ((n) * (::tpy::BigInt(10)));
+                __fin_ran_4 = true;
                 // return -1
                 return ::tpy::BigInt(-1);
             }
             // print("neg", n)
             std::cout << "neg" << " " << n << "\n";
         } catch (...) {
-            // return -1
-            return ::tpy::BigInt(-1);
+            if (!__fin_ran_4) {
+                // return -1
+                return ::tpy::BigInt(-1);
+            }
+            throw;
         }
         // return -1
         return ::tpy::BigInt(-1);
@@ -117,10 +130,12 @@ void bare_ret(const ::tpy::BigInt& n) {
     for (::tpy::BigInt i = 0; i < __stop_0; ++i) {
         // try:
         {
+            bool __fin_ran_5 = false;
             try {
                 // if i == 1:
                 if ((i == 1)) {
                     // continue
+                    __fin_ran_5 = true;
                     // total = total + 100
                     total = ((total) + (::tpy::BigInt(100)));
                     continue;
@@ -128,6 +143,7 @@ void bare_ret(const ::tpy::BigInt& n) {
                 // if i == 3:
                 if ((i == 3)) {
                     // break
+                    __fin_ran_5 = true;
                     // total = total + 100
                     total = ((total) + (::tpy::BigInt(100)));
                     break;
@@ -135,8 +151,10 @@ void bare_ret(const ::tpy::BigInt& n) {
                 // total = total + i
                 total = ((::tpy::BigInt(total)) + (i));
             } catch (...) {
-                // total = total + 100
-                total = ((total) + (::tpy::BigInt(100)));
+                if (!__fin_ran_5) {
+                    // total = total + 100
+                    total = ((total) + (::tpy::BigInt(100)));
+                }
                 throw;
             }
             // total = total + 100
@@ -182,37 +200,47 @@ void nested() {
     // with CM(n) as x:
     auto __ctx_1 = CM(n);
     auto x = __ctx_1.__enter__();
+    bool __fin_ran_8 = false;
     try {
         // try:
         {
+            bool __fin_ran_9 = false;
             try {
                 // if x > 3:
                 if ((x > 3)) {
                     // return x
                     ::tpy::BigInt __tpy_ret_0 = x;
+                    __fin_ran_9 = true;
                     // print("try-cleanup", x)
                     std::cout << "try-cleanup" << " " << x << "\n";
+                    __fin_ran_8 = true;
                     __ctx_1.__exit__({}, nullptr, {});
                     return __tpy_ret_0;
                 }
                 // print("small", x)
                 std::cout << "small" << " " << x << "\n";
             } catch (...) {
-                // print("try-cleanup", x)
-                std::cout << "try-cleanup" << " " << x << "\n";
+                if (!__fin_ran_9) {
+                    // print("try-cleanup", x)
+                    std::cout << "try-cleanup" << " " << x << "\n";
+                }
                 throw;
             }
             // print("try-cleanup", x)
             std::cout << "try-cleanup" << " " << x << "\n";
         }
-        __ctx_1.__exit__({}, nullptr, {});
+        goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
+        if (__fin_ran_8) throw;
         __ctx_1.__exit__({}, &__exc_1, {});
         throw;
     } catch (...) {
+        if (__fin_ran_8) throw;
         __ctx_1.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_1:
+    __ctx_1.__exit__({}, nullptr, {});
     // return -5
     return ::tpy::BigInt(-5);
 }
@@ -221,15 +249,19 @@ void nested() {
 ::tpy::BigInt term_body() {
     // try:
     {
+        bool __fin_ran_10 = false;
         try {
             // return 4
             ::tpy::BigInt __tpy_ret_0 = ::tpy::BigInt(4);
+            __fin_ran_10 = true;
             // print("term-cleanup")
             std::cout << "term-cleanup" << "\n";
             return __tpy_ret_0;
         } catch (...) {
-            // print("term-cleanup")
-            std::cout << "term-cleanup" << "\n";
+            if (!__fin_ran_10) {
+                // print("term-cleanup")
+                std::cout << "term-cleanup" << "\n";
+            }
             throw;
         }
     }

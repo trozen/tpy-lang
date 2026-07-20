@@ -14,11 +14,13 @@ void main() {
     try {
         // print("inside:", cm.n)
         std::cout << "inside:" << " " << cm.n << "\n";
-        __ctx_1.__exit__({}, {}, {});
+        goto __with_exit_1;
     } catch (...) {
         __ctx_1.__exit__({}, {}, {});
         throw;
     }
+    __with_exit_1:
+    __ctx_1.__exit__({}, {}, {});
     // print("after:", cm.n)
     std::cout << "after:" << " " << cm.n << "\n";
 }

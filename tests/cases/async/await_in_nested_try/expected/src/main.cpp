@@ -53,7 +53,9 @@ __coro_fail fail() {
         continue;
     }
     case S_RESUME_0: {
+        bool __fin_ran_1 = false;
         try {
+            bool __fin_ran_2 = false;
             try {
                 auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
                 if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
@@ -61,7 +63,9 @@ __coro_fail fail() {
                 __sub_0.reset();
                 // return x
                 int32_t __tpy_async_ret_0 = x;
+                __fin_ran_2 = true;
                 this->__finally_1();
+                __fin_ran_1 = true;
                 this->__finally_0();
                 __state = S_DONE;
                 return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret_0));
@@ -80,16 +84,21 @@ __coro_fail fail() {
                 }
             } catch (...) {
                 __sub_0.reset();
-                this->__finally_1();
+                if (!__fin_ran_2) {
+                    this->__finally_1();
+                }
                 throw;
             }
         } catch (...) {
             __sub_0.reset();
-            this->__finally_0();
+            if (!__fin_ran_1) {
+                this->__finally_0();
+            }
             throw;
         }
     }
     case S_RESUME_1: {
+        bool __fin_ran_4 = false;
         try {
             auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
             if (__r1.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
@@ -98,13 +107,16 @@ __coro_fail fail() {
             // return y
             int32_t __tpy_async_ret_1 = y;
             this->__finally_1();
+            __fin_ran_4 = true;
             this->__finally_0();
             __state = S_DONE;
             return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret_1));
         } catch (...) {
             __sub_1.reset();
             this->__finally_1();
-            this->__finally_0();
+            if (!__fin_ran_4) {
+                this->__finally_0();
+            }
             throw;
         }
     }

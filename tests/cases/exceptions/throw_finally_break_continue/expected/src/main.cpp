@@ -10,10 +10,12 @@ void test_break() {
     for (int32_t i = 0; i < 5; ++i) {
         // try:
         {
+            bool __fin_ran_1 = false;
             try {
                 // if i == 2:
                 if ((i == 2)) {
                     // break
+                    __fin_ran_1 = true;
                     // print("cleanup", i)
                     std::cout << "cleanup" << " " << i << "\n";
                     break;
@@ -21,8 +23,10 @@ void test_break() {
                 // print(i)
                 std::cout << i << "\n";
             } catch (...) {
-                // print("cleanup", i)
-                std::cout << "cleanup" << " " << i << "\n";
+                if (!__fin_ran_1) {
+                    // print("cleanup", i)
+                    std::cout << "cleanup" << " " << i << "\n";
+                }
                 throw;
             }
             // print("cleanup", i)
@@ -37,10 +41,12 @@ void test_continue() {
     for (int32_t i = 0; i < 5; ++i) {
         // try:
         {
+            bool __fin_ran_2 = false;
             try {
                 // if i == 2:
                 if ((i == 2)) {
                     // continue
+                    __fin_ran_2 = true;
                     // print("cleanup", i)
                     std::cout << "cleanup" << " " << i << "\n";
                     continue;
@@ -48,8 +54,10 @@ void test_continue() {
                 // print(i)
                 std::cout << i << "\n";
             } catch (...) {
-                // print("cleanup", i)
-                std::cout << "cleanup" << " " << i << "\n";
+                if (!__fin_ran_2) {
+                    // print("cleanup", i)
+                    std::cout << "cleanup" << " " << i << "\n";
+                }
                 throw;
             }
             // print("cleanup", i)
@@ -64,10 +72,12 @@ void test_break_for_else() {
     for (int32_t i = 0; i < 5; ++i) {
         // try:
         {
+            bool __fin_ran_3 = false;
             try {
                 // if i == 2:
                 if ((i == 2)) {
                     // break
+                    __fin_ran_3 = true;
                     // print("cleanup", i)
                     std::cout << "cleanup" << " " << i << "\n";
                     goto __after_else_0;
@@ -75,8 +85,10 @@ void test_break_for_else() {
                 // print(i)
                 std::cout << i << "\n";
             } catch (...) {
-                // print("cleanup", i)
-                std::cout << "cleanup" << " " << i << "\n";
+                if (!__fin_ran_3) {
+                    // print("cleanup", i)
+                    std::cout << "cleanup" << " " << i << "\n";
+                }
                 throw;
             }
             // print("cleanup", i)

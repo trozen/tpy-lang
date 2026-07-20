@@ -72,7 +72,7 @@ void test_try_load_bad() {
     try {
         // f.write("{bad json}")
         f.write("{bad json}");
-        __ctx_4.__exit__({}, nullptr, {});
+        goto __with_exit_4;
     } catch (::tpy::BaseException& __exc_4) {
         __ctx_4.__exit__({}, &__exc_4, {});
         throw;
@@ -80,6 +80,8 @@ void test_try_load_bad() {
         __ctx_4.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_4:
+    __ctx_4.__exit__({}, nullptr, {});
     // try:
     std::optional<Item> c;
     {

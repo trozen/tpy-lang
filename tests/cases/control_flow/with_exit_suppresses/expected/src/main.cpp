@@ -32,13 +32,17 @@ void normal_inside() {
     try {
         // print(f"using {s}")
         std::cout << std::format("using {}", s) << "\n";
-        __ctx_2.__exit__({}, nullptr, {});
+        goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
         if (!__ctx_2.__exit__({}, &__exc_2, {})) throw;
+        goto __with_after_2;
     } catch (...) {
         __ctx_2.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_2:
+    __ctx_2.__exit__({}, nullptr, {});
+    __with_after_2:;
     // print("post-with")
     std::cout << "post-with" << "\n";
 }

@@ -51,7 +51,7 @@ void main() {
     try {
         // fh.write("hi")
         fh.write("hi");
-        __ctx_1.__exit__({}, nullptr, {});
+        goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});
         throw;
@@ -59,6 +59,8 @@ void main() {
         __ctx_1.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_1:
+    __ctx_1.__exit__({}, nullptr, {});
     // os.symlink(base + "/f.txt", base + "/lnk")
     ::tpy::stdlib::os::symlink((::tpy::str_concat(base, "/f.txt")), (::tpy::str_concat(base, "/lnk")));
     // rows: list[str] = []

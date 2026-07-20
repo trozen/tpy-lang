@@ -83,6 +83,7 @@ void handler_falls_through() {
 int32_t finally_return_wins() {
     // try:
     {
+        bool __fin_ran_4 = false;
         try {
             try {
                 // raise ValueError("boom")
@@ -90,12 +91,16 @@ int32_t finally_return_wins() {
             } catch (const ::tpy::ValueError&) {
                 // return 1
                 [[maybe_unused]] int32_t __tpy_ret_0 = 1;
+                __fin_ran_4 = true;
                 // return 2
                 return 2;
             }
         } catch (...) {
-            // return 2
-            return 2;
+            if (!__fin_ran_4) {
+                // return 2
+                return 2;
+            }
+            throw;
         }
     }
 }
@@ -168,23 +173,28 @@ void deep_terminating_finally(bool c) {
 int32_t all_paths_terminate() {
     // try:
     {
+        bool __fin_ran_7 = false;
         try {
             try {
                 // return 10
                 int32_t __tpy_ret_0 = 10;
+                __fin_ran_7 = true;
                 // print("finally ran")
                 std::cout << "finally ran" << "\n";
                 return __tpy_ret_0;
             } catch (const ::tpy::ValueError&) {
                 // return 20
                 int32_t __tpy_ret_1 = 20;
+                __fin_ran_7 = true;
                 // print("finally ran")
                 std::cout << "finally ran" << "\n";
                 return __tpy_ret_1;
             }
         } catch (...) {
-            // print("finally ran")
-            std::cout << "finally ran" << "\n";
+            if (!__fin_ran_7) {
+                // print("finally ran")
+                std::cout << "finally ran" << "\n";
+            }
             throw;
         }
     }

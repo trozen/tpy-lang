@@ -1,0 +1,32 @@
+-- normal_exit --
+1
+side-effect 1
+caught code=1
+-- handler_exit --
+1
+caught
+side-effect 1
+caught code=1
+-- return_exit --
+1
+side-effect 1
+caught code=1
+-- with_exit --
+1
+side-effect 1
+caught code=1
+-- nested_exit --
+1
+inner fin
+side-effect 1
+outer fin
+caught code=1
+-- break_exit --
+0
+1
+side-effect 1
+caught code=1
+-- continue_exit --
+0
+side-effect 1
+caught code=1

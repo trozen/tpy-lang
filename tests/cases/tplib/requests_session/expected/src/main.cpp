@@ -90,7 +90,7 @@ void context_manager_closes() {
         conn->sock = std::move(a);
         // s._connection = Box(conn)
         s._connection = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move((*conn)));
-        __ctx_1.__exit__({}, nullptr, {});
+        goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});
         throw;
@@ -98,6 +98,8 @@ void context_manager_closes() {
         __ctx_1.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_1:
+    __ctx_1.__exit__({}, nullptr, {});
     // # __exit__ closed the still-set connection; the peer now sees EOF.
     // print(b.recv(10))
     std::cout << ::tpy::BytesPrinter(b.recv(10)) << "\n";

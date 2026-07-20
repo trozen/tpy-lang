@@ -8,8 +8,6 @@ there). When a release ships, delete its section and promote the next one.
 
 ### Bugs to fix (the `[HIGH]` entries in BUGS.md)
 
-- "a `finally` body that RAISES runs TWICE" -- in a resumable frame whose
-  `try` suspends
 - "renders pointer truthiness instead of dispatching to the narrowed
   record's `__bool__`" -- narrowed Optional record skips the dunder
 - "compiles to an empty loop" -- key-iteration over a narrowed Optional dict

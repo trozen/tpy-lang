@@ -12,11 +12,13 @@ void run(Counter& c) {
     try {
         // print("inside:", c.n)
         std::cout << "inside:" << " " << c.n << "\n";
-        __ctx_1.__exit__({}, {}, {});
+        goto __with_exit_1;
     } catch (...) {
         __ctx_1.__exit__({}, {}, {});
         throw;
     }
+    __with_exit_1:
+    __ctx_1.__exit__({}, {}, {});
     // print("after:", c.n)
     std::cout << "after:" << " " << c.n << "\n";
 }
@@ -34,11 +36,13 @@ void main() {
     try {
         // print("second inside:", c.n)
         std::cout << "second inside:" << " " << c.n << "\n";
-        __ctx_2.__exit__({}, {}, {});
+        goto __with_exit_2;
     } catch (...) {
         __ctx_2.__exit__({}, {}, {});
         throw;
     }
+    __with_exit_2:
+    __ctx_2.__exit__({}, {}, {});
     // print("second after:", c.n)
     std::cout << "second after:" << " " << c.n << "\n";
 }

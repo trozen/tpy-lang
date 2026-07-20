@@ -152,7 +152,7 @@ void build(std::string_view root) {
     try {
         // f.write("t")
         f->write("t");
-        __ctx_1.__exit__({}, nullptr, {});
+        goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});
         throw;
@@ -160,13 +160,15 @@ void build(std::string_view root) {
         __ctx_1.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_1:
+    __ctx_1.__exit__({}, nullptr, {});
     // with open(root + "/a/x.txt", "w") as f:
     auto __ctx_2 = ::tpy::builtin_open_mode((::tpy::str_concat(root, "/a/x.txt")), "w");
     f = &(__ctx_2.__enter__());
     try {
         // f.write("x")
         f->write("x");
-        __ctx_2.__exit__({}, nullptr, {});
+        goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
         __ctx_2.__exit__({}, &__exc_2, {});
         throw;
@@ -174,6 +176,8 @@ void build(std::string_view root) {
         __ctx_2.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_2:
+    __ctx_2.__exit__({}, nullptr, {});
 }
 
 // def teardown(root: str) -> None:

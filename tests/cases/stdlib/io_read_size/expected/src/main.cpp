@@ -66,7 +66,7 @@ void file_read_size() {
     try {
         // f.write("abcdefghij")
         f.write("abcdefghij");
-        __ctx_1.__exit__({}, nullptr, {});
+        goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});
         throw;
@@ -74,6 +74,8 @@ void file_read_size() {
         __ctx_1.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_1:
+    __ctx_1.__exit__({}, nullptr, {});
     // with open(tpath) as r:
     auto __ctx_2 = ::tpy::builtin_open(tpath);
     auto& r = __ctx_2.__enter__();
@@ -88,7 +90,7 @@ void file_read_size() {
         std::cout << "file-rest:" << " " << r.read() << "\n";
         // print("file-eof:", "[" + r.read(5) + "]")  # []
         std::cout << "file-eof:" << " " << (::tpy::str_concat((::tpy::str_concat("[", r.read(5))), "]")) << "\n";
-        __ctx_2.__exit__({}, nullptr, {});
+        goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
         __ctx_2.__exit__({}, &__exc_2, {});
         throw;
@@ -96,6 +98,8 @@ void file_read_size() {
         __ctx_2.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_2:
+    __ctx_2.__exit__({}, nullptr, {});
     // bpath = "/tmp/tpy_test_io_read_size.bin"
     std::string_view bpath = "/tmp/tpy_test_io_read_size.bin";
     // with open(bpath, "wb") as bf:
@@ -104,7 +108,7 @@ void file_read_size() {
     try {
         // bf.write(b"0123456789")
         bf.write(::tpy::bytes_literal("0123456789", 10));
-        __ctx_3.__exit__({}, nullptr, {});
+        goto __with_exit_3;
     } catch (::tpy::BaseException& __exc_3) {
         __ctx_3.__exit__({}, &__exc_3, {});
         throw;
@@ -112,6 +116,8 @@ void file_read_size() {
         __ctx_3.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_3:
+    __ctx_3.__exit__({}, nullptr, {});
     // with open(bpath, "rb") as br:
     auto __ctx_4 = ::tpy::builtin_open_binary(bpath, "rb");
     auto& br = __ctx_4.__enter__();
@@ -122,7 +128,7 @@ void file_read_size() {
         std::cout << "bfile-rest:" << " " << ::tpy::BytesPrinter(br.read()) << "\n";
         // print("bfile-eof:", br.read(3))          # b''
         std::cout << "bfile-eof:" << " " << ::tpy::BytesPrinter(br.read(3)) << "\n";
-        __ctx_4.__exit__({}, nullptr, {});
+        goto __with_exit_4;
     } catch (::tpy::BaseException& __exc_4) {
         __ctx_4.__exit__({}, &__exc_4, {});
         throw;
@@ -130,6 +136,8 @@ void file_read_size() {
         __ctx_4.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_4:
+    __ctx_4.__exit__({}, nullptr, {});
 }
 
 // def main() -> None:

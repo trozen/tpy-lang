@@ -101,7 +101,7 @@ inline Resource::~Resource() {
         try {
             // print("cleanup", t)
             std::cout << "cleanup" << " " << t << "\n";
-            __ctx_1.__exit__({}, nullptr, {});
+            goto __with_exit_1;
         } catch (::tpy::BaseException& __exc_1) {
             __ctx_1.__exit__({}, &__exc_1, {});
             throw;
@@ -109,6 +109,8 @@ inline Resource::~Resource() {
             __ctx_1.__exit__({}, nullptr, {});
             throw;
         }
+        __with_exit_1:
+        __ctx_1.__exit__({}, nullptr, {});
     } catch (const std::exception& __del_exc) {
         ::tpy::report_del_exception(__del_exc);
     } catch (...) {

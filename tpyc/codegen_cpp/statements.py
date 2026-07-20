@@ -477,6 +477,8 @@ class StatementGenerator:
                                with_counter=CtxCounter(self.ctx, "with_counter"),
                                try_counter=CtxCounter(self.ctx,
                                                       "try_except_counter"),
+                               finally_guard_counter=CtxCounter(
+                                   self.ctx, "finally_guard_counter"),
                                return_cpp=return_cpp)
                 # The function-level trailing-comment walk runs for THIR
                 # bodies too (this early return skips the AST tail's call).
@@ -3712,11 +3714,18 @@ class StatementGenerator:
         loop_depth captures len(loop_else_labels) at push time so
         break/continue can identify finally frames inside the innermost
         active loop body.
+
+        The guard name is allocated eagerly (an exit site inside the body
+        needs it while the body emits) but only declared if an exit site
+        actually used it -- see FinallyContext.guard_name.
         """
+        self.ctx.finally_guard_counter += 1
+        guard = f"__fin_ran_{self.ctx.finally_guard_counter}"
         fctx = FinallyContext(
             emit_finally=emit_finally,
             terminates=terminates,
             loop_depth=len(self.ctx.loop_else_labels),
+            guard_name=guard,
         )
         self.ctx.finally_stack.append(fctx)
         return fctx
@@ -3770,6 +3779,18 @@ class StatementGenerator:
             self.ctx.indent_level = target_level
             while len(self.ctx.finally_stack) > stop_at:
                 fctx = self.ctx.finally_stack.pop()
+                # Set before the copy runs: if the copy raises, the frame's
+                # own catch must not run it again. Frames further out still
+                # have a false guard, so their finallies do run -- Python's
+                # unwind semantics.
+                if fctx.guard_name is not None:
+                    fctx.guard_used = True
+                    # The resumable path gates its guard declaration on this
+                    # set instead of guard_used (its frames outlive one
+                    # emit_finally_chain call); harmless for the sync path,
+                    # which consults guard_used only.
+                    self.ctx.resumable_guards_used.add(fctx.guard_name)
+                    out.write(f"{indent}{fctx.guard_name} = true;\n")
                 fctx.emit_finally(out, indent)
                 if fctx.terminates:
                     terminated = True
@@ -4070,10 +4091,11 @@ class StatementGenerator:
         Layout (full, when can_suppress or takes_exc_val):
             try {
                 <body>
-                __ctx_N.__exit__({}, nullptr, {});  // normal fall-through
+                goto __with_exit_N;                 // normal fall-through
             } catch (::tpy::BaseException& __exc_N) {
                 // can_suppress=True (return type bool):
                 if (!__ctx_N.__exit__({}, &__exc_N, {})) throw;
+                goto __with_after_N;                // suppressed
                 // can_suppress=False (return type None):
                 __ctx_N.__exit__({}, &__exc_N, {});
                 throw;
@@ -4084,6 +4106,9 @@ class StatementGenerator:
                 __ctx_N.__exit__({}, nullptr, {});
                 throw;
             }
+            __with_exit_N:
+            __ctx_N.__exit__({}, nullptr, {});
+            __with_after_N:;
 
         When !can_suppress and !takes_exc_val, the BaseException& catch
         and the foreign catch would emit byte-identical bodies (both:
@@ -4091,26 +4116,47 @@ class StatementGenerator:
         in that case -- cleanup-only managers (the common stdlib shape)
         emit one catch instead of two.
 
-        Normal-path __exit__ is INSIDE the try (last stmt after the
-        body) so a suppressing catch doesn't double-call it on
-        fall-through. Push a finally frame for return/break/continue
-        through the body (matches `_emit_try_with_finally`'s contract).
+        The fall-through __exit__ sits AFTER the catches, so a throwing
+        __exit__ propagates instead of being caught by this statement's
+        own catch-all (which would run it a second time). A suppressing
+        catch already ran __exit__, so it jumps past that copy rather
+        than falling into it. Push a finally frame for
+        return/break/continue through the body (matches
+        `_emit_try_with_finally`'s contract).
         """
         exc_null_arg = "nullptr" if takes_exc_val else "{}"
         exc_obj_arg = f"&__exc_{ctx_n}" if takes_exc_val else "{}"
         emit_tpy_catch = can_suppress or takes_exc_val
+        exit_label = f"__with_exit_{ctx_n}"
+        after_label = f"__with_after_{ctx_n}"
+        # The skip only has something to skip when the body can fall
+        # through to the __exit__ copy at all.
+        needs_after_label = can_suppress and not body_terminates
 
         def emit_normal_exit(o: TextIO, ind: str) -> None:
             o.write(f"{ind}__ctx_{ctx_n}.__exit__({{}}, {exc_null_arg}, {{}});\n")
 
-        self._push_finally(emit_normal_exit, terminates=False)
+        fctx = self._push_finally(emit_normal_exit, terminates=False)
 
-        out.write(f"{inner}try {{\n")
+        # Buffered so an exit site inside the body can decide whether this
+        # frame's guard is needed before the `try {` is written.
+        body_buf = io.StringIO()
         self.ctx.indent_level += 1
-        emit_body(out, self.ctx.indent())
+        emit_body(body_buf, self.ctx.indent())
         if not body_terminates:
-            emit_normal_exit(out, self.ctx.indent())
+            # Jumping out of the try to the after-catches label leaves the
+            # try scope, so any with-body local is destroyed here (before
+            # __exit__ runs), matching normal nested-RAII order.
+            body_buf.write(f"{self.ctx.indent()}goto {exit_label};\n")
         self.ctx.indent_level -= 1
+
+        # The fall-through copy sits outside the try, so only the inline
+        # return/break/continue copies need guarding here.
+        guard = fctx.guard_name if fctx.guard_used else None
+        if guard is not None:
+            out.write(f"{inner}bool {guard} = false;\n")
+        out.write(f"{inner}try {{\n")
+        out.write(body_buf.getvalue())
 
         # Pop the frame before emitting catches so a nested raise/return
         # inside __exit__'s body walks outer frames, not back through
@@ -4120,10 +4166,17 @@ class StatementGenerator:
             self.ctx.indent_level += 1
             self.ctx.finally_stack.pop()
             catch_ind = self.ctx.indent()
+            # An exit-site __exit__ that raised IS the cleanup's own
+            # exception: never re-call __exit__ with it, and never offer it
+            # to __exit__ for suppression.
+            if guard is not None:
+                out.write(f"{catch_ind}if ({guard}) throw;\n")
             if can_suppress:
                 out.write(
                     f"{catch_ind}if (!__ctx_{ctx_n}.__exit__({{}}, "
                     f"{exc_obj_arg}, {{}})) throw;\n")
+                if needs_after_label:
+                    out.write(f"{catch_ind}goto {after_label};\n")
             else:
                 out.write(
                     f"{catch_ind}__ctx_{ctx_n}.__exit__({{}}, "
@@ -4136,10 +4189,17 @@ class StatementGenerator:
             self.ctx.finally_stack.pop()
         self.ctx.indent_level += 1
         catch_ind = self.ctx.indent()
+        if guard is not None:
+            out.write(f"{catch_ind}if ({guard}) throw;\n")
         emit_normal_exit(out, catch_ind)
         out.write(f"{catch_ind}throw;\n")
         self.ctx.indent_level -= 1
         out.write(f"{inner}}}\n")
+        if not body_terminates:
+            out.write(f"{inner}{exit_label}:\n")
+            emit_normal_exit(out, inner)
+        if needs_after_label:
+            out.write(f"{inner}{after_label}:;\n")
 
     def _emit_try_with_finally(
             self,
@@ -4166,14 +4226,24 @@ class StatementGenerator:
         Asking whether the whole statement terminates folds in the finally's
         own termination and elides the fall-through copy of an always-raising
         finally, so it never runs.
+
+        The body emits into a buffer first: an exit site inside it decides
+        whether this frame's guard is needed, and the guard has to be
+        declared before the `try {` that the body follows.
         """
         body_terminates = try_terminates_ignoring_finally(stmt)
         fctx = self._push_finally(emit_finally, finally_terminates)
 
-        out.write(f"{inner}try {{\n")
+        body_buf = io.StringIO()
         self.ctx.indent_level += 1
-        emit_body(out, self.ctx.indent())
+        emit_body(body_buf, self.ctx.indent())
         self.ctx.indent_level -= 1
+
+        guard = fctx.guard_name if fctx.guard_used else None
+        if guard is not None:
+            out.write(f"{inner}bool {guard} = false;\n")
+        out.write(f"{inner}try {{\n")
+        out.write(body_buf.getvalue())
         out.write(f"{inner}}} catch (...) {{\n")
         self.ctx.indent_level += 1
         # Pop the frame so a raise/return inside the finally body redirects
@@ -4181,9 +4251,20 @@ class StatementGenerator:
         # also affects the normal-path emission below.
         self.ctx.finally_stack.pop()
         catch_indent = self.ctx.indent()
-        emit_finally(out, catch_indent)
-        if not finally_terminates:
+        if guard is not None:
+            out.write(f"{catch_indent}if (!{guard}) {{\n")
+            self.ctx.indent_level += 1
+            emit_finally(out, self.ctx.indent())
+            self.ctx.indent_level -= 1
+            out.write(f"{catch_indent}}}\n")
+            # Always rethrow behind a guard: the guarded-true path reaches
+            # here carrying the exit-site copy's own exception, which must
+            # propagate even when the finally body itself terminates.
             out.write(f"{catch_indent}throw;\n")
+        else:
+            emit_finally(out, catch_indent)
+            if not finally_terminates:
+                out.write(f"{catch_indent}throw;\n")
         self.ctx.indent_level -= 1
         out.write(f"{inner}}}\n")
 

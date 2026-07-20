@@ -68,18 +68,22 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Source_windowed::__next__() {
         }
     }
     case S_JOIN_0: {
+        bool __fin_ran_3 = false;
         try {
             if ((i < ::tpy::__len__(xs))) {
                 // yield xs[i] + self.base
                 __state = S_RESUME_0;
                 return (::tpy::add_check<int32_t>(xs[static_cast<std::size_t>(i)], __self.base));
             } else {
+                __fin_ran_3 = true;
                 this->__finally_0();
                 __state = S_JOIN_1;
                 continue;
             }
         } catch (...) {
-            this->__finally_0();
+            if (!__fin_ran_3) {
+                this->__finally_0();
+            }
             throw;
         }
     }

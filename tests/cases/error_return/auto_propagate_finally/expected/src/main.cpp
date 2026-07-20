@@ -22,12 +22,14 @@ std::expected<int32_t, MyErr> caller(int32_t x) {
     // try:
     int32_t y;
     {
+        bool __fin_ran_1 = false;
         try {
             // y = fallible(x)
             {
                 auto __try_tmp_1 = fallible(x);
                 if (!__try_tmp_1.has_value()) {
                     std::expected<int32_t, MyErr> __tpy_ret_0 = ::tpy::make_unexpected(__try_tmp_1.error());
+                    __fin_ran_1 = true;
                     // print("cleanup-1")
                     std::cout << "cleanup-1" << "\n";
                     return __tpy_ret_0;
@@ -36,12 +38,15 @@ std::expected<int32_t, MyErr> caller(int32_t x) {
             }
             // return y
             std::expected<int32_t, MyErr> __tpy_ret_1 = y;
+            __fin_ran_1 = true;
             // print("cleanup-1")
             std::cout << "cleanup-1" << "\n";
             return __tpy_ret_1;
         } catch (...) {
-            // print("cleanup-1")
-            std::cout << "cleanup-1" << "\n";
+            if (!__fin_ran_1) {
+                // print("cleanup-1")
+                std::cout << "cleanup-1" << "\n";
+            }
             throw;
         }
     }
@@ -54,12 +59,14 @@ std::expected<int32_t, MyErr> caller_assign(int32_t x) {
     int32_t z = 0;
     // try:
     {
+        bool __fin_ran_2 = false;
         try {
             // z = fallible(x)
             {
                 auto __try_tmp_2 = fallible(x);
                 if (!__try_tmp_2.has_value()) {
                     std::expected<int32_t, MyErr> __tpy_ret_0 = ::tpy::make_unexpected(__try_tmp_2.error());
+                    __fin_ran_2 = true;
                     // print("cleanup-2")
                     std::cout << "cleanup-2" << "\n";
                     return __tpy_ret_0;
@@ -68,12 +75,15 @@ std::expected<int32_t, MyErr> caller_assign(int32_t x) {
             }
             // return z
             std::expected<int32_t, MyErr> __tpy_ret_1 = z;
+            __fin_ran_2 = true;
             // print("cleanup-2")
             std::cout << "cleanup-2" << "\n";
             return __tpy_ret_1;
         } catch (...) {
-            // print("cleanup-2")
-            std::cout << "cleanup-2" << "\n";
+            if (!__fin_ran_2) {
+                // print("cleanup-2")
+                std::cout << "cleanup-2" << "\n";
+            }
             throw;
         }
     }
@@ -84,20 +94,24 @@ std::expected<int32_t, MyErr> caller_assign(int32_t x) {
 std::expected<void, MyErr> caller_stmt(int32_t x) {
     // try:
     {
+        bool __fin_ran_3 = false;
         try {
             // fallible(x)
             {
                 auto __try_tmp_3 = fallible(x);
                 if (!__try_tmp_3.has_value()) {
                     std::expected<void, MyErr> __tpy_ret_0 = ::tpy::make_unexpected(__try_tmp_3.error());
+                    __fin_ran_3 = true;
                     // print("cleanup-3")
                     std::cout << "cleanup-3" << "\n";
                     return __tpy_ret_0;
                 }
             }
         } catch (...) {
-            // print("cleanup-3")
-            std::cout << "cleanup-3" << "\n";
+            if (!__fin_ran_3) {
+                // print("cleanup-3")
+                std::cout << "cleanup-3" << "\n";
+            }
             throw;
         }
         // print("cleanup-3")

@@ -12,11 +12,13 @@ void run(Guard& g) {
     try {
         // print("inside:", g.n)
         std::cout << "inside:" << " " << g.n << "\n";
-        __ctx_1.__exit__({}, {}, {});
+        goto __with_exit_1;
     } catch (...) {
         __ctx_1.__exit__({}, {}, {});
         throw;
     }
+    __with_exit_1:
+    __ctx_1.__exit__({}, {}, {});
     // print("after:", g.n)
     std::cout << "after:" << " " << g.n << "\n";
 }

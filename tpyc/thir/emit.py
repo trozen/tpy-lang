@@ -264,6 +264,11 @@ class _FinallyFrame:
     exc_null_arg: str = "{}"
     stmts: 'tuple[THIRStmt, ...] | None' = None
     terminates: bool = False
+    # Mirrors FinallyContext.guard_name / guard_used: the `bool __fin_ran_N`
+    # set right before an exit-site copy so this frame's own catch skips its
+    # copy, declared only where an exit site actually walked the frame.
+    guard_name: 'str | None' = None
+    guard_used: bool = False
 
 
 @dataclass
@@ -295,6 +300,10 @@ class _EmitState:
     # one module-cumulative stream shared with the AST path).
     with_counter: ModuleCounter = field(default_factory=ModuleCounter)
     try_counter: ModuleCounter = field(default_factory=ModuleCounter)
+    # Numbers the `__fin_ran_N` cleanup guards (ctx attr
+    # `finally_guard_counter`); allocated per pushed finally frame, in the
+    # AST's push order, so both paths land on the same names.
+    finally_guard_counter: ModuleCounter = field(default_factory=ModuleCounter)
     return_cpp: 'str | None' = None
     # @error_return context, mirroring the AST ctx fields the error_return
     # renders read: `error_return_cpp` is the enclosing function's error type
@@ -1716,6 +1725,12 @@ def _emit_finally_chain(out: TextIO, indent: str, state: _EmitState,
     try:
         while len(state.finally_frames) > stop_at:
             fr = state.finally_frames.pop()
+            # Set before the copy: a copy that raises must not be re-run by
+            # its own frame's catch. Outer frames' guards stay false, so
+            # their cleanup still runs -- Python's unwind semantics.
+            if fr.guard_name is not None:
+                fr.guard_used = True
+                out.write(f"{indent}{fr.guard_name} = true;\n")
             if fr.stmts is not None:
                 _emit_stmts(out, fr.stmts, len(indent) // len(INDENT), state)
             else:
@@ -1898,37 +1913,67 @@ def _emit_with(out: TextIO, stmt: THIRWith, indent_level: int,
         layer_term[k] = t
         if stmt.items[k].can_suppress:
             t = False
+    frames: list[_FinallyFrame] = []
     for k, (n, item) in enumerate(zip(ctx_ids, stmt.items)):
-        out.write(f"{INDENT * (indent_level + k)}try {{\n")
-        state.finally_frames.append(_FinallyFrame(
+        fr = _FinallyFrame(
             ctx_n=n,
             exc_null_arg="nullptr" if item.takes_exc_val else "{}",
-            loop_depth=state.loop_depth))
-    _emit_stmts(out, stmt.body, indent_level + len(stmt.items), state)
+            loop_depth=state.loop_depth,
+            guard_name=f"__fin_ran_{state.finally_guard_counter.next()}")
+        frames.append(fr)
+        state.finally_frames.append(fr)
+    # Buffered so the exit sites inside the body settle each layer's
+    # guard_used before that layer's `try {` (and its decl) is written.
+    body_buf = io.StringIO()
+    _emit_stmts(body_buf, stmt.body, indent_level + len(stmt.items), state)
+    for k in range(len(stmt.items)):
+        g = frames[k].guard_name if frames[k].guard_used else None
+        if g is not None:
+            out.write(f"{INDENT * (indent_level + k)}bool {g} = false;\n")
+        out.write(f"{INDENT * (indent_level + k)}try {{\n")
+    out.write(body_buf.getvalue())
     for k in range(len(stmt.items) - 1, -1, -1):
         n, item = ctx_ids[k], stmt.items[k]
         ind = INDENT * (indent_level + k)
         body_ind = INDENT * (indent_level + k + 1)
         exc_null = "nullptr" if item.takes_exc_val else "{}"
+        # The fall-through __exit__ copy sits after the catches, so a
+        # throwing __exit__ isn't re-run by this layer's own catch-all.
+        needs_after_label = item.can_suppress and not layer_term[k]
+        guard = frames[k].guard_name if frames[k].guard_used else None
         if not layer_term[k]:
-            out.write(f"{body_ind}__ctx_{n}.__exit__({{}}, {exc_null}, {{}});\n")
+            out.write(f"{body_ind}goto __with_exit_{n};\n")
         # Popped before the catch arms, mirroring _emit_with_try_catch's pop
         # discipline (the catches are fixed strings; nothing walks the stack).
         state.finally_frames.pop()
         if item.can_suppress or item.takes_exc_val:
             exc_obj = f"&__exc_{n}" if item.takes_exc_val else "{}"
             out.write(f"{ind}}} catch (::tpy::BaseException& __exc_{n}) {{\n")
+            # An exit-site __exit__ that raised IS the cleanup's own
+            # exception: never re-call __exit__ with it, and never offer it
+            # to __exit__ for suppression.
+            if guard is not None:
+                out.write(f"{body_ind}if ({guard}) throw;\n")
             if item.can_suppress:
                 out.write(f"{body_ind}if (!__ctx_{n}.__exit__({{}}, "
                           f"{exc_obj}, {{}})) throw;\n")
+                if needs_after_label:
+                    out.write(f"{body_ind}goto __with_after_{n};\n")
             else:
                 out.write(f"{body_ind}__ctx_{n}.__exit__({{}}, "
                           f"{exc_obj}, {{}});\n")
                 out.write(f"{body_ind}throw;\n")
         out.write(f"{ind}}} catch (...) {{\n")
+        if guard is not None:
+            out.write(f"{body_ind}if ({guard}) throw;\n")
         out.write(f"{body_ind}__ctx_{n}.__exit__({{}}, {exc_null}, {{}});\n")
         out.write(f"{body_ind}throw;\n")
         out.write(f"{ind}}}\n")
+        if not layer_term[k]:
+            out.write(f"{ind}__with_exit_{n}:\n")
+            out.write(f"{ind}__ctx_{n}.__exit__({{}}, {exc_null}, {{}});\n")
+        if needs_after_label:
+            out.write(f"{ind}__with_after_{n}:;\n")
 
 
 def _emit_frame_wrapped(out: TextIO, inner_level: int, state: _EmitState,
@@ -1937,19 +1982,37 @@ def _emit_frame_wrapped(out: TextIO, inner_level: int, state: _EmitState,
     # stack while the body emits; the catch-path and normal-path copies emit
     # with the frame popped, so nested exits redirect through OUTER frames
     # only. `stmt.body_terminates` is the terminates fact of whatever the
-    # frame wraps (see THIRTry) and elides the normal-path copy.
+    # frame wraps (see THIRTry) and elides the normal-path copy. The body
+    # emits into a buffer first: an exit site inside it decides whether the
+    # frame's guard is needed, which has to be declared before the `try {`.
     inner = INDENT * inner_level
-    state.finally_frames.append(_FinallyFrame(
+    fr = _FinallyFrame(
         loop_depth=state.loop_depth,
         stmts=stmt.finally_body,
-        terminates=stmt.finally_terminates))
+        terminates=stmt.finally_terminates,
+        guard_name=f"__fin_ran_{state.finally_guard_counter.next()}")
+    state.finally_frames.append(fr)
+    body_buf = io.StringIO()
+    emit_body(body_buf, inner_level + 1)
+    guard = fr.guard_name if fr.guard_used else None
+    if guard is not None:
+        out.write(f"{inner}bool {guard} = false;\n")
     out.write(f"{inner}try {{\n")
-    emit_body(inner_level + 1)
+    out.write(body_buf.getvalue())
     out.write(f"{inner}}} catch (...) {{\n")
     state.finally_frames.pop()
-    _emit_stmts(out, stmt.finally_body, inner_level + 1, state)
-    if not stmt.finally_terminates:
+    if guard is not None:
+        out.write(f"{INDENT * (inner_level + 1)}if (!{guard}) {{\n")
+        _emit_stmts(out, stmt.finally_body, inner_level + 2, state)
+        out.write(f"{INDENT * (inner_level + 1)}}}\n")
+        # Always rethrow behind a guard: the guarded-true path carries the
+        # exit-site copy's own exception, which must propagate even when the
+        # finally body itself terminates.
         out.write(f"{INDENT * (inner_level + 1)}throw;\n")
+    else:
+        _emit_stmts(out, stmt.finally_body, inner_level + 1, state)
+        if not stmt.finally_terminates:
+            out.write(f"{INDENT * (inner_level + 1)}throw;\n")
     out.write(f"{inner}}}\n")
     if not stmt.body_terminates:
         _emit_stmts(out, stmt.finally_body, inner_level, state)
@@ -2018,38 +2081,38 @@ def _emit_try_return(out: TextIO, stmt: THIRTry, inner_level: int,
         state.try_except_err_opt = err_opt_var
         _witness("er.try_binding")
 
-    def emit_try_except(level: int) -> None:
+    def emit_try_except(o: TextIO, level: int) -> None:
         body_indent = INDENT * level
         prev_label = state.try_except_label
         state.try_except_label = except_label
-        _emit_stmts(out, stmt.try_body, level, state)
+        _emit_stmts(o, stmt.try_body, level, state)
         state.try_except_label = prev_label
         if stmt.else_body:
-            out.write(f"{body_indent}// else:\n")
-            _emit_stmts(out, stmt.else_body, level, state)
-        out.write(f"{body_indent}goto {after_label};\n")
+            o.write(f"{body_indent}// else:\n")
+            _emit_stmts(o, stmt.else_body, level, state)
+        o.write(f"{body_indent}goto {after_label};\n")
         exc_display = h.source_display or "..."
-        out.write(f"{body_indent}// except {exc_display}:\n")
-        out.write(f"{body_indent}{except_label}:;\n")
+        o.write(f"{body_indent}// except {exc_display}:\n")
+        o.write(f"{body_indent}{except_label}:;\n")
         prev_tier = state.in_except_tier
         state.in_except_tier = "return"
         if h.binding and err_opt_var:
             binding = escape_cpp_name(h.binding)
-            out.write(f"{body_indent}{{\n")
-            out.write(f"{INDENT * (level + 1)}auto& {binding} = "
-                      f"*{err_opt_var};\n")
-            _emit_stmts(out, h.body, level + 1, state)
-            out.write(f"{body_indent}}}\n")
+            o.write(f"{body_indent}{{\n")
+            o.write(f"{INDENT * (level + 1)}auto& {binding} = "
+                    f"*{err_opt_var};\n")
+            _emit_stmts(o, h.body, level + 1, state)
+            o.write(f"{body_indent}}}\n")
         else:
-            _emit_stmts(out, h.body, level, state)
+            _emit_stmts(o, h.body, level, state)
         state.in_except_tier = prev_tier
-        out.write(f"{body_indent}{after_label}:;\n")
+        o.write(f"{body_indent}{after_label}:;\n")
 
     _witness("er.try_return")
     if stmt.finally_body:
         _emit_frame_wrapped(out, inner_level, state, stmt, emit_try_except)
     else:
-        emit_try_except(inner_level)
+        emit_try_except(out, inner_level)
     state.try_except_err_opt = prev_err_opt
 
 
@@ -2066,13 +2129,13 @@ def _emit_try(out: TextIO, stmt: THIRTry, indent_level: int,
     if stmt.tier == "finally_only":
         _emit_frame_wrapped(
             out, inner_level, state, stmt,
-            lambda lvl: _emit_stmts(out, stmt.try_body, lvl, state))
+            lambda o, lvl: _emit_stmts(o, stmt.try_body, lvl, state))
     elif stmt.tier == "return":
         _emit_try_return(out, stmt, inner_level, state)
     elif stmt.finally_body:
         _emit_frame_wrapped(
             out, inner_level, state, stmt,
-            lambda lvl: _emit_try_except(out, stmt, lvl, state))
+            lambda o, lvl: _emit_try_except(o, stmt, lvl, state))
     else:
         _emit_try_except(out, stmt, inner_level, state)
     out.write(f"{indent}}}\n")
@@ -3361,11 +3424,13 @@ def emit_thir_body(out: TextIO, fn: THIRFunction, indent_level: int = 1,
                    temps: TempSink | None = None,
                    with_counter: ModuleCounter | None = None,
                    try_counter: ModuleCounter | None = None,
+                   finally_guard_counter: ModuleCounter | None = None,
                    return_cpp: 'str | None' = None) -> None:
     """Emit `fn`'s body statements (no signature, no braces) at `indent_level`.
 
-    `temps` is the `__tmp_N` sink, `with_counter` the `__ctx_N` sink, and
-    `try_counter` the try/error_return label+temp sink -- all
+    `temps` is the `__tmp_N` sink, `with_counter` the `__ctx_N` sink,
+    `try_counter` the try/error_return label+temp sink, and
+    `finally_guard_counter` the `__fin_ran_N` cleanup-guard sink -- all
     module-cumulative, so the codegen seam passes the ctx-backed
     implementations (CtxTempSink / CtxCounter); the defaults are fresh local
     sinks (standalone/unit callers). `return_cpp` is the signature's return
@@ -3374,6 +3439,8 @@ def emit_thir_body(out: TextIO, fn: THIRFunction, indent_level: int = 1,
     state = _EmitState(comments or _NO_COMMENTS, temps=temps or TempSink(),
                        with_counter=with_counter or ModuleCounter(),
                        try_counter=try_counter or ModuleCounter(),
+                       finally_guard_counter=(finally_guard_counter
+                                              or ModuleCounter()),
                        return_cpp=return_cpp,
                        error_return_cpp=fn.error_return_cpp)
     # Buffer the body so function-top hoists (@dynamic rebind slots, allocated
@@ -3396,6 +3463,7 @@ def emit_thir_constructor_tail(out: TextIO, ctor: THIRConstructor,
                                temps: TempSink | None = None,
                                with_counter: ModuleCounter | None = None,
                                try_counter: ModuleCounter | None = None,
+                               finally_guard_counter: ModuleCounter | None = None,
                                body_indent_level: int = 2) -> None:
     """Emit a constructor's member-init-list + body tail (the ` : f(v)... {}` that
     follows the signature). The THIR counterpart of gen_record_decl's AST MIL+body
@@ -3408,7 +3476,9 @@ def emit_thir_constructor_tail(out: TextIO, ctor: THIRConstructor,
     in-struct definition, 1 for an out-of-line one at namespace scope."""
     state = _EmitState(comments or _NO_COMMENTS, temps=temps or TempSink(),
                        with_counter=with_counter or ModuleCounter(),
-                       try_counter=try_counter or ModuleCounter())
+                       try_counter=try_counter or ModuleCounter(),
+                       finally_guard_counter=(finally_guard_counter
+                                              or ModuleCounter()))
     inits = [f"{bi.base_cpp}({', '.join(_emit_expr(a, state) for a in bi.args)})"
              for bi in ctor.base_inits]
     inits.extend(
@@ -3450,6 +3520,7 @@ class ResumableLeafEmitter:
                  temps: 'TempSink | None' = None,
                  with_counter: 'ModuleCounter | None' = None,
                  try_counter: 'ModuleCounter | None' = None,
+                 finally_guard_counter: 'ModuleCounter | None' = None,
                  return_cpp: 'str | None' = None,
                  frame_shadow_probe: 'Callable[[str], bool] | None' = None,
                  resumable_return_hook: 'Callable[[object, int], str] | None'
@@ -3460,6 +3531,8 @@ class ResumableLeafEmitter:
                                  temps=temps or TempSink(),
                                  with_counter=with_counter or ModuleCounter(),
                                  try_counter=try_counter or ModuleCounter(),
+                                 finally_guard_counter=(finally_guard_counter
+                                                        or ModuleCounter()),
                                  return_cpp=return_cpp,
                                  frame_shadow_probe=frame_shadow_probe,
                                  resumable_return_hook=resumable_return_hook,
@@ -3551,12 +3624,15 @@ class SimpleGenLeafEmitter:
     def __init__(self, body, *, comments: 'CommentSink | None' = None,
                  temps: 'TempSink | None' = None,
                  with_counter: 'ModuleCounter | None' = None,
-                 try_counter: 'ModuleCounter | None' = None) -> None:
+                 try_counter: 'ModuleCounter | None' = None,
+                 finally_guard_counter: 'ModuleCounter | None' = None) -> None:
         self._body = body
         self._state = _EmitState(comments or _NO_COMMENTS,
                                  temps=temps or TempSink(),
                                  with_counter=with_counter or ModuleCounter(),
                                  try_counter=try_counter or ModuleCounter(),
+                                 finally_guard_counter=(finally_guard_counter
+                                                        or ModuleCounter()),
                                  hoist_drainable=False)
 
     def emit_init(self, out: TextIO, indent_level: int) -> None:

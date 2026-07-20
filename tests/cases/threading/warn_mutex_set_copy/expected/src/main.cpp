@@ -17,7 +17,7 @@ void main() {
         // g.set(live)                 # tpyc: warning(/copies .* into owned storage/)
         auto __tmp_1 = live;
         g.set(std::move(__tmp_1));
-        __ctx_1.__exit__({}, nullptr, {});
+        goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});
         throw;
@@ -25,6 +25,8 @@ void main() {
         __ctx_1.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_1:
+    __ctx_1.__exit__({}, nullptr, {});
     // live.append(9)                  # keeps `live` alive past set() -> forces the copy
     live.push_back(9);
     // with m.lock() as g2:
@@ -33,7 +35,7 @@ void main() {
     try {
         // print(len(g2.get()))        # 2 -- the lock holds its own copy, not `live`
         std::cout << ::tpy::__len__(g2.get()) << "\n";
-        __ctx_2.__exit__({}, nullptr, {});
+        goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
         __ctx_2.__exit__({}, &__exc_2, {});
         throw;
@@ -41,6 +43,8 @@ void main() {
         __ctx_2.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_2:
+    __ctx_2.__exit__({}, nullptr, {});
     // acked = [5, 6]
     std::vector<int32_t> acked = {5, 6};
     // with m.lock() as g3:
@@ -49,7 +53,7 @@ void main() {
     try {
         // g3.set(acked.copy())        # tpyc: ok
         g3.set(::tpy::list_copy(acked));
-        __ctx_3.__exit__({}, nullptr, {});
+        goto __with_exit_3;
     } catch (::tpy::BaseException& __exc_3) {
         __ctx_3.__exit__({}, &__exc_3, {});
         throw;
@@ -57,6 +61,8 @@ void main() {
         __ctx_3.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_3:
+    __ctx_3.__exit__({}, nullptr, {});
     // acked.append(7)
     acked.push_back(7);
     // with m.lock() as g4:
@@ -65,7 +71,7 @@ void main() {
     try {
         // print(len(g4.get()))        # 2 -- acknowledged copy is independent too
         std::cout << ::tpy::__len__(g4.get()) << "\n";
-        __ctx_4.__exit__({}, nullptr, {});
+        goto __with_exit_4;
     } catch (::tpy::BaseException& __exc_4) {
         __ctx_4.__exit__({}, &__exc_4, {});
         throw;
@@ -73,6 +79,8 @@ void main() {
         __ctx_4.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_4:
+    __ctx_4.__exit__({}, nullptr, {});
     // rw = RwLock.new([1, 2])
     ::tpystd::tpy::sync::RwLock<std::vector<int32_t>> rw = ::tpystd::tpy::sync::RwLock<std::vector<int32_t>>::new_({1, 2});
     // shared = [7, 8]
@@ -84,7 +92,7 @@ void main() {
         // w.set(shared)               # tpyc: warning(/copies .* into owned storage/)
         auto __tmp_2 = shared;
         w.set(std::move(__tmp_2));
-        __ctx_5.__exit__({}, nullptr, {});
+        goto __with_exit_5;
     } catch (::tpy::BaseException& __exc_5) {
         __ctx_5.__exit__({}, &__exc_5, {});
         throw;
@@ -92,6 +100,8 @@ void main() {
         __ctx_5.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_5:
+    __ctx_5.__exit__({}, nullptr, {});
     // shared.append(9)
     shared.push_back(9);
     // with rw.read() as r:
@@ -100,7 +110,7 @@ void main() {
     try {
         // print(len(r.get()))         # 2 -- WriteGuard copy is independent
         std::cout << ::tpy::__len__(r.get()) << "\n";
-        __ctx_6.__exit__({}, nullptr, {});
+        goto __with_exit_6;
     } catch (::tpy::BaseException& __exc_6) {
         __ctx_6.__exit__({}, &__exc_6, {});
         throw;
@@ -108,6 +118,8 @@ void main() {
         __ctx_6.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_6:
+    __ctx_6.__exit__({}, nullptr, {});
 }
 
 void __tpy_init() {

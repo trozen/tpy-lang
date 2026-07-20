@@ -22,7 +22,7 @@ void build(std::string_view root) {
     try {
         // f.write("t")
         f->write("t");
-        __ctx_1.__exit__({}, nullptr, {});
+        goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});
         throw;
@@ -30,13 +30,15 @@ void build(std::string_view root) {
         __ctx_1.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_1:
+    __ctx_1.__exit__({}, nullptr, {});
     // with open(root + "/sub1/a.txt", "w") as f:
     auto __ctx_2 = ::tpy::builtin_open_mode((::tpy::str_concat(root, "/sub1/a.txt")), "w");
     f = &(__ctx_2.__enter__());
     try {
         // f.write("a")
         f->write("a");
-        __ctx_2.__exit__({}, nullptr, {});
+        goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
         __ctx_2.__exit__({}, &__exc_2, {});
         throw;
@@ -44,13 +46,15 @@ void build(std::string_view root) {
         __ctx_2.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_2:
+    __ctx_2.__exit__({}, nullptr, {});
     // with open(root + "/sub1/deep/b.txt", "w") as f:
     auto __ctx_3 = ::tpy::builtin_open_mode((::tpy::str_concat(root, "/sub1/deep/b.txt")), "w");
     f = &(__ctx_3.__enter__());
     try {
         // f.write("b")
         f->write("b");
-        __ctx_3.__exit__({}, nullptr, {});
+        goto __with_exit_3;
     } catch (::tpy::BaseException& __exc_3) {
         __ctx_3.__exit__({}, &__exc_3, {});
         throw;
@@ -58,13 +62,15 @@ void build(std::string_view root) {
         __ctx_3.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_3:
+    __ctx_3.__exit__({}, nullptr, {});
     // with open(root + "/skip/junk.txt", "w") as f:
     auto __ctx_4 = ::tpy::builtin_open_mode((::tpy::str_concat(root, "/skip/junk.txt")), "w");
     f = &(__ctx_4.__enter__());
     try {
         // f.write("j")
         f->write("j");
-        __ctx_4.__exit__({}, nullptr, {});
+        goto __with_exit_4;
     } catch (::tpy::BaseException& __exc_4) {
         __ctx_4.__exit__({}, &__exc_4, {});
         throw;
@@ -72,6 +78,8 @@ void build(std::string_view root) {
         __ctx_4.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_4:
+    __ctx_4.__exit__({}, nullptr, {});
     // os.symlink(root + "/sub1", root + "/lnk")
     ::tpy::stdlib::os::symlink((::tpy::str_concat(root, "/sub1")), (::tpy::str_concat(root, "/lnk")));
     // # a broken symlink -- is_dir() raises; walk must treat it as a non-dir

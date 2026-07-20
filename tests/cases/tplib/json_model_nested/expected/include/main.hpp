@@ -231,7 +231,7 @@ inline void Address::save_json(std::string_view __path, int32_t indent) const {
         // # Test @model macro: all type combos, nesting, and round-trip.
         // # Covers: str, Int32, float, Float32, bool, BigInt, enum, Optional,
         __f.write(this->to_json(indent));
-        __ctx_1.__exit__({}, nullptr, {});
+        goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});
         throw;
@@ -239,6 +239,8 @@ inline void Address::save_json(std::string_view __path, int32_t indent) const {
         __ctx_1.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_1:
+    __ctx_1.__exit__({}, nullptr, {});
     // # Covers: str, Int32, float, Float32, bool, BigInt, enum, Optional,
     // # list[T], dict[str, V], tuple, nested @model, list[Model], list[Enum],
     // # dict[str, list[T]].
@@ -253,7 +255,7 @@ inline Address Address::load_json(std::string_view __path) {
         // # Test @model macro: all type combos, nesting, and round-trip.
         // # Covers: str, Int32, float, Float32, bool, BigInt, enum, Optional,
         __data = __f.read();
-        __ctx_2.__exit__({}, nullptr, {});
+        goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
         __ctx_2.__exit__({}, &__exc_2, {});
         throw;
@@ -261,6 +263,8 @@ inline Address Address::load_json(std::string_view __path) {
         __ctx_2.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_2:
+    __ctx_2.__exit__({}, nullptr, {});
     // # Test @model macro: all type combos, nesting, and round-trip.
     // # Covers: str, Int32, float, Float32, bool, BigInt, enum, Optional,
     // # list[T], dict[str, V], tuple, nested @model, list[Model], list[Enum],
@@ -277,7 +281,7 @@ inline std::expected<Address, ::tpystd::tplib::json::parser::JsonError> Address:
         // # Test @model macro: all type combos, nesting, and round-trip.
         // # Covers: str, Int32, float, Float32, bool, BigInt, enum, Optional,
         __data = __f.read();
-        __ctx_3.__exit__({}, nullptr, {});
+        goto __with_exit_3;
     } catch (::tpy::BaseException& __exc_3) {
         __ctx_3.__exit__({}, &__exc_3, {});
         throw;
@@ -285,6 +289,8 @@ inline std::expected<Address, ::tpystd::tplib::json::parser::JsonError> Address:
         __ctx_3.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_3:
+    __ctx_3.__exit__({}, nullptr, {});
     // # Test @model macro: all type combos, nesting, and round-trip.
     // # Covers: str, Int32, float, Float32, bool, BigInt, enum, Optional,
     // # list[T], dict[str, V], tuple, nested @model, list[Model], list[Enum],
@@ -343,7 +349,7 @@ inline void Profile::save_json(std::string_view __path, int32_t indent) const {
         // # Test @model macro: all type combos, nesting, and round-trip.
         // # Covers: str, Int32, float, Float32, bool, BigInt, enum, Optional,
         __f.write(this->to_json(indent));
-        __ctx_4.__exit__({}, nullptr, {});
+        goto __with_exit_4;
     } catch (::tpy::BaseException& __exc_4) {
         __ctx_4.__exit__({}, &__exc_4, {});
         throw;
@@ -351,6 +357,8 @@ inline void Profile::save_json(std::string_view __path, int32_t indent) const {
         __ctx_4.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_4:
+    __ctx_4.__exit__({}, nullptr, {});
     // # Covers: str, Int32, float, Float32, bool, BigInt, enum, Optional,
     // # list[T], dict[str, V], tuple, nested @model, list[Model], list[Enum],
     // # dict[str, list[T]].
@@ -365,7 +373,7 @@ inline Profile Profile::load_json(std::string_view __path) {
         // # Test @model macro: all type combos, nesting, and round-trip.
         // # Covers: str, Int32, float, Float32, bool, BigInt, enum, Optional,
         __data = __f.read();
-        __ctx_5.__exit__({}, nullptr, {});
+        goto __with_exit_5;
     } catch (::tpy::BaseException& __exc_5) {
         __ctx_5.__exit__({}, &__exc_5, {});
         throw;
@@ -373,6 +381,8 @@ inline Profile Profile::load_json(std::string_view __path) {
         __ctx_5.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_5:
+    __ctx_5.__exit__({}, nullptr, {});
     // # Test @model macro: all type combos, nesting, and round-trip.
     // # Covers: str, Int32, float, Float32, bool, BigInt, enum, Optional,
     // # list[T], dict[str, V], tuple, nested @model, list[Model], list[Enum],
@@ -389,7 +399,7 @@ inline std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> Profile:
         // # Test @model macro: all type combos, nesting, and round-trip.
         // # Covers: str, Int32, float, Float32, bool, BigInt, enum, Optional,
         __data = __f.read();
-        __ctx_6.__exit__({}, nullptr, {});
+        goto __with_exit_6;
     } catch (::tpy::BaseException& __exc_6) {
         __ctx_6.__exit__({}, &__exc_6, {});
         throw;
@@ -397,6 +407,8 @@ inline std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> Profile:
         __ctx_6.__exit__({}, nullptr, {});
         throw;
     }
+    __with_exit_6:
+    __ctx_6.__exit__({}, nullptr, {});
     // # Test @model macro: all type combos, nesting, and round-trip.
     // # Covers: str, Int32, float, Float32, bool, BigInt, enum, Optional,
     // # list[T], dict[str, V], tuple, nested @model, list[Model], list[Enum],
