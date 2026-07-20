@@ -376,6 +376,7 @@ Features this doc references or assumes, with one-line explanations and deeper-d
 | `CLAUDE.md` | Commands, architecture overview, agent rules | Update when adding major features |
 | `README.md` | Quick start, build flags | Update when CLI changes |
 | `TODO.md` | Current priorities | Check before starting non-trivial work |
+| `RELEASE_PLAN.md` | Milestone slice of BUGS.md/TODO.md: must-fix bugs for the next release + queued features | Short bullets only, each linking into BUGS.md/TODO.md via a quoted greppable phrase; delete a release's section when it ships |
 | `BUGS.md` | Known compiler defects (incorrect output, crashes, miscompiles, rejection of valid code, missing safety diagnostics). Has a `## Compiler bugs` section and a `## Safety / borrow checker` section -- file borrow-checker / view-lifetime gaps in the latter | Add new bug entries here, not in TODO.md |
 
 **Before committing**: If code adds new features or changes behavior, update `docs/LANGUAGE_FEATURES.md` in the same commit to reflect the current state (Working/Planned/Open status).
