@@ -56,7 +56,9 @@ PyObject *class_inheritance__as_shape_pywrap(PyObject *self, PyObject *args, PyO
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:as_shape", __kwlist, &a0)) return nullptr;
     try {
         ::tpyapp::class_inheritance::Circle &__p0 = *::tpy::interop::instance_payload<::tpyapp::class_inheritance::Circle>(a0, (::tpy::cpy::PyTypeObject *)class_inheritance__type_Circle);
-        return ::tpy::interop::instance_to_py((::tpy::cpy::PyTypeObject *)class_inheritance__type_Shape, ::tpyapp::class_inheritance::as_shape(__p0));
+        auto &__r = ::tpyapp::class_inheritance::as_shape(__p0);
+        if (&__r == &__p0) { Py_IncRef(a0); return a0; }
+        return ::tpy::interop::instance_to_py((::tpy::cpy::PyTypeObject *)class_inheritance__type_Shape, __r);
     } catch (const ::tpy::BaseException &__e) {
         ::tpy::interop::set_py_err_from(__e);
         return nullptr;

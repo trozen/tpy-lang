@@ -3,12 +3,23 @@
 
 namespace tpyapp::main {
 
+// self = Box(0)
+Box* self{};
 
 // @export
 // def identity(b: Box) -> Box:
 Box& identity(Box& b) {
-    // return b  # tpyc: warning(/copied across the CPython boundary/)
+    // return b  # tpyc: ok
     return b;
+}
+
+// @export
+// def get_global() -> Box:
+Box& get_global() {
+    // # A free function has no receiver: a module global -- even one named
+    // # `self` -- is not a glue candidate, so this copies and warns.
+    // return self  # tpyc: warning(/copied across the CPython boundary there/)
+    return (*self);
 }
 
 // @export
@@ -24,6 +35,9 @@ void __tpy_init() {
     initialized = true;
 
     // from tpy.extern import export
+    // self = Box(0)
+    static Box __global_slot_1 = Box(0);
+    self = &__global_slot_1;
 }
 
 } // namespace tpyapp::main

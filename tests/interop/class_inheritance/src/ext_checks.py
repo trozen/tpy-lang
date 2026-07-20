@@ -42,12 +42,6 @@ try:
 except TypeError:
     pass
 
-# A borrow-form `-> Shape` return of a live Circle copies AND slices to the
-# declared type (warned at compile); plain Python returns the same Circle.
-r = m.as_shape(m.Circle("r", 3.0))
-assert type(r).__name__ == "Shape"
-assert not hasattr(r, "radius")
-
 # A leaf exposed class stays final: the class statement itself is rejected.
 try:
     class Leaf(m.Disc):

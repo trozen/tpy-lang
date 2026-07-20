@@ -7,18 +7,40 @@
 
 namespace tpyapp::main {
 
+struct Inner;
 struct Box;
 
+extern Box* self;
 inline constexpr std::string_view __name__ = "__main__";
 
 Box& identity(Box& b);
+Box& get_global();
 Box fresh(int64_t v);
+
+// @export
+// class Inner:
+struct Inner {
+    // x: Int64
+    int64_t x;
+
+    // def __init__(self, x: Int64):
+    Inner() = default;
+    explicit Inner(int64_t x);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Inner";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Inner& obj) {
+    ::tpy::print_object_default(os, "Inner", obj);
+    return os;
+}
 
 // @export
 // class Box:
 struct Box {
-    // self.v = v
+    // v: Int64
     int64_t v;
+    // _inner: Inner
+    Inner _inner;
 
     // def __init__(self, v: Int64):
     Box() = default;
@@ -26,6 +48,26 @@ struct Box {
 
     // def me(self) -> "Box":
     Box& me();
+
+    // @property
+    // def itself(self) -> "Box":
+    Box& itself();
+
+    // @property
+    // def itself(self) -> "Box":
+    const Box& itself() const;
+
+    // def get_inner(self) -> Inner:
+    Inner& get_inner();
+
+    // def pick_inner(self, other: Inner, use_field: bool) -> Inner:
+    Inner& pick_inner(Inner& other, bool use_field);
+
+    // def __iter__(self) -> "Box":
+    Box& __iter__();
+
+    // def __next__(self) -> Int64:
+    std::expected<int64_t, ::tpy::StopIteration> __next__();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
@@ -35,13 +77,68 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 }
 
 
+// def __init__(self, x: Int64):
+inline Inner::Inner(int64_t x) : x(x) {}
+
 // def __init__(self, v: Int64):
-inline Box::Box(int64_t v) : v(v) {}
+inline Box::Box(int64_t v) : v(v), _inner(Inner(v)) {}
 
 // def me(self) -> "Box":
 inline Box& Box::me() {
-    // return self  # tpyc: warning(/copied across the CPython boundary/)
+    // return self  # tpyc: ok
     return (*this);
+}
+
+// @property
+// def itself(self) -> "Box":
+inline Box& Box::itself() {
+    // return self  # tpyc: ok
+    return (*this);
+}
+
+// @property
+// def itself(self) -> "Box":
+inline const Box& Box::itself() const {
+    // return self  # tpyc: ok
+    return (*this);
+}
+
+// def get_inner(self) -> Inner:
+inline Inner& Box::get_inner() {
+    // return self._inner  # tpyc: warning(/copied across the CPython boundary there/)
+    return this->_inner;
+}
+
+// def pick_inner(self, other: Inner, use_field: bool) -> Inner:
+inline Inner& Box::pick_inner(Inner& other, bool use_field) {
+    // if use_field:
+    if (use_field) {
+        // return self._inner  # tpyc: warning(/on at least one return path/)
+        return this->_inner;
+    }
+    // return other
+    return other;
+}
+
+// def __iter__(self) -> "Box":
+inline Box& Box::__iter__() {
+    // # A dunder slot emits through the expression-form copy path (no
+    // # identity candidates), so even a bare `self` return still warns.
+    // return self  # tpyc: warning(/copied across the CPython boundary there/)
+    return (*this);
+}
+
+// def __next__(self) -> Int64:
+inline std::expected<int64_t, ::tpy::StopIteration> Box::__next__() {
+    // if self.v <= 0:
+    if ((this->v <= 0)) {
+        // raise StopIteration
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    // self.v -= 1
+    this->v = ::tpy::sub_check<int64_t>(this->v, 1);
+    // return self.v
+    return this->v;
 }
 void __tpy_init();
 } // namespace tpyapp::main

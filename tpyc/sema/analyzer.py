@@ -504,30 +504,45 @@ class SemanticAnalyzer:
         """In an ext_module, warn when an @export function or an exposed class's
         method returns an exposed class or a list/dict/set *by borrow* --
         declared `-> Cls` / `-> list[T]` (sema lowers these to RefType), not
-        `-> Own[...]`. The only thing returnable by reference is an existing
-        object (a fresh local can't be returned by reference, and a borrowed
-        source can't be returned as Own without copy()), so the boundary
-        necessarily copies a caller-visible object into a fresh PyObject:
-        identity (`is`) and write-through aliasing are not preserved. Returning
-        `Own[...]` -- a freshly constructed or copy()'d owned value -- is a
-        distinct object on both sides and is the acknowledged form (so it is
-        not flagged). tuple is a value type (never RefType-lowered) and str
-        crosses as a value; a borrow-form `bytes` return predates this warning
-        and stays unflagged for now (tracked in TODO.md).
+        `-> Own[...]`. A class borrow return crosses as the ORIGINAL PyObject
+        when the returned reference is the receiver or a parameter (the glue
+        matches its address against the boundary-crossed objects in scope), so
+        a body whose every return site is a bare `self`/parameter name is
+        identity-preserving and not flagged. Any other source (a field, a
+        module global) has no live PyObject behind it, so that path copies a
+        caller-visible object into a fresh PyObject: identity (`is`) and
+        write-through aliasing are not preserved there. A list/dict/set borrow
+        return always copies (the container was copied IN, so no PyObject
+        backs it). Returning `Own[...]` -- a freshly constructed or copy()'d
+        owned value -- is a distinct object on both sides and is the
+        acknowledged form (so it is not flagged). tuple is a value type (never
+        RefType-lowered) and str crosses as a value; a borrow-form `bytes`
+        return predates this warning and stays unflagged for now (tracked in
+        TODO.md).
         """
         if not module.directives.ext_module:
             return
 
-        def first_return(body) -> 'TpyReturn | None':
+        def collect_returns(body) -> 'list[TpyReturn]':
             found: list[TpyReturn] = []
             _walk_body_stmts(
                 body, lambda _e: None,
                 lambda s: found.append(s)
-                if isinstance(s, TpyReturn) and s.value is not None
-                and not found else None)
+                if isinstance(s, TpyReturn) and s.value is not None else None)
+            return found
+
+        def first_return(body) -> 'TpyReturn | None':
+            found = collect_returns(body)
             return found[0] if found else None
 
-        def warn_if_borrow_return(fn, label: str) -> None:
+        def warn_if_borrow_return(fn, label: str,
+                                  alias_names: 'set[str] | None') -> None:
+            """`alias_names` = the bare return-site names whose returns the
+            GLUE hands back by identity (the address-matched candidates it
+            actually threads: params, plus `self` for methods/getters), or
+            None when the emit site has no identity path at all (dunder slots
+            emit through `_value_out_expr`, which always copies) -- those must
+            keep the unconditional warning."""
             if not isinstance(fn.return_type, RefType):
                 return
             if is_exposed_class(fn.return_type):
@@ -537,14 +552,27 @@ class SemanticAnalyzer:
                 # copy is deleted), reported by the validator -- don't also warn.
                 if info is not None and info.is_nocopy:
                     return
+                # Every return site a bare candidate name -> the glue's
+                # address match always hits and the original PyObject crosses;
+                # nothing is copied, nothing to warn about. (Conservative:
+                # a ternary or a local alias of self still warns even though
+                # the runtime address match preserves identity there too.)
+                returns = collect_returns(fn.body)
+                if alias_names is not None and returns and all(
+                        (src := _bare_name_source(r.value)) is not None
+                        and src.name in alias_names for r in returns):
+                    return
                 self._warning(
                     f"{label}: returns exposed class "
                     f"'{getattr(fn.return_type.wrapped, 'name', '?')}' by "
-                    f"reference, so the instance is copied across the CPython "
-                    f"boundary -- the result is a new object (identity and "
-                    f"write-through aliasing are not preserved; a derived "
-                    f"instance is sliced to the declared type); return "
-                    f"Own[...] to make the copy explicit",
+                    f"reference from a source other than `self` or a "
+                    f"parameter on at least one return path, so the instance "
+                    f"is copied across the CPython boundary there -- the copy "
+                    f"is a new object (identity and write-through aliasing "
+                    f"are not preserved; a copied derived instance is sliced "
+                    f"to the declared type); `self`/parameter returns cross "
+                    f"as the original object; return Own[...] to make the "
+                    f"copy explicit",
                     first_return(fn.body))
                 return
             inner = _boundary_inner(fn.return_type)
@@ -563,7 +591,10 @@ class SemanticAnalyzer:
 
         for func in module.functions:
             if func.exposed_to_host:
-                warn_if_borrow_return(func, f"@export function '{func.name}'")
+                # A free function has no receiver: only its params are glue
+                # candidates (a module global named `self` is NOT one).
+                warn_if_borrow_return(func, f"@export function '{func.name}'",
+                                      {n for n, _t in func.params})
         for record in module.records:
             if not record.exposed_to_host:
                 continue
@@ -591,8 +622,13 @@ class SemanticAnalyzer:
                     # sites only -- so this skip is getter-specific.)
                     continue
                 what = "property" if m.is_property_getter else "method"
+                # Non-inplace dunders emit through `_value_out_expr` slot
+                # wrappers, which have no identity path -- their borrow
+                # returns always copy, so no suppression (alias_names=None).
                 warn_if_borrow_return(
-                    m, f"exposed class '{record.name}' {what} '{m.name}'")
+                    m, f"exposed class '{record.name}' {what} '{m.name}'",
+                    None if is_dunder
+                    else {n for n, _t in m.params} | {"self"})
 
     def _validate_export_class_dunders(self, module: TpyModule) -> None:
         """In an ext_module, validate an @export class's repr/str/eq/ne/lt/le/

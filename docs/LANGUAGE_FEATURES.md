@@ -5985,7 +5985,9 @@ API, floor 3.12, hand-rolled C-API glue, copy-in marshalling).
   mirrors it: a *borrow-form* container return (`-> list[T]`, not
   `-> Own[list[T]]`) marshals a fresh copy, losing write-through aliasing, and
   **warns** at the return with `Own[...]` as the acknowledged spelling (same
-  model as the exposed-class `-> Cls` alias warning). (2)
+  model as the exposed-class `-> Cls` alias warning; unlike a class, a
+  container return is never identity-preserving -- the container was copied
+  IN, so no live PyObject backs it). (2)
   strict-by-container-kind IN: a wrong container kind
   / tuple arity is a `TypeError` where the untyped source accepts any iterable.
   (3) per-element scalar coercion (`list[int]` coerces `True -> 1`), so distinct
@@ -6121,20 +6123,33 @@ API, floor 3.12, hand-rolled C-API glue, copy-in marshalling).
   transfer; use a plain method), and a `Span[T]` setter is rejected (the
   buffer copy-in dies at the call boundary; store `list[T]`). A `_`-prefixed
   property is internal like a `_`-prefixed field. A getter returning a borrow
-  (`-> list[T]` / `-> Cls`) copies out and warns, exactly like a method
-  borrow-return. Introspection divergence: on the `.so` the descriptor is a
+  behaves like a method borrow-return: `-> Cls` sourced from `self`/a param
+  is identity-preserving, `-> list[T]` (or a field-sourced `-> Cls`) copies
+  out and warns. Introspection divergence: on the `.so` the descriptor is a
   `getset_descriptor`, not a `property` object (no `fget`/`fset`). Because the
   PyObject *owns* the instance, a class crosses **IN as a borrow of the live
   embedded payload** -- a method call or a free function taking the instance
   (`def bump(c: Counter, ...)`) mutates through it and the change is visible on
   the same object (correct Python reference semantics, unlike the by-copy
-  container boundary). It crosses **OUT by copy/move into a fresh instance**
-  (`instance_to_py`), so identity is not preserved across a return: returning a
-  fresh/`copy()`'d `Own[Counter]` is the normal form, while returning a borrow
-  (`-> Counter`, i.e. `return self`/`return <param>`) copies a caller-visible
-  object and **warns** (return `Own[...]` to make the copy explicit; a
-  derived instance returned as `-> Base` additionally slices to the declared
-  type). **Inheritance**: an `@export class Derived(Base)` whose single base
+  container boundary). Crossing **OUT**, a borrow-form return (`-> Counter`)
+  is **identity-preserving when the returned reference is the receiver or a
+  parameter**: the glue address-matches it against the boundary-crossed
+  objects in scope and hands back the ORIGINAL PyObject (`Py_IncRef`), so
+  `is`, write-through, and the dynamic type survive -- `return self`, fluent
+  chains, and param pass-through behave exactly like plain Python (a derived
+  instance returned as `-> Base` comes back un-sliced, as itself). The
+  decision is per return path: a source with no live PyObject behind it (a
+  field borrow, a module global) still copies out into a fresh instance
+  (`instance_to_py`) -- a body with such a path **warns** (return `Own[...]`
+  to make the copy explicit; the copy is a new object, and a copied derived
+  instance slices to the declared type). Operator/container dunder slots are
+  not identity-capable (their borrow returns always copy and warn; the
+  in-place group returns `self` identity-preserved by construction), and a
+  `readonly[Cls]` self/param return takes the identity path like the
+  mutable form (readonly is a TPy-side contract; the Python consumer gets
+  the original object, as in plain Python). Returning a fresh/`copy()`'d
+  `Own[Counter]` is the normal always-fresh form.
+  **Inheritance**: an `@export class Derived(Base)` whose single base
   is itself an `@export` class in the same module crosses as a real CPython
   subtype (`PyType_FromSpecWithBases` wires the base as `tp_base`):
   `isinstance`/`issubclass`/`__mro__`, inherited methods/fields/dunders, and

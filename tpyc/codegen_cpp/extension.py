@@ -16,7 +16,8 @@ import io
 from typing import TYPE_CHECKING, TextIO
 
 from ..parse import TpyModule, TpyVarDecl
-from ..typesys import TpyType, is_void_like_type, FinalType, OwnType
+from ..typesys import (
+    TpyType, is_void_like_type, FinalType, OwnType, ReadonlyType)
 from ..type_def_registry import (
     is_boundary_marshallable, is_function_boundary_marshallable, is_exposed_class,
     is_exposed_enum, is_span_boundary_param, _boundary_inner, enum_info_of,
@@ -33,6 +34,7 @@ if TYPE_CHECKING:
     from .context import CodeGenContext
     from .records import RecordGenerator
     from .types import TypeResolver
+    from ..typesys import RecordInfo
 
 # Exposed-class arithmetic/ordering operators: dunder name
 # -> CPython nb_* slot id. Dunder NAMES come from the canonical
@@ -504,18 +506,81 @@ class ExtensionGenerator:
                       f"::tpy::interop::from_py<{cpp}>(a{idx});\n")
         return f"__p{idx}"
 
+    def _param_alias_candidates(
+            self, params: list[tuple[str, TpyType]]
+    ) -> list[tuple[str, str, 'RecordInfo']]:
+        """(payload_expr, pyobj_expr, RecordInfo) for each exposed-class
+        param -- the boundary-crossed objects a borrow return could hand
+        back by identity (`__p{i}` is the payload reference
+        `_emit_marshal_in` binds for the class param `a{i}`)."""
+        reg = self.ctx.analyzer.registry
+        out: list[tuple[str, str, 'RecordInfo']] = []
+        for i, (_pn, t) in enumerate(params):
+            if not is_exposed_class(t):
+                continue
+            cinfo = reg.get_record_for_type(_boundary_inner(t))
+            if cinfo is not None:
+                out.append((f"__p{i}", f"a{i}", cinfo))
+        return out
+
+    def _scoped_alias_candidates(
+            self, ret_typ: TpyType,
+            alias_candidates: list[tuple[str, str, 'RecordInfo']]
+    ) -> list[tuple[str, str]]:
+        """Filter (payload_expr, pyobj_expr, RecordInfo) alias candidates down
+        to those whose declared class is inheritance-related to the return
+        class. Only for related classes does address equality imply "same
+        object": an UNRELATED exposed class can share the returned reference's
+        address (a first `_`-internal field's payload starts at offset 0 of
+        its holder), so comparing it could hand back the wrong PyObject."""
+        reg = self.ctx.analyzer.registry
+        rinfo = reg.get_record_for_type(_boundary_inner(ret_typ))
+        if rinfo is None or rinfo.is_value_type:
+            # A value-type class returns by value (a prvalue -- nothing to
+            # address-match, and copying is its honest semantics anyway).
+            return []
+        return [(payload, pyobj) for payload, pyobj, cinfo in alias_candidates
+                if cinfo is rinfo
+                or reg.is_subclass_of_record(cinfo, rinfo)
+                or reg.is_subclass_of_record(rinfo, cinfo)]
+
     def _emit_call_return(self, out: TextIO, ret_typ: TpyType | None,
-                          call_expr: str, sym: str) -> None:
-        """Emit the return of a boundary call: void -> None; an exposed class ->
-        a fresh wrapping instance (instance_to_py -- identity NOT preserved);
-        else to_py."""
+                          call_expr: str, sym: str,
+                          alias_candidates: tuple[tuple[str, str, 'RecordInfo'], ...] |
+                          list[tuple[str, str, 'RecordInfo']] = ()) -> None:
+        """Emit the return of a boundary call: void -> None; an exposed class
+        borrow return -> the ORIGINAL PyObject when the returned reference's
+        address matches a boundary-crossed candidate (self / an exposed-class
+        param -- identity and write-through preserved, and a derived instance
+        crosses un-sliced), else a fresh wrapping instance (instance_to_py);
+        an Own[...] class return is always a fresh instance; else to_py."""
         if ret_typ is None or is_void_like_type(ret_typ):
             out.write(f"        {call_expr};\n")
             out.write("        return ::tpy::interop::none_to_py();\n")
         elif is_exposed_class(ret_typ):
             _cpp, tv = self._class_cpp_var(ret_typ, sym)
-            out.write(f"        return ::tpy::interop::instance_to_py("
-                      f"(::tpy::cpy::PyTypeObject *){tv}, {call_expr});\n")
+            # Borrow-form returns only: an Own[...] return is a fresh value
+            # and can never alias a candidate. A reference-class return
+            # without Own IS the borrow form (an owned return would require
+            # Own[...]), whether or not the Ref wrapper survived on this
+            # FunctionInfo (a property getter's return_type is the bare
+            # class); value-type classes return by value (prvalue) and are
+            # excluded in _scoped_alias_candidates.
+            t = ret_typ
+            while isinstance(t, ReadonlyType):
+                t = t.wrapped
+            scoped = ([] if isinstance(t, OwnType) else
+                      self._scoped_alias_candidates(ret_typ, alias_candidates))
+            if scoped:
+                out.write(f"        auto &__r = {call_expr};\n")
+                for payload, pyobj in scoped:
+                    out.write(f"        if (&__r == &{payload}) {{ "
+                              f"Py_IncRef({pyobj}); return {pyobj}; }}\n")
+                out.write(f"        return ::tpy::interop::instance_to_py("
+                          f"(::tpy::cpy::PyTypeObject *){tv}, __r);\n")
+            else:
+                out.write(f"        return ::tpy::interop::instance_to_py("
+                          f"(::tpy::cpy::PyTypeObject *){tv}, {call_expr});\n")
         elif is_exposed_enum(ret_typ):
             _cpp, ev = self._enum_cpp_var(ret_typ, sym)
             # Cast to the enum's underlying int (not long long) so enum_to_py
@@ -1195,7 +1260,10 @@ class ExtensionGenerator:
             argtoks = [self._emit_marshal_in(out, i, t, sym)
                        for i, (_pn, t) in enumerate(params)]
             call = f"__self.{escape_cpp_name(mname)}({', '.join(argtoks)})"
-            self._emit_call_return(out, m.return_type, call, sym)
+            self._emit_call_return(
+                out, m.return_type, call, sym,
+                [("__self", "self", info)]
+                + self._param_alias_candidates(params))
             self._emit_boundary_catch(out, reg_arg)
             out.write("}\n\n")
 
@@ -1272,7 +1340,8 @@ class ExtensionGenerator:
             out.write("    try {\n")
             out.write(f"        auto &__self = {cppvar}->payload;\n")
             self._emit_call_return(out, prop.getter.return_type,
-                                   f"__self.{pcpp}()", sym)
+                                   f"__self.{pcpp}()", sym,
+                                   [("__self", "self", info)])
             self._emit_boundary_catch(out, reg_arg)
             out.write("}\n\n")
             if not has_setter:
@@ -1482,7 +1551,8 @@ class ExtensionGenerator:
             argtoks = [self._emit_marshal_in(out, i, ptype, sym)
                        for i, (_pn, ptype) in enumerate(fn.params)]
             call_expr = f"{call}({', '.join(argtoks)})"
-            self._emit_call_return(out, fn.return_type, call_expr, sym)
+            self._emit_call_return(out, fn.return_type, call_expr, sym,
+                                   self._param_alias_candidates(fn.params))
             self._emit_boundary_catch(out, reg_arg)
             out.write("}\n\n")
 

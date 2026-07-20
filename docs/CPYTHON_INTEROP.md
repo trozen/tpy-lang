@@ -54,7 +54,7 @@ progress -> ✅ done.
 | 2 | Extension codegen; **free functions** end-to-end; local `.so` build | **v1.0** | 🚧 every scalar arg/return + void return + str/bytes + container arg/return done; positional + keyword args (PyArg_ParseTupleAndKeywords) |
 | 2.5 | PEP 517 backend -> abi3 wheel (packaging) | **v1.0** | 🔬 |
 | 3 | Buffer input -- numeric (copy-in in v1.0; zero-copy -> 3.5) | **v1.0** | ✅ done: `Span[readonly[T]]`/`Span[T]` (fixed-width int/`float`) as an @export fn or exposed-class method PARAM only, via `PyObject_GetBuffer`; copy-in for both forms (no write-back for either); a mutated `Span[T]` param warns (copy-in, not visible to caller) |
-| 4 | **Classes + methods** (`PyType_FromSpec`; dunders per Q4) | **v1.1** | 🚧 baseline done: construct + plain methods + annotated fields as getset (scalars/str/bytes/exposed-enum/exposed-value-type; a value type is exposed read-only; a *public* mutable reference class-typed field is rejected -- copy-out breaks write-through, but a `_`-prefixed **internal** field of any type is kept as payload state and never crosses, so a class can hold reference-class/container members reached through methods), instances as free-fn/method params (borrow) + returns (copy); dunders (Q4) DONE -- all three checkpoints (repr/str/eq/ne/lt/le/gt/ge/hash; arithmetic/ordering operators incl. in-place; container protocol) landed; @property DONE (computed getset, full method boundary set); inheritance DONE (single exposed same-module base -> real `tp_base`); public-reference-class fields still deferred |
+| 4 | **Classes + methods** (`PyType_FromSpec`; dunders per Q4) | **v1.1** | 🚧 baseline done: construct + plain methods + annotated fields as getset (scalars/str/bytes/exposed-enum/exposed-value-type; a value type is exposed read-only; a *public* mutable reference class-typed field is rejected -- copy-out breaks write-through, but a `_`-prefixed **internal** field of any type is kept as payload state and never crosses, so a class can hold reference-class/container members reached through methods), instances as free-fn/method params (borrow) + returns (identity-preserving when the returned reference is `self`/a param -- the original PyObject crosses back; copy otherwise); dunders (Q4) DONE -- all three checkpoints (repr/str/eq/ne/lt/le/gt/ge/hash; arithmetic/ordering operators incl. in-place; container protocol) landed; @property DONE (computed getset, full method boundary set); inheritance DONE (single exposed same-module base -> real `tp_base`); public-reference-class fields still deferred |
 | 5 | **Enums + constants** | **v1.1** | 🚧 `@export` enums recreated as real CPython IntEnum/Enum (functional API, module= set); enum values cross as @export fn params/returns (member round-trip, strict-by-type IN); `Final` scalar/str constants as init-time module-attribute snapshots; nested/cross-module enums deferred |
 | 3.5 | Foreign-borrow primitive -> zero-copy str + buffer input | post-v1.0 (next) -- IR-gated | 🔬 |
 | 6 | Containers (`list`/`dict`/`set`/`tuple`, by-copy) | v1-adjacent | 🚧 done: list/dict/set/tuple cross as @export fn AND exposed-class method/`__init__` params/returns, O(n) recursive copy-in/out (str/bytes elements + arbitrary nesting); strict-by-container-kind IN; a mutated container param warns (copy-in, not visible to caller); a borrow-form container return warns (copy-out, Own[...] acknowledges); a *container* getset field stays rejected (an enum or value-type field IS admitted -- see row 4); exposed enum/class *top-level elements* now cross (deferred: class as a tuple element, nested-in-a-container element, @nocopy element, class set-element/dict-key) |
@@ -1130,9 +1130,32 @@ Detail for the tracker table in "v1 plan and status" (top). **v1.0 = phases
    embeds the TPy payload after the `PyObject` header (`Instance<T>`); `tp_init`
    runs `__init__`, `tp_dealloc` runs the C++ destructor; plain instance methods
    + annotated fields as read/write getset; instances cross as free-fn/method
-   params (a borrow of the live payload -- mutation writes through) and returns
-   (copy/move into a fresh instance via `instance_to_py`, so a borrow-form
-   `-> Cls` return warns; `Own[Cls]` is the acknowledged form). A leaf type is
+   params (a borrow of the live payload -- mutation writes through) and
+   returns. A borrow-form (`-> Cls`) return is **identity-preserving** when
+   the returned reference is the receiver or a parameter: the glue
+   address-matches it against the boundary-crossed objects in scope
+   (`self` + the exposed-class params, restricted to classes
+   inheritance-related to the return class -- an unrelated class can share
+   the address via a first `_`-internal field) and `Py_IncRef`s the ORIGINAL
+   PyObject, so `is`, write-through, and the dynamic type survive
+   (`return self`, fluent chains, param pass-through -- as in plain Python).
+   The decision is per call: a return path whose source has no live PyObject
+   behind it (a field borrow, a module global) still copies into a fresh
+   instance via `instance_to_py` -- the warning fires on bodies with such a
+   path (suppressed only when every return site is a bare `self`/param name
+   at an identity-capable site; note the per-call split: the same function
+   can alias on one input and copy on another, so tests must exercise every
+   return path). Operator/container DUNDER slots are not identity-capable
+   (they emit through the expression-form copy path), so their borrow
+   returns always copy and always warn -- except the in-place group, which
+   returns `self` identity-preserved by construction. A `readonly[Cls]`
+   self/param return takes the same identity path as the mutable form: the
+   Python consumer receives the ORIGINAL object exactly as under plain
+   Python (readonly is a TPy-side no-mutation-through-this-handle contract
+   and is a no-op in the `lib/cpy` stubs), so mutations from Python write
+   through; note borrow-form readonly returns never trigger the copy
+   warning from any source (pre-existing gate, tracked in TODO).
+   `Own[Cls]` stays the acknowledged always-fresh form. A leaf type is
    final (no `BASETYPE`; a class serving as another exposed class's base
    carries the flag -- see the inheritance block below) with no instance
    `__dict__`. `@property` crosses as a
@@ -1196,10 +1219,13 @@ Detail for the tracker table in "v1 plan and status" (top). **v1.0 = phases
    pre-existing/acknowledged: TPy's static dispatch means a base method (or
    a base-typed param) invoking an overridden method runs the BASE version
    inside the module -- the method-hiding warning fires at the override site
-   (`@dynamic` is the hatch); and a borrow-form `-> Base` return of a live
-   derived object copies AND slices to the declared type (the return-alias
-   warning names it). Python-side calls of overridden methods dispatch via
-   MRO and match CPython.
+   (`@dynamic` is the hatch); and a borrow-form `-> Base` return sourced
+   from something other than `self`/a param (a field borrow, a global)
+   copies AND slices to the declared type (the return-alias warning names
+   it) -- a `self`/param-sourced return hands back the ORIGINAL object,
+   derived type intact (see the identity-preserving-return rule above).
+   Python-side calls of overridden methods dispatch via MRO and match
+   CPython.
 
    **Dunders (Q4), checkpoint 1 implemented**: `__repr__`/`__str__` ->
    `Py_tp_repr`/`Py_tp_str` (must return `str`); `__eq__`/`__ne__`/`__lt__`/
@@ -1268,7 +1294,9 @@ Detail for the tracker table in "v1 plan and status" (top). **v1.0 = phases
    return value -- TPy already requires these to return `self` (not
    `Own[T]`), so no new validation is needed; the borrow-return-copies
    warning is suppressed for this group specifically (identity is
-   preserved, unlike every other dunder's fresh-`instance_to_py` return).
+   preserved by construction; plain methods now get the same treatment via
+   the address-matched identity-preserving return, while other dunders keep
+   the fresh-`instance_to_py` return).
    **Checkpoint 3 implemented**: the container protocol -> `Py_mp_*`/
    `Py_sq_*`/`Py_tp_iter*`. `__len__` wires ONE wrapper to BOTH
    `Py_mp_length` and `Py_sq_length` (matching how CPython wires a plain

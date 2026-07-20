@@ -20,6 +20,10 @@ print(s.describe())
 m.rename(c, "big")                     # borrow through a base-typed param
 print(c.name)                          # write-through on the same object
 
+r = m.as_shape(c)                      # param pass-through: the ORIGINAL
+print(r is c, type(r).__name__)        # Circle comes back (no copy/slice)
+print(r.radius)
+
 d = m.Disc("d", 1.0)                   # __init__ inherited from Circle
 print(isinstance(d, m.Circle), isinstance(d, m.Shape))
 print(d.spin(), d.describe(), d.name, d.radius)

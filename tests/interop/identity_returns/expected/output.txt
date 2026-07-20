@@ -1,0 +1,13 @@
+True
+True
+True
+True
+0
+True 7
+True
+True
+42
+True
+False 3
+9
+True
