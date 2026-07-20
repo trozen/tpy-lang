@@ -1285,6 +1285,21 @@ class PtrSlotKind(Enum):
     # (reseat). `base_cpp` carries the protocol base; `init`/`value` is the
     # deref'd source.
     DYN_PROTOCOL_ERASED = auto()
+    # Rvalue reseat of a branch-hoisted pointer-local that carries NO if-head
+    # rebind slot (the name is reassigned but not rvalue-reassigned -- the
+    # mixed rvalue/lvalue flavor): the first such reseat allocates the
+    # `std::optional<T> __slot_N;` lazily into the function-top hoist lines
+    # and registers it for reuse; every reseat renders
+    # `name = &*(__slot_N = <rvalue>);` (`_gen_pointer_local_rebind`'s
+    # is_hoisted rvalue branch). `val_cpp` carries the slot's T spelling.
+    BRANCH_RVALUE = auto()
+    # Lvalue-NAME reseat of a pointer-local (`items = base;` ->
+    # `items = &(base);` -- `_gen_pointer_local_rebind`'s address-of
+    # catch-all). A THIRFormConvert cannot carry it: a non-value name READ
+    # is already BORROW form, so the convert would be the no-op node the
+    # validator rejects; the `&(...)` lives in this kind's emit instead
+    # (the UNION_ADDR precedent).
+    PTR_ADDR = auto()
 
 
 @dataclass(frozen=True)
@@ -1575,16 +1590,24 @@ class THIRIf(THIRStmt):
     `} else {` + its own source comment + `if (...)` one level deeper
     (`_gen_if`'s `_has_concrete_isinstance_facts` chain-collect gate).
 
-    `hoist_decls` mirrors `THIRTry.hoist_decls`: a value var first-declared
-    in a branch and definitely-assigned-after is predeclared `T v;` at the
-    chain head (the AST's `_emit_branch_decls` before `_gen_if`), the
+    `hoist_decls` mirrors `THIRTry.hoist_decls`: a var first-declared in a
+    branch and definitely-assigned-after is predeclared `{cpp_type} v;` at
+    the chain head (the AST's `_emit_branch_decls` before `_gen_if`), the
     in-branch assigns lowering as bare reassigns against the slot. The
+    cpp_type carries the full spelling per flavor: `T` for a value var,
+    `std::optional<T>` for a single-bind non-value (OPTIONAL_STORAGE), a
+    `T*` / `Base*` pointer-local for reassigned non-values and @dynamic
+    protocols. `hoist_slots` names the rvalue-reassigned subset: emit
+    writes `std::optional<T> __slot_N;` (allocating N from the shared slot
+    counter, registered in `rebind_slots`) immediately before that name's
+    predecl line, mirroring `_emit_branch_decls`' rebind-slot arm. The
     narrowing-condition path never carries hoists (deferred)."""
     condition: THIRExpr
     then_body: tuple[THIRStmt, ...]
     else_body: tuple[THIRStmt, ...] = ()
     else_is_nested: bool = False
     hoist_decls: tuple[tuple[str, str], ...] = ()
+    hoist_slots: tuple[tuple[str, str], ...] = ()
 
 
 @dataclass(frozen=True)

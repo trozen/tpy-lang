@@ -695,6 +695,14 @@ THIR_FACES: frozenset[str] = frozenset({
     "try.finally_terminates",       # raise/return-ending finally: no rethrow
     # if/elif/else (lowering, per statement).
     "if.hoist_decl",                # sema-hoisted plain-value branch predecls
+    "if.hoist_optional_storage",    # single-bind non-value -> optional<T> name;
+    "if.hoist_ptr_local",           # reassigned/borrow non-value -> T* name;
+    "if.hoist_dyn_protocol",        # @dynamic branch decl -> Base* name;
+    "reseat.opt_storage",           # plain assign into an OPTIONAL_STORAGE hoist
+    "reseat.branch_rvalue",         # lazy-slot rvalue reseat of a branch hoist
+    "reseat.storage_name",          # `x = base;` -> `x = &(base);` lvalue lift
+    "reseat.subscript_elem",        # `p = xs[i];` -> `p = &(__getitem__(...));`
+    "print.hoisted_container_arg",  # ListPrinter((*items)) over a hoisted ptr
     # Raise statements (lowering).
     "raise.ctor",                   # `raise X(args)` -> `throw <cpp>(...)`
     "raise.bare",                   # bare re-raise -> `throw;`

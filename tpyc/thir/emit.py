@@ -1442,8 +1442,16 @@ def _emit_if(out: TextIO, stmt: THIRIf, indent_level: int, state: _EmitState) ->
     indent = INDENT * indent_level
     body_indent = INDENT * (indent_level + 1)
     # Hoisted predecls precede the whole chain, like the AST's
-    # _emit_branch_decls run before _gen_if (see _emit_try).
+    # _emit_branch_decls run before _gen_if (see _emit_try). A hoist_slots
+    # entry allocates that name's rebind slot immediately before its predecl
+    # line (the rvalue-reassigned arm's `std::optional<T> __slot_N;`).
+    slot_types = dict(stmt.hoist_slots)
     for name, cpp_type in stmt.hoist_decls:
+        if name in slot_types:
+            slot = state.next_slot()
+            state.rebind_slots[name] = slot
+            out.write(f"{indent}std::optional<{slot_types[name]}> "
+                      f"__slot_{slot};\n")
         out.write(f"{indent}{cpp_type} {name};\n")
     chain = [stmt]
     while (len(chain[-1].else_body) == 1
@@ -2958,6 +2966,28 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             # `p2 = p1` where p1 is already erased: re-alias, no slot (the deref'd
             # source renders its own parens).
             out.write(f"{indent}{name} = &{_emit_expr(stmt.value, state)};\n")
+        elif stmt.kind is PtrSlotKind.PTR_ADDR:
+            # Lvalue-name reseat: address-of the bare storage read.
+            out.write(f"{indent}{name} = "
+                      f"&({_emit_expr(stmt.value, state)});\n")
+        elif stmt.kind is PtrSlotKind.BRANCH_RVALUE:
+            # Branch-hoisted rvalue reseat without an if-head slot: the first
+            # reseat allocates the function-top `std::optional<T>` lazily
+            # (the AST's pending_hoist_decls append) and registers it; later
+            # rvalue reseats reuse it. Value renders before the allocation,
+            # matching _gen_pointer_local_rebind's gen_expr-then-next_slot
+            # order.
+            val_cpp = _emit_expr(stmt.value, state)
+            slot = state.rebind_slots.get(stmt.name)
+            if slot is None:
+                slot = state.next_slot()
+                state.rebind_slots[stmt.name] = slot
+                assert state.hoist_drainable, (
+                    "BRANCH_RVALUE rebind hoist reached a non-draining "
+                    "leaf emitter")
+                state.hoist_lines.append(
+                    f"std::optional<{stmt.val_cpp}> __slot_{slot};")
+            out.write(f"{indent}{name} = &*(__slot_{slot} = {val_cpp});\n")
         else:  # PtrSlotKind.UNION_RVALUE -- emplace + re-lift the rebind slot
             slot = state.rebind_slots[stmt.name]
             out.write(f"{indent}__slot_{slot}.emplace("

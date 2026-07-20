@@ -96,6 +96,7 @@ from ...modules.type_resolution import is_native_iterable
 from ...sema.literal_utils import fixed_int_literal_value_from_expr
 from ...codegen_cpp.forms import (
     LocalBinding,
+    is_plain_nonvalue,
     is_ptr_variant_union,
     is_storage_tuple_alias_decl,
 )
@@ -1586,14 +1587,180 @@ def _lower_hoist_predecls(hoists: dict, declared: dict[str, TpyType],
         if name in declared:
             continue
         vtype = unwrap_ref_type(raw)
-        render_src = (_resolved_str_value(vtype, lc.analyzer)
-                      or _resolved_bytes_value(vtype, lc.analyzer)
-                      or vtype)
-        hoist_decls.append((name, lc.render_type(render_src)))
-        declared[name] = vtype
+        hoist_decls.append(_value_hoist_entry(name, vtype, declared, lc))
     if hoist_decls:
         _witness(witness_tag)
     return hoist_decls
+
+
+def _rebind_rvalue_source_ok(init: TpyExpr, target_t: TpyType,
+                             analyzer) -> bool:
+    """The rvalue shapes a slot rebind admits (`__slot_N = <init>`): a
+    shape-checked container literal, an F1-record rvalue, or a
+    container-returning by-value/Own call (the storage-call family -- the
+    AST rebind path is source-shape-blind past is_rvalue_source; these are
+    the vetted slices of it)."""
+    if isinstance(init, (TpyArrayLiteral, TpyDictLiteral, TpySetLiteral)):
+        return _container_literal_shape_ok(init, target_t, analyzer)
+    if _record_rvalue_source_shape(init, analyzer):
+        return True
+    if (isinstance(init, (TpyCall, TpyMethodCall))
+            and is_rvalue_source(analyzer, init)):
+        fam = _storage_call_ret(analyzer.get_expr_type(init), analyzer)
+        return fam is not None and (_storage_call_container(fam)
+                                    or is_bytearray_type(fam))
+    return False
+
+
+def _rebind_rvalue_use(init: TpyExpr) -> '_ExprUse':
+    """A slot assign is a storage sink at statement position: a
+    container-returning call needs the STORAGE result use (the storage-decl
+    sink's admission) and may hoist arg temps."""
+    if isinstance(init, (TpyCall, TpyMethodCall)):
+        return _ExprUse(result=_ExprResultUse.STORAGE, allow_temps=True)
+    return _ExprUse()
+
+
+def _value_hoist_entry(name: str, vtype: TpyType,
+                       declared: dict[str, TpyType],
+                       lc: '_LowerCtx') -> tuple[str, str]:
+    """One value-family hoist predecl entry: resolve the str/bytes view
+    spelling, render, and register the raw binding type in the caller's
+    `declared` -- the single render shared by the try/with tail and the
+    if-flavor cascade so the two cannot drift."""
+    render_src = (_resolved_str_value(vtype, lc.analyzer)
+                  or _resolved_bytes_value(vtype, lc.analyzer)
+                  or vtype)
+    declared[name] = vtype
+    return (name, lc.render_type(render_src))
+
+
+def _lower_if_hoist_predecls(stmt: TpyIf, hoists: dict,
+                             declared: dict[str, TpyType], lc: '_LowerCtx',
+                             in_branch: bool
+                             ) -> tuple[list[tuple[str, str]],
+                                        list[tuple[str, str]]]:
+    """The if-chain flavor of `_emit_branch_decls`: classify each sema-hoisted
+    branch-first decl in dict order (the AST's cascade order) and register its
+    read/write model on `lc`. Returns `(hoist_decls, hoist_slots)` for THIRIf:
+    every predecl renders `{cpp_type} {name};` at the chain head; a slot entry
+    additionally pre-decls that name's `std::optional<T> __slot_N;` rebind slot
+    (allocated at emit, mirroring `ctx.slots`). Non-value flavors:
+
+      * @dynamic protocol -> `Base* name;` + the DYN_PROTOCOL reseat arm.
+      * plain non-value, not reassigned, not borrow-only -> the
+        OPTIONAL_STORAGE local (`std::optional<T> name;`, plain assigns,
+        deref reads -- `_emit_branch_decls`' optional_locals arm).
+      * reassigned / borrow-only -> `T* name;` pointer-local; an
+        rvalue-reassigned name gets the if-head rebind slot, otherwise
+        reseats allocate one lazily at function top (BRANCH_RVALUE).
+
+    Raises ThirUnsupported (whole-body fallback) for the shapes outside this
+    slice: const/readonly hoists, borrow-form tuples, resumable bodies (the
+    rebind hoists have no drain point in the leaf emitters)."""
+    analyzer = lc.analyzer
+    borrow_decls = analyzer.function_stmt_borrow_decls.get(id(lc.func), {})
+    ever_owned = analyzer.function_ever_owned_locals.get(id(lc.func), set())
+    hoist_decls: list[tuple[str, str]] = []
+    hoist_slots: list[tuple[str, str]] = []
+    for name, raw in hoists.items():
+        if name in declared:
+            continue
+        if name in lc.prescan.native_globals:
+            note_detail("if.hoist_native_global")
+            raise ThirUnsupported(stmt_reject_reason(stmt))
+        var_type = unwrap_ref_type(raw)
+        # An un-annotated container hoist (`xs = [1]` / `xs = [2]`) carries
+        # the pending literal type; resolve it up front so the registered
+        # binding, the flavor gates, and the render all see the final
+        # container (the reseat shape checks compare against `declared`).
+        var_type = resolve_pending_container(var_type, analyzer) or var_type
+        is_nonvalue_flavor = (
+            (isinstance(var_type, NominalType) and is_dyn_protocol(var_type))
+            or is_plain_nonvalue(var_type)
+            or (isinstance(var_type, OptionalType)
+                and var_type.uses_pointer_repr()))
+        if is_nonvalue_flavor and in_branch:
+            # An INNER-scope if (any in_branch body: branch, loop, with,
+            # try) registers its hoist names into that scope's `declared`
+            # COPY, but Python names are function-scoped and the AST tracks
+            # them in flat declared_vars -- a sibling or post-scope
+            # statement on the same name would classify differently on the
+            # two paths. Non-value hoists stay AST there until THIR's hoist
+            # registration is function-scoped; only function-top-level ifs
+            # route.
+            note_detail("if.hoist_inner_scope")
+            raise ThirUnsupported(stmt_reject_reason(stmt))
+        if isinstance(var_type, NominalType) and is_dyn_protocol(var_type):
+            # `Base* name;` + per-reseat adapter slots (the DYN_PROTOCOL
+            # rebind arm). Those slots hoist to function top -- no drain
+            # point in a resumable leaf emitter, same guard as the reseat.
+            if lc.func.is_generator or lc.func.is_async:
+                note_detail("if.hoist_dyn_resumable")
+                raise ThirUnsupported(stmt_reject_reason(stmt))
+            hoist_decls.append(
+                (name, f"{dynamic_base_name(var_type, analyzer)}*"))
+            lc.pointers.add(name)
+            lc.dyn_protocol_locals.add(name)
+            declared[name] = var_type
+            _witness("if.hoist_dyn_protocol")
+            continue
+        # Pointer-repr Optional predecls the bare inner `T* name;` (nullable
+        # pointer-local); readonly inners are the const-indirect arm (a later
+        # rung, like every const hoist below).
+        resolve_type = var_type
+        if (isinstance(var_type, OptionalType)
+                and var_type.uses_pointer_repr()):
+            resolve_type = var_type.inner
+        if isinstance(resolve_type, ReadonlyType):
+            note_detail("if.hoist_const")
+            raise ThirUnsupported(stmt_reject_reason(stmt))
+        if is_plain_nonvalue(var_type) or resolve_type is not var_type:
+            if lc.func.is_generator or lc.func.is_async:
+                # Both non-value flavors hoist storage to function top on
+                # reseats; resumable leaves cannot drain those lines.
+                note_detail("if.hoist_nonvalue_resumable")
+                raise ThirUnsupported(stmt_reject_reason(stmt))
+            if name in lc.prescan.move_through:
+                # `_needs_indirection` exempts move-through names -- the AST
+                # gives them the plain storage decl, a different arm.
+                note_detail("if.hoist_move_through")
+                raise ThirUnsupported(stmt_reject_reason(stmt))
+            borrow_only = (name in borrow_decls and name not in ever_owned)
+            if borrow_decls.get(name, False):
+                # The borrow-decl const bit makes the pointer-local
+                # const-indirect (`const T* name;`) -- the const rung.
+                note_detail("if.hoist_const")
+                raise ThirUnsupported(stmt_reject_reason(stmt))
+            reassigned = name in lc.prescan.reassigned
+            cpp = lc.render_type(resolve_type)
+            if (is_plain_nonvalue(var_type) and not reassigned
+                    and not borrow_only):
+                # OPTIONAL_STORAGE: single-bind rvalue local -- plain
+                # assigns engage the optional, reads deref through it.
+                hoist_decls.append((name, f"std::optional<{cpp}>"))
+                lc.pointers.add(name)
+                lc.optional_locals.add(name)
+                lc.movable_locals.add(name)
+                declared[name] = var_type
+                _witness("if.hoist_optional_storage")
+                continue
+            hoist_decls.append((name, f"{cpp}*"))
+            lc.pointers.add(name)
+            if name in lc.prescan.rvalue_reassigned:
+                hoist_slots.append((name, cpp))
+                lc.rebind_slot_locals.add(name)
+            else:
+                lc.branch_hoisted.add(name)
+            declared[name] = var_type
+            _witness("if.hoist_ptr_local")
+            continue
+        if not _try_hoist_type_ok(var_type, analyzer):
+            note_detail("if.hoist_type")
+            raise ThirUnsupported(stmt_reject_reason(stmt))
+        hoist_decls.append(_value_hoist_entry(name, var_type, declared, lc))
+        _witness("if.hoist_decl")
+    return hoist_decls, hoist_slots
 
 def _handler_binding_type(h: TpyExceptHandler, analyzer) -> 'NominalType | None':
     """The `as`-binding's type, exactly as sema binds it (`NominalType` over
@@ -1771,8 +1938,19 @@ def _lower_borrow_local(stmt: TpyVarDecl, vtype: TpyType, binding: 'LocalBinding
     if binding is LocalBinding.POINTER and isinstance(stmt.init, TpyName):
         # A reassigned bare record-name alias: `[const] T* x = &(a);`. The bare
         # name renders as a plain lvalue; the THIRFormConvert emits the `&(...)`.
+        src = _lower_expr(stmt.init, lc, declared)
+        if (src.form is Form.BORROW and src.result_type == vtype
+                and not lc.resumable_leaf_mode):
+            # Same trap as the reseat arms: a same-type BORROW-form name
+            # makes the convert the no-op node validate_function
+            # hard-rejects -- the T&/T* representation change has no form
+            # spelling yet, so the shape stays on AST. Resumable leaves are
+            # exempt like the twin guards (they never run whole-function
+            # validation).
+            note_detail("decl.ptr_alias_borrow")
+            raise ThirUnsupported(stmt_reject_reason(stmt))
         convert = THIRFormConvert(
-            result_type=vtype, value=_lower_expr(stmt.init, lc, declared),
+            result_type=vtype, value=src,
             form=Form.BORROW, is_const=is_const, loc=loc)
         return THIRVarDecl(
             name=stmt.name, resolved_type=vtype, init=convert,
@@ -2396,6 +2574,9 @@ def _lower_scoped_stmts(body, lc: _LowerCtx,
     saved = lc.narrow.snapshot()
     saved_pointers = set(lc.pointers)
     saved_rebind = set(lc.rebind_slot_locals)
+    saved_optional = set(lc.optional_locals)
+    saved_branch_hoisted = set(lc.branch_hoisted)
+    saved_dyn = set(lc.dyn_protocol_locals)
     try:
         return _lower_stmts(body, lc, declared, in_branch=True,
                             branch_decls_ok=branch_decls_ok,
@@ -2404,6 +2585,9 @@ def _lower_scoped_stmts(body, lc: _LowerCtx,
         lc.narrow = saved
         lc.pointers = saved_pointers
         lc.rebind_slot_locals = saved_rebind
+        lc.optional_locals = saved_optional
+        lc.branch_hoisted = saved_branch_hoisted
+        lc.dyn_protocol_locals = saved_dyn
 
 def _lower_loop_orelse(orelse, lc: _LowerCtx, declared: dict[str, TpyType],
                        scope: '_LowerScope', face: str
@@ -2439,6 +2623,9 @@ def _lower_narrowed_branch(body, fact: 'TpyType | None', var: str,
     # otherwise classify as a reseat of a name its scope never saw).
     saved_pointers = set(lc.pointers)
     saved_rebind = set(lc.rebind_slot_locals)
+    saved_optional = set(lc.optional_locals)
+    saved_branch_hoisted = set(lc.branch_hoisted)
+    saved_dyn = set(lc.dyn_protocol_locals)
     branch_declared = dict(declared)
     out: list[THIRStmt] = []
     try:
@@ -2454,6 +2641,9 @@ def _lower_narrowed_branch(body, fact: 'TpyType | None', var: str,
         lc.narrow = saved
         lc.pointers = saved_pointers
         lc.rebind_slot_locals = saved_rebind
+        lc.optional_locals = saved_optional
+        lc.branch_hoisted = saved_branch_hoisted
+        lc.dyn_protocol_locals = saved_dyn
     return tuple(out)
 
 
@@ -3365,6 +3555,49 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     init=THIRMove(result_type=src.result_type, value=src,
                                   form=src.form, loc=loc),
                     cpp_type=lc.render_type(vtype), form=Form.STORAGE, loc=loc)
+        # OPTIONAL_STORAGE branch-hoist assign: the single-bind non-value's
+        # in-branch decl writes PLAIN into the if-head `std::optional<T>`
+        # (`name = <storage rvalue>;` -- _gen_var_decl_code's
+        # OPTIONAL_STORAGE arm). Checked before the rebind-slot/pointer
+        # reseats: the name is in `pointers` for its read side only.
+        if stmt.name in lc.optional_locals and stmt.name in declared:
+            target_t = declared[stmt.name]
+            if not _rebind_rvalue_source_ok(stmt.init, target_t, analyzer):
+                note_detail("reseat.opt_storage_source")
+                raise ThirUnsupported(stmt_reject_reason(stmt))
+            _witness("reseat.opt_storage")
+            return THIRAssign(
+                target=THIRName(result_type=target_t, name=stmt.name,
+                                loc=loc),
+                value=_lower_expr(stmt.init, lc, declared,
+                                  target_type=target_t,
+                                  use=_rebind_rvalue_use(stmt.init)),
+                loc=loc)
+        # BRANCH_RVALUE reseat: a branch-hoisted `T*` local without an
+        # if-head slot takes an rvalue via the lazily-allocated function-top
+        # slot (`name = &*(__slot_N = <rvalue>);`); lvalue sources fall
+        # through to the pointer reseat arms below.
+        if (stmt.name in lc.branch_hoisted and stmt.name in declared
+                and is_rvalue_source(analyzer, stmt.init)):
+            target_t = declared[stmt.name]
+            # The slot holds the POINTEE: a pointer-repr Optional hoist's
+            # lazy slot is `std::optional<T>`, not optional<optional<T>>.
+            slot_t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                target_t)))
+            if (isinstance(slot_t, OptionalType)
+                    and slot_t.uses_pointer_repr()):
+                slot_t = unwrap_readonly(slot_t.inner)
+            slot_t = resolve_pending_container(slot_t, analyzer) or slot_t
+            if not _rebind_rvalue_source_ok(stmt.init, target_t, analyzer):
+                note_detail("reseat.branch_rvalue_source")
+                raise ThirUnsupported(stmt_reject_reason(stmt))
+            _witness("reseat.branch_rvalue")
+            return THIRPtrLocalRebind(
+                name=stmt.name, kind=PtrSlotKind.BRANCH_RVALUE,
+                value=_lower_expr(stmt.init, lc, declared,
+                                  target_type=target_t,
+                                  use=_rebind_rvalue_use(stmt.init)),
+                val_cpp=lc.render_type(slot_t), loc=loc)
         # F2d rebind-slot reseat: an rvalue ctor / by-value source. It lowers as a
         # plain value-form call; emit wraps it as `p = &*(__slot_N = <value>)`
         # using the rebind slot allocated at the decl. Checked before the lvalue
@@ -3395,19 +3628,22 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                                     loc=loc),
                     value=_lower_expr(stmt.init, lc, declared,
                                       target_type=decl_u.inner), loc=loc)
-            container_reseat = (
-                isinstance(stmt.init, (TpyArrayLiteral, TpyDictLiteral,
-                                       TpySetLiteral))
-                and _container_literal_shape_ok(stmt.init, declared[stmt.name],
-                                                analyzer))
-            if not (container_reseat
-                    or _record_rvalue_source_shape(stmt.init, analyzer)):
-                note_detail("decl.rebind_source")
-                raise ThirUnsupported(stmt_reject_reason(stmt))
-            return THIRAssign(
-                target=THIRName(result_type=vtype, name=stmt.name, loc=loc),
-                value=_lower_expr(stmt.init, lc, declared,
-                                  target_type=declared[stmt.name]), loc=loc)
+            if is_rvalue_source(analyzer, stmt.init):
+                if not _rebind_rvalue_source_ok(stmt.init,
+                                                declared[stmt.name],
+                                                analyzer):
+                    note_detail("decl.rebind_source")
+                    raise ThirUnsupported(stmt_reject_reason(stmt))
+                return THIRAssign(
+                    target=THIRName(result_type=vtype, name=stmt.name,
+                                    loc=loc),
+                    value=_lower_expr(stmt.init, lc, declared,
+                                      target_type=declared[stmt.name],
+                                      use=_rebind_rvalue_use(stmt.init)),
+                    loc=loc)
+            # An LVALUE reseat of a slot-holding name leaves the slot
+            # untouched and re-points the alias (`p = &(lvalue);`) -- fall
+            # through to the pointer reseat arms below.
         # F2a pointer-local reseat: lift the new lvalue field source to `T*` via
         # `&(...)` (the same storage->borrow convert as the first decl). Eligibility
         # admitted only an F1-record field source here. result_type is the stripped
@@ -3532,6 +3768,58 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     raise ThirUnsupported(stmt_reject_reason(stmt))
             elif _f2_reseat_ok(stmt.init, declared, analyzer):
                 src_name = _lower_field_source(stmt.init, lc, declared)
+            elif (isinstance(stmt.init, TpyName)
+                  and stmt.init.name in declared
+                  and stmt.init.name not in lc.pointers
+                  and stmt.init.name not in lc.rebind_slot_locals
+                  and stmt.init.name not in lc.optional_locals
+                  and stmt.init.name not in lc.const_locals
+                  and stmt.init.name not in lc.narrow.narrowed
+                  and not _param_is_const(stmt.init.name, lc.func, analyzer,
+                                          lc.record_name)
+                  and is_plain_nonvalue(unwrap_readonly(unwrap_ref_type(
+                      unwrap_send_sync(declared[stmt.init.name]))))
+                  and unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                      declared[stmt.init.name]))) == unwrap_readonly(
+                      unwrap_ref_type(unwrap_send_sync(
+                          declared[stmt.name])))):
+                # A plain same-type storage LOCAL lvalue (`items = base;` ->
+                # `items = &(base);`): the AST rebind's address-of catch-all
+                # for a name that renders bare storage. The `&` lives in the
+                # PTR_ADDR emit (a FormConvert over the BORROW-form name read
+                # would be the no-op node the validator rejects).
+                # Pointer-form, const, and narrowed sources stay on their
+                # own rungs.
+                _witness("reseat.storage_name")
+                return THIRPtrLocalRebind(
+                    name=stmt.name, kind=PtrSlotKind.PTR_ADDR,
+                    value=_lower_expr(stmt.init, lc, declared), loc=loc)
+            elif (isinstance(stmt.init, TpySubscript)
+                  and stmt.init.slice_function_info is None
+                  and not isinstance(stmt.init.index, TpySlice)
+                  and not isinstance(
+                      unwrap_ref_type(unwrap_send_sync(
+                          analyzer.get_expr_type(stmt.init.obj)
+                          or vtype)), ReadonlyType)
+                  and unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                      analyzer.get_expr_type(stmt.init) or vtype)))
+                  == unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                      declared[stmt.name])))
+                  and is_plain_nonvalue(unwrap_readonly(unwrap_ref_type(
+                      unwrap_send_sync(declared[stmt.name]))))):
+                # A mutable container ELEMENT lvalue (`p = points[0];` ->
+                # `p = &(::tpy::__getitem__(points, 0));`): the same
+                # address-of catch-all over the element read. RECEIVER use:
+                # the record-elem read is admitted for address-of inners
+                # there (a value use would copy the borrow). Readonly
+                # receivers (const elements) stay on the const rung.
+                _witness("reseat.subscript_elem")
+                return THIRPtrLocalRebind(
+                    name=stmt.name, kind=PtrSlotKind.PTR_ADDR,
+                    value=_lower_expr(
+                        stmt.init, lc, declared,
+                        use=_ExprUse(result=_ExprResultUse.RECEIVER)),
+                    loc=loc)
             else:
                 note_detail("decl.reseat_source")
                 raise ThirUnsupported(stmt_reject_reason(stmt))
@@ -5127,22 +5415,17 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
     if isinstance(stmt, TpyIf):
         begin_stmt()
         info = _narrow_cond_info(stmt.condition, declared, analyzer)
-        admitted_declared = dict(declared)
         hoists = analyzer.if_branch_decls.get(id(stmt), {})
         if hoists and info is not None:
             note_detail("if.narrow_hoist")
             raise ThirUnsupported(stmt_reject_reason(stmt))
-        for name, raw in hoists.items():
-            if name in declared:
-                continue
-            if name in lc.prescan.native_globals:
-                note_detail("if.hoist_native_global")
-                raise ThirUnsupported(stmt_reject_reason(stmt))
-            vtype = unwrap_ref_type(raw)
-            if not _try_hoist_type_ok(vtype, analyzer):
-                note_detail("if.hoist_type")
-                raise ThirUnsupported(stmt_reject_reason(stmt))
-            admitted_declared[name] = vtype
+        # Classification registers the hoisted names' read/write model on
+        # `lc` and enters them in `declared` BEFORE the condition lowers
+        # (the AST's declared_vars registration order); a reject anywhere
+        # after a partial registration is fine -- the whole body falls back
+        # and the partially-mutated lc is discarded with it.
+        hoist_decls, hoist_slots = _lower_if_hoist_predecls(
+            stmt, hoists, declared, lc, scope.in_branch)
         if info is not None:
             var, u, _members, folded, _isin = info
             narrow_ok = not (
@@ -5157,8 +5440,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             return _lower_narrow_if(stmt, info, lc, declared, loc,
                                     loop_depth=scope.loop_depth)
         try:
-            condition = _lower_truthy(
-                stmt.condition, lc, admitted_declared)
+            condition = _lower_truthy(stmt.condition, lc, declared)
         except ThirUnsupported:
             c = stmt.condition
             if isinstance(c, TpyBinOp):
@@ -5168,11 +5450,6 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             else:
                 _kind_detail("cond.", c)
             raise ThirUnsupported(stmt_reject_reason(stmt))
-        # Hoisted predecls render at the chain head (see THIRIf): names enter
-        # the CALLER's `declared` (function-scope, visible in every branch and
-        # after the if).
-        hoist_decls = _lower_hoist_predecls(hoists, declared, lc,
-                                            "if.hoist_decl")
         # Branch-local `declared` copies: eligibility guarantees branches only
         # reassign already-declared locals, but a nested post-if narrowing may
         # retype its subject for the rest of ITS branch -- that must not leak
@@ -5203,6 +5480,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             else_body=else_stmts,
             else_is_nested=else_is_nested,
             hoist_decls=tuple(hoist_decls),
+            hoist_slots=tuple(hoist_slots),
             loc=loc,
         )
     if isinstance(stmt, TpyBreak):
@@ -5858,6 +6136,24 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                               and _wrap_print_form(
                                   arg, declared, analyzer) is not None
                               and _witness("print.wrap_arg"))
+                          or (isinstance(arg, TpyName)
+                              and (arg.name in lc.optional_locals
+                                   or arg.name in lc.branch_hoisted
+                                   or arg.name in lc.rebind_slot_locals)
+                              and not isinstance(
+                                  unwrap_readonly(unwrap_ref_type(
+                                      unwrap_send_sync(
+                                          declared.get(arg.name)))),
+                                  OptionalType)
+                              and _wrap_print_form(arg, declared, analyzer)
+                              in (PrintForm.LIST, PrintForm.DICT,
+                                  PrintForm.SET, PrintForm.BYTEARRAY)
+                              # A branch-hoisted container pointer-local
+                              # streams its deref inside the same kind-keyed
+                              # wrap (`ListPrinter((*items))`); pointer-repr
+                              # Optional bindings stay out (their whole-name
+                              # print is a different render).
+                              and _witness("print.hoisted_container_arg"))
                           or (isinstance(arg, TpyFieldAccess)
                               and _wrap_print_form(
                                   arg, declared, analyzer) is not None

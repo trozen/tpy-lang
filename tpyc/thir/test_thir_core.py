@@ -154,14 +154,24 @@ class TestEligibility:
         assert fn is not None
         assert fn.body[0].hoist_decls == (("x", "int32_t"),)
 
-    def test_hoisted_nonvalue_branch_decl_is_ineligible(self):
-        # A hoisted container/reference name registers pointer-local walk state
-        # the slice does not reproduce -> the whole if stays AST.
-        thir = _lower(_PRELUDE
-                      + "def f(c: bool) -> Int32:\n"
-                      + "    if c:\n        xs = [1]\n    else:\n        xs = [2]\n"
-                      + "    return xs[0]\n")
-        assert _fn(thir, "f") is None
+    def test_hoisted_nonvalue_branch_decl_routes(self):
+        # A both-branch container hoist takes the pointer flavor: the
+        # rvalue-reassigned name's `std::optional<T>` rebind slot rides
+        # THIRIf.hoist_slots next to the `T*` predecl; branch assigns
+        # rebind through the slot (`xs = &*(__slot_1 = {1});`).
+        # NB the annotation is load-bearing: an UN-annotated both-branch
+        # literal hoist leaves an unresolved PendingListType that crashes
+        # the AST predecl (pre-existing, BUGS.md).
+        src = (_PRELUDE
+               + "def f(c: bool) -> Int32:\n"
+               + "    if c:\n        xs: list[Int32] = [1]\n"
+               + "    else:\n        xs = [2]\n"
+               + "    return xs[0]\n")
+        fn = _fn(_lower(src), "f")
+        assert fn is not None
+        assert fn.body[0].hoist_decls == (("xs", "std::vector<int32_t>*"),)
+        assert fn.body[0].hoist_slots == (("xs", "std::vector<int32_t>"),)
+        _assert_byte_identical(src)
 
     def test_nonvalue_container_block_local_routes(self):
         # A branch-FIRST container-literal decl is genuinely block-local (an

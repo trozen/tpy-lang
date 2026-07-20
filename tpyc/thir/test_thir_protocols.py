@@ -403,3 +403,39 @@ class TestDynProtocolContainerDecl:
                + "def main() -> None:\n    go()\nmain()\n")
         assert _fn(_lower_ctx(src), "go") is not None
         _assert_byte_identical(src)
+
+
+class TestDynProtocolBranchHoist:
+    def test_branch_declared_dynamic_local_routes(self):
+        # A @dynamic local first-declared in both branches predecls the bare
+        # protocol base pointer (`Pet* pet;`); each branch assign is a
+        # DYN_PROTOCOL rebind through its own fresh function-top slot.
+        src = _src(
+            "class Cat:\n"
+            "    def make_noise(self) -> str:\n        return \"Meow\"\n"
+            "def go(c: bool) -> None:\n"
+            "    if c:\n        pet: Pet = Dog()\n"
+            "    else:\n        pet = Cat()\n"
+            "    print(pet.make_noise())\n"
+            "def main() -> None:\n    go(True)\nmain()\n")
+        thir = _lower_ctx(src)
+        fn = _fn(thir, "go")
+        assert fn is not None
+        assert fn.body[0].hoist_decls == (("pet", "Pet*"),)
+        reseat = fn.body[0].then_body[0]
+        assert isinstance(reseat, THIRPtrLocalRebind)
+        assert reseat.kind is PtrSlotKind.DYN_PROTOCOL
+        _assert_byte_identical(src)
+
+    def test_branch_declared_dynamic_local_in_generator_rejects(self):
+        # The per-reseat slots hoist to function top; resumable leaves have
+        # no drain point -- the body stays AST.
+        thir = _lower_ctx(_src(
+            "from typing import Iterator\n"
+            "class Cat:\n"
+            "    def make_noise(self) -> str:\n        return \"Meow\"\n"
+            "def g(c: bool) -> Iterator[Int32]:\n"
+            "    if c:\n        pet: Pet = Dog()\n"
+            "    else:\n        pet = Cat()\n"
+            "    yield 1\n"))
+        assert _fn(thir, "g") is None

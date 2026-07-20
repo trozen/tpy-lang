@@ -330,3 +330,273 @@ class TestPtrSpanCoerceDispositions:
             "def f() -> None:\n"
             "    print(take_ro([5, 5]))\n")
         assert _fn(thir, "f") is None
+
+
+class TestBranchHoistDecls:
+    """Branch-first non-value hoists (`if_branch_decls`) -- the
+    OPTIONAL_STORAGE / pointer / @dynamic flavors of `_emit_branch_decls`."""
+
+    def test_optional_storage_single_bind_routes(self):
+        # One branch binds, the other returns: `std::optional<Inner> p;`
+        # predecl, the branch decl assigns PLAIN into the optional.
+        src = (_F1_RECORDS
+               + "def f(c: bool) -> Int32:\n"
+               + "    if c:\n        p = Inner(1)\n"
+               + "    else:\n        return 0\n"
+               + "    return p.value\n")
+        thir = _lower_ctx(src)
+        fn = _fn(thir, "f")
+        assert fn is not None
+        assert fn.body[0].hoist_decls == (("p", "std::optional<Inner>"),)
+        assert fn.body[0].hoist_slots == ()
+        assign = fn.body[0].then_body[0]
+        assert isinstance(assign, THIRAssign) and assign.target.name == "p"
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+        assert "std::optional<Inner> p;" in _cpp(src, thir=True)
+
+    def test_rvalue_reassigned_slot_at_if_head(self):
+        # Both branches bind rvalues: `std::optional<Inner> __slot_1;` +
+        # `Inner* p;` at the chain head, reseats through the slot.
+        src = (_F1_RECORDS
+               + "def f(c: bool) -> Int32:\n"
+               + "    if c:\n        p = Inner(1)\n"
+               + "    else:\n        p = Inner(2)\n"
+               + "    return p.value\n")
+        thir = _lower_ctx(src)
+        fn = _fn(thir, "f")
+        assert fn is not None
+        assert fn.body[0].hoist_decls == (("p", "Inner*"),)
+        assert fn.body[0].hoist_slots == (("p", "Inner"),)
+        cpp = _cpp(src, thir=True)
+        assert cpp == _cpp(src, thir=False)
+        assert "p = &*(__slot_1 = Inner(1));" in cpp
+
+    def test_lvalue_then_rvalue_slot_at_if_head(self):
+        # An lvalue-first mixed pair: the later rvalue makes the name
+        # rvalue-reassigned, so the slot pre-decls at the if-head and the
+        # rvalue reseat rides the rebind-slot THIRAssign arm; the lvalue
+        # branch aliases via PTR_ADDR.
+        src = (_F1_RECORDS
+               + "def f(c: bool) -> Int32:\n"
+               + "    base = Inner(9)\n"
+               + "    if c:\n        p = base\n"
+               + "    else:\n        p = Inner(2)\n"
+               + "    return p.value\n")
+        thir = _lower_ctx(src)
+        fn = _fn(thir, "f")
+        assert fn is not None
+        assert fn.body[1].hoist_slots == (("p", "Inner"),)
+        reseat_alias = fn.body[1].then_body[0]
+        assert isinstance(reseat_alias, THIRPtrLocalRebind)
+        assert reseat_alias.kind is PtrSlotKind.PTR_ADDR
+        assert isinstance(fn.body[1].else_body[0], THIRAssign)
+        cpp = _cpp(src, thir=True)
+        assert cpp == _cpp(src, thir=False)
+        assert "p = &(base);" in cpp
+        assert "p = &*(__slot_1 = Inner(2));" in cpp
+
+    def test_rvalue_then_lvalue_lazy_slot(self):
+        # Rvalue FIRST (the textual decl), lvalue second: the name is NOT
+        # rvalue-reassigned, so no if-head slot -- the rvalue branch
+        # allocates the function-top slot lazily (BRANCH_RVALUE).
+        src = (_F1_RECORDS
+               + "def f(c: bool) -> Int32:\n"
+               + "    base = Inner(9)\n"
+               + "    if c:\n        p = Inner(2)\n"
+               + "    else:\n        p = base\n"
+               + "    return p.value\n")
+        thir = _lower_ctx(src)
+        fn = _fn(thir, "f")
+        assert fn is not None
+        assert fn.body[1].hoist_slots == ()
+        reseat_rv = fn.body[1].then_body[0]
+        assert isinstance(reseat_rv, THIRPtrLocalRebind)
+        assert reseat_rv.kind is PtrSlotKind.BRANCH_RVALUE
+        reseat_alias = fn.body[1].else_body[0]
+        assert isinstance(reseat_alias, THIRPtrLocalRebind)
+        assert reseat_alias.kind is PtrSlotKind.PTR_ADDR
+        cpp = _cpp(src, thir=True)
+        assert cpp == _cpp(src, thir=False)
+        assert "p = &*(__slot_1 = Inner(2));" in cpp
+        assert "p = &(base);" in cpp
+
+    def test_subscript_elem_reseat_routes(self):
+        # `p = items[i]` reseats via the address-of over the checked
+        # element read (`p = &(::tpy::__getitem__(items, 0));`).
+        src = (_F1_RECORDS
+               + "def f(items: list[Inner], c: bool) -> Int32:\n"
+               + "    if c:\n        p = items[0]\n"
+               + "    else:\n        p = items[1]\n"
+               + "    return p.value\n")
+        thir = _lower_ctx(src)
+        fn = _fn(thir, "f")
+        assert fn is not None
+        cpp = _cpp(src, thir=True)
+        assert cpp == _cpp(src, thir=False)
+        assert "p = &(::tpy::__getitem__(items, 0));" in cpp
+
+    def test_readonly_hoist_rejects(self):
+        # A readonly-sourced hoist is the const-indirect rung -- whole-body
+        # fallback (byte-identical either way: fallback emits AST).
+        src = (_F1_RECORDS
+               + "def f(a: readonly[Inner], b: readonly[Inner], c: bool)"
+               + " -> Int32:\n"
+               + "    if c:\n        p = a\n"
+               + "    else:\n        p = b\n"
+               + "    return p.value\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is None
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+    def test_resumable_nonvalue_hoist_rejects(self):
+        # Resumable leaves cannot drain the reseat hoist lines -- the body
+        # stays AST (and the AST branch-list-literal flavor is itself a
+        # tracked crash, so the record shape pins the guard).
+        src = (_F1_RECORDS
+               + "from typing import Iterator\n"
+               + "def g(c: bool) -> Iterator[Int32]:\n"
+               + "    if c:\n        p = Inner(1)\n"
+               + "    else:\n        p = Inner(2)\n"
+               + "    yield p.value\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "g") is None
+
+    def test_record_name_alias_decl_rejects(self):
+        # `x = a; ...; x = b` (both plain record locals): the POINTER decl's
+        # bare-name init is the same-type BORROW read whose convert is the
+        # no-op node the validator hard-rejects, so the decl itself rejects
+        # (decl.ptr_alias_borrow). Whole body stays AST, byte-identical.
+        src = (_F1_RECORDS
+               + "def f() -> Int32:\n"
+               + "    a: Inner = Inner(1)\n"
+               + "    b: Inner = Inner(2)\n"
+               + "    x = a\n"
+               + "    x = b\n"
+               + "    return x.value\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is None
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+    def test_nested_branch_nonvalue_hoist_rejects(self):
+        # An INNER-scope if's non-value hoist (any in_branch body)
+        # registers into that scope's declared COPY, but the name is
+        # function-scoped in Python (the AST tracks it flat) -- a later
+        # same-name decl would classify differently on the two paths, so
+        # inner-scope non-value hoists stay AST. Byte-identity is exactly
+        # the regression guard.
+        src = (_F1_RECORDS
+               + "def f(a: bool, b: bool) -> Int32:\n"
+               + "    r = 0\n"
+               + "    if a:\n"
+               + "        if b:\n            p = Inner(1)\n"
+               + "        else:\n            return 0\n"
+               + "        r = p.value\n"
+               + "    p = Inner(9)\n"
+               + "    p = Inner(10)\n"
+               + "    return r + p.value\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is None
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+    def test_sibling_branch_same_name_hoist_restores(self):
+        # Registry restore: branch 1's nested-if hoist registrations
+        # (optional_locals / branch_hoisted) must pop with the branch so a
+        # same-named decl in the SIBLING branch classifies fresh.
+        src = (_F1_RECORDS
+               + "def f(a: bool, b: bool) -> Int32:\n"
+               + "    if a:\n"
+               + "        if b:\n            p = Inner(1)\n"
+               + "        else:\n            return 0\n"
+               + "        return p.value\n"
+               + "    else:\n"
+               + "        p = Inner(2)\n"
+               + "        return p.value\n")
+        thir = _lower_ctx(src)
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+    def test_move_through_hoist_rejects(self):
+        # A move-through hoisted name takes the AST's plain storage decl (a
+        # different arm) -- the classification rejects it.
+        src = (_F1_RECORDS
+               + "def f(c: bool) -> Int32:\n"
+               + "    if c:\n        a = Inner(1)\n"
+               + "    else:\n        a = Inner(2)\n"
+               + "    b = a\n"
+               + "    return b.value\n")
+        thir = _lower_ctx(src)
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+    def test_dict_hoist_routes(self):
+        # The container flavors beyond list: a both-branch dict hoist rides
+        # the same slot machinery.
+        src = (_F1_RECORDS
+               + "def f(c: bool) -> Int32:\n"
+               + "    if c:\n        d: dict[Int32, Int32] = {1: 2}\n"
+               + "    else:\n        d = {3: 4}\n"
+               + "    return len(d)\n")
+        fn = _fn(_lower_ctx(src), "f")
+        assert fn is not None
+        assert fn.body[0].hoist_slots == (
+            ("d", "::tpy::ordered_map<int32_t, int32_t>"),)
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+    def test_set_single_bind_optional_storage_routes(self):
+        # A single-bind set hoist takes the OPTIONAL_STORAGE flavor and the
+        # hoisted-container print wrap (`SetPrinter((*s))`).
+        src = (_F1_RECORDS
+               + "def f(c: bool) -> None:\n"
+               + "    if c:\n        s: set[Int32] = {1, 2}\n"
+               + "    else:\n        return\n"
+               + "    print(s)\n")
+        fn = _fn(_lower_ctx(src), "f")
+        assert fn is not None
+        assert fn.body[0].hoist_decls == (
+            ("s", "std::optional<::tpy::ordered_set<int32_t>>"),)
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+    def test_async_name_alias_stays_byte_identical(self):
+        # The decl.ptr_alias_borrow guard exempts resumable leaves (they
+        # never run whole-function validation); today the async name-alias
+        # shape falls back upstream anyway, so byte-identity pins the
+        # exemption's current (vacuous) reach.
+        src = (_F1_RECORDS
+               + "import asyncio\n"
+               + "async def f() -> Int32:\n"
+               + "    a = Inner(1)\n"
+               + "    b = Inner(2)\n"
+               + "    x = a\n"
+               + "    await asyncio.sleep(0)\n"
+               + "    x = b\n"
+               + "    return x.value\n")
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+    def test_f2d_slot_container_print_routes(self):
+        # The print wrap's rebind_slot_locals admission also covers a plain
+        # F2d slot container (function-scope reassigned, NOT branch-hoisted)
+        # -- its own witness, not riding the hoist cases' green.
+        src = (_F1_RECORDS
+               + "def f() -> None:\n"
+               + "    items: list[Int32] = [1, 2]\n"
+               + "    items = [3]\n"
+               + "    print(items)\n")
+        fn = _fn(_lower_ctx(src), "f")
+        assert fn is not None
+        cpp = _cpp(src, thir=True)
+        assert cpp == _cpp(src, thir=False)
+        assert "::tpy::ListPrinter((*items))" in cpp
+
+    def test_optional_storage_call_source_routes(self):
+        # The OPTIONAL_STORAGE assign's storage-call source flavor
+        # (`items = make()` in a single-bind branch) -- reseat.opt_storage
+        # over a call, not a literal/ctor.
+        src = (_F1_RECORDS
+               + "def make() -> Own[list[Int32]]:\n    return [1, 2, 3]\n"
+               + "def f(c: bool) -> None:\n"
+               + "    if c:\n        items = make()\n"
+               + "    else:\n        return\n"
+               + "    print(items)\n")
+        fn = _fn(_lower_ctx(src), "f")
+        assert fn is not None
+        cpp = _cpp(src, thir=True)
+        assert cpp == _cpp(src, thir=False)
+        assert "items = make();" in cpp

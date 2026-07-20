@@ -461,9 +461,14 @@ deferred (self-contained) / blocked-on-`<rung>`.
   `.emplace` + re-lift) and concrete-member lvalue addresses (`v{&(name)}`).
   Slot NUMBERING mirrors `SlotState` allocation order per body; union
   slot-holders are excluded from THIRAssign's optional-slot reseat arm via
-  `_EmitState.union_slot_locals`. Deferred rungs (hoisted/branch-first, const
-  indirection, Own[Opt] lifts, polymorphic slots, lvalue reseats, slotless
-  union reseats) are named rejects -- see the TODO.md entry. Witnesses:
+  `_EmitState.union_slot_locals`. Branch-first hoists LANDED (if-head +
+  lazy function-top slots via `THIRIf.hoist_slots` / `BRANCH_RVALUE`, plus
+  the `PTR_ADDR` lvalue name/subscript reseats; inner-scope non-value
+  hoists still reject -- `if.hoist_inner_scope` (any in_branch body:
+  branch, loop, with, try)). Remaining deferred rungs
+  (const indirection, Own[Opt] lifts, polymorphic slots, pointer-copy /
+  storage-lift reseats, slotless union reseats) are named rejects -- see
+  the TODO.md entry. Witnesses:
   `pointers/optional_basic`, `none_safety/concrete_assignment_proves`,
   `inference/reassign_none_branch_narrowing`; the union emit arms are
   corpus-zero-witness (host bodies co-block on call-track shapes) and

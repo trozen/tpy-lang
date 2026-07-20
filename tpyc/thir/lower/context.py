@@ -327,6 +327,7 @@ class _LowerCtx:
                  "render_type_stored", "render_resolve", "tparam_bounds",
                  "const_locals",
                  "pointers", "rebind_slot_locals", "dyn_protocol_locals",
+                 "optional_locals", "branch_hoisted",
                  "iterator_object_locals",
                  "ref_alias_locals",
                  "value_opt_locals", "value_opt_view_locals", "movable_locals",
@@ -407,6 +408,16 @@ class _LowerCtx:
         # First-declared @dynamic protocol locals that are reassigned: their
         # reseat statements take the rebind emit (hoisted optional slot).
         self.dyn_protocol_locals: set[str] = set()
+        # OPTIONAL_STORAGE branch-hoisted locals (`std::optional<T> name;`
+        # if-head predecl, the AST's ctx.optional_locals): a subset of
+        # `pointers` for the read side (deref reads, `->` access); assigns
+        # write PLAIN into the optional (`name = <storage rvalue>;`).
+        self.optional_locals: set[str] = set()
+        # Branch-hoisted `T*` pointer-locals WITHOUT an if-head rebind slot
+        # (reassigned but not rvalue-reassigned): an rvalue reseat allocates
+        # its slot lazily at function top (PtrSlotKind.BRANCH_RVALUE); the
+        # AST's ctx.branch_hoisted_vars.
+        self.branch_hoisted: set[str] = set()
         # Iterator-object locals (`it = g()`, the `auto` decl off a
         # generator/iterator factory): the for-head's name arm admits one as
         # a plain lvalue iterable despite its protocol declared type (a
