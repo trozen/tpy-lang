@@ -2973,26 +2973,28 @@ class TestValueTupleReturns:
         assert _res_fallback(src).get("res.return_type") == 1
         _assert_identical(src)
 
-    def test_value_opt_element_literal_defers(self):
-        # A value-opt ELEMENT slot rejects: the AST's untargeted literal
-        # render spells the None element `monostate`/`nullptr` --
-        # uncompilable pre-existing output at this unreached shape (see
-        # BUGS.md) -- while the slot-targeted render would diverge from
-        # it. Byte-identity holds because the body falls back whole.
+    def test_value_opt_element_literal_routes(self):
+        # A value-opt ELEMENT slot routes: both paths spell the None
+        # element against the slot (std::nullopt) -- the AST's async
+        # return render targets tuple literals like the sync arm.
         src = ("import asyncio\nfrom tpy import Int32\n\n"
                + "async def f(n: Int32) -> tuple[Int32, Int32 | None]:\n"
                + "    await asyncio.sleep(0)\n"
                + "    return (n, None)\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        fb = _res_fallback(src)
-        assert fb.get("stmt.return:return.optval_tuple_elem") == 1
-        _assert_identical(src)
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.return_tuple_literal") == 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert ("std::tuple<int32_t, std::optional<int32_t>>"
+                "{n, std::nullopt}") in cpp
 
-    def test_own_element_name_source_defers(self):
-        # An Own-element NAME source rejects: the AST's untargeted render
-        # copies bare where the slot-targeted lowering moves (the bare
-        # copy is the latent AST gap -- see BUGS.md). Ctor-rvalue sources
-        # (the routed pin above) render identically on both paths.
+    def test_own_element_name_source_routes(self):
+        # An Own-element NAME source routes: both paths move the frame
+        # local into the by-value slot (`std::move((*b))`) -- the
+        # slot-targeted render; a bare copy would not compile for a
+        # @nocopy element. Ctor-rvalue sources (the routed pin above)
+        # render identically either way.
         src = ("import asyncio\nfrom tpy import Int32, Own\n\n"
                + "class Box:\n"
                + "    v: Int32\n"
@@ -3002,9 +3004,70 @@ class TestValueTupleReturns:
                + "    await asyncio.sleep(0)\n"
                + "    return (b, 99)\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        fb = _res_fallback(src)
-        assert fb.get("stmt.return:return.own_tuple_name_elem") == 1
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.return_tuple_literal") == 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "std::tuple<Box, int32_t>{std::move((*b)), 99}" in cpp
+
+    def test_value_opt_str_element_literal_routes(self):
+        # The str-opt element family shares the lifted gate with the
+        # scalar-opt pin above: None spells the slot's std::nullopt, a
+        # str literal lands bare (the optional's converting ctor).
+        src = ("import asyncio\nfrom tpy import Int32\n\n"
+               + "async def f(n: Int32) -> tuple[Int32, str | None]:\n"
+               + "    await asyncio.sleep(0)\n"
+               + "    return (n, None)\n\n"
+               + "async def g(n: Int32) -> tuple[Int32, str | None]:\n"
+               + "    await asyncio.sleep(0)\n"
+               + "    return (n, \"hi\")\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.return_tuple_literal") == 2
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert ("std::tuple<int32_t, std::optional<std::string>>"
+                "{n, std::nullopt}") in cpp
+        assert ("std::tuple<int32_t, std::optional<std::string>>"
+                "{n, \"hi\"}") in cpp
+
+    def test_nested_tuple_element_literal_routes(self):
+        # A nested value-tuple element spells its inner brace-init
+        # recursively against the element slot.
+        src = ("import asyncio\nfrom tpy import Int32\n\n"
+               + "async def f(n: Int32) -> tuple[tuple[Int32, Int32], Int32]:\n"
+               + "    await asyncio.sleep(0)\n"
+               + "    return ((n, n), 7)\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.return_tuple_literal") == 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert ("std::tuple<std::tuple<int32_t, int32_t>, int32_t>"
+                "{std::tuple<int32_t, int32_t>{n, n}, 7}") in cpp
+
+    def test_tuple_literal_return_through_finally_targets(self):
+        # A tuple-literal return under try/finally exercises the
+        # OTHER _async_return_value_cpp scaffolding sites (pre-finally
+        # capture / pending-slot store), which are syntactically
+        # distinct from the direct-ready site the pins above cover.
+        # The AST render assertion is the payload: the THIR body may
+        # legitimately fall back whole on the finally machinery
+        # (fallback emits identical AST, keeping _assert_identical
+        # trivially green), but the targeted brace-init must appear at
+        # the capture site either way.
+        src = ("import asyncio\nfrom tpy import Int32\n\n"
+               + "async def f(n: Int32) -> tuple[Int32, Int32 | None]:\n"
+               + "    try:\n"
+               + "        await asyncio.sleep(0)\n"
+               + "        return (n, None)\n"
+               + "    finally:\n"
+               + "        print(\"f\")\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
         _assert_identical(src)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert ("__tpy_async_ret_0 = std::tuple<int32_t, "
+                "std::optional<int32_t>>{n, std::nullopt};") in cpp
 
     def test_name_and_call_sources_route_position_blind(self):
         # NAME and CALL sources of NARROW value tuples ride the

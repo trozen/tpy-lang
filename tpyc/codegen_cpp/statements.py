@@ -3882,6 +3882,17 @@ class StatementGenerator:
             # target-typed spelling (std::nullopt / monostate), not the
             # borrow-form nullptr.
             return self.expressions.gen_expr(stmt.value, target_type=ret_type)
+        bare_ret = unwrap_qualifiers(ret_type) if ret_type is not None else None
+        if (isinstance(stmt.value, TpyTupleLiteral)
+                and isinstance(bare_ret, TupleType)
+                and not bare_ret.has_pointer_repr_element()):
+            # Value-tuple literal: spell the brace-init against the return
+            # slot (the sync return arm's targeting). The untargeted render
+            # would spell each element's OWN type -- a None element becomes
+            # an uncompilable monostate/nullptr, an Own-element name copies
+            # bare where the slot demands a move. Borrow-form tuples
+            # (pointer-repr elements) keep the untargeted tail.
+            return self.expressions.gen_expr(stmt.value, target_type=ret_type)
         expr_cpp = self.expressions.gen_expr_deref(stmt.value)
         expr_cpp = self._wrap_view_to_storage(stmt.value, ret_type, expr_cpp)
         if to_borrow:

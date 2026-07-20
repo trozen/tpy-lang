@@ -325,7 +325,12 @@ See `docs/FEATURE_ROADMAP.md` for bigger tasks and `BUGS.md` for known compiler 
   ROUTED (2026-07-19, LITERAL sources: `_value_tuple_return` admitted
   at the signature gate + the spelled-brace-init arm in
   `_lower_resumable_return_value`; flip await_async_tuple_unpack,
-  `__anext__` of async_for_tuple_unpack routed). The res.return_type
+  `__anext__` of async_for_tuple_unpack routed; the two BUGS-gated
+  element shapes -- value-opt elements, Own-element names -- route
+  since the AST async-return render targets tuple literals; the
+  marked async_tuple_optional_elem_return case is the ready witness
+  for the widened-tuple DECL+read sinks -- flip it when that
+  local_storage rung lands). The res.return_type
   residue is now per-family rungs, each its own render: generic
   Ref-element tuples (`tuple[K, V]` resolving Ref[K]/Ref[V] -- the
   val_or_ptr element bridge; generic_async_free_func_multi_T +

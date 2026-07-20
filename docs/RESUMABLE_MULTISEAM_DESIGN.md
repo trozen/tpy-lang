@@ -205,11 +205,13 @@ wraps, state transitions). The ONLY places it renders user source are:
     `leaf.render_return_value`). Two scaffolding paths become reachable
     for routed bodies once regions admit: the pending-slot store
     (`to_borrow=False`, :3924-3927) and the pre-finally `__tpy_async_ret_N`
-    capture (:3944-3954). For the CURRENT return-type gate (value scalars
-    only, resumable.py:262-273) both are render-identical (the
+    capture (:3944-3954). For the admitted return shapes (value scalars,
+    value-opt scalars, value tuples) both are render-identical (the
     `_wrap_view_to_storage` / `_async_ret_to_borrow` wraps are no-ops for
-    scalars), but the load-bearing comment at statements.py:3886-3894 pins
-    this and must be updated by the cell that lifts the gates.
+    them, and the tuple-literal-targeted arm in `_async_return_value_cpp`
+    returns the same target-typed brace-init at every scaffolding site);
+    the load-bearing comment in `_async_return_value_cpp` pins this and
+    must be updated by any cell that widens the return-shape gate.
     [ROUTED 2026-07-17 for LEAF-NESTED returns (`res.leaf_return`): a
     return inside a non-suspending leaf compound lowers to
     THIRResumableReturn, whose emit calls back into `_make_async_return`

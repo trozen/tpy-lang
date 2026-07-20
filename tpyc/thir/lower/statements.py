@@ -2712,8 +2712,10 @@ def _lower_resumable_return_value(ret: TpyReturn, lc: '_LowerCtx',
     -- so a literal at a wider slot stays bare `42`, NOT the sync-return
     arm's target-typed `::tpy::BigInt(42)`. Lower the value directly (== the
     AST's `gen_expr_deref`), bypassing `_lower_stmt`'s return-coercion arm.
-    The one exception is the owned str/bytes slot's view->owned copy, shared
-    with the sync return tail (`_wrap_view_owned_return`)."""
+    Two exceptions render target-typed on both paths: the owned str/bytes
+    slot's view->owned copy, shared with the sync return tail
+    (`_wrap_view_owned_return`), and value-tuple literals (the AST's
+    tuple-literal-targeted arm in `_async_return_value_cpp`)."""
     if lc.prescan.ret_char and isinstance(ret.value, TpyStrLiteral):
         raise ThirUnsupported(stmt_reject_reason(ret))
     ret_vopt = lc.prescan.ret_value_opt
@@ -2744,34 +2746,14 @@ def _lower_resumable_return_value(ret: TpyReturn, lc: '_LowerCtx',
     ret_vt = lc.prescan.ret_value_tuple
     if ret_vt is not None and isinstance(ret.value, TpyTupleLiteral):
         # A value-tuple literal renders the spelled brace-init against the
-        # return slot (the sync return arm's render); the scaffolding's
-        # `<ret_cpp> __tpy_async_ret = <value>;` decl consumes it
-        # position-independently, like the frame-field flavor. Off-slice
-        # element shapes reject inside _lower_tuple_literal (whole-body
-        # fallback); name/call sources ride the position-blind tail below
-        # (bare renders -- the decl absorbs the copy/move).
-        # Value-opt ELEMENT slots stay out: the AST's untargeted literal
-        # render spells the elements' OWN types (a None element becomes
-        # `std::tuple<..., std::monostate>{.., nullptr}` -- an
-        # uncompilable pre-existing AST render at this unreached shape,
-        # see BUGS.md), while _lower_tuple_literal targets the slot
-        # (std::nullopt) -- a probe-caught divergence.
-        if any(_value_opt_scalar(e, lc.analyzer) is not None
-               or _value_opt_str(e, lc.analyzer) is not None
-               for e in ret_vt.element_types):
-            note_detail("return.optval_tuple_elem")
-            raise ThirUnsupported(stmt_reject_reason(ret))
-        # An Own-element NAME source diverges the same way: the AST's
-        # untargeted render copies bare (`(*b)`) where the slot-targeted
-        # lowering moves -- and the bare copy is itself the latent AST
-        # gap (a @nocopy element would not compile; same BUGS.md entry).
-        # Ctor-rvalue sources render identically on both paths.
-        for el, src_el in zip(ret_vt.element_types, ret.value.elements):
-            if (isinstance(unwrap_readonly(unwrap_ref_type(
-                    unwrap_send_sync(el))), OwnType)
-                    and isinstance(src_el, TpyName)):
-                note_detail("return.own_tuple_name_elem")
-                raise ThirUnsupported(stmt_reject_reason(ret))
+        # return slot (the sync return arm's render, matching the AST's
+        # tuple-literal-targeted arm in _async_return_value_cpp: value-opt
+        # element slots spell std::nullopt, Own-element names move); the
+        # scaffolding's `<ret_cpp> __tpy_async_ret = <value>;` decl
+        # consumes it position-independently, like the frame-field flavor.
+        # Off-slice element shapes reject inside _lower_tuple_literal
+        # (whole-body fallback); name/call sources ride the position-blind
+        # tail below (bare renders -- the decl absorbs the copy/move).
         value = _lower_tuple_literal(ret.value, ret_vt, lc, declared)
         _witness("res.return_tuple_literal")
         return value
