@@ -206,12 +206,17 @@ wraps, state transitions). The ONLY places it renders user source are:
     for routed bodies once regions admit: the pending-slot store
     (`to_borrow=False`, :3924-3927) and the pre-finally `__tpy_async_ret_N`
     capture (:3944-3954). For the admitted return shapes (value scalars,
-    value-opt scalars, value tuples) both are render-identical (the
-    `_wrap_view_to_storage` / `_async_ret_to_borrow` wraps are no-ops for
-    them, and the tuple-literal-targeted arm in `_async_return_value_cpp`
-    returns the same target-typed brace-init at every scaffolding site);
-    the load-bearing comment in `_async_return_value_cpp` pins this and
-    must be updated by any cell that widens the return-shape gate.
+    value-opt scalars, value tuples, container storage) both are
+    render-identical (the `_wrap_view_to_storage` / `_async_ret_to_borrow`
+    wraps are no-ops for them -- the latter short-circuits on anything but
+    a pointer-repr Optional -- and the tuple-literal-targeted arm in
+    `_async_return_value_cpp` returns the same target-typed brace-init at
+    every scaffolding site); the load-bearing comment in
+    `_async_return_value_cpp` pins this and must be updated by any cell
+    that widens the return-shape gate. Container returns render bare at
+    every site, EXCEPT an empty literal, which the lowering rejects
+    (`return.empty_container_literal`): the AST spells an empty literal's
+    type only when a target is passed, and this render has none.
     [ROUTED 2026-07-17 for LEAF-NESTED returns (`res.leaf_return`): a
     return inside a non-suspending leaf compound lowers to
     THIRResumableReturn, whose emit calls back into `_make_async_return`

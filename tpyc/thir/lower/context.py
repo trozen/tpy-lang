@@ -19,6 +19,7 @@ from ..nodes import THIRFormConvert, THIRNarrowedRead, THIRSelf
 from .predicates import (
     _borrow_tuple_return_type,
     _container_storage_return,
+    _res_container_return,
     _eligible_char,
     _eligible_enum,
     _eligible_ptr_union,
@@ -99,7 +100,8 @@ class _Prescan:
                  "alias_sources", "alias_born",
                  "ret_storage_opt", "ret_ptr_opt", "ret_borrow_tuple",
                  "ret_record_borrow", "ret_record_storage",
-                 "ret_container_storage", "ret_value_tuple",
+                 "ret_container_storage", "ret_res_container",
+                 "ret_value_tuple",
                  "ret_str", "ret_bytes",
                  "ret_char", "ret_union", "ret_ptr_union", "ret_own_union",
                  "ret_supported", "ret_callable",
@@ -206,6 +208,10 @@ class _Prescan:
         # literals return bare (the decl-init renders, position-independent);
         # every other source shape stays on the AST path.
         self.ret_container_storage = _container_storage_return(rt, analyzer)
+        # The RESUMABLE container return slot -- wider at the `Own` axis
+        # (a coro's slot holds T by value either way); read only by the
+        # resumable return arm's empty-literal guard.
+        self.ret_res_container = _res_container_return(rt, analyzer)
         # The value-tuple return slot (`-> tuple[int, str]` -> a by-value
         # `std::tuple<...>`): a tuple literal renders the spelled brace-init
         # (THIRTupleLiteral) recursively -- the return element set is widened

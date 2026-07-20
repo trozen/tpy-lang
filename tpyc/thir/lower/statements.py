@@ -2735,6 +2735,18 @@ def _lower_resumable_return_value(ret: TpyReturn, lc: '_LowerCtx',
     tuple-literal-targeted arm in `_async_return_value_cpp`)."""
     if lc.prescan.ret_char and isinstance(ret.value, TpyStrLiteral):
         raise ThirUnsupported(stmt_reject_reason(ret))
+    if (lc.prescan.ret_res_container is not None
+            and isinstance(ret.value, (TpyArrayLiteral, TpyDictLiteral,
+                                       TpySetLiteral))
+            and not ret.value.children()):
+        # An EMPTY container literal is the one shape the position-blind tail
+        # cannot serve: the AST spells the type only when a target is passed
+        # (`_gen_array_literal`'s T*-ambiguity guard), and this render has
+        # none -- so it emits a bare `= {}` where the lowering spells
+        # `std::vector<T>{}`. The sync return slot IS targeted, hence its
+        # opposite rule.
+        note_detail("return.empty_container_literal")
+        raise ThirUnsupported(stmt_reject_reason(ret))
     ret_vopt = lc.prescan.ret_value_opt
     if ret_vopt is not None:
         # Value-repr Optional[scalar] slot (`std::optional<T>

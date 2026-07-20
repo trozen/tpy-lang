@@ -3103,6 +3103,115 @@ class TestValueTupleReturns:
         _assert_identical(src)
 
 
+class TestContainerReturns:
+    """Container storage returns (`Poll<std::vector<T>>`): every source rides
+    the position-blind tail bare -- the `__tpy_async_ret` decl supplies the
+    type -- except the empty literal, which the AST leaves untyped."""
+
+    def test_own_container_literal_routes(self):
+        src = ("import asyncio\nfrom tpy import Int32, Own\n\n"
+               + "async def f() -> Own[list[Int32]]:\n"
+               + "    await asyncio.sleep(0)\n"
+               + "    return [1, 2, 3]\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        _, fallback = _assert_identical(src)
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "std::vector<int32_t> __tpy_async_ret = {1, 2, 3};" in cpp
+
+    def test_owned_name_source_returns_bare(self):
+        # A frame-slot container name returns bare (`(*xs)`); the decl-init
+        # does the ownership transfer, so no move wrap appears here.
+        src = ("import asyncio\nfrom tpy import Int32, Own\n\n"
+               + "async def f() -> Own[list[Int32]]:\n"
+               + "    xs = [1, 2]\n"
+               + "    await asyncio.sleep(0)\n"
+               + "    xs.append(3)\n"
+               + "    return xs\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        _, fallback = _assert_identical(src)
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "__tpy_async_ret = (*xs);" in cpp
+
+    def test_bare_container_await_result_routes(self):
+        # The BARE `-> list[T]` slot (no Own) -- the axis on which this
+        # predicate is wider than its sync sibling. Sema admits it only
+        # for an await source (the corpus gather_helper shape), and the
+        # return is pure skeleton (`auto __ret0 = std::move(__r0).value();`).
+        src = ("import asyncio\nfrom tpy import Int32, Own\n\n"
+               + "async def g() -> Own[list[Int32]]:\n"
+               + "    await asyncio.sleep(0)\n"
+               + "    return [1]\n\n"
+               + "async def f() -> list[Int32]:\n"
+               + "    return await g()\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        _, fallback = _assert_identical(src)
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert ("::tpystd::tpy::Poll<std::vector<int32_t>>::ready("
+                "std::move(__ret0));") in cpp
+
+    def test_container_return_through_finally_routes(self):
+        # The pre-finally capture scaffolding site (a DIFFERENT
+        # `_async_return_value_cpp` call site than direct-ready): the
+        # value is bound to `__tpy_async_ret_N` before the finally chain
+        # runs, and must render the same bare source there.
+        src = ("import asyncio\nfrom tpy import Int32, Own\n\n"
+               + "async def f() -> Own[list[Int32]]:\n"
+               + "    try:\n"
+               + "        await asyncio.sleep(0)\n"
+               + "        return [1, 2]\n"
+               + "    finally:\n"
+               + "        print(\"f\")\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        _, fallback = _assert_identical(src)
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "__tpy_async_ret_0 = {1, 2};" in cpp
+
+    def test_dict_and_set_literals_route(self):
+        src = ("import asyncio\nfrom tpy import Int32, Own\n\n"
+               + "async def d() -> Own[dict[Int32, Int32]]:\n"
+               + "    await asyncio.sleep(0)\n"
+               + "    return {1: 2}\n\n"
+               + "async def s() -> Own[set[Int32]]:\n"
+               + "    await asyncio.sleep(0)\n"
+               + "    return {1, 2}\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        _, fallback = _assert_identical(src)
+        assert not any(k.startswith("resumable:") for k in fallback)
+
+    def test_empty_container_literal_defers(self):
+        # The AST spells an empty literal's type only when a target is
+        # passed (`_gen_array_literal`'s T*-ambiguity guard); this render
+        # has none, so it emits `= {}` where the lowering spells
+        # `std::vector<int32_t>{}`. The sync return slot IS targeted --
+        # hence the opposite rule there.
+        src = ("import asyncio\nfrom tpy import Int32, Own\n\n"
+               + "async def f() -> Own[list[Int32]]:\n"
+               + "    await asyncio.sleep(0)\n"
+               + "    return []\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        fb = _res_fallback(src)
+        assert fb.get("stmt.return:return.empty_container_literal") == 1
+        _assert_identical(src)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "__tpy_async_ret = {};" in cpp
+
+    def test_empty_dict_literal_defers(self):
+        # The guard's dict arm: emptiness is `children()` (keys + values),
+        # since a dict literal carries no `elements`.
+        src = ("import asyncio\nfrom tpy import Int32, Own\n\n"
+               + "async def f() -> Own[dict[Int32, Int32]]:\n"
+               + "    await asyncio.sleep(0)\n"
+               + "    return {}\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        fb = _res_fallback(src)
+        assert fb.get("stmt.return:return.empty_container_literal") == 1
+        _assert_identical(src)
+
+
 class TestValueOptReturns:
     """Value-repr Optional[scalar] async returns (`std::optional<T>
     __tpy_async_ret = ...`): None spells std::nullopt, a value-opt param

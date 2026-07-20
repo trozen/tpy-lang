@@ -525,6 +525,15 @@ deferred (self-contained) / blocked-on-`<rung>`.
   fact and qualify the ctor-call/base-init/type sites under the flag, instead of
   gate-rejecting. Surfaced by /tpy-review of the member/type-name collision fix.
 
+- **Empty container literal at a resumable return** (`return.empty_container_literal`,
+  `_lower_resumable_return_value`): the async return render is position-blind, and the
+  AST spells an empty literal's type only when a target is passed, so it emits a bare
+  `= {}` where THIR spells `std::vector<T>{}`. Both compile identically; the reject
+  exists purely to mirror the AST spelling. To CLOSE before AST deletion: delete the
+  guard and let THIR spell the typed form -- the untargeted `{}` was the AST path's
+  limitation, not a correctness constraint. Surfaced by the /tpy-ready retrospective of
+  the resumable container-return cell.
+
 ### Form ladder (F) -- `IR_DESIGN.md` rung ladder + `THIR_FORM_INVENTORY.md`
 - F1 (record locals + Optional read), F2 (reseatable pointer-locals + Optional
   write/return + move): **DONE**.

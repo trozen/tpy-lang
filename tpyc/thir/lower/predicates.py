@@ -1943,6 +1943,29 @@ def _unwrap_own(t: TpyType) -> TpyType:
     the `Optional`-inner helpers apply before an `_f1_record` check."""
     return t.wrapped if isinstance(t, OwnType) else t
 
+def _res_container_return(t: TpyType | None, analyzer) -> 'TpyType | None':
+    """The RESUMABLE container return slot (`Poll<std::vector<T>>` /
+    `expected<std::vector<T>, StopIteration>`), or None. Wider than the sync
+    `_container_storage_return` at the `Own` axis: a coroutine's return slot
+    holds `T` by value whether or not the signature spells `Own`, so a bare
+    `-> list[T]` (reachable when the value comes from an await, the only
+    source sema admits without `Own`) shares the render. The value rides the
+    position-blind tail -- the scaffolding's `{ret_cpp} __tpy_async_ret =
+    <value>;` decl supplies the type, so names/calls/literals emit bare.
+
+    That plain-`T` binding is also why a container return COPIES where CPython
+    aliases (the reference-type divergence `_res_capture_ok`'s RETURN bullet
+    records against BUGS.md). Pre-existing and byte-identical, so routing these
+    shapes does not change it -- but when the fix routes returns through
+    `val_or_ref_t<T>`, re-check THIS arm together with the capture arm and the
+    return leaf, exactly as that bullet instructs."""
+    if t is None:
+        return None
+    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    if isinstance(t, OwnType):
+        t = unwrap_readonly(t.wrapped)
+    return t if (is_list(t) or is_dict(t) or is_set(t)) else None
+
 def _container_storage_return(t: TpyType | None, analyzer) -> 'TpyType | None':
     """The storage-form container return slot (`-> Own[list[T]]` -> C++
     `std::vector<T>` by value), or None: `Own` wrapping list / dict / set

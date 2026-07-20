@@ -125,6 +125,7 @@ from .predicates import (
     _own_declared_call_ret,
     _peel_stale_view_owned_coerce,
     _reassert_bump_info,
+    _res_container_return,
     _resolved_bytes_value,
     _resolved_str_value,
     _unwrap_own,
@@ -783,7 +784,11 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 # Value-repr Optional[scalar] (`std::optional<T>` slot):
                 # the return value gates per-shape in
                 # _lower_resumable_return_value's value-opt arm.
-                or _value_opt_scalar(rt, analyzer) is not None):
+                or _value_opt_scalar(rt, analyzer) is not None
+                # Container storage slot (`std::vector`/`map`/`set` by
+                # value): every source rides the position-blind tail
+                # bare, except the empty literal the return arm rejects.
+                or _res_container_return(rt, analyzer) is not None):
             return _reject("res.return_type")
     if func.forwarded_locals:
         return _reject("res.forwarded_local")
