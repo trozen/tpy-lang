@@ -950,13 +950,10 @@ class FinallyContext:
     catch(...) tests it and skips its copy, so a finally that RAISES at
     an exit site is not re-run by the catch it throws into. An OUTER
     frame's guard is still false there, so its finally still runs --
-    which is what Python requires. Only declared when an exit site
-    actually walked this frame (`guard_used`); a try/finally with no
-    return/break/continue inside emits no guard at all."""
-
-    guard_used: bool = False
-    """Set by _emit_finally_chain when an exit site emitted this frame's
-    copy, so the emitter knows to declare the guard and test it."""
+    which is what Python requires. The guard is declared/tested only when
+    an exit site actually walked this frame -- tracked by membership of
+    the name in `CodeGenContext.live_finally_guards` (see there); a
+    try/finally with no return/break/continue inside emits no guard."""
 
 
 @dataclass
@@ -1259,6 +1256,10 @@ class CodeGenContext:
     # copy that raised -- parking the value to run the copy outside the try
     # instead would defeat copy elision on every such return.
     finally_stack: list[FinallyContext] = field(default_factory=list)
+    # Numbers the `__fin_ran_N` cleanup guards. MUST stay monotonic across the
+    # whole compilation -- never reset per function/case: live_finally_guards
+    # (below) is a set keyed by these NAMES, so uniqueness is what keeps one
+    # frame's membership from aliasing another's. reset_scope leaves it alone.
     finally_guard_counter: int = 0
     # Resumable path only: id(region) -> `bool __fin_ran_N` guard name for the
     # C++ try the current switch case opened for that region. An exit-edge
@@ -1267,12 +1268,15 @@ class CodeGenContext:
     # FinallyContext.guard_name, expressed across the three resumable emit
     # methods). Populated per case in _emit_case, cleared at case end.
     resumable_region_guards: dict[int, str] = field(default_factory=dict)
-    # Guard names that actually got a `= true` emitted on some exit edge in
-    # the current case. A guard whose region has no normal-exit cleanup copy
-    # (e.g. a with-body that always raises) never lands here, so its
-    # declaration and catch test are skipped -- mirroring the sync path's
-    # guard_used gate. Populated while the case body is buffered.
-    resumable_guards_used: set[str] = field(default_factory=set)
+    # Live `bool __fin_ran_N` guard names: a guard lands here when an exit
+    # edge actually emits its `= true`. The one liveness channel for BOTH
+    # paths -- the sync try/finally + with catches and the resumable region
+    # catches declare and test a guard only when its name is present, so a
+    # cleanup that never runs on a normal exit (e.g. a with-body that always
+    # raises) emits no dead guard. Names are globally unique
+    # (finally_guard_counter is monotonic), so cross-frame membership is
+    # unambiguous; the resumable path clears it per case for hygiene.
+    live_finally_guards: set[str] = field(default_factory=set)
 
     # --- with statement ---
     with_counter: int = 0

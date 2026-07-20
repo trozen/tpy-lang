@@ -264,11 +264,11 @@ class _FinallyFrame:
     exc_null_arg: str = "{}"
     stmts: 'tuple[THIRStmt, ...] | None' = None
     terminates: bool = False
-    # Mirrors FinallyContext.guard_name / guard_used: the `bool __fin_ran_N`
-    # set right before an exit-site copy so this frame's own catch skips its
-    # copy, declared only where an exit site actually walked the frame.
+    # Mirrors FinallyContext.guard_name: the `bool __fin_ran_N` set right
+    # before an exit-site copy so this frame's own catch skips its copy,
+    # declared only where an exit site actually walked the frame -- tracked
+    # by membership of the name in _EmitState.live_finally_guards.
     guard_name: 'str | None' = None
-    guard_used: bool = False
 
 
 @dataclass
@@ -359,6 +359,12 @@ class _EmitState:
     # signature's return spelling (`ctx.current_return_cpp`), read only by the
     # finally-return temp.
     finally_frames: list[_FinallyFrame] = field(default_factory=list)
+    # Live `bool __fin_ran_N` guard names -- the emit-side mirror of
+    # CodeGenContext.live_finally_guards: a guard lands here when an exit
+    # site emits its `= true`, and each frame's catch declares/tests the
+    # guard only when its name is present (per-function; names are unique
+    # via the module-cumulative finally_guard_counter).
+    live_finally_guards: set[str] = field(default_factory=set)
     loop_depth: int = 0
     # Per-function match-switch state, mirroring reset_scope's fields:
     # `match_counter` numbers `__match_subject_N` (one bump per match, the
@@ -1729,7 +1735,7 @@ def _emit_finally_chain(out: TextIO, indent: str, state: _EmitState,
             # its own frame's catch. Outer frames' guards stay false, so
             # their cleanup still runs -- Python's unwind semantics.
             if fr.guard_name is not None:
-                fr.guard_used = True
+                state.live_finally_guards.add(fr.guard_name)
                 out.write(f"{indent}{fr.guard_name} = true;\n")
             if fr.stmts is not None:
                 _emit_stmts(out, fr.stmts, len(indent) // len(INDENT), state)
@@ -1922,12 +1928,13 @@ def _emit_with(out: TextIO, stmt: THIRWith, indent_level: int,
             guard_name=f"__fin_ran_{state.finally_guard_counter.next()}")
         frames.append(fr)
         state.finally_frames.append(fr)
-    # Buffered so the exit sites inside the body settle each layer's
-    # guard_used before that layer's `try {` (and its decl) is written.
+    # Buffered so the exit sites inside the body settle each layer's guard
+    # liveness before that layer's `try {` (and its decl) is written.
     body_buf = io.StringIO()
     _emit_stmts(body_buf, stmt.body, indent_level + len(stmt.items), state)
     for k in range(len(stmt.items)):
-        g = frames[k].guard_name if frames[k].guard_used else None
+        g = (frames[k].guard_name
+             if frames[k].guard_name in state.live_finally_guards else None)
         if g is not None:
             out.write(f"{INDENT * (indent_level + k)}bool {g} = false;\n")
         out.write(f"{INDENT * (indent_level + k)}try {{\n")
@@ -1940,7 +1947,8 @@ def _emit_with(out: TextIO, stmt: THIRWith, indent_level: int,
         # The fall-through __exit__ copy sits after the catches, so a
         # throwing __exit__ isn't re-run by this layer's own catch-all.
         needs_after_label = item.can_suppress and not layer_term[k]
-        guard = frames[k].guard_name if frames[k].guard_used else None
+        guard = (frames[k].guard_name
+                 if frames[k].guard_name in state.live_finally_guards else None)
         if not layer_term[k]:
             out.write(f"{body_ind}goto __with_exit_{n};\n")
         # Popped before the catch arms, mirroring _emit_with_try_catch's pop
@@ -1994,7 +2002,8 @@ def _emit_frame_wrapped(out: TextIO, inner_level: int, state: _EmitState,
     state.finally_frames.append(fr)
     body_buf = io.StringIO()
     emit_body(body_buf, inner_level + 1)
-    guard = fr.guard_name if fr.guard_used else None
+    guard = (fr.guard_name
+             if fr.guard_name in state.live_finally_guards else None)
     if guard is not None:
         out.write(f"{inner}bool {guard} = false;\n")
     out.write(f"{inner}try {{\n")

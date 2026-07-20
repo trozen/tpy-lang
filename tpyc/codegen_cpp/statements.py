@@ -3784,12 +3784,11 @@ class StatementGenerator:
                 # have a false guard, so their finallies do run -- Python's
                 # unwind semantics.
                 if fctx.guard_name is not None:
-                    fctx.guard_used = True
-                    # The resumable path gates its guard declaration on this
-                    # set instead of guard_used (its frames outlive one
-                    # emit_finally_chain call); harmless for the sync path,
-                    # which consults guard_used only.
-                    self.ctx.resumable_guards_used.add(fctx.guard_name)
+                    # Record the guard live: the emitter (sync catch here, or
+                    # a resumable region catch, whose frames outlive one
+                    # _emit_finally_chain call) declares and tests it only
+                    # when its name is present in live_finally_guards.
+                    self.ctx.live_finally_guards.add(fctx.guard_name)
                     out.write(f"{indent}{fctx.guard_name} = true;\n")
                 fctx.emit_finally(out, indent)
                 if fctx.terminates:
@@ -4152,7 +4151,8 @@ class StatementGenerator:
 
         # The fall-through copy sits outside the try, so only the inline
         # return/break/continue copies need guarding here.
-        guard = fctx.guard_name if fctx.guard_used else None
+        guard = (fctx.guard_name
+                 if fctx.guard_name in self.ctx.live_finally_guards else None)
         if guard is not None:
             out.write(f"{inner}bool {guard} = false;\n")
         out.write(f"{inner}try {{\n")
@@ -4239,7 +4239,8 @@ class StatementGenerator:
         emit_body(body_buf, self.ctx.indent())
         self.ctx.indent_level -= 1
 
-        guard = fctx.guard_name if fctx.guard_used else None
+        guard = (fctx.guard_name
+                 if fctx.guard_name in self.ctx.live_finally_guards else None)
         if guard is not None:
             out.write(f"{inner}bool {guard} = false;\n")
         out.write(f"{inner}try {{\n")
