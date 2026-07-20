@@ -316,6 +316,9 @@ from .checks import (
 from .expressions import (
     _container_slice_recv_ok,
     _flush_witness,
+    _narrow_member_cpp,
+    _narrow_subject_const,
+    _param_declared_type,
     _is_move_source,
     _lower_call_arg,
     _lower_char_targeted,
@@ -781,9 +784,9 @@ def _for_each_container_route(
     # call (`for c in full(s):` / `for x in make_list():`). The call's capture
     # verdict rides `iterable_lvalue` (`_call_iterable_lvalue`: a str return
     # and an `Own[...]` container return are rvalues, the owning `auto
-    # __obj_N =` capture; a borrow container return is an lvalue). Bytes-
-    # returning calls and other non-name iterables (subscript) ride a later
-    # cell.
+    # __obj_N =` capture; a borrow container return is an lvalue). A
+    # slice-subscript iterable is the owning-capture rvalue arm below;
+    # bytes-returning calls stay deferred.
     if _is_range_call(it):
         return None
     iterable_lvalue = True
@@ -869,6 +872,19 @@ def _for_each_container_route(
                 return None
             it_type = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ft)))
             container_field = True
+    elif (isinstance(it, TpySubscript)
+          and it.slice_function_info is not None
+          and isinstance(it.index, TpySlice)):
+        # A slice-subscript iterable (`for b in items[1:3]:`): the slice
+        # rvalue takes the owning `auto __obj_N =` capture; the subscript
+        # arm re-validates the receiver / bounds and falls the body back
+        # on a shape outside its slice.
+        rt = analyzer.get_expr_type(it)
+        it_type = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rt)))
+                   if rt is not None else None)
+        if it_type is None:
+            return None
+        iterable_lvalue = False
     else:
         # Unhandled node kinds and non-native iterable families are
         # sub-classified at the reject boundary (_for_each_reject_detail).
@@ -2341,6 +2357,31 @@ def _append_assert_narrow(stmt: TpyAssert, out: 'list[THIRStmt]',
     lc.narrow.persistent_aliases.add(alias)
     lc.narrow.narrowed[var] = alias
 
+def _owned_view_opt_whole_src(stmt: TpyVarDecl, vtype: 'TpyType | None',
+                              lc: _LowerCtx) -> bool:
+    """Whether an owned-view Optional slot (`str | None` ->
+    `optional<string>`) may take the bare WHOLE-optional copy of its init
+    (`flat = rec.key;`). Two source shapes mis-render as a bare copy and
+    stay deferred (both probe-caught): a view-form PARAM source needs the
+    AST's view->owned shim (`s ? make_optional(string(*s)) : nullopt`), and
+    a NARROWED source occurrence (sema retyped the read to the inner) takes
+    the deref path -- `optional<string> y = (*s);` does not even compile
+    (string_view has no implicit conversion into optional<string>)."""
+    analyzer = lc.analyzer
+    if _value_opt_owned_view(vtype, analyzer) is None:
+        return False
+    src = stmt.init
+    if isinstance(src, TpyName) and _opt_view_arg_shim(
+            _param_declared_type(src.name, lc), vtype, analyzer):
+        return False
+    st = analyzer.get_expr_type(src) if src is not None else None
+    if st is None or not isinstance(
+            unwrap_readonly(unwrap_ref_type(unwrap_send_sync(st))),
+            OptionalType):
+        return False
+    return True
+
+
 def _lower_scoped_stmts(body, lc: _LowerCtx,
                         declared: dict[str, TpyType], *,
                         branch_decls_ok: bool = False,
@@ -2415,17 +2456,6 @@ def _lower_narrowed_branch(body, fact: 'TpyType | None', var: str,
         lc.rebind_slot_locals = saved_rebind
     return tuple(out)
 
-def _narrow_subject_const(var: str, lc: _LowerCtx) -> bool:
-    """Whether a pointer-variant narrowing SUBJECT spells const pointees: a
-    const local (the U2 field-lift chain), or a param the function's
-    deep-const verdict (`deep_const_borrow_params` -- the inferred
-    discriminant-only-use fact that also deep-consts the signature's variant
-    spelling) applies to. Shared by the isinstance condition and every
-    narrowed-member `std::get` template arg, so the two renders cannot
-    drift."""
-    if var in lc.const_locals:
-        return True
-    return _param_is_deep_const(var, lc.func, lc.analyzer, lc.record_name)
 
 def _lower_isinstance_cond(info, condition: TpyExpr, lc: _LowerCtx) -> THIRExpr:
     """The isinstance-condition render shared by the narrow if / while /
@@ -2446,19 +2476,6 @@ def _lower_isinstance_cond(info, condition: TpyExpr, lc: _LowerCtx) -> THIRExpr:
             f"{const}{lc.render_type(m)}*" if is_ptr else lc.render_type(m)
             for m in members),
         loc=cond_loc)
-
-def _narrow_member_cpp(var: str, member: TpyType, u: UnionType,
-                       lc: _LowerCtx) -> tuple[str, bool]:
-    """The final `std::get` template arg for a narrowed member read, plus the
-    pointer-variant verdict: the ptr `*` suffix and the const-pointee prefix
-    (`_narrow_subject_const`) applied at lowering. Shared by the extraction
-    alias and the compound-condition inline read."""
-    member_cpp = lc.render_type(member)
-    is_ptr = is_ptr_variant_union(u)
-    if is_ptr:
-        const = "const " if _narrow_subject_const(var, lc) else ""
-        member_cpp = f"{const}{member_cpp}*"
-    return member_cpp, is_ptr
 
 def _lower_compound_cond(cond: TpyExpr, isin: TpyExpr, info,
                          lc: _LowerCtx,
@@ -3109,8 +3126,26 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             note_detail("decl.linkage")
             raise ThirUnsupported(stmt_reject_reason(stmt))
         if stmt.init is None:
-            note_detail("decl.no_init")
-            raise ThirUnsupported(stmt_reject_reason(stmt))
+            # An annotation-only decl (`x: str` / `x: Int32`) default-
+            # constructs the resolved slot (`std::string x;` / `int32_t x;`)
+            # and the later assignment writes it. VALUE families only -- a
+            # non-value no-init decl (record/container/Optional) is the
+            # AST's pointer/slot machinery, not a bare default-construct.
+            vt0 = _var_decl_type(stmt, analyzer)
+            nt: 'TpyType | None' = None
+            if vt0 is not None and stmt.name not in declared:
+                if _eligible_scalar(vt0) or _eligible_char(vt0):
+                    nt = vt0
+                else:
+                    nt = _resolved_str_value(vt0, analyzer)
+            if nt is None or (scope.in_branch
+                              and not scope.branch_decls_ok):
+                note_detail("decl.no_init")
+                raise ThirUnsupported(stmt_reject_reason(stmt))
+            _witness("decl.no_init_value")
+            declared[stmt.name] = nt
+            return THIRVarDecl(name=stmt.name, resolved_type=nt, init=None,
+                               loc=loc)
         if lc.prescan.has_self and stmt.name == "self":
             note_detail("decl.self_rebind")
             raise ThirUnsupported(stmt_reject_reason(stmt))
@@ -3591,9 +3626,13 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             if is_reassign or len(stmt.init.value) != 1:
                 note_detail("decl.char_literal")
                 raise ThirUnsupported(stmt_reject_reason(stmt))
+        # Branch position included: a branch-FIRST literal decl reaching the
+        # check is genuinely block-local (the LINCHPIN note below -- escaping
+        # names are hoisted or rejected, and the check itself rejects
+        # hoisted/reassigned/move-through), so it emits the same plain decl
+        # at branch indent.
         container_literal = (
             not is_reassign
-            and not scope.in_branch
             and _container_literal_decl_ok(
                 stmt, declared, lc.prescan, analyzer))
         storage_call = False
@@ -3608,10 +3647,16 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         if storage_src:
             fam = _storage_call_ret(analyzer.get_expr_type(stmt.init), analyzer)
             if fam is not None:
-                if in_branch_first:
-                    note_detail("decl.branch_storage_call")
-                    raise ThirUnsupported(stmt_reject_reason(stmt))
-                if _storage_call_container(fam):
+                # Branch-FIRST decls included: block-local (the LINCHPIN
+                # note), and the container guards below exclude every
+                # escaping/rebinding shape -- same plain decl at branch
+                # indent (mirrors the native-record arm below).
+                # bytearray rides the same guards: it is the one owned
+                # container OUTSIDE `_storage_call_container` (that predicate
+                # also gates the generic-instantiation arms, where bytearray
+                # does not belong), and its reassigned locals take the AST's
+                # pointer-rebind machinery exactly like list/dict/set.
+                if _storage_call_container(fam) or is_bytearray_type(fam):
                     if (is_reassign
                             or stmt.name in lc.prescan.reassigned
                             or stmt.name in lc.prescan.hoisted
@@ -3800,8 +3845,12 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     or _eligible_value_union(vtype) is not None
                     # A value-repr Optional[scalar] slot (`y: Int32 | None =
                     # items[i]`): the whole `std::optional<T>` lands bare, the
-                    # value-repr twin of the plain-scalar decl.
+                    # value-repr twin of the plain-scalar decl. The owned-view
+                    # twin (`cmd: str | None = acc` -> `std::optional
+                    # <std::string> cmd = acc;`) takes the same bare copy,
+                    # gated to genuinely whole-optional sources.
                     or _value_opt_scalar(vtype, analyzer) is not None
+                    or _owned_view_opt_whole_src(stmt, vtype, lc)
                     or _slice_object_type(vtype)
                     or _range_object_value(vtype)
                     or _eligible_ptr_value(vtype, analyzer)
@@ -3879,8 +3928,13 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 # A value-repr Optional[scalar] slot consumes a WHOLE-optional
                 # init source bare (`y: Int32 | None = items[i]` -- the
                 # `std::optional<T>` element / call result lands directly), so
-                # thread allow_whole_optional to admit those reads at their gate.
-                opt_slot = _value_opt_scalar(vtype, analyzer) is not None
+                # thread allow_whole_optional to admit those reads at their
+                # gate. The owned-view twin (`str | None` ->
+                # `optional<string>`) takes the same bare whole-optional copy
+                # (`flat = rec.key;`), gated to genuinely whole-optional
+                # sources (`_owned_view_opt_whole_src`).
+                opt_slot = (_value_opt_scalar(vtype, analyzer) is not None
+                            or _owned_view_opt_whole_src(stmt, vtype, lc))
                 # A str-family FIELD read into a str-value decl slot
                 # (`s = p.name` -> `std::string_view s = p.name;` for a view
                 # slot, `std::string s = p.name;` for an owned one): the bare
@@ -4157,6 +4211,18 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     result_type=eu, value=_lower_expr(v, lc, declared),
                     form=Form.STORAGE, loc=loc)
                 _witness("setitem.borrow_lift")
+            elif _value_opt_scalar(eu, analyzer) is not None:
+                # Value-repr Optional[scalar] element: a None literal stores
+                # the STORAGE-form `std::nullopt` (`::tpy::__setitem__(items,
+                # 0, std::nullopt)` -- the decl.opt_none twin). Other value
+                # sources (scalars, whole optionals, narrowed reads) stay
+                # deferred until their renders are witnessed.
+                if not isinstance(stmt.value, TpyNoneLiteral):
+                    note_detail("setitem.optval_value_shape")
+                    raise ThirUnsupported(stmt_reject_reason(stmt))
+                value = THIRLiteral(result_type=eu, value=None,
+                                    form=Form.STORAGE, loc=loc)
+                _witness("setitem.optval_none")
             elif _eligible_ptr_union(eu, analyzer) is not None:
                 # Value-variant union element: a same-union borrow NAME lifts
                 # via `::tpy::to_value_variant<...>` (copy); a NARROWED member
@@ -5790,7 +5856,11 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                               and _witness(
                                   "print.container_slice_arg"
                                   if arg.slice_function_info is not None
-                                  else "print.tuple_subscript_arg")))
+                                  else "print.tuple_subscript_arg"))
+                          or (isinstance(arg, (TpyCall, TpyMethodCall))
+                              and _wrap_print_form(
+                                  arg, declared, analyzer) is not None
+                              and _witness("print.container_call_arg")))
                 if not ok:
                     fam = _type_family_tag(
                         analyzer.get_expr_type(arg), analyzer)
@@ -6218,6 +6288,15 @@ def _lower_print_arg(a: TpyExpr, lc: _LowerCtx,
     # wrap (or the record's raw operator<<) around the bare name -- the
     # same routing fact lowering consumed (`_wrap_print_form`).
     wrap = _wrap_print_form(a, declared, lc.analyzer)
+    if wrap is not None and isinstance(a, (TpyCall, TpyMethodCall)):
+        # A container-returning CALL wraps the inline call render; STORAGE
+        # use admits the container-return call shapes (the storage-sink
+        # gate), and a print is a flush position, so arg temps may hoist.
+        return THIRPrintArg(
+            _lower_expr(a, lc, declared,
+                        use=_ExprUse(result=_ExprResultUse.STORAGE,
+                                     allow_temps=True)),
+            wrap)
     if wrap is not None:
         return THIRPrintArg(
             _lower_expr(

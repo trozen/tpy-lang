@@ -520,6 +520,10 @@ def _emit_binop(e: THIRBinOp, state: _EmitState) -> str:
                   f"({wl}, {wr})")
     if e.divisor_non_zero:
         result = result.replace("div_check", "div_floor").replace("mod_check", "mod_floor")
+    if e.op == "!=" and rb.method.name == "__eq__":
+        # `!=` resolved via `__eq__` derives by negation -- `(!(...))`,
+        # mirroring gen_binop's derived-negation wrap.
+        return f"(!({result}))"
     return f"({result})" if e.paren_wrap else result
 
 
@@ -1177,7 +1181,9 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
     if isinstance(e, THIRFieldAccess):
         return _emit_field_access(e, state)
     if isinstance(e, THIRSubscript):
-        return _emit_subscript(e, state)
+        sub = _emit_subscript(e, state)
+        return (f"::tpy::deref_optional_check({sub})"
+                if e.opt_deref_check else sub)
     if isinstance(e, THIRStrSlice):
         return _emit_str_slice(e, state)
     if isinstance(e, THIRFormConvert):

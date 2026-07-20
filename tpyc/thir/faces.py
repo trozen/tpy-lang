@@ -797,6 +797,25 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # TuplePrinter(std::get<N>(t))
     "print.container_slice_arg",    # list/Array/Span slice read print arg ->
                                     # ListPrinter(list_slice/list_stepped_slice)
+    "print.container_call_arg",     # container-returning CALL print arg -> its
+                                    # kind-keyed printer wrap around the call
+    "call.inst_slice_arg",          # container-slice rvalue into a list/set/
+                                    # dict instantiation (`list(argv[i:])`)
+    "argtemp.container_call",       # container-returning rvalue call into a
+                                    # plain call's container ref param -> the
+                                    # hoisted `__tmp_N` ArgTemp
+    "field.whole_optional",         # WHOLE value-repr Optional field read into
+                                    # an optional sink -> bare member copy
+    "field.assign_narrowed_union",  # .field off an assign-narrowed ptr-variant
+                                    # union name -> (*std::get<T*>(v)).field
+    "decl.no_init_value",           # annotation-only value decl (`x: str`) ->
+                                    # the default-construct `std::string x;`
+    "call.record_field_arg",        # F1-record FIELD read into a record ref
+                                    # slot -> the bare aliasing member read
+    "setitem.optval_none",          # None into a value-repr Optional[scalar]
+                                    # element -> the nullopt STORAGE store
+    "ctor.protocol_union_arg",      # record/container NAME into an
+                                    # all-protocols union ctor slot -> bare
     "print.kw_sep_end",             # sep=/end= kwarg (str literal or resolved
                                     # str-value name) -> the chain-token render
     "print.file_sink",              # file= kwarg -> ::tpy::as_ostream(<sink>)

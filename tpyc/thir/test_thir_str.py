@@ -235,11 +235,14 @@ class TestStrReceiverMethods:
         thir = _lower("def f(s: str) -> None:\n    xs = s.split()\n    print(xs)\n")
         assert _fn(thir, "f") is not None
 
-    def test_split_nonstorage_sink_still_ineligible(self):
-        # Outside a storage sink the container result stays rejected: a
-        # direct print arg is not a storage position.
-        thir = _lower("def f(s: str) -> None:\n    print(s.split())\n")
-        assert _fn(thir, "f") is None
+    def test_split_print_arg_routes(self):
+        # A container-returning call IS admitted as a print arg now: the
+        # kind-keyed printer wraps the inline call
+        # (`ListPrinter(::tpy::str_split_whitespace(s))`), lowered under
+        # STORAGE use like the decl sink.
+        src = "def f(s: str) -> None:\n    print(s.split())\n"
+        assert _fn(_lower(src), "f") is not None
+        _assert_byte_identical(src)
 
     def test_str_literal_receiver_routes(self):
         # A str-LITERAL receiver renders bare into the resolved template

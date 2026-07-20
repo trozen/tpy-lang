@@ -3341,9 +3341,16 @@ def _value_opt_rvalue(e: TpyExpr, analyzer) -> 'OptionalType | None':
     None-test reads `.has_value()` over it -- the same _gen_binop storage-form
     arm the value-opt NAME/FIELD rows key. No narrowing applies to an rvalue,
     so the RESOLVED type is authoritative (unlike the name rows, which key the
-    declared binding). Names / fields / None-literals are handled by the other
-    operand rows; a pointer-repr optional rvalue is excluded here."""
-    if not isinstance(e, (TpyCall, TpyMethodCall)):
+    declared binding). A container-ELEMENT subscript read of a value-opt
+    element (`items[1] is None` on `list[Int32 | None]`) takes the same
+    `.has_value()` over the read (`::tpy::__getitem__(items, 1).has_value()`);
+    the subscript arm re-validates receiver/index under allow_whole_optional.
+    Names / fields / None-literals are handled by the other operand rows; a
+    pointer-repr optional rvalue is excluded here."""
+    if isinstance(e, TpySubscript):
+        if isinstance(e.index, TpySlice) or e.slice_function_info is not None:
+            return None
+    elif not isinstance(e, (TpyCall, TpyMethodCall)):
         return None
     t = analyzer.get_expr_type(e)
     if not isinstance(t, TpyType):

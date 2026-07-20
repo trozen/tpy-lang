@@ -408,13 +408,31 @@ class TestScalarCtorCall:
                       + "def f() -> float:\n    return float(\"nan\")\n")
         assert _fn(thir, "f") is None
 
-    def test_char_ctor_ineligible(self):
-        # Char("a") resolves to a @native(function=True) ctor (no cpp_template);
-        # the str-LITERAL arg keeps it off the native-free-ctor route, and the
-        # Char result is not an eligible scalar either.
-        thir = _lower("from tpy import Char\n"
-                      + "def f() -> None:\n    c = Char(\"a\")\n    print(1)\n")
-        assert _fn(thir, "f") is None
+    def test_char_ctor_str_literal_routes(self):
+        # Char("a") is a @native(function=True) ctor with NO literal fold on
+        # the AST path (`char c = ::tpy::char_from_str("a");`), so the
+        # narrowed exclusion (float special constants only) admits it --
+        # byte-identical through the native free-ctor arm.
+        src = ("from tpy import Char\n"
+               + "def f() -> None:\n    c = Char(\"a\")\n    print(1)\n")
+        assert _fn(_lower(src), "f") is not None
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        ast = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(
+                emit_source_comments=False, thir_codegen=False))
+        thir = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(
+                emit_source_comments=False, thir_codegen=True))
+        assert thir == ast
+
+    def test_int_ctor_str_literal_routes(self):
+        # int("123") -> `::tpy::BigInt::from_str("123")` on both paths; no
+        # fold exists for int, so ordinary str literals route (the narrowed
+        # exclusion covers only float's special constants).
+        src = "def f() -> None:\n    print(int(\"123\"))\n"
+        assert _fn(_lower(src), "f") is not None
+        _assert_byte_identical(src)
 
     def test_float32_ctor_routes(self):
         # Float32(1.5) routes: the result is an eligible scalar and the

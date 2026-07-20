@@ -498,14 +498,16 @@ class THIRUnionArgLift(THIRExpr):
 
 @dataclass(frozen=True)
 class THIROptionalPtrArg(THIRExpr):
-    """A temp-free value into a pointer-repr `Optional[record]` slot
-    (`const A*` / `A*`) -- a call arg (the inline arms of
-    `_gen_optional_ptr_arg`'s non-protocol tail) or a return value (the same
-    renders via `_optional_pointer_form_value`): a `None` literal renders
+    """A temp-free value lowered to a pointer the slot binds -- a pointer-repr
+    `Optional[record]` slot (`const A*` / `A*`) or a protocols-only union ctor
+    slot whose `&`-lift arm reuses this node (a record / Span name into
+    `Iterable[...] | Spannable[...] | None`, `addr_of`). A call arg (the inline
+    arms of `_gen_optional_ptr_arg`'s non-protocol tail) or a return value (the
+    same renders via `_optional_pointer_form_value`): a `None` literal renders
     `nullptr` (`value=None`; the typed-null spelling is protocol-only, and
-    protocol slots are gate-rejected), a record name the address-of
-    (`&(name)`, `addr_of`), and a storage-form Optional field read the
-    `::tpy::optional_to_ptr(...)` lift (`lift`). An already-pointer name (an F2 pointer-local, a
+    Optional protocol slots are gate-rejected), a record / Span name the
+    address-of (`&(name)`, `addr_of`), and a storage-form Optional field read
+    the `::tpy::optional_to_ptr(...)` lift (`lift`). An already-pointer name (an F2 pointer-local, a
     pointer-repr Optional binding) passes bare and never builds this node;
     the ctor-rvalue face hoists a `THIRArgTemp` with its `addr_of` wrap
     instead. The spelling is const-blind: `optional_to_ptr` selects its
@@ -1116,6 +1118,10 @@ class THIRSubscript(THIRExpr):
     # index (no size_t cast -- the operator takes the user's declared key type,
     # like _gen_subscript's concrete-user-record / fi-fallback arms).
     record_getitem: bool = False
+    # An UNPROVEN value-repr Optional[scalar] ELEMENT read consumed as its
+    # inner scalar: wraps `::tpy::deref_optional_check(<read>)` (the
+    # runtime-checked unwrap), the subscript twin of THIRName's flag.
+    opt_deref_check: bool = False
 
 
 @dataclass(frozen=True)

@@ -2327,3 +2327,139 @@ class TestVarargPack:
         assert _cpp(src, thir=True) == _cpp(src, thir=False)
         assert ("f(::tpy::varargs<const int32_t>(::tpy::as_span(xs)))"
                 in _cpp(src, thir=True))
+
+
+class TestNativeIterableLiteralArg:
+    """Container literals into a native builtin's Iterable/Sequence slot
+    (`_native_iterable_literal_arg`): the resolved container renders inline,
+    bare into the template slot."""
+
+    def test_list_literal_routes(self):
+        src = "def f() -> None:\n    print(all([True, False]))\n"
+        assert _fn(_lower(src), "f") is not None
+        _assert_byte_identical(src)
+
+    def test_set_literal_routes(self):
+        src = "def f() -> None:\n    print(any({1, 2}))\n"
+        assert _fn(_lower(src), "f") is not None
+        _assert_byte_identical(src)
+
+    def test_bigint_array_elements_stay_bare(self):
+        # Regression: the Array-target scalar retype is decl-position only.
+        # An arg literal's elements land bare in the spelled aggregate
+        # (`std::array<::tpy::BigInt, 3>{1, 2, 3}`, no per-element wrap).
+        src = "def f() -> None:\n    print(all([1, 2, 3]))\n"
+        assert _fn(_lower(src, default_int="BigInt"), "f") is not None
+        _assert_byte_identical(src, default_int="BigInt")
+
+    def test_make_path_element_falls_back(self):
+        # A move-source element flips the literal onto make_ordered_set; the
+        # native-arg arm rejects the make path (unverified in-place render).
+        src = ("def f(s: str) -> None:\n"
+               "    t = s + \"x\"\n"
+               "    print(any({t}))\n")
+        assert _fn(_lower(src), "f") is None
+
+
+class TestContainerCallTempArg:
+    """A container-returning rvalue CALL into a plain free call's container
+    param (`_container_call_temp_arg`): MUTABLE-ref slots hoist the `__tmp_N`
+    ArgTemp; a readonly (`const T&`) slot binds the rvalue inline -- keyed on
+    `is_ref_param()` exactly like the AST."""
+
+    _SRC_MUT = (
+        "from tpy import Int32\n"
+        "def g(xs: list[Int32]) -> None:\n    xs.append(1)\n"
+        "def f(a: list[Int32]) -> None:\n    g(list(a[1:]))\n"
+    )
+    _SRC_RO = (
+        "from tpy import Int32, readonly\n"
+        "def g(xs: readonly[list[Int32]]) -> Int32:\n    return len(xs)\n"
+        "def f(a: list[Int32]) -> None:\n    print(g(list(a[1:])))\n"
+    )
+
+    def test_mutable_slot_hoists_arg_temp(self):
+        assert _fn(_lower(self._SRC_MUT), "f") is not None
+        assert _cpp(self._SRC_MUT, thir=True) == _cpp(self._SRC_MUT, thir=False)
+        assert "__tmp_1" in _cpp(self._SRC_MUT, thir=True)
+
+    def test_readonly_slot_takes_no_temp(self):
+        # A readonly (`const T&`) slot binds the rvalue inline on the AST
+        # path -- the temp rung correctly declines it (`is_ref_param()`
+        # False), and no other row admits the shape yet, so the body falls
+        # back whole; the fallback emit stays byte-identical and temp-free.
+        assert _fn(_lower(self._SRC_RO), "f") is None
+        assert _cpp(self._SRC_RO, thir=True) == _cpp(self._SRC_RO, thir=False)
+        assert "__tmp_" not in _cpp(self._SRC_RO, thir=True)
+
+
+class TestNativeValueCallArg:
+    """`_native_value_call_arg`: a value-family CALL rvalue into a
+    native/template slot renders bare in place; Own/Optional/Union slots
+    keep their lift arms."""
+
+    def test_bytes_view_method_result_routes(self):
+        src = ("def f(v: bytes) -> None:\n"
+               "    print(len(v.strip()))\n")
+        assert _fn(_lower(src), "f") is not None
+        _assert_byte_identical(src)
+
+    def test_own_slot_excluded(self):
+        from .lower.checks import _native_value_call_arg
+        from ..typesys import OwnType, NominalType
+        from ..compilation_context import activate_compiler
+        src = "def f(v: bytes) -> None:\n    print(len(v.strip()))\n"
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        with activate_compiler(compiler):
+            analyzer = entry.analyzer
+            fn = next(x for x in entry.ast.functions if x.name == "f")
+            call = fn.body[0].expr.args[0]  # len(...) inside print
+            inner = call.args[0]            # v.strip()
+            own_slot = OwnType(NominalType("bytes", (),
+                                           _module_qname="builtins.bytes"))
+            assert not _native_value_call_arg(inner, own_slot, analyzer)
+
+
+class TestRecordFieldRefArg:
+    """`_record_field_ref_arg`: an F1-record FIELD read binds a record ref
+    slot as the bare aliasing member read. Readonly slots are ADMITTED (the
+    const lives in the callee's signature; the arg render is the same bare
+    read -- unlike the name-arg sibling, whose readonly guard exists for
+    the deep-const signature frontier). A subclass upcast stays deferred."""
+
+    _SRC = (
+        "from tpy import Int32\n"
+        "class A:\n    x: Int32\n"
+        "    def __init__(self, x: Int32):\n        self.x = x\n"
+        "class H:\n    a: A\n"
+        "    def __init__(self):\n        self.a = A(1)\n"
+    )
+
+    def test_mutable_slot_aliases(self):
+        src = (self._SRC
+               + "def bump(a: A) -> None:\n    a.x += 1\n"
+               + "def f() -> None:\n"
+               + "    h = H()\n    bump(h.a)\n    print(h.a.x)\n")
+        assert _fn(_lower_ctx(src), "f") is not None
+        _assert_byte_identical(src)
+
+    def test_readonly_slot_admitted(self):
+        src = (self._SRC.replace("from tpy import Int32",
+                                 "from tpy import Int32, readonly")
+               + "def look(a: readonly[A]) -> Int32:\n    return a.x\n"
+               + "def f() -> None:\n"
+               + "    h = H()\n    print(look(h.a))\n")
+        assert _fn(_lower_ctx(src), "f") is not None
+        _assert_byte_identical(src)
+
+    def test_subclass_slot_deferred(self):
+        src = (self._SRC
+               + "class Child(A):\n"
+               + "    def __init__(self):\n        super().__init__(2)\n"
+               + "class H2:\n    c: Child\n"
+               + "    def __init__(self):\n        self.c = Child()\n"
+               + "def base_use(a: A) -> Int32:\n    return a.x\n"
+               + "def f() -> None:\n"
+               + "    h = H2()\n    print(base_use(h.c))\n")
+        assert _fn(_lower_ctx(src), "f") is None

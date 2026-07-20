@@ -2004,9 +2004,12 @@ class TestTupleUnpackMethodSource:
         assert _fn(thir, "use") is not None
         assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
-    def test_value_position_method_tuple_still_ast(self):
-        # The storage escape is position-pinned: a tuple-returning method
-        # call in a general value position stays gate-rejected.
+    def test_value_position_method_tuple_routes_via_native_arg(self):
+        # `len(str(p.pair()))`: the str(...) result is a value-family CALL
+        # rvalue admitted into the native Sized slot
+        # (`_native_value_call_arg`); the inner tuple-returning method call
+        # re-validates through str()'s own arg machinery -- the former
+        # position-pin is superseded by that rung.
         src = (
             self._REC
             + "def use(p: P) -> Int32:\n"
@@ -2014,7 +2017,8 @@ class TestTupleUnpackMethodSource:
             + "print(use(P(1)))\n"
         )
         thir = _lower_ctx(src)
-        assert _fn(thir, "use") is None
+        assert _fn(thir, "use") is not None
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
 
 class TestBranchOwnedRecordDecl:

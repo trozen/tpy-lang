@@ -1808,3 +1808,45 @@ class TestOwnUnionReturn:
         assert thir_cpp == cpp(False)
         assert "return Dog(age);" in thir_cpp
         assert "return Cat(lives);" in thir_cpp
+
+
+class TestAssignNarrowedUnionFieldRead:
+    """`.field` off an ASSIGN-narrowed pointer-variant union name renders the
+    inline bare get (`(*std::get<Circle*>(c)).radius`); a field WRITE through
+    the same receiver stays on the AST path."""
+
+    _RECORDS = (
+        "class Circle:\n    radius: float\n"
+        "    def __init__(self, radius: float) -> None:\n"
+        "        self.radius = radius\n"
+        "class Rect:\n    width: float\n"
+        "    def __init__(self, width: float) -> None:\n"
+        "        self.width = width\n"
+    )
+
+    def test_read_routes_byte_identical(self):
+        src = (self._RECORDS
+               + "def f() -> None:\n"
+               + "    c: Circle | Rect = Circle(5.0)\n"
+               + "    print(c.radius)\n")
+        thir, _ = _lower_ctx(src), None
+        assert _fn(thir, "f") is not None
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        from ..codegen_cpp.context import CodeGenOptions
+        ast = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=False))
+        out = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=True))
+        assert out == ast
+        assert "(*std::get<Circle*>(c)).radius" in out[1]
+
+    def test_write_falls_back(self):
+        src = (self._RECORDS
+               + "def f() -> None:\n"
+               + "    c: Circle | Rect = Circle(5.0)\n"
+               + "    c.radius = 6.0\n"
+               + "    print(c.radius)\n")
+        assert _fn(_lower_ctx(src), "f") is None

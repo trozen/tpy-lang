@@ -3473,3 +3473,161 @@ class TestBytearraySurface:
             "def f(a: bytearray, b: bytearray) -> None:\n"
             "    a.extend(b)\n")
         assert _fn(thir, "f") is None
+
+
+class TestForSliceIterable:
+    """The for-head slice-subscript arm: owning `auto __obj_N =` capture of
+    the slice rvalue -- list, stepped, and the newly-reachable str-slice
+    for-head all render byte-identically."""
+
+    def test_list_slice_loop(self):
+        src = ("from tpy import Int32\n"
+               "def f(xs: list[Int32]) -> Int32:\n"
+               "    n: Int32 = 0\n"
+               "    for x in xs[1:3]:\n        n += x\n"
+               "    return n\n")
+        assert _fn(_lower(src), "f") is not None
+        _assert_byte_identical(src)
+
+    def test_stepped_slice_loop(self):
+        src = ("from tpy import Int32\n"
+               "def f(xs: list[Int32]) -> Int32:\n"
+               "    n: Int32 = 0\n"
+               "    for x in xs[1:10:2]:\n        n += x\n"
+               "    return n\n")
+        assert _fn(_lower(src), "f") is not None
+        _assert_byte_identical(src)
+
+    def test_str_slice_loop(self):
+        # Newly reachable via the classifier arm (no container-family gate
+        # there; the render arm carries the family restriction) -- pin the
+        # byte-identity so a later narrowing can't silently regress it.
+        src = ("def f(s: str) -> None:\n"
+               "    for c in s[1:]:\n        print(c)\n")
+        assert _fn(_lower(src), "f") is not None
+        _assert_byte_identical(src)
+
+
+class TestValueOptElemContainer:
+    """The value-opt-element container chain (`list[Int32 | None]`): the
+    setitem-None store, the append/insert None args, the element None-test,
+    and the unproven checked-unwrap -- plus the deferred boundaries."""
+
+    _HDR = "from tpy import Int32\nfrom typing import Optional\n"
+
+    def test_setitem_none_stores_nullopt(self):
+        src = (self._HDR
+               + "def f(items: list[Optional[Int32]]) -> None:\n"
+               + "    items[0] = None\n")
+        assert _fn(_lower(src), "f") is not None
+        _assert_byte_identical(src)
+
+    def test_append_insert_none(self):
+        src = (self._HDR
+               + "def f(items: list[Optional[Int32]]) -> None:\n"
+               + "    items.append(None)\n"
+               + "    items.insert(0, None)\n")
+        assert _fn(_lower(src), "f") is not None
+        _assert_byte_identical(src)
+
+    def test_elem_none_test_and_checked_unwrap(self):
+        src = (self._HDR
+               + "def f(items: list[Optional[Int32]]) -> Int32:\n"
+               + "    if items[1] is not None:\n"
+               + "        return items[1] + 1\n"
+               + "    return 0\n")
+        assert _fn(_lower(src), "f") is not None
+        _assert_byte_identical(src)
+
+    def test_dict_scalar_optional_value(self):
+        src = (self._HDR
+               + "def f(d: dict[str, Optional[Int32]]) -> None:\n"
+               + "    if d[\"k\"] is None:\n"
+               + "        print(\"none\")\n")
+        assert _fn(_lower(src), "f") is not None
+        _assert_byte_identical(src)
+
+    def test_scalar_value_setitem_deferred(self):
+        # Non-None value sources into the optional element stay deferred
+        # (setitem.optval_value_shape) until their renders are witnessed.
+        src = (self._HDR
+               + "def f(items: list[Optional[Int32]]) -> None:\n"
+               + "    items[0] = 5\n")
+        assert _fn(_lower(src), "f") is None
+        _assert_byte_identical(src)
+
+    def test_view_elem_receiver_deferred(self):
+        # The value-opt-VIEW element family (`list[str | None]`) stays off
+        # the widened receiver sites -- the drift-risk boundary the
+        # widening deliberately excluded.
+        src = ("from typing import Optional\n"
+               + "def f(items: list[Optional[str]]) -> None:\n"
+               + "    items.append(None)\n")
+        assert _fn(_lower(src), "f") is None
+        _assert_byte_identical(src)
+
+class TestGenericRecordSetItem:
+    """The open-T user-record setitem value slot (tplib ArrayList as the
+    monomorphized-generic fixture): eligibility keys on the SUBSTITUTED
+    element; record elements (the move machinery) stay deferred."""
+
+    _HDR = ("from tpy import Int32\n"
+            "from tplib import ArrayList\n")
+
+    def test_scalar_element_routes(self):
+        src = (self._HDR
+               + "def f() -> None:\n"
+               + "    a = ArrayList[Int32, 4]()\n"
+               + "    a.append(10)\n    a.append(20)\n"
+               + "    a[1] = 99\n"
+               + "    print(a[1])\n")
+        assert _fn(_lower_ctx(src), "f") is not None
+        _assert_byte_identical(src)
+
+    def test_record_element_setitem_deferred(self):
+        src = (self._HDR
+               + "class R:\n    x: Int32\n"
+               + "    def __init__(self) -> None:\n        self.x = 1\n"
+               + "def f() -> None:\n"
+               + "    a = ArrayList[R, 4]()\n"
+               + "    a.append(R())\n"
+               + "    a[0] = R()\n")
+        assert _fn(_lower_ctx(src), "f") is None
+        _assert_byte_identical(src)
+
+
+class TestProtocolUnionCtorArg:
+    """A NAME into an all-protocols union ctor slot: F1-record names bind
+    bare, Span names take the address-of lift; containers stay deferred."""
+
+    _HDR = ("from tpy import Int32, Span, Array\n"
+            "from tplib import ArrayList\n")
+
+    def test_record_name_binds_bare(self):
+        src = (self._HDR
+               + "def f() -> None:\n"
+               + "    a = ArrayList[Int32, 4]()\n"
+               + "    a.append(1)\n"
+               + "    b = ArrayList[Int32, 4](a)\n"
+               + "    print(b[0])\n")
+        assert _fn(_lower_ctx(src), "f") is not None
+        _assert_byte_identical(src)
+
+    def test_span_name_takes_addr_of(self):
+        src = (self._HDR
+               + "def f() -> None:\n"
+               + "    arr: Array[Int32, 3] = [1, 2, 3]\n"
+               + "    s: Span[Int32] = arr\n"
+               + "    d = ArrayList[Int32, 8](s)\n"
+               + "    print(d[0])\n")
+        assert _fn(_lower_ctx(src), "f") is not None
+        _assert_byte_identical(src)
+
+    def test_container_name_deferred(self):
+        src = (self._HDR
+               + "def f() -> None:\n"
+               + "    xs = [1, 2, 3]\n"
+               + "    d = ArrayList[Int32, 8](xs)\n"
+               + "    print(d[0])\n")
+        assert _fn(_lower_ctx(src), "f") is None
+        _assert_byte_identical(src)

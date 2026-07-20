@@ -163,13 +163,15 @@ class TestEligibility:
                       + "    return xs[0]\n")
         assert _fn(thir, "f") is None
 
-    def test_nonvalue_container_block_local_is_ineligible(self):
-        # A container-literal block-local is a pointer-local whose lowering
-        # mutates function-scoped walk state -> stays AST.
-        thir = _lower(_PRELUDE
-                      + "def f(c: bool) -> None:\n"
-                      + "    if c:\n        xs = [1, 2]\n        print(len(xs))\n")
-        assert _fn(thir, "f") is None
+    def test_nonvalue_container_block_local_routes(self):
+        # A branch-FIRST container-literal decl is genuinely block-local (an
+        # escaping name is hoisted or rejected before the decl gate), so it
+        # emits the same plain decl at branch indent -- byte-identical.
+        src = (_PRELUDE
+               + "def f(c: bool) -> None:\n"
+               + "    if c:\n        xs = [1, 2]\n        print(len(xs))\n")
+        assert _fn(_lower(src), "f") is not None
+        _assert_byte_identical(src)
 
     def test_truthiness_condition_routes(self):
         # `if a:` (native int-name truthiness) routes byte-identically via the
@@ -4452,3 +4454,36 @@ def test_float_truthiness_not_routes():
     src = "from tpy import Float64\ndef f(x: Float64) -> bool:\n    return not x\n"
     assert _fn(_lower(src), "f") is not None
     _assert_byte_identical(src)
+
+
+class TestNoInitValueDecl:
+    """Annotation-only VALUE decls (`x: str` / `x: Int32`) default-construct
+    the resolved slot; non-value no-init decls stay on the AST path."""
+
+    def test_scalar_and_str_no_init_route(self):
+        src = (_PRELUDE
+               + "def f() -> None:\n"
+               + "    x: Int32\n    x = 4\n    print(x)\n"
+               + "    s: str\n    s = \"hi\"\n    print(s)\n")
+        assert _fn(_lower(src), "f") is not None
+        _assert_byte_identical(src)
+
+    def test_owned_str_no_init_route(self):
+        # The OWNED resolution half (`std::string x;` -- an owned-call
+        # source): the view half is pinned above.
+        src = (_PRELUDE
+               + "def make() -> str:\n    return \"a\" + \"b\"\n"
+               + "def f() -> None:\n"
+               + "    x: str\n    x = make()\n    print(x)\n")
+        assert _fn(_lower(src), "f") is not None
+        _assert_byte_identical(src)
+
+    def test_record_no_init_falls_back(self):
+        src = (_PRELUDE
+               + "class R:\n    x: Int32\n"
+               + "    def __init__(self) -> None:\n        self.x = 1\n"
+               + "def f(c: bool) -> None:\n"
+               + "    r: R | None\n"
+               + "    r = R()\n"
+               + "    if r is not None:\n        print(r.x)\n")
+        assert _fn(_lower(src), "f") is None

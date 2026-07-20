@@ -1423,3 +1423,34 @@ class TestOptionalScalarEqEmit:
         assert "return (x == 3);" in out
         assert "return (o == 'a');" in out
         assert "return (a != b);" in out
+
+
+class TestOwnedViewOptWholeSrc:
+    """The owned-view Optional whole-copy rows (`field.whole_optional` /
+    `_owned_view_opt_whole_src`): only genuinely whole-optional sources take
+    the bare copy; a NARROWED param source must fall back (the bare-copy
+    render `optional<string> y = (*s);` does not even compile)."""
+
+    def test_whole_field_read_into_optional_local(self):
+        src = ("from typing import Optional\n"
+               "class R:\n"
+               "    key: Optional[str]\n"
+               "    def __init__(self) -> None:\n        self.key = \"k\"\n"
+               "def f() -> None:\n"
+               "    r = R()\n"
+               "    flat: Optional[str] = None\n"
+               "    flat = r.key\n"
+               "    if flat is not None:\n        print(flat)\n")
+        assert _fn(_lower_ctx(src), "f") is not None
+        _assert_byte_identical(src)
+
+    def test_narrowed_param_source_falls_back(self):
+        # Regression: sema narrows `s` inside the guard, so the read takes
+        # the deref path -- the whole-copy row must not admit it.
+        src = ("from typing import Optional\n"
+               "def relay(s: Optional[str]) -> None:\n"
+               "    if s is not None:\n"
+               "        y: Optional[str] = s\n"
+               "        if y is not None:\n            print(y)\n")
+        assert _fn(_lower_ctx(src), "relay") is None
+        _assert_byte_identical(src)

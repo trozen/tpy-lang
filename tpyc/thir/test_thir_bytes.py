@@ -470,3 +470,60 @@ class TestBytesTailEmit:
         assert "t = ::tpy::bytes_concat(t, v);" in cpp
         assert ('t = ::tpy::bytes_concat(t, '
                 '::tpy::bytes_literal_owned("end", 3));') in cpp
+
+
+class TestBytearrayStorageCallDecl:
+    """The bytearray rows of the storage-call decl arm: single-assignment
+    routes (function scope AND branch-first); a reassigned local must fall
+    back -- bytearray is a `_storage_call_ret` family but sits OUTSIDE
+    `_storage_call_container`, so the reassign/escape guards name it
+    explicitly (a plain-copy decl would silently diverge from the AST's
+    pointer-rebind form)."""
+
+    def test_branch_first_decl_routes(self):
+        src = ("def f(c: bool) -> None:\n"
+               "    if c:\n"
+               "        ba = bytearray(b\"ab\")\n"
+               "        print(len(ba))\n")
+        assert _fn(_lower(src), "f") is not None
+        _assert_byte_identical(src)
+
+    def test_reassigned_falls_back(self):
+        src = ("def f() -> None:\n"
+               "    ba = bytearray(b\"ab\")\n"
+               "    ba = bytearray(b\"cd\")\n"
+               "    print(len(ba))\n")
+        assert _fn(_lower(src), "f") is None
+
+    def test_branch_reassigned_falls_back(self):
+        src = ("def f(c: bool) -> None:\n"
+               "    if c:\n"
+               "        ba = bytearray(b\"ab\")\n"
+               "        ba = bytearray(b\"cd\")\n"
+               "        print(len(ba))\n")
+        assert _fn(_lower(src), "f") is None
+
+
+class TestBytesNeDerivedNegation:
+    """`!=` resolved via `__eq__` derives by negation: the emit must wrap
+    `(!(::tpy::bytes_eq(x, y)))` -- a THIR-only drop of the `!` shipped
+    unwitnessed until a routed body exposed it (os_urandom)."""
+
+    def test_bytes_ne_negates(self):
+        src = ("def f() -> None:\n"
+               "    x = b\"a\"\n"
+               "    y = b\"b\"\n"
+               "    print(x != y)\n"
+               "    print(x == y)\n")
+        assert _fn(_lower(src), "f") is not None
+        _assert_byte_identical(src)
+
+    def test_bytes_ne_condition_position(self):
+        # The emit is position-agnostic, but pin the condition position
+        # too -- the corpus site and the pin above are both print args.
+        src = ("def f() -> None:\n"
+               "    x = b\"a\"\n"
+               "    y = b\"b\"\n"
+               "    if x != y:\n        print(\"ne\")\n")
+        assert _fn(_lower(src), "f") is not None
+        _assert_byte_identical(src)
