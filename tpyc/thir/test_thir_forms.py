@@ -2105,3 +2105,85 @@ class TestBranchOwnedRecordDecl:
             + "    for p in items:\n"
             + "        saved = p\n"
             + "    return saved.value\n")
+
+
+class TestOptionalRecordUpcastWrite:
+    """Covariant-generic record rvalues written into `Box[Proto] | None`
+    fields (`s.link = Box(c)`): the bare plain assign of the rvalue's OWN
+    inferred type -- the field's inner (its dyn-protocol arg) is never
+    rendered, so its spelling cannot gate the write."""
+
+    _SRC = (
+        "from tpy import Int32, dynamic\n"
+        "from typing import Protocol\n"
+        "from tplib import Box\n"
+        "@dynamic\n"
+        "class Conn(Protocol):\n"
+        "    def ping(self) -> Int32: ...\n"
+        "class Tcp(Conn):\n"
+        "    n: Int32\n"
+        "    def __init__(self) -> None:\n"
+        "        self.n = 1\n"
+        "    def ping(self) -> Int32:\n"
+        "        return self.n\n"
+        "class Sess:\n"
+        "    link: Box[Conn] | None\n"
+        "    def __init__(self) -> None:\n"
+        "        self.link = None\n"
+    )
+
+    def test_covariant_box_rvalue_field_write_routes(self):
+        # The admitted write always lands on the optrec rvalue arm (the
+        # inner qualifies F1 at emit); the covariant GATE's regression guard
+        # is the unmarked tplib/requests_* corpus cases, whose ratchet fails
+        # on any fallback of `s._connection = Box(conn)`.
+        src = (self._SRC
+               + "def seed(s: Sess) -> None:\n"
+               + "    c = Tcp()\n"
+               + "    s.link = Box(c)\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "seed") is not None
+        assert faces.get("field_write.optrec_rvalue")
+        _assert_byte_identical(src)
+
+    def test_covariant_name_source_rides_name_arm(self):
+        # A NAME source (a local Box auto-moved at last use) is outside the
+        # covariant gate (rvalues only): it rides the optrec NAME arm's
+        # move/copy rules, byte-identical.
+        src = (self._SRC
+               + "def seed(s: Sess) -> None:\n"
+               + "    b = Box(Tcp())\n"
+               + "    s.link = b\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert faces.get("field_write.optrec_name")
+        _assert_byte_identical(src)
+
+
+class TestOptrecRvalueTempFlush:
+    """The optrec rvalue arm's flushable position: a nested Own-slot ctor
+    arg NOT at its last use hoists the copy temp at the assign statement
+    (`auto __tmp_N = p; h.opt = Inner(std::move(__tmp_N));`)."""
+
+    def test_own_arg_copy_temp_hoists(self):
+        src = ("from tpy import Int32, Own\n"
+               "class R:\n"
+               "    v: Int32\n"
+               "    def __init__(self) -> None:\n"
+               "        self.v = 1\n"
+               "class Inner:\n"
+               "    r: R\n"
+               "    def __init__(self, r: Own[R]) -> None:\n"
+               "        self.r = r\n"
+               "class H:\n"
+               "    opt: Inner | None\n"
+               "    def __init__(self) -> None:\n"
+               "        self.opt = None\n"
+               "def f(h: H) -> None:\n"
+               "    p = R()\n"
+               "    h.opt = Inner(p)\n"
+               "    print(p.v)\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("field_write.optrec_rvalue")
+        assert faces.get("argtemp.own_copy")
+        _assert_byte_identical(src)

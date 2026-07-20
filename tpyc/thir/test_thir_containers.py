@@ -1870,11 +1870,15 @@ class TestContainerSetItem:
         assert _fn(_lower(src), "f") is not None
         _assert_byte_identical(src)
 
-    def test_record_element_ineligible(self):
-        thir = _lower_ctx(
-            _F1_RECORDS
-            + "def f(xs: list[Leaf], a: Leaf) -> None:\n    xs[0] = a\n")
-        assert _fn(thir, "f") is None
+    def test_record_element_name_routes(self):
+        # The F1-record element family admits the write, a plain record
+        # NAME landing bare (`__setitem__(xs, 0, a);`).
+        src = (_F1_RECORDS
+               + "def f(xs: list[Leaf], a: Leaf) -> None:\n    xs[0] = a\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("setitem.record_name")
+        _assert_byte_identical(src)
 
     def test_own_container_receiver_ineligible(self):
         thir = _lower(
@@ -2163,16 +2167,17 @@ class TestFieldReceiverSubscript:
             + "        return self.maybe[0]\n")
         assert _fn(thir, "read") is None
 
-    def test_record_element_field_ineligible(self):
-        # A container field whose ELEMENT is a record: the family gate
-        # (_container_scalar_read) rejects it -- receiver widening does not
-        # open non-value elements.
-        thir = _lower_ctx(
-            _F1_RECORDS
-            + "class G:\n    rs: list[Leaf]\n"
-            + "    def __init__(self):\n        self.rs = []\n"
-            + "    def put(self, a: Leaf) -> None:\n        self.rs[0] = a\n")
-        assert _fn(thir, "put") is None
+    def test_record_element_field_routes(self):
+        # The F1-record element row covers the write off a field receiver
+        # too (`__setitem__(this->rs, 0, a);` -- bare NAME).
+        src = (_F1_RECORDS
+               + "class G:\n    rs: list[Leaf]\n"
+               + "    def __init__(self):\n        self.rs = []\n"
+               + "    def put(self, a: Leaf) -> None:\n        self.rs[0] = a\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "put") is not None
+        assert faces.get("setitem.record_name")
+        _assert_byte_identical(src)
 
 
 class TestFieldReceiverSubscriptEmit:
@@ -3630,4 +3635,119 @@ class TestProtocolUnionCtorArg:
                + "    d = ArrayList[Int32, 8](xs)\n"
                + "    print(d[0])\n")
         assert _fn(_lower_ctx(src), "f") is None
+        _assert_byte_identical(src)
+
+
+class TestRecordElementSetItem:
+    """F1-record element/value slots at the checked `__setitem__`: exact /
+    covariant record rvalues, `copy(name)` copy-constructs, and plain record
+    names (bare copy / last-use move) -- the requests-cluster pool-seeding
+    family plus the copy_warnings_own_param shapes."""
+
+    _PT = (
+        "from tpy import Int32, copy\n"
+        "class Point:\n"
+        "    x: Int32\n"
+        "    def __init__(self) -> None:\n"
+        "        self.x = 0\n"
+    )
+
+    _COV = (
+        "from tpy import Int32, dynamic\n"
+        "from typing import Protocol\n"
+        "from tplib import Box\n"
+        "@dynamic\n"
+        "class Conn(Protocol):\n"
+        "    def ping(self) -> Int32: ...\n"
+        "class Tcp(Conn):\n"
+        "    n: Int32\n"
+        "    def __init__(self) -> None:\n"
+        "        self.n = 1\n"
+        "    def ping(self) -> Int32:\n"
+        "        return self.n\n"
+    )
+
+    def test_exact_record_rvalue(self):
+        src = (self._PT
+               + "def f() -> None:\n"
+               + "    items: list[Point] = [Point()]\n"
+               + "    items[0] = Point()\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("setitem.record_rvalue")
+        _assert_byte_identical(src)
+
+    def test_covariant_box_rvalue_dict_value(self):
+        # The pool-seeding shape: `pool[key] = Box(conn)` into a
+        # dict[str, Box[Proto]] value slot -- the converting move.
+        src = (self._COV
+               + "def f() -> None:\n"
+               + "    pool: dict[str, Box[Conn]] = {}\n"
+               + "    c = Tcp()\n"
+               + '    pool["k"] = Box(c)\n')
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("setitem.record_rvalue")
+        _assert_byte_identical(src)
+
+    def test_record_name_copy_and_copy_builtin(self):
+        # `items[0] = p` (bare copy, copy-warned) and `items[0] = copy(p)`
+        # (the copy-construct rvalue `Point(p)`).
+        src = (self._PT
+               + "def f(p: Point) -> None:\n"
+               + "    items: list[Point] = [Point()]\n"
+               + "    items[0] = p\n"
+               + "    items[0] = copy(p)\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("setitem.record_name")
+        assert faces.get("setitem.record_copy")
+        _assert_byte_identical(src)
+
+    def test_append_copy_builtin_arg(self):
+        # `items.append(copy(p))` -> `items.push_back(Point(p));` -- the
+        # copy-construct rvalue binding the Own[T] slot.
+        src = (self._PT
+               + "def f(p: Point) -> None:\n"
+               + "    items: list[Point] = []\n"
+               + "    items.append(copy(p))\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("own.record_copy")
+        _assert_byte_identical(src)
+
+    def test_field_access_value_defers(self):
+        # A field-access source is outside the vetted value shapes -- the
+        # body falls back whole (byte-identical via the AST emit).
+        src = (self._PT
+               + "class H:\n"
+               + "    pt: Point\n"
+               + "    def __init__(self) -> None:\n"
+               + "        self.pt = Point()\n"
+               + "def f(h: H) -> None:\n"
+               + "    items: list[Point] = [Point()]\n"
+               + "    items[0] = h.pt\n")
+        assert _fn(_lower_ctx(src), "f") is None
+        _assert_byte_identical(src)
+
+
+class TestRecordElementSetItemMove:
+    """The move half of the setitem record-NAME arm: an owned record local
+    at its LAST use moves into the element (`__setitem__(items, 0,
+    std::move(p));` -- the AST's _maybe_move on the setitem value path)."""
+
+    def test_owned_local_last_use_moves(self):
+        src = ("from tpy import Int32\n"
+               "class Point:\n"
+               "    x: Int32\n"
+               "    def __init__(self) -> None:\n"
+               "        self.x = 0\n"
+               "def f() -> None:\n"
+               "    items: list[Point] = [Point()]\n"
+               "    p = Point()\n"
+               "    items[0] = p\n"
+               "    print(items[0].x)\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("setitem.record_name")
         _assert_byte_identical(src)

@@ -95,6 +95,9 @@ THIR_FACES: frozenset[str] = frozenset({
     # Own-cascade bare rows + the readonly ctor tail (lowering admission).
     "own.scalar_rvalue",            # rvalue scalar into Own[scalar]
     "own.record_rvalue",            # record rvalue call into Own[record]
+    "own.record_copy",              # copy(name) into Own[record]: T(x)
+    "method.record_discard",        # discarded F1-record method result at
+                                    # stmt position: the bare call
     "own.union_ctor",               # record-ctor rvalue into Own[union]
     "own.readonly_ctor",            # record-ctor rvalue into readonly slot
     # Self receiver / ctor-call renders (lowering).
@@ -250,6 +253,17 @@ THIR_FACES: frozenset[str] = frozenset({
     # The Optional[record] FIELD write from a record RVALUE (ctor / by-value
     # call of the inner type): the bare copy `recv.opt = Inner(args);`.
     "field_write.optrec_rvalue",
+    # F1-record element/value slot: a record RVALUE (exact or covariant
+    # upcast) forwarded bare by the checked `__setitem__`
+    # (`::tpy::__setitem__(s._pool, key, Box<Conn>(std::move(conn)));`).
+    "setitem.record_rvalue",
+    # F1-record element/value slot from `copy(name)`: the copy-construct
+    # rvalue (`::tpy::__setitem__(items, 0, Point(p));`).
+    "setitem.record_copy",
+    # F1-record element/value slot from a plain record NAME: the bare copy
+    # (`::tpy::__setitem__(items, 0, p);`) or `std::move(p)` at a movable
+    # name's last use.
+    "setitem.record_name",
     # `recv.opt = None` at any Optional FIELD: the storage-form `std::nullopt`,
     # keyed on the declared field type (a narrowed write site still stores it).
     "field_write.opt_none",
@@ -809,6 +823,9 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # kind-keyed printer wrap around the call
     "call.inst_slice_arg",          # container-slice rvalue into a list/set/
                                     # dict instantiation (`list(argv[i:])`)
+    "argtemp.optptr_container_literal",  # container literal into a ptr-repr
+                                    # Optional[container] slot: typed __tmp_N
+                                    # + &(__tmp_N)
     "argtemp.container_call",       # container-returning rvalue call into a
                                     # plain call's container ref param -> the
                                     # hoisted `__tmp_N` ArgTemp

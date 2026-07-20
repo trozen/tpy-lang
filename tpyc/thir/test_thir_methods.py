@@ -2635,3 +2635,104 @@ class TestMethodRecvFamilyTable:
         assert isinstance(call, THIRMethodCall)
         assert call.native_function_name == "tpy::bytes_find"
         _assert_byte_identical(source)
+
+
+class TestRecordResultDiscard:
+    """A discarded F1-record method result at statement position renders the
+    same bare call (`s.get(url);`) -- the record sibling of the container
+    family's stmt_storage_ok row."""
+
+    _SRC = (
+        "from tpy import Int32, Own\n"
+        "class R:\n"
+        "    v: Int32\n"
+        "    def __init__(self) -> None:\n"
+        "        self.v = 1\n"
+        "class S:\n"
+        "    n: Int32\n"
+        "    def __init__(self) -> None:\n"
+        "        self.n = 0\n"
+        "    def make(self) -> Own[R]:\n"
+        "        self.n += 1\n"
+        "        return R()\n"
+    )
+
+    def test_discarded_record_result_routes(self):
+        src = (self._SRC
+               + "def f(s: S) -> None:\n"
+               + "    s.make()\n"
+               + "    print(s.n)\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("method.record_discard")
+        _assert_byte_identical(src)
+
+    def test_value_position_record_result_still_gated(self):
+        # In VALUE position the record result keeps its sink-specific gates
+        # (here: an admitted owned-record decl -- routes via that sink, not
+        # the discard row).
+        src = (self._SRC
+               + "def f(s: S) -> None:\n"
+               + "    r = s.make()\n"
+               + "    print(r.v)\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert not faces.get("method.record_discard")
+        _assert_byte_identical(src)
+
+
+class TestOptionalPtrContainerMethodArgs:
+    """Pointer-repr Optional[container] method-arg faces off a record
+    receiver: `None` -> `nullptr`, and a container LITERAL -> the typed
+    `__tmp_N` + `&(__tmp_N)` hoist (`s.get(url, None, {...})`)."""
+
+    _SRC = (
+        "from tpy import Int32\n"
+        "class S:\n"
+        "    n: Int32\n"
+        "    def __init__(self) -> None:\n"
+        "        self.n = 0\n"
+        "    def get(self, url: str, params: dict[str, str] | None = None,\n"
+        "            headers: dict[str, str] | None = None) -> Int32:\n"
+        "        self.n += 1\n"
+        "        return self.n\n"
+    )
+
+    def test_dict_literal_hoists_addr_temp(self):
+        src = (self._SRC
+               + "def f(s: S) -> None:\n"
+               + '    print(s.get("u", None, {"k": "v"}))\n')
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("argtemp.optptr_container_literal")
+        _assert_byte_identical(src)
+
+    def test_none_renders_nullptr(self):
+        src = (self._SRC
+               + "def f(s: S) -> None:\n"
+               + '    print(s.get("u", None))\n')
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        _assert_byte_identical(src)
+
+
+class TestOptionalPtrContainerNameArg:
+    """The bare-container-name face at a record-method's pointer-repr
+    Optional[container] slot: `s.get("u", d)` -> `s.get("u", &(d))`."""
+
+    def test_container_name_addr_of(self):
+        src = ("from tpy import Int32\n"
+               "class S:\n"
+               "    n: Int32\n"
+               "    def __init__(self) -> None:\n"
+               "        self.n = 0\n"
+               "    def get(self, url: str,\n"
+               "            params: dict[str, str] | None = None) -> Int32:\n"
+               "        self.n += 1\n"
+               "        return self.n\n"
+               "def f(s: S) -> None:\n"
+               '    d = {"k": "v"}\n'
+               '    print(s.get("u", d))\n')
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("optptr.name")
+        _assert_byte_identical(src)

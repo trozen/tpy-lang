@@ -147,6 +147,7 @@ from ..nodes import (
     THIRTruthy,
     THIROptViewArg,
     THIRListRepeat,
+    THIRCopy,
     THIRLiteral,
     THIRMethodCall,
     THIRModuleVar,
@@ -326,6 +327,10 @@ _RECORD_TEMP_FLUSH_USE = _ExprUse(record_ctor=_RecordCtorUse.RECORD_TEMP,
 
 
 from .checks import (
+    copy_plain_record_source,
+    _optional_ptr_container_slot,
+    _optional_ptr_container_arg,
+    _optional_ptr_container_literal_arg,
     _FSTRING_INELIGIBLE,
     _call_arity_ok,
     _call_ret_reject,
@@ -740,6 +745,13 @@ def _bytes_membership_ok(e, declared: dict[str, TpyType], analyzer) -> bool:
         if not (_field_receiver_ok(recv, declared, analyzer)
                 and _resolved_bytes_value(analyzer.get_expr_type(recv), analyzer)
                 is not None):
+            return False
+    elif isinstance(recv, (TpyCall, TpyMethodCall)):
+        # A bytes-returning call haystack (`b"..." in sock.recv(n)`): the
+        # call renders inline as the first bytes_contains[_sub] operand; its
+        # own lowering gates the callee/arg shapes.
+        if _resolved_bytes_value(analyzer.get_expr_type(recv),
+                                 analyzer) is None:
             return False
     elif not isinstance(recv, TpyBytesLiteral):
         return False
@@ -3383,6 +3395,23 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                         result_type=tt, cpp_type=tt.to_cpp(),
                         init=_lower_expr(a, lc, declared, target_type=tt),
                         form=Form.VALUE, loc=getattr(a, "loc", None))
+                # A container LITERAL into a pointer-repr Optional[container]
+                # slot: the typed `__tmp_N` + `&(__tmp_N)` face
+                # (`s.get(url, None, {...})` -- _gen_optional_ptr_arg's
+                # temporary face); the temp init is the target-threaded
+                # literal render spelled at the slot's INNER.
+                mcont = _optional_ptr_container_slot(ptype, lc.analyzer)
+                if (mcont is not None
+                        and _optional_ptr_container_literal_arg(
+                            a, mcont, lc.analyzer)):
+                    inner = unwrap_readonly(mcont.inner)
+                    _witness("argtemp.optptr_container_literal")
+                    return THIRArgTemp(
+                        result_type=inner, cpp_type=lc.render_type(inner),
+                        init=_lower_expr(a, lc, declared, target_type=inner,
+                                         use=_NESTED_ARG_USE),
+                        addr_of=True, form=Form.BORROW,
+                        loc=getattr(a, "loc", None))
             return _lower_call_arg(a, ptype, lc, declared,
                                    method_arg=not proto_recv,
                                    method_arg_stub=stub_recv and not proto_recv)
@@ -4399,46 +4428,6 @@ def _value_opt_member_arg(a: TpyExpr, ptype: 'TpyType | None',
     return isinstance(peeled, (TpyCall, TpyMethodCall, TpyBinOp, TpyUnaryOp))
 
 
-def _optional_ptr_container_slot(ptype: 'TpyType | None',
-                                 analyzer) -> 'OptionalType | None':
-    """A pointer-repr Optional slot with a CONTAINER inner (`list[T] | None`
-    -> `const std::vector<T>*`), or None -- the container twin of
-    `_optional_ptr_arg_slot` (which is F1-record-only). Only the two faces
-    the AST renders position-blind are lowered for it: the `nullptr` literal
-    and the bare-container-name address-of (`&(name)`)."""
-    pt = ptype if isinstance(ptype, TpyType) else None
-    if pt is None:
-        return None
-    pt = unwrap_readonly(pt)
-    if not (isinstance(pt, OptionalType) and pt.uses_pointer_repr()):
-        return None
-    inner = unwrap_readonly(pt.inner)
-    if is_list(inner) or is_dict(inner) or is_set(inner):
-        return pt
-    return None
-
-
-def _optional_ptr_container_arg(a: TpyExpr, ptype: 'TpyType | None',
-                                declared: dict[str, TpyType],
-                                analyzer) -> bool:
-    """Admission twin of the container-inner optional-ptr rows in
-    `_lower_call_arg`: a `None` literal, or a NAME declared as the matching
-    bare container (an optional-declared or narrowed name stays rejected --
-    its C++ binding is already the pointer / needs the pass face)."""
-    ot = _optional_ptr_container_slot(ptype, analyzer)
-    if ot is None:
-        return False
-    if isinstance(a, TpyNoneLiteral):
-        return True
-    if not isinstance(a, TpyName) or a.name == "self":
-        return False
-    dt = declared.get(a.name)
-    if dt is None:
-        return False
-    du = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(dt)))
-    return du == unwrap_readonly(ot.inner)
-
-
 def _union_ctor_temp_arg(a: TpyExpr, ptype: 'TpyType | None', analyzer) -> bool:
     """A member-typed record-ctor rvalue into a (non-Own) pointer-variant
     union slot -- `_gen_union_arg`'s rvalue branch: the ctor hoists a named
@@ -4980,6 +4969,21 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
             return THIRFormConvert(result_type=ow_str, value=lowered,
                                    form=Form.STORAGE, loc=getattr(a, "loc", None))
         return lowered
+    # `copy(name)` of a plain F1-record into a SAME-nominal `Own[record]`
+    # slot: the copy-construct rvalue (`push_back(Point(p))`) binds the
+    # `T&&` slot directly -- no temp, no move. Re-runs the source check with
+    # the live pointer set (the gate could not see it); a pointer-local
+    # source falls through to the tail and rejects.
+    crec = copy_plain_record_source(a, lc.analyzer, lc.pointers)
+    if crec is not None:
+        w = _plain_own_slot(ptype)
+        if w is not None and crec == w:
+            return THIRCopy(
+                result_type=w,
+                value=_lower_expr(a.args[0], lc, declared,
+                                  use=_NESTED_ARG_USE),
+                cpp_type=lc.render_type(crec), form=Form.STORAGE,
+                loc=getattr(a, "loc", None))
     # The Own-slot copy+move row: `auto __tmp_N = <arg>;` + the move wrap
     # at the arg position -- or the temp-free `std::move(name)` when the
     # name is movable at its last use (`_maybe_move` fires before the
@@ -5032,6 +5036,8 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
     # The container twin of the pointer-repr Optional faces below: only the
     # `nullptr` literal and the bare-container-name address-of are lowered
     # (`sum_list(&(data))` / `sum_list(nullptr)`); admission pinned the shape.
+    # The container-LITERAL typed-temp face lives on the METHOD arg path
+    # (`_method_arg`'s temp rows), the position that witnesses it.
     cont_ot = _optional_ptr_container_slot(ptype, lc.analyzer)
     if cont_ot is not None and _optional_ptr_container_arg(
             a, cont_ot, declared, lc.analyzer):

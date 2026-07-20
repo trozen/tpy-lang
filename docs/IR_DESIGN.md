@@ -1144,6 +1144,20 @@ by theme; each is a rule the next cell should apply.
 
 **Measurement / tally honesty.**
 
+- **F1-ness is phase-dependent**: `_f1_record` (and any spelling-keyed
+  predicate reading `to_cpp()` / `native_cpp_names`) can answer differently
+  at ANALYSIS time (a bare `activate_compiler` after `compile()`) vs at EMIT
+  time (inside `generate_code`, the name maps populated). A gate probed
+  outside generation can look like it needs a new emit arm that is in fact
+  unreachable -- the record-writes wave built (and then deleted) exactly such
+  an arm for the covariant Optional-field write. Probe F1/spelling questions
+  inside `generate_code`; where a gate's admission relies on emit-time
+  F1-ness, guard the emit side with an explicit reject, not an assumed arm.
+- A face asserted through an OR-hedged pin (`assert a or b`) is NOT
+  witnessed -- the hedge hides which arm fired. Pin the exact face; shared
+  witness names that also fire from other positions (e.g. free-call vs
+  method-position `optptr.name`) alias the zero-witness metric, so note the
+  unit-pin-only positions explicitly at the gate.
 - Corpus fallback/routing tallies are **per-case-inflated**: the stdlib compiles into
   every case, so ONE stdlib body counts ~3,400x. Sequence by *distinct bodies* / the
   shape meter, and name the marquee stdlib bodies -- never by raw body counts.

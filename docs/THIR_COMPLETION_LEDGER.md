@@ -775,8 +775,18 @@ deferred (self-contained) / blocked-on-`<rung>`.
   owned-copy wrap and the copy-into-temp + `std::move(__tmp_N)` shapes).
   Container subscript WRITES landed in the wave-2 setitem cell
   (`THIRSetItem`: `d[k] = v` + aug read-modify-write on name receivers of
-  the scalar/owned-str families; field-receiver targets `self.xs[i] = v`
-  remain the deferred cell, ~385 mass).
+  the scalar/owned-str families; the widened-family gate also covers
+  field-receiver targets `self.xs[i] = v` for the admitted element rows).
+  F1-RECORD elements landed in the wave-4 record-writes cell
+  (`setitem.record_rvalue/copy/name`: exact/covariant record rvalues --
+  sema's `is_covariant_generic_upcast`, the `s._pool[key] = Box(conn)`
+  shape -- `copy(name)` copy-constructs, and plain-name bare-copy /
+  last-use-move values, name and field receivers both); sibling rungs in
+  the same cell: `field_write.optrec` covariant-upcast admission,
+  `own.record_copy` (`copy(name)` into `Own[record]` method slots),
+  `method.record_discard` (discarded record results at stmt position),
+  and the pointer-repr Optional[container] method-arg faces incl. the
+  literal `&(__tmp_N)` hoist (`argtemp.optptr_container_literal`).
   **S6 bytes values DONE (increment 44)**: the bytes twin of S1 --
   bytes/BytesView params, literal-init locals (PendingBytesType through
   ViewVarInfo), owned-bytes returns, comparisons, `len(b)`, same-type call

@@ -1147,6 +1147,45 @@ def _optional_record_field_write_ok(
         vt = own.wrapped
     return _f1_record(vt, analyzer)
 
+def _covariant_record_upcast_ok(vt: 'TpyType | None', target: 'TpyType | None',
+                                analyzer) -> bool:
+    """`vt -> target` is a covariant-generic record upcast (`Box[Impl] ->
+    Box[Proto]`) per sema's `is_covariant_generic_upcast` -- the single
+    covariance-vs-slice authority ("a representation-preserving converting
+    move, NOT slicing"). The one THIR entry point into that verdict, shared
+    by the optional-field write gate and the record-element setitem arm so
+    the two admission sites cannot drift."""
+    return (isinstance(vt, NominalType) and isinstance(target, NominalType)
+            and analyzer.compat.is_covariant_generic_upcast(vt, target))
+
+
+def _optional_record_field_upcast_write_ok(
+        stmt: TpyAssign, declared: dict[str, TpyType], analyzer) -> bool:
+    """A covariant-generic record RVALUE written into a pointer-repr
+    `Optional[generic]` field (`recv.opt = Box(conn)` at a `Box[Proto] | None`
+    slot): the AST's default field assign renders the bare plain assign -- the
+    source spells its OWN inferred type (`Box<HTTPConnection>(...)`) and
+    `optional::operator=` absorbs the converting move -- so the field's inner
+    type is never rendered, and its F1-ness does not gate the write. At emit
+    the inner qualifies F1 (generation context), so the admitted write rides
+    the optrec rvalue arm; corpus witness: the flipped tplib/requests_* cases'
+    `s._connection = Box(conn)`. Name sources stay out: their move/copy
+    renders ride the exact-type arm's rules."""
+    target = stmt.target
+    if not _field_receiver_ok(target, declared, analyzer):
+        return False
+    ft = unwrap_readonly(unwrap_ref_type(
+        unwrap_send_sync(analyzer.get_expr_type(target))))
+    if not (isinstance(ft, OptionalType) and ft.uses_pointer_repr()
+            and isinstance(ft.inner, NominalType)):
+        return False
+    v = stmt.value
+    if not _record_rvalue_source_shape(v, analyzer):
+        return False
+    vt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+        analyzer.get_expr_type(v))))
+    return _covariant_record_upcast_ok(vt, ft.inner, analyzer)
+
 def _container_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
                               analyzer) -> bool:
     """A container-literal field write `recv.field = [...] / {...}` off an
@@ -1499,7 +1538,12 @@ def _setitem_widened_elem_ok(elem_t: 'TpyType', analyzer) -> bool:
             # A value-repr Optional[scalar] element (`items[0] = None` on
             # `list[Int32 | None]`): the nullopt / bare-scalar STORAGE
             # store; the value shape narrows at the lowering arm.
-            or _value_opt_scalar(elem_t, analyzer) is not None)
+            or _value_opt_scalar(elem_t, analyzer) is not None
+            # An F1-record element/value slot (`s._pool[key] = Box(conn)`):
+            # the checked `__setitem__` forwards a record RVALUE bare; the
+            # value shape (exact / covariant-upcast rvalue) narrows at the
+            # lowering arm.
+            or _f1_record(elem_t, analyzer))
 
 def _setitem_widened_family_ok(recv_t: 'TpyType | None', analyzer) -> bool:
     """The non-scalar element/value slots the setitem WRITE additionally
@@ -2771,6 +2815,23 @@ def _own_record_rvalue_arg(a: TpyExpr, ptype: TpyType | None,
                 and _witness("own.record_rvalue"))
     return (_record_rvalue_call_shape(a, analyzer)
             and _witness("own.record_rvalue"))
+
+def _copy_record_own_arg(a: TpyExpr, ptype: TpyType | None,
+                         analyzer) -> bool:
+    """`copy(name)` of a plain F1-record into a SAME-nominal plain
+    `Own[record]` slot (`items.append(copy(p))` -> `push_back(Point(p))`):
+    the copy-construct rvalue binds the `T&&` slot like any record rvalue
+    (`_own_record_rvalue_arg`'s row). The pointer-source split
+    (`copy_plain_record_source` excludes pointer-locals, whose AST render
+    derefs) re-runs at lowering with the live pointer set; a gate-admitted
+    pointer source rejects there."""
+    w = _plain_own_slot(ptype)
+    if w is None or not _f1_record(w, analyzer):
+        return False
+    # frozenset(): the gate is deliberately pointer-blind; lowering re-runs
+    # with the live set and rejects pointer sources (gate-vs-lowering split).
+    src = copy_plain_record_source(a, analyzer, frozenset())
+    return src is not None and src == w and _witness("own.record_copy")
 
 def _own_optional_record_rvalue_arg(a: TpyExpr, ptype: TpyType | None,
                                     analyzer) -> bool:
@@ -4132,6 +4193,7 @@ def _container_method_arg_ok(
             or _ptr_pass_through_arg(a, ptype, locals_, analyzer)
             or _container_pass_through_arg(a, ptype, locals_, analyzer)
             or _own_record_rvalue_arg(a, ptype, locals_, analyzer)
+            or _copy_record_own_arg(a, ptype, analyzer)
             or _own_move_arg(a, ptype, locals_, analyzer)
             or _own_lvalue_arg(a, ptype, locals_, narrowed, analyzer)
             or _any_pass_through_arg(a, ptype, locals_, analyzer)
@@ -4480,9 +4542,73 @@ def _record_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyTy
             # is vacuous (a concrete coro record like `_Send[T]`, an erased
             # view -- whatever sema stamped).
             or (suspend_ok and ret is not None)
-            or (stmt_position and (ret is None or is_void_like_type(ret)))):
+            or (stmt_position and (ret is None or is_void_like_type(ret)))
+            # A DISCARDED F1-record result (`s.get(url);` -- the Response
+            # dropped at statement position): the render is the same bare
+            # call whatever the ignored result, the record sibling of the
+            # container family's stmt_storage_ok row.
+            or (stmt_position and _f1_record(ret, analyzer)
+                and _witness("method.record_discard"))):
         return note_detail("method.ret_type")
     return True
+
+
+def _optional_ptr_container_slot(ptype: 'TpyType | None',
+                                 analyzer) -> 'OptionalType | None':
+    """A pointer-repr Optional slot with a CONTAINER inner (`list[T] | None`
+    -> `const std::vector<T>*`), or None -- the container twin of
+    `_optional_ptr_arg_slot` (which is F1-record-only). Three faces are
+    lowered for it: the `nullptr` literal, the bare-container-name
+    address-of (`&(name)`), and the temps-gated container-LITERAL temp
+    (`&(__tmp_N)`)."""
+    pt = ptype if isinstance(ptype, TpyType) else None
+    if pt is None:
+        return None
+    pt = unwrap_readonly(pt)
+    if not (isinstance(pt, OptionalType) and pt.uses_pointer_repr()):
+        return None
+    inner = unwrap_readonly(pt.inner)
+    if is_list(inner) or is_dict(inner) or is_set(inner):
+        return pt
+    return None
+
+
+def _optional_ptr_container_arg(a: TpyExpr, ptype: 'TpyType | None',
+                                declared: dict[str, TpyType],
+                                analyzer) -> bool:
+    """Admission twin of the container-inner optional-ptr rows in
+    `_lower_call_arg`: a `None` literal, or a NAME declared as the matching
+    bare container (an optional-declared or narrowed name stays rejected --
+    its C++ binding is already the pointer / needs the pass face)."""
+    ot = _optional_ptr_container_slot(ptype, analyzer)
+    if ot is None:
+        return False
+    if isinstance(a, TpyNoneLiteral):
+        return True
+    if not isinstance(a, TpyName) or a.name == "self":
+        return False
+    dt = declared.get(a.name)
+    if dt is None:
+        return False
+    du = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(dt)))
+    return du == unwrap_readonly(ot.inner)
+
+
+def _optional_ptr_container_literal_arg(a: TpyExpr, ptype: 'TpyType | None',
+                                        analyzer) -> bool:
+    """A container LITERAL into a pointer-repr Optional[container] slot
+    (`s.get(url, {"db": "das"})` at a `dict[str, str] | None` param): the
+    AST hoists the typed temp at the statement flush and passes its address
+    (`__tmp_N = ordered_map<...>({...}); s.get(url, &(__tmp_1))` --
+    `_gen_optional_ptr_arg`'s temporary face). Temp-hoisting, so admitted
+    only under temps_ok (callers gate); element admission is the shared
+    container-literal slice against the slot's inner."""
+    ot = _optional_ptr_container_slot(ptype, analyzer)
+    if ot is None:
+        return False
+    if not isinstance(a, (TpyArrayLiteral, TpyDictLiteral, TpySetLiteral)):
+        return False
+    return _container_literal_shape_ok(a, unwrap_readonly(ot.inner), analyzer)
 
 
 def _record_method_arg_ok(
@@ -4519,6 +4645,16 @@ def _record_method_arg_ok(
             # slot renders bare / `std::nullopt` -- `sock.settimeout(0.5)`.
             or _value_opt_scalar_value_arg(a, ptype, analyzer)
             or _none_value_opt_arg(a, ptype, analyzer) is not None
+            # The pointer-repr Optional[container] slot faces: `None` ->
+            # `nullptr`, a bare matching container name -> `&(name)` (the
+            # free-call rows), and (temps only) a container literal ->
+            # the `&(__tmp_N)` typed temp (`s.get(url, None, {...})`).
+            # The shared optptr.none/name witnesses also fire from free-call
+            # corpus sites, so the METHOD-position name face is guarded by
+            # its unit pin, not the zero-witness metric.
+            or _optional_ptr_container_arg(a, ptype, locals_, analyzer)
+            or (temps_ok
+                and _optional_ptr_container_literal_arg(a, ptype, analyzer))
             or note_detail("method.arg_shape"))
 
 def _view_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyType],

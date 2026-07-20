@@ -527,3 +527,24 @@ class TestBytesNeDerivedNegation:
                "    if x != y:\n        print(\"ne\")\n")
         assert _fn(_lower(src), "f") is not None
         _assert_byte_identical(src)
+
+
+class TestBytesMembershipCallReceiver:
+    """`needle in <bytes-returning call>`: the call haystack renders inline
+    as the first `bytes_contains[_sub]` operand
+    (`bytes_contains_sub(sock.recv(n), bytes_literal_owned(...))`)."""
+
+    def test_call_haystack_routes(self):
+        src = ("def data() -> bytes:\n"
+               "    return b\"User-Agent: x\"\n"
+               "def f() -> None:\n"
+               "    print(b\"User-Agent\" in data())\n")
+        assert _fn(_lower(src), "f") is not None
+        _assert_byte_identical(src)
+
+    def test_name_haystack_still_routes(self):
+        src = ("def f() -> None:\n"
+               "    hay = b\"abc\"\n"
+               "    print(b\"b\" in hay)\n")
+        assert _fn(_lower(src), "f") is not None
+        _assert_byte_identical(src)

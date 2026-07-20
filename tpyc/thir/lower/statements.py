@@ -293,6 +293,8 @@ from .checks import (
     _narrow_cond_info,
     _optional_record_field_inner,
     _optional_record_field_write_ok,
+    _covariant_record_upcast_ok,
+    _optional_record_field_upcast_write_ok,
     _optional_field_none_write_ok,
     _print_arg_form,
     _print_arg_ok,
@@ -4427,6 +4429,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     stmt, declared, analyzer, pointers, narrowed, lc.prescan)
                 or _optional_record_field_write_ok(
                     stmt, declared, pointers, analyzer, narrowed, lc.prescan)
+                or _optional_record_field_upcast_write_ok(
+                    stmt, declared, analyzer)
                 or _optional_field_none_write_ok(stmt, declared, analyzer)
                 or _container_field_write_ok(stmt, declared, analyzer)
                 or _str_field_write_ok(stmt, declared, analyzer)
@@ -4546,6 +4550,59 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     value = THIRFormConvert(result_type=eu, value=lowered,
                                             form=Form.STORAGE, loc=loc)
                 _witness("setitem.borrow_lift")
+            elif _f1_record(eu, analyzer):
+                # F1-record element/value slot, the checked `__setitem__`
+                # forwarding the value bare. Three vetted sources: a record
+                # RVALUE of the slot's own type -- or its covariant-generic
+                # upcast (`Box(conn)` into a `dict[str, Box[Proto]]` value;
+                # sema's `is_covariant_generic_upcast`, the converting move)
+                # -- rendered with its OWN inferred type at this flushable
+                # statement position; `copy(name)` as the copy-construct
+                # rvalue (`T(x)`, _gen_copy_expr's bare-record arm); a plain
+                # record NAME copied bare / moved at a movable name's last
+                # use (the AST's `_maybe_move`), exact-type like the
+                # field-write twin. Other sources stay AST.
+                v = stmt.value
+                copy_rec = copy_plain_record_source(v, analyzer, lc.pointers)
+                vt = analyzer.get_expr_type(v)
+                vtu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(vt)))
+                       if vt is not None else None)
+                if isinstance(vtu, OwnType):
+                    vtu = unwrap_readonly(vtu.wrapped)
+                if copy_rec is not None:
+                    value = THIRCopy(
+                        result_type=eu,
+                        value=_lower_expr(
+                            v.args[0], lc, declared,
+                            use=_ExprUse(result=_ExprResultUse.BORROW_BIND)),
+                        cpp_type=lc.render_type(copy_rec),
+                        form=Form.STORAGE, loc=loc)
+                    _witness("setitem.record_copy")
+                elif (isinstance(v, TpyName) and v.name in declared
+                      and v.name not in lc.pointers
+                      and v.name not in lc.narrow.narrowed
+                      and not (lc.prescan.has_self and v.name == "self")
+                      and vtu == eu):
+                    value = _lower_expr(v, lc, declared)
+                    if _is_move_source(v, lc):
+                        value = THIRFormConvert(result_type=eu, value=value,
+                                                form=Form.STORAGE, move=True,
+                                                loc=loc)
+                    _witness("setitem.record_name")
+                elif (_record_rvalue_source_shape(v, analyzer)
+                      and vtu is not None
+                      and (vtu == eu
+                           or _covariant_record_upcast_ok(vtu, eu, analyzer))):
+                    value = _flush_witness(
+                        "flush.assign",
+                        _lower_expr(v, lc, declared,
+                                    use=_ExprUse(
+                                        result=_ExprResultUse.STORAGE,
+                                        allow_temps=True)))
+                    _witness("setitem.record_rvalue")
+                else:
+                    note_detail("setitem.record_value_shape")
+                    raise ThirUnsupported(stmt_reject_reason(stmt))
             else:
                 value = _slot_literal_retype(
                     _flush_witness("flush.assign",
@@ -4717,9 +4774,30 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                         target=_lower_field_write_target(stmt, lc, declared),
                         value=lowered, loc=loc)
                 _witness("field_write.optrec_rvalue")
-                return THIRAssign(target=_lower_field_write_target(
-                                      stmt, lc, declared),
-                                  value=_lower_expr(stmt.value, lc, declared), loc=loc)
+                # The assign is a statement-position flush point, so the
+                # rvalue's arg rows that hoist a `__tmp_N` (the Own-slot
+                # copy+move row) are admissible here -- same flushable use as
+                # the generic assign tail.
+                return THIRAssign(
+                    target=_lower_field_write_target(stmt, lc, declared),
+                    value=_flush_witness(
+                        "flush.assign",
+                        _lower_expr(stmt.value, lc, declared,
+                                    use=_ExprUse(
+                                        result=_ExprResultUse.STORAGE,
+                                        allow_temps=True))),
+                    loc=loc)
+            # A covariant-upcast rvalue admitted by
+            # `_optional_record_field_upcast_write_ok` always lands on the
+            # optrec arm above: at emit the inner is F1 (generation context
+            # qualifies its dyn-protocol arg via native_cpp_names), so
+            # `opt_inner` is non-None wherever the gate admitted. If that
+            # assumption ever breaks (a spelling-divergent inner), fall the
+            # body back rather than reach the generic tail's unrelated
+            # FormConvert render.
+            if _optional_record_field_upcast_write_ok(stmt, declared, analyzer):
+                note_detail("field_write.optrec_upcast_inner")
+                raise ThirUnsupported(stmt_reject_reason(stmt))
             if isinstance(stmt.value, TpyNoneLiteral):
                 fvalue: THIRExpr = THIRLiteral(result_type=ftype, value=None,
                                                form=Form.STORAGE, loc=loc)
