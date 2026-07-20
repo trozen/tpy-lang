@@ -1669,9 +1669,13 @@ class SemanticAnalyzer:
                         and bound.qualified_name() == "tpy.ValueType"):
                     continue
             # @nocopy types are lifetime-significant: taking Own[T] to
-            # consume-by-drop (hand it off, let the callee's scope-end dtor
-            # run it) is a legitimate ownership use. Drop is the "consume"
-            # the store/forward/return check doesn't model, so don't flag it.
+            # consume-by-drop (hand it off and let it drop) is a legitimate
+            # ownership use, so don't flag it. The drop lands at the CALLER's
+            # scope end, not here: an Own[T] param is a `T&&` borrow, so a
+            # callee that doesn't relocate the value never destructs it --
+            # relocation (store/forward/return) is the "consume" this check
+            # models. That timing matches CPython, where passing a value as an
+            # argument likewise doesn't drop it; prompt cleanup is `del`/`with`.
             # (These types CAN be borrowed via a plain param; the suppression
             # is about avoiding false positives on the dispose pattern, not
             # about Own being the only way to pass them.)

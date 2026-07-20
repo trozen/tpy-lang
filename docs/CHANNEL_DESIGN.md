@@ -329,8 +329,10 @@ no M:N scheduler, so each producer is an OS thread; select and unbuffered
   sender's drop auto-closes; any `close()` force-closes channel-wide. Caveat:
   the drop-close fires when a `Sender` goes out of scope (or its owning spawned
   task completes), NOT when a named `Sender` local is moved into a helper to
-  drop it early -- that defers to the caller's scope end (the drop-timing
-  limitation filed in `BUGS.md`); use `close()` explicitly for an early close.
+  "drop" it early -- that defers to the caller's scope end, because an `Own[T]`
+  param is a `T&&` borrow the callee never destructs (this matches CPython,
+  where passing a value as an argument doesn't drop it either). Use `del tx` or
+  `close()` for a prompt close.
 - `no_cpython`: `tplib` is a symlinked shared source (no separate cpy stub), and
   the `channel[T](cap)` factory needs an explicit type argument (capacity gives
   no inference for `T`) which is not valid Python -- same as the async channel.
@@ -392,10 +394,10 @@ compile-error (`T: Send` bound) cases are comp-only and run everywhere:
   auto-close ending `for item in rx:`); `channel_close_recv` /
   `channel_close_empty` cover explicit `close()` + the `recv()`/`ChannelClosed`
   path deterministically. Drop-based auto-close via a bare named `Sender` local
-  passed to a helper is NOT single-threaded-testable today (a filed drop-timing
-  bug defers the move's destructor to the caller's scope end -- see `BUGS.md`);
-  it is covered by `channel_mpsc`, where the `Sender` lives in a spawned task's
-  field and drops at task completion.
+  passed to a helper is not single-threaded-testable this way: an `Own[T]` param
+  is a borrow, so the drop defers to the caller's scope end (matching CPython --
+  use `del tx` or `close()` for a prompt close). It is covered by `channel_mpsc`,
+  where the `Sender` lives in a spawned task's field and drops at task completion.
 
 ## Cross-references
 
