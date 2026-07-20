@@ -1786,3 +1786,128 @@ class TestFinalTupleUnpackSources:
         assert thir_cpp == cpp(False)
         assert "const auto& __tup_1 = VERSION;" in thir_cpp
         assert "auto __tup_1 = Version::SEMVER;" in thir_cpp
+
+
+def _both_cpp(src: str) -> str:
+    compiler, modules = _compile(src)
+    entry = _entry(modules)
+    _, ast_cpp = compiler.generate_code_to_strings(
+        entry, options=CodeGenOptions(emit_source_comments=False,
+                                      thir_codegen=False))
+    compiler2, modules2 = _compile(src)
+    entry2 = _entry(modules2)
+    _, thir_cpp = compiler2.generate_code_to_strings(
+        entry2, options=CodeGenOptions(emit_source_comments=False,
+                                       thir_codegen=True))
+    assert thir_cpp == ast_cpp
+    return ast_cpp
+
+
+# Borrow-tuple branch-hoist family: a ptr-repr tuple local bound in both
+# if arms and read after. The admission's deferred rungs must each REJECT
+# (whole-body fallback, byte-identical via the AST path).
+_BT_RECORDS = (
+    "from tpy import Int32, readonly\n"
+    "class Box2:\n"
+    "    val: Int32\n"
+    "    def __init__(self, v: Int32):\n        self.val = v\n"
+)
+
+
+class TestBorrowTupleHoistRejects:
+    def test_const_source_hoist_rejects(self):
+        # A readonly element source sets the borrow-decl const bit /
+        # readonly result -- the non-const slice must fall back.
+        src = (
+            _BT_RECORDS
+            + "def f(b: readonly[Box2], c: bool) -> Int32:\n"
+            + "    if c:\n"
+            + "        t = (1, b)\n"
+            + "    else:\n"
+            + "        t = (2, b)\n"
+            + "    return t[0]\n"
+            + "f(Box2(1), True)\n"
+        )
+        assert _fn(_lower_ctx(src), "f") is None
+        _both_cpp(src)
+
+    def test_call_source_hoist_rejects(self):
+        # An owning-call source needs the emplace-slot machinery (deferred).
+        src = (
+            _BT_RECORDS
+            + "def make(b: Box2) -> tuple[Int32, Box2]:\n"
+            + "    return (1, b)\n"
+            + "def f(b: Box2, c: bool) -> Int32:\n"
+            + "    if c:\n"
+            + "        t = make(b)\n"
+            + "    else:\n"
+            + "        t = (2, b)\n"
+            + "    return t[0]\n"
+            + "f(Box2(1), True)\n"
+        )
+        assert _fn(_lower_ctx(src), "f") is None
+        _both_cpp(src)
+
+    def test_walrus_bound_name_rejects_sources(self):
+        # _borrow_tuple_binding_sources returns None when a walrus binds the
+        # name anywhere -- uncollected sources would make the const/route
+        # decision unsound.
+        src = (
+            "from tpy import Int32\n"
+            "def f(c: bool) -> Int32:\n"
+            "    t = 0\n"
+            "    y = 0\n"
+            "    if c:\n"
+            "        y = (t := 5)\n"
+            "    return t + y\n"
+            "f(True)\n"
+        )
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        fn = [x for x in entry.ast.functions if x.name == "f"][0]
+        from .lower.context import _LowerCtx
+        from .lower.statements import _borrow_tuple_binding_sources
+        lc = _LowerCtx(fn, entry.analyzer, None)
+        assert _borrow_tuple_binding_sources("t", lc) is None
+        assert _borrow_tuple_binding_sources("y", lc) is not None
+
+    def test_tuple_over_tuple_chain_rejects(self):
+        # items[i][N].field admits CONTAINER-element receivers only; a
+        # tuple-over-tuple chain (t[0][1].val off a nested tuple name) is an
+        # unverified render and must fall back.
+        src = (
+            _BT_RECORDS
+            + "def f(b: Box2) -> Int32:\n"
+            + "    t = ((1, b), 2)\n"
+            + "    return t[0][1].val\n"
+            + "f(Box2(3))\n"
+        )
+        assert _fn(_lower_ctx(src), "f") is None
+        _both_cpp(src)
+
+
+class TestSetitemMethodRvalueMismatch:
+    def test_covariant_method_rvalue_rejects(self):
+        # The setitem method-rvalue row is exact-type only: a covariant
+        # Box[Tcp].clone() into a dict[str, Box[Conn]] value slot must fall
+        # back (the covariant converting-move stays a deferred rung).
+        src = (
+            "from typing import Protocol\n"
+            "from tpy import Int32, dynamic\n"
+            "from tplib import Box\n"
+            "@dynamic\n"
+            "class Conn(Protocol):\n"
+            "    def ping(self) -> Int32: ...\n"
+            "class Tcp(Conn):\n"
+            "    n: Int32\n"
+            "    def __init__(self) -> None:\n"
+            "        self.n = 1\n"
+            "    def ping(self) -> Int32:\n"
+            "        return self.n\n"
+            "def seed(b: Box[Tcp]) -> None:\n"
+            "    d: dict[str, Box[Conn]] = {}\n"
+            "    d[\"x\"] = b.clone()\n"
+            "seed(Box(Tcp()))\n"
+        )
+        assert _fn(_lower_ctx(src), "seed") is None
+        _both_cpp(src)

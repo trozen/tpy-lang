@@ -1213,6 +1213,33 @@ by theme; each is a rule the next cell should apply.
   facts). Resumable bodies key `THIRResumableBody` by `id()` of skeleton-held AST nodes for
   the same reason.
 
+**Branch-scoped state: one registry, one pop.**
+
+- Per-name classification sets on `_LowerCtx` are SCOPE state, not accumulators:
+  a branch lowers over a per-branch `declared` copy, so its lc-set registrations
+  must pop with it. Hand-listed restore sites accreted six parallel mechanisms
+  and each eventually missed a set -- the confirmed worst case was
+  `value_opt_locals` leaking from a branch-local `x: int | None` decl into a
+  sibling branch's plain `x`, rendering `(*x)` on an `int32_t` (uncompilable
+  C++), masked only because no corpus case reused a name across sibling scopes.
+  The fix is structural: `branch_scope()` restores every set in
+  `_BRANCH_SCOPED_SETS` (mirroring the AST's `LocalScopeSnap`), a completeness
+  unit test forces every new mutable `_LowerCtx` slot to be classified
+  branch-scoped or function-scoped, and whole-set restore is symmetric -- it
+  undoes in-scope REMOVALS too, so shadowing (the for-each frame/pointer
+  shadow) needs no separate mechanism.
+- Registration that must OUTLIVE a scope (with-targets, match full-binds, a
+  nested def's name) is done by ORDERING -- the caller registers in its own
+  frame, outside the inner push/pop -- not by an exemption API. This matches
+  the AST exactly: `LocalScopeSnap` pops a with-target at an enclosing branch
+  boundary too, so "persists" always means "registered one scope up".
+- A per-arm `in_branch` reject standing in for a missing restore is a fragile
+  guard: two Criticals and the leak above were exactly ordering-masked sites.
+  With restores centralized, such rejects divide into RESTORE-guards (now
+  liftable, see the TODO gate-lift worklist) and RENDER-guards (branch position
+  genuinely changes emitted C++ -- hoist predecl placement, `loop_depth`
+  re-entry) which must stay.
+
 **Counters and numbering.**
 
 - Emit counters that reset per **function** are per-function `_EmitState` ints (`iter_counter`,

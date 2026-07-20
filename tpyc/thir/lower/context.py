@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 from collections.abc import Mapping
+from contextlib import contextmanager
 from dataclasses import dataclass, field, fields
 from enum import Enum, auto
 from ...parse.nodes import TpyFunction, TpyGlobal
@@ -308,6 +309,41 @@ class _NarrowScope:
         return _NarrowScope(**{f.name: getattr(self, f.name).copy()
                                for f in fields(self)})
 
+# Every mutable per-name classification set on _LowerCtx, by scoping rule.
+# The mirror of the AST's LocalScopeSnap (codegen_cpp/context.py): a branch
+# body lowers over a per-branch `declared` COPY, so the lc-set entries its
+# decls register must pop with the branch too -- a same-named sibling-branch
+# or post-scope decl would otherwise classify against state its scope never
+# saw (the missed-restore bug class).
+#
+# BRANCH-SCOPED: snapshotted and restored by `branch_scope()`. `narrow` joins
+# the snapshot via its own `snapshot()`; `frame_slots` is here because the
+# for-each shadow REMOVES names for the body -- the same symmetric restore
+# re-adds them at the pop.
+_BRANCH_SCOPED_SETS = (
+    "const_locals", "pointers", "rebind_slot_locals", "dyn_protocol_locals",
+    "optional_locals", "branch_hoisted", "iterator_object_locals",
+    "ref_alias_locals", "value_opt_locals", "value_opt_view_locals",
+    "movable_locals", "storage_tuple_locals", "const_storage_tuple_locals",
+    "frame_slots", "forbidden_reads", "forbidden_writes",
+)
+# DELIBERATELY NOT branch-scoped. Registration that must survive a scope
+# (with-targets, match full-binds, a nested def's name) is done by ORDERING:
+# the caller registers in its own frame, outside the inner push/pop.
+#   unhandled_hoists -- function-scoped residue ledger; branch drains ARE the
+#       accounting, restoring them would fake un-lowered hoists.
+#   nested_def_locals -- the bound name outlives its block (the AST re-adds
+#       it after its scope restore; Python names are function-scoped).
+#   nested_returns -- function-scoped resumable accumulator (the seam table).
+#   inline_narrowed -- condition-scoped: saved/restored by _lower_narrow_cond
+#       within a single condition, never live across statements.
+#   tparam_bounds -- init-only per-function fact.
+_FUNCTION_SCOPED_STATE = (
+    "unhandled_hoists", "nested_def_locals", "nested_returns",
+    "inline_narrowed", "tparam_bounds",
+)
+
+
 class _LowerCtx:
     """Per-function lowering state threaded through `_lower_stmt`.
 
@@ -560,6 +596,24 @@ class _LowerCtx:
         # return pass-through / return-tier raise admissions and rides
         # THIRFunction into the emit state.
         self.error_return_cpp: 'str | None' = None
+
+    @contextmanager
+    def branch_scope(self):
+        """One scope pop for every branch-scoped lc name-set (plus `narrow`).
+
+        Restore is by whole-set snapshot, so it is symmetric: in-scope adds
+        (branch-local decl registrations) AND removals (the for-each shadow)
+        both undo at the pop. Registration that must outlive the scope is the
+        caller's job -- perform it in the enclosing frame, after (or outside)
+        this context."""
+        saved = [set(getattr(self, name)) for name in _BRANCH_SCOPED_SETS]
+        saved_narrow = self.narrow.snapshot()
+        try:
+            yield
+        finally:
+            for name, entries in zip(_BRANCH_SCOPED_SETS, saved):
+                setattr(self, name, entries)
+            self.narrow = saved_narrow
 
 
 @dataclass

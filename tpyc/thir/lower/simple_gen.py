@@ -265,17 +265,14 @@ def _lower_loop_body(loop_stmt, lc: _LowerCtx, declared: dict[str, TpyType],
         # A bare `yield` never arises for the gated value-scalar yield types;
         # defensive.
         raise ThirUnsupported("sgen.bare_yield")
-    saved = lc.narrow.snapshot()
     body_declared = dict(declared)
-    try:
+    with lc.branch_scope():
         pre_l = _lower_stmts(pre, lc, body_declared, in_branch=True,
                              branch_decls_ok=True, loop_depth=loop_depth)
         yv = _lower_expr(yield_stmt.value, lc, body_declared)
         _witness("sgen.yield_value")
         post_l = _lower_stmts(post, lc, body_declared, in_branch=True,
                               branch_decls_ok=True, loop_depth=loop_depth)
-    finally:
-        lc.narrow = saved
     if lc.unhandled_hoists:
         raise ThirUnsupported("body.hoisted_vars")
     return pre_l, yv, post_l

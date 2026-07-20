@@ -101,7 +101,10 @@ from ...type_def_registry import (
     is_varargs,
 )
 from ...codegen_cpp.types import resolve_pending_container
-from ...modules.type_resolution import is_native_iterable
+from ...modules.type_resolution import (
+    get_iterable_element_type,
+    is_native_iterable,
+)
 from ...codegen_cpp.context import (
     enum_cpp_name,
     escape_cpp_name,
@@ -2110,12 +2113,17 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                 result_type=rtype,
                 receiver=_lower_expr(
                     e.obj, lc, declared,
+                    # A container-element tuple receiver (`items[i][N]`)
+                    # admits through the RECEIVER-position tuple-element row.
+                    use=(_ExprUse(result=_ExprResultUse.RECEIVER)
+                         if isinstance(e.obj, TpySubscript) else _ExprUse()),
                     field_prechecked=isinstance(e.obj, TpyFieldAccess)),
                 index=THIRLiteral(result_type=analyzer.get_expr_type(e.index),
                                   value=idx, loc=loc),
                 form=form,
                 loc=loc,
             )
+        tuple_elem_recv = False
         if not subscript_prechecked:
             rec_key = _record_getitem_key(
                 analyzer.get_expr_type(e.obj), analyzer)
@@ -2220,8 +2228,25 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                 use.result is _ExprResultUse.RECEIVER
                 and _container_record_elem(recv_t, analyzer)
                 and _f1_record(rtype, analyzer) and index_ok)
+            # A whole TUPLE element read in RECEIVER position (the inner of
+            # `items[i][N].field`): the `::tpy::__getitem__(items, i)`
+            # storage-tuple `T&` lvalue, consumed by the outer `std::get`.
+            # Eligibility reads the container's DECLARED element tuple (the
+            # subscript's analyzer type can carry unresolved literal
+            # members).
+            if (use.result is _ExprResultUse.RECEIVER and index_ok
+                    and recv_t is not None):
+                _tr_et = get_iterable_element_type(
+                    unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                        recv_t))), analyzer.registry)
+                _tr_eb = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                    _tr_et))) if isinstance(_tr_et, TpyType) else None)
+                tuple_elem_recv = (
+                    isinstance(_tr_eb, TupleType)
+                    and (_value_tuple(_tr_eb, analyzer) is not None
+                         or _f1_tuple(_tr_eb, analyzer) is not None))
             if not (container_ok or str_ok or bytes_ok or nested_ok
-                    or record_recv_ok):
+                    or record_recv_ok or tuple_elem_recv):
                 if recv_t is None:
                     detail = "subscript." + _subscript_recv_reject(
                         e.obj, declared, analyzer)
@@ -2271,6 +2296,11 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
             # element's BORROW tag).
             form = Form.BORROW
             _witness("subscript.record_elem")
+        elif tuple_elem_recv:
+            # The storage-tuple element lvalue: elements held by value, so
+            # the consuming get reads `.`-style off it.
+            form = Form.STORAGE
+            _witness("subscript.tuple_elem_recv")
         if isinstance(e.obj, TpyFieldAccess):
             _witness("subscript.field_recv")
             if _resolved_bytes_value(analyzer.get_expr_type(e.obj),
@@ -3009,7 +3039,11 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                               else container_threaded),
                     forced=(isinstance(e, TpySetLiteral)
                             or is_array(container_type)),
-                    allow_record=not isinstance(e, TpySetLiteral),
+                    # Set RECORD elements route: the copyable-record moves /
+                    # make_ordered_set path renders like the list rows
+                    # (probe-verified vs the oracle). Nested/optional set
+                    # elements stay conservative.
+                    allow_record=True,
                     allow_nested=not isinstance(e, TpySetLiteral),
                     allow_optional=not isinstance(e, TpySetLiteral),
                     retype_scalars=retype)
@@ -3971,6 +4005,15 @@ def _lower_container_elem(e: TpyExpr, slot: TpyType | None,
         comp = _lower_comprehension(e, su, lc, declared, pointers)
         _witness("comp.nested")
         return comp
+    if (isinstance(e, TpyMethodCall)
+            and _f1_record(lc.analyzer.get_expr_type(e), lc.analyzer)):
+        # A record-returning method-call rvalue element (`rc.clone()`): the
+        # bare call lands in the make_vector/make_ordered_set slot, so it
+        # lowers under BORROW_BIND -- the record-return admission the
+        # owned-record decl bind uses (the element consumes the rvalue by
+        # value; no move wrap, a call rvalue is not a move source).
+        return _lower_expr(e, lc, declared,
+                           use=_ExprUse(result=_ExprResultUse.BORROW_BIND))
     el = _lower_expr(
         e, lc, declared, container_threaded=retype_scalars)
     if retype_scalars:
@@ -5712,15 +5755,25 @@ def _lower_field_source(e: TpyFieldAccess, lc: '_LowerCtx',
     to borrow form is the `T&` reference bind (REF_ALIAS), the `auto&&` alias, or the
     wrapping THIRFormConvert (`&(...)` for POINTER, `optional_to_ptr` / `tuple_to_pointer`
     for the lifts). The receiver itself may be a pointer-local (a chained borrow), so
-    `->` vs `.` is decided the same way as a value read."""
+    `->` vs `.` is decided the same way as a value read. A sema-narrowed
+    Optional field source (declared `std::optional<T>`, analyzed non-Optional
+    -- a branch-first `n = w._node` alias under an is-not-None narrow) unwraps
+    `(*recv.field)` exactly like the value-position read; the un-narrowed
+    OPTIONAL_TO_PTR lift keeps the whole optional (its analyzed type stays
+    Optional, so the predicate is inert there)."""
+    rtype = lc.analyzer.get_expr_type(e)
+    narrowed_opt = _narrowed_opt_field_read(e, rtype, declared, lc.analyzer)
+    if narrowed_opt:
+        _witness("field.narrowed_deref")
     return THIRFieldAccess(
-        result_type=lc.analyzer.get_expr_type(e),
+        result_type=rtype,
         receiver=_lower_expr(
             e.obj, lc, declared,
             field_prechecked=isinstance(e.obj, TpyFieldAccess),
             subscript_prechecked=isinstance(e.obj, TpySubscript)),
         field_cpp=_field_cpp(e),
         is_arrow=_field_is_arrow(e, lc),
+        narrowed_deref=narrowed_opt,
         form=Form.STORAGE,
         loc=getattr(e, "loc", None),
     )

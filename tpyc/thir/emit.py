@@ -1668,7 +1668,8 @@ def _emit_for_each(out: TextIO, stmt: THIRForEach, indent_level: int,
     inner = INDENT * (indent_level + 1)
     binding = loop_var_binding(stmt.elem_type, escape_cpp_name(stmt.var),
                               f"*{beg}", stmt.const_loop_var,
-                              hoisted=stmt.hoist_loop_var)
+                              hoisted=stmt.hoist_loop_var,
+                              hoisted_tuple_lift_cpp=stmt.hoisted_tuple_lift_cpp)
     out.write(f"{inner}{binding}\n")
     state.loop_depth += 1
     _emit_stmts(out, stmt.body, indent_level + 1, state)
@@ -1916,6 +1917,8 @@ def _emit_with(out: TextIO, stmt: THIRWith, indent_level: int,
                       f"&(__ctx_{n}.__enter__());\n")
         elif item.target_arm is WithTargetArm.ASSIGN_PTR:
             out.write(f"{indent}{item.target} = &(__ctx_{n}.__enter__());\n")
+        elif item.target_arm is WithTargetArm.ASSIGN_OPT:
+            out.write(f"{indent}{item.target} = __ctx_{n}.__enter__();\n")
         else:
             out.write(f"{indent}__ctx_{n}.__enter__();\n")
     # Per-layer terminates: the innermost layer carries body_terminates; once

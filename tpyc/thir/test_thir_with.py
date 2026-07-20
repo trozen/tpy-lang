@@ -6,7 +6,13 @@ targets, first-declaring bodies, walrus managers)."""
 
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 from ..codegen_cpp.context import CodeGenOptions
+from ..compilation_context import activate_compiler
+from ..typesys import unwrap_ref_type
+from .lower.context import _Prescan
+from .lower.statements import _with_target_arm
 from .nodes import THIRCall, THIRWith, WithTargetArm
 from .testutil import (
     _compile, _entry, _fn, _lower_ctor, _lower_ctx, _lower_ctx_witnessed,
@@ -371,9 +377,10 @@ class TestWithGateRejections:
         assert cpp == _cpp(src, thir=False)
         assert cpp.index("int32_t y;") < cpp.index("__ctx_")
 
-    def test_record_hoist_stays_ast(self):
-        # A body-declared RECORD var used after takes the AST's
-        # std::optional<T> predecl arm -- outside the value slice.
+    def test_record_hoist_optional_storage(self):
+        # A body-declared RECORD var used after the with takes the
+        # OPTIONAL_STORAGE predecl (`std::optional<CM> r;` before the
+        # header; the body decl engages it, the post-with read derefs).
         src = (
             _CM
             + "def f(cm: CM) -> None:\n"
@@ -382,8 +389,14 @@ class TestWithGateRejections:
             + "    print(r.n)\n"
             + "f(CM(1))\n"
         )
-        assert _fn(_lower_ctx(src), "f") is None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+        fn = _fn(_lower_ctx(src), "f")
+        assert fn is not None
+        w = next(s for s in fn.body if isinstance(s, THIRWith))
+        assert w.hoist_decls == (("r", "std::optional<CM>"),)
+        cpp = _cpp(src, thir=True)
+        assert cpp == _cpp(src, thir=False)
+        assert cpp.index("std::optional<CM> r;") < cpp.index("__ctx_")
+        assert "r->n" in cpp
 
     def test_hoist_inside_branch_stays_ast(self):
         # The statement-level-only rule (_lower_try's in_branch guard).
@@ -411,9 +424,11 @@ class TestWithGateRejections:
         )
         assert _fn(_lower_ctx(src), "f") is None
 
-    def test_target_inside_branch_stays_ast(self):
-        # A first-declaring as-target inside an if branch (the var-decl
-        # branch rule).
+    def test_target_inside_branch_routes_inline(self):
+        # A first-declaring as-target inside an if branch: the VALUE arm's
+        # inline `auto x = __ctx_N.__enter__();` is position-identical, so
+        # in-branch admission routes it (the target pops with the branch
+        # via branch_scope).
         src = (
             _CM
             + "def f(b: bool) -> None:\n"
@@ -422,7 +437,7 @@ class TestWithGateRejections:
             + "            print(x)\n"
             + "f(True)\n"
         )
-        assert _fn(_lower_ctx(src), "f") is None
+        assert _fn(_lower_ctx(src), "f") is not None
         assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
 
@@ -789,3 +804,78 @@ class TestNativeCtxManager:
         )
         out = _cpp(src, thir=True)
         assert "f.write(\"hi\");" in out
+
+
+# Self-returning record manager: the enter type is the manager record, so
+# an as-target binds a record (REF at function top, ASSIGN_OPT when the
+# name was hoist-predeclared into optional storage).
+_SELFG = (
+    "from typing import Self\n"
+    "from tpy import Int32\n"
+    "class G:\n"
+    "    n: Int32\n"
+    "    def __init__(self, n: Int32) -> None:\n"
+    "        self.n = n\n"
+    "    def __enter__(self) -> Self:\n"
+    "        return self\n"
+    "    def __exit__(self, et: None, ev: None, tb: None) -> None:\n"
+    "        pass\n"
+)
+
+
+class TestAssignOptTarget:
+    def test_nested_with_optional_slot_assign(self):
+        # The inner with-as target is hoist-predeclared by the outer's
+        # branch-decl pass (std::optional<G> inner;) and the inner item
+        # takes the plain slot assign -- the ASSIGN_OPT arm.
+        src = (
+            _SELFG
+            + "def f() -> None:\n"
+            + "    with G(1) as outer:\n"
+            + "        with G(2) as inner:\n"
+            + "            print(inner.n)\n"
+            + "            print(outer.n)\n"
+            + "f()\n"
+        )
+        fn = _fn(_lower_ctx(src), "f")
+        assert fn is not None
+        outer_w = next(s for s in fn.body if isinstance(s, THIRWith))
+        inner_w = next(s for s in outer_w.body if isinstance(s, THIRWith))
+        assert inner_w.items[0].target_arm is WithTargetArm.ASSIGN_OPT
+        cpp = _cpp(src, thir=True)
+        assert cpp == _cpp(src, thir=False)
+        assert "inner = __ctx_" in cpp
+
+    def test_assign_opt_requires_matching_record(self):
+        # A hoist-predeclared optional-slot name reused over a DIFFERENT
+        # record must fall through same_record and reject -- and must NOT
+        # fall into the pointer row (the &-assign render would be
+        # ill-formed against the optional slot).
+        src = (
+            _SELFG
+            + "class H:\n"
+            + "    m: Int32\n"
+            + "    def __init__(self, m: Int32) -> None:\n"
+            + "        self.m = m\n"
+            + "def probe(g: G, h: H) -> None:\n"
+            + "    print(g.n)\n"
+            + "    print(h.m)\n"
+            + "probe(G(1), H(2))\n"
+        )
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        fnode = [f for f in entry.ast.functions if f.name == "probe"][0]
+        g_t = unwrap_ref_type(fnode.params[0][1])
+        h_t = unwrap_ref_type(fnode.params[1][1])
+        prescan = _Prescan(fnode, entry.analyzer)
+        item = SimpleNamespace(target="t", enter_type=g_t)
+        with activate_compiler(compiler):
+            mismatch = _with_target_arm(
+                item, {"t": h_t}, prescan, entry.analyzer,
+                {"t"}, set(), {"t"})
+            matching = _with_target_arm(
+                item, {"t": g_t}, prescan, entry.analyzer,
+                {"t"}, set(), {"t"})
+        assert mismatch is None
+        assert matching is not None
+        assert matching[0] is WithTargetArm.ASSIGN_OPT

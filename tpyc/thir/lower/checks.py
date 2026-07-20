@@ -427,8 +427,15 @@ def _container_literal_shape_ok(init: TpyExpr, t: TpyType, analyzer, *,
 
 def _record_source_call(e: TpyExpr, analyzer) -> bool:
     """A record RVALUE source for a container-literal element: a constructor
-    whose ctor/instantiation shape routes, or a record-returning call. Shared
-    by the record element arm and the record-inner-Optional element arm."""
+    whose ctor/instantiation shape routes, a record-returning call, or a
+    record-returning METHOD-call rvalue (`rc.clone()` -- shallow like the
+    owned-record decl's method row: the method-call lowering arm validates
+    its receiver/args itself and falls the body back on its own rejects).
+    Shared by the record element arm and the record-inner-Optional element
+    arm."""
+    if isinstance(e, TpyMethodCall):
+        return (_f1_record(analyzer.get_expr_type(e), analyzer)
+                and is_rvalue_source(analyzer, e))
     if not isinstance(e, TpyCall):
         return False
     rfi = e.resolved_function_info
@@ -511,6 +518,17 @@ def _container_lit_elem_ok(e: TpyExpr, slot: 'TpyType | None',
         if isinstance(e, TpyNoneLiteral):
             return True  # -> std::nullopt (the STORAGE-form None)
         return True
+    if fam == "union":
+        # A VALUE-union element slot (`std::variant<...>`): literal elements
+        # convert implicitly and render BARE on both paths (`{1, "two"}`
+        # into `std::vector<std::variant<int32_t, std::string>>`).
+        # Non-literal sources (names, calls -- the member-selection /
+        # to_ptr_variant renders) stay AST.
+        if (_eligible_value_union(su) is not None
+                and isinstance(e, (TpyIntLiteral, TpyFloatLiteral,
+                                   TpyBoolLiteral, TpyStrLiteral))):
+            return True
+        return note_detail("container_lit.elem.union") if note else False
     if fam == "tuple":
         if not threaded:
             return note_detail("container_lit.elem.tuple") if note else False

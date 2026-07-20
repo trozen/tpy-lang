@@ -1092,12 +1092,26 @@ class TestContainerLiteralElementFamilies:
         cpp = self._both(src)
         assert "return {std::string(label)};" in cpp
 
-    def test_union_elements_stay_ineligible(self):
-        thir = _lower(
+    def test_union_literal_elements_route(self):
+        # LITERAL elements into a value-union slot convert implicitly and
+        # render bare ({1} into vector<variant<...>>); non-literal union
+        # sources (names, calls) still reject.
+        src = (
             _PRELUDE
             + "from tpy import Float64\n"
             + "def f() -> Int32:\n"
             + "    xs: list[Int32 | Float64] = [1]\n    return len(xs)\n")
+        thir = _lower(src)
+        assert _fn(thir, "f") is not None
+        cpp = self._both(src)
+        assert "xs = {1};" in cpp
+
+    def test_union_name_elements_stay_ineligible(self):
+        thir = _lower(
+            _PRELUDE
+            + "from tpy import Float64\n"
+            + "def f(v: Float64) -> Int32:\n"
+            + "    xs: list[Int32 | Float64] = [v]\n    return len(xs)\n")
         assert _fn(thir, "f") is None
 
 

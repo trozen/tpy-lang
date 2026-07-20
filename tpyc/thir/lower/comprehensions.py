@@ -517,6 +517,9 @@ def _lower_owned_comp_sink(e, slot: 'TpyType | None', lc: '_LowerCtx',
     movable would multi-move). A bare-loop-var LAST sink moves UNCONDITIONALLY
     (structurally the last use, sequenced after any earlier read); an
     earlier/derived sink defers to the ordinary `_maybe_move` last-use gate."""
+    # Whole-set REPLACEMENT for this one sink render -- an expression-position
+    # override, not a lexical scope, so it stays a manual single-set swap
+    # rather than a branch_scope (context.py's _BRANCH_SCOPED_SETS).
     saved = lc.movable_locals
     lc.movable_locals = {gen.var}
     try:

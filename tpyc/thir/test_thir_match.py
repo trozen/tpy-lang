@@ -2565,3 +2565,38 @@ class TestMatchRecordOrWildcardAlt:
 
     def test_byte_identical(self):
         assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
+
+
+class TestMatchArmBranchDecls:
+    # Arm-local branch-first decls (value and owned-record) lower inline in
+    # the case block -- the branch_decls_ok admission at every match tier.
+    # Distinct per-arm names: a same-named all-arm decl is sema-hoisted and
+    # hits the (value-only) match hoist gate instead.
+    SRC = (
+        "from tpy import Int32\n"
+        "class Holder:\n"
+        "    val: Int32\n"
+        "    def __init__(self, v: Int32) -> None:\n"
+        "        self.val = v\n"
+        "def pick(n: Int32) -> None:\n"
+        "    match n:\n"
+        "        case 2:\n"
+        "            h = Holder(1)\n"
+        "            k = 10\n"
+        "            print(h.val + k)\n"
+        "        case _:\n"
+        "            g = Holder(9)\n"
+        "            print(g.val)\n"
+        "def main() -> None:\n"
+        "    pick(2)\n"
+        "    pick(5)\n"
+        "main()\n"
+    )
+
+    def test_routes_and_byte_identical(self):
+        assert _fn(_lower_ctx(self.SRC), "pick") is not None
+        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
+
+    def test_arm_decl_renders_inline(self):
+        cpp = _cpp(self.SRC, thir=True)
+        assert "Holder h = Holder(1);" in cpp

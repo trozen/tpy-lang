@@ -465,7 +465,38 @@ deferred (self-contained) / blocked-on-`<rung>`.
   lazy function-top slots via `THIRIf.hoist_slots` / `BRANCH_RVALUE`, plus
   the `PTR_ADDR` lvalue name/subscript reseats; inner-scope non-value
   hoists still reject -- `if.hoist_inner_scope` (any in_branch body:
-  branch, loop, with, try)). Remaining deferred rungs
+  branch, loop, with, try)). Wave-5 (branch `thir-grind-wave5`, dial
+  1893 -> 1905): the `branch_scope()` registry (context.py
+  `_BRANCH_SCOPED_SETS`) centralized every branch-scoped lc name-set
+  restore (fixed the sibling-branch `value_opt_locals` leak -- corpus
+  case `optional/branch_local_opt_reuse`); branch-FIRST admission went
+  per-arm in the borrow-decl cascade (POINTER/REF_ALIAS/OPTIONAL_TO_PTR/
+  REBIND_SLOT/tparam-call/owned-record route in-branch; dyn/OPT_PTR_SLOT/
+  storage-tuple/comprehension/copy-record/move-through keep `fn_top`
+  guards pending oracle witnesses); the WITH family gained the
+  OPTIONAL_STORAGE hoist flavor (`_optional_storage_hoist_entry`, shared
+  with the if cascade) + in-branch VALUE/REF targets + the ASSIGN_OPT
+  optional-slot target assign (`with.opt_slot_target`); MATCH arms admit
+  branch-first decls at every tier; the standalone unpack's
+  declared-name tail covers hoist-predeclared fresh targets. Wave-5
+  post-review increments (dial -> 1913): the BORROW-TUPLE HOIST family
+  (`if.hoist_borrow_tuple` / `foreach.hoist_borrow_tuple` --
+  `std::tuple<..., T*> name;` predecl via a shared admission
+  `_borrow_tuple_hoist_ok` (non-const sources only; const bit /
+  owning-call / walrus / pending-or-literal elements / resumables
+  reject as named rungs); reseats `btuple.reseat_literal` /
+  `btuple.reseat_lift` keyed on the DERIVED borrow classification
+  `_borrow_tuple_local_type` (declared ptr-repr tuple minus storage
+  registrations -- params excluded from RESEAT, the AST param-reassign
+  arm is a filed BUGS.md break); the loop flavor threads
+  `THIRForEach.hoisted_tuple_lift_cpp` into the shared
+  `loop_var_binding`); the nested container-elem tuple read
+  (`subscript.tuple_elem_recv`: `std::get<N>(__getitem__(items, i))`
+  receivers, eligibility off the container's DECLARED element tuple);
+  and the container-literal element widenings (set record elements,
+  record METHOD-rvalue elements + `setitem.record_method_rvalue`
+  exact-type values via BORROW_BIND, value-union LITERAL elements).
+  Remaining deferred rungs
   (const indirection, Own[Opt] lifts, polymorphic slots, pointer-copy /
   storage-lift reseats, slotless union reseats) are named rejects -- see
   the TODO.md entry. Witnesses:

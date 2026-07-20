@@ -1871,6 +1871,11 @@ class THIRForEach(THIRStmt):
     # binding assigns the predeclared slot (`s = *__beg_N;`) instead of declaring
     # a fresh local, so the post-loop read sees the last element.
     hoist_loop_var: bool = False
+    # A hoisted ptr-repr tuple loop var was predeclared in BORROW form, so the
+    # per-iteration assign lifts the storage element:
+    # `t = ::tpy::tuple_to_pointer<<this>>(*__beg_N);` (loop_var_binding's
+    # hoisted_tuple_lift_cpp arm).
+    hoisted_tuple_lift_cpp: 'str | None' = None
     # Branch-first-declared value locals used after the loop (see THIRForRange).
     hoist_decls: tuple[tuple[str, str], ...] = ()
 
@@ -1910,9 +1915,12 @@ class THIRForIterProto(THIRStmt):
 
 class WithTargetArm(Enum):
     """Which `_gen_with` as-target binding arm a `with` item takes -- decided
-    at lowering. The value-typed and optional-slot REUSE arms stay
-    gate-rejected: their AST renders assign `&(__enter__())` into a value /
-    `std::optional` slot -- the BUGS.md ill-formed with-target-reuse family.
+    at lowering. The value-typed REUSE arm stays gate-rejected: its AST
+    renders assign `&(__enter__())` into a value slot -- the BUGS.md
+    ill-formed with-target-reuse family. An OPTIONAL-slot target is different:
+    when the name was hoist-predeclared (`std::optional<T> name;` by an
+    enclosing if/with branch-decl pass), the AST assigns the slot plainly --
+    the ASSIGN_OPT arm, keyed on optional-locals membership.
 
       * `NONE`       -- no target: `__ctx_N.__enter__();`
       * `VALUE`      -- value enter type: `auto <name> = __ctx_N.__enter__();`
@@ -1922,12 +1930,16 @@ class WithTargetArm(Enum):
                         the F2 pointer-locals; `target_cpp` carries `T`)
       * `ASSIGN_PTR` -- reuse of a prior with's pointer-local target:
                         `<name> = &(__ctx_N.__enter__());`
+      * `ASSIGN_OPT` -- hoist-predeclared optional-storage target:
+                        `<name> = __ctx_N.__enter__();` (plain engaging
+                        assign; reads stay on the deref model)
     """
     NONE = auto()
     VALUE = auto()
     REF = auto()
     PTR_DECL = auto()
     ASSIGN_PTR = auto()
+    ASSIGN_OPT = auto()
 
 
 @dataclass(frozen=True)

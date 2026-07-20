@@ -696,6 +696,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "with.cleanup_only",            # elided BaseException catch (common shape)
     "with.multi",                   # multiple managers in one statement
     "with.hoist_decl",              # sema-hoisted plain-value predecls
+    "with.hoist_optional_storage",  # single-bind non-value -> optional<T> name;
+    "with.opt_slot_target",         # hoist-predeclared target -> name = __enter__();
     # Sync `try` faces (lowering, per statement).
     "try.finally_only",             # the unified try/catch(...)/finally shape
     "try.throw_tier",               # C++ try/catch over the handler arms
@@ -710,6 +712,12 @@ THIR_FACES: frozenset[str] = frozenset({
     # if/elif/else (lowering, per statement).
     "if.hoist_decl",                # sema-hoisted plain-value branch predecls
     "if.hoist_optional_storage",    # single-bind non-value -> optional<T> name;
+    "if.hoist_borrow_tuple",        # ptr-repr tuple -> std::tuple<..., T*> name;
+    "foreach.hoist_borrow_tuple",   # hoisted tuple loop var -> borrow predecl + lift bind
+    "subscript.tuple_elem_recv",    # container tuple elem lvalue under std::get
+    "setitem.record_method_rvalue", # d[k] = rc.clone() -- bare method rvalue value
+    "btuple.reseat_literal",        # borrow-tuple local = REF-capture literal
+    "btuple.reseat_lift",           # borrow-tuple local = tuple_to_pointer(lvalue)
     "if.hoist_ptr_local",           # reassigned/borrow non-value -> T* name;
     "if.hoist_dyn_protocol",        # @dynamic branch decl -> Base* name;
     "reseat.opt_storage",           # plain assign into an OPTIONAL_STORAGE hoist

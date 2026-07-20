@@ -828,7 +828,8 @@ def _lower_scalar_arms(
         else:
             entry = THIRMatchArmEntry(
                 body=_statements._lower_scoped_stmts(
-                    case.body, lc, arm_declared, loop_depth=loop_depth),
+                    case.body, lc, arm_declared,
+                    branch_decls_ok=True, loop_depth=loop_depth),
                 loc=case.loc, binding=binding, guard=guard)
         if is_chain:
             # Source order, one entry per group (the always-match arm is
@@ -979,7 +980,8 @@ def _lower_match_record(stmt: TpyMatch, lc: _LowerCtx,
             guard = _lower_match_guard(case.guard, lc, arm_declared)
         arms.append(THIRMatchArm(labels=(), entries=(THIRMatchArmEntry(
             body=_statements._lower_scoped_stmts(
-                case.body, lc, arm_declared, loop_depth=loop_depth),
+                case.body, lc, arm_declared,
+                branch_decls_ok=True, loop_depth=loop_depth),
             loc=case.loc, binding=binding, guard=guard,
             field_conds=field_conds, field_bindings=field_bindings,
             or_conds=or_conds),)))
@@ -1044,7 +1046,8 @@ def _lower_match_optional(stmt: TpyMatch, lc: _LowerCtx,
             raise ThirUnsupported("stmt.match")
         none_entry = THIRMatchArmEntry(
             body=_statements._lower_scoped_stmts(
-                ncase.body, lc, dict(declared), loop_depth=loop_depth),
+                ncase.body, lc, dict(declared),
+                branch_decls_ok=True, loop_depth=loop_depth),
             loc=ncase.loc)
     else:
         _witness("match.optional_value_only")
@@ -1075,14 +1078,12 @@ def _lower_match_optional(stmt: TpyMatch, lc: _LowerCtx,
         binding = THIRMatchBinding(name=bnode.name, mode=mode,
                                    from_case_var=True)
         arm_declared[bnode.name] = inner_type
-    saved_forbidden = lc.forbidden_writes.copy()
-    if bnode is not None:
-        lc.forbidden_writes.add(bnode.name)
-    try:
-        body = _statements._lower_scoped_stmts(
-            case.body, lc, arm_declared, loop_depth=loop_depth)
-    finally:
-        lc.forbidden_writes = saved_forbidden
+    with lc.branch_scope():
+        if bnode is not None:
+            lc.forbidden_writes.add(bnode.name)
+        body = _statements._lower_stmts(
+            case.body, lc, arm_declared, in_branch=True,
+            branch_decls_ok=True, loop_depth=loop_depth)
     arm = THIRMatchArm(labels=(), entries=(THIRMatchArmEntry(
         body=body,
         loc=case.loc, binding=binding),))
@@ -1135,7 +1136,8 @@ def _lower_optional_inner_record(
             raise ThirUnsupported("stmt.match")
         none_entry = THIRMatchArmEntry(
             body=_statements._lower_scoped_stmts(
-                ncase.body, lc, dict(declared), loop_depth=loop_depth),
+                ncase.body, lc, dict(declared),
+                branch_decls_ok=True, loop_depth=loop_depth),
             loc=ncase.loc)
     else:
         _witness("match.optional_value_only")
@@ -1186,14 +1188,12 @@ def _lower_optional_inner_record(
             binding = THIRMatchBinding(name=bnode.name, mode=mode,
                                        from_case_var=True)
             arm_declared[bnode.name] = inner_type
-        saved_forbidden = lc.forbidden_writes.copy()
-        if bnode is not None:
-            lc.forbidden_writes.add(bnode.name)
-        try:
-            body = _statements._lower_scoped_stmts(
-                case.body, lc, arm_declared, loop_depth=loop_depth)
-        finally:
-            lc.forbidden_writes = saved_forbidden
+        with lc.branch_scope():
+            if bnode is not None:
+                lc.forbidden_writes.add(bnode.name)
+            body = _statements._lower_stmts(
+                case.body, lc, arm_declared, in_branch=True,
+                branch_decls_ok=True, loop_depth=loop_depth)
         arms.append(THIRMatchArm(labels=(), entries=(THIRMatchArmEntry(
             body=body, loc=case.loc, binding=binding,
             field_conds=field_conds, field_bindings=field_bindings,
@@ -1261,7 +1261,8 @@ def _lower_optional_value_dispatch(
         _witness("match.optional_none_arm")
         none_entry = THIRMatchArmEntry(
             body=_statements._lower_scoped_stmts(
-                ncase.body, lc, dict(declared), loop_depth=loop_depth),
+                ncase.body, lc, dict(declared),
+                branch_decls_ok=True, loop_depth=loop_depth),
             loc=ncase.loc)
     else:
         _witness("match.optional_value_only")
@@ -1495,18 +1496,16 @@ def _lower_match_optional_chain(stmt: TpyMatch, lc: _LowerCtx,
             if binds_full:
                 _witness("match.optional_full_bind")
                 lc.value_opt_locals.add(bnode.name)
-        saved_forbidden = lc.forbidden_writes.copy()
-        if binding is not None and binding.mode != "assign":
-            lc.forbidden_writes.add(binding.name)
-        try:
+        with lc.branch_scope():
+            if binding is not None and binding.mode != "assign":
+                lc.forbidden_writes.add(binding.name)
             guard = None
             if case.guard is not None:
                 _witness("match.guard_arm")
                 guard = _lower_match_guard(case.guard, lc, arm_declared)
-            body = _statements._lower_scoped_stmts(
-                case.body, lc, arm_declared, loop_depth=loop_depth)
-        finally:
-            lc.forbidden_writes = saved_forbidden
+            body = _statements._lower_stmts(
+                case.body, lc, arm_declared, in_branch=True,
+                branch_decls_ok=True, loop_depth=loop_depth)
         arms.append(THIRMatchArm(labels=(), entries=(THIRMatchArmEntry(
             body=body, loc=case.loc, binding=binding, guard=guard,
             field_bindings=field_bindings, opt_conds=opt_conds),)))
@@ -1614,7 +1613,8 @@ def _lower_match_switch_str(stmt: TpyMatch, lc: _LowerCtx,
         binding = lower_binding(bnode, arm_declared)
         guard = _lower_match_guard(case.guard, lc, arm_declared)
         body = _statements._lower_scoped_stmts(
-            case.body, lc, arm_declared, loop_depth=loop_depth)
+            case.body, lc, arm_declared,
+            branch_decls_ok=True, loop_depth=loop_depth)
         str_guarded.append(THIRMatchArmEntry(
             body=body, loc=case.loc, binding=binding, guard=guard,
             opt_conds=_str_lit_cond_group(strs)))
@@ -1637,7 +1637,8 @@ def _lower_match_switch_str(stmt: TpyMatch, lc: _LowerCtx,
             arm_declared = dict(declared)
             binding = lower_binding(bnode, arm_declared)
             body = _statements._lower_scoped_stmts(
-                case.body, lc, arm_declared, loop_depth=loop_depth)
+                case.body, lc, arm_declared,
+                branch_decls_ok=True, loop_depth=loop_depth)
             entries.append(THIRMatchArmEntry(
                 body=body, loc=case.loc, binding=binding,
                 opt_conds=_str_lit_cond_group((s,))))
@@ -1654,7 +1655,8 @@ def _lower_match_switch_str(stmt: TpyMatch, lc: _LowerCtx,
             _witness("match.guard_arm")
             guard = _lower_match_guard(case.guard, lc, arm_declared)
         body = _statements._lower_scoped_stmts(
-            case.body, lc, arm_declared, loop_depth=loop_depth)
+            case.body, lc, arm_declared,
+            branch_decls_ok=True, loop_depth=loop_depth)
         str_trailing.append(THIRMatchArmEntry(
             body=body, loc=case.loc, binding=binding, guard=guard))
 
@@ -1739,8 +1741,7 @@ def _lower_match_union(stmt: TpyMatch, lc: _LowerCtx,
                 alt_index = _union_member_index(members, alt.resolved_type)
                 alt_alias = f"__case_{i}_{j}"
                 alt_declared = dict(declared)
-                alt_saved = lc.narrow.snapshot()
-                try:
+                with lc.branch_scope():
                     if facts:
                         lc.narrow.narrowed[subj_name] = alt_alias
                         alt_declared[subj_name] = facts[subj_name]
@@ -1753,9 +1754,7 @@ def _lower_match_union(stmt: TpyMatch, lc: _LowerCtx,
                             "field condition reached the unguarded union tier"
                     alt_body = _statements._lower_stmts(
                         case.body, lc, alt_declared, in_branch=True,
-                        loop_depth=loop_depth)
-                finally:
-                    lc.narrow = alt_saved
+                        branch_decls_ok=True, loop_depth=loop_depth)
                 arms.append(THIRMatchArm(
                     labels=(str(alt_index),),
                     entries=(THIRMatchArmEntry(
@@ -1769,8 +1768,7 @@ def _lower_match_union(stmt: TpyMatch, lc: _LowerCtx,
         member = None
         field_bindings: tuple = ()
         arm_declared = dict(declared)
-        saved = lc.narrow.snapshot()
-        try:
+        with lc.branch_scope():
             if test is None:
                 labels: tuple[str, ...] = ()
                 _witness("match.union_default")
@@ -1810,9 +1808,7 @@ def _lower_match_union(stmt: TpyMatch, lc: _LowerCtx,
                                             else arm_declared[subj_name])
             body = (() if arm_body_hooks else _statements._lower_stmts(
                 case.body, lc, arm_declared, in_branch=True,
-                loop_depth=loop_depth))
-        finally:
-            lc.narrow = saved
+                branch_decls_ok=True, loop_depth=loop_depth))
         arms.append(THIRMatchArm(labels=labels, entries=(THIRMatchArmEntry(
             body=body, loc=case.loc, binding=binding,
             variant_index=variant_index, case_alias=case_alias,
@@ -1915,9 +1911,7 @@ def _lower_match_guarded_union(stmt: TpyMatch, lc: _LowerCtx,
 
     def lower_entry(case, kind, member, bnode, pattern, alias, idx):
         arm_declared = dict(declared)
-        saved = lc.narrow.snapshot()
-        saved_reads = lc.forbidden_reads.copy()
-        try:
+        with lc.branch_scope():
             facts = case.type_facts or {}
             if kind == "class" and facts and alias is not None:
                 lc.narrow.narrowed[subj_name] = alias
@@ -1941,20 +1935,17 @@ def _lower_match_guarded_union(stmt: TpyMatch, lc: _LowerCtx,
             guard = None
             if case.guard is not None:
                 _witness("match.guard_arm")
-                lc.forbidden_reads.add(subj_name)
-                if field_conds and pattern is not None:
-                    lc.forbidden_reads.update(
-                        _match_pattern_captures(pattern))
-                try:
+                # The guard-only forbidden_reads must not survive into the
+                # arm body -- an inner scope pops them after the guard.
+                with lc.branch_scope():
+                    lc.forbidden_reads.add(subj_name)
+                    if field_conds and pattern is not None:
+                        lc.forbidden_reads.update(
+                            _match_pattern_captures(pattern))
                     guard = _lower_match_guard(case.guard, lc, arm_declared)
-                finally:
-                    lc.forbidden_reads = saved_reads.copy()
             body = _statements._lower_stmts(
                 case.body, lc, arm_declared, in_branch=True,
-                loop_depth=loop_depth)
-        finally:
-            lc.narrow = saved
-            lc.forbidden_reads = saved_reads
+                branch_decls_ok=True, loop_depth=loop_depth)
         return THIRMatchArmEntry(
             body=body, loc=case.loc, binding=binding, guard=guard,
             variant_index=idx if kind == "class" else None,

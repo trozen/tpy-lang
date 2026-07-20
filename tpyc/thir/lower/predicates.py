@@ -2519,18 +2519,48 @@ def _subscript_recv_tuple(e: TpyExpr, locals_: dict[str, TpyType],
                           analyzer) -> 'tuple[TupleType, int] | None':
     """`(tuple_type, normalized_idx)` for a subscript `t[N]` off an in-scope
     eligible-tuple name (a value-scalar tuple or an already-routed pointer-repr
-    `_f1_tuple`); else None. Shared by the value-element and record-element read gates
-    -- non-name receivers, ineligible tuples, and non-const indices stay on the AST
-    path."""
+    `_f1_tuple`) OR off a container-element read of such a tuple
+    (`items[i][N]` -- a storage-form tuple lvalue, so the get chains off the
+    container read: `std::get<N>(::tpy::__getitem__(items, i))`, `.` element
+    access); else None. Shared by the value-element and record-element read
+    gates -- other receiver shapes (nested tuple gets, calls, fields),
+    ineligible tuples, and non-const indices stay on the AST path."""
     if not isinstance(e, TpySubscript):
         return None
     recv = e.obj
-    if not isinstance(recv, TpyName) or recv.name not in locals_:
+    if isinstance(recv, TpyName):
+        if recv.name not in locals_:
+            return None
+    elif (isinstance(recv, TpySubscript)
+            and isinstance(recv.obj, TpyName)
+            and recv.obj.name in locals_):
+        # The inner read must be a CONTAINER element (its receiver is not
+        # itself a tuple) -- a tuple-over-tuple chain is an unverified
+        # render.
+        it = locals_.get(recv.obj.name)
+        ib = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(it)))
+              if isinstance(it, TpyType) else None)
+        if ib is None or isinstance(ib, TupleType):
+            return None
+    else:
         return None
     res = _subscript_index_and_tuple(e, analyzer)
     if res is None:
         return None
-    recv_t, _idx = res
+    recv_t, idx = res
+    if not isinstance(recv, TpyName):
+        # The container-element receiver's analyzer type can carry
+        # unresolved literal elements (`items = [(7, Box(10))]` types
+        # `items[0]` with an IntLiteralType member); the container's
+        # DECLARED element tuple is the resolved authority.
+        et = get_iterable_element_type(ib, analyzer.registry)
+        eb = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(et)))
+              if isinstance(et, TpyType) else None)
+        if (not isinstance(eb, TupleType)
+                or len(eb.element_types) != len(recv_t.element_types)):
+            return None
+        recv_t = eb
+        res = (recv_t, idx)
     if not (_value_tuple(recv_t, analyzer) is not None
             or _f1_tuple(recv_t, analyzer) is not None):
         return None
