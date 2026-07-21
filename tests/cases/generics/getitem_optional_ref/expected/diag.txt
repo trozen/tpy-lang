@@ -1,0 +1,3 @@
+main.py:21: warning: copies Rec into field; use copy() to make this explicit
+main.py:34: warning: may copy K into field if not a value type; use copy() to make this explicit
+main.py:35: warning: may copy V into field if not a value type; use copy() to make this explicit

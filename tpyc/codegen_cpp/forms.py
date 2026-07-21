@@ -24,7 +24,7 @@ from ..typesys import (
     OptionalType, OwnType, TpyType, TupleType, UnionType,
     unwrap_qualifiers, unwrap_readonly,
 )
-from ..value_category import is_rvalue_source
+from ..value_category import call_returns_cpp_ref, is_rvalue_source
 
 
 def _expr_type(analyzer, expr: TpyExpr) -> TpyType | None:
@@ -122,6 +122,12 @@ def reads_storage_form_optional(analyzer, expr: TpyExpr) -> bool:
         vt = _expr_type(analyzer, expr)
         if not (isinstance(vt, OptionalType) and vt.uses_pointer_repr()):
             return False
+        # A user-record __getitem__ CALL follows the call convention: a
+        # pointer-repr Optional return is already borrow-form `T*` unless the
+        # accessor returns a C++ reference aliasing a stored optional (the
+        # cpp-ref case keeps the storage lift, like a container element).
+        if expr.getitem_function_info is not None:
+            return call_returns_cpp_ref(analyzer, expr.getitem_function_info)
         # A tuple subscript pre-lifts to `T*` in codegen, so it is not a storage
         # source (mirrors the tuple carve-out in is_storage_form_optional_source).
         obj_type = _expr_type(analyzer, expr.obj)

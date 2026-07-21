@@ -1107,7 +1107,14 @@ class ProtocolChecker:
         return self.type_ops.substitute_method_type_params(method, type_subst) if type_subst else method
 
     def lookup_record_property(self, record_info: RecordInfo, prop_name: str) -> 'PropertyInfo | None':
-        """Look up a property by name, including inherited properties."""
+        """Look up a property by name, including inherited properties.
+
+        For generic parent classes, substitutes type parameters in the
+        inherited property's accessor signatures with concrete types --
+        in-walk, level by level, mirroring lookup_record_field. Without it a
+        subclass of an instantiation (class Sub(Holder[Int32, Rec])) reads an
+        inherited `-> K` getter with K unsubstituted.
+        """
         prop = record_info.properties.get(prop_name)
         if prop:
             return prop
@@ -1117,6 +1124,16 @@ class ProtocolChecker:
                 continue
             inherited = self.lookup_record_property(parent_info, prop_name)
             if inherited:
+                type_subst = self.get_parent_type_subst(parent_type, parent_info)
+                if type_subst:
+                    return PropertyInfo(
+                        name=inherited.name,
+                        getter=self.type_ops.substitute_method_type_params(
+                            inherited.getter, type_subst),
+                        setter=(self.type_ops.substitute_method_type_params(
+                            inherited.setter, type_subst)
+                            if inherited.setter else None),
+                    )
                 return inherited
         return None
 

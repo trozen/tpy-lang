@@ -23,6 +23,7 @@
 | No `@override` on properties | Properties are inherited but not overridable |
 | Optional[non-value] narrowing | Pre-existing: `if obj.node is not None: obj.node.val` generates invalid C++ for non-value Optional. Affects both fields and properties |
 | `str` / `BigInt` return by value | General method return convention -- not property-specific. Use `-> StrView` for zero-copy str |
+| Computed pointer-repr Optional getter | The Phase-5 "storage type" getter-return convention (row above) holds only when the body returns a stored optional FIELD; a computed `-> Rec \| None` (returning a plain field or `None`) emits uncompilable C++. Toolchain-caught. See the BUGS.md `@property` pointer-repr `Optional` entry |
 
 ### Future Extensions
 

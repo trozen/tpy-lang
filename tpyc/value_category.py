@@ -103,10 +103,14 @@ def is_rvalue_source(analyzer: ValueCategoryAnalyzer, expr: TpyExpr) -> bool:
     if isinstance(expr, TpyFieldAccess):
         return is_rvalue_source(analyzer, expr.obj)
     # Subscript into containers is an lvalue (returns T&).
-    # Exception: slice calls (e.g. list_stepped_slice) may return by value.
+    # Exceptions: slice calls (e.g. list_stepped_slice) and user-record
+    # __getitem__ calls may return by value (e.g. a pointer-repr Optional
+    # returns T*) -- both follow the resolved callee's convention.
     if isinstance(expr, TpySubscript):
         if expr.slice_function_info is not None:
             return not call_returns_cpp_ref(analyzer, expr.slice_function_info)
+        if expr.getitem_function_info is not None:
+            return not call_returns_cpp_ref(analyzer, expr.getitem_function_info)
         return False
     # Ternary: lvalue iff both arms are lvalues (C++ ternary with two lvalue
     # arms is itself an lvalue). Uses OR semantics: rvalue if either arm is

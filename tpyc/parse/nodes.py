@@ -608,6 +608,12 @@ class TpySubscript(TpyExpr):
     bounds_safe: bool = False  # Set by sema: index provably in [0, len(obj)), skip bounds check
     is_stepped_slice: bool = False  # Set by sema: slice has step (a[::2])
     slice_function_info: 'FunctionInfo | None' = None  # Set by sema: resolved __getitem__ for slice
+    # Set by sema: the resolved user-record single-key __getitem__ this
+    # subscript calls. Distinguishes a real method CALL (whose return follows
+    # the call convention -- e.g. a pointer-repr Optional returns T*) from a
+    # container ELEMENT read (a storage lvalue); the borrow/storage and
+    # value-category classifiers key on it.
+    getitem_function_info: 'FunctionInfo | None' = None
     typed_dict_field: str | None = None  # Set by sema: d["key"] on TypedDict -> field access
     typed_dict_optional: bool = False  # Set by sema: total=False field, needs runtime check
 

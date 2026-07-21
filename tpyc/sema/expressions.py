@@ -3740,6 +3740,7 @@ class ExpressionAnalyzer:
                 if kr is not None:
                     key_t, ret_t = kr
                     if self.compat.is_type_compatible(unwrap_readonly(index_type), unwrap_readonly(key_t)):
+                        self._tag_record_getitem(expr, bare_obj, ret_t)
                         if ro_obj and not ret_t.is_value_type():
                             ret_t = ReadonlyType(unwrap_readonly(ret_t))
                         return make_ref(ret_t)
@@ -3789,11 +3790,51 @@ class ExpressionAnalyzer:
             ret = self.narrowing._get_record_getitem_type(actual_type)
             if ret is None:
                 raise self.ctx.error(f"Cannot index type {actual_type}: no __getitem__ method", expr)
+            self._tag_record_getitem(expr, actual_type, ret)
             if is_readonly_obj and not ret.is_value_type():
                 ret = ReadonlyType(unwrap_readonly(ret))
             return make_ref(ret)
 
         raise self.ctx.error(f"Cannot index type {obj_type}", expr)
+
+    def _tag_record_getitem(self, expr: TpySubscript, record_type: NominalType,
+                            ret_type: TpyType) -> None:
+        """Record the resolved user-record __getitem__ on the subscript node
+        (substitution-composed, like a method call's resolved callee), so the
+        borrow/storage and value-category classifiers can treat the read as a
+        method CALL -- a pointer-repr Optional return is borrow-form T*, not a
+        storage `std::optional<T>` element lvalue.
+
+        Tagged ONLY for pointer-repr Optional returns -- the one shape whose
+        consumption differs from a container element read; tagging every
+        record subscript would run the method lookup (and its module-usage
+        side effects) on cases whose codegen must stay byte-identical."""
+        actual_ret = unwrap_readonly(ret_type)
+        if not (isinstance(actual_ret, OptionalType)
+                and actual_ret.uses_pointer_repr()):
+            return
+        # The accessor hands back a borrow (`T*`) into the receiver, valid only
+        # while the receiver lives. An rvalue receiver (a temporary) dies at the
+        # end of the full-expression, so the borrow would dangle. A pointer-repr
+        # Optional is always a reference type, which TPy never silently copies --
+        # there is no valid non-copying result to hand back. Reject loudly until
+        # the general borrow/liveness pass (BUGS.md rvalue-subscript entry)
+        # replaces this with scope-based reasoning.
+        if is_rvalue_source(self.ctx, expr.obj):
+            raise self.ctx.error(
+                "subscript into a temporary would dangle: the accessor returns "
+                "a borrow into the receiver, which is freed at the end of this "
+                "expression -- bind the receiver to a local first", expr)
+        record = self.ctx.registry.get_record_for_type(record_type)
+        if record is None:
+            return
+        # Re-resolved UNSUBSTITUTED: for a generic record this carries the raw
+        # `V | None` signature, not the composed `Rec | None`. Safe only because
+        # the sole consumer (call_returns_cpp_ref) keys on the return's outer
+        # shape; a consumer needing the substituted inner type must thread the
+        # already-composed FunctionInfo from _get_record_getitem_type instead.
+        expr.getitem_function_info = self.protocols.lookup_record_method(
+            record, "__getitem__")
 
     def _analyze_slice(self, expr: TpySubscript, obj_type: TpyType) -> TpyType:
         """Analyze slice expression: obj[start:stop] or obj[start:stop:step].

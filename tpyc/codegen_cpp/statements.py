@@ -697,6 +697,18 @@ class StatementGenerator:
                         f"{indent}return;\n")
             if stmt.value:
                 ret_type = self.ctx.current_return_type
+                # The const twin of an auto_readonly accessor (implicit on
+                # __getitem__/__deref__/__span__) declares
+                # ReadonlyType(Optional[T]); the readonly projection only
+                # affects the emitted signature's const-ness, not the
+                # pointer-vs-storage repr -- classify the OPTIONAL arm below
+                # on the wrapped type, else a pointer-repr Optional return
+                # misses its `&(...)` lift. Scoped to Optional: other
+                # readonly returns (e.g. readonly[tuple[...]]) keep the
+                # wrapper, their arms consume its const projection.
+                if (isinstance(ret_type, ReadonlyType)
+                        and isinstance(ret_type.wrapped, OptionalType)):
+                    ret_type = ret_type.wrapped
                 ret_value = stmt.value
                 # In @overload specialization: validate return type and strip
                 # wrong-target coercions. Sema coerced against the impl's union
