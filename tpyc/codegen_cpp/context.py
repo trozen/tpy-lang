@@ -793,6 +793,20 @@ class TempState:
                 out.write(f"{indent}{type_cpp} {temp_name} = {init_expr};\n")
 
 
+def any_isinstance_check(subject_cpp: str, member_cpps: 'tuple[str, ...]') -> str:
+    """The Any-isinstance condition render (D15): the has_value guard + one
+    typeid check per member (tuple form OR-joined in one paren group). An
+    empty/moved-from Any has no value() and is not any concrete type, so the
+    guard is essential. Shared by the AST isinstance arm and THIR's
+    `THIRAnyIsinstance` emit so the spellings cannot drift."""
+    if len(member_cpps) == 1:
+        return (f"({subject_cpp}.value.has_value() && "
+                f"{subject_cpp}.value.type() == typeid({member_cpps[0]}))")
+    checks = " || ".join(f"{subject_cpp}.value.type() == typeid({m})"
+                         for m in member_cpps)
+    return f"({subject_cpp}.value.has_value() && ({checks}))"
+
+
 def contains_named_expr(expr: TpyExpr | None) -> bool:
     """True if `expr` contains a walrus (TpyNamedExpr) anywhere in its subtree.
 

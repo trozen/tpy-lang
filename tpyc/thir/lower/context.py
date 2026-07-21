@@ -309,6 +309,14 @@ class _NarrowScope:
     persistent_aliases: set[str] = field(default_factory=set)
     subject_union: dict[str, UnionType] = field(default_factory=dict)
     persistent_narrowed: set[str] = field(default_factory=set)
+    # Vars narrowed from an ANY subject (D15): consumers that mirror the
+    # AST's declared-type classification (print args) key on this to pick
+    # the Any fall-through render instead of the union reject.
+    any_narrowed: set[str] = field(default_factory=set)
+    # Vars narrowed via the polymorphic if-init cast: var -> the pre-spelled
+    # C++ read (`(*__p_ptr)`), rendered verbatim through THIRName.cpp. No
+    # alias statement exists -- the if-init pre-binds the cast pointer.
+    spelled: dict[str, str] = field(default_factory=dict)
 
     def snapshot(self) -> '_NarrowScope':
         # Field-generic so a new container can't be silently shared: every

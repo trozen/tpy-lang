@@ -139,6 +139,7 @@ from .predicates import (
     _native_iterable_genexpr_arg,
     _container_record_elem,
     _container_ref_alias_elem,
+    _container_str_elem,
     _set_method_recv,
     _container_elem_family,
     _container_scalar_read,
@@ -164,6 +165,7 @@ from .predicates import (
     _is_type_param_slot,
     _is_string_owned,
     _isinstance_narrow_info,
+    _any_narrow_info,
     _member_valued_union_slot,
     _narrow_bigint_index,
     _narrow_fact_member,
@@ -312,6 +314,22 @@ def _narrow_cond_info(
         return None
     var, u, members, isin = c
     return var, u, members, False, isin
+
+def _any_narrow_cond_info(
+        cond: TpyExpr, declared: dict[str, TpyType], analyzer,
+) -> 'tuple[str, tuple[TpyType, ...], bool] | None':
+    """The D15 Any-isinstance if condition, simple or negated-simple:
+    `(var, check_members, negated)`. The Any sibling of `_narrow_cond_info`;
+    compound (`&&`) conditions stay AST (no inline-read machinery for the
+    Any slice)."""
+    negated = isinstance(cond, TpyUnaryOp) and cond.op == "!"
+    inner = cond.operand if negated else cond
+    info = _any_narrow_info(inner, declared, analyzer)
+    if info is None:
+        return None
+    var, members = info
+    return var, members, negated
+
 
 def _assert_narrow_info(
         stmt: TpyAssert, declared: dict[str, TpyType], analyzer,
@@ -3473,6 +3491,13 @@ def _str_owned_slot_arg(a: TpyExpr, ptype: TpyType | None,
     # whole-body-rejected, so the view form is stable at every use here.
     if isinstance(a, TpyName):
         return a.name in param_names
+    # A container-ELEMENT owned-str read (`tag.append(argv[i])`): the element
+    # lvalue lands bare in the element slot (`push_back(__getitem__(argv, i))`
+    # -- the vector copies on insert), no cascade on either path.
+    if (isinstance(a, TpySubscript)
+            and _borrow_elem_subscript_shape(a, locals_, analyzer,
+                                             _container_str_elem)):
+        return True
     # An owned-str RVALUE source (a concat binop, an owned-returning call)
     # binds the `T&&` element slot bare -- gen_call_arg's is_temporary_expr
     # arm, no temp and no view convert. Owned LVALUES (locals, field reads)
@@ -3694,7 +3719,12 @@ def _method_nonname_receiver_ok(recv: TpyExpr, locals_: dict[str, TpyType],
         return ((_container_record_elem_subscript(recv, locals_, analyzer)
                  or _container_ref_alias_elem_subscript(recv, locals_, analyzer)
                  or _subscript_over_container_subscript_ok(
-                     recv, locals_, analyzer))
+                     recv, locals_, analyzer)
+                 # A str-element read (`argv[i].startswith(...)`): the element
+                 # lvalue feeds the native str view-method positionally, the
+                 # subscript rendering as its own THIRSubscript.
+                 or _borrow_elem_subscript_shape(recv, locals_, analyzer,
+                                                _container_str_elem))
                 and _witness("method.recv.subscript"))
     if isinstance(recv, TpyStrLiteral):
         # A str-LITERAL receiver (`"a,b,c".split(",")`): the AST's builtin-

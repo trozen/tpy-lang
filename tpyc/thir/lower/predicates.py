@@ -46,6 +46,9 @@ from ...typesys import (
     IntLiteralType,
     LiteralType,
     NoneType,
+    is_polymorphic_subclass_fact,
+    polymorphic_source_inner,
+    polymorphic_source_is_pointer,
     NominalType,
     OptionalType,
     OwnType,
@@ -612,6 +615,91 @@ def _isinstance_narrow_info(
     if not all(any(m == cm for m in u.members) for cm in members):
         return None
     return var, u, members, folded
+
+def _any_narrow_info(
+        cond: TpyExpr, declared: dict[str, TpyType], analyzer,
+) -> 'tuple[str, tuple[TpyType, ...]] | None':
+    """The D15 Any-isinstance condition shape: `isinstance(v, A)` /
+    `isinstance(v, (A, B))` on a declared local/param of exactly `Any`.
+    Returns `(var, check_members)` or None. The Any sibling of
+    `_isinstance_narrow_info`: no exhaustiveness fold exists for Any (sema
+    cannot exhaust an open type), and `NoneType` check members stay AST
+    (the typeid(std::monostate) arm, a later rung)."""
+    if not (isinstance(cond, TpyCall) and cond.isinstance_var is not None
+            and cond.isinstance_type is not None):
+        return None
+    if (cond.isinstance_type_param or cond.isinstance_deref_depth
+            or cond.macro_expansion is not None):
+        return None
+    var = cond.isinstance_var
+    dt = declared.get(var)
+    if dt is None or unwrap_readonly(unwrap_ref_type(unwrap_send_sync(dt))) is not dt:
+        return None
+    if not isinstance(dt, AnyType):
+        return None
+    ct = cond.isinstance_type
+    members = tuple(ct.members) if isinstance(ct, UnionType) else (ct,)
+    if any(isinstance(m, NoneType) for m in members):
+        return None
+    return var, members
+
+
+def _poly_narrow_info(
+        cond: TpyExpr, declared: dict[str, TpyType], analyzer,
+) -> 'tuple[str, NominalType, TpyType] | None':
+    """The polymorphic-isinstance if condition: `isinstance(v, Sub)` on a
+    declared local/param whose type is a @dynamic-dispatch source (a bare
+    dyn-protocol ref or polymorphic base -- `polymorphic_source_inner`),
+    narrowing to a strict subclass. Returns `(var, member, var_decl)` or
+    None. The slice admits the BARE (`T&`) binding shape only -- pointer-repr
+    Optional / Ptr / deref-view subjects, tuple checks, negation, and
+    compound conditions stay AST (the cast-arg spelling differs there)."""
+    if not (isinstance(cond, TpyCall) and cond.isinstance_var is not None
+            and cond.isinstance_type is not None):
+        return None
+    if (cond.isinstance_type_param or cond.isinstance_deref_depth
+            or cond.macro_expansion is not None):
+        return None
+    member = cond.isinstance_type
+    if not isinstance(member, NominalType):
+        return None
+    var = cond.isinstance_var
+    dt = declared.get(var)
+    if dt is None or unwrap_readonly(unwrap_ref_type(unwrap_send_sync(dt))) is not dt:
+        return None
+    registry = analyzer.registry
+    if polymorphic_source_is_pointer(dt):
+        return None
+    if not is_polymorphic_subclass_fact(dt, member, registry):
+        return None
+    return var, member, dt
+
+
+def _any_narrow_fact(members: tuple[TpyType, ...],
+                     facts: dict[str, TpyType], var: str) -> TpyType | None:
+    """The concrete extraction fact for an Any-narrowed branch, or None when
+    the branch extracts nothing (no fact, or a union/void fact -- the tuple
+    form's A|B branch fact aliases nothing, mirroring the union path)."""
+    ft = facts.get(var)
+    if ft is None or isinstance(ft, UnionType) or is_void_like_type(ft):
+        return None
+    return ft if any(m == ft for m in members) else None
+
+
+def _any_narrow_facts_ok(members: tuple[TpyType, ...],
+                         facts: dict[str, TpyType], var: str) -> bool:
+    """A branch facts map the Any slice can mirror: facts describe only the
+    checked var, each a check member, a union, or void (the Any sibling of
+    `_narrow_facts_ok`; an `AnyType` remainder fact also extracts nothing)."""
+    for k, ft in facts.items():
+        if k != var:
+            return False
+        if not (isinstance(ft, (UnionType, AnyType))
+                or is_void_like_type(ft)
+                or any(m == ft for m in members)):
+            return False
+    return True
+
 
 def _narrow_fact_member(u: UnionType, facts: dict[str, TpyType],
                         var: str) -> TpyType | None:
@@ -2943,6 +3031,17 @@ def _container_ref_alias_elem(t: TpyType | None, analyzer) -> bool:
         # value (`{1:[1,2],2:[3,4]}` -> dict[int, Array[int,2]]).
         return is_list(a) or is_dict(a) or is_set(a) or is_array(a)
     return _container_elem_family(t, analyzer, container_elem)
+
+def _container_str_elem(t: TpyType | None, analyzer) -> bool:
+    """A container whose element/value is a resolved str value (`list[str]` /
+    `dict[K, str]`): the element subscript yields the owned-string lvalue,
+    consumable positionally as a str view-method receiver
+    (`argv[i].startswith("-")` -> `::tpy::str_startswith(__getitem__(argv, i),
+    ...)`). The str sibling of `_container_record_elem`."""
+    return _container_elem_family(
+        t, analyzer, lambda a: isinstance(a, TpyType)
+        and _resolved_str_value(a, analyzer) is not None)
+
 
 def _set_method_recv(t: TpyType | None, analyzer) -> bool:
     """A `set[scalar|owned-str]` METHOD-CALL receiver. Deliberately its own

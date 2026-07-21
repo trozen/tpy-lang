@@ -79,7 +79,7 @@ from ..parse import (
 from ..prescan import match_is_none, _expr_to_narrowing_key
 from ..namespace import BindingKind
 from ..sema.literal_utils import literal_value_from_expr
-from .context import INDENT, escape_cpp_string, escape_cpp_char, escape_cpp_name, qualified_cpp_name, qualify_native_name, imported_free_callee_cpp, imported_variable_cpp, module_qualified_callee_cpp, module_static_class_cpp, static_method_callee_cpp, enum_cpp_name, enum_member_cpp, loop_var_binding, is_lvalue_iterable, cpp_string_literal_expr, cpp_bytes_literal_span, cpp_bytes_literal_owned, view_key_target, bigint_index_narrow_type, CppForm, FormValue, expand_cpp_template
+from .context import any_isinstance_check, INDENT, escape_cpp_string, escape_cpp_char, escape_cpp_name, qualified_cpp_name, qualify_native_name, imported_free_callee_cpp, imported_variable_cpp, module_qualified_callee_cpp, module_static_class_cpp, static_method_callee_cpp, enum_cpp_name, enum_member_cpp, loop_var_binding, is_lvalue_iterable, cpp_string_literal_expr, cpp_bytes_literal_span, cpp_bytes_literal_owned, view_key_target, bigint_index_narrow_type, CppForm, FormValue, expand_cpp_template
 from .functions import literal_mangled_name
 from .int_literals import render_int_literal_value
 from .. import qnames
@@ -2930,16 +2930,12 @@ class ExpressionGenerator:
             var_decl = self.ctx.lookup_var_type(expr.isinstance_var)
             if isinstance(var_decl, AnyType):
                 check_type = expr.isinstance_type
-                var_ref = expr.isinstance_var
-                if isinstance(check_type, UnionType):
-                    typeid_checks = " || ".join(
-                        f"{var_ref}.value.type() == typeid({self.types.type_to_cpp(m)})"
-                        for m in check_type.members
-                    )
-                    return f"({var_ref}.value.has_value() && ({typeid_checks}))"
-                check_cpp = self.types.type_to_cpp(check_type)
-                return (f"({var_ref}.value.has_value() && "
-                        f"{var_ref}.value.type() == typeid({check_cpp}))")
+                members = (tuple(check_type.members)
+                           if isinstance(check_type, UnionType)
+                           else (check_type,))
+                return any_isinstance_check(
+                    expr.isinstance_var,
+                    tuple(self.types.type_to_cpp(m) for m in members))
             # holds_alternative needs the original variant; narrowed_vars
             # aliases (extracted member refs or std::get expressions) are not
             # variants, so we deliberately skip that lookup here.

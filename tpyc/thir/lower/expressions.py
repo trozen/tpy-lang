@@ -1645,6 +1645,15 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                 is_ptr_variant=is_ptr,
                 form=Form.BORROW if _is_borrow_form_name(rtype) else Form.VALUE,
                 loc=loc)
+        spelled = lc.narrow.spelled.get(e.name)
+        if spelled is not None:
+            # A polymorphic-isinstance-narrowed read: the pre-bound cast
+            # pointer's deref, rendered verbatim (`(*__p_ptr)`); rtype is the
+            # narrowed subclass -- sema retyped the read.
+            return THIRName(
+                result_type=rtype, name=e.name, cpp=spelled,
+                form=Form.BORROW if _is_borrow_form_name(rtype) else Form.VALUE,
+                loc=loc)
         alias = lc.narrow.narrowed.get(e.name)
         if alias is not None:
             # A U3 isinstance-narrowed read renames to the extraction alias
@@ -5737,6 +5746,16 @@ def _lower_truthy(e: TpyExpr, lc: '_LowerCtx',
     if isinstance(e, (TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
                       TpyBytesLiteral, TpyNoneLiteral)):
         raise ThirUnsupported("truthy.literal")
+    if isinstance(e, TpyName) and e.name in lc.narrow.any_narrowed:
+        # A narrowed-Any subject read in truthy position: the AST keys
+        # truthiness on the DECLARED Any (`::tpy::to_bool(alias)`) even
+        # though sema retyped the occurrence -- mirror the declared-type
+        # dispatch (the truthy sibling of the print-arg RAW mirror).
+        return THIRTruthy(
+            result_type=BOOL, mode=TruthinessMode.TO_BOOL,
+            operand=_lower_expr(e, lc, declared,
+                                use=_ExprUse(result=_ExprResultUse.TRUTHY)),
+            deref=False, loc=getattr(e, "loc", None))
     et = lc.analyzer.get_expr_type(e)
     if isinstance(e, TpyBinOp) and e.op in _LOGICAL_OPS:
         return THIRBinOp(

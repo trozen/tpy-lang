@@ -37,6 +37,8 @@ from .nodes import (
     THIRIfExpr,
     THIRIsNone,
     THIRIsinstance,
+    THIRAnyIsinstance,
+    THIRDynIsinstance,
     THIRExprStmt,
     THIRContainerLiteral,
     THIRContinue,
@@ -51,6 +53,7 @@ from .nodes import (
     THIRMove,
     THIRName,
     THIRNarrowAlias,
+    THIRAnyNarrowAlias,
     THIRNarrowedRead,
     THIROptionalPtrArg,
     THIRPrint,
@@ -265,6 +268,11 @@ def _expr(e: THIRExpr) -> str:
         return f"form_convert[{cst}{e.form.name.lower()}]({_expr(e.value)})"
     if isinstance(e, THIRIsinstance):
         return f"isinstance(%{e.variant_cpp}, [{', '.join(e.member_cpps)}])"
+    if isinstance(e, THIRAnyIsinstance):
+        return (f"any_isinstance(%{e.subject_cpp}, "
+                f"[{', '.join(e.member_cpps)}])")
+    if isinstance(e, THIRDynIsinstance):
+        return f"dyn_isinstance[{e.ptr_local}]({e.init_cpp})"
     if isinstance(e, THIRNarrowedRead):
         deref = "*" if e.is_ptr_variant else ""
         return f"({deref}get<{e.member_cpp}>(%{e.variant_cpp}))"
@@ -375,6 +383,9 @@ def _stmt_lines(stmt: THIRStmt, depth: int) -> list[str]:
         cst = "const " if stmt.const_ref else ""
         return [f"{pad}%{stmt.alias} = {cst}&{deref}get<{stmt.member_cpp}>"
                 f"(%{stmt.variant_cpp})"]
+    if isinstance(stmt, THIRAnyNarrowAlias):
+        return [f"{pad}%{stmt.alias} = const &any_cast<{stmt.member_cpp}>"
+                f"(%{stmt.subject_cpp})"]
     if isinstance(stmt, THIRAssert):
         msg = ""
         if isinstance(stmt.message, str):

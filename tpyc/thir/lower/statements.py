@@ -111,6 +111,8 @@ from ...codegen_cpp.protocols import (
     record_inherits_dynamic,
 )
 from ...codegen_cpp.context import escape_cpp_name
+from ...codegen_cpp.protocols import narrow_cast_rhs
+from ...typesys import polymorphic_source_inner
 from ...codegen_cpp.types import resolve_pending_container
 from ...liveness import stmts_terminate, try_terminates_ignoring_finally
 from ...value_category import call_returns_cpp_ref, is_rvalue_source
@@ -151,6 +153,9 @@ from ..nodes import (
     THIRFormConvert,
     THIRIf,
     THIRIsinstance,
+    THIRAnyIsinstance,
+    THIRDynIsinstance,
+    THIRAnyNarrowAlias,
     THIRLiteral,
     THIRMethodCall,
     THIRModuleVar,
@@ -222,7 +227,10 @@ from .predicates import (
     _is_string_owned,
     _narrow_bigint_index,
     _narrow_fact_member,
+    _any_narrow_fact,
+    _poly_narrow_info,
     _narrow_facts_ok,
+    _any_narrow_facts_ok,
     _nonvalue_container_ret,
     _callable_value,
     _optional_narrow_facts_ok,
@@ -297,6 +305,7 @@ from .checks import (
     _record_rvalue_source_shape,
     _rvalue_free_call_shape,
     _narrow_cond_info,
+    _any_narrow_cond_info,
     _optional_record_field_inner,
     _optional_record_field_write_ok,
     _covariant_record_upcast_ok,
@@ -2574,9 +2583,11 @@ def _lower_nested_def(stmt: TpyNestedDef, scope: '_LowerScope') -> THIRStmt:
     if "self" in stmt.captured_names:
         note_detail("nesteddef.self_capture")
         raise ThirUnsupported(stmt_reject_reason(stmt))
-    # A narrowed capture's reads rename to an OUTER extraction alias the
-    # capture list does not carry -> AST path.
-    if any(n in lc.narrow.narrowed for n in stmt.captured_names):
+    # A narrowed capture's reads rename to an OUTER extraction alias (or the
+    # poly-narrow `(*__p_ptr)` spelling) the capture list does not carry ->
+    # AST path.
+    if any(n in lc.narrow.narrowed or n in lc.narrow.spelled
+           for n in stmt.captured_names):
         note_detail("nesteddef.narrowed_capture")
         raise ThirUnsupported(stmt_reject_reason(stmt))
     # Capture list -- _gen_nested_def's spelling over the node facts.
@@ -2823,24 +2834,41 @@ def _lower_loop_orelse(orelse, lc: _LowerCtx, declared: dict[str, TpyType],
 
 
 def _lower_narrowed_branch(body, fact: 'TpyType | None', var: str,
-                           u: UnionType, lc: _LowerCtx,
+                           u: 'UnionType | None', lc: _LowerCtx,
                            declared: dict[str, TpyType],
                            alias_loc, *,
-                           loop_depth: int = 0) -> tuple[THIRStmt, ...]:
+                           loop_depth: int = 0,
+                           make_alias=None,
+                           any_subject: bool = False,
+                           bind_spelled: 'str | None' = None
+                           ) -> tuple[THIRStmt, ...]:
     """Lower one narrow-if branch under a narrowing-scope snapshot: a concrete
-    member fact prepends the extraction alias (reads rename via
-    `lc.narrow.narrowed`, the subject retypes for the branch walk); the
-    snapshot pops at the closing brace. `alias_loc` is the if's loc for the
-    then arm, but else_body[0]'s loc for the else arm -- emit_else_comment's
-    backward scan for the `else:` line starts from the else body's leading
-    statement."""
+    member fact binds the subject (reads rename via `lc.narrow.narrowed`, or
+    the poly-narrow `(*__p_ptr)` spelling via `lc.narrow.spelled`; the
+    subject retypes for the branch walk); the snapshot pops at the closing
+    brace. `alias_loc` is the if's loc for the then arm, but else_body[0]'s
+    loc for the else arm -- emit_else_comment's backward scan for the
+    `else:` line starts from the else body's leading statement.
+    `make_alias(alias, fact, loc)` overrides the union extraction (the Any
+    arm's any_cast alias); `u` may be None only when it is given.
+    `bind_spelled` is the poly-narrow read spelling -- no alias statement
+    exists (the if-init pre-bound the cast pointer)."""
     branch_declared = dict(declared)
     out: list[THIRStmt] = []
     with lc.branch_scope():
         if fact is not None:
-            alias = f"__{var}"  # branch-scoped: shadowing an outer alias is fine
-            out.append(_make_narrow_alias(alias, var, fact, u, lc, alias_loc))
-            lc.narrow.narrowed[var] = alias
+            if bind_spelled is not None:
+                lc.narrow.spelled[var] = bind_spelled
+            else:
+                alias = f"__{var}"  # branch-scoped: shadowing is fine
+                if make_alias is not None:
+                    out.append(make_alias(alias, fact, alias_loc))
+                else:
+                    out.append(_make_narrow_alias(alias, var, fact, u, lc,
+                                                  alias_loc))
+                lc.narrow.narrowed[var] = alias
+                if any_subject:
+                    lc.narrow.any_narrowed.add(var)
             branch_declared[var] = fact
         out.extend(_lower_stmts(body, lc, branch_declared, in_branch=True,
                                 branch_decls_ok=True,
@@ -2922,20 +2950,17 @@ def _lower_narrow_cond(cinfo, condition: TpyExpr, lc: _LowerCtx,
     finally:
         lc.inline_narrowed = saved
 
-def _lower_narrow_if(stmt: TpyIf, info, lc: _LowerCtx,
-                     declared: dict[str, TpyType], loc, *,
-                     loop_depth: int = 0) -> THIRIf:
-    """Lower a U3 isinstance-narrowing `if`. The condition is the
-    holds_alternative test (or
-    the exhaustiveness fold's bare `true`); each branch lowers via
-    `_lower_narrowed_branch`; an elif continuation recurses, breaking the
-    emitter's flat `else if` chain when the outer else-fact would extract
-    (`else_is_nested` -- the AST's `_has_concrete_isinstance_facts` gate)."""
-    var, u, _members, _folded, _isin = info
-    cond = _lower_narrow_cond(info, stmt.condition, lc, declared)
-    then_fact = _narrow_fact_member(u, stmt.then_type_facts, var)
-    then_stmts = _lower_narrowed_branch(stmt.then_body, then_fact, var, u, lc,
-                                        declared, loc, loop_depth=loop_depth)
+def _lower_narrow_if_shape(stmt: TpyIf, cond: THIRExpr, fact_of, branch_of,
+                           lc: _LowerCtx, declared: dict[str, TpyType],
+                           loc, *, loop_depth: int = 0) -> THIRIf:
+    """The shared narrowing-`if` chain skeleton (union U3 and Any D15
+    subjects): each branch lowers via `branch_of(body, fact, alias_loc)`
+    with `fact_of(facts)` supplying the extraction fact; an elif
+    continuation recurses, breaking the emitter's flat `else if` chain when
+    the outer else-fact would extract (`else_is_nested` -- the AST's
+    `_has_concrete_isinstance_facts` gate)."""
+    then_fact = fact_of(stmt.then_type_facts)
+    then_stmts = branch_of(stmt.then_body, then_fact, loc)
     else_stmts: tuple[THIRStmt, ...] = ()
     else_is_nested = False
     if stmt.else_body:
@@ -2961,13 +2986,112 @@ def _lower_narrow_if(stmt: TpyIf, info, lc: _LowerCtx,
                     branch_decls_ok=True,
                     loop_depth=loop_depth),)
         else:
-            else_fact = _narrow_fact_member(u, stmt.else_type_facts, var)
-            else_stmts = _lower_narrowed_branch(
-                stmt.else_body, else_fact, var, u, lc, declared,
-                getattr(stmt.else_body[0], "loc", None),
-                loop_depth=loop_depth)
+            else_fact = fact_of(stmt.else_type_facts)
+            else_stmts = branch_of(
+                stmt.else_body, else_fact,
+                getattr(stmt.else_body[0], "loc", None))
     return THIRIf(condition=cond, then_body=then_stmts,
                   else_body=else_stmts, else_is_nested=else_is_nested, loc=loc)
+
+
+def _lower_narrow_if(stmt: TpyIf, info, lc: _LowerCtx,
+                     declared: dict[str, TpyType], loc, *,
+                     loop_depth: int = 0) -> THIRIf:
+    """Lower a U3 isinstance-narrowing `if`: the holds_alternative condition
+    (or the exhaustiveness fold's bare `true`) over the shared chain
+    skeleton."""
+    var, u, _members, _folded, _isin = info
+    cond = _lower_narrow_cond(info, stmt.condition, lc, declared)
+
+    def fact_of(facts):
+        return _narrow_fact_member(u, facts, var)
+
+    def branch_of(body, fact, alias_loc):
+        return _lower_narrowed_branch(body, fact, var, u, lc, declared,
+                                      alias_loc, loop_depth=loop_depth)
+
+    return _lower_narrow_if_shape(stmt, cond, fact_of, branch_of, lc,
+                                  declared, loc, loop_depth=loop_depth)
+
+
+def _lower_any_isinstance_cond(ainfo, condition: TpyExpr,
+                               lc: _LowerCtx) -> THIRExpr:
+    """The D15 Any-isinstance condition render: the has_value + typeid
+    check(s), with the negated-polarity `!` wrap mirroring the union path."""
+    var, members, negated = ainfo
+    inner = condition.operand if negated else condition
+    base = THIRAnyIsinstance(
+        result_type=lc.analyzer.get_expr_type(inner),
+        subject_cpp=var,
+        member_cpps=tuple(lc.render_type(m) for m in members),
+        loc=getattr(inner, "loc", None))
+    if not negated:
+        return base
+    return THIRUnaryNot(
+        result_type=lc.analyzer.get_expr_type(condition),
+        operand=base, loc=getattr(condition, "loc", None))
+
+
+def _lower_dyn_narrow_if(stmt: TpyIf, pinfo, lc: _LowerCtx,
+                         declared: dict[str, TpyType], loc, *,
+                         loop_depth: int = 0) -> THIRIf:
+    """Lower a polymorphic-isinstance `if` (dyn-protocol / polymorphic-base
+    subject): the C++17 if-init condition over the shared chain skeleton,
+    composed via the `narrow_cast_rhs` chokepoint the AST emit shares."""
+    var, member, var_decl = pinfo
+    analyzer = lc.analyzer
+    cpp_type = lc.render_type(member)
+    const = _narrow_subject_const(var, lc)
+    const_pfx = "const " if const else ""
+    ptr_local = f"__{var}_ptr"
+    cast_rhs = narrow_cast_rhs(
+        cpp_type, member,
+        polymorphic_source_inner(var_decl, analyzer.registry),
+        f"&{escape_cpp_name(var)}", is_const=const, analyzer=analyzer)
+    inner = stmt.condition
+    cond = THIRDynIsinstance(
+        result_type=analyzer.get_expr_type(inner),
+        init_cpp=f"{const_pfx}{cpp_type}* {ptr_local} = {cast_rhs}",
+        ptr_local=ptr_local,
+        loc=getattr(inner, "loc", None))
+
+    def fact_of(facts):
+        ft = facts.get(var)
+        return ft if ft == member else None
+
+    def branch_of(body, fact, alias_loc):
+        return _lower_narrowed_branch(body, fact, var, None, lc, declared,
+                                      alias_loc, loop_depth=loop_depth,
+                                      bind_spelled=f"(*{ptr_local})")
+
+    return _lower_narrow_if_shape(stmt, cond, fact_of, branch_of, lc,
+                                  declared, loc, loop_depth=loop_depth)
+
+
+def _lower_any_narrow_if(stmt: TpyIf, ainfo, lc: _LowerCtx,
+                         declared: dict[str, TpyType], loc, *,
+                         loop_depth: int = 0) -> THIRIf:
+    """Lower a D15 Any-isinstance-narrowing `if`: the typeid condition over
+    the shared chain skeleton, with the any_cast extraction alias."""
+    var, members, _negated = ainfo
+    cond = _lower_any_isinstance_cond(ainfo, stmt.condition, lc)
+
+    def fact_of(facts):
+        return _any_narrow_fact(members, facts, var)
+
+    def make_alias(alias, fact, alias_loc):
+        return THIRAnyNarrowAlias(
+            alias=alias, subject_cpp=var, member_cpp=lc.render_type(fact),
+            no_source_comment=True, loc=alias_loc)
+
+    def branch_of(body, fact, alias_loc):
+        return _lower_narrowed_branch(body, fact, var, None, lc, declared,
+                                      alias_loc, loop_depth=loop_depth,
+                                      make_alias=make_alias,
+                                      any_subject=True)
+
+    return _lower_narrow_if_shape(stmt, cond, fact_of, branch_of, lc,
+                                  declared, loc, loop_depth=loop_depth)
 
 
 def _written_names(stmt: TpyStmt) -> set[str]:
@@ -5755,8 +5879,11 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
     if isinstance(stmt, TpyIf):
         begin_stmt()
         info = _narrow_cond_info(stmt.condition, declared, analyzer)
+        ainfo = (None if info is not None
+                 else _any_narrow_cond_info(stmt.condition, declared,
+                                            analyzer))
         hoists = analyzer.if_branch_decls.get(id(stmt), {})
-        if hoists and info is not None:
+        if hoists and (info is not None or ainfo is not None):
             note_detail("if.narrow_hoist")
             raise ThirUnsupported(stmt_reject_reason(stmt))
         # Classification registers the hoisted names' read/write model on
@@ -5779,6 +5906,41 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 raise ThirUnsupported(stmt_reject_reason(stmt))
             return _lower_narrow_if(stmt, info, lc, declared, loc,
                                     loop_depth=scope.loop_depth)
+        if ainfo is not None:
+            avar, amembers, _negated = ainfo
+            any_ok = not (
+                avar in lc.narrow.narrowed
+                or not _any_narrow_facts_ok(amembers, stmt.then_type_facts,
+                                            avar)
+                or not _any_narrow_facts_ok(amembers, stmt.else_type_facts,
+                                            avar))
+            if not any_ok:
+                note_detail("if.any_narrow_shape")
+                raise ThirUnsupported(stmt_reject_reason(stmt))
+            return _lower_any_narrow_if(stmt, ainfo, lc, declared, loc,
+                                        loop_depth=scope.loop_depth)
+        pinfo = _poly_narrow_info(stmt.condition, declared, analyzer)
+        if pinfo is not None:
+            pvar, pmember, _pdecl = pinfo
+            # Mirror _build_isinstance_init_clause's constraints: a bare
+            # (non-pointer, non-self, non-global) subject, single-fact
+            # branches, the then-fact being exactly the checked subclass,
+            # and no concrete else-fact (the else keeps the base).
+            poly_ok = not (
+                bool(hoists)
+                or pvar in lc.pointers
+                or pvar == lc.self_receiver
+                or pvar in lc.prescan.global_seeded
+                or pvar in lc.narrow.narrowed
+                or pvar in lc.narrow.spelled
+                or any(k != pvar for k in stmt.then_type_facts)
+                or stmt.then_type_facts.get(pvar) != pmember
+                or any(k == pvar for k in stmt.else_type_facts))
+            if not poly_ok:
+                note_detail("if.dyn_narrow_shape")
+                raise ThirUnsupported(stmt_reject_reason(stmt))
+            return _lower_dyn_narrow_if(stmt, pinfo, lc, declared, loc,
+                                        loop_depth=scope.loop_depth)
         try:
             condition = _lower_truthy(stmt.condition, lc, declared)
         except ThirUnsupported:
@@ -6481,8 +6643,19 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             lowered_args = []
             for arg in e.args:
                 if isinstance(arg, TpyName) and arg.name in narrowed:
-                    note_detail("print.narrowed_arg")
-                    raise ThirUnsupported(stmt_reject_reason(stmt))
+                    if arg.name not in lc.narrow.any_narrowed:
+                        note_detail("print.narrowed_arg")
+                        raise ThirUnsupported(stmt_reject_reason(stmt))
+                    # An Any-narrowed alias: the AST classifies print args by
+                    # the DECLARED type (get_resolved_type reads the
+                    # pre-narrow binding), so an Any subject streams the
+                    # alias RAW -- including the narrowed-float face (no
+                    # print_float wrap; that formatting divergence is the
+                    # AST's, mirrored byte-identically and filed in BUGS.md).
+                    lowered_args.append(THIRPrintArg(
+                        expr=_lower_expr(arg, lc, declared),
+                        print_form=PrintForm.RAW))
+                    continue
                 if type(arg) in _comprehensions._COMP_KINDS:
                     ok = True
                 else:

@@ -18,7 +18,7 @@ from dataclasses import dataclass, field
 from typing import Callable, TextIO
 
 from ..codegen_cpp.context import (
-    INDENT, cpp_bytes_literal_owned, cpp_bytes_literal_span,
+    INDENT, any_isinstance_check, cpp_bytes_literal_owned, cpp_bytes_literal_span,
     cpp_string_literal_expr, escape_cpp_char, escape_cpp_name,
     escape_cpp_string, expand_cpp_template, loop_var_binding,
     qualify_native_name,
@@ -79,6 +79,8 @@ from .nodes import (
     THIRStrMembership,
     THIRTupleMembership,
     THIRIsinstance,
+    THIRAnyIsinstance,
+    THIRDynIsinstance,
     THIRLiteral,
     THIRMatch,
     THIRMatchBinding,
@@ -88,6 +90,7 @@ from .nodes import (
     THIRMove,
     THIRName,
     THIRNarrowAlias,
+    THIRAnyNarrowAlias,
     THIRNestedDef,
     THIRNarrowedRead,
     THIRNoOpStmt,
@@ -1196,6 +1199,14 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         checks = [f"std::holds_alternative<{m}>({e.variant_cpp})"
                   for m in e.member_cpps]
         return checks[0] if len(checks) == 1 else "(" + " || ".join(checks) + ")"
+    if isinstance(e, THIRDynIsinstance):
+        # The C++17 if-init form: the whole `init; cond` sits inside the if's
+        # own parens (mirrors _gen_if's `{init_clause}{cond}` composition).
+        return f"{e.init_cpp}; ({e.ptr_local} != nullptr)"
+    if isinstance(e, THIRAnyIsinstance):
+        # The shared composition (any_isinstance_check) -- one spelling for
+        # the AST isinstance arm's Any branch and this node.
+        return any_isinstance_check(e.subject_cpp, e.member_cpps)
     if isinstance(e, THIRNarrowedRead):
         # A compound-condition read of the narrowed subject: the bare get, no
         # alias yet -- the ptr-variant deref parenthesizes for member access.
@@ -3116,6 +3127,12 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
         deref = "*" if stmt.is_ptr_variant else ""
         out.write(f"{indent}{qualifier} {stmt.alias} = {deref}"
                   f"std::get<{stmt.member_cpp}>({stmt.variant_cpp});\n")
+    elif isinstance(stmt, THIRAnyNarrowAlias):
+        # The Any-narrowing extraction (D15) -- mirrors
+        # _emit_isinstance_extractions' Any arm (explicit type, not auto&).
+        out.write(f"{indent}const {stmt.member_cpp}& {stmt.alias} = "
+                  f"std::any_cast<const {stmt.member_cpp}&>"
+                  f"({stmt.subject_cpp}.value);\n")
     elif isinstance(stmt, THIRAssert):
         # The narrowing alias (if any) follows as its own THIRNarrowAlias.
         if stmt.message is None:

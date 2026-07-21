@@ -1195,6 +1195,37 @@ class THIRIsinstance(THIRExpr):
 
 
 @dataclass(frozen=True)
+class THIRAnyIsinstance(THIRExpr):
+    """`isinstance(v, A)` / `isinstance(v, (A, B))` over an Any-typed subject
+    (D15) -> the has_value guard + typeid check(s):
+
+        (v.value.has_value() && v.value.type() == typeid(T))
+        (v.value.has_value() && (..typeid(A) || ..typeid(B)))
+
+    -- mirrors the AST isinstance arm's Any branch. `subject_cpp` is the bare
+    Python name (the slice excludes indirect / frame-slot subjects, like the
+    variant sibling `THIRIsinstance`)."""
+    subject_cpp: str
+    member_cpps: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class THIRDynIsinstance(THIRExpr):
+    """Polymorphic isinstance over a @dynamic-dispatch subject (a dyn-protocol
+    ref or polymorphic base class) -> the AST's C++17 if-init render, emitted
+    whole inside the if-condition parens:
+
+        [const ]Sub* __p_ptr = <narrow_cast_rhs>; (__p_ptr != nullptr)
+
+    `init_cpp` is the full init declaration (type, ptr local, cast RHS --
+    composed at lowering via the shared `narrow_cast_rhs` chokepoint);
+    `ptr_local` is the pre-bound cast pointer every branch read of the
+    subject renders through (`(*__p_ptr)` via THIRName.cpp)."""
+    init_cpp: str
+    ptr_local: str
+
+
+@dataclass(frozen=True)
 class THIRNarrowedRead(THIRExpr):
     """A condition-position read of an isinstance-narrowed subject (F4 U4
     compound conditions): no extraction alias exists yet, so the read renders
@@ -1528,6 +1559,23 @@ class THIRNarrowAlias(THIRStmt):
     member_cpp: str
     is_ptr_variant: bool
     const_ref: bool
+
+
+@dataclass(frozen=True)
+class THIRAnyNarrowAlias(THIRStmt):
+    """The Any-narrowing extraction alias (D15), the Any sibling of
+    `THIRNarrowAlias`:
+
+        const T& __v = std::any_cast<const T&>(v.value);
+
+    declared at branch entry; reads of the narrowed subject inside the
+    alias's scope lower to `THIRName(alias)`; the outer Any cell survives
+    unchanged. The explicit type spelling (not `auto&`) mirrors
+    `_emit_isinstance_extractions`' Any arm. Never carries a source
+    comment."""
+    alias: str
+    subject_cpp: str
+    member_cpp: str
 
 
 @dataclass(frozen=True)

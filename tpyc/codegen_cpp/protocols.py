@@ -147,6 +147,32 @@ def dynamic_ref_adapter_type(protocol: NominalType, concrete_cpp: str,
     return f"::tpy::RefAdapter<{dynamic_base_name(protocol, analyzer)}, {concrete_cpp}>"
 
 
+def narrow_cast_rhs(cpp_type: str, check_type: TpyType,
+                    source_inner: 'TpyType | None', cast_arg: str, *,
+                    is_const: bool, analyzer) -> str:
+    """Build the pointer-producing RHS that narrows `cast_arg` (a
+    `[const] P*` payload pointer) to a `[const] Sub*` for isinstance
+    dispatch. The result is used as the if-init / extraction-local
+    initializer and, against nullptr, as the branch condition.
+
+    An inheritance conformer (or a polymorphic-class root, which has no
+    structural conformers) uses `dynamic_cast`. A STRUCTURAL conformer of
+    a @dynamic protocol routes through `tpy::dyn_adapter_cast`, which
+    unwraps the `Adapter`/`RefAdapter` the structural value sits inside --
+    a plain `dynamic_cast<Sub*>` would always fail there. The structural
+    overload infers const-ness from `cast_arg`, so `is_const` only shapes
+    the `dynamic_cast` form. Module-level (analyzer-pure) so the AST emit
+    and the THIR lowering share one composition."""
+    if (is_protocol_type(source_inner)
+            and isinstance(check_type, NominalType)
+            and not record_inherits_dynamic(check_type, source_inner,
+                                            analyzer)):
+        base = dynamic_base_name(source_inner, analyzer)
+        return f"::tpy::dyn_adapter_cast<{base}, {cpp_type}>({cast_arg})"
+    const_pfx = "const " if is_const else ""
+    return f"dynamic_cast<{const_pfx}{cpp_type}*>({cast_arg})"
+
+
 def record_inherits_dynamic(concrete_type: TpyType, protocol: NominalType,
                             analyzer) -> bool:
     """Whether concrete_type inherits a @dynamic protocol (directly or transitively).
@@ -335,25 +361,8 @@ class ProtocolGenerator:
         self, cpp_type: str, check_type: TpyType, source_inner: 'TpyType | None',
         cast_arg: str, *, is_const: bool,
     ) -> str:
-        """Build the pointer-producing RHS that narrows `cast_arg` (a
-        `[const] P*` payload pointer) to a `[const] Sub*` for isinstance
-        dispatch. The result is used as the if-init / extraction-local
-        initializer and, against nullptr, as the branch condition.
-
-        An inheritance conformer (or a polymorphic-class root, which has no
-        structural conformers) uses `dynamic_cast`. A STRUCTURAL conformer of
-        a @dynamic protocol routes through `tpy::dyn_adapter_cast`, which
-        unwraps the `Adapter`/`RefAdapter` the structural value sits inside --
-        a plain `dynamic_cast<Sub*>` would always fail there. The structural
-        overload infers const-ness from `cast_arg`, so `is_const` only shapes
-        the `dynamic_cast` form."""
-        if (is_protocol_type(source_inner)
-                and isinstance(check_type, NominalType)
-                and not self.directly_implements_dynamic(check_type, source_inner)):
-            base = self.get_dynamic_base_name(source_inner)
-            return f"::tpy::dyn_adapter_cast<{base}, {cpp_type}>({cast_arg})"
-        const_pfx = "const " if is_const else ""
-        return f"dynamic_cast<{const_pfx}{cpp_type}*>({cast_arg})"
+        return narrow_cast_rhs(cpp_type, check_type, source_inner, cast_arg,
+                               is_const=is_const, analyzer=self.ctx.analyzer)
 
     def dyn_protocol_forward_ok(self, source: TpyType, target: TpyType) -> bool:
         """True if `source` (@dynamic protocol) can be forwarded as `target`
