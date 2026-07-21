@@ -305,6 +305,7 @@ from .predicates import (
     _value_opt_view,
     _value_opt_owned_view,
     _value_tuple,
+    _value_tuple_element_ok,
     _value_tuple_nested,
     _tuple_compare_pair,
     _value_tuple_global,
@@ -4102,7 +4103,8 @@ def _lower_checked_container_elem(
 def _lower_container_elem(e: TpyExpr, slot: TpyType | None,
                           lc: '_LowerCtx', declared: dict[str, TpyType], *,
                           retype_scalars: bool = True,
-                          suppress_move: bool = False) -> THIRExpr:
+                          suppress_move: bool = False,
+                          field_str_ok: bool = False) -> THIRExpr:
     """Lower one container-literal element / dict key / dict value into its
     slot. A view-form str source (BORROW -- a string_view param/local, a slice,
     a StrView-returning call) into an owned `std::string` slot copies
@@ -4110,7 +4112,11 @@ def _lower_container_elem(e: TpyExpr, slot: TpyType | None,
     the `_wrap_for_owned_slot`/`_view_source_to_owned` chokepoint at element
     positions. A literal (VALUE, const char[N]) and an owned source (STORAGE --
     an owned local, a String local, a concat/f-string rvalue) land bare, like
-    the AST's brace-init pass-through; scalar slots never wrap."""
+    the AST's brace-init pass-through; scalar slots never wrap.
+    `field_str_ok` threads the str/bytes FIELD-read admission
+    (`field_owned_str_ok`) for sinks whose element render is the same bare
+    member / view->owned wrap (the generic-tuple return builder); the
+    default keeps field elements gate-rejected."""
     su0 = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(slot))) \
         if slot is not None else None
     if isinstance(su0, AnyType):
@@ -4181,7 +4187,8 @@ def _lower_container_elem(e: TpyExpr, slot: TpyType | None,
         return _lower_expr(e, lc, declared,
                            use=_ExprUse(result=_ExprResultUse.BORROW_BIND))
     el = _lower_expr(
-        e, lc, declared, container_threaded=retype_scalars)
+        e, lc, declared, container_threaded=retype_scalars,
+        field_owned_str_ok=field_str_ok and isinstance(e, TpyFieldAccess))
     if retype_scalars:
         el = _slot_literal_retype(el, slot, lc)
     # A record-name element mirrors gen_expr_deref + _maybe_move: an F2
@@ -4429,6 +4436,69 @@ def _lower_borrow_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
         result_type=slot, spelled_cpp=spelled,
         elements=tuple(lowered), addr_of=tuple(lifts),
         loc=getattr(e, "loc", None))
+
+
+def _lower_generic_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
+                                 lc: '_LowerCtx',
+                                 declared: dict[str, TpyType]) -> THIRExpr:
+    """Lower a tuple literal at a slot with TypeParamRef elements -- the
+    `want_val_or_ptr_form` arm of `_gen_tuple_literal` reduced to its
+    witnessed subset. A generic slot spells `::tpy::val_or_ptr_t<T>` and
+    wraps its element `::tpy::to_val_or_ptr<slot>(...)` (address-of into a
+    pointer slot, construct/copy into a value slot -- decided at
+    instantiation); concrete value elements render bare into their base
+    slots via the container-elem rows. VALUE captures only (sema stamps
+    VALUE on return-tuple elements; a CONST_REF stamp would flip the slot
+    to `val_or_cptr_t` -- unwitnessed). A generic element admits a plain
+    declared NAME that is neither narrowed, pointer-form, nor a move
+    source: on the AST path a movable source takes `_maybe_move` (VALUE
+    capture + non-value slot_inner) and a narrowed or pointer-form one
+    derefs -- renders this slice does not reproduce."""
+    analyzer = lc.analyzer
+    if len(e.elements) != len(slot.element_types):
+        note_detail("gentuple.arity")
+        raise ThirUnsupported("expr.tuple_literal")
+    parts: list[str] = []
+    lowered: list[THIRExpr] = []
+    wraps: list['str | None'] = []
+    for i in range(len(e.elements)):
+        et = slot.element_types[i]
+        mode = (e.elem_capture[i] if i < len(e.elem_capture)
+                else TupleElemCapture.VALUE)
+        if mode is not TupleElemCapture.VALUE:
+            note_detail("gentuple.elem_capture")
+            raise ThirUnsupported("expr.tuple_literal")
+        elem = e.elements[i]
+        if isinstance(et, TypeParamRef):
+            # Pointer-form locals excluded like narrowed/movable names: the
+            # AST derefs them (gen_expr_deref) before the to_val_or_ptr
+            # wrap, a render this slice does not reproduce.
+            if not (isinstance(elem, TpyName) and elem.name in declared
+                    and elem.name not in lc.narrow.narrowed
+                    and elem.name not in lc.pointers
+                    and not _is_move_source(elem, lc)):
+                note_detail("gentuple.elem_source")
+                raise ThirUnsupported("expr.tuple_literal")
+            part = f"::tpy::val_or_ptr_t<{lc.render_type(et)}>"
+            parts.append(part)
+            lowered.append(_lower_expr(elem, lc, declared))
+            wraps.append(f"::tpy::to_val_or_ptr<{part}>({{0}})")
+            continue
+        if _value_tuple_element_ok(et, analyzer):
+            parts.append(lc.render_type(unwrap_readonly(unwrap_ref_type(
+                unwrap_send_sync(et)))))
+            lowered.append(_lower_container_elem(elem, et, lc, declared,
+                                                 field_str_ok=True))
+            wraps.append(None)
+            continue
+        note_detail("gentuple.elem_slot")
+        raise ThirUnsupported("expr.tuple_literal")
+    _witness("gentuple.literal")
+    return THIRBorrowTupleLiteral(
+        result_type=slot,
+        spelled_cpp=f"std::tuple<{', '.join(parts)}>",
+        elements=tuple(lowered), addr_of=tuple(False for _ in lowered),
+        elem_wraps=tuple(wraps), loc=getattr(e, "loc", None))
 
 
 def _compose_static_targs(cpp_class: str, record_info, cpp_method: str,

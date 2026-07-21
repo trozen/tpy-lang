@@ -339,6 +339,7 @@ from .expressions import (
     _lower_lambda,
     _lower_truthy,
     _lower_borrow_tuple_literal,
+    _lower_generic_tuple_literal,
     _lower_tuple_literal,
     _rb_operand_slots,
     _retag_bytes_literal_view,
@@ -3118,10 +3119,10 @@ def _lower_resumable_return_value(ret: TpyReturn, lc: '_LowerCtx',
     -- so a literal at a wider slot stays bare `42`, NOT the sync-return
     arm's target-typed `::tpy::BigInt(42)`. Lower the value directly (== the
     AST's `gen_expr_deref`), bypassing `_lower_stmt`'s return-coercion arm.
-    Two exceptions render target-typed on both paths: the owned str/bytes
+    The exceptions render target-typed on both paths: the owned str/bytes
     slot's view->owned copy, shared with the sync return tail
-    (`_wrap_view_owned_return`), and value-tuple literals (the AST's
-    tuple-literal-targeted arm in `_async_return_value_cpp`)."""
+    (`_wrap_view_owned_return`), and value-tuple / generic-tuple literals
+    (the AST's tuple-literal-targeted arm in `_async_return_value_cpp`)."""
     if lc.prescan.ret_char and isinstance(ret.value, TpyStrLiteral):
         raise ThirUnsupported(stmt_reject_reason(ret))
     if (lc.prescan.ret_res_container is not None
@@ -3174,6 +3175,16 @@ def _lower_resumable_return_value(ret: TpyReturn, lc: '_LowerCtx',
         # tail below (bare renders -- the decl absorbs the copy/move).
         value = _lower_tuple_literal(ret.value, ret_vt, lc, declared)
         _witness("res.return_tuple_literal")
+        return value
+    ret_gt = lc.prescan.ret_generic_tuple
+    if ret_gt is not None and isinstance(ret.value, TpyTupleLiteral):
+        # A generic tuple literal renders the spelled brace-init with
+        # per-element `to_val_or_ptr` wraps (the AST's want_val_or_ptr_form
+        # arm under the tuple-literal-targeted return); non-literal sources
+        # ride the position-blind tail below, like the AST's untargeted
+        # gen_expr_deref for the same shapes.
+        value = _lower_generic_tuple_literal(ret.value, ret_gt, lc, declared)
+        _witness("res.return_generic_tuple")
         return value
     return _wrap_view_owned_return(
         _lower_expr(ret.value, lc, declared), lc, getattr(ret, "loc", None))

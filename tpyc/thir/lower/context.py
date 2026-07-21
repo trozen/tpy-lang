@@ -41,6 +41,7 @@ from .predicates import (
     _span_return,
     _value_opt_scalar,
     _value_opt_view,
+    _generic_value_tuple_return,
     _value_tuple_return,
 )
 
@@ -103,7 +104,7 @@ class _Prescan:
                  "ret_storage_opt", "ret_ptr_opt", "ret_borrow_tuple",
                  "ret_record_borrow", "ret_record_storage",
                  "ret_container_storage", "ret_res_container",
-                 "ret_value_tuple",
+                 "ret_value_tuple", "ret_generic_tuple",
                  "ret_str", "ret_bytes",
                  "ret_char", "ret_union", "ret_ptr_union", "ret_own_union",
                  "ret_supported", "ret_callable",
@@ -221,6 +222,11 @@ class _Prescan:
         # scalar] elements). A bare value-tuple name return stays on the narrow
         # arm (no bare-copy read arm for a widened-element receiver).
         self.ret_value_tuple = _value_tuple_return(rt, analyzer)
+        # The GENERIC tuple return slot (>=1 TypeParamRef element): consumed
+        # only by the RESUMABLE return arm (the async `val_or_ptr_t` bridge);
+        # the sync return arm does not read it, so sync generic-tuple returns
+        # stay on the AST path (not in ret_supported).
+        self.ret_generic_tuple = _generic_value_tuple_return(rt, analyzer)
         # S1 str slice: the resolved str-family return type (owned `str` or
         # `StrView`), so a `return <view-form source>` into an owned `std::string`
         # return copies via the view->owned THIRFormConvert. None otherwise.

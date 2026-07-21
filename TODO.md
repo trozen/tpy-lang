@@ -342,10 +342,21 @@ See `docs/FEATURE_ROADMAP.md` for bigger tasks and `BUGS.md` for known compiler 
   marked async_tuple_optional_elem_return case is the ready witness
   for the widened-tuple DECL+read sinks -- flip it when that
   local_storage rung lands). The res.return_type
-  residue is now per-family rungs, each its own render: generic
-  Ref-element tuples (`tuple[K, V]` resolving Ref[K]/Ref[V] -- the
-  val_or_ptr element bridge; generic_async_free_func_multi_T +
-  generic_async_method), Ref[record]/Ref[list] borrow
+  residue is now per-family rungs, each its own render:
+  **generic Ref-element tuples ROUTED (2026-07-21, the val_or_ptr
+  bridge: `_generic_value_tuple_return` at the resumable return gate +
+  `_lower_generic_tuple_literal` -- TypeParamRef slots spell
+  `val_or_ptr_t<T>` with `to_val_or_ptr` element wraps on the extended
+  THIRBorrowTupleLiteral `elem_wraps` templates; +2 flips:
+  generic_async_free_func_multi_T + generic_async_method. Sliced out,
+  named rejects: generic-tuple YIELD slots (`res.btuple_yield_source`),
+  the SYNC return-arm wiring (ref_generic_tuple_return's label renders
+  the same builder shape but its main is lambda-blocked -- wire
+  `ret_generic_tuple` into the sync return arm + `ret_supported` when a
+  flip exists), `val_or_cptr_t` CONST_REF captures, non-NAME T-element
+  sources (`gentuple.elem_source`), Own/Optional/nested concrete
+  elements beside a T (`gentuple.elem_slot` / gate));**
+  Ref[record]/Ref[list] borrow
   returns (future_drop waiter), pointer-repr Optional returns incl.
   the Own[Box]|None peel (await_optional_field_borrow, 2 bodies);
   **container storage returns ROUTED (2026-07-20, `_res_container_return`

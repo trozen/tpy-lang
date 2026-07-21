@@ -518,6 +518,7 @@ THIR_FACES: frozenset[str] = frozenset({
     # / a scalar value bare). Return-slot only.
     "ret.tuple_nested_elem",
     "btuple.literal",               # borrow-slot tuple literal (spelled + lifts)
+    "gentuple.literal",             # generic-slot tuple literal (to_val_or_ptr)
     "btuple.value_to_borrow",       # rvalue elements via the source-tuple helper
     "btuple.value_arg",             # value-tuple literal call arg
     "btuple.decl",                  # sync borrow-tuple local decl (`auto t = ...`)
@@ -943,6 +944,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "res.frame_tuple_literal",      # value-tuple literal at a bare frame field
     "res.alias_bind",               # pointer-alias frame bind (= &(<lvalue>))
     "res.return_tuple_literal",     # value-tuple literal at the async return slot
+    "res.return_generic_tuple",     # generic tuple literal at the async return slot
     "res.loop_ptr_bind",            # pointer-form loop var admitted (T* reads)
     "res.loop_slot_bind",           # frame_slot loop var admitted ((*x) reads)
     "res.loop_tuple_bind",          # value-tuple holder loop admitted

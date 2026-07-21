@@ -1379,11 +1379,15 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
             return f"{cpp_type}({elems})"
         return f"{cpp_type}{{{elems}}}"
     if isinstance(e, THIRBorrowTupleLiteral):
-        # The borrow-slot render: the spelled slot type + per-element bare
-        # or `&(...)` lifts. Single-element parenthesizes like the value arm.
+        # The borrow-slot render: the spelled slot type + per-element bare,
+        # `&(...)` lift, or `{0}` wrap template (the generic to_val_or_ptr
+        # elements). Single-element parenthesizes like the value arm.
+        wraps = e.elem_wraps or (None,) * len(e.elements)
         elems = ", ".join(
-            f"&({_emit_expr(x, state)})" if lift else _emit_expr(x, state)
-            for x, lift in zip(e.elements, e.addr_of))
+            w.format(_emit_expr(x, state)) if w is not None
+            else f"&({_emit_expr(x, state)})" if lift
+            else _emit_expr(x, state)
+            for x, lift, w in zip(e.elements, e.addr_of, wraps))
         if len(e.elements) == 1:
             return f"{e.spelled_cpp}({elems})"
         return f"{e.spelled_cpp}{{{elems}}}"

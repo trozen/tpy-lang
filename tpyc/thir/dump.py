@@ -282,10 +282,13 @@ def _expr(e: THIRExpr) -> str:
     if isinstance(e, THIRTupleLiteral):
         return f"tuple({_exprs(e.elements)})"
     if isinstance(e, THIRBorrowTupleLiteral):
-        # Per-element address-of is the borrow-form decision, so it shows
-        # per element rather than as one flag.
-        elems = ", ".join(("&" if a else "") + _expr(x)
-                          for x, a in zip(e.elements, e.addr_of))
+        # Per-element address-of / wrap is the borrow-form decision, so it
+        # shows per element rather than as one flag.
+        wraps = e.elem_wraps or (None,) * len(e.elements)
+        elems = ", ".join(
+            w.format(_expr(x)) if w is not None
+            else ("&" if a else "") + _expr(x)
+            for x, a, w in zip(e.elements, e.addr_of, wraps))
         return f"borrow_tuple<{e.spelled_cpp}>({elems})"
     if isinstance(e, THIRTupleValueToBorrow):
         elems = ", ".join(("&" if a else "") + _expr(x)

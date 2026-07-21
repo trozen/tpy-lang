@@ -824,12 +824,21 @@ class THIRBorrowTupleLiteral(THIRExpr):
     bare). `spelled_cpp` is the slot spelling from the slot-info ladder
     (`std::tuple<int32_t, Box*>`), carried whole because the borrow spelling
     is per-element-mode, not derivable from `result_type.to_cpp()`.
-    `addr_of[i]` marks the elements the emit wraps `&(...)`. Rvalue borrow
-    elements (the tuple_value_to_borrow helper machinery), pointer-repr
-    Optional / union / TypeParamRef slots stay gate-rejected."""
+    `addr_of[i]` marks the elements the emit wraps `&(...)`. `elem_wraps[i]`
+    is the third element treatment: a positional `{0}` render template (the
+    generic slot's `::tpy::to_val_or_ptr<val_or_ptr_t<T>>({0})` wrap,
+    computed at lowering like THIRCoerce's TEMPLATE shape); empty tuple for
+    the borrow-only callers, and exclusive with `addr_of[i]` per element.
+    Rvalue borrow elements (the tuple_value_to_borrow helper machinery) and
+    pointer-repr Optional / union slots stay gate-rejected."""
     spelled_cpp: str
     elements: tuple[THIRExpr, ...]
     addr_of: tuple[bool, ...]
+    elem_wraps: tuple[str | None, ...] = ()
+
+    def __post_init__(self) -> None:
+        assert not any(w is not None and a
+                       for w, a in zip(self.elem_wraps, self.addr_of))
 
 
 @dataclass(frozen=True)

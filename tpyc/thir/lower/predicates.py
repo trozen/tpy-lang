@@ -2494,6 +2494,30 @@ def _value_tuple_return(t: TpyType | None, analyzer) -> 'TupleType | None':
     return t if all(_value_tuple_return_element_ok(e, analyzer)
                     for e in t.element_types) else None
 
+def _generic_value_tuple_return(t: TpyType | None,
+                                analyzer) -> 'TupleType | None':
+    """The GENERIC tuple RETURN slot: a tuple with at least one bare
+    TypeParamRef element (its slot spells `::tpy::val_or_ptr_t<T>` and the
+    element wraps in `::tpy::to_val_or_ptr` -- the AST slot-info ladder's
+    TypeParamRef row, deferring value-vs-pointer to instantiation), every
+    other element a narrow value-tuple element (scalar / owned-str / Any --
+    bare by-value slots). Disjoint from `_value_tuple_return` (which has no
+    TypeParamRef row); wrapped generic elements (`readonly[T]` / `Ref[T]`)
+    and wider concrete mixes (Own / Optional / nested tuples beside a T)
+    have no witnesses and keep the whole body on the AST path."""
+    if t is None:
+        return None
+    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    if not isinstance(t, TupleType):
+        return None
+    has_tp = False
+    for e in t.element_types:
+        if isinstance(e, TypeParamRef):
+            has_tp = True
+        elif not _value_tuple_element_ok(e, analyzer):
+            return None
+    return t if has_tp else None
+
 def _value_tuple_nested(t: TpyType | None, analyzer) -> 'TupleType | None':
     """A value tuple whose every element is a narrow value-tuple element (scalar /
     owned-str) OR itself a (recursively) value tuple -- the nesting-agnostic

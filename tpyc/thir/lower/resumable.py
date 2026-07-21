@@ -121,6 +121,7 @@ from .predicates import (
     _eligible_scalar,
     _f1_record,
     _f1_tuple,
+    _generic_value_tuple_return,
     _optional_ptr_borrow,
     _own_declared_call_ret,
     _peel_stale_view_owned_coerce,
@@ -781,6 +782,11 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 # tuple arm (a literal renders the spelled brace-init,
                 # position-independent like the frame-field flavor).
                 or _value_tuple_return(rt, analyzer) is not None
+                # Generic tuple slot (>=1 TypeParamRef element, spelled
+                # `val_or_ptr_t<T>` per element): a literal renders the
+                # spelled brace-init with `to_val_or_ptr` element wraps in
+                # _lower_resumable_return_value's generic arm.
+                or _generic_value_tuple_return(rt, analyzer) is not None
                 # Value-repr Optional[scalar] (`std::optional<T>` slot):
                 # the return value gates per-shape in
                 # _lower_resumable_return_value's value-opt arm.

@@ -2920,8 +2920,9 @@ class TestAliasBinds:
 class TestValueTupleReturns:
     """Value-tuple async return slots: a literal source renders the spelled
     brace-init against the slot (the sync return arm's render); the
-    `__tpy_async_ret` decl + Poll wrap stay skeleton. Generic Ref-element
-    and view-element tuples stay out (the val_or_ptr bridge / view rungs)."""
+    `__tpy_async_ret` decl + Poll wrap stay skeleton. Generic TypeParamRef
+    elements ride the val_or_ptr bridge (spelled slots + to_val_or_ptr
+    wraps); view-element tuples stay out (the view rungs)."""
 
     def test_own_element_literal_return_routes(self):
         src = ("import asyncio\nfrom tpy import Int32, Own\n\n"
@@ -2959,16 +2960,109 @@ class TestValueTupleReturns:
         _, _hpp, cpp = _gen(src, thir=True)
         assert "std::tuple<int32_t, int32_t>{__self.a, __self.b}" in cpp
 
-    def test_generic_ref_tuple_return_defers(self):
-        # Ref[T] elements need the val_or_ptr element spelling -- the
-        # generic-tuple bridge rung; the slot stays out of
-        # _value_tuple_return, so the signature gate rejects.
+    def test_generic_ref_tuple_return_routes(self):
+        # The generic bridge rung: a TypeParamRef element slot spells
+        # `::tpy::val_or_ptr_t<T>` and wraps its element in `to_val_or_ptr`
+        # (value-vs-pointer decided at instantiation); the declared
+        # `std::tuple<K, V>` ret local absorbs the spelled literal.
         # Spelled `tuple[K, V]`; sema resolves the elements to Ref[K]/Ref[V]
-        # (the corpus generic_async_free_func_multi_T shape).
+        # (the corpus generic_async_free_func_multi_T shape). Generic
+        # bodies emit in the HEADER.
         src = ("import asyncio\nfrom tpy import Int32\n\n"
                + "async def pick[K, V](k: K, v: V) -> tuple[K, V]:\n"
                + "    await asyncio.sleep(0)\n"
                + "    return (k, v)\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.return_generic_tuple") == 1
+        assert witnesses.get("gentuple.literal") == 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, hpp, _cpp = _gen(src, thir=True)
+        assert ("std::tuple<K, V> __tpy_async_ret = "
+                "std::tuple<::tpy::val_or_ptr_t<K>, ::tpy::val_or_ptr_t<V>>"
+                "{::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<K>>(k), "
+                "::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<V>>(v)};") in hpp
+
+    def test_generic_method_mixed_str_element_routes(self):
+        # The method flavor with a CONCRETE str element beside a T: the str
+        # slot spells its base type and the field element reads bare
+        # through the frame's __self (the corpus generic_async_method
+        # shape); only the T element takes the to_val_or_ptr wrap.
+        src = ("import asyncio\nfrom tpy import Int32\n\n"
+               + "class Container:\n"
+               + "    def __init__(self, label: str):\n"
+               + "        self.label = label\n\n"
+               + "    async def labeled[T](self, x: T) -> tuple[str, T]:\n"
+               + "        await asyncio.sleep(0)\n"
+               + "        return (self.label, x)\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.return_generic_tuple") == 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, hpp, _cpp = _gen(src, thir=True)
+        assert ("std::tuple<std::string, ::tpy::val_or_ptr_t<T>>"
+                "{__self.label, "
+                "::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(x)};") in hpp
+
+    def test_generic_scalar_element_mix_routes(self):
+        # A concrete SCALAR element beside a T: the scalar slot spells its
+        # base type and reads bare (the _eligible_scalar branch of the
+        # concrete-element row); only the T element wraps.
+        src = ("import asyncio\nfrom tpy import Int32\n\n"
+               + "async def tag[T](n: Int32, x: T) -> tuple[Int32, T]:\n"
+               + "    await asyncio.sleep(0)\n"
+               + "    return (n, x)\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.return_generic_tuple") == 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, hpp, _cpp = _gen(src, thir=True)
+        assert ("std::tuple<int32_t, ::tpy::val_or_ptr_t<T>>"
+                "{n, ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(x)};"
+                ) in hpp
+
+    def test_generic_single_element_tuple_routes(self):
+        # A single-element tuple[T] return: the emit parenthesizes
+        # (`std::tuple<...>(...)`, the brace-init-ambiguity rule) with the
+        # wrap template composing into the single slot.
+        src = ("import asyncio\nfrom tpy import Int32\n\n"
+               + "async def solo[T](x: T) -> tuple[T]:\n"
+               + "    await asyncio.sleep(0)\n"
+               + "    return (x,)\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.return_generic_tuple") == 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, hpp, _cpp = _gen(src, thir=True)
+        assert ("std::tuple<::tpy::val_or_ptr_t<T>>"
+                "(::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(x));") in hpp
+
+    def test_generic_tuple_rvalue_element_defers(self):
+        # A CALL rvalue at a T element slot: the AST routes it through
+        # `_wrap_for_owned_slot`, not the to_val_or_ptr wrap -- the builder
+        # admits plain declared NAMES only (gentuple.elem_source).
+        src = ("import asyncio\nfrom tpy import Int32\n\n"
+               + "def ident[T](x: T) -> T:\n"
+               + "    return x\n\n"
+               + "async def pick[K, V](k: K, v: V) -> tuple[K, V]:\n"
+               + "    await asyncio.sleep(0)\n"
+               + "    return (k, ident(v))\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        assert _res_fallback(src).get("expr.tuple_literal") == 1
+        _assert_identical(src)
+
+    def test_generic_tuple_own_element_mix_defers(self):
+        # An Own[record] element beside a T is outside both tuple-return
+        # families (no witness): _generic_value_tuple_return requires the
+        # concrete elements to be narrow value elements, so the signature
+        # gate rejects.
+        src = ("import asyncio\nfrom tpy import Int32, Own\n\n"
+               + "class Box:\n"
+               + "    v: Int32\n"
+               + "    def __init__(self, v: Int32):\n        self.v = v\n\n"
+               + "async def pick[V](b: Own[Box], v: V) -> tuple[Own[Box], V]:\n"
+               + "    await asyncio.sleep(0)\n"
+               + "    return (b, v)\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
         assert _res_fallback(src).get("res.return_type") == 1
         _assert_identical(src)
