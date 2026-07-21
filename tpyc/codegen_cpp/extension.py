@@ -1138,6 +1138,30 @@ class ExtensionGenerator:
         out.write("}\n\n")
         return "Py_tp_iternext", wname
 
+    def _emit_export_class_iter(self, out: TextIO, cls: dict, sym: str,
+                                reg_arg: str, cppvar: str
+                                ) -> tuple[str, str] | None:
+        """Emit __iter__ -> Py_tp_iter (unaryfunc shape). Unlike the
+        arithmetic unary ops this goes through `_emit_call_return` with the
+        receiver as an alias candidate: the canonical `return self` iterator
+        crosses as the SAME PyObject -- a copied iterator would be silently
+        restartable and interleaved next(obj) would diverge. An Own[...]
+        return (a fresh iterator object) takes the usual fresh-instance path."""
+        info = cls["info"]
+        if "__iter__" not in info.methods:
+            return None
+        base = f"{sym}__{escape_cpp_name(cls['simple'])}"
+        wname = f"{base}__iter_slot"
+        out.write(f"PyObject *{wname}(PyObject *self) {{\n")
+        out.write("    try {\n")
+        out.write(f"        auto &__self = {cppvar}->payload;\n")
+        self._emit_call_return(out, info.methods["__iter__"][0].return_type,
+                               "__self.__iter__()", sym,
+                               [("__self", "self", info)])
+        self._emit_boundary_catch(out, reg_arg)
+        out.write("}\n\n")
+        return "Py_tp_iter", wname
+
     def _emit_export_class_container_slots(self, out: TextIO, cls: dict, sym: str,
                                            reg_arg: str, cppvar: str
                                            ) -> list[tuple[str, str]]:
@@ -1150,14 +1174,11 @@ class ExtensionGenerator:
         for fn in (self._emit_export_class_getitem,
                   self._emit_export_class_ass_subscript,
                   self._emit_export_class_contains,
-                  self._emit_export_class_next):
+                  self._emit_export_class_next,
+                  self._emit_export_class_iter):
             r = fn(out, cls, sym, reg_arg, cppvar)
             if r is not None:
                 slots.append(r)
-        r = self._emit_export_class_unary_op(
-            out, cls, sym, reg_arg, cppvar, "__iter__", "Py_tp_iter")
-        if r is not None:
-            slots.append(r)
         return slots
 
     def _emit_exposed_class(self, out: TextIO, cls: dict, sym: str,

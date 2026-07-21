@@ -186,7 +186,8 @@ PyObject *class_container__Box__next_slot(PyObject *self) {
 
 PyObject *class_container__Box__iter_slot(PyObject *self) {
     try {
-        return ::tpy::interop::instance_to_py((::tpy::cpy::PyTypeObject *)class_container__type_Box, reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_container::Box> *>(self)->payload.__iter__());
+        auto &__self = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_container::Box> *>(self)->payload;
+        return ::tpy::interop::instance_to_py((::tpy::cpy::PyTypeObject *)class_container__type_Box, __self.__iter__());
     } catch (const ::tpy::BaseException &__e) {
         ::tpy::interop::set_py_err_from(__e);
         return nullptr;

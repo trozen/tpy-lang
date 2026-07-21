@@ -6144,7 +6144,10 @@ API, floor 3.12, hand-rolled C-API glue, copy-in marshalling).
   to make the copy explicit; the copy is a new object, and a copied derived
   instance slices to the declared type). Operator/container dunder slots are
   not identity-capable (their borrow returns always copy and warn; the
-  in-place group returns `self` identity-preserved by construction), and a
+  in-place group returns `self` identity-preserved by construction, and
+  `__iter__` threads the receiver candidate, so the canonical `return self`
+  iterator crosses as the SAME object -- shared cursor state, sticky
+  exhaustion -- while an `Own[Cls]` fresh-iterator return stays fresh), and a
   `readonly[Cls]` self/param return takes the identity path like the
   mutable form (readonly is a TPy-side contract; the Python consumer gets
   the original object, as in plain Python). Returning a fresh/`copy()`'d

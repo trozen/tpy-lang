@@ -9,6 +9,7 @@ namespace tpyapp::main {
 
 struct Inner;
 struct Box;
+struct FieldIter;
 
 extern Box* self;
 inline constexpr std::string_view __name__ = "__main__";
@@ -66,13 +67,46 @@ struct Box {
     // def __iter__(self) -> "Box":
     Box& __iter__();
 
+    // def __getitem__(self, i: Int64) -> "Box":
+    Box& __getitem__(int64_t i);
+
+    // def __getitem__(self, i: Int64) -> "Box":
+    const Box& __getitem__(int64_t i) const;
+
     // def __next__(self) -> Int64:
     std::expected<int64_t, ::tpy::StopIteration> __next__();
+
+    const Box& operator[](int64_t i) const {
+        return __getitem__(i);
+    }
+
+    Box& operator[](int64_t i) {
+        return __getitem__(i);
+    }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
     ::tpy::print_object_default(os, "Box", obj);
+    return os;
+}
+
+// @export
+// class FieldIter:
+struct FieldIter {
+    // _b: Box
+    Box _b;
+
+    // def __init__(self):
+    FieldIter();
+
+    // def __iter__(self) -> Box:
+    Box& __iter__();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.FieldIter";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const FieldIter& obj) {
+    ::tpy::print_object_default(os, "FieldIter", obj);
     return os;
 }
 
@@ -122,9 +156,27 @@ inline Inner& Box::pick_inner(Inner& other, bool use_field) {
 
 // def __iter__(self) -> "Box":
 inline Box& Box::__iter__() {
-    // # A dunder slot emits through the expression-form copy path (no
-    // # identity candidates), so even a bare `self` return still warns.
-    // return self  # tpyc: warning(/copied across the CPython boundary there/)
+    // # tp_iter threads the receiver candidate, so the canonical
+    // # return-self iterator crosses by identity and doesn't warn.
+    // return self  # tpyc: ok
+    return (*this);
+}
+
+// def __getitem__(self, i: Int64) -> "Box":
+inline Box& Box::__getitem__(int64_t i) {
+    // # Every other dunder slot emits through the expression-form copy
+    // # path (no identity candidates), so even a bare `self` return warns,
+    // # with the always-copies wording (no identity advice).
+    // return self  # tpyc: warning(/dunder slot with no identity-preserving path/)
+    return (*this);
+}
+
+// def __getitem__(self, i: Int64) -> "Box":
+inline const Box& Box::__getitem__(int64_t i) const {
+    // # Every other dunder slot emits through the expression-form copy
+    // # path (no identity candidates), so even a bare `self` return warns,
+    // # with the always-copies wording (no identity advice).
+    // return self  # tpyc: warning(/dunder slot with no identity-preserving path/)
     return (*this);
 }
 
@@ -139,6 +191,17 @@ inline std::expected<int64_t, ::tpy::StopIteration> Box::__next__() {
     this->v = ::tpy::sub_check<int64_t>(this->v, 1);
     // return self.v
     return this->v;
+}
+
+// def __init__(self):
+inline FieldIter::FieldIter() : _b(Box(0)) {}
+
+// def __iter__(self) -> Box:
+inline Box& FieldIter::__iter__() {
+    // # The __iter__ carve-out suppresses only bare-self bodies: a field
+    // # source has no live PyObject behind it, so it still copies and warns.
+    // return self._b  # tpyc: warning(/copied across the CPython boundary there/)
+    return this->_b;
 }
 void __tpy_init();
 } // namespace tpyapp::main

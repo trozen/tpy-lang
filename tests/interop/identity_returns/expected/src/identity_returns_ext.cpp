@@ -8,6 +8,8 @@ namespace {
 using namespace ::tpy::cpy;
 
 PyObject *identity_returns__type_Box = nullptr;
+PyObject *identity_returns__type_Cursor = nullptr;
+PyObject *identity_returns__type_CursorSub = nullptr;
 PyObject *identity_returns__type_Inner = nullptr;
 PyObject *identity_returns__type_Holder = nullptr;
 
@@ -216,6 +218,151 @@ PyType_Spec identity_returns__Box__spec = {
     Py_TPFLAGS_DEFAULT, identity_returns__Box__slots,
 };
 
+int identity_returns__Cursor_init(PyObject *self, PyObject *args, PyObject *kwargs) {
+    if (Py_TYPE(self) != (::tpy::cpy::PyTypeObject *)identity_returns__type_Cursor) {
+        PyErr_SetString(PyExc_TypeError, "Python-defined subclasses of exposed class 'identity_returns.Cursor' are not supported");
+        return -1;
+    }
+    static char *__kwlist[] = {const_cast<char *>("n"), nullptr};
+    PyObject *a0 = nullptr;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:Cursor", __kwlist, &a0)) return -1;
+    auto *__inst = reinterpret_cast<::tpy::interop::Instance<::tpyapp::identity_returns::Cursor> *>(self);
+    try {
+        int32_t __p0 = ::tpy::interop::from_py<int32_t>(a0);
+        if (__inst->initialized) { __inst->initialized = false; ::std::destroy_at(&__inst->payload); }
+        new (&__inst->payload) ::tpyapp::identity_returns::Cursor(__p0);
+        __inst->initialized = true;
+        return 0;
+    } catch (const ::tpy::BaseException &__e) {
+        ::tpy::interop::set_py_err_from(__e);
+        return -1;
+    } catch (...) {
+        if (!PyErr_Occurred())
+            PyErr_SetString(PyExc_RuntimeError, "tpy extension: constructor failed");
+        return -1;
+    }
+}
+
+PyObject *identity_returns__Cursor__n_get(PyObject *self, void *) {
+    try {
+        return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::identity_returns::Cursor> *>(self)->payload.n);
+    } catch (...) {
+        if (!PyErr_Occurred())
+            PyErr_SetString(PyExc_RuntimeError, "tpy extension: attribute read failed");
+        return nullptr;
+    }
+}
+int identity_returns__Cursor__n_set(PyObject *self, PyObject *value, void *) {
+    if (value == nullptr) {
+        PyErr_SetString(PyExc_AttributeError, "attribute 'n' cannot be deleted");
+        return -1;
+    }
+    try {
+        reinterpret_cast<::tpy::interop::Instance<::tpyapp::identity_returns::Cursor> *>(self)->payload.n = ::tpy::interop::from_py<int32_t>(value);
+        return 0;
+    } catch (...) {
+        if (!PyErr_Occurred())
+            PyErr_SetString(PyExc_RuntimeError, "tpy extension: attribute write failed");
+        return -1;
+    }
+}
+
+PyObject *identity_returns__Cursor__next_slot(PyObject *self) {
+    try {
+        auto __r = reinterpret_cast<::tpy::interop::Instance<::tpyapp::identity_returns::Cursor> *>(self)->payload.__next__();
+        if (!__r.has_value()) {
+            ::tpy::interop::set_py_err_from(__r.error());
+            return nullptr;
+        }
+        return ::tpy::interop::to_py(std::move(__r).value());
+    } catch (const ::tpy::BaseException &__e) {
+        ::tpy::interop::set_py_err_from(__e);
+        return nullptr;
+    } catch (...) {
+        if (!PyErr_Occurred())
+            PyErr_SetString(PyExc_RuntimeError, "tpy extension: unhandled error");
+        return nullptr;
+    }
+}
+
+PyObject *identity_returns__Cursor__iter_slot(PyObject *self) {
+    try {
+        auto &__self = reinterpret_cast<::tpy::interop::Instance<::tpyapp::identity_returns::Cursor> *>(self)->payload;
+        auto &__r = __self.__iter__();
+        if (&__r == &__self) { Py_IncRef(self); return self; }
+        return ::tpy::interop::instance_to_py((::tpy::cpy::PyTypeObject *)identity_returns__type_Cursor, __r);
+    } catch (const ::tpy::BaseException &__e) {
+        ::tpy::interop::set_py_err_from(__e);
+        return nullptr;
+    } catch (...) {
+        if (!PyErr_Occurred())
+            PyErr_SetString(PyExc_RuntimeError, "tpy extension: unhandled error");
+        return nullptr;
+    }
+}
+
+PyMethodDef identity_returns__Cursor__methods[] = {
+    {nullptr, nullptr, 0, nullptr},
+};
+PyGetSetDef identity_returns__Cursor__getset[] = {
+    {"n", identity_returns__Cursor__n_get, identity_returns__Cursor__n_set, nullptr, nullptr},
+    {nullptr, nullptr, nullptr, nullptr, nullptr},
+};
+PyType_Slot identity_returns__Cursor__slots[] = {
+    {Py_tp_init, (void *)identity_returns__Cursor_init},
+    {Py_tp_dealloc, (void *)::tpy::interop::instance_dealloc<::tpyapp::identity_returns::Cursor>},
+    {Py_tp_methods, (void *)identity_returns__Cursor__methods},
+    {Py_tp_getset, (void *)identity_returns__Cursor__getset},
+    {Py_tp_iternext, (void *)identity_returns__Cursor__next_slot},
+    {Py_tp_iter, (void *)identity_returns__Cursor__iter_slot},
+    {Py_tp_new, (void *)::tpy::cpy::PyType_GenericNew},
+    {0, nullptr},
+};
+PyType_Spec identity_returns__Cursor__spec = {
+    "identity_returns.Cursor", (int)sizeof(::tpy::interop::Instance<::tpyapp::identity_returns::Cursor>), 0,
+    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, identity_returns__Cursor__slots,
+};
+
+int identity_returns__CursorSub_init(PyObject *self, PyObject *args, PyObject *kwargs) {
+    static char *__kwlist[] = {const_cast<char *>("n"), nullptr};
+    PyObject *a0 = nullptr;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:CursorSub", __kwlist, &a0)) return -1;
+    auto *__inst = reinterpret_cast<::tpy::interop::Instance<::tpyapp::identity_returns::CursorSub> *>(self);
+    try {
+        int32_t __p0 = ::tpy::interop::from_py<int32_t>(a0);
+        if (__inst->initialized) { __inst->initialized = false; ::std::destroy_at(&__inst->payload); }
+        new (&__inst->payload) ::tpyapp::identity_returns::CursorSub(__p0);
+        __inst->initialized = true;
+        return 0;
+    } catch (const ::tpy::BaseException &__e) {
+        ::tpy::interop::set_py_err_from(__e);
+        return -1;
+    } catch (...) {
+        if (!PyErr_Occurred())
+            PyErr_SetString(PyExc_RuntimeError, "tpy extension: constructor failed");
+        return -1;
+    }
+}
+
+PyMethodDef identity_returns__CursorSub__methods[] = {
+    {nullptr, nullptr, 0, nullptr},
+};
+PyGetSetDef identity_returns__CursorSub__getset[] = {
+    {nullptr, nullptr, nullptr, nullptr, nullptr},
+};
+PyType_Slot identity_returns__CursorSub__slots[] = {
+    {Py_tp_init, (void *)identity_returns__CursorSub_init},
+    {Py_tp_dealloc, (void *)::tpy::interop::instance_dealloc<::tpyapp::identity_returns::CursorSub>},
+    {Py_tp_methods, (void *)identity_returns__CursorSub__methods},
+    {Py_tp_getset, (void *)identity_returns__CursorSub__getset},
+    {Py_tp_new, (void *)::tpy::cpy::PyType_GenericNew},
+    {0, nullptr},
+};
+PyType_Spec identity_returns__CursorSub__spec = {
+    "identity_returns.CursorSub", (int)sizeof(::tpy::interop::Instance<::tpyapp::identity_returns::CursorSub>), 0,
+    Py_TPFLAGS_DEFAULT, identity_returns__CursorSub__slots,
+};
+
 int identity_returns__Inner_init(PyObject *self, PyObject *args, PyObject *kwargs) {
     static char *__kwlist[] = {const_cast<char *>("x"), nullptr};
     PyObject *a0 = nullptr;
@@ -382,6 +529,12 @@ extern "C" PyObject *PyInit_identity_returns(void) {
         identity_returns__type_Box = ::tpy::cpy::PyType_FromSpec(&identity_returns__Box__spec);
         if (!identity_returns__type_Box) { ::tpy::cpy::Py_DecRef(__m); return nullptr; }
         if (::tpy::cpy::PyModule_AddObjectRef(__m, "Box", identity_returns__type_Box) < 0) { ::tpy::cpy::Py_DecRef(__m); return nullptr; }
+        identity_returns__type_Cursor = ::tpy::cpy::PyType_FromSpec(&identity_returns__Cursor__spec);
+        if (!identity_returns__type_Cursor) { ::tpy::cpy::Py_DecRef(__m); return nullptr; }
+        if (::tpy::cpy::PyModule_AddObjectRef(__m, "Cursor", identity_returns__type_Cursor) < 0) { ::tpy::cpy::Py_DecRef(__m); return nullptr; }
+        identity_returns__type_CursorSub = ::tpy::cpy::PyType_FromSpecWithBases(&identity_returns__CursorSub__spec, identity_returns__type_Cursor);
+        if (!identity_returns__type_CursorSub) { ::tpy::cpy::Py_DecRef(__m); return nullptr; }
+        if (::tpy::cpy::PyModule_AddObjectRef(__m, "CursorSub", identity_returns__type_CursorSub) < 0) { ::tpy::cpy::Py_DecRef(__m); return nullptr; }
         identity_returns__type_Inner = ::tpy::cpy::PyType_FromSpec(&identity_returns__Inner__spec);
         if (!identity_returns__type_Inner) { ::tpy::cpy::Py_DecRef(__m); return nullptr; }
         if (::tpy::cpy::PyModule_AddObjectRef(__m, "Inner", identity_returns__type_Inner) < 0) { ::tpy::cpy::Py_DecRef(__m); return nullptr; }

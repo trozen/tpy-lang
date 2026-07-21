@@ -3,13 +3,14 @@
 # the receiver or a parameter crosses as the ORIGINAL PyObject (Py_IncRef in
 # the glue after an address match against self / the exposed-class params),
 # so `is`, write-through, and the dynamic type survive the boundary --
-# return-self, fluent chains, param pass-through, and both arms of a
-# mixed self/param body. A source with no live PyObject behind it (the
-# `_inner` field borrow) still copies; that residual divergence (and the
+# return-self, fluent chains, param pass-through, both arms of a mixed
+# self/param body, and the tp_iter slot (the return-self iterator idiom,
+# incl. inherited into a subclass). A source with no live PyObject behind it
+# (the `_inner` field borrow) still copies; that residual divergence (and the
 # first-field address-collision guard: Holder's payload starts at `_inner`,
 # but Holder is unrelated to Inner so the glue must not compare them) is
 # asserted ext-only in ext_checks.py.
-from tpy import Int64, Own, readonly
+from tpy import Int32, Int64, Own, readonly
 from tpy.extern import export
 
 
@@ -43,6 +44,36 @@ class Box:
         # plain-Python aliasing the cpy stubs exhibit (readonly is a no-op
         # there).
         return self
+
+
+@export
+class Cursor:
+    n: Int32
+    _i: Int32
+
+    def __init__(self, n: Int32):
+        self.n = n
+        self._i = 0
+
+    def __iter__(self) -> "Cursor":
+        # The canonical iterator idiom: tp_iter hands back the SAME PyObject
+        # (a copied iterator would restart and interleaved next() on the
+        # original would diverge).
+        return self
+
+    def __next__(self) -> Int32:
+        if self._i >= self.n:
+            raise StopIteration
+        result = self._i
+        self._i += 1
+        return result
+
+
+@export
+class CursorSub(Cursor):
+    # No own __iter__: the base's tp_iter slot is inherited, and its identity
+    # path must hand back this derived instance un-sliced.
+    pass
 
 
 @export

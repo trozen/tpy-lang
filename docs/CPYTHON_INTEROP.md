@@ -1148,7 +1148,10 @@ Detail for the tracker table in "v1 plan and status" (top). **v1.0 = phases
    return path). Operator/container DUNDER slots are not identity-capable
    (they emit through the expression-form copy path), so their borrow
    returns always copy and always warn -- except the in-place group, which
-   returns `self` identity-preserved by construction. A `readonly[Cls]`
+   returns `self` identity-preserved by construction, and `__iter__`,
+   whose `tp_iter` wrapper threads the receiver candidate (the canonical
+   `return self` iterator crosses as the SAME object; see the container
+   protocol below). A `readonly[Cls]`
    self/param return takes the same identity path as the mutable form: the
    Python consumer receives the ORIGINAL object exactly as under plain
    Python (readonly is a TPy-side no-mutation-through-this-handle contract
@@ -1294,9 +1297,9 @@ Detail for the tracker table in "v1 plan and status" (top). **v1.0 = phases
    return value -- TPy already requires these to return `self` (not
    `Own[T]`), so no new validation is needed; the borrow-return-copies
    warning is suppressed for this group specifically (identity is
-   preserved by construction; plain methods now get the same treatment via
-   the address-matched identity-preserving return, while other dunders keep
-   the fresh-`instance_to_py` return).
+   preserved by construction; plain methods and `__iter__` get the same
+   treatment via the address-matched identity-preserving return, while the
+   other dunders keep the fresh-`instance_to_py` return).
    **Checkpoint 3 implemented**: the container protocol -> `Py_mp_*`/
    `Py_sq_*`/`Py_tp_iter*`. `__len__` wires ONE wrapper to BOTH
    `Py_mp_length` and `Py_sq_length` (matching how CPython wires a plain
@@ -1310,11 +1313,14 @@ Detail for the tracker table in "v1 plan and status" (top). **v1.0 = phases
    Python class with the same shape -- an inherited half keeps working); `__contains__` -> `Py_sq_contains` (omitted entirely when
    undefined -- `in` then falls back to CPython's own iterate-via-`tp_iter`
    behavior, `PySequence_Contains`, for free); `__iter__` -> `Py_tp_iter`
-   (reuses the unary-op shape -- no special self-identity handling: `__iter__`
-   need not return `self`, e.g. `def __iter__(self) -> Own[Cls]: return
-   Cls(...)` is a legitimate "returns a fresh iterator" shape, so it's
-   marshalled like any other exposed-class return, with the usual
-   borrow-vs-`Own` warning if it aliases); `__next__` -> `Py_tp_iternext` --
+   (goes through the same identity-preserving return as plain methods with
+   `self` as the alias candidate: the canonical `def __iter__(self) ->
+   "Cls": return self` hands back the SAME PyObject -- iterator state is
+   shared and exhaustion sticks, exactly as in plain Python -- while `def
+   __iter__(self) -> Own[Cls]: return Cls(...)`, the "returns a fresh
+   iterator" shape, marshals a fresh instance like any other `Own` return;
+   the borrow-vs-`Own` warning fires only for non-`self` borrow sources);
+   `__next__` -> `Py_tp_iternext` --
    `__next__` is implicitly `@error_return(StopIteration)` (the parser
    default), so the compiled method returns `std::expected<T,
    StopIteration>` rather than throwing on exhaustion; the wrapper checks

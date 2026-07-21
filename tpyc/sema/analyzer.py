@@ -539,10 +539,10 @@ class SemanticAnalyzer:
                                   alias_names: 'set[str] | None') -> None:
             """`alias_names` = the bare return-site names whose returns the
             GLUE hands back by identity (the address-matched candidates it
-            actually threads: params, plus `self` for methods/getters), or
-            None when the emit site has no identity path at all (dunder slots
-            emit through `_value_out_expr`, which always copies) -- those must
-            keep the unconditional warning."""
+            actually threads: params, plus `self` for methods/getters and the
+            tp_iter slot), or None when the emit site has no identity path at
+            all (the other dunder slots emit through `_value_out_expr`, which
+            always copies) -- those must keep the unconditional warning."""
             if not isinstance(fn.return_type, RefType):
                 return
             if is_exposed_class(fn.return_type):
@@ -562,9 +562,25 @@ class SemanticAnalyzer:
                         (src := _bare_name_source(r.value)) is not None
                         and src.name in alias_names for r in returns):
                     return
+                cls_name = getattr(fn.return_type.wrapped, 'name', '?')
+                if alias_names is None:
+                    # No identity path exists at this emit site, so the copy
+                    # is unconditional -- the identity-advice wording would
+                    # lie here (`return self` still copies).
+                    self._warning(
+                        f"{label}: returns exposed class '{cls_name}' by "
+                        f"reference from a dunder slot with no "
+                        f"identity-preserving path, so the instance is "
+                        f"always copied across the CPython boundary -- the "
+                        f"copy is a new object (identity and write-through "
+                        f"aliasing are not preserved; a copied derived "
+                        f"instance is sliced to the declared type); return "
+                        f"Own[{cls_name}] to make the copy explicit",
+                        first_return(fn.body))
+                    return
                 self._warning(
                     f"{label}: returns exposed class "
-                    f"'{getattr(fn.return_type.wrapped, 'name', '?')}' by "
+                    f"'{cls_name}' by "
                     f"reference from a source other than `self` or a "
                     f"parameter on at least one return path, so the instance "
                     f"is copied across the CPython boundary there -- the copy "
@@ -625,9 +641,13 @@ class SemanticAnalyzer:
                 # Non-inplace dunders emit through `_value_out_expr` slot
                 # wrappers, which have no identity path -- their borrow
                 # returns always copy, so no suppression (alias_names=None).
+                # __iter__ is the exception: its tp_iter wrapper threads the
+                # receiver candidate (the canonical `return self` iterator
+                # crosses by identity), so bare-self returns suppress.
                 warn_if_borrow_return(
                     m, f"exposed class '{record.name}' {what} '{m.name}'",
-                    None if is_dunder
+                    {"self"} if m.name in _EXPORT_CLASS_ITER_DUNDERS
+                    else None if is_dunder
                     else {n for n, _t in m.params} | {"self"})
 
     def _validate_export_class_dunders(self, module: TpyModule) -> None:

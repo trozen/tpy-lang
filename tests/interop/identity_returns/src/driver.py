@@ -30,3 +30,19 @@ h = m.Holder(9)
 print(h.get_inner().x)
 i = m.Inner(7)
 print(h.pick_inner(i, False) is i)
+
+# The return-self iterator: iter() is the SAME object, so cursor state is
+# shared (interleaved next on the iterator and the original advance one
+# cursor) and exhaustion sticks -- a copied iterator would restart.
+cur = m.Cursor(4)
+print(iter(cur) is cur)
+it = iter(cur)
+print(next(it), next(cur), next(it))
+print(list(cur))
+print(list(cur))
+
+# Inherited __iter__ (base slot on a derived instance): identity holds and
+# the dynamic type survives un-sliced.
+sub = m.CursorSub(2)
+print(iter(sub) is sub, type(iter(sub)) is m.CursorSub)
+print(list(sub), list(sub))

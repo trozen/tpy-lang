@@ -11,3 +11,9 @@ True
 False 3
 9
 True
+True
+0 1 2
+[3]
+[]
+True True
+[0, 1] []

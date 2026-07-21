@@ -16,6 +16,7 @@ print(20 in b, 99 in b)         # False True
 
 vals = list(b)                 # exercises __iter__ + __next__
 print(vals)                    # [0, 1, 2]
+print(iter(b) is b)            # False -- Own[Box] __iter__ mints a fresh iterator
 
 it = iter(b)
 print(next(it), next(it), next(it))   # 0 1 2

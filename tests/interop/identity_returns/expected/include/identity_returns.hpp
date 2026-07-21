@@ -8,6 +8,8 @@
 namespace tpyapp::identity_returns {
 
 struct Box;
+struct Cursor;
+struct CursorSub;
 struct Inner;
 struct Holder;
 
@@ -43,6 +45,24 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
     return os;
 }
 
+struct Cursor {
+    int32_t n;
+    int32_t _i;
+
+    Cursor() = default;
+    explicit Cursor(int32_t n);
+
+    Cursor& __iter__();
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Cursor";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Cursor& obj) {
+    ::tpy::print_object_default(os, "Cursor", obj);
+    return os;
+}
+
 struct Inner {
     int64_t x;
 
@@ -70,6 +90,17 @@ struct Holder {
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     ::tpy::print_object_default(os, "Holder", obj);
+    return os;
+}
+
+struct CursorSub : Cursor {
+
+    using Cursor::Cursor;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.CursorSub";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const CursorSub& obj) {
+    ::tpy::print_object_default(os, "CursorSub", obj);
     return os;
 }
 
@@ -102,6 +133,21 @@ inline const Box& Box::itself() const {
 
 inline const Box& Box::view() {
     return (*this);
+}
+
+inline Cursor::Cursor(int32_t n) : n(n), _i(0) {}
+
+inline Cursor& Cursor::__iter__() {
+    return (*this);
+}
+
+inline std::expected<int32_t, ::tpy::StopIteration> Cursor::__next__() {
+    if ((this->_i >= this->n)) {
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    int32_t result = this->_i;
+    this->_i = ::tpy::add_check<int32_t>(this->_i, 1);
+    return result;
 }
 
 inline Inner::Inner(int64_t x) : x(x) {}
