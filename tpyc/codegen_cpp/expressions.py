@@ -617,6 +617,21 @@ class ExpressionGenerator:
             return f"(*{obj})"
         return obj
 
+    def render_for_iterable(self, expr: TpyExpr) -> str:
+        """Render a for-loop iterable as the contained container value.
+
+        Single owner of the narrowed-Optional unwrap for iteration sources
+        (shared by the sync loop and the resumable-frame setup): gen_expr_deref
+        already unwraps narrowed-Optional FIELDS (its is_narrowed_optional_field
+        arm) and derefs indirect names, so a second unwrap here would deref the
+        contained value; narrowed value-Optional locals/params are left wrapped
+        by gen_expr_deref and get their `(*v)` here."""
+        code = self.gen_expr_deref(expr)
+        if isinstance(expr, TpyFieldAccess):
+            return code
+        return self._maybe_unwrap_narrowed_optional(
+            expr, code, self.ctx.is_indirect_name(expr))
+
     def narrowed_value_optional_iter_type(self, expr: TpyExpr, declared: TpyType | None) -> TpyType | None:
         """For a for-loop iterable: if `declared` is a narrowed value-Optional
         (`str|None`/`bytes|None` proven non-None, value-repr -- still

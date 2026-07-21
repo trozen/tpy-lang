@@ -437,9 +437,9 @@ class CookieJar:
         return out
 
     def __iter__(self) -> Iterator[str]:
-        # Yield from a materialized key list rather than iterating self._store
-        # directly: a generator over the (const, in a readonly method) dict can't
-        # store the const key-iterator in its frame (BUGS.md).
+        # Yield from a materialized key list: yielding the dict-key VIEW from
+        # a resumable frame mis-emits it into the owned `str` yield slot
+        # (string_view -> expected<string>, no conversion; BUGS.md).
         names = self.keys()
         for name in names:
             yield name

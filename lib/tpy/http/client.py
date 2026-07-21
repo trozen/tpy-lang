@@ -353,9 +353,7 @@ def _build_request(method: str, url: str, body: bytes | None,
     has_cl = False
     has_te = False
     if headers is not None:
-        # .items() not bare `for k in headers`: key-iteration over a
-        # narrowed Optional dict miscompiles to an empty loop (BUGS.md).
-        for k, v in headers.items():
+        for k in headers:
             kl = k.lower()
             if kl == "host":
                 has_host = True

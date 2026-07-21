@@ -44,7 +44,7 @@ _FRESH_COLLECTION_NODES = (
     TpyArrayLiteral, TpyDictLiteral, TpySetLiteral, TpyListRepeat,
     TpyListComprehension, TpyDictComprehension, TpySetComprehension,
 )
-from ..typesys import IntLiteralType, NominalType, OptionalType, OwnType, TupleType, TypeParamRef, unwrap_readonly, unwrap_ref_type, unwrap_own, unwrap_send_sync, VoidType, is_fn_type, is_dyn_protocol
+from ..typesys import IntLiteralType, NominalType, OptionalType, OwnType, ReadonlyType, TupleType, TypeParamRef, unwrap_readonly, unwrap_ref_type, unwrap_own, unwrap_send_sync, VoidType, is_fn_type, is_dyn_protocol
 from .gen_generators import GeneratorCodegen, GeneratorForInfo
 from ..type_def_registry import (is_str_type, is_str_category, is_big_int_type,
                                   is_owned_in_coro_frame, view_owned_copy_init)
@@ -1246,8 +1246,14 @@ class AsyncCoroCodegen:
                     # Pointer-repr Optional: bare `T* = nullptr` aliases
                     # the source and uses nullptr as both "uninitialized"
                     # and "None"; no outer `std::optional<...>` wrap.
+                    # Const-rooted sources (borrow of self's field in a
+                    # readonly method) need `const T*` -- classified into
+                    # const_pointer_alias_locals at the initializing decl.
                     inner_cpp = self.types.type_to_cpp(ltype_inner.inner)
-                    out.write(f"{INDENT}{inner_cpp}* {cpp_name} = nullptr;\n")
+                    const_pfx = ("const " if lname in
+                                 state.const_pointer_alias_locals else "")
+                    out.write(
+                        f"{INDENT}{const_pfx}{inner_cpp}* {cpp_name} = nullptr;\n")
                 else:
                     cpp_type = self.types.type_to_cpp(ltype_inner)
                     out.write(f"{INDENT}::tpy::frame_slot<{cpp_type}> {cpp_name};\n")
@@ -1937,6 +1943,35 @@ class AsyncCoroCodegen:
         saved_var_types = self.ctx.var_types
         self.ctx.var_types = {pname: unwrap_ref_type(ptype)
                               for pname, ptype in func.params}
+        # The strategy analysis also consults the const sets (a const-rooted
+        # iterable needs a const_iterator frame slot), which on entry still
+        # hold the previous function's values -- seed FRAME-CAPTURE constness,
+        # not the sync signature inference: the frame stores `const Self&`
+        # for a readonly method and `const T&` for explicit readonly[T]
+        # params, but captures inferred-const reference params as mutable
+        # `T&`, so sync const sets would over-mark param-rooted sources.
+        saved_crp = self.ctx.const_ref_params
+        saved_dcbp = self.ctx.deep_const_borrow_params
+        crp: set[str] = set()
+        dcbp: set[str] = set()
+        if func.is_readonly and (record_name is not None or func.is_method):
+            crp.add("self")
+        for pname, ptype in func.params:
+            if isinstance(unwrap_ref_type(ptype), ReadonlyType):
+                crp.add(pname)
+                dcbp.add(pname)
+        self.ctx.const_ref_params = crp
+        self.ctx.deep_const_borrow_params = dcbp
+        # Classify borrow-alias locals under the seeded const sets (the
+        # classification is memoized, so it must not first run against a
+        # stale context) and expose the const subset: the strategy analysis
+        # types const-alias iterables' frame iterator slots off it.
+        saved_alias = self.ctx.generator_pointer_alias_locals
+        saved_alias_const = self.ctx.generator_const_pointer_alias_locals
+        self.ctx.generator_pointer_alias_locals = (
+            self._classify_pointer_alias_locals(func))
+        self.ctx.generator_const_pointer_alias_locals = (
+            rcfg.resumable_state(func).const_pointer_alias_locals)
         try:
             for_uid_map = self._prescan_resumable_for_loops(func, body)
             with_uid_map = self._prescan_with_stmts(func, body)
@@ -1960,6 +1995,10 @@ class AsyncCoroCodegen:
             raise CodeGenError(e.msg, loc=e.loc)
         finally:
             self.ctx.var_types = saved_var_types
+            self.ctx.const_ref_params = saved_crp
+            self.ctx.deep_const_borrow_params = saved_dcbp
+            self.ctx.generator_pointer_alias_locals = saved_alias
+            self.ctx.generator_const_pointer_alias_locals = saved_alias_const
         # Stash the builder so callers (emit) can look up handler
         # entries via builder.get_handler_entry().
         state.cfg_builder = builder
@@ -2160,16 +2199,33 @@ class AsyncCoroCodegen:
                     src_is_exc = root_name(s.init) in exc_bindings
                     # Owned-erased (Own[dyn P]) locals move on binding --
                     # never a borrow alias of the source.
+                    ltype_bare = unwrap_ref_type(ltype) if ltype is not None else None
+                    # is_const_storage_source: a field chain rooted at a
+                    # const receiver (self.field in a readonly method)
+                    # renders const; sync locals pick that up via auto
+                    # deduction, but the frame field must spell it.
+                    def init_is_const(s=s, ltype_bare=ltype_bare):
+                        return (self.statements._is_const_indirect(
+                                    ltype_bare, s.init, s)
+                                or self.ctx.is_const_storage_source(s.init))
                     if (ltype is not None and s.init is not None
                             and not src_is_exc
-                            and not isinstance(unwrap_ref_type(ltype), OwnType)
-                            and self.statements._is_plain_nonvalue(
-                                unwrap_ref_type(ltype))
+                            and not isinstance(ltype_bare, OwnType)
+                            and self.statements._is_plain_nonvalue(ltype_bare)
                             and not self.ctx.is_rvalue_source(s.init)):
                         aliases.add(s.name)
-                        if self.statements._is_const_indirect(
-                                unwrap_ref_type(ltype), s.init, s):
+                        if init_is_const():
                             const_aliases.add(s.name)
+                    elif (ltype is not None and s.init is not None
+                            and not src_is_exc
+                            and isinstance(ltype_bare, OptionalType)
+                            and ltype_bare.uses_pointer_repr()
+                            and init_is_const()):
+                        # Pointer-repr Optional locals get their bare `T*`
+                        # frame field on their own emission branch (not via
+                        # `aliases`); only the const fact is recorded here,
+                        # where the initializing decl is in hand.
+                        const_aliases.add(s.name)
                 elif isinstance(s, TpyTupleUnpack):
                     # For-loop element unpacks (`idx, it = __for_tup`) already
                     # get pointer-form slots via the loop machinery's
@@ -3919,16 +3975,18 @@ class AsyncCoroCodegen:
         strategies. When the iterable is a temporary (the pre-scan allocated
         `__for_src_<uid>`), store it once here and return the stored access;
         otherwise return the (re-evaluable) named expression."""
-        # A narrowed value-Optional iterable (`str|None`/`bytes|None` proven
-        # non-None) is still `std::optional<V>` in the frame -- iterate `(*v)`.
-        # Mirrors the sync for-loop's `_for_iterable_deref`. (A routed body
-        # rejects narrowed-optional iterables, so its leaf render is bare.)
+        # Shares `render_for_iterable` with the sync for-loop: narrowed
+        # Optional unwrap + indirect-name deref with one owner per shape.
+        # (A routed body rejects narrowed-optional iterables, so its leaf
+        # render is bare and only needs the value-Optional unwrap.)
         leaf = self.ctx.thir_resumable_leaf
-        base_cpp = (leaf.render_region_expr(iterable_expr) if leaf is not None
-                    else self.expressions.gen_expr(iterable_expr))
-        src_cpp = self.expressions._maybe_unwrap_narrowed_optional(
-            iterable_expr, base_cpp,
-            self.ctx.is_indirect_name(iterable_expr))
+        if leaf is not None:
+            base_cpp = leaf.render_region_expr(iterable_expr)
+            src_cpp = self.expressions._maybe_unwrap_narrowed_optional(
+                iterable_expr, base_cpp,
+                self.ctx.is_indirect_name(iterable_expr))
+        else:
+            src_cpp = self.expressions.render_for_iterable(iterable_expr)
         self.ctx.temps.flush(out, indent)
         if any(fn == f"__for_src_{uid}" for fn, _ in info.fields):
             out.write(f"{indent}__for_src_{uid}.emplace({src_cpp});\n")

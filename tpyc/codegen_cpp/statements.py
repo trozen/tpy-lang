@@ -5995,14 +5995,10 @@ class StatementGenerator:
             out.write(f"{indent}{break_label}:;\n")
 
     def _for_iterable_deref(self, stmt: TpyForEach) -> str:
-        """Render the for-loop iterable, dereferencing a narrowed value-Optional
-        (a proven-non-None `str | None` / `bytes | None` iterable's C++ var is
-        still `std::optional`; the loop must iterate `(*v)`). No-op for any
-        other iterable -- `_maybe_unwrap_narrowed_optional` self-gates on the
-        declared-Optional + analyzed-non-Optional shape."""
-        code = self.expressions.gen_expr_deref(stmt.iterable)
-        return self.expressions._maybe_unwrap_narrowed_optional(
-            stmt.iterable, code, self.ctx.is_indirect_name(stmt.iterable))
+        """Render the for-loop iterable as its contained container value
+        (narrowed-Optional unwrap, indirect-name deref) -- see
+        `render_for_iterable` for the ownership split."""
+        return self.expressions.render_for_iterable(stmt.iterable)
 
     def _gen_for_each_loop(self, out: TextIO, stmt: TpyForEach, indent: str) -> None:
         """Generate the loop part of a for-each (without else handling).

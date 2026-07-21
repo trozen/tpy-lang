@@ -323,7 +323,8 @@ class GeneratorCodegen:
         if record_name:
             self.ctx.generator_self_ref = "(*this)"
         self._setup_body_scope(out, func, init_stmts,
-                               indent_level=1 + extra, leaf=leaf)
+                               indent_level=1 + extra, leaf=leaf,
+                               record_name=record_name)
 
         captures = self._build_capture_list(func.params, init_stmts)
         if record_name:
@@ -410,7 +411,8 @@ class GeneratorCodegen:
         if record_name:
             self.ctx.generator_self_ref = "(*this)"
         self._setup_body_scope(out, func, init_stmts,
-                               indent_level=1 + extra, leaf=leaf)
+                               indent_level=1 + extra, leaf=leaf,
+                               record_name=record_name)
 
         old_indent = self.ctx.indent_level
         self.ctx.indent_level = 2 + extra
@@ -833,7 +835,20 @@ class GeneratorCodegen:
         native_elem = builtin_modules.get_iterable_element_type(iterable_type, registry=self.ctx.analyzer.registry) if is_builtin_ni else None
         if native_elem is not None:
             container_cpp = self.types.type_to_cpp(iterable_type)
-            iter_type = f"::tpy::begin_iter_t<{container_cpp}>"
+            # A const-rooted lvalue chain (self.field in a readonly method,
+            # const param/local) or a const borrow-alias frame local renders
+            # const, so begin() yields a const_iterator -- the slot type must
+            # match. Over-approximation is safe (iterator converts to
+            # const_iterator); the __for_src_ copy slot below stays non-const
+            # (temporaries are never const-storage sources).
+            src_is_const = (
+                self.ctx.is_const_storage_source(stmt.iterable)
+                or (isinstance(stmt.iterable, TpyName)
+                    and stmt.iterable.name
+                    in self.ctx.generator_const_pointer_alias_locals))
+            iter_container_cpp = (f"const {container_cpp}" if src_is_const
+                                  else container_cpp)
+            iter_type = f"::tpy::begin_iter_t<{iter_container_cpp}>"
             fields = [
                 (f"__for_it_{uid}", iter_type),
                 (f"__for_end_{uid}", iter_type),
@@ -1041,7 +1056,8 @@ class GeneratorCodegen:
 
     def _setup_body_scope(self, out: TextIO, func: TpyFunction, init_stmts: list[TpyStmt],
                           indent_level: int = 1,
-                          leaf: "SimpleGenLeafEmitter | None" = None) -> "Namespace":
+                          leaf: "SimpleGenLeafEmitter | None" = None,
+                          record_name: str | None = None) -> "Namespace":
         """Generate init stmts and set up codegen scope.
 
         Returns the function's local namespace with `current_ns` left pointing
@@ -1059,7 +1075,14 @@ class GeneratorCodegen:
         local_ns = Namespace(parent=self.ctx.analyzer.global_ns)
         for pname, ptype in func.params:
             local_ns.bind_variable(pname, ptype)
+        # The generator's own const sets (mirrors sync method emission):
+        # init-stmt and loop renders spell borrow locals of a readonly
+        # receiver `const T&`. gen_body installs them via setup_body_scope;
+        # they stay installed for the lambda-body renders that follow.
+        crp, dcbp = self.functions.compute_body_const_sets(func, record_name)
         if leaf is not None:
+            self.ctx.const_ref_params = crp
+            self.ctx.deep_const_borrow_params = dcbp
             leaf.emit_init(out, indent_level)
             self.ctx.emit_block_trailing_comments(
                 out, init_stmts, INDENT * indent_level)
@@ -1067,6 +1090,7 @@ class GeneratorCodegen:
             self.statements.gen_body(
                 out, init_stmts, func.params, func.generator_yield_type,
                 func, local_ns, indent_level=indent_level, is_method=False,
+                const_ref_params=crp, deep_const_borrow_params=dcbp,
             )
         self.ctx.current_ns = local_ns
         return local_ns

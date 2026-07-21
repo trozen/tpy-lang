@@ -8,7 +8,6 @@ there). When a release ships, delete its section and promote the next one.
 
 ### Bugs to fix (the `[HIGH]` entries in BUGS.md)
 
-- "compiles to an empty loop" -- key-iteration over a narrowed Optional dict
 - "dict subscript narrows the key to int32" -- valid BigInt key panics where
   CPython works
 - "hashes inputs AFTER the link" -- build cache can persistently serve a

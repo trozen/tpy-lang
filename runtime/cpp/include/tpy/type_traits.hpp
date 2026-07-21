@@ -314,7 +314,10 @@ struct val_or_ref {
     val_or_ref(T* ptr) requires (!is_val) : data_(ptr) {}
 
     decltype(auto) get() const {
-        if constexpr (is_val) return data_;
+        // (data_): return a reference to the stored copy, never a prvalue --
+        // callers bind views (string_view/span) to the result, which would
+        // dangle at end of statement if a temporary were returned.
+        if constexpr (is_val) return (data_);
         else return (*data_);
     }
 };
