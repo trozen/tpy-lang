@@ -1190,6 +1190,23 @@ class TestOptionalPtrArgs:
         assert "optptr.name" in w
         assert "optptr.ctor_rvalue" in w
 
+    def test_marker_call_rvalue_temp(self):
+        # A record-returning STATIC marker-call rvalue into the Optional
+        # slot takes the same `&(__tmp_N)` temp as a ctor rvalue -- the
+        # TpyMethodCall extension of `_optional_ptr_arg_face`'s 'ctor'
+        # face (`HTTPSConnection(.., ssl.create_default_context())`).
+        src = self.SRC + (
+            "from tpy import Own\n"
+            "class F:\n"
+            "    @staticmethod\n"
+            "    def make() -> Own[A]:\n        return A(9)\n"
+            "def marker_arm() -> Int32:\n    return take_opt(F.make())\n"
+        )
+        out = _cpp(src, thir=True)
+        assert out == _cpp(src, thir=False)
+        assert "return take_opt(&(__tmp_" in out
+        assert _fn(_lower_ctx(src), "marker_arm") is not None
+
 
 class TestOptionalPtrNarrowedArgs:
     def test_narrowed_subject_arg_routes_via_alias_addr(self):
@@ -1544,18 +1561,29 @@ class TestCtorShapeGateRejects:
         inner = outer.init.args[0]
         assert isinstance(inner, THIRArgTemp) and inner.move  # __tmp_1 = k
 
-    def test_union_ctor_param_stays_ast(self):
-        # A member-valued scalar into a union-typed __init__ slot hoists a
-        # variant temp on the AST path (`_member_valued_union_slot`). A VALUE
-        # union (scalar members) is not a pointer-variant, so the member-lift
-        # arms don't fire -- it stays AST.
+    def test_union_ctor_param_variant_temp_routes(self):
+        # A member-valued scalar into a VALUE-union __init__ slot hoists the
+        # `std::variant<...> __tmp_N = k;` temp at the flushing statement
+        # (the free-call arg-temp row, now admitted at the ctor gate too):
+        # `take_w(W(k))` -> `W __tmp_2 = W(std::move-less __tmp_1); ...`,
+        # nested temps flushing at the same statement point like the
+        # Own[scalar] sibling above.
         thir = _lower_ctx(
             "from tpy import Int32, Float64\n"
             "class W:\n    u: Int32 | Float64\n"
             "    def __init__(self, v: Int32 | Float64):\n        self.u = v\n"
             "def take_w(w: W) -> Int32:\n    return 0\n"
             "def use(k: Int32) -> Int32:\n    return take_w(W(k))\n")
-        assert _fn(thir, "use") is None
+        fn = _fn(thir, "use")
+        assert fn is not None
+        ret = fn.body[0]
+        assert isinstance(ret, THIRReturn) and isinstance(ret.value, THIRCall)
+        outer = ret.value.args[0]
+        assert isinstance(outer, THIRArgTemp)          # W __tmp_2 = W(...)
+        assert isinstance(outer.init, THIRCtorCall)
+        inner = outer.init.args[0]
+        assert isinstance(inner, THIRArgTemp)          # variant __tmp_1 = k
+        assert inner.cpp_type is not None and "variant" in inner.cpp_type
 
 
 class TestCtorArgUnionOptionalProtocol:

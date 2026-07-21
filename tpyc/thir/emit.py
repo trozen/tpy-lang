@@ -609,6 +609,11 @@ def _emit_method_call(e: THIRMethodCall, state: _EmitState) -> str:
     # user-record pointer-local receiver (`is_arrow`, the _gen_method_call
     # indirect-name arm); container receivers are pinned to bare names.
     recv = _emit_expr(e.receiver, state)
+    if e.move_receiver:
+        # Consuming method: the rvalue-qualified call moves the receiver
+        # (_gen_method_call's is_consuming wrap; bare-name receivers only,
+        # so no deref composes here).
+        recv = f"std::move({recv})"
     args = [_emit_expr(a, state) for a in e.args]
     if e.cpp_template is not None:
         return expand_cpp_template(e.cpp_template, recv, *args)

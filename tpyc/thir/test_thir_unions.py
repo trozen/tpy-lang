@@ -1526,8 +1526,11 @@ class TestUnionCallArgLift:
         assert arg.cpp_type == "A"
         assert isinstance(arg.init, THIRCtorCall) and arg.init.type_cpp == "A"
 
-    def test_ctor_record_arg_rejects(self):
-        # A ctor whose own arg is a record (non-scalar) -> AST.
+    def test_ctor_record_own_arg_routes_bare(self):
+        # A nested ctor whose own arg is a record-ctor rvalue into an
+        # `Own[A]` slot (`take_own2(W(A(1)))`): temp-free, the rvalue binds
+        # the T&& slot bare -- routed since the nested tail admits
+        # `_own_record_rvalue_arg`.
         thir = self._lower(
             "class W:\n    a: A\n"
             "    def __init__(self, a: Own[A]):\n        self.a = a\n"
@@ -1537,7 +1540,10 @@ class TestUnionCallArgLift:
             "    s2 = S2(v)\n    return 1\n"
             "class S2:\n    u: W | A\n"
             "    def __init__(self, v: Own[W | A]):\n        self.u = v\n")
-        assert _fn(thir, "f") is None
+        outer = self._arg(thir, "f")
+        assert isinstance(outer, THIRCtorCall) and outer.type_cpp == "W"
+        inner = outer.args[0]
+        assert isinstance(inner, THIRCtorCall) and inner.type_cpp == "A"
 
     def test_witnesses_lift_faces(self):
         # The monostate arm (None into `A | B | None`), the deep-const

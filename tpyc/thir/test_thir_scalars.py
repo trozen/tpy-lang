@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from ..codegen_cpp.context import CodeGenOptions
 from .nodes import (
-    THIRBinOp, THIRCall, THIRCoerce, THIRForRange, THIRLiteral,
+    THIRBinOp, THIRCall, THIRCoerce, THIRForRange, THIRLiteral, THIRReturn,
 )
 from .testutil import (
     _compile, _entry, _lower, _lower_ctx, _lower_ctx_witnessed, _fn, _emit_expr,
@@ -400,13 +400,17 @@ class TestScalarCtorCall:
                 emit_source_comments=False, thir_codegen=True))
         assert thir == ast
 
-    def test_float_str_arg_ineligible(self):
+    def test_float_str_constant_folds(self):
         # float("nan") folds to a numeric_limits constant on the AST path (not
-        # float_from_str), so a str-LITERAL native-ctor arg stays AST -- the
-        # native-free-ctor route excludes str literals to avoid that divergence.
+        # float_from_str); the fold pre-arm mirrors it as a pre-spelled
+        # template call (call.float_str_fold), so the body routes.
         thir = _lower(_CTOR_PRELUDE
                       + "def f() -> float:\n    return float(\"nan\")\n")
-        assert _fn(thir, "f") is None
+        fn = _fn(thir, "f")
+        assert fn is not None
+        ret = fn.body[-1]
+        assert isinstance(ret, THIRReturn) and isinstance(ret.value, THIRCall)
+        assert ret.value.cpp_template == "std::numeric_limits<double>::quiet_NaN()"
 
     def test_char_ctor_str_literal_routes(self):
         # Char("a") is a @native(function=True) ctor with NO literal fold on

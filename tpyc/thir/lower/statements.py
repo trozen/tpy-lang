@@ -232,6 +232,7 @@ from .predicates import (
     _narrow_facts_ok,
     _any_narrow_facts_ok,
     _nonvalue_container_ret,
+    _record_call_rvalue_operand,
     _callable_value,
     _optional_narrow_facts_ok,
     _optional_ptr_borrow,
@@ -858,10 +859,22 @@ def _for_each_container_route(
             it, declared, analyzer, methods=("values", "keys", "items"))
         str_list_method = _str_list_method_iterable_ok(
             it, declared, analyzer)
-        if not (dict_view or str_list_method):
-            return None
-        it_type = analyzer.get_expr_type(it)
-        iterable_lvalue = False
+        if dict_view or str_list_method:
+            it_type = analyzer.get_expr_type(it)
+            iterable_lvalue = False
+        else:
+            # A container-returning user METHOD call (`for v in g.get():`):
+            # the TpyCall arm's twin -- a borrow return is a C++ lvalue
+            # (`auto& __obj_N =`), an `Own[...]` return an owning rvalue
+            # capture. The call's own lowering re-validates receiver/args
+            # and falls the body back on a shape outside its slice.
+            ret = analyzer.get_expr_type(it)
+            if not _nonvalue_container_ret(ret):
+                return None
+            mfi = it.resolved_function_info
+            it_type = unwrap_readonly(unwrap_send_sync(ret))
+            iterable_lvalue = not (
+                mfi is not None and isinstance(mfi.return_type, OwnType))
     elif isinstance(it, TpyName):
         if it.name not in declared:
             note_detail("foreach.name_global")
@@ -7177,7 +7190,13 @@ def _lower_print_arg(a: TpyExpr, lc: _LowerCtx,
     # before the statement), so temp-hoisting arg rows admit here. A print
     # sink is a raw `<<` position, so an owned-str FIELD read streams bare --
     # the same admission the f-string arg site grants (field_owned_str_ok).
+    # An F1-record-returning call arg (print.record_call) threads BORROW_BIND
+    # so the call's record result gate admits the rvalue.
+    use = _ExprUse(allow_temps=True)
+    if _record_call_rvalue_operand(a, lc.analyzer):
+        use = _ExprUse(allow_temps=True,
+                       result=_ExprResultUse.BORROW_BIND)
     return THIRPrintArg(
-        _lower_expr(a, lc, declared, use=_ExprUse(allow_temps=True),
+        _lower_expr(a, lc, declared, use=use,
                     field_owned_str_ok=isinstance(a, TpyFieldAccess)),
         _print_arg_form(arg_type))

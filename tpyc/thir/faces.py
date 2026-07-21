@@ -99,6 +99,12 @@ THIR_FACES: frozenset[str] = frozenset({
     "method.record_discard",        # discarded F1-record method result at
                                     # stmt position: the bare call
     "method.container_discard",     # discarded container method result: same bare call
+    "method.container_iterable",    # container method result as a for-head iterable
+    "method.consuming_move",        # consuming method: std::move(name) receiver wrap
+    "call.native_record_arg",       # F1-record call rvalue bare into a native slot
+    "call.value_record_arg",        # record rvalue bare into a by-value record slot
+    "call.float_str_fold",          # float("nan"/"inf") -> spelled numeric-limits constant
+    "print.record_call",            # F1-record call rvalue streams raw via operator<<
     "own.union_ctor",               # record-ctor rvalue into Own[union]
     "own.readonly_ctor",            # record-ctor rvalue into readonly slot (sync callee)
     # Self receiver / ctor-call renders (lowering).

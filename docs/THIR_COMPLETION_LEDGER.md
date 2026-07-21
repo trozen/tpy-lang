@@ -1078,7 +1078,9 @@ admitted), str/bytes args (owned-copy conversion), `Own[record]` args (ownership
 boundary -- the `gen_call_arg` temp facility), non-name receivers
 (`self.items.append(...)`), `self.helper()` call sites,
 consuming receivers, generic `inferred_type_args` methods. (User-record method
-receivers + record NAME args landed with incr 56 -- see the Wave-1 entry below.)
+receivers + record NAME args landed with incr 56 -- see the Wave-1 entry below.
+Consuming receivers landed with the calls-wave2 `move_receiver` render:
+`std::move(name).take()` for bare non-pointer, non-narrowed name receivers.)
 **Bare numeric-literal call args + negated int literals landed (incr 45)**: a
 bare FLOAT literal (FloatLiteralType) into a double param slot passes through
 (`f(3, 1.5)` -- repr(v) bare on both paths; Float32 slots arrive

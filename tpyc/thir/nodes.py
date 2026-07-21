@@ -715,11 +715,17 @@ class THIRMethodCall(THIRExpr):
     # (`g->__deref__().push_back(3)`, is_arrow); still exclusive with
     # deref_check (the checked deref yields a reference).
     deref_chain: int = 0
+    # A consuming method's receiver move (`std::move(b1).take()` --
+    # _gen_method_call's is_consuming wrap). Lowering admits only a bare
+    # non-pointer, non-narrowed NAME receiver, so no deref composes with it.
+    move_receiver: bool = False
 
     def __post_init__(self) -> None:
         assert not (self.deref_check and self.is_arrow)
         assert not (self.deref_check and self.method_targs_cpp)
         assert not (self.deref_chain and self.deref_check)
+        assert not (self.move_receiver
+                    and (self.is_arrow or self.deref_check or self.deref_chain))
 
 
 @dataclass(frozen=True)

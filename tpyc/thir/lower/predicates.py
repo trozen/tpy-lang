@@ -482,9 +482,11 @@ def _eligible_value_union(t: TpyType | None) -> 'UnionType | None':
     source renders `std::monostate{}`. The form-relevant boundary is member
     INSERT: a str-VIEW value into a `... | str` slot is a view->owned
     conversion (`std::variant<...> __tmp = view;`), which `_value_union_temp_
-    slot`'s scalar-only member check rejects (the body then stays AST). Record
-    members (pointer-variant, U2) and recursive-alias wrappers ride later F4
-    cells."""
+    slot`'s scalar-only member check rejects (the body then stays AST).
+    Pointer-variant record members (U2) and recursive-alias wrappers ride
+    later F4 cells; VALUE-TYPE record members (also value variants) have
+    their own arg-temp slice in `_value_record_union` -- keep the two
+    member tables in sync when widening either."""
     if t is None:
         return None
     t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
@@ -3873,6 +3875,36 @@ def _member_valued_union_slot(a: TpyExpr, ptype: TpyType | None,
           if at is not None else None)
     return not isinstance(at, UnionType)
 
+def _record_call_rvalue_operand(a: TpyExpr, analyzer) -> bool:
+    """A user-record-returning call RVALUE at a consuming operand sink
+    (compare operand, print arg): the sink threads BORROW_BIND so the
+    call's rvalue record result is admitted by its own result gate --
+    one helper so the sinks cannot drift."""
+    if not isinstance(a, (TpyCall, TpyMethodCall)):
+        return False
+    st = analyzer.get_expr_type(a)
+    stu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(st)))
+           if st is not None else None)
+    if isinstance(stu, OwnType):
+        stu = unwrap_readonly(stu.wrapped)
+    return (isinstance(stu, NominalType) and stu.is_user_record
+            and is_rvalue_source(analyzer, a))
+
+def _value_record_union(t: 'UnionType') -> 'UnionType | None':
+    """A non-wrapper union whose non-void members are all VALUE-TYPE records
+    (`None | ZoneInfo | timezone` -- `std::variant<std::monostate, ..>`
+    stores them by value): the member-valued arg hoists the same variant
+    temp as the scalar slice. Mixed record/scalar member sets stay out
+    (unwitnessed)."""
+    if t.needs_wrapper():
+        return None
+    members = [m for m in t.members if not is_void_like_type(m)]
+    if not members or not all(
+            isinstance(m, NominalType) and m.is_user_record
+            and m.is_value_type() for m in members):
+        return None
+    return t
+
 def _value_union_temp_slot(a: TpyExpr, ptype: TpyType | None,
                            locals_: dict[str, TpyType],
                            analyzer) -> 'UnionType | None':
@@ -3897,6 +3929,9 @@ def _value_union_temp_slot(a: TpyExpr, ptype: TpyType | None,
     if not isinstance(pt, UnionType):
         return None
     ut = _eligible_value_union(pt)
+    value_rec_union = ut is None and _value_record_union(pt) is not None
+    if value_rec_union:
+        ut = pt
     if ut is None:
         return None
     # `_gen_union_arg`'s `already_union` verdict keys on the C++ DECLARED type:
@@ -3918,6 +3953,16 @@ def _value_union_temp_slot(a: TpyExpr, ptype: TpyType | None,
     # the temp-free `_union_coerced_literal_arg` row.)
     if isinstance(at, FloatLiteralType):
         at = FLOAT
+    if value_rec_union:
+        # The value-RECORD union slice (`datetime(.., tzinfo=ist)` -- the
+        # ValueType-record members store by value, so the same
+        # `std::variant<...> __tmp_N = v;` hoist applies; the ArgTemp arm
+        # spells the variant via render_type for cross-module members).
+        if not (isinstance(at, NominalType)
+                and any(at == m for m in ut.members
+                        if not is_void_like_type(m))):
+            return None
+        return ut
     if not _eligible_scalar(at):
         return None
     if not any(at == m for m in ut.members if not is_void_like_type(m)):
@@ -4106,6 +4151,15 @@ def _optional_ptr_arg_face(a: TpyExpr, ptype: TpyType | None,
         if fi is None or not fi.is_constructor:
             return None
         return 'ctor' if analyzer.get_expr_type(a) == inner else None
+    if isinstance(a, TpyMethodCall):
+        # A record-returning marker-call rvalue (`HTTPSConnection(..,
+        # ssl.create_default_context())`): the AST tail hoists the same
+        # `&(__tmp_N)` temp as a ctor rvalue; the call's own lowering
+        # validates the marker kind/args recursively.
+        if (analyzer.get_expr_type(a) == inner
+                and is_rvalue_source(analyzer, a)):
+            return 'ctor'
+        return None
     if isinstance(a, TpyFieldAccess):
         at = analyzer.get_expr_type(a)
         at = unwrap_readonly(at) if at is not None else None
@@ -4473,9 +4527,12 @@ def _plain_member_call_markers_ok(e: TpyMethodCall, *,
 def _plain_method_fi_ok(fi, *, generator_ok: bool = False,
                         property_getter_ok: bool = False,
                         property_setter_ok: bool = False,
-                        coro_factory_ok: bool = False) -> bool:
+                        coro_factory_ok: bool = False,
+                        consuming_ok: bool = False) -> bool:
     """Shared fi rejects. A consuming method moves the receiver
-    (`std::move(xs)`); `cpp_return_type` wraps the call in a static_cast;
+    (`std::move(xs)`) -- `consuming_ok` admits it (set only by the record
+    method arm for a bare non-pointer, non-narrowed name receiver, whose
+    move_receiver render mirrors the wrap); `cpp_return_type` wraps the call in a static_cast;
     @error_return unwraps via a statement expression; a LiteralType param
     mangles the member name. None are reproduced. `generator_ok` admits a
     generator fi (set only by the iterable-position member-gen-call
@@ -4487,7 +4544,8 @@ def _plain_method_fi_ok(fi, *, generator_ok: bool = False,
     `property_getter_ok`/`property_setter_ok` admit the accessor fis -- set
     only by the property read/write delegation, whose `c.prop` -> `c.prop()`
     and `c.prop = v` -> `c.set_prop(v)` render like any plain method."""
-    return not (fi.is_consuming or fi.error_return_type is not None
+    return not ((fi.is_consuming and not consuming_ok)
+                or fi.error_return_type is not None
                 or fi.native_cpp_return_type is not None
                 or any(isinstance(p.type, LiteralType) for p in fi.params)
                 or (fi.is_async and not coro_factory_ok)
