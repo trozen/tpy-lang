@@ -1152,13 +1152,18 @@ class TestContainerCallArgs:
             + "def f(d: dict[Int32, Int32]) -> None:\n    wipe(d)\n")
         assert isinstance(_fn(thir, "f").body[0], THIRExprStmt)
 
-    def test_own_container_param_ineligible(self):
-        # An Own[list] slot auto-moves at last use (`f(std::move(xs))`) -> AST.
-        thir = _lower(
+    def test_own_container_param_moves_at_last_use(self):
+        # An Own[list] slot auto-moves at last use (`consume(std::move(zs))`):
+        # _own_lvalue_temp_slot's container-payload branch, the same
+        # copy+move row as records (a non-last-use lvalue takes the
+        # `auto __tmp_N` copy temp instead).
+        src = (
             "from tpy import Int32, Own\n"
             + "def consume(xs: Own[list[Int32]]) -> Int32:\n    return len(xs)\n"
             + "def f() -> Int32:\n    zs = [1]\n    return consume(zs)\n")
-        assert _fn(thir, "f") is None
+        thir = _lower(src)
+        assert _fn(thir, "f") is not None
+        _assert_byte_identical(src)
 
     def test_span_param_arg_routes(self):
         # A Span slot converts (`::tpy::as_mut_span(xs)`) -- routed since the
@@ -1208,18 +1213,43 @@ class TestContainerCallArgs:
                 "{::tpy::BigInt(10), ::tpy::BigInt(20), ::tpy::BigInt(30)})"
                 in cpp)
 
-    def test_protocol_param_method_arg_ineligible(self):
-        # list.extend(other: Iterable[Own[T]]) -- the Iterable[Own[T]] slot's
-        # auto-consuming-iteration path diverges: a movable-last-use local arg
-        # emits `list_extend(xs, own_iter(std::move(ys)))`, not the bare
-        # `list_extend(xs, ys)`. A container PARAM (or non-last-use local) is
-        # never movable, so it DOES pass bare, but safely characterizing that
-        # subset needs the body movable-locals set the arg gate does not thread
-        # (it mirrors only Own-param seeding), so the whole shape stays AST.
-        thir = _lower(
+    def test_movable_view_param_elem_makes_vector(self):
+        # A narrowed value-Optional-VIEW param element at its last use takes
+        # the make_vector escape with the move OUTSIDE the view->owned wrap
+        # (`::tpy::make_vector<std::string>(std::move(std::string((*a))))`):
+        # seed_param_locals movability is codegen-side, so
+        # _container_elem_move_source front-runs the seeded param; the
+        # converts apply before THIRMove (wrap-then-move).
+        src = (
+            "def f(a: str | None) -> None:\n"
+            "    if a is not None:\n"
+            "        xs: list[str] = [a]\n"
+            "        print(xs)\n")
+        thir = _lower(src)
+        assert _fn(thir, "f") is not None
+        _assert_byte_identical(src)
+        from .testutil import _compile, _entry
+        from ..codegen_cpp.context import CodeGenOptions
+        compiler, modules = _compile(src)
+        _, cpp = compiler.generate_code_to_strings(
+            _entry(modules), options=CodeGenOptions(
+                emit_source_comments=False, thir_codegen=True))
+        assert ("::tpy::make_vector<std::string>"
+                "(std::move(std::string((*a))))") in cpp
+
+    def test_protocol_param_method_arg_routes(self):
+        # list.extend(other: Iterable[Own[T]]): the Iterable-slot name arm
+        # decides move-vs-bare at LOWERING from the live movable/last-use
+        # facts -- a PARAM (never movable) binds bare
+        # (`::tpy::list_extend(xs, ys)`); a movable last-use local takes
+        # the consuming `::tpy::own_iter(std::move(b))` wrap (byte-pinned
+        # by tests/cases/list/warn_extend_copy).
+        src = (
             _PRELUDE
             + "def f(xs: list[Int32], ys: list[Int32]) -> None:\n    xs.extend(ys)\n")
-        assert _fn(thir, "f") is None
+        thir = _lower(src)
+        assert _fn(thir, "f") is not None
+        _assert_byte_identical(src)
 
     def test_byte_identical(self):
         src = (

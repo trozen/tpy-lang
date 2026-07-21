@@ -98,6 +98,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "own.record_copy",              # copy(name) into Own[record]: T(x)
     "method.record_discard",        # discarded F1-record method result at
                                     # stmt position: the bare call
+    "method.container_discard",     # discarded container method result: same bare call
     "own.union_ctor",               # record-ctor rvalue into Own[union]
     "own.readonly_ctor",            # record-ctor rvalue into readonly slot
     # Self receiver / ctor-call renders (lowering).
@@ -106,6 +107,9 @@ THIR_FACES: frozenset[str] = frozenset({
     "call.imported",                # cross-module callee -> pre-rendered
                                     # `::tpyapp::mod::f` (callee_cpp)
     "call.native_free",             # C++ @native free callee -> `::native(args)`
+    "call.native_c_free",           # C-linkage @native free callee -> raw `sym(args)`
+    "call.own_iter_arg",            # movable last-use container into an Iterable slot -> ::tpy::own_iter(std::move(x))
+    "call.own_iter_explicit",       # explicit own_iter(x) -> ::tpy::own_iter(std::move(x))
     "call.template_free",           # positional-only @cpp_template free callee
     "call.instantiation_template",  # generic-type instantiation `list(it)` ->
                                     # sema-substituted ctor template expansion
@@ -156,6 +160,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "method.ptr_arrow",             # proven non-null: `p->m(args)`
     "method.ptr_checked",           # `::tpy::deref_check(p).m(args)`
     "method.user_deref_chain",      # `r.__deref__()...m(args)` user Deref proxy
+    "method.user_deref_stub",       # container MEMBER stub through the Deref chain (push_back)
     "method.ptr_template",          # explicit `@cpp_template` Ptr method
                                     # (`p.__deref__()` -> `::tpy::deref_check(p)`)
     # Container-field method receiver (`self.buf.append(x)` -> the container arm
@@ -188,6 +193,7 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # str method's bare nested-call render
     "ctor.call",                    # THIRCtorCall bare ctor expansion
     "ctor.native",                  # native-record (builtin exception) ctor: `::tpy::OSError(...)`
+    "ctor.native_plain",            # plain @native record ctor: `::Vec2(...)` / @native_c `::Point{...}`
     "ctor.ptr_null",                # `Ptr[T]()` -> `static_cast<T*>(nullptr)`
     "ctor.cross_module",            # imported-record ctor: the qualified
                                     # `::ns::Name(args)` spelling
@@ -349,6 +355,9 @@ THIR_FACES: frozenset[str] = frozenset({
     # `Color[name]` enum name lookup -> `::tpy::EnumUtil<E>::from_name(name)`
     # (lowering; a static lookup panicking KeyError on miss).
     "subscript.enum_from_name",
+    "subscript.typed_dict",         # d["key"] -> d.key (TypedDict field read)
+    "subscript.typed_dict_check",   # total=False read -> ::tpy::typed_dict_field_check(d.key)
+    "setitem.typed_dict_field",     # d["key"] = v / OP= v -> the plain field lvalue write
     # `len(recv.field)` -- a container/str/bytes field arg to the builtin len
     # (lowering; `::tpy::__len__(this->xs)`, the field renders as its own
     # THIRFieldAccess inside the shared native-call emit).

@@ -315,13 +315,11 @@ class TestImplicitCtorCallSites:
         assert w.get("argtemp.record_rvalue", 0) > 0 or w.get("ctor.call", 0) > 0
         assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
 
-    def test_inherited_init_ctor_call_stays_ast(self):
-        # A derived record with only an INHERITED param-ful __init__ has no
-        # OWN overloads; the widening must not admit its call. Today sema
-        # attaches no synthetic ctor fi for it, so the fi-None gate rejects
-        # first -- this pin keeps the smuggle shut if sema ever grows
-        # inherited-init fis (the widening would then admit a NON-zero-arg
-        # call whose AST render disagrees).
+    def test_inherited_init_ctor_call_routes(self):
+        # A derived record with only an INHERITED param-ful __init__: sema's
+        # synthetic ctor fi carries EMPTY params, and the gate checks arity
+        # against ri.init_params (the AST arg loop's fallback), so the
+        # call-arg face renders the same inline `use(Sub(5))` as the AST.
         src = (
             "class Base:\n"
             "    n: int\n"
@@ -336,8 +334,11 @@ class TestImplicitCtorCallSites:
             "print(f())\n"
         )
         thir = _lower_ctx(src)
-        assert _fn(thir, "f") is None
+        assert _fn(thir, "f") is not None
         assert _cpp(src, thir=True) == _cpp(src, thir=False)
+        # The record rvalue hoists the ref-param temp; the inherited-init
+        # param type (int -> BigInt) threads from ri.init_params.
+        assert "Sub __tmp_1 = Sub(::tpy::BigInt(5));" in _cpp(src, thir=True)
 
 
 class TestWithGateRejections:

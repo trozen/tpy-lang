@@ -8,6 +8,7 @@ from enum import Enum, auto
 from ...parse.nodes import TpyFunction, TpyGlobal
 from ...typesys import (
     CallableType,
+    OptionalType,
     ReadonlyType,
     TpyType,
     UnionType,
@@ -567,13 +568,17 @@ class _LowerCtx:
             own = unwrap_optional_own(unwrap_readonly(unwrap_send_sync(ptype)))
             if own is not None and not own.wrapped.is_value_type():
                 self.movable_locals.add(pname)
-            # A value-repr Optional[expensive-copy scalar] param (`int | None`
-            # -> std::optional<BigInt>) is movable at its narrowed last use --
-            # seed_param_locals' value-optional arm. readonly params are
-            # excluded to honor the no-mutation contract.
-            vopt = _value_opt_scalar(ptype, analyzer)
-            if (vopt is not None and vopt.inner.is_expensive_copy()
-                    and not isinstance(ptype, ReadonlyType)):
+            # A value-repr Optional[expensive-copy] param (`int | None` ->
+            # std::optional<BigInt>, `str | None` -> optional<string_view>)
+            # is movable at its narrowed last use -- seed_param_locals'
+            # value-optional arm, mirrored with its EXACT condition (no
+            # scalar/view split there; is_expensive_copy is the filter).
+            # readonly params are excluded to honor the no-mutation contract.
+            vopt_u = unwrap_readonly(unwrap_send_sync(ptype))
+            if (isinstance(vopt_u, OptionalType)
+                    and not vopt_u.uses_pointer_repr()
+                    and not isinstance(ptype, ReadonlyType)
+                    and vopt_u.inner.is_expensive_copy()):
                 self.movable_locals.add(pname)
         # U3/U4 isinstance-narrowing scope (see _NarrowScope's docstring),
         # snapshot/restored around branch and loop bodies.

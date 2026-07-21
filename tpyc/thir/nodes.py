@@ -538,6 +538,8 @@ class THIRCtorCall(THIRExpr):
     value the slot's variant converting ctor consumes."""
     type_cpp: str
     args: tuple[THIRExpr, ...] = ()
+    # @native_c POD aggregate init: `::Name{args}` (the AST's is_native_c arm).
+    brace_init: bool = False
 
 
 @dataclass(frozen=True)
@@ -706,16 +708,18 @@ class THIRMethodCall(THIRExpr):
     # at lowering via render_type over the inferred args. Plain member arm
     # only (the deref_check arm gate-excludes type args).
     method_targs_cpp: tuple[str, ...] | None = None
-    # A USER Deref-wrapper method call: N `.__deref__()` calls between the bare
+    # A USER Deref-wrapper method call: N `.__deref__()` calls between the
     # receiver and the member call (`r.sum()` -> `r.__deref__().sum()`),
-    # _gen_method_call's `deref_chain and not is_pointer()` arm. Bare `.`
-    # member access, so mutually exclusive with is_arrow / deref_check.
+    # _gen_method_call's `deref_chain and not is_pointer()` arm. A
+    # pointer-local receiver joins the FIRST hop with `->`
+    # (`g->__deref__().push_back(3)`, is_arrow); still exclusive with
+    # deref_check (the checked deref yields a reference).
     deref_chain: int = 0
 
     def __post_init__(self) -> None:
         assert not (self.deref_check and self.is_arrow)
         assert not (self.deref_check and self.method_targs_cpp)
-        assert not (self.deref_chain and (self.is_arrow or self.deref_check))
+        assert not (self.deref_chain and self.deref_check)
 
 
 @dataclass(frozen=True)

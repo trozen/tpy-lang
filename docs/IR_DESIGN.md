@@ -1141,6 +1141,32 @@ by theme; each is a rule the next cell should apply.
   template-keyword miscompile, sat in exactly such witness-free faces. Register each
   new gate/render face in `faces.py` and require a witness (unit or corpus). Zero-witness
   branches hide real bugs.
+- **A gate arm can be UNREACHABLE end-to-end even though both halves look right:**
+  admission passes but the recursive child lowering re-rejects (a different gate --
+  result-use, pending-type resolution) and the body falls back, so the arm is dead,
+  not wrong. Wave-6 hit this twice: the Own-slot container copy-temp compared the
+  slot against an unresolved `PendingListType` read, and the Own-slot method-call
+  rvalue arm admitted a shape whose INNER call then failed the record-result gate
+  until the arg lower threaded BORROW_BIND. The unit pin that asserts the arm
+  actually routes (not just that the predicate returns True) is what surfaces this.
+- **Sema attaches an EMPTY-params synthetic ctor fi for records with no own
+  `__init__`** (inherited param-ful inits, `@native` records, TypedDict) -- the real
+  param list lives in `ri.init_params` triples (name, type, default), which the AST
+  arg loop reads as a fallback. Any THIR arity/param logic keyed on `fi.params`
+  silently mis-rejects these; route through `_ctor_effective_params`.
+- **The same emit can be per-arg-loop, not per-construct:** the consuming
+  `own_iter(std::move(b))` wrap for an `Iterable[Own[T]]` name arg fires on the
+  STUB-METHOD arg loop but NOT the free-native loop (`xs.extend(b)` wraps,
+  `sum(xs)` binds bare) -- the whole-corpus byte-diff caught the over-wrap
+  mid-cell. Mirror the AST's per-loop split, not the slot type alone; where the
+  split leans on unrelated gates keeping a face off THIR, leave a COUPLING note
+  at the arm.
+- **Emitted-wrap ORDER is a fact to mirror, not derive:** the container-element
+  render is wrap-for-the-owned-slot THEN move (`std::move(std::string((*a)))`,
+  the make_vector escape). THIR had the converts after the move; the divergence
+  surfaced only when adjacent routing let a body reach the shape -- codegen-side
+  seeding facts (`seed_param_locals` movability) are not in the raw sema sets
+  the lowering mirrors, so each such fact needs an explicit front-run.
 
 **Measurement / tally honesty.**
 

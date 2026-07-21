@@ -1036,15 +1036,39 @@ class TestMethodReceiverShape:
         assert fn is not None
         assert w.get("method.recv.record_field", 0) >= 1
 
-    def test_set_field_receiver_excluded(self):
-        # `self.s.add(x)`: a set has no `__getitem__` -- outside the
-        # container-scalar-read admit set -> stays AST.
-        thir = _lower_ctx(
+    def test_set_field_receiver_routes(self):
+        # `self.s.add(x)`: the field-receiver gate admits the full
+        # `_container_method_recv` family (sets included), matching the
+        # name-receiver dispatch -- the receiver renders as its own
+        # THIRFieldAccess and the set method arm gates the rest. Byte-pinned:
+        # no corpus case has a set-typed field method call, so the widening's
+        # emit is witnessed here.
+        src = (
             "from tpy import Int32\n"
             "class S:\n    s: set[Int32]\n"
             "    def __init__(self):\n        self.s = set()\n"
-            "    def add(self, x: Int32):\n        self.s.add(x)\n")
-        assert _fn(thir, "add") is None
+            "    def add(self, x: Int32):\n        self.s.add(x)\n"
+            "def main() -> None:\n    h = S()\n    h.add(3)\n"
+            "    print(len(h.s))\nmain()\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "add") is not None
+        _assert_byte_identical(src)
+
+    def test_typed_dict_total_false_write_stays_ast(self):
+        # A total=False TypedDict subscript WRITE keeps the AST path: the
+        # THIR write target rejects `typed_dict_optional` (Python allows
+        # writing an absent key, a shape the field-lvalue mirror does not
+        # model) -- the excluded neighbor of the total=True write arm.
+        src = (
+            "from typing import TypedDict\nfrom tpy import Int32\n"
+            "class Info(TypedDict, total=False):\n    age: Int32\n"
+            "def f() -> None:\n"
+            "    d = Info(age=Int32(1))\n"
+            "    d[\"age\"] = Int32(2)\n"
+            "    print(d[\"age\"])\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is None
+        _assert_byte_identical(src)
 
     def test_optional_field_receiver_excluded(self):
         # `self.opt.get()`: an Optional field receiver needs the outer deref /
@@ -1935,6 +1959,50 @@ class TestPtrDerefMethodCall:
             "def use_box(b: Box[A]) -> Int32:\n"
             "    return b.val()\n")
         assert _fn(_lower_ctx(src), "use_box") is not None
+        _assert_byte_identical(src)
+
+
+class TestDerefStubMethodCall:
+    # A user Deref wrapper over a builtin container: the payload's stub
+    # methods compose with the deref chain only for MEMBER-rename natives.
+    SRC = (
+        "from tpy import Int32\n"
+        "class Wrap:\n"
+        "    xs: list[Int32]\n"
+        "    def __init__(self):\n        self.xs = [1]\n"
+        "    def __deref__(self) -> list[Int32]:\n        return self.xs\n"
+    )
+
+    def test_member_native_through_deref_routes(self):
+        # `w.append(2)` -> `w.__deref__().push_back(2)`: the member-rename
+        # native rides the deref chain's member spelling exactly.
+        src = (self.SRC
+               + "def f() -> Int32:\n"
+               + "    w = Wrap()\n    w.append(2)\n    return len(w.xs)\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is not None
+        _assert_byte_identical(src)
+
+    def test_function_native_through_deref_stays_ast(self):
+        # `w.pop()` resolves to a function=True native
+        # (`::tpy::pop_back(recv)`): the THIR deref emit cannot thread the
+        # `.__deref__()` chain into the symbol's receiver slot -> AST.
+        src = (self.SRC
+               + "def f() -> Int32:\n"
+               + "    w = Wrap()\n    return w.pop()\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is None
+        _assert_byte_identical(src)
+
+    def test_template_stub_through_deref_stays_ast(self):
+        # `w.unchecked_get(0)` resolves to a @cpp_template stub
+        # (`{self}[{0}]`): the `{self}` substitution would miss the deref
+        # chain -> AST.
+        src = (self.SRC
+               + "def f() -> Int32:\n"
+               + "    w = Wrap()\n    return w.unchecked_get(0)\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is None
         _assert_byte_identical(src)
 
 

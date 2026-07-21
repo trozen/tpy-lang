@@ -52,6 +52,7 @@ from ...typesys import (
     NominalType,
     OptionalType,
     OwnType,
+    ParamInfo,
     PtrType,
     ReadonlyType,
     TpyType,
@@ -94,6 +95,7 @@ from ...type_def_registry import (
     is_string_type,
 )
 from ...codegen_cpp.builtins import _FLOAT_STR_CONSTANTS
+from ...codegen_cpp.types import resolve_pending_container
 from ...codegen_cpp.forms import LocalBinding, classify_local_binding
 from ...value_category import is_rvalue_source
 from ...codegen_cpp.context import (
@@ -187,6 +189,7 @@ from .predicates import (
     _protocol_binding,
     _record_rvalue_temp_slot,
     _record_setitem_value,
+    _resolve_literal_seeded,
     _resolved_bytes_value,
     _resolved_scalar,
     _resolved_str_value,
@@ -1941,16 +1944,26 @@ def _free_callee_kind(e: TpyCall, analyzer, *,
             return ("template", tmpl)
         note_detail("call.template_shape")
         return None
-    if fi.native_function or fi.native_name:
-        # C++ @native imports spell `::native_name` -- gen_call_from_fi's
-        # two native arms coincide for a receiver-less call, so only the
-        # symbol matters. extern-C / @native_c (raw unqualified symbol), a
-        # native_function with no native_name (the bare `fi.name` tail),
-        # and a declared cpp_return_type (the AST wraps the call in the
-        # narrowing static_cast) stay AST.
-        if (fi.native_name and fi.linkage == FunctionLinkage.NATIVE
-                and fi.native_cpp_return_type is None):
-            return ("native", fi.native_name)
+    if fi.native_function or fi.native_name or fi.linkage in (
+            FunctionLinkage.NATIVE, FunctionLinkage.NATIVE_C):
+        # C++ @native imports spell the absolute-qualified symbol -- the
+        # AST's is_native_import arm (`qualify_native_name(native_name or
+        # name)`, idempotent on `::`-prefixed stub names); a user-module
+        # `@native def` carries only the NATIVE linkage (no stub flags) and
+        # spells the same. @native(binding="C") emits the RAW unqualified
+        # symbol (the extern "C" re-declaration is namespace-scoped, a `::`
+        # would miss it). A declared cpp_return_type (the AST wraps the
+        # call in the narrowing static_cast) and @export stay AST.
+        if fi.native_cpp_return_type is None:
+            if fi.linkage == FunctionLinkage.NATIVE:
+                # The emit's native_name arm applies qualify_native_name,
+                # so the node carries the raw symbol (name when the stub
+                # declares no rename -- the user-module `@native def` face).
+                return ("native", fi.native_name or fi.name)
+            if fi.linkage == FunctionLinkage.NATIVE_C:
+                # Distinct kind: the emit's native_name arm force-qualifies,
+                # so the raw symbol rides callee_cpp (rendered verbatim).
+                return ("native_c", fi.native_name or fi.name)
         note_detail("call.native_shape")
         return None
     # Only a DEFAULT-linkage function emits as a bare/qualified `name(args)`.
@@ -2147,6 +2160,7 @@ def _native_call_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
             or _native_iterable_genexpr_arg(a, ptype)
             or _native_iterable_literal_arg(a, ptype, analyzer)
             or _native_value_call_arg(a, ptype, analyzer)
+            or _native_container_call_arg(a, ptype, analyzer)
             # A bare-name conformer into a monomorphized protocol slot of a
             # native/template callee (`repr(p)` -> `::tpy::repr_of(p)`): the
             # native arg loop renders it bare (`protocol_slots=False`), no
@@ -2459,6 +2473,42 @@ def _container_literal_method_arg(a: TpyExpr, ptype: 'TpyType | None',
         return is_list(pt) and _container_literal_shape_ok(a, pt, analyzer)
     return False
 
+def _own_container_literal_arg(a: TpyExpr, ptype: 'TpyType | None',
+                               analyzer) -> bool:
+    """A list LITERAL into an `Own[list]` qualcall slot
+    (`Mutex.new([1, 2])` -> `new_({1, 2})`): the qualcall arg loop threads
+    the slot and the literal renders the bare in-place brace. List literals
+    only -- dict/set spellings and non-literal sources keep their own
+    rows. NOTE: `_lower_call_arg` has no dedicated render arm for this row
+    (the explicit literal arms exclude Own slots); the literal falls to the
+    generic tail and renders off its OWN resolved type, which coincides
+    with the peeled slot because `_container_literal_shape_ok` pinned the
+    match here. Extending this row beyond same-shape list literals needs
+    an explicit slot thread."""
+    if not isinstance(a, TpyArrayLiteral):
+        return False
+    pt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
+          if ptype is not None else None)
+    if not isinstance(pt, OwnType):
+        return False
+    inner = unwrap_readonly(unwrap_send_sync(pt.wrapped))
+    # A stub slot off a literal-seeded receiver can still be PENDING
+    # (`rows.append([9, 9])` -- Own[PendingList], which resolves to the
+    # read-only DEMOTED Array); resolve first. The bare brace renders the
+    # same for the list and the demoted-Array spellings.
+    inner = _resolve_literal_seeded(inner, analyzer)
+    if _is_type_param_slot(inner):
+        # A RAW `Own[T]` element slot (a builtin stub's unsubstituted T):
+        # the bare brace renders off the literal's own resolved container,
+        # so gate on that shape instead.
+        ltu = _resolve_literal_seeded(analyzer.get_expr_type(a), analyzer)
+        ltu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ltu)))
+               if ltu is not None else None)
+        return (ltu is not None and (is_list(ltu) or is_array(ltu))
+                and _container_literal_shape_ok(a, ltu, analyzer))
+    return ((is_list(inner) or is_array(inner))
+            and _container_literal_shape_ok(a, inner, analyzer))
+
 def _native_iterable_literal_arg(a: TpyExpr, ptype: 'TpyType | None',
                                  analyzer) -> bool:
     """A container LITERAL into a NATIVE builtin's structural `Iterable[T]` /
@@ -2506,6 +2556,42 @@ def _record_field_ref_arg(a: TpyExpr, ptype: 'TpyType | None',
     return (_field_markers_clean(a)
             and _field_receiver_ok(a, locals_, analyzer))
 
+
+def _own_iter_special_arg(a: TpyExpr, ptype: 'TpyType | None') -> bool:
+    """An explicit `own_iter(x)` call into a structural Iterable/Sequence
+    slot (`b.extend(own_iter(a))` ->
+    `::tpy::list_extend(b, ::tpy::own_iter(std::move(a)))`): the
+    special-builtin lowering arm renders it; the row only admits the
+    pairing."""
+    if not isinstance(a, TpyCall):
+        return False
+    pb = _protocol_binding(ptype)
+    if pb is None or pb.name not in ("Iterable", "Sequence"):
+        return False
+    fi = a.resolved_function_info
+    return fi is not None and fi.qualified_name == qnames.OWN_ITER
+
+def _native_container_call_arg(a: TpyExpr, ptype: 'TpyType | None',
+                               analyzer) -> bool:
+    """A container-returning CALL rvalue into a native/template slot that is
+    NOT the structural Iterable face (`len(g.get())` ->
+    `::tpy::__len__(g.get())`, `sorted(...)` feeding a Sized-ish slot): the
+    call renders bare in place on both paths, exactly like the value-family
+    row; `_lower_free_call_arg` threads STORAGE use so the inner call's
+    result gate admits the container. Own / Optional / Union slots keep
+    their lift arms (excluded)."""
+    if not isinstance(a, (TpyCall, TpyMethodCall)):
+        return False
+    pt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
+          if ptype is not None else None)
+    if pt is None or isinstance(pt, (OwnType, OptionalType, UnionType)):
+        return False
+    rt = analyzer.get_expr_type(a)
+    rtu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rt)))
+           if rt is not None else None)
+    if isinstance(rtu, OwnType):
+        rtu = unwrap_readonly(rtu.wrapped)
+    return _storage_call_ret(rtu, analyzer) is not None
 
 def _native_value_call_arg(a: TpyExpr, ptype: 'TpyType | None',
                            analyzer) -> bool:
@@ -2818,7 +2904,30 @@ def _own_record_rvalue_arg(a: TpyExpr, ptype: TpyType | None,
     through a temp) -> AST; the same-nominal check is a slice guard (sema
     rejects an upcast into an Own slot outright)."""
     w = _plain_own_slot(ptype)
-    if w is None or not _f1_record(w, analyzer):
+    if w is None:
+        return False
+    w_container = _storage_call_ret(
+        unwrap_readonly(unwrap_send_sync(w)), analyzer) is not None
+    if not w_container and not _f1_record(w, analyzer):
+        return False
+    if isinstance(a, TpyMethodCall):
+        # A record- or container-returning METHOD-call rvalue
+        # (`Arc.new(Mutex.new(0))` / `g.set(acked.copy())` ->
+        # `set(::tpy::list_copy(acked))`): binds the T&& slot inline like a
+        # ctor rvalue; the method-call lowering validates its
+        # receiver/args itself (the shallow _record_source_call pattern).
+        at = analyzer.get_expr_type(a)
+        atu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
+               if at is not None else None)
+        if isinstance(atu, OwnType):
+            atu = unwrap_readonly(atu.wrapped)
+        atu = _resolve_literal_seeded(atu, analyzer)
+        return (atu == unwrap_readonly(unwrap_send_sync(w))
+                and is_rvalue_source(analyzer, a)
+                and _witness("own.record_rvalue"))
+    if w_container:
+        # Container Own slots admit only the method-rvalue face here;
+        # names/literals ride the copy-temp and literal rows.
         return False
     if not isinstance(a, TpyCall):
         return False
@@ -3047,6 +3156,19 @@ def _own_union_ctor_arg(a: TpyExpr, ptype: TpyType | None,
     return (_ctor_shape_ok(a, analyzer)
             and _witness("own.union_ctor"))
 
+def _ctor_effective_params(e: TpyCall, ri) -> 'list[ParamInfo]':
+    """The param list the record-ctor arg loop reads: the synthetic fi's, or
+    -- when the record has NO own `__init__` but registered init_params (an
+    inherited param-ful `__init__`) -- the registry triples, mirroring
+    `_gen_call`'s init_params fallback. `_ctor_shape_ok` already pinned the
+    arity of whichever source applies."""
+    fi = e.resolved_function_info
+    if fi.params or not e.args:
+        return fi.params
+    if ri is None or ri.get_method_overloads("__init__") or not ri.init_params:
+        return fi.params
+    return [ParamInfo(n, t) for n, t, _ in ri.init_params]
+
 def _ctor_arity_ok(e: TpyCall, fi) -> bool:
     """Positional arity for a raw-name record-ctor call. Exact arity is the
     common case; fewer args are admitted when the OMITTED trailing params all
@@ -3097,8 +3219,16 @@ def _ctor_shape_ok(e: TpyCall, analyzer) -> bool:
         return False
     if fi.cpp_template or fi.native_function or fi.native_name:
         return False
+    inherited_arity = False
     if not _ctor_arity_ok(e, fi):
-        return False
+        # A record with NO own `__init__` but a param-ful INHERITED one:
+        # sema's synthetic ctor fi carries EMPTY params, so positional args
+        # fail the fi-arity gate. The AST arg loop reads the registry's
+        # init_params triples instead; defer the arity verdict to the
+        # no-own-overloads arm below, which checks against those.
+        if fi.params or not e.args:
+            return False
+        inherited_arity = True
     ri = analyzer.registry.get_record(e.func_name)
     if ri is None or ri.builtin_type_key is not None:
         return False
@@ -3109,7 +3239,14 @@ def _ctor_shape_ok(e: TpyCall, analyzer) -> bool:
     # Any OTHER native record takes a divergent ctor emit shape -> AST.
     is_native_exc = ri.is_native and ri.implements_throwable
     if ri.is_native and not is_native_exc:
-        return False
+        # A plain @native record with NO own `__init__` constructs via
+        # `native_name(args)` (@native_c: the `{args}` aggregate), args
+        # typed from init_params -- the same no-own-init fallback the
+        # inherited-init face reads. An overloaded / @native /
+        # @cpp_template `__init__` takes other emit arms
+        # (gen_call_from_fi / the builtin ctor path) -> AST.
+        if ri.get_method_overloads("__init__"):
+            return False
     if ri.type_params:  # generic ctor: substituted/spelled type args -> AST
         return False
     # The short-name collision override: when the sema result type resolves
@@ -3132,13 +3269,23 @@ def _ctor_shape_ok(e: TpyCall, analyzer) -> bool:
     # carries only params + mutation facts).
     overloads = ri.get_method_overloads("__init__")
     if not overloads:
-        # No OWN __init__: the implicit default ctor. Reaching here with a
-        # non-None fi means sema attached the synthetic zero-param ctor fi
-        # (own-init-less records only -- a record with an INHERITED param-ful
-        # __init__ gets no fi and rejected above), so the arity gate pinned
-        # the call zero-arg, and a zero-arg call renders the same bare
-        # `Name()` -- no arg machinery to disagree with.
-        return True
+        # No OWN __init__: either the implicit default ctor (zero-arg call,
+        # fi-arity already pinned it) or an INHERITED param-ful __init__
+        # (sema attaches a synthetic ctor fi with EMPTY params; the real
+        # param list lives in ri.init_params, which both arg loops read --
+        # the AST via _gen_call's init_params fallback, the lowering via
+        # _ctor_effective_params). Arity for the inherited face checks the
+        # triples: exact, or omitted trailing params that carry a default.
+        if not inherited_arity:
+            return True
+        ip = ri.init_params
+        if not ip or len(e.args) > len(ip):
+            return False
+        return all(d is not None for _, _, d in ip[len(e.args):])
+    if inherited_arity:
+        # Own overloads exist but the synthetic fi is param-less: a shape
+        # mismatch this gate does not model -> AST.
+        return False
     if len(overloads) != 1:
         return False
     init_fi = overloads[0]
@@ -3478,14 +3625,16 @@ def _method_field_receiver_ok(recv: TpyExpr, locals_: dict[str, TpyType],
     if not _field_receiver_ok(recv, locals_, analyzer):
         return False
     ft = analyzer.get_expr_type(recv)
-    # A scalar-read container field routes the container arm: the receiver
-    # renders bare as its own THIRFieldAccess (`this->buf` / `this->m`), exactly
+    # A container-family field routes the container arm: the receiver renders
+    # bare as its own THIRFieldAccess (`this->buf` / `parent.children`), exactly
     # as a bare-name container receiver renders `xs` -- the append / pop / update
     # emit inserts that receiver identically. `_method_receiver_type` reads the
     # same resolved field type downstream (no PendingListType round-trip that the
-    # name arm dodges via `locals_`). Non-scalar element containers and sets fall
-    # through to the record check (and reject there).
-    if _container_scalar_read(ft, analyzer):
+    # name arm dodges via `locals_`), so gating on the SAME family predicate the
+    # method-family dispatch uses keeps shape/arg admission coherent: whatever
+    # admits here routes the container family there, and the per-method /
+    # per-arg gates decide the rest (record-elem moves, set adds, pop results).
+    if _container_method_recv(ft, analyzer, None):
         return _witness("method.recv.container_field")
     ft = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ft)))
     if isinstance(ft, OwnType):
@@ -3955,6 +4104,7 @@ def _marker_call_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
             or _none_unit_arg(a, ptype) is not None
             or (temps_ok and _value_union_temp_arg(
                 a, ptype, locals_, narrowed, analyzer))
+            or (own_ok and _own_record_rvalue_arg(a, ptype, locals_, analyzer))
             or (own_ok and _own_move_arg(a, ptype, locals_, analyzer))
             or (own_ok and temps_ok and _own_lvalue_arg(
                 a, ptype, locals_, narrowed, analyzer))
@@ -3976,6 +4126,7 @@ def _marker_call_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
             # ref-param temp hoist (a FREE call would hoist, but the qualcall
             # arg loop emits it in place).
             or _container_literal_method_arg(a, ptype, analyzer)
+            or (own_ok and _own_container_literal_arg(a, ptype, analyzer))
             or note_detail(_qualcall_arg_reject(a, ptype, analyzer)))
 
 
@@ -4214,6 +4365,17 @@ def _container_method_arg_ok(
             or _copy_record_own_arg(a, ptype, analyzer)
             or _own_move_arg(a, ptype, locals_, analyzer)
             or _own_lvalue_arg(a, ptype, locals_, narrowed, analyzer)
+            # The structural Iterable/Sequence slot of a stub method
+            # (`xs.extend([4, 5])` / `xs.extend(b)` -- the C++ template
+            # binds the container bare; a movable last-use name takes the
+            # consuming `::tpy::own_iter(std::move(b))` wrap at lowering).
+            or _native_iterable_literal_arg(a, ptype, analyzer)
+            or _native_iterable_container_arg(a, ptype, locals_)
+            or _native_iterable_call_arg(a, ptype, analyzer)
+            or _own_iter_special_arg(a, ptype)
+            # A nested list literal into an Own[list] element slot
+            # (`rows.append([9, 9])` -> `push_back({9, 9})`).
+            or _own_container_literal_arg(a, ptype, analyzer)
             or _any_pass_through_arg(a, ptype, locals_, analyzer)
             or _container_literal_method_arg(a, ptype, analyzer)
             # `None` into a value-repr Optional element slot
@@ -4566,7 +4728,12 @@ def _record_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyTy
             # call whatever the ignored result, the record sibling of the
             # container family's stmt_storage_ok row.
             or (stmt_position and _f1_record(ret, analyzer)
-                and _witness("method.record_discard"))):
+                and _witness("method.record_discard"))
+            # A DISCARDED container result (`g.get();` -- the guard payload
+            # dropped): same bare call, the container sibling.
+            or (stmt_position
+                and _storage_call_ret(ret, analyzer) is not None
+                and _witness("method.container_discard"))):
         return note_detail("method.ret_type")
     return True
 
@@ -4648,6 +4815,13 @@ def _record_method_arg_ok(
             or _own_scalar_rvalue_arg(a, ptype, locals_, analyzer)
             or _own_record_rvalue_arg(a, ptype, locals_, analyzer)
             or _own_move_arg(a, ptype, locals_, analyzer)
+            # The Own-slot copy half (`auto __tmp_N = b;` +
+            # `recv.m(std::move(__tmp_N))`): a user method's Own param is a
+            # real by-value C++ slot, so the copy hoists exactly like the
+            # free-call/ctor rows -- flush-gated; `_method_arg` threads the
+            # scoped temp_args into `_lower_call_arg`'s copy+move arm.
+            or (temps_ok and _own_lvalue_arg(a, ptype, locals_, narrowed,
+                                             analyzer))
             or _optional_ptr_arg(a, ptype, locals_, analyzer, temps_ok=False)
             or _container_pass_through_arg(a, ptype, locals_, analyzer)
             or _record_pass_through_arg(a, ptype, locals_, analyzer)
@@ -4663,6 +4837,10 @@ def _record_method_arg_ok(
             # slot renders bare / `std::nullopt` -- `sock.settimeout(0.5)`.
             or _value_opt_scalar_value_arg(a, ptype, analyzer)
             or _none_value_opt_arg(a, ptype, analyzer) is not None
+            # A list literal into an `Own[list]` user-method slot renders
+            # the bare in-place brace (`g.set([7, 8, 9])` -> `set({7, 8,
+            # 9})`), the record-method twin of the qualcall row.
+            or _own_container_literal_arg(a, ptype, analyzer)
             # The pointer-repr Optional[container] slot faces: `None` ->
             # `nullptr`, a bare matching container name -> `&(name)` (the
             # free-call rows), and (temps only) a container literal ->
@@ -5106,7 +5284,20 @@ def _method_ctor_rvalue_arg(a: TpyExpr, ptype: TpyType | None, idx: int,
     if pt != analyzer.get_expr_type(a):
         return False
     cbp = method_fi.const_borrow_params
-    if cbp is None or idx not in cbp:
+    if cbp is None:
+        # An UN-ANALYZED callee (a @native record's body-less stub method):
+        # no const verdict exists. The AST inlines the ctor expansion
+        # regardless (its ctor_mutated falls back to empty) and
+        # compilability falls to the real C++ signature -- mirror it in
+        # lockstep. Analyzed user methods always carry a materialized cbp
+        # (populate_const_borrow_params runs for every body-bearing fi),
+        # so this arm cannot smuggle the mutated-ref miscompile shape
+        # past the const gate.
+        if (method_fi.direct_mutated_params is None
+                and method_fi.call_edges is None):
+            return _ctor_shape_ok(a, analyzer)
+        return False
+    if idx not in cbp:
         return False
     return _ctor_shape_ok(a, analyzer)
 

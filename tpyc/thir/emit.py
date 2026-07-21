@@ -591,8 +591,12 @@ def _emit_union_arg_lift(e: THIRUnionArgLift, state: _EmitState) -> str:
 def _emit_ctor_call(e: THIRCtorCall, state: _EmitState) -> str:
     # _gen_call's record-branch tail: the RAW source name (same-module) or
     # the qualified `::ns::Name` spelling (imported record), decided at
-    # lowering, over the lowering-admitted args.
-    return f"{e.type_cpp}({', '.join(_emit_expr(a, state) for a in e.args)})"
+    # lowering, over the lowering-admitted args. @native_c PODs take the
+    # aggregate `{args}` init.
+    args = ", ".join(_emit_expr(a, state) for a in e.args)
+    if e.brace_init:
+        return f"{e.type_cpp}{{{args}}}"
+    return f"{e.type_cpp}({args})"
 
 
 def _emit_method_call(e: THIRMethodCall, state: _EmitState) -> str:
@@ -614,8 +618,12 @@ def _emit_method_call(e: THIRMethodCall, state: _EmitState) -> str:
         return f"::tpy::deref_check({recv}).{e.method_cpp}({', '.join(args)})"
     if e.deref_chain:
         # User Deref-wrapper method call: N `.__deref__()` calls between the
-        # bare receiver and the member call (`r.__deref__().sum()`).
-        chain = ".__deref__()" * e.deref_chain
+        # bare receiver and the member call (`r.__deref__().sum()`); a
+        # pointer-local receiver joins the first hop with `->`
+        # (`g->__deref__().push_back(3)`).
+        first = "->" if e.is_arrow else "."
+        chain = (f"{first}__deref__()"
+                 + ".__deref__()" * (e.deref_chain - 1))
         return f"{recv}{chain}.{e.method_cpp}({', '.join(args)})"
     mtargs = (f"<{', '.join(e.method_targs_cpp)}>"
               if e.method_targs_cpp else "")

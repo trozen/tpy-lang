@@ -252,3 +252,21 @@ bucket has mass (the `_marker_reject` pattern -- it runs only on already-
 rejected calls, first-reject-wins, and self-documents the residue) and delete
 it when the bucket empties; hand-written temporary classifiers reverted before
 commit are the exception for one-off questions, not the default.
+
+Wave-6 landing note (2026-07-21): the ctor face grew the no-own-`__init__`
+param source (`_ctor_effective_params` reading `ri.init_params` -- inherited
+inits, `@native`/`@native_c` records, TypedDict) and the `@native_c`
+aggregate spelling (`THIRCtorCall.brace_init`); the free-call classifier
+grew NATIVE/NATIVE_C linkage arms; the method surface grew the
+container-family field receiver, the Own copy-temp arg row
+(`_method_arg`'s scoped `own_flush`), the typed-dict subscript
+read/write/aug arms, and the Deref-guard MEMBER-stub composition
+(`method.user_deref_stub`).
+
+Wave-7 landing note (2026-07-21): the method surface grew the
+container-returning USER-method positions (native-arg STORAGE threading,
+DISCARD row, deref-chain `->` first-hop join) and the stub-method
+Iterable[Own[T]] arg family (own_iter wrap keyed on the STUB arg loop --
+see the COUPLING note in `_lower_call_arg`'s Iterable arm); the
+container-literal element path now orders converts before the move wrap
+(the make_vector face) with seeded value-opt param movability.

@@ -1874,6 +1874,68 @@ def _user_deref_field_recv_ok(e: TpyExpr, declared: dict[str, TpyType],
     ri = analyzer.registry.get_record_for_type(u)
     return ri is not None and bool(ri.get_method_overloads("__deref__"))
 
+def _typed_dict_recv_ok(obj: TpyExpr, declared: dict[str, TpyType],
+                        pointers: 'AbstractSet[str]',
+                        narrowed: 'AbstractSet[str]', analyzer) -> bool:
+    """The typed-dict subscript RECEIVER set, shared by the read arm and the
+    write-target gate so the two cannot drift: a bare declared NAME (not a
+    pointer-local / narrowed -- those read through AST-side unwraps), or a
+    one-level FIELD off an admitted binding (`p.addr["city"]`)."""
+    if isinstance(obj, TpyName):
+        return (obj.name in declared and obj.name not in pointers
+                and obj.name not in narrowed)
+    return (isinstance(obj, TpyFieldAccess)
+            and _field_receiver_ok(obj, declared, analyzer))
+
+def _user_deref_stub_method_ok(e: TpyExpr, declared: dict[str, TpyType],
+                               narrowed: 'AbstractSet[str]', analyzer,
+                               pointers: 'AbstractSet[str]') -> bool:
+    """A container-stub MEMBER method call through a USER Deref wrapper
+    (`g.append(4)` on a Mutex guard over a list ->
+    `g.__deref__().push_back(4)`): the deref receiver shape of
+    `_user_deref_method_call_ok`, but the fi is the payload container's
+    MEMBER-rename native (`@native("push_back")` / bare `clear`). The
+    THIR deref emit spells `recv.__deref__()...member(args)` exactly;
+    function=True natives and cpp_template stubs thread the receiver
+    through a symbol/template slot the deref branch cannot reach -> AST."""
+    if not isinstance(e, TpyMethodCall):
+        return False
+    if not e.deref_depth or e.deref_narrowed_to is not None:
+        return False
+    if e.kwargs or e.double_star_unpack is not None:
+        return False
+    if (e.is_static_call or e.super_parent_type is not None
+            or e.unbound_self_parent_type is not None
+            or e.user_module_call is not None
+            or e.builtin_module_call is not None
+            or e.typed_dict_get_field is not None
+            or e.is_nested_constructor or e.is_nested_enum_constructor
+            or e.is_callable_field or e.macro_expansion is not None
+            or e.fstr_expansion is not None or e.type_args
+            or e.inferred_type_args or e.needs_optional_runtime_check):
+        return False
+    fi = e.resolved_function_info
+    if fi is None:
+        return False
+    if not (fi.native_name and not fi.native_function
+            and fi.cpp_template is None and not fi.type_params):
+        return False
+    recv = e.obj
+    if not isinstance(recv, TpyName) or recv.name not in declared:
+        return False
+    if recv.name in narrowed:
+        return False
+    # A POINTER-local receiver is admitted: the lowering sets is_arrow and
+    # the deref emit joins the first hop with `->`
+    # (`g->__deref__().push_back(3)` -- the Arc-chained guard target).
+    u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(declared[recv.name])))
+    if isinstance(u, OwnType):
+        u = unwrap_readonly(u.wrapped)
+    if not (isinstance(u, NominalType) and _f1_record(u, analyzer)):
+        return False
+    ri = analyzer.registry.get_record_for_type(u)
+    return ri is not None and bool(ri.get_method_overloads("__deref__"))
+
 def _user_deref_method_call_ok(e: TpyExpr, declared: dict[str, TpyType],
                                narrowed: 'AbstractSet[str]', analyzer,
                                pointers: 'AbstractSet[str]') -> bool:
@@ -2129,6 +2191,24 @@ def _value_opt_scalar_value_arg(a: TpyExpr, ptype: 'TpyType | None',
         return False
     return bool(_resolved_scalar(at, analyzer) or _eligible_char(at)
                 or _eligible_enum(at, analyzer) is not None)
+
+def _str_literal_value_opt_arg(a: TpyExpr, ptype: 'TpyType | None') -> bool:
+    """A str LITERAL into a value-repr `Optional[str]` slot
+    (`Info("Alice")` into `str | None` -- the total=False TypedDict ctor
+    face): both paths render the bare literal; C++'s implicit
+    `const char*` -> `optional<string>` chain absorbs it. Owned-str inner
+    only: a view inner (`optional<string_view>`) takes the ARG-split shim,
+    and non-literal sources need the view->owned wrap."""
+    if not isinstance(a, TpyStrLiteral):
+        return False
+    pt = ptype if isinstance(ptype, TpyType) else None
+    if pt is None:
+        return False
+    pt = unwrap_readonly(unwrap_send_sync(pt))
+    if not (isinstance(pt, OptionalType) and not pt.uses_pointer_repr()):
+        return False
+    inner = unwrap_readonly(pt.inner)
+    return isinstance(inner, NominalType) and is_str_type(inner)
 
 def _unrouted_binding_read(t: 'TpyType | None', analyzer) -> 'str | None':
     """A declared binding kind whose bare NAME read has no THIR arm -- reachable
@@ -3524,6 +3604,17 @@ def _nonvalue_container_ret(ret: TpyType | None) -> bool:
     t = unwrap_readonly(unwrap_send_sync(ret))
     return is_list(t) or is_dict(t) or is_set(t)
 
+def _resolve_literal_seeded(t: 'TpyType | None', analyzer) -> 'TpyType | None':
+    """Resolve a literal-seeded analyzer type to its final form: a PENDING
+    container (PendingListType -> list, or the read-only demoted Array) and
+    IntLiteral element types (through the module default) -- the pair the
+    AST's render-time get_resolved_type applies. One helper so the storage
+    families and the Own-slot arg rows cannot drift apart."""
+    if t is None:
+        return None
+    t = resolve_pending_container(t, analyzer) or t
+    return resolve_int_literals(t, analyzer.ctx.default_int_for_literal)
+
 def _storage_call_ret(ret: TpyType | None, analyzer) -> TpyType | None:
     """A call result admitted at the storage decl-init / return sinks: an
     owned builtin container (list/dict of the literal-decl families, or a
@@ -3536,6 +3627,7 @@ def _storage_call_ret(ret: TpyType | None, analyzer) -> TpyType | None:
     if ret is None:
         return None
     t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ret)))
+    t = _resolve_literal_seeded(t, analyzer)
     if is_list(t) or is_dict(t):
         return t if _container_scalar_read(t, analyzer) else None
     if is_bytearray_type(t):
@@ -3793,6 +3885,16 @@ def _own_lvalue_temp_slot(a: TpyExpr, ptype: TpyType | None,
         # a generic body): the copy renders the same `auto __tmp_N = <arg>;`
         # and the movable last use the same temp-free `std::move(name)`.
         return w if at == w else None
+    wu = unwrap_readonly(unwrap_send_sync(w))
+    if is_list(wu) or is_dict(wu) or is_set(wu) or is_bytearray_type(wu):
+        # A builtin-container payload (`g.set(live)` into `Own[list[T]]`):
+        # the same copy temp (`auto __tmp_N = live;` + the move wrap) and
+        # the same temp-free move at a movable last use -- containers are
+        # non-value, so the movable seeding applies exactly as for records.
+        # A literal-seeded local's read is still a PendingListType here;
+        # resolve it before the same-type compare.
+        at_res = resolve_pending_container(at, analyzer) or at
+        return w if at_res == wu else None
     return None
 
 def _optional_ptr_arg_slot(ptype: TpyType | None, analyzer) -> 'OptionalType | None':

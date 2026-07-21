@@ -490,15 +490,20 @@ class TestRecordMethodCalls:
                                                      thir_codegen=False))
         assert cpp_t == cpp_a
 
-    def test_own_scalar_method_slot_stays_ast(self):
+    def test_own_scalar_method_slot_copy_temp(self):
         # A user method is not an inline template: gen_call_arg copies an
-        # Own[scalar] arg into a temp and moves it -- rejected, unlike the
-        # builtin-container Own[scalar] slots.
-        thir = _lower_ctx(_src(
+        # Own[scalar] arg into a temp and moves it. The method-arg Own-slot
+        # copy row hoists the same `auto __tmp_N = n;` + `std::move(__tmp_N)`
+        # (scoped temp_args threaded by `_method_arg` -- flush positions only).
+        src = _src(
             "def use(a: A, n: Int32) -> Int32:\n    return a.own_scalar(n)\n",
             extra_a="    def own_scalar(self, v: Own[Int32]) -> Int32:\n"
-                    "        return self.x + v\n"))
-        assert _fn(thir, "use") is None
+                    "        return self.x + v\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "use") is not None
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+        assert "auto __tmp_1 = n;" in _cpp(src, thir=True)
+        assert "a.own_scalar(std::move(__tmp_1))" in _cpp(src, thir=True)
 
     def test_record_returning_method_routes_as_field_receiver(self):
         # A record result routes at the FIELD-RECEIVER position
@@ -511,6 +516,79 @@ class TestRecordMethodCalls:
         assert _fn(_lower_ctx(src), "use") is not None
         assert _cpp(src, thir=True) == _cpp(src, thir=False)
         assert "return a.pick(b).x;" in _cpp(src, thir=True)
+
+
+class TestInheritedInitCtor:
+    SRC = (
+        "from tpy import Int32\n"
+        "class Base:\n    v: Int32\n"
+        "    def __init__(self, v: Int32) -> None:\n        self.v = v\n"
+        "class Sub(Base):\n    pass\n"
+    )
+
+    def test_inherited_init_ctor_routes(self):
+        # `Sub(7)`: sema attaches a synthetic ctor fi with EMPTY params; the
+        # real param list lives in ri.init_params (the AST arg loop's
+        # fallback). The gate checks arity against the triples and the
+        # lowering threads `_ctor_effective_params` into the arg zip.
+        src = self.SRC + "def use() -> Int32:\n    s = Sub(7)\n    return s.v\n"
+        assert _fn(_lower_ctx(src), "use") is not None
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+        assert "Sub s = Sub(7);" in _cpp(src, thir=True)
+
+    def test_own_container_copy_temp_method_arg(self):
+        # A bound container lvalue into a user method's Own[list] slot,
+        # used after the call: the copy temp `auto __tmp_N = xs;` + the
+        # move wrap -- _own_lvalue_temp_slot's container-payload branch
+        # (no corpus witness: the threading cases still fall back on other
+        # constructs, so the emit is pinned here).
+        src = (
+            "from tpy import Int32, Own\n"
+            "class Sink:\n    data: list[Int32]\n"
+            "    def __init__(self):\n        self.data = []\n"
+            "    def take(self, v: Own[list[Int32]]) -> None:\n"
+            "        self.data = v\n"
+            "def f() -> Int32:\n"
+            "    s = Sink()\n    xs = [1, 2]\n"
+            "    s.take(xs)\n"
+            "    return len(xs)\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is not None
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+        assert "auto __tmp_1 = xs;" in _cpp(src, thir=True)
+        assert "s.take(std::move(__tmp_1))" in _cpp(src, thir=True)
+
+    def test_own_record_method_rvalue_arg(self):
+        # A record-returning METHOD-call rvalue into an Own[record] method
+        # slot (`k.keep(m.mk())` -- the Arc.new(Mutex.new(...)) shape):
+        # binds the T&& slot inline, no temp. No unmarked corpus witness
+        # (the threading cases still fall back on other constructs).
+        src = _src(
+            "class K:\n    held: Int32\n"
+            "    def __init__(self):\n        self.held = 0\n"
+            "    def keep(self, a: Own[A]) -> None:\n"
+            "        self.held = a.x\n"
+            "class M:\n"
+            "    def __init__(self):\n        pass\n"
+            "    def mk(self) -> Own[A]:\n        return A(9)\n"
+            "def f(k: K, m: M) -> None:\n    k.keep(m.mk())\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is not None
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+        assert "k.keep(m.mk())" in _cpp(src, thir=True)
+
+    def test_inherited_init_omitted_default_routes(self):
+        # An omitted trailing param whose TRIPLE carries a default renders the
+        # zero-arg `Name()` (the default lives on the C++ ctor signature).
+        src = (
+            "from tpy import Int32\n"
+            "class Base:\n    v: Int32\n"
+            "    def __init__(self, v: Int32 = 3) -> None:\n        self.v = v\n"
+            "class Sub(Base):\n    pass\n"
+            "def use() -> Int32:\n    s = Sub()\n    return s.v\n")
+        assert _fn(_lower_ctx(src), "use") is not None
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+        assert "Sub s = Sub();" in _cpp(src, thir=True)
 
 
 class TestCallArgEmit:

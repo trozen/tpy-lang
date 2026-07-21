@@ -1800,3 +1800,29 @@ byte-diff itself.
   methods rank individually (`method.str.rfind` 714, `.startswith` 693,
   `.find` 346) and are NOT a big rock. The stdlib drill (distinct bodies)
   gives the same ordinal ranking.
+- **Landed: wave-6 call/method sub-family drill (2026-07-21).** New routed
+  families: container-family FIELD receivers (`_method_field_receiver_ok`
+  gates on the same `_container_method_recv` predicate as the method-family
+  dispatch table); the Own-slot copy-temp on USER-method args (containers
+  included); inherited-`__init__` and plain-`@native` / `@native_c` ctors
+  (both ride the no-own-overloads `ri.init_params` fallback --
+  `_ctor_effective_params`; `@native_c` aggregates via
+  `THIRCtorCall.brace_init`); user-module `@native def` and C-linkage free
+  callees (`call.native_c_free` kind: raw symbol on `callee_cpp`); the
+  TypedDict family (ctor via the init_params fallback, subscript read
+  `d["k"]` -> `d.k` with the total=False `typed_dict_field_check` wrap,
+  total=True writes/aug as field lvalues); Deref-guard container MEMBER
+  stubs (`g.append(4)` -> `g.__deref__().push_back(4)`;
+  function=True/cpp_template stubs stay AST). Dial 1913 -> 1961/3485.
+- **Landed: wave-7 container-ret + Iterable-slot families (2026-07-21).**
+  Container-returning USER methods route at native/template arg positions
+  (`::tpy::__len__(g.get())` -- `_native_container_call_arg` + STORAGE-use
+  threading), at DISCARD (`method.container_discard`), and through
+  Arc-chained guards (pointer-receiver deref chains,
+  `g->__deref__().push_back(3)`). The stub-method `Iterable[Own[T]]` slot
+  family landed (literal / bare-name / call-rvalue rows, the explicit
+  `own_iter(x)` arm, the movable last-use `::tpy::own_iter(std::move(b))`
+  wrap -- STUB loops only; free natives bind bare). Latent THIR divergence
+  fixed: container-element converts apply BEFORE the move wrap
+  (`std::move(std::string((*a)))`, the make_vector face), and seeded
+  value-opt VIEW params count as movable elements. Dial 1974 -> 1988/3485.

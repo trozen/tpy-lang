@@ -214,6 +214,7 @@ from .predicates import (
     _facts_have_concrete,
     _field_decl_type,
     _field_receiver_ok,
+    _typed_dict_recv_ok,
     _for_each_elem_binding_ok,
     _foreach_value_opt_elem,
     _is_borrow_form_name,
@@ -442,6 +443,22 @@ def _any_dict_subscript_shape_ok(
             analyzer):
         return False
     return _bigint_index_disposition(sub.index, analyzer) != "reject"
+
+def _typed_dict_write_target(
+        sub: 'TpyExpr', declared: dict[str, TpyType], pointers: set[str],
+        narrowed: 'AbstractSet[str]', analyzer) -> bool:
+    """`d["key"]` as a WRITE target on a total=True TypedDict -> the plain
+    field lvalue `d.key` (the AST renders the subscript target through its
+    typed-dict arm; the value assigns like a field write). total=False
+    targets (whose READ render is the check wrap -- Python allows writing
+    an absent key, a shape this mirror does not model) and receivers
+    outside the read arm's set (a bare name / one-level admitted field)
+    stay AST."""
+    return (isinstance(sub, TpySubscript)
+            and sub.typed_dict_field is not None
+            and not sub.typed_dict_optional
+            and _typed_dict_recv_ok(sub.obj, declared, pointers, narrowed,
+                                    analyzer))
 
 def _any_dict_setitem_ok(
         stmt: TpyAssign, declared: dict[str, TpyType], pointers: set[str],
@@ -4575,6 +4592,25 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             # list_set_stepped_slice. Its own gate + node, distinct from the
             # single-index subscript-write arm below.
             return _lower_slice_assign(stmt, lc, declared, loc)
+        elif _typed_dict_write_target(stmt.target, declared, pointers,
+                                      narrowed, analyzer):
+            # `d["key"] = v` -> `d.key = v;`: the target rides the
+            # typed-dict subscript READ arm (a plain THIRFieldAccess
+            # lvalue); the value renders against the field's sema slot.
+            td_elem = analyzer.get_expr_type(stmt.target)
+            _witness("setitem.typed_dict_field")
+            return THIRAssign(
+                target=_lower_expr(stmt.target, lc, declared),
+                value=_slot_literal_retype(
+                    _flush_witness(
+                        "flush.assign",
+                        _lower_expr(stmt.value, lc, declared,
+                                    target_type=td_elem,
+                                    use=_ExprUse(
+                                        result=_ExprResultUse.STORAGE,
+                                        allow_temps=True))),
+                    td_elem, lc),
+                loc=loc)
         elif isinstance(stmt.target, TpySubscript):
             any_dict_write = _any_dict_setitem_ok(
                 stmt, declared, pointers, narrowed, analyzer)
@@ -5063,9 +5099,16 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         if inplace is not None:
             return inplace
         if isinstance(stmt.target, TpySubscript):
-            aug_ok = _container_aug_setitem_ok(
-                stmt, declared, scope.admission_pointers(), narrowed,
-                analyzer)
+            # A typed-dict subscript target is a FIELD lvalue: it rides the
+            # generic `target = (target OP value)` tail as a THIRAssign
+            # (`user.age = ::tpy::add_check<int32_t>(user.age, 1);`),
+            # skipping the checked-subscript special arms below.
+            aug_ok = (_typed_dict_write_target(
+                          stmt.target, declared,
+                          scope.admission_pointers(), narrowed, analyzer)
+                      or _container_aug_setitem_ok(
+                          stmt, declared, scope.admission_pointers(),
+                          narrowed, analyzer))
         else:
             aug_ok = (_scalar_aug_assign_ok(stmt, declared, analyzer)
                       or _class_const_aug_assign_ok(
@@ -5127,7 +5170,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 stmt.target, lc, declared,
                 field_prechecked=target_prechecked)
         cast_t = analyzer.get_expr_type(stmt.target)
-        if isinstance(stmt.target, TpySubscript):
+        if (isinstance(stmt.target, TpySubscript)
+                and stmt.target.typed_dict_field is None):
             # The subscript read-modify-write pair always renders the CHECKED
             # dunders -- _gen_aug_assign_subscript_code never takes the
             # bounds-safe operator[] -- so the node fact is forced off on
@@ -5165,7 +5209,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                   and is_bytes_type(tgt_bytes) else Form.VALUE),
             loc=loc,
         )
-        if isinstance(stmt.target, TpySubscript):
+        if (isinstance(stmt.target, TpySubscript)
+                and stmt.target.typed_dict_field is None):
             _witness("setitem.aug")
             if isinstance(stmt.target.obj, TpyFieldAccess):
                 _witness("setitem.field_recv")
@@ -6801,11 +6846,18 @@ def _lower_with(stmt: TpyWith, lc: _LowerCtx, declared: dict[str, TpyType],
                 and _f1_record(declared[ctx.name], lc.analyzer))
         else:
             manager_ok = (
-                isinstance(ctx, TpyCall)
-                and _f1_record(lc.analyzer.get_expr_type(ctx), lc.analyzer)
-                and (_ctor_shape_ok(ctx, lc.analyzer)
-                     or _record_rvalue_source_shape(ctx, lc.analyzer)
-                     or _native_ctx_manager_ok(ctx, lc.analyzer)))
+                (isinstance(ctx, TpyCall)
+                 and _f1_record(lc.analyzer.get_expr_type(ctx), lc.analyzer)
+                 and (_ctor_shape_ok(ctx, lc.analyzer)
+                      or _record_rvalue_source_shape(ctx, lc.analyzer)
+                      or _native_ctx_manager_ok(ctx, lc.analyzer)))
+                # A METHOD-call manager rvalue (`with m.lock() as g:` -- the
+                # guard factory): the owned-record decl's method row; the
+                # method lowering validates its receiver/args itself.
+                or (isinstance(ctx, TpyMethodCall)
+                    and _f1_record(lc.analyzer.get_expr_type(ctx),
+                                   lc.analyzer)
+                    and is_rvalue_source(lc.analyzer, ctx)))
         if not manager_ok:
             raise ThirUnsupported(stmt_reject_reason(stmt))
         deref = (item.manager_borrowed and isinstance(ctx, TpyName)

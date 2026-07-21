@@ -1548,21 +1548,22 @@ class TestPrintStmt:
         thir = _lower(_PRELUDE + "def f(n: Int32) -> None:\n    print(\"x\", n)\n")
         assert "print(str('x') [raw], %n [raw])" in dump_thir(thir)
 
-    def test_native_call_arg_ineligible(self):
-        # A @native function is ::-qualified at the call site; the bare THIRCall
-        # emit can't reproduce that, so a print with a native-call arg stays AST.
-        thir = _lower(
-            "from tpy.extern import native\nfrom tpy import Int32\n"
-            + "@native\ndef ext() -> Int32: ...\n"
-            + "def f() -> None:\n    print(ext())\n")
-        assert _fn(thir, "f") is None
+    def test_native_call_arg_routes(self):
+        # A user-module `@native def` carries only the NATIVE linkage (no
+        # stub flags); the classifier returns its raw name on the native
+        # kind and the emit's native_name arm ::-qualifies it -- `::ext()`.
+        src = ("from tpy.extern import native\nfrom tpy import Int32\n"
+               + "@native\ndef ext() -> Int32: ...\n"
+               + "def f() -> None:\n    print(ext())\n")
+        assert _fn(_lower(src), "f") is not None
+        _assert_byte_identical(src)
 
-    def test_native_bare_call_ineligible(self):
-        thir = _lower(
-            "from tpy.extern import native\n"
-            + "@native\ndef ext() -> None: ...\n"
-            + "def f() -> None:\n    ext()\n")
-        assert _fn(thir, "f") is None
+    def test_native_bare_call_routes(self):
+        src = ("from tpy.extern import native\n"
+               + "@native\ndef ext() -> None: ...\n"
+               + "def f() -> None:\n    ext()\n")
+        assert _fn(_lower(src), "f") is not None
+        _assert_byte_identical(src)
 
     def test_export_c_call_ineligible(self):
         # An @export(binding="C") function has EXPORT_C linkage and emits its raw
