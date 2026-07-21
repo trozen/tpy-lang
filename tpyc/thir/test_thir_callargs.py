@@ -914,6 +914,38 @@ class TestOwnSlotArgs:
         assert "auto __tmp_1 = o;\n    int32_t r = take_own(std::move(__tmp_1));" in out
         assert _fn(_lower_ctx(src), "use") is not None
 
+    def test_generic_own_not_at_last_use_copies(self):
+        # The GENERIC-callee twin of the pin above: the concrete-resolved
+        # Own[T] slot takes the same copy temp when the arg is movable but
+        # not at its last use (_generic_plain_arg_ok's _own_lvalue_arg row).
+        src = (
+            _PRELUDE
+            + "def take_gen[T](o: Own[T]) -> Int32:\n    return 1\n"
+            + "def use(o: Own[A]) -> Int32:\n"
+            + "    r = take_gen(o)\n    return r + o.x\n")
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+        out = _cpp(src, thir=True)
+        assert "auto __tmp_1 = o;" in out
+        assert "take_gen<A>(std::move(__tmp_1))" in out
+        assert _fn(_lower_ctx(src), "use") is not None
+
+    def test_lambda_arg_at_template_callee_routes(self):
+        # The lambda half of the native/template callable-arg admission
+        # (_native_call_arg_ok's _lambda_routable row): no corpus flip
+        # exercises it, so the routing + inline render pin lives here.
+        src = (
+            "from tpy import Int32\n"
+            + "def use(xs: list[Int32]) -> Int32:\n"
+            + "    t: Int32 = 0\n"
+            + "    for x in filter(lambda v: v > 1, xs):\n"
+            + "        t = t + x\n"
+            + "    return t\n")
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+        out = _cpp(src, thir=True)
+        assert "::tpy::builtin_filter" in out
+        assert "[](int32_t v)" in out
+        assert _fn(_lower_ctx(src), "use") is not None
+
     def test_dump_shapes(self):
         from .dump import dump_thir
         text = dump_thir(_lower_ctx(self.SRC))

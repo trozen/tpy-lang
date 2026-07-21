@@ -457,6 +457,21 @@ def static_method_callee_cpp(registry, implicit_stdlib_modules: 'set[str]',
     return f"{class_name}::{escape_cpp_name(method)}"
 
 
+def module_static_class_cpp(registry, user_module: str,
+                            class_short: str) -> str:
+    """The module-qualified static call's CLASS spelling (`m.Cls.m(...)`):
+    a native record spells its C++ class name, everything else qualifies
+    through the module namespace (`::tpyapp::m::Cls`). The ONE composition
+    shared by the AST module-static emit and the THIR gate mirror; the
+    method half is `fi.native_name or escape_cpp_name(method)` at both
+    sites (the AST arm appends targs to the class part, so only the class
+    composition is shared whole)."""
+    record_info = registry.find_record_by_qname(f"{user_module}.{class_short}")
+    if record_info and record_info.is_native and record_info.native_name:
+        return record_info.native_name
+    return qualified_cpp_name(user_module, class_short)
+
+
 def qualify_native_name(name: str) -> str:
     """Force @native call-site emission to absolute global scope.
 

@@ -1634,7 +1634,12 @@ class TestMarkerModuleCall:
     """Module-qualified calls (`import helper; helper.bump(x)`) route as
     THIRCall with the pre-rendered qualified spelling on callee_cpp --
     module_qualified_callee_cpp, the ONE decision shared with the AST's
-    user_module_call arm. Generic and module-static forms stay AST."""
+    user_module_call arm. Plain module-statics route via
+    module_static_class_cpp; generic module calls route with explicit
+    targs; the module-static cpp_template/native/non-default-linkage rows
+    stay AST (not fixturable from a user module without @native
+    companions -- the linkage guard's reachability is structural:
+    a method fi with native_name always carries non-default linkage)."""
 
     def _lowered(self, tmp_path):
         (tmp_path / "helper.py").write_text(_MARKER_HELPER)
@@ -1659,11 +1664,16 @@ class TestMarkerModuleCall:
         assert _fn(thir, "gen") is not None
         assert faces.get("call.generic_qualified", 0) >= 1
 
-    def test_module_static_stays_ast(self, tmp_path):
-        # `helper.Kit.twice(n)` spells through the module-static arm
-        # (`::tpyapp::helper::Kit::twice`) -- not mirrored yet.
+    def test_module_static_plain_routes(self, tmp_path):
+        # `helper.Kit.twice(n)` spells the qualified callee with no targs
+        # (`::tpyapp::helper::Kit::twice(n)`) -- the plain form of the
+        # module-static arm rides the "qualified" kind.
         thir, _ = self._lowered(tmp_path)
-        assert _fn(thir, "mstatic") is None
+        fn = _fn(thir, "mstatic")
+        assert fn is not None
+        ret = fn.body[0]
+        assert isinstance(ret.value, THIRCall)
+        assert ret.value.callee_cpp == "::tpyapp::helper::Kit::twice"
 
     def test_byte_identical(self, tmp_path):
         (tmp_path / "helper.py").write_text(_MARKER_HELPER)

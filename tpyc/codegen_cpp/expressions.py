@@ -79,7 +79,7 @@ from ..parse import (
 from ..prescan import match_is_none, _expr_to_narrowing_key
 from ..namespace import BindingKind
 from ..sema.literal_utils import literal_value_from_expr
-from .context import INDENT, escape_cpp_string, escape_cpp_char, escape_cpp_name, qualified_cpp_name, qualify_native_name, imported_free_callee_cpp, imported_variable_cpp, module_qualified_callee_cpp, static_method_callee_cpp, enum_cpp_name, enum_member_cpp, loop_var_binding, is_lvalue_iterable, cpp_string_literal_expr, cpp_bytes_literal_span, cpp_bytes_literal_owned, view_key_target, bigint_index_narrow_type, CppForm, FormValue, expand_cpp_template
+from .context import INDENT, escape_cpp_string, escape_cpp_char, escape_cpp_name, qualified_cpp_name, qualify_native_name, imported_free_callee_cpp, imported_variable_cpp, module_qualified_callee_cpp, module_static_class_cpp, static_method_callee_cpp, enum_cpp_name, enum_member_cpp, loop_var_binding, is_lvalue_iterable, cpp_string_literal_expr, cpp_bytes_literal_span, cpp_bytes_literal_owned, view_key_target, bigint_index_narrow_type, CppForm, FormValue, expand_cpp_template
 from .functions import literal_mangled_name
 from .int_literals import render_int_literal_value
 from .. import qnames
@@ -3624,10 +3624,8 @@ class ExpressionGenerator:
                     fi, None, gen_args, type_args=expr.inferred_type_args)
             record_info = self.ctx.analyzer.registry.find_record_by_qname(
                 f"{expr.user_module_call}.{class_short}")
-            if record_info and record_info.is_native and record_info.native_name:
-                cpp_class = record_info.native_name
-            else:
-                cpp_class = qualified_cpp_name(expr.user_module_call, class_short)
+            cpp_class = module_static_class_cpp(
+                self.ctx.analyzer.registry, expr.user_module_call, class_short)
             cpp_method = fi.native_name if fi and fi.native_name else escape_cpp_name(expr.method)
             static_method_targs = ""
             template_kw = ""

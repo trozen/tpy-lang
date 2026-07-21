@@ -4630,7 +4630,8 @@ def _lower_generic_plain_call(e, callee_cpp, lc: '_LowerCtx',
         ptype = unwrap_ref_type(p.type)
         resolved = substitute_type_params_simple(ptype, subst)
         if not _generic_plain_arg_ok(
-                a, ptype, subst, declared, analyzer, temps_ok=temp_args):
+                a, ptype, subst, declared, analyzer, temps_ok=temp_args,
+                narrowed=frozenset(lc.narrow.narrowed)):
             raise ThirUnsupported("expr.call")
         peeled = _peel_coerce(a)
 
