@@ -62,6 +62,7 @@ from ...typesys import (
     PendingListType,
     PtrType,
     ReadonlyType,
+    is_readonly_ref_param,
     TpyType,
     TupleType,
     TypeParamRef,
@@ -4680,7 +4681,8 @@ def _inst_slice_arg_ok(arg: TpyExpr, analyzer) -> bool:
 
 
 def _container_call_temp_arg(a: TpyExpr, ptype: 'TpyType | None',
-                             analyzer) -> 'TpyType | None':
+                             analyzer, *,
+                             frame_capturing: bool = False) -> 'TpyType | None':
     """A container-returning rvalue CALL into a plain free call's concrete
     container ref param (`f(list(argv[i:]))`): the AST hoists the `__tmp_N`
     ref-param temp. Returns the unwrapped slot type when the row applies --
@@ -4690,10 +4692,14 @@ def _container_call_temp_arg(a: TpyExpr, ptype: 'TpyType | None',
     if not isinstance(a, (TpyCall, TpyMethodCall)) or ptype is None:
         return None
     pr = unwrap_ref_type(unwrap_send_sync(ptype))
-    # The AST hoists only for MUTABLE-ref params (`is_ref_param()`): a
-    # readonly slot is a `const T&`, which binds the rvalue inline
-    # (`f(std::vector<int32_t>())`) -- no temp on either path.
-    if not (isinstance(pr, TpyType) and pr.is_ref_param()):
+    # The AST hoists for MUTABLE-ref params (`is_ref_param()`) always, and
+    # for readonly reference slots only when the callee is a frame-capturing
+    # factory (`frame_capturing`): there the statement-scoped inline
+    # `const T&` bind would dangle. A sync callee keeps the inline bind
+    # (CPython drop timing), so the row must decline it here too.
+    if not (isinstance(pr, TpyType)
+            and (pr.is_ref_param()
+                 or (frame_capturing and is_readonly_ref_param(pr)))):
         return None
     slot = unwrap_readonly(pr)
     if not (is_list(slot) or is_dict(slot) or is_set(slot)):
@@ -4726,6 +4732,12 @@ def _lower_free_call_arg(e: TpyCall, a: TpyExpr,
                          temp_args: bool,
                          readonly_target: bool) -> THIRExpr:
     analyzer = lc.analyzer
+    # Frame-capturing callee (generator/coro factory): its frame borrows ref
+    # args past the statement, so readonly-slot rvalues hoist like mutable
+    # ones (the AST arms key the same fact off func_info).
+    _callee_fi = e.resolved_function_info
+    frame_capturing = (_callee_fi is not None
+                       and (_callee_fi.is_generator or _callee_fi.is_async))
     if (isinstance(a, TpyVarargPack)
             and (kind is None or kind[0] not in ("native", "native_c", "template"))):
         return _lower_vararg_pack(a, ptype, lc, declared, temp_args=temp_args)
@@ -4746,7 +4758,8 @@ def _lower_free_call_arg(e: TpyCall, a: TpyExpr,
                     a, ptype, analyzer):
                 ok = True  # witnessed at the lowering arm (unionlift.ctor_temp)
             if not ok and temp_args and _container_call_temp_arg(
-                    a, ptype, analyzer) is not None:
+                    a, ptype, analyzer,
+                    frame_capturing=frame_capturing) is not None:
                 ok = True  # witnessed at the ArgTemp arm (argtemp.container_call)
         if not ok:
             raise ThirUnsupported("expr.call")
@@ -4790,7 +4803,8 @@ def _lower_free_call_arg(e: TpyCall, a: TpyExpr,
             and (kind is None or kind[0] not in ("native", "native_c", "template"))):
         # The call-rvalue sibling of the literal ArgTemp arm above:
         # `std::vector<T> __tmp_N = <call>; f(__tmp_N)`.
-        slot = _container_call_temp_arg(a, ptype, lc.analyzer)
+        slot = _container_call_temp_arg(a, ptype, lc.analyzer,
+                                        frame_capturing=frame_capturing)
         if slot is not None:
             _witness("argtemp.container_call")
             lowered = _lower_expr(
@@ -4802,7 +4816,7 @@ def _lower_free_call_arg(e: TpyCall, a: TpyExpr,
     return _lower_call_arg(
         a, ptype, lc, declared, temp_args=temp_args,
         protocol_slots=kind is not None and kind[0] not in ("native", "native_c", "template"),
-        readonly_target=readonly_target)
+        readonly_target=readonly_target, frame_capturing=frame_capturing)
 
 
 def _lower_vararg_pack(pack: TpyVarargPack, ptype: 'TpyType | None',
@@ -4922,7 +4936,8 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                     readonly_target: bool = False,
                     method_arg: bool = False,
                     method_arg_stub: bool = False,
-                    protocol_slots: bool = False) -> THIRExpr:
+                    protocol_slots: bool = False,
+                    frame_capturing: bool = False) -> THIRExpr:
     """Lower one call argument against its param slot. A str literal into a
     Char slot renders as a target-typed char literal (gen_expr's char arm,
     via `_lower_char_targeted`); a bytes literal into a bytes/BytesView slot
@@ -5168,7 +5183,8 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                                init=init, brace_init=brace_init,
                                form=Form.BORROW, loc=getattr(a, "loc", None))
     if temp_args:
-        rec_pt = _record_rvalue_temp_slot(a, ptype, lc.analyzer)
+        rec_pt = _record_rvalue_temp_slot(a, ptype, lc.analyzer,
+                                          frame_capturing=frame_capturing)
         if rec_pt is not None:
             _witness("argtemp.record_rvalue")
             return THIRArgTemp(

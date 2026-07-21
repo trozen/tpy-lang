@@ -37,6 +37,15 @@ async def amain() -> None:
 
 
 def main() -> None:
+    # Rvalue arg: materialized as a named scope-local so the frame's const
+    # borrow outlives the statement -- including a generator held across
+    # statements.
+    print(sum(tail([1, 2])))
+    g = tail([3, 4])
+    total = 0
+    for x in g:
+        total += x
+    print(total)
     asyncio.run(amain())
 
 

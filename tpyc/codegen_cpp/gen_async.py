@@ -465,6 +465,12 @@ class AsyncCoroCodegen:
                         else self.types.type_to_cpp_ptr_variant(actual))
             else:  # OWNED_VALUE / REF -- both spell the plain C++ type
                 field_type = ctor_type = self.types.type_to_cpp(ptype_inner)
+                # An explicit readonly[T] reference param captures const --
+                # flows to the frame field, ctor, and both factory decls,
+                # which all derive from this spelling.
+                if (kind is _CoroParamKind.REF
+                        and isinstance(ptype_inner, ReadonlyType)):
+                    field_type = ctor_type = f"const {field_type}"
             out.append(_CoroParam(
                 cpp_name=cpp_name,
                 field_type=field_type,

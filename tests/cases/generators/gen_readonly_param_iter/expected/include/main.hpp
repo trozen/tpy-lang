@@ -18,7 +18,7 @@ struct __gen_tail;
 struct __coro_amain;
 struct __coro_Holder_total;
 
-__gen_tail tail(std::vector<int32_t>& xs);
+__gen_tail tail(const std::vector<int32_t>& xs);
 __coro_amain amain();
 void main();
 
@@ -102,7 +102,7 @@ struct __coro_amain {
 // Generator: tail
 struct __gen_tail : public ::tpy::next_iter_mixin<__gen_tail, int32_t> {
     int32_t __state;
-    std::vector<int32_t>& xs;
+    const std::vector<int32_t>& xs;
     int32_t x;
     ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_it_0;
     ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_end_0;
@@ -115,7 +115,7 @@ struct __gen_tail : public ::tpy::next_iter_mixin<__gen_tail, int32_t> {
         S_DONE = 4,
     };
 
-    __gen_tail(std::vector<int32_t>& xs)
+    __gen_tail(const std::vector<int32_t>& xs)
         : __state(S_INITIAL), xs(xs) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();

@@ -3033,11 +3033,12 @@ def _own_lvalue_arg(a: TpyExpr, ptype: TpyType | None,
 def _readonly_record_ctor_arg(a: TpyExpr, ptype: TpyType | None,
                               locals_: dict[str, TpyType], analyzer) -> bool:
     """A record-ctor rvalue into a readonly-ANNOTATED same-record slot
-    (`take_ro(A(7))`, emitted `const A&`): the free-call ref-param temp arm
-    keys on `is_ref_param()`, which the `readonly[...]` wrapper defeats, and
-    the const ref binds the rvalue directly -- so both paths render the bare
-    ctor expansion (no temp). The NAME face (the readonly pass-through)
-    stays deferred with the other deep-const rows."""
+    (`take_ro(A(7))`, emitted `const A&`) with a SYNC callee: the const ref
+    binds the rvalue for the statement, matching CPython's drop timing --
+    both paths render the bare ctor expansion (no temp). Frame-capturing
+    callees (generator/coro factories) take the argtemp.record_rvalue row
+    instead (the frame outlives the statement). The NAME face (the readonly
+    pass-through) stays deferred with the other deep-const rows."""
     pt = ptype if isinstance(ptype, TpyType) else None
     if pt is None or not isinstance(pt, ReadonlyType):
         return False

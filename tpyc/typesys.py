@@ -1814,6 +1814,18 @@ def unwrap_readonly(typ: 'TpyType') -> 'TpyType':
     return typ
 
 
+def is_readonly_ref_param(typ: 'TpyType | None') -> bool:
+    """An explicit readonly[T] param whose underlying T passes by C++
+    reference (const T&). The wrapper defeats is_ref_param() by design (a
+    const ref binds an rvalue inline in a sync call, no temp needed), so
+    the frame-capture-aware call sites -- which must materialize a named
+    scope-local for a borrowing generator/coro factory -- test this
+    composite separately. One definition, shared by the AST arg arms and
+    the THIR temp rows, so the mirror pair cannot drift."""
+    return (isinstance(typ, ReadonlyType)
+            and unwrap_readonly(typ).is_ref_param())
+
+
 def unwrap_own(typ: 'TpyType') -> 'TpyType':
     """Strip OwnType wrapper if present, returning the inner type."""
     if isinstance(typ, OwnType):

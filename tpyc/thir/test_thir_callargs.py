@@ -261,9 +261,10 @@ class TestRecordCallArgs:
         assert _fn(thir, "use") is None
 
     def test_readonly_slot_ctor_rvalue_routes_bare(self):
-        # A ctor rvalue into a readonly-ANNOTATED slot binds the const ref
-        # directly -- bare on both paths (the ref-param temp arm keys on
-        # is_ref_param, which the readonly wrapper defeats).
+        # A ctor rvalue into a readonly-ANNOTATED slot of a SYNC callee binds
+        # the const ref directly -- bare on both paths, statement lifetime
+        # (CPython drop timing). Frame-capturing callees hoist instead (see
+        # TestContainerCallTempArg's generator variant).
         src = (
             _PRELUDE
             + "def take_ro(a: readonly[A]) -> Int32:\n    return a.x\n"
@@ -2478,8 +2479,10 @@ class TestNativeIterableLiteralArg:
 class TestContainerCallTempArg:
     """A container-returning rvalue CALL into a plain free call's container
     param (`_container_call_temp_arg`): MUTABLE-ref slots hoist the `__tmp_N`
-    ArgTemp; a readonly (`const T&`) slot binds the rvalue inline -- keyed on
-    `is_ref_param()` exactly like the AST."""
+    ArgTemp unconditionally; a readonly (`const T&`) slot binds the rvalue
+    inline for a SYNC callee (statement lifetime, CPython drop timing) and
+    hoists only for a frame-capturing callee (generator/coro factory), whose
+    frame outlives the statement -- keyed on the same facts as the AST."""
 
     _SRC_MUT = (
         "from tpy import Int32\n"
@@ -2491,20 +2494,29 @@ class TestContainerCallTempArg:
         "def g(xs: readonly[list[Int32]]) -> Int32:\n    return len(xs)\n"
         "def f(a: list[Int32]) -> None:\n    print(g(list(a[1:])))\n"
     )
+    _SRC_RO_GEN = (
+        "from typing import Iterator\n"
+        "from tpy import Int32, readonly\n"
+        "def g(xs: readonly[list[Int32]]) -> Iterator[Int32]:\n"
+        "    yield -1\n"
+        "    for x in xs:\n        yield x\n"
+        "def f(a: list[Int32]) -> None:\n"
+        "    for v in g(list(a[1:])):\n        print(v)\n"
+    )
 
     def test_mutable_slot_hoists_arg_temp(self):
         assert _fn(_lower(self._SRC_MUT), "f") is not None
         assert _cpp(self._SRC_MUT, thir=True) == _cpp(self._SRC_MUT, thir=False)
         assert "__tmp_1" in _cpp(self._SRC_MUT, thir=True)
 
-    def test_readonly_slot_takes_no_temp(self):
-        # A readonly (`const T&`) slot binds the rvalue inline on the AST
-        # path -- the temp rung correctly declines it (`is_ref_param()`
-        # False), and no other row admits the shape yet, so the body falls
-        # back whole; the fallback emit stays byte-identical and temp-free.
-        assert _fn(_lower(self._SRC_RO), "f") is None
+    def test_readonly_slot_sync_callee_takes_no_temp(self):
         assert _cpp(self._SRC_RO, thir=True) == _cpp(self._SRC_RO, thir=False)
         assert "__tmp_" not in _cpp(self._SRC_RO, thir=True)
+
+    def test_readonly_slot_generator_callee_hoists_arg_temp(self):
+        assert _cpp(self._SRC_RO_GEN, thir=True) == _cpp(self._SRC_RO_GEN,
+                                                         thir=False)
+        assert "__tmp_1" in _cpp(self._SRC_RO_GEN, thir=True)
 
 
 class TestNativeValueCallArg:

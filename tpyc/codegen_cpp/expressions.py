@@ -15,7 +15,7 @@ from ..typesys import (
     NominalType, AliasRef, RecursiveAliasInstanceType, recursive_union_alternatives,
     PtrType, OwnType, OptionalType, NoneType, AnyType, make_array,
     PendingListType, ListRepeatType,
-    TypeParamRef, ReadonlyType, unwrap_readonly, unwrap_own, unwrap_qualifiers, unwrap_optional_own, unwrap_send_sync, collapse_tuple_own_elements, UnionType, VoidType, make_union, union_none_narrow,
+    TypeParamRef, ReadonlyType, unwrap_readonly, is_readonly_ref_param, unwrap_own, unwrap_qualifiers, unwrap_optional_own, unwrap_send_sync, collapse_tuple_own_elements, UnionType, VoidType, make_union, union_none_narrow,
     ConcreteCoroType,
     TupleType, CallableType, ValueForm,
     INT32, BIGINT, FLOAT, CHAR, VOID, is_protocol_type, is_void_like_type, polymorphic_source_inner, polymorphic_source_is_pointer, polymorphic_subclass_into_optional, is_any_str_type, is_any_bytes_type, container_to_str_template,
@@ -3153,7 +3153,17 @@ class ExpressionGenerator:
                 # TypeParamRef generates param_val_or_ref_t<T> which is T& for
                 # object types and const T& for value types -- both need a temp
                 # when the callee captures by reference (e.g. generators).
-                elif (resolved_ptype.is_ref_param() or isinstance(ptype, TypeParamRef)) and self.ctx.is_temporary_expr(arg):
+                # readonly[T] reference params need it ONLY for frame-capturing
+                # callees (generator/coro factories): their frame outlives the
+                # statement-scoped inline `const T&` bind. A sync callee keeps
+                # the inline bind -- the temporary then dies at statement end,
+                # matching CPython's drop timing (a named local would delay
+                # __del__ to end of block).
+                elif ((resolved_ptype.is_ref_param()
+                       or isinstance(ptype, TypeParamRef)
+                       or (is_readonly_ref_param(resolved_ptype)
+                           and (func_info.is_generator or func_info.is_async)))
+                      and self.ctx.is_temporary_expr(arg)):
                     init_expr = self.gen_expr(arg, resolved_ptype)
                     # Child -> Parent upcast: declare the temp with the child's
                     # type so subtype data isn't sliced; C++ binds the parent
@@ -3943,6 +3953,20 @@ class ExpressionGenerator:
                                     arg, rptype,
                                     is_readonly_target=(method_dcbp is not None and i in method_dcbp))) is not None:
                                 gen_args.append(union_arg)
+                            elif ((method_info.is_generator or method_info.is_async)
+                                    and rptype is not None
+                                    and self.ctx.is_temporary_expr(arg)
+                                    and (rptype.is_ref_param()
+                                         or is_readonly_ref_param(rptype))):
+                                # A generator/coro factory borrows this param in
+                                # its frame past the statement: materialize the
+                                # rvalue as a named scope-local (a mutable T&
+                                # cannot bind an rvalue at all; a readonly
+                                # `const T&` would bind it for the statement
+                                # only and dangle once the frame is resumed).
+                                init_expr = self.gen_expr(arg, rptype)
+                                gen_args.append(
+                                    self.ctx.temps.create(rptype, init_expr))
                             else:
                                 # target_type controls gen_expr_deref hints:
                                 # - None literals need it for nullptr vs std::nullopt

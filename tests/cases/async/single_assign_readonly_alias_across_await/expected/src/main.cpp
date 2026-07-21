@@ -32,7 +32,7 @@ namespace tpyapp::main {
 
 
 // async def peek(o: readonly[Outer]) -> int:
-__coro_peek peek(Outer& o) {
+__coro_peek peek(const Outer& o) {
     return __coro_peek(o);
 }
 

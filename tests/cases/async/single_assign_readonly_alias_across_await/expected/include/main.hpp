@@ -18,7 +18,7 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __coro_peek;
 struct __coro_amain;
 
-__coro_peek peek(Outer& o);
+__coro_peek peek(const Outer& o);
 __coro_amain amain();
 
 // class Inner:
@@ -57,7 +57,7 @@ inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
 struct __coro_peek {
     int32_t __state;
     bool __cancel_pending;
-    Outer& o;
+    const Outer& o;
     const Inner* a = nullptr;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
@@ -67,7 +67,7 @@ struct __coro_peek {
         S_DONE = 2,
     };
 
-    __coro_peek(Outer& o)
+    __coro_peek(const Outer& o)
         : __state(S_INITIAL), __cancel_pending(false), o(o) {}
 
     ::tpystd::tpy::Poll<::tpy::BigInt> __poll__(::tpystd::coro::Waker waker);

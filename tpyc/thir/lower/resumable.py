@@ -1571,7 +1571,11 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                     _witness("res.suspend_expr")
                 lowered_args = []
                 for i, a in enumerate(operand.args):
-                    lowered_args.append(_lower_call_arg(a, fi.params[i].type, lc, declared))
+                    # An awaited callee is a coro factory -- always
+                    # frame-capturing for its ref args.
+                    lowered_args.append(_lower_call_arg(
+                        a, fi.params[i].type, lc, declared,
+                        frame_capturing=True))
                 await_args[id(operand)] = tuple(lowered_args)
                 if lowered_args:
                     _witness("res.await_args")

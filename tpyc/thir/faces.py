@@ -100,7 +100,7 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # stmt position: the bare call
     "method.container_discard",     # discarded container method result: same bare call
     "own.union_ctor",               # record-ctor rvalue into Own[union]
-    "own.readonly_ctor",            # record-ctor rvalue into readonly slot
+    "own.readonly_ctor",            # record-ctor rvalue into readonly slot (sync callee)
     # Self receiver / ctor-call renders (lowering).
     "self.this",                    # `self` name read -> `this`
     "call.self_method",             # `self.helper()` -> `this->helper()`

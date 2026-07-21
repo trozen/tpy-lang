@@ -39,7 +39,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_tail::__next__() {
 
 
 // def tail(xs: readonly[list[Int32]]) -> Iterator[Int32]:
-__gen_tail tail(std::vector<int32_t>& xs) {
+__gen_tail tail(const std::vector<int32_t>& xs) {
     return __gen_tail(xs);
 }
 
@@ -81,6 +81,29 @@ __coro_amain amain() {
 
 // def main() -> None:
 void main() {
+    // # Rvalue arg: materialized as a named scope-local so the frame's const
+    // # borrow outlives the statement -- including a generator held across
+    // # statements.
+    // print(sum(tail([1, 2])))
+    std::vector<int32_t> __tmp_1 = {1, 2};
+    std::cout << ::tpy::builtin_sum<int32_t>(tail(__tmp_1)) << "\n";
+    // g = tail([3, 4])
+    std::vector<int32_t> __tmp_2 = {3, 4};
+    auto g = tail(__tmp_2);
+    // total = 0
+    int32_t total = 0;
+    // for x in g:
+    auto& __src_0 = g;
+    auto&& __itr_0 = ::tpy::__iter__(__src_0);
+    for (;;) {
+        auto __r_1 = __itr_0.__next__();
+        if (!__r_1.has_value()) break;
+        int32_t x = ::tpy::unwrap_ref(*__r_1);
+        // total += x
+        total = ::tpy::add_check<int32_t>(total, x);
+    }
+    // print(total)
+    std::cout << total << "\n";
     // asyncio.run(amain())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(amain()));
 }
