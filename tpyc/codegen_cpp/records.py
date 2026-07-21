@@ -482,12 +482,14 @@ class RecordGenerator:
             if record_info and record_info.inherits_init_from is not None:
                 # `using Foo::Foo` only compiles if both halves match the C++
                 # class name. @native renames let the Python and C++ short
-                # names diverge, so split on the C++ side, not parent.name.
-                # For a generic base (`Base<14>`) the injected-class-name is the
-                # bare `Base`, so drop the template args from the ctor half --
-                # `using Base<14>::Base;`, not `using Base<14>::Base<14>;`.
+                # names diverge, so derive the ctor half from the C++ side,
+                # not parent.name. The injected-class-name is the bare short
+                # name (no namespace, no template args), so take the last ::
+                # segment of the args-free base name -- never parse to_cpp()
+                # output, whose template args can themselves contain `::`.
                 parent_cpp = record_info.inherits_init_from.to_cpp()
-                parent_cpp_short = parent_cpp.rsplit("::", 1)[-1].split("<", 1)[0]
+                base_name = record_info.inherits_init_from.to_cpp_base_name()
+                parent_cpp_short = base_name.rsplit("::", 1)[-1]
                 out.write(f"{INDENT}using {parent_cpp}::{parent_cpp_short};\n")
             if record_info and (record_info.is_nocopy or record_info.has_del or record_info.has_copy):
                 if not del_suppresses_default_ctor(record_info):

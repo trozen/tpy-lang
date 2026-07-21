@@ -1,0 +1,2 @@
+main.py:12: warning: may copy K into field if not a value type; use copy() to make this explicit
+main.py:13: warning: may copy V into field if not a value type; use copy() to make this explicit
