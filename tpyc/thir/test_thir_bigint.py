@@ -214,8 +214,10 @@ class TestDeepConstNarrowSubject:
 
 class TestBigIntNarrowIndex:
     """Runtime-BigInt subscript indices / slice bounds / del keys take the
-    AST's `.to_fixed_check<int32_t>()` narrow (no outer parens: composite
-    renders carry their own)."""
+    AST's `.to_fixed_check<T>()` narrow at the receiver's declared key/index
+    width (no outer parens: composite renders carry their own) -- and a
+    BigInt-KEYED dict passes the key through unnarrowed (the map's C++ key
+    type IS BigInt)."""
 
     SRC = (
         _BI_PRELUDE
@@ -269,6 +271,8 @@ class TestBigIntNarrowIndex:
         assert "::tpy::bytes_getitem(b, k.to_fixed_check<int32_t>())" in cpp
         assert "::tpy::__getitem__(d, k.to_fixed_check<int32_t>())" in cpp
         assert "::tpy::__delitem__(d, k.to_fixed_check<int32_t>())" in cpp
+        # BigInt-keyed dict: the key passes through unnarrowed.
+        assert "::tpy::__getitem__(d, k)" in cpp
         # slice bounds: var/composite bounds narrow, literal + absent stay bare
         assert ("::tpy::BasicSlice{k.to_fixed_check<int32_t>(), "
                 "((k) + (::tpy::BigInt(2))).to_fixed_check<int32_t>()}") in cpp
@@ -294,6 +298,43 @@ class TestBigIntNarrowIndex:
         cpp = _cpp(src, thir=True)
         assert "xs[static_cast<std::size_t>(k.to_fixed_check<int32_t>())]" in cpp
         assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+    def test_declared_key_width(self):
+        # The narrow width comes from the receiver's DECLARED key type:
+        # dict[Int64] takes to_fixed_check<int64_t>; a user __getitem__ with a
+        # BigInt key param passes the key through unnarrowed (like the
+        # BigInt-keyed map); a BigInt-keyed store/del stay unnarrowed too.
+        src = (
+            "from tpy import Int64\n"
+            "class Table:\n"
+            "    base: int\n"
+            "    def __init__(self):\n"
+            "        self.base = 0\n"
+            "    def __getitem__(self, key: int) -> int:\n"
+            "        return key + self.base\n"
+            "def d64(d: dict[Int64, str], k: int) -> None:\n"
+            "    print(d[k])\n"
+            "def dbig_write(d: dict[int, str], k: int) -> None:\n"
+            "    d[k] = \"v\"\n"
+            "    del d[k]\n"
+            "def rec(t: Table, k: int) -> None:\n"
+            "    print(t[k])\n"
+            "def main():\n"
+            "    d: dict[Int64, str] = {}\n"
+            "    d[2] = \"a\"\n"
+            "    d64(d, 2)\n"
+            "    db: dict[int, str] = {2: \"b\"}\n"
+            "    dbig_write(db, 2)\n"
+            "    rec(Table(), 3)\n"
+            "main()\n"
+        )
+        cpp = _cpp(src, thir=True, default_int="BigInt")
+        assert "::tpy::__getitem__(d, k.to_fixed_check<int64_t>())" in cpp
+        assert "::tpy::__setitem__(d, k, " in cpp
+        assert "::tpy::__delitem__(d, k)" in cpp
+        assert "t[k]" in cpp
+        assert _cpp(src, thir=True, default_int="BigInt") == _cpp(
+            src, thir=False, default_int="BigInt")
 
     def test_literal_bigint_slice_bound_stays_ast(self):
         # A literal slice bound under a BigInt default: the AST wraps the bare

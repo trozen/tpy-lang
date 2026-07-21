@@ -587,14 +587,18 @@ deferred (self-contained) / blocked-on-`<rung>`.
   operand wraps (int-enum underlying casts, mixed BigInt/float compares).
   The runtime-BigInt NARROW positions landed as increment 76: subscript
   indices / dict keys / `del c[k]` / slice bounds
-  (`.to_fixed_check<int32_t>()` via `_bigint_index_disposition` +
-  `_narrow_bigint_index`, one helper shared by gates and lowering),
+  (`.to_fixed_check<T>()` at the receiver's declared key width via
+  `_bigint_index_disposition` + `_narrow_bigint_index`, one helper shared
+  by gates and lowering; a BigInt-keyed receiver passes the key through
+  unnarrowed),
   BigInt range counters, FixedInt-target aug-assigns fed BigInt values
   (`THIRBinOp.right_cast`), BigInt-arg `E(x)` (underlying-typed wrap),
   BigInt-keyed dict receivers, and the resolved-container-kind retype fix
   (ARRAY literal elements thread their scalar target; vector elements
   stay bare). Still-deferred narrow shapes (all literal-render mismatches,
-  each gate-rejected explicitly): out-of-int32-range literal indices,
+  each gate-rejected explicitly): out-of-int32-range literal indices
+  headed for a narrow (a BigInt-keyed receiver's big literal key routes --
+  it renders unnarrowed through the shared literal renderer),
   literal slice bounds resolving BigInt (the AST render is ill-formed C++
   -- BUGS.md), literal-BigInt `E(x)` args, the BigInt-arg NESTED
   `Outer.Kind(v)` form (its method-call gate keeps the reject);

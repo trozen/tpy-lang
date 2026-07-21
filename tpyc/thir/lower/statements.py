@@ -443,7 +443,8 @@ def _any_dict_subscript_shape_ok(
             _subscript_container_recv_type(recv, declared, analyzer),
             analyzer):
         return False
-    return _bigint_index_disposition(sub.index, analyzer) != "reject"
+    return _bigint_index_disposition(sub.index, analyzer.get_expr_type(sub.obj),
+                                     analyzer) != "reject"
 
 def _typed_dict_write_target(
         sub: 'TpyExpr', declared: dict[str, TpyType], pointers: set[str],
@@ -5900,7 +5901,9 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                      or _container_scalar_read(recv_t, analyzer)
                      or (_any_value_dict(recv_t, analyzer)
                          and _witness("delitem.any_value")))
-                and _bigint_index_disposition(sub.index, analyzer) != "reject"):
+                and _bigint_index_disposition(
+                        sub.index, analyzer.get_expr_type(sub.obj),
+                        analyzer) != "reject"):
             raise ThirUnsupported("stmt.del_item:recv_or_index")
         if user_del:
             _witness("delitem.user_record")
@@ -5914,7 +5917,9 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                           field_prechecked=isinstance(
                               sub.obj, TpyFieldAccess)),
                       _narrow_bigint_index(_lower_expr(sub.index, lc, declared),
-                                           sub.index, analyzer, loc)),
+                                           sub.index,
+                                           analyzer.get_expr_type(sub.obj),
+                                           analyzer, loc)),
                 loc=loc),
             loc=loc)
     if isinstance(stmt, TpyDelAttr):

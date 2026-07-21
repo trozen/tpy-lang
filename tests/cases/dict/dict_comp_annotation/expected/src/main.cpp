@@ -28,7 +28,7 @@ void main() {
     for (; __beg_1 != __end_1; ++__beg_1) {
         const ::tpy::BigInt& k = *__beg_1;
         // print(k, widened[k])
-        std::cout << k << " " << ::tpy::__getitem__(widened, k.to_fixed_check<int32_t>()) << "\n";
+        std::cout << k << " " << ::tpy::__getitem__(widened, k) << "\n";
     }
     // # Int32 -> Int64 widening via annotation
     // wide64: dict[Int32, Int64] = {x: x * 2 for x in range(3)}

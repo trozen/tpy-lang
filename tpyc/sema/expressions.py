@@ -3736,7 +3736,7 @@ class ExpressionAnalyzer:
             ro_obj = isinstance(inner_obj_type, ReadonlyType)
             bare_obj = unwrap_readonly(inner_obj_type)
             if isinstance(bare_obj, NominalType) and bare_obj.is_record:
-                kr = self.narrowing._get_record_getitem_key_ret(bare_obj)
+                kr = self.narrowing.record_getitem_key_ret(bare_obj)
                 if kr is not None:
                     key_t, ret_t = kr
                     if self.compat.is_type_compatible(unwrap_readonly(index_type), unwrap_readonly(key_t)):

@@ -2459,7 +2459,8 @@ class StatementGenerator:
             # Thread the dict/set's view-typed key through so bytes/str
             # literals pin to static storage (avoiding a stored dangling view).
             index_expr = self.expressions.gen_index_expr(
-                stmt.target.index, index_type, view_key_target(obj_type))
+                stmt.target.index, index_type, view_key_target(obj_type),
+                obj_type)
 
             # Bounds-safe: index provably in [0, len(obj)), skip normalize_index.
             # See the matching note in expressions.py _gen_subscript: cast to
@@ -2649,7 +2650,8 @@ class StatementGenerator:
             obj_type = self.ctx.get_expr_type(subscript.obj)
             index_type = self.ctx.analyzer.get_expr_type(subscript.index)
             subscript_obj = f"(*{obj})" if self.ctx.is_indirect_name(subscript.obj) else obj
-            index_expr = self.expressions.gen_index_expr(subscript.index, index_type)
+            index_expr = self.expressions.gen_index_expr(
+                subscript.index, index_type, obj_type=obj_type)
 
             fi = self.builtins.get_type_method_fi(obj_type, "__delitem__")
             if fi:
@@ -2791,7 +2793,8 @@ class StatementGenerator:
         index_type = self.ctx.get_expr_type(subscript.index)
         # Dereference globals for subscript access
         subscript_obj = f"(*{obj})" if is_indirect else obj
-        index_expr = self.expressions.gen_index_expr(subscript.index, index_type or INT32)
+        index_expr = self.expressions.gen_index_expr(
+            subscript.index, index_type or INT32, obj_type=obj_type)
 
         # Get element type
         elem_type = obj_type.get_element_type()

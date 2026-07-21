@@ -712,7 +712,8 @@ def _borrow_elem_subscript_shape(e: TpyExpr, locals_: dict[str, TpyType],
     recv_t = _subscript_container_recv_type(e.obj, locals_, analyzer)
     if recv_t is None or not elem_family(recv_t, analyzer):
         return False
-    return (_bigint_index_disposition(e.index, analyzer) != "reject")
+    return (_bigint_index_disposition(e.index, analyzer.get_expr_type(e.obj),
+                                      analyzer) != "reject")
 
 def _field_over_container_subscript_ok(e: TpyExpr, locals_: dict[str, TpyType],
                                        analyzer) -> bool:
@@ -1541,7 +1542,8 @@ def _setitem_target_ok(
             or _bytearray_recv(recv_t)
             or _setitem_widened_family_ok(recv_t, analyzer)):
         return note_detail("setitem.family")
-    if (_bigint_index_disposition(sub.index, analyzer) == "reject"):
+    if (_bigint_index_disposition(sub.index, analyzer.get_expr_type(sub.obj),
+                                  analyzer) == "reject"):
         return note_detail("setitem.index")
     return True
 
@@ -1605,8 +1607,9 @@ def _user_record_setitem_ok(
     defining `__setitem__` -> the AST's no-container fallback
     `::tpy::__setitem__(recv, key, v);` (checked, never operator[]). Mirrors the
     user-record `__getitem__` READ arm's receiver / key checks: a bare in-scope
-    name or one-level field receiver, a value-scalar (non-runtime-BigInt) or str
-    key. The value slot is a value scalar / Char / enum / Ptr -- the bare-render
+    name or one-level field receiver, a value-scalar or str key (a
+    runtime-BigInt key only against a BigInt key param -- no narrow on either
+    path; a fixed-int key param takes the `.to_fixed_check` narrow, AST). The value slot is a value scalar / Char / enum / Ptr -- the bare-render
     families the checked setitem template forwards unchanged (str/bytes/record
     value slots, whose AST render adds an owned-copy / storage lift, stay AST)."""
     sub = stmt.target
@@ -1626,7 +1629,10 @@ def _user_record_setitem_ok(
         return False
     idx_type = analyzer.get_expr_type(sub.index)
     idx_ok = ((_resolved_scalar(idx_type, analyzer)
-               and not _runtime_bigint(idx_type, analyzer))
+               and (not _runtime_bigint(idx_type, analyzer)
+                    or _bigint_index_disposition(
+                           sub.index, analyzer.get_expr_type(sub.obj),
+                           analyzer) == "bare"))
               or _resolved_str_value(idx_type, analyzer) is not None)
     if not idx_ok:
         return False

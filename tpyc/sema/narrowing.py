@@ -200,7 +200,7 @@ class NarrowingTracker:
             return self.type_ops.substitute_type_params(getitem.return_type, type_subst)
         return getitem.return_type
 
-    def _get_record_getitem_key_ret(self, record_type: NominalType) -> tuple[TpyType, TpyType] | None:
+    def record_getitem_key_ret(self, record_type: NominalType) -> tuple[TpyType, TpyType] | None:
         """(key-param type, return type) of a record's single-arg __getitem__.
 
         Returns None when there is no single-key __getitem__ (e.g. only a slice

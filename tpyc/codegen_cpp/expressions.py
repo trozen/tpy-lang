@@ -79,7 +79,7 @@ from ..parse import (
 from ..prescan import match_is_none, _expr_to_narrowing_key
 from ..namespace import BindingKind
 from ..sema.literal_utils import literal_value_from_expr
-from .context import INDENT, escape_cpp_string, escape_cpp_char, escape_cpp_name, qualified_cpp_name, qualify_native_name, imported_free_callee_cpp, imported_variable_cpp, module_qualified_callee_cpp, static_method_callee_cpp, enum_cpp_name, enum_member_cpp, loop_var_binding, is_lvalue_iterable, cpp_string_literal_expr, cpp_bytes_literal_span, cpp_bytes_literal_owned, view_key_target, CppForm, FormValue, expand_cpp_template
+from .context import INDENT, escape_cpp_string, escape_cpp_char, escape_cpp_name, qualified_cpp_name, qualify_native_name, imported_free_callee_cpp, imported_variable_cpp, module_qualified_callee_cpp, static_method_callee_cpp, enum_cpp_name, enum_member_cpp, loop_var_binding, is_lvalue_iterable, cpp_string_literal_expr, cpp_bytes_literal_span, cpp_bytes_literal_owned, view_key_target, bigint_index_narrow_type, CppForm, FormValue, expand_cpp_template
 from .functions import literal_mangled_name
 from .int_literals import render_int_literal_value
 from .. import qnames
@@ -6190,7 +6190,8 @@ class ExpressionGenerator:
                 # For pointer-globals with wrapper storage, this yields raw `T*`.
                 ptr_expr = self.ctx.pointer_value_expr(expr.obj, obj)
                 subscript_obj = f"::tpy::deref_check({ptr_expr})"
-        index_expr = self.gen_index_expr(expr.index, index_type, view_key_target(obj_type))
+        index_expr = self.gen_index_expr(expr.index, index_type,
+                                         view_key_target(obj_type), obj_type)
 
         # Bounds-safe: index provably in [0, len(obj)), skip normalize_index.
         # The index type is signed (int32_t typically); built-in container
@@ -6218,17 +6219,25 @@ class ExpressionGenerator:
         return f"{subscript_obj}[{index_expr}]"
 
     def gen_index_expr(self, index: TpyExpr, index_type: TpyType,
-                       target_type: TpyType | None = None) -> str:
-        """Generate index expression, converting BigInt indices to int32_t.
+                       target_type: TpyType | None = None,
+                       obj_type: TpyType | None = None) -> str:
+        """Generate index expression, narrowing BigInt indices to the
+        receiver's declared key/index width.
 
         The raw index (possibly negative) is passed through to the runtime
         helpers which handle normalization and bounds checking, matching CPython.
-        target_type, when set, threads the container's key type so view-typed
-        keys (BytesView/StrView) can pin literal indices to static storage.
+        target_type, when set, threads the container's view-typed key so
+        bytes/str literal keys can pin to static storage. obj_type, when set,
+        threads the receiver so a BigInt-keyed container skips the narrow
+        entirely and a fixed-int key narrows to its declared width; without
+        it the int32 sequence-index domain applies.
         """
         index_expr = self.gen_expr_deref(index, target_type)
         if not self._is_int_constant(index) and self.types.is_runtime_bigint(index, index_type):
-            index_expr = f"{index_expr}.to_fixed_check<int32_t>()"
+            narrow = (INT32 if obj_type is None
+                      else bigint_index_narrow_type(obj_type, self.ctx.analyzer))
+            if narrow is not None:
+                index_expr = f"{index_expr}.to_fixed_check<{narrow.to_cpp()}>()"
         return index_expr
 
     @staticmethod

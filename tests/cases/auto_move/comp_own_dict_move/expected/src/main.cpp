@@ -29,7 +29,7 @@ namespace tpyapp::main {
     for (; __beg_1 != __end_1; ++__beg_1) {
         const ::tpy::BigInt& k = *__beg_1;
         // total += d[k].tag
-        total = ::tpy::add_check<int32_t>(total, (::tpy::__getitem__(d, k.to_fixed_check<int32_t>()).tag).to_fixed_check<int32_t>());
+        total = ::tpy::add_check<int32_t>(total, (::tpy::__getitem__(d, k).tag).to_fixed_check<int32_t>());
     }
     // return total
     return ::tpy::BigInt(total);
@@ -115,7 +115,7 @@ namespace tpyapp::main {
     for (; __beg_1 != __end_1; ++__beg_1) {
         const ::tpy::BigInt& k = *__beg_1;
         // total += d[k].tag
-        total = ::tpy::add_check<int32_t>(total, (::tpy::__getitem__(d, k.to_fixed_check<int32_t>()).tag).to_fixed_check<int32_t>());
+        total = ::tpy::add_check<int32_t>(total, (::tpy::__getitem__(d, k).tag).to_fixed_check<int32_t>());
     }
     // return total
     return ::tpy::BigInt(total);

@@ -8,10 +8,7 @@ there). When a release ships, delete its section and promote the next one.
 
 ### Bugs to fix (the `[HIGH]` entries in BUGS.md)
 
-- "dict subscript narrows the key to int32" -- valid BigInt key panics where
-  CPython works
-- "hashes inputs AFTER the link" -- build cache can persistently serve a
-  stale binary after a mid-build source edit
+(none open -- both fixed; delete this section when 0.5.0 ships)
 
 ### Ships as known limitation (document in release notes, don't fix)
 

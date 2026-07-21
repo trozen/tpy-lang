@@ -111,6 +111,7 @@ from ...codegen_cpp.forms import (
 )
 from ...codegen_cpp.types import resolve_pending_container
 from ...codegen_cpp.context import (
+    bigint_index_narrow_type,
     enum_cpp_name,
     escape_cpp_name,
     qualified_cpp_name,
@@ -1032,8 +1033,6 @@ def _runtime_bigint(t: TpyType | None, analyzer) -> bool:
 
 _BIGINT_NARROW = "bigint_narrow"  # synthetic THIRCoerce tag (not a sema coercion)
 
-_BIGINT_INDEX_NARROW_WRAP = "{0}.to_fixed_check<int32_t>()"
-
 def _unwrap_lit_coerce(e: TpyExpr) -> TpyExpr:
     """Strip sema's int-literal slot coercions (fixed-int / BigInt targets) so
     literal-shape checks see the digit token the AST renders."""
@@ -1042,44 +1041,54 @@ def _unwrap_lit_coerce(e: TpyExpr) -> TpyExpr:
         e = e.expr
     return e
 
-def _bigint_index_disposition(index: TpyExpr, analyzer) -> str:
-    """How a subscript index / str-slice-adjacent int position renders when its
-    type half is a runtime BigInt -- gen_index_expr's decision, written once so
-    the gates and the wrap sites cannot drift:
+def _bigint_index_disposition(index: TpyExpr, obj_type: 'TpyType | None',
+                              analyzer) -> 'str | TpyType':
+    """How a subscript index renders when its type half is a runtime BigInt --
+    gen_index_expr's decision, written once so the gates and the wrap sites
+    cannot drift. obj_type is the receiver (its declared key/index type picks
+    the narrow width via bigint_index_narrow_type):
 
-      * 'bare' -- not runtime-BigInt, or an int32-range (possibly negated) int
-        literal: `_is_int_constant` exempts those from the narrow, and the
-        emitter renders an unresolved IntLiteralType literal as the bare token
-        on both paths;
-      * 'narrow' -- the `{0}.to_fixed_check<int32_t>()` wrap (no outer parens:
-        any composite render already carries its own);
-      * 'reject' -- an out-of-int32-range literal: the AST renders the BigInt
-        ctor wrap inside the narrow, a shape the literal emit does not
-        reproduce."""
+      * 'bare' -- no narrow: not runtime-BigInt, an int32-range (possibly
+        negated) int literal (`_is_int_constant` exempts those, and the
+        emitter renders an unresolved IntLiteralType literal as the bare
+        token on both paths), or a BigInt-keyed receiver (the index passes
+        through unnarrowed; a big literal renders through the shared
+        render_int_literal_value on both paths);
+      * a fixed-int TpyType -- the `{0}.to_fixed_check<T>()` wrap at the
+        receiver's declared key width (no outer parens: any composite render
+        already carries its own);
+      * 'reject' -- an out-of-int32-range literal headed for a narrow: the
+        AST renders the BigInt ctor wrap inside the narrow, a shape the
+        literal emit does not reproduce."""
     if not _runtime_bigint(analyzer.get_expr_type(index), analyzer):
         return "bare"
+    narrow = (INT32 if obj_type is None
+              else bigint_index_narrow_type(obj_type, analyzer))
     c = _const_index(index)
     if c is not None:
-        return "bare" if -(2**31) <= c <= 2**31 - 1 else "reject"
+        if -(2**31) <= c <= 2**31 - 1:
+            return "bare"
+        return "bare" if narrow is None else "reject"
     if _const_index(_unwrap_lit_coerce(index)) is not None:
         # A coerce-wrapped literal fails `_is_int_constant` on the AST path, so
         # the narrow would wrap the literal's target-typed render -- a shape
         # not observed at index positions (sema leaves indices unwrapped);
         # defensive reject rather than a guessed mirror.
         return "reject"
-    return "narrow"
+    return "bare" if narrow is None else narrow
 
-def _narrow_bigint_index(idx: 'THIRExpr', e: TpyExpr, analyzer,
-                         loc) -> 'THIRExpr':
-    """Wrap a lowered runtime-BigInt index in the `.to_fixed_check<int32_t>()`
+def _narrow_bigint_index(idx: 'THIRExpr', e: TpyExpr, obj_type: 'TpyType | None',
+                         analyzer, loc) -> 'THIRExpr':
+    """Wrap a lowered runtime-BigInt index in the `.to_fixed_check<T>()`
     narrow when its disposition says so (reads, del-item); 'reject' never
     reaches lowering (the gates exclude it)."""
-    if _bigint_index_disposition(e, analyzer) != "narrow":
+    disp = _bigint_index_disposition(e, obj_type, analyzer)
+    if isinstance(disp, str):
         return idx
     _witness("narrow.subscript_index")
-    return THIRCoerce(result_type=INT32, expr=idx,
+    return THIRCoerce(result_type=disp, expr=idx,
                       coercion_name=_BIGINT_NARROW,
-                      wrap=_BIGINT_INDEX_NARROW_WRAP, loc=loc)
+                      wrap=f"{{0}}.to_fixed_check<{disp.to_cpp()}>()", loc=loc)
 
 def _eligible_enum(t: TpyType | None, analyzer) -> 'TpyType | None':
     """A registered enum value type of any flavor: same-module (bare name),
@@ -2798,9 +2807,9 @@ def _container_scalar_read(t: TpyType | None, analyzer) -> bool:
     admitted like a fixed-int-keyed one -- every render this predicate feeds is
     key-type-neutral (bare receiver name, `__len__`, dict-literal elements via
     the slot retype) except the index positions, which apply
-    `_narrow_bigint_index` on the INDEX type alone (gen_index_expr narrows a
-    runtime-BigInt key even into a BigInt-keyed map -- the int32 round-trip is
-    mirrored, not endorsed). An `Own[container]` (move-in
+    `_narrow_bigint_index` against the receiver's declared key type (a
+    BigInt-keyed map passes the key through unnarrowed, a fixed-int key
+    narrows to its declared width). An `Own[container]` (move-in
     `T&&` param) is excluded explicitly -- its ABI differs from the borrow shape
     this slice's emit assumes, and it rides a later cell (mirrors the Own unwrap
     in `_f1_record`, which admits Own where this deliberately does not)."""

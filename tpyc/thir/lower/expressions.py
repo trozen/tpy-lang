@@ -174,7 +174,6 @@ from ..nodes import (
 )
 from ...codegen_cpp.forms import is_ptr_variant_union
 from .predicates import (
-    _BIGINT_INDEX_NARROW_WRAP,
     _BIGINT_LIT_COERCION,
     _BIGINT_NARROW,
     _eligible_ptr_union,
@@ -2127,7 +2126,7 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                 _witness("narrow.slice_bound")
                 return THIRCoerce(result_type=INT32, expr=lowered,
                                   coercion_name=_BIGINT_NARROW,
-                                  wrap=_BIGINT_INDEX_NARROW_WRAP, loc=loc)
+                                  wrap="{0}.to_fixed_check<int32_t>()", loc=loc)
 
             return THIRStrSlice(
                 result_type=rtype,
@@ -2179,9 +2178,11 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                 # User-record `recv[index]` -> the record's bare operator[].
                 # Value-scalar/char/enum/str/bytes/ptr results only (a
                 # record-returning getitem is a borrow-form seam, deferred). The
-                # index renders plainly against the key param (str-view/int),
-                # mirroring _gen_subscript's fallback; a runtime-BigInt index
-                # would need the `.to_fixed_check` narrow -- excluded.
+                # index renders plainly against the key param (str-view/int,
+                # or a BigInt index against a BigInt key param -- no narrow on
+                # either path), mirroring _gen_subscript's fallback; a
+                # runtime-BigInt index against a FIXED-int key param takes the
+                # `.to_fixed_check` narrow -- excluded.
                 ret_ok = (_resolved_scalar(rtype, analyzer)
                           or _eligible_char(rtype)
                           or _eligible_enum(rtype, analyzer) is not None
@@ -2190,7 +2191,10 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                           or _eligible_ptr_value(rtype, analyzer))
                 idx_type = analyzer.get_expr_type(e.index)
                 idx_ok = ((_resolved_scalar(idx_type, analyzer)
-                           and not _runtime_bigint(idx_type, analyzer))
+                           and (not _runtime_bigint(idx_type, analyzer)
+                                or _bigint_index_disposition(
+                                       e.index, analyzer.get_expr_type(e.obj),
+                                       analyzer) == "bare"))
                           or _resolved_str_value(idx_type, analyzer) is not None)
                 recv_ok = (
                     (isinstance(e.obj, TpyName) and e.obj.name in declared
@@ -2213,7 +2217,8 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
             recv_t = _subscript_container_recv_type(
                 e.obj, declared, analyzer)
             index_ok = (
-                _bigint_index_disposition(e.index, analyzer) != "reject")
+                _bigint_index_disposition(e.index, analyzer.get_expr_type(e.obj),
+                                          analyzer) != "reject")
             ret_ok = (
                 _resolved_scalar(rtype, analyzer)
                 or _eligible_char(rtype)
@@ -2361,6 +2366,7 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                 field_prechecked=isinstance(e.obj, TpyFieldAccess),
                 subscript_prechecked=isinstance(e.obj, TpySubscript)),
             index=_narrow_bigint_index(_lower_expr(e.index, lc, declared), e.index,
+                                       analyzer.get_expr_type(e.obj),
                                        analyzer, loc),
             bounds_safe=e.bounds_safe,
             form=form,
