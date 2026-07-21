@@ -502,13 +502,14 @@ class TestFieldWriteFamilies:
         # BARE assign: operator=(string_view), no view->owned FormConvert.
         assert isinstance(st.value, THIRName)
 
-    def test_str_field_write_concat_value_stays_ast(self):
-        # A concat value is a String rvalue -- source shapes beyond
-        # names/literals stay on the AST path.
+    def test_str_field_write_concat_value_routes(self):
+        # A str-typed BINOP value now assigns its concat render bare (the
+        # TestStrFieldConcatWrite pin in test_thir_forms carries the
+        # byte-identity assert); call/other sources still stay AST.
         thir = _lower_ctx(
             _FW_RECORDS
             + "    def suffix(self, s: str):\n        self.tag = s + \"!\"\n")
-        assert _fn(thir, "suffix") is None
+        assert _fn(thir, "suffix") is not None
 
 
 # A value-storage Optional[record] field (`std::optional<Inner>`): the

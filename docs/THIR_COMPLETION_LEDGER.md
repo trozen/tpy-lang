@@ -87,8 +87,10 @@ cell it touches is admitted:
   ladder: scalar switches, if/elif chains, captures + all guard shapes,
   union switches incl. guarded, incr 81-86; record patterns + union
   field conditions/bindings, incr 92; optional partitions over
-  pointer-repr subjects, incr 93; parked tail = the value-repr /
-  if-elif optional tiers, polymorphic, str-switch, Literal subjects,
+  pointer-repr subjects, incr 93; value-repr optional dispatch, the
+  chain-optional tiers, str-switch, polymorphic dispatch, and
+  storage-form subjects landed on later branches -- see the per-tier
+  paragraphs below; parked tail = Literal subjects,
   M4c wrapper subjects, resumable) / docstring-`pass` trivia in any
   body position (incr 90) / comprehensions (the C1+C2 decl-init
   slice, incr 91; C3 routine rows -- 3-arg range, field iterables,
@@ -1398,9 +1400,55 @@ and str inners; the non-prefix if/elif-optional chain tiers, the
 str-switch discriminator tier, `Optional[enum]` names, and the O1
 record-inner dispatch LANDED on thir-match-dynattrs-args): the
 optional tiers' remainder (field-access subjects; guarded record-inner
-chains), polymorphic/@dynamic (15), overload-specialized (1),
+chains), overload-specialized (1),
 resumable (generator/async) matches (own frontier), M4c wrapper
-subjects (cross-axis, see above). Corpus
+subjects (cross-axis, see above).
+**P1 polymorphic/@dynamic dispatch LANDED (thir-match-drill):** the
+poly_if_elif chain (`_gen_match_polymorphic_if_elif` mirror: C++17
+if-init `Sub* __mpoly_i = <cast>` + `Sub& __case_i` alias, subject
+reads renamed via `lc.narrow` like the U3 mechanic, or-arms as
+`||`-joined null tests, wildcard/capture else) and the poly_guarded
+tier (`_gen_match_polymorphic_guarded` mirror: standalone-if arms,
+field conds around the ALIAS, guards lowered inside the narrowed
+window, `goto __match_end_N` + INDENTED end label). Casts compose
+through the shared `narrow_cast_rhs` chokepoint as (prefix, suffix)
+pairs around the emit-numbered subject (deref-view depth for Box/Rc
+wrapper subjects included); guarded-vs-chain dispatch shares the AST's
+`pattern_has_field_condition` (moved module-level). Subject const-ness
+mirrors `_is_const_borrow_source` via `_poly_subject_const`
+(predicates.py) -- and the dyn-isinstance if arm was ALIGNED to the
+same predicate (it read `_narrow_subject_const`, a latent near-miss vs
+the AST's fact source). Excluded rungs: pointer-repr sources
+(`match.poly_ptr_source`), resumable-leaf bodies
+(`match.poly_resumable`), literal facts / foreign fact keys
+(`match.poly_facts`), or-arm `as` bindings (`match.poly_or_bind`),
+positional patterns. Faces `match.poly_if_elif` /
+`match.poly_guarded` / `match.poly_or_arm`; units
+`test_thir_poly_match.py`.
+**Storage-form subjects LANDED (thir-match-drill, same wave):** the
+union switch/guarded tiers, the record tiers, and the pointer-repr O1
+partition admit field/subscript LVALUE subjects (`h.pet`, `xs[0]`,
+`self.f` -- `_match_expr_subject_ok`: the shared
+`_match_subject_is_lvalue` fact + a direct declared/`self` root).
+Union expr subjects fold VALUE-variant (`std::get` without `*` --
+`is_ptr_variant_source`'s field/subscript arms; names keep the
+type-level fold); the O1 field source lifts via `optional_to_ptr`
+(`THIRFormConvert` BORROW) off `_lower_field_source` and binds by
+value; union/record expr subjects lower field_prechecked /
+subscript_prechecked (the route vetted the shape; the sink ladders
+gate sinks, not the subject bind). Expression subjects carry no sema
+facts (verified) -- keyed facts on one gate-reject. The
+`forbidden_writes` gate narrowed to NAME-level writes (rebind / del /
+unpack): through-writes (`bb.val = 9`) alias exactly like the AST's
+binding emit and now mirror -- including BUGS.md's const-subject
+capture-mutation face (toolchain-caught, non-corpus), pinned lockstep
+by `test_capture_through_write_mirrors`. Scalar tiers and the optional
+chains stay name-only. Face `match.optional_subject_lift`; units
+`TestMatchStorageFormSubjects` / `TestMatchStorageFormSubjectRungs`.
+Wave witnesses (thir-match-drill flips): the match/poly_* seven,
+`match/optional_field_subject`, `match/warn_subject_mutation_prefix`,
+`exceptions/raise_ctor_union`. (The older M1 witness list below names
+the scalar-tier cases only.) Corpus
 witnesses: the match/ group (`literal_int`, `enum_value`,
 `break_in_match_arm`, `two_matches_same_scope`, `guard_basic`, and the
 new `arm_declared_local` / `union_none_member` / `union_recursive_bare`);

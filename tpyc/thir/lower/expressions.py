@@ -6314,6 +6314,17 @@ def _lower_field_source(e: TpyFieldAccess, lc: '_LowerCtx',
     `(*recv.field)` exactly like the value-position read; the un-narrowed
     OPTIONAL_TO_PTR lift keeps the whole optional (its analyzed type stays
     Optional, so the predicate is inert there)."""
+    # The prechecked receiver recursion below skips the receiver ladders --
+    # an UNPROVEN Optional intermediate link (`o.mid.f` with `o.mid`
+    # analyzed Optional) would silently drop the AST's deref_optional_check
+    # panic; reject the chain at the chokepoint so every caller is covered.
+    # (A sema-narrowed link reads non-Optional here and passes.)
+    link = e.obj
+    while isinstance(link, (TpyFieldAccess, TpySubscript)):
+        if isinstance(unwrap_readonly(lc.analyzer.get_expr_type(link)),
+                      OptionalType):
+            raise ThirUnsupported("field.opt_receiver", detail=True)
+        link = link.obj
     rtype = lc.analyzer.get_expr_type(e)
     narrowed_opt = _narrowed_opt_field_read(e, rtype, declared, lc.analyzer)
     if narrowed_opt:

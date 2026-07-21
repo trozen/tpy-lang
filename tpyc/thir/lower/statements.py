@@ -228,6 +228,7 @@ from .predicates import (
     _narrow_bigint_index,
     _narrow_fact_member,
     _any_narrow_fact,
+    _const_borrow_name,
     _poly_narrow_info,
     _narrow_facts_ok,
     _any_narrow_facts_ok,
@@ -318,6 +319,7 @@ from .checks import (
     _print_optval_form,
     _print_optval_opt,
     _ptr_union_field_write_ok,
+    _union_member_ctor_rvalue,
     _ptr_union_source_ok,
     _ctor_shape_ok,
     _native_ctx_manager_ok,
@@ -3054,7 +3056,9 @@ def _lower_dyn_narrow_if(stmt: TpyIf, pinfo, lc: _LowerCtx,
     var, member, var_decl = pinfo
     analyzer = lc.analyzer
     cpp_type = lc.render_type(member)
-    const = _narrow_subject_const(var, lc)
+    # The AST if-init clause consults `_is_const_borrow_source` (the param
+    # const verdicts), not the pointer-variant subject predicate.
+    const = _const_borrow_name(var, lc)
     const_pfx = "const " if const else ""
     ptr_local = f"__{var}_ptr"
     cast_rhs = narrow_cast_rhs(
@@ -3108,23 +3112,21 @@ def _lower_any_narrow_if(stmt: TpyIf, ainfo, lc: _LowerCtx,
 
 
 def _written_names(stmt: TpyStmt) -> set[str]:
-    def root(e: TpyExpr) -> 'str | None':
-        while isinstance(e, (TpyFieldAccess, TpySubscript)):
-            e = e.obj
-        return e.name if isinstance(e, TpyName) else None
-
+    """Roots written AT NAME LEVEL -- a rebind, bare-name value write,
+    re-decl, unpack target, or `del name`. Field/subscript writes THROUGH a
+    root (`bb.val = 9`, `del bb[k]`) are excluded: a match binding aliases
+    its extraction exactly like the AST's `auto&` emit, so a through-write
+    lowers identically -- only writes to the binding NAME itself have no
+    mirrored render (the forbidden_writes gate's purpose)."""
     if isinstance(stmt, (TpyAssign, TpyAugAssign)):
-        name = root(stmt.target)
-        return {name} if name is not None else set()
+        return ({stmt.target.name} if isinstance(stmt.target, TpyName)
+                else set())
     if isinstance(stmt, TpyVarDecl):
         return {stmt.name}
     if isinstance(stmt, TpyTupleUnpack):
         return {name for name in stmt.targets if name is not None}
     if isinstance(stmt, TpyDelVar):
         return set(stmt.names)
-    if isinstance(stmt, TpyDelItem):
-        return {name for target in stmt.targets
-                if (name := root(target)) is not None}
     return set()
 
 
@@ -5197,6 +5199,18 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 # ptr-variant source on the AST path, so it assigns
                 # storage-to-storage bare -- no to_value_variant lift.
                 fvalue = _lower_field_source(stmt.value, lc, declared)
+            elif ((u := _eligible_ptr_union(ftype, analyzer)) is not None
+                    and _union_member_ctor_rvalue(stmt.value, u, analyzer)):
+                # A member-typed ctor rvalue stores bare (`field = Cat(9);`
+                # -- the variant assignment absorbs the member; a
+                # to_value_variant lift would be ill-formed). The assign is
+                # a flushable statement position like the optrec arm.
+                _witness("field_write.union_member_ctor")
+                fvalue = _flush_witness(
+                    "flush.assign",
+                    _lower_expr(stmt.value, lc, declared,
+                                use=_ExprUse(result=_ExprResultUse.STORAGE,
+                                             allow_temps=True)))
             else:
                 lowered = _lower_expr(stmt.value, lc, declared)
                 mv = _is_move_source(stmt.value, lc)

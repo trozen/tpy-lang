@@ -2300,6 +2300,21 @@ class THIRMatchArmEntry:
     # arm (`{` / `} else {`, and the guarded tier's bare block).
     opt_conds: 'tuple[tuple[bool, tuple[tuple[str, str], ...]], ...] | None' \
         = None
+    # Polymorphic tiers (poly_if_elif / poly_guarded). A class arm carries
+    # `poly_cast` -- the C++17 if-init `Sub* __mpoly_i = <cast>` as a
+    # (prefix, suffix) pair around the subject spelling (the cast RHS goes
+    # through the shared `narrow_cast_rhs` chokepoint at lowering, so
+    # dynamic_cast vs dyn_adapter_cast and const-ness are folded) -- plus
+    # `poly_ref_decl`, the fully-rendered `Sub& __case_i = *__mpoly_i;`
+    # alias line (`case_alias` names it for bindings and the narrowed
+    # subject reads). An or-pattern arm carries `poly_or_conds`: one
+    # pre-rendered `(<cast> != nullptr)` (prefix, suffix) pair per
+    # alternative, `||`-joined at emit. The poly-guarded tier composes
+    # `field_conds` around the ALIAS (like the guarded-union tier), not
+    # the subject.
+    poly_cast: 'tuple[str, str] | None' = None
+    poly_ref_decl: 'str | None' = None
+    poly_or_conds: 'tuple[tuple[str, str], ...] | None' = None
 
 
 @dataclass(frozen=True)
@@ -2360,7 +2375,7 @@ class THIRMatch(THIRStmt):
     # 'switch_enum' | 'switch_primitive' | 'if_elif' | 'if_elif_guarded'
     # | 'switch_union' | 'guarded_union' | 'if_elif_record' | 'guarded_record'
     # | 'optional_partition' | 'if_elif_optional' | 'if_elif_optional_guarded'
-    # | 'switch_str'
+    # | 'switch_str' | 'poly_if_elif' | 'poly_guarded'
     strategy: str = "switch_enum"
     subject: 'THIRExpr | None' = None
     subject_ref: bool = True          # auto& (lvalue subject) vs auto

@@ -1057,8 +1057,9 @@ def _ptr_union_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
     write), a `None` literal (a monostate store, `recv.field =
     std::monostate{};`), or a same-union field lvalue (a storage-to-storage
     copy: a field source is not a ptr-variant source on the AST path, so it
-    assigns bare with no lift). Member-valued sources (the ctor-arg cascade)
-    ride a later cell -- also a pre-existing AST gap at other positions."""
+    assigns bare with no lift), or a member-typed CTOR rvalue (`h.pet =
+    Cat(9)` -- the variant assignment absorbs the member, so the AST
+    assigns the bare ctor with no lift; exact member type only)."""
     target = stmt.target
     if not _field_receiver_ok(target, declared, analyzer):
         return False
@@ -1067,8 +1068,25 @@ def _ptr_union_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
         return False
     if isinstance(stmt.value, TpyNoneLiteral):
         return True
+    if _union_member_ctor_rvalue(stmt.value, u, analyzer):
+        return True
     return _ptr_union_source_ok(stmt.value, declared, analyzer, u,
                                 allow_field=True)
+
+
+def _union_member_ctor_rvalue(value: TpyExpr, u: UnionType, analyzer) -> bool:
+    """A constructor-call rvalue whose type is EXACTLY a member of `u` --
+    the bare variant-absorbing store (`field = Cat(9);`)."""
+    if not isinstance(value, TpyCall):
+        return False
+    fi = value.resolved_function_info
+    if fi is None or not fi.is_constructor:
+        return False
+    vt = analyzer.get_expr_type(value)
+    if vt is None:
+        return False
+    vt = unwrap_readonly(vt)
+    return any(m == vt for m in u.members)
 
 def _nondef_ctor_field(ftype: 'TpyType | None', analyzer) -> bool:
     """The field's record type has a suppressed default ctor (`@nocopy` with
@@ -1254,16 +1272,28 @@ def _str_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
     absorbs a view source into an owned field, so unlike a decl init there is
     NO view->owned `std::string(...)` construction, and str names are never in
     codegen's movable set (value-typed decl arms don't register), so no move
-    wrap either. Sources beyond names/literals (concats, calls, coerces) stay
-    on the AST path; `String`-typed fields/sources keep their own emit shapes
-    (excluded by `_resolved_str_value`)."""
+    wrap either. A str-typed BINOP value (`self.buf = self.buf + s`) also
+    assigns its concat render bare, and a same-family COERCE wrap peels
+    transparently before the rows (so a coerce-wrapped literal / name /
+    binop admits like its bare form -- the wrap does not change the
+    assign render). Call sources stay on the AST path; `String`-typed
+    fields/sources keep their own emit shapes (excluded by
+    `_resolved_str_value`)."""
     if not _field_receiver_ok(stmt.target, declared, analyzer):
         return False
     if _resolved_str_value(analyzer.get_expr_type(stmt.target),
                            analyzer) is None:
         return False
     v = stmt.value
+    # A str-typed BINOP value assigns its concat render bare; the str-ness
+    # reads off the OUTER (possibly coerce-wrapped) type -- the raw binop
+    # node can carry an unresolved in-place type.
+    outer_str = _resolved_str_value(analyzer.get_expr_type(v), analyzer)
+    if isinstance(v, TpyCoerce):
+        v = v.expr
     if isinstance(v, TpyStrLiteral):
+        return True
+    if isinstance(v, TpyBinOp) and outer_str is not None:
         return True
     return (isinstance(v, TpyName) and v.name in declared
             and _resolved_str_value(declared[v.name], analyzer) is not None)

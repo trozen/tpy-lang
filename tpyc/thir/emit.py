@@ -2237,6 +2237,10 @@ def _emit_match(out: TextIO, stmt: THIRMatch, indent_level: int,
                                              subject)
     elif stmt.strategy == "switch_str":
         _emit_match_switch_str(out, stmt, indent_level, state, subject)
+    elif stmt.strategy == "poly_if_elif":
+        _emit_match_poly_if_elif(out, stmt, indent_level, state, subject)
+    elif stmt.strategy == "poly_guarded":
+        _emit_match_poly_guarded(out, stmt, indent_level, state, subject)
     else:
         _emit_match_switch(out, stmt, indent_level, state, subject)
     if stmt.emit_unreachable:
@@ -2450,6 +2454,114 @@ def _emit_match_guarded_union(out: TextIO, stmt: THIRMatch,
     state.switch_depth -= 1
     out.write(f"{indent}}}\n")
     out.write(f"{end_label}:;\n")
+
+
+def _emit_poly_whole_binding(out: TextIO, entry, subject: str,
+                             at: str) -> None:
+    # The whole-subject capture/`as` binding: vs the `__case_i` alias for a
+    # class arm (`from_case_var`), vs the subject otherwise.
+    if entry.binding is not None:
+        rhs = entry.case_alias if entry.binding.from_case_var else subject
+        _emit_match_binding(out, entry.binding, rhs, at)
+
+
+def _emit_match_poly_if_elif(out: TextIO, stmt: THIRMatch,
+                             indent_level: int, state: _EmitState,
+                             subject: str) -> None:
+    # _gen_match_polymorphic_if_elif: per class arm the C++17 if-init cast
+    # (poly_cast composed around the subject), the `__case_i` ref line,
+    # field bindings + the `as` binding against the alias, the body one
+    # level in; or-arms the ||-joined null tests; the always-match arm the
+    # chain's `{` / `} else {`. One trailing `}` closes the chain (also for
+    # a non-exhaustive chain with no else arm).
+    indent = INDENT * indent_level
+    inner = INDENT * (indent_level + 1)
+    for i, arm in enumerate(stmt.arms):
+        entry = arm.entries[0]
+        state.comments.stmt(out, entry.loc, indent)
+        if entry.poly_cast is not None:
+            keyword = "if" if i == 0 else "} else if"
+            pre, suf = entry.poly_cast
+            out.write(f"{indent}{keyword} ({pre}{subject}{suf}) {{\n")
+            out.write(f"{inner}{entry.poly_ref_decl}\n")
+            for fb in entry.field_bindings:
+                _emit_match_binding(out, fb, entry.case_alias, inner)
+            _emit_poly_whole_binding(out, entry, subject, inner)
+        elif entry.poly_or_conds is not None:
+            keyword = "if" if i == 0 else "} else if"
+            cond = " || ".join(f"{p}{subject}{s}"
+                               for p, s in entry.poly_or_conds)
+            out.write(f"{indent}{keyword} ({cond}) {{\n")
+            _emit_poly_whole_binding(out, entry, subject, inner)
+        else:
+            out.write(f"{indent}{{\n" if i == 0 else f"{indent}}} else {{\n")
+            _emit_poly_whole_binding(out, entry, subject, inner)
+        _emit_stmts(out, entry.body, indent_level + 1, state)
+    out.write(f"{indent}}}\n")
+
+
+def _emit_match_poly_guarded(out: TextIO, stmt: THIRMatch,
+                             indent_level: int, state: _EmitState,
+                             subject: str) -> None:
+    # _gen_match_polymorphic_guarded + _emit_poly_guarded_action: the end
+    # label draws the second counter bump; class arms are standalone
+    # `if (cast) {` blocks -- alias + bindings first, then the field-cond /
+    # guard `if` gating body + `goto end` (or the inline body + goto when
+    # unconditional); or-arms AND the guard into the block condition;
+    # always-match arms bind at the OUTER indent, a guarded one gates the
+    # body, an unguarded one is a bare block with NO goto (it falls through
+    # to the label). The end label writes INDENTED (unlike the
+    # guarded-union tier's column-0 write).
+    indent = INDENT * indent_level
+    inner = INDENT * (indent_level + 1)
+    state.match_counter += 1
+    end_label = f"__match_end_{state.match_counter}"
+    for arm in stmt.arms:
+        entry = arm.entries[0]
+        state.comments.stmt(out, entry.loc, indent)
+        if entry.poly_cast is not None:
+            pre, suf = entry.poly_cast
+            out.write(f"{indent}if ({pre}{subject}{suf}) {{\n")
+            out.write(f"{inner}{entry.poly_ref_decl}\n")
+            for fb in entry.field_bindings:
+                _emit_match_binding(out, fb, entry.case_alias, inner)
+            _emit_poly_whole_binding(out, entry, subject, inner)
+            cond_parts = [f"{p}{entry.case_alias}{s}"
+                          for p, s in entry.field_conds]
+            if entry.guard is not None:
+                cond_parts.append(_emit_expr(entry.guard, state))
+            if cond_parts:
+                out.write(f"{inner}if ({' && '.join(cond_parts)}) {{\n")
+                _emit_stmts(out, entry.body, indent_level + 2, state)
+                out.write(f"{inner}    goto {end_label};\n")
+                out.write(f"{inner}}}\n")
+            else:
+                _emit_stmts(out, entry.body, indent_level + 1, state)
+                out.write(f"{inner}goto {end_label};\n")
+            out.write(f"{indent}}}\n")
+        elif entry.poly_or_conds is not None:
+            cond = " || ".join(f"{p}{subject}{s}"
+                               for p, s in entry.poly_or_conds)
+            if entry.guard is not None:
+                cond = f"({cond}) && {_emit_expr(entry.guard, state)}"
+            out.write(f"{indent}if ({cond}) {{\n")
+            _emit_poly_whole_binding(out, entry, subject, inner)
+            _emit_stmts(out, entry.body, indent_level + 1, state)
+            out.write(f"{inner}goto {end_label};\n")
+            out.write(f"{indent}}}\n")
+        else:
+            _emit_poly_whole_binding(out, entry, subject, indent)
+            if entry.guard is not None:
+                out.write(f"{indent}if ({_emit_expr(entry.guard, state)}) "
+                          f"{{\n")
+                _emit_stmts(out, entry.body, indent_level + 1, state)
+                out.write(f"{inner}goto {end_label};\n")
+                out.write(f"{indent}}}\n")
+            else:
+                out.write(f"{indent}{{\n")
+                _emit_stmts(out, entry.body, indent_level + 1, state)
+                out.write(f"{indent}}}\n")
+    out.write(f"{indent}{end_label}:;\n")
 
 
 def _emit_match_optional(out: TextIO, stmt: THIRMatch, indent_level: int,

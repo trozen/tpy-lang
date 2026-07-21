@@ -1982,11 +1982,15 @@ class TestMatchOptionalGateRejections:
         assert not self._routed(src, "check")
         assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
-    def test_capture_write_rejects(self):
-        # Mutation through the capture is ill-formed on the AST path when
-        # the subject is const (BUGS.md: capture-alias mutations never
-        # reach the subject's const verdict) -- gate-rejected, not
-        # mirrored.
+    def test_capture_through_write_mirrors(self):
+        # Mutation through the capture routes and mirrors the AST
+        # byte-identically -- including the const-subject face, where the
+        # AST emit is ill-formed C++ (BUGS.md: capture-alias mutations
+        # never reach the subject's const verdict; toolchain-caught, no
+        # corpus case can exercise it). The forbidden_writes gate now
+        # catches NAME-level writes only (rebind/del); when the sema const
+        # fix lands and changes the AST emit, this lockstep pin flags the
+        # THIR side.
         src = OPT_PREAMBLE + (
             "def check(x: Leaf | None) -> None:\n"
             "    match x:\n"
@@ -1998,7 +2002,8 @@ class TestMatchOptionalGateRejections:
             "    check(Leaf(3))\n"
             "main()\n"
         )
-        assert not self._routed(src, "check")
+        assert self._routed(src, "check")
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_full_optional_capture_rejects(self):
         # No None prefix + a catchall: the partition itself fails (the
@@ -2600,3 +2605,265 @@ class TestMatchArmBranchDecls:
     def test_arm_decl_renders_inline(self):
         cpp = _cpp(self.SRC, thir=True)
         assert "Holder h = Holder(1);" in cpp
+
+
+class TestMatchStorageFormSubjects:
+    # Field/subscript LVALUE subjects on the union/record tiers store
+    # VALUE-variant (`std::get` without the `*` deref) regardless of the
+    # union's primary repr; the pointer-repr O1 partition lifts a field
+    # source via `optional_to_ptr` and binds by value.
+    UNION_SRC = (
+        "from tpy import Int32\n"
+        "class Dog:\n"
+        "    n: Int32\n"
+        "    def __init__(self, n: Int32) -> None:\n        self.n = n\n"
+        "class Cat:\n"
+        "    n: Int32\n"
+        "    def __init__(self, n: Int32) -> None:\n        self.n = n\n"
+        "class Holder:\n"
+        "    pet: Dog | Cat\n"
+        "    def __init__(self) -> None:\n        self.pet = Dog(1)\n"
+        "def f(h: Holder) -> None:\n"
+        "    match h.pet:\n"
+        "        case Dog(n=k):\n"
+        "            print(\"dog\", k)\n"
+        "        case Cat(n=k2):\n"
+        "            print(\"cat\", k2)\n"
+    )
+
+    def test_union_field_subject_routes_value_variant(self):
+        assert _fn(_lower_ctx(self.UNION_SRC), "f") is not None
+        cpp = _cpp(self.UNION_SRC, thir=True)
+        assert cpp == _cpp(self.UNION_SRC, thir=False)
+        assert "auto& __match_subject_1 = h.pet;" in cpp
+        # Value-variant storage: no `*` on the extraction.
+        assert "auto& __case_0 = std::get<1>(__match_subject_1);" in cpp
+
+    OPT_SRC = (
+        "from tpy import Int32\n"
+        "class Box:\n"
+        "    val: Int32\n"
+        "    def __init__(self, val: Int32) -> None:\n        self.val = val\n"
+        "class Holder:\n"
+        "    opt: Box | None\n"
+        "    def __init__(self) -> None:\n        self.opt = Box(7)\n"
+        "def f(h: Holder) -> None:\n"
+        "    match h.opt:\n"
+        "        case None:\n"
+        "            print(\"none\")\n"
+        "        case Box() as bb:\n"
+        "            bb.val = 99\n"
+    )
+
+    def test_optional_field_subject_lifts(self):
+        assert _fn(_lower_ctx(self.OPT_SRC), "f") is not None
+        cpp = _cpp(self.OPT_SRC, thir=True)
+        assert cpp == _cpp(self.OPT_SRC, thir=False)
+        # Storage-form source: the optional_to_ptr lift, bound by VALUE,
+        # and the through-write via the inner alias stays admitted.
+        assert ("auto __match_subject_1 = "
+                "::tpy::optional_to_ptr(h.opt);") in cpp
+        assert "bb.val = 99;" in cpp
+
+    def test_binding_rebind_still_rejects(self):
+        # A NAME-level write to the O1 arm binding has no mirrored render;
+        # the narrowed forbidden_writes gate must still catch it.
+        src = (
+            "from tpy import Int32\n"
+            "class Box:\n"
+            "    val: Int32\n"
+            "    def __init__(self, val: Int32) -> None:\n"
+            "        self.val = val\n"
+            "class Holder:\n"
+            "    opt: Box | None\n"
+            "    def __init__(self) -> None:\n        self.opt = Box(7)\n"
+            "def f(h: Holder, other: Box) -> None:\n"
+            "    match h.opt:\n"
+            "        case None:\n"
+            "            print(\"none\")\n"
+            "        case Box() as bb:\n"
+            "            bb = other\n"
+            "            print(bb.val)\n"
+        )
+        assert _fn(_lower_ctx(src), "f") is None
+
+    def test_scalar_tier_field_subject_rejects(self):
+        # The scalar tiers stay name-only.
+        src = (
+            "from tpy import Int32\n"
+            "class Holder:\n"
+            "    n: Int32\n"
+            "    def __init__(self) -> None:\n        self.n = 1\n"
+            "def f(h: Holder) -> None:\n"
+            "    match h.n:\n"
+            "        case 0:\n"
+            "            print(0)\n"
+            "        case _:\n"
+            "            print(1)\n"
+        )
+        assert _fn(_lower_ctx(src), "f") is None
+
+
+class TestMatchStorageFormSubjectRungs:
+    _UNION_PRE = (
+        "from tpy import Int32\n"
+        "class Dog:\n"
+        "    n: Int32\n"
+        "    def __init__(self, n: Int32) -> None:\n        self.n = n\n"
+        "class Cat:\n"
+        "    n: Int32\n"
+        "    def __init__(self, n: Int32) -> None:\n        self.n = n\n"
+    )
+
+    def test_subscript_union_subject_routes(self):
+        # A subscript LVALUE subject on the union tier (the admission's
+        # subscript arm has no corpus witness -- every subscript-subject
+        # case is blocked on other constructs).
+        src = (
+            self._UNION_PRE
+            + "def f(xs: list[Dog | Cat]) -> None:\n"
+            + "    match xs[0]:\n"
+            + "        case Dog(n=k):\n"
+            + "            print(\"dog\", k)\n"
+            + "        case Cat(n=k2):\n"
+            + "            print(\"cat\", k2)\n"
+        )
+        assert _fn(_lower_ctx(src), "f") is not None
+        cpp = _cpp(src, thir=True)
+        assert cpp == _cpp(src, thir=False)
+        assert ("auto& __match_subject_1 = "
+                "::tpy::__getitem__(xs, 0);") in cpp
+
+    def test_guarded_union_field_subject_value_variant(self):
+        # A field subject reaching the GUARDED union tier (a literal field
+        # condition forces it) must keep the value-variant `std::get` --
+        # no `*` deref off the type's primary pointer repr.
+        src = (
+            self._UNION_PRE
+            + "class Holder:\n"
+            + "    pet: Dog | Cat\n"
+            + "    def __init__(self) -> None:\n        self.pet = Dog(1)\n"
+            + "def f(h: Holder) -> None:\n"
+            + "    match h.pet:\n"
+            + "        case Dog(n=1):\n"
+            + "            print(\"one\")\n"
+            + "        case Dog(n=k):\n"
+            + "            print(\"dog\", k)\n"
+            + "        case Cat(n=k2):\n"
+            + "            print(\"cat\", k2)\n"
+        )
+        assert _fn(_lower_ctx(src), "f") is not None
+        cpp = _cpp(src, thir=True)
+        assert cpp == _cpp(src, thir=False)
+        assert "*std::get" not in cpp
+
+    _OPT_PRE = (
+        "from tpy import Int32\n"
+        "class Box:\n"
+        "    val: Int32\n"
+        "    data: list[Int32]\n"
+        "    def __init__(self, val: Int32) -> None:\n"
+        "        self.val = val\n"
+        "        self.data = [1, 2]\n"
+        "class Mid:\n"
+        "    opt: Box | None\n"
+        "    def __init__(self) -> None:\n        self.opt = Box(7)\n"
+        "class Outer:\n"
+        "    mid: Mid | None\n"
+        "    def __init__(self) -> None:\n        self.mid = Mid()\n"
+    )
+
+    def test_nested_optional_receiver_falls_back(self):
+        # An Optional-typed INTERMEDIATE link draws the AST's
+        # deref_optional_check panic, which the field-source lift cannot
+        # mirror -- the whole body falls back (field.opt_receiver).
+        src = (
+            self._OPT_PRE
+            + "def f(o: Outer) -> None:\n"
+            + "    match o.mid.opt:\n"
+            + "        case None:\n"
+            + "            print(\"none\")\n"
+            + "        case Box() as bb:\n"
+            + "            print(bb.val)\n"
+        )
+        assert _fn(_lower_ctx(src), "f") is None
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+    def test_field_over_subscript_subject_routes(self):
+        # A field-over-subscript O1 subject (`ms[0].opt`) is a
+        # TpyFieldAccess and lifts like the plain field source.
+        src = (
+            self._OPT_PRE
+            + "def f(ms: list[Mid]) -> None:\n"
+            + "    match ms[0].opt:\n"
+            + "        case None:\n"
+            + "            print(\"none\")\n"
+            + "        case Box() as bb:\n"
+            + "            print(bb.val)\n"
+        )
+        assert _fn(_lower_ctx(src), "f") is not None
+        cpp = _cpp(src, thir=True)
+        assert cpp == _cpp(src, thir=False)
+        assert ("::tpy::optional_to_ptr(::tpy::__getitem__(ms, 0).opt)"
+                in cpp)
+
+    def test_bare_subscript_optional_subject_falls_back(self):
+        # A BARE subscript O1 subject (an Optional container element) is
+        # the match.optional_subject_shape rung -- the lift is field-only.
+        src = (
+            self._OPT_PRE
+            + "def f(xs: list[Box | None]) -> None:\n"
+            + "    match xs[0]:\n"
+            + "        case None:\n"
+            + "            print(\"none\")\n"
+            + "        case Box() as bb:\n"
+            + "            print(bb.val)\n"
+        )
+        assert _fn(_lower_ctx(src), "f") is None
+
+    def test_subscript_through_write_routes(self):
+        # A subscript-assign THROUGH the O1 arm binding (`bb.data[0] = 9`)
+        # is a through-write like the field assign -- routes and mirrors.
+        src = (
+            self._OPT_PRE
+            + "def f(m: Mid) -> None:\n"
+            + "    match m.opt:\n"
+            + "        case None:\n"
+            + "            print(\"none\")\n"
+            + "        case Box() as bb:\n"
+            + "            bb.data[0] = 9\n"
+        )
+        assert _fn(_lower_ctx(src), "f") is not None
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+
+class TestUnionMemberCtorFieldWrite:
+    # `h.pet = Cat(9)` inside a match arm: the member-typed ctor rvalue
+    # stores BARE into the value-variant union field (the variant
+    # assignment absorbs the member; no to_value_variant lift).
+    SRC = (
+        "from tpy import Int32\n"
+        "class Dog:\n"
+        "    n: Int32\n"
+        "    def __init__(self, n: Int32) -> None:\n        self.n = n\n"
+        "class Cat:\n"
+        "    n: Int32\n"
+        "    def __init__(self, n: Int32) -> None:\n        self.n = n\n"
+        "class Holder:\n"
+        "    pet: Dog | Cat\n"
+        "    def __init__(self) -> None:\n        self.pet = Dog(1)\n"
+        "def f(h: Holder) -> None:\n"
+        "    match h.pet:\n"
+        "        case Dog(n=k):\n"
+        "            h.pet = Cat(9)\n"
+        "            print(k)\n"
+        "        case Cat(n=k2):\n"
+        "            print(k2)\n"
+    )
+
+    def test_routes_and_byte_identical(self):
+        assert _fn(_lower_ctx(self.SRC), "f") is not None
+        cpp = _cpp(self.SRC, thir=True)
+        assert cpp == _cpp(self.SRC, thir=False)
+        assert "h.pet = Cat(9);" in cpp
+        assert "to_value_variant" not in cpp

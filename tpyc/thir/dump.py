@@ -469,6 +469,10 @@ def _stmt_lines(stmt: THIRStmt, depth: int) -> list[str]:
         for arm in stmt.arms:
             head = ", ".join(arm.labels) if arm.labels else "default"
             for entry in arm.entries:
+                if entry.poly_cast is not None:
+                    head = f"cast -> {entry.case_alias}"
+                elif entry.poly_or_conds is not None:
+                    head = f"cast-or[{len(entry.poly_or_conds)}]"
                 extra = ""
                 if entry.binding is not None:
                     extra += f" as %{entry.binding.name} [{entry.binding.mode}]"

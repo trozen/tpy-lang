@@ -3453,6 +3453,30 @@ def _param_is_const(name: str, func: TpyFunction, analyzer,
     return _param_const_verdict(name, func, analyzer, record_name,
                                 "const_borrow_params")
 
+def _const_borrow_name(name: str, lc) -> bool:
+    """The AST `_is_const_borrow_source` mirror for a bare name: a param
+    under the deep-const or const-borrow verdicts. The AST's third arm
+    (ReadonlyType declared type) never fires for admitted subjects -- the
+    poly/dyn admission requires the declared entry fully unwrapped, so a
+    readonly-declared name rejects before const-ness is consulted."""
+    return (_param_is_deep_const(name, lc.func, lc.analyzer, lc.record_name)
+            or _param_is_const(name, lc.func, lc.analyzer, lc.record_name))
+
+def _poly_subject_const(expr: TpyExpr, lc) -> bool:
+    """`_poly_subject_is_const` mirror: whether a polymorphic dispatch
+    subject's pointee is const, so the cast targets `const Sub*`. True for
+    a readonly-typed subject, a name param under the const verdicts, or a
+    field/subscript whose receiver chain is const (C++ propagates const
+    through member access)."""
+    if isinstance(lc.analyzer.get_expr_type(expr), ReadonlyType):
+        return True
+    while isinstance(expr, (TpyFieldAccess, TpySubscript)):
+        expr = expr.obj
+    if isinstance(expr, TpyName):
+        return (isinstance(lc.analyzer.get_expr_type(expr), ReadonlyType)
+                or _const_borrow_name(expr.name, lc))
+    return False
+
 def _f1_is_const(binding: 'LocalBinding', target_type: TpyType | None,
                  stmt: TpyVarDecl, func: TpyFunction, analyzer,
                  const_locals: set[str], record_name: str | None = None) -> bool:

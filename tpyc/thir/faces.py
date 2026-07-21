@@ -265,6 +265,7 @@ THIR_FACES: frozenset[str] = frozenset({
     # The Optional[record] FIELD write from a record RVALUE (ctor / by-value
     # call of the inner type): the bare copy `recv.opt = Inner(args);`.
     "field_write.optrec_rvalue",
+    "field_write.union_member_ctor",  # member ctor rvalue -> bare variant store
     # F1-record element/value slot: a record RVALUE (exact or covariant
     # upcast) forwarded bare by the checked `__setitem__`
     # (`::tpy::__setitem__(s._pool, key, Box<Conn>(std::move(conn)));`).
@@ -897,9 +898,13 @@ THIR_FACES: frozenset[str] = frozenset({
     "match.union_field_cond",       # guarded-union entry with field conds
     "match.or_labels",              # or-pattern -> stacked case labels
     "match.union_or_bind",          # binding or-arm -> one block per alt
+    "match.poly_if_elif",           # dynamic_cast if-init chain (P1)
+    "match.poly_guarded",           # poly standalone-if + goto end tier
+    "match.poly_or_arm",            # or-pattern -> ||-joined null tests
     "match.optional_partition",     # Optional-ptr subject: None/has-value split
     "match.optional_value_dispatch",  # value-repr subject: multi-arm inner tier
     "match.optional_none_arm",      # `case None:` prefix -> the nullptr block
+    "match.optional_subject_lift",  # storage-form field source -> optional_to_ptr
     "match.optional_value_only",    # no None arm -> bare `if (s != nullptr)`
     "match.optional_inner_bind",    # capture/as vs the __match_inner_N alias
     "match.optional_inner_record",  # record inner: if/elif chain on the alias

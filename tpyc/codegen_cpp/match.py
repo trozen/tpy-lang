@@ -66,6 +66,38 @@ def _match_subject_is_lvalue(expr: TpyExpr) -> bool:
         return (fi is not None and _returns_bare_reference(fi.return_type)
                 and _match_subject_is_lvalue(expr.obj))
     return False
+
+
+def _sub_has_field_condition(sub: 'TpyPattern') -> bool:
+    """Whether a field sub-pattern emits a runtime condition (mirrors what
+    `_record_field_conditions` produces): a literal comparison, a union
+    field guard, or a nested record sub-pattern that itself carries one.
+    Such a sub-pattern makes its arm conditional -- a later arm on the same
+    variant stays reachable."""
+    inner = sub.pattern if isinstance(sub, TpyAsPattern) else sub
+    if isinstance(inner, TpyLiteralPattern):
+        return True
+    if isinstance(inner, TpyClassPattern):
+        if inner.is_union_field_guard:
+            return True
+        return any(_sub_has_field_condition(s) for _, s in inner.keywords)
+    return False
+
+
+def pattern_has_field_condition(pattern: 'TpyPattern') -> bool:
+    """Whether a case pattern (class or or-pattern alternative) carries a
+    field-value condition that the guarded codegen path must emit.
+    Module-level so the THIR poly-tier routing shares the exact
+    guarded-vs-chain dispatch fact."""
+    if isinstance(pattern, TpyAsPattern):
+        pattern = pattern.pattern
+    if isinstance(pattern, TpyClassPattern):
+        return any(_sub_has_field_condition(sub)
+                   for _, sub in pattern.keywords)
+    if isinstance(pattern, TpyOrPattern):
+        return any(pattern_has_field_condition(alt)
+                   for alt in pattern.patterns)
+    return False
 from .context import INDENT, CodeGenError, escape_cpp_name, cpp_string_literal_expr
 from .string_dispatch import (
     find_best_discriminator, discriminator_key, case_label,
@@ -2416,36 +2448,8 @@ class MatchGenerator:
                 conds.extend(nested)
         return conds
 
-    @staticmethod
-    def _sub_has_field_condition(sub: TpyPattern) -> bool:
-        """Whether a field sub-pattern emits a runtime condition (mirrors what
-        `_record_field_conditions` produces): a literal comparison, a union
-        field guard, or a nested record sub-pattern that itself carries one.
-        Such a sub-pattern makes its arm conditional -- a later arm on the same
-        variant stays reachable."""
-        inner = sub.pattern if isinstance(sub, TpyAsPattern) else sub
-        if isinstance(inner, TpyLiteralPattern):
-            return True
-        if isinstance(inner, TpyClassPattern):
-            if inner.is_union_field_guard:
-                return True
-            return any(MatchGenerator._sub_has_field_condition(s)
-                       for _, s in inner.keywords)
-        return False
-
-    @staticmethod
-    def _pattern_has_field_condition(pattern: TpyPattern) -> bool:
-        """Whether a case pattern (class or or-pattern alternative) carries a
-        field-value condition that the guarded codegen path must emit."""
-        if isinstance(pattern, TpyAsPattern):
-            pattern = pattern.pattern
-        if isinstance(pattern, TpyClassPattern):
-            return any(MatchGenerator._sub_has_field_condition(sub)
-                       for _, sub in pattern.keywords)
-        if isinstance(pattern, TpyOrPattern):
-            return any(MatchGenerator._pattern_has_field_condition(alt)
-                       for alt in pattern.patterns)
-        return False
+    _sub_has_field_condition = staticmethod(_sub_has_field_condition)
+    _pattern_has_field_condition = staticmethod(pattern_has_field_condition)
 
     def _has_shared_variant_index(self, stmt: TpyMatch, subject_type: UnionType) -> bool:
         """Check if multiple cases resolve to the same variant index (e.g. union field guards)."""

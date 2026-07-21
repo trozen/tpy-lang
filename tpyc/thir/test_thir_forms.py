@@ -2187,3 +2187,36 @@ class TestOptrecRvalueTempFlush:
         assert faces.get("field_write.optrec_rvalue")
         assert faces.get("argtemp.own_copy")
         _assert_byte_identical(src)
+
+
+class TestStrFieldConcatWrite:
+    # `self.buf = self.buf + s`: a str-typed (coerce-wrapped) BINOP value
+    # assigns its concat render bare into the owned str field; the
+    # str-ness keys off the OUTER type (the raw binop node can carry an
+    # unresolved in-place type).
+    SRC = (
+        "class Sink:\n"
+        "    buf: str\n"
+        "    def __init__(self) -> None:\n"
+        "        self.buf = \"\"\n"
+        "    def push(self, s: str) -> None:\n"
+        "        self.buf = self.buf + s\n"
+        "def main() -> None:\n"
+        "    k = Sink()\n"
+        "    k.push(\"a\")\n"
+        "    print(k.buf)\n"
+        "main()\n"
+    )
+
+    def test_routes_and_byte_identical(self):
+        thir = _lower_ctx(self.SRC)
+        assert _fn(thir, "push") is not None
+        _assert_byte_identical(self.SRC)
+
+    def test_emitted_shape(self):
+        compiler, modules = _compile(self.SRC)
+        entry = _entry(modules)
+        hpp, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=True))
+        assert "this->buf = (::tpy::str_concat(this->buf, s));" in hpp + cpp
