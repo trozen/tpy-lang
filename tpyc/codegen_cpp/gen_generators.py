@@ -13,7 +13,7 @@ from ..typesys import IntLiteralType, OptionalType, OwnType, ReadonlyType, TypeP
 from tpyc import modules as builtin_modules
 from ..type_def_registry import (iter_yields_ref_tuple_proxies,
                                   is_owned_in_coro_frame, view_owned_copy_init)
-from .context import INDENT, CodeGenError, escape_cpp_name
+from .context import INDENT, CodeGenError, escape_cpp_name, contains_named_expr
 from .resumable_cfg import _stmts_have_any_suspension
 from .protocols import protocol_param_template_name
 
@@ -335,9 +335,33 @@ class GeneratorCodegen:
 
         old_indent = self.ctx.indent_level
         self.ctx.indent_level = 3 + extra
+        cond_checkpoint = self.ctx.temps.checkpoint()
         cond_code = (leaf.render_cond() if leaf is not None
                      else self.expressions.gen_expr(while_stmt.condition))
-        out.write(f"{INDENT * (3 + extra)}while ({cond_code}) {{\n")
+        # Condition-registered decls have no statement flush inside the
+        # lambda: walrus pre-decls go at lambda scope, and anonymous temps
+        # (re-evaluated per iteration, like _gen_while's restructured head)
+        # go inside the loop head. Mixed walrus + temps is rejected: the
+        # in-head temp could run before the walrus assignment it reads
+        # (_gen_while's gated fallback hazard), and this shape never
+        # compiled before, so a loud reject regresses nothing (BUGS.md).
+        if (self.ctx.temps.has_pending_since(cond_checkpoint)
+                and contains_named_expr(while_stmt.condition)):
+            raise CodeGenError(
+                "A generator 'while' condition combining a walrus binding "
+                "with an argument that needs a temporary is not supported; "
+                "bind the value in the loop body ('while True:' with an "
+                "explicit break) instead.",
+                loc=while_stmt.condition.loc)
+        self.ctx.temps.flush_named_since(out, cond_checkpoint,
+                                         INDENT * (3 + extra))
+        if self.ctx.temps.has_pending_since(cond_checkpoint):
+            out.write(f"{INDENT * (3 + extra)}while (true) {{\n")
+            self.ctx.temps.flush_since(out, cond_checkpoint,
+                                       INDENT * (4 + extra))
+            out.write(f"{INDENT * (4 + extra)}if (!({cond_code})) break;\n")
+        else:
+            out.write(f"{INDENT * (3 + extra)}while ({cond_code}) {{\n")
         self.ctx.indent_level = 4 + extra
 
         if leaf is not None:

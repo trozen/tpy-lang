@@ -774,7 +774,43 @@ class TestArgTempEmit:
         out = _cpp(src, thir=True)
         assert out == _cpp(src, thir=False)
         assert "__tmp_1 = k;\n    return take_vu(__tmp_1);" in out
-        assert "__tmp_2 = k;\n    while ((take_vu(__tmp_2) > n))" in out
+        assert ("__tmp_2 = k;\n"
+                "        if (!((take_vu(__tmp_2) > n))) break;") in out
+
+    def test_while_mixed_walrus_temp_keeps_preloop_flush(self):
+        # The walrus-free gate (contains_named_expr): a condition mixing a
+        # walrus with an arg temp must NOT restructure -- the temp keeps the
+        # legacy pre-loop flush (single-eval residual, BUGS.md), so a
+        # borrow-form walrus can never alias a loop-scoped temp.
+        src = (
+            _VU_PRELUDE
+            + "def mixed(k: Int32) -> Int32:\n"
+            + "    n = 0\n"
+            + "    while (n := n + 1) < 5 and take_vu(k) > 0:\n"
+            + "        k -= 1\n"
+            + "    return n\n"
+        )
+        out = _cpp(src, thir=True)
+        assert out == _cpp(src, thir=False)
+        assert "while (true)" not in out
+        assert "__tmp_1 = k;\n    while ((" in out
+
+    def test_gen_while_mixed_walrus_temp_rejects(self):
+        # The peephole face of the mixed shape never compiled (undeclared
+        # __tmp on master), so it rejects loudly instead of shipping the
+        # sync fallback's single-eval semantics as new silent surface.
+        import pytest
+        from ..codegen_cpp.context import CodeGenError
+        src = (
+            _VU_PRELUDE
+            + "from typing import Iterator\n"
+            + "def g(k: Int32) -> Iterator[Int32]:\n"
+            + "    n = 0\n"
+            + "    while (n := n + 1) < 5 and take_vu(k) > 0:\n"
+            + "        yield n\n"
+        )
+        with pytest.raises(CodeGenError, match="walrus"):
+            _cpp(src, thir=False)
 
     def test_ctor_demotion_body_temp_routes(self):
         # A ctor body statement is the same flushable machinery: the demoted

@@ -408,7 +408,9 @@ deferred (self-contained) / blocked-on-`<rung>`.
   is toolchain-caught identically on both paths AND the mirror needs no
   new machinery (the const-blind member lift, the narrowed-alias-into-
   variant render); GATE-REJECT when mirroring would reproduce wrong
-  runtime behavior (the while-condition stale-snapshot hoist) or would
+  runtime behavior (the while-condition stale-snapshot hoist -- since
+  fixed on the AST path, so that arm now awaits an ordinary mirror of
+  the restructured loop head, not a gate) or would
   add mechanism solely to reproduce a bug (the method mutated-ref rvalue
   arm). A rejected row cites its BUGS.md entry at the gate.
 - **Record return slots, BOTH directions: LANDED.** BORROW (`-> Box` -> C++
@@ -1115,7 +1117,10 @@ variant temps -- `THIRArgTemp` (number-free node) over the
 TempSink/CtxTempSink emission seam drawing from the live module-cumulative
 `ctx.temps` counter, flushed at the four simple-statement positions (incl.
 ctor demotion bodies); while/elif conditions and nested calls stay
-gate-rejected (the BUGS.md while-condition stale-snapshot entry honored).
+gate-rejected (originally honoring the BUGS.md while-condition
+stale-snapshot entry; that miscompile is fixed -- the AST head now
+re-evaluates condition temps per iteration via a while(true) restructure
+-- so the while arm awaits a mirror of the corrected emission).
 Upcast Child->Parent NAME args pass bare; method ctor-rvalues into CONST
 same-record slots inline via `THIRCtorCall` (`const_borrow_params`-keyed);
 deep-const ptr-union slots spell const pointees + the

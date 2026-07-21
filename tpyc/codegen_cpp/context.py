@@ -25,6 +25,7 @@ from ..parse import (
     TpyGeneratorExpression,
     TpyCoerce, TpyBinOp, TpyUnaryOp, TpyMethodCall, TpySubscript, TpySlice, TpyCall, TpyName, TpyFieldAccess,
     TpyIfExpr, TpyAssign, TpyVarDecl, TpyTupleUnpack, TpyStmt, VarLinkage,
+    TpyNamedExpr,
 )
 from ..namespace import Namespace, BindingKind
 from ..type_def_registry import (
@@ -668,6 +669,10 @@ class TempState:
         """Register a named pre-declaration (for walrus operator variables)."""
         self._pending_named.append((name, cpp_type, init, brace_init))
 
+    def has_pending_since(self, checkpoint: tuple[int, int]) -> bool:
+        """True if anonymous temps were registered after `checkpoint`."""
+        return len(self._pending) > checkpoint[0]
+
     def checkpoint(self) -> tuple[int, int]:
         """Snapshot the current pending-temp queue lengths.
 
@@ -711,6 +716,20 @@ class TempState:
         self._render(out, indent, [], self._pending[pending_n:])
         del self._pending[pending_n:]
 
+    def flush_named_since(self, out: TextIO, checkpoint: tuple[int, int],
+                          indent: str) -> None:
+        """Emit (and remove) only the named pre-declarations registered after
+        `checkpoint`.
+
+        For emission contexts whose enclosing scope is not the statement
+        flush's scope (the simple-generator lambda): a walrus target bound in
+        the condition must be declared inside the lambda body, not left for a
+        flush the lambda never runs.
+        """
+        named_n = checkpoint[1]
+        self._render(out, indent, self._pending_named[named_n:], [])
+        del self._pending_named[named_n:]
+
     @staticmethod
     def _render(out: TextIO, indent: str,
                 named: list[tuple[str, str, str | None, bool]],
@@ -727,6 +746,20 @@ class TempState:
                 out.write(f"{indent}{type_cpp} {temp_name}{{{init_expr}}};\n")
             else:
                 out.write(f"{indent}{type_cpp} {temp_name} = {init_expr};\n")
+
+
+def contains_named_expr(expr: TpyExpr | None) -> bool:
+    """True if `expr` contains a walrus (TpyNamedExpr) anywhere in its subtree.
+
+    Gates the while-head temp restructure: a walrus is the only way a value
+    produced in a condition escapes it, and per-iteration temps must neither
+    run before the walrus assignment they read nor be aliased by a binding
+    that outlives the loop (see the mixed walrus+temp BUGS.md entry)."""
+    if expr is None:
+        return False
+    if isinstance(expr, TpyNamedExpr):
+        return True
+    return any(contains_named_expr(c) for c in expr.children())
 
 
 class CodeGenError(Exception):

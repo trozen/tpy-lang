@@ -42,8 +42,9 @@ void main() {
     // count: Int32 = 0
     int32_t count = 0;
     // while sum_array([1, 0, 0]) > count:
-    std::array<int32_t, 3> __tmp_4 = {1, 0, 0};
-    while ((sum_array(__tmp_4) > count)) {
+    while (true) {
+        std::array<int32_t, 3> __tmp_4 = {1, 0, 0};
+        if (!((sum_array(__tmp_4) > count))) break;
         // count = count + 1
         count = (::tpy::add_check<int32_t>(count, 1));
     }

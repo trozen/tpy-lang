@@ -1278,8 +1278,10 @@ by theme; each is a rule the next cell should apply.
 
 - Byte-identity means **bug-identity** on green paths: the migration mirrors pre-existing AST
   miscompiles byte-for-byte (each filed in BUGS.md) rather than fixing them, and gate-rejects
-  the ones that would diverge or are toolchain-caught. The `_gen_while` stale-snapshot bug is
-  *honored* (gate-rejected), never reproduced. Fix-in-place is out of scope for a migration cell.
+  the ones that would diverge or are toolchain-caught. The `_gen_while` stale-snapshot bug was
+  *honored* (gate-rejected), never reproduced -- and has since been fixed on the AST path (the
+  head restructures to `while(true){temps; if(!cond)break;}`), so the gate now just awaits a
+  mirror of the corrected emission. Fix-in-place is out of scope for a migration cell.
 
 **Resumable frames (async / generators).**
 

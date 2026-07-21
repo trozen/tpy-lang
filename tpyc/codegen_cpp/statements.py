@@ -51,7 +51,7 @@ from .variant_access import VariantAccess
 from ..diagnostics import SemanticError
 from ..liveness import stmts_terminate, try_terminates_ignoring_finally
 
-from .context import INDENT, CodeGenError, FinallyContext, LocalCppForm, CppForm, FormValue, escape_cpp_name, qualified_cpp_name, loop_var_binding, is_lvalue_iterable, view_key_target
+from .context import INDENT, CodeGenError, FinallyContext, LocalCppForm, CppForm, FormValue, escape_cpp_name, qualified_cpp_name, loop_var_binding, is_lvalue_iterable, view_key_target, contains_named_expr
 from .forms import classify_local_binding, LocalBinding
 from ..type_def_registry import (
     is_list, is_dict,
@@ -5499,9 +5499,28 @@ class StatementGenerator:
         saved_switch_depth = self.ctx.match_switch_depth
         self.ctx.match_switch_depth = 0
 
+        cond_checkpoint = self.ctx.temps.checkpoint()
         cond = self.expressions.gen_truthy_expr(stmt.condition)
-        self.ctx.temps.flush(out, indent)
-        out.write(f"{indent}while ({cond}) {{\n")
+        if (self.ctx.temps.has_pending_since(cond_checkpoint)
+                and not contains_named_expr(stmt.condition)):
+            # The condition registered anonymous temps (arg materializations).
+            # A while header re-evaluates per iteration, so they must live in
+            # the loop head, not before the loop -- a pre-loop flush would
+            # freeze per-iteration state into a stale snapshot. Gated to
+            # walrus-free conditions: an in-head temp could run before the
+            # walrus assignment it reads, and a borrow-form walrus aliasing
+            # into a per-iteration temp would dangle after the loop, so the
+            # mixed shape keeps the legacy single-eval flush below (BUGS.md).
+            cond_temps = io.StringIO()
+            self.ctx.temps.flush_since(cond_temps, cond_checkpoint,
+                                       indent + INDENT)
+            self.ctx.temps.flush(out, indent)
+            out.write(f"{indent}while (true) {{\n")
+            out.write(cond_temps.getvalue())
+            out.write(f"{indent}{INDENT}if (!({cond})) break;\n")
+        else:
+            self.ctx.temps.flush(out, indent)
+            out.write(f"{indent}while ({cond}) {{\n")
 
         lit_snap = self.ctx.save_literal_facts()
         proto_snap = self.ctx.save_protocol_narrowings()
