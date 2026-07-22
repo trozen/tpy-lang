@@ -1,0 +1,1 @@
+Function macro: @probe is a compile-time decorator, not valid Python at runtime.

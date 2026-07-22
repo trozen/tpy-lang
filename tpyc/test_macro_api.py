@@ -1,11 +1,13 @@
 """Unit tests for the @function_macro context API surface that needs no
 running compiler -- chiefly FunctionMacroContext.resolve_type, which maps a
-builtin type name to a TypeInfo without touching the SemanticContext.
+builtin type name to a TypeInfo without touching the SemanticContext, and
+the method-context properties (is_method / self_type).
 """
 import pytest
 
-from tpyc.macro_api import FunctionMacroContext
-from tpyc.parse.nodes import TpyFunction
+from tpyc.diagnostics import SemanticError
+from tpyc.macro_api import FunctionMacroContext, PostSemaFunctionMacroContext
+from tpyc.parse.nodes import TpyFunction, TpyRecord
 
 
 def _ctx() -> FunctionMacroContext:
@@ -13,6 +15,49 @@ def _ctx() -> FunctionMacroContext:
     # SemanticContext are sufficient to exercise it.
     fn = TpyFunction(name="f", params=[], return_type=None, body=[])
     return FunctionMacroContext(None, fn, "testmod")
+
+
+def _method_ctx(is_staticmethod: bool = False,
+                record: bool = True) -> FunctionMacroContext:
+    fn = TpyFunction(name="m", params=[], return_type=None, body=[],
+                     is_method=record, is_staticmethod=is_staticmethod)
+    rec = TpyRecord(name="R", fields=[]) if record else None
+    return FunctionMacroContext(None, fn, "testmod", record=rec)
+
+
+# --- method-context properties (is_method / self_type) --------------------
+
+def test_free_function_has_no_method_context():
+    ctx = _ctx()
+    assert ctx.is_method is False
+    assert ctx.self_type is None
+
+
+def test_method_context_exposes_self_type():
+    # Without a SemanticContext the property takes the bare-NominalType
+    # fallback; the name is what matters for the API contract.
+    ctx = _method_ctx()
+    assert ctx.is_method is True
+    assert ctx.self_type is not None
+    assert ctx.self_type.name == "R"
+
+
+def test_staticmethod_has_no_self_type():
+    ctx = _method_ctx(is_staticmethod=True)
+    assert ctx.is_method is True
+    assert ctx.self_type is None
+
+
+def test_note_param_mutated_rejects_method_host():
+    # note_param_mutated resolves the host via get_function (module-level
+    # functions only), so it must reject a method host rather than mis-target
+    # a same-named free function; method-aware support is a parked follow-up.
+    fn = TpyFunction(name="m", params=[("c", None)], return_type=None, body=[],
+                     is_method=True, is_staticmethod=False)
+    rec = TpyRecord(name="R", fields=[])
+    ctx = PostSemaFunctionMacroContext(None, fn, "testmod", record=rec)
+    with pytest.raises(SemanticError, match="not supported on method hosts"):
+        ctx.note_param_mutated(0)
 
 
 @pytest.mark.parametrize("name", [

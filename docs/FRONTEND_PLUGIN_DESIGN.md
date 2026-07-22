@@ -733,8 +733,9 @@ class DecoratorRoute(Enum):
 class DecoratorEntry:
     name: str                               # dotted, e.g. "tpy.native", "mylang.dataclass"
     route: DecoratorRoute
-    target_kinds: tuple[str, ...]           # "function", "record", "field", "enum",
-                                            # "enum_value", "constant"
+    target_kinds: tuple[str, ...]           # "function", "method", "record",
+                                            # "field", "enum", "enum_value",
+                                            # "constant"
 ```
 
 The registry is **compiler-owned**: TPy core preloads the registry with
@@ -763,21 +764,25 @@ macros need does **not** ride a decorator -- it rides
 decorator's `args`/`kwargs` stay declarative `Expr`s.
 
 Status: built for `BUILTIN_LOWERING(tpy.native)` (function + record) and
-`MACRO` (function + record). The IR carries decorators only as the typed
-`Decorator` node above; the earlier raw `(module, name, kwargs)` tuple
-form is gone.
+`MACRO` (function + method + record). The IR carries decorators only as
+the typed `Decorator` node above; the earlier raw `(module, name,
+kwargs)` tuple form is gone.
 
 The two routes also have different valid `target_kinds`:
 
-- **`BUILTIN_LOWERING`** can target `function`, `record`, `field`,
-  `enum`, `enum_value`, or `constant` -- TPy core picks where each
-  recognized builtin decorator's effect lands. v1 wires `tpy.native`
-  (function + record).
+- **`BUILTIN_LOWERING`** can target `function`, `method`, `record`,
+  `field`, `enum`, `enum_value`, or `constant` -- TPy core picks where
+  each recognized builtin decorator's effect lands. v1 wires
+  `tpy.native` (function + method + record).
 - **`MACRO`** targets `function` (`@function_macro`, run at sema pass
-  5.5 on module-level free functions) and `record` (`@class_macro`, run
-  via the record's `pending_macros`); both have a `pending_macros` slot.
-  `Field`, `Enum`, `EnumValue`, and `Constant` have none, so a
-  `DecoratorEntry` with `route=MACRO` on those is a manifest-load error.
+  5.5 on module-level free functions), `method` (the same
+  `@function_macro` phase run on record-method bodies -- a separate
+  target kind so a function macro must opt in before it applies to
+  methods; the context then exposes `is_method` / `self_type`), and
+  `record` (`@class_macro`, run via the record's `pending_macros`);
+  all three have a `pending_macros` slot. `Field`, `Enum`, `EnumValue`,
+  and `Constant` have none, so a `DecoratorEntry` with `route=MACRO` on
+  those is a manifest-load error.
 
 For v1, plugin-runtime decorators must therefore be either:
 - TPy class macros (`@class_macro`, registered as `MACRO`,

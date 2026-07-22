@@ -12,7 +12,7 @@
 | 5 | CPython compatibility: `lib/cpy/tpyc/macro_api.py` backend targeting Python `ast` module | Dropped |
 | 6 | TpyMini VM: tree-walking interpreter for self-hosted compiler | Not started |
 | 7 | Builder-trace macros: `@builder_macro` / `@builder_method` / `@builder_returns` / `@builder_terminal`, `BuilderContext`, sema sub-pass. First use case: `argparse` | Done |
-| 8 | Function macros: `@function_macro` on a free function, `FunctionMacroContext` (read-only introspection + body mutation), sema pass 5.5. Motivating use case: local-variable type deduction | Spike (mechanism + mutation work and are tested; the type-resolution surface and the motivating use case are not yet built -- see below) |
+| 8 | Function macros: `@function_macro` on a free function or record method, `FunctionMacroContext` (read-only introspection + body mutation, `is_method`/`self_type` for methods), sema pass 5.5. Motivating use case: local-variable type deduction | Spike (mechanism + mutation work and are tested; the type-resolution surface and the motivating use case are not yet built -- see below) |
 
 ### Macro System Future Work
 
@@ -660,9 +660,19 @@ Context surface:
   `tpyc.parse.nodes` (the macro import sandbox only allows `tpyc.macro_api`).
 
 Resolution: an unrecognized *resolved* (imported) decorator on a free function
-is collected as a pending function macro and resolved against the registry at
-sema (errors if unregistered). Genuinely unresolved decorator names still
-error at parse; method (record-body) decorators are unchanged.
+OR a record method is collected as a pending function macro and resolved
+against the registry at sema (errors if unregistered). Genuinely unresolved
+decorator names still error at parse.
+
+**Methods.** Pass 5.5 walks record methods (including nested records) before
+free functions, mirroring the builder-trace expansion walk, so a function
+macro runs on method bodies under the same contract: signature resolved,
+body not yet type-checked. The context adds two method-aware properties
+(mirroring `CallMacroContext`): `is_method` (True for any record method,
+including staticmethods) and `self_type` (the enclosing record's `TypeInfo`
+for non-static methods; `None` for staticmethods and free functions).
+`ctx.params` excludes `self`, as everywhere else in sema. Deferred post-sema
+callbacks (below) drain for methods too.
 
 Plugin-emitted functions get the same treatment: a frontend plugin sets
 `Function.decorators` to typed `Decorator` IR nodes, and lowering
@@ -678,9 +688,10 @@ Python payload via `FrontendModule.macro_data`; lowering threads it onto
 `lookup_imported_name` (identifier -> resolved `TypeInfo` for *module-visible
 user types* -- the load-bearing downstream-slot signal) and `enum_members` are
 now in hand via the shared `_MacroContextBase` / `TypeInfo` surface, alongside
-field and method-return introspection on a *resolved* type (param/return). Not
-yet built: `is_subtype_of` and method-body function macros. Motivating use case
-driving the remaining work is local-variable type deduction.
+field and method-return introspection on a *resolved* type (param/return) and
+method-body function macros (above). Not yet built: `is_subtype_of`.
+Motivating use case driving the remaining work is local-variable type
+deduction.
 
 #### Deferred post-sema phase
 

@@ -955,22 +955,16 @@ def _lower_function(
             return None
     body = _lower_stmt_list(
         fn.body, name_to_origin, plugin_name, fm, diags)
+    # Methods are their own decoration target: a MACRO entry must declare
+    # "method" in its target_kinds for lowering to thread it into the
+    # method's pending_macros (sema's pass-5.5 runs macros on method
+    # bodies just like free-function ones).
     routed = _route_decorators(
-        fn.decorators, "function", registry, plugin_name, fm, diags)
+        fn.decorators, "method" if is_method else "function",
+        registry, plugin_name, fm, diags)
     if routed is None:
         return None
     pending_macros, native = routed
-    # Function macros run only on module-level free functions (sema's
-    # pass-5.5 doesn't scan methods), so a macro decorator on a method
-    # would silently never fire -- reject it, as the parser does. A
-    # BUILTIN_LOWERING `@native`, by contrast, IS valid on a method (it
-    # becomes method linkage, not a macro).
-    if is_method and pending_macros:
-        diags.append(_ir_invalid(
-            plugin_name, fm,
-            f"method {fn.name!r}: function-macro decorators are not "
-            f"supported on methods"))
-        return None
     linkage = FunctionLinkage.DEFAULT
     native_name: str | None = None
     native_function = False

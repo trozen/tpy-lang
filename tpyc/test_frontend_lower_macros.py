@@ -16,6 +16,9 @@ from tpyc.parse.nodes import FunctionLinkage, RecordLinkage
 
 # A MACRO decorator a plugin contributes via its decorator_manifest.
 DEDUCE = DecoratorEntry("mymacros.deduce", DecoratorRoute.MACRO, ("function",))
+# One that also opts in to methods (pass 5.5 runs macros on method bodies).
+DEDUCE_M = DecoratorEntry(
+    "mymacros.deduce_m", DecoratorRoute.MACRO, ("function", "method"))
 
 
 def _lower(fn=None, records=(), manifest=(), macro_data=None):
@@ -67,14 +70,28 @@ def test_macro_nonliteral_kwarg_is_rejected():
                for d in res.diagnostics)
 
 
-def test_macro_decorator_on_method_is_rejected():
+def test_function_only_macro_on_method_is_rejected():
+    # Methods are their own target kind: a macro that declares only
+    # ("function",) does not silently start applying to method bodies.
     method = Function(name="m", params=(Param(name="self", type=None),),
                       decorators=(Decorator(name="mymacros.deduce"),))
     res = _lower(records=(Record(name="R", methods=(method,)),),
                  manifest=(DEDUCE,))
     assert res.module is None
-    assert any("not supported on methods" in d.diagnostic.message
+    assert any("not valid on a method" in d.diagnostic.message
                for d in res.diagnostics)
+
+
+def test_method_macro_decorator_lowers_to_pending_macro():
+    # A macro that opts in via the "method" target kind threads into the
+    # method's pending_macros for sema's pass 5.5.
+    method = Function(name="m", params=(Param(name="self", type=None),),
+                      decorators=(Decorator(name="mymacros.deduce_m"),))
+    res = _lower(records=(Record(name="R", methods=(method,)),),
+                 manifest=(DEDUCE_M,))
+    assert res.module is not None, res.diagnostics
+    m = res.module.records[0].methods[0]
+    assert m.pending_macros == [("mymacros.deduce_m", {})]
 
 
 # --- registry errors -----------------------------------------------------

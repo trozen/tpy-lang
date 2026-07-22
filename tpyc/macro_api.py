@@ -673,21 +673,50 @@ class FunctionMacroContext(_MacroContextBase):
     registry-backed type introspection from _MacroContextBase, e.g.
     get_field_type for record params), plus in-place mutation
     (annotate_local, replace_expr) and diagnostics.
+
+    The decorated function may be a record method; `record` is then the
+    enclosing TpyRecord (passed by the pass-5.5 expansion loop -- there is
+    no live record context at that point, unlike call macros).
     """
 
     def __init__(self, ctx: SemanticContext, func: TpyFunction,
                  module_qname: str, loc: Any = None,
-                 module_data: Any = None) -> None:
+                 module_data: Any = None,
+                 record: TpyRecord | None = None) -> None:
         super().__init__(
             ctx, loc if loc is not None else getattr(func, "loc", None))
         self._func = func
         self._module_qname = module_qname
         self._module_data = module_data
+        self._record = record
 
     @property
     def function_name(self) -> str:
         """Name of the decorated function."""
         return self._func.name
+
+    @property
+    def is_method(self) -> bool:
+        """True when the decorated function is a record method, including a
+        `@staticmethod` -- `self` is available only for non-static methods
+        (`self_type` returns None for a staticmethod). Mirrors
+        `CallMacroContext.in_method`."""
+        return self._record is not None and self._func.is_method
+
+    @property
+    def self_type(self) -> TypeInfo | None:
+        """The enclosing record as TypeInfo when the decorated function is a
+        non-static method, else None. Mirrors `CallMacroContext.self_type`."""
+        if not self.is_method or self._func.is_staticmethod:
+            return None
+        # Prefer the registry-resolved form (qname-carrying NominalType);
+        # fall back to a bare NominalType when the record is not (yet)
+        # registered -- also the no-SemanticContext unit-test path.
+        resolved = (_resolve_record_name(self._ctx, self._record.name)
+                    if self._ctx is not None else None)
+        if resolved is not None:
+            return resolved
+        return TypeInfo.from_tpy_type(NominalType(self._record.name))
 
     @property
     def module_qname(self) -> str:
@@ -858,6 +887,15 @@ class PostSemaFunctionMacroContext(FunctionMacroContext):
             self.error(
                 f"note_param_mutated: param index {param_index} out of range "
                 f"(host function {self.function_name!r} has {n} params)")
+        # get_function resolves module-level functions by bare name only; for a
+        # method host it would miss (or match an unrelated same-named free
+        # function and corrupt its mutation facts). Method-aware resolution is
+        # the parked follow-up (see TODO.md "note_param_mutated"); until then
+        # reject rather than silently target the wrong FunctionInfo.
+        if self.is_method:
+            self.error(
+                "note_param_mutated: not supported on method hosts yet "
+                f"(function {self.function_name!r} is a method)")
         overloads = self._ctx.registry.get_function(self.function_name)
         if not overloads:
             self.error(

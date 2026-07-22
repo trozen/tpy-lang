@@ -20,18 +20,20 @@ from ..macro_api import (
 from ..diagnostics import SemanticError
 
 if TYPE_CHECKING:
-    from ..parse.nodes import TpyFunction
+    from ..parse.nodes import TpyFunction, TpyRecord
     from .context import SemanticContext
 
 
 def run_function_macros(
     func: 'TpyFunction', ctx: 'SemanticContext', module_qname: str,
-    module_data: 'Any' = None,
+    module_data: 'Any' = None, record: 'TpyRecord | None' = None,
 ) -> None:
     """Resolve and apply `@function_macro` decorators on `func` in place.
 
     `module_data` is the enclosing module's opaque plugin payload
     (`TpyModule.macro_data`), surfaced to each macro as `ctx.module_data`.
+    `record` is the enclosing record when `func` is a method (surfaced as
+    `ctx.self_type`); None for free functions.
 
     No-op when the function carries no pending macros.
     """
@@ -52,7 +54,7 @@ def run_function_macros(
         if macro_fn is None:
             raise SemanticError(f"Unknown function macro '{qname}'", func.loc)
         fmctx = FunctionMacroContext(ctx, func, module_qname, loc=func.loc,
-                                     module_data=module_data)
+                                     module_data=module_data, record=record)
         try:
             macro_fn(fmctx, **kwargs)
         except MacroError as e:
@@ -67,7 +69,7 @@ def run_function_macros(
 
 def run_deferred_sema_macros(
     func: 'TpyFunction', ctx: 'SemanticContext', module_qname: str,
-    module_data: 'Any' = None,
+    module_data: 'Any' = None, record: 'TpyRecord | None' = None,
 ) -> None:
     """Drain callbacks registered via ctx.defer_until_sema_complete on `func`,
     AFTER its body has been type-checked (post pass 7).
@@ -83,7 +85,7 @@ def run_deferred_sema_macros(
     func.pending_deferred_sema_macros = []
     for callback in callbacks:
         pmctx = PostSemaFunctionMacroContext(
-            ctx, func, module_qname, module_data=module_data)
+            ctx, func, module_qname, module_data=module_data, record=record)
         try:
             callback(pmctx)
         except MacroError as e:

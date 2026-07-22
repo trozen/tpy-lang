@@ -2319,6 +2319,7 @@ class Parser:
         native_cpp_return_type: str | None = None
         send_override: bool | None = None
         sync_override: bool | None = None
+        pending_macros: list[tuple[str, dict[str, Any]]] = []
         for dec in node.decorator_list:
             # Detect @prop_name.setter / @prop_name.deleter before general resolution
             func_node_check = dec.func if isinstance(dec, ast.Call) else dec
@@ -2391,8 +2392,12 @@ class Parser:
                     raise ParseError(
                         f"@{bare_name(qname)}(cpp_return_type=...) requires a type name", dec)
             else:
-                dec_name = self._decorator_local_name(dec) or "?"
-                raise ParseError(f"Unknown decorator '{dec_name}' on method '{node.name}'", dec)
+                # Resolved name that is not a builtin method decorator --
+                # treat as a @function_macro, mirroring the free-function
+                # path (sema resolves against the macro registry and errors
+                # if unregistered).
+                macro_kwargs = self._extract_decorator_kwargs(dec, arg, node.name)
+                pending_macros.append((qname, macro_kwargs))
         if is_override and is_staticmethod:
             raise ParseError(f"@override cannot be combined with @staticmethod on method '{node.name}'", node)
         if is_property_getter:
@@ -2647,6 +2652,7 @@ class Parser:
             self_annotation=self_annotation,
             send_override=send_override,
             sync_override=sync_override,
+            pending_macros=pending_macros,
             loc=self._loc(node)
         )
         return method

@@ -42,16 +42,18 @@ class DecoratorRegistryError(Exception):
 
 
 # Valid decoration targets, mirroring the IR nodes that carry a
-# `decorators` tuple. Methods lower through the function path, so they
-# count as "function".
+# `decorators` tuple. Methods lower through the function path but are
+# their own target kind: a decorator must opt in to "method" explicitly,
+# so a function macro never silently starts applying to method bodies.
 _TARGET_KINDS = frozenset(
-    ("function", "record", "field", "enum", "enum_value", "constant"))
+    ("function", "method", "record", "field", "enum", "enum_value",
+     "constant"))
 
 
 # TPy-builtin decorators a plugin may emit, preloaded into every registry.
 CORE_DECORATORS: tuple[DecoratorEntry, ...] = (
     DecoratorEntry("tpy.native", DecoratorRoute.BUILTIN_LOWERING,
-                   ("function", "record")),
+                   ("function", "method", "record")),
 )
 
 

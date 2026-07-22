@@ -1,0 +1,1 @@
+main.py:10: error: Unknown function macro 'badmod.not_a_macro'

@@ -4235,13 +4235,19 @@ class SemanticAnalyzer:
         return (ult_mod, ult_name, bd.kind)
 
     def _expand_function_macros(self, module: TpyModule) -> None:
-        """Pass 5.5: run @function_macro decorators on free-function bodies.
+        """Pass 5.5: run @function_macro decorators on record-method and
+        free-function bodies (mirrors `_expand_builder_traces`' walk).
 
         Iterates unconditionally (each function with no pending macros is a
         cheap no-op) so an unresolved macro decorator errors rather than
-        being silently dropped. Only free functions carry function macros;
-        methods reject the decorator at parse time.
+        being silently dropped. Methods run first so a macro can't observe
+        a module where some free functions are expanded and methods aren't.
         """
+        for record in module.all_records():
+            for method in record.methods:
+                run_function_macros(method, self.ctx, self.ctx.module_name,
+                                    module_data=module.macro_data,
+                                    record=record)
         for func in list(module.functions):
             run_function_macros(func, self.ctx, self.ctx.module_name,
                                 module_data=module.macro_data)
@@ -4258,10 +4264,18 @@ class SemanticAnalyzer:
         """Post-pass-7: run callbacks a macro deferred via
         ctx.defer_until_sema_complete. They run here -- after every body in
         the module is type-checked -- so they can read inferred expression
-        types (absent at pass 5.5 when the macro itself ran). Skip functions
-        whose body Pass 7 never analyzed, so a callback never reads empty
-        expr_types.
+        types (absent at pass 5.5 when the macro itself ran). Skip bodies
+        passes 6/7 never analyzed (@overload stubs, @inline), so a callback
+        never reads empty expr_types.
         """
+        for record in module.all_records():
+            for method in record.methods:
+                if self._skip_body_analysis(method):
+                    continue
+                run_deferred_sema_macros(method, self.ctx,
+                                         self.ctx.module_name,
+                                         module_data=module.macro_data,
+                                         record=record)
         for func in list(module.functions):
             if self._skip_body_analysis(func):
                 continue
