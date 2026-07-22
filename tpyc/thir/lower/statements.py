@@ -2356,11 +2356,20 @@ def _ptr_union_slot_kind(init: TpyExpr, ptr_u: 'UnionType',
     # is source-type-blind (member F1-ness is already `_eligible_ptr_union`'s
     # admission). Anything else must be a concrete F1 member.
     whole_union = it_u == ptr_u
+    scalar_member = False
     if not whole_union:
         if not any(m == it_u for m in ptr_u.members):
             return None
         if not _f1_record(it_u, analyzer):
-            return None
+            # A scalar MEMBER of a mixed union (`a: Int32 | Dog | None =
+            # Int32(42)`): a type-ctor RVALUE takes the same value-variant
+            # `__slot_N` + lift (the AST rvalue branch is member-shape-blind,
+            # the slot init being the ctor's folded render). Scalar NAME
+            # sources stay out (unwitnessed).
+            if not (_eligible_scalar(it_u) and isinstance(init, TpyCall)
+                    and is_rvalue_source(analyzer, init)):
+                return None
+            scalar_member = True
     if whole_union:
         # An `Own[A | B]`-returning free call: the F1-record type gate of
         # `_record_rvalue_source_shape` cannot apply, so run the
@@ -2370,6 +2379,8 @@ def _ptr_union_slot_kind(init: TpyExpr, ptr_u: 'UnionType',
                 and _rvalue_free_call_shape(init, analyzer)):
             return PtrSlotKind.UNION_RVALUE
         return None
+    if scalar_member:
+        return PtrSlotKind.UNION_RVALUE
     if (is_rvalue_source(analyzer, init)
             and _record_rvalue_source_shape(init, analyzer)):
         return PtrSlotKind.UNION_RVALUE
@@ -4855,8 +4866,13 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             # a view source, which is invalid C++ (vector has no span
             # operator=) -- a pre-existing AST bug (BUGS.md); mirrored
             # byte-identically rather than silently fixed on one path.
+            # A write-seeded native-linkage global's target spells the BARE
+            # C name (`g_counter = val;` -- the AST global-write arm's
+            # native_global_names.get target).
             return THIRAssign(
-                target=THIRName(result_type=vtype, name=stmt.name, loc=loc),
+                target=THIRName(
+                    result_type=vtype, name=stmt.name,
+                    cpp=lc.prescan.global_write_cpp.get(stmt.name), loc=loc),
                 value=init,
                 loc=loc,
             )

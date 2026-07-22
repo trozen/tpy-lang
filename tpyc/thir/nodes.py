@@ -302,11 +302,17 @@ class THIRIsNone(THIRExpr):
     On an `Any` subject (`any_typeid=True`) it renders the typeid probe
     `(a.value.has_value() && a.value.type() == typeid(std::monostate))` (D15):
     the Any cell holds None as a `std::monostate` value, and an empty/moved-from
-    Any is not None."""
+    Any is not None.
+
+    On a union-typed NAME binding (`union_monostate=True`) it renders the
+    monostate holds test `(std::holds_alternative<std::monostate>(v))` /
+    `(!...)` -- _gen_binop's union arm, identical for value- and
+    pointer-variant reprs (monostate is a value member in both)."""
     operand: THIRExpr
     negate: bool = False
     value_repr: bool = False
     any_typeid: bool = False
+    union_monostate: bool = False
 
 
 @dataclass(frozen=True)

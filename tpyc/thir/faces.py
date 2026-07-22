@@ -33,6 +33,8 @@ THIR_FACES: frozenset[str] = frozenset({
     # THIRArgTemp arms (lowering; _lower_call_arg / the method-arg row).
     "argtemp.value_union",          # free-call value-union member temp
     "argtemp.value_union_method",   # method-call value-union member temp
+    "argtemp.recursive_union_literal",  # list/dict literal into a recursive-
+                                    # union wrapper slot (json.dumps([...]))
     "argtemp.record_rvalue",        # record-ctor rvalue into a ref slot
     # Protocol-slot arg wrap: the @dynamic Adapter / RefAdapter / concrete
     # materialization, and the structural slot's `auto __tmp_N` rvalue temp.
@@ -537,6 +539,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "fstr.any_arg",
     # `Any is [not] None`: the D15 typeid probe against std::monostate.
     "isnone.any_typeid",
+    "isnone.union_monostate",        # union-binding `is [not] None` ->
+                                     # holds_alternative<std::monostate>
     # Value-tuple slots (`tuple[scalar|str, ...]`): the spelled
     # `std::tuple<...>{...}` literal render at returns / decls, and the bare
     # value-tuple name return.

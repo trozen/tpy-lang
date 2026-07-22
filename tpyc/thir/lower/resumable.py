@@ -110,7 +110,7 @@ from .expressions import (
 )
 from .functions import (
     _check_callable_structure,
-    _seed_readonly_globals,
+    _seed_global_scope,
     method_self_type_by_name,
 )
 from . import match as _match
@@ -1067,17 +1067,13 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     if has_self:
         declared["self"] = self_type  # the record receiver, a field source
     declared.update(handler_bindings)
-    # Read-only value-global seeding, like lower_function's and the ctor
-    # entry's (resumable bodies read module globals too). A global is never
-    # a frame field, so its reads render exactly the sync spellings -- bare
-    # same-module, qualified native/imported -- with no frame peel. Only
-    # the read-only half: `global`-write names stay unseeded, so a
-    # TpyGlobal statement still rejects the body (prescan.global_seeded
-    # stays empty), and assigned/shadow-bound names are excluded by the
-    # seeding helper itself (they are locals, i.e. frame fields).
-    lc.prescan.native_globals = dict(native_globals or {})
-    lc.prescan.global_readonly, lc.prescan.global_cpp = _seed_readonly_globals(
-        func, analyzer, declared, native_globals or {})
+    # Global seeding, like lower_function's and the ctor entry's. A global
+    # is never a frame field, so reads render exactly the sync spellings --
+    # bare same-module, qualified native/imported -- with no frame peel,
+    # and a `global`-declared name's write renders the same module-slot
+    # `g = v;` as a sync body's (the AST resumable emit is
+    # function-kind-blind there).
+    _seed_global_scope(func, analyzer, lc, declared, native_globals or {})
 
     # Pass 1 -- scope registration. Each frame-field decl (and each await
     # bind on a fresh name) registers its FIRST decl's type, in BB-id order.

@@ -763,6 +763,9 @@ class TestSlicedOutShapes:
         assert fallback.get("resumable:stmt.del_var:binding") == 1
 
     def test_global_lowering_reject_falls_back_after_await(self):
+        # A STR global is not an eligible-scalar write slot, so its
+        # `global` declaration stays unseeded (the write-seeding admits
+        # scalar / Ptr-value globals only, resumables included).
         src = (_PRE
                + "message = 'before'\n\n"
                + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
@@ -773,6 +776,22 @@ class TestSlicedOutShapes:
                + "def main() -> None:\n    pass\nmain()\n")
         _, fallback = _assert_identical(src)
         assert fallback.get("resumable:stmt.global:global.unseeded") == 1
+
+    def test_scalar_global_write_routes_after_await(self):
+        # A `global`-declared scalar write in a resumable renders the same
+        # module-slot `counter = ...;` as a sync body's (a global is never
+        # a frame field).
+        src = (_PRE
+               + "counter: Int32 = 0\n\n"
+               + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
+               + "async def f(n: Int32) -> Int32:\n"
+               + "    global counter\n"
+               + "    n = await step(n)\n"
+               + "    counter = counter + n\n"
+               + "    return counter\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        _, fallback = _assert_identical(src)
+        assert not fallback
 
     def test_raise_lowering_reject_falls_back_after_await(self):
         src = (_PRE
@@ -2641,9 +2660,10 @@ class TestResumableGlobals:
         assert witnesses.get("name.global_seeded")
         assert not any(k.startswith("resumable:") for k in fallback)
 
-    def test_global_write_still_defers(self):
-        # Only the read-only half seeds: a `global`-declared write name
-        # stays unseeded, so the TpyGlobal statement rejects the body.
+    def test_scalar_global_write_seeds_and_routes(self):
+        # The write half seeds in resumables too: a
+        # `global`-declared scalar write renders the sync module-slot
+        # `counter = 1;` -- no frame field, no fallback.
         src = ("import asyncio\nfrom tpy import Int32\n\n"
                + "counter: Int32 = 0\n\n"
                + "async def f() -> None:\n"
@@ -2652,7 +2672,7 @@ class TestResumableGlobals:
                + "    await asyncio.sleep(0)\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
         fallback = _res_fallback(src)
-        assert sum(fallback.values()) >= 1
+        assert not any(k.startswith("resumable:") for k in fallback)
         _assert_identical(src)
 
 

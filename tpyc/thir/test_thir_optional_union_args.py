@@ -10,8 +10,8 @@ import io
 
 from .emit import emit_thir_body
 from .nodes import (
-    THIRCall, THIRExprStmt, THIRLiteral, THIROptionalPtrArg, THIRPrint,
-    THIRUnionArgLift,
+    THIRArgTemp, THIRCall, THIRContainerLiteral, THIRExprStmt, THIRLiteral,
+    THIROptionalPtrArg, THIRPrint, THIRUnionArgLift,
 )
 from .testutil import (_assert_byte_identical, _fn, _lower, _lower_ctx,
                        _lower_ctx_witnessed)
@@ -182,6 +182,180 @@ class TestUnionCtorTempArg:
         assert isinstance(arg, THIRUnionArgLift) and arg.temp_cpp is None
         assert _body(thir, "f") == (
             "    check(std::variant<Cat*, Dog*>{&(d)});\n")
+
+
+_MIXED_UNION = (
+    "from tpy import Int32\n"
+    "class Dog:\n"
+    "    name: str\n"
+    "    def __init__(self, name: str) -> None:\n        self.name = name\n"
+    "def check(v: Int32 | Dog | None) -> bool:\n"
+    "    return v is None\n"
+)
+
+
+class TestUnionNoneTest:
+    """The union-binding `is [not] None` monostate arm and the mixed
+    scalar+record ptr-union family it unblocks."""
+
+    def test_union_param_none_test_renders_monostate_holds(self):
+        thir, faces = _lower_ctx_witnessed(_MIXED_UNION + (
+            "def f(v: Int32 | Dog | None) -> bool:\n"
+            "    return v is not None\n"))
+        assert _body(thir, "f") == (
+            "    return (!std::holds_alternative<std::monostate>(v));\n")
+        assert faces.get("isnone.union_monostate", 0) >= 1
+
+    def test_commuted_none_is_v_routes(self):
+        thir = _lower_ctx(_MIXED_UNION + (
+            "def f(v: Int32 | Dog | None) -> bool:\n"
+            "    return None is v\n"))
+        assert _body(thir, "f") == (
+            "    return (std::holds_alternative<std::monostate>(v));\n")
+
+    def test_mixed_union_isinstance_routes_byte_identical(self):
+        src = _MIXED_UNION + (
+            "def f(v: Int32 | Dog | None) -> str:\n"
+            "    if v is None:\n"
+            "        return \"none\"\n"
+            "    if isinstance(v, Int32):\n"
+            "        return \"int\"\n"
+            "    return \"other\"\n")
+        assert _fn(_lower_ctx(src), "f") is not None
+        _assert_byte_identical(src)
+
+    def test_scalar_ctor_into_mixed_union_hoists_member_temp(self):
+        thir, faces = _lower_ctx_witnessed(_MIXED_UNION + (
+            "def f() -> None:\n    check(Int32(1))\n"))
+        assert _body(thir, "f") == (
+            "    int32_t __tmp_1 = 1;\n"
+            "    check(std::variant<std::monostate, Dog*, int32_t*>"
+            "{&__tmp_1});\n")
+        assert faces.get("unionlift.ctor_temp", 0) >= 1
+
+    def test_scalar_ctor_decl_slot_lifts(self):
+        src = _MIXED_UNION + (
+            "def f() -> None:\n"
+            "    a: Int32 | Dog | None = Int32(42)\n"
+            "    print(check(a))\n")
+        assert _fn(_lower_ctx(src), "f") is not None
+        _assert_byte_identical(src)
+
+    def test_wrapper_union_none_test_still_defers(self):
+        # A recursive-alias wrapper binding reads through `.value` -- a
+        # different render, out of slice.
+        src = (
+            "type Tree = int | None | list[Tree]\n"
+            "def f(t: Tree) -> bool:\n"
+            "    return t is None\n")
+        assert _fn(_lower_ctx(src), "f") is None
+
+    def test_scalar_name_decl_source_still_defers(self):
+        # A scalar-member NAME init at a mixed-union decl slot stays out
+        # (only type-ctor RVALUES route the UNION_RVALUE slot).
+        src = _MIXED_UNION + (
+            "def f(n: Int32) -> None:\n"
+            "    a: Int32 | Dog | None = n\n"
+            "    print(check(a))\n")
+        assert _fn(_lower_ctx(src), "f") is None
+
+    def test_str_member_union_member_keyed_still_defers(self):
+        # A str member fails _eligible_ptr_union, so member-KEYED positions
+        # (isinstance narrowing here) keep rejecting even though the
+        # member-blind None-test routes.
+        src = (
+            "from tpy import Int32\n"
+            "class Dog:\n"
+            "    name: str\n"
+            "    def __init__(self, name: str) -> None:\n"
+            "        self.name = name\n"
+            "def f(v: str | Dog | None) -> bool:\n"
+            "    if isinstance(v, Dog):\n"
+            "        return True\n"
+            "    return False\n")
+        assert _fn(_lower_ctx(src), "f") is None
+
+    def test_str_member_union_none_test_member_blind(self):
+        # The None-test render is MEMBER-BLIND (holds_alternative over the
+        # monostate slot), so even a str-member ptr-union subject routes it
+        # -- pinned byte-identical. Member-KEYED positions (isinstance,
+        # args, decls) still reject str members via _eligible_ptr_union.
+        src = (
+            "from tpy import Int32\n"
+            "class Dog:\n"
+            "    name: str\n"
+            "    def __init__(self, name: str) -> None:\n"
+            "        self.name = name\n"
+            "def f(v: str | Dog | None) -> bool:\n"
+            "    return v is None\n")
+        assert _fn(_lower_ctx(src), "f") is not None
+        _assert_byte_identical(src)
+
+
+class TestRecursiveUnionLiteralArg:
+    """The qualcall recursive-union wrapper ArgTemp row (`json.dumps([...])`
+    -- `JsonValue __tmp_N = std::vector<JsonValue>{...};` + the bare temp at
+    the arg position) and its boundaries."""
+
+    def test_list_literal_hoists_wrapper_temp(self):
+        # Node shape + witness; the wrapper/vector SPELLINGS come from the
+        # per-compilation alias maps codegen populates, so the exact render
+        # is pinned by _assert_byte_identical below, not by _body here.
+        src = ("import json\n"
+               "def f() -> None:\n    print(json.dumps([1, None, \"x\"]))\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        stmt = _fn(thir, "f").body[0]
+        assert isinstance(stmt, THIRPrint)
+        arg = stmt.args[0].expr.args[0]
+        assert isinstance(arg, THIRArgTemp)
+        assert isinstance(arg.init, THIRContainerLiteral)
+        none_elem = arg.init.elements[1]
+        assert isinstance(none_elem, THIRLiteral) and none_elem.value is None
+        assert faces.get("argtemp.recursive_union_literal", 0) >= 1
+        _assert_byte_identical(src)
+
+    def test_nested_mixed_literals_byte_identical(self):
+        src = (
+            "import json\n"
+            "def f() -> None:\n"
+            "    print(json.dumps([1, [None, {\"a\": [], \"b\":"
+            " {\"c\": [True, 1.5, \"x\"]}}], \"y\"]))\n"
+            "    print(json.dumps({\"a\": {}, \"b\": []}))\n")
+        assert _fn(_lower_ctx(src), "f") is not None
+        _assert_byte_identical(src)
+
+    def test_nonliteral_element_still_defers(self):
+        src = ("import json\n"
+               "def f(n: int) -> None:\n    print(json.dumps([1, n]))\n")
+        assert _fn(_lower_ctx(src), "f") is None
+
+    def test_beyond_int32_literal_still_defers(self):
+        # A wider literal takes the width-pinned ctor spelling -- unmirrored.
+        src = ("import json\n"
+               "def f() -> None:\n    print(json.dumps([1099511627776]))\n")
+        assert _fn(_lower_ctx(src), "f") is None
+
+    def test_nonliteral_dict_key_still_defers(self):
+        src = ("import json\n"
+               "def f(k: str) -> None:\n    print(json.dumps({k: 1}))\n")
+        assert _fn(_lower_ctx(src), "f") is None
+
+    def test_negative_literal_element_still_defers(self):
+        # A negative literal parses as a unary op, not a literal node --
+        # outside the element family.
+        src = ("import json\n"
+               "def f() -> None:\n    print(json.dumps([-1]))\n")
+        assert _fn(_lower_ctx(src), "f") is None
+
+    def test_generic_alias_instance_literal_still_defers(self):
+        # A generic recursive-alias instance slot is a
+        # RecursiveAliasInstanceType, never the UnionType the wrapper row
+        # keys on -- the literal arg keeps falling back.
+        src = (
+            "type Tree[T] = T | None | list[Tree[T]]\n"
+            "def sink(t: Tree[int]) -> None:\n    pass\n"
+            "def f() -> None:\n    sink([1, None])\n")
+        assert _fn(_lower_ctx(src), "f") is None
 
 
 class TestValueOptReturnPosition:

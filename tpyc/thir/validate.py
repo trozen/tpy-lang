@@ -330,9 +330,13 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
         # Ternary ARMS evaluate lazily: a hoisted temp there would run
         # eagerly before the statement -- lowering never threads allow_temps
         # into arms, so the validator resets the right (zero false
-        # positives) and keeps the miscompile class detectable.
+        # positives) and keeps the miscompile class detectable. The
+        # CONDITION evaluates exactly once unconditionally, so it inherits
+        # the enclosing flush right (`Gate __tmp_1 = Gate(true);` before
+        # `((check(__tmp_1)) ? (1) : (0))` -- the AST hoist).
         for child in _iter_children(node):
-            _walk(owner, child, return_type)
+            _walk(owner, child, return_type,
+                  argtemp_ok=argtemp_ok and child is node.cond)
         return
     if (isinstance(node, THIRBinOp) and node.resolved is None
             and node.op in ("&&", "||")):

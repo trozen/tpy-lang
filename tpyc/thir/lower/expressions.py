@@ -319,10 +319,13 @@ from .predicates import (
     _tuple_compare_pair,
     _value_tuple_global,
     _value_tuple_return,
+    _ru_container_literal_ok,
+    _ru_wrapper_arg_slot,
     _value_union_temp_slot,
     _union_binding_divergent,
     _any_compare_pair,
     _any_none_subject,
+    _union_none_name,
     _union_compare_pair,
     _record_compare_pair,
     _unrouted_binding_read,
@@ -1549,6 +1552,28 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                 form=Form.VALUE,
                 loc=loc)
         operand = e.right if isinstance(e.left, TpyNoneLiteral) else e.left
+        ut_none = _union_none_name(operand, declared, analyzer)
+        if ut_none is not None:
+            # `v is None` on a union binding: the monostate holds test over
+            # the bare variant read (identical for value/pointer reprs; the
+            # AST arm is order-blind, so `None is v` lands here too). A
+            # NARROWED subject's read is its extraction alias -- the AST
+            # still tests the variant binding, so reject rather than
+            # route-and-diverge.
+            assert isinstance(operand, TpyName)
+            if (operand.name in lc.narrow.narrowed
+                    or operand.name in lc.inline_narrowed
+                    or operand.name in lc.narrow.spelled):
+                raise ThirUnsupported("binop.union_none_narrowed_subject")
+            _witness("isnone.union_monostate")
+            return THIRIsNone(
+                result_type=rtype,
+                operand=_lower_expr(operand, lc, declared,
+                                    allow_union_divergent=True),
+                negate=e.op == "is not",
+                union_monostate=True,
+                form=Form.VALUE,
+                loc=loc)
         # A value-repr Optional binding (param OR declared local -- e.g. a
         # try-hoisted `std::optional<T> r;` slot) None-tests via has_value;
         # pointer-repr bindings via `!= nullptr`. An Optional FIELD subject
@@ -2879,7 +2904,8 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                 or bytes_rt is not None):
             note_detail("ifexpr.result_type")
             raise ThirUnsupported("expr.ifexpr")
-        return _lower_if_expr(e, rtype, lc, declared, loc)
+        return _lower_if_expr(e, rtype, lc, declared, loc,
+                              cond_temps_ok=use.allow_temps)
     if isinstance(e, TpyCall):
         if not isinstance(e.func, TpyName):
             # An expression callee (`make_adder(10)(5)`, `fns[i](x)`) has a
@@ -4674,6 +4700,48 @@ def _lower_checked_container_elem(
         suppress_move=suppress_move)
 
 
+def _lower_ru_literal(e: TpyExpr, ut: 'UnionType', lc: '_LowerCtx',
+                      declared: dict[str, TpyType]) -> THIRExpr:
+    """Lower a list/dict literal admitted by `_ru_container_literal_ok` for a
+    recursive-union wrapper slot, mirroring the AST's element targeting: a
+    non-empty list spells the typed prefix (`std::vector<W>{...}` -- the
+    `list[AliasRef]` arm of `_gen_array_literal`; the union_prefix arm spells
+    the identical member type for nested literals), an empty list keeps the
+    emit's bare-to_cpp empty spelling, a dict is self-describing
+    (`::tpy::ordered_map<K, W>({{k, v}, ...})`, both spellings bare to_cpp
+    like `_gen_dict_literal`), None renders the wrapper's monostate via the
+    union-typed literal, and scalar literals keep their target-less render."""
+    at = lc.analyzer.get_expr_type(e)
+    at = resolve_pending_container(at, lc.analyzer) or at
+    loc = getattr(e, "loc", None)
+    if isinstance(e, TpyArrayLiteral):
+        elems = tuple(_lower_ru_elem(x, ut, lc, declared)
+                      for x in e.elements)
+        return THIRContainerLiteral(
+            result_type=at, elements=elems,
+            typed_brace_cpp=lc.render_type(at) if e.elements else None,
+            loc=loc)
+    assert isinstance(e, TpyDictLiteral)
+    keys = tuple(_lower_expr(k, lc, declared, use=_NESTED_ARG_USE)
+                 for k in e.keys)
+    vals = tuple(_lower_ru_elem(v, ut, lc, declared) for v in e.values)
+    return THIRContainerLiteral(result_type=at, elements=keys, values=vals,
+                                loc=loc)
+
+
+def _lower_ru_elem(x: TpyExpr, ut: 'UnionType', lc: '_LowerCtx',
+                   declared: dict[str, TpyType]) -> THIRExpr:
+    if isinstance(x, (TpyArrayLiteral, TpyDictLiteral)):
+        return _lower_ru_literal(x, ut, lc, declared)
+    if isinstance(x, TpyNoneLiteral):
+        # The wrapper's None alternative: the union-typed literal takes the
+        # emit's monostate render (the AliasRef-target arm of the AST's
+        # None-literal emit).
+        return THIRLiteral(result_type=ut, value=None, form=Form.VALUE,
+                           loc=getattr(x, "loc", None))
+    return _lower_expr(x, lc, declared, use=_NESTED_ARG_USE)
+
+
 def _lower_container_elem(e: TpyExpr, slot: TpyType | None,
                           lc: '_LowerCtx', declared: dict[str, TpyType], *,
                           retype_scalars: bool = True,
@@ -5299,18 +5367,24 @@ def _value_opt_member_arg(a: TpyExpr, ptype: 'TpyType | None',
 def _union_ctor_temp_arg(a: TpyExpr, ptype: 'TpyType | None', analyzer) -> bool:
     """A member-typed record-ctor rvalue into a (non-Own) pointer-variant
     union slot -- `_gen_union_arg`'s rvalue branch: the ctor hoists a named
-    temp and the variant lifts its address (`pv{&__tmp_N}`). Temp-hoisting,
-    so the caller admits it only under `temp_args`."""
+    temp and the variant lifts its address (`pv{&__tmp_N}`). A SCALAR
+    type-ctor rvalue (`check(Int32(1))` on a mixed union) takes the same
+    branch -- the AST render is member-shape-blind
+    (`int32_t __tmp_N = 1;` + `pv{&__tmp_N}`), the temp init being the
+    ctor's ordinary folded render. Temp-hoisting, so the caller admits it
+    only under `temp_args`."""
     slot = _arg_ptr_union_slot(ptype, analyzer)
     if slot is None:
         return False
     ut, _deep_const = slot
-    if not isinstance(a, TpyCall) or not _ctor_shape_ok(a, analyzer):
-        return False
-    if not is_rvalue_source(analyzer, a):
+    if not isinstance(a, TpyCall) or not is_rvalue_source(analyzer, a):
         return False
     at = analyzer.get_expr_type(a)
-    return any(at == m for m in ut.members if not is_void_like_type(m))
+    if not any(at == m for m in ut.members if not is_void_like_type(m)):
+        return False
+    if _eligible_scalar(at):
+        return True
+    return _ctor_shape_ok(a, analyzer)
 
 
 def _inst_slice_arg_ok(arg: TpyExpr, analyzer) -> bool:
@@ -5934,7 +6008,8 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                                init=inner, form=Form.BORROW,
                                loc=getattr(a, "loc", None))
         rec_pt = _record_rvalue_temp_slot(a, ptype, lc.analyzer,
-                                          frame_capturing=frame_capturing)
+                                          frame_capturing=frame_capturing,
+                                          upcast_ok=True)
         if rec_pt is not None:
             _witness("argtemp.record_rvalue")
             return THIRArgTemp(
@@ -5958,6 +6033,17 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                 init=init,
                 form=Form.VALUE,
                 loc=getattr(a, "loc", None))
+        # A list/dict LITERAL into a recursive-union WRAPPER slot
+        # (`json.dumps([1, 2, 3])`): `_gen_union_arg`'s value branch hoists
+        # `JsonValue __tmp_N = std::vector<JsonValue>{...};` (create_typed,
+        # `= init` form) and passes the bare temp name.
+        ru = _ru_wrapper_arg_slot(ptype)
+        if ru is not None and _ru_container_literal_ok(a, lc.analyzer):
+            _witness("argtemp.recursive_union_literal")
+            return THIRArgTemp(result_type=ru, cpp_type=lc.render_type(ru),
+                               init=_lower_ru_literal(a, ru, lc, declared),
+                               form=Form.VALUE,
+                               loc=getattr(a, "loc", None))
     # A str-slice arg into an `Own[str]` container element slot
     # (`xs.append(s)`): a VIEW-form source (BORROW -- a str param / StrView
     # local) materializes an owned copy `std::string(x)` via the S1 view->owned
@@ -6735,7 +6821,8 @@ def _bytes_view_arm(e: TpyExpr, lc: '_LowerCtx') -> bool:
     return rt is not None and is_bytes_view_type(rt)
 
 def _lower_if_expr(e: TpyIfExpr, rtype: 'TpyType | None', lc: '_LowerCtx',
-                   declared: dict[str, TpyType], loc) -> THIRIfExpr:
+                   declared: dict[str, TpyType], loc, *,
+                   cond_temps_ok: bool = False) -> THIRIfExpr:
     """`a if c else b` -> `((cond) ? (then) : (else))`, _gen_if_expr's render.
     The arm slot is the ternary's OWN resolved type (`branch_target =
     result_type` -- the consumer's target is ignored), so the target-typed
@@ -6749,7 +6836,10 @@ def _lower_if_expr(e: TpyIfExpr, rtype: 'TpyType | None', lc: '_LowerCtx',
     if slot is not None:
         slot = resolve_int_literals(unwrap_readonly(slot),
                                     analyzer.ctx.default_int_for_literal)
-    cond = _lower_truthy(e.condition, lc, declared)
+    # The condition evaluates exactly once unconditionally, so the
+    # enclosing flush right extends into it (the AST hoists its arg temps
+    # before the statement); the ARMS evaluate lazily and never get it.
+    cond = _lower_truthy(e.condition, lc, declared, temps_ok=cond_temps_ok)
     then = _slot_literal_retype(
         _lower_char_targeted(e.then_expr, slot, lc, declared), slot, lc)
     orelse = _slot_literal_retype(

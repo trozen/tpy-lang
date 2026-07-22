@@ -2720,6 +2720,56 @@ class TestGlobalStmt:
         assert "counter = (::tpy::add_check<int32_t>(counter, 1));" in cpp
 
 
+class TestGlobalWriteSeeding:
+    """`global`-write seeding beyond plain sync same-module scalars: the
+    native-linkage C-name write target, the constructor entry, and the
+    Optional-typed boundary (stays unseeded -- the gated Optional-global
+    cell)."""
+
+    NATIVE_SRC = (
+        "from tpy.extern import native_global\n"
+        "from tpy import Int32\n"
+        "opentop: Int32 = native_global(\"opentop\", binding=\"C\")\n"
+        "counter: Int32 = native_global(\"g_counter\", binding=\"C\")\n"
+        "def set_same(val: Int32) -> None:\n"
+        "    global opentop\n    opentop = val\n"
+        "def set_renamed(val: Int32) -> None:\n"
+        "    global counter\n    counter = val\n"
+    )
+
+    def test_native_global_write_targets_c_name(self):
+        compiler, modules = _compile(self.NATIVE_SRC)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=True))
+        assert "opentop = val;" in cpp
+        assert "g_counter = val;" in cpp
+        _assert_byte_identical(self.NATIVE_SRC)
+
+    def test_ctor_global_write_routes_byte_identical(self):
+        src = (_PRELUDE
+               + "count: Int32 = 0\n"
+               + "class C:\n"
+               + "    v: Int32\n"
+               + "    def __init__(self) -> None:\n"
+               + "        global count\n"
+               + "        count = count + 1\n"
+               + "        self.v = count\n"
+               + "def main() -> None:\n    c = C()\n    print(c.v)\nmain()\n")
+        _assert_byte_identical(src)
+
+    def test_optional_global_write_stays_unseeded(self):
+        # An Optional-typed global is not an eligible scalar slot; its
+        # `global` declaration keeps rejecting the body (the value-Optional
+        # seeding cell is gated on an AST-side BUGS verify).
+        src = (_PRELUDE
+               + "from typing import Optional\n"
+               + "g: Optional[Int32] = None\n"
+               + "def w() -> None:\n    global g\n    g = None\n")
+        assert _fn(_lower_ctx(src), "w") is None
+
+
 class TestBreakContinueEmit:
     SRC = (
         _PRELUDE

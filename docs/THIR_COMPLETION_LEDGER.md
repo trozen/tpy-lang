@@ -2030,3 +2030,43 @@ byte-diff itself.
   urllib_parse_quote (tuple-for-head lane), walrus_reassign (Optional/str
   walrus slices), user_dunders inplace increment (memo B pricing STALE --
   fragments into record-binop returns + decl slots + aug-assign, not +2).
+
+- **Landed: union-none/globals/upcast wave (`thir-wave-next3`, 2026-07-22
+  night, 5 cells, dial 2189 -> 2214, +25).** (1) The json qualcall trio
+  (memo III): `_ru_wrapper_arg_slot` + `_ru_container_literal_ok` +
+  `_lower_ru_literal` -- list/dict LITERALS into non-generic
+  recursive-union wrapper slots hoist `JsonValue __tmp_N = <literal>;`
+  (typed list prefix, monostate None, self-describing ordered_map;
+  int32-range/finite scalar literals + str-literal dict keys only;
+  nocopy wrapper members reject). Face argtemp.recursive_union_literal.
+  (2) Union/None lane (round-6 A1/A3 + cell B): THIRIsNone grew
+  `union_monostate` (member-blind `std::holds_alternative<std::monostate>
+  (v)` on a non-wrapper union NAME binding, commuted included; narrowed
+  subjects reject; wrapper unions defer -- the `.value` read);
+  `_eligible_ptr_union` admits eligible-SCALAR members of MIXED unions
+  (`Int32 | Dog | None` -- renders are member-shape-blind);
+  `_union_ctor_temp_arg` + `_ptr_union_slot_kind` take scalar type-ctor
+  rvalues (`check(Int32(1))` -> `int32_t __tmp_N = 1;` + address lift /
+  the UNION_RVALUE decl slot). (3) Globals write seeding (round-6 lane V
+  cell A): native-linkage `global` names seed with the BARE C-name write
+  target (`prescan.global_write_cpp`) + `::`-qualified reads;
+  `_seed_global_scope` wired into lower_constructor and the resumable
+  entry (a global is never a frame field -- writes render the sync
+  module-slot form). Optional/str globals stay unseeded (the gated
+  Optional-global cell). (4) Free-call arg widenings:
+  `_record_rvalue_temp_slot` admits SUBCLASS rvalues (CHILD-typed temp,
+  the AST's arg-typed hoist); `_record_pass_through_arg` admits
+  readonly[record] slots for bare NAMES; the ternary CONDITION inherits
+  the flush right (evaluates once; ARMS stay reset -- pinned).
+  (5) Inplace dunders admit (round-6 VI increment A): `_param_is_const`
+  grew the CONST_PARAMS_METHODS forced-const arm; `return self` rides
+  the record-self arm, the T& return is skeleton. PARKED with verified
+  blockers: value-record union isinstance (`Fixed | Zone | None` ctor
+  conds -- `_eligible_value_union` member-table widening, oracle
+  `const auto& __tz = std::get<Fixed>(tz)`); the whole-union
+  call-rvalue ArgTemp at ctor slots (`Box(mk(...))` -- the A2 lane;
+  the eval_once pair + union_none_default_param need BOTH);
+  submodule-native ctor rvalues (from_pkg_import_submod pair);
+  rc_new_arg_passing (generic static-factory rvalue temp, memo-A
+  spelling asymmetry); optional_other_nonetype conds (fragments 3+:
+  container-borrow / callable / subscript subjects).

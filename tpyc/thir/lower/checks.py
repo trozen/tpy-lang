@@ -195,6 +195,8 @@ from .predicates import (
     _record_rvalue_temp_slot,
     _record_setitem_value,
     _resolve_literal_seeded,
+    _ru_container_literal_ok,
+    _ru_wrapper_arg_slot,
     _resolved_bytes_value,
     _resolved_scalar,
     _resolved_str_value,
@@ -2396,7 +2398,7 @@ def _plain_call_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
             or (temps_ok and _value_union_temp_arg(
                 a, ptype, locals_, narrowed, analyzer))
             or (temps_ok and _record_rvalue_temp_arg(
-                a, ptype, locals_, analyzer))
+                a, ptype, locals_, analyzer, upcast_ok=True))
             or _own_move_arg(a, ptype, locals_, analyzer)
             or (temps_ok and _own_lvalue_arg(
                 a, ptype, locals_, narrowed, analyzer))
@@ -3117,11 +3119,16 @@ def _typed_dict_ctor_call(e: TpyExpr, analyzer) -> 'RecordInfo | None':
     return ri
 
 def _record_rvalue_temp_arg(a: TpyExpr, ptype: TpyType | None,
-                            locals_: dict[str, TpyType], analyzer) -> bool:
+                            locals_: dict[str, TpyType], analyzer, *,
+                            upcast_ok: bool = False) -> bool:
     """Gate arm for the record-rvalue temp row. Constructor arguments are
     validated under `_RecordCtorUse.RECORD_TEMP` during recursive lowering;
-    by-value record calls retain their callee and argument checks here."""
-    if _record_rvalue_temp_slot(a, ptype, analyzer) is None:
+    by-value record calls retain their callee and argument checks here.
+    `upcast_ok` (the FREE-call gate only) admits the CHILD-typed upcast
+    temp slice; the ctor gate/rows stay same-nominal (their mutated-slot
+    row spells the SLOT type -- a different render)."""
+    if _record_rvalue_temp_slot(a, ptype, analyzer,
+                                upcast_ok=upcast_ok) is None:
         return False
     return ((isinstance(a, TpyCall)
              and (_ctor_shape_ok(a, analyzer)
@@ -3919,9 +3926,10 @@ def _record_pass_through_arg(a: TpyExpr, ptype: TpyType | None,
     subject's read arrives with `locals_` retyped to the member record and
     renames to its `T&` extraction alias at lowering (bare on both paths).
     `self` renders the receiver deref `(*this)` (the tail retag, like an F2
-    pointer-local). An `Own[record]` slot
-    auto-moves at last use and a readonly-wrapped slot is the deep-const
-    frontier -> AST. A record RVALUE (`take_rec(A(7))`) is not a
+    pointer-local). An `Own[record]` slot auto-moves at last use -> its own
+    rows; a `readonly[record]` slot binds the same bare name (`const T&` --
+    no readonly lift exists for records, and the retags are const-blind).
+    A record RVALUE (`take_rec(A(7))`) is not a
     name: the AST hoists it into a `__tmp_N` (free calls, typed at the CHILD
     for an upcast) or inlines it (method calls -- the const-slot ctor row
     rides `_method_ctor_rvalue_arg`; the mutated-ref-param shape is the
@@ -3959,8 +3967,13 @@ def _record_pass_through_arg(a: TpyExpr, ptype: TpyType | None,
     if ptype is None or not isinstance(ptype, TpyType):
         return False
     pt = unwrap_ref_type(unwrap_send_sync(ptype))
-    if isinstance(pt, (ReadonlyType, OwnType)):
+    if isinstance(pt, OwnType):
         return False
+    # A `readonly[record]` slot binds the same bare name (`const T&` --
+    # gen_call_arg has no readonly lift for records; the F2 pointer-local
+    # `(*p)` retag is const-blind too). Own slots keep the auto-move
+    # cascade -> their own rows.
+    pt = unwrap_readonly(pt)
     return ((pt == at or analyzer.registry.is_subclass_of(at, pt)))
 
 def _method_receiver_type(recv: TpyExpr, locals_: dict[str, TpyType],
@@ -4519,6 +4532,12 @@ def _marker_call_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
             or _union_pass_through_arg(a, ptype, locals_, analyzer)
             or _union_member_lift_arg(a, ptype, locals_, analyzer)
             or _union_coerced_literal_arg(a, ptype, locals_, analyzer)
+            # A list/dict LITERAL into a recursive-union wrapper slot
+            # (`json.dumps([1, 2, 3])`): `_gen_union_arg`'s value branch
+            # hoists `JsonValue __tmp_N = <literal>;` -- flush-gated like
+            # the value-union temp row.
+            or (temps_ok and _ru_wrapper_arg_slot(ptype) is not None
+                and _ru_container_literal_ok(a, analyzer))
             or (own_ok and _own_union_ctor_arg(
                 a, ptype, locals_, analyzer))
             or (own_ok and _dyn_own_coro_factory_arg(a, ptype, analyzer)

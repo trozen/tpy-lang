@@ -252,13 +252,16 @@ class TestRecordCallArgs:
             + "def use(a: Own[A]) -> Int32:\n    return sink(a)\n")
         assert _fn(thir, "use") is not None
 
-    def test_readonly_record_slot_stays_ast(self):
-        # A readonly-wrapped slot is the deep-const frontier -- deferred.
-        thir = _lower_ctx(
-            _PRELUDE
-            + "def take_ro(a: readonly[A]) -> Int32:\n    return a.x\n"
-            + "def use(a: A) -> Int32:\n    return take_ro(a)\n")
-        assert _fn(thir, "use") is None
+    def test_readonly_record_slot_name_routes_bare(self):
+        # A bare NAME into a readonly[record] slot binds the same const ref
+        # bare on both paths; rvalues keep their
+        # own rows.
+        src = (_PRELUDE
+               + "def take_ro(a: readonly[A]) -> Int32:\n    return a.x\n"
+               + "def use(a: A) -> Int32:\n    return take_ro(a)\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "use") is not None
+        _assert_byte_identical(src)
 
     def test_readonly_slot_ctor_rvalue_routes_bare(self):
         # A ctor rvalue into a readonly-ANNOTATED slot of a SYNC callee binds
@@ -292,21 +295,27 @@ class TestRecordCallArgs:
         arg = stmt.expr.args[0]
         assert isinstance(arg, THIRName) and arg.name == "c" and not arg.deref
 
-    def test_upcast_rvalue_arg_stays_ast(self):
-        # A ctor-rvalue upcast hoists a temp typed at the CHILD on the AST
-        # path (`Child __tmp_N = Child(7); take_base(__tmp_N)`) -> AST.
-        thir = _lower_ctx(
-            _UPCAST_PRELUDE
-            + "def use() -> Int32:\n    return take_base(Child(7))\n")
-        assert _fn(thir, "use") is None
+    def test_upcast_rvalue_arg_hoists_child_typed_temp(self):
+        # A ctor-rvalue upcast hoists a temp typed at the CHILD
+        # (`Child __tmp_N = Child(7); take_base(__tmp_N)`) -- the
+        # _record_rvalue_temp_slot subclass arm.
+        src = (_UPCAST_PRELUDE
+               + "def use() -> Int32:\n    return take_base(Child(7))\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "use") is not None
+        _assert_byte_identical(src)
+        out = _cpp(src, thir=True)
+        assert "Child __tmp_1 = Child(7);" in out
 
-    def test_upcast_readonly_slot_stays_ast(self):
-        # The deep-const frontier rejects readonly slots for upcasts too.
-        thir = _lower_ctx(
-            _UPCAST_PRELUDE
-            + "def take_ro(b: readonly[Base]) -> Int32:\n    return b.x\n"
-            + "def use(c: Child) -> Int32:\n    return take_ro(c)\n")
-        assert _fn(thir, "use") is None
+    def test_upcast_readonly_slot_name_routes(self):
+        # A Child NAME into a readonly[Base] slot: the same bare name /
+        # implicit derived-to-base const-ref bind on both paths.
+        src = (_UPCAST_PRELUDE
+               + "def take_ro(b: readonly[Base]) -> Int32:\n    return b.x\n"
+               + "def use(c: Child) -> Int32:\n    return take_ro(c)\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "use") is not None
+        _assert_byte_identical(src)
 
     def test_optional_record_slot_routes_via_addr_of(self):
         # An `A | None` slot takes the `_gen_optional_ptr_arg` lift (`&(a)`)
@@ -1371,10 +1380,11 @@ class TestArgTempGateRejects:
                       + "    return 0\n")
         assert _fn(thir, "f") is None
 
-    def test_upcast_ctor_arg_stays_ast(self):
+    def test_upcast_ctor_arg_hoists_child_temp(self):
         # A Child-typed ctor into a Parent slot declares the CHILD's type
-        # (the anti-slicing upcast temp) -- same-nominal only.
-        thir = _lower_ctx(
+        # (the anti-slicing upcast temp) -- byte-identical to the AST's
+        # arg-typed hoist.
+        src = (
             "from tpy import Int32\n"
             "class Base:\n"
             "    x: Int32\n"
@@ -1383,7 +1393,9 @@ class TestArgTempGateRejects:
             "    def __init__(self, x: Int32):\n        super().__init__(x)\n"
             "def take_base(b: Base) -> Int32:\n    return b.x\n"
             "def f() -> Int32:\n    return take_base(Child(7))\n")
-        assert _fn(thir, "f") is None
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is not None
+        _assert_byte_identical(src)
 
     def test_own_union_slot_name_still_moves_ast(self):
         # The temp rows must not swallow the Own[union] auto-move shape.
@@ -2657,3 +2669,101 @@ class TestRecordFieldRefArg:
                + "def f() -> None:\n"
                + "    h = H2()\n    print(base_use(h.c))\n")
         assert _fn(_lower_ctx(src), "f") is None
+
+
+class TestUpcastReadonlyTernaryArgs:
+    """The wave's free-call arg widenings: the subclass-rvalue CHILD-typed
+    temp, the readonly[record] bare-name row, and the ternary-CONDITION
+    flush right."""
+
+    _POLY = (
+        "from tpy import Int32, readonly\n"
+        "class Animal:\n"
+        "    legs: Int32\n"
+        "    def __init__(self, legs: Int32) -> None:\n"
+        "        self.legs = legs\n"
+        "class Dog(Animal):\n"
+        "    def __init__(self) -> None:\n"
+        "        super().__init__(4)\n"
+        "def classify(a: Animal) -> Int32:\n    return a.legs\n"
+    )
+
+    def test_subclass_rvalue_hoists_child_typed_temp(self):
+        src = self._POLY + "def f() -> None:\n    print(classify(Dog()))\n"
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("argtemp.record_rvalue", 0) >= 1
+        _assert_byte_identical(src)
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=True))
+        assert "Dog __tmp_1 = Dog();" in cpp
+
+    def test_readonly_record_name_arg_routes_bare(self):
+        src = (self._POLY
+               + "def observe(a: readonly[Animal]) -> Int32:\n"
+               + "    return a.legs\n"
+               + "def f(a: Animal) -> None:\n    print(observe(a))\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is not None
+        _assert_byte_identical(src)
+
+    def test_ternary_condition_inherits_flush_right(self):
+        src = (self._POLY
+               + "def f() -> None:\n"
+               + "    print(1 if classify(Dog()) > 2 else 0)\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is not None
+        _assert_byte_identical(src)
+
+    def test_upcast_rvalue_mutated_ctor_slot_still_defers(self):
+        # The ctor MUTATED-ref-slot row spells the SLOT type
+        # (`Base __tmp_N = Child();` -- dualgen-verified), not the
+        # free-call row's CHILD-typed temp; the upcast slice stays
+        # same-nominal there, so the shape falls back whole.
+        src = (self._POLY
+               + "class Holder:\n"
+               + "    v: Int32\n"
+               + "    def __init__(self, b: Animal) -> None:\n"
+               + "        b.legs = b.legs + 1\n"
+               + "        self.v = b.legs\n"
+               + "def f() -> None:\n"
+               + "    h = Holder(Dog())\n"
+               + "    print(h.v)\n")
+        assert _fn(_lower_ctx(src), "f") is None
+
+    def test_ternary_arm_temp_still_defers(self):
+        # A hoisted temp in a ternary ARM would evaluate eagerly -- the arms
+        # never get the flush right, so the arm-temp shape falls back whole.
+        src = (self._POLY
+               + "def f(b: bool) -> None:\n"
+               + "    print(classify(Dog()) if b else 0)\n")
+        assert _fn(_lower_ctx(src), "f") is None
+
+
+class TestInplaceDunderAdmission:
+    """Inplace dunders (__iadd__ ...) admit: forced-const params via
+    _param_is_const's CONST_PARAMS_METHODS arm; `return self` renders
+    `return *this;` (the T& return type is skeleton-emitted)."""
+
+    _SRC = (
+        "from tpy import Int32\n"
+        "class Acc:\n"
+        "    total: Int32\n"
+        "    def __init__(self) -> None:\n        self.total = 0\n"
+        "    def __iadd__(self, other: Int32) -> \"Acc\":\n"
+        "        self.total = self.total + other\n"
+        "        return self\n"
+        "def main() -> None:\n"
+        "    a = Acc()\n"
+        "    a += 3\n"
+        "    print(a.total)\n"
+        "main()\n"
+    )
+
+    def test_inplace_dunder_body_routes_byte_identical(self):
+        thir = _lower_ctx(self._SRC)
+        assert _fn(thir, "__iadd__") is not None
+        _assert_byte_identical(self._SRC)

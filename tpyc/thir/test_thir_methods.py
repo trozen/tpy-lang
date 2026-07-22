@@ -871,15 +871,53 @@ class TestDunderMethods:
         for name in ("__le__", "__gt__", "__ge__"):
             assert _fn(thir, name) is not None, name
 
-    def test_inplace_dunder_excluded(self):
-        # __iadd__ takes forced-const params (CONST_PARAMS_METHODS) and returns
-        # `*this` -- both outside the mirror.
-        thir = _lower_ctx(
+    def test_inplace_dunder_admitted(self):
+        # __iadd__ routes: the forced-const params (CONST_PARAMS_METHODS)
+        # are mirrored by _param_is_const's forced arm, and `return self`
+        # renders `return *this;` (the T& return type is skeleton-emitted).
+        src = (
             "from tpy import Int32\n"
             "class Acc:\n    total: Int32\n"
             "    def __init__(self, total: Int32):\n        self.total = total\n"
             "    def __iadd__(self, n: Int32) -> Acc:\n"
             "        self.total += n\n        return self\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "__iadd__") is not None
+        _assert_byte_identical(src)
+
+    def test_inplace_dunder_mutated_param_still_defers(self):
+        # A genuinely MUTATED non-self param: decide_param_const drops the
+        # forced const on the AST path (`Counter& other`), which the flat
+        # forced-const mirror cannot see -- the sig check rejects the body.
+        src = (
+            "from tpy import Int32\n"
+            "class Counter:\n    n: Int32\n"
+            "    def __init__(self, n: Int32):\n        self.n = n\n"
+            "class Acc:\n    total: Int32\n"
+            "    def __init__(self, total: Int32):\n        self.total = total\n"
+            "    def __iadd__(self, other: Counter) -> Acc:\n"
+            "        other.n = 99\n"
+            "        self.total += other.n\n"
+            "        return self\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "__iadd__") is None
+
+    def test_inplace_dunder_addr_escaping_param_still_defers(self):
+        # An addr-ESCAPING param (`self.p = Ptr(other)`) also drops the
+        # AST's forced const (addr_escapes_params precedes the force in
+        # decide_param_const) -- the sig check rejects that slice too.
+        src = (
+            "from tpy import Int32, Ptr\n"
+            "class Counter:\n    n: Int32\n"
+            "    def __init__(self, n: Int32):\n        self.n = n\n"
+            "class Acc:\n    total: Int32\n"
+            "    p: Ptr[Counter] = None\n"
+            "    def __init__(self, total: Int32):\n"
+            "        self.total = total\n"
+            "    def __iadd__(self, other: Counter) -> Acc:\n"
+            "        self.p = other\n"
+            "        return self\n")
+        thir = _lower_ctx(src)
         assert _fn(thir, "__iadd__") is None
 
 

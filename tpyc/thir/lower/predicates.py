@@ -8,6 +8,7 @@ body and do not construct THIR; lowering arms consume their results locally.
 """
 
 from __future__ import annotations
+import math
 from ...parse.nodes import (
     FunctionLinkage,
     TpyArrayLiteral,
@@ -18,8 +19,10 @@ from ...parse.nodes import (
     TpyBytesLiteral,
     TpyCall,
     TpyCoerce,
+    TpyDictLiteral,
     TpyExpr,
     TpyFieldAccess,
+    TpyFloatLiteral,
     TpyFunction,
     TpyIf,
     TpyIntLiteral,
@@ -37,7 +40,9 @@ from ...parse.nodes import (
 )
 from ...modules.type_resolution import get_iterable_element_type
 from ...typesys import (
+    AliasRef,
     AnyType,
+    CONST_PARAMS_METHODS,
     BYTES_FAMILY,
     CallableType,
     FLOAT,
@@ -526,14 +531,20 @@ def _eligible_ptr_union(t: TpyType | None, analyzer) -> 'UnionType | None':
     type spelling agrees with the resolver; only generics stay off), so both C++
     spellings render byte-identically; a None member is the monostate slot --
     both spellings render it `std::monostate`, so it adds no form question.
-    Recursive-alias wrappers and protocol unions ride later cells."""
+    A MIXED union's eligible-scalar members (`Int32 | Dog | None` -> an
+    `int32_t*` alternative) render through the same member-shape-blind
+    machinery (`m.to_cpp() + "*"` borrow, bare value storage, `*std::get<
+    int32_t*>(v)` extraction), so they ride the record rows unchanged; an
+    ALL-scalar union is value-repr (`is_ptr_variant_union` False) and stays
+    on the U1 slice. Recursive-alias wrappers and protocol unions ride
+    later cells."""
     if t is None:
         return None
     t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
     if not (isinstance(t, UnionType) and is_ptr_variant_union(t)):
         return None
-    if not all(_f1_record(m, analyzer) or is_void_like_type(m)
-               for m in t.members):
+    if not all(_f1_record(m, analyzer) or _eligible_scalar(m)
+               or is_void_like_type(m) for m in t.members):
         return None
     return t
 
@@ -3559,7 +3570,15 @@ def _param_is_const(name: str, func: TpyFunction, analyzer,
     inferred set exact. The verdict set is None when Phase-2 has not run --
     unreachable for an admitted function (Phase-1 always sets
     `mutated_params`), so the resulting not-const is a safe default, not a
-    divergence."""
+    divergence. Inplace dunders (`__iadd__` ...) take the AST's FORCED
+    const-params verdict (`use_const_params` via CONST_PARAMS_METHODS --
+    a codegen-side force sema's `const_borrow_params` does not record);
+    the mutated-param slice the force does NOT cover (decide_param_const's
+    directly_mutated short-circuit) is rejected at the sig check, so the
+    flat force here is exact for every admitted body."""
+    if (func.is_method and func.name in CONST_PARAMS_METHODS
+            and name != "self"):
+        return True
     return _param_const_verdict(name, func, analyzer, record_name,
                                 "const_borrow_params")
 
@@ -3783,9 +3802,31 @@ def _is_none_compare_operand(e: TpyBinOp, locals_: dict[str, TpyType],
             and _value_opt_rvalue(operand, analyzer) is None
             and not _ptr_value_none_name(operand, locals_, analyzer)
             and not _ptr_value_none_field(operand, locals_, analyzer)
-            and not _optional_field_none_subject(operand, locals_, analyzer)):
+            and not _optional_field_none_subject(operand, locals_, analyzer)
+            and _union_none_name(operand, locals_, analyzer) is None):
         return None
     return operand
+
+def _union_none_name(e: TpyExpr, locals_: dict[str, TpyType],
+                     analyzer) -> 'UnionType | None':
+    """A union-typed NAME subject of an `is [not] None` test (`v is None` on
+    `v: Int32 | Dog | None`): the AST's monostate arm renders
+    `std::holds_alternative<std::monostate>(v)` over the bare binding --
+    identical for value- and pointer-variant reprs (monostate is a value
+    member in both). Keyed on the DECLARED type like the AST's
+    `get_resolved_type` (a flow-narrowed subject still tests the variant
+    binding; the lowering rejects narrowed names whose READ is an extraction
+    alias). Wrapper (recursive-alias) unions read through `.value` -- a
+    different render, out of slice. Locals only (union globals are never
+    seeded, so a global subject's body falls back whole)."""
+    if not (isinstance(e, TpyName) and e.name in locals_):
+        return None
+    dt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(locals_[e.name])))
+    if not isinstance(dt, UnionType) or dt.needs_wrapper():
+        return None
+    if not any(is_void_like_type(m) for m in dt.members):
+        return None
+    return dt
 
 def _any_none_subject(e: TpyBinOp, locals_: dict[str, TpyType],
                       analyzer) -> 'TpyExpr | None':
@@ -4119,9 +4160,87 @@ def _value_union_temp_slot(a: TpyExpr, ptype: TpyType | None,
         return None
     return ut
 
+def _ru_wrapper_arg_slot(ptype: TpyType | None) -> 'UnionType | None':
+    """A recursive-union WRAPPER arg slot (`v: JsonValue` -- the expanded
+    non-generic UnionType whose C++ form is the alias's wrapper struct), or
+    None. `_gen_union_arg`'s value branch hoists `JsonValue __tmp_N =
+    <arg>;` (create_typed, `= init` form) and passes the bare temp name.
+    Mirrors that branch's unwrap exactly (readonly only -- a Ref/SendSync
+    wrapper leaves the AST branch inert, so both paths take the default
+    render). A generic alias instance is a `RecursiveAliasInstanceType`,
+    never a UnionType, so the key naturally excludes it."""
+    pt = ptype if isinstance(ptype, TpyType) else None
+    if pt is None:
+        return None
+    pt = unwrap_readonly(pt)
+    if not isinstance(pt, UnionType) or not pt.needs_wrapper():
+        return None
+    if is_ptr_variant_union(pt):
+        return None
+    return pt
+
+def _ru_container_literal_ok(a: TpyExpr, analyzer) -> bool:
+    """A list/dict literal coercible into a recursive-union wrapper slot,
+    admitted when the whole tree mirrors byte-identically: the container's
+    sema type carries the NON-generic `AliasRef` placeholder element
+    (`list[JsonValue]` / `dict[str, JsonValue]` -- the AST's typed-prefix,
+    empty-spelling, and monostate arms all key on that shape), and every
+    element is a scalar literal (target-less render on both paths), None
+    (the wrapper's monostate), or a nested list/dict literal of the same
+    family. Dict keys are str literals only (the owned-key `"k"` render).
+    Everything else -- names, calls, f-strings, generic
+    `RecursiveAliasInstanceType` elements -- stays AST."""
+    at = analyzer.get_expr_type(a)
+    at = resolve_pending_container(at, analyzer) or at
+    if isinstance(a, TpyArrayLiteral):
+        if not is_list(at):
+            return False
+        et = at.type_args[0] if getattr(at, "type_args", None) else None
+        if not (isinstance(et, AliasRef) and not et.args
+                and _ru_alias_copyable(et, analyzer)):
+            return False
+        return all(_ru_elem_ok(x, analyzer) for x in a.elements)
+    if isinstance(a, TpyDictLiteral):
+        if not is_dict(at):
+            return False
+        kt, vt = at.type_args[0], at.type_args[1]
+        if not (isinstance(vt, AliasRef) and not vt.args
+                and is_str_type(kt)
+                and _ru_alias_copyable(vt, analyzer)):
+            return False
+        return (all(isinstance(k, TpyStrLiteral) for k in a.keys)
+                and all(_ru_elem_ok(v, analyzer) for v in a.values))
+    return False
+
+def _ru_alias_copyable(et: 'AliasRef', analyzer) -> bool:
+    """No noncopyable member in the alias's union body: a nocopy member
+    would flip the AST render to make_vector / make_ordered_map
+    (`_is_nocopy_container_element`'s AliasRef arm) -- unmirrored."""
+    alias = analyzer.registry.resolve_alias_ref(et)
+    if not isinstance(alias, UnionType):
+        return False
+    return not any(_cpp_noncopyable_type(m, analyzer)
+                   for m in alias.members if not is_void_like_type(m))
+
+def _ru_elem_ok(x: TpyExpr, analyzer) -> bool:
+    """One recursive-union container element (see `_ru_container_literal_ok`).
+    Int literals stay inside int32 so the render is the bare token on both
+    paths (a wider literal takes the width-pinned ctor spelling); floats stay
+    finite (inf/nan take their own spellings)."""
+    if isinstance(x, (TpyArrayLiteral, TpyDictLiteral)):
+        return _ru_container_literal_ok(x, analyzer)
+    if isinstance(x, TpyNoneLiteral):
+        return True
+    if isinstance(x, TpyIntLiteral):
+        return -(2 ** 31) < x.value < 2 ** 31
+    if isinstance(x, TpyFloatLiteral):
+        return math.isfinite(x.value)
+    return isinstance(x, (TpyBoolLiteral, TpyStrLiteral))
+
 def _record_rvalue_temp_slot(a: TpyExpr, ptype: TpyType | None,
                              analyzer, *,
-                             frame_capturing: bool = False) -> 'NominalType | None':
+                             frame_capturing: bool = False,
+                             upcast_ok: bool = False) -> 'NominalType | None':
     """The record-rvalue arg-temp row (the free-call `is_ref_param() +
     is_temporary_expr` cascade arm): a record RVALUE -- a ctor
     `A(7)` or a by-value record-returning call `make(7)` -- into a
@@ -4134,11 +4253,17 @@ def _record_rvalue_temp_slot(a: TpyExpr, ptype: TpyType | None,
     `TempState.create` renders the slot type's bare `to_cpp()`, which the F1
     restriction keeps equal to the ctor's own spelling (raw name
     same-module, `native_cpp_names` qualification cross-module).
-    A SUBCLASS-typed rvalue (the upcast temp declares the CHILD's type)
-    rejects on the same-nominal check. A borrow-returning call is not an
-    rvalue source (the AST binds/copies without this temp) and rejects.
-    Shared by the local slot classifier and `_lower_call_arg`; recursive
-    lowering validates the source call's arguments."""
+    A SUBCLASS-typed rvalue declares the CHILD's type (`Dog __tmp_1 =
+    Dog();` into a `const Animal&` slot -- the AST's `temps.create(
+    arg_type, ..)` upcast temp; C++'s implicit derived-to-base binding
+    does the rest), so the CHILD type is returned -- but ONLY on the
+    FREE-call row (`upcast_ok`): the ctor mutated-slot row spells the
+    SLOT type instead (`Base __tmp_1 = Child();` -- dualgen-verified),
+    so the ctor consumers keep the same-nominal slice. A
+    borrow-returning call is not an rvalue source (the AST binds/copies
+    without this temp) and rejects. Shared by the local slot classifier
+    and `_lower_call_arg`; recursive lowering validates the source
+    call's arguments."""
     pt = ptype if isinstance(ptype, TpyType) else None
     if pt is None:
         return None
@@ -4155,9 +4280,14 @@ def _record_rvalue_temp_slot(a: TpyExpr, ptype: TpyType | None,
         return None
     if not is_rvalue_source(analyzer, a):
         return None
-    if analyzer.get_expr_type(a) != pt:
-        return None
-    return pt
+    at = analyzer.get_expr_type(a)
+    if at == pt:
+        return pt
+    if (upcast_ok
+            and isinstance(at, NominalType) and _f1_record(at, analyzer)
+            and analyzer.registry.is_subclass_of(at, pt)):
+        return at
+    return None
 
 def _own_cascade_fires(ptype: TpyType | None) -> bool:
     """Whether gen_call_arg's ownership cascade fires for this slot: an

@@ -217,12 +217,25 @@ def _check_callable_structure(func: TpyFunction, analyzer,
     if func.is_method:
         if self_type is None or not _f1_record(self_type, analyzer):
             raise ThirUnsupported("sig.receiver_record")
-        # Inplace dunders (__iadd__ ...): the AST forces const params on them
-        # (CONST_PARAMS_METHODS), a verdict `_param_is_const` does not mirror;
-        # their mandatory `return self` (`return *this;`) is outside the slice
-        # anyway.
-        if func.name in CONST_PARAMS_METHODS:
-            raise ThirUnsupported("sig.inplace_dunder")
+        # Inplace dunders (__iadd__ ...) admit: the AST's forced-const param
+        # verdict (CONST_PARAMS_METHODS) is mirrored by `_param_is_const`'s
+        # forced arm, and the mandatory `return self` renders `return
+        # *this;` through the record-self return arm (the T& return type is
+        # SKELETON -- the signature emitter's is_inplace_dunder branch).
+        # The force applies only to UNMUTATED, NON-escaping params:
+        # decide_param_const drops const for a genuinely mutated param
+        # (directly_mutated short-circuit) AND for an addr-escaping one
+        # (`self.p = Ptr(other)`), verdicts the flat forced arm cannot
+        # see -- reject both slices. ([-1] is the same last-overload
+        # pick `_param_const_verdict` documents.)
+        if func.name in CONST_PARAMS_METHODS and self_type is not None:
+            in_ri = analyzer.registry.get_record_for_type(self_type)
+            in_ov = (in_ri.get_method_overloads(func.name)
+                     if in_ri is not None else None)
+            in_fi = in_ov[-1] if in_ov else None
+            if in_fi is not None and (in_fi.mutated_params
+                                      or in_fi.addr_escapes_params):
+                raise ThirUnsupported("sig.inplace_dunder_mutated_param")
         # @readonly on a @staticmethod emits with the readonly verdicts dropped
         # (`gen_method_def` branches on `is_const and not is_static`): the const
         # overload and forced-const params are signature-only, emitted by the AST
@@ -500,10 +513,13 @@ def _seed_global_scope(func: TpyFunction, analyzer, lc: '_LowerCtx',
     body regardless of statement order (the TpyGlobal arm reads
     `prescan.global_seeded`, not walk state), so no unseeded-global write
     can survive to misroute as a fresh local decl. Native-linkage globals
-    render through `native_global_names` -- never seeded."""
+    seed like same-module ones, with the split spelling recorded in
+    `global_write_cpp` (bare C-name write target) / `global_cpp`
+    (`::`-qualified reads)."""
     global_seeded: set[str] = set()
+    global_write_cpp: dict[str, str] = {}
     for n in analyzer.function_global_decls.get(id(func), set()):
-        if n in params_set or n in native_globals:
+        if n in params_set:
             continue
         gt = analyzer.ctx.global_scope.lookup(n)
         if gt is None:
@@ -512,10 +528,22 @@ def _seed_global_scope(func: TpyFunction, analyzer, lc: '_LowerCtx',
         if _eligible_scalar(gt) or _eligible_ptr_value(gt, analyzer):
             params_set[n] = gt
             global_seeded.add(n)
+            if n in native_globals:
+                # A native-linkage global writes through its BARE C name
+                # (`g_counter = val;` -- the AST's native_global_names.get
+                # target, unqualified) and reads through the `::`-qualified
+                # spelling like any other native-global read.
+                global_write_cpp[n] = native_globals[n]
     lc.prescan.global_seeded = frozenset(global_seeded)
+    lc.prescan.global_write_cpp = global_write_cpp
     lc.prescan.native_globals = native_globals
     lc.prescan.global_readonly, lc.prescan.global_cpp = _seed_readonly_globals(
         func, analyzer, params_set, native_globals)
+    for n, cname in global_write_cpp.items():
+        # Reads of a write-seeded native global keep the ordinary
+        # `::`-qualified native-read spelling (the read arm is
+        # global-decl-blind on the AST path).
+        lc.prescan.global_cpp.setdefault(n, qualify_native_name(cname))
 
 def lower_function(func: TpyFunction, analyzer, render_type=None,
                    self_type: 'TpyType | None' = None,
@@ -1119,12 +1147,11 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
                    record_name=record.name,
                    render_type_stored=render_type_stored,
                    render_resolve=render_resolve)
-    # Read-only value-global seeding, like lower_function's (ctors read module
-    # globals too). No `global`-write seeding here: a ctor's `global` names
-    # stay unseeded, so its TpyGlobal statement rejects the body -> AST path.
-    lc.prescan.native_globals = native_globals
-    lc.prescan.global_readonly, lc.prescan.global_cpp = _seed_readonly_globals(
-        init_method, analyzer, declared, native_globals)
+    # Global seeding, like lower_function's: read-only value globals plus
+    # `global`-declared write names (the AST's global-write arm is
+    # function-kind-blind, so a ctor's `g = v;` renders exactly like a
+    # sync function's).
+    _seed_global_scope(init_method, analyzer, lc, declared, native_globals)
     # Every lowering call sits inside this boundary: expression admission can
     # raise, and a raise outside here would crash instead of falling back.
     try:

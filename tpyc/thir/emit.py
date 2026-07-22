@@ -1366,6 +1366,10 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
             # `std::optional<T>` param: `is None` -> `(!p.has_value())`,
             # `is not None` -> `(p.has_value())` (_gen_binop's has_value arm).
             return f"({inner}.has_value())" if e.negate else f"(!{inner}.has_value())"
+        if e.union_monostate:
+            # Union binding: the monostate holds test (_gen_binop's union arm).
+            check = f"std::holds_alternative<std::monostate>({inner})"
+            return f"(!{check})" if e.negate else f"({check})"
         op = "!=" if e.negate else "=="
         return f"({inner} {op} nullptr)"
     if isinstance(e, THIRTruthy):

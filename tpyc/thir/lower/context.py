@@ -117,7 +117,7 @@ class _Prescan:
                  "ret_value_opt", "ret_value_opt_view",
                  "value_opt_params", "param_names",
                  "has_self", "is_constructor", "global_seeded", "global_readonly",
-                 "global_cpp", "native_globals")
+                 "global_cpp", "global_write_cpp", "native_globals")
 
     def __init__(self, func: TpyFunction, analyzer) -> None:
         # Param names, for checks that must tell a param from a local (a str
@@ -152,6 +152,10 @@ class _Prescan:
         # imported_variable_cpp). Disjoint from global_readonly (those
         # render bare).
         self.global_cpp: dict[str, str] = {}
+        # WRITE-seeded native-linkage globals: name -> the BARE C-name
+        # target spelling of the AST's global-write arm
+        # (`native_global_names.get(name, name)`, unqualified).
+        self.global_write_cpp: dict[str, str] = {}
         # Module native-linkage globals (name -> C/C++ symbol,
         # module_native_global_names; lower_function threads them through);
         # the try hoist arm rejects a colliding predecl name, and the
