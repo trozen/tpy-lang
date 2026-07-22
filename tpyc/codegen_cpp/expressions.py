@@ -288,6 +288,12 @@ class ExpressionGenerator:
             return f"::tpy::optional_to_ptr({self.gen_expr(arg, ptype)})"
         if self.ctx.is_storage_form_optional_source(arg):
             return f"::tpy::optional_to_ptr({self.gen_expr(arg, ptype)})"
+        # A sema-NARROWED storage-form Optional FIELD arg: the analyzed type
+        # is the payload (so the classifier above misses), but the C++ shape
+        # is still `std::optional<T>` storage -- same lift, never `&(field)`.
+        if (isinstance(arg, TpyFieldAccess)
+                and self._is_narrowed_value_optional(arg)):
+            return f"::tpy::optional_to_ptr({self.gen_expr(arg, ptype)})"
         if self.ctx.is_already_pointer_source(arg):
             return self.gen_expr(arg, ptype)
         arg_type = self.ctx.get_expr_type(arg)
@@ -2036,6 +2042,24 @@ class ExpressionGenerator:
                 opt_expr = expr.left
             elif isinstance(right_type, OptionalType) and isinstance(expr.left, TpyNoneLiteral):
                 opt_expr = expr.right
+            # A sema-NARROWED storage-form Optional FIELD subject: narrowing
+            # replaced the recorded type with the payload type, so the
+            # OptionalType checks above miss -- but the C++ shape is still
+            # `std::optional<T>` storage (fields have no extraction alias,
+            # unlike narrowed locals), so identity-vs-None must recover the
+            # declared-type Optional semantics: .has_value() on the bare
+            # member read. Property getters never match (_resolve_field_
+            # declared_type sees real fields only) and keep their own path.
+            for side, other in ((expr.left, expr.right),
+                                (expr.right, expr.left)):
+                if (opt_expr is None
+                        and isinstance(other, TpyNoneLiteral)
+                        and isinstance(side, TpyFieldAccess)
+                        and self._is_narrowed_value_optional(side)):
+                    val = self.gen_expr(side)
+                    if expr.op == "is":
+                        return f"(!{val}.has_value())"
+                    return f"({val}.has_value())"
             if opt_expr is not None:
                 # @overload context: the specialization narrowed this Optional
                 # param to a concrete type (its inner T or None). Fold the test
@@ -6035,6 +6059,12 @@ class ExpressionGenerator:
         if isinstance(elem, TpyIfExpr):
             return ret_expr
         if self.ctx.is_storage_form_optional_source(elem):
+            return f"::tpy::optional_to_ptr({ret_expr})"
+        # A sema-NARROWED storage-form Optional FIELD: the analyzed type is
+        # the payload (so the classifier above misses), but the C++ shape is
+        # still `std::optional<T>` storage -- lift, never `&(field)`.
+        if (isinstance(elem, TpyFieldAccess)
+                and self._is_narrowed_value_optional(elem)):
             return f"::tpy::optional_to_ptr({ret_expr})"
         return f"&({ret_expr})"
 

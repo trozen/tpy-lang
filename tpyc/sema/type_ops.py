@@ -985,7 +985,17 @@ class TypeOperations:
 
         # Optional[T] -- unwrap and recurse (bare T can coerce to Optional[T])
         if isinstance(param_type, OptionalType):
-            inner_arg = arg_type.inner if isinstance(arg_type, OptionalType) else arg_type
+            if isinstance(arg_type, OptionalType):
+                inner_arg = arg_type.inner
+            else:
+                # A bare arg widening into the Optional slot: a Ref borrow
+                # marker on it is incidental (a sema-NARROWED Optional field
+                # read analyzes as Ref[T]) -- the slot's payload is by-value
+                # storage, so binding the param to Ref[T] would emit a
+                # val_or_ref<T> template arg against the T* the arg render
+                # produces. The bare-T reference-preservation rule (Ref kept
+                # for a bare TypeParamRef param) is unaffected.
+                inner_arg = unwrap_ref_type(arg_type)
             return self.match_type_with_inference(
                 param_type.inner, inner_arg, inferred
             )

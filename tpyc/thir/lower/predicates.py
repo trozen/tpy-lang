@@ -3707,17 +3707,14 @@ def _optional_field_none_subject(e: TpyExpr, locals_: dict[str, TpyType],
     """A one-level Optional FIELD subject of an `is [not] None` test
     (`self.f is None` / `cfg.port is not None`): declared field storage is
     `std::optional<T>` whatever the repr, so the AST renders the storage-form
-    `.has_value()` compare over the bare member read. Requires the
-    UN-narrowed Optional read (a sema-narrowed subject folds elsewhere) and
-    the same receiver/marker shape the plain field arm admits."""
+    `.has_value()` compare over the bare member read. Keyed on the DECLARED
+    field type only: a sema-NARROWED subject (analyzed type is the payload)
+    renders the identical bare-member `.has_value()` -- the AST's
+    narrowed-field recovery arm in `_gen_binop` -- so it is admitted the
+    same way. Same receiver/marker shape as the plain field arm."""
     if not (isinstance(e, TpyFieldAccess) and isinstance(e.obj, TpyName)
             and _field_markers_clean(e)
             and _field_receiver_ok(e, locals_, analyzer)):
-        return False
-    at = analyzer.get_expr_type(e)
-    if at is None or not isinstance(
-            unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at))),
-            OptionalType):
         return False
     fdt = _field_decl_type(e, locals_, analyzer)
     return fdt is not None and isinstance(

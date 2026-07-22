@@ -3780,6 +3780,15 @@ inference outright). A bare value passed into an `Own[T]` param keeps its
 reference form, so val_or_ref reference passing (`map(identity, ...)`) is
 unaffected.
 
+**Optional-widening args**: a bare (non-Optional) arg widening into an
+`Optional[T]` parameter slot strips an incidental `Ref` wrapper before binding
+the type param -- the slot's payload is by-value storage, so binding `Ref[T]`
+would instantiate against the borrow form the arg render never produces. A
+sema-narrowed Optional field read analyzes as `Ref[Payload]`, so without this
+`is_def_gen(t.o)` (with `def is_def_gen[U](o: U | None)`) would infer
+`U=Ref[Pod]` rather than `U=Pod`. The bare-`TypeParamRef` param
+reference-preservation rule (`map(identity, ...)`) is unaffected.
+
 **Contextual Type Inference**: When arguments don't fully determine all type
 parameters, the expected type from context (assignment annotation, return type,
 reassignment, field assignment) fills in the remaining params:
