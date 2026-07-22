@@ -1,15 +1,7 @@
-# Ext-only: the borrow-form __next__ COPY semantics (plain Python would
-# alias -- each next() there is the same object). Distinct objects, real
-# data (a garbage payload was the original miscompile), no write-through.
+# Ext-only: the borrow-LIST __next__ COPY divergence (plain Python would
+# alias the same stored row; containers have no boundary view path, so
+# each next() hands out a fresh copy -- warned at compile).
 import next_borrow as m
-
-i = iter(m.Repeat(5))
-a = next(i)
-b = next(i)
-assert a is not b
-assert (a.v, b.v) == (5, 5), (a.v, b.v)
-a.v = 99
-assert next(i).v == 5
 
 r = iter(m.Rows())
 row = next(r)

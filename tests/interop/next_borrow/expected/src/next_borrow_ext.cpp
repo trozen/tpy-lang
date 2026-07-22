@@ -9,6 +9,8 @@ using namespace ::tpy::cpy;
 
 PyObject *next_borrow__type_Node = nullptr;
 PyObject *next_borrow__type_Repeat = nullptr;
+PyObject *next_borrow__type_RepeatSub = nullptr;
+PyObject *next_borrow__type_Peek = nullptr;
 PyObject *next_borrow__type_Rows = nullptr;
 PyObject *next_borrow__type_Fresh = nullptr;
 ::tpy::interop::ViewRegistry next_borrow__view_registry;
@@ -92,6 +94,10 @@ PyType_Spec next_borrow__Node__spec = {
 };
 
 int next_borrow__Repeat_init(PyObject *self, PyObject *args, PyObject *kwargs) {
+    if (Py_TYPE(self) != (::tpy::cpy::PyTypeObject *)next_borrow__type_Repeat) {
+        PyErr_SetString(PyExc_TypeError, "Python-defined subclasses of exposed class 'next_borrow.Repeat' are not supported");
+        return -1;
+    }
     static char *__kwlist[] = {const_cast<char *>("v"), nullptr};
     PyObject *a0 = nullptr;
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:Repeat", __kwlist, &a0)) return -1;
@@ -127,12 +133,15 @@ void next_borrow__Repeat_dealloc(PyObject *self) {
 
 PyObject *next_borrow__Repeat__next_slot(PyObject *self) {
     try {
-        auto __r = reinterpret_cast<::tpy::interop::Instance<::tpyapp::next_borrow::Repeat> *>(self)->p->__next__();
-        if (!__r.has_value()) {
-            ::tpy::interop::set_py_err_from(__r.error());
+        auto __e = reinterpret_cast<::tpy::interop::Instance<::tpyapp::next_borrow::Repeat> *>(self)->p->__next__();
+        if (!__e.has_value()) {
+            ::tpy::interop::set_py_err_from(__e.error());
             return nullptr;
         }
-        return ::tpy::interop::instance_to_py((::tpy::cpy::PyTypeObject *)next_borrow__type_Node, __r.value().get());
+        auto &__r = __e.value().get();
+        if (::tpy::interop::within_payload(&__r, &(*reinterpret_cast<::tpy::interop::Instance<::tpyapp::next_borrow::Repeat> *>(self)->p), sizeof((*reinterpret_cast<::tpy::interop::Instance<::tpyapp::next_borrow::Repeat> *>(self)->p))))
+            return ::tpy::interop::borrow_to_py((::tpy::cpy::PyTypeObject *)next_borrow__type_Node, __r, self, next_borrow__view_registry);
+        return ::tpy::interop::instance_to_py((::tpy::cpy::PyTypeObject *)next_borrow__type_Node, __r);
     } catch (const ::tpy::BaseException &__e) {
         ::tpy::interop::set_py_err_from(__e);
         return nullptr;
@@ -179,7 +188,154 @@ PyType_Slot next_borrow__Repeat__slots[] = {
 };
 PyType_Spec next_borrow__Repeat__spec = {
     "next_borrow.Repeat", (int)sizeof(::tpy::interop::Instance<::tpyapp::next_borrow::Repeat>), 0,
-    Py_TPFLAGS_DEFAULT, next_borrow__Repeat__slots,
+    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, next_borrow__Repeat__slots,
+};
+
+int next_borrow__RepeatSub_init(PyObject *self, PyObject *args, PyObject *kwargs) {
+    static char *__kwlist[] = {const_cast<char *>("v"), nullptr};
+    PyObject *a0 = nullptr;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:RepeatSub", __kwlist, &a0)) return -1;
+    auto *__inst = reinterpret_cast<::tpy::interop::Instance<::tpyapp::next_borrow::RepeatSub> *>(self);
+    if (__inst->owner != nullptr) {
+        PyErr_SetString(PyExc_TypeError, "cannot __init__ a borrowed field view");
+        return -1;
+    }
+    try {
+        int32_t __p0 = ::tpy::interop::from_py<int32_t>(a0);
+        if (__inst->initialized && ::tpy::interop::has_views_into(__inst->p, sizeof(*__inst->p), next_borrow__view_registry)) {
+            PyErr_SetString(PyExc_TypeError, "cannot __init__ an instance while borrow views of its fields are alive");
+            return -1;
+        }
+        if (__inst->initialized) { __inst->initialized = false; ::std::destroy_at(&__inst->storage); }
+        new (&__inst->storage) ::tpyapp::next_borrow::RepeatSub(__p0);
+        __inst->p = &__inst->storage;
+        __inst->initialized = true;
+        return 0;
+    } catch (const ::tpy::BaseException &__e) {
+        ::tpy::interop::set_py_err_from(__e);
+        return -1;
+    } catch (...) {
+        if (!PyErr_Occurred())
+            PyErr_SetString(PyExc_RuntimeError, "tpy extension: constructor failed");
+        return -1;
+    }
+}
+
+void next_borrow__RepeatSub_dealloc(PyObject *self) {
+    ::tpy::interop::instance_dealloc<::tpyapp::next_borrow::RepeatSub>(self, next_borrow__view_registry);
+}
+
+PyMethodDef next_borrow__RepeatSub__methods[] = {
+    {nullptr, nullptr, 0, nullptr},
+};
+PyGetSetDef next_borrow__RepeatSub__getset[] = {
+    {nullptr, nullptr, nullptr, nullptr, nullptr},
+};
+PyType_Slot next_borrow__RepeatSub__slots[] = {
+    {Py_tp_init, (void *)next_borrow__RepeatSub_init},
+    {Py_tp_dealloc, (void *)next_borrow__RepeatSub_dealloc},
+    {Py_tp_methods, (void *)next_borrow__RepeatSub__methods},
+    {Py_tp_getset, (void *)next_borrow__RepeatSub__getset},
+    {Py_tp_new, (void *)::tpy::cpy::PyType_GenericNew},
+    {0, nullptr},
+};
+PyType_Spec next_borrow__RepeatSub__spec = {
+    "next_borrow.RepeatSub", (int)sizeof(::tpy::interop::Instance<::tpyapp::next_borrow::RepeatSub>), 0,
+    Py_TPFLAGS_DEFAULT, next_borrow__RepeatSub__slots,
+};
+
+int next_borrow__Peek_init(PyObject *self, PyObject *args, PyObject *kwargs) {
+    static char *__kwlist[] = {const_cast<char *>("v"), nullptr};
+    PyObject *a0 = nullptr;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:Peek", __kwlist, &a0)) return -1;
+    auto *__inst = reinterpret_cast<::tpy::interop::Instance<::tpyapp::next_borrow::Peek> *>(self);
+    if (__inst->owner != nullptr) {
+        PyErr_SetString(PyExc_TypeError, "cannot __init__ a borrowed field view");
+        return -1;
+    }
+    try {
+        int32_t __p0 = ::tpy::interop::from_py<int32_t>(a0);
+        if (__inst->initialized && ::tpy::interop::has_views_into(__inst->p, sizeof(*__inst->p), next_borrow__view_registry)) {
+            PyErr_SetString(PyExc_TypeError, "cannot __init__ an instance while borrow views of its fields are alive");
+            return -1;
+        }
+        if (__inst->initialized) { __inst->initialized = false; ::std::destroy_at(&__inst->storage); }
+        new (&__inst->storage) ::tpyapp::next_borrow::Peek(__p0);
+        __inst->p = &__inst->storage;
+        __inst->initialized = true;
+        return 0;
+    } catch (const ::tpy::BaseException &__e) {
+        ::tpy::interop::set_py_err_from(__e);
+        return -1;
+    } catch (...) {
+        if (!PyErr_Occurred())
+            PyErr_SetString(PyExc_RuntimeError, "tpy extension: constructor failed");
+        return -1;
+    }
+}
+
+void next_borrow__Peek_dealloc(PyObject *self) {
+    ::tpy::interop::instance_dealloc<::tpyapp::next_borrow::Peek>(self, next_borrow__view_registry);
+}
+
+PyObject *next_borrow__Peek__next_slot(PyObject *self) {
+    try {
+        auto __e = reinterpret_cast<::tpy::interop::Instance<::tpyapp::next_borrow::Peek> *>(self)->p->__next__();
+        if (!__e.has_value()) {
+            ::tpy::interop::set_py_err_from(__e.error());
+            return nullptr;
+        }
+        auto &__r = __e.value().get();
+        if (::tpy::interop::within_payload(&__r, &(*reinterpret_cast<::tpy::interop::Instance<::tpyapp::next_borrow::Peek> *>(self)->p), sizeof((*reinterpret_cast<::tpy::interop::Instance<::tpyapp::next_borrow::Peek> *>(self)->p))))
+            return ::tpy::interop::borrow_to_py((::tpy::cpy::PyTypeObject *)next_borrow__type_Node, __r, self, next_borrow__view_registry);
+        return ::tpy::interop::instance_to_py((::tpy::cpy::PyTypeObject *)next_borrow__type_Node, __r);
+    } catch (const ::tpy::BaseException &__e) {
+        ::tpy::interop::set_py_err_from(__e);
+        return nullptr;
+    } catch (...) {
+        if (!PyErr_Occurred())
+            PyErr_SetString(PyExc_RuntimeError, "tpy extension: unhandled error");
+        return nullptr;
+    }
+}
+
+PyObject *next_borrow__Peek__iter_slot(PyObject *self) {
+    try {
+        auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::next_borrow::Peek> *>(self)->p;
+        auto &__r = __self.__iter__();
+        if (&__r == &__self) { Py_IncRef(self); return self; }
+        if (::tpy::interop::within_payload(&__r, &__self, sizeof(__self)))
+            return ::tpy::interop::borrow_to_py((::tpy::cpy::PyTypeObject *)next_borrow__type_Peek, __r, self, next_borrow__view_registry);
+        return ::tpy::interop::instance_to_py((::tpy::cpy::PyTypeObject *)next_borrow__type_Peek, __r);
+    } catch (const ::tpy::BaseException &__e) {
+        ::tpy::interop::set_py_err_from(__e);
+        return nullptr;
+    } catch (...) {
+        if (!PyErr_Occurred())
+            PyErr_SetString(PyExc_RuntimeError, "tpy extension: unhandled error");
+        return nullptr;
+    }
+}
+
+PyMethodDef next_borrow__Peek__methods[] = {
+    {nullptr, nullptr, 0, nullptr},
+};
+PyGetSetDef next_borrow__Peek__getset[] = {
+    {nullptr, nullptr, nullptr, nullptr, nullptr},
+};
+PyType_Slot next_borrow__Peek__slots[] = {
+    {Py_tp_init, (void *)next_borrow__Peek_init},
+    {Py_tp_dealloc, (void *)next_borrow__Peek_dealloc},
+    {Py_tp_methods, (void *)next_borrow__Peek__methods},
+    {Py_tp_getset, (void *)next_borrow__Peek__getset},
+    {Py_tp_iternext, (void *)next_borrow__Peek__next_slot},
+    {Py_tp_iter, (void *)next_borrow__Peek__iter_slot},
+    {Py_tp_new, (void *)::tpy::cpy::PyType_GenericNew},
+    {0, nullptr},
+};
+PyType_Spec next_borrow__Peek__spec = {
+    "next_borrow.Peek", (int)sizeof(::tpy::interop::Instance<::tpyapp::next_borrow::Peek>), 0,
+    Py_TPFLAGS_DEFAULT, next_borrow__Peek__slots,
 };
 
 int next_borrow__Rows_init(PyObject *self, PyObject *args, PyObject *) {
@@ -214,12 +370,12 @@ void next_borrow__Rows_dealloc(PyObject *self) {
 
 PyObject *next_borrow__Rows__next_slot(PyObject *self) {
     try {
-        auto __r = reinterpret_cast<::tpy::interop::Instance<::tpyapp::next_borrow::Rows> *>(self)->p->__next__();
-        if (!__r.has_value()) {
-            ::tpy::interop::set_py_err_from(__r.error());
+        auto __e = reinterpret_cast<::tpy::interop::Instance<::tpyapp::next_borrow::Rows> *>(self)->p->__next__();
+        if (!__e.has_value()) {
+            ::tpy::interop::set_py_err_from(__e.error());
             return nullptr;
         }
-        return ::tpy::interop::list_to_py(__r.value().get(), [](const int32_t &__o0) { return ::tpy::interop::to_py(__o0); });
+        return ::tpy::interop::list_to_py(__e.value().get(), [](const int32_t &__o0) { return ::tpy::interop::to_py(__o0); });
     } catch (const ::tpy::BaseException &__e) {
         ::tpy::interop::set_py_err_from(__e);
         return nullptr;
@@ -301,12 +457,12 @@ void next_borrow__Fresh_dealloc(PyObject *self) {
 
 PyObject *next_borrow__Fresh__next_slot(PyObject *self) {
     try {
-        auto __r = reinterpret_cast<::tpy::interop::Instance<::tpyapp::next_borrow::Fresh> *>(self)->p->__next__();
-        if (!__r.has_value()) {
-            ::tpy::interop::set_py_err_from(__r.error());
+        auto __e = reinterpret_cast<::tpy::interop::Instance<::tpyapp::next_borrow::Fresh> *>(self)->p->__next__();
+        if (!__e.has_value()) {
+            ::tpy::interop::set_py_err_from(__e.error());
             return nullptr;
         }
-        return ::tpy::interop::instance_to_py((::tpy::cpy::PyTypeObject *)next_borrow__type_Node, std::move(__r).value());
+        return ::tpy::interop::instance_to_py((::tpy::cpy::PyTypeObject *)next_borrow__type_Node, std::move(__e).value());
     } catch (const ::tpy::BaseException &__e) {
         ::tpy::interop::set_py_err_from(__e);
         return nullptr;
@@ -380,6 +536,12 @@ extern "C" PyObject *PyInit_next_borrow(void) {
         next_borrow__type_Repeat = ::tpy::cpy::PyType_FromSpec(&next_borrow__Repeat__spec);
         if (!next_borrow__type_Repeat) { ::tpy::cpy::Py_DecRef(__m); return nullptr; }
         if (::tpy::cpy::PyModule_AddObjectRef(__m, "Repeat", next_borrow__type_Repeat) < 0) { ::tpy::cpy::Py_DecRef(__m); return nullptr; }
+        next_borrow__type_RepeatSub = ::tpy::cpy::PyType_FromSpecWithBases(&next_borrow__RepeatSub__spec, next_borrow__type_Repeat);
+        if (!next_borrow__type_RepeatSub) { ::tpy::cpy::Py_DecRef(__m); return nullptr; }
+        if (::tpy::cpy::PyModule_AddObjectRef(__m, "RepeatSub", next_borrow__type_RepeatSub) < 0) { ::tpy::cpy::Py_DecRef(__m); return nullptr; }
+        next_borrow__type_Peek = ::tpy::cpy::PyType_FromSpec(&next_borrow__Peek__spec);
+        if (!next_borrow__type_Peek) { ::tpy::cpy::Py_DecRef(__m); return nullptr; }
+        if (::tpy::cpy::PyModule_AddObjectRef(__m, "Peek", next_borrow__type_Peek) < 0) { ::tpy::cpy::Py_DecRef(__m); return nullptr; }
         next_borrow__type_Rows = ::tpy::cpy::PyType_FromSpec(&next_borrow__Rows__spec);
         if (!next_borrow__type_Rows) { ::tpy::cpy::Py_DecRef(__m); return nullptr; }
         if (::tpy::cpy::PyModule_AddObjectRef(__m, "Rows", next_borrow__type_Rows) < 0) { ::tpy::cpy::Py_DecRef(__m); return nullptr; }

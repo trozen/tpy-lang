@@ -11,6 +11,7 @@ struct Node;
 struct Repeat;
 struct Rows;
 struct Peek;
+struct Swapping;
 struct Fresh;
 
 inline constexpr std::string_view __name__ = "__main__";
@@ -103,6 +104,32 @@ inline std::ostream& operator<<(std::ostream& os, const Peek& obj) {
 }
 
 // @export
+// class Swapping:
+struct Swapping {
+    // _cur: Node
+    Node _cur;
+    // _n: Int32
+    int32_t _n;
+
+    // def __init__(self):
+    Swapping();
+
+    auto& __iter__() { return *this; }
+
+    // def reset(self) -> None:
+    void reset();
+
+    // def __next__(self) -> Node:
+    std::expected<::tpy::val_or_ref<Node>, ::tpy::StopIteration> __next__();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Swapping";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Swapping& obj) {
+    ::tpy::print_object_default(os, "Swapping", obj);
+    return os;
+}
+
+// @export
 // class Fresh:
 struct Fresh {
     // _n: Int32
@@ -145,7 +172,7 @@ inline std::expected<::tpy::val_or_ref<Node>, ::tpy::StopIteration> Repeat::__ne
     }
     // self._n += 1
     this->_n = ::tpy::add_check<int32_t>(this->_n, 1);
-    // return self._cur  # tpyc: warning(/'__next__': returns exposed class 'Node' by reference from a dunder slot with no identity-preserving path/)
+    // return self._cur  # tpyc: ok
     return this->_cur;
 }
 
@@ -177,7 +204,29 @@ inline std::expected<::tpy::val_or_ref<const Node>, ::tpy::StopIteration> Peek::
     }
     // self._n += 1
     this->_n = ::tpy::add_check<int32_t>(this->_n, 1);
-    // return self._cur  # tpyc: warning(/'__next__': returns exposed class 'Node' by reference from a dunder slot with no identity-preserving path/)
+    // return self._cur  # tpyc: ok
+    return this->_cur;
+}
+
+// def __init__(self):
+inline Swapping::Swapping() : _cur(Node(0)), _n(0) {}
+
+// def reset(self) -> None:
+inline void Swapping::reset() {
+    // self._cur = Node(1)
+    this->_cur = Node(1);
+}
+
+// def __next__(self) -> Node:
+inline std::expected<::tpy::val_or_ref<Node>, ::tpy::StopIteration> Swapping::__next__() {
+    // if self._n >= 3:
+    if ((this->_n >= 3)) {
+        // raise StopIteration
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    // self._n += 1
+    this->_n = ::tpy::add_check<int32_t>(this->_n, 1);
+    // return self._cur  # tpyc: warning(/'__next__': returns exposed class 'Node' by reference from a source with no live object behind it/)
     return this->_cur;
 }
 

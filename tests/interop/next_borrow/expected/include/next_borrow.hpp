@@ -9,6 +9,8 @@ namespace tpyapp::next_borrow {
 
 struct Node;
 struct Repeat;
+struct RepeatSub;
+struct Peek;
 struct Rows;
 struct Fresh;
 
@@ -45,6 +47,24 @@ inline std::ostream& operator<<(std::ostream& os, const Repeat& obj) {
     return os;
 }
 
+struct Peek {
+    Node _cur;
+    int32_t _n;
+
+    Peek() = default;
+    explicit Peek(int32_t v);
+
+    Peek& __iter__();
+
+    std::expected<::tpy::val_or_ref<const Node>, ::tpy::StopIteration> __next__();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Peek";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Peek& obj) {
+    ::tpy::print_object_default(os, "Peek", obj);
+    return os;
+}
+
 struct Rows {
     std::vector<int32_t> _row;
     int32_t _n;
@@ -78,6 +98,17 @@ inline std::ostream& operator<<(std::ostream& os, const Fresh& obj) {
     return os;
 }
 
+struct RepeatSub : Repeat {
+
+    using Repeat::Repeat;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.RepeatSub";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const RepeatSub& obj) {
+    ::tpy::print_object_default(os, "RepeatSub", obj);
+    return os;
+}
+
 
 inline Node::Node(int32_t v) : v(v) {}
 
@@ -89,6 +120,20 @@ inline Repeat& Repeat::__iter__() {
 
 inline std::expected<::tpy::val_or_ref<Node>, ::tpy::StopIteration> Repeat::__next__() {
     if ((this->_n >= 3)) {
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    this->_n = ::tpy::add_check<int32_t>(this->_n, 1);
+    return this->_cur;
+}
+
+inline Peek::Peek(int32_t v) : _cur(Node(v)), _n(0) {}
+
+inline Peek& Peek::__iter__() {
+    return (*this);
+}
+
+inline std::expected<::tpy::val_or_ref<const Node>, ::tpy::StopIteration> Peek::__next__() {
+    if ((this->_n >= 2)) {
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
     this->_n = ::tpy::add_check<int32_t>(this->_n, 1);

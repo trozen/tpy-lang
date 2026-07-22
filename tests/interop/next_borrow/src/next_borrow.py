@@ -1,11 +1,13 @@
 # tpy: ext_module
-# A borrow-form __next__ return crosses as a WARNED COPY: the tp_iternext
-# glue unwraps @error_return's val_or_ref borrow slot before marshalling
-# (std::expected cannot hold T&, so the compiled method returns the value
-# through the wrapper). Read-only iteration values match plain Python; the
-# copy divergence itself is pinned ext-only in ext_checks.py. Own[...]
-# returns move a fresh instance out (the quiet form).
-from tpy import Int32, Own
+# Borrow-form __next__ returns cross ALIASING, like plain Python: the
+# tp_iternext slot unwraps @error_return's val_or_ref borrow slot
+# (std::expected cannot hold T&) and threads the receiver candidate, so a
+# never-reassigned field source yields ONE registry-deduped borrow view
+# (identity + write-through; asserted in the parity driver -- plain Python
+# aliases identically). A borrow LIST return still copies (warned; no view
+# path for containers) -- that divergence is pinned ext-only in
+# ext_checks.py. Own[...] returns move a fresh instance out.
+from tpy import Int32, Own, readonly
 from tpy.extern import export
 
 
@@ -31,6 +33,35 @@ class Repeat:
 
     def __next__(self) -> Node:
         if self._n >= 3:
+            raise StopIteration
+        self._n += 1
+        return self._cur
+
+
+@export
+class RepeatSub(Repeat):
+    # No own __next__/__iter__: the base's tp_iternext slot is inherited,
+    # and its view path must alias the field of THIS derived instance.
+    pass
+
+
+@export
+class Peek:
+    _cur: Node
+    _n: Int32
+
+    def __init__(self, v: Int32):
+        self._cur = Node(v)
+        self._n = 0
+
+    def __iter__(self) -> "Peek":
+        return self
+
+    def __next__(self) -> "readonly[Node]":
+        # The readonly borrow spelling crosses identically to the plain
+        # form (readonly is a TPy-side contract, a no-op at the boundary
+        # and in the lib/cpy stubs).
+        if self._n >= 2:
             raise StopIteration
         self._n += 1
         return self._cur

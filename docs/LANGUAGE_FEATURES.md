@@ -6273,8 +6273,8 @@ API, floor 3.12, hand-rolled C-API glue, copy-in marshalling).
   `def __mul__(self, scalar: Int64)` for `vec * 3`) -- not restricted to the
   record's own type. `__pow__`/`__rpow__` reject a real 3-argument modulus
   (`NotImplemented`, since TPy has no 3-arg `__pow__`). In-place ops mutate
-  `self` and return the *same* object (unlike every other dunder's
-  fresh-instance return) -- TPy already requires them to return `self`, not
+  `self` and return the *same* object by construction (their slot never
+  marshals a return) -- TPy already requires them to return `self`, not
   `Own[T]`. The container protocol is also **wired**: `__len__` -> both
   `Py_mp_length`/`Py_sq_length`; `__getitem__` -> `Py_mp_subscript` (a
   wrong-typed key's `TypeError` propagates directly -- no `NotImplemented`
@@ -6289,8 +6289,19 @@ API, floor 3.12, hand-rolled C-API glue, copy-in marshalling).
   `__next__` -> `Py_tp_iternext` (implicitly `@error_return(StopIteration)`,
   so exhaustion crosses via the existing exception bridge rather than a
   special sentinel; a borrow-form return -- `-> Cls` / `-> list[T]` -- is
-  unwrapped from its `val_or_ref` borrow slot and crosses as a warned
-  copy, like every other non-`__iter__` dunder's borrow return). `list(x)`, `iter(x)`/`next(it)`, and a `for` loop all
+  unwrapped from its `val_or_ref` borrow slot before dispatch). Every
+  marshalled-return dunder slot (arithmetic, `__getitem__`, `__iter__`,
+  `__next__`) threads the same identity/view candidates a method wrapper
+  does, so a borrow return of `self`, an exposed-class operand, or a
+  never-reassigned field crosses as the ORIGINAL PyObject / a
+  registry-deduped borrow view -- plain Python's aliasing (`x[0] is x[0]`,
+  a `return self` subscript is `x` itself, inherited slots un-sliced);
+  only the residue (reassignable fields, containers) copies with the
+  standard warning. The arithmetic slots' identity path is currently
+  unreachable from TPy source: two operator defects (the shim
+  const-return mismatch; the `Own[readonly[Cls]]` result binding --
+  BUGS.md) reject every arithmetic-dunder borrow return before codegen.
+  `list(x)`, `iter(x)`/`next(it)`, and a `for` loop all
   work once these are wired. Any other dunder (`__call__`, `__bool__`, ...)
   is still **warned** -- not yet wired into the host type, so it would be
   silently absent otherwise.

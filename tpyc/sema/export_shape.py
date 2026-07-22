@@ -161,7 +161,12 @@ def view_safe_borrow_returns(fn: 'TpyFunction',
 
     True when every return site is either a bare name in `alias_records`
     (identity path: the original PyObject crosses back) or a view-safe
-    field access of such a name (borrow-view path)."""
+    field access of such a name (borrow-view path). A VALUE-type return
+    class is never identity/view-safe: the glue excludes value types from
+    both runtime paths (a value class crosses by copy), so suppressing
+    here would silence a copy that plain Python would alias."""
+    if return_info.is_value_type:
+        return False
     returns: list[TpyReturn] = []
     _walk_body_stmts(
         fn.body, lambda _e: None,

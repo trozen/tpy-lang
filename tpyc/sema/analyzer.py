@@ -544,15 +544,14 @@ class SemanticAnalyzer:
             return boundary_alias_records(params, self.ctx.registry, rec_info)
 
         def warn_if_borrow_return(fn, label: str,
-                                  alias_records: 'dict | None') -> None:
+                                  alias_records: 'dict') -> None:
             """`alias_records` = name -> RecordInfo of the candidates the
-            GLUE threads at this emit site (params, plus `self` for
-            methods/getters and the tp_iter slot), or None when the emit
-            site has no identity/view path at all (the other dunder slots
-            emit through `_value_out_expr`, which always copies) -- those
-            must keep the unconditional warning. Suppression and the glue's
-            view emission share ONE classifier (view_safe_borrow_returns),
-            so a suppressed warning always has a runtime aliasing path.
+            GLUE threads at this emit site (exposed-class params, plus
+            `self` for method-family sites -- every marshalled-return emit
+            site threads them: methods, free fns, property getters, and the
+            dunder slots). Suppression and the glue's view emission share
+            ONE classifier (view_safe_borrow_returns), so a suppressed
+            warning always has a runtime aliasing path.
 
             Borrow form has two spellings: `-> Cls` lowers to RefType, but
             `-> readonly[Cls]` stays ReadonlyType-topped (make_ref no-ops
@@ -572,24 +571,23 @@ class SemanticAnalyzer:
                 # copied, nothing to warn about. (Conservative: a ternary or
                 # a local alias of self still warns even though the runtime
                 # address match preserves identity there too.)
-                if (alias_records is not None and info is not None
+                if (info is not None
                         and view_safe_borrow_returns(
                             fn, alias_records, info, self.ctx.registry)):
                     return
                 cls_name = getattr(fn.return_type.wrapped, 'name', '?')
-                if alias_records is None:
-                    # No identity path exists at this emit site, so the copy
-                    # is unconditional -- the identity-advice wording would
-                    # lie here (`return self` still copies).
+                if info is not None and info.is_value_type:
+                    # A value class has no identity/view path at all (it
+                    # crosses by copy from every source), so the residual
+                    # wording's self/param identity advice would lie here.
                     self._warning(
-                        f"{label}: returns exposed class '{cls_name}' by "
-                        f"reference from a dunder slot with no "
-                        f"identity-preserving path, so the instance is "
-                        f"always copied across the CPython boundary -- the "
-                        f"copy is a new object (identity and write-through "
-                        f"aliasing are not preserved; a copied derived "
-                        f"instance is sliced to the declared type); return "
-                        f"Own[{cls_name}] to make the copy explicit",
+                        f"{label}: returns exposed value-type class "
+                        f"'{cls_name}' by reference, and a value class "
+                        f"always crosses the CPython boundary as a copy -- "
+                        f"the copy is a new object (identity and "
+                        f"write-through aliasing are not preserved, even "
+                        f"for `return self`); return Own[{cls_name}] to "
+                        f"make the copy explicit",
                         first_return(fn.body))
                     return
                 self._warning(
@@ -653,19 +651,21 @@ class SemanticAnalyzer:
                     # METHODS still cross -- the `_` rule gates attribute
                     # sites only -- so this skip is getter-specific.)
                     continue
+                if m.name in (_EXPORT_CLASS_SETITEM_DUNDERS
+                              | _EXPORT_CLASS_DELITEM_DUNDERS):
+                    # The mp_ass_subscript slot returns a status int; the
+                    # method's own return value is DISCARDED -- nothing
+                    # crosses, so nothing is copied.
+                    continue
                 what = "property" if m.is_property_getter else "method"
-                # Non-inplace dunders emit through `_value_out_expr` slot
-                # wrappers, which have no identity path -- their borrow
-                # returns always copy, so no suppression (alias_records=None).
-                # __iter__ is the exception: its tp_iter wrapper threads the
-                # receiver candidate (the canonical `return self` iterator
-                # crosses by identity), so bare-self returns suppress.
+                # Every marshalled-return dunder slot threads the same
+                # candidates as a method wrapper (the branch's receiver +
+                # its exposed-class operands), so dunders get the method
+                # treatment: identity/view-safe bodies suppress, the
+                # residue warns.
                 warn_if_borrow_return(
                     m, f"exposed class '{record.name}' {what} '{m.name}'",
-                    alias_records_of([], rec_info)
-                    if m.name in _EXPORT_CLASS_ITER_DUNDERS
-                    else None if is_dunder
-                    else alias_records_of(m.params, rec_info))
+                    alias_records_of(m.params, rec_info))
 
     def _validate_export_class_dunders(self, module: TpyModule) -> None:
         """In an ext_module, validate an @export class's repr/str/eq/ne/lt/le/

@@ -1,9 +1,13 @@
 # Identity/view-preserving borrow returns: bare `self`/param returns and
 # never-reassigned field borrows of them don't warn (methods, property
-# getters, free fns, and the tp_iter slot); reassignable fields, module
-# globals, and the other dunder slots still copy and warn.
+# getters, free fns, and every marshalled-return dunder slot -- getitem,
+# iter, next thread the same candidates); reassignable fields and module
+# globals still copy and warn. A VALUE-type class crosses by copy from
+# every source (no identity/view path), so even its `return self` warns,
+# with value-specific wording; a setitem return is discarded by the slot
+# (nothing crosses), so it never warns.
 # tpy: ext_module
-from tpy import Int64, Own
+from tpy import Int64, Own, ValueType, readonly
 from tpy.extern import export
 
 
@@ -57,10 +61,9 @@ class Box:
         return self  # tpyc: ok
 
     def __getitem__(self, i: Int64) -> "Box":
-        # Every other dunder slot emits through the expression-form copy
-        # path (no identity candidates), so even a bare `self` return warns,
-        # with the always-copies wording (no identity advice).
-        return self  # tpyc: warning(/dunder slot with no identity-preserving path/)
+        # The mp_subscript slot threads the receiver candidate like a
+        # method wrapper: a bare `self` return crosses by identity.
+        return self  # tpyc: ok
 
     def __next__(self) -> Int64:
         if self.v <= 0:
@@ -77,9 +80,48 @@ class FieldIter:
         self._b = Box(0)
 
     def __iter__(self) -> Box:
-        # The __iter__ carve-out admits view-safe field sources too:
-        # `_b` is never reassigned, so the iterator crosses as a view.
+        # A view-safe field source crosses as a borrow view from a dunder
+        # slot too: `_b` is never reassigned.
         return self._b  # tpyc: ok
+
+
+@export
+class Rebound:
+    _alt: Inner
+
+    def __init__(self):
+        self._alt = Inner(0)
+
+    def reset(self) -> None:
+        self._alt = Inner(1)
+
+    def __getitem__(self, i: Int64) -> Inner:
+        # Dunder-slot RESIDUE witness: a reassignable-field source has no
+        # identity/view path, so dunder slots warn exactly like method
+        # wrappers.
+        return self._alt  # tpyc: warning(/no live object behind it/)
+
+    def __setitem__(self, i: Int64, v: Int64) -> Inner:
+        # The mp_ass_subscript slot discards the method's return (CPython
+        # does too), so even a would-warn source never crosses here.
+        return self._alt  # tpyc: ok
+
+
+@export
+class Flat(ValueType):
+    n: Int64
+
+    def __init__(self, n: Int64):
+        self.n = n
+
+    def itself(self) -> "readonly[Flat]":
+        # A value class crosses by copy from EVERY source -- `return self`
+        # included -- so the identity suppression must not apply and the
+        # value-specific wording fires.
+        return self  # tpyc: warning(/value-type class 'Flat' by reference, and a value class always crosses the CPython boundary as a copy/)
+
+    def __getitem__(self, i: Int64) -> "readonly[Flat]":
+        return self  # tpyc: warning(/value-type class 'Flat' by reference, and a value class always crosses/)
 
 
 self = Box(0)

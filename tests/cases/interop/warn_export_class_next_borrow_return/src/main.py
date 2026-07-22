@@ -1,9 +1,10 @@
-# A borrow-form __next__ return warns (copied at the boundary -- the
-# tp_iternext glue unwraps @error_return's val_or_ref borrow slot before
-# marshalling, since std::expected cannot hold T&); the readonly[Cls]
-# borrow spelling warns identically (the gate peels ReadonlyType);
-# Own[...] moves a fresh instance out and stays quiet. The runtime copy
-# semantics are pinned in tests/interop/next_borrow.
+# Borrow-form __next__ returns: the tp_iternext slot threads the receiver
+# candidate (after unwrapping @error_return's val_or_ref borrow slot, since
+# std::expected cannot hold T&), so a never-reassigned field source -- plain
+# or readonly[...] spelled -- crosses as an aliasing borrow view and stays
+# quiet; a reassignable-field source and a borrow list return still copy
+# and warn. Own[...] moves a fresh instance out (the quiet form). Runtime
+# aliasing is pinned in tests/interop/next_borrow.
 # tpy: ext_module
 from tpy import Int32, Own, readonly
 from tpy.extern import export
@@ -33,7 +34,7 @@ class Repeat:
         if self._n >= 3:
             raise StopIteration
         self._n += 1
-        return self._cur  # tpyc: warning(/'__next__': returns exposed class 'Node' by reference from a dunder slot with no identity-preserving path/)
+        return self._cur  # tpyc: ok
 
 
 @export
@@ -65,7 +66,26 @@ class Peek:
         if self._n >= 3:
             raise StopIteration
         self._n += 1
-        return self._cur  # tpyc: warning(/'__next__': returns exposed class 'Node' by reference from a dunder slot with no identity-preserving path/)
+        return self._cur  # tpyc: ok
+
+
+@export
+class Swapping:
+    _cur: Node
+    _n: Int32
+
+    def __init__(self):
+        self._cur = Node(0)
+        self._n = 0
+
+    def reset(self) -> None:
+        self._cur = Node(1)
+
+    def __next__(self) -> Node:
+        if self._n >= 3:
+            raise StopIteration
+        self._n += 1
+        return self._cur  # tpyc: warning(/'__next__': returns exposed class 'Node' by reference from a source with no live object behind it/)
 
 
 @export

@@ -10,6 +10,8 @@ namespace tpyapp::main {
 struct Inner;
 struct Box;
 struct FieldIter;
+struct Rebound;
+struct Flat;
 
 extern Box* self;
 inline constexpr std::string_view __name__ = "__main__";
@@ -119,6 +121,75 @@ inline std::ostream& operator<<(std::ostream& os, const FieldIter& obj) {
     return os;
 }
 
+// @export
+// class Rebound:
+struct Rebound {
+    // _alt: Inner
+    Inner _alt;
+
+    // def __init__(self):
+    Rebound();
+
+    // def reset(self) -> None:
+    void reset();
+
+    // def __getitem__(self, i: Int64) -> Inner:
+    Inner& __getitem__(int64_t i);
+
+    // def __getitem__(self, i: Int64) -> Inner:
+    const Inner& __getitem__(int64_t i) const;
+
+    // def __setitem__(self, i: Int64, v: Int64) -> Inner:
+    Inner& __setitem__(int64_t i, int64_t v);
+
+    const Inner& operator[](int64_t i) const {
+        return __getitem__(i);
+    }
+
+    Inner& operator[](int64_t i) {
+        return __getitem__(i);
+    }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Rebound";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Rebound& obj) {
+    ::tpy::print_object_default(os, "Rebound", obj);
+    return os;
+}
+
+// @export
+// class Flat(ValueType):
+struct Flat {
+    // n: Int64
+    int64_t n;
+
+    // def __init__(self, n: Int64):
+    Flat() = default;
+    explicit Flat(int64_t n);
+
+    // def itself(self) -> "readonly[Flat]":
+    Flat itself() const;
+
+    // def __getitem__(self, i: Int64) -> "readonly[Flat]":
+    Flat __getitem__(int64_t i) const;
+
+    Flat operator[](int64_t i) const {
+        return __getitem__(i);
+    }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Flat";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Flat& obj) {
+    ::tpy::print_object_default(os, "Flat", obj);
+    return os;
+}
+} // namespace tpyapp::main
+
+template<> struct tpy::is_value_type<::tpyapp::main::Flat> : std::true_type {};
+
+namespace tpyapp::main {
+
+
 
 // def __init__(self, x: Int64):
 inline Inner::Inner(int64_t x) : x(x) {}
@@ -189,19 +260,17 @@ inline Box& Box::__iter__() {
 
 // def __getitem__(self, i: Int64) -> "Box":
 inline Box& Box::__getitem__(int64_t i) {
-    // # Every other dunder slot emits through the expression-form copy
-    // # path (no identity candidates), so even a bare `self` return warns,
-    // # with the always-copies wording (no identity advice).
-    // return self  # tpyc: warning(/dunder slot with no identity-preserving path/)
+    // # The mp_subscript slot threads the receiver candidate like a
+    // # method wrapper: a bare `self` return crosses by identity.
+    // return self  # tpyc: ok
     return (*this);
 }
 
 // def __getitem__(self, i: Int64) -> "Box":
 inline const Box& Box::__getitem__(int64_t i) const {
-    // # Every other dunder slot emits through the expression-form copy
-    // # path (no identity candidates), so even a bare `self` return warns,
-    // # with the always-copies wording (no identity advice).
-    // return self  # tpyc: warning(/dunder slot with no identity-preserving path/)
+    // # The mp_subscript slot threads the receiver candidate like a
+    // # method wrapper: a bare `self` return crosses by identity.
+    // return self  # tpyc: ok
     return (*this);
 }
 
@@ -223,10 +292,63 @@ inline FieldIter::FieldIter() : _b(Box(0)) {}
 
 // def __iter__(self) -> Box:
 inline Box& FieldIter::__iter__() {
-    // # The __iter__ carve-out admits view-safe field sources too:
-    // # `_b` is never reassigned, so the iterator crosses as a view.
+    // # A view-safe field source crosses as a borrow view from a dunder
+    // # slot too: `_b` is never reassigned.
     // return self._b  # tpyc: ok
     return this->_b;
+}
+
+// def __init__(self):
+inline Rebound::Rebound() : _alt(Inner(0)) {}
+
+// def reset(self) -> None:
+inline void Rebound::reset() {
+    // self._alt = Inner(1)
+    this->_alt = Inner(1);
+}
+
+// def __getitem__(self, i: Int64) -> Inner:
+inline Inner& Rebound::__getitem__(int64_t i) {
+    // # Dunder-slot RESIDUE witness: a reassignable-field source has no
+    // # identity/view path, so dunder slots warn exactly like method
+    // # wrappers.
+    // return self._alt  # tpyc: warning(/no live object behind it/)
+    return this->_alt;
+}
+
+// def __getitem__(self, i: Int64) -> Inner:
+inline const Inner& Rebound::__getitem__(int64_t i) const {
+    // # Dunder-slot RESIDUE witness: a reassignable-field source has no
+    // # identity/view path, so dunder slots warn exactly like method
+    // # wrappers.
+    // return self._alt  # tpyc: warning(/no live object behind it/)
+    return this->_alt;
+}
+
+// def __setitem__(self, i: Int64, v: Int64) -> Inner:
+inline Inner& Rebound::__setitem__(int64_t i, int64_t v) {
+    // # The mp_ass_subscript slot discards the method's return (CPython
+    // # does too), so even a would-warn source never crosses here.
+    // return self._alt  # tpyc: ok
+    return this->_alt;
+}
+
+// def __init__(self, n: Int64):
+inline Flat::Flat(int64_t n) : n(n) {}
+
+// def itself(self) -> "readonly[Flat]":
+inline Flat Flat::itself() const {
+    // # A value class crosses by copy from EVERY source -- `return self`
+    // # included -- so the identity suppression must not apply and the
+    // # value-specific wording fires.
+    // return self  # tpyc: warning(/value-type class 'Flat' by reference, and a value class always crosses the CPython boundary as a copy/)
+    return (*this);
+}
+
+// def __getitem__(self, i: Int64) -> "readonly[Flat]":
+inline Flat Flat::__getitem__(int64_t i) const {
+    // return self  # tpyc: warning(/value-type class 'Flat' by reference, and a value class always crosses/)
+    return (*this);
 }
 void __tpy_init();
 } // namespace tpyapp::main

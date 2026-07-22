@@ -247,6 +247,11 @@ class ExtensionGenerator:
             base = base_of[r.name]
             result.append({
                 "record": r,
+                # Shared name -> AST record map (all exposed classes are
+                # same-module; cross-module bases are sema-rejected) -- lets
+                # _ast_method walk to an ancestor's body for an inherited
+                # dunder half emitted on a derived slot.
+                "records_by_name": by_name,
                 "info": reg.get_record(r.name),
                 "var": f"{sym}__type_{escape_cpp_name(r.name)}",
                 "cpp_type": qualified_cpp_name(call_ns, r.name),
@@ -574,26 +579,36 @@ class ExtensionGenerator:
 
     def _ast_method(self, cls: dict, name: str, *,
                     property_getter: bool = False):
-        """The source-level TpyFunction for an own method of an exposed
-        class (the glue's per-class loops run off RecordInfo; the view
-        classifier needs the body AST). For a property, the MUTABLE getter
-        clone (the const clone shares its return shape)."""
-        for m in cls["record"].methods:
-            if m.name != name:
-                continue
-            if property_getter:
-                if m.is_property_getter and not m.is_readonly:
+        """The source-level TpyFunction for a method of an exposed class
+        (the glue's per-class loops run off RecordInfo; the view classifier
+        needs the body AST). Own record first, then ancestors -- an
+        inherited dunder half emitted on a derived slot classifies against
+        the declaring body, mirroring _method_with_ancestors' MRO lookup.
+        For a property, the MUTABLE getter clone (the const clone shares
+        its return shape)."""
+        reg = self.ctx.analyzer.registry
+        by_name = cls["records_by_name"]
+        records = [cls["record"]] + [
+            by_name[anc.name] for anc in reg.iter_ancestor_records(cls["info"])
+            if anc.name in by_name]
+        for rec in records:
+            for m in rec.methods:
+                if m.name != name:
+                    continue
+                if property_getter:
+                    if m.is_property_getter and not m.is_readonly:
+                        return m
+                    continue
+                if not (m.is_property_getter or m.is_property_setter):
                     return m
-                continue
-            if not (m.is_property_getter or m.is_property_setter):
-                return m
         return None
 
     def _emit_call_return(self, out: TextIO, ret_typ: TpyType | None,
                           call_expr: str, sym: str,
                           alias_candidates: tuple[tuple[str, str, 'RecordInfo'], ...] |
                           list[tuple[str, str, 'RecordInfo']] = (),
-                          view_fallback: bool = False) -> None:
+                          view_fallback: bool = False,
+                          indent: str = "        ") -> None:
         """Emit the return of a boundary call: void -> None; an exposed class
         borrow return -> the ORIGINAL PyObject when the returned reference's
         address matches a boundary-crossed candidate (self / an exposed-class
@@ -605,9 +620,10 @@ class ExtensionGenerator:
         registry-deduped identity), else a fresh wrapping instance
         (instance_to_py); an Own[...] class return is always a fresh
         instance; else to_py."""
+        ind = indent
         if ret_typ is None or is_void_like_type(ret_typ):
-            out.write(f"        {call_expr};\n")
-            out.write("        return ::tpy::interop::none_to_py();\n")
+            out.write(f"{ind}{call_expr};\n")
+            out.write(f"{ind}return ::tpy::interop::none_to_py();\n")
         elif is_exposed_class(ret_typ):
             _cpp, tv = self._class_cpp_var(ret_typ, sym)
             # Borrow-form returns only: an Own[...] return is a fresh value
@@ -630,20 +646,20 @@ class ExtensionGenerator:
             views = (list(alias_candidates)
                      if view_fallback and not isinstance(t, OwnType) else [])
             if scoped or views:
-                out.write(f"        auto &__r = {call_expr};\n")
+                out.write(f"{ind}auto &__r = {call_expr};\n")
                 for payload, pyobj in scoped:
-                    out.write(f"        if (&__r == &{payload}) {{ "
+                    out.write(f"{ind}if (&__r == &{payload}) {{ "
                               f"Py_IncRef({pyobj}); return {pyobj}; }}\n")
                 for payload, pyobj, _cinfo in views:
-                    out.write(f"        if (::tpy::interop::within_payload("
+                    out.write(f"{ind}if (::tpy::interop::within_payload("
                               f"&__r, &{payload}, sizeof({payload})))\n")
-                    out.write(f"            return ::tpy::interop::"
+                    out.write(f"{ind}    return ::tpy::interop::"
                               f"borrow_to_py((::tpy::cpy::PyTypeObject *)"
                               f"{tv}, __r, {pyobj}, {sym}__view_registry);\n")
-                out.write(f"        return ::tpy::interop::instance_to_py("
+                out.write(f"{ind}return ::tpy::interop::instance_to_py("
                           f"(::tpy::cpy::PyTypeObject *){tv}, __r);\n")
             else:
-                out.write(f"        return ::tpy::interop::instance_to_py("
+                out.write(f"{ind}return ::tpy::interop::instance_to_py("
                           f"(::tpy::cpy::PyTypeObject *){tv}, {call_expr});\n")
         elif is_exposed_enum(ret_typ):
             _cpp, ev = self._enum_cpp_var(ret_typ, sym)
@@ -651,13 +667,13 @@ class ExtensionGenerator:
             # picks the signed/unsigned Py_BuildValue format -- a UInt64 member
             # above INT64_MAX must cross unsigned, not wrap to a negative.
             und = enum_info_of(_boundary_inner(ret_typ)).underlying_type.to_cpp()
-            out.write(f"        return ::tpy::interop::enum_to_py({ev}, "
+            out.write(f"{ind}return ::tpy::interop::enum_to_py({ev}, "
                       f"static_cast<{und}>({call_expr}));\n")
         elif _container_element_types(_boundary_inner(ret_typ)) is not None:
-            out.write(f"        return "
+            out.write(f"{ind}return "
                       f"{self._marshal_out_expr(ret_typ, call_expr, 0)};\n")
         else:
-            out.write(f"        return ::tpy::interop::to_py({call_expr});\n")
+            out.write(f"{ind}return ::tpy::interop::to_py({call_expr});\n")
 
     def _emit_boundary_catch(self, out: TextIO, reg_arg: str) -> None:
         """The shared per-wrapper exception boundary: a body-raised TPy
@@ -869,11 +885,10 @@ class ExtensionGenerator:
         """The C++ expression producing the PyObject* for a single outgoing
         value -- an expression-form mirror of `_emit_call_return`'s dispatch,
         used where the caller needs a bare `return <expr>;` rather than a
-        multi-line statement emitter: an operator-dunder result (its
-        forward/reflected branches already sit inside their own try) and a
-        getset field getter. (For a field getter the exposed-class arm is
-        reached only by an immutable value-type field, which copies out; a
-        mutable reference-class field is sema-rejected.)"""
+        multi-line statement emitter: the getset field getter. (Its
+        exposed-class arm is reached only by an immutable value-type field,
+        which copies out; a mutable reference-class field crosses as a
+        borrow-view getset or is sema-rejected.)"""
         if ret_typ is not None and is_exposed_class(ret_typ):
             _cpp, tv = self._class_cpp_var(ret_typ, sym)
             return (f"::tpy::interop::instance_to_py("
@@ -941,9 +956,25 @@ class ExtensionGenerator:
             out.write("            try {\n")
             decl, expr = self._value_in_decl_expr(operand_type, operand_var, sym)
             out.write(f"                {decl}__other = {expr};\n")
+            recv = (f"(*reinterpret_cast<::tpy::interop::Instance<{cpp}> *>"
+                    f"({self_var})->p)")
             call = (f"reinterpret_cast<::tpy::interop::Instance<{cpp}> *>"
                     f"({self_var})->p->{meth}(__other)")
-            out.write(f"                return {self._value_out_expr(call, ret_typ, sym)};\n")
+            # Per-branch candidates: the branch's receiver + its class-typed
+            # operand (both live boundary-crossed PyObjects; the classifier's
+            # alias_records is the same receiver+params set).
+            candidates = [(recv, self_var, info)]
+            if is_exposed_class(operand_type):
+                oinfo = self.ctx.analyzer.registry.get_record_for_type(
+                    _boundary_inner(operand_type))
+                if oinfo is not None:
+                    candidates.append(("__other", operand_var, oinfo))
+            self._emit_call_return(
+                out, ret_typ, call, sym, candidates,
+                view_fallback=self._view_fallback_ok(
+                    self._ast_method(cls, meth), ret_typ,
+                    [(p.name, p.type) for p in m.params], info),
+                indent=" " * 16)
             out.write("            } catch (const ::tpy::interop::MarshalError &) {\n")
             out.write("                if (!PyErr_ExceptionMatches(PyExc_TypeError)) "
                       "return nullptr;\n")
@@ -971,10 +1002,15 @@ class ExtensionGenerator:
             return None
         base = f"{sym}__{escape_cpp_name(cls['simple'])}"
         wname = f"{base}__{dunder.strip('_')}_slot"
+        m = info.methods[dunder][0]
         out.write(f"PyObject *{wname}(PyObject *self) {{\n")
         out.write("    try {\n")
         call = f"{cppvar}->p->{dunder}()"
-        out.write(f"        return {self._value_out_expr(call, info.methods[dunder][0].return_type, sym)};\n")
+        self._emit_call_return(
+            out, m.return_type, call, sym,
+            [(f"(*{cppvar}->p)", "self", info)],
+            view_fallback=self._view_fallback_ok(
+                self._ast_method(cls, dunder), m.return_type, [], info))
         self._emit_boundary_catch(out, reg_arg)
         out.write("}\n\n")
         return slot_id, wname
@@ -1082,7 +1118,18 @@ class ExtensionGenerator:
         decl, expr = self._value_in_decl_expr(key_type, "key", sym)
         out.write(f"        {decl}__key = {expr};\n")
         call = f"{cppvar}->p->__getitem__(__key)"
-        out.write(f"        return {self._value_out_expr(call, m.return_type, sym)};\n")
+        candidates = [(f"(*{cppvar}->p)", "self", cls["info"])]
+        if is_exposed_class(key_type):
+            kinfo = self.ctx.analyzer.registry.get_record_for_type(
+                _boundary_inner(key_type))
+            if kinfo is not None:
+                candidates.append(("__key", "key", kinfo))
+        params = [(p.name, p.type) for p in m.params]
+        self._emit_call_return(
+            out, m.return_type, call, sym, candidates,
+            view_fallback=self._view_fallback_ok(
+                self._ast_method(cls, "__getitem__"), m.return_type, params,
+                cls["info"]))
         self._emit_boundary_catch(out, reg_arg)
         out.write("}\n\n")
         return "Py_mp_subscript", wname
@@ -1191,20 +1238,26 @@ class ExtensionGenerator:
         wname = f"{base}__next_slot"
         out.write(f"PyObject *{wname}(PyObject *self) {{\n")
         out.write("    try {\n")
-        out.write(f"        auto __r = {cppvar}->p->__next__();\n")
-        out.write("        if (!__r.has_value()) {\n")
-        out.write(f"            ::tpy::interop::set_py_err_from(__r.error(){reg_arg});\n")
+        # `__e`, not `__r`: the identity/view scan below binds `__r` itself.
+        out.write(f"        auto __e = {cppvar}->p->__next__();\n")
+        out.write("        if (!__e.has_value()) {\n")
+        out.write(f"            ::tpy::interop::set_py_err_from(__e.error(){reg_arg});\n")
         out.write("            return nullptr;\n")
         out.write("        }\n")
         # A borrow-form return is stored through val_or_ref (std::expected
-        # can't hold T&) -- unwrap to the T& before marshalling, landing on
-        # the same warned-copy path every other dunder's borrow return takes;
-        # marshalling the wrapper itself would let instance_to_py's by-value
-        # template swallow it (payload = reinterpreted pointer bytes).
-        call = ("__r.value().get()"
+        # can't hold T&) -- unwrap to the T& before marshalling; the T& then
+        # takes the same identity/view/copy dispatch as every other borrow
+        # return (marshalling the wrapper itself would let instance_to_py's
+        # by-value template swallow it: payload = reinterpreted pointer
+        # bytes).
+        call = ("__e.value().get()"
                 if error_return_uses_borrow_slot(ret_typ)
-                else "std::move(__r).value()")
-        out.write(f"        return {self._value_out_expr(call, ret_typ, sym)};\n")
+                else "std::move(__e).value()")
+        self._emit_call_return(
+            out, ret_typ, call, sym,
+            [(f"(*{cppvar}->p)", "self", info)],
+            view_fallback=self._view_fallback_ok(
+                self._ast_method(cls, "__next__"), ret_typ, [], info))
         self._emit_boundary_catch(out, reg_arg)
         out.write("}\n\n")
         return "Py_tp_iternext", wname
@@ -1212,12 +1265,12 @@ class ExtensionGenerator:
     def _emit_export_class_iter(self, out: TextIO, cls: dict, sym: str,
                                 reg_arg: str, cppvar: str
                                 ) -> tuple[str, str] | None:
-        """Emit __iter__ -> Py_tp_iter (unaryfunc shape). Unlike the
-        arithmetic unary ops this goes through `_emit_call_return` with the
-        receiver as an alias candidate: the canonical `return self` iterator
-        crosses as the SAME PyObject -- a copied iterator would be silently
-        restartable and interleaved next(obj) would diverge. An Own[...]
-        return (a fresh iterator object) takes the usual fresh-instance path."""
+        """Emit __iter__ -> Py_tp_iter (unaryfunc shape), through
+        `_emit_call_return` with the receiver as an alias candidate: the
+        canonical `return self` iterator crosses as the SAME PyObject -- a
+        copied iterator would be silently restartable and interleaved
+        next(obj) would diverge. An Own[...] return (a fresh iterator
+        object) takes the usual fresh-instance path."""
         info = cls["info"]
         if "__iter__" not in info.methods:
             return None

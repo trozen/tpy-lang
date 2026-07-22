@@ -93,12 +93,12 @@ int field_views__Cell__n_set(PyObject *self, PyObject *value, void *) {
 
 PyObject *field_views__Cell__next_slot(PyObject *self) {
     try {
-        auto __r = reinterpret_cast<::tpy::interop::Instance<::tpyapp::field_views::Cell> *>(self)->p->__next__();
-        if (!__r.has_value()) {
-            ::tpy::interop::set_py_err_from(__r.error());
+        auto __e = reinterpret_cast<::tpy::interop::Instance<::tpyapp::field_views::Cell> *>(self)->p->__next__();
+        if (!__e.has_value()) {
+            ::tpy::interop::set_py_err_from(__e.error());
             return nullptr;
         }
-        return ::tpy::interop::to_py(std::move(__r).value());
+        return ::tpy::interop::to_py(std::move(__e).value());
     } catch (const ::tpy::BaseException &__e) {
         ::tpy::interop::set_py_err_from(__e);
         return nullptr;

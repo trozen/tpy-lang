@@ -1173,13 +1173,10 @@ Detail for the tracker table in "v1 plan and status" (top). **v1.0 = phases
    behind it (a reassignable field, a module global) still copies into a
    fresh instance via `instance_to_py` -- the warning fires on bodies with
    such a path (note the per-call split: the same function can alias on one
-   input and copy on another, so tests must exercise every return path). Operator/container DUNDER slots are not identity-capable
-   (they emit through the expression-form copy path), so their borrow
-   returns always copy and always warn -- except the in-place group, which
-   returns `self` identity-preserved by construction, and `__iter__`,
-   whose `tp_iter` wrapper threads the receiver candidate (the canonical
-   `return self` iterator crosses as the SAME object; see the container
-   protocol below). A `readonly[Cls]`
+   input and copy on another, so tests must exercise every return path).
+   Every marshalled-return DUNDER slot threads the same candidates (see
+   the container-protocol block below); the in-place group returns `self`
+   identity-preserved by construction. A `readonly[Cls]`
    self/param return takes the same identity path as the mutable form: the
    Python consumer receives the ORIGINAL object exactly as under plain
    Python (readonly is a TPy-side no-mutation-through-this-handle contract
@@ -1328,9 +1325,9 @@ Detail for the tracker table in "v1 plan and status" (top). **v1.0 = phases
    return value -- TPy already requires these to return `self` (not
    `Own[T]`), so no new validation is needed; the borrow-return-copies
    warning is suppressed for this group specifically (identity is
-   preserved by construction; plain methods and `__iter__` get the same
-   treatment via the address-matched identity-preserving return, while the
-   other dunders keep the fresh-`instance_to_py` return).
+   preserved by construction; every other marshalled-return slot threads
+   the address-matched identity/view candidates -- see Checkpoint 3's
+   dunder-return paragraph).
    **Checkpoint 3 implemented**: the container protocol -> `Py_mp_*`/
    `Py_sq_*`/`Py_tp_iter*`. `__len__` wires ONE wrapper to BOTH
    `Py_mp_length` and `Py_sq_length` (matching how CPython wires a plain
@@ -1360,9 +1357,20 @@ Detail for the tracker table in "v1 plan and status" (top). **v1.0 = phases
    already in the exception-bridge's built-in list). A borrow-form
    `__next__` return (`-> Cls` / `-> list[T]`) is stored through the
    `val_or_ref` borrow slot (`std::expected` can't hold `T&`); the wrapper
-   unwraps it before marshalling, so each yielded value crosses as a
-   warned COPY -- same as every other non-`__iter__` dunder's borrow
-   return (`Own[...]` is the quiet fresh-instance form). A `@nocopy`
+   unwraps it and then dispatches like every other marshalled-return
+   dunder slot. EVERY such slot (binary/reflected/unary arithmetic,
+   `__getitem__`, `tp_iter`, `tp_iternext`) threads the same
+   identity/view candidates a method wrapper does -- the branch's
+   receiver plus its exposed-class operands -- so a borrow return of
+   `self`, an operand, or a never-reassigned field crosses as the
+   ORIGINAL PyObject / a registry-deduped borrow view (write-through,
+   exactly plain Python's aliasing), and only the residue (reassignable
+   fields, containers) copies with the standard warning (`Own[...]` is
+   the quiet fresh-instance form). The arithmetic slots' candidates are
+   currently emit-dead: two plain-TPy operator defects (the shim
+   const-return mismatch and the `Own[readonly[Cls]]` operator-result
+   binding, BUGS.md) reject every borrow return from those dunders
+   before codegen. A `@nocopy`
    class's dunder borrow return is a located error (the copy is deleted),
    mirroring the plain-method reject; in-place dunders are exempt (their
    wrapper hands back the same `self` PyObject, no copy). `list(x)`,
