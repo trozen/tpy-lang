@@ -1774,6 +1774,30 @@ byte-diff itself.
   emit divergence: SINGLE-element tuple literals parenthesize
   (`std::tuple<T>(x)`, the GCC C++23 brace-init ambiguity) -- the
   THIRTupleLiteral emit now mirrors `_gen_tuple_literal`'s tail.
+- **Landed: print/compare-sink wave (`thir-wave-next`, 2026-07-22, +43 flips,
+  dial 2065 -> 2108).** Eight construct families: user-record `__contains__`
+  membership (`binop.user_membership` -- name/field receivers, set-LITERAL
+  rvalue receivers, F1-record needles); str-call membership receivers
+  (`"x" in str(e)` through the `.find()` arm); the target-less both-literal
+  BigInt fold (`binop.literal_fold`, `_ExprUse.literal_fold_ok` -- print args
+  + compare operands only; slot-threaded positions render the full operator
+  expr on the AST path and keep rejecting, unit-pinned); str LITERALs into
+  value-repr `Optional[str]` method slots; structural-protocol slots taking
+  F1-record FIELD reads (`len(r.cookies)`; @dynamic pinned AST); user-record
+  setitem str-LITERAL values; F1-record dict/set KEYS (the shared
+  `_dict_key_shape_ok` slice; `_any_value_dict` deliberately narrower);
+  for-head user-iterator FIELD reads + STRUCTURAL protocol params (the
+  NativeIterable/Spannable/Own-elem/resumable exclusions mirror
+  `_gen_for_each`'s peephole split -- the corpus byte-diff caught 4
+  divergences mid-wave before the exclusions landed, all four now
+  unit-pinned); bytes method-chain receivers (`recv(32).decode()`);
+  hasattr/getattr-default probe stmt-exprs (`call.dyn_hasattr` /
+  `call.dyn_getattr_default`, the shared `_lower_dyn_synth_call` gate);
+  Own[container] param consumes via the Own-slot move/copy arms'
+  `allow_unrouted_name` opt-in (general reads still reject, unit-pinned).
+  Parked residuals recorded in TODO.md's calls-wave frontier entry
+  (datetime kitchen-sink tails, tuple_ref_member_compare, math_numeric,
+  the extern-C `sig.linkage` param-ABI design cell, enumerate/zip heads).
 - **Landed: tuple-unpack method-call sources** (`tuple_unpack.src_method_call`):
   `a, b = obj.pair()` routes via a `storage_ret_ok` escape threaded through
   `_container_method_call_supported` / `_record_method_call_supported` result

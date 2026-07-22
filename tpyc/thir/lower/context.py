@@ -92,6 +92,12 @@ class _ExprUse:
     # free call (`with open(path, mode) as f`) -- the result is stored in the
     # `__ctx_N` manager slot, whatever native symbol the overload resolves to.
     ctx_manager: bool = False
+    # TARGET-LESS positions only (print args, compare operands): the AST's
+    # pure-literal binop fold fires there (`_gen_binop` folds only when
+    # target_type is None), so the THIR fold arm may mirror it. Slot-threaded
+    # positions (decl init / arg / return) render the FULL operator expr on
+    # the AST path and must keep rejecting.
+    literal_fold_ok: bool = False
 
 # --- F1 form slice: single-assignment non-value record locals + field reads ---
 

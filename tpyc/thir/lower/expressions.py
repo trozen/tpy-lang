@@ -870,6 +870,12 @@ def _str_membership_ok(e, declared: dict[str, TpyType], analyzer) -> bool:
     elif isinstance(recv, TpyFieldAccess):
         if not _field_receiver_ok(recv, declared, analyzer):
             return False
+    elif isinstance(recv, (TpyCall, TpyMethodCall)):
+        # A str-returning CALL rvalue receiver (`"timed out" in str(e)` ->
+        # `(std::string(::tpy::__str__(e)).find("timed out") != npos)`):
+        # the call renders through its own lowering arm, whose reject falls
+        # the body back whole -- admission only pins the shape.
+        pass
     elif not isinstance(recv, TpyStrLiteral):
         return False
     lt = _operand_type(e.left, declared, analyzer)
@@ -1092,7 +1098,8 @@ def _binop_operand_suffix(e: TpyBinOp, declared: dict[str, TpyType],
 
 
 def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
-                 declared: dict[str, TpyType], loc) -> THIRExpr:
+                 declared: dict[str, TpyType], loc, *,
+                 fold_ok: bool = False) -> THIRExpr:
     analyzer = lc.analyzer
 
     def reject() -> None:
@@ -1104,6 +1111,9 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
     # A `__contains__`-unresolved native-set membership routes via the AST's
     # `std::ranges::contains` fallback (set by the membership gate below).
     ranges_contains = False
+    # A plain user `__contains__` member (no native spelling): the member
+    # call renders `fi.name` instead of `fi.native_name`.
+    user_contains = False
     rb = e.resolved_binop
     # sema's optional_safe_eq pair (value-repr Optional[scalar] ==/!=): the
     # per-side literal targets, or None outside the slice (set in the
@@ -1163,18 +1173,40 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
               and not isinstance(e.right, TpyName)
               and not is_fixed_int_type(resolve_int_literals(
                   rtype, analyzer.ctx.default_int_for_literal))):
-            # The AST constant-folds a both-literal int binop ONLY in a
-            # target-less (BigInt/literal) context -- `2 + 3` -> `5`,
-            # `2**63 - 1` -> `9223372036854775807LL` -- which THIR does not
-            # reproduce, so reject. A FIXED-int target never folds (the slot
-            # pins `::tpy::add_check<intN>(...)`), so those route. Only a BigInt
-            # result whose value OVERFLOWS int64 (`2**64 + 1`) is rendered as a
-            # full operator expr and routes.
+            # The AST constant-folds a both-literal int binop in a target-less
+            # BigInt context (`_gen_binop`'s pure-literal arm): `2**63 - 1`
+            # renders the folded `::tpy::BigInt(static_cast<int64_t>(...LL))`
+            # via the shared render_int_literal_value. Mirror it: emit the
+            # folded THIRLiteral with the BigInt-targeted spelling; a slot
+            # retarget downstream overwrites int_cpp wholesale, so the
+            # pre-render cannot double-wrap. A FIXED-int result never folds
+            # (the slot pins `::tpy::add_check<intN>(...)`), so those route
+            # through the operator arm above; a value OVERFLOWING int64
+            # (`2**64 + 1`) already routes as the full operator expr.
             lit_val = getattr(analyzer.get_expr_type(e), "value", None)
             fits_i64 = lit_val is not None and -(2**63) <= lit_val <= 2**63 - 1
-            is_bigint = is_big_int_type(resolve_int_literals(
-                rtype, analyzer.ctx.default_int_for_literal))
-            if not is_bigint or lit_val is None or fits_i64:
+            resolved = resolve_int_literals(
+                rtype, analyzer.ctx.default_int_for_literal)
+            # The fold covers every magnitude in a flagged position:
+            # render_int_literal_value spells fits-i64 values
+            # `BigInt(static_cast<int64_t>(..LL))` and beyond-int64 values
+            # `BigInt::from_str("...")` -- both the AST's fold renders.
+            if fold_ok and is_big_int_type(resolved) and lit_val is not None:
+                _witness("binop.literal_fold")
+                return THIRLiteral(
+                    result_type=resolved, value=lit_val,
+                    int_cpp=render_int_literal_value(
+                        lit_val, resolved,
+                        default_int_type=analyzer.ctx.default_int_type,
+                        type_to_cpp=lambda t: t.to_cpp()),
+                    loc=loc)
+            # Un-flagged positions keep rejecting the fits-i64 slice: the
+            # AST may fold there too (an unwitnessed target-less sink), so
+            # routing the full operator render would silently diverge. The
+            # beyond-int64 slice keeps its pre-existing operator route
+            # (correct at slot-threaded sinks; a target-less unflagged sink
+            # would diverge the same way -- flag it before routing).
+            if not is_big_int_type(resolved) or lit_val is None or fits_i64:
                 reject()
         if e.op in _BITWISE_OPS:
             _witness("binop.bitwise")
@@ -1278,22 +1310,51 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                 reject()
             ranges_contains = True
         elif (e.typed_dict_in_field is not None
-                or fi.cpp_template or fi.native_function
-                or not fi.native_name):
+                or fi.cpp_template or fi.native_function):
             reject()
-        elif isinstance(e.right, TpyName):
-            if e.right.name not in declared:
+        elif not fi.native_name:
+            # A plain USER `__contains__` (record / generic record): the AST's
+            # gen_call_from_fi member tail, `(recv.__contains__(needle))`. A
+            # declared record name or an admitted field-read receiver; a
+            # scalar / str-value needle renders bare (a user record is never
+            # view-keyed, so the AST threads no literal target).
+            recv_ok = ((isinstance(e.right, TpyName)
+                        and e.right.name in declared)
+                       or (isinstance(e.right, TpyFieldAccess)
+                           and _field_receiver_ok(e.right, declared,
+                                                  analyzer)))
+            if not (recv_ok
+                    and (_resolved_scalar(lt, analyzer)
+                         or _resolved_str_value(lt, analyzer) is not None)):
                 reject()
-            ct = unwrap_readonly(unwrap_ref_type(
-                unwrap_send_sync(declared[e.right.name])))
+            user_contains = True
+        elif isinstance(e.right, (TpyName, TpySetLiteral)):
+            if isinstance(e.right, TpyName):
+                if e.right.name not in declared:
+                    reject()
+                ct = unwrap_readonly(unwrap_ref_type(
+                    unwrap_send_sync(declared[e.right.name])))
+            else:
+                # A SET-LITERAL rvalue receiver (`d in {date(..), date(..)}`)
+                # renders its spelled ctor and takes the same `.contains`
+                # member; the literal's own lowering gates the elements.
+                ct = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                    analyzer.get_expr_type(e.right))))
+                if ct is not None:
+                    ct = resolve_pending_container(ct, analyzer) or ct
             # A str needle renders bare into `contains(...)` on both paths
             # (literal / view name / owned local -- the container's transparent
-            # lookup absorbs the form), exactly like a scalar needle. A
-            # VIEW-keyed container (`set[StrView]`) threads view_key_target into
-            # the needle's literal render (the static-storage pin) -- not
-            # mirrored, reject.
+            # lookup absorbs the form), exactly like a scalar needle. An
+            # F1-RECORD needle name reads bare the same way (the record-keyed
+            # set/dict slice). A VIEW-keyed container (`set[StrView]`) threads
+            # view_key_target into the needle's literal render (the
+            # static-storage pin) -- not mirrored, reject.
+            lt_bare = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(lt)))
+                       if lt is not None else None)
             if not ((is_dict(ct) or is_set(ct))
                     and (_resolved_scalar(lt, analyzer)
+                         or (isinstance(e.left, TpyName)
+                             and _f1_record(lt_bare, analyzer))
                          or (_resolved_str_value(lt, analyzer) is not None
                              and view_key_target(ct) is None))):
                 reject()
@@ -1375,12 +1436,18 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
             ranges_contains=True,
             loc=loc)
     if e.op in _MEMBERSHIP_OPS:
-        _witness("binop.membership")
+        _witness("binop.user_membership" if user_contains
+                 else "binop.membership")
         # A dict-view receiver (`d.values()`) renders the bare native view call
         # via the for-loop's ITERABLE override; a name/container receiver reads
-        # bare.
-        recv_use = (_ExprUse(result=_ExprResultUse.ITERABLE)
-                    if isinstance(e.right, TpyMethodCall) else _ExprUse())
+        # bare; a field-read receiver (`"sid" in s.cookies`) takes the bare
+        # member read (receiver position).
+        if isinstance(e.right, TpyMethodCall):
+            recv_use = _ExprUse(result=_ExprResultUse.ITERABLE)
+        elif isinstance(e.right, TpyFieldAccess):
+            recv_use = _ExprUse(result=_ExprResultUse.RECEIVER)
+        else:
+            recv_use = _ExprUse()
         return THIRMembership(
             result_type=rtype,
             receiver=_lower_expr(e.right, lc, declared, use=recv_use),
@@ -1390,7 +1457,8 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
             needle=_lower_expr(
                 e.left, lc, declared,
                 field_owned_str_ok=isinstance(e.left, TpyFieldAccess)),
-            method_cpp=e.resolved_contains.native_name,
+            method_cpp=(e.resolved_contains.name if user_contains
+                        else e.resolved_contains.native_name),
             negate=e.op == "not in",
             loc=loc)
     if e.op in _IS_OPS:
@@ -1476,7 +1544,16 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
             # keeps the default value use.
             if _record_call_rvalue_operand(side, analyzer):
                 return _ExprUse(result=_ExprResultUse.BORROW_BIND)
-            return _ExprUse()
+            # An F1-record FIELD operand (`r.headers == other`) renders the
+            # bare member read into the compare parens, like a record name.
+            if isinstance(side, TpyFieldAccess):
+                st = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                    analyzer.get_expr_type(side))))
+                if _f1_record(st, analyzer):
+                    return _ExprUse(result=_ExprResultUse.BORROW_BIND)
+            # Compare operands are target-less on the AST path, so a
+            # both-literal sub-binop folds there.
+            return _ExprUse(literal_fold_ok=True)
 
         left = (_lower_unproven_opt_scalar(e.left, lc, declared)
                 if e.op not in ("==", "!=") else None) or _lower_char_targeted(
@@ -1900,6 +1977,14 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                     or _is_type_param_slot(rtype)
                     or _eligible_ptr_value(rtype, analyzer)
                     or (use.result is _ExprResultUse.RECEIVER
+                        and _f1_record(rtype, analyzer))
+                    # A user-iterator F1-record field in the for-head
+                    # (`for k in r.headers:`, the bare `auto& __src_N =`
+                    # member bind) and an F1-record field compare operand
+                    # (`r.headers == other`, the bare read in the compare
+                    # parens) both render the plain member read.
+                    or (use.result in (_ExprResultUse.ITERABLE,
+                                       _ExprResultUse.BORROW_BIND)
                         and _f1_record(rtype, analyzer))
                     or (use.result is _ExprResultUse.TRUTHY
                         and _truthiness_mode(rtype, analyzer) is not None)
@@ -2525,7 +2610,8 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
         return THIRFString(result_type=rtype, parts=tuple(parts),
                            form=Form.STORAGE, loc=loc)
     if isinstance(e, TpyBinOp):
-        return _lower_binop(e, rtype, lc, declared, loc)
+        return _lower_binop(e, rtype, lc, declared, loc,
+                            fold_ok=use.literal_fold_ok)
     if isinstance(e, TpyUnaryOp):
         # A negated int literal folds to a plain literal (the AST's
         # _gen_unaryop literal-negation branch renders the negated value
@@ -2663,6 +2749,47 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
             # the call node lowers to its expansion.
             _witness("call.macro_expansion")
             return _lower_expr(e.macro_expansion, lc, declared)
+        if e.dyn_hasattr_call is not None:
+            # `hasattr(obj, name)` runtime probe: the try/catch stmt-expr
+            # over the synthesized `obj.__getattr__(name)`
+            # (_gen_dyn_hasattr_block).
+            inner = _lower_dyn_synth_call(
+                e.dyn_hasattr_call, analyzer.get_expr_type(e.dyn_hasattr_call),
+                lc, declared, loc, allow_name_arg=True)
+            _witness("call.dyn_hasattr")
+            return THIRCall(
+                result_type=rtype, callee="hasattr",
+                args=(inner,),
+                cpp_template=(
+                    "({{ bool __ok = true; "
+                    "try {{ (void)({0}); }} "
+                    "catch (const ::tpy::AttributeError&) {{ __ok = false; }} "
+                    "__ok; }})"),
+                loc=loc)
+        if e.dyn_getattr_default_call is not None:
+            # `getattr(obj, name, default)`: the optional-deferred stmt-expr
+            # yielding the dunder's result or the default on AttributeError
+            # (_gen_dyn_getattr_default_block). The default renders against
+            # the dunder's return type, like the AST's gen_expr target.
+            synth = e.dyn_getattr_default_call
+            inner = _lower_dyn_synth_call(
+                synth, analyzer.get_expr_type(synth), lc, declared, loc,
+                allow_name_arg=True)
+            fi = synth.resolved_function_info
+            ret_cpp = lc.render_type(fi.return_type)
+            default = _lower_call_arg(e.args[2], fi.return_type, lc, declared,
+                                      method_arg=True)
+            _witness("call.dyn_getattr_default")
+            return THIRCall(
+                result_type=rtype, callee="getattr",
+                args=(inner, default),
+                cpp_template=(
+                    f"({{{{ std::optional<{ret_cpp}> __r; "
+                    "try {{ __r.emplace({0}); }} "
+                    "catch (const ::tpy::AttributeError&) "
+                    "{{ __r.emplace({1}); }} "
+                    "std::move(*__r); }})"),
+                loc=loc)
         if e.cast_target_type is not None:
             if (len(e.args) != 2 or e.kwargs
                     or e.double_star_unpack is not None):
@@ -4053,18 +4180,15 @@ def _lower_lambda(e: TpyLambda, lc: '_LowerCtx',
         loc=loc,
     )
 
-def _lower_dyn_getattr_call(e: TpyFieldAccess, rtype: 'TpyType | None',
-                            lc: '_LowerCtx',
-                            declared: dict[str, TpyType]) -> THIRExpr:
-    """The sema-synthesized `obj.__getattr__("name")` behind a dynamic-attr
-    read (`obj.x`, D16) -- the value-position mirror of the dyn-setattr write
-    arm: the same bare non-pointer F1-record receiver name, literal name arg,
-    and single-overload plain user method, lowered as the plain method call
-    (`_gen_field_access` delegates to `_gen_method_call`; the post-process
-    chain is identity in this slice per `_plain_method_fi_ok`)."""
+def _lower_dyn_synth_call(call: 'TpyMethodCall', rtype: 'TpyType | None',
+                          lc: '_LowerCtx', declared: dict[str, TpyType],
+                          loc, *, allow_name_arg: bool = False) -> THIRExpr:
+    """The shared shape gate + lowering for a sema-synthesized dunder call
+    (`obj.__getattr__(name)` behind a dyn-attr read, a hasattr probe, or a
+    getattr-with-default): a bare non-pointer F1-record receiver name, a
+    literal (or, for the probe forms, str-NAME) name arg, and a
+    single-overload plain user method, lowered as the plain method call."""
     analyzer = lc.analyzer
-    call = e.dyn_getattr_call
-    loc = getattr(e, "loc", None)
     recv = call.obj
     if not (isinstance(recv, TpyName) and recv.name in declared
             and recv.name != lc.self_receiver
@@ -4089,9 +4213,12 @@ def _lower_dyn_getattr_call(e: TpyFieldAccess, rtype: 'TpyType | None',
             ri, call.method)) != 1:
         raise ThirUnsupported("getattr.overloads", detail=True)
     name_arg = call.args[0]
-    if not isinstance(name_arg, TpyStrLiteral):
+    if not (isinstance(name_arg, TpyStrLiteral)
+            or (allow_name_arg and isinstance(name_arg, TpyName)
+                and name_arg.name in declared
+                and _resolved_str_value(declared[name_arg.name], analyzer)
+                is not None)):
         raise ThirUnsupported("getattr.name_shape", detail=True)
-    _witness("method.dyn_getattr")
     return THIRMethodCall(
         result_type=rtype,
         receiver=_lower_expr(
@@ -4102,6 +4229,20 @@ def _lower_dyn_getattr_call(e: TpyFieldAccess, rtype: 'TpyType | None',
                               method_arg=True),),
         loc=loc,
     )
+
+
+def _lower_dyn_getattr_call(e: TpyFieldAccess, rtype: 'TpyType | None',
+                            lc: '_LowerCtx',
+                            declared: dict[str, TpyType]) -> THIRExpr:
+    """The sema-synthesized `obj.__getattr__("name")` behind a dynamic-attr
+    read (`obj.x`, D16) -- the value-position mirror of the dyn-setattr write
+    arm, lowered as the plain method call (`_gen_field_access` delegates to
+    `_gen_method_call`; the post-process chain is identity in this slice per
+    `_plain_method_fi_ok`)."""
+    result = _lower_dyn_synth_call(e.dyn_getattr_call, rtype, lc, declared,
+                                   getattr(e, "loc", None))
+    _witness("method.dyn_getattr")
+    return result
 
 def _lower_class_constant(e: TpyFieldAccess, rtype: 'TpyType | None',
                           lc: '_LowerCtx', declared: dict[str, TpyType],
@@ -5495,8 +5636,14 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         # unbound callee T while its OWN value-ness forbids the move.
         # `_own_move_source_slice` carries the whole verdict, shared with
         # the nested-ctor gate so the two cannot drift.
+        # Both arms consume the bare name whole (`std::move(name)` / the
+        # `auto __tmp_N = name;` init), so an UNROUTED binding kind (an
+        # `Own[container]` param, whose general name read has no arm) is
+        # safe here -- the position pins the render (the truthiness
+        # precedent for allow_unrouted_name).
         if _own_move_source_slice(a, ptype, lc, declared):
-            lowered = _lower_expr(a, lc, declared, use=_NESTED_ARG_USE)
+            lowered = _lower_expr(a, lc, declared, use=_NESTED_ARG_USE,
+                                  allow_unrouted_name=True)
             if isinstance(a, TpyName) and a.name in lc.pointers:
                 assert isinstance(lowered, THIRName)
                 lowered = replace(lowered, deref=True)
@@ -5504,7 +5651,8 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
             return THIRMove(result_type=ow, value=lowered, form=own_form,
                             loc=getattr(a, "loc", None))
         if temp_args:
-            lowered = _lower_expr(a, lc, declared, use=_NESTED_ARG_USE)
+            lowered = _lower_expr(a, lc, declared, use=_NESTED_ARG_USE,
+                                  allow_unrouted_name=True)
             if isinstance(a, TpyName) and a.name in lc.pointers:
                 assert isinstance(lowered, THIRName)
                 lowered = replace(lowered, deref=True)

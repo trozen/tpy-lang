@@ -2908,6 +2908,19 @@ def _container_scalar_read(t: TpyType | None, analyzer) -> bool:
         lambda a: _eligible_scalar(a) or _owned_str_slot(a, analyzer),
         span_ok=True)
 
+def _dict_key_shape_ok(key: 'TpyType', analyzer) -> bool:
+    """The ADMITTED dict/set key slice, written once for the dict-literal
+    gate, the container elem-family dispatch, and the subscript reject
+    namer: fixed-int / runtime-BigInt / owned-str / F1-record / Any keys --
+    every render is key-type-neutral (index-position exprs gate their own
+    shapes). `_any_value_dict` deliberately keeps the narrower int/BigInt/
+    str trio: record/Any-KEYED Any-dict writes have no byte-diff witness."""
+    kb = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(key)))
+    return (is_fixed_int_type(key) or _runtime_bigint(key, analyzer)
+            or _owned_str_slot(key, analyzer)
+            or _f1_record(kb, analyzer)
+            or isinstance(kb, AnyType))
+
 def _container_elem_family(t: 'TpyType | None', analyzer, elem_ok,
                            *, span_ok: bool = False) -> bool:
     """The shared container-shape dispatch behind the per-element-family
@@ -2937,14 +2950,7 @@ def _container_elem_family(t: 'TpyType | None', analyzer, elem_ok,
         if not args or len(args) < 2:
             return False
         key, val = args[0], args[1]
-        # An `Any` key (`dict[Any, V]`) reads/writes bare through the Any cell's
-        # hash slot -- the key renders like any other bare value in the
-        # `__getitem__`/`__setitem__`/index positions.
-        key_ok = (is_fixed_int_type(key) or _runtime_bigint(key, analyzer)
-                  or _owned_str_slot(key, analyzer)
-                  or isinstance(unwrap_readonly(unwrap_ref_type(
-                      unwrap_send_sync(key))), AnyType))
-        return key_ok and elem_ok(val)
+        return _dict_key_shape_ok(key, analyzer) and elem_ok(val)
     return False
 
 def _bytes_elem_container(t: TpyType | None, analyzer) -> bool:

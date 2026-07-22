@@ -213,7 +213,9 @@ from .predicates import (
     _type_family_tag,
     _union_binding_divergent,
     _unwrap_lit_coerce,
+    _dict_key_shape_ok,
     _none_value_opt_arg,
+    _str_literal_value_opt_arg,
     _value_opt_scalar_value_arg,
     _value_opt_scalar,
     _value_opt_scalar_name,
@@ -411,10 +413,7 @@ def _container_literal_shape_ok(init: TpyExpr, t: TpyType, analyzer, *,
         if not is_dict(t) or not args or len(args) < 2:
             return _note_container_lit_reject(init, t, analyzer) if note else False
         key = args[0]
-        if not (is_fixed_int_type(key) or _runtime_bigint(key, analyzer)
-                or _owned_str_slot(key, analyzer)
-                or isinstance(unwrap_readonly(unwrap_ref_type(
-                    unwrap_send_sync(key))), AnyType)):
+        if not _dict_key_shape_ok(key, analyzer):
             if note:
                 fam = _container_lit_slot_family(key, analyzer) or "scalar"
                 return note_detail(f"container_lit.key.{fam}")
@@ -1523,8 +1522,7 @@ def _subscript_elem_reject(t: TpyType, analyzer) -> str:
     elem = args[0]
     if is_dict(t):
         key, val = args[0], args[1]
-        key_ok = (is_fixed_int_type(key) or _runtime_bigint(key, analyzer)
-                  or _owned_str_slot(key, analyzer))
+        key_ok = _dict_key_shape_ok(key, analyzer)
         if key_ok:
             elem = val
         elif _eligible_scalar(val) or _owned_str_slot(val, analyzer):
@@ -1702,7 +1700,13 @@ def _user_record_setitem_ok(
                 or _eligible_enum(et, analyzer) is not None)
     return (_eligible_scalar(vbare) or _eligible_char(vbare)
             or _eligible_enum(vbare, analyzer) is not None
-            or _eligible_ptr_value(vbare, analyzer))
+            or _eligible_ptr_value(vbare, analyzer)
+            # A str LITERAL into a str-view value slot renders bare (no
+            # owned-copy / storage lift fires on a literal) --
+            # `other["CONTENT-TYPE"] = "application/json"`. Non-literal str
+            # sources keep their view->owned machinery on the AST path.
+            or (isinstance(stmt.value, TpyStrLiteral)
+                and _resolved_str_value(vbare, analyzer) is not None))
 
 def _container_aug_setitem_ok(
         stmt: TpyAugAssign, declared: dict[str, TpyType], pointers: set[str],
@@ -2941,6 +2945,15 @@ def _protocol_slot_arg(a: TpyExpr, ptype: 'TpyType | None',
         return False
     if isinstance(a, TpyName):
         rvalue = False
+    elif (isinstance(a, TpyFieldAccess) and not is_dyn_protocol(proto)
+          and _field_receiver_ok(a, locals_, analyzer)
+          and _f1_record(unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at))),
+                         analyzer)):
+        # An F1-record FIELD read into a STRUCTURAL slot (`len(r.cookies)`
+        # -> `::tpy::__len__(r.cookies)`): the same bare lvalue render as a
+        # conformer name, through the ordinary tail. @dynamic slots keep
+        # their adapter temps on the AST path.
+        rvalue = False
     elif isinstance(a, TpyCall) and _ctor_shape_ok(a, analyzer):
         rvalue = True
     elif (isinstance(a, TpyArrayLiteral) and not is_dyn_protocol(proto)):
@@ -3927,6 +3940,11 @@ def _method_call_receiver_ok(recv: TpyMethodCall, locals_: dict[str, TpyType],
         # str view-method's receiver slot positionally -- both native
         # free-function str methods composing as nested calls.
         return _witness("method.recv.str_method")
+    if _resolved_bytes_value(analyzer.get_expr_type(recv), analyzer) is not None:
+        # The bytes twin (`srv.recv(32).decode()` ->
+        # `::tpy::bytes_decode(srv.recv(32))`): the inner bytes-returning
+        # method feeds the outer bytes method's receiver slot positionally.
+        return _witness("method.recv.bytes_method")
     rt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
         analyzer.get_expr_type(recv))))
     if isinstance(rt, OwnType):
@@ -5099,6 +5117,10 @@ def _record_method_arg_ok(
             # A scalar value / `None` into a value-repr Optional[scalar]
             # slot renders bare / `std::nullopt` -- `sock.settimeout(0.5)`.
             or _value_opt_scalar_value_arg(a, ptype, analyzer)
+            # A str LITERAL into a value-repr Optional[str] slot renders
+            # bare the same way (`jar.get("missing", "fallback")`) -- the
+            # TypedDict-ctor face's row, shared with the ctor arg loop.
+            or _str_literal_value_opt_arg(a, ptype)
             or _none_value_opt_arg(a, ptype, analyzer) is not None
             # A list literal into an `Own[list]` user-method slot renders
             # the bare in-place brace (`g.set([7, 8, 9])` -> `set({7, 8,

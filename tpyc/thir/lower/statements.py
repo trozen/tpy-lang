@@ -433,6 +433,9 @@ def _any_value_dict(t: 'TpyType | None', analyzer) -> bool:
     if not args or len(args) < 2:
         return False
     key, val = args[0], args[1]
+    # Deliberately NARROWER than the shared `_dict_key_shape_ok` slice:
+    # record/Any-KEYED Any-dict writes have no byte-diff witness, so those
+    # keys stay AST here even though the read-side gates admit them.
     return ((is_fixed_int_type(key) or _runtime_bigint(key, analyzer)
              or _owned_str_slot(key, analyzer))
             and _is_any_type(val))
@@ -1140,8 +1143,8 @@ def _iter_call_lvalue(it: 'TpyCall | TpyMethodCall', analyzer) -> bool:
 def _for_iter_proto_route(
         stmt: TpyForEach, analyzer,
         declared: dict[str, TpyType],
-        iterator_object_locals: 'AbstractSet[str]' = frozenset()
-        ) -> '_ForEachRoute | None':
+        iterator_object_locals: 'AbstractSet[str]' = frozenset(),
+        *, protocol_param_ok: bool = False) -> '_ForEachRoute | None':
     """The universal `::tpy::__iter__` + `__next__` protocol loop
     (`_gen_direct_next_loop_with_iter`), for the iterables the container
     route's NativeIterable gate excludes. Slice: a free GENERATOR or
@@ -1178,6 +1181,17 @@ def _for_iter_proto_route(
         if not fi.is_generator and not _iter_proto_call_ret(it, analyzer):
             return None
         iterable_lvalue = _iter_call_lvalue(it, analyzer)
+    elif isinstance(it, TpyFieldAccess):
+        # A user-iterator FIELD read (`for k in r.headers:`) captures the
+        # member lvalue (`auto& __src_N = r.headers;`) exactly like a local
+        # user-iterator name; the field read lowers through the field arm.
+        u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+            analyzer.get_expr_type(it))))
+        if (not isinstance(u, NominalType) or u.is_protocol
+                or not _user_iterator_iterable(u, analyzer)
+                or not _field_receiver_ok(it, declared, analyzer)):
+            return None
+        iterable_lvalue = True
     elif isinstance(it, TpyName):
         # `for x in self:` renders the receiver DEREFERENCED (`auto& __src_N
         # = (*this);`, gen_expr_deref) -- the self-iterable rung is deferred.
@@ -1194,6 +1208,34 @@ def _for_iter_proto_route(
         # (`auto& __src_N = it;`).
         if it.name in iterator_object_locals:
             pass
+        elif (isinstance(u, NominalType) and u.is_protocol
+                and not is_dyn_protocol(u)):
+            # A STRUCTURAL protocol-typed param (`it: Iterator[Int32]`) in a
+            # SYNC body: the deduced `T_it&` param is a plain C++ lvalue, so
+            # the loop captures it bare (`auto& __src_N = it;`) and
+            # `::tpy::__iter__` resolves via ADL -- the same render as a
+            # user-iterator record name. Excluded (mirroring _gen_for_each's
+            # NativeIterable peephole and its universal-default split):
+            # `tpy.NativeIterable` / `tpy.Spannable` params (the AST emits
+            # the begin/end range-for), any native-iterable verdict, an
+            # `Own[...]`-element loop (the consuming render), @dynamic
+            # bindings (adapter dispatch), and resumable bodies
+            # (protocol_param_ok is threaded False there -- the frame
+            # emitters have no witnessed protocol-loop shape).
+            elem = _resolved_loop_elem_type(stmt, analyzer)
+            elem_bare = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                elem))) if elem is not None else None)
+            # The Own check unwraps an Optional wrapper too, so an
+            # `Own[T] | None` element is excluded here directly rather than
+            # relying on the elem-binding gate downstream.
+            if isinstance(elem_bare, OptionalType):
+                elem_bare = unwrap_readonly(elem_bare.inner)
+            if (not protocol_param_ok
+                    or u.qualified_name() in ("tpy.NativeIterable",
+                                              "tpy.Spannable")
+                    or is_native_iterable(u, analyzer.registry)
+                    or isinstance(elem_bare, OwnType)):
+                return None
         elif (not isinstance(u, NominalType) or u.is_protocol
                 or not _user_iterator_iterable(u, analyzer)):
             return None
@@ -1295,8 +1337,8 @@ def _for_each_reject_detail(stmt: TpyForEach, analyzer,
 def _select_for_each_route(
         stmt: TpyForEach, analyzer, declared: dict[str, TpyType],
         narrowed: AbstractSet[str],
-        iterator_object_locals: 'AbstractSet[str]' = frozenset()
-        ) -> _ForEachRoute:
+        iterator_object_locals: 'AbstractSet[str]' = frozenset(),
+        *, protocol_param_ok: bool = False) -> _ForEachRoute:
     """Select the lowering strategy or reject from the lowering boundary."""
     if _is_range_call(stmt.iterable):
         route = _for_range_route(stmt, analyzer, declared)
@@ -1310,7 +1352,8 @@ def _select_for_each_route(
             route = _for_each_container_route(stmt, analyzer, declared)
         if route is None:
             route = _for_iter_proto_route(stmt, analyzer, declared,
-                                          iterator_object_locals)
+                                          iterator_object_locals,
+                                          protocol_param_ok=protocol_param_ok)
     if route is None:
         note_detail(_for_each_reject_detail(stmt, analyzer, declared, narrowed))
         raise ThirUnsupported(stmt_reject_reason(stmt))
@@ -6317,7 +6360,12 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
     if isinstance(stmt, TpyForEach):
         route = _select_for_each_route(
             stmt, analyzer, declared, lc.narrow.narrowed.keys(),
-            lc.iterator_object_locals)
+            lc.iterator_object_locals,
+            # Protocol-typed param iterables route in SYNC bodies only: the
+            # resumable leaf/frame emitters have no witnessed protocol-loop
+            # shape, so those keep the fallback.
+            protocol_param_ok=not (lc.resumable_leaf_mode
+                                   or lc.frame_slots))
         it = stmt.iterable
         # Loop var is C++-for-scoped: visible in the body but not the outer scope
         # (a fresh declared copy, so a body decl can't leak past the loop).
@@ -7206,7 +7254,11 @@ def _lower_print_arg(a: TpyExpr, lc: _LowerCtx,
     # the same admission the f-string arg site grants (field_owned_str_ok).
     # An F1-record-returning call arg (print.record_call) threads BORROW_BIND
     # so the call's record result gate admits the rvalue.
-    use = _ExprUse(allow_temps=True)
+    # A print arg is target-less on the AST path, so a both-literal binop
+    # folds (literal_fold_ok). The record-call branch drops the flag --
+    # fine while the two shapes stay mutually exclusive (a record-call arg
+    # is never a both-literal int binop); revisit if that ever changes.
+    use = _ExprUse(allow_temps=True, literal_fold_ok=True)
     if _record_call_rvalue_operand(a, lc.analyzer):
         use = _ExprUse(allow_temps=True,
                        result=_ExprResultUse.BORROW_BIND)

@@ -503,25 +503,25 @@ def test_iterator_object_decl_routes():
     assert compiler._thir_face_witnesses.get("decl.iterator_object") == 1
 
 
-def test_iterator_protocol_param_iterable_still_defers():
-    # An Iterator[T]-typed PARAM iterable spells through the deduced template
-    # param on the AST path -- must keep falling back (only iterator-object
-    # LOCALS are exempt).
+def test_iterator_protocol_param_iterable_routes():
+    # An Iterator[T]-typed STRUCTURAL param iterable routes in a sync body:
+    # the deduced `T_it&` is a plain lvalue, the universal `__iter__` loop
+    # renders identically to a user-iterator record name (corpus-verified on
+    # iterators/for_*_protocol). NativeIterable/Spannable, Own-element, and
+    # resumable shapes keep deferring (see the still-defers pins).
     compiler, entry, f = _fn_body(
         "from tpy import Int32\n"
         "from typing import Iterator\n"
-        "def rejected(it: Iterator[Int32]) -> Int32:\n"
+        "def routed(it: Iterator[Int32]) -> Int32:\n"
         "    t = 0\n"
         "    for v in it:\n"
         "        t = t + v\n"
         "    return t\n",
-        "rejected")
+        "routed")
     with activate_compiler(compiler):
         begin_attempt()
         fn = lower_function(f, entry.analyzer, self_type=None)
-        if fn is None:
-            fold_attempt("body")
-    assert fn is None
+    assert fn is not None
 
 
 def test_protocol_arg_pending_type_falls_back():
@@ -691,14 +691,13 @@ def test_for_each_user_iterator_name_routes():
     assert compiler._thir_face_witnesses.get("foreach.iter_proto") == 1
 
 
-def test_for_each_protocol_iterator_param_sub_tag():
-    # The protocol branch of the user_iterator family: a bare Iterator-typed
-    # PARAM (no user record in sight) folds under the same protocol-loop tag
-    # as a dunder-declaring record.
+def test_for_each_spannable_protocol_param_still_defers():
+    # The Spannable sibling of the NativeIterable exclusion: the AST's
+    # begin/end range-for peephole covers `tpy.Spannable[T]` params too, so
+    # routing the universal `__iter__` loop would diverge.
     compiler, entry, f = _fn_body(
-        "from tpy import Int32\n"
-        "from typing import Iterator\n"
-        "def rejected(it: Iterator[Int32]) -> Int32:\n"
+        "from tpy import Int32, Spannable\n"
+        "def rejected(it: Spannable[Int32]) -> Int32:\n"
         "    total = 0\n"
         "    for v in it:\n"
         "        total = total + v\n"
@@ -710,8 +709,52 @@ def test_for_each_protocol_iterator_param_sub_tag():
         if fn is None:
             fold_attempt("body")
     assert fn is None
-    assert compiler._thir_fallback.get(
-        "body:stmt.for_each:iter.user_iterator.name") == 1
+
+
+def test_for_each_own_elem_protocol_param_still_defers():
+    # An `Own[...]`-ELEMENT protocol loop takes the consuming element render
+    # on the AST path -- must keep deferring (corpus caught the divergence on
+    # auto_move/consuming_iterable_own_param mid-wave).
+    compiler, entry, f = _fn_body(
+        "from tpy import Int32, Own\n"
+        "from typing import Iterable\n"
+        "class Item:\n"
+        "    v: Int32\n"
+        "    def __init__(self, v: Int32) -> None:\n        self.v = v\n"
+        "def rejected(source: Iterable[Own[Item]]) -> Int32:\n"
+        "    total = 0\n"
+        "    for x in source:\n"
+        "        total = total + x.v\n"
+        "    return total\n",
+        "rejected")
+    with activate_compiler(compiler):
+        begin_attempt()
+        fn = lower_function(f, entry.analyzer, self_type=None)
+        if fn is None:
+            fold_attempt("body")
+    assert fn is None
+
+
+def test_for_each_native_iterable_protocol_param_still_defers():
+    # The residual of the protocol-param loop widening: a
+    # `tpy.NativeIterable[T]` / `tpy.Spannable[T]` param takes the AST's
+    # begin/end range-for peephole (NOT the universal `__iter__` loop), so
+    # it must keep falling back -- routing it emitted the wrong loop shape
+    # (caught by the corpus byte-diff on protocols/span_like_*).
+    compiler, entry, f = _fn_body(
+        "from tpy import Int32, NativeIterable\n"
+        "def rejected(it: NativeIterable[Int32]) -> Int32:\n"
+        "    total = 0\n"
+        "    for v in it:\n"
+        "        total = total + v\n"
+        "    return total\n",
+        "rejected")
+    with activate_compiler(compiler):
+        begin_attempt()
+        fn = lower_function(f, entry.analyzer, self_type=None)
+        if fn is None:
+            fold_attempt("body")
+    assert fn is None
 
 
 def test_for_each_plain_call_iterable_routes():

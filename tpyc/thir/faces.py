@@ -151,6 +151,10 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # (`UInt32.trunc(i)`) -> template expansion
     "call.macro_expansion",         # `@call_macro`/getattr/hasattr call ->
                                     # its sema-synthesized replacement expr
+    "call.dyn_hasattr",             # runtime hasattr probe -> the try/catch
+                                    # stmt-expr over `obj.__getattr__(name)`
+    "call.dyn_getattr_default",     # getattr(obj, name, default) -> the
+                                    # optional-deferred try/catch stmt-expr
     "call.dunder_call",             # `obj(args)` with a __call__ method ->
                                     # the synthetic `obj.__call__(args)`
     "call.ord_fold",                # `ord("X")` single-char literal ->
@@ -194,6 +198,9 @@ THIR_FACES: frozenset[str] = frozenset({
     "method.recv.str_literal",      # `"a,b,c".split(",")` -- a str-literal
                                     # receiver rendered bare into the resolved
                                     # builtin-method template
+    "method.recv.bytes_method",     # `srv.recv(32).decode()` -- a bytes-VALUE
+                                    # method-call result feeding the outer
+                                    # bytes method's receiver slot
     "method.recv.str_method",       # `s.strip().lower()` -- a str-VALUE
                                     # method-call/free-call receiver, the inner
                                     # str method's bare nested-call render
@@ -750,6 +757,10 @@ THIR_FACES: frozenset[str] = frozenset({
     # resolved_contains arm; witnessed at lowering admission and again at
     # lowering -- non-vacuity only needs a nonzero count).
     "binop.membership",
+    # user-record membership (`needle in jar` over a record whose
+    # `__contains__` is a plain user method) -> the member call
+    # `(recv.__contains__(needle))`, gen_call_from_fi's member tail.
+    "binop.user_membership",
     # native-set membership with no resolved __contains__ member (a
     # `readonly[set]`) -> the AST's `is_native_in` fallback
     # `[!]std::ranges::contains(s, x)`.
@@ -766,6 +777,9 @@ THIR_FACES: frozenset[str] = frozenset({
     # A fixed-int bitwise op (`a & b`, `a << b`, ...) admitted at the scalar
     # arm -- same resolved-binop template emit as arithmetic (lowering admission).
     "binop.bitwise",
+    # A both-literal int binop folded in the target-less BigInt context
+    # (`2**63 - 1` -> the folded BigInt-targeted literal render).
+    "binop.literal_fold",
     # sema's optional_safe_eq (value-repr Optional[scalar] ==/!=): optional
     # sides read bare, the plain side opposite an un-narrowed optional is
     # target-typed to its inner (lowering).
