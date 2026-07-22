@@ -12,6 +12,7 @@ struct Handle;
 inline constexpr std::string_view __name__ = "__main__";
 
 Handle f();
+Handle f_alias();
 void main();
 
 // @nocopy

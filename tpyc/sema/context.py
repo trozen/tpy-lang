@@ -1052,12 +1052,14 @@ class SemanticContext:
 
     # --- Last-use tracking (shared with codegen, persists across functions) ---
     all_last_uses: set[int] = field(default_factory=set)
-    # id(TpyName) of `return <name>` values whose name an enclosing finally
-    # body reads (liveness.collect_finally_return_reads). Return analysis
-    # re-marks eligible reference-type shapes as last-use and stamps
+    # id(TpyName) of `return <name>` values under a non-suspending finally
+    # (liveness.collect_finally_return_candidates; every such return -- the
+    # finally can reach the local through aliases/closures, so candidacy is
+    # structural, not read-based). Return analysis re-marks eligible
+    # reference-type shapes as last-use and stamps
     # TpyReturn.finally_deferred_capture (codegen then materializes the
     # return value after the inline finally chain).
-    finally_return_reads: set[int] = field(default_factory=set)
+    finally_return_candidates: set[int] = field(default_factory=set)
 
     # id(FunctionInfo) of this module's bodied functions/methods whose body
     # analysis has not run yet -- their return_borrows_from is still None

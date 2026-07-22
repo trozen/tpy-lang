@@ -15,10 +15,12 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __coro_f;
 struct __coro_f_opt;
+struct __coro_f_alias;
 struct __coro_main;
 
 __coro_f f();
 __coro_f_opt f_opt(bool flag);
+__coro_f_alias f_alias();
 __coro_main main();
 
 // class Box:
@@ -81,6 +83,29 @@ struct __coro_f_opt {
     }
 };
 
+// Async coroutine: f_alias
+struct __coro_f_alias {
+    int32_t __state;
+    bool __cancel_pending;
+    ::tpy::frame_slot<Box> b;
+    Box* a = nullptr;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_DONE = 1,
+    };
+
+    __coro_f_alias()
+        : __state(S_INITIAL), __cancel_pending(false) {}
+
+    ::tpystd::tpy::Poll<Box> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_f_alias&) {
+        return os << "<coroutine f_alias>";
+    }
+};
+
 // Async coroutine: main
 struct __coro_main {
     int32_t __state;
@@ -88,16 +113,19 @@ struct __coro_main {
     ::tpy::frame_slot<Box> r;
     std::optional<Box> o;
     std::optional<Box> __await_lift_0;
+    ::tpy::frame_slot<Box> __await_lift_1;
     std::optional<__coro_f> __sub_0;
     std::optional<__coro_f_opt> __sub_1;
     std::optional<__coro_f_opt> __sub_2;
+    std::optional<__coro_f_alias> __sub_3;
 
     enum : int32_t {
         S_INITIAL = 0,
         S_RESUME_0 = 1,
         S_RESUME_1 = 2,
         S_RESUME_2 = 3,
-        S_DONE = 4,
+        S_RESUME_3 = 4,
+        S_DONE = 5,
     };
 
     __coro_main()

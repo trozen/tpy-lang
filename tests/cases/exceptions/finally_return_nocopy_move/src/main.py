@@ -19,8 +19,20 @@ def f() -> Own[Handle]:
         h.n += 1
 
 
+def f_alias() -> Own[Handle]:
+    # Alias-mediated mutation: structural deferral must move (a copy would be
+    # a deleted-ctor build error) and the mutation must reach the result.
+    h = Handle()
+    a = h
+    try:
+        return h
+    finally:
+        a.n += 1
+
+
 def main() -> None:
     print(f().n)
+    print(f_alias().n)
 
 
 main()

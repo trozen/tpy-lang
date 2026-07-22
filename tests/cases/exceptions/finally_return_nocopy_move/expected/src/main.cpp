@@ -28,10 +28,40 @@ Handle f() {
     }
 }
 
+// def f_alias() -> Own[Handle]:
+Handle f_alias() {
+    // # Alias-mediated mutation: structural deferral must move (a copy would be
+    // # a deleted-ctor build error) and the mutation must reach the result.
+    // h = Handle()
+    Handle h = Handle();
+    // a = h
+    Handle& a = h;
+    // try:
+    {
+        bool __fin_ran_2 = false;
+        try {
+            // return h
+            auto* __tpy_retp_0 = &(h);
+            __fin_ran_2 = true;
+            // a.n += 1
+            a.n = ::tpy::add_check<int32_t>(a.n, 1);
+            return std::move(*__tpy_retp_0);
+        } catch (...) {
+            if (!__fin_ran_2) {
+                // a.n += 1
+                a.n = ::tpy::add_check<int32_t>(a.n, 1);
+            }
+            throw;
+        }
+    }
+}
+
 // def main() -> None:
 void main() {
     // print(f().n)
     std::cout << f().n << "\n";
+    // print(f_alias().n)
+    std::cout << f_alias().n << "\n";
 }
 
 void __tpy_init() {

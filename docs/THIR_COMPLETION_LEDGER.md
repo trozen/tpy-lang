@@ -1255,14 +1255,16 @@ plain-value tail arm only, straight-line function scope only), and
 `lower_function`'s blanket hoisted-vars reject gained the try-covered
 carve-out. Corpus witness: `control_flow/try_finally_shapes`; units
 `tpyc/thir/test_thir_try.py`. NEW RESIDUAL (finally-deferred return
-capture): a `return <ref-type name>` whose enclosing finally reads the
-name now defers materialization past the chain on the AST path
-(sema-stamped `TpyReturn.finally_deferred_capture`); THIR rejects the
-stamp (`return.finally_deferred_capture`, both the sync dispatch and
+capture): EVERY eligible `return <ref-type name>` under a
+non-suspending finally now defers materialization past the chain on
+the AST path (structural candidacy, sema-stamped
+`TpyReturn.finally_deferred_capture`); THIR rejects the stamp
+(`return.finally_deferred_capture`, both the sync dispatch and
 `_lower_resumable_return_value`) and falls the body back -- porting
 needs the borrow-capture/materialize split mirrored in
 `_emit_finally_return`. Witnesses carry `no_thir.txt`:
 `exceptions/finally_mutates_returned_local`,
+`exceptions/finally_mutates_returned_local_indirect`,
 `exceptions/finally_return_nocopy_move`,
 `async/async_finally_mutates_returned_local`.
 **try/except throw tier + raise landed (incr 80): +493 bodies

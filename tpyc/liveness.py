@@ -593,66 +593,109 @@ def _all_read_names(stmts: list[TpyStmt]) -> list[TpyName]:
     return result
 
 
-def collect_finally_return_reads(stmts: list[TpyStmt]) -> set[int]:
-    """ids of TpyName nodes that are the direct `return <name>` value inside a
-    try whose finally body reads that name.
+def collect_finally_return_candidates(stmts: list[TpyStmt]) -> set[int]:
+    """ids of TpyName nodes that are the direct `return <name>` value inside
+    a try with a non-suspending finally -- EVERY such return, regardless of
+    whether the finally body mentions the name. The finally can reach the
+    local's storage through channels no syntactic read-scan can enumerate
+    (aliases, closures, Ptr), and deferring an untouched local is
+    semantically identical to the eager move -- so candidacy is structural,
+    not read-based; only the suspending-finally subtree is excluded (the
+    CFG pending-return slot has no deferred-capture recipe, and a stamp
+    there would silently accept shapes that must keep their loud
+    diagnostics).
 
-    Such a read is consumable at the return site despite the finally's later
-    read: on the return path codegen defers the materialization until after
-    the inline finally chain, and on the exception path the return never
-    executed. Sema consults this set to keep the auto-move mark (which the
-    exception-path discard in _analyze_try would otherwise drop) and to stamp
-    TpyReturn.finally_deferred_capture for eligible reference-type shapes.
+    Such a read is consumable at the return site despite any later finally
+    access: on the return path codegen defers the materialization until
+    after the inline finally chain, and on the exception path the return
+    never executed. Sema consults this set to keep the auto-move mark
+    (which the exception-path discard in _analyze_try would otherwise drop)
+    and to stamp TpyReturn.finally_deferred_capture for eligible
+    reference-type shapes.
     """
     out: set[int] = set()
-    _walk_finally_returns(stmts, [], out, suppressed=False)
+    rebound = _collect_nested_def_nonlocal_rebinds(stmts)
+    _walk_finally_returns(stmts, 0, out, rebound, suppressed=False)
     return out
 
 
-def _walk_finally_returns(stmts: list[TpyStmt],
-                          finally_reads: list[set[str]],
-                          out: set[int], *, suppressed: bool) -> None:
+def _collect_nested_def_nonlocal_rebinds(stmts: list[TpyStmt]) -> set[str]:
+    """Nonlocal names a nested def REBINDS (assigns the name itself, not a
+    field). Such a rebind overwrites the outer local's storage in place (the
+    reassigned-var scan does not see nested-def writes, so the local has no
+    slot indirection -- BUGS.md), which would clobber a deferred return's
+    borrow; those names keep the eager capture. Mutation-only nonlocal use
+    (`b.n += 1`) does NOT exclude -- that is the aliasing deferral exists
+    for. Name-level aug-assign counts as a rebind conservatively.
+    """
+    rebound: set[str] = set()
+
+    def scan_def(func: TpyFunction) -> None:
+        nonlocals: set[str] = set()
+        assigned: set[str] = set()
+
+        def walk(body: list[TpyStmt]) -> None:
+            for s in body:
+                if isinstance(s, TpyNonlocal):
+                    nonlocals.update(s.names)
+                elif isinstance(s, TpyAssign) and isinstance(s.target, TpyName):
+                    assigned.add(s.target.name)
+                elif isinstance(s, TpyVarDecl):
+                    assigned.add(s.name)
+                elif isinstance(s, TpyAugAssign) and isinstance(s.target, TpyName):
+                    assigned.add(s.target.name)
+                elif isinstance(s, TpyTupleUnpack):
+                    assigned.update(n for n in s.targets if n is not None)
+                elif isinstance(s, TpyForEach):
+                    assigned.add(s.var)
+                for b in s.sub_bodies():
+                    walk(b)
+
+        walk(func.body)
+        rebound.update(nonlocals & assigned)
+
+    def find_defs(body: list[TpyStmt]) -> None:
+        for s in body:
+            if isinstance(s, TpyNestedDef):
+                scan_def(s.func)
+            for b in s.sub_bodies():
+                find_defs(b)
+
+    find_defs(stmts)
+    return rebound
+
+
+def _walk_finally_returns(stmts: list[TpyStmt], finally_depth: int,
+                          out: set[int], rebound: set[str],
+                          *, suppressed: bool) -> None:
     for stmt in stmts:
         if isinstance(stmt, TpyReturn):
-            if (not suppressed
+            if (not suppressed and finally_depth > 0
                     and isinstance(stmt.value, TpyName)
-                    and any(stmt.value.name in reads
-                            for reads in finally_reads)):
+                    and stmt.value.name not in rebound):
                 out.add(id(stmt.value))
         elif isinstance(stmt, TpyNestedDef):
             # A nested def's returns exit the inner function; the enclosing
             # finallies never run for them. Its own analysis pass covers it.
             continue
         elif isinstance(stmt, TpyTry) and stmt.finally_body:
-            # A finally containing a suspension lowers via the CFG
-            # pending-return slot, which has no deferred-capture recipe.
-            # Every return lexically inside such a try (including under an
-            # INNER non-suspending finally) routes through that slot, so
-            # suppress candidates for the whole subtree -- a stamp there
-            # would restore the auto-move mark for an arm that eagerly
-            # copies, silently accepting shapes (list/@nocopy) that must
-            # keep their loud diagnostics (BUGS.md).
             sub_suppressed = (suppressed
                               or stmts_have_any_suspension(stmt.finally_body))
-            reads = ({n.name for n in _all_read_names(stmt.finally_body)}
-                     if not sub_suppressed else set())
-            finally_reads.append(reads)
-            _walk_finally_returns(stmt.try_body, finally_reads, out,
-                                  suppressed=sub_suppressed)
+            _walk_finally_returns(stmt.try_body, finally_depth + 1, out,
+                                  rebound, suppressed=sub_suppressed)
             for h in stmt.handlers:
-                _walk_finally_returns(h.body, finally_reads, out,
-                                      suppressed=sub_suppressed)
-            _walk_finally_returns(stmt.else_body, finally_reads, out,
-                                  suppressed=sub_suppressed)
-            finally_reads.pop()
+                _walk_finally_returns(h.body, finally_depth + 1, out,
+                                      rebound, suppressed=sub_suppressed)
+            _walk_finally_returns(stmt.else_body, finally_depth + 1, out,
+                                  rebound, suppressed=sub_suppressed)
             # A return in the finally body itself overrides at chain position
             # (no deferral); only outer finallies apply to it.
-            _walk_finally_returns(stmt.finally_body, finally_reads, out,
-                                  suppressed=sub_suppressed)
+            _walk_finally_returns(stmt.finally_body, finally_depth, out,
+                                  rebound, suppressed=sub_suppressed)
         else:
             for body in stmt.sub_bodies():
-                _walk_finally_returns(body, finally_reads, out,
-                                      suppressed=suppressed)
+                _walk_finally_returns(body, finally_depth, out,
+                                      rebound, suppressed=suppressed)
 
 
 def _analyze_with(

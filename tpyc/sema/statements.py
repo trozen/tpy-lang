@@ -51,7 +51,7 @@ from ..prescan import (
     ScanResult, scan_reassigned_vars, parse_deref_view_key,
     FactKills, collect_fact_kills, liveness_alias_sources,
 )
-from ..liveness import (analyze_last_uses, collect_finally_return_reads,
+from ..liveness import (analyze_last_uses, collect_finally_return_candidates,
                         stmts_terminate)
 from ..parse.nodes import VarLinkage
 from .context import addr_taken_roots, expr_yields_non_null_ptr, record_stmt_borrow_binding
@@ -641,13 +641,15 @@ class StatementAnalyzer:
 
     def _mark_finally_deferred_return(self, stmt: TpyReturn, ret_type: TpyType,
                                       expected: TpyType) -> None:
-        """`return <name>` whose name an enclosing finally still reads: for
-        eligible reference-type shapes, keep the auto-move mark (the
-        exception-path discard dropped it) and stamp the node so codegen
+        """`return <name>` under a non-suspending finally: for eligible
+        reference-type shapes, keep the auto-move mark (the exception-path
+        discard may have dropped it) and stamp the node so codegen
         materializes the return value AFTER the inline finally chain. This is
-        what makes finally mutations of the returned local visible in the
-        returned object (CPython aliasing) -- an eager capture would copy or
-        move before the finally runs.
+        what makes finally mutations of the returned local -- through ANY
+        channel, direct or alias/closure-mediated -- visible in the returned
+        object (CPython aliasing); an eager capture would copy or move before
+        the finally runs, and deferring a local the finally never touches is
+        equivalent to the eager move.
 
         Sound regardless of other exception-path readers: on the return path
         the finally chain runs before the deferred move, and on any path
@@ -662,7 +664,7 @@ class StatementAnalyzer:
         (tracked in BUGS.md).
         """
         if not (isinstance(stmt.value, TpyName)
-                and id(stmt.value) in self.ctx.finally_return_reads
+                and id(stmt.value) in self.ctx.finally_return_candidates
                 and self.compat._is_owned_var(stmt.value.name)):
             return
         exp = unwrap_ref_type(expected)
@@ -2141,30 +2143,32 @@ class StatementAnalyzer:
         else:
             self._analyze_try_throw(stmt)
 
+    @staticmethod
+    def _walk_deferred_return_names(stmts: list[TpyStmt],
+                                    names: set[str]) -> None:
+        """Collect names of finally-deferred returns in `stmts` (deep;
+        nested defs excluded -- their returns exit the inner function and
+        never hold a borrow across an enclosing finally)."""
+        for s in stmts:
+            if isinstance(s, TpyReturn):
+                if s.finally_deferred_capture:
+                    inner = s.value
+                    while isinstance(inner, TpyCoerce):
+                        inner = inner.expr
+                    if isinstance(inner, TpyName):
+                        names.add(inner.name)
+            elif not isinstance(s, TpyNestedDef):
+                for body in s.sub_bodies():
+                    StatementAnalyzer._walk_deferred_return_names(body, names)
+
     def _collect_deferred_return_names(self, stmt: TpyTry) -> frozenset[str]:
         """Names borrowed by finally-deferred returns anywhere in the try's
-        try/else/handler bodies (deep; nested defs excluded -- their returns
-        exit the inner function and never hold a borrow across this finally).
-        """
+        try/else/handler bodies."""
         names: set[str] = set()
-
-        def walk(stmts: list[TpyStmt]) -> None:
-            for s in stmts:
-                if isinstance(s, TpyReturn):
-                    if s.finally_deferred_capture:
-                        inner = s.value
-                        while isinstance(inner, TpyCoerce):
-                            inner = inner.expr
-                        if isinstance(inner, TpyName):
-                            names.add(inner.name)
-                elif not isinstance(s, TpyNestedDef):
-                    for body in s.sub_bodies():
-                        walk(body)
-
-        walk(stmt.try_body)
-        walk(stmt.else_body)
+        self._walk_deferred_return_names(stmt.try_body, names)
+        self._walk_deferred_return_names(stmt.else_body, names)
         for h in stmt.handlers:
-            walk(h.body)
+            self._walk_deferred_return_names(h.body, names)
         return frozenset(names)
 
     def _analyze_finally_body(self, stmt: TpyTry,
@@ -2887,7 +2891,7 @@ class StatementAnalyzer:
         scan = scan_reassigned_vars(func.body, pre_declared=param_names)
         self.ctx.all_last_uses |= analyze_last_uses(
             func.body, liveness_alias_sources(scan))
-        self.ctx.finally_return_reads |= collect_finally_return_reads(func.body)
+        self.ctx.finally_return_candidates |= collect_finally_return_candidates(func.body)
         self.ctx.func.current_reassigned_vars = scan.reassigned.copy()
         self.ctx.func.current_fresh_ctor_locals = set()
         self.ctx.func.tuple_unpack_view_targets = set()
@@ -2910,7 +2914,53 @@ class StatementAnalyzer:
         if implicit_ret is not None:
             self.analyze_stmt(implicit_ret)
 
+        self._check_closure_del_of_deferred_returns(func)
+
         return scan
+
+    def _check_closure_del_of_deferred_returns(self, func: TpyFunction) -> None:
+        """Reject `nonlocal x; del x` in a nested def when the enclosing
+        function has a finally-deferred `return x`: the pending return holds
+        a borrow of x's storage across the finally chain, and a closure
+        invoked from a finally would free it before the materialization.
+        Runs post-body (nested defs can be defined before the try, so their
+        dels are analyzed before any stamp exists). Over-broad by design --
+        the closure need not provably run inside the finally -- but the
+        combination is exotic and the diagnostic names the conflict.
+        """
+        deferred: set[str] = set()
+        self._walk_deferred_return_names(func.body, deferred)
+        if not deferred:
+            return
+
+        def check_defs(stmts: list[TpyStmt]) -> None:
+            for s in stmts:
+                if isinstance(s, TpyNestedDef):
+                    nonlocals: set[str] = set()
+                    for inner_s in s.func.body:
+                        if isinstance(inner_s, TpyNonlocal):
+                            nonlocals.update(inner_s.names)
+
+                    def check_dels(stmts2: list[TpyStmt]) -> None:
+                        for d in stmts2:
+                            if isinstance(d, TpyDelVar):
+                                for name in d.names:
+                                    if name in nonlocals and name in deferred:
+                                        raise self.ctx.error(
+                                            f"cannot delete nonlocal "
+                                            f"'{name}' here: an enclosing "
+                                            f"'return {name}' under a "
+                                            f"finally still borrows it (the "
+                                            f"value is materialized after "
+                                            f"the finally chain runs)", d)
+                            for body in d.sub_bodies():
+                                check_dels(body)
+
+                    check_dels(s.func.body)
+                for body in s.sub_bodies():
+                    check_defs(body)
+
+        check_defs(func.body)
 
     def _materialize_implicit_return(self, func: TpyFunction) -> TpyReturn | None:
         """The C++ body of a non-void function must return on every path

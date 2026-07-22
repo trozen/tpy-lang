@@ -1,0 +1,1 @@
+main.py:20: error: cannot delete nonlocal 'b' here: an enclosing 'return b' under a finally still borrows it (the value is materialized after the finally chain runs)

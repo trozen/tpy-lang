@@ -123,11 +123,11 @@ Box ret_rebound() {
         bool __fin_ran_5 = false;
         try {
             // return b
-            Box __tpy_ret_0 = std::move((*b));
+            auto* __tpy_retp_0 = &((*b));
             __fin_ran_5 = true;
             // b = Box()  # rebinding: the pending return keeps the original object
             b = &*(__slot_2 = Box());
-            return __tpy_ret_0;
+            return std::move(*__tpy_retp_0);
         } catch (...) {
             if (!__fin_ran_5) {
                 // b = Box()  # rebinding: the pending return keeps the original object

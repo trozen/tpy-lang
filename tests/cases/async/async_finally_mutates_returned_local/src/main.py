@@ -30,6 +30,19 @@ async def f_opt(flag: bool) -> Own[Box] | None:
             b.n += 1
 
 
+# This case should also test mutation through a closure, like the sync
+# via_closure case does. It can't yet: a nested def that captures a local
+# does not compile inside an async def (BUGS.md). Add that shape once it
+# works.
+async def f_alias() -> Own[Box]:
+    b = Box()
+    a = b
+    try:
+        return b
+    finally:
+        a.n += 1
+
+
 async def main() -> None:
     r = await f()
     print(r.n)
@@ -37,6 +50,7 @@ async def main() -> None:
     if o is not None:
         print(o.n)
     print(await f_opt(False) is None)
+    print((await f_alias()).n)
 
 
 asyncio.run(main())

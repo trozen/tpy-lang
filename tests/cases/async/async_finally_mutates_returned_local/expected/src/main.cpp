@@ -94,6 +94,47 @@ __coro_f_opt f_opt(bool flag) {
     return __coro_f_opt(flag);
 }
 
+// async def f_alias() -> Own[Box]:
+::tpystd::tpy::Poll<Box> __coro_f_alias::__poll__(::tpystd::coro::Waker waker) {
+    (void)waker;
+    switch (__state) {
+    case S_INITIAL: {
+        // b = Box()
+        b.emplace(Box());
+        // a = b
+        a = &((*b));
+        // try:
+        {
+            bool __fin_ran_3 = false;
+            try {
+                // return b
+                auto* __tpy_retp_0 = &((*b));
+                __fin_ran_3 = true;
+                // a.n += 1
+                a->n = ::tpy::add_check<int32_t>(a->n, 1);
+                __state = S_DONE;
+                return ::tpystd::tpy::Poll<Box>::ready(std::move(*__tpy_retp_0));
+            } catch (...) {
+                if (!__fin_ran_3) {
+                    // a.n += 1
+                    a->n = ::tpy::add_check<int32_t>(a->n, 1);
+                }
+                throw;
+            }
+        }
+        ::tpy::tpy_panic("async def fell through without returning a value");
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def f_alias() -> Own[Box]:
+__coro_f_alias f_alias() {
+    return __coro_f_alias();
+}
+
 // async def main() -> None:
 ::tpystd::tpy::Poll<::std::monostate> __coro_main::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
@@ -137,6 +178,18 @@ __coro_f_opt f_opt(bool flag) {
         __sub_2.reset();
         // print(await f_opt(False) is None)
         std::cout << ::tpy::print_bool((!__await_lift_0.has_value())) << "\n";
+        // print((await f_alias()).n)
+        __sub_3.emplace();
+        __state = S_RESUME_3;
+        continue;
+    }
+    case S_RESUME_3: {
+        auto __r3 = ::tpy::poll_with_cancel(__sub_3, __cancel_pending, waker);
+        if (__r3.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        __await_lift_1.emplace(std::move(__r3).value());
+        __sub_3.reset();
+        // print((await f_alias()).n)
+        std::cout << (*__await_lift_1).n << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
