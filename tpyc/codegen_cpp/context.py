@@ -2086,10 +2086,7 @@ class CodeGenContext:
         typ = self.var_types.get(var_name)
         if typ is not None:
             return typ
-        if (var_name == "self"
-                and self.in_method
-                and "self" not in self.current_func_params
-                and self.current_method_record_type is not None):
+        if var_name == "self" and self.self_renders_as_this():
             return self.current_method_record_type
         global_ns = self.analyzer.ctx.global_ns
         if global_ns is not None:
@@ -2097,6 +2094,26 @@ class CodeGenContext:
             if binding is not None and binding.type is not None:
                 return binding.type
         return None
+
+    def self_renders_as_this(self) -> bool:
+        """True when a bare `self` in the current emission scope is the
+        method receiver (rendered through C++ `this`), not an ordinary
+        local/param that happens to be named self. Staticmethods set
+        in_method but have no receiver (current_method_record_type stays
+        None), and a free function may declare its own `self` param."""
+        return (self.in_method
+                and "self" not in self.current_func_params
+                and self.current_method_record_type is not None)
+
+    def self_captures_this(self) -> bool:
+        """True when a lambda / nested-def capture list must spell a
+        captured `self` as `this`. Covers every receiver render form: the
+        plain method body (`this`), the simple-generator wrapper lambda
+        (self renders `(*this)` through the wrapper's captured this), and
+        the resumable frame member (`__self` is a frame field reached
+        through the member's own this)."""
+        return (self.generator_self_ref == "(*this)"
+                or self.self_renders_as_this())
 
     def is_global_name(self, expr: TpyExpr) -> bool:
         """Check if expression is a reference to a global variable.
@@ -2620,7 +2637,7 @@ class CodeGenContext:
         # self -> this (pointer) in instance methods, unless inside a generator
         # where generator_self_ref is already a dereferenced reference
         if (isinstance(expr, TpyName) and expr.name == "self"
-                and self.in_method and "self" not in self.current_func_params
+                and self.self_renders_as_this()
                 and self.generator_self_ref is None):
             return True
         if self._is_pointer_global(expr) or self.is_pointer_local(expr):

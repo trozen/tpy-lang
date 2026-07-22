@@ -3635,13 +3635,19 @@ class StatementGenerator:
             out.write(f"{indent}// def {func.name}: frame member\n")
             return
 
-        # Build capture list
+        # Build capture list. `self` renders as `this` in the body (same
+        # rule as the name renderer / _genexpr_outer_captures), so its
+        # capture is the pointer -- alias semantics in every capture mode.
+        captures_this = self.ctx.self_captures_this()
         if stmt.captured_names:
             if stmt.escapes:
                 # Mixed capture: ref for non-value outer params,
                 # move for last-use locals, value (copy) for the rest
                 parts = []
                 for n in stmt.captured_names:
+                    if n == "self" and captures_this:
+                        parts.append("this")
+                        continue
                     cpp_n = escape_cpp_name(n)
                     if n in stmt.ref_captures:
                         parts.append(f"&{cpp_n}")
@@ -3651,7 +3657,10 @@ class StatementGenerator:
                         parts.append(cpp_n)
                 capture = f"[{', '.join(parts)}]"
             else:
-                refs = ", ".join(f"&{escape_cpp_name(n)}" for n in stmt.captured_names)
+                refs = ", ".join(
+                    "this" if (n == "self" and captures_this)
+                    else f"&{escape_cpp_name(n)}"
+                    for n in stmt.captured_names)
                 capture = f"[{refs}]"
         else:
             capture = "[]"

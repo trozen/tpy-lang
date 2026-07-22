@@ -1,0 +1,1 @@
+main.py:14: error: 'self' cannot be declared nonlocal in nested function 'replace': the method receiver cannot be rebound. Bind the new object to a different name instead

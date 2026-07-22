@@ -2089,6 +2089,12 @@ class SemanticAnalyzer:
             names_used_after = self._names_used_after(body, node)
             # Per-capture analysis: determine ref vs value vs move capture mode
             for cap_name in node.captured_names:
+                if cap_name == "self" and self.ctx.receiver_self_in_scope():
+                    # The receiver is captured as `this` -- an alias,
+                    # neither copied nor moved, so the copy/move buckets
+                    # and their warnings do not apply. The receiver-
+                    # lifetime residual is tracked in BUGS.md.
+                    continue
                 cap_type = self.ctx.func.current_scope.lookup(cap_name) if self.ctx.func.current_scope else None
                 if cap_type is None:
                     continue

@@ -743,6 +743,10 @@ class FunctionTrackingState:
     # --- Nested def tracking ---
     in_nested_def: bool = False
     nested_def_name: str | None = None
+    # Inside a nested-def analysis: 'self' in outer_scope_locals is the
+    # enclosing METHOD's receiver (not an ordinary local named self), so
+    # assignment sites can reject rebinds with the receiver message.
+    outer_self_is_receiver: bool = False
     outer_scope_locals: set[str] = field(default_factory=set)
     current_nonlocal_names: set[str] = field(default_factory=set)
     # Union of nonlocal targets across all nested defs analyzed so far in
@@ -752,6 +756,12 @@ class FunctionTrackingState:
     nested_def_names: set[str] = field(default_factory=set)
     nested_def_escapes: set[str] = field(default_factory=set)
     nested_def_nodes: dict[str, 'TpyNestedDef'] = field(default_factory=dict)
+    # Mutation marks attempted while analyzing a nested-def body (recorded on
+    # the NESTED tracking state, which is otherwise discarded on restore).
+    # Entries are (name, through_field, structural). _analyze_nested_def
+    # replays the captured/nonlocal/self subset into the enclosing state so
+    # closure mutations reach the method's const/param-mutation facts.
+    nested_mutation_marks: list[tuple[str, bool, bool]] = field(default_factory=list)
 
     # --- Per-local escape/ownership provenance (see BindingProvenance) ---
     # One record per local; absent name == default. Mutate only via the
@@ -1501,6 +1511,14 @@ class SemanticContext:
         if name in self.func.loop_vars:
             self.func.consumed_loop_vars.add(name)
 
+    def receiver_self_in_scope(self) -> bool:
+        """True when 'self' in the current function scope is the method
+        receiver (a closure captures it as the C++ this pointer -- an
+        alias), not an ordinary local/param that happens to be named self."""
+        f = self.func.current_function
+        return (isinstance(f, TpyFunction) and f.is_method
+                and not f.is_staticmethod)
+
     def mark_param_mutated(self, name: str, *, through_field: bool = False) -> None:
         """Mark a function parameter as directly mutated (Phase 1 of mutation inference).
 
@@ -1518,6 +1536,8 @@ class SemanticContext:
         callee turns out readonly must NOT demote the receiver, so the
         method-call mark stops at the field-path key as it always has.
         """
+        if self.func.in_nested_def:
+            self.func.nested_mutation_marks.append((name, through_field, False))
         if name == "self":
             self.func.current_self_mutated = True
             return
@@ -1552,6 +1572,8 @@ class SemanticContext:
         mark_param_mutated which also fires for element-ref taking (a = items[0]).
         Traces loop variables back to their source iterables transitively.
         """
+        if self.func.in_nested_def:
+            self.func.nested_mutation_marks.append((name, False, True))
         if name == "self":
             self.func.current_self_struct_mutated = True
             return

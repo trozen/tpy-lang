@@ -2315,6 +2315,10 @@ def _lambda_routable(a: TpyExpr, analyzer) -> bool:
     -- a needless fallback)."""
     if not isinstance(a, TpyLambda):
         return False
+    # A captured `self` spells `this` in the capture list (method context
+    # the lowering does not carry) -> AST path.
+    if "self" in a.captured_names:
+        return False
     rt = a.inferred_return_type
     if rt is None or is_void_like_type(rt):
         return False

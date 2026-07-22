@@ -27,6 +27,7 @@ from ..parse import (
     collect_name_refs, collect_top_level_local_names, expr_reads_self_field,
 )
 from ..namespace import Namespace
+from ..sema.registration import build_record_self_type
 
 from .. import qnames
 from .context import (
@@ -881,10 +882,20 @@ class RecordGenerator:
             return
         saved_func_params = self.ctx.current_func_params
         saved_in_method = self.ctx.in_method
+        saved_method_record = self.ctx.current_method_record_type
         saved_ns = self.ctx.current_ns
         self.ctx.current_func_params = {
             pname: ptype for pname, ptype in record.init_method.params}
         self.ctx.in_method = True
+        # Field-init RHS renders go through the same self-receiver rules as
+        # method bodies (`self.helper()` -> `this->helper()`), which require
+        # the record type to be attached, not just in_method.
+        rec_info = self.ctx.analyzer.registry.get_record(record.name)
+        if rec_info is not None:
+            self.ctx.current_method_record_type = build_record_self_type(
+                rec_info, qname=rec_info.qualified_name())
+        else:
+            self.ctx.current_method_record_type = NominalType(record.name)
         # Field-init RHS expressions live lexically in the constructor
         # body, so binding-based dispatch in expression codegen needs the
         # constructor's namespace. The non-init body gets the same
@@ -894,6 +905,7 @@ class RecordGenerator:
         inits, hoisted_ids = self._extract_field_inits(record.init_method, record)
         self.ctx.current_func_params = saved_func_params
         self.ctx.in_method = saved_in_method
+        self.ctx.current_method_record_type = saved_method_record
         self.ctx.current_ns = saved_ns
         non_init_stmts = self._get_non_init_stmts(record.init_method, record, hoisted_ids)
 

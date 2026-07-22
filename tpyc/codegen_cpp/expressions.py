@@ -1402,7 +1402,7 @@ class ExpressionGenerator:
                 return self.ctx.generator_self_ref
             # self -> this (pointer) in instance methods; callers use
             # is_indirect_name to decide -> vs . and (*x) for value deref
-            if expr.name == "self" and self.ctx.in_method and "self" not in self.ctx.current_func_params:
+            if expr.name == "self" and self.ctx.self_renders_as_this():
                 return "this"
             # Native global name substitution (Python name -> C/C++ name)
             # Skip if shadowed by a local variable
@@ -5601,7 +5601,7 @@ class ExpressionGenerator:
             refs |= extra_refs
 
         # "self" maps to C++ "this", not a regular local
-        needs_this = "self" in refs and self.ctx.in_method
+        needs_this = "self" in refs and self.ctx.self_captures_this()
         refs.discard("self")
 
         # Keep only names that are function locals (not globals, not builtins,
@@ -6837,10 +6837,14 @@ class ExpressionGenerator:
             self.ctx.local_scope_names = saved_locals
 
         if expr.captured_names:
-            if expr.captures_by_value:
-                refs = ", ".join(escape_cpp_name(n) for n in expr.captured_names)
-            else:
-                refs = ", ".join(f"&{escape_cpp_name(n)}" for n in expr.captured_names)
+            # `self` renders as `this` in the body (name-renderer rule), so
+            # its capture is the pointer in both modes -- alias semantics.
+            captures_this = self.ctx.self_captures_this()
+            prefix = "" if expr.captures_by_value else "&"
+            refs = ", ".join(
+                "this" if (n == "self" and captures_this)
+                else f"{prefix}{escape_cpp_name(n)}"
+                for n in expr.captured_names)
             capture = f"[{refs}]"
         else:
             capture = "[]"

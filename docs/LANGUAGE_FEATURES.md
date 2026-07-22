@@ -7073,7 +7073,7 @@ Send/Sync rules for built-in types:
   apply(lambda x: x + 1, 42)  # lambda inlined, zero overhead
   ```
 - **Working**: Lambda expressions `lambda x: expr` -- parameter types inferred from `Fn` or `Callable` context via bidirectional inference. Non-capturing lambdas generate `[]`, capturing lambdas generate explicit capture lists (`[&var]` for `Fn`, `[var]` by value for `Callable`).
-- **Working**: Capturing lambdas -- `Fn` captures by reference (non-escaping, template-based), `Callable` captures by value (safe for escaping via `std::function`).
+- **Working**: Capturing lambdas -- `Fn` captures by reference (non-escaping, template-based), `Callable` captures by value (safe for escaping via `std::function`). Exception: a captured `self` is always the `this` pointer (alias, never a copy) -- an escaping self-capturing `Callable` is not tied to the receiver's lifetime (see BUGS.md), and its frame classifies non-Send.
 - **Working**: `Fn` in method parameters -- generates per-method template with `requires` constraint.
 - **Working**: `Callable[[A, B], R]` type -- type-erased callable (`std::function`). Valid in all positions: the callable itself binds as `const std::function<...>&` (params), or by value in fields/returns/containers/locals. The `std::function`'s own param types (`A`, `B`) spell mutable by default for non-value types -- see the callable-value-call bullet above for the mutability contract. `Callable | None` maps to `std::optional<std::function<...>>` with `is not None` narrowing for both fields and parameters; a lambda literal, a function by name, or `None` may be passed directly to a `Callable[...] | None` parameter (the optional wrapper is unwrapped to recover the callable shape for arg inference, then the value coerces back into the optional slot).
   ```python
@@ -7103,8 +7103,16 @@ Send/Sync rules for built-in types:
   or containers) use per-capture mode: non-value parameters capture by reference (caller's
   object outlives the closure, Python-like semantics), `Own[T]` parameters and last-use locals
   are moved, remaining non-value locals are copied (with a warning suggesting `copy()` or a
-  class). `nonlocal` enables mutable captures (non-escaping only). Restrictions: no decorators,
-  no type parameters, no nested-in-nested, no recursive nested defs. Escaping closures that
+  class). `nonlocal` enables mutable captures (non-escaping only). In a method, a nested def
+  (or lambda) can capture `self`: the capture is `this` (alias semantics -- mutations of
+  `self` fields from the closure are visible on the caller's object, matching CPython), and
+  closure mutations propagate to the method's const/mutation inference (a self-mutating
+  closure de-consts the method, including transitively via `self.helper()` calls; a read-only
+  closure keeps the method `const`). A self-capturing closure's frame classifies non-Send
+  (the capture is an alias), and `nonlocal self` is rejected -- the receiver cannot be
+  rebound. An escaping closure capturing `self` holds the raw `this` -- receiver lifetime
+  is not yet tied to the closure (see BUGS.md). Restrictions: no decorators, no type
+  parameters, no nested-in-nested, no recursive nested defs. Escaping closures that
   capture `str` parameters are rejected (string_view would dangle). Inside an `async def` or
   a generator, a nested def is emitted as a member function of the resumable frame: captures
   reach the frame-field locals directly (mutation via `nonlocal` matches CPython) and the

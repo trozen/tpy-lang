@@ -3049,6 +3049,17 @@ class StatementAnalyzer:
         nonlocal_names: set[str] = set()
         self._collect_nonlocal_names(func.body, nonlocal_names)
 
+        # The receiver has no rebindable storage behind `this` -- a
+        # `nonlocal self` rebind would silently keep using the original
+        # object where CPython switches to the new one (the self flavor
+        # of the nonlocal-rebind slot-model gap tracked in BUGS.md).
+        if "self" in nonlocal_names and self.ctx.receiver_self_in_scope():
+            raise self.ctx.error(
+                f"'self' cannot be declared nonlocal in nested function "
+                f"'{func.name}': the method receiver cannot be rebound. "
+                f"Bind the new object to a different name instead",
+                stmt)
+
         # Resolve param and return types
         resolved_params_bare = [(p, self.type_ops.resolve_type(t)) for p, t in func.params]
         func.params = [(p, make_ref(t)) for p, t in resolved_params_bare]
@@ -3057,9 +3068,12 @@ class StatementAnalyzer:
         return_type = self.type_ops.resolve_type(func.return_type)
         func.return_type = make_ref(return_type)
 
+        self_is_receiver = self.ctx.receiver_self_in_scope()
+
         # Analyze body in isolated scope
         with self.scopes.nested_def_scope(func) as inner_scope:
             self.ctx.func.outer_scope_locals = outer_locals
+            self.ctx.func.outer_self_is_receiver = self_is_receiver
 
             # Add nonlocal names to inner scope with types from outer
             for name in nonlocal_names:
@@ -3075,6 +3089,15 @@ class StatementAnalyzer:
             # Use the authoritative nonlocal set from body analysis
             # (covers nonlocal declarations at any nesting depth)
             nonlocal_names = self.ctx.func.current_nonlocal_names.copy()
+            # Harvest closure mutation facts before the state restore discards
+            # them: attempted mutation marks (filtered to outer names below)
+            # and self-receiver call edges (their param_map indexes the nested
+            # def's own params, so only the index-free self fact is portable).
+            nested_marks = list(self.ctx.func.nested_mutation_marks)
+            nested_self_edges = [
+                e.callee_fi for e in self.ctx.func.current_call_edges
+                if e.receiver_is_self
+            ]
         stmt.nonlocal_names = nonlocal_names
         # After the scope restore: any later call in the enclosing function
         # may invoke this closure, killing facts for its nonlocal targets.
@@ -3091,6 +3114,24 @@ class StatementAnalyzer:
             if name not in captured:
                 captured.append(name)
         stmt.captured_names = captured
+
+        # Replay the closure's mutation facts into the enclosing state:
+        # defining the closure conservatively counts as performing its
+        # mutations (the def-site stance closure_written_names already
+        # takes). Only names reaching outer storage are replayed; the
+        # nested def's own params/locals are filtered out.
+        replayable = set(captured) | nonlocal_names | {"self"}
+        for mname, through_field, structural in nested_marks:
+            if mname not in replayable:
+                continue
+            if structural:
+                self.ctx.mark_param_structurally_mutated(mname)
+            else:
+                self.ctx.mark_param_mutated(mname, through_field=through_field)
+        for callee_fi in nested_self_edges:
+            self.ctx.func.current_call_edges.append(
+                MutationCallEdge(callee_fi=callee_fi, param_map={},
+                                 receiver_is_self=True))
 
         # Create FunctionInfo and register as local function
         param_infos = [ParamInfo(name=pname, type=ptype) for pname, ptype in params]
@@ -3109,8 +3150,12 @@ class StatementAnalyzer:
             b = ns.lookup(name) if ns else None
             return b.type if (b is not None
                               and b.kind == BindingKind.VARIABLE) else None
+        # A captured receiver is a by-ref slot regardless of escape mode:
+        # codegen captures `this` (an alias into the origin thread's
+        # object), never a copy -- so it must classify non-Send.
         fi.frame_captures = [
-            (name, _capture_type(name), name in nonlocal_names)
+            (name, _capture_type(name),
+             name in nonlocal_names or (name == "self" and self_is_receiver))
             for name in captured
         ]
 
@@ -3712,6 +3757,12 @@ class StatementAnalyzer:
         if (self.ctx.func.in_nested_def
                 and stmt.name in self.ctx.func.outer_scope_locals
                 and stmt.name not in self.ctx.func.current_nonlocal_names):
+            if stmt.name == "self" and self.ctx.func.outer_self_is_receiver:
+                raise self.ctx.error(
+                    "Cannot rebind 'self' in a nested function: the method"
+                    " receiver cannot be rebound. Bind the new object to a"
+                    " different name instead",
+                    stmt)
             raise self.ctx.error(
                 f"Cannot assign to '{stmt.name}' in nested function"
                 f" without 'nonlocal' declaration",
@@ -4890,6 +4941,13 @@ class StatementAnalyzer:
                 and isinstance(stmt.target, TpyName)
                 and stmt.target.name in self.ctx.func.outer_scope_locals
                 and stmt.target.name not in self.ctx.func.current_nonlocal_names):
+            if (stmt.target.name == "self"
+                    and self.ctx.func.outer_self_is_receiver):
+                raise self.ctx.error(
+                    "Cannot rebind 'self' in a nested function: the method"
+                    " receiver cannot be rebound. Bind the new object to a"
+                    " different name instead",
+                    stmt)
             raise self.ctx.error(
                 f"Cannot assign to '{stmt.target.name}' in nested function"
                 f" without 'nonlocal' declaration",
@@ -5610,6 +5668,13 @@ class StatementAnalyzer:
                 and isinstance(stmt.target, TpyName)
                 and stmt.target.name in self.ctx.func.outer_scope_locals
                 and stmt.target.name not in self.ctx.func.current_nonlocal_names):
+            if (stmt.target.name == "self"
+                    and self.ctx.func.outer_self_is_receiver):
+                raise self.ctx.error(
+                    "Cannot rebind 'self' in a nested function: the method"
+                    " receiver cannot be rebound. Bind the new object to a"
+                    " different name instead",
+                    stmt)
             raise self.ctx.error(
                 f"Cannot modify '{stmt.target.name}' in nested function"
                 f" without 'nonlocal' declaration",

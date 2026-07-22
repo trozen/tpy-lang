@@ -22,6 +22,8 @@ void main() {
         std::cout << v << "\n";
         }
     }
+    // print(c.n)
+    std::cout << c.n << "\n";
 }
 
 // async def bump_twice(self) -> Int32:
@@ -46,8 +48,6 @@ void main() {
         __sub_0.reset();
         // bump()
         bump();
-        // self.n += delta
-        __self.n = ::tpy::add_check<int32_t>(__self.n, delta);
         // return self.n
         __state = S_DONE;
         int32_t __tpy_async_ret = __self.n;
@@ -62,6 +62,8 @@ void __coro_Counter_bump_twice::bump() {
     // nonlocal delta
     // delta += 1
     delta = ::tpy::add_check<int32_t>(delta, 1);
+    // self.n += delta
+    __self.n = ::tpy::add_check<int32_t>(__self.n, delta);
 }
 
 // def steps(self) -> Iterator[Int32]:
@@ -72,14 +74,14 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Counter_steps::__next__() {
         step = 100;
         // def next_offset() -> Int32:
         // def next_offset: frame member
-        // yield self.n + next_offset()
+        // yield next_offset()
         __state = S_RESUME_0;
-        return (::tpy::add_check<int32_t>(__self.n, next_offset()));
+        return next_offset();
     }
     case S_RESUME_0: {
-        // yield self.n + next_offset()
+        // yield next_offset()
         __state = S_RESUME_1;
-        return (::tpy::add_check<int32_t>(__self.n, next_offset()));
+        return next_offset();
     }
     case S_RESUME_1: {
         __state = S_DONE;
@@ -92,8 +94,8 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Counter_steps::__next__() {
 
 int32_t __gen_Counter_steps::next_offset() {
     // nonlocal step
-    // step += 100
-    step = ::tpy::add_check<int32_t>(step, 100);
+    // step += self.n
+    step = ::tpy::add_check<int32_t>(step, __self.n);
     // return step
     return step;
 }
@@ -104,8 +106,8 @@ void __tpy_init() {
     initialized = true;
 
     // # Nested defs inside async and generator METHODS (record-owned frames).
-    // # The defs capture locals only: self access from a nested def is a
-    // # pre-existing unsupported shape in sync and resumable forms alike (BUGS.md).
+    // # The defs capture locals AND self: the async one mutates self.n from the
+    // # closure (visible on the caller's object), the generator one reads self.n.
     // import asyncio
     ::tpystd::asyncio::__tpy_init();
     // main()

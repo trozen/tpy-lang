@@ -4059,9 +4059,13 @@ class ExpressionAnalyzer:
             expr.captures_by_value = True
         # Send/Sync frame fact: classify the capture list so conversion
         # sites (Send[Callable[...]] slots) can consult the concrete frame.
+        # A captured receiver is by-ref in every mode: codegen captures
+        # `this` (an alias), never a copy -- must classify non-Send.
         by_ref = not expr.captures_by_value
+        self_is_receiver = self.ctx.receiver_self_in_scope()
         expr.frame_type = build_closure_frame([
-            (name, self._lookup_capture_type(name), by_ref)
+            (name, self._lookup_capture_type(name),
+             by_ref or (name == "self" and self_is_receiver))
             for name in captured
         ])
 
