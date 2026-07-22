@@ -6,7 +6,7 @@ only from the node arm being lowered.
 
 from __future__ import annotations
 import math
-from dataclasses import field, replace
+from dataclasses import field, fields as dataclass_fields, replace
 from ... import qnames
 from ...parse.nodes import (
     FSTRING_CONV_NONE,
@@ -33,6 +33,7 @@ from ...parse.nodes import (
     TpyListRepeat,
     TpyMethodCall,
     TpyName,
+    TpyNamedExpr,
     TpyNoneLiteral,
     TpySetComprehension,
     TpySetLiteral,
@@ -103,7 +104,8 @@ from ...type_def_registry import (
     is_varargs,
 )
 from ...codegen_cpp.builtins import _FLOAT_STR_CONSTANTS
-from ...codegen_cpp.types import resolve_pending_container
+from ...codegen_cpp.types import TypeResolver, resolve_pending_container
+from ...modules.defs import BINOP_TO_METHOD
 from ...modules.type_resolution import (
     get_iterable_element_type,
     is_native_iterable,
@@ -128,6 +130,7 @@ from ..nodes import (
     Form,
     TruthinessMode,
     THIRArgTemp,
+    THIRNode,
     THIRBinOp,
     THIRChainedCompareStmtExpr,
     THIRBytesLiteral,
@@ -160,6 +163,7 @@ from ..nodes import (
     THIRModuleVar,
     THIRMove,
     THIRName,
+    THIRWalrus,
     THIRNarrowedRead,
     THIROptionalPtrArg,
     THIRSelf,
@@ -352,6 +356,7 @@ from .checks import (
     _container_lit_elem_ok,
     _container_literal_arg,
     _container_literal_method_arg,
+    _ref_param_dictset_literal_arg,
     _container_method_arg_ok,
     _stub_method_ret_ok,
     _native_iterable_literal_arg,
@@ -362,6 +367,8 @@ from .checks import (
     _ctor_effective_params,
     _ctor_shape_ok,
     _dyn_own_coro_factory_arg,
+    _dyn_own_conformer_arg,
+    _covariant_temp_arg,
     _dyn_own_handle_arg,
     _field_over_call_ok,
     _field_over_property_call_ok,
@@ -540,8 +547,12 @@ def _record_ctor_shape_supported(e: TpyCall, lc: '_LowerCtx',
                                  use: _ExprUse) -> bool:
     if _ctor_shape_ok(e, lc.analyzer):
         return True
-    return (use.record_ctor is not _RecordCtorUse.NESTED_ARG
-            and _ctor_instantiation_ok(e, lc.analyzer))
+    # The instantiation render (`type_to_cpp(call_type)(args)`) is
+    # position-independent on the AST path, so NESTED_ARG positions admit it
+    # too (`Rc.new(Box(Box(Dog(..))))` -- the inner Box); its ARGS still
+    # gate per position (a temp-needing arg without the ridden flush right
+    # rejects in the arg rows, not here).
+    return _ctor_instantiation_ok(e, lc.analyzer)
 
 
 def _protocol_union_ctor_arg(arg: TpyExpr, ptype: 'TpyType | None',
@@ -607,12 +618,15 @@ def _record_ctor_arg_supported(
     mutation_unknown = fi is not None and fi.mutated_params is None
     mutated = (fi.mutated_params if fi is not None else None) or frozenset()
     is_mutated = index in mutated
-    if use.record_ctor is not _RecordCtorUse.NESTED_ARG:
+    if use.record_ctor is not _RecordCtorUse.NESTED_ARG or use.allow_temps:
         # temps_ok tracks whether THIS ctor position flushes. DIRECT threads
         # its own allow_temps; a RECORD_TEMP source ctor flushes at the
         # enclosing statement too when it was reached via the flush-enabled
         # recursion (`_RECORD_TEMP_FLUSH_USE`), so `use.allow_temps` is the
-        # single source of truth for both.
+        # single source of truth for both. A NESTED_ARG ctor with the ridden
+        # flush right (allow_temps threads through call-shaped args) gates
+        # like DIRECT -- its temps flush at the same enclosing statement;
+        # the restricted branch below serves only flush-less nested slots.
         temps_ok = use.allow_temps
         if _str_pass_through_arg(
                 arg, param_type, declared, analyzer, mutated=is_mutated):
@@ -700,6 +714,12 @@ def _record_ctor_arg_supported(
                 # `_lower_call_arg`'s protocol pre-arm (protocol_slots=True).
                 or _protocol_slot_arg(arg, param_type, declared, analyzer,
                                       temps_ok=temps_ok)
+                # A concrete conformer into an `Own[@dynamic P]` ctor slot
+                # (`Box(Dog(...))`): the make_unique / make_adapter wrap,
+                # verdict-keyed via the shared classifier (the
+                # `_dyn_own_conformer_arg` row in `_lower_call_arg`).
+                or _dyn_own_conformer_arg(arg, param_type, declared,
+                                          analyzer) is not None
                 or (_record_rvalue_temp_arg(
                         arg, param_type, declared, analyzer)
                     and (temps_ok if is_mutated else True)))
@@ -723,6 +743,12 @@ def _record_ctor_arg_supported(
         # in `spawn(...)`), so the nested position admits exactly the
         # move-source slice of the copy+move row.
         _witness("ctor.own_arg")
+        return True
+    if _dyn_own_conformer_arg(arg, param_type, declared,
+                              analyzer) is not None:
+        # The make_unique / make_adapter conformer wraps are temp-free
+        # in-place renders (`Box(Box(Dog(..)))` -- the inner Box's Dog arg),
+        # so the nested position admits them like the rvalue rows above.
         return True
     if (_record_rvalue_temp_slot(arg, param_type, analyzer) is not None
             and not is_mutated):
@@ -1112,7 +1138,10 @@ def _binop_operand_suffix(e: TpyBinOp, declared: dict[str, TpyType],
 
 def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                  declared: dict[str, TpyType], loc, *,
-                 fold_ok: bool = False) -> THIRExpr:
+                 fold_ok: bool = False, temps_ok: bool = False) -> THIRExpr:
+    # `temps_ok` rides the enclosing use's allow_temps: operand temps flush
+    # at the enclosing statement, so a flushable position's right extends
+    # into call-shaped operands. Cond positions thread False (unchanged).
     analyzer = lc.analyzer
 
     def reject() -> None:
@@ -1193,28 +1222,33 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
         elif (isinstance(analyzer.get_expr_type(e.left), IntLiteralType)
               and not isinstance(e.left, TpyName)
               and isinstance(analyzer.get_expr_type(e.right), IntLiteralType)
-              and not isinstance(e.right, TpyName)
-              and not is_fixed_int_type(resolve_int_literals(
-                  rtype, analyzer.ctx.default_int_for_literal))):
-            # The AST constant-folds a both-literal int binop in a target-less
-            # BigInt context (`_gen_binop`'s pure-literal arm): `2**63 - 1`
-            # renders the folded `::tpy::BigInt(static_cast<int64_t>(...LL))`
-            # via the shared render_int_literal_value. Mirror it: emit the
-            # folded THIRLiteral with the BigInt-targeted spelling; a slot
-            # retarget downstream overwrites int_cpp wholesale, so the
-            # pre-render cannot double-wrap. A FIXED-int result never folds
-            # (the slot pins `::tpy::add_check<intN>(...)`), so those route
-            # through the operator arm above; a value OVERFLOWING int64
-            # (`2**64 + 1`) already routes as the full operator expr.
+              and not isinstance(e.right, TpyName)):
+            # The AST constant-folds a both-literal int binop at a TARGET-LESS
+            # position (`_gen_binop`'s pure-literal arm): a BigInt context
+            # renders `::tpy::BigInt(static_cast<int64_t>(...LL))` /
+            # `from_str`, a default-int one the plain decimal (`print(1 +
+            # (2 + 3))` -> `6`) -- both via the shared
+            # render_int_literal_value. Mirror it in flagged positions; a
+            # slot retarget downstream overwrites int_cpp wholesale, so the
+            # pre-render cannot double-wrap. Slot-THREADED fixed-int sinks
+            # never fold (the retype rebuilds `::tpy::add_check<intN>(...)`
+            # instead), so the operator route below stays their path.
             lit_val = getattr(analyzer.get_expr_type(e), "value", None)
+            # The fold is SYNTACTIC (_gen_binop's involves_variables walk):
+            # sema computes a constant value for a subscript over a
+            # literal-seeded container too (`xs[0] + xs[1]`), but the AST
+            # renders those as runtime reads -- only variable-free literal
+            # trees fold.
+            if lit_val is not None and TypeResolver.involves_variables(e):
+                lit_val = None
             fits_i64 = lit_val is not None and -(2**63) <= lit_val <= 2**63 - 1
             resolved = resolve_int_literals(
                 rtype, analyzer.ctx.default_int_for_literal)
             # The fold covers every magnitude in a flagged position:
-            # render_int_literal_value spells fits-i64 values
+            # render_int_literal_value spells BigInt fits-i64 values
             # `BigInt(static_cast<int64_t>(..LL))` and beyond-int64 values
             # `BigInt::from_str("...")` -- both the AST's fold renders.
-            if fold_ok and is_big_int_type(resolved) and lit_val is not None:
+            if fold_ok and lit_val is not None:
                 _witness("binop.literal_fold")
                 return THIRLiteral(
                     result_type=resolved, value=lit_val,
@@ -1228,8 +1262,11 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
             # routing the full operator render would silently diverge. The
             # beyond-int64 slice keeps its pre-existing operator route
             # (correct at slot-threaded sinks; a target-less unflagged sink
-            # would diverge the same way -- flag it before routing).
-            if not is_big_int_type(resolved) or lit_val is None or fits_i64:
+            # would diverge the same way -- flag it before routing). The
+            # FIXED-resolvable slice routes on: slot-threaded sinks are its
+            # witnessed positions (the retype rebuild), and its target-less
+            # flagged sinks folded above.
+            if is_big_int_type(resolved) and (lit_val is None or fits_i64):
                 reject()
         if e.op in _BITWISE_OPS:
             _witness("binop.bitwise")
@@ -1583,7 +1620,8 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
             # call's rvalue record result is admitted; every other operand
             # keeps the default value use.
             if _record_call_rvalue_operand(side, analyzer):
-                return _ExprUse(result=_ExprResultUse.BORROW_BIND)
+                return _ExprUse(result=_ExprResultUse.BORROW_BIND,
+                                allow_temps=temps_ok)
             # An F1-record FIELD operand (`r.headers == other`) renders the
             # bare member read into the compare parens, like a record name.
             if isinstance(side, TpyFieldAccess):
@@ -1593,7 +1631,7 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                     return _ExprUse(result=_ExprResultUse.BORROW_BIND)
             # Compare operands are target-less on the AST path, so a
             # both-literal sub-binop folds there.
-            return _ExprUse(literal_fold_ok=True)
+            return _ExprUse(literal_fold_ok=True, allow_temps=temps_ok)
 
         left = (_lower_unproven_opt_scalar(e.left, lc, declared)
                 if e.op not in ("==", "!=") else None) or _lower_char_targeted(
@@ -1619,8 +1657,9 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
             # rides BORROW_BIND so the ctor/call's record result is
             # admitted -- the compare arm's `_cmp_operand_use` twin.
             if _record_call_rvalue_operand(side, analyzer):
-                return _ExprUse(result=_ExprResultUse.BORROW_BIND)
-            return _ExprUse()
+                return _ExprUse(result=_ExprResultUse.BORROW_BIND,
+                                allow_temps=temps_ok)
+            return _ExprUse(allow_temps=temps_ok)
 
         left = _lower_unproven_opt_scalar(e.left, lc, declared)
         if left is None:
@@ -1639,21 +1678,20 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                 rslot, lc)
     bt = _resolved_bytes_value(rtype, analyzer)
     lcast, rcast = _binop_operand_casts(e, analyzer)
-    # A both-int-literal binop with a FIXED-int target renders through the AST's
-    # dedicated `gen_call_from_fi` arm (`::tpy::add_check<intN>(l, r)`) with NO
-    # wrapping parens -- unlike the generic resolved-binop path. Nested such
-    # binops recurse the same way, so the whole tree is paren-free.
-    paren_wrap = True
-    if (e.resolved_binop is not None
-            and getattr(e.resolved_binop.method, "cpp_template", None)
-            and isinstance(analyzer.get_expr_type(e.left), IntLiteralType)
-            and not isinstance(e.left, TpyName)
-            and isinstance(analyzer.get_expr_type(e.right), IntLiteralType)
-            and not isinstance(e.right, TpyName)
-            and rtype is not None
-            and is_fixed_int_type(resolve_int_literals(
-                rtype, analyzer.ctx.default_int_for_literal))):
-        paren_wrap = False
+    # gen_binop's dedicated fixed-int literal arm fires only where a
+    # fixed-int TARGET is threaded (decl inits, returns, call/ctor args,
+    # resolved-binop operand slots -- exactly `_slot_literal_retype`'s
+    # positions), so the verdict lives THERE: lowering stamps the
+    # position-independent operand fact (both operands IntLiteral-typed
+    # non-names) and the retype rebuilds the node paren-free with the
+    # target-resolved `gen_call_from_fi` template. A target-less position
+    # (print arg) keeps the generic parens even when the operands' sema
+    # types are IntLiteral (a subscript over a literal-seeded array).
+    both_lit = (e.op in _ARITH_OPS or e.op in _BITWISE_OPS) and (
+        isinstance(analyzer.get_expr_type(e.left), IntLiteralType)
+        and not isinstance(e.left, TpyName)
+        and isinstance(analyzer.get_expr_type(e.right), IntLiteralType)
+        and not isinstance(e.right, TpyName))
     return THIRBinOp(
         result_type=rtype,
         left=left,
@@ -1663,7 +1701,7 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
         divisor_non_zero=e.divisor_non_zero,
         left_cast=lcast,
         right_cast=rcast,
-        paren_wrap=paren_wrap,
+        both_literal_int_operands=both_lit,
         form=(Form.STORAGE if _is_string_owned(rtype)
               or (bt is not None and is_bytes_type(bt)) else Form.VALUE),
         loc=loc)
@@ -2731,7 +2769,8 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                            form=Form.STORAGE, loc=loc)
     if isinstance(e, TpyBinOp):
         return _lower_binop(e, rtype, lc, declared, loc,
-                            fold_ok=use.literal_fold_ok)
+                            fold_ok=use.literal_fold_ok,
+                            temps_ok=use.allow_temps)
     if isinstance(e, TpyUnaryOp):
         # A negated int literal folds to a plain literal (the AST's
         # _gen_unaryop literal-negation branch renders the negated value
@@ -2802,6 +2841,32 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                                    resolved=None, loc=loc)
             return folded
         return _lower_chained_compare_stmtexpr(e, rtype, lc, declared, loc)
+    if isinstance(e, TpyNamedExpr):
+        # The value-scalar walrus slice of _gen_named_expr: pre-declare
+        # `type name;` on the sink's named row (first binding) + the inline
+        # `(name = value)` assign. Everything the AST routes through the
+        # borrow/tuple/Optional/pointer machinery (non-value targets,
+        # pointer-repr Optionals, borrow tuples, hoisted names) stays AST --
+        # those renders carry registry side effects this arm does not mirror.
+        vt = (resolve_int_literals(rtype, analyzer.ctx.default_int_for_literal)
+              if rtype is not None else None)
+        vtu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(vt)))
+               if vt is not None else None)
+        if (vtu is None
+                or not (_eligible_scalar(vtu) or _eligible_char(vtu))
+                or isinstance(vtu, OptionalType)
+                or e.target in lc.prescan.hoisted):
+            raise ThirUnsupported("expr.walrus")
+        need_predecl = e.target not in declared
+        lowered_value = _lower_expr(e.value, lc, declared, target_type=vtu)
+        declared[e.target] = vtu
+        _witness("expr.walrus_scalar")
+        return THIRWalrus(
+            result_type=vtu, name=e.target,
+            cpp_name=escape_cpp_name(e.target),
+            value=lowered_value,
+            cpp_type=lc.render_type(vtu) if need_predecl else None,
+            loc=loc)
     if isinstance(e, TpyIfExpr):
         bytes_rt = _resolved_bytes_value(rtype, analyzer)
         if not (_resolved_scalar(rtype, analyzer) or _eligible_char(rtype)
@@ -4086,9 +4151,12 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                 for t in e.inferred_type_args)
         return THIRMethodCall(
             result_type=rtype if rtype is not None else VoidType(),
+            # A call-shaped receiver's own arg temps flush at the enclosing
+            # statement like any nested arg's, so allow_temps rides through.
             receiver=_lower_expr(
                 e.obj, lc, declared,
-                use=_ExprUse(result=_ExprResultUse.BORROW_BIND),
+                use=_ExprUse(result=_ExprResultUse.BORROW_BIND,
+                             allow_temps=temp_args),
                 field_prechecked=isinstance(e.obj, TpyFieldAccess),
                 subscript_prechecked=isinstance(e.obj, TpySubscript)),
             method_cpp=member,
@@ -4178,6 +4246,14 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                 and isinstance(inner.value, int)
                 and not isinstance(inner.value, bool)):
             inner = _retarget_int_literal(inner, rtype, lc)
+        if (e.coercion.name in (_INT_LIT_COERCION, _BIGINT_LIT_COERCION)
+                and isinstance(inner, THIRBinOp)
+                and inner.both_literal_int_operands):
+            # A literal-tree widening coerce (`b: Int64 = (4 + 5) + 6`): the
+            # AST forwards the coerce target into gen_binop, whose dedicated
+            # literal arm re-resolves the operators at the TARGET width
+            # (`add_check<int64_t>`); the rebuild mirrors that recursion.
+            inner = _slot_literal_retype(inner, rtype, lc)
         # Identity passthrough: the node's form is the wrapped expression's
         # form -- carried honestly (not the VALUE default) so the owned-sink
         # BORROW checks read the real source shape through the coerce (e.g.
@@ -5338,9 +5414,12 @@ def _lower_free_call_arg(e: TpyCall, a: TpyExpr,
         # A container-returning call rvalue bound bare by the native slot
         # (`::tpy::__len__(g.get())` / `::tpy::sorted(ml.get())`): STORAGE
         # use so the inner call's result gate admits the container -- the
-        # print wrap-call path's twin.
+        # print wrap-call path's twin. `allow_temps` rides through: the AST
+        # flushes every nested arg temp at the enclosing statement, so a
+        # flushable position's right extends into the inner call's args.
         return _lower_expr(a, lc, declared,
-                           use=_ExprUse(result=_ExprResultUse.STORAGE))
+                           use=_ExprUse(result=_ExprResultUse.STORAGE,
+                                        allow_temps=temp_args))
     if (_is_len_native(e) and isinstance(a, TpyFieldAccess)):
         return _lower_expr(a, lc, declared, field_prechecked=True)
     if (_is_len_native(e) and isinstance(a, TpyMethodCall)
@@ -5364,6 +5443,22 @@ def _lower_free_call_arg(e: TpyCall, a: TpyExpr,
         lowered = _lower_literal_arg(
             a, slot, lc, declared,
             "container-literal free arg on the make_vector path")
+        _witness("argtemp.container_literal")
+        return THIRArgTemp(result_type=slot, cpp_type=slot.to_cpp(),
+                           init=lowered, form=Form.BORROW,
+                           loc=getattr(a, "loc", None))
+    if (isinstance(a, (TpyDictLiteral, TpySetLiteral, TpyArrayLiteral))
+            and temp_args
+            and (kind is None or kind[0] not in ("native", "native_c", "template"))
+            and _ref_param_dictset_literal_arg(a, ptype, lc.analyzer)):
+        # The dict / set / Array sibling of the list arm above: the spelled
+        # container render hoisted into the ref-param `__tmp_N` temp
+        # (`::tpy::ordered_map<...> __tmp_N = ::tpy::ordered_map<...>({{..}});`,
+        # bare-brace for the `Array[T, N]` slot).
+        slot = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
+        lowered = _lower_literal_arg(
+            a, slot, lc, declared,
+            "container-literal free arg on the make_ordered path")
         _witness("argtemp.container_literal")
         return THIRArgTemp(result_type=slot, cpp_type=slot.to_cpp(),
                            init=lowered, form=Form.BORROW,
@@ -5690,7 +5785,8 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
     if coro_proto is not None:
         _witness("call.coro_factory_adapter")
         inner = _lower_expr(a, lc, declared,
-                            use=_ExprUse(coro_factory=True))
+                            use=_ExprUse(coro_factory=True,
+                                         allow_temps=temp_args))
         base = dynamic_base_name(coro_proto, lc.analyzer)
         # THIRCoerce is form-preserving by contract (validate.py); the
         # adapter rvalue is consumed in place by the call slot, so the
@@ -5713,6 +5809,44 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
             coercion_name="dyn_own_adapter",
             wrap=f"::tpy::make_adapter<{base}>(std::move(*({{0}})))",
             form=inner.form, loc=getattr(a, "loc", None))
+    conf = _dyn_own_conformer_arg(a, ptype, declared, lc.analyzer)
+    if conf is not None:
+        # The concrete-conformer faces of _gen_dynamic_protocol_own_arg,
+        # verdict-keyed via the shared classifier: an inheritance conformer
+        # takes `std::make_unique<U>(x)` (unique_ptr<U> converts to
+        # unique_ptr<P>), a structural one the owning
+        # `::tpy::make_adapter<Base>(x)` Adapter wrap. A movable NAME source
+        # moves in (`_maybe_move` -> _is_move_source); a ctor rvalue lands
+        # bare.
+        conf_proto, verdict = conf
+        inner = _lower_expr(a, lc, declared,
+                            use=replace(_NESTED_ARG_USE,
+                                        result=_ExprResultUse.BORROW_BIND,
+                                        allow_temps=temp_args),
+                            allow_unrouted_name=True)
+        if isinstance(a, TpyName):
+            if a.name in lc.pointers:
+                assert isinstance(inner, THIRName)
+                inner = replace(inner, deref=True)
+            if _is_move_source(a, lc):
+                inner = THIRMove(result_type=inner.result_type, value=inner,
+                                 form=inner.form,
+                                 loc=getattr(a, "loc", None))
+        at = lc.analyzer.get_expr_type(a)
+        at_u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
+        if isinstance(at_u, OwnType):
+            at_u = unwrap_readonly(at_u.wrapped)
+        if verdict == "inherit":
+            _witness("dynown.make_unique")
+            wrap = f"std::make_unique<{lc.render_type(at_u)}>({{0}})"
+        else:
+            _witness("dynown.adapter_conformer")
+            base = dynamic_base_name(conf_proto, lc.analyzer)
+            wrap = f"::tpy::make_adapter<{base}>({{0}})"
+        return THIRCoerce(
+            result_type=unwrap_send_sync(ptype), expr=inner,
+            coercion_name="dyn_own_adapter",
+            wrap=wrap, form=inner.form, loc=getattr(a, "loc", None))
     # The two arg-temp rows, admitted only when the enclosing
     # statement position flushes (`temp_args`; see _lower_expr). The record
     # row mirrors the ref-param cascade arm: the temp declares the SLOT's
@@ -5775,6 +5909,30 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                                init=init, brace_init=brace_init,
                                form=Form.BORROW, loc=getattr(a, "loc", None))
     if temp_args:
+        cov_slot = _covariant_temp_arg(a, ptype, declared, lc.analyzer)
+        if cov_slot is not None:
+            # The covariant-upcast typed temp (`Box<Shape> __tmp_N =
+            # std::move(bc);` -- _gen_covariant_arg): the target-typed init
+            # absorbs the converting move; the arg position reads the temp
+            # bare. A movable NAME moves in, a ctor rvalue lands bare.
+            inner = _lower_expr(a, lc, declared,
+                                use=replace(_NESTED_ARG_USE,
+                                            result=_ExprResultUse.BORROW_BIND,
+                                            allow_temps=temp_args),
+                                allow_unrouted_name=True)
+            if isinstance(a, TpyName):
+                if a.name in lc.pointers:
+                    assert isinstance(inner, THIRName)
+                    inner = replace(inner, deref=True)
+                if _is_move_source(a, lc):
+                    inner = THIRMove(result_type=inner.result_type,
+                                     value=inner, form=inner.form,
+                                     loc=getattr(a, "loc", None))
+            _witness("argtemp.covariant")
+            return THIRArgTemp(result_type=cov_slot,
+                               cpp_type=lc.render_type(cov_slot),
+                               init=inner, form=Form.BORROW,
+                               loc=getattr(a, "loc", None))
         rec_pt = _record_rvalue_temp_slot(a, ptype, lc.analyzer,
                                           frame_capturing=frame_capturing)
         if rec_pt is not None:
@@ -5929,9 +6087,11 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
             and isinstance(a, (TpyCall, TpyMethodCall))):
         # A container-returning call rvalue bound bare by the Iterable slot
         # (`a.extend(copy(b))` / `a.extend(make_nodes())`): STORAGE use so
-        # the inner call's result gate admits the container.
+        # the inner call's result gate admits the container. `allow_temps`
+        # rides through (the statement flush covers nested args).
         return _lower_expr(a, lc, declared,
-                           use=_ExprUse(result=_ExprResultUse.STORAGE))
+                           use=_ExprUse(result=_ExprResultUse.STORAGE,
+                                        allow_temps=temp_args))
     ow_slot = _plain_own_slot(ptype) if isinstance(a, TpyMethodCall) else None
     if (ow_slot is not None
             and is_dyn_protocol(unwrap_readonly(unwrap_send_sync(ow_slot)))
@@ -5943,7 +6103,8 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         # A concrete-conformer / async-factory return takes the make_adapter
         # wrap instead (`_own_dyn_method_rvalue_ok`, shared with the gate).
         return _lower_expr(a, lc, declared,
-                           use=_ExprUse(result=_ExprResultUse.BORROW_BIND))
+                           use=_ExprUse(result=_ExprResultUse.BORROW_BIND,
+                                        allow_temps=temp_args))
     if ow_slot is not None and _f1_record(ow_slot, lc.analyzer):
         # An Own-slot record METHOD-call rvalue (admitted by
         # _own_record_rvalue_arg -- `Arc.new(Mutex.new(0))`): the inline
@@ -5951,7 +6112,8 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         # owned-record decl's method row, whose record-result gate this
         # position shares.
         return _lower_expr(a, lc, declared,
-                           use=_ExprUse(result=_ExprResultUse.BORROW_BIND))
+                           use=_ExprUse(result=_ExprResultUse.BORROW_BIND,
+                                        allow_temps=temp_args))
     if (ow_slot is not None
             and _storage_call_ret(
                 unwrap_readonly(unwrap_send_sync(ow_slot)),
@@ -5959,7 +6121,8 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         # The container sibling (`g.set(acked.copy())`): STORAGE use, the
         # container-returning method result's storage sink.
         return _lower_expr(a, lc, declared,
-                           use=_ExprUse(result=_ExprResultUse.STORAGE))
+                           use=_ExprUse(result=_ExprResultUse.STORAGE,
+                                        allow_temps=temp_args))
     lift = _lower_union_arg_lift(a, ptype, lc, declared,
                                  readonly_target=readonly_target,
                                  temp_args=temp_args)
@@ -5993,7 +6156,8 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         # inner call's rvalue record result is admitted; only fires for
         # gate-admitted shapes (the tail would reject the record result).
         return _lower_expr(a, lc, declared,
-                           use=_ExprUse(result=_ExprResultUse.BORROW_BIND))
+                           use=_ExprUse(result=_ExprResultUse.BORROW_BIND,
+                                        allow_temps=temp_args))
     # The pointer-repr Optional slot faces (must run BEFORE the pointer-local
     # deref retag: an already-pointer name passes BARE into the `T*` slot).
     # A narrowed subject is NOT skipped: its read renames to the extraction
@@ -6081,7 +6245,10 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
     # self.name)` -> `::tpy::repr_of(this->name)`) admits as STORAGE, matching
     # the fstring arg's own owned-str field read; admission already validated
     # the shape via `_shared_pass_through_arg` / `_protocol_slot_arg`.
-    lowered = _lower_expr(a, lc, declared, use=_NESTED_ARG_USE,
+    # `allow_temps` rides into a call-shaped arg (the AST flushes nested arg
+    # temps at the enclosing statement); inert for every non-call shape.
+    lowered = _lower_expr(a, lc, declared,
+                          use=replace(_NESTED_ARG_USE, allow_temps=temp_args),
                           field_owned_str_ok=isinstance(a, TpyFieldAccess),
                           allow_union_divergent=isinstance(slot_u, UnionType))
     if (method_arg and isinstance(lowered, THIRLiteral)
@@ -6291,10 +6458,46 @@ def _lower_char_targeted(e: TpyExpr, target: TpyType | None,
                        allow_whole_optional=allow_whole_optional,
                        field_owned_str_ok=field_owned_str_ok)
 
+def _cond_mixed_walrus_temps(cond: THIRExpr) -> bool:
+    """True when a lowered condition carries BOTH a walrus binding and a
+    hoisted arg temp -- the shape both restructured-head renders exclude (an
+    in-head temp could run before the walrus assignment it reads; the AST
+    keeps the legacy single-eval flush for it, sgen raises CodeGenError), so
+    lowering rejects it and the body falls back whole. Every node kind that
+    registers a pending temp at EMIT time counts: THIRArgTemp, a
+    temp-bearing THIRUnionArgLift, and THIRVarargPack (its per-arg hoist)."""
+    has_walrus = False
+    has_temp = False
+
+    def walk(n) -> None:
+        nonlocal has_walrus, has_temp
+        if isinstance(n, THIRWalrus):
+            has_walrus = True
+        if isinstance(n, (THIRArgTemp, THIRVarargPack)) or (
+                isinstance(n, THIRUnionArgLift) and n.temp_cpp is not None):
+            has_temp = True
+        for f in dataclass_fields(n):
+            v = getattr(n, f.name)
+            if isinstance(v, THIRNode):
+                walk(v)
+            elif isinstance(v, (list, tuple)):
+                for item in v:
+                    if isinstance(item, THIRNode):
+                        walk(item)
+
+    walk(cond)
+    return has_walrus and has_temp
+
+
 def _lower_truthy(e: TpyExpr, lc: '_LowerCtx',
                   declared: dict[str, TpyType], *,
-                  unary_operand: bool = False) -> THIRExpr:
-    """Lower one Python-truthiness position without condition temps."""
+                  unary_operand: bool = False,
+                  temps_ok: bool = False) -> THIRExpr:
+    """Lower one Python-truthiness position. `temps_ok` marks the cond
+    positions whose emit places condition temps (the restructured while /
+    sgen loop head, the pre-`if` flush, the nested-elif block); logical-op
+    OPERANDS never thread it (a short-circuit RHS temp would hoist
+    eagerly)."""
     if isinstance(e, (TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
                       TpyBytesLiteral, TpyNoneLiteral)):
         raise ThirUnsupported("truthy.literal")
@@ -6437,7 +6640,7 @@ def _lower_truthy(e: TpyExpr, lc: '_LowerCtx',
             raise ThirUnsupported("truthy.shape")
         operand = _lower_expr(
             e, lc, declared,
-            use=_ExprUse(result=_ExprResultUse.TRUTHY),
+            use=_ExprUse(result=_ExprResultUse.TRUTHY, allow_temps=temps_ok),
             allow_whole_optional=mode is TruthinessMode.IS_TRUTHY,
             allow_unrouted_name=mode is TruthinessMode.IS_TRUTHY,
         )
@@ -6601,6 +6804,28 @@ def _lower_int_literal(value: int, result_type: TpyType, lc: '_LowerCtx',
         loc=loc)
 
 
+def _fixed_int_binop_fi(t: 'TpyType', op: str, analyzer):
+    """The single-overload fixed-int operator fi over `t` -- the AST's
+    `get_type_method_fi(target_type, BINOP_TO_METHOD[op])` lookup for the
+    dedicated literal arm, without a live BuiltinsGen. Mirrors ONLY the
+    plain single-overload path of `BuiltinGenerator.get_type_method_fi`
+    (builtins.py) -- an overload-selection change there must be re-mirrored
+    here (nothing but the byte-diff enforces lockstep)."""
+    method_name = BINOP_TO_METHOD.get(op)
+    if method_name is None:
+        return None
+    ri = analyzer.registry.get_record_for_type(t)
+    if ri is None:
+        return None
+    overloads = ri.get_method_overloads(method_name)
+    if len(overloads) != 1:
+        return None
+    fi = overloads[0]
+    if fi.cpp_template or fi.native_function or fi.native_name:
+        return fi
+    return None
+
+
 def _retarget_int_literal(v: THIRLiteral, slot: TpyType,
                           lc: '_LowerCtx') -> THIRLiteral:
     st = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(slot)))
@@ -6638,6 +6863,23 @@ def _slot_literal_retype(v: 'THIRExpr | None',
         # keys on the operand literal's type, so thread the slot into it, the
         # same target render the AST gives the unary operand (`-(3.0f)`).
         return replace(v, operand=replace(v.operand, result_type=st))
+    if (isinstance(v, THIRBinOp) and v.both_literal_int_operands
+            and is_fixed_int_type(st)):
+        # gen_binop's dedicated fixed-int literal arm: a both-IntLiteral
+        # binop meeting a fixed-int SLOT re-resolves the operator on the
+        # slot type (`fi = get_type_method_fi(target, method)`) and renders
+        # `gen_call_from_fi(fi, l, r)` -- target-width template, no parens.
+        # Operands recurse (nested literal binops rebuild the same way, the
+        # AST's `gen_expr(left, target_type)` recursion); an op outside the
+        # module system (bitwise) takes the AST's bare `(l op r)` fallback.
+        left = _slot_literal_retype(v.left, st, lc)
+        right = _slot_literal_retype(v.right, st, lc)
+        fi = _fixed_int_binop_fi(st, v.op, lc.analyzer)
+        if fi is not None and fi.cpp_template:
+            return replace(v, left=left, right=right, result_type=st,
+                           template_override=fi.cpp_template)
+        return replace(v, left=left, right=right, result_type=st,
+                       resolved=None, paren_wrap=True)
     if not isinstance(v, THIRLiteral):
         return v
     if isinstance(v.value, float) and is_float32_type(st):

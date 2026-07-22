@@ -189,6 +189,9 @@ def test_base_init_arg_lowering_reject_falls_back():
     # there -- it must land on the ctor's fallback boundary, not escape as a crash.
     compiler, modules = _compile(
         "from tpy import Int32\n"
+        "def eat(xs: list[Int32]) -> Int32:\n"
+        "    xs.append(1)\n"
+        "    return len(xs)\n"
         "class Base:\n"
         "    x: Int32\n"
         "    def __init__(self, x: Int32):\n"
@@ -196,7 +199,7 @@ def test_base_init_arg_lowering_reject_falls_back():
         "class Derived(Base):\n"
         "    y: Int32\n"
         "    def __init__(self, n: Int32):\n"
-        "        super().__init__(m := n)\n"
+        "        super().__init__(eat([1, 2]))\n"
         "        self.y = n\n"
     )
     entry = _entry(modules)
@@ -210,7 +213,7 @@ def test_base_init_arg_lowering_reject_falls_back():
         if ctor is None:
             fold_attempt("ctor")
     assert ctor is None
-    assert compiler._thir_fallback.get("ctor:expr.named_expr") == 1
+    assert compiler._thir_fallback.get("ctor:expr.call") == 1
 
 
 def test_global_lowering_reject_falls_back_at_sync_boundary():
@@ -318,8 +321,8 @@ def test_wide_integer_routes_while_nonfinite_float_rejects():
 def test_unhandled_expression_rejects_from_lowering_tail():
     compiler, modules = _compile(
         "from tpy import Int32\n"
-        "def rejected(n: Int32) -> Int32:\n"
-        "    x = (y := n)\n"
+        "def rejected(s: str) -> str:\n"
+        "    x = (y := s + \"!\")\n"
         "    return x\n"
         "def clean(n: Int32) -> Int32:\n"
         "    return n + 1\n"
@@ -334,7 +337,7 @@ def test_unhandled_expression_rejects_from_lowering_tail():
                 fold_attempt("body")
             else:
                 routed.append(fn.name)
-    assert compiler._thir_fallback.get("body:expr.named_expr") == 1
+    assert compiler._thir_fallback.get("body:expr.walrus") == 1
     assert "clean" in routed
 
 
@@ -1199,9 +1202,9 @@ def test_return_lowering_reject_falls_back_at_sync_boundary():
 def test_sync_lowering_reports_first_reject_in_source_order():
     compiler, modules = _compile(
         "from tpy import Int32\n"
-        "def rejected(n: Int32) -> Int32:\n"
+        "def rejected(s: str) -> str:\n"
         "    assert True\n"
-        "    x = (y := n)\n"
+        "    x = (y := s + \"!\")\n"
         "    return x\n"
     )
     entry = _entry(modules)
@@ -1212,17 +1215,17 @@ def test_sync_lowering_reports_first_reject_in_source_order():
         if fn is None:
             fold_attempt("body")
     assert fn is None
-    assert compiler._thir_fallback == {"body:expr.named_expr": 1}
+    assert compiler._thir_fallback == {"body:expr.walrus": 1}
 
 
 def test_constructor_lowering_reports_first_reject_in_source_order():
     compiler, modules = _compile(
         "from tpy import Int32\n"
         "class R:\n"
-        "    n: Int32\n"
-        "    def __init__(self, n: Int32):\n"
+        "    n: str\n"
+        "    def __init__(self, n: str):\n"
         "        assert True\n"
-        "        x = (y := n)\n"
+        "        x = (y := n + \"!\")\n"
         "        self.n = x\n"
     )
     entry = _entry(modules)
@@ -1235,7 +1238,7 @@ def test_constructor_lowering_reports_first_reject_in_source_order():
         if ctor is None:
             fold_attempt("ctor")
     assert ctor is None
-    assert compiler._thir_fallback == {"ctor:expr.named_expr": 1}
+    assert compiler._thir_fallback == {"ctor:expr.walrus": 1}
 
 
 def test_detail_composes_into_stmt_tag():

@@ -42,6 +42,14 @@ THIR_FACES: frozenset[str] = frozenset({
     "argtemp.own_copy",             # Own-slot copy+move `__tmp_N` temp
     "argtemp.container_literal",    # list literal into a free-call container
                                     # ref slot -> hoisted `__tmp_N` temp
+    "expr.walrus_scalar",           # value-scalar walrus `(n = v)` + named
+                                    # pre-decl on the sink's named row
+    "dynown.make_unique",           # inheritance conformer into Own[dyn P]:
+                                    # std::make_unique<U>(x)
+    "dynown.adapter_conformer",     # structural conformer into Own[dyn P]:
+                                    # ::tpy::make_adapter<Base>(x)
+    "argtemp.covariant",            # covariant-upcast typed temp:
+                                    # `Box<Shape> __tmp_N = std::move(bc);`
     # `*args` call-site pack faces (THIRVarargPack lowering / _gen_vararg_pack).
     "vararg.empty",                 # `::tpy::varargs<E>()`
     "vararg.pack_value",            # value-element std::array<E, N> temp
@@ -637,6 +645,10 @@ THIR_FACES: frozenset[str] = frozenset({
     # rvalue init: `T __slot_N = init;` + `T* x = &__slot_N;` (the
     # REBIND_SLOT render minus the rebind slot).
     "decl.record_slot_rvalue",
+    # NAME-reassigned container-LITERAL pointer-local: `std::vector<T>
+    # __slot_N = {..};` + `std::vector<T>* xs = &__slot_N;` (the container
+    # flavor of the same render).
+    "decl.container_slot_rvalue",
     # HOISTED record pointer-local decl inside a loop/branch: function-top
     # `std::optional<T> __slot_N;` + `T* x = &*(__slot_N = init);`.
     "decl.record_slot_hoisted",

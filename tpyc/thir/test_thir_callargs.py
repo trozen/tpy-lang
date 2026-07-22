@@ -759,24 +759,24 @@ class TestArgTempEmit:
     def test_mixed_thir_ast_numbering_stays_continuous(self):
         # The load-bearing seam test: fn1 routes (its temp draws __tmp_1 from
         # the module-cumulative ctx.temps via CtxTempSink), fn2 stays AST (a
-        # while-condition temp hoist) and must continue at __tmp_2 exactly as
-        # the all-AST emit numbers it.
+        # walrus-MIXED while cond keeps the legacy path) and must continue at
+        # __tmp_2 exactly as the all-AST emit numbers it.
         src = (
             _VU_PRELUDE
             + "def routed(k: Int32) -> Int32:\n    return take_vu(k)\n"
             + "def unrouted(k: Int32) -> Int32:\n"
             + "    n = 0\n"
-            + "    while take_vu(k) > n:\n        n += 1\n"
+            + "    while (n := n + 1) < 5 and take_vu(k) > 0:\n"
+            + "        k -= 1\n"
             + "    return n\n"
         )
         thir = _lower(src)
         assert _fn(thir, "routed") is not None
-        assert _fn(thir, "unrouted") is None  # while-cond temp -> AST
+        assert _fn(thir, "unrouted") is None  # mixed walrus+temp cond -> AST
         out = _cpp(src, thir=True)
         assert out == _cpp(src, thir=False)
         assert "__tmp_1 = k;\n    return take_vu(__tmp_1);" in out
-        assert ("__tmp_2 = k;\n"
-                "        if (!((take_vu(__tmp_2) > n))) break;") in out
+        assert "__tmp_2 = k;\n    while ((" in out
 
     def test_while_mixed_walrus_temp_keeps_preloop_flush(self):
         # The walrus-free gate (contains_named_expr): a condition mixing a
@@ -968,14 +968,16 @@ class TestOwnSlotGateRejects:
     # unrouted. Each pairs with a byte-identity assertion so a future gate
     # widening that forgets the emit half fails here first.
 
-    def test_own_arg_in_non_flushable_position_stays_ast(self):
-        # A nested call arg has no flush point -- the copy temp cannot hoist.
+    def test_own_arg_in_nested_call_position_routes(self):
+        # A nested call arg flushes at the enclosing statement (allow_temps
+        # rides through call-shaped args), so the copy temp hoists there too.
         src = (
             _PRELUDE
             + "def take_own_s(o: Own[Int32]) -> Int32:\n    return o\n"
             + "def g(x: Int32) -> Int32:\n    return x\n"
             + "def use(n: Int32) -> Int32:\n    return g(take_own_s(n))\n")
-        assert _fn(_lower_ctx(src), "use") is None
+        assert _fn(_lower_ctx(src), "use") is not None
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_optional_own_slot_stays_ast(self):
         # An `Own[A] | None` slot takes the ptr_to_optional wrap arms.
@@ -1107,14 +1109,15 @@ class TestMethodUnionAndSelfArgs:
         _, w = _lower_ctx_witnessed(self.SRC)
         assert w.get("argtemp.value_union_method", 0) == 3
 
-    def test_method_union_temp_in_non_flushable_position_stays_ast(self):
-        # A nested method-call arg has no flush point for the variant temp.
+    def test_method_union_temp_in_nested_position_routes(self):
+        # A nested method-call arg's variant temp flushes at the enclosing
+        # statement (allow_temps rides through call-shaped args).
         src = (
             self.SRC
             + "def g(x: Int32) -> Int32:\n    return x\n"
             + "def nested(a: A, k: Int32) -> Int32:\n    return g(a.tag(k))\n")
         assert _cpp(src, thir=True) == _cpp(src, thir=False)
-        assert _fn(_lower_ctx(src), "nested") is None
+        assert _fn(_lower_ctx(src), "nested") is not None
 
 
 class TestOptionalPtrArgs:
@@ -1274,9 +1277,9 @@ class TestOptionalPtrGateRejects:
         assert _fn(thir, "use") is not None
         assert _fn(thir, "take_opt") is not None
 
-    def test_ctor_rvalue_in_non_flushable_position_stays_ast(self):
-        # The &(__tmp_N) hoist needs a flush point -- a nested call arg has
-        # none.
+    def test_ctor_rvalue_in_nested_call_position_routes(self):
+        # The &(__tmp_N) hoist flushes at the enclosing statement -- the
+        # flush right rides into nested call args.
         src = (
             _PRELUDE
             + "def take_opt(o: A | None) -> Int32:\n"
@@ -1285,7 +1288,7 @@ class TestOptionalPtrGateRejects:
             + "def g(x: Int32) -> Int32:\n    return x\n"
             + "def use() -> Int32:\n    return g(take_opt(A(7)))\n")
         assert _cpp(src, thir=True) == _cpp(src, thir=False)
-        assert _fn(_lower_ctx(src), "use") is None
+        assert _fn(_lower_ctx(src), "use") is not None
 
 
 class TestArgTempGateRejects:
@@ -1293,27 +1296,34 @@ class TestArgTempGateRejects:
     # the AST path -- pinned unrouted so the AST behavior (incl. the BUGS.md
     # while-condition stale-snapshot hoist) is never mirrored.
 
-    def test_while_condition_stays_ast(self):
-        thir = _lower(_VU_PRELUDE
-                      + "def f(k: Int32) -> Int32:\n"
-                      + "    n = 0\n"
-                      + "    while take_vu(k) > n:\n        n += 1\n"
-                      + "    return n\n")
-        assert _fn(thir, "f") is None
+    def test_while_condition_routes_restructured_head(self):
+        # Cond temps re-evaluate per iteration behind `while (true)` + the
+        # inverted break (the restructured head mirror).
+        src = (_VU_PRELUDE
+               + "def f(k: Int32) -> Int32:\n"
+               + "    n = 0\n"
+               + "    while take_vu(k) > n:\n        n += 1\n"
+               + "    return n\n")
+        thir = _lower(src)
+        assert _fn(thir, "f") is not None
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
-    def test_if_and_elif_conditions_stay_ast(self):
-        # An elif temp makes the AST abandon the flat `else if` chain and
-        # nest -- the deferred chain-abandon relocation shape.
-        thir = _lower(_VU_PRELUDE
-                      + "def f(k: Int32) -> Int32:\n"
-                      + "    if take_vu(k) == 1:\n        return 1\n"
-                      + "    return 0\n"
-                      + "def g(k: Int32) -> Int32:\n"
-                      + "    if k == 0:\n        return 0\n"
-                      + "    elif take_vu(k) == 1:\n        return 1\n"
-                      + "    return 2\n")
-        assert _fn(thir, "f") is None
-        assert _fn(thir, "g") is None
+    def test_if_and_elif_conditions_route(self):
+        # An if-cond temp flushes before the `if (`; an elif temp abandons
+        # the flat `else if` chain and nests with the decls inside the
+        # `} else {` block (same __tmp numbering as the AST's regenerate).
+        src = (_VU_PRELUDE
+               + "def f(k: Int32) -> Int32:\n"
+               + "    if take_vu(k) == 1:\n        return 1\n"
+               + "    return 0\n"
+               + "def g(k: Int32) -> Int32:\n"
+               + "    if k == 0:\n        return 0\n"
+               + "    elif take_vu(k) == 1:\n        return 1\n"
+               + "    return 2\n")
+        thir = _lower(src)
+        assert _fn(thir, "f") is not None
+        assert _fn(thir, "g") is not None
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_for_iterable_stays_ast(self):
         thir = _lower(_VU_PRELUDE
@@ -1326,18 +1336,18 @@ class TestArgTempGateRejects:
                       + "    return total\n")
         assert _fn(thir, "f") is None
 
-    def test_nested_call_positions_stay_ast(self):
+    def test_nested_call_positions_route(self):
         # A print arg is a flush position (temps hoist before the cout
-        # chain), but a binop operand is not the direct statement value --
-        # temps never propagate inward there.
+        # chain), and a binop OPERAND under a flushable statement flushes at
+        # the same point -- allow_temps rides into operands too.
         src = (_VU_PRELUDE
                + "def f(k: Int32):\n    print(take_vu(k))\n"
                + "def g(k: Int32) -> Int32:\n"
                + "    return take_vu(k) + 1\n")
         thir = _lower(src)
         assert _fn(thir, "f") is not None
-        assert _fn(thir, "g") is None
-        # The print-arg temp must FLUSH before the cout line, not just route.
+        assert _fn(thir, "g") is not None
+        # The temps must FLUSH before the statement line, not just route.
         assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_scalar_field_write_value_routes(self):
@@ -2047,17 +2057,16 @@ class TestArgTempValidator:
             layout=THIRFunctionLayout())
         validate_function(fn)
 
-    def test_temp_under_method_call_condition_raises(self):
-        import pytest
+    def test_temp_under_method_call_condition_validates(self):
+        # While conditions are flushable now (the restructured loop head
+        # places their temps), so the validator admits them.
         from ..typesys import VoidType
         from .nodes import THIRFunction, THIRFunctionLayout, THIRWhile
-        from .validate import THIRValidationError, validate_function
+        from .validate import validate_function
         loop = THIRWhile(condition=self._method_call(self._temp()), body=())
         fn = THIRFunction(name="t", params=(), return_type=VoidType(),
                           body=(loop,), layout=THIRFunctionLayout())
-        with pytest.raises(THIRValidationError,
-                           match="non-flushable statement position"):
-            validate_function(fn)
+        validate_function(fn)
 
     def test_temp_under_flushable_positions_passes(self):
         from ..typesys import INT32, VoidType
@@ -2072,17 +2081,16 @@ class TestArgTempValidator:
             layout=THIRFunctionLayout())
         validate_function(fn)
 
-    def test_temp_under_condition_raises(self):
-        import pytest
-        from ..typesys import INT32, VoidType
+    def test_temp_under_condition_validates(self):
+        # The while-cond flush point is the restructured loop head; the
+        # validator's cond exemption mirrors it.
+        from ..typesys import VoidType
         from .nodes import THIRFunction, THIRFunctionLayout, THIRWhile
-        from .validate import THIRValidationError, validate_function
+        from .validate import validate_function
         loop = THIRWhile(condition=self._call(self._temp()), body=())
         fn = THIRFunction(name="t", params=(), return_type=VoidType(),
                           body=(loop,), layout=THIRFunctionLayout())
-        with pytest.raises(THIRValidationError,
-                           match="non-flushable statement position"):
-            validate_function(fn)
+        validate_function(fn)
 
     def test_temp_outside_call_arg_raises(self):
         import pytest
@@ -2232,15 +2240,15 @@ class TestOwnSlotCtorArgs:
         # Own param at last use: temp-free move.
         assert "W w = W(std::move(o));" in out
 
-    def test_nested_ctor_own_arg_stays_ast(self):
+    def test_nested_ctor_own_arg_routes(self):
         # W(a) as a NESTED ctor arg (`take_w(W(a))`): the NESTED_ARG branch
-        # keeps its narrower row set -- the own-lvalue copy needs a flush
-        # point the nested position does not have.
+        # gates like DIRECT when the flush right rides in -- the own-lvalue
+        # copy temp hoists at the enclosing statement.
         src = (self.SRC
                + "def take_w(w: Own[W]) -> Int32:\n    return w.get()\n"
                + "def nested(a: A) -> Int32:\n    return take_w(W(a))\n")
         thir = _lower_ctx(src)
-        assert _fn(thir, "nested") is None
+        assert _fn(thir, "nested") is not None
         assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
 

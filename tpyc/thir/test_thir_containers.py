@@ -7,7 +7,7 @@ import dataclasses
 
 from ..codegen_cpp.context import CodeGenOptions
 from ..codegen_cpp.forms import LocalBinding
-from .testutil import _emit_expr
+from .testutil import _assert_byte_identical, _emit_expr
 from .nodes import (
     Form, THIRArgTemp, THIRBinOp, THIRCall, THIRCoerce, THIRContainerLiteral,
     THIRExprStmt, THIRFieldAccess, THIRForEach, THIRFormConvert, THIRGenExpr,
@@ -607,15 +607,19 @@ class TestContainerLiteralLocal:
         assert isinstance(decl.init, THIRContainerLiteral)
         assert decl.init.values == ()
 
-    def test_reassigned_container_local_ineligible(self):
-        # A reassigned container local is a POINTER-LOCAL on the AST path
-        # (aliasing rebind, `a = &(b)`); the plain value decl would silently
-        # copy -- the whole function stays AST.
-        thir = _lower(
+    def test_reassigned_container_local_routes_ptr_slot(self):
+        # A NAME-reassigned container-literal local routes the pointer-local
+        # binding (`std::vector<T> __slot_1 = {..}; std::vector<T>* a =
+        # &__slot_1;` + the `a = &(b)` reseat) -- the container flavor of
+        # RECORD_RVALUE; byte-identity is pinned by the wave file's
+        # TestContainerPtrSlot.
+        src = (
             _PRELUDE
             + "def f() -> None:\n"
             + "    a = [1, 2]\n    b = [3, 4]\n    a = b\n    a.append(5)\n")
-        assert _fn(thir, "f") is None
+        thir = _lower(src)
+        assert _fn(thir, "f") is not None
+        _assert_byte_identical(src)
 
     def test_lazy_list_repeat_stays_ast(self):
         # A LAZY `ListRepeatType`-resolved repeat (variable count, unmutated,

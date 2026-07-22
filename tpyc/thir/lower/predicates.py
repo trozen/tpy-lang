@@ -1765,7 +1765,7 @@ def _protocol_arg_temp(proto: 'NominalType', arg_type: 'TpyType | None',
         return None
     if not is_dyn_protocol(proto):
         return (None, False) if rvalue else None
-    if record_inherits_dynamic(arg_type, proto, analyzer):
+    if record_inherits_dynamic(arg_type, proto, analyzer.registry):
         return (arg_cpp_type, True) if rvalue else None
     wrap = dynamic_adapter_type if rvalue else dynamic_ref_adapter_type
     return (wrap(proto, arg_cpp_type, analyzer), True)
@@ -4228,6 +4228,13 @@ def _own_lvalue_temp_slot(a: TpyExpr, ptype: TpyType | None,
         # resolve it before the same-type compare.
         at_res = resolve_pending_container(at, analyzer) or at
         return w if at_res == wu else None
+    if is_dyn_protocol(wu):
+        # An already-erased `unique_ptr<P>` payload (`Box(initial)` off an
+        # `Own[P]` param -- the classifier's 'forward' verdict): the same
+        # temp-free `std::move(name)` at a movable last use / copy temp
+        # otherwise. Same-protocol only (the slice guard the forward
+        # verdict pins).
+        return w if at == wu else None
     return None
 
 def _optional_ptr_arg_slot(ptype: TpyType | None, analyzer) -> 'OptionalType | None':

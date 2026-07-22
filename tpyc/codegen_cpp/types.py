@@ -321,18 +321,22 @@ class TypeResolver:
         """
         return substitute_type_params_simple(typ, subst)
 
-    def involves_variables(self, expr: TpyExpr) -> bool:
-        """Check if an expression involves any variable references."""
+    @staticmethod
+    def involves_variables(expr: TpyExpr) -> bool:
+        """Check if an expression involves any variable references. Static --
+        the AST fold's syntactic guard, shared verbatim by THIR's literal-fold
+        mirror (one walk, no drift)."""
         if isinstance(expr, TpyCoerce):
-            return self.involves_variables(expr.expr)
+            return TypeResolver.involves_variables(expr.expr)
         if isinstance(expr, TpyName):
             return True
         if isinstance(expr, TpyIntLiteral):
             return False
         if isinstance(expr, TpyBinOp):
-            return self.involves_variables(expr.left) or self.involves_variables(expr.right)
+            return (TypeResolver.involves_variables(expr.left)
+                    or TypeResolver.involves_variables(expr.right))
         if isinstance(expr, TpyUnaryOp):
-            return self.involves_variables(expr.operand)
+            return TypeResolver.involves_variables(expr.operand)
         if isinstance(expr, TpyCall):
             return True  # Function calls may return BigInt
         if isinstance(expr, TpyMethodCall):

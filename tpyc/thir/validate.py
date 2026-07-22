@@ -54,8 +54,9 @@ from .nodes import (
     Form, THIRArgTemp, THIRAssign, THIRCall, THIRCoerce, THIRConstructor,
     THIRCtorCall, THIRErrorReturnBind, THIRErrorReturnDiscard,
     THIRErrorReturnUnwrap, THIRExprStmt, THIRFieldAccess, THIRFormConvert,
-    THIRForIterProto, THIRFunction, THIRMethodCall, THIRNode,
-    THIRInplaceContainerOp,
+    THIRBinOp, THIRExpr, THIRForIterProto, THIRFunction, THIRIf,
+    THIRIfExpr, THIRMethodCall,
+    THIRNode, THIRInplaceContainerOp, THIRWhile,
     THIRPrint, THIRRaise, THIRReturn, THIRSetItem, THIRSliceAssign,
     THIRUnionArgLift, THIRVarDecl,
 )
@@ -188,12 +189,13 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
     """`argtemp_ok` marks the value expression of a flushable statement
     (expr stmt / var-decl init / assign value / return value / print arg)
     -- the only
-    region where a THIRArgTemp may appear, and there only as a direct
-    free-call, method-call, or ctor-call arg (the ctor face only for a
-    mutated ref slot). Anywhere else (a condition, an iterable, a MIL cell,
-    a non-call operand) a temp has no flush point on the AST path -- a
-    while-condition hoist is the stale-snapshot miscompile -- so reaching
-    one is a lowering bug."""
+    region where a THIRArgTemp may appear, and there only under call-arg
+    nesting (the flush right rides through call-shaped args / receivers /
+    operands). If and while CONDITIONS are also flushable: the emit places
+    their temps (pre-`if` flush, the nested-elif block, the restructured
+    `while (true)` loop head -- never a pre-loop stale snapshot). Anywhere
+    else (a loop-header iterable, a MIL cell) a temp has no flush point on
+    the AST path, so reaching one is a lowering bug."""
     _check_node(owner, node)
     _check_stmt(owner, node, return_type)
     if isinstance(node, THIRArgTemp):
@@ -208,7 +210,9 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
         # A ctor call carries a temp only for its mutated-ref-slot record
         # rvalue (the ctor_mutated arm); const-slot rvalues inline temp-free.
         if isinstance(node, THIRMethodCall):
-            _walk(owner, node.receiver, return_type)
+            # A call-shaped receiver's arg temps flush at the same statement
+            # (allow_temps rides into receivers at lowering).
+            _walk(owner, node.receiver, return_type, argtemp_ok=argtemp_ok)
         for a in node.args:
             if isinstance(a, THIRArgTemp):
                 if not argtemp_ok:
@@ -225,9 +229,12 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
                     _fail(owner, a, "temp-bearing THIRUnionArgLift under a "
                                     "non-flushable statement position")
                 if a.value is not None:
-                    _walk(owner, a.value, return_type)
+                    _walk(owner, a.value, return_type, argtemp_ok=argtemp_ok)
             else:
-                _walk(owner, a, return_type)  # temps never nest deeper
+                # A call-shaped arg's own args flush at the same statement
+                # point (allow_temps rides through nested calls at lowering),
+                # so the flush right propagates through call-arg nesting.
+                _walk(owner, a, return_type, argtemp_ok=argtemp_ok)
         return
     if isinstance(node, THIRErrorReturnUnwrap):
         # The expression unwrap is TRANSPARENT for flushability: its call's
@@ -243,6 +250,15 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
         return
     if isinstance(node, THIRExprStmt):
         _walk(owner, node.expr, return_type, argtemp_ok=True)
+        return
+    if isinstance(node, (THIRIf, THIRWhile)):
+        # Conditions are flushable: _emit_if flushes before the `if (` /
+        # inside the nested-elif block, _emit_while restructures the loop
+        # head (`while (true) { <temps> if (!cond) break;`).
+        _walk(owner, node.condition, return_type, argtemp_ok=True)
+        for child in _iter_children(node):
+            if child is not node.condition:
+                _walk(owner, child, return_type)
         return
     if isinstance(node, THIRForIterProto):
         # The iterable renders as its own `__src` bind with a temps flush
@@ -310,8 +326,29 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
             else:
                 _walk(owner, a, return_type)
         return
+    if isinstance(node, THIRIfExpr):
+        # Ternary ARMS evaluate lazily: a hoisted temp there would run
+        # eagerly before the statement -- lowering never threads allow_temps
+        # into arms, so the validator resets the right (zero false
+        # positives) and keeps the miscompile class detectable.
+        for child in _iter_children(node):
+            _walk(owner, child, return_type)
+        return
+    if (isinstance(node, THIRBinOp) and node.resolved is None
+            and node.op in ("&&", "||")):
+        # Short-circuit operands likewise: the RHS may never run, so its
+        # temps must not hoist (the truthy lowering never grants temps_ok
+        # to logical operands).
+        for child in _iter_children(node):
+            _walk(owner, child, return_type)
+        return
+    # The flush right propagates through EXPRESSION nesting (binop operands,
+    # coerce wraps, ...): every sub-position of a flushable value expression
+    # flushes at the same statement on the AST path. Statement nodes reset it
+    # -- each statement handler above grants the right per position.
     for child in _iter_children(node):
-        _walk(owner, child, return_type)
+        _walk(owner, child, return_type,
+              argtemp_ok=argtemp_ok and isinstance(node, THIRExpr))
 
 
 def validate_function(fn: THIRFunction) -> None:

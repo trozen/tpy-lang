@@ -22,6 +22,7 @@ from .nodes import (
     THIRBytesLiteral,
     THIRCall,
     THIRCharLiteral,
+    THIRWalrus,
     THIRClassConstant,
     THIRCoerce,
     THIRCtorCall,
@@ -150,6 +151,9 @@ def _expr(e: THIRExpr) -> str:
         return f"fstring({parts})"
     if isinstance(e, THIRCharLiteral):
         return f"char({e.value!r})"
+    if isinstance(e, THIRWalrus):
+        decl = f" [decl {e.cpp_type}]" if e.cpp_type is not None else ""
+        return f"walrus({e.name}{decl}, {_expr(e.value)})"
     if isinstance(e, THIRBinOp):
         return f"binop({_expr(e.left)}, {e.op}, {_expr(e.right)})"
     if isinstance(e, THIRUnaryNot):

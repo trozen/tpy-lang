@@ -13,7 +13,8 @@ from .nodes import (
     THIRCall, THIRExprStmt, THIRLiteral, THIROptionalPtrArg, THIRPrint,
     THIRUnionArgLift,
 )
-from .testutil import _fn, _lower, _lower_ctx, _lower_ctx_witnessed
+from .testutil import (_assert_byte_identical, _fn, _lower, _lower_ctx,
+                       _lower_ctx_witnessed)
 
 _PRELUDE = "from tpy import Int32\nfrom typing import Optional\n"
 
@@ -156,16 +157,19 @@ class TestUnionCtorTempArg:
             "    Dog __tmp_1 = Dog(::tpy::BigInt(3));\n"
             "    check(std::variant<Cat*, Dog*>{&__tmp_1});\n")
 
-    def test_ctor_rvalue_in_condition_rejects(self):
-        # A while condition is re-evaluated per iteration; the AST hoists the
-        # temp ONCE before the loop (a pre-existing miscompile shape) -- the
-        # mirror must reject, not reproduce it.
-        thir = _lower_ctx(
-            _UNION_RECORDS
-            + "def f() -> None:\n"
-            + "    while check(Dog(3)):\n"
-            + "        pass\n")
-        assert _fn(thir, "f") is None
+    def test_ctor_rvalue_in_condition_routes_per_iteration(self):
+        # A while condition re-evaluates per iteration: both paths place the
+        # union-lift ctor temp in the RESTRUCTURED loop head (`while (true)
+        # { Dog __tmp_1 = Dog(3); if (!(check(...))) break; }` -- the old
+        # hoist-once-before-the-loop miscompile is gone since the AST
+        # restructure, and the mirror reproduces it byte-identically).
+        src = (_UNION_RECORDS
+               + "def f() -> None:\n"
+               + "    while check(Dog(3)):\n"
+               + "        pass\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is not None
+        _assert_byte_identical(src)
 
     def test_member_name_lift_still_routes(self):
         # Regression guard: the temp arm must not shadow the temp-free

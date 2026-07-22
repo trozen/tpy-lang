@@ -1994,8 +1994,9 @@ class TestDump:
         )
 
     def test_dump_empty(self):
-        # Walrus (`:=`) has no THIR lowering arm, so nothing routes.
-        thir = _lower(_PRELUDE + "def f() -> Int32:\n    if (y := 5) > 0:\n        return y\n    return 0\n")
+        # A str walrus is outside the value-scalar walrus slice, so nothing
+        # routes (the scalar walrus now has an arm -- see the wave pins).
+        thir = _lower(_PRELUDE + "def f(s: str) -> Int32:\n    if (y := s + \"!\"):\n        return 1\n    return 0\n")
         assert "(no THIR-eligible functions)" in dump_thir(thir)
 
     def test_dump_for_range(self):
@@ -3027,17 +3028,21 @@ class TestContainerRebindSlotEmit:
         _, w = _lower_ctx_witnessed(self.SRC)
         assert w.get("decl.container_rebind_slot", 0) == 1
 
-    def test_name_rebound_container_falls_back(self):
-        # A container local rebound from a NAME is the lvalue-reseat pointer
-        # shape (`items = &(b);`), not the rebind slot -- stays AST.
-        thir = _lower(
+    def test_name_rebound_container_routes_ptr_slot(self):
+        # A container local rebound from a NAME routes the pointer-local
+        # binding (`std::vector<T> __slot_1 = {..}; std::vector<T>* items =
+        # &__slot_1;` + the `items = &(b);` reseat) -- the container flavor
+        # of RECORD_RVALUE (byte-identity pinned by the wave file).
+        src = (
             _PRELUDE
             + "def f() -> Int32:\n"
             + "    b = [7, 8]\n"
             + "    items = [1, 2]\n"
             + "    items = b\n"
             + "    return len(items)\n")
-        assert _fn(thir, "f") is None
+        thir = _lower(src)
+        assert _fn(thir, "f") is not None
+        _assert_byte_identical(src)
 
 
 class TestTriviaBodies:

@@ -41,6 +41,7 @@ from ...parse.nodes import (
     TpyNoneLiteral,
     TpyNonlocal,
     TpyPassStmt,
+    TpyListRepeat,
     TpyRaise,
     TpyReturn,
     TpySetLiteral,
@@ -67,6 +68,7 @@ from ...typesys import (
     NominalType,
     OptionalType,
     OwnType,
+    PendingListType,
     PendingViewType,
     ReadonlyType,
     TpyType,
@@ -351,6 +353,7 @@ from .expressions import (
     _lower_field_source,
     _lower_lambda,
     _lower_truthy,
+    _cond_mixed_walrus_temps,
     _lower_borrow_tuple_literal,
     _lower_generic_tuple_literal,
     _lower_tuple_literal,
@@ -2511,6 +2514,55 @@ def _lower_record_ptr_slot_decl(stmt: TpyVarDecl, vtype: 'TpyType | None',
         loc=loc)
 
 
+def _lower_container_ptr_slot_decl(stmt: TpyVarDecl, vtype: 'TpyType | None',
+                                   lc: _LowerCtx, declared: dict[str, TpyType],
+                                   loc) -> 'THIRPtrLocalDecl | None':
+    """First decl of a NAME-reassigned container-LITERAL local -- the
+    container flavor of the pointer-local binding class
+    (`std::vector<T> __slot_N = {..};` + `std::vector<T>* xs = &__slot_N;`,
+    _gen_pointer_local_init's rvalue branch): reseats ride the pointer arms
+    (`xs = &(b);`, the bare pointer copy `xs = xs;`), value reads deref via
+    the F2d name render. Returns None when the decl is not this shape.
+    Rvalue-reassigned literals keep the REBIND_SLOT machinery (unrouted),
+    hoisted / move-through / branch-rebound ones keep rejecting."""
+    analyzer = lc.analyzer
+    if not isinstance(stmt.init, (TpyArrayLiteral, TpyDictLiteral,
+                                  TpySetLiteral, TpyListRepeat)):
+        return None
+    if not (stmt.name in lc.prescan.reassigned
+            and stmt.name not in lc.prescan.rvalue_reassigned
+            and stmt.name not in lc.prescan.hoisted
+            and stmt.name not in lc.prescan.move_through):
+        return None
+    vt = resolve_pending_container(vtype, analyzer) or vtype
+    vtu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(vt)))
+           if vt is not None else None)
+    if isinstance(vtu, PendingListType):
+        # An unresolved pending binding would crash render_type -- reject to
+        # the AST path (which resolves at its own later render point).
+        note_detail("container_lit.rebound")
+        raise ThirUnsupported(stmt_reject_reason(stmt))
+    if vtu is None or not (is_list(vtu) or is_dict(vtu) or is_set(vtu)
+                           or is_array(vtu)):
+        return None
+    if not _container_literal_shape_ok(stmt.init, vtu, analyzer):
+        note_detail("container_lit.rebound")
+        raise ThirUnsupported(stmt_reject_reason(stmt))
+    init = _lower_expr(stmt.init, lc, declared,
+                       use=_ExprUse(result=_ExprResultUse.STORAGE),
+                       target_type=vtu)
+    if getattr(init, "make_container", False):
+        # The make_vector / make_ordered_* element path's slot render is
+        # unverified -- reject rather than risk a divergent `__slot_N` init.
+        note_detail("container_lit.rebound")
+        raise ThirUnsupported(stmt_reject_reason(stmt))
+    _witness("decl.container_slot_rvalue")
+    return THIRPtrLocalDecl(
+        name=stmt.name, resolved_type=vtu, kind=PtrSlotKind.RECORD_RVALUE,
+        init=init, cpp_type=lc.render_type(vtu), needs_rebind_slot=False,
+        loc=loc)
+
+
 def _lower_dyn_protocol_decl(stmt: TpyVarDecl, vtype: 'TpyType | None',
                             lc: _LowerCtx, declared: dict[str, TpyType],
                             loc) -> 'THIRPtrLocalDecl | None':
@@ -2566,7 +2618,7 @@ def _lower_dyn_protocol_decl(stmt: TpyVarDecl, vtype: 'TpyType | None',
             kind=PtrSlotKind.DYN_PROTOCOL_ERASED, init=erased,
             base_cpp=dynamic_base_name(vtype, analyzer), loc=loc)
     concrete_cpp = lc.render_type(concrete_type)
-    if record_inherits_dynamic(concrete_type, vtype, analyzer):
+    if record_inherits_dynamic(concrete_type, vtype, analyzer.registry):
         slot_cpp = concrete_cpp  # direct inheritance -- plain concrete slot
     else:
         slot_cpp = dynamic_adapter_type(vtype, concrete_cpp, analyzer)
@@ -3832,6 +3884,12 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     lc.rebind_slot_locals.add(stmt.name)
                 declared[stmt.name] = vtype
                 return rec_node
+            cont_node = _lower_container_ptr_slot_decl(stmt, vtype, lc,
+                                                       declared, loc)
+            if cont_node is not None:
+                lc.pointers.add(stmt.name)
+                declared[stmt.name] = cont_node.resolved_type
+                return cont_node
         # First decl of a non-value borrow local (REF_ALIAS / OPTIONAL_TO_PTR /
         # POINTER). Branch-first admission is PER-ARM: an arm lowers in-branch
         # only once its render is oracle-verified position-identical (the lc
@@ -4179,7 +4237,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                         name=stmt.name, kind=PtrSlotKind.DYN_PROTOCOL_ERASED,
                         value=erased, loc=loc)
                 concrete_cpp = lc.render_type(concrete_type)
-                if record_inherits_dynamic(concrete_type, proto_vt, analyzer):
+                if record_inherits_dynamic(concrete_type, proto_vt, analyzer.registry):
                     slot_cpp = concrete_cpp
                 else:
                     slot_cpp = dynamic_adapter_type(proto_vt, concrete_cpp,
@@ -6128,7 +6186,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             return _lower_dyn_narrow_if(stmt, pinfo, lc, declared, loc,
                                         loop_depth=scope.loop_depth)
         try:
-            condition = _lower_truthy(stmt.condition, lc, declared)
+            condition = _lower_truthy(stmt.condition, lc, declared,
+                                      temps_ok=True)
         except ThirUnsupported:
             c = stmt.condition
             if isinstance(c, TpyBinOp):
@@ -6137,6 +6196,11 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 note_detail(f"if.cond_binop.{c.op}.{lf}_{rf}")
             else:
                 _kind_detail("cond.", c)
+            raise ThirUnsupported(stmt_reject_reason(stmt))
+        if _cond_mixed_walrus_temps(condition):
+            # Mixed walrus + temps: the flat-flush (i==0) and nested-elif
+            # renders diverge from the AST's clear-and-burn numbering --
+            # pinned AST (matches the while arm's legacy-path fallback).
             raise ThirUnsupported(stmt_reject_reason(stmt))
         # Branch-local `declared` copies: eligibility guarantees branches only
         # reassign already-declared locals, but a nested post-if narrowing may
@@ -6311,9 +6375,14 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                                           loop_depth=scope.loop_depth + 1)
         else:
             try:
-                condition = _lower_truthy(stmt.condition, lc, declared)
+                condition = _lower_truthy(stmt.condition, lc, declared,
+                                          temps_ok=True)
             except ThirUnsupported:
                 raise ThirUnsupported("stmt.while") from None
+            if _cond_mixed_walrus_temps(condition):
+                # The AST keeps the legacy single-eval flush for the mixed
+                # shape (BUGS residual) -- fall back rather than restructure.
+                raise ThirUnsupported("stmt.while")
             body = _lower_scoped_stmts(
                 stmt.body, lc, dict(declared),
                 branch_decls_ok=True,

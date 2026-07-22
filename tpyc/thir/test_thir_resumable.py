@@ -810,14 +810,17 @@ class TestSlicedOutShapes:
 
     def test_unhandled_expression_lowering_reject_falls_back_after_await(self):
         src = (_PRE
+               + "def eat(xs: list[Int32]) -> Int32:\n"
+               + "    xs.append(1)\n"
+               + "    return len(xs)\n\n"
                + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
                + "async def f(n: Int32) -> Int32:\n"
                + "    n = await step(n)\n"
-               + "    x = (y := n)\n"
+               + "    x = eat([1, 2]) if n > 0 else 0\n"
                + "    return x\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
         _, fallback = _assert_identical(src)
-        assert fallback.get("resumable:expr.named_expr") == 1
+        assert fallback.get("resumable:expr.call") == 1
 
     def test_async_with_global_manager_rejects(self):
         # A global-manager async-with renders the manager as `CM*` already

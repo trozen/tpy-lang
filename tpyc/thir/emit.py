@@ -46,6 +46,7 @@ from .nodes import (
     THIRBytesLiteral,
     THIRCall,
     THIRCharLiteral,
+    THIRWalrus,
     THIRComprehension,
     THIRGenExpr,
     THIRClassConstant,
@@ -179,6 +180,7 @@ class TempSink:
     def __init__(self) -> None:
         self._counter = 0
         self._pending: list[tuple[str, str, str, bool]] = []
+        self._pending_named: list[tuple[str, str]] = []
 
     def create(self, cpp_type: str, init_expr: str, *,
                brace_init: bool = False) -> str:
@@ -187,7 +189,39 @@ class TempSink:
         self._pending.append((name, cpp_type, init_expr, brace_init))
         return name
 
+    def declare_named(self, name: str, cpp_type: str) -> None:
+        """Register a named pre-declaration (walrus target) -- rendered
+        `type name;` ahead of the anonymous temps, like TempState's."""
+        self._pending_named.append((name, cpp_type))
+
+    def checkpoint(self) -> tuple[int, int]:
+        """Snapshot the pending queues -- the cond-position seam
+        (`has_*_since` / `flush_since` take this token), mirroring
+        `TempState.checkpoint`."""
+        return (len(self._pending), len(self._pending_named))
+
+    def has_pending_since(self, checkpoint: tuple[int, ...]) -> bool:
+        return len(self._pending) > checkpoint[0]
+
+    def has_named_since(self, checkpoint: tuple[int, ...]) -> bool:
+        return len(self._pending_named) > checkpoint[1]
+
+    def flush_since(self, out: TextIO, checkpoint: tuple[int, int],
+                    indent: str) -> None:
+        """Emit (and remove) only the anonymous temps registered after
+        `checkpoint` -- the restructured loop-head / nested-elif flush."""
+        pending_n = checkpoint[0]
+        for name, cpp_type, init_expr, brace_init in self._pending[pending_n:]:
+            if brace_init:
+                out.write(f"{indent}{cpp_type} {name}{{{init_expr}}};\n")
+            else:
+                out.write(f"{indent}{cpp_type} {name} = {init_expr};\n")
+        del self._pending[pending_n:]
+
     def flush(self, out: TextIO, indent: str) -> None:
+        for name, cpp_type in self._pending_named:
+            out.write(f"{indent}{cpp_type} {name};\n")
+        self._pending_named.clear()
         for name, cpp_type, init_expr, brace_init in self._pending:
             if brace_init:
                 out.write(f"{indent}{cpp_type} {name}{{{init_expr}}};\n")
@@ -212,6 +246,22 @@ class CtxTempSink(TempSink):
                brace_init: bool = False) -> str:
         return self._ctx.temps.create_typed(cpp_type, init_expr,
                                             brace_init=brace_init)
+
+    def declare_named(self, name: str, cpp_type: str) -> None:
+        self._ctx.temps.declare_named(name, cpp_type)
+
+    def checkpoint(self) -> tuple[int, int]:
+        return self._ctx.temps.checkpoint()
+
+    def has_pending_since(self, checkpoint: tuple[int, ...]) -> bool:
+        return self._ctx.temps.has_pending_since(checkpoint)
+
+    def has_named_since(self, checkpoint: tuple[int, ...]) -> bool:
+        return self._ctx.temps.has_named_since(checkpoint)
+
+    def flush_since(self, out: TextIO, checkpoint: tuple[int, int],
+                    indent: str) -> None:
+        self._ctx.temps.flush_since(out, checkpoint, indent)
 
     def flush(self, out: TextIO, indent: str) -> None:
         self._ctx.temps.flush(out, indent)
@@ -519,6 +569,12 @@ def _emit_binop(e: THIRBinOp, state: _EmitState) -> str:
         left = e.left_cast.format(left)
     if e.right_cast is not None:
         right = e.right_cast.format(right)
+    if e.template_override is not None:
+        # The rebuilt fixed-int literal arm (gen_call_from_fi over the
+        # target-typed operands): plain template expansion, no wrappers, no
+        # parens, no divisor swap -- the AST's dedicated arm bypasses all of
+        # those the same way.
+        return expand_cpp_template(e.template_override, left, right)
     rb = e.resolved
     if rb is None:
         # Derived comparison (`<= > >= !=`) or logical `&&`/`||` (incl. the
@@ -1205,6 +1261,13 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         # Char-annotated decl init, a Char-slot call arg) -- mirrors
         # gen_expr's char-literal branch.
         return f"'{escape_cpp_char(e.value)}'"
+    if isinstance(e, THIRWalrus):
+        # The scalar walrus render (`(n = v)`); the first binding registers
+        # its `type name;` pre-decl on the sink's named row, which the
+        # enclosing statement / loop-head / lambda flush places.
+        if e.cpp_type is not None:
+            state.temps.declare_named(e.cpp_name, e.cpp_type)
+        return f"({e.cpp_name} = {_emit_expr(e.value, state)})"
     if isinstance(e, THIRIsinstance):
         # Mirrors the AST isinstance arm over value/pointer variants: one
         # holds_alternative per check member, OR-joined and parenthesized for
@@ -1503,12 +1566,32 @@ def _emit_if(out: TextIO, stmt: THIRIf, indent_level: int, state: _EmitState) ->
            and not chain[-1].else_is_nested
            and _is_elif(chain[-1], chain[-1].else_body[0])):
         chain.append(chain[-1].else_body[0])
+    # An elif condition that registers temps abandons the flat `} else if`
+    # chain: the temps have no legal spot between `}` and `else`, so the
+    # remainder nests in an `} else {` block with the decls flushed inside
+    # (_gen_if's probe-then-nest arm; the single render here reissues the
+    # same `__tmp_N` names the AST's discard-and-regenerate produces).
+    extra_closes: list[str] = []
     for i, node in enumerate(chain):
         if i == 0:
-            out.write(f"{indent}if ({_emit_expr(node.condition, state)}) {{\n")
+            cond = _emit_expr(node.condition, state)
+            state.temps.flush(out, indent)
+            out.write(f"{indent}if ({cond}) {{\n")
         else:
             state.comments.elif_(out, node.loc, indent)
-            out.write(f"{indent}}} else if ({_emit_expr(node.condition, state)}) {{\n")
+            cp = state.temps.checkpoint()
+            cond = _emit_expr(node.condition, state)
+            if (state.temps.has_pending_since(cp)
+                    or state.temps.has_named_since(cp)):
+                out.write(f"{indent}}} else {{\n")
+                extra_closes.append(indent)
+                indent_level += 1
+                indent = INDENT * indent_level
+                body_indent = INDENT * (indent_level + 1)
+                state.temps.flush(out, indent)
+                out.write(f"{indent}if ({cond}) {{\n")
+            else:
+                out.write(f"{indent}}} else if ({cond}) {{\n")
         _emit_stmts(out, node.then_body, indent_level + 1, state)
         state.comments.trailing(out, node.then_body, body_indent)
     last = chain[-1]
@@ -1518,6 +1601,8 @@ def _emit_if(out: TextIO, stmt: THIRIf, indent_level: int, state: _EmitState) ->
         _emit_stmts(out, last.else_body, indent_level + 1, state)
         state.comments.trailing(out, last.else_body, body_indent)
     out.write(f"{indent}}}\n")
+    for ind in reversed(extra_closes):
+        out.write(f"{ind}}}\n")
 
 
 def _push_loop_frame(state: _EmitState, has_else: bool = False) -> int:
@@ -1614,7 +1699,29 @@ def _emit_while(out: TextIO, stmt: THIRWhile, indent_level: int, state: _EmitSta
     # The `// while ...:` comment is emitted by the caller (_emit_stmts).
     indent = INDENT * indent_level
     saved_depth = _push_loop_frame(state, has_else=bool(stmt.orelse))
-    out.write(f"{indent}while ({_emit_expr(stmt.condition, state)}) {{\n")
+    # Mirror _gen_while's restructured head: anonymous cond temps re-evaluate
+    # per iteration, so they live in the loop head behind `while (true)` with
+    # an inverted break -- a pre-loop flush would freeze a stale snapshot.
+    # Lowering rejects the mixed walrus+temps shape, so a walrus pre-decl here
+    # only ever rides the plain flush (before the loop, where it stays
+    # visible after it).
+    cond_checkpoint = state.temps.checkpoint()
+    cond = _emit_expr(stmt.condition, state)
+    if state.temps.has_pending_since(cond_checkpoint):
+        # Sink-side guard for the lowering-side mixed reject: an in-head
+        # temp next to a pre-loop-flushed walrus pre-decl would be the
+        # stale-read hazard _cond_mixed_walrus_temps exists to exclude.
+        assert not state.temps.has_named_since(cond_checkpoint), (
+            "mixed walrus + temps while cond reached the restructured head")
+        cond_temps = io.StringIO()
+        state.temps.flush_since(cond_temps, cond_checkpoint, indent + INDENT)
+        state.temps.flush(out, indent)
+        out.write(f"{indent}while (true) {{\n")
+        out.write(cond_temps.getvalue())
+        out.write(f"{indent}{INDENT}if (!({cond})) break;\n")
+    else:
+        state.temps.flush(out, indent)
+        out.write(f"{indent}while ({cond}) {{\n")
     state.loop_depth += 1
     _emit_stmts(out, stmt.body, indent_level + 1, state)
     state.loop_depth -= 1

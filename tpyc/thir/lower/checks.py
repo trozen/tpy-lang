@@ -97,6 +97,7 @@ from ...type_def_registry import (
 from ...codegen_cpp.builtins import _FLOAT_STR_CONSTANTS
 from ...codegen_cpp.types import resolve_pending_container
 from ...codegen_cpp.forms import LocalBinding, classify_local_binding
+from ...codegen_cpp.protocols import classify_dyn_own_arg
 from ...value_category import is_rvalue_source
 from ...codegen_cpp.context import (
     escape_cpp_name,
@@ -1618,7 +1619,17 @@ def _setitem_target_ok(
     recv = sub.obj
     if isinstance(recv, TpyName) and (recv.name in pointers
                                       or recv.name in narrowed):
-        return note_detail("setitem.recv.name_shape")
+        # A rebound CONTAINER pointer-local (F2d) writes through the deref
+        # (`::tpy::__setitem__((*xs), i, v)` -- the name arm's
+        # pointer_value_expr render); record / narrowed pointer receivers
+        # keep their own (unrouted) shapes.
+        rb = (declared.get(recv.name)
+              if recv.name not in narrowed else None)
+        rbu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rb)))
+               if rb is not None else None)
+        if not (rbu is not None and (is_list(rbu) or is_dict(rbu)
+                                     or is_set(rbu) or is_array(rbu))):
+            return note_detail("setitem.recv.name_shape")
     recv_t = _subscript_container_recv_type(recv, declared, analyzer)
     if recv_t is None:
         # A nested container-element subscript receiver (`d[k][i] = v`): the
@@ -2386,6 +2397,9 @@ def _plain_call_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
             or (temps_ok and _own_lvalue_arg(
                 a, ptype, locals_, narrowed, analyzer))
             or (temps_ok and _container_literal_arg(a, ptype, analyzer))
+            or (temps_ok and _ref_param_dictset_literal_arg(a, ptype, analyzer))
+            or (temps_ok and _covariant_temp_arg(a, ptype, locals_, analyzer)
+                is not None)
             or _optional_ptr_arg(a, ptype, locals_, analyzer,
                                  temps_ok=temps_ok)
             or _readonly_record_ctor_arg(a, ptype, locals_, analyzer)
@@ -2395,6 +2409,7 @@ def _plain_call_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
             or _own_union_ctor_arg(a, ptype, locals_, analyzer)
             or _dyn_own_coro_factory_arg(a, ptype, analyzer) is not None
             or _dyn_own_handle_arg(a, ptype, locals_, analyzer) is not None
+            or _dyn_own_conformer_arg(a, ptype, locals_, analyzer) is not None
             or _none_value_opt_arg(a, ptype, analyzer) is not None
             or _protocol_slot_arg(a, ptype, locals_, analyzer,
                                   temps_ok=temps_ok)
@@ -2606,6 +2621,30 @@ def _container_literal_method_arg(a: TpyExpr, ptype: 'TpyType | None',
         return is_set(pt) and _container_literal_shape_ok(a, pt, analyzer)
     if isinstance(a, TpyArrayLiteral):
         return is_list(pt) and _container_literal_shape_ok(a, pt, analyzer)
+    return False
+
+def _ref_param_dictset_literal_arg(a: TpyExpr, ptype: 'TpyType | None',
+                                   analyzer) -> bool:
+    """A dict / set literal into a matching container slot of a PLAIN free
+    call: the AST hoists the ref-param `__tmp_N` temp with the spelled
+    container init (`::tpy::ordered_map<...> __tmp_N = ::tpy::ordered_map<...>
+    ({{..}});` -- gen_call_arg renders the literal target-typed, then the
+    ref-param cascade hoists it). Flush positions only (the arm is
+    temps_ok-gated); the list-literal sibling rides `_container_literal_arg`."""
+    pt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
+          if ptype is not None else None)
+    if pt is None or isinstance(pt, (OwnType, OptionalType)):
+        return False
+    if isinstance(a, TpyDictLiteral):
+        return is_dict(pt) and _container_literal_shape_ok(a, pt, analyzer)
+    if isinstance(a, TpySetLiteral):
+        return is_set(pt) and _container_literal_shape_ok(a, pt, analyzer)
+    if isinstance(a, TpyArrayLiteral):
+        # A list literal into an `Array[T, N]` slot (compile-time-sized
+        # coercion): the same ref-param hoist, bare-brace init
+        # (`std::array<int32_t, 3> __tmp_N = {10, 20, 30};`). The list-slot
+        # literal rides `_container_literal_arg` -- keep the rows disjoint.
+        return is_array(pt) and _container_literal_shape_ok(a, pt, analyzer)
     return False
 
 def _own_container_literal_arg(a: TpyExpr, ptype: 'TpyType | None',
@@ -3222,7 +3261,12 @@ def _own_record_rvalue_arg(a: TpyExpr, ptype: TpyType | None,
         return False
     if not isinstance(a, TpyCall):
         return False
-    if analyzer.get_expr_type(a) != w:
+    at = analyzer.get_expr_type(a)
+    if at != w and not _covariant_record_upcast_ok(at, w, analyzer):
+        # A covariant-generic upcast rvalue (`pets.append(Box(Parrot(..)))`
+        # into `Own[Box[Pet]]`) binds the slot inline through the C++
+        # converting move ctor -- the same bare expansion as the
+        # same-nominal row.
         return False
     fi = a.resolved_function_info
     if fi is None:
@@ -4571,6 +4615,92 @@ def _dyn_own_coro_factory_arg(a: TpyExpr, ptype: 'TpyType | None',
         return None
     return proto
 
+def _dyn_own_conformer_arg(a: TpyExpr, ptype: 'TpyType | None',
+                           locals_: dict[str, 'TpyType'],
+                           analyzer) -> 'tuple[NominalType, str] | None':
+    """A concrete-CONFORMER source into an `Own[@dynamic P]` slot: the
+    `std::make_unique<U>(x)` (inheritance) / `::tpy::make_adapter<Base>(x)`
+    (structural) wrap of _gen_dynamic_protocol_own_arg, keyed by the SHARED
+    `classify_dyn_own_arg` verdict so the two paths cannot drift. Admitted
+    shapes: a user-record CTOR rvalue and a record-typed local NAME (the
+    AST's `_maybe_move` renders `std::move` at a movable last use -- the
+    lowering arm mirrors it via `_is_move_source`). Returns
+    (slot protocol, verdict) or None; the coro-handle / async-factory /
+    forward verdicts keep their own rows."""
+    if not isinstance(ptype, TpyType):
+        return None
+    u = unwrap_send_sync(ptype)
+    if not isinstance(u, OwnType):
+        return None
+    # RAW wrapped, matching the AST key (see _dyn_own_handle_arg): an
+    # `Own[readonly[P]]` slot never takes the adapter render there.
+    proto = u.wrapped
+    if not (isinstance(proto, NominalType) and is_dyn_protocol(proto)):
+        return None
+    declared = None
+    if isinstance(a, TpyName):
+        declared = locals_.get(a.name)
+    elif isinstance(a, TpyCall):
+        fi = a.resolved_function_info
+        if fi is None or not fi.is_constructor:
+            return None
+    else:
+        return None
+    at = analyzer.get_expr_type(a)
+    at_u = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
+            if at is not None else None)
+    if isinstance(at_u, OwnType):
+        at_u = unwrap_readonly(at_u.wrapped)
+    # A protocol-typed source can never take the conformer wraps
+    # (Adapter<P, P> over abstract P has no sizeof) -- defensive: such
+    # sources classify 'forward' unless sema let a cross-protocol bind
+    # through, and then AST is the safe path.
+    if not (isinstance(at_u, NominalType) and at_u.is_user_record
+            and not at_u.is_protocol):
+        return None
+    verdict = classify_dyn_own_arg(a, proto, declared, analyzer)
+    if verdict not in ("inherit", "structural"):
+        return None
+    if verdict == "inherit" and not _f1_record(at_u, analyzer):
+        # make_unique spells the concrete type -- F1 pins to_cpp().
+        return None
+    return (proto, verdict)
+
+
+def _covariant_temp_arg(a: TpyExpr, ptype: 'TpyType | None',
+                        locals_: dict[str, 'TpyType'],
+                        analyzer) -> 'NominalType | None':
+    """A covariant-generic record source into the UPCAST slot
+    (`print_area(bc)` at a `Box[Shape]` param, `bc: Box[Circle]`):
+    _gen_covariant_arg's typed temp (`Box<Shape> __tmp_N = std::move(bc);`
+    + the bare `__tmp_N` at the arg position). Flush positions only (the
+    caller gates temps_ok). Shapes: a local NAME (moved at a movable last
+    use) or a ctor RVALUE. Returns the slot type, or None."""
+    slot = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
+            if isinstance(ptype, TpyType) else None)
+    if not (isinstance(slot, NominalType) and slot.is_user_record):
+        return None
+    if isinstance(a, TpyName):
+        if a.name not in locals_:
+            return None
+    elif isinstance(a, TpyCall):
+        fi = a.resolved_function_info
+        if (fi is None or not fi.is_constructor
+                or not (_ctor_shape_ok(a, analyzer)
+                        or _ctor_instantiation_ok(a, analyzer))):
+            return None
+    else:
+        return None
+    at = analyzer.get_expr_type(a)
+    at_u = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
+            if at is not None else None)
+    if isinstance(at_u, OwnType):
+        at_u = unwrap_readonly(at_u.wrapped)
+    if not _covariant_record_upcast_ok(at_u, slot, analyzer):
+        return None
+    return slot
+
+
 def _moved_record_ret(ret: 'TpyType | None', analyzer) -> bool:
     """A nominal record result (generic-concrete included) at a MOVED
     position: the consumer takes the value whole (std::move into a slot),
@@ -5225,6 +5355,11 @@ def _record_method_arg_ok(
             or _record_pass_through_arg(a, ptype, locals_, analyzer)
             or _method_ctor_rvalue_arg(
                 a, ptype, index, overload, locals_, analyzer)
+            # A concrete conformer into an `Own[@dynamic P]` method slot
+            # (`b.set(Dog(...))`): the make_unique / make_adapter wrap,
+            # verdict-keyed via the shared classifier (the
+            # `_dyn_own_conformer_arg` row in `_lower_call_arg`).
+            or _dyn_own_conformer_arg(a, ptype, locals_, analyzer) is not None
             or (temps_ok
                 and _tparam_slot_temp_arg(a, ptype, index, overload,
                                           analyzer) is not None)

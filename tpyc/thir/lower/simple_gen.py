@@ -52,7 +52,8 @@ from ...codegen_cpp.gen_generators import (
 )
 from .context import _ExprResultUse, _ExprUse, _LowerCtx
 from .checks import _narrow_cond_info
-from .expressions import _lower_expr, _lower_truthy
+from .expressions import (_lower_expr, _lower_truthy,
+                          _cond_mixed_walrus_temps, _slot_literal_retype)
 from .functions import _check_callable_structure, _seed_global_scope
 from .predicates import (
     _f1_record,
@@ -193,8 +194,12 @@ def _lower_simple_generator(func: TpyFunction, analyzer, render_type,
             # woven between the skeleton's `while (...) {` and the body.
             return _reject("sgen.narrow_cond")
         try:
-            cond = _lower_truthy(last.condition, lc, declared)
+            cond = _lower_truthy(last.condition, lc, declared, temps_ok=True)
         except ThirUnsupported:
+            return _reject("sgen.cond")
+        if _cond_mixed_walrus_temps(cond):
+            # The AST skeleton raises CodeGenError for mixed walrus + temps
+            # conds; fall back so it does so identically.
             return _reject("sgen.cond")
         _witness("sgen.while_cond")
         pre_l, yv, post_l = _lower_loop_body(last, lc, declared, loop_depth=1)
@@ -269,7 +274,11 @@ def _lower_loop_body(loop_stmt, lc: _LowerCtx, declared: dict[str, TpyType],
     with lc.branch_scope():
         pre_l = _lower_stmts(pre, lc, body_declared, in_branch=True,
                              branch_decls_ok=True, loop_depth=loop_depth)
-        yv = _lower_expr(yield_stmt.value, lc, body_declared)
+        # gen_yield_value threads the yield type into the render
+        # (`yield 1` at an `Iterator[int]` -> `::tpy::BigInt(1)`).
+        yv = _slot_literal_retype(
+            _lower_expr(yield_stmt.value, lc, body_declared),
+            lc.func.generator_yield_type, lc)
         _witness("sgen.yield_value")
         post_l = _lower_stmts(post, lc, body_declared, in_branch=True,
                               branch_decls_ok=True, loop_depth=loop_depth)

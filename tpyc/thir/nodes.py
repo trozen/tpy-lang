@@ -172,6 +172,22 @@ class THIRCharLiteral(THIRExpr):
 
 
 @dataclass(frozen=True)
+class THIRWalrus(THIRExpr):
+    """A value-scalar walrus binding (`(n := v)` -> `(n = v)`), the scalar
+    slice of _gen_named_expr: the target pre-declares `type name;` through
+    the temp sink's named row on FIRST binding (`cpp_type` set) and assigns
+    in place on a rebind (`cpp_type` None). The named pre-decl flushes at
+    the statement flush point -- for a while condition that is BEFORE the
+    loop (the binding stays visible after it), for a simple-generator
+    condition at lambda scope (`flush_named_since`). Non-value targets
+    (borrow decls, tuples, Optionals, hoisted names) stay on the AST path."""
+    name: str
+    cpp_name: str
+    value: 'THIRExpr'
+    cpp_type: 'str | None' = None
+
+
+@dataclass(frozen=True)
 class THIRName(THIRExpr):
     """Local / param reference. `deref` marks an F2 pointer-local (`T*`) read
     in a value position (a record call arg), rendered `(*name)` -- the mirror
@@ -238,6 +254,17 @@ class THIRBinOp(THIRExpr):
     # compare casts to the float operand's type. Computed at lowering.
     left_cast: 'str | None' = None
     right_cast: 'str | None' = None
+    # Lowering's position-independent stamp for gen_binop's dedicated
+    # fixed-int literal arm: both operands are IntLiteral-typed NON-names
+    # (literals, nested literal binops, subscripts over literal-seeded
+    # containers). `_slot_literal_retype` -- the AST's target-threading
+    # positions -- consumes it to rebuild the node with `template_override`.
+    both_literal_int_operands: bool = False
+    # When set (the rebuilt dedicated arm), emit expands this
+    # target-resolved cpp_template over the bare operands -- no wrappers,
+    # no parens (`::tpy::add_check<int64_t>(l, r)`), gen_call_from_fi's
+    # render.
+    template_override: 'str | None' = None
 
 
 @dataclass(frozen=True)

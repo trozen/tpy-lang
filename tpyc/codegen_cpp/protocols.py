@@ -13,8 +13,9 @@ from ..typesys import (
     OptionalType, UnionType, OwnType, MethodSignature, is_protocol_type,
     unwrap_readonly, unwrap_own, is_protocol_union, protocol_union_protocols,
     protocol_union_has_none, unwrap_ref_type, shadowed_local_cpp_name,
+    ConcreteCoroType, is_dyn_protocol, unwrap_send_sync,
 )
-from ..parse import TpyProtocol, TpyRecord
+from ..parse import TpyCall, TpyMethodCall, TpyProtocol, TpyRecord
 from .. import qnames
 from .context import INDENT, DUNDER_TO_BINARY_OP, CodeGenError, qualified_cpp_name, expand_cpp_template
 from ..type_def_registry import is_str_type, protocol_info_of, is_subtype
@@ -166,7 +167,7 @@ def narrow_cast_rhs(cpp_type: str, check_type: TpyType,
     if (is_protocol_type(source_inner)
             and isinstance(check_type, NominalType)
             and not record_inherits_dynamic(check_type, source_inner,
-                                            analyzer)):
+                                            analyzer.registry)):
         base = dynamic_base_name(source_inner, analyzer)
         return f"::tpy::dyn_adapter_cast<{base}, {cpp_type}>({cast_arg})"
     const_pfx = "const " if is_const else ""
@@ -174,7 +175,7 @@ def narrow_cast_rhs(cpp_type: str, check_type: TpyType,
 
 
 def record_inherits_dynamic(concrete_type: TpyType, protocol: NominalType,
-                            analyzer) -> bool:
+                            registry) -> bool:
     """Whether concrete_type inherits a @dynamic protocol (directly or transitively).
 
     True when the record explicitly implements a @dynamic protocol that
@@ -208,7 +209,7 @@ def record_inherits_dynamic(concrete_type: TpyType, protocol: NominalType,
     """
     if not isinstance(concrete_type, NominalType) or not concrete_type.is_user_record:
         return False
-    record_info = analyzer.registry.get_record(concrete_type.name)
+    record_info = registry.get_record(concrete_type.name)
     if record_info is None or record_info.is_native:
         return False
     proto_name = protocol.name
@@ -219,6 +220,115 @@ def record_inherits_dynamic(concrete_type: TpyType, protocol: NominalType,
         if p.name == proto_name or is_subtype(pi, proto_name):
             return True
     return False
+
+
+def dyn_forward_ok(source: TpyType, target: TpyType, analyzer) -> bool:
+    """True if `source` (@dynamic protocol) can be forwarded as `target`
+    (@dynamic protocol) without an Adapter wrap -- same protocol (joint
+    qualified_name + type_args check, so generic instantiations like
+    `Container[int]` and `Container[str]` stay distinct) or inheriting
+    peer. Module-level (analyzer-pure) so the AST emit and the THIR
+    lowering share one verdict."""
+    if not (isinstance(source, NominalType) and isinstance(target, NominalType)):
+        return False
+    if (source.qualified_name() == target.qualified_name()
+            and source.type_args == target.type_args):
+        return True
+    return is_subtype(
+        analyzer.registry.scan_by_short_name(source.name), target.name)
+
+
+def resolve_own_source_type(arg: 'TpyExpr', declared: 'TpyType | None',
+                            analyzer) -> 'OwnType | None':
+    """The source ownership type if `arg` is shaped as Own[X] in C++ --
+    ExpressionGenerator._resolve_own_source_type with the declared-type
+    lookup passed IN (`declared`: the caller's var_types/param/field
+    resolution for a name/field arg, None otherwise), so the verdict is
+    analyzer-pure and THIR lowering can thread its own scope dict."""
+    declared = unwrap_send_sync(declared) if declared is not None else None
+    if isinstance(declared, OwnType):
+        return declared
+    fi = getattr(arg, 'resolved_function_info', None)
+    fi_return = unwrap_send_sync(fi.return_type) if (
+        fi is not None and fi.return_type is not None) else None
+    if not isinstance(fi_return, OwnType):
+        return None
+    inner = fi_return.wrapped
+    if not isinstance(inner, TypeParamRef):
+        return fi_return
+    ta = getattr(arg, 'inferred_type_args', None)
+    if ta and fi.type_params:
+        sub = dict(zip(fi.type_params, ta)).get(inner.name)
+        if sub is not None:
+            return OwnType(sub)
+    obj = getattr(arg, 'obj', None)
+    if obj is not None:
+        obj_type = analyzer.get_expr_type(obj)
+        if isinstance(obj_type, NominalType) and obj_type.type_args:
+            record_info = analyzer.registry.get_record(obj_type.name)
+            if record_info and record_info.type_params:
+                sub = dict(zip(record_info.type_params,
+                               obj_type.type_args)).get(inner.name)
+                if sub is not None:
+                    return OwnType(sub)
+    return None
+
+
+def is_async_call_with_protocol_return(arg: 'TpyExpr',
+                                       arg_type: 'TpyType | None') -> bool:
+    """True if `arg` is a call to an `async def` whose sema return type is
+    the structural Cancellable / Awaitable wrap (the C++ value is the
+    concrete coro factory struct)."""
+    if not isinstance(arg, (TpyCall, TpyMethodCall)):
+        return False
+    fi = arg.resolved_function_info
+    if fi is None or not fi.is_async:
+        return False
+    if not isinstance(arg_type, NominalType):
+        return False
+    return arg_type.qualified_name() in (qnames.CANCELLABLE, qnames.AWAITABLE)
+
+
+def classify_dyn_own_arg(arg: 'TpyExpr', protocol: TpyType,
+                         declared: 'TpyType | None',
+                         analyzer) -> str:
+    """Classify one arg bound for an `Own[@dynamic P]` slot -- the single
+    verdict behind `_gen_dynamic_protocol_own_arg`'s dispatch (and, negated
+    on 'forward', `_is_dyn_own_wrap_needed`), shared with THIR so the two
+    paths cannot drift. `declared` is the caller's declared-type resolution
+    for the arg (var_types/param/field), None for other shapes.
+
+    Verdicts and their renders:
+      'coro_handle'   -- Own[ConcreteCoroType] source: the bound-handle
+                         erasure `make_adapter<Base>(std::move(*(x)))`.
+      'forward'       -- already-erased `unique_ptr<P>` (same/inheriting
+                         protocol): the bare forward, no wrap.
+      'async_factory' -- an async-def call rvalue: the concrete coro frame
+                         moves into `make_adapter<Base>(...)`.
+      'inherit'       -- an inheritance conformer: `std::make_unique<U>(x)`
+                         (unique_ptr<U> converts to unique_ptr<P>).
+      'structural'    -- a structural conformer: the owning
+                         `make_adapter<Base>(x)` Adapter wrap.
+    """
+    source_own_type = resolve_own_source_type(arg, declared, analyzer)
+    if source_own_type is not None:
+        inner = unwrap_readonly(source_own_type.wrapped)
+        if isinstance(inner, ConcreteCoroType):
+            return 'coro_handle'
+        if is_protocol_type(inner) and dyn_forward_ok(inner, protocol,
+                                                      analyzer):
+            return 'forward'
+    arg_type = analyzer.get_expr_type(arg)
+    if isinstance(arg_type, OwnType):
+        arg_type = arg_type.wrapped
+    if is_async_call_with_protocol_return(arg, arg_type):
+        return 'async_factory'
+    if is_dyn_protocol(arg_type) and dyn_forward_ok(arg_type, protocol,
+                                                    analyzer):
+        return 'forward'
+    if record_inherits_dynamic(arg_type, protocol, analyzer.registry):
+        return 'inherit'
+    return 'structural'
 
 
 class ProtocolGenerator:
@@ -365,22 +475,11 @@ class ProtocolGenerator:
                                is_const=is_const, analyzer=self.ctx.analyzer)
 
     def dyn_protocol_forward_ok(self, source: TpyType, target: TpyType) -> bool:
-        """True if `source` (@dynamic protocol) can be forwarded as `target`
-        (@dynamic protocol) without an Adapter wrap -- same protocol (joint
-        qualified_name + type_args check, so generic instantiations like
-        `Container[int]` and `Container[str]` stay distinct) or inheriting peer.
-        """
-        if not (isinstance(source, NominalType) and isinstance(target, NominalType)):
-            return False
-        if (source.qualified_name() == target.qualified_name()
-                and source.type_args == target.type_args):
-            return True
-        return is_subtype(
-            self.ctx.analyzer.registry.scan_by_short_name(source.name), target.name
-        )
+        return dyn_forward_ok(source, target, self.ctx.analyzer)
 
     def directly_implements_dynamic(self, concrete_type: TpyType, protocol: NominalType) -> bool:
-        return record_inherits_dynamic(concrete_type, protocol, self.ctx.analyzer)
+        return record_inherits_dynamic(concrete_type, protocol,
+                                       self.ctx.analyzer.registry)
 
     def gen_record_template_parts(
         self,

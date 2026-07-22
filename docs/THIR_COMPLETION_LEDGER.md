@@ -1986,3 +1986,47 @@ byte-diff itself.
   nested-position ctor arg temps (memo G phase 2, blocked on the AST elif
   cleanup), json qualcall recursive-wrapper literals, kwargs_unpack_get_in
   (kwargs.get lane), the no-init family's _from_global/_return tails.
+- **Landed: adapter/temps wave (2026-07-22, 5 cells).** (1) NESTED temp
+  threading: `allow_temps` rides through call-shaped args, method-call
+  receivers, binop operands (`temps_ok` on `_lower_binop`), the
+  coro-factory arm, and the NESTED_ARG ctor gate branch (gates like DIRECT
+  with the ridden flush right); the validator's `argtemp_ok` propagates
+  through all expression nesting. Plus the dict/set/Array free-call
+  literal ArgTemp row (`_ref_param_dictset_literal_arg`). (2) COND-position
+  temps (memo G phase 2): TempSink/CtxTempSink grew the checkpoint /
+  flush_since / declare_named seam; `_emit_while` mirrors the restructured
+  head (`while (true) { <temps> if (!(cond)) break; }`), `_emit_if`
+  flushes pre-`if` and nests the elif chain-abandon (same __tmp numbering
+  as the AST's discard-and-regenerate); the sgen leaf rides the skeleton's
+  checkpoint machinery; the value-scalar WALRUS arm landed (THIRWalrus:
+  `(n = v)` + the sink's named pre-decl row); mixed walrus+temps conds
+  reject. Latent divergence fixed: sgen yield values thread the yield type.
+  (3) Container pointer-local decls (memo I): NAME-reassigned
+  container-literal first decls route PtrSlotKind.RECORD_RVALUE
+  (`std::vector<T> __slot_N = {..}; std::vector<T>* xs = &__slot_N;`);
+  setitem admits the F2d pointer-container receiver; literal-rvalue reseats
+  ride INLINE_RVALUE. The fixed-int literal binop arm re-keyed on the
+  THREADED target via a `_slot_literal_retype` rebuild
+  (`template_override`) -- fixes a latent width divergence (`b: Int64 =
+  (4+5)+6` emitted add_check<int32_t>) and the target-less paren/fold
+  policy (syntactic involves_variables guard). (4) The SHARED
+  `classify_dyn_own_arg` classifier (decisions 4/round-5 cell A): verdicts
+  coro_handle/forward/async_factory/inherit/structural extracted
+  analyzer-pure into codegen_cpp/protocols.py, consumed by the AST render,
+  `_is_dyn_own_wrap_needed`, and THIR's `_dyn_own_conformer_arg`
+  (make_unique / make_adapter rows at the free/ctor/method Own[dyn P] arg
+  gates); the sema `directly_implements_dynamic` mirror now delegates
+  (drift closed). Instantiation ctors admit at NESTED_ARG positions; the
+  erased `unique_ptr<P>` payload joined `_own_lvalue_temp_slot`.
+  (5) Covariant-ARG admission (round-5 cell B): rvalues bind Own slots
+  inline via the converting ctor (`_own_record_rvalue_arg` upcast
+  widening); names hoist the `Box<Shape> __tmp_N = std::move(bc);` typed
+  temp (`_covariant_temp_arg`). Dial 2155 -> 2189/3513 (+34: nested-temp /
+  cond-temps / container ptr-local x16 incl. bonuses, adapter/covariant
+  x18 incl. bonuses). Parked with verified blockers: json qualcall
+  trio (needs the recursive-union ELEMENT literal family + the qualcall
+  ArgTemp row; oracle read, memo III analysis stands), datetime
+  strftime/tzenv/timestamp (kwargs-ctor + globals lanes),
+  urllib_parse_quote (tuple-for-head lane), walrus_reassign (Optional/str
+  walrus slices), user_dunders inplace increment (memo B pricing STALE --
+  fragments into record-binop returns + decl slots + aug-assign, not +2).

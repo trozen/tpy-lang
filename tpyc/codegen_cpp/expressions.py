@@ -83,6 +83,11 @@ from .context import any_isinstance_check, INDENT, escape_cpp_string, escape_cpp
 from .functions import literal_mangled_name
 from .int_literals import render_int_literal_value
 from .. import qnames
+from .protocols import (
+    classify_dyn_own_arg,
+    is_async_call_with_protocol_return,
+    resolve_own_source_type,
+)
 
 if TYPE_CHECKING:
     from .context import CodeGenContext
@@ -868,78 +873,27 @@ class ExpressionGenerator:
             return self.ctx.temps.create_typed(adapter_type, arg_expr, brace_init=True)
 
     def _resolve_own_source_type(self, arg: TpyExpr) -> 'OwnType | None':
-        """Return the source ownership type if `arg` is shaped as Own[X] in C++.
-
-        Names/params/fields use declared-type lookup (preserves OwnType).
-        Calls use the resolved function's return type, substituting
-        TypeParamRefs from the call's inferred type args or, for method
-        calls, the receiver's record-level type args.
-        """
-        # Send/Sync markers persist around @dynamic-wrapping Own; they don't
-        # change the C++ shape, so strip before the OwnType dispatch.
-        declared = unwrap_send_sync(self._get_cpp_declared_type(arg))
-        if isinstance(declared, OwnType):
-            return declared
-        fi = getattr(arg, 'resolved_function_info', None)
-        fi_return = unwrap_send_sync(fi.return_type) if (
-            fi is not None and fi.return_type is not None) else None
-        if not isinstance(fi_return, OwnType):
-            return None
-        inner = fi_return.wrapped
-        if not isinstance(inner, TypeParamRef):
-            return fi_return
-        ta = getattr(arg, 'inferred_type_args', None)
-        if ta and fi.type_params:
-            sub = dict(zip(fi.type_params, ta)).get(inner.name)
-            if sub is not None:
-                return OwnType(sub)
-        obj = getattr(arg, 'obj', None)
-        if obj is not None:
-            obj_type = self.ctx.get_expr_type(obj)
-            if isinstance(obj_type, NominalType) and obj_type.type_args:
-                record_info = self.ctx.analyzer.registry.get_record(obj_type.name)
-                if record_info and record_info.type_params:
-                    sub = dict(zip(record_info.type_params, obj_type.type_args)).get(inner.name)
-                    if sub is not None:
-                        return OwnType(sub)
-        return None
+        """Return the source ownership type if `arg` is shaped as Own[X] in
+        C++ -- the shared module-level resolver over this generator's
+        declared-type lookup."""
+        return resolve_own_source_type(
+            arg, self._get_cpp_declared_type(arg), self.ctx.analyzer)
 
     def _is_dyn_own_wrap_needed(self, expr: TpyExpr, target: 'OwnType') -> bool:
         """True iff an `expr` returned into an `Own[abstract @dynamic P]` slot
         needs a `std::make_unique<...>` wrap (concrete or different protocol).
 
-        Forward case (source already shaped as `Own[P]`, same protocol or
-        inheriting peer) returns False so the return statement can emit the
-        bare expression -- C++ implicit-moves named locals/params on by-value
-        return; wrapping with `std::move` would trigger `-Wredundant-move`.
+        The 'forward' verdict (source already shaped as `Own[P]`, same
+        protocol or inheriting peer) returns False so the return statement
+        can emit the bare expression -- C++ implicit-moves named
+        locals/params on by-value return; wrapping with `std::move` would
+        trigger `-Wredundant-move`.
         """
         if not is_dyn_protocol(target.wrapped):
             return False
-        source = self._resolve_own_source_type(expr)
-        if source is not None:
-            inner = unwrap_readonly(source.wrapped)
-            # Concrete coroutine handle: always needs the adapter wrap
-            # (the optional<frame> slot is not a unique_ptr).
-            if isinstance(inner, ConcreteCoroType):
-                return True
-            if not is_protocol_type(inner):
-                return True
-            return not self.protocols.dyn_protocol_forward_ok(inner, target.wrapped)
-        expr_type = self.ctx.get_expr_type(expr)
-        if isinstance(expr_type, OwnType):
-            expr_type = expr_type.wrapped
-        # An async-def call's sema type is the @dynamic Cancellable[T], but
-        # the C++ value is the concrete coro struct -- always needs the
-        # adapter wrap (checked before the bare-P forward heuristic below,
-        # which would mistake it for an already-erased unique_ptr).
-        if self._is_async_call_with_protocol_return(expr, expr_type):
-            return True
-        # `_resolve_own_source_type` misses non-name expressions whose sema
-        # type was stripped to bare `P` (ternary, subscript element). C++
-        # shape is still `unique_ptr<P>`, so forward without wrap.
-        if is_dyn_protocol(expr_type) and self.protocols.dyn_protocol_forward_ok(expr_type, target.wrapped):
-            return False
-        return True
+        return classify_dyn_own_arg(
+            expr, target.wrapped, self._get_cpp_declared_type(expr),
+            self.ctx.analyzer) != 'forward'
 
     def _gen_dynamic_protocol_own_arg(self, arg: TpyExpr, protocol: TpyType) -> str:
         """Wrap an Own[ConcreteT] argument into Own[P] (unique_ptr<P>) where P is @dynamic.
@@ -957,42 +911,34 @@ class ExpressionGenerator:
         because the latter strips OwnType, which would also match
         borrowed P refs (not shaped as unique_ptr<P>).
         """
-        source_own_type = self._resolve_own_source_type(arg)
-        if source_own_type is not None:
-            inner = unwrap_readonly(source_own_type.wrapped)
+        verdict = classify_dyn_own_arg(
+            arg, protocol, self._get_cpp_declared_type(arg),
+            self.ctx.analyzer)
+        if verdict == 'coro_handle':
             # Concrete coroutine handle: the erasure boundary -- move the
             # frame out of its optional slot into the heap adapter (the
             # one allocation, paid exactly here).
-            if isinstance(inner, ConcreteCoroType):
-                base_cpp = self.protocols.get_dynamic_base_name(protocol)
-                arg_expr = self.gen_expr(arg)
-                return (f"::tpy::make_adapter<{base_cpp}>"
-                        f"(std::move(*({arg_expr})))")
-            if is_protocol_type(inner) and self.protocols.dyn_protocol_forward_ok(inner, protocol):
-                return self.gen_call_arg(arg, OwnType(protocol))
+            base_cpp = self.protocols.get_dynamic_base_name(protocol)
+            arg_expr = self.gen_expr(arg)
+            return (f"::tpy::make_adapter<{base_cpp}>"
+                    f"(std::move(*({arg_expr})))")
+        if verdict == 'forward':
+            return self.gen_call_arg(arg, OwnType(protocol))
         arg_type = self.ctx.get_expr_type(arg)
         if isinstance(arg_type, OwnType):
             arg_type = arg_type.wrapped
-        # Async-def call results: sema views them as `Cancellable[T]` (the
-        # registered FunctionInfo return type), but the C++ value is the
-        # concrete `__coro_<funcname>` struct returned by the factory -- not a
-        # sema-visible type. `make_adapter` deduces the concrete impl from the
-        # argument, so the source evaluates `arg_expr` once with no `decltype`.
-        # Must precede the erased-forward branch: Cancellable is @dynamic, so
-        # the protocol-typed-forward check would mistake the concrete rvalue
-        # for an already-erased unique_ptr.
-        if self._is_async_call_with_protocol_return(arg, arg_type):
+        if verdict == 'async_factory':
+            # Async-def call results: sema views them as `Cancellable[T]`,
+            # but the C++ value is the concrete `__coro_<funcname>` struct
+            # returned by the factory. `make_adapter` deduces the concrete
+            # impl from the argument, so the source evaluates `arg_expr`
+            # once with no `decltype`.
             arg_expr = self._maybe_move(arg, self.gen_expr_deref(arg, arg_type))
             base_cpp = self.protocols.get_dynamic_base_name(protocol)
             return f"::tpy::make_adapter<{base_cpp}>({arg_expr})"
-        # Sibling of the forward branch above for non-name expressions whose
-        # sema type was stripped to bare `P` (ternary, subscript). Wrapping
-        # via `Adapter<P, P>` would be ill-formed -- abstract P has no sizeof.
-        if is_dyn_protocol(arg_type) and self.protocols.dyn_protocol_forward_ok(arg_type, protocol):
-            return self.gen_call_arg(arg, OwnType(protocol))
         arg_expr = self.gen_expr_deref(arg, arg_type)
         arg_expr = self._maybe_move(arg, arg_expr)
-        if self.protocols.directly_implements_dynamic(arg_type, protocol):
+        if verdict == 'inherit':
             # Inheritance conformer: U IS-A P, so unique_ptr<U> converts to
             # unique_ptr<P> directly -- no adapter.
             return f"std::make_unique<{self.types.type_to_cpp(arg_type)}>({arg_expr})"
@@ -1007,14 +953,7 @@ class ExpressionGenerator:
         the concrete coro factory struct (`__coro_<funcname>`), so any
         Adapter wrap at the call site must recover the concrete type via
         `decltype` instead of reading the protocol type from sema."""
-        if not isinstance(arg, (TpyCall, TpyMethodCall)):
-            return False
-        fi = arg.resolved_function_info
-        if fi is None or not fi.is_async:
-            return False
-        if not isinstance(arg_type, NominalType):
-            return False
-        return arg_type.qualified_name() in (qnames.CANCELLABLE, qnames.AWAITABLE)
+        return is_async_call_with_protocol_return(arg, arg_type)
 
     def _gen_covariant_arg(self, arg: TpyExpr, ptype: TpyType) -> str | None:
         """If ptype requires covariant conversion, return the wrapped arg. Otherwise None."""

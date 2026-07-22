@@ -178,28 +178,14 @@ class ProtocolChecker:
     def directly_implements_dynamic(self, concrete: TpyType, protocol: NominalType) -> bool:
         """True iff `concrete` C++-inherits the @dynamic protocol base.
 
-        Mirrors codegen's same-named helper. Match is by short name through
-        the implemented_protocols chain; @native records always return False
-        (their C++ struct does NOT inherit the codegen-emitted base, even if
-        the TPy declaration claims to implement the protocol).
-
-        Called from the call-analysis path when deciding whether a structural
-        conformer of a @dynamic bound needs Adapter substitution at codegen
-        (see `TpyCall.representational_subst_params`).
+        Delegates to codegen's `record_inherits_dynamic` (one verdict, no
+        drift). Called from the call-analysis path when deciding whether a
+        structural conformer of a @dynamic bound needs Adapter substitution
+        at codegen (see `TpyCall.representational_subst_params`).
         """
-        if not isinstance(concrete, NominalType) or not concrete.is_user_record:
-            return False
-        record_info = self.ctx.registry.get_record(concrete.name)
-        if record_info is None or record_info.is_native:
-            return False
-        proto_name = protocol.name
-        for p in record_info.implemented_protocols:
-            pi = protocol_info_of(p)
-            if pi is None or not pi.is_dynamic:
-                continue
-            if p.name == proto_name or is_subtype(pi, proto_name):
-                return True
-        return False
+        # local import: avoid a sema->codegen_cpp cycle (cf. calls.py)
+        from ..codegen_cpp.protocols import record_inherits_dynamic
+        return record_inherits_dynamic(concrete, protocol, self.ctx.registry)
 
     def satisfies_bound(self, actual: TpyType, bound: TpyType) -> bool:
         """Does `actual` satisfy a type-parameter `bound`?
