@@ -19,10 +19,7 @@ namespace tpyapp::main {
         (void)std::move(__r0).value();
         __sub_0.reset();
         // def g() -> int:
-        auto g = []() -> ::tpy::BigInt {
-            // return 5
-            return ::tpy::BigInt(5);
-        };
+        // def g: frame member
         // return g()
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = g();
@@ -33,6 +30,10 @@ namespace tpyapp::main {
     __builtin_unreachable();
 }
 
+::tpy::BigInt __coro_outer::g() {
+    // return 5
+    return ::tpy::BigInt(5);
+}
 
 // async def outer() -> int:
 __coro_outer outer() {
@@ -50,10 +51,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # A nested def inside an async def is a plain sync function: its return
-    // # must not lower to the coroutine's Poll-ready shape. (The def and its
-    // # calls sit between suspension points -- using a nested def ACROSS an
-    // # await is a separate unsupported shape, see BUGS.md.)
+    // # A nested def inside an async def is a plain sync function emitted as a
+    // # frame member: its return must not lower to the coroutine's Poll-ready
+    // # shape.
     // import asyncio
     ::tpystd::asyncio::__tpy_init();
     // main()

@@ -4128,6 +4128,11 @@ class ExpressionAnalyzer:
                             expr.function_ref_type_args = type_args
                         expr.is_function_ref = True
                         expr.function_ref_info = matched
+                        if expr.name in self.ctx.func.nested_def_names:
+                            # Frame members have no value form -- reject any
+                            # value use in a resumable body (Callable AND Fn).
+                            self.ctx.reject_resumable_nested_def_escape(
+                                expr.name, expr)
                         # Escape tracking: passing nested def to Callable (type-erased)
                         # marks it as escaping. Fn (template) stays inline -- no escape.
                         if (isinstance(hint, CallableType) and not hint.is_template

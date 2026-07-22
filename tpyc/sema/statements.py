@@ -1270,6 +1270,8 @@ class StatementAnalyzer:
                     self.ctx.mark_loop_var_mutated(stmt.value.name)
                     # Escape tracking: returning a nested def marks it as escaping
                     if stmt.value.name in self.ctx.func.nested_def_names:
+                        self.ctx.reject_resumable_nested_def_escape(
+                            stmt.value.name, stmt)
                         self.ctx.func.nested_def_escapes.add(stmt.value.name)
                 # Returning a borrowing view does not give the caller write
                 # access to the source, so we record borrow provenance but
@@ -3031,6 +3033,13 @@ class StatementAnalyzer:
             raise self.ctx.error(
                 "Nested functions cannot contain further nested functions",
                 stmt)
+
+        # A nested def is emitted as a member function of the resumable
+        # frame; the simple-generator lambda peephole has no equivalent, so
+        # a generator containing one must take the resumable path.
+        outer = self.ctx.func.current_function
+        if isinstance(outer, TpyFunction) and outer.is_generator:
+            outer.requires_resumable_frame = True
 
         # Collect outer locals available for capture
         outer_locals = self.ctx.func.definitely_assigned.copy()

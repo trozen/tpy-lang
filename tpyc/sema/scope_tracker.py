@@ -79,9 +79,19 @@ class ScopeTracker:
         Saves and restores all per-function state so the nested def analysis
         doesn't interfere with the enclosing function.
         """
+        # save_function_state deep-copies the whole tracking state, so the
+        # restore below would install CLONES of the namespace/scope -- and
+        # every binding made after the nested def would land in the clone
+        # while consumers holding the original object (e.g.
+        # _collect_generator_locals' local_ns) never see it. The nested
+        # analysis only ever binds into the child scope/ns created here, so
+        # re-attaching the ORIGINAL objects after the restore is safe and
+        # keeps their identity stable across the def statement.
+        outer_scope = self.ctx.func.current_scope
+        outer_ns = self.ctx.func.current_ns
         saved = self.ctx.save_function_state()
-        inner_scope = Scope(self.ctx.func.current_scope)
-        inner_ns = Namespace(parent=self.ctx.func.current_ns) if self.ctx.func.current_ns else None
+        inner_scope = Scope(outer_scope)
+        inner_ns = Namespace(parent=outer_ns) if outer_ns else None
 
         self.ctx.reset_function_tracking()
         self.ctx.func.current_scope = inner_scope
@@ -93,6 +103,8 @@ class ScopeTracker:
             yield inner_scope
         finally:
             self.ctx.restore_function_state(saved)
+            self.ctx.func.current_scope = outer_scope
+            self.ctx.func.current_ns = outer_ns
 
     @contextmanager
     def loop_var(self, scope: Scope, name: str, var_type: TpyType,

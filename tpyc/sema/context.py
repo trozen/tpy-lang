@@ -1117,6 +1117,24 @@ class SemanticContext:
         """Create a SemanticError with location from a node."""
         return SemanticError(message, self._resolve_loc(node))
 
+    def reject_resumable_nested_def_escape(
+            self, name: str, node: 'TpyExpr | TpyStmt | None') -> None:
+        """A nested def in an async def / generator is a member function of
+        the resumable frame -- it cannot be returned or handed off as a
+        value (the callable would dangle once the frame is gone, and a
+        member function has no standalone C++ value form). Call it
+        directly. No-op in plain sync functions (lambda form escapes fine).
+        """
+        func = self.func.current_function
+        if not isinstance(func, TpyFunction) or not (func.is_async
+                                                     or func.is_generator):
+            return
+        kind = "an async function" if func.is_async else "a generator"
+        raise self.error(
+            f"nested function '{name}' defined in {kind} cannot escape or "
+            f"be passed as a value (it lives on the coroutine frame); call "
+            f"it directly", node)
+
     def emit_error(self, message: str, node: TpyExpr | TpyStmt | None = None) -> None:
         """Record an error diagnostic without raising (allows continued analysis)."""
         self.diagnostics.append(Diagnostic(DiagnosticLevel.ERROR, message, self._resolve_loc(node)))

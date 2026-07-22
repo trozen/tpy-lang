@@ -3571,11 +3571,69 @@ class StatementGenerator:
 
         emit_body(out, indent)
 
-    def _gen_nested_def(self, out: TextIO, stmt: TpyNestedDef, indent: str) -> None:
-        """Generate a C++ lambda for a nested function definition."""
+    def nested_def_signature(self, func: TpyFunction) -> 'tuple[str, str | None]':
+        """(params_str, ret_cpp-or-None-for-void) for a nested def -- shared
+        by the lambda emission and the resumable-frame member emission."""
+        params = []
+        for pname, ptype in func.params:
+            resolved = self.types.resolve_type(ptype)
+            cpp_name = escape_cpp_name(pname)
+            params.append(resolved.to_cpp_param(cpp_name))
+        return_type = self.types.resolve_type(func.return_type)
+        ret_cpp = (None if isinstance(return_type, VoidType)
+                   else self.types.type_to_cpp(return_type))
+        return ", ".join(params), ret_cpp
 
+    def gen_nested_def_body(self, out: TextIO, func: TpyFunction,
+                            ret_cpp: 'str | None') -> None:
+        """Emit a nested def's body statements at the current indent level.
+
+        The emission scope isolates per-function context (finally_stack,
+        try/except labels, async/generator modes, return facts) -- the
+        nested def is its own function, not a block of the enclosing one.
+        Local-render state (pointer/frame-slot classifications) is
+        deliberately NOT reset: captured outer locals must keep their
+        enclosing-scope rendering.
+        """
+        scope_snap = self.ctx.snapshot_local_scope()
+        for pname, _ in func.params:
+            self.ctx.local_scope_names.add(pname)
+        self.ctx.local_scope_names.add(func.name)
+        self.ctx.nested_def_locals.add(func.name)
+        try:
+            with self.ctx.nested_def_emission_scope(
+                    func.return_type, ret_cpp, None):
+                for s in func.body:
+                    self.gen_stmt(out, s)
+        finally:
+            self.ctx.restore_local_scope(scope_snap)
+            # Re-add nested def name (must survive into outer scope)
+            self.ctx.nested_def_locals.add(func.name)
+            self.ctx.local_scope_names.add(func.name)
+
+    def _gen_nested_def(self, out: TextIO, stmt: TpyNestedDef, indent: str) -> None:
+        """Generate a C++ lambda for a nested function definition.
+
+        In a resumable body (async def / resumable generator) the def is
+        emitted as a MEMBER FUNCTION of the frame struct instead (see
+        gen_async's frame emission): locals are frame fields a lambda
+        cannot capture, and the member is callable from every resume case.
+        The statement position then emits nothing -- calls resolve to the
+        member unqualified.
+        """
         func = stmt.func
         name = escape_cpp_name(func.name)
+
+        # in_generator_body is set exclusively by _resumable_frame_ctx and
+        # spans EVERY frame emission context -- the state-machine body AND
+        # the __finally_<n> helper bodies (whose emission scope does not
+        # carry the per-shape in_async_coro_body/in_generator_resumable_body
+        # flags, so routing on those would miss a def inside a finally).
+        if self.ctx.in_generator_body:
+            self.ctx.nested_def_locals.add(func.name)
+            self.ctx.local_scope_names.add(func.name)
+            out.write(f"{indent}// def {func.name}: frame member\n")
+            return
 
         # Build capture list
         if stmt.captured_names:
@@ -3598,51 +3656,16 @@ class StatementGenerator:
         else:
             capture = "[]"
 
-        # Build parameter list
-        params = []
-        for pname, ptype in func.params:
-            resolved = self.types.resolve_type(ptype)
-            cpp_name = escape_cpp_name(pname)
-            cpp_type = resolved.to_cpp_param(cpp_name)
-            params.append(cpp_type)
-        params_str = ", ".join(params)
-
-        # Return type
-        return_type = self.types.resolve_type(func.return_type)
-        if isinstance(return_type, VoidType):
-            ret_annotation = ""
-            ret_cpp = None
-        else:
-            ret_cpp = self.types.type_to_cpp(return_type)
-            ret_annotation = f" -> {ret_cpp}"
-
-        # Save outer codegen scope so lambda body declarations don't leak
-        scope_snap = self.ctx.snapshot_local_scope()
-        for pname, _ in func.params:
-            self.ctx.local_scope_names.add(pname)
-        self.ctx.local_scope_names.add(func.name)
-        self.ctx.nested_def_locals.add(func.name)
+        params_str, ret_cpp = self.nested_def_signature(func)
+        ret_annotation = f" -> {ret_cpp}" if ret_cpp is not None else ""
 
         # Emit lambda header
         out.write(f"{indent}auto {name} = {capture}({params_str}){ret_annotation} {{\n")
-
-        # Increase indent and generate body. The emission scope isolates
-        # per-function context (finally_stack, try/except labels, async/
-        # generator modes, return facts) -- the lambda is its own function,
-        # not a block of the enclosing one.
         self.ctx.indent_level += 1
         try:
-            with self.ctx.nested_def_emission_scope(
-                    func.return_type, ret_cpp, None):
-                for s in func.body:
-                    self.gen_stmt(out, s)
+            self.gen_nested_def_body(out, func, ret_cpp)
         finally:
             self.ctx.indent_level -= 1
-            self.ctx.restore_local_scope(scope_snap)
-            # Re-add nested def name (must survive into outer scope)
-            self.ctx.nested_def_locals.add(func.name)
-            self.ctx.local_scope_names.add(func.name)
-
         out.write(f"{indent}}};\n")
 
     def _gen_raise(self, stmt: TpyRaise, indent: str) -> str:

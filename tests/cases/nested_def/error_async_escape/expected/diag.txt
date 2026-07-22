@@ -1,0 +1,1 @@
+main.py:14: error: nested function 'add' defined in an async function cannot escape or be passed as a value (it lives on the coroutine frame); call it directly

@@ -34,6 +34,7 @@ struct __coro_outer {
 
     ::tpystd::tpy::Poll<::tpy::BigInt> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
+    ::tpy::BigInt g();
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_outer&) {
         return os << "<coroutine outer>";

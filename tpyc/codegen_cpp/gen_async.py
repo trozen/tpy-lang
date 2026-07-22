@@ -29,13 +29,28 @@ from ..parse.nodes import (
     TpyFunction, TpyAwait, TpyStmt, TpyAssign, TpyVarDecl, TpyReturn,
     TpyExprStmt, TpyName, TpyExpr, TpyTry, TpyExceptHandler, TpyCall,
     TpyMethodCall, TpyFieldAccess, TpyForEach, TpyWith, TpyWithItem,
-    TpyTupleUnpack,
+    TpyTupleUnpack, TpyNestedDef,
     TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBoolLiteral,
     TpyNoneLiteral, TpyCoerce,
     TpyArrayLiteral, TpyDictLiteral, TpySetLiteral, TpyListRepeat,
     TpyListComprehension, TpyDictComprehension, TpySetComprehension,
     is_stable_address_lvalue,
 )
+
+
+def collect_frame_nested_defs(stmts: 'list[TpyStmt]') -> 'list[TpyNestedDef]':
+    """Nested defs anywhere in a resumable body, in source order. Each is
+    emitted as a member function of the frame struct (locals are frame
+    fields a lambda cannot capture, and a member is callable from every
+    resume case). Nested-in-nested defs are rejected by sema."""
+    out: 'list[TpyNestedDef]' = []
+    for s in stmts:
+        if isinstance(s, TpyNestedDef):
+            out.append(s)
+        else:
+            for body in s.sub_bodies():
+                out.extend(collect_frame_nested_defs(body))
+    return out
 
 # Collection literals / comprehensions have no concrete C++ type at a
 # protocol-typed call site (the param is a concept) and no frame storage to
@@ -1340,6 +1355,14 @@ class AsyncCoroCodegen:
         for helper_name, _body in cfg.finally_helpers:
             out.write(f"{INDENT}void {helper_name}();\n")
 
+        # Nested defs become frame member functions (callable from every
+        # resume case; frame-field access via implicit this).
+        for nd in collect_frame_nested_defs(func.body):
+            params_str, nd_ret = self.statements.nested_def_signature(nd.func)
+            ret_str = nd_ret if nd_ret is not None else "void"
+            out.write(f"{INDENT}{ret_str} "
+                      f"{escape_cpp_name(nd.func.name)}({params_str});\n")
+
         repr_label = (f"{record_name}.{func.name}" if record_name
                       else func.name)
         repr_kind = "generator" if self._is_generator_shape() else "coroutine"
@@ -1481,6 +1504,12 @@ class AsyncCoroCodegen:
         )
 
         self.ctx.in_generator_body = True
+        # Nested defs are frame members: register their names up front so
+        # call sites in any resume case (and finally-helper bodies) render
+        # the unqualified member call.
+        for nd in collect_frame_nested_defs(func.body):
+            self.ctx.nested_def_locals.add(nd.func.name)
+            self.ctx.local_scope_names.add(nd.func.name)
         # Belt-and-suspenders: `setup_body_scope` registers Own[T] params
         # as movable when `T.is_value_type()` is False, which already
         # covers most static-protocol shapes. Static-protocol frame
@@ -1535,12 +1564,15 @@ class AsyncCoroCodegen:
 
     def gen_coro_finally_top_def(self, out: "TextIO", func: TpyFunction,
                                    record_name: str | None = None) -> None:
-        """Emit member-function bodies for every `__finally_<n>()` helper
-        the CFG produced (one per TryRegion with a finally body). No-op
-        if the function has no finally bodies.
+        """Emit member-function bodies the frame declares beyond its body
+        method: every `__finally_<n>()` helper the CFG produced (one per
+        TryRegion with a finally body), and every nested def (emitted as a
+        frame member so it is callable from any resume case and reaches
+        frame-field locals via implicit this). No-op when neither exists.
         """
         cfg = self._build_resumable_cfg(func, record_name)
-        if not cfg.finally_helpers:
+        nested_defs = collect_frame_nested_defs(func.body)
+        if not cfg.finally_helpers and not nested_defs:
             return
         struct_name = self._struct_name_templated(func, record_name)
         # A routed body lowers its helper-finally statements into the same
@@ -1565,6 +1597,17 @@ class AsyncCoroCodegen:
                                 self.statements.gen_stmt(out, stmt)
                     self.ctx.indent_level = 0
                     out.write(f"}}\n")
+            for nd in nested_defs:
+                params_str, nd_ret = self.statements.nested_def_signature(
+                    nd.func)
+                ret_str = nd_ret if nd_ret is not None else "void"
+                self._emit_template_header(out, func, record_name=record_name)
+                out.write(f"{ret_str} {struct_name}::"
+                          f"{escape_cpp_name(nd.func.name)}({params_str}) {{\n")
+                self.ctx.indent_level = 1
+                self.statements.gen_nested_def_body(out, nd.func, nd_ret)
+                self.ctx.indent_level = 0
+                out.write(f"}}\n")
 
     # =====================================================================
     # Resumable-shape policy seam. These methods isolate the decisions
