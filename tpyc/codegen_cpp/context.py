@@ -714,9 +714,13 @@ class TempState:
         """Register a named pre-declaration (for walrus operator variables)."""
         self._pending_named.append((name, cpp_type, init, brace_init))
 
-    def has_pending_since(self, checkpoint: tuple[int, int]) -> bool:
+    def has_pending_since(self, checkpoint: tuple[int, ...]) -> bool:
         """True if anonymous temps were registered after `checkpoint`."""
         return len(self._pending) > checkpoint[0]
+
+    def has_named_since(self, checkpoint: tuple[int, ...]) -> bool:
+        """True if named pre-declarations were registered after `checkpoint`."""
+        return len(self._pending_named) > checkpoint[1]
 
     def checkpoint(self) -> tuple[int, int]:
         """Snapshot the current pending-temp queue lengths.
@@ -741,6 +745,27 @@ class TempState:
         del self._pending[pending:]
         del self._pending_named[pending_named:]
         return True
+
+    def probe_checkpoint(self) -> tuple[int, int, int]:
+        """`checkpoint()` plus the name counter, for `rollback_discarded`.
+
+        Compatible with `has_pending_since` / `has_named_since` (same first
+        two elements)."""
+        return (len(self._pending), len(self._pending_named), self._counter)
+
+    def rollback_discarded(self, checkpoint: tuple[int, int, int]) -> None:
+        """Discard temps registered after `checkpoint` AND restore the counter.
+
+        Unlike `rollback_to`, only valid when the render since the checkpoint
+        is discarded wholesale and regenerated verbatim in a flushable
+        position (the elif-with-temps fallback): the regeneration then
+        reissues the same `__tmp_N` names instead of burning counter slots.
+        Requires no named entries since the checkpoint: named pre-decls carry
+        registry side effects that cannot be rolled back, and a kept
+        named-auto slot would collide with its reissued number."""
+        assert len(self._pending_named) == checkpoint[1]
+        del self._pending[checkpoint[0]:]
+        self._counter = checkpoint[2]
 
     def flush(self, out: TextIO, indent: str) -> None:
         """Emit any pending temp variable declarations."""

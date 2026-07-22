@@ -4,10 +4,12 @@
 namespace tpyapp::main {
 
 
-// def has_items(items: list[Int32]) -> bool:
-bool has_items(const std::vector<int32_t>& items) {
-    // return len(items) > 0
-    return (::tpy::__len__(items) > 0);
+// def take(items: list[Int32]) -> Int32:
+int32_t take(std::vector<int32_t>& items) {
+    // items.append(1)
+    items.push_back(1);
+    // return len(items)
+    return ::tpy::__len__(items);
 }
 
 // def test(x: Int32) -> Int32:
@@ -16,16 +18,17 @@ int32_t test(int32_t x) {
     if ((x < 0)) {
         // return -1
         return -1;
-    // elif has_items([10, 20]):
+    // elif (v := take([10, 20])) == x:
     } else {
-        std::vector<int32_t> __tmp_1 = {10, 20};
-        if (has_items(__tmp_1)) {
-            // return 0
-            return 0;
+        int32_t v;
+        std::vector<int32_t> __tmp_2 = {10, 20};
+        if (((v = take(__tmp_2)) == x)) {
+            // return v
+            return v;
         // else:
         } else {
-            // return 1
-            return 1;
+            // return -v
+            return ::tpy::neg_check<int32_t>(v);
         }
     }
 }
@@ -34,10 +37,10 @@ int32_t test(int32_t x) {
 void main() {
     // print(test(-5))
     std::cout << test(-5) << "\n";
-    // print(test(0))
-    std::cout << test(0) << "\n";
-    // print(test(5))
-    std::cout << test(5) << "\n";
+    // print(test(3))
+    std::cout << test(3) << "\n";
+    // print(test(7))
+    std::cout << test(7) << "\n";
 }
 
 void __tpy_init() {

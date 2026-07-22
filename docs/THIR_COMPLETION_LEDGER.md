@@ -382,7 +382,11 @@ deferred (self-contained) / blocked-on-`<rung>`.
   `::tpy::own_iter(std::move(x))` rewrite lives in `gen_call_arg` itself
   rather than in a protocol pre-arm.
   **Still deferred**: the elif-chain-abandon + statement-expr temp
-  relocation (ARCHITECTURAL -- design first), method POINTER-variant union slots
+  relocation (design resolved 2026-07-22: the AST emit no longer burns a
+  temp number for temp-only elif conditions -- `TempState.probe_checkpoint`
+  / `rollback_discarded` in `codegen_cpp/context.py` is the seam the THIR
+  mirror consumes; walrus-mixed conditions keep the legacy burn and stay
+  rejected), method POINTER-variant union slots
   (the deep-const threading differs between the AST's own-record and
   inherited first-pass arg loops), coerce-wrapped lvalues into Own slots
   (the AST's rendered-identity `needs_copy` split), record field reads
