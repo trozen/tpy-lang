@@ -13,6 +13,7 @@ from ..typesys import (
     PendingListType, PendingDictType, make_list, PendingSetType, PendingStrType, PendingBytesType, PendingViewType, NominalType, TypeParamRef,
     ListLiteralInfo, DictLiteralInfo, SetLiteralInfo, ViewVarInfo, PtrType, is_readonly_ptr, NoneType, OptionalType, AnyType, UnionType, UnknownElementType, VoidType,
     unwrap_readonly, unwrap_own, unwrap_qualifiers, is_any_str_type, is_any_bytes_type, TupleType, own_tuple_target,
+    RecursiveAliasInstanceType,
     collapse_tuple_own_elements, type_contains_own,
     LiteralType,
     ViewTypeFamily, view_family_for_type, VIEW_TYPE_FAMILIES,
@@ -50,7 +51,8 @@ from ..prescan import (
     ScanResult, scan_reassigned_vars, parse_deref_view_key,
     FactKills, collect_fact_kills, liveness_alias_sources,
 )
-from ..liveness import analyze_last_uses, stmts_terminate
+from ..liveness import (analyze_last_uses, collect_finally_return_reads,
+                        stmts_terminate)
 from ..parse.nodes import VarLinkage
 from .context import addr_taken_roots, expr_yields_non_null_ptr, record_stmt_borrow_binding
 from ..diagnostics import SemanticError, NOCOPY_REMEDIATION_HINT
@@ -637,6 +639,70 @@ class StatementAnalyzer:
         """Check that an lvalue returned as Own[T] has explicit copy() or is auto-moved."""
         self.compat.check_own_lvalue_into_own(own_type, expr, context, action="return")
 
+    def _mark_finally_deferred_return(self, stmt: TpyReturn, ret_type: TpyType,
+                                      expected: TpyType) -> None:
+        """`return <name>` whose name an enclosing finally still reads: for
+        eligible reference-type shapes, keep the auto-move mark (the
+        exception-path discard dropped it) and stamp the node so codegen
+        materializes the return value AFTER the inline finally chain. This is
+        what makes finally mutations of the returned local visible in the
+        returned object (CPython aliasing) -- an eager capture would copy or
+        move before the finally runs.
+
+        Sound regardless of other exception-path readers: on the return path
+        the finally chain runs before the deferred move, and on any path
+        where handlers read the name this return never executed.
+
+        Only stamp shapes codegen's deferred-capture recipes cover -- a stamp
+        without a recipe falls back to the eager copy, whose pre-mutation
+        value silently diverges from CPython's aliasing pending return, so
+        the gate errs narrow: plain non-value scalars returned as Own[T], and
+        pointer-repr Optional locals returned as a storage Optional. Narrowed
+        Optional sources and tuple/union-typed values keep the eager capture
+        (tracked in BUGS.md).
+        """
+        if not (isinstance(stmt.value, TpyName)
+                and id(stmt.value) in self.ctx.finally_return_reads
+                and self.compat._is_owned_var(stmt.value.name)):
+            return
+        exp = unwrap_ref_type(expected)
+        val = unwrap_readonly(unwrap_own(unwrap_ref_type(ret_type)))
+        declared = (self.ctx.func.current_scope.lookup(stmt.value.name)
+                    if self.ctx.func.current_scope is not None else None)
+        if declared is not None:
+            declared = unwrap_readonly(unwrap_own(unwrap_ref_type(declared)))
+        eligible = False
+        if isinstance(exp, OwnType) and not exp.wrapped.is_value_type():
+            # Shape A: Own[T] return of a plain reference-type local
+            # (including a declared-Optional local narrowed to T -- its T*
+            # slot is what the recipe dereferences). A declared UNION local
+            # stores a variant even when narrowed, and the recipe's
+            # &(name)/std::move(*p) would move the wrong C++ type -- key the
+            # storage-shape questions on the DECLARED binding, not the
+            # (possibly narrowed) analyzed type.
+            declared_ok = (
+                declared is not None
+                and not isinstance(declared, (UnionType, TupleType))
+                and not isinstance(declared, RecursiveAliasInstanceType)
+                and (not isinstance(declared, OptionalType)
+                     or declared.uses_pointer_repr())
+                and not is_protocol_type(declared))
+            eligible = (declared_ok
+                        and not val.is_value_type()
+                        and not isinstance(val, (OptionalType, UnionType,
+                                                 TupleType))
+                        and not is_protocol_type(val))
+        elif isinstance(exp, OptionalType) and not exp.uses_pointer_repr():
+            # Shape B: pointer-repr Optional local returned as the storage
+            # Optional (Own[T] | None) -- the ptr_to_optional_move arm. The
+            # analyzed type may be narrowed to T, so key on the declared
+            # binding.
+            eligible = (isinstance(declared, OptionalType)
+                        and declared.uses_pointer_repr())
+        if eligible:
+            self.ctx.all_last_uses.add(id(stmt.value))
+            stmt.finally_deferred_capture = True
+
     def _is_in_constructor(self) -> bool:
         """Check if currently analyzing an __init__ method body."""
         func = self.ctx.func.current_function
@@ -1112,6 +1178,7 @@ class StatementAnalyzer:
                 expected = unwrap_ref_type(self.ctx.func.current_function.return_type) if self.ctx.func.current_function else VOID
                 ret_type = self.expr.analyze_expr_with_hint(stmt.value, expected)
                 stmt.value_type = ret_type
+                self._mark_finally_deferred_return(stmt, ret_type, expected)
                 stmt.value = self.compat.coerce_expr(stmt.value, ret_type, expected, "return value",
                                                       coercion_ctx=CoercionContext.RETURN, is_return=True)
                 # Track return-type context for pending list/dict/set deduction
@@ -2074,6 +2141,32 @@ class StatementAnalyzer:
         else:
             self._analyze_try_throw(stmt)
 
+    def _collect_deferred_return_names(self, stmt: TpyTry) -> frozenset[str]:
+        """Names borrowed by finally-deferred returns anywhere in the try's
+        try/else/handler bodies (deep; nested defs excluded -- their returns
+        exit the inner function and never hold a borrow across this finally).
+        """
+        names: set[str] = set()
+
+        def walk(stmts: list[TpyStmt]) -> None:
+            for s in stmts:
+                if isinstance(s, TpyReturn):
+                    if s.finally_deferred_capture:
+                        inner = s.value
+                        while isinstance(inner, TpyCoerce):
+                            inner = inner.expr
+                        if isinstance(inner, TpyName):
+                            names.add(inner.name)
+                elif not isinstance(s, TpyNestedDef):
+                    for body in s.sub_bodies():
+                        walk(body)
+
+        walk(stmt.try_body)
+        walk(stmt.else_body)
+        for h in stmt.handlers:
+            walk(h.body)
+        return frozenset(names)
+
     def _analyze_finally_body(self, stmt: TpyTry,
                               try_kills: FactKills | None = None) -> None:
         """Analyze a finally body under all-paths entry facts.
@@ -2103,8 +2196,11 @@ class StatementAnalyzer:
         self.init.apply_fact_kills(entry_kills)
         prev_in_finally = self.ctx.func.in_finally
         self.ctx.func.in_finally = True
+        self.ctx.func.pending_return_borrows.append(
+            self._collect_deferred_return_names(stmt))
         for s in stmt.finally_body:
             self.analyze_stmt(s)
+        self.ctx.func.pending_return_borrows.pop()
         self.ctx.func.in_finally = prev_in_finally
         # Re-union the normal path: replay the finally body's own kills on
         # the normal-path snapshot, then let facts the finally established
@@ -2791,6 +2887,7 @@ class StatementAnalyzer:
         scan = scan_reassigned_vars(func.body, pre_declared=param_names)
         self.ctx.all_last_uses |= analyze_last_uses(
             func.body, liveness_alias_sources(scan))
+        self.ctx.finally_return_reads |= collect_finally_return_reads(func.body)
         self.ctx.func.current_reassigned_vars = scan.reassigned.copy()
         self.ctx.func.current_fresh_ctor_locals = set()
         self.ctx.func.tuple_unpack_view_targets = set()
@@ -5317,6 +5414,17 @@ class StatementAnalyzer:
     def _analyze_del_var(self, stmt: TpyDelVar) -> None:
         """Analyze a variable deletion statement (del x)."""
         for name in stmt.names:
+            # A finally-deferred return holds a borrow of the local across
+            # this finally body; del would free the storage it materializes
+            # from. (CPython's pending return keeps the object alive -- the
+            # restructure is to drop other cleanup targets, not the returned
+            # local.)
+            if any(name in pending
+                   for pending in self.ctx.func.pending_return_borrows):
+                raise self.ctx.error(
+                    f"cannot delete '{name}' in this finally block: an "
+                    f"enclosed 'return {name}' still borrows it (the value "
+                    f"is materialized after the finally runs)", stmt)
             # Global-declared and nonlocal vars are always reachable;
             # locals/params must be definitely assigned.
             is_external = (name in self.ctx.func.global_declarations

@@ -709,6 +709,17 @@ class StatementGenerator:
                 if (isinstance(ret_type, ReadonlyType)
                         and isinstance(ret_type.wrapped, OptionalType)):
                     ret_type = ret_type.wrapped
+                if stmt.finally_deferred_capture:
+                    if self.ctx.finally_stack:
+                        deferred = self._gen_finally_deferred_return(
+                            stmt, ret_type, indent)
+                        if deferred is not None:
+                            return deferred
+                    else:
+                        # Stamped but no active finally frame here: keep the
+                        # retract invariant (stamped-and-not-deferred never
+                        # leaves the restored move mark live on eager arms).
+                        self._retract_deferred_return_mark(stmt)
                 ret_value = stmt.value
                 # In @overload specialization: validate return type and strip
                 # wrong-target coercions. Sema coerced against the impl's union
@@ -3873,6 +3884,70 @@ class StatementGenerator:
             out.write(f"{indent}return {expr};\n")
         return out.getvalue()
 
+    def _deferred_return_recipe(
+            self, stmt: TpyReturn,
+            ret_type) -> 'tuple[str, str, str] | None':
+        """(ptr_name, capture_rhs, materialize_expr) for a sema-stamped
+        finally-deferred return, or None when no recipe covers the shape.
+
+        The capture binds only a pointer to the local's storage BEFORE the
+        inline finally chain; the materialize expression moves the value out
+        AFTER it, so finally mutations of the local are visible in the
+        returned object (CPython's pending-return is an alias). The recipe
+        allocates ptr_name itself (bumping iter_counter) so the name embedded
+        in materialize_expr can never desync from the one the caller
+        declares. On a None result the caller must retract the auto-move
+        mark sema restored -- falling through to the eager arms with the
+        mark present would move the value before the finally reads it.
+        """
+        name_expr = self.ctx.unwrap_copy(stmt.value)
+        if not isinstance(name_expr, TpyName):
+            return None
+        base = self.expressions.gen_expr(name_expr)
+        ret_u = unwrap_ref_type(ret_type)
+        if isinstance(ret_u, OptionalType) and not ret_u.uses_pointer_repr():
+            # Shape B: pointer-repr Optional local into the storage-Optional
+            # return slot (the ptr_to_optional_move arm, deferred).
+            if not self.ctx.is_indirect_name(name_expr):
+                return None
+            ptr = f"__tpy_retp_{self.ctx.iter_counter}"
+            self.ctx.iter_counter += 1
+            return ptr, base, f"::tpy::ptr_to_optional_move({ptr})"
+        if isinstance(ret_u, (OptionalType, TupleType, UnionType)):
+            return None
+        # Shape A: plain reference-type local into an Own[T]-style by-value
+        # return slot.
+        lvalue = f"(*{base})" if self.ctx.is_indirect_name(name_expr) else base
+        ptr = f"__tpy_retp_{self.ctx.iter_counter}"
+        self.ctx.iter_counter += 1
+        return ptr, f"&({lvalue})", f"std::move(*{ptr})"
+
+    def _retract_deferred_return_mark(self, stmt: TpyReturn) -> None:
+        """No recipe for a stamped shape: drop the restored auto-move mark so
+        the eager arms capture a copy -- pre-mutation value, but never a
+        moved-from read -- instead of moving storage the finally chain still
+        reads."""
+        name_expr = self.ctx.unwrap_copy(stmt.value)
+        if isinstance(name_expr, TpyName):
+            self.ctx.analyzer.ctx.all_last_uses.discard(id(name_expr))
+
+    def _gen_finally_deferred_return(self, stmt: TpyReturn, ret_type,
+                                     indent: str) -> 'str | None':
+        recipe = self._deferred_return_recipe(stmt, ret_type)
+        if recipe is None:
+            self._retract_deferred_return_mark(stmt)
+            return None
+        ptr, capture_rhs, materialize = recipe
+        out = io.StringIO()
+        chain = io.StringIO()
+        terminated = self._emit_finally_chain(chain, indent)
+        maybe_unused = "[[maybe_unused]] " if terminated else ""
+        out.write(f"{indent}{maybe_unused}auto* {ptr} = {capture_rhs};\n")
+        out.write(chain.getvalue())
+        if not terminated:
+            out.write(f"{indent}return {materialize};\n")
+        return out.getvalue()
+
     def _async_ret_to_borrow(self, value: TpyExpr, ret_type: TpyType,
                              expr_cpp: str) -> str:
         """When the coro return slot is borrow form (pointer-repr Optional --
@@ -3950,6 +4025,13 @@ class StatementGenerator:
         out = io.StringIO()
         pending_flag = self.ctx.async_pending_return_flag
         if pending_flag is not None:
+            if stmt.finally_deferred_capture:
+                # The CFG pending-slot store has no deferred-capture recipe;
+                # keep the retract invariant so the restored move mark can
+                # never turn the eager slot store into a moved-from read.
+                # (Liveness suppresses stamps under a suspending finally, so
+                # this is a defensive backstop.)
+                self._retract_deferred_return_mark(stmt)
             pending_slot = self.ctx.async_pending_return_slot
             target_state = self.ctx.async_pending_return_target_state
             boundary = self.ctx.async_pending_return_boundary
@@ -3973,18 +4055,32 @@ class StatementGenerator:
         # the return value must be captured BEFORE the chain runs (Python
         # evaluates the return expression first, then finally bodies).
         ret_tmp: str | None = None
+        deferred_materialize: str | None = None
         ret_cpp = self.ctx.async_coro_return_cpp or "void"
         if (not isinstance(ret_type, VoidType) and stmt.value is not None
                 and self.ctx.finally_stack):
-            expr_cpp = self._async_return_value_cpp(stmt, ret_type,
-                                                    to_borrow=True)
-            ret_tmp = f"__tpy_async_ret_{self.ctx.iter_counter}"
-            self.ctx.iter_counter += 1
-            chain = io.StringIO()
-            terminated = self._emit_finally_chain(chain, indent)
-            maybe_unused = "[[maybe_unused]] " if terminated else ""
-            out.write(f"{indent}{maybe_unused}{ret_cpp} {ret_tmp} = {expr_cpp};\n")
-            out.write(chain.getvalue())
+            recipe = None
+            if stmt.finally_deferred_capture:
+                recipe = self._deferred_return_recipe(stmt, ret_type)
+                if recipe is None:
+                    self._retract_deferred_return_mark(stmt)
+            if recipe is not None:
+                ptr, capture_rhs, deferred_materialize = recipe
+                chain = io.StringIO()
+                terminated = self._emit_finally_chain(chain, indent)
+                maybe_unused = "[[maybe_unused]] " if terminated else ""
+                out.write(f"{indent}{maybe_unused}auto* {ptr} = {capture_rhs};\n")
+                out.write(chain.getvalue())
+            else:
+                expr_cpp = self._async_return_value_cpp(stmt, ret_type,
+                                                        to_borrow=True)
+                ret_tmp = f"__tpy_async_ret_{self.ctx.iter_counter}"
+                self.ctx.iter_counter += 1
+                chain = io.StringIO()
+                terminated = self._emit_finally_chain(chain, indent)
+                maybe_unused = "[[maybe_unused]] " if terminated else ""
+                out.write(f"{indent}{maybe_unused}{ret_cpp} {ret_tmp} = {expr_cpp};\n")
+                out.write(chain.getvalue())
         else:
             terminated = self._emit_finally_chain(out, indent)
         if terminated:
@@ -3999,6 +4095,11 @@ class StatementGenerator:
                 out.write(
                     f"{indent}::tpy::tpy_panic(\"non-void async def used bare return\");\n")
             else:
+                if deferred_materialize is not None:
+                    out.write(
+                        f"{indent}return ::tpystd::tpy::Poll<{ret_cpp}>::ready("
+                        f"{deferred_materialize});\n")
+                    return out.getvalue()
                 if ret_tmp is None:
                     expr_cpp = self._async_return_value_cpp(stmt, ret_type,
                                                             to_borrow=True)

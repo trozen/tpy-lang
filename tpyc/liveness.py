@@ -22,6 +22,7 @@ from .parse import (
     TpyName, TpyFieldAccess, TpySubscript, TpyNamedExpr, TpyFunction,
     TpyBoolLiteral, TpyAssert,
 )
+from .parse.nodes import stmts_have_any_suspension
 
 # source_name -> set[alias_name] reverse map
 _Aliases = dict[str, set[str]]
@@ -590,6 +591,68 @@ def _all_read_names(stmts: list[TpyStmt]) -> list[TpyName]:
         for body in stmt.sub_bodies():
             result.extend(_all_read_names(body))
     return result
+
+
+def collect_finally_return_reads(stmts: list[TpyStmt]) -> set[int]:
+    """ids of TpyName nodes that are the direct `return <name>` value inside a
+    try whose finally body reads that name.
+
+    Such a read is consumable at the return site despite the finally's later
+    read: on the return path codegen defers the materialization until after
+    the inline finally chain, and on the exception path the return never
+    executed. Sema consults this set to keep the auto-move mark (which the
+    exception-path discard in _analyze_try would otherwise drop) and to stamp
+    TpyReturn.finally_deferred_capture for eligible reference-type shapes.
+    """
+    out: set[int] = set()
+    _walk_finally_returns(stmts, [], out, suppressed=False)
+    return out
+
+
+def _walk_finally_returns(stmts: list[TpyStmt],
+                          finally_reads: list[set[str]],
+                          out: set[int], *, suppressed: bool) -> None:
+    for stmt in stmts:
+        if isinstance(stmt, TpyReturn):
+            if (not suppressed
+                    and isinstance(stmt.value, TpyName)
+                    and any(stmt.value.name in reads
+                            for reads in finally_reads)):
+                out.add(id(stmt.value))
+        elif isinstance(stmt, TpyNestedDef):
+            # A nested def's returns exit the inner function; the enclosing
+            # finallies never run for them. Its own analysis pass covers it.
+            continue
+        elif isinstance(stmt, TpyTry) and stmt.finally_body:
+            # A finally containing a suspension lowers via the CFG
+            # pending-return slot, which has no deferred-capture recipe.
+            # Every return lexically inside such a try (including under an
+            # INNER non-suspending finally) routes through that slot, so
+            # suppress candidates for the whole subtree -- a stamp there
+            # would restore the auto-move mark for an arm that eagerly
+            # copies, silently accepting shapes (list/@nocopy) that must
+            # keep their loud diagnostics (BUGS.md).
+            sub_suppressed = (suppressed
+                              or stmts_have_any_suspension(stmt.finally_body))
+            reads = ({n.name for n in _all_read_names(stmt.finally_body)}
+                     if not sub_suppressed else set())
+            finally_reads.append(reads)
+            _walk_finally_returns(stmt.try_body, finally_reads, out,
+                                  suppressed=sub_suppressed)
+            for h in stmt.handlers:
+                _walk_finally_returns(h.body, finally_reads, out,
+                                      suppressed=sub_suppressed)
+            _walk_finally_returns(stmt.else_body, finally_reads, out,
+                                  suppressed=sub_suppressed)
+            finally_reads.pop()
+            # A return in the finally body itself overrides at chain position
+            # (no deferral); only outer finallies apply to it.
+            _walk_finally_returns(stmt.finally_body, finally_reads, out,
+                                  suppressed=sub_suppressed)
+        else:
+            for body in stmt.sub_bodies():
+                _walk_finally_returns(body, finally_reads, out,
+                                      suppressed=suppressed)
 
 
 def _analyze_with(

@@ -601,6 +601,11 @@ class FunctionTrackingState:
     in_except_has_binding: bool = False
     # True when analyzing a finally body
     in_finally: bool = False
+    # Stack (one frame per finally body being analyzed) of local names a
+    # finally-deferred return in the corresponding try borrowed: `del` of
+    # such a name inside the finally would free storage the pending return
+    # still reads (CPython keeps the object alive via the stashed reference).
+    pending_return_borrows: list[frozenset[str]] = field(default_factory=list)
 
     # --- List/dict/set literal tracking ---
     variable_to_literal: dict[str, int] = field(default_factory=dict)
@@ -1047,6 +1052,12 @@ class SemanticContext:
 
     # --- Last-use tracking (shared with codegen, persists across functions) ---
     all_last_uses: set[int] = field(default_factory=set)
+    # id(TpyName) of `return <name>` values whose name an enclosing finally
+    # body reads (liveness.collect_finally_return_reads). Return analysis
+    # re-marks eligible reference-type shapes as last-use and stamps
+    # TpyReturn.finally_deferred_capture (codegen then materializes the
+    # return value after the inline finally chain).
+    finally_return_reads: set[int] = field(default_factory=set)
 
     # id(FunctionInfo) of this module's bodied functions/methods whose body
     # analysis has not run yet -- their return_borrows_from is still None

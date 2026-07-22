@@ -107,7 +107,7 @@ from .methods import MethodAnalyzer
 from .statements import StatementAnalyzer
 
 from ..prescan import ScanResult, scan_reassigned_vars, liveness_alias_sources, collect_fact_kills
-from ..liveness import analyze_last_uses
+from ..liveness import analyze_last_uses, collect_finally_return_reads
 from .mutation_propagation import propagate_mutation_facts, infer_method_const
 from tpyc import modules as builtin_modules
 from ..cycle_detection import detect_type_cycles
@@ -3725,6 +3725,7 @@ class SemanticAnalyzer:
         # Last-use analysis for auto-move (shared with codegen)
         self.ctx.all_last_uses |= analyze_last_uses(
             stmts, liveness_alias_sources(self.top_level_scan_result))
+        self.ctx.finally_return_reads |= collect_finally_return_reads(stmts)
         self.ctx.func.current_reassigned_vars = self.top_level_scan_result.reassigned.copy()
         self.ctx.func.current_fresh_ctor_locals = set()
         self.ctx.func.current_lvalue_reassigned = self.top_level_scan_result.lvalue_reassigned.copy()

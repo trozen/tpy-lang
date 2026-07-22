@@ -835,6 +835,11 @@ class TpyReturn(TpyStmt):
     value: Optional[TpyExpr]
     # Set by sema: the analyzed type of the return expression (before coercion)
     value_type: Optional['TpyType'] = None
+    # Set by sema: the value is a reference-type local whose storage an
+    # enclosing finally body still reads. Codegen captures a borrow before
+    # the inline finally chain and materializes (moves) the return value
+    # after it, so finally mutations stay visible (CPython aliasing).
+    finally_deferred_capture: bool = False
 
     def exprs(self) -> list[TpyExpr]:
         return [self.value] if self.value else []

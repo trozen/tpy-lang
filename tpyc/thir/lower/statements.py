@@ -3306,6 +3306,12 @@ def _lower_resumable_return_value(ret: TpyReturn, lc: '_LowerCtx',
     slot's view->owned copy, shared with the sync return tail
     (`_wrap_view_owned_return`), and value-tuple / generic-tuple literals
     (the AST's tuple-literal-targeted arm in `_async_return_value_cpp`)."""
+    if ret.finally_deferred_capture:
+        # Finally-deferred return capture (borrow before the chain, move
+        # after) is not lowered yet; the AST scaffolding path defers while
+        # the leaf seam renders position-blind, so fall the body back.
+        note_detail("return.finally_deferred_capture")
+        raise ThirUnsupported(stmt_reject_reason(ret))
     if lc.prescan.ret_char and isinstance(ret.value, TpyStrLiteral):
         raise ThirUnsupported(stmt_reject_reason(ret))
     if (lc.prescan.ret_res_container is not None
@@ -5425,6 +5431,13 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                           recv_eval=recv_eval, recv_wrap=recv_wrap, loc=loc)
     if isinstance(stmt, TpyReturn):
         begin_stmt()
+        if stmt.finally_deferred_capture:
+            # Finally-deferred return capture (borrow before the inline
+            # finally chain, materialize after) has no THIR emit recipe yet;
+            # fall the body back so the AST path's deferral stays the
+            # byte-authoritative output.
+            note_detail("return.finally_deferred_capture")
+            raise ThirUnsupported(stmt_reject_reason(stmt))
         if stmt.value is not None and lc.error_return_cpp is not None:
             rfi = _error_return_stmt_fi(stmt.value, analyzer)
             if rfi is not None:

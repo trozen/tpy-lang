@@ -1,0 +1,1 @@
+main.py:19: error: cannot delete 'b' in this finally block: an enclosed 'return b' still borrows it (the value is materialized after the finally runs)
