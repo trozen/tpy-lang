@@ -17,7 +17,8 @@ from typing import TYPE_CHECKING, TextIO
 
 from ..parse import TpyModule, TpyVarDecl
 from ..typesys import (
-    TpyType, is_void_like_type, FinalType, OwnType, ReadonlyType)
+    TpyType, is_void_like_type, FinalType, OwnType, ReadonlyType,
+    error_return_uses_borrow_slot)
 from ..type_def_registry import (
     is_boundary_marshallable, is_function_boundary_marshallable, is_exposed_class,
     is_exposed_enum, is_span_boundary_param, _boundary_inner, enum_info_of,
@@ -1195,7 +1196,14 @@ class ExtensionGenerator:
         out.write(f"            ::tpy::interop::set_py_err_from(__r.error(){reg_arg});\n")
         out.write("            return nullptr;\n")
         out.write("        }\n")
-        call = "std::move(__r).value()"
+        # A borrow-form return is stored through val_or_ref (std::expected
+        # can't hold T&) -- unwrap to the T& before marshalling, landing on
+        # the same warned-copy path every other dunder's borrow return takes;
+        # marshalling the wrapper itself would let instance_to_py's by-value
+        # template swallow it (payload = reinterpreted pointer bytes).
+        call = ("__r.value().get()"
+                if error_return_uses_borrow_slot(ret_typ)
+                else "std::move(__r).value()")
         out.write(f"        return {self._value_out_expr(call, ret_typ, sym)};\n")
         self._emit_boundary_catch(out, reg_arg)
         out.write("}\n\n")

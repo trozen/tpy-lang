@@ -23,12 +23,12 @@ from ..parse.nodes import (
     TpyCoerce, TpyFieldAccess, TpyName, TpyReturn,
 )
 from ..type_def_registry import _boundary_inner
-from ..typesys import NominalType, ReadonlyType
+from ..typesys import NominalType, OwnType, ReadonlyType
 from .expressions import _walk_body_stmts
 
 if TYPE_CHECKING:
     from ..parse.nodes import TpyExpr, TpyFunction
-    from ..typesys import RecordInfo
+    from ..typesys import RecordInfo, TpyType
 
 # The 6 rich-comparison dunders share BINOP_TO_METHOD with the 12 binary
 # arithmetic ops but are semantically distinct (one shared richcompare slot,
@@ -177,6 +177,27 @@ def view_safe_borrow_returns(fn: 'TpyFunction',
                                      registry):
             return False
     return True
+
+
+def nocopy_borrow_return_error(ret_type: 'TpyType', registry) -> 'str | None':
+    """A @nocopy exposed class returned by borrow: the boundary's fallback
+    copies the instance out (even a provably-identity `return self` body
+    still instantiates the copy fallback), but @nocopy deletes the copy --
+    reject with a located error instead of the raw C++ deleted-copy-ctor
+    failure. Own[Cls] moves and is exempt. Covers every borrow spelling
+    (`-> Cls`, `-> readonly[Cls]`, and the property getter's un-normalized
+    bare class) by peeling to the boundary inner. ONE message tail for both
+    validation homes (the plain-method/free-fn/property validator in
+    compiler._exposed_form_error and the dunder validator in
+    analyzer._validate_export_class_dunders) so the set can't drift."""
+    if isinstance(ret_type, OwnType):
+        return None
+    info = registry.get_record_for_type(_boundary_inner(ret_type))
+    if info is None or not info.is_nocopy or info.is_value_type:
+        return None
+    return (f"is a @nocopy class '{info.name}' returned by reference, which "
+            f"the boundary cannot copy out (its copy is deleted) -- return "
+            f"Own[{info.name}] to move a fresh instance out")
 
 
 def unsupported_boundary_param_form(fn: 'TpyFunction') -> 'str | None':

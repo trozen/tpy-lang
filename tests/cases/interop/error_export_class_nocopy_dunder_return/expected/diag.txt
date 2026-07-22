@@ -1,0 +1,1 @@
+main.py:19: error: exposed class 'Cur': '__iter__' return is a @nocopy class 'Cur' returned by reference, which the boundary cannot copy out (its copy is deleted) -- return Own[Cur] to move a fresh instance out

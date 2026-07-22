@@ -1184,8 +1184,8 @@ Detail for the tracker table in "v1 plan and status" (top). **v1.0 = phases
    Python consumer receives the ORIGINAL object exactly as under plain
    Python (readonly is a TPy-side no-mutation-through-this-handle contract
    and is a no-op in the `lib/cpy` stubs), so mutations from Python write
-   through; note borrow-form readonly returns never trigger the copy
-   warning from any source (pre-existing gate, tracked in TODO).
+   through; a borrow-form readonly return warns exactly like the mutable
+   spelling when its source has no identity/view path.
    `Own[Cls]` stays the acknowledged always-fresh form. A leaf type is
    final (no `BASETYPE`; a class serving as another exposed class's base
    carries the flag -- see the inheritance block below) with no instance
@@ -1357,7 +1357,15 @@ Detail for the tracker table in "v1 plan and status" (top). **v1.0 = phases
    StopIteration>` rather than throwing on exhaustion; the wrapper checks
    `.has_value()` and calls `set_py_err_from` on the `StopIteration` value
    directly (no throw/catch needed for that path -- `StopIteration` is
-   already in the exception-bridge's built-in list). `list(x)`,
+   already in the exception-bridge's built-in list). A borrow-form
+   `__next__` return (`-> Cls` / `-> list[T]`) is stored through the
+   `val_or_ref` borrow slot (`std::expected` can't hold `T&`); the wrapper
+   unwraps it before marshalling, so each yielded value crosses as a
+   warned COPY -- same as every other non-`__iter__` dunder's borrow
+   return (`Own[...]` is the quiet fresh-instance form). A `@nocopy`
+   class's dunder borrow return is a located error (the copy is deleted),
+   mirroring the plain-method reject; in-place dunders are exempt (their
+   wrapper hands back the same `self` PyObject, no copy). `list(x)`,
    `iter(x)`/`next(it)`, and a `for` loop all round-trip through CPython's
    own sequence/iterator machinery once these are wired -- verified
    end-to-end via a manual `.so` build. `__call__`, `__bool__`, and

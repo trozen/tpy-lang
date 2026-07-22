@@ -28,7 +28,7 @@ from ..typesys import (
     PtrType, LiteralType, LiteralValue, LiteralTag, is_any_str_type,
     is_primitive_type,
     resolve_int_literals, CONST_PARAMS_METHODS,
-    error_return_to_cpp, unwrap_ref_type,
+    error_return_to_cpp, error_return_uses_borrow_slot, unwrap_ref_type,
     bare_name,
 )
 from ..parse import TpyFunction, TpyVarDecl, VarLinkage
@@ -582,7 +582,7 @@ class FunctionGenerator:
             # keeps the const through the stored pointer (val_or_ref<const T>),
             # mirroring the @dynamic-protocol branch above.
             inner = unwrapped_return.to_cpp()
-            if not return_type.is_value_type() and not isinstance(return_type, VoidType):
+            if error_return_uses_borrow_slot(return_type):
                 if const or isinstance(unwrap_ref_type(return_type), ReadonlyType):
                     inner = f"::tpy::val_or_ref<const {inner}>"
                 else:

@@ -6222,7 +6222,9 @@ API, floor 3.12, hand-rolled C-API glue, copy-in marshalling).
   keeps its reference, so ownership can't transfer -- use the borrow form), a
   `@nocopy`
   class returned by reference (the boundary can't copy it out -- return
-  `Own[Cls]`), static/async/generic/overloaded/`@error_return`
+  `Own[Cls]`; covers every borrow spelling: methods, `readonly[Cls]`,
+  property getters, and dunder slots -- in-place dunders exempt, they
+  hand back the same `self` PyObject with no copy), static/async/generic/overloaded/`@error_return`
   methods (the same shape checks cover property accessors),
   multiple bases (CPython rejects two bases with distinct C instance
   layouts -- permanent), a non-`@export` base, a cross-module base, a
@@ -6286,7 +6288,9 @@ API, floor 3.12, hand-rolled C-API glue, copy-in marshalling).
   iterator object, marshalled like any other exposed-class return);
   `__next__` -> `Py_tp_iternext` (implicitly `@error_return(StopIteration)`,
   so exhaustion crosses via the existing exception bridge rather than a
-  special sentinel). `list(x)`, `iter(x)`/`next(it)`, and a `for` loop all
+  special sentinel; a borrow-form return -- `-> Cls` / `-> list[T]` -- is
+  unwrapped from its `val_or_ref` borrow slot and crosses as a warned
+  copy, like every other non-`__iter__` dunder's borrow return). `list(x)`, `iter(x)`/`next(it)`, and a `for` loop all
   work once these are wired. Any other dunder (`__call__`, `__bool__`, ...)
   is still **warned** -- not yet wired into the host type, so it would be
   silently absent otherwise.

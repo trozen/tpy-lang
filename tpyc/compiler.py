@@ -23,7 +23,7 @@ from .sema import SemanticAnalyzer, SemanticError, Diagnostic, DiagnosticLevel
 from .sema.reach_analysis import compute_reached_symbols
 from .sema.export_shape import (
     export_method_shape_error, exposed_view_field,
-    unsupported_boundary_param_form)
+    nocopy_borrow_return_error, unsupported_boundary_param_form)
 from .modules.resolver import ModuleResolver, ResolvedModule
 from .modules import get_builtin_module_names
 from .frontend_plugin import (
@@ -3952,7 +3952,10 @@ class Compiler:
         for mname, overloads in info.methods.items():
             if mname.startswith("__") and mname.endswith("__") \
                     and mname != "__init__":
-                continue  # only __init__ is exposed; other dunders aren't yet
+                # Supported dunders cross as type slots and are validated by
+                # sema's _validate_export_class_dunders; unsupported ones stay
+                # off the host type (warned there too).
+                continue
             ast_m = ast_by_name.get(mname)
             m_loc = ast_m.loc if ast_m is not None else None
             # The glue emits one positional wrapper per method; an @overload
@@ -4060,7 +4063,7 @@ class Compiler:
             case -- the class's qualified C++ name and CPython type handle are
             keyed to the defining module's glue, not this one.
         """
-        from .typesys import OwnType, RefType, TupleType
+        from .typesys import OwnType, TupleType
         from .type_def_registry import (
             is_exposed_class, is_exposed_enum, _boundary_inner, enum_info_of,
             _container_element_types)
@@ -4221,11 +4224,13 @@ class Compiler:
             return (f"is Own[{cls}], which is not a valid boundary type: the host "
                     f"keeps its reference, so ownership cannot transfer -- use "
                     f"the borrow form '{cls}'")
-        if role == "return" and isinstance(typ, RefType) \
-                and info is not None and info.is_nocopy:
-            return (f"is a @nocopy class '{cls}' returned by reference, which the "
-                    f"boundary cannot copy out (its copy is deleted) -- return "
-                    f"Own[{cls}] to move it out")
+        if role == "return":
+            # Shared with the dunder validator; peels every borrow spelling
+            # (RefType, readonly-topped, the property getter's un-normalized
+            # bare class), so none of them reaches the C++ deleted-copy error.
+            nocopy_err = nocopy_borrow_return_error(typ, registry)
+            if nocopy_err is not None:
+                return nocopy_err
         return None
 
     def _build_namespace_map(self) -> dict[str, str]:

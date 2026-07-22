@@ -1,0 +1,1 @@
+main.py:18: error: @export class 'Res': method 'peek' return is a @nocopy class 'Res' returned by reference, which the boundary cannot copy out (its copy is deleted) -- return Own[Res] to move a fresh instance out

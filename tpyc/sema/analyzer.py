@@ -50,7 +50,8 @@ from .export_shape import (
     EXPORT_CLASS_NEXT_DUNDERS as _EXPORT_CLASS_NEXT_DUNDERS,
     EXPORT_CLASS_SUPPORTED_DUNDERS as _EXPORT_CLASS_SUPPORTED_DUNDERS,
     boundary_alias_records, export_method_shape_error,
-    unsupported_boundary_param_form, view_safe_borrow_returns,
+    nocopy_borrow_return_error, unsupported_boundary_param_form,
+    view_safe_borrow_returns,
 )
 
 # Deferred-resolution placeholder types. After `LocalTypeDeduction.resolve_all()`
@@ -504,8 +505,8 @@ class SemanticAnalyzer:
     def _warn_export_class_return_alias(self, module: TpyModule) -> None:
         """In an ext_module, warn when an @export function or an exposed class's
         method returns an exposed class or a list/dict/set *by borrow* --
-        declared `-> Cls` / `-> list[T]` (sema lowers these to RefType), not
-        `-> Own[...]`. A class borrow return crosses aliasing when the
+        declared `-> Cls` / `-> list[T]` (sema lowers these to RefType) or
+        `-> readonly[...]` (ReadonlyType-topped), not `-> Own[...]`. A class borrow return crosses aliasing when the
         returned reference is the receiver, a parameter (identity: the glue
         address-matches it against the boundary-crossed objects in scope and
         hands back the ORIGINAL PyObject), or a never-reassigned field of one
@@ -551,8 +552,13 @@ class SemanticAnalyzer:
             emit through `_value_out_expr`, which always copies) -- those
             must keep the unconditional warning. Suppression and the glue's
             view emission share ONE classifier (view_safe_borrow_returns),
-            so a suppressed warning always has a runtime aliasing path."""
-            if not isinstance(fn.return_type, RefType):
+            so a suppressed warning always has a runtime aliasing path.
+
+            Borrow form has two spellings: `-> Cls` lowers to RefType, but
+            `-> readonly[Cls]` stays ReadonlyType-topped (make_ref no-ops
+            on it) -- both cross identically (identity/view when provable,
+            copy otherwise), so both must enter the classification."""
+            if not isinstance(fn.return_type, (RefType, ReadonlyType)):
                 return
             if is_exposed_class(fn.return_type):
                 info = self.ctx.registry.get_record_for_type(
@@ -798,6 +804,17 @@ class SemanticAnalyzer:
                             f"exposed class '{record.name}': '{m.name}' "
                             f"return type cannot cross the CPython boundary",
                             loc)
+                    # Same @nocopy borrow-return reject the plain-method
+                    # validator applies -- these are the marshalled-return
+                    # slots whose fallback copies the instance out. In-place
+                    # dunders are exempt by construction (their wrapper hands
+                    # back the same self PyObject, no copy).
+                    nocopy_err = nocopy_borrow_return_error(
+                        m.return_type, self.ctx.registry)
+                    if nocopy_err is not None:
+                        raise SemanticError(
+                            f"exposed class '{record.name}': '{m.name}' "
+                            f"return {nocopy_err}", loc)
                 # Inplace dunders (__iadd__, ...) already have a general,
                 # non-export-specific rule that they return self (the record
                 # type) -- registration.py's CONST_PARAMS_METHODS check -- so

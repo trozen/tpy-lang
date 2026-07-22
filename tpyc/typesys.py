@@ -1932,6 +1932,22 @@ def yield_uses_borrow_slot(elem_type: 'TpyType') -> bool:
     return not isinstance(bare, (TupleType, OptionalType, UnionType, TypeParamRef))
 
 
+def error_return_uses_borrow_slot(return_type: 'TpyType') -> bool:
+    """Whether an @error_return function's compiled return stores its success
+    value through `val_or_ref<T>` -- std::expected cannot hold a reference, so
+    a borrow-form (non-value, non-void) return is wrapped. Own[T] is exempt
+    (is_value_type True: the success value is moved out by value). ONE answer
+    for both the signature render (codegen functions) and any consumer of the
+    compiled return (the CPython tp_iternext glue), so a wrap without the
+    matching unwrap can't reappear. Deliberately bare, unlike the sibling
+    yield_uses_borrow_slot above: its Optional/Union/tuple exclusions serve
+    the yield slot's distinct storage forms, while this mirrors the expected
+    wrap exactly (those shapes DO wrap here; the boundary consumer never
+    sees them -- is_function_boundary_marshallable rejects them upstream)."""
+    return (not return_type.is_value_type()
+            and not isinstance(return_type, VoidType))
+
+
 def unwrap_qualifiers(typ: 'TpyType') -> 'TpyType':
     """Strip Send/Sync markers, ReadonlyType, OwnType, and RefType wrappers."""
     typ = unwrap_send_sync(typ)
