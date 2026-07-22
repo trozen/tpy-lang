@@ -1565,17 +1565,16 @@ class TestPrintStmt:
         assert _fn(_lower(src), "f") is not None
         _assert_byte_identical(src)
 
-    def test_export_c_call_ineligible(self):
-        # An @export(binding="C") function has EXPORT_C linkage and emits its raw
-        # extern-C symbol at the call site (not a bare name); the fi.linkage gate
-        # keeps a caller of it on the AST path. Unlike a plain @native (caught by
-        # the native_function/native_name check), EXPORT_C has a body and only the
-        # linkage gate excludes it.
-        thir = _lower(
-            "from tpy.extern import export\nfrom tpy import Int32\n"
-            + "@export(binding=\"C\")\ndef ext(x: Int32) -> Int32:\n    return x\n"
-            + "def f(n: Int32) -> Int32:\n    return ext(n)\n")
-        assert _fn(thir, "f") is None
+    def test_export_c_call_routes_raw_symbol(self):
+        # An @export(binding="C") callee emits its raw extern-C symbol at the
+        # call site (the native_c verbatim render; corpus witness:
+        # native/extern_c_call) -- byte identity pins the spelling.
+        src = ("from tpy.extern import export\nfrom tpy import Int32\n"
+               + "@export(binding=\"C\")\ndef ext(x: Int32) -> Int32:\n    return x\n"
+               + "def f(n: Int32) -> Int32:\n    return ext(n)\n")
+        thir = _lower(src)
+        assert _fn(thir, "f") is not None
+        _assert_byte_identical(src)
 
     def test_desugar_shares_one_source_comment(self):
         # A tuple-unpack desugars to several assigns on one source line; only the
@@ -4115,9 +4114,11 @@ class TestClassConstantRead:
         assert arg.cpp == "H::AGENT"
         assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
-    def test_effectful_receiver_stays_ast(self):
-        # `make().LIMIT`: the AST evaluates the receiver for effects inside
-        # a statement expression -- a render this arm does not reproduce.
+    def test_effectful_receiver_routes(self):
+        # `make().LIMIT`: the receiver evaluates for effects inside the
+        # statement expression (`({ static_cast<void>(make()); C::LIMIT; })`)
+        # -- routed by the recv_effect arm (corpus witness:
+        # class_const/obj_with_side_effects_reads_class_const).
         src = (
             "from typing import Final\n"
             "from tpy import Int32, Own\n"
@@ -4131,12 +4132,15 @@ class TestClassConstantRead:
             "f()\n"
         )
         thir, witnessed = _lower_ctx_witnessed(src)
-        assert _fn(thir, "f") is None
-        assert witnessed.get("field.class_const", 0) == 0
+        assert _fn(thir, "f") is not None
+        assert witnessed.get("field.class_const_recv_effect", 0) >= 1
+        _assert_byte_identical(src)
 
-    def test_unproven_optional_receiver_stays_ast(self):
-        # An unproven `Optional[C]` receiver carries the runtime null check
-        # (`deref_check`) around the constant -- out of the arm.
+    def test_unproven_optional_receiver_routes(self):
+        # An unproven `Optional[C]` NAME receiver keeps the runtime check
+        # (`({ ::tpy::deref_check(c); C::LIMIT; })`) -- routed by the
+        # recv_check arm (corpus witness:
+        # class_const/optional_reads_class_const).
         src = (
             "from typing import Final, Optional\n"
             "from tpy import Int32\n"
@@ -4148,8 +4152,9 @@ class TestClassConstantRead:
             "use(C())\n"
         )
         thir, witnessed = _lower_ctx_witnessed(src)
-        assert _fn(thir, "use") is None
-        assert witnessed.get("field.class_const", 0) == 0
+        assert _fn(thir, "use") is not None
+        assert witnessed.get("field.class_const_recv_check", 0) >= 1
+        _assert_byte_identical(src)
 
 
 class TestClassConstantWrite:

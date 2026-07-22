@@ -345,6 +345,7 @@ _BRANCH_SCOPED_SETS = (
     "const_locals", "pointers", "rebind_slot_locals", "dyn_protocol_locals",
     "optional_locals", "branch_hoisted", "iterator_object_locals",
     "ref_alias_locals", "value_opt_locals", "value_opt_view_locals",
+    "value_opt_record_locals",
     "movable_locals", "storage_tuple_locals", "const_storage_tuple_locals",
     "frame_slots", "forbidden_reads", "forbidden_writes",
 )
@@ -387,7 +388,8 @@ class _LowerCtx:
                  "optional_locals", "branch_hoisted",
                  "iterator_object_locals",
                  "ref_alias_locals",
-                 "value_opt_locals", "value_opt_view_locals", "movable_locals",
+                 "value_opt_locals", "value_opt_view_locals",
+                 "value_opt_record_locals", "movable_locals",
                  "self_receiver", "self_cpp", "self_is_pointer",
                  "record_name", "storage_tuple_locals",
                  "const_storage_tuple_locals", "frame_slots",
@@ -505,6 +507,13 @@ class _LowerCtx:
         # Consulted only by `_value_opt_view_binding` (None-test + narrowed
         # read); every other view-local position defers.
         self.value_opt_view_locals: set[str] = set()
+        # STORAGE `std::optional<T>` RECORD locals -- an owned-optional-
+        # returning call bound whole (`upgraded = w.upgrade()` ->
+        # `std::optional<Rc<T>> upgraded = ...;`). The record twin of the
+        # scalar/view sets: a NARROWED read derefs `(*upgraded)` (a record
+        # lvalue consumed as a receiver), the None-test reads has_value.
+        # Single-assignment only (the decl gate enforces it).
+        self.value_opt_record_locals: set[str] = set()
         # Resumable frame_slot locals (R1c): a non-value coro/generator local
         # stored as `tpy::frame_slot<T>`. Reads render `(*name)` (deref=True on
         # the THIRName; member access is `.` since the slot is not a pointer),

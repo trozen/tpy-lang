@@ -45,6 +45,7 @@ from ...prescan import scan_reassigned_vars
 from ...typesys import (
     CONST_PARAMS_METHODS,
     IntLiteralType,
+    is_any_str_type,
     NominalType,
     OptionalType,
     OwnType,
@@ -309,7 +310,16 @@ def _check_callable_structure(func: TpyFunction, analyzer,
     # (`std::size_t N`); its name is seeded as an INT TypeParamRef
     # binding so body reads render bare `N`.
     if func.linkage != FunctionLinkage.DEFAULT:
-        raise ThirUnsupported("sig.linkage")
+        if func.linkage is not FunctionLinkage.EXPORT_C:
+            raise ThirUnsupported("sig.linkage")
+        # An @export(binding="C") BODY renders like a plain function's (the
+        # driver owns the extern "C" signature). The C ABI respells ONLY
+        # str-family params (`const char*` -- gen_c_params), and the AST
+        # renders their body READS ABI-blind -- a divergence the str-param
+        # slice keeps on the AST path until cutover decides the str story.
+        for _n, _ptype in func.params:
+            if isinstance(_ptype, TpyType) and is_any_str_type(_ptype):
+                raise ThirUnsupported("sig.linkage_c_abi")
     # A reassigned param of a type flagged param_needs_copy_for_reassign (owned
     # str/bytes/String, BigInt -- const-ref params that cannot reassign in
     # place) gets a mutable owned copy hoisted by the AST prologue

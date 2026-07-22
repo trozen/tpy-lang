@@ -157,6 +157,7 @@ from .predicates import (
     _field_decl_type,
     _field_markers_clean,
     _field_over_subscript_ok,
+    _field_over_record_getitem_ok,
     _field_receiver_ok,
     _ptr_value_field_recv_ok,
     _user_deref_field_recv_ok,
@@ -206,6 +207,8 @@ from .predicates import (
     _owned_tuple_call_ret,
     _span_value,
     _storage_call_ret,
+    _storage_optional_return_type,
+    _unwrap_own,
     _str_concat_operand,
     _subscript_container_recv_type,
     _tparam_value,
@@ -778,6 +781,22 @@ def _field_over_field_ok(e: TpyExpr, locals_: dict[str, TpyType],
     return bool(isinstance(ft, NominalType) and _f1_record(ft, analyzer)
                 and _witness("field.chain_recv"))
 
+def _field_over_property_call_ok(e: TpyExpr, analyzer) -> bool:
+    """A field read off a PROPERTY-GETTER receiver (`s.Config.v` -- the inner
+    read is a getter call in disguise, lowered through the method-call arms):
+    the field chains postfix `.` off the call render on both paths, so
+    admission only needs the getter's return to be a record (native included
+    -- the member spelling resolves through `_field_cpp` either way); every
+    inner gate still applies when the receiver lowers."""
+    if not (isinstance(e, TpyFieldAccess) and _field_markers_clean(e)
+            and isinstance(e.obj, TpyFieldAccess)
+            and e.obj.property_getter_call is not None):
+        return False
+    rt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+        analyzer.get_expr_type(e.obj))))
+    return bool(isinstance(rt, NominalType) and rt.is_user_record
+                and _witness("field.property_call_recv"))
+
 def _field_over_call_ok(e: TpyExpr, analyzer) -> bool:
     """A value field read off an F1-record-returning call / method-call
     receiver (`f().x`, `p.Box(10).n`, `h.boxed.get().x`): the AST renders
@@ -789,6 +808,19 @@ def _field_over_call_ok(e: TpyExpr, analyzer) -> bool:
         return False
     return bool(_f1_record(analyzer.get_expr_type(e.obj), analyzer)
                 and _witness("field.call_recv"))
+
+def _field_over_binop_ok(e: TpyExpr, analyzer) -> bool:
+    """A value field read off an F1-record-result user-dunder binop
+    receiver (`(a // b).v` -> `((a).__floordiv__(b)).v`): the postfix
+    member chains off the parenthesized template render on both paths.
+    The receiver lowers through the binop's record-dunder arm (RECEIVER
+    use), so its operand gates still apply."""
+    if not (isinstance(e, TpyFieldAccess) and _field_markers_clean(e)
+            and isinstance(e.obj, TpyBinOp)):
+        return False
+    rt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+        analyzer.get_expr_type(e.obj))))
+    return bool(_f1_record(rt, analyzer) and _witness("field.binop_recv"))
 
 def _alias_ref_container(t: TpyType | None) -> bool:
     """A container whose borrow local binds a plain `T&` alias -- `list` / `dict`
@@ -990,7 +1022,8 @@ def _method_recv_field_write_ok(target: TpyExpr, declared: dict[str, TpyType],
 
 
 def _scalar_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
-                           analyzer) -> bool:
+                           analyzer,
+                           pointers: 'AbstractSet[str]' = frozenset()) -> bool:
     """A scalar-field write `recv.field = <scalar>`: a value-scalar field off an
     F1-record receiver (`_field_receiver_ok` also rejects the property-setter /
     __setattr__ write target), written with an eligible scalar expression. The
@@ -1012,6 +1045,8 @@ def _scalar_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
             or _optional_checked_field(target, declared, analyzer)
             or _field_over_subscript_ok(target, declared, analyzer)
             or _field_over_container_subscript_ok(target, declared, analyzer)
+            or _field_over_record_getitem_ok(target, declared, analyzer,
+                                             pointers)
             or _method_recv_field_write_ok(target, declared, analyzer)):
         return False
     ftype = analyzer.get_expr_type(target)
@@ -1179,15 +1214,21 @@ def _optional_record_field_write_ok(
     """A value-storage `Optional[record]` field write `recv.opt = <record>` off
     an F1-record receiver: the field stores `std::optional<inner>`, and the
     source is a record RVALUE (ctor / by-value call of the inner type -- copied
-    bare, exact-type to keep a subclass slice out) or a record NAME (a record
-    param / owned local, incl. `Own[T]` params) copied bare (`opt = p;`,
+    bare, exact-type to keep a subclass slice out), an OWNED-record METHOD-call
+    rvalue of the inner type (`a.get().next = b.clone()` -- the Own return
+    lands bare, optional::operator= absorbs the move), or a record NAME (a
+    record param / owned local, incl. `Own[T]` params) copied bare (`opt = p;`,
     optional::operator= absorbs the inner lvalue) or moved at a movable name's
-    last use (`opt = std::move(p);`). The record-field-write shape at an Optional
+    last use (`opt = std::move(p);`). The receiver is an admitted field-write
+    receiver -- a NAME (`_field_receiver_ok`) or a mutable-ref-returning
+    method call (`a.get().next`, `_method_recv_field_write_ok`). The
+    record-field-write shape at an Optional
     slot; the F2b `T*`->ptr_to_optional lift (a pointer-local source) and the
     `None` store stay their own arms. Narrowed / pointer-local / `self` sources
     take other AST emit paths and stay on the AST path."""
     target = stmt.target
-    if not _field_receiver_ok(target, declared, analyzer):
+    if not (_field_receiver_ok(target, declared, analyzer)
+            or _method_recv_field_write_ok(target, declared, analyzer)):
         return False
     inner = _optional_record_field_inner(analyzer.get_expr_type(target), analyzer)
     if inner is None:
@@ -1195,6 +1236,12 @@ def _optional_record_field_write_ok(
     v = stmt.value
     if _record_rvalue_source_shape(v, analyzer):
         return analyzer.get_expr_type(v) == inner
+    if (isinstance(v, TpyMethodCall)
+            and is_rvalue_source(analyzer, v)):
+        vt = analyzer.get_expr_type(v)
+        vt = (_unwrap_own(unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+            vt)))) if isinstance(vt, TpyType) else None)
+        return vt == inner and _f1_record(vt, analyzer)
     if not (isinstance(v, TpyName) and v.name in declared
             and v.name not in pointers and v.name not in narrowed
             and not (prescan.has_self and v.name == "self")):
@@ -2019,16 +2066,25 @@ def _free_callee_kind(e: TpyCall, analyzer, *,
                 # so the node carries the raw symbol (name when the stub
                 # declares no rename -- the user-module `@native def` face).
                 return ("native", fi.native_name or fi.name)
-            if fi.linkage == FunctionLinkage.NATIVE_C:
+            if fi.linkage in (FunctionLinkage.NATIVE_C,
+                              FunctionLinkage.EXPORT_C):
                 # Distinct kind: the emit's native_name arm force-qualifies,
                 # so the raw symbol rides callee_cpp (rendered verbatim).
+                # A RENAMED @export(binding="C") (`@export("Helper_Add")`)
+                # lands here via its native_name; the un-renamed export
+                # takes the linkage arm below.
                 return ("native_c", fi.native_name or fi.name)
         note_detail("call.native_shape")
         return None
     # Only a DEFAULT-linkage function emits as a bare/qualified `name(args)`.
-    # @export(binding="C") uses the raw symbol -- rejected by default so a
-    # future linkage is rejected rather than silently mis-emitted.
     if fi.linkage != FunctionLinkage.DEFAULT:
+        if fi.linkage is FunctionLinkage.EXPORT_C:
+            # An @export(binding="C") callee spells the RAW unqualified C
+            # symbol (`helper_add(42)` -> `Helper_Add(42)`; the extern "C"
+            # definition is namespace-scoped, so no `::` qualification) --
+            # the native_c verbatim render.
+            return ("native_c", fi.native_name or fi.name)
+        # Any future linkage is rejected rather than silently mis-emitted.
         note_detail("call.linkage")
         return None
     icc = imported_free_callee_cpp(analyzer.ctx.module_attributes, e.func_name)
@@ -2239,15 +2295,14 @@ def _lambda_routable(a: TpyExpr, analyzer) -> bool:
     a closure with a non-void, non-pointer-tuple return and param types in the
     families the body emit renders without seeding (value scalars / Char /
     enums / str / bytes / F1-record) -- `_gen_lambda`'s `(params) -> ret {
-    return body; }` arm, in both its by-reference (Fn template) and by-value
-    (Callable/std::function) capture modes. The readonly-param (key-function)
-    spelling and the void-body statement render stay on the AST path. The
+    return body; }` arm, in its by-reference (Fn template), by-value
+    (Callable/std::function), and readonly-param (key-function -- const
+    `_callable_param_cpp` spelling + `to_cpp_return_const` trailing) capture
+    modes. The void-body statement render stays on the AST path. The
     single source of truth for both the arg-admission gate and the lowering
     arm (they must agree, else the gate admits a shape lowering then rejects
     -- a needless fallback)."""
     if not isinstance(a, TpyLambda):
-        return False
-    if a.readonly_params:
         return False
     rt = a.inferred_return_type
     if rt is None or is_void_like_type(rt):
@@ -3902,6 +3957,15 @@ def _method_nonname_receiver_ok(recv: TpyExpr, locals_: dict[str, TpyType],
         # reproduces; `_method_receiver_type` reads the literal's str type so
         # the view arm gates the method itself.
         return _witness("method.recv.str_literal")
+    if isinstance(recv, TpyBinOp):
+        # A record-result dunder-binop receiver (`(dt + td).isoformat()`):
+        # the postfix member chains off the parenthesized template render on
+        # both paths; the receiver lowers through the binop record-dunder
+        # arm (RECEIVER use), whose operand gates still apply.
+        rt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+            analyzer.get_expr_type(recv))))
+        return bool(_f1_record(rt, analyzer)
+                    and _witness("method.recv.binop"))
     if isinstance(recv, TpyMethodCall):
         return _method_call_receiver_ok(recv, locals_, analyzer)
     if isinstance(recv, TpyCall):
@@ -4879,6 +4943,19 @@ def _record_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyTy
     opt_recv = _optional_ptr_borrow(recv_t, analyzer)
     if opt_recv is not None:
         recv_t = unwrap_readonly(opt_recv.inner)
+    if isinstance(recv_t, OptionalType) and isinstance(recv, TpyName):
+        # A STORAGE-optional binding (`std::optional<Rc<T>>` local from an
+        # owned-optional call) NARROWED at this occurrence dispatches on the
+        # inner record over the `(*name)` deref receiver. The name arm only
+        # renders that deref for REGISTERED locals -- an unregistered binding
+        # (an Own-optional param) still rejects at its read, so admitting
+        # the type here never mis-renders.
+        so = _storage_optional_return_type(recv_t, analyzer)
+        occ = analyzer.get_expr_type(recv)
+        if (so is not None and occ is not None
+                and not isinstance(unwrap_readonly(unwrap_ref_type(
+                    unwrap_send_sync(occ))), OptionalType)):
+            recv_t = unwrap_readonly(_unwrap_own(unwrap_readonly(so.inner)))
     if not (isinstance(recv_t, NominalType) and _f1_record(recv_t, analyzer)):
         # The drill's "which methods block" discriminant: name the receiver
         # family AND the method, so e.g. str methods rank individually.
@@ -4973,10 +5050,17 @@ def _record_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyTy
             # Storage sinks only (the tuple-unpack source; the record-method
             # sibling of free-call lowering's storage_ret_ok escape). A span
             # result is a by-value view landing bare in its decl slot
-            # (`std::span<T> s = b.as_span();`).
+            # (`std::span<T> s = b.as_span();`). An owned-optional record
+            # return (`-> Own[Rc[T]] | None`) lands bare in its registered
+            # `std::optional<T>` decl slot the same way.
             or (storage_ret_ok
                 and (_storage_call_ret(ret, analyzer) is not None
-                     or _span_value(ret)))
+                     or _span_value(ret)
+                     or _storage_optional_return_type(
+                            unwrap_readonly(unwrap_ref_type(
+                                unwrap_send_sync(ret)))
+                            if isinstance(ret, TpyType) else None,
+                            analyzer) is not None))
             # A coro-factory result at the handle-binding sink (`m =
             # w.bump(5)` -> `m.emplace((*w).bump(5))`): the frame value is
             # consumed whole by the emplace; no value slot is involved. The
@@ -5871,6 +5955,14 @@ def _print_arg_ok(a: TpyExpr, locals_: dict[str, TpyType], analyzer) -> bool:
         if (_f1_record(atu, analyzer)
                 and is_rvalue_source(analyzer, a)):
             return _witness("print.record_call")
+    if isinstance(a, (TpyBinOp, TpyUnaryOp)):
+        # An F1-record-result user-dunder binop / unary rvalue streams RAW
+        # like the record-call row (`print(td1 + td2)`, `print(-td)` -- the
+        # template render into gen_print's fall-through `<< x`).
+        atu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
+               if at is not None else None)
+        if _f1_record(atu, analyzer):
+            return _witness("print.record_binop")
     return ((_resolved_scalar(at, analyzer) or _eligible_char(at)
              # A tpy-defined enum streams via its emitted operator<< (RAW);
              # an @native enum takes `::tpy::__repr__` (PrintForm.REPR).

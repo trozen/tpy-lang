@@ -195,6 +195,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "method.recv.record_field",
     "method.recv.free_call",        # `make(3).get()` -- a plain F1-record
                                     # free-call result receiver, `.` access
+    "method.recv.binop",            # `(dt + td).isoformat()` -- a record-
+                                    # result dunder-binop receiver (gate)
     "method.recv.str_literal",      # `"a,b,c".split(",")` -- a str-literal
                                     # receiver rendered bare into the resolved
                                     # builtin-method template
@@ -352,6 +354,24 @@ THIR_FACES: frozenset[str] = frozenset({
     # recurses through the receiver, so every link's render is shared with the
     # single-level field read, and admission is the distinguishing site).
     "field.chain_recv",
+    # Unproven member access off a STORAGE Optional[F1-record] field lvalue
+    # (`h.opt.x` -> `::tpy::deref_optional_check(h.opt).x`; lowering) -- the
+    # optional-lvalue sibling of the deref_check (`T*` receiver) arm.
+    "field.opt_check_field_recv",
+    # A RECORD-result user-dunder binop (`a // b` -> Meters, `td1 + td2`):
+    # the injected/native cpp_template render, admitted at consumers that
+    # pin the record rvalue (lowering).
+    "binop.record_dunder",
+    # ...consumed as a PRINT arg (the record-call row's binop twin; gate).
+    "print.record_binop",
+    # ...consumed as a FIELD-access receiver (`(a // b).v`; gate).
+    "field.binop_recv",
+    # A field read off a PROPERTY-GETTER receiver returning a record
+    # (`h.mid.x` -- the inner read is a getter call in disguise; gate).
+    "field.property_call_recv",
+    # ...DISCARDED in statement position (`timedelta(seconds=1) / 0;` --
+    # evaluated for its raise; statement lowering).
+    "expr_stmt.record_binop",
     # Owned-BYTES element read off a list[bytes]/dict-value container
     # (lowering; STORAGE form -- owned sinks copy implicitly, view bindings
     # / span args convert implicitly, so every admitted sink lands it bare).
@@ -603,6 +623,15 @@ THIR_FACES: frozenset[str] = frozenset({
     # Slot-hoist Optional local, F1-record rvalue init: `T __slot_N = ...;
     # T* x = &__slot_N;` (+ the rebind-slot pre-decl).
     "decl.opt_slot_rvalue",
+    # Owned-optional record slot from a storage-optional-returning call
+    # (`std::optional<Rc<T>> upgraded = w.upgrade();`); the name registers
+    # for the narrowed `(*name)` deref + has_value None-test reads.
+    "decl.opt_record_call",
+    # A registered owned-optional record local's NARROWED read -- the
+    # `(*upgraded)` deref consumed as a receiver / member position.
+    "name.opt_record_deref",
+    # ...and its WHOLE-optional read (the bare name at a None-test).
+    "name.opt_record_whole",
     # Escape-hoist PLAIN-record pointer-local, name-reassigned with a record
     # rvalue init: `T __slot_N = init;` + `T* x = &__slot_N;` (the
     # REBIND_SLOT render minus the rebind slot).
@@ -823,6 +852,11 @@ THIR_FACES: frozenset[str] = frozenset({
     # A borrow (is_ref) F1-record target aliasing a storage-form tuple element
     # via the tuple_to_pointer source wrap + unwrap_ref/tuple_elem_ref bind.
     "stmt.tuple_unpack.ref_target",
+    # For-head ref unpack over an ITER-PROTO source (`for i, p in
+    # enumerate(ps):`): the element is already a borrow-form tuple, so the
+    # head binds `auto& __tup_N` (no lift) and ref targets alias via
+    # unwrap_ref/tuple_elem_ref (statement lowering).
+    "stmt.tuple_unpack.ref_target_iter",
     # A reused plain scalar/str target (lowering): `a = std::get<i>(__tup_N);`
     # -- the AST's declared-name assign tail, no decl.
     "stmt.tuple_unpack.assign_target",
@@ -1010,6 +1044,13 @@ THIR_FACES: frozenset[str] = frozenset({
     # `C::LIMIT`, `::tpyapp::m::Limits::MAX`, `C<int32_t>::X` -- the
     # receiver_eval-None shapes of _class_constant_access_parts).
     "field.class_const",
+    # Class-constant read whose UNPROVEN Optional-ptr name receiver keeps its
+    # runtime check (`({ ::tpy::deref_check(c); C::LIMIT; })`; lowering).
+    "field.class_const_recv_check",
+    # Class-constant read whose instance receiver has observable cost --
+    # evaluated and discarded (`({ static_cast<void>(make_c()); C::LIMIT; })`;
+    # lowering).
+    "field.class_const_recv_effect",
     # Module-variable read -> the fixed registered spelling (lowering;
     # `mod.X` off a MODULE binding or the dotted `pkg.sub.X` marker --
     # native_cpp_name / (*slot) / qualified cpp_expr).

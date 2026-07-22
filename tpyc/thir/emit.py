@@ -972,10 +972,18 @@ def _emit_field_access(e: THIRFieldAccess, state: _EmitState) -> str:
         # Unproven Optional member access: null-check the (already `T*`) receiver
         # before the `.` member read. Mirrors _gen_field_access's runtime-check path.
         return f"::tpy::deref_check({_emit_expr(e.receiver, state)}).{e.field_cpp}"
+    if e.opt_deref_check:
+        # Unproven access off a WHOLE value-repr Optional lvalue receiver
+        # (`h.opt.x` -> `::tpy::deref_optional_check(h.opt).x`).
+        return (f"::tpy::deref_optional_check({_emit_expr(e.receiver, state)})"
+                f".{e.field_cpp}")
     if e.deref_chain:
-        # User Deref-wrapper field access: N `.__deref__()` calls between the
-        # bare receiver and the field (`r.__deref__().x`).
-        chain = ".__deref__()" * e.deref_chain
+        # User Deref-wrapper field access: N `__deref__()` calls between the
+        # bare receiver and the field (`r.__deref__().x`); a pointer-local
+        # receiver joins the first hop with `->` (`r->__deref__().x`).
+        first = "->" if e.is_arrow else "."
+        chain = (f"{first}__deref__()"
+                 + ".__deref__()" * (e.deref_chain - 1))
         base = f"{_emit_expr(e.receiver, state)}{chain}.{e.field_cpp}"
         return f"(*{base})" if e.narrowed_deref else base
     base = f"{_emit_expr(e.receiver, state)}{'->' if e.is_arrow else '.'}{e.field_cpp}"
@@ -1373,7 +1381,15 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         return f"&({inner})" if e.addr_of else inner
     if isinstance(e, THIRMethodCall):
         return _emit_method_call(e, state)
-    if isinstance(e, (THIREnumMember, THIRClassConstant, THIRModuleVar)):
+    if isinstance(e, THIRClassConstant):
+        if e.recv_eval is not None:
+            # Effectful / runtime-checked instance receiver: evaluate it,
+            # discard, yield the static (`({ static_cast<void>(recv);
+            # C::LIMIT; })` / the deref_check variant).
+            recv = e.recv_wrap.format(_emit_expr(e.recv_eval, state))
+            return f"({{ {recv}; {e.cpp}; }})"
+        return e.cpp
+    if isinstance(e, (THIREnumMember, THIRModuleVar)):
         return e.cpp
     if isinstance(e, THIREnumWrap):
         if e.operand is None:

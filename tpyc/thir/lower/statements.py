@@ -238,6 +238,7 @@ from .predicates import (
     _optional_narrow_facts_ok,
     _optional_ptr_borrow,
     _optional_ptr_borrow_name,
+    _storage_optional_return_type,
     _unwrap_own,
     _owned_str_append_target,
     _owned_str_slot,
@@ -1065,11 +1066,14 @@ def _for_tuple_unpack_route(
                 or len(elem.element_types) != len(up.targets)
                 or not _for_each_elem_binding_ok(et)):
             return None
-        # A generator / zip source yields BORROW-form tuples (`std::tuple<T*>`);
-        # a ref / fresh-const-ref target reads them with the unwrapped emit, NOT
-        # the storage container's tuple_to_pointer lift, so it defers (only the
-        # value-tuple / scalar unpack routes over an iter-proto source).
-        if any(up.is_ref) or any(
+        # A generator / zip / enumerate source yields BORROW-form tuples
+        # (`std::tuple<..., T*>`): a REF target aliases the live element via
+        # the unwrapped emit (`auto&& p = unwrap_ref(tuple_elem_ref(...))`)
+        # off the mutable `auto& __tup_N` head -- NO tuple_to_pointer lift
+        # (the head lowering keys that on `iter_proto`). A fresh const-ref
+        # target still defers: its `const T& = std::get<i>` bind assumes a
+        # storage element.
+        if any(
                 up.is_const_ref[i] and n not in hoisted_names
                 for i, n in enumerate(up.targets) if n is not None):
             return None
@@ -2189,6 +2193,31 @@ def _owned_record_decl_ok(stmt: TpyVarDecl, vtype: 'TpyType | None',
                  or (isinstance(stmt.init, TpyMethodCall)
                      and _f1_record(analyzer.get_expr_type(stmt.init), analyzer)
                      and is_rvalue_source(analyzer, stmt.init))))
+
+def _own_opt_record_call_slot(stmt: TpyVarDecl, vtype: 'TpyType | None',
+                              lc: '_LowerCtx', analyzer) -> bool:
+    """A single-assignment STORAGE `std::optional<T>` record local from an
+    owned-optional-returning call (`upgraded = w.upgrade()` on an
+    `-> Own[Rc[T]] | None` accessor): the plain spelled copy decl; the name
+    registers in `value_opt_record_locals` so narrowed reads deref
+    `(*upgraded)` and the None-test reads has_value. Reassigned / hoisted /
+    escaping names keep their AST pointer machinery."""
+    if (stmt.name in lc.prescan.reassigned
+            or stmt.name in lc.prescan.hoisted
+            or stmt.name in lc.prescan.move_through):
+        return False
+    if not isinstance(stmt.init, (TpyCall, TpyMethodCall)):
+        return False
+    u = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(vtype)))
+         if isinstance(vtype, TpyType) else None)
+    if not isinstance(u, OptionalType) or not _f1_record(
+            _unwrap_own(unwrap_readonly(u.inner)), analyzer):
+        return False
+    it = analyzer.get_expr_type(stmt.init)
+    return _storage_optional_return_type(
+        unwrap_readonly(unwrap_ref_type(unwrap_send_sync(it)))
+        if isinstance(it, TpyType) else None, analyzer) is not None
+
 
 def _lower_borrow_local(stmt: TpyVarDecl, vtype: TpyType, binding: 'LocalBinding',
                         is_const: bool, lc: _LowerCtx,
@@ -4607,7 +4636,12 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     # init is the `into_any` make_any wrap (or an already-Any
                     # source). The plain-copy decl spells `::tpy::Any a = ...`.
                     or _is_any_type(vtype)
-                    or _value_tuple(vtype, analyzer) is not None)
+                    or _value_tuple(vtype, analyzer) is not None
+                    # An owned-optional record slot (`std::optional<Rc<T>>
+                    # upgraded = w.upgrade();`) -- the record twin of the
+                    # value-opt scalar row; registration below keys its
+                    # narrowed/None-test reads.
+                    or _own_opt_record_call_slot(stmt, vtype, lc, analyzer))
                 if not slot_ok:
                     # Branch-first REBIND_SLOT and owned-record decls are
                     # handled by the borrow cascade above (its per-arm
@@ -4735,6 +4769,13 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         # str/bytes-name arm (no deref), matching the AST.
         elif not is_reassign and _value_opt_owned_view(vtype, analyzer) is not None:
             lc.value_opt_view_locals.add(stmt.name)
+        # The record twin: an owned-optional-call slot binds the whole
+        # `std::optional<T>` record, so narrowed reads deref `(*name)` and
+        # the None-test reads has_value off the registered binding.
+        elif (not is_reassign
+              and _own_opt_record_call_slot(stmt, vtype, lc, analyzer)):
+            lc.value_opt_record_locals.add(stmt.name)
+            _witness("decl.opt_record_call")
         # An enum decl type spells via render_type (codegen's type_to_cpp):
         # its enum arm routes through enum_cpp_name -- the authoritative
         # spelling for cross-module (`::tpyapp::m::E`), @native (user qname),
@@ -4749,7 +4790,11 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             cpp_type = "auto"
         elif (_eligible_enum(vtype, analyzer) is not None
               or _container_enum_spell(vtype, analyzer)
-              or _callable_value(vtype)):
+              or _callable_value(vtype)
+              # The owned-optional record slot spells via render_type
+              # (generic instantiation + cross-module qualification --
+              # `std::optional<::tpystd::tplib::rc::Rc<Cell>>`).
+              or stmt.name in lc.value_opt_record_locals):
             cpp_type = lc.render_type(vtype)
         else:
             cpp_type = None
@@ -4845,7 +4890,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     stmt, declared, pointers, analyzer)
                 or _class_const_write_target_ok(
                     stmt.target, declared, lc.pointers, analyzer)
-                or _scalar_field_write_ok(stmt, declared, analyzer)
+                or _scalar_field_write_ok(stmt, declared, analyzer, pointers)
                 or _user_deref_field_write_ok(
                     stmt, declared, narrowed, analyzer, pointers)
                 or _f1_tuple_field_write_ok(
@@ -6477,17 +6522,28 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                         target_binds.append("value")
                     body_declared[name] = tt
                 head_wrap_cpp = None
+                head_bind = TupleSourceBind.NAME_CREF
                 if any(b == "ref" for b in target_binds):
-                    # The loop element (`stmt.var`) is a storage-form tuple;
-                    # lift it to the borrow pointer tuple so `std::get<i>`
-                    # yields the `T*` each ref target aliases.
-                    head_wrap_cpp = _borrow_tuple_wrap_cpp(
-                        up.target_types, analyzer,
-                        const_source=_iteration_yields_const(
-                            stmt.iterable, lc, analyzer))
-                    if head_wrap_cpp is None:
-                        raise ThirUnsupported("stmt.tuple_unpack")
-                    _witness("stmt.tuple_unpack.ref_target")
+                    if route.iter_proto:
+                        # An iter-proto element (`std::tuple<..., T*>` off a
+                        # zip/enumerate/generator yield) is ALREADY borrow
+                        # form: no lift; the head binds the mutable
+                        # `auto& __tup_N = <var>;` and each ref target
+                        # aliases via unwrap_ref/tuple_elem_ref.
+                        head_bind = TupleSourceBind.NAME_REF
+                        _witness("stmt.tuple_unpack.ref_target_iter")
+                    else:
+                        # The loop element (`stmt.var`) is a storage-form
+                        # tuple; lift it to the borrow pointer tuple so
+                        # `std::get<i>` yields the `T*` each ref target
+                        # aliases.
+                        head_wrap_cpp = _borrow_tuple_wrap_cpp(
+                            up.target_types, analyzer,
+                            const_source=_iteration_yields_const(
+                                stmt.iterable, lc, analyzer))
+                        if head_wrap_cpp is None:
+                            raise ThirUnsupported("stmt.tuple_unpack")
+                        _witness("stmt.tuple_unpack.ref_target")
                 head = THIRTupleUnpack(
                     source=stmt.var,
                     targets=tuple(up.targets),
@@ -6495,7 +6551,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     binds=tuple(target_binds),
                     source_bind=(TupleSourceBind.STORAGE_WRAP
                                  if head_wrap_cpp is not None
-                                 else TupleSourceBind.NAME_CREF),
+                                 else head_bind),
                     source_wrap_cpp=head_wrap_cpp,
                     loc=getattr(up, "loc", None))
                 body = (head,) + _lower_stmts(
@@ -6825,6 +6881,13 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             eligible = True
         elif isinstance(stmt.expr, TpyMethodCall):
             eligible = True
+        elif isinstance(stmt.expr, TpyBinOp) and _f1_record(
+                unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                    analyzer.get_expr_type(stmt.expr)))), analyzer):
+            # A DISCARDED record-result dunder binop (`timedelta(seconds=1)
+            # / 0` evaluated for its ZeroDivisionError): the template render
+            # + `;`, identical to its expression form.
+            eligible = bool(_witness("expr_stmt.record_binop"))
         else:
             eligible = _kind_detail("expr_stmt.", stmt.expr)
         if not eligible:

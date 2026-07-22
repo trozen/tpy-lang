@@ -1937,12 +1937,14 @@ def _user_deref_field_recv_ok(e: TpyExpr, declared: dict[str, TpyType],
                               pointers: 'AbstractSet[str]') -> bool:
     """A `.field` access auto-dereffed through a USER Deref-style wrapper
     (`r.x` on `r: Ref` with a `__deref__` method) -> `r.__deref__().x`
-    (_gen_field_access's `deref_chain and not is_pointer()` arm). The receiver
-    must be a plain value NAME bound to an F1 user record (spells bare `.`)
-    that is NOT a pointer / Optional (the narrowed-Optional `->__deref__()`
-    indirect variant stays AST) and NOT isinstance-narrowed; the record must
-    carry a `__deref__` overload. `deref_depth` is the auto-deref count (the
-    chain length); `deref_narrowed_to` (a deref-view cast) stays AST. Read AND
+    (_gen_field_access's deref_chain arm). The receiver is a NAME bound to an
+    F1 user record: a plain value binding spells the bare `.` chain; a
+    pointer-local (a PROVEN narrowed-Optional local or an F2-reseated `T*`)
+    spells the indirect `recv->__deref__().field` -- the lowering keys the
+    first hop on the pointer set like the method twin. NOT
+    isinstance-narrowed; the record must carry a `__deref__` overload.
+    `deref_depth` is the auto-deref count (the chain length);
+    `deref_narrowed_to` (a deref-view cast) stays AST. Read AND
     scalar-write target alike -- the chain render is position-independent."""
     if not isinstance(e, TpyFieldAccess):
         return False
@@ -1957,21 +1959,39 @@ def _user_deref_field_recv_ok(e: TpyExpr, declared: dict[str, TpyType],
             or e.needs_optional_runtime_check):
         return False
     recv = e.obj
-    if not isinstance(recv, TpyName) or recv.name not in declared:
-        return False
-    if recv.name in narrowed or recv.name in pointers:
-        # An F2-reseated record local is a real `T*` (in `pointers` though its
-        # declared type is bare) -- the AST renders `recv->__deref__().field`,
-        # not the bare `.` chain this arm emits, so it stays AST.
-        return False
-    rt = declared[recv.name]
-    u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rt)))
-    if isinstance(u, OwnType):
-        u = unwrap_readonly(u.wrapped)
-    if not (isinstance(u, NominalType) and _f1_record(u, analyzer)):
+    u = _deref_wrapper_receiver_record(recv, declared, narrowed, pointers,
+                                       analyzer)
+    if u is None:
         return False
     ri = analyzer.registry.get_record_for_type(u)
     return ri is not None and bool(ri.get_method_overloads("__deref__"))
+
+
+def _deref_wrapper_receiver_record(recv: TpyExpr,
+                                   declared: dict[str, TpyType],
+                                   narrowed: 'AbstractSet[str]',
+                                   pointers: 'AbstractSet[str]',
+                                   analyzer) -> 'NominalType | None':
+    """The user-Deref twins' shared receiver resolution: an in-scope,
+    non-isinstance-narrowed NAME whose binding unwraps to an F1 user record
+    -- a plain value binding (bare `.` chain), or a PROVEN Optional-ptr
+    local (`r: Ref | None` narrowed non-None, in `pointers` -- the lowering
+    spells the `->` first hop off the pointer set), whose wrapper record is
+    the Optional's inner. None outside the slice."""
+    if not isinstance(recv, TpyName) or recv.name not in declared:
+        return None
+    if recv.name in narrowed:
+        return None
+    u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(declared[recv.name])))
+    if isinstance(u, OwnType):
+        u = unwrap_readonly(u.wrapped)
+    if isinstance(u, OptionalType):
+        if recv.name not in pointers or not u.uses_pointer_repr():
+            return None
+        u = unwrap_readonly(_unwrap_own(u.inner))
+    if not (isinstance(u, NominalType) and _f1_record(u, analyzer)):
+        return None
+    return u
 
 def _typed_dict_recv_ok(obj: TpyExpr, declared: dict[str, TpyType],
                         pointers: 'AbstractSet[str]',
@@ -2040,10 +2060,12 @@ def _user_deref_method_call_ok(e: TpyExpr, declared: dict[str, TpyType],
                                pointers: 'AbstractSet[str]') -> bool:
     """A method call auto-dereffed through a USER Deref-style wrapper
     (`r.sum()` on `r: Ref` with `__deref__`) -> `r.__deref__().sum()`
-    (_gen_method_call's `deref_chain and not is_pointer()` arm; N =
-    deref_depth). The method arm (plain member, no marker) mirrors the field
-    read's `_user_deref_field_recv_ok`: a plain value NAME bound to an F1 user
-    record with a `__deref__` overload, not a pointer / narrowed local. The
+    (_gen_method_call's deref_chain arm; N = deref_depth). The method arm
+    (plain member, no marker) mirrors the field read's
+    `_user_deref_field_recv_ok`: a NAME bound to an F1 user record with a
+    `__deref__` overload -- a plain value binding spells the bare `.` chain,
+    a pointer-local (proven narrowed-Optional / F2-reseated) the indirect
+    `recv->__deref__()` first hop; isinstance-narrowed stays AST. The
     called method's fi is a plain user method on the DEREFFED type; every
     special-emit marker (static/module/template/native/type-args/nested/
     optional-check) stays AST."""
@@ -2070,14 +2092,9 @@ def _user_deref_method_call_ok(e: TpyExpr, declared: dict[str, TpyType],
             or fi.type_params or fi.linkage != FunctionLinkage.DEFAULT):
         return False
     recv = e.obj
-    if not isinstance(recv, TpyName) or recv.name not in declared:
-        return False
-    if recv.name in narrowed or recv.name in pointers:
-        return False
-    u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(declared[recv.name])))
-    if isinstance(u, OwnType):
-        u = unwrap_readonly(u.wrapped)
-    if not (isinstance(u, NominalType) and _f1_record(u, analyzer)):
+    u = _deref_wrapper_receiver_record(recv, declared, narrowed, pointers,
+                                       analyzer)
+    if u is None:
         return False
     ri = analyzer.registry.get_record_for_type(u)
     return ri is not None and bool(ri.get_method_overloads("__deref__"))
@@ -2722,17 +2739,26 @@ def _subscript_recv_tuple(e: TpyExpr, locals_: dict[str, TpyType],
                           analyzer) -> 'tuple[TupleType, int] | None':
     """`(tuple_type, normalized_idx)` for a subscript `t[N]` off an in-scope
     eligible-tuple name (a value-scalar tuple or an already-routed pointer-repr
-    `_f1_tuple`) OR off a container-element read of such a tuple
+    `_f1_tuple`), off a container-element read of such a tuple
     (`items[i][N]` -- a storage-form tuple lvalue, so the get chains off the
     container read: `std::get<N>(::tpy::__getitem__(items, i))`, `.` element
-    access); else None. Shared by the value-element and record-element read
-    gates -- other receiver shapes (nested tuple gets, calls, fields),
+    access), OR off a clean field read of such a tuple (`c.data[N]` -- a
+    storage-form tuple member, `std::get<N>(c.data)`, `.` element access);
+    else None. Shared by the value-element and record-element read
+    gates -- other receiver shapes (nested tuple gets, calls),
     ineligible tuples, and non-const indices stay on the AST path."""
     if not isinstance(e, TpySubscript):
         return None
     recv = e.obj
     if isinstance(recv, TpyName):
         if recv.name not in locals_:
+            return None
+    elif isinstance(recv, TpyFieldAccess):
+        # A clean field read of a storage-form tuple (`c.data[N]` /
+        # `self.data[N]`): the field renders bare off its admitted receiver,
+        # so the get chains identically (`std::get<N>(c.data)`); elements are
+        # held by value (storage form -- `.` member access, no borrow lift).
+        if not _field_receiver_ok(recv, locals_, analyzer):
             return None
     elif (isinstance(recv, TpySubscript)
             and isinstance(recv.obj, TpyName)
@@ -2751,7 +2777,7 @@ def _subscript_recv_tuple(e: TpyExpr, locals_: dict[str, TpyType],
     if res is None:
         return None
     recv_t, idx = res
-    if not isinstance(recv, TpyName):
+    if isinstance(recv, TpySubscript):
         # The container-element receiver's analyzer type can carry
         # unresolved literal elements (`items = [(7, Box(10))]` types
         # `items[0]` with an IntLiteralType member); the container's
@@ -2785,9 +2811,14 @@ def _tuple_subscript_value_read(e: TpyExpr, locals_: dict[str, TpyType],
         if recv.name not in locals_:
             return None
     elif isinstance(recv, TpyFieldAccess):
+        # A value-tuple field (`self.data[N]`) or a storage-form mixed
+        # record/scalar tuple field (`c.data[N]` on an `_f1_tuple` -- elements
+        # held by value, so a scalar element reads bare like the name arm).
         if not (_field_receiver_ok(recv, locals_, analyzer)
-                and _value_tuple(analyzer.get_expr_type(recv), analyzer)
-                is not None):
+                and (_value_tuple(analyzer.get_expr_type(recv), analyzer)
+                     is not None
+                     or _f1_tuple(analyzer.get_expr_type(recv), analyzer)
+                     is not None)):
             return None
     elif isinstance(recv, TpySubscript):
         # A nested read `t[i][j]`: the inner `t[i]` must itself be a value-tuple
@@ -2876,6 +2907,54 @@ def _optional_field_over_subscript_ok(e: TpyExpr, locals_: dict[str, TpyType],
     return (isinstance(e, TpyFieldAccess) and e.needs_optional_runtime_check
             and _field_markers_clean(e, allow_optional_check=True)
             and _subscript_optional_field_recv(e.obj, locals_, analyzer) is not None)
+
+def _record_getitem_idx_recv_ok(sub: 'TpySubscript',
+                                locals_: dict[str, TpyType], analyzer,
+                                pointers: 'AbstractSet[str]') -> bool:
+    """The record-getitem subscript arm's index/receiver admission, written
+    once for the subscript arm and the field-over-getitem gate: a plainly
+    rendered index (scalar without the `.to_fixed_check` narrow, or a str
+    value) off a declared non-pointer NAME or clean-field receiver
+    (pointer-local receivers render `(*p)[...]` -- excluded). An UNPROVEN
+    Optional receiver keeps its runtime check on the AST path (explicit
+    here rather than relying on `_record_getitem_key`'s unwrap staying
+    narrow)."""
+    if sub.needs_optional_runtime_check:
+        return False
+    idx_type = analyzer.get_expr_type(sub.index)
+    idx_ok = ((_resolved_scalar(idx_type, analyzer)
+               and (not _runtime_bigint(idx_type, analyzer)
+                    or _bigint_index_disposition(
+                           sub.index, analyzer.get_expr_type(sub.obj),
+                           analyzer) == "bare"))
+              or _resolved_str_value(idx_type, analyzer) is not None)
+    recv_ok = ((isinstance(sub.obj, TpyName) and sub.obj.name in locals_
+                and sub.obj.name not in pointers)
+               or (isinstance(sub.obj, TpyFieldAccess)
+                   and _field_receiver_ok(sub.obj, locals_, analyzer)))
+    return bool(idx_ok and recv_ok)
+
+
+def _field_over_record_getitem_ok(e: TpyExpr, locals_: dict[str, TpyType],
+                                  analyzer,
+                                  pointers: 'AbstractSet[str]') -> bool:
+    """A field access off an F1-RECORD-returning user-record `__getitem__`
+    subscript (`points[0].x` on `ArrayList[Point, N]`): the receiver spells
+    the record's bare `operator[]` lvalue, the field chains `.` off it.
+    Only the member-access consumer admits (a value position would copy the
+    borrow); position-neutral -- a read (RHS) and a scalar-field write
+    target (LHS) render off the same receiver. Index/receiver shapes are
+    the record-getitem subscript arm's (`_record_getitem_idx_recv_ok`)."""
+    if not (isinstance(e, TpyFieldAccess) and _field_markers_clean(e)
+            and isinstance(e.obj, TpySubscript)):
+        return False
+    sub = e.obj
+    if isinstance(sub.index, TpySlice):
+        return False
+    if _record_getitem_key(analyzer.get_expr_type(sub.obj), analyzer) is None:
+        return False
+    return bool(_record_getitem_idx_recv_ok(sub, locals_, analyzer, pointers)
+                and _f1_record(analyzer.get_expr_type(sub), analyzer))
 
 def _owned_str_slot(t: TpyType | None, analyzer) -> bool:
     """An owned `str` container element/key/value slot (S5). Only the owned
@@ -3210,6 +3289,31 @@ def _optional_checked_field(e: TpyExpr, declared: dict[str, TpyType],
     if not _field_markers_clean(e, allow_optional_check=True):
         return False
     return _optional_ptr_borrow_name(e.obj, declared, analyzer) is not None
+
+def _optional_checked_field_over_field_ok(e: TpyExpr,
+                                          declared: dict[str, TpyType],
+                                          analyzer) -> bool:
+    """An UNPROVEN field access whose receiver is a clean field READ of a
+    STORAGE `Optional[F1-record]` member (`h.opt.x` where sema could not
+    prove `h.opt` non-None): the AST wraps the whole optional lvalue --
+    `::tpy::deref_optional_check(h.opt).x` -- the storage sibling of
+    `_optional_checked_field`'s already-`T*` name receiver. Read positions
+    only (the write target keeps its own gate)."""
+    if not isinstance(e, TpyFieldAccess):
+        return False
+    if not e.needs_optional_runtime_check:
+        return False
+    if not _field_markers_clean(e, allow_optional_check=True):
+        return False
+    recv = e.obj
+    if not (isinstance(recv, TpyFieldAccess)
+            and _field_receiver_ok(recv, declared, analyzer)):
+        return False
+    rt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+        analyzer.get_expr_type(recv))))
+    if not (isinstance(rt, OptionalType) and rt.uses_pointer_repr()):
+        return False
+    return _f1_record(_unwrap_own(rt.inner), analyzer)
 
 def _field_markers_clean(e: TpyFieldAccess, *,
                          allow_optional_check: bool = False) -> bool:

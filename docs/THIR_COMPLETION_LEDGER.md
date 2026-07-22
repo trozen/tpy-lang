@@ -1786,6 +1786,41 @@ byte-diff itself.
   emit divergence: SINGLE-element tuple literals parenthesize
   (`std::tuple<T>(x)`, the GCC C++23 brace-init ambiguity) -- the
   THIRTupleLiteral emit now mirrors `_gen_tuple_literal`'s tail.
+- **Landed: field-receiver/opt-record/dunder wave (`thir-forhead-recv-wave`,
+  2026-07-22, +29 flips, dial 2109 -> 2138).** Six cells: (1) the
+  field-receiver drill -- storage-form tuple FIELD subscripts
+  (`std::get<N>(c.data).x`, read + scalar write, `_subscript_recv_tuple`'s
+  field arm + the STORAGE form fix for field-rooted Optional elements),
+  record-returning user-getitem receivers (`points[0].x`, the shared
+  `_record_getitem_idx_recv_ok` gate + the prechecked record construction,
+  form BORROW), unproven STORAGE `Optional[record]` field chains
+  (`deref_optional_check(h.opt).x`, the new `THIRFieldAccess.opt_deref_check`
+  flag), pointer-first-hop user-Deref chains (`r->__deref__().x`/`.sum()`,
+  the field emit's arrow first hop + the shared
+  `_deref_wrapper_receiver_record` twins), class-constant receiver
+  effect/check statement expressions (`THIRClassConstant.recv_eval/recv_wrap`),
+  property-getter record receivers, and the Ptr-deref `record_ret_ok`
+  RECEIVER slice; (2) the tplib opt-record family (design-track memo A:
+  the generics-F1 interlock was STALE) -- owned-optional record slot decls
+  (`std::optional<Rc<T>> u = w.upgrade();`, the new branch-scoped
+  `value_opt_record_locals` binding class: narrowed `(*u)` reads, has_value
+  None-tests, method-gate dispatch on the narrowed inner), storage-sink
+  owned-record method rvalues, accessor-receiver optional-field writes
+  (`a.get().next = b.clone()`); (3) readonly-param key-function lambdas
+  (`_callable_param_cpp(readonly[T])` + `to_cpp_return_const`); (4) the
+  record-dunder rvalue arms (memo B: premise refuted -- templates already
+  injected) -- result admission + print/field/method/discard consumers,
+  incl. the `__rfloordiv__` swap (whose PRE-EXISTING operand-order
+  divergence vs CPython is now filed in BUGS.md); (5) extern-C option A
+  (memo D) -- EXPORT_C bodies with no str param (str-param residue tagged
+  `sig.linkage_c_abi` until cutover) + verbatim raw-symbol callees (the
+  refuted "len(name) uncompilable" BUGS candidate: runtime carries
+  `__len__(const char*)`); (6) iter-proto REF-target unpacks
+  (`for i, p in enumerate(ps):` -- the borrow-tuple head binds
+  `auto& __tup_N` via TupleSourceBind.NAME_REF, no lift; the existing "ref"
+  emit arm renders the alias). Five stale still-defers pins flipped to
+  routes-pins with corpus witnesses in hand. Parked residuals in TODO.md's
+  calls-wave frontier entry.
 - **Landed: print/compare-sink wave (`thir-wave-next`, 2026-07-22, +43 flips,
   dial 2065 -> 2108).** Eight construct families: user-record `__contains__`
   membership (`binop.user_membership` -- name/field receivers, set-LITERAL

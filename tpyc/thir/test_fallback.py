@@ -862,10 +862,11 @@ def test_for_each_tuple_unpack_over_gen_call_routes():
     assert compiler._thir_face_witnesses.get("foreach.tuple_unpack_iter") == 1
 
 
-def test_for_each_tuple_unpack_over_gen_record_target_defers():
-    # A record unpack target over a generator call stays deferred (the
-    # borrow target branch of _gen_tuple_unpack) -- the reject classifier
-    # names the iterable family (the call check precedes the target rungs).
+def test_for_each_tuple_unpack_over_gen_record_target_routes():
+    # A record unpack target over a generator call ROUTES: the iter-proto
+    # element is already a borrow-form tuple, so the ref target aliases via
+    # unwrap_ref/tuple_elem_ref off the mutable `auto& __tup_N` head
+    # (corpus witness: iterators/gen_resumable_mixed_tuple_yield).
     compiler, entry, f = _fn_body(
         "from tpy import Int32\n"
         "from typing import Iterator\n"
@@ -876,20 +877,20 @@ def test_for_each_tuple_unpack_over_gen_record_target_defers():
         "def gen(ps: list[P]) -> Iterator[tuple[Int32, P]]:\n"
         "    for i in range(len(ps)):\n"
         "        yield (Int32(i), ps[i])\n"
-        "def rejected(ps: list[P]) -> Int32:\n"
+        "def routed(ps: list[P]) -> Int32:\n"
         "    t = 0\n"
         "    for i, p in gen(ps):\n"
         "        t = t + i + p.x\n"
         "    return t\n",
-        "rejected")
+        "routed")
     with activate_compiler(compiler):
         begin_attempt()
         fn = lower_function(f, entry.analyzer, self_type=None)
         if fn is None:
             fold_attempt("body")
-    assert fn is None
-    assert compiler._thir_fallback.get(
-        "body:stmt.for_each:iter.call.generator") == 1
+    assert fn is not None
+    assert compiler._thir_face_witnesses.get(
+        "stmt.tuple_unpack.ref_target_iter", 0) >= 1
 
 
 def test_for_each_tuple_unpack_ref_target_routes():

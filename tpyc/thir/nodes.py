@@ -1007,11 +1007,19 @@ class THIRClassConstant(THIRExpr):
     static (`C::LIMIT`, `::tpyapp::m::Limits::MAX`, `C<int32_t>::X`). `cpp`
     is the full spelling composed at lowering (native rename, generic
     instantiation, cross-module qualification) -- the AST's
-    `_class_constant_access_parts` with receiver_eval None; effectful /
-    runtime-checked receivers (the statement-expression wrapper) reject at
-    lowering. `form` follows the constant's type like a name read: a
-    `StrView` constant is a view (BORROW -- owned-str sinks copy it)."""
+    `_class_constant_access_parts`. An effectful / runtime-checked INSTANCE
+    receiver carries `recv_eval` + `recv_wrap` (the statement-expression
+    wrapper: `({ <wrap(recv)>; C::LIMIT; })`, wrap `::tpy::deref_check({0})`
+    for the unproven-Optional check or `static_cast<void>({0})` for the
+    effect discard -- gen_class_constant's receiver_eval split). `form`
+    follows the constant's type like a name read: a `StrView` constant is a
+    view (BORROW -- owned-str sinks copy it)."""
     cpp: str
+    recv_eval: 'THIRExpr | None' = None
+    recv_wrap: 'str | None' = None
+
+    def __post_init__(self) -> None:
+        assert (self.recv_eval is None) == (self.recv_wrap is None)
 
 
 @dataclass(frozen=True)
@@ -1070,26 +1078,37 @@ class THIRFieldAccess(THIRExpr):
     `print_optional_val` wrap read the bare storage instead; those consumers
     strip the flag (mirroring the AST's gen_expr-vs-gen_expr_deref split).
 
-    `deref_chain` (>0) inserts N `.__deref__()` calls between the receiver and
+    `deref_chain` (>0) inserts N `__deref__()` calls between the receiver and
     the field -- a field access through a USER Deref-style wrapper
-    (`r.x` -> `r.__deref__().x`), _gen_field_access's `deref_chain and not
-    is_pointer()` arm. Non-indirect only (`.` receiver access); the indirect
-    (narrowed-Optional) `->__deref__()` variant stays on the AST path."""
+    (`r.x` -> `r.__deref__().x`), _gen_field_access's deref_chain arm. A
+    pointer-local receiver (proven narrowed-Optional / F2-reseated `T*`)
+    joins the first hop with `->` via `is_arrow`
+    (`r->__deref__().x`), mirroring the method twin."""
     receiver: THIRExpr
     field_cpp: str
     is_arrow: bool = False
     deref_check: bool = False
     narrowed_deref: bool = False
     deref_chain: int = 0
+    # An unproven access whose receiver is a WHOLE value-repr Optional
+    # lvalue (an Optional[record] field read, `h.opt.x`): wraps the receiver
+    # in `::tpy::deref_optional_check(...)` -- the optional-lvalue sibling
+    # of `deref_check` (whose receiver is already a `T*`).
+    opt_deref_check: bool = False
 
     def __post_init__(self) -> None:
         # Enforce the deref_check/is_arrow mutual exclusivity the docstring documents.
         assert not (self.deref_check and self.is_arrow)
         # A narrowed field is proven non-None; the runtime check never coexists.
         assert not (self.deref_check and self.narrowed_deref)
-        # The user-Deref chain is a plain `.` wrapper access -- never the
-        # pointer/runtime-check arms.
-        assert not (self.deref_chain and (self.deref_check or self.is_arrow))
+        # The user-Deref chain never coexists with the runtime check (a
+        # checked receiver takes deref_check); `is_arrow` MAY join it (the
+        # indirect first hop).
+        assert not (self.deref_chain and self.deref_check)
+        # The optional-lvalue check is its own exclusive receiver wrap.
+        assert not (self.opt_deref_check
+                    and (self.deref_check or self.is_arrow
+                         or self.narrowed_deref or self.deref_chain))
 
 
 @dataclass(frozen=True)
