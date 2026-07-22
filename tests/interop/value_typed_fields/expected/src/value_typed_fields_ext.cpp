@@ -9,17 +9,27 @@ using namespace ::tpy::cpy;
 
 PyObject *value_typed_fields__type_Point = nullptr;
 PyObject *value_typed_fields__type_Box = nullptr;
+::tpy::interop::ViewRegistry value_typed_fields__view_registry;
 
 int value_typed_fields__Point_init(PyObject *self, PyObject *args, PyObject *kwargs) {
     static char *__kwlist[] = {const_cast<char *>("x"), const_cast<char *>("y"), nullptr};
     PyObject *a0 = nullptr; PyObject *a1 = nullptr;
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OO:Point", __kwlist, &a0, &a1)) return -1;
     auto *__inst = reinterpret_cast<::tpy::interop::Instance<::tpyapp::value_typed_fields::Point> *>(self);
+    if (__inst->owner != nullptr) {
+        PyErr_SetString(PyExc_TypeError, "cannot __init__ a borrowed field view");
+        return -1;
+    }
     try {
         int64_t __p0 = ::tpy::interop::from_py<int64_t>(a0);
         int64_t __p1 = ::tpy::interop::from_py<int64_t>(a1);
-        if (__inst->initialized) { __inst->initialized = false; ::std::destroy_at(&__inst->payload); }
-        new (&__inst->payload) ::tpyapp::value_typed_fields::Point(__p0, __p1);
+        if (__inst->initialized && ::tpy::interop::has_views_into(__inst->p, sizeof(*__inst->p), value_typed_fields__view_registry)) {
+            PyErr_SetString(PyExc_TypeError, "cannot __init__ an instance while borrow views of its fields are alive");
+            return -1;
+        }
+        if (__inst->initialized) { __inst->initialized = false; ::std::destroy_at(&__inst->storage); }
+        new (&__inst->storage) ::tpyapp::value_typed_fields::Point(__p0, __p1);
+        __inst->p = &__inst->storage;
         __inst->initialized = true;
         return 0;
     } catch (const ::tpy::BaseException &__e) {
@@ -32,9 +42,13 @@ int value_typed_fields__Point_init(PyObject *self, PyObject *args, PyObject *kwa
     }
 }
 
+void value_typed_fields__Point_dealloc(PyObject *self) {
+    ::tpy::interop::instance_dealloc<::tpyapp::value_typed_fields::Point>(self, value_typed_fields__view_registry);
+}
+
 PyObject *value_typed_fields__Point__x_get(PyObject *self, void *) {
     try {
-        return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::value_typed_fields::Point> *>(self)->payload.x);
+        return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::value_typed_fields::Point> *>(self)->p->x);
     } catch (...) {
         if (!PyErr_Occurred())
             PyErr_SetString(PyExc_RuntimeError, "tpy extension: attribute read failed");
@@ -43,7 +57,7 @@ PyObject *value_typed_fields__Point__x_get(PyObject *self, void *) {
 }
 PyObject *value_typed_fields__Point__y_get(PyObject *self, void *) {
     try {
-        return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::value_typed_fields::Point> *>(self)->payload.y);
+        return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::value_typed_fields::Point> *>(self)->p->y);
     } catch (...) {
         if (!PyErr_Occurred())
             PyErr_SetString(PyExc_RuntimeError, "tpy extension: attribute read failed");
@@ -55,8 +69,8 @@ PyObject *value_typed_fields__Point__richcompare_slot(PyObject *self, PyObject *
     if (__ot != (::tpy::cpy::PyTypeObject *)value_typed_fields__type_Point && PyType_IsSubtype(__ot, (::tpy::cpy::PyTypeObject *)value_typed_fields__type_Point) == 0)
         return ::tpy::interop::notimplemented_to_py();
     try {
-        auto &__self = reinterpret_cast<::tpy::interop::Instance<::tpyapp::value_typed_fields::Point> *>(self)->payload;
-        auto &__other = reinterpret_cast<::tpy::interop::Instance<::tpyapp::value_typed_fields::Point> *>(other)->payload;
+        auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::value_typed_fields::Point> *>(self)->p;
+        auto &__other = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::value_typed_fields::Point> *>(other)->p;
         switch (op) {
         case Py_LT:
             return ::tpy::interop::notimplemented_to_py();
@@ -85,7 +99,7 @@ PyObject *value_typed_fields__Point__richcompare_slot(PyObject *self, PyObject *
 
 Py_ssize_t value_typed_fields__Point__hash_slot(PyObject *self) {
     try {
-        return ::tpy::interop::hash_to_py_hash_t(static_cast<std::uint64_t>(reinterpret_cast<::tpy::interop::Instance<::tpyapp::value_typed_fields::Point> *>(self)->payload.__hash__()));
+        return ::tpy::interop::hash_to_py_hash_t(static_cast<std::uint64_t>(reinterpret_cast<::tpy::interop::Instance<::tpyapp::value_typed_fields::Point> *>(self)->p->__hash__()));
     } catch (const ::tpy::BaseException &__e) {
         ::tpy::interop::set_py_err_from(__e);
         return -1;
@@ -106,7 +120,7 @@ PyGetSetDef value_typed_fields__Point__getset[] = {
 };
 PyType_Slot value_typed_fields__Point__slots[] = {
     {Py_tp_init, (void *)value_typed_fields__Point_init},
-    {Py_tp_dealloc, (void *)::tpy::interop::instance_dealloc<::tpyapp::value_typed_fields::Point>},
+    {Py_tp_dealloc, (void *)value_typed_fields__Point_dealloc},
     {Py_tp_methods, (void *)value_typed_fields__Point__methods},
     {Py_tp_getset, (void *)value_typed_fields__Point__getset},
     {Py_tp_richcompare, (void *)value_typed_fields__Point__richcompare_slot},
@@ -124,10 +138,19 @@ int value_typed_fields__Box_init(PyObject *self, PyObject *args, PyObject *kwarg
     PyObject *a0 = nullptr;
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:Box", __kwlist, &a0)) return -1;
     auto *__inst = reinterpret_cast<::tpy::interop::Instance<::tpyapp::value_typed_fields::Box> *>(self);
+    if (__inst->owner != nullptr) {
+        PyErr_SetString(PyExc_TypeError, "cannot __init__ a borrowed field view");
+        return -1;
+    }
     try {
         ::tpyapp::value_typed_fields::Point &__p0 = *::tpy::interop::instance_payload<::tpyapp::value_typed_fields::Point>(a0, (::tpy::cpy::PyTypeObject *)value_typed_fields__type_Point);
-        if (__inst->initialized) { __inst->initialized = false; ::std::destroy_at(&__inst->payload); }
-        new (&__inst->payload) ::tpyapp::value_typed_fields::Box(__p0);
+        if (__inst->initialized && ::tpy::interop::has_views_into(__inst->p, sizeof(*__inst->p), value_typed_fields__view_registry)) {
+            PyErr_SetString(PyExc_TypeError, "cannot __init__ an instance while borrow views of its fields are alive");
+            return -1;
+        }
+        if (__inst->initialized) { __inst->initialized = false; ::std::destroy_at(&__inst->storage); }
+        new (&__inst->storage) ::tpyapp::value_typed_fields::Box(__p0);
+        __inst->p = &__inst->storage;
         __inst->initialized = true;
         return 0;
     } catch (const ::tpy::BaseException &__e) {
@@ -140,9 +163,13 @@ int value_typed_fields__Box_init(PyObject *self, PyObject *args, PyObject *kwarg
     }
 }
 
+void value_typed_fields__Box_dealloc(PyObject *self) {
+    ::tpy::interop::instance_dealloc<::tpyapp::value_typed_fields::Box>(self, value_typed_fields__view_registry);
+}
+
 PyObject *value_typed_fields__Box__get_origin_pywrap(PyObject *self, PyObject *) {
     try {
-        auto &__self = reinterpret_cast<::tpy::interop::Instance<::tpyapp::value_typed_fields::Box> *>(self)->payload;
+        auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::value_typed_fields::Box> *>(self)->p;
         return ::tpy::interop::instance_to_py((::tpy::cpy::PyTypeObject *)value_typed_fields__type_Point, __self.get_origin());
     } catch (const ::tpy::BaseException &__e) {
         ::tpy::interop::set_py_err_from(__e);
@@ -156,7 +183,7 @@ PyObject *value_typed_fields__Box__get_origin_pywrap(PyObject *self, PyObject *)
 
 PyObject *value_typed_fields__Box__origin_get(PyObject *self, void *) {
     try {
-        return ::tpy::interop::instance_to_py((::tpy::cpy::PyTypeObject *)value_typed_fields__type_Point, reinterpret_cast<::tpy::interop::Instance<::tpyapp::value_typed_fields::Box> *>(self)->payload.origin);
+        return ::tpy::interop::instance_to_py((::tpy::cpy::PyTypeObject *)value_typed_fields__type_Point, reinterpret_cast<::tpy::interop::Instance<::tpyapp::value_typed_fields::Box> *>(self)->p->origin);
     } catch (...) {
         if (!PyErr_Occurred())
             PyErr_SetString(PyExc_RuntimeError, "tpy extension: attribute read failed");
@@ -169,7 +196,7 @@ int value_typed_fields__Box__origin_set(PyObject *self, PyObject *value, void *)
         return -1;
     }
     try {
-        reinterpret_cast<::tpy::interop::Instance<::tpyapp::value_typed_fields::Box> *>(self)->payload.origin = *::tpy::interop::instance_payload<::tpyapp::value_typed_fields::Point>(value, (::tpy::cpy::PyTypeObject *)value_typed_fields__type_Point);
+        reinterpret_cast<::tpy::interop::Instance<::tpyapp::value_typed_fields::Box> *>(self)->p->origin = *::tpy::interop::instance_payload<::tpyapp::value_typed_fields::Point>(value, (::tpy::cpy::PyTypeObject *)value_typed_fields__type_Point);
         return 0;
     } catch (...) {
         if (!PyErr_Occurred())
@@ -188,7 +215,7 @@ PyGetSetDef value_typed_fields__Box__getset[] = {
 };
 PyType_Slot value_typed_fields__Box__slots[] = {
     {Py_tp_init, (void *)value_typed_fields__Box_init},
-    {Py_tp_dealloc, (void *)::tpy::interop::instance_dealloc<::tpyapp::value_typed_fields::Box>},
+    {Py_tp_dealloc, (void *)value_typed_fields__Box_dealloc},
     {Py_tp_methods, (void *)value_typed_fields__Box__methods},
     {Py_tp_getset, (void *)value_typed_fields__Box__getset},
     {Py_tp_new, (void *)::tpy::cpy::PyType_GenericNew},

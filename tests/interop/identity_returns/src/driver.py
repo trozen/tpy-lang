@@ -31,6 +31,23 @@ print(h.get_inner().x)
 i = m.Inner(7)
 print(h.pick_inner(i, False) is i)
 
+# A never-reassigned field borrow crosses as an aliasing borrow view:
+# repeated accesses are the SAME object (so eq/hash hold), mutation writes
+# through, the mixed body's field arm aliases too, and the view of h's
+# first field (which sits at h's own payload address) is a real Inner --
+# never h itself.
+inner = h.get_inner()
+print(inner is h.get_inner(), inner == h.get_inner())
+inner.x = 99
+print(h.get_inner().x)
+print(h.pick_inner(i, True) is inner)
+print(type(inner) is m.Inner, inner is not h)
+
+# Keepalive: a view outlives its holder's last direct reference.
+v = m.Holder(5).get_inner()
+v.x = 77
+print(v.x)
+
 # The return-self iterator: iter() is the SAME object, so cursor state is
 # shared (interleaved next on the iterator and the original advance one
 # cursor) and exhaustion sticks -- a copied iterator would restart.

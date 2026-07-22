@@ -12,6 +12,7 @@ PyObject *enum_values__type_Toggle = nullptr;
 PyObject *enum_values__enum_Color = nullptr;
 PyObject *enum_values__enum_Shape = nullptr;
 PyObject *enum_values__enum_Big = nullptr;
+::tpy::interop::ViewRegistry enum_values__view_registry;
 
 PyObject *enum_values__next_color_pywrap(PyObject *self, PyObject *args, PyObject *kwargs) {
     static char *__kwlist[] = {const_cast<char *>("c"), nullptr};
@@ -99,10 +100,19 @@ int enum_values__Toggle_init(PyObject *self, PyObject *args, PyObject *kwargs) {
     PyObject *a0 = nullptr;
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:Toggle", __kwlist, &a0)) return -1;
     auto *__inst = reinterpret_cast<::tpy::interop::Instance<::tpyapp::enum_values::Toggle> *>(self);
+    if (__inst->owner != nullptr) {
+        PyErr_SetString(PyExc_TypeError, "cannot __init__ a borrowed field view");
+        return -1;
+    }
     try {
         int64_t __p0 = ::tpy::interop::from_py<int64_t>(a0);
-        if (__inst->initialized) { __inst->initialized = false; ::std::destroy_at(&__inst->payload); }
-        new (&__inst->payload) ::tpyapp::enum_values::Toggle(__p0);
+        if (__inst->initialized && ::tpy::interop::has_views_into(__inst->p, sizeof(*__inst->p), enum_values__view_registry)) {
+            PyErr_SetString(PyExc_TypeError, "cannot __init__ an instance while borrow views of its fields are alive");
+            return -1;
+        }
+        if (__inst->initialized) { __inst->initialized = false; ::std::destroy_at(&__inst->storage); }
+        new (&__inst->storage) ::tpyapp::enum_values::Toggle(__p0);
+        __inst->p = &__inst->storage;
         __inst->initialized = true;
         return 0;
     } catch (const ::tpy::BaseException &__e) {
@@ -115,12 +125,16 @@ int enum_values__Toggle_init(PyObject *self, PyObject *args, PyObject *kwargs) {
     }
 }
 
+void enum_values__Toggle_dealloc(PyObject *self) {
+    ::tpy::interop::instance_dealloc<::tpyapp::enum_values::Toggle>(self, enum_values__view_registry);
+}
+
 PyObject *enum_values__Toggle__pick_pywrap(PyObject *self, PyObject *args, PyObject *kwargs) {
     static char *__kwlist[] = {const_cast<char *>("c"), nullptr};
     PyObject *a0 = nullptr;
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:pick", __kwlist, &a0)) return nullptr;
     try {
-        auto &__self = reinterpret_cast<::tpy::interop::Instance<::tpyapp::enum_values::Toggle> *>(self)->payload;
+        auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::enum_values::Toggle> *>(self)->p;
         ::tpyapp::enum_values::Color __p0 = ::tpy::interop::enum_from_py<::tpyapp::enum_values::Color>(a0, enum_values__enum_Color);
         return ::tpy::interop::enum_to_py(enum_values__enum_Color, static_cast<int32_t>(__self.pick(__p0)));
     } catch (const ::tpy::BaseException &__e) {
@@ -135,7 +149,7 @@ PyObject *enum_values__Toggle__pick_pywrap(PyObject *self, PyObject *args, PyObj
 
 PyObject *enum_values__Toggle__n_get(PyObject *self, void *) {
     try {
-        return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::enum_values::Toggle> *>(self)->payload.n);
+        return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::enum_values::Toggle> *>(self)->p->n);
     } catch (...) {
         if (!PyErr_Occurred())
             PyErr_SetString(PyExc_RuntimeError, "tpy extension: attribute read failed");
@@ -148,7 +162,7 @@ int enum_values__Toggle__n_set(PyObject *self, PyObject *value, void *) {
         return -1;
     }
     try {
-        reinterpret_cast<::tpy::interop::Instance<::tpyapp::enum_values::Toggle> *>(self)->payload.n = ::tpy::interop::from_py<int64_t>(value);
+        reinterpret_cast<::tpy::interop::Instance<::tpyapp::enum_values::Toggle> *>(self)->p->n = ::tpy::interop::from_py<int64_t>(value);
         return 0;
     } catch (...) {
         if (!PyErr_Occurred())
@@ -167,7 +181,7 @@ PyGetSetDef enum_values__Toggle__getset[] = {
 };
 PyType_Slot enum_values__Toggle__slots[] = {
     {Py_tp_init, (void *)enum_values__Toggle_init},
-    {Py_tp_dealloc, (void *)::tpy::interop::instance_dealloc<::tpyapp::enum_values::Toggle>},
+    {Py_tp_dealloc, (void *)enum_values__Toggle_dealloc},
     {Py_tp_methods, (void *)enum_values__Toggle__methods},
     {Py_tp_getset, (void *)enum_values__Toggle__getset},
     {Py_tp_new, (void *)::tpy::cpy::PyType_GenericNew},

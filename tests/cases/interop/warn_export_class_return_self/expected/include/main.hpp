@@ -15,6 +15,7 @@ extern Box* self;
 inline constexpr std::string_view __name__ = "__main__";
 
 Box& identity(Box& b);
+Inner& through_param(Box& b);
 Box& get_global();
 Box fresh(int64_t v);
 
@@ -42,6 +43,8 @@ struct Box {
     int64_t v;
     // _inner: Inner
     Inner _inner;
+    // _alt: Inner
+    Inner _alt;
 
     // def __init__(self, v: Int64):
     Box() = default;
@@ -63,6 +66,12 @@ struct Box {
 
     // def pick_inner(self, other: Inner, use_field: bool) -> Inner:
     Inner& pick_inner(Inner& other, bool use_field);
+
+    // def swap_alt(self) -> None:
+    void swap_alt();
+
+    // def get_alt(self) -> Inner:
+    Inner& get_alt();
 
     // def __iter__(self) -> "Box":
     Box& __iter__();
@@ -115,7 +124,7 @@ inline std::ostream& operator<<(std::ostream& os, const FieldIter& obj) {
 inline Inner::Inner(int64_t x) : x(x) {}
 
 // def __init__(self, v: Int64):
-inline Box::Box(int64_t v) : v(v), _inner(Inner(v)) {}
+inline Box::Box(int64_t v) : v(v), _inner(Inner(v)), _alt(Inner(v)) {}
 
 // def me(self) -> "Box":
 inline Box& Box::me() {
@@ -139,7 +148,9 @@ inline const Box& Box::itself() const {
 
 // def get_inner(self) -> Inner:
 inline Inner& Box::get_inner() {
-    // return self._inner  # tpyc: warning(/copied across the CPython boundary there/)
+    // # `_inner` is never reassigned outside __init__, so this crosses as
+    // # an aliasing borrow view -- no copy, no warning.
+    // return self._inner  # tpyc: ok
     return this->_inner;
 }
 
@@ -147,11 +158,25 @@ inline Inner& Box::get_inner() {
 inline Inner& Box::pick_inner(Inner& other, bool use_field) {
     // if use_field:
     if (use_field) {
-        // return self._inner  # tpyc: warning(/on at least one return path/)
+        // return self._inner  # tpyc: ok
         return this->_inner;
     }
     // return other
     return other;
+}
+
+// def swap_alt(self) -> None:
+inline void Box::swap_alt() {
+    // # Post-__init__ reassignment makes `_alt` view-ineligible: a live
+    // # view would read the storage slot through this rebind.
+    // self._alt = Inner(0)
+    this->_alt = Inner(0);
+}
+
+// def get_alt(self) -> Inner:
+inline Inner& Box::get_alt() {
+    // return self._alt  # tpyc: warning(/no live object behind it/)
+    return this->_alt;
 }
 
 // def __iter__(self) -> "Box":
@@ -198,9 +223,9 @@ inline FieldIter::FieldIter() : _b(Box(0)) {}
 
 // def __iter__(self) -> Box:
 inline Box& FieldIter::__iter__() {
-    // # The __iter__ carve-out suppresses only bare-self bodies: a field
-    // # source has no live PyObject behind it, so it still copies and warns.
-    // return self._b  # tpyc: warning(/copied across the CPython boundary there/)
+    // # The __iter__ carve-out admits view-safe field sources too:
+    // # `_b` is never reassigned, so the iterator crosses as a view.
+    // return self._b  # tpyc: ok
     return this->_b;
 }
 void __tpy_init();

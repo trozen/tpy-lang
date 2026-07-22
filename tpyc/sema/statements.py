@@ -991,6 +991,17 @@ class StatementAnalyzer:
                 stmt,
             )
 
+    def _record_field_rebind_outside_init(self, rec_info, field_name: str) -> None:
+        """Mark `field_name` rebindable on its DECLARING record (see
+        RecordInfo.fields_rebound_outside_init -- the CPython-interop
+        borrow-view gate; a missed recording here is a soundness hole,
+        not a diagnostic nit)."""
+        for check in (rec_info,
+                      *self.ctx.registry.iter_ancestor_records(rec_info)):
+            if any(fld.name == field_name for fld in check.fields):
+                check.fields_rebound_outside_init.add(field_name)
+                return
+
     def _enforce_readonly_assignment_target(self, target: TpyExpr) -> None:
         """Reject assignments through readonly references, frozen fields, and readonly field declarations."""
         # ClassVar writes always go to class-scoped `static inline` storage,
@@ -1007,6 +1018,16 @@ class StatementAnalyzer:
             cur = self.ctx.func.current_function
             if isinstance(cur, TpyFunction) and cur.is_readonly:
                 raise self.ctx.error("Cannot mutate readonly reference", target)
+            # The unbound spelling bypasses the receiver-typed branch below
+            # (the class-name receiver has no cached expr type), so record
+            # the rebind here; the write goes through `this`, so any
+            # non-__init__ method body counts.
+            if not (isinstance(cur, TpyFunction) and cur.name == "__init__"):
+                pinfo = self.ctx.registry.get_record_for_type(
+                    target.unbound_self_parent_type)
+                if pinfo is not None:
+                    self._record_field_rebind_outside_init(
+                        pinfo, target.field)
         if isinstance(target, (TpyFieldAccess, TpySubscript)):
             obj_type = self.ctx.get_expr_type(target.obj)
             if obj_type is not None:
@@ -1027,6 +1048,7 @@ class StatementAnalyzer:
                 # if the object the field actually lives on is readonly.
                 # Ptr[readonly[T]] is excluded -- it has its own, more specific
                 # "assign through read-only pointer" diagnostic downstream.
+                field_holder_type = check_type
                 if (isinstance(target, TpyFieldAccess) and target.deref_depth > 0
                         and not isinstance(check_type, PtrType)):
                     # Walk the deref chain like the field-access reader does
@@ -1045,19 +1067,37 @@ class StatementAnalyzer:
                             deref_t = deref_t.wrapped
                     if deref_ro:
                         raise self.ctx.error("Cannot mutate readonly reference", target)
+                    if deref_t is not None:
+                        # The write lands on the deref TARGET's field, so
+                        # that record (not the wrapper's) carries the rebind.
+                        field_holder_type = deref_t
                 # Frozen dataclass / immutable value type / readonly field:
                 # reject assignment except self.field in __init__
                 if isinstance(target, TpyFieldAccess):
                     actual = unwrap_readonly(check_type)
+                    cur = self.ctx.func.current_function
+                    rec = self.ctx.record_ctx.record
+                    in_any_init = (
+                        isinstance(cur, TpyFunction) and cur.name == "__init__"
+                        and isinstance(target.obj, TpyName) and target.obj.name == "self"
+                        and rec is not None
+                    )
+                    # The rebind fact (the borrow-view gate) must not depend
+                    # on the local-records-only get_record lookup below: a
+                    # module-qualified receiver (`mod.Cls`) misses there, and
+                    # a deref-forwarded write lands on the deref target --
+                    # resolve the holder record type-identity-first.
+                    if not in_any_init:
+                        rinfo = self.ctx.registry.get_record_for_type(
+                            unwrap_readonly(field_holder_type))
+                        if rinfo is not None:
+                            self._record_field_rebind_outside_init(
+                                rinfo, target.field)
                     if isinstance(actual, NominalType):
                         info = self.ctx.registry.get_record(actual.name)
                         if info is not None:
-                            cur = self.ctx.func.current_function
-                            rec = self.ctx.record_ctx.record
                             in_own_init = (
-                                isinstance(cur, TpyFunction) and cur.name == "__init__"
-                                and isinstance(target.obj, TpyName) and target.obj.name == "self"
-                                and rec is not None and rec.name == actual.name
+                                in_any_init and rec.name == actual.name
                             )
                             if (info.is_frozen or info.is_value_type) and not in_own_init:
                                 kind = ("frozen dataclass" if info.is_frozen
@@ -1066,16 +1106,10 @@ class StatementAnalyzer:
                                     f"Cannot assign to field '{target.field}' of {kind} '{actual.name}'",
                                     target,
                                 )
-                            # Walk the class hierarchy to find readonly fields
-                            # (own and inherited). __init__ of the declaring
-                            # class or any subclass is exempt.
-                            in_any_init = (
-                                isinstance(cur, TpyFunction) and cur.name == "__init__"
-                                and isinstance(target.obj, TpyName) and target.obj.name == "self"
-                                and rec is not None
-                            )
+                            # Walk self + MRO ancestors for a readonly field
+                            # declaration (own and inherited); __init__ of the
+                            # declaring class or any subclass is exempt.
                             if not in_any_init:
-                                # Walk self + MRO ancestors for a readonly field declaration.
                                 records_to_check = [info, *self.ctx.registry.iter_ancestor_records(info)]
                                 for check in records_to_check:
                                     for fld in check.fields:

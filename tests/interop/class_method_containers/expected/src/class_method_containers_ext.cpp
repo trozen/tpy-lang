@@ -8,16 +8,26 @@ namespace {
 using namespace ::tpy::cpy;
 
 PyObject *class_method_containers__type_Stats = nullptr;
+::tpy::interop::ViewRegistry class_method_containers__view_registry;
 
 int class_method_containers__Stats_init(PyObject *self, PyObject *args, PyObject *kwargs) {
     static char *__kwlist[] = {const_cast<char *>("seed"), nullptr};
     PyObject *a0 = nullptr;
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:Stats", __kwlist, &a0)) return -1;
     auto *__inst = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_method_containers::Stats> *>(self);
+    if (__inst->owner != nullptr) {
+        PyErr_SetString(PyExc_TypeError, "cannot __init__ a borrowed field view");
+        return -1;
+    }
     try {
         std::vector<int64_t> __p0 = ::tpy::interop::list_from_py<int64_t>(a0, [](::tpy::cpy::PyObject *__e0) { return ::tpy::interop::from_py<int64_t>(__e0); });
-        if (__inst->initialized) { __inst->initialized = false; ::std::destroy_at(&__inst->payload); }
-        new (&__inst->payload) ::tpyapp::class_method_containers::Stats(__p0);
+        if (__inst->initialized && ::tpy::interop::has_views_into(__inst->p, sizeof(*__inst->p), class_method_containers__view_registry)) {
+            PyErr_SetString(PyExc_TypeError, "cannot __init__ an instance while borrow views of its fields are alive");
+            return -1;
+        }
+        if (__inst->initialized) { __inst->initialized = false; ::std::destroy_at(&__inst->storage); }
+        new (&__inst->storage) ::tpyapp::class_method_containers::Stats(__p0);
+        __inst->p = &__inst->storage;
         __inst->initialized = true;
         return 0;
     } catch (const ::tpy::BaseException &__e) {
@@ -30,12 +40,16 @@ int class_method_containers__Stats_init(PyObject *self, PyObject *args, PyObject
     }
 }
 
+void class_method_containers__Stats_dealloc(PyObject *self) {
+    ::tpy::interop::instance_dealloc<::tpyapp::class_method_containers::Stats>(self, class_method_containers__view_registry);
+}
+
 PyObject *class_method_containers__Stats__add_dict_pywrap(PyObject *self, PyObject *args, PyObject *kwargs) {
     static char *__kwlist[] = {const_cast<char *>("d"), nullptr};
     PyObject *a0 = nullptr;
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:add_dict", __kwlist, &a0)) return nullptr;
     try {
-        auto &__self = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_method_containers::Stats> *>(self)->payload;
+        auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_method_containers::Stats> *>(self)->p;
         ::tpy::ordered_map<std::string, int64_t> __p0 = ::tpy::interop::dict_from_py<std::string, int64_t>(a0, [](::tpy::cpy::PyObject *__e0) { return ::tpy::interop::from_py<std::string>(__e0); }, [](::tpy::cpy::PyObject *__e0) { return ::tpy::interop::from_py<int64_t>(__e0); });
         return ::tpy::interop::to_py(__self.add_dict(__p0));
     } catch (const ::tpy::BaseException &__e) {
@@ -53,7 +67,7 @@ PyObject *class_method_containers__Stats__add_span_pywrap(PyObject *self, PyObje
     PyObject *a0 = nullptr;
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:add_span", __kwlist, &a0)) return nullptr;
     try {
-        auto &__self = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_method_containers::Stats> *>(self)->payload;
+        auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_method_containers::Stats> *>(self)->p;
         std::vector<int64_t> __p0 = ::tpy::interop::span_from_py<int64_t>(a0);
         __self.add_span(__p0);
         return ::tpy::interop::none_to_py();
@@ -72,7 +86,7 @@ PyObject *class_method_containers__Stats__span_sum_pywrap(PyObject *self, PyObje
     PyObject *a0 = nullptr;
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:span_sum", __kwlist, &a0)) return nullptr;
     try {
-        auto &__self = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_method_containers::Stats> *>(self)->payload;
+        auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_method_containers::Stats> *>(self)->p;
         std::vector<int64_t> __p0 = ::tpy::interop::span_from_py<int64_t>(a0);
         return ::tpy::interop::to_py(__self.span_sum(__p0));
     } catch (const ::tpy::BaseException &__e) {
@@ -90,7 +104,7 @@ PyObject *class_method_containers__Stats__scaled_pywrap(PyObject *self, PyObject
     PyObject *a0 = nullptr; PyObject *a1 = nullptr;
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OO:scaled", __kwlist, &a0, &a1)) return nullptr;
     try {
-        auto &__self = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_method_containers::Stats> *>(self)->payload;
+        auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_method_containers::Stats> *>(self)->p;
         std::vector<int64_t> __p0 = ::tpy::interop::list_from_py<int64_t>(a0, [](::tpy::cpy::PyObject *__e0) { return ::tpy::interop::from_py<int64_t>(__e0); });
         int64_t __p1 = ::tpy::interop::from_py<int64_t>(a1);
         return ::tpy::interop::list_to_py(__self.scaled(__p0, __p1), [](const int64_t &__o0) { return ::tpy::interop::to_py(__o0); });
@@ -109,7 +123,7 @@ PyObject *class_method_containers__Stats__uniq_pywrap(PyObject *self, PyObject *
     PyObject *a0 = nullptr;
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:uniq", __kwlist, &a0)) return nullptr;
     try {
-        auto &__self = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_method_containers::Stats> *>(self)->payload;
+        auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_method_containers::Stats> *>(self)->p;
         std::vector<int64_t> __p0 = ::tpy::interop::list_from_py<int64_t>(a0, [](::tpy::cpy::PyObject *__e0) { return ::tpy::interop::from_py<int64_t>(__e0); });
         return ::tpy::interop::set_to_py(__self.uniq(__p0), [](const int64_t &__o0) { return ::tpy::interop::to_py(__o0); });
     } catch (const ::tpy::BaseException &__e) {
@@ -124,7 +138,7 @@ PyObject *class_method_containers__Stats__uniq_pywrap(PyObject *self, PyObject *
 
 PyObject *class_method_containers__Stats__snapshot_pywrap(PyObject *self, PyObject *) {
     try {
-        auto &__self = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_method_containers::Stats> *>(self)->payload;
+        auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_method_containers::Stats> *>(self)->p;
         return ::tpy::interop::tuple_to_py(__self.snapshot(), [](const int64_t &__o0) { return ::tpy::interop::to_py(__o0); }, [](const std::string &__o0) { return ::tpy::interop::to_py(__o0); });
     } catch (const ::tpy::BaseException &__e) {
         ::tpy::interop::set_py_err_from(__e);
@@ -141,7 +155,7 @@ PyObject *class_method_containers__Stats__flatten_pywrap(PyObject *self, PyObjec
     PyObject *a0 = nullptr;
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:flatten", __kwlist, &a0)) return nullptr;
     try {
-        auto &__self = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_method_containers::Stats> *>(self)->payload;
+        auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_method_containers::Stats> *>(self)->p;
         ::tpy::ordered_map<std::string, std::vector<int64_t>> __p0 = ::tpy::interop::dict_from_py<std::string, std::vector<int64_t>>(a0, [](::tpy::cpy::PyObject *__e0) { return ::tpy::interop::from_py<std::string>(__e0); }, [](::tpy::cpy::PyObject *__e0) { return ::tpy::interop::list_from_py<int64_t>(__e0, [](::tpy::cpy::PyObject *__e1) { return ::tpy::interop::from_py<int64_t>(__e1); }); });
         return ::tpy::interop::list_to_py(__self.flatten(__p0), [](const int64_t &__o0) { return ::tpy::interop::to_py(__o0); });
     } catch (const ::tpy::BaseException &__e) {
@@ -159,7 +173,7 @@ PyObject *class_method_containers__Stats__absorb_pywrap(PyObject *self, PyObject
     PyObject *a0 = nullptr; PyObject *a1 = nullptr;
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OO:absorb", __kwlist, &a0, &a1)) return nullptr;
     try {
-        auto &__self = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_method_containers::Stats> *>(self)->payload;
+        auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_method_containers::Stats> *>(self)->p;
         std::vector<int64_t> __p0 = ::tpy::interop::list_from_py<int64_t>(a0, [](::tpy::cpy::PyObject *__e0) { return ::tpy::interop::from_py<int64_t>(__e0); });
         int64_t __p1 = ::tpy::interop::from_py<int64_t>(a1);
         return ::tpy::interop::to_py(__self.absorb(__p0, __p1));
@@ -178,7 +192,7 @@ PyObject *class_method_containers__Stats__same_pywrap(PyObject *self, PyObject *
     PyObject *a0 = nullptr;
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:same", __kwlist, &a0)) return nullptr;
     try {
-        auto &__self = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_method_containers::Stats> *>(self)->payload;
+        auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_method_containers::Stats> *>(self)->p;
         std::vector<int64_t> __p0 = ::tpy::interop::list_from_py<int64_t>(a0, [](::tpy::cpy::PyObject *__e0) { return ::tpy::interop::from_py<int64_t>(__e0); });
         return ::tpy::interop::list_to_py(__self.same(__p0), [](const int64_t &__o0) { return ::tpy::interop::to_py(__o0); });
     } catch (const ::tpy::BaseException &__e) {
@@ -193,7 +207,7 @@ PyObject *class_method_containers__Stats__same_pywrap(PyObject *self, PyObject *
 
 PyObject *class_method_containers__Stats__total_get(PyObject *self, void *) {
     try {
-        return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_method_containers::Stats> *>(self)->payload.total);
+        return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_method_containers::Stats> *>(self)->p->total);
     } catch (...) {
         if (!PyErr_Occurred())
             PyErr_SetString(PyExc_RuntimeError, "tpy extension: attribute read failed");
@@ -206,7 +220,7 @@ int class_method_containers__Stats__total_set(PyObject *self, PyObject *value, v
         return -1;
     }
     try {
-        reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_method_containers::Stats> *>(self)->payload.total = ::tpy::interop::from_py<int64_t>(value);
+        reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_method_containers::Stats> *>(self)->p->total = ::tpy::interop::from_py<int64_t>(value);
         return 0;
     } catch (...) {
         if (!PyErr_Occurred())
@@ -233,7 +247,7 @@ PyGetSetDef class_method_containers__Stats__getset[] = {
 };
 PyType_Slot class_method_containers__Stats__slots[] = {
     {Py_tp_init, (void *)class_method_containers__Stats_init},
-    {Py_tp_dealloc, (void *)::tpy::interop::instance_dealloc<::tpyapp::class_method_containers::Stats>},
+    {Py_tp_dealloc, (void *)class_method_containers__Stats_dealloc},
     {Py_tp_methods, (void *)class_method_containers__Stats__methods},
     {Py_tp_getset, (void *)class_method_containers__Stats__getset},
     {Py_tp_new, (void *)::tpy::cpy::PyType_GenericNew},

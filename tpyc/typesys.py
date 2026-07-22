@@ -5143,6 +5143,14 @@ class RecordInfo:
     module: str | None = None  # Public module name (collapses private submodules via public_module_name); used for qualified_name() and codegen C++ namespace
     defining_module: str | None = None  # Raw (uncollapsed) module where the class was declared; used by re-export logic to look up the record through ModuleInfo.records
     exposed_to_host: bool = False  # True for a bare `@export` class in an ext_module: exposed as a CPython type (PyType_FromSpec). Mirrors TpyFunction.exposed_to_host.
+    # Field names (declared on THIS record) that some body assigns outside an
+    # `__init__` with a bare-`self` receiver -- i.e. the field can be REBOUND
+    # after construction. Populated during Phase-1 body analysis at the
+    # field-store check. The CPython-interop borrow-view gate admits only
+    # never-rebound fields: a live view aliases the field's storage SLOT, so
+    # a rebind would show through it where Python's rebind leaves the old
+    # object intact.
+    fields_rebound_outside_init: set[str] = field(default_factory=set)
 
     @property
     def is_keyword_stub(self) -> bool:

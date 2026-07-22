@@ -8,6 +8,7 @@ namespace {
 using namespace ::tpy::cpy;
 
 PyObject *kwargs__type_Vec = nullptr;
+::tpy::interop::ViewRegistry kwargs__view_registry;
 
 PyObject *kwargs__total_pywrap(PyObject *self, PyObject *args, PyObject *kwargs) {
     static char *__kwlist[] = {const_cast<char *>("a"), const_cast<char *>("b"), const_cast<char *>("c"), nullptr};
@@ -51,11 +52,20 @@ int kwargs__Vec_init(PyObject *self, PyObject *args, PyObject *kwargs) {
     PyObject *a0 = nullptr; PyObject *a1 = nullptr;
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OO:Vec", __kwlist, &a0, &a1)) return -1;
     auto *__inst = reinterpret_cast<::tpy::interop::Instance<::tpyapp::kwargs::Vec> *>(self);
+    if (__inst->owner != nullptr) {
+        PyErr_SetString(PyExc_TypeError, "cannot __init__ a borrowed field view");
+        return -1;
+    }
     try {
         int64_t __p0 = ::tpy::interop::from_py<int64_t>(a0);
         int64_t __p1 = ::tpy::interop::from_py<int64_t>(a1);
-        if (__inst->initialized) { __inst->initialized = false; ::std::destroy_at(&__inst->payload); }
-        new (&__inst->payload) ::tpyapp::kwargs::Vec(__p0, __p1);
+        if (__inst->initialized && ::tpy::interop::has_views_into(__inst->p, sizeof(*__inst->p), kwargs__view_registry)) {
+            PyErr_SetString(PyExc_TypeError, "cannot __init__ an instance while borrow views of its fields are alive");
+            return -1;
+        }
+        if (__inst->initialized) { __inst->initialized = false; ::std::destroy_at(&__inst->storage); }
+        new (&__inst->storage) ::tpyapp::kwargs::Vec(__p0, __p1);
+        __inst->p = &__inst->storage;
         __inst->initialized = true;
         return 0;
     } catch (const ::tpy::BaseException &__e) {
@@ -68,12 +78,16 @@ int kwargs__Vec_init(PyObject *self, PyObject *args, PyObject *kwargs) {
     }
 }
 
+void kwargs__Vec_dealloc(PyObject *self) {
+    ::tpy::interop::instance_dealloc<::tpyapp::kwargs::Vec>(self, kwargs__view_registry);
+}
+
 PyObject *kwargs__Vec__move_pywrap(PyObject *self, PyObject *args, PyObject *kwargs) {
     static char *__kwlist[] = {const_cast<char *>("dx"), const_cast<char *>("dy"), nullptr};
     PyObject *a0 = nullptr; PyObject *a1 = nullptr;
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OO:move", __kwlist, &a0, &a1)) return nullptr;
     try {
-        auto &__self = reinterpret_cast<::tpy::interop::Instance<::tpyapp::kwargs::Vec> *>(self)->payload;
+        auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::kwargs::Vec> *>(self)->p;
         int64_t __p0 = ::tpy::interop::from_py<int64_t>(a0);
         int64_t __p1 = ::tpy::interop::from_py<int64_t>(a1);
         __self.move(__p0, __p1);
@@ -93,7 +107,7 @@ PyObject *kwargs__Vec__dot_pywrap(PyObject *self, PyObject *args, PyObject *kwar
     PyObject *a0 = nullptr; PyObject *a1 = nullptr;
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OO:dot", __kwlist, &a0, &a1)) return nullptr;
     try {
-        auto &__self = reinterpret_cast<::tpy::interop::Instance<::tpyapp::kwargs::Vec> *>(self)->payload;
+        auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::kwargs::Vec> *>(self)->p;
         int64_t __p0 = ::tpy::interop::from_py<int64_t>(a0);
         int64_t __p1 = ::tpy::interop::from_py<int64_t>(a1);
         return ::tpy::interop::to_py(__self.dot(__p0, __p1));
@@ -109,7 +123,7 @@ PyObject *kwargs__Vec__dot_pywrap(PyObject *self, PyObject *args, PyObject *kwar
 
 PyObject *kwargs__Vec__x_get(PyObject *self, void *) {
     try {
-        return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::kwargs::Vec> *>(self)->payload.x);
+        return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::kwargs::Vec> *>(self)->p->x);
     } catch (...) {
         if (!PyErr_Occurred())
             PyErr_SetString(PyExc_RuntimeError, "tpy extension: attribute read failed");
@@ -122,7 +136,7 @@ int kwargs__Vec__x_set(PyObject *self, PyObject *value, void *) {
         return -1;
     }
     try {
-        reinterpret_cast<::tpy::interop::Instance<::tpyapp::kwargs::Vec> *>(self)->payload.x = ::tpy::interop::from_py<int64_t>(value);
+        reinterpret_cast<::tpy::interop::Instance<::tpyapp::kwargs::Vec> *>(self)->p->x = ::tpy::interop::from_py<int64_t>(value);
         return 0;
     } catch (...) {
         if (!PyErr_Occurred())
@@ -133,7 +147,7 @@ int kwargs__Vec__x_set(PyObject *self, PyObject *value, void *) {
 
 PyObject *kwargs__Vec__y_get(PyObject *self, void *) {
     try {
-        return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::kwargs::Vec> *>(self)->payload.y);
+        return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::kwargs::Vec> *>(self)->p->y);
     } catch (...) {
         if (!PyErr_Occurred())
             PyErr_SetString(PyExc_RuntimeError, "tpy extension: attribute read failed");
@@ -146,7 +160,7 @@ int kwargs__Vec__y_set(PyObject *self, PyObject *value, void *) {
         return -1;
     }
     try {
-        reinterpret_cast<::tpy::interop::Instance<::tpyapp::kwargs::Vec> *>(self)->payload.y = ::tpy::interop::from_py<int64_t>(value);
+        reinterpret_cast<::tpy::interop::Instance<::tpyapp::kwargs::Vec> *>(self)->p->y = ::tpy::interop::from_py<int64_t>(value);
         return 0;
     } catch (...) {
         if (!PyErr_Occurred())
@@ -167,7 +181,7 @@ PyGetSetDef kwargs__Vec__getset[] = {
 };
 PyType_Slot kwargs__Vec__slots[] = {
     {Py_tp_init, (void *)kwargs__Vec_init},
-    {Py_tp_dealloc, (void *)::tpy::interop::instance_dealloc<::tpyapp::kwargs::Vec>},
+    {Py_tp_dealloc, (void *)kwargs__Vec_dealloc},
     {Py_tp_methods, (void *)kwargs__Vec__methods},
     {Py_tp_getset, (void *)kwargs__Vec__getset},
     {Py_tp_new, (void *)::tpy::cpy::PyType_GenericNew},

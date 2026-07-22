@@ -13,6 +13,7 @@ PyObject *class_inheritance__type_Disc = nullptr;
 PyObject *class_inheritance__type_BaseBox = nullptr;
 PyObject *class_inheritance__type_MidBox = nullptr;
 PyObject *class_inheritance__type_LeafBox = nullptr;
+::tpy::interop::ViewRegistry class_inheritance__view_registry;
 
 PyObject *class_inheritance__rename_pywrap(PyObject *self, PyObject *args, PyObject *kwargs) {
     static char *__kwlist[] = {const_cast<char *>("s"), const_cast<char *>("name"), nullptr};
@@ -58,6 +59,8 @@ PyObject *class_inheritance__as_shape_pywrap(PyObject *self, PyObject *args, PyO
         ::tpyapp::class_inheritance::Circle &__p0 = *::tpy::interop::instance_payload<::tpyapp::class_inheritance::Circle>(a0, (::tpy::cpy::PyTypeObject *)class_inheritance__type_Circle);
         auto &__r = ::tpyapp::class_inheritance::as_shape(__p0);
         if (&__r == &__p0) { Py_IncRef(a0); return a0; }
+        if (::tpy::interop::within_payload(&__r, &__p0, sizeof(__p0)))
+            return ::tpy::interop::borrow_to_py((::tpy::cpy::PyTypeObject *)class_inheritance__type_Shape, __r, a0, class_inheritance__view_registry);
         return ::tpy::interop::instance_to_py((::tpy::cpy::PyTypeObject *)class_inheritance__type_Shape, __r);
     } catch (const ::tpy::BaseException &__e) {
         ::tpy::interop::set_py_err_from(__e);
@@ -78,10 +81,19 @@ int class_inheritance__Shape_init(PyObject *self, PyObject *args, PyObject *kwar
     PyObject *a0 = nullptr;
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:Shape", __kwlist, &a0)) return -1;
     auto *__inst = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance::Shape> *>(self);
+    if (__inst->owner != nullptr) {
+        PyErr_SetString(PyExc_TypeError, "cannot __init__ a borrowed field view");
+        return -1;
+    }
     try {
         std::string __p0 = ::tpy::interop::from_py<std::string>(a0);
-        if (__inst->initialized) { __inst->initialized = false; ::std::destroy_at(&__inst->payload); }
-        new (&__inst->payload) ::tpyapp::class_inheritance::Shape(__p0);
+        if (__inst->initialized && ::tpy::interop::has_views_into(__inst->p, sizeof(*__inst->p), class_inheritance__view_registry)) {
+            PyErr_SetString(PyExc_TypeError, "cannot __init__ an instance while borrow views of its fields are alive");
+            return -1;
+        }
+        if (__inst->initialized) { __inst->initialized = false; ::std::destroy_at(&__inst->storage); }
+        new (&__inst->storage) ::tpyapp::class_inheritance::Shape(__p0);
+        __inst->p = &__inst->storage;
         __inst->initialized = true;
         return 0;
     } catch (const ::tpy::BaseException &__e) {
@@ -94,9 +106,13 @@ int class_inheritance__Shape_init(PyObject *self, PyObject *args, PyObject *kwar
     }
 }
 
+void class_inheritance__Shape_dealloc(PyObject *self) {
+    ::tpy::interop::instance_dealloc<::tpyapp::class_inheritance::Shape>(self, class_inheritance__view_registry);
+}
+
 PyObject *class_inheritance__Shape__describe_pywrap(PyObject *self, PyObject *) {
     try {
-        auto &__self = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance::Shape> *>(self)->payload;
+        auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance::Shape> *>(self)->p;
         return ::tpy::interop::to_py(__self.describe());
     } catch (const ::tpy::BaseException &__e) {
         ::tpy::interop::set_py_err_from(__e);
@@ -110,7 +126,7 @@ PyObject *class_inheritance__Shape__describe_pywrap(PyObject *self, PyObject *) 
 
 PyObject *class_inheritance__Shape__name_get(PyObject *self, void *) {
     try {
-        return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance::Shape> *>(self)->payload.name);
+        return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance::Shape> *>(self)->p->name);
     } catch (...) {
         if (!PyErr_Occurred())
             PyErr_SetString(PyExc_RuntimeError, "tpy extension: attribute read failed");
@@ -123,7 +139,7 @@ int class_inheritance__Shape__name_set(PyObject *self, PyObject *value, void *) 
         return -1;
     }
     try {
-        reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance::Shape> *>(self)->payload.name = ::tpy::interop::from_py<std::string>(value);
+        reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance::Shape> *>(self)->p->name = ::tpy::interop::from_py<std::string>(value);
         return 0;
     } catch (...) {
         if (!PyErr_Occurred())
@@ -134,7 +150,7 @@ int class_inheritance__Shape__name_set(PyObject *self, PyObject *value, void *) 
 
 PyObject *class_inheritance__Shape__label_get(PyObject *self, void *) {
     try {
-        auto &__self = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance::Shape> *>(self)->payload;
+        auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance::Shape> *>(self)->p;
         return ::tpy::interop::to_py(__self.label());
     } catch (const ::tpy::BaseException &__e) {
         ::tpy::interop::set_py_err_from(__e);
@@ -151,8 +167,8 @@ PyObject *class_inheritance__Shape__richcompare_slot(PyObject *self, PyObject *o
     if (__ot != (::tpy::cpy::PyTypeObject *)class_inheritance__type_Shape && PyType_IsSubtype(__ot, (::tpy::cpy::PyTypeObject *)class_inheritance__type_Shape) == 0)
         return ::tpy::interop::notimplemented_to_py();
     try {
-        auto &__self = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance::Shape> *>(self)->payload;
-        auto &__other = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance::Shape> *>(other)->payload;
+        auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance::Shape> *>(self)->p;
+        auto &__other = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance::Shape> *>(other)->p;
         switch (op) {
         case Py_LT:
             return ::tpy::interop::notimplemented_to_py();
@@ -181,7 +197,7 @@ PyObject *class_inheritance__Shape__richcompare_slot(PyObject *self, PyObject *o
 
 Py_ssize_t class_inheritance__Shape__hash_slot(PyObject *self) {
     try {
-        return ::tpy::interop::hash_to_py_hash_t(static_cast<std::uint64_t>(reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance::Shape> *>(self)->payload.__hash__()));
+        return ::tpy::interop::hash_to_py_hash_t(static_cast<std::uint64_t>(reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance::Shape> *>(self)->p->__hash__()));
     } catch (const ::tpy::BaseException &__e) {
         ::tpy::interop::set_py_err_from(__e);
         return -1;
@@ -203,7 +219,7 @@ PyGetSetDef class_inheritance__Shape__getset[] = {
 };
 PyType_Slot class_inheritance__Shape__slots[] = {
     {Py_tp_init, (void *)class_inheritance__Shape_init},
-    {Py_tp_dealloc, (void *)::tpy::interop::instance_dealloc<::tpyapp::class_inheritance::Shape>},
+    {Py_tp_dealloc, (void *)class_inheritance__Shape_dealloc},
     {Py_tp_methods, (void *)class_inheritance__Shape__methods},
     {Py_tp_getset, (void *)class_inheritance__Shape__getset},
     {Py_tp_richcompare, (void *)class_inheritance__Shape__richcompare_slot},
@@ -225,11 +241,20 @@ int class_inheritance__Circle_init(PyObject *self, PyObject *args, PyObject *kwa
     PyObject *a0 = nullptr; PyObject *a1 = nullptr;
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OO:Circle", __kwlist, &a0, &a1)) return -1;
     auto *__inst = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance::Circle> *>(self);
+    if (__inst->owner != nullptr) {
+        PyErr_SetString(PyExc_TypeError, "cannot __init__ a borrowed field view");
+        return -1;
+    }
     try {
         std::string __p0 = ::tpy::interop::from_py<std::string>(a0);
         double __p1 = ::tpy::interop::from_py<double>(a1);
-        if (__inst->initialized) { __inst->initialized = false; ::std::destroy_at(&__inst->payload); }
-        new (&__inst->payload) ::tpyapp::class_inheritance::Circle(__p0, __p1);
+        if (__inst->initialized && ::tpy::interop::has_views_into(__inst->p, sizeof(*__inst->p), class_inheritance__view_registry)) {
+            PyErr_SetString(PyExc_TypeError, "cannot __init__ an instance while borrow views of its fields are alive");
+            return -1;
+        }
+        if (__inst->initialized) { __inst->initialized = false; ::std::destroy_at(&__inst->storage); }
+        new (&__inst->storage) ::tpyapp::class_inheritance::Circle(__p0, __p1);
+        __inst->p = &__inst->storage;
         __inst->initialized = true;
         return 0;
     } catch (const ::tpy::BaseException &__e) {
@@ -242,9 +267,13 @@ int class_inheritance__Circle_init(PyObject *self, PyObject *args, PyObject *kwa
     }
 }
 
+void class_inheritance__Circle_dealloc(PyObject *self) {
+    ::tpy::interop::instance_dealloc<::tpyapp::class_inheritance::Circle>(self, class_inheritance__view_registry);
+}
+
 PyObject *class_inheritance__Circle__area_pywrap(PyObject *self, PyObject *) {
     try {
-        auto &__self = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance::Circle> *>(self)->payload;
+        auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance::Circle> *>(self)->p;
         return ::tpy::interop::to_py(__self.area());
     } catch (const ::tpy::BaseException &__e) {
         ::tpy::interop::set_py_err_from(__e);
@@ -258,7 +287,7 @@ PyObject *class_inheritance__Circle__area_pywrap(PyObject *self, PyObject *) {
 
 PyObject *class_inheritance__Circle__describe_pywrap(PyObject *self, PyObject *) {
     try {
-        auto &__self = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance::Circle> *>(self)->payload;
+        auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance::Circle> *>(self)->p;
         return ::tpy::interop::to_py(__self.describe());
     } catch (const ::tpy::BaseException &__e) {
         ::tpy::interop::set_py_err_from(__e);
@@ -272,7 +301,7 @@ PyObject *class_inheritance__Circle__describe_pywrap(PyObject *self, PyObject *)
 
 PyObject *class_inheritance__Circle__radius_get(PyObject *self, void *) {
     try {
-        return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance::Circle> *>(self)->payload.radius);
+        return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance::Circle> *>(self)->p->radius);
     } catch (...) {
         if (!PyErr_Occurred())
             PyErr_SetString(PyExc_RuntimeError, "tpy extension: attribute read failed");
@@ -285,7 +314,7 @@ int class_inheritance__Circle__radius_set(PyObject *self, PyObject *value, void 
         return -1;
     }
     try {
-        reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance::Circle> *>(self)->payload.radius = ::tpy::interop::from_py<double>(value);
+        reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance::Circle> *>(self)->p->radius = ::tpy::interop::from_py<double>(value);
         return 0;
     } catch (...) {
         if (!PyErr_Occurred())
@@ -305,8 +334,8 @@ PyObject *class_inheritance__Circle__richcompare_slot(PyObject *self, PyObject *
     if (__ot != (::tpy::cpy::PyTypeObject *)class_inheritance__type_Circle && PyType_IsSubtype(__ot, (::tpy::cpy::PyTypeObject *)class_inheritance__type_Circle) == 0)
         return ::tpy::interop::notimplemented_to_py();
     try {
-        auto &__self = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance::Circle> *>(self)->payload;
-        auto &__other = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance::Circle> *>(other)->payload;
+        auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance::Circle> *>(self)->p;
+        auto &__other = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance::Circle> *>(other)->p;
         switch (op) {
         case Py_LT:
             return ::tpy::interop::to_py(__self.__lt__(__other));
@@ -344,7 +373,7 @@ PyGetSetDef class_inheritance__Circle__getset[] = {
 };
 PyType_Slot class_inheritance__Circle__slots[] = {
     {Py_tp_init, (void *)class_inheritance__Circle_init},
-    {Py_tp_dealloc, (void *)::tpy::interop::instance_dealloc<::tpyapp::class_inheritance::Circle>},
+    {Py_tp_dealloc, (void *)class_inheritance__Circle_dealloc},
     {Py_tp_methods, (void *)class_inheritance__Circle__methods},
     {Py_tp_getset, (void *)class_inheritance__Circle__getset},
     {Py_tp_richcompare, (void *)class_inheritance__Circle__richcompare_slot},
@@ -362,11 +391,20 @@ int class_inheritance__Disc_init(PyObject *self, PyObject *args, PyObject *kwarg
     PyObject *a0 = nullptr; PyObject *a1 = nullptr;
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OO:Disc", __kwlist, &a0, &a1)) return -1;
     auto *__inst = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance::Disc> *>(self);
+    if (__inst->owner != nullptr) {
+        PyErr_SetString(PyExc_TypeError, "cannot __init__ a borrowed field view");
+        return -1;
+    }
     try {
         std::string __p0 = ::tpy::interop::from_py<std::string>(a0);
         double __p1 = ::tpy::interop::from_py<double>(a1);
-        if (__inst->initialized) { __inst->initialized = false; ::std::destroy_at(&__inst->payload); }
-        new (&__inst->payload) ::tpyapp::class_inheritance::Disc(__p0, __p1);
+        if (__inst->initialized && ::tpy::interop::has_views_into(__inst->p, sizeof(*__inst->p), class_inheritance__view_registry)) {
+            PyErr_SetString(PyExc_TypeError, "cannot __init__ an instance while borrow views of its fields are alive");
+            return -1;
+        }
+        if (__inst->initialized) { __inst->initialized = false; ::std::destroy_at(&__inst->storage); }
+        new (&__inst->storage) ::tpyapp::class_inheritance::Disc(__p0, __p1);
+        __inst->p = &__inst->storage;
         __inst->initialized = true;
         return 0;
     } catch (const ::tpy::BaseException &__e) {
@@ -379,9 +417,13 @@ int class_inheritance__Disc_init(PyObject *self, PyObject *args, PyObject *kwarg
     }
 }
 
+void class_inheritance__Disc_dealloc(PyObject *self) {
+    ::tpy::interop::instance_dealloc<::tpyapp::class_inheritance::Disc>(self, class_inheritance__view_registry);
+}
+
 PyObject *class_inheritance__Disc__spin_pywrap(PyObject *self, PyObject *) {
     try {
-        auto &__self = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance::Disc> *>(self)->payload;
+        auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance::Disc> *>(self)->p;
         return ::tpy::interop::to_py(__self.spin());
     } catch (const ::tpy::BaseException &__e) {
         ::tpy::interop::set_py_err_from(__e);
@@ -402,7 +444,7 @@ PyGetSetDef class_inheritance__Disc__getset[] = {
 };
 PyType_Slot class_inheritance__Disc__slots[] = {
     {Py_tp_init, (void *)class_inheritance__Disc_init},
-    {Py_tp_dealloc, (void *)::tpy::interop::instance_dealloc<::tpyapp::class_inheritance::Disc>},
+    {Py_tp_dealloc, (void *)class_inheritance__Disc_dealloc},
     {Py_tp_methods, (void *)class_inheritance__Disc__methods},
     {Py_tp_getset, (void *)class_inheritance__Disc__getset},
     {Py_tp_new, (void *)::tpy::cpy::PyType_GenericNew},
@@ -422,10 +464,19 @@ int class_inheritance__BaseBox_init(PyObject *self, PyObject *args, PyObject *kw
     PyObject *a0 = nullptr;
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:BaseBox", __kwlist, &a0)) return -1;
     auto *__inst = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance::BaseBox> *>(self);
+    if (__inst->owner != nullptr) {
+        PyErr_SetString(PyExc_TypeError, "cannot __init__ a borrowed field view");
+        return -1;
+    }
     try {
         int64_t __p0 = ::tpy::interop::from_py<int64_t>(a0);
-        if (__inst->initialized) { __inst->initialized = false; ::std::destroy_at(&__inst->payload); }
-        new (&__inst->payload) ::tpyapp::class_inheritance::BaseBox(__p0);
+        if (__inst->initialized && ::tpy::interop::has_views_into(__inst->p, sizeof(*__inst->p), class_inheritance__view_registry)) {
+            PyErr_SetString(PyExc_TypeError, "cannot __init__ an instance while borrow views of its fields are alive");
+            return -1;
+        }
+        if (__inst->initialized) { __inst->initialized = false; ::std::destroy_at(&__inst->storage); }
+        new (&__inst->storage) ::tpyapp::class_inheritance::BaseBox(__p0);
+        __inst->p = &__inst->storage;
         __inst->initialized = true;
         return 0;
     } catch (const ::tpy::BaseException &__e) {
@@ -438,9 +489,13 @@ int class_inheritance__BaseBox_init(PyObject *self, PyObject *args, PyObject *kw
     }
 }
 
+void class_inheritance__BaseBox_dealloc(PyObject *self) {
+    ::tpy::interop::instance_dealloc<::tpyapp::class_inheritance::BaseBox>(self, class_inheritance__view_registry);
+}
+
 PyObject *class_inheritance__BaseBox__w_pywrap(PyObject *self, PyObject *) {
     try {
-        auto &__self = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance::BaseBox> *>(self)->payload;
+        auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance::BaseBox> *>(self)->p;
         return ::tpy::interop::to_py(__self.w());
     } catch (const ::tpy::BaseException &__e) {
         ::tpy::interop::set_py_err_from(__e);
@@ -454,7 +509,7 @@ PyObject *class_inheritance__BaseBox__w_pywrap(PyObject *self, PyObject *) {
 
 PyObject *class_inheritance__BaseBox__width_get(PyObject *self, void *) {
     try {
-        return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance::BaseBox> *>(self)->payload.width);
+        return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance::BaseBox> *>(self)->p->width);
     } catch (...) {
         if (!PyErr_Occurred())
             PyErr_SetString(PyExc_RuntimeError, "tpy extension: attribute read failed");
@@ -467,7 +522,7 @@ int class_inheritance__BaseBox__width_set(PyObject *self, PyObject *value, void 
         return -1;
     }
     try {
-        reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance::BaseBox> *>(self)->payload.width = ::tpy::interop::from_py<int64_t>(value);
+        reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance::BaseBox> *>(self)->p->width = ::tpy::interop::from_py<int64_t>(value);
         return 0;
     } catch (...) {
         if (!PyErr_Occurred())
@@ -486,7 +541,7 @@ PyGetSetDef class_inheritance__BaseBox__getset[] = {
 };
 PyType_Slot class_inheritance__BaseBox__slots[] = {
     {Py_tp_init, (void *)class_inheritance__BaseBox_init},
-    {Py_tp_dealloc, (void *)::tpy::interop::instance_dealloc<::tpyapp::class_inheritance::BaseBox>},
+    {Py_tp_dealloc, (void *)class_inheritance__BaseBox_dealloc},
     {Py_tp_methods, (void *)class_inheritance__BaseBox__methods},
     {Py_tp_getset, (void *)class_inheritance__BaseBox__getset},
     {Py_tp_new, (void *)::tpy::cpy::PyType_GenericNew},
@@ -506,10 +561,19 @@ int class_inheritance__MidBox_init(PyObject *self, PyObject *args, PyObject *kwa
     PyObject *a0 = nullptr;
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:MidBox", __kwlist, &a0)) return -1;
     auto *__inst = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance::MidBox> *>(self);
+    if (__inst->owner != nullptr) {
+        PyErr_SetString(PyExc_TypeError, "cannot __init__ a borrowed field view");
+        return -1;
+    }
     try {
         int64_t __p0 = ::tpy::interop::from_py<int64_t>(a0);
-        if (__inst->initialized) { __inst->initialized = false; ::std::destroy_at(&__inst->payload); }
-        new (&__inst->payload) ::tpyapp::class_inheritance::MidBox(__p0);
+        if (__inst->initialized && ::tpy::interop::has_views_into(__inst->p, sizeof(*__inst->p), class_inheritance__view_registry)) {
+            PyErr_SetString(PyExc_TypeError, "cannot __init__ an instance while borrow views of its fields are alive");
+            return -1;
+        }
+        if (__inst->initialized) { __inst->initialized = false; ::std::destroy_at(&__inst->storage); }
+        new (&__inst->storage) ::tpyapp::class_inheritance::MidBox(__p0);
+        __inst->p = &__inst->storage;
         __inst->initialized = true;
         return 0;
     } catch (const ::tpy::BaseException &__e) {
@@ -522,9 +586,13 @@ int class_inheritance__MidBox_init(PyObject *self, PyObject *args, PyObject *kwa
     }
 }
 
+void class_inheritance__MidBox_dealloc(PyObject *self) {
+    ::tpy::interop::instance_dealloc<::tpyapp::class_inheritance::MidBox>(self, class_inheritance__view_registry);
+}
+
 PyObject *class_inheritance__MidBox__tag_pywrap(PyObject *self, PyObject *) {
     try {
-        auto &__self = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance::MidBox> *>(self)->payload;
+        auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance::MidBox> *>(self)->p;
         return ::tpy::interop::to_py(__self.tag());
     } catch (const ::tpy::BaseException &__e) {
         ::tpy::interop::set_py_err_from(__e);
@@ -545,7 +613,7 @@ PyGetSetDef class_inheritance__MidBox__getset[] = {
 };
 PyType_Slot class_inheritance__MidBox__slots[] = {
     {Py_tp_init, (void *)class_inheritance__MidBox_init},
-    {Py_tp_dealloc, (void *)::tpy::interop::instance_dealloc<::tpyapp::class_inheritance::MidBox>},
+    {Py_tp_dealloc, (void *)class_inheritance__MidBox_dealloc},
     {Py_tp_methods, (void *)class_inheritance__MidBox__methods},
     {Py_tp_getset, (void *)class_inheritance__MidBox__getset},
     {Py_tp_new, (void *)::tpy::cpy::PyType_GenericNew},
@@ -561,10 +629,19 @@ int class_inheritance__LeafBox_init(PyObject *self, PyObject *args, PyObject *kw
     PyObject *a0 = nullptr;
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:LeafBox", __kwlist, &a0)) return -1;
     auto *__inst = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance::LeafBox> *>(self);
+    if (__inst->owner != nullptr) {
+        PyErr_SetString(PyExc_TypeError, "cannot __init__ a borrowed field view");
+        return -1;
+    }
     try {
         int64_t __p0 = ::tpy::interop::from_py<int64_t>(a0);
-        if (__inst->initialized) { __inst->initialized = false; ::std::destroy_at(&__inst->payload); }
-        new (&__inst->payload) ::tpyapp::class_inheritance::LeafBox(__p0);
+        if (__inst->initialized && ::tpy::interop::has_views_into(__inst->p, sizeof(*__inst->p), class_inheritance__view_registry)) {
+            PyErr_SetString(PyExc_TypeError, "cannot __init__ an instance while borrow views of its fields are alive");
+            return -1;
+        }
+        if (__inst->initialized) { __inst->initialized = false; ::std::destroy_at(&__inst->storage); }
+        new (&__inst->storage) ::tpyapp::class_inheritance::LeafBox(__p0);
+        __inst->p = &__inst->storage;
         __inst->initialized = true;
         return 0;
     } catch (const ::tpy::BaseException &__e) {
@@ -577,9 +654,13 @@ int class_inheritance__LeafBox_init(PyObject *self, PyObject *args, PyObject *kw
     }
 }
 
+void class_inheritance__LeafBox_dealloc(PyObject *self) {
+    ::tpy::interop::instance_dealloc<::tpyapp::class_inheritance::LeafBox>(self, class_inheritance__view_registry);
+}
+
 PyObject *class_inheritance__LeafBox__tag2_pywrap(PyObject *self, PyObject *) {
     try {
-        auto &__self = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance::LeafBox> *>(self)->payload;
+        auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance::LeafBox> *>(self)->p;
         return ::tpy::interop::to_py(__self.tag2());
     } catch (const ::tpy::BaseException &__e) {
         ::tpy::interop::set_py_err_from(__e);
@@ -600,7 +681,7 @@ PyGetSetDef class_inheritance__LeafBox__getset[] = {
 };
 PyType_Slot class_inheritance__LeafBox__slots[] = {
     {Py_tp_init, (void *)class_inheritance__LeafBox_init},
-    {Py_tp_dealloc, (void *)::tpy::interop::instance_dealloc<::tpyapp::class_inheritance::LeafBox>},
+    {Py_tp_dealloc, (void *)class_inheritance__LeafBox_dealloc},
     {Py_tp_methods, (void *)class_inheritance__LeafBox__methods},
     {Py_tp_getset, (void *)class_inheritance__LeafBox__getset},
     {Py_tp_new, (void *)::tpy::cpy::PyType_GenericNew},

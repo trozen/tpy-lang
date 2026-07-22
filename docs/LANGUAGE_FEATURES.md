@@ -6110,14 +6110,22 @@ API, floor 3.12, hand-rolled C-API glue, copy-in marshalling).
   field is r/w (you can *replace* the whole value: `b.origin = Point(3, 4)`) but
   the nested value's own fields loud-fail a mutation (`b.origin.x = 5` raises
   `AttributeError`), and each read is a fresh copy (`b.origin is b.origin` is
-  `False`). A *public* *container* field stays rejected (the per-field
-  getter/setter path has no container emit), and a *public* *mutable* (reference)
-  *class-typed* field stays rejected (see the reject list) -- but a field whose
-  name begins with `_` is **internal**: it never crosses as a Python attribute
-  (it stays live C++ payload state the class's own methods use), so it may hold
-  *any* type, including the reference-class and container members the getset path
-  rejects. Reach an internal member through a method rather than an attribute
-  (the reject diagnostic points here). The same `_`-prefix rule hides an
+  `False`). A **never-reassigned reference class-typed field** (sema proves no
+  assignment outside `__init__` with a bare-self receiver) crosses as a
+  **READ-ONLY borrow-view getset**: reads return a PyObject aliasing the live
+  field -- write-through, and `outer.inner is outer.inner` holds via the
+  per-module view registry -- while a Python-side rebind (`outer.inner = ...`)
+  raises `AttributeError` (loud; plain Python would rebind -- the missing
+  setter is what keeps the never-reassigned gate honest). A *public*
+  *container* field stays rejected (the per-field getter/setter path has no
+  container emit), and a *reassignable* reference class-typed field stays
+  rejected (a view aliases the storage SLOT, so the rebind would show through
+  it) -- but a field whose name begins with `_` is **internal**: it never
+  crosses as a Python attribute (it stays live C++ payload state the class's
+  own methods use), so it may hold *any* type, including the container and
+  reassignable reference-class members the getset path rejects. Reach an
+  internal member through a method rather than an attribute (the reject
+  diagnostic points here). The same `_`-prefix rule hides an
   exception's internal data fields. A **`@property`** crosses as a *computed*
   getset: the getter is a zero-arg method return site (full method boundary
   set, containers included), the setter a one-param method param site, so
@@ -6133,8 +6141,9 @@ API, floor 3.12, hand-rolled C-API glue, copy-in marshalling).
   buffer copy-in dies at the call boundary; store `list[T]`). A `_`-prefixed
   property is internal like a `_`-prefixed field. A getter returning a borrow
   behaves like a method borrow-return: `-> Cls` sourced from `self`/a param
-  is identity-preserving, `-> list[T]` (or a field-sourced `-> Cls`) copies
-  out and warns. Introspection divergence: on the `.so` the descriptor is a
+  is identity-preserving, from a never-reassigned field of one it crosses as
+  an aliasing borrow view, and `-> list[T]` (or a reassignable-field
+  `-> Cls`) copies out and warns. Introspection divergence: on the `.so` the descriptor is a
   `getset_descriptor`, not a `property` object (no `fget`/`fset`). Because the
   PyObject *owns* the instance, a class crosses **IN as a borrow of the live
   embedded payload** -- a method call or a free function taking the instance
@@ -6146,12 +6155,19 @@ API, floor 3.12, hand-rolled C-API glue, copy-in marshalling).
   objects in scope and hands back the ORIGINAL PyObject (`Py_IncRef`), so
   `is`, write-through, and the dynamic type survive -- `return self`, fluent
   chains, and param pass-through behave exactly like plain Python (a derived
-  instance returned as `-> Base` comes back un-sliced, as itself). The
-  decision is per return path: a source with no live PyObject behind it (a
-  field borrow, a module global) still copies out into a fresh instance
-  (`instance_to_py`) -- a body with such a path **warns** (return `Own[...]`
-  to make the copy explicit; the copy is a new object, and a copied derived
-  instance slices to the declared type). Operator/container dunder slots are
+  instance returned as `-> Base` comes back un-sliced, as itself). A
+  **never-reassigned field borrow** of the receiver or a param
+  (`return self._inner`) crosses as an aliasing **borrow view**: a PyObject
+  of the field's exposed type pointing into the holder's live storage, with
+  a keepalive ref on the holder and registry-deduped identity, so repeated
+  accesses are the SAME object and mutation writes through -- plain-Python
+  attribute aliasing (the field must be declared as exactly the return
+  class; upcast sources stay on the copy path). The decision is per return
+  path: a source with no live object behind it (a reassignable field, a
+  module global) still copies out into a fresh instance (`instance_to_py`)
+  -- a body with such a path **warns** (return `Own[...]` to make the copy
+  explicit; the copy is a new object, and a copied derived instance slices
+  to the declared type). Operator/container dunder slots are
   not identity-capable (their borrow returns always copy and warn; the
   in-place group returns `self` identity-preserved by construction, and
   `__iter__` threads the receiver candidate, so the canonical `return self`
@@ -6191,17 +6207,18 @@ API, floor 3.12, hand-rolled C-API glue, copy-in marshalling).
   -- declared divergences kept out of the parity driver and exercised in
   `ext_checks.py`. The ext-module validator rejects, with a located error, an
   exposed class the glue can't yet emit: a field/method type that doesn't
-  marshal, a **public mutable (reference) class-typed field** (a nested *mutable*
-  class is stored inline by value, so a getset getter could only copy it out --
-  `outer.inner` would fabricate a fresh object every read and `outer.inner.x = 5`
-  would silently no-op where CPython aliases the real object; the diagnostic
-  steers to making the field *internal* -- a `_`-prefixed name never crosses as
-  an attribute, so it may hold any type -- plus an accessor method that mutates
-  through `self` or an explicit `copy()`, and faithful *aliasing* of a public
-  field awaits the deferred foreign-borrow primitive.
-  A *value-type* class-typed field is exempt -- immutability makes the copy-out
-  invisible, so it is admitted, above; a `_`-prefixed field of *any* type is
-  exempt too -- it is internal payload state, never a Python attribute), an `Own[Cls]` param (the host
+  marshal, a **REASSIGNABLE public reference class-typed field** (a live
+  borrow view aliases the field's storage slot, so a post-`__init__` rebind
+  would show its replacement through the view where CPython keeps the old
+  object; the diagnostic steers to dropping the reassignment or making the
+  field *internal* -- a `_`-prefixed name never crosses as an attribute, so
+  it may hold any type -- plus an accessor method that mutates through
+  `self` or an explicit `copy()`.
+  A *never-reassigned* reference class-typed field is admitted as a
+  read-only borrow-view getset (see above), a *value-type* class-typed
+  field is exempt -- immutability makes the copy-out invisible, so it is
+  admitted, above -- and a `_`-prefixed field of *any* type is exempt too
+  -- it is internal payload state, never a Python attribute), an `Own[Cls]` param (the host
   keeps its reference, so ownership can't transfer -- use the borrow form), a
   `@nocopy`
   class returned by reference (the boundary can't copy it out -- return
@@ -6214,13 +6231,12 @@ API, floor 3.12, hand-rolled C-API glue, copy-in marshalling).
   (cross-module exposed types are deferred, mirroring the cross-module enum
   guard below -- define and `@export` the class in the module that uses it),
   or `@export` on an exception class (those cross via the
-  separate `PyErr_NewException` path). The exposed type carries no GC traversal (its fields are
-  scalar/str/bytes/enum or a nested value-type class -- all held by value, no
-  `PyObject` reference, so no reference cycle is possible; `tp_traverse` becomes necessary only if a future
-  *aliasing* class-typed field lands via the foreign-borrow primitive, which
-  would hold a real `PyObject` ref -- the current copy model would not;
-  a Python-side subclass could add referencing attributes, but instantiating
-  one is rejected). `__repr__`/`__str__` (-> `Py_tp_repr`/`Py_tp_str`, must return `str`),
+  separate `PyErr_NewException` path). The exposed type carries no GC traversal: an owned
+  instance's fields are held by value (no `PyObject` reference), and a borrow
+  VIEW holds exactly one strong ref -- its owner -- while no exposed instance
+  holds a ref to any view, so the reference graph is acyclic by construction
+  and plain refcounting reclaims everything (a Python-side subclass could add
+  referencing attributes, but instantiating one is rejected). `__repr__`/`__str__` (-> `Py_tp_repr`/`Py_tp_str`, must return `str`),
   `__eq__`/`__ne__`/`__lt__`/`__le__`/`__gt__`/`__ge__` (-> one
   `Py_tp_richcompare` wrapper, one param beyond self typed as the record's
   OWN exposed-class type -- richcompare's one shared type-guard covers every

@@ -14,11 +14,20 @@ Box& identity(Box& b) {
 }
 
 // @export
+// def through_param(b: Box) -> Inner:
+Inner& through_param(Box& b) {
+    // # A never-reassigned field of a PARAM is view-safe too (owner = the
+    // # param's PyObject, found by the address-range scan).
+    // return b._inner  # tpyc: ok
+    return b._inner;
+}
+
+// @export
 // def get_global() -> Box:
 Box& get_global() {
     // # A free function has no receiver: a module global -- even one named
     // # `self` -- is not a glue candidate, so this copies and warns.
-    // return self  # tpyc: warning(/copied across the CPython boundary there/)
+    // return self  # tpyc: warning(/no live object behind it/)
     return (*self);
 }
 

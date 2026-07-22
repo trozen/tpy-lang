@@ -5,11 +5,13 @@
 # so `is`, write-through, and the dynamic type survive the boundary --
 # return-self, fluent chains, param pass-through, both arms of a mixed
 # self/param body, and the tp_iter slot (the return-self iterator idiom,
-# incl. inherited into a subclass). A source with no live PyObject behind it
-# (the `_inner` field borrow) still copies; that residual divergence (and the
-# first-field address-collision guard: Holder's payload starts at `_inner`,
-# but Holder is unrelated to Inner so the glue must not compare them) is
-# asserted ext-only in ext_checks.py.
+# incl. inherited into a subclass). A never-reassigned field borrow (the
+# `_inner` returns) crosses as an aliasing BORROW VIEW -- registry-deduped
+# identity, write-through, keepalive -- incl. through the first-field
+# address collision (Holder's payload starts at `_inner`, so the view must
+# be a fresh Inner, never Holder itself). Only a source with no live object
+# behind it (the module global) still copies; that residue and the view
+# re-init guard are asserted ext-only in ext_checks.py.
 from tpy import Int32, Int64, Own, readonly
 from tpy.extern import export
 

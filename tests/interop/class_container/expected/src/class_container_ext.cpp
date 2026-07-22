@@ -9,18 +9,28 @@ using namespace ::tpy::cpy;
 
 PyObject *class_container__type_Box = nullptr;
 PyObject *class_container__type_Slot = nullptr;
+::tpy::interop::ViewRegistry class_container__view_registry;
 
 int class_container__Box_init(PyObject *self, PyObject *args, PyObject *kwargs) {
     static char *__kwlist[] = {const_cast<char *>("a"), const_cast<char *>("b"), const_cast<char *>("c"), nullptr};
     PyObject *a0 = nullptr; PyObject *a1 = nullptr; PyObject *a2 = nullptr;
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OOO:Box", __kwlist, &a0, &a1, &a2)) return -1;
     auto *__inst = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_container::Box> *>(self);
+    if (__inst->owner != nullptr) {
+        PyErr_SetString(PyExc_TypeError, "cannot __init__ a borrowed field view");
+        return -1;
+    }
     try {
         int64_t __p0 = ::tpy::interop::from_py<int64_t>(a0);
         int64_t __p1 = ::tpy::interop::from_py<int64_t>(a1);
         int64_t __p2 = ::tpy::interop::from_py<int64_t>(a2);
-        if (__inst->initialized) { __inst->initialized = false; ::std::destroy_at(&__inst->payload); }
-        new (&__inst->payload) ::tpyapp::class_container::Box(__p0, __p1, __p2);
+        if (__inst->initialized && ::tpy::interop::has_views_into(__inst->p, sizeof(*__inst->p), class_container__view_registry)) {
+            PyErr_SetString(PyExc_TypeError, "cannot __init__ an instance while borrow views of its fields are alive");
+            return -1;
+        }
+        if (__inst->initialized) { __inst->initialized = false; ::std::destroy_at(&__inst->storage); }
+        new (&__inst->storage) ::tpyapp::class_container::Box(__p0, __p1, __p2);
+        __inst->p = &__inst->storage;
         __inst->initialized = true;
         return 0;
     } catch (const ::tpy::BaseException &__e) {
@@ -33,9 +43,13 @@ int class_container__Box_init(PyObject *self, PyObject *args, PyObject *kwargs) 
     }
 }
 
+void class_container__Box_dealloc(PyObject *self) {
+    ::tpy::interop::instance_dealloc<::tpyapp::class_container::Box>(self, class_container__view_registry);
+}
+
 PyObject *class_container__Box__a_get(PyObject *self, void *) {
     try {
-        return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_container::Box> *>(self)->payload.a);
+        return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_container::Box> *>(self)->p->a);
     } catch (...) {
         if (!PyErr_Occurred())
             PyErr_SetString(PyExc_RuntimeError, "tpy extension: attribute read failed");
@@ -48,7 +62,7 @@ int class_container__Box__a_set(PyObject *self, PyObject *value, void *) {
         return -1;
     }
     try {
-        reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_container::Box> *>(self)->payload.a = ::tpy::interop::from_py<int64_t>(value);
+        reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_container::Box> *>(self)->p->a = ::tpy::interop::from_py<int64_t>(value);
         return 0;
     } catch (...) {
         if (!PyErr_Occurred())
@@ -59,7 +73,7 @@ int class_container__Box__a_set(PyObject *self, PyObject *value, void *) {
 
 PyObject *class_container__Box__b_get(PyObject *self, void *) {
     try {
-        return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_container::Box> *>(self)->payload.b);
+        return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_container::Box> *>(self)->p->b);
     } catch (...) {
         if (!PyErr_Occurred())
             PyErr_SetString(PyExc_RuntimeError, "tpy extension: attribute read failed");
@@ -72,7 +86,7 @@ int class_container__Box__b_set(PyObject *self, PyObject *value, void *) {
         return -1;
     }
     try {
-        reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_container::Box> *>(self)->payload.b = ::tpy::interop::from_py<int64_t>(value);
+        reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_container::Box> *>(self)->p->b = ::tpy::interop::from_py<int64_t>(value);
         return 0;
     } catch (...) {
         if (!PyErr_Occurred())
@@ -83,7 +97,7 @@ int class_container__Box__b_set(PyObject *self, PyObject *value, void *) {
 
 PyObject *class_container__Box__c_get(PyObject *self, void *) {
     try {
-        return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_container::Box> *>(self)->payload.c);
+        return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_container::Box> *>(self)->p->c);
     } catch (...) {
         if (!PyErr_Occurred())
             PyErr_SetString(PyExc_RuntimeError, "tpy extension: attribute read failed");
@@ -96,7 +110,7 @@ int class_container__Box__c_set(PyObject *self, PyObject *value, void *) {
         return -1;
     }
     try {
-        reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_container::Box> *>(self)->payload.c = ::tpy::interop::from_py<int64_t>(value);
+        reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_container::Box> *>(self)->p->c = ::tpy::interop::from_py<int64_t>(value);
         return 0;
     } catch (...) {
         if (!PyErr_Occurred())
@@ -107,7 +121,7 @@ int class_container__Box__c_set(PyObject *self, PyObject *value, void *) {
 
 Py_ssize_t class_container__Box__len_slot(PyObject *self) {
     try {
-        return static_cast<Py_ssize_t>(reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_container::Box> *>(self)->payload.__len__());
+        return static_cast<Py_ssize_t>(reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_container::Box> *>(self)->p->__len__());
     } catch (const ::tpy::BaseException &__e) {
         ::tpy::interop::set_py_err_from(__e);
         return -1;
@@ -121,7 +135,7 @@ Py_ssize_t class_container__Box__len_slot(PyObject *self) {
 PyObject *class_container__Box__getitem_slot(PyObject *self, PyObject *key) {
     try {
         int32_t __key = ::tpy::interop::from_py<int32_t>(key);
-        return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_container::Box> *>(self)->payload.__getitem__(__key));
+        return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_container::Box> *>(self)->p->__getitem__(__key));
     } catch (const ::tpy::BaseException &__e) {
         ::tpy::interop::set_py_err_from(__e);
         return nullptr;
@@ -140,7 +154,7 @@ int class_container__Box__ass_subscript_slot(PyObject *self, PyObject *key, PyOb
         }
         int32_t __key = ::tpy::interop::from_py<int32_t>(key);
         int64_t __value = ::tpy::interop::from_py<int64_t>(value);
-        reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_container::Box> *>(self)->payload.__setitem__(__key, __value);
+        reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_container::Box> *>(self)->p->__setitem__(__key, __value);
         return 0;
     } catch (const ::tpy::BaseException &__e) {
         ::tpy::interop::set_py_err_from(__e);
@@ -155,7 +169,7 @@ int class_container__Box__ass_subscript_slot(PyObject *self, PyObject *key, PyOb
 int class_container__Box__contains_slot(PyObject *self, PyObject *value) {
     try {
         int64_t __v = ::tpy::interop::from_py<int64_t>(value);
-        return reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_container::Box> *>(self)->payload.__contains__(__v) ? 1 : 0;
+        return reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_container::Box> *>(self)->p->__contains__(__v) ? 1 : 0;
     } catch (const ::tpy::BaseException &__e) {
         ::tpy::interop::set_py_err_from(__e);
         return -1;
@@ -168,7 +182,7 @@ int class_container__Box__contains_slot(PyObject *self, PyObject *value) {
 
 PyObject *class_container__Box__next_slot(PyObject *self) {
     try {
-        auto __r = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_container::Box> *>(self)->payload.__next__();
+        auto __r = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_container::Box> *>(self)->p->__next__();
         if (!__r.has_value()) {
             ::tpy::interop::set_py_err_from(__r.error());
             return nullptr;
@@ -186,7 +200,7 @@ PyObject *class_container__Box__next_slot(PyObject *self) {
 
 PyObject *class_container__Box__iter_slot(PyObject *self) {
     try {
-        auto &__self = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_container::Box> *>(self)->payload;
+        auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_container::Box> *>(self)->p;
         return ::tpy::interop::instance_to_py((::tpy::cpy::PyTypeObject *)class_container__type_Box, __self.__iter__());
     } catch (const ::tpy::BaseException &__e) {
         ::tpy::interop::set_py_err_from(__e);
@@ -209,7 +223,7 @@ PyGetSetDef class_container__Box__getset[] = {
 };
 PyType_Slot class_container__Box__slots[] = {
     {Py_tp_init, (void *)class_container__Box_init},
-    {Py_tp_dealloc, (void *)::tpy::interop::instance_dealloc<::tpyapp::class_container::Box>},
+    {Py_tp_dealloc, (void *)class_container__Box_dealloc},
     {Py_tp_methods, (void *)class_container__Box__methods},
     {Py_tp_getset, (void *)class_container__Box__getset},
     {Py_mp_length, (void *)class_container__Box__len_slot},
@@ -232,10 +246,19 @@ int class_container__Slot_init(PyObject *self, PyObject *args, PyObject *kwargs)
     PyObject *a0 = nullptr;
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:Slot", __kwlist, &a0)) return -1;
     auto *__inst = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_container::Slot> *>(self);
+    if (__inst->owner != nullptr) {
+        PyErr_SetString(PyExc_TypeError, "cannot __init__ a borrowed field view");
+        return -1;
+    }
     try {
         int64_t __p0 = ::tpy::interop::from_py<int64_t>(a0);
-        if (__inst->initialized) { __inst->initialized = false; ::std::destroy_at(&__inst->payload); }
-        new (&__inst->payload) ::tpyapp::class_container::Slot(__p0);
+        if (__inst->initialized && ::tpy::interop::has_views_into(__inst->p, sizeof(*__inst->p), class_container__view_registry)) {
+            PyErr_SetString(PyExc_TypeError, "cannot __init__ an instance while borrow views of its fields are alive");
+            return -1;
+        }
+        if (__inst->initialized) { __inst->initialized = false; ::std::destroy_at(&__inst->storage); }
+        new (&__inst->storage) ::tpyapp::class_container::Slot(__p0);
+        __inst->p = &__inst->storage;
         __inst->initialized = true;
         return 0;
     } catch (const ::tpy::BaseException &__e) {
@@ -248,9 +271,13 @@ int class_container__Slot_init(PyObject *self, PyObject *args, PyObject *kwargs)
     }
 }
 
+void class_container__Slot_dealloc(PyObject *self) {
+    ::tpy::interop::instance_dealloc<::tpyapp::class_container::Slot>(self, class_container__view_registry);
+}
+
 PyObject *class_container__Slot__value_get(PyObject *self, void *) {
     try {
-        return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_container::Slot> *>(self)->payload.value);
+        return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_container::Slot> *>(self)->p->value);
     } catch (...) {
         if (!PyErr_Occurred())
             PyErr_SetString(PyExc_RuntimeError, "tpy extension: attribute read failed");
@@ -263,7 +290,7 @@ int class_container__Slot__value_set(PyObject *self, PyObject *value, void *) {
         return -1;
     }
     try {
-        reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_container::Slot> *>(self)->payload.value = ::tpy::interop::from_py<int64_t>(value);
+        reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_container::Slot> *>(self)->p->value = ::tpy::interop::from_py<int64_t>(value);
         return 0;
     } catch (...) {
         if (!PyErr_Occurred())
@@ -274,7 +301,7 @@ int class_container__Slot__value_set(PyObject *self, PyObject *value, void *) {
 
 PyObject *class_container__Slot__filled_get(PyObject *self, void *) {
     try {
-        return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_container::Slot> *>(self)->payload.filled);
+        return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_container::Slot> *>(self)->p->filled);
     } catch (...) {
         if (!PyErr_Occurred())
             PyErr_SetString(PyExc_RuntimeError, "tpy extension: attribute read failed");
@@ -287,7 +314,7 @@ int class_container__Slot__filled_set(PyObject *self, PyObject *value, void *) {
         return -1;
     }
     try {
-        reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_container::Slot> *>(self)->payload.filled = ::tpy::interop::from_py<bool>(value);
+        reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_container::Slot> *>(self)->p->filled = ::tpy::interop::from_py<bool>(value);
         return 0;
     } catch (...) {
         if (!PyErr_Occurred())
@@ -298,7 +325,7 @@ int class_container__Slot__filled_set(PyObject *self, PyObject *value, void *) {
 
 Py_ssize_t class_container__Slot__len_slot(PyObject *self) {
     try {
-        return static_cast<Py_ssize_t>(reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_container::Slot> *>(self)->payload.__len__());
+        return static_cast<Py_ssize_t>(reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_container::Slot> *>(self)->p->__len__());
     } catch (const ::tpy::BaseException &__e) {
         ::tpy::interop::set_py_err_from(__e);
         return -1;
@@ -312,7 +339,7 @@ Py_ssize_t class_container__Slot__len_slot(PyObject *self) {
 PyObject *class_container__Slot__getitem_slot(PyObject *self, PyObject *key) {
     try {
         int32_t __key = ::tpy::interop::from_py<int32_t>(key);
-        return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_container::Slot> *>(self)->payload.__getitem__(__key));
+        return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_container::Slot> *>(self)->p->__getitem__(__key));
     } catch (const ::tpy::BaseException &__e) {
         ::tpy::interop::set_py_err_from(__e);
         return nullptr;
@@ -327,12 +354,12 @@ int class_container__Slot__ass_subscript_slot(PyObject *self, PyObject *key, PyO
     try {
         if (value == nullptr) {
             int32_t __key = ::tpy::interop::from_py<int32_t>(key);
-            reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_container::Slot> *>(self)->payload.__delitem__(__key);
+            reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_container::Slot> *>(self)->p->__delitem__(__key);
             return 0;
         }
         int32_t __key = ::tpy::interop::from_py<int32_t>(key);
         int64_t __value = ::tpy::interop::from_py<int64_t>(value);
-        reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_container::Slot> *>(self)->payload.__setitem__(__key, __value);
+        reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_container::Slot> *>(self)->p->__setitem__(__key, __value);
         return 0;
     } catch (const ::tpy::BaseException &__e) {
         ::tpy::interop::set_py_err_from(__e);
@@ -354,7 +381,7 @@ PyGetSetDef class_container__Slot__getset[] = {
 };
 PyType_Slot class_container__Slot__slots[] = {
     {Py_tp_init, (void *)class_container__Slot_init},
-    {Py_tp_dealloc, (void *)::tpy::interop::instance_dealloc<::tpyapp::class_container::Slot>},
+    {Py_tp_dealloc, (void *)class_container__Slot_dealloc},
     {Py_tp_methods, (void *)class_container__Slot__methods},
     {Py_tp_getset, (void *)class_container__Slot__getset},
     {Py_mp_length, (void *)class_container__Slot__len_slot},

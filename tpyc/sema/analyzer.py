@@ -49,7 +49,8 @@ from .export_shape import (
     EXPORT_CLASS_ITER_DUNDERS as _EXPORT_CLASS_ITER_DUNDERS,
     EXPORT_CLASS_NEXT_DUNDERS as _EXPORT_CLASS_NEXT_DUNDERS,
     EXPORT_CLASS_SUPPORTED_DUNDERS as _EXPORT_CLASS_SUPPORTED_DUNDERS,
-    export_method_shape_error, unsupported_boundary_param_form,
+    boundary_alias_records, export_method_shape_error,
+    unsupported_boundary_param_form, view_safe_borrow_returns,
 )
 
 # Deferred-resolution placeholder types. After `LocalTypeDeduction.resolve_all()`
@@ -504,21 +505,24 @@ class SemanticAnalyzer:
         """In an ext_module, warn when an @export function or an exposed class's
         method returns an exposed class or a list/dict/set *by borrow* --
         declared `-> Cls` / `-> list[T]` (sema lowers these to RefType), not
-        `-> Own[...]`. A class borrow return crosses as the ORIGINAL PyObject
-        when the returned reference is the receiver or a parameter (the glue
-        matches its address against the boundary-crossed objects in scope), so
-        a body whose every return site is a bare `self`/parameter name is
-        identity-preserving and not flagged. Any other source (a field, a
-        module global) has no live PyObject behind it, so that path copies a
-        caller-visible object into a fresh PyObject: identity (`is`) and
-        write-through aliasing are not preserved there. A list/dict/set borrow
-        return always copies (the container was copied IN, so no PyObject
-        backs it). Returning `Own[...]` -- a freshly constructed or copy()'d
-        owned value -- is a distinct object on both sides and is the
-        acknowledged form (so it is not flagged). tuple is a value type (never
-        RefType-lowered) and str crosses as a value; a borrow-form `bytes`
-        return predates this warning and stays unflagged for now (tracked in
-        TODO.md).
+        `-> Own[...]`. A class borrow return crosses aliasing when the
+        returned reference is the receiver, a parameter (identity: the glue
+        address-matches it against the boundary-crossed objects in scope and
+        hands back the ORIGINAL PyObject), or a never-reassigned field of one
+        (borrow view: a PyObject aliasing the live field with a keepalive ref
+        on its holder) -- a body whose every return site is one of those
+        shapes is not flagged (the shared view_safe_borrow_returns
+        classifier; the glue emits from the same answer). Any other source
+        (a reassignable field, a module global) has no live-object-preserving
+        path, so it copies a caller-visible object into a fresh PyObject:
+        identity (`is`) and write-through aliasing are not preserved there.
+        A list/dict/set borrow return always copies (the container was
+        copied IN, so no PyObject backs it). Returning `Own[...]` -- a
+        freshly constructed or copy()'d owned value -- is a distinct object
+        on both sides and is the acknowledged form (so it is not flagged).
+        tuple is a value type (never RefType-lowered) and str crosses as a
+        value; a borrow-form `bytes` return predates this warning and stays
+        unflagged for now (tracked in TODO.md).
         """
         if not module.directives.ext_module:
             return
@@ -535,14 +539,19 @@ class SemanticAnalyzer:
             found = collect_returns(body)
             return found[0] if found else None
 
+        def alias_records_of(params, rec_info=None) -> 'dict[str, RecordInfo]':
+            return boundary_alias_records(params, self.ctx.registry, rec_info)
+
         def warn_if_borrow_return(fn, label: str,
-                                  alias_names: 'set[str] | None') -> None:
-            """`alias_names` = the bare return-site names whose returns the
-            GLUE hands back by identity (the address-matched candidates it
-            actually threads: params, plus `self` for methods/getters and the
-            tp_iter slot), or None when the emit site has no identity path at
-            all (the other dunder slots emit through `_value_out_expr`, which
-            always copies) -- those must keep the unconditional warning."""
+                                  alias_records: 'dict | None') -> None:
+            """`alias_records` = name -> RecordInfo of the candidates the
+            GLUE threads at this emit site (params, plus `self` for
+            methods/getters and the tp_iter slot), or None when the emit
+            site has no identity/view path at all (the other dunder slots
+            emit through `_value_out_expr`, which always copies) -- those
+            must keep the unconditional warning. Suppression and the glue's
+            view emission share ONE classifier (view_safe_borrow_returns),
+            so a suppressed warning always has a runtime aliasing path."""
             if not isinstance(fn.return_type, RefType):
                 return
             if is_exposed_class(fn.return_type):
@@ -552,18 +561,17 @@ class SemanticAnalyzer:
                 # copy is deleted), reported by the validator -- don't also warn.
                 if info is not None and info.is_nocopy:
                     return
-                # Every return site a bare candidate name -> the glue's
-                # address match always hits and the original PyObject crosses;
-                # nothing is copied, nothing to warn about. (Conservative:
-                # a ternary or a local alias of self still warns even though
-                # the runtime address match preserves identity there too.)
-                returns = collect_returns(fn.body)
-                if alias_names is not None and returns and all(
-                        (src := _bare_name_source(r.value)) is not None
-                        and src.name in alias_names for r in returns):
+                # Every return site a bare candidate name (identity) or a
+                # view-safe field access of one (borrow view) -> nothing is
+                # copied, nothing to warn about. (Conservative: a ternary or
+                # a local alias of self still warns even though the runtime
+                # address match preserves identity there too.)
+                if (alias_records is not None and info is not None
+                        and view_safe_borrow_returns(
+                            fn, alias_records, info, self.ctx.registry)):
                     return
                 cls_name = getattr(fn.return_type.wrapped, 'name', '?')
-                if alias_names is None:
+                if alias_records is None:
                     # No identity path exists at this emit site, so the copy
                     # is unconditional -- the identity-advice wording would
                     # lie here (`return self` still copies).
@@ -579,16 +587,17 @@ class SemanticAnalyzer:
                         first_return(fn.body))
                     return
                 self._warning(
-                    f"{label}: returns exposed class "
-                    f"'{cls_name}' by "
-                    f"reference from a source other than `self` or a "
-                    f"parameter on at least one return path, so the instance "
+                    f"{label}: returns exposed class '{cls_name}' by "
+                    f"reference from a source with no live object behind it "
+                    f"on at least one return path (not `self`/a parameter, "
+                    f"nor a never-reassigned field of one), so the instance "
                     f"is copied across the CPython boundary there -- the copy "
                     f"is a new object (identity and write-through aliasing "
                     f"are not preserved; a copied derived instance is sliced "
                     f"to the declared type); `self`/parameter returns cross "
-                    f"as the original object; return Own[...] to make the "
-                    f"copy explicit",
+                    f"as the original object, never-reassigned field returns "
+                    f"as an aliasing view; return Own[...] to make the copy "
+                    f"explicit",
                     first_return(fn.body))
                 return
             inner = _boundary_inner(fn.return_type)
@@ -610,10 +619,11 @@ class SemanticAnalyzer:
                 # A free function has no receiver: only its params are glue
                 # candidates (a module global named `self` is NOT one).
                 warn_if_borrow_return(func, f"@export function '{func.name}'",
-                                      {n for n, _t in func.params})
+                                      alias_records_of(func.params))
         for record in module.records:
             if not record.exposed_to_host:
                 continue
+            rec_info = self.ctx.registry.get_record(record.name)
             for m in record.methods:
                 is_dunder = m.name.startswith("__") and m.name.endswith("__")
                 if m.name == "__init__" or (
@@ -640,15 +650,16 @@ class SemanticAnalyzer:
                 what = "property" if m.is_property_getter else "method"
                 # Non-inplace dunders emit through `_value_out_expr` slot
                 # wrappers, which have no identity path -- their borrow
-                # returns always copy, so no suppression (alias_names=None).
+                # returns always copy, so no suppression (alias_records=None).
                 # __iter__ is the exception: its tp_iter wrapper threads the
                 # receiver candidate (the canonical `return self` iterator
                 # crosses by identity), so bare-self returns suppress.
                 warn_if_borrow_return(
                     m, f"exposed class '{record.name}' {what} '{m.name}'",
-                    {"self"} if m.name in _EXPORT_CLASS_ITER_DUNDERS
+                    alias_records_of([], rec_info)
+                    if m.name in _EXPORT_CLASS_ITER_DUNDERS
                     else None if is_dunder
-                    else {n for n, _t in m.params} | {"self"})
+                    else alias_records_of(m.params, rec_info))
 
     def _validate_export_class_dunders(self, module: TpyModule) -> None:
         """In an ext_module, validate an @export class's repr/str/eq/ne/lt/le/

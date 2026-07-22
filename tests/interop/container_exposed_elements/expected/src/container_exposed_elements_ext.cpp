@@ -10,6 +10,7 @@ using namespace ::tpy::cpy;
 
 PyObject *container_exposed_elements__type_Counter = nullptr;
 PyObject *container_exposed_elements__enum_Color = nullptr;
+::tpy::interop::ViewRegistry container_exposed_elements__view_registry;
 
 PyObject *container_exposed_elements__cycle_pywrap(PyObject *self, PyObject *args, PyObject *kwargs) {
     static char *__kwlist[] = {const_cast<char *>("cs"), nullptr};
@@ -154,10 +155,19 @@ int container_exposed_elements__Counter_init(PyObject *self, PyObject *args, PyO
     PyObject *a0 = nullptr;
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:Counter", __kwlist, &a0)) return -1;
     auto *__inst = reinterpret_cast<::tpy::interop::Instance<::tpyapp::container_exposed_elements::Counter> *>(self);
+    if (__inst->owner != nullptr) {
+        PyErr_SetString(PyExc_TypeError, "cannot __init__ a borrowed field view");
+        return -1;
+    }
     try {
         int64_t __p0 = ::tpy::interop::from_py<int64_t>(a0);
-        if (__inst->initialized) { __inst->initialized = false; ::std::destroy_at(&__inst->payload); }
-        new (&__inst->payload) ::tpyapp::container_exposed_elements::Counter(__p0);
+        if (__inst->initialized && ::tpy::interop::has_views_into(__inst->p, sizeof(*__inst->p), container_exposed_elements__view_registry)) {
+            PyErr_SetString(PyExc_TypeError, "cannot __init__ an instance while borrow views of its fields are alive");
+            return -1;
+        }
+        if (__inst->initialized) { __inst->initialized = false; ::std::destroy_at(&__inst->storage); }
+        new (&__inst->storage) ::tpyapp::container_exposed_elements::Counter(__p0);
+        __inst->p = &__inst->storage;
         __inst->initialized = true;
         return 0;
     } catch (const ::tpy::BaseException &__e) {
@@ -170,9 +180,13 @@ int container_exposed_elements__Counter_init(PyObject *self, PyObject *args, PyO
     }
 }
 
+void container_exposed_elements__Counter_dealloc(PyObject *self) {
+    ::tpy::interop::instance_dealloc<::tpyapp::container_exposed_elements::Counter>(self, container_exposed_elements__view_registry);
+}
+
 PyObject *container_exposed_elements__Counter__bump_pywrap(PyObject *self, PyObject *) {
     try {
-        auto &__self = reinterpret_cast<::tpy::interop::Instance<::tpyapp::container_exposed_elements::Counter> *>(self)->payload;
+        auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::container_exposed_elements::Counter> *>(self)->p;
         __self.bump();
         return ::tpy::interop::none_to_py();
     } catch (const ::tpy::BaseException &__e) {
@@ -187,7 +201,7 @@ PyObject *container_exposed_elements__Counter__bump_pywrap(PyObject *self, PyObj
 
 PyObject *container_exposed_elements__Counter__value_get(PyObject *self, void *) {
     try {
-        return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::container_exposed_elements::Counter> *>(self)->payload.value);
+        return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::container_exposed_elements::Counter> *>(self)->p->value);
     } catch (...) {
         if (!PyErr_Occurred())
             PyErr_SetString(PyExc_RuntimeError, "tpy extension: attribute read failed");
@@ -200,7 +214,7 @@ int container_exposed_elements__Counter__value_set(PyObject *self, PyObject *val
         return -1;
     }
     try {
-        reinterpret_cast<::tpy::interop::Instance<::tpyapp::container_exposed_elements::Counter> *>(self)->payload.value = ::tpy::interop::from_py<int64_t>(value);
+        reinterpret_cast<::tpy::interop::Instance<::tpyapp::container_exposed_elements::Counter> *>(self)->p->value = ::tpy::interop::from_py<int64_t>(value);
         return 0;
     } catch (...) {
         if (!PyErr_Occurred())
@@ -219,7 +233,7 @@ PyGetSetDef container_exposed_elements__Counter__getset[] = {
 };
 PyType_Slot container_exposed_elements__Counter__slots[] = {
     {Py_tp_init, (void *)container_exposed_elements__Counter_init},
-    {Py_tp_dealloc, (void *)::tpy::interop::instance_dealloc<::tpyapp::container_exposed_elements::Counter>},
+    {Py_tp_dealloc, (void *)container_exposed_elements__Counter_dealloc},
     {Py_tp_methods, (void *)container_exposed_elements__Counter__methods},
     {Py_tp_getset, (void *)container_exposed_elements__Counter__getset},
     {Py_tp_new, (void *)::tpy::cpy::PyType_GenericNew},

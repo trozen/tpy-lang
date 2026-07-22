@@ -8,17 +8,27 @@ namespace {
 using namespace ::tpy::cpy;
 
 PyObject *class_operators__type_Vec2 = nullptr;
+::tpy::interop::ViewRegistry class_operators__view_registry;
 
 int class_operators__Vec2_init(PyObject *self, PyObject *args, PyObject *kwargs) {
     static char *__kwlist[] = {const_cast<char *>("x"), const_cast<char *>("y"), nullptr};
     PyObject *a0 = nullptr; PyObject *a1 = nullptr;
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OO:Vec2", __kwlist, &a0, &a1)) return -1;
     auto *__inst = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_operators::Vec2> *>(self);
+    if (__inst->owner != nullptr) {
+        PyErr_SetString(PyExc_TypeError, "cannot __init__ a borrowed field view");
+        return -1;
+    }
     try {
         int64_t __p0 = ::tpy::interop::from_py<int64_t>(a0);
         int64_t __p1 = ::tpy::interop::from_py<int64_t>(a1);
-        if (__inst->initialized) { __inst->initialized = false; ::std::destroy_at(&__inst->payload); }
-        new (&__inst->payload) ::tpyapp::class_operators::Vec2(__p0, __p1);
+        if (__inst->initialized && ::tpy::interop::has_views_into(__inst->p, sizeof(*__inst->p), class_operators__view_registry)) {
+            PyErr_SetString(PyExc_TypeError, "cannot __init__ an instance while borrow views of its fields are alive");
+            return -1;
+        }
+        if (__inst->initialized) { __inst->initialized = false; ::std::destroy_at(&__inst->storage); }
+        new (&__inst->storage) ::tpyapp::class_operators::Vec2(__p0, __p1);
+        __inst->p = &__inst->storage;
         __inst->initialized = true;
         return 0;
     } catch (const ::tpy::BaseException &__e) {
@@ -31,9 +41,13 @@ int class_operators__Vec2_init(PyObject *self, PyObject *args, PyObject *kwargs)
     }
 }
 
+void class_operators__Vec2_dealloc(PyObject *self) {
+    ::tpy::interop::instance_dealloc<::tpyapp::class_operators::Vec2>(self, class_operators__view_registry);
+}
+
 PyObject *class_operators__Vec2__x_get(PyObject *self, void *) {
     try {
-        return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_operators::Vec2> *>(self)->payload.x);
+        return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_operators::Vec2> *>(self)->p->x);
     } catch (...) {
         if (!PyErr_Occurred())
             PyErr_SetString(PyExc_RuntimeError, "tpy extension: attribute read failed");
@@ -46,7 +60,7 @@ int class_operators__Vec2__x_set(PyObject *self, PyObject *value, void *) {
         return -1;
     }
     try {
-        reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_operators::Vec2> *>(self)->payload.x = ::tpy::interop::from_py<int64_t>(value);
+        reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_operators::Vec2> *>(self)->p->x = ::tpy::interop::from_py<int64_t>(value);
         return 0;
     } catch (...) {
         if (!PyErr_Occurred())
@@ -57,7 +71,7 @@ int class_operators__Vec2__x_set(PyObject *self, PyObject *value, void *) {
 
 PyObject *class_operators__Vec2__y_get(PyObject *self, void *) {
     try {
-        return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_operators::Vec2> *>(self)->payload.y);
+        return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_operators::Vec2> *>(self)->p->y);
     } catch (...) {
         if (!PyErr_Occurred())
             PyErr_SetString(PyExc_RuntimeError, "tpy extension: attribute read failed");
@@ -70,7 +84,7 @@ int class_operators__Vec2__y_set(PyObject *self, PyObject *value, void *) {
         return -1;
     }
     try {
-        reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_operators::Vec2> *>(self)->payload.y = ::tpy::interop::from_py<int64_t>(value);
+        reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_operators::Vec2> *>(self)->p->y = ::tpy::interop::from_py<int64_t>(value);
         return 0;
     } catch (...) {
         if (!PyErr_Occurred())
@@ -84,7 +98,7 @@ PyObject *class_operators__Vec2__add_slot(PyObject *a, PyObject *b) {
         if (Py_TYPE(a) == (::tpy::cpy::PyTypeObject *)class_operators__type_Vec2 || PyType_IsSubtype(Py_TYPE(a), (::tpy::cpy::PyTypeObject *)class_operators__type_Vec2) != 0) {
             try {
                 const ::tpyapp::class_operators::Vec2 &__other = *::tpy::interop::instance_payload<::tpyapp::class_operators::Vec2>(b, (::tpy::cpy::PyTypeObject *)class_operators__type_Vec2);
-                return ::tpy::interop::instance_to_py((::tpy::cpy::PyTypeObject *)class_operators__type_Vec2, reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_operators::Vec2> *>(a)->payload.__add__(__other));
+                return ::tpy::interop::instance_to_py((::tpy::cpy::PyTypeObject *)class_operators__type_Vec2, reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_operators::Vec2> *>(a)->p->__add__(__other));
             } catch (const ::tpy::interop::MarshalError &) {
                 if (!PyErr_ExceptionMatches(PyExc_TypeError)) return nullptr;
                 PyErr_Clear();
@@ -106,7 +120,7 @@ PyObject *class_operators__Vec2__sub_slot(PyObject *a, PyObject *b) {
         if (Py_TYPE(a) == (::tpy::cpy::PyTypeObject *)class_operators__type_Vec2 || PyType_IsSubtype(Py_TYPE(a), (::tpy::cpy::PyTypeObject *)class_operators__type_Vec2) != 0) {
             try {
                 const ::tpyapp::class_operators::Vec2 &__other = *::tpy::interop::instance_payload<::tpyapp::class_operators::Vec2>(b, (::tpy::cpy::PyTypeObject *)class_operators__type_Vec2);
-                return ::tpy::interop::instance_to_py((::tpy::cpy::PyTypeObject *)class_operators__type_Vec2, reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_operators::Vec2> *>(a)->payload.__sub__(__other));
+                return ::tpy::interop::instance_to_py((::tpy::cpy::PyTypeObject *)class_operators__type_Vec2, reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_operators::Vec2> *>(a)->p->__sub__(__other));
             } catch (const ::tpy::interop::MarshalError &) {
                 if (!PyErr_ExceptionMatches(PyExc_TypeError)) return nullptr;
                 PyErr_Clear();
@@ -115,7 +129,7 @@ PyObject *class_operators__Vec2__sub_slot(PyObject *a, PyObject *b) {
         if (Py_TYPE(b) == (::tpy::cpy::PyTypeObject *)class_operators__type_Vec2 || PyType_IsSubtype(Py_TYPE(b), (::tpy::cpy::PyTypeObject *)class_operators__type_Vec2) != 0) {
             try {
                 int64_t __other = ::tpy::interop::from_py<int64_t>(a);
-                return ::tpy::interop::instance_to_py((::tpy::cpy::PyTypeObject *)class_operators__type_Vec2, reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_operators::Vec2> *>(b)->payload.__rsub__(__other));
+                return ::tpy::interop::instance_to_py((::tpy::cpy::PyTypeObject *)class_operators__type_Vec2, reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_operators::Vec2> *>(b)->p->__rsub__(__other));
             } catch (const ::tpy::interop::MarshalError &) {
                 if (!PyErr_ExceptionMatches(PyExc_TypeError)) return nullptr;
                 PyErr_Clear();
@@ -137,7 +151,7 @@ PyObject *class_operators__Vec2__mul_slot(PyObject *a, PyObject *b) {
         if (Py_TYPE(a) == (::tpy::cpy::PyTypeObject *)class_operators__type_Vec2 || PyType_IsSubtype(Py_TYPE(a), (::tpy::cpy::PyTypeObject *)class_operators__type_Vec2) != 0) {
             try {
                 int64_t __other = ::tpy::interop::from_py<int64_t>(b);
-                return ::tpy::interop::instance_to_py((::tpy::cpy::PyTypeObject *)class_operators__type_Vec2, reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_operators::Vec2> *>(a)->payload.__mul__(__other));
+                return ::tpy::interop::instance_to_py((::tpy::cpy::PyTypeObject *)class_operators__type_Vec2, reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_operators::Vec2> *>(a)->p->__mul__(__other));
             } catch (const ::tpy::interop::MarshalError &) {
                 if (!PyErr_ExceptionMatches(PyExc_TypeError)) return nullptr;
                 PyErr_Clear();
@@ -146,7 +160,7 @@ PyObject *class_operators__Vec2__mul_slot(PyObject *a, PyObject *b) {
         if (Py_TYPE(b) == (::tpy::cpy::PyTypeObject *)class_operators__type_Vec2 || PyType_IsSubtype(Py_TYPE(b), (::tpy::cpy::PyTypeObject *)class_operators__type_Vec2) != 0) {
             try {
                 int64_t __other = ::tpy::interop::from_py<int64_t>(a);
-                return ::tpy::interop::instance_to_py((::tpy::cpy::PyTypeObject *)class_operators__type_Vec2, reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_operators::Vec2> *>(b)->payload.__rmul__(__other));
+                return ::tpy::interop::instance_to_py((::tpy::cpy::PyTypeObject *)class_operators__type_Vec2, reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_operators::Vec2> *>(b)->p->__rmul__(__other));
             } catch (const ::tpy::interop::MarshalError &) {
                 if (!PyErr_ExceptionMatches(PyExc_TypeError)) return nullptr;
                 PyErr_Clear();
@@ -170,7 +184,7 @@ PyObject *class_operators__Vec2__pow_slot(PyObject *a, PyObject *b, PyObject *mo
         if (Py_TYPE(a) == (::tpy::cpy::PyTypeObject *)class_operators__type_Vec2 || PyType_IsSubtype(Py_TYPE(a), (::tpy::cpy::PyTypeObject *)class_operators__type_Vec2) != 0) {
             try {
                 int64_t __other = ::tpy::interop::from_py<int64_t>(b);
-                return ::tpy::interop::instance_to_py((::tpy::cpy::PyTypeObject *)class_operators__type_Vec2, reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_operators::Vec2> *>(a)->payload.__pow__(__other));
+                return ::tpy::interop::instance_to_py((::tpy::cpy::PyTypeObject *)class_operators__type_Vec2, reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_operators::Vec2> *>(a)->p->__pow__(__other));
             } catch (const ::tpy::interop::MarshalError &) {
                 if (!PyErr_ExceptionMatches(PyExc_TypeError)) return nullptr;
                 PyErr_Clear();
@@ -189,7 +203,7 @@ PyObject *class_operators__Vec2__pow_slot(PyObject *a, PyObject *b, PyObject *mo
 
 PyObject *class_operators__Vec2__neg_slot(PyObject *self) {
     try {
-        return ::tpy::interop::instance_to_py((::tpy::cpy::PyTypeObject *)class_operators__type_Vec2, reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_operators::Vec2> *>(self)->payload.__neg__());
+        return ::tpy::interop::instance_to_py((::tpy::cpy::PyTypeObject *)class_operators__type_Vec2, reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_operators::Vec2> *>(self)->p->__neg__());
     } catch (const ::tpy::BaseException &__e) {
         ::tpy::interop::set_py_err_from(__e);
         return nullptr;
@@ -203,7 +217,7 @@ PyObject *class_operators__Vec2__neg_slot(PyObject *self) {
 PyObject *class_operators__Vec2__iadd_slot(PyObject *self, PyObject *other) {
     try {
         const ::tpyapp::class_operators::Vec2 &__other = *::tpy::interop::instance_payload<::tpyapp::class_operators::Vec2>(other, (::tpy::cpy::PyTypeObject *)class_operators__type_Vec2);
-        reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_operators::Vec2> *>(self)->payload.__iadd__(__other);
+        reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_operators::Vec2> *>(self)->p->__iadd__(__other);
         Py_IncRef(self);
         return self;
     } catch (const ::tpy::interop::MarshalError &) {
@@ -230,7 +244,7 @@ PyGetSetDef class_operators__Vec2__getset[] = {
 };
 PyType_Slot class_operators__Vec2__slots[] = {
     {Py_tp_init, (void *)class_operators__Vec2_init},
-    {Py_tp_dealloc, (void *)::tpy::interop::instance_dealloc<::tpyapp::class_operators::Vec2>},
+    {Py_tp_dealloc, (void *)class_operators__Vec2_dealloc},
     {Py_tp_methods, (void *)class_operators__Vec2__methods},
     {Py_tp_getset, (void *)class_operators__Vec2__getset},
     {Py_nb_add, (void *)class_operators__Vec2__add_slot},

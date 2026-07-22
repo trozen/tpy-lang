@@ -54,7 +54,7 @@ progress -> ✅ done.
 | 2 | Extension codegen; **free functions** end-to-end; local `.so` build | **v1.0** | 🚧 every scalar arg/return + void return + str/bytes + container arg/return done; positional + keyword args (PyArg_ParseTupleAndKeywords) |
 | 2.5 | PEP 517 backend -> abi3 wheel (packaging) | **v1.0** | 🔬 |
 | 3 | Buffer input -- numeric (copy-in in v1.0; zero-copy -> 3.5) | **v1.0** | ✅ done: `Span[readonly[T]]`/`Span[T]` (fixed-width int/`float`) as an @export fn or exposed-class method PARAM only, via `PyObject_GetBuffer`; copy-in for both forms (no write-back for either); a mutated `Span[T]` param warns (copy-in, not visible to caller) |
-| 4 | **Classes + methods** (`PyType_FromSpec`; dunders per Q4) | **v1.1** | 🚧 baseline done: construct + plain methods + annotated fields as getset (scalars/str/bytes/exposed-enum/exposed-value-type; a value type is exposed read-only; a *public* mutable reference class-typed field is rejected -- copy-out breaks write-through, but a `_`-prefixed **internal** field of any type is kept as payload state and never crosses, so a class can hold reference-class/container members reached through methods), instances as free-fn/method params (borrow) + returns (identity-preserving when the returned reference is `self`/a param -- the original PyObject crosses back; copy otherwise); dunders (Q4) DONE -- all three checkpoints (repr/str/eq/ne/lt/le/gt/ge/hash; arithmetic/ordering operators incl. in-place; container protocol) landed; @property DONE (computed getset, full method boundary set); inheritance DONE (single exposed same-module base -> real `tp_base`); public-reference-class fields still deferred |
+| 4 | **Classes + methods** (`PyType_FromSpec`; dunders per Q4) | **v1.1** | 🚧 baseline done: construct + plain methods + annotated fields as getset (scalars/str/bytes/exposed-enum/exposed-value-type; a value type is exposed read-only; a *never-reassigned* reference class-typed field crosses as a READ-ONLY aliasing borrow-view getset, a *reassignable* one is rejected -- its view would read the storage slot through the rebind -- and a `_`-prefixed **internal** field of any type is kept as payload state and never crosses, so a class can hold reference-class/container members reached through methods), instances as free-fn/method params (borrow) + returns (identity-preserving when the returned reference is `self`/a param -- the original PyObject crosses back; an aliasing registry-deduped borrow VIEW when it is a never-reassigned field of one; copy otherwise); dunders (Q4) DONE -- all three checkpoints (repr/str/eq/ne/lt/le/gt/ge/hash; arithmetic/ordering operators incl. in-place; container protocol) landed; @property DONE (computed getset, full method boundary set); inheritance DONE (single exposed same-module base -> real `tp_base`) |
 | 5 | **Enums + constants** | **v1.1** | 🚧 `@export` enums recreated as real CPython IntEnum/Enum (functional API, module= set); enum values cross as @export fn params/returns (member round-trip, strict-by-type IN); `Final` scalar/str constants as init-time module-attribute snapshots; nested/cross-module enums deferred |
 | 3.5 | Foreign-borrow primitive -> zero-copy str + buffer input | post-v1.0 (next) -- IR-gated | 🔬 |
 | 6 | Containers (`list`/`dict`/`set`/`tuple`, by-copy) | v1-adjacent | 🚧 done: list/dict/set/tuple cross as @export fn AND exposed-class method/`__init__` params/returns, O(n) recursive copy-in/out (str/bytes elements + arbitrary nesting); strict-by-container-kind IN; a mutated container param warns (copy-in, not visible to caller); a borrow-form container return warns (copy-out, Own[...] acknowledges); a *container* getset field stays rejected (an enum or value-type field IS admitted -- see row 4); exposed enum/class *top-level elements* now cross (deferred: class as a tuple element, nested-in-a-container element, @nocopy element, class set-element/dict-key) |
@@ -520,21 +520,29 @@ setter descriptors -- matching the rule that its fields are set only in
 `__init__`), so on the holder the value field is r/w for whole-value
 *replacement* (`b.origin = Point(3, 4)`) but a nested-field mutation
 (`b.origin.x = 5`) loud-fails with `AttributeError`, and each read is a fresh
-copy (`b.origin is b.origin` is `False`). A *public* container field or a
-**mutable (reference) class-typed** field stays rejected -- a nested *mutable*
-class is stored inline by value, so a getset getter could only copy it out,
-silently breaking the write-through that `outer.inner.x = 5` expects; faithful
-aliasing needs the deferred foreign-borrow primitive, so the diagnostic steers
-to making the field **internal** (see below) plus an accessor method (mutating
-through `self`) or an explicit `copy()`.
+copy (`b.origin is b.origin` is `False`). A **never-reassigned reference
+class-typed** field crosses as a **READ-ONLY borrow-view getset**: the getter
+mints (or, via the per-module registry, re-returns) a PyObject aliasing the
+live field with a keepalive ref on the holder, so `outer.inner.x = 5` writes
+through and `outer.inner is outer.inner` holds -- exactly plain-Python
+attribute semantics for reads; the missing setter is what keeps the
+never-reassigned gate honest (a Python-side rebind raises `AttributeError`
+where plain Python would rebind -- acknowledged, loud). A *public* container
+field or a **reassignable** reference class-typed field stays rejected -- the
+container was copied in (no PyObject to alias), and a rebindable field's view
+would read the storage SLOT through the rebind; the diagnostic steers to
+dropping the post-`__init__` reassignment or making the field **internal**
+(see below) plus an accessor method (mutating through `self`) or an explicit
+`copy()`.
 
 **Internal (`_`-prefixed) fields.** A field whose name begins with `_` never
 crosses as a Python attribute -- it stays live C++ payload state (readable and
 mutable from the class's own methods) but is absent from the exposed type. This
 enforces at the boundary what Python's own `_private` convention only advises,
 and it is precisely what lets an exposed class hold a member of *any* type,
-including the reference-class and container fields the getset path rejects: name
-it `_inner` and reach it through a method rather than an attribute. The rule is
+including the container and reassignable reference-class fields the getset
+path rejects: name it `_inner` and reach it through a method rather than an
+attribute. The rule is
 uniform and has no override -- it applies identically to the exposed-class
 getset and to the exception data-fields below. Divergence (acknowledged, like
 `e.message`): under plain Python `_inner` is an ordinary attribute, so it is
@@ -1139,13 +1147,33 @@ Detail for the tracker table in "v1 plan and status" (top). **v1.0 = phases
    the address via a first `_`-internal field) and `Py_IncRef`s the ORIGINAL
    PyObject, so `is`, write-through, and the dynamic type survive
    (`return self`, fluent chains, param pass-through -- as in plain Python).
-   The decision is per call: a return path whose source has no live PyObject
-   behind it (a field borrow, a module global) still copies into a fresh
-   instance via `instance_to_py` -- the warning fires on bodies with such a
-   path (suppressed only when every return site is a bare `self`/param name
-   at an identity-capable site; note the per-call split: the same function
-   can alias on one input and copy on another, so tests must exercise every
-   return path). Operator/container DUNDER slots are not identity-capable
+   A **never-reassigned field borrow** (`return self._inner`, where sema
+   proves the field is never assigned outside an `__init__` with a bare-self
+   receiver -- `RecordInfo.fields_rebound_outside_init`) crosses as a
+   **borrow view**: a PyObject of the field's exposed type whose payload
+   points into the holder's live storage, holding a strong reference on the
+   holder (the memoryview owner-keepalive pattern) and deduped through a
+   per-module address registry -- so repeated accesses return the SAME view
+   (`h.get_inner() is h.get_inner()`, `==`, `hash` all match plain Python)
+   and mutation writes through both ways. The glue finds the owner by an
+   address-RANGE scan over the boundary-crossed candidates after the exact
+   identity matches (`within_payload`; a first field sits at offset 0 of its
+   holder, so the range hit correctly mints a view of the UNRELATED holder
+   rather than handing the holder back). The never-reassigned gate is what
+   keeps the view honest: a view aliases the field's storage SLOT, so a
+   rebindable field would show its replacement through a live view where
+   CPython's rebind leaves the old object intact -- those fields stay on the
+   copy path. The view admits only a field declared as EXACTLY the return
+   class (no upcast views), and explicit `view.__init__(...)` is rejected
+   with a TypeError (its storage belongs to the holder). Sema's warning
+   suppression and the glue's view emission consult ONE classifier
+   (`view_safe_borrow_returns` in sema/export_shape.py), so a suppressed
+   warning always has a runtime aliasing path behind it.
+   The decision is per call: a return path whose source has no live object
+   behind it (a reassignable field, a module global) still copies into a
+   fresh instance via `instance_to_py` -- the warning fires on bodies with
+   such a path (note the per-call split: the same function can alias on one
+   input and copy on another, so tests must exercise every return path). Operator/container DUNDER slots are not identity-capable
    (they emit through the expression-form copy path), so their borrow
    returns always copy and always warn -- except the in-place group, which
    returns `self` identity-preserved by construction, and `__iter__`,
@@ -1223,10 +1251,13 @@ Detail for the tracker table in "v1 plan and status" (top). **v1.0 = phases
    a base-typed param) invoking an overridden method runs the BASE version
    inside the module -- the method-hiding warning fires at the override site
    (`@dynamic` is the hatch); and a borrow-form `-> Base` return sourced
-   from something other than `self`/a param (a field borrow, a global)
-   copies AND slices to the declared type (the return-alias warning names
-   it) -- a `self`/param-sourced return hands back the ORIGINAL object,
-   derived type intact (see the identity-preserving-return rule above).
+   from something with no aliasing path (a reassignable field, a global, or
+   a field declared as a DERIVED class -- the view requires an exact
+   declared-type match) copies AND slices to the declared type (the
+   return-alias warning names it) -- a `self`/param-sourced return hands
+   back the ORIGINAL object, derived type intact, and a never-reassigned
+   same-type field crosses as an aliasing view (see the
+   identity-preserving-return rule above).
    Python-side calls of overridden methods dispatch via MRO and match
    CPython.
 

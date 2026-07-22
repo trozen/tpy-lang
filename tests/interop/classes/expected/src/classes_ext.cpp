@@ -8,6 +8,7 @@ namespace {
 using namespace ::tpy::cpy;
 
 PyObject *classes__type_Counter = nullptr;
+::tpy::interop::ViewRegistry classes__view_registry;
 
 PyObject *classes__bump_pywrap(PyObject *self, PyObject *args, PyObject *kwargs) {
     static char *__kwlist[] = {const_cast<char *>("c"), const_cast<char *>("by"), nullptr};
@@ -50,11 +51,20 @@ int classes__Counter_init(PyObject *self, PyObject *args, PyObject *kwargs) {
     PyObject *a0 = nullptr; PyObject *a1 = nullptr;
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OO:Counter", __kwlist, &a0, &a1)) return -1;
     auto *__inst = reinterpret_cast<::tpy::interop::Instance<::tpyapp::classes::Counter> *>(self);
+    if (__inst->owner != nullptr) {
+        PyErr_SetString(PyExc_TypeError, "cannot __init__ a borrowed field view");
+        return -1;
+    }
     try {
         int64_t __p0 = ::tpy::interop::from_py<int64_t>(a0);
         std::string __p1 = ::tpy::interop::from_py<std::string>(a1);
-        if (__inst->initialized) { __inst->initialized = false; ::std::destroy_at(&__inst->payload); }
-        new (&__inst->payload) ::tpyapp::classes::Counter(__p0, __p1);
+        if (__inst->initialized && ::tpy::interop::has_views_into(__inst->p, sizeof(*__inst->p), classes__view_registry)) {
+            PyErr_SetString(PyExc_TypeError, "cannot __init__ an instance while borrow views of its fields are alive");
+            return -1;
+        }
+        if (__inst->initialized) { __inst->initialized = false; ::std::destroy_at(&__inst->storage); }
+        new (&__inst->storage) ::tpyapp::classes::Counter(__p0, __p1);
+        __inst->p = &__inst->storage;
         __inst->initialized = true;
         return 0;
     } catch (const ::tpy::BaseException &__e) {
@@ -67,12 +77,16 @@ int classes__Counter_init(PyObject *self, PyObject *args, PyObject *kwargs) {
     }
 }
 
+void classes__Counter_dealloc(PyObject *self) {
+    ::tpy::interop::instance_dealloc<::tpyapp::classes::Counter>(self, classes__view_registry);
+}
+
 PyObject *classes__Counter__incr_pywrap(PyObject *self, PyObject *args, PyObject *kwargs) {
     static char *__kwlist[] = {const_cast<char *>("by"), nullptr};
     PyObject *a0 = nullptr;
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:incr", __kwlist, &a0)) return nullptr;
     try {
-        auto &__self = reinterpret_cast<::tpy::interop::Instance<::tpyapp::classes::Counter> *>(self)->payload;
+        auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::classes::Counter> *>(self)->p;
         int64_t __p0 = ::tpy::interop::from_py<int64_t>(a0);
         __self.incr(__p0);
         return ::tpy::interop::none_to_py();
@@ -88,7 +102,7 @@ PyObject *classes__Counter__incr_pywrap(PyObject *self, PyObject *args, PyObject
 
 PyObject *classes__Counter__get_pywrap(PyObject *self, PyObject *) {
     try {
-        auto &__self = reinterpret_cast<::tpy::interop::Instance<::tpyapp::classes::Counter> *>(self)->payload;
+        auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::classes::Counter> *>(self)->p;
         return ::tpy::interop::to_py(__self.get());
     } catch (const ::tpy::BaseException &__e) {
         ::tpy::interop::set_py_err_from(__e);
@@ -105,7 +119,7 @@ PyObject *classes__Counter__echo_pywrap(PyObject *self, PyObject *args, PyObject
     PyObject *a0 = nullptr;
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:echo", __kwlist, &a0)) return nullptr;
     try {
-        auto &__self = reinterpret_cast<::tpy::interop::Instance<::tpyapp::classes::Counter> *>(self)->payload;
+        auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::classes::Counter> *>(self)->p;
         std::string __p0 = ::tpy::interop::from_py<std::string>(a0);
         return ::tpy::interop::to_py(__self.echo(__p0));
     } catch (const ::tpy::BaseException &__e) {
@@ -120,7 +134,7 @@ PyObject *classes__Counter__echo_pywrap(PyObject *self, PyObject *args, PyObject
 
 PyObject *classes__Counter__value_get(PyObject *self, void *) {
     try {
-        return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::classes::Counter> *>(self)->payload.value);
+        return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::classes::Counter> *>(self)->p->value);
     } catch (...) {
         if (!PyErr_Occurred())
             PyErr_SetString(PyExc_RuntimeError, "tpy extension: attribute read failed");
@@ -133,7 +147,7 @@ int classes__Counter__value_set(PyObject *self, PyObject *value, void *) {
         return -1;
     }
     try {
-        reinterpret_cast<::tpy::interop::Instance<::tpyapp::classes::Counter> *>(self)->payload.value = ::tpy::interop::from_py<int64_t>(value);
+        reinterpret_cast<::tpy::interop::Instance<::tpyapp::classes::Counter> *>(self)->p->value = ::tpy::interop::from_py<int64_t>(value);
         return 0;
     } catch (...) {
         if (!PyErr_Occurred())
@@ -144,7 +158,7 @@ int classes__Counter__value_set(PyObject *self, PyObject *value, void *) {
 
 PyObject *classes__Counter__label_get(PyObject *self, void *) {
     try {
-        return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::classes::Counter> *>(self)->payload.label);
+        return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::classes::Counter> *>(self)->p->label);
     } catch (...) {
         if (!PyErr_Occurred())
             PyErr_SetString(PyExc_RuntimeError, "tpy extension: attribute read failed");
@@ -157,7 +171,7 @@ int classes__Counter__label_set(PyObject *self, PyObject *value, void *) {
         return -1;
     }
     try {
-        reinterpret_cast<::tpy::interop::Instance<::tpyapp::classes::Counter> *>(self)->payload.label = ::tpy::interop::from_py<std::string>(value);
+        reinterpret_cast<::tpy::interop::Instance<::tpyapp::classes::Counter> *>(self)->p->label = ::tpy::interop::from_py<std::string>(value);
         return 0;
     } catch (...) {
         if (!PyErr_Occurred())
@@ -179,7 +193,7 @@ PyGetSetDef classes__Counter__getset[] = {
 };
 PyType_Slot classes__Counter__slots[] = {
     {Py_tp_init, (void *)classes__Counter_init},
-    {Py_tp_dealloc, (void *)::tpy::interop::instance_dealloc<::tpyapp::classes::Counter>},
+    {Py_tp_dealloc, (void *)classes__Counter_dealloc},
     {Py_tp_methods, (void *)classes__Counter__methods},
     {Py_tp_getset, (void *)classes__Counter__getset},
     {Py_tp_new, (void *)::tpy::cpy::PyType_GenericNew},

@@ -26,6 +26,12 @@ from ..type_def_registry import (
     _container_element_types, is_list, is_dict, is_set,
 )
 from ..modules import BINOP_TO_METHOD, BINOP_TO_RMETHOD, AUGOP_TO_IMETHOD, UNARYOP_TO_METHOD
+# The ONE classifier both ends of the identity/view contract consult: sema's
+# warning suppression and this glue's view emission must answer identically
+# (and the validator's field admission and the getset emit likewise share
+# exposed_view_field).
+from ..sema.export_shape import (
+    boundary_alias_records, exposed_view_field, view_safe_borrow_returns)
 from .context import (
     qualified_cpp_name, escape_cpp_name, module_to_include_path, CodeGenError)
 from .type_resolution import resolve_stmt_type_cascade
@@ -544,16 +550,60 @@ class ExtensionGenerator:
                 or reg.is_subclass_of_record(cinfo, rinfo)
                 or reg.is_subclass_of_record(rinfo, cinfo)]
 
+    def _view_fallback_ok(self, ast_fn, ret_typ: TpyType | None,
+                          params, rec_info=None) -> bool:
+        """Whether this emit site gets the borrow-view fallback: the SAME
+        view_safe_borrow_returns classifier that suppressed sema's copy
+        warning must say every return source is identity/view-safe (the
+        two-ended contract shares one answer by construction). `params`
+        excludes self; `rec_info` is the receiver's record for method-family
+        sites; `ast_fn` is the source-level function (None when the AST
+        isn't available -- then no view path, matching a still-firing
+        warning)."""
+        if ast_fn is None or ret_typ is None:
+            return False
+        if not is_exposed_class(ret_typ):
+            return False
+        reg = self.ctx.analyzer.registry
+        rinfo = reg.get_record_for_type(_boundary_inner(ret_typ))
+        if rinfo is None or rinfo.is_value_type or rinfo.is_nocopy:
+            return False
+        return view_safe_borrow_returns(
+            ast_fn, boundary_alias_records(params, reg, rec_info), rinfo, reg)
+
+    def _ast_method(self, cls: dict, name: str, *,
+                    property_getter: bool = False):
+        """The source-level TpyFunction for an own method of an exposed
+        class (the glue's per-class loops run off RecordInfo; the view
+        classifier needs the body AST). For a property, the MUTABLE getter
+        clone (the const clone shares its return shape)."""
+        for m in cls["record"].methods:
+            if m.name != name:
+                continue
+            if property_getter:
+                if m.is_property_getter and not m.is_readonly:
+                    return m
+                continue
+            if not (m.is_property_getter or m.is_property_setter):
+                return m
+        return None
+
     def _emit_call_return(self, out: TextIO, ret_typ: TpyType | None,
                           call_expr: str, sym: str,
                           alias_candidates: tuple[tuple[str, str, 'RecordInfo'], ...] |
-                          list[tuple[str, str, 'RecordInfo']] = ()) -> None:
+                          list[tuple[str, str, 'RecordInfo']] = (),
+                          view_fallback: bool = False) -> None:
         """Emit the return of a boundary call: void -> None; an exposed class
         borrow return -> the ORIGINAL PyObject when the returned reference's
         address matches a boundary-crossed candidate (self / an exposed-class
         param -- identity and write-through preserved, and a derived instance
-        crosses un-sliced), else a fresh wrapping instance (instance_to_py);
-        an Own[...] class return is always a fresh instance; else to_py."""
+        crosses un-sliced), else -- when `view_fallback` (the shared
+        view_safe_borrow_returns classifier said every source is
+        identity/view-safe) -- a borrow VIEW of the candidate whose payload
+        CONTAINS the reference (a never-reassigned field; owner keepalive,
+        registry-deduped identity), else a fresh wrapping instance
+        (instance_to_py); an Own[...] class return is always a fresh
+        instance; else to_py."""
         if ret_typ is None or is_void_like_type(ret_typ):
             out.write(f"        {call_expr};\n")
             out.write("        return ::tpy::interop::none_to_py();\n")
@@ -571,11 +621,24 @@ class ExtensionGenerator:
                 t = t.wrapped
             scoped = ([] if isinstance(t, OwnType) else
                       self._scoped_alias_candidates(ret_typ, alias_candidates))
-            if scoped:
+            # The view scan is UNSCOPED (every class candidate): a field's
+            # holder is typically inheritance-UNRELATED to the field's class,
+            # which is exactly what the identity path's type scoping filters
+            # out. Ordered after the exact matches so a candidate itself is
+            # never demoted to a view of its own offset-0 first field.
+            views = (list(alias_candidates)
+                     if view_fallback and not isinstance(t, OwnType) else [])
+            if scoped or views:
                 out.write(f"        auto &__r = {call_expr};\n")
                 for payload, pyobj in scoped:
                     out.write(f"        if (&__r == &{payload}) {{ "
                               f"Py_IncRef({pyobj}); return {pyobj}; }}\n")
+                for payload, pyobj, _cinfo in views:
+                    out.write(f"        if (::tpy::interop::within_payload("
+                              f"&__r, &{payload}, sizeof({payload})))\n")
+                    out.write(f"            return ::tpy::interop::"
+                              f"borrow_to_py((::tpy::cpy::PyTypeObject *)"
+                              f"{tv}, __r, {pyobj}, {sym}__view_registry);\n")
                 out.write(f"        return ::tpy::interop::instance_to_py("
                           f"(::tpy::cpy::PyTypeObject *){tv}, __r);\n")
             else:
@@ -639,7 +702,7 @@ class ExtensionGenerator:
 
     def _method_with_ancestors(self, info, name: str):
         """MRO-faithful single-method lookup for a combined-slot half: own
-        first, then ancestors. The generated `payload.<name>(...)` call
+        first, then ancestors. The generated `p-><name>(...)` call
         resolves the inherited C++ method the same way, so a derived slot can
         serve a half the class only inherits (a partial override would
         otherwise shadow the base's whole slot and lose the other half)."""
@@ -670,7 +733,7 @@ class ExtensionGenerator:
             slots.append((slot_id, wname))
             out.write(f"PyObject *{wname}(PyObject *self) {{\n")
             out.write("    try {\n")
-            call = f"{cppvar}->payload.{mname}()"
+            call = f"{cppvar}->p->{mname}()"
             self._emit_call_return(out, info.methods[mname][0].return_type, call, sym)
             self._emit_boundary_catch(out, reg_arg)
             out.write("}\n\n")
@@ -714,9 +777,9 @@ class ExtensionGenerator:
                       f"== 0)\n")
             out.write("        return ::tpy::interop::notimplemented_to_py();\n")
             out.write("    try {\n")
-            out.write(f"        auto &__self = {cppvar}->payload;\n")
-            out.write(f"        auto &__other = reinterpret_cast<"
-                      f"::tpy::interop::Instance<{cpp}> *>(other)->payload;\n")
+            out.write(f"        auto &__self = *{cppvar}->p;\n")
+            out.write(f"        auto &__other = *reinterpret_cast<"
+                      f"::tpy::interop::Instance<{cpp}> *>(other)->p;\n")
             out.write("        switch (op) {\n")
             for opname, opconst in self._COMPARE_DUNDER_OPS:
                 out.write(f"        case {opconst}:\n")
@@ -742,7 +805,7 @@ class ExtensionGenerator:
             out.write("    try {\n")
             out.write(f"        return ::tpy::interop::hash_to_py_hash_t("
                       f"static_cast<std::uint64_t>("
-                      f"{cppvar}->payload.__hash__()));\n")
+                      f"{cppvar}->p->__hash__()));\n")
             out.write("    } catch (const ::tpy::BaseException &__e) {\n")
             out.write(f"        ::tpy::interop::set_py_err_from(__e{reg_arg});\n")
             out.write("        return -1;\n")
@@ -878,7 +941,7 @@ class ExtensionGenerator:
             decl, expr = self._value_in_decl_expr(operand_type, operand_var, sym)
             out.write(f"                {decl}__other = {expr};\n")
             call = (f"reinterpret_cast<::tpy::interop::Instance<{cpp}> *>"
-                    f"({self_var})->payload.{meth}(__other)")
+                    f"({self_var})->p->{meth}(__other)")
             out.write(f"                return {self._value_out_expr(call, ret_typ, sym)};\n")
             out.write("            } catch (const ::tpy::interop::MarshalError &) {\n")
             out.write("                if (!PyErr_ExceptionMatches(PyExc_TypeError)) "
@@ -909,7 +972,7 @@ class ExtensionGenerator:
         wname = f"{base}__{dunder.strip('_')}_slot"
         out.write(f"PyObject *{wname}(PyObject *self) {{\n")
         out.write("    try {\n")
-        call = f"{cppvar}->payload.{dunder}()"
+        call = f"{cppvar}->p->{dunder}()"
         out.write(f"        return {self._value_out_expr(call, info.methods[dunder][0].return_type, sym)};\n")
         self._emit_boundary_catch(out, reg_arg)
         out.write("}\n\n")
@@ -935,7 +998,7 @@ class ExtensionGenerator:
         out.write("    try {\n")
         decl, expr = self._value_in_decl_expr(operand_type, "other", sym)
         out.write(f"        {decl}__other = {expr};\n")
-        out.write(f"        {cppvar}->payload.{dunder}(__other);\n")
+        out.write(f"        {cppvar}->p->{dunder}(__other);\n")
         out.write("        Py_IncRef(self);\n")
         out.write("        return self;\n")
         out.write("    } catch (const ::tpy::interop::MarshalError &) {\n")
@@ -985,7 +1048,7 @@ class ExtensionGenerator:
         out.write(f"Py_ssize_t {wname}(PyObject *self) {{\n")
         out.write("    try {\n")
         out.write(f"        return static_cast<Py_ssize_t>("
-                  f"{cppvar}->payload.__len__());\n")
+                  f"{cppvar}->p->__len__());\n")
         out.write("    } catch (const ::tpy::BaseException &__e) {\n")
         out.write(f"        ::tpy::interop::set_py_err_from(__e{reg_arg});\n")
         out.write("        return -1;\n")
@@ -1017,7 +1080,7 @@ class ExtensionGenerator:
         out.write("    try {\n")
         decl, expr = self._value_in_decl_expr(key_type, "key", sym)
         out.write(f"        {decl}__key = {expr};\n")
-        call = f"{cppvar}->payload.__getitem__(__key)"
+        call = f"{cppvar}->p->__getitem__(__key)"
         out.write(f"        return {self._value_out_expr(call, m.return_type, sym)};\n")
         self._emit_boundary_catch(out, reg_arg)
         out.write("}\n\n")
@@ -1049,7 +1112,7 @@ class ExtensionGenerator:
             key_type = del_m.params[0].type
             decl, expr = self._value_in_decl_expr(key_type, "key", sym)
             out.write(f"            {decl}__key = {expr};\n")
-            out.write(f"            {cppvar}->payload.__delitem__(__key);\n")
+            out.write(f"            {cppvar}->p->__delitem__(__key);\n")
             out.write("            return 0;\n")
         else:
             out.write('            PyErr_SetString(PyExc_TypeError, '
@@ -1062,7 +1125,7 @@ class ExtensionGenerator:
             vdecl, vexpr = self._value_in_decl_expr(val_type, "value", sym)
             out.write(f"        {kdecl}__key = {kexpr};\n")
             out.write(f"        {vdecl}__value = {vexpr};\n")
-            out.write(f"        {cppvar}->payload.__setitem__(__key, __value);\n")
+            out.write(f"        {cppvar}->p->__setitem__(__key, __value);\n")
             out.write("        return 0;\n")
         else:
             out.write('        PyErr_SetString(PyExc_TypeError, '
@@ -1097,7 +1160,7 @@ class ExtensionGenerator:
         out.write("    try {\n")
         decl, expr = self._value_in_decl_expr(value_type, "value", sym)
         out.write(f"        {decl}__v = {expr};\n")
-        out.write(f"        return {cppvar}->payload.__contains__(__v) ? 1 : 0;\n")
+        out.write(f"        return {cppvar}->p->__contains__(__v) ? 1 : 0;\n")
         out.write("    } catch (const ::tpy::BaseException &__e) {\n")
         out.write(f"        ::tpy::interop::set_py_err_from(__e{reg_arg});\n")
         out.write("        return -1;\n")
@@ -1127,7 +1190,7 @@ class ExtensionGenerator:
         wname = f"{base}__next_slot"
         out.write(f"PyObject *{wname}(PyObject *self) {{\n")
         out.write("    try {\n")
-        out.write(f"        auto __r = {cppvar}->payload.__next__();\n")
+        out.write(f"        auto __r = {cppvar}->p->__next__();\n")
         out.write("        if (!__r.has_value()) {\n")
         out.write(f"            ::tpy::interop::set_py_err_from(__r.error(){reg_arg});\n")
         out.write("            return nullptr;\n")
@@ -1154,10 +1217,14 @@ class ExtensionGenerator:
         wname = f"{base}__iter_slot"
         out.write(f"PyObject *{wname}(PyObject *self) {{\n")
         out.write("    try {\n")
-        out.write(f"        auto &__self = {cppvar}->payload;\n")
+        out.write(f"        auto &__self = *{cppvar}->p;\n")
         self._emit_call_return(out, info.methods["__iter__"][0].return_type,
                                "__self.__iter__()", sym,
-                               [("__self", "self", info)])
+                               [("__self", "self", info)],
+                               view_fallback=self._view_fallback_ok(
+                                   self._ast_method(cls, "__iter__"),
+                                   info.methods["__iter__"][0].return_type,
+                                   [], info))
         self._emit_boundary_catch(out, reg_arg)
         out.write("}\n\n")
         return "Py_tp_iter", wname
@@ -1232,12 +1299,31 @@ class ExtensionGenerator:
             self._emit_arg_unpack(out, [pn for pn, _t in init_params], "-1",
                                   cls['simple'])
         out.write(f"    auto *__inst = {cppvar};\n")
+        # A borrow view's storage belongs to its owner; re-constructing it in
+        # place would write into unused view storage (silently wrong), so an
+        # explicit `view.__init__(...)` is rejected loudly.
+        out.write("    if (__inst->owner != nullptr) {\n")
+        out.write('        PyErr_SetString(PyExc_TypeError, "cannot __init__ '
+                  'a borrowed field view");\n')
+        out.write("        return -1;\n    }\n")
         out.write("    try {\n")
         argtoks = [self._emit_marshal_in(out, i, t, sym)
                    for i, (_pn, t) in enumerate(init_params)]
+        # Re-init destroys + reconstructs the payload IN PLACE; a live borrow
+        # view of one of its fields would silently observe the replacement
+        # (CPython's re-__init__ rebinds attributes, leaving old references
+        # intact) -- reject loudly, mirroring the view-side guard above.
+        out.write("        if (__inst->initialized && ::tpy::interop::"
+                  "has_views_into(__inst->p, sizeof(*__inst->p), "
+                  f"{sym}__view_registry)) {{\n")
+        out.write('            PyErr_SetString(PyExc_TypeError, "cannot '
+                  '__init__ an instance while borrow views of its fields '
+                  'are alive");\n')
+        out.write("            return -1;\n        }\n")
         out.write("        if (__inst->initialized) { __inst->initialized = "
-                  "false; ::std::destroy_at(&__inst->payload); }\n")
-        out.write(f"        new (&__inst->payload) {cpp}({', '.join(argtoks)});\n")
+                  "false; ::std::destroy_at(&__inst->storage); }\n")
+        out.write(f"        new (&__inst->storage) {cpp}({', '.join(argtoks)});\n")
+        out.write("        __inst->p = &__inst->storage;\n")
         out.write("        __inst->initialized = true;\n")
         out.write("        return 0;\n")
         # __init__ failure returns the -1 init sentinel, not the NULL wrapper
@@ -1251,6 +1337,15 @@ class ExtensionGenerator:
                   '"tpy extension: constructor failed");\n')
         out.write("        return -1;\n")
         out.write("    }\n")
+        out.write("}\n\n")
+
+        # tp_dealloc wrapper: the shared template needs the module's view
+        # registry (a view deregisters itself there), which a raw slot
+        # pointer can't carry.
+        dealloc_fn = f"{sym}__{escape_cpp_name(cls['simple'])}_dealloc"
+        out.write(f"void {dealloc_fn}(PyObject *self) {{\n")
+        out.write(f"    ::tpy::interop::instance_dealloc<{cpp}>(self, "
+                  f"{sym}__view_registry);\n")
         out.write("}\n\n")
 
         # Instance methods (plain, non-dunder; the sema validator guaranteed the
@@ -1277,23 +1372,28 @@ class ExtensionGenerator:
                                       mname)
             method_entries.append((mname, wname, meth_flag, kw))
             out.write("    try {\n")
-            out.write(f"        auto &__self = {cppvar}->payload;\n")
+            out.write(f"        auto &__self = *{cppvar}->p;\n")
             argtoks = [self._emit_marshal_in(out, i, t, sym)
                        for i, (_pn, t) in enumerate(params)]
             call = f"__self.{escape_cpp_name(mname)}({', '.join(argtoks)})"
             self._emit_call_return(
                 out, m.return_type, call, sym,
                 [("__self", "self", info)]
-                + self._param_alias_candidates(params))
+                + self._param_alias_candidates(params),
+                view_fallback=self._view_fallback_ok(
+                    self._ast_method(cls, mname), m.return_type, params,
+                    info))
             self._emit_boundary_catch(out, reg_arg)
             out.write("}\n\n")
 
         # getset: every crossing field as a descriptor. `_`-named fields are
         # internal payload state and skipped here (never a Python attribute).
-        # Crossing field types are scalar/str/bytes, an exposed enum, or (on a
-        # reference class) an exposed VALUE-type field; a public reference-class
-        # field stays sema-rejected (its inline copy-out silently breaks
-        # write-through; make it internal with a `_` name to hold it). The get/set reuse the
+        # Crossing field types are scalar/str/bytes, an exposed enum, an
+        # exposed VALUE-type field, or a never-reassigned reference-class
+        # field (a read-only borrow-view getset -- the first arm below); a
+        # REASSIGNABLE reference-class field stays sema-rejected (a view
+        # would read the storage slot through the rebind; make it internal
+        # with a `_` name to hold it). The get/set reuse the
         # same single-value marshal helpers the operator dunders use, so an enum
         # or value-class field round-trips its value while a scalar field's
         # getset still emits a plain `to_py`/`from_py` (the helpers' scalar arm).
@@ -1308,10 +1408,34 @@ class ExtensionGenerator:
             fcpp = escape_cpp_name(fld.name)
             getn = f"{sym}__{escape_cpp_name(cls['simple'])}__{fcpp}_get"
             setn = f"{sym}__{escape_cpp_name(cls['simple'])}__{fcpp}_set"
+            if exposed_view_field(fld, info,
+                                  self.ctx.analyzer.registry) is not None:
+                # Never-reassigned reference-class field: a READ-ONLY getset
+                # whose getter mints (or re-returns) a borrow view aliasing
+                # the live field -- reads write through, identity is
+                # registry-preserved, and the missing setter keeps the
+                # never-reassigned gate honest (a Python-side rebind would
+                # defeat it). Admission mirrors the validator via the shared
+                # exposed_view_field.
+                _fc, ftv = self._class_cpp_var(fld.type, sym)
+                getset_entries.append((fld.name, getn, "nullptr"))
+                out.write(f"PyObject *{getn}(PyObject *self, void *) {{\n")
+                out.write("    try {\n")
+                out.write(f"        return ::tpy::interop::borrow_to_py("
+                          f"(::tpy::cpy::PyTypeObject *){ftv}, "
+                          f"{cppvar}->p->{fcpp}, self, "
+                          f"{sym}__view_registry);\n")
+                out.write("    } catch (...) {\n")
+                out.write("        if (!PyErr_Occurred())\n")
+                out.write('            PyErr_SetString(PyExc_RuntimeError, '
+                          '"tpy extension: attribute read failed");\n')
+                out.write("        return nullptr;\n")
+                out.write("    }\n}\n")
+                continue
             getset_entries.append((fld.name, getn, "nullptr" if read_only else setn))
             out.write(f"PyObject *{getn}(PyObject *self, void *) {{\n")
             out.write("    try {\n")
-            out.write(f"        return {self._value_out_expr(f'{cppvar}->payload.{fcpp}', fld.type, sym)};\n")
+            out.write(f"        return {self._value_out_expr(f'{cppvar}->p->{fcpp}', fld.type, sym)};\n")
             out.write("    } catch (...) {\n")
             out.write("        if (!PyErr_Occurred())\n")
             out.write('            PyErr_SetString(PyExc_RuntimeError, '
@@ -1329,7 +1453,7 @@ class ExtensionGenerator:
                       f'"attribute \'{fld.name}\' cannot be deleted");\n')
             out.write("        return -1;\n    }\n")
             out.write("    try {\n")
-            out.write(f"        {cppvar}->payload.{fcpp} = {fin};\n")
+            out.write(f"        {cppvar}->p->{fcpp} = {fin};\n")
             out.write("        return 0;\n")
             out.write("    } catch (...) {\n")
             out.write("        if (!PyErr_Occurred())\n")
@@ -1359,10 +1483,14 @@ class ExtensionGenerator:
                                    else "nullptr"))
             out.write(f"PyObject *{getn}(PyObject *self, void *) {{\n")
             out.write("    try {\n")
-            out.write(f"        auto &__self = {cppvar}->payload;\n")
+            out.write(f"        auto &__self = *{cppvar}->p;\n")
             self._emit_call_return(out, prop.getter.return_type,
                                    f"__self.{pcpp}()", sym,
-                                   [("__self", "self", info)])
+                                   [("__self", "self", info)],
+                                   view_fallback=self._view_fallback_ok(
+                                       self._ast_method(
+                                           cls, pname, property_getter=True),
+                                       prop.getter.return_type, [], info))
             self._emit_boundary_catch(out, reg_arg)
             out.write("}\n\n")
             if not has_setter:
@@ -1380,7 +1508,7 @@ class ExtensionGenerator:
             out.write("        return -1;\n    }\n")
             out.write("    PyObject *a0 = value;\n")
             out.write("    try {\n")
-            out.write(f"        auto &__self = {cppvar}->payload;\n")
+            out.write(f"        auto &__self = *{cppvar}->p;\n")
             tok = self._emit_marshal_in(out, 0, sp_type, sym)
             # A non-value setter param is an ownership transfer (Own
             # auto-wrap, C++ T&&) -- move the marshalled owned local in.
@@ -1417,8 +1545,7 @@ class ExtensionGenerator:
         out.write("    {nullptr, nullptr, nullptr, nullptr, nullptr},\n};\n")
         out.write(f"PyType_Slot {base}__slots[] = {{\n")
         out.write(f"    {{Py_tp_init, (void *){init_fn}}},\n")
-        out.write(f"    {{Py_tp_dealloc, "
-                  f"(void *)::tpy::interop::instance_dealloc<{cpp}>}},\n")
+        out.write(f"    {{Py_tp_dealloc, (void *){dealloc_fn}}},\n")
         out.write(f"    {{Py_tp_methods, (void *){base}__methods}},\n")
         out.write(f"    {{Py_tp_getset, (void *){base}__getset}},\n")
         for slot_id, expr in dunder_slots:
@@ -1532,6 +1659,11 @@ class ExtensionGenerator:
             out.write(f"PyObject *{cls['var']} = nullptr;\n")
         for e in exposed_enums:
             out.write(f"PyObject *{e['var']} = nullptr;\n")
+        if exposed_classes:
+            # Live borrow views, keyed by borrowed-storage address: repeated
+            # field accesses return the SAME view PyObject; each class's
+            # dealloc wrapper deregisters through it.
+            out.write(f"::tpy::interop::ViewRegistry {sym}__view_registry;\n")
         if exposed_classes or exposed_enums:
             out.write("\n")
 
@@ -1573,7 +1705,9 @@ class ExtensionGenerator:
                        for i, (_pn, ptype) in enumerate(fn.params)]
             call_expr = f"{call}({', '.join(argtoks)})"
             self._emit_call_return(out, fn.return_type, call_expr, sym,
-                                   self._param_alias_candidates(fn.params))
+                                   self._param_alias_candidates(fn.params),
+                                   view_fallback=self._view_fallback_ok(
+                                       fn, fn.return_type, fn.params))
             self._emit_boundary_catch(out, reg_arg)
             out.write("}\n\n")
 

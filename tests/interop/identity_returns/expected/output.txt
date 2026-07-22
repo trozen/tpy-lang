@@ -11,6 +11,11 @@ True
 False 3
 9
 True
+True True
+99
+True
+True True
+77
 True
 0 1 2
 [3]

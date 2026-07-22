@@ -19,9 +19,16 @@ from typing import TYPE_CHECKING
 from ..modules import (
     BINOP_TO_METHOD, BINOP_TO_RMETHOD, AUGOP_TO_IMETHOD, UNARYOP_TO_METHOD,
 )
+from ..parse.nodes import (
+    TpyCoerce, TpyFieldAccess, TpyName, TpyReturn,
+)
+from ..type_def_registry import _boundary_inner
+from ..typesys import NominalType, ReadonlyType
+from .expressions import _walk_body_stmts
 
 if TYPE_CHECKING:
-    from ..parse.nodes import TpyFunction
+    from ..parse.nodes import TpyExpr, TpyFunction
+    from ..typesys import RecordInfo
 
 # The 6 rich-comparison dunders share BINOP_TO_METHOD with the 12 binary
 # arithmetic ops but are semantically distinct (one shared richcompare slot,
@@ -54,6 +61,122 @@ EXPORT_CLASS_SUPPORTED_DUNDERS = (
     EXPORT_CLASS_REPR_STR_DUNDERS | EXPORT_CLASS_COMPARE_DUNDERS
     | {"__hash__"} | EXPORT_CLASS_ARITH_DUNDERS
     | EXPORT_CLASS_CONTAINER_DUNDERS)
+
+
+def _peel_coerce(expr: 'TpyExpr') -> 'TpyExpr':
+    while isinstance(expr, TpyCoerce):
+        expr = expr.expr
+    return expr
+
+
+def boundary_alias_records(params, registry,
+                           rec_info: 'RecordInfo | None' = None
+                           ) -> 'dict[str, RecordInfo]':
+    """name -> RecordInfo of the glue's boundary-crossed candidates at an
+    emit site: the exposed-class-typed params, plus `self` when a receiver
+    record is given. The ONE builder both ends of the identity/view
+    contract use (sema's warning pass and the glue's view emission), so
+    the candidate sets can't drift."""
+    out: 'dict[str, RecordInfo]' = {}
+    if rec_info is not None:
+        out["self"] = rec_info
+    for n, t in params:
+        if n == "self":
+            continue
+        cinfo = registry.get_record_for_type(_boundary_inner(t))
+        if cinfo is not None:
+            out[n] = cinfo
+    return out
+
+
+def view_safe_attr_source(expr: 'TpyExpr',
+                          alias_records: 'dict[str, RecordInfo]',
+                          return_info: 'RecordInfo',
+                          registry) -> bool:
+    """Whether a return-site value is a bare `<name>.<field>` access the
+    glue's borrow-view fallback hands back as an aliasing view: the base
+    name is a boundary-crossed candidate (self / an exposed-class param),
+    and the field is a never-rebound reference-class field declared as
+    EXACTLY the return class (an upcast field view would lie about the
+    dynamic type, so it stays on the copy path; a rebindable field's view
+    would alias the storage SLOT through the rebind, so it does too)."""
+    expr = _peel_coerce(expr)
+    if not isinstance(expr, TpyFieldAccess):
+        return False
+    base = _peel_coerce(expr.obj)
+    if not isinstance(base, TpyName) or base.name not in alias_records:
+        return False
+    holder = alias_records[base.name]
+    for rec in (holder, *registry.iter_ancestor_records(holder)):
+        fld = next((f for f in rec.fields if f.name == expr.field), None)
+        if fld is not None:
+            declarer = rec
+            break
+    else:
+        return False
+    if expr.field in declarer.fields_rebound_outside_init:
+        return False
+    ftype = fld.type
+    while isinstance(ftype, ReadonlyType):
+        ftype = ftype.wrapped
+    if not isinstance(ftype, NominalType):
+        return False
+    finfo = registry.get_record(ftype.name)
+    return (finfo is return_info and not return_info.is_value_type)
+
+
+def exposed_view_field(fld, declarer_info: 'RecordInfo',
+                       registry) -> 'RecordInfo | None':
+    """The exposed reference-class RecordInfo a PUBLIC field crosses as a
+    READ-ONLY borrow-view getset (attribute reads alias the live field;
+    attribute writes raise -- a Python-side rebind would defeat the
+    never-reassigned gate), or None when the field stays on its other
+    path (scalar getset, value-type copy-out, or the located reject for a
+    reassignable/@nocopy reference-class field). Consulted by BOTH the
+    exposed-class validator and the getset emit -- one answer."""
+    ftype = fld.type
+    while isinstance(ftype, ReadonlyType):
+        ftype = ftype.wrapped
+    if not isinstance(ftype, NominalType):
+        return None
+    finfo = registry.get_record(ftype.name)
+    if (finfo is None or not finfo.exposed_to_host or finfo.is_value_type
+            or finfo.is_nocopy):
+        return None
+    if fld.name in declarer_info.fields_rebound_outside_init:
+        return None
+    return finfo
+
+
+def view_safe_borrow_returns(fn: 'TpyFunction',
+                             alias_records: 'dict[str, RecordInfo]',
+                             return_info: 'RecordInfo',
+                             registry) -> bool:
+    """Both ends of the identity/view contract consult this ONE classifier:
+    sema suppresses the borrow-return copy warning exactly when it returns
+    True, and the glue emits the borrow-view fallback (address-range owner
+    scan + borrow_to_py) for the same functions -- so a suppressed warning
+    always has a runtime aliasing path behind it, and a warned body never
+    silently aliases.
+
+    True when every return site is either a bare name in `alias_records`
+    (identity path: the original PyObject crosses back) or a view-safe
+    field access of such a name (borrow-view path)."""
+    returns: list[TpyReturn] = []
+    _walk_body_stmts(
+        fn.body, lambda _e: None,
+        lambda s: returns.append(s)
+        if isinstance(s, TpyReturn) and s.value is not None else None)
+    if not returns:
+        return False
+    for r in returns:
+        src = _peel_coerce(r.value)
+        if isinstance(src, TpyName) and src.name in alias_records:
+            continue
+        if not view_safe_attr_source(r.value, alias_records, return_info,
+                                     registry):
+            return False
+    return True
 
 
 def unsupported_boundary_param_form(fn: 'TpyFunction') -> 'str | None':

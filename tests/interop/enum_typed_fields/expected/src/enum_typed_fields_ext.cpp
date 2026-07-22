@@ -10,16 +10,26 @@ using namespace ::tpy::cpy;
 
 PyObject *enum_typed_fields__type_Widget = nullptr;
 PyObject *enum_typed_fields__enum_Color = nullptr;
+::tpy::interop::ViewRegistry enum_typed_fields__view_registry;
 
 int enum_typed_fields__Widget_init(PyObject *self, PyObject *args, PyObject *kwargs) {
     static char *__kwlist[] = {const_cast<char *>("c"), nullptr};
     PyObject *a0 = nullptr;
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:Widget", __kwlist, &a0)) return -1;
     auto *__inst = reinterpret_cast<::tpy::interop::Instance<::tpyapp::enum_typed_fields::Widget> *>(self);
+    if (__inst->owner != nullptr) {
+        PyErr_SetString(PyExc_TypeError, "cannot __init__ a borrowed field view");
+        return -1;
+    }
     try {
         ::tpyapp::enum_typed_fields::Color __p0 = ::tpy::interop::enum_from_py<::tpyapp::enum_typed_fields::Color>(a0, enum_typed_fields__enum_Color);
-        if (__inst->initialized) { __inst->initialized = false; ::std::destroy_at(&__inst->payload); }
-        new (&__inst->payload) ::tpyapp::enum_typed_fields::Widget(__p0);
+        if (__inst->initialized && ::tpy::interop::has_views_into(__inst->p, sizeof(*__inst->p), enum_typed_fields__view_registry)) {
+            PyErr_SetString(PyExc_TypeError, "cannot __init__ an instance while borrow views of its fields are alive");
+            return -1;
+        }
+        if (__inst->initialized) { __inst->initialized = false; ::std::destroy_at(&__inst->storage); }
+        new (&__inst->storage) ::tpyapp::enum_typed_fields::Widget(__p0);
+        __inst->p = &__inst->storage;
         __inst->initialized = true;
         return 0;
     } catch (const ::tpy::BaseException &__e) {
@@ -32,12 +42,16 @@ int enum_typed_fields__Widget_init(PyObject *self, PyObject *args, PyObject *kwa
     }
 }
 
+void enum_typed_fields__Widget_dealloc(PyObject *self) {
+    ::tpy::interop::instance_dealloc<::tpyapp::enum_typed_fields::Widget>(self, enum_typed_fields__view_registry);
+}
+
 PyObject *enum_typed_fields__Widget__set_color_pywrap(PyObject *self, PyObject *args, PyObject *kwargs) {
     static char *__kwlist[] = {const_cast<char *>("c"), nullptr};
     PyObject *a0 = nullptr;
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:set_color", __kwlist, &a0)) return nullptr;
     try {
-        auto &__self = reinterpret_cast<::tpy::interop::Instance<::tpyapp::enum_typed_fields::Widget> *>(self)->payload;
+        auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::enum_typed_fields::Widget> *>(self)->p;
         ::tpyapp::enum_typed_fields::Color __p0 = ::tpy::interop::enum_from_py<::tpyapp::enum_typed_fields::Color>(a0, enum_typed_fields__enum_Color);
         __self.set_color(__p0);
         return ::tpy::interop::none_to_py();
@@ -53,7 +67,7 @@ PyObject *enum_typed_fields__Widget__set_color_pywrap(PyObject *self, PyObject *
 
 PyObject *enum_typed_fields__Widget__get_color_pywrap(PyObject *self, PyObject *) {
     try {
-        auto &__self = reinterpret_cast<::tpy::interop::Instance<::tpyapp::enum_typed_fields::Widget> *>(self)->payload;
+        auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::enum_typed_fields::Widget> *>(self)->p;
         return ::tpy::interop::enum_to_py(enum_typed_fields__enum_Color, static_cast<int32_t>(__self.get_color()));
     } catch (const ::tpy::BaseException &__e) {
         ::tpy::interop::set_py_err_from(__e);
@@ -67,7 +81,7 @@ PyObject *enum_typed_fields__Widget__get_color_pywrap(PyObject *self, PyObject *
 
 PyObject *enum_typed_fields__Widget__color_get(PyObject *self, void *) {
     try {
-        return ::tpy::interop::enum_to_py(enum_typed_fields__enum_Color, static_cast<int32_t>(reinterpret_cast<::tpy::interop::Instance<::tpyapp::enum_typed_fields::Widget> *>(self)->payload.color));
+        return ::tpy::interop::enum_to_py(enum_typed_fields__enum_Color, static_cast<int32_t>(reinterpret_cast<::tpy::interop::Instance<::tpyapp::enum_typed_fields::Widget> *>(self)->p->color));
     } catch (...) {
         if (!PyErr_Occurred())
             PyErr_SetString(PyExc_RuntimeError, "tpy extension: attribute read failed");
@@ -80,7 +94,7 @@ int enum_typed_fields__Widget__color_set(PyObject *self, PyObject *value, void *
         return -1;
     }
     try {
-        reinterpret_cast<::tpy::interop::Instance<::tpyapp::enum_typed_fields::Widget> *>(self)->payload.color = ::tpy::interop::enum_from_py<::tpyapp::enum_typed_fields::Color>(value, enum_typed_fields__enum_Color);
+        reinterpret_cast<::tpy::interop::Instance<::tpyapp::enum_typed_fields::Widget> *>(self)->p->color = ::tpy::interop::enum_from_py<::tpyapp::enum_typed_fields::Color>(value, enum_typed_fields__enum_Color);
         return 0;
     } catch (...) {
         if (!PyErr_Occurred())
@@ -100,7 +114,7 @@ PyGetSetDef enum_typed_fields__Widget__getset[] = {
 };
 PyType_Slot enum_typed_fields__Widget__slots[] = {
     {Py_tp_init, (void *)enum_typed_fields__Widget_init},
-    {Py_tp_dealloc, (void *)::tpy::interop::instance_dealloc<::tpyapp::enum_typed_fields::Widget>},
+    {Py_tp_dealloc, (void *)enum_typed_fields__Widget_dealloc},
     {Py_tp_methods, (void *)enum_typed_fields__Widget__methods},
     {Py_tp_getset, (void *)enum_typed_fields__Widget__getset},
     {Py_tp_new, (void *)::tpy::cpy::PyType_GenericNew},

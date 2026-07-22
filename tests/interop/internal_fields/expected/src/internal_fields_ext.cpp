@@ -11,6 +11,7 @@ using namespace ::tpy::cpy;
 
 PyObject *internal_fields__type_Entry = nullptr;
 PyObject *internal_fields__type_Vault = nullptr;
+::tpy::interop::ViewRegistry internal_fields__view_registry;
 
 PyObject *internal_fields__make_vault_pywrap(PyObject *self, PyObject *args, PyObject *kwargs) {
     static char *__kwlist[] = {const_cast<char *>("owner"), const_cast<char *>("secret"), nullptr};
@@ -74,10 +75,19 @@ int internal_fields__Entry_init(PyObject *self, PyObject *args, PyObject *kwargs
     PyObject *a0 = nullptr;
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:Entry", __kwlist, &a0)) return -1;
     auto *__inst = reinterpret_cast<::tpy::interop::Instance<::tpyapp::internal_fields::Entry> *>(self);
+    if (__inst->owner != nullptr) {
+        PyErr_SetString(PyExc_TypeError, "cannot __init__ a borrowed field view");
+        return -1;
+    }
     try {
         int64_t __p0 = ::tpy::interop::from_py<int64_t>(a0);
-        if (__inst->initialized) { __inst->initialized = false; ::std::destroy_at(&__inst->payload); }
-        new (&__inst->payload) ::tpyapp::internal_fields::Entry(__p0);
+        if (__inst->initialized && ::tpy::interop::has_views_into(__inst->p, sizeof(*__inst->p), internal_fields__view_registry)) {
+            PyErr_SetString(PyExc_TypeError, "cannot __init__ an instance while borrow views of its fields are alive");
+            return -1;
+        }
+        if (__inst->initialized) { __inst->initialized = false; ::std::destroy_at(&__inst->storage); }
+        new (&__inst->storage) ::tpyapp::internal_fields::Entry(__p0);
+        __inst->p = &__inst->storage;
         __inst->initialized = true;
         return 0;
     } catch (const ::tpy::BaseException &__e) {
@@ -90,9 +100,13 @@ int internal_fields__Entry_init(PyObject *self, PyObject *args, PyObject *kwargs
     }
 }
 
+void internal_fields__Entry_dealloc(PyObject *self) {
+    ::tpy::interop::instance_dealloc<::tpyapp::internal_fields::Entry>(self, internal_fields__view_registry);
+}
+
 PyObject *internal_fields__Entry__v_get(PyObject *self, void *) {
     try {
-        return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::internal_fields::Entry> *>(self)->payload.v);
+        return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::internal_fields::Entry> *>(self)->p->v);
     } catch (...) {
         if (!PyErr_Occurred())
             PyErr_SetString(PyExc_RuntimeError, "tpy extension: attribute read failed");
@@ -105,7 +119,7 @@ int internal_fields__Entry__v_set(PyObject *self, PyObject *value, void *) {
         return -1;
     }
     try {
-        reinterpret_cast<::tpy::interop::Instance<::tpyapp::internal_fields::Entry> *>(self)->payload.v = ::tpy::interop::from_py<int64_t>(value);
+        reinterpret_cast<::tpy::interop::Instance<::tpyapp::internal_fields::Entry> *>(self)->p->v = ::tpy::interop::from_py<int64_t>(value);
         return 0;
     } catch (...) {
         if (!PyErr_Occurred())
@@ -123,7 +137,7 @@ PyGetSetDef internal_fields__Entry__getset[] = {
 };
 PyType_Slot internal_fields__Entry__slots[] = {
     {Py_tp_init, (void *)internal_fields__Entry_init},
-    {Py_tp_dealloc, (void *)::tpy::interop::instance_dealloc<::tpyapp::internal_fields::Entry>},
+    {Py_tp_dealloc, (void *)internal_fields__Entry_dealloc},
     {Py_tp_methods, (void *)internal_fields__Entry__methods},
     {Py_tp_getset, (void *)internal_fields__Entry__getset},
     {Py_tp_new, (void *)::tpy::cpy::PyType_GenericNew},
@@ -139,11 +153,20 @@ int internal_fields__Vault_init(PyObject *self, PyObject *args, PyObject *kwargs
     PyObject *a0 = nullptr; PyObject *a1 = nullptr;
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OO:Vault", __kwlist, &a0, &a1)) return -1;
     auto *__inst = reinterpret_cast<::tpy::interop::Instance<::tpyapp::internal_fields::Vault> *>(self);
+    if (__inst->owner != nullptr) {
+        PyErr_SetString(PyExc_TypeError, "cannot __init__ a borrowed field view");
+        return -1;
+    }
     try {
         int64_t __p0 = ::tpy::interop::from_py<int64_t>(a0);
         int64_t __p1 = ::tpy::interop::from_py<int64_t>(a1);
-        if (__inst->initialized) { __inst->initialized = false; ::std::destroy_at(&__inst->payload); }
-        new (&__inst->payload) ::tpyapp::internal_fields::Vault(__p0, __p1);
+        if (__inst->initialized && ::tpy::interop::has_views_into(__inst->p, sizeof(*__inst->p), internal_fields__view_registry)) {
+            PyErr_SetString(PyExc_TypeError, "cannot __init__ an instance while borrow views of its fields are alive");
+            return -1;
+        }
+        if (__inst->initialized) { __inst->initialized = false; ::std::destroy_at(&__inst->storage); }
+        new (&__inst->storage) ::tpyapp::internal_fields::Vault(__p0, __p1);
+        __inst->p = &__inst->storage;
         __inst->initialized = true;
         return 0;
     } catch (const ::tpy::BaseException &__e) {
@@ -156,9 +179,13 @@ int internal_fields__Vault_init(PyObject *self, PyObject *args, PyObject *kwargs
     }
 }
 
+void internal_fields__Vault_dealloc(PyObject *self) {
+    ::tpy::interop::instance_dealloc<::tpyapp::internal_fields::Vault>(self, internal_fields__view_registry);
+}
+
 PyObject *internal_fields__Vault__reveal_pywrap(PyObject *self, PyObject *) {
     try {
-        auto &__self = reinterpret_cast<::tpy::interop::Instance<::tpyapp::internal_fields::Vault> *>(self)->payload;
+        auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::internal_fields::Vault> *>(self)->p;
         return ::tpy::interop::to_py(__self.reveal());
     } catch (const ::tpy::BaseException &__e) {
         ::tpy::interop::set_py_err_from(__e, internal_fields__exc_registry);
@@ -172,7 +199,7 @@ PyObject *internal_fields__Vault__reveal_pywrap(PyObject *self, PyObject *) {
 
 PyObject *internal_fields__Vault__cell_n_pywrap(PyObject *self, PyObject *) {
     try {
-        auto &__self = reinterpret_cast<::tpy::interop::Instance<::tpyapp::internal_fields::Vault> *>(self)->payload;
+        auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::internal_fields::Vault> *>(self)->p;
         return ::tpy::interop::to_py(__self.cell_n());
     } catch (const ::tpy::BaseException &__e) {
         ::tpy::interop::set_py_err_from(__e, internal_fields__exc_registry);
@@ -189,7 +216,7 @@ PyObject *internal_fields__Vault__record_pywrap(PyObject *self, PyObject *args, 
     PyObject *a0 = nullptr;
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:record", __kwlist, &a0)) return nullptr;
     try {
-        auto &__self = reinterpret_cast<::tpy::interop::Instance<::tpyapp::internal_fields::Vault> *>(self)->payload;
+        auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::internal_fields::Vault> *>(self)->p;
         int64_t __p0 = ::tpy::interop::from_py<int64_t>(a0);
         __self.record(__p0);
         return ::tpy::interop::none_to_py();
@@ -205,7 +232,7 @@ PyObject *internal_fields__Vault__record_pywrap(PyObject *self, PyObject *args, 
 
 PyObject *internal_fields__Vault__snapshot_pywrap(PyObject *self, PyObject *) {
     try {
-        auto &__self = reinterpret_cast<::tpy::interop::Instance<::tpyapp::internal_fields::Vault> *>(self)->payload;
+        auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::internal_fields::Vault> *>(self)->p;
         return ::tpy::interop::instance_to_py((::tpy::cpy::PyTypeObject *)internal_fields__type_Entry, __self.snapshot());
     } catch (const ::tpy::BaseException &__e) {
         ::tpy::interop::set_py_err_from(__e, internal_fields__exc_registry);
@@ -219,7 +246,7 @@ PyObject *internal_fields__Vault__snapshot_pywrap(PyObject *self, PyObject *) {
 
 PyObject *internal_fields__Vault__owner_get(PyObject *self, void *) {
     try {
-        return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::internal_fields::Vault> *>(self)->payload.owner);
+        return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::internal_fields::Vault> *>(self)->p->owner);
     } catch (...) {
         if (!PyErr_Occurred())
             PyErr_SetString(PyExc_RuntimeError, "tpy extension: attribute read failed");
@@ -232,7 +259,7 @@ int internal_fields__Vault__owner_set(PyObject *self, PyObject *value, void *) {
         return -1;
     }
     try {
-        reinterpret_cast<::tpy::interop::Instance<::tpyapp::internal_fields::Vault> *>(self)->payload.owner = ::tpy::interop::from_py<int64_t>(value);
+        reinterpret_cast<::tpy::interop::Instance<::tpyapp::internal_fields::Vault> *>(self)->p->owner = ::tpy::interop::from_py<int64_t>(value);
         return 0;
     } catch (...) {
         if (!PyErr_Occurred())
@@ -254,7 +281,7 @@ PyGetSetDef internal_fields__Vault__getset[] = {
 };
 PyType_Slot internal_fields__Vault__slots[] = {
     {Py_tp_init, (void *)internal_fields__Vault_init},
-    {Py_tp_dealloc, (void *)::tpy::interop::instance_dealloc<::tpyapp::internal_fields::Vault>},
+    {Py_tp_dealloc, (void *)internal_fields__Vault_dealloc},
     {Py_tp_methods, (void *)internal_fields__Vault__methods},
     {Py_tp_getset, (void *)internal_fields__Vault__getset},
     {Py_tp_new, (void *)::tpy::cpy::PyType_GenericNew},

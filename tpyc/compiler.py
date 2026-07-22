@@ -22,7 +22,8 @@ from .module_names import public_module_name as _public_module_name_of
 from .sema import SemanticAnalyzer, SemanticError, Diagnostic, DiagnosticLevel
 from .sema.reach_analysis import compute_reached_symbols
 from .sema.export_shape import (
-    export_method_shape_error, unsupported_boundary_param_form)
+    export_method_shape_error, exposed_view_field,
+    unsupported_boundary_param_form)
 from .modules.resolver import ModuleResolver, ResolvedModule
 from .modules import get_builtin_module_names
 from .frontend_plugin import (
@@ -3903,8 +3904,9 @@ class Compiler:
                        f"be exposed (the virtual-dispatch layout is "
                        f"incompatible with the CPython instance embedding)")
 
-        def check(typ, what: str, role: str, loc=None) -> None:
-            form_err = self._exposed_form_error(typ, role, reg, compiled)
+        def check(typ, what: str, role: str, loc=None, field_ctx=None) -> None:
+            form_err = self._exposed_form_error(typ, role, reg, compiled,
+                                                field_ctx)
             if form_err is not None:
                 reject(f"{what} {form_err}", loc)
             # Method/__init__ params and returns share the free-function glue
@@ -3915,6 +3917,13 @@ class Compiler:
             # getter/setter path has no container emit.
             if role == "field":
                 if is_boundary_marshallable(typ, False):
+                    return
+                if field_ctx is not None and exposed_view_field(
+                        field_ctx[0], field_ctx[1], reg) is not None:
+                    # Crosses as a read-only borrow-view getset (the form
+                    # check above already rejected the cross-module case,
+                    # which the shared registry's exposed_to_host alone
+                    # can't distinguish).
                     return
             elif ((role == "param" and is_span_boundary_param(typ))
                     or is_function_boundary_marshallable(typ, role == "return")):
@@ -3927,7 +3936,8 @@ class Compiler:
         for fld in info.fields:
             if is_internal_boundary_field(fld.name):
                 continue  # internal payload state; not exposed, any type allowed
-            check(fld.type, f"field '{fld.name}'", "field", fld.loc)
+            check(fld.type, f"field '{fld.name}'", "field", fld.loc,
+                  field_ctx=(fld, info))
 
         # AST nodes (not the FunctionInfo overloads) carry the arg-form facts
         # the keyword-aware unpack can't cross (defaults/*args/**kwargs/posonly/
@@ -4027,7 +4037,8 @@ class Compiler:
             check(sp.type, f"property '{pname}' setter value", "param", s_loc)
 
     def _exposed_form_error(self, typ, role: str, registry,
-                            compiled: 'CompiledModule') -> 'str | None':
+                            compiled: 'CompiledModule',
+                            field_ctx=None) -> 'str | None':
         """Diagnose an exposed-class or exposed-enum boundary type the glue
         cannot emit, so a located error replaces an opaque C++ failure. role in
         {field,param,return}. Returns the message tail or None.
@@ -4180,20 +4191,30 @@ class Compiler:
                     "cross the boundary yet (cross-module exposed types are "
                     "deferred -- define and @export the class in this module)")
         if role == "field" and not _boundary_inner(typ).is_value_type():
-            # A nested MUTABLE (reference) exposed class is stored inline by
-            # value, so a getset getter could only copy it out -- `outer.inner`
-            # would fabricate a fresh object every read and `outer.inner.x = 5`
-            # would silently no-op (CPython aliases the real object). Faithful
-            # write-through aliasing needs the deferred foreign-borrow primitive
-            # (a PyObject pointing into the parent's storage); until then, steer
-            # to the honest forms. A value-type field is exempt: value types are
-            # immutable, so copy-out is behaviorally invisible (the exposed value
-            # presents read-only getset, so a mutation attempt loud-fails) -- it
-            # falls through to admission below, like an exposed-enum field.
-            return (f"of exposed-class type '{cls}' cannot be exposed as a getset "
-                    f"field: a nested class stored inline can only copy out, "
-                    f"silently breaking write-through. Make the field internal by "
-                    f"prefixing its name with '_' (kept as payload state, never a "
+            # A never-reassigned reference-class field crosses as a READ-ONLY
+            # borrow-view getset: the getter mints a PyObject aliasing the
+            # live field (owner keepalive; registry-deduped identity), so
+            # `outer.inner.x = 5` writes through like CPython. The gate is
+            # the reassignment: a view aliases the storage SLOT, so a field
+            # rebound after __init__ would show the replacement through a
+            # live view where CPython's rebind leaves the old object intact
+            # -- those (and @nocopy fields) keep the located reject below.
+            # A value-type field is exempt from all of this: value types are
+            # immutable, so copy-out is behaviorally invisible (read-only
+            # getset; a mutation attempt loud-fails) -- it falls through to
+            # admission below, like an exposed-enum field.
+            if field_ctx is not None:
+                fld, declarer = field_ctx
+                if exposed_view_field(fld, declarer, registry) is not None:
+                    return None
+            return (f"of exposed-class type '{cls}' cannot be exposed as a "
+                    f"getset field: only a field never reassigned outside "
+                    f"__init__ (and not @nocopy) crosses as a read-only "
+                    f"aliasing view -- a reassignable field's view would read "
+                    f"the storage slot through the reassignment where CPython "
+                    f"keeps the old object. Drop the post-__init__ "
+                    f"reassignment, or make the field internal by prefixing "
+                    f"its name with '_' (kept as payload state, never a "
                     f"Python attribute) and expose a method that mutates it "
                     f"through 'self' or returns an explicit copy()")
         if role == "param" and isinstance(typ, OwnType):

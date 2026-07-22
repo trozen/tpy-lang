@@ -10,17 +10,27 @@ using namespace ::tpy::cpy;
 PyObject *class_dunders__type_Vec2 = nullptr;
 PyObject *class_dunders__type_Frac = nullptr;
 PyObject *class_dunders__type_Ordered = nullptr;
+::tpy::interop::ViewRegistry class_dunders__view_registry;
 
 int class_dunders__Vec2_init(PyObject *self, PyObject *args, PyObject *kwargs) {
     static char *__kwlist[] = {const_cast<char *>("x"), const_cast<char *>("y"), nullptr};
     PyObject *a0 = nullptr; PyObject *a1 = nullptr;
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OO:Vec2", __kwlist, &a0, &a1)) return -1;
     auto *__inst = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_dunders::Vec2> *>(self);
+    if (__inst->owner != nullptr) {
+        PyErr_SetString(PyExc_TypeError, "cannot __init__ a borrowed field view");
+        return -1;
+    }
     try {
         int64_t __p0 = ::tpy::interop::from_py<int64_t>(a0);
         int64_t __p1 = ::tpy::interop::from_py<int64_t>(a1);
-        if (__inst->initialized) { __inst->initialized = false; ::std::destroy_at(&__inst->payload); }
-        new (&__inst->payload) ::tpyapp::class_dunders::Vec2(__p0, __p1);
+        if (__inst->initialized && ::tpy::interop::has_views_into(__inst->p, sizeof(*__inst->p), class_dunders__view_registry)) {
+            PyErr_SetString(PyExc_TypeError, "cannot __init__ an instance while borrow views of its fields are alive");
+            return -1;
+        }
+        if (__inst->initialized) { __inst->initialized = false; ::std::destroy_at(&__inst->storage); }
+        new (&__inst->storage) ::tpyapp::class_dunders::Vec2(__p0, __p1);
+        __inst->p = &__inst->storage;
         __inst->initialized = true;
         return 0;
     } catch (const ::tpy::BaseException &__e) {
@@ -33,9 +43,13 @@ int class_dunders__Vec2_init(PyObject *self, PyObject *args, PyObject *kwargs) {
     }
 }
 
+void class_dunders__Vec2_dealloc(PyObject *self) {
+    ::tpy::interop::instance_dealloc<::tpyapp::class_dunders::Vec2>(self, class_dunders__view_registry);
+}
+
 PyObject *class_dunders__Vec2__x_get(PyObject *self, void *) {
     try {
-        return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_dunders::Vec2> *>(self)->payload.x);
+        return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_dunders::Vec2> *>(self)->p->x);
     } catch (...) {
         if (!PyErr_Occurred())
             PyErr_SetString(PyExc_RuntimeError, "tpy extension: attribute read failed");
@@ -48,7 +62,7 @@ int class_dunders__Vec2__x_set(PyObject *self, PyObject *value, void *) {
         return -1;
     }
     try {
-        reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_dunders::Vec2> *>(self)->payload.x = ::tpy::interop::from_py<int64_t>(value);
+        reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_dunders::Vec2> *>(self)->p->x = ::tpy::interop::from_py<int64_t>(value);
         return 0;
     } catch (...) {
         if (!PyErr_Occurred())
@@ -59,7 +73,7 @@ int class_dunders__Vec2__x_set(PyObject *self, PyObject *value, void *) {
 
 PyObject *class_dunders__Vec2__y_get(PyObject *self, void *) {
     try {
-        return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_dunders::Vec2> *>(self)->payload.y);
+        return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_dunders::Vec2> *>(self)->p->y);
     } catch (...) {
         if (!PyErr_Occurred())
             PyErr_SetString(PyExc_RuntimeError, "tpy extension: attribute read failed");
@@ -72,7 +86,7 @@ int class_dunders__Vec2__y_set(PyObject *self, PyObject *value, void *) {
         return -1;
     }
     try {
-        reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_dunders::Vec2> *>(self)->payload.y = ::tpy::interop::from_py<int64_t>(value);
+        reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_dunders::Vec2> *>(self)->p->y = ::tpy::interop::from_py<int64_t>(value);
         return 0;
     } catch (...) {
         if (!PyErr_Occurred())
@@ -83,7 +97,7 @@ int class_dunders__Vec2__y_set(PyObject *self, PyObject *value, void *) {
 
 PyObject *class_dunders__Vec2__repr_slot(PyObject *self) {
     try {
-        return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_dunders::Vec2> *>(self)->payload.__repr__());
+        return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_dunders::Vec2> *>(self)->p->__repr__());
     } catch (const ::tpy::BaseException &__e) {
         ::tpy::interop::set_py_err_from(__e);
         return nullptr;
@@ -99,8 +113,8 @@ PyObject *class_dunders__Vec2__richcompare_slot(PyObject *self, PyObject *other,
     if (__ot != (::tpy::cpy::PyTypeObject *)class_dunders__type_Vec2 && PyType_IsSubtype(__ot, (::tpy::cpy::PyTypeObject *)class_dunders__type_Vec2) == 0)
         return ::tpy::interop::notimplemented_to_py();
     try {
-        auto &__self = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_dunders::Vec2> *>(self)->payload;
-        auto &__other = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_dunders::Vec2> *>(other)->payload;
+        auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_dunders::Vec2> *>(self)->p;
+        auto &__other = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_dunders::Vec2> *>(other)->p;
         switch (op) {
         case Py_LT:
             return ::tpy::interop::to_py(__self.__lt__(__other));
@@ -129,7 +143,7 @@ PyObject *class_dunders__Vec2__richcompare_slot(PyObject *self, PyObject *other,
 
 Py_ssize_t class_dunders__Vec2__hash_slot(PyObject *self) {
     try {
-        return ::tpy::interop::hash_to_py_hash_t(static_cast<std::uint64_t>(reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_dunders::Vec2> *>(self)->payload.__hash__()));
+        return ::tpy::interop::hash_to_py_hash_t(static_cast<std::uint64_t>(reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_dunders::Vec2> *>(self)->p->__hash__()));
     } catch (const ::tpy::BaseException &__e) {
         ::tpy::interop::set_py_err_from(__e);
         return -1;
@@ -150,7 +164,7 @@ PyGetSetDef class_dunders__Vec2__getset[] = {
 };
 PyType_Slot class_dunders__Vec2__slots[] = {
     {Py_tp_init, (void *)class_dunders__Vec2_init},
-    {Py_tp_dealloc, (void *)::tpy::interop::instance_dealloc<::tpyapp::class_dunders::Vec2>},
+    {Py_tp_dealloc, (void *)class_dunders__Vec2_dealloc},
     {Py_tp_methods, (void *)class_dunders__Vec2__methods},
     {Py_tp_getset, (void *)class_dunders__Vec2__getset},
     {Py_tp_repr, (void *)class_dunders__Vec2__repr_slot},
@@ -169,11 +183,20 @@ int class_dunders__Frac_init(PyObject *self, PyObject *args, PyObject *kwargs) {
     PyObject *a0 = nullptr; PyObject *a1 = nullptr;
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OO:Frac", __kwlist, &a0, &a1)) return -1;
     auto *__inst = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_dunders::Frac> *>(self);
+    if (__inst->owner != nullptr) {
+        PyErr_SetString(PyExc_TypeError, "cannot __init__ a borrowed field view");
+        return -1;
+    }
     try {
         int64_t __p0 = ::tpy::interop::from_py<int64_t>(a0);
         int64_t __p1 = ::tpy::interop::from_py<int64_t>(a1);
-        if (__inst->initialized) { __inst->initialized = false; ::std::destroy_at(&__inst->payload); }
-        new (&__inst->payload) ::tpyapp::class_dunders::Frac(__p0, __p1);
+        if (__inst->initialized && ::tpy::interop::has_views_into(__inst->p, sizeof(*__inst->p), class_dunders__view_registry)) {
+            PyErr_SetString(PyExc_TypeError, "cannot __init__ an instance while borrow views of its fields are alive");
+            return -1;
+        }
+        if (__inst->initialized) { __inst->initialized = false; ::std::destroy_at(&__inst->storage); }
+        new (&__inst->storage) ::tpyapp::class_dunders::Frac(__p0, __p1);
+        __inst->p = &__inst->storage;
         __inst->initialized = true;
         return 0;
     } catch (const ::tpy::BaseException &__e) {
@@ -186,9 +209,13 @@ int class_dunders__Frac_init(PyObject *self, PyObject *args, PyObject *kwargs) {
     }
 }
 
+void class_dunders__Frac_dealloc(PyObject *self) {
+    ::tpy::interop::instance_dealloc<::tpyapp::class_dunders::Frac>(self, class_dunders__view_registry);
+}
+
 PyObject *class_dunders__Frac__num_get(PyObject *self, void *) {
     try {
-        return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_dunders::Frac> *>(self)->payload.num);
+        return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_dunders::Frac> *>(self)->p->num);
     } catch (...) {
         if (!PyErr_Occurred())
             PyErr_SetString(PyExc_RuntimeError, "tpy extension: attribute read failed");
@@ -201,7 +228,7 @@ int class_dunders__Frac__num_set(PyObject *self, PyObject *value, void *) {
         return -1;
     }
     try {
-        reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_dunders::Frac> *>(self)->payload.num = ::tpy::interop::from_py<int64_t>(value);
+        reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_dunders::Frac> *>(self)->p->num = ::tpy::interop::from_py<int64_t>(value);
         return 0;
     } catch (...) {
         if (!PyErr_Occurred())
@@ -212,7 +239,7 @@ int class_dunders__Frac__num_set(PyObject *self, PyObject *value, void *) {
 
 PyObject *class_dunders__Frac__den_get(PyObject *self, void *) {
     try {
-        return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_dunders::Frac> *>(self)->payload.den);
+        return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_dunders::Frac> *>(self)->p->den);
     } catch (...) {
         if (!PyErr_Occurred())
             PyErr_SetString(PyExc_RuntimeError, "tpy extension: attribute read failed");
@@ -225,7 +252,7 @@ int class_dunders__Frac__den_set(PyObject *self, PyObject *value, void *) {
         return -1;
     }
     try {
-        reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_dunders::Frac> *>(self)->payload.den = ::tpy::interop::from_py<int64_t>(value);
+        reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_dunders::Frac> *>(self)->p->den = ::tpy::interop::from_py<int64_t>(value);
         return 0;
     } catch (...) {
         if (!PyErr_Occurred())
@@ -239,8 +266,8 @@ PyObject *class_dunders__Frac__richcompare_slot(PyObject *self, PyObject *other,
     if (__ot != (::tpy::cpy::PyTypeObject *)class_dunders__type_Frac && PyType_IsSubtype(__ot, (::tpy::cpy::PyTypeObject *)class_dunders__type_Frac) == 0)
         return ::tpy::interop::notimplemented_to_py();
     try {
-        auto &__self = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_dunders::Frac> *>(self)->payload;
-        auto &__other = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_dunders::Frac> *>(other)->payload;
+        auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_dunders::Frac> *>(self)->p;
+        auto &__other = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_dunders::Frac> *>(other)->p;
         switch (op) {
         case Py_LT:
             return ::tpy::interop::notimplemented_to_py();
@@ -277,7 +304,7 @@ PyGetSetDef class_dunders__Frac__getset[] = {
 };
 PyType_Slot class_dunders__Frac__slots[] = {
     {Py_tp_init, (void *)class_dunders__Frac_init},
-    {Py_tp_dealloc, (void *)::tpy::interop::instance_dealloc<::tpyapp::class_dunders::Frac>},
+    {Py_tp_dealloc, (void *)class_dunders__Frac_dealloc},
     {Py_tp_methods, (void *)class_dunders__Frac__methods},
     {Py_tp_getset, (void *)class_dunders__Frac__getset},
     {Py_tp_richcompare, (void *)class_dunders__Frac__richcompare_slot},
@@ -295,10 +322,19 @@ int class_dunders__Ordered_init(PyObject *self, PyObject *args, PyObject *kwargs
     PyObject *a0 = nullptr;
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:Ordered", __kwlist, &a0)) return -1;
     auto *__inst = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_dunders::Ordered> *>(self);
+    if (__inst->owner != nullptr) {
+        PyErr_SetString(PyExc_TypeError, "cannot __init__ a borrowed field view");
+        return -1;
+    }
     try {
         int64_t __p0 = ::tpy::interop::from_py<int64_t>(a0);
-        if (__inst->initialized) { __inst->initialized = false; ::std::destroy_at(&__inst->payload); }
-        new (&__inst->payload) ::tpyapp::class_dunders::Ordered(__p0);
+        if (__inst->initialized && ::tpy::interop::has_views_into(__inst->p, sizeof(*__inst->p), class_dunders__view_registry)) {
+            PyErr_SetString(PyExc_TypeError, "cannot __init__ an instance while borrow views of its fields are alive");
+            return -1;
+        }
+        if (__inst->initialized) { __inst->initialized = false; ::std::destroy_at(&__inst->storage); }
+        new (&__inst->storage) ::tpyapp::class_dunders::Ordered(__p0);
+        __inst->p = &__inst->storage;
         __inst->initialized = true;
         return 0;
     } catch (const ::tpy::BaseException &__e) {
@@ -311,9 +347,13 @@ int class_dunders__Ordered_init(PyObject *self, PyObject *args, PyObject *kwargs
     }
 }
 
+void class_dunders__Ordered_dealloc(PyObject *self) {
+    ::tpy::interop::instance_dealloc<::tpyapp::class_dunders::Ordered>(self, class_dunders__view_registry);
+}
+
 PyObject *class_dunders__Ordered__rank_get(PyObject *self, void *) {
     try {
-        return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_dunders::Ordered> *>(self)->payload.rank);
+        return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_dunders::Ordered> *>(self)->p->rank);
     } catch (...) {
         if (!PyErr_Occurred())
             PyErr_SetString(PyExc_RuntimeError, "tpy extension: attribute read failed");
@@ -326,7 +366,7 @@ int class_dunders__Ordered__rank_set(PyObject *self, PyObject *value, void *) {
         return -1;
     }
     try {
-        reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_dunders::Ordered> *>(self)->payload.rank = ::tpy::interop::from_py<int64_t>(value);
+        reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_dunders::Ordered> *>(self)->p->rank = ::tpy::interop::from_py<int64_t>(value);
         return 0;
     } catch (...) {
         if (!PyErr_Occurred())
@@ -340,8 +380,8 @@ PyObject *class_dunders__Ordered__richcompare_slot(PyObject *self, PyObject *oth
     if (__ot != (::tpy::cpy::PyTypeObject *)class_dunders__type_Ordered && PyType_IsSubtype(__ot, (::tpy::cpy::PyTypeObject *)class_dunders__type_Ordered) == 0)
         return ::tpy::interop::notimplemented_to_py();
     try {
-        auto &__self = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_dunders::Ordered> *>(self)->payload;
-        auto &__other = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_dunders::Ordered> *>(other)->payload;
+        auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_dunders::Ordered> *>(self)->p;
+        auto &__other = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_dunders::Ordered> *>(other)->p;
         switch (op) {
         case Py_LT:
             return ::tpy::interop::to_py(__self.__lt__(__other));
@@ -377,7 +417,7 @@ PyGetSetDef class_dunders__Ordered__getset[] = {
 };
 PyType_Slot class_dunders__Ordered__slots[] = {
     {Py_tp_init, (void *)class_dunders__Ordered_init},
-    {Py_tp_dealloc, (void *)::tpy::interop::instance_dealloc<::tpyapp::class_dunders::Ordered>},
+    {Py_tp_dealloc, (void *)class_dunders__Ordered_dealloc},
     {Py_tp_methods, (void *)class_dunders__Ordered__methods},
     {Py_tp_getset, (void *)class_dunders__Ordered__getset},
     {Py_tp_richcompare, (void *)class_dunders__Ordered__richcompare_slot},

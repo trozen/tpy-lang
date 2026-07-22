@@ -10,17 +10,27 @@ using namespace ::tpy::cpy;
 
 PyObject *class_properties__type_Rect = nullptr;
 PyObject *class_properties__enum_Color = nullptr;
+::tpy::interop::ViewRegistry class_properties__view_registry;
 
 int class_properties__Rect_init(PyObject *self, PyObject *args, PyObject *kwargs) {
     static char *__kwlist[] = {const_cast<char *>("w"), const_cast<char *>("h"), nullptr};
     PyObject *a0 = nullptr; PyObject *a1 = nullptr;
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OO:Rect", __kwlist, &a0, &a1)) return -1;
     auto *__inst = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_properties::Rect> *>(self);
+    if (__inst->owner != nullptr) {
+        PyErr_SetString(PyExc_TypeError, "cannot __init__ a borrowed field view");
+        return -1;
+    }
     try {
         int32_t __p0 = ::tpy::interop::from_py<int32_t>(a0);
         int32_t __p1 = ::tpy::interop::from_py<int32_t>(a1);
-        if (__inst->initialized) { __inst->initialized = false; ::std::destroy_at(&__inst->payload); }
-        new (&__inst->payload) ::tpyapp::class_properties::Rect(__p0, __p1);
+        if (__inst->initialized && ::tpy::interop::has_views_into(__inst->p, sizeof(*__inst->p), class_properties__view_registry)) {
+            PyErr_SetString(PyExc_TypeError, "cannot __init__ an instance while borrow views of its fields are alive");
+            return -1;
+        }
+        if (__inst->initialized) { __inst->initialized = false; ::std::destroy_at(&__inst->storage); }
+        new (&__inst->storage) ::tpyapp::class_properties::Rect(__p0, __p1);
+        __inst->p = &__inst->storage;
         __inst->initialized = true;
         return 0;
     } catch (const ::tpy::BaseException &__e) {
@@ -33,9 +43,13 @@ int class_properties__Rect_init(PyObject *self, PyObject *args, PyObject *kwargs
     }
 }
 
+void class_properties__Rect_dealloc(PyObject *self) {
+    ::tpy::interop::instance_dealloc<::tpyapp::class_properties::Rect>(self, class_properties__view_registry);
+}
+
 PyObject *class_properties__Rect__name_get(PyObject *self, void *) {
     try {
-        return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_properties::Rect> *>(self)->payload.name);
+        return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_properties::Rect> *>(self)->p->name);
     } catch (...) {
         if (!PyErr_Occurred())
             PyErr_SetString(PyExc_RuntimeError, "tpy extension: attribute read failed");
@@ -48,7 +62,7 @@ int class_properties__Rect__name_set(PyObject *self, PyObject *value, void *) {
         return -1;
     }
     try {
-        reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_properties::Rect> *>(self)->payload.name = ::tpy::interop::from_py<std::string>(value);
+        reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_properties::Rect> *>(self)->p->name = ::tpy::interop::from_py<std::string>(value);
         return 0;
     } catch (...) {
         if (!PyErr_Occurred())
@@ -59,7 +73,7 @@ int class_properties__Rect__name_set(PyObject *self, PyObject *value, void *) {
 
 PyObject *class_properties__Rect__area_get(PyObject *self, void *) {
     try {
-        auto &__self = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_properties::Rect> *>(self)->payload;
+        auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_properties::Rect> *>(self)->p;
         return ::tpy::interop::to_py(__self.area());
     } catch (const ::tpy::BaseException &__e) {
         ::tpy::interop::set_py_err_from(__e);
@@ -73,7 +87,7 @@ PyObject *class_properties__Rect__area_get(PyObject *self, void *) {
 
 PyObject *class_properties__Rect__width_get(PyObject *self, void *) {
     try {
-        auto &__self = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_properties::Rect> *>(self)->payload;
+        auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_properties::Rect> *>(self)->p;
         return ::tpy::interop::to_py(__self.width());
     } catch (const ::tpy::BaseException &__e) {
         ::tpy::interop::set_py_err_from(__e);
@@ -92,7 +106,7 @@ int class_properties__Rect__width_set(PyObject *self, PyObject *value, void *) {
     }
     PyObject *a0 = value;
     try {
-        auto &__self = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_properties::Rect> *>(self)->payload;
+        auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_properties::Rect> *>(self)->p;
         int32_t __p0 = ::tpy::interop::from_py<int32_t>(a0);
         __self.set_width(__p0);
         return 0;
@@ -108,7 +122,7 @@ int class_properties__Rect__width_set(PyObject *self, PyObject *value, void *) {
 
 PyObject *class_properties__Rect__label_get(PyObject *self, void *) {
     try {
-        auto &__self = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_properties::Rect> *>(self)->payload;
+        auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_properties::Rect> *>(self)->p;
         return ::tpy::interop::to_py(__self.label());
     } catch (const ::tpy::BaseException &__e) {
         ::tpy::interop::set_py_err_from(__e);
@@ -122,7 +136,7 @@ PyObject *class_properties__Rect__label_get(PyObject *self, void *) {
 
 PyObject *class_properties__Rect__dims_get(PyObject *self, void *) {
     try {
-        auto &__self = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_properties::Rect> *>(self)->payload;
+        auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_properties::Rect> *>(self)->p;
         return ::tpy::interop::list_to_py(__self.dims(), [](const int32_t &__o0) { return ::tpy::interop::to_py(__o0); });
     } catch (const ::tpy::BaseException &__e) {
         ::tpy::interop::set_py_err_from(__e);
@@ -136,7 +150,7 @@ PyObject *class_properties__Rect__dims_get(PyObject *self, void *) {
 
 PyObject *class_properties__Rect__color_get(PyObject *self, void *) {
     try {
-        auto &__self = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_properties::Rect> *>(self)->payload;
+        auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_properties::Rect> *>(self)->p;
         return ::tpy::interop::enum_to_py(class_properties__enum_Color, static_cast<int32_t>(__self.color()));
     } catch (const ::tpy::BaseException &__e) {
         ::tpy::interop::set_py_err_from(__e);
@@ -155,7 +169,7 @@ int class_properties__Rect__color_set(PyObject *self, PyObject *value, void *) {
     }
     PyObject *a0 = value;
     try {
-        auto &__self = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_properties::Rect> *>(self)->payload;
+        auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_properties::Rect> *>(self)->p;
         ::tpyapp::class_properties::Color __p0 = ::tpy::interop::enum_from_py<::tpyapp::class_properties::Color>(a0, class_properties__enum_Color);
         __self.set_color(__p0);
         return 0;
@@ -171,7 +185,7 @@ int class_properties__Rect__color_set(PyObject *self, PyObject *value, void *) {
 
 PyObject *class_properties__Rect__tags_get(PyObject *self, void *) {
     try {
-        auto &__self = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_properties::Rect> *>(self)->payload;
+        auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_properties::Rect> *>(self)->p;
         return ::tpy::interop::list_to_py(__self.tags(), [](const int32_t &__o0) { return ::tpy::interop::to_py(__o0); });
     } catch (const ::tpy::BaseException &__e) {
         ::tpy::interop::set_py_err_from(__e);
@@ -190,7 +204,7 @@ int class_properties__Rect__tags_set(PyObject *self, PyObject *value, void *) {
     }
     PyObject *a0 = value;
     try {
-        auto &__self = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_properties::Rect> *>(self)->payload;
+        auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_properties::Rect> *>(self)->p;
         std::vector<int32_t> __p0 = ::tpy::interop::list_from_py<int32_t>(a0, [](::tpy::cpy::PyObject *__e0) { return ::tpy::interop::from_py<int32_t>(__e0); });
         __self.set_tags(::std::move(__p0));
         return 0;
@@ -206,7 +220,7 @@ int class_properties__Rect__tags_set(PyObject *self, PyObject *value, void *) {
 
 PyObject *class_properties__Rect__blob_get(PyObject *self, void *) {
     try {
-        auto &__self = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_properties::Rect> *>(self)->payload;
+        auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_properties::Rect> *>(self)->p;
         return ::tpy::interop::to_py(__self.blob());
     } catch (const ::tpy::BaseException &__e) {
         ::tpy::interop::set_py_err_from(__e);
@@ -220,7 +234,7 @@ PyObject *class_properties__Rect__blob_get(PyObject *self, void *) {
 
 PyObject *class_properties__Rect__mapping_get(PyObject *self, void *) {
     try {
-        auto &__self = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_properties::Rect> *>(self)->payload;
+        auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_properties::Rect> *>(self)->p;
         return ::tpy::interop::dict_to_py(__self.mapping(), [](const std::string &__o0) { return ::tpy::interop::to_py(__o0); }, [](const int32_t &__o0) { return ::tpy::interop::to_py(__o0); });
     } catch (const ::tpy::BaseException &__e) {
         ::tpy::interop::set_py_err_from(__e);
@@ -249,7 +263,7 @@ PyGetSetDef class_properties__Rect__getset[] = {
 };
 PyType_Slot class_properties__Rect__slots[] = {
     {Py_tp_init, (void *)class_properties__Rect_init},
-    {Py_tp_dealloc, (void *)::tpy::interop::instance_dealloc<::tpyapp::class_properties::Rect>},
+    {Py_tp_dealloc, (void *)class_properties__Rect_dealloc},
     {Py_tp_methods, (void *)class_properties__Rect__methods},
     {Py_tp_getset, (void *)class_properties__Rect__getset},
     {Py_tp_new, (void *)::tpy::cpy::PyType_GenericNew},

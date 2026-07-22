@@ -12,6 +12,7 @@ PyObject *identity_returns__type_Cursor = nullptr;
 PyObject *identity_returns__type_CursorSub = nullptr;
 PyObject *identity_returns__type_Inner = nullptr;
 PyObject *identity_returns__type_Holder = nullptr;
+::tpy::interop::ViewRegistry identity_returns__view_registry;
 
 PyObject *identity_returns__get_default_pywrap(PyObject *self, PyObject *unused) {
     try {
@@ -34,6 +35,8 @@ PyObject *identity_returns__identity_pywrap(PyObject *self, PyObject *args, PyOb
         ::tpyapp::identity_returns::Box &__p0 = *::tpy::interop::instance_payload<::tpyapp::identity_returns::Box>(a0, (::tpy::cpy::PyTypeObject *)identity_returns__type_Box);
         auto &__r = ::tpyapp::identity_returns::identity(__p0);
         if (&__r == &__p0) { Py_IncRef(a0); return a0; }
+        if (::tpy::interop::within_payload(&__r, &__p0, sizeof(__p0)))
+            return ::tpy::interop::borrow_to_py((::tpy::cpy::PyTypeObject *)identity_returns__type_Box, __r, a0, identity_returns__view_registry);
         return ::tpy::interop::instance_to_py((::tpy::cpy::PyTypeObject *)identity_returns__type_Box, __r);
     } catch (const ::tpy::BaseException &__e) {
         ::tpy::interop::set_py_err_from(__e);
@@ -67,10 +70,19 @@ int identity_returns__Box_init(PyObject *self, PyObject *args, PyObject *kwargs)
     PyObject *a0 = nullptr;
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:Box", __kwlist, &a0)) return -1;
     auto *__inst = reinterpret_cast<::tpy::interop::Instance<::tpyapp::identity_returns::Box> *>(self);
+    if (__inst->owner != nullptr) {
+        PyErr_SetString(PyExc_TypeError, "cannot __init__ a borrowed field view");
+        return -1;
+    }
     try {
         int64_t __p0 = ::tpy::interop::from_py<int64_t>(a0);
-        if (__inst->initialized) { __inst->initialized = false; ::std::destroy_at(&__inst->payload); }
-        new (&__inst->payload) ::tpyapp::identity_returns::Box(__p0);
+        if (__inst->initialized && ::tpy::interop::has_views_into(__inst->p, sizeof(*__inst->p), identity_returns__view_registry)) {
+            PyErr_SetString(PyExc_TypeError, "cannot __init__ an instance while borrow views of its fields are alive");
+            return -1;
+        }
+        if (__inst->initialized) { __inst->initialized = false; ::std::destroy_at(&__inst->storage); }
+        new (&__inst->storage) ::tpyapp::identity_returns::Box(__p0);
+        __inst->p = &__inst->storage;
         __inst->initialized = true;
         return 0;
     } catch (const ::tpy::BaseException &__e) {
@@ -83,11 +95,17 @@ int identity_returns__Box_init(PyObject *self, PyObject *args, PyObject *kwargs)
     }
 }
 
+void identity_returns__Box_dealloc(PyObject *self) {
+    ::tpy::interop::instance_dealloc<::tpyapp::identity_returns::Box>(self, identity_returns__view_registry);
+}
+
 PyObject *identity_returns__Box__me_pywrap(PyObject *self, PyObject *) {
     try {
-        auto &__self = reinterpret_cast<::tpy::interop::Instance<::tpyapp::identity_returns::Box> *>(self)->payload;
+        auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::identity_returns::Box> *>(self)->p;
         auto &__r = __self.me();
         if (&__r == &__self) { Py_IncRef(self); return self; }
+        if (::tpy::interop::within_payload(&__r, &__self, sizeof(__self)))
+            return ::tpy::interop::borrow_to_py((::tpy::cpy::PyTypeObject *)identity_returns__type_Box, __r, self, identity_returns__view_registry);
         return ::tpy::interop::instance_to_py((::tpy::cpy::PyTypeObject *)identity_returns__type_Box, __r);
     } catch (const ::tpy::BaseException &__e) {
         ::tpy::interop::set_py_err_from(__e);
@@ -101,9 +119,11 @@ PyObject *identity_returns__Box__me_pywrap(PyObject *self, PyObject *) {
 
 PyObject *identity_returns__Box__bump_pywrap(PyObject *self, PyObject *) {
     try {
-        auto &__self = reinterpret_cast<::tpy::interop::Instance<::tpyapp::identity_returns::Box> *>(self)->payload;
+        auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::identity_returns::Box> *>(self)->p;
         auto &__r = __self.bump();
         if (&__r == &__self) { Py_IncRef(self); return self; }
+        if (::tpy::interop::within_payload(&__r, &__self, sizeof(__self)))
+            return ::tpy::interop::borrow_to_py((::tpy::cpy::PyTypeObject *)identity_returns__type_Box, __r, self, identity_returns__view_registry);
         return ::tpy::interop::instance_to_py((::tpy::cpy::PyTypeObject *)identity_returns__type_Box, __r);
     } catch (const ::tpy::BaseException &__e) {
         ::tpy::interop::set_py_err_from(__e);
@@ -120,12 +140,16 @@ PyObject *identity_returns__Box__pick_pywrap(PyObject *self, PyObject *args, PyO
     PyObject *a0 = nullptr; PyObject *a1 = nullptr;
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OO:pick", __kwlist, &a0, &a1)) return nullptr;
     try {
-        auto &__self = reinterpret_cast<::tpy::interop::Instance<::tpyapp::identity_returns::Box> *>(self)->payload;
+        auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::identity_returns::Box> *>(self)->p;
         ::tpyapp::identity_returns::Box &__p0 = *::tpy::interop::instance_payload<::tpyapp::identity_returns::Box>(a0, (::tpy::cpy::PyTypeObject *)identity_returns__type_Box);
         bool __p1 = ::tpy::interop::from_py<bool>(a1);
         auto &__r = __self.pick(__p0, __p1);
         if (&__r == &__self) { Py_IncRef(self); return self; }
         if (&__r == &__p0) { Py_IncRef(a0); return a0; }
+        if (::tpy::interop::within_payload(&__r, &__self, sizeof(__self)))
+            return ::tpy::interop::borrow_to_py((::tpy::cpy::PyTypeObject *)identity_returns__type_Box, __r, self, identity_returns__view_registry);
+        if (::tpy::interop::within_payload(&__r, &__p0, sizeof(__p0)))
+            return ::tpy::interop::borrow_to_py((::tpy::cpy::PyTypeObject *)identity_returns__type_Box, __r, a0, identity_returns__view_registry);
         return ::tpy::interop::instance_to_py((::tpy::cpy::PyTypeObject *)identity_returns__type_Box, __r);
     } catch (const ::tpy::BaseException &__e) {
         ::tpy::interop::set_py_err_from(__e);
@@ -139,9 +163,11 @@ PyObject *identity_returns__Box__pick_pywrap(PyObject *self, PyObject *args, PyO
 
 PyObject *identity_returns__Box__view_pywrap(PyObject *self, PyObject *) {
     try {
-        auto &__self = reinterpret_cast<::tpy::interop::Instance<::tpyapp::identity_returns::Box> *>(self)->payload;
+        auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::identity_returns::Box> *>(self)->p;
         auto &__r = __self.view();
         if (&__r == &__self) { Py_IncRef(self); return self; }
+        if (::tpy::interop::within_payload(&__r, &__self, sizeof(__self)))
+            return ::tpy::interop::borrow_to_py((::tpy::cpy::PyTypeObject *)identity_returns__type_Box, __r, self, identity_returns__view_registry);
         return ::tpy::interop::instance_to_py((::tpy::cpy::PyTypeObject *)identity_returns__type_Box, __r);
     } catch (const ::tpy::BaseException &__e) {
         ::tpy::interop::set_py_err_from(__e);
@@ -155,7 +181,7 @@ PyObject *identity_returns__Box__view_pywrap(PyObject *self, PyObject *) {
 
 PyObject *identity_returns__Box__v_get(PyObject *self, void *) {
     try {
-        return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::identity_returns::Box> *>(self)->payload.v);
+        return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::identity_returns::Box> *>(self)->p->v);
     } catch (...) {
         if (!PyErr_Occurred())
             PyErr_SetString(PyExc_RuntimeError, "tpy extension: attribute read failed");
@@ -168,7 +194,7 @@ int identity_returns__Box__v_set(PyObject *self, PyObject *value, void *) {
         return -1;
     }
     try {
-        reinterpret_cast<::tpy::interop::Instance<::tpyapp::identity_returns::Box> *>(self)->payload.v = ::tpy::interop::from_py<int64_t>(value);
+        reinterpret_cast<::tpy::interop::Instance<::tpyapp::identity_returns::Box> *>(self)->p->v = ::tpy::interop::from_py<int64_t>(value);
         return 0;
     } catch (...) {
         if (!PyErr_Occurred())
@@ -179,9 +205,11 @@ int identity_returns__Box__v_set(PyObject *self, PyObject *value, void *) {
 
 PyObject *identity_returns__Box__itself_get(PyObject *self, void *) {
     try {
-        auto &__self = reinterpret_cast<::tpy::interop::Instance<::tpyapp::identity_returns::Box> *>(self)->payload;
+        auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::identity_returns::Box> *>(self)->p;
         auto &__r = __self.itself();
         if (&__r == &__self) { Py_IncRef(self); return self; }
+        if (::tpy::interop::within_payload(&__r, &__self, sizeof(__self)))
+            return ::tpy::interop::borrow_to_py((::tpy::cpy::PyTypeObject *)identity_returns__type_Box, __r, self, identity_returns__view_registry);
         return ::tpy::interop::instance_to_py((::tpy::cpy::PyTypeObject *)identity_returns__type_Box, __r);
     } catch (const ::tpy::BaseException &__e) {
         ::tpy::interop::set_py_err_from(__e);
@@ -207,7 +235,7 @@ PyGetSetDef identity_returns__Box__getset[] = {
 };
 PyType_Slot identity_returns__Box__slots[] = {
     {Py_tp_init, (void *)identity_returns__Box_init},
-    {Py_tp_dealloc, (void *)::tpy::interop::instance_dealloc<::tpyapp::identity_returns::Box>},
+    {Py_tp_dealloc, (void *)identity_returns__Box_dealloc},
     {Py_tp_methods, (void *)identity_returns__Box__methods},
     {Py_tp_getset, (void *)identity_returns__Box__getset},
     {Py_tp_new, (void *)::tpy::cpy::PyType_GenericNew},
@@ -227,10 +255,19 @@ int identity_returns__Cursor_init(PyObject *self, PyObject *args, PyObject *kwar
     PyObject *a0 = nullptr;
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:Cursor", __kwlist, &a0)) return -1;
     auto *__inst = reinterpret_cast<::tpy::interop::Instance<::tpyapp::identity_returns::Cursor> *>(self);
+    if (__inst->owner != nullptr) {
+        PyErr_SetString(PyExc_TypeError, "cannot __init__ a borrowed field view");
+        return -1;
+    }
     try {
         int32_t __p0 = ::tpy::interop::from_py<int32_t>(a0);
-        if (__inst->initialized) { __inst->initialized = false; ::std::destroy_at(&__inst->payload); }
-        new (&__inst->payload) ::tpyapp::identity_returns::Cursor(__p0);
+        if (__inst->initialized && ::tpy::interop::has_views_into(__inst->p, sizeof(*__inst->p), identity_returns__view_registry)) {
+            PyErr_SetString(PyExc_TypeError, "cannot __init__ an instance while borrow views of its fields are alive");
+            return -1;
+        }
+        if (__inst->initialized) { __inst->initialized = false; ::std::destroy_at(&__inst->storage); }
+        new (&__inst->storage) ::tpyapp::identity_returns::Cursor(__p0);
+        __inst->p = &__inst->storage;
         __inst->initialized = true;
         return 0;
     } catch (const ::tpy::BaseException &__e) {
@@ -243,9 +280,13 @@ int identity_returns__Cursor_init(PyObject *self, PyObject *args, PyObject *kwar
     }
 }
 
+void identity_returns__Cursor_dealloc(PyObject *self) {
+    ::tpy::interop::instance_dealloc<::tpyapp::identity_returns::Cursor>(self, identity_returns__view_registry);
+}
+
 PyObject *identity_returns__Cursor__n_get(PyObject *self, void *) {
     try {
-        return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::identity_returns::Cursor> *>(self)->payload.n);
+        return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::identity_returns::Cursor> *>(self)->p->n);
     } catch (...) {
         if (!PyErr_Occurred())
             PyErr_SetString(PyExc_RuntimeError, "tpy extension: attribute read failed");
@@ -258,7 +299,7 @@ int identity_returns__Cursor__n_set(PyObject *self, PyObject *value, void *) {
         return -1;
     }
     try {
-        reinterpret_cast<::tpy::interop::Instance<::tpyapp::identity_returns::Cursor> *>(self)->payload.n = ::tpy::interop::from_py<int32_t>(value);
+        reinterpret_cast<::tpy::interop::Instance<::tpyapp::identity_returns::Cursor> *>(self)->p->n = ::tpy::interop::from_py<int32_t>(value);
         return 0;
     } catch (...) {
         if (!PyErr_Occurred())
@@ -269,7 +310,7 @@ int identity_returns__Cursor__n_set(PyObject *self, PyObject *value, void *) {
 
 PyObject *identity_returns__Cursor__next_slot(PyObject *self) {
     try {
-        auto __r = reinterpret_cast<::tpy::interop::Instance<::tpyapp::identity_returns::Cursor> *>(self)->payload.__next__();
+        auto __r = reinterpret_cast<::tpy::interop::Instance<::tpyapp::identity_returns::Cursor> *>(self)->p->__next__();
         if (!__r.has_value()) {
             ::tpy::interop::set_py_err_from(__r.error());
             return nullptr;
@@ -287,9 +328,11 @@ PyObject *identity_returns__Cursor__next_slot(PyObject *self) {
 
 PyObject *identity_returns__Cursor__iter_slot(PyObject *self) {
     try {
-        auto &__self = reinterpret_cast<::tpy::interop::Instance<::tpyapp::identity_returns::Cursor> *>(self)->payload;
+        auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::identity_returns::Cursor> *>(self)->p;
         auto &__r = __self.__iter__();
         if (&__r == &__self) { Py_IncRef(self); return self; }
+        if (::tpy::interop::within_payload(&__r, &__self, sizeof(__self)))
+            return ::tpy::interop::borrow_to_py((::tpy::cpy::PyTypeObject *)identity_returns__type_Cursor, __r, self, identity_returns__view_registry);
         return ::tpy::interop::instance_to_py((::tpy::cpy::PyTypeObject *)identity_returns__type_Cursor, __r);
     } catch (const ::tpy::BaseException &__e) {
         ::tpy::interop::set_py_err_from(__e);
@@ -310,7 +353,7 @@ PyGetSetDef identity_returns__Cursor__getset[] = {
 };
 PyType_Slot identity_returns__Cursor__slots[] = {
     {Py_tp_init, (void *)identity_returns__Cursor_init},
-    {Py_tp_dealloc, (void *)::tpy::interop::instance_dealloc<::tpyapp::identity_returns::Cursor>},
+    {Py_tp_dealloc, (void *)identity_returns__Cursor_dealloc},
     {Py_tp_methods, (void *)identity_returns__Cursor__methods},
     {Py_tp_getset, (void *)identity_returns__Cursor__getset},
     {Py_tp_iternext, (void *)identity_returns__Cursor__next_slot},
@@ -328,10 +371,19 @@ int identity_returns__CursorSub_init(PyObject *self, PyObject *args, PyObject *k
     PyObject *a0 = nullptr;
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:CursorSub", __kwlist, &a0)) return -1;
     auto *__inst = reinterpret_cast<::tpy::interop::Instance<::tpyapp::identity_returns::CursorSub> *>(self);
+    if (__inst->owner != nullptr) {
+        PyErr_SetString(PyExc_TypeError, "cannot __init__ a borrowed field view");
+        return -1;
+    }
     try {
         int32_t __p0 = ::tpy::interop::from_py<int32_t>(a0);
-        if (__inst->initialized) { __inst->initialized = false; ::std::destroy_at(&__inst->payload); }
-        new (&__inst->payload) ::tpyapp::identity_returns::CursorSub(__p0);
+        if (__inst->initialized && ::tpy::interop::has_views_into(__inst->p, sizeof(*__inst->p), identity_returns__view_registry)) {
+            PyErr_SetString(PyExc_TypeError, "cannot __init__ an instance while borrow views of its fields are alive");
+            return -1;
+        }
+        if (__inst->initialized) { __inst->initialized = false; ::std::destroy_at(&__inst->storage); }
+        new (&__inst->storage) ::tpyapp::identity_returns::CursorSub(__p0);
+        __inst->p = &__inst->storage;
         __inst->initialized = true;
         return 0;
     } catch (const ::tpy::BaseException &__e) {
@@ -344,6 +396,10 @@ int identity_returns__CursorSub_init(PyObject *self, PyObject *args, PyObject *k
     }
 }
 
+void identity_returns__CursorSub_dealloc(PyObject *self) {
+    ::tpy::interop::instance_dealloc<::tpyapp::identity_returns::CursorSub>(self, identity_returns__view_registry);
+}
+
 PyMethodDef identity_returns__CursorSub__methods[] = {
     {nullptr, nullptr, 0, nullptr},
 };
@@ -352,7 +408,7 @@ PyGetSetDef identity_returns__CursorSub__getset[] = {
 };
 PyType_Slot identity_returns__CursorSub__slots[] = {
     {Py_tp_init, (void *)identity_returns__CursorSub_init},
-    {Py_tp_dealloc, (void *)::tpy::interop::instance_dealloc<::tpyapp::identity_returns::CursorSub>},
+    {Py_tp_dealloc, (void *)identity_returns__CursorSub_dealloc},
     {Py_tp_methods, (void *)identity_returns__CursorSub__methods},
     {Py_tp_getset, (void *)identity_returns__CursorSub__getset},
     {Py_tp_new, (void *)::tpy::cpy::PyType_GenericNew},
@@ -368,10 +424,19 @@ int identity_returns__Inner_init(PyObject *self, PyObject *args, PyObject *kwarg
     PyObject *a0 = nullptr;
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:Inner", __kwlist, &a0)) return -1;
     auto *__inst = reinterpret_cast<::tpy::interop::Instance<::tpyapp::identity_returns::Inner> *>(self);
+    if (__inst->owner != nullptr) {
+        PyErr_SetString(PyExc_TypeError, "cannot __init__ a borrowed field view");
+        return -1;
+    }
     try {
         int64_t __p0 = ::tpy::interop::from_py<int64_t>(a0);
-        if (__inst->initialized) { __inst->initialized = false; ::std::destroy_at(&__inst->payload); }
-        new (&__inst->payload) ::tpyapp::identity_returns::Inner(__p0);
+        if (__inst->initialized && ::tpy::interop::has_views_into(__inst->p, sizeof(*__inst->p), identity_returns__view_registry)) {
+            PyErr_SetString(PyExc_TypeError, "cannot __init__ an instance while borrow views of its fields are alive");
+            return -1;
+        }
+        if (__inst->initialized) { __inst->initialized = false; ::std::destroy_at(&__inst->storage); }
+        new (&__inst->storage) ::tpyapp::identity_returns::Inner(__p0);
+        __inst->p = &__inst->storage;
         __inst->initialized = true;
         return 0;
     } catch (const ::tpy::BaseException &__e) {
@@ -384,9 +449,13 @@ int identity_returns__Inner_init(PyObject *self, PyObject *args, PyObject *kwarg
     }
 }
 
+void identity_returns__Inner_dealloc(PyObject *self) {
+    ::tpy::interop::instance_dealloc<::tpyapp::identity_returns::Inner>(self, identity_returns__view_registry);
+}
+
 PyObject *identity_returns__Inner__x_get(PyObject *self, void *) {
     try {
-        return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::identity_returns::Inner> *>(self)->payload.x);
+        return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::identity_returns::Inner> *>(self)->p->x);
     } catch (...) {
         if (!PyErr_Occurred())
             PyErr_SetString(PyExc_RuntimeError, "tpy extension: attribute read failed");
@@ -399,7 +468,7 @@ int identity_returns__Inner__x_set(PyObject *self, PyObject *value, void *) {
         return -1;
     }
     try {
-        reinterpret_cast<::tpy::interop::Instance<::tpyapp::identity_returns::Inner> *>(self)->payload.x = ::tpy::interop::from_py<int64_t>(value);
+        reinterpret_cast<::tpy::interop::Instance<::tpyapp::identity_returns::Inner> *>(self)->p->x = ::tpy::interop::from_py<int64_t>(value);
         return 0;
     } catch (...) {
         if (!PyErr_Occurred())
@@ -417,7 +486,7 @@ PyGetSetDef identity_returns__Inner__getset[] = {
 };
 PyType_Slot identity_returns__Inner__slots[] = {
     {Py_tp_init, (void *)identity_returns__Inner_init},
-    {Py_tp_dealloc, (void *)::tpy::interop::instance_dealloc<::tpyapp::identity_returns::Inner>},
+    {Py_tp_dealloc, (void *)identity_returns__Inner_dealloc},
     {Py_tp_methods, (void *)identity_returns__Inner__methods},
     {Py_tp_getset, (void *)identity_returns__Inner__getset},
     {Py_tp_new, (void *)::tpy::cpy::PyType_GenericNew},
@@ -433,10 +502,19 @@ int identity_returns__Holder_init(PyObject *self, PyObject *args, PyObject *kwar
     PyObject *a0 = nullptr;
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:Holder", __kwlist, &a0)) return -1;
     auto *__inst = reinterpret_cast<::tpy::interop::Instance<::tpyapp::identity_returns::Holder> *>(self);
+    if (__inst->owner != nullptr) {
+        PyErr_SetString(PyExc_TypeError, "cannot __init__ a borrowed field view");
+        return -1;
+    }
     try {
         int64_t __p0 = ::tpy::interop::from_py<int64_t>(a0);
-        if (__inst->initialized) { __inst->initialized = false; ::std::destroy_at(&__inst->payload); }
-        new (&__inst->payload) ::tpyapp::identity_returns::Holder(__p0);
+        if (__inst->initialized && ::tpy::interop::has_views_into(__inst->p, sizeof(*__inst->p), identity_returns__view_registry)) {
+            PyErr_SetString(PyExc_TypeError, "cannot __init__ an instance while borrow views of its fields are alive");
+            return -1;
+        }
+        if (__inst->initialized) { __inst->initialized = false; ::std::destroy_at(&__inst->storage); }
+        new (&__inst->storage) ::tpyapp::identity_returns::Holder(__p0);
+        __inst->p = &__inst->storage;
         __inst->initialized = true;
         return 0;
     } catch (const ::tpy::BaseException &__e) {
@@ -449,10 +527,17 @@ int identity_returns__Holder_init(PyObject *self, PyObject *args, PyObject *kwar
     }
 }
 
+void identity_returns__Holder_dealloc(PyObject *self) {
+    ::tpy::interop::instance_dealloc<::tpyapp::identity_returns::Holder>(self, identity_returns__view_registry);
+}
+
 PyObject *identity_returns__Holder__get_inner_pywrap(PyObject *self, PyObject *) {
     try {
-        auto &__self = reinterpret_cast<::tpy::interop::Instance<::tpyapp::identity_returns::Holder> *>(self)->payload;
-        return ::tpy::interop::instance_to_py((::tpy::cpy::PyTypeObject *)identity_returns__type_Inner, __self.get_inner());
+        auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::identity_returns::Holder> *>(self)->p;
+        auto &__r = __self.get_inner();
+        if (::tpy::interop::within_payload(&__r, &__self, sizeof(__self)))
+            return ::tpy::interop::borrow_to_py((::tpy::cpy::PyTypeObject *)identity_returns__type_Inner, __r, self, identity_returns__view_registry);
+        return ::tpy::interop::instance_to_py((::tpy::cpy::PyTypeObject *)identity_returns__type_Inner, __r);
     } catch (const ::tpy::BaseException &__e) {
         ::tpy::interop::set_py_err_from(__e);
         return nullptr;
@@ -468,11 +553,15 @@ PyObject *identity_returns__Holder__pick_inner_pywrap(PyObject *self, PyObject *
     PyObject *a0 = nullptr; PyObject *a1 = nullptr;
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OO:pick_inner", __kwlist, &a0, &a1)) return nullptr;
     try {
-        auto &__self = reinterpret_cast<::tpy::interop::Instance<::tpyapp::identity_returns::Holder> *>(self)->payload;
+        auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::identity_returns::Holder> *>(self)->p;
         ::tpyapp::identity_returns::Inner &__p0 = *::tpy::interop::instance_payload<::tpyapp::identity_returns::Inner>(a0, (::tpy::cpy::PyTypeObject *)identity_returns__type_Inner);
         bool __p1 = ::tpy::interop::from_py<bool>(a1);
         auto &__r = __self.pick_inner(__p0, __p1);
         if (&__r == &__p0) { Py_IncRef(a0); return a0; }
+        if (::tpy::interop::within_payload(&__r, &__self, sizeof(__self)))
+            return ::tpy::interop::borrow_to_py((::tpy::cpy::PyTypeObject *)identity_returns__type_Inner, __r, self, identity_returns__view_registry);
+        if (::tpy::interop::within_payload(&__r, &__p0, sizeof(__p0)))
+            return ::tpy::interop::borrow_to_py((::tpy::cpy::PyTypeObject *)identity_returns__type_Inner, __r, a0, identity_returns__view_registry);
         return ::tpy::interop::instance_to_py((::tpy::cpy::PyTypeObject *)identity_returns__type_Inner, __r);
     } catch (const ::tpy::BaseException &__e) {
         ::tpy::interop::set_py_err_from(__e);
@@ -494,7 +583,7 @@ PyGetSetDef identity_returns__Holder__getset[] = {
 };
 PyType_Slot identity_returns__Holder__slots[] = {
     {Py_tp_init, (void *)identity_returns__Holder_init},
-    {Py_tp_dealloc, (void *)::tpy::interop::instance_dealloc<::tpyapp::identity_returns::Holder>},
+    {Py_tp_dealloc, (void *)identity_returns__Holder_dealloc},
     {Py_tp_methods, (void *)identity_returns__Holder__methods},
     {Py_tp_getset, (void *)identity_returns__Holder__getset},
     {Py_tp_new, (void *)::tpy::cpy::PyType_GenericNew},

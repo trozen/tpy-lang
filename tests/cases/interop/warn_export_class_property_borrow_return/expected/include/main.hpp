@@ -35,9 +35,14 @@ struct Box {
     std::vector<int64_t> _items;
     // _inner: Inner
     Inner _inner;
+    // _alt: Inner
+    Inner _alt;
 
     // def __init__(self) -> None:
     Box();
+
+    // def rebind_alt(self) -> None:
+    void rebind_alt();
 
     // @property
     // def items(self) -> list[Int64]:
@@ -56,6 +61,14 @@ struct Box {
     const Inner& inner() const;
 
     // @property
+    // def alt(self) -> Inner:
+    Inner& alt();
+
+    // @property
+    // def alt(self) -> Inner:
+    const Inner& alt() const;
+
+    // @property
     // def snapshot(self) -> Own[list[Int64]]:  # tpyc: ok
     std::vector<int64_t> snapshot() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
@@ -71,7 +84,13 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 inline Inner::Inner() : x(0) {}
 
 // def __init__(self) -> None:
-inline Box::Box() : _items({1, 2}), _inner(Inner()) {}
+inline Box::Box() : _items({1, 2}), _inner(Inner()), _alt(Inner()) {}
+
+// def rebind_alt(self) -> None:
+inline void Box::rebind_alt() {
+    // self._alt = Inner()
+    this->_alt = Inner();
+}
 
 // @property
 // def items(self) -> list[Int64]:
@@ -90,15 +109,33 @@ inline const std::vector<int64_t>& Box::items() const {
 // @property
 // def inner(self) -> Inner:
 inline Inner& Box::inner() {
-    // return self._inner  # tpyc: warning(/property 'inner': returns exposed class 'Inner' by reference.*identity and write-through aliasing are not preserved/)
+    // # `_inner` is never reassigned outside __init__: crosses as an
+    // # aliasing borrow view, so nothing copies and nothing warns.
+    // return self._inner  # tpyc: ok
     return this->_inner;
 }
 
 // @property
 // def inner(self) -> Inner:
 inline const Inner& Box::inner() const {
-    // return self._inner  # tpyc: warning(/property 'inner': returns exposed class 'Inner' by reference.*identity and write-through aliasing are not preserved/)
+    // # `_inner` is never reassigned outside __init__: crosses as an
+    // # aliasing borrow view, so nothing copies and nothing warns.
+    // return self._inner  # tpyc: ok
     return this->_inner;
+}
+
+// @property
+// def alt(self) -> Inner:
+inline Inner& Box::alt() {
+    // return self._alt  # tpyc: warning(/property 'alt': returns exposed class 'Inner' by reference.*identity and write-through aliasing are not preserved/)
+    return this->_alt;
+}
+
+// @property
+// def alt(self) -> Inner:
+inline const Inner& Box::alt() const {
+    // return self._alt  # tpyc: warning(/property 'alt': returns exposed class 'Inner' by reference.*identity and write-through aliasing are not preserved/)
+    return this->_alt;
 }
 
 // @property

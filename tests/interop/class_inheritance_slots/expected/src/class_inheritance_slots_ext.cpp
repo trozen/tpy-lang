@@ -13,6 +13,7 @@ PyObject *class_inheritance_slots__type_Node = nullptr;
 PyObject *class_inheritance_slots__type_MidNode = nullptr;
 PyObject *class_inheritance_slots__type_LeafNode = nullptr;
 PyObject *class_inheritance_slots__type_HashNode = nullptr;
+::tpy::interop::ViewRegistry class_inheritance_slots__view_registry;
 
 int class_inheritance_slots__Gate_init(PyObject *self, PyObject *args, PyObject *kwargs) {
     if (Py_TYPE(self) != (::tpy::cpy::PyTypeObject *)class_inheritance_slots__type_Gate) {
@@ -23,10 +24,19 @@ int class_inheritance_slots__Gate_init(PyObject *self, PyObject *args, PyObject 
     PyObject *a0 = nullptr;
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:Gate", __kwlist, &a0)) return -1;
     auto *__inst = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance_slots::Gate> *>(self);
+    if (__inst->owner != nullptr) {
+        PyErr_SetString(PyExc_TypeError, "cannot __init__ a borrowed field view");
+        return -1;
+    }
     try {
         std::string __p0 = ::tpy::interop::from_py<std::string>(a0);
-        if (__inst->initialized) { __inst->initialized = false; ::std::destroy_at(&__inst->payload); }
-        new (&__inst->payload) ::tpyapp::class_inheritance_slots::Gate(__p0);
+        if (__inst->initialized && ::tpy::interop::has_views_into(__inst->p, sizeof(*__inst->p), class_inheritance_slots__view_registry)) {
+            PyErr_SetString(PyExc_TypeError, "cannot __init__ an instance while borrow views of its fields are alive");
+            return -1;
+        }
+        if (__inst->initialized) { __inst->initialized = false; ::std::destroy_at(&__inst->storage); }
+        new (&__inst->storage) ::tpyapp::class_inheritance_slots::Gate(__p0);
+        __inst->p = &__inst->storage;
         __inst->initialized = true;
         return 0;
     } catch (const ::tpy::BaseException &__e) {
@@ -39,9 +49,13 @@ int class_inheritance_slots__Gate_init(PyObject *self, PyObject *args, PyObject 
     }
 }
 
+void class_inheritance_slots__Gate_dealloc(PyObject *self) {
+    ::tpy::interop::instance_dealloc<::tpyapp::class_inheritance_slots::Gate>(self, class_inheritance_slots__view_registry);
+}
+
 PyObject *class_inheritance_slots__Gate__code_get(PyObject *self, void *) {
     try {
-        return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance_slots::Gate> *>(self)->payload.code);
+        return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance_slots::Gate> *>(self)->p->code);
     } catch (...) {
         if (!PyErr_Occurred())
             PyErr_SetString(PyExc_RuntimeError, "tpy extension: attribute read failed");
@@ -54,7 +68,7 @@ int class_inheritance_slots__Gate__code_set(PyObject *self, PyObject *value, voi
         return -1;
     }
     try {
-        reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance_slots::Gate> *>(self)->payload.code = ::tpy::interop::from_py<std::string>(value);
+        reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance_slots::Gate> *>(self)->p->code = ::tpy::interop::from_py<std::string>(value);
         return 0;
     } catch (...) {
         if (!PyErr_Occurred())
@@ -68,8 +82,8 @@ PyObject *class_inheritance_slots__Gate__richcompare_slot(PyObject *self, PyObje
     if (__ot != (::tpy::cpy::PyTypeObject *)class_inheritance_slots__type_Gate && PyType_IsSubtype(__ot, (::tpy::cpy::PyTypeObject *)class_inheritance_slots__type_Gate) == 0)
         return ::tpy::interop::notimplemented_to_py();
     try {
-        auto &__self = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance_slots::Gate> *>(self)->payload;
-        auto &__other = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance_slots::Gate> *>(other)->payload;
+        auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance_slots::Gate> *>(self)->p;
+        auto &__other = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance_slots::Gate> *>(other)->p;
         switch (op) {
         case Py_LT:
             return ::tpy::interop::notimplemented_to_py();
@@ -101,7 +115,7 @@ PyObject *class_inheritance_slots__Gate__add_slot(PyObject *a, PyObject *b) {
         if (Py_TYPE(a) == (::tpy::cpy::PyTypeObject *)class_inheritance_slots__type_Gate || PyType_IsSubtype(Py_TYPE(a), (::tpy::cpy::PyTypeObject *)class_inheritance_slots__type_Gate) != 0) {
             try {
                 int64_t __other = ::tpy::interop::from_py<int64_t>(b);
-                return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance_slots::Gate> *>(a)->payload.__add__(__other));
+                return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance_slots::Gate> *>(a)->p->__add__(__other));
             } catch (const ::tpy::interop::MarshalError &) {
                 if (!PyErr_ExceptionMatches(PyExc_TypeError)) return nullptr;
                 PyErr_Clear();
@@ -110,7 +124,7 @@ PyObject *class_inheritance_slots__Gate__add_slot(PyObject *a, PyObject *b) {
         if (Py_TYPE(b) == (::tpy::cpy::PyTypeObject *)class_inheritance_slots__type_Gate || PyType_IsSubtype(Py_TYPE(b), (::tpy::cpy::PyTypeObject *)class_inheritance_slots__type_Gate) != 0) {
             try {
                 int64_t __other = ::tpy::interop::from_py<int64_t>(a);
-                return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance_slots::Gate> *>(b)->payload.__radd__(__other));
+                return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance_slots::Gate> *>(b)->p->__radd__(__other));
             } catch (const ::tpy::interop::MarshalError &) {
                 if (!PyErr_ExceptionMatches(PyExc_TypeError)) return nullptr;
                 PyErr_Clear();
@@ -130,7 +144,7 @@ PyObject *class_inheritance_slots__Gate__add_slot(PyObject *a, PyObject *b) {
 PyObject *class_inheritance_slots__Gate__getitem_slot(PyObject *self, PyObject *key) {
     try {
         std::string __key = ::tpy::interop::from_py<std::string>(key);
-        return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance_slots::Gate> *>(self)->payload.__getitem__(__key));
+        return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance_slots::Gate> *>(self)->p->__getitem__(__key));
     } catch (const ::tpy::BaseException &__e) {
         ::tpy::interop::set_py_err_from(__e);
         return nullptr;
@@ -145,12 +159,12 @@ int class_inheritance_slots__Gate__ass_subscript_slot(PyObject *self, PyObject *
     try {
         if (value == nullptr) {
             std::string __key = ::tpy::interop::from_py<std::string>(key);
-            reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance_slots::Gate> *>(self)->payload.__delitem__(__key);
+            reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance_slots::Gate> *>(self)->p->__delitem__(__key);
             return 0;
         }
         std::string __key = ::tpy::interop::from_py<std::string>(key);
         int64_t __value = ::tpy::interop::from_py<int64_t>(value);
-        reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance_slots::Gate> *>(self)->payload.__setitem__(__key, __value);
+        reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance_slots::Gate> *>(self)->p->__setitem__(__key, __value);
         return 0;
     } catch (const ::tpy::BaseException &__e) {
         ::tpy::interop::set_py_err_from(__e);
@@ -171,7 +185,7 @@ PyGetSetDef class_inheritance_slots__Gate__getset[] = {
 };
 PyType_Slot class_inheritance_slots__Gate__slots[] = {
     {Py_tp_init, (void *)class_inheritance_slots__Gate_init},
-    {Py_tp_dealloc, (void *)::tpy::interop::instance_dealloc<::tpyapp::class_inheritance_slots::Gate>},
+    {Py_tp_dealloc, (void *)class_inheritance_slots__Gate_dealloc},
     {Py_tp_methods, (void *)class_inheritance_slots__Gate__methods},
     {Py_tp_getset, (void *)class_inheritance_slots__Gate__getset},
     {Py_tp_richcompare, (void *)class_inheritance_slots__Gate__richcompare_slot},
@@ -192,10 +206,19 @@ int class_inheritance_slots__SubGate_init(PyObject *self, PyObject *args, PyObje
     PyObject *a0 = nullptr;
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:SubGate", __kwlist, &a0)) return -1;
     auto *__inst = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance_slots::SubGate> *>(self);
+    if (__inst->owner != nullptr) {
+        PyErr_SetString(PyExc_TypeError, "cannot __init__ a borrowed field view");
+        return -1;
+    }
     try {
         std::string __p0 = ::tpy::interop::from_py<std::string>(a0);
-        if (__inst->initialized) { __inst->initialized = false; ::std::destroy_at(&__inst->payload); }
-        new (&__inst->payload) ::tpyapp::class_inheritance_slots::SubGate(__p0);
+        if (__inst->initialized && ::tpy::interop::has_views_into(__inst->p, sizeof(*__inst->p), class_inheritance_slots__view_registry)) {
+            PyErr_SetString(PyExc_TypeError, "cannot __init__ an instance while borrow views of its fields are alive");
+            return -1;
+        }
+        if (__inst->initialized) { __inst->initialized = false; ::std::destroy_at(&__inst->storage); }
+        new (&__inst->storage) ::tpyapp::class_inheritance_slots::SubGate(__p0);
+        __inst->p = &__inst->storage;
         __inst->initialized = true;
         return 0;
     } catch (const ::tpy::BaseException &__e) {
@@ -206,6 +229,10 @@ int class_inheritance_slots__SubGate_init(PyObject *self, PyObject *args, PyObje
             PyErr_SetString(PyExc_RuntimeError, "tpy extension: constructor failed");
         return -1;
     }
+}
+
+void class_inheritance_slots__SubGate_dealloc(PyObject *self) {
+    ::tpy::interop::instance_dealloc<::tpyapp::class_inheritance_slots::SubGate>(self, class_inheritance_slots__view_registry);
 }
 
 PyObject *class_inheritance_slots__SubGate__richcompare_slot(PyObject *self, PyObject *other, int op) {
@@ -219,8 +246,8 @@ PyObject *class_inheritance_slots__SubGate__richcompare_slot(PyObject *self, PyO
     if (__ot != (::tpy::cpy::PyTypeObject *)class_inheritance_slots__type_SubGate && PyType_IsSubtype(__ot, (::tpy::cpy::PyTypeObject *)class_inheritance_slots__type_SubGate) == 0)
         return ::tpy::interop::notimplemented_to_py();
     try {
-        auto &__self = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance_slots::SubGate> *>(self)->payload;
-        auto &__other = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance_slots::SubGate> *>(other)->payload;
+        auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance_slots::SubGate> *>(self)->p;
+        auto &__other = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance_slots::SubGate> *>(other)->p;
         switch (op) {
         case Py_LT:
             return ::tpy::interop::notimplemented_to_py();
@@ -252,7 +279,7 @@ PyObject *class_inheritance_slots__SubGate__add_slot(PyObject *a, PyObject *b) {
         if (Py_TYPE(a) == (::tpy::cpy::PyTypeObject *)class_inheritance_slots__type_SubGate || PyType_IsSubtype(Py_TYPE(a), (::tpy::cpy::PyTypeObject *)class_inheritance_slots__type_SubGate) != 0) {
             try {
                 int64_t __other = ::tpy::interop::from_py<int64_t>(b);
-                return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance_slots::SubGate> *>(a)->payload.__add__(__other));
+                return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance_slots::SubGate> *>(a)->p->__add__(__other));
             } catch (const ::tpy::interop::MarshalError &) {
                 if (!PyErr_ExceptionMatches(PyExc_TypeError)) return nullptr;
                 PyErr_Clear();
@@ -261,7 +288,7 @@ PyObject *class_inheritance_slots__SubGate__add_slot(PyObject *a, PyObject *b) {
         if (Py_TYPE(b) == (::tpy::cpy::PyTypeObject *)class_inheritance_slots__type_SubGate || PyType_IsSubtype(Py_TYPE(b), (::tpy::cpy::PyTypeObject *)class_inheritance_slots__type_SubGate) != 0) {
             try {
                 int64_t __other = ::tpy::interop::from_py<int64_t>(a);
-                return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance_slots::SubGate> *>(b)->payload.__radd__(__other));
+                return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance_slots::SubGate> *>(b)->p->__radd__(__other));
             } catch (const ::tpy::interop::MarshalError &) {
                 if (!PyErr_ExceptionMatches(PyExc_TypeError)) return nullptr;
                 PyErr_Clear();
@@ -282,12 +309,12 @@ int class_inheritance_slots__SubGate__ass_subscript_slot(PyObject *self, PyObjec
     try {
         if (value == nullptr) {
             std::string __key = ::tpy::interop::from_py<std::string>(key);
-            reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance_slots::SubGate> *>(self)->payload.__delitem__(__key);
+            reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance_slots::SubGate> *>(self)->p->__delitem__(__key);
             return 0;
         }
         std::string __key = ::tpy::interop::from_py<std::string>(key);
         int64_t __value = ::tpy::interop::from_py<int64_t>(value);
-        reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance_slots::SubGate> *>(self)->payload.__setitem__(__key, __value);
+        reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance_slots::SubGate> *>(self)->p->__setitem__(__key, __value);
         return 0;
     } catch (const ::tpy::BaseException &__e) {
         ::tpy::interop::set_py_err_from(__e);
@@ -307,7 +334,7 @@ PyGetSetDef class_inheritance_slots__SubGate__getset[] = {
 };
 PyType_Slot class_inheritance_slots__SubGate__slots[] = {
     {Py_tp_init, (void *)class_inheritance_slots__SubGate_init},
-    {Py_tp_dealloc, (void *)::tpy::interop::instance_dealloc<::tpyapp::class_inheritance_slots::SubGate>},
+    {Py_tp_dealloc, (void *)class_inheritance_slots__SubGate_dealloc},
     {Py_tp_methods, (void *)class_inheritance_slots__SubGate__methods},
     {Py_tp_getset, (void *)class_inheritance_slots__SubGate__getset},
     {Py_tp_richcompare, (void *)class_inheritance_slots__SubGate__richcompare_slot},
@@ -331,10 +358,19 @@ int class_inheritance_slots__Node_init(PyObject *self, PyObject *args, PyObject 
     PyObject *a0 = nullptr;
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:Node", __kwlist, &a0)) return -1;
     auto *__inst = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance_slots::Node> *>(self);
+    if (__inst->owner != nullptr) {
+        PyErr_SetString(PyExc_TypeError, "cannot __init__ a borrowed field view");
+        return -1;
+    }
     try {
         int64_t __p0 = ::tpy::interop::from_py<int64_t>(a0);
-        if (__inst->initialized) { __inst->initialized = false; ::std::destroy_at(&__inst->payload); }
-        new (&__inst->payload) ::tpyapp::class_inheritance_slots::Node(__p0);
+        if (__inst->initialized && ::tpy::interop::has_views_into(__inst->p, sizeof(*__inst->p), class_inheritance_slots__view_registry)) {
+            PyErr_SetString(PyExc_TypeError, "cannot __init__ an instance while borrow views of its fields are alive");
+            return -1;
+        }
+        if (__inst->initialized) { __inst->initialized = false; ::std::destroy_at(&__inst->storage); }
+        new (&__inst->storage) ::tpyapp::class_inheritance_slots::Node(__p0);
+        __inst->p = &__inst->storage;
         __inst->initialized = true;
         return 0;
     } catch (const ::tpy::BaseException &__e) {
@@ -347,9 +383,13 @@ int class_inheritance_slots__Node_init(PyObject *self, PyObject *args, PyObject 
     }
 }
 
+void class_inheritance_slots__Node_dealloc(PyObject *self) {
+    ::tpy::interop::instance_dealloc<::tpyapp::class_inheritance_slots::Node>(self, class_inheritance_slots__view_registry);
+}
+
 PyObject *class_inheritance_slots__Node__v_get(PyObject *self, void *) {
     try {
-        return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance_slots::Node> *>(self)->payload.v);
+        return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance_slots::Node> *>(self)->p->v);
     } catch (...) {
         if (!PyErr_Occurred())
             PyErr_SetString(PyExc_RuntimeError, "tpy extension: attribute read failed");
@@ -362,7 +402,7 @@ int class_inheritance_slots__Node__v_set(PyObject *self, PyObject *value, void *
         return -1;
     }
     try {
-        reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance_slots::Node> *>(self)->payload.v = ::tpy::interop::from_py<int64_t>(value);
+        reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance_slots::Node> *>(self)->p->v = ::tpy::interop::from_py<int64_t>(value);
         return 0;
     } catch (...) {
         if (!PyErr_Occurred())
@@ -376,8 +416,8 @@ PyObject *class_inheritance_slots__Node__richcompare_slot(PyObject *self, PyObje
     if (__ot != (::tpy::cpy::PyTypeObject *)class_inheritance_slots__type_Node && PyType_IsSubtype(__ot, (::tpy::cpy::PyTypeObject *)class_inheritance_slots__type_Node) == 0)
         return ::tpy::interop::notimplemented_to_py();
     try {
-        auto &__self = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance_slots::Node> *>(self)->payload;
-        auto &__other = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance_slots::Node> *>(other)->payload;
+        auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance_slots::Node> *>(self)->p;
+        auto &__other = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance_slots::Node> *>(other)->p;
         switch (op) {
         case Py_LT:
             return ::tpy::interop::notimplemented_to_py();
@@ -406,7 +446,7 @@ PyObject *class_inheritance_slots__Node__richcompare_slot(PyObject *self, PyObje
 
 Py_ssize_t class_inheritance_slots__Node__hash_slot(PyObject *self) {
     try {
-        return ::tpy::interop::hash_to_py_hash_t(static_cast<std::uint64_t>(reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance_slots::Node> *>(self)->payload.__hash__()));
+        return ::tpy::interop::hash_to_py_hash_t(static_cast<std::uint64_t>(reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance_slots::Node> *>(self)->p->__hash__()));
     } catch (const ::tpy::BaseException &__e) {
         ::tpy::interop::set_py_err_from(__e);
         return -1;
@@ -426,7 +466,7 @@ PyGetSetDef class_inheritance_slots__Node__getset[] = {
 };
 PyType_Slot class_inheritance_slots__Node__slots[] = {
     {Py_tp_init, (void *)class_inheritance_slots__Node_init},
-    {Py_tp_dealloc, (void *)::tpy::interop::instance_dealloc<::tpyapp::class_inheritance_slots::Node>},
+    {Py_tp_dealloc, (void *)class_inheritance_slots__Node_dealloc},
     {Py_tp_methods, (void *)class_inheritance_slots__Node__methods},
     {Py_tp_getset, (void *)class_inheritance_slots__Node__getset},
     {Py_tp_richcompare, (void *)class_inheritance_slots__Node__richcompare_slot},
@@ -448,10 +488,19 @@ int class_inheritance_slots__MidNode_init(PyObject *self, PyObject *args, PyObje
     PyObject *a0 = nullptr;
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:MidNode", __kwlist, &a0)) return -1;
     auto *__inst = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance_slots::MidNode> *>(self);
+    if (__inst->owner != nullptr) {
+        PyErr_SetString(PyExc_TypeError, "cannot __init__ a borrowed field view");
+        return -1;
+    }
     try {
         int64_t __p0 = ::tpy::interop::from_py<int64_t>(a0);
-        if (__inst->initialized) { __inst->initialized = false; ::std::destroy_at(&__inst->payload); }
-        new (&__inst->payload) ::tpyapp::class_inheritance_slots::MidNode(__p0);
+        if (__inst->initialized && ::tpy::interop::has_views_into(__inst->p, sizeof(*__inst->p), class_inheritance_slots__view_registry)) {
+            PyErr_SetString(PyExc_TypeError, "cannot __init__ an instance while borrow views of its fields are alive");
+            return -1;
+        }
+        if (__inst->initialized) { __inst->initialized = false; ::std::destroy_at(&__inst->storage); }
+        new (&__inst->storage) ::tpyapp::class_inheritance_slots::MidNode(__p0);
+        __inst->p = &__inst->storage;
         __inst->initialized = true;
         return 0;
     } catch (const ::tpy::BaseException &__e) {
@@ -464,9 +513,13 @@ int class_inheritance_slots__MidNode_init(PyObject *self, PyObject *args, PyObje
     }
 }
 
+void class_inheritance_slots__MidNode_dealloc(PyObject *self) {
+    ::tpy::interop::instance_dealloc<::tpyapp::class_inheritance_slots::MidNode>(self, class_inheritance_slots__view_registry);
+}
+
 PyObject *class_inheritance_slots__MidNode__bump_pywrap(PyObject *self, PyObject *) {
     try {
-        auto &__self = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance_slots::MidNode> *>(self)->payload;
+        auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance_slots::MidNode> *>(self)->p;
         __self.bump();
         return ::tpy::interop::none_to_py();
     } catch (const ::tpy::BaseException &__e) {
@@ -488,7 +541,7 @@ PyGetSetDef class_inheritance_slots__MidNode__getset[] = {
 };
 PyType_Slot class_inheritance_slots__MidNode__slots[] = {
     {Py_tp_init, (void *)class_inheritance_slots__MidNode_init},
-    {Py_tp_dealloc, (void *)::tpy::interop::instance_dealloc<::tpyapp::class_inheritance_slots::MidNode>},
+    {Py_tp_dealloc, (void *)class_inheritance_slots__MidNode_dealloc},
     {Py_tp_methods, (void *)class_inheritance_slots__MidNode__methods},
     {Py_tp_getset, (void *)class_inheritance_slots__MidNode__getset},
     {Py_tp_new, (void *)::tpy::cpy::PyType_GenericNew},
@@ -504,10 +557,19 @@ int class_inheritance_slots__LeafNode_init(PyObject *self, PyObject *args, PyObj
     PyObject *a0 = nullptr;
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:LeafNode", __kwlist, &a0)) return -1;
     auto *__inst = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance_slots::LeafNode> *>(self);
+    if (__inst->owner != nullptr) {
+        PyErr_SetString(PyExc_TypeError, "cannot __init__ a borrowed field view");
+        return -1;
+    }
     try {
         int64_t __p0 = ::tpy::interop::from_py<int64_t>(a0);
-        if (__inst->initialized) { __inst->initialized = false; ::std::destroy_at(&__inst->payload); }
-        new (&__inst->payload) ::tpyapp::class_inheritance_slots::LeafNode(__p0);
+        if (__inst->initialized && ::tpy::interop::has_views_into(__inst->p, sizeof(*__inst->p), class_inheritance_slots__view_registry)) {
+            PyErr_SetString(PyExc_TypeError, "cannot __init__ an instance while borrow views of its fields are alive");
+            return -1;
+        }
+        if (__inst->initialized) { __inst->initialized = false; ::std::destroy_at(&__inst->storage); }
+        new (&__inst->storage) ::tpyapp::class_inheritance_slots::LeafNode(__p0);
+        __inst->p = &__inst->storage;
         __inst->initialized = true;
         return 0;
     } catch (const ::tpy::BaseException &__e) {
@@ -518,6 +580,10 @@ int class_inheritance_slots__LeafNode_init(PyObject *self, PyObject *args, PyObj
             PyErr_SetString(PyExc_RuntimeError, "tpy extension: constructor failed");
         return -1;
     }
+}
+
+void class_inheritance_slots__LeafNode_dealloc(PyObject *self) {
+    ::tpy::interop::instance_dealloc<::tpyapp::class_inheritance_slots::LeafNode>(self, class_inheritance_slots__view_registry);
 }
 
 PyObject *class_inheritance_slots__LeafNode__richcompare_slot(PyObject *self, PyObject *other, int op) {
@@ -531,8 +597,8 @@ PyObject *class_inheritance_slots__LeafNode__richcompare_slot(PyObject *self, Py
     if (__ot != (::tpy::cpy::PyTypeObject *)class_inheritance_slots__type_LeafNode && PyType_IsSubtype(__ot, (::tpy::cpy::PyTypeObject *)class_inheritance_slots__type_LeafNode) == 0)
         return ::tpy::interop::notimplemented_to_py();
     try {
-        auto &__self = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance_slots::LeafNode> *>(self)->payload;
-        auto &__other = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance_slots::LeafNode> *>(other)->payload;
+        auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance_slots::LeafNode> *>(self)->p;
+        auto &__other = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance_slots::LeafNode> *>(other)->p;
         switch (op) {
         case Py_LT:
             return ::tpy::interop::to_py(__self.__lt__(__other));
@@ -567,7 +633,7 @@ PyGetSetDef class_inheritance_slots__LeafNode__getset[] = {
 };
 PyType_Slot class_inheritance_slots__LeafNode__slots[] = {
     {Py_tp_init, (void *)class_inheritance_slots__LeafNode_init},
-    {Py_tp_dealloc, (void *)::tpy::interop::instance_dealloc<::tpyapp::class_inheritance_slots::LeafNode>},
+    {Py_tp_dealloc, (void *)class_inheritance_slots__LeafNode_dealloc},
     {Py_tp_methods, (void *)class_inheritance_slots__LeafNode__methods},
     {Py_tp_getset, (void *)class_inheritance_slots__LeafNode__getset},
     {Py_tp_richcompare, (void *)class_inheritance_slots__LeafNode__richcompare_slot},
@@ -585,10 +651,19 @@ int class_inheritance_slots__HashNode_init(PyObject *self, PyObject *args, PyObj
     PyObject *a0 = nullptr;
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:HashNode", __kwlist, &a0)) return -1;
     auto *__inst = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance_slots::HashNode> *>(self);
+    if (__inst->owner != nullptr) {
+        PyErr_SetString(PyExc_TypeError, "cannot __init__ a borrowed field view");
+        return -1;
+    }
     try {
         int64_t __p0 = ::tpy::interop::from_py<int64_t>(a0);
-        if (__inst->initialized) { __inst->initialized = false; ::std::destroy_at(&__inst->payload); }
-        new (&__inst->payload) ::tpyapp::class_inheritance_slots::HashNode(__p0);
+        if (__inst->initialized && ::tpy::interop::has_views_into(__inst->p, sizeof(*__inst->p), class_inheritance_slots__view_registry)) {
+            PyErr_SetString(PyExc_TypeError, "cannot __init__ an instance while borrow views of its fields are alive");
+            return -1;
+        }
+        if (__inst->initialized) { __inst->initialized = false; ::std::destroy_at(&__inst->storage); }
+        new (&__inst->storage) ::tpyapp::class_inheritance_slots::HashNode(__p0);
+        __inst->p = &__inst->storage;
         __inst->initialized = true;
         return 0;
     } catch (const ::tpy::BaseException &__e) {
@@ -601,9 +676,13 @@ int class_inheritance_slots__HashNode_init(PyObject *self, PyObject *args, PyObj
     }
 }
 
+void class_inheritance_slots__HashNode_dealloc(PyObject *self) {
+    ::tpy::interop::instance_dealloc<::tpyapp::class_inheritance_slots::HashNode>(self, class_inheritance_slots__view_registry);
+}
+
 Py_ssize_t class_inheritance_slots__HashNode__hash_slot(PyObject *self) {
     try {
-        return ::tpy::interop::hash_to_py_hash_t(static_cast<std::uint64_t>(reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance_slots::HashNode> *>(self)->payload.__hash__()));
+        return ::tpy::interop::hash_to_py_hash_t(static_cast<std::uint64_t>(reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance_slots::HashNode> *>(self)->p->__hash__()));
     } catch (const ::tpy::BaseException &__e) {
         ::tpy::interop::set_py_err_from(__e);
         return -1;
@@ -622,7 +701,7 @@ PyGetSetDef class_inheritance_slots__HashNode__getset[] = {
 };
 PyType_Slot class_inheritance_slots__HashNode__slots[] = {
     {Py_tp_init, (void *)class_inheritance_slots__HashNode_init},
-    {Py_tp_dealloc, (void *)::tpy::interop::instance_dealloc<::tpyapp::class_inheritance_slots::HashNode>},
+    {Py_tp_dealloc, (void *)class_inheritance_slots__HashNode_dealloc},
     {Py_tp_methods, (void *)class_inheritance_slots__HashNode__methods},
     {Py_tp_getset, (void *)class_inheritance_slots__HashNode__getset},
     {Py_tp_hash, (void *)class_inheritance_slots__HashNode__hash_slot},
