@@ -408,6 +408,7 @@ from .checks import (
     _record_rvalue_call_shape,
     _native_record_rvalue_call_shape,
     _record_rvalue_temp_arg,
+    _typed_dict_ctor_call,
     _native_ctx_manager_ok,
     _shared_pass_through_arg,
     _str_pass_through_arg,
@@ -436,6 +437,8 @@ def _call_use_supported(e: TpyCall, lc: '_LowerCtx',
     elif e.enum_from_value is not None:
         ok = True
     elif fi is not None and fi.is_constructor:
+        ok = True
+    elif fi is None and _typed_dict_ctor_call(e, analyzer) is not None:
         ok = True
     elif e.call_type is not None:
         ok = result is _ExprResultUse.STORAGE
@@ -598,9 +601,11 @@ def _own_move_source_slice(a: TpyExpr, ptype: 'TpyType | None',
 def _record_ctor_arg_supported(
         arg: TpyExpr, param_type: TpyType, index: int, fi,
         lc: '_LowerCtx', declared: dict[str, TpyType], use: _ExprUse) -> bool:
+    # fi is None for a TypedDict ctor (no synthetic constructor fi; params
+    # come from the registry's init_params, which carry no mutation facts).
     analyzer = lc.analyzer
-    mutation_unknown = fi.mutated_params is None
-    mutated = fi.mutated_params or frozenset()
+    mutation_unknown = fi is not None and fi.mutated_params is None
+    mutated = (fi.mutated_params if fi is not None else None) or frozenset()
     is_mutated = index in mutated
     if use.record_ctor is not _RecordCtorUse.NESTED_ARG:
         # temps_ok tracks whether THIS ctor position flushes. DIRECT threads
@@ -2969,6 +2974,32 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                               "::from_value({0})"),
                 loc=loc)
         fi = e.resolved_function_info
+        if fi is None:
+            td_ri = _typed_dict_ctor_call(e, analyzer)
+            if td_ri is not None:
+                # TypedDict ctor (the kwargs-pack rewrite): the record-branch
+                # tail's spelling over init_params -- no fi, no mutation
+                # facts, field-ordered positional args.
+                _witness("ctor.typed_dict")
+                qual = lc.analyzer.registry.record_qualification(
+                    td_ri, lc.analyzer.ctx.module_name)
+                td_type_cpp = (qualified_cpp_name(*qual) if qual is not None
+                               else e.func_name)
+                td_args = []
+                for i, (a, trip) in enumerate(zip(e.args, td_ri.init_params)):
+                    p_type = trip[1]
+                    if not _record_ctor_arg_supported(
+                            a, p_type, i, None, lc, declared,
+                            _ExprUse(allow_temps=False)):
+                        note_detail("call.ctor_arg."
+                                    + _type_family_tag(p_type, analyzer))
+                        raise ThirUnsupported("expr.call")
+                    td_args.append(_lower_call_arg(
+                        a, p_type, lc, declared, temp_args=False,
+                        protocol_slots=True))
+                return THIRCtorCall(
+                    result_type=rtype, type_cpp=td_type_cpp,
+                    args=tuple(td_args), form=Form.STORAGE, loc=loc)
         if fi is not None and fi.is_constructor:
             if not _record_ctor_shape_supported(e, lc, use):
                 raise ThirUnsupported("expr.call")
@@ -3068,7 +3099,11 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                         # The member-valued VALUE-union temp (`std::variant
                         # <...> __tmp_N = v;`), gate-admitted above.
                         or _value_union_temp_slot(
-                            a, p.type, declared, lc.analyzer) is not None)
+                            a, p.type, declared, lc.analyzer) is not None
+                        # The optional-ptr 'ctor' face's ArgTemp (`T __tmp_N =
+                        # <rvalue>; ...&__tmp_N`), gate-admitted under temps_ok.
+                        or _optional_ptr_arg_face(
+                            a, p.type, declared, lc.analyzer) == 'ctor')
                     args.append(_lower_call_arg(
                         a, p.type, lc, declared,
                         temp_args=temp_args and flush_slot,
@@ -3975,9 +4010,14 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                                            and (a.name in lc.narrow.narrowed
                                                 or a.name in lc.inline_narrowed)):
                     _witness("argtemp.value_union_method")
+                    init = (THIRLiteral(result_type=ut, value=None,
+                                        form=Form.VALUE,
+                                        loc=getattr(a, "loc", None))
+                            if isinstance(a, TpyNoneLiteral)
+                            else _lower_expr(a, lc, declared))
                     return THIRArgTemp(result_type=ut,
                                        cpp_type=lc.render_type(ut),
-                                       init=_lower_expr(a, lc, declared), form=Form.VALUE,
+                                       init=init, form=Form.VALUE,
                                        loc=getattr(a, "loc", None))
                 # A temporary into a generic-record method's RAW T slot
                 # hoists the named temp with the substituted type
@@ -5749,9 +5789,15 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                                    and (a.name in lc.narrow.narrowed
                                         or a.name in lc.inline_narrowed)):
             _witness("argtemp.value_union")
+            # A None arg is the union-typed literal (emit's monostate
+            # render); other members keep the target-less init.
+            init = (THIRLiteral(result_type=ut, value=None, form=Form.VALUE,
+                                loc=getattr(a, "loc", None))
+                    if isinstance(a, TpyNoneLiteral)
+                    else _lower_expr(a, lc, declared, use=_NESTED_ARG_USE))
             return THIRArgTemp(
                 result_type=ut, cpp_type=lc.render_type(ut),
-                init=_lower_expr(a, lc, declared, use=_NESTED_ARG_USE),
+                init=init,
                 form=Form.VALUE,
                 loc=getattr(a, "loc", None))
     # A str-slice arg into an `Own[str]` container element slot
@@ -6087,7 +6133,11 @@ def _lower_ctor_call_args(args: list[TpyExpr], fi, lc: '_LowerCtx',
             flush_slot = (
                 _own_lvalue_temp_slot(a, p.type, analyzer) is not None
                 or _union_ctor_temp_arg(a, p.type, analyzer)
-                or _protocol_arg_slot(p.type) is not None)
+                or _protocol_arg_slot(p.type) is not None
+                # The optional-ptr 'ctor' face's ArgTemp, gate-admitted
+                # under temps_ok (see the construction-site twin).
+                or _optional_ptr_arg_face(
+                    a, p.type, declared, analyzer) == 'ctor')
             lowered.append(_lower_call_arg(
                 a, p.type, lc, declared,
                 temp_args=temp_args and flush_slot,

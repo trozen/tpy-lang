@@ -1960,3 +1960,29 @@ byte-diff itself.
   fixed: container-element converts apply BEFORE the move wrap
   (`std::move(std::string((*a)))`, the make_vector face), and seeded
   value-opt VIEW params count as movable elements. Dial 1974 -> 1988/3485.
+- **Landed: capture/kwargs/no-init wave (2026-07-22, 5 cells).** (1) The match
+  WHOLE-SUBJECT CAPTURE tier: `_route_hoists` classifies F1-record hoists
+  into `_emit_branch_decls`' non-value forms -- borrow-only pointer
+  (`T* q;`, kind 'ptr'), single-bind owned-optional slot
+  (`std::optional<T> s;`, 'opt_storage'), and the pointer-repr-Optional
+  bare-inner pointer ('opt_ptr'); THIRMatchBinding grew assign_addr
+  (`q = &(__match_subject_N);`) and assign_move (`std::move` from a
+  MATERIALIZED call/ctor rvalue subject, subject_ref=False); the
+  chain-optional tier admits storage-form FIELD subjects via the O1
+  `optional_to_ptr` lift and binds the full Optional through the hoisted
+  pointer. (2) The optional-ptr 'ctor' face realized (both flush_slot rows).
+  (3) Value-union ctor-arg literal temps: None -> the monostate temp, a bare
+  int literal -> the target-less render (single int-family member only).
+  (4) No-init pointer-Optional decls (`h: Handle | None` ->
+  `Handle* h = nullptr;`, NO rebind pre-decl) + the slotless reseat arms:
+  INLINE_RVALUE (in-place plain block slot, reused by later rvalue reseats)
+  and the same-Optional pointer-name copy. (5) TypedDict ctor calls (the
+  kwargs-pack rewrite): fi-less `Options(...)` lowers over `init_params`
+  (`_typed_dict_ctor_call`), with the free-call ArgTemp and const
+  method-slot inline rows. Dial 2138 -> 2152/3502 (+14: match capture x4,
+  optional-ptr ctor x2, field_none, auto_move no-init x2,
+  kwargs-unpack x5). Parked with verified blockers: container-literal
+  REBOUND locals (a whole container pointer-local binding class),
+  nested-position ctor arg temps (memo G phase 2, blocked on the AST elif
+  cleanup), json qualcall recursive-wrapper literals, kwargs_unpack_get_in
+  (kwargs.get lane), the no-init family's _from_global/_return tails.

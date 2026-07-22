@@ -1369,6 +1369,15 @@ class PtrSlotKind(Enum):
     # validator rejects; the `&(...)` lives in this kind's emit instead
     # (the UNION_ADDR precedent).
     PTR_ADDR = auto()
+    # Rvalue reseat of a SLOTLESS pointer-repr Optional local (an
+    # annotation-only decl -- no pre-declared rebind slot): the first such
+    # reseat declares its PLAIN block slot in place and registers it
+    # (`T __slot_N = <rvalue>;\nname = &__slot_N;` --
+    # `_gen_pointer_local_rebind`'s no-slot rvalue branch); later rvalue
+    # reseats reuse it (`name = &(__slot_N = <rvalue>);`). `val_cpp`
+    # carries the pointee T spelling. Straight-line positions only (a
+    # block-scoped slot inside a branch/loop is not this slice).
+    INLINE_RVALUE = auto()
 
 
 @dataclass(frozen=True)
@@ -2251,9 +2260,12 @@ class THIRErrorReturnDiscard(THIRStmt):
 class THIRMatchBinding:
     """A capture / `as` name bound to the whole subject in a scalar-tier
     arm. `mode` folds `_emit_binding`'s value-subject arms at lowering:
-    'assign' (a hoisted / pre-declared local -- plain `name = subject;`;
-    the pointer/optional-local assign arms never fire for the admitted
-    scalar/str subjects), 'copy' (sema's `bind_by_value` free-copy scalar
+    'assign' (a hoisted / pre-declared local -- plain `name = subject;`,
+    including a hoisted pointer-local aliasing a pointer-repr subject),
+    'assign_addr' (a hoisted pointer-local aliasing a value lvalue subject
+    -- `name = &(subject);`), 'assign_move' (a hoisted owned-optional slot
+    moving from a materialized rvalue subject -- `name =
+    std::move(subject);`), 'copy' (sema's `bind_by_value` free-copy scalar
     -- `auto name = subject;`), 'ref' (`auto& name = subject;`). The name
     is raw; emit escapes. `from_case_var` (union tier) binds against the
     arm's `__case_{i}` extraction alias (or the composed `std::get` when
@@ -2263,7 +2275,7 @@ class THIRMatchBinding:
     the base being the subject (record tiers) or the alias (union
     tiers)."""
     name: str
-    mode: str  # 'assign' | 'copy' | 'ref'
+    mode: str  # 'assign' | 'assign_addr' | 'assign_move' | 'copy' | 'ref'
     from_case_var: bool = False
     subject_suffix: str = ""
 

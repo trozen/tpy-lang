@@ -3048,6 +3048,31 @@ def _protocol_bare_name_arg(a: TpyExpr, ptype: 'TpyType | None',
     return (_protocol_arg_temp(proto, at, "", analyzer, rvalue=False) is None
             and _witness("protoarg.bare"))
 
+def _typed_dict_ctor_call(e: TpyExpr, analyzer) -> 'RecordInfo | None':
+    """A TypedDict constructor call (`Options("localhost", 8080)` -- sema's
+    kwargs-pack rewrite leaves field-ordered positionals and NO synthetic
+    ctor fi), or None. The AST's record-branch tail renders it exactly like
+    a plain same/cross-module ctor, with `init_params` as the param source
+    (`_gen_call`'s init_params fallback). Returns the RecordInfo."""
+    if not (isinstance(e, TpyCall) and isinstance(e.func, TpyName)):
+        return None
+    if e.kwargs or e.double_star_unpack is not None or not e.args:
+        return None
+    if _ctor_call_special_form(e):
+        return None
+    if e.resolved_function_info is not None:
+        return None
+    if analyzer.registry.get_function(e.func_name):
+        return None
+    et = analyzer.get_expr_type(e)
+    ri = (analyzer.registry.get_record_for_type(unwrap_readonly(et))
+          if et is not None else None)
+    if ri is None or not ri.is_typed_dict or ri.is_native:
+        return None
+    if not ri.init_params or len(e.args) != len(ri.init_params):
+        return None
+    return ri
+
 def _record_rvalue_temp_arg(a: TpyExpr, ptype: TpyType | None,
                             locals_: dict[str, TpyType], analyzer) -> bool:
     """Gate arm for the record-rvalue temp row. Constructor arguments are
@@ -3057,7 +3082,8 @@ def _record_rvalue_temp_arg(a: TpyExpr, ptype: TpyType | None,
         return False
     return ((isinstance(a, TpyCall)
              and (_ctor_shape_ok(a, analyzer)
-                  or _ctor_instantiation_ok(a, analyzer)))
+                  or _ctor_instantiation_ok(a, analyzer)
+                  or _typed_dict_ctor_call(a, analyzer) is not None))
             or _record_rvalue_call_shape(a, analyzer))
 
 def _own_scalar_rvalue_arg(a: TpyExpr, ptype: TpyType | None,
@@ -3460,6 +3486,17 @@ def _ctor_arity_ok(e: TpyCall, fi) -> bool:
         return _witness("ctor.omit_defaults")
     return True
 
+def _ctor_call_special_form(e: TpyCall) -> bool:
+    """Whether a ctor-shaped call carries any of the special-form markers
+    that take other emit shapes -- shared by `_ctor_shape_ok` and
+    `_typed_dict_ctor_call` so a new TpyCall marker excludes both."""
+    return (e.call_type is not None or bool(e.type_args)
+            or bool(e.inferred_type_args)
+            or e.enum_from_value is not None or e.cast_target_type is not None
+            or e.isinstance_var is not None or e.dunder_call is not None
+            or e.macro_expansion is not None or e.compile_time_assert
+            or e.subscript_callee is not None)
+
 def _ctor_shape_ok(e: TpyCall, analyzer) -> bool:
     """A bare-name plain user-record constructor call in the `Name(args)` /
     qualified `::ns::Name(args)` emit shape -- `_gen_call`'s record-branch
@@ -3474,11 +3511,7 @@ def _ctor_shape_ok(e: TpyCall, analyzer) -> bool:
         return False
     if e.kwargs or e.double_star_unpack is not None:
         return False
-    if (e.call_type is not None or e.type_args or e.inferred_type_args
-            or e.enum_from_value is not None or e.cast_target_type is not None
-            or e.isinstance_var is not None or e.dunder_call is not None
-            or e.macro_expansion is not None or e.compile_time_assert
-            or e.subscript_callee is not None):
+    if _ctor_call_special_form(e):
         return False
     # A same-name free function wins _gen_call's registry branch before the
     # record lookup.
@@ -5680,7 +5713,8 @@ def _method_ctor_rvalue_arg(a: TpyExpr, ptype: TpyType | None, idx: int,
         return False
     if idx not in cbp:
         return False
-    return _ctor_shape_ok(a, analyzer)
+    return (_ctor_shape_ok(a, analyzer)
+            or _typed_dict_ctor_call(a, analyzer) is not None)
 
 def _is_builtin_print(e: TpyExpr, declared: dict[str, TpyType], analyzer) -> bool:
     """`e` is a call to the builtin `print` (not a user/local shadow): the builtin

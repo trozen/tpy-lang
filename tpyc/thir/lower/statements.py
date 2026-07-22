@@ -2413,9 +2413,18 @@ def _lower_opt_ptr_slot_decl(stmt: TpyVarDecl, vtype: 'OptionalType',
         note_detail("decl.opt_slot_pointee")
         raise ThirUnsupported(stmt_reject_reason(stmt))
     needs_rebind = stmt.name in lc.prescan.rvalue_reassigned
-    if isinstance(stmt.init, TpyNoneLiteral):
+    if stmt.init is None:
+        # An annotation-only decl (`h: Handle | None`) renders the same
+        # `T* x = nullptr;` as the explicit None init, but the AST
+        # allocates NO rebind slot at the decl -- the first rvalue reseat
+        # declares its block slot in place (the INLINE_RVALUE reseat arm).
+        needs_rebind = False
         kind = PtrSlotKind.OPT_NONE
         init: THIRExpr | None = None
+        _witness("decl.opt_slot_none")
+    elif isinstance(stmt.init, TpyNoneLiteral):
+        kind = PtrSlotKind.OPT_NONE
+        init = None
         _witness("decl.opt_slot_none")
     else:
         # A const rvalue source is not part of this slice (the rvalue arm below
@@ -3768,6 +3777,21 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     nt = vt0
                 else:
                     nt = _resolved_str_value(vt0, analyzer)
+            if (nt is None and not scope.in_branch
+                    and vt0 is not None and stmt.name not in declared
+                    and isinstance(vt0, OptionalType)
+                    and vt0.uses_pointer_repr()):
+                # `h: Handle | None` (no init): the OPT_PTR_SLOT decl's
+                # None flavor (`Handle* h = nullptr;`), reseats ride the
+                # pointer-local assign arms. Same registrations as the
+                # initialized OPT_PTR_SLOT call site.
+                node = _lower_opt_ptr_slot_decl(stmt, vt0, lc, declared,
+                                                loc)
+                lc.pointers.add(stmt.name)
+                if node.needs_rebind_slot:
+                    lc.rebind_slot_locals.add(stmt.name)
+                declared[stmt.name] = vt0
+                return node
             if nt is None or (scope.in_branch
                               and not scope.branch_decls_ok):
                 note_detail("decl.no_init")
@@ -4182,6 +4206,40 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     return THIRPtrLocalRebind(
                         name=stmt.name, kind=PtrSlotKind.OPT_NONE, loc=loc)
                 pointee = unwrap_readonly(reseat_u.inner)
+                if (_opt_slot_rvalue_shape(stmt.init, pointee, analyzer)
+                        and not scope.in_branch and scope.loop_depth == 0
+                        and not lc.resumable_leaf_mode):
+                    # First rvalue reseat of a slotless local declares its
+                    # plain block slot in place; later ones reuse it (the
+                    # INLINE_RVALUE emit).
+                    _witness("reseat.opt_inline_rvalue")
+                    return THIRPtrLocalRebind(
+                        name=stmt.name, kind=PtrSlotKind.INLINE_RVALUE,
+                        value=_lower_expr(
+                            stmt.init, lc, declared,
+                            use=_ExprUse(result=_ExprResultUse.BORROW_BIND),
+                            target_type=pointee),
+                        val_cpp=lc.render_type(pointee), loc=loc)
+                if (isinstance(stmt.init, TpyName)
+                        and stmt.init.name not in lc.narrow.narrowed
+                        and (stmt.init.name in lc.pointers
+                             or _optional_ptr_borrow_name(
+                                 stmt.init, declared, analyzer) is not None)
+                        and _optional_ptr_borrow(declared.get(stmt.init.name),
+                                                 analyzer) == reseat_u):
+                    # Same-Optional pointer-source copy (`q = a;` -- a `T*`
+                    # param/local source copies the pointer bare, the AST's
+                    # pointer-local source branch). Const safety rides the
+                    # structural equality: a readonly-inner source Optional
+                    # is a DIFFERENT OptionalType than the mutable target's,
+                    # so a const-dropping copy can never match this arm.
+                    _witness("reseat.opt_ptr_copy")
+                    return THIRAssign(
+                        target=THIRName(result_type=vtype, name=stmt.name,
+                                        loc=loc),
+                        value=THIRName(result_type=declared[stmt.init.name],
+                                       name=stmt.init.name, loc=loc),
+                        loc=loc)
                 if _f1_param_lvalue_reseat_ok(stmt.init, pointee, declared, lc,
                                               analyzer):
                     src: THIRExpr = _lower_expr(stmt.init, lc, declared)
@@ -6915,7 +6973,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         match_route = _match._select_match_route(
                 stmt, analyzer, declared, scope.admission_pointers(),
                 lc.narrow.narrowed.keys(), lc.storage_tuple_locals,
-                lc.prescan,
+                lc.prescan, lc,
                 in_branch=scope.in_branch,
                 in_loop=scope.loop_depth > 0)
         return _match._lower_match(

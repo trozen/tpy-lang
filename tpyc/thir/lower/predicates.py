@@ -4082,6 +4082,25 @@ def _value_union_temp_slot(a: TpyExpr, ptype: TpyType | None,
     # double member, rendering repr(v) -- resolve it like the f-string row
     # does. (An int literal never arrives bare: sema coerces it to the union,
     # the temp-free `_union_coerced_literal_arg` row.)
+    if isinstance(a, TpyNoneLiteral):
+        # `W("x", None)` at a value-union-with-None slot: the AST value
+        # branch hoists the monostate temp (`std::variant<...> __tmp_N =
+        # std::monostate{};`); the arm's init is the union-typed None
+        # literal (emit's monostate render).
+        if any(is_void_like_type(m) for m in ut.members):
+            return ut
+        return None
+    if isinstance(at, IntLiteralType):
+        # A bare int literal at a value-union ctor slot is NOT sema-coerced
+        # (unlike the free-call row): the AST hoists the temp with the
+        # target-less literal render (`__tmp_N = 1;`, the variant's
+        # converting ctor picks the single int-family member).
+        int_members = [m for m in ut.members
+                       if is_fixed_int_type(unwrap_readonly(m))
+                       or is_big_int_type(unwrap_readonly(m))]
+        if len(int_members) == 1:
+            return ut
+        return None
     if isinstance(at, FloatLiteralType):
         at = FLOAT
     if value_rec_union:

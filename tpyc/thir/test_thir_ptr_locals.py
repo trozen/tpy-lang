@@ -102,6 +102,77 @@ class TestOptPtrSlotDecl:
         assert isinstance(reseat, THIRPtrLocalRebind)
         assert reseat.kind is PtrSlotKind.OPT_NONE
 
+    def test_no_init_decl_routes(self):
+        # `p: Inner | None` (annotation only): the same `T* p = nullptr;`
+        # render as `= None`, but NO rebind-slot pre-decl -- the first
+        # rvalue reseat declares its plain block slot in place
+        # (INLINE_RVALUE: `Inner __slot_N = Inner(1); p = &__slot_N;`).
+        src = (
+            _F1_RECORDS
+            + "def f() -> Int32:\n"
+            + "    p: Inner | None\n"
+            + "    p = Inner(1)\n"
+            + "    if p is not None:\n        return p.value\n"
+            + "    return 0\n")
+        thir = _lower_ctx(src)
+        fn = _fn(thir, "f")
+        assert fn is not None
+        decl = fn.body[0]
+        assert isinstance(decl, THIRPtrLocalDecl)
+        assert decl.kind is PtrSlotKind.OPT_NONE
+        assert not decl.needs_rebind_slot
+        reseat = fn.body[1]
+        assert isinstance(reseat, THIRPtrLocalRebind)
+        assert reseat.kind is PtrSlotKind.INLINE_RVALUE
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+    def test_no_init_double_reseat_reuses_slot(self):
+        # The second rvalue reseat reuses the first's plain slot
+        # (`p = &(__slot_N = Inner(2));`).
+        src = (
+            _F1_RECORDS
+            + "def f() -> Int32:\n"
+            + "    p: Inner | None\n"
+            + "    p = Inner(1)\n"
+            + "    p = Inner(2)\n"
+            + "    if p is not None:\n        return p.value\n"
+            + "    return 0\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is not None
+        cpp = _cpp(src, thir=True)
+        assert "Inner __slot_1 = Inner(1);" in cpp
+        assert "p = &(__slot_1 = Inner(2));" in cpp
+        assert cpp == _cpp(src, thir=False)
+
+    def test_no_init_ptr_param_copy_reseat_routes(self):
+        # `q = a` off a same-Optional borrow param copies the pointer bare.
+        src = (
+            _F1_RECORDS
+            + "def f(a: Inner | None) -> bool:\n"
+            + "    q: Inner | None\n"
+            + "    q = a\n"
+            + "    return q is None\n")
+        thir = _lower_ctx(src)
+        fn = _fn(thir, "f")
+        assert fn is not None
+        reseat = fn.body[1]
+        assert isinstance(reseat, THIRAssign)
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+    def test_no_init_branch_reseat_still_defers(self):
+        # A branch-positioned rvalue reseat would block-scope the slot
+        # under the branch -- stays AST.
+        src = (
+            _F1_RECORDS
+            + "def f(c: bool) -> bool:\n"
+            + "    p: Inner | None\n"
+            + "    if c:\n        p = Inner(1)\n"
+            + "    else:\n        p = Inner(2)\n"
+            + "    return p is None\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is None
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
     def test_own_optional_call_init_is_ineligible(self):
         # An `Own[Inner | None]`-returning call init needs the
         # `optional_to_ptr` slot-lift arm (a later rung) -- the whole body

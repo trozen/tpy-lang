@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from ..codegen_cpp.context import CodeGenOptions
 from .testutil import (
-    _compile, _entry, _lower_ctor, _ctor_tail, _PRELUDE,
+    _compile, _entry, _fn, _lower_ctor, _lower_ctx, _lower_ctx_witnessed,
+    _ctor_tail, _PRELUDE,
 )
 
 class TestConstructor:
@@ -1531,3 +1532,129 @@ class TestCtorMilSmallFamilies:
             + "    print(d.n)\n"
             + "main()\n")
         assert self._hpp(src, thir=True) == self._hpp(src, thir=False)
+
+
+class TestTypedDictCtorCall:
+    # The kwargs-pack rewrite: sema turns `connect(host=..., port=...)`
+    # into a fi-less `Options(...)` ctor arg with field-ordered
+    # positionals; the free-call slot hoists the ArgTemp, the const method
+    # slot inlines the expansion (both AST renders mirrored).
+
+    _SRC = (
+        "from typing import TypedDict, Unpack\n"
+        "from tpy import Int32\n"
+        "class Options(TypedDict):\n"
+        "    host: str\n"
+        "    port: Int32\n"
+        "def connect(**kwargs: Unpack[Options]) -> None:\n"
+        "    print(kwargs[\"host\"])\n"
+        "def main() -> None:\n"
+        "    connect(host=\"localhost\", port=Int32(8080))\n"
+        "main()\n"
+    )
+
+    def test_kwargs_pack_routes_byte_identical(self):
+        thir, faces = _lower_ctx_witnessed(self._SRC)
+        assert _fn(thir, "main") is not None
+        assert faces.get("ctor.typed_dict")
+        compiler, modules = _compile(self._SRC)
+        entry = _entry(modules)
+        outs = {}
+        for flag in (True, False):
+            compiler2, modules2 = _compile(self._SRC)
+            entry2 = _entry(modules2)
+            _, outs[flag] = compiler2.generate_code_to_strings(
+                entry2, options=CodeGenOptions(emit_source_comments=False,
+                                               thir_codegen=flag))
+        assert outs[True] == outs[False]
+
+
+    def _cpp_pair(self, src: str) -> tuple[str, str]:
+        outs = []
+        for flag in (True, False):
+            compiler, modules = _compile(src)
+            entry = _entry(modules)
+            _, cpp = compiler.generate_code_to_strings(
+                entry, options=CodeGenOptions(emit_source_comments=False,
+                                              thir_codegen=flag))
+            outs.append(cpp)
+        return outs[0], outs[1]
+
+    def test_method_slot_inlines_byte_identical(self):
+        # The const method-slot row inlines the pack expansion
+        # (`c.connect(Options("localhost", 8080));` -- no temp).
+        src = (
+            "from typing import TypedDict, Unpack\n"
+            "from tpy import Int32\n"
+            "class Options(TypedDict):\n"
+            "    host: str\n"
+            "    port: Int32\n"
+            "class Client:\n"
+            "    n: Int32\n"
+            "    def __init__(self, n: Int32) -> None:\n"
+            "        self.n = n\n"
+            "    def connect(self, **kwargs: Unpack[Options]) -> None:\n"
+            "        print(kwargs[\"host\"])\n"
+            "def main() -> None:\n"
+            "    c = Client(1)\n"
+            "    c.connect(host=\"localhost\", port=Int32(8080))\n"
+            "main()\n"
+        )
+        thir = _lower_ctx(src)
+        assert _fn(thir, "main") is not None
+        a, b = self._cpp_pair(src)
+        assert "c.connect(Options(" in a
+        assert a == b
+
+    def test_double_star_unpack_still_defers(self):
+        # `connect(**o)` re-spreads an existing pack -- the classifier
+        # excludes double_star_unpack shapes at the CALL, so the caller
+        # body stays AST (byte-identical via fallback).
+        src = (
+            "from typing import TypedDict, Unpack\n"
+            "from tpy import Int32\n"
+            "class Options(TypedDict):\n"
+            "    host: str\n"
+            "    port: Int32\n"
+            "def connect(**kwargs: Unpack[Options]) -> None:\n"
+            "    print(kwargs[\"host\"])\n"
+            "def use(o: Options) -> None:\n"
+            "    connect(**o)\n"
+            "def main() -> None:\n"
+            "    use(Options(host=\"x\", port=Int32(1)))\n"
+            "main()\n"
+        )
+        a, b = self._cpp_pair(src)
+        assert a == b
+
+
+class TestCtorArgOptionalPtrCtorFace:
+    # The optional-ptr 'ctor' face's flush rows: a record-ctor rvalue into
+    # a `Inner | None` ctor slot hoists the ArgTemp and lifts its address
+    # (`Inner __tmp_N = Inner(7); Holder(&__tmp_N)`).
+
+    _SRC = (
+        _PRELUDE
+        + "class Inner:\n    v: Int32\n"
+        + "    def __init__(self, v: Int32):\n        self.v = v\n"
+        + "class Holder:\n    opt: Inner | None\n"
+        + "    def __init__(self, opt: Inner | None):\n        self.opt = opt\n"
+        + "def main() -> None:\n"
+        + "    h = Holder(Inner(7))\n"
+        + "    if h.opt is not None:\n        print(h.opt.v)\n"
+        + "main()\n")
+
+    def test_ctor_face_routes_byte_identical(self):
+        thir, faces = _lower_ctx_witnessed(self._SRC)
+        assert _fn(thir, "main") is not None
+        assert faces.get("optptr.ctor_rvalue")
+        outs = []
+        for flag in (True, False):
+            compiler, modules = _compile(self._SRC)
+            entry = _entry(modules)
+            _, cpp = compiler.generate_code_to_strings(
+                entry, options=CodeGenOptions(emit_source_comments=False,
+                                              thir_codegen=flag))
+            outs.append(cpp)
+        assert "__tmp_1 = Inner(" in outs[0]
+        assert outs[0] == outs[1]

@@ -1327,9 +1327,10 @@ class TestMatchRecordRejections:
         assert not self._routed(src, "f")
         assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
-    def test_hoisted_record_as_capture_rejects(self):
-        # A leaked record `as` capture hoists in pointer form on the AST
-        # (`Point* q;`) -- outside the plain-value hoist slice.
+    def test_hoisted_record_as_capture_routes(self):
+        # A leaked record `as` capture hoists in pointer form (`Point* q;`)
+        # and aliases the value lvalue subject via address-of
+        # (`q = &(__match_subject_N);` -- the assign_addr mode).
         src = RECORD_PREAMBLE + (
             "def f(p: Point) -> Int32:\n"
             "    match p:\n"
@@ -1338,10 +1339,7 @@ class TestMatchRecordRejections:
             "    return q.x\n"
             "f(Point(1, 2))\n"
         )
-        assert not self._routed(src, "f")
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
-
-        assert not self._routed(src, "f")
+        assert self._routed(src, "f")
         assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
 
@@ -2005,9 +2003,10 @@ class TestMatchOptionalGateRejections:
         assert self._routed(src, "check")
         assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
-    def test_full_optional_capture_rejects(self):
-        # No None prefix + a catchall: the partition itself fails (the
-        # capture would bind the full Optional).
+    def test_full_optional_capture_routes(self):
+        # No None prefix + a catchall: the chain tier binds the full
+        # Optional through the hoisted `T* v;` pointer capture
+        # (`v = __match_subject_N;`).
         src = OPT_PREAMBLE + (
             "def check(x: Leaf | None) -> None:\n"
             "    match x:\n"
@@ -2017,7 +2016,7 @@ class TestMatchOptionalGateRejections:
             "    check(Leaf(3))\n"
             "main()\n"
         )
-        assert not self._routed(src, "check")
+        assert self._routed(src, "check")
         assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
 
@@ -2545,6 +2544,223 @@ class TestMatchSwitchStrRejections:
         )
         thir = _lower_ctx(src)
         assert _fn(thir, "f") is None
+
+
+class TestMatchWholeSubjectCapture:
+    # The whole-subject capture tier over record subjects: hoisted captures
+    # take `_emit_branch_decls`' non-value forms (`T* q;` borrow alias /
+    # `std::optional<T> s;` owned slot) and `_emit_binding`'s declared
+    # pointer/optional-local arms (assign / assign_addr / assign_move).
+
+    def test_value_subject_capture_assign_addr(self):
+        # A value lvalue subject: `Point* q;` hoist + `q = &(__match_subject_N);`.
+        src = RECORD_PREAMBLE + (
+            "def f() -> None:\n"
+            "    p = Point(1, 2)\n"
+            "    match p:\n"
+            "        case q:\n"
+            "            q.x = 9\n"
+            "    print(p.x)\n"
+            "f()\n"
+        )
+        thir, faces = _lower_ctx_witnessed(src)
+        fn = _fn(thir, "f")
+        assert fn is not None
+        assert faces.get("match.hoist_ptr_local")
+        assert faces.get("match.bind_assign_addr")
+        m = next(s for s in fn.body if isinstance(s, THIRMatch))
+        assert m.hoist_decls == (("q", "Point*"),)
+        assert m.arms[0].entries[0].binding.mode == "assign_addr"
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+    def test_optional_borrow_subject_capture_assign(self):
+        # A pointer-repr Optional local narrowed to the record: the subject
+        # binds the `Point*` itself, so the capture assigns the pointer
+        # directly (no address-of).
+        src = RECORD_PREAMBLE + (
+            "def f() -> None:\n"
+            "    b: Point | None = Point(1, 2)\n"
+            "    match b:\n"
+            "        case q:\n"
+            "            q.x = 9\n"
+            "    if b is not None:\n"
+            "        print(b.x)\n"
+            "f()\n"
+        )
+        thir, faces = _lower_ctx_witnessed(src)
+        fn = _fn(thir, "f")
+        assert fn is not None
+        assert faces.get("match.bind_assign")
+        m = next(s for s in fn.body if isinstance(s, THIRMatch))
+        assert m.hoist_decls == (("q", "Point*"),)
+        assert m.arms[0].entries[0].binding.mode == "assign"
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+    def test_rvalue_subject_capture_moves(self):
+        # A call rvalue subject materializes (`auto __match_subject_N =
+        # make();`, subject_ref False); the capture owns via the optional
+        # slot + std::move, body reads deref (`s->x`).
+        src = RECORD_PREAMBLE + (
+            "from tpy import Own\n"
+            "def make() -> Own[Point]:\n"
+            "    return Point(7, 8)\n"
+            "def f() -> None:\n"
+            "    match make():\n"
+            "        case s:\n"
+            "            s.x = 11\n"
+            "            print(s.x)\n"
+            "f()\n"
+        )
+        thir, faces = _lower_ctx_witnessed(src)
+        fn = _fn(thir, "f")
+        assert fn is not None
+        assert faces.get("match.subject_rvalue")
+        assert faces.get("match.hoist_optional_storage")
+        assert faces.get("match.bind_assign_move")
+        m = next(s for s in fn.body if isinstance(s, THIRMatch))
+        assert not m.subject_ref
+        assert m.hoist_decls == (("s", "std::optional<Point>"),)
+        assert m.arms[0].entries[0].binding.mode == "assign_move"
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+    def test_guarded_rvalue_subject_still_defers(self):
+        # Any guard routes the strategy to guarded_record, where an rvalue
+        # subject stays out (a moving capture under a guard could re-read
+        # the moved-from temp on guard failure).
+        src = RECORD_PREAMBLE + (
+            "from tpy import Own\n"
+            "def make() -> Own[Point]:\n"
+            "    return Point(7, 8)\n"
+            "def f() -> None:\n"
+            "    match make():\n"
+            "        case s if s.x > 0:\n"
+            "            print(s.x)\n"
+            "        case _:\n"
+            "            print(0)\n"
+            "f()\n"
+        )
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is None
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+    def test_optional_rvalue_subject_still_defers(self):
+        # An Optional-typed rvalue subject stays out: the tiers' pointer
+        # form would lift a temporary (`optional_to_ptr` dangle).
+        src = RECORD_PREAMBLE + (
+            "from tpy import Own\n"
+            "def make() -> Own[Point | None]:\n"
+            "    return Point(7, 8)\n"
+            "def f() -> None:\n"
+            "    match make():\n"
+            "        case None:\n"
+            "            print(0)\n"
+            "        case s:\n"
+            "            print(1)\n"
+            "f()\n"
+        )
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is None
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+    def test_leaked_container_arm_decl_still_defers(self):
+        # A leaked arm-body container decl is outside the F1-record slice
+        # of the non-value hoist forms. Lowering-level assert only: the
+        # AST path crashes on this sema-legal shape (BUGS.md, leaked
+        # branch-first container-literal decl -> unresolved PendingListType).
+        src = RECORD_PREAMBLE + (
+            "def f(p: Point) -> Int32:\n"
+            "    match p:\n"
+            "        case Point(x=0):\n"
+            "            xs = [1, 2]\n"
+            "        case _:\n"
+            "            return 0\n"
+            "    return xs[0]\n"
+            "print(f(Point(0, 1)))\n"
+        )
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is None
+
+    def test_optional_field_subject_full_capture_routes(self):
+        # Chain-optional tier, storage-form Optional FIELD subject: the
+        # `optional_to_ptr` lift (`auto` bind) + the hoisted `T* q;`
+        # full-Optional pointer capture (`q = __match_subject_N;`).
+        src = RECORD_PREAMBLE + (
+            "class Holder:\n"
+            "    def __init__(self, opt: Point | None) -> None:\n"
+            "        self.opt = opt\n"
+            "def f(h: Holder) -> None:\n"
+            "    match h.opt:\n"
+            "        case q:\n"
+            "            q.x = 9\n"
+            "    if h.opt is not None:\n"
+            "        print(h.opt.x)\n"
+            "f(Holder(Point(1, 2)))\n"
+        )
+        thir, faces = _lower_ctx_witnessed(src)
+        fn = _fn(thir, "f")
+        assert fn is not None
+        assert faces.get("match.hoist_opt_ptr_local")
+        m = next(s for s in fn.body if isinstance(s, THIRMatch))
+        assert m.strategy == "if_elif_optional" and not m.subject_ref
+        assert m.hoist_decls == (("q", "Point*"),)
+        b = m.arms[0].entries[0].binding
+        assert b.mode == "assign" and not b.from_case_var
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+    def test_optional_name_subject_full_capture_routes(self):
+        # Same tier over a NAME subject: the borrow-form `T*` binding passes
+        # bare (`auto& __match_subject_N = b;`), the capture assigns it.
+        src = RECORD_PREAMBLE + (
+            "def f(b: Point | None) -> None:\n"
+            "    match b:\n"
+            "        case q:\n"
+            "            pass\n"
+            "    if q is not None:\n"
+            "        q.x = 5\n"
+            "    if b is not None:\n"
+            "        print(b.x)\n"
+            "f(Point(1, 2))\n"
+        )
+        thir = _lower_ctx(src)
+        fn = _fn(thir, "f")
+        assert fn is not None
+        m = next(s for s in fn.body if isinstance(s, THIRMatch))
+        assert m.subject_ref
+        assert m.hoist_decls == (("q", "Point*"),)
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+    def test_optional_subscript_subject_still_defers(self):
+        # A subscript Optional source has no lift witness -- stays AST.
+        src = RECORD_PREAMBLE + (
+            "def f(xs: list[Point | None]) -> None:\n"
+            "    match xs[0]:\n"
+            "        case q:\n"
+            "            pass\n"
+            "    print(len(xs))\n"
+            "f([Point(1, 2)])\n"
+        )
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is None
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+    def test_resumable_capture_still_defers(self):
+        # Non-value hoist forms place storage at function top -- no drain
+        # point in a resumable leaf emitter.
+        src = RECORD_PREAMBLE + (
+            "from typing import Iterator\n"
+            "def g(p: Point) -> Iterator[Int32]:\n"
+            "    match p:\n"
+            "        case q:\n"
+            "            q.x = 3\n"
+            "    yield p.x\n"
+            "def f() -> None:\n"
+            "    for v in g(Point(1, 2)):\n"
+            "        print(v)\n"
+            "f()\n"
+        )
+        thir = _lower_ctx(src)
+        assert _fn(thir, "g") is None
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
 
 class TestMatchRecordOrWildcardAlt:

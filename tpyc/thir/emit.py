@@ -2275,6 +2275,10 @@ def _emit_match_binding(out: TextIO, binding: 'THIRMatchBinding | None',
     rhs = f"{subject}{binding.subject_suffix}"
     if binding.mode == "assign":
         out.write(f"{inner}{name} = {rhs};\n")
+    elif binding.mode == "assign_addr":
+        out.write(f"{inner}{name} = &({rhs});\n")
+    elif binding.mode == "assign_move":
+        out.write(f"{inner}{name} = std::move({rhs});\n")
     elif binding.mode == "copy":
         out.write(f"{inner}auto {name} = {rhs};\n")
     else:
@@ -3129,6 +3133,21 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             # Lvalue-name reseat: address-of the bare storage read.
             out.write(f"{indent}{name} = "
                       f"&({_emit_expr(stmt.value, state)});\n")
+        elif stmt.kind is PtrSlotKind.INLINE_RVALUE:
+            # Slotless local's rvalue reseat: the first allocates the plain
+            # block slot in place (value renders before the slot draw,
+            # matching _gen_pointer_local_rebind's order); later rvalue
+            # reseats reuse it.
+            val_cpp = _emit_expr(stmt.value, state)
+            slot = state.rebind_slots.get(stmt.name)
+            if slot is None:
+                slot = state.next_slot()
+                state.rebind_slots[stmt.name] = slot
+                out.write(f"{indent}{stmt.val_cpp} __slot_{slot} = "
+                          f"{val_cpp};\n")
+                out.write(f"{indent}{name} = &__slot_{slot};\n")
+            else:
+                out.write(f"{indent}{name} = &(__slot_{slot} = {val_cpp});\n")
         elif stmt.kind is PtrSlotKind.BRANCH_RVALUE:
             # Branch-hoisted rvalue reseat without an if-head slot: the first
             # reseat allocates the function-top `std::optional<T>` lazily

@@ -138,6 +138,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "ctor.instantiation",           # record-ctor instantiation form
                                     # (`Cell[Int32]()` / `Poll[T]()`) ->
                                     # rendered `type_to_cpp(call_type)(args)`
+    "ctor.typed_dict",              # TypedDict ctor: init_params spelling, no fi
     "call.marker_qualified",        # module-qualified `m.f(x)` / static
                                     # `Rec.m(x)` -> pre-rendered callee_cpp
     "call.coro_factory_adapter",    # async-def factory call into an
@@ -644,6 +645,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "reseat.ptr_copy",
     # Reseat of a slot-hoist Optional local to None: `x = nullptr;`.
     "reseat.opt_none",
+    "reseat.opt_inline_rvalue",  # slotless local: in-place plain block slot + later reuse
+    "reseat.opt_ptr_copy",       # same-Optional borrow-name source: bare pointer copy
     # Rvalue reseat through the pre-declared rebind slot:
     # `x = &*(__slot_N = <rvalue>);` (THIRAssign's rebind-slot arm).
     "reseat.opt_rvalue",
@@ -928,6 +931,12 @@ THIR_FACES: frozenset[str] = frozenset({
     "match.bind_copy",              # capture/as: `auto name = subject;`
     "match.bind_ref",               # capture/as: `auto& name = subject;`
     "match.bind_assign",            # pre-declared/hoisted: `name = subject;`
+    "match.bind_assign_addr",       # hoisted ptr-local: `name = &(subject);`
+    "match.bind_assign_move",       # hoisted opt slot: `name = std::move(subject);`
+    "match.subject_rvalue",         # call rvalue subject: owned `auto` dispatch-local
+    "match.hoist_ptr_local",        # capture hoist: `T* name;` borrow-only form
+    "match.hoist_opt_ptr_local",    # ptr-repr Optional capture hoist: `T* name;`
+    "match.hoist_optional_storage",  # capture hoist: `std::optional<T> name;` slot
     "match.if_elif_guarded",        # standalone-if + goto __match_end_N (M3b)
     "match.guard_arm",              # a guarded arm's inner `if (guard)`
     "match.switch_guard_chain",     # in-switch guard chain (grouped entries)

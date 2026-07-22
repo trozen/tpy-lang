@@ -1421,7 +1421,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
             m_route = _match._select_match_route(
                 t.match_stmt, analyzer, declared, frozenset(lc.pointers),
                 lc.narrow.narrowed.keys(), lc.storage_tuple_locals,
-                lc.prescan, in_branch=False, in_loop=False)
+                lc.prescan, lc, in_branch=False, in_loop=False)
             match_dispatches[id(t.match_stmt)] = _match._lower_match(
                 t.match_stmt, m_route, lc, declared, frozenset(lc.pointers),
                 getattr(t.match_stmt, "loc", None), arm_body_hooks=True)

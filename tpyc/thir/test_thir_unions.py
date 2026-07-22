@@ -1435,6 +1435,46 @@ class TestUnionCallArgLift:
         assert isinstance(arg, THIRArgTemp)
         assert isinstance(arg.init, THIRBinOp) and arg.init.paren_wrap
 
+    def test_none_value_union_arg_temps(self):
+        # `None` into a value-union-with-None slot hoists the monostate
+        # temp (`std::variant<...> __tmp_N = std::monostate{};` -- the
+        # union-typed literal init, emit's monostate render).
+        thir = self._lower(
+            "def take_vn(v: Int32 | Float64 | None) -> Int32:\n"
+            "    return 0\n"
+            "def f() -> Int32:\n    return take_vn(None)\n")
+        arg = self._arg(thir, "f")
+        assert isinstance(arg, THIRArgTemp)
+        assert isinstance(arg.init, THIRLiteral) and arg.init.value is None
+        assert isinstance(arg.init.result_type, UnionType)
+
+    def test_two_int_member_union_ctor_literal_still_defers(self):
+        # A bare int literal against a ctor slot whose union carries TWO
+        # int-family members has no single converting-ctor target -- the
+        # widened row rejects and the body stays AST.
+        thir = self._lower(
+            "from tpy import Int64\n"
+            "class WI:\n    uni: Int32 | Int64 | None\n"
+            "    def __init__(self, uni: 'Int32 | Int64 | None') -> None:\n"
+            "        self.uni = uni\n"
+            "def look(w: WI) -> Int32:\n    return 0\n"
+            "def f() -> None:\n    print(look(WI(1)))\n")
+        assert _fn(thir, "f") is None
+
+    def test_int_literal_value_union_ctor_arg_temps(self):
+        # A bare int literal at a value-union ctor slot is not sema-coerced:
+        # the temp hoists with the target-less literal render (`__tmp_N =
+        # 1;`, the variant's converting ctor picks the int member). The
+        # flush position is the enclosing statement.
+        thir = self._lower(
+            "class WU:\n    uni: int | str | None\n"
+            "    def __init__(self, uni: 'int | str | None') -> None:\n"
+            "        self.uni = uni\n"
+            "def look(w: WU) -> Int32:\n    return 0\n"
+            "def f() -> None:\n    print(look(WU(1)))\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+
     def test_record_rvalue_ptr_union_arg_temps(self):
         # `take(A(n))` hoists a named record temp (`A __tmp_N = A(n);`) and
         # lifts its address -- the ctor-rvalue temp arm (flush positions
