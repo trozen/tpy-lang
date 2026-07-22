@@ -1448,15 +1448,30 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
             recv_use = _ExprUse(result=_ExprResultUse.RECEIVER)
         else:
             recv_use = _ExprUse()
+        # A str-family FIELD needle renders the bare member read into the
+        # contains(...) template on both paths (same owned-str-field-ok
+        # position as the compare operands above).
+        needle = _lower_expr(
+            e.left, lc, declared,
+            field_owned_str_ok=isinstance(e.left, TpyFieldAccess))
+        if user_contains and e.resolved_contains.params:
+            # Mirror _convert_to_fixed_int_arg: a runtime-BigInt needle
+            # against the user __contains__'s declared fixed-int param takes
+            # the checked call-arg narrow (an int literal stays bare, like
+            # the AST's literal exemption).
+            pt = unwrap_readonly(e.resolved_contains.params[0].type)
+            if (is_fixed_int_type(pt)
+                    and not isinstance(e.left, TpyIntLiteral)
+                    and _runtime_bigint(analyzer.get_expr_type(e.left),
+                                        analyzer)):
+                needle = THIRCoerce(
+                    result_type=pt, expr=needle,
+                    coercion_name=_BIGINT_NARROW,
+                    wrap=f"({{0}}).to_fixed_check<{pt.to_cpp()}>()", loc=loc)
         return THIRMembership(
             result_type=rtype,
             receiver=_lower_expr(e.right, lc, declared, use=recv_use),
-            # A str-family FIELD needle renders the bare member read into the
-            # contains(...) template on both paths (same owned-str-field-ok
-            # position as the compare operands above).
-            needle=_lower_expr(
-                e.left, lc, declared,
-                field_owned_str_ok=isinstance(e.left, TpyFieldAccess)),
+            needle=needle,
             method_cpp=(e.resolved_contains.name if user_contains
                         else e.resolved_contains.native_name),
             negate=e.op == "not in",

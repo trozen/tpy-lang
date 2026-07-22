@@ -18,6 +18,7 @@
 #include <type_traits>
 #include <vector>
 
+#include "bigint.hpp"
 #include "core.hpp"
 #include "container_ops.hpp"
 #include "ranges.hpp"
@@ -239,6 +240,17 @@ inline bool bytes_contains(BytesView haystack, uint8_t needle) {
 
 inline bool bytes_contains(BytesView haystack, int32_t needle) {
     return bytes_contains(haystack, int_to_byte(needle));
+}
+
+// A BigInt needle raises outside the byte domain like CPython's
+// `2**40 in b"..."` (ValueError, not False -- unlike dict/set membership,
+// where an out-of-range key is simply absent).
+inline bool bytes_contains(BytesView haystack, const BigInt& needle) {
+    int32_t v;
+    if (!needle.to_fixed_try<int32_t>(v)) {
+        raise_value_error("bytes must be in range(0, 256)");
+    }
+    return bytes_contains(haystack, int_to_byte(v));
 }
 
 // -- Manipulation -----------------------------------------------------------

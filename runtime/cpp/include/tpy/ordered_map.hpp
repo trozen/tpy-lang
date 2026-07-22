@@ -11,11 +11,13 @@
 
 #pragma once
 
+#include <concepts>
 #include <cstdint>
 #include <expected>
 #include <functional>
 #include <initializer_list>
 #include <tuple>
+#include <type_traits>
 #include <unordered_map>
 #include <utility>
 
@@ -290,6 +292,21 @@ public:
         requires requires(const KeyArg& k) { K(k); }
     bool contains(const KeyArg& key) const {
         return contains(K(key));
+    }
+
+    // A wider-than-K integer needle (a BigInt key in `k in d` against a
+    // fixed-int-keyed map): membership is a value question, so a needle
+    // outside K's range is simply absent (False), never a range panic --
+    // matching CPython's `2**70 in d`.
+    template<typename KeyArg>
+        requires (std::is_integral_v<K>
+                  && !requires(const KeyArg& k) { K(k); }
+                  && requires(const KeyArg& k, K& out) {
+                         { k.template to_fixed_try<K>(out) } -> std::convertible_to<bool>;
+                     })
+    bool contains(const KeyArg& key) const {
+        K narrowed;
+        return key.template to_fixed_try<K>(narrowed) && contains(narrowed);
     }
 
     items_iterator find(const K& key) {

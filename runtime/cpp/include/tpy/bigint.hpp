@@ -378,28 +378,54 @@ public:
                                 tpy::fixed_int_name<T>());
     }
 
-    // Non-throwing "fits in int64?" check + extract. Mirrors the int64 path of
-    // to_fixed_check but returns a bool instead of raising, so the CPython
-    // to_py(BigInt) fast-path test does not throw for control flow.
-    bool to_i64_checked(int64_t& out) const noexcept {
+    // Non-throwing "fits in T?" check + extract. Mirrors to_fixed_check but
+    // returns a bool instead of raising, so range questions whose answer is
+    // "no" (a membership needle outside the container's key width) do not
+    // throw for control flow.
+    template<typename T>
+    bool to_fixed_try(T& out) const noexcept {
+        static_assert(std::is_integral_v<T>, "T must be an integer type");
         if (is_small()) {
-            out = small_value();
-            return true;
+            int64_t v = small_value();
+            if constexpr (std::is_signed_v<T>) {
+                if (v >= static_cast<int64_t>(std::numeric_limits<T>::min()) &&
+                    v <= static_cast<int64_t>(std::numeric_limits<T>::max())) {
+                    out = static_cast<T>(v);
+                    return true;
+                }
+            } else {
+                if (v >= 0 && static_cast<uint64_t>(v) <= static_cast<uint64_t>(std::numeric_limits<T>::max())) {
+                    out = static_cast<T>(v);
+                    return true;
+                }
+            }
+            return false;
         }
         const HeapBig* p = heap_ptr();
         if (p->len > 1) {
             return false;
         }
         uint64_t mag = (p->len == 0) ? 0 : p->limbs[0];
-        __int128 value = (p->sign < 0)
-            ? -static_cast<__int128>(mag)
-            : static_cast<__int128>(mag);
-        if (value >= static_cast<__int128>(std::numeric_limits<int64_t>::min()) &&
-            value <= static_cast<__int128>(std::numeric_limits<int64_t>::max())) {
-            out = static_cast<int64_t>(value);
-            return true;
+        if constexpr (std::is_signed_v<T>) {
+            __int128 value = (p->sign < 0)
+                ? -static_cast<__int128>(mag)
+                : static_cast<__int128>(mag);
+            if (value >= static_cast<__int128>(std::numeric_limits<T>::min()) &&
+                value <= static_cast<__int128>(std::numeric_limits<T>::max())) {
+                out = static_cast<T>(value);
+                return true;
+            }
+        } else {
+            if (p->sign >= 0 && mag <= static_cast<uint64_t>(std::numeric_limits<T>::max())) {
+                out = static_cast<T>(mag);
+                return true;
+            }
         }
         return false;
+    }
+
+    bool to_i64_checked(int64_t& out) const noexcept {
+        return to_fixed_try<int64_t>(out);
     }
 
     // Truncating conversion to any fixed-width integer type (modular reduction, never panics)

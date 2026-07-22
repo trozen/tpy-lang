@@ -1996,7 +1996,19 @@ class ExpressionGenerator:
                 right = f"(*{right})"
             negate = expr.op == "not in"
             if expr.resolved_contains:
-                find_expr = f"({self.builtins.gen_call_from_fi(expr.resolved_contains, right, [left])})"
+                fi = expr.resolved_contains
+                # A plain user __contains__ takes the standard call-arg
+                # fixed-int narrow (a BigInt needle vs a declared fixed-int
+                # param panics out of range, like any call); native container
+                # fis (dict/set contains, bytes_contains) instead handle wide
+                # needles value-correctly in the runtime (absent -> False,
+                # bytes -> ValueError), so their needle stays bare.
+                if fi.params and not (fi.native_name or fi.native_function
+                                      or fi.cpp_template):
+                    left = self._convert_to_fixed_int_arg(
+                        left, self.types.get_resolved_type(expr.left),
+                        unwrap_readonly(fi.params[0].type), expr.left)
+                find_expr = f"({self.builtins.gen_call_from_fi(fi, right, [left])})"
                 return f"(!{find_expr})" if negate else find_expr
             elif is_any_str_type(self.types.get_resolved_type(expr.right)):
                 # String contains: use .find(). Wrap string literals in

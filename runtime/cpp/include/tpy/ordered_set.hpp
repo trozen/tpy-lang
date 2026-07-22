@@ -8,10 +8,12 @@
 
 #pragma once
 
+#include <concepts>
 #include <cstdint>
 #include <expected>
 #include <functional>
 #include <initializer_list>
+#include <type_traits>
 #include <unordered_map>
 #include <utility>
 
@@ -173,6 +175,20 @@ public:
         requires requires(const ValArg& v) { T(v); }
     bool contains(const ValArg& value) const {
         return contains(T(value));
+    }
+
+    // A wider-than-T integer needle (a BigInt against a fixed-int set):
+    // membership is a value question, so a needle outside T's range is
+    // simply absent (False), never a range panic -- matching CPython.
+    template<typename ValArg>
+        requires (std::is_integral_v<T>
+                  && !requires(const ValArg& v) { T(v); }
+                  && requires(const ValArg& v, T& out) {
+                         { v.template to_fixed_try<T>(out) } -> std::convertible_to<bool>;
+                     })
+    bool contains(const ValArg& value) const {
+        T narrowed;
+        return value.template to_fixed_try<T>(narrowed) && contains(narrowed);
     }
 
     // -- Iteration (insertion order) -----------------------------------------

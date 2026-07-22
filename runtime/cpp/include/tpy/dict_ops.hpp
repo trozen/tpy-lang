@@ -11,12 +11,14 @@
 #pragma once
 
 #include <algorithm>
+#include <concepts>
 #include <cstdint>
 #include <iostream>
 #include <optional>
 #include <ranges>
 #include <sstream>
 #include <tuple>
+#include <type_traits>
 
 #include "core.hpp"
 #include "next_iter.hpp"
@@ -138,7 +140,10 @@ struct dict_keys_view {
     auto begin() const { return map_->begin(); }
     auto end() const { return map_->end(); }
     int32_t size() const { return map_->size(); }
-    bool contains(const K& key) const { return map_->contains(key); }
+    // Forward the needle generically so the map's contains overload set
+    // applies (incl. the wider-integer needle arm: out-of-range -> False).
+    template<typename KeyArg>
+    bool contains(const KeyArg& key) const { return map_->contains(key); }
 
     auto __iter__() const {
         return native_iterator<decltype(begin()), K>{begin(), end()};
@@ -156,7 +161,31 @@ struct dict_values_view {
     auto begin() const { return map_->values_begin(); }
     auto end() const { return map_->values_end(); }
     int32_t size() const { return map_->size(); }
-    bool contains(const V& value) const { return std::find(begin(), end(), value) != end(); }
+    // Generic needle: heterogeneous == (a BigInt needle against fixed-int
+    // values compares by value; out-of-range is simply absent).
+    template<typename ValArg>
+        requires requires(const V& v, const ValArg& a) {
+            { v == a } -> std::convertible_to<bool>;
+        }
+    bool contains(const ValArg& value) const { return std::find(begin(), end(), value) != end(); }
+
+    // A wider-integer needle whose == with V is not usable (unsigned V:
+    // `uint32_t == BigInt` is ambiguous between the int64/uint64 ctors):
+    // narrow-then-find, out-of-range -> absent (False), like the map's key
+    // overload.
+    template<typename ValArg>
+        requires (std::is_integral_v<V>
+                  && !requires(const V& v, const ValArg& a) {
+                         { v == a } -> std::convertible_to<bool>;
+                     }
+                  && requires(const ValArg& a, V& out) {
+                         { a.template to_fixed_try<V>(out) } -> std::convertible_to<bool>;
+                     })
+    bool contains(const ValArg& value) const {
+        V narrowed;
+        return value.template to_fixed_try<V>(narrowed)
+               && std::find(begin(), end(), narrowed) != end();
+    }
 
     auto __iter__() const {
         return native_iterator<decltype(begin()), V>{begin(), end()};
@@ -169,7 +198,31 @@ struct dict_values_view<K, const V> {
     auto begin() const { return map_->values_begin(); }
     auto end() const { return map_->values_end(); }
     int32_t size() const { return map_->size(); }
-    bool contains(const V& value) const { return std::find(begin(), end(), value) != end(); }
+    // Generic needle: heterogeneous == (a BigInt needle against fixed-int
+    // values compares by value; out-of-range is simply absent).
+    template<typename ValArg>
+        requires requires(const V& v, const ValArg& a) {
+            { v == a } -> std::convertible_to<bool>;
+        }
+    bool contains(const ValArg& value) const { return std::find(begin(), end(), value) != end(); }
+
+    // A wider-integer needle whose == with V is not usable (unsigned V:
+    // `uint32_t == BigInt` is ambiguous between the int64/uint64 ctors):
+    // narrow-then-find, out-of-range -> absent (False), like the map's key
+    // overload.
+    template<typename ValArg>
+        requires (std::is_integral_v<V>
+                  && !requires(const V& v, const ValArg& a) {
+                         { v == a } -> std::convertible_to<bool>;
+                     }
+                  && requires(const ValArg& a, V& out) {
+                         { a.template to_fixed_try<V>(out) } -> std::convertible_to<bool>;
+                     })
+    bool contains(const ValArg& value) const {
+        V narrowed;
+        return value.template to_fixed_try<V>(narrowed)
+               && std::find(begin(), end(), narrowed) != end();
+    }
 
     auto __iter__() const {
         return native_iterator<decltype(begin()), V>{begin(), end()};

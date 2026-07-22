@@ -1,0 +1,3 @@
+True
+False
+out of byte range
