@@ -15,6 +15,7 @@ from ..prescan import FactKills, alias_group, deref_view_key
 if TYPE_CHECKING:
     from ..typesys import TpyType
     from .context import SemanticContext
+    from .narrowing import NarrowingTracker
 
 
 
@@ -22,8 +23,9 @@ if TYPE_CHECKING:
 class InitTracker:
     """Definite-assignment and rvalue-vars flow analysis."""
 
-    def __init__(self, ctx: SemanticContext):
+    def __init__(self, ctx: SemanticContext, narrowing: NarrowingTracker):
         self.ctx = ctx
+        self.narrowing = narrowing
 
     def save(self) -> FlowFacts:
         return FlowFacts(
@@ -92,6 +94,12 @@ class InitTracker:
         are managed by their own merge policies.
         """
         f = self.ctx.func
+        if kills.suspends:
+            # The body suspends, so this meet crosses a suspension point
+            # (back-edge re-entry, or handler/finally entry after a
+            # mid-body suspension) -- everything a suspension kills must
+            # die here too, or the restore resurrects it.
+            self.narrowing.invalidate_suspension_facts()
 
         def _sweep(killed_key: str, kill_self: bool) -> None:
             prefix = killed_key + "."

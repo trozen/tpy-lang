@@ -50,7 +50,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Source_windowed::__next__() {
         try {
             // yield xs[i] * self.base
             __state = S_RESUME_1;
-            return (::tpy::mul_check<int32_t>(xs[static_cast<std::size_t>(i)], __self.base));
+            return (::tpy::mul_check<int32_t>(::tpy::__getitem__(xs, i), __self.base));
         } catch (...) {
             this->__finally_0();
             throw;

@@ -99,3 +99,31 @@ class TestCollectFactKills:
         assert not k.paths
         # print(p...) passes no bare names mutably here; field reads only.
         assert "p" not in k.receivers
+
+
+class TestSuspendsFlag:
+    def test_yield_sets_suspends(self):
+        k = _kills("def f():\n    yield 1\n")
+        assert k.suspends
+
+    def test_nested_yield_in_loop_sets_suspends(self):
+        k = _kills("def f(n: Int32):\n    for i in range(n):\n        yield i\n")
+        assert k.suspends
+
+    def test_await_in_decl_init_sets_suspends(self):
+        k = _kills("def f():\n    x = await g()\n")
+        assert k.suspends
+
+    def test_async_with_sets_suspends_without_body_suspension(self):
+        k = _kills("def f(m: Int32):\n    async with m:\n        pass\n")
+        assert k.suspends
+
+    def test_nested_def_does_not_count(self):
+        # Suspension-carrying nested defs are parse-rejected outright, so a
+        # plain one is the only representable shape; it must not set the flag.
+        k = _kills("def f():\n    def inner():\n        return 1\n    x = 1\n")
+        assert not k.suspends
+
+    def test_plain_body_does_not_suspend(self):
+        k = _kills("def f():\n    x = 1\n")
+        assert not k.suspends

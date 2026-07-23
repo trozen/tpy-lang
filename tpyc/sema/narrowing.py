@@ -22,7 +22,10 @@ from ..parse import (
 )
 from .literal_utils import literal_value_from_expr
 from .value_range import ValueRange
-from ..prescan import match_is_none, _expr_to_narrowing_key, deref_view_key, alias_group
+from ..prescan import (
+    match_is_none, _expr_to_narrowing_key, deref_view_key,
+    parse_deref_view_key, alias_group,
+)
 from ..namespace import BindingKind
 from ..diagnostics import OPTIONAL_VALUE_TRUTHINESS_WARNING
 from ..type_def_registry import protocol_info_of
@@ -846,6 +849,32 @@ class NarrowingTracker:
             self.ctx.func.non_null_ptr_vars.discard(name)
             self.ctx.func.value_ranges.pop(name, None)
             self._invalidate_len_ranges(name)
+
+    def invalidate_suspension_facts(self) -> None:
+        """Kill facts a suspension may falsify: while a resumable frame is
+        suspended (yield / await / the awaits inside `async for` and
+        `async with`), arbitrary caller code runs before resume, so any
+        storage reachable from outside the frame can be mutated.
+
+        Plain-name facts survive -- params and locals are frame-private
+        bindings (a pointer value or value copy the caller cannot rebind)
+        -- except the closure/rebindable-global set, which the call-site
+        kill already models; reuse it. Everything rooted in shared storage
+        dies: field-path facts (the caller may hold the object), deref-view
+        facts (the wrapper payload may be replaced through another handle),
+        and len-symbolic ranges (the container may shrink, and a stale
+        bound elides a needed bounds check).
+        """
+        self.invalidate_closure_written_facts()
+        func = self.ctx.func
+        for k in [k for k in func.narrowed_types
+                  if "." in k or parse_deref_view_key(k) is not None]:
+            del func.narrowed_types[k]
+        for k in [k for k in func.non_null_ptr_vars if "." in k]:
+            func.non_null_ptr_vars.discard(k)
+        for k in [k for k, v in func.value_ranges.items()
+                  if "." in k or v.hi_len_of is not None]:
+            del func.value_ranges[k]
 
     def _module_has_rebindable_globals(self) -> bool:
         """True when the module namespace has any value-type VARIABLE

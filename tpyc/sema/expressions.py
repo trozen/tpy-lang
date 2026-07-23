@@ -366,6 +366,10 @@ class ExpressionAnalyzer:
             typ = self._analyze_named_expr(expr)
         elif isinstance(expr, TpyAwait):
             typ = self._analyze_await(expr)
+            # The operand above was analyzed pre-suspension; whatever the
+            # enclosing statement does with the result runs post-resume,
+            # when the caller may have mutated shared storage.
+            self.narrowing.invalidate_suspension_facts()
         elif isinstance(expr, TpyLambda):
             typ = self._analyze_lambda(expr)
         elif isinstance(expr, TpyCoerce):

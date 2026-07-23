@@ -1,6 +1,6 @@
 # Narrowed value-Optional NAMES at resumable-frame sinks deref to the
 # inner value: frame reassign, yield (param and loop-var), whole-optional
-# yield inverse. Field sources stay rejected (narrow stales across yields).
+# yield inverse. Field faces live in narrowed_value_opt_field_yield.
 from tpy import Int32
 from typing import Iterator
 

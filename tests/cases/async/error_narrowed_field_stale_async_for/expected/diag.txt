@@ -1,0 +1,1 @@
+main.py:34: error: Type mismatch in return value: expected Int32, got Int32 | None

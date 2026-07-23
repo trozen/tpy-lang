@@ -20,6 +20,7 @@ from .parse import (
     TpyDictLiteral, TpySetLiteral, TpyTupleLiteral, TpyFString,
     TpyDelVar, TpyDelAttr, TpyDelItem, TpyNonlocal, TpyGlobal,
 )
+from .parse.nodes import stmts_have_any_suspension
 
 
 @dataclass
@@ -303,14 +304,22 @@ class FactKills:
     # receivers, reference-type call args): kills field facts under the key
     # and len-derived ranges, but not the key's own narrowing.
     receivers: set[str] = field(default_factory=set)
+    # The body contains a suspension point (yield / await / async for /
+    # async with): re-entering it (back-edge) or leaving it mid-way
+    # (handler/finally entry) crosses a suspension, so everything a
+    # suspension kills (field paths, deref views, len ranges,
+    # closure/global names) must die at the meet as well.
+    suspends: bool = False
 
     def __bool__(self) -> bool:
-        return bool(self.names or self.paths or self.receivers)
+        return bool(self.names or self.paths or self.receivers
+                    or self.suspends)
 
     def update(self, other: 'FactKills') -> None:
         self.names |= other.names
         self.paths |= other.paths
         self.receivers |= other.receivers
+        self.suspends |= other.suspends
 
 
 def _kills_in_expr(expr: TpyExpr | None, kills: FactKills) -> None:
@@ -432,6 +441,9 @@ def collect_fact_kills(stmts: list[TpyStmt],
     _collect_fact_kills(stmts, kills)
     for e in extra_exprs:
         _kills_in_expr(e, kills)
+    # Condition-position awaits are desugared to statement position before
+    # sema, so extra_exprs (re-evaluated conditions) cannot suspend.
+    kills.suspends = stmts_have_any_suspension(stmts)
     return kills
 
 

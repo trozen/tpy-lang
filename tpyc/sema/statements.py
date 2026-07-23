@@ -467,7 +467,7 @@ class StatementAnalyzer:
         self.protocols = protocols
         self.narrowing = narrowing
         self.scopes = ScopeTracker(ctx, compat)
-        self.init = InitTracker(ctx)
+        self.init = InitTracker(ctx, narrowing)
         self.expr = expr
         self.match = MatchAnalyzer(ctx, self, expr)
 
@@ -2662,6 +2662,10 @@ class StatementAnalyzer:
         self._check_loop_var_rebind(stmt, elem_type)
         self._record_for_loop_var_type(stmt, elem_type)
 
+        # The first `__anext__` await suspends before the body ever runs;
+        # kill pre-save so the loop-entry restore and the exit-facts
+        # intersection both see the post-suspension state.
+        self.narrowing.invalidate_suspension_facts()
         before = self.init.save()
         consumed_before_loop = self.ctx.func.current_consumed_own_params.copy()
         ns_types_before = self._save_ns_var_types()
@@ -2870,12 +2874,20 @@ class StatementAnalyzer:
                 self.ctx.func.nonstmt_bound_names.add(item.target)
                 self.init.mark_assigned(item.target)
 
+            if stmt.is_async:
+                # This item's `__aenter__` awaits before the next item's
+                # context expression (or the body) runs.
+                self.narrowing.invalidate_suspension_facts()
+
         # Analyze the body -- track new variable declarations so codegen
         # can pre-declare them outside the guard {} scope (C++ scoping).
         scope_before = set(self.ctx.func.current_scope.bindings.keys())
 
         for s in stmt.body:
             self.analyze_stmt(s)
+        if stmt.is_async:
+            # `__aexit__` awaits before any code after the block runs.
+            self.narrowing.invalidate_suspension_facts()
 
         # All variables first declared inside the body need pre-declaration
         # since codegen wraps the body in try {} for the with's cleanup pattern.
@@ -3719,6 +3731,10 @@ class StatementAnalyzer:
             for root in addr_taken_roots(stmt.value):
                 self.ctx.mark_param_mutated(root)
                 self.ctx.mark_param_returned(root)
+        # The yield value above was analyzed pre-suspension; everything
+        # after the yield runs post-resume, when the caller may have
+        # mutated shared storage between next() calls.
+        self.narrowing.invalidate_suspension_facts()
 
     def _force_yielded_pending_lists(self, value: TpyExpr, elem_type: TpyType) -> None:
         """A borrow-yielded container literal must materialize as a real

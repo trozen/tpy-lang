@@ -1846,13 +1846,14 @@ class StatementGenerator:
         """
         yield_type = self.ctx.current_yield_type
         expr = self.expressions.gen_expr(yield_stmt.value, yield_type)
-        # A proven-non-None value-Optional NAME into a plain-T yield slot
-        # reads the inner value; frame/lambda emission does not always route
-        # the name through the target-driven unwrap in gen_expr. Names only:
-        # params/locals are frame-private, but a FIELD's narrow can go stale
-        # across a suspension (the caller may rebind it between next()
-        # calls), so field sources keep the loud build error (BUGS.md).
-        if yield_type is not None and isinstance(yield_stmt.value, TpyName):
+        # A proven-non-None value-Optional NAME or FIELD into a plain-T
+        # yield slot reads the inner value; frame/lambda emission does not
+        # always route these through the target-driven unwrap in gen_expr.
+        # A field narrow surviving to a yield is sound: sema kills
+        # field-path facts at every suspension point, so a live fact means
+        # no yield/await intervened since the guard.
+        if yield_type is not None and isinstance(
+                yield_stmt.value, (TpyName, TpyFieldAccess)):
             expr = self.expressions._maybe_unwrap_narrowed_optional(
                 yield_stmt.value, expr, self.ctx.is_indirect_name(yield_stmt.value),
                 target_type=yield_type)
@@ -2100,12 +2101,13 @@ class StatementGenerator:
                     self.ctx.var_types.get(stmt.name)
                     if isinstance(stmt.init, (TpyCoerce, TpyNoneLiteral))
                     else None)
-                # A proven-non-None value-Optional NAME into a plain-T frame
-                # field reads the inner value; an Optional field keeps the
-                # whole copy (the helper's target_type guard). Names only --
-                # a FIELD source's narrow can go stale across a suspension
-                # (see the yield sink's note).
-                if var_type is not None and isinstance(stmt.init, TpyName):
+                # A proven-non-None value-Optional NAME or FIELD into a
+                # plain-T frame field reads the inner value; an Optional
+                # target keeps the whole copy (the helper's target_type
+                # guard). Field narrows surviving here are sound -- sema
+                # kills field-path facts at every suspension point.
+                if var_type is not None and isinstance(
+                        stmt.init, (TpyName, TpyFieldAccess)):
                     init_expr = self.expressions._maybe_unwrap_narrowed_optional(
                         stmt.init, init_expr, self.ctx.is_indirect_name(stmt.init),
                         target_type=var_type)
@@ -4108,9 +4110,8 @@ class StatementGenerator:
         # A proven-non-None value-Optional NAME into a plain-T return slot
         # reads the inner value (this untargeted tail otherwise misses the
         # sync return arm's target-driven unwrap). Names only -- gen_expr_deref
-        # already unwraps a narrowed FIELD (its is_narrowed_optional_field
-        # arm), and a field's narrow can go stale across a suspension anyway
-        # (see the yield sink's note).
+        # above already unwraps a narrowed FIELD (its is_narrowed_optional_field
+        # arm); a second unwrap here would double-deref.
         if ret_type is not None and isinstance(stmt.value, TpyName):
             expr_cpp = self.expressions._maybe_unwrap_narrowed_optional(
                 stmt.value, expr_cpp, self.ctx.is_indirect_name(stmt.value),
