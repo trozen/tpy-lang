@@ -1825,6 +1825,16 @@ class StatementGenerator:
         """
         yield_type = self.ctx.current_yield_type
         expr = self.expressions.gen_expr(yield_stmt.value, yield_type)
+        # A proven-non-None value-Optional NAME into a plain-T yield slot
+        # reads the inner value; frame/lambda emission does not always route
+        # the name through the target-driven unwrap in gen_expr. Names only:
+        # params/locals are frame-private, but a FIELD's narrow can go stale
+        # across a suspension (the caller may rebind it between next()
+        # calls), so field sources keep the loud build error (BUGS.md).
+        if yield_type is not None and isinstance(yield_stmt.value, TpyName):
+            expr = self.expressions._maybe_unwrap_narrowed_optional(
+                yield_stmt.value, expr, self.ctx.is_indirect_name(yield_stmt.value),
+                target_type=yield_type)
         # Deref a borrow-form for-loop var (stored as T* so the borrow survives
         # suspension) into the value-form yield slot. Gated on the
         # borrow-form-loop-var set, not the broader pointer_locals: pointer-repr
@@ -2058,13 +2068,26 @@ class StatementGenerator:
                     init_expr = self.expressions._gen_dynamic_protocol_own_arg(
                         stmt.init, inner)
                     return f"{indent}{cpp_name} = {init_expr};\n"
-                # Thread the binding type for coerce inits only: a view-resolved
+                # Thread the binding type for coerce inits (a view-resolved
                 # frame field fed a stale view->owned coerce must render the
-                # source bare (gen_expr's stale-coerce arm), like the sync decl.
+                # source bare, gen_expr's stale-coerce arm) and for None
+                # literals (a value-Optional field needs the target-typed
+                # std::nullopt, not the pointer-repr nullptr default) --
+                # like the sync decl.
                 init_expr = self.expressions.gen_expr(
                     stmt.init,
                     self.ctx.var_types.get(stmt.name)
-                    if isinstance(stmt.init, TpyCoerce) else None)
+                    if isinstance(stmt.init, (TpyCoerce, TpyNoneLiteral))
+                    else None)
+                # A proven-non-None value-Optional NAME into a plain-T frame
+                # field reads the inner value; an Optional field keeps the
+                # whole copy (the helper's target_type guard). Names only --
+                # a FIELD source's narrow can go stale across a suspension
+                # (see the yield sink's note).
+                if var_type is not None and isinstance(stmt.init, TpyName):
+                    init_expr = self.expressions._maybe_unwrap_narrowed_optional(
+                        stmt.init, init_expr, self.ctx.is_indirect_name(stmt.init),
+                        target_type=var_type)
                 if stmt.name in self.ctx.generator_frame_slot_locals:
                     # frame_slot<T> has no operator= for arbitrary T;
                     # writes route through emplace, which also destroys
@@ -4054,6 +4077,16 @@ class StatementGenerator:
             # (pointer-repr elements) keep the untargeted tail.
             return self.expressions.gen_expr(stmt.value, target_type=ret_type)
         expr_cpp = self.expressions.gen_expr_deref(stmt.value)
+        # A proven-non-None value-Optional NAME into a plain-T return slot
+        # reads the inner value (this untargeted tail otherwise misses the
+        # sync return arm's target-driven unwrap). Names only -- gen_expr_deref
+        # already unwraps a narrowed FIELD (its is_narrowed_optional_field
+        # arm), and a field's narrow can go stale across a suspension anyway
+        # (see the yield sink's note).
+        if ret_type is not None and isinstance(stmt.value, TpyName):
+            expr_cpp = self.expressions._maybe_unwrap_narrowed_optional(
+                stmt.value, expr_cpp, self.ctx.is_indirect_name(stmt.value),
+                target_type=ret_type)
         expr_cpp = self._wrap_view_to_storage(stmt.value, ret_type, expr_cpp)
         if to_borrow:
             expr_cpp = self._async_ret_to_borrow(stmt.value, ret_type, expr_cpp)
