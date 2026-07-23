@@ -3783,6 +3783,14 @@ class Parser:
             raise ParseError(
                 f"Type parameters are not supported on nested functions", node)
         func = self._parse_function(node)
+        # A closure that is itself a generator has no frame/registration
+        # support (the reverse -- a generator containing a nested def --
+        # works).
+        if func.is_generator:
+            raise ParseError(
+                f"nested generator functions are not supported (function "
+                f"'{node.name}' contains 'yield'); define the generator at "
+                f"module or class level", node)
         # Nested defs live inside a function body, so sema's top-level
         # resolve_refs pre-pass doesn't see them. Resolve
         # refs immediately, passing the enclosing function's type-param

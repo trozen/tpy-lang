@@ -1,0 +1,1 @@
+main.py:9: error: nested generator functions are not supported (function 'gen' contains 'yield'); define the generator at module or class level

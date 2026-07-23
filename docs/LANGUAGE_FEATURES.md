@@ -7123,7 +7123,9 @@ Send/Sync rules for built-in types:
   (the capture is an alias), and `nonlocal self` is rejected -- the receiver cannot be
   rebound. An escaping closure capturing `self` holds the raw `this` -- receiver lifetime
   is not yet tied to the closure (see BUGS.md). Restrictions: no decorators, no type
-  parameters, no nested-in-nested, no recursive nested defs. Escaping closures that
+  parameters, no nested-in-nested, no recursive nested defs, no nested async defs, no
+  nested generators (a nested def containing `yield` is rejected; a generator containing
+  a nested def works). Escaping closures that
   capture `str` parameters are rejected (string_view would dangle). Inside an `async def` or
   a generator, a nested def is emitted as a member function of the resumable frame: captures
   reach the frame-field locals directly (mutation via `nonlocal` matches CPython) and the
