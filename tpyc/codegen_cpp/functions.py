@@ -1477,6 +1477,34 @@ class FunctionGenerator:
                     result[method_sig.name] = method_sig.is_readonly or proto_info.is_readonly
         return result
 
+    def gen_shim_params(self, method: TpyFunction, record_name: str) -> str:
+        """Param list for a delegating operator shim (operator(), the mutable
+        operator[] overload), rendered with the same const decisions as the
+        target method's own signature.
+
+        A shim that re-derives const-ness from declared types drifts from the
+        method emit whenever inference diverges (a mutated or borrow-escaping
+        param stays mutable in the method): the shim then binds const and the
+        delegation doesn't type-check. Mirrors gen_method_def's non-protocol
+        arm; defaults and the reassigned-param rename are omitted (the shim
+        declares its own params and forwards by name, so the rename never
+        applies, and shims don't repeat C++ default arguments).
+        """
+        use_const_params = ((method.is_readonly and not method.auto_readonly_params_resolved)
+                            or method.name in CONST_PARAMS_METHODS)
+        ae = self._get_method_addr_escapes(method, record_name)
+        if use_const_params:
+            return self.gen_params(method.params, method.type_params, const_params=True,
+                                   mutated_params=self._get_method_genuine_mutated_params(method, record_name),
+                                   addr_escapes_params=ae,
+                                   use_readonly_params=method.is_readonly,
+                                   func=method)
+        return self.gen_params(method.params, method.type_params,
+                               mutated_params=self._get_method_mutated_params(method, record_name),
+                               addr_escapes_params=ae,
+                               use_readonly_params=method.is_readonly and not method.auto_readonly_params_resolved,
+                               func=method)
+
     def gen_method_def(self, out: TextIO, method: TpyFunction, record_name: str,
                        dynamic_overrides: dict[str, bool] | None = None,
                        record_type_param_bounds: dict[str, TpyType] | None = None,

@@ -17,3 +17,22 @@ print(s.n)
 
 d = m.EchoSub()
 print(d[0] is d, type(d[0]) is m.EchoSub)
+
+e = m.KeyEcho()
+k = m.Node(1)
+print(e[k] is k)
+e[k].v = 7
+print(k.v)
+
+x = m.Acc(3)
+y = m.Acc(1)
+print((x + y) is x)
+(x + y).n = 20
+print(x.n)
+y.n = 50
+print((x + y) is y)
+print((-y) is y)
+
+r = m.RoPick(2)
+q = m.RoPick(9)
+print((r + q) is r)

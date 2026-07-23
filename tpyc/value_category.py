@@ -128,6 +128,14 @@ def is_rvalue_source(analyzer: ValueCategoryAnalyzer, expr: TpyExpr) -> bool:
         if not is_bool_type(result_type):
             return (is_rvalue_source(analyzer, expr.left)
                     and is_rvalue_source(analyzer, expr.right))
+    # An arithmetic binop/unaryop resolved to a dunder follows the method's
+    # return convention, like the method-call and subscript arms: a
+    # borrow-returning `__add__`/`__neg__` aliases an operand, it does not
+    # create a value.
+    if isinstance(expr, TpyBinOp) and expr.resolved_binop is not None:
+        return not call_returns_cpp_ref(analyzer, expr.resolved_binop.method)
+    if isinstance(expr, TpyUnaryOp) and expr.resolved_unaryop is not None:
+        return not call_returns_cpp_ref(analyzer, expr.resolved_unaryop.method)
     # Constructor calls, literals, ops are rvalues.
     if isinstance(expr, (TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
                          TpyBoolLiteral, TpyNoneLiteral,

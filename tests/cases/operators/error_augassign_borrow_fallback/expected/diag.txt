@@ -1,0 +1,1 @@
+main.py:22: error: '+=' falls back to '__add__', which returns a borrow; the in-place update would copy where CPython rebinds the name to the returned object. Define '__iadd__' for in-place semantics, or return Own[...] from '__add__' for a fresh value

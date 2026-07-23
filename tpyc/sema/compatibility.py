@@ -1639,16 +1639,21 @@ class TypeCompatibility:
             return existing_type, value_expr
 
         # str/bytes view family: track owned-vs-borrow provenance (so an owned
-        # source promotes the local to owned storage) before coercing.
+        # source promotes the local to owned storage) before coercing. Unwrap
+        # Own for the family check -- an Own[bytes] source (e.g. concat) is a
+        # family member and an owned source par excellence; leaving it wrapped
+        # would skip the promotion and leave a view of a dying temporary
+        # (mirrors the statement-path unwrap in _analyze_assign).
         if (isinstance(inner_existing, (PendingViewType, LiteralType))
                 and (vf := view_family_for_type(inner_existing)) is not None):
-            if vf.is_any_member(inner_value):
-                if not self.deduction.is_view_compatible_source(value_expr, inner_value):
+            inner_value_owned = unwrap_own(inner_value)
+            if vf.is_any_member(inner_value_owned):
+                if not self.deduction.is_view_compatible_source(value_expr, inner_value_owned):
                     self.deduction.mark_view_reassigned_from_owned(name, vf)
                 else:
-                    self.deduction.track_view_reassign_source(name, inner_value, vf)
+                    self.deduction.track_view_reassign_source(name, inner_value_owned, vf)
             coerced = self.coerce_expr(
-                value_expr, inner_value, inner_existing, ctx,
+                value_expr, inner_value_owned, inner_existing, ctx,
                 coercion_ctx=CoercionContext.ASSIGN)
             return existing_type, coerced
 

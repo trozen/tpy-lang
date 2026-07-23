@@ -11,6 +11,9 @@ struct Node;
 struct Grid;
 struct Echo;
 struct EchoSub;
+struct KeyEcho;
+struct Acc;
+struct RoPick;
 
 inline constexpr std::string_view __name__ = "__main__";
 
@@ -77,6 +80,73 @@ inline std::ostream& operator<<(std::ostream& os, const Echo& obj) {
     return os;
 }
 
+struct KeyEcho {
+
+    KeyEcho();
+
+    Node& __getitem__(Node& k);
+
+    const Node& __getitem__(const Node& k) const;
+
+    const Node& operator[](const Node& k) const {
+        return __getitem__(k);
+    }
+
+    Node& operator[](Node& k) {
+        return __getitem__(k);
+    }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.KeyEcho";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const KeyEcho& obj) {
+    ::tpy::print_object_default(os, "KeyEcho", obj);
+    return os;
+}
+
+struct Acc {
+    int32_t n;
+
+    Acc() = default;
+    explicit Acc(int32_t n);
+
+    const Acc& __add__(const Acc& o) const;
+
+    const Acc& __neg__() const;
+
+    friend const Acc& operator+(const Acc& lhs, const Acc& o) {
+        return lhs.__add__(o);
+    }
+
+    friend const Acc& operator-(const Acc& operand) {
+        return operand.__neg__();
+    }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Acc";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Acc& obj) {
+    ::tpy::print_object_default(os, "Acc", obj);
+    return os;
+}
+
+struct RoPick {
+    int32_t n;
+
+    RoPick() = default;
+    explicit RoPick(int32_t n);
+
+    const RoPick& __add__(const RoPick& o) const;
+
+    friend const RoPick& operator+(const RoPick& lhs, const RoPick& o) {
+        return lhs.__add__(o);
+    }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.RoPick";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const RoPick& obj) {
+    ::tpy::print_object_default(os, "RoPick", obj);
+    return os;
+}
+
 struct EchoSub : Echo {
 
     using Echo::Echo;
@@ -112,6 +182,33 @@ inline Echo& Echo::__getitem__(int32_t i) {
 }
 
 inline const Echo& Echo::__getitem__(int32_t i) const {
+    return (*this);
+}
+
+inline KeyEcho::KeyEcho() {
+}
+
+inline Node& KeyEcho::__getitem__(Node& k) {
+    return k;
+}
+
+inline const Node& KeyEcho::__getitem__(const Node& k) const {
+    return k;
+}
+
+inline Acc::Acc(int32_t n) : n(n) {}
+
+inline const Acc& Acc::__add__(const Acc& o) const {
+    return (((this->n >= o.n)) ? ((*this)) : (o));
+}
+
+inline const Acc& Acc::__neg__() const {
+    return (*this);
+}
+
+inline RoPick::RoPick(int32_t n) : n(n) {}
+
+inline const RoPick& RoPick::__add__(const RoPick& o) const {
     return (*this);
 }
 void __tpy_init();

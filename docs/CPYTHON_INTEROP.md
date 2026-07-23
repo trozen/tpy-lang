@@ -1366,11 +1366,13 @@ Detail for the tracker table in "v1 plan and status" (top). **v1.0 = phases
    ORIGINAL PyObject / a registry-deduped borrow view (write-through,
    exactly plain Python's aliasing), and only the residue (reassignable
    fields, containers) copies with the standard warning (`Own[...]` is
-   the quiet fresh-instance form). The arithmetic slots' candidates are
-   currently emit-dead: two plain-TPy operator defects (the shim
-   const-return mismatch and the `Own[readonly[Cls]]` operator-result
-   binding, BUGS.md) reject every borrow return from those dunders
-   before codegen. A `@nocopy`
+   the quiet fresh-instance form). The arithmetic slots are live
+   end-to-end: `(a + b) is a`, mutation through the crossed result, the
+   `readonly[...]` spelling, and the class-typed `__getitem__` KEY
+   identity are witnessed in `tests/interop/dunder_identity` (the two
+   plain-TPy operator defects that used to reject borrow returns from
+   these dunders -- the shim const-return mismatch and the
+   `Own[readonly[Cls]]` operator-result binding -- are fixed). A `@nocopy`
    class's dunder borrow return is a located error (the copy is deleted),
    mirroring the plain-method reject; in-place dunders are exempt (their
    wrapper hands back the same `self` PyObject, no copy). `list(x)`,

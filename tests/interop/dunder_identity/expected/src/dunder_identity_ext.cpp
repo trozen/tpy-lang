@@ -11,6 +11,9 @@ PyObject *dunder_identity__type_Node = nullptr;
 PyObject *dunder_identity__type_Grid = nullptr;
 PyObject *dunder_identity__type_Echo = nullptr;
 PyObject *dunder_identity__type_EchoSub = nullptr;
+PyObject *dunder_identity__type_KeyEcho = nullptr;
+PyObject *dunder_identity__type_Acc = nullptr;
+PyObject *dunder_identity__type_RoPick = nullptr;
 ::tpy::interop::ViewRegistry dunder_identity__view_registry;
 
 int dunder_identity__Node_init(PyObject *self, PyObject *args, PyObject *kwargs) {
@@ -322,6 +325,306 @@ PyType_Spec dunder_identity__EchoSub__spec = {
     Py_TPFLAGS_DEFAULT, dunder_identity__EchoSub__slots,
 };
 
+int dunder_identity__KeyEcho_init(PyObject *self, PyObject *args, PyObject *) {
+    auto *__inst = reinterpret_cast<::tpy::interop::Instance<::tpyapp::dunder_identity::KeyEcho> *>(self);
+    if (__inst->owner != nullptr) {
+        PyErr_SetString(PyExc_TypeError, "cannot __init__ a borrowed field view");
+        return -1;
+    }
+    try {
+        if (__inst->initialized && ::tpy::interop::has_views_into(__inst->p, sizeof(*__inst->p), dunder_identity__view_registry)) {
+            PyErr_SetString(PyExc_TypeError, "cannot __init__ an instance while borrow views of its fields are alive");
+            return -1;
+        }
+        if (__inst->initialized) { __inst->initialized = false; ::std::destroy_at(&__inst->storage); }
+        new (&__inst->storage) ::tpyapp::dunder_identity::KeyEcho();
+        __inst->p = &__inst->storage;
+        __inst->initialized = true;
+        return 0;
+    } catch (const ::tpy::BaseException &__e) {
+        ::tpy::interop::set_py_err_from(__e);
+        return -1;
+    } catch (...) {
+        if (!PyErr_Occurred())
+            PyErr_SetString(PyExc_RuntimeError, "tpy extension: constructor failed");
+        return -1;
+    }
+}
+
+void dunder_identity__KeyEcho_dealloc(PyObject *self) {
+    ::tpy::interop::instance_dealloc<::tpyapp::dunder_identity::KeyEcho>(self, dunder_identity__view_registry);
+}
+
+PyObject *dunder_identity__KeyEcho__getitem_slot(PyObject *self, PyObject *key) {
+    try {
+        const ::tpyapp::dunder_identity::Node &__key = *::tpy::interop::instance_payload<::tpyapp::dunder_identity::Node>(key, (::tpy::cpy::PyTypeObject *)dunder_identity__type_Node);
+        auto &__r = reinterpret_cast<::tpy::interop::Instance<::tpyapp::dunder_identity::KeyEcho> *>(self)->p->__getitem__(__key);
+        if (&__r == &__key) { Py_IncRef(key); return key; }
+        if (::tpy::interop::within_payload(&__r, &(*reinterpret_cast<::tpy::interop::Instance<::tpyapp::dunder_identity::KeyEcho> *>(self)->p), sizeof((*reinterpret_cast<::tpy::interop::Instance<::tpyapp::dunder_identity::KeyEcho> *>(self)->p))))
+            return ::tpy::interop::borrow_to_py((::tpy::cpy::PyTypeObject *)dunder_identity__type_Node, __r, self, dunder_identity__view_registry);
+        if (::tpy::interop::within_payload(&__r, &__key, sizeof(__key)))
+            return ::tpy::interop::borrow_to_py((::tpy::cpy::PyTypeObject *)dunder_identity__type_Node, __r, key, dunder_identity__view_registry);
+        return ::tpy::interop::instance_to_py((::tpy::cpy::PyTypeObject *)dunder_identity__type_Node, __r);
+    } catch (const ::tpy::BaseException &__e) {
+        ::tpy::interop::set_py_err_from(__e);
+        return nullptr;
+    } catch (...) {
+        if (!PyErr_Occurred())
+            PyErr_SetString(PyExc_RuntimeError, "tpy extension: unhandled error");
+        return nullptr;
+    }
+}
+
+PyMethodDef dunder_identity__KeyEcho__methods[] = {
+    {nullptr, nullptr, 0, nullptr},
+};
+PyGetSetDef dunder_identity__KeyEcho__getset[] = {
+    {nullptr, nullptr, nullptr, nullptr, nullptr},
+};
+PyType_Slot dunder_identity__KeyEcho__slots[] = {
+    {Py_tp_init, (void *)dunder_identity__KeyEcho_init},
+    {Py_tp_dealloc, (void *)dunder_identity__KeyEcho_dealloc},
+    {Py_tp_methods, (void *)dunder_identity__KeyEcho__methods},
+    {Py_tp_getset, (void *)dunder_identity__KeyEcho__getset},
+    {Py_mp_subscript, (void *)dunder_identity__KeyEcho__getitem_slot},
+    {Py_tp_new, (void *)::tpy::cpy::PyType_GenericNew},
+    {0, nullptr},
+};
+PyType_Spec dunder_identity__KeyEcho__spec = {
+    "dunder_identity.KeyEcho", (int)sizeof(::tpy::interop::Instance<::tpyapp::dunder_identity::KeyEcho>), 0,
+    Py_TPFLAGS_DEFAULT, dunder_identity__KeyEcho__slots,
+};
+
+int dunder_identity__Acc_init(PyObject *self, PyObject *args, PyObject *kwargs) {
+    static char *__kwlist[] = {const_cast<char *>("n"), nullptr};
+    PyObject *a0 = nullptr;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:Acc", __kwlist, &a0)) return -1;
+    auto *__inst = reinterpret_cast<::tpy::interop::Instance<::tpyapp::dunder_identity::Acc> *>(self);
+    if (__inst->owner != nullptr) {
+        PyErr_SetString(PyExc_TypeError, "cannot __init__ a borrowed field view");
+        return -1;
+    }
+    try {
+        int32_t __p0 = ::tpy::interop::from_py<int32_t>(a0);
+        if (__inst->initialized && ::tpy::interop::has_views_into(__inst->p, sizeof(*__inst->p), dunder_identity__view_registry)) {
+            PyErr_SetString(PyExc_TypeError, "cannot __init__ an instance while borrow views of its fields are alive");
+            return -1;
+        }
+        if (__inst->initialized) { __inst->initialized = false; ::std::destroy_at(&__inst->storage); }
+        new (&__inst->storage) ::tpyapp::dunder_identity::Acc(__p0);
+        __inst->p = &__inst->storage;
+        __inst->initialized = true;
+        return 0;
+    } catch (const ::tpy::BaseException &__e) {
+        ::tpy::interop::set_py_err_from(__e);
+        return -1;
+    } catch (...) {
+        if (!PyErr_Occurred())
+            PyErr_SetString(PyExc_RuntimeError, "tpy extension: constructor failed");
+        return -1;
+    }
+}
+
+void dunder_identity__Acc_dealloc(PyObject *self) {
+    ::tpy::interop::instance_dealloc<::tpyapp::dunder_identity::Acc>(self, dunder_identity__view_registry);
+}
+
+PyObject *dunder_identity__Acc__n_get(PyObject *self, void *) {
+    try {
+        return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::dunder_identity::Acc> *>(self)->p->n);
+    } catch (...) {
+        if (!PyErr_Occurred())
+            PyErr_SetString(PyExc_RuntimeError, "tpy extension: attribute read failed");
+        return nullptr;
+    }
+}
+int dunder_identity__Acc__n_set(PyObject *self, PyObject *value, void *) {
+    if (value == nullptr) {
+        PyErr_SetString(PyExc_AttributeError, "attribute 'n' cannot be deleted");
+        return -1;
+    }
+    try {
+        reinterpret_cast<::tpy::interop::Instance<::tpyapp::dunder_identity::Acc> *>(self)->p->n = ::tpy::interop::from_py<int32_t>(value);
+        return 0;
+    } catch (...) {
+        if (!PyErr_Occurred())
+            PyErr_SetString(PyExc_RuntimeError, "tpy extension: attribute write failed");
+        return -1;
+    }
+}
+
+PyObject *dunder_identity__Acc__add_slot(PyObject *a, PyObject *b) {
+    try {
+        if (Py_TYPE(a) == (::tpy::cpy::PyTypeObject *)dunder_identity__type_Acc || PyType_IsSubtype(Py_TYPE(a), (::tpy::cpy::PyTypeObject *)dunder_identity__type_Acc) != 0) {
+            try {
+                const ::tpyapp::dunder_identity::Acc &__other = *::tpy::interop::instance_payload<::tpyapp::dunder_identity::Acc>(b, (::tpy::cpy::PyTypeObject *)dunder_identity__type_Acc);
+                auto &__r = reinterpret_cast<::tpy::interop::Instance<::tpyapp::dunder_identity::Acc> *>(a)->p->__add__(__other);
+                if (&__r == &(*reinterpret_cast<::tpy::interop::Instance<::tpyapp::dunder_identity::Acc> *>(a)->p)) { Py_IncRef(a); return a; }
+                if (&__r == &__other) { Py_IncRef(b); return b; }
+                return ::tpy::interop::instance_to_py((::tpy::cpy::PyTypeObject *)dunder_identity__type_Acc, __r);
+            } catch (const ::tpy::interop::MarshalError &) {
+                if (!PyErr_ExceptionMatches(PyExc_TypeError)) return nullptr;
+                PyErr_Clear();
+            }
+        }
+        return ::tpy::interop::notimplemented_to_py();
+    } catch (const ::tpy::BaseException &__e) {
+        ::tpy::interop::set_py_err_from(__e);
+        return nullptr;
+    } catch (...) {
+        if (!PyErr_Occurred())
+            PyErr_SetString(PyExc_RuntimeError, "tpy extension: unhandled error");
+        return nullptr;
+    }
+}
+
+PyObject *dunder_identity__Acc__neg_slot(PyObject *self) {
+    try {
+        auto &__r = reinterpret_cast<::tpy::interop::Instance<::tpyapp::dunder_identity::Acc> *>(self)->p->__neg__();
+        if (&__r == &(*reinterpret_cast<::tpy::interop::Instance<::tpyapp::dunder_identity::Acc> *>(self)->p)) { Py_IncRef(self); return self; }
+        if (::tpy::interop::within_payload(&__r, &(*reinterpret_cast<::tpy::interop::Instance<::tpyapp::dunder_identity::Acc> *>(self)->p), sizeof((*reinterpret_cast<::tpy::interop::Instance<::tpyapp::dunder_identity::Acc> *>(self)->p))))
+            return ::tpy::interop::borrow_to_py((::tpy::cpy::PyTypeObject *)dunder_identity__type_Acc, __r, self, dunder_identity__view_registry);
+        return ::tpy::interop::instance_to_py((::tpy::cpy::PyTypeObject *)dunder_identity__type_Acc, __r);
+    } catch (const ::tpy::BaseException &__e) {
+        ::tpy::interop::set_py_err_from(__e);
+        return nullptr;
+    } catch (...) {
+        if (!PyErr_Occurred())
+            PyErr_SetString(PyExc_RuntimeError, "tpy extension: unhandled error");
+        return nullptr;
+    }
+}
+
+PyMethodDef dunder_identity__Acc__methods[] = {
+    {nullptr, nullptr, 0, nullptr},
+};
+PyGetSetDef dunder_identity__Acc__getset[] = {
+    {"n", dunder_identity__Acc__n_get, dunder_identity__Acc__n_set, nullptr, nullptr},
+    {nullptr, nullptr, nullptr, nullptr, nullptr},
+};
+PyType_Slot dunder_identity__Acc__slots[] = {
+    {Py_tp_init, (void *)dunder_identity__Acc_init},
+    {Py_tp_dealloc, (void *)dunder_identity__Acc_dealloc},
+    {Py_tp_methods, (void *)dunder_identity__Acc__methods},
+    {Py_tp_getset, (void *)dunder_identity__Acc__getset},
+    {Py_nb_add, (void *)dunder_identity__Acc__add_slot},
+    {Py_nb_negative, (void *)dunder_identity__Acc__neg_slot},
+    {Py_tp_new, (void *)::tpy::cpy::PyType_GenericNew},
+    {0, nullptr},
+};
+PyType_Spec dunder_identity__Acc__spec = {
+    "dunder_identity.Acc", (int)sizeof(::tpy::interop::Instance<::tpyapp::dunder_identity::Acc>), 0,
+    Py_TPFLAGS_DEFAULT, dunder_identity__Acc__slots,
+};
+
+int dunder_identity__RoPick_init(PyObject *self, PyObject *args, PyObject *kwargs) {
+    static char *__kwlist[] = {const_cast<char *>("n"), nullptr};
+    PyObject *a0 = nullptr;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:RoPick", __kwlist, &a0)) return -1;
+    auto *__inst = reinterpret_cast<::tpy::interop::Instance<::tpyapp::dunder_identity::RoPick> *>(self);
+    if (__inst->owner != nullptr) {
+        PyErr_SetString(PyExc_TypeError, "cannot __init__ a borrowed field view");
+        return -1;
+    }
+    try {
+        int32_t __p0 = ::tpy::interop::from_py<int32_t>(a0);
+        if (__inst->initialized && ::tpy::interop::has_views_into(__inst->p, sizeof(*__inst->p), dunder_identity__view_registry)) {
+            PyErr_SetString(PyExc_TypeError, "cannot __init__ an instance while borrow views of its fields are alive");
+            return -1;
+        }
+        if (__inst->initialized) { __inst->initialized = false; ::std::destroy_at(&__inst->storage); }
+        new (&__inst->storage) ::tpyapp::dunder_identity::RoPick(__p0);
+        __inst->p = &__inst->storage;
+        __inst->initialized = true;
+        return 0;
+    } catch (const ::tpy::BaseException &__e) {
+        ::tpy::interop::set_py_err_from(__e);
+        return -1;
+    } catch (...) {
+        if (!PyErr_Occurred())
+            PyErr_SetString(PyExc_RuntimeError, "tpy extension: constructor failed");
+        return -1;
+    }
+}
+
+void dunder_identity__RoPick_dealloc(PyObject *self) {
+    ::tpy::interop::instance_dealloc<::tpyapp::dunder_identity::RoPick>(self, dunder_identity__view_registry);
+}
+
+PyObject *dunder_identity__RoPick__n_get(PyObject *self, void *) {
+    try {
+        return ::tpy::interop::to_py(reinterpret_cast<::tpy::interop::Instance<::tpyapp::dunder_identity::RoPick> *>(self)->p->n);
+    } catch (...) {
+        if (!PyErr_Occurred())
+            PyErr_SetString(PyExc_RuntimeError, "tpy extension: attribute read failed");
+        return nullptr;
+    }
+}
+int dunder_identity__RoPick__n_set(PyObject *self, PyObject *value, void *) {
+    if (value == nullptr) {
+        PyErr_SetString(PyExc_AttributeError, "attribute 'n' cannot be deleted");
+        return -1;
+    }
+    try {
+        reinterpret_cast<::tpy::interop::Instance<::tpyapp::dunder_identity::RoPick> *>(self)->p->n = ::tpy::interop::from_py<int32_t>(value);
+        return 0;
+    } catch (...) {
+        if (!PyErr_Occurred())
+            PyErr_SetString(PyExc_RuntimeError, "tpy extension: attribute write failed");
+        return -1;
+    }
+}
+
+PyObject *dunder_identity__RoPick__add_slot(PyObject *a, PyObject *b) {
+    try {
+        if (Py_TYPE(a) == (::tpy::cpy::PyTypeObject *)dunder_identity__type_RoPick || PyType_IsSubtype(Py_TYPE(a), (::tpy::cpy::PyTypeObject *)dunder_identity__type_RoPick) != 0) {
+            try {
+                const ::tpyapp::dunder_identity::RoPick &__other = *::tpy::interop::instance_payload<::tpyapp::dunder_identity::RoPick>(b, (::tpy::cpy::PyTypeObject *)dunder_identity__type_RoPick);
+                auto &__r = reinterpret_cast<::tpy::interop::Instance<::tpyapp::dunder_identity::RoPick> *>(a)->p->__add__(__other);
+                if (&__r == &(*reinterpret_cast<::tpy::interop::Instance<::tpyapp::dunder_identity::RoPick> *>(a)->p)) { Py_IncRef(a); return a; }
+                if (&__r == &__other) { Py_IncRef(b); return b; }
+                if (::tpy::interop::within_payload(&__r, &(*reinterpret_cast<::tpy::interop::Instance<::tpyapp::dunder_identity::RoPick> *>(a)->p), sizeof((*reinterpret_cast<::tpy::interop::Instance<::tpyapp::dunder_identity::RoPick> *>(a)->p))))
+                    return ::tpy::interop::borrow_to_py((::tpy::cpy::PyTypeObject *)dunder_identity__type_RoPick, __r, a, dunder_identity__view_registry);
+                if (::tpy::interop::within_payload(&__r, &__other, sizeof(__other)))
+                    return ::tpy::interop::borrow_to_py((::tpy::cpy::PyTypeObject *)dunder_identity__type_RoPick, __r, b, dunder_identity__view_registry);
+                return ::tpy::interop::instance_to_py((::tpy::cpy::PyTypeObject *)dunder_identity__type_RoPick, __r);
+            } catch (const ::tpy::interop::MarshalError &) {
+                if (!PyErr_ExceptionMatches(PyExc_TypeError)) return nullptr;
+                PyErr_Clear();
+            }
+        }
+        return ::tpy::interop::notimplemented_to_py();
+    } catch (const ::tpy::BaseException &__e) {
+        ::tpy::interop::set_py_err_from(__e);
+        return nullptr;
+    } catch (...) {
+        if (!PyErr_Occurred())
+            PyErr_SetString(PyExc_RuntimeError, "tpy extension: unhandled error");
+        return nullptr;
+    }
+}
+
+PyMethodDef dunder_identity__RoPick__methods[] = {
+    {nullptr, nullptr, 0, nullptr},
+};
+PyGetSetDef dunder_identity__RoPick__getset[] = {
+    {"n", dunder_identity__RoPick__n_get, dunder_identity__RoPick__n_set, nullptr, nullptr},
+    {nullptr, nullptr, nullptr, nullptr, nullptr},
+};
+PyType_Slot dunder_identity__RoPick__slots[] = {
+    {Py_tp_init, (void *)dunder_identity__RoPick_init},
+    {Py_tp_dealloc, (void *)dunder_identity__RoPick_dealloc},
+    {Py_tp_methods, (void *)dunder_identity__RoPick__methods},
+    {Py_tp_getset, (void *)dunder_identity__RoPick__getset},
+    {Py_nb_add, (void *)dunder_identity__RoPick__add_slot},
+    {Py_tp_new, (void *)::tpy::cpy::PyType_GenericNew},
+    {0, nullptr},
+};
+PyType_Spec dunder_identity__RoPick__spec = {
+    "dunder_identity.RoPick", (int)sizeof(::tpy::interop::Instance<::tpyapp::dunder_identity::RoPick>), 0,
+    Py_TPFLAGS_DEFAULT, dunder_identity__RoPick__slots,
+};
+
 PyMethodDef dunder_identity__methods[] = {
     {nullptr, nullptr, 0, nullptr},
 };
@@ -352,6 +655,15 @@ extern "C" PyObject *PyInit_dunder_identity(void) {
         dunder_identity__type_EchoSub = ::tpy::cpy::PyType_FromSpecWithBases(&dunder_identity__EchoSub__spec, dunder_identity__type_Echo);
         if (!dunder_identity__type_EchoSub) { ::tpy::cpy::Py_DecRef(__m); return nullptr; }
         if (::tpy::cpy::PyModule_AddObjectRef(__m, "EchoSub", dunder_identity__type_EchoSub) < 0) { ::tpy::cpy::Py_DecRef(__m); return nullptr; }
+        dunder_identity__type_KeyEcho = ::tpy::cpy::PyType_FromSpec(&dunder_identity__KeyEcho__spec);
+        if (!dunder_identity__type_KeyEcho) { ::tpy::cpy::Py_DecRef(__m); return nullptr; }
+        if (::tpy::cpy::PyModule_AddObjectRef(__m, "KeyEcho", dunder_identity__type_KeyEcho) < 0) { ::tpy::cpy::Py_DecRef(__m); return nullptr; }
+        dunder_identity__type_Acc = ::tpy::cpy::PyType_FromSpec(&dunder_identity__Acc__spec);
+        if (!dunder_identity__type_Acc) { ::tpy::cpy::Py_DecRef(__m); return nullptr; }
+        if (::tpy::cpy::PyModule_AddObjectRef(__m, "Acc", dunder_identity__type_Acc) < 0) { ::tpy::cpy::Py_DecRef(__m); return nullptr; }
+        dunder_identity__type_RoPick = ::tpy::cpy::PyType_FromSpec(&dunder_identity__RoPick__spec);
+        if (!dunder_identity__type_RoPick) { ::tpy::cpy::Py_DecRef(__m); return nullptr; }
+        if (::tpy::cpy::PyModule_AddObjectRef(__m, "RoPick", dunder_identity__type_RoPick) < 0) { ::tpy::cpy::Py_DecRef(__m); return nullptr; }
         ::tpyapp::dunder_identity::__tpy_init();
         return __m;
     } catch (const ::tpy::BaseException &__e) {

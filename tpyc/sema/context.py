@@ -32,7 +32,8 @@ from ..namespace import Namespace
 from ..type_def_registry import int_traits_of
 from ..parse import (
     TpyExpr, TpyStmt, TpyRecord, TpyFunction, TpyVarDecl, TpyMethodCall,
-    TpyCall, TpyCoerce, TpyName, TpySubscript, TpyFieldAccess, TpyBinOp, TpyIfExpr,
+    TpyCall, TpyCoerce, TpyName, TpySubscript, TpyFieldAccess, TpyBinOp,
+    TpyUnaryOp, TpyIfExpr,
     TpyNestedDef, TpyNamedExpr,
 )
 from ..diagnostics import Diagnostic, DiagnosticLevel, SemanticError, Scope
@@ -496,6 +497,15 @@ def record_stmt_borrow_binding(ctx: 'SemanticContext', name: str,
         fi = inner.resolved_function_info
         const = bool(fi is not None and fi.is_readonly
                      and call_returns_cpp_ref(ctx, fi))
+    # Operator dispatch mirrors the method-call arm (same rule as
+    # _is_const_indirect): a readonly dunder's borrow return binds const,
+    # so a branch pre-decl must pick the const pointer form.
+    if not const and isinstance(inner, TpyBinOp) and inner.resolved_binop is not None:
+        fi = inner.resolved_binop.method
+        const = bool(fi.is_readonly and call_returns_cpp_ref(ctx, fi))
+    if not const and isinstance(inner, TpyUnaryOp) and inner.resolved_unaryop is not None:
+        fi = inner.resolved_unaryop.method
+        const = bool(fi.is_readonly and call_returns_cpp_ref(ctx, fi))
     prev = ctx.func.stmt_borrow_decls.get(name, False)
     ctx.func.stmt_borrow_decls[name] = prev or const
 

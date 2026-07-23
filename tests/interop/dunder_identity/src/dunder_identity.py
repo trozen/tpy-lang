@@ -1,13 +1,12 @@
 # tpy: ext_module
 # Dunder slots thread identity/view candidates like method wrappers: a
 # __getitem__ borrow return of `self` crosses as the SAME PyObject (incl.
-# through an inherited slot, un-sliced) and of a never-reassigned field as
-# ONE registry-deduped borrow view (write-through) -- matching plain
-# Python's aliasing, so the driver asserts everything in parity. (A
-# class-typed KEY returned from __getitem__ would cross by identity too,
-# but the operator[] shim's const-return defect blocks that shape at the
-# plain-TPy level -- see BUGS.md.)
-from tpy import Int32
+# through an inherited slot, un-sliced), of a never-reassigned field as
+# ONE registry-deduped borrow view (write-through), of a class-typed KEY
+# as the key's own PyObject, and an arithmetic/unary dunder returning
+# self/the operand crosses by identity through the nb_* slots -- matching
+# plain Python's aliasing, so the driver asserts everything in parity.
+from tpy import Int32, readonly
 from tpy.extern import export
 
 
@@ -51,3 +50,39 @@ class EchoSub(Echo):
     # No own __getitem__: the base's mp_subscript slot is inherited, and
     # its identity path must hand back this derived instance un-sliced.
     pass
+
+
+@export
+class KeyEcho:
+    def __init__(self):
+        pass
+
+    def __getitem__(self, k: Node) -> Node:
+        return k
+
+
+@export
+class Acc:
+    n: Int32
+
+    def __init__(self, n: Int32):
+        self.n = n
+
+    def __add__(self, o: "Acc") -> "Acc":
+        return self if self.n >= o.n else o
+
+    def __neg__(self) -> "Acc":
+        return self
+
+
+@export
+class RoPick:
+    n: Int32
+
+    def __init__(self, n: Int32):
+        self.n = n
+
+    def __add__(self, o: "RoPick") -> "readonly[RoPick]":
+        # The readonly borrow spelling crosses identically to the plain
+        # form (readonly is a TPy-side contract, a no-op at the boundary).
+        return self

@@ -211,7 +211,10 @@ class OperatorResolver:
         ret = unwrap_ref_type(method.return_type)
         if ret is not method.return_type:
             method = dc_replace(method, return_type=ret, canonical_fi=method.root)
-            # Rebuild receiver_type from subst to resolve IntLiteralType elements.
+        if type_subst:
+            # Rebuild receiver_type from subst to resolve IntLiteralType elements
+            # (a literal receiver like [10, 20] carries IntLiteralType inner types
+            # that must not leak into codegen's receiver render).
             # Use inner_types() as the source of truth for the reconstruction -- it
             # defines exactly how many (and which) inner types the type has. params_map
             # may have more entries (e.g. Tspan for PtrType), but with_inner_types only

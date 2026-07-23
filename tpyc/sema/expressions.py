@@ -1335,7 +1335,8 @@ class ExpressionAnalyzer:
             if expr.op in ("//", "%"):
                 self._check_divisor_non_zero(expr)
             # List concat produces a list -- mark pending literals as mutated
-            if is_list(result.method.return_type):
+            # (the concat stub returns Own[list[T]]; unwrap to see the list)
+            if is_list(unwrap_own(result.method.return_type)):
                 self._mark_list_concat_operands_mutated(expr, left_effective, right_effective)
             return result.method.return_type
 
@@ -1374,7 +1375,12 @@ class ExpressionAnalyzer:
                                 native_name=method.native_name,
                                 native_function=method.native_function,
                                 is_method=True,
+                                is_readonly=method.is_readonly,
                                 owning_type_qname=method.owning_type_qname,
+                                # Borrow facts (return_borrows_from) land on the
+                                # registered fi after body analysis; keep the
+                                # chain so consumers can reach them via .root.
+                                canonical_fi=method.root,
                             )
                             expr.resolved_binop = ResolvedBinop(
                                 method=resolved_method,

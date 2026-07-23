@@ -72,7 +72,7 @@ if TYPE_CHECKING:
     from .protocols import ProtocolChecker
 
 from .context import BorrowKind, MODULE_INIT_CONTEXT, PENDING_CONTAINER_TYPES, _storage_key, _storage_root, _borrow_storage_root, register_binding_borrow, ephemeral_borrow_root, contains_pending_leaf
-from ..value_category import is_rvalue_source
+from ..value_category import is_rvalue_source, call_returns_cpp_ref
 from .expressions import _collect_body_name_refs, _collect_body_local_defs, _find_list_member
 from .local_deduction import collect_pending_source_types, walk_view_source_leaves
 from .type_ops import signature_may_return_borrow as _signature_may_return_borrow
@@ -201,6 +201,19 @@ def _register_call_result_borrow(ctx: SemanticContext, borrower: str, expr: TpyE
         fi = expr.property_getter_call.resolved_function_info
         args = expr.property_getter_call.args
         obj = expr.property_getter_call.obj
+    elif isinstance(expr, TpyBinOp) and expr.resolved_binop is not None:
+        # Operator dispatch is a method call in disguise: a borrow-returning
+        # dunder hands out a borrow of an operand. Use the canonical fi --
+        # the resolved copy is synthesized before the dunder's body facts
+        # land, so only the root carries return_borrows_from.
+        rb = expr.resolved_binop
+        fi = rb.method.root
+        obj = expr.right if rb.is_reverse else expr.left
+        args = [expr.left if rb.is_reverse else expr.right]
+    elif isinstance(expr, TpyUnaryOp) and expr.resolved_unaryop is not None:
+        fi = expr.resolved_unaryop.method.root
+        obj = expr.operand
+        args = []
     else:
         return
     if fi is None:
@@ -5827,6 +5840,24 @@ class StatementAnalyzer:
                     loc=stmt.loc, source_expr=stmt.value,
                 )
             if result := operators.resolve_binop(target_type, stmt.op, value_type, loc_node=stmt):
+                # A borrow-returning fallback dunder is rejected: the emitted
+                # in-place update would COPY the returned object's fields into
+                # the target's storage, where CPython REBINDS the name to the
+                # returned object (aliasing). Rebind-as-alias for aug-assign
+                # targets is unimplemented (BUGS.md), so stay loud.
+                if call_returns_cpp_ref(self.ctx, result.method):
+                    imethod = builtin_modules.AUGOP_TO_IMETHOD.get(stmt.op)
+                    hatch = (f"Define '{imethod}'" if imethod
+                             else "Define the in-place dunder")
+                    raise self.ctx.error(
+                        f"'{stmt.op}=' falls back to '{result.method.name}', "
+                        f"which returns a borrow; the in-place update would "
+                        f"copy where CPython rebinds the name to the returned "
+                        f"object. {hatch} for in-place semantics, "
+                        f"or return Own[...] from '{result.method.name}' for "
+                        f"a fresh value",
+                        stmt,
+                    )
                 stmt.resolved_binop = result
                 return
             raise self.ctx.error(

@@ -1843,18 +1843,19 @@ class RecordGenerator:
         # Check if this __getitem__ has @overload stubs (use first impl for lookup)
         overload_stubs = self.ctx.analyzer.overload_groups.get(id(getitem_impls[0]))
         if overload_stubs:
-            self._gen_overload_subscript_operators(out, overload_stubs)
+            self._gen_overload_subscript_operators(out, overload_stubs, record.name)
             return
         # auto_readonly clone pair: const operator first, then mutable.
         pair = _split_readonly_clone_pair(getitem_impls)
         if pair is not None:
             const_impl, mutable_impl = pair
-            self._gen_const_subscript_operator(out, const_impl)
-            self._gen_mutable_subscript_operator(out, mutable_impl)
+            self._gen_const_subscript_operator(out, const_impl, record.name)
+            self._gen_mutable_subscript_operator(out, mutable_impl, record.name)
             return
-        self._gen_single_subscript_operator(out, getitem_impls[0])
+        self._gen_single_subscript_operator(out, getitem_impls[0], record.name)
 
-    def _gen_overload_subscript_operators(self, out: TextIO, stubs: list) -> None:
+    def _gen_overload_subscript_operators(self, out: TextIO, stubs: list,
+                                          record_name: str) -> None:
         """Generate operator[] for @overload __getitem__, handling auto_readonly clone pairs.
 
         Stubs may include mutable+const clone pairs (from @overload @auto_readonly).
@@ -1869,59 +1870,69 @@ class RecordGenerator:
                 key = str(stub.params[0][1])
                 by_param[key].append(stub)
             else:
-                self._gen_single_subscript_operator(out, stub)
+                self._gen_single_subscript_operator(out, stub, record_name)
 
         for param_type_str, group in by_param.items():
             pair = _split_readonly_clone_pair(group)
             if pair is not None:
                 const_stub, mutable_stub = pair
                 # Clone pair: const operator first, then mutable.
-                self._gen_const_subscript_operator(out, const_stub)
+                self._gen_const_subscript_operator(out, const_stub, record_name)
                 # Mutable only if return could be a reference.
                 needs_dual = (not mutable_stub.return_type.is_value_type()
                               or isinstance(mutable_stub.return_type, TypeParamRef))
                 if needs_dual:
-                    self._gen_mutable_subscript_operator(out, mutable_stub)
+                    self._gen_mutable_subscript_operator(out, mutable_stub, record_name)
                 continue
             # No clone pair: emit each stub via the standard logic.
             for stub in group:
-                self._gen_single_subscript_operator(out, stub)
+                self._gen_single_subscript_operator(out, stub, record_name)
 
-    def _gen_single_subscript_operator(self, out: TextIO, method: 'TpyFunction') -> None:
+    def _gen_single_subscript_operator(self, out: TextIO, method: 'TpyFunction',
+                                       record_name: str) -> None:
         """Generate a single operator[] overload delegating to __getitem__."""
         if not method.params:
             return
         if method.is_readonly:
-            self._gen_const_subscript_operator(out, method)
+            self._gen_const_subscript_operator(out, method, record_name)
             # Non-const overload only when return could be a reference
             needs_dual = not method.return_type.is_value_type() or isinstance(method.return_type, TypeParamRef)
             if needs_dual:
-                self._gen_mutable_subscript_operator(out, method)
+                self._gen_mutable_subscript_operator(out, method, record_name)
         else:
-            self._gen_mutable_subscript_operator(out, method)
+            self._gen_mutable_subscript_operator(out, method, record_name)
 
-    def _gen_const_subscript_operator(self, out: TextIO, method: 'TpyFunction') -> None:
+    def _gen_const_subscript_operator(self, out: TextIO, method: 'TpyFunction',
+                                      record_name: str) -> None:
         """Generate a const operator[] overload (read-only subscript)."""
         if not method.params:
             return
-        index_param_name, index_type = method.params[0]
-        # Mirror __getitem__'s borrow-form key param (str -> string_view, ref ->
-        # const T&), like the binary/call operators -- not the storage form.
-        index_cpp = index_type.to_cpp_const_param(index_param_name)
+        index_param_name, _ = method.params[0]
+        # Mirror __getitem__'s emitted key param (borrow form + the method's
+        # inferred const-ness), like the call operator -- not the storage form.
+        index_cpp = self.functions.gen_shim_params(method, record_name)
         ret_const = method.return_type.to_cpp_return_const()
         out.write(f"\n{INDENT}{ret_const} operator[]({index_cpp}) const {{\n")
-        out.write(f"{INDENT}{INDENT}return __getitem__({index_param_name});\n")
+        out.write(f"{INDENT}{INDENT}return __getitem__({escape_cpp_name(index_param_name)});\n")
         out.write(f"{INDENT}}}\n")
 
-    def _gen_mutable_subscript_operator(self, out: TextIO, method: 'TpyFunction') -> None:
-        """Generate a mutable (non-const) operator[] overload."""
+    def _gen_mutable_subscript_operator(self, out: TextIO, method: 'TpyFunction',
+                                        record_name: str) -> None:
+        """Generate a mutable (non-const) operator[] overload.
+
+        `method` is the mutable clone of an auto_readonly pair, a genuinely
+        mutable single __getitem__, or -- for the single-readonly dual -- the
+        readonly method itself; in that last case the delegation hits the
+        const overload, so the return must render const to match it.
+        """
         if not method.params:
             return
-        index_param_name, index_type = method.params[0]
-        index_cpp = index_type.to_cpp_const_param(index_param_name)
-        ret_mut = method.return_type.to_cpp_return()
+        index_param_name, _ = method.params[0]
+        index_cpp = self.functions.gen_shim_params(method, record_name)
+        ret_mut = (method.return_type.to_cpp_return_const()
+                   if method.is_readonly else method.return_type.to_cpp_return())
         out.write(f"\n{INDENT}{ret_mut} operator[]({index_cpp}) {{\n")
-        out.write(f"{INDENT}{INDENT}return __getitem__({index_param_name});\n")
+        out.write(f"{INDENT}{INDENT}return __getitem__({escape_cpp_name(index_param_name)});\n")
         out.write(f"{INDENT}}}\n")
 
     def _gen_binary_operators(self, out: TextIO, record: TpyRecord) -> None:
@@ -1963,8 +1974,12 @@ class RecordGenerator:
 
             param_name, param_type = method.params[0]
             param_cpp = param_type.to_cpp_const_param(param_name)
-            # Return type - use to_cpp() for value/Own types
-            ret_cpp = method.return_type.to_cpp()
+            # Mirror the method's emitted return: a readonly dunder's borrow
+            # return is const-projected there (const=is_readonly), so the shim
+            # must render const too or the delegation discards qualifiers.
+            # Value/Own returns render identically either way.
+            ret_cpp = (method.return_type.to_cpp_return_const()
+                       if method.is_readonly else method.return_type.to_cpp())
             rec_short = bare_name(record.name)
             rec_cpp = escape_cpp_name(rec_short)
 
@@ -1997,13 +2012,15 @@ class RecordGenerator:
             # emitted __call__ signature, with matching const-ness.
             if self.ctx.analyzer.overload_groups.get(id(method)):
                 continue
-            ret_cpp = method.return_type.to_cpp()
+            # Mirror the method emit for both axes: the const-projected return
+            # (a readonly __call__ returning a borrow returns const&) and the
+            # inferred param const-ness (a mutated param stays T& in the
+            # method; a const shim param wouldn't bind to it).
+            ret_cpp = (method.return_type.to_cpp_return_const()
+                       if method.is_readonly else method.return_type.to_cpp())
             const_suffix = " const" if method.is_readonly else ""
-            params_cpp = ", ".join(
-                p_type.to_cpp_const_param(p_name)
-                for p_name, p_type in method.params
-            )
-            arg_names = ", ".join(p_name for p_name, _ in method.params)
+            params_cpp = self.functions.gen_shim_params(method, record.name)
+            arg_names = ", ".join(escape_cpp_name(p_name) for p_name, _ in method.params)
             out.write(f"\n{INDENT}{ret_cpp} operator()({params_cpp}){const_suffix} {{\n")
             out.write(f"{INDENT}{INDENT}return __call__({arg_names});\n")
             out.write(f"{INDENT}}}\n")
@@ -2093,7 +2110,9 @@ class RecordGenerator:
             if method.params:
                 continue  # Unary operators take no params
             cpp_op = DUNDER_TO_UNARY_OP[method.name]
-            ret_cpp = method.return_type.to_cpp()
+            # Same const mirroring as the binary shims (see _gen_binary_operators).
+            ret_cpp = (method.return_type.to_cpp_return_const()
+                       if method.is_readonly else method.return_type.to_cpp())
             rec_short = bare_name(record.name)
             out.write(f"\n{INDENT}friend {ret_cpp} operator{cpp_op}(const {escape_cpp_name(rec_short)}& operand) {{\n")
             out.write(f"{INDENT}{INDENT}return operand.{method.name}();\n")

@@ -579,13 +579,13 @@ class ExtensionGenerator:
 
     def _ast_method(self, cls: dict, name: str, *,
                     property_getter: bool = False):
-        """The source-level TpyFunction for a method of an exposed class
-        (the glue's per-class loops run off RecordInfo; the view classifier
-        needs the body AST). Own record first, then ancestors -- an
-        inherited dunder half emitted on a derived slot classifies against
-        the declaring body, mirroring _method_with_ancestors' MRO lookup.
-        For a property, the MUTABLE getter clone (the const clone shares
-        its return shape)."""
+        """The source-level (TpyFunction, declaring RecordInfo) for a method
+        of an exposed class (the glue's per-class loops run off RecordInfo;
+        the view classifier needs the body AST). Own record first, then
+        ancestors -- an inherited dunder half emitted on a derived slot
+        classifies against the declaring body, mirroring
+        _method_with_ancestors' MRO lookup. For a property, the MUTABLE
+        getter clone (the const clone shares its return shape)."""
         reg = self.ctx.analyzer.registry
         by_name = cls["records_by_name"]
         records = [cls["record"]] + [
@@ -597,11 +597,26 @@ class ExtensionGenerator:
                     continue
                 if property_getter:
                     if m.is_property_getter and not m.is_readonly:
-                        return m
+                        return m, reg.get_record(rec.name)
                     continue
                 if not (m.is_property_getter or m.is_property_setter):
-                    return m
-        return None
+                    return m, reg.get_record(rec.name)
+        return None, None
+
+    def _view_fallback_method(self, cls: dict, name: str,
+                              ret_typ: TpyType | None, params, *,
+                              property_getter: bool = False) -> bool:
+        """_view_fallback_ok for a method-family emit site: classify with
+        the DECLARING record's info, matching how sema built the
+        alias_records that suppressed the copy warning (one construction
+        rule at both ends -- an inherited half must not classify against
+        the derived receiver while sema classified against the declarer).
+        The runtime alias candidates stay typed by the derived receiver."""
+        m, decl_info = self._ast_method(cls, name,
+                                        property_getter=property_getter)
+        if m is None:
+            return False
+        return self._view_fallback_ok(m, ret_typ, params, decl_info)
 
     def _emit_call_return(self, out: TextIO, ret_typ: TpyType | None,
                           call_expr: str, sym: str,
@@ -971,9 +986,9 @@ class ExtensionGenerator:
                     candidates.append(("__other", operand_var, oinfo))
             self._emit_call_return(
                 out, ret_typ, call, sym, candidates,
-                view_fallback=self._view_fallback_ok(
-                    self._ast_method(cls, meth), ret_typ,
-                    [(p.name, p.type) for p in m.params], info),
+                view_fallback=self._view_fallback_method(
+                    cls, meth, ret_typ,
+                    [(p.name, p.type) for p in m.params]),
                 indent=" " * 16)
             out.write("            } catch (const ::tpy::interop::MarshalError &) {\n")
             out.write("                if (!PyErr_ExceptionMatches(PyExc_TypeError)) "
@@ -1009,8 +1024,8 @@ class ExtensionGenerator:
         self._emit_call_return(
             out, m.return_type, call, sym,
             [(f"(*{cppvar}->p)", "self", info)],
-            view_fallback=self._view_fallback_ok(
-                self._ast_method(cls, dunder), m.return_type, [], info))
+            view_fallback=self._view_fallback_method(
+                cls, dunder, m.return_type, []))
         self._emit_boundary_catch(out, reg_arg)
         out.write("}\n\n")
         return slot_id, wname
@@ -1127,9 +1142,8 @@ class ExtensionGenerator:
         params = [(p.name, p.type) for p in m.params]
         self._emit_call_return(
             out, m.return_type, call, sym, candidates,
-            view_fallback=self._view_fallback_ok(
-                self._ast_method(cls, "__getitem__"), m.return_type, params,
-                cls["info"]))
+            view_fallback=self._view_fallback_method(
+                cls, "__getitem__", m.return_type, params))
         self._emit_boundary_catch(out, reg_arg)
         out.write("}\n\n")
         return "Py_mp_subscript", wname
@@ -1256,8 +1270,8 @@ class ExtensionGenerator:
         self._emit_call_return(
             out, ret_typ, call, sym,
             [(f"(*{cppvar}->p)", "self", info)],
-            view_fallback=self._view_fallback_ok(
-                self._ast_method(cls, "__next__"), ret_typ, [], info))
+            view_fallback=self._view_fallback_method(
+                cls, "__next__", ret_typ, []))
         self._emit_boundary_catch(out, reg_arg)
         out.write("}\n\n")
         return "Py_tp_iternext", wname
@@ -1282,10 +1296,10 @@ class ExtensionGenerator:
         self._emit_call_return(out, info.methods["__iter__"][0].return_type,
                                "__self.__iter__()", sym,
                                [("__self", "self", info)],
-                               view_fallback=self._view_fallback_ok(
-                                   self._ast_method(cls, "__iter__"),
+                               view_fallback=self._view_fallback_method(
+                                   cls, "__iter__",
                                    info.methods["__iter__"][0].return_type,
-                                   [], info))
+                                   []))
         self._emit_boundary_catch(out, reg_arg)
         out.write("}\n\n")
         return "Py_tp_iter", wname
@@ -1441,9 +1455,8 @@ class ExtensionGenerator:
                 out, m.return_type, call, sym,
                 [("__self", "self", info)]
                 + self._param_alias_candidates(params),
-                view_fallback=self._view_fallback_ok(
-                    self._ast_method(cls, mname), m.return_type, params,
-                    info))
+                view_fallback=self._view_fallback_method(
+                    cls, mname, m.return_type, params))
             self._emit_boundary_catch(out, reg_arg)
             out.write("}\n\n")
 
@@ -1548,10 +1561,9 @@ class ExtensionGenerator:
             self._emit_call_return(out, prop.getter.return_type,
                                    f"__self.{pcpp}()", sym,
                                    [("__self", "self", info)],
-                                   view_fallback=self._view_fallback_ok(
-                                       self._ast_method(
-                                           cls, pname, property_getter=True),
-                                       prop.getter.return_type, [], info))
+                                   view_fallback=self._view_fallback_method(
+                                       cls, pname, prop.getter.return_type,
+                                       [], property_getter=True))
             self._emit_boundary_catch(out, reg_arg)
             out.write("}\n\n")
             if not has_setter:

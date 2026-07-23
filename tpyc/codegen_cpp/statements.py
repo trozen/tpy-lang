@@ -1038,6 +1038,16 @@ class StatementGenerator:
             fi = init.resolved_function_info
             if fi is not None and fi.is_readonly and self.ctx._call_returns_cpp_ref(fi):
                 return True
+        # Operator dispatch mirrors the method-call arm: a readonly dunder's
+        # borrow return is const-projected at emit, so the alias binds const.
+        if isinstance(init, TpyBinOp) and init.resolved_binop is not None:
+            fi = init.resolved_binop.method
+            if fi.is_readonly and self.ctx._call_returns_cpp_ref(fi):
+                return True
+        if isinstance(init, TpyUnaryOp) and init.resolved_unaryop is not None:
+            fi = init.resolved_unaryop.method
+            if fi.is_readonly and self.ctx._call_returns_cpp_ref(fi):
+                return True
         # An alias of a const-inferred source must also bind const, else a
         # mutable reference/pointer would be taken from a const source. Sound
         # because a const source implies the alias is never written through --
