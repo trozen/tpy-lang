@@ -167,6 +167,10 @@ THIR_FACES: frozenset[str] = frozenset({
     "call.native_c_free",           # C-linkage @native free callee -> raw `sym(args)`
     "call.own_iter_arg",            # movable last-use container into an Iterable slot -> ::tpy::own_iter(std::move(x))
     "call.own_iter_explicit",       # explicit own_iter(x) -> ::tpy::own_iter(std::move(x))
+    "call.try_parse",               # try_parse(Enum, s) -> EnumUtil<E>::
+                                    # try_parse(s)
+    "call.native_ret_cast",         # @native cpp_return_type: static_cast<
+                                    # declared>(::sym(args))
     "call.template_free",           # positional-only @cpp_template free callee
     "call.instantiation_template",  # generic-type instantiation `list(it)` ->
                                     # sema-substituted ctor template expansion
@@ -269,6 +273,8 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # rows (last-use move / copy+move temp)
     "ctor.container_literal_arg",   # list literal into a ctor's list slot:
                                     # the bare brace-init render in place
+    "ctor.value_opt_pass_arg",      # whole value-opt name into the same
+                                    # Optional ctor slot (bare copy)
     "ctor.omit_defaults",           # ctor call omitting trailing default args
                                     # (defaults ride the C++ ctor signature)
     "call.omit_defaults",           # free/method/qualified call omitting
@@ -608,6 +614,8 @@ THIR_FACES: frozenset[str] = frozenset({
     # / a scalar value bare). Return-slot only.
     "ret.tuple_nested_elem",
     "btuple.literal",               # borrow-slot tuple literal (spelled + lifts)
+    "btuple.elem_optptr",           # pointer-repr Optional elem slot: None ->
+                                    # nullptr, plain lvalue name -> &(name)
     "gentuple.literal",             # generic-slot tuple literal (to_val_or_ptr)
     "btuple.value_to_borrow",       # rvalue elements via the source-tuple helper
     "btuple.value_arg",             # value-tuple literal call arg
@@ -970,6 +978,8 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # dict instantiation (`list(argv[i:])`)
     "call.inst_gen_arg",            # generator-factory rvalue into a list/set/
                                     # dict instantiation (`list(gen())`)
+    "call.inst_view_arg",           # dict-view rvalue instantiation arg
+                                    # (dict(m.items()) / list(d.keys()))
     "argtemp.optptr_container_literal",  # container literal into a ptr-repr
                                     # Optional[container] slot: typed __tmp_N
                                     # + &(__tmp_N)

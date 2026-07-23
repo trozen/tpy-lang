@@ -1955,7 +1955,8 @@ def copy_plain_record_source(init: TpyExpr, analyzer,
 def _free_callee_kind(e: TpyCall, analyzer, *,
                       generator_ok: bool = False,
                       error_return_ok: bool = False,
-                      coro_factory_ok: bool = False
+                      coro_factory_ok: bool = False,
+                      ret_cast_ok: bool = False
                       ) -> 'tuple[str, str] | None':
     """Classify a bare-name free callee into its emit kind + pre-rendered
     payload -- the routing fact consumed by lowering:
@@ -2116,8 +2117,13 @@ def _free_callee_kind(e: TpyCall, analyzer, *,
         # spells the same. @native(binding="C") emits the RAW unqualified
         # symbol (the extern "C" re-declaration is namespace-scoped, a `::`
         # would miss it). A declared cpp_return_type (the AST wraps the
-        # call in the narrowing static_cast) and @export stay AST.
-        if fi.native_cpp_return_type is None:
+        # call in the narrowing static_cast) routes only where the caller
+        # renders the cast (`ret_cast_ok` -- the free-call lowering arm
+        # composes the static_cast template); @export stays AST.
+        if (fi.native_cpp_return_type is None
+                or (ret_cast_ok and fi.linkage == FunctionLinkage.NATIVE
+                    and fi.return_type is not None
+                    and fi.error_return_type is None)):
             if fi.linkage == FunctionLinkage.NATIVE:
                 # The emit's native_name arm applies qualify_native_name,
                 # so the node carries the raw symbol (name when the stub
@@ -5517,12 +5523,15 @@ def _record_method_arg_ok(
             or _method_value_union_arg(a, ptype, locals_, analyzer)
             # A same-union NAME into a POINTER-variant method slot passes
             # bare when the callee's param carries no deep-const verdict
-            # (`p.set_pet(new_pet)`); a dcbp slot takes the AST's
-            # ptr_variant_to_const wrap -- unthreaded here, stays AST.
+            # (`p.set_pet(new_pet)`); a dcbp slot takes the
+            # ptr_variant_to_const wrap (unionlift.const_wrap -- the
+            # method loop threads readonly_target), un-narrowed NAMES only
+            # (a narrowed arg renders the bare extraction, wrap skipped).
             or (_union_pass_through_arg(a, ptype, locals_, analyzer)
-                and not (overload is not None
-                         and overload.deep_const_borrow_params
-                         and index in overload.deep_const_borrow_params)
+                and (not (overload is not None
+                          and overload.deep_const_borrow_params
+                          and index in overload.deep_const_borrow_params)
+                     or (isinstance(a, TpyName) and a.name not in narrowed))
                 and _witness("method.union_pass_arg"))
             or (temps_ok and _value_union_temp_arg(
                 a, ptype, locals_, narrowed, analyzer))
@@ -6195,6 +6204,15 @@ def _wrap_print_form(a: TpyExpr, declared: dict[str, TpyType],
         if not (_field_markers_clean(a)
                 and _field_receiver_ok(a, declared, analyzer)):
             return None
+        fdt = _field_decl_type(a, declared, analyzer)
+        if (fdt is not None
+                and isinstance(unwrap_readonly(unwrap_ref_type(
+                    unwrap_send_sync(fdt))), OptionalType)):
+            # A NARROWED value-Optional field prints print_optional_val over
+            # the WHOLE field on the AST path (the analyzed type is the bare
+            # container, the declared type still Optional) -- not the
+            # bare-deref kind-keyed printer. Stay AST.
+            return None
         ft = unwrap_readonly(unwrap_ref_type(
             unwrap_send_sync(analyzer.get_expr_type(a))))
         if is_dict(ft):
@@ -6203,6 +6221,11 @@ def _wrap_print_form(a: TpyExpr, declared: dict[str, TpyType],
             return PrintForm.SET
         if is_list(ft) or is_array(ft):
             return PrintForm.LIST
+        if isinstance(ft, TupleType):
+            # A STORAGE-form tuple field (`print(h1.pair)`) streams via
+            # `TuplePrinter(recv.field)` -- gen_print's TupleType arm over
+            # the bare field lvalue.
+            return PrintForm.TUPLE
         return None
     if isinstance(a, TpyNamedExpr):
         # A container WALRUS arg (`print((cols := [..]))`): the kind-keyed

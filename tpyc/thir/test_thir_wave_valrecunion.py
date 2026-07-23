@@ -187,15 +187,18 @@ class TestBorrowTupleOptionalElem:
         assert _fn(_lower_ctx(src), "f") is not None
         _assert_byte_identical(src)
 
-    def test_name_into_optional_elem_slot_still_defers(self):
-        # NAME sources keep the slot-info optional arm -> AST.
+    def test_name_into_optional_elem_slot_routes_addr(self):
+        # A plain lvalue NAME source takes the `&(name)` lift
+        # (btuple.elem_optptr); narrowed/storage-form names still defer
+        # (pinned in test_thir_wave_ctorargs7).
         src = _PTRREC + (
             "def take(pair: tuple[Box | None, Int32]) -> Int32:\n"
             "    return pair[1]\n"
             "def f() -> None:\n"
             "    bx = Box(3)\n"
             "    print(take((bx, 5)))\n")
-        assert _fn(_lower_ctx(src), "f") is None
+        assert _fn(_lower_ctx(src), "f") is not None
+        _assert_byte_identical(src)
 
 
 _CORO = (

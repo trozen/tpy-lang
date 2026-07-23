@@ -344,27 +344,32 @@ class TestInstantiationTemplateCall:
         src = self._SRC + "main()\n"
         assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
-    def test_last_use_arg_stays_ast(self):
-        # `list(xs)` at xs's LAST use may take the consuming-__iter__ / move
-        # renders -> the face rejects, the whole body stays AST.
+    def test_last_use_arg_wraps_consuming_iter(self):
+        # `list(xs)` at xs's LAST use takes the consuming-__iter__ wrap
+        # (`::tpy::own_iter(std::move(xs))`) -- the instantiation arm's
+        # last-use branch.
         src = ("def main():\n"
                "    xs = list(range(3))\n"
                "    ys = list(xs)\n"
                "    print(len(ys))\n")
         thir = _lower_ctx(src)
-        assert _fn(thir, "main") is None
+        assert _fn(thir, "main") is not None
         full = src + "main()\n"
-        assert self._cpp(full, thir=True) == self._cpp(full, thir=False)
+        out = self._cpp(full, thir=True)
+        assert out == self._cpp(full, thir=False)
+        assert "::tpy::own_iter(std::move(xs))" in out
 
-    def test_method_call_arg_stays_ast(self):
-        # A `d.keys()` arg is outside the admitted arg shapes (range call /
-        # bare container name) -> AST path.
+    def test_method_call_arg_routes_view(self):
+        # A `d.keys()` arg renders the inline dict-view call
+        # (call.inst_view_arg).
         src = ("def main():\n"
                "    d = {1: 2}\n"
                "    ks = list(d.keys())\n"
                "    print(len(ks), len(d))\n")
         thir = _lower_ctx(src)
-        assert _fn(thir, "main") is None
+        assert _fn(thir, "main") is not None
+        full = src + "main()\n"
+        assert self._cpp(full, thir=True) == self._cpp(full, thir=False)
 
     def test_ptr_null_ctor_routes(self):
         # `Ptr[Int32]()` (typed-nullptr render) routes byte-identically via the

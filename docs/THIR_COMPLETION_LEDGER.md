@@ -2241,3 +2241,45 @@ byte-diff itself.
   corpus byte-diff catches skeleton-seam double-derefs dualgen misses
   -- probe every skeleton-owned position (with/await/async-for) when a
   name class joins lc.pointers.
+
+- **Landed: ctor-arg / instantiation-arg wave (`thir-wave-next7`,
+  2026-07-23, 5 cells + 2 harvests).** The round-7 expr.call cluster-1
+  remainder plus the cluster-6 own_iter basket, driven off a fresh
+  per-case site clustering (the 117 expr.call sole-blocker cases split
+  by RAISE SITE, then per-family verification). (1) Ctor-arg rows:
+  flush-less DIRECT positions admit the temp-free move-source slice
+  (`[Box(h1)]` -> `std::move(h1)`); `Own[list]` slots admit the bare
+  brace list literal (`Summer([1, 2, 3])`, the qualcall row's ctor
+  face); tuple LITERALS at ctor tuple slots ride the borrow/value
+  tuple builders; a whole value-opt NAME passes bare into the SAME
+  Optional slot (argparse builder ctors); `_protocol_union_ctor_arg`
+  widened to Optional[protocol] slots + container names
+  (`Counter(words)` -> `&(words)`). (2) The borrow-tuple builder's
+  pointer-repr Optional elem faces: `None` -> `nullptr`, plain lvalue
+  name -> `&(name)` (btuple.elem_optptr); None excluded from the
+  rvalue-unwrap like the AST. (3) Consuming instantiation args: the
+  stub-method consuming-__iter__ wrap extracted to
+  `_consuming_iter_wrap` and consumed by the instantiation arm's
+  last-use branch (`dict(pairs)` -> `own_iter(std::move(pairs))`);
+  dict-view rvalues render inline (`dict(m.items())` /
+  `list(d.keys())`, call.inst_view_arg). (4) Callee-kind specials:
+  TRY_PARSE renders `EnumUtil<E>::try_parse(s)`; a @native
+  cpp_return_type callee routes at free-call positions with the
+  composed `static_cast<declared>(::sym(args))` template
+  (ret_cast_ok, other positions keep rejecting). (5) The dcbp union
+  const-wrap threaded through the user-method arg loop
+  (`z.names(other)` -> `ptr_variant_to_const<...>(other)`);
+  print-arg FieldAccess form gains the storage tuple field
+  (TuplePrinter). DIVERGENCE fixed en route: the field print form
+  misfired on NARROWED value-Optional container fields (AST prints
+  print_optional_val over the WHOLE field) -- the arm now declines
+  declared-Optional fields; the corpus byte-diff caught it the moment
+  the tuple row unblocked the witness body. PARKED with verified
+  blockers: dict literals into ctor slots (spelled ordered_map render,
+  pinned); the sumprod float-literal Iterable args (wrong-arm
+  interlock -- needs the protocol-slot ArgTemp hoist, reverted); the
+  overload_set per-stub emission families (ret_mismatch /
+  db_isinstance -- per-stub dead-branch machinery); list[tuple]
+  storage-call decls (the `_container_scalar_read` axis); the
+  gen-method union-param narrowed/Fn residue; void-body lambda args;
+  protocol-receiver subscripts; isinstance cond.call narrowing folds.
