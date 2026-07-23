@@ -1754,15 +1754,20 @@ class TestBoolOps:
         assert isinstance(fn.body[1], THIRWhile) and fn.body[1].condition.op == "||"
         assert isinstance(fn.body[1].condition.left, THIRUnaryNot)
 
-    def test_value_semantics_or_is_ineligible(self):
-        # `n or 5` (non-bool result) takes _gen_logical_value's Python operand
-        # semantics (temp + ternary `(n ? n : 5)`), not the bare operator.
-        thir = _lower(_PRELUDE + "def f(n: Int32) -> Int32:\n    return n or 5\n")
-        assert _fn(thir, "f") is None
+    def test_value_semantics_or_routes(self):
+        # RE-PINNED ROUTED (thir-wave-next6): `n or 5` takes the
+        # THIRValueSelect ternary (`(n ? n : 5)`), _gen_logical_value's
+        # value slice.
+        src = _PRELUDE + "def f(n: Int32) -> Int32:\n    return n or 5\n"
+        thir = _lower(src)
+        assert _fn(thir, "f") is not None
+        _assert_byte_identical(src)
 
     def test_non_bool_operand_is_ineligible(self):
-        # An int operand under a bool result (`flag and n`) renders through
-        # truthiness reasoning the slice does not carry -- stays on the AST path.
+        # A BOOL result over an int operand (`flag and n` -> bool) takes
+        # the AST's direct C++ `&&` with truthiness reasoning the slice
+        # does not carry -- stays on the AST path (the value-select routes
+        # only non-bool RESULTS, mirroring _gen_binop's split).
         thir = _lower(_PRELUDE
                       + "def f(flag: bool, n: Int32) -> bool:\n    return flag and n\n")
         assert _fn(thir, "f") is None
@@ -2759,15 +2764,16 @@ class TestGlobalWriteSeeding:
                + "def main() -> None:\n    c = C()\n    print(c.v)\nmain()\n")
         _assert_byte_identical(src)
 
-    def test_optional_global_write_stays_unseeded(self):
-        # An Optional-typed global is not an eligible scalar slot; its
-        # `global` declaration keeps rejecting the body (the value-Optional
-        # seeding cell mirrors the AST's narrowed-global renders when built).
+    def test_optional_global_write_routes(self):
+        # A value-opt global seeds like a value-opt local: the `global`
+        # write renders `g = std::nullopt;` (byte-identity below).
         src = (_PRELUDE
                + "from typing import Optional\n"
                + "g: Optional[Int32] = None\n"
-               + "def w() -> None:\n    global g\n    g = None\n")
-        assert _fn(_lower_ctx(src), "w") is None
+               + "def w() -> None:\n    global g\n    g = None\n"
+               + "def main() -> None:\n    w()\n    print(g is None)\nmain()\n")
+        assert _fn(_lower_ctx(src), "w") is not None
+        _assert_byte_identical(src)
 
 
 class TestBreakContinueEmit:
@@ -3686,14 +3692,16 @@ class TestGlobalReadonlySeed:
         # global); the exclusion keeps the body on the AST path.
         assert _fn(thir, "aug_without_global") is None
 
-    def test_nonvalue_and_optional_globals_reject(self):
-        thir = _lower_ctx(self.SRC)
-        # Containers are pointer slots ((*GL) reads) -- not seeded.
-        assert _fn(thir, "read_container") is None
-        # Optional-value globals must NOT seed: sema narrows the read, and the
-        # AST renders the narrowed global bare (a known AST miscompile) while
-        # THIR's local-style narrowing would extract -- a divergence.
-        assert _fn(thir, "read_optional") is None
+    def test_slot_and_optional_globals(self):
+        thir, witnessed = _lower_ctx_witnessed(self.SRC)
+        # A container global is a POINTER SLOT seeded read-only: the read
+        # rides the pointer-local arms ((*GL)[0], name.global_slot).
+        assert _fn(thir, "read_container") is not None
+        assert witnessed.get("name.global_slot", 0) >= 1
+        # A value-opt global reads like a value-opt local (bare
+        # whole-optional None-test, narrowed (*GO) deref -- the value-opt
+        # read arms via lc.value_opt_locals).
+        assert _fn(thir, "read_optional") is not None
 
     def test_byte_identical(self):
         compiler, modules = _compile(self.SRC)
@@ -3925,10 +3933,15 @@ class TestGlobalSpelledSeed:
         "NAME: StrView = \"hello\"\n"
         "BIG: Final[Int32] = 99\n"
         "items: list[Int32] = [1, 2]\n"
+        "maybe: Int32 | None = 4\n"
     )
     SRC = (
         "from tpy import Int32\n"
-        "from helper import G, NAME, BIG, items\n"
+        "from helper import G, NAME, BIG, items, maybe\n"
+        "def read_maybe() -> Int32:\n"
+        "    if maybe is not None:\n"
+        "        return maybe\n"
+        "    return 0\n"
         "def read_g() -> Int32:\n"
         "    return G + 1\n"
         "def read_final() -> Int32:\n"
@@ -3978,11 +3991,16 @@ class TestGlobalSpelledSeed:
         thir, _ = self._lowered(tmp_path)
         assert _fn(thir, "name_owned") is not None
 
-    def test_nonvalue_and_shadowed_imported(self, tmp_path):
-        thir, _ = self._lowered(tmp_path)
-        # A list global is a pointer slot ((*::tpyapp::helper::items) reads)
-        # -- not in the value family, never seeded.
-        assert _fn(thir, "read_items") is None
+    def test_slot_and_shadowed_imported(self, tmp_path):
+        thir, witnessed = self._lowered(tmp_path)
+        # An imported list global is a pointer slot seeded read-only: the
+        # read derefs through the qualified spelling
+        # ((*::tpyapp::helper::items), name.global_slot + THIRName.cpp).
+        assert _fn(thir, "read_items") is not None
+        assert witnessed.get("name.global_slot", 0) >= 1
+        # An IMPORTED value-opt global stays unseeded (its narrowed
+        # (*qualified) render is unverified) -- the body falls back.
+        assert _fn(thir, "read_maybe") is None
         # The shadowing assignment excludes the name: fresh local decl.
         fn = _fn(thir, "shadow")
         assert fn is not None
@@ -4417,9 +4435,11 @@ class TestModuleVarRead:
 
 
 class TestGlobalRecordReceiverRead:
-    """Field reads off a SAME-module global-record receiver
-    (field.global_record_recv): the bare pointer-slot name with an arrow
-    (`gate->x`). Reads only -- global field writes keep the AST path."""
+    """Field reads AND writes off a SAME-module global-record receiver:
+    the seeded pointer-slot name with an arrow (`gate->x`,
+    name.global_slot via the general receiver path). The dedicated
+    field.global_record_recv arm now serves only un-seeded positions
+    (`global g`-declared bodies)."""
 
     SRC = (
         "from tpy import Int32\n"
@@ -4446,11 +4466,28 @@ class TestGlobalRecordReceiverRead:
         assert isinstance(ret.value, THIRFieldAccess) and ret.value.is_arrow
         recv = ret.value.receiver
         assert isinstance(recv, THIRName) and recv.name == "gate"
-        assert witnessed.get("field.global_record_recv", 0) == 1
+        assert witnessed.get("name.global_slot", 0) >= 1
 
-    def test_write_stays_ast(self):
+    def test_write_routes_through_seed(self):
+        # `gate.x = 9` -- the seeded receiver satisfies the field-write
+        # gate's declared-receiver requirement; renders `gate->x = 9;`
+        # (byte-identity pinned below).
         thir, witnessed = _lower_ctx_witnessed(self.SRC)
-        assert _fn(thir, "write") is None
+        assert _fn(thir, "write") is not None
+
+    def test_unseeded_shadow_body_keeps_dedicated_arm(self):
+        # A body that SHADOWS the global excludes it from seeding; the
+        # read-before-shadow field access still routes via the dedicated
+        # field.global_record_recv arm (its remaining reachable shape --
+        # sema resolves the early read to the global, a parity gap).
+        src = (self.SRC.replace("main()\n", "")
+               + "def readshadow() -> Int32:\n"
+               + "    y = gate.x\n"
+               + "    gate = Gate()\n"
+               + "    return y\n"
+               + "main()\n")
+        thir, witnessed = _lower_ctx_witnessed(src)
+        assert witnessed.get("field.global_record_recv", 0) >= 1
 
     def test_byte_identical(self):
         compiler, modules = _compile(self.SRC)
@@ -4462,6 +4499,54 @@ class TestGlobalRecordReceiverRead:
                                           thir_codegen=True))
         assert thir_out == ast_out
         assert "gate->x" in thir_out[1]
+
+
+class TestGlobalSlotSeed:
+    """Pointer-slot global seeding (name.global_slot): value reads deref
+    (`(*g)`), the addr-Ptr coerce composes `&(*g)`, and the simple-gen
+    lambda iterable REJECTS (its AST oracle calls `.begin()` on the bare
+    slot pointer -- uncompilable, see BUGS.md)."""
+
+    SRC = (
+        "from tpy import Int32, Ptr\n"
+        "from typing import Iterator\n"
+        "class Pt:\n"
+        "    x: Int32\n"
+        "    def __init__(self) -> None:\n"
+        "        self.x = 7\n"
+        "g: Pt = Pt()\n"
+        "xs = [1, 2, 3]\n"
+        "def addr_global() -> Ptr[Pt]:\n"
+        "    return g\n"
+        "def sgen_over_global() -> Iterator[Int32]:\n"
+        "    for v in xs:\n"
+        "        yield v\n"
+        "def main() -> None:\n"
+        "    p = addr_global()\n"
+        "    print(p is not None)\n"
+        "main()\n"
+    )
+
+    def test_ptr_return_coerce_derefs(self):
+        thir, witnessed = _lower_ctx_witnessed(self.SRC)
+        fn = _fn(thir, "addr_global")
+        assert fn is not None
+        assert witnessed.get("name.global_slot", 0) >= 1
+
+    def test_sgen_global_iterable_rejects(self):
+        thir = _lower_ctx(self.SRC)
+        assert _fn(thir, "sgen_over_global") is None
+
+    def test_byte_identical(self):
+        compiler, modules = _compile(self.SRC)
+        entry = _entry(modules)
+        ast_out = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False))
+        thir_out = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=True))
+        assert thir_out == ast_out
+        assert "&(*g)" in thir_out[1]
 
 
 class TestWave12MoveCopyNodes:

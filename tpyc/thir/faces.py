@@ -46,6 +46,43 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # ref slot -> hoisted `__tmp_N` temp
     "expr.walrus_scalar",           # value-scalar walrus `(n = v)` + named
                                     # pre-decl on the sink's named row
+    "expr.walrus_opt_ptr",          # ptr-Optional walrus target: `T* n =
+                                    # nullptr;` + borrow-lifted assign
+                                    # (optional_to_ptr / nullptr / bare ptr)
+    "expr.walrus_ptr_alias",        # borrow-alias pointer walrus target:
+                                    # `[const ]T* n = nullptr;` +
+                                    # `(n = &(v), *n)` (bare for a
+                                    # pointer-name source)
+    "field.walrus_recv",            # field read off a walrus receiver
+                                    # (`(q = &(b), *q).v`, dot access)
+    "expr.walrus_value_opt",        # value-opt scalar walrus reassign:
+                                    # `(x = std::nullopt)` / converting
+                                    # scalar assign
+    "expr.walrus_owned_viewfam",    # owned str/bytes walrus reassign:
+                                    # `(s = str_concat(...))` in place
+    "expr.walrus_owned_slot",       # owned non-value walrus off an Own
+                                    # call: `std::optional<T> n;` +
+                                    # `(n = make(), *n)`, `(*n)` dot reads
+    "expr.walrus_btuple",           # non-reassigned borrow-tuple walrus:
+                                    # `std::tuple<..., T*> t;` + borrow
+                                    # literal / tuple_to_pointer lift
+    "assign.btuple_elem_field",     # scalar field write through a borrow-
+                                    # tuple element (std::get<N>(t)->f = v)
+    "expr.walrus_btuple_slot",      # reassigned borrow-tuple walrus: owning
+                                    # __slot_N.emplace + tuple_to_pointer +
+                                    # bare-name tail
+    "field.walrus_subscript_recv",  # scalar field off a record-elem
+                                    # subscript over a reassigned btuple
+                                    # walrus (std::get<N>((t = ..))->f)
+    "binop.value_select",           # value-position and/or: the once-
+                                    # evaluated-LHS ternary
+                                    # (_gen_logical_value's value slice)
+    "stmt.compile_time_assert",     # assert_send/assert_sync statement:
+                                    # sema-checked, zero emission (NoOp)
+    "ctor.union_pass_arg",          # already-union NAME bare into a
+                                    # same-union record-ctor slot
+    "method.union_pass_arg",        # already-union NAME bare into a non-
+                                    # dcbp pointer-variant method slot
     "dynown.make_unique",           # inheritance conformer into Own[dyn P]:
                                     # std::make_unique<U>(x)
     "dynown.adapter_conformer",     # structural conformer into Own[dyn P]:
@@ -700,6 +737,11 @@ THIR_FACES: frozenset[str] = frozenset({
     # pre-rendered `::tpyapp::mod::g` / native_cpp_name spelling on
     # THIRName.cpp -- imported_variable_cpp, shared with the AST render).
     "name.global_imported",
+    # A read of a read-only-seeded POINTER-SLOT global (non-value record/
+    # container `T* g{};` -- rides the pointer-local arms via lc.pointers:
+    # `(*g)` value derefs, `->` receivers, the addr-coerce `&(*g)`, the
+    # `T& q = (*g);` alias bind).
+    "name.global_slot",
     # BigInt-counter range loop (lowering admission; the render difference is
     # the `::tpy::BigInt` cpp_elem + literal-bound retype, shared with the
     # fixed-int emit).
@@ -920,6 +962,8 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # TuplePrinter(std::get<N>(t))
     "print.container_slice_arg",    # list/Array/Span slice read print arg ->
                                     # ListPrinter(list_slice/list_stepped_slice)
+    "print.walrus_arg",             # container walrus print arg -> the
+                                    # kind-keyed wrap over the walrus render
     "print.container_call_arg",     # container-returning CALL print arg -> its
                                     # kind-keyed printer wrap around the call
     "call.inst_slice_arg",          # container-slice rvalue into a list/set/
@@ -1068,6 +1112,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "sgen.body",                    # one routed simple-generator body
     "sgen.while_cond",              # while-branch condition render
     "sgen.yield_value",             # yield-value render
+    "sgen.tuple_yield",             # tuple yield slot: the resumable tuple
+                                    # arm's mirror (borrow/value builders)
     "sgen.iterable",                # for-branch iterable render
     "sgen.range_arg",               # for-range bound renders
     # The universal __iter__/__next__ protocol foreach (generator-call /

@@ -115,6 +115,7 @@ from .predicates import (
     _is_type_param_slot,
     _optional_ptr_borrow_name,
     _readonly_global_type,
+    _pointer_slot_global_type,
     _resolved_bytes_value,
     _resolved_str_value,
     _template_init_call_fi,
@@ -408,11 +409,14 @@ def _shadow_bound_names(stmts: list[TpyStmt]) -> set[str]:
 def _seed_readonly_globals(
         func: TpyFunction, analyzer, scope: dict[str, TpyType],
         native_globals: 'Mapping[str, str]',
-) -> tuple[frozenset[str], dict[str, str]]:
-    """Seed the VALUE globals `func` only ever READS into `scope` (mutated
-    in place); returns `(bare, spelled)`: the same-module names that render
-    bare, and the native/imported names mapped to their pre-rendered
-    spelling (THIRName.cpp).
+) -> tuple[frozenset[str], dict[str, str], frozenset[str]]:
+    """Seed the globals `func` only ever READS into `scope` (mutated in
+    place); returns `(bare, spelled, slots)`: the same-module VALUE names
+    that render bare, the native/imported names mapped to their
+    pre-rendered spelling (THIRName.cpp), and the POINTER-SLOT names
+    (non-value record/container globals -- `T* g{};` slots whose reads
+    ride the pointer-local arms via lc.pointers; Final and native-linkage
+    names are excluded, matching the generator's pointer_globals set).
 
     Sema resolves an unassigned name to the module global, and the AST
     renders a value global's read bare (`is_indirect_name` is False for
@@ -435,6 +439,7 @@ def _seed_readonly_globals(
     reassign)."""
     cands: dict[str, TpyType] = {}
     spelled: dict[str, str] = {}
+    slots: set[str] = set()
     global_decls = analyzer.function_global_decls.get(id(func), set())
     hoisted = analyzer.function_hoisted_vars.get(id(func), set())
     for n in analyzer.ctx.top_level_decls:
@@ -449,6 +454,15 @@ def _seed_readonly_globals(
                   and nb.kind is BindingKind.VARIABLE else None)
         st = _readonly_global_type(gt, analyzer)
         if st is None:
+            # A same-module POINTER-SLOT global (the predicate excludes
+            # Final and native-linkage names -- namespace-scope values,
+            # not slots -- like the generator's pointer_globals set).
+            st = _pointer_slot_global_type(gt, analyzer, name=n,
+                                           native_globals=native_globals)
+            if st is None:
+                continue
+            cands[n] = st
+            slots.add(n)
             continue
         cands[n] = st
         if n in native_globals:
@@ -464,19 +478,37 @@ def _seed_readonly_globals(
         src_mod, orig = analyzer.imported_names[n]
         vi = analyzer.registry.get_module(src_mod).variables[orig]
         st = _readonly_global_type(vi.type, analyzer)
+        if st is not None and _value_opt_scalar(st, analyzer) is not None:
+            # An IMPORTED value-opt global stays unseeded: the narrowed
+            # (*qualified) render is unverified against the AST's
+            # imported-global deref sites -- same-module only for now.
+            continue
         if st is None:
+            # An imported pointer-slot global reads through the qualified
+            # spelling with the same slot renders (`(*::tpyapp::mod::g)`);
+            # `vi.is_pointer` is the render authority the AST keys on
+            # (is_indirect_name's imported branch).
+            if (not getattr(vi, "is_pointer", False)
+                    or _pointer_slot_global_type(vi.type, analyzer) is None):
+                continue
+            cands[n] = _pointer_slot_global_type(vi.type, analyzer)
+            slots.add(n)
+            spelled[n] = cpp
             continue
         cands[n] = st
         spelled[n] = cpp
     if not cands:
-        return frozenset(), {}
+        return frozenset(), {}, frozenset()
     scan = scan_reassigned_vars(func.body, pre_declared=set(cands))
     for n in (scan.reassigned | scan.aug_assigned
               | _shadow_bound_names(func.body)):
         cands.pop(n, None)
         spelled.pop(n, None)
+        slots.discard(n)
     scope.update(cands)
-    return frozenset(n for n in cands if n not in spelled), spelled
+    return (frozenset(n for n in cands
+                      if n not in spelled and n not in slots),
+            spelled, frozenset(slots))
 
 def _seed_int_kind_tparams(func: TpyFunction, record_name: 'str | None',
                            analyzer, params_set: dict[str, TpyType]) -> None:
@@ -518,27 +550,59 @@ def _seed_global_scope(func: TpyFunction, analyzer, lc: '_LowerCtx',
     (`::`-qualified reads)."""
     global_seeded: set[str] = set()
     global_write_cpp: dict[str, str] = {}
+    decl_slots: set[str] = set()
     for n in analyzer.function_global_decls.get(id(func), set()):
         if n in params_set:
             continue
         gt = analyzer.ctx.global_scope.lookup(n)
         if gt is None:
-            continue
+            nb = analyzer.global_ns.lookup_local(n)
+            gt = (nb.type if nb is not None
+                  and nb.kind is BindingKind.VARIABLE else None)
+            if gt is None:
+                continue
         gt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(gt)))
-        if _eligible_scalar(gt) or _eligible_ptr_value(gt, analyzer):
+        if (_eligible_scalar(gt) or _eligible_ptr_value(gt, analyzer)
+                or _value_opt_scalar(gt, analyzer) is not None):
             params_set[n] = gt
             global_seeded.add(n)
+            if _value_opt_scalar(gt, analyzer) is not None:
+                # Value-opt globals read/write like value-opt locals
+                # (`= std::nullopt`, `.has_value()`, narrowed `(*g)`).
+                lc.value_opt_locals.add(n)
             if n in native_globals:
                 # A native-linkage global writes through its BARE C name
                 # (`g_counter = val;` -- the AST's native_global_names.get
                 # target, unqualified) and reads through the `::`-qualified
                 # spelling like any other native-global read.
                 global_write_cpp[n] = native_globals[n]
+        elif _pointer_slot_global_type(
+                gt, analyzer, name=n,
+                native_globals=native_globals) is not None:
+            # A `global`-declared POINTER-SLOT global: sema forbids
+            # rebinding a non-value global, so the name is only ever read /
+            # mutated in place -- seed it like the read-only slots.
+            params_set[n] = _pointer_slot_global_type(
+                gt, analyzer, name=n, native_globals=native_globals)
+            global_seeded.add(n)
+            decl_slots.add(n)
     lc.prescan.global_seeded = frozenset(global_seeded)
     lc.prescan.global_write_cpp = global_write_cpp
     lc.prescan.native_globals = native_globals
-    lc.prescan.global_readonly, lc.prescan.global_cpp = _seed_readonly_globals(
+    (lc.prescan.global_readonly, lc.prescan.global_cpp,
+     lc.prescan.global_slots) = _seed_readonly_globals(
         func, analyzer, params_set, native_globals)
+    lc.prescan.global_slots = lc.prescan.global_slots | frozenset(decl_slots)
+    # Pointer-slot globals ride every pointer-local render arm (`->`
+    # receivers, `(*g)` derefs, alias binds); read-only / rebind-forbidden
+    # seeding means no write/reseat arm can ever fire on them.
+    lc.pointers.update(lc.prescan.global_slots)
+    for n in lc.prescan.global_readonly:
+        if _value_opt_scalar(params_set.get(n), analyzer) is not None:
+            # Read-only value-opt globals ride the value-opt local read
+            # arms (bare whole-optional, narrowed `(*g)`, unproven
+            # deref_optional_check).
+            lc.value_opt_locals.add(n)
     for n, cname in global_write_cpp.items():
         # Reads of a write-seeded native global keep the ordinary
         # `::`-qualified native-read spelling (the read arm is

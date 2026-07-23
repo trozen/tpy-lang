@@ -354,10 +354,12 @@ from .expressions import (
     lower_print_sink,
     _lower_field_source,
     _lower_lambda,
+    _strip_slot_leaf_deref,
     _lower_truthy,
     _cond_mixed_walrus_temps,
     _lower_borrow_tuple_literal,
     _lower_generic_tuple_literal,
+    _subscript_yields_borrow_ptr,
     _lower_tuple_literal,
     _rb_operand_slots,
     _retag_bytes_literal_view,
@@ -1845,6 +1847,14 @@ def _borrow_tuple_source_ok(src: TpyExpr, lc: '_LowerCtx') -> bool:
         if name_const(src.obj.name):
             return False
         return not isinstance(analyzer.get_expr_type(src.obj), ReadonlyType)
+    if (isinstance(src, TpyFieldAccess)
+            and isinstance(src.obj, TpyName)):
+        # A storage-tuple FIELD source (`t = h.pair` -> `tuple_to_pointer<..>
+        # (h.pair)`): the reseat_lift render off a non-const receiver; the
+        # field's own read admission runs during lowering.
+        if name_const(src.obj.name):
+            return False
+        return not isinstance(analyzer.get_expr_type(src.obj), ReadonlyType)
     return False
 
 
@@ -1877,6 +1887,30 @@ def _borrow_tuple_hoist_ok(name: str, bare: 'TupleType',
     srcs = _borrow_tuple_binding_sources(name, lc)
     return (srcs is not None
             and all(_borrow_tuple_source_ok(s, lc) for s in srcs))
+
+
+def _btuple_elem_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
+                                lc: '_LowerCtx', analyzer) -> bool:
+    """A value-scalar field write through a borrow-tuple element
+    (`t[1].val = 99` -> `std::get<1>(t)->val = 99;`): the target rides the
+    tuple-subscript field READ arm (the `_subscript_yields_borrow_ptr`
+    arrow) off an in-scope borrow-tuple NAME receiver; only value-scalar /
+    Char field slots admit (record/container slots carry write machinery
+    not mirrored here)."""
+    target = stmt.target
+    if not (isinstance(target, TpyFieldAccess)
+            and isinstance(target.obj, TpySubscript)
+            and isinstance(target.obj.obj, TpyName)
+            and _borrow_tuple_local_type(target.obj.obj.name, declared, lc)
+            is not None
+            # Plain borrow elements only: an Optional element write needs
+            # the deref_check machinery (stays AST, pinned).
+            and _subscript_yields_borrow_ptr(target.obj, lc)):
+        return False
+    ft = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+        analyzer.get_expr_type(target))))
+    return bool((_eligible_scalar(ft) or _eligible_char(ft))
+                and _witness("assign.btuple_elem_field"))
 
 
 def _borrow_tuple_local_type(name: str, declared: dict[str, TpyType],
@@ -4157,7 +4191,11 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     stmt.init, bt_t, lc, declared)
                 _witness("btuple.reseat_literal")
             else:
+                # BORROW_BIND: the tuple_to_pointer wrap consumes the bare
+                # storage read (subscript element or F3 tuple field).
                 src = _lower_expr(stmt.init, lc, declared,
+                                  use=_ExprUse(
+                                      result=_ExprResultUse.BORROW_BIND),
                                   subscript_prechecked=True)
                 value = THIRFormConvert(result_type=bt_t, value=src,
                                         form=Form.BORROW, loc=loc)
@@ -4550,7 +4588,15 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     form=Form.BORROW, is_const=u_const, loc=loc)
             else:
                 u_const = False
-                u_init = _lower_expr(stmt.init, lc, declared)
+                # A ptr-variant-returning CALL source assigns bare into the
+                # same-union slot (`got = cycle(start);`) -- STORAGE use so
+                # the call-ret union row admits it; name copies keep the
+                # default use.
+                u_init = _lower_expr(
+                    stmt.init, lc, declared,
+                    use=(_ExprUse(result=_ExprResultUse.STORAGE)
+                         if isinstance(stmt.init, (TpyCall, TpyMethodCall))
+                         else _ExprUse()))
             if stmt.name in declared:
                 return THIRAssign(
                     target=THIRName(result_type=ptr_u, name=stmt.name,
@@ -5107,7 +5153,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 or _str_field_write_ok(stmt, declared, analyzer)
                 or _bytes_field_write_ok(stmt, declared, analyzer)
                 or _container_name_field_write_ok(
-                    stmt, declared, pointers, narrowed, analyzer)):
+                    stmt, declared, pointers, narrowed, analyzer)
+                or _btuple_elem_field_write_ok(stmt, declared, lc, analyzer)):
             note_detail("assign.field_write_shape")
             raise ThirUnsupported(stmt_reject_reason(stmt))
         target_prechecked = isinstance(stmt.target, TpyFieldAccess)
@@ -6984,6 +7031,13 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         )
     if isinstance(stmt, TpyExprStmt):
         begin_stmt()
+        if (isinstance(stmt.expr, TpyCall)
+                and stmt.expr.compile_time_assert):
+            # assert_send/assert_sync: checked in sema, no emission (the
+            # AST's early None return); the loc rides trivia_loc so the
+            # leading `#` comments still emit without the source line.
+            _witness("stmt.compile_time_assert")
+            return THIRNoOpStmt(loc=None, trivia_loc=loc)
         er_fi = _error_return_stmt_fi(stmt.expr, analyzer)
         if er_fi is not None:
             # A discarded @error_return call: the `__try_tmp_N` block
@@ -7095,7 +7149,15 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                           or (isinstance(arg, (TpyCall, TpyMethodCall))
                               and _wrap_print_form(
                                   arg, declared, analyzer) is not None
-                              and _witness("print.container_call_arg")))
+                              and _witness("print.container_call_arg"))
+                          # A container WALRUS arg (`print((cols := [..]))`):
+                          # the kind-keyed wrap composes over the walrus
+                          # render (`ListPrinter((cols = .., *cols))`); the
+                          # walrus arm validates its own target class.
+                          or (isinstance(arg, TpyNamedExpr)
+                              and _wrap_print_form(
+                                  arg, declared, analyzer) is not None
+                              and _witness("print.walrus_arg")))
                 if not ok:
                     fam = _type_family_tag(
                         analyzer.get_expr_type(arg), analyzer)
@@ -7479,8 +7541,9 @@ def _lower_with(stmt: TpyWith, lc: _LowerCtx, declared: dict[str, TpyType],
         if not (item.exit_can_suppress or item.exit_takes_exc_val):
             _witness("with.cleanup_only")
         items.append(THIRWithItem(
-            ctx_expr=_lower_expr(ctx, lc, declared,
-                                 use=_ExprUse(ctx_manager=True)),
+            ctx_expr=_strip_slot_leaf_deref(
+                _lower_expr(ctx, lc, declared,
+                            use=_ExprUse(ctx_manager=True)), lc),
             manager_borrowed=item.manager_borrowed,
             deref_manager=deref,
             target=item.target,

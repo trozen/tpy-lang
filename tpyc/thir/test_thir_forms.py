@@ -299,14 +299,16 @@ class TestNameAlias:
         assert "std::vector<int32_t>& row = ::tpy::__getitem__(matrix, 0);" in cpp
         assert "const std::vector<int32_t>& row" not in cpp
 
-    def test_global_source_ineligible(self):
-        # A module-global record renders `T*`; aliasing it needs `(*g)` -- a
-        # later rung, so the whole body stays on the AST path.
+    def test_global_source_routes_deref_alias(self):
+        # RE-PINNED ROUTED (thir-wave-next6): a module-global record seeds
+        # as a pointer slot (lc.pointers), so the alias takes the `(*g)`
+        # deref bind (`Inner& local = (*g);`, decl.alias_ptr_deref_src) --
+        # corpus-verified by warn_auto_move_global_alias.
         thir = _lower_ctx(
             _F1_RECORDS
             + "g: Inner = Inner(0)\n"
             + "def f() -> Int32:\n    local = g\n    return local.value\n")
-        assert _fn(thir, "f") is None
+        assert _fn(thir, "f") is not None
 
     def test_ptr_local_source_routes_deref_alias(self):
         # RE-PINNED ROUTED (thir-wave-next5): aliasing an F2 pointer-local

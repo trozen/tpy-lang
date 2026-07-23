@@ -119,7 +119,8 @@ class _Prescan:
                  "ret_value_opt", "ret_value_opt_view",
                  "value_opt_params", "param_names",
                  "has_self", "is_constructor", "global_seeded", "global_readonly",
-                 "global_cpp", "global_write_cpp", "native_globals")
+                 "global_cpp", "global_write_cpp", "native_globals",
+                 "global_slots")
 
     def __init__(self, func: TpyFunction, analyzer) -> None:
         # Param names, for checks that must tell a param from a local (a str
@@ -158,6 +159,11 @@ class _Prescan:
         # target spelling of the AST's global-write arm
         # (`native_global_names.get(name, name)`, unqualified).
         self.global_write_cpp: dict[str, str] = {}
+        # POINTER-SLOT globals seeded read-only (non-value record/container
+        # `T* g{};` slots): also in lc.pointers, so reads take the slot
+        # renders (`(*g)`, `g->`, `&(*g)`); imported ones carry their
+        # qualified spelling in global_cpp.
+        self.global_slots: frozenset[str] = frozenset()
         # Module native-linkage globals (name -> C/C++ symbol,
         # module_native_global_names; lower_function threads them through);
         # the try hoist arm rejects a colliding predecl name, and the
@@ -371,9 +377,16 @@ _BRANCH_SCOPED_SETS = (
 #   inline_narrowed -- condition-scoped: saved/restored by _lower_narrow_cond
 #       within a single condition, never live across statements.
 #   tparam_bounds -- init-only per-function fact.
+#   walrus_predeclared -- mirrors the AST's walrus_pre_declared asymmetry:
+#       the named pre-decl is function-scoped, so a sibling-branch walrus
+#       re-bind must see the first branch's decl and assign in place.
+#   walrus_slot_locals -- the owned-slot walrus targets: the decl is
+#       function-scoped (named row) and the binding outlives its branch
+#       (Python scoping), so reads after the branch keep the `(*n)` render.
 _FUNCTION_SCOPED_STATE = (
     "unhandled_hoists", "nested_def_locals", "nested_returns",
-    "inline_narrowed", "tparam_bounds",
+    "inline_narrowed", "tparam_bounds", "walrus_predeclared",
+    "walrus_slot_locals",
 )
 
 
@@ -410,7 +423,8 @@ class _LowerCtx:
                  "unpack_ptr_targets",
                  "unhandled_hoists", "narrow",
                  "inline_narrowed", "forbidden_reads", "forbidden_writes",
-                 "nested_def_locals", "error_return_cpp")
+                 "nested_def_locals", "error_return_cpp",
+                 "walrus_predeclared", "walrus_slot_locals")
 
     def __init__(self, func: TpyFunction, analyzer, render_type,
                  self_receiver: str | None = None,
@@ -472,6 +486,16 @@ class _LowerCtx:
         for pname, ptype in func.params:
             if _optional_ptr_borrow(ptype, analyzer) is not None:
                 self.pointers.add(pname)
+        # Walrus targets already pre-declared this FUNCTION -- the AST's
+        # walrus_pre_declared asymmetry (function-scoped, never
+        # branch-restored, unlike the branch-copied `declared` dict): a
+        # sibling-branch re-bind assigns in place, no second decl.
+        self.walrus_predeclared: set[str] = set()
+        # Owned-slot walrus targets (`std::optional<T> n;` + walrus-deref
+        # reads): every read renders `(*n)` with DOT member access -- the
+        # AST's register_walrus_deref substitution, NOT the pointer-local
+        # arrow model. Function-scoped like the decl itself.
+        self.walrus_slot_locals: set[str] = set()
         # F2d rebind-slot subset of `pointers`: their reseats lower as rvalue
         # rebinds (`p = &*(__slot_N = ...)`), not lvalue `&(...)` reseats.
         self.rebind_slot_locals: set[str] = set()

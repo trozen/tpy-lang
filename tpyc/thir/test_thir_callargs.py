@@ -1397,14 +1397,18 @@ class TestArgTempGateRejects:
         assert _fn(thir, "f") is not None
         _assert_byte_identical(src)
 
-    def test_own_union_slot_name_still_moves_ast(self):
-        # The temp rows must not swallow the Own[union] auto-move shape.
-        thir = _lower_ctx(_PRELUDE
-                          + "def take_own(v: Own[A | B]) -> Int32:\n"
-                          + "    return 0\n"
-                          + "def f(v: Own[A | B]) -> Int32:\n"
-                          + "    return take_own(v)\n")
-        assert _fn(thir, "f") is None
+    def test_own_union_slot_name_routes_move(self):
+        # RE-PINNED ROUTED (thir-wave-next6): the Own[union] auto-move now
+        # rides the Own-slot cascade's union row (`take_own(std::move(v))`,
+        # corpus: callarg_own_ctor) -- not the temp rows.
+        src = (_PRELUDE
+               + "def take_own(v: Own[A | B]) -> Int32:\n"
+               + "    return 0\n"
+               + "def f(v: Own[A | B]) -> Int32:\n"
+               + "    return take_own(v)\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is not None
+        _assert_byte_identical(src)
 
     def test_method_call_rvalue_args_never_temp(self):
         # Method-call args never temp through this facility: the AST inlines

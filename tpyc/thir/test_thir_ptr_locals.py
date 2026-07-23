@@ -314,17 +314,19 @@ class TestUnionPtrSlot:
         assert "d = ::tpy::to_ptr_variant(*__slot_2);" in cpp
         assert "d{&(dog)}" in cpp
 
-    def test_whole_union_call_rvalue_gate(self):
-        # An `Own[Dog | Cat]`-returning call classifies UNION_RVALUE at the
-        # decl; the union-returning call EXPRESSION is a later call-track
-        # rung, so the body still falls back -- pin the fallback (not a
-        # divergence) so the interlock is explicit.
-        thir = _lower_ctx(
-            _UNION_RECORDS
-            + "def mk() -> Own[Dog | Cat]:\n    return Dog(1)\n"
-            + "def f() -> None:\n"
-            + "    d = mk()\n")
-        assert _fn(thir, "f") is None
+    def test_whole_union_call_rvalue_routes(self):
+        # RE-PINNED ROUTED (thir-wave-next6): the union-returning call
+        # expression landed (the call-ret union row), so the UNION_RVALUE
+        # decl fills its storage slot from the bare call
+        # (`__slot_N = mk();` + `to_ptr_variant` -- corpus:
+        # union_own_return).
+        src = (_UNION_RECORDS
+               + "def mk() -> Own[Dog | Cat]:\n    return Dog(1)\n"
+               + "def f() -> None:\n"
+               + "    d = mk()\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is not None
+        _assert_byte_identical(src)
 
     def test_const_member_source_is_ineligible(self):
         # A const-rooted member lvalue would need the const-pointee variant

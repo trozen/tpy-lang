@@ -34,6 +34,8 @@ from ...parse.nodes import (
     TpyFieldAccess,
     TpyForEach,
     TpyFunction,
+    TpyName,
+    TpyTupleLiteral,
     TpyWhile,
 )
 from ...typesys import (
@@ -42,6 +44,7 @@ from ...typesys import (
     OwnType,
     ReadonlyType,
     TpyType,
+    TupleType,
     unwrap_readonly,
     unwrap_ref_type,
     unwrap_send_sync,
@@ -53,10 +56,12 @@ from ...codegen_cpp.gen_generators import (
 from .context import _ExprResultUse, _ExprUse, _LowerCtx
 from .checks import _narrow_cond_info
 from .expressions import (_lower_expr, _lower_truthy,
-                          _cond_mixed_walrus_temps, _slot_literal_retype)
+                          _cond_mixed_walrus_temps, _slot_literal_retype,
+                          _lower_borrow_tuple_literal, _lower_tuple_literal)
 from .functions import _check_callable_structure, _seed_global_scope
 from .predicates import (
     _f1_record,
+    _value_tuple_nested,
     _field_receiver_ok,
     _resolved_bytes_value,
     _resolved_str_value,
@@ -71,11 +76,12 @@ def _sgen_yield_ok(yt: 'TpyType | None', analyzer) -> bool:
     move-out): value scalars/Char/enums (`_res_value_ok`), str/bytes (the
     bare source render into the owned `std::optional<std::string>` slot),
     F1 records (the `val_or_ref<T>` borrow slot -- a bare name/field
-    render), and `Own[F1 record]` (the bare value slot; the skeleton's
-    `std::move(__val)`). Excluded, each its own rung: tuples
-    (`gen_yield_value`'s tuple_to_pointer bridge + the borrow-form literal
-    builder), readonly (const-borrow slot), Optional/Union
-    (pointer/storage machinery), TypeParamRef (substituted slots)."""
+    render), `Own[F1 record]` (the bare value slot; the skeleton's
+    `std::move(__val)`), and TUPLE slots (deferred to the per-yield tuple
+    arm in `_lower_loop_body`, mirroring the resumable Yield tuple arm's
+    literal/borrow-local sources). Excluded, each its own rung: readonly
+    (const-borrow slot), Optional/Union (pointer/storage machinery),
+    TypeParamRef (substituted slots)."""
     if _res_value_ok(yt, analyzer):
         return True
     if yt is None or isinstance(unwrap_ref_type(yt), ReadonlyType):
@@ -84,6 +90,8 @@ def _sgen_yield_ok(yt: 'TpyType | None', analyzer) -> bool:
             or _resolved_bytes_value(yt, analyzer) is not None):
         return True
     u = unwrap_ref_type(unwrap_send_sync(yt))
+    if isinstance(u, TupleType):
+        return True
     if isinstance(u, OwnType):
         u = unwrap_readonly(u.wrapped)
     return _f1_record(u, analyzer)
@@ -231,6 +239,13 @@ def _lower_simple_generator(func: TpyFunction, analyzer, render_type,
         if range_args:
             _witness("sgen.range_arg")
     else:
+        # A pointer-slot GLOBAL iterable: the AST lambda captures the bare
+        # slot name and calls `.begin()` on the pointer -- uncompilable C++
+        # (pre-existing, see BUGS.md); reject rather than mirror or
+        # silently diverge until the AST emit is fixed.
+        if (isinstance(last.iterable, TpyName)
+                and last.iterable.name in lc.prescan.global_slots):
+            return _reject("sgen.iterable_global_slot")
         # A field iterable (`for h in self.items:`) mirrors the sync
         # container route's validation: receiver admission via
         # _field_receiver_ok, then the bare field-read render (the result
@@ -274,11 +289,32 @@ def _lower_loop_body(loop_stmt, lc: _LowerCtx, declared: dict[str, TpyType],
     with lc.branch_scope():
         pre_l = _lower_stmts(pre, lc, body_declared, in_branch=True,
                              branch_decls_ok=True, loop_depth=loop_depth)
-        # gen_yield_value threads the yield type into the render
-        # (`yield 1` at an `Iterator[int]` -> `::tpy::BigInt(1)`).
-        yv = _slot_literal_retype(
-            _lower_expr(yield_stmt.value, lc, body_declared),
-            lc.func.generator_yield_type, lc)
+        yt = lc.func.generator_yield_type
+        yt_bare = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(yt)))
+                   if isinstance(yt, TpyType) else None)
+        if isinstance(yt_bare, TupleType):
+            # Tuple yield slot -- the resumable Yield tuple arm's mirror:
+            # a LITERAL takes the borrow or value builder per the slot's
+            # element forms; other sources (storage lifts, names) stay
+            # their own rung.
+            yv_src = yield_stmt.value
+            if not isinstance(yv_src, TpyTupleLiteral):
+                raise ThirUnsupported("sgen.tuple_yield_source")
+            if yt_bare.has_pointer_repr_element():
+                yv = _lower_borrow_tuple_literal(
+                    yv_src, yt_bare, lc, body_declared)
+            else:
+                vt = _value_tuple_nested(yt_bare, lc.analyzer)
+                if vt is None:
+                    raise ThirUnsupported("sgen.tuple_yield_source")
+                yv = _lower_tuple_literal(yv_src, vt, lc, body_declared)
+            _witness("sgen.tuple_yield")
+        else:
+            # gen_yield_value threads the yield type into the render
+            # (`yield 1` at an `Iterator[int]` -> `::tpy::BigInt(1)`).
+            yv = _slot_literal_retype(
+                _lower_expr(yield_stmt.value, lc, body_declared),
+                yt, lc)
         _witness("sgen.yield_value")
         post_l = _lower_stmts(post, lc, body_declared, in_branch=True,
                               branch_decls_ok=True, loop_depth=loop_depth)

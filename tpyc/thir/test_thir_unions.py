@@ -1448,10 +1448,11 @@ class TestUnionCallArgLift:
         assert isinstance(arg.init, THIRLiteral) and arg.init.value is None
         assert isinstance(arg.init.result_type, UnionType)
 
-    def test_two_int_member_union_ctor_literal_still_defers(self):
-        # A bare int literal against a ctor slot whose union carries TWO
-        # int-family members has no single converting-ctor target -- the
-        # widened row rejects and the body stays AST.
+    def test_two_int_member_union_ctor_literal_routes(self):
+        # RE-PINNED ROUTED (thir-wave-next6): the ctor-arg ladder gained
+        # the free-call union rows, and the two-int-member literal renders
+        # identically on both paths (dualgen-verified: the hoisted temp's
+        # target-less literal render + the variant's converting ctor).
         thir = self._lower(
             "from tpy import Int64\n"
             "class WI:\n    uni: Int32 | Int64 | None\n"
@@ -1459,7 +1460,7 @@ class TestUnionCallArgLift:
             "        self.uni = uni\n"
             "def look(w: WI) -> Int32:\n    return 0\n"
             "def f() -> None:\n    print(look(WI(1)))\n")
-        assert _fn(thir, "f") is None
+        assert _fn(thir, "f") is not None
 
     def test_int_literal_value_union_ctor_arg_temps(self):
         # A bare int literal at a value-union ctor slot is not sema-coerced:
@@ -1549,11 +1550,13 @@ class TestUnionCallArgLift:
         arg = self._arg(thir, "g")
         assert isinstance(arg, THIRUnionArgLift) and arg.const_wrap
 
-    def test_own_slot_name_arg_rejects(self):
-        # An Own[union] slot with a NAME arg auto-moves (`std::move(v)`) -> AST.
+    def test_own_slot_name_arg_routes_move(self):
+        # RE-PINNED ROUTED (thir-wave-next6): an Own[union] slot with an
+        # Own-param NAME arg takes the last-use `std::move(v)` via the
+        # Own-slot cascade's union row (corpus: callarg_own_ctor).
         thir = self._lower(
             "def f(v: Own[A | B]) -> Int32:\n    return take_own(v)\n")
-        assert _fn(thir, "f") is None
+        assert _fn(thir, "f") is not None
 
     def test_ctor_rvalue_plain_record_slot_temps(self):
         # `use(A(7))` into a plain record param hoists `A __tmp_N = A(7);`
@@ -1773,10 +1776,12 @@ class TestUnionCallDecl:
         assert "std::variant<int32_t, double> u = make(n);" in cpp
         assert "u = make((::tpy::sub_check<int32_t>(n, 1)));" in cpp
 
-    def test_ptr_union_call_decl_ineligible(self):
-        # A pointer-variant union return (record members) at a call decl
-        # stays on the AST path -- the docstring's claim, pinned like the
-        # sibling classes' _ineligible tests.
+    def test_ptr_union_call_decl_routes(self):
+        # RE-PINNED ROUTED (thir-wave-next6): a plain ptr-variant union
+        # return assigns BARE at the decl (`u = pick(a, b, true);` -- the
+        # C++ return is already the pointer variant); only `Own[union]`
+        # factories keep the UNION_RVALUE storage slot. Corpus-verified by
+        # union_ptr_variant_none_write.
         thir = _lower_ctx(
             "from tpy import Int32\n"
             "class A:\n    x: Int32\n"
@@ -1788,7 +1793,7 @@ class TestUnionCallDecl:
             "def use(a: A, b: B) -> Int32:\n"
             "    u = pick(a, b, True)\n"
             "    return 1\n")
-        assert _fn(thir, "use") is None
+        assert _fn(thir, "use") is not None
 
 
 class TestOwnUnionReturn:

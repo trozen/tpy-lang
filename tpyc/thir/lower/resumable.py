@@ -107,6 +107,7 @@ from .expressions import (
     _lower_truthy,
     _lower_tuple_literal,
     _slot_literal_retype,
+    _strip_slot_leaf_deref,
 )
 from .functions import (
     _check_callable_structure,
@@ -1366,8 +1367,10 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 reason = _with_enter_reject(stmt, analyzer, declared)
                 if reason is not None:
                     raise ThirUnsupported(reason)
-                region_exprs[id(stmt.item.context_expr)] = _lower_expr(
-                    stmt.item.context_expr, lc, declared)
+                region_exprs[id(stmt.item.context_expr)] = (
+                    _strip_slot_leaf_deref(
+                        _lower_expr(stmt.item.context_expr, lc, declared),
+                        lc))
                 _witness("res.with_ctx")
                 continue
             if isinstance(stmt, rcfg.AsyncForIterSetup):
@@ -1378,8 +1381,13 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 # call is skeleton).
                 begin_stmt()
                 if stmt.is_async:
-                    region_exprs[id(stmt.iterable_expr)] = _lower_expr(
-                        stmt.iterable_expr, lc, declared)
+                    # The async skeleton owns the indirect deref
+                    # ((*(g)).__aiter__(), gen_async's is_indirect wrap)
+                    # -- the leaf renders bare.
+                    region_exprs[id(stmt.iterable_expr)] = (
+                        _strip_slot_leaf_deref(
+                            _lower_expr(stmt.iterable_expr, lc, declared),
+                            lc))
                 else:
                     _lower_for_iter_setup(
                         stmt, func, lc, declared, analyzer, region_exprs)
@@ -1561,9 +1569,11 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 # never reaches here (gated as res.await_prebuilt).
                 begin_stmt()
                 try:
-                    suspend_exprs[id(operand)] = _lower_expr(
-                        operand, lc, declared,
-                        use=_ExprUse(result=_ExprResultUse.SUSPEND))
+                    suspend_exprs[id(operand)] = _strip_slot_leaf_deref(
+                        _lower_expr(
+                            operand, lc, declared,
+                            use=_ExprUse(result=_ExprResultUse.SUSPEND)),
+                        lc)
                 except ThirUnsupported:
                     raise ThirUnsupported("res.await_operand_shape") from None
                 _witness("res.suspend_operand")

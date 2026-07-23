@@ -228,9 +228,10 @@ class TestSlicedOutShapes:
         assert witnesses.get("sgen.body") == 1
         assert not any("sgen." in k for k in fallback)
 
-    def test_tuple_yield_defers(self):
-        # A tuple yield interacts with gen_yield_value's tuple_to_pointer
-        # bridge and the borrow-form literal builder -- out of slice.
+    def test_tuple_yield_literal_routes(self):
+        # A tuple-literal yield now routes through the borrow builder (the
+        # resumable tuple arm's mirror); the non-name element shapes
+        # (Int32(i) fold, subscript element) validate inside the builder.
         src = (_ITER
                + "class P:\n"
                + "    x: Int32\n"
@@ -241,7 +242,8 @@ class TestSlicedOutShapes:
                + "def main() -> None:\n"
                + "    ps = [P(1), P(2)]\n"
                + "    for i, p in gen(ps):\n        print(i, p.x)\nmain()\n")
-        assert _sgen_fallback(src).get("sgen.yield_type") == 1
+        witnesses, _fallback = _assert_identical(src)
+        assert not _sgen_fallback(src).get("sgen.yield_type")
 
     def test_str_loop_var_defers(self):
         # A str loop element stays out of the loop-var slice (the view/owned
@@ -515,3 +517,63 @@ class TestForeachCallers:
         assert not witnesses.get("foreach.iter_proto")
         assert any("iter.name" in k or "user_iterator" in k
                    for k in fallback), fallback
+
+
+class TestTupleYield:
+    """Tuple yield slots: the resumable Yield tuple arm's mirror (borrow
+    builder for pointer-repr slots, value builder otherwise); non-literal
+    sources keep falling back."""
+
+    _BOX = (_ITER
+            + "class Box:\n"
+            + "    val: Int32\n"
+            + "    def __init__(self, v: Int32) -> None:\n"
+            + "        self.val = v\n\n")
+
+    def test_borrow_tuple_literal_yield_routes(self):
+        src = (self._BOX
+               + "def pairs(items: list[Box]) -> Iterator[tuple[Int32, Box]]:\n"
+               + "    i = 0\n"
+               + "    for item in items:\n"
+               + "        yield (i, item)\n"
+               + "        i += 1\n\n"
+               + "def main() -> None:\n"
+               + "    xs = [Box(1), Box(2)]\n"
+               + "    for i, b in pairs(xs):\n"
+               + "        b.val = i + 10\n"
+               + "    for b in xs:\n"
+               + "        print(b.val)\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("sgen.tuple_yield", 0) >= 1
+        assert not fallback
+
+    def test_value_tuple_literal_yield_routes(self):
+        src = (_ITER
+               + "def pairs(n: Int32) -> Iterator[tuple[Int32, Int32]]:\n"
+               + "    i = 0\n"
+               + "    while i < n:\n"
+               + "        yield (i, i * 2)\n"
+               + "        i += 1\n\n"
+               + "def main() -> None:\n"
+               + "    for a, b in pairs(2):\n"
+               + "        print(a, b)\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("sgen.tuple_yield", 0) >= 1
+        assert not fallback
+
+    def test_name_tuple_yield_stays_ast(self):
+        # A yielded tuple NAME (a loop var) is not the literal shape --
+        # falls back (byte-identical via fallback).
+        src = (self._BOX
+               + "def relay(items: list[tuple[Int32, Box]])"
+               + " -> Iterator[tuple[Int32, Box]]:\n"
+               + "    for it in items:\n"
+               + "        yield it\n\n"
+               + "def main() -> None:\n"
+               + "    b = Box(3)\n"
+               + "    items: list[tuple[Int32, Box]] = [(1, b)]\n"
+               + "    for i, x in relay(items):\n"
+               + "        x.val = 9\n"
+               + "    print(b.val)\nmain()\n")
+        _witnesses, fallback = _assert_identical(src)
+        assert fallback, "expected the name-source tuple yield to fall back"

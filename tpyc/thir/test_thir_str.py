@@ -571,12 +571,14 @@ class TestFString:
         assert _emit_expr(fstr) == 'std::format("{}", ::tpy::list_to_str(xs))'
 
     def test_ineligible_inner_expr_rejects(self):
-        # The interpolated expr itself must be in the slice (a container
-        # global is not -- containers stay unseeded pointer slots).
+        # The interpolated expr itself must be in the slice (the iterator-
+        # combinator machinery -- `list(map(...))` -- is avoid-list
+        # territory; a container global seeds as a pointer slot now and
+        # routes).
         thir = _lower(
             "from tpy import Int32\n"
-            "xs = [1, 2]\n"
-            'def f() -> str:\n    return f"{xs[0]}"\n')
+            "def f(xs: list[Int32]) -> str:\n"
+            '    return f"{list(map(lambda v: v + 1, xs))}"\n')
         assert _fn(thir, "f") is None
 
     def test_string_concat_arg_routes(self):

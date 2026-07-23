@@ -76,6 +76,7 @@ from .nodes import (
     THIRIf,
     THIRIfExpr,
     THIRIsNone,
+    THIRValueSelect,
     THIRMembership,
     THIRStrMembership,
     THIRTupleMembership,
@@ -154,6 +155,9 @@ class CommentSink:
     def stmt(self, out: TextIO, loc, indent: str) -> None:
         ...
 
+    def inline(self, out: TextIO, loc, indent: str) -> None:
+        ...
+
     def elif_(self, out: TextIO, loc, indent: str) -> None:
         ...
 
@@ -180,7 +184,7 @@ class TempSink:
     def __init__(self) -> None:
         self._counter = 0
         self._pending: list[tuple[str, str, str, bool]] = []
-        self._pending_named: list[tuple[str, str]] = []
+        self._pending_named: list[tuple[str, str, 'str | None']] = []
 
     def create(self, cpp_type: str, init_expr: str, *,
                brace_init: bool = False) -> str:
@@ -189,10 +193,12 @@ class TempSink:
         self._pending.append((name, cpp_type, init_expr, brace_init))
         return name
 
-    def declare_named(self, name: str, cpp_type: str) -> None:
+    def declare_named(self, name: str, cpp_type: str, *,
+                      init: 'str | None' = None) -> None:
         """Register a named pre-declaration (walrus target) -- rendered
-        `type name;` ahead of the anonymous temps, like TempState's."""
-        self._pending_named.append((name, cpp_type))
+        `type name[ = init];` ahead of the anonymous temps, like
+        TempState's."""
+        self._pending_named.append((name, cpp_type, init))
 
     def checkpoint(self) -> tuple[int, int]:
         """Snapshot the pending queues -- the cond-position seam
@@ -219,8 +225,11 @@ class TempSink:
         del self._pending[pending_n:]
 
     def flush(self, out: TextIO, indent: str) -> None:
-        for name, cpp_type in self._pending_named:
-            out.write(f"{indent}{cpp_type} {name};\n")
+        for name, cpp_type, init in self._pending_named:
+            if init is not None:
+                out.write(f"{indent}{cpp_type} {name} = {init};\n")
+            else:
+                out.write(f"{indent}{cpp_type} {name};\n")
         self._pending_named.clear()
         for name, cpp_type, init_expr, brace_init in self._pending:
             if brace_init:
@@ -247,8 +256,9 @@ class CtxTempSink(TempSink):
         return self._ctx.temps.create_typed(cpp_type, init_expr,
                                             brace_init=brace_init)
 
-    def declare_named(self, name: str, cpp_type: str) -> None:
-        self._ctx.temps.declare_named(name, cpp_type)
+    def declare_named(self, name: str, cpp_type: str, *,
+                      init: 'str | None' = None) -> None:
+        self._ctx.temps.declare_named(name, cpp_type, init=init)
 
     def checkpoint(self) -> tuple[int, int]:
         return self._ctx.temps.checkpoint()
@@ -331,13 +341,14 @@ class _EmitState:
     function, so a counter seeded at 0 here and bumped once per loop (pre-order)
     matches the AST path's `__start_N`/`__stop_N` numbering exactly.
 
-    `slot_counter` reproduces `ctx.slots` for F2d rebind-slot pointer-locals:
-    within the eligible slice only a REBIND_SLOT decl bumps it (every other
-    `__slot_N` consumer -- unions, tuples, @dynamic, walrus -- is gated out), and
-    it pre-increments per allocation just like `SlotState.next_slot`, so the
-    `__slot_N` numbering matches the AST path. `rebind_slots` maps a rebind-slot
-    local's name to its optional rebind slot N (allocated at the decl, read at
-    each reseat) -- the analog of `ctx.rebind_slots`.
+    `slot_counter` reproduces `ctx.slots` for F2d rebind-slot pointer-locals
+    and reassigned borrow-tuple walruses: within the eligible slice only
+    those bump it (the other `__slot_N` consumers -- unions, @dynamic -- are
+    gated out), and it pre-increments per allocation just like
+    `SlotState.next_slot`, so the `__slot_N` numbering matches the AST path.
+    `rebind_slots` maps a rebind-slot local's name to its optional rebind
+    slot N (allocated at the decl / first walrus, read at each reseat) --
+    the analog of `ctx.rebind_slots`.
 
     `temps` is the `__tmp_N` sink THIRArgTemp renders through, flushed before
     the enclosing statement line (after its source comment, mirroring the AST's
@@ -405,6 +416,10 @@ class _EmitState:
     # so a plain THIRAssign on them (a same-union name copy) must NOT take the
     # `&*(__slot_N = ...)` optional-slot reseat arm.
     union_slot_locals: set[str] = field(default_factory=set)
+    # Names whose rebind slot backs a reassigned borrow-tuple WALRUS: their
+    # later storage-alias reseats are plain assigns
+    # (`t = tuple_to_pointer<..>(h.pair);`), never the optional-slot arm.
+    btuple_slot_locals: set[str] = field(default_factory=set)
     # Enclosing `with` layers, innermost last -- return/break/continue walk it
     # to render the inline `__exit__` chain (the AST's `ctx.finally_stack`);
     # `loop_depth` mirrors `len(ctx.loop_else_labels)` (bumped around every
@@ -470,6 +485,11 @@ class CtxCommentSink(CommentSink):
     def stmt(self, out: TextIO, loc, indent: str) -> None:
         self._ctx.emit_inline_comments(out, loc, indent)
         self._ctx.emit_source_comment(out, loc, indent)
+
+    def inline(self, out: TextIO, loc, indent: str) -> None:
+        # Leading `#`-comment trivia only (a skipped statement's comments;
+        # the AST's gen_stmt emits these before the None-code suppression).
+        self._ctx.emit_inline_comments(out, loc, indent)
 
     def elif_(self, out: TextIO, loc, indent: str) -> None:
         # An elif condition gets only its source line (the AST path emits no
@@ -1262,12 +1282,33 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         # gen_expr's char-literal branch.
         return f"'{escape_cpp_char(e.value)}'"
     if isinstance(e, THIRWalrus):
-        # The scalar walrus render (`(n = v)`); the first binding registers
-        # its `type name;` pre-decl on the sink's named row, which the
-        # enclosing statement / loop-head / lambda flush places.
+        # The per-class walrus render (see the node doc); the first binding
+        # registers its `type name[ = init];` pre-decl on the sink's named
+        # row, which the enclosing statement / loop-head / lambda flush
+        # places.
         if e.cpp_type is not None:
-            state.temps.declare_named(e.cpp_name, e.cpp_type)
-        return f"({e.cpp_name} = {_emit_expr(e.value, state)})"
+            state.temps.declare_named(e.cpp_name, e.cpp_type, init=e.init)
+        v = _emit_expr(e.value, state)
+        if e.slot_cpp is not None:
+            # Reassigned borrow-tuple: the owning slot is allocated once per
+            # target (sibling occurrences reuse it, the AST's rebind_slots
+            # read) and declared on the named row next to the target.
+            slot_n = state.rebind_slots.get(e.name)
+            if slot_n is None:
+                slot_n = state.next_slot()
+                state.rebind_slots[e.name] = slot_n
+                state.btuple_slot_locals.add(e.name)
+                state.temps.declare_named(
+                    f"__slot_{slot_n}", f"std::optional<{e.slot_cpp}>")
+            v = (f"::tpy::tuple_to_pointer<{e.borrow_cpp}>"
+                 f"(__slot_{slot_n}.emplace({v}))")
+        if e.addr_of:
+            v = f"&({v})"
+        if e.tail == "deref":
+            return f"({e.cpp_name} = {v}, *{e.cpp_name})"
+        if e.tail == "name":
+            return f"({e.cpp_name} = {v}, {e.cpp_name})"
+        return f"({e.cpp_name} = {v})"
     if isinstance(e, THIRIsinstance):
         # Mirrors the AST isinstance arm over value/pointer variants: one
         # holds_alternative per check member, OR-joined and parenthesized for
@@ -1355,6 +1396,25 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         if e.negate:
             return f"(!({joined}))" if len(conditions) > 1 else f"(!{conditions[0]})"
         return f"({joined})"
+    if isinstance(e, THIRValueSelect):
+        # Value-position and/or (`_gen_logical_value`'s value slice): the
+        # LHS renders (and hoists) FIRST so temp numbering matches the AST;
+        # the RHS render sits inside the ternary branch (its EVALUATION is
+        # lazy at runtime -- an RHS-nested temp would hoist above the
+        # ternary exactly as on the AST path, but no admitted RHS shape
+        # carries one).
+        lhs_r = _emit_expr(e.lhs, state)
+        if e.lhs_temp_cpp is not None:
+            lhs_r = state.temps.create(e.lhs_temp_cpp, lhs_r)
+        truthy = f"(!{lhs_r}.empty())" if e.truthy_nonempty else lhs_r
+        rhs_r = _emit_expr(e.rhs, state)
+        if e.rhs_sv:
+            rhs_r = f"std::string_view({rhs_r})"
+        lhs_b = f"{e.lhs_cast}({lhs_r})" if e.lhs_cast else lhs_r
+        rhs_b = f"{e.rhs_cast}({rhs_r})" if e.rhs_cast else rhs_r
+        if e.op == "||":
+            return f"({truthy} ? {lhs_b} : {rhs_b})"
+        return f"({truthy} ? {rhs_b} : {lhs_b})"
     if isinstance(e, THIRIsNone):
         inner = _emit_expr(e.operand, state)
         if e.any_typeid:
@@ -3290,7 +3350,8 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
         # `p = &*(__slot_N = <rvalue>);`.
         if (isinstance(stmt.target, THIRName)
                 and stmt.target.name in state.rebind_slots
-                and stmt.target.name not in state.union_slot_locals):
+                and stmt.target.name not in state.union_slot_locals
+                and stmt.target.name not in state.btuple_slot_locals):
             slot = state.rebind_slots[stmt.target.name]
             out.write(f"{indent}{escape_cpp_name(stmt.target.name)} = "
                       f"&*(__slot_{slot} = {_emit_expr(stmt.value, state)});\n")
@@ -3662,8 +3723,10 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
         out.write(state.resumable_return_hook(stmt.ast_stmt, indent_level))
     elif isinstance(stmt, THIRNoOpStmt):
         # No code -- the `// pass` source comment (if any) is emitted by the
-        # caller (_emit_stmts) from the node's loc.
-        pass
+        # caller (_emit_stmts) from the node's loc. A skipped statement's
+        # leading trivia (trivia_loc) emits inline comments only.
+        if stmt.trivia_loc is not None:
+            state.comments.inline(out, stmt.trivia_loc, INDENT * indent_level)
     else:
         raise THIRCodeGenError(f"unhandled THIR stmt: {type(stmt).__name__}")
 

@@ -23,6 +23,7 @@ from .nodes import (
     THIRCall,
     THIRCharLiteral,
     THIRWalrus,
+    THIRValueSelect,
     THIRClassConstant,
     THIRCoerce,
     THIRCtorCall,
@@ -156,6 +157,11 @@ def _expr(e: THIRExpr) -> str:
         return f"walrus({e.name}{decl}, {_expr(e.value)})"
     if isinstance(e, THIRBinOp):
         return f"binop({_expr(e.left)}, {e.op}, {_expr(e.right)})"
+    if isinstance(e, THIRValueSelect):
+        temp = (f" [lhs_temp {e.lhs_temp_cpp}]"
+                if e.lhs_temp_cpp is not None else "")
+        return (f"value_select({_expr(e.lhs)}, {e.op}, {_expr(e.rhs)}"
+                f"{temp})")
     if isinstance(e, THIRUnaryNot):
         return f"not({_expr(e.operand)})"
     if isinstance(e, THIRUnaryArith):

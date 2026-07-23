@@ -30,6 +30,7 @@ from ...parse.nodes import (
     TpyMethodCall,
     TpyGeneratorExpression,
     TpyName,
+    TpyNamedExpr,
     TpyNoneLiteral,
     TpyReturn,
     TpySlice,
@@ -241,12 +242,18 @@ _FLOAT32_LIT_COERCION = "float_literal_to_float32"
 _BIGINT_LIT_COERCION = "int_literal_to_bigint"
 
 # Address-taking Ptr coercions: the codegen lambda is `&{e}` in every
-# position. The AST's indirect-global pre-deref (`&(*g)`) never arises
-# through THIR -- a record/container GLOBAL read rejects during inner
-# lowering, so any inner that lowers here is a local/param/field lvalue.
+# position. The AST pre-derefs an indirect-name inner (`&(*g)` for a
+# pointer-slot global / pointer-local source, expressions.py's coerce
+# arm); the THIR coerce arm mirrors that deref for names in lc.pointers.
 _ADDR_PTR_COERCIONS = frozenset({
     "record_to_ptr", "record_to_const_ptr", "value_to_ptr",
     "upcast_to_ptr", "upcast_to_const_ptr"})
+
+# The coercions whose AST emit pre-derefs an indirect-name inner
+# (expressions.py's "need dereferencing for globals" list): the addr
+# family above + the method-calling BigInt cast. The THIR coerce arm
+# mirrors the deref for un-narrowed names in lc.pointers.
+_INDIRECT_DEREF_COERCIONS = _ADDR_PTR_COERCIONS | {"bigint_to_fixed_int"}
 
 # Position-independent identity coercions on the ptr/span/slice axis: both
 # sides are C++-implicitly convertible (`T*` -> `const T*`, `Slice`'s
@@ -1099,6 +1106,43 @@ def _readonly_global_type(gt: TpyType | None, analyzer) -> TpyType | None:
             or _eligible_ptr_value(gt, analyzer)):
         return gt
     if _value_tuple_global(gt, analyzer) is not None:
+        return gt
+    # A value-repr Optional[scalar] global (`std::optional<T>` at namespace
+    # scope) reads exactly like a value-opt LOCAL: bare whole-optional
+    # (None-tests, opt slots), `(*g)` on a narrowed occurrence, and
+    # `deref_optional_check(g)` unproven -- the AST's narrowed-global deref
+    # family renders through the same local-shaped sites since the
+    # _declared_type_incl_globals fix. Callers register the name in
+    # lc.value_opt_locals so the reads ride _value_opt_scalar_binding.
+    if _value_opt_scalar(gt, analyzer) is not None:
+        return gt
+    return None
+
+def _pointer_slot_global_type(gt: TpyType | None, analyzer, *,
+                              name: 'str | None' = None,
+                              native_globals=()) -> 'TpyType | None':
+    """The unwrapped type of a POINTER-SLOT global (`T* g{};` at namespace
+    scope -- the generator's `pointer_globals` classification: non-value,
+    no wrapper) whose READ-ONLY body renders ride the pointer-local arms:
+    `(*g)` value reads, `g->` receivers, the addr-coerce `&(*g)`, and the
+    `T& q = (*g);` alias bind. Only the plain shapes admit -- an F1-record
+    or a list/dict/set container; Optional/union/protocol/iterator-typed
+    globals carry unmirrored read machinery and stay rejected. Pass `name`
+    (with the module's `native_globals`) for a same-module candidate so
+    the Final / native-linkage exclusion lives here (those names are
+    namespace-scope VALUES on the AST side, never slots); imported
+    candidates key finality on their own registry facts and pass no name.
+    Returns None when out of the family."""
+    if gt is None:
+        return None
+    if name is not None and (name in native_globals
+                             or name in analyzer.ctx.final_globals):
+        return None
+    gt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(gt)))
+    if gt.is_value_type() or gt.needs_wrapper():
+        return None
+    if (_f1_record(gt, analyzer)
+            or is_list(gt) or is_dict(gt) or is_set(gt)):
         return gt
     return None
 
@@ -2217,6 +2261,22 @@ def _own_storage_viewfam_return(t: TpyType | None, analyzer) -> 'TpyType | None'
         return bt
     return None
 
+def _call_ret_union_ok(ret: 'TpyType | None', analyzer) -> bool:
+    """A union-returning call landing bare in a same-union STORAGE sink:
+    a ptr-variant return (`std::variant<monostate, A*, B*>` by value) or
+    an `Own[union]` factory's storage variant -- no per-member conversion
+    fires on either path."""
+    if ret is None:
+        return False
+    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ret)))
+    if isinstance(t, OwnType):
+        t = unwrap_readonly(t.wrapped)
+    if not isinstance(t, UnionType):
+        return False
+    return (_eligible_value_union(t) is not None
+            or _eligible_ptr_union(t, analyzer) is not None)
+
+
 def _optional_ptr_borrow(t: TpyType | None, analyzer) -> 'OptionalType | None':
     """The pointer-repr `Optional[F1-record]` BORROW binding type -- the C++
     shape of an `A | None` param or an OPTIONAL_TO_PTR local (a bare
@@ -2870,12 +2930,23 @@ def _tuple_subscript_value_read(e: TpyExpr, locals_: dict[str, TpyType],
         if _value_tuple_nested(analyzer.get_expr_type(recv),
                                analyzer) is None:
             return None
+    elif isinstance(recv, TpyNamedExpr):
+        # A walrus receiver (`(t := (1, b))[0]`): the assign form renders in
+        # place (`std::get<0>((t = ...))`); the walrus arm validates its own
+        # target/source classes during receiver lowering.
+        pass
     else:
         return None
     res = _subscript_index_and_tuple(e, analyzer)
     if res is None:
         return None
     recv_t, idx = res
+    if isinstance(recv, TpyNamedExpr):
+        # A literal-init walrus type carries IntLiteral elements
+        # (`(t := (1, b))` -> tuple[IntLiteral(1), Box]); the AST's
+        # get_resolved_type collapses them, mirror before the family check.
+        recv_t = resolve_int_literals(recv_t,
+                                      analyzer.ctx.default_int_for_literal)
     if (_value_tuple_nested(recv_t, analyzer) is None
             and _f1_tuple(recv_t, analyzer) is None):
         return None
@@ -3828,6 +3899,16 @@ def _is_none_compare_operand(e: TpyBinOp, locals_: dict[str, TpyType],
     if left_none == right_none:  # both or neither
         return None
     operand = e.right if left_none else e.left
+    if isinstance(operand, TpyNamedExpr):
+        # A walrus None-test operand: a ptr-Optional target wraps the
+        # pointer compare (`((t = optional_to_ptr(...)) != nullptr)`), a
+        # value-opt target the has_value test (`(!(x = ...).has_value())`);
+        # the walrus arm validates target/source shapes during lowering.
+        wt = analyzer.get_expr_type(operand)
+        if (_optional_ptr_borrow(wt, analyzer) is not None
+                or _value_opt_scalar(wt, analyzer) is not None):
+            return operand
+        return None
     if (_optional_ptr_borrow_name(operand, locals_, analyzer) is None
             and _value_opt_scalar_name(operand, locals_, analyzer) is None
             and _value_opt_view_name(operand, locals_, analyzer) is None
@@ -4383,6 +4464,12 @@ def _own_lvalue_temp_slot(a: TpyExpr, ptype: TpyType | None,
     if _f1_record(w, analyzer):
         # Same-nominal is a slice guard: sema rejects an upcast into an Own
         # slot outright, so no other pairing reaches codegen.
+        return w if at == w else None
+    if isinstance(w, UnionType) and (
+            _eligible_value_union(w) is not None
+            or _eligible_ptr_union(w, analyzer) is not None):
+        # An `Own[union]` slot: the storage variant moves/copies whole
+        # (`Sink(std::move(v))`), family-blind like the record row.
         return w if at == w else None
     if _is_type_param_slot(w):
         # A TypeParamRef payload (`Own[T]` slot fed by an `Own[T]` param in

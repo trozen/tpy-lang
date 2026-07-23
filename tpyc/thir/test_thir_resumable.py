@@ -841,9 +841,12 @@ class TestSlicedOutShapes:
         _, fallback = _assert_identical(src)
         assert fallback.get("resumable:expr.call") == 1
 
-    def test_async_with_global_manager_rejects(self):
-        # A global-manager async-with renders the manager as `CM*` already
-        # (not the F1-record lvalue-name family) -- res.with_manager.
+    def test_async_with_global_manager_routes(self):
+        # RE-PINNED ROUTED (thir-wave-next6): a global manager seeds as a
+        # pointer slot; the skeleton stores the bare slot pointer
+        # (`__with_ctx_0 = cm;` -- the leaf's deref is stripped, the
+        # skeleton owns the indirect handling). Byte-verified by the
+        # async_with_global_manager corpus case.
         src = ("import asyncio\n\n"
                + "class ACM:\n"
                + "    async def __aenter__(self) -> None:\n"
@@ -855,7 +858,7 @@ class TestSlicedOutShapes:
                + "async def f() -> None:\n"
                + "    async with cm:\n        await asyncio.sleep(0)\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        assert _res_fallback(src).get("res.with_manager") == 1
+        assert not _res_fallback(src).get("res.with_manager")
 
     def test_nested_frame_write_routes(self):
         # A name-write nested inside a leaf compound routes through the

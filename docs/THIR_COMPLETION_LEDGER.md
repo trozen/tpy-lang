@@ -2168,3 +2168,67 @@ byte-diff itself.
   and generic member-factory method targs (generics lane). REFUTED:
   the wave-next4 "value-opt RECORD bindings = biggest lever" claim --
   the fresh corpus map has ZERO cases blocked on name.optval_read.
+
+- **Landed: globals/walrus/value-select wave (`thir-wave-next6`, stacked
+  on `thir-design-round7`, 2026-07-23, 9 cells, +40 flips, dial
+  2292 -> 2332/3538).** Consumed FOUR standing design approvals in one
+  wave. (1) GlobalSlot (round-6 approval): non-value record/container
+  globals seed read-only into scope + lc.pointers
+  (`_pointer_slot_global_type`; Final/native excluded), riding the
+  pointer-local arms -- `(*g)` value derefs, `g->` receivers AND field
+  writes, the addr-Ptr coerce `&(*g)` (the AST's indirect pre-deref
+  mirrored at the THIR coerce arm for pointer-locals too), `T& q =
+  (*g)` alias binds, resumable/ctor bodies via the shared seeding. The
+  skeleton-owned seams strip the leaf deref (`_strip_slot_leaf_deref`:
+  async-for iterables, sync/async with managers, erased await
+  operands -- the corpus caught 3 divergences the dualgen missed). The
+  simple-gen lane REJECTS global iterables: its AST oracle emits
+  uncompilable `.begin()` on the slot pointer (pre-existing, filed in
+  BUGS.md). (2) Globals cell B (round-6, ungated by the valueopt-deref
+  fixes): same-module value-Optional scalar globals seed read-only AND
+  via `global` decls, registered in lc.value_opt_locals (bare
+  whole-optional reads, narrowed `(*g)`, `= std::nullopt` writes);
+  `global`-declared pointer-slot globals seed as slots (rebinding is
+  sema-forbidden); imported value-opt globals stay unseeded (pinned).
+  (3) The walrus target-class ladder (round-7 approval, rungs 1-4):
+  THIRWalrus gains init/tail/addr_of/slot fields -- ptr-Optional
+  targets (`T* t = nullptr;` + optional_to_ptr assigns, walrus
+  None-compare operands), borrow-alias pointer targets (`(q = &(b),
+  *q)` incl. ref-returning call sources, walrus field receivers, len
+  args), value-opt + owned-viewfam reassigns, owned non-value slots
+  (`std::optional<T>` + walrus-deref dot reads; comprehension sources
+  lower directly; container walrus print args), borrow tuples
+  (non-reassigned predecl + literal/tuple_to_pointer lift; reassigned
+  `__slot_N.emplace` + bare-name tail + collapsed-element reads/writes;
+  the btuple field-elem write row; F3 tuple-field reseat sources).
+  `walrus_predeclared` mirrors the AST's function-scoped asymmetry.
+  Boundaries pinned: hoisted targets, resumable bodies, first-decl
+  viewfam, Optional-element writes, IS_TRUTHY operands. (4)
+  THIRValueSelect tier A (round-7 approval): value-position and/or on
+  a dedicated node -- once-evaluated LHS (`auto&&`/string_view temps
+  off the shared counter), lazy in-branch RHS, bare/nonempty truthy
+  modes, mixed-operand casts, chains; the form tag carries the runtime
+  spelling so view chains compose with the owned-sink copy. Record
+  results / pointer-select / isinstance-LHS stay rejected; bool
+  positions keep the bool arm (the AST splits on RESULT type alone --
+  the two stale bool-op pins re-pinned). (5) sgen tuple-literal yields
+  (round-7 de-design): the resumable Yield tuple arm mirrored in
+  _lower_loop_body. (6) compile-time asserts (round-7 cluster 3):
+  assert_send/assert_sync statements lower to THIRNoOpStmt with
+  trivia_loc (leading comments emit, no source line). (7) The
+  record-ctor/method union-arg rows (round-7 cluster 1 union
+  sub-cell): ctor slots gain the free-call union rows (pass-through /
+  coerced literals / Own[union] ctor rvalues), method slots the
+  non-dcbp ptr-variant pass-through, the Own cascade union payloads
+  (`Sink(std::move(v))`), union-returning calls land bare at
+  storage/borrow-bind sinks with plain ptr-variant returns as bare
+  decl sources (Own[union] factories keep the UNION_RVALUE slot).
+  PARKED with verified blockers: union_field_assign(+_nullable)
+  (`name.union_binding_divergent` -- the narrowing-divergent-read BUGS
+  family); the send_sync lambda-call-arg trio; walrus try-hoisted
+  targets (the AST's forward-declared hoist model); the iterator-global
+  for-head (`decltype` iterator slots); Final non-value globals (bare
+  namespace-scope renders); imported value-opt globals. Lesson: the
+  corpus byte-diff catches skeleton-seam double-derefs dualgen misses
+  -- probe every skeleton-owned position (with/await/async-for) when a
+  name class joins lc.pointers.

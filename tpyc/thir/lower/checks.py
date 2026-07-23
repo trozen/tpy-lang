@@ -30,6 +30,7 @@ from ...parse.nodes import (
     TpyListRepeat,
     TpyMethodCall,
     TpyName,
+    TpyNamedExpr,
     TpyNoneLiteral,
     TpySetLiteral,
     TpySlice,
@@ -265,6 +266,20 @@ def _ptr_union_source_ok(e: TpyExpr, declared: dict[str, TpyType], analyzer,
         ft = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ft)))
               if ft is not None else None)
         return ft == u
+    if isinstance(e, (TpyCall, TpyMethodCall)):
+        # A call whose C++ return is ALREADY the pointer variant (a plain
+        # same-union return, NOT an `Own[union]` factory -- that one
+        # materializes through the UNION_RVALUE storage slot) assigns
+        # bare: `got = cycle(start);`.
+        fi = e.resolved_function_info
+        if fi is not None and isinstance(
+                unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                    fi.return_type))), OwnType):
+            return False
+        rt = analyzer.get_expr_type(e)
+        rt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rt)))
+              if rt is not None else None)
+        return rt == u
     return False
 
 def _compound_narrow_info(
@@ -826,6 +841,18 @@ def _field_over_binop_ok(e: TpyExpr, analyzer) -> bool:
     rt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
         analyzer.get_expr_type(e.obj))))
     return bool(_f1_record(rt, analyzer) and _witness("field.binop_recv"))
+
+def _field_over_walrus_ok(e: TpyExpr, analyzer) -> bool:
+    """A marker-clean field read off a WALRUS receiver (`(q := b).v`): the
+    borrow-alias walrus comma form yields an lvalue (`(q = &(b), *q).v`,
+    dot access); the walrus arm validates its own target/source classes
+    during receiver lowering, so admission needs only the record shape."""
+    if not (isinstance(e, TpyFieldAccess) and _field_markers_clean(e)
+            and isinstance(e.obj, TpyNamedExpr)):
+        return False
+    rt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+        analyzer.get_expr_type(e.obj))))
+    return bool(_f1_record(rt, analyzer) and _witness("field.walrus_recv"))
 
 def _alias_ref_container(t: TpyType | None) -> bool:
     """A container whose borrow local binds a plain `T&` alias -- `list` / `dict`
@@ -1868,6 +1895,11 @@ def _is_len_call(e: TpyExpr, locals_: dict[str, TpyType], analyzer) -> bool:
         # SUBSCRIPT result is a str value rendered bare, so the __len__ overload
         # accepts it like a name/field. Non-str subscripts ride a later cell.
         return _resolved_str_value(analyzer.get_expr_type(arg), analyzer) is not None
+    elif isinstance(arg, TpyNamedExpr):
+        # `len(v := h.view())` -- a container walrus arg: the comma form's
+        # `*v` result is the same container lvalue a name renders; the
+        # walrus arm validates its own target/source classes.
+        bt = analyzer.get_expr_type(arg)
     else:
         return False
     t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(bt)))
@@ -5483,6 +5515,15 @@ def _record_method_arg_ok(
                 and _tparam_slot_temp_arg(a, ptype, index, overload,
                                           analyzer) is not None)
             or _method_value_union_arg(a, ptype, locals_, analyzer)
+            # A same-union NAME into a POINTER-variant method slot passes
+            # bare when the callee's param carries no deep-const verdict
+            # (`p.set_pet(new_pet)`); a dcbp slot takes the AST's
+            # ptr_variant_to_const wrap -- unthreaded here, stays AST.
+            or (_union_pass_through_arg(a, ptype, locals_, analyzer)
+                and not (overload is not None
+                         and overload.deep_const_borrow_params
+                         and index in overload.deep_const_borrow_params)
+                and _witness("method.union_pass_arg"))
             or (temps_ok and _value_union_temp_arg(
                 a, ptype, locals_, narrowed, analyzer))
             # A scalar value / `None` into a value-repr Optional[scalar]
@@ -6161,6 +6202,19 @@ def _wrap_print_form(a: TpyExpr, declared: dict[str, TpyType],
         if is_set(ft):
             return PrintForm.SET
         if is_list(ft) or is_array(ft):
+            return PrintForm.LIST
+        return None
+    if isinstance(a, TpyNamedExpr):
+        # A container WALRUS arg (`print((cols := [..]))`): the kind-keyed
+        # wrap composes over the walrus render; the walrus arm validates
+        # its own target class during lowering.
+        wt = unwrap_readonly(unwrap_ref_type(
+            unwrap_send_sync(analyzer.get_expr_type(a))))
+        if is_dict(wt):
+            return PrintForm.DICT
+        if is_set(wt):
+            return PrintForm.SET
+        if is_list(wt) or is_array(wt):
             return PrintForm.LIST
         return None
     if not isinstance(a, TpyName) or a.name == "self":

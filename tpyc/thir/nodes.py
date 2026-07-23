@@ -173,18 +173,36 @@ class THIRCharLiteral(THIRExpr):
 
 @dataclass(frozen=True)
 class THIRWalrus(THIRExpr):
-    """A value-scalar walrus binding (`(n := v)` -> `(n = v)`), the scalar
-    slice of _gen_named_expr: the target pre-declares `type name;` through
-    the temp sink's named row on FIRST binding (`cpp_type` set) and assigns
-    in place on a rebind (`cpp_type` None). The named pre-decl flushes at
-    the statement flush point -- for a while condition that is BEFORE the
-    loop (the binding stays visible after it), for a simple-generator
-    condition at lambda scope (`flush_named_since`). Non-value targets
-    (borrow decls, tuples, Optionals, hoisted names) stay on the AST path."""
+    """A walrus binding (`(n := v)`), mirroring _gen_named_expr's
+    target-class renders: the target pre-declares `type name[ = init];`
+    through the temp sink's named row on FIRST binding (`cpp_type` set)
+    and assigns in place on a rebind (`cpp_type` None). The named pre-decl
+    flushes at the statement flush point -- for a while condition that is
+    BEFORE the loop (the binding stays visible after it), for a
+    simple-generator condition at lambda scope (`flush_named_since`).
+
+    Per-class shape: the value-scalar slice renders `(n = v)` (no init, no
+    tail); a pointer-repr Optional target pre-declares `T* n = nullptr;`
+    and assigns the borrow-lifted RHS (`(n = optional_to_ptr(...))`); a
+    borrow-alias pointer target pre-declares `[const ]T* n = nullptr;` and
+    renders `(n = &(v), *n)` (`addr_of` off for an already-pointer
+    source). `tail="deref"` appends the `, *n` result deref. Remaining
+    non-value targets (tuples, non-value slots, hoisted names) stay on
+    the AST path."""
     name: str
     cpp_name: str
     value: 'THIRExpr'
     cpp_type: 'str | None' = None
+    init: 'str | None' = None
+    tail: 'str | None' = None
+    addr_of: bool = False
+    # REASSIGNED borrow-tuple walrus (`(t := make_pair(9))` later rebound):
+    # the owning slot `std::optional<{slot_cpp}> __slot_N;` is allocated at
+    # emit (reused per target across sibling occurrences) and the value
+    # renders `tuple_to_pointer<{borrow_cpp}>(__slot_N.emplace({v}))`,
+    # with the bare-name result tail (`, t`).
+    slot_cpp: 'str | None' = None
+    borrow_cpp: 'str | None' = None
 
 
 @dataclass(frozen=True)
@@ -265,6 +283,33 @@ class THIRBinOp(THIRExpr):
     # no parens (`::tpy::add_check<int64_t>(l, r)`), gen_call_from_fi's
     # render.
     template_override: 'str | None' = None
+
+
+@dataclass(frozen=True)
+class THIRValueSelect(THIRExpr):
+    """Python `and`/`or` in VALUE position (`_gen_logical_value`'s value
+    slice): renders `(t ? lhs : rhs)` for `or`, `(t ? rhs : lhs)` for
+    `and`, where `t` is the truthiness of the (once-evaluated) LHS and the
+    RHS sits lazily inside the ternary branch (short-circuit preserved).
+
+    `lhs_temp_cpp` non-None hoists a non-name LHS into a `__tmp_N` off the
+    shared counter (`auto&&`, or `std::string_view` for a str literal),
+    reused by the truthy test and the lhs branch. `truthy_nonempty`
+    renders `(!ref.empty())` (str family); False renders the bare ref
+    (scalars' implicit bool). `lhs_cast`/`rhs_cast` are the mixed-operand
+    conversion wraps (`<cpp_result>(x)` when the operand C++ spellings
+    differ); `rhs_sv` wraps a str-literal RHS `std::string_view(...)`.
+    Chains nest naturally (an inner select is a non-name LHS taking its
+    own temp). Record results, rvalue non-value RHS (the pointer-select)
+    and inline-isinstance LHS facts are gate-rejected."""
+    lhs: 'THIRExpr'
+    rhs: 'THIRExpr'
+    op: str
+    truthy_nonempty: bool = False
+    lhs_temp_cpp: 'str | None' = None
+    lhs_cast: 'str | None' = None
+    rhs_cast: 'str | None' = None
+    rhs_sv: bool = False
 
 
 @dataclass(frozen=True)
@@ -1654,7 +1699,13 @@ class THIRNoOpStmt(THIRStmt):
     comment exactly as the AST does: a `pass` keeps its `loc` (so `_emit_stmts`
     emits its `// pass` source line), while a docstring lowers with `loc=None`
     -- the AST emits neither comment nor code for a docstring (`gen_body`'s
-    simple-stmt code is None, which suppresses the comment)."""
+    simple-stmt code is None, which suppresses the comment).
+
+    `trivia_loc` is the SKIPPED statement's loc when its leading
+    `#`-comment trivia must still emit without the statement's own source
+    line (a compile-time assert: the AST's gen_stmt emits inline comments
+    before dispatch, then the None code suppresses the source comment)."""
+    trivia_loc: 'object | None' = None
 
 
 @dataclass(frozen=True)

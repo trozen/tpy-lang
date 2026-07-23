@@ -270,6 +270,9 @@ def test_raise_lowering_reject_falls_back_at_sync_boundary():
         "from tpy import Int32\n"
         "err = ValueError('bad')\n"
         "def rejected(n: Int32) -> Int32:\n"
+        "    if n > 0:\n"
+        "        raise err\n"
+        "    err = ValueError('x')\n"
         "    raise err\n"
         "def clean(n: Int32) -> Int32:\n"
         "    return n + 1\n"
@@ -284,9 +287,11 @@ def test_raise_lowering_reject_falls_back_at_sync_boundary():
                 fold_attempt("body")
             else:
                 routed.append(fn.name)
-    # `raise <global record>` enters the expr-raise arm, then the global-record
-    # source read rejects -- the nested reason (the expr form routes for a
-    # routable source; an unroutable global source falls the body back).
+    # The later local SHADOW excludes `err` from seeding (whole-function
+    # scan), so the read-before-shadow raise-source rejects -- the nested
+    # reason folds the body back at the sync boundary while `clean` stays
+    # routed. (An un-shadowed record global raise routes via the slot
+    # seeding now.)
     assert compiler._thir_fallback.get("body:stmt.raise:name.global_read") == 1
     assert "clean" in routed
 

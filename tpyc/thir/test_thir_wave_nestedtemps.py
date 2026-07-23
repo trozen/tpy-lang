@@ -5,6 +5,9 @@ dict / set / Array literal ref-param hoist row."""
 
 from __future__ import annotations
 
+import pytest
+
+from ..diagnostics import SemanticError
 from .testutil import (
     _lower_ctx, _lower_ctx_witnessed, _fn, _assert_byte_identical,
 )
@@ -184,15 +187,193 @@ class TestCondTemps:
         assert _fn(thir, "use") is None
         _assert_byte_identical(src)
 
-    def test_str_walrus_stays_ast(self):
-        # A non-value-scalar walrus target (owned-str promotion machinery)
-        # is outside the slice.
+    def test_str_walrus_first_decl_stays_ast(self):
+        # A FIRST-DECL owned-str walrus target stays AST (the pending-view
+        # predecl is unmirrored); only the REASSIGN form routes
+        # (expr.walrus_owned_viewfam).
         src = ("def use(s: str) -> str:\n"
                "    if (t := s + \"!\"):\n"
                "        return t\n"
                "    return s\n")
         thir = _lower_ctx(src)
         assert _fn(thir, "use") is None
+        _assert_byte_identical(src)
+
+
+class TestWalrusLadder:
+    """The _gen_named_expr target-class ladder: ptr-Optional targets,
+    borrow-alias pointer targets, value-opt/owned-viewfam reassigns,
+    owned slots, borrow tuples -- each with its boundary."""
+
+    _BOX = ("from tpy import Int32\n"
+            "class Box:\n"
+            "    val: Int32\n"
+            "    def __init__(self, v: Int32) -> None:\n"
+            "        self.val = v\n")
+
+    def test_opt_ptr_field_lift_routes(self):
+        src = (self._BOX
+               + "class H:\n"
+               + "    opt: Box | None\n"
+               + "    def __init__(self, b: Box | None) -> None:\n"
+               + "        self.opt = b\n"
+               + "def use(h: H) -> Int32:\n"
+               + "    if (t := h.opt) is not None:\n"
+               + "        return t.val\n"
+               + "    return 0\n")
+        thir, w = _lower_ctx_witnessed(src)
+        assert _fn(thir, "use") is not None
+        assert w.get("expr.walrus_opt_ptr", 0) >= 1
+        _assert_byte_identical(src)
+
+    def test_borrow_alias_name_and_field_recv(self):
+        # `(q := b)` -> `Box* q = nullptr;` + `(q = &(b), *q)`; the field
+        # read off the walrus takes the dot over the comma form.
+        src = (self._BOX
+               + "def use() -> Int32:\n"
+               + "    b = Box(5)\n"
+               + "    n = (q := b).val\n"
+               + "    q.val = 9\n"
+               + "    return n + b.val\n")
+        thir, w = _lower_ctx_witnessed(src)
+        assert _fn(thir, "use") is not None
+        assert w.get("expr.walrus_ptr_alias", 0) >= 1
+        assert w.get("field.walrus_recv", 0) >= 1
+        _assert_byte_identical(src)
+
+    def test_value_opt_reassign_routes(self):
+        src = ("from tpy import Int32\n"
+               "def use() -> Int32:\n"
+               "    x: Int32 | None = 5\n"
+               "    if (x := None) is None:\n"
+               "        return 1\n"
+               "    return 0\n")
+        thir, w = _lower_ctx_witnessed(src)
+        assert _fn(thir, "use") is not None
+        assert w.get("expr.walrus_value_opt", 0) >= 1
+        _assert_byte_identical(src)
+
+    def test_sibling_branch_nonvalue_rebind_sema_rejected(self):
+        # The sibling-branch re-bind hazard for the NEW walrus classes is
+        # UNREACHABLE: sema rejects walrus REASSIGNMENT of a non-value
+        # local outright, so the function-scoped walrus_predeclared
+        # asymmetry is load-bearing only for the scalar class (pinned by
+        # test_scalar_walrus_cond_routes). This pins the sema boundary so
+        # a future sema widening re-opens the question loudly.
+        src = (self._BOX
+               + "def use(flag: bool) -> Int32:\n"
+               + "    a = Box(1)\n"
+               + "    b = Box(2)\n"
+               + "    if flag:\n"
+               + "        n = (q := a).val\n"
+               + "    else:\n"
+               + "        n = (q := b).val\n"
+               + "    return n\n")
+        with pytest.raises(SemanticError,
+                           match="walrus reassignment of non-value"):
+            _lower_ctx(src)
+
+    def test_resumable_walrus_rungs_stay_ast(self):
+        # The pointer/slot rungs are SYNC-only: a resumable body's locals
+        # are frame fields with different source renders.
+        src = (self._BOX
+               + "from typing import Iterator\n"
+               + "def g() -> Iterator[Int32]:\n"
+               + "    b = Box(5)\n"
+               + "    yield (q := b).val\n"
+               + "    yield q.val\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "g") is None
+        _assert_byte_identical(src)
+
+    def test_hoisted_walrus_target_stays_ast(self):
+        # A try-hoisted walrus target keeps the AST's forward-declared
+        # hoist model (need_predecl asymmetry unmirrored for hoists).
+        src = (self._BOX
+               + "class H:\n"
+               + "    items: list[Int32]\n"
+               + "    def __init__(self) -> None:\n"
+               + "        self.items = [1, 2]\n"
+               + "    def view(self) -> list[Int32]:\n"
+               + "        return self.items\n"
+               + "def use(h: H) -> Int32:\n"
+               + "    try:\n"
+               + "        if len(v := h.view()) > 0:\n"
+               + "            v.append(9)\n"
+               + "    except ValueError:\n"
+               + "        return -1\n"
+               + "    return len(h.items)\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "use") is None
+        _assert_byte_identical(src)
+
+
+class TestValueSelect:
+    """Value-position and/or (THIRValueSelect, _gen_logical_value's value
+    slice): eval-once LHS temps, lazy in-branch RHS, mixed-operand casts;
+    record results and bool positions keep their own paths."""
+
+    def test_scalar_select_routes_with_temp(self):
+        src = ("from tpy import Int32\n"
+               "def f(c: list[Int32], d: list[Int32]) -> Int32:\n"
+               "    return c[0] or d[0]\n")
+        thir, w = _lower_ctx_witnessed(src)
+        fn = _fn(thir, "f")
+        assert fn is not None
+        assert w.get("binop.value_select", 0) >= 1
+        sel = fn.body[0].value
+        assert sel.lhs_temp_cpp == "auto&&" and sel.op == "||"
+        _assert_byte_identical(src)
+
+    def test_name_lhs_no_temp_and_chain(self):
+        src = ("from tpy import Int32\n"
+               "def f(a: Int32, c: list[Int32]) -> Int32:\n"
+               "    return a or c[0] or c[1]\n")
+        thir, w = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert w.get("binop.value_select", 0) >= 2
+        _assert_byte_identical(src)
+
+    def test_side_effecting_lhs_evaluates_once(self):
+        # The eval-once LHS temp: a side-effecting call LHS renders into
+        # ONE `auto&& __tmp_N` reused by the truthy test and the chosen
+        # branch -- a second render would double the side effect (the
+        # byte-diff pins the AST's single-temp form).
+        src = ("from tpy import Int32\n"
+               "def bump(log: list[Int32], v: Int32) -> Int32:\n"
+               "    log.append(v)\n"
+               "    return v\n"
+               "def f(log: list[Int32]) -> Int32:\n"
+               "    return bump(log, 3) or 7\n")
+        thir, w = _lower_ctx_witnessed(src)
+        fn = _fn(thir, "f")
+        assert fn is not None
+        sel = fn.body[0].value
+        assert sel.lhs_temp_cpp == "auto&&"
+        _assert_byte_identical(src)
+
+    def test_bool_position_keeps_bool_arm(self):
+        src = ("from tpy import Int32\n"
+               "def f(a: Int32, b: Int32) -> bool:\n"
+               "    return a > 0 or b > 0\n")
+        thir, w = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert not w.get("binop.value_select")
+        _assert_byte_identical(src)
+
+    def test_record_select_stays_ast(self):
+        # A record-result select needs the reference-bound / pointer-select
+        # machinery -- gate-rejected (tier B).
+        src = ("from tpy import Int32\n"
+               "class Box:\n"
+               "    val: Int32\n"
+               "    def __init__(self, v: Int32) -> None:\n"
+               "        self.val = v\n"
+               "def f(a: Box, b: Box) -> Int32:\n"
+               "    r = a or b\n"
+               "    return r.val\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is None
         _assert_byte_identical(src)
 
 
