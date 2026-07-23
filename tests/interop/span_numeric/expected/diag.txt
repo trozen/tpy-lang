@@ -1,0 +1,1 @@
+span_numeric.py:50: warning: @export function 'scale_in_place': Span parameter 'data' is copied in at the CPython boundary; mutations to it are not visible to the caller

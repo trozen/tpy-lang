@@ -1,0 +1,1 @@
+next_borrow.py:86: warning: exposed class 'Rows' method '__next__': returns a list by reference, so it is copied across the CPython boundary -- the result is a new object; mutations to it are not visible on this side (write-through aliasing is not preserved); return Own[...] to make the copy explicit

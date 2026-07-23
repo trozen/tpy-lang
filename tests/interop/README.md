@@ -20,8 +20,11 @@ For each case directory (any `tests/interop/<case>/` whose `src/` holds a
 gitignored `__tpyc__/` build output stay at the case root:
 
 - **comp/snapshot** (always): `tpyc` emits the module `.hpp`/`.cpp` and the
-  CPython glue `<mod>_ext.cpp`; all three are snapshotted into `expected/`.
-  This alone catches any glue/marshaller codegen drift in CI.
+  CPython glue `<mod>_ext.cpp`; all three are snapshotted into `expected/`,
+  and the front-end diagnostics into `expected/diag.txt` (source paths
+  normalized to basenames, as in the main harness). `# tpyc:` inline
+  annotations on `src/*.py` are validated against the diagnostics. This
+  alone catches any glue/marshaller codegen or diagnostics drift in CI.
 - **ext-exec** (cached, like the exec phase; **Linux-only**): `tpyc`'s
   first-class `.so` build mode (`-b` on an `# tpy: ext_module` -> `-fPIC
   -shared`, no `main`, facade only -- never links libpython) produces an

@@ -940,8 +940,9 @@ under `tests/cases/interop/`. See `tests/interop/README.md`.
   (`assert mod.add(a, b) == ...; print(...)`), plus an optional `ext_checks.py`
   for ext-only marshalling-error cases. The driver is *identical* across both
   runs below; only what `import <mod>` resolves to changes.
-- **comp/snapshot** (always): snapshot the generated `.hpp`/`.cpp` **and the
-  glue TU** (`<mod>_ext.cpp`) into `expected/`.
+- **comp/snapshot** (always): snapshot the generated `.hpp`/`.cpp`, **the
+  glue TU** (`<mod>_ext.cpp`), and the front-end diagnostics (`diag.txt`,
+  with `# tpyc:` annotation validation) into `expected/`.
 - **ext-exec** (cached, like the exec phase): build the `.so` via the
   first-class `.so` build mode (`tpyc -b` on an `# tpy: ext_module`), run the
   driver under CPython importing it, compare stdout to `output.txt`. Gated by

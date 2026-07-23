@@ -99,7 +99,7 @@ def byte_lengths(chunks: list[bytes]) -> Own[list[int]]:
 
 
 @export
-def append_to(xs: list[int], v: int) -> int:
+def append_to(xs: list[int], v: int) -> int:  # tpyc: warning(/list parameter 'xs' is copied in at the CPython boundary/)
     # Mutates a copy-in param: the boundary warns, and the mutation is not
     # visible to the caller (proven in ext_checks.py). Aliases in the source.
     xs.append(v)

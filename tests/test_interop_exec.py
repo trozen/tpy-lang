@@ -6,8 +6,10 @@ output split; expected/ and the gitignored __tpyc__/ stay at the case root.
 For every case this proves, in the shape of the main snapshot harness:
 
   - COMP/SNAPSHOT (always): tpyc emits the module .hpp/.cpp + the CPython glue
-    `_ext.cpp`; all three are snapshotted into expected/. This alone catches
-    any glue/marshaller codegen drift in CI.
+    `_ext.cpp`; all three are snapshotted into expected/, and the front-end
+    diagnostics into expected/diag.txt (with `# tpyc:` annotation validation,
+    as in the main harness). This alone catches any glue/marshaller codegen
+    or diagnostics drift in CI.
   - EXT-EXEC (cached, like the exec phase; Linux-only): tpyc's first-class .so
     build mode produces an importable `<mod>.so` (facade only -- never links
     libpython); CPython imports it and runs driver.py. Gated by a
@@ -47,6 +49,7 @@ from conftest import (
     exec_pass_is_cached,
     record_exec_pass,
     run_cpython,
+    validate_annotations,
 )
 
 _FACADE_SELFCHECK = (
@@ -65,8 +68,10 @@ _LIMITED_API = "-DPy_LIMITED_API=0x030c0000"
 _EXT_BUILD_SUPPORTED = platform.system() == "Linux"
 
 
-def _run_tpyc(args: list[str], what: str) -> None:
-    """Invoke the real `tpyc` CLI (exercises the first-class .so build mode)."""
+def _run_tpyc(args: list[str], what: str) -> str:
+    """Invoke the real `tpyc` CLI (exercises the first-class .so build mode)
+    and return stderr -- under `-q` on the emit path that is exactly the
+    front-end diagnostics, which the caller snapshots into diag.txt."""
     cmd = [sys.executable, "-m", "tpyc", *args]
     result = subprocess.run(cmd, capture_output=True, text=True, cwd=PROJECT_ROOT)
     if result.returncode != 0:
@@ -75,6 +80,7 @@ def _run_tpyc(args: list[str], what: str) -> None:
             f"--- stdout ---\n{result.stdout}\n--- stderr ---\n{result.stderr}",
             pytrace=False,
         )
+    return result.stderr
 
 
 def _assert_facade_only(so_path: Path) -> None:
@@ -170,7 +176,21 @@ def test_interop_exec(case_dir, mod_py, request):
     # `_ext.cpp` regardless of building, so this gives us everything to
     # snapshot and to fingerprint the build inputs -- without paying the C++
     # build on a cache hit.
-    _run_tpyc([str(mod_py), "-o", str(build_dir), "--cxx", cxx], "emit")
+    # `-q` suppresses progress lines, so stderr is exactly the front-end
+    # diagnostics -- pinned in diag.txt (the exec marker cache never skips
+    # this phase, so a lost or spurious warning can't hide behind it).
+    diag = _run_tpyc([str(mod_py), "-q", "-o", str(build_dir), "--cxx", cxx], "emit")
+    src_prefix = str((case_dir / "src").relative_to(PROJECT_ROOT)) + "/"
+    diag = diag.replace(src_prefix, "")
+    check_or_update(diag, expected_dir / "diag.txt", "Diagnostics")
+
+    if not UPDATE_EXPECTED:
+        annotation_errors: list[str] = []
+        for src_file in sorted((case_dir / "src").glob("*.py")):
+            annotation_errors.extend(validate_annotations(src_file, diag))
+        if annotation_errors:
+            pytest.fail("\n".join(annotation_errors), pytrace=False)
+
     gen_hpp = build_dir / "include" / f"{mod}.hpp"
     gen_cpp = build_dir / "src" / f"{mod}.cpp"
     gen_ext = build_dir / "src" / f"{mod}_ext.cpp"

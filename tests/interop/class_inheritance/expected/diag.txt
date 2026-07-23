@@ -1,0 +1,2 @@
+class_inheritance.py:37: warning: Method 'Circle.describe' hides 'Shape.describe' -- any 'Shape' reference will call 'Shape.describe', not 'Circle.describe' (differs from Python's dynamic dispatch); make 'Shape' a @dynamic protocol for runtime dispatch
+class_inheritance.py:95: warning: upcast narrows 'Circle' to 'Shape' -- only 'Shape' fields and methods will be accessible; keep the concrete type or make 'Shape' a @dynamic protocol
