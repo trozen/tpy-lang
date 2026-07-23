@@ -48,6 +48,8 @@ class NarrowingTracker:
         self.ctx = ctx
         self.type_ops = type_ops
         self.protocols = protocols
+        # (namespace, flag) memo for _module_has_rebindable_globals.
+        self._rebindable_globals_cache: 'tuple[object, bool] | None' = None
 
     # -- Name-based narrowing -------------------------------------------
 
@@ -465,7 +467,8 @@ class NarrowingTracker:
         self, condition: TpyExpr,
     ) -> tuple[dict[str, TpyType], dict[str, TpyType]]:
         """Get (true_facts, false_facts) for type narrowing (isinstance, is None, truthiness)."""
-        return self._isinstance_facts(condition)
+        return self._strip_call_unstable(
+            self._isinstance_facts(condition), condition)
 
     def condition_ptr_null_facts(
         self, condition: TpyExpr,
@@ -478,7 +481,56 @@ class NarrowingTracker:
         condition is true. When `p is None`, returns ({}, {p}) -- p is
         non-null when the condition is false.
         """
-        return self._ptr_null_facts(condition)
+        return self._strip_call_unstable(
+            self._ptr_null_facts(condition), condition)
+
+    def _condition_contains_call(self, expr: TpyExpr) -> bool:
+        """True when the condition subtree contains any fact-invalidating
+        call -- the same trigger set as the sequential call-site kill,
+        minus the pure narrowing primitives (isinstance/len), which ARE
+        the condition's fact source and rebind nothing. Their arguments
+        still walk (a nested user call inside them kills)."""
+        if isinstance(expr, TpyMethodCall):
+            return True
+        if isinstance(expr, TpyCall):
+            pure = (expr.isinstance_var is not None
+                    or expr.func_name in ("isinstance", "len"))
+            if not pure:
+                return True
+        return any(self._condition_contains_call(c) for c in expr.children())
+
+    def _strip_call_unstable(self, pair, condition: TpyExpr):
+        """Drop condition-derived facts a call inside the SAME condition may
+        falsify.
+
+        The structural derivation walks the condition with no notion of
+        evaluation order, so it re-establishes facts even when a call
+        operand runs after (or before) the test that proved them -- e.g.
+        `if GO is not None and clear():` where clear() rebinds GO. Any
+        fact rooted at a closure-written name or a rebindable value-type
+        global is dropped when a call shares the condition, conservatively
+        covering both operand orderings (mirrors the call-site kill).
+        """
+        t, f = pair
+        if not t and not f:
+            return pair
+        func = self.ctx.func
+        check_globals = self._module_has_rebindable_globals()
+        if not func.closure_written_names and not check_globals:
+            return pair
+        if not self._condition_contains_call(condition):
+            return pair
+
+        def stable(key: str) -> bool:
+            root = key.split(".")[0]
+            if root in func.closure_written_names:
+                return False
+            return not (check_globals and self._is_rebindable_global(root))
+
+        if isinstance(t, dict):
+            return ({k: v for k, v in t.items() if stable(k)},
+                    {k: v for k, v in f.items() if stable(k)})
+        return {k for k in t if stable(k)}, {k for k in f if stable(k)}
 
     def _ptr_null_facts(
         self, expr: TpyExpr,
@@ -522,7 +574,8 @@ class NarrowingTracker:
         Handles comparisons (!=, ==, <, <=, >, >=), including symbolic
         len() comparisons, and logical composition (and/or/not).
         """
-        return self._range_facts(condition)
+        return self._strip_call_unstable(
+            self._range_facts(condition), condition)
 
     def _range_facts(
         self, expr: TpyExpr,
@@ -761,19 +814,82 @@ class NarrowingTracker:
                 self.ctx.func.non_null_ptr_vars.discard(k)
 
     def invalidate_closure_written_facts(self) -> None:
-        """Kill facts for names a previously-analyzed closure may rebind.
+        """Kill facts a call may falsify: closure-rebindable names and
+        value-type module globals.
 
-        Called at every call site: sema cannot know which call invokes the
+        Called at every call site: sema cannot know which call invokes a
         closure (directly, via a local binding, or through another callee),
         so any call may run `nonlocal x; x = ...` and falsify x's facts.
+        The same holds for value-type module globals -- any callee may run
+        `global g; g = ...`. Non-value globals are exempt: reassigning one
+        from a function is rejected outright, so their facts cannot go
+        stale across a call.
         """
-        for name in self.ctx.func.closure_written_names:
+        stale = set(self.ctx.func.closure_written_names)
+        func = self.ctx.func
+        # Roots-scan only when the module can have a rebindable global at
+        # all and any facts exist -- keeps the per-call cost at the old
+        # O(closure_written_names) for the common case.
+        if (self._module_has_rebindable_globals()
+                and (func.narrowed_types or func.non_null_ptr_vars
+                     or func.value_ranges)):
+            roots = {k.split(".")[0] for k in func.narrowed_types}
+            roots.update(func.non_null_ptr_vars)
+            roots.update(func.value_ranges)
+            for name in roots - stale:
+                if self._is_rebindable_global(name):
+                    stale.add(name)
+        for name in stale:
             self.ctx.func.narrowed_types.pop(name, None)
             self.ctx.func.narrowed_types.pop(deref_view_key(name), None)
             self._invalidate_field_facts(name)
             self.ctx.func.non_null_ptr_vars.discard(name)
             self.ctx.func.value_ranges.pop(name, None)
             self._invalidate_len_ranges(name)
+
+    def _module_has_rebindable_globals(self) -> bool:
+        """True when the module namespace has any value-type VARIABLE
+        binding -- the precondition for any per-name rebindable check to
+        succeed. Cached per namespace so the per-call kill can skip its
+        roots-scan in modules without such globals."""
+        gns = self.ctx.global_ns
+        if gns is None:
+            return False
+        cached = self._rebindable_globals_cache
+        if cached is not None and cached[0] is gns:
+            return cached[1]
+        has = any(
+            b.kind == BindingKind.VARIABLE and b.type is not None
+            and unwrap_ref_type(b.type).is_value_type()
+            for b in gns.all_bindings().values())
+        self._rebindable_globals_cache = (gns, has)
+        return has
+
+    def _is_rebindable_global(self, name: str) -> bool:
+        """True for a module global a callee could rebind via `global g`:
+        a VARIABLE binding in the module namespace, not shadowed by a
+        function-level binding or param, of value type.
+
+        The shadow walk parallels TypeCompatibility._is_local_shadow
+        (compatibility.py) but terminates on scope depth (module = 0) and
+        additionally excludes params -- keep the two in sync."""
+        gns = self.ctx.global_ns
+        if gns is None:
+            return False
+        binding = gns.lookup_local(name)
+        if binding is None or binding.kind != BindingKind.VARIABLE:
+            return False
+        if name in self.ctx.func.current_param_names:
+            return False
+        # A function-level scope binding shadows the global; the fact then
+        # belongs to the (call-safe) local. Module scope sits at depth 0.
+        scope = self.ctx.func.current_scope
+        while scope is not None and scope.depth > 0:
+            if name in scope.bindings:
+                return False
+            scope = scope.parent
+        t = unwrap_ref_type(binding.type) if binding.type else None
+        return t is not None and t.is_value_type()
 
     def invalidate_for_field_write(self, target: TpyExpr) -> None:
         """Invalidate narrowing facts for sub-paths when a field is written.

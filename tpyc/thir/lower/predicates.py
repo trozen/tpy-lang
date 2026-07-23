@@ -1082,10 +1082,9 @@ def _readonly_global_type(gt: TpyType | None, analyzer) -> TpyType | None:
     consumers (the standalone tuple-unpack source, tuple subscript reads)
     render `std::get` over the bare name on both paths. Everything else
     stays AST: containers/records are pointer slots, Optional-value globals
-    hit the AST's broken narrowed-global read (no `.value()` extraction --
-    and seeding one would let THIR's local-style narrowing arms admit what
-    the AST renders bare), and unions/enums are unprobed. Returns None when
-    out of the family."""
+    have no THIR read/narrow arms yet (the AST's narrowed-global deref is
+    the oracle to mirror when seeding them), and unions/enums are unprobed.
+    Returns None when out of the family."""
     if gt is None:
         return None
     gt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(gt)))

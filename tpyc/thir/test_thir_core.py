@@ -2762,7 +2762,7 @@ class TestGlobalWriteSeeding:
     def test_optional_global_write_stays_unseeded(self):
         # An Optional-typed global is not an eligible scalar slot; its
         # `global` declaration keeps rejecting the body (the value-Optional
-        # seeding cell is gated on an AST-side BUGS verify).
+        # seeding cell mirrors the AST's narrowed-global renders when built).
         src = (_PRELUDE
                + "from typing import Optional\n"
                + "g: Optional[Int32] = None\n"

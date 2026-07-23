@@ -2095,6 +2095,13 @@ class StatementGenerator:
             if var_type is not None:
                 var_type = unwrap_qualifiers(var_type)
             init_expr = self.expressions.gen_expr(stmt.init, var_type)
+            # A proven-non-None value-Optional source into a plain-T global
+            # reads the inner value, like the local-reassign arm (the
+            # helper's target_type guard keeps Optional targets whole).
+            if var_type is not None:
+                init_expr = self.expressions._maybe_unwrap_narrowed_optional(
+                    stmt.init, init_expr, self.ctx.is_indirect_name(stmt.init),
+                    target_type=var_type)
             init_expr = self._maybe_wrap_tuple_to_storage(init_expr, var_type, stmt.init)
             target_name = self.ctx.native_global_names.get(stmt.name, stmt.name)
             return f"{indent}{target_name} = {init_expr};\n"
@@ -2173,6 +2180,13 @@ class StatementGenerator:
                 if result := self._try_str_inplace_append(stmt.name, cpp_name, stmt.init, var_type, indent):
                     return result
                 init_expr = self.expressions.gen_expr(stmt.init, var_type)
+                # A proven-non-None value-Optional source into a plain-T slot
+                # reads the inner value; an Optional slot keeps the whole copy
+                # (the helper's target_type guard).
+                if var_type is not None:
+                    init_expr = self.expressions._maybe_unwrap_narrowed_optional(
+                        stmt.init, init_expr, self.ctx.is_indirect_name(stmt.init),
+                        target_type=var_type)
                 init_expr = self._maybe_wrap_tuple_to_storage(init_expr, var_type, stmt.init)
                 return f"{indent}{cpp_name} = {init_expr};\n"
             return None
@@ -2760,6 +2774,13 @@ class StatementGenerator:
                 stmt.target, target, self.ctx.is_indirect_name(stmt.target))
         target_type = self.ctx.get_expr_type(stmt.target)
         value = self.expressions.gen_expr(stmt.value, target_type)
+        # Mirror the target-side unwrap above: a proven-non-None value-Optional
+        # source must feed the synthesized binop its inner value (the helper's
+        # target_type guard keeps whole-optional targets bare).
+        if target_type is not None:
+            value = self.expressions._maybe_unwrap_narrowed_optional(
+                stmt.value, value, self.ctx.is_indirect_name(stmt.value),
+                target_type=target_type)
         value_type = self.types.get_resolved_type(stmt.value, target_type)
 
         # Special case: FixedInt += BigInt should convert BigInt to the target type
@@ -2877,19 +2898,13 @@ class StatementGenerator:
         chokepoint on ExpressionGenerator."""
         return self.expressions._view_source_to_owned(ret_value, ret_type, ret_expr)
 
-    def _is_value_optional_var(self, name: str) -> bool:
-        """Check if a variable's C++ declared type is a value-type std::optional<T>."""
-        declared = self.ctx.var_types.get(name) or self.ctx.current_func_params.get(name)
-        return (isinstance(declared, OptionalType) and not declared.uses_pointer_repr())
-
     def _is_value_optional_expr(self, expr: TpyExpr) -> bool:
         """Check if an expression's C++ type is a value-type std::optional<T>.
 
-        Handles both TpyName (variable) and TpyFieldAccess (obj.field).
+        Handles TpyName (locals, params, module globals) and TpyFieldAccess
+        (obj.field) via the global-aware declared-type resolver.
         """
-        if isinstance(expr, TpyName):
-            return self._is_value_optional_var(expr.name)
-        declared = self.expressions._get_cpp_declared_type(expr)
+        declared = self.expressions._declared_type_incl_globals(expr)
         return (isinstance(declared, OptionalType) and not declared.uses_pointer_repr())
 
 

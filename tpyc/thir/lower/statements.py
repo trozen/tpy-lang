@@ -3736,6 +3736,15 @@ def _lower_frame_field_assign(stmt: TpyVarDecl, lc: '_LowerCtx',
         no_source_comment=getattr(stmt, "no_source_comment", False))
 
 
+def _value_opt_target_binding(name: str, lc: '_LowerCtx') -> bool:
+    """The reassignment TARGET's slot is a value-repr optional (scalar or
+    owned-view) binding -- the whole-optional-copy admission all three
+    reassign arms key on (whole_optional_reassign, the opt_slot override,
+    the deref strip); keep them agreeing through this one predicate."""
+    return (_value_opt_scalar_binding(name, lc)
+            or _value_opt_view_binding(name, lc))
+
+
 def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
     lc = scope.lc
     declared = scope.declared
@@ -4803,7 +4812,10 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             whole_optional_reassign = (
                 stmt.name in declared
                 and isinstance(src, TpyName)
-                and _value_opt_scalar_binding(src.name, lc))
+                and _value_opt_scalar_binding(src.name, lc)
+                # Whole-optional only into an optional TARGET slot; a plain-T
+                # binding reads the narrowed inner ((*p)).
+                and _value_opt_target_binding(stmt.name, lc))
             if whole_optional_reassign:
                 init = _flush_witness(
                     "flush.vardecl",
@@ -4821,6 +4833,12 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 # sources (`_owned_view_opt_whole_src`).
                 opt_slot = (_value_opt_scalar(vtype, analyzer) is not None
                             or _owned_view_opt_whole_src(stmt, vtype, lc))
+                # On a reassignment the sink is the TARGET's existing slot:
+                # only an optional binding takes the whole-optional copy; a
+                # plain-T binding reads the narrowed inner ((*p)).
+                if (stmt.name in declared
+                        and not _value_opt_target_binding(stmt.name, lc)):
+                    opt_slot = False
                 # A str-family FIELD read into a str-value decl slot
                 # (`s = p.name` -> `std::string_view s = p.name;` for a view
                 # slot, `std::string s = p.name;` for an owned one): the bare
@@ -4865,15 +4883,14 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         if stmt.name in declared:
             assert init is not None  # eligibility requires a var-decl init
             # A value-repr Optional[scalar/view] name reassigned to an existing
-            # optional local passes the bare optional (`q = p;`): the AST's
-            # reassignment RHS threads no target type, so a narrowed read is NOT
-            # unwrapped here (unlike a decl init / value-target position) -- so
-            # strip the name arm's deref-on-narrow. For scalars into a plain-`T`
-            # slot this mirrors a pre-existing AST bug byte-identically; for an
-            # optional-into-optional slot it is the correct whole-optional copy.
+            # OPTIONAL local passes the bare optional (`q = p;`) -- the correct
+            # whole-optional copy, so strip the name arm's deref-on-narrow.
+            # A plain-`T` target keeps the deref: the AST's reassignment RHS
+            # unwraps a proven-non-None value-Optional source to `(*p)`.
             if (isinstance(stmt.init, TpyName) and isinstance(init, THIRName)
                     and (_value_opt_scalar_binding(stmt.init.name, lc)
-                         or _value_opt_view_binding(stmt.init.name, lc))):
+                         or _value_opt_view_binding(stmt.init.name, lc))
+                    and _value_opt_target_binding(stmt.name, lc)):
                 init = replace(init, deref=False)
             # No view->owned wrap on a plain reassignment: std::string has an
             # implicit operator=(string_view), and the AST emits the bare
@@ -6176,14 +6193,16 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         ret_t = lc.func.return_type if isinstance(lc.func.return_type,
                                                   TpyType) else None
         value = _slot_literal_retype(value, ret_t, lc)
-        # An expensive-copy value-Optional param (`int | None`) returned at its
+        # An expensive-copy value-Optional PARAM (`int | None`) returned at its
         # narrowed last use moves the unwrapped value (`return std::move((*p));`,
-        # seed_param_locals' value-optional movable face). `_is_move_source`
-        # only fires for the movable-seeded expensive-copy inner; the deref
+        # seed_param_locals' value-optional movable face -- param-only: the
+        # AST registers a sema-movable VALUE local nowhere, so a value-opt
+        # LOCAL's narrowed return stays a plain `(*x)` copy). The deref
         # guard scopes it to the narrowed `(*p)` read (an un-narrowed return
         # renders the bare optional into an Optional slot -- a different arm).
         if (isinstance(stmt.value, TpyName) and isinstance(value, THIRName)
                 and value.deref
+                and stmt.value.name in lc.prescan.param_names
                 and _value_opt_scalar_binding(stmt.value.name, lc)
                 and _is_move_source(stmt.value, lc)):
             value = THIRMove(result_type=value.result_type, value=value,

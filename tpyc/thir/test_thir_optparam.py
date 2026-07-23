@@ -454,9 +454,10 @@ class TestValueReprOptionalParam:
         assert isinstance(cond.operand, THIRTruthy)
         assert cond.operand.mode is TruthinessMode.IS_TRUTHY
 
-    def test_reassign_strips_deref(self):
-        # The AST reassignment RHS threads no target type, so a narrowed read is
-        # NOT unwrapped (`q = p;`, a pre-existing AST bug mirrored here).
+    def test_reassign_derefs_into_plain_slot(self):
+        # A narrowed value-opt source reassigned into a plain-T slot reads the
+        # inner value (`q = (*p);`) -- the whole-optional copy is reserved for
+        # an optional TARGET binding (see the strips_deref sibling below).
         thir = _lower_ctx(
             "from tpy import Int32\n"
             "def use(p: Int32 | None) -> Int32:\n"
@@ -465,7 +466,7 @@ class TestValueReprOptionalParam:
             "    return q\n")
         assign = _fn(thir, "use").body[1].then_body[0]
         assert isinstance(assign, THIRAssign)
-        assert isinstance(assign.value, THIRName) and not assign.value.deref
+        assert isinstance(assign.value, THIRName) and assign.value.deref
 
     def test_bigint_return_moves_at_last_use(self):
         # BigInt is expensive-copy -- the narrowed last-use read moves.
@@ -566,7 +567,7 @@ class TestValueReprOptionalParamEmit:
         assert "return (p.has_value());" in out
         assert "if ((!(::tpy::is_truthy(p))))" in out
         assert "return sink(p);" in out       # bare pass into optional slot
-        assert "q = p;" in out                 # reassign strips the deref
+        assert "q = (*p);" in out              # narrowed reassign into plain slot derefs
 
 
 class TestValueReprOptionalStrParam:

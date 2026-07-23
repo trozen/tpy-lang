@@ -2306,7 +2306,11 @@ class TypeCompatibility:
         return False
 
     def _is_local_shadow(self, name: str) -> bool:
-        """Check if a name is bound in a local scope, shadowing a global."""
+        """Check if a name is bound in a local scope, shadowing a global.
+
+        NarrowingTracker._is_rebindable_global (narrowing.py) walks the same
+        chain with a depth-based terminator and a param exclusion -- keep the
+        two in sync when changing shadow semantics."""
         scope = self.ctx.func.current_scope
         while scope and scope is not self.ctx.global_scope:
             if name in scope.bindings:

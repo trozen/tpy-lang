@@ -457,7 +457,10 @@ class ExpressionGenerator:
         # narrowed inner type but the C++ variable is still std::optional<T>.
         # Fields always use std::optional<T> regardless of uses_pointer_repr(),
         # so include field accesses when sema has actually narrowed them.
-        cpp_declared_type = self._get_cpp_declared_type(expr)
+        # Global-aware: a narrowed value-Optional GLOBAL needs the same
+        # target-driven unwrap (un-narrowed globals already enter via the
+        # resolved expr_type leg below).
+        cpp_declared_type = self._declared_type_incl_globals(expr)
         is_narrowed_optional_field = (
             isinstance(expr, TpyFieldAccess)
             and cpp_declared_type is not None
@@ -540,11 +543,31 @@ class ExpressionGenerator:
         For names, checks codegen var_types and current_func_params.
         For field access (obj.field), resolves the field's declared type
         on the record, which may be Optional even when sema has narrowed it.
+
+        MUST stay local-only for names: callers like the union-arg
+        already-variant check rely on module globals resolving None. The
+        narrowed-Optional family uses `_declared_type_incl_globals`.
         """
         if isinstance(expr, TpyName):
             return self.ctx.var_types.get(expr.name) or self.ctx.current_func_params.get(expr.name)
         if isinstance(expr, TpyFieldAccess):
             return self._resolve_field_declared_type(expr)
+        return None
+
+    def _declared_type_incl_globals(self, expr: TpyExpr) -> TpyType | None:
+        """`_get_cpp_declared_type` extended to module globals.
+
+        Only the narrowed-Optional unwrap family consults globals: a
+        narrowed global read must see its declared (possibly Optional)
+        type. Other `_get_cpp_declared_type` callers (e.g. the union-arg
+        already-variant check) rely on globals resolving None."""
+        declared = self._get_cpp_declared_type(expr)
+        if declared is not None:
+            return declared
+        if isinstance(expr, TpyName) and self.ctx.is_global_name(expr):
+            binding = self.ctx.analyzer.global_ns.lookup_local(expr.name)
+            if binding is not None:
+                return binding.type
         return None
 
     def _receiver_is_own_dyn(self, recv: TpyExpr) -> bool:
@@ -596,7 +619,7 @@ class ExpressionGenerator:
         The C++ storage is still std::optional<T> but sema proved it holds a value
         (e.g. inside `if x is not None:`).
         """
-        cpp_type = self._get_cpp_declared_type(expr)
+        cpp_type = self._declared_type_incl_globals(expr)
         if (cpp_type is not None
                 and isinstance(cpp_type, OptionalType)
                 and (isinstance(expr, TpyFieldAccess) or not cpp_type.uses_pointer_repr())):
@@ -604,7 +627,8 @@ class ExpressionGenerator:
             return analyzed is not None and not isinstance(analyzed, OptionalType)
         return False
 
-    def _maybe_unwrap_narrowed_optional(self, expr_obj: TpyExpr, obj: str, needs_deref: bool) -> str:
+    def _maybe_unwrap_narrowed_optional(self, expr_obj: TpyExpr, obj: str, needs_deref: bool,
+                                        target_type: TpyType | None = None) -> str:
         """Unwrap narrowed Optional receivers.
 
         When sema has proven a std::optional<T> variable holds a value,
@@ -612,10 +636,15 @@ class ExpressionGenerator:
         Handles simple names, field accesses, and generator-promoted
         Optional locals (whose rendered `obj` is already the inner
         storage-form Optional after the outer init-tracking deref).
+        When `target_type` is given, the unwrap only fires for a
+        non-Optional target -- an Optional target keeps the whole copy.
         """
         if needs_deref:
             return obj
-        cpp_decl = self._get_cpp_declared_type(expr_obj)
+        if (target_type is not None
+                and isinstance(unwrap_readonly(target_type), OptionalType)):
+            return obj
+        cpp_decl = self._declared_type_incl_globals(expr_obj)
         analyzed = self.ctx.get_expr_type(expr_obj)
         is_comp_var = isinstance(expr_obj, TpyName) and expr_obj.name in self.ctx.comp_local_names
         is_storage_optional = self.ctx.is_storage_form_optional_source(expr_obj)
