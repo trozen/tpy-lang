@@ -1,30 +1,30 @@
 """Shared shape validation for the CPython `@export` boundary.
 
-Two homes reject the method/dunder shapes the extension glue cannot emit: the
-exposed-class dunder validator (sema, `analyzer._validate_export_class_dunders`)
-and the exposed-class body/free-function validator (`compiler._validate_exposed_
-class` / `_validate_ext_module_exports`). They must agree on WHICH decorator,
-kind, and argument forms don't cross -- when the two implementations drifted, an
-`async` dunder slipped the home missing the async check and an `@error_return`
-method slipped the home missing the error-return check, each reaching codegen and
-failing the `.so` build with an opaque C++ template error instead of a located
-diagnostic. Detection lives here so the set can't diverge; each home keeps its
-own message prefix (`exposed class 'R':` vs `@export class 'R':`).
+Two homes reject the method/dunder shapes the extension glue cannot emit:
+the exposed-class dunder validator (sema_validators.py) and the
+exposed-class body/free-function validator (module_validators.py). They
+must agree on WHICH decorator, kind, and argument forms don't cross --
+when the two implementations drifted, an `async` dunder slipped the home
+missing the async check and an `@error_return` method slipped the home
+missing the error-return check, each reaching codegen and failing the
+`.so` build with an opaque C++ template error instead of a located
+diagnostic. Detection lives here so the set can't diverge; each home
+keeps its own message prefix (`exposed class 'R':` vs `@export class 'R':`).
 
-The supported-dunder catalog derives from the same `modules/defs.py` operator
-tables the codegen slot emitter (`codegen_cpp/extension.py`) derives from, so the
-validator's supported set stays in lockstep with what codegen actually emits.
+The supported-dunder catalog derives from the same `modules/defs.py`
+operator tables the codegen slot emitter (`extension.py` beside this file)
+derives from, so the validator's supported set stays in lockstep with what
+codegen actually emits.
 """
 from typing import TYPE_CHECKING
 from ..modules import (
     BINOP_TO_METHOD, BINOP_TO_RMETHOD, AUGOP_TO_IMETHOD, UNARYOP_TO_METHOD,
 )
 from ..parse.nodes import (
-    TpyCoerce, TpyFieldAccess, TpyName, TpyReturn,
+    TpyCoerce, TpyFieldAccess, TpyName, TpyReturn, walk_body_stmts,
 )
 from ..type_def_registry import _boundary_inner
 from ..typesys import NominalType, OwnType, ReadonlyType
-from .expressions import _walk_body_stmts
 
 if TYPE_CHECKING:
     from ..parse.nodes import TpyExpr, TpyFunction
@@ -168,7 +168,7 @@ def view_safe_borrow_returns(fn: 'TpyFunction',
     if return_info.is_value_type:
         return False
     returns: list[TpyReturn] = []
-    _walk_body_stmts(
+    walk_body_stmts(
         fn.body, lambda _e: None,
         lambda s: returns.append(s)
         if isinstance(s, TpyReturn) and s.value is not None else None)
@@ -193,8 +193,8 @@ def nocopy_borrow_return_error(ret_type: 'TpyType', registry) -> 'str | None':
     (`-> Cls`, `-> readonly[Cls]`, and the property getter's un-normalized
     bare class) by peeling to the boundary inner. ONE message tail for both
     validation homes (the plain-method/free-fn/property validator in
-    compiler._exposed_form_error and the dunder validator in
-    analyzer._validate_export_class_dunders) so the set can't drift."""
+    module_validators._exposed_form_error and the dunder validator in
+    sema_validators.validate_export_class_dunders) so the set can't drift."""
     if isinstance(ret_type, OwnType):
         return None
     info = registry.get_record_for_type(_boundary_inner(ret_type))

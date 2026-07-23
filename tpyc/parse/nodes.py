@@ -1909,3 +1909,19 @@ def stmts_have_any_return(stmts: list[TpyStmt]) -> bool:
                 if stmts_have_any_return(b):
                     return True
     return False
+
+
+def walk_body_stmts(
+    stmts: list[TpyStmt],
+    on_expr: Callable[[TpyExpr], None],
+    on_stmt: Callable[[TpyStmt], None],
+) -> None:
+    """Walk statements calling on_expr/on_stmt. Does NOT recurse into TpyNestedDef."""
+    for stmt in stmts:
+        on_stmt(stmt)
+        if isinstance(stmt, TpyNestedDef):
+            continue  # separate scope
+        for expr in stmt.exprs():
+            on_expr(expr)
+        for body in stmt.sub_bodies():
+            walk_body_stmts(body, on_expr, on_stmt)

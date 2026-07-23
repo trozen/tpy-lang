@@ -6,7 +6,6 @@ Core expression analysis including literals, names, operators, field access, and
 
 from __future__ import annotations
 from contextlib import ExitStack
-from collections.abc import Callable as CallableFn
 from dataclasses import replace as dc_replace
 from typing import Literal, TYPE_CHECKING
 
@@ -37,6 +36,7 @@ from ..parse import (
     TpyNoneLiteral, TpyName, TpyBinOp, TpyChainedCompare, TpyUnaryOp, TpyTypeParamConstruct,
     TpyCall, TpyMethodCall, TpyFieldAccess, TpyFunction,
     is_stable_address_lvalue,
+    walk_body_stmts,
     TpyArrayLiteral, TpyTupleLiteral, TpyDictLiteral, TpySetLiteral, TpyListRepeat,
     TpyListComprehension, TpyDictComprehension, TpySetComprehension, TpyGeneratorExpression, TpyComprehensionGenerator,
     TpySlice, TpySubscript, TpyCoerce,
@@ -84,22 +84,6 @@ if TYPE_CHECKING:
 from tpyc import modules as builtin_modules
 
 
-def _walk_body_stmts(
-    stmts: list[TpyStmt],
-    on_expr: CallableFn[[TpyExpr], None],
-    on_stmt: CallableFn[[TpyStmt], None],
-) -> None:
-    """Walk statements calling on_expr/on_stmt. Does NOT recurse into TpyNestedDef."""
-    for stmt in stmts:
-        on_stmt(stmt)
-        if isinstance(stmt, TpyNestedDef):
-            continue  # separate scope
-        for expr in stmt.exprs():
-            on_expr(expr)
-        for body in stmt.sub_bodies():
-            _walk_body_stmts(body, on_expr, on_stmt)
-
-
 def _collect_body_name_refs(stmts: list[TpyStmt]) -> set[str]:
     """Collect all name references from a list of statements.
 
@@ -111,7 +95,7 @@ def _collect_body_name_refs(stmts: list[TpyStmt]) -> set[str]:
     def on_expr(expr: TpyExpr) -> None:
         names.update(collect_name_refs(expr))
 
-    _walk_body_stmts(stmts, on_expr, lambda s: None)
+    walk_body_stmts(stmts, on_expr, lambda s: None)
     return names
 
 
@@ -138,7 +122,7 @@ def _collect_body_local_defs(stmts: list[TpyStmt]) -> set[str]:
         elif isinstance(stmt, TpyNestedDef):
             defs.add(stmt.func.name)
 
-    _walk_body_stmts(stmts, lambda e: None, on_stmt)
+    walk_body_stmts(stmts, lambda e: None, on_stmt)
     return defs
 
 

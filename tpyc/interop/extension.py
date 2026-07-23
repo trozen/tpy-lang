@@ -31,16 +31,16 @@ from ..modules import BINOP_TO_METHOD, BINOP_TO_RMETHOD, AUGOP_TO_IMETHOD, UNARY
 # warning suppression and this glue's view emission must answer identically
 # (and the validator's field admission and the getset emit likewise share
 # exposed_view_field).
-from ..sema.export_shape import (
+from .export_shape import (
     boundary_alias_records, exposed_view_field, view_safe_borrow_returns)
-from .context import (
+from ..codegen_cpp.context import (
     qualified_cpp_name, escape_cpp_name, module_to_include_path, CodeGenError)
-from .type_resolution import resolve_stmt_type_cascade
+from ..codegen_cpp.type_resolution import resolve_stmt_type_cascade
 
 if TYPE_CHECKING:
-    from .context import CodeGenContext
-    from .records import RecordGenerator
-    from .types import TypeResolver
+    from ..codegen_cpp.context import CodeGenContext
+    from ..codegen_cpp.records import RecordGenerator
+    from ..codegen_cpp.types import TypeResolver
     from ..typesys import RecordInfo
 
 # Exposed-class arithmetic/ordering operators: dunder name

@@ -36,6 +36,7 @@ from .nodes import (
     collect_top_level_local_names,
     expr_reads_self_field,
     is_stable_address_lvalue,
+    walk_body_stmts,
 )
 
 from .imports import (

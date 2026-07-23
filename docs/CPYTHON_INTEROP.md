@@ -887,7 +887,7 @@ on AST nodes, don't sprawl interop logic across phases):
 - **Runtime facade.** `runtime/cpp/include/tpy/interop/cpython_h.hpp` -- the
   hand-written limited-API facade (opaque `PyObject`, function decls, no
   `Python.h`).
-- **Codegen (isolated).** `tpyc/codegen_cpp/extension.py` (`ExtensionGenerator`,
+- **Codegen (isolated).** `tpyc/interop/extension.py` (`ExtensionGenerator`,
   wired as `CodeGenerator.extension`) owns glue-TU emission: per-function
   `from_py`/`to_py` wrappers, `PyMethodDef`/`PyModuleDef`/`PyInit_`,
   `PyType_FromSpec` for classes, exception-registry init. Invoked via the thin
@@ -895,7 +895,11 @@ on AST nodes, don't sprawl interop logic across phases):
   `(hpp, cpp)` codegen contract is untouched. The shared boundary helpers
   (`boundary_cpp_type` / `boundary_unmarshallable_msg`, beside
   `is_boundary_marshallable`) live in `type_def_registry.py` so the sema
-  validator and the glue import them from one neutral home.
+  validator and the glue import them from one neutral home. The boundary
+  validators live beside the emitter in the same `tpyc/interop/` package
+  (`sema_validators.py` for the per-module dunder/aliasing checks,
+  `module_validators.py` for the whole-program export validation), invoked
+  through thin hooks on the analyzer and compiler.
 - **Thin compiler hooks.** Parser: the `ext_module` directive + the `@export`
   linkage extension (small touches to `_DIRECTIVE_SPECS` / the linkage map).
   `cli.py` / `BuildLayout`: the `.so` build-output mode. Everything reads facts
@@ -1168,7 +1172,7 @@ Detail for the tracker table in "v1 plan and status" (top). **v1.0 = phases
    class (no upcast views), and explicit `view.__init__(...)` is rejected
    with a TypeError (its storage belongs to the holder). Sema's warning
    suppression and the glue's view emission consult ONE classifier
-   (`view_safe_borrow_returns` in sema/export_shape.py), so a suppressed
+   (`view_safe_borrow_returns` in tpyc/interop/export_shape.py), so a suppressed
    warning always has a runtime aliasing path behind it.
    The decision is per call: a return path whose source has no live object
    behind it (a reassignable field, a module global) still copies into a

@@ -1,4 +1,4 @@
-"""Unit pins for the borrow-view classifier (sema/export_shape.py).
+"""Unit pins for the borrow-view classifier (tpyc/interop/export_shape.py).
 
 The classifier is the single answer BOTH ends of the identity/view contract
 consume (sema warning suppression == glue view emission), so its gates are
@@ -8,7 +8,7 @@ case-level witness: a derived-typed by-value FIELD hits the emit-order
 defect filed in BUGS.md, so no buildable case can hold one.
 """
 from tpyc.parse.nodes import TpyFieldAccess, TpyName, TpyReturn
-from tpyc.sema.export_shape import (
+from tpyc.interop.export_shape import (
     view_safe_attr_source, view_safe_borrow_returns,
 )
 from tpyc.typesys import FieldInfo, NominalType, RecordInfo

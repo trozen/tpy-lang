@@ -29,7 +29,6 @@ from .expressions import ExpressionGenerator
 from .statements import StatementGenerator
 from .records import RecordGenerator
 from .functions import FunctionGenerator
-from .extension import ExtensionGenerator
 from .type_resolution import resolve_stmt_type_cascade
 from .string_dispatch import (
     find_best_discriminator, discriminator_key, case_label,
@@ -120,6 +119,10 @@ class CodeGenerator:
         self.records = RecordGenerator(self.ctx, self.types, self.protocols, self.expressions, self.functions)
         # CPython extension glue (shares the records topo sort for exc-class
         # ordering and the type resolver for exposed-constant types)
+        # Imported here, not at module level: extension.py needs this
+        # package's context/type_resolution, so an eager import would be a
+        # codegen_cpp <-> interop cycle.
+        from ..interop.extension import ExtensionGenerator
         self.extension = ExtensionGenerator(self.ctx, self.records, self.types)
 
         # Generator codegen (must be created after wiring since it uses statements/functions)

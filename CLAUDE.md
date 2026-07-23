@@ -237,6 +237,7 @@ The compiler lives in `tpyc/`. Modules are grouped by phase -- browse `tpyc/` to
 - `typesys.py`, `type_resolver.py` -- type system and resolver for parser-emitted `TypeRefNode`s
 - `sema/` -- multi-pass semantic analysis (analyzer, statements, expressions, calls, methods, protocols, narrowing, mutation_propagation, value_range, flow_facts, match, ...)
 - `codegen_cpp/` -- C++ code generation (generator, expressions, statements, functions, records, protocols, builtins, types, match, gen_generators, string_dispatch, ...)
+- `interop/` -- the CPython `@export` boundary gathered in one package: shared shape/classifier predicates (`export_shape`), the sema and whole-program validators (`sema_validators`, `module_validators`), and the extension glue emitter (`extension`). The phase call sites in sema/compiler/codegen stay thin hooks.
 - `thir/` -- Typed High-level IR: the codegen path for migrated user-module bodies, byte-identical to the AST path; byte-diffed on every case by default (see the THIR migration section). The first step of the THIR/MIR migration (`docs/IR_DESIGN.md`)
 - `modules/` -- resolution helpers and constant tables. Note: builtin types, functions, and protocols are *defined* in `.py` stubs under `lib/tpy/`, not here. Generic type factories and per-qname behavior live on `tpyc.type_def_registry.TypeDef`; see `docs/ARCHITECTURE.md` for the nominal/structural split.
 - `compiler.py` -- multi-module orchestration
