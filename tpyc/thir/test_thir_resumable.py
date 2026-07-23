@@ -3236,9 +3236,9 @@ class TestContainerReturns:
         _, _hpp, cpp = _gen(src, thir=True)
         assert "std::vector<int32_t> __tpy_async_ret = {1, 2, 3};" in cpp
 
-    def test_owned_name_source_returns_bare(self):
-        # A frame-slot container name returns bare (`(*xs)`); the decl-init
-        # does the ownership transfer, so no move wrap appears here.
+    def test_owned_name_source_returns_moved(self):
+        # A frame-slot container name at its last use moves out of the slot
+        # (the frame is completing; a copy broke @nocopy Own returns).
         src = ("import asyncio\nfrom tpy import Int32, Own\n\n"
                + "async def f() -> Own[list[Int32]]:\n"
                + "    xs = [1, 2]\n"
@@ -3249,7 +3249,7 @@ class TestContainerReturns:
         _, fallback = _assert_identical(src)
         assert not any(k.startswith("resumable:") for k in fallback)
         _, _hpp, cpp = _gen(src, thir=True)
-        assert "__tpy_async_ret = (*xs);" in cpp
+        assert "__tpy_async_ret = std::move((*xs));" in cpp
 
     def test_bare_container_await_result_routes(self):
         # The BARE `-> list[T]` slot (no Own) -- the axis on which this

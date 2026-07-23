@@ -70,7 +70,7 @@ __coro_value value(::tpy::BigInt n) {
     case S_JOIN_1: {
         // return total
         __state = S_DONE;
-        ::tpy::BigInt __tpy_async_ret = total;
+        ::tpy::BigInt __tpy_async_ret = std::move(total);
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");

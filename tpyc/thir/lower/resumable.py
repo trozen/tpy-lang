@@ -797,8 +797,9 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 # _lower_resumable_return_value's value-opt arm.
                 or _value_opt_scalar(rt, analyzer) is not None
                 # Container storage slot (`std::vector`/`map`/`set` by
-                # value): every source rides the position-blind tail
-                # bare, except the empty literal the return arm rejects.
+                # value): sources ride the position-blind tail (a last-use
+                # movable name with a THIRMove wrap), except the empty
+                # literal the return arm rejects.
                 or _res_container_return(rt, analyzer) is not None):
             return _reject("res.return_type")
     if func.forwarded_locals:

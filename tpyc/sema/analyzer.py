@@ -110,6 +110,7 @@ from .statements import StatementAnalyzer
 
 from ..prescan import ScanResult, scan_reassigned_vars, liveness_alias_sources, collect_fact_kills
 from ..liveness import analyze_last_uses, collect_finally_return_candidates
+from ..value_category import wants_move
 from .mutation_propagation import propagate_mutation_facts, infer_method_const
 from tpyc import modules as builtin_modules
 from ..cycle_detection import detect_type_cycles
@@ -2121,15 +2122,11 @@ class SemanticAnalyzer:
                             node.ref_captures.add(cap_name)
                 else:
                     # Local variable: must copy or move (local dies on return).
-                    # Only emit std::move for types where move is cheaper than
-                    # copy (string, BigInt, etc.) -- for trivial types like
-                    # Int32 it's just noise.
-                    wants_move = (not raw_type.is_value_type()
-                                  or raw_type.is_expensive_copy())
-                    if wants_move and cap_name not in names_used_after:
+                    should_move = wants_move(raw_type)
+                    if should_move and cap_name not in names_used_after:
                         # Last use -- move into the closure, no warning
                         node.move_captures.add(cap_name)
-                    elif wants_move:
+                    elif should_move:
                         # Used after the closure -- must copy, warn
                         self.ctx.warning(
                             f"Escaping closure '{name}' copies local"

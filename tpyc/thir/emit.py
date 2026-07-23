@@ -3898,11 +3898,18 @@ class ResumableLeafEmitter:
         args = self._lookup(self._body.await_args, call, "await args")
         return [_emit_expr(a, self._state) for a in args]
 
-    def render_return_value(self, ret) -> str:
+    def render_return_value(self, ret, *, allow_move: bool = False) -> str:
         """Render a `return v`'s value for `_make_async_return`'s
-        scaffolding (the ret-tmp init / pending-slot store)."""
-        return _emit_expr(self._lookup(self._body.return_values, ret,
-                                       "return value"), self._state)
+        scaffolding (the ret-tmp init / pending-slot store). The lowering
+        bakes the last-use move (THIRMove) position-blind; the scaffolding
+        knows the site, so a pre-finally store unwraps it -- an alias bound
+        before the try can still read the local from the finally body.
+        Defaults to no-move (the AST flag's fail-safe polarity): a future
+        call site that forgets the kwarg gets the copy, never the move."""
+        node = self._lookup(self._body.return_values, ret, "return value")
+        if not allow_move and isinstance(node, THIRMove):
+            node = node.value
+        return _emit_expr(node, self._state)
 
     def render_yield_value(self, ys) -> str:
         """Render a generator `yield v`'s value -- the seam replacement for

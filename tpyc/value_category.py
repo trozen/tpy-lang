@@ -28,6 +28,13 @@ from .parse import (
 from .type_def_registry import is_bool_type
 
 
+def wants_move(t: TpyType) -> bool:
+    """Whether moving a value of this type beats copying it: reference
+    types always, value types only when the copy is expensive (String,
+    BigInt, ...). For trivial types std::move is just noise."""
+    return not t.is_value_type() or t.is_expensive_copy()
+
+
 class ValueCategoryAnalyzer(Protocol):
     """The slice of sema/codegen state these predicates need. The sema
     `AnalyzerContext` and the codegen `SemanticAnalyzer` both satisfy it."""

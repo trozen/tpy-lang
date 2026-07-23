@@ -47,6 +47,7 @@ from ..sema.literal_utils import (
 )
 from ..sema.registration import build_record_self_type
 from ..typesys import view_family_for_type
+from ..value_category import wants_move
 from .variant_access import VariantAccess
 from ..diagnostics import SemanticError
 from ..liveness import stmts_terminate, try_terminates_ignoring_finally
@@ -4049,12 +4050,17 @@ class StatementGenerator:
             dst_type=bare, dst_form=CppForm.BORROW)
 
     def _async_return_value_cpp(self, stmt: TpyReturn, ret_type,
-                                *, to_borrow: bool) -> str:
+                                *, to_borrow: bool,
+                                allow_move: bool = False) -> str:
         """The value render for `_make_async_return`'s three scaffolding
         sites (pending-slot store / pre-finally capture / direct ready) --
         and the resumable THIR seam's return-value chokepoint: a routed
         body renders the value from its lowered node, the scaffolding
-        around it is shared skeleton either way."""
+        around it is shared skeleton either way. `allow_move` is True only
+        at the direct-ready site: the pre-finally sites must copy, because
+        an alias bound before the try can still read the local from the
+        finally body (liveness's alias tracking does not survive the
+        return arm, so the last-use fact alone cannot rule that out)."""
         leaf = self.ctx.thir_resumable_leaf
         if leaf is not None:
             # A routed body renders position-blind, replacing only the value
@@ -4062,14 +4068,16 @@ class StatementGenerator:
             # it skips are no-ops for every admitted return shape (value
             # scalars, value-opt scalars, value tuples, container storage --
             # _async_ret_to_borrow short-circuits on anything but a
-            # pointer-repr Optional), so every scaffolding site (pending-slot
-            # store, pre-finally capture, direct ready) stays identical.
+            # pointer-repr Optional), and the last-use move it skips is
+            # mirrored at lowering (THIRMove in
+            # _lower_resumable_return_value) with the same site rule via
+            # allow_move below -- so every scaffolding site stays identical.
             # Serves ReturnT terminators AND nested leaf returns
             # (THIRResumableReturn's emit hook re-enters _make_async_return,
             # which lands back here). Widening the return-shape gate must
             # revisit this seam -- see the THIRResumableBody return_values
             # contract.
-            return leaf.render_return_value(stmt)
+            return leaf.render_return_value(stmt, allow_move=allow_move)
         if isinstance(stmt.value, TpyNoneLiteral):
             # The coroutine return slot is storage form: None needs the
             # target-typed spelling (std::nullopt / monostate), not the
@@ -4098,6 +4106,29 @@ class StatementGenerator:
                 stmt.value, expr_cpp, self.ctx.is_indirect_name(stmt.value),
                 target_type=ret_type)
         expr_cpp = self._wrap_view_to_storage(stmt.value, ret_type, expr_cpp)
+        bare = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ret_type)))
+                if ret_type is not None else None)
+        if (allow_move
+                and not (isinstance(bare, OptionalType)
+                         and bare.uses_pointer_repr())):
+            # Direct-ready storage slot: a last-use movable bare name moves
+            # out (the frame is completing, nothing can read it after).
+            # Every ctx.movable_locals member is already trusted for
+            # mid-body call-arg moves (_maybe_move), and this site is
+            # strictly safer than any call arg; the union's point is the
+            # SEMA-ONLY members -- an await-result frame field is assigned,
+            # never declared, so the working set alone under-covers it.
+            # A coerce-wrapped source is excluded (its render is a fresh
+            # conversion temp), and wants_move keeps trivial scalars bare.
+            # Borrow-form slots (pointer-repr Optional) alias, not move.
+            if (isinstance(stmt.value, TpyName)
+                    and self.expressions._is_last_use_movable(
+                        stmt.value,
+                        self.ctx.sema_movable_locals
+                        | self.ctx.movable_locals)):
+                vt = self.ctx.get_expr_type(stmt.value)
+                if vt is not None and wants_move(vt):
+                    expr_cpp = f"std::move({expr_cpp})"
         if to_borrow:
             expr_cpp = self._async_ret_to_borrow(stmt.value, ret_type, expr_cpp)
         return expr_cpp
@@ -4129,6 +4160,13 @@ class StatementGenerator:
             if pending_slot is not None and stmt.value is not None:
                 expr_cpp = self._async_return_value_cpp(stmt, ret_type,
                                                         to_borrow=False)
+                # KNOWN-WRONG eager COPY for reference payloads: a mutation
+                # of the returned local by the suspending finally is
+                # invisible in the returned object (CPython's pending return
+                # aliases), and a @nocopy payload fails to build. A move is
+                # NOT the fix (an alias in the finally would read a gutted
+                # object); the deferral needs a parked discriminant at
+                # AsyncFinallyExit -- tracked in BUGS.md.
                 out.write(f"{indent}this->{pending_slot} = {expr_cpp};\n")
             out.write(f"{indent}this->{pending_flag} = true;\n")
             # Walk finally frames pushed by regions INSIDE the CFG-
@@ -4169,6 +4207,12 @@ class StatementGenerator:
                 chain = io.StringIO()
                 terminated = self._emit_finally_chain(chain, indent)
                 maybe_unused = "[[maybe_unused]] " if terminated else ""
+                # For deferral-INELIGIBLE reference shapes (declared unions,
+                # tuples, ...) this eager capture is a KNOWN-WRONG pre-chain
+                # COPY: a finally mutation of the local is invisible in the
+                # returned object (CPython's pending return aliases) --
+                # tracked in BUGS.md; a move here would be worse (the
+                # finally can still read the local through an alias).
                 out.write(f"{indent}{maybe_unused}{ret_cpp} {ret_tmp} = {expr_cpp};\n")
                 out.write(chain.getvalue())
         else:
@@ -4191,8 +4235,11 @@ class StatementGenerator:
                         f"{deferred_materialize});\n")
                     return out.getvalue()
                 if ret_tmp is None:
+                    # Direct ready: no finally chain follows, so this is the
+                    # one site where a last-use move is unconditionally safe.
                     expr_cpp = self._async_return_value_cpp(stmt, ret_type,
-                                                            to_borrow=True)
+                                                            to_borrow=True,
+                                                            allow_move=True)
                     # Bind to a local first so `std::move` has a typed source:
                     # `std::move({1, 2, 3})` (braced initializer) doesn't
                     # compile because the template parameter can't be deduced.

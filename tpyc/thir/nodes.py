@@ -668,14 +668,14 @@ class THIRConsumingIter(THIRExpr):
 
 @dataclass(frozen=True)
 class THIRMove(THIRExpr):
-    """A movable owned local consumed at its last use by an `Own[T]` call-arg
-    slot: renders `std::move(<value>)` (gen_call_arg's `_maybe_move` arm).
+    """A movable owned name consumed at its last use: renders
+    `std::move(<value>)`. Created for an `Own[T]` call-arg slot
+    (gen_call_arg's `_maybe_move` arm) and for the resumable return leaf's
+    direct-ready move (containers/records/expensive values move out of the
+    completing frame; the emit hook unwraps it at pre-finally sites).
     Lowering creates it only when the movability + last-use facts fire (the
     same `movable_locals` + `all_last_uses` reads as the AST); the
-    non-movable lvalue shape hoists a `THIRArgTemp` copy instead. STORAGE in
-    practice -- only owned records are ever movable, and a moved record is a
-    self-contained value handed to the consuming slot (the lowering's scalar
-    branch is unreachable here: scalars are never in `movable_locals`)."""
+    non-movable lvalue shape hoists a `THIRArgTemp` copy instead."""
     value: THIRExpr
 
 

@@ -117,7 +117,7 @@ from ...codegen_cpp.protocols import narrow_cast_rhs
 from ...typesys import polymorphic_source_inner
 from ...codegen_cpp.types import resolve_pending_container
 from ...liveness import stmts_terminate, try_terminates_ignoring_finally
-from ...value_category import call_returns_cpp_ref, is_rvalue_source
+from ...value_category import call_returns_cpp_ref, is_rvalue_source, wants_move
 from ..faces import witness as _witness
 from ..fallback import (
     ThirUnsupported,
@@ -3492,8 +3492,29 @@ def _lower_resumable_return_value(ret: TpyReturn, lc: '_LowerCtx',
         value = _lower_generic_tuple_literal(ret.value, ret_gt, lc, declared)
         _witness("res.return_generic_tuple")
         return value
-    return _wrap_view_owned_return(
+    value = _wrap_view_owned_return(
         _lower_expr(ret.value, lc, declared), lc, getattr(ret, "loc", None))
+    # Mirror the AST's direct-ready last-use move (_async_return_value_cpp).
+    # The sets agree on every ADMITTED return shape; lc.movable_locals is
+    # deliberately partial vs codegen's seeds (owned-tuple params, the
+    # gen_async force-seeds) but those shapes reject upstream -- a realized
+    # divergence fails loudly via the corpus byte-diff. Baked
+    # position-blind; the emit hook unwraps the THIRMove at pre-finally
+    # scaffolding sites (render_return_value's allow_move), matching the
+    # AST's site rule. Bare names only (a coerce-wrapped source renders a
+    # fresh conversion temp); the borrow-form pointer-repr Optional slot
+    # aliases instead of moving.
+    rt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(lc.func.return_type)))
+          if isinstance(lc.func.return_type, TpyType) else None)
+    if (isinstance(ret.value, TpyName)
+            and _is_move_source(ret.value, lc)
+            and not (isinstance(rt, OptionalType) and rt.uses_pointer_repr())):
+        vt = lc.analyzer.get_expr_type(ret.value)
+        vt = unwrap_readonly(vt) if vt is not None else None
+        if vt is not None and wants_move(vt):
+            value = THIRMove(result_type=value.result_type, value=value,
+                             loc=getattr(ret, "loc", None))
+    return value
 
 
 def _lower_frame_tuple_unpack(stmt: TpyTupleUnpack,

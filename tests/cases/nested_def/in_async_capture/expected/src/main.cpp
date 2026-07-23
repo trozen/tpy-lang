@@ -28,7 +28,7 @@ namespace tpyapp::main {
         bump();
         // return b
         __state = S_DONE;
-        Box __tpy_async_ret = (*b);
+        Box __tpy_async_ret = std::move((*b));
         return ::tpystd::tpy::Poll<Box>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");

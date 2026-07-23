@@ -52,7 +52,7 @@ __coro_value value(::tpy::BigInt n) {
             std::cout << "else-ran" << "\n";
             // return total
             __state = S_DONE;
-            ::tpy::BigInt __tpy_async_ret = total;
+            ::tpy::BigInt __tpy_async_ret = std::move(total);
             return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
         }
         i = ((*__for_i_0))++;

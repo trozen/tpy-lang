@@ -1261,6 +1261,12 @@ class CodeGenContext:
     lvalue_reassigned_vars: set[str] = field(default_factory=set)
 
     # --- Auto-move tracking (last-use -> std::move) ---
+    # movable_locals is the WORKING set: the deliberate param seeds
+    # (seed_param_locals: Own / owned-tuple / value-opt-expensive params)
+    # plus decl-driven adds from sema_movable_locals as decls are emitted.
+    # sema_movable_locals is the RAW per-function sema fact; an
+    # assigned-never-declared frame field (await result) appears only
+    # here. Do not unify: consumers pick the set matching their site.
     movable_locals: set[str] = field(default_factory=set)
     sema_movable_locals: set[str] = field(default_factory=set)
     # Locals ever bound to a fresh rvalue (sema fact). A branch-declared

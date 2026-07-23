@@ -6977,6 +6977,15 @@ Send/Sync rules for built-in types:
   `emplace(...)` call site by the same coercion sync uses. Same
   `nullptr`-doubles-as-uninitialized-and-None convention as the
   matching hoisted-locals row in the generator section above.
+- **Working**: `async def f(...) -> Own[T]` returning a reference-type
+  frame local moves it out of the frame at the return (the sync
+  last-use discipline), so `@nocopy` results work and no copy is paid;
+  under a non-suspending `finally` the deferred-capture path keeps the
+  finally's reads/mutations visible in the returned object. Direct
+  `await` only for now: routing an `Own[T]`-returning coro through
+  `asyncio.run`/`create_task`, and the borrow-form returns
+  (`return self`, bare reference returns, generic object-`T`), await
+  the async reference-return ABI design (see BUGS.md).
 - **Working (v1.5 M9)**: `asyncio.gather(*tasks)` (variadic-positional)
   and `asyncio.gather_list(tasks)` (list-shaped) -- two homogeneous
   entrypoints over one `_GatherFuture[T]` engine. Both run N already-

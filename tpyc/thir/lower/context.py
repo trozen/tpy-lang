@@ -596,7 +596,11 @@ class _LowerCtx:
         # PARTIAL: seed_param_locals' owned-movable tuple-param branch is NOT
         # mirrored -- no current consumer can see those names (the Own-slot
         # rows admit scalar/F1-record payloads only); a frontier that reuses
-        # lc.movable_locals against tuple sources must extend this.
+        # lc.movable_locals against tuple sources must extend this. The
+        # resumable RETURN leaf's direct-ready move is such a reuser: its
+        # AST twin reads codegen's full working set, so the partiality is
+        # masked only by the return-shape gate -- widening that gate to
+        # tuple/force-seeded shapes must extend this seeding in lockstep.
         # CAVEAT (proven by a corpus divergence): this is the RAW sema set,
         # while codegen registers movables only at NON-VALUE decl arms -- a
         # consumer matching non-record sources must value-type-filter first
