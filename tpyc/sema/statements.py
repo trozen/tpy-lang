@@ -74,7 +74,10 @@ if TYPE_CHECKING:
 from .context import BorrowKind, MODULE_INIT_CONTEXT, PENDING_CONTAINER_TYPES, _storage_key, _storage_root, _borrow_storage_root, register_binding_borrow, ephemeral_borrow_root, contains_pending_leaf
 from ..value_category import is_rvalue_source, call_returns_cpp_ref
 from .expressions import _collect_body_name_refs, _collect_body_local_defs, _find_list_member
-from .local_deduction import collect_pending_source_types, walk_view_source_leaves
+from .local_deduction import (
+    collect_pending_source_types, mark_pending_list_mutated,
+    walk_view_source_leaves,
+)
 from .type_ops import signature_may_return_borrow as _signature_may_return_borrow
 from tpyc import modules as builtin_modules
 from tpyc import qnames
@@ -5808,6 +5811,10 @@ class StatementAnalyzer:
         # PendingViewType += promotes to owned
         if isinstance(target_type, PendingViewType) and isinstance(stmt.target, TpyName):
             self.deduction.mark_view_augassign(stmt.target.name, target_type.family)
+        # A pending list target of += is mutated in place -- it must resolve
+        # to list, not Array (the view-family sibling of the line above; the
+        # binary-concat operands get the same marking in expressions.py).
+        mark_pending_list_mutated(self.ctx, stmt.target, target_type)
         if not is_numeric_target and not is_str_target and not is_bytes_target:
             # StrView/BytesView += would dangle (result is a temporary assigned to a view)
             if is_str_view_type(target_type):

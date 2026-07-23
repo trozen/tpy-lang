@@ -19,7 +19,7 @@ from .lower.checks import (
 from .lower.predicates import _eligible_ptr_value
 from .nodes import (
     Form, THIRAssign, THIRBinOp, THIRCall, THIRCoerce, THIRExprStmt,
-    THIRFieldAccess, THIRFormConvert,
+    THIRFieldAccess, THIRFormConvert, THIRInplaceContainerOp,
     THIRMethodCall, THIRName, THIRReturn, THIRSelf, THIRSetItem, THIRStrAppend,
     THIRVarDecl,
 )
@@ -670,13 +670,15 @@ class TestScalarAugAssign:
         assert st.target.is_arrow
         assert isinstance(st.value, THIRBinOp)
 
-    def test_inplace_dunder_excluded(self):
-        # `xs += [v]` resolves to list_extend (__iadd__) -- mutates in place via a
-        # method call, not the binop substitution -> AST path.
+    def test_inplace_dunder_not_scalar_desugar(self):
+        # `xs += [v]` resolves to list_extend (__iadd__) -- an in-place method
+        # emit, so it must take the container-inplace arm, never this class's
+        # scalar THIRAssign+BinOp desugar.
         thir = _lower_ctx(
             "from tpy import Int32\n"
             "def grow(v: Int32):\n    xs = [1]\n    xs += [v]\n")
-        assert _fn(thir, "grow") is None
+        st = _fn(thir, "grow").body[1]
+        assert isinstance(st, THIRInplaceContainerOp)
 
     def test_str_aug_assign_routes_as_append(self):
         # `s += t` on a str takes the in-place-append emit -- not the scalar

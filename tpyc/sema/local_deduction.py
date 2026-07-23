@@ -115,6 +115,26 @@ def collect_pending_source_types(ctx: 'SemanticContext', expr: 'TpyExpr') -> 'li
     return walk_view_source_leaves(expr, leaf)
 
 
+def mark_pending_list_mutated(ctx: 'SemanticContext', expr: 'TpyExpr | None',
+                              expr_type: 'TpyType | None') -> None:
+    """Mark the pending list literal behind `expr` as mutated so it resolves
+    to list, not Array. Covers a directly PendingListType-typed expression
+    and a name bound to a tracked literal (alias). One home for the
+    expression-rooted mutation routes: mutating method receivers, binary
+    concat operands, and aug-assign targets."""
+    if isinstance(expr_type, PendingListType):
+        info = ctx.list_literals.get(expr_type.literal_id)
+        if info:
+            info.is_mutated = True
+        return
+    if isinstance(expr, TpyName):
+        lit_id = ctx.func.variable_to_literal.get(expr.name)
+        if lit_id is not None:
+            info = ctx.list_literals.get(lit_id)
+            if info:
+                info.is_mutated = True
+
+
 class LocalTypeDeduction:
     """Unified tracker for local variable type deduction.
 
@@ -374,15 +394,6 @@ class LocalTypeDeduction:
     # ------------------------------------------------------------------
     # List literal deduction (moved from ListLiteralTracker)
     # ------------------------------------------------------------------
-
-    def mark_list_mutated(self, obj_expr: TpyExpr) -> None:
-        """Mark a list literal as mutated if it can be traced to one."""
-        if isinstance(obj_expr, TpyName):
-            var_name = obj_expr.name
-            if var_name in self.ctx.func.variable_to_literal:
-                literal_id = self.ctx.func.variable_to_literal[var_name]
-                if literal_id in self.ctx.list_literals:
-                    self.ctx.list_literals[literal_id].is_mutated = True
 
     def infer_empty_list_element_type(self, obj_expr: TpyExpr, value_type: TpyType) -> None:
         """Infer element type for an empty list literal from usage (e.g. .append(v)).

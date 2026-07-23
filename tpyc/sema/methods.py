@@ -55,6 +55,7 @@ if TYPE_CHECKING:
     from ..typesys import PendingGenericInstanceInfo
 
 from .context import _storage_key
+from .local_deduction import mark_pending_list_mutated
 
 
 # Single-element container inserts and the arg index that lands in element
@@ -761,7 +762,7 @@ class MethodAnalyzer:
         # List mutation tracking (before deref chain -- applies to direct list types only)
         if isinstance(obj_type, PendingListType) or is_list(obj_type):
             if not self._is_readonly_method(obj_type, expr.method):
-                self.deduction.mark_list_mutated(expr.obj)
+                mark_pending_list_mutated(self.ctx, expr.obj, obj_type)
 
         # Pending container element type inference from method args.
         # For any method on a pending container, check if params involve the

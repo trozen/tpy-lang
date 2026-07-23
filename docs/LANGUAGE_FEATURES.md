@@ -4898,7 +4898,7 @@ class Car(Vehicle, Printable, Measurable):
       (no buffer default-construction; multi-element repeats index `i % k`)
     - Variable count, unmutated -> lazy `repeat[T]` (`tpy::repeat_range<T>`, no allocation)
     - Variable count with subscript -> auto-promoted to `list[T]`
-    - Mutated (`.append()`, etc.) -> auto-promoted to `list[T]`
+    - Mutated (`.append()`, `+=`, concat operands, etc.) -> auto-promoted to `list[T]`
   - Lazy `repeat[T]` conforms to `Iterable[T]`, `Sized`, `NativeIterable[T]`
   - Explicit annotation (`z: list[T] = [v]*N`) always produces `list[T]`
   - Inline repeat cannot be passed directly to `Span` -- assign to a variable first

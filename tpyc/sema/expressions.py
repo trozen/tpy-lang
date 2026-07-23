@@ -66,7 +66,7 @@ from ..value_category import is_rvalue_source
 from .narrowing import NarrowingTracker, deref_view_narrowed
 from .numeric_lattice import widen_numeric_types
 from .list_literals import IterableHelper
-from .local_deduction import collect_pending_source_types
+from .local_deduction import collect_pending_source_types, mark_pending_list_mutated
 from .operators import DUNDER_CPP_TEMPLATES, _substitute_type_params
 from .bound_check import raise_if_class_param_bound_violated
 from .overloads import resolve_overload
@@ -1431,17 +1431,7 @@ class ExpressionAnalyzer:
     ) -> None:
         """Mark PendingListType operands as mutated so they resolve to list, not Array."""
         for sub_expr, sub_type in ((expr.left, left_type), (expr.right, right_type)):
-            if isinstance(sub_type, PendingListType):
-                info = self.ctx.list_literals.get(sub_type.literal_id)
-                if info:
-                    info.is_mutated = True
-            elif isinstance(sub_expr, TpyName):
-                var_name = sub_expr.name
-                if var_name in self.ctx.func.variable_to_literal:
-                    lit_id = self.ctx.func.variable_to_literal[var_name]
-                    info = self.ctx.list_literals.get(lit_id)
-                    if info:
-                        info.is_mutated = True
+            mark_pending_list_mutated(self.ctx, sub_expr, sub_type)
 
     def _try_eval_int_literal_binop(self, op: str, left: int | None, right: int | None) -> int | None:
         """Best-effort constant evaluation for int literal binops."""
