@@ -159,9 +159,8 @@ class TestEligibility:
         # rvalue-reassigned name's `std::optional<T>` rebind slot rides
         # THIRIf.hoist_slots next to the `T*` predecl; branch assigns
         # rebind through the slot (`xs = &*(__slot_1 = {1});`).
-        # NB the annotation is load-bearing: an UN-annotated both-branch
-        # literal hoist leaves an unresolved PendingListType that crashes
-        # the AST predecl (pre-existing, BUGS.md).
+        # (The un-annotated flavor resolves too now -- covered end-to-end
+        # by cases/list/branch_decl_pending_list.)
         src = (_PRELUDE
                + "def f(c: bool) -> Int32:\n"
                + "    if c:\n        xs: list[Int32] = [1]\n"

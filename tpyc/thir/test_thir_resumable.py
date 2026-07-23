@@ -3688,10 +3688,9 @@ class TestBranchFrameDecls:
     def test_branch_frame_slot_decl_defers(self):
         # A frame_slot local (owning non-value, `.emplace()` render) first-
         # declared in a branch stays a named reject -- only the PLAIN
-        # member-assign family routes in branch position. (A list-literal
-        # local in this shape hits a pre-existing AST codegen crash --
-        # PendingListType in typed_brace_init, see BUGS.md -- so the pin
-        # uses a record local.)
+        # member-assign family routes in branch position. (A record local
+        # pins the frame_slot family directly; the list-literal flavor is
+        # covered end-to-end by cases/async/branch_decl_pending_list_frame.)
         src = (_PRE
                + "class Holder:\n"
                + "    v: Int32\n"

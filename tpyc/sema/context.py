@@ -637,6 +637,11 @@ class FunctionTrackingState:
     # `tuple[Pending,...]`). Recorded at set_expr_type so the finalization pass
     # rewrites only these nodes -- never a sweep over the module-wide cache.
     pending_composite_exprs: list[object] = field(default_factory=list)
+    # Branch-decl snapshot dicts (the `if_branch_decls` values recorded by
+    # this function's branch producers). The snapshots capture binding types
+    # BEFORE the deferred container resolution, so resolve_all must finalize
+    # each registered map or a Pending* leaf reaches codegen's to_cpp().
+    pending_branch_decl_maps: list[dict] = field(default_factory=list)
 
     # --- Pending generic instance tracking ---
     pending_generic_instances: dict[int, PendingGenericInstanceInfo] = field(default_factory=dict)
@@ -1409,6 +1414,39 @@ class SemanticContext:
         # contains_pending_leaf fast-returns on leaves.
         if not isinstance(typ, PENDING_CONTAINER_TYPES) and contains_pending_leaf(typ):
             self.func.pending_composite_exprs.append(expr)
+
+    def record_branch_decls(self, stmt: TpyStmt, mapping: dict) -> dict:
+        """Store a branch-decl snapshot for `stmt`, registered for the
+        pending-container finalization in resolve_all (see
+        pending_branch_decl_maps). Incremental callers keep mutating the
+        one registered dict."""
+        for typ in mapping.values():
+            if typ is not None:
+                self._force_branch_decl_lists(typ)
+        existing = self.if_branch_decls.get(id(stmt))
+        if existing is not None:
+            existing.update(mapping)
+            return existing
+        self.if_branch_decls[id(stmt)] = mapping
+        self.func.pending_branch_decl_maps.append(mapping)
+        return mapping
+
+    def _force_branch_decl_lists(self, typ: TpyType) -> None:
+        """Force pending list literals reaching a branch-decl slot off the
+        Array optimization: sibling branches may bind literals of different
+        sizes into the one pre-declared slot (the snapshot sees only one
+        literal, and a handler/arm bind is not a visible reassignment), so
+        only the plain list form is size-safe."""
+        if isinstance(typ, PendingListType):
+            info = self.list_literals.get(typ.literal_id)
+            if info is not None:
+                info.is_mutated = True
+            # inner_types() does not traverse a Pending's element type, and
+            # a nested literal ([[1, 2]] vs [[3]]) has the same shared-slot
+            # size hazard one level down.
+            self._force_branch_decl_lists(typ.element_type)
+        for inner in typ.inner_types():
+            self._force_branch_decl_lists(inner)
 
     def default_int_for_literal(
         self,

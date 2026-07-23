@@ -2664,9 +2664,9 @@ class TestMatchWholeSubjectCapture:
 
     def test_leaked_container_arm_decl_still_defers(self):
         # A leaked arm-body container decl is outside the F1-record slice
-        # of the non-value hoist forms. Lowering-level assert only: the
-        # AST path crashes on this sema-legal shape (BUGS.md, leaked
-        # branch-first container-literal decl -> unresolved PendingListType).
+        # of the non-value hoist forms; lowering-level assert (the AST
+        # path handles the shape -- cases/match/branch_decl_pending_list_leak
+        # covers it end-to-end).
         src = RECORD_PREAMBLE + (
             "def f(p: Point) -> Int32:\n"
             "    match p:\n"

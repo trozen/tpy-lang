@@ -742,8 +742,7 @@ class ExpressionAnalyzer:
         self.ctx.func.current_scope.define(name, var_type)
         self.ctx.func.definitely_assigned.add(name)
         # Register for codegen pre-declaration
-        decls = self.ctx.if_branch_decls.setdefault(id(loop_stmt), {})
-        decls[name] = var_type
+        self.ctx.record_branch_decls(loop_stmt, {name: var_type})
         # NB: a str/bytes view target first-declared in a loop BODY from an
         # owned-temp source, hoisted here and used after the loop, dangles into
         # the dead per-iteration `__tup` -- but we cannot blanket-own here, as

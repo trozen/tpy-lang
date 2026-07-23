@@ -497,10 +497,10 @@ class MatchAnalyzer:
         else:
             predecl = set()
         if predecl:
-            self.ctx.if_branch_decls[id(stmt)] = {
+            self.ctx.record_branch_decls(stmt, {
                 name: self.ctx.func.current_scope.lookup(name)
                 for name in sorted(predecl)
-            }
+            })
             self.stmts.deduction.promote_predecl_view_targets(predecl)
 
     @staticmethod

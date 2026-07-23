@@ -1492,10 +1492,10 @@ class StatementAnalyzer:
             else:
                 predecl = set()
             if predecl:
-                self.ctx.if_branch_decls[id(stmt)] = {
+                self.ctx.record_branch_decls(stmt, {
                     name: self.ctx.func.current_scope.lookup(name)
                     for name in sorted(predecl)
-                }
+                })
                 self.deduction.promote_predecl_view_targets(predecl)
         elif isinstance(stmt, TpyWhile):
             assigned_before_cond = frozenset(self.ctx.func.definitely_assigned)
@@ -2322,11 +2322,11 @@ class StatementAnalyzer:
         branch_new = set(all_bindings.keys()) - scope_before
         predecl = branch_new - self.ctx.func.global_declarations
         if predecl:
-            self.ctx.if_branch_decls[id(stmt)] = {
+            self.ctx.record_branch_decls(stmt, {
                 name: all_bindings[name]
                 for name in sorted(predecl)
                 if name in all_bindings
-            }
+            })
             self.ctx.func.hoisted_vars |= predecl
             self.deduction.promote_predecl_view_targets(predecl)
 
@@ -2437,11 +2437,11 @@ class StatementAnalyzer:
             branch_new.discard(handler.binding)
         predecl = branch_new - self.ctx.func.global_declarations
         if predecl:
-            self.ctx.if_branch_decls[id(stmt)] = {
+            self.ctx.record_branch_decls(stmt, {
                 name: all_bindings[name]
                 for name in sorted(predecl)
                 if name in all_bindings
-            }
+            })
             self.deduction.promote_predecl_view_targets(predecl)
 
     def _analyze_try_throw(self, stmt: TpyTry) -> None:
@@ -2583,11 +2583,11 @@ class StatementAnalyzer:
         da_new = branch_new & (self.ctx.func.definitely_assigned - before.definitely_assigned)
         predecl = (branch_new if needs_full_hoist else da_new) - self.ctx.func.global_declarations
         if predecl:
-            self.ctx.if_branch_decls[id(stmt)] = {
+            self.ctx.record_branch_decls(stmt, {
                 name: all_bindings[name]
                 for name in sorted(predecl)
                 if name in all_bindings
-            }
+            })
             self.ctx.func.hoisted_vars |= predecl
             self.deduction.promote_predecl_view_targets(predecl)
 
@@ -2934,11 +2934,11 @@ class StatementAnalyzer:
         branch_new = set(self.ctx.func.current_scope.bindings.keys()) - scope_before
         predecl = branch_new - self.ctx.func.global_declarations
         if predecl:
-            self.ctx.if_branch_decls[id(stmt)] = {
+            self.ctx.record_branch_decls(stmt, {
                 name: self.ctx.func.current_scope.lookup(name)
                 for name in sorted(predecl)
                 if name in self.ctx.func.current_scope.bindings
-            }
+            })
             self.deduction.promote_predecl_view_targets(predecl)
 
     # --- Nested def / nonlocal ---

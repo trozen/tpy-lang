@@ -216,10 +216,9 @@ See `docs/FEATURE_ROADMAP.md` for bigger tasks and `BUGS.md` for known compiler 
   shared `_lower_frame_field_assign` (position-blind member assign,
   keyed on `lc.plain_frame_fields`, types registered by the nested
   pass-1 walk) -- the frame_slot / borrow-tuple / coro-handle families
-  in branch position keep `res.leaf_field_write`. Discovered filing the
-  frame_slot defer pin: a PRE-EXISTING AST codegen crash on
-  branch-declared list-literal locals in resumables (PendingListType in
-  typed_brace_init) -- filed in BUGS.md.
+  in branch position keep `res.leaf_field_write`. (The AST crash on
+  branch-declared list-literal locals once noted here is FIXED --
+  branch-decl snapshots are finalized after container resolution.)
   **Grind-batch 1 ROUTES (2026-07-18, five admission/arm cells):**
   method-call await operands under SUSPEND use (`suspend_ok` -- the
   result type is vacuous, the skeleton's wrap consumes the operand

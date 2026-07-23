@@ -1306,6 +1306,14 @@ class LocalTypeDeduction:
                 if resolved is not vtype:
                     loop_vars[name] = (resolved, s1, s2)
 
+        # Branch-decl snapshots capture binding types before the deferred
+        # container resolution; codegen renders them directly (predecl /
+        # frame-slot init), so finalize each map recorded by this function.
+        for decls in self.ctx.func.pending_branch_decl_maps:
+            for name, vtype in decls.items():
+                if vtype is not None:
+                    decls[name] = self._deep_resolve_pending(vtype)
+
     def _deep_resolve_pending(self, typ: TpyType) -> TpyType:
         """Replace every Pending* container leaf in a (possibly composite) type
         with its registry-resolved type, recursing through wrapper/composite
