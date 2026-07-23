@@ -841,12 +841,14 @@ def _lower_match(stmt: TpyMatch, route: _MatchRoute, lc: _LowerCtx,
             "switch_union")
             or (kind == "switch_union"
                 and route.union_route == "guarded_union")
-            or route.hoist_types):
+            or any(hk != "value" for _n, _t, hk in route.hoist_types)):
         # Dispatch-hook mode (a resumable MatchDispatch): the scalar tiers
         # and the unguarded union switch carry the skeleton hook at their
         # arm-body points; the guarded-union / record / optional tiers and
-        # hoisted arm decls (frame-field territory in a resumable) stay
-        # their own rungs.
+        # pointer/optional hoist kinds (frame-field pointer mechanics
+        # unverified) stay their own rungs. VALUE-kind hoists are no-op
+        # decls in a resumable -- every local is already a frame field --
+        # so they admit with the decl suppressed below.
         raise ThirUnsupported("res.match_strategy")
     if kind != "switch_union":  # the union lowerers witness their route
         _witness(f"match.{kind}")
@@ -880,11 +882,17 @@ def _lower_match(stmt: TpyMatch, route: _MatchRoute, lc: _LowerCtx,
             declared[name] = vtype
             _witness("match.hoist_opt_ptr_local")
             continue
+        declared[name] = vtype
+        if arm_body_hooks:
+            # Resumable hook mode: the frame struct already declares every
+            # local, so the value hoist registers the name only -- no decl
+            # line at the match site (the AST emits none either).
+            _witness("match.hoist_value_frame")
+            continue
         render_src = (_resolved_str_value(vtype, lc.analyzer)
                       or _resolved_bytes_value(vtype, lc.analyzer)
                       or vtype)
         hoist_decls.append((name, lc.render_type(render_src)))
-        declared[name] = vtype
     if hoist_decls:
         _witness("match.hoist_decl")
     if kind == "switch_union":
@@ -1024,13 +1032,14 @@ def _lower_scalar_arms(
             guard = _lower_match_guard(case.guard, lc, arm_declared)
         if arm_body_hooks:
             # Dispatch-hook mode: the arm body is a BB chain the skeleton
-            # walks (already seam-routed leaves); a whole-subject binding
-            # would be a frame-field write, not gen_match's local decl --
-            # its rung needs that duality mirrored.
-            if binding is not None:
+            # walks (already seam-routed leaves). An ASSIGN-mode binding is
+            # the frame-field write (`v = __match_subject_N;`) both paths
+            # emit before the body point -- admitted; the copy/ref modes
+            # declare arm-block LOCALS, whose frame duality is unmirrored.
+            if binding is not None and binding.mode != "assign":
                 raise ThirUnsupported("res.match_binding")
             entry = THIRMatchArmEntry(
-                body=(), loc=case.loc, binding=None, guard=guard,
+                body=(), loc=case.loc, binding=binding, guard=guard,
                 body_key=id(case.body))
         else:
             entry = THIRMatchArmEntry(

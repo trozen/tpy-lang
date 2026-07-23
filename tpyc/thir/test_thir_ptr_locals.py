@@ -6,8 +6,8 @@ with the rebind-slot pre-decl), the rvalue init slot (`T __slot_N = ...;`),
 the None / rvalue reseats, and the ptr-variant union rvalue / address kinds.
 """
 
-from .testutil import (_compile, _entry, _lower_ctx, _fn, _F1_RECORDS,
-                       _assert_byte_identical)
+from .testutil import (_compile, _entry, _lower_ctx, _lower_ctx_witnessed,
+                       _fn, _F1_RECORDS, _assert_byte_identical)
 from ..codegen_cpp import CodeGenOptions
 from ..codegen_cpp.forms import LocalBinding
 from .nodes import (
@@ -671,3 +671,43 @@ class TestBranchHoistDecls:
         cpp = _cpp(src, thir=True)
         assert cpp == _cpp(src, thir=False)
         assert "items = make();" in cpp
+
+
+class TestAliasPtrDerefSource:
+    """A REF_ALIAS decl off a PLAIN pointer-local source (`alias = p` where
+    `p` is reassigned later): the alias binds through the deref (`Point&
+    alias = (*p);`). Optional-declared pointer sources keep the deref_check
+    machinery and stay AST."""
+
+    _SRC = ("from tpy import Int32\n"
+            "class Point:\n"
+            "    x: Int32\n"
+            "    def __init__(self, x: Int32) -> None:\n"
+            "        self.x = x\n")
+
+    def test_pointer_source_alias_routes(self):
+        src = (self._SRC
+               + "def f() -> None:\n"
+               + "    p = Point(1)\n"
+               + "    alias = p\n"
+               + "    alias.x = 5\n"
+               + "    print(p.x)\n"
+               + "    p = Point(2)\n"
+               + "    print(alias.x, p.x)\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("decl.alias_ptr_deref_src")
+        _assert_byte_identical(src)
+
+    def test_optional_pointer_source_still_defers(self):
+        # BOUNDARY: an Optional-declared pointer name carries deref_check
+        # nullability -- the alias arm must not admit it.
+        src = (self._SRC
+               + "def f(flag: bool) -> None:\n"
+               + "    q: Point | None = Point(3) if flag else None\n"
+               + "    if q is not None:\n"
+               + "        r = q\n"
+               + "        print(r.x)\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert not faces.get("decl.alias_ptr_deref_src")
+        _assert_byte_identical(src)

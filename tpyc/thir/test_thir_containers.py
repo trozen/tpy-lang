@@ -3801,3 +3801,44 @@ class TestRecordElementSetItemMove:
         assert _fn(thir, "f") is not None
         assert faces.get("setitem.record_name")
         _assert_byte_identical(src)
+
+
+class TestInstantiationGenFactoryArg:
+    """`list(gen())` -- a generator-factory rvalue into a container
+    instantiation renders the bare factory call inside the construct
+    template; builtin iterator factories (map/filter) keep their own
+    callee family and stay AST."""
+
+    _GEN = ("from typing import Iterator\n"
+            "from tpy import Int32\n\n"
+            "def gen(n: Int32) -> Iterator[Int32]:\n"
+            "    i: Int32 = 0\n"
+            "    while i < n:\n"
+            "        yield i\n"
+            "        i += 1\n\n")
+
+    def test_gen_factory_arg_routes(self):
+        src = (self._GEN
+               + "def f() -> None:\n"
+               + "    xs = list(gen(3))\n"
+               + "    print(xs)\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("call.inst_gen_arg")
+        _assert_byte_identical(src)
+
+    def test_builtin_map_factory_still_defers(self):
+        # BOUNDARY: map/filter are builtin iterator factories with their
+        # own callee family (function-ref args) -- not the plain
+        # generator-factory arm.
+        src = ("from tpy import Int32\n\n"
+               "def add(a: Int32, b: Int32) -> Int32:\n"
+               "    return a + b\n\n"
+               "def f() -> None:\n"
+               "    xs: list[Int32] = [1, 2]\n"
+               "    ys: list[Int32] = [3, 4]\n"
+               "    print(list(map(add, xs, ys)))\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is None
+        assert not faces.get("call.inst_gen_arg")
+        _assert_byte_identical(src)

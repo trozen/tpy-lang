@@ -2662,23 +2662,25 @@ class TestAsyncioRunDriverCall:
             "main()\n")
         assert _fn(thir, "main") is None
 
-    def test_method_coro_arg_stays_ast(self):
-        # A bound async-METHOD coroutine captures its receiver; the factory
-        # is a TpyMethodCall -- outside the free-call factory row.
-        thir = _lower_ctx(
-            "from tpy import Int32\n"
-            "import asyncio\n"
-            "class W:\n"
-            "    n: Int32\n"
-            "    def __init__(self):\n"
-            "        self.n = 1\n"
-            "    async def go(self) -> None:\n"
-            "        print(self.n)\n"
-            "def main() -> None:\n"
-            "    w = W()\n"
-            "    asyncio.run(w.go())\n"
-            "main()\n")
-        assert _fn(thir, "main") is None
+    def test_method_coro_arg_routes(self):
+        # RE-PINNED ROUTED (thir-wave-next5): a MEMBER async-method factory
+        # (`asyncio.run(w.go())`) spells inline inside make_adapter -- the
+        # `_dyn_own_coro_factory_arg` member widening (dualgen-verified).
+        src = ("from tpy import Int32\n"
+               "import asyncio\n"
+               "class W:\n"
+               "    n: Int32\n"
+               "    def __init__(self):\n"
+               "        self.n = 1\n"
+               "    async def go(self) -> None:\n"
+               "        print(self.n)\n"
+               "def main() -> None:\n"
+               "    w = W()\n"
+               "    asyncio.run(w.go())\n"
+               "main()\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "main") is not None
+        _assert_byte_identical(src)
 
     def test_byte_identical(self):
         compiler, modules = _compile(_ASYNCIO_DRIVER_SRC)
@@ -2852,4 +2854,52 @@ class TestOptionalPtrContainerNameArg:
         thir, faces = _lower_ctx_witnessed(src)
         assert _fn(thir, "f") is not None
         assert faces.get("optptr.name")
+        _assert_byte_identical(src)
+
+
+class TestQualcallRecordDiscard:
+    """The qualcall twin of the record-method discard row: a DISCARDED
+    record-family MARKER-call result renders the same bare call statement
+    (`datetime.datetime.now();`); a discarded CONTAINER-returning qualcall
+    keeps falling back (the row admits the record family only)."""
+
+    def test_discarded_record_qualcall_routes(self):
+        src = ("import datetime\n"
+               "def f() -> None:\n"
+               "    datetime.datetime.now()\n"
+               '    print("done")\n')
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("method.qualcall.record_discard")
+        _assert_byte_identical(src)
+
+    def test_discarded_container_qualcall_still_defers(self):
+        # BOUNDARY: re.split returns list[str] -- the container family
+        # keeps its storage/borrow duality out of the discard row.
+        src = ("import re\n"
+               "def f() -> None:\n"
+               '    re.split(",", "a,b")\n'
+               '    print("done")\n')
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is None
+        assert not faces.get("method.qualcall.record_discard")
+        _assert_byte_identical(src)
+
+
+class TestQualcallRecordStorageSync:
+    """Review-probe pin (thir-wave-next5): the record_storage row's SYNC-lane
+    face -- a record-family qualcall rvalue at an owned decl slot
+    (`d = datetime.datetime.now()`) renders the bare call, byte-identical."""
+
+    def test_sync_storage_decl_routes(self):
+        # datetime is F1, so this rides the pre-existing F1 record row --
+        # the pin guards the SYNC-lane storage-decl render either way
+        # (the record_storage row's own witnesses are the async Task
+        # cases; a sync NON-F1 qualcall factory has no corpus witness).
+        src = ("import datetime\n"
+               "def f() -> None:\n"
+               "    d = datetime.datetime.now()\n"
+               "    print(d.year > 1970)\n")
+        thir, _faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
         _assert_byte_identical(src)

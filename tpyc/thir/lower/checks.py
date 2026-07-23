@@ -854,8 +854,18 @@ def _bare_nonvalue_name_alias_ok(init: TpyExpr, target_type: TpyType | None,
     if not isinstance(init, TpyName):
         return False
     if init.name in pointers:
-        note_detail("decl.name_alias_ptr_src")
-        return False
+        # A PLAIN pointer-local source (a reassigned record local) aliases
+        # through the deref the name lowering already renders (`Point&
+        # alias = (*p);`). An Optional-declared pointer name carries the
+        # deref_check nullability machinery -- unmirrored, stays AST.
+        dt = declared.get(init.name)
+        dt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(dt)))
+              if isinstance(dt, TpyType) else None)
+        if isinstance(dt, OptionalType):
+            note_detail("decl.name_alias_ptr_src")
+            return False
+        return bool(_f1_record(target_type, analyzer)
+                    and _witness("decl.alias_ptr_deref_src"))
     if init.name not in declared and init.name not in prescan.param_names:
         note_detail("decl.name_alias_global_src")
         return False
@@ -4291,7 +4301,8 @@ def _deref_marker_reject(e: TpyMethodCall, analyzer) -> str:
     return "method.marker.deref.plain"
 
 def _marker_call_kind(e: TpyMethodCall, analyzer, *,
-                      generator_ok: bool = False) -> 'tuple[str, str] | None':
+                      generator_ok: bool = False,
+                      coro_factory_ok: bool = False) -> 'tuple[str, str] | None':
     """Classify a marker-carrying method call whose emit is RECEIVER-LESS --
     module-qualified (`m.f(x)`) or same-module static (`Rec.m(x)`) -- into
     its THIRCall emit kind + pre-rendered payload, the ONE routing fact
@@ -4346,7 +4357,11 @@ def _marker_call_kind(e: TpyMethodCall, analyzer, *,
         return None
     if (fi.is_consuming or fi.error_return_type is not None
             or fi.native_cpp_return_type is not None
-            or fi.is_async or (fi.is_generator and not generator_ok)
+            # `coro_factory_ok` lifts ONLY the async-callee reject (the
+            # adapter-wrap position consumes the frame whole), mirroring
+            # _free_callee_kind's flag.
+            or (fi.is_async and not coro_factory_ok)
+            or (fi.is_generator and not generator_ok)
             or fi.is_property_getter or fi.is_property_setter
             or any(isinstance(p.type, LiteralType) for p in fi.params)):
         return None
@@ -4494,6 +4509,7 @@ def _marker_call_supported(e: TpyMethodCall, kind: 'tuple[str, str]',
                           owned_tuple_ret_ok: bool = False,
                           storage_ret_ok: bool = False,
                           value_opt_ret_ok: bool = False,
+                          coro_factory_ok: bool = False,
                           narrowed: 'set[str] | frozenset[str]' = frozenset()) -> bool:
     """Result/arg checks for a `_marker_call_kind`-classified receiver-less
     call. Mirrors free-call lowering's value-position result set and its arg
@@ -4542,7 +4558,29 @@ def _marker_call_supported(e: TpyMethodCall, kind: 'tuple[str, str]',
             # (`os.getenv("X") is None` -- the has_value render takes the
             # bare call), the record-method row's marker twin.
             or (value_opt_ret_ok and _value_opt_ret(ret))
-            or (stmt_position and (ret is None or is_void_like_type(ret)))):
+            or (stmt_position and (ret is None or is_void_like_type(ret)))
+            # A DISCARDED record-family result (`asyncio.create_task(...);`
+            # -- the Task handle dropped at statement position): the render
+            # is the same bare call whatever the ignored result, the
+            # qualcall twin of the record-method discard row. Containers
+            # stay out (storage/borrow duality; no oracle witness).
+            or (stmt_position and _moved_record_ret(ret, analyzer)
+                and _witness("method.qualcall.record_discard"))
+            # A record-family RVALUE result consumed whole by a storage sink
+            # (`t1 = asyncio.create_task(reader(b1))` -- the frame-slot
+            # emplace / owned decl takes the bare call): record_ret_ok at
+            # STORAGE already pinned rvalue-source-ness; the F1 row above
+            # keeps the borrow-bind/receiver positions F1-only.
+            or (storage_ret_ok and record_ret_ok
+                and _moved_record_ret(ret, analyzer)
+                and _witness("method.qualcall.record_storage"))
+            # A module-qualified coro FACTORY at the adapter-wrap position
+            # (`create_task(asyncio.wait_for(...))`): the erased dyn-protocol
+            # result is consumed whole by make_adapter -- no value slot; the
+            # record-method ladder's coro_factory_ok twin.
+            or (coro_factory_ok and ret is not None
+                and is_dyn_protocol(unwrap_readonly(unwrap_ref_type(
+                    unwrap_send_sync(ret)))))):
         return note_detail(_qualcall_ret_reject(ret, analyzer))
     return True
 
@@ -4652,7 +4690,8 @@ def _dyn_own_coro_factory_arg(a: TpyExpr, ptype: 'TpyType | None',
     different render, AST. The factory itself must classify plain/imported
     (`coro_factory_ok`); its own args are judged by the free-call loop at
     lowering."""
-    if not isinstance(ptype, TpyType) or not isinstance(a, TpyCall):
+    if not isinstance(ptype, TpyType) or not isinstance(a, (TpyCall,
+                                                            TpyMethodCall)):
         return None
     u = unwrap_send_sync(ptype)
     if not isinstance(u, OwnType):
@@ -4676,6 +4715,18 @@ def _dyn_own_coro_factory_arg(a: TpyExpr, ptype: 'TpyType | None',
     if not (isinstance(at, NominalType) and at.qualified_name()
             in (qnames.CANCELLABLE, qnames.AWAITABLE)):
         return None
+    if isinstance(a, TpyMethodCall):
+        # A module-qualified async factory (`asyncio.wait_for(slow(), 5.0)`
+        # nested in `create_task(...)`) or a MEMBER async method
+        # (`asyncio.run(b.take())`): the AST wraps either render in the
+        # same adapter -- the method call spells inline, its receiver
+        # riding the ordinary method-call arm. The marker lane's
+        # dyn-protocol result rides the coro_factory_ok escape; a member
+        # factory's receiver/arg shapes gate at its own lowering.
+        if (_marker_call_kind(a, analyzer, coro_factory_ok=True) is None
+                and not fi.is_method):
+            return None
+        return proto
     k = _free_callee_kind(a, analyzer, coro_factory_ok=True)
     if k is None or k[0] not in ("plain", "imported"):
         return None
@@ -4994,12 +5045,14 @@ def _method_call_arg_ok(
         param_names: 'set[str] | frozenset[str]',
         tparam_bounds: 'dict | None' = None) -> bool:
     if not _plain_member_call_markers_ok(e, targs_ok=True):
-        # generator_ok unconditionally: the call-level gate already decided
-        # whether the generator fi is admitted (iterable position only) --
-        # this arg-side re-derivation only picks the arg rows, which are the
-        # same for a generator factory as for any qualified call.
+        # generator_ok/coro_factory_ok unconditionally: the call-level gate
+        # already decided whether the generator/async fi is admitted
+        # (iterable / adapter-wrap position only) -- this arg-side
+        # re-derivation only picks the arg rows, which are the same for a
+        # generator or coro factory as for any qualified call.
         kind = (("qualified", "") if _ptr_deref_method_call(e, analyzer)
-                else _marker_call_kind(e, analyzer, generator_ok=True))
+                else _marker_call_kind(e, analyzer, generator_ok=True,
+                                       coro_factory_ok=True))
         return (kind is not None
                 and _marker_call_arg_ok(
                     a, ptype, kind, locals_, analyzer,
@@ -5440,6 +5493,11 @@ def _record_method_arg_ok(
             # TypedDict-ctor face's row, shared with the ctor arg loop.
             or _str_literal_value_opt_arg(a, ptype)
             or _none_value_opt_arg(a, ptype, analyzer) is not None
+            # A `None` literal into a unit slot (`fut.set_result(None)` on a
+            # `Future[None]` -- the substituted T=None param): the bare
+            # `std::monostate{}`, the record-method twin of the qualcall row;
+            # `_lower_call_arg`'s unit-none tail renders it.
+            or _none_unit_arg(a, ptype) is not None
             # A list literal into an `Own[list]` user-method slot renders
             # the bare in-place brace (`g.set([7, 8, 9])` -> `set({7, 8,
             # 9})`), the record-method twin of the qualcall row.

@@ -3309,6 +3309,18 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                     # outside its slice falls the body back.
                     _witness("call.inst_slice_arg")
                     lowered_args.append(_lower_expr(arg, lc, declared))
+                elif (isinstance(arg, TpyCall)
+                      and arg.resolved_function_info is not None
+                      and arg.resolved_function_info.is_generator
+                      and _free_callee_kind(arg, analyzer,
+                                            generator_ok=True) is not None):
+                    # A generator-factory rvalue (`list(gen())`): the bare
+                    # factory call renders inside the construct template --
+                    # the iterable-position render, consumed whole here.
+                    _witness("call.inst_gen_arg")
+                    lowered_args.append(_lower_expr(
+                        arg, lc, declared,
+                        use=_ExprUse(result=_ExprResultUse.ITERABLE)))
                 else:
                     if (not isinstance(arg, TpyName) or arg.name == "self"
                             or arg.name not in declared):
@@ -3901,7 +3913,8 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
             iterable_gen = (result_use is _ExprResultUse.ITERABLE
                             and e.resolved_function_info is not None
                             and e.resolved_function_info.is_generator)
-            mk = _marker_call_kind(e, analyzer, generator_ok=iterable_gen)
+            mk = _marker_call_kind(e, analyzer, generator_ok=iterable_gen,
+                                   coro_factory_ok=use.coro_factory)
             # An F1-record result renders bare under a postfix member
             # (RECEIVER) and, when it is an RVALUE source, directly into the
             # owned-record decl / storage slot (`Rc<A> r = Rc.new_(...);`) --
@@ -3924,6 +3937,7 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                         and use.tuple_source),
                     storage_ret_ok=result_use is _ExprResultUse.STORAGE,
                     value_opt_ret_ok=allow_whole_optional,
+                    coro_factory_ok=use.coro_factory,
                     narrowed=frozenset(lc.narrow.narrowed))):
                 if mk is None:
                     note_detail(_marker_reject(e, analyzer))

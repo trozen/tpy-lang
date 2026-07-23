@@ -109,6 +109,10 @@ THIR_FACES: frozenset[str] = frozenset({
     "method.record_discard",        # discarded F1-record method result at
                                     # stmt position: the bare call
     "method.container_discard",     # discarded container method result: same bare call
+    "method.qualcall.record_discard",  # discarded record-family qualcall result
+                                       # (asyncio.create_task(...);): the bare call
+    "method.qualcall.record_storage",  # record-family qualcall rvalue at a
+                                       # storage sink: bare call into the slot
     "method.container_iterable",    # container method result as a for-head iterable
     "method.consuming_move",        # consuming method: std::move(name) receiver wrap
     "call.native_record_arg",       # F1-record call rvalue bare into a native slot
@@ -661,6 +665,9 @@ THIR_FACES: frozenset[str] = frozenset({
     # Pointer-name copy reseat between two `T*` locals: `saved = p;` (bare,
     # no address-of).
     "reseat.ptr_copy",
+    # REF_ALIAS decl off a PLAIN pointer-local source: `Point& alias =
+    # (*p);` (the name lowering's deref render at the alias init).
+    "decl.alias_ptr_deref_src",
     # Reseat of a slot-hoist Optional local to None: `x = nullptr;`.
     "reseat.opt_none",
     "reseat.opt_inline_rvalue",  # slotless local: in-place plain block slot + later reuse
@@ -917,6 +924,8 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # kind-keyed printer wrap around the call
     "call.inst_slice_arg",          # container-slice rvalue into a list/set/
                                     # dict instantiation (`list(argv[i:])`)
+    "call.inst_gen_arg",            # generator-factory rvalue into a list/set/
+                                    # dict instantiation (`list(gen())`)
     "argtemp.optptr_container_literal",  # container literal into a ptr-repr
                                     # Optional[container] slot: typed __tmp_N
                                     # + &(__tmp_N)
@@ -994,6 +1003,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "match.synthetic_default",      # non-exhaustive: `default: break;`
     "match.unreachable_tail",       # exhaustive + terminating arms tail
     "match.hoist_decl",             # sema-hoisted plain-value predecls
+    "match.hoist_value_frame",      # resumable hook mode: value hoist is a
+                                    # frame field, no decl at the match site
     # Emit-side finally-frame walks (recorded at emission -- the chain is
     # structural, so lowering never sees it; a no-op outside a compilation).
     # The with/try prefix keys on the walked segment's frame arms, so a

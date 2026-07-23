@@ -554,7 +554,12 @@ def _lower_for_iter_setup(stmt: 'rcfg.AsyncForIterSetup', func, lc,
         return
     if _for_iterable_narrowed_optional(it, declared, analyzer):
         raise ThirUnsupported("res.for_narrowed_optional")
-    region_exprs[id(it)] = _lower_expr(it, lc, declared)
+    # ITERABLE result use, mirroring the sync for-head: the skeleton's
+    # source capture consumes the render whole (`gen_expr(iterable_expr)`,
+    # position-blind), so generator-factory calls admit here exactly like
+    # the sync route (their render is the same bare call).
+    region_exprs[id(it)] = _lower_expr(
+        it, lc, declared, use=_ExprUse(result=_ExprResultUse.ITERABLE))
 
 
 def _with_enter_reject(stmt: 'rcfg.WithEnter | rcfg.AsyncWithSetup', analyzer,

@@ -2123,3 +2123,48 @@ byte-diff itself.
   `return iter(self._items)` iterator-protocol returns; `-> Any`
   literal returns (into_any at return); exceptions-class isinstance
   dispatch; NativeIterable protocol narrowing.
+
+- **Landed: create_task/res-iterable/aliases wave (`thir-wave-next5`,
+  2026-07-23, 7 landed arms across 6 cells, +27 flips, dial
+  2265 -> 2292/3533).** (1) The
+  create_task cluster: `_marker_call_supported` gains the record-family
+  DISCARD row (`asyncio.create_task(...);` -- the bare call statement,
+  qualcall twin of method.record_discard) and the record-rvalue STORAGE
+  row (`t1 = create_task(reader(b1))` -- `_moved_record_ret` at
+  storage+rvalue, admitting non-F1 generic-concrete rets like
+  Task[bytes]; sync-lane face unit-pinned). (2) Coro-factory marker
+  lift: `_marker_call_kind` gains coro_factory_ok (lifts ONLY the
+  async-callee reject, mirroring _free_callee_kind);
+  `_dyn_own_coro_factory_arg` admits module-qualified async factories
+  (`create_task(asyncio.wait_for(slow(), 5.0))` -- nested adapters) and
+  MEMBER async methods (`asyncio.run(b.take())` -- inline method call
+  in the wrap); the qualcall ret gate gains the coro_factory_ok
+  dyn-protocol escape; `_method_call_arg_ok`'s kind re-derivation passes
+  the flag unconditionally (arg rows are kind-keyed only). (3)
+  `_record_method_arg_ok` gains the none-unit row
+  (`fut.set_result(None)` on Future[None] -> `std::monostate{}`).
+  (4) The resumable for-head iterable lowers under the ITERABLE result
+  use (the skeleton's source capture is position-blind gen_expr) --
+  generator factories, container-returning calls, and dict-view
+  iterables route in res for-heads (gen_resumable_delegate trio).
+  (5) Res-match hook mode admits VALUE-kind hoists (a resumable's
+  locals are frame fields -- decl suppressed, face
+  match.hoist_value_frame) and ASSIGN-mode whole-subject bindings (the
+  frame-field write both paths emit before the arm-body point);
+  pointer/optional hoist kinds and copy/ref bind modes stay rejected.
+  (6) REF_ALIAS decls off PLAIN pointer-local sources
+  (`Point& alias = (*p);` -- deref forced at the alias arm; the old
+  reject pin re-pinned routed; Optional-declared sources stay AST).
+  (7) Generator-factory rvalues at container instantiations
+  (`list(gen())` -> the bare factory inside the construct template,
+  face call.inst_gen_arg; map/filter builtin factories stay AST).
+  PARKED with probe-verified blockers: the reactor pair's method-call
+  CONFORMER args (non-async awaitable-record rvalues into Own[@dynamic]
+  slots + Optional-ptr receivers); res.local_storage heterogeneous
+  frame locals; sgen tuple yields (tuple_to_pointer bridge); the
+  SpanIter value family; tuple literals with container/union elements
+  at storage decls (3 render sub-shapes); Optional[container] params;
+  optional_other_nonetype cond subjects; generic generator factories
+  and generic member-factory method targs (generics lane). REFUTED:
+  the wave-next4 "value-opt RECORD bindings = biggest lever" claim --
+  the fresh corpus map has ZERO cases blocked on name.optval_read.

@@ -4154,3 +4154,245 @@ class TestFrameFieldShadowingTupleUnpack:
         witnesses, fallback = _assert_identical(self.SRC)
         assert "res.body" not in witnesses
         assert fallback.get("resumable:stmt.for_each:tuple.iter_shape") == 1
+
+
+class TestQualcallRecordDiscardStorage:
+    """The qualcall record-result rows added for the create_task cluster:
+    a DISCARDED record-family result renders the bare call statement
+    (`asyncio.create_task(...);`), a record RVALUE at a storage sink lands
+    bare in the frame-slot emplace (Task[bytes] -- non-F1), and a
+    module-qualified ASYNC factory nested in the adapter position lowers
+    through the marker lane (`create_task(asyncio.wait_for(...))`)."""
+
+    _PRE = ("import asyncio\n"
+            "from tpy import Int32\n\n"
+            "async def sub() -> bytes:\n"
+            '    return b"x"\n\n')
+
+    def test_discarded_create_task_routes(self):
+        src = (self._PRE
+               + "async def main_coro() -> None:\n"
+               + "    asyncio.create_task(sub())\n"
+               + "    await asyncio.sleep(0.001)\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("method.qualcall.record_discard", 0) >= 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+
+    def test_nonf1_record_storage_decl_routes(self):
+        # Task[bytes] fails _f1_record (reference-type targ); the storage
+        # row admits the rvalue call whole into the emplace.
+        src = (self._PRE
+               + "async def main_coro() -> None:\n"
+               + "    t = asyncio.create_task(sub())\n"
+               + "    r = await t\n"
+               + "    print(len(r))\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("method.qualcall.record_storage", 0) >= 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+
+    def test_nested_marker_async_factory_routes(self):
+        # The inner wait_for is an ASYNC module function: the coro_factory
+        # lift admits it only inside the Own[@dynamic] adapter position.
+        src = (self._PRE
+               + "async def main_coro() -> None:\n"
+               + "    t = asyncio.create_task(asyncio.wait_for(sub(), 5.0))\n"
+               + "    r = await t\n"
+               + "    print(len(r))\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("call.coro_factory_adapter", 0) >= 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert ("::tpy::make_adapter<::tpystd::coro::Cancellable<"
+                "std::vector<uint8_t>>>(::tpystd::asyncio::wait_for<"
+                in cpp)
+
+    def test_unawaited_async_factory_decl_still_defers(self):
+        # BOUNDARY: an async factory bound at a plain decl slot is NOT the
+        # adapter position -- the coro_factory lift must not admit it.
+        src = (self._PRE
+               + "async def main_coro() -> None:\n"
+               + "    c = asyncio.wait_for(sub(), 5.0)\n"
+               + "    r = await c\n"
+               + "    print(len(r))\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        _witnesses, fallback = _assert_identical(src)
+        assert any(k.startswith("resumable:") for k in fallback)
+
+    def test_set_result_none_unit_arg_routes(self):
+        # `fut.set_result(None)` on Future[None]: the substituted T=None
+        # param takes the bare `std::monostate{}` (the none-unit row in the
+        # record-method arg ladder).
+        src = ("import asyncio\n"
+               + "from asyncio import Future\n\n"
+               + "async def producer(fut: Future[None]) -> None:\n"
+               + "    fut.set_result(None)\n\n"
+               + "async def main_coro() -> None:\n"
+               + "    fut: Future[None] = Future[None]()\n"
+               + "    asyncio.create_task(producer(fut))\n"
+               + "    await fut\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        _witnesses, fallback = _assert_identical(src)
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "set_result(std::monostate{})" in cpp
+
+
+class TestResForHeadIterableUse:
+    """The res-lane for-head iterable lowers under the ITERABLE result use
+    (mirroring the sync for-head): a sub-generator FACTORY call delegates
+    through the `__for_src` frame field; the generic-factory spelling stays
+    unprobed and falls back."""
+
+    def test_subgenerator_factory_iterable_routes(self):
+        src = ("from typing import Iterator\n"
+               "from tpy import Int32\n\n"
+               "def src() -> Iterator[Int32]:\n"
+               "    yield 1\n    yield 2\n\n"
+               "def gen() -> Iterator[Int32]:\n"
+               "    yield 0\n"
+               "    for x in src():\n"
+               "        yield x\n"
+               "    yield 9\n\n"
+               "def main() -> None:\n    pass\nmain()\n")
+        _witnesses, fallback = _assert_identical(src)
+        assert not any(k.startswith("resumable:") for k in fallback)
+
+    def test_container_call_iterable_routes(self):
+        # A container-returning call iterable in a resumable for-head:
+        # newly reachable under ITERABLE use; the skeleton captures the
+        # bare call render.
+        src = ("from typing import Iterator\n"
+               "from tpy import Int32, Own\n\n"
+               "def make_list() -> Own[list[Int32]]:\n"
+               "    return [1, 2, 3]\n\n"
+               "def gen() -> Iterator[Int32]:\n"
+               "    yield 0\n"
+               "    for x in make_list():\n"
+               "        yield x\n\n"
+               "def main() -> None:\n    pass\nmain()\n")
+        _witnesses, fallback = _assert_identical(src)
+        assert not any(k.startswith("resumable:") for k in fallback)
+
+    def test_generic_factory_iterable_still_defers(self):
+        # BOUNDARY: a GENERIC generator factory (`pair[T]`) keeps the
+        # _free_callee_kind generic-generator reject.
+        src = ("from typing import Iterator\n"
+               "from tpy import Int32\n\n"
+               "def pair[T](a: T, b: T) -> Iterator[T]:\n"
+               "    yield a\n    yield b\n\n"
+               "def gen() -> Iterator[Int32]:\n"
+               "    yield 0\n"
+               "    for x in pair(7, 8):\n"
+               "        yield x\n\n"
+               "def main() -> None:\n    pass\nmain()\n")
+        _witnesses, fallback = _assert_identical(src)
+        assert any(k.startswith("resumable:") for k in fallback)
+
+
+class TestResMatchValueHoists:
+    """Res-match hook mode admits VALUE-kind hoists (a resumable's locals
+    are frame fields, so the hoist is a no-op decl) and ASSIGN-mode
+    whole-subject bindings (`v = __match_subject_N;` -- the frame-field
+    write both paths emit); the copy/ref bind modes (arm-block locals)
+    keep falling back."""
+
+    def test_hoisted_capture_with_guard_routes(self):
+        src = ("from typing import Iterator\n\n"
+               "def gen(items: list[int]) -> Iterator[int]:\n"
+               "    for it in items:\n"
+               "        match it:\n"
+               "            case 0:\n"
+               "                break\n"
+               "            case v if v > 10:\n"
+               "                yield v\n"
+               "                yield v + 100\n"
+               "            case v:\n"
+               "                yield v\n"
+               "    yield -1\n\n"
+               "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("match.hoist_value_frame", 0) >= 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+
+    def test_single_arm_capture_still_defers(self):
+        # BOUNDARY: a single-arm capture is not sema-hoisted, so its bind
+        # mode is copy/ref (an arm-block local) -- unmirrored in hook mode.
+        src = ("from typing import Iterator\n\n"
+               "def gen(items: list[int]) -> Iterator[int]:\n"
+               "    for it in items:\n"
+               "        match it:\n"
+               "            case 0:\n"
+               "                yield 100\n"
+               "            case v:\n"
+               "                yield v\n\n"
+               "def main() -> None:\n    pass\nmain()\n")
+        _witnesses, fallback = _assert_identical(src)
+        assert fallback.get("resumable:res.match_binding")
+
+
+class TestMemberCoroFactoryArg:
+    """A MEMBER async-method factory into the Own[@dynamic P] adapter slot
+    (`asyncio.run(b.take())`): the method call spells inline inside
+    make_adapter, its receiver riding the ordinary method-call arm."""
+
+    _PRE = ("import asyncio\n"
+            "from tpy import Int32\n\n"
+            "class Box:\n"
+            "    v: Int32\n"
+            "    def __init__(self, v: Int32) -> None:\n"
+            "        self.v = v\n"
+            "    async def take(self) -> Int32:\n"
+            "        await asyncio.sleep(0.001)\n"
+            "        return self.v\n\n")
+
+    def test_member_factory_routes(self):
+        src = (self._PRE
+               + "def main() -> None:\n"
+               + "    b = Box(7)\n"
+               + "    print(asyncio.run(b.take()))\n\n"
+               + "main()\n")
+        _witnesses, fallback = _assert_identical(src)
+        assert not fallback
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert ("::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<"
+                "::tpystd::coro::Cancellable<int32_t>>(b.take()))" in cpp)
+
+    def test_awaitable_record_factory_still_defers(self):
+        # BOUNDARY: a NON-async method returning a concrete awaitable
+        # record (`loop.sock_recv(...)` -> _SockRecv) into wait_for's
+        # adapter slot is the method-call CONFORMER face, not an async
+        # factory -- must keep falling back. (The DIRECT-await position
+        # routes via the suspend-operand machinery instead.)
+        src = ("import asyncio\n"
+               "from socket import socketpair\n\n"
+               "async def main_coro() -> None:\n"
+               "    loop = asyncio.get_running_loop()\n"
+               "    a, b = socketpair()\n"
+               "    b.setblocking(False)\n"
+               "    data = await asyncio.wait_for(loop.sock_recv(b, 16), 0.5)\n"
+               "    print(len(data))\n\n"
+               "def main() -> None:\n    pass\nmain()\n")
+        _witnesses, fallback = _assert_identical(src)
+        assert any(k.startswith("resumable:") for k in fallback)
+
+
+class TestResForHeadDictViewIterable:
+    """Review-probe pin (thir-wave-next5): the ITERABLE-use change also
+    admits dict-view iterables inside a resumable for-head
+    (`for v in d.values():` in a generator) -- byte-identical."""
+
+    def test_dict_view_iterable_routes(self):
+        src = ("from typing import Iterator\n"
+               "from tpy import Int32\n\n"
+               "def gen(d: dict[str, Int32]) -> Iterator[Int32]:\n"
+               "    yield 0\n"
+               "    for v in d.values():\n"
+               "        yield v\n"
+               "    for k in d.keys():\n"
+               "        yield len(k)\n\n"
+               "def main() -> None:\n    pass\nmain()\n")
+        _witnesses, fallback = _assert_identical(src)
+        assert not any(k.startswith("resumable:") for k in fallback)

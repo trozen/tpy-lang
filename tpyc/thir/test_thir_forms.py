@@ -308,16 +308,17 @@ class TestNameAlias:
             + "def f() -> Int32:\n    local = g\n    return local.value\n")
         assert _fn(thir, "f") is None
 
-    def test_ptr_local_source_ineligible(self):
-        # Aliasing an F2 pointer-local (`x` is reseated, so it renders `Inner*`)
-        # needs `(*x)` -- the deferred `decl.name_alias_ptr_src` rung, so the
-        # whole body stays on the AST path.
-        thir = _lower_ctx(
-            _F1_RECORDS
-            + "def f(b: Box, c: Box, which: Int32) -> Int32:\n"
-            + "    x = b.inner\n    if which < 0:\n        x = c.inner\n"
-            + "    y = x\n    return y.value\n")
-        assert _fn(thir, "f") is None
+    def test_ptr_local_source_routes_deref_alias(self):
+        # RE-PINNED ROUTED (thir-wave-next5): aliasing an F2 pointer-local
+        # (`x` is reseated, so it renders `Inner*`) takes the `(*x)` deref
+        # alias via `decl.alias_ptr_deref_src` (dualgen-verified).
+        src = (_F1_RECORDS
+               + "def f(b: Box, c: Box, which: Int32) -> Int32:\n"
+               + "    x = b.inner\n    if which < 0:\n        x = c.inner\n"
+               + "    y = x\n    return y.value\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is not None
+        _assert_byte_identical(src)
 
 
 # --- F2 form rung: reassigned/rebound pointer-locals (lvalue reseat) ---

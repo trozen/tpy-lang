@@ -2273,7 +2273,12 @@ def _lower_borrow_local(stmt: TpyVarDecl, vtype: TpyType, binding: 'LocalBinding
         if isinstance(stmt.init, TpySubscript):
             src = _lower_expr(stmt.init, lc, declared, subscript_prechecked=True)
         elif isinstance(stmt.init, TpyName):
-            src = _lower_expr(stmt.init, lc, declared)
+            # A pointer-local source aliases through the deref
+            # (`Point& alias = (*p);`) -- the shared pointer-name-source
+            # render, also the erased-@dynamic assign's. The name arm
+            # always yields a THIRName here, so the helper never misses.
+            src = _lower_ptr_name_src(stmt.init, lc, declared)
+            assert src is not None
         else:
             src = _lower_field_source(stmt.init, lc, declared)
         return THIRVarDecl(
@@ -2645,6 +2650,20 @@ def _lower_dyn_protocol_decl(stmt: TpyVarDecl, vtype: 'TpyType | None',
         base_cpp=dynamic_base_name(vtype, analyzer), loc=loc)
 
 
+def _lower_ptr_name_src(init: TpyExpr, lc: _LowerCtx,
+                        declared: dict[str, TpyType]) -> 'THIRExpr | None':
+    """Lower a NAME source, forcing the deref render for a pointer-local
+    (`(*p)` -- pointer names render bare by default, their access riding
+    the arrow arms); bare for a non-pointer name. None for a non-name
+    source or a non-name render (those keep their own deref rules)."""
+    if not isinstance(init, TpyName):
+        return None
+    src = _lower_expr(init, lc, declared)
+    if not isinstance(src, THIRName):
+        return None
+    return replace(src, deref=True) if init.name in lc.pointers else src
+
+
 def _lower_dyn_erased_source(init: TpyExpr, lc: _LowerCtx,
                              declared: dict[str, TpyType]) -> 'THIRExpr | None':
     """The deref'd source of an already-erased @dynamic assign (`p2 = p1`):
@@ -2652,12 +2671,7 @@ def _lower_dyn_erased_source(init: TpyExpr, lc: _LowerCtx,
     param/reference. Returns None for a non-name source (a protocol call /
     field / subscript keeps its own deref rules, and a protocol-returning call
     does not itself route yet -- a later rung)."""
-    if not isinstance(init, TpyName):
-        return None
-    src = _lower_expr(init, lc, declared)
-    if not isinstance(src, THIRName):
-        return None
-    return replace(src, deref=True) if init.name in lc.pointers else src
+    return _lower_ptr_name_src(init, lc, declared)
 
 
 @contextmanager
